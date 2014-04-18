@@ -25,10 +25,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/stat.h>
+#include <sys/param.h>
+
+#include <fcntl.h>
+
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
+
 
 #include "pkg.h"
 #include "private/event.h"
@@ -98,43 +104,79 @@ _load_rsa_public_key_buf(unsigned char *cert, int certlen)
 	return (rsa);
 }
 
-int
-rsa_verify_cert(const char *path, unsigned char *key, int keylen,
-    unsigned char *sig, int siglen, int fd)
+struct rsa_verify_cbdata {
+	unsigned char *key;
+	size_t keylen;
+	unsigned char *sig;
+	size_t siglen;
+};
+
+static int
+rsa_verify_cert_cb(int fd, void *ud)
 {
+	struct rsa_verify_cbdata *cbdata = ud;
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
 	char hash[SHA256_DIGEST_LENGTH];
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
 
-	if (fd != -1)
-		sha256_fd(fd, sha256);
-	else
-		sha256_file(path, sha256);
+	sha256_fd(fd, sha256);
+
+	sha256_buf_bin(sha256, strlen(sha256), hash);
+
+	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
+	if (rsa == NULL)
+		return (EPKG_FATAL);
+	ret = RSA_verify(NID_sha256, hash, sizeof(hash), cbdata->sig,
+			cbdata->siglen, rsa);
+	if (ret == 0) {
+		pkg_emit_error("rsa verify failed: %s",
+				ERR_error_string(ERR_get_error(), errbuf));
+		return (EPKG_FATAL);
+	}
+
+	RSA_free(rsa);
+
+	return (EPKG_OK);
+}
+
+int
+rsa_verify_cert(const char *path, unsigned char *key, int keylen,
+    unsigned char *sig, int siglen, int fd)
+{
+	int ret;
+	bool need_close = false;
+	struct rsa_verify_cbdata cbdata;
+
+	if (fd == -1) {
+		if ((fd = open(path, O_RDONLY)) == -1) {
+			pkg_emit_errno("fopen", path);
+			return (EPKG_FATAL);
+		}
+		need_close = true;
+	}
+	(void)lseek(fd, 0, SEEK_SET);
+
+	cbdata.key = key;
+	cbdata.keylen = keylen;
+	cbdata.sig = sig;
+	cbdata.siglen = siglen;
 
 	SSL_load_error_strings();
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	sha256_buf_bin(sha256, strlen(sha256), hash);
+	ret = pkg_emit_sandbox_call(rsa_verify_cert_cb, fd, &cbdata);
+	if (need_close)
+		close(fd);
 
-	rsa = _load_rsa_public_key_buf(key, keylen);
-	if (rsa == NULL)
-		return (EPKG_FATAL);
-	ret = RSA_verify(NID_sha256, hash, sizeof(hash), sig, siglen, rsa);
-	if (ret == 0) {
-		pkg_emit_error("rsa verify failed: %s",
-		    ERR_error_string(ERR_get_error(), errbuf));
-		return (EPKG_FATAL);
-	}
-
-	RSA_free(rsa);
-	ERR_free_strings();
-
-	return (EPKG_OK);
+	return (ret);
 }
 
+/*
+ * XXX: this function is deprecated and should be removed in the next pkg releases
+ */
 int
 rsa_verify(const char *path, const char *key, unsigned char *sig,
     unsigned int sig_len, int fd)

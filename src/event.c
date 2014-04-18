@@ -28,9 +28,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
 
 #ifdef HAVE_CAPSICUM
 #include <sys/capability.h>
@@ -41,6 +46,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sysexits.h>
+#include <signal.h>
 
 #include "pkg.h"
 #include "progressmeter.h"
@@ -106,12 +112,6 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
-	cap_rights_init(&rights, CAP_READ|CAP_MMAP_R|CAP_SEEK|CAP_LOOKUP|CAP_FSTAT);
-	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
-		warn("cap_rights_limit() failed");
-		return (EPKG_FATAL);
-	}
-
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		return (EPKG_FATAL);
@@ -123,6 +123,99 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 	 * make a sandbox
 	 */
 	ret = func(fd, ud);
+
+	_exit(ret);
+}
+
+static int
+event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
+		void *ud)
+{
+	pid_t pid;
+	int	status, ret = EPKG_OK;
+	int pair[2], r;
+	int64_t res_len = 0;
+
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1) {
+		warn("socketpair failed");
+		return (EPKG_FATAL);
+	}
+
+	pid = fork();
+
+	switch(pid) {
+	case -1:
+		warn("fork failed");
+		return (EPKG_FATAL);
+		break;
+	case 0:
+		break;
+	default:
+		close(pair[0]);
+		/*
+		 * We use blocking IO here as if the child is terminated we would have
+		 * EINTR here
+		 */
+		if (read(pair[1], &res_len, sizeof(res_len)) == -1) {
+			ret = EPKG_FATAL;
+		}
+		else {
+			/* Fill the result buffer */
+			*len = res_len;
+			*result = malloc(res_len + 1);
+			if (*result == NULL) {
+				warn("malloc failed");
+				kill(pid, SIGTERM);
+				ret = EPKG_FATAL;
+			}
+			else {
+				if ((r = read(pair[1], *result, res_len)) == -1) {
+					ret = EPKG_FATAL;
+					free(*result);
+					kill(pid, SIGTERM);
+				}
+				else {
+					/* Null terminate string */
+					*result[r] = '\0';
+				}
+			}
+		}
+		/* Parent process */
+		while (waitpid(pid, &status, 0) == -1) {
+			if (errno != EINTR) {
+				warn("Sandboxed process pid=%d", (int)pid);
+				ret = -1;
+				break;
+			}
+		}
+
+		if (WIFEXITED(status)) {
+			ret = WEXITSTATUS(status);
+		}
+		if (WIFSIGNALED(status)) {
+			/* Process got some terminating signal, hence stop the loop */
+			fprintf(stderr, "Sandboxed process pid=%d terminated abnormally by signal: %d\n",
+					(int)pid, WTERMSIG(status));
+			ret = -1;
+		}
+		return (ret);
+	}
+
+	/* Here comes child process */
+	close(pair[1]);
+
+#ifdef HAVE_CAPSICUM
+	if (cap_enter() < 0 && errno != ENOSYS) {
+		warn("cap_enter() failed");
+		return (EPKG_FATAL);
+	}
+#endif
+
+	/*
+	 * XXX: if capsicum is not enabled we basically have no idea of how to
+	 * make a sandbox
+	 */
+	ret = func(pair[0], ud);
 
 	_exit(ret);
 }
@@ -426,6 +519,13 @@ event_callback(void *data, struct pkg_event *ev)
 		return ( event_sandboxed_call(ev->e_sandbox_call.call,
 				ev->e_sandbox_call.fd,
 				ev->e_sandbox_call.userdata) );
+		break;
+	case PKG_EVENT_SANDBOX_GET_STRING:
+		return ( event_sandboxed_get_string(ev->e_sandbox_call_str.call,
+				ev->e_sandbox_call_str.result,
+				ev->e_sandbox_call_str.len,
+				ev->e_sandbox_call_str.userdata) );
+		break;
 	default:
 		break;
 	}
