@@ -599,6 +599,69 @@ struct pkg_repo_check_cbdata {
 	const char *name;
 };
 
+static int
+pkg_repo_meta_extract_pubkey(int fd, void *ud)
+{
+	struct pkg_repo_check_cbdata *cbdata = ud;
+	struct ucl_parser *parser;
+	ucl_object_t *top;
+	const ucl_object_t *obj, *cur, *elt;
+	ucl_object_iter_t iter = NULL;
+	struct iovec iov;
+	int rc = EPKG_OK;
+	int64_t res_len = 0;
+	bool found = false;
+
+	parser = ucl_parser_new(0);
+	if (!ucl_parser_add_chunk(parser, cbdata->map, cbdata->len)) {
+		pkg_emit_error("cannot parse repository meta from %s",
+				ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		return (EPKG_FATAL);
+	}
+
+	top = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+
+	/* Now search for the required key */
+	obj = ucl_object_find_key(top, "cert");
+	if (obj == NULL) {
+		pkg_emit_error("cannot find key for signature %s in meta",
+				cbdata->name);
+		rc = EPKG_FATAL;
+	}
+	else {
+		while(!found && (cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
+			elt = ucl_object_find_key(cur, "name");
+			if (elt != NULL && elt->type == UCL_STRING) {
+				if (strcmp(ucl_object_tostring(elt), cbdata->name) == 0) {
+					elt = ucl_object_find_key(cur, "data");
+					if (elt == NULL || elt->type != UCL_STRING)
+						continue;
+
+					/* +1 to include \0 at the end */
+					res_len = elt->len + 1;
+					iov[0].iov_base = &res_len;
+					iov[0].iov_len = sizeof(res_len);
+					iov[1].iov_base = (void *)ucl_object_tostring(elt);
+					iov[1].iov_len = res_len;
+					if (writev(fd, iov, 2) == -1) {
+						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
+								"writev error");
+						rc = EPKG_FATAL;
+						break;
+					}
+					found = true;
+				}
+			}
+		}
+	}
+
+	ucl_object_unref(top);
+
+	return (rc);
+}
+
 int
 pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
