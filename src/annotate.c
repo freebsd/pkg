@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -54,9 +54,9 @@ void
 usage_annotate(void)
 {
 	fprintf(stderr,
-            "Usage: pkg annotate [-giqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
+            "Usage: pkg annotate [-Cgiqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
 	fprintf(stderr,
-            "       pkg annotate [-giqxy] -D <pkg-name> <tag>\n");
+            "       pkg annotate [-Cgiqxy] -D <pkg-name> <tag>\n");
 	fprintf(stderr,
             "       pkg annotate [-qy] -a [-A|M] <tag> [<value>]\n");
 	fprintf(stderr,
@@ -204,13 +204,16 @@ exec_annotate(int argc, char **argv)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "aADgiMqxy")) != -1) {
+	while ((ch = getopt(argc, argv, "aACDgiMqxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'A':
 			action = ADD;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'D':
 			action = DELETE;

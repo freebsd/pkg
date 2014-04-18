@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -826,7 +826,7 @@ usage_query(void)
 	fprintf(stderr, "       pkg query [-a] <query-format>\n");
 	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
-	fprintf(stderr, "       pkg query [-gix] <query-format> <pattern> <...>\n\n");
+	fprintf(stderr, "       pkg query [-Cgix] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help query.'\n");
 }
 
@@ -849,10 +849,13 @@ exec_query(int argc, char **argv)
 	struct sbuf *sqlcond = NULL;
 	const unsigned int q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
 
-	while ((ch = getopt(argc, argv, "agixF:e:")) != -1) {
+	while ((ch = getopt(argc, argv, "aCgixF:e:")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'g':
 			match = MATCH_GLOB;

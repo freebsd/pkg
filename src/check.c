@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -241,7 +242,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "Usage: pkg check [-Bdsr] [-vy] [-a | -gix <pattern>]\n\n");
+	fprintf(stderr, "Usage: pkg check [-Bdsr] [-vy] [-a | -Cgix <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -269,7 +270,7 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagidnBxsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "aBCdginrsvxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -277,6 +278,9 @@ exec_check(int argc, char **argv)
 		case 'B':
 			reanalyse_shlibs = true;
 			flags |= PKG_LOAD_FILES;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'd':
 			dcheck = true;

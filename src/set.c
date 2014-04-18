@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -41,7 +42,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-gix] <pkg-name>\n\n");
+	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-Cgix] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -66,7 +67,7 @@ exec_set(int argc, char **argv)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "A:agio:xy")) != -1) {
+	while ((ch = getopt(argc, argv, "A:aCgio:xy")) != -1) {
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
@@ -78,6 +79,9 @@ exec_set(int argc, char **argv)
 			break;
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'g':
 			match = MATCH_GLOB;

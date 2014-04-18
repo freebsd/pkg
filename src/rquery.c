@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -74,7 +74,7 @@ usage_rquery(void)
 	fprintf(stderr, "Usage: pkg rquery [-r reponame] [-I|<query-format>] <pkg-name>\n");
 	fprintf(stderr, "       pkg rquery [-a] [-r reponame] [-I|<query-format>]\n");
 	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
-	fprintf(stderr, "       pkg rquery [-gix] [-r reponame] [-I|<query-format>] <pattern> <...>\n\n");
+	fprintf(stderr, "       pkg rquery [-Cgix] [-r reponame] [-I|<query-format>] <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
 }
 
@@ -120,10 +120,13 @@ exec_rquery(int argc, char **argv)
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
-	while ((ch = getopt(argc, argv, "agiIxe:r:U")) != -1) {
+	while ((ch = getopt(argc, argv, "aCgiIxe:r:U")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'g':
 			match = MATCH_GLOB;

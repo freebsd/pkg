@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
@@ -43,7 +43,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-dgiqUxy] <pkg-name> <...>\n");
+	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-dqUy] [-Cgix] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -a\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -u\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
@@ -67,10 +67,13 @@ exec_fetch(int argc, char **argv)
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "adgiqr:Uuxy")) != -1) {
+	while ((ch = getopt(argc, argv, "aCdgiqr:Uuxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'd':
 			f |= PKG_FLAG_WITH_DEPS | PKG_FLAG_RECURSIVE;

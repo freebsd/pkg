@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "Usage: pkg delete [-DfginqRxy] <pkg-name> ...\n");
+	fprintf(stderr, "Usage: pkg delete [-DfnqRy] [-Cgix] <pkg-name> ...\n");
 	fprintf(stderr, "       pkg delete [-Dnqy] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
@@ -63,10 +63,13 @@ exec_delete(int argc, char **argv)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "aDfginqRxy")) != -1) {
+	while ((ch = getopt(argc, argv, "aCDfginqRxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'D':
 			f |= PKG_FLAG_NOSCRIPT;

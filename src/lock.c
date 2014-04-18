@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -47,9 +47,9 @@ static bool yes = false;	/* Assume yes answer to questions */
 void
 usage_lock(void)
 {
-	fprintf(stderr, "Usage: pkg lock [-giqxy] <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg lock [-qy] [-Cgix] <pkg-name>\n");
 	fprintf(stderr, "       pkg lock [-qy] -a\n");
-	fprintf(stderr, "       pkg unlock [-giqxy] <pkg-name>\n");
+	fprintf(stderr, "       pkg unlock [-qy] [-Cgix] <pkg-name>\n");
 	fprintf(stderr, "       pkg unlock [-qy] -a\n");
 	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
@@ -120,10 +120,13 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "agiqxy")) != -1) {
+	while ((ch = getopt(argc, argv, "aCgiqxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'g':
 			match = MATCH_GLOB;

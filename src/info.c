@@ -61,7 +61,7 @@ usage_info(void)
 {
 	fprintf(stderr, "Usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
-	fprintf(stderr, "       pkg info [-AbBDdefgiIklOqRrsx] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-AbBDdefIklOqRrs] [-Cgix] <pkg-name>\n");
 	fprintf(stderr, "       pkg info [-AbBDdfIlqRrs] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
@@ -100,13 +100,16 @@ exec_info(int argc, char **argv)
 #endif
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aADegixEIdrklbBsqopOfF:R")) != -1) {
+	while ((ch = getopt(argc, argv, "aACDegixEIdrklbBsqopOfF:R")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'A':
 			opt |= INFO_ANNOTATIONS;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'O':
 			origin_search = true;  /* only for ports compat */

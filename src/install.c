@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
@@ -46,7 +46,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg install [-AfgIinFMqRUxy] [-r reponame] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-AfInFMqRUy] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -81,10 +81,13 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
-	while ((ch = getopt(argc, argv, "AfgIiFMnqRr:Uxyl")) != -1) {
+	while ((ch = getopt(argc, argv, "ACfgIiFMnqRr:Uxyl")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;

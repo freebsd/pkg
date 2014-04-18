@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -216,10 +217,10 @@ usage_search(void)
 {
 	int i, n;
 
-	fprintf(stderr, "Usage: pkg search [-egiUx] [-r repo] [-S search] "
-	    "[-L label] [-Q mod]... <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-cDdefgiopqRUx] [-r repo] "
-	    "<pattern>\n\n");
+	fprintf(stderr, "Usage: pkg search [-eU] [-r repo] [-S search] "
+	    "[-L label] [-Q mod]... [-Cgix] <pkg-name>\n");
+	fprintf(stderr, "       pkg search [-cDdefopqRU] [-r repo] "
+	    "[-Cgix] <pattern>\n\n");
 	n = fprintf(stderr, "       Search and Label options:");
 	for (i = 0; search_label[i].option != NULL; i++) {
 		if (n > 72)
@@ -257,8 +258,11 @@ exec_search(int argc, char **argv)
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
-	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:RS:sUx")) != -1) {
+	while ((ch = getopt(argc, argv, "CcDdefgiL:opqQ:r:RS:sUx")) != -1) {
 		switch (ch) {
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
+			break;
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
 			break;

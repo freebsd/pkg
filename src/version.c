@@ -58,7 +58,7 @@ struct index_entry {
 void
 usage_version(void)
 {
-	fprintf(stderr, "Usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [-egix pattern]\n");
+	fprintf(stderr, "Usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [-Cegix pattern]\n");
 	fprintf(stderr, "		    [-r reponame] [-O origin] [index]\n");
 	fprintf(stderr, "	pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "	pkg version -T <pkgname> <pattern>\n\n");
@@ -652,67 +652,70 @@ exec_version(int argc, char **argv)
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
-	while ((ch = getopt(argc, argv, "hIPRUoqvl:L:ix:g:e:O:r:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "Ce:g:hIiL:l:O:oPqRr:TtUvx:")) != -1) {
 		switch (ch) {
-		case 'h':
-			usage_version();
-			return (EX_OK);
-		case 'I':
-			opt |= VERSION_SOURCE_INDEX;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
 			break;
-		case 'R':
-			opt |= VERSION_SOURCE_REMOTE;
-			break;
-		case 'U':
-			auto_update = false;
-			break;
-		case 'P':
-			opt |= VERSION_SOURCE_PORTS;
-			break;
-		case 'o':
-			opt |= VERSION_ORIGIN;
-			break;
-		case 'q':
-			opt |= VERSION_QUIET;
-			break;
-		case 'v':
-			opt |= VERSION_VERBOSE;
-			break;
-		case 'l':
-			opt |= VERSION_STATUS;
-			limchar = *optarg;
-			break;
-		case 'L':
-			opt |= VERSION_NOSTATUS;
-			limchar = *optarg;
-			break;
-		case 'i':
-			pkgdb_set_case_sensitivity(false);
-			break;
-		case 'x':
-			match = MATCH_REGEX;
+		case 'e':
+			match = MATCH_EXACT;
 			pattern = optarg;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
 			pattern = optarg;
 			break;
-		case 'e':
-			match = MATCH_EXACT;
-			pattern = optarg;
+		case 'h':
+			usage_version();
+			return (EX_OK);
+		case 'I':
+			opt |= VERSION_SOURCE_INDEX;
 			break;
-		case 'r':
-			reponame = optarg;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
+			break;
+		case 'L':
+			opt |= VERSION_NOSTATUS;
+			limchar = *optarg;
+			break;
+		case 'l':
+			opt |= VERSION_STATUS;
+			limchar = *optarg;
 			break;
 		case 'O':
 			opt |= VERSION_WITHORIGIN;
 			matchorigin = optarg;
 			break;
-		case 't':
-			opt |= VERSION_TESTVERSION;
+		case 'o':
+			opt |= VERSION_ORIGIN;
+			break;
+		case 'P':
+			opt |= VERSION_SOURCE_PORTS;
+			break;
+		case 'q':
+			opt |= VERSION_QUIET;
+			break;
+		case 'R':
+			opt |= VERSION_SOURCE_REMOTE;
+			break;
+		case 'r':
+			reponame = optarg;
 			break;
 		case 'T':
 			opt |= VERSION_TESTPATTERN;
+			break;
+		case 't':
+			opt |= VERSION_TESTVERSION;
+			break;
+		case 'U':
+			auto_update = false;
+			break;
+		case 'v':
+			opt |= VERSION_VERBOSE;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			pattern = optarg;
 			break;
 		default:
 			usage_version();
