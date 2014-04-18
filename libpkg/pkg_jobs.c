@@ -2157,8 +2157,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		}
 	}
 
-	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bavai)) {
-		int64_t fsize = (int64_t)fs.f_bsize * (int64_t)fs.f_bavai;
+	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bavail)) {
+		int64_t fsize = (int64_t)fs.f_bsize * (int64_t)fs.f_bavail;
 		char dlsz[8], fsz[8];
 
 		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
