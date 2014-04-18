@@ -271,6 +271,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
 	int nbgood = 0;
 	struct sig_cert *s = NULL, *stmp = NULL;
+	struct pkg_repo_meta_key *mk = NULL;
 
 	if (HASH_COUNT(sc) == 0) {
 		if (fatal)
@@ -285,13 +286,29 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 	}
 
 	HASH_ITER(hh, sc, s, stmp) {
-		if (s->sig == NULL || s->cert == NULL) {
-			if (fatal)
-				pkg_emit_error("Number of signatures and certificates "
-					"mismatch");
+		if (s->sig != NULL && s->cert == NULL) {
+			/*
+			 * We may want to check meta
+			 */
+			if (repo->meta != NULL && repo->meta->keys != NULL)
+				HASH_FIND_STR(repo->meta->keys, s->name, mk);
 
+			if (mk != NULL && mk->pubkey != NULL) {
+				s->cert = mk->pubkey;
+				s->certlen = strlen(mk->pubkey);
+			}
+			else {
+				if (fatal)
+					pkg_emit_error("No key with name %s has been found", s->name);
+				return (false);
+			}
+		}
+		else if (s->sig == NULL) {
+			if (fatal)
+				pkg_emit_error("No signature with name %s has been found", s->name);
 			return (false);
 		}
+
 		s->trusted = false;
 		sha256_buf(s->cert, s->certlen, hash);
 		HASH_FIND_STR(repo->revoked_fp, hash, f);
