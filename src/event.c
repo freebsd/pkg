@@ -135,7 +135,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 {
 	pid_t pid;
 	int	status, ret = EPKG_OK;
-	int pair[2];
+	int pair[2], r;
 	int64_t res_len = 0;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1) {
@@ -164,17 +164,21 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 		else {
 			/* Fill the result buffer */
 			*len = res_len;
-			*result = malloc(res_len);
+			*result = malloc(res_len + 1);
 			if (*result == NULL) {
 				warn("malloc failed");
 				kill(pid, SIGTERM);
 				ret = EPKG_FATAL;
 			}
 			else {
-				if (read(pair[1], *result, res_len) == -1) {
+				if ((r = read(pair[1], *result, res_len)) == -1) {
 					ret = EPKG_FATAL;
 					free(*result);
 					kill(pid, SIGTERM);
+				}
+				else {
+					/* Null terminate string */
+					*result[r] = '\0';
 				}
 			}
 		}
