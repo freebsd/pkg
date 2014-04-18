@@ -112,12 +112,6 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
-	cap_rights_init(&rights, CAP_READ|CAP_MMAP_R|CAP_SEEK|CAP_LOOKUP|CAP_FSTAT);
-	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
-		warn("cap_rights_limit() failed");
-		return (EPKG_FATAL);
-	}
-
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		return (EPKG_FATAL);
@@ -208,9 +202,9 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	}
 
 	/* Here comes child process */
-#ifdef HAVE_CAPSICUM
 	close(pair[1]);
 
+#ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		return (EPKG_FATAL);
