@@ -121,7 +121,8 @@ rsa_verify_cert_cb(int fd, void *ud)
 	RSA *rsa = NULL;
 	int ret;
 
-	sha256_fd(fd, sha256);
+	if (sha256_fd(fd, sha256) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	sha256_buf_bin(sha256, strlen(sha256), hash);
 
@@ -133,6 +134,7 @@ rsa_verify_cert_cb(int fd, void *ud)
 	if (ret == 0) {
 		pkg_emit_error("rsa verify failed: %s",
 				ERR_error_string(ERR_get_error(), errbuf));
+		RSA_free(rsa);
 		return (EPKG_FATAL);
 	}
 
@@ -183,7 +185,8 @@ rsa_verify_cb(int fd, void *ud)
 	RSA *rsa = NULL;
 	int ret;
 
-	sha256_fd(fd, sha256);
+	if (sha256_fd(fd, sha256) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
 	if (rsa == NULL)
