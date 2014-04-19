@@ -67,6 +67,11 @@ exec_fetch(int argc, char **argv)
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	while ((ch = getopt(argc, argv, "aCdgiqr:Uuxy")) != -1) {
 		switch (ch) {
 		case 'a':

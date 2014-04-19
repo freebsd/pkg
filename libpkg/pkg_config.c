@@ -902,11 +902,6 @@ pkg_init(const char *path, const char *reposdir)
 	if (nsname != NULL)
 		set_nameserver(ucl_object_tostring_forced(o));
 
-	/* Set default case sensitivity for searching */
-	pkgdb_set_case_sensitivity(
-		pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-		);
-
 	return (EPKG_OK);
 }
 

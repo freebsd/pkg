@@ -258,6 +258,11 @@ exec_search(int argc, char **argv)
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	while ((ch = getopt(argc, argv, "CcDdefgiL:opqQ:r:RS:sUx")) != -1) {
 		switch (ch) {
 		case 'C':

@@ -120,6 +120,11 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	while ((ch = getopt(argc, argv, "aCgiqxy")) != -1) {
 		switch (ch) {
 		case 'a':

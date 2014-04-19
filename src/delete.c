@@ -63,6 +63,11 @@ exec_delete(int argc, char **argv)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	while ((ch = getopt(argc, argv, "aCDfginqRxy")) != -1) {
 		switch (ch) {
 		case 'a':

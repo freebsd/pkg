@@ -268,6 +268,11 @@ exec_check(int argc, char **argv)
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
 	while ((ch = getopt(argc, argv, "aBCdginrsvxy")) != -1) {

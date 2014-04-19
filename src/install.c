@@ -72,6 +72,11 @@ exec_install(int argc, char **argv)
 	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	yes = yes_arg;
 
 	if (strcmp(argv[0], "add") == 0) {

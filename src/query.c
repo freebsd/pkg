@@ -849,6 +849,11 @@ exec_query(int argc, char **argv)
 	struct sbuf *sqlcond = NULL;
 	const unsigned int q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
 
+        /* Set default case sensitivity for searching */
+        pkgdb_set_case_sensitivity(
+                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+                );
+
 	while ((ch = getopt(argc, argv, "aCgixF:e:")) != -1) {
 		switch (ch) {
 		case 'a':
