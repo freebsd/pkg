@@ -121,7 +121,8 @@ rsa_verify_cert_cb(int fd, void *ud)
 	RSA *rsa = NULL;
 	int ret;
 
-	sha256_fd(fd, sha256);
+	if (sha256_fd(fd, sha256) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	sha256_buf_bin(sha256, strlen(sha256), hash);
 
@@ -133,6 +134,7 @@ rsa_verify_cert_cb(int fd, void *ud)
 	if (ret == 0) {
 		pkg_emit_error("rsa verify failed: %s",
 				ERR_error_string(ERR_get_error(), errbuf));
+		RSA_free(rsa);
 		return (EPKG_FATAL);
 	}
 
@@ -174,43 +176,77 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 	return (ret);
 }
 
-/*
- * XXX: this function is deprecated and should be removed in the next pkg releases
- */
-int
-rsa_verify(const char *path, const char *key, unsigned char *sig,
-    unsigned int sig_len, int fd)
+static int
+rsa_verify_cb(int fd, void *ud)
 {
+	struct rsa_verify_cbdata *cbdata = ud;
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
 
-	if (fd != -1) {
-		(void)lseek(fd, 0, SEEK_SET);
-		sha256_fd(fd, sha256);
-	} else
-		sha256_file(path, sha256);
+	if (sha256_fd(fd, sha256) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
+	if (rsa == NULL)
+		return(EPKG_FATAL);
+
+	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), cbdata->sig,
+			cbdata->siglen, rsa);
+	if (ret == 0) {
+		pkg_emit_error("%s: %s", cbdata->key,
+				ERR_error_string(ERR_get_error(), errbuf));
+		RSA_free(rsa);
+		return (EPKG_FATAL);
+	}
+
+	RSA_free(rsa);
+
+	return (EPKG_OK);
+}
+
+int
+rsa_verify(const char *path, const char *key, unsigned char *sig,
+    unsigned int sig_len, int fd)
+{
+	int ret;
+	bool need_close = false;
+	struct rsa_verify_cbdata cbdata;
+	unsigned char *key_buf;
+	off_t key_len;
+
+	if (file_to_buffer(key, (char**)&key_buf, &key_len) != EPKG_OK) {
+		pkg_emit_errno("rsa_verify", "cannot read key");
+		return (EPKG_FATAL);
+	}
+
+	if (fd == -1) {
+		if ((fd = open(path, O_RDONLY)) == -1) {
+			pkg_emit_errno("fopen", path);
+			free(key_buf);
+			return (EPKG_FATAL);
+		}
+		need_close = true;
+	}
+	(void)lseek(fd, 0, SEEK_SET);
+
+	cbdata.key = key_buf;
+	cbdata.keylen = key_len;
+	cbdata.sig = sig;
+	cbdata.siglen = sig_len;
 
 	SSL_load_error_strings();
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	rsa = _load_rsa_public_key(key);
-	if (rsa == NULL)
-		return(EPKG_FATAL);
+	ret = pkg_emit_sandbox_call(rsa_verify_cb, fd, &cbdata);
+	if (need_close)
+		close(fd);
 
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa);
-	if (ret == 0) {
-		pkg_emit_error("%s: %s", key,
-		    ERR_error_string(ERR_get_error(), errbuf));
-		return (EPKG_FATAL);
-	}
+	free(key_buf);
 
-	RSA_free(rsa);
-	ERR_free_strings();
-
-	return (EPKG_OK);
+	return (ret);
 }
 
 int
