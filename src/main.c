@@ -562,7 +562,7 @@ main(int argc, char **argv)
 	optreset = 1;
 	optind = 1;
 
-	if (debug == 0)
+	if (debug == 0 && version == 0)
 		start_process_worker();
 
 	if (jail_str != NULL && chroot_path != NULL) {
