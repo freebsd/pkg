@@ -856,7 +856,7 @@ pkg_init(const char *path, const char *reposdir)
 			break;
 		}
 		if (o != NULL) {
-			if (ncfg != NULL)
+			if (ncfg == NULL)
 				ncfg = ucl_object_typed_new(UCL_OBJECT);
 			ucl_object_insert_key(ncfg, o, key, strlen(key), true);
 		}
