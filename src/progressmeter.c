@@ -73,7 +73,8 @@ static int win_size;		/* terminal window size */
 static volatile sig_atomic_t win_resized; /* for window resizing */
 
 /* units for format_size */
-static const char unit[] = " KMGT";
+static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
+static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
 
 static int
 can_output(void)
@@ -86,36 +87,69 @@ can_output(void)
 }
 
 static void
-format_rate(char *buf, int size, off_t bytes)
+format_rate_IEC(char *buf, int size, off_t bytes)
 {
 	int i;
 
 	bytes *= 100;
-	for (i = 0; bytes >= 100*1000 && unit[i] != 'T'; i++)
+	for (i = 0; bytes >= 100*1000 && unit_IEC[i][0] != 'T'; i++)
 		bytes = (bytes + 512) / 1024;
 	if (i == 0) {
 		i++;
 		bytes = (bytes + 512) / 1024;
 	}
-	snprintf(buf, size, "%3lld.%1lld%c%s",
+	snprintf(buf, size, "%3lld.%1lld%s%s",
 	    (long long) (bytes + 5) / 100,
 	    (long long) (bytes + 5) / 10 % 10,
-	    unit[i],
+	    unit_IEC[i],
 	    i ? "B" : " ");
 }
 
 static void
-format_size(char *buf, int size, off_t bytes)
+format_size_IEC(char *buf, int size, off_t bytes)
 {
 	int i;
 
-	for (i = 0; bytes >= 10000 && unit[i] != 'T'; i++)
+	for (i = 0; bytes >= 10000 && unit_IEC[i][0] != 'T'; i++)
 		bytes = (bytes + 512) / 1024;
-	snprintf(buf, size, "%4lld%c%s",
+	snprintf(buf, size, "%4lld%s%s",
 	    (long long) bytes,
-	    unit[i],
+	    unit_IEC[i],
 	    i ? "B" : " ");
 }
+
+static void
+format_rate_SI(char *buf, int size, off_t bytes)
+{
+        int i;
+
+        bytes *= 100;
+        for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
+                bytes = (bytes + 500) / 1000;
+        if (i == 0) {
+                i++;
+                bytes = (bytes + 500) / 1000;
+        }
+        snprintf(buf, size, "%3lld.%1lld%s%s",
+            (long long) (bytes + 5) / 100,
+            (long long) (bytes + 5) / 10 % 10,
+            unit_SI[i],
+            i ? "B" : " ");
+}
+
+static void
+format_size_SI(char *buf, int size, off_t bytes)
+{
+        int i;
+
+        for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
+                bytes = (bytes + 500) / 1000;
+        snprintf(buf, size, "%4lld%s%s",
+            (long long) bytes,
+            unit_SI[i],
+            i ? "B" : " ");
+}
+
 
 void
 refresh_progress_meter(void)
@@ -186,13 +220,13 @@ refresh_progress_meter(void)
 	snprintf(buf + strlen(buf), win_size - strlen(buf) - 8,
 	    " %3d%% ", percent);
 
-	/* amount transferred */
-	format_size(buf + strlen(buf), win_size - strlen(buf),
+	/* amount transferred -- IEC powers of 2 scale factors */
+	format_size_IEC(buf + strlen(buf), win_size - strlen(buf),
 	    cur_pos);
 	strlcat(buf, " ", win_size);
 
-	/* instantaneous rate */
-	format_rate(buf + strlen(buf), win_size - strlen(buf),
+	/* instantaneous rate -- SI powers of 10 scale factors */
+	format_rate_SI(buf + strlen(buf), win_size - strlen(buf),
 	    cur_speed);
 	strlcat(buf, "/s ", win_size);
 
