@@ -306,36 +306,30 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				data = pkg_repo_url(r);
 			}
 
-			if (!ucl_object_replace_key(pkg->fields,
+			ucl_object_replace_key(pkg->fields,
 			    ucl_object_fromstring_common(data, strlen(data), 0),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false)) {
-				if (buf != NULL)
-					free(buf);
-				return (EPKG_FATAL);
-			}
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 
 			if (buf != NULL)
 				free(buf);
 
 			break;
 		case UCL_BOOLEAN:
-			if (!ucl_object_replace_key(pkg->fields,
+			ucl_object_replace_key(pkg->fields,
 			    ucl_object_frombool((bool)va_arg(ap, int64_t)),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
-				return (EPKG_FATAL);
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 			break;
 		case UCL_INT:
-			if (!ucl_object_replace_key(pkg->fields,
+			ucl_object_replace_key(pkg->fields,
 			    ucl_object_fromint(va_arg(ap, int64_t)),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
-				return (EPKG_FATAL);
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 			break;
 		case UCL_OBJECT:
 		case UCL_ARRAY:
 			o = va_arg(ap, ucl_object_t *);
-			if (!ucl_object_replace_key(pkg->fields, o,
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
-					return (EPKG_FATAL);
+			ucl_object_replace_key(pkg->fields, o,
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
+			break;
 		default:
 			(void) va_arg(ap, void *);
 			break;
