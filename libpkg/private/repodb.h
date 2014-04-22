@@ -174,6 +174,9 @@ static const char initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, provide_id)"
 	");"
+		/* FTS search table */
+	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
+
 	"PRAGMA user_version=%d;"
 	;
 
@@ -319,6 +322,11 @@ static const struct repo_changes repo_upgrades[] = {
 	    "UNIQUE(package_id, provide_id)"
 	");"
 	},
+	{2007,
+	 2008,
+	 "CREATE VIRTUAL TABLE %Q.pkg_search USING fts4(id, name, origin);"
+	 "INSERT INTO %Q.pkg_search SELECT id, name, origin FROM %Q.packages;"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -327,6 +335,10 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2008,
+	 2007,
+	 "DROP TABLE %Q.pkg_search;"
+	},
 	{2007,
 	 2006,
 	 "Revert conflicts and provides creation",
