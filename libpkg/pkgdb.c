@@ -2316,6 +2316,7 @@ typedef enum _sql_prstmt_index {
 	CONFLICT,
 	PKG_PROVIDE,
 	PROVIDE,
+	FTS_APPEND,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2508,10 +2509,16 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM provides WHERE provide = ?2))",
 		"IT",
 	},
-	{
+	[PROVIDE] = {
 		NULL,
 		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",
 		"T",
+	},
+	[FTS_APPEND] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
+		"VALUES (?1, ?2, ?3);",
+		"ITT"
 	}
 	/* PRSTMT_LAST */
 };
@@ -2680,6 +2687,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	}
 
 	package_id = sqlite3_last_insert_rowid(s);
+
+	if (run_prstmt(FTS_APPEND, package_id, name, origin) != SQLITE_DONE) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
 
 	/*
 	 * update dep informations on packages that depends on the insert
