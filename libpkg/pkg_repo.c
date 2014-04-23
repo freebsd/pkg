@@ -367,8 +367,6 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	archive_read_support_filter_all(a);
 	archive_read_support_format_tar(a);
 
-	/* Seek to the begin of file */
-	(void)lseek(fd, 0, SEEK_SET);
 	archive_read_open_fd(a, afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
