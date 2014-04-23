@@ -1522,6 +1522,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			comp = " WHERE id IN (SELECT id FROM pkg_search WHERE name MATCH ?1)";
 		else
 			comp = " WHERE id IN (SELECT id FROM pkg_search WHERE origin MATCH ?1)";
+		break;
 	}
 
 	return (comp);
@@ -1553,7 +1554,7 @@ pkgdb_get_match_how(match_t match)
 		assert(0);
 		break;
 	case MATCH_FTS:
-		how = "id IN (SELECT id FROM pkg_search WHERE %s MATCH ?1";
+		how = "id IN (SELECT id FROM pkg_search WHERE %s MATCH ?1)";
 		break;
 	}
 
