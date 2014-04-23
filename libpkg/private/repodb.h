@@ -174,7 +174,9 @@ static const char initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, provide_id)"
 	");"
-		/* FTS search table */
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	/* FTS search table */
 	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 
 	"PRAGMA user_version=%d;"
@@ -326,6 +328,8 @@ static const struct repo_changes repo_upgrades[] = {
 	 2008,
 	 "CREATE VIRTUAL TABLE %Q.pkg_search USING fts4(id, name, origin);"
 	 "INSERT INTO %Q.pkg_search SELECT id, name, origin FROM %Q.packages;"
+	 "CREATE INDEX %Q.packages_origin ON %Q.packages(origin COLLATE NOCASE);"
+	 "CREATE INDEX %Q.packages_name ON %Q.packages(name COLLATE NOCASE);"
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
