@@ -619,6 +619,48 @@ pkg_solve_add_var_rules (struct pkg_solve_variable *var,
 } while (0)
 
 static int
+pkg_solve_handle_provide (struct pkg_jobs *j, struct pkg_solve_problem *problem,
+		struct pkg_job_provide *pr, struct pkg_solve_rule *rule, int *cnt)
+{
+	struct pkg_solve_item *it = NULL;
+	const char *origin, *digest;
+	struct pkg_solve_variable *var;
+	struct pkg_job_universe_item *un, *cur;
+	struct pkg_shlib *sh;
+
+	/* Find the first package in the universe list */
+	un = pr->un;
+	while (un->prev->next != NULL) {
+		un = un->prev;
+	}
+
+	LL_FOREACH(un, cur) {
+		/* For each provide */
+		pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
+		HASH_FIND(hd, problem->variables_by_digest, digest,
+				strlen(digest), var);
+		if (var == NULL) {
+			if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
+				continue;
+		}
+		/* Check if we have the specified require provided by this package */
+		HASH_FIND_STR(un->pkg->provides, pr->provide, sh);
+		if (sh == NULL)
+			continue;
+
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = false;
+		RULE_ITEM_PREPEND(rule, it);
+		(*cnt) ++;
+	}
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *pvar, bool conflicting)
 {
@@ -763,23 +805,9 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					/* B1 | B2 | ... */
 					cnt = 1;
 					LL_FOREACH(prhead, pr) {
-						/* For each provide */
-						pkg_get(pr->un->pkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
-						HASH_FIND(hd, problem->variables_by_digest, digest,
-								strlen(digest), var);
-						if (var == NULL) {
-							if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
-								continue;
-						}
-						/* XXX: select all its versions? */
-
-						it = pkg_solve_item_new(var);
-						if (it == NULL)
+						if (pkg_solve_handle_provide (j, problem, pr, rule,
+								&cnt) != EPKG_OK)
 							goto err;
-
-						it->inverse = false;
-						RULE_ITEM_PREPEND(rule, it);
-						cnt ++;
 					}
 
 					if (cnt > 1) {
