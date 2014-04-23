@@ -516,6 +516,122 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 }
 
 static int
+pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
+{
+	const char *p = in, *end = in + inlen;
+	int rc = EPKG_OK;
+	enum {
+		fp_parse_type,
+		fp_parse_flen,
+		fp_parse_file,
+		fp_parse_siglen,
+		fp_parse_sig
+	} state = fp_parse_type;
+	char type;
+	unsigned char *sig;
+	int len = 0;
+	struct sig_cert *s;
+
+	while (p < end) {
+		switch (state) {
+		case fp_parse_type:
+			type = *p;
+			if (*p != 0 || *p != 1) {
+				/* Invalid type */
+				pkg_emit_error("%d is not a valid type for signature_fingerprints"
+						"output", type);
+				return (EPKG_FATAL);
+			}
+			state = fp_parse_flen;
+			s = NULL;
+			p ++;
+			break;
+		case fp_parse_flen:
+			if (end - p < sizeof (int)) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output", type);
+				return (EPKG_FATAL);
+			}
+			len = *(int *)p;
+			state = fp_parse_file;
+			p += sizeof(int);
+			s = NULL;
+			break;
+		case fp_parse_file:
+			if (end - p < len) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output, wanted %d bytes", type, len);
+				return (EPKG_FATAL);
+			}
+			else if (len >= MAXPATHLEN || len < 4) {
+				pkg_emit_error("filename is incorrect for signature_fingerprints"
+						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
+				return (EPKG_FATAL);
+			}
+			HASH_FIND(hh, *sc, p, len - 4, s);
+			if (s == NULL) {
+				s = malloc(sizeof(struct sig_cert));
+				if (s == NULL) {
+					pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
+					return (EPKG_FATAL);
+				}
+				strlcpy(s->name, p, MIN(len + 1, sizeof(s->name)));
+			}
+			state = fp_parse_siglen;
+			p += len;
+			break;
+		case fp_parse_siglen:
+			if (s == NULL) {
+				pkg_emit_error("fatal state machine failure at pkg_repo_parse_sigkeys");
+				return (EPKG_FATAL);
+			}
+			if (end - p < sizeof (int)) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output", type);
+				return (EPKG_FATAL);
+			}
+			len = *(int *)p;
+			state = fp_parse_sig;
+			p += sizeof(int);
+			break;
+		case fp_parse_sig:
+			if (s == NULL) {
+				pkg_emit_error("fatal state machine failure at pkg_repo_parse_sigkeys");
+				return (EPKG_FATAL);
+			}
+			if (end - p < len) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output, wanted %d bytes", type, len);
+				free(s);
+				return (EPKG_FATAL);
+			}
+			sig = malloc(len);
+			if (s->sig == NULL) {
+				pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
+				free(s);
+				return (EPKG_FATAL);
+			}
+			memcpy(sig, p, len);
+			if (type == 0) {
+				s->sig = sig;
+				s->siglen = len;
+			}
+			else {
+				s->cert = sig;
+				s->certlen = len;
+				s->cert_allocated = true;
+			}
+			state = fp_parse_type;
+			p += len;
+			HASH_ADD_STR(*sc, name, s);
+			break;
+		}
+	}
+
+	return (rc);
+}
+
+static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
 		const char *dest, struct pkg_repo *repo, int dest_fd,
 		struct sig_cert **signatures)
@@ -537,9 +653,10 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 
 	/* Seek to the begin of file */
 	(void)lseek(fd, 0, SEEK_SET);
+
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
-				&fd, (char **)&sig, &siglen) == EPKG_OK) {
+				&fd, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
 			s = calloc(1, sizeof(struct sig_cert));
 			if (s == NULL) {
 				pkg_emit_errno("pkg_repo_archive_extract_archive",
@@ -551,6 +668,15 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 			s->siglen = siglen;
 			strlcpy(s->name, "signature", sizeof(s->name));
 			HASH_ADD_STR(sc, name, s);
+		}
+	}
+	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_fingerprints,
+				&fd, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
+			if (pkg_repo_parse_sigkeys(sig, siglen, &sc) == EPKG_FATAL) {
+				return (EPKG_FATAL);
+			}
+			free(sig);
 		}
 	}
 	(void)lseek(fd, 0, SEEK_SET);
@@ -581,6 +707,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 				(void)lseek(dest_fd, 0, SEEK_SET);
 			}
 		}
+#if 0
 		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
 				snprintf(key, sizeof(key), "%.*s",
@@ -636,6 +763,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 				archive_read_data(a, s->cert, s->certlen);
 			}
 		}
+#endif
 	}
 
 cleanup:
