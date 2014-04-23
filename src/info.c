@@ -99,10 +99,9 @@ exec_info(int argc, char **argv)
 	cap_rights_t rights;
 #endif
 
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
+	/* Set default case sensitivity for searching */
+	pkgdb_set_case_sensitivity(
+	    pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH")));
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "aACDegixEIdrklbBsqopOfF:R")) != -1) {
