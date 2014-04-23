@@ -558,6 +558,8 @@ static struct db_upgrades {
 	{23,
 	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 	"INSERT INTO pkg_search SELECT id, name, origin FROM packages;"
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	},
 
 
