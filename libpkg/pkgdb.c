@@ -2528,8 +2528,8 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[FTS_APPEND] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
-		"VALUES (?1, ?2, ?3);",
-		"ITT"
+		"VALUES (?1, ?2 || '-' || ?3, ?4);",
+		"ITTT"
 	}
 	/* PRSTMT_LAST */
 };
@@ -2699,7 +2699,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 
 	package_id = sqlite3_last_insert_rowid(s);
 
-	if (run_prstmt(FTS_APPEND, package_id, name, origin) != SQLITE_DONE) {
+	if (run_prstmt(FTS_APPEND, package_id, name, version, origin) != SQLITE_DONE) {
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}

@@ -327,7 +327,7 @@ static const struct repo_changes repo_upgrades[] = {
 	{2007,
 	 2008,
 	 "CREATE VIRTUAL TABLE %Q.pkg_search USING fts4(id, name, origin);"
-	 "INSERT INTO %Q.pkg_search SELECT id, name, origin FROM %Q.packages;"
+	 "INSERT INTO %Q.pkg_search SELECT id, name || '-' || version, origin FROM %Q.packages;"
 	 "CREATE INDEX %Q.packages_origin ON %Q.packages(origin COLLATE NOCASE);"
 	 "CREATE INDEX %Q.packages_name ON %Q.packages(name COLLATE NOCASE);"
 	},

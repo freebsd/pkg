@@ -185,8 +185,8 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[FTS_APPEND] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
-		"VALUES (?1, ?2, ?3);",
-		"ITT"
+		"VALUES (?1, ?2 || '-' || ?3, ?4);",
+		"ITTT"
 	}
 	/* PRSTMT_LAST */
 };
@@ -523,7 +523,7 @@ try_again:
 	package_id = sqlite3_last_insert_rowid(sqlite);
 
 	if (run_prepared_statement (FTS_APPEND, package_id,
-			name, origin) != SQLITE_DONE) {
+			name, version, origin) != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite);
 		return (EPKG_FATAL);
 	}
