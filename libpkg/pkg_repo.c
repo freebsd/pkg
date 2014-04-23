@@ -707,63 +707,6 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 				(void)lseek(dest_fd, 0, SEEK_SET);
 			}
 		}
-#if 0
-		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
-			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
-				snprintf(key, sizeof(key), "%.*s",
-						(int) strlen(archive_entry_pathname(ae)) - 4,
-						archive_entry_pathname(ae));
-				HASH_FIND_STR(sc, key, s);
-				if (s == NULL) {
-					s = calloc(1, sizeof(struct sig_cert));
-					if (s == NULL) {
-						pkg_emit_errno("pkg_repo_archive_extract_file",
-								"calloc failed for struct sig_cert");
-						rc = EPKG_FATAL;
-						goto cleanup;
-					}
-					strlcpy(s->name, key, sizeof(s->name));
-					HASH_ADD_STR(sc, name, s);
-				}
-				s->siglen = archive_entry_size(ae);
-				s->sig = malloc(s->siglen);
-				if (s->sig == NULL) {
-					pkg_emit_errno("pkg_repo_archive_extract_file",
-							"calloc failed for signature data");
-					rc = EPKG_FATAL;
-					goto cleanup;
-				}
-				archive_read_data(a, s->sig, s->siglen);
-			}
-			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
-				snprintf(key, sizeof(key), "%.*s",
-						(int) strlen(archive_entry_pathname(ae)) - 4,
-						archive_entry_pathname(ae));
-				HASH_FIND_STR(sc, key, s);
-				if (s == NULL) {
-					s = calloc(1, sizeof(struct sig_cert));
-					if (s == NULL) {
-						pkg_emit_errno("pkg_repo_archive_extract_file",
-								"calloc failed for struct sig_cert");
-						rc = EPKG_FATAL;
-						goto cleanup;
-					}
-					strlcpy(s->name, key, sizeof(s->name));
-					HASH_ADD_STR(sc, name, s);
-				}
-				s->certlen = archive_entry_size(ae);
-				s->cert = malloc(s->certlen);
-				if (s->cert == NULL) {
-					pkg_emit_errno("pkg_repo_archive_extract_file",
-							"calloc failed for signature data");
-					rc = EPKG_FATAL;
-					goto cleanup;
-				}
-				s->cert_allocated = true;
-				archive_read_data(a, s->cert, s->certlen);
-			}
-		}
-#endif
 	}
 
 cleanup:
