@@ -199,6 +199,7 @@ sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-DUSE_PREAD \
 			-DSQLITE_THREADSAFE=1 \
 			-DSQLITE_TEMP_STORE=3 \
+			-DSQLITE_ENABLE_FTS4 \
 			-DSQLITE_SHELL_DBNAME_PROC=pkgshell_open \
 			-Dmain=sqlite3_shell \
 			-DNDEBUG

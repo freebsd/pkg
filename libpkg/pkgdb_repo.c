@@ -59,7 +59,7 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 7
+#define REPO_SCHEMA_MINOR 8
 
 /* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
@@ -81,6 +81,7 @@ typedef enum _sql_prstmt_index {
 	EXISTS,
 	VERSION,
 	DELETE,
+	FTS_APPEND,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -177,8 +178,15 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[DELETE] = {
 		NULL,
-		"DELETE FROM packages WHERE origin=?1",
-		"T",
+		"DELETE FROM packages WHERE origin=?1;"
+		"DELETE FROM pkg_search WHERE origin=?1;",
+		"TT",
+	},
+	[FTS_APPEND] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
+		"VALUES (?1, ?2, ?3);",
+		"ITT"
 	}
 	/* PRSTMT_LAST */
 };
@@ -426,7 +434,7 @@ maybe_delete_conflicting(const char *origin, const char *version,
 					"version %s in repo with package %s for "
 					"origin %s", oversion, pkg_path, origin);
 
-			if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
+			if (run_prepared_statement(DELETE, origin, origin) != SQLITE_DONE)
 				return (EPKG_FATAL); /* sqlite error */
 
 			ret = EPKG_OK;	/* conflict cleared */
@@ -441,7 +449,7 @@ maybe_delete_conflicting(const char *origin, const char *version,
 		}
 	}
 	else {
-		if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
+		if (run_prepared_statement(DELETE, origin, origin) != SQLITE_DONE)
 			return (EPKG_FATAL); /* sqlite error */
 
 		ret = EPKG_OK;
@@ -513,6 +521,12 @@ try_again:
 		}
 	}
 	package_id = sqlite3_last_insert_rowid(sqlite);
+
+	if (run_prepared_statement (FTS_APPEND, package_id,
+			name, origin) != SQLITE_DONE) {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
 
 	dep = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
@@ -613,7 +627,7 @@ try_again:
 int
 pkgdb_repo_remove_package(const char *origin)
 {
-	if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
+	if (run_prepared_statement(DELETE, origin, origin) != SQLITE_DONE)
 		return (EPKG_FATAL); /* sqlite error */
 
 	return (EPKG_OK);

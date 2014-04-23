@@ -7,6 +7,7 @@
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
+ * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,7 +73,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	22
+#define DB_SCHEMA_MINOR	23
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -630,6 +631,10 @@ pkgdb_init(sqlite3 *sdb)
 	    "UNIQUE(package_id, provide_id)"
 	");"
 
+	/* FTS search table */
+
+	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
+
 	/* Mark the end of the array */
 
 	"CREATE INDEX deporigini on deps(origin);"
@@ -649,6 +654,8 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_conflicts_pid ON pkg_conflicts(package_id);"
 	"CREATE INDEX pkg_conflicts_cid ON pkg_conflicts(conflict_id);"
 	"CREATE INDEX pkg_provides_id ON pkg_provides(package_id);"
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 
 	"CREATE VIEW pkg_shlibs AS SELECT * FROM pkg_shlibs_required;"
 	"CREATE TRIGGER pkg_shlibs_update "
@@ -1510,6 +1517,12 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	case MATCH_CONDITION:
 		comp = pattern;
 		break;
+	case MATCH_FTS:
+		if (checkorigin == NULL)
+			comp = " WHERE id IN (SELECT id FROM pkg_search WHERE name MATCH ?1)";
+		else
+			comp = " WHERE id IN (SELECT id FROM pkg_search WHERE origin MATCH ?1)";
+		break;
 	}
 
 	return (comp);
@@ -1539,6 +1552,9 @@ pkgdb_get_match_how(match_t match)
 	case MATCH_CONDITION:
 		/* Should not be called by pkgdb_get_match_how(). */
 		assert(0);
+		break;
+	case MATCH_FTS:
+		how = "id IN (SELECT id FROM pkg_search WHERE %s MATCH ?1)";
 		break;
 	}
 
@@ -2311,6 +2327,7 @@ typedef enum _sql_prstmt_index {
 	CONFLICT,
 	PKG_PROVIDE,
 	PROVIDE,
+	FTS_APPEND,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2503,10 +2520,16 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM provides WHERE provide = ?2))",
 		"IT",
 	},
-	{
+	[PROVIDE] = {
 		NULL,
 		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",
 		"T",
+	},
+	[FTS_APPEND] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
+		"VALUES (?1, ?2, ?3);",
+		"ITT"
 	}
 	/* PRSTMT_LAST */
 };
@@ -2675,6 +2698,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	}
 
 	package_id = sqlite3_last_insert_rowid(s);
+
+	if (run_prstmt(FTS_APPEND, package_id, name, origin) != SQLITE_DONE) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
 
 	/*
 	 * update dep informations on packages that depends on the insert
