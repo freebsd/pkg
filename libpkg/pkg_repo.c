@@ -352,6 +352,58 @@ pkg_repo_signatures_free(struct sig_cert *sc)
 }
 
 static int
+pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
+{
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	int afd = *(int *)ud;
+	int siglen;
+	void *sig;
+	int rc = EPKG_FATAL;
+
+	pkg_debug(1, "PkgRepo: extracting signature of repo in a sandbox");
+
+	a = archive_read_new();
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
+
+	/* Seek to the begin of file */
+	(void)lseek(fd, 0, SEEK_SET);
+	archive_read_open_fd(a, afd, 4096);
+
+	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			if (sig == NULL) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"malloc failed");
+				return (EPKG_FATAL);
+			}
+			if (archive_read_data(a, sig, siglen) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"archive_read_data failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			if (write(fd, sig, siglen) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"write failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			free(sig);
+			rc = EPKG_OK;
+			break;
+		}
+	}
+	/*
+	 * XXX: do not free resources here since the sandbox is terminated anyway
+	 */
+	return (rc);
+}
+
+static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
 		const char *dest, struct pkg_repo *repo, int dest_fd,
 		struct sig_cert **signatures)
@@ -361,7 +413,8 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	struct sig_cert *sc = NULL, *s;
 
 	unsigned char *sig = NULL;
-	int siglen = 0, rc = EPKG_OK;
+	int rc = EPKG_OK;
+	int64_t siglen = 0;
 	char key[MAXPATHLEN];
 
 	pkg_debug(1, "PkgRepo: extracting %s of repo %s", file, pkg_repo_name(repo));
@@ -371,6 +424,23 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	archive_read_support_format_tar(a);
 
 	/* Seek to the begin of file */
+	(void)lseek(fd, 0, SEEK_SET);
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
+				&fd, (char **)&sig, &siglen) == EPKG_OK) {
+			s = calloc(1, sizeof(struct sig_cert));
+			if (s == NULL) {
+				pkg_emit_errno("pkg_repo_archive_extract_archive",
+						"malloc failed");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+			s->sig = sig;
+			s->siglen = siglen;
+			strlcpy(s->name, "signature", sizeof(s->name));
+			HASH_ADD_STR(sc, name, s);
+		}
+	}
 	(void)lseek(fd, 0, SEEK_SET);
 	archive_read_open_fd(a, fd, 4096);
 
@@ -399,18 +469,6 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 				(void)lseek(dest_fd, 0, SEEK_SET);
 			}
 		}
-		if (pkg_repo_signature_type(repo) == SIG_PUBKEY &&
-				strcmp(archive_entry_pathname(ae), "signature") == 0) {
-			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			archive_read_data(a, sig, siglen);
-			s = calloc(1, sizeof(struct sig_cert));
-			s->sig = sig;
-			s->siglen = siglen;
-			strlcpy(s->name, "signature", sizeof(s->name));
-			HASH_ADD_STR(sc, name, s);
-		}
-
 		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
 				snprintf(key, sizeof(key), "%.*s",
