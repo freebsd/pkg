@@ -900,11 +900,9 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 
 					/* +1 to include \0 at the end */
 					res_len = elt->len + 1;
-					iov[0].iov_base = &res_len;
-					iov[0].iov_len = sizeof(res_len);
-					iov[1].iov_base = (void *)ucl_object_tostring(elt);
-					iov[1].iov_len = res_len;
-					if (writev(fd, iov, 2) == -1) {
+					iov[0].iov_base = (void *)ucl_object_tostring(elt);
+					iov[0].iov_len = res_len;
+					if (writev(fd, iov, 1) == -1) {
 						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
 								"writev error");
 						rc = EPKG_FATAL;

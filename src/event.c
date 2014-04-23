@@ -133,8 +133,8 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 {
 	pid_t pid;
 	int	status, ret = EPKG_OK;
-	int pair[2], r;
-	int64_t res_len = 0;
+	int pair[2], r, allocated_len = 0, off = 0;
+	char *buf = NULL;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1) {
 		warn("socketpair failed");
@@ -151,36 +151,47 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	case 0:
 		break;
 	default:
+		/* Parent process */
 		close(pair[0]);
 		/*
 		 * We use blocking IO here as if the child is terminated we would have
 		 * EINTR here
 		 */
-		if (read(pair[1], &res_len, sizeof(res_len)) == -1) {
+		buf = malloc(BUFSIZ);
+		if (buf == NULL) {
+			warn("malloc failed");
+			return (EPKG_FATAL);
+		}
+		allocated_len = BUFSIZ;
+		do {
+			if (off >= allocated_len) {
+				allocated_len *= 2;
+				buf = realloc(buf, allocated_len);
+				if (buf == NULL) {
+					warn("realloc failed");
+					return (EPKG_FATAL);
+				}
+			}
+
+			r = read(pair[1], buf + off, allocated_len - off);
+			if (r == -1 && errno != EINTR) {
+				free(buf);
+				warn("read failed");
+				return (EPKG_FATAL);
+			}
+			else if (r > 0) {
+				off += r;
+			}
+		} while (r > 0);
+
+		/* Fill the result buffer */
+		*len = off;
+		*result = buf;
+		if (*result == NULL) {
+			warn("malloc failed");
+			kill(pid, SIGTERM);
 			ret = EPKG_FATAL;
 		}
-		else {
-			/* Fill the result buffer */
-			*len = res_len;
-			*result = malloc(res_len + 1);
-			if (*result == NULL) {
-				warn("malloc failed");
-				kill(pid, SIGTERM);
-				ret = EPKG_FATAL;
-			}
-			else {
-				if ((r = read(pair[1], *result, res_len)) == -1) {
-					ret = EPKG_FATAL;
-					free(*result);
-					kill(pid, SIGTERM);
-				}
-				else {
-					/* Null terminate string */
-					*result[r] = '\0';
-				}
-			}
-		}
-		/* Parent process */
 		while (waitpid(pid, &status, 0) == -1) {
 			if (errno != EINTR) {
 				warn("Sandboxed process pid=%d", (int)pid);
@@ -216,6 +227,8 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	 * make a sandbox
 	 */
 	ret = func(pair[0], ud);
+
+	close(pair[0]);
 
 	_exit(ret);
 }
