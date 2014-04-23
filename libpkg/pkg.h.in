@@ -167,6 +167,10 @@ typedef enum {
 	 * The argument is a WHERE clause to use as condition
 	 */
 	MATCH_CONDITION,
+	/**
+	 * Match using FTS search
+	 */
+	MATCH_FTS
 } match_t;
 
 /**
