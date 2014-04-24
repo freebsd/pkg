@@ -680,11 +680,19 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_fingerprints,
-				&fd, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
+				&fd, (char **)&sig, &siglen) == EPKG_OK && sig != NULL &&
+				siglen > 0) {
 			if (pkg_repo_parse_sigkeys(sig, siglen, &sc) == EPKG_FATAL) {
 				return (EPKG_FATAL);
 			}
 			free(sig);
+			if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+				return (EPKG_FATAL);
+			}
+		}
+		else {
+			pkg_emit_error("No signature found");
+			return (EPKG_FATAL);
 		}
 	}
 	(void)lseek(fd, 0, SEEK_SET);
@@ -775,14 +783,6 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
-
-		ret = pkg_repo_check_fingerprint(repo, sc, true);
-
-		if (!ret) {
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-
 		HASH_ITER(hh, sc, s, stmp) {
 			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen,
 					dest_fd);
