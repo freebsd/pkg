@@ -674,7 +674,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_job_provide *pr, *prhead;
 	int cnt;
 
-	const char *origin, *digest;
+	const char *origin;
 
 	/* Go through all deps in all variables*/
 	LL_FOREACH(pvar, cur_var) {
