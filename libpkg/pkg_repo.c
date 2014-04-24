@@ -531,12 +531,13 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 	unsigned char *sig;
 	int len = 0;
 	struct sig_cert *s;
+	bool new = false;
 
 	while (p < end) {
 		switch (state) {
 		case fp_parse_type:
 			type = *p;
-			if (*p != 0 || *p != 1) {
+			if (type != 0 && type != 1) {
 				/* Invalid type */
 				pkg_emit_error("%d is not a valid type for signature_fingerprints"
 						"output", type);
@@ -558,24 +559,28 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			s = NULL;
 			break;
 		case fp_parse_file:
-			if (end - p < len) {
+			if (end - p < len || len <= 0) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
 						"output, wanted %d bytes", type, len);
 				return (EPKG_FATAL);
 			}
-			else if (len >= MAXPATHLEN || len < 4) {
+			else if (len >= MAXPATHLEN) {
 				pkg_emit_error("filename is incorrect for signature_fingerprints"
 						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
 				return (EPKG_FATAL);
 			}
-			HASH_FIND(hh, *sc, p, len - 4, s);
+			HASH_FIND(hh, *sc, p, len, s);
 			if (s == NULL) {
-				s = malloc(sizeof(struct sig_cert));
+				s = calloc(1, sizeof(struct sig_cert));
 				if (s == NULL) {
-					pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
+					pkg_emit_errno("pkg_repo_parse_sigkeys", "calloc failed");
 					return (EPKG_FATAL);
 				}
 				strlcpy(s->name, p, MIN(len + 1, sizeof(s->name)));
+				new = true;
+			}
+			else {
+				new = false;
 			}
 			state = fp_parse_siglen;
 			p += len;
@@ -599,14 +604,14 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 				pkg_emit_error("fatal state machine failure at pkg_repo_parse_sigkeys");
 				return (EPKG_FATAL);
 			}
-			if (end - p < len) {
+			if (end - p < len || len <= 0) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
 						"output, wanted %d bytes", type, len);
 				free(s);
 				return (EPKG_FATAL);
 			}
 			sig = malloc(len);
-			if (s->sig == NULL) {
+			if (sig == NULL) {
 				pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
 				free(s);
 				return (EPKG_FATAL);
@@ -623,7 +628,10 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			}
 			state = fp_parse_type;
 			p += len;
-			HASH_ADD_STR(*sc, name, s);
+
+			if (new)
+				HASH_ADD_STR(*sc, name, s);
+
 			break;
 		}
 	}
