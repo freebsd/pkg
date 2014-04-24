@@ -351,12 +351,19 @@ pkg_repo_signatures_free(struct sig_cert *sc)
 	}
 }
 
+
+struct pkg_extract_cbdata {
+	int afd;
+	int tfd;
+	const char *fname;
+};
+
 static int
 pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
-	int afd = *(int *)ud;
+	struct pkg_extract_cbdata *cb = ud;
 	int siglen;
 	void *sig;
 	int rc = EPKG_FATAL;
@@ -367,7 +374,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	archive_read_support_filter_all(a);
 	archive_read_support_format_tar(a);
 
-	archive_read_open_fd(a, afd, 4096);
+	archive_read_open_fd(a, cb->afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
@@ -394,13 +401,21 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 			rc = EPKG_OK;
 			break;
 		}
+		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
+			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
+				pkg_emit_errno("archive_read_extract", "extract error");
+				rc = EPKG_FATAL;
+				break;
+			}
+		}
 	}
+
+	close(cb->tfd);
 	/*
 	 * XXX: do not free resources here since the sandbox is terminated anyway
 	 */
 	return (rc);
 }
-
 /*
  * We use here the following format:
  * <type(0|1)><namelen(int)><name><datalen(int)><data>
@@ -410,7 +425,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
-	int afd = *(int *)ud;
+	struct pkg_extract_cbdata *cb = ud;
 	int siglen, keylen;
 	void *sig;
 	int rc = EPKG_FATAL;
@@ -423,7 +438,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 	archive_read_support_filter_all(a);
 	archive_read_support_format_tar(a);
 
-	archive_read_open_fd(a, afd, 4096);
+	archive_read_open_fd(a, cb->afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
@@ -505,10 +520,16 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			rc = EPKG_OK;
 		}
 		else {
-			/* Pubkeys and signatures *MUST* be at the beginnig of an archive */
-			break;
+			if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
+				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
+					pkg_emit_errno("archive_read_extract", "extract error");
+					rc = EPKG_FATAL;
+					break;
+				}
+			}
 		}
 	}
+	close(cb->tfd);
 	/*
 	 * XXX: do not free resources here since the sandbox is terminated anyway
 	 */
@@ -646,9 +667,8 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		const char *dest, struct pkg_repo *repo, int dest_fd,
 		struct sig_cert **signatures)
 {
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
 	struct sig_cert *sc = NULL, *s;
+	struct pkg_extract_cbdata cbdata;
 
 	unsigned char *sig = NULL;
 	int rc = EPKG_OK;
@@ -657,16 +677,32 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 
 	pkg_debug(1, "PkgRepo: extracting %s of repo %s", file, pkg_repo_name(repo));
 
-	a = archive_read_new();
-	archive_read_support_filter_all(a);
-	archive_read_support_format_tar(a);
-
 	/* Seek to the begin of file */
 	(void)lseek(fd, 0, SEEK_SET);
 
+	cbdata.afd = fd;
+	cbdata.fname = file;
+	if (dest_fd != -1) {
+		cbdata.tfd = dest_fd;
+	}
+	else if (dest != NULL) {
+		cbdata.tfd = open (dest, O_WRONLY | O_CREAT | O_TRUNC,
+				0644);
+		if (cbdata.tfd == -1) {
+			pkg_emit_errno("archive_read_extract", "open error");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		fchown (fd, 0, 0);
+	}
+	else {
+		pkg_emit_error("internal error: both fd and name are invalid");
+		return (EPKG_FATAL);
+	}
+
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
-				&fd, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
+				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
 			s = calloc(1, sizeof(struct sig_cert));
 			if (s == NULL) {
 				pkg_emit_errno("pkg_repo_archive_extract_archive",
@@ -682,7 +718,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_fingerprints,
-				&fd, (char **)&sig, &siglen) == EPKG_OK && sig != NULL &&
+				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL &&
 				siglen > 0) {
 			if (pkg_repo_parse_sigkeys(sig, siglen, &sc) == EPKG_FATAL) {
 				return (EPKG_FATAL);
@@ -698,34 +734,8 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		}
 	}
 	(void)lseek(fd, 0, SEEK_SET);
-	archive_read_open_fd(a, fd, 4096);
-
-	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (strcmp(archive_entry_pathname(ae), file) == 0) {
-			if (dest_fd == -1) {
-				archive_entry_set_pathname(ae, dest);
-				/*
-				 * The repo should be owned by root and not writable
-				 */
-				archive_entry_set_uid(ae, 0);
-				archive_entry_set_gid(ae, 0);
-				archive_entry_set_perm(ae, 0644);
-
-				if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != 0) {
-					pkg_emit_errno("archive_read_extract", "extract error");
-					rc = EPKG_FATAL;
-					goto cleanup;
-				}
-			} else {
-				if (archive_read_data_into_fd(a, dest_fd) != 0) {
-					pkg_emit_errno("archive_read_extract", "extract error");
-					rc = EPKG_FATAL;
-					goto cleanup;
-				}
-				(void)lseek(dest_fd, 0, SEEK_SET);
-			}
-		}
-	}
+	if (dest_fd != -1)
+		(void)lseek(dest_fd, 0, SEEK_SET);
 
 cleanup:
 	if (rc == EPKG_OK) {
@@ -738,13 +748,8 @@ cleanup:
 		pkg_repo_signatures_free(sc);
 	}
 
-	if (rc != EPKG_OK && dest != NULL)
+	if (rc != EPKG_OK)
 		unlink(dest);
-
-	if (a != NULL) {
-		archive_read_close(a);
-		archive_read_free(a);
-	}
 
 	return rc;
 }
