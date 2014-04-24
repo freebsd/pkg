@@ -529,7 +529,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 	} state = fp_parse_type;
 	char type;
 	unsigned char *sig;
-	int len = 0;
+	int len = 0, tlen;
 	struct sig_cert *s;
 	bool new = false;
 
@@ -576,7 +576,9 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 					pkg_emit_errno("pkg_repo_parse_sigkeys", "calloc failed");
 					return (EPKG_FATAL);
 				}
-				strlcpy(s->name, p, MIN(len + 1, sizeof(s->name)));
+				tlen = MIN(len, sizeof(s->name) - 1);
+				memcpy(s->name, p, tlen);
+				s->name[tlen] = '\0';
 				new = true;
 			}
 			else {
