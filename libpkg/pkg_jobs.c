@@ -55,6 +55,8 @@ static bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
 
+#define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
+
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 {
@@ -623,7 +625,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 
 		rpkg = NULL;
 		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-		if (npkg == NULL) {
+		if (npkg == NULL && !IS_DELETE(j)) {
 			/*
 			 * We have a package installed, but its dependencies are not,
 			 * try to search a remote dependency
@@ -634,7 +636,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
 				/* Cannot continue */
-				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				pkg_emit_error("Missing dependency matching '%s'",
+						pkg_dep_get(d, PKG_DEP_ORIGIN));
 				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING) {
 					continue;
 				}
@@ -643,9 +646,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			/* Set automatic if no local package is found */
 			pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
 		}
-		else if ((j->type == PKG_JOBS_UPGRADE ||
-				j->type == PKG_JOBS_INSTALL) &&
-				npkg->type == PKG_INSTALLED) {
+		else if (!IS_DELETE(j) && npkg->type == PKG_INSTALLED) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
 			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (rpkg != NULL) {
@@ -677,7 +678,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			continue;
 
 		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-		if (npkg == NULL) {
+		if (npkg == NULL && !IS_DELETE(j)) {
 			/*
 			 * We have a package installed, but its dependencies are not,
 			 * try to search a remote dependency
@@ -696,33 +697,17 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			return (EPKG_FATAL);
 	}
 
-	/* Examine conflicts */
-	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
-		/* XXX: this assumption can be applied only for the current plain dependencies */
-		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
-		if (unit != NULL)
-			continue;
-
-		/* Check local and remote conflicts */
-		if (pkg->type == PKG_INSTALLED) {
-			/* Installed packages can conflict with remote ones */
-			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-			if (npkg == NULL)
+	if (!IS_DELETE(j)) {
+		/* Examine conflicts */
+		while (pkg_conflicts(pkg, &c) == EPKG_OK) {
+			/* XXX: this assumption can be applied only for the current plain dependencies */
+			HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
+			if (unit != NULL)
 				continue;
 
-			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-				return (EPKG_FATAL);
-		}
-		else {
-			/* Remote packages can conflict with remote and local */
-			npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
-			if (npkg == NULL)
-				continue;
-
-			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-				return (EPKG_FATAL);
-
-			if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
+			/* Check local and remote conflicts */
+			if (pkg->type == PKG_INSTALLED) {
+				/* Installed packages can conflict with remote ones */
 				npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
 				if (npkg == NULL)
 					continue;
@@ -730,11 +715,30 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 					return (EPKG_FATAL);
 			}
+			else {
+				/* Remote packages can conflict with remote and local */
+				npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
+				if (npkg == NULL)
+					continue;
+
+				if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+					return (EPKG_FATAL);
+
+				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
+					npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+					if (npkg == NULL)
+						continue;
+
+					if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL)
+							!= EPKG_OK)
+						return (EPKG_FATAL);
+				}
+			}
 		}
 	}
 
 	/* For remote packages we should also handle shlib deps */
-	if (pkg->type != PKG_INSTALLED) {
+	if (pkg->type != PKG_INSTALLED && !IS_DELETE(j)) {
 		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
 			HASH_FIND_STR(j->provides, pkg_shlib_name(shlib), pr);
 			if (pr != NULL)
@@ -1065,9 +1069,12 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	struct pkgdb_it *it;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
+		if (!IS_DELETE(j))
+			flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
 				PKG_LOAD_CONFLICTS;
+		else
+			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS;
 	}
 
 	if ((it = pkgdb_query(j->db, origin, MATCH_EXACT)) == NULL)
