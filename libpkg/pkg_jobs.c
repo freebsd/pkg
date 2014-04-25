@@ -676,23 +676,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			continue;
 
 		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-		if (npkg == NULL && !IS_DELETE(j)) {
-			/*
-			 * We have a package installed, but its dependencies are not,
-			 * try to search a remote dependency
-			 */
-			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-			if (npkg == NULL) {
-				/* Cannot continue */
-				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING) {
-					continue;
-				}
+		if (npkg != NULL) {
+			/* Do not bother about remote deps */
+			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 				return (EPKG_FATAL);
-			}
 		}
-		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-			return (EPKG_FATAL);
 	}
 
 	if (!IS_DELETE(j)) {
