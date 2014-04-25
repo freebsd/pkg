@@ -1555,7 +1555,8 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS)
+			== EPKG_OK) {
 		// Check if the pkg is locked
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_FIND_STR(j->universe, origin, unit);
