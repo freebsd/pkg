@@ -205,7 +205,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	const char *origin, *digest, *offset, *length;
 	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *p;
-	int updated = 0, removed = 0, added = 0, processed = 0;
+	int updated = 0, removed = 0, added = 0, processed = 0, pushed = 0;
 	long num_offset, num_length;
 	time_t local_t = *mtime;
 	time_t digest_t;
@@ -365,10 +365,11 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 
 	hash_it = 0;
 	last = 0;
+	pushed = HASH_COUNT(ladd);
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		now = time(NULL);
-		if (++hash_it == added || now > last) {
-			pkg_emit_update_add(added, hash_it);
+		if (++hash_it == pushed || now > last) {
+			pkg_emit_update_add(pushed, hash_it);
 			last = now;
 		}
 		if (rc == EPKG_OK) {
