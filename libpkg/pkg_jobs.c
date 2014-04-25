@@ -249,12 +249,12 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 }
 
 static void
-pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg_job_universe_item *item,
-		bool add)
+pkg_jobs_add_req(struct pkg_jobs *j, const char *origin,
+		struct pkg_job_universe_item *item)
 {
 	struct pkg_job_request *req, *test, **head;
 
-	if (add)
+	if (!IS_DELETE(j))
 		head = &j->request_add;
 	else
 		head = &j->request_delete;
@@ -943,7 +943,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		/* However, we may want to add it to the job request */
 		HASH_FIND_STR(j->request_add, origin, jreq);
 		if (jreq == NULL)
-			pkg_jobs_add_req(j, origin, seen->un, true);
+			pkg_jobs_add_req(j, origin, seen->un);
 		return (EPKG_OK);
 	}
 	HASH_FIND_STR(j->universe, origin, jit);
@@ -986,7 +986,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	/* Add a package to request chain and populate universe */
 	rc = pkg_jobs_add_universe(j, p, recursive, false, &jit);
 	if (add_request)
-		pkg_jobs_add_req(j, origin, jit, true);
+		pkg_jobs_add_req(j, origin, jit);
 
 	if (unit != NULL)
 		*unit = jit;
@@ -1529,7 +1529,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			}
 			else {
 				pkg_get(pkg, PKG_ORIGIN, &origin);
-				pkg_jobs_add_req(j, origin, unit, false);
+				pkg_jobs_add_req(j, origin, unit);
 			}
 			/* TODO: use repository priority here */
 
@@ -1566,7 +1566,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			else if (pkg_jobs_test_automatic(j, pkg)) {
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
-				pkg_jobs_add_req(j, origin, unit, false);
+				pkg_jobs_add_req(j, origin, unit);
 			}
 		}
 		else {
@@ -1576,7 +1576,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			else if (pkg_jobs_test_automatic(j, unit->pkg)) {
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
-				pkg_jobs_add_req(j, origin, unit, false);
+				pkg_jobs_add_req(j, origin, unit);
 			}
 
 			pkg_free(pkg);
