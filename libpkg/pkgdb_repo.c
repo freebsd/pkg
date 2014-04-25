@@ -477,7 +477,7 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
 	int64_t			 flatsize, pkgsize;
-	lic_t			 licenselogic;
+	int64_t			 licenselogic;
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
