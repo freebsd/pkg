@@ -316,7 +316,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			break;
 		case UCL_BOOLEAN:
 			ucl_object_replace_key(pkg->fields,
-			    ucl_object_frombool((bool)va_arg(ap, int64_t)),
+			    ucl_object_frombool(va_arg(ap, bool)),
 			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 			break;
 		case UCL_INT:
