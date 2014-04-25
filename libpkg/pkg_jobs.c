@@ -643,8 +643,6 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				}
 				return (EPKG_FATAL);
 			}
-			/* Set automatic if no local package is found */
-			pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
 		}
 		else if (!IS_DELETE(j) && npkg->type == PKG_INSTALLED) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
@@ -662,7 +660,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		if (rpkg != NULL) {
 			/* Save automatic flag */
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
-			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)automatic);
+			pkg_set(rpkg, PKG_AUTOMATIC, automatic);
 
 			if (pkg_jobs_add_universe(j, rpkg, recursive, false, NULL) != EPKG_OK)
 				return (EPKG_FATAL);
@@ -1277,7 +1275,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	pkg_get(rp, PKG_VERSION, &newversion);
 	pkg_set(rp, PKG_OLD_VERSION, oldversion,
 	    PKG_OLD_FLATSIZE, oldsize,
-	    PKG_AUTOMATIC, (int64_t)automatic);
+	    PKG_AUTOMATIC, automatic);
 
 	if (force)
 		return (true);
@@ -1452,7 +1450,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 	struct pkg_job_universe_item *unit, *utmp, *cur, *local;
 	struct pkg_job_request *req;
 	const char *origin;
-	int64_t automatic;
+	bool automatic;
 
 	HASH_ITER(hh, j->universe, unit, utmp) {
 		/* Rewind list */
@@ -1918,7 +1916,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	const char *pkgorigin, *oldversion = NULL;
 	const ucl_object_t *an, *obj;
 	char path[MAXPATHLEN], *target;
-	int64_t automatic;
+	bool automatic;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
