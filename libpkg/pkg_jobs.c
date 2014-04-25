@@ -1446,6 +1446,59 @@ pkg_conflicts_integrity_check(struct pkg_jobs *j)
 	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb_local, j));
 }
 
+static void
+pkg_jobs_propagate_automatic(struct pkg_jobs *j)
+{
+	struct pkg_job_universe_item *unit, *utmp, *cur, *local;
+	struct pkg_job_request *req;
+	const char *origin;
+	int64_t automatic;
+
+	HASH_ITER(hh, j->universe, unit, utmp) {
+		/* Rewind list */
+		while (unit->prev->next != NULL)
+			unit = unit->prev;
+		if (unit->next == NULL) {
+			/*
+			 * For packages that are alone in the installation list
+			 * we search them in the corresponding request
+			 */
+			pkg_get(unit->pkg, PKG_ORIGIN, &origin);
+			HASH_FIND_STR(j->request_add, origin, req);
+			if (req == NULL) {
+				automatic = 1;
+				pkg_debug(2, "set automatic flag for %s", origin);
+				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
+			}
+			else {
+				automatic = 0;
+				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
+			}
+		}
+		else {
+			/*
+			 * For packages that are in the conflict chain we need to inherit
+			 * automatic flag from the local package
+			 */
+			local = NULL;
+			automatic = 0;
+			LL_FOREACH(unit, cur) {
+				if (cur->pkg->type == PKG_INSTALLED) {
+					local = cur;
+					pkg_get(local->pkg, PKG_AUTOMATIC, &automatic);
+				}
+			}
+			if (local != NULL) {
+				LL_FOREACH(unit, cur) {
+					if (cur->pkg->type != PKG_INSTALLED) {
+						pkg_set(cur->pkg, PKG_AUTOMATIC, automatic);
+					}
+				}
+			}
+		}
+	}
+}
+
 static struct pkg_job_request *
 pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item, struct pkg_jobs *j)
 {
@@ -1638,6 +1691,8 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 	}
 
+	pkg_jobs_propagate_automatic(j);
+
 order:
 
 	j->solved ++;
@@ -1690,6 +1745,8 @@ jobs_solve_install(struct pkg_jobs *j)
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
 	}
+
+	pkg_jobs_propagate_automatic(j);
 
 order:
 
@@ -1861,18 +1918,17 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	const char *pkgorigin, *oldversion = NULL;
 	const ucl_object_t *an, *obj;
 	char path[MAXPATHLEN], *target;
-	bool automatic = false;
+	int64_t automatic;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
 
-	pkg_get(new, PKG_ORIGIN, &pkgorigin, PKG_ANNOTATIONS, &obj);
+	pkg_get(new, PKG_ORIGIN, &pkgorigin, PKG_ANNOTATIONS, &obj,
+			PKG_AUTOMATIC, &automatic);
 	if (old != NULL)
-		pkg_get(old, PKG_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
-	else if (!new->direct)
-		automatic = true;
+		pkg_get(old, PKG_VERSION, &oldversion);
 
 	an = pkg_object_find(obj, "repository");
 
