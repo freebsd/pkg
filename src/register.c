@@ -134,7 +134,7 @@ exec_register(int argc, char **argv)
 		switch (ch) {
 		case 'A':
 		case 'd':
-			pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
+			pkg_set(pkg, PKG_AUTOMATIC, (bool)true);
 			break;
 		case 'f':
 			plist = optarg;

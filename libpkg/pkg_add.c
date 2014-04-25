@@ -199,7 +199,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 	if (flags & PKG_ADD_AUTOMATIC)
-		pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
+		pkg_set(pkg, PKG_AUTOMATIC, (bool)true);
 
 	/*
 	 * Check the architecture
