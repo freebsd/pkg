@@ -71,6 +71,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 {
 	const char	*key;
 	const char	*version;
+	int		 cout;
 
 	pkg_get(pkg, PKG_VERSION, &version);
 	if (ver == NULL) {
@@ -103,8 +104,13 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 
 	if (opt & VERSION_ORIGIN)
 		pkg_printf("%-34o %S", pkg, key);
-	else
-		pkg_printf("%n-%v %S", pkg, pkg, key);
+	else {
+		cout = pkg_printf("%n-%v", pkg, pkg);
+		cout = 35 - cout;
+		if (cout < 1)
+			cout = 1;
+		printf("%*s%s", cout, " ", key);
+	}
 
 	if (opt & VERSION_VERBOSE) {
 		switch (*key) {
