@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd April 26, 2014
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -40,13 +40,21 @@
 is used for generating a report of packages installed by
 .Xr pkg 8 .
 .Pp
-By default, if a ports tree exists it is used to compare versions.
-If it does not exist, the remote repository catalogue is used.
-These defaults can be overridden by specifying one of
+The database of available packages and versions to compare against the
+installed packages may be chosen by specifying one of
 .Fl P ,
 .Fl R
 or
 .Fl I .
+If not specified then the ports index file
+will be used if it exists
+.Fl ( I ) .
+Otherwise, should a ports tree exist that will be used to compare
+versions
+.Fl ( P ) .
+Failing either of those two choices, the repository catalogue will be
+used
+.Fl ( R ) .
 .Pp
 When
 .Fl I
@@ -114,15 +122,18 @@ file for determining if a package is out of date.
 If no
 .Pa index
 file name is specified, uses the default index file.
+This is the default, if the index file exists.
 .It Fl P
 Use ports for determining if a package is out of date.
-This is the default if a ports tree exists.
+This is the default if the index file is not present and a ports tree
+exists.
 The tree used can be overridden by PORTSDIR, see
 .Xr pkg 5
 for more information.
 .It Fl R
 Use repository catalogue for determining if a package is out of date.
-This is the default if no ports tree exists.
+This is the default if neither the ports index nor the ports tree
+exists.
 .It Fl U
 Suppress the automatic update of the local copy of the repository catalogue
 from remote.
@@ -232,9 +243,9 @@ relative to that directory.
 If
 .Ev INDEXFILE
 is not set, the default file name is
-.Pa INDEX- Sy N
+.Pa INDEX-N
 where
-.Sy N
+.Cm N
 is the OS major version number.
 .Sh FILES
 See
