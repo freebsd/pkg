@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd April 27, 2014
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -23,21 +23,25 @@
 .Nd query information from remote repositories
 .Sh SYNOPSIS
 .Nm
-.Ao query-format Ac Ao pkg-name Ac
+.Sm Fl I |
+.Ao query-format Ac Sm Ao pkg-name Ac
 .Nm
 .Op Fl aU
 .Op Fl r Ar reponame
-.Ao query-format Ac
+.Sm Fl I |
+.Ao query-format Ac Sm
 .Nm
 .Op Fl U
 .Fl e Ao evaluation-condition Ac
 .Op Fl r Ar reponame
-.Ao query-format Ac
+.Sm Fl I |
+.Ao query-format Ac Sm
 .Nm
 .Op Fl U
 .Op Fl Cgix
 .Op Fl r Ar reponame
-.Ao query-format Ac Ao pattern Ac Ao ... Ac
+.Sm Fl I |
+.Ao query-format Ac Sm Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
 is used for displaying information about remote packages.
@@ -69,6 +73,16 @@ case sensitive.
 Match packages using the given
 .Ar evaluation-condition.
 See EVALUATION FORMAT for details.
+.It Fl I
+Print out the corresponding line from the ports
+.Pa INDEX
+file for each matched package.
+This option is a shorthand
+.Ao query-format Ac
+argument.
+Only the first query format (including the
+.Fl I
+option) on the command line will be interpreted.
 .It Fl r Ar reponame
 Query for data about packages from only the named repository,
 irrespective of the configured
