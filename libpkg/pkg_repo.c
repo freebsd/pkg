@@ -356,6 +356,7 @@ struct pkg_extract_cbdata {
 	int afd;
 	int tfd;
 	const char *fname;
+	bool need_sig;
 };
 
 static int
@@ -377,7 +378,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	archive_read_open_fd(a, cb->afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
+		if (cb->need_sig && strcmp(archive_entry_pathname(ae), "signature") == 0) {
 			siglen = archive_entry_size(ae);
 			sig = malloc(siglen);
 			if (sig == NULL) {
@@ -406,6 +407,9 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 				pkg_emit_errno("archive_read_extract", "extract error");
 				rc = EPKG_FATAL;
 				break;
+			}
+			else if (!cb->need_sig) {
+				rc = EPKG_OK;
 			}
 		}
 	}
@@ -701,6 +705,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	}
 
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		cbdata.need_sig = true;
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
 				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
 			s = calloc(1, sizeof(struct sig_cert));
@@ -730,6 +735,18 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		}
 		else {
 			pkg_emit_error("No signature found");
+			return (EPKG_FATAL);
+		}
+	}
+	else {
+		cbdata.need_sig = false;
+		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
+			&cbdata, (char **)&sig, &siglen) == EPKG_OK) {
+			if (sig)
+				free(sig);
+		}
+		else {
+			pkg_emit_error("Repo extraction failed");
 			return (EPKG_FATAL);
 		}
 	}
