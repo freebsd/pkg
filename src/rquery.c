@@ -79,16 +79,13 @@ usage_rquery(void)
 }
 
 static void
-print_index(struct pkg *pkg)
+print_index(struct pkg *pkg, const char *portsdir)
 {
-#ifndef PORTSDIR
-#define PORTSDIR "/usr/ports"
-#endif
 	const pkg_object *obj, *list;
 	pkg_iter iter = NULL;
 
-	pkg_printf("%n-%v|" PORTSDIR "/%o|%p|%c|" PORTSDIR "/%o/pkg-descr|%m|",
-	    pkg, pkg, pkg, pkg, pkg, pkg, pkg);
+	pkg_printf("%n-%v|%S/%o|%p|%c|%S/%o/pkg-descr|%m|",
+	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg);
 	pkg_get(pkg, PKG_CATEGORIES, &list);
 	while ((obj = pkg_object_iterate(list, &iter)))
 		pkg_printf("%Cn ", obj);
@@ -110,6 +107,7 @@ exec_rquery(int argc, char **argv)
 	int i;
 	char multiline = 0;
 	char *condition = NULL;
+	const char *portsdir;
 	struct sbuf *sqlcond = NULL;
 	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
 	const char *reponame = NULL;
@@ -119,6 +117,8 @@ exec_rquery(int argc, char **argv)
 	bool index_output = false;
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
+
+	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
         /* Set default case sensitivity for searching */
         pkgdb_set_case_sensitivity(
@@ -222,7 +222,7 @@ exec_rquery(int argc, char **argv)
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			if (index_output)
-				print_index(pkg);
+				print_index(pkg, portsdir);
 			else
 				print_query(pkg, argv[0],  multiline);
 		}
@@ -241,7 +241,7 @@ exec_rquery(int argc, char **argv)
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 				onematched = true;
 				if (index_output)
-					print_index(pkg);
+					print_index(pkg, portsdir);
 				else
 					print_query(pkg, argv[0], multiline);
 			}
