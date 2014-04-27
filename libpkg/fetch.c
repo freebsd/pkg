@@ -312,7 +312,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			if (ssh_args != NULL)
 				sbuf_printf(cmd, "%s ", ssh_args);
 			if (u->port > 0)
-				sbuf_printf(cmd, "-P %d ", u->port);
+				sbuf_printf(cmd, "-p %d ", u->port);
 			if (u->user[0] != '\0')
 				sbuf_printf(cmd, "%s@", u->user);
 			sbuf_cat(cmd, u->host);
