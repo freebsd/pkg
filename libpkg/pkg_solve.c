@@ -109,6 +109,13 @@ pkg_debug_print_rule (struct pkg_solve_item *rule)
 {
 	struct pkg_solve_item *it;
 	struct sbuf *sb;
+	int64_t expectlevel;
+
+	/* Avoid expensive printing if debug level is less than required */
+	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+
+	if (expectlevel < 2)
+		return;
 
 	sb = sbuf_new_auto();
 
