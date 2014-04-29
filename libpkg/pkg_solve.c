@@ -545,7 +545,7 @@ static int
 pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		struct pkg_solve_problem *problem, const char *origin, struct pkg_solve_variable **var)
 {
-	struct pkg_job_universe_item *unit;
+	struct pkg_job_universe_item *unit, *cur;
 	struct pkg_solve_variable *nvar, *tvar = NULL, *found;
 	const char *digest;
 
@@ -560,26 +560,39 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 	if (nvar == NULL)
 		return (EPKG_FATAL);
 
-	HASH_ADD_KEYPTR(hd, problem->variables_by_digest, nvar->digest, strlen(nvar->digest), nvar);
-	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
-	pkg_debug(4, "solver: add variable from universe with origin %s", nvar->origin);
+	HASH_ADD_KEYPTR(hd, problem->variables_by_digest, nvar->digest,
+			strlen(nvar->digest), nvar);
 
-	unit = unit->next;
-	while (unit != NULL) {
-		pkg_get(unit->pkg, PKG_DIGEST, &digest);
-		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), found);
-		if (found == NULL) {
-			/* Add all alternatives as independent variables */
-			tvar = pkg_solve_variable_new(unit);
-			if (tvar == NULL)
-				return (EPKG_FATAL);
-			DL_APPEND(nvar, tvar);
-			HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest,
-					strlen(tvar->digest), tvar);
-			pkg_debug (4, "solver: add another variable with origin %s and digest %s",
-					tvar->origin, tvar->digest);
+	/*
+	 * Now we check the origin variable and if there is no such origin then
+	 * we need to add the whole conflict chain to it
+	 */
+	HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), found);
+	if (found == NULL) {
+		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin,
+				strlen(nvar->origin), nvar);
+		pkg_debug(4, "solver: add variable from universe with origin %s", nvar->origin);
+
+		/* Rewind to the beginning of the list */
+		while (unit->prev->next != NULL)
+			unit = unit->prev;
+
+		LL_FOREACH (unit, cur) {
+			pkg_get(cur->pkg, PKG_DIGEST, &digest);
+			HASH_FIND(hd, problem->variables_by_digest, digest,
+					strlen(digest), found);
+			if (found == NULL) {
+				/* Add all alternatives as independent variables */
+				tvar = pkg_solve_variable_new(cur);
+				if (tvar == NULL)
+					return (EPKG_FATAL);
+				DL_APPEND(nvar, tvar);
+				HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest,
+						strlen(tvar->digest), tvar);
+				pkg_debug (4, "solver: add another variable with origin %s and digest %s",
+						tvar->origin, tvar->digest);
+			}
 		}
-		unit = unit->next;
 	}
 
 	*var = nvar;
@@ -596,8 +609,8 @@ pkg_solve_add_var_rules (struct pkg_solve_variable *var,
 	struct pkg_solve_variable *tvar;
 
 	LL_FOREACH(var, tvar) {
-		pkg_debug(4, "solver: add %d-ary %s clause to variable %s-%s: %d",
-				nrules, desc, tvar->origin, tvar->digest, rule->inverse);
+		pkg_debug(4, "solver: add %d-ary %s clause to variable %s-%s",
+							nrules, desc, tvar->origin, tvar->digest);
 		tvar->nrules += nrules;
 		head = calloc(1, sizeof (struct _pkg_solve_var_rule));
 		if (head == NULL) {
@@ -609,6 +622,7 @@ pkg_solve_add_var_rules (struct pkg_solve_variable *var,
 		if (!iterate_vars)
 			break;
 	}
+	pkg_debug_print_rule(head->rule);
 
 	return (EPKG_OK);
 }
