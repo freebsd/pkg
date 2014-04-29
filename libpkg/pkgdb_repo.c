@@ -1173,7 +1173,7 @@ pkgdb_find_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
 			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_provided AS ps ON "
 			"p.id = ps.package_id "
-			"WHERE ps.shlib_id = (SELECT id FROM '%1$s'.shlibs WHERE name=?1);";
+			"WHERE ps.shlib_id IN (SELECT id FROM '%1$s'.shlibs WHERE name LIKE ?1 || '%%');";
 
 	assert(db != NULL);
 	reponame = pkgdb_get_reponame(db, repo);
