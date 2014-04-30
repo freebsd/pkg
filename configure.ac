@@ -2,7 +2,7 @@ m4_define([maj_ver], [1])
 m4_define([med_ver], [3])
 m4_define([min_ver], [0])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
-m4_define([pkg_version], [maj_ver.med_ver.min_ver.a9])
+m4_define([pkg_version], [maj_ver.med_ver.min_ver.a10])
 
 AC_INIT([pkg],[pkg_version],[https://github.com/freebsd/pkg],[pkg])
 AC_CONFIG_SRCDIR([configure.ac])
