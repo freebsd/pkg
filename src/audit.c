@@ -70,8 +70,14 @@ struct audit_cve {
 	struct audit_cve *next;
 };
 
-struct audit_entry {
+struct audit_pkgname_entry {
 	char *pkgname;
+	struct audit_pkgname_entry *next;
+};
+
+struct audit_entry {
+	const char *pkgname;
+	struct audit_pkgname_entry *names;
 	struct audit_versions *versions;
 	struct audit_cve *cve;
 	char *url;
