@@ -236,7 +236,6 @@ struct vulnxml_userdata {
 	struct audit_entry *cur_entry;
 	enum vulnxml_parse_state state;
 	int range_num;
-	int npkg;
 };
 
 static void
@@ -258,7 +257,6 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 			}
 		}
 		ud->cur_entry->next = ud->h;
-		ud->npkg = 0;
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "topic") == 0) {
@@ -687,6 +685,7 @@ free_audit_list(struct audit_entry *h)
 	struct audit_entry *e;
 	struct audit_versions *vers, *vers_tmp;
 	struct audit_cve *cve, *cve_tmp;
+	struct audit_pkgname_entry *pname, *pname_tmp;
 
 	while (h) {
 		e = h;
@@ -704,6 +703,11 @@ free_audit_list(struct audit_entry *h)
 			if (cve->cvename)
 				free(cve->cvename);
 			free(cve);
+		}
+		LL_FOREACH_SAFE(e->names, pname, pname_tmp) {
+			if (pname->pkgname)
+				free(pname->pkgname);
+			free(pname);
 		}
 		if (e->url)
 			free(e->url);
