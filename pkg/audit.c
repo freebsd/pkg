@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -69,13 +70,20 @@ struct audit_cve {
 	struct audit_cve *next;
 };
 
-struct audit_entry {
+struct audit_pkgname_entry {
 	char *pkgname;
+	struct audit_pkgname_entry *next;
+};
+
+struct audit_entry {
+	const char *pkgname;
+	struct audit_pkgname_entry *names;
 	struct audit_versions *versions;
 	struct audit_cve *cve;
 	char *url;
 	char *desc;
 	char *id;
+	bool ref;
 	struct audit_entry *next;
 };
 
@@ -266,6 +274,39 @@ parse_pattern(struct audit_entry *e, char *pattern, size_t len)
 			dest = next_dest;
 			next_dest = NULL;
 		}
+	}
+}
+
+/*
+ * Expand multiple names to a set of audit entries
+ */
+static void
+audit_expand_entries(struct audit_entry *entry, struct audit_entry *head)
+{
+	struct audit_entry *n;
+	struct audit_pkgname_entry *pcur;
+
+	/* Set the name of the current entry */
+	entry->pkgname = entry->names->pkgname;
+
+	if (entry->names->next == NULL) {
+		/* Nothing to expand */
+		return;
+	}
+
+	LL_FOREACH(entry->names->next, pcur) {
+		n = calloc(1, sizeof(struct audit_entry));
+		if (n == NULL)
+			err(1, "calloc(audit_entry)");
+		n->pkgname = pcur->pkgname;
+		/* Set new entry as reference entry */
+		n->ref = true;
+		n->cve = entry->cve;
+		n->desc = entry->desc;
+		n->versions = entry->versions;
+		n->url = entry->url;
+		n->id = entry->id;
+		LL_PREPEND(head, n);
 	}
 }
 
