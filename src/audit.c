@@ -724,31 +724,33 @@ free_audit_list(struct audit_entry *h)
 	while (h) {
 		e = h;
 		h = h->next;
-		LL_FOREACH_SAFE(e->versions, vers, vers_tmp) {
-			if (vers->v1.version) {
-				free(vers->v1.version);
+		if (!e->ref) {
+			LL_FOREACH_SAFE(e->versions, vers, vers_tmp) {
+				if (vers->v1.version) {
+					free(vers->v1.version);
+				}
+				if (vers->v2.version) {
+					free(vers->v2.version);
+				}
+				free(vers);
 			}
-			if (vers->v2.version) {
-				free(vers->v2.version);
+			LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
+				if (cve->cvename)
+					free(cve->cvename);
+				free(cve);
 			}
-			free(vers);
+			LL_FOREACH_SAFE(e->names, pname, pname_tmp) {
+				if (pname->pkgname)
+					free(pname->pkgname);
+				free(pname);
+			}
+			if (e->url)
+				free(e->url);
+			if (e->desc)
+				free(e->desc);
+			if (e->id)
+				free(e->id);
 		}
-		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-			if (cve->cvename)
-				free(cve->cvename);
-			free(cve);
-		}
-		LL_FOREACH_SAFE(e->names, pname, pname_tmp) {
-			if (pname->pkgname)
-				free(pname->pkgname);
-			free(pname);
-		}
-		if (e->url)
-			free(e->url);
-		if (e->desc)
-			free(e->desc);
-		if (e->id)
-			free(e->id);
 		free(e);
 	}
 }
