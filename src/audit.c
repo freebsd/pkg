@@ -70,13 +70,20 @@ struct audit_cve {
 	struct audit_cve *next;
 };
 
-struct audit_entry {
+struct audit_pkgname_entry {
 	char *pkgname;
+	struct audit_pkgname_entry *next;
+};
+
+struct audit_entry {
+	const char *pkgname;
+	struct audit_pkgname_entry *names;
 	struct audit_versions *versions;
 	struct audit_cve *cve;
 	char *url;
 	char *desc;
 	char *id;
+	bool ref;
 	struct audit_entry *next;
 };
 
@@ -210,6 +217,42 @@ fetch_and_extract(const char *src, const char *dest)
 	return (retcode);
 }
 
+/*
+ * Expand multiple names to a set of audit entries
+ */
+static void
+audit_expand_entries(struct audit_entry *entry, struct audit_entry *head)
+{
+	struct audit_entry *n;
+	struct audit_pkgname_entry *pcur;
+
+	/* Set the name of the current entry */
+	if (entry->names == NULL)
+		return;
+
+	entry->pkgname = entry->names->pkgname;
+
+	if (entry->names->next == NULL) {
+		/* Nothing to expand */
+		return;
+	}
+
+	LL_FOREACH(entry->names->next, pcur) {
+		n = calloc(1, sizeof(struct audit_entry));
+		if (n == NULL)
+			err(1, "calloc(audit_entry)");
+		n->pkgname = pcur->pkgname;
+		/* Set new entry as reference entry */
+		n->ref = true;
+		n->cve = entry->cve;
+		n->desc = entry->desc;
+		n->versions = entry->versions;
+		n->url = entry->url;
+		n->id = entry->id;
+		LL_PREPEND(head, n);
+	}
+}
+
 enum vulnxml_parse_state {
 	VULNXML_PARSE_INIT = 0,
 	VULNXML_PARSE_VULN,
@@ -230,7 +273,6 @@ struct vulnxml_userdata {
 	struct audit_entry *cur_entry;
 	enum vulnxml_parse_state state;
 	int range_num;
-	int npkg;
 };
 
 static void
@@ -238,7 +280,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 {
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 	struct audit_versions *vers;
-	struct audit_entry *tmp_entry;
+	struct audit_pkgname_entry *name_entry;
 	int i;
 
 	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(element, "vuln") == 0) {
@@ -252,7 +294,6 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 			}
 		}
 		ud->cur_entry->next = ud->h;
-		ud->npkg = 0;
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "topic") == 0) {
@@ -260,23 +301,16 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "package") == 0) {
 		ud->state = VULNXML_PARSE_PACKAGE;
-		if (ud->npkg++ > 0) {
-			/* Need to copy entry */
-			tmp_entry = ud->cur_entry;
-			LL_PREPEND(ud->h, tmp_entry);
-			ud->cur_entry = calloc(1, sizeof(struct audit_entry));
-			if (ud->cur_entry == NULL)
-				err(1, "calloc(audit_entry)");
-			ud->cur_entry->id = strdup(tmp_entry->id);
-			ud->cur_entry->desc = strdup(tmp_entry->desc);
-			ud->cur_entry->next = ud->h;
-		}
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "cvename") == 0) {
 		ud->state = VULNXML_PARSE_CVE;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "name") == 0) {
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
+		name_entry = calloc(1, sizeof(struct audit_pkgname_entry));
+		if (name_entry == NULL)
+			err(1, "calloc(audit_pkgname_entry)");
+		LL_PREPEND(ud->cur_entry->names, name_entry);
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "range") == 0) {
 		ud->state = VULNXML_PARSE_RANGE;
@@ -314,11 +348,13 @@ vulnxml_end_element(void *data, const char *element)
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 
 	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "vuln") == 0) {
+		audit_expand_entries(ud->cur_entry, ud->h);
 		if (ud->cur_entry->pkgname != NULL) {
 			LL_PREPEND(ud->h, ud->cur_entry);
 		}
 		else {
 			/* Ignore canceled entries */
+			/* XXX: can memory leak here */
 			if (ud->cur_entry->id != NULL)
 				free(ud->cur_entry->id);
 			free(ud->cur_entry);
@@ -364,7 +400,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 	struct audit_versions *vers;
 	struct audit_cve *cve;
 	struct audit_entry *entry;
-	int range_type = -1, i;
+	int range_type = -1;
 
 	switch(ud->state) {
 	case VULNXML_PARSE_INIT:
@@ -377,7 +413,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		ud->cur_entry->desc = strndup(content, length);
 		break;
 	case VULNXML_PARSE_PACKAGE_NAME:
-		ud->cur_entry->pkgname = strndup(content, length);
+		ud->cur_entry->names->pkgname = strndup(content, length);
 		break;
 	case VULNXML_PARSE_RANGE_GT:
 		range_type = GT;
@@ -396,13 +432,9 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		break;
 	case VULNXML_PARSE_CVE:
 		entry = ud->cur_entry;
-		for (i = 0; i < ud->npkg; i ++, entry = entry->next) {
-			if (entry == NULL)
-				break;
-			cve = malloc(sizeof(struct audit_cve));
-			cve->cvename = strndup(content, length);
-			LL_PREPEND(entry->cve, cve);
-		}
+		cve = malloc(sizeof(struct audit_cve));
+		cve->cvename = strndup(content, length);
+		LL_PREPEND(entry->cve, cve);
 		break;
 	}
 
@@ -448,7 +480,6 @@ parse_db_vulnxml(const char *path, struct audit_entry **h)
 
 	ud.cur_entry = NULL;
 	ud.h = *h;
-	ud.npkg = 0;
 	ud.range_num = 0;
 	ud.state = VULNXML_PARSE_INIT;
 
@@ -681,30 +712,38 @@ free_audit_list(struct audit_entry *h)
 	struct audit_entry *e;
 	struct audit_versions *vers, *vers_tmp;
 	struct audit_cve *cve, *cve_tmp;
+	struct audit_pkgname_entry *pname, *pname_tmp;
 
 	while (h) {
 		e = h;
 		h = h->next;
-		LL_FOREACH_SAFE(e->versions, vers, vers_tmp) {
-			if (vers->v1.version) {
-				free(vers->v1.version);
+		if (!e->ref) {
+			LL_FOREACH_SAFE(e->versions, vers, vers_tmp) {
+				if (vers->v1.version) {
+					free(vers->v1.version);
+				}
+				if (vers->v2.version) {
+					free(vers->v2.version);
+				}
+				free(vers);
 			}
-			if (vers->v2.version) {
-				free(vers->v2.version);
+			LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
+				if (cve->cvename)
+					free(cve->cvename);
+				free(cve);
 			}
-			free(vers);
+			LL_FOREACH_SAFE(e->names, pname, pname_tmp) {
+				if (pname->pkgname)
+					free(pname->pkgname);
+				free(pname);
+			}
+			if (e->url)
+				free(e->url);
+			if (e->desc)
+				free(e->desc);
+			if (e->id)
+				free(e->id);
 		}
-		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-			if (cve->cvename)
-				free(cve->cvename);
-			free(cve);
-		}
-		if (e->url)
-			free(e->url);
-		if (e->desc)
-			free(e->desc);
-		if (e->id)
-			free(e->id);
 		free(e);
 	}
 }
