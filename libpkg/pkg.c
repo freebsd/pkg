@@ -1006,11 +1006,6 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	if (s != NULL)
 		return (EPKG_OK);
 
-	HASH_FIND_STR(pkg->shlibs_provided, name, s);
-	/* avoid deps on the same package */
-	if (s != NULL)
-		return (EPKG_OK);
-
 	pkg_shlib_new(&s);
 
 	sbuf_set(&s->name, name);

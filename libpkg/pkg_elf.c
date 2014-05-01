@@ -58,6 +58,10 @@
 #include "private/elf_tables.h"
 #include "private/ldconfig.h"
 
+#ifndef NT_ABI_TAG
+#define NT_ABI_TAG 1
+#endif
+
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
@@ -253,16 +257,25 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup;
 	}
 
+	/* Elf file has sections header */
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath,
-			    elf_errmsg(-1));
+					elf_errmsg(-1));
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
 		case SHT_NOTE:
-			note = scn;
+			if ((data = elf_getdata(scn, NULL)) == NULL) {
+				ret = EPKG_END; /* Some error occurred, ignore this file */
+				goto cleanup;
+			}
+			else if (data->d_buf != NULL) {
+				Elf_Note *en = (Elf_Note *)data->d_buf;
+				if (en->n_type == NT_ABI_TAG)
+					note = scn;
+			}
 			break;
 		case SHT_DYNAMIC:
 			dynamic = scn;
@@ -339,7 +352,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			   *provided* by the package. Record this if
 			   appropriate */
 
-			pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
@@ -348,6 +361,16 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val), 
 				      dirname(fpath));
 		break;
+	}
+	if (!is_shlib) {
+		/*
+		 * Some shared libraries have no SONAME, but we still want
+		 * to manage them in provides list.
+		 */
+		if (elfhdr.e_type == ET_DYN) {
+			is_shlib = true;
+			pkg_addshlib_provided(pkg, basename(fpath));
+		}
 	}
 
 	/* Now find all of the NEEDED shared libraries. */
@@ -458,6 +481,8 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 {
 	struct pkg_file        *file = NULL;
 	char fpath[MAXPATHLEN];
+	struct pkg_shlib *sh, *shtmp, *found;
+	const char *origin;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
@@ -476,6 +501,19 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
 		} else
 			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	}
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	/*
+	 * Do not depend on libraries that a package provides itself
+	 */
+	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
+		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
+		if (found != NULL) {
+			pkg_debug(2, "remove %s from required shlibs as the package %s provides "
+					"this library itself", pkg_shlib_name(sh), origin);
+			HASH_DEL(pkg->shlibs_required, sh);
+		}
 	}
 
 	shlib_list_free();
