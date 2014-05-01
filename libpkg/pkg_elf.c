@@ -262,7 +262,15 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		}
 		switch (shdr.sh_type) {
 		case SHT_NOTE:
-			note = scn;
+			if ((data = elf_getdata(scn, NULL)) == NULL) {
+				ret = EPKG_END; /* Some error occurred, ignore this file */
+				goto cleanup;
+			}
+			else if (data->d_buf != NULL) {
+				Elf_Note *en = (Elf_Note *)data->d_buf;
+				if (en->n_type == NT_FREEBSD_ABI_TAG)
+					note = scn;
+			}
 			break;
 		case SHT_DYNAMIC:
 			dynamic = scn;
