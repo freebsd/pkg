@@ -58,6 +58,10 @@
 #include "private/elf_tables.h"
 #include "private/ldconfig.h"
 
+#ifndef NT_ABI_TAG
+#define NT_ABI_TAG 1
+#endif
+
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
@@ -269,7 +273,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			}
 			else if (data->d_buf != NULL) {
 				Elf_Note *en = (Elf_Note *)data->d_buf;
-				if (en->n_type == NT_FREEBSD_ABI_TAG)
+				if (en->n_type == NT_ABI_TAG)
 					note = scn;
 			}
 			break;
@@ -357,6 +361,16 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val), 
 				      dirname(fpath));
 		break;
+	}
+	if (!is_shlib) {
+		/*
+		 * Some shared libraries have no SONAME, but we still want
+		 * to manage them in provides list.
+		 */
+		if (elfhdr.e_type == ET_DYN) {
+			is_shlib = true;
+			pkg_addshlib_provided(pkg, basename(fpath));
+		}
 	}
 
 	/* Now find all of the NEEDED shared libraries. */
