@@ -481,6 +481,8 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 {
 	struct pkg_file        *file = NULL;
 	char fpath[MAXPATHLEN];
+	struct pkg_shlib *sh, *shtmp, *found;
+	const char *origin;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
@@ -499,6 +501,19 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
 		} else
 			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	}
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	/*
+	 * Do not depend on libraries that a package provides itself
+	 */
+	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
+		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
+		if (found != NULL) {
+			pkg_debug(2, "remove %s from required shlibs as the package %s provides "
+					"this library itself", pkg_shlib_name(sh), origin);
+			HASH_DEL(pkg->shlibs_required, sh);
+		}
 	}
 
 	shlib_list_free();
