@@ -253,11 +253,12 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup;
 	}
 
+	/* Elf file has sections header */
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath,
-			    elf_errmsg(-1));
+					elf_errmsg(-1));
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
@@ -347,7 +348,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			   *provided* by the package. Record this if
 			   appropriate */
 
-			pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
