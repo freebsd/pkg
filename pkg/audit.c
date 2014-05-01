@@ -231,7 +231,7 @@ parse_pattern(struct audit_entry *e, char *pattern, size_t len)
 	size_t i;
 	char *start = pattern;
 	char *end;
-	char **dest = &e->pkgname;
+	char **dest = __DECONST(char **, &e->pkgname);
 	char **next_dest = NULL;
 	struct version_entry *v = &e->versions->v1;
 	int skipnext;
