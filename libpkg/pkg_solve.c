@@ -351,7 +351,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int propagated;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
-	bool rc, backtrack;
+	bool rc, backtrack = false;
 
 	struct _solver_tree_elt {
 		struct pkg_solve_variable *var;
