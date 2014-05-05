@@ -1632,12 +1632,14 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 }
 
 static int
-jobs_solve_upgrade(struct pkg_jobs *j)
+jobs_solve_install_upgrade(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
-	bool automatic;
+	bool automatic, got_local;
+	struct job_pattern *jp, *jtmp;
+	struct pkg_job_request *req, *rtmp;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
@@ -1647,73 +1649,41 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 			goto order;
 		}
 
-	if (j->solved == 0) {
-		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
-			return (EPKG_FATAL);
-
-		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-			/* TODO: use repository priority here */
-			pkg_jobs_add_universe(j, pkg, true, false, NULL);
-			pkg_get(pkg, PKG_ORIGIN, &origin, PKG_AUTOMATIC, &automatic);
-			/* Do not test we ignore what doesn't exists remotely */
-			find_remote_pkg(j, origin, MATCH_EXACT, false, true, !automatic);
-			pkg = NULL;
-		}
-		pkgdb_it_free(it);
-	}
-	else {
-		/*
-		 * If we have tried to solve request, then we just want to re-add all
-		 * request packages to the universe to find out any potential conflicts
-		 */
-		struct pkg_job_request *req, *rtmp;
-		HASH_ITER(hh, j->request_add, req, rtmp) {
-			pkg_jobs_add_universe(j, req->item->pkg, true, false, NULL);
-		}
-	}
-
-	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
-		pkg_emit_error("Cannot resolve conflicts in a request");
+	if (j->patterns == NULL && j->type == PKG_JOBS_INSTALL) {
+		pkg_emit_error("no patterns are specified for install job");
 		return (EPKG_FATAL);
 	}
 
-	pkg_jobs_propagate_automatic(j);
-
-order:
-
-	j->solved ++;
-
-	return (EPKG_OK);
-}
-
-static int
-jobs_solve_install(struct pkg_jobs *j)
-{
-	struct job_pattern *jp, *jtmp;
-	struct pkg_job_request *req, *rtmp;
-	bool got_local;
-
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST) {
-		if (new_pkg_version(j)) {
-			pkg_emit_newpkgversion();
-			goto order;
-		}
-	}
-
 	if (j->solved == 0) {
-		HASH_ITER(hh, j->patterns, jp, jtmp) {
-			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) == EPKG_FATAL) {
-				pkg_emit_error("No packages matching '%s' have been found in the "
-						"repositories", jp->pattern);
+		if (j->patterns == NULL) {
+			if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 				return (EPKG_FATAL);
+
+			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+				/* TODO: use repository priority here */
+				pkg_jobs_add_universe(j, pkg, true, false, NULL);
+				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_AUTOMATIC, &automatic);
+				/* Do not test we ignore what doesn't exists remotely */
+				find_remote_pkg(j, origin, MATCH_EXACT, false, true, !automatic);
+				pkg = NULL;
 			}
+			pkgdb_it_free(it);
 		}
-		if (got_local) {
-			/*
-			 * Need to iterate request one more time to recurse depends
-			 */
-			HASH_ITER(hh, j->request_add, req, rtmp) {
-				pkg_jobs_add_universe(j, req->item->pkg, true, true, NULL);
+		else {
+			HASH_ITER(hh, j->patterns, jp, jtmp) {
+				if (pkg_jobs_find_remote_pattern(j, jp, &got_local) == EPKG_FATAL) {
+					pkg_emit_error("No packages matching '%s' have been found in the "
+							"repositories", jp->pattern);
+					return (EPKG_FATAL);
+				}
+			}
+			if (got_local) {
+				/*
+				 * Need to iterate request one more time to recurse depends
+				 */
+				HASH_ITER(hh, j->request_add, req, rtmp) {
+					pkg_jobs_add_universe(j, req->item->pkg, true, true, NULL);
+				}
 			}
 		}
 	}
@@ -1802,10 +1772,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		ret = jobs_solve_deinstall(j);
 		break;
 	case PKG_JOBS_UPGRADE:
-		ret = jobs_solve_upgrade(j);
-		break;
 	case PKG_JOBS_INSTALL:
-		ret = jobs_solve_install(j);
+		ret = jobs_solve_install_upgrade(j);
 		break;
 	case PKG_JOBS_FETCH:
 		ret = jobs_solve_fetch(j);
