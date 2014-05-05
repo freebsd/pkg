@@ -1019,6 +1019,29 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 }
 
 static int
+pkg_jobs_check_local_pkg(struct pkg_jobs *j, struct job_pattern *jp)
+{
+	struct pkgdb_it *it;
+	struct pkg *pkg = NULL;
+	int rc = EPKG_OK;
+
+	it = pkgdb_query(j->db, jp->pattern, jp->match);
+	if (it != NULL) {
+		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK)
+			rc = EPKG_FATAL;
+		else
+			pkg_free(pkg);
+
+		pkgdb_it_free(it);
+	}
+	else {
+		rc = EPKG_FATAL;
+	}
+
+	return (rc);
+}
+
+static int
 pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 		bool *got_local)
 {
@@ -1026,8 +1049,21 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
 	struct pkg_job_universe_item *unit;
+	struct job_pattern jfp;
+	const char *pkgname;
 
 	if (!jp->is_file) {
+		if (j->type == PKG_JOBS_UPGRADE) {
+			/*
+			 * For upgrade patterns we must ensure that a local package is
+			 * installed as well.
+			 */
+			if (pkg_jobs_check_local_pkg (j, jp) != EPKG_OK) {
+				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
+						jp->pattern);
+				return (EPKG_FATAL);
+			}
+		}
 		rc = find_remote_pkg(j, jp->pattern, jp->match, true, true, true);
 		*got_local = false;
 	}
@@ -1036,6 +1072,17 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 		if (pkg_open(&pkg, jp->path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK)
 			rc = EPKG_FATAL;
 		else {
+			if (j->type == PKG_JOBS_UPGRADE) {
+				pkg_get(pkg, PKG_NAME, &pkgname);
+				jfp.match = MATCH_EXACT;
+				jfp.pattern = __DECONST(char *, pkgname);
+				if (pkg_jobs_check_local_pkg (j, &jfp) != EPKG_OK) {
+					pkg_emit_error("%s is not installed, therefore upgrade is impossible",
+							jfp.pattern);
+					pkg_manifest_keys_free(keys);
+					return (EPKG_FATAL);
+				}
+			}
 			pkg->type = PKG_FILE;
 			rc = pkg_jobs_process_remote_pkg(j, pkg, true,
 					j->flags & PKG_FLAG_FORCE, false, &unit, true);
@@ -1672,8 +1719,11 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
 				if (pkg_jobs_find_remote_pattern(j, jp, &got_local) == EPKG_FATAL) {
-					pkg_emit_error("No packages matching '%s' have been found in the "
-							"repositories", jp->pattern);
+					pkg_emit_error("No packages available to %s matching '%s' "
+							"have been found in the "
+							"repositories",
+							(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
+							jp->pattern);
 					return (EPKG_FATAL);
 				}
 			}
