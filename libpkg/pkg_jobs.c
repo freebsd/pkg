@@ -1854,7 +1854,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 						j->solved = 0;
 					}
 					else {
-						ret = pkg_solve_sat_to_jobs(problem, j);
+						ret = pkg_solve_sat_to_jobs(problem);
 					}
 				}
 			}
