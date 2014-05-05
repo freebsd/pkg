@@ -4174,7 +4174,8 @@ pkgdb_check_lock_pid(struct pkgdb *db)
 		pid = sqlite3_column_int64(stmt, 0);
 		if (pid != lpid) {
 			if (kill((pid_t)pid, 0) == -1) {
-				pkg_debug(1, "found stale pid %lld in lock database", pid);
+				pkg_debug(1, "found stale pid %lld in lock database, my pid is: %lld",
+						pid, lpid);
 				if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
 					sqlite3_finalize(stmt);
 					return (EPKG_FATAL);
@@ -4238,6 +4239,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
 					 * In case of upgrade we should obtain a lock from the beginning,
 					 * hence switch upgrade to retain
 					 */
+					pkgdb_remove_lock_pid(db, (int64_t)getpid());
 					return pkgdb_obtain_lock(db, type, delay, retries - tries);
 				}
 				continue;
