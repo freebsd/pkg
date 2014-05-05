@@ -322,16 +322,24 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variabl
  * Set initial guess based on a variable passed
  */
 static bool
-pkg_solve_initial_guess(struct pkg_solve_variable *var)
+pkg_solve_initial_guess(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var)
 {
-	if (var->unit->pkg->type == PKG_INSTALLED) {
-		/* For local packages assume true if we have no upgrade */
-		if (var->unit->next == NULL && var->unit->prev == var->unit)
-			return (true);
+	if (problem->j->type == PKG_JOBS_UPGRADE) {
+		if (var->unit->pkg->type == PKG_INSTALLED) {
+			/* For local packages assume true if we have no upgrade */
+			if (var->unit->next == NULL && var->unit->prev == var->unit)
+				return (true);
+		}
+		else {
+			/* For remote packages we return true if they are upgrades for local ones */
+			if (var->unit->next != NULL || var->unit->prev != var->unit)
+				return (true);
+		}
 	}
 	else {
-		/* For remote packages we return true if they are upgrades for local ones */
-		if (var->unit->next != NULL || var->unit->prev != var->unit)
+		/* For all non-upgrade jobs be more conservative */
+		if (var->unit->pkg->type == PKG_INSTALLED)
 			return (true);
 	}
 
@@ -400,8 +408,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			assert (var == elt->var);
 
 			if (elt->guess == -1)
-				/* Guess true for installed packages and false otherwise */
-				var->guess = pkg_solve_initial_guess(var);
+				var->guess = pkg_solve_initial_guess(problem, var);
 			else
 				/* For analyzed variables we can only inverse previous guess */
 				var->guess = !elt->guess;
