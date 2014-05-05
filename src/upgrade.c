@@ -38,7 +38,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [-r reponame]\n\n");
+	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -52,6 +52,7 @@ exec_upgrade(int argc, char **argv)
 	int updcode;
 	int ch;
 	int lock_type = PKGDB_LOCK_ADVISORY;
+	match_t match = MATCH_EXACT;
 	bool yes = true, yes_arg = false;
 	bool dry_run = false;
 	bool auto_update;
@@ -62,13 +63,22 @@ exec_upgrade(int argc, char **argv)
 	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
-	while ((ch = getopt(argc, argv, "fInqFr:Uy")) != -1) {
+	while ((ch = getopt(argc, argv, "fInqFr:UyCgix")) != -1) {
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
 			break;
 		case 'I':
 			f |= PKG_FLAG_NOSCRIPT;
+			break;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'U':
 			auto_update = false;
@@ -88,6 +98,9 @@ exec_upgrade(int argc, char **argv)
 		case 'r':
 			reponame = optarg;
 			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
 		case 'y':
 			yes_arg = true;
 			break;
@@ -99,11 +112,6 @@ exec_upgrade(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-
-	if (argc != 0) {
-		usage_upgrade();
-		return (EX_USAGE);
-	}
 
 	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
@@ -148,6 +156,10 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);
+
+	if (argc > 0)
+		if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
+				goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
