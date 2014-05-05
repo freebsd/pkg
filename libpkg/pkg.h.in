@@ -1220,7 +1220,7 @@ int pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f);
  * Move solved problem to the jobs structure
  * @return error code
  */
-int pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j);
+int pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem);
 
 /**
  * Parse SAT solver output and convert it to jobs
