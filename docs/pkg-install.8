@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 05, 2014
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -26,13 +26,13 @@
 .Op Fl AfIMnFqRUy
 .Op Fl r Ar reponame
 .Op Fl Cgix
-.Ar pkg-origin ...
+.Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Sh DESCRIPTION
 .Nm
 is used for installation of packages from a package repository or
 local archives.
 Multiple package names can be specified on the command line, either
-explicitly or by matching against package names in the repository
+explicitly or by matching against package names (or origins) in the repository
 catalogues using shell globbing or regular expressions.
 .Pp
 .Nm

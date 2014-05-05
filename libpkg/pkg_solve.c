@@ -76,6 +76,7 @@ struct pkg_solve_rule {
 };
 
 struct pkg_solve_problem {
+	struct pkg_jobs *j;
 	unsigned int rules_count;
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables_by_origin;
@@ -321,16 +322,24 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variabl
  * Set initial guess based on a variable passed
  */
 static bool
-pkg_solve_initial_guess(struct pkg_solve_variable *var)
+pkg_solve_initial_guess(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var)
 {
-	if (var->unit->pkg->type == PKG_INSTALLED) {
-		/* For local packages assume true if we have no upgrade */
-		if (var->unit->next == NULL && var->unit->prev == var->unit)
-			return (true);
+	if (problem->j->type == PKG_JOBS_UPGRADE) {
+		if (var->unit->pkg->type == PKG_INSTALLED) {
+			/* For local packages assume true if we have no upgrade */
+			if (var->unit->next == NULL && var->unit->prev == var->unit)
+				return (true);
+		}
+		else {
+			/* For remote packages we return true if they are upgrades for local ones */
+			if (var->unit->next != NULL || var->unit->prev != var->unit)
+				return (true);
+		}
 	}
 	else {
-		/* For remote packages we return true if they are upgrades for local ones */
-		if (var->unit->next != NULL || var->unit->prev != var->unit)
+		/* For all non-upgrade jobs be more conservative */
+		if (var->unit->pkg->type == PKG_INSTALLED)
 			return (true);
 	}
 
@@ -399,8 +408,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			assert (var == elt->var);
 
 			if (elt->guess == -1)
-				/* Guess true for installed packages and false otherwise */
-				var->guess = pkg_solve_initial_guess(var);
+				var->guess = pkg_solve_initial_guess(problem, var);
 			else
 				/* For analyzed variables we can only inverse previous guess */
 				var->guess = !elt->guess;
@@ -549,12 +557,13 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 }
 
 static int
-pkg_solve_add_universe_variable(struct pkg_jobs *j,
-		struct pkg_solve_problem *problem, const char *origin, struct pkg_solve_variable **var)
+pkg_solve_add_universe_variable(struct pkg_solve_problem *problem,
+		const char *origin, struct pkg_solve_variable **var)
 {
 	struct pkg_job_universe_item *unit, *cur;
 	struct pkg_solve_variable *nvar, *tvar = NULL, *found;
 	const char *digest;
+	struct pkg_jobs *j = problem->j;
 
 	HASH_FIND_STR(j->universe, origin, unit);
 	/* If there is no package in universe, refuse continue */
@@ -640,7 +649,7 @@ pkg_solve_add_var_rules (struct pkg_solve_variable *var,
 } while (0)
 
 static int
-pkg_solve_handle_provide (struct pkg_jobs *j, struct pkg_solve_problem *problem,
+pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		struct pkg_job_provide *pr, struct pkg_solve_rule *rule, int *cnt)
 {
 	struct pkg_solve_item *it = NULL;
@@ -661,7 +670,8 @@ pkg_solve_handle_provide (struct pkg_jobs *j, struct pkg_solve_problem *problem,
 		HASH_FIND(hd, problem->variables_by_digest, digest,
 				strlen(digest), var);
 		if (var == NULL) {
-			if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
+			if (pkg_solve_add_universe_variable(problem, origin,
+					&var) != EPKG_OK)
 				continue;
 		}
 		/* Check if we have the specified require provided by this package */
@@ -682,7 +692,7 @@ pkg_solve_handle_provide (struct pkg_jobs *j, struct pkg_solve_problem *problem,
 }
 
 static int
-pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
+pkg_solve_add_pkg_rule(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *pvar, bool conflicting)
 {
 	struct pkg_dep *dep, *dtmp;
@@ -694,6 +704,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_shlib *shlib = NULL;
 	struct pkg_job_provide *pr, *prhead;
 	int cnt;
+	struct pkg_jobs *j = problem->j;
 
 	const char *origin;
 
@@ -708,7 +719,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			origin = pkg_dep_get(dep, PKG_DEP_ORIGIN);
 			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
-				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
+				if (pkg_solve_add_universe_variable(problem, origin, &var) != EPKG_OK)
 					continue;
 			}
 			/* Dependency rule: (!A | B) */
@@ -749,7 +760,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			origin = pkg_conflict_origin(conflict);
 			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
-				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
+				if (pkg_solve_add_universe_variable(problem, origin, &var) != EPKG_OK)
 					continue;
 			}
 			/* Return the origin to the package's origin and not conflict */
@@ -826,7 +837,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					/* B1 | B2 | ... */
 					cnt = 1;
 					LL_FOREACH(prhead, pr) {
-						if (pkg_solve_handle_provide (j, problem, pr, rule,
+						if (pkg_solve_handle_provide (problem, pr, rule,
 								&cnt) != EPKG_OK)
 							goto err;
 					}
@@ -906,8 +917,7 @@ err:
 }
 
 static int
-pkg_solve_add_universe_item(struct pkg_jobs *j,
-		struct pkg_job_universe_item *un,
+pkg_solve_add_universe_item(struct pkg_job_universe_item *un,
 		struct pkg_solve_problem *problem)
 {
 	struct pkg_job_universe_item *ucur;
@@ -944,7 +954,7 @@ pkg_solve_add_universe_item(struct pkg_jobs *j,
 	}
 	HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 	/* Now `var' contains a variables chain related to this origin */
-	if (pkg_solve_add_pkg_rule(j, problem, var, true) == EPKG_FATAL)
+	if (pkg_solve_add_pkg_rule(problem, var, true) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);
@@ -968,6 +978,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		return (NULL);
 	}
 
+	problem->j = j;
+
 	/* Add requests */
 	HASH_ITER(hh, j->request_add, jreq, jtmp) {
 		if (jreq->skip)
@@ -977,7 +989,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		it = NULL;
 		var = NULL;
 
-		if (pkg_solve_add_universe_item(j, jreq->item, problem) == EPKG_FATAL)
+		if (pkg_solve_add_universe_item(jreq->item, problem) == EPKG_FATAL)
 			goto err;
 
 		pkg_get(jreq->item->pkg, PKG_DIGEST, &digest);
@@ -1013,7 +1025,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		it = NULL;
 		var = NULL;
 
-		if (pkg_solve_add_universe_item(j, jreq->item, problem) == EPKG_FATAL)
+		if (pkg_solve_add_universe_item(jreq->item, problem) == EPKG_FATAL)
 			goto err;
 
 		pkg_get(jreq->item->pkg, PKG_DIGEST, &digest);
@@ -1051,7 +1063,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		var = NULL;
 
 		/* Add corresponding variables */
-		if (pkg_solve_add_universe_item(j, un, problem) == EPKG_FATAL)
+		if (pkg_solve_add_universe_item(un, problem) == EPKG_FATAL)
 			goto err;
 	}
 
@@ -1109,11 +1121,12 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 
 static void
 pkg_solve_insert_res_job (struct pkg_solve_variable *var,
-		struct pkg_solve_problem *problem, struct pkg_jobs *j)
+		struct pkg_solve_problem *problem)
 {
 	struct pkg_solved *res;
 	struct pkg_solve_variable *cur_var, *del_var = NULL, *add_var = NULL;
 	int seen_add = 0, seen_del = 0;
+	struct pkg_jobs *j = problem->j;
 
 	LL_FOREACH(var, cur_var) {
 		if (cur_var->to_install && cur_var->unit->pkg->type != PKG_INSTALLED) {
@@ -1168,7 +1181,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 }
 
 int
-pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
+pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_variable *var, *vtmp;
 
@@ -1177,7 +1190,7 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
 			return (EPKG_FATAL);
 
 		pkg_debug(4, "solver: check variable with origin %s", var->origin);
-		pkg_solve_insert_res_job(var, problem, j);
+		pkg_solve_insert_res_job(var, problem);
 	}
 
 	return (EPKG_OK);
@@ -1255,7 +1268,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 	}
 
 	if (done)
-		ret = pkg_solve_sat_to_jobs(problem, j);
+		ret = pkg_solve_sat_to_jobs(problem);
 	else {
 		pkg_emit_error("cannot parse sat solver output");
 		ret = EPKG_FATAL;
