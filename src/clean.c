@@ -295,6 +295,8 @@ exec_clean(int argc, char **argv)
 		retcode = EX_OK;
 
 cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+	pkgdb_close(db);
 	pkg_manifest_keys_free(keys);
 	free_dellist(&dl);
 
