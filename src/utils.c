@@ -668,26 +668,24 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 
 	case PKG_SOLVED_FETCH:
 		*dlsize += pkgsize;
+		*newsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
 
 		pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		if (stat(path, &st) != -1)
-			*oldsize = st.st_size;
-		else
-			*oldsize = 0;
-		*dlsize -= *oldsize;
-
+			*oldsize += st.st_size;
 		break;
 	}
 	DL_APPEND(disp[it->display_type], it);
 }
 
 static void
-display_summary_item (struct pkg_solved_display_item *it, int64_t total_size)
+display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
+		int64_t dlsize)
 {
 	const char *why;
 	int64_t pkgsize;
-	char size[7];
+	char size[7], tlsize[7];
 
 	pkg_get(it->new, PKG_PKGSIZE, &pkgsize);
 
@@ -747,10 +745,11 @@ display_summary_item (struct pkg_solved_display_item *it, int64_t total_size)
 		break;
 	case PKG_DISPLAY_FETCH:
 		humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(tlsize, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 
 		pkg_printf("\t%n-%v ", it->new, it->new);
-		printf("(%" PRId64 "%% of %s)\n", 100 - (100 * total_size) / pkgsize,
-				size);
+		printf("(%.2f%% of %s: %s)\n", ((double)100 * pkgsize) / (double)dlsize,
+				tlsize, size);
 		break;
 	default:
 		break;
@@ -798,7 +797,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		if (disp[type] != NULL) {
 			printf("%s:\n", pkg_display_messages[type]);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
-				display_summary_item(cur, dlsize);
+				display_summary_item(cur, newsize, dlsize);
 				free(cur);
 			}
 			puts("\n");
