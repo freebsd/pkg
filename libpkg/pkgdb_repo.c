@@ -782,12 +782,12 @@ upgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
 	for (version = current_version;
 	     version < REPO_SCHEMA_VERSION;
 	     version = next_version)  {
-		pkg_debug(1, "Upgrading repo database schema from %d to %d",
-		    version, next_version);
 		ret = apply_repo_change(db, database, repo_upgrades,
 					"upgrade", version, &next_version);
 		if (ret != EPKG_OK)
 			break;
+		pkg_debug(1, "Upgrading repo database schema from %d to %d",
+				version, next_version);
 	}
 	return (ret);
 }
@@ -802,12 +802,13 @@ downgrade_repo_schema(struct pkgdb *db, const char *database, int current_versio
 	for (version = current_version;
 	     version > REPO_SCHEMA_VERSION;
 	     version = next_version)  {
-		pkg_debug(1, "Downgrading repo database schema from %d to %d",
-		    version, next_version);
+
 		ret = apply_repo_change(db, database, repo_downgrades,
 					"downgrade", version, &next_version);
 		if (ret != EPKG_OK)
 			break;
+		pkg_debug(1, "Downgrading repo database schema from %d to %d",
+				version, next_version);
 	}
 	return (ret);
 }
