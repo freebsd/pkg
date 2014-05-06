@@ -715,7 +715,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 		  int version, int *next_version)
 {
 	const struct repo_changes	*change;
-	bool			 found = false;
+	bool			 found = false, in_trans = false;
 	int			 ret = EPKG_OK;
 	char			 sql[BUFSIZ];
 	char			*errmsg;
@@ -738,8 +738,10 @@ apply_repo_change(struct pkgdb *db, const char *database,
 	ret = substitute_into_sql(sql, sizeof(sql), change->sql, database);
 
 	/* begin transaction */
-	if (ret == EPKG_OK)
+	if (ret == EPKG_OK) {
+		in_trans = true;
 		ret = pkgdb_transaction_begin(db->sqlite, "SCHEMA");
+	}
 
 	/* apply change */
 	if (ret == EPKG_OK) {
@@ -758,10 +760,13 @@ apply_repo_change(struct pkgdb *db, const char *database,
 	}
 
 	/* commit or rollback */
-	if (ret != EPKG_OK)
-		pkgdb_transaction_rollback(db->sqlite, "SCHEMA");
+	if (in_trans) {
+		if (ret != EPKG_OK)
+			pkgdb_transaction_rollback(db->sqlite, "SCHEMA");
 
-	pkgdb_transaction_commit(db->sqlite, "SCHEMA");
+		if (pkgdb_transaction_commit(db->sqlite, "SCHEMA") != EPKG_OK)
+			ret = EPKG_FATAL;
+	}
 
 	if (ret == EPKG_OK) {
 		pkg_emit_notice("Repo \"%s\" %s schema %d to %d: %s",
