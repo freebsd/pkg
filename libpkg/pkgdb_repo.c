@@ -717,7 +717,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 	const struct repo_changes	*change;
 	bool			 found = false, in_trans = false;
 	int			 ret = EPKG_OK;
-	char			 sql[BUFSIZ];
+	char			 sql[8192];
 	char			*errmsg;
 
 	for (change = repo_changes; change->version != -1; change++) {
