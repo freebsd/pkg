@@ -644,6 +644,10 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				return (EPKG_FATAL);
 			}
 		}
+		else if (npkg == NULL) {
+			/* For delete jobs we don't care about uninstalled dependencies */
+			continue;
+		}
 		else if (!IS_DELETE(j) && npkg->type == PKG_INSTALLED) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
 			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
