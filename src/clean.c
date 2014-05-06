@@ -256,9 +256,6 @@ exec_clean(int argc, char **argv)
 				s->sum[slen] = '\0';
 				HASH_ADD_STR(sumlist, sum, s);
 			}
-			pkgdb_it_free(it);
-			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-			pkgdb_close(db);
 		}
 
 		s = NULL;
