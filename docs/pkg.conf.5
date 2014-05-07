@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 7, 2014
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -348,6 +348,7 @@ is
 then the
 .Sy PUBKEY
 option will be used for signature verification.
+This option is for use with the builtin signing support.
 When
 .Sy SIGNATURE_TYPE
 is
@@ -355,9 +356,13 @@ is
 then the
 .Sy FINGERPRINTS
 option will be used for signature verification.
+This option is for use with an external signing command.
+See
+.Xr pkg-repo 8
+for more discussion on signature types.
 (default: NONE)
 .It Cm PUBKEY: string
-PUBKEY for this repository only. (default: NONE) (deprecated)
+PUBKEY for this repository only. (default: NONE)
 .It Cm FINGERPRINTS: string
 This should be set to a path containing known signatures for the repository.
 I.e., if
