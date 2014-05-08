@@ -75,8 +75,15 @@ struct audit_pkgname_entry {
 	struct audit_pkgname_entry *next;
 };
 
+struct audit_package_entry {
+	struct audit_pkgname_entry *names;
+	struct audit_versions *versions;
+	struct audit_package_entry *next;
+};
+
 struct audit_entry {
 	const char *pkgname;
+	struct audit_package_entry *packages;
 	struct audit_pkgname_entry *names;
 	struct audit_versions *versions;
 	struct audit_cve *cve;
@@ -138,6 +145,47 @@ usage_audit(void)
 {
 	fprintf(stderr, "Usage: pkg audit [-Fq] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
+}
+
+static void
+free_audit_entry(struct audit_entry *e)
+{
+	struct audit_package_entry *ppkg, *ppkg_tmp;
+	struct audit_versions *vers, *vers_tmp;
+	struct audit_cve *cve, *cve_tmp;
+	struct audit_pkgname_entry *pname, *pname_tmp;
+
+	if (!e->ref) {
+		LL_FOREACH_SAFE(e->packages, ppkg, ppkg_tmp) {
+			LL_FOREACH_SAFE(ppkg->versions, vers, vers_tmp) {
+				if (vers->v1.version) {
+					free(vers->v1.version);
+				}
+				if (vers->v2.version) {
+					free(vers->v2.version);
+				}
+				free(vers);
+			}
+
+			LL_FOREACH_SAFE(ppkg->names, pname, pname_tmp) {
+				if (pname->pkgname)
+					free(pname->pkgname);
+				free(pname);
+			}
+		}
+		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
+			if (cve->cvename)
+				free(cve->cvename);
+			free(cve);
+		}
+		if (e->url)
+			free(e->url);
+		if (e->desc)
+			free(e->desc);
+		if (e->id)
+			free(e->id);
+	}
+	free(e);
 }
 
 static int
@@ -221,36 +269,35 @@ fetch_and_extract(const char *src, const char *dest)
  * Expand multiple names to a set of audit entries
  */
 static void
-audit_expand_entries(struct audit_entry *entry, struct audit_entry *head)
+audit_expand_entries(struct audit_entry *entry, struct audit_entry **head)
 {
 	struct audit_entry *n;
-	struct audit_pkgname_entry *pcur;
+	struct audit_pkgname_entry *ncur;
+	struct audit_package_entry *pcur;
 
 	/* Set the name of the current entry */
-	if (entry->names == NULL)
-		return;
-
-	entry->pkgname = entry->names->pkgname;
-
-	if (entry->names->next == NULL) {
-		/* Nothing to expand */
+	if (entry->packages == NULL || entry->packages->names == NULL) {
+		free_audit_entry(entry);
 		return;
 	}
 
-	LL_FOREACH(entry->names->next, pcur) {
-		n = calloc(1, sizeof(struct audit_entry));
-		if (n == NULL)
-			err(1, "calloc(audit_entry)");
-		n->pkgname = pcur->pkgname;
-		/* Set new entry as reference entry */
-		n->ref = true;
-		n->cve = entry->cve;
-		n->desc = entry->desc;
-		n->versions = entry->versions;
-		n->url = entry->url;
-		n->id = entry->id;
-		LL_PREPEND(head, n);
+	LL_FOREACH(entry->packages, pcur) {
+		LL_FOREACH(pcur->names, ncur) {
+			n = calloc(1, sizeof(struct audit_entry));
+			if (n == NULL)
+				err(1, "calloc(audit_entry)");
+			n->pkgname = ncur->pkgname;
+			/* Set new entry as reference entry */
+			n->ref = true;
+			n->cve = entry->cve;
+			n->desc = entry->desc;
+			n->versions = pcur->versions;
+			n->url = entry->url;
+			n->id = entry->id;
+			LL_PREPEND(*head, n);
+		}
 	}
+	LL_PREPEND(*head, entry);
 }
 
 enum vulnxml_parse_state {
@@ -281,6 +328,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 	struct audit_versions *vers;
 	struct audit_pkgname_entry *name_entry;
+	struct audit_package_entry *pkg_entry;
 	int i;
 
 	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(element, "vuln") == 0) {
@@ -300,6 +348,10 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		ud->state = VULNXML_PARSE_TOPIC;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "package") == 0) {
+		pkg_entry = calloc(1, sizeof(struct audit_package_entry));
+		if (pkg_entry == NULL)
+			err(1, "calloc(audit_package_entry)");
+		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "cvename") == 0) {
@@ -310,14 +362,14 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		name_entry = calloc(1, sizeof(struct audit_pkgname_entry));
 		if (name_entry == NULL)
 			err(1, "calloc(audit_pkgname_entry)");
-		LL_PREPEND(ud->cur_entry->names, name_entry);
+		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "range") == 0) {
 		ud->state = VULNXML_PARSE_RANGE;
 		vers = calloc(1, sizeof(struct audit_versions));
 		if (vers == NULL)
 			err(1, "calloc(audit_versions)");
-		LL_PREPEND(ud->cur_entry->versions, vers);
+		LL_PREPEND(ud->cur_entry->packages->versions, vers);
 		ud->range_num = 0;
 	}
 	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "gt") == 0) {
@@ -348,17 +400,7 @@ vulnxml_end_element(void *data, const char *element)
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 
 	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "vuln") == 0) {
-		audit_expand_entries(ud->cur_entry, ud->h);
-		if (ud->cur_entry->pkgname != NULL) {
-			LL_PREPEND(ud->h, ud->cur_entry);
-		}
-		else {
-			/* Ignore canceled entries */
-			/* XXX: can memory leak here */
-			if (ud->cur_entry->id != NULL)
-				free(ud->cur_entry->id);
-			free(ud->cur_entry);
-		}
+		audit_expand_entries(ud->cur_entry, &ud->h);
 		ud->state = VULNXML_PARSE_INIT;
 	}
 	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(element, "topic") == 0) {
@@ -413,7 +455,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		ud->cur_entry->desc = strndup(content, length);
 		break;
 	case VULNXML_PARSE_PACKAGE_NAME:
-		ud->cur_entry->names->pkgname = strndup(content, length);
+		ud->cur_entry->packages->names->pkgname = strndup(content, length);
 		break;
 	case VULNXML_PARSE_RANGE_GT:
 		range_type = GT;
@@ -439,7 +481,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 	}
 
 	if (range_type > 0) {
-		vers = ud->cur_entry->versions;
+		vers = ud->cur_entry->packages->versions;
 		if (ud->range_num == 1) {
 			vers->v1.version = strndup(content, length);
 			vers->v1.type = range_type;
@@ -562,10 +604,12 @@ preprocess_db(struct audit_entry *h)
 
 	n = 0;
 	LL_FOREACH(h, e) {
-		ret[n].e = e;
-		ret[n].noglob_len = str_noglob_len(e->pkgname);
-		ret[n].next_pfx_incr = 1;
-		n++;
+		if (e->pkgname != NULL) {
+			ret[n].e = e;
+			ret[n].noglob_len = str_noglob_len(e->pkgname);
+			ret[n].next_pfx_incr = 1;
+			n++;
+		}
 	}
 
 	qsort(ret, n, sizeof(*ret), audit_entry_compare);
@@ -710,41 +754,11 @@ static void
 free_audit_list(struct audit_entry *h)
 {
 	struct audit_entry *e;
-	struct audit_versions *vers, *vers_tmp;
-	struct audit_cve *cve, *cve_tmp;
-	struct audit_pkgname_entry *pname, *pname_tmp;
 
 	while (h) {
 		e = h;
 		h = h->next;
-		if (!e->ref) {
-			LL_FOREACH_SAFE(e->versions, vers, vers_tmp) {
-				if (vers->v1.version) {
-					free(vers->v1.version);
-				}
-				if (vers->v2.version) {
-					free(vers->v2.version);
-				}
-				free(vers);
-			}
-			LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-				if (cve->cvename)
-					free(cve->cvename);
-				free(cve);
-			}
-			LL_FOREACH_SAFE(e->names, pname, pname_tmp) {
-				if (pname->pkgname)
-					free(pname->pkgname);
-				free(pname);
-			}
-			if (e->url)
-				free(e->url);
-			if (e->desc)
-				free(e->desc);
-			if (e->id)
-				free(e->id);
-		}
-		free(e);
+		free_audit_entry(e);
 	}
 }
 
