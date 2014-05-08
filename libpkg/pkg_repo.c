@@ -180,7 +180,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	checksum:
 	/*	checksum calculation is expensive, if size does not
 		match, skip it and assume failed checksum. */
-	if (stat(path, &st) == -1 || pkgsize != st.st_size) {
+	if (stat(dest, &st) == -1 || pkgsize != st.st_size) {
 		pkg_emit_error("cached package %s-%s: "
 			"size mismatch, fetching from remote",
 			name, version);
