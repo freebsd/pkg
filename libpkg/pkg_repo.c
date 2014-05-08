@@ -117,6 +117,8 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	char url[MAXPATHLEN];
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	int64_t pkgsize;
+	struct stat st;
 	char *path = NULL;
 	const char *packagesite = NULL;
 
@@ -126,8 +128,8 @@ pkg_repo_fetch_package(struct pkg *pkg)
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
-	pkg_get(pkg, PKG_REPONAME, &reponame,
-			PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
+	pkg_get(pkg, PKG_REPONAME, &reponame, PKG_CKSUM, &sum,
+			PKG_NAME, &name, PKG_VERSION, &version, PKG_PKGSIZE, &pkgsize);
 	pkg_repo_cached_name(pkg, dest, sizeof(dest));
 
 	/* If it is already in the local cachedir, dont bother to
@@ -176,6 +178,15 @@ pkg_repo_fetch_package(struct pkg *pkg)
 		goto cleanup;
 
 	checksum:
+	/*	checksum calculation is expensive, if size does not
+		match, skip it and assume failed checksum. */
+	if (stat(path, &st) == -1 || pkgsize != st.st_size) {
+		pkg_emit_error("cached package %s-%s: "
+			"size mismatch, fetching from remote",
+			name, version);
+		unlink(dest);
+		return (pkg_repo_fetch_package(pkg));
+	}
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK)
 		if (strcmp(cksum, sum)) {
