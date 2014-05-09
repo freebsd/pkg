@@ -229,8 +229,9 @@ exec_install(int argc, char **argv)
 		if (yes) {
 			retcode = pkg_jobs_apply(jobs);
 			if (retcode == EPKG_CONFLICT) {
-				printf ("Conflicts with the existing packages have been found.\n"
-						"We need to run one more solver iteration to resolve them.\n");
+				printf("Conflicts with the existing packages "
+				    "have been found.\nOne more solver "
+				    "iteration is needed to resolve them.\n");
 				continue;
 			}
 			else if (retcode != EPKG_OK)
