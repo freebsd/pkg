@@ -229,7 +229,7 @@ exec_install(int argc, char **argv)
 		if (yes) {
 			retcode = pkg_jobs_apply(jobs);
 			if (retcode == EPKG_CONFLICT) {
-				printf ("The conflicts with the existing packages have been found.\n"
+				printf ("Conflicts with the existing packages have been found.\n"
 						"We need to run one more solver iteration to resolve them.\n");
 				continue;
 			}

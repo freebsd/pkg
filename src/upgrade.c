@@ -182,7 +182,7 @@ exec_upgrade(int argc, char **argv)
 			retcode = pkg_jobs_apply(jobs);
 			done = 1;
 			if (retcode == EPKG_CONFLICT) {
-				printf ("The conflicts with the existing packages have been found.\n"
+				printf ("Conflicts with the existing packages have been found.\n"
 						"We need to run one more solver iteration to resolve them.\n");
 				continue;
 			}
