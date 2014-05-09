@@ -9,6 +9,24 @@ AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
 AM_SILENT_RULES([yes])
 
+# Here are rules for setting version-info for libpkg
+# we use 3 integers: current, revision and age:
+# - if you change ABI (meaning add/remove/modify), then always update `current`
+# - if you modify lib (that means ALL modifies), then increase `revision`
+# - if you want backward compatibility, then use `age`
+#
+# more details here: https://www.flameeyes.eu/autotools-mythbuster/libtool/version.html
+#
+# For git you should consider using of the proper branch model, when a set of
+# related changes that leads to `revision` increase should always be in a separate
+# branch. For details you can check this resource:
+# http://nvie.com/posts/a-successful-git-branching-model/
+LIBPKG_CURRENT=3
+LIBPKG_REVISION=0
+LIBPKG_AGE=0
+LIBPKG_SO_VERSION="$LIBPKG_CURRENT:$LIBPKG_REVISION:$LIBPKG_AGE"
+AC_SUBST(LIBPKG_SO_VERSION)
+
 AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
