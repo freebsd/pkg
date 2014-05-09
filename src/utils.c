@@ -800,7 +800,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				display_summary_item(cur, newsize, dlsize);
 				free(cur);
 			}
-			puts("\n");
+			puts("");
 		}
 	}
 
