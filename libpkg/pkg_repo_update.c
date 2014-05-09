@@ -244,8 +244,8 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	}
 
 	if (pkg_repo_fetch_meta(repo, NULL) == EPKG_FATAL)
-		pkg_emit_notice("repository %s has no meta file, use default settings",
-				repo->name);
+		pkg_emit_notice("repository %s has no meta file, using "
+		    "default settings", repo->name);
 
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->digests, &local_t, &rc);
