@@ -106,7 +106,7 @@ exec_unlock(int argc, char **argv)
 	return (exec_lock_unlock(argc, argv, UNLOCK));
 }
 
-int 
+static int 
 list_locked()
 {
         struct pkgdb *db = NULL;
