@@ -87,6 +87,7 @@ void usage_plugins(void);
 /* pkg lock */
 int exec_lock(int, char **);
 int exec_unlock(int, char **);
+int list_locked();
 void usage_lock(void);
 
 /* pkg query */
