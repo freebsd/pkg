@@ -49,6 +49,13 @@
 #include <pkg.h>
 #include "pkgcli.h"
 
+void
+usage_audit(void)
+{
+	fprintf(stderr, "Usage: pkg audit [-Fq] <pattern>\n\n");
+	fprintf(stderr, "For more information see 'pkg help audit'.\n");
+}
+
 int
 exec_audit(int argc, char **argv)
 {
