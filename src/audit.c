@@ -44,8 +44,6 @@
 #include <sysexits.h>
 #include <utlist.h>
 
-#include <expat.h>
-
 #include <pkg.h>
 #include "pkgcli.h"
 
@@ -56,11 +54,29 @@ usage_audit(void)
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
+struct pkg_check_entry {
+	struct pkg *pkg;
+	struct pkg_check_entry *next;
+};
+
+static void
+add_to_check(struct pkg_check_entry **head, struct pkg *pkg)
+{
+	struct pkg_check_entry *e;
+
+	e = malloc(sizeof(*e));
+	if (e == NULL) {
+		warnx("malloc failed for pkg_check_entry");
+		exit(EXIT_FAILURE);
+	}
+	e->pkg = pkg;
+	LL_PREPEND(*head, e);
+}
+
 int
 exec_audit(int argc, char **argv)
 {
-	struct audit_entry		*h = NULL;
-	struct audit_entry_sorted	*cooked_audit_entries = NULL;
+	struct pkg_audit	*audit;
 	struct pkgdb			*db = NULL;
 	struct pkgdb_it			*it = NULL;
 	struct pkg			*pkg = NULL;
@@ -72,8 +88,10 @@ exec_audit(int argc, char **argv)
 	unsigned int			 vuln = 0;
 	bool				 fetch = false;
 	int				 ch;
-	int				 ret = EX_OK, res;
+	int				 ret = EX_OK;
 	const char			*portaudit_site = NULL;
+	struct sbuf			*sb;
+	struct pkg_check_entry *check = NULL, *cur;
 
 	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
@@ -97,11 +115,25 @@ exec_audit(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	audit = pkg_audit_new();
+
 	if (fetch == true) {
 		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
-		if (fetch_and_extract(portaudit_site, audit_file) != EPKG_OK) {
+		if (pkg_audit_fetch(portaudit_site, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
 		}
+	}
+
+	if (pkg_audit_load(audit, audit_file) != EPKG_OK) {
+		if (errno == ENOENT)
+			warnx("vulnxml file %s does not exist. "
+					"Try running 'pkg audit -F' first",
+					audit_file);
+		else
+			warn("unable to open vulnxml file %s",
+					audit_file);
+
+		return (EX_DATAERR);
 	}
 
 	if (argc > 2) {
@@ -121,83 +153,85 @@ exec_audit(int argc, char **argv)
 		pkg_set(pkg,
 		    PKG_NAME, name,
 		    PKG_VERSION, version);
-		res = parse_db_vulnxml(audit_file, &h);
-		if (res != EPKG_OK) {
-			if (errno == ENOENT)
-				warnx("vulnxml file %s does not exist. "
-				      "Try running 'pkg audit -F' first",
-				      audit_file);
-			else
-				warn("unable to open vulnxml file %s",
-				     audit_file);
-			ret = EX_DATAERR;
-			goto cleanup;
+		add_to_check(&check, pkg);
+	}
+	else {
+
+		/*
+		 * if the database doesn't exist it just means there are no
+		 * packages to audit.
+		 */
+
+		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+		if (ret == EPKG_ENODB)
+			return (EX_OK);
+		else if (ret == EPKG_ENOACCESS) {
+			warnx("Insufficient privileges to read the package database");
+			return (EX_NOPERM);
+		} else if (ret != EPKG_OK) {
+			warnx("Error accessing the package database");
+			return (EX_IOERR);
 		}
-		cooked_audit_entries = preprocess_db(h);
-		is_vulnerable(cooked_audit_entries, pkg);
-		goto cleanup;
+
+		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+			return (EX_IOERR);
+
+		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+			pkgdb_close(db);
+			warnx("Cannot get a read lock on a database, it is locked by another process");
+			return (EX_TEMPFAIL);
+		}
+
+		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
+			warnx("Error accessing the package database");
+			ret = EX_IOERR;
+		}
+		else {
+			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+				add_to_check(&check, pkg);
+				pkg = NULL;
+			}
+			ret = EX_OK;
+		}
+		if (db != NULL) {
+			if (it != NULL)
+				pkgdb_it_free(it);
+			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+			pkgdb_close(db);
+		}
+		if (ret != EX_OK)
+			return (ret);
 	}
 
-	/*
-	 * if the database doesn't exist it just means there are no
-	 * packages to audit.
-	 */
+	/* Now we have vulnxml loaded and check list formed */
+#ifdef HAVE_CAPSICUM
+	if (cap_enter() < 0 && errno != ENOSYS) {
+		warn("cap_enter() failed");
+		return (EPKG_FATAL);
+	}
+#endif
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
-	if (ret == EPKG_ENODB) 
-		return (EX_OK);
-	else if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privileges to read the package database");
-		return (EX_NOPERM);
-	} else if (ret != EPKG_OK) {
-		warnx("Error accessing the package database");
-		return (EX_IOERR);
+	if (pkg_audit_process(audit) == EPKG_OK) {
+		LL_FOREACH(check, cur) {
+			if (pkg_audit_is_vulnerable(audit, cur->pkg, quiet, &sb)) {
+				vuln ++;
+				printf("%s", sbuf_data(sb));
+				sbuf_delete(sb);
+			}
+		}
+
+		if (ret == EPKG_END && vuln == 0)
+			ret = EX_OK;
+
+		if (!quiet)
+			printf("%u problem(s) in the installed packages found.\n", vuln);
+	}
+	else {
+		warnx("cannot process vulnxml");
+		ret = EX_SOFTWARE;
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
-
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
-	}
-
-	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
-	{
-		warnx("Error accessing the package database");
-		ret = EX_IOERR;
-		goto cleanup;
-	}
-
-	res = parse_db_vulnxml(audit_file, &h);
-	if (res != EPKG_OK) {
-		if (errno == ENOENT)
-			warnx("unable to open vulnxml file, try running 'pkg audit -F' first");
-		else
-			warn("unable to open vulnxml file %s", audit_file);
-		ret = EX_DATAERR;
-		goto cleanup;
-	}
-	cooked_audit_entries = preprocess_db(h);
-
-	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK)
-		if (is_vulnerable(cooked_audit_entries, pkg))
-			vuln++;
-
-	if (ret == EPKG_END && vuln == 0)
-		ret = EX_OK;
-
-	if (!quiet)
-		printf("%u problem(s) in the installed packages found.\n", vuln);
-
-cleanup:
-	pkgdb_it_free(it);
-	if (db != NULL)
-		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
-	pkg_free(pkg);
-	free_audit_list(h);
+	pkg_audit_free(audit);
 
 	return (ret);
 }
