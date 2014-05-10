@@ -205,18 +205,6 @@ pkg_audit_free_list(struct pkg_audit_entry *h)
 	}
 }
 
-void
-pkg_audit_free (struct pkg_audit *audit)
-{
-	if (audit != NULL) {
-		if (audit->parsed) {
-			pkg_audit_free_list(audit->entries);
-			free(audit->items);
-		}
-		free(audit);
-	}
-}
-
 struct pkg_audit_extract_cbdata {
 	int out;
 	const char *fname;
@@ -375,8 +363,8 @@ enum vulnxml_parse_state {
 };
 
 struct vulnxml_userdata {
-	struct pkg_audit_entry *h;
 	struct pkg_audit_entry *cur_entry;
+	struct pkg_audit *audit;
 	enum vulnxml_parse_state state;
 	int range_num;
 };
@@ -400,7 +388,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 				break;
 			}
 		}
-		ud->cur_entry->next = ud->h;
+		ud->cur_entry->next = ud->audit->entries;
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "topic") == 0) {
@@ -459,7 +447,7 @@ vulnxml_end_element(void *data, const char *element)
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 
 	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "vuln") == 0) {
-		pkg_audit_expand_entry(ud->cur_entry, &ud->h);
+		pkg_audit_expand_entry(ud->cur_entry, &ud->audit->entries);
 		ud->state = VULNXML_PARSE_INIT;
 	}
 	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(element, "topic") == 0) {
@@ -553,26 +541,11 @@ vulnxml_handle_data(void *data, const char *content, int length)
 }
 
 static int
-pkg_audit_parse_vulnxml(const char *path, struct pkg_audit_entry **h)
+pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 {
-	int fd;
-	void *mem;
-	struct stat st;
 	XML_Parser parser;
 	struct vulnxml_userdata ud;
 	int ret = EPKG_OK;
-
-	if (stat(path, &st) == -1)
-		return (EPKG_FATAL);
-
-	if ((fd = open(path, O_RDONLY)) == -1)
-		return (EPKG_FATAL);
-
-	if ((mem = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED) {
-		close(fd);
-		return (EPKG_FATAL);
-	}
-	close(fd);
 
 	parser = XML_ParserCreate(NULL);
 	XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
@@ -580,18 +553,17 @@ pkg_audit_parse_vulnxml(const char *path, struct pkg_audit_entry **h)
 	XML_SetUserData(parser, &ud);
 
 	ud.cur_entry = NULL;
-	ud.h = *h;
+	ud.audit = audit;
 	ud.range_num = 0;
 	ud.state = VULNXML_PARSE_INIT;
 
-	if (XML_Parse(parser, mem, st.st_size, XML_TRUE) == XML_STATUS_ERROR) {
-	    warnx("vulnxml parsing error: %s", XML_ErrorString(XML_GetErrorCode(parser)));
+	if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) == XML_STATUS_ERROR) {
+		pkg_emit_error("vulnxml parsing error: %s",
+				XML_ErrorString(XML_GetErrorCode(parser)));
+		ret = EPKG_FATAL;
 	}
 
 	XML_ParserFree(parser);
-	munmap(mem, st.st_size);
-
-	*h = ud.h;
 
 	return (ret);
 }
@@ -740,22 +712,31 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 	return (res);
 }
 
-static bool
-pkg_audit_is_vulnerable(struct pkg_audit_item *a, struct pkg *pkg)
+bool
+pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
+		bool quiet, struct sbuf **result)
 {
 	struct pkg_audit_entry *e;
 	struct pkg_audit_versions_range *vers;
 	struct pkg_audit_cve *cve;
 	const char *pkgname;
 	const char *pkgversion;
+	struct sbuf *sb;
+	struct pkg_audit_item *a;
 	bool res = false, res1, res2;
+
+	if (!audit->parsed)
+		return false;
 
 	pkg_get(pkg,
 		PKG_NAME, &pkgname,
 		PKG_VERSION, &pkgversion
 	);
 
+	a = audit->items;
 	a += audit_entry_first_byte_idx[(size_t)pkgname[0]];
+	sb = sbuf_new_auto();
+
 	for (; (e = a->e) != NULL; a += a->next_pfx_incr) {
 		int cmp;
 		size_t i;
@@ -780,30 +761,41 @@ pkg_audit_is_vulnerable(struct pkg_audit_item *a, struct pkg *pkg)
 				res1 = pkg_audit_version_match(pkgversion, &vers->v1);
 				res2 = pkg_audit_version_match(pkgversion, &vers->v2);
 				if (res1 && res2) {
+
 					res = true;
 					if (quiet) {
-						printf("%s-%s\n", pkgname, pkgversion);
-						return (res); /* avoid reporting the same pkg multiple times */
+						sbuf_printf(sb, "%s-%s\n", pkgname, pkgversion);
+						sbuf_finish(sb);
+						*res = sb;
+						return (res);
 					} else {
-						printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
-						printf("%s\n", e->desc);
+						sbuf_printf(sb, "%s-%s is vulnerable:\n", pkgname, pkgversion);
+						sbuf_printf(sb, "%s\n", e->desc);
 						/* XXX: for vulnxml we should use more clever approach indeed */
 						if (e->cve) {
 							cve = e->cve;
 							while (cve) {
-								printf("CVE: %s\n", cve->cvename);
+								sbuf_printf("CVE: %s\n", cve->cvename);
 								cve = cve->next;
 							}
 						}
 						if (e->url)
-							printf("WWW: %s\n\n", e->url);
+							sbuf_printf("WWW: %s\n\n", e->url);
 						else if (e->id)
-							printf("WWW: http://portaudit.FreeBSD.org/%s.html\n\n", e->id);
+							sbuf_printf("WWW: http://portaudit.FreeBSD.org/%s.html\n\n", e->id);
 					}
 					break;
 				}
 			}
 		}
+	}
+
+	if (res) {
+		sbuf_finish(sb);
+		*res = sb;
+	}
+	else {
+		sbuf_delete(sb);
 	}
 
 	return (res);
@@ -817,4 +809,61 @@ pkg_audit_new(void)
 	audit = calloc(1, sizeof(struct pkg_audit));
 
 	return (audit);
+}
+
+int
+pkg_audit_load(struct pkg_audit *audit, const char *fname)
+{
+	int fd;
+	void *mem;
+	struct stat st;
+
+	if (stat(fname, &st) == -1)
+		return (EPKG_FATAL);
+
+	if ((fd = open(fname, O_RDONLY)) == -1)
+		return (EPKG_FATAL);
+
+	if ((mem = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED) {
+		close(fd);
+		return (EPKG_FATAL);
+	}
+	close(fd);
+
+	audit->map = mem;
+	audit->len = st.st_size;
+	audit->loaded = true;
+
+	return (EPKG_OK);
+}
+
+/* This can and should be executed after cap_enter(3) */
+int
+pkg_audit_process(struct pkg_audit *audit)
+{
+	if (!audit->loaded)
+		return (EPKG_FATAL);
+
+	if (pkg_audit_parse_vulnxml(audit) == EPKG_FATAL)
+		return (EPKG_FATAL);
+
+	audit->items = pkg_audit_preprocess(audit->entries);
+	audit->parsed = true;
+
+	return (EPKG_OK);
+}
+
+void
+pkg_audit_free (struct pkg_audit *audit)
+{
+	if (audit != NULL) {
+		if (audit->parsed) {
+			pkg_audit_free_list(audit->entries);
+			free(audit->items);
+		}
+		if (audit->loaded) {
+			munmap(audit->map, audit->len);
+		}
+		free(audit);
+	}
 }
