@@ -48,7 +48,9 @@
 
 #include <expat.h>
 
-#include <pkg.h>
+#include "pkg.h"
+#include "private/pkg.h"
+#include "private/event.h"
 
 #define EQ 1
 #define LT 2
@@ -251,11 +253,10 @@ pkg_audit_sandboxed_extract(int fd, void *ud)
 int
 pkg_audit_fetch(const char *src, const char *dest)
 {
-	int fd = -1, outfd;
+	int fd = -1, outfd = -1;
 	char tmp[MAXPATHLEN];
 	const char *tmpdir;
 	int retcode = EPKG_FATAL;
-	int ret;
 	time_t t = 0;
 	struct stat st;
 	struct pkg_audit_extract_cbdata cbdata;
@@ -766,7 +767,7 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 					if (quiet) {
 						sbuf_printf(sb, "%s-%s\n", pkgname, pkgversion);
 						sbuf_finish(sb);
-						*res = sb;
+						*result = sb;
 						return (res);
 					} else {
 						sbuf_printf(sb, "%s-%s is vulnerable:\n", pkgname, pkgversion);
@@ -775,14 +776,14 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 						if (e->cve) {
 							cve = e->cve;
 							while (cve) {
-								sbuf_printf("CVE: %s\n", cve->cvename);
+								sbuf_printf(sb, "CVE: %s\n", cve->cvename);
 								cve = cve->next;
 							}
 						}
 						if (e->url)
-							sbuf_printf("WWW: %s\n\n", e->url);
+							sbuf_printf(sb, "WWW: %s\n\n", e->url);
 						else if (e->id)
-							sbuf_printf("WWW: http://portaudit.FreeBSD.org/%s.html\n\n", e->id);
+							sbuf_printf(sb, "WWW: http://portaudit.FreeBSD.org/%s.html\n\n", e->id);
 					}
 					break;
 				}
@@ -792,7 +793,7 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 
 	if (res) {
 		sbuf_finish(sb);
-		*res = sb;
+		*result = sb;
 	}
 	else {
 		sbuf_delete(sb);
