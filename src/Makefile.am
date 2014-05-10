@@ -37,7 +37,6 @@ pkg_SOURCES=		add.c \
 			which.c
 			
 pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
-			$(top_builddir)/external/libexpat.la \
 			@LIBJAIL_LIB@
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/uthash \
