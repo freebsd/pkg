@@ -1748,6 +1748,7 @@ int pkg_audit_process(struct pkg_audit *audit);
  * just returning a name of vulnerable package.
  * It's caller responsibility to free `result` after use
  * @return true and `*result` is set if a package is vulnerable
+ */
 bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 		bool quiet, struct sbuf **result);
 #endif
