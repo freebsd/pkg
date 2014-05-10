@@ -130,6 +130,13 @@ struct pkg_audit_item {
 				   different prefix */
 };
 
+struct pkg_audit {
+	struct pkg_audit_entry *entries;
+	struct pkg_audit_item *items;
+	bool parsed;
+};
+
+
 /*
  * Another small optimization to skip the beginning of the
  * VuXML entry array, if possible.
@@ -195,6 +202,18 @@ pkg_audit_free_list(struct pkg_audit_entry *h)
 	}
 }
 
+void
+pkg_audit_free (struct pkg_audit *audit)
+{
+	if (audit != NULL) {
+		if (audit->parsed) {
+			pkg_audit_free_list(audit->entries);
+			free(audit->items);
+		}
+		free(audit);
+	}
+}
+
 static int
 pkg_audit_fetch(const char *src, const char *dest)
 {
@@ -220,11 +239,11 @@ pkg_audit_fetch(const char *src, const char *dest)
 	case EPKG_OK:
 		break;
 	case EPKG_UPTODATE:
-		printf("Vulnxml file up-to-date.\n");
+		pkg_emit_notice("vulnxml file up-to-date");
 		retcode = EPKG_OK;
 		goto cleanup;
 	default:
-		warnx("Cannot fetch vulnxml file!");
+		pkg_emit_error("cannot fetch vulnxml file");
 		goto cleanup;
 	}
 
@@ -556,7 +575,7 @@ pkg_audit_str_noglob_len(const char *s)
 	for (n = 0; s[n] && s[n] != '*' && s[n] != '?' &&
 	    s[n] != '[' && s[n] != '{' && s[n] != '\\'; n++);
 
-	return n;
+	return (n);
 }
 
 /*
@@ -669,7 +688,7 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 	 * only one version to match: the missing one will always match.
 	 */
 	if (v->version == NULL)
-		return true;
+		return (true);
 
 	switch (pkg_version_cmp(pkgversion, v->version)) {
 	case -1:
@@ -685,7 +704,7 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 			res = true;
 		break;
 	}
-	return res;
+	return (res);
 }
 
 static bool
@@ -731,7 +750,7 @@ pkg_audit_is_vulnerable(struct pkg_audit_item *a, struct pkg *pkg)
 					res = true;
 					if (quiet) {
 						printf("%s-%s\n", pkgname, pkgversion);
-						return res; /* avoid reporting the same pkg multiple times */
+						return (res); /* avoid reporting the same pkg multiple times */
 					} else {
 						printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
 						printf("%s\n", e->desc);
@@ -754,5 +773,15 @@ pkg_audit_is_vulnerable(struct pkg_audit_item *a, struct pkg *pkg)
 		}
 	}
 
-	return res;
+	return (res);
+}
+
+struct pkg_audit *
+pkg_audit_new(void)
+{
+	struct pkg_audit *audit;
+
+	audit = calloc(1, sizeof(struct pkg_audit));
+
+	return (audit);
 }
