@@ -15,6 +15,7 @@ libpkg_la_SOURCES=	pkg.c \
 			packing.c \
 			pkg_add.c \
 			pkg_attributes.c \
+			pkg_audit.c \
 			pkg_config.c \
 			pkg_conflicts.c \
 			pkg_cudf.c \
