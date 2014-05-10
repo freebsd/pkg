@@ -134,6 +134,9 @@ struct pkg_audit {
 	struct pkg_audit_entry *entries;
 	struct pkg_audit_item *items;
 	bool parsed;
+	bool loaded;
+	void *map;
+	size_t len;
 };
 
 
@@ -214,18 +217,60 @@ pkg_audit_free (struct pkg_audit *audit)
 	}
 }
 
+struct pkg_audit_extract_cbdata {
+	int out;
+	const char *fname;
+	const char *dest;
+};
+
 static int
-pkg_audit_fetch(const char *src, const char *dest)
+pkg_audit_sandboxed_extract(int fd, void *ud)
 {
+	struct pkg_audit_extract_cbdata *cbdata = ud;
+	int ret, rc = EPKG_OK;
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
-	int fd = -1;
+
+	a = archive_read_new();
+#if ARCHIVE_VERSION_NUMBER < 3000002
+	archive_read_support_compression_all(a);
+#else
+	archive_read_support_filter_all(a);
+#endif
+
+	archive_read_support_format_raw(a);
+
+	if (archive_read_open_fd(a, fd, 4096) != ARCHIVE_OK) {
+		pkg_emit_error("archive_read_open_filename(%s) failed: %s",
+				cbdata->fname, archive_error_string(a));
+		rc = EPKG_FATAL;
+	}
+	else {
+		while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+			if (archive_read_data_into_fd(a, cbdata->out) != ARCHIVE_OK) {
+				pkg_emit_error("archive_read_data_into_fd(%s) failed: %s",
+						cbdata->dest, archive_error_string(a));
+				break;
+			}
+		}
+		archive_read_close(a);
+		archive_read_free(a);
+	}
+
+	return (rc);
+}
+
+int
+pkg_audit_fetch(const char *src, const char *dest)
+{
+	int fd = -1, outfd;
 	char tmp[MAXPATHLEN];
 	const char *tmpdir;
 	int retcode = EPKG_FATAL;
 	int ret;
 	time_t t = 0;
 	struct stat st;
+	struct pkg_audit_extract_cbdata cbdata;
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
@@ -247,46 +292,34 @@ pkg_audit_fetch(const char *src, const char *dest)
 		goto cleanup;
 	}
 
-	a = archive_read_new();
-#if ARCHIVE_VERSION_NUMBER < 3000002
-	archive_read_support_compression_all(a);
-#else
-	archive_read_support_filter_all(a);
-#endif
-
-	archive_read_support_format_raw(a);
-
-	if (archive_read_open_filename(a, tmp, 4096) != ARCHIVE_OK) {
-		warnx("archive_read_open_filename(%s): %s",
-				tmp, archive_error_string(a));
+	/* Open input fd */
+	fd = open(tmp, O_RDONLY);
+	if (fd == -1) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	/* Open out fd */
+	outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
+			S_IRUSR|S_IRGRP|S_IROTH);
+	if (outfd == -1) {
+		pkg_emit_errno("pkg_audit_fetch", "open out fd");
 		goto cleanup;
 	}
 
-	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
-		fd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
-				S_IRUSR|S_IRGRP|S_IROTH);
-		if (fd < 0) {
-			warn("open(%s)", dest);
-			goto cleanup;
-		}
+	cbdata.fname = tmp;
+	cbdata.out = outfd;
+	cbdata.dest = dest;
 
-		if (archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
-			warnx("archive_read_data_into_fd(%s): %s",
-					dest, archive_error_string(a));
-			goto cleanup;
-		}
-	}
+	/* Call sandboxed */
+	retcode = pkg_emit_sandbox_call(pkg_audit_sandboxed_extract, fd, &cbdata);
 
-	retcode = EPKG_OK;
-
-	cleanup:
+cleanup:
 	unlink(tmp);
-	if (a != NULL) {
-		archive_read_close(a);
-		archive_read_free(a);
-	}
-	if (fd >= 0)
+
+	if (fd != -1)
 		close(fd);
+	if (outfd != -1)
+		close(outfd);
 
 	return (retcode);
 }
