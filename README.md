@@ -471,5 +471,5 @@ If you hit a bug when using pkgng, you can always submit an issue in the [pkgng 
 
 [1]: https://github.com/freebsd/pkg
 [2]: http://wiki.freebsd.org/pkgng
-[3]: http://jenkins.unix-heaven.org/jenkins/
+[3]: http://jenkins.mouf.net/job/pkg/
 [4]: https://github.com/freebsd/pkg/issues
