@@ -815,12 +815,10 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 		.ucl_emitter_append_double = ucl_file_append_double
 	};
 
-	func.ud = out;
-
 	if (obj == NULL)
 		return (false);
 
-	func.ud = NULL;
+	func.ud = out;
 
 	return (ucl_object_emit_full(obj, emit_type, &func));
 
