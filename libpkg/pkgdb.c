@@ -4175,13 +4175,15 @@ pkgdb_check_lock_pid(struct pkgdb *db)
 		if (pid != lpid) {
 			if (kill((pid_t)pid, 0) == -1) {
 				pkg_debug(1, "found stale pid %lld in lock database, my pid is: %lld",
-						pid, lpid);
+						(long long)pid, (long long)lpid);
 				if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
 					sqlite3_finalize(stmt);
 					return (EPKG_FATAL);
 				}
 			}
 			else {
+				pkg_emit_notice("process with pid %lld still holds the lock",
+						(long long int)pid);
 				found ++;
 			}
 		}
