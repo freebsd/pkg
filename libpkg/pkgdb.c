@@ -4224,7 +4224,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 	if (timeout)
 		num_timeout = pkg_object_int(timeout);
 	if (max_tries)
-		num_maxtries = pkg_object_int(num_maxtries);
+		num_maxtries = pkg_object_int(max_tries);
 
 	while (tries <= num_maxtries) {
 		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
