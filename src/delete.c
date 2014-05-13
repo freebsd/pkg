@@ -139,7 +139,7 @@ exec_delete(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
