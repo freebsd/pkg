@@ -294,6 +294,18 @@ static struct config_entry c[] = {
 		"NO",
 		"Match package names case sensitively",
 	},
+	{
+		PKG_INT,
+		"LOCK_WAIT",
+		"1",
+		"Wait time to regain a lock if it is not available"
+	},
+	{
+		PKG_INT,
+		"LOCK_RETRIES",
+		"5",
+		"Retries performed to obtain a lock"
+	}
 };
 
 static bool parsed = false;
