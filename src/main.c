@@ -42,6 +42,7 @@
 #include <sys/wait.h>
 
 #include <assert.h>
+#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -463,36 +464,190 @@ start_process_worker(void)
 	/* NOTREACHED */
 }
 
+/* A bit like strsep(), except it accounts for "double" and 'single'
+   quotes.  Unlike strsep(), returns the next arg string, trimmed of
+   whitespace or enclosing quotes, and updates **args to point at the
+   character after that.  Sets *args to NULL when it has been
+   completely consumed.  Quoted strings run from the first encountered
+   quotemark to the next one of the same type or the terminating NULL.
+   Quoted strings can contain the /other/ type of quote mark, which
+   loses any special significance.  There isn't an escape
+   character. */
+
+enum parse_states {
+	START,
+	ORDINARY_TEXT,
+	OPEN_SINGLE_QUOTES,
+	IN_SINGLE_QUOTES,
+	OPEN_DOUBLE_QUOTES,
+	IN_DOUBLE_QUOTES,
+};
+
+static char *
+tokenize(char **args)
+{
+	char			*p, *p_start;
+	enum parse_states	 parse_state = START;
+
+	assert(*args != NULL);
+
+	for (p = p_start = *args; *p != '\0'; p++) {
+		switch (parse_state) {
+		case START:
+			if (!isspace(*p)) {
+				if (*p == '"')
+					parse_state = OPEN_DOUBLE_QUOTES;
+				else if (*p == '\'')
+					parse_state = OPEN_SINGLE_QUOTES;
+				else {
+					parse_state = ORDINARY_TEXT;
+					p_start = p;
+				}				
+			} else 
+				p_start = p;
+			break;
+		case ORDINARY_TEXT:
+			if (isspace(*p))
+				goto finish;
+			break;
+		case OPEN_SINGLE_QUOTES:
+			p_start = p;
+			if (*p == '\'')
+				goto finish;
+
+			parse_state = IN_SINGLE_QUOTES;
+			break;
+		case IN_SINGLE_QUOTES:
+			if (*p == '\'')
+				goto finish;
+			break;
+		case OPEN_DOUBLE_QUOTES:
+			p_start = p;
+			if (*p == '"')
+				goto finish;
+			parse_state = IN_DOUBLE_QUOTES;
+			break;
+		case IN_DOUBLE_QUOTES:
+			if (*p == '"')
+				goto finish;
+			break;
+		}
+	}
+
+finish:
+	if (*p == '\0')
+		*args = NULL;	/* All done */
+	else {
+		*p = '\0';
+		p++;
+		if (*p == '\0' || parse_state == START)
+			*args = NULL; /* whitespace or nothing left */
+		else
+			*args = p;
+	}
+	return (p_start);
+}
+
+static int
+count_spaces(const char *args)
+{
+	int		spaces;
+	const char	*p;
+
+	for (spaces = 0, p = args; *p != '\0'; p++) 
+		if (isspace(*p))
+			spaces++;
+
+	return (spaces);
+}
+
+
+static int
+expand_aliases(int argc, char ***argv)
+{
+	pkg_iter		  it = NULL;
+	const pkg_object	 *all_aliases;
+	const pkg_object	 *alias;
+	const char		 *alias_value;
+	void			 *buf;
+	char			**oldargv = *argv;
+	char			**newargv;
+	char			 *args;
+	int			  newargc; 
+	int			  spaces;
+	int			  i;
+	size_t			  veclen;
+	size_t			  arglen;
+	bool			  matched = false;
+
+	all_aliases = pkg_config_get("ALIAS");
+
+	while ((alias = pkg_object_iterate(all_aliases, &it))) {
+		if (strcmp(oldargv[0], pkg_object_key(alias)) == 0) {
+			matched = true;
+			break;
+		}
+	}
+
+	if (!matched || (alias_value = pkg_object_string(alias)) == NULL)
+		return (argc);	/* Nothing to do */
+
+	/* Estimate how many args alias_value will split into by
+	 * counting the number of whitespace characters in it. This
+	 * will be at minimum one less than the final argc. We'll be
+	 * consuming one of the orginal argv, so that balances
+	 * out. */ 
+
+	spaces = count_spaces(alias_value);
+	arglen = strlen(alias_value) + 1;
+	veclen = sizeof(char *) * (spaces + argc + 1);
+	buf = malloc(veclen + arglen);
+	if (buf == NULL)
+		err(EX_OSERR, "expanding aliases");
+
+	newargv = (char **) buf;
+	args = (char *) (buf + veclen);
+	strlcpy(args, alias_value, arglen);
+
+	newargc = 0;
+	while(args != NULL) {
+		newargv[newargc++] = tokenize(&args);
+	}
+	for (i = 1; i < argc; i++) {
+		newargv[newargc++] = oldargv[i];
+	}
+	newargv[newargc] = NULL;
+
+	*argv = newargv;
+	return (newargc);
+}
+
 int
 main(int argc, char **argv)
 {
-	unsigned int i;
-	struct commands *command = NULL;
-	unsigned int ambiguous = 0;
-	const char *chroot_path = NULL;
+	unsigned int	  i;
+	struct commands	 *command = NULL;
+	unsigned int	  ambiguous = 0;
+	const char	 *chroot_path = NULL;
 #ifdef HAVE_LIBJAIL
-	int jid;
+	int		  jid;
 #endif
-	const char *jail_str = NULL;
-	size_t len;
-	signed char ch;
-	int debug = 0;
-	int version = 0;
-	int ret = EX_OK;
-	bool plugins_enabled = false;
-	bool plugin_found = false;
-	bool show_commands = false;
-	bool activation_test = false;
-	struct plugcmd *c;
-	const char *conffile = NULL;
-	const char *reposdir = NULL;
-	const pkg_object *alias, *cur;
-	pkg_iter it = NULL;
-	const char *alias_value;
-	char **newargv, *arg, *args;
-	int newargc, newargvl;
-	struct sbuf *newcmd = NULL;
-	int j;
+	const char	 *jail_str = NULL;
+	size_t		  len;
+	signed char	  ch;
+	int		  debug = 0;
+	int		  version = 0;
+	int		  ret = EX_OK;
+	bool		  plugins_enabled = false;
+	bool		  plugin_found = false;
+	bool		  show_commands = false;
+	bool		  activation_test = false;
+	struct plugcmd	 *c;
+	const char	 *conffile = NULL;
+	const char	 *reposdir = NULL;
+	char		**save_argv;
+	int		  newargvl;
+	int		  j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -659,44 +814,12 @@ main(int argc, char **argv)
 		}
 	}
 
-	newargv = argv;
-	newargc = argc;
-	alias = pkg_config_get("ALIAS");
-	while ((cur = pkg_object_iterate(alias, &it))) {
-		if (strcmp(argv[0], pkg_object_key(cur)) == 0) {
-			if ((alias_value = pkg_object_string(cur)) == NULL)
-				continue;
-			argv++;
-			argc--;
-			newcmd = sbuf_new_auto();
-			sbuf_cat(newcmd, alias_value);
-			for (j = 0; j < argc; j++) {
-				if (strspn(argv[j], " \t\n") > 0)
-					sbuf_printf(newcmd, " \"%s\" ", argv[j]);
-				else
-					sbuf_printf(newcmd, " %s ", argv[j]);
-			}
-			newargv = NULL;
-			newargc = 0;
-			sbuf_done(newcmd);
-			args = sbuf_data(newcmd);
-			while ((arg = strsep(&args, "\t \n")) != NULL) {
-				if (*arg == '\0')
-					continue;
-				if (newargc > newargvl -2) {
-					newargvl += 1024;
-					newargv = reallocf(newargv, newargvl * sizeof(char *));
-				}
-				newargv[newargc++] = arg;
-			}
-			newargv[newargc+1] = NULL;
-			break;
-		}
-	}
+	save_argv = argv;
+	argc = expand_aliases(argc, &argv);
 
-	len = strlen(newargv[0]);
+	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
-		if (strncmp(newargv[0], cmd[i].name, len) == 0) {
+		if (strncmp(argv[0], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
 			if (len == strlen(cmd[i].name)) {
 				command = &cmd[i];
@@ -719,31 +842,29 @@ main(int argc, char **argv)
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
 			STAILQ_FOREACH(c, &plugins, next) {
-				if (strcmp(c->name, newargv[0]) == 0) {
+				if (strcmp(c->name, argv[0]) == 0) {
 					plugin_found = true;
-					ret = c->exec(newargc, newargv);
+					ret = c->exec(argc, argv);
 					break;
 				}
 			}
 		}
 
 		if (!plugin_found)
-			usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
+			usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, argv[0]);
 
 		return (ret);
 	}
 
 	if (ambiguous <= 1) {
 		assert(command->exec != NULL);
-		ret = command->exec(newargc, newargv);
+		ret = command->exec(argc, argv);
 	} else {
-		usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
+		usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, argv[0]);
 	}
 
-	if (newcmd != NULL) {
-		free(newargv);
-		sbuf_delete(newcmd);
-	}
+	if (save_argv != argv)
+		free(argv);
 
 	if (ret == EX_OK && newpkgversion)
 		return (EX_NEEDRESTART);
