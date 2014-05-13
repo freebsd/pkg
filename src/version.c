@@ -385,7 +385,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 
 	indexhead = hash_indexfile(indexfile);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		free_index(indexhead);
 		warnx("Cannot get a read lock on the database. "
@@ -454,7 +454,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database. "
 		      "It is locked by another process");
@@ -619,7 +619,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database. "
 		      "It is locked by another process");

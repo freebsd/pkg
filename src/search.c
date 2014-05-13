@@ -370,11 +370,21 @@ exec_search(int argc, char **argv)
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
-	if (ret == EPKG_ENOACCESS) {
+	switch(ret) {
+	case EPKG_ENOACCESS:
 		warnx("Insufficient privileges to query the package database");
 		return (EX_NOPERM);
-	} else if (ret != EPKG_OK)
+	case EPKG_ENODB:
+		if (!auto_update) {
+			warnx("Unable to open remote repository catalogues. Try running '%s update' first.", getprogname());
+			return (EX_IOERR);
+		}
+		break;
+	case EPKG_OK:
+		break;
+	default:
 		return (EX_IOERR);
+	}
 
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;

@@ -2021,7 +2021,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	/* XXX: get rid of hardcoded values */
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
-			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
+			PKGDB_LOCK_EXCLUSIVE);
 	if (retcode != EPKG_OK)
 		return (retcode);
 

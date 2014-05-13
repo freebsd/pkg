@@ -805,7 +805,8 @@ ucl_sbuf_append_double(double val, void *data)
 }
 
 bool
-ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
+ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
+    FILE *out)
 {
 	struct ucl_emitter_functions func = {
 		.ucl_emitter_append_character = ucl_file_append_character,
@@ -814,12 +815,10 @@ ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
 		.ucl_emitter_append_double = ucl_file_append_double
 	};
 
-	func.ud = out;
-
 	if (obj == NULL)
 		return (false);
 
-	func.ud = NULL;
+	func.ud = out;
 
 	return (ucl_object_emit_full(obj, emit_type, &func));
 
@@ -827,7 +826,7 @@ ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
 }
 
 bool
-ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type,
+ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
                      struct sbuf **buf)
 {
 	bool ret = false;

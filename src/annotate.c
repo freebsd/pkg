@@ -298,7 +298,7 @@ exec_annotate(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);

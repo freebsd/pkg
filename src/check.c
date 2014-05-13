@@ -149,7 +149,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_ENODB);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -354,7 +354,7 @@ exec_check(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -386,7 +386,7 @@ exec_check(int argc, char **argv)
 			}
 			if (recompute) {
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
-						PKGDB_LOCK_EXCLUSIVE, 0.5, 20) == EPKG_OK) {
+						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
 						pkg_printf("Recomputing size and checksums: %n\n", pkg);
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
@@ -400,7 +400,7 @@ exec_check(int argc, char **argv)
 			}
 			if (reanalyse_shlibs) {
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
-						PKGDB_LOCK_EXCLUSIVE, 0.5, 20) == EPKG_OK) {
+						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
 						pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
 					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
@@ -419,7 +419,7 @@ exec_check(int argc, char **argv)
 			printf("\n>>> Missing package dependencies were detected.\n");
 			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
 			if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
-					PKGDB_LOCK_EXCLUSIVE, 0.5, 20) == EPKG_OK) {
+					PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 				ret = fix_deps(db, &dh, nbpkgs, yes);
 				if (ret == EPKG_OK)
 					check_summary(db, &dh);

@@ -1,6 +1,7 @@
 pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			@LIBELF_INCLUDE@ \
 			@LIBSBUF_INCLUDE@ \
+			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
@@ -15,6 +16,7 @@ libpkg_la_SOURCES=	pkg.c \
 			packing.c \
 			pkg_add.c \
 			pkg_attributes.c \
+			pkg_audit.c \
 			pkg_config.c \
 			pkg_conflicts.c \
 			pkg_cudf.c \
@@ -47,6 +49,7 @@ libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
 libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libyaml.la \
+			$(top_builddir)/external/libexpat.la \
 			@LIBELF_LIB@ \
 			@LIBSBUF_LIB@ \
 			-larchive \
@@ -63,6 +66,7 @@ libpkg_static_la_SOURCES=	$(libpkg_la_SOURCES)
 libpkg_static_la_CFLAGS=	$(pkg_common_cflags) -static
 libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
+			$(top_builddir)/external/libexpat_static.la \
 			$(top_builddir)/external/libyaml_static.la
 
 libpkg_static_la_LDFLAGS=	-all-static
