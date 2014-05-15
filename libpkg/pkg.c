@@ -1341,8 +1341,9 @@ pkg_test_filesum(struct pkg *pkg)
 	struct pkg_file *f = NULL;
 	const char *path;
 	const char *sum;
+	struct stat	 st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	int rc = EPKG_OK;
+	int rc = EPKG_OK, ret;
 
 	assert(pkg != NULL);
 
@@ -1350,7 +1351,23 @@ pkg_test_filesum(struct pkg *pkg)
 		path = pkg_file_path(f);
 		sum = pkg_file_cksum(f);
 		if (*sum != '\0') {
-			sha256_file(path, sha256);
+			if (lstat(path, &st) == -1) {
+				pkg_emit_errno("pkg_create_from_dir", "lstat failed");
+				return (EPKG_FATAL);
+			}
+			if (S_ISLNK(st.st_mode)) {
+				char linkbuf[MAXPATHLEN];
+				if ((ret = readlink(path, linkbuf, sizeof(linkbuf))) == -1) {
+					pkg_emit_errno("pkg_create_from_dir", "readlink failed");
+					return (EPKG_FATAL);
+				}
+				sha256_buf(linkbuf, ret, sha256);
+			}
+			else {
+				if (sha256_file(path, sha256) != EPKG_OK)
+					return (EPKG_FATAL);
+
+			}
 			if (strcmp(sha256, sum) != 0) {
 				pkg_emit_file_mismatch(pkg, f, sum);
 				rc = EPKG_FATAL;
