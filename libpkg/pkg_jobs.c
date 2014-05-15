@@ -1537,7 +1537,8 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 }
 
 static struct pkg_job_request *
-pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item, struct pkg_jobs *j)
+pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
+		struct pkg_jobs *j, int rec_level)
 {
 	struct pkg_job_request *found;
 	struct pkg_job_universe_item *dep_item;
@@ -1546,13 +1547,18 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item, struct pkg_j
 	struct pkg *pkg = item->pkg;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin);
+	if (rec_level > 128) {
+		pkg_debug(2, "cannot find deinstall request after 128 iterations for %s,"
+				"circular dependency maybe", origin);
+		return (NULL);
+	}
 
 	HASH_FIND_STR(j->request_delete, origin, found);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
 			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), dep_item);
 			if (dep_item) {
-				found = pkg_jobs_find_deinstall_request(dep_item, j);
+				found = pkg_jobs_find_deinstall_request(dep_item, j, rec_level + 1);
 				if (found)
 					return (found);
 			}
@@ -1575,8 +1581,8 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 	const char *name, *version;
 
 	LL_FOREACH(j->jobs, sit) {
-		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j);
-		if (jreq->item != sit->items[0]) {
+		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j, 0);
+		if (jreq != NULL && jreq->item != sit->items[0]) {
 			req_pkg = jreq->item->pkg;
 			pkg = sit->items[0]->pkg;
 			/* Set the reason */
