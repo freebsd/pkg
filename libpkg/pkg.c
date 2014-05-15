@@ -1367,6 +1367,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 			ret = pkg_parse_manifest(pkg, buffer, len, keys);
 			free(buffer);
 			if (ret != EPKG_OK) {
+				pkg_emit_error("%s is not a valid package: "
+				    "Invalid manifest", path);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
