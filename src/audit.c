@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -96,7 +97,13 @@ exec_audit(int argc, char **argv)
 	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
 
-	while ((ch = getopt(argc, argv, "qFf:")) != -1) {
+	struct option longopts[] = {
+		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "fetch",	no_argument,		NULL,	'F' },
+		{ "file",	required_argument,	NULL,	'f' },
+	};
+
+	while ((ch = getopt_long(argc, argv, "qFf:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
