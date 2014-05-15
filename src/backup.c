@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +27,7 @@
  */
 
 #include <pkg.h>
+#include <getopt.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -42,35 +44,57 @@ usage_backup(void)
 int
 exec_backup(int argc, char **argv)
 {
-	struct pkgdb  *db = NULL;
-	char *dest = NULL;
+	struct pkgdb	*db = NULL;
+	char		*backup_file = NULL;
+	bool		 dump = false;
+	bool		 restore = false;
+	int		 ch;
 
-	if (argc < 2 || argc > 3 || argv[1][0] != '-' ||
-	    (argv[1][1] != 'd' && argv[1][1] != 'r')) {
+	struct option longopts[] = {
+		{ "dump",	required_argument,	NULL,	'd' },
+		{ "restore",	required_argument,	NULL,	'r' },
+	};
+
+	while ((ch = getopt_long(argc, argv, "d:r:", longopts, NULL)) != -1) {
+		switch (ch) {
+		case 'd':
+			dump = true;
+			backup_file = optarg;
+			break;
+		case 'r':
+			restore = true;
+			backup_file = optarg;
+			break;
+		default:
+			usage_backup();
+			return (EX_USAGE);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if ( dump == restore ) {
 		usage_backup();
 		return (EX_USAGE);
 	}
 
-	if (argc == 3)
-		dest = argv[2];
-
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (argv[1][1] == 'd') {
+	if (dump) {
 		if (isatty(fileno(stdin)))
 				printf("Dumping database...\n");
-		if (pkgdb_dump(db, dest) == EPKG_FATAL)
+		if (pkgdb_dump(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
 
 		if (isatty(fileno(stdin)))
 			printf("done\n");
 	}
 
-	if (argv[1][1] == 'r') {
+	if (restore) {
 		if (isatty(fileno(stdin)))
 			printf("Restoring database...\n");
-		if (pkgdb_load(db, dest) == EPKG_FATAL)
+		if (pkgdb_load(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
 		if (isatty(fileno(stdin)))
 			printf("done\n");
