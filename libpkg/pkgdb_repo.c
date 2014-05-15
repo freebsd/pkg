@@ -745,6 +745,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 
 	/* apply change */
 	if (ret == EPKG_OK) {
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_exec(db->sqlite, sql, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
 			pkg_emit_error("sqlite: %s", errmsg);
