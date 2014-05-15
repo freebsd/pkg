@@ -31,6 +31,7 @@
 
 #include <err.h>
 #include <assert.h>
+#include <getopt.h>
 #include <sysexits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -266,6 +267,21 @@ exec_check(int argc, char **argv)
 	int i;
 	int verbose = 0;
 
+	struct option longopts[] = {
+		{ "all",		no_argument,	NULL,	'a' },
+		{ "shlibs",		no_argument,	NULL,	'B' },
+		{ "case-sensitive",	no_argument,	NULL,	'C' },
+		{ "dependencies",	no_argument,	NULL,	'd' },
+		{ "glob",		no_argument,	NULL,	'g' },
+		{ "case-insensitive",	no_argument,	NULL,	'i' },
+		{ "dry-run",		no_argument,	NULL,	'n' },
+		{ "recompute",		no_argument,	NULL,	'r' },
+		{ "checksums",		no_argument,	NULL,	's' },
+		{ "verbose",		no_argument,	NULL,	'v' },
+		{ "regex",		no_argument,	NULL,	'x' },
+		{ "yes",		no_argument,	NULL,	'y' },
+	};
+
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
         /* Set default case sensitivity for searching */
@@ -275,7 +291,7 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "aBCdginrsvxy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aBCdginrsvxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
