@@ -28,6 +28,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
@@ -48,18 +49,33 @@ usage_delete(void)
 int
 exec_delete(int argc, char **argv)
 {
-	struct pkg_jobs *jobs = NULL;
-	struct pkgdb *db = NULL;
-	match_t match = MATCH_EXACT;
-	int ch;
-	bool force = false;
-	bool recursive_flag = false;
-	bool yes;
-	bool dry_run = false;
-	int retcode = EX_SOFTWARE;
+	struct pkg_jobs	*jobs = NULL;
+	struct pkgdb	*db = NULL;
+	match_t		 match = MATCH_EXACT;
+	pkg_flags	 f = PKG_FLAG_NONE;
+	bool		 force = false;
+	bool		 recursive_flag = false;
+	bool		 yes;
+	bool		 dry_run = false;
+	int		 retcode = EX_SOFTWARE;
+	int		 ch;
+	int		 i;
+
+	struct option longopts[] = {
+		{ "all",			no_argument,	NULL,	'a' },
+		{ "case-sensitive",		no_argument,	NULL,	'C' },
+		{ "no-deinstall-script",	no_argument,	NULL,	'D' },
+		{ "force",			no_argument,	NULL,	'f' },
+		{ "glob",			no_argument,	NULL,	'g' },
+		{ "case-insensitive",		no_argument,	NULL,	'i' },
+		{ "dry-run",			no_argument,	NULL,	'n' },
+		{ "quiet",			no_argument,	NULL,	'q' },
+		{ "recursive",			no_argument,	NULL,	'R' },
+		{ "regex",			no_argument,	NULL,	'x' },
+		{ "yes",			no_argument,	NULL,	'y' },
+	};
+
 	nbactions = nbdone = 0;
-	pkg_flags f = PKG_FLAG_NONE;
-	int i;
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
@@ -68,7 +84,7 @@ exec_delete(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "aCDfginqRxy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aCDfginqRxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
