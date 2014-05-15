@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +32,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <getopt.h>
 #include <string.h>
 #include <sysexits.h>
 #include <dirent.h>
@@ -50,21 +52,22 @@ usage_convert(void)
 static int
 convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 {
-	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL;
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	char *content, *name, *version, *buf;
-	const char *tmp;
-	int ret = EX_OK;
-	char path[MAXPATHLEN];
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
-	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE |
-	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_RDEPS;
-	FILE *fp, *rq;
-	struct sbuf *install_script = sbuf_new_auto();
-	struct sbuf *deinstall_script = sbuf_new_auto();
+	struct pkgdb	*db = NULL;
+	struct pkg	*pkg = NULL;
+	struct pkg_dep	*dep = NULL;
+	struct pkgdb_it	*it = NULL;
+	char		*content, *name, *version, *buf;
+	const char	*tmp;
+	int		 ret = EX_OK;
+	char		 path[MAXPATHLEN];
+	int		 query_flags = PKG_LOAD_DEPS    | PKG_LOAD_FILES   |
+				       PKG_LOAD_DIRS    | PKG_LOAD_SCRIPTS |
+				       PKG_LOAD_OPTIONS | PKG_LOAD_MTREE   |
+				       PKG_LOAD_USERS   | PKG_LOAD_GROUPS  |
+				       PKG_LOAD_RDEPS;
+	FILE		*fp, *rq;
+	struct sbuf	*install_script = sbuf_new_auto();
+	struct sbuf	*deinstall_script = sbuf_new_auto();
 
 	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
 		err(EX_CANTCREAT, "%s", pkg_add_dbdir);
@@ -231,12 +234,12 @@ cleanup:
 static int
 convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 {
-	DIR *d;
-	struct dirent *dp;
-	struct pkg *p = NULL;
-	char path[MAXPATHLEN];
-	struct pkgdb *db = NULL;
-	struct stat sb;
+	DIR		*d;
+	struct dirent	*dp;
+	struct pkg	*p = NULL;
+	char		 path[MAXPATHLEN];
+	struct pkgdb	*db = NULL;
+	struct stat	 sb;
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
 		err(EX_NOINPUT, "%s", pkg_add_dbdir);
@@ -275,12 +278,18 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 int
 exec_convert(__unused int argc, __unused char **argv)
 {
-	int ch;
-	bool revert = false;
-	bool dry_run = false;
-	const char *pkg_add_dbdir = "/var/db/pkg";
+	int		 ch;
+	bool		 revert = false;
+	bool		 dry_run = false;
+	const char	*pkg_add_dbdir = "/var/db/pkg";
 
-	while ((ch = getopt(argc, argv, "d:nr")) != -1) {
+	struct option longopts[] = {
+		{ "pkg-dbdir",	required_argument,	NULL,	'd' },
+		{ "dry-run",	no_argument,		NULL,	'n' },
+		{ "revert",	no_argument,		NULL,	'r' },
+	};
+
+	while ((ch = getopt_long(argc, argv, "d:nr", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			pkg_add_dbdir = optarg;
