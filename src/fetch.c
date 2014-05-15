@@ -29,6 +29,7 @@
 #include <sys/types.h>
 
 #include <err.h>
+#include <getopt.h>
 #include <libgen.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -64,6 +65,20 @@ exec_fetch(int argc, char **argv)
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
 
+	struct option longopts[] = {
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "dependencies",	no_argument,		NULL,	'd' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "quiet",		no_argument,		NULL,	'q' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "avaialbe-updates",	no_argument,		NULL,	'u' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ "yes",		no_argument,		NULL,	'y' },
+	};
+
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
@@ -72,7 +87,7 @@ exec_fetch(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "aCdgiqr:Uuxy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aCdgiqr:Uuxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -89,9 +104,6 @@ exec_fetch(int argc, char **argv)
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
-		case 'U':
-			auto_update = false;
-			break;
 		case 'q':
 			quiet = true;
 			break;
@@ -101,6 +113,9 @@ exec_fetch(int argc, char **argv)
 		case 'u':
 			f |= PKG_FLAG_UPGRADES_FOR_INSTALLED;
 			upgrades_for_installed = true;
+			break;
+		case 'U':
+			auto_update = false;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
