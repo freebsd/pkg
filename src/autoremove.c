@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -54,19 +55,25 @@ exec_autoremove(__unused int argc, __unused char **argv)
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
 
+	struct option longopts[] = {
+		{ "dry-run",	no_argument,	NULL,	'n' },
+		{ "quiet",	no_argument,	NULL,	'q' },
+		{ "yes",	no_argument,	NULL,	'y' },
+	};
+
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "ynq")) != -1) {
+	while ((ch = getopt_long(argc, argv, "nqy", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'n':
+			f |= PKG_FLAG_DRY_RUN;
+			dry_run = true;
+			break;
 		case 'q':
 			quiet = true;
 			break;
 		case 'y':
 			yes = true;
-			break;
-		case 'n':
-			f |= PKG_FLAG_DRY_RUN;
-			dry_run = true;
 			break;
 		default:
 			break;

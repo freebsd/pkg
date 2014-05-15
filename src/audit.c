@@ -98,21 +98,21 @@ exec_audit(int argc, char **argv)
 	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
 
 	struct option longopts[] = {
-		{ "quiet",	no_argument,		NULL,	'q' },
 		{ "fetch",	no_argument,		NULL,	'F' },
 		{ "file",	required_argument,	NULL,	'f' },
+		{ "quiet",	no_argument,		NULL,	'q' },
 	};
 
-	while ((ch = getopt_long(argc, argv, "qFf:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "Ff:q", longopts, NULL)) != -1) {
 		switch (ch) {
-		case 'q':
-			quiet = true;
-			break;
 		case 'F':
 			fetch = true;
 			break;
 		case 'f':
 			audit_file = optarg;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		default:
 			usage_audit();
