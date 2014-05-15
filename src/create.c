@@ -213,6 +213,7 @@ exec_create(int argc, char **argv)
 		{ "no-clobber", no_argument,		NULL,	'n' },
 		{ "plist",	required_argument,	NULL,	'p' },
 		{ "old",	no_argument,		NULL,	'O' },
+		{ NULL,		0,			NULL,	0   },
 	};
 
 	while ((ch = getopt_long(argc, argv, "agxf:r:m:M:o:np:O", longopts, NULL)) != -1) {

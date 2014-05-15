@@ -662,6 +662,7 @@ main(int argc, char **argv)
 		{ "check-activation",	no_argument,		NULL,	'N' },
 		{ "version",		no_argument,		NULL,	'v' },
 		{ "option",		required_argument,	NULL,	'o' },
+		{ NULL,			0,			NULL,	0   },
 	};
 
 	/* Set stdout unbuffered */

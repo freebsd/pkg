@@ -101,6 +101,7 @@ exec_audit(int argc, char **argv)
 		{ "fetch",	no_argument,		NULL,	'F' },
 		{ "file",	required_argument,	NULL,	'f' },
 		{ "quiet",	no_argument,		NULL,	'q' },
+		{ NULL,		0,			NULL,	0   },
 	};
 
 	while ((ch = getopt_long(argc, argv, "Ff:q", longopts, NULL)) != -1) {

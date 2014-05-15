@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without

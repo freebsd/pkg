@@ -181,6 +181,7 @@ exec_clean(int argc, char **argv)
 		{ "dry-run",	no_argument,	NULL,	'n' },
 		{ "quiet",	no_argument,	NULL,	'q' },
 		{ "yes",	no_argument,	NULL,	'y' },
+		{ NULL,		0,		NULL,	0   },
 	};
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));

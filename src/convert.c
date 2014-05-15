@@ -287,6 +287,7 @@ exec_convert(__unused int argc, __unused char **argv)
 		{ "pkg-dbdir",	required_argument,	NULL,	'd' },
 		{ "dry-run",	no_argument,		NULL,	'n' },
 		{ "revert",	no_argument,		NULL,	'r' },
+		{ NULL,		0,			NULL,	0   },
 	};
 
 	while ((ch = getopt_long(argc, argv, "d:nr", longopts, NULL)) != -1) {

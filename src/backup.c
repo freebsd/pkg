@@ -53,6 +53,7 @@ exec_backup(int argc, char **argv)
 	struct option longopts[] = {
 		{ "dump",	required_argument,	NULL,	'd' },
 		{ "restore",	required_argument,	NULL,	'r' },
+		{ NULL,		0,			NULL,	0   },
 	};
 
 	while ((ch = getopt_long(argc, argv, "d:r:", longopts, NULL)) != -1) {

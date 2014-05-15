@@ -77,6 +77,7 @@ exec_fetch(int argc, char **argv)
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
+		{ NULL,			0,			NULL,	0   },
 	};
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));

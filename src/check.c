@@ -280,6 +280,7 @@ exec_check(int argc, char **argv)
 		{ "verbose",		no_argument,	NULL,	'v' },
 		{ "regex",		no_argument,	NULL,	'x' },
 		{ "yes",		no_argument,	NULL,	'y' },
+		{ NULL,			0,		NULL,	0   },
 	};
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));

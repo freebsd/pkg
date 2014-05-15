@@ -73,6 +73,7 @@ exec_delete(int argc, char **argv)
 		{ "recursive",			no_argument,	NULL,	'R' },
 		{ "regex",			no_argument,	NULL,	'x' },
 		{ "yes",			no_argument,	NULL,	'y' },
+		{ NULL,				0,		NULL,	0   },
 	};
 
 	nbactions = nbdone = 0;
