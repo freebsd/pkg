@@ -40,6 +40,7 @@
 #endif
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <string.h>
@@ -185,18 +186,32 @@ cleanup:
 int
 exec_create(int argc, char **argv)
 {
-	match_t match = MATCH_EXACT;
-	const char *outdir = NULL;
-	const char *format = NULL;
-	const char *rootdir = NULL;
-	const char *manifestdir = NULL;
-	char *plist = NULL;
-	bool overwrite = true;
-	pkg_formats fmt;
-	int ch;
-	bool old = false;
+	match_t		 match = MATCH_EXACT;
+	const char	*outdir = NULL;
+	const char	*format = NULL;
+	const char	*rootdir = NULL;
+	const char	*manifestdir = NULL;
+	char		*plist = NULL;
+	pkg_formats	 fmt;
+	int		 ch;
+	bool		 overwrite = true;
+	bool		 old = false;
 
-	while ((ch = getopt(argc, argv, "agxf:r:m:o:np:O")) != -1) {
+	struct option longopts[] = {
+		{ "all",	no_argument,		NULL,	'a' },
+		{ "glob",	no_argument,		NULL,	'g' },
+		{ "regex",	no_argument,		NULL,	'x' },
+		{ "format",	required_argument,	NULL,	'f' },
+		{ "root-dir",	required_argument,	NULL,	'r' },
+		{ "metadata",	required_argument,	NULL,	'm' },
+		{ "out-dir",	required_argument,	NULL,	'o' },
+		{ "no-clobber", no_argument,		NULL,	'n' },
+		{ "plist",	required_argument,	NULL,	'p' },
+		{ "old",	no_argument,		NULL,	'O' },
+	/* FFR  { "manifest",	required_argument,	NULL,	'M' }, */
+	};
+
+	while ((ch = getopt_long(argc, argv, "agxf:r:m:o:np:O", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
