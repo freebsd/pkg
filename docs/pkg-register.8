@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 14, 2013
+.Dd May 16, 2014
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -30,6 +30,14 @@
 .Nm
 .Op Fl dlOt
 .Fl M Ar metadatafile
+.Nm
+.Op Cm --debug|legacy|old|test|relocate
+.Op Cm --plist Ar plist-file
+.Cm --metadata Ar metadatadir
+.Cm --root Ar input-path
+.Nm
+.Op Cm --debug|legacy|old|test|relocate
+.Cm --manifest Ar metadatafile
 .Sh DESCRIPTION
 .Nm
 is used for registering a package into the local package database.
@@ -54,7 +62,7 @@ Direct analysis of files installed by the package
 .El
 .Pp
 The package manifest is a
-.Cm YAML
+.Cm UCL
 format listing of package meta-data.
 It can contain all of the necessary meta-data needed by the package,
 but the more usual approach is to provide selected items via the
@@ -74,6 +82,9 @@ option.
 Other information about shared library requirements and the packages
 necessary to provide them may be obtained by direct analysis of the
 files installed by the package.
+File checksums may be left blank in the input metadata:
+all checksums will be recalculated from the installed or staged files
+overwriting the input.
 This is the mechanism currently used when installing software directly
 from the ports tree, as it provides reasonable backwards compatibility
 with the old style
@@ -94,19 +105,21 @@ itself, and should not be routinely used.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl d
+.Bl -tag -width metadata
+.It Fl A , Cm --automatic 
 Mark the package to be automatically removed if no other packages
 depend on it.
 For more information please refer to
 .Xr pkg-autoremove 8
-.It Fl f Ar plist-file
+.It Fl d , Cm --debug 
+Enable debugging output.
+.It Fl f Ar plist-file , Cm --plist Ar plist-file
 Specifies a
 .Fa pkg-plist
 style packing list file
-.It Fl i Ar input-path
+.It Fl i Ar input-path , Cm --root Ar input-path
 Specifies the package input path or staging directory.
-.It Fl l
+.It Fl l , Cm --legacy
 Tells
 .Nm
 to generate an old-style package registry entry in a sub-directory of
@@ -114,7 +127,7 @@ to generate an old-style package registry entry in a sub-directory of
 rather than updating the
 .Fa local.sqlite
 database.
-.It Fl M Ar manifest
+.It  Fl M Ar manifest , Cm --manifest Ar manifest
 Specifies the package manifest file.
 Use of this option means that the only file which will be used as a
 source of package meta-data is the named
@@ -124,7 +137,7 @@ The
 .Fl M
 option is mutually exclusive with
 .Fl m .
-.It Fl m Ar metadatadir
+.It  Fl m Ar metadatadir , Cm --metadata Ar metadatadir
 Specifies the meta data directory to use when registering the package.
 This directory will hold the package manifest, and optionally may contain
 a number of other old-style metadata input files.
@@ -132,7 +145,7 @@ The
 .Fl m
 option is mutually exclusive with
 .Fl M .
-.It Fl t
+.It  Fl t , Cm --test
 Enable testing mode.
 This allows
 .Nm
@@ -142,6 +155,22 @@ This option should only be used with caution, and preferably only
 for the intended purpose of performing regression tests on
 .Xr pkg 8
 itself.
+.It Fl O, Cm --old
+This is a temporary compatibility flag for internal use within the
+ports tree only.
+This flag will be removed once
+.Xr pkg_tools 8
+reached end-of-life.
+Generates an old-style packing list on
+.Pa stdout ,
+without registering the port in the package database.
+.It Cm --relocate location
+Annotates the package as having been relocated to
+.Pa location ,
+which is an alternate system root.
+This is an experimental feature and intended for cross-architecture
+package management.
+There is no corresponding single letter option.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
