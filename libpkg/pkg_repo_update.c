@@ -219,6 +219,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	size_t len = 0;
 	int hash_it = 0;
 	time_t now, last;
+	bool in_trans = false;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
@@ -331,6 +332,14 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	rc = EPKG_OK;
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
+
+	sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repo_update (x INTEGER);");
+
+	in_trans = true;
+	rc = pkgdb_transaction_begin(sqlite, "REPO");
+	if (rc != EPKG_OK)
+		goto cleanup;
+
 	removed = HASH_COUNT(ldel);
 	hash_it = 0;
 	last = 0;
@@ -360,7 +369,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 			pkg_emit_error("Empty catalog");
 		else
 			pkg_emit_error("Catalog too large");
-		return (EPKG_FATAL);
+		goto cleanup;
 	}
 
 	hash_it = 0;
@@ -392,6 +401,16 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
+
+	if (rc == EPKG_OK)
+		sql_exec(sqlite, "DROP TABLE repo_update;");
+	if (in_trans) {
+		if (rc != EPKG_OK)
+			pkgdb_transaction_rollback(sqlite, "REPO");
+
+		if (pkgdb_transaction_commit(sqlite, "REPO") != EPKG_OK)
+			rc = EPKG_FATAL;
+	}
 	if (pkg != NULL)
 		pkg_free(pkg);
 	if (it != NULL)
@@ -460,7 +479,8 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 
 		if (res != 1) {
 			t = 0;
-
+			pkg_emit_notice("Repository %s contains no repodata table, "
+					"need to re-create database", repo->name);
 			if (sqlite != NULL) {
 				sqlite3_close(sqlite);
 				sqlite = NULL;
@@ -480,6 +500,19 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 		 */
 		get_pragma(sqlite, req, &res, true);
 		sqlite3_free(req);
+		if (res == 1) {
+			/* Test for incomplete upgrade */
+			if (sqlite3_exec(sqlite, "INSERT INTO repo_update VALUES(1);",
+					NULL, NULL, NULL) == SQLITE_OK) {
+				res = -1;
+				pkg_emit_notice("The previous update of %s was not completed "
+						"successfully, re-create repo database", repo->name);
+			}
+		}
+		else {
+			pkg_emit_notice("Repository %s has a wrong packagesite, need to "
+					"re-create database", repo->name);
+		}
 		if (res != 1) {
 			t = 0;
 
