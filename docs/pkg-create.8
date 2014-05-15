@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd November 29, 2013
+.Dd May 16, 2014
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -30,7 +30,13 @@
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
-.Fl m Ar manifestdir
+.Fl m Ar metadatadir
+.Nm
+.Op Fl n
+.Op Fl f Ar format
+.Op Fl o Ar outdir
+.Op Fl r Ar rootdir
+.Fl M Ar manifest
 .Nm
 .Op Fl gnx
 .Op Fl f Ar format
@@ -54,14 +60,16 @@ Any number of packages may be created in one invocation of this style.
 .Pp
 Alternatively, a single package can be created from an arbitrary
 selection of files on your system, but this requires a
-.Ar manifestdir
+.Ar metadatadir
 and optionally
 .Ar plist
 to be supplied.
 The package name will be derived from the
 .Pa +MANIFEST
 file which must be contained within the
-.Ar manifestdir .
+.Ar metadatadir ,
+or passed as the argument to
+.Fl M .
 .Pp
 Packages thus created can be distributed and subsequently installed on
 other machines using the
@@ -71,13 +79,13 @@ command.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width ".Fl m Ar manifestdir"
+.Bl -tag -width ".Fl m Ar metadatadir"
 .It Fl a
 Create package tarballs from all packages installed on your system.
 This option is incompatible with the
 .Fl g , x
 or
-.Fl m Ar manifestdir
+.Fl m Ar metadatadir
 options.
 .It Fl g
 Interpret
@@ -87,7 +95,7 @@ name match this pattern.
 This option is incompatible with the
 .Fl a , x
 or
-.Fl m Ar manifestdir
+.Fl m Ar metadatadir
 options.
 .It Fl x
 Like
@@ -99,7 +107,7 @@ as a regular expression using the "modern" or "extended" syntax described in
 This option is incompatible with the
 .Fl a, g
 or
-.Fl m Ar manifestdir
+.Fl m Ar metadatadir
 options.
 .It Fl f Ar format
 Set
@@ -113,7 +121,7 @@ which are currently the only supported format.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
-.It Fl m Ar manifestdir
+.It Fl m Ar metadatadir
 Specify the directory containing the package manifest,
 .Pa +MANIFEST
 and optionally three other files; one containing a message to be
@@ -138,7 +146,21 @@ are not required; the
 file can contain all the required information needed to build a
 package.
 This option is incompatible with the
-.Fl a, g
+.Fl M, a, g
+or
+.Fl x
+options.
+.It Fl M Ar manifest
+Read all of the package metadata from the
+.Ar manifest
+file.
+This is exactly the same format as
+.Pa +MANIFEST
+mentioned above, but any file name can be used, and no
+other file will be used to read package metada from.
+If specified, only a single package will be created.
+This option is incompatible with the
+.Fl m, a, g
 or
 .Fl x
 options.
@@ -160,9 +182,9 @@ Metadata from the
 G.Ar plist
 file, if specified, will take precedence over any equivalents from
 the
-.Ar manifestdir .
+.Ar metadatadir .
 Only has any effect when used with
-.Ar manifestdir .
+.Ar metadatadir .
 See
 .Sx "PLIST FORMAT"
 for details

@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -225,6 +226,58 @@ static const char * const scripts[] = {
 	NULL
 };
 
+
+/* The "no concessions to old pkg_tools" variant: just get everything
+ * from the manifest */
+int
+pkg_create_from_manifest(const char *outdir, pkg_formats format,
+			 const char *rootdir, const char *manifest, bool old)
+{
+	struct pkg	*pkg = NULL;
+	struct packing	*pkg_archive = NULL;
+	char		 arch[BUFSIZ];
+	int		 ret = ENOMEM;
+	char		*buf;
+	struct pkg_manifest_key *keys = NULL;
+
+	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
+
+	if(pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_manifest_keys_new(&keys);
+	if ((ret = pkg_parse_manifest_file(pkg, manifest, keys)) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* if no arch autodetermine it */
+	pkg_get(pkg, PKG_ARCH, &buf);
+	if (buf == NULL) {
+		pkg_get_myarch(arch, BUFSIZ);
+		pkg_set(pkg, PKG_ARCH, arch);
+	}
+
+	/* Create the archive */
+	pkg_archive = pkg_create_archive(outdir, pkg, format, 0);
+	if (pkg_archive == NULL) {
+		ret = EPKG_FATAL; /* XXX do better */
+		goto cleanup;
+	}
+
+	pkg_create_from_dir(pkg, rootdir, pkg_archive);
+	ret = EPKG_OK;
+
+cleanup:
+	free(pkg);
+	pkg_manifest_keys_free(keys);
+	if (ret == EPKG_OK)
+		ret = packing_finish(pkg_archive);
+	return (ret);
+}
+
 int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
     const char *md_dir, char *plist, bool old)
@@ -369,7 +422,7 @@ cleanup:
 	pkg_manifest_keys_free(keys);
 	if (ret == EPKG_OK)
 		ret = packing_finish(pkg_archive);
-	return ret;
+	return (ret);
 }
 
 int
