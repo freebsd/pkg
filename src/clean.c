@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <err.h>
 #include <fts.h>
+#include <getopt.h>
 #include <libutil.h>
 #include <pkg.h>
 #include <stdbool.h>
@@ -175,9 +176,16 @@ exec_clean(int argc, char **argv)
 	char		 size[7];
 	struct pkg_manifest_key *keys = NULL;
 
+	struct option longopts[] = {
+		{ "all",	no_argument,	NULL,	'a' },
+		{ "dry-run",	no_argument,	NULL,	'n' },
+		{ "quiet",	no_argument,	NULL,	'q' },
+		{ "yes",	no_argument,	NULL,	'y' },
+	};
+
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
-	while ((ch = getopt(argc, argv, "anqy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "anqy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			all = true;
