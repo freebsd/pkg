@@ -60,7 +60,9 @@ void
 usage_create(void)
 {
 	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
-		"[-p plist] [-r rootdir] -m manifestdir\n");
+		"[-p plist] [-r rootdir] -m metadatadir\n");
+	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
+		"[-r rootdir] -M manifest\n");
 	fprintf(stderr, "       pkg create [-Ognx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
 	fprintf(stderr, "       pkg create [-On] [-f format] [-o outdir] "
@@ -179,6 +181,7 @@ cleanup:
  * -g: globbing
  * -r: rootdir for the package
  * -m: path to dir where to find the metadata
+ * -M: manifest file
  * -f <format>: format could be txz, tgz, tbz or tar
  * -o: output directory where to create packages by default ./ is used
  */
@@ -190,7 +193,8 @@ exec_create(int argc, char **argv)
 	const char	*outdir = NULL;
 	const char	*format = NULL;
 	const char	*rootdir = NULL;
-	const char	*manifestdir = NULL;
+	const char	*metadatadir = NULL;
+	const char	*manifest = NULL;
 	char		*plist = NULL;
 	pkg_formats	 fmt;
 	int		 ch;
@@ -204,14 +208,14 @@ exec_create(int argc, char **argv)
 		{ "format",	required_argument,	NULL,	'f' },
 		{ "root-dir",	required_argument,	NULL,	'r' },
 		{ "metadata",	required_argument,	NULL,	'm' },
+		{ "manifest",	required_argument,	NULL,	'M' },
 		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "no-clobber", no_argument,		NULL,	'n' },
 		{ "plist",	required_argument,	NULL,	'p' },
 		{ "old",	no_argument,		NULL,	'O' },
-	/* FFR  { "manifest",	required_argument,	NULL,	'M' }, */
 	};
 
-	while ((ch = getopt_long(argc, argv, "agxf:r:m:o:np:O", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "agxf:r:m:M:o:np:O", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -232,7 +236,10 @@ exec_create(int argc, char **argv)
 			rootdir = optarg;
 			break;
 		case 'm':
-			manifestdir = optarg;
+			metadatadir = optarg;
+			break;
+		case 'M':
+			manifest = optarg;
 			break;
 		case 'n':
 			overwrite = false;
@@ -251,12 +258,13 @@ exec_create(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (match != MATCH_ALL && manifestdir == NULL && argc == 0) {
+	if (match != MATCH_ALL && metadatadir == NULL && manifest == NULL &&
+	    argc == 0) {
 		usage_create();
 		return (EX_USAGE);
 	}
 
-	if (manifestdir == NULL && rootdir != NULL) {
+	if (metadatadir == NULL && manifest == NULL && rootdir != NULL) {
 		warnx("Do not specify a rootdir when creating a package from an installed package");
 		usage_create();
 		return (EX_USAGE);
@@ -284,7 +292,7 @@ exec_create(int argc, char **argv)
 		}
 	}
 
-	if (manifestdir == NULL) {
+	if (metadatadir == NULL && manifest == NULL) {
 		if (old) {
 			warnx("Can only create an old package format"
 			    " out of a staged directory");
@@ -292,9 +300,12 @@ exec_create(int argc, char **argv)
 		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,
 		    overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	} else {
-		return (pkg_create_staged(outdir, fmt, rootdir, manifestdir,
+	} else if (metadatadir != NULL) {
+		return (pkg_create_staged(outdir, fmt, rootdir, metadatadir,
 		    plist, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+	} else  { /* (manifest != NULL) */
+		return (pkg_create_from_manifest(outdir, fmt, rootdir,
+		    manifest, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	}
 }
 
