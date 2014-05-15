@@ -139,12 +139,6 @@ static struct config_entry c[] = {
 		"Log pkg(8) operations via syslog(3)",
 	},
 	{
-		PKG_BOOL,
-		"AUTODEPS",
-		"YES",
-		"Automatically append dependencies to fulfil dynamic linking requrements of binaries",
-	},
-	{
 		PKG_STRING,
 		"ABI",
 		myabi,

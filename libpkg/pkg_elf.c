@@ -127,76 +127,6 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 }
 
 static int
-test_depends(void *actdata, struct pkg *pkg, const char *fpath,
-	     const char *name, bool is_shlib)
-{
-	struct pkgdb *db = actdata;
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *d;
-	const char *deporigin, *depname, *depversion;
-	const char *origin;
-	const char *pkgname, *pkgversion;
-	bool deplocked;
-	char pathbuf[MAXPATHLEN];
-	struct pkg_file *file = NULL;
-	const char *filepath;
-
-	assert(db != NULL);
-
-	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
-	case EPKG_OK:		/* A non-system library */
-		break;
-	case EPKG_END:		/* A system library */
-		return (EPKG_OK);
-	default:
-		/* Ignore link resolution errors if we're analysing a
-		   shared library. */
-		if (is_shlib)
-			return (EPKG_OK);
-
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			filepath = pkg_file_path(file);
-			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
-				pkg_addshlib_required(pkg, name);
-				return (EPKG_OK);
-			}
-		}
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		warnx("(%s-%s) %s - shared library %s not found",
-		      pkgname, pkgversion, fpath, name);
-		return (EPKG_FATAL);
-	}
-
-	pkg_addshlib_required(pkg, name);
-
-	if ((it = pkgdb_query_which(db, pathbuf, false)) == NULL)
-		return (EPKG_OK);
-
-	d = NULL;
-	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(d, PKG_ORIGIN,  &deporigin,
-			   PKG_NAME,    &depname,
-			   PKG_VERSION, &depversion,
-			   PKG_LOCKED,  &deplocked);
-
-		dep = pkg_dep_lookup(pkg, deporigin);
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-
-		if (dep == NULL && strcmp(origin, deporigin) != 0) {
-			pkg_debug(1, "Autodeps: adding unlisted depends (%s): %s-%s",
-			    pathbuf, depname, depversion);
-			pkg_adddep(pkg, depname, deporigin, depversion,
-			    deplocked);
-		}
-		pkg_free(d);
-	}
-
-	pkgdb_it_free(it);
-	return (EPKG_OK);
-}
-
-static int
 analyse_elf(struct pkg *pkg, const char *fpath,
 	int (action)(void *, struct pkg *, const char *, const char *, bool),
 	void *actdata)
@@ -427,20 +357,12 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
-	bool autodeps = false;
 	bool developer = false;
-	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
-	autodeps = pkg_object_bool(pkg_config_get("AUTODEPS"));
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
-
-	if (autodeps)
-		action = test_depends;
-	else
-		action = add_shlibs_to_pkg;
 
 	shlib_list_init();
 
@@ -460,7 +382,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		else
 			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
 
-		ret = analyse_elf(pkg, fpath, action, db);
+		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
 				goto cleanup;

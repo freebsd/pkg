@@ -638,7 +638,7 @@ int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
  * dependency list contains all applicable packages providing the
  * shared objects used by pkg.
  * Also add all the shared object into the shlibs.
- * It respects the SHLIBS and AUTODEPS options from configuration
+ * It respects the SHLIBS options from configuration
  * @return An error code
  */
 
