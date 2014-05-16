@@ -26,6 +26,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -49,21 +50,33 @@ usage_set(void)
 int
 exec_set(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	int ch;
-	int i;
-	bool yes;
-	match_t match = MATCH_EXACT;
-	int64_t newautomatic = -1;
-	bool automatic = false;
-	const char *errstr;
-	char *neworigin = NULL;
-	char *oldorigin = NULL;
-	unsigned int loads = PKG_LOAD_BASIC;
-	unsigned int sets = 0;
-	int retcode;
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	int		 ch;
+	int		 i;
+	bool		 yes;
+	match_t		 match = MATCH_EXACT;
+	int64_t		 newautomatic = -1;
+	bool		 automatic = false;
+	const char	*errstr;
+	char		*neworigin = NULL;
+	char		*oldorigin = NULL;
+	unsigned int	 loads = PKG_LOAD_BASIC;
+	unsigned int	 sets = 0;
+	int		 retcode;
+
+	struct option longopts[] = {
+		{ "automatic",		required_argument,	NULL,	'A' },
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "change-origin",	required_argument,	NULL,	'o' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ "yes",		no_argument,		NULL,	'y' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
@@ -72,7 +85,7 @@ exec_set(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "A:aCgio:xy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "A:aCgio:xy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
