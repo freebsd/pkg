@@ -32,6 +32,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <getopt.h>
 #include <inttypes.h>
 #include <pkg.h>
 #include <stdio.h>
@@ -833,34 +834,52 @@ usage_query(void)
 int
 exec_query(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	struct pkg_manifest_key *keys = NULL;
-	char *pkgname = NULL;
-	int query_flags = PKG_LOAD_BASIC;
-	match_t match = MATCH_EXACT;
-	int ch;
-	int ret;
-	int retcode = EX_OK;
-	int i;
-	char multiline = 0;
-	char *condition = NULL;
-	struct sbuf *sqlcond = NULL;
-	const unsigned int q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
+	struct pkgdb		*db = NULL;
+	struct pkgdb_it		*it = NULL;
+	struct pkg		*pkg = NULL;
+	struct pkg_manifest_key	*keys = NULL;
+	char			*pkgname = NULL;
+	int			 query_flags = PKG_LOAD_BASIC;
+	match_t			 match = MATCH_EXACT;
+	int			 ch;
+	int			 ret;
+	int			 retcode = EX_OK;
+	int			 i;
+	char			 multiline = 0;
+	char			*condition = NULL;
+	struct sbuf		*sqlcond = NULL;
+	const unsigned int	 q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
+
+	struct option longopts[] = {
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "evaluate",		required_argument,	NULL,	'e' },
+		{ "read-file",		required_argument,	NULL,	'F' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
         /* Set default case sensitivity for searching */
         pkgdb_set_case_sensitivity(
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "aCgixF:e:")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aCe:F:gix", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
+			break;
+		case 'e':
+			match = MATCH_CONDITION;
+			condition = optarg;
+			break;
+		case 'F':
+			pkgname = optarg;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -870,13 +889,6 @@ exec_query(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'F':
-			pkgname = optarg;
-			break;
-		case 'e':
-			match = MATCH_CONDITION;
-			condition = optarg;
 			break;
 		default:
 			usage_query();
