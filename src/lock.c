@@ -25,6 +25,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -138,6 +139,16 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	int		 ch;
 	bool		 show_locked = false;
 
+	struct option longopts[] = {
+		{ "all",		no_argument,	NULL,	'a' },
+		{ "case-sensitive",	no_argument,	NULL,	'C' },
+		{ "glob",		no_argument,	NULL,	'g' },
+		{ "show-locked",	no_argument,	NULL,	'l' },
+		{ "quiet",		no_argument,	NULL,	'q' },
+		{ "regex",		no_argument,	NULL,	'x' },
+		{ "yes",		no_argument,	NULL,	'y' },
+		{ NULL,		0,			NULL,	0   },
+	};
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
@@ -146,13 +157,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "alCgiqxy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aCgilqxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
-			break;
-		case 'l':
-			show_locked = true;
 			break;
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
@@ -162,6 +170,9 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
+			break;
+		case 'l':
+			show_locked = true;
 			break;
 		case 'q':
 			quiet = true;
