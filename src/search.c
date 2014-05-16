@@ -28,11 +28,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
-#include <err.h>
+
 
 #include <pkg.h>
 
@@ -241,20 +243,43 @@ usage_search(void)
 int
 exec_search(int argc, char **argv)
 {
-	const char *pattern = NULL;
-	const char *reponame = NULL;
-	int ret = EPKG_OK, ch;
-	int flags;
-	uint64_t opt = 0;
-	match_t match = MATCH_REGEX;
-	pkgdb_field search = FIELD_NONE;
-	pkgdb_field label = FIELD_NONE;
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	bool atleastone = false;
-	bool auto_update;
-	bool old_quiet;
+	const char	*pattern = NULL;
+	const char	*reponame = NULL;
+	int		 ret = EPKG_OK, ch;
+	int		 flags;
+	uint64_t	 opt = 0;
+	match_t		 match = MATCH_REGEX;
+	pkgdb_field	 search = FIELD_NONE;
+	pkgdb_field	 label = FIELD_NONE;
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	bool		 atleastone = false;
+	bool		 auto_update;
+	bool		 old_quiet;
+
+	struct option longopts[] = {
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "comment",		no_argument,		NULL,	'c' },
+		{ "description",	no_argument,		NULL,	'D' },
+		{ "depends-on",		no_argument,		NULL,	'd' },
+		{ "exact",		no_argument,		NULL,	'e' },
+		{ "full",		no_argument,		NULL,	'f' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "label",		required_argument,	NULL,	'L' },
+		{ "origins",		no_argument,		NULL,	'o' },
+		{ "prefix",		no_argument,		NULL,	'p' },
+		{ "quiet",		no_argument,		NULL,	'q' },
+		{ "query-modifier",	required_argument,	NULL,	'Q' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "raw",		no_argument,		NULL,	'R' },
+		{ "search",		required_argument,	NULL,	'S' },
+		{ "size",		no_argument,		NULL,	's' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
@@ -262,7 +287,7 @@ exec_search(int argc, char **argv)
 	pkgdb_set_case_sensitivity(
 	    pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH")));
 
-	while ((ch = getopt(argc, argv, "CcDdefgiL:opqQ:r:RS:sUx")) != -1) {
+	while ((ch = getopt_long(argc, argv, "CcDdefgiL:opqQ:r:RS:sUx", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
