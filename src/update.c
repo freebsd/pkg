@@ -31,6 +31,7 @@
 #include <sys/param.h>
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,18 +108,25 @@ usage_update(void)
 int
 exec_update(int argc, char **argv)
 {
-	int ret;
-	int ch;
-	bool force = false;
-	const char *reponame = NULL;
+	int		 ret;
+	int		 ch;
+	bool		 force = false;
+	const char	*reponame = NULL;
 
-	while ((ch = getopt(argc, argv, "fqr:")) != -1) {
+	struct option longopts[] = {
+		{ "force",	no_argument,		NULL,	'f' },
+		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "repository", required_argument,	NULL,	'r' },
+		{ NULL,		0,			NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "fqr:", longopts, NULL)) != -1) {
 		switch (ch) {
-		case 'q':
-			quiet = true;
-			break;
 		case 'f':
 			force = true;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		case 'r':
 			reponame = optarg;
