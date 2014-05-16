@@ -113,14 +113,14 @@ pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 int
 pkg_repo_fetch_package(struct pkg *pkg)
 {
-	char dest[MAXPATHLEN];
+	char dest[MAXPATHLEN], link_dest[MAXPATHLEN];
 	char url[MAXPATHLEN];
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	int64_t pkgsize;
 	struct stat st;
 	char *path = NULL;
-	const char *packagesite = NULL;
+	const char *packagesite = NULL, *dest_fname = NULL, *ext = NULL;
 
 	int retcode = EPKG_OK;
 	const char *reponame, *name, *version, *sum;
@@ -206,6 +206,16 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	cleanup:
 	if (retcode != EPKG_OK)
 		unlink(dest);
+	else {
+		/* Create symlink from full pkgname */
+		ext = strrchr(dest, '.');
+		pkg_snprintf(link_dest, sizeof(link_dest), "%S/%n-%v%S",
+		    path, pkg, pkg, ext ? ext : "");
+		if ((dest_fname = strrchr(dest, '/')) != NULL)
+			++dest_fname;
+		if (symlink(dest_fname, link_dest))
+			pkg_emit_errno("symlink", link_dest);
+	}
 
 	return (retcode);
 }
