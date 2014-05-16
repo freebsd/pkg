@@ -27,6 +27,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -45,34 +46,52 @@ usage_upgrade(void)
 int
 exec_upgrade(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkg_jobs *jobs = NULL;
-	const char *reponame = NULL;
-	int retcode;
-	int updcode;
-	int ch;
-	int lock_type = PKGDB_LOCK_ADVISORY;
-	match_t match = MATCH_EXACT;
-	bool yes = true, yes_arg = false;
-	bool dry_run = false;
-	bool auto_update;
-	int done = 0;
+	struct pkgdb	*db = NULL;
+	struct pkg_jobs	*jobs = NULL;
+	const char	*reponame = NULL;
+	int		 retcode;
+	int		 updcode;
+	int		 ch;
+	int		 lock_type = PKGDB_LOCK_ADVISORY;
+	match_t		 match = MATCH_EXACT;
+	bool		 yes = true, yes_arg = false;
+	bool		 dry_run = false;
+	bool		 auto_update;
+	int		 done = 0;
+	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
+
+	struct option longopts[] = {
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "force",		no_argument,		NULL,	'f' },
+		{ "fetch-only",		no_argument,		NULL,	'F' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "no-install-scripts",	no_argument,		NULL,	'I' },
+		{ "dry-run",		no_argument,		NULL,	'n' },
+		{ "quiet",		no_argument,		NULL,	'q' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ "yes",		no_argument,		NULL,	'y' },
+		{ NULL,			0,			NULL,	0   },
+	};
+
 	nbactions = nbdone = 0;
-	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
-	while ((ch = getopt(argc, argv, "fInqFr:UyCgix")) != -1) {
+	while ((ch = getopt_long(argc, argv, "CfFgiInqr:Uxy", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
+			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
 			break;
-		case 'I':
-			f |= PKG_FLAG_NOSCRIPT;
-			break;
-		case 'C':
-			pkgdb_set_case_sensitivity(true);
+		case 'F':
+			f |= PKG_FLAG_SKIP_INSTALL;
+			lock_type = PKGDB_LOCK_READONLY;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -80,23 +99,22 @@ exec_upgrade(int argc, char **argv)
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
-		case 'U':
-			auto_update = false;
+		case 'I':
+			f |= PKG_FLAG_NOSCRIPT;
 			break;
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
 			lock_type = PKGDB_LOCK_READONLY;
 			dry_run = true;
 			break;
-		case 'F':
-			f |= PKG_FLAG_SKIP_INSTALL;
-			lock_type = PKGDB_LOCK_READONLY;
-			break;
 		case 'q':
 			quiet = true;
 			break;
 		case 'r':
 			reponame = optarg;
+			break;
+		case 'U':
+			auto_update = false;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
