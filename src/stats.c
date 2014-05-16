@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -24,12 +25,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <err.h>
+#include <getopt.h>
+#include <inttypes.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <libutil.h>
-#include <err.h>
 
 #include <pkg.h>
 
@@ -45,26 +47,34 @@ usage_stats(void)
 int
 exec_stats(__unused int argc, __unused char **argv)
 {
-	struct pkgdb *db = NULL;
-	int64_t flatsize = 0;
-	unsigned int opt = 0;
-	char size[7];
-	int ch;
-	bool show_bytes = false;
+	struct pkgdb	*db = NULL;
+	int64_t		 flatsize = 0;
+	unsigned int	 opt = 0;
+	char		 size[7];
+	int		 ch;
+	bool		 show_bytes = false;
 
-	while ((ch = getopt(argc, argv, "qlrb")) != -1) {
+	struct option longopts[] = {
+		{ "bytes",	no_argument,	NULL,	'b' },
+		{ "local",	no_argument,	NULL,	'l' },
+		{ "quiet",	no_argument,	NULL,	'q' },
+		{ "remote",	no_argument,	NULL,	'r' },
+		{ NULL,		0,		NULL,	0   },
+	};
+	
+	while ((ch = getopt_long(argc, argv, "blqr", longopts, NULL)) != -1) {
                 switch (ch) {
-		case 'q':
-			quiet = true;
+		case 'b':
+			show_bytes = true;
 			break;
 		case 'l':
 			opt |= STATS_LOCAL;
 			break;
+		case 'q':
+			quiet = true;
+			break;
 		case 'r':
 			opt |= STATS_REMOTE;
-			break;
-		case 'b':
-			show_bytes = true;
 			break;
 		default:
 			usage_stats();
