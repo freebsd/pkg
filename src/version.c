@@ -35,6 +35,7 @@
 
 #define _WITH_GETLINE
 #include <err.h>
+#include <getopt.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -671,6 +672,29 @@ exec_version(int argc, char **argv)
 	char		*pattern = NULL;
 	int		 ch;
 
+	struct option longopts[] = {
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "exact",		required_argument,	NULL,	'e' },
+		{ "glob",		required_argument,	NULL,	'g' },
+		{ "help",		no_argument,		NULL,	'h' },
+		{ "index",		no_argument,		NULL,	'I' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "not-like",		required_argument,	NULL,	'L' },
+		{ "like",		required_argument,	NULL,	'l' },
+		{ "match-origin",	required_argument,	NULL,	'O' },
+		{ "origin",		no_argument,		NULL,	'o' },
+		{ "ports",		no_argument,		NULL,	'P' },
+		{ "quiet",		no_argument,		NULL,	'q' },
+		{ "remote",		no_argument,		NULL,	'R' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "test-pattern",	no_argument,		NULL,	'T' },
+		{ "test-version",	no_argument,		NULL,	't' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "verbose",		no_argument,		NULL,	'v' },
+		{ "regex",		required_argument,	NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
+
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
         /* Set default case sensitivity for searching */
@@ -678,7 +702,8 @@ exec_version(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "Ce:g:hIiL:l:O:oPqRr:TtUvx:")) != -1) {
+	while ((ch = getopt_long(argc, argv, "Ce:g:hIiL:l:O:oPqRr:TtUvx:",
+				 longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
