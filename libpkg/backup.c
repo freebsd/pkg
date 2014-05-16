@@ -98,7 +98,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 			if (ret == SQLITE_BUSY) {
 				sqlite3_sleep(250);
 			} else {
-				ERROR_SQLITE(dst);
+				ERROR_SQLITE(dst, "PRAGMA page_size");
 				break;
 			}
 		}
@@ -152,7 +152,7 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 	ret = sqlite3_open(dest, &backup);
 
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(backup);
+		ERROR_SQLITE(backup, "sqlite3_open");
 		sqlite3_close(backup);
 		return (EPKG_FATAL);
 	}
@@ -178,7 +178,7 @@ pkgdb_load(struct pkgdb *db, const char *src)
 	ret = sqlite3_open(src, &restore);
 
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(restore);
+		ERROR_SQLITE(restore, "sqlite3_open");
 		sqlite3_close(restore);
 		return (EPKG_FATAL);
 	}

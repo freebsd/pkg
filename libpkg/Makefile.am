@@ -52,6 +52,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libexpat.la \
 			@LIBELF_LIB@ \
 			@LIBSBUF_LIB@ \
+			@LIBEXECINFO_LIB@ \
 			-larchive \
 			-lfetch \
 			-lutil \
