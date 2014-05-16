@@ -163,8 +163,9 @@ exec_clean(int argc, char **argv)
 	FTS		*fts = NULL;
 	FTSENT		*ent = NULL;
 	struct dl_head	dl = STAILQ_HEAD_INITIALIZER(dl);
-	const char	*cachedir, *sum;
-	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1];
+	const char	*cachedir, *sum, *name;
+	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1],
+			link_buf[MAXPATHLEN];
 	bool		 all = false;
 	bool		 dry_run = false;
 	bool		 yes, sumloaded = false;
@@ -172,6 +173,7 @@ exec_clean(int argc, char **argv)
 	int		 ret;
 	int		 ch;
 	size_t		 total = 0, slen;
+	ssize_t		 link_len;
 	char		 size[7];
 	struct pkg_manifest_key *keys = NULL;
 
@@ -237,7 +239,7 @@ exec_clean(int argc, char **argv)
 
 	pkg_manifest_keys_new(&keys);
 	while ((ent = fts_read(fts)) != NULL) {
-		if (ent->fts_info != FTS_F)
+		if (ent->fts_info != FTS_F && ent->fts_info != FTS_SL)
 			continue;
 
 		if (all) {
@@ -258,8 +260,20 @@ exec_clean(int argc, char **argv)
 			}
 		}
 
+		if (ent->fts_info == FTS_SL) {
+			/* Deferenence the symlink and check it for being
+			 * recognized checksum file, or delete the symlink
+			 * later. */
+			if ((link_len = readlink(ent->fts_name, link_buf,
+			    sizeof(link_buf))) == -1)
+				continue;
+			link_buf[link_len] = '\0';
+			name = link_buf;
+		} else
+			name = ent->fts_name;
+
 		s = NULL;
-		if (extract_filename_sum(ent->fts_name, csum))
+		if (extract_filename_sum(name, csum))
 			HASH_FIND_STR(sumlist, csum, s);
 		if (s == NULL) {
 			ret = add_to_dellist(&dl, ent->fts_path);
