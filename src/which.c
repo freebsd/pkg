@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,12 +30,13 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <stdio.h>
-#include <pkg.h>
-#include <string.h>
-#include <unistd.h>
-#include <sysexits.h>
 #include <err.h>
+#include <getopt.h>
+#include <pkg.h>
+#include <stdio.h>
+#include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
 
 #include "pkgcli.h"
 
@@ -51,24 +53,29 @@ int get_match(char **, char *, char *);
 int
 exec_which(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	char pathabs[MAXPATHLEN];
-	char *p, *path, *match;
-	int ret = EPKG_OK, retcode = EX_SOFTWARE;
-	int ch;
-	int res, pathlen;
-	bool orig = false;
-	bool glob = false;
-	bool search = false;
-	bool search_s = false;
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	char		 pathabs[MAXPATHLEN];
+	char		*p, *path, *match;
+	int		 ret = EPKG_OK, retcode = EX_SOFTWARE;
+	int		 ch;
+	int		 res, pathlen;
+	bool		 orig = false;
+	bool		 glob = false;
+	bool		 search = false;
+	bool		 search_s = false;
 
-	while ((ch = getopt(argc, argv, "qgop")) != -1) {
+	struct option longopts[] = {
+		{ "glob",		no_argument,	NULL,	'g' },
+		{ "origin",		no_argument,	NULL,	'o' },
+		{ "path-search",	no_argument,	NULL,	'p' },
+		{ "quiet",		no_argument,	NULL,	'q' },
+		{ NULL,			0,		NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "gopq", longopts, NULL)) != -1) {
 		switch (ch) {
-		case 'q':
-			quiet = true;
-			break;
 		case 'g':
 			glob = true;
 			break;
@@ -77,6 +84,9 @@ exec_which(int argc, char **argv)
 			break;
 		case 'p':
 			search_s = true;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		default:
 			usage_which();
