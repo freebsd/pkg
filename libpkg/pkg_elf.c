@@ -25,9 +25,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/endian.h>
 #include <sys/types.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>
@@ -40,7 +44,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <link.h>
 #endif
 #include <paths.h>
@@ -53,6 +57,10 @@
 #include "private/event.h"
 #include "private/elf_tables.h"
 #include "private/ldconfig.h"
+
+#ifndef NT_ABI_TAG
+#define NT_ABI_TAG 1
+#endif
 
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
@@ -119,76 +127,6 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 }
 
 static int
-test_depends(void *actdata, struct pkg *pkg, const char *fpath,
-	     const char *name, bool is_shlib)
-{
-	struct pkgdb *db = actdata;
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *d;
-	const char *deporigin, *depname, *depversion;
-	const char *origin;
-	const char *pkgname, *pkgversion;
-	bool deplocked;
-	char pathbuf[MAXPATHLEN];
-	struct pkg_file *file = NULL;
-	const char *filepath;
-
-	assert(db != NULL);
-
-	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
-	case EPKG_OK:		/* A non-system library */
-		break;
-	case EPKG_END:		/* A system library */
-		return (EPKG_OK);
-	default:
-		/* Ignore link resolution errors if we're analysing a
-		   shared library. */
-		if (is_shlib)
-			return (EPKG_OK);
-
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			filepath = pkg_file_path(file);
-			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
-				pkg_addshlib_required(pkg, name);
-				return (EPKG_OK);
-			}
-		}
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		warnx("(%s-%s) %s - shared library %s not found",
-		      pkgname, pkgversion, fpath, name);
-		return (EPKG_FATAL);
-	}
-
-	pkg_addshlib_required(pkg, name);
-
-	if ((it = pkgdb_query_which(db, pathbuf, false)) == NULL)
-		return (EPKG_OK);
-
-	d = NULL;
-	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(d, PKG_ORIGIN,  &deporigin,
-			   PKG_NAME,    &depname,
-			   PKG_VERSION, &depversion,
-			   PKG_LOCKED,  &deplocked);
-
-		dep = pkg_dep_lookup(pkg, deporigin);
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-
-		if (dep == NULL && strcmp(origin, deporigin) != 0) {
-			pkg_debug(1, "Autodeps: adding unlisted depends (%s): %s-%s",
-			    pathbuf, depname, depversion);
-			pkg_adddep(pkg, depname, deporigin, depversion,
-			    deplocked);
-		}
-		pkg_free(d);
-	}
-
-	pkgdb_it_free(it);
-	return (EPKG_OK);
-}
-
-static int
 analyse_elf(struct pkg *pkg, const char *fpath,
 	int (action)(void *, struct pkg *, const char *, const char *, bool),
 	void *actdata)
@@ -213,7 +151,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	bool developer = false;
 	bool is_shlib = false;
 
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	int fd;
 
@@ -249,16 +187,25 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup;
 	}
 
+	/* Elf file has sections header */
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath,
-			    elf_errmsg(-1));
+					elf_errmsg(-1));
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
 		case SHT_NOTE:
-			note = scn;
+			if ((data = elf_getdata(scn, NULL)) == NULL) {
+				ret = EPKG_END; /* Some error occurred, ignore this file */
+				goto cleanup;
+			}
+			else if (data->d_buf != NULL) {
+				Elf_Note *en = (Elf_Note *)data->d_buf;
+				if (en->n_type == NT_ABI_TAG)
+					note = scn;
+			}
 			break;
 		case SHT_DYNAMIC:
 			dynamic = scn;
@@ -335,7 +282,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			   *provided* by the package. Record this if
 			   appropriate */
 
-			pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
@@ -344,6 +291,16 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val), 
 				      dirname(fpath));
 		break;
+	}
+	if (!is_shlib) {
+		/*
+		 * Some shared libraries have no SONAME, but we still want
+		 * to manage them in provides list.
+		 */
+		if (elfhdr.e_type == ET_DYN) {
+			is_shlib = true;
+			pkg_addshlib_provided(pkg, basename(fpath));
+		}
 	}
 
 	/* Now find all of the NEEDED shared libraries. */
@@ -400,20 +357,12 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
-	bool autodeps = false;
 	bool developer = false;
-	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
-
-	if (autodeps)
-		action = test_depends;
-	else
-		action = add_shlibs_to_pkg;
 
 	shlib_list_init();
 
@@ -433,7 +382,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		else
 			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
 
-		ret = analyse_elf(pkg, fpath, action, db);
+		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
 				goto cleanup;
@@ -454,6 +403,8 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 {
 	struct pkg_file        *file = NULL;
 	char fpath[MAXPATHLEN];
+	struct pkg_shlib *sh, *shtmp, *found;
+	const char *origin;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
@@ -472,6 +423,19 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
 		} else
 			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	}
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	/*
+	 * Do not depend on libraries that a package provides itself
+	 */
+	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
+		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
+		if (found != NULL) {
+			pkg_debug(2, "remove %s from required shlibs as the package %s provides "
+					"this library itself", pkg_shlib_name(sh), origin);
+			HASH_DEL(pkg->shlibs_required, sh);
+		}
 	}
 
 	shlib_list_free();
@@ -636,6 +600,11 @@ pkg_get_myarch(char *dest, size_t sz)
 	int ret = EPKG_OK;
 	int i;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	const char *path;
+
+	path = getenv("ABI_FILE");
+	if (path == NULL)
+		path = _PATH_BSHELL;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -643,7 +612,7 @@ pkg_get_myarch(char *dest, size_t sz)
 		return (EPKG_FATAL);
 	}
 
-	if ((fd = open(_PATH_BSHELL, O_RDONLY)) < 0) {
+	if ((fd = open(path, O_RDONLY)) < 0) {
 		pkg_emit_errno("open", _PATH_BSHELL);
 		snprintf(dest, sz, "%s", "unknown");
 		return (EPKG_FATAL);

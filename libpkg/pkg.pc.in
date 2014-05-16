@@ -1,9 +1,9 @@
-prefix=__PREFIX__
+prefix=@prefix@
 libdir=${prefix}/lib
 includedir=${prefix}/include
 
 Name: pkg
 Descriptions: Library to manipulate packages
-Version: __VERSION__
+Version: @VERSION@
 Libs: -L${libdir} -lpkg
 Cflags: -I${includedir}

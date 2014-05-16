@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -285,9 +286,8 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 	assert (v1 != NULL && v2 != NULL);
 
 	/* Check epoch, port version, and port revision, in that order. */
-	if (e1 != e2) {
+	if (e1 != e2)
 		result = (e1 < e2 ? -1 : 1);
-	}
 
 	/* Shortcut check for equality before invoking the parsing routines. */
 	if (result == 0 &&
@@ -329,10 +329,10 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 	}
 
 	/* Compare FreeBSD revision numbers. */
-	if (result == 0 && r1 != r2) {
+	if (result == 0 && r1 != r2)
 		result = (r1 < r2 ? -1 : 1);
-	}
-	return result;
+
+	return (result);
 }
 
 pkg_change_t
@@ -344,15 +344,37 @@ pkg_version_change(const struct pkg * restrict pkg)
 	    PKG_OLD_VERSION, &oldversion);
 
 	if (oldversion == NULL)
-		return PKG_REINSTALL;
+		return (PKG_REINSTALL);
 
 	switch (pkg_version_cmp(oldversion, version)) {
 	case -1:
-		return PKG_UPGRADE;
+		return (PKG_UPGRADE);
 	default:		/* placate the compiler */
 	case 0:
-		return PKG_REINSTALL;
+		return (PKG_REINSTALL);
 	case 1:
-		return PKG_DOWNGRADE;
+		return (PKG_DOWNGRADE);
+	}
+}
+
+pkg_change_t
+pkg_version_change_between(const struct pkg * pkg1, const struct pkg *pkg2)
+{
+	const char *version, *oldversion;
+
+	if (pkg2 == NULL)
+		return PKG_REINSTALL;
+
+	pkg_get(pkg1, PKG_VERSION, &version);
+	pkg_get(pkg2, PKG_VERSION, &oldversion);
+
+	switch (pkg_version_cmp(oldversion, version)) {
+	case -1:
+		return (PKG_UPGRADE);
+	default:		/* placate the compiler */
+	case 0:
+		return (PKG_REINSTALL);
+	case 1:
+		return (PKG_DOWNGRADE);
 	}
 }

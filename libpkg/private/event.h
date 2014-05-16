@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -33,17 +34,19 @@ void pkg_emit_notice(const char *fmt, ...);
 void pkg_emit_errno(const char *func, const char *arg);
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed);
+void pkg_emit_update_add(int total, int done);
+void pkg_emit_update_remove(int total, int done);
 void pkg_emit_install_begin(struct pkg *p);
 void pkg_emit_install_finished(struct pkg *p);
 void pkg_emit_deinstall_begin(struct pkg *p);
 void pkg_emit_deinstall_finished(struct pkg *p);
-void pkg_emit_upgrade_begin(struct pkg *p);
-void pkg_emit_upgrade_finished(struct pkg *p);
+void pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old);
+void pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old);
 void pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d);
 void pkg_emit_locked(struct pkg *p);
 void pkg_emit_required(struct pkg *p, int force);
 void pkg_emit_integritycheck_begin(void);
-void pkg_emit_integritycheck_finished(void);
+void pkg_emit_integritycheck_finished(int);
 void pkg_emit_integritycheck_conflict(const char *name, const char *version,
 		const char *origin, const char *path, struct pkg_event_conflict *conflicts);
 void pkg_emit_noremotedb(const char *);
@@ -54,6 +57,8 @@ void pkg_emit_developer_mode(const char *fmt, ...);
 void pkg_emit_package_not_found(const char *);
 void pkg_emit_incremental_update(int updated, int removed, int added, int processed);
 void pkg_debug(int level, const char *fmt, ...);
+int pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud);
+int pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len);
 
 
 #endif

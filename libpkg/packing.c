@@ -212,7 +212,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
-	pkg_config_bool(PKG_CONFIG_UNSET_TIMESTAMP, &unset_timestamp);
+	unset_timestamp = pkg_object_bool(pkg_config_get("UNSET_TIMESTAMP"));
 
 	if (unset_timestamp) {
 		archive_entry_unset_atime(entry);
@@ -387,4 +387,27 @@ packing_format_from_string(const char *str)
 		return TAR;
 	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
+}
+
+const char*
+packing_format_to_string(pkg_formats format)
+{
+	const char *res = NULL;
+
+	switch (format) {
+	case TXZ:
+		res = "txz";
+		break;
+	case TBZ:
+		res = "tbz";
+		break;
+	case TGZ:
+		res = "tgz";
+		break;
+	case TAR:
+		res = "tar";
+		break;
+	}
+
+	return (res);
 }

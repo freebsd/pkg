@@ -3,6 +3,8 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ *
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
+#include <sys/uio.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -37,12 +40,15 @@
 #include <libgen.h>
 #include <sqlite3.h>
 #include <string.h>
+#include <dirent.h>
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -52,29 +58,79 @@
 #include "private/repodb.h"
 #include "private/thd_repo.h"
 
+
+struct sig_cert {
+	char name[MAXPATHLEN];
+	unsigned char *sig;
+	int64_t siglen;
+	unsigned char *cert;
+	int64_t certlen;
+	bool cert_allocated;
+	UT_hash_handle hh;
+	bool trusted;
+};
+
+void
+pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
+{
+	const char *sum, *name, *version, *reponame, *repourl, *ext = NULL;
+	const char *cachedir = NULL;
+	struct stat st;
+
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+
+	pkg_get(pkg, PKG_REPONAME, &reponame,
+			PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version,
+			PKG_REPOPATH, &repourl);
+
+	if (repourl != NULL)
+		ext = strrchr(repourl, '.');
+
+	if (ext != NULL) {
+		/*
+		 * XXX:
+		 * This code tries to skip refetching but it should be removed as soon
+		 * as we transfer to new scheme.
+		 */
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
+				cachedir, pkg, pkg, pkg);
+		if (stat (dest, &st) != -1)
+			return;
+
+		/*
+		 * The real naming scheme:
+		 * <cachedir>/<name>-<version>-<checksum>.txz
+		 */
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
+				cachedir, pkg, pkg, pkg, ext);
+	}
+	else {
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
+				cachedir, pkg, pkg, pkg);
+	}
+}
+
 int
-pkg_repo_fetch(struct pkg *pkg)
+pkg_repo_fetch_package(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN];
 	char url[MAXPATHLEN];
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	int64_t pkgsize;
+	struct stat st;
 	char *path = NULL;
 	const char *packagesite = NULL;
-	const char *cachedir = NULL;
+
 	int retcode = EPKG_OK;
-	const char *sum, *name, *version, *reponame;
+	const char *reponame, *name, *version, *sum;
 	struct pkg_repo *repo;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
-		return (EPKG_FATAL);
-
-	pkg_get(pkg, PKG_REPONAME, &reponame,
-	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
-
-	pkg_snprintf(dest, sizeof(dest), "%S/%R", cachedir, pkg);
+	pkg_get(pkg, PKG_REPONAME, &reponame, PKG_CKSUM, &sum,
+			PKG_NAME, &name, PKG_VERSION, &version, PKG_PKGSIZE, &pkgsize);
+	pkg_repo_cached_name(pkg, dest, sizeof(dest));
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */
@@ -110,6 +166,11 @@ pkg_repo_fetch(struct pkg *pkg)
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
+	if (strncasecmp(packagesite, "file://", 7) == 0) {
+		pkg_set(pkg, PKG_REPOPATH, url + 7);
+		return (EPKG_OK);
+	}
+
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
 
@@ -117,6 +178,15 @@ pkg_repo_fetch(struct pkg *pkg)
 		goto cleanup;
 
 	checksum:
+	/*	checksum calculation is expensive, if size does not
+		match, skip it and assume failed checksum. */
+	if (stat(dest, &st) == -1 || pkgsize != st.st_size) {
+		pkg_emit_error("cached package %s-%s: "
+			"size mismatch, fetching from remote",
+			name, version);
+		unlink(dest);
+		return (pkg_repo_fetch_package(pkg));
+	}
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK)
 		if (strcmp(cksum, sum)) {
@@ -129,7 +199,7 @@ pkg_repo_fetch(struct pkg *pkg)
 				    "checksum mismatch, fetching from remote",
 				    name, version);
 				unlink(dest);
-				return (pkg_repo_fetch(pkg));
+				return (pkg_repo_fetch_package(pkg));
 			}
 		}
 
@@ -140,647 +210,1014 @@ pkg_repo_fetch(struct pkg *pkg)
 	return (retcode);
 }
 
-struct digest_list_entry {
-	char *origin;
-	char *digest;
-	long manifest_pos;
-	long files_pos;
-	long manifest_length;
-	struct digest_list_entry *next;
-};
+static int
+pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
+		const char *filename, const char *extension, time_t *t, int *rc)
+{
+	char url[MAXPATHLEN];
+	char tmp[MAXPATHLEN];
+	int fd;
+	mode_t mask;
+	const char *tmpdir, *dot;
 
-struct pkg_conflict_bulk {
-	struct pkg_conflict *conflicts;
-	char *file;
-	UT_hash_handle hh;
+	/*
+	 * XXX: here we support old naming scheme, such as filename.yaml
+	 */
+	dot = strrchr(filename, '.');
+	if (dot != NULL) {
+		snprintf(tmp, MIN(sizeof(tmp), dot - filename + 1), "%s", filename);
+		snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), tmp,
+				extension);
+	}
+	else {
+		snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), filename,
+				extension);
+	}
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	mkdirs(tmpdir);
+	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
+
+	mask = umask(022);
+	fd = mkstemp(tmp);
+	umask(mask);
+	if (fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+		    "aborting update.\n", tmp);
+		*rc = EPKG_FATAL;
+		return (-1);
+	}
+	(void)unlink(tmp);
+
+	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t)) != EPKG_OK) {
+		close(fd);
+		fd = -1;
+	}
+
+	return (fd);
+}
+
+static bool
+pkg_repo_file_has_ext(const char *path, const char *ext)
+{
+	size_t n, l;
+	const char *p = NULL;
+
+	n = strlen(path);
+	l = strlen(ext);
+	p = &path[n - l];
+
+	if (strcmp(p, ext) == 0)
+		return (true);
+
+	return (false);
+}
+
+static bool
+pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fatal)
+{
+	struct fingerprint *f = NULL;
+	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
+	int nbgood = 0;
+	struct sig_cert *s = NULL, *stmp = NULL;
+	struct pkg_repo_meta_key *mk = NULL;
+
+	if (HASH_COUNT(sc) == 0) {
+		if (fatal)
+			pkg_emit_error("No signature found");
+		return (false);
+	}
+
+	/* load fingerprints */
+	if (repo->trusted_fp == NULL) {
+		if (pkg_repo_load_fingerprints(repo) != EPKG_OK)
+			return (false);
+	}
+
+	HASH_ITER(hh, sc, s, stmp) {
+		if (s->sig != NULL && s->cert == NULL) {
+			/*
+			 * We may want to check meta
+			 */
+			if (repo->meta != NULL && repo->meta->keys != NULL)
+				HASH_FIND_STR(repo->meta->keys, s->name, mk);
+
+			if (mk != NULL && mk->pubkey != NULL) {
+				s->cert = mk->pubkey;
+				s->certlen = strlen(mk->pubkey);
+			}
+			else {
+				if (fatal)
+					pkg_emit_error("No key with name %s has been found", s->name);
+				return (false);
+			}
+		}
+		else if (s->sig == NULL) {
+			if (fatal)
+				pkg_emit_error("No signature with name %s has been found", s->name);
+			return (false);
+		}
+
+		s->trusted = false;
+		sha256_buf(s->cert, s->certlen, hash);
+		HASH_FIND_STR(repo->revoked_fp, hash, f);
+		if (f != NULL) {
+			if (fatal)
+				pkg_emit_error("At least one of the "
+					" certificates has been revoked");
+
+			return (false);
+		}
+
+		HASH_FIND_STR(repo->trusted_fp, hash, f);
+		if (f != NULL) {
+			nbgood++;
+			s->trusted = true;
+		}
+	}
+
+	if (nbgood == 0) {
+		if (fatal)
+			pkg_emit_error("No trusted public keys found");
+
+		return (false);
+	}
+
+	return (true);
+}
+
+static void
+pkg_repo_signatures_free(struct sig_cert *sc)
+{
+	struct sig_cert *s, *stmp;
+
+	HASH_ITER(hh, sc, s, stmp) {
+		HASH_DELETE(hh, sc, s);
+		free(s->sig);
+		if (s->cert_allocated)
+			free(s->cert);
+		free(s);
+	}
+}
+
+
+struct pkg_extract_cbdata {
+	int afd;
+	int tfd;
+	const char *fname;
+	bool need_sig;
 };
 
 static int
-digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry *d2)
+pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 {
-	return strcmp(d1->origin, d2->origin);
-}
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	struct pkg_extract_cbdata *cb = ud;
+	int siglen;
+	void *sig;
+	int rc = EPKG_FATAL;
 
-static void
-pkg_repo_new_conflict(const char *origin, struct pkg_conflict_bulk *bulk)
-{
-	struct pkg_conflict *new;
+	pkg_debug(1, "PkgRepo: extracting signature of repo in a sandbox");
 
-	pkg_conflict_new(&new);
-	sbuf_set(&new->origin, origin);
+	a = archive_read_new();
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
 
-	HASH_ADD_KEYPTR(hh, bulk->conflicts,
-			__DECONST(char *, pkg_conflict_origin(new)),
-			sbuf_size(new->origin), new);
-}
+	archive_read_open_fd(a, cb->afd, 4096);
 
-static void
-pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
-{
-	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
-	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
-	bool new;
+	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+		if (cb->need_sig && strcmp(archive_entry_pathname(ae), "signature") == 0) {
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			if (sig == NULL) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"malloc failed");
+				return (EPKG_FATAL);
+			}
+			if (archive_read_data(a, sig, siglen) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"archive_read_data failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			if (write(fd, sig, siglen) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"write failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			free(sig);
+			rc = EPKG_OK;
+			break;
+		}
+		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
+			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
+				pkg_emit_errno("archive_read_extract", "extract error");
+				rc = EPKG_FATAL;
+				break;
+			}
+			else if (!cb->need_sig) {
+				rc = EPKG_OK;
+			}
+		}
+	}
 
+	close(cb->tfd);
 	/*
-	 * Here we reorder bulk hash from hash by file
-	 * to hash indexed by a package, so we iterate over the
-	 * original hash and create a new hash indexed by package name
+	 * XXX: do not free resources here since the sandbox is terminated anyway
 	 */
+	return (rc);
+}
+/*
+ * We use here the following format:
+ * <type(0|1)><namelen(int)><name><datalen(int)><data>
+ */
+static int
+pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
+{
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	struct pkg_extract_cbdata *cb = ud;
+	int siglen, keylen;
+	void *sig;
+	int rc = EPKG_FATAL;
+	char key[MAXPATHLEN], t;
+	struct iovec iov[5];
 
-	HASH_ITER (hh, bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->origin), s);
-			if (s == NULL) {
-				/* New entry required */
-				s = malloc(sizeof(struct pkg_conflict_bulk));
-				if (s == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
-					goto out;
+	pkg_debug(1, "PkgRepo: extracting signature of repo in a sandbox");
+
+	a = archive_read_new();
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
+
+	archive_read_open_fd(a, cb->afd, 4096);
+
+	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+		if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
+			snprintf(key, sizeof(key), "%.*s",
+					(int) strlen(archive_entry_pathname(ae)) - 4,
+					archive_entry_pathname(ae));
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			if (sig == NULL) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"malloc failed");
+				return (EPKG_FATAL);
+			}
+			if (archive_read_data(a, sig, siglen) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"archive_read_data failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			/* Signature type */
+			t = 0;
+			keylen = strlen(key);
+			iov[0].iov_base = &t;
+			iov[0].iov_len = sizeof(t);
+			iov[1].iov_base = &keylen;
+			iov[1].iov_len = sizeof(keylen);
+			iov[2].iov_base = key;
+			iov[2].iov_len = keylen;
+			iov[3].iov_base = &siglen;
+			iov[3].iov_len = sizeof(siglen);
+			iov[4].iov_base = sig;
+			iov[4].iov_len = siglen;
+			if (writev(fd, iov, sizeof(iov) / sizeof(iov[0])) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"writev failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			free(sig);
+			rc = EPKG_OK;
+		}
+		else if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
+			snprintf(key, sizeof(key), "%.*s",
+					(int) strlen(archive_entry_pathname(ae)) - 4,
+					archive_entry_pathname(ae));
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			if (sig == NULL) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"malloc failed");
+				return (EPKG_FATAL);
+			}
+			if (archive_read_data(a, sig, siglen) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"archive_read_data failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			/* Pubkey type */
+			t = 1;
+			keylen = strlen(key);
+			iov[0].iov_base = &t;
+			iov[0].iov_len = sizeof(t);
+			iov[1].iov_base = &keylen;
+			iov[1].iov_len = sizeof(keylen);
+			iov[2].iov_base = key;
+			iov[2].iov_len = keylen;
+			iov[3].iov_base = &siglen;
+			iov[3].iov_len = sizeof(siglen);
+			iov[4].iov_base = sig;
+			iov[4].iov_len = siglen;
+			if (writev(fd, iov, sizeof(iov) / sizeof(iov[0])) == -1) {
+				pkg_emit_errno("pkg_repo_meta_extract_signature",
+						"writev failed");
+				free(sig);
+				return (EPKG_FATAL);
+			}
+			free(sig);
+			rc = EPKG_OK;
+		}
+		else {
+			if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
+				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
+					pkg_emit_errno("archive_read_extract", "extract error");
+					rc = EPKG_FATAL;
+					break;
 				}
-				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = sbuf_get(c1->origin);
-				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
-			}
-			/* Now add all new entries from this file to this conflict structure */
-			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				new = true;
-				if (strcmp(sbuf_get(c1->origin), sbuf_get(c2->origin)) == 0)
-					continue;
-
-				HASH_FIND_STR(s->conflicts, sbuf_get(c2->origin), ctmp);
-				if (ctmp == NULL)
-					pkg_repo_new_conflict(sbuf_get(c2->origin), s);
 			}
 		}
 	}
-
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		fprintf(out, "%s:", cur->file);
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", sbuf_get(c1->origin));
-			else
-				fprintf(out, "%s\n", sbuf_get(c1->origin));
-		}
-	}
-out:
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_DEL(cur->conflicts, c1);
-			sbuf_free(c1->origin);
-			free(c1);
-		}
-		HASH_DEL(pkg_bulk, cur);
-		free(cur);
-	}
-	return;
+	close(cb->tfd);
+	/*
+	 * XXX: do not free resources here since the sandbox is terminated anyway
+	 */
+	return (rc);
 }
 
-int
-pkg_create_repo(char *path, const char *output_dir, bool filelist,
-		void (progress)(struct pkg *pkg, void *data), void *data)
+static int
+pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 {
-	FTS *fts = NULL;
-	struct thd_data thd_data;
-	struct pkg_conflict *c, *ctmp;
-	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
-	int num_workers;
-	size_t len;
-	pthread_t *tids = NULL;
-	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
+	const char *p = in, *end = in + inlen;
+	int rc = EPKG_OK;
+	enum {
+		fp_parse_type,
+		fp_parse_flen,
+		fp_parse_file,
+		fp_parse_siglen,
+		fp_parse_sig
+	} state = fp_parse_type;
+	char type;
+	unsigned char *sig;
+	int len = 0, tlen;
+	struct sig_cert *s;
+	bool new = false;
 
-	int retcode = EPKG_OK;
+	while (p < end) {
+		switch (state) {
+		case fp_parse_type:
+			type = *p;
+			if (type != 0 && type != 1) {
+				/* Invalid type */
+				pkg_emit_error("%d is not a valid type for signature_fingerprints"
+						"output", type);
+				return (EPKG_FATAL);
+			}
+			state = fp_parse_flen;
+			s = NULL;
+			p ++;
+			break;
+		case fp_parse_flen:
+			if (end - p < sizeof (int)) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output", type);
+				return (EPKG_FATAL);
+			}
+			len = *(int *)p;
+			state = fp_parse_file;
+			p += sizeof(int);
+			s = NULL;
+			break;
+		case fp_parse_file:
+			if (end - p < len || len <= 0) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output, wanted %d bytes", type, len);
+				return (EPKG_FATAL);
+			}
+			else if (len >= MAXPATHLEN) {
+				pkg_emit_error("filename is incorrect for signature_fingerprints"
+						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
+				return (EPKG_FATAL);
+			}
+			HASH_FIND(hh, *sc, p, len, s);
+			if (s == NULL) {
+				s = calloc(1, sizeof(struct sig_cert));
+				if (s == NULL) {
+					pkg_emit_errno("pkg_repo_parse_sigkeys", "calloc failed");
+					return (EPKG_FATAL);
+				}
+				tlen = MIN(len, sizeof(s->name) - 1);
+				memcpy(s->name, p, tlen);
+				s->name[tlen] = '\0';
+				new = true;
+			}
+			else {
+				new = false;
+			}
+			state = fp_parse_siglen;
+			p += len;
+			break;
+		case fp_parse_siglen:
+			if (s == NULL) {
+				pkg_emit_error("fatal state machine failure at pkg_repo_parse_sigkeys");
+				return (EPKG_FATAL);
+			}
+			if (end - p < sizeof (int)) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output", type);
+				return (EPKG_FATAL);
+			}
+			len = *(int *)p;
+			state = fp_parse_sig;
+			p += sizeof(int);
+			break;
+		case fp_parse_sig:
+			if (s == NULL) {
+				pkg_emit_error("fatal state machine failure at pkg_repo_parse_sigkeys");
+				return (EPKG_FATAL);
+			}
+			if (end - p < len || len <= 0) {
+				pkg_emit_error("truncated reply for signature_fingerprints"
+						"output, wanted %d bytes", type, len);
+				free(s);
+				return (EPKG_FATAL);
+			}
+			sig = malloc(len);
+			if (sig == NULL) {
+				pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
+				free(s);
+				return (EPKG_FATAL);
+			}
+			memcpy(sig, p, len);
+			if (type == 0) {
+				s->sig = sig;
+				s->siglen = len;
+			}
+			else {
+				s->cert = sig;
+				s->certlen = len;
+				s->cert_allocated = true;
+			}
+			state = fp_parse_type;
+			p += len;
 
-	char *repopath[2];
-	char repodb[MAXPATHLEN];
-	char *manifest_digest;
-	FILE *psyml, *fsyml, *mandigests, *fconflicts;
+			if (new)
+				HASH_ADD_STR(*sc, name, s);
 
-	psyml = fsyml = mandigests = fconflicts = NULL;
+			break;
+		}
+	}
 
-	if (!is_dir(path)) {
-		pkg_emit_error("%s is not a directory", path);
+	return (rc);
+}
+
+static int
+pkg_repo_archive_extract_archive(int fd, const char *file,
+		const char *dest, struct pkg_repo *repo, int dest_fd,
+		struct sig_cert **signatures)
+{
+	struct sig_cert *sc = NULL, *s;
+	struct pkg_extract_cbdata cbdata;
+
+	unsigned char *sig = NULL;
+	int rc = EPKG_OK;
+	int64_t siglen = 0;
+
+
+	pkg_debug(1, "PkgRepo: extracting %s of repo %s", file, pkg_repo_name(repo));
+
+	/* Seek to the begin of file */
+	(void)lseek(fd, 0, SEEK_SET);
+
+	cbdata.afd = fd;
+	cbdata.fname = file;
+	if (dest_fd != -1) {
+		cbdata.tfd = dest_fd;
+	}
+	else if (dest != NULL) {
+		cbdata.tfd = open (dest, O_WRONLY | O_CREAT | O_TRUNC,
+				0644);
+		if (cbdata.tfd == -1) {
+			pkg_emit_errno("archive_read_extract", "open error");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		fchown (fd, 0, 0);
+	}
+	else {
+		pkg_emit_error("internal error: both fd and name are invalid");
 		return (EPKG_FATAL);
 	}
 
-	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		cbdata.need_sig = true;
+		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
+				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
+			s = calloc(1, sizeof(struct sig_cert));
+			if (s == NULL) {
+				pkg_emit_errno("pkg_repo_archive_extract_archive",
+						"malloc failed");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+			s->sig = sig;
+			s->siglen = siglen;
+			strlcpy(s->name, "signature", sizeof(s->name));
+			HASH_ADD_STR(sc, name, s);
+		}
+	}
+	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_fingerprints,
+				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL &&
+				siglen > 0) {
+			if (pkg_repo_parse_sigkeys(sig, siglen, &sc) == EPKG_FATAL) {
+				return (EPKG_FATAL);
+			}
+			free(sig);
+			if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+				return (EPKG_FATAL);
+			}
+		}
+		else {
+			pkg_emit_error("No signature found");
+			return (EPKG_FATAL);
+		}
+	}
+	else {
+		cbdata.need_sig = false;
+		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
+			&cbdata, (char **)&sig, &siglen) == EPKG_OK) {
+			if (sig)
+				free(sig);
+		}
+		else {
+			pkg_emit_error("Repo extraction failed");
+			return (EPKG_FATAL);
+		}
+	}
+	(void)lseek(fd, 0, SEEK_SET);
+	if (dest_fd != -1)
+		(void)lseek(dest_fd, 0, SEEK_SET);
+
+cleanup:
+	if (rc == EPKG_OK) {
+		if (signatures != NULL)
+			*signatures = sc;
+		else
+			pkg_repo_signatures_free(sc);
+	}
+	else {
+		pkg_repo_signatures_free(sc);
+	}
+
+	if (rc != EPKG_OK)
+		unlink(dest);
+
+	return rc;
+}
+
+static int
+pkg_repo_archive_extract_check_archive(int fd, const char *file,
+		const char *dest, struct pkg_repo *repo, int dest_fd)
+{
+	struct sig_cert *sc = NULL, *s, *stmp;
+
+	int ret, rc = EPKG_OK;
+
+	if (pkg_repo_archive_extract_archive(fd, file, dest, repo, dest_fd, &sc)
+			!= EPKG_OK)
 		return (EPKG_FATAL);
-	}
 
-	repopath[0] = path;
-	repopath[1] = NULL;
-
-	len = sizeof(num_workers);
-	if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
-		num_workers = 6;
-
-	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
-		pkg_emit_errno("fts_open", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_packagesite_file);
-	if ((psyml = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-	if (filelist) {
-		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-		    repo_filesite_file);
-		if ((fsyml = fopen(repodb, "w")) == NULL) {
-			retcode = EPKG_FATAL;
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if (sc == NULL) {
+			pkg_emit_error("No signature found in the repository.  "
+					"Can not validate against %s key.", pkg_repo_key(repo));
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		/*
+		 * Here are dragons:
+		 * 1) rsa_verify is NOT rsa_verify_cert
+		 * 2) siglen must be reduced by one to support this legacy method
+		 *
+		 * by @bdrewery
+		 */
+		ret = rsa_verify(dest, pkg_repo_key(repo), sc->sig, sc->siglen - 1,
+				dest_fd);
+		if (ret != EPKG_OK) {
+			pkg_emit_error("Invalid signature, "
+					"removing repository.");
+			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_digests_file);
-	if ((mandigests = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir, repo_conflicts_file);
-	if ((fconflicts = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	thd_data.root_path = path;
-	thd_data.max_results = num_workers;
-	thd_data.num_results = 0;
-	thd_data.stop = false;
-	thd_data.fts = fts;
-	thd_data.read_files = filelist;
-	pthread_mutex_init(&thd_data.fts_m, NULL);
-	thd_data.results = NULL;
-	thd_data.thd_finished = 0;
-	pthread_mutex_init(&thd_data.results_m, NULL);
-	pthread_cond_init(&thd_data.has_result, NULL);
-	pthread_cond_init(&thd_data.has_room, NULL);
-
-	/* Launch workers */
-	tids = calloc(num_workers, sizeof(pthread_t));
-	for (int i = 0; i < num_workers; i++) {
-		pthread_create(&tids[i], NULL, (void *)&read_pkg_file, &thd_data);
-	}
-
-	for (;;) {
-		struct pkg_result *r;
-		const char *origin;
-
-		long manifest_pos, files_pos, manifest_length;
-
-		pthread_mutex_lock(&thd_data.results_m);
-		while ((r = thd_data.results) == NULL) {
-			if (thd_data.thd_finished == num_workers) {
+	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+		HASH_ITER(hh, sc, s, stmp) {
+			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen,
+					dest_fd);
+			if (ret == EPKG_OK && s->trusted) {
 				break;
 			}
-			pthread_cond_wait(&thd_data.has_result, &thd_data.results_m);
+			ret = EPKG_FATAL;
 		}
-		if (r != NULL) {
-			LL_DELETE(thd_data.results, thd_data.results);
-			thd_data.num_results--;
-			pthread_cond_signal(&thd_data.has_room);
+		if (ret != EPKG_OK) {
+			pkg_emit_error("No trusted certificate has been used "
+			    "to sign the repository");
+			rc = EPKG_FATAL;
+			goto cleanup;
 		}
-		pthread_mutex_unlock(&thd_data.results_m);
-		if (r == NULL) {
-			break;
-		}
-
-		if (r->retcode != EPKG_OK) {
-			free(r);
-			continue;
-		}
-
-		/* EPKG_END returned */
-
-		if (progress != NULL)
-			progress(r->pkg, data);
-
-		manifest_pos = ftell(psyml);
-		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
-		manifest_length = ftell(psyml) - manifest_pos;
-		if (filelist) {
-			files_pos = ftell(fsyml);
-			pkg_emit_filelist(r->pkg, fsyml);
-		} else {
-			files_pos = 0;
-		}
-
-		pkg_get(r->pkg, PKG_ORIGIN, &origin);
-
-		cur_dig = malloc(sizeof (struct digest_list_entry));
-		cur_dig->origin = strdup(origin);
-		cur_dig->digest = manifest_digest;
-		cur_dig->manifest_pos = manifest_pos;
-		cur_dig->files_pos = files_pos;
-		cur_dig->manifest_length = manifest_length;
-		LL_PREPEND(dlist, cur_dig);
-
-		pkg_free(r->pkg);
-		free(r);
 	}
 
-	/* Now sort all digests */
-	LL_SORT(dlist, digest_sort_compare_func);
-
-	pkg_repo_write_conflicts(conflicts, fconflicts);
 cleanup:
-	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			sbuf_free(c->origin);
-			HASH_DEL(curcb->conflicts, c);
-			free(c);
-		}
-		HASH_DEL(conflicts, curcb);
-		free(curcb);
-	}
-	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
-		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-		    cur_dig->manifest_length);
-		free(cur_dig->digest);
-		free(cur_dig->origin);
-		free(cur_dig);
-	}
-	if (tids != NULL) {
-		// Cancel running threads
-		if (retcode != EPKG_OK) {
-			pthread_mutex_lock(&thd_data.fts_m);
-			thd_data.stop = true;
-			pthread_mutex_unlock(&thd_data.fts_m);
-		}
-		// Join on threads to release thread IDs
-		for (int i = 0; i < num_workers; i++) {
-			pthread_join(tids[i], NULL);
-		}
-		free(tids);
-	}
+	if (rc != EPKG_OK && dest != NULL)
+		unlink(dest);
 
-	if (fts != NULL)
-		fts_close(fts);
-
-	if (fsyml != NULL)
-		fclose(fsyml);
-
-	if (psyml != NULL)
-		fclose(psyml);
-
-	if (fconflicts != NULL)
-		fclose(fconflicts);
-
-	if (mandigests != NULL)
-		fclose(mandigests);
-
-	return (retcode);
+	return rc;
 }
 
-void
-read_pkg_file(void *data)
+FILE *
+pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
+		time_t *t, int *rc)
 {
-	struct thd_data *d = (struct thd_data*) data;
-	struct pkg_result *r;
-	struct pkg_manifest_key *keys = NULL;
+	int fd, dest_fd;
+	mode_t mask;
+	FILE *res = NULL;
+	const char *tmpdir;
+	char tmp[MAXPATHLEN];
 
-	FTSENT *fts_ent = NULL;
-	char fts_accpath[MAXPATHLEN];
-	char fts_path[MAXPATHLEN];
-	char fts_name[MAXPATHLEN];
-	off_t st_size;
-	int fts_info, flags;
+	fd = pkg_repo_fetch_remote_tmp(repo, filename,
+			packing_format_to_string(repo->meta->packing_format), t, rc);
+	if (fd == -1) {
+		return (NULL);
+	}
 
-	char *ext = NULL;
-	char *pkg_path;
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, filename);
 
-	pkg_manifest_keys_new(&keys);
+	mask = umask(022);
+	dest_fd = mkstemp(tmp);
+	umask(mask);
+	if (dest_fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+				"aborting update.\n", tmp);
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	(void)unlink(tmp);
+	if (pkg_repo_archive_extract_check_archive(fd, filename, NULL, repo, dest_fd)
+			!= EPKG_OK) {
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
 
-	for (;;) {
-		fts_ent = NULL;
+	res = fdopen(dest_fd, "r");
+	if (res == NULL) {
+		pkg_emit_errno("fdopen", "digest open failed");
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	dest_fd = -1;
+	*rc = EPKG_OK;
 
-		/*
-		 * Get a file to read from.
-		 * Copy the data we need from the fts entry localy because as soon as
-		 * we unlock the fts_m mutex, we can not access it.
-		 */
-		pthread_mutex_lock(&d->fts_m);
-		if (!d->stop)
-			fts_ent = fts_read(d->fts);
-		if (fts_ent != NULL) {
-			strlcpy(fts_accpath, fts_ent->fts_accpath, sizeof(fts_accpath));
-			strlcpy(fts_path, fts_ent->fts_path, sizeof(fts_path));
-			strlcpy(fts_name, fts_ent->fts_name, sizeof(fts_name));
-			st_size = fts_ent->fts_statp->st_size;
-			fts_info = fts_ent->fts_info;
+cleanup:
+	if (dest_fd != -1)
+		close(dest_fd);
+	/* Thus removing archived file as well */
+	close(fd);
+	return (res);
+}
+
+struct pkg_repo_check_cbdata {
+	unsigned char *map;
+	size_t len;
+	const char *name;
+};
+
+static int
+pkg_repo_meta_extract_pubkey(int fd, void *ud)
+{
+	struct pkg_repo_check_cbdata *cbdata = ud;
+	struct ucl_parser *parser;
+	ucl_object_t *top;
+	const ucl_object_t *obj, *cur, *elt;
+	ucl_object_iter_t iter = NULL;
+	struct iovec iov[2];
+	int rc = EPKG_OK;
+	int64_t res_len = 0;
+	bool found = false;
+
+	parser = ucl_parser_new(0);
+	if (!ucl_parser_add_chunk(parser, cbdata->map, cbdata->len)) {
+		pkg_emit_error("cannot parse repository meta from %s",
+				ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		return (EPKG_FATAL);
+	}
+
+	top = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+
+	/* Now search for the required key */
+	obj = ucl_object_find_key(top, "cert");
+	if (obj == NULL) {
+		pkg_emit_error("cannot find key for signature %s in meta",
+				cbdata->name);
+		rc = EPKG_FATAL;
+	}
+	else {
+		while(!found && (cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
+			elt = ucl_object_find_key(cur, "name");
+			if (elt != NULL && elt->type == UCL_STRING) {
+				if (strcmp(ucl_object_tostring(elt), cbdata->name) == 0) {
+					elt = ucl_object_find_key(cur, "data");
+					if (elt == NULL || elt->type != UCL_STRING)
+						continue;
+
+					/* +1 to include \0 at the end */
+					res_len = elt->len + 1;
+					iov[0].iov_base = (void *)ucl_object_tostring(elt);
+					iov[0].iov_len = res_len;
+					if (writev(fd, iov, 1) == -1) {
+						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
+								"writev error");
+						rc = EPKG_FATAL;
+						break;
+					}
+					found = true;
+				}
+			}
 		}
-		pthread_mutex_unlock(&d->fts_m);
+	}
 
-		// There is no more jobs, exit the main loop.
-		if (fts_ent == NULL)
-			break;
+	ucl_object_unref(top);
 
-		/* skip everything that is not a file */
-		if (fts_info != FTS_F)
-			continue;
+	return (rc);
+}
 
-		ext = strrchr(fts_name, '.');
+int
+pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
+{
+	char filepath[MAXPATHLEN];
+	struct pkg_repo_meta *nmeta;
+	struct stat st;
+	const char *dbdir = NULL;
+	unsigned char *map = NULL;
+	int fd;
+	int rc = EPKG_OK, ret;
+	struct sig_cert *sc = NULL, *s, *stmp;
+	struct pkg_repo_check_cbdata cbdata;
 
-		if (ext == NULL)
-			continue;
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
-		if (strcmp(ext, ".tgz") != 0 &&
-				strcmp(ext, ".tbz") != 0 &&
-				strcmp(ext, ".txz") != 0 &&
-				strcmp(ext, ".tar") != 0)
-			continue;
+	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "txz", t, &rc);
+	if (fd == -1)
+		return (rc);
 
-		*ext = '\0';
+	snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
 
-		if (strcmp(fts_name, repo_db_archive) == 0 ||
-			strcmp(fts_name, repo_packagesite_archive) == 0 ||
-			strcmp(fts_name, repo_filesite_archive) == 0 ||
-			strcmp(fts_name, repo_digests_archive) == 0 ||
-			strcmp(fts_name, repo_conflicts_archive) == 0)
-			continue;
-		*ext = '.';
+	/* Remove old metafile */
+	if (unlink (filepath) == -1 && errno != ENOENT) {
+		close(fd);
+		return (EPKG_FATAL);
+	}
 
-		pkg_path = fts_path;
-		pkg_path += strlen(d->root_path);
-		while (pkg_path[0] == '/')
-			pkg_path++;
-
-		r = calloc(1, sizeof(struct pkg_result));
-		strlcpy(r->path, pkg_path, sizeof(r->path));
-
-		if (d->read_files)
-			flags = PKG_OPEN_MANIFEST_ONLY;
-		else
-			flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
-
-		if (pkg_open(&r->pkg, fts_accpath, keys, flags) != EPKG_OK) {
-			r->retcode = EPKG_WARN;
-		} else {
-			sha256_file(fts_accpath, r->cksum);
-			pkg_set(r->pkg, PKG_CKSUM, r->cksum,
-			    PKG_REPOPATH, pkg_path,
-			    PKG_PKGSIZE, st_size);
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+			close (fd);
+			return (rc);
 		}
-
-
-		/* Add result to the FIFO and notify */
-		pthread_mutex_lock(&d->results_m);
-		while (d->num_results >= d->max_results) {
-			pthread_cond_wait(&d->has_room, &d->results_m);
-		}
-		LL_APPEND(d->results, r);
-		d->num_results++;
-		pthread_cond_signal(&d->has_result);
-		pthread_mutex_unlock(&d->results_m);
+		goto load_meta;
 	}
 
 	/*
-	 * This thread is about to exit.
-	 * Notify the main thread that we are done.
+	 * For fingerprints we cannot just load pubkeys as they could be in metafile itself
+	 * To do it, we parse meta in sandbox and for each unloaded pubkey we try to return
+	 * a corresponding key from meta file.
 	 */
-	pthread_mutex_lock(&d->results_m);
-	d->thd_finished++;
-	pthread_cond_signal(&d->has_result);
-	pthread_mutex_unlock(&d->results_m);
-	pkg_manifest_keys_free(keys);
-}
 
-static int
-cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
-{
-	FILE *fp;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	struct sbuf *cmd = NULL;
-	struct sbuf *buf = NULL;
-	char *line = NULL;
-	size_t linecap = 0;
-	ssize_t linelen;
-	int i, ret = EPKG_OK;
-
-	if (sha256_file(path, sha256) != EPKG_OK)
-		return (EPKG_FATAL);
-
-	cmd = sbuf_new_auto();
-
-	for (i = 0; i < argc; i++) {
-		if (strspn(argv[i], " \t\n") > 0)
-			sbuf_printf(cmd, " \"%s\" ", argv[i]);
-		else
-			sbuf_printf(cmd, " %s ", argv[i]);
-	}
-	sbuf_done(cmd);
-
-	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
-		ret = EPKG_FATAL;
-		goto done;
+	if ((rc = pkg_repo_archive_extract_archive(fd, "meta", filepath, repo, -1, &sc)) != EPKG_OK) {
+		close (fd);
+		return (rc);
 	}
 
-	fprintf(fp, "%s\n", sha256);
+	close(fd);
 
-	if (*sig == NULL)
-		*sig = sbuf_new_auto();
-	if (*cert == NULL)
-		*cert = sbuf_new_auto();
+	if (repo->trusted_fp == NULL) {
+		if (pkg_repo_load_fingerprints(repo) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
 
-	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
-		if (strcmp(line, "SIGNATURE\n") == 0) {
-			buf = *sig;
-			continue;
-		} else if (strcmp(line, "CERT\n") == 0) {
-			buf = *cert;
-			continue;
-		} else if (strcmp(line, "END\n") == 0) {
+	/* Map meta file for extracting pubkeys from it */
+	if (stat(filepath, &st) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	if ((fd = open(filepath, O_RDONLY)) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	close(fd);
+	if (map == MAP_FAILED) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot mmap meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	cbdata.len = st.st_size;
+	cbdata.map = map;
+	HASH_ITER(hh, sc, s, stmp) {
+		if (s->siglen != 0 && s->certlen == 0) {
+			/*
+			 * We need to load this pubkey from meta
+			 */
+			cbdata.name = s->name;
+			if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
+					(char **)&s->cert, &s->certlen) != EPKG_OK) {
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+			s->cert_allocated = true;
+		}
+	}
+
+	if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	HASH_ITER(hh, sc, s, stmp) {
+		ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
+				-1);
+		if (ret == EPKG_OK && s->trusted)
 			break;
-		}
-		if (buf != NULL)
-			sbuf_bcat(buf, line, linelen);
-	}
 
-	if (pclose(fp) != 0) {
 		ret = EPKG_FATAL;
-		goto done;
+	}
+	if (ret != EPKG_OK) {
+		pkg_emit_error("No trusted certificate has been used "
+				"to sign the repository");
+		rc = EPKG_FATAL;
+		goto cleanup;
 	}
 
-	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
-		sbuf_setpos(*sig, sbuf_len(*sig) -1);
+load_meta:
+	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK)
+		return (rc);
 
-	sbuf_finish(*sig);
-	sbuf_finish(*cert);
-done:
-	if (cmd)
-		sbuf_delete(cmd);
+	if (repo->meta != NULL)
+		pkg_repo_meta_free(repo->meta);
 
-	return (ret);
+	repo->meta = nmeta;
+
+cleanup:
+	if (map != NULL)
+		munmap(map, st.st_size);
+
+	if (sc != NULL)
+		pkg_repo_signatures_free(sc);
+
+	if (rc != EPKG_OK)
+		unlink(filepath);
+
+	return (rc);
+}
+
+static struct fingerprint *
+pkg_repo_parse_fingerprint(ucl_object_t *obj)
+{
+	const ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
+	const char *function = NULL, *fp = NULL;
+	hash_t fct = HASH_UNKNOWN;
+	struct fingerprint *f = NULL;
+	const char *key;
+
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (cur->type != UCL_STRING)
+			continue;
+
+		if (strcasecmp(key, "function") == 0) {
+			function = ucl_object_tostring(cur);
+			continue;
+		}
+
+		if (strcasecmp(key, "fingerprint") == 0) {
+			fp = ucl_object_tostring(cur);
+			continue;
+		}
+	}
+
+	if (fp == NULL || function == NULL)
+		return (NULL);
+
+	if (strcasecmp(function, "sha256") == 0)
+		fct = HASH_SHA256;
+
+	if (fct == HASH_UNKNOWN) {
+		pkg_emit_error("Unsupported hashing function: %s", function);
+		return (NULL);
+	}
+
+	f = calloc(1, sizeof(struct fingerprint));
+	f->type = fct;
+	strlcpy(f->hash, fp, sizeof(f->hash));
+
+	return (f);
+}
+
+static struct fingerprint *
+pkg_repo_load_fingerprint(const char *dir, const char *filename)
+{
+	ucl_object_t *obj = NULL;
+	struct ucl_parser *p = NULL;
+	char path[MAXPATHLEN];
+	struct fingerprint *f = NULL;
+
+	snprintf(path, sizeof(path), "%s/%s", dir, filename);
+
+	p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_file(p, path)) {
+		pkg_emit_error("%s", ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		return (NULL);
+	}
+
+	obj = ucl_parser_get_object(p);
+
+	if (obj->type == UCL_OBJECT)
+		f = pkg_repo_parse_fingerprint(obj);
+
+	ucl_object_unref(obj);
+	ucl_parser_free(p);
+
+	return (f);
 }
 
 static int
-pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, char **argv, int argc)
+pkg_repo_load_fingerprints_from_path(const char *path, struct fingerprint **f)
 {
-	struct packing *pack;
-	unsigned char *sigret = NULL;
-	unsigned int siglen = 0;
-	char fname[MAXPATHLEN];
-	struct sbuf *sig, *pub;
+	DIR *d;
+	struct dirent *ent;
+	struct fingerprint *finger = NULL;
 
-	sig = NULL;
-	pub = NULL;
+	*f = NULL;
 
-	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
+	if ((d = opendir(path)) == NULL)
 		return (EPKG_FATAL);
 
-	if (rsa != NULL) {
-		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
-			free(sigret);
-			free(pack);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		free(sigret);
-	} else if (argc >= 1) {
-		if (cmd_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		snprintf(fname, sizeof(fname), "%s.sig", name);
-		if (packing_append_buffer(pack, sbuf_data(sig), fname, sbuf_len(sig)) != EPKG_OK) {
-			packing_finish(pack);
-			sbuf_delete(sig);
-			sbuf_delete(pub);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		snprintf(fname, sizeof(fname), "%s.pub", name);
-		if (packing_append_buffer(pack, sbuf_data(pub), fname, sbuf_len(pub)) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			sbuf_delete(sig);
-			sbuf_delete(pub);
-			return (EPKG_FATAL);
-		}
-
+	while ((ent = readdir(d))) {
+		if (strcmp(ent->d_name, ".") == 0 ||
+		    strcmp(ent->d_name, "..") == 0)
+			continue;
+		finger = pkg_repo_load_fingerprint(path, ent->d_name);
+		if (finger != NULL)
+			HASH_ADD_STR(*f, hash, finger);
 	}
-	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
 
-	packing_finish(pack);
-	unlink(path);
-	if (sig != NULL)
-		sbuf_delete(sig);
-	if (pub != NULL)
-		sbuf_delete(pub);
+	closedir(d);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
-    char **argv, int argc, bool filelist)
+pkg_repo_load_fingerprints(struct pkg_repo *repo)
 {
-	char repo_path[MAXPATHLEN];
-	char repo_archive[MAXPATHLEN];
-	struct rsa_key *rsa = NULL;
+	char path[MAXPATHLEN];
 	struct stat st;
-	int ret = EPKG_OK;
-	
-	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
+
+	snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+	if ((pkg_repo_load_fingerprints_from_path(path, &repo->trusted_fp)) != EPKG_OK) {
+		pkg_emit_error("Error loading trusted certificates");
 		return (EPKG_FATAL);
 	}
 
-	if (argc == 1) {
-		rsa_new(&rsa, password_cb, argv[0]);
-	}
-
-	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
+	if (HASH_COUNT(repo->trusted_fp) == 0) {
+		pkg_emit_error("No trusted certificates");
 		return (EPKG_FATAL);
-
-	if (argc > 1) {
-		argc--;
-		argv++;
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_packagesite_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_packagesite_archive);
-	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (filelist) {
-		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		    repo_filesite_file);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
-		    output_dir, repo_filesite_archive);
-		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto cleanup;
+	snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
+	/* Absence of revoked certificates is not a fatal error */
+	if (stat(path, &st) != -1) {
+		if ((pkg_repo_load_fingerprints_from_path(path, &repo->revoked_fp)) != EPKG_OK) {
+			pkg_emit_error("Error loading revoked certificates");
+			return (EPKG_FATAL);
 		}
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_digests_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_digests_archive);
-	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir, 
-		repo_conflicts_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		repo_conflicts_archive);
-	if (pack_db(repo_conflicts_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-	    output_dir, repo_db_archive);
-	if (stat(repo_archive, &st) == 0) {
-		struct timeval ftimes[2] = {
-			{
-			.tv_sec = st.st_mtime,
-			.tv_usec = 0
-			},
-			{
-			.tv_sec = st.st_mtime,
-			.tv_usec = 0
-			}
-		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_packagesite_archive);
-		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_digests_archive);
-		utimes(repo_archive, ftimes);
-		if (filelist) {
-			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.txz", output_dir, repo_filesite_archive);
-			utimes(repo_archive, ftimes);
-		}
-	}
-
-cleanup:
-	if (rsa)
-		rsa_free(rsa);
-
-	return (ret);
+	return (EPKG_OK);
 }
