@@ -673,6 +673,15 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
 
+	/* getopt_long() will permute the arg-list unless
+	 * POSIXLY_CORRECT is set in the environment.  This is a
+	 * difference to the original getopt() we were using, and
+	 * screws up our 'pkg {pkg-opts} verb {verb-opts}' command
+	 * line concept. */
+
+	if (setenv("POSIXLY_CORRECT", "1",  1) == -1)
+		err(EX_SOFTWARE, "setenv() failed");
+
 #ifdef HAVE_LIBJAIL
 	while ((ch = getopt_long(argc, argv, "dj:c:C:R:lNvo:", longopts, NULL)) != -1) {
 #else
