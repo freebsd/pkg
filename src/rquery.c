@@ -32,6 +32,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <getopt.h>
 #include <inttypes.h>
 #include <pkg.h>
 #include <stdio.h>
@@ -95,26 +96,39 @@ print_index(struct pkg *pkg, const char *portsdir)
 int
 exec_rquery(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	char *pkgname = NULL;
-	int query_flags = PKG_LOAD_BASIC;
-	match_t match = MATCH_EXACT;
-	int ch;
-	int ret = EPKG_OK;
-	int retcode = EX_OK;
-	int i;
-	char multiline = 0;
-	char *condition = NULL;
-	const char *portsdir;
-	struct sbuf *sqlcond = NULL;
-	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
-	const char *reponame = NULL;
-	bool auto_update;
-	bool onematched = false;
-	bool old_quiet;
-	bool index_output = false;
+	struct pkgdb		*db = NULL;
+	struct pkgdb_it		*it = NULL;
+	struct pkg		*pkg = NULL;
+	char			*pkgname = NULL;
+	int			 query_flags = PKG_LOAD_BASIC;
+	match_t			 match = MATCH_EXACT;
+	int			 ch;
+	int			 ret = EPKG_OK;
+	int			 retcode = EX_OK;
+	int			 i;
+	char			 multiline = 0;
+	char			*condition = NULL;
+	const char		*portsdir;
+	struct sbuf		*sqlcond = NULL;
+	const unsigned int	 q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
+	const char		*reponame = NULL;
+	bool			 auto_update;
+	bool			 onematched = false;
+	bool			 old_quiet;
+	bool			 index_output = false;
+
+	struct option longopts[] = {
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "evaluate",		required_argument,	NULL,	'e' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "index-line",		no_argument,		NULL,	'I' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
@@ -125,7 +139,7 @@ exec_rquery(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "aCgiIxe:r:U")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -133,27 +147,27 @@ exec_rquery(int argc, char **argv)
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
 			break;
+		case 'e':
+			match = MATCH_CONDITION;
+			condition = optarg;
+			break;
 		case 'g':
 			match = MATCH_GLOB;
-			break;
-		case 'I':
-			index_output = true;
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'e':
-			match = MATCH_CONDITION;
-			condition = optarg;
+		case 'I':
+			index_output = true;
 			break;
 		case 'r':
 			reponame = optarg;
 			break;
 		case 'U':
 			auto_update = false;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
 			break;
 		default:
 			usage_rquery();
