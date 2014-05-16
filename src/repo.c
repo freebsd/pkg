@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <getopt.h>
 #include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
@@ -86,22 +87,29 @@ password_cb(char *buf, int size, int rwflag, void *key)
 int
 exec_repo(int argc, char **argv)
 {
-	int ret;
-	int pos = 0;
-	int ch;
-	bool filelist = false;
-	char *output_dir = NULL;
+	int	 ret;
+	int	 pos = 0;
+	int	 ch;
+	bool	 filelist = false;
+	char	*output_dir = NULL;
 
-	while ((ch = getopt(argc, argv, "lo:q")) != -1) {
+	struct option longopts[] = {
+		{ "list-files", no_argument,		NULL,	'l' },
+		{ "output-dir", required_argument,	NULL,	'o' },
+		{ "quiet",	no_argument,		NULL,	'q' },
+		{ NULL,		0,			NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "lo:q", longopts, NULL)) != -1) {
 		switch (ch) {
-		case 'q':
-			quiet = true;
-			break;
 		case 'l':
 			filelist = true;
 			break;
 		case 'o':
 			output_dir = optarg;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		default:
 			usage_repo();
