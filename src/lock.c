@@ -47,10 +47,10 @@ static bool yes = false;	/* Assume yes answer to questions */
 void
 usage_lock(void)
 {
-	fprintf(stderr, "Usage: pkg lock [-qy] [-Cgix] <pkg-name>\n");
-	fprintf(stderr, "       pkg lock [-qy] -al\n");
-	fprintf(stderr, "       pkg unlock [-qy] [-Cgix] <pkg-name>\n");
-	fprintf(stderr, "       pkg unlock [-qy] -a\n");
+	fprintf(stderr, "Usage: pkg lock [-lqy] [-Cgix] <pkg-name>\n");
+	fprintf(stderr, "       pkg lock [-lqy] -al\n");
+	fprintf(stderr, "       pkg unlock [-lqy] [-Cgix] <pkg-name>\n");
+	fprintf(stderr, "       pkg unlock [-lqy] -a\n");
 	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
 
@@ -107,48 +107,37 @@ exec_unlock(int argc, char **argv)
 }
 
 static int 
-list_locked()
+list_locked(struct pkgdb *db)
 {
-        struct pkgdb *db = NULL;
-        struct pkgdb_it *it = NULL;
-        struct pkg *pkg = NULL;
-        const char *pkg_name, *pkg_version;
- 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
-                        
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
-	}
-
+        struct pkgdb_it	*it = NULL;
+        struct pkg	*pkg = NULL;
+                         
 	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
 		pkgdb_close(db);
 		return (EX_UNAVAILABLE);
 	}
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_NAME, &pkg_name, PKG_VERSION, &pkg_version);
-                printf("%s-%s\n", pkg_name, pkg_version);
-	}
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
-	return (EX_OK);
+	printf("Currently locked packages:\n");
 
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_printf("%n-%v\n", pkg, pkg);
+	}
+	return (EX_OK);
 }
 
 static int
 exec_lock_unlock(int argc, char **argv, enum action action)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	const char *pkgname;
-	int match = MATCH_EXACT;
-	int retcode;
-	int exitcode = EX_OK;
-	int ch;
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	const char	*pkgname;
+	int		 match = MATCH_EXACT;
+	int		 retcode;
+	int		 exitcode = EX_OK;
+	int		 ch;
+	bool		 show_locked = false;
+
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
@@ -163,14 +152,8 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			match = MATCH_ALL;
 			break;
 		case 'l':
-			if (action == LOCK) {
-				exitcode = list_locked();
-				return exitcode;
-			} else {
-				warnx("list of locked packages useless with unlock command");
-				return (EX_USAGE);
-			}
-
+			show_locked = true;
+			break;
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
 			break;
@@ -229,7 +212,8 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
-		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		warnx("Cannot get an exclusive lock on database. "
+		      "It is locked by another process");
 		return (EX_TEMPFAIL);
 	}
 
@@ -249,6 +233,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			goto cleanup;
 		}
 	}
+
+	if (show_locked) 
+		retcode = list_locked(db);
+
 	if (retcode != EPKG_END)
 		exitcode = EX_IOERR;
 
