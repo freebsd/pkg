@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -24,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <sysexits.h>
@@ -47,7 +49,12 @@ exec_plugins(__unused int argc, __unused char **argv)
 	int ch;
 	bool __unused list_only = true;
 
-	while ((ch = getopt(argc, argv, "l")) != -1) {
+	struct option longopts[] = {
+		{ "list-only",	no_argument,	NULL,	'l' },
+		{ NULL,		0,		NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "l", longopts, NULL)) != -1) {
                 switch (ch) {
 		case 'l':
 			list_only = true;
