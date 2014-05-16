@@ -32,7 +32,9 @@
 #include <sys/sbuf.h>
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
+#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -45,6 +47,7 @@ enum action {
 	ADD,
 	MODIFY,
 	DELETE,
+	SHOW,
 };
 
 static 	bool yes;
@@ -56,11 +59,11 @@ usage_annotate(void)
 	fprintf(stderr,
             "Usage: pkg annotate [-Cgiqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
 	fprintf(stderr,
-            "       pkg annotate [-Cgiqxy] -D <pkg-name> <tag>\n");
+            "       pkg annotate [-Cgiqxy] [-S|D] <pkg-name> <tag>\n");
 	fprintf(stderr,
             "       pkg annotate [-qy] -a [-A|M] <tag> [<value>]\n");
 	fprintf(stderr,
-            "       pkg annotate [-qy] -a -D <tag>\n");
+            "       pkg annotate [-qy] -a [-S|D] <tag>\n");
 	fprintf(stderr,
             "For more information see 'pkg help annotate'.\n");
 }
@@ -158,6 +161,29 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	return (ret);
 } 
 
+static int
+do_show(struct pkg *pkg, const char *tag)
+{
+	const pkg_object	*annotations, *note;
+	pkg_iter		 it = NULL;
+	int			 ret = EPKG_OK;
+
+	pkg_get(pkg, PKG_ANNOTATIONS, &annotations);
+	while ((note = pkg_object_iterate(annotations, &it)) != NULL) {
+		if (strcmp(tag, pkg_object_key(note)) == 0) {
+			if (quiet)
+				printf("%s\n", pkg_object_string(note));
+			else
+				pkg_printf("%n-%v: Tag: %S Value: %S\n",
+				    pkg, pkg, pkg_object_key(note),
+				    pkg_object_string(note));
+		}
+	}
+
+	return (ret);
+}
+
+
 static struct sbuf *
 read_input(void)
 {
@@ -201,6 +227,22 @@ exec_annotate(int argc, char **argv)
 	int		 match    = MATCH_EXACT;
 	int		 retcode;
 	int		 exitcode = EX_OK;
+	int		 flags = 0;
+
+	struct option longopts[] = {
+		{ "all",		no_argument,	NULL,	'a' },
+		{ "add",		no_argument,	NULL,	'A' },
+		{ "case-insensitive",	no_argument,	NULL,	'C' },
+		{ "delete",		no_argument,	NULL,	'D' },
+		{ "glob",		no_argument,	NULL,	'g' },
+		{ "case-insensitive",	no_argument,	NULL,	'i' },
+		{ "modify",		no_argument,	NULL,	'M' },
+		{ "quiet",		no_argument,	NULL,	'q' },
+		{ "show",		no_argument,	NULL,	'S' },
+		{ "regex",		no_argument,	NULL,	'x' },
+		{ "yes",		no_argument,	NULL,	'y' },
+		{ NULL,			0,		NULL,	0   },
+	};
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
@@ -209,7 +251,8 @@ exec_annotate(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt(argc, argv, "aACDgiMqxy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "aACDgiMqSxy", longopts, NULL))
+	       != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -234,6 +277,10 @@ exec_annotate(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'S':
+			action = SHOW;
+			flags |= PKG_LOAD_ANNOTATIONS;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
@@ -309,7 +356,7 @@ exec_annotate(int argc, char **argv)
 		goto cleanup;
 	}
 
-	while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
+	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 
 		switch(action) {
 		case NONE:	/* Should never happen */
@@ -324,6 +371,9 @@ exec_annotate(int argc, char **argv)
 			break;
 		case DELETE:
 			retcode = do_delete(db, pkg, tag);
+			break;
+		case SHOW:
+			retcode = do_show(pkg, tag);
 			break;
 		}
 

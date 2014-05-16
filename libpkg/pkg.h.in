@@ -1066,7 +1066,7 @@ struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db,
 
 /**
  * Add/Modify/Delete an annotation for a package
- * @param key -- tag for the annotation
+ * @param tag -- tag for the annotation
  * @param value -- text of the annotation
  * @return An error code
  */
