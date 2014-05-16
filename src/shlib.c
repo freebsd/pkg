@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #include <sys/param.h>
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <libgen.h>
@@ -146,8 +147,14 @@ exec_shlib(int argc, char **argv)
 	int		 ch;
 	bool		 provides_only = false;
 	bool		 requires_only = false;
+	
+	struct option longopts[] = {
+		{ "provides",	no_argument,	NULL,	'P' },
+		{ "requires",	no_argument,	NULL,	'R' },
+		{ NULL,		0,		NULL,	0 },
+	};
 
-	while ((ch = getopt(argc, argv, "PR")) != -1) {
+	while ((ch = getopt_long(argc, argv, "PR", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'P':
 			provides_only = true;
