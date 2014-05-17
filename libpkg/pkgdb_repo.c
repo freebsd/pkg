@@ -231,7 +231,7 @@ get_repo_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
 	sqlite3_snprintf(sizeof(sql), sql, fmt, database);
 
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -257,7 +257,7 @@ initialize_prepared_statements(sqlite3 *sqlite)
 	for (i = 0; i < last; i++) {
 		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
 		if (ret != SQLITE_OK) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(i));
 			return (EPKG_FATAL);
 		}
 	}
@@ -461,7 +461,7 @@ int
 pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum)
 {
 	if (run_prepared_statement(EXISTS, cksum) != SQLITE_ROW) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, SQL(EXISTS));
 		return (EPKG_FATAL);
 	}
 	if (sqlite3_column_int(STMT(EXISTS), 0) > 0) {
@@ -505,7 +505,7 @@ try_again:
 			switch(maybe_delete_conflicting(origin,
 					version, pkg_path, forced)) {
 			case EPKG_FATAL: /* sqlite error */
-				ERROR_SQLITE(sqlite);
+				ERROR_SQLITE(sqlite, SQL(PKG));
 				return (EPKG_FATAL);
 				break;
 			case EPKG_END: /* repo already has newer */
@@ -516,7 +516,7 @@ try_again:
 				break;
 			}
 		} else {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(PKG));
 			return (EPKG_FATAL);
 		}
 	}
@@ -524,7 +524,7 @@ try_again:
 
 	if (run_prepared_statement (FTS_APPEND, package_id,
 			name, version, origin) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, SQL(FTS_APPEND));
 		return (EPKG_FATAL);
 	}
 
@@ -535,7 +535,7 @@ try_again:
 				pkg_dep_name(dep),
 				pkg_dep_version(dep),
 				package_id) != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(DEPS));
 			return (EPKG_FATAL);
 		}
 	}
@@ -548,7 +548,7 @@ try_again:
 			    pkg_object_string(obj));
 		if (ret != SQLITE_DONE)
 		{
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(CAT2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -560,7 +560,7 @@ try_again:
 			ret = run_prepared_statement(LIC2, package_id,
 			    pkg_object_string(obj));
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(LIC2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -571,7 +571,7 @@ try_again:
 		    ret = run_prepared_statement(OPT2, pkg_option_opt(option),
 				pkg_option_value(option), package_id);
 		if(ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(OPT2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -585,7 +585,7 @@ try_again:
 			ret = run_prepared_statement(SHLIB_REQD, package_id,
 					shlib_name);
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(SHLIB_REQD));
 			return (EPKG_FATAL);
 		}
 	}
@@ -599,7 +599,7 @@ try_again:
 			ret = run_prepared_statement(SHLIB_PROV, package_id,
 					shlib_name);
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(SHLIB_PROV));
 			return (EPKG_FATAL);
 		}
 	}
@@ -616,7 +616,7 @@ try_again:
 			ret = run_prepared_statement(ANNOTATE2, package_id,
 				  note_tag, note_val);
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, SQL(ANNOTATE2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -919,7 +919,7 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 	ret = sqlite3_prepare_v2(sqlite, query_sql, -1,
 			&stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, query_sql);
 		return (NULL);
 	}
 	repodb.sqlite = sqlite;
@@ -948,7 +948,7 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 
 	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
 	if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, select_id_sql);
 		return (EPKG_FATAL);
 	}
 
@@ -959,14 +959,14 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		origin_id = sqlite3_column_int64(stmt, 0);
 	}
 	else {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, select_id_sql);
 		return (EPKG_FATAL);
 	}
 	sqlite3_finalize(stmt);
 
 	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", clean_conflicts_sql);
 	if (sqlite3_prepare_v2(sqlite, clean_conflicts_sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, clean_conflicts_sql);
 		return (EPKG_FATAL);
 	}
 
@@ -980,7 +980,7 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		/* Select a conflict */
 		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
 		if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, select_id_sql);
 			return (EPKG_FATAL);
 		}
 
@@ -991,7 +991,7 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 			conflict_id = sqlite3_column_int64(stmt, 0);
 		}
 		else {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, select_id_sql);
 			return (EPKG_FATAL);
 		}
 
@@ -1000,7 +1000,7 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		/* Insert a pair */
 		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", insert_conflict_sql);
 		if (sqlite3_prepare_v2(sqlite, insert_conflict_sql, -1, &stmt, NULL) != SQLITE_OK) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, insert_conflict_sql);
 			return (EPKG_FATAL);
 		}
 
@@ -1009,7 +1009,7 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		ret = sqlite3_step(stmt);
 
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite, insert_conflict_sql);
 			return (EPKG_FATAL);
 		}
 
@@ -1098,7 +1098,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), sbuf_size(sql), &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
+		ERROR_SQLITE(db->sqlite, sbuf_get(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -1154,7 +1154,7 @@ pkgdb_rquery_provide(struct pkgdb *db, const char *provide, const char *repo)
 	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
+		ERROR_SQLITE(db->sqlite, sbuf_get(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -1207,7 +1207,7 @@ pkgdb_find_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
+		ERROR_SQLITE(db->sqlite, sbuf_get(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -1260,7 +1260,7 @@ pkgdb_find_shlib_require(struct pkgdb *db, const char *provide, const char *repo
 	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
+		ERROR_SQLITE(db->sqlite, sbuf_get(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}

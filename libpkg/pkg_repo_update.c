@@ -67,14 +67,14 @@ pkg_repo_register(struct pkg_repo *repo, sqlite3 *sqlite)
 	}
 
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_text(stmt, 1, pkg_repo_url(repo), -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite, sql);
 		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
