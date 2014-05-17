@@ -34,6 +34,7 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 
@@ -68,6 +69,25 @@ print_status_end(struct sbuf *msg)
 static void
 print_status_begin(struct sbuf *msg)
 {
+#ifdef HAVE_LIBJAIL
+	static char hostname[MAXHOSTNAMELEN] = "";
+	static int jailed = -1;
+	size_t intlen;
+
+	if (jailed == -1) {
+		intlen = sizeof(jailed);
+		if (sysctlbyname("security.jail.jailed", &jailed, &intlen,
+		    NULL, 0) == -1)
+			jailed = 0;
+	}
+
+	if (jailed == 1) {
+		if (hostname[0] == '\0')
+			gethostname(hostname, sizeof(hostname));
+
+		sbuf_printf(msg, "[%s] ", hostname);
+	}
+#endif
 
 	if (nbactions > 0)
 		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
