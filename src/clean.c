@@ -261,7 +261,7 @@ exec_clean(int argc, char **argv)
 		}
 
 		if (ent->fts_info == FTS_SL) {
-			/* Deferenence the symlink and check it for being
+			/* Dereference the symlink and check it for being
 			 * recognized checksum file, or delete the symlink
 			 * later. */
 			if ((link_len = readlink(ent->fts_name, link_buf,
