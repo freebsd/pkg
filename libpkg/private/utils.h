@@ -115,6 +115,7 @@ int set_nameserver(const char *nsname);
 ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 void set_blocking(int fd);
 void set_nonblocking(int fd);
+void print_trace(void);
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 

@@ -185,6 +185,14 @@ AC_CHECK_HEADER([sys/sbuf.h], [
 	LIBSBUF_INCLUDE="-I\$(top_srcdir)/external/libsbuf"
 ])
 
+AC_CHECK_HEADER([execinfo.h], [
+	AC_DEFINE(HAVE_EXECINFO_H, 1, [Define to 1 if you have the <execinfo.h> header file.])
+	AC_CHECK_LIB(execinfo, backtrace, [
+		AC_DEFINE(HAVE_LIBEXECINFO, 1, [Define to 1 if you have the 'execinfo' library (-lexecinfo).])
+		LIBEXECINFO_LIB="-lexecinfo"
+	])
+],)
+
 AC_CHECK_HEADER([atf-c.h], [
 	 TESTS="\$(test_program)"
  ])
@@ -196,7 +204,6 @@ AC_CHECK_HEADER([sys/capability.h], [
 
 ])
 
-
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])
@@ -204,6 +211,7 @@ AC_SUBST([LIBSBUF_LIB])
 AC_SUBST([LIBSBUF_BUNDLED])
 AC_SUBST([LIBSBUF_INCLUDE])
 AC_SUBST([LIBJAIL_LIB])
+AC_SUBST([LIBEXECINFO_LIB])
 AC_SUBST([TESTS])
 
 AC_CONFIG_FILES(Makefile \

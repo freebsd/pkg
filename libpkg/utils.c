@@ -32,6 +32,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <execinfo.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -848,4 +849,21 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 	sbuf_finish(*buf);
 
 	return (ret);
+}
+
+void
+print_trace(void)
+{
+	void *array[10];
+	size_t size;
+	char **strings;
+	size_t i;
+
+	size = backtrace(array, 10);
+	strings = backtrace_symbols(array, size);
+
+	for (i = 0; i < size; i++)
+		fprintf(stderr, "%s\n", strings[i]);
+
+	free(strings);
 }

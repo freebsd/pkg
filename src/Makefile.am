@@ -48,6 +48,7 @@ pkg_static_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
 			@LIBSBUF_LIB@ \
+			@LIBEXECINFO_LIB@ \
 			@LIBELF_LIB@ \
 			-lfetch \
 			-larchive \
