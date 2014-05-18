@@ -301,8 +301,8 @@ run_prepared_statement(sql_prstmt_index s, ...)
 	return (retcode);
 }
 
-static void
-finalize_prepared_statements(void)
+void
+pkgdb_repo_finalize_statements(void)
 {
 	sql_prstmt_index i, last;
 
@@ -377,7 +377,7 @@ pkgdb_repo_init(sqlite3 *sqlite)
 {
 	int retcode = EPKG_OK;
 
-	retcode = sql_exec(sqlite, "PRAGMA synchronous=off");
+	retcode = sql_exec(sqlite, "PRAGMA synchronous=default");
 	if (retcode != EPKG_OK)
 		return (retcode);
 
@@ -386,10 +386,6 @@ pkgdb_repo_init(sqlite3 *sqlite)
 		return (retcode);
 
 	retcode = initialize_prepared_statements(sqlite);
-	if (retcode != EPKG_OK)
-		return (retcode);
-
-	retcode = pkgdb_transaction_begin(sqlite, NULL);
 	if (retcode != EPKG_OK)
 		return (retcode);
 
@@ -412,7 +408,7 @@ pkgdb_repo_close(sqlite3 *sqlite, bool commit)
 		if (pkgdb_transaction_rollback(sqlite, NULL) != SQLITE_OK)
 				retcode = EPKG_FATAL;
 	}
-	finalize_prepared_statements();
+	pkgdb_repo_finalize_statements();
 
 	return (retcode);
 }

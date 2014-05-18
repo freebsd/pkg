@@ -402,8 +402,6 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 
 cleanup:
 
-	if (rc == EPKG_OK)
-		sql_exec(sqlite, "DROP TABLE repo_update;");
 	if (in_trans) {
 		if (rc != EPKG_OK)
 			pkgdb_transaction_rollback(sqlite, "REPO");
@@ -411,6 +409,11 @@ cleanup:
 		if (pkgdb_transaction_commit(sqlite, "REPO") != EPKG_OK)
 			rc = EPKG_FATAL;
 	}
+
+	pkgdb_repo_finalize_statements();
+
+	if (rc == EPKG_OK)
+		sql_exec(sqlite, "DROP TABLE repo_update;");
 	if (pkg != NULL)
 		pkg_free(pkg);
 	if (it != NULL)
@@ -426,7 +429,7 @@ cleanup:
 	if (linebuf != NULL)
 		free(linebuf);
 
-	pkgdb_repo_close(sqlite, rc == EPKG_OK);
+	sqlite3_close(sqlite);
 
 	return (rc);
 }

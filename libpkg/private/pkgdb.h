@@ -84,6 +84,11 @@ int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
 int pkgdb_repo_init(sqlite3 *sqlite);
 
 /**
+ * Finalize prepared statements for a repo
+ */
+void pkgdb_repo_finalize_statements(void);
+
+/**
  * Close repodb and commit/rollback transaction started
  * @param sqlite sqlite pointer
  * @param commit commit transaction if true, rollback otherwise
