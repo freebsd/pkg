@@ -1216,7 +1216,8 @@ pkgdb_close(struct pkgdb *db)
 }
 
 /* How many times to try COMMIT or ROLLBACK if the DB is busy */ 
-#define NTRIES	3
+#define NTRIES	6
+#define SLEEP_TIME 200
 
 int
 pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
@@ -1251,7 +1252,7 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 			ret = sqlite3_step(stmt);
 			if (ret != SQLITE_BUSY)
 				break;
-			sqlite3_sleep(250);
+			sqlite3_sleep(SLEEP_TIME);
 		}
 
 	sqlite3_finalize(stmt);
@@ -1296,7 +1297,7 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 			ret = sqlite3_step(stmt);
 			if (ret != SQLITE_BUSY)
 				break;
-			sqlite3_sleep(250);
+			sqlite3_sleep(SLEEP_TIME);
 		}
 
 	sqlite3_finalize(stmt);
@@ -1340,7 +1341,7 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 			ret = sqlite3_step(stmt);
 			if (ret != SQLITE_BUSY)
 				break;
-			sqlite3_sleep(250);
+			sqlite3_sleep(SLEEP_TIME);
 		}
 
 	sqlite3_finalize(stmt);
@@ -3502,7 +3503,7 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 		ret = sqlite3_step(stmt);
 		if (ret != SQLITE_BUSY)
 			break;
-		sqlite3_sleep(250);
+		sqlite3_sleep(SLEEP_TIME);
 	}
 
 	if (ret == SQLITE_ROW)
