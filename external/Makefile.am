@@ -179,6 +179,7 @@ sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-Wno-unused-variable \
 			-Wno-unused-function \
 			-Wno-strict-aliasing \
+			-DHAVE_USLEEP=1 \
 			-DSQLITE_OMIT_AUTOVACUUM \
 			-DSQLITE_OMIT_BLOB_LITERAL \
 			-DSQLITE_OMIT_DECLTYPE \
