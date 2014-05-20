@@ -990,7 +990,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
-	bool force = false;
+	bool force = false, found = false;
 	int rc = EPKG_FATAL;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
@@ -1007,14 +1007,20 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		force = true;
 
 	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
-		return (rc);
+		rc = EPKG_FATAL;
 
-	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		rc = pkg_jobs_process_remote_pkg(j, p, root, force, recursive,
 				NULL, add_request);
 		if (rc == EPKG_FATAL)
 			break;
+		found = true;
 		p = NULL;
+	}
+
+	if (root && !found) {
+		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
+				"remote repo", pattern);
 	}
 
 	pkgdb_it_free(it);
@@ -1721,7 +1727,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				pkg_jobs_add_universe(j, pkg, true, false, NULL);
 				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_AUTOMATIC, &automatic);
 				/* Do not test we ignore what doesn't exists remotely */
-				find_remote_pkg(j, origin, MATCH_EXACT, false, true, !automatic);
+				find_remote_pkg(j, origin, MATCH_EXACT, !automatic, true, !automatic);
 				pkg = NULL;
 			}
 			pkgdb_it_free(it);
