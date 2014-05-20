@@ -1216,14 +1216,19 @@ pkgdb_close(struct pkgdb *db)
 }
 
 /* How many times to try COMMIT or ROLLBACK if the DB is busy */ 
-#define NTRIES	6
-#define SLEEP_TIME 200
+#define BUSY_RETRIES	6
+#define BUSY_SLEEP	200
+
+#define PKGDB_SQLITE_RETRY_ON_BUSY(ret) 				\
+	ret = SQLITE_BUSY;						\
+	for (int _sqlite_busy_retries = 0;				\
+	    _sqlite_busy_retries < BUSY_RETRIES && ret == SQLITE_BUSY; 	\
+	    ++_sqlite_busy_retries, sqlite3_sleep(BUSY_SLEEP))
 
 int
 pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
-	int		 tries;
 	sqlite3_stmt	*stmt;
 	const char *psql;
 
@@ -1248,12 +1253,8 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 	}
 
 	if (ret == SQLITE_OK)
-		for (tries = 0; tries < NTRIES; tries++) {
+		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 			ret = sqlite3_step(stmt);
-			if (ret != SQLITE_BUSY)
-				break;
-			sqlite3_sleep(SLEEP_TIME);
-		}
 
 	sqlite3_finalize(stmt);
 
@@ -1267,7 +1268,6 @@ int
 pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
-	int		 tries;
 	sqlite3_stmt	*stmt;
 	const char *psql;
 
@@ -1293,12 +1293,8 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 	}
 
 	if (ret == SQLITE_OK)
-		for (tries = 0; tries < NTRIES; tries++) {
+		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 			ret = sqlite3_step(stmt);
-			if (ret != SQLITE_BUSY)
-				break;
-			sqlite3_sleep(SLEEP_TIME);
-		}
 
 	sqlite3_finalize(stmt);
 
@@ -1312,7 +1308,6 @@ int
 pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
-	int		 tries;
 	sqlite3_stmt	*stmt;
 	const char *psql;
 
@@ -1337,12 +1332,8 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 	}
 
 	if (ret == SQLITE_OK)
-		for (tries = 0; tries < NTRIES; tries++) {
+		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 			ret = sqlite3_step(stmt);
-			if (ret != SQLITE_BUSY)
-				break;
-			sqlite3_sleep(SLEEP_TIME);
-		}
 
 	sqlite3_finalize(stmt);
 
@@ -3488,7 +3479,6 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
-	int		 tries;
 
 	assert(s != NULL && sql != NULL);
 
@@ -3499,12 +3489,8 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 		return (EPKG_OK);
 	}
 
-	for (tries = 0; tries < NTRIES; tries++) {
+	PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 		ret = sqlite3_step(stmt);
-		if (ret != SQLITE_BUSY)
-			break;
-		sqlite3_sleep(SLEEP_TIME);
-	}
 
 	if (ret == SQLITE_ROW)
 		*res = sqlite3_column_int64(stmt, 0);
