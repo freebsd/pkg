@@ -561,6 +561,20 @@ static struct db_upgrades {
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	},
+	/* pkg_lock existed during 1.3 dev cycle before moving to schema */
+	{24,
+	"CREATE TABLE IF NOT EXISTS pkg_lock ("
+	    "exclusive INTEGER(1),"
+	    "advisory INTEGER(1),"
+	    "read INTEGER(8)"
+	");"
+	"CREATE TABLE IF NOT EXISTS pkg_lock_pid ("
+	    "pid INTEGER PRIMARY KEY"
+	");"
+	"DELETE FROM pkg_lock;"
+	"DELETE FROM pkg_lock_pid;"
+	"INSERT INTO pkg_lock VALUES(0,0,0);"
+	},
 
 
 	/* Mark the end of the array */
