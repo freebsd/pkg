@@ -60,5 +60,7 @@ void pkg_debug(int level, const char *fmt, ...);
 int pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud);
 int pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len);
 
+bool pkg_emit_query_yesno(bool deft, const char *msg);
+int pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft);
 
 #endif

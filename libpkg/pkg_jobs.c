@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <ctype.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -985,12 +986,109 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 }
 
 static int
+pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
+		const char *origin, match_t m)
+{
+	struct pkg *p = NULL;
+	struct pkgdb_it *it;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
+				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	int rc = EPKG_FATAL;
+	struct sbuf *qmsg;
+	const char *forigin;
+	struct pkg_job_universe_item *unit;
+
+	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
+		return (EPKG_FATAL);
+
+	qmsg = sbuf_new_auto();
+
+	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+		pkg_get(p, PKG_ORIGIN, &forigin);
+		sbuf_printf(qmsg, "%s has no direct installation candidates, change it to "
+				"%s [Y/n]: ", origin, forigin);
+		sbuf_finish(qmsg);
+		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
+			/* Change the origin of the local package */
+			HASH_FIND(hh, j->universe, origin, strlen(origin), unit);
+			if (it != NULL)
+				pkg_set(unit->pkg, PKG_ORIGIN, forigin);
+
+			rc = pkg_jobs_process_remote_pkg(j, p, true, false, true,
+				NULL, true);
+			break;
+		}
+		sbuf_reset(qmsg);
+	}
+
+	sbuf_free(qmsg);
+	pkgdb_it_free(it);
+
+	return (rc);
+}
+
+static int
+pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
+{
+
+	int rc = EPKG_FATAL;
+	const char *pos, *opattern = pattern;
+	char *cpy;
+	size_t len, olen;
+
+	/* First of all, try to search a package with the same name */
+	pos = strchr(pattern, '/');
+	if (pos != NULL && pos[1] != '\0') {
+		if (pkg_jobs_try_remote_candidate(j, pos + 1, opattern, MATCH_EXACT) == EPKG_OK)
+			return (EPKG_OK);
+		pos ++;
+		pattern = pos;
+	}
+	else {
+		pos = pattern;
+	}
+
+	/* Figure, if we have any numbers at the end of the package */
+	olen = strlen(pos);
+	len = olen;
+	while (len > 0) {
+		if (isdigit(pos[len - 1]) || pos[len - 1] == '.')
+			len --;
+		else
+			break;
+	}
+
+	if (olen != len) {
+		/* Try exact pattern without numbers */
+		cpy = malloc(len + 1);
+		strlcpy(cpy, pos, len + 1);
+		if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_EXACT) != EPKG_OK) {
+			free(cpy);
+			cpy = sqlite3_mprintf(" WHERE name REGEXP ('^' || %.*Q || '[0-9.]*$')"
+					" ORDER by origin",
+					len, pos);
+			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_CONDITION)
+					== EPKG_OK)
+				rc = EPKG_OK;
+			sqlite3_free(cpy);
+		}
+		else {
+			free(cpy);
+			rc = EPKG_OK;
+		}
+	}
+
+	return (rc);
+}
+
+static int
 find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		match_t m, bool root, bool recursive, bool add_request)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
-	bool force = false;
+	bool force = false, found = false;
 	int rc = EPKG_FATAL;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
@@ -1007,17 +1105,24 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		force = true;
 
 	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
-		return (rc);
+		rc = EPKG_FATAL;
 
-	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		rc = pkg_jobs_process_remote_pkg(j, p, root, force, recursive,
 				NULL, add_request);
 		if (rc == EPKG_FATAL)
 			break;
+		found = true;
 		p = NULL;
 	}
 
 	pkgdb_it_free(it);
+
+	if (root && !found) {
+		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
+				"remote repo", pattern);
+		rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
+	}
 
 	return (rc);
 }
@@ -1721,7 +1826,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				pkg_jobs_add_universe(j, pkg, true, false, NULL);
 				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_AUTOMATIC, &automatic);
 				/* Do not test we ignore what doesn't exists remotely */
-				find_remote_pkg(j, origin, MATCH_EXACT, false, true, !automatic);
+				find_remote_pkg(j, origin, MATCH_EXACT, !automatic, true, !automatic);
 				pkg = NULL;
 			}
 			pkgdb_it_free(it);

@@ -1088,10 +1088,11 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	} else
 		sbuf_printf(sql, basesql, reponame, reponame);
 
-	sbuf_cat(sql, " ORDER BY name;");
+	if (match != MATCH_CONDITION)
+		sbuf_cat(sql, " ORDER BY name;");
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_get(sql), pattern);
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), sbuf_size(sql), &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite, sbuf_get(sql));
