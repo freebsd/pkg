@@ -4208,6 +4208,31 @@ pkgdb_reset_lock(struct pkgdb *db)
 }
 
 static int
+pkgdb_sqlite3_exec_while_busy(sqlite3 *sqlite, const char *sql)
+{
+	int ret;
+	struct timespec ts;
+	int64_t num_timeout = 1;
+	unsigned int tries = 0, max_tries = 30;
+
+	for (;;) {
+		ret = sqlite3_exec(sqlite, sql, NULL, NULL, NULL);
+		if (ret == SQLITE_BUSY && tries++ < max_tries) {
+			ts.tv_sec = (int)num_timeout;
+			ts.tv_nsec = (num_timeout - (int)num_timeout) * 1000000000.;
+			pkg_debug(1, "waiting on database busy for %d times, "
+			    "next try in %.2f seconds", tries, num_timeout);
+			(void)nanosleep(&ts, NULL);
+			continue;
+		}
+
+		return (ret);
+	}
+
+	/* NOTREACHED */
+}
+
+static int
 pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 		bool upgrade)
 {
@@ -4226,7 +4251,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 		num_maxtries = pkg_object_int(max_tries);
 
 	while (tries <= num_maxtries) {
-		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
+		ret = pkgdb_sqlite3_exec_while_busy(db->sqlite, lock_sql);
 		if (ret != SQLITE_OK) {
 			if (ret == SQLITE_READONLY && type == PKGDB_LOCK_READONLY) {
 				pkg_debug(1, "want read lock but cannot write to database, "
@@ -4281,6 +4306,7 @@ int
 pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 {
 	int ret;
+
 	const char table_sql[] = ""
 			"CREATE TABLE pkg_lock "
 			"(exclusive INTEGER(1), advisory INTEGER(1), read INTEGER(8));";
@@ -4299,7 +4325,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 
 	assert(db != NULL);
 
-	ret = sqlite3_exec(db->sqlite, table_sql, NULL, NULL, NULL);
+	ret = pkgdb_sqlite3_exec_while_busy(db->sqlite, table_sql);
 	if (ret == SQLITE_OK) {
 		/* Need to initialize */
 		ret = sqlite3_exec(db->sqlite, init_sql, NULL, NULL, NULL);
@@ -4309,7 +4335,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 		}
 	}
 
-	ret = sqlite3_exec(db->sqlite, pid_sql, NULL, NULL, NULL);
+	ret = pkgdb_sqlite3_exec_while_busy(db->sqlite, pid_sql);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite, pid_sql);
 		return (EPKG_FATAL);
