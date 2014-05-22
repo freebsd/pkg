@@ -1503,9 +1503,13 @@ const char *
 pkgdb_get_pattern_query(const char *pattern, match_t match)
 {
 	char		*checkorigin = NULL;
+	char		*checkuid = NULL;
 	const char	*comp = NULL;
 
 	if (pattern != NULL)
+		checkuid = strchr(pattern, '~');
+	
+	if (pattern != NULL && checkuid != NULL)
 		checkorigin = strchr(pattern, '/');
 
 	switch (match) {
@@ -1514,33 +1518,49 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		break;
 	case MATCH_EXACT:
 		if (pkgdb_case_sensitive()) {
-			if (checkorigin == NULL)
-				comp = " WHERE name = ?1 "
-					"OR name || \"-\" || version = ?1";
-			else
-				comp = " WHERE origin = ?1";
+			if (checkuid == NULL) {
+				if (checkorigin == NULL)
+					comp = " WHERE name = ?1 "
+					    "OR name || \"-\" || version = ?1";
+				else
+					comp = " WHERE origin = ?1";
+			} else {
+				comp = " WHERE name || \"~\" || origin = ?1";
+			}
 		} else {
-			if (checkorigin == NULL)
-				comp = " WHERE name = ?1 COLLATE NOCASE "
-					"OR name || \"-\" || version = ?1"
-					"COLLATE NOCASE";
-			else
-				comp = " WHERE origin = ?1 COLLATE NOCASE";
+			if (checkuid == NULL) {
+				if (checkorigin == NULL)
+					comp = " WHERE name = ?1 COLLATE NOCASE "
+						"OR name || \"-\" || version = ?1"
+						"COLLATE NOCASE";
+				else
+					comp = " WHERE origin = ?1 COLLATE NOCASE";
+			} else {
+				comp = " WHERE name || \"~\" || origin = ?1 COLLATE NOCASE";
+			}
 		}
 		break;
 	case MATCH_GLOB:
-		if (checkorigin == NULL)
-			comp = " WHERE name GLOB ?1 "
-				"OR name || \"-\" || version GLOB ?1";
-		else
-			comp = " WHERE origin GLOB ?1";
+		if (checkuid == NULL) {
+			if (checkorigin == NULL)
+				comp = " WHERE name GLOB ?1 "
+				    "OR name || \"-\" || version GLOB ?1";
+			else
+				comp = " WHERE origin GLOB ?1";
+		} else {
+			comp = " WHERE name || \"~\" || origin = ?1";
+		}
 		break;
 	case MATCH_REGEX:
-		if (checkorigin == NULL)
-			comp = " WHERE name REGEXP ?1 "
-				"OR name || \"-\" || version REGEXP ?1";
-		else
-			comp = " WHERE origin REGEXP ?1";
+		if (checkuid == NULL) {
+			if (checkorigin == NULL)
+				comp = " WHERE name REGEXP ?1 "
+					"OR name || \"-\" || version REGEXP ?1";
+			else
+				comp = " WHERE origin REGEXP ?1";
+		} else {
+			comp = " WHERE name || \"~\" || origin = ?1";
+		}
 		break;
 	case MATCH_CONDITION:
 		comp = pattern;
