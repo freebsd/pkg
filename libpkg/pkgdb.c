@@ -1804,19 +1804,19 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
-	const char	*origin;
+	const char	*uniqueid;
 	const char	*reponame = NULL;
 	char		 sql[BUFSIZ];
 	const char	*mainsql = ""
 		"SELECT p.name, p.origin, p.version, p.locked "
 		"FROM main.packages AS p, main.deps AS d "
 		"WHERE p.id = d.package_id "
-			"AND d.origin = ?1;";
+			"AND d.name || \"~\" || d.origin = ?1;";
 	const char	*reposql = ""
 		"SELECT p.name, p.origin, p.version, 0 "
 		"FROM %Q.packages AS p, %Q.deps AS d "
 		"WHERE p.id = d.package_id "
-			"AND d.origin = ?1;";
+			"AND d.name || \"~\" || d.origin = ?1;";
 
 	assert(db != NULL && pkg != NULL);
 
@@ -1839,8 +1839,8 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_STATIC);
+	pkg_get(pkg, PKG_UNIQUEID, &uniqueid);
+	sqlite3_bind_text(stmt, 1, uniqueid, -1, SQLITE_STATIC);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0),

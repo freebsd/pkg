@@ -391,6 +391,7 @@ static struct pkg_key {
 	[PKG_ANNOTATIONS] = { "annotations", UCL_OBJECT },
 	[PKG_LICENSES] = { "licenses", UCL_ARRAY },
 	[PKG_CATEGORIES] = { "catagories", UCL_ARRAY },
+	[PKG_UNIQUEID] = { "uniqueid", UCL_STRING },
 };
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,
