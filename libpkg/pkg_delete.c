@@ -37,6 +37,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
 #include "private/utils.h"
 
 int
@@ -45,7 +46,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	struct pkg_dep	*rdep = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
-	const char	*origin;
+	int64_t		id;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -125,9 +126,9 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_finished(pkg);
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
+	pkg_get(pkg, PKG_ROWID, &id);
 
-	return (pkgdb_unregister_pkg(db, origin));
+	return (pkgdb_unregister_pkg(db, id));
 }
 
 int

@@ -2520,7 +2520,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES ("
-		" (SELECT id FROM packages WHERE origin = ?1 ),"
+		" (SELECT id FROM packages WHERE name || \"~\" || origin = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
 		"TTTT",
@@ -2529,7 +2529,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"DELETE FROM pkg_annotation WHERE "
 		"package_id IN"
-                " (SELECT id FROM packages WHERE origin = ?1) "
+                " (SELECT id FROM packages WHERE name || \"~\" || origin = ?1) "
 		"AND tag_id IN"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2)",
 		"TTT",
@@ -2544,7 +2544,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[CONFLICT] = {
 		NULL,
 		"INSERT INTO pkg_conflicts(package_id, conflict_id) "
-		"VALUES (?1, (SELECT id FROM packages WHERE origin = ?2))",
+		"VALUES (?1, (SELECT id FROM packages WHERE name || \"~\" || origin = ?2))",
 		"IT",
 	},
 	[PKG_PROVIDE] = {
@@ -3145,7 +3145,7 @@ pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
         const char *value)
 {
 	int		 rows_changed;
-	const char	*pkgorigin;
+	const char	*uniqueid;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
@@ -3154,13 +3154,13 @@ pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
+	pkg_get(pkg, PKG_UNIQUEID, &uniqueid);
 
 	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_ADD1, pkgorigin, tag, value)
+	    run_prstmt(ANNOTATE_ADD1, uniqueid, tag, value)
 	    != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite, SQL(ANNOTATE_ADD1));
 		pkgdb_transaction_rollback(db->sqlite, NULL);
@@ -3180,7 +3180,7 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
         const char *value)
 {
 	int		 rows_changed; 
-	const char	*pkgorigin;
+	const char	*uniqueid;
 
 	assert(pkg!= NULL);
 	assert(tag != NULL);
@@ -3192,15 +3192,15 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
+	pkg_get(pkg, PKG_UNIQUEID, &uniqueid);
 
-	if (run_prstmt(ANNOTATE_DEL1, pkgorigin, tag) != SQLITE_DONE
+	if (run_prstmt(ANNOTATE_DEL1, uniqueid, tag) != SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_ADD1, pkgorigin, tag, value) !=
+	    run_prstmt(ANNOTATE_ADD1, uniqueid, tag, value) !=
 	        SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
@@ -3225,7 +3225,7 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 {
 	int		 rows_changed;
 	bool		 result;
-	const char	*pkgorigin;
+	const char	*uniqueid;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
@@ -3236,9 +3236,9 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
+	pkg_get(pkg, PKG_UNIQUEID, &uniqueid);
 
-	result = (run_prstmt(ANNOTATE_DEL1, pkgorigin, tag)
+	result = (run_prstmt(ANNOTATE_DEL1, uniqueid, tag)
 		  == SQLITE_DONE);
 
 	rows_changed = sqlite3_changes(db->sqlite);
@@ -3290,13 +3290,13 @@ pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
+pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 {
 	sqlite3_stmt	*stmt_del;
 	unsigned int	 obj;
 	int		 ret;
 	const char	 sql[] = ""
-		"DELETE FROM packages WHERE origin = ?1;";
+		"DELETE FROM packages WHERE id = ?1;";
 	const char	*deletions[] = {
 		"directories WHERE id NOT IN "
 			"(SELECT DISTINCT directory_id FROM pkg_directories)",
@@ -3321,7 +3321,6 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	};
 
 	assert(db != NULL);
-	assert(origin != NULL);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt_del, NULL)
@@ -3330,7 +3329,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_text(stmt_del, 1, origin, -1, SQLITE_STATIC);
+	sqlite3_bind_int64(stmt_del, 1, id);
 
 	ret = sqlite3_step(stmt_del);
 	sqlite3_finalize(stmt_del);

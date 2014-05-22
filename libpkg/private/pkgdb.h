@@ -205,4 +205,11 @@ struct pkgdb_it *pkgdb_find_shlib_require(struct pkgdb *db,
 struct pkgdb_it *pkgdb_find_shlib_provide(struct pkgdb *db,
 		const char *require, const char *repo);
 
+/**
+ * Unregister a package from the database
+ * @return An error code.
+ */
+int pkgdb_unregister_pkg(struct pkgdb *pkg, int64_t id);
+
+
 #endif

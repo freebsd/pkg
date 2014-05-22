@@ -1026,12 +1026,6 @@ int pkgdb_load(struct pkgdb *db, const char *src);
 int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
 
 /**
- * Unregister a package from the database
- * @return An error code.
- */
-int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
-
-/**
  * Set the case sensitivity flag on or off.  Defaults to 
  * true (case_sensitive)
  */
