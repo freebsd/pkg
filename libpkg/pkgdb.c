@@ -126,6 +126,7 @@ static struct column_mapping {
 	{ "repopath",	PKG_REPOPATH, PKG_SQLITE_STRING },
 	{ "rowid",	PKG_ROWID, PKG_SQLITE_INT64 },
 	{ "time",	PKG_TIME, PKG_SQLITE_INT64 },
+	{ "uniqueid",	PKG_UNIQUEID, PKG_SQLITE_STRING },
 	{ "version",	PKG_VERSION, PKG_SQLITE_STRING },
 	{ "weight",	-1, PKG_SQLITE_INT64 },
 	{ "www",	PKG_WWW, PKG_SQLITE_STRING },
@@ -1601,7 +1602,8 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	comp = pkgdb_get_pattern_query(pattern, match);
 
 	sqlite3_snprintf(sizeof(sql), sql,
-			"SELECT id, origin, name, version, comment, desc, "
+			"SELECT id, origin, name, name || \"~\" || origin as uniqueid, "
+				"version, comment, desc, "
 				"message, arch, maintainer, www, "
 				"prefix, flatsize, licenselogic, automatic, "
 				"locked, time "
@@ -1629,7 +1631,8 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 
 	assert(db != NULL);
 	sqlite3_snprintf(sizeof(sql), sql,
-			"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+			"SELECT p.id, p.origin, p.name, p.name || \"~\" || p.origin as uniqueid, "
+			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p "
@@ -1652,7 +1655,8 @@ pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
-		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+		"SELECT p.id, p.origin, p.name, p.name || \"~\" || p.origin as uniqueid, "
+			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p, pkg_shlibs_required AS ps, shlibs AS s "
@@ -1678,7 +1682,8 @@ pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
-		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+		"SELECT p.id, p.origin, p.name, p.name || \"~\" || p.origin as uniqueid, "
+			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p, pkg_shlibs_provided AS ps, shlibs AS s "
