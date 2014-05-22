@@ -905,7 +905,7 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 	int ret;
 	static struct pkgdb repodb;
 	const char query_sql[] = ""
-		"SELECT id, origin, name, version, comment, "
+		"SELECT id, origin, name, name || \"~\" || origin as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, path AS repopath, manifestdigest "
@@ -1049,7 +1049,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	const char	*comp = NULL;
 	int		 ret;
 	char		 basesql[BUFSIZ] = ""
-		"SELECT id, origin, name, version, comment, "
+		"SELECT id, origin, name, name || \"~\" || origin as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%1$s' AS dbname "
@@ -1117,6 +1117,7 @@ pkgdb_rquery_provide(struct pkgdb *db, const char *provide, const char *repo)
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.name || \"~\" || p.origin as uniqueid, "
 			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
 			"p.licenselogic, p.flatsize, p.pkgsize, "
 			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
@@ -1172,6 +1173,7 @@ pkgdb_find_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.name || \"~\" || p.origin as uniqueid, "
 			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
 			"p.licenselogic, p.flatsize, p.pkgsize, "
 			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
@@ -1225,6 +1227,7 @@ pkgdb_find_shlib_require(struct pkgdb *db, const char *provide, const char *repo
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.name || \"~\" || p.origin as uniqueid, "
 			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
 			"p.licenselogic, p.flatsize, p.pkgsize, "
 			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "

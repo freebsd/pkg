@@ -2947,7 +2947,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert conflicts
 	 */
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		if (run_prstmt(CONFLICT, package_id, pkg_conflict_origin(conflict))
+		if (run_prstmt(CONFLICT, package_id, pkg_conflict_uniqueid(conflict))
 				!= SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(CONFLICT));
 			goto cleanup;

@@ -54,6 +54,7 @@ pkg_dep_free(struct pkg_dep *d)
 	sbuf_free(d->origin);
 	sbuf_free(d->name);
 	sbuf_free(d->version);
+	free(d->uid);
 	free(d);
 }
 
@@ -414,7 +415,7 @@ pkg_conflict_free(struct pkg_conflict *c)
 }
 
 const char *
-pkg_conflict_origin(const struct pkg_conflict *c)
+pkg_conflict_uniqueid(const struct pkg_conflict *c)
 {
 	assert(c != NULL);
 

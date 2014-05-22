@@ -627,6 +627,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	sbuf_set(&d->origin, origin);
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
+	asprintf(&d->uid, "%s~%s", name, origin);
 	d->locked = locked;
 
 	HASH_ADD_KEYPTR(hh, pkg->deps, pkg_dep_get(d, PKG_DEP_ORIGIN),
@@ -651,6 +652,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->origin, origin);
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
+	asprintf(&d->uid, "%s~%s", name, origin);
 	d->locked = locked;
 
 	HASH_ADD_KEYPTR(hh, pkg->rdeps, pkg_dep_get(d, PKG_DEP_ORIGIN),
@@ -1070,7 +1072,7 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", uid, uniqueid);
 
 	HASH_ADD_KEYPTR(hh, pkg->conflicts,
-	    __DECONST(char *, pkg_conflict_origin(c)),
+	    __DECONST(char *, pkg_conflict_uniqueid(c)),
 	    sbuf_size(c->uniqueid), c);
 
 	return (EPKG_OK);

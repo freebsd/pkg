@@ -362,7 +362,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 		}
 		if (it->pkg->type != PKG_INSTALLED) {
 			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
-				HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
+				HASH_FIND_STR(j->universe, pkg_conflict_uniqueid(c), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
 						if (cur->pkg->type == PKG_INSTALLED) {
@@ -389,7 +389,7 @@ pkg_jobs_update_conflict_priority(struct pkg_jobs *j, struct pkg_solved *req)
 
 	while (pkg_conflicts(lp, &c) == EPKG_OK) {
 		rit = NULL;
-		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
+		HASH_FIND_STR(j->universe, pkg_conflict_uniqueid(c), found);
 		assert(found != NULL);
 
 		LL_FOREACH(found, cur) {
@@ -692,14 +692,14 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		/* Examine conflicts */
 		while (pkg_conflicts(pkg, &c) == EPKG_OK) {
 			/* XXX: this assumption can be applied only for the current plain dependencies */
-			HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
+			HASH_FIND_STR(j->universe, pkg_conflict_uniqueid(c), unit);
 			if (unit != NULL)
 				continue;
 
 			/* Check local and remote conflicts */
 			if (pkg->type == PKG_INSTALLED) {
 				/* Installed packages can conflict with remote ones */
-				npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+				npkg = get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
 				if (npkg == NULL)
 					continue;
 
@@ -708,7 +708,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			}
 			else {
 				/* Remote packages can conflict with remote and local */
-				npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
+				npkg = get_local_pkg(j, pkg_conflict_uniqueid(c), 0);
 				if (npkg == NULL)
 					continue;
 
@@ -716,7 +716,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					return (EPKG_FATAL);
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
-					npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+					npkg = get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
 					if (npkg == NULL)
 						continue;
 
@@ -1330,8 +1330,8 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_conflict_origin(rc),
-					pkg_conflict_origin(lc)) != 0) {
+			if (strcmp(pkg_conflict_uniqueid(rc),
+					pkg_conflict_uniqueid(lc)) != 0) {
 				pkg_set(rp, PKG_REASON, "direct conflict changed");
 				return (true);
 			}

@@ -198,7 +198,7 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 	sbuf_set(&new->uniqueid, uniqueid);
 
 	HASH_ADD_KEYPTR(hh, bulk->conflicts,
-			pkg_conflict_origin(new),
+			pkg_conflict_uniqueid(new),
 			sbuf_size(new->uniqueid), new);
 }
 
