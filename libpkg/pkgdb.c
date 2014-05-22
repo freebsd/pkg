@@ -4434,7 +4434,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 
 		/* execute on all databases */
 		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT name || \"~\" || originAS c FROM '%1$s'.packages", " UNION ");
+		    "SELECT name || \"~\" || origin AS c FROM '%1$s'.packages", " UNION ");
 
 		/* close parentheses for the compound statement */
 		sbuf_printf(sql, ");");
