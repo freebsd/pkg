@@ -1051,27 +1051,27 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_addconflict(struct pkg *pkg, const char *name)
+pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 {
 	struct pkg_conflict *c = NULL;
-	const char *origin;
+	const char *uid;
 
 	assert(pkg != NULL);
-	assert(name != NULL && name[0] != '\0');
+	assert(uniqueid != NULL && uniqueid[0] != '\0');
 
-	HASH_FIND_STR(pkg->conflicts, __DECONST(char *, name), c);
+	HASH_FIND_STR(pkg->conflicts, __DECONST(char *, uniqueid), c);
 	/* silently ignore duplicates in case of conflicts */
 	if (c != NULL)
 		return (EPKG_OK);
 
 	pkg_conflict_new(&c);
-	sbuf_set(&c->origin, name);
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", origin, name);
+	sbuf_set(&c->uniqueid, uniqueid);
+	pkg_get(pkg, PKG_UNIQUEID, &uid);
+	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", uid, uniqueid);
 
 	HASH_ADD_KEYPTR(hh, pkg->conflicts,
 	    __DECONST(char *, pkg_conflict_origin(c)),
-	    sbuf_size(c->origin), c);
+	    sbuf_size(c->uniqueid), c);
 
 	return (EPKG_OK);
 }

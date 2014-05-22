@@ -190,16 +190,16 @@ pkg_digest_sort_compare_func(struct digest_list_entry *d1,
 }
 
 static void
-pkg_repo_new_conflict(const char *origin, struct pkg_conflict_bulk *bulk)
+pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 {
 	struct pkg_conflict *new;
 
 	pkg_conflict_new(&new);
-	sbuf_set(&new->origin, origin);
+	sbuf_set(&new->uniqueid, uniqueid);
 
 	HASH_ADD_KEYPTR(hh, bulk->conflicts,
 			pkg_conflict_origin(new),
-			sbuf_size(new->origin), new);
+			sbuf_size(new->uniqueid), new);
 }
 
 static void
@@ -217,7 +217,7 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 
 	HASH_ITER (hh, bulk, cur, tmp) {
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->origin), s);
+			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->uniqueid), s);
 			if (s == NULL) {
 				/* New entry required */
 				s = malloc(sizeof(struct pkg_conflict_bulk));
@@ -226,18 +226,18 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 					goto out;
 				}
 				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = sbuf_get(c1->origin);
+				s->file = sbuf_get(c1->uniqueid);
 				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
 			}
 			/* Now add all new entries from this file to this conflict structure */
 			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
 				new = true;
-				if (strcmp(sbuf_get(c1->origin), sbuf_get(c2->origin)) == 0)
+				if (strcmp(sbuf_get(c1->uniqueid), sbuf_get(c2->uniqueid)) == 0)
 					continue;
 
-				HASH_FIND_STR(s->conflicts, sbuf_get(c2->origin), ctmp);
+				HASH_FIND_STR(s->conflicts, sbuf_get(c2->uniqueid), ctmp);
 				if (ctmp == NULL)
-					pkg_repo_new_conflict(sbuf_get(c2->origin), s);
+					pkg_repo_new_conflict(sbuf_get(c2->uniqueid), s);
 			}
 		}
 	}
@@ -246,16 +246,16 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 		fprintf(out, "%s:", cur->file);
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
 			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", sbuf_get(c1->origin));
+				fprintf(out, "%s,", sbuf_get(c1->uniqueid));
 			else
-				fprintf(out, "%s\n", sbuf_get(c1->origin));
+				fprintf(out, "%s\n", sbuf_get(c1->uniqueid));
 		}
 	}
 out:
 	HASH_ITER (hh, pkg_bulk, cur, tmp) {
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
 			HASH_DEL(cur->conflicts, c1);
-			sbuf_free(c1->origin);
+			sbuf_free(c1->uniqueid);
 			free(c1);
 		}
 		HASH_DEL(pkg_bulk, cur);
@@ -419,7 +419,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			sbuf_free(c->origin);
+			sbuf_free(c->uniqueid);
 			HASH_DEL(curcb->conflicts, c);
 			free(c);
 		}

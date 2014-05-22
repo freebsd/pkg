@@ -409,7 +409,7 @@ pkg_conflict_free(struct pkg_conflict *c)
 	if (c == NULL)
 		return;
 
-	sbuf_free(c->origin);
+	sbuf_free(c->uniqueid);
 	free(c);
 }
 
@@ -418,7 +418,7 @@ pkg_conflict_origin(const struct pkg_conflict *c)
 {
 	assert(c != NULL);
 
-	return (sbuf_get(c->origin));
+	return (sbuf_get(c->uniqueid));
 }
 
 /*
