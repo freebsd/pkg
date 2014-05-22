@@ -858,6 +858,8 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 void
 print_trace(void)
 {
+	return;
+
 #ifdef HAVE_EXECINFO_H
 	void *array[10];
 	size_t size;
