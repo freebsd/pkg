@@ -1751,6 +1751,7 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 		"SELECT d.name, d.origin, d.version, p.locked "
 		"FROM main.deps AS d "
 		"LEFT JOIN main.packages AS p ON p.origin = d.origin "
+		"AND p.name = d.name "
 		"WHERE d.package_id = ?1 ORDER BY d.origin DESC;";
 	const char	*reposql = ""
 		"SELECT d.name, d.origin, d.version, 0 "
