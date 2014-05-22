@@ -4484,8 +4484,8 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		sbuf_free(sql);
 		ERROR_SQLITE(db->sqlite, sbuf_data(sql));
+		sbuf_free(sql);
 		return (-1);
 	}
 
