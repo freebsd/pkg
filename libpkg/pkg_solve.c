@@ -667,7 +667,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	LL_FOREACH(un, cur) {
 		/* For each provide */
 		pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
-		printf("%s\n", ucl_object_emit(un->pkg->fields, UCL_EMIT_CONFIG));
 		HASH_FIND(hd, problem->variables_by_digest, digest,
 				strlen(digest), var);
 		if (var == NULL) {
