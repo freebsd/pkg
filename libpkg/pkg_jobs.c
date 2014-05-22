@@ -333,7 +333,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 		}
 
 		while (deps_func(it->pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+			HASH_FIND_STR(j->universe, d->uid, found);
 			if (found != NULL) {
 				LL_FOREACH(found, cur) {
 					if (cur->priority < priority + 1)
@@ -346,7 +346,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 		d = NULL;
 		maxpri = priority;
 		while (rdeps_func(it->pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+			HASH_FIND_STR(j->universe, d->uid, found);
 			if (found != NULL) {
 				LL_FOREACH(found, cur) {
 					if (cur->priority >= maxpri) {
@@ -834,7 +834,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 	bool automatic;
 
 	while (pkg_rdeps(p, &d) == EPKG_OK && ret) {
-		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
+		HASH_FIND_STR(j->universe, d->uid, unit);
 		if (unit != NULL) {
 			pkg_get(unit->pkg, PKG_AUTOMATIC, &automatic);
 			if (!automatic) {
@@ -1391,7 +1391,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	bool automatic;
 	int ret;
 
-	pkg_get(rp, PKG_ORIGIN, &uid,
+	pkg_get(rp, PKG_UNIQUEID, &uid,
 	    PKG_REPONAME, &reponame);
 	lp = get_local_pkg(j, uid, 0);
 
@@ -1661,7 +1661,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 	HASH_FIND_STR(j->request_delete, uid, found);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), dep_item);
+			HASH_FIND_STR(j->universe, d->uid, dep_item);
 			if (dep_item) {
 				found = pkg_jobs_find_deinstall_request(dep_item, j, rec_level + 1);
 				if (found)
@@ -1730,7 +1730,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 				pkg_emit_locked(pkg);
 			}
 			else {
-				pkg_get(pkg, PKG_ORIGIN, &uid);
+				pkg_get(pkg, PKG_UNIQUEID, &uid);
 				pkg_jobs_add_req(j, uid, unit);
 			}
 			/* TODO: use repository priority here */
@@ -1897,7 +1897,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 				pkg_emit_locked(pkg);
 			}
 			else {
-				pkg_get(pkg, PKG_ORIGIN, &uid);
+				pkg_get(pkg, PKG_UNIQUEID, &uid);
 				/* Do not test we ignore what doesn't exists remotely */
 				find_remote_pkg(j, uid, MATCH_EXACT, false,
 						j->flags & PKG_FLAG_RECURSIVE, true);

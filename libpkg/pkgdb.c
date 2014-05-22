@@ -3920,7 +3920,7 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 			    sqlite3_column_text(stmt_conflicts, 0),
 			    sqlite3_column_text(stmt_conflicts, 1));
 			if (cb != NULL)
-				cb (sbuf_data(uniqueid), sqlite3_column_text(stmt_conflicts, 2), cbdata);
+				cb (sbuf_data(uniqueid), sqlite3_column_text(stmt_conflicts, 3), cbdata);
 		}
 
 		sbuf_finish(conflictmsg);
