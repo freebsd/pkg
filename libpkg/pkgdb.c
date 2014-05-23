@@ -1230,11 +1230,16 @@ pkgdb_close(struct pkgdb *db)
 #define BUSY_RETRIES	6
 #define BUSY_SLEEP	200
 
+/* This is a MACRO instead of a function as any sqlite3_* function that
+ * queries the DB can return SQLITE_BUSY. We would need a function to
+ * wrap all sqlite3_* API since we cannot pass anonymous functions/blocks
+ * in C. This can be used to wrap existing code. */
 #define PKGDB_SQLITE_RETRY_ON_BUSY(ret) 				\
 	ret = SQLITE_BUSY;						\
 	for (int _sqlite_busy_retries = 0;				\
 	    _sqlite_busy_retries < BUSY_RETRIES && ret == SQLITE_BUSY; 	\
-	    ++_sqlite_busy_retries, sqlite3_sleep(BUSY_SLEEP))
+	    ++_sqlite_busy_retries, ret == SQLITE_BUSY && 		\
+	    sqlite3_sleep(BUSY_SLEEP))
 
 int
 pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
