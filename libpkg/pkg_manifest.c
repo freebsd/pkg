@@ -1008,6 +1008,8 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	if (map)
 		ucl_object_insert_key(top, map, "options", 7, false);
 
+	/* XXXB: Fix this code please */
+#if 0
 	if (annotations != NULL) {
 		/* Remove internal only annotations */
 		ucl_object_delete_keyl(annotations, "repository", 10);
@@ -1015,6 +1017,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		ucl_object_insert_key(top,
 		    ucl_object_ref(annotations), "annotations", 11, false);
 	}
+#endif
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
