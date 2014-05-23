@@ -844,7 +844,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		}
 		else {
 			npkg = get_local_pkg(j, d->uid,
-					PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
+					PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_ANNOTATIONS);
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			if (npkg == NULL)
 				return (false);
@@ -877,11 +877,11 @@ new_pkg_version(struct pkg_jobs *j)
 	j->flags &= ~(PKG_FLAG_FORCE|PKG_FLAG_RECURSIVE);
 
 	/* determine local pkgng */
-	p = get_local_pkg(j, origin, PKG_LOAD_BASIC);
+	p = get_local_pkg(j, origin, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
 
 	if (p == NULL) {
 		origin = "ports-mgmt/pkg-devel";
-		p = get_local_pkg(j, origin, PKG_LOAD_BASIC);
+		p = get_local_pkg(j, origin, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
 	}
 
 	/* you are using git version skip */
@@ -1136,7 +1136,7 @@ pkg_jobs_check_local_pkg(struct pkg_jobs *j, struct job_pattern *jp)
 
 	it = pkgdb_query(j->db, jp->pattern, jp->match);
 	if (it != NULL) {
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK)
+		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS) != EPKG_OK)
 			rc = EPKG_FATAL;
 		else
 			pkg_free(pkg);
@@ -1216,7 +1216,7 @@ get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
 				PKG_LOAD_CONFLICTS;
 		else
-			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS;
+			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS;
 	}
 
 	if ((it = pkgdb_query(j->db, uid, MATCH_EXACT)) == NULL)
@@ -1742,8 +1742,8 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS)
-				== EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg,
+				PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS) == EPKG_OK) {
 			// Check if the pkg is locked
 			pkg_get(pkg, PKG_UNIQUEID, &uid);
 			pkg_jobs_add_universe(j, pkg, recursive, false, &unit);
@@ -1777,7 +1777,8 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS)
+	while (pkgdb_it_next(it, &pkg,
+			PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS)
 			== EPKG_OK) {
 		// Check if the pkg is locked
 		pkg_get(pkg, PKG_UNIQUEID, &uid);
@@ -1904,7 +1905,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *uid;
-	unsigned flag = PKG_LOAD_BASIC;
+	unsigned flag = PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS;
 
 	if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
 		flag |= PKG_LOAD_DEPS;
