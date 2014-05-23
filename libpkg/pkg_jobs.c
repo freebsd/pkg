@@ -1257,26 +1257,49 @@ static bool
 pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 {
 	int ret, ret1, ret2;
-	const char *lversion, *rversion, *larch, *rarch;
+	const char *lversion, *rversion, *larch, *rarch, *reponame, *origin;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 	struct pkg_provide *lpr = NULL, *rpr = NULL;
+	const ucl_object_t *an, *obj;
 
 	/* Do not upgrade locked packages */
 	if (pkg_is_locked(lp))
 		return (false);
 
-	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch);
+	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch, PKG_ORIGIN, &origin);
 	pkg_get(rp, PKG_VERSION, &rversion, PKG_ARCH, &rarch);
 
+	/*
+	 * XXX: for a remote package we also need to check whether options
+	 * are compatible.
+	 */
 	ret = pkg_version_cmp(lversion, rversion);
 	if (ret > 0)
 		return (false);
 	else if (ret < 0)
 		return (true);
 
+	/* Check reponame */
+	pkg_get(rp, PKG_REPONAME, &reponame);
+	pkg_get(lp, PKG_ANNOTATIONS, &obj);
+	an = pkg_object_find(obj, "repository");
+	if (an != NULL)  {
+		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
+				ucl_object_tostring(an)) != 0)  {
+			/*
+			 * If we have packages from some different repo, then
+			 * we should not try to detect options changed and so on,
+			 * basically, we need to check a version only and suggest upgrade
+			 */
+			pkg_debug(2, "package %s was installed from repo %s, so we ignore "
+					"the same version of %s in %s repository", origin,
+					ucl_object_tostring(an), origin, reponame);
+			return (false);
+		}
+	}
 	/* Compare archs */
 	if (strcmp (larch, rarch) != 0) {
 		pkg_set(rp, PKG_REASON, "ABI changed");
@@ -1411,8 +1434,6 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
 		    ucl_object_tostring(an)) != 0)  {
 			return (false);
-		} else {
-			pkg_addannotation(rp, "repository", ucl_object_tostring(an));
 		}
 	}
 
@@ -2035,7 +2056,6 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 {
 	struct pkg *new, *old;
 	const char *pkguid, *oldversion = NULL;
-	const ucl_object_t *an, *obj;
 	char path[MAXPATHLEN], *target;
 	bool automatic;
 	int flags = 0;
@@ -2044,12 +2064,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
 
-	pkg_get(new, PKG_UNIQUEID, &pkguid, PKG_ANNOTATIONS, &obj,
-			PKG_AUTOMATIC, &automatic);
+	pkg_get(new, PKG_UNIQUEID, &pkguid, PKG_AUTOMATIC, &automatic);
 	if (old != NULL)
 		pkg_get(old, PKG_VERSION, &oldversion);
-
-	an = pkg_object_find(obj, "repository");
 
 	if (ps->items[0]->jp != NULL && ps->items[0]->jp->is_file) {
 		/*
@@ -2087,13 +2104,10 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 			goto cleanup;
 		}
 	}
-	if ((retcode = pkg_add(j->db, target, flags, keys, NULL)) != EPKG_OK) {
+	if ((retcode = pkg_add_from_remote(j->db, target, flags, keys,
+			NULL, new)) != EPKG_OK) {
 		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 		goto cleanup;
-	}
-
-	if (an != NULL) {
-		pkgdb_add_annotation(j->db, new, "repository", ucl_object_tostring(an));
 	}
 
 	if (oldversion != NULL)

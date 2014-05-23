@@ -153,9 +153,9 @@ cleanup:
 	return (retcode);
 }
 
-int
-pkg_add(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location)
+static int
+pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location, struct pkg *remote)
 {
 	const char	*arch;
 	const char	*origin;
@@ -204,91 +204,98 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 	/*
 	 * Check the architecture
 	 */
-
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
 
-	if (!is_valid_abi(arch, true)) {
-		if ((flags & PKG_ADD_FORCE) == 0) {
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
 	/*
-	 * Check if the package is already installed
+	 * Additional checks for non-remote package
 	 */
-
-	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
-	if (ret == EPKG_OK) {
-		if ((flags & PKG_ADD_FORCE) == 0) {
-			pkg_emit_already_installed(pkg_inst);
-			retcode = EPKG_INSTALLED;
-			pkg_free(pkg_inst);
-			pkg_inst = NULL;
+	if (remote == NULL) {
+		if (!is_valid_abi(arch, true)) {
+			if ((flags & PKG_ADD_FORCE) == 0) {
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+		ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
+		if (ret == EPKG_OK) {
+			if ((flags & PKG_ADD_FORCE) == 0) {
+				pkg_emit_already_installed(pkg_inst);
+				retcode = EPKG_INSTALLED;
+				pkg_free(pkg_inst);
+				pkg_inst = NULL;
+				goto cleanup;
+			}
+			else {
+				pkg_emit_notice("package %s is already installed, forced install",
+						name);
+				pkg_free(pkg_inst);
+				pkg_inst = NULL;
+			}
+		} else if (ret != EPKG_END) {
+			retcode = ret;
 			goto cleanup;
 		}
-		else {
-			pkg_emit_notice("package %s is already installed, forced install", name);
-			pkg_free(pkg_inst);
-			pkg_inst = NULL;
-		}
-	} else if (ret != EPKG_END) {
-		retcode = ret;
-		goto cleanup;
-	}
 
-	/*
-	 * Check for dependencies by searching the same directory as
-	 * the package archive we're reading.  Of course, if we're
-	 * reading from a file descriptor or a unix domain socket or
-	 * somesuch, there's no valid directory to search.
-	 */
+		/*
+		 * Check for dependencies by searching the same directory as
+		 * the package archive we're reading.  Of course, if we're
+		 * reading from a file descriptor or a unix domain socket or
+		 * somesuch, there's no valid directory to search.
+		 */
 
-	if (strncmp(path, "-", 2) != 0 && (flags & PKG_ADD_UPGRADE) == 0) {
-		basedir = dirname(path);
-		if ((ext = strrchr(path, '.')) == NULL) {
-			pkg_emit_error("%s has no extension", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-	} else {
-		basedir = NULL;
-		ext = NULL;
-	}
-
-	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
-			continue;
-
-		if (basedir != NULL) {
-			const char *dep_name = pkg_dep_name(dep);
-			const char *dep_ver = pkg_dep_version(dep);
-
-			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
-			    dep_name, dep_ver, ext);
-
-			if ((flags & PKG_ADD_UPGRADE) == 0 &&
-			    access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
-				if (ret != EPKG_OK) {
-					retcode = EPKG_FATAL;
-					goto cleanup;
-				}
-			} else {
-				pkg_emit_error("Missing dependency matching "
-				    "Origin: '%s' Version: '%s'",
-				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
-				    pkg_dep_get(dep, PKG_DEP_VERSION));
-				if ((flags & PKG_ADD_FORCE_MISSING) == 0) {
-					retcode = EPKG_FATAL;
-					goto cleanup;
-				}
+		if (strncmp(path, "-", 2) != 0 && (flags & PKG_ADD_UPGRADE) == 0) {
+			basedir = dirname(path);
+			if ((ext = strrchr(path, '.')) == NULL) {
+				pkg_emit_error("%s has no extension", path);
+				retcode = EPKG_FATAL;
+				goto cleanup;
 			}
 		} else {
-			retcode = EPKG_FATAL;
-			pkg_emit_missing_dep(pkg, dep);
-			goto cleanup;
+			basedir = NULL;
+			ext = NULL;
 		}
+
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
+				continue;
+
+			if (basedir != NULL) {
+				const char *dep_name = pkg_dep_name(dep);
+				const char *dep_ver = pkg_dep_version(dep);
+
+				snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
+						dep_name, dep_ver, ext);
+
+				if ((flags & PKG_ADD_UPGRADE) == 0 &&
+						access(dpath, F_OK) == 0) {
+					ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
+					if (ret != EPKG_OK) {
+						retcode = EPKG_FATAL;
+						goto cleanup;
+					}
+				} else {
+					pkg_emit_error("Missing dependency matching "
+							"Origin: '%s' Version: '%s'",
+							pkg_dep_get(dep, PKG_DEP_ORIGIN),
+							pkg_dep_get(dep, PKG_DEP_VERSION));
+					if ((flags & PKG_ADD_FORCE_MISSING) == 0) {
+						retcode = EPKG_FATAL;
+						goto cleanup;
+					}
+				}
+			} else {
+				retcode = EPKG_FATAL;
+				pkg_emit_missing_dep(pkg, dep);
+				goto cleanup;
+			}
+		}
+	}
+	else {
+		/* Save reponame */
+		const char *reponame;
+
+		pkg_get(remote, PKG_REPONAME, &reponame);
+		pkg_addannotation(pkg, "repository", reponame);
 	}
 
 	if (location != NULL)
@@ -296,7 +303,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
-	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_UPGRADE, flags & PKG_ADD_FORCE);
+	retcode = pkgdb_register_pkg(db, pkg,
+			flags & PKG_ADD_UPGRADE,
+			flags & PKG_ADD_FORCE);
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
@@ -372,4 +381,18 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_free(pkg_inst);
 
 	return (retcode);
+}
+
+int
+pkg_add(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location)
+{
+	return pkg_add_common(db, path, flags, keys, location, NULL);
+}
+
+int
+pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location, struct pkg *rp)
+{
+	return pkg_add_common(db, path, flags, keys, location, rp);
 }
