@@ -36,7 +36,7 @@ case "${daily_backup_pkgng_enable:-YES}" in
 		[ -e "${bak_file}.txz" ] && \
 			mv -f "${bak_file}.txz" "${bak_file}.txz.2"
 
-		if ${pkgcmd} backup -d ${bak_file} 2>/dev/null; then
+		if ${pkgcmd} backup -d ${bak_file}; then
 			rc=0
 		else
 			rc=3
