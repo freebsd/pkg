@@ -1090,6 +1090,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 	struct pkgdb_it *it;
 	bool force = false, found = false;
 	int rc = EPKG_FATAL;
+	struct pkg_dep *rdep = NULL;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
@@ -1119,6 +1120,26 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 	pkgdb_it_free(it);
 
 	if (root && !found) {
+		/*
+		 * Here we need to ensure that this package has no
+		 * reverse deps installed
+		 */
+		p = get_local_pkg(j, pattern, 0);
+		if (p == NULL)
+			return (EPKG_FATAL);
+
+		while(pkg_deps(p, &rdep) == EPKG_OK) {
+			struct pkg *rdep_package;
+
+			rdep_package = get_local_pkg(j, pkg_dep_get(rdep, PKG_DEP_ORIGIN), 0);
+			if (rdep_package != NULL) {
+				/* It is not a top level package */
+				pkg_free(p);
+				pkg_free(rdep_package);
+				return (EPKG_FATAL);
+			}
+		}
+		pkg_free(p);
 		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
 		rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
