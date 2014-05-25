@@ -1511,11 +1511,11 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	char		*checkuid = NULL;
 	const char	*comp = NULL;
 
-	if (pattern != NULL)
+	if (pattern != NULL) {
 		checkuid = strchr(pattern, '~');
-	
-	if (pattern != NULL && checkuid != NULL)
-		checkorigin = strchr(pattern, '/');
+		if (checkuid == NULL)
+			checkorigin = strchr(pattern, '/');
+	}
 
 	switch (match) {
 	case MATCH_ALL:
