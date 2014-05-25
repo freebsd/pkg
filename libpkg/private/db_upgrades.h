@@ -623,6 +623,10 @@ static struct db_upgrades {
 		"FROM olddeps;"
 	"DROP TABLE olddeps;"
 	},
+	{26,
+	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
+	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
+	},
 
 
 	/* Mark the end of the array */
