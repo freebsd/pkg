@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd May 25, 2014
 .Dt PKG-CONVERT 8
 .Os
 .Sh NAME
@@ -25,25 +25,30 @@
 .Nm
 .Op Fl d Ar pkg_dbdir
 .Op Fl nr
+.Pp
+.Nm
+.Op Cm --pkg-dbdir Ar pkg_dbdir
+.Op Cm --{dry-run,revert}
 .Sh DESCRIPTION
 .Nm
-is used to convert from/to pkgng local database to legacy pkg_install tools
-format.
+is used to convert from/to
+.Xr pkg 8
+local database to legacy pkg_install tools format.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl d
+.Bl -tag -width revert
+.It Fl d Ar pkg_dbdir , Cm --pkg-dbdir Ar pkg_dbdir
 The location of the
 .Xr pkg_add 1
 dbdir.
 Defaults to
 .Fa /var/db/pkg .
-.It Fl n
+.It Fl n , Cm --dry-run
 Dry-run mode.
 Do not actually convert anything.
 Just show what would be done.
-.It Fl r
+.It Fl r , Cm --revert
 Revert conversion
 .El
 .Sh FILES
