@@ -1526,22 +1526,22 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
 					comp = " WHERE name = ?1 "
-					    "OR name || \"-\" || version = ?1";
+					    "OR name || '-' || version = ?1";
 				else
 					comp = " WHERE origin = ?1";
 			} else {
-				comp = " WHERE name || \"~\" || origin = ?1";
+				comp = " WHERE name || '~' || origin = ?1";
 			}
 		} else {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
 					comp = " WHERE name = ?1 COLLATE NOCASE "
-						"OR name || \"-\" || version = ?1"
+						"OR name || '-' || version = ?1"
 						"COLLATE NOCASE";
 				else
 					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {
-				comp = " WHERE name || \"~\" || origin = ?1 COLLATE NOCASE";
+				comp = " WHERE name || '~' || origin = ?1 COLLATE NOCASE";
 			}
 		}
 		break;
@@ -1549,22 +1549,22 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
 				comp = " WHERE name GLOB ?1 "
-				    "OR name || \"-\" || version GLOB ?1";
+				    "OR name || '-' || version GLOB ?1";
 			else
 				comp = " WHERE origin GLOB ?1";
 		} else {
-			comp = " WHERE name || \"~\" || origin = ?1";
+			comp = " WHERE name || '~' || origin = ?1";
 		}
 		break;
 	case MATCH_REGEX:
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
 				comp = " WHERE name REGEXP ?1 "
-					"OR name || \"-\" || version REGEXP ?1";
+					"OR name || '-' || version REGEXP ?1";
 			else
 				comp = " WHERE origin REGEXP ?1";
 		} else {
-			comp = " WHERE name || \"~\" || origin = ?1";
+			comp = " WHERE name || '~' || origin = ?1";
 		}
 		break;
 	case MATCH_CONDITION:
@@ -1627,7 +1627,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	comp = pkgdb_get_pattern_query(pattern, match);
 
 	sqlite3_snprintf(sizeof(sql), sql,
-			"SELECT id, origin, name, name || \"~\" || origin as uniqueid, "
+			"SELECT id, origin, name, name || '~' || origin as uniqueid, "
 				"version, comment, desc, "
 				"message, arch, maintainer, www, "
 				"prefix, flatsize, licenselogic, automatic, "
@@ -1656,7 +1656,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 
 	assert(db != NULL);
 	sqlite3_snprintf(sizeof(sql), sql,
-			"SELECT p.id, p.origin, p.name, p.name || \"~\" || p.origin as uniqueid, "
+			"SELECT p.id, p.origin, p.name, p.name || '~' || p.origin as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
@@ -1680,7 +1680,7 @@ pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
-		"SELECT p.id, p.origin, p.name, p.name || \"~\" || p.origin as uniqueid, "
+		"SELECT p.id, p.origin, p.name, p.name || '~' || p.origin as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
@@ -1707,7 +1707,7 @@ pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
-		"SELECT p.id, p.origin, p.name, p.name || \"~\" || p.origin as uniqueid, "
+		"SELECT p.id, p.origin, p.name, p.name || '~' || p.origin as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
@@ -1837,12 +1837,12 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 		"SELECT p.name, p.origin, p.version, p.locked "
 		"FROM main.packages AS p, main.deps AS d "
 		"WHERE p.id = d.package_id "
-			"AND d.name || \"~\" || d.origin = ?1;";
+			"AND d.name || '~' || d.origin = ?1;";
 	const char	*reposql = ""
 		"SELECT p.name, p.origin, p.version, 0 "
 		"FROM %Q.packages AS p, %Q.deps AS d "
 		"WHERE p.id = d.package_id "
-			"AND d.name || \"~\" || d.origin = ?1;";
+			"AND d.name || '~' || d.origin = ?1;";
 
 	assert(db != NULL && pkg != NULL);
 
@@ -2545,7 +2545,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES ("
-		" (SELECT id FROM packages WHERE name || \"~\" || origin = ?1 ),"
+		" (SELECT id FROM packages WHERE name || '~' || origin = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
 		"TTTT",
@@ -2554,7 +2554,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"DELETE FROM pkg_annotation WHERE "
 		"package_id IN"
-                " (SELECT id FROM packages WHERE name || \"~\" || origin = ?1) "
+                " (SELECT id FROM packages WHERE name || '~' || origin = ?1) "
 		"AND tag_id IN"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2)",
 		"TTT",
@@ -2569,7 +2569,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[CONFLICT] = {
 		NULL,
 		"INSERT INTO pkg_conflicts(package_id, conflict_id) "
-		"VALUES (?1, (SELECT id FROM packages WHERE name || \"~\" || origin = ?2))",
+		"VALUES (?1, (SELECT id FROM packages WHERE name || '~' || origin = ?2))",
 		"IT",
 	},
 	[PKG_PROVIDE] = {
@@ -3631,7 +3631,7 @@ pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
 		what = "name";
 		break;
 	case FIELD_NAMEVER:
-		what = "name || \"-\" || version";
+		what = "name || '-' || version";
 		break;
 	case FIELD_COMMENT:
 		what = "comment";
@@ -3851,18 +3851,18 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 	assert (db != NULL);
 
 	const char	 sql_local_conflict[] = ""
-		"SELECT p.name, p.version, p.origin, p.name || \"~\" || p.origin as uniqueid FROM packages AS p, files AS f "
+		"SELECT p.name, p.version, p.origin, p.name || '~' || p.origin as uniqueid FROM packages AS p, files AS f "
 		"WHERE p.id = f.package_id AND f.path = ?1;";
 
 	const char	 sql_conflicts[] = ""
-		"SELECT name, version, origin, name || \"~\" || origin as uniqueid FROM integritycheck WHERE path = ?1;";
+		"SELECT name, version, origin, name || '~' || origin as uniqueid FROM integritycheck WHERE path = ?1;";
 
 	const char sql_integrity_prepare[] = ""
 		"SELECT f.path FROM files as f, integritycheck as i "
 		"LEFT JOIN packages as p ON "
 		"p.id = f.package_id "
 		"WHERE f.path = i.path AND "
-		"p.name || \"~\" || p.origin != i.name || \"~\" || i.origin "
+		"p.name || '~' || p.origin != i.name || '~' || i.origin "
 		"GROUP BY f.path";
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_integrity_prepare);
@@ -3957,8 +3957,8 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *uniqueid)
 		    "p.prefix "
 		"FROM packages AS p, files AS f, integritycheck AS i "
 		"WHERE p.id = f.package_id AND f.path = i.path "
-		"AND i.name || \"~\" || i.origin = ?1 AND "
-		"i.name || \"~\" || i.origin != p.name || \"~\" || p.origin";
+		"AND i.name || '~' || i.origin = ?1 AND "
+		"i.name || '~' || i.origin != p.name || '~' || p.origin";
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
@@ -4439,7 +4439,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 
 		/* execute on all databases */
 		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT name || \"~\" || origin AS c FROM '%1$s'.packages", " UNION ");
+		    "SELECT name || '~' || origin AS c FROM '%1$s'.packages", " UNION ");
 
 		/* close parentheses for the compound statement */
 		sbuf_printf(sql, ");");
@@ -4452,7 +4452,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 
 		/* execute on all databases */
 		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT  name || \"~\" || origin AS c FROM '%1$s'.packages", " UNION ALL ");
+		    "SELECT  name || '~' || origin AS c FROM '%1$s'.packages", " UNION ALL ");
 
 		/* close parentheses for the compound statement */
 		sbuf_printf(sql, ");");
