@@ -79,6 +79,7 @@
 
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_split_uid(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_split_version(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
@@ -318,37 +319,50 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 }
 
 static void
-pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+pkgdb_split_common(sqlite3_context *ctx, int argc, sqlite3_value **argv,
+		char delim, const char *first, const char *second)
 {
 	const unsigned char *what = NULL;
-	const unsigned char *uid;
-	const unsigned char *twiddle;
+	const unsigned char *data;
+	const unsigned char *pos;
 
 	if (argc != 2 || (what = sqlite3_value_text(argv[0])) == NULL ||
-			(uid = sqlite3_value_text(argv[1])) == NULL) {
-		sqlite3_result_error(ctx, "SQL function split_uid() called "
+			(data = sqlite3_value_text(argv[1])) == NULL) {
+		sqlite3_result_error(ctx, "SQL function split_*() called "
 				"with invalid arguments.\n", -1);
 		return;
 	}
 
-	if (strcasecmp(what, "name") == 0) {
-		twiddle = strchr(uid, '~');
-		if (twiddle != NULL)
-			sqlite3_result_text(ctx, uid, (twiddle - uid), NULL);
+	if (strcasecmp(what, first) == 0) {
+		pos = strrchr(data, delim);
+		if (pos != NULL)
+			sqlite3_result_text(ctx, data, (pos - data), NULL);
 		else
-			sqlite3_result_text(ctx, uid, -1, NULL);
+			sqlite3_result_text(ctx, data, -1, NULL);
 	}
-	else if (strcasecmp(what, "origin") == 0) {
-		twiddle = strchr(uid, '~');
-		if (twiddle != NULL)
-			sqlite3_result_text(ctx, twiddle + 1, -1, NULL);
+	else if (strcasecmp(what, second) == 0) {
+		pos = strrchr(data, delim);
+		if (pos != NULL)
+			sqlite3_result_text(ctx, pos + 1, -1, NULL);
 		else
-			sqlite3_result_text(ctx, uid, -1, NULL);
+			sqlite3_result_text(ctx, data, -1, NULL);
 	}
 	else {
-		sqlite3_result_error(ctx, "SQL function split_uid() called "
-						"with invalid arguments.\n", -1);
+		sqlite3_result_error(ctx, "SQL function split_*() called "
+				"with invalid arguments.\n", -1);
 	}
+}
+
+static void
+pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_split_common(ctx, argc, argv, '~', "name", "origin");
+}
+
+static void
+pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_split_common(ctx, argc, argv, '-', "name", "version");
 }
 
 static void
@@ -1578,7 +1592,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
 					comp = " WHERE name = ?1 "
-					    "OR name || '-' || version = ?1";
+					    "OR (name = SPLIT_VERSION('name', ?1) AND "
+					    " version = SPLIT_VERSION('version', ?1))";
 				else
 					comp = " WHERE origin = ?1";
 			} else {
@@ -1589,12 +1604,12 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
 					comp = " WHERE name = ?1 COLLATE NOCASE "
-						"OR name || '-' || version = ?1"
-						"COLLATE NOCASE";
+							"OR (name = SPLIT_VERSION('name', ?1) COLLATE NOCASE AND "
+							" version = SPLIT_VERSION('version', ?1))";
 				else
 					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {
-				comp = " WHERE name = SPLIT_UID('name', ?1) AND "
+				comp = " WHERE name = SPLIT_UID('name', ?1) COLLATE NOCASE AND "
 						"origin = SPLIT_UID('origin', ?1) COLLATE NOCASE";
 			}
 		}
@@ -1603,7 +1618,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
 				comp = " WHERE name GLOB ?1 "
-				    "OR name || '-' || version GLOB ?1";
+					"OR (name GLOB SPLIT_VERSION('name', ?1) AND "
+					" version GLOB SPLIT_VERSION('version', ?1))";
 			else
 				comp = " WHERE origin GLOB ?1";
 		} else {
@@ -1615,7 +1631,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
 				comp = " WHERE name REGEXP ?1 "
-					"OR name || '-' || version REGEXP ?1";
+					"OR (name REGEXP SPLIT_VERSION('name', ?1) AND "
+					" version REGEXP SPLIT_VERSION('version', ?1))";
 			else
 				comp = " WHERE origin REGEXP ?1";
 		} else {
@@ -4179,6 +4196,8 @@ sqlcmd_init(sqlite3 *db, __unused const char **err,
 				pkgdb_regex, NULL, NULL);
 	sqlite3_create_function(db, "split_uid", 2, SQLITE_ANY, NULL,
 				pkgdb_split_uid, NULL, NULL);
+	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY, NULL,
+				pkgdb_split_version, NULL, NULL);
 
 	return SQLITE_OK;
 }
