@@ -176,6 +176,10 @@ static const char initsql[] = ""
 	");"
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX packages_uid ON packages(name, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version ON packages(name, version);"
 	/* FTS search table */
 	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 
