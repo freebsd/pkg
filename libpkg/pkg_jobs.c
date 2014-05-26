@@ -947,13 +947,13 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			 * do not add it.
 			 */
 			if (jit->pkg->type == PKG_INSTALLED) {
-				if (root)
-					pkg_emit_already_installed(p);
 				return (EPKG_INSTALLED);
 			}
 			else {
 				pkg_debug(3, "already added newer package %s to the universe, do not add it again",
 								uid);
+				if (add_request)
+					pkg_jobs_add_req(j, uid, jit);
 				return (EPKG_OK);
 			}
 		}
@@ -965,8 +965,6 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	else {
 		if (j->type != PKG_JOBS_FETCH) {
 			if (!newer_than_local_pkg(j, p, force)) {
-				if (root)
-					pkg_emit_already_installed(p);
 				return (EPKG_INSTALLED);
 			}
 		}
