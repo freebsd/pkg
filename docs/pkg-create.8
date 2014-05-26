@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2014
+.Dd May 26, 2014
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -50,6 +50,33 @@
 .Op Fl r Ar rootdir
 .Fl a
 .\" ---------------------------------------------------------------------------
+.Pp
+.Nm
+.Op Cm --no-clobber
+.Op Cm --format Ar format
+.Op Cm --out-dir Ar outdir
+.Op Cm --plist Ar plist
+.Op Cm --root-dir Ar rootdir
+.Cm --metadata Ar metadatadir
+.Nm
+.Op Cm --no-clobber
+.Op Cm --format Ar format
+.Op Cm --out-dir Ar outdir
+.Op Cm --root-dir Ar rootdir
+.Cm --manifest Ar manifest
+.Nm
+.Op Cm --{glob,no-clobber,regex}
+.Op Cm --format Ar format
+.Op Cm --out-dir Ar outdir
+.Op Cm --root-dir Ar rootdir
+.Ar pkg-name ...
+.Nm
+.Op Cm --no-clobber
+.Op Cm --format Ar format
+.Op Cm --out-dir Ar outdir
+.Op Cm --root-dir Ar rootdir
+.Cm --all
+.\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
 .Nm
 is used to create packages from binaries or other files installed on
@@ -80,14 +107,14 @@ command.
 The following options are supported by
 .Nm :
 .Bl -tag -width ".Fl m Ar metadatadir"
-.It Fl a
+.It Fl a , Cm --all
 Create package tarballs from all packages installed on your system.
 This option is incompatible with the
 .Fl g , x
 or
 .Fl m Ar metadatadir
 options.
-.It Fl g
+.It Fl g , Cm --glob
 Interpret
 .Ar pkg-name
 as a shell glob pattern and create package only for installed binaries whose
@@ -97,7 +124,7 @@ This option is incompatible with the
 or
 .Fl m Ar metadatadir
 options.
-.It Fl x
+.It Fl x , Cm --regex
 Like
 .Fl g ,
 but interpret
@@ -109,7 +136,7 @@ This option is incompatible with the
 or
 .Fl m Ar metadatadir
 options.
-.It Fl f Ar format
+.It Fl f Ar format , Cm --format Ar format
 Set
 .Ar format
 as the package output format.
@@ -121,7 +148,7 @@ which are currently the only supported format.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
-.It Fl m Ar metadatadir
+.It Fl m Ar metadatadir , Cm --metadata Ar metadatadir
 Specify the directory containing the package manifest,
 .Pa +MANIFEST
 and optionally three other files; one containing a message to be
@@ -150,7 +177,7 @@ This option is incompatible with the
 or
 .Fl x
 options.
-.It Fl M Ar manifest
+.It Fl M Ar manifest , Cm --manifest Ar manifest
 Read all of the package metadata from the
 .Ar manifest
 file.
@@ -164,22 +191,22 @@ This option is incompatible with the
 or
 .Fl x
 options.
-.It Fl n
+.It Fl n , Cm --no-clobber
 Do not overwrite already existing packages
-.It Fl o Ar outdir
+.It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
 as the output directory.
 If this option is not given, all created packages will
 be saved in the current directory.
-.It Fl p Ar plist
+.It Fl p Ar plist , Cm --plist Ar plist
 Specify some package metadata using the legacy plist format from
 .Xr pkg_add 1 ,
 commonly found in
 .Pa pkg-plist
 files in the ports tree.
 Metadata from the
-G.Ar plist
+.Ar plist
 file, if specified, will take precedence over any equivalents from
 the
 .Ar metadatadir .
@@ -188,7 +215,7 @@ Only has any effect when used with
 See
 .Sx "PLIST FORMAT"
 for details
-.It Fl r Ar rootdir
+.It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
 filesystem hierarchy containing the package files.

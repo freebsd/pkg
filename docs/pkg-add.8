@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 21, 2014
+.Dd May 25, 2014
 .Dt PKG-ADD 8
 .Os
 .Sh NAME
@@ -27,6 +27,15 @@
 .Ar pkg-name ...
 .Nm
 .Op Fl IAfMq
+.Ar <protocol>://<path>/<pkg-name> ...
+.Pp
+.Nm
+.Op Cm --{no-scripts,automatic,force,accept-missing,quiet}
+.Op Cm --relocate Ar location
+.Ar pkg-name ...
+.Nm
+.Op Cm --{no-scripts,automatic,force,accept-missing,quiet}
+.Op Cm --relocate Ar location
 .Ar <protocol>://<path>/<pkg-name> ...
 .Sh DESCRIPTION
 .Nm
@@ -67,21 +76,28 @@ has unmet dependencies.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width I1
-.It Fl I
-If any installation scripts (pre-install or post-install) exist for given
-packages, do not execute them.
-.It Fl A
+.Bl -tag -width automatic
+.It Fl A , Cm --automatic
 Mark the installed packages as orphan.
 Will be automatically removed if no other packages depend on them.
 For more information please refer to
 .Xr pkg-autoremove 8
-.It Fl f
+.It Fl f , Cm --force
 Force the reinstallation of the package if already installed.
-.It Fl M
+.It Fl I , Cm --no-scripts
+If any installation scripts (pre-install or post-install) exist for given
+packages, do not execute them.
+.It Fl M , Cm --accept-missing
 Force the installation of the package with missing dependencies.
-.It Fl q
+.It Fl q , Cm --quiet
 Force quiet output.
+.It Cm --relocate Ar location
+Annotates the package as having been relocated to
+.Pa location ,
+which is an alternate system root.
+This is an experimental feature and intended for cross-architecture
+package management.
+There is no corresponding single letter option.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

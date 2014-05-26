@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 26, 2014
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -29,6 +29,14 @@
 .Op Fl y
 .Op Fl Cgix
 .Ar pkg-name
+.Pp
+.Nm
+.Op Cm --all
+.Op Cm --automatic Op Ar 01
+.Op Cm --change-origin Ar oldorigin:neworigin
+.Op Cm --yes
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Ar pkg-name
 .Sh DESCRIPTION
 .Nm
 is used to modify information concerning installed packages.
@@ -37,24 +45,24 @@ should always be used with caution.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl A Ar 01
+.Bl -tag -width automatic
+.It Fl A Ar 01 , Cm --automatic Ar 01
 Set automatic flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
-.It Fl a
+.It Fl a , Cm --all
 Match all installed packages.
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl g
+.It Fl g , Cm --glob
 Match
 .Ar pkg-name
 as a globbing expression.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
@@ -64,7 +72,7 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl o Ar oldorigin:neworigin
+.It Fl o Ar oldorigin:neworigin , Cm --change-origin Ar oldorigin:neworigin
 Change the port origin of a given dependency from
 .Ar oldorigin
 to
@@ -78,12 +86,12 @@ Also see
 .Xr pkg-updating 8
 and
 .Sx EXAMPLES .
-.It Fl x
+.It Fl x , Cm --regex
 Match
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax of
 .Xr re_format 7 .
-.It Fl y
+.It Fl y , Cm --yes
 Assume yes rather than asking for confirmation before package autoremoval.
 .El
 .Pp

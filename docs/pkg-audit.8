@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 6, 2014
+.Dd May 25, 2014
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -24,7 +24,12 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Fq
-.Op Fl f Ar file
+.Op Fl f Ar filename
+.Ar pkg-name
+.Pp
+.Nm
+.Op Cm --{fetch,quiet}
+.Op Cm --file Ar filename
 .Ar pkg-name
 .Sh DESCRIPTION
 .Nm
@@ -54,19 +59,19 @@ will audit only that package.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl f Ar file
+.Bl -tag -width fetch
+.It Fl f Ar filename , Cm --file Ar filename
 Use
-.Pa file
+.Pa filename
 as the local copy of the vulnerability database.
 If used in combination with
 .Fl F
 download the vulnerability database to the named
-.Pa file
+.Pa filename
 before auditing installed ports against it.
-.It Fl F
+.It Fl F , Cm --fetch
 Fetch the database before checking.
-.It Fl q
+.It Fl q , Cm --quiet
 Be ``quiet''.
 Prints only the requested information without
 displaying many hints.

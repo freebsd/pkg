@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 3, 2013
+.Dd May 26, 2014
 .Dt PKG-SHLIB 8
 .Os
 .Sh NAME
@@ -31,6 +31,10 @@ Only exact matches are handled.
 .Nm
 .Op Fl PR
 .Ar library
+.Pp
+.Nm
+.Op Cm --{provides,requires}
+.Ar library
 .Sh DESCRIPTION
 .Nm
 is used for displaying the packages that provide
@@ -41,11 +45,11 @@ by containing binaries that link to it.
 .Sh OPTIONS
 The following mutually exclusive options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl P
+.Bl -tag -width provides
+.It Fl P , Cm --provides
 Show only the installed packages which provide the named
 .Ar library .
-.It Fl R
+.It Fl R , Cm --requires
 Show only the installed packages which require
 .Ar library.
 .El

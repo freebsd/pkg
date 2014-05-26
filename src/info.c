@@ -121,7 +121,7 @@ exec_info(int argc, char **argv)
 		{ "by-origin",		no_argument,		NULL,	'O' },
 		{ "prefix",		no_argument,		NULL,	'p' },
 		{ "guiet",		no_argument,		NULL,	'q' },
-		{ "requirements",	no_argument,		NULL,	'r' },
+		{ "required-by",	no_argument,		NULL,	'r' },
 		{ "raw",		no_argument,		NULL,	'R' },
 		{ "size",		no_argument,		NULL,	's' },
 		{ "regex",		no_argument,		NULL,	'x' },

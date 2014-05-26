@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 13, 2014
+.Dd May 26, 2014
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
@@ -26,6 +26,10 @@ package repositories
 .Nm
 .Op Fl fq
 .Op Fl r Ar reponame
+.Pp
+.Nm
+.Op Cm --{force,quiet}
+.Op Cm --repository Ar reponame
 .Sh DESCRIPTION
 .Nm
 is used for updating the local copy of a repository catalogue from
@@ -69,13 +73,13 @@ for more information.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl q
+.Bl -tag -width quiet
+.It Fl q , Cm --quiet
 Force quiet output
-.It Fl f
+.It Fl f , Cm --force
 Force a full download of the repository catalogue without regard to the
 respective ages of the local and remote copies of the catalogue
-.It Fl r Ar reponame
+.It Fl r Ar reponame , Cm --repository Ar reponame
 Download the catalogue for the named repository only.
 This will update only the named repository, irrespective of the configured
 .Dq active

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd May 25, 2014
 .Dt PKG-BACKUP 8
 .Os
 .Sh NAME
@@ -23,31 +23,33 @@
 .Nd backup and restore the local package database
 .Sh SYNOPSIS
 .Nm
-.Fl d
-.Ar dest_file
+.Fl d Ar dest_file
 .Nm
-.Fl r
-.Ar src_file
+.Fl r Ar src_file
+.Pp
+.Nm
+.Cm --dump Ar dest_file
+.Nm
+.Cm --restore Ar src_file
 .Sh DESCRIPTION
-.Nm
 is used for backing up and restoring of the local package database.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl d Ar dest_file
+.Bl -tag -width restore
+.It Fl d Ar dest_file , Cm --dump Ar dest_file
 Dumps the local package database to a file specified on the command-line.
 If
 .Ar -
 is specified as the argument
 .Nm
 will use stdout for its output.
-.It Fl r Ar src_file
+.It Fl r Ar src_file , Cm --restore Ar src_file
 Uses
-.Ar file
+.Ar src_file
 in order to restore the local package database.
 Useful in case of a database
-crash of lost to restore your database from previously made backup.
+crash or loss to restore your database from a previously made backup.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

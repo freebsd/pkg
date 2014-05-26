@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 05, 2014
+.Dd May 26, 2014
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -26,6 +26,13 @@
 .Op Fl fInFqUy
 .Op Fl r Ar reponame
 .Op Fl Cgix
+.Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
+.Pp
+.Nm
+.Op Cm --{force,no-install-scripts,dry-run,fetch-only}
+.Op Cm --{quiet,no-repo-update,yes}
+.Op Cm --repository Ar reponame
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Sh DESCRIPTION
 .Nm
@@ -114,51 +121,25 @@ work list.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl f
-Force reinstalling/upgrading the whole set of packages
-.It Fl I
-If any installation scripts (pre-install or post-install) or deinstallation
-scripts (pre-deinstall or post-deinstall) exist for a given package, do not
-execute them.
-.It Fl n
-Dry-run mode: show what packages have updates available, but do not perform
-any upgrades.
-Repository catalogues will be updated as usual unless the
-.Fl U
-option is also given.
-.It Fl F
-Do not perform installation of packages, merely fetch packages that should be
-upgraded and detect possible conflicts.
-.It Fl q
-Force quiet output, except when
-.Fl n
-is used, where a summary of the work list is always displayed.
-.It Fl U
-Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
-Automatic repository catalogue updates are only attempted when the
-effective UID of the process has write access to the package database.
-Otherwise they are silently ignored.
-.It Fl r Ar reponame
-Install packages from only the named repository,
-irrespective of the configured
-.Dq active
-status from
-.Pa repo.conf .
-.It Fl y
-Assume yes when asked for confirmation before package installation.
-.It Fl C
+.Bl -tag -width repository
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl f
-Force the reinstallation of the package if already installed.
-.It Fl g
+.It Fl F , Cm --fetch-only
+Do not perform installation of packages, merely fetch packages that should be
+upgraded and detect possible conflicts.
+.It Fl f , Cm --force
+Force the reinstallation or upgrade of the whole set of packages.
+.It Fl g , Cm --glob
 Treat the package names as shell glob patterns.
-.It Fl i
+.It Fl I , Cm --no-install-scripts
+If any installation scripts (pre-install or post-install) or deinstallation
+scripts (pre-deinstall or post-deinstall) exist for a given package, do not
+execute them.
+.It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -168,6 +149,30 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
+.It Fl n , Cm --dry-run
+Dry-run mode: show what packages have updates available, but do not perform
+any upgrades.
+Repository catalogues will be updated as usual unless the
+.Fl U 
+option is also given.
+.It Fl q , Cm --quiet
+Force quiet output, except when
+.Fl n
+is used, where a summary of the work list is always displayed.
+.It Fl r Ar reponame , Cm --repository Ar reponame
+Install packages from only the named repository,
+irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
+.It Fl U , Cm --no-repo-update
+Suppress the automatic update of the local copy of the repository catalogue
+from remote. 
+Automatic repository catalogue updates are only attempted when the
+effective UID of the process has write access to the package database.
+Otherwise they are silently ignored.
+.It Fl y , Cm --yes
+Assume yes when asked for confirmation before package installation.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

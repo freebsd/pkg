@@ -71,7 +71,7 @@ exec_fetch(int argc, char **argv)
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
-		{ "avaialbe-updates",	no_argument,		NULL,	'u' },
+		{ "available-updates",	no_argument,		NULL,	'u' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },

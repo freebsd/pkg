@@ -23,7 +23,11 @@
 .Nd displays which package installed a specific file
 .Sh SYNOPSIS
 .Nm
-.Op Fl qog
+.Op Fl gopq
+.Ar file
+.Pp
+.Nm
+.Op Cm --{glob,origin,path-search,quiet}
 .Ar file
 .Sh DESCRIPTION
 .Nm
@@ -32,17 +36,17 @@ is used for displaying the package that installed
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl q
-Be quiet
-.It Fl o
-Shows the origin of the package instead of name-version
-.It Fl g
+.Bl -tag -width origin
+.It Fl g , Cm --glob
 Treat
 .Ao file Ac
 as a glob pattern.
-.It Fl p
+.It Fl o , Cm --origin
+Shows the origin of the package instead of name-version
+.It Fl p , Cm --path-search
 Search for the filename in PATH.
+.It Fl q , Cm --quiet
+Be quiet
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -52,6 +56,7 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev PATH
 .El
 .Sh FILES
 See

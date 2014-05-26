@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2014
+.Dd May 25, 2014
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -30,13 +30,16 @@
 .Nm
 .Op Fl dlOt
 .Fl M Ar metadatafile
+.Pp
 .Nm
-.Op Cm --debug|legacy|old|test|relocate
+.Op Cm --{debug,legacy,old,test}
+.Op Cm --relocate Ar location
 .Op Cm --plist Ar plist-file
 .Cm --metadata Ar metadatadir
 .Cm --root Ar input-path
 .Nm
-.Op Cm --debug|legacy|old|test|relocate
+.Op Cm --{debug,legacy,old,test}
+.Op Cm --relocate Ar location
 .Cm --manifest Ar metadatafile
 .Sh DESCRIPTION
 .Nm
@@ -160,11 +163,11 @@ This is a temporary compatibility flag for internal use within the
 ports tree only.
 This flag will be removed once
 .Xr pkg_tools 8
-reached end-of-life.
+reaches end-of-life.
 Generates an old-style packing list on
 .Pa stdout ,
 without registering the port in the package database.
-.It Cm --relocate location
+.It Cm --relocate Ar location
 Annotates the package as having been relocated to
 .Pa location ,
 which is an alternate system root.

@@ -46,10 +46,8 @@ static int do_unlock(struct pkgdb *db, struct pkg *pkg);
 void
 usage_lock(void)
 {
-	fprintf(stderr, "Usage: pkg lock [-lqy] [-Cgix] <pkg-name>\n");
-	fprintf(stderr, "       pkg lock [-lqy] -al\n");
-	fprintf(stderr, "       pkg unlock [-lqy] [-Cgix] <pkg-name>\n");
-	fprintf(stderr, "       pkg unlock [-lqy] -a\n");
+	fprintf(stderr, "Usage: pkg lock [-lqy] [-a|[-Cgix] <pkg-name>]\n");
+	fprintf(stderr, "       pkg unlock [-lqy] [-a|[-Cgix] <pkg-name>]\n");
 	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
 
@@ -182,7 +180,9 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	argc -= optind;
 	argv += optind;
 
-	if (!(match == MATCH_ALL && argc == 0) && argc != 1) {
+	
+
+	if (!(match == MATCH_ALL && argc == 0) && argc != 1 && !show_locked) {
 		usage_lock();
 		return (EX_USAGE);
 	}
@@ -219,20 +219,22 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		return (EX_TEMPFAIL);
 	}
 
-	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-		exitcode = EX_IOERR;
-		goto cleanup;
-	}
-
-	while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
-		if (action == LOCK)
-			retcode = do_lock(db, pkg);
-		else
-			retcode = do_unlock(db, pkg);
-
-		if (retcode != EPKG_OK) {
+	if (match == MATCH_ALL || argc != 0) {
+		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 			exitcode = EX_IOERR;
 			goto cleanup;
+		}
+
+		while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
+			if (action == LOCK)
+				retcode = do_lock(db, pkg);
+			else
+				retcode = do_unlock(db, pkg);
+
+			if (retcode != EPKG_OK) {
+				exitcode = EX_IOERR;
+				goto cleanup;
+			}
 		}
 	}
 
