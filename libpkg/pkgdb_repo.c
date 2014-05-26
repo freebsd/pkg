@@ -1088,8 +1088,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	} else
 		sbuf_printf(sql, basesql, reponame, reponame);
 
-	if (match != MATCH_CONDITION)
-		sbuf_cat(sql, " ORDER BY name;");
+	sbuf_cat(sql, " ORDER BY name;");
 	sbuf_finish(sql);
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_get(sql), pattern);

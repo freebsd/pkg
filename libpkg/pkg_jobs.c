@@ -1065,8 +1065,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 		strlcpy(cpy, pos, len + 1);
 		if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_EXACT) != EPKG_OK) {
 			free(cpy);
-			cpy = sqlite3_mprintf(" WHERE name REGEXP ('^' || %.*Q || '[0-9.]*$')"
-					" ORDER by origin",
+			cpy = sqlite3_mprintf(" WHERE name REGEXP ('^' || %.*Q || '[0-9.]*$')",
 					len, pos);
 			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_CONDITION)
 					== EPKG_OK)
