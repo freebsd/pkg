@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 26, 2014
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -31,9 +31,24 @@
 .Op Fl Cegix
 .Ar pattern
 .Nm
-.Op Fl cDdfopqRU
+.Op Fl cDdfopqRsU
 .Op Fl r Ar reponame
-.Op Cegix
+.Op Fl Cegix
+.Ar pattern
+.Pp
+.Nm
+.Op Cm --no-repo-update
+.Op Cm --repository Ar reponame
+.Op Cm --search Ar search
+.Op Cm --label Ar label
+.Op Cm --query-modifier Ar query-modifier
+.Op Cm --{case-sensitive,exact,glob,case-insensitive,regex}
+.Ar pattern
+.Nm
+.Op Cm --{comment,description,depends-on,full,origins,prefix}
+.Op Cm --{quiet,raw,size,no-repo-update}
+.Op Cm --repository Ar reponame
+.Op Cm --{case-sensitive,exact,glob,case-insensitive,regex}
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -68,8 +83,8 @@ for details.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl C
+.Bl -tag -width repository
+.It Fl C , Cm --case-sensitive
 Make the exact
 .Fl ( e )
 or the regular expression
@@ -77,33 +92,33 @@ or the regular expression
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl c
+.It Fl c , Cm --comment
 Search for packages with comment text matching
 .Ar pattern .
 Equivalent to
 .Fl "S comment" .
-.It Fl D
+.It Fl D , Cm --description
 Search for packages with description text matching
 .Ar pattern .
 Equivalent to
 .Fl "S description" .
-.It Fl d
+.It Fl d , Cm --depends-on
 Display the list of packages depended on by each matched package.
 Equivalent to
 .Fl "Q depends-on" .
-.It Fl e
+.It Fl e , Cm --exact
 .Ar pattern
 should be an exact match against the search field.
-.It Fl f
+.It Fl f , Cm --full
 Show ``full'' information about the package.
 Equivalent to
 .Fl "Q full" .
-.It Fl g
+.It Fl g , Cm --glob
 Treat
 .Ar pattern
 as a shell globbing expression.
 The glob pattern must match the entire field being seached.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the exact
 .Fl ( e )
 or regular expression
@@ -115,7 +130,7 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl L Ar label
+.It Fl L Ar label , Cm --label Ar label
 Select which identifying label is printed for each matched package,
 unless
 .Fl q
@@ -132,20 +147,21 @@ If unspecified,
 is set to the same as the value searched via the
 .Fl S Ar search
 option.
-.It Fl o
+.It Fl o , Cm --origins
 List packages by origin for each package matching
 .Ar pattern .
 Equivalent to
 .Fl "L origin" .
-.It Fl p
+.It Fl p , Cm --prefix
 Display the package installation prefix for each matched package.
 Equivalent to
 .Fl "Q prefix" .
-.It Fl q
-Be ``quiet''.
+.It Fl q , Cm --quiet
+Be
+.Dq quiet .
 Produce less output.
 In particular do not show an identifying label field for each package.
-.It Fl Q Ar query-modifier
+.It Fl Q Ar query-modifier , Cm --query-modifier Ar query-modifier
 Modify the query output by adding an additional field to the result.
 Multiple fields can be added by using additional
 .Fl Q Ar query-modifier
@@ -153,7 +169,7 @@ flags.
 See the
 .Qq Sx Output Modifier Options
 section for details.
-.It Fl r Ar reponame
+.It Fl r Ar reponame , Cm --repository Ar reponame
 Search for packages from only the named repository,
 irrespective of the configured
 .Dq active
@@ -162,9 +178,9 @@ status from
 By default all repository catalogues marked
 .Dq active
 are searched.
-.It Fl R
+.It Fl R , Cm --raw
 Display the full manifest (raw) from the matching packages.
-.It Fl S Ar search
+.It Fl S Ar search , Cm --search Ar search
 Specify the field to search the repository catalogue on.
 If unspecified, searches on
 .Ar pkg-name
@@ -178,17 +194,17 @@ field.
 See the
 .Qq Sx Search and Label Options
 sections for more details.
-.It Fl s
+.It Fl s , Cm --size
 Display the installed size of matched packages.
 Equivalent to
 .Fl "Q size" .
-.It Fl U
+.It Fl U, Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
 from remote. 
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
-.It Fl x
+.It Fl x , Cm --regex
 Treat
 .Ar pattern
 as a regular expression according to the "modern" or "extended"
