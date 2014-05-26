@@ -343,6 +343,15 @@ static const struct repo_changes repo_upgrades[] = {
 	 "CREATE INDEX %Q.packages_origin ON packages(origin COLLATE NOCASE);"
 	 "CREATE INDEX %Q.packages_name ON packages(name COLLATE NOCASE);"
 	},
+	{2008,
+	 2009,
+	 "Optimize indicies",
+
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid ON packages(name, origin COLLATE NOCASE);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_version ON packages(name, version);"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -351,6 +360,15 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2009,
+	 2008,
+	 "Drop indicies",
+
+	 "DROP INDEX %Q.packages_uid_nocase;"
+	 "DROP INDEX %Q.packages_version_nocase;"
+	 "DROP INDEX %Q.packages_uid;"
+	 "DROP INDEX %Q.packages_version;"
+	},
 	{2008,
 	 2007,
 	 "Drop FTS index",

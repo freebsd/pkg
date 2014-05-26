@@ -627,8 +627,14 @@ static struct db_upgrades {
 	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
 	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
 	},
-
-
+	{27,
+	"CREATE INDEX IF NOT EXISTS packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX IF NOT EXISTS packages_uid ON packages(name, origin COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_version ON packages(name, version);"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 
