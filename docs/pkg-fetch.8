@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 26, 2014
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -36,6 +36,21 @@
 .Op Fl r Ar reponame
 .Op Fl dqUy
 .Fl u
+.Pp
+.Nm
+.Op Cm --repository Ar reponame
+.Op Cm --{dependencies,quiet,no-repo-update,yes}
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Ar pkg-name
+.Op ...
+.Nm
+.Op Cm --repository Ar reponame
+.Op Cm --{dependencies,quiet,no-repo-update,yes}
+.Cm --all
+.Nm
+.Op Cm --repository Ar reponame
+.Op Cm --{dependencies,quiet,no-repo-update,yes}
+.Cm --available-updates
 .Sh DESCRIPTION
 .Nm
 is used to download binary packages from a remote repository.
@@ -56,22 +71,22 @@ in
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl a
+.Bl -tag -width dependencies
+.It Fl a , Cm --all
 Fetch all packages.
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl d
+.It Fl d , Cm --dependencies
 Fetch the package and its dependencies as well.
-.It Fl g
+.It Fl g , Cm --glob
 Treat
 .Ar pkg-name
 as a shell glob pattern.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
@@ -81,30 +96,30 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl q
+.It Fl q , Cm --glob
 Quiet mode.
 Show less output.
-.It Fl r Ar reponame
+.It Fl r Ar reponame , Cm --repository Ar reponame
 Fetches packages from the given
 .Ar reponame
 if multiple repo support is enabled.
 See
 .Xr pkg.conf 5 .
-.It Fl u
+.It Fl u , Cm --available-updates
 Fetch all available updates for the currently installed packages.
-.It Fl U
+.It Fl U , Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
 from remote. 
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
-.It Fl x
+.It Fl x , Cm --regex
 Treat
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
-.It Fl y
+.It Fl y , Cm --yes
 Assume yes when asked for confirmation before fetching packages.
 .El
 .Sh ENVIRONMENT
