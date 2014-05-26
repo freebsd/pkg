@@ -1071,6 +1071,16 @@ pkgdb_access(unsigned mode, unsigned database)
 	return (retval);
 }
 
+static void
+pkgdb_profile_callback(void *ud, const char *req, sqlite3_uint64 nsec)
+{
+	/* According to sqlite3 documentation, nsec has milliseconds accuracy */
+	nsec /= 1000000LLU;
+	if (nsec > 0)
+		pkg_debug(1, "Sqlite request %s was executed in %lu milliseconds",
+			req, (unsigned long)nsec);
+}
+
 int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
@@ -1083,6 +1093,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	struct pkgdb	*db = NULL;
 	struct statfs	 stfs;
 	bool		 reopen = false;
+	bool		 profile = false;
 	char		 localpath[MAXPATHLEN];
 	const char	*dbdir;
 	bool		 create = false;
@@ -1195,6 +1206,12 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 			pkg_emit_error("No active remote repositories configured");
 			return (EPKG_FATAL);
 		}
+	}
+
+	profile = pkg_object_bool(pkg_config_get("SQLITE_PROFILE"));
+	if (profile) {
+		pkg_debug(1, "pkgdb profiling is enabled");
+		sqlite3_profile(db->sqlite, pkgdb_profile_callback, NULL);
 	}
 
 	*db_p = db;

@@ -299,7 +299,13 @@ static struct config_entry c[] = {
 		"LOCK_RETRIES",
 		"5",
 		"Retries performed to obtain a lock"
-	}
+	},
+	{
+		PKG_BOOL,
+		"SQLITE_PROFILE",
+		"NO",
+		"Profile sqlite queries"
+	},
 };
 
 static bool parsed = false;
