@@ -87,27 +87,71 @@ cleanup:
 	return (r);
 }
 
+static bool
+vquery_yesno(bool deft, const char *msg, va_list ap)
+{
+	char *line = NULL;
+	size_t linecap = 0;
+	int linelen;
+	bool	 r = deft;
+
+	/* We use default value of yes or default in case of quiet mode */
+	if (quiet)
+		return (yes || r);
+
+	/* Do not query user if we have specified yes flag */
+	if (yes)
+		return (true);
+
+	for (;;) {
+		pkg_vprintf(msg, ap);
+
+		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
+
+			if (linelen == 1 && line[0] == '\n') {
+				break;
+			}
+			else if (linelen == 2) {
+				if (line[0] == 'y' || line[0] == 'Y') {
+					r = true;
+					break;
+				}
+				else if (line[0] == 'n' || line[0] == 'N') {
+					r = false;
+					break;
+				}
+			}
+			else {
+				if (strcasecmp(line, "yes\n") == 0) {
+					r = true;
+					break;
+				}
+				else if (strcasecmp(line, "no\n") == 0) {
+					r = false;
+					break;
+				}
+			}
+			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
+		}
+		else {
+			/* Assume EOF as false */
+			r = false;
+			break;
+		}
+	}
+
+	return (r);
+}
+
 bool
 query_yesno(bool deft, const char *msg, ...)
 {
-	int	 c;
-	bool	 r = deft;
 	va_list	 ap;
+	bool r;
 
 	va_start(ap, msg);
-	pkg_vprintf(msg, ap);
+	r = vquery_yesno(deft, msg, ap);
 	va_end(ap);
-
-	c = getchar();
-	if (c == 'y' || c == 'Y')
-		r = true;
-	else if (c == 'n' || c == 'N')
-		r = false;
-	else if (c == '\n' || c == EOF)
-		return r;
-
-	while ((c = getchar()) != '\n' && c != EOF)
-		continue;
 
 	return (r);
 }

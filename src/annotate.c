@@ -50,9 +50,6 @@ enum action {
 	SHOW,
 };
 
-static 	bool yes;
-
-
 void
 usage_annotate(void)
 {
@@ -75,7 +72,7 @@ do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 	int		 ret = EPKG_OK;
 
 
-	if (yes || query_tty_yesno(false, "%n-%v: Add annotation tagged: %S with "
+	if (query_tty_yesno(false, "%n-%v: Add annotation tagged: %S with "
 	               "value: %S? [y/N]: ", pkg, pkg, tag, value)) {
 
 		ret = pkgdb_add_annotation(db, pkg, tag, value);
@@ -110,7 +107,7 @@ do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 	int		 ret = EPKG_OK;
 
 
-	if (yes || query_tty_yesno(false, "%n-%v: Change annotation tagged: %S to "
+	if (query_tty_yesno(false, "%n-%v: Change annotation tagged: %S to "
 		         "new value: %S? [y/N]: ", pkg, pkg, tag, value)) {
 		ret = pkgdb_modify_annotation(db, pkg, tag, value);
 		if (ret == EPKG_OK || ret == EPKG_WARN) {
@@ -134,7 +131,7 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	const char	*pkgname, *pkgversion;
 	int		 ret = EPKG_OK;
 
-	if (yes || query_tty_yesno(false, "%n-%v: Delete annotation tagged: %S "
+	if (query_tty_yesno(false, "%n-%v: Delete annotation tagged: %S "
 			 "[y/N]: ", pkg, pkg, tag)) {
 		ret = pkgdb_delete_annotation(db, pkg, tag);
 		if (ret == EPKG_OK) {
@@ -243,8 +240,6 @@ exec_annotate(int argc, char **argv)
 		{ "yes",		no_argument,	NULL,	'y' },
 		{ NULL,			0,		NULL,	0   },
 	};
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
         /* Set default case sensitivity for searching */
         pkgdb_set_case_sensitivity(

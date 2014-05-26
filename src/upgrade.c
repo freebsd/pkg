@@ -54,10 +54,8 @@ exec_upgrade(int argc, char **argv)
 	int		 ch;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	match_t		 match = MATCH_EXACT;
-	bool		 yes = true, yes_arg = false;
-	bool		 dry_run = false;
-	bool		 auto_update;
 	int		 done = 0;
+	bool	rc = false;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	struct option longopts[] = {
@@ -77,9 +75,6 @@ exec_upgrade(int argc, char **argv)
 	};
 
 	nbactions = nbdone = 0;
-
-	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
 	while ((ch = getopt_long(argc, argv, "CfFgiInqr:Uxy", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -120,7 +115,7 @@ exec_upgrade(int argc, char **argv)
 			match = MATCH_REGEX;
 			break;
 		case 'y':
-			yes_arg = true;
+			yes = true;
 			break;
 		default:
 			usage_upgrade();
@@ -184,19 +179,19 @@ exec_upgrade(int argc, char **argv)
 
 	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
 		/* print a summary before applying the jobs */
-		yes = yes_arg;
+		rc = yes;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
 				"The following %d packages will be affected (of %d checked):\n\n",
 				nbactions, pkg_jobs_total(jobs));
 
-			if (!yes && !dry_run)
-				yes = query_yesno(false, "\nProceed with this action [y/N]: ");
-			if (dry_run)
-				yes = false;
+			if (!dry_run)
+				rc = query_yesno(false, "\nProceed with this action [y/N]: ");
+			else
+				rc = false;
 		}
 
-		if (yes) {
+		if (rc) {
 			retcode = pkg_jobs_apply(jobs);
 			done = 1;
 			if (retcode == EPKG_CONFLICT) {
@@ -216,7 +211,7 @@ exec_upgrade(int argc, char **argv)
 		break;
 	}
 
-	if (done == 0 && yes)
+	if (done == 0 && rc)
 		printf("Your packages are up to date\n");
 
 	retcode = EX_OK;
@@ -226,7 +221,7 @@ cleanup:
 	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 
-	if (!yes && newpkgversion)
+	if (!rc && newpkgversion)
 		newpkgversion = false;
 
 	return (retcode);

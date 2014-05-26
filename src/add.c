@@ -96,6 +96,7 @@ exec_add(int argc, char **argv)
 			break;
 		case 'f':
 			f |= PKG_ADD_FORCE;
+			force = true;
 			break;
 		case 'M':
 			f |= PKG_ADD_FORCE_MISSING;

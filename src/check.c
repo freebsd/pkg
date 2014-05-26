@@ -134,6 +134,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	struct deps_entry *e = NULL;
 	char **pkgs = NULL;
 	int i = 0;
+	bool rc;
 	pkg_flags f = PKG_FLAG_AUTOMATIC;
 
 	assert(db != NULL);
@@ -178,10 +179,9 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	/* print a summary before applying the jobs */
 	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
 	
-	if (!yes)
-		yes = query_yesno(false, "\n>>> Try to fix the missing dependencies [y/N]: ");
+	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies [y/N]: ");
 
-	if (yes) {
+	if (rc) {
 		if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) ==
 		    EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to modify the package "
@@ -257,7 +257,6 @@ exec_check(int argc, char **argv)
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EX_OK;
 	int ch;
-	bool yes;
 	bool dcheck = false;
 	bool checksums = false;
 	bool recompute = false;
@@ -282,13 +281,6 @@ exec_check(int argc, char **argv)
 		{ "yes",		no_argument,	NULL,	'y' },
 		{ NULL,			0,		NULL,	0   },
 	};
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 

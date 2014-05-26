@@ -13,6 +13,7 @@ pkg_SOURCES=		add.c \
 			delete.c \
 			event.c \
 			fetch.c \
+			globals.c \
 			info.c \
 			install.c \
 			lock.c \

@@ -55,10 +55,10 @@ exec_set(int argc, char **argv)
 	struct pkg	*pkg = NULL;
 	int		 ch;
 	int		 i;
-	bool		 yes;
 	match_t		 match = MATCH_EXACT;
 	int64_t		 newautomatic = -1;
 	bool		 automatic = false;
+	bool		 rc = false;
 	const char	*errstr;
 	char		*neworigin = NULL;
 	char		*oldorigin = NULL;
@@ -77,13 +77,6 @@ exec_set(int argc, char **argv)
 		{ "yes",		no_argument,		NULL,	'y' },
 		{ NULL,			0,			NULL,	0   },
 	};
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
 
 	while ((ch = getopt_long(argc, argv, "A:aCgio:xy", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -193,14 +186,12 @@ exec_set(int argc, char **argv)
 			return (EX_SOFTWARE);*/
 		}
 
-		if (!yes) {
-			if (pkg != NULL)
-				yes = query_yesno(false, "Change origin from %S to %S for %n-%v? [y/N]: ",
-				    oldorigin, neworigin, pkg, pkg);
-			else
-				yes = query_yesno(false, "Change origin from %S to %S for all dependencies? "
-				    "[y/N]: ", oldorigin, neworigin);
-		}
+		if (pkg != NULL)
+			rc = query_yesno(false, "Change origin from %S to %S for %n-%v? [y/N]: ",
+					oldorigin, neworigin, pkg, pkg);
+		else
+			rc = query_yesno(false, "Change origin from %S to %S for all dependencies? "
+					"[y/N]: ", oldorigin, neworigin);
 		if (pkg != NULL && yes) {
 			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK) {
 				retcode = EX_IOERR;
@@ -211,7 +202,7 @@ exec_set(int argc, char **argv)
 	}
 	i = 0;
 	do {
-		bool save_yes = yes;
+		bool saved_rc = rc;
 
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			retcode = EX_IOERR;
@@ -223,15 +214,19 @@ exec_set(int argc, char **argv)
 				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 				if (automatic == newautomatic)
 					continue;
-				if (!yes) {
+				if (!rc) {
 					if (newautomatic)
-						yes = query_yesno(false, "Mark %n-%v as automatically installed? [y/N]: ", pkg, pkg);
+						rc = query_yesno(false,
+								"Mark %n-%v as automatically installed? [y/N]: ",
+								pkg, pkg);
 					else
-						yes = query_yesno(false, "Mark %n-%v as not automatically installed? [y/N]: ", pkg, pkg);
+						rc = query_yesno(false,
+								"Mark %n-%v as not automatically installed? [y/N]: ",
+								pkg, pkg);
 				}
-				if (yes)
+				if (rc)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
-				yes = save_yes;
+				rc = saved_rc;
 			}
 			if ((sets & ORIGIN) == ORIGIN) {
 				struct pkg_dep *d = NULL;

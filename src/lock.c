@@ -43,8 +43,6 @@ static int exec_lock_unlock(int, char**, enum action);
 static int do_lock(struct pkgdb *db, struct pkg *pkg);
 static int do_unlock(struct pkgdb *db, struct pkg *pkg);
 
-static bool yes = false;	/* Assume yes answer to questions */
-
 void
 usage_lock(void)
 {
@@ -65,7 +63,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno(false, "%n-%v: lock this package? [y/N]: ",
+	if (!query_yesno(false, "%n-%v: lock this package? [y/N]: ",
 				 pkg, pkg))
 		return (EPKG_OK);
 
@@ -85,7 +83,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno(false, "%n-%v: unlock this package? [y/N]: ",
+	if (!query_yesno(false, "%n-%v: unlock this package? [y/N]: ",
 				 pkg, pkg))
 		return (EPKG_OK);
 
@@ -149,13 +147,6 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		{ "yes",		no_argument,	NULL,	'y' },
 		{ NULL,		0,			NULL,	0   },
 	};
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
 
 	while ((ch = getopt_long(argc, argv, "aCgilqxy", longopts, NULL)) != -1) {
 		switch (ch) {

@@ -168,8 +168,7 @@ exec_clean(int argc, char **argv)
 	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1],
 			link_buf[MAXPATHLEN];
 	bool		 all = false;
-	bool		 dry_run = false;
-	bool		 yes, sumloaded = false;
+	bool		 sumloaded = false;
 	int		 retcode;
 	int		 ret;
 	int		 ch;
@@ -185,8 +184,6 @@ exec_clean(int argc, char **argv)
 		{ "yes",	no_argument,	NULL,	'y' },
 		{ NULL,		0,		NULL,	0   },
 	};
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt_long(argc, argv, "anqy", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -306,13 +303,13 @@ exec_clean(int argc, char **argv)
 
 	printf("The cleanup will free %s\n", size);
 	if (!dry_run) {
-		if (!yes)
-			yes = query_yesno(false,
-				"\nProceed with cleaning the cache [y/N]: ");
-		if (yes)
-			retcode = delete_dellist(&dl);
-	} else
+			if (query_yesno(false,
+			  "\nProceed with cleaning the cache [y/N]: ")) {
+				retcode = delete_dellist(&dl);
+			}
+	} else {
 		retcode = EX_OK;
+	}
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
