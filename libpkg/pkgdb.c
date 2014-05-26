@@ -78,6 +78,7 @@
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_split_uid(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
@@ -314,6 +315,40 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 	ret = regexec(re, str, 0, NULL, 0);
 	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
+}
+
+static void
+pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	const unsigned char *what = NULL;
+	const unsigned char *uid;
+	const unsigned char *twiddle;
+
+	if (argc != 2 || (what = sqlite3_value_text(argv[0])) == NULL ||
+			(uid = sqlite3_value_text(argv[1])) == NULL) {
+		sqlite3_result_error(ctx, "SQL function split_uid() called "
+				"with invalid arguments.\n", -1);
+		return;
+	}
+
+	if (strcasecmp(what, "name") == 0) {
+		twiddle = strchr(uid, '~');
+		if (twiddle != NULL)
+			sqlite3_result_text(ctx, uid, (twiddle - uid), NULL);
+		else
+			sqlite3_result_text(ctx, uid, -1, NULL);
+	}
+	else if (strcasecmp(what, "origin") == 0) {
+		twiddle = strchr(uid, '~');
+		if (twiddle != NULL)
+			sqlite3_result_text(ctx, twiddle + 1, -1, NULL);
+		else
+			sqlite3_result_text(ctx, uid, -1, NULL);
+	}
+	else {
+		sqlite3_result_error(ctx, "SQL function split_uid() called "
+						"with invalid arguments.\n", -1);
+	}
 }
 
 static void
@@ -1547,7 +1582,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				else
 					comp = " WHERE origin = ?1";
 			} else {
-				comp = " WHERE name || '~' || origin = ?1";
+				comp = " WHERE name = SPLIT_UID('name', ?1) AND "
+						"origin = SPLIT_UID('origin', ?1)";
 			}
 		} else {
 			if (checkuid == NULL) {
@@ -1558,7 +1594,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				else
 					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {
-				comp = " WHERE name || '~' || origin = ?1 COLLATE NOCASE";
+				comp = " WHERE name = SPLIT_UID('name', ?1) AND "
+						"origin = SPLIT_UID('origin', ?1) COLLATE NOCASE";
 			}
 		}
 		break;
@@ -1570,7 +1607,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			else
 				comp = " WHERE origin GLOB ?1";
 		} else {
-			comp = " WHERE name || '~' || origin = ?1";
+			comp = " WHERE name = SPLIT_UID('name', ?1) AND "
+					"origin = SPLIT_UID('origin', ?1)";
 		}
 		break;
 	case MATCH_REGEX:
@@ -1581,7 +1619,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			else
 				comp = " WHERE origin REGEXP ?1";
 		} else {
-			comp = " WHERE name || '~' || origin = ?1";
+			comp = " WHERE name = SPLIT_UID('name', ?1) AND "
+					"origin = SPLIT_UID('origin', ?1)";
 		}
 		break;
 	case MATCH_CONDITION:
@@ -4138,6 +4177,8 @@ sqlcmd_init(sqlite3 *db, __unused const char **err,
 				pkgdb_myarch, NULL, NULL);
 	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
 				pkgdb_regex, NULL, NULL);
+	sqlite3_create_function(db, "split_uid", 2, SQLITE_ANY, NULL,
+				pkgdb_split_uid, NULL, NULL);
 
 	return SQLITE_OK;
 }
