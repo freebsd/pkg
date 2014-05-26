@@ -274,4 +274,11 @@ int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,
 			 char *multiline);
 
+extern int yes;
+extern int dry_run;
+extern int auto_update;
+extern int case_sensitive;
+extern int force;
+void set_globals(void);
+
 #endif

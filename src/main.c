@@ -862,6 +862,8 @@ main(int argc, char **argv)
 		}
 	}
 
+	set_globals();
+
 	if (command == NULL) {
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
