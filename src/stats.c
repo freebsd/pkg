@@ -45,7 +45,7 @@ usage_stats(void)
 }
 
 int
-exec_stats(__unused int argc, __unused char **argv)
+exec_stats(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	int64_t		 flatsize = 0;
@@ -112,7 +112,7 @@ exec_stats(__unused int argc, __unused char **argv)
 		}
 	}
 
-	if (opt & STATS_REMOTE && pkg_repos_total_count() > 0) {
+	if ((opt & STATS_REMOTE) && pkg_repos_total_count() > 0) {
 		printf("Remote package database(s):\n");
 		printf("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
 		printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));

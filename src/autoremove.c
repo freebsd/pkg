@@ -44,16 +44,15 @@ usage_autoremove(void)
 }
 
 int
-exec_autoremove(__unused int argc, __unused char **argv)
+exec_autoremove(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode;
+	int retcode = EX_OK;
 	int ch;
-	bool yes = false;
-	bool dry_run = false;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
+	bool rc;
 
 	struct option longopts[] = {
 		{ "dry-run",	no_argument,	NULL,	'n' },
@@ -61,8 +60,6 @@ exec_autoremove(__unused int argc, __unused char **argv)
 		{ "yes",	no_argument,	NULL,	'y' },
 		{ NULL,		0,		NULL,	0   },
 	};
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt_long(argc, argv, "nqy", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -79,7 +76,7 @@ exec_autoremove(__unused int argc, __unused char **argv)
 		default:
 			break;
 		}
-        }
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -134,21 +131,15 @@ exec_autoremove(__unused int argc, __unused char **argv)
 
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
-		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
-		if (!yes && !dry_run)
-			yes = query_yesno(false,
+				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
+			rc = query_yesno(false,
 		            "\nProceed with deinstalling packages [y/N]: ");
-		if (dry_run)
-			yes = false;
 	}
-	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
-		retcode = EX_SOFTWARE;
+	if (dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
 		goto cleanup;
 	}
 
 	pkgdb_compact(db);
-
-	retcode = EX_OK;
 
 cleanup:
 	pkg_jobs_free(jobs);

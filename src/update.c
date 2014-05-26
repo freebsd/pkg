@@ -110,7 +110,6 @@ exec_update(int argc, char **argv)
 {
 	int		 ret;
 	int		 ch;
-	bool		 force = false;
 	const char	*reponame = NULL;
 
 	struct option longopts[] = {

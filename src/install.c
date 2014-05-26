@@ -62,11 +62,9 @@ exec_install(int argc, char **argv)
 	int		 ch;
 	int		 mode, repo_type;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
-	bool		 yes, yes_arg;
-	bool		 auto_update;
+	bool		 rc = false;
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
-	bool		 dry_run = false;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	struct option longopts[] = {
@@ -91,20 +89,10 @@ exec_install(int argc, char **argv)
 
 	nbactions = nbdone = 0;
 
-	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
-
-	yes = yes_arg;
-
 	if (strcmp(argv[0], "add") == 0) {
 		auto_update = false;
 		local_only = true;
-		yes_arg = true;
+		yes = true;
 		quiet = true;
 	}
 
@@ -160,7 +148,7 @@ exec_install(int argc, char **argv)
 			match = MATCH_REGEX;
 			break;
 		case 'y':
-			yes_arg = true;
+			yes = true;
 			break;
 		default:
 			usage_install();
@@ -233,22 +221,24 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
+	rc = yes;
 	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
 		/* print a summary before applying the jobs */
-		yes = yes_arg;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
 			    "The following %d packages will be affected (of %d checked):\n\n",
 			    nbactions, pkg_jobs_total(jobs));
 
-			if (!yes && !dry_run)
-				yes = query_yesno(false, 
+			if (!dry_run) {
+				rc = query_yesno(false,
 				    "\nProceed with this action [y/N]: ");
-			if (dry_run)
-				yes = false;
+			}
+			else {
+				rc = false;
+			}
 		}
 
-		if (yes) {
+		if (rc) {
 			retcode = pkg_jobs_apply(jobs);
 			if (retcode == EPKG_CONFLICT) {
 				printf("Conflicts with the existing packages "
@@ -274,7 +264,7 @@ cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 
-	if (!yes && newpkgversion)
+	if (!rc && newpkgversion)
 		newpkgversion = false;
 
 	return (retcode);

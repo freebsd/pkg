@@ -53,10 +53,7 @@ exec_delete(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
-	bool		 force = false;
-	bool		 recursive_flag = false;
-	bool		 yes;
-	bool		 dry_run = false;
+	bool		 recursive_flag = false, rc = false;
 	int		 retcode = EX_SOFTWARE;
 	int		 ch;
 	int		 i;
@@ -77,13 +74,6 @@ exec_delete(int argc, char **argv)
 	};
 
 	nbactions = nbdone = 0;
-
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
 
 	while ((ch = getopt_long(argc, argv, "aCDfginqRxy", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -216,11 +206,10 @@ exec_delete(int argc, char **argv)
 			retcode = EX_OK;
 			goto cleanup;
 		}
-		if (!yes && !dry_run)
-			yes = query_yesno(false,
+		rc = query_yesno(false,
 		            "\nProceed with deinstalling packages [y/N]: ");
 	}
-	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
+	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
 	pkgdb_compact(db);

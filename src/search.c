@@ -255,7 +255,6 @@ exec_search(int argc, char **argv)
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	bool		 atleastone = false;
-	bool		 auto_update;
 	bool		 old_quiet;
 
 	struct option longopts[] = {
@@ -280,12 +279,6 @@ exec_search(int argc, char **argv)
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ NULL,			0,			NULL,	0   },
 	};
-
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
-
-	/* Set default case sensitivity for searching */
-	pkgdb_set_case_sensitivity(
-	    pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH")));
 
 	while ((ch = getopt_long(argc, argv, "CcDdefgiL:opqQ:r:RS:sUx", longopts, NULL)) != -1) {
 		switch (ch) {

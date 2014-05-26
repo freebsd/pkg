@@ -130,14 +130,7 @@ exec_rquery(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
-
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
 
 	while ((ch = getopt_long(argc, argv, "aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -187,7 +180,7 @@ exec_rquery(int argc, char **argv)
 	if (!index_output) {
 		if (argc == 1 && condition == NULL && match == MATCH_EXACT) {
 			match = MATCH_ALL;
-		} else if ((argc == 1) ^ (match == MATCH_ALL ) && condition == NULL) {
+		} else if (((argc == 1) ^ (match == MATCH_ALL )) && condition == NULL) {
 			usage_rquery();
 			return (EX_USAGE);
 		}
