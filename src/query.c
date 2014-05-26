@@ -854,7 +854,7 @@ exec_query(int argc, char **argv)
 		{ "all",		no_argument,		NULL,	'a' },
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
 		{ "evaluate",		required_argument,	NULL,	'e' },
-		{ "read-file",		required_argument,	NULL,	'F' },
+		{ "file",		required_argument,	NULL,	'F' },
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "regex",		no_argument,		NULL,	'x' },
