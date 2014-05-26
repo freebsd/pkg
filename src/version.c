@@ -667,7 +667,6 @@ exec_version(int argc, char **argv)
 	const char	*portsdir;
 	const char	*indexfile;
 	char		 filebuf[MAXPATHLEN];
-	bool		 auto_update;
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
 	int		 ch;
@@ -694,13 +693,6 @@ exec_version(int argc, char **argv)
 		{ "regex",		required_argument,	NULL,	'x' },
 		{ NULL,			0,			NULL,	0   },
 	};
-
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
 
 	while ((ch = getopt_long(argc, argv, "Ce:g:hIiL:l:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
