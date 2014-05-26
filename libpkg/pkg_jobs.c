@@ -46,7 +46,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-static int find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
+static int pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
 		bool root, bool recursive, bool add_request);
 static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
 static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
@@ -893,7 +893,7 @@ new_pkg_version(struct pkg_jobs *j)
 	pkg_jobs_add_universe(j, p, true, false, NULL);
 
 	/* Use maximum priority for pkg */
-	if (find_remote_pkg(j, origin, MATCH_EXACT, false, true, true) == EPKG_OK) {
+	if (pkg_jobs_find_remote_pkg(j, origin, MATCH_EXACT, false, true, true) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
@@ -1083,7 +1083,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 }
 
 static int
-find_remote_pkg(struct pkg_jobs *j, const char *pattern,
+pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		match_t m, bool root, bool recursive, bool add_request)
 {
 	struct pkg *p = NULL;
@@ -1124,19 +1124,20 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		 * Here we need to ensure that this package has no
 		 * reverse deps installed
 		 */
-		p = get_local_pkg(j, pattern, 0);
+		p = get_local_pkg(j, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
 		if (p == NULL)
-			return (EPKG_FATAL);
+			return (EPKG_END);
 
-		while(pkg_deps(p, &rdep) == EPKG_OK) {
+		while(pkg_rdeps(p, &rdep) == EPKG_OK) {
 			struct pkg *rdep_package;
 
-			rdep_package = get_local_pkg(j, pkg_dep_get(rdep, PKG_DEP_ORIGIN), 0);
+			rdep_package = get_local_pkg(j, pkg_dep_get(rdep, PKG_DEP_ORIGIN),
+					PKG_LOAD_BASIC);
 			if (rdep_package != NULL) {
 				/* It is not a top level package */
 				pkg_free(p);
 				pkg_free(rdep_package);
-				return (EPKG_FATAL);
+				return (EPKG_END);
 			}
 		}
 		pkg_free(p);
@@ -1194,7 +1195,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 				return (EPKG_FATAL);
 			}
 		}
-		rc = find_remote_pkg(j, jp->pattern, jp->match, true, true, true);
+		rc = pkg_jobs_find_remote_pkg(j, jp->pattern, jp->match, true, true, true);
 		*got_local = false;
 	}
 	else {
@@ -1869,7 +1870,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				pkg_jobs_add_universe(j, pkg, true, false, NULL);
 				pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_AUTOMATIC, &automatic);
 				/* Do not test we ignore what doesn't exists remotely */
-				find_remote_pkg(j, uid, MATCH_EXACT, !automatic, true, !automatic);
+				pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, !automatic, true, !automatic);
 				pkg = NULL;
 			}
 			pkgdb_it_free(it);
@@ -1942,7 +1943,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			else {
 				pkg_get(pkg, PKG_UNIQUEID, &uid);
 				/* Do not test we ignore what doesn't exists remotely */
-				find_remote_pkg(j, uid, MATCH_EXACT, false,
+				pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, false,
 						j->flags & PKG_FLAG_RECURSIVE, true);
 			}
 			pkg = NULL;
@@ -1951,7 +1952,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	} else {
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
 			/* TODO: use repository priority here */
-			if (find_remote_pkg(j, jp->pattern, jp->match, true,
+			if (pkg_jobs_find_remote_pkg(j, jp->pattern, jp->match, true,
 					j->flags & PKG_FLAG_RECURSIVE, true) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
