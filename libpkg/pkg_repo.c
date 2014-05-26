@@ -138,7 +138,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 		goto checksum;
 
 	/* Create the dirs in cachedir */
-	if ((path = dirname(dest)) == NULL) {
+	if ((path = strdup(dirname(dest))) == NULL) {
 		pkg_emit_errno("dirname", dest);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -216,6 +216,9 @@ pkg_repo_fetch_package(struct pkg *pkg)
 		if (symlink(dest_fname, link_dest))
 			pkg_emit_errno("symlink", link_dest);
 	}
+
+	if (path != NULL)
+		free(path);
 
 	return (retcode);
 }
