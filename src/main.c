@@ -72,8 +72,6 @@ enum pkg_usage_reason {
 static void usage(const char *, const char *, FILE *, enum pkg_usage_reason, ...);
 static void usage_help(void);
 static int exec_help(int, char **);
-bool quiet = false;
-bool newpkgversion = false;
 
 static struct commands {
 	const char * const name;

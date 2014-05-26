@@ -279,6 +279,8 @@ extern int dry_run;
 extern int auto_update;
 extern int case_sensitive;
 extern int force;
+extern bool quiet;
+extern bool newpkgversion;
 void set_globals(void);
 
 #endif
