@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 27, 2014
+.Dd May 26, 2014
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -42,6 +42,27 @@
 .Op Fl r Ar reponame
 .Sm Fl I |
 .Ao query-format Ac Sm Ao pattern Ac Ao ... Ac
+.Pp
+.Nm
+.Sm Cm --index-line |
+.Ao query-format Ac Sm Ao pkg-name Ac
+.Nm
+.Op Cm --{all,no-repo-update}
+.Op Cm --repository Ar reponame
+.Sm Cm --index-line |
+.Ao query-format Ac Sm
+.Nm
+.Op Cm --no-repo-update
+.Cm --evaluate Ao evaluation-condition Ac
+.Op Cm --repository Ar reponame
+.Sm Cm --index-line |
+.Ao query-format Ac Sm
+.Nm
+.Op Cm --no-repo-update
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Op Cm --repository Ar reponame
+.Sm Cm --index-line |
+.Ao query-format Ac Sm Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
 is used for displaying information about remote packages.
@@ -60,20 +81,20 @@ in
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl a
+.Bl -tag -width repository
+.It Fl a , Cm --all
 Match all packages from the database
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl e
+.It Fl e , Cm --evaluate
 Match packages using the given
 .Ar evaluation-condition.
 See EVALUATION FORMAT for details.
-.It Fl I
+.It Fl I , Cm --index-line
 Print out the corresponding line from the ports
 .Pa INDEX
 file for each matched package.
@@ -83,7 +104,7 @@ argument.
 Only the first query format (including the
 .Fl I
 option) on the command line will be interpreted.
-.It Fl r Ar reponame
+.It Fl r Ar reponame , Cm --repository Ar reponame
 Query for data about packages from only the named repository,
 irrespective of the configured
 .Dq active
@@ -92,11 +113,11 @@ status from
 By default all repository catalogues marked
 .Dq active
 are queried.
-.It Fl g
+.It Fl g , Cm --glob
 Treat
 .Ao pattern Ac
 as a glob pattern.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
@@ -106,13 +127,13 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl U
+.It Fl U , Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
 from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
-.It Fl x
+.It Fl x , Cm --regex
 Treat
 .Ao pattern Ac
 as a regular expression according to the "modern" or "extended" syntax
