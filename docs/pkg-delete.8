@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 26, 2014
 .Dt PKG-DELETE 8
 .Os
 .Sh NAME
@@ -29,6 +29,14 @@
 .Nm
 .Op Fl Dnqy
 .Fl a
+.Pp
+.Nm
+.Op Cm --{no-deinstall-script,force,dry-run,quiet,recursive,yes}
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Ar pkg-name ...
+.Nm
+.Op Cm --{no-deinstall-script,dry-run,quiet,yes}
+.Cm --all
 .Sh DESCRIPTION
 .Nm
 is used for deleting installed packages from the system.
@@ -53,22 +61,22 @@ option.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl a
+.Bl -tag -width recursive
+.It Fl a , Cm --all
 Deletes all installed packages from the system and empties the database.
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl D
+.It Fl D , Cm --no-deinstall-script
 If a deinstallation script exists for a given package, do not execute it.
-.It Fl f
+.It Fl f , Cm --force
 Forces packages to be removed despite leaving unresolved dependencies.
-.It Fl g
+.It Fl g , Cm --glob
 Treat the package names as shell glob patterns.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
@@ -78,23 +86,23 @@ This is the defalt, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl n
+.It Fl n , Cm --dry-run
 Dry run mode.
 The list of packages to delete is always printed, but no packages are
 actually deleted.
-.It Fl q
+.It Fl q , Cm --quiet
 Force quiet output, except where
 .Fl n
 is also used, when
 .Nm
 will show the list of packages to be deleted.
-.It Fl R
+.It Fl R , Cm --recursive
 Delete all packages that require the listed packages as well.
-.It Fl x
+.It Fl x , Cm --regex
 Treat the package names as regular expressions according to the
 "modern" or "extended" syntax of
 .Xr re_format 7 .
-.It Fl y
+.It Fl y , Cm --yes
 Assume yes when asked for confirmation before package deletion.
 .El
 .Sh ENVIRONMENT
