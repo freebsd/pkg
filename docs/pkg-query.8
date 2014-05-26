@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 26, 2014
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -24,15 +24,27 @@
 .Sh SYNOPSIS
 .Nm
 .Ao query-format Ac Ao pkg-name Ac
+.Pp
 .Nm
 .Op Fl a
 .Ao query-format Ac
 .Nm
-.Fl F Ao pkg-name Ac Ao query-format Ac
+.Fl F Ao pkg-file Ac Ao query-format Ac
 .Nm
 .Fl e Ao evaluation-condition Ac Ao query-format Ac
 .Nm
-.Op Fl gix
+.Op Fl Cgix
+.Ao query-format Ac Ao pattern Ac Ao ... Ac
+.Pp
+.Nm
+.Op Cm --all
+.Ao query-format Ac
+.Nm
+.Cm --file Ao pkg-file Ac Ao query-format Ac
+.Nm
+.Cm --evaluate Ao evaluation-condition Ac Ao query-format Ac
+.Nm
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
@@ -40,23 +52,23 @@ is used for displaying information about packages.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl a
+.Bl -tag -width evaluate
+.It Fl a , Cm --all
 Match all packages from the database
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl e
+.It Fl e , Cm --evaluate
 Match packages using the given
 .Ar evaluation-condition.
 See EVALUATION FORMAT for details.
-.It Fl F Ar pkg-name
+.It Fl F Ar pkg-file , Cm --file Ar pkg-file
 Display information only for the package file
 .Ar pkg-name
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
@@ -66,11 +78,11 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl g
+.It Fl g , Cm --glob
 Treat
 .Ao pattern Ac
 as a glob pattern.
-.It Fl x
+.It Fl x , Cm --regex
 Treat
 .Ao pattern Ac
 as a regular expression according to the "modern" or "extended" syntax
