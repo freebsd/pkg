@@ -24,6 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -34,11 +40,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 
 int
-pkg_sshserve(void)
+pkg_sshserve(int fd)
 {
 	struct stat st;
 	char *line = NULL;
@@ -47,12 +54,12 @@ pkg_sshserve(void)
 	ssize_t linelen;
 	time_t mtime = 0;
 	const char *errstr;
-	FILE *f;
+	int ffd;
 	char buf[BUFSIZ];
 	char fpath[MAXPATHLEN];
 	const char *restricted = NULL;
 
-	pkg_config_string(PKG_CONFIG_SSH_RESTRICT_DIR, &restricted);
+	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {
@@ -72,6 +79,10 @@ pkg_sshserve(void)
 		}
 
 		file = line + 4;
+
+		if (*file == '/')
+			file++;
+
 		age = file;
 		while (!isspace(*age)) {
 			if (*age == '\0') {
@@ -108,7 +119,12 @@ pkg_sshserve(void)
 			continue;
 		}
 
+#ifdef HAVE_CAPSICUM
+		if (!cap_sandboxed() && restricted != NULL) {
+#else
 		if (restricted != NULL) {
+#endif
+			chdir(restricted);
 			file = realpath(file, fpath);
 			if (strncmp(file, restricted, strlen(restricted)) != 0) {
 				printf("ko: file not found\n");
@@ -116,7 +132,7 @@ pkg_sshserve(void)
 			}
 		}
 
-		if (stat(file, &st) == -1) {
+		if (fstatat(fd, file, &st, AT_SYMLINK_NOFOLLOW) == -1) {
 			printf("ko: file not found\n");
 			continue;
 		}
@@ -131,13 +147,17 @@ pkg_sshserve(void)
 			continue;
 		}
 
-		printf("ok: %" PRIdMAX "\n", (intmax_t)st.st_size);
-		f = fopen(file, "r");
+		if ((ffd = openat(fd, file, O_RDONLY)) == -1) {
+			printf("ko: file not found\n");
+			continue;
+		}
 
-		while ((r = fread(buf, 1, sizeof(buf), f)) > 0)
+		printf("ok: %" PRIdMAX "\n", (intmax_t)st.st_size);
+
+		while ((r = read(ffd, buf, sizeof(buf))) > 0)
 			fwrite(buf, 1, r, stdout);
 
-		fclose(f);
+		close(ffd);
 	}
 
 	free(line);

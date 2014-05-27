@@ -22,7 +22,7 @@ esac
 
 case "$daily_status_pkg_changes_enable" in
 	[Yy][Ee][Ss])
-	pkgcmd=__PREFIX__/sbin/pkg
+	pkgcmd=@prefix@/sbin/pkg
 
 	echo
 	echo 'Changes in installed packages:'

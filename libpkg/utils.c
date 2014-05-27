@@ -26,12 +26,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <pkg_config.h>
+
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <stdio.h>
 
 #include <assert.h>
 #include <errno.h>
+#ifdef HAVE_EXECINFO_H
+#include <execinfo.h>
+#endif
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -479,7 +484,7 @@ bool
 is_valid_abi(const char *arch, bool emit_error) {
 	const char *myarch;
 
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
 	    strncmp(arch, myarch, strlen(myarch)) != 0) {
@@ -519,7 +524,9 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 			/* Should not happen */
 			break;
 		}
-		obj = ucl_array_append(obj, sub);
+		if (obj == NULL)
+			obj = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(obj, sub);
 		++item;
 	}
 
@@ -555,8 +562,11 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			/* Should not happen */
 			break;
 		}
-		if (sub != NULL)
-			obj = ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		if (sub != NULL) {
+			if (obj == NULL)
+				obj = ucl_object_typed_new(UCL_OBJECT);
+			ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		}
 		++pair;
 	}
 
@@ -800,7 +810,8 @@ ucl_sbuf_append_double(double val, void *data)
 }
 
 bool
-ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
+ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
+    FILE *out)
 {
 	struct ucl_emitter_functions func = {
 		.ucl_emitter_append_character = ucl_file_append_character,
@@ -809,12 +820,10 @@ ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
 		.ucl_emitter_append_double = ucl_file_append_double
 	};
 
-	func.ud = out;
-
 	if (obj == NULL)
 		return (false);
 
-	func.ud = NULL;
+	func.ud = out;
 
 	return (ucl_object_emit_full(obj, emit_type, &func));
 
@@ -822,7 +831,7 @@ ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
 }
 
 bool
-ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type,
+ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
                      struct sbuf **buf)
 {
 	bool ret = false;
@@ -844,4 +853,25 @@ ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type,
 	sbuf_finish(*buf);
 
 	return (ret);
+}
+
+void
+print_trace(void)
+{
+	return;
+
+#ifdef HAVE_EXECINFO_H
+	void *array[10];
+	size_t size;
+	char **strings;
+	size_t i;
+
+	size = backtrace(array, 10);
+	strings = backtrace_symbols(array, size);
+
+	for (i = 0; i < size; i++)
+		fprintf(stderr, "%s\n", strings[i]);
+
+	free(strings);
+#endif
 }

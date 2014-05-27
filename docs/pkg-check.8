@@ -1,0 +1,148 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd May 25, 2014
+.Dt PKG-CHECK 8
+.Os
+.Sh NAME
+.Nm "pkg check"
+.Nd sanity checks installed packages
+.Sh SYNOPSIS
+.Nm
+.Op Fl Bdsr
+.Op Fl nvy
+.Op Fl a | Cgix Ar pattern
+.Pp
+.Nm
+.Op Cm --{shlibs,dependencies,checksums,recompute}
+.Op Cm --{dry-run,verbose,yes}
+.Op Cm --all | Cm --{case-sensitive,glob,case-insensitive,regex} Ar pattern
+.Sh DESCRIPTION
+.Nm
+.Fl B
+or
+.Nm
+.Cm --shlibs
+is used to reanalyse shared libraries of installed packages.
+.Pp
+.Nm
+.Fl d
+or
+.Nm
+.Cm --dependencies
+is used to check for and install missing dependencies.
+.Pp
+.Nm
+.Fl r
+or
+.Nm
+.Cm --recompute
+is used to recompute sizes and checksums of installed packages.
+.Pp
+.Nm
+.Fl s
+or
+.Nm
+.Cm --checksums
+is used to find invalid checksums for installed packages.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width dependencies
+.It Fl a , Cm --all
+Process all packages.
+.It Fl C , Cm --case-sensitive
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pattern
+case sensitive.
+.It Fl g , Cm --glob
+Treat
+.Ar pattern
+as a shell glob pattern.
+.It Fl i , Cm --case-insensitive
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pattern
+case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH 
+to true in
+.Pa pkg.conf .
+.It Fl n , Cm --dry-run
+Merely check for missing dependencies and do not install them.
+.It Fl v , Cm --verbose
+Be verbose.
+.It Fl x , Cm --regex
+Treat
+.Ar pattern
+as a regular expression.
+This uses the "modern" or "extended" syntax described in
+.Xr re_format 7
+.It Fl y , Cm --yes
+Assume yes when asked for confirmation before installing missing dependencies.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8

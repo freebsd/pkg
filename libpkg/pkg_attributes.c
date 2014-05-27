@@ -54,6 +54,7 @@ pkg_dep_free(struct pkg_dep *d)
 	sbuf_free(d->origin);
 	sbuf_free(d->name);
 	sbuf_free(d->version);
+	free(d->uid);
 	free(d);
 }
 
@@ -212,66 +213,6 @@ pkg_dir_try(struct pkg_dir const * const d)
 	assert(d != NULL);
 
 	return (d->try);
-}
-
-/*
- * Category
- */
-
-int
-pkg_category_new(struct pkg_category **c)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_category))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-const char *
-pkg_category_name(struct pkg_category const * const c)
-{
-	assert(c != NULL);
-
-	return (sbuf_get(c->name));
-}
-
-void
-pkg_category_free(struct pkg_category *c)
-{
-
-	if (c == NULL)
-		return;
-
-	sbuf_free(c->name);
-	free(c);
-}
-
-/*
- * License
- */
-int
-pkg_license_new(struct pkg_license **l)
-{
-	if ((*l = calloc(1, sizeof(struct pkg_license))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_license");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_license_free(struct pkg_license *l)
-{
-	free(l);
-}
-
-const char *
-pkg_license_name(struct pkg_license const * const l)
-{
-	assert(l != NULL);
-
-	return (l->name);
 }
 
 /*
@@ -469,16 +410,16 @@ pkg_conflict_free(struct pkg_conflict *c)
 	if (c == NULL)
 		return;
 
-	sbuf_free(c->origin);
+	sbuf_free(c->uniqueid);
 	free(c);
 }
 
 const char *
-pkg_conflict_origin(const struct pkg_conflict *c)
+pkg_conflict_uniqueid(const struct pkg_conflict *c)
 {
 	assert(c != NULL);
 
-	return (sbuf_get(c->origin));
+	return (sbuf_get(c->uniqueid));
 }
 
 /*
@@ -509,45 +450,4 @@ pkg_provide_name(const struct pkg_provide *c)
 	assert(c != NULL);
 
 	return (sbuf_get(c->provide));
-}
-
-
-/*
- * Annotations
- */
-
-int
-pkg_annotation_new(struct pkg_note **an)
-{
-	if ((*an = calloc(1, sizeof(struct pkg_note))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_annotation_free(struct pkg_note *an)
-{
-	if (an == NULL)
-		return;
-
-	sbuf_free(an->tag);
-	sbuf_free(an->value);
-	free(an);
-}
-
-const char *
-pkg_annotation_tag(struct pkg_note const * const an)
-{
-	assert(an != NULL);
-
-	return (sbuf_get(an->tag));
-}
-
-const char *
-pkg_annotation_value(struct pkg_note const * const an)
-{
-	assert(an != NULL);
-
-	return (sbuf_get(an->value));
 }

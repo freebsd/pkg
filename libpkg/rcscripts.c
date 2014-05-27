@@ -150,7 +150,7 @@ rc_start(const char *rc_file)
 	if ((error = posix_spawn(&pid, "/usr/sbin/service", NULL, NULL,
 	    __DECONST(char **, argv), environ)) != 0) {
 		errno = error;
-		pkg_emit_errno("Cannot stop service", rc_file);
+		pkg_emit_errno("Cannot start service", rc_file);
 		return (-1);
 	}
 

@@ -39,6 +39,7 @@
 
 #include "pkg.h"
 #include <private/pkg_printf.h>
+#include <private/pkg.h>
 
 /*
  * Format codes
@@ -154,7 +155,8 @@
  *
  * x
  * y
- * z
+ *
+ * z  pkg          short checksum
  */
 
 struct pkg_printf_fmt {
@@ -757,6 +759,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_checksum,
 	},
+	[PP_PKG_SHORT_CHECKSUM] =
+	{
+		'z',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_short_checksum,
+	},
 	[PP_PKG_VERSION] =
 	{
 		'v',
@@ -824,17 +835,20 @@ struct sbuf *
 format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const pkg_object	*an;
 
+	pkg_get(pkg, PKG_ANNOTATIONS, &an);
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_ANNOTATIONS), p));
+		return (list_count(sbuf, pkg_object_count(an), p));
 	else {
-		struct pkg_note	*note = NULL;
-		int		 count;
+		const pkg_object	*note;
+		pkg_iter		it = NULL;
+		int			 count;
 
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
-		while (pkg_annotations(pkg, &note) == EPKG_OK) {
+		while ((note = pkg_object_iterate(an, &it))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     note, count, PP_A);
@@ -853,9 +867,9 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_note	*note = data;
+	pkg_object	*o = (pkg_object *)data;
 
-	return (string_val(sbuf, pkg_annotation_tag(note), p));
+	return (string_val(sbuf, pkg_object_key(o), p));
 }
 
 /*
@@ -864,9 +878,9 @@ format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *
 struct sbuf *
 format_annotation_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_note	*note = data;
+	pkg_object	*o = (pkg_object *)data;
 
-	return (string_val(sbuf, pkg_annotation_value(note), p));
+	return (string_val(sbuf, pkg_object_string(o), p));
 }
 
 /*
@@ -923,18 +937,21 @@ struct sbuf *
 format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const pkg_object	*obj;
+
+	pkg_get(pkg, PKG_CATEGORIES, &obj);
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
-				   p));
+		return (list_count(sbuf, pkg_object_count(obj), p));
 	else {
-		struct pkg_category	*cat = NULL;
+		const pkg_object	*cat;
+		pkg_iter		 it = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		while (pkg_categories(pkg, &cat) == EPKG_OK) {
+		while ((cat = pkg_object_iterate(obj, &it))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     cat, count, PP_C);
@@ -953,9 +970,9 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_category	*cat = data;
+	pkg_object	*o = (pkg_object *)data;
 
-	return (string_val(sbuf, pkg_category_name(cat), p));
+	return (string_val(sbuf, pkg_object_string(o), p));
 }
 
 /*
@@ -1235,18 +1252,21 @@ struct sbuf *
 format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const pkg_object	*obj;
+
+	pkg_get(pkg, PKG_LICENSES, &obj);
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
-				   p));
+		return (list_count(sbuf, pkg_object_count(obj), p));
 	else {
-		struct pkg_license	*lic = NULL;
+		const pkg_object	*lic;
+		pkg_iter		 iter = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
+		while ((lic = pkg_object_iterate(obj, &iter))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     lic, count, PP_L);
@@ -1265,9 +1285,9 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_license	*license = data;
+	pkg_object *o = (pkg_object *) data;
 
-	return (string_val(sbuf, pkg_license_name(license), p));
+	return (string_val(sbuf, pkg_object_string(o), p));
 }
 
 /*
@@ -1640,7 +1660,7 @@ struct sbuf *
 format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	lic_t			 licenselogic;
+	int64_t			 licenselogic;
 
 	pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
 	return (liclog_val(sbuf, licenselogic, p));
@@ -1812,6 +1832,26 @@ format_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_CKSUM, &checksum);
 	return (string_val(sbuf, checksum, p));
+}
+
+/*
+ * %z -- Package short checksum. string. Accepts field width, left align
+ */
+struct sbuf *
+format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*checksum;
+	char	 csum[PKG_FILE_CKSUM_CHARS + 1];
+	int slen;
+
+	pkg_get(pkg, PKG_CKSUM, &checksum);
+
+	slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	memcpy(csum, checksum, slen);
+	csum[slen] = '\0';
+
+	return (string_val(sbuf, csum, p));
 }
 
 /*

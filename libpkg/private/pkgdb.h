@@ -84,6 +84,11 @@ int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
 int pkgdb_repo_init(sqlite3 *sqlite);
 
 /**
+ * Finalize prepared statements for a repo
+ */
+void pkgdb_repo_finalize_statements(void);
+
+/**
  * Close repodb and commit/rollback transaction started
  * @param sqlite sqlite pointer
  * @param commit commit transaction if true, rollback otherwise
@@ -144,5 +149,67 @@ struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
  */
 int pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		int conflicts_num, sqlite3 *sqlite);
+
+/**
+ * Execute SQL statement on all attached databases
+ * @param s
+ * @param sql
+ * @param multireposql
+ * @param compound
+ * @return
+ */
+int
+pkgdb_sql_all_attached(sqlite3 *s, struct sbuf *sql, const char *multireposql,
+    const char *compound);
+
+/**
+ * Get repository name
+ * @param db
+ * @param repo
+ * @return
+ */
+const char *pkgdb_get_reponame(struct pkgdb *db, const char *repo);
+
+/**
+ * Get query for the specified match type
+ * @param pattern
+ * @param match
+ * @return
+ */
+const char * pkgdb_get_pattern_query(const char *pattern, match_t match);
+
+/**
+ * Returns whether the specified database is attached
+ * @param s
+ * @param name
+ * @return
+ */
+bool pkgdb_is_attached(sqlite3 *s, const char *name);
+
+/**
+ * Find provides for a specified require in repos
+ * @param db
+ * @param provide
+ * @param repo
+ * @return
+ */
+struct pkgdb_it *pkgdb_find_shlib_require(struct pkgdb *db,
+		const char *provide, const char *repo);
+/**
+ * Find requires for a specified provide in repos
+ * @param db
+ * @param require
+ * @param repo
+ * @return
+ */
+struct pkgdb_it *pkgdb_find_shlib_provide(struct pkgdb *db,
+		const char *require, const char *repo);
+
+/**
+ * Unregister a package from the database
+ * @return An error code.
+ */
+int pkgdb_unregister_pkg(struct pkgdb *pkg, int64_t id);
+
 
 #endif

@@ -1,6 +1,7 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +28,7 @@
 
 #include <assert.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
 #include <sys/un.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -34,6 +36,8 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <osreldate.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,8 +48,21 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
-#define ABI_VAR_STRING "${ABI}"
 #define REPO_NAME_PREFIX "repo-"
+#ifndef PORTSDIR
+#define PORTSDIR "/usr/ports"
+#endif
+#ifndef DEFAULT_VULNXML_URL
+#define DEFAULT_VULNXML_URL "http://www.vuxml.org/freebsd/vuln.xml.bz2"
+#endif
+
+#ifdef	OSMAJOR
+#define STRINGIFY(X)	TEXT(X)
+#define TEXT(X)		#X
+#define INDEXFILE	"INDEX-" STRINGIFY(OSMAJOR)
+#else
+#define INDEXFILE	INDEX
+#endif
 
 int eventpipe = -1;
 
@@ -58,255 +75,242 @@ struct config_entry {
 
 static char myabi[BUFSIZ];
 static struct pkg_repo *repos = NULL;
-static struct pkg_config *config = NULL;
-static struct pkg_config *config_by_key = NULL;
+ucl_object_t *config = NULL;
 
 static struct config_entry c[] = {
-	[PKG_CONFIG_REPO] = {
-		PKG_CONFIG_STRING,
-		"PACKAGESITE",
-#ifdef DEFAULT_PACKAGESITE
-		DEFAULT_PACKAGESITE,
-#else
-		NULL,
-#endif
-		"Repository URL",
-	},
-	[PKG_CONFIG_DBDIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
 		"Where the package databases are stored",
 	},
-	[PKG_CONFIG_CACHEDIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
 		"Directory containing cache of downloaded packages",
 	},
-	[PKG_CONFIG_PORTSDIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PORTSDIR",
-#ifdef PORTSDIR
-		PORTSDIR,
-#else
 		"/usr/ports",
-#endif
 		"Location of the ports collection",
 	},
-	[PKG_CONFIG_REPOKEY] = {
-		PKG_CONFIG_STRING,
-		"PUBKEY",
-		NULL,
-		"Public key for authenticating packages from the chosen repository",
+	{
+		PKG_STRING,
+		"INDEXDIR",
+		NULL,		/* Default to PORTSDIR unless defined */
+		"Location of the ports INDEX",
 	},
-	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_STRING,
+		"INDEXFILE",
+		INDEXFILE,
+		"Filename of the ports INDEX",
+	},
+	{
+		PKG_BOOL,
 		"HANDLE_RC_SCRIPTS",
-		NULL,
+		"NO",
 		"Automatically handle restarting services",
 	},
-	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"ASSUME_ALWAYS_YES",
-		NULL,
+		"NO",
 		"Answer 'yes' to all pkg(8) questions",
 	},
-	[PKG_CONFIG_REPOS_DIR] = {
-		PKG_CONFIG_LIST,
+	{
+		PKG_ARRAY,
 		"REPOS_DIR",
 		"/etc/pkg/,"PREFIX"/etc/pkg/repos/",
 		"Location of the repository configuration files"
 	},
-	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
 		"Directory containing definitions of plist keywords",
 	},
-	[PKG_CONFIG_SYSLOG] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"SYSLOG",
 		"YES",
 		"Log pkg(8) operations via syslog(3)",
 	},
-	[PKG_CONFIG_AUTODEPS] = {
-		PKG_CONFIG_BOOL,
-		"AUTODEPS",
-		"YES",
-		"Automatically append dependencies to fulfil dynamic linking requrements of binaries",
-	},
-	[PKG_CONFIG_ABI] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"ABI",
 		myabi,
 		"Override the automatically detected ABI",
 	},
-	[PKG_CONFIG_DEVELOPER_MODE] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
 		"Add extra strict, pedantic warnings as an aid to package maintainers",
 	},
-	[PKG_CONFIG_PORTAUDIT_SITE] = {
-		PKG_CONFIG_STRING,
-		"PORTAUDIT_SITE",
-#ifdef DEFAULT_AUDIT_URL
-		DEFAULT_AUDIT_URL,
-#else
-		"http://portaudit.FreeBSD.org/auditfile.tbz",
-#endif
-		"URL giving location of the audit database",
-	},
-	[PKG_CONFIG_VULNXML_SITE] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"VULNXML_SITE",
-#ifdef DEFAULT_VULNXML_URL
 		DEFAULT_VULNXML_URL,
-#else
-		"http://www.vuxml.org/freebsd/vuln.xml.bz2",
-#endif
 		"URL giving location of the vulnxml database",
 	},
-	[PKG_CONFIG_MIRRORS] = {
-		PKG_CONFIG_STRING,
-		"MIRROR_TYPE",
-#if DEFAULT_MIRROR_TYPE == 1
-		"SRV",
-#elif DEFAULT_MIRROR_TYPE == 2
-		"HTTP",
-#else
-		NULL,
-#endif
-		"How to locate alternate mirror sites of a repository (one of: 'SRV', 'HTTP')",
-	},
-	[PKG_CONFIG_FETCH_RETRY] = {
-		PKG_CONFIG_INTEGER,
+	{
+		PKG_INT,
 		"FETCH_RETRY",
 		"3",
 		"How many times to retry fetching files",
 	},
-	[PKG_CONFIG_PLUGINS_DIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
 		"Directory which pkg(8) will load plugins from",
 	},
-	[PKG_CONFIG_ENABLE_PLUGINS] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
 		"Activate plugin support",
 	},
-	[PKG_CONFIG_PLUGINS] = {
-		PKG_CONFIG_LIST,
+	{
+		PKG_ARRAY,
 		"PLUGINS",
 		NULL,
 		"List of plugins that pkg(8) should load",
 	},
-	[PKG_CONFIG_DEBUG_SCRIPTS] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
 		"Run shell scripts in verbose mode to facilitate debugging",
 	},
-	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
 		"Directory containing plugin configuration data",
 	},
-	[PKG_CONFIG_PERMISSIVE] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"PERMISSIVE",
 		"NO",
 		"Permit package installation despite presence of conflicting packages",
 	},
-	[PKG_CONFIG_REPO_AUTOUPDATE] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
 		"Automatically update repository catalogues prior to package updates",
 	},
-	[PKG_CONFIG_NAMESERVER] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"NAMESERVER",
 		NULL,
 		"Use this nameserver when looking up addresses",
 	},
-	[PKG_CONFIG_EVENT_PIPE] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"EVENT_PIPE",
 		NULL,
 		"Send all events to the specified fifo or Unix socket",
 	},
-	[PKG_CONFIG_FETCH_TIMEOUT] = {
-		PKG_CONFIG_INTEGER,
+	{
+		PKG_INT,
 		"FETCH_TIMEOUT",
 		"30",
-		NULL,
+		"Number of seconds before fetch(3) times out",
 	},
-	[PKG_CONFIG_UNSET_TIMESTAMP] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"UNSET_TIMESTAMP",
 		"NO",
-		NULL,
+		"Do not include timestamps in the package",
 	},
-	[PKG_CONFIG_SSH_RESTRICT_DIR] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"SSH_RESTRICT_DIR",
 		NULL,
 		"Directory the ssh subsystem will be restricted to",
 	},
-	[PKG_CONFIG_ENV] = {
-		PKG_CONFIG_KVLIST,
+	{
+		PKG_OBJECT,
 		"PKG_ENV",
 		NULL,
 		"Environment variables pkg will use",
 	},
-	[PKG_CONFIG_DISABLE_MTREE] = {
-		PKG_CONFIG_BOOL,
+	{
+		PKG_BOOL,
 		"DISABLE_MTREE",
 		"NO",
 		"Experimental: disable MTREE processing on pkg installation",
 	},
-	[PKG_CONFIG_SSH_ARGS] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"PKG_SSH_ARGS",
 		NULL,
 		"Extras arguments to pass to ssh(1)",
 	},
-	[PKG_CONFIG_DEBUG_LEVEL] = {
-		PKG_CONFIG_INTEGER,
+	{
+		PKG_INT,
 		"DEBUG_LEVEL",
 		"0",
 		"Level for debug messages",
 	},
-	[PKG_CONFIG_ALIAS] = {
-		PKG_CONFIG_KVLIST,
+	{
+		PKG_OBJECT,
 		"ALIAS",
 		NULL,
 		"Command aliases",
 	},
-	[PKG_CONFIG_CUDF_SOLVER] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"CUDF_SOLVER",
 		NULL,
 		"Experimental: tells pkg to use an external CUDF solver",
 	},
-	[PKG_CONFIG_SAT_SOLVER] = {
-		PKG_CONFIG_STRING,
+	{
+		PKG_STRING,
 		"SAT_SOLVER",
 		NULL,
 		"Experimental: tells pkg to use an external SAT solver",
+	},
+	{
+		PKG_BOOL,
+		"RUN_SCRIPTS",
+		"YES",
+		"Run post/pre actions scripts",
+	},
+	{
+		PKG_BOOL,
+		"CASE_SENSITIVE_MATCH",
+		"NO",
+		"Match package names case sensitively",
+	},
+	{
+		PKG_INT,
+		"LOCK_WAIT",
+		"1",
+		"Wait time to regain a lock if it is not available"
+	},
+	{
+		PKG_INT,
+		"LOCK_RETRIES",
+		"5",
+		"Retries performed to obtain a lock"
+	},
+	{
+		PKG_BOOL,
+		"SQLITE_PROFILE",
+		"NO",
+		"Profile sqlite queries"
 	},
 };
 
 static bool parsed = false;
 static size_t c_size = NELEM(c);
 
-static void		 pkg_config_kv_free(struct pkg_config_kv *);
-static void		 pkg_config_value_free(struct pkg_config_value *);
 static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
 
 static void
@@ -357,321 +361,33 @@ connect_evpipe(const char *evpipe) {
 
 }
 
-static void
-obj_walk_array(ucl_object_t *obj, struct pkg_config *conf)
-{
-	struct pkg_config_value *v;
-	ucl_object_t *cur;
-	ucl_object_iter_t it = NULL;
-	
-	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		if (cur->type != UCL_STRING)
-			continue;
-		v = malloc(sizeof(struct pkg_config_value));
-		v->value = strdup(ucl_object_tostring(cur));
-		HASH_ADD_STR(conf->list, value, v);
-	}
-}
-
-static void
-obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
-{
-	struct pkg_config_kv *kv;
-	ucl_object_t *cur;
-	ucl_object_iter_t it = NULL;
-	const char *key;
-
-	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		if (cur->type != UCL_STRING)
-			continue;
-		kv = malloc(sizeof(struct pkg_config_kv));
-		key = ucl_object_key(cur);
-		if (key == NULL)
-			continue;
-		kv->key = strdup(key);
-		kv->value = strdup(ucl_object_tostring(cur));
-		HASH_ADD_STR(conf->kvlist, value, kv);
-	}
-}
-
-void
-pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
-{
-	ucl_object_t *cur;
-	ucl_object_iter_t it = NULL;
-	struct sbuf *b = sbuf_new_auto();
-	struct pkg_config *conf;
-	const char *key;
-	size_t i;
-
-	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		sbuf_clear(b);
-		key = ucl_object_key(cur);
-		if (key == NULL)
-			continue;
-		for (i = 0; i < strlen(key); i++)
-			sbuf_putc(b, toupper(key[i]));
-		sbuf_finish(b);
-
-		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
-		if (conf != NULL) {
-			switch (conf->type) {
-			case PKG_CONFIG_STRING:
-				if (cur->type != UCL_STRING) {
-					pkg_emit_error("Expecting a string for key %s,"
-					    " ignoring...", key);
-					continue;
-				}
-				if (!conf->fromenv) {
-					free(conf->string);
-					conf->string = strdup(ucl_object_tostring(cur));
-				}
-				break;
-			case PKG_CONFIG_INTEGER:
-				if (cur->type != UCL_INT) {
-					pkg_emit_error("Expecting an integer for key %s,"
-					    " ignoring...", key);
-					continue;
-				}
-				if (!conf->fromenv)
-					conf->integer = ucl_object_toint(cur);
-				break;
-			case PKG_CONFIG_BOOL:
-				if (cur->type != UCL_BOOLEAN) {
-					pkg_emit_error("Expecting a boolean for key %s,"
-					    " ignoring...", key);
-					continue;
-				}
-
-				if (!conf->fromenv)
-					conf->boolean = ucl_object_toboolean(cur);
-				break;
-			case PKG_CONFIG_LIST:
-				if (cur->type != UCL_ARRAY) {
-					pkg_emit_error("Expecting a list for key %s,"
-					    " ignoring...", key);
-					continue;
-				}
-				if (!conf->fromenv) {
-					HASH_FREE(conf->list, pkg_config_value, pkg_config_value_free);
-					conf->list = NULL;
-					obj_walk_array(cur, conf);
-				}
-				break;
-			case PKG_CONFIG_KVLIST:
-				if (cur->type != UCL_OBJECT) {
-					pkg_emit_error("Expecting a mapping for key %s,"
-					    " ignoring...", key);
-					continue;
-				}
-				if (!conf->fromenv) {
-					HASH_FREE(conf->kvlist, pkg_config_kv, pkg_config_kv_free);
-					conf->kvlist = NULL;
-					obj_walk_object(cur, conf);
-				}
-				break;
-			}
-		}
-	}
-	sbuf_delete(b);
-}
-
-static char *
-subst_packagesite_str(const char *oldstr)
-{
-	const char *myarch;
-	struct sbuf *newval;
-	const char *variable_string;
-	char *res;
-
-	variable_string = strstr(oldstr, ABI_VAR_STRING);
-	if (variable_string == NULL)
-		return strdup(oldstr);
-
-	newval = sbuf_new_auto();
-	sbuf_bcat(newval, oldstr, variable_string - oldstr);
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-	sbuf_cat(newval, myarch);
-	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
-	sbuf_finish(newval);
-
-	res = strdup(sbuf_data(newval));
-	sbuf_free(newval);
-
-	return res;
-}
-
 int
 pkg_initialized(void)
 {
 	return (parsed);
 }
 
-int
-pkg_config_desc(pkg_config_key key, const char **desc)
-{
-	struct pkg_config *conf;
-
-	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_desc()");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(config, &key, conf);
-	if (conf == NULL)
-		*desc = NULL;
-	else
-		*desc = conf->desc;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_config_string(pkg_config_key key, const char **val)
-{
-	struct pkg_config *conf;
-
-	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_string()");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(config, &key, conf);
-	if (conf == NULL)
-		*val = NULL;
-	else
-		*val = conf->string;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_config_int64(pkg_config_key key, int64_t *val)
-{
-	struct pkg_config *conf;
-
-	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(config, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	*val = conf->integer;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_config_bool(pkg_config_key key, bool *val)
-{
-	struct pkg_config *conf;
-
-	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_bool()");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(config, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	*val = conf->boolean;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv)
-{
-	struct pkg_config *conf;
-
-	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_kvlist()");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(config, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	if (conf->type != PKG_CONFIG_KVLIST) {
-		pkg_emit_error("this config entry is not a \"key: value\" list");
-		return (EPKG_FATAL);
-	}
-
-	HASH_NEXT(conf->kvlist, (*kv));
-}
-
-int
-pkg_config_list(pkg_config_key key, struct pkg_config_value **v)
-{
-	struct pkg_config *conf;
-
-	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_list()");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(config, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	if (conf->type != PKG_CONFIG_LIST) {
-		pkg_emit_error("this config entry is not a list");
-		return (EPKG_FATAL);
-	}
-
-	HASH_NEXT(conf->list, (*v));
+const pkg_object *
+pkg_config_get(const char *key) {
+	return (ucl_object_find_key(config, key));
 }
 
 const char *
-pkg_config_value(struct pkg_config_value *v)
+pkg_config_dump(void)
 {
-	assert(v != NULL);
-
-	return (v->value);
-}
-
-
-const char *
-pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type)
-{
-	assert(kv != NULL);
-
-	switch (type) {
-	case PKG_CONFIG_KV_KEY:
-		return (kv->key);
-		break;
-	case PKG_CONFIG_KV_VALUE:
-		return (kv->value);
-		break;
-	}
-	return (NULL);
+	return (pkg_object_dump(config));
 }
 
 static void
 disable_plugins_if_static(void)
 {
 	void *dlh;
-	struct pkg_config *conf;
-	pkg_config_key k = PKG_CONFIG_ENABLE_PLUGINS;
-
-	HASH_FIND_INT(config, &k, conf);
-
-	if (conf == NULL)
-		return;
-
-	if (!conf->boolean)
-		return;
 
 	dlh = dlopen(0, 0);
 
 	/* if dlh is NULL then we are in static binary */
 	if (dlh == NULL)
-		conf->boolean = false;
+		ucl_object_replace_key(config, ucl_object_frombool(false), "ENABLE_PLUGINS", 14, false);
 	else
 		dlclose(dlh);
 
@@ -679,9 +395,10 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
+add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	ucl_object_t *cur, *tmp = NULL;
+	const ucl_object_t *cur;
+	ucl_object_t *tmp = NULL;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
@@ -719,7 +436,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				if (tmp != NULL)
-					ucl_object_free(tmp);
+					ucl_object_unref(tmp);
 				return;
 			}
 			if (tmp != NULL)
@@ -727,7 +444,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    " the value has been correctly converted, please consider fixing", key, rname);
 			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
 			if (tmp != NULL)
-				ucl_object_free(tmp);
+				ucl_object_unref(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -796,17 +513,15 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 }
 
 static void
-walk_repo_obj(ucl_object_t *obj, const char *file)
+walk_repo_obj(const ucl_object_t *obj, const char *file)
 {
-	ucl_object_t *cur;
+	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	struct pkg_repo *r;
 	const char *key;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
-		if (key == NULL)
-			continue;
 		pkg_debug(1, "PkgConfig: parsing key '%s'", key);
 		r = pkg_repo_find_ident(key);
 		if (r != NULL)
@@ -825,11 +540,11 @@ load_repo_file(const char *repofile)
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	bool fallback = false;
-	const char *myarch;
+	const char *myarch = NULL;
 
 	p = ucl_parser_new(0);
 
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	myarch = pkg_object_string(pkg_config_get("ABI"));
 	ucl_parser_register_variable (p, "ABI", myarch);
 
 	pkg_debug(1, "PKgConfig: loading %s", repofile);
@@ -865,7 +580,7 @@ load_repo_file(const char *repofile)
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj, repofile);
 
-	ucl_object_free(obj);
+	ucl_object_unref(obj);
 }
 
 static void
@@ -899,38 +614,40 @@ load_repo_files(const char *repodir)
 static void
 load_repositories(const char *repodir)
 {
-	struct pkg_repo *r;
-	struct pkg_config_value *v;
-	const char *url, *pub, *mirror_type;
-
-	pkg_config_string(PKG_CONFIG_REPO, &url);
-	pkg_config_string(PKG_CONFIG_REPOKEY, &pub);
-	pkg_config_string(PKG_CONFIG_MIRRORS, &mirror_type);
-
-	if (url != NULL) {
-		pkg_emit_error("PACKAGESITE in pkg.conf is deprecated. "
-		    "Please create a repository configuration file");
-		r = pkg_repo_new("packagesite", url);
-		if (pub != NULL) {
-			r->pubkey = strdup(pub);
-			r->signature_type = SIG_PUBKEY;
-		}
-		if (mirror_type != NULL) {
-			if (strcasecmp(mirror_type, "srv") == 0)
-				r->mirror_type = SRV;
-			else if (strcasecmp(mirror_type, "http") == 0)
-				r->mirror_type = HTTP;
-		}
-	}
+	const pkg_object *reposlist, *cur;
+	pkg_iter it = NULL;
 
 	if (repodir != NULL) {
 		load_repo_files(repodir);
 		return;
 	}
 
-	v = NULL;
-	while (pkg_config_list(PKG_CONFIG_REPOS_DIR, &v) == EPKG_OK)
-		load_repo_files(pkg_config_value(v));
+	reposlist = pkg_config_get( "REPOS_DIR");
+	while ((cur = pkg_object_iterate(reposlist, &it)))
+		load_repo_files(pkg_object_string(cur));
+}
+
+bool
+pkg_compiled_for_same_os_major(void)
+{
+#ifdef OSMAJOR
+	struct utsname	u;
+	int		osmajor;
+
+	/* Are we running the same OS major version as the one we were
+	 * compiled under? */
+
+	if (uname(&u) != 0) {
+		pkg_emit_error("Cannot determine OS version number");
+		return (true);	/* Can't tell, so assume yes  */
+	}
+
+	osmajor = (int) strtol(u.release, NULL, 10);
+
+	return (osmajor == OSMAJOR);
+#else
+	return (true);		/* Can't tell, so assume yes  */
+#endif
 }
 
 
@@ -940,17 +657,14 @@ pkg_init(const char *path, const char *reposdir)
 	struct ucl_parser *p = NULL;
 	size_t i;
 	const char *val = NULL;
-	const char *buf, *walk, *value, *key;
-	const char *errstr = NULL;
+	const char *buf, *walk, *value, *key, *k;
 	const char *evkey = NULL;
 	const char *nsname = NULL;
 	const char *evpipe = NULL;
-	struct pkg_config *conf;
-	struct pkg_config_value *v;
-	struct pkg_config_kv *kv;
-	ucl_object_t *obj = NULL, *cur;
+	const ucl_object_t *cur, *object;
+	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
-	bool fallback = false;
+	struct sbuf *ukey = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -958,65 +672,30 @@ pkg_init(const char *path, const char *reposdir)
 		return (EPKG_FATAL);
 	}
 
-	for (i = 0; i < c_size; i++) {
-		conf = malloc(sizeof(struct pkg_config));
-		conf->id = i;
-		conf->key = c[i].key;
-		conf->type = c[i].type;
-		conf->desc = c[i].desc;
-		conf->fromenv = false;
-		val = getenv(c[i].key);
+	config = ucl_object_typed_new(UCL_OBJECT);
 
+	for (i = 0; i < c_size; i++) {
 		switch (c[i].type) {
-		case PKG_CONFIG_STRING:
-			if (val != NULL) {
-				if (strcmp(c[i].key, "PACKAGESITE") == 0)
-					conf->string = subst_packagesite_str(val);
-				else
-					conf->string = strdup(val);
-				conf->fromenv = true;
-			}
-			else if (c[i].def != NULL)
-				conf->string = strdup(c[i].def);
-			else
-				conf->string = NULL;
+		case PKG_STRING:
+			obj = ucl_object_fromstring_common(
+			    c[i].def != NULL ? c[i].def : "", 0, UCL_STRING_TRIM);
+			ucl_object_insert_key(config, obj,
+			    c[i].key, strlen(c[i].key), false);
 			break;
-		case PKG_CONFIG_INTEGER:
-			if (val == NULL)
-				val = c[i].def;
-			else
-				conf->fromenv = true;
-			conf->integer = strtonum(val, 0, INT64_MAX, &errstr);
-			if (errstr != NULL) {
-				pkg_emit_error("Unable to convert %s to int64: %s",
-				    val, errstr);
-				free(conf);
-				return (EPKG_FATAL);
-			}
+		case PKG_INT:
+			ucl_object_insert_key(config,
+			    ucl_object_fromstring_common(c[i].def, 0, UCL_STRING_PARSE_INT),
+			    c[i].key, strlen(c[i].key), false);
 			break;
-		case PKG_CONFIG_BOOL:
-			if (val == NULL)
-				val = c[i].def;
-			else
-				conf->fromenv = true;
-			if (val != NULL && (
-			    strcmp(val, "1") == 0 ||
-			    strcasecmp(val, "yes") == 0 ||
-			    strcasecmp(val, "true") == 0 ||
-			    strcasecmp(val, "on") == 0)) {
-				conf->boolean = true;
-			} else {
-				conf->boolean = false;
-			}
+		case PKG_BOOL:
+			ucl_object_insert_key(config,
+			    ucl_object_fromstring_common(c[i].def, 0, UCL_STRING_PARSE_BOOLEAN),
+			    c[i].key, strlen(c[i].key), false);
 			break;
-		case PKG_CONFIG_KVLIST:
-			conf->kvlist = NULL;
-			if (val == NULL)
-				val = c[i].def;
-			else
-				conf->fromenv = false;
-			if (val != NULL) {
-				walk = buf = val;
+		case PKG_OBJECT:
+			obj = ucl_object_typed_new(UCL_OBJECT);
+			if (c[i].def != NULL) {
+				walk = buf = c[i].def;
 				while ((buf = strchr(buf, ',')) != NULL) {
 					key = walk;
 					value = walk;
@@ -1025,63 +704,45 @@ pkg_init(const char *path, const char *reposdir)
 							break;
 						value++;
 					}
-					if (value == buf || (value - key) == 0) {
-						pkg_emit_error("Malformed Key/Value for %s", c[i].key);
-						pkg_config_kv_free(conf->kvlist);
-						conf->kvlist = NULL;
-						break;
-					}
-					kv = malloc(sizeof(struct pkg_config_kv));
-					kv->key = strndup(key, value - key);
-					kv->value = strndup(value + 1, buf - value -1);
-					HASH_ADD_STR(conf->kvlist, value, kv);
+					ucl_object_insert_key(obj,
+					    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
+					    key, value - key, false);
 					buf++;
 					walk = buf;
 				}
 				key = walk;
 				value = walk;
-				while (*value != '\0') {
+				while (*value != ',') {
 					if (*value == '=')
 						break;
 					value++;
 				}
-				if (*value == '\0' || (value - key) == 0) {
-					pkg_emit_error("Malformed Key/Value for %s: %s", c[i].key, val);
-					pkg_config_kv_free(conf->kvlist);
-					conf->kvlist = NULL;
-					break;
-				}
-				kv = malloc(sizeof(struct pkg_config_kv));
-				kv->key = strndup(key, value - key);
-				kv->value = strdup(value + 1);
-				HASH_ADD_STR(conf->kvlist, value, kv);
+				if (o == NULL)
+					o = ucl_object_typed_new(UCL_OBJECT);
+				ucl_object_insert_key(o,
+				    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
+				    key, value - key, false);
 			}
+			ucl_object_insert_key(config, obj,
+			    c[i].key, strlen(c[i].key), false);
 			break;
-		case PKG_CONFIG_LIST:
-			conf->list = NULL;
-			if (val == NULL)
-				val = c[i].def;
-			else
-				conf->fromenv = true;
-			if (val != NULL) {
-				walk = buf = val;
+		case PKG_ARRAY:
+			obj = ucl_object_typed_new(UCL_ARRAY);
+			if (c[i].def != NULL) {
+				walk = buf = c[i].def;
 				while ((buf = strchr(buf, ',')) != NULL) {
-					v = malloc(sizeof(struct pkg_config_value));
-					v->value = strndup(walk, buf - walk);
-					HASH_ADD_STR(conf->list, value, v);
+					ucl_array_append(obj,
+					    ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
 					buf++;
 					walk = buf;
 				}
-				v = malloc(sizeof(struct pkg_config_value));
-				v->value = strdup(walk);
-				HASH_ADD_STR(conf->list, value, v);
+				ucl_array_append(obj,
+				    ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
 			}
+			ucl_object_insert_key(config, obj,
+			    c[i].key, strlen(c[i].key), false);
 			break;
 		}
-
-		HASH_ADD_INT(config, id, conf);
-		HASH_ADD_KEYPTR(hhkey, config_by_key, conf->key,
-		    strlen(conf->key), conf);
 	}
 
 	if (path == NULL)
@@ -1090,76 +751,157 @@ pkg_init(const char *path, const char *reposdir)
 	p = ucl_parser_new(0);
 
 	errno = 0;
+	obj = NULL;
 	if (!ucl_parser_add_file(p, path)) {
-		if (errno == ENOENT)
-			goto parsed;
-		fallback = true;
+		if (errno != ENOENT)
+			pkg_emit_error("%s", ucl_parser_get_error(p));
+	} else {
+		obj = ucl_parser_get_object(p);
+
 	}
 
-	if (!fallback) {
-		/* Validate the first level of the configuration */
-		obj = ucl_parser_get_object(p);
-		if (obj->type == UCL_OBJECT) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				key = ucl_object_key(cur);
-				if (key == NULL)
-					continue;
-				if (strcasecmp(key, "REPOS_DIR") == 0 &&
-				    cur->type != UCL_ARRAY)
-					fallback = true;
-				else if (strcasecmp(key, "PKG_ENV") == 0 &&
-				    cur->type != UCL_OBJECT)
-					fallback = true;
-				else if (strcasecmp(key, "ALIAS") == 0 &&
-				    cur->type != UCL_OBJECT)
-					fallback = true;
-				if (fallback)
-					break;
+	ncfg = NULL;
+	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
+		sbuf_init(&ukey);
+		key = ucl_object_key(cur);
+		for (i = 0; key[i] != '\0'; i++)
+			sbuf_putc(ukey, toupper(key[i]));
+		sbuf_done(ukey);
+		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
+		/* ignore unknown keys */
+		if (object == NULL)
+			continue;
+
+		if (object->type != cur->type) {
+			pkg_emit_error("Malformed key %s, ignoring", key);
+			continue;
+		}
+
+		if (ncfg == NULL)
+			ncfg = ucl_object_typed_new(UCL_OBJECT);
+		ucl_object_insert_key(ncfg, ucl_object_ref(cur), key, strlen(key), false);
+	}
+
+	if (ncfg != NULL) {
+		it = NULL;
+		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
+			key = ucl_object_key(cur);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+		}
+		ucl_object_unref(ncfg);
+	}
+
+	ncfg = NULL;
+	it = NULL;
+	while ((cur = ucl_iterate_object(config, &it, true))) {
+		o = NULL;
+		key = ucl_object_key(cur);
+		val = getenv(key);
+		if (val == NULL)
+			continue;
+		switch (cur->type) {
+		case UCL_STRING:
+			o = ucl_object_fromstring_common(val, 0, UCL_STRING_TRIM);
+			break;
+		case UCL_INT:
+			o = ucl_object_fromstring_common(val, 0, UCL_STRING_PARSE_INT);
+			if (o->type != UCL_INT) {
+				pkg_emit_error("Invalid type for environment "
+				    "variable %s, got %s, while expecting an integer",
+				    key, val);
+				ucl_object_unref(o);
+				continue;
 			}
-		} else {
-			fallback = true;
+			break;
+		case UCL_BOOLEAN:
+			o = ucl_object_fromstring_common(val, 0, UCL_STRING_PARSE_BOOLEAN);
+			if (o->type != UCL_BOOLEAN) {
+				pkg_emit_error("Invalid type for environment "
+				    "variable %s, got %s, while expecting a boolean",
+				    key, val);
+				ucl_object_unref(o);
+				continue;
+			}
+			break;
+		case UCL_OBJECT:
+			o = ucl_object_typed_new(UCL_OBJECT);
+			walk = buf = val;
+			while ((buf = strchr(buf, ',')) != NULL) {
+				k = walk;
+				value = walk;
+				while (*value != ',') {
+					if (*value == '=')
+						break;
+					value++;
+				}
+				ucl_object_insert_key(o,
+				    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
+				    k, value - k, false);
+				buf++;
+				walk = buf;
+			}
+			key = walk;
+			value = walk;
+			while (*value != '\0') {
+				if (*value == '=')
+					break;
+				value++;
+			}
+			ucl_object_insert_key(o,
+			    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
+			    k, value - k, false);
+			break;
+		case UCL_ARRAY:
+			o = ucl_object_typed_new(UCL_ARRAY);
+			walk = buf = val;
+			while ((buf = strchr(buf, ',')) != NULL) {
+				ucl_array_append(o,
+				    ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
+				buf++;
+				walk = buf;
+			}
+			ucl_array_append(o,
+			    ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
+			break;
+		default:
+			/* ignore other types */
+			break;
+		}
+		if (o != NULL) {
+			if (ncfg == NULL)
+				ncfg = ucl_object_typed_new(UCL_OBJECT);
+			ucl_object_insert_key(ncfg, o, key, strlen(key), true);
 		}
 	}
 
-	if (fallback) {
-		if (obj != NULL)
-			ucl_object_free(obj);
-		obj = yaml_to_ucl(path, NULL, 0);
-		if (obj == NULL)
-			return (EPKG_FATAL);
+	if (ncfg != NULL) {
+		it = NULL;
+		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
+			key = ucl_object_key(cur);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+		}
+		ucl_object_unref(ncfg);
 	}
 
-	if (fallback) {
-		pkg_emit_error("Your pkg.conf file is in deprecated format you "
-		    "should convert it to the following format:\n"
-		    "====== BEGIN pkg.conf ======\n"
-		    "%s"
-		    "\n====== END pkg.conf ======\n",
-		    ucl_object_emit(obj, UCL_EMIT_YAML));
-	}
-
-	if (obj->type == UCL_OBJECT)
-		pkg_object_walk(obj, config_by_key);
-
-parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
-	ucl_object_free(obj);
+	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
 	pkg_debug(1, "%s", "pkg initialized");
 
 	/* Start the event pipe */
-	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);
+	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	kv = NULL;
-	while (pkg_config_kvlist(PKG_CONFIG_ENV, &kv) == EPKG_OK) {
-		evkey = pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY);
+	it = NULL;
+	object = ucl_object_find_key(config, "PKG_ENV");
+	while ((cur = ucl_iterate_object(o, &it, true))) {
+		evkey = ucl_object_key(cur);
 		if (evkey != NULL && evkey[0] != '\0')
-			setenv(evkey, pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE), 1);
+			setenv(evkey, ucl_object_tostring_forced(cur), 1);
 	}
 
 	/* load the repositories */
@@ -1168,85 +910,11 @@ parsed:
 	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
-	pkg_config_string(PKG_CONFIG_NAMESERVER, &nsname);
+	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
 	if (nsname != NULL)
-		set_nameserver(nsname);
+		set_nameserver(ucl_object_tostring_forced(o));
 
 	return (EPKG_OK);
-}
-
-struct pkg_config *
-pkg_config_lookup(const char *name)
-{
-	struct pkg_config *conf;
-
-	if (name == NULL)
-		return (NULL);
-
-	HASH_FIND(hhkey, config_by_key, name, strlen(name), conf);
-
-	return (conf);
-}
-
-static void
-pkg_config_kv_free(struct pkg_config_kv *k)
-{
-	if (k == NULL)
-		return;
-
-	free(k->key);
-	free(k->value);
-	free(k);
-}
-
-static void
-pkg_config_value_free(struct pkg_config_value *v)
-{
-	if (v == NULL)
-		return;
-
-	free(v->value);
-	free(v);
-}
-
-static void
-pkg_config_free(struct pkg_config *conf)
-{
-	if (conf == NULL)
-		return;
-
-	if (conf->type == PKG_CONFIG_STRING)
-		free(conf->string);
-	else if (conf->type == PKG_CONFIG_KVLIST)
-		HASH_FREE(conf->kvlist, pkg_config_kv, pkg_config_kv_free);
-	else if (conf->type == PKG_CONFIG_LIST)
-		HASH_FREE(conf->list, pkg_config_value, pkg_config_value_free);
-
-	free(conf);
-}
-
-int
-pkg_config_id(struct pkg_config *conf)
-{
-	return (conf->id);
-}
-
-int
-pkg_config_type(struct pkg_config *conf)
-{
-	return (conf->type);
-}
-
-const char *
-pkg_config_name(struct pkg_config *conf)
-{
-	return (conf->key);
-}
-
-int
-pkg_configs(struct pkg_config **conf)
-{
-	HASH_NEXT(config, (*conf));
 }
 
 static struct pkg_repo *
@@ -1256,11 +924,12 @@ pkg_repo_new(const char *name, const char *url)
 
 	r = calloc(1, sizeof(struct pkg_repo));
 	r->type = REPO_BINARY_PKGS;
-	r->update = repo_update_binary_pkgs;
-	r->url = subst_packagesite_str(url);
+	r->update = pkg_repo_update_binary_pkgs;
+	r->url = strdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
+	r->meta = pkg_repo_meta_default();
 	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
@@ -1273,6 +942,7 @@ pkg_repo_free(struct pkg_repo *r)
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
+	free(r->meta);
 	if (r->ssh != NULL) {
 		fprintf(r->ssh, "quit\n");
 		pclose(r->ssh);
@@ -1289,10 +959,8 @@ pkg_shutdown(void)
 		/* NOTREACHED */
 	}
 
-	HASH_FREE(config, pkg_config, pkg_config_free);
-	HASH_FREE(repos, pkg_repo, pkg_repo_free);
-
-	config_by_key = NULL;
+	ucl_object_unref(config);
+	HASH_FREE(repos, pkg_repo_free);
 
 	parsed = false;
 
@@ -1343,6 +1011,9 @@ pkg_repo_ident(struct pkg_repo *r)
 const char *
 pkg_repo_ident_from_name(const char *repo_name)
 {
+	if (repo_name == NULL)
+		return "local";
+
 	return (repo_name + strlen(REPO_NAME_PREFIX));
 }
 

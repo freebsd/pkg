@@ -37,7 +37,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
 fi
 
 # Compute PKG_DBDIR from the config file.
-pkgcmd=__PREFIX__/sbin/pkg
+pkgcmd=@prefix@/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
 auditfile="${PKG_DBDIR}/vuln.xml"
 

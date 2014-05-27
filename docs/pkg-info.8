@@ -1,0 +1,206 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd May 26, 2014
+.Dt PKG-INFO 8
+.Os
+.Sh NAME
+.Nm "pkg info"
+.Nd displays information for packages
+.Sh SYNOPSIS
+.Nm
+.Ar pkg-name
+.Nm
+.Fl a
+.Nm
+.Op Fl AbBDdefIklOpqRrs
+.Op Fl Cgix
+.Ar pkg-name
+.Nm
+.Op Fl AbBDdfIlpqRrs
+.Fl F Ar pkg-file
+.Pp
+.Nm
+.Ar pkg-name
+.Nm
+.Cm --all
+.Nm
+.Op Cm --{annotations,provided-shlibs,required-shlibs}
+.Op Cm --{pkg-message,dependencies,exists,full,comment,locked}
+.Op Cm --{list-files,by-origin,quiet,prefix,raw,required-by,size}
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Ar pkg-name
+.Nm
+.Op Cm --{annotations,provided-shlibs,required-shlibs}
+.Op Cm --{pkg-message,dependencies,full,comment,list-files}
+.Op Cm --{quiet,prefix,raw,required-by,size}
+.Cm --file Ar pkg-file
+.Sh DESCRIPTION
+.Nm
+is used for displaying information for packages.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width origin
+.It Fl a , Cm --all
+Display all installed packages.
+.It Fl A , Cm --annotations
+Display any annotations added to the package.
+.It Fl C , Cm --case-insensitive
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
+.It Fl f , Cm --full
+Display full information about the packages matching
+.Ar pkg-name .
+This is the default.
+.It Fl R , Cm --raw
+Display the full manifest (raw) for the packages matching
+.Ar pkg-name .
+.It Fl e , Cm --exists
+If
+.Ar pkg-name
+is installed and registered in the database, return 0, otherwise return 1.
+Useful for checking whether the package is installed.
+.It Fl D , Cm --pkg-message
+Show the pkg-message for matching packages.
+.It Fl g , Cm --glob
+Treat
+.Ar pkg-name
+as a shell glob pattern.
+.It Fl i , Cm --case-insensitive
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
+.It Fl x , Cm --regex
+Treat
+.Ar pkg-name
+as a regular expression according to the "modern" or "extended" syntax
+of
+.Xr re_format 7 .
+.It Fl d , Cm --dependencies
+Display the list of packages on which
+.Ar pkg-name
+depends.
+.It Fl r , Cm --required-by
+Display the list of packages which require
+.Ar pkg-name .
+.It Fl k , Cm --locked
+Show the locking status for
+.Ar pkg-name .
+When used in combination with
+.Fl d
+or
+.Fl r ,
+indicate which packages, dependencies or requirements are locked
+by '(*)'.
+Locking status is only meaningful for installed packages; all locking
+statuses will show as unlocked when information about a
+.Ar pkg-file
+is queried.
+.It Fl l , Cm --list-files
+Display all files installed by
+.Ar pkg-name .
+.It Fl b , Cm --provided-shlibs
+Display all shared libraries provided by
+.Ar pkg-name .
+.It Fl B , Cm --required-shlibs
+Display all shared libraries used by
+.Ar pkg-name .
+.It Fl s , Cm --size
+Display the total size of files installed by
+.Ar pkg-name
+.It Fl q , Cm --quiet
+Be
+.Dq quiet .
+Prints only the requested information without displaying many hints.
+.It Fl O , Cm --by-origin
+Search is done by the
+.Ar pkg-name
+origin.
+Added only for Ports compatibility.
+.Pp
+.It Fl E , Cm --show-name-only
+Hides the full package output and only shows the package name.
+This option is deprecated and exists only for Ports compatibility.
+.It Fl o , Cm --origin
+Display
+.Ar pkg-name
+origin.
+.It Fl p , --prefix
+Display the installation prefix for each package matching
+.Ar pkg-name .
+.It Fl F Ar pkg-file , Cm --file Ar pkg-file
+Displays information from the package archive
+.Ar pkg-file .
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8

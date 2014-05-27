@@ -41,8 +41,11 @@
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
-#define ERROR_SQLITE(db) \
-	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db), __FILE__, __LINE__)
+#define ERROR_SQLITE(db, query) do { \
+	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", (query), \
+	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
+	print_trace();																 \
+} while(0)
 
 #define HASH_FIND_INO(head,ino,out)                                          \
 	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
@@ -114,6 +117,7 @@ int set_nameserver(const char *nsname);
 ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 void set_blocking(int fd);
 void set_nonblocking(int fd);
+void print_trace(void);
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 

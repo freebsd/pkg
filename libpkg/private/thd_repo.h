@@ -36,7 +36,7 @@ struct pkg_result {
 	char cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 	off_t size;
 	int retcode; /* to pass errors */
-	struct pkg_result *next;
+	struct pkg_result *next, *prev;
 };
 
 struct thd_data {

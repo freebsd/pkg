@@ -174,6 +174,15 @@ static const char initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, provide_id)"
 	");"
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX packages_uid ON packages(name, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version ON packages(name, version);"
+	/* FTS search table */
+	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
+
 	"PRAGMA user_version=%d;"
 	;
 
@@ -190,6 +199,7 @@ static const struct repo_changes repo_upgrades[] = {
 	{2001,
 	 2002,
 	 "Modify shlib tracking to add \'provided\' capability",
+
 	 "CREATE TABLE %Q.pkg_shlibs_required ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE CASCADE,"
@@ -211,6 +221,7 @@ static const struct repo_changes repo_upgrades[] = {
 	{2002,
 	 2003,
 	 "Add abstract metadata capability",
+
 	 "CREATE TABLE %Q.abstract ("
 		"abstract_id INTEGER PRIMARY KEY,"
 		"abstract TEXT NOT NULL UNIQUE"
@@ -227,12 +238,14 @@ static const struct repo_changes repo_upgrades[] = {
 	{2003,
 	 2004,
 	"Add manifest digest field",
+
 	"ALTER TABLE %Q.packages ADD COLUMN manifestdigest TEXT NULL;"
 	"CREATE INDEX IF NOT EXISTS %Q.pkg_digest_id ON packages(origin, manifestdigest);"
 	},
 	{2004,
 	 2005,
 	 "Rename 'abstract metadata' to 'annotations'",
+
 	 "CREATE TABLE %Q.annotation ("
 	        "annotation_id INTEGER PRIMARY KEY,"
 	        "annotation TEXT NOT NULL UNIQUE"
@@ -256,6 +269,7 @@ static const struct repo_changes repo_upgrades[] = {
 	{2005,
 	 2006,
 	 "Add capability to track option descriptions and defaults",
+
 	 "CREATE TABLE %Q.option ("
 		"option_id INTEGER PRIMARY KEY,"
 		"option TEXT NOT NULL UNIQUE"
@@ -301,6 +315,7 @@ static const struct repo_changes repo_upgrades[] = {
 	{2006,
 	 2007,
 	 "Add conflicts and provides",
+
 	"CREATE TABLE %Q.pkg_conflicts ("
 	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
 	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
@@ -319,6 +334,24 @@ static const struct repo_changes repo_upgrades[] = {
 	    "UNIQUE(package_id, provide_id)"
 	");"
 	},
+	{2007,
+	 2008,
+	 "Add FTS index",
+
+	 "CREATE VIRTUAL TABLE %Q.pkg_search USING fts4(id, name, origin);"
+	 "INSERT INTO %Q.pkg_search SELECT id, name || '-' || version, origin FROM %Q.packages;"
+	 "CREATE INDEX %Q.packages_origin ON packages(origin COLLATE NOCASE);"
+	 "CREATE INDEX %Q.packages_name ON packages(name COLLATE NOCASE);"
+	},
+	{2008,
+	 2009,
+	 "Optimize indicies",
+
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid ON packages(name, origin COLLATE NOCASE);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_version ON packages(name, version);"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -327,9 +360,25 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2009,
+	 2008,
+	 "Drop indicies",
+
+	 "DROP INDEX %Q.packages_uid_nocase;"
+	 "DROP INDEX %Q.packages_version_nocase;"
+	 "DROP INDEX %Q.packages_uid;"
+	 "DROP INDEX %Q.packages_version;"
+	},
+	{2008,
+	 2007,
+	 "Drop FTS index",
+
+	 "DROP TABLE %Q.pkg_search;"
+	},
 	{2007,
 	 2006,
 	 "Revert conflicts and provides creation",
+
 	 "DROP TABLE %Q.pkg_provides;"
 	 "DROP TABLE %Q.provides;"
 	 "DROP TABLE %Q.conflicts;"
@@ -337,6 +386,7 @@ static const struct repo_changes repo_downgrades[] = {
 	{2006,
 	 2005,
 	 "Revert addition of extra options related data",
+
 	 "CREATE TABLE %Q.options ("
 		"package_id INTEGER REFERENCES packages(id) "
 			"ON DELETE CASCADE ON UPDATE CASCADE,"
@@ -379,17 +429,20 @@ static const struct repo_changes repo_downgrades[] = {
 	{2004,
 	 2003,
 	 "Drop manifest digest index",
+
 	 "DROP INDEX %Q.pkg_digest_id;"
 	},
 	{2003,
 	 2002,
 	 "Drop abstract metadata",
+
 	 "DROP TABLE %Q.pkg_abstract;"
 	 "DROP TABLE %Q.abstract;"
 	},
 	{2002,
 	 2001,
 	 "Drop \'shlibs provided\' but retain \'shlibs required\'",
+
 	 "CREATE TABLE %Q.pkg_shlibs_required ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE CASCADE,"
