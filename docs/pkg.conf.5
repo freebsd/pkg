@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd May 15, 2014
+.Dd May 27, 2014
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -358,7 +358,7 @@ See
 for more discussion on signature types.
 (default: NONE)
 .It Cm PUBKEY: string
-PUBKEY for this repository only. (default: NONE)
+This should be set to a path containing public key for this repository only. (default: NONE)
 .It Cm FINGERPRINTS: string
 This should be set to a path containing known signatures for the repository.
 I.e., if
