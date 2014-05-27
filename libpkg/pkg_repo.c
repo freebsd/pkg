@@ -424,7 +424,6 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 			}
 			free(sig);
 			rc = EPKG_OK;
-			break;
 		}
 		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
