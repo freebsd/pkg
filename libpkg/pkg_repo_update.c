@@ -219,7 +219,10 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	size_t len = 0;
 	int hash_it = 0;
 	time_t now, last;
-	bool in_trans = false;
+	bool in_trans = false, new_repo = true;
+
+	if (access(name, R_OK) != -1)
+		new_repo = false;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
@@ -250,14 +253,26 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->digests, &local_t, &rc);
-	if (fdigests == NULL)
+	if (fdigests == NULL) {
+		rc = EPKG_FATAL;
+		/* Destroy repo completely */
+		if (new_repo)
+			unlink(name);
+
 		goto cleanup;
+	}
 	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->manifests, &local_t, &rc);
-	if (fmanifest == NULL)
+	if (fmanifest == NULL) {
+		rc = EPKG_FATAL;
+		/* Destroy repo completely */
+		if (new_repo)
+			unlink(name);
+
 		goto cleanup;
+	}
 	packagesite_t = digest_t;
 	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
