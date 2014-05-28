@@ -56,6 +56,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
 	const ucl_object_t	*obj, *an;
+	struct hardlinks *hardlinks = NULL;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -79,9 +80,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			pkg_emit_errno("pkg_create_from_dir", "lstat failed");
 			return (EPKG_FATAL);
 		}
+
 		if (file->size == 0)
 			file->size = (int64_t)st.st_size;
-		flatsize += file->size;
+
+		if (!is_hardlink(hardlinks, &st)) {
+			flatsize += file->size;
+		}
 
 		if (S_ISLNK(st.st_mode)) {
 			char linkbuf[MAXPATHLEN];
@@ -108,6 +113,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		}
 	}
 	pkg_set(pkg, PKG_FLATSIZE, flatsize);
+	HASH_FREE(hardlinks, free);
 
 	if (pkg->type == PKG_OLD_FILE) {
 		const char *desc, *display, *comment;
