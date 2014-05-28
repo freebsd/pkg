@@ -1056,6 +1056,11 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		problem->rules_count ++;
 	}
 
+	if (problem->rules_count == 0) {
+		pkg_debug(1, "problem has no requests");
+		return (problem);
+	}
+
 	/* Parse universe */
 	HASH_ITER(hh, j->universe, un, utmp) {
 		rule = NULL;
