@@ -293,9 +293,13 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	else {
 		/* Save reponame */
 		const char *reponame;
+		const char *manifestdigest;
 
 		pkg_get(remote, PKG_REPONAME, &reponame);
 		pkg_addannotation(pkg, "repository", reponame);
+
+		pkg_get(remote, PKG_DIGEST, &manifestdigest);
+		pkg_set(pkg, PKG_DIGEST, manifestdigest);
 	}
 
 	if (location != NULL)
