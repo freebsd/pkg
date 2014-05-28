@@ -503,7 +503,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 				goto cleanup;
 			}
 			--retry;
-			if (retry <= 0) {
+			if (retry <= 0 || fetchLastErrCode == FETCH_UNAVAIL) {
 				pkg_emit_error("%s: %s", url,
 				    fetchLastErrString);
 				retcode = EPKG_FATAL;
