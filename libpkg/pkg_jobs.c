@@ -934,7 +934,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 				seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
 		if (seen->un->pkg->type != p->type) {
 			/* Remote package is the same as local */
-			return (EPKG_END);
+			return (EPKG_INSTALLED);
 		}
 		else {
 			/* However, we may want to add it to the job request */
@@ -1125,7 +1125,7 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 
 	pkgdb_it_free(it);
 
-	if (root && !found) {
+	if (root && !found && rc != EPKG_INSTALLED) {
 		/*
 		 * Here we need to ensure that this package has no
 		 * reverse deps installed
