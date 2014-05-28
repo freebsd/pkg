@@ -375,13 +375,23 @@ file(struct plist *p, char *line, struct file_attr *a)
 			pkg_emit_error("Plist error, directory listed as a file: %s", line);
 			free_file_attr(a);
 			return (EPKG_FATAL);
-		} else if (S_ISREG(st.st_mode))
-			regular = true;
+		} else if (S_ISREG(st.st_mode)) {
+			if (st.st_nlink > 1)
+				regular = !is_hardlink(p->hardlinks, &st);
+			else
+				regular = true;
 
-
-		/* special case for hardlinks */
-		if (st.st_nlink > 1)
-			regular = is_hardlink(p->hardlinks, &st);
+		} else if (S_ISLNK(st.st_mode)) {
+			char linkbuf[MAXPATHLEN];
+			int len;
+			if ((len = readlink(testpath, linkbuf, sizeof(linkbuf))) == -1) {
+				pkg_emit_errno("file", "readlink failed");
+				return (EPKG_FATAL);
+			}
+			sha256_buf(linkbuf, len, sha256);
+			buf = sha256;
+			regular = false;
+		}
 
 		if (regular) {
 			p->flatsize += st.st_size;

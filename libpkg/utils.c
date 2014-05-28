@@ -471,13 +471,13 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 
 	HASH_FIND_INO(hl, &st->st_ino, h);
 	if (h != NULL)
-		return false;
+		return (true);
 
 	h = malloc(sizeof(struct hardlinks));
 	h->inode = st->st_ino;
 	HASH_ADD_INO(hl, inode, h);
 
-	return (true);
+	return (false);
 }
 
 bool

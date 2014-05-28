@@ -1551,9 +1551,8 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 				}
 			}
 
-			/* special case for hardlinks */
 			if (st.st_nlink > 1)
-				regular = is_hardlink(hl, &st);
+				regular = !is_hardlink(hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;
@@ -1561,6 +1560,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 		if (strcmp(sha256, sum) != 0)
 			pkgdb_file_set_cksum(db, f, sha256);
 	}
+	HASH_FREE(hl, free);
 
 	pkg_get(pkg, PKG_FLATSIZE, &oldflatsize);
 	if (flatsize != oldflatsize)
