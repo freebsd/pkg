@@ -84,7 +84,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		if (file->size == 0)
 			file->size = (int64_t)st.st_size;
 
-		if (st.st_nlink == 1 || !is_hardlink(hardlinks, &st)) {
+		if (st.st_nlink == 1 || !check_for_hardlink(hardlinks, &st)) {
 			flatsize += file->size;
 		}
 

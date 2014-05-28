@@ -465,7 +465,7 @@ is_conf_file(const char *path, char *newpath, size_t len)
 }
 
 bool
-is_hardlink(struct hardlinks *hl, struct stat *st)
+check_for_hardlink(struct hardlinks *hl, struct stat *st)
 {
 	struct hardlinks *h;
 

@@ -1552,7 +1552,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			}
 
 			if (st.st_nlink > 1)
-				regular = !is_hardlink(hl, &st);
+				regular = !check_for_hardlink(hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;

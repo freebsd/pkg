@@ -377,7 +377,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 			return (EPKG_FATAL);
 		} else if (S_ISREG(st.st_mode)) {
 			if (st.st_nlink > 1)
-				regular = !is_hardlink(p->hardlinks, &st);
+				regular = !check_for_hardlink(p->hardlinks, &st);
 			else
 				regular = true;
 
