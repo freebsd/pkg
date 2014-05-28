@@ -55,7 +55,7 @@ exec_upgrade(int argc, char **argv)
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	match_t		 match = MATCH_EXACT;
 	int		 done = 0;
-	bool	rc = false;
+	bool	rc = true;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	struct option longopts[] = {
