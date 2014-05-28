@@ -929,12 +929,19 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	HASH_FIND_STR(j->seen, digest, seen);
 	if (seen != NULL) {
 		/* We have already added exactly the same package to the universe */
-		pkg_debug(3, "already seen package %s-%s in the universe, do not add it again",
-				uid, digest);
-		/* However, we may want to add it to the job request */
-		HASH_FIND_STR(j->request_add, uid, jreq);
-		if (jreq == NULL)
-			pkg_jobs_add_req(j, uid, seen->un);
+		pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
+				uid, digest,
+				seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
+		if (seen->un->pkg->type != p->type) {
+			/* Remote package is the same as local */
+			return (EPKG_END);
+		}
+		else {
+			/* However, we may want to add it to the job request */
+			HASH_FIND_STR(j->request_add, uid, jreq);
+			if (jreq == NULL)
+				pkg_jobs_add_req(j, uid, seen->un);
+		}
 		return (EPKG_OK);
 	}
 	HASH_FIND_STR(j->universe, uid, jit);
@@ -1110,7 +1117,9 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 				NULL, add_request);
 		if (rc == EPKG_FATAL)
 			break;
-		found = true;
+		else if (rc == EPKG_OK)
+			found = true;
+
 		p = NULL;
 	}
 
@@ -1277,6 +1286,7 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 {
 	int ret, ret1, ret2;
 	const char *lversion, *rversion, *larch, *rarch, *reponame, *origin;
+	const char *ldigest, *rdigest;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
@@ -1288,9 +1298,15 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	if (pkg_is_locked(lp))
 		return (false);
 
-	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch, PKG_ORIGIN, &origin);
-	pkg_get(rp, PKG_VERSION, &rversion, PKG_ARCH, &rarch);
+	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch, PKG_ORIGIN, &origin,
+			PKG_DIGEST, &ldigest);
+	pkg_get(rp, PKG_VERSION, &rversion, PKG_ARCH, &rarch, PKG_DIGEST, &rdigest);
 
+	if (ldigest != NULL && rdigest != NULL &&
+			strcmp(ldigest, rdigest) == 0) {
+		/* Remote and local packages has the same digest, hence they are the same */
+		return (false);
+	}
 	/*
 	 * XXX: for a remote package we also need to check whether options
 	 * are compatible.
@@ -1412,6 +1428,7 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 			if (strcmp(pkg_shlib_name(rs),
 					pkg_shlib_name(ls)) != 0) {
 				pkg_set(rp, PKG_REASON, "needed shared library changed");
+				pkg_debug(1, "shlib changed %s->%s", pkg_shlib_name(ls), pkg_shlib_name(rs));
 				return (true);
 			}
 		}
