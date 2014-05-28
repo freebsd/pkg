@@ -1851,17 +1851,94 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
+struct pkg_jobs_install_candidate {
+	int64_t id;
+	struct pkg_jobs_install_candidate *next;
+};
+
+static struct pkg_jobs_install_candidate *
+pkg_jobs_new_candidate(struct pkg *pkg)
+{
+	struct pkg_jobs_install_candidate *n;
+	int64_t id;
+
+	pkg_get(pkg, PKG_ROWID, &id);
+	n = malloc(sizeof(*n));
+	if (n == NULL) {
+		pkg_emit_errno("malloc", "pkg_jobs_install_candidate");
+		return (NULL);
+	}
+	n->id = id;
+	return (n);
+}
+
+static bool
+pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
+{
+	const char *digest;
+	char sqlbuf[256];
+	struct pkgdb_it *it;
+	struct pkg *p = NULL;
+
+	pkg_get(pkg, PKG_DIGEST, &digest);
+	/* If we have no digest, we need to check this package */
+	if (digest == NULL || digest[0] == '\0')
+		return (true);
+
+	sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE manifestdigest=%Q", digest);
+
+	it = pkgdb_rquery(j->db, sqlbuf, MATCH_CONDITION, j->reponame);
+	if (it != NULL) {
+		/*
+		 * If we have the same package in a remote repo, it is not an
+		 * installation candidate
+		 */
+		if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+			pkg_free(p);
+			pkgdb_it_free(it);
+			return (false);
+		}
+		pkgdb_it_free(it);
+	}
+
+	return (true);
+}
+
+static struct pkg_jobs_install_candidate *
+pkg_jobs_find_install_candidates(struct pkg_jobs *j)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+	struct pkg_jobs_install_candidate *candidates = NULL, *c;
+
+	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
+		return (NULL);
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		if (pkg_jobs_check_remote_candidate(j, pkg)) {
+			c = pkg_jobs_new_candidate(pkg);
+			LL_PREPEND(candidates, c);
+		}
+	}
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+
+	return (candidates);
+}
+
 static int
 jobs_solve_install_upgrade(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *uid;
+	char sqlbuf[256];
 	bool automatic, got_local;
 	struct job_pattern *jp, *jtmp;
 	struct pkg_job_request *req, *rtmp;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	struct pkg_jobs_install_candidate *candidates, *c;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
@@ -1876,18 +1953,26 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		if (j->patterns == NULL) {
-			if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
-				return (EPKG_FATAL);
+			candidates = pkg_jobs_find_install_candidates(j);
 
-			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-				/* TODO: use repository priority here */
-				pkg_jobs_add_universe(j, pkg, true, false, NULL);
-				pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_AUTOMATIC, &automatic);
-				/* Do not test we ignore what doesn't exists remotely */
-				pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, !automatic, true, !automatic);
-				pkg = NULL;
+			LL_FOREACH(candidates, c) {
+				sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
+						c->id);
+				if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
+					return (EPKG_FATAL);
+
+				while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+					/* TODO: use repository priority here */
+					pkg_jobs_add_universe(j, pkg, true, false, NULL);
+					pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_AUTOMATIC, &automatic);
+					/* Do not test we ignore what doesn't exists remotely */
+					pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, !automatic,
+							true, !automatic);
+					pkg = NULL;
+				}
+				pkgdb_it_free(it);
 			}
-			pkgdb_it_free(it);
+			LL_FREE(candidates, free);
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {

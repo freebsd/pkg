@@ -178,8 +178,9 @@ static const char initsql[] = ""
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
 	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
-	"CREATE INDEX packages_uid ON packages(name, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_uid ON packages(name, origin);"
 	"CREATE INDEX packages_version ON packages(name, version);"
+	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
 	/* FTS search table */
 	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 
@@ -349,8 +350,9 @@ static const struct repo_changes repo_upgrades[] = {
 
 	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
 	 "CREATE INDEX IF NOT EXISTS %Q.packages_version_nocase ON packages(name COLLATE NOCASE, version);"
-	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid ON packages(name, origin COLLATE NOCASE);"
+	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid ON packages(name, origin);"
 	 "CREATE INDEX IF NOT EXISTS %Q.packages_version ON packages(name, version);"
+	 "CREATE UNIQUE INDEX IF NOT EXISTS %Q.packages_digest ON packages(manifestdigest);"
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
@@ -368,6 +370,7 @@ static const struct repo_changes repo_downgrades[] = {
 	 "DROP INDEX %Q.packages_version_nocase;"
 	 "DROP INDEX %Q.packages_uid;"
 	 "DROP INDEX %Q.packages_version;"
+	 "DROP INDEX %Q.packages_digest;"
 	},
 	{2008,
 	 2007,
