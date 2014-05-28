@@ -1306,8 +1306,7 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	pkg_get(lp, PKG_ANNOTATIONS, &obj);
 	an = pkg_object_find(obj, "repository");
 	if (an != NULL)  {
-		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
-				ucl_object_tostring(an)) != 0)  {
+		if (strcmp(reponame, ucl_object_tostring(an)) != 0) {
 			/*
 			 * If we have packages from some different repo, then
 			 * we should not try to detect options changed and so on,
