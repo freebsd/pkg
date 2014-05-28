@@ -254,10 +254,10 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->digests, &local_t, &rc);
 	if (fdigests == NULL) {
-		rc = EPKG_FATAL;
-		/* Destroy repo completely */
-		if (new_repo)
-			unlink(name);
+		if (rc == EPKG_FATAL)
+			/* Destroy repo completely */
+			if (new_repo)
+				unlink(name);
 
 		goto cleanup;
 	}
@@ -266,10 +266,10 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	fmanifest = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->manifests, &local_t, &rc);
 	if (fmanifest == NULL) {
-		rc = EPKG_FATAL;
-		/* Destroy repo completely */
-		if (new_repo)
-			unlink(name);
+		if (rc == EPKG_FATAL)
+			/* Destroy repo completely */
+			if (new_repo)
+				unlink(name);
 
 		goto cleanup;
 	}
