@@ -500,7 +500,7 @@ iter_again:
  * Calculate manifest for packages that lack it
  */
 static int
-pkg_jobs_digest_manifest(struct pkg *pkg)
+pkg_jobs_digest_manifest(struct pkg_jobs *j, struct pkg *pkg)
 {
 	char *new_digest;
 	int rc;
@@ -512,6 +512,7 @@ pkg_jobs_digest_manifest(struct pkg *pkg)
 
 	if (rc == EPKG_OK) {
 		pkg_set(pkg, PKG_DIGEST, new_digest);
+		pkgdb_set_pkg_digest(j->db, pkg);
 		free(new_digest);
 	}
 
@@ -537,7 +538,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 	if (digest == NULL) {
 		pkg_debug(3, "no digest found for package %s (%s-%s)", uid,
 				name, version);
-		if (pkg_jobs_digest_manifest(pkg) != EPKG_OK) {
+		if (pkg_jobs_digest_manifest(j, pkg) != EPKG_OK) {
 			*found = NULL;
 			return (EPKG_FATAL);
 		}
@@ -921,7 +922,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	pkg_get(p, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 
 	if (digest == NULL) {
-		if (pkg_jobs_digest_manifest(p) != EPKG_OK) {
+		if (pkg_jobs_digest_manifest(j, p) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 		pkg_get(p, PKG_DIGEST, &digest);

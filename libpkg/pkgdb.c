@@ -2463,6 +2463,7 @@ typedef enum _sql_prstmt_index {
 	PKG_PROVIDE,
 	PROVIDE,
 	FTS_APPEND,
+	UPDATE_DIGEST,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2665,6 +2666,11 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
 		"VALUES (?1, ?2 || '-' || ?3, ?4);",
 		"ITTT"
+	},
+	[UPDATE_DIGEST] = {
+		NULL,
+		"UPDATE packages SET manifestdigest=?1 WHERE id=?2;",
+		"TI"
 	}
 	/* PRSTMT_LAST */
 };
@@ -3275,6 +3281,27 @@ pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	rows_changed = sqlite3_changes(db->sqlite);
 
 	return (rows_changed == 1 ? EPKG_OK : EPKG_WARN);
+}
+
+int
+pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg)
+{
+	const char *digest;
+	int64_t id;
+
+	assert(pkg != NULL);
+	assert(db != NULL);
+
+	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	pkg_get(pkg, PKG_DIGEST, &digest, PKG_ROWID, &id);
+	if (run_prstmt(UPDATE_DIGEST, digest, id) != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite, SQL(UPDATE_DIGEST));
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
 }
 
 int

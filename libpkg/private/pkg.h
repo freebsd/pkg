@@ -522,6 +522,7 @@ int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s
 int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
+int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
 
 int pkg_register_shlibs(struct pkg *pkg, const char *root);
 
