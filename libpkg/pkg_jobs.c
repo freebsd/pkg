@@ -505,59 +505,33 @@ static int
 pkg_jobs_digest_manifest(struct pkg_jobs *j, struct pkg *pkg)
 {
 	char *new_digest;
-	int rc = EPKG_FATAL;
-	struct sbuf *sb;
-	char path[MAXPATHLEN], sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	struct archive *a;
-	struct archive_entry *ae;
+	struct pkg_repo *repo;
+	const char *reponame;
+	int rc = EPKG_OK;
+	pkg_checksum_type_t type = 0;
 
-	/* Try to use the cached package */
-	pkg_snprintf(path, sizeof(path), "%R", pkg);
-	if (*path != '/')
-		pkg_repo_cached_name(pkg, path, sizeof(path));
-	a = archive_read_new();
-	archive_read_support_filter_all(a);
-	archive_read_support_format_tar(a);
-	if (archive_read_open_filename(a, path, 4096) == ARCHIVE_OK) {
-		const char *fpath;
+	pkg_get(pkg, PKG_REPONAME, &reponame);
+	repo = pkg_repo_find_name(reponame);
 
-		while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-			fpath = archive_entry_pathname(ae);
-			if (strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
-				char *buffer;
-				size_t len = archive_entry_size(ae);
+	if (repo != NULL)
+		type = repo->meta->digest_format;
 
-				buffer = malloc(len);
-				archive_read_data(a, buffer, archive_entry_size(ae));
-				sha256_buf(buffer, len, sha256);
-				free(buffer);
-				pkg_debug(1, "manifest(%s): %.*s", buffer, len, buffer);
-				pkg_set(pkg, PKG_DIGEST, sha256);
-				pkgdb_set_pkg_digest(j->db, pkg);
-				rc = EPKG_OK;
-				break;
-			}
-		}
-
-		archive_read_close(a);
-	}
-	if (rc != EPKG_OK) {
-		/* XXX: broken with pkg 1.2 repos */
-		/* We need to calculate digest of this package */
-		sb = sbuf_new_auto();
-		rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
-
-		pkg_debug(1, "manifest(%s): %s", new_digest, sbuf_data(sb));
-		if (rc == EPKG_OK) {
-			pkg_set(pkg, PKG_DIGEST, new_digest);
-			pkgdb_set_pkg_digest(j->db, pkg);
-			free(new_digest);
-		}
-
-		sbuf_delete(sb);
+	new_digest = malloc(pkg_checksum_type_size(type));
+	if (new_digest == NULL) {
+		pkg_emit_errno("malloc", "pkg_checksum_type_t");
+		return (EPKG_FATAL);
 	}
 
-	archive_read_free(a);
+	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
+			!= EPKG_OK) {
+		free(new_digest);
+		return (EPKG_FATAL);
+	}
+
+	pkg_set(pkg, PKG_DIGEST, new_digest);
+	pkgdb_set_pkg_digest(j->db, pkg);
+
+	free(new_digest);
 
 	return (rc);
 }
