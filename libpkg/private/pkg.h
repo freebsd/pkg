@@ -274,13 +274,19 @@ struct pkg_repo_meta_key {
 	UT_hash_handle hh;
 };
 
+typedef enum pkg_checksum_type_e {
+	PKG_HASH_TYPE_SHA256_BASE32 = 0,
+	PKG_HASH_TYPE_SHA256_HEX,
+	PKG_HASH_TYPE_UNKNOWN
+} pkg_checksum_type_t;
+
 struct pkg_repo_meta {
 
 	char *maintainer;
 	char *source;
 
 	pkg_formats packing_format;
-	char *digest_format; /* TODO: should be enumeration */
+	pkg_checksum_type_t digest_format;
 
 	char *digests;
 	char *manifests;
@@ -393,6 +399,7 @@ static struct pkg_key {
 	[PKG_LICENSES] = { "licenses", UCL_ARRAY },
 	[PKG_CATEGORIES] = { "catagories", UCL_ARRAY },
 	[PKG_UNIQUEID] = { "uniqueid", UCL_STRING },
+	[PKG_OLD_DIGEST] = { "olddigest", UCL_STRING },
 };
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,
@@ -537,5 +544,18 @@ bool ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     struct sbuf **buf);
 bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
     FILE *);
+
+/* Hash is in format <version>:<typeid>:<hexhash> */
+#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 10)
+#define PKG_CHECKSUM_CUR_VERSION 1
+
+int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
+	pkg_checksum_type_t type);
+
+bool pkg_checksum_is_valid(const char *cksum, size_t clen);
+pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);
+pkg_checksum_type_t pkg_checksum_type_from_string(const char *name);
+size_t pkg_checksum_type_size(pkg_checksum_type_t type);
+int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db);
 
 #endif

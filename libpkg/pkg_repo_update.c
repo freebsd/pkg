@@ -85,9 +85,10 @@ pkg_repo_register(struct pkg_repo *repo, sqlite3 *sqlite)
 }
 
 static int
-pkg_repo_add_from_manifest(char *buf, const char *origin, long offset,
-		const char *manifest_digest, sqlite3 *sqlite,
-		struct pkg_manifest_key **keys, struct pkg **p)
+pkg_repo_add_from_manifest(char *buf, const char *origin, const char *digest,
+		long offset, sqlite3 *sqlite,
+		struct pkg_manifest_key **keys, struct pkg **p, bool is_legacy,
+		struct pkg_repo *repo)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
@@ -127,7 +128,16 @@ pkg_repo_add_from_manifest(char *buf, const char *origin, long offset,
 		goto cleanup;
 	}
 
-	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true);
+	pkg_set(pkg, PKG_REPONAME, repo->name);
+	if (is_legacy) {
+		pkg_set(pkg, PKG_OLD_DIGEST, digest);
+		pkg_checksum_calculate(pkg, NULL);
+	}
+	else {
+		pkg_set(pkg, PKG_DIGEST, digest);
+	}
+
+	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, true);
 
 cleanup:
 	return (rc);
@@ -136,6 +146,7 @@ cleanup:
 struct pkg_increment_task_item {
 	char *origin;
 	char *digest;
+	char *olddigest;
 	long offset;
 	long length;
 	UT_hash_handle hh;
@@ -219,7 +230,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	size_t len = 0;
 	int hash_it = 0;
 	time_t now, last;
-	bool in_trans = false, new_repo = true;
+	bool in_trans = false, new_repo = true, legacy_repo = false;
 
 	if (access(name, R_OK) != -1)
 		new_repo = false;
@@ -240,11 +251,6 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	if (it == NULL) {
 		rc = EPKG_FATAL;
 		goto cleanup;
-	}
-
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
-		pkg_repo_update_increment_item_new(&ldel, origin, digest, 4, 0);
 	}
 
 	if (pkg_repo_fetch_meta(repo, NULL) == EPKG_FATAL)
@@ -281,6 +287,30 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
+	/* Detect whether we have legacy repo */
+	if ((linelen = getline(&linebuf, &linecap, fdigests)) > 0) {
+		p = linebuf;
+		origin = strsep(&p, ":");
+		digest = strsep(&p, ":");
+		if (digest == NULL) {
+			pkg_emit_error("invalid digest file format");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		if (!pkg_checksum_is_valid(digest, strlen(digest))) {
+			legacy_repo = true;
+			pkg_debug(1, "repository '%s' has a legacy digests format", repo->name);
+		}
+	}
+	fseek(fdigests, 0, SEEK_SET);
+
+	/* Load local repo data */
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,
+				&digest);
+		pkg_repo_update_increment_item_new(&ldel, origin, digest, 4, 0);
+	}
+
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
 	/* load the while digests */
 	while ((linelen = getline(&linebuf, &linecap, fdigests)) > 0) {
@@ -295,7 +325,6 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		if (origin == NULL || digest == NULL ||
 				offset == NULL) {
 			pkg_emit_error("invalid digest file format");
-			assert(0);
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -399,12 +428,13 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		if (rc == EPKG_OK) {
 			if (item->length != 0) {
 				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
-						item->length, item->digest,
-						sqlite, &keys, &pkg);
+				    item->digest, item->length, sqlite, &keys, &pkg, legacy_repo,
+				    repo);
 			}
 			else {
 				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
-						len - item->offset, item->digest, sqlite, &keys, &pkg);
+				    item->digest, len - item->offset, sqlite, &keys, &pkg,
+				    legacy_repo, repo);
 			}
 		}
 		free(item->origin);
