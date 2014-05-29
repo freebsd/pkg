@@ -81,6 +81,9 @@ usage_rquery(void)
 static void
 print_index(struct pkg *pkg)
 {
+#ifndef PORTSDIR
+#define PORTSDIR "/usr/ports"
+#endif
 
 	pkg_printf(
 	    "%n-%v|"			/* PKGNAME */
@@ -96,7 +99,7 @@ print_index(struct pkg *pkg)
 	    "|"				/* EXTRACT_DEPENDS */
 	    "|"				/* PATCH_DEPENDS */
 	    "\n",			/* FETCH_DEPENDS */
-	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg, pkg, pkg,
+	    pkg, pkg, PORTSDIR, pkg, pkg, pkg, PORTSDIR, pkg, pkg, pkg, pkg,
 	    pkg);
 }
 
