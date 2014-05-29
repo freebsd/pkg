@@ -372,10 +372,12 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 	pkg_checksum_type_t type = 0;
 
 	pkg_get(pkg, PKG_REPONAME, &reponame);
-	repo = pkg_repo_find_name(reponame);
+	if (reponame != NULL) {
+		repo = pkg_repo_find_name(reponame);
 
-	if (repo != NULL)
-		type = repo->meta->digest_format;
+		if (repo != NULL)
+			type = repo->meta->digest_format;
+	}
 
 	new_digest = malloc(pkg_checksum_type_size(type));
 	if (new_digest == NULL) {
