@@ -1847,7 +1847,10 @@ format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p
 
 	pkg_get(pkg, PKG_CKSUM, &checksum);
 
-	slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	if (checksum != NULL)
+		slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	else
+		slen = 0;
 	memcpy(csum, checksum, slen);
 	csum[slen] = '\0';
 
