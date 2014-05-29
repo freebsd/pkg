@@ -59,7 +59,7 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 9
+#define REPO_SCHEMA_MINOR 10
 
 /* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
@@ -90,10 +90,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT INTO packages ("
 		"origin, name, version, comment, desc, arch, maintainer, www, "
-		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest"
+		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest, olddigest"
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
-		"TTTTTTTTTIIITTT",
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+		"TTTTTTTTTIIITTTT",
 	},
 	[DEPS] = {
 		NULL,
@@ -468,10 +468,11 @@ pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum)
 
 int
 pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced)
+		sqlite3 *sqlite, bool forced)
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
+	const char *olddigest, *manifestdigest;
 	int64_t			 flatsize, pkgsize;
 	int64_t			 licenselogic;
 	int			 ret;
@@ -490,13 +491,14 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
 			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath,
 			    PKG_LICENSES, &licenses, PKG_CATEGORIES, &categories,
-			    PKG_ANNOTATIONS, &annotations);
+			    PKG_ANNOTATIONS, &annotations, PKG_OLD_DIGEST, &olddigest,
+			    PKG_DIGEST, &manifestdigest);
 
 try_again:
 	if ((ret = run_prepared_statement(PKG, origin, name, version,
 			comment, desc, arch, maintainer, www, prefix,
 			pkgsize, flatsize, (int64_t)licenselogic, sum,
-			rpath, manifest_digest)) != SQLITE_DONE) {
+			rpath, manifestdigest, olddigest)) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
 			switch(maybe_delete_conflicting(origin,
 					version, pkg_path, forced)) {

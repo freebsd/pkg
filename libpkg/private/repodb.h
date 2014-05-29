@@ -60,7 +60,8 @@ static const char initsql[] = ""
 	    /* relative path to the package in the repository */
 	    "path TEXT NOT NULL,"
 	    "pkg_format_version INTEGER,"
-	    "manifestdigest TEXT NULL"
+	    "manifestdigest TEXT NULL,"
+	    "olddigest TEXT NULL"
 	");"
 	"CREATE TABLE deps ("
 	    "origin TEXT,"
@@ -354,6 +355,12 @@ static const struct repo_changes repo_upgrades[] = {
 	 "CREATE INDEX IF NOT EXISTS %Q.packages_version ON packages(name, version);"
 	 "CREATE UNIQUE INDEX IF NOT EXISTS %Q.packages_digest ON packages(manifestdigest);"
 	},
+	{2009,
+	 2010,
+	 "Add legacy digest field",
+
+	 "ALTER TABLE %Q.packages ADD COLUMN olddigest TEXT NULL;"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -362,6 +369,12 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2010,
+	 2009,
+	 "Drop olddigest field",
+
+	 "ALTER TABLE %Q.packages REMOVE COLUMN olddigest;"
+	},
 	{2009,
 	 2008,
 	 "Drop indicies",

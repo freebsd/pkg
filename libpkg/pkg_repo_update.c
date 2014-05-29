@@ -86,7 +86,7 @@ pkg_repo_register(struct pkg_repo *repo, sqlite3 *sqlite)
 
 static int
 pkg_repo_add_from_manifest(char *buf, const char *origin, long offset,
-		const char *manifest_digest, sqlite3 *sqlite,
+		sqlite3 *sqlite,
 		struct pkg_manifest_key **keys, struct pkg **p)
 {
 	int rc = EPKG_OK;
@@ -127,7 +127,7 @@ pkg_repo_add_from_manifest(char *buf, const char *origin, long offset,
 		goto cleanup;
 	}
 
-	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true);
+	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, true);
 
 cleanup:
 	return (rc);
@@ -244,6 +244,10 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+		if (digest == NULL) {
+			pkg_checksum_calculate(pkg, NULL);
+			pkg_get(pkg, PKG_DIGEST, &digest);
+		}
 		pkg_repo_update_increment_item_new(&ldel, origin, digest, 4, 0);
 	}
 
@@ -399,12 +403,11 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		if (rc == EPKG_OK) {
 			if (item->length != 0) {
 				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
-						item->length, item->digest,
-						sqlite, &keys, &pkg);
+						item->length, sqlite, &keys, &pkg);
 			}
 			else {
 				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
-						len - item->offset, item->digest, sqlite, &keys, &pkg);
+						len - item->offset, sqlite, &keys, &pkg);
 			}
 		}
 		free(item->origin);

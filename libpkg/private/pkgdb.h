@@ -109,13 +109,12 @@ int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
  * @param pkg package structure
  * @param pkg_path path triggered package addition
  * @param sqlite sqlite pointer
- * @param manifest_digest sha256 checksum of the manifest of the package
  * @param forced force adding of package even if it is outdated
  * @return EPKG_OK if package added, EPKG_END if package already exists and is newer than
  * inserted one, EPKG_FATAL if error occurred
  */
 int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced);
+		sqlite3 *sqlite, bool forced);
 
 /**
  * Remove specified pkg from repo

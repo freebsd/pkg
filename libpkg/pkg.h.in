@@ -254,6 +254,7 @@ typedef enum {
 	PKG_LICENSES,
 	PKG_CATEGORIES,
 	PKG_UNIQUEID,
+	PKG_OLD_DIGEST,
 	PKG_NUM_FIELDS, 	/* end of fields */
 } pkg_attr;
 
