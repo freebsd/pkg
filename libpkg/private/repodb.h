@@ -360,6 +360,7 @@ static const struct repo_changes repo_upgrades[] = {
 	 "Add legacy digest field",
 
 	 "ALTER TABLE %Q.packages ADD COLUMN olddigest TEXT NULL;"
+	 "UPDATE %Q.packages SET olddigest=manifestdigest WHERE olddigest=NULL;"
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
