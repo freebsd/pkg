@@ -554,5 +554,6 @@ int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 bool pkg_checksum_is_valid(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_type_from_string(const char *name);
+size_t pkg_checksum_type_size(pkg_checksum_type_t type);
 
 #endif
