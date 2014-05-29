@@ -299,7 +299,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		}
 		if (!pkg_checksum_is_valid(digest, strlen(digest))) {
 			legacy_repo = true;
-			pkg_debug(1, "repo %s is legace repo", repo->name);
+			pkg_debug(1, "repository '%s' has a legacy digests format", repo->name);
 		}
 	}
 	fseek(fdigests, 0, SEEK_SET);
