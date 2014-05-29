@@ -538,4 +538,19 @@ bool ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
     FILE *);
 
+typedef enum pkg_checksum_type_e {
+	PKG_HASH_TYPE_SHA256_BASE32 = 0,
+	PKG_HASH_TYPE_SHA256_HEX,
+	PKG_HASH_TYPE_UNKNOWN
+} pkg_checksum_type_t;
+
+/* Hash is in format <typeid>:<hexhash> */
+#define PKG_HASH_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 3)
+
+int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
+	pkg_checksum_type_t type);
+
+bool pkg_checksum_is_valid(const char *cksum, size_t clen);
+pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);
+
 #endif
