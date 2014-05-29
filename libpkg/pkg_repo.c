@@ -207,7 +207,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	cleanup:
 	if (retcode != EPKG_OK)
 		unlink(dest);
-	else {
+	else if (path != NULL) {
 		/* Create symlink from full pkgname */
 		ext = strrchr(dest, '.');
 		pkg_snprintf(link_dest, sizeof(link_dest), "%S/%n-%v%S",
