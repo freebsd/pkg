@@ -35,7 +35,7 @@ static ucl_object_t *repo_meta_schema_v1 = NULL;
 static void
 pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 {
-	meta->digest_format = strdup("sha256");
+	meta->digest_format = PKG_HASH_TYPE_SHA256_BASE32;
 	meta->packing_format = TXZ;
 
 	/* Not use conflicts for now */
@@ -59,7 +59,6 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->manifests);
 		free(meta->digests);
 		free(meta->fulldb);
-		free(meta->digest_format);
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
@@ -86,7 +85,7 @@ pkg_repo_meta_open_schema_v1()
 			"maintainer = {type = string};\n"
 			"source = {type = string};\n"
 			"packing_format = {enum = [txz, tbz, tgz]};\n"
-			"digest_format = {enum = [sha256]};\n"
+			"digest_format = {enum = [sha256_base32, sha256_hex]};\n"
 			"digests = {type = string};\n"
 			"manifests = {type = string};\n"
 			"conflicts = {type = string};\n"
@@ -174,7 +173,6 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 
 	META_EXTRACT_STRING(maintainer);
 	META_EXTRACT_STRING(source);
-	META_EXTRACT_STRING(digest_format);
 
 	META_EXTRACT_STRING(conflicts);
 	META_EXTRACT_STRING(digests);
@@ -196,6 +194,11 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	obj = ucl_object_find_key(top, "packing_format");
 	if (obj != NULL && obj->type == UCL_STRING) {
 		meta->packing_format = packing_format_from_string(ucl_object_tostring(obj));
+	}
+
+	obj = ucl_object_find_key(top, "digest_format");
+	if (obj != NULL && obj->type == UCL_STRING) {
+		meta->digest_format = pkg_checksum_type_from_string(ucl_object_tostring(obj));
 	}
 
 	obj = ucl_object_find_key(top, "cert");

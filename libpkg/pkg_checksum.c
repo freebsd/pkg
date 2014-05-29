@@ -56,21 +56,25 @@ static void pkg_checksum_encode_hex(unsigned char *in, size_t inlen,
 				char *out, size_t outlen);
 
 static const struct _pkg_cksum_type {
+	const char *name;
 	size_t hlen;
 	pkg_checksum_hash_func hfunc;
 	pkg_checksum_encode_func encfunc;
 } checksum_types[] = {
 	[PKG_HASH_TYPE_SHA256_BASE32] = {
+		"sha256_base32",
 		PKG_CHECKSUM_SHA256_LEN,
 		pkg_checksum_hash_sha256,
 		pkg_checksum_encode_base32
 	},
 	[PKG_HASH_TYPE_SHA256_HEX] = {
+		"sha256_hex",
 		PKG_CHECKSUM_SHA256_LEN,
 		pkg_checksum_hash_sha256,
 		pkg_checksum_encode_hex
 	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
+		NULL,
 		-1,
 		NULL,
 		NULL
@@ -338,4 +342,16 @@ pkg_checksum_encode_hex(unsigned char *in, size_t inlen,
 		sprintf(out + (i * 2), "%02x", in[i]);
 
 	out[inlen * 2] = '\0';
+}
+
+pkg_checksum_type_t
+pkg_checksum_type_from_string(const char *name)
+{
+	int i;
+	for (i = 0; i < PKG_HASH_TYPE_UNKNOWN; i ++) {
+		if (strcasecmp(name, checksum_types[i].name) == 0)
+			return (i);
+	}
+
+	return (PKG_HASH_TYPE_UNKNOWN);
 }
