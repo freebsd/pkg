@@ -361,3 +361,40 @@ pkg_checksum_type_size(pkg_checksum_type_t type)
 {
 	return (checksum_types[type].hlen);
 }
+
+int
+pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
+{
+	char *new_digest;
+	struct pkg_repo *repo;
+	const char *reponame;
+	int rc = EPKG_OK;
+	pkg_checksum_type_t type = 0;
+
+	pkg_get(pkg, PKG_REPONAME, &reponame);
+	repo = pkg_repo_find_name(reponame);
+
+	if (repo != NULL)
+		type = repo->meta->digest_format;
+
+	new_digest = malloc(pkg_checksum_type_size(type));
+	if (new_digest == NULL) {
+		pkg_emit_errno("malloc", "pkg_checksum_type_t");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
+			!= EPKG_OK) {
+		free(new_digest);
+		return (EPKG_FATAL);
+	}
+
+	pkg_set(pkg, PKG_DIGEST, new_digest);
+
+	if (db != NULL)
+		pkgdb_set_pkg_digest(db, pkg);
+
+	free(new_digest);
+
+	return (rc);
+}

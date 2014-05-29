@@ -498,43 +498,6 @@ iter_again:
 
 #undef PRIORITY_CAN_UPDATE
 
-/*
- * Calculate manifest for packages that lack it
- */
-static int
-pkg_jobs_digest_manifest(struct pkg_jobs *j, struct pkg *pkg)
-{
-	char *new_digest;
-	struct pkg_repo *repo;
-	const char *reponame;
-	int rc = EPKG_OK;
-	pkg_checksum_type_t type = 0;
-
-	pkg_get(pkg, PKG_REPONAME, &reponame);
-	repo = pkg_repo_find_name(reponame);
-
-	if (repo != NULL)
-		type = repo->meta->digest_format;
-
-	new_digest = malloc(pkg_checksum_type_size(type));
-	if (new_digest == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_type_t");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
-			!= EPKG_OK) {
-		free(new_digest);
-		return (EPKG_FATAL);
-	}
-
-	pkg_set(pkg, PKG_DIGEST, new_digest);
-	pkgdb_set_pkg_digest(j->db, pkg);
-
-	free(new_digest);
-
-	return (rc);
-}
 
 /**
  * Check whether a package is in the universe already or add it
@@ -553,7 +516,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 	if (digest == NULL) {
 		pkg_debug(3, "no digest found for package %s (%s-%s)", uid,
 				name, version);
-		if (pkg_jobs_digest_manifest(j, pkg) != EPKG_OK) {
+		if (pkg_checksum_calculate(pkg, j->db) != EPKG_OK) {
 			*found = NULL;
 			return (EPKG_FATAL);
 		}
@@ -937,7 +900,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	pkg_get(p, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 
 	if (digest == NULL) {
-		if (pkg_jobs_digest_manifest(j, p) != EPKG_OK) {
+		if (pkg_checksum_calculate(p, j->db) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 		pkg_get(p, PKG_DIGEST, &digest);
