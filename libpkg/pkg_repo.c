@@ -188,7 +188,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 		return (pkg_repo_fetch_package(pkg));
 	}
 	retcode = sha256_file(dest, cksum);
-	if (retcode == EPKG_OK)
+	if (retcode == EPKG_OK) {
 		if (strcmp(cksum, sum)) {
 			if (fetched == 1) {
 				pkg_emit_error("%s-%s failed checksum "
@@ -202,6 +202,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 				return (pkg_repo_fetch_package(pkg));
 			}
 		}
+	}
 
 	cleanup:
 	if (retcode != EPKG_OK)
