@@ -212,17 +212,84 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 	}
 }
 
+/*
+ * We use here z-base32 encoding described here:
+ * http://philzimmermann.com/docs/human-oriented-base-32-encoding.txt
+ */
+static const char b32[]="ybndrfg8ejkmcpqxot1uwisza345h769";
+
 
 static void
 pkg_checksum_encode_base32(unsigned char *in, size_t inlen,
 				char *out, size_t outlen)
 {
+	int i, remain = -1, r, x;
 
+	if (outlen < inlen * 8 / 5) {
+		pkg_emit_error("cannot encode base32 as outlen is not sufficient");
+		return;
+	}
+
+	for (i = 0, r = 0; i < inlen; i++) {
+		switch (i % 5) {
+		case 0:
+			/* 8 bits of input and 3 to remain */
+			x = in[i];
+			remain = in[i] >> 5;
+			out[r++] = b32[x & 0x1F];
+			break;
+		case 1:
+			/* 11 bits of input, 1 to remain */
+			x = remain | in[i] << 3;
+			out[r++] = b32[x & 0x1F];
+			out[r++] = b32[x >> 5 & 0x1F];
+			remain = x >> 10;
+			break;
+		case 2:
+			/* 9 bits of input, 4 to remain */
+			x = remain | in[i] << 1;
+			out[r++] = b32[x & 0x1F];
+			remain = x >> 5;
+			break;
+		case 3:
+			/* 12 bits of input, 2 to remain */
+			x = remain | in[i] << 4;
+			out[r++] = b32[x & 0x1F];
+			out[r++] = b32[x >> 5 & 0x1F];
+			remain = x >> 10 & 0x3;
+			break;
+		case 4:
+			/* 10 bits of output, nothing to remain */
+			x = remain | in[i] << 2;
+			out[r++] = b32[x & 0x1F];
+			out[r++] = b32[x >> 5 & 0x1F];
+			remain = -1;
+			break;
+		default:
+			/* Not to be happen */
+			break;
+		}
+
+	}
+	if (remain >= 0)
+		out[r++] = b32[remain];
+
+	out[r] = 0;
 }
 
 static void
 pkg_checksum_encode_hex(unsigned char *in, size_t inlen,
 				char *out, size_t outlen)
 {
+	int i;
 
+	if (outlen < inlen * 2) {
+		pkg_emit_error("cannot encode hex as outlen is not sufficient");
+		return;
+	}
+
+	for (i = 0; i < inlen; i++)
+		sprintf(out + (i * 2), "%02x", in[i]);
+
+	out[inlen * 2] = '\0';
 }
