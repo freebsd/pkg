@@ -81,16 +81,23 @@ usage_rquery(void)
 static void
 print_index(struct pkg *pkg)
 {
-#ifndef PORTSDIR
-#define PORTSDIR "/usr/ports"
-#endif
-	struct pkg_category *cat = NULL;
 
-	pkg_printf("%n-%v|" PORTSDIR "/%o|%p|%c|" PORTSDIR "/%o/pkg-descr|%m|",
-	    pkg, pkg, pkg, pkg, pkg, pkg, pkg);
-	while (pkg_categories(pkg, &cat) == EPKG_OK)
-		pkg_printf("%Cn ", cat);
-	printf("\n");
+	pkg_printf(
+	    "%n-%v|"			/* PKGNAME */
+	    "%S/%o|"			/* PORTDIR */
+	    "%p|"			/* PREFIX */
+	    "%c|"			/* COMMENT */
+	    "%S/%o/pkg-descr|"		/* _DESCR */
+	    "%m|"			/* MAINTAINER */
+	    "%C%{%Cn%| %}|"		/* CATEGORIES */
+	    "|"				/* BUILD_DEPENDS */
+	    "%d%{%dn-%dv%| %}|"		/* RUN_DEPENDS */
+	    "%w|"			/* WWW */
+	    "|"				/* EXTRACT_DEPENDS */
+	    "|"				/* PATCH_DEPENDS */
+	    "\n",			/* FETCH_DEPENDS */
+	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg, pkg, pkg,
+	    pkg);
 }
 
 int
@@ -201,7 +208,7 @@ exec_rquery(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (index_output)
-		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES;
+		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
