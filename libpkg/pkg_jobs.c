@@ -32,6 +32,8 @@
 #include <sys/mount.h>
 #include <sys/types.h>
 
+#include <archive.h>
+#include <archive_entry.h>
 #include <assert.h>
 #include <errno.h>
 #include <libutil.h>
@@ -503,20 +505,59 @@ static int
 pkg_jobs_digest_manifest(struct pkg_jobs *j, struct pkg *pkg)
 {
 	char *new_digest;
-	int rc;
+	int rc = EPKG_FATAL;
 	struct sbuf *sb;
+	char path[MAXPATHLEN], sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	struct archive *a;
+	struct archive_entry *ae;
 
-	/* We need to calculate digest of this package */
-	sb = sbuf_new_auto();
-	rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
+	/* Try to use the cached package */
+	pkg_snprintf(path, sizeof(path), "%R", pkg);
+	if (*path != '/')
+		pkg_repo_cached_name(pkg, path, sizeof(path));
+	a = archive_read_new();
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
+	if (archive_read_open_filename(a, path, 4096) == ARCHIVE_OK) {
+		const char *fpath;
 
-	if (rc == EPKG_OK) {
-		pkg_set(pkg, PKG_DIGEST, new_digest);
-		pkgdb_set_pkg_digest(j->db, pkg);
-		free(new_digest);
+		while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+			fpath = archive_entry_pathname(ae);
+			if (strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
+				char *buffer;
+				size_t len = archive_entry_size(ae);
+
+				buffer = malloc(len);
+				archive_read_data(a, buffer, archive_entry_size(ae));
+				sha256_buf(buffer, len, sha256);
+				free(buffer);
+				pkg_debug(1, "manifest(%s): %.*s", buffer, len, buffer);
+				pkg_set(pkg, PKG_DIGEST, sha256);
+				pkgdb_set_pkg_digest(j->db, pkg);
+				rc = EPKG_OK;
+				break;
+			}
+		}
+
+		archive_read_close(a);
+	}
+	if (rc != EPKG_OK) {
+		/* XXX: broken with pkg 1.2 repos */
+		/* We need to calculate digest of this package */
+		sb = sbuf_new_auto();
+		rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
+
+		pkg_debug(1, "manifest(%s): %s", new_digest, sbuf_data(sb));
+		if (rc == EPKG_OK) {
+			pkg_set(pkg, PKG_DIGEST, new_digest);
+			pkgdb_set_pkg_digest(j->db, pkg);
+			free(new_digest);
+		}
+
+		sbuf_delete(sb);
 	}
 
-	sbuf_delete(sb);
+	archive_read_free(a);
 
 	return (rc);
 }
@@ -1443,7 +1484,7 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
-	char *uid, *newversion, *oldversion, *reponame;
+	char *uid, *newversion, *oldversion, *reponame, *cksum;
 	const ucl_object_t *an, *obj;
 	int64_t oldsize;
 	struct pkg *lp;
@@ -1451,14 +1492,13 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	int ret;
 
 	pkg_get(rp, PKG_UNIQUEID, &uid,
-	    PKG_REPONAME, &reponame);
+	    PKG_REPONAME, &reponame, PKG_CKSUM, &cksum);
 	lp = get_local_pkg(j, uid, 0);
 
 	/* obviously yes because local doesn't exists */
 	if (lp == NULL)
 		return (true);
 
-	pkg_jobs_add_universe(j, lp, true, false, NULL);
 	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
 	    PKG_FLATSIZE, &oldsize,
@@ -1467,11 +1507,16 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	/* Add repo name to the annotation */
 	an = pkg_object_find(obj, "repository");
 	if (an != NULL)  {
-		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
-		    ucl_object_tostring(an)) != 0)  {
+		if (strcmp(reponame, ucl_object_tostring(an)) != 0)  {
+			pkg_jobs_add_universe(j, lp, true, false, NULL);
 			return (false);
 		}
+		else {
+			pkg_set(lp, PKG_REPONAME, &reponame, PKG_CKSUM, &cksum);
+		}
 	}
+
+	pkg_jobs_add_universe(j, lp, true, false, NULL);
 
 	pkg_get(rp, PKG_VERSION, &newversion);
 	pkg_set(rp, PKG_OLD_VERSION, oldversion,
