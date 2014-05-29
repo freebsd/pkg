@@ -61,12 +61,12 @@ static const struct _pkg_cksum_type {
 	pkg_checksum_encode_func encfunc;
 } checksum_types[] = {
 	[PKG_HASH_TYPE_SHA256_BASE32] = {
-		PKG_HASH_SHA256_LEN,
+		PKG_CHECKSUM_SHA256_LEN,
 		pkg_checksum_hash_sha256,
 		pkg_checksum_encode_base32
 	},
 	[PKG_HASH_TYPE_SHA256_HEX] = {
-		PKG_HASH_SHA256_LEN,
+		PKG_CHECKSUM_SHA256_LEN,
 		pkg_checksum_hash_sha256,
 		pkg_checksum_encode_hex
 	},
@@ -137,6 +137,8 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type)
 {
 	const char *key;
+	unsigned char *bdigest;
+	size_t blen;
 	struct pkg_checksum_entry *entries = NULL;
 	const ucl_object_t *o;
 	struct pkg_option *option = NULL;
@@ -170,6 +172,15 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	/* Sort before hashing */
 	DL_SORT(entries, pkg_checksum_entry_cmp);
 
+	checksum_types[type].hfunc(entries, &bdigest, &blen);
+	if (blen == 0 || bdigest == NULL) {
+		LL_FREE(entries, free);
+		return (EPKG_FATAL);
+	}
+
+	i = snprintf(dest, destlen, "%d:%d:", PKG_CHECKSUM_CUR_VERSION, type);
+	checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
+
 	LL_FREE(entries, free);
 
 	return (EPKG_OK);
@@ -178,6 +189,31 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 bool
 pkg_checksum_is_valid(const char *cksum, size_t clen)
 {
+	const char *semicolon;
+	unsigned int value;
+
+	if (clen < 4)
+		return (false);
+
+	semicolon = strchr(cksum, ':');
+	if (semicolon == NULL || *semicolon == '\0')
+		return (false);
+
+	/* Test version */
+	value = strtoul(cksum, NULL, 10);
+	if (value != PKG_CHECKSUM_CUR_VERSION)
+		return (false);
+
+	cksum = semicolon + 1;
+	semicolon = strchr(cksum, ':');
+	if (semicolon == NULL || *semicolon == '\0')
+		return (false);
+
+	/* Test type */
+	value = strtoul(cksum, NULL, 10);
+	if (value >= PKG_HASH_TYPE_UNKNOWN)
+		return (false);
+
 	return (true);
 }
 
@@ -185,6 +221,16 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 pkg_checksum_type_t
 pkg_checksum_get_type(const char *cksum, size_t clen)
 {
+	const char *semicolon;
+	unsigned int value;
+
+	semicolon = strchr(cksum, ':');
+	if (semicolon != NULL && *semicolon != '\0') {
+		value = strtoul(semicolon + 1, NULL, 10);
+		if (value < PKG_HASH_TYPE_UNKNOWN)
+			return (value);
+	}
+
 	return (PKG_HASH_TYPE_UNKNOWN);
 }
 

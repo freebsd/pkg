@@ -545,8 +545,8 @@ typedef enum pkg_checksum_type_e {
 } pkg_checksum_type_t;
 
 /* Hash is in format <version>:<typeid>:<hexhash> */
-#define PKG_HASH_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 5)
-#define PKG_HASH_CUR_VERSION 1
+#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 10)
+#define PKG_CHECKSUM_CUR_VERSION 1
 
 int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type);
