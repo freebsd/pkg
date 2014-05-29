@@ -306,9 +306,12 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				data = pkg_repo_url(r);
 			}
 
-			ucl_object_replace_key(pkg->fields,
-			    ucl_object_fromstring_common(data, strlen(data), 0),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
+			if (data == NULL)
+				ucl_object_delete_key(pkg->fields, pkg_keys[attr].name);
+			else
+				ucl_object_replace_key(pkg->fields,
+				    ucl_object_fromstring_common(data, strlen(data), 0),
+				    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 
 			if (buf != NULL)
 				free(buf);

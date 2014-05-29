@@ -1479,8 +1479,18 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 	struct pkg	*pkg;
 	int		 i;
 	int		 ret;
+	const char *digest;
 
 	assert(it != NULL);
+
+	/*
+	 * XXX:
+	 * Currently, we have a lot of issues related to pkg digests.
+	 * So we want to ensure that we always have a valid package digest
+	 * even if we work with pkg 1.2 repo. Therefore, we explicitly check
+	 * manifest digests and set it to NULL if it is invalid.
+	 *
+	 */
 
 	if (it->finished && (it->flags & PKGDB_IT_FLAG_ONCE))
 		return (EPKG_END);
@@ -1496,6 +1506,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 		pkg = *pkg_p;
 
 		populate_pkg(it->stmt, pkg);
+
+		pkg_get(pkg, PKG_DIGEST, &digest);
+		if (!pkg_checksum_is_valid(digest, strlen(digest)))
+			pkg_set(pkg, PKG_DIGEST, NULL);
 
 		for (i = 0; load_on_flag[i].load != NULL; i++) {
 			if (flags & load_on_flag[i].flag) {
