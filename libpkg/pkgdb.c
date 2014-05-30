@@ -1508,7 +1508,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 		populate_pkg(it->stmt, pkg);
 
 		pkg_get(pkg, PKG_DIGEST, &digest);
-		if (!pkg_checksum_is_valid(digest, strlen(digest)))
+		if (digest != NULL && !pkg_checksum_is_valid(digest, strlen(digest)))
 			pkg_set(pkg, PKG_DIGEST, NULL);
 
 		for (i = 0; load_on_flag[i].load != NULL; i++) {
