@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,21 +25,29 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <pkg_config.h>
+
 #include <sys/stat.h> /* for private.utils.h */
 
 #include <stdbool.h> /* for private/utils.h */
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
+#ifdef HAVE_LDNS
+#include <ldns/ldns.h>
+#else
 #include <resolv.h>
+#endif
 #include <netdb.h>
 
 #include "private/utils.h"
 
+#ifndef HAVE_LDNS
 typedef union {
 	HEADER hdr;
 	unsigned char buf[1024];
 } query_t;
+#endif
 
 static int
 srv_priority_cmp(const void *a, const void *b)
@@ -99,6 +108,7 @@ compute_weight(struct dns_srvinfo **d, int first, int last)
 	free(chosen);
 }
 
+#ifndef HAVE_LDNS
 struct dns_srvinfo *
 dns_getsrvinfo(const char *zone)
 {
@@ -258,3 +268,77 @@ set_nameserver(const char *nsname) {
 
 	return (0);
 }
+#else
+
+static ldns_resolver *lres = NULL;
+
+struct dns_srvinfo *
+dns_getsrvinfo(const char *zone)
+{
+	ldns_rdf *domain;
+	ldns_pkt *p;
+	ldns_rr_list *srv;
+	struct dns_srvinfo *res;
+	int ancount, i;
+
+	if (lres == NULL)
+		if (ldns_resolver_new_frm_file(&lres, NULL) != LDNS_STATUS_OK)
+			return (NULL);
+
+	domain = ldns_dname_new_frm_str(zone);
+	if (domain == NULL)
+		return (NULL);
+
+	p = ldns_resolver_query(lres, domain,
+	    LDNS_RR_TYPE_SRV,
+	    LDNS_RR_CLASS_IN,
+	    LDNS_RD);
+
+	ldns_rdf_deep_free(domain);
+
+	if (p == NULL)
+		return (NULL);
+
+	srv = ldns_pkt_rr_list_by_type(p, LDNS_RR_TYPE_SRV, LDNS_SECTION_ANSWER);
+	ldns_pkt_free(p);
+
+	if (srv == NULL)
+		return (NULL);
+
+	ancount = ldns_rr_list_rr_count(srv);
+	res = calloc(ancount, sizeof(struct dns_srvinfo));
+	if (res == NULL)
+		return (NULL);
+
+	for (i = 0; i < ancount; i ++) {
+		ldns_rr *rr;
+
+		rr = ldns_rr_list_rr(srv, i);
+		if (rr != NULL) {
+			char *host;
+			res[i].class = ldns_rr_get_class(rr);
+			res[i].ttl = ldns_rr_ttl(rr);
+			res[i].priority = ldns_rdf2native_int16(ldns_rr_rdf(rr, 0));
+			res[i].weight = ldns_rdf2native_int16(ldns_rr_rdf(rr, 1));
+			res[i].port = ldns_rdf2native_int16(ldns_rr_rdf(rr, 2));
+			host = ldns_rdf2str(ldns_rr_rdf(rr, 3));
+			strlcpy(res[i].host, host, sizeof(res[i].host));
+			free(host);
+		}
+	}
+
+	ldns_rr_list_deep_free(srv);
+
+	return (res);
+}
+
+int
+set_nameserver(const char *nsname)
+{
+	/*
+	 * XXX: can we use the system resolver to resolve this name ??
+	 * The current code does this, but it is unlikely a good solution
+	 */
+	return (0);
+}
+#endif

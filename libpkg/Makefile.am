@@ -1,6 +1,7 @@
 pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			@LIBELF_INCLUDE@ \
 			@LIBSBUF_INCLUDE@ \
+			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/uthash \
@@ -54,6 +55,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			@LIBELF_LIB@ \
 			@LIBSBUF_LIB@ \
 			@LIBEXECINFO_LIB@ \
+			@LDNS_LIBS@ \
 			-larchive \
 			-lfetch \
 			-lutil \

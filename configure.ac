@@ -193,6 +193,12 @@ AC_CHECK_HEADER([execinfo.h], [
 	])
 ],)
 
+AC_ARG_WITH([ldns], AS_HELP_STRING([--with-ldns], [Build with ldns for name resolving]))
+
+AS_IF([test "x$with_ldns" = "xyes"], [
+   PKG_CHECK_MODULES([LDNS], [libldns], [AC_DEFINE([HAVE_LDNS], [1], [Use ldns])])
+])
+
 AC_CHECK_HEADER([atf-c.h], [
 	 TESTS="\$(test_program)"
  ])
