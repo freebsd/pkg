@@ -1257,6 +1257,12 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 		}
 	}
 
+	if (prstmt_initialize(db) != EPKG_OK) {
+		pkgdb_close(db);
+		return (EPKG_FATAL);
+	}
+
+
 	profile = pkg_object_bool(pkg_config_get("SQLITE_PROFILE"));
 	if (profile) {
 		pkg_debug(1, "pkgdb profiling is enabled");
@@ -2698,18 +2704,20 @@ prstmt_initialize(struct pkgdb *db)
 
 	assert(db != NULL);
 
-	sqlite = db->sqlite;
+	if (!db->prstmt_initialized) {
+		sqlite = db->sqlite;
 
-	for (i = 0; i < PRSTMT_LAST; i++)
-	{
-		pkg_debug(4, "Pkgdb: running '%s'", SQL(i));
-		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
-		if (ret != SQLITE_OK) {
-			ERROR_SQLITE(sqlite, SQL(i));
-			return (EPKG_FATAL);
+		for (i = 0; i < PRSTMT_LAST; i++)
+		{
+			pkg_debug(4, "Pkgdb: running '%s'", SQL(i));
+			ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
+			if (ret != SQLITE_OK) {
+				ERROR_SQLITE(sqlite, SQL(i));
+				return (EPKG_FATAL);
+			}
 		}
+		db->prstmt_initialized = true;
 	}
-	db->prstmt_initialized = true;
 
 	return (EPKG_OK);
 }
@@ -2803,9 +2811,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);
 	}
-
-	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
-		return (EPKG_FATAL);
 
 	s = db->sqlite;
 
@@ -3222,10 +3227,6 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	if ((ret = pkg_analyse_files(db, pkg, NULL)) == EPKG_OK) {
-		if (!db->prstmt_initialized &&
-		    prstmt_initialize(db) != EPKG_OK)
-			return (EPKG_FATAL);
-
 		s = db->sqlite;
 		pkg_get(pkg, PKG_ROWID, &package_id);
 
@@ -3273,9 +3274,6 @@ pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	assert(tag != NULL);
 	assert(value != NULL);
 
-	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
-		return (EPKG_FATAL);
-
 	pkg_get(pkg, PKG_UNIQUEID, &uniqueid);
 
 	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
@@ -3306,9 +3304,6 @@ pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg)
 	assert(pkg != NULL);
 	assert(db != NULL);
 
-	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
-		return (EPKG_FATAL);
-
 	pkg_get(pkg, PKG_DIGEST, &digest, PKG_ROWID, &id);
 	if (run_prstmt(UPDATE_DIGEST, digest, id) != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite, SQL(UPDATE_DIGEST));
@@ -3328,9 +3323,6 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	assert(pkg!= NULL);
 	assert(tag != NULL);
 	assert(value != NULL);
-
-	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
-		return (EPKG_FATAL);
 
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -3372,9 +3364,6 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
-
-	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
-		return (EPKG_FATAL);
 
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
