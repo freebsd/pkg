@@ -2709,7 +2709,7 @@ prstmt_initialize(struct pkgdb *db)
 
 		for (i = 0; i < PRSTMT_LAST; i++)
 		{
-			pkg_debug(4, "Pkgdb: running '%s'", SQL(i));
+			pkg_debug(4, "Pkgdb: preparing statement '%s'", SQL(i));
 			ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
 			if (ret != SQLITE_OK) {
 				ERROR_SQLITE(sqlite, SQL(i));
