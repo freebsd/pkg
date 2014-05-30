@@ -2054,6 +2054,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	FILE *spipe[2];
 	pid_t pchild;
 
+	pkgdb_begin_solver(j->db);
+
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
 		ret =jobs_solve_autoremove(j);
@@ -2069,6 +2071,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		ret = jobs_solve_fetch(j);
 		break;
 	default:
+		pkgdb_end_solver(j->db);
 		return (EPKG_FATAL);
 	}
 
@@ -2126,6 +2129,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	if (j->type == PKG_JOBS_DEINSTALL && j->solved)
 		pkg_jobs_set_deinstall_reasons(j);
+
+	pkgdb_end_solver(j->db);
 
 	return (ret);
 }

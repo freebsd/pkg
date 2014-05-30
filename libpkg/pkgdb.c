@@ -4625,3 +4625,26 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 
 	return (stats);
 }
+
+
+int
+pkgdb_begin_solver(struct pkgdb *db)
+{
+	const char solver_sql[] = ""
+		"PRAGMA synchronous = OFF;"
+		"PRAGMA journal_mode = MEMORY;"
+		"BEGIN TRANSACTION;";
+
+	return (sql_exec(db->sqlite, solver_sql));
+}
+
+int
+pkgdb_end_solver(struct pkgdb *db)
+{
+	const char solver_sql[] = ""
+		"END TRANSACTION;"
+		"PRAGMA synchronous = NORMAL;"
+		"PRAGMA journal_mode = DELETE;";
+
+	return (sql_exec(db->sqlite, solver_sql));
+}

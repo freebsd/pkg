@@ -210,5 +210,16 @@ struct pkgdb_it *pkgdb_find_shlib_provide(struct pkgdb *db,
  */
 int pkgdb_unregister_pkg(struct pkgdb *pkg, int64_t id);
 
+/**
+ * Optimize db for using of solver
+ */
+int pkgdb_begin_solver(struct pkgdb *db);
+
+/**
+ * Restore normal db operations
+ * @param db
+ * @return
+ */
+int pkgdb_end_solver(struct pkgdb *db);
 
 #endif
