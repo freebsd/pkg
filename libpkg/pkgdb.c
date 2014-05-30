@@ -4623,8 +4623,39 @@ pkgdb_begin_solver(struct pkgdb *db)
 		"PRAGMA synchronous = OFF;"
 		"PRAGMA journal_mode = MEMORY;"
 		"BEGIN TRANSACTION;";
+	const char *digest;
+	struct pkgdb_it *it;
+	struct pkg *pkglist = NULL, *p = NULL;
+	int rc;
+	int64_t id;
 
-	return (sql_exec(db->sqlite, solver_sql));
+	it = pkgdb_query(db, " WHERE manifestdigest IS NULL", MATCH_CONDITION);
+	if (it != NULL) {
+		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC|PKG_LOAD_OPTIONS) == EPKG_OK) {
+			pkg_checksum_calculate(p, NULL);
+			LL_PREPEND(pkglist, p);
+			p = NULL;
+		}
+		pkgdb_it_free(it);
+		rc = sql_exec(db->sqlite, solver_sql);
+		LL_FOREACH(pkglist, p) {
+			pkg_get(p, PKG_ROWID, &id, PKG_DIGEST, &digest);
+			rc = run_prstmt(UPDATE_DIGEST, digest, id);
+			if (rc != SQLITE_DONE) {
+				assert(0);
+				ERROR_SQLITE(db->sqlite, SQL(UPDATE_DIGEST));
+			}
+		}
+		if (rc == SQLITE_DONE)
+			rc = EPKG_OK;
+
+		LL_FREE(pkglist, pkg_free);
+	}
+	else {
+		rc = sql_exec(db->sqlite, solver_sql);
+	}
+
+	return (rc);
 }
 
 int
