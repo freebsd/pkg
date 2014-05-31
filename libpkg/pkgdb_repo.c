@@ -319,15 +319,17 @@ pkgdb_repo_finalize_statements(void)
 }
 
 int
-pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
+pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite,
+	bool *incremental)
 {
-	bool incremental = false;
 	bool db_not_open;
 	int reposcver;
 	int retcode = EPKG_OK;
 
 	if (access(repodb, R_OK) == 0)
-		incremental = true;
+		*incremental = true;
+	else
+		*incremental = false;
 
 	sqlite3_initialize();
 	db_not_open = true;
@@ -343,7 +345,7 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 			   update, then we cannot do an incremental update.
 			   Delete the existing repo, and promote this to a
 			   full update */
-		if (!incremental)
+		if (!*incremental)
 			continue;
 		retcode = get_repo_user_version(*sqlite, "main", &reposcver);
 		if (retcode != EPKG_OK)
@@ -355,7 +357,7 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 						REPO_SCHEMA_VERSION);
 			sqlite3_close(*sqlite);
 			unlink(repodb);
-			incremental = false;
+			*incremental = false;
 			db_not_open = true;
 		}
 	}
@@ -363,7 +365,7 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
 	    file_exists, NULL, NULL);
 
-	if (!incremental) {
+	if (!*incremental) {
 		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
 		if (retcode != EPKG_OK)
 			return (retcode);

@@ -72,9 +72,12 @@ void pkgshell_open(const char **r);
  * @param repodb path of repodb
  * @param force create repository if not exists
  * @param sqlite destination db pointer
+ * @param incremental if this param is set to false, then database was re-created
+ *  and thus needs to be updated
  * @return EPKG_OK if succeed
  */
-int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
+int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite,
+	bool *incremental);
 
 /**
  * Init repository for pkgdb_repo* functions

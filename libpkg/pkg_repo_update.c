@@ -230,14 +230,20 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	size_t len = 0;
 	int hash_it = 0;
 	time_t now, last;
-	bool in_trans = false, new_repo = true, legacy_repo = false;
+	bool in_trans = false, new_repo = true, legacy_repo = false, reuse_repo;
 
 	if (access(name, R_OK) != -1)
 		new_repo = false;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
-	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
+	if ((rc = pkgdb_repo_open(name, false, &sqlite, &reuse_repo)) != EPKG_OK) {
 		return (EPKG_FATAL);
+	}
+
+	if (!reuse_repo) {
+		pkg_debug(1, "Pkgrepo, need to re-create database '%s'", name);
+		local_t = 0;
+		*mtime = 0;
 	}
 
 	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK) {
