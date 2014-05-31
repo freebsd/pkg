@@ -41,6 +41,7 @@
 #include <netdb.h>
 
 #include "private/utils.h"
+#include "pkg.h"
 
 #ifndef HAVE_LDNS
 typedef union {
@@ -53,9 +54,13 @@ static int
 srv_priority_cmp(const void *a, const void *b)
 {
 	const struct dns_srvinfo *da, *db;
-	
+#ifdef HAVE_LDNS
+	da = (const struct dns_srvinfo *)a;
+	db = (const struct dns_srvinfo *)b;
+#else
 	da = *(struct dns_srvinfo * const *)a;
 	db = *(struct dns_srvinfo * const *)b;
+#endif
 
 	return ((da->priority > db->priority) - (da->priority < db->priority));
 }
@@ -65,9 +70,13 @@ srv_final_cmp(const void *a, const void *b)
 {
 	const struct dns_srvinfo *da, *db;
 	int res;
-	
+#ifdef HAVE_LDNS
+	da = (const struct dns_srvinfo *)a;
+	db = (const struct dns_srvinfo *)b;
+#else
 	da = *(struct dns_srvinfo * const *)a;
 	db = *(struct dns_srvinfo * const *)b;
+#endif
 
 	res = ((da->priority > db->priority) - (da->priority < db->priority));
 	if (res == 0)
@@ -76,6 +85,7 @@ srv_final_cmp(const void *a, const void *b)
 	return (res);
 }
 
+#ifndef HAVE_LDNS
 static void
 compute_weight(struct dns_srvinfo **d, int first, int last)
 {
@@ -108,7 +118,6 @@ compute_weight(struct dns_srvinfo **d, int first, int last)
 	free(chosen);
 }
 
-#ifndef HAVE_LDNS
 struct dns_srvinfo *
 dns_getsrvinfo(const char *zone)
 {
@@ -272,6 +281,38 @@ set_nameserver(const char *nsname) {
 
 static ldns_resolver *lres = NULL;
 
+static void
+compute_weight(struct dns_srvinfo *d, int first, int last)
+{
+	int i, j;
+	int totalweight = 0;
+	int *chosen;
+
+	for (i = 0; i <= last; i++)
+		totalweight += d[i].weight;
+
+	if (totalweight == 0)
+		return;
+
+	chosen = malloc(sizeof(int) * (last - first + 1));
+
+	for (i = 0; i <= last; i++) {
+		for (;;) {
+			chosen[i] = random() % (d[i].weight * 100 / totalweight);
+			for (j = 0; j < i; j++) {
+				if (chosen[i] == chosen[j])
+					break;
+			}
+			if (j == i) {
+				d[i].finalweight = chosen[i];
+				break;
+			}
+		}
+	}
+
+	free(chosen);
+}
+
 struct dns_srvinfo *
 dns_getsrvinfo(const char *zone)
 {
@@ -280,6 +321,7 @@ dns_getsrvinfo(const char *zone)
 	ldns_rr_list *srv;
 	struct dns_srvinfo *res;
 	int ancount, i;
+	int f, l, priority;
 
 	if (lres == NULL)
 		if (ldns_resolver_new_frm_file(&lres, NULL) != LDNS_STATUS_OK)
@@ -329,6 +371,28 @@ dns_getsrvinfo(const char *zone)
 
 	ldns_rr_list_deep_free(srv);
 
+	/* order by priority */
+	qsort(res, ancount, sizeof(res[0]), srv_priority_cmp);
+
+	priority = 0;
+	f = 0;
+	l = 0;
+	for (i = 0; i < ancount; i++) {
+		if (res[i].priority != priority) {
+			if (f != l)
+				compute_weight(res, f, l);
+			f = i;
+			priority = res[i].priority;
+		}
+		l = i;
+	}
+
+	/* Sort against priority then weight */
+	qsort(res, ancount, sizeof(res[0]), srv_final_cmp);
+
+	for (i = 0; i < ancount - 1; i++)
+		res[i].next = &res[i + 1];
+
 	return (res);
 }
 
@@ -338,7 +402,24 @@ set_nameserver(const char *nsname)
 	/*
 	 * XXX: can we use the system resolver to resolve this name ??
 	 * The current code does this, but it is unlikely a good solution
+	 * So here we allow IP addresses only
 	 */
-	return (0);
+	ldns_rdf *rdf;
+
+	rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_A, nsname);
+	if (rdf == NULL)
+		rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_AAAA, nsname);
+
+	if (rdf == NULL)
+		return (EPKG_FATAL);
+
+	if (lres == NULL)
+		if (ldns_resolver_new_frm_file(&lres, NULL) != LDNS_STATUS_OK)
+			return (EPKG_FATAL);
+
+	if (ldns_resolver_push_nameserver(lres, rdf) != LDNS_STATUS_OK)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
 }
 #endif
