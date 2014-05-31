@@ -202,6 +202,7 @@ AS_IF([test "x$with_ldns" = "xyes"], [
    	AC_CHECK_HEADER([ldns/ldns.h], [
    		AC_CHECK_LIB(ldns, ldns_resolver_new_frm_file, [
    			AC_DEFINE([HAVE_LDNS], [1], [Use ldns])
+   			AC_DEFINE([LDNS_LIBS], [-lldns], [LDNS library])
    		])
    	])
    ])
@@ -227,6 +228,8 @@ AC_SUBST([LIBSBUF_INCLUDE])
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBEXECINFO_LIB])
 AC_SUBST([TESTS])
+AC_SUBST([LDNS_LIBS])
+AC_SUBST([LDNS_CFLAGS])
 
 AC_CONFIG_FILES(Makefile \
 		src/Makefile \
