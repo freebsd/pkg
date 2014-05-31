@@ -37,7 +37,7 @@ AC_TYPE_SIZE_T
 AC_CHECK_FUNCS(memmove bcopy)
 AC_PROG_LN_S
 
-AC_CHECK_HEADERS_ONCE([fcntl.h unistd.h])
+AC_CHECK_HEADERS_ONCE([fcntl.h unistd.h elf-hints.h])
 AC_TYPE_OFF_T
 AC_FUNC_MMAP
 
@@ -72,6 +72,7 @@ AC_LINK_IFELSE([
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
+AC_CHECK_HEADERS_ONCE([sys/endian.h])
 AC_CHECK_HEADERS_ONCE([fcntl.h])
 AC_CHECK_HEADERS_ONCE([dlfcn.h])
 AC_CHECK_HEADERS_ONCE([memory.h])
@@ -196,7 +197,14 @@ AC_CHECK_HEADER([execinfo.h], [
 AC_ARG_WITH([ldns], AS_HELP_STRING([--with-ldns], [Build with ldns for name resolving]))
 
 AS_IF([test "x$with_ldns" = "xyes"], [
-   PKG_CHECK_MODULES([LDNS], [libldns], [AC_DEFINE([HAVE_LDNS], [1], [Use ldns])])
+   PKG_CHECK_MODULES([LDNS], [libldns], [AC_DEFINE([HAVE_LDNS], [1], [Use ldns])],
+   [
+   	AC_CHECK_HEADER([ldns/ldns.h], [
+   		AC_CHECK_LIB(ldns, ldns_resolver_new_frm_file, [
+   			AC_DEFINE([HAVE_LDNS], [1], [Use ldns])
+   		])
+   	])
+   ])
 ])
 
 AC_CHECK_HEADER([atf-c.h], [

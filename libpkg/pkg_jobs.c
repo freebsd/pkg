@@ -911,7 +911,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
 				uid, digest,
 				seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
-		if (seen->un->pkg->type != p->type) {
+		if (seen->un->pkg->type != p->type && !force) {
 			/* Remote package is the same as local */
 			return (EPKG_INSTALLED);
 		}

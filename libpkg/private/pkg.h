@@ -49,6 +49,24 @@
 
 #define PKG_NUM_SCRIPTS 9
 
+/*
+ * Some compatibility checks
+ */
+#ifndef MAXLOGNAME
+# ifdef LOGIN_NAME_MAX
+# define MAXLOGNAME LOGIN_NAME_MAX
+# else
+# define MAXLOGNAME 64
+# endif
+#endif
+#ifndef __unused
+# ifdef __GNUC__
+# define __unused __attribute__ ((__unused__))
+# else
+# define __unused
+# endif
+#endif
+
 #if ARCHIVE_VERSION_NUMBER < 3000002
 #define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
 #define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)

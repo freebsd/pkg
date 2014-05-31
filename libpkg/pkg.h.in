@@ -33,10 +33,11 @@
 #define _PKG_H
 
 #include <sys/types.h>
+#include <sys/param.h>
+#include <sys/cdefs.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/sbuf.h>
-#include <stringlist.h>
 #include <openssl/pem.h>
 #include <sysexits.h>
 
@@ -64,6 +65,10 @@
 
 #ifdef __DragonFly__
 #define OSMAJOR	__DragonFly__
+#endif
+
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
 #endif
 
 /* Special exit status for worker processes indicating that a restart
