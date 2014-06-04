@@ -1146,6 +1146,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			pkg_set(cur_var->unit->pkg, PKG_REASON, "forced reinstall");
 			add_var = cur_var;
 			seen_add ++;
+			del_var = cur_var;
+			seen_del = 1;
 		}
 	}
 	if (seen_add > 1 || seen_del > 1) {
