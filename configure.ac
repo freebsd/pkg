@@ -192,7 +192,7 @@ AC_CHECK_HEADER([execinfo.h], [
 		AC_DEFINE(HAVE_LIBEXECINFO, 1, [Define to 1 if you have the 'execinfo' library (-lexecinfo).])
 		LIBEXECINFO_LIB="-lexecinfo"
 	])
-],)
+])
 
 AC_ARG_WITH([ldns], AS_HELP_STRING([--with-ldns], [Build with ldns for name resolving]))
 
