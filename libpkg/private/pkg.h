@@ -207,6 +207,7 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	struct job_pattern *jp;
 	int priority;
+	bool reinstall;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };

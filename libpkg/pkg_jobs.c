@@ -920,6 +920,8 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			HASH_FIND_STR(j->request_add, uid, jreq);
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
+			if (force)
+				seen->un->reinstall = true;
 		}
 		return (EPKG_OK);
 	}
@@ -1423,6 +1425,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *uid, *newversion, *oldversion, *reponame, *cksum;
 	const ucl_object_t *an, *obj;
+	struct pkg_job_universe_item *unit;
 	int64_t oldsize;
 	struct pkg *lp;
 	bool automatic;
@@ -1453,15 +1456,17 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		}
 	}
 
-	pkg_jobs_add_universe(j, lp, true, false, NULL);
+	pkg_jobs_add_universe(j, lp, true, false, &unit);
 
 	pkg_get(rp, PKG_VERSION, &newversion);
 	pkg_set(rp, PKG_OLD_VERSION, oldversion,
 	    PKG_OLD_FLATSIZE, oldsize,
 	    PKG_AUTOMATIC, automatic);
 
-	if (force)
+	if (force) {
+		unit->reinstall = true;
 		return (true);
+	}
 
 	ret = pkg_need_upgrade(rp, lp, false);
 
@@ -2166,7 +2171,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	struct pkg *new, *old;
 	const char *pkguid, *oldversion = NULL;
 	char path[MAXPATHLEN], *target;
-	bool automatic;
+	bool automatic, need_free = false;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
@@ -2184,6 +2189,18 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		target = ps->items[0]->jp->path;
 	}
 	else {
+		if (new->type == PKG_INSTALLED) {
+			/* We need to find the corresponding remote package */
+			const char *uid;
+			pkg_get(new, PKG_UNIQUEID, &uid);
+			new = get_remote_pkg(j, uid, 0);
+			if (new == NULL) {
+				pkg_emit_error("no remote package found for reinstallation of %s",
+						uid);
+				return (EPKG_FATAL);
+			}
+			need_free = true;
+		}
 		pkg_snprintf(path, sizeof(path), "%R", new);
 		if (*path != '/')
 			pkg_repo_cached_name(new, path, sizeof(path));
@@ -2228,6 +2245,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 
 cleanup:
 
+	if (need_free)
+		pkg_free(new);
+
 	return (retcode);
 }
 
@@ -2253,7 +2273,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 
-	/* XXX: get rid of hardcoded values */
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
 			PKGDB_LOCK_EXCLUSIVE);
 	if (retcode != EPKG_OK)
@@ -2514,8 +2533,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 				p = pkg;
 			}
 			else if (p->type != PKG_FILE) {
-				pkg_emit_error("invalid package type in solved jobs (internal error)");
-				return (EPKG_FATAL);
+				continue;
 			}
 		}
 		if ((res = pkg_conflicts_append_pkg(p, j)) != EPKG_OK)

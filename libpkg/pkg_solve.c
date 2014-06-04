@@ -1142,6 +1142,11 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			del_var = cur_var;
 			seen_del ++;
 		}
+		else if (cur_var->to_install && cur_var->unit->reinstall) {
+			pkg_set(cur_var->unit->pkg, PKG_REASON, "forced reinstall");
+			add_var = cur_var;
+			seen_add ++;
+		}
 	}
 	if (seen_add > 1 || seen_del > 1) {
 		pkg_emit_error("internal solver error: more than two packages to install(%d) "
