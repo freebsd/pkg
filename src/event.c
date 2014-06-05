@@ -48,6 +48,8 @@
 #include <errno.h>
 #include <sysexits.h>
 #include <signal.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #include "pkg.h"
 #include "progressmeter.h"
@@ -56,6 +58,7 @@
 static off_t fetched = 0;
 static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
+static char *progress_message = NULL;
 
 static void
 print_status_end(struct sbuf *msg)
@@ -558,6 +561,42 @@ event_callback(void *data, struct pkg_event *ev)
 				ev->e_sandbox_call_str.result,
 				ev->e_sandbox_call_str.len,
 				ev->e_sandbox_call_str.userdata) );
+		break;
+	case PKG_EVENT_PROGRESS_START:
+		if (progress_message != NULL) {
+			free(progress_message);
+			progress_message = NULL;
+		}
+		if (!quiet) {
+			printf("%s: ", ev->e_progress_start.msg);
+			progress_message = strdup(ev->e_progress_start.msg);
+		}
+		break;
+	case PKG_EVENT_PROGRESS_TICK:
+		if (!quiet) {
+			int64_t total = ev->e_progress_tick.total;
+			int64_t current = ev->e_progress_tick.current;
+
+			if (total > current) {
+				int slots = 10. * current / total;
+				int remain;
+
+				remain = 10 - slots;
+				printf("\r%s: [", ev->e_progress_start.msg);
+				while (slots) {
+					putchar('+');
+					slots --;
+				}
+				while (remain) {
+					putchar('-');
+					remain --;
+				}
+				printf("] %" PRId64 " / %" PRId64, current, total);
+			}
+			else {
+				printf("\n");
+			}
+		}
 		break;
 	default:
 		break;
