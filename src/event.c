@@ -50,6 +50,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <math.h>
 
 #include "pkg.h"
 #include "progressmeter.h"
@@ -59,6 +60,9 @@ static off_t fetched = 0;
 static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
 static char *progress_message = NULL;
+int last_progress_slots = -1;
+
+const int max_slots = 30;
 
 static void
 print_status_end(struct sbuf *msg)
@@ -570,19 +574,21 @@ event_callback(void *data, struct pkg_event *ev)
 		if (!quiet) {
 			printf("%s: ", ev->e_progress_start.msg);
 			progress_message = strdup(ev->e_progress_start.msg);
+			last_progress_slots = -1;
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
 		if (!quiet) {
 			int64_t total = ev->e_progress_tick.total;
 			int64_t current = ev->e_progress_tick.current;
+			int slots = nearbyint((double)max_slots * current / (double)total);
+			int remain;
 
-			if (total > current) {
-				int slots = 10. * current / total;
-				int remain;
+			if (slots != last_progress_slots || current == total) {
+				last_progress_slots = slots;
 
-				remain = 10 - slots;
-				printf("\r%s: [", ev->e_progress_start.msg);
+				remain = max_slots - slots;
+				printf("\r%s: [", progress_message);
 				while (slots) {
 					putchar('+');
 					slots --;
@@ -593,8 +599,9 @@ event_callback(void *data, struct pkg_event *ev)
 				}
 				printf("] %" PRId64 " / %" PRId64, current, total);
 			}
-			else {
-				printf("\n");
+			if (current == total) {
+				putchar('\n');
+				last_progress_slots = -1;
 			}
 		}
 		break;
