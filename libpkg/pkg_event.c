@@ -877,3 +877,31 @@ pkg_debug(int level, const char *fmt, ...)
 	pkg_emit_event(&ev);
 	free(ev.e_debug.msg);
 }
+
+void
+pkg_emit_progress_start(const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_PROGRESS_START;
+	va_start(ap, fmt);
+	vasprintf(&ev.e_progress_start.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_progress_start.msg);
+}
+
+void
+pkg_emit_progress_tick(int64_t current, int64_t total)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PROGRESS_TICK;
+	ev.e_progress_tick.current = current;
+	ev.e_progress_tick.total = total;
+
+	pkg_emit_event(&ev);
+
+}

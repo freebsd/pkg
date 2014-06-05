@@ -63,4 +63,7 @@ int pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64
 bool pkg_emit_query_yesno(bool deft, const char *msg);
 int pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft);
 
+void pkg_emit_progress_start(const char *fmt, ...);
+void pkg_emit_progress_tick(int64_t current, int64_t total);
+
 #endif
