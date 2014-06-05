@@ -229,7 +229,6 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	char *map = MAP_FAILED;
 	size_t len = 0;
 	int hash_it = 0;
-	time_t now, last;
 	bool in_trans = false, new_repo = true, legacy_repo = false, reuse_repo;
 
 	if (access(name, R_OK) != -1)
@@ -392,13 +391,9 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 
 	removed = HASH_COUNT(ldel);
 	hash_it = 0;
-	last = 0;
+	pkg_emit_progress_start("Removing expired entries");
 	HASH_ITER(hh, ldel, item, tmp_item) {
-		now = time(NULL);
-		if (++hash_it == removed || now > last) {
-			pkg_emit_update_remove(removed, hash_it);
-			last = now;
-		}
+		pkg_emit_progress_tick(++hash_it, removed);
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);
 		}
@@ -423,14 +418,10 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	}
 
 	hash_it = 0;
-	last = 0;
 	pushed = HASH_COUNT(ladd);
+	pkg_emit_progress_start("Adding new entries");
 	HASH_ITER(hh, ladd, item, tmp_item) {
-		now = time(NULL);
-		if (++hash_it == pushed || now > last) {
-			pkg_emit_update_add(pushed, hash_it);
-			last = now;
-		}
+		pkg_emit_progress_tick(++hash_it, pushed);
 		if (rc == EPKG_OK) {
 			if (item->length != 0) {
 				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
