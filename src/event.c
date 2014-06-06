@@ -59,10 +59,11 @@
 static off_t fetched = 0;
 static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
-static char *progress_message = NULL;
-int last_progress_slots = -1;
 
-const int max_slots = 30;
+static char *progress_message = NULL;
+static int last_progress_slots = -1;
+static const int max_slots = 30;
+static bool progress_alarm = false;
 
 static void
 print_status_end(struct sbuf *msg)
@@ -258,6 +259,54 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	close(pair[0]);
 
 	_exit(ret);
+}
+
+static void
+progress_alarm_handler(int signo)
+{
+	last_progress_slots = -1;
+
+	if (progress_alarm)
+		alarm(1);
+}
+
+static void
+draw_progressbar(int64_t current, int64_t total)
+{
+	int slots = nearbyint((double)max_slots * current / (double)total);
+	int remain;
+
+	if (slots != last_progress_slots || current == total) {
+		last_progress_slots = slots;
+
+		remain = max_slots - slots;
+		printf("\r%s: [", progress_message);
+		while (slots) {
+			putchar('+');
+			slots --;
+		}
+		while (remain) {
+			putchar('-');
+			remain --;
+		}
+		printf("] %" PRId64 " / %" PRId64, current, total);
+	}
+	if (current == total) {
+		putchar('\n');
+		last_progress_slots = -1;
+		progress_alarm = false;
+	}
+	else if (!progress_alarm) {
+		/* Setup auxiliary alarm */
+		struct sigaction sa;
+
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler = progress_alarm_handler;
+		sigemptyset(&sa.sa_mask);
+		sigaction(SIGALRM, &sa, NULL);
+		alarm(1);
+		progress_alarm = true;
+	}
 }
 
 int
@@ -578,32 +627,9 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
-		if (!quiet) {
-			int64_t total = ev->e_progress_tick.total;
-			int64_t current = ev->e_progress_tick.current;
-			int slots = nearbyint((double)max_slots * current / (double)total);
-			int remain;
+		if (!quiet)
+			draw_progressbar(ev->e_progress_tick.current, ev->e_progress_tick.total);
 
-			if (slots != last_progress_slots || current == total) {
-				last_progress_slots = slots;
-
-				remain = max_slots - slots;
-				printf("\r%s: [", progress_message);
-				while (slots) {
-					putchar('+');
-					slots --;
-				}
-				while (remain) {
-					putchar('-');
-					remain --;
-				}
-				printf("] %" PRId64 " / %" PRId64, current, total);
-			}
-			if (current == total) {
-				putchar('\n');
-				last_progress_slots = -1;
-			}
-		}
 		break;
 	default:
 		break;
