@@ -264,10 +264,10 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 static void
 progress_alarm_handler(int signo)
 {
-	last_progress_slots = -1;
-
-	if (progress_alarm)
+	if (max_slots != last_progress_slots && progress_alarm) {
+		last_progress_slots = -1;
 		alarm(1);
+	}
 }
 
 static void
@@ -291,7 +291,7 @@ draw_progressbar(int64_t current, int64_t total)
 		}
 		printf("] %" PRId64 " / %" PRId64, current, total);
 	}
-	if (current == total) {
+	if (current >= total) {
 		putchar('\n');
 		last_progress_slots = -1;
 		progress_alarm = false;

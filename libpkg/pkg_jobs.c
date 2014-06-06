@@ -1892,7 +1892,7 @@ pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 }
 
 static struct pkg_jobs_install_candidate *
-pkg_jobs_find_install_candidates(struct pkg_jobs *j)
+pkg_jobs_find_install_candidates(struct pkg_jobs *j, size_t *count)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
@@ -1905,6 +1905,7 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j)
 		if (pkg_jobs_check_remote_candidate(j, pkg)) {
 			c = pkg_jobs_new_candidate(pkg);
 			LL_PREPEND(candidates, c);
+			(*count)++;
 		}
 	}
 	pkg_free(pkg);
@@ -1921,6 +1922,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	char *uid;
 	char sqlbuf[256];
 	bool automatic, got_local;
+	size_t jcount = 0;
 	struct job_pattern *jp, *jtmp;
 	struct pkg_job_request *req, *rtmp;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
@@ -1940,9 +1942,14 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		if (j->patterns == NULL) {
-			candidates = pkg_jobs_find_install_candidates(j);
+			size_t elt_num = 0;
+
+			candidates = pkg_jobs_find_install_candidates(j, &jcount);
+
+			pkg_emit_progress_start("Processing packages");
 
 			LL_FOREACH(candidates, c) {
+				pkg_emit_progress_tick(++elt_num, jcount);
 				sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
 						c->id);
 				if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
