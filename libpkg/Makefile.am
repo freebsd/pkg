@@ -62,7 +62,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-lcrypto \
 			-lm
 
-libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -pthread
+libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -pthread -Wl,--version-script=libpkg.ver
 lib_LTLIBRARIES=	libpkg.la libpkg_static.la
 include_HEADERS=	pkg.h
 
