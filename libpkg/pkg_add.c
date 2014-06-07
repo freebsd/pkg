@@ -108,7 +108,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	}
 
 cleanup:
-	pkg_emit_progress_tick(nfiles, nfiles);
 
 	return (retcode);
 }

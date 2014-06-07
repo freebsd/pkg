@@ -64,12 +64,13 @@ static char *progress_message = NULL;
 static int last_progress_slots = -1;
 static const int max_slots = 30;
 static bool progress_alarm = false;
+static bool progress_started = false;
 
 static void
 print_status_end(struct sbuf *msg)
 {
 	sbuf_finish(msg);
-	printf("%s", sbuf_data(msg));
+	printf("%s\n", sbuf_data(msg));
 	/*printf("\033]0; %s\007", sbuf_data(msg));*/
 	sbuf_delete(msg);
 }
@@ -264,7 +265,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 static void
 progress_alarm_handler(int signo)
 {
-	if (max_slots != last_progress_slots && progress_alarm) {
+	if (max_slots != last_progress_slots && progress_alarm && progress_started) {
 		last_progress_slots = -1;
 		alarm(1);
 	}
@@ -276,7 +277,8 @@ draw_progressbar(int64_t current, int64_t total)
 	int slots = nearbyint((double)max_slots * current / (double)total);
 	int remain;
 
-	if (slots != last_progress_slots || current == total) {
+	if (progress_started && slots <= max_slots &&
+			(slots != last_progress_slots || current == total)) {
 		last_progress_slots = slots;
 
 		remain = max_slots - slots;
@@ -292,11 +294,14 @@ draw_progressbar(int64_t current, int64_t total)
 		printf("] %" PRId64 " / %" PRId64, current, total);
 	}
 	if (current >= total) {
-		putchar('\n');
+		if (progress_alarm)
+			putchar('\n');
+
 		last_progress_slots = -1;
 		progress_alarm = false;
+		progress_started = false;
 	}
-	else if (!progress_alarm) {
+	else if (!progress_alarm && progress_started) {
 		/* Setup auxiliary alarm */
 		struct sigaction sa;
 
@@ -624,6 +629,7 @@ event_callback(void *data, struct pkg_event *ev)
 			printf("%s: ", ev->e_progress_start.msg);
 			progress_message = strdup(ev->e_progress_start.msg);
 			last_progress_slots = -1;
+			progress_started = true;
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
