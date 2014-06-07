@@ -47,9 +47,10 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
-	char	path[MAXPATHLEN], pathname[MAXPATHLEN];
+	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
 	struct stat st;
 	const char *name;
+	bool renamed = true;
 
 	pkg_get(pkg, PKG_NAME, &name);
 	pkg_emit_progress_start("Installing %s", name);
@@ -59,6 +60,23 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		    location ? location : "",
 		    archive_entry_pathname(ae)
 		);
+
+		if (stat(pathname, &st) != -1 && !S_ISDIR(st.st_mode)) {
+			/*
+			 * We have an existing file on the path, so handle it
+			 */
+
+			snprintf(rpath, sizeof(rpath), "%s.%jd", pathname,
+			    (intmax_t)time(NULL));
+			if (rename(pathname, rpath) == -1) {
+				pkg_emit_error("cannot rename %s to %s: %s", pathname, rpath,
+				    strerror(errno));
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			renamed = true;
+		}
+
 		archive_entry_set_pathname(ae, pathname);
 
 		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
@@ -99,6 +117,10 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				goto cleanup;
 			}
 		}
+		if (renamed) {
+			unlink(rpath);
+			renamed = false;
+		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF) {
@@ -108,6 +130,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	}
 
 cleanup:
+
+	if (renamed && retcode == EPKG_FATAL)
+		rename(rpath, pathname);
 
 	return (retcode);
 }
