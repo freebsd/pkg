@@ -42,12 +42,17 @@
 #include "private/pkg.h"
 
 static int
-do_extract(struct archive *a, struct archive_entry *ae, const char *location)
+do_extract(struct archive *a, struct archive_entry *ae, const char *location,
+		int nfiles, struct pkg *pkg)
 {
 	int	retcode = EPKG_OK;
-	int	ret = 0;
+	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN];
 	struct stat st;
+	const char *name;
+
+	pkg_get(pkg, PKG_NAME, &name);
+	pkg_emit_progress_start("Installing %s", name);
 
 	do {
 		snprintf(pathname, sizeof(pathname), "%s/%s",
@@ -73,6 +78,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 				goto cleanup;
 			}
 		}
+		pkg_emit_progress_tick(cur_file++, nfiles);
 
 		/*
 		 * if the file is a configuration file and the configuration
@@ -102,6 +108,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 	}
 
 cleanup:
+	pkg_emit_progress_tick(nfiles, nfiles);
+
 	return (retcode);
 }
 
@@ -175,6 +183,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	char		*prefix;
 	int		 retcode = EPKG_OK;
 	int		 ret;
+	int nfiles;
 
 	assert(path != NULL);
 
@@ -337,10 +346,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* add the user and group if necessary */
 	/* pkg_add_user_group(pkg); */
 
+	nfiles = HASH_COUNT(pkg->files);
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract && (retcode = do_extract(a, ae, location)) != EPKG_OK) {
+	if (extract && (retcode = do_extract(a, ae, location, nfiles, pkg)) != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg, 1);
