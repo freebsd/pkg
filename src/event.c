@@ -279,19 +279,24 @@ draw_progressbar(int64_t current, int64_t total)
 
 	if (progress_started && slots <= max_slots &&
 			(slots != last_progress_slots || current == total)) {
+		char bar[80];
+		int r = 0;
+
 		last_progress_slots = slots;
 
 		remain = max_slots - slots;
-		printf("\r%s: [", progress_message);
+		r = snprintf(bar, sizeof(bar), "\r%s: [", progress_message);
 		while (slots) {
-			putchar('+');
+			bar[r++] = '+';
 			slots --;
 		}
 		while (remain) {
-			putchar('-');
+			bar[r++] = '-';
 			remain --;
 		}
-		printf("] %" PRId64 " / %" PRId64, current, total);
+		bar[r] = '\0';
+		printf("%s] %" PRId64 " / %" PRId64, bar, current, total);
+		fflush(stdout);
 	}
 	if (current >= total) {
 		if (progress_alarm)
