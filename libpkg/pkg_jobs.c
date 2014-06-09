@@ -1657,8 +1657,10 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
 			}
 			else {
-				automatic = 0;
-				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
+				if (!unit->reinstall || j->type == PKG_JOBS_INSTALL) {
+					automatic = 0;
+					pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
+				}
 			}
 		}
 		else {
@@ -1675,6 +1677,15 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				}
 			}
 			if (local != NULL) {
+				/*
+				 * Turn off automatic22 flags for install job if
+				 * a package was1 explicitly requested to be installed
+				 */
+				if (j->type == PKG_JOBS_INSTALL) {
+					HASH_FIND_STR(j->request_add, uid, req);
+					if (req != NULL)
+						automatic = 0;
+				}
 				LL_FOREACH(unit, cur) {
 					if (cur->pkg->type != PKG_INSTALLED) {
 						pkg_set(cur->pkg, PKG_AUTOMATIC, automatic);
