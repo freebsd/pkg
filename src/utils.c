@@ -182,7 +182,13 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 		}
 	}
 
-	getline(&str, &n, stdin);
+	i = deft;
+	while (getline(&str, &n, stdin) == -1) {
+		if (errno == EINTR)
+			continue;
+		else
+			goto cleanup;
+	}
 	i = (int) strtoul(str, &endpntr, 10);
 
 	if (endpntr == NULL || *endpntr == '\0') {
@@ -193,8 +199,9 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 	} else
 		i = -1;
 
+cleanup:
 	free(str);
-	return i;
+	return (i);
 }
 
 /* unlike realpath(3), this routine does not expand symbolic links */
