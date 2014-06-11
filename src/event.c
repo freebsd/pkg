@@ -343,21 +343,21 @@ event_callback(void *data, struct pkg_event *ev)
 		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
 		break;
 	case PKG_EVENT_UPDATE_ADD:
-		if (quiet || !isatty(fileno(stdin)))
+		if (quiet || !isatty(STDOUT_FILENO))
 			break;
 		printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
 		if (ev->e_upd_add.total == ev->e_upd_add.done)
 			printf("\n");
 		break;
 	case PKG_EVENT_UPDATE_REMOVE:
-		if (quiet || !isatty(fileno(stdin)))
+		if (quiet || !isatty(STDOUT_FILENO))
 			break;
 		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
 		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
 			printf("\n");
 		break;
 	case PKG_EVENT_FETCHING:
-		if (quiet || !isatty(fileno(stdin)))
+		if (quiet || !isatty(STDOUT_FILENO))
 			break;
 		if (fetched == 0) {
 			filename = strrchr(ev->e_fetching.url, '/');
