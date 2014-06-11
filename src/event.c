@@ -357,7 +357,7 @@ event_callback(void *data, struct pkg_event *ev)
 			printf("\n");
 		break;
 	case PKG_EVENT_FETCHING:
-		if (quiet || !isatty(STDOUT_FILENO))
+		if (quiet)
 			break;
 		if (fetched == 0) {
 			filename = strrchr(ev->e_fetching.url, '/');
@@ -371,12 +371,18 @@ event_callback(void *data, struct pkg_event *ev)
 				filename = ev->e_fetching.url;
 			}
 			strlcpy(url, filename, sizeof(url));
-			start_progress_meter(url, ev->e_fetching.total,
-			    &fetched);
+			if (isatty(STDOUT_FILENO))
+				start_progress_meter(url, ev->e_fetching.total,
+				    &fetched);
+			else
+				printf("Fetching %s...", url);
 		}
 		fetched = ev->e_fetching.done;
 		if (ev->e_fetching.done == ev->e_fetching.total) {
-			stop_progress_meter();
+			if (isatty(STDOUT_FILENO))
+				stop_progress_meter();
+			else
+				printf(" done\n");
 			fetched = 0;
 		}
 		break;
