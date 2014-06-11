@@ -200,7 +200,6 @@ cleanup:
 	if (jobs != NULL)
 		pkg_jobs_free(jobs);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
-	pkgdb_close(db);
 
 	return (EPKG_OK);
 }
