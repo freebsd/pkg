@@ -630,7 +630,7 @@ event_callback(void *data, struct pkg_event *ev)
 			free(progress_message);
 			progress_message = NULL;
 		}
-		if (!quiet) {
+		if (!quiet && isatty(STDOUT_FILENO)) {
 			printf("%s: ", ev->e_progress_start.msg);
 			progress_message = strdup(ev->e_progress_start.msg);
 			last_progress_slots = -1;
@@ -638,7 +638,7 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
-		if (!quiet)
+		if (!quiet && isatty(STDOUT_FILENO))
 			draw_progressbar(ev->e_progress_tick.current, ev->e_progress_tick.total);
 
 		break;
