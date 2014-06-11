@@ -92,6 +92,8 @@ exec_repo(int argc, char **argv)
 	int	 ch;
 	bool	 filelist = false;
 	char	*output_dir = NULL;
+	void	(*progress_fn)(struct pkg *, void *);
+	int	*pos_ptr;
 
 	struct option longopts[] = {
 		{ "list-files", no_argument,		NULL,	'l' },
@@ -99,6 +101,9 @@ exec_repo(int argc, char **argv)
 		{ "quiet",	no_argument,		NULL,	'q' },
 		{ NULL,		0,			NULL,	0   },
 	};
+
+	progress_fn = NULL;
+	pos_ptr = NULL;
 
 	while ((ch = getopt_long(argc, argv, "lo:q", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -134,16 +139,24 @@ exec_repo(int argc, char **argv)
 
 	if (!quiet) {
 		printf("Generating repository catalog in %s:  ", argv[0]);
-		ret = pkg_create_repo(argv[0], output_dir, filelist, progress, &pos);
-	} else
-		ret = pkg_create_repo(argv[0], output_dir, filelist, NULL, NULL);
+		if (isatty(STDOUT_FILENO)) {
+			progress_fn = progress;
+			pos_ptr = &pos;
+		}
+	}
+
+	ret = pkg_create_repo(argv[0], output_dir, filelist, progress_fn,
+	    pos_ptr);
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
 		return (EX_IOERR);
 	} else {
-		if (!quiet)
-			printf("\bdone!\n");
+		if (!quiet) {
+			if (progress_fn != NULL)
+				printf("\b");
+			printf("done!\n");
+		}
 	}
 	
 	if (pkg_finish_repo(output_dir, password_cb, argv + 1, argc - 1,
