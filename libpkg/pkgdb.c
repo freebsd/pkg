@@ -1930,12 +1930,14 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 		"SELECT p.name, p.origin, p.version, p.locked "
 		"FROM main.packages AS p "
 		"INNER JOIN main.deps AS d ON p.id = d.package_id "
-		"WHERE d.name || '~' || d.origin = ?1;";
+		"WHERE WHERE d.name = SPLIT_UID('name', ?1) AND "
+		"d.origin = SPLIT_UID('origin', ?1);";
 	const char	*reposql = ""
 		"SELECT p.name, p.origin, p.version, 0 "
 		"FROM %Q.packages AS p "
 		"INNER JOIN %Q.deps AS d ON p.id = d.package_id "
-		"WHERE d.name || '~' || d.origin = ?1;";
+		"WHERE d.name = SPLIT_UID('name', ?1) AND "
+		"d.origin = SPLIT_UID('origin', ?1);";
 
 	assert(db != NULL && pkg != NULL);
 
