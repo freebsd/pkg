@@ -113,9 +113,10 @@ pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 int
 pkg_repo_fetch_package(struct pkg *pkg)
 {
-	char dest[MAXPATHLEN], link_dest[MAXPATHLEN];
+	char dest[MAXPATHLEN], link_dest[MAXPATHLEN],
+	     link_dest_tmp[MAXPATHLEN];
 	char url[MAXPATHLEN];
-	int fetched = 0;
+	int sym_fd, fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	int64_t pkgsize;
 	struct stat st;
@@ -212,10 +213,22 @@ pkg_repo_fetch_package(struct pkg *pkg)
 		ext = strrchr(dest, '.');
 		pkg_snprintf(link_dest, sizeof(link_dest), "%S/%n-%v%S",
 		    path, pkg, pkg, ext ? ext : "");
+		/* Create a unique filename, avoiding annoying warning
+		 * from more useful mktemp(). */
+		snprintf(link_dest_tmp, sizeof(link_dest_tmp), "%s.new",
+		    link_dest);
+		if ((sym_fd = mkstemp(link_dest_tmp)) == -1)
+			pkg_emit_error("mkstemp", link_dest_tmp);
+		close(sym_fd);
+		if (unlink(link_dest_tmp))
+			pkg_emit_errno("unlink", link_dest_tmp);
+		/* Trim the path to just the filename. */
 		if ((dest_fname = strrchr(dest, '/')) != NULL)
 			++dest_fname;
-		if (symlink(dest_fname, link_dest))
-			pkg_emit_errno("symlink", link_dest);
+		if (symlink(dest_fname, link_dest_tmp))
+			pkg_emit_errno("symlink", link_dest_tmp);
+		if (rename(link_dest_tmp, link_dest))
+			pkg_emit_errno("rename", link_dest);
 	}
 
 	if (path != NULL)
