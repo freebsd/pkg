@@ -278,6 +278,7 @@ global:
 	pkgdb_cmd;
 	pkgdb_compact;
 	pkgdb_delete_annotation;
+	pkgdb_downgrade_lock;
 	pkgdb_dump;
 	pkgdb_end_solver;
 	pkgdb_file_set_cksum;

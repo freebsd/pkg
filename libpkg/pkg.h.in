@@ -1004,6 +1004,8 @@ int pkgdb_open_all(struct pkgdb **db, pkgdb_t type, const char *reponame);
  */
 int pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type);
 int pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type);
+int pkgdb_downgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type,
+    pkgdb_lock_t new_type);
 int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
 
 /**

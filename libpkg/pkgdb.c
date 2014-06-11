@@ -4480,6 +4480,27 @@ pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_typ
 }
 
 int
+pkgdb_downgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type,
+    pkgdb_lock_t new_type)
+{
+	const char downgrade_exclusive_lock_sql[] = ""
+		"UPDATE pkg_lock SET exclusive=0,advisory=1 WHERE exclusive=1 "
+		"AND advisory=1 AND read=0;";
+	int ret = EPKG_FATAL;
+
+	assert(db != NULL);
+
+	if (old_type == PKGDB_LOCK_EXCLUSIVE &&
+	    new_type == PKGDB_LOCK_ADVISORY) {
+		pkg_debug(1, "want to downgrade exclusive to advisory lock");
+		ret = pkgdb_try_lock(db, downgrade_exclusive_lock_sql,
+		    new_type, true);
+	}
+
+	return (ret);
+}
+
+int
 pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
 {
 	const char readonly_unlock_sql[] = ""
