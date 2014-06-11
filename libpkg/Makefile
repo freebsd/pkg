@@ -299,7 +299,7 @@ LDADD+=		-larchive \
 LDADD+=		-ledit
 .endif
 
-LDADD=		-Wl,--version-script=${.CURDIR}/libpkg.ver
+LDADD+=		-Wl,--version-script=${.CURDIR}/libpkg.ver
 
 .if defined(DEBUG_FLAGS)
 .if ${DEBUG_FLAGS} == 1
