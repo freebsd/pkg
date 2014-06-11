@@ -1928,14 +1928,14 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	char		 sql[BUFSIZ];
 	const char	*mainsql = ""
 		"SELECT p.name, p.origin, p.version, p.locked "
-		"FROM main.packages AS p, main.deps AS d "
-		"WHERE p.id = d.package_id "
-			"AND d.name || '~' || d.origin = ?1;";
+		"FROM main.packages AS p "
+		"INNER JOIN main.deps AS d ON p.id = d.package_id "
+		"WHERE d.name || '~' || d.origin = ?1;";
 	const char	*reposql = ""
 		"SELECT p.name, p.origin, p.version, 0 "
-		"FROM %Q.packages AS p, %Q.deps AS d "
-		"WHERE p.id = d.package_id "
-			"AND d.name || '~' || d.origin = ?1;";
+		"FROM %Q.packages AS p "
+		"INNER JOIN %Q.deps AS d ON p.id = d.package_id "
+		"WHERE d.name || '~' || d.origin = ?1;";
 
 	assert(db != NULL && pkg != NULL);
 
