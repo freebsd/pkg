@@ -272,6 +272,17 @@ progress_alarm_handler(int signo)
 }
 
 static void
+stop_progressbar(void)
+{
+	if (progress_alarm)
+		putchar('\n');
+
+	last_progress_slots = -1;
+	progress_alarm = false;
+	progress_started = false;
+}
+
+static void
 draw_progressbar(int64_t current, int64_t total)
 {
 	int slots = nearbyint((double)max_slots * current / (double)total);
@@ -299,12 +310,7 @@ draw_progressbar(int64_t current, int64_t total)
 		fflush(stdout);
 	}
 	if (current >= total) {
-		if (progress_alarm)
-			putchar('\n');
-
-		last_progress_slots = -1;
-		progress_alarm = false;
-		progress_started = false;
+		stop_progressbar();
 	}
 	else if (!progress_alarm && progress_started) {
 		/* Setup auxiliary alarm */
@@ -326,6 +332,15 @@ event_callback(void *data, struct pkg_event *ev)
 	int *debug = data;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
+
+	/*
+	 * If a progressbar has been interrupted by another event, then
+	 * we need to stop it immediately to avoid bad formatting
+	 */
+	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK) {
+		stop_progressbar();
+		progress_started = true;
+	}
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
