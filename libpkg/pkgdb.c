@@ -1651,8 +1651,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
 				comp = " WHERE name REGEXP ?1 "
-					"OR (name REGEXP SPLIT_VERSION('name', ?1) AND "
-					" version REGEXP SPLIT_VERSION('version', ?1))";
+				    "OR name || '-' || version REGEXP ?1";
 			else
 				comp = " WHERE origin REGEXP ?1";
 		} else {
