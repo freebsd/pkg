@@ -847,7 +847,7 @@ static bool
 new_pkg_version(struct pkg_jobs *j)
 {
 	struct pkg *p;
-	const char *origin = "ports-mgmt/pkg";
+	const char *uid = "pkg~ports-mgmt/pkg";
 	pkg_flags old_flags;
 	bool ret = false;
 
@@ -856,11 +856,11 @@ new_pkg_version(struct pkg_jobs *j)
 	j->flags &= ~(PKG_FLAG_FORCE|PKG_FLAG_RECURSIVE);
 
 	/* determine local pkgng */
-	p = get_local_pkg(j, origin, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
+	p = get_local_pkg(j, uid, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
 
 	if (p == NULL) {
-		origin = "ports-mgmt/pkg-devel";
-		p = get_local_pkg(j, origin, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
+		uid = "pkg~ports-mgmt/pkg-devel";
+		p = get_local_pkg(j, uid, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
 	}
 
 	/* you are using git version skip */
@@ -872,7 +872,7 @@ new_pkg_version(struct pkg_jobs *j)
 	pkg_jobs_add_universe(j, p, true, false, NULL);
 
 	/* Use maximum priority for pkg */
-	if (pkg_jobs_find_remote_pkg(j, origin, MATCH_EXACT, false, true, true) == EPKG_OK) {
+	if (pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, false, true, true) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
