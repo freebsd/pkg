@@ -3709,7 +3709,7 @@ static char *cmdline_option_value(int argc, char **argv, int i){
   return argv[i];
 }
 
-int main(int argc, char **argv){
+int sqlite3_shell(int argc, char **argv){
   char *zErrMsg = 0;
   struct callback_data data;
   const char *zInitFile = 0;
@@ -3745,10 +3745,12 @@ int main(int argc, char **argv){
     char *z;
     z = argv[i];
     if( z[0]!='-' ){
+#if 0
       if( data.zDbFilename==0 ){
         data.zDbFilename = z;
         continue;
       }
+#endif
       if( zFirstCmd==0 ){
         zFirstCmd = z;
         continue;
