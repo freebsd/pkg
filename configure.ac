@@ -113,6 +113,8 @@ AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 
+PKG_PROG_PKG_CONFIG
+
 AC_DEFUN([AC_PROG_GIT], [AC_CHECK_PROG(GITBIN,git,yes)])
 AC_PROG_GIT
 if test x"${GITBIN}" == x"yes" ; then
