@@ -2,25 +2,21 @@ m4_define([maj_ver], [1])
 m4_define([med_ver], [3])
 m4_define([min_ver], [0])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
-m4_define([pkg_version], [maj_ver.med_ver.min_ver.b3])
+m4_define([dev_ver], m4_expand([m4_normalize(m4_sinclude([dev_version.m4]))]))
+m4_ifset([dev_ver],
+       [m4_define([pkg_version], [maj_ver.med_ver.min_ver.dev_ver])],
+       [m4_define([pkg_version], [maj_ver.med_ver.min_ver])])
 
-AC_INIT([pkg],[pkg_version],[https://github.com/freebsd/pkg],[pkg])
+AC_INIT([pkg],m4_expand([pkg_version]),[https://github.com/freebsd/pkg],[pkg])
 AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
 AM_SILENT_RULES([yes])
 
-# Here are rules for setting version-info for libpkg
-# we use 3 integers: current, revision and age:
-# - if you change ABI (meaning add/remove/modify), then always update `current`
-# - if you modify lib (that means ALL modifies), then increase `revision`
-# - if you want backward compatibility, then use `age`
-#
-# more details here: https://www.flameeyes.eu/autotools-mythbuster/libtool/version.html
-#
-# For git you should consider using of the proper branch model, when a set of
-# related changes that leads to `revision` increase should always be in a separate
-# branch. For details you can check this resource:
-# http://nvie.com/posts/a-successful-git-branching-model/
+dnl Here are rules for setting version-info for libpkg
+dnl we use 3 integers: current, revision and age:
+dnl - if you change ABI (meaning add/remove/modify), then always update `current`
+dnl - if you modify lib (that means ALL modifies), then increase `revision`
+dnl - if you want backward compatibility, then use `age`
 LIBPKG_CURRENT=3
 LIBPKG_REVISION=0
 LIBPKG_AGE=0
