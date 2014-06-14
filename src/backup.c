@@ -83,21 +83,21 @@ exec_backup(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (dump) {
-		if (isatty(fileno(stdin)))
+		if (isatty(fileno(stdout)))
 				printf("Dumping database...\n");
 		if (pkgdb_dump(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
 
-		if (isatty(fileno(stdin)))
+		if (isatty(fileno(stdout)))
 			printf("done\n");
 	}
 
 	if (restore) {
-		if (isatty(fileno(stdin)))
+		if (!quiet)
 			printf("Restoring database...\n");
 		if (pkgdb_load(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
-		if (isatty(fileno(stdin)))
+		if (!quiet)
 			printf("done\n");
 	}
 
