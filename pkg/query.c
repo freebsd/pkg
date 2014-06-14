@@ -945,6 +945,11 @@ exec_query(int argc, char **argv)
 		for (i = 1; i < argc; i++) {
 			pkgname = argv[i];
 
+			if (pkgname[0] == '\0') {
+				fprintf(stderr, "Pattern must not be empty.\n", i);
+				continue;
+			}
+
 			if ((it = pkgdb_query(db, pkgname, match)) == NULL)
 				return (EX_IOERR);
 
