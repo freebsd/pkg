@@ -284,6 +284,8 @@ enum pkg_priority_update_type {
 	PKG_PRIORITY_UPDATE_DELETE
 };
 
+#define RECURSION_LIMIT 1024
+
 static void
 pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 		struct pkg_job_universe_item *item, int priority,
@@ -298,6 +300,17 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	int (*rdeps_func)(const struct pkg *pkg, struct pkg_dep **d);
+
+	if (priority > RECURSION_LIMIT) {
+		pkg_debug(1, "recursion limit has been reached, something is bad"
+					" with dependencies/conflicts graph");
+		return;
+	}
+	else if (priority + 10 > RECURSION_LIMIT) {
+		pkg_get(item->pkg, PKG_UNIQUEID, &uid);
+		pkg_debug(2, "approaching recursion limit at %d, while processing of"
+					" package %s", priority, uid);
+	}
 
 	LL_FOREACH(item, it) {
 
