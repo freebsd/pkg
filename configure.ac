@@ -279,5 +279,29 @@ AC_CONFIG_FILES(Makefile \
 AC_CONFIG_FILES(m4_expand([repos_makefiles]))
 
 AC_CONFIG_HEADERS(pkg_config.h)
+AC_CONFIG_COMMANDS([pkg_repos.h], [[
+	NMODULES=pkg_repos.h.new
+	echo "#ifndef PKG_REPOS_H" > $NMODULES
+	echo "#define PKG_REPOS_H" >> $NMODULES
+	for rt in $REPOS ; do
+		echo "extern struct pkg_repo_ops pkg_repo_${rt}_ops;" >> $NMODULES;
+	done
+	echo "struct pkg_repo_ops repos_ops[] = {" >> $NMODULES
+	for rt in $REPOS ; do
+		echo "pkg_repo_${rt}_ops," >> $NMODULES
+	done
+	echo "{REPO_NULL_PKGS}" >> $NMODULES
+	echo "};" >> $NMODULES
+	echo "#endif /* PKG_REPOS_H */" >> $NMODULES
+	if [ -f pkg_repos.h ] ; then
+		diff $NMODULES pkg_repos.h > /dev/null 2>&1
+		if [ $? -ne 0 ] ; then
+			cp $NMODULES pkg_repos.h
+		fi
+	else
+		cp $NMODULES pkg_repos.h
+	fi
+	rm $NMODULES
+]], [REPOS=$REPOS])
 
 AC_OUTPUT
