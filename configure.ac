@@ -290,7 +290,7 @@ AC_CONFIG_COMMANDS([pkg_repos.h], [[
 	for rt in $REPOS ; do
 		echo "&pkg_repo_${rt}_ops," >> $NMODULES
 	done
-	echo "{NULL}" >> $NMODULES
+	echo "NULL" >> $NMODULES
 	echo "};" >> $NMODULES
 	echo "#endif /* PKG_REPOS_H */" >> $NMODULES
 	if [ -f pkg_repos.h ] ; then

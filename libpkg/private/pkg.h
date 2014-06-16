@@ -320,8 +320,28 @@ struct pkg_repo_meta {
 	time_t eol;
 };
 
+struct pkg_repo_ops {
+	const char *type;
+	/* Accessing repo */
+	int (*init)(struct pkg_repo *);
+	int (*access)(struct pkg_repo *, unsigned);
+	int (*open)(struct pkg_repo *);
+	int (*close)(struct pkg_repo *, bool);
+
+	/* Updating repo */
+	int (*update)(struct pkg_repo *, bool);
+
+	/* Query repo */
+	struct pkgdb_it * (*query)(struct pkg_repo *,
+					const char *, match_t);
+
+	/* Fetch package from repo */
+	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
+};
+
 struct pkg_repo {
-	repo_t type;
+	struct pkg_repo_ops *ops;
+
 	char *name;
 	char *url;
 	char *pubkey;
@@ -345,10 +365,11 @@ struct pkg_repo {
 
 	struct pkg_repo_meta *meta;
 
-	int (*update)(struct pkg_repo *, bool);
-
 	bool enable;
 	UT_hash_handle hh;
+
+	/* Opaque repository data */
+	void *repo_data;
 };
 
 /* sql helpers */

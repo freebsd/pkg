@@ -601,5 +601,5 @@ cleanup:
 int
 pkg_update(struct pkg_repo *repo, bool force)
 {
-	return (repo->update(repo, force));
+	return (repo->ops->update(repo, force));
 }

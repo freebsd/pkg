@@ -309,10 +309,6 @@ typedef enum {
 } pkg_list;
 
 typedef enum {
-	REPO_BINARY_PKGS,
-} repo_t;
-
-typedef enum {
 	SRV,
 	HTTP,
 	NOMIRROR,

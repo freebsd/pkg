@@ -45,6 +45,7 @@
 #include <ucl.h>
 
 #include "pkg.h"
+#include "pkg_repos.h"
 #include "private/pkg.h"
 #include "private/event.h"
 
@@ -311,7 +312,8 @@ static struct config_entry c[] = {
 static bool parsed = false;
 static size_t c_size = NELEM(c);
 
-static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
+static struct pkg_repo* pkg_repo_new(const char *name,
+	const char *url, const char *type);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -404,6 +406,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
+	const char *type = NULL;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
@@ -469,6 +472,14 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			fingerprints = ucl_object_tostring(cur);
+		} else if (strcasecmp(key, "type") == 0) {
+			if (cur->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			type = ucl_object_tostring(cur);
 		}
 	}
 
@@ -478,7 +489,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	}
 
 	if (r == NULL)
-		r = pkg_repo_new(rname, url);
+		r = pkg_repo_new(rname, url, type);
 
 	if (signature_type != NULL) {
 		if (strcasecmp(signature_type, "pubkey") == 0)
@@ -917,14 +928,36 @@ pkg_init(const char *path, const char *reposdir)
 	return (EPKG_OK);
 }
 
+static struct pkg_repo_ops*
+pkg_repo_find_type(const char *type)
+{
+	struct pkg_repo_ops *found = NULL, **cur;
+
+	/* Default repo type */
+	if (type == NULL)
+		return (pkg_repo_find_type("binary"));
+
+	cur = &repos_ops[0];
+	while (*cur != NULL) {
+		if (strcasecmp(type, (*cur)->type) == 0) {
+			found = *cur;
+		}
+		cur ++;
+	}
+
+	if (found == NULL)
+		return (pkg_repo_find_type("binary"));
+
+	return (found);
+}
+
 static struct pkg_repo *
-pkg_repo_new(const char *name, const char *url)
+pkg_repo_new(const char *name, const char *url, const char *type)
 {
 	struct pkg_repo *r;
 
 	r = calloc(1, sizeof(struct pkg_repo));
-	r->type = REPO_BINARY_PKGS;
-	r->update = pkg_repo_update_binary_pkgs;
+	r->ops = pkg_repo_find_type(type);
 	r->url = strdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;

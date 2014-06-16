@@ -21,3 +21,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg.h"
+#include "private/pkg.h"
+
+struct pkg_repo_ops pkg_repo_binary_ops = {
+	.type = "binary",
+	.init = NULL,
+	.access = NULL,
+	.open = NULL,
+	.close = NULL,
+	.update = NULL,
+	.query = NULL,
+	.fetch_pkg = NULL
+};
