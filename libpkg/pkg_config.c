@@ -45,9 +45,9 @@
 #include <ucl.h>
 
 #include "pkg.h"
-#include "pkg_repos.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "pkg_repos.h"
 
 #define REPO_NAME_PREFIX "repo-"
 #ifndef PORTSDIR

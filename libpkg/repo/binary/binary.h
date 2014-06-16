@@ -20,17 +20,16 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef BINARY_H_
+#define BINARY_H_
 
 #include "pkg.h"
 #include "private/pkg.h"
 
-struct pkg_repo_ops pkg_repo_binary_ops = {
-	.type = "binary",
-	.init = NULL,
-	.access = NULL,
-	.open = NULL,
-	.close = NULL,
-	.update = NULL,
-	.query = NULL,
-	.fetch_pkg = NULL
-};
+#define PRIV_GET(repo) (sqlite3 *)(repo)->priv;
+
+extern struct pkg_repo_ops pkg_repo_binary_ops;
+
+int pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
+
+#endif /* BINARY_H_ */
