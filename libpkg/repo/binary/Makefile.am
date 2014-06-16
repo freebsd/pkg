@@ -7,7 +7,8 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/sqlite \
 			-Wno-pointer-sign
 
-librepo_binary_la_SOURCES= binary.c \
+librepo_binary_la_SOURCES=	binary.c \
+							init.c \
 							update.c
 librepo_binary_la_CFLAGS=	$(pkg_common_cflags) -shared
 

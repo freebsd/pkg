@@ -369,7 +369,7 @@ struct pkg_repo {
 	UT_hash_handle hh;
 
 	/* Opaque repository data */
-	void *repo_data;
+	void *priv;
 };
 
 /* sql helpers */
@@ -578,7 +578,7 @@ int pkg_emit_filelist(struct pkg *, FILE *);
 
 int do_extract_mtree(char *mtree, const char *prefix);
 
-int pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
+int pkg_repo_binary_update(struct pkg_repo *repo, bool force);
 
 bool ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     struct sbuf **buf);

@@ -49,7 +49,7 @@
 
 
 static int
-pkg_repo_register(struct pkg_repo *repo, sqlite3 *sqlite)
+pkg_repo_binary_register(struct pkg_repo *repo, sqlite3 *sqlite)
 {
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
@@ -85,7 +85,7 @@ pkg_repo_register(struct pkg_repo *repo, sqlite3 *sqlite)
 }
 
 static int
-pkg_repo_add_from_manifest(char *buf, const char *origin, const char *digest,
+pkg_repo_binary_add_from_manifest(char *buf, const char *origin, const char *digest,
 		long offset, sqlite3 *sqlite,
 		struct pkg_manifest_key **keys, struct pkg **p, bool is_legacy,
 		struct pkg_repo *repo)
@@ -153,7 +153,7 @@ struct pkg_increment_task_item {
 };
 
 static void
-pkg_repo_update_increment_item_new(struct pkg_increment_task_item **head, const char *origin,
+pkg_repo_binary_update_item_new(struct pkg_increment_task_item **head, const char *origin,
 		const char *digest, long offset, long length)
 {
 	struct pkg_increment_task_item *item;
@@ -170,7 +170,7 @@ pkg_repo_update_increment_item_new(struct pkg_increment_task_item **head, const 
 }
 
 static void __unused
-pkg_repo_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
+pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 {
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -207,7 +207,7 @@ pkg_repo_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
 }
 
 static int
-pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
+pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL /*, *fconflicts = NULL*/;
 	sqlite3 *sqlite = NULL;
@@ -235,7 +235,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		new_repo = false;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
-	if ((rc = pkgdb_repo_open(name, false, &sqlite, &reuse_repo)) != EPKG_OK) {
+	if ((rc = pkg_repo_binary_open(name, false, &sqlite, &reuse_repo)) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 
@@ -245,11 +245,11 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		*mtime = 0;
 	}
 
-	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK) {
+	if ((rc = pkg_repo_binary_init(sqlite)) != EPKG_OK) {
 		goto cleanup;
 	}
 
-	if ((rc = pkg_repo_register(repo, sqlite)) != EPKG_OK)
+	if ((rc = pkg_repo_binary_register(repo, sqlite)) != EPKG_OK)
 		goto cleanup;
 
 	it = pkgdb_repo_origins(sqlite);
@@ -313,7 +313,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,
 				&digest);
-		pkg_repo_update_increment_item_new(&ldel, origin, digest, 4, 0);
+		pkg_repo_binary_update_item_new(&ldel, origin, digest, 4, 0);
 	}
 
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
@@ -356,7 +356,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		HASH_FIND_STR(ldel, origin, item);
 		if (item == NULL) {
 			added++;
-			pkg_repo_update_increment_item_new(&ladd, origin, digest, num_offset,
+			pkg_repo_binary_update_item_new(&ladd, origin, digest, num_offset,
 					num_length);
 		} else {
 			if (strcmp(digest, item->digest) == 0) {
@@ -371,7 +371,7 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 				HASH_DEL(ldel, item);
 				free(item);
 				item = NULL;
-				pkg_repo_update_increment_item_new(&ladd, origin, digest,
+				pkg_repo_binary_update_item_new(&ladd, origin, digest,
 						num_offset, num_length);
 				updated++;
 			}
@@ -424,12 +424,12 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		pkg_emit_progress_tick(++hash_it, pushed);
 		if (rc == EPKG_OK) {
 			if (item->length != 0) {
-				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
+				rc = pkg_repo_binary_add_from_manifest(map + item->offset, item->origin,
 				    item->digest, item->length, sqlite, &keys, &pkg, legacy_repo,
 				    repo);
 			}
 			else {
-				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
+				rc = pkg_repo_binary_add_from_manifest(map + item->offset, item->origin,
 				    item->digest, len - item->offset, sqlite, &keys, &pkg,
 				    legacy_repo, repo);
 			}
@@ -452,7 +452,7 @@ cleanup:
 			rc = EPKG_FATAL;
 	}
 
-	pkgdb_repo_finalize_statements();
+	pkg_repo_binary_finalize_prstatements();
 
 	if (rc == EPKG_OK)
 		sql_exec(sqlite, "DROP TABLE repo_update;");
@@ -477,7 +477,7 @@ cleanup:
 }
 
 int
-pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
+pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 {
 	char filepath[MAXPATHLEN];
 
@@ -569,7 +569,7 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 		}
 	}
 
-	res = pkg_repo_update_incremental(filepath, repo, &t);
+	res = pkg_repo_binary_update_incremental(filepath, repo, &t);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to find catalogs");
 		goto cleanup;

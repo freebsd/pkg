@@ -68,38 +68,6 @@ struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short
 void pkgshell_open(const char **r);
 
 /**
- * Open repodb for specified path
- * @param repodb path of repodb
- * @param force create repository if not exists
- * @param sqlite destination db pointer
- * @param incremental if this param is set to false, then database was re-created
- *  and thus needs to be updated
- * @return EPKG_OK if succeed
- */
-int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite,
-	bool *incremental);
-
-/**
- * Init repository for pkgdb_repo* functions
- * @param sqlite sqlite object
- * @return EPKG_OK if succeed
- */
-int pkgdb_repo_init(sqlite3 *sqlite);
-
-/**
- * Finalize prepared statements for a repo
- */
-void pkgdb_repo_finalize_statements(void);
-
-/**
- * Close repodb and commit/rollback transaction started
- * @param sqlite sqlite pointer
- * @param commit commit transaction if true, rollback otherwise
- * @return EPKG_OK if succeed
- */
-int pkgdb_repo_close(sqlite3 *sqlite, bool commit);
-
-/**
  * Check whether a package with the cehcksum specified exists in pkg_repo
  * @param sqlite sqlite pointer
  * @param cksum sha256 printed checksum

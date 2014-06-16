@@ -21,15 +21,52 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "binary.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
-struct pkg_repo_ops pkg_repo_binary_ops = {
-	.type = "binary",
-	.init = pkg_repo_binary_init,
-	.access = NULL,
-	.open = NULL,
-	.close = pkg_repo_binary_close,
-	.update = pkg_repo_binary_update,
-	.query = NULL,
-	.fetch_pkg = NULL
-};
+#include <sqlite3.h>
+
+#include "pkg.h"
+#include "private/event.h"
+#include "private/pkg.h"
+#include "private/pkgdb.h"
+#include "private/utils.h"
+#include "binary_private.h"
+
+int
+pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...)
+{
+	int retcode;	/* Returns SQLITE error code */
+	va_list ap;
+	sqlite3_stmt *stmt;
+	int i;
+	const char *argtypes;
+
+	stmt = STMT(s);
+	argtypes = sql_prepared_statements[s].argtypes;
+
+	sqlite3_reset(stmt);
+
+	va_start(ap, s);
+
+	for (i = 0; argtypes[i] != '\0'; i++)
+	{
+		switch (argtypes[i]) {
+		case 'T':
+			sqlite3_bind_text(stmt, i + 1, va_arg(ap, const char*),
+			    -1, SQLITE_STATIC);
+			break;
+		case 'I':
+			sqlite3_bind_int64(stmt, i + 1, va_arg(ap, int64_t));
+			break;
+		}
+	}
+
+	va_end(ap);
+
+	retcode = sqlite3_step(stmt);
+
+	return (retcode);
+}
