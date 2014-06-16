@@ -399,8 +399,7 @@ disable_plugins_if_static(void)
 static void
 add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	const ucl_object_t *cur;
-	ucl_object_t *tmp = NULL;
+	const ucl_object_t *cur, *enabled;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
@@ -409,6 +408,13 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	const char *type = NULL;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
+
+	enabled = ucl_object_find_key(obj, "enabled");
+	if (enabled != NULL && !ucl_object_toboolean(enabled)) {
+		pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
+		return;
+	}
+
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		if (key == NULL)
@@ -430,24 +436,6 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			pubkey = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "enabled") == 0) {
-			if (cur->type == UCL_STRING)
-				tmp = ucl_object_fromstring_common(ucl_object_tostring(cur),
-				    strlen(ucl_object_tostring(cur)), UCL_STRING_PARSE_BOOLEAN);
-			if (cur->type != UCL_BOOLEAN && (tmp != NULL && tmp->type != UCL_BOOLEAN)) {
-				pkg_emit_error("Expecting a boolean for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				if (tmp != NULL)
-					ucl_object_unref(tmp);
-				return;
-			}
-			if (tmp != NULL)
-				pkg_emit_error("Warning: expecting a boolean for the '%s' key of the '%s' repo, "
-				    " the value has been correctly converted, please consider fixing", key, rname);
-			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
-			if (tmp != NULL)
-				ucl_object_unref(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
