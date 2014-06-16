@@ -229,13 +229,40 @@ AC_SUBST([TESTS])
 AC_SUBST([LDNS_LIBS])
 AC_SUBST([LDNS_CFLAGS])
 
+dnl We now support merely binary repos
+m4_define([repos], [binary])
+m4_define([repos_ldadd], [])
+m4_define([repos_makefiles], [])
+m4_define([repos_ldadd_static], [])
+
+dnl Add ldadd for repo
+m4_define([repos_add_ldadd], [
+	m4_append([$1], [m4_join([], [ \], m4_newline(), [    repo/], 
+		[$3], [/repo_], 
+		[$3], [$2.la])])
+])
+dnl Create makefile definition for repo
+m4_define([repos_add_makefile], [
+	m4_append([$1], [m4_join([], [ \], m4_newline(), [    libpkg/repo/], 
+		[$2], [/Makefile])])
+])
+dnl Apply macros to repos list
+m4_map([m4_curry([repos_add_ldadd], [repos_ldadd], [])], [repos])
+m4_map([m4_curry([repos_add_ldadd], [repos_ldadd_static], [_static])], [repos])
+m4_map([m4_curry([repos_add_makefile], [repos_makefiles])], [repos])
+
+AC_SUBST([REPOS], m4_expand([repos]))
+AC_SUBST([REPOS_LDADD], m4_expand([repos_ldadd]))
+AC_SUBST([REPOS_LDADD_STATIC], m4_expand([repos_ldadd_static]))
+
 AC_CONFIG_FILES(Makefile \
 		src/Makefile \
 		external/Makefile \
 		scripts/Makefile \
 		docs/Makefile \
 		tests/Makefile \
-		libpkg/Makefile
+		libpkg/Makefile \
+		libpkg/repo/Makefile \
 		libpkg/pkg.h \
 		libpkg/pkg.pc
 		scripts/periodic/400.status-pkg
@@ -246,6 +273,8 @@ AC_CONFIG_FILES(Makefile \
 		scripts/sbin/pkg2ng
 		scripts/completion/_pkg.bash
 		scripts/completion/_pkg.zsh)
+AC_CONFIG_FILES(m4_expand([repos_makefiles]))
+
 AC_CONFIG_HEADERS(pkg_config.h)
 
 AC_OUTPUT
