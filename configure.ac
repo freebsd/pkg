@@ -238,7 +238,7 @@ m4_define([repos_ldadd_static], [])
 dnl Add ldadd for repo
 m4_define([repos_add_ldadd], [
 	m4_append([$1], [m4_join([], [ \], m4_newline(), [    repo/], 
-		[$3], [/repo_], 
+		[$3], [/librepo_], 
 		[$3], [$2.la])])
 ])
 dnl Create makefile definition for repo
