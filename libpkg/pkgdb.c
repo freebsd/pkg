@@ -906,7 +906,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db,
 			return (EPKG_FATAL);
 		}
 
-		switch (pkgdb_repo_check_version(db, pkg_repo_name(r))) {
+		switch (pkg_repo_binary_check_version(db, pkg_repo_name(r))) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);

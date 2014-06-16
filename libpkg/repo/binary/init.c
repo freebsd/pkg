@@ -72,16 +72,11 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 }
 
 static int
-pkg_repo_binary_get_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
+pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 {
 	sqlite3_stmt *stmt;
 	int retcode;
-	char sql[BUFSIZ];
-	const char *fmt = "PRAGMA %Q.user_version";
-
-	assert(database != NULL);
-
-	sqlite3_snprintf(sizeof(sql), sql, fmt, database);
+	const char *sql = "PRAGMA user_version;";
 
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sql);
@@ -135,11 +130,207 @@ pkg_repo_binary_finalize_prstatements(void)
 	return;
 }
 
+static int
+pkg_repo_binary_set_version(sqlite3 *sqlite, int reposcver)
+{
+	int		 retcode = EPKG_OK;
+	char		*errmsg;
+	const char	*sql = "PRAGMA user_version = %d;" ;
+
+	if (sqlite3_exec(sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
+		pkg_emit_error("sqlite: %s", errmsg);
+		sqlite3_free(errmsg);
+		retcode = EPKG_FATAL;
+	}
+	return (retcode);
+}
+
+static int
+pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
+		  const struct repo_changes *repo_changes, const char *updown,
+		  int version, int *next_version)
+{
+	const struct repo_changes	*change;
+	bool			 found = false, in_trans = false;
+	int			 ret = EPKG_OK;
+	char			*errmsg;
+
+	for (change = repo_changes; change->version != -1; change++) {
+		if (change->version == version) {
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		pkg_emit_error("Failed to %s \"%s\" repo schema "
+			" version %d (target version %d) "
+			"-- change not found", updown, repo->name, version,
+			REPO_SCHEMA_VERSION);
+		return (EPKG_FATAL);
+	}
+
+	/* begin transaction */
+	in_trans = true;
+	ret = pkgdb_transaction_begin(sqlite, "SCHEMA");
+
+	/* apply change */
+	if (ret == EPKG_OK) {
+		pkg_debug(4, "Pkgdb: running '%s'", change->sql);
+		ret = sqlite3_exec(sqlite, change->sql, NULL, NULL, &errmsg);
+		if (ret != SQLITE_OK) {
+			pkg_emit_error("sqlite: %s", errmsg);
+			sqlite3_free(errmsg);
+			ret = EPKG_FATAL;
+		}
+	}
+
+	/* update repo user_version */
+	if (ret == EPKG_OK) {
+		*next_version = change->next_version;
+		ret = pkg_repo_binary_set_version(sqlite, *next_version);
+	}
+
+	/* commit or rollback */
+	if (in_trans) {
+		if (ret != EPKG_OK)
+			pkgdb_transaction_rollback(sqlite, "SCHEMA");
+
+		if (pkgdb_transaction_commit(sqlite, "SCHEMA") != EPKG_OK)
+			ret = EPKG_FATAL;
+	}
+
+	if (ret == EPKG_OK) {
+		pkg_emit_notice("Repo \"%s\" %s schema %d to %d: %s",
+				repo->name, updown, version,
+				change->next_version, change->message);
+	}
+
+	return (ret);
+}
+
+static int
+pkg_repo_binary_upgrade(struct pkg_repo *repo, sqlite3 *sqlite, int current_version)
+{
+	int version;
+	int next_version;
+	int ret = EPKG_OK;
+
+	for (version = current_version;
+	     version < REPO_SCHEMA_VERSION;
+	     version = next_version)  {
+		ret = pkg_repo_binary_apply_change(repo, sqlite, repo_upgrades,
+					"upgrade", version, &next_version);
+		if (ret != EPKG_OK)
+			break;
+		pkg_debug(1, "Upgrading repo database schema from %d to %d",
+				version, next_version);
+	}
+	return (ret);
+}
+
+static int
+pkg_repo_binary_downgrade(struct pkg_repo *repo, sqlite3 *sqlite, int current_version)
+{
+	int version;
+	int next_version;
+	int ret = EPKG_OK;
+
+	for (version = current_version;
+	     version > REPO_SCHEMA_VERSION;
+	     version = next_version)  {
+
+		ret = pkg_repo_binary_apply_change(repo, sqlite, repo_downgrades,
+					"downgrade", version, &next_version);
+		if (ret != EPKG_OK)
+			break;
+		pkg_debug(1, "Downgrading repo database schema from %d to %d",
+				version, next_version);
+	}
+	return (ret);
+}
+
+int
+pkg_repo_binary_check_version(struct pkg_repo *repo, sqlite3 *sqlite)
+{
+	int reposcver;
+	int repomajor;
+	int ret;
+
+	if ((ret = pkg_repo_binary_get_user_version(sqlite, &reposcver))
+	    != EPKG_OK)
+		return (ret);	/* sqlite error */
+
+	/*
+	 * If the local pkgng uses a repo schema behind that used to
+	 * create the repo, we may still be able use it for reading
+	 * (ie pkg install), but pkg repo can't do an incremental
+	 * update unless the actual schema matches the compiled in
+	 * schema version.
+	 *
+	 * Use a major - minor version schema: as the user_version
+	 * PRAGMA takes an integer version, encode this as MAJOR *
+	 * 1000 + MINOR.
+	 *
+	 * So long as the major versions are the same, the local pkgng
+	 * should be compatible with any repo created by a more recent
+	 * pkgng, although it may need some modification of the repo
+	 * schema
+	 */
+
+	/* --- Temporary ---- Grandfather in the old repo schema
+	   version so this patch doesn't immediately invalidate all
+	   the repos out there */
+
+	if (reposcver == 2)
+		reposcver = 2000;
+	if (reposcver == 3)
+		reposcver = 2001;
+
+	repomajor = reposcver / 1000;
+
+	if (repomajor < REPO_SCHEMA_MAJOR) {
+		pkg_emit_error("Repo %s (schema version %d) is too old - "
+		    "need at least schema %d", repo->name, reposcver,
+		    REPO_SCHEMA_MAJOR * 1000);
+		return (EPKG_REPOSCHEMA);
+	}
+
+	if (repomajor > REPO_SCHEMA_MAJOR) {
+		pkg_emit_error("Repo %s (schema version %d) is too new - "
+		    "we can accept at most schema %d", repo->name, reposcver,
+		    ((REPO_SCHEMA_MAJOR + 1) * 1000) - 1);
+		return (EPKG_REPOSCHEMA);
+	}
+
+	/* This is a repo schema version we can work with */
+
+	ret = EPKG_OK;
+
+	if (reposcver < REPO_SCHEMA_VERSION) {
+		if (sqlite3_db_readonly(sqlite, "main")) {
+			pkg_emit_error("Repo %s needs schema upgrade from "
+			    "%d to %d but it is opened readonly", repo->name,
+			    reposcver, REPO_SCHEMA_VERSION);
+			ret = EPKG_FATAL;
+		} else
+			ret = pkg_repo_binary_upgrade(repo, sqlite, reposcver);
+	} else if (reposcver > REPO_SCHEMA_VERSION) {
+		if (sqlite3_db_readonly(sqlite, "main")) {
+			pkg_emit_error("Repo %s needs schema downgrade from "
+			"%d to %d but it is opened readonly", repo->name,
+			       reposcver, REPO_SCHEMA_VERSION
+			);
+			ret = EPKG_FATAL;
+		} else
+			ret = pkg_repo_binary_downgrade(repo, sqlite, reposcver);
+	}
+
+	return (ret);
+}
+
 int
 pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 {
-	int reposcver;
-	int retcode = EPKG_OK;
 	char filepath[MAXPATHLEN];
 	const char *dbdir = NULL;
 	sqlite3 *sqlite = NULL;
@@ -189,16 +380,9 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	}
 
 	/* Check version */
-	retcode = pkg_repo_binary_get_user_version(sqlite, "main", &reposcver);
-	if (retcode != EPKG_OK) {
-		sqlite3_close(sqlite);
-		return (EPKG_FATAL);
-	}
-	if (reposcver != REPO_SCHEMA_VERSION) {
-		if (reposcver != REPO_SCHEMA_VERSION)
-			pkg_emit_error("re-creating repo to upgrade schema version "
-				"from %d to %d", reposcver,
-				REPO_SCHEMA_VERSION);
+	if (pkg_repo_binary_check_version(repo, sqlite) != EPKG_OK) {
+		pkg_emit_error("need to re-create repo %s to upgrade schema version",
+			repo->name);
 		sqlite3_close(sqlite);
 		if (mode & W_OK)
 			unlink(filepath);

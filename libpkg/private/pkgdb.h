@@ -95,14 +95,6 @@ int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 int pkgdb_repo_remove_package(const char *origin);
 
 /**
- * Upgrade repo db version if required
- * @param db package database object
- * @param database name of database
- * @return EPKG_OK if succeeded
- */
-int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
-
-/**
  * Returns a list of all packages sorted by origin
  * @param sqlite database
  * @return new iterator
