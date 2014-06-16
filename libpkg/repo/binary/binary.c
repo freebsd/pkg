@@ -26,7 +26,7 @@
 struct pkg_repo_ops pkg_repo_binary_ops = {
 	.type = "binary",
 	.init = pkg_repo_binary_init,
-	.access = NULL,
+	.access = pkg_repo_binary_access,
 	.open = NULL,
 	.close = pkg_repo_binary_close,
 	.update = pkg_repo_binary_update,

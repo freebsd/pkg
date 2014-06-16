@@ -193,4 +193,13 @@ int pkgdb_begin_solver(struct pkgdb *db);
  */
 int pkgdb_end_solver(struct pkgdb *db);
 
+/**
+ * Check access mode for the specified file
+ * @param mode
+ * @param dbdir
+ * @param dbname
+ * @return
+ */
+int pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname);
+
 #endif

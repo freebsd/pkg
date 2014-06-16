@@ -33,5 +33,6 @@ extern struct pkg_repo_ops pkg_repo_binary_ops;
 int pkg_repo_binary_update(struct pkg_repo *repo, bool force);
 int pkg_repo_binary_init(struct pkg_repo *repo);
 int pkg_repo_binary_close(struct pkg_repo *repo, bool commit);
+int pkg_repo_binary_access(struct pkg_repo *repo, unsigned mode);
 
 #endif /* BINARY_H_ */

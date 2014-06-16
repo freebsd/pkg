@@ -239,3 +239,18 @@ pkg_repo_binary_close(struct pkg_repo *repo, bool commit)
 
 	return (retcode);
 }
+
+int
+pkg_repo_binary_access(struct pkg_repo *repo, unsigned mode)
+{
+	const pkg_object	*o;
+	const char		*dbdir;
+	int			 ret = EPKG_OK;
+
+	o = pkg_config_get("PKG_DBDIR");
+	dbdir = pkg_object_string(o);
+
+	ret = pkgdb_check_access(mode, dbdir, pkg_repo_name(repo));
+
+	return (ret);
+}

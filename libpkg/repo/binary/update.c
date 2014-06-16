@@ -452,7 +452,7 @@ cleanup:
 			rc = EPKG_FATAL;
 	}
 
-	pkg_repo_binary_finalize_prstatements();
+	repo->ops->close(repo, false);
 
 	if (rc == EPKG_OK)
 		sql_exec(sqlite, "DROP TABLE repo_update;");

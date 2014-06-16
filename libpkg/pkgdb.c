@@ -928,7 +928,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db,
 }
 
 static int
-file_mode_insecure(const char *path, bool install_as_user)
+pkgdb_is_insecure_mode(const char *path, bool install_as_user)
 {
 	uid_t		fileowner;
 	gid_t		filegroup;
@@ -987,8 +987,8 @@ file_mode_insecure(const char *path, bool install_as_user)
 	return (EPKG_OK);
 }
 
-static int
-database_access(unsigned mode, const char* dbdir, const char *dbname)
+int
+pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 {
 	char		 dbpath[MAXPATHLEN];
 	int		 retval;
@@ -1002,7 +1002,7 @@ database_access(unsigned mode, const char* dbdir, const char *dbname)
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
-	retval = file_mode_insecure(dbpath, install_as_user);
+	retval = pkgdb_is_insecure_mode(dbpath, install_as_user);
 
 	database_exists = (retval != EPKG_ENODB);
 
@@ -1089,17 +1089,17 @@ pkgdb_access(unsigned mode, unsigned database)
 	   Otherwise, just test for read access */
 
 	if ((mode & PKGDB_MODE_CREATE) != 0) {
-		retval = database_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+		retval = pkgdb_check_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
 					 dbdir, NULL);
 	} else
-		retval = database_access(PKGDB_MODE_READ, dbdir, NULL);
+		retval = pkgdb_check_access(PKGDB_MODE_READ, dbdir, NULL);
 	if (retval != EPKG_OK)
 		return (retval);
 
 	/* Test local.sqlite, if required */
 
 	if ((database & PKGDB_DB_LOCAL) != 0) {
-		retval = database_access(mode, dbdir, "local");
+		retval = pkgdb_check_access(mode, dbdir, "local");
 		if (retval != EPKG_OK)
 			return (retval);
 	}
@@ -1112,7 +1112,7 @@ pkgdb_access(unsigned mode, unsigned database)
 			if (!pkg_repo_enabled(r))
 				continue;
 
-			retval = database_access(mode, dbdir, pkg_repo_name(r));
+			retval = r->ops->access(r, mode);
 			if (retval != EPKG_OK)
 				return (retval);
 		}
