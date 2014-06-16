@@ -614,4 +614,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	/* PRSTMT_LAST */
 };
 
+int pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...);
+
 #endif /* INIT_PRIVATE_H_ */

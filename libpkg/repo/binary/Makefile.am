@@ -8,6 +8,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-Wno-pointer-sign
 
 librepo_binary_la_SOURCES=	binary.c \
+							common.c \
 							init.c \
 							update.c
 librepo_binary_la_CFLAGS=	$(pkg_common_cflags) -shared

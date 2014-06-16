@@ -68,33 +68,6 @@ struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short
 void pkgshell_open(const char **r);
 
 /**
- * Check whether a package with the cehcksum specified exists in pkg_repo
- * @param sqlite sqlite pointer
- * @param cksum sha256 printed checksum
- * @return EPKG_OK if checksum exists, EPKG_END if not and EPKG_FATAL if error occurred
- */
-int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
-
-/**
- * Add a package to pkg_repo
- * @param pkg package structure
- * @param pkg_path path triggered package addition
- * @param sqlite sqlite pointer
- * @param forced force adding of package even if it is outdated
- * @return EPKG_OK if package added, EPKG_END if package already exists and is newer than
- * inserted one, EPKG_FATAL if error occurred
- */
-int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, bool forced);
-
-/**
- * Remove specified pkg from repo
- * @param origin the origin of package to remove
- * @return EPKG_OK if succeeded
- */
-int pkgdb_repo_remove_package(const char *origin);
-
-/**
  * Returns a list of all packages sorted by origin
  * @param sqlite database
  * @return new iterator
