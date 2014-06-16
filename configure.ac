@@ -286,11 +286,11 @@ AC_CONFIG_COMMANDS([pkg_repos.h], [[
 	for rt in $REPOS ; do
 		echo "extern struct pkg_repo_ops pkg_repo_${rt}_ops;" >> $NMODULES;
 	done
-	echo "struct pkg_repo_ops repos_ops[] = {" >> $NMODULES
+	echo "struct pkg_repo_ops* repos_ops[] = {" >> $NMODULES
 	for rt in $REPOS ; do
-		echo "pkg_repo_${rt}_ops," >> $NMODULES
+		echo "&pkg_repo_${rt}_ops," >> $NMODULES
 	done
-	echo "{REPO_NULL_PKGS}" >> $NMODULES
+	echo "{NULL}" >> $NMODULES
 	echo "};" >> $NMODULES
 	echo "#endif /* PKG_REPOS_H */" >> $NMODULES
 	if [ -f pkg_repos.h ] ; then
