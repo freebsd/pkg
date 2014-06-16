@@ -190,33 +190,33 @@ static const struct repo_changes repo_upgrades[] = {
 	 2002,
 	 "Modify shlib tracking to add \'provided\' capability",
 
-	 "CREATE TABLE %Q.pkg_shlibs_required ("
+	 "CREATE TABLE pkg_shlibs_required ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE CASCADE,"
 		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
 		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, shlib_id)"
 	 ");"
-	 "CREATE TABLE %Q.pkg_shlibs_provided ("
+	 "CREATE TABLE pkg_shlibs_provided ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE CASCADE,"
 		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
 		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, shlib_id)"
 	 ");"
-	 "INSERT INTO %Q.pkg_shlibs_required (package_id, shlib_id)"
-		" SELECT package_id, shlib_id FROM %Q.pkg_shlibs;"
-	 "DROP TABLE %Q.pkg_shlibs;"
+	 "INSERT INTO pkg_shlibs_required (package_id, shlib_id)"
+		" SELECT package_id, shlib_id FROM pkg_shlibs;"
+	 "DROP TABLE pkg_shlibs;"
 	},
 	{2002,
 	 2003,
 	 "Add abstract metadata capability",
 
-	 "CREATE TABLE %Q.abstract ("
+	 "CREATE TABLE abstract ("
 		"abstract_id INTEGER PRIMARY KEY,"
 		"abstract TEXT NOT NULL UNIQUE"
 	 ");"
-	 "CREATE TABLE %Q.pkg_abstract ("
+	 "CREATE TABLE pkg_abstract ("
 		"package_id INTERGER REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE RESTRICT,"
 		"key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
@@ -229,18 +229,18 @@ static const struct repo_changes repo_upgrades[] = {
 	 2004,
 	"Add manifest digest field",
 
-	"ALTER TABLE %Q.packages ADD COLUMN manifestdigest TEXT NULL;"
-	"CREATE INDEX IF NOT EXISTS %Q.pkg_digest_id ON packages(origin, manifestdigest);"
+	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
+	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
 	},
 	{2004,
 	 2005,
 	 "Rename 'abstract metadata' to 'annotations'",
 
-	 "CREATE TABLE %Q.annotation ("
+	 "CREATE TABLE annotation ("
 	        "annotation_id INTEGER PRIMARY KEY,"
 	        "annotation TEXT NOT NULL UNIQUE"
 	 ");"
-	 "CREATE TABLE %Q.pkg_annotation ("
+	 "CREATE TABLE pkg_annotation ("
 	        "package_id INTEGER REFERENCES packages(id)"
 	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
 	        "tag_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
@@ -249,10 +249,10 @@ static const struct repo_changes repo_upgrades[] = {
 	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
 	        "UNIQUE (package_id, tag_id)"
 	 ");"
-	 "INSERT INTO %Q.annotation (annotation_id, annotation)"
-	        " SELECT abstract_id, abstract FROM %Q.abstract;"
-	 "INSERT INTO %Q.pkg_annotation (package_id,tag_id,value_id)"
-	        " SELECT package_id,key_id,value_id FROM %Q.pkg_abstract;"
+	 "INSERT INTO annotation (annotation_id, annotation)"
+	        " SELECT abstract_id, abstract FROM abstract;"
+	 "INSERT INTO pkg_annotation (package_id,tag_id,value_id)"
+	        " SELECT package_id,key_id,value_id FROM pkg_abstract;"
 	 "DROP TABLE pkg_abstract;"
 	 "DROP TABLE abstract;"
 	},
@@ -260,15 +260,15 @@ static const struct repo_changes repo_upgrades[] = {
 	 2006,
 	 "Add capability to track option descriptions and defaults",
 
-	 "CREATE TABLE %Q.option ("
+	 "CREATE TABLE option ("
 		"option_id INTEGER PRIMARY KEY,"
 		"option TEXT NOT NULL UNIQUE"
 	 ");"
-	 "CREATE TABLE %Q.option_desc ("
+	 "CREATE TABLE option_desc ("
 		"option_desc_id INTEGER PRIMARY KEY,"
 		"option_desc TEXT NOT NULL UNIQUE"
 	 ");"
-	 "CREATE TABLE %Q.pkg_option ("
+	 "CREATE TABLE pkg_option ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id) "
 			"ON DELETE CASCADE ON UPDATE CASCADE,"
 		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
@@ -276,7 +276,7 @@ static const struct repo_changes repo_upgrades[] = {
 		"value TEXT NOT NULL,"
 		"PRIMARY KEY(package_id, option_id)"
 	 ");"
-	 "CREATE TABLE %Q.pkg_option_desc ("
+	 "CREATE TABLE pkg_option_desc ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id) "
 			"ON DELETE CASCADE ON UPDATE CASCADE,"
 		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
@@ -286,7 +286,7 @@ static const struct repo_changes repo_upgrades[] = {
 			"ON DELETE RESTRICT ON UPDATE CASCADE,"
 		"PRIMARY KEY(package_id, option_id)"
 	 ");"
-	 "CREATE TABLE %Q.pkg_option_default ("
+	 "CREATE TABLE pkg_option_default ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id) "
 			"ON DELETE CASCADE ON UPDATE CASCADE,"
 		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
@@ -294,29 +294,29 @@ static const struct repo_changes repo_upgrades[] = {
 		"default_value TEXT NOT NULL,"
 		"PRIMARY KEY(package_id, option_id)"
 	 ");"
-	 "INSERT INTO %Q.option (option) "
-		"SELECT DISTINCT option FROM %Q.options;"
-	 "INSERT INTO %Q.pkg_option(package_id, option_id, value) "
+	 "INSERT INTO option (option) "
+		"SELECT DISTINCT option FROM options;"
+	 "INSERT INTO pkg_option(package_id, option_id, value) "
 		"SELECT package_id, option_id, value "
-		"FROM %Q.options oo JOIN %Q.option o "
+		"FROM options oo JOIN option o "
 			"ON (oo.option = o.option);"
-	 "DROP TABLE %Q.options;",
+	 "DROP TABLE options;",
 	},
 	{2006,
 	 2007,
 	 "Add conflicts and provides",
 
-	"CREATE TABLE %Q.pkg_conflicts ("
+	"CREATE TABLE pkg_conflicts ("
 	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
 	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
 	    "conflict_id INTEGER NOT NULL,"
 	    "UNIQUE(package_id, conflict_id)"
 	");"
-	"CREATE TABLE %Q.provides("
+	"CREATE TABLE provides("
 	"    id INTEGER PRIMARY KEY,"
 	"    provide TEXT NOT NULL"
 	");"
-	"CREATE TABLE %Q.pkg_provides ("
+	"CREATE TABLE pkg_provides ("
 	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
 	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
 	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
@@ -328,27 +328,27 @@ static const struct repo_changes repo_upgrades[] = {
 	 2008,
 	 "Add FTS index",
 
-	 "CREATE VIRTUAL TABLE %Q.pkg_search USING fts4(id, name, origin);"
-	 "INSERT INTO %Q.pkg_search SELECT id, name || '-' || version, origin FROM %Q.packages;"
-	 "CREATE INDEX %Q.packages_origin ON packages(origin COLLATE NOCASE);"
-	 "CREATE INDEX %Q.packages_name ON packages(name COLLATE NOCASE);"
+	 "CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
+	 "INSERT INTO pkg_search SELECT id, name || '-' || version, origin FROM packages;"
+	 "CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	 "CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	},
 	{2008,
 	 2009,
 	 "Optimize indicies",
 
-	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
-	 "CREATE INDEX IF NOT EXISTS %Q.packages_version_nocase ON packages(name COLLATE NOCASE, version);"
-	 "CREATE INDEX IF NOT EXISTS %Q.packages_uid ON packages(name, origin);"
-	 "CREATE INDEX IF NOT EXISTS %Q.packages_version ON packages(name, version);"
-	 "CREATE UNIQUE INDEX IF NOT EXISTS %Q.packages_digest ON packages(manifestdigest);"
+	 "CREATE INDEX IF NOT EXISTS packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	 "CREATE INDEX IF NOT EXISTS packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	 "CREATE INDEX IF NOT EXISTS packages_uid ON packages(name, origin);"
+	 "CREATE INDEX IF NOT EXISTS packages_version ON packages(name, version);"
+	 "CREATE UNIQUE INDEX IF NOT EXISTS packages_digest ON packages(manifestdigest);"
 	},
 	{2009,
 	 2010,
 	 "Add legacy digest field",
 
-	 "ALTER TABLE %Q.packages ADD COLUMN olddigest TEXT NULL;"
-	 "UPDATE %Q.packages SET olddigest=manifestdigest WHERE olddigest=NULL;"
+	 "ALTER TABLE packages ADD COLUMN olddigest TEXT NULL;"
+	 "UPDATE packages SET olddigest=manifestdigest WHERE olddigest=NULL;"
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
@@ -362,46 +362,46 @@ static const struct repo_changes repo_downgrades[] = {
 	 2009,
 	 "Drop olddigest field",
 
-	 "ALTER TABLE %Q.packages REMOVE COLUMN olddigest;"
+	 "ALTER TABLE packages REMOVE COLUMN olddigest;"
 	},
 	{2009,
 	 2008,
 	 "Drop indicies",
 
-	 "DROP INDEX %Q.packages_uid_nocase;"
-	 "DROP INDEX %Q.packages_version_nocase;"
-	 "DROP INDEX %Q.packages_uid;"
-	 "DROP INDEX %Q.packages_version;"
-	 "DROP INDEX %Q.packages_digest;"
+	 "DROP INDEX packages_uid_nocase;"
+	 "DROP INDEX packages_version_nocase;"
+	 "DROP INDEX packages_uid;"
+	 "DROP INDEX packages_version;"
+	 "DROP INDEX packages_digest;"
 	},
 	{2008,
 	 2007,
 	 "Drop FTS index",
 
-	 "DROP TABLE %Q.pkg_search;"
+	 "DROP TABLE pkg_search;"
 	},
 	{2007,
 	 2006,
 	 "Revert conflicts and provides creation",
 
-	 "DROP TABLE %Q.pkg_provides;"
-	 "DROP TABLE %Q.provides;"
-	 "DROP TABLE %Q.conflicts;"
+	 "DROP TABLE pkg_provides;"
+	 "DROP TABLE provides;"
+	 "DROP TABLE conflicts;"
 	},
 	{2006,
 	 2005,
 	 "Revert addition of extra options related data",
 
-	 "CREATE TABLE %Q.options ("
+	 "CREATE TABLE options ("
 		"package_id INTEGER REFERENCES packages(id) "
 			"ON DELETE CASCADE ON UPDATE CASCADE,"
 		"option TEXT,"
 		"value TEXT,"
 		"PRIMARY KEY(package_id,option)"
 	 ");"
-	 "INSERT INTO %Q.options (package_id, option, value) "
+	 "INSERT INTO options (package_id, option, value) "
 		 "SELECT package_id, option, value "
-		"FROM %Q.pkg_option JOIN %Q.option USING(option_id);"
+		"FROM pkg_option JOIN option USING(option_id);"
 	 "DROP TABLE pkg_option;"
 	 "DROP TABLE pkg_option_default;"
 	 "DROP TABLE option;"
@@ -412,11 +412,11 @@ static const struct repo_changes repo_downgrades[] = {
 	 2004,
 	 "Revert rename of 'abstract metadata' to 'annotations'",
 
-	 "CREATE TABLE %Q.abstract ("
+	 "CREATE TABLE abstract ("
 	        "abstract_id INTEGER PRIMARY KEY,"
 	        "abstract TEXT NOT NULL UNIQUE"
 	 ");"
-	 "CREATE TABLE %Q.pkg_abstract ("
+	 "CREATE TABLE pkg_abstract ("
 	        "package_id INTEGER REFERENCES packages(id)"
 	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
 	        "key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
@@ -424,50 +424,50 @@ static const struct repo_changes repo_downgrades[] = {
 	        "value_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
 	        " ON DELETE CASCADE ON UPDATE RESTRICT"
 	 ");"
-	 "INSERT INTO %Q.abstract (abstract_id, abstract)"
-	        " SELECT annotation_id, annotation FROM %Q.annotation;"
-	 "INSERT INTO %Q.pkg_abstract (package_id,key_id,value_id)"
-	        " SELECT package_id,tag_id,value_id FROM %Q.pkg_annotation;"
-	 "DROP TABLE %Q.pkg_annotation;"
-	 "DROP TABLE %Q.annotation;"
+	 "INSERT INTO abstract (abstract_id, abstract)"
+	        " SELECT annotation_id, annotation FROM annotation;"
+	 "INSERT INTO pkg_abstract (package_id,key_id,value_id)"
+	        " SELECT package_id,tag_id,value_id FROM pkg_annotation;"
+	 "DROP TABLE pkg_annotation;"
+	 "DROP TABLE annotation;"
 	},
 	{2004,
 	 2003,
 	 "Drop manifest digest index",
 
-	 "DROP INDEX %Q.pkg_digest_id;"
+	 "DROP INDEX pkg_digest_id;"
 	},
 	{2003,
 	 2002,
 	 "Drop abstract metadata",
 
-	 "DROP TABLE %Q.pkg_abstract;"
-	 "DROP TABLE %Q.abstract;"
+	 "DROP TABLE pkg_abstract;"
+	 "DROP TABLE abstract;"
 	},
 	{2002,
 	 2001,
 	 "Drop \'shlibs provided\' but retain \'shlibs required\'",
 
-	 "CREATE TABLE %Q.pkg_shlibs_required ("
+	 "CREATE TABLE pkg_shlibs_required ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE CASCADE,"
 		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
 		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, shlib_id)"
 	 ");"
-	 "CREATE TABLE %Q.pkg_shlibs ("
+	 "CREATE TABLE pkg_shlibs ("
 		"package_id INTEGER REFERENCES packages(id)"
 		" ON DELETE CASCADE ON UPDATE CASCADE,"
 		"shlib_id INTEGER REFERENCES shlibs(id)"
 		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"PRIMARY KEY (package_id, shlib_id)"
 	 ");"
-	 "INSERT INTO %Q.pkg_shlibs (package_id, shlib_id)"
-		" SELECT package_id, shlib_id FROM %Q.pkg_shlibs_required;"
-	 "DELETE FROM %Q.shlibs WHERE id NOT IN"
-		" (SELECT shlib_id FROM %Q.pkg_shlibs);"
-	 "DROP TABLE %Q.pkg_shlibs_provided;"
-	 "DROP TABLE %Q.pkg_shlibs_required;"
+	 "INSERT INTO pkg_shlibs (package_id, shlib_id)"
+		" SELECT package_id, shlib_id FROM pkg_shlibs_required;"
+	 "DELETE FROM shlibs WHERE id NOT IN"
+		" (SELECT shlib_id FROM pkg_shlibs);"
+	 "DROP TABLE pkg_shlibs_provided;"
+	 "DROP TABLE pkg_shlibs_required;"
 	},
 
 
