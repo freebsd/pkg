@@ -136,67 +136,151 @@ pkg_repo_binary_finalize_prstatements(void)
 }
 
 int
-pkg_repo_binary_open(const char *repodb, bool force, sqlite3 **sqlite,
-	bool *incremental)
+pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 {
-	bool db_not_open;
 	int reposcver;
 	int retcode = EPKG_OK;
-
-	if (access(repodb, R_OK) == 0)
-		*incremental = true;
-	else
-		*incremental = false;
+	char filepath[MAXPATHLEN];
+	const char *dbdir = NULL;
+	sqlite3 *sqlite = NULL;
+	int flags;
+	int64_t res;
 
 	sqlite3_initialize();
-	db_not_open = true;
-	while (db_not_open) {
-		if (sqlite3_open(repodb, sqlite) != SQLITE_OK) {
-			sqlite3_shutdown();
-			return (EPKG_FATAL);
-		}
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
-		db_not_open = false;
+	snprintf(filepath, sizeof(filepath), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
 
-		/* If the schema is too old, or we're forcing a full
-			   update, then we cannot do an incremental update.
-			   Delete the existing repo, and promote this to a
-			   full update */
-		if (!*incremental)
-			continue;
-		retcode = pkg_repo_binary_get_user_version(*sqlite, "main", &reposcver);
-		if (retcode != EPKG_OK)
-			return (EPKG_FATAL);
-		if (force || reposcver != REPO_SCHEMA_VERSION) {
-			if (reposcver != REPO_SCHEMA_VERSION)
-				pkg_emit_error("re-creating repo to upgrade schema version "
-						"from %d to %d", reposcver,
-						REPO_SCHEMA_VERSION);
-			sqlite3_close(*sqlite);
-			unlink(repodb);
-			*incremental = false;
-			db_not_open = true;
-		}
+	/* Always want read mode here */
+	if (access(filepath, R_OK | mode) != 0)
+		return (EPKG_ENOACCESS);
+
+	flags = (mode & W_OK) != 0 ? SQLITE_OPEN_READWRITE : SQLITE_OPEN_READONLY;
+	if (sqlite3_open_v2(filepath, &sqlite, flags, NULL) != SQLITE_OK)
+		return (EPKG_FATAL);
+
+	/* Sanitise sqlite database */
+	if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
+		"WHERE type='table' AND name='repodata';", &res, false) != EPKG_OK) {
+		pkg_emit_error("Unable to query repository");
+		sqlite3_close(sqlite);
+		return (EPKG_FATAL);
 	}
 
-	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
-	    sqlite_file_exists, NULL, NULL);
-
-	if (!*incremental) {
-		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
-		if (retcode != EPKG_OK)
-			return (retcode);
+	if (res != 1) {
+		pkg_emit_notice("Repository %s contains no repodata table, "
+			"need to re-create database", repo->name);
+		sqlite3_close(sqlite);
+		return (EPKG_FATAL);
 	}
+
+	/* Check package site */
+	char *req = sqlite3_mprintf("select count(key) from repodata "
+		"WHERE key = \"packagesite\" and value = '%q'", pkg_repo_url(repo));
+
+	res = 0;
+	get_pragma(sqlite, req, &res, true);
+	sqlite3_free(req);
+	if (res != 1) {
+		pkg_emit_notice("Repository %s has a wrong packagesite, need to "
+			"re-create database", repo->name);
+		sqlite3_close(sqlite);
+		return (EPKG_FATAL);
+	}
+
+	/* Check version */
+	retcode = pkg_repo_binary_get_user_version(sqlite, "main", &reposcver);
+	if (retcode != EPKG_OK) {
+		sqlite3_close(sqlite);
+		return (EPKG_FATAL);
+	}
+	if (reposcver != REPO_SCHEMA_VERSION) {
+		if (reposcver != REPO_SCHEMA_VERSION)
+			pkg_emit_error("re-creating repo to upgrade schema version "
+				"from %d to %d", reposcver,
+				REPO_SCHEMA_VERSION);
+		sqlite3_close(sqlite);
+		if (mode & W_OK)
+			unlink(filepath);
+		return (EPKG_REPOSCHEMA);
+	}
+
+	repo->priv = sqlite;
 
 	return (EPKG_OK);
+}
+
+int
+pkg_repo_binary_create(struct pkg_repo *repo)
+{
+	char filepath[MAXPATHLEN];
+	const char *dbdir = NULL;
+	sqlite3 *sqlite = NULL;
+	int retcode;
+
+	sqlite3_initialize();
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+
+	snprintf(filepath, sizeof(filepath), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
+	/* Should never ever happen */
+	if (access(filepath, R_OK) != 0)
+		return (EPKG_CONFLICT);
+
+	/* Open for read/write/create */
+	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK)
+		return (EPKG_FATAL);
+
+	retcode = sql_exec(sqlite, binary_repo_initsql, REPO_SCHEMA_VERSION);
+
+	if (retcode == EPKG_OK) {
+		sqlite3_stmt *stmt;
+		const char sql[] = ""
+						"INSERT OR REPLACE INTO repodata (key, value) "
+						"VALUES (\"packagesite\", ?1);";
+
+		/* register the packagesite */
+		if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
+			"   key TEXT UNIQUE NOT NULL,"
+			"   value TEXT NOT NULL"
+			");") != EPKG_OK) {
+			pkg_emit_error("Unable to register the packagesite in the "
+				"database");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(sqlite, sql);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		sqlite3_bind_text(stmt, 1, pkg_repo_url(repo), -1, SQLITE_STATIC);
+
+		if (sqlite3_step(stmt) != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite, sql);
+			sqlite3_finalize(stmt);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		sqlite3_finalize(stmt);
+	}
+
+cleanup:
+	sqlite3_close(sqlite);
+
+	return (retcode);
 }
 
 int
 pkg_repo_binary_init(struct pkg_repo *repo)
 {
 	int retcode = EPKG_OK;
-	sqlite3 *sqlite;
+	sqlite3 *sqlite = PRIV_GET(repo);
 
+	sqlite3_create_function(sqlite, "file_exists", 2, SQLITE_ANY, NULL,
+		    sqlite_file_exists, NULL, NULL);
 	retcode = sql_exec(sqlite, "PRAGMA synchronous=default");
 	if (retcode != EPKG_OK)
 		return (retcode);

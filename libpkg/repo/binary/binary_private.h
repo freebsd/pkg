@@ -28,7 +28,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 
-static const char initsql[] = ""
+static const char binary_repo_initsql[] = ""
 	"CREATE TABLE packages ("
 	    "id INTEGER PRIMARY KEY,"
 	    "origin TEXT UNIQUE,"

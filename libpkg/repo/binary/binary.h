@@ -35,4 +35,7 @@ int pkg_repo_binary_init(struct pkg_repo *repo);
 int pkg_repo_binary_close(struct pkg_repo *repo, bool commit);
 int pkg_repo_binary_access(struct pkg_repo *repo, unsigned mode);
 
+int pkg_repo_binary_create(struct pkg_repo *repo);
+int pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode);
+
 #endif /* BINARY_H_ */

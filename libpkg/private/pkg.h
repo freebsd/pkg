@@ -325,7 +325,8 @@ struct pkg_repo_ops {
 	/* Accessing repo */
 	int (*init)(struct pkg_repo *);
 	int (*access)(struct pkg_repo *, unsigned);
-	int (*open)(struct pkg_repo *);
+	int (*open)(struct pkg_repo *, unsigned);
+	int (*create)(struct pkg_repo *);
 	int (*close)(struct pkg_repo *, bool);
 
 	/* Updating repo */

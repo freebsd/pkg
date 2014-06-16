@@ -49,42 +49,6 @@
 
 
 static int
-pkg_repo_binary_register(struct pkg_repo *repo, sqlite3 *sqlite)
-{
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-	    "INSERT OR REPLACE INTO repodata (key, value) "
-	    "VALUES (\"packagesite\", ?1);";
-
-	/* register the packagesite */
-	if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
-			"   key TEXT UNIQUE NOT NULL,"
-			"   value TEXT NOT NULL"
-			");") != EPKG_OK) {
-		pkg_emit_error("Unable to register the packagesite in the "
-				"database");
-		return (EPKG_FATAL);
-	}
-
-	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sql);
-		return (EPKG_FATAL);
-	}
-
-	sqlite3_bind_text(stmt, 1, pkg_repo_url(repo), -1, SQLITE_STATIC);
-
-	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, sql);
-		sqlite3_finalize(stmt);
-		return (EPKG_FATAL);
-	}
-
-	sqlite3_finalize(stmt);
-
-	return (EPKG_OK);
-}
-
-static int
 pkg_repo_binary_add_from_manifest(char *buf, const char *origin, const char *digest,
 		long offset, sqlite3 *sqlite,
 		struct pkg_manifest_key **keys, struct pkg **p, bool is_legacy,
@@ -207,12 +171,13 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 }
 
 static int
-pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
+pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
+	time_t *mtime)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL /*, *fconflicts = NULL*/;
-	sqlite3 *sqlite = NULL;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
+	sqlite3 *sqlite = PRIV_GET(repo);
 	const char *origin, *digest, *offset, *length;
 	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *p;
@@ -229,28 +194,9 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo, time
 	char *map = MAP_FAILED;
 	size_t len = 0;
 	int hash_it = 0;
-	bool in_trans = false, new_repo = true, legacy_repo = false, reuse_repo;
-
-	if (access(name, R_OK) != -1)
-		new_repo = false;
+	bool in_trans = false, new_repo = true, legacy_repo = false;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
-	if ((rc = pkg_repo_binary_open(name, false, &sqlite, &reuse_repo)) != EPKG_OK) {
-		return (EPKG_FATAL);
-	}
-
-	if (!reuse_repo) {
-		pkg_debug(1, "Pkgrepo, need to re-create database '%s'", name);
-		local_t = 0;
-		*mtime = 0;
-	}
-
-	if ((rc = pkg_repo_binary_init(sqlite)) != EPKG_OK) {
-		goto cleanup;
-	}
-
-	if ((rc = pkg_repo_binary_register(repo, sqlite)) != EPKG_OK)
-		goto cleanup;
 
 	it = pkgdb_repo_origins(sqlite);
 	if (it == NULL) {
@@ -382,8 +328,6 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo, time
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
 
-	sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repo_update (x INTEGER);");
-
 	in_trans = true;
 	rc = pkgdb_transaction_begin(sqlite, "REPO");
 	if (rc != EPKG_OK)
@@ -452,10 +396,6 @@ cleanup:
 			rc = EPKG_FATAL;
 	}
 
-	repo->ops->close(repo, false);
-
-	if (rc == EPKG_OK)
-		sql_exec(sqlite, "DROP TABLE repo_update;");
 	if (pkg != NULL)
 		pkg_free(pkg);
 	if (it != NULL)
@@ -471,7 +411,7 @@ cleanup:
 	if (linebuf != NULL)
 		free(linebuf);
 
-	sqlite3_close(sqlite);
+	repo->ops->close(repo, false);
 
 	return (rc);
 }
@@ -484,9 +424,8 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	const char *dbdir = NULL;
 	struct stat st;
 	time_t t = 0;
-	sqlite3 *sqlite = NULL;
-	char *req = NULL;
-	int64_t res;
+	int res = EPKG_FATAL;
+
 	bool got_meta = false;
 
 	sqlite3_initialize();
@@ -510,74 +449,31 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	}
 
 	if (t != 0) {
-		if (sqlite3_open(filepath, &sqlite) != SQLITE_OK) {
-			pkg_emit_error("Unable to open local database");
-			return (EPKG_FATAL);
-		}
-
-		if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
-		    "WHERE type='table' AND name='repodata';", &res, false) != EPKG_OK) {
-			pkg_emit_error("Unable to query repository");
-			sqlite3_close(sqlite);
-			return (EPKG_FATAL);
-		}
-
-		if (res != 1) {
-			t = 0;
-			pkg_emit_notice("Repository %s contains no repodata table, "
-					"need to re-create database", repo->name);
-			if (sqlite != NULL) {
-				sqlite3_close(sqlite);
-				sqlite = NULL;
-			}
-		}
-	}
-
-	if (t != 0) {
-		req = sqlite3_mprintf("select count(key) from repodata "
-		    "WHERE key = \"packagesite\" and value = '%q'", pkg_repo_url(repo));
-
-		res = 0;
-		/*
-		 * Ignore error here:
-		 * if an error occure it means the database is unusable
-		 * therefor it is better to rebuild it from scratch
-		 */
-		get_pragma(sqlite, req, &res, true);
-		sqlite3_free(req);
-		if (res == 1) {
-			/* Test for incomplete upgrade */
-			if (sqlite3_exec(sqlite, "INSERT INTO repo_update VALUES(1);",
-					NULL, NULL, NULL) == SQLITE_OK) {
-				res = -1;
-				pkg_emit_notice("The previous update of %s was not completed "
-						"successfully, re-create repo database", repo->name);
-			}
-		}
-		else {
-			pkg_emit_notice("Repository %s has a wrong packagesite, need to "
-					"re-create database", repo->name);
-		}
-		if (res != 1) {
-			t = 0;
-
-			if (sqlite != NULL) {
-				sqlite3_close(sqlite);
-				sqlite = NULL;
-			}
+		/* Try to open repo */
+		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+			/* Try to re-create it */
 			unlink(filepath);
+			if (repo->ops->create(repo) != EPKG_OK) {
+				pkg_emit_notice("Unable to create repository %s", repo->name);
+				goto cleanup;
+			}
+			t = 0;
+			if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+				pkg_emit_notice("Unable to open created repository %s", repo->name);
+				goto cleanup;
+			}
 		}
 	}
 
 	res = pkg_repo_binary_update_incremental(filepath, repo, &t);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
-		pkg_emit_notice("Unable to find catalogs");
+		pkg_emit_notice("Unable to update repository %s", repo->name);
 		goto cleanup;
 	}
 
 cleanup:
 	/* Set mtime from http request if possible */
-	if (t != 0) {
+	if (t != 0 && res == EPKG_OK) {
 		struct timeval ftimes[2] = {
 			{
 			.tv_sec = t,
