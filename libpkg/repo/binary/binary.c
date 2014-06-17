@@ -34,5 +34,6 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.query = pkg_repo_binary_query,
 	.shlib_provided = pkg_repo_binary_shlib_provide,
 	.shlib_required = pkg_repo_binary_shlib_require,
+	.search = pkg_repo_binary_search,
 	.fetch_pkg = NULL
 };

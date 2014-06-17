@@ -135,39 +135,6 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	return (comp);
 }
 
-static const char *
-pkgdb_get_match_how(match_t match)
-{
-	const char	*how = NULL;
-
-	switch (match) {
-	case MATCH_ALL:
-		how = NULL;
-		break;
-	case MATCH_EXACT:
-		if (pkgdb_case_sensitive())
-			how = "%s = ?1";
-		else
-			how = "%s = ?1 COLLATE NOCASE";
-		break;
-	case MATCH_GLOB:
-		how = "%s GLOB ?1";
-		break;
-	case MATCH_REGEX:
-		how = "%s REGEXP ?1";
-		break;
-	case MATCH_CONDITION:
-		/* Should not be called by pkgdb_get_match_how(). */
-		assert(0);
-		break;
-	case MATCH_FTS:
-		how = "id IN (SELECT id FROM pkg_search WHERE %s MATCH ?1)";
-		break;
-	}
-
-	return (how);
-}
-
 struct pkgdb_it *
 pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 {

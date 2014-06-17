@@ -215,3 +215,139 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
+
+static const char *
+pkgdb_get_match_how(match_t match)
+{
+	const char	*how = NULL;
+
+	switch (match) {
+	case MATCH_ALL:
+		how = NULL;
+		break;
+	case MATCH_EXACT:
+		if (pkgdb_case_sensitive())
+			how = "%s = ?1";
+		else
+			how = "%s = ?1 COLLATE NOCASE";
+		break;
+	case MATCH_GLOB:
+		how = "%s GLOB ?1";
+		break;
+	case MATCH_REGEX:
+		how = "%s REGEXP ?1";
+		break;
+	case MATCH_CONDITION:
+		/* Should not be called by pkgdb_get_match_how(). */
+		assert(0);
+		break;
+	case MATCH_FTS:
+		how = "id IN (SELECT id FROM pkg_search WHERE %s MATCH ?1)";
+		break;
+	}
+
+	return (how);
+}
+
+static int
+pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
+    pkgdb_field field, pkgdb_field sort)
+{
+	const char	*how = NULL;
+	const char	*what = NULL;
+	const char	*orderby = NULL;
+
+	how = pkgdb_get_match_how(match);
+
+	switch (field) {
+	case FIELD_NONE:
+		what = NULL;
+		break;
+	case FIELD_ORIGIN:
+		what = "origin";
+		break;
+	case FIELD_NAME:
+		what = "name";
+		break;
+	case FIELD_NAMEVER:
+		what = "name || '-' || version";
+		break;
+	case FIELD_COMMENT:
+		what = "comment";
+		break;
+	case FIELD_DESC:
+		what = "desc";
+		break;
+	}
+
+	if (what != NULL && how != NULL)
+		sbuf_printf(sql, how, what);
+
+	switch (sort) {
+	case FIELD_NONE:
+		orderby = NULL;
+		break;
+	case FIELD_ORIGIN:
+		orderby = " ORDER BY origin";
+		break;
+	case FIELD_NAME:
+		orderby = " ORDER BY name";
+		break;
+	case FIELD_NAMEVER:
+		orderby = " ORDER BY name, version";
+		break;
+	case FIELD_COMMENT:
+		orderby = " ORDER BY comment";
+		break;
+	case FIELD_DESC:
+		orderby = " ORDER BY desc";
+		break;
+	}
+
+	if (orderby != NULL)
+		sbuf_cat(sql, orderby);
+
+	return (EPKG_OK);
+}
+
+struct pkg_repo_it *
+pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match,
+    pkgdb_field field, pkgdb_field sort)
+{
+	sqlite3 *sqlite = PRIV_GET(repo);
+	sqlite3_stmt	*stmt = NULL;
+	struct sbuf	*sql = NULL;
+	int		 ret;
+	const char	*multireposql = ""
+		"SELECT id, origin, name, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, path, '%1$s' AS dbname "
+		"FROM packages ";
+
+	assert(pattern != NULL && pattern[0] != '\0');
+
+	sql = sbuf_new_auto();
+	sbuf_printf(sql, multireposql, repo->name);
+
+	/* close the UNIONs and build the search query */
+	sbuf_cat(sql, ") WHERE ");
+
+	pkgdb_search_build_search_query(sql, match, field, sort);
+	sbuf_cat(sql, ";");
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+
+	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
+}

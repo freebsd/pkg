@@ -2356,141 +2356,6 @@ pkgdb_compact(struct pkgdb *db)
 	return (sql_exec(db->sqlite, "VACUUM;"));
 }
 
-static int
-pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
-    pkgdb_field field, pkgdb_field sort)
-{
-	const char	*how = NULL;
-	const char	*what = NULL;
-	const char	*orderby = NULL;
-
-	how = pkgdb_get_match_how(match);
-
-	switch (field) {
-	case FIELD_NONE:
-		what = NULL;
-		break;
-	case FIELD_ORIGIN:
-		what = "origin";
-		break;
-	case FIELD_NAME:
-		what = "name";
-		break;
-	case FIELD_NAMEVER:
-		what = "name || '-' || version";
-		break;
-	case FIELD_COMMENT:
-		what = "comment";
-		break;
-	case FIELD_DESC:
-		what = "desc";
-		break;
-	}
-
-	if (what != NULL && how != NULL)
-		sbuf_printf(sql, how, what);
-
-	switch (sort) {
-	case FIELD_NONE:
-		orderby = NULL;
-		break;
-	case FIELD_ORIGIN:
-		orderby = " ORDER BY origin";
-		break;
-	case FIELD_NAME:
-		orderby = " ORDER BY name";
-		break;
-	case FIELD_NAMEVER:
-		orderby = " ORDER BY name, version";
-		break;
-	case FIELD_COMMENT:
-		orderby = " ORDER BY comment";
-		break;
-	case FIELD_DESC:
-		orderby = " ORDER BY desc";
-		break;
-	}
-
-	if (orderby != NULL)
-		sbuf_cat(sql, orderby);
-
-	return (EPKG_OK);
-}
-
-struct pkgdb_it *
-pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
-    pkgdb_field field, pkgdb_field sort, const char *reponame)
-{
-	sqlite3_stmt	*stmt = NULL;
-	struct sbuf	*sql = NULL;
-	int		 ret;
-	const char	*rname;
-	const char	*basesql = ""
-		"SELECT id, origin, name, version, comment, "
-		"prefix, desc, arch, maintainer, www, "
-		"licenselogic, flatsize, pkgsize, "
-		"cksum, path AS repopath ";
-	const char	*multireposql = ""
-		"SELECT id, origin, name, version, comment, "
-		"prefix, desc, arch, maintainer, www, "
-		"licenselogic, flatsize, pkgsize, "
-		"cksum, path, '%1$s' AS dbname "
-		"FROM '%1$s'.packages ";
-
-	assert(db != NULL);
-	assert(pattern != NULL && pattern[0] != '\0');
-
-	sql = sbuf_new_auto();
-	sbuf_cat(sql, basesql);
-
-	/* add the dbname column to the SELECT */
-	sbuf_cat(sql, ", dbname FROM (");
-
-	if (reponame != NULL) {
-		if ((rname = pkgdb_get_reponame(db, reponame)) != NULL)
-			sbuf_printf(sql, multireposql, rname, rname);
-		else {
-			pkg_emit_error("Repository %s can't be loaded",
-					reponame);
-			sbuf_delete(sql);
-			return (NULL);
-		}
-	} else {
-		if (pkg_repos_activated_count() == 0) {
-			pkg_emit_error("No active repositories configured");
-			sbuf_delete(sql);
-			return (NULL);
-		}
-		/* test on all the attached databases */
-		if (pkgdb_sql_all_attached(db->sqlite, sql,
-		    multireposql, " UNION ALL ") != EPKG_OK) {
-			sbuf_delete(sql);
-			return (NULL);
-		}
-	}
-
-	/* close the UNIONs and build the search query */
-	sbuf_cat(sql, ") WHERE ");
-
-	pkgdb_search_build_search_query(sql, match, field, sort);
-	sbuf_cat(sql, ";");
-	sbuf_finish(sql);
-
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sbuf_get(sql));
-		sbuf_delete(sql);
-		return (NULL);
-	}
-
-	sbuf_delete(sql);
-
-	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new_sqlite(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
-}
-
 int
 pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 		conflict_func_cb cb, void *cbdata)
@@ -3201,6 +3066,8 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	case PKG_STATS_LOCAL_SIZE:
 		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
 		break;
+	/* TODO: broken now */
+#if 0
 	case PKG_STATS_REMOTE_UNIQUE:
 		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
 
@@ -3253,6 +3120,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		/* close parentheses for the compound statement */
 		sbuf_printf(sql, ");");
 		break;
+#endif
 	}
 
 	sbuf_finish(sql);
