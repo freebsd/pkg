@@ -43,7 +43,6 @@ libpkg_la_SOURCES=	pkg.c \
 			pkgdb.c \
 			pkgdb_iterator.c \
 			pkgdb_query.c \
-			pkgdb_repo.c \
 			rcscripts.c \
 			rsa.c \
 			ssh.c \
