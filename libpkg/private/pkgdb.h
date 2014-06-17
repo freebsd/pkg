@@ -39,13 +39,23 @@ struct pkgdb {
 	bool		 prstmt_initialized;
 };
 
-struct pkgdb_it {
+struct pkgdb_sqlite_it {
 	struct pkgdb	*db;
 	sqlite3	*sqlite;
 	sqlite3_stmt	*stmt;
-	short	type;
 	short	flags;
 	short	finished;
+};
+
+struct pkgdb_it {
+	int	type;
+	union _un_pkg_it {
+		struct _pkg_repo_it_set {
+			struct pkg_repo_it *it;
+			struct _pkg_repo_it_set *next;
+		} *remote;
+		struct pkgdb_sqlite_it *local;
+	} un;
 };
 
 #define PKGDB_IT_FLAG_CYCLED (0x1)
@@ -77,26 +87,6 @@ void pkgshell_open(const char **r);
  */
 int pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		int conflicts_num, sqlite3 *sqlite);
-
-/**
- * Execute SQL statement on all attached databases
- * @param s
- * @param sql
- * @param multireposql
- * @param compound
- * @return
- */
-int
-pkgdb_sql_all_attached(sqlite3 *s, struct sbuf *sql, const char *multireposql,
-    const char *compound);
-
-/**
- * Get repository name
- * @param db
- * @param repo
- * @return
- */
-const char *pkgdb_get_reponame(struct pkgdb *db, const char *repo);
 
 /**
  * Get query for the specified match type

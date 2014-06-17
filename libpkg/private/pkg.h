@@ -320,6 +320,18 @@ struct pkg_repo_meta {
 	time_t eol;
 };
 
+struct pkg_remote_it_ops {
+	int (*next)(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
+	void (*free)(struct pkg_repo_it *it);
+	void (*reset)(struct pkg_repo_it *it);
+};
+
+struct pkg_repo_it {
+	struct pkg_repo *repo;
+	struct pkg_remote_it_ops *ops;
+	char data[0];
+};
+
 struct pkg_repo_ops {
 	const char *type;
 	/* Accessing repo */
@@ -333,7 +345,7 @@ struct pkg_repo_ops {
 	int (*update)(struct pkg_repo *, bool);
 
 	/* Query repo */
-	struct pkgdb_it * (*query)(struct pkg_repo *,
+	struct pkg_repo_it * (*query)(struct pkg_repo *,
 					const char *, match_t);
 
 	/* Fetch package from repo */
