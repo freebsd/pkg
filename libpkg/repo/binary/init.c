@@ -479,6 +479,8 @@ pkg_repo_binary_init(struct pkg_repo *repo)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
+	pkgdb_sqlcmd_init(sqlite, NULL, NULL);
+
 	repo->priv = sqlite;
 
 	return (EPKG_OK);
@@ -496,10 +498,6 @@ pkg_repo_binary_close(struct pkg_repo *repo, bool commit)
 	if (commit) {
 		if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
 			retcode = EPKG_FATAL;
-	}
-	else {
-		if (pkgdb_transaction_rollback(sqlite, NULL) != SQLITE_OK)
-				retcode = EPKG_FATAL;
 	}
 
 	pkg_repo_binary_finalize_prstatements();

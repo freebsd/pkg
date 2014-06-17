@@ -237,7 +237,7 @@ m4_define([repos_ldadd_static], [])
 
 dnl Add ldadd for repo
 m4_define([repos_add_ldadd], [
-	m4_append([$1], [m4_join([], [repo/], 
+	m4_append([$1], [m4_join([], [$(top_builddir)/libpkg/repo/], 
 		[$3], [/librepo_], 
 		[$3], [$2.la ])])
 ])
@@ -252,8 +252,8 @@ m4_map([m4_curry([repos_add_ldadd], [repos_ldadd_static], [_static])], [repos])
 m4_map([m4_curry([repos_add_makefile], [repos_makefiles])], [repos])
 
 REPOS="m4_expand([repos])"
-REPOS_LDADD="m4_normalize(m4_expand([repos_ldadd]))"
-REPOS_LDADD_STATIC="m4_normalize(m4_expand([repos_ldadd_static]))"
+REPOS_LDADD='m4_normalize(m4_expand([repos_ldadd]))'
+REPOS_LDADD_STATIC='m4_normalize(m4_expand([repos_ldadd_static]))'
 AC_SUBST([REPOS])
 AC_SUBST([REPOS_LDADD])
 AC_SUBST([REPOS_LDADD_STATIC])

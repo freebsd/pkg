@@ -77,13 +77,7 @@
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
-static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_split_uid(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_split_version(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_regex_delete(void *);
 static int pkgdb_upgrade(struct pkgdb *);
-static int sqlcmd_init(sqlite3 *db, __unused const char **err,
-    __unused const void *noused);
 static int prstmt_initialize(struct pkgdb *db);
 /* static int run_prstmt(sql_prstmt_index s, ...); */
 static void prstmt_finalize(struct pkgdb *db);
@@ -92,7 +86,7 @@ static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 
 extern int sqlite3_shell(int, char**);
 
-static void
+void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	const unsigned char	*regex = NULL;
@@ -165,19 +159,19 @@ pkgdb_split_common(sqlite3_context *ctx, int argc, sqlite3_value **argv,
 	}
 }
 
-static void
+void
 pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	pkgdb_split_common(ctx, argc, argv, '~', "name", "origin");
 }
 
-static void
+void
 pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	pkgdb_split_common(ctx, argc, argv, '-', "name", "version");
 }
 
-static void
+void
 pkgdb_regex_delete(void *p)
 {
 	regex_t	*re = (regex_t *)p;
@@ -186,7 +180,7 @@ pkgdb_regex_delete(void *p)
 	free(re);
 }
 
-static void
+void
 pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 {
 	if (argc != 0) {
@@ -198,7 +192,7 @@ pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 	sqlite3_result_int64(ctx, (int64_t)time(NULL));
 }
 
-static void
+void
 pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	const unsigned char	*arch = NULL;
@@ -963,7 +957,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 		}
 
 		/* Create our functions */
-		sqlcmd_init(db->sqlite, NULL, NULL);
+		pkgdb_sqlcmd_init(db->sqlite, NULL, NULL);
 
 		if (pkgdb_upgrade(db) != EPKG_OK) {
 			pkgdb_close(db);
@@ -2715,8 +2709,8 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
  * create our custom functions in the sqlite3 connection.
  * Used both in the shell and pkgdb_open
  */
-static int
-sqlcmd_init(sqlite3 *db, __unused const char **err, 
+int
+pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err, 
 	    __unused const void *noused)
 {
 	sqlite3_create_function(db, "now", 0, SQLITE_ANY, NULL,
@@ -2748,7 +2742,7 @@ pkgshell_open(const char **reponame)
 	char		 localpath[MAXPATHLEN];
 	const char	*dbdir;
 
-	sqlite3_auto_extension((void(*)(void))sqlcmd_init);
+	sqlite3_auto_extension((void(*)(void))pkgdb_sqlcmd_init);
 
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
