@@ -167,7 +167,7 @@ print_status_begin(struct sbuf *msg)
 	}
 #endif
 
-	if (nbactions > 0)
+	if (nbactions > 0 && nbdone > 0)
 		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 }
 
