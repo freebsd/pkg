@@ -54,6 +54,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 
 	pkg_get(pkg, PKG_NAME, &name);
 	pkg_emit_progress_start(NULL);
+	/* show a progression on package with no files */
+	if (nfiles == 0)
+		pkg_emit_progress_tick(1,1);
 
 	do {
 		snprintf(pathname, sizeof(pathname), "%s/%s",
