@@ -100,3 +100,118 @@ pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 	pkgdb_it_reset(it->data);
 }
 
+struct pkg_repo_it *
+pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
+{
+	sqlite3 *sqlite = PRIV_GET(repo);
+	sqlite3_stmt	*stmt = NULL;
+	struct sbuf	*sql = NULL;
+	const char	*comp = NULL;
+	int		 ret;
+	char		 basesql[BUFSIZ] = ""
+		"SELECT id, origin, name, name || '~' || origin as uniqueid, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, manifestdigest, path AS repopath, '%1$s' AS dbname "
+		"FROM packages";
+
+	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
+
+	sql = sbuf_new_auto();
+	comp = pkgdb_get_pattern_query(pattern, match);
+	if (comp && comp[0])
+		strlcat(basesql, comp, sizeof(basesql));
+
+	sbuf_printf(sql, basesql, repo->name);
+
+	sbuf_cat(sql, " ORDER BY name;");
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_get(sql), pattern);
+	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), sbuf_size(sql), &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	if (match != MATCH_ALL && match != MATCH_CONDITION)
+		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+
+	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkg_repo_it *
+pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
+{
+	sqlite3_stmt	*stmt;
+	sqlite3 *sqlite = PRIV_GET(repo);
+	struct sbuf	*sql = NULL;
+	int		 ret;
+	const char	 basesql[] = ""
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.name || '~' || p.origin as uniqueid, "
+			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+			"p.licenselogic, p.flatsize, p.pkgsize, "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
+			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_provided AS ps ON "
+			"p.id = ps.package_id "
+			"WHERE ps.shlib_id IN (SELECT id FROM '%1$s'.shlibs WHERE "
+			"name BETWEEN ?1 AND ?1 || '.9');";
+
+	sbuf_printf(sql, basesql, repo->name);
+
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
+
+	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkg_repo_it *
+pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
+{
+	sqlite3_stmt	*stmt;
+	sqlite3 *sqlite = PRIV_GET(repo);
+	struct sbuf	*sql = NULL;
+	int		 ret;
+	const char	 basesql[] = ""
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.name || '~' || p.origin as uniqueid, "
+			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+			"p.licenselogic, p.flatsize, p.pkgsize, "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
+			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_required AS ps ON "
+			"p.id = ps.package_id "
+			"WHERE ps.shlib_id = (SELECT id FROM '%1$s'.shlibs WHERE name=?1);";
+
+	sbuf_printf(sql, basesql, repo->name);
+
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
+
+	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
+}

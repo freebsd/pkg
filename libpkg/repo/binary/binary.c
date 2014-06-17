@@ -31,6 +31,8 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.create = pkg_repo_binary_create,
 	.close = pkg_repo_binary_close,
 	.update = pkg_repo_binary_update,
-	.query = NULL,
+	.query = pkg_repo_binary_query,
+	.shlib_provided = pkg_repo_binary_shlib_provide,
+	.shlib_required = pkg_repo_binary_shlib_require,
 	.fetch_pkg = NULL
 };

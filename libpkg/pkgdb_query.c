@@ -285,7 +285,7 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 
 
 struct pkgdb_it *
-pkgdb_repo_query(struct pkgdb *db, const char *pattern, match_t match,
+pkg_repo_query(struct pkgdb *db, const char *pattern, match_t match,
     const char *repo)
 {
 	struct pkgdb_it *it;

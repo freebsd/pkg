@@ -232,7 +232,7 @@ exec_rquery(int argc, char **argv)
 		const char *condition_sql = NULL;
 		if (match == MATCH_CONDITION && sqlcond)
 			condition_sql = sbuf_data(sqlcond);
-		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL)
+		if ((it = pkg_repo_query(db, condition_sql, match, reponame)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
@@ -250,7 +250,7 @@ exec_rquery(int argc, char **argv)
 		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL)
+			if ((it = pkg_repo_query(db, pkgname, match, reponame)) == NULL)
 				return (EX_IOERR);
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
