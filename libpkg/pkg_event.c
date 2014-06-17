@@ -885,9 +885,13 @@ pkg_emit_progress_start(const char *fmt, ...)
 	va_list ap;
 
 	ev.type = PKG_EVENT_PROGRESS_START;
-	va_start(ap, fmt);
-	vasprintf(&ev.e_progress_start.msg, fmt, ap);
-	va_end(ap);
+	if (fmt != NULL) {
+		va_start(ap, fmt);
+		vasprintf(&ev.e_progress_start.msg, fmt, ap);
+		va_end(ap);
+	} else {
+		ev.e_progress_start.msg = NULL;
+	}
 
 	pkg_emit_event(&ev);
 	free(ev.e_progress_start.msg);

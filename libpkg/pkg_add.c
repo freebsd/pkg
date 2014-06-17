@@ -53,7 +53,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	bool renamed = true;
 
 	pkg_get(pkg, PKG_NAME, &name);
-	pkg_emit_progress_start("Installing %s", name);
+	pkg_emit_progress_start(NULL);
 
 	do {
 		snprintf(pathname, sizeof(pathname), "%s/%s",

@@ -61,6 +61,7 @@ static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
 
 static char *progress_message = NULL;
+static struct sbuf *msg_buf = NULL;
 static int last_progress_slots = -1;
 static const int max_slots = 30;
 static bool progress_alarm = false;
@@ -332,6 +333,9 @@ event_callback(void *data, struct pkg_event *ev)
 	int *debug = data;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
+	if (msg_buf == NULL) {
+		msg_buf = sbuf_new_auto();
+	}
 
 	/*
 	 * If a progressbar has been interrupted by another event, then
@@ -405,28 +409,17 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		else {
-			struct sbuf	*msg;
-
 			nbdone++;
-
-			msg = sbuf_new_auto();
-			if (msg == NULL) {
-				warn("sbuf_new_auto() failed");
-				break;
-			}
-
-			print_status_begin(msg);
+			sbuf_clear(msg_buf);
+			print_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg, "Installing %n-%v...", pkg, pkg);
-
-			print_status_end(msg);
+			pkg_sbuf_printf(msg_buf, "Installing %n-%v", pkg, pkg);
 		}
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
 		if (pkg_has_message(ev->e_install_finished.pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
@@ -500,43 +493,31 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		else {
-			struct sbuf	*msg;
-
 			pkg_new = ev->e_upgrade_begin.new;
 			pkg_old = ev->e_upgrade_begin.old;
 			nbdone++;
 
-			msg = sbuf_new_auto();
-			if (msg == NULL) {
-				warn("sbuf_new_auto() failed");
-				break;
-			}
-
-			print_status_begin(msg);
+			print_status_begin(msg_buf);
 
 			switch (pkg_version_change_between(pkg_new, pkg_old)) {
 			case PKG_DOWNGRADE:
-				pkg_sbuf_printf(msg,
-				    "Downgrading %n from %v to %v...",
+				pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v",
 				    pkg_new, pkg_new, pkg_old);
 				break;
 			case PKG_REINSTALL:
-				pkg_sbuf_printf(msg, "Reinstalling %n-%v...",
+				pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
 				    pkg_old, pkg_old);
 				break;
 			case PKG_UPGRADE:
-				pkg_sbuf_printf(msg,
-				    "Upgrading %n from %v to %v...",
-						pkg_old, pkg_old, pkg_new);
+				pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
+				    pkg_old, pkg_old);
 				break;
 			}
-			print_status_end(msg);
 		}
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
 		pkg_new = ev->e_upgrade_begin.new;
 		if (pkg_has_message(pkg_new)) {
 			if (messages == NULL)
@@ -652,8 +633,14 @@ event_callback(void *data, struct pkg_event *ev)
 			progress_message = NULL;
 		}
 		if (!quiet && isatty(STDOUT_FILENO)) {
-			printf("%s: ", ev->e_progress_start.msg);
-			progress_message = strdup(ev->e_progress_start.msg);
+			if (ev->e_progress_start.msg != NULL) {
+				printf("%s: ", ev->e_progress_start.msg);
+				progress_message = strdup(ev->e_progress_start.msg);
+			} else {
+				sbuf_finish(msg_buf);
+				printf("%s: ", sbuf_data(msg_buf));
+				progress_message = strdup(sbuf_data(msg_buf));
+			}
 			last_progress_slots = -1;
 			progress_started = true;
 		}
