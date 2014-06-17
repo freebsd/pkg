@@ -34,7 +34,6 @@
 
 struct pkgdb {
 	sqlite3		*sqlite;
-	int		 lock_count;
 	bool		 prstmt_initialized;
 
 	struct _pkg_repo_list_item {

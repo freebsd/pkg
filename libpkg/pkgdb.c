@@ -855,6 +855,30 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	return (pkgdb_open_all(db_p, type, NULL));
 }
 
+static int
+pkgdb_open_repos(struct pkgdb *db, const char *reponame)
+{
+	struct pkg_repo *r = NULL;
+	struct _pkg_repo_list_item *item;
+
+	while (pkg_repos(&r) == EPKG_OK) {
+		if (reponame == NULL || strcasecmp(r->name, reponame) == 0) {
+			/* We need read only access here */
+			if (r->ops->open(r, R_OK) == EPKG_OK) {
+				item = malloc(sizeof(*item));
+				if (item == NULL) {
+					pkg_emit_errno("malloc", "_pkg_repo_list_item");
+					return (EPKG_FATAL);
+				}
+				item->repo = r;
+				LL_PREPEND(db->repos, item);
+			}
+		}
+	}
+
+	return (EPKG_OK);
+}
+
 int
 pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 {
@@ -869,21 +893,16 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	int		 ret;
 
 	if (*db_p != NULL) {
-		assert((*db_p)->lock_count == 0);
 		reopen = true;
 		db = *db_p;
-		if (db->type == type)
-			return (EPKG_OK);
 	}
 
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
-		return EPKG_FATAL;
+		return (EPKG_FATAL);
 	}
 
-	db->type = type;
-	db->lock_count = 0;
 	db->prstmt_initialized = false;
 
 	if (!reopen) {
@@ -964,8 +983,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 
 	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
 		if (reponame != NULL || pkg_repos_activated_count() > 0) {
-			db->type = PKGDB_REMOTE;
-			ret = pkgdb_open_multirepos(dbdir, db, reponame);
+			ret = pkgdb_open_repos(db, reponame);
 			if (ret != EPKG_OK)
 				return (ret);
 		} else if (type == PKGDB_REMOTE) {
@@ -995,6 +1013,8 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 void
 pkgdb_close(struct pkgdb *db)
 {
+	struct _pkg_repo_list_item *cur, *tmp;
+
 	if (db == NULL)
 		return;
 
@@ -1002,9 +1022,10 @@ pkgdb_close(struct pkgdb *db)
 		prstmt_finalize(db);
 
 	if (db->sqlite != NULL) {
-		assert(db->lock_count == 0);
-		if (db->type == PKGDB_REMOTE) {
-			pkgdb_detach_remotes(db->sqlite);
+
+		LL_FOREACH_SAFE(db->repos, cur, tmp) {
+			cur->repo->ops->close(cur->repo, false);
+			free(cur);
 		}
 
 		if (!sqlite3_db_readonly(db->sqlite, "main"))
@@ -2418,7 +2439,6 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 
 	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
-	assert(db->type == PKGDB_REMOTE);
 
 	sql = sbuf_new_auto();
 	sbuf_cat(sql, basesql);
