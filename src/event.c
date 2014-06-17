@@ -354,7 +354,7 @@ stop_progressbar(void)
 static void
 draw_progressbar(int64_t current, int64_t total)
 {
-        int percent;
+	int percent;
 	int64_t transferred;
 	time_t now;
 	char buf[10];
@@ -580,14 +580,12 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		else {
-			nbdone++;
+		nbdone++;
 
-			print_status_begin(msg_buf);
+		print_status_begin(msg_buf);
 
-			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
-		}
+		pkg = ev->e_install_begin.pkg;
+		pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -596,27 +594,25 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		else {
-			pkg_new = ev->e_upgrade_begin.new;
-			pkg_old = ev->e_upgrade_begin.old;
-			nbdone++;
+		pkg_new = ev->e_upgrade_begin.new;
+		pkg_old = ev->e_upgrade_begin.old;
+		nbdone++;
 
-			print_status_begin(msg_buf);
+		print_status_begin(msg_buf);
 
-			switch (pkg_version_change_between(pkg_new, pkg_old)) {
-			case PKG_DOWNGRADE:
-				pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v",
-				    pkg_new, pkg_new, pkg_old);
-				break;
-			case PKG_REINSTALL:
-				pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
-				    pkg_old, pkg_old);
-				break;
-			case PKG_UPGRADE:
-				pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v",
-				    pkg_new, pkg_new, pkg_old);
-				break;
-			}
+		switch (pkg_version_change_between(pkg_new, pkg_old)) {
+		case PKG_DOWNGRADE:
+			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v",
+			    pkg_new, pkg_new, pkg_old);
+			break;
+		case PKG_REINSTALL:
+			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
+		    pkg_old, pkg_old);
+			break;
+		case PKG_UPGRADE:
+			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v",
+			    pkg_new, pkg_new, pkg_old);
+			break;
 		}
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
