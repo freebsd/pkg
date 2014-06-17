@@ -237,7 +237,6 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
 	const char	*uniqueid;
-	char		 sql[BUFSIZ];
 	const char	*mainsql = ""
 		"SELECT p.name, p.origin, p.version, p.locked "
 		"FROM main.packages AS p "
@@ -776,6 +775,25 @@ static struct load_on_flag {
 	{ -1,			        NULL }
 };
 
+static void
+pkgdb_sqlite_it_reset(struct pkgdb_sqlite_it *it)
+{
+	if (it == NULL)
+		return;
+
+	it->finished = 0;
+	sqlite3_reset(it->stmt);
+}
+
+static void
+pkgdb_sqlite_it_free(struct pkgdb_sqlite_it *it)
+{
+	if (it == NULL)
+		return;
+
+	sqlite3_finalize(it->stmt);
+}
+
 static int
 pkgdb_sqlite_it_next(struct pkgdb *db, struct pkgdb_sqlite_it *it,
 	struct pkg **pkg_p, unsigned flags)
@@ -838,7 +856,7 @@ pkgdb_sqlite_it_next(struct pkgdb *db, struct pkgdb_sqlite_it *it,
 		}
 		else {
 			if (it->flags & PKGDB_IT_FLAG_AUTO)
-				pkgdb_it_free(it);
+				pkgdb_sqlite_it_free(it);
 			return (EPKG_END);
 		}
 		break;
@@ -847,26 +865,6 @@ pkgdb_sqlite_it_next(struct pkgdb *db, struct pkgdb_sqlite_it *it,
 		return (EPKG_FATAL);
 	}
 }
-
-static void
-pkgdb_sqlite_it_reset(struct pkgdb_sqlite_it *it)
-{
-	if (it == NULL)
-		return;
-
-	it->finished = 0;
-	sqlite3_reset(it->stmt);
-}
-
-static void
-pkgdb_sqlite_it_free(struct pkgdb_sqlite_it *it)
-{
-	if (it == NULL)
-		return;
-
-	sqlite3_finalize(it->stmt);
-}
-
 
 int
 pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
@@ -911,6 +909,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 void
 pkgdb_it_reset(struct pkgdb_it *it)
 {
+	struct _pkg_repo_it_set *cur;
+
 	assert(it != NULL);
 
 	switch (it->type) {
@@ -918,7 +918,6 @@ pkgdb_it_reset(struct pkgdb_it *it)
 			pkgdb_sqlite_it_reset(&it->un.local);
 			break;
 		case PKGDB_IT_REPO:
-			struct _pkg_repo_it_set *cur;
 			LL_FOREACH(it->un.remote, cur) {
 				cur->it->ops->reset(cur->it);
 			}
@@ -929,6 +928,8 @@ pkgdb_it_reset(struct pkgdb_it *it)
 void
 pkgdb_it_free(struct pkgdb_it *it)
 {
+	struct _pkg_repo_it_set *cur, *tmp;
+
 	if (it == NULL)
 		return;
 
@@ -937,7 +938,6 @@ pkgdb_it_free(struct pkgdb_it *it)
 			pkgdb_sqlite_it_free(&it->un.local);
 			break;
 		case PKGDB_IT_REPO:
-			struct _pkg_repo_it_set *cur, *tmp;
 			LL_FOREACH_SAFE(it->un.remote, cur, tmp) {
 				cur->it->ops->free(cur->it);
 				free(cur);

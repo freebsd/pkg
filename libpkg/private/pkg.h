@@ -356,7 +356,7 @@ struct pkg_repo_ops {
 	struct pkg_repo_it * (*shlib_provided)(struct pkg_repo *,
 					const char *);
 	struct pkg_repo_it * (*search)(struct pkg_repo *, const char *, match_t,
-					pkgdb_field field, pkgdb_field sort, const char *reponame);
+					pkgdb_field field, pkgdb_field sort);
 
 	/* Fetch package from repo */
 	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
