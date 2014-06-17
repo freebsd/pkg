@@ -95,42 +95,6 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 }
 
 static int
-pkg_repo_binary_init_prstatements(sqlite3 *sqlite)
-{
-	sql_prstmt_index i, last;
-	int ret;
-
-	last = PRSTMT_LAST;
-
-	for (i = 0; i < last; i++) {
-		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
-		if (ret != SQLITE_OK) {
-			ERROR_SQLITE(sqlite, SQL(i));
-			return (EPKG_FATAL);
-		}
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_repo_binary_finalize_prstatements(void)
-{
-	sql_prstmt_index i, last;
-
-	last = PRSTMT_LAST;
-
-	for (i = 0; i < last; i++)
-	{
-		if (STMT(i) != NULL) {
-			sqlite3_finalize(STMT(i));
-			STMT(i) = NULL;
-		}
-	}
-	return;
-}
-
-static int
 pkg_repo_binary_set_version(sqlite3 *sqlite, int reposcver)
 {
 	int		 retcode = EPKG_OK;
@@ -409,7 +373,7 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	snprintf(filepath, sizeof(filepath), "%s/%s",
 		dbdir, pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 	/* Should never ever happen */
-	if (access(filepath, R_OK) != 0)
+	if (access(filepath, R_OK) == 0)
 		return (EPKG_CONFLICT);
 
 	/* Open for read/write/create */
@@ -475,11 +439,11 @@ pkg_repo_binary_init(struct pkg_repo *repo)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
+	pkgdb_sqlcmd_init(sqlite, NULL, NULL);
+
 	retcode = pkg_repo_binary_init_prstatements(sqlite);
 	if (retcode != EPKG_OK)
 		return (retcode);
-
-	pkgdb_sqlcmd_init(sqlite, NULL, NULL);
 
 	repo->priv = sqlite;
 

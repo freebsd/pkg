@@ -322,7 +322,7 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 		"SELECT id, origin, name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
-		"cksum, path, '%1$s' AS dbname "
+		"cksum, path AS repopath, '%1$s' AS dbname "
 		"FROM packages ";
 
 	assert(pattern != NULL && pattern[0] != '\0');

@@ -57,7 +57,7 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 
 	if (pkg_repo_binary_run_prstatement(VERSION, origin) != SQLITE_ROW)
 		return (EPKG_FATAL); /* sqlite error */
-	oversion = sqlite3_column_text(STMT(VERSION), 0);
+	oversion = sqlite3_column_text(pkg_repo_binary_stmt_prstatement(VERSION), 0);
 	if (!forced) {
 		switch(pkg_version_cmp(oversion, version)) {
 		case -1:
@@ -125,7 +125,7 @@ try_again:
 			switch(pkg_repo_binary_delete_conflicting(origin,
 					version, pkg_path, forced)) {
 			case EPKG_FATAL: /* sqlite error */
-				ERROR_SQLITE(sqlite, SQL(PKG));
+				ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PKG));
 				return (EPKG_FATAL);
 				break;
 			case EPKG_END: /* repo already has newer */
@@ -136,7 +136,7 @@ try_again:
 				break;
 			}
 		} else {
-			ERROR_SQLITE(sqlite, SQL(PKG));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PKG));
 			return (EPKG_FATAL);
 		}
 	}
@@ -144,7 +144,7 @@ try_again:
 
 	if (pkg_repo_binary_run_prstatement (FTS_APPEND, package_id,
 			name, version, origin) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, SQL(FTS_APPEND));
+		ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(FTS_APPEND));
 		return (EPKG_FATAL);
 	}
 
@@ -155,7 +155,7 @@ try_again:
 				pkg_dep_name(dep),
 				pkg_dep_version(dep),
 				package_id) != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, SQL(DEPS));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(DEPS));
 			return (EPKG_FATAL);
 		}
 	}
@@ -168,7 +168,7 @@ try_again:
 			    pkg_object_string(obj));
 		if (ret != SQLITE_DONE)
 		{
-			ERROR_SQLITE(sqlite, SQL(CAT2));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -180,7 +180,7 @@ try_again:
 			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
 			    pkg_object_string(obj));
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, SQL(LIC2));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -191,7 +191,7 @@ try_again:
 		    ret = pkg_repo_binary_run_prstatement(OPT2, pkg_option_opt(option),
 				pkg_option_value(option), package_id);
 		if(ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, SQL(OPT2));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(OPT2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -205,7 +205,7 @@ try_again:
 			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id,
 					shlib_name);
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, SQL(SHLIB_REQD));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
 		}
 	}
@@ -219,7 +219,7 @@ try_again:
 			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id,
 					shlib_name);
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, SQL(SHLIB_PROV));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);
 		}
 	}
@@ -236,7 +236,7 @@ try_again:
 			ret = pkg_repo_binary_run_prstatement(ANNOTATE2, package_id,
 				  note_tag, note_val);
 		if (ret != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, SQL(ANNOTATE2));
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(ANNOTATE2));
 			return (EPKG_FATAL);
 		}
 	}
@@ -479,6 +479,7 @@ pkg_repo_binary_get_origins(sqlite3 *sqlite)
 		"FROM packages "
 		"ORDER BY origin;";
 
+	pkg_debug(4, "binary_repo: running '%s'", query_sql);
 	ret = sqlite3_prepare_v2(sqlite, query_sql, -1,
 			&stmt, NULL);
 	if (ret != SQLITE_OK) {
@@ -519,12 +520,6 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	struct pkgdb fakedb;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
-
-	stmt = pkg_repo_binary_get_origins(sqlite);
-	if (stmt == NULL) {
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
 
 	if (pkg_repo_fetch_meta(repo, NULL) == EPKG_FATAL)
 		pkg_emit_notice("repository %s has no meta file, using "
@@ -578,13 +573,22 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	fseek(fdigests, 0, SEEK_SET);
 
 	/* Load local repo data */
+	stmt = pkg_repo_binary_get_origins(sqlite);
+	if (stmt == NULL) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
 	fakedb.sqlite = sqlite;
 	it = pkgdb_it_new_sqlite(&fakedb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,
-				&digest);
-		pkg_repo_binary_update_item_new(&ldel, origin, digest, 4, 0);
+	if (it != NULL) {
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,
+							&digest);
+			pkg_repo_binary_update_item_new(&ldel, origin, digest, 4, 0);
+		}
+
+		pkgdb_it_free(it);
 	}
 
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
@@ -723,8 +727,6 @@ cleanup:
 
 	if (pkg != NULL)
 		pkg_free(pkg);
-	if (it != NULL)
-		pkgdb_it_free(it);
 	if (map == MAP_FAILED && fmanifest)
 		fclose(fmanifest);
 	if (fdigests)
@@ -790,6 +792,20 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 			}
 		}
 	}
+	else {
+		/* [Re]create repo */
+		unlink(filepath);
+		if (repo->ops->create(repo) != EPKG_OK) {
+			pkg_emit_notice("Unable to create repository %s", repo->name);
+			goto cleanup;
+		}
+		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+			pkg_emit_notice("Unable to open created repository %s", repo->name);
+			goto cleanup;
+		}
+	}
+
+	repo->ops->init(repo);
 
 	res = pkg_repo_binary_update_incremental(filepath, repo, &t);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {

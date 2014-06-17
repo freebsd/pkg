@@ -510,113 +510,11 @@ typedef enum _sql_prstmt_index {
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
-static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
-	[PKG] = {
-		NULL,
-		"INSERT INTO packages ("
-		"origin, name, version, comment, desc, arch, maintainer, www, "
-		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest, olddigest"
-		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-		"TTTTTTTTTIIITTTT",
-	},
-	[DEPS] = {
-		NULL,
-		"INSERT INTO deps (origin, name, version, package_id) "
-		"VALUES (?1, ?2, ?3, ?4)",
-		"TTTI",
-	},
-	[CAT1] = {
-		NULL,
-		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
-		"T",
-	},
-	[CAT2] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
-		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
-		"IT",
-	},
-	[LIC1] = {
-		NULL,
-		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
-		"T",
-	},
-	[LIC2] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
-		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
-		"IT",
-	},
-	[OPT1] = {
-		NULL,
-		"INSERT OR IGNORE INTO option(option) "
-		"VALUES (?1)",
-		"T",
-	},
-	[OPT2] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_option (option_id, value, package_id) "
-		"VALUES (( SELECT option_id FROM option WHERE option = ?1), ?2, ?3)",
-		"TTI",
-	},
-	[SHLIB1] = {
-		NULL,
-		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
-		"T",
-	},
-	[SHLIB_REQD] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_shlibs_required(package_id, shlib_id) "
-		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT",
-	},
-	[SHLIB_PROV] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_shlibs_provided(package_id, shlib_id) "
-		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT",
-	},
-	[EXISTS] = {
-		NULL,
-		"SELECT count(*) FROM packages WHERE cksum=?1",
-		"T",
-	},
-	[ANNOTATE1] = {
-		NULL,
-		"INSERT OR IGNORE INTO annotation(annotation) "
-		"VALUES (?1)",
-		"T",
-	},
-	[ANNOTATE2] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, tag_id, value_id) "
-		"VALUES (?1,"
-		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
-		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
-		"ITT",
-	},
-	[VERSION] = {
-		NULL,
-		"SELECT version FROM packages WHERE origin=?1",
-		"T",
-	},
-	[DELETE] = {
-		NULL,
-		"DELETE FROM packages WHERE origin=?1;"
-		"DELETE FROM pkg_search WHERE origin=?1;",
-		"TT",
-	},
-	[FTS_APPEND] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
-		"VALUES (?1, ?2 || '-' || ?3, ?4);",
-		"ITTT"
-	}
-	/* PRSTMT_LAST */
-};
-
+int pkg_repo_binary_init_prstatements(sqlite3 *sqlite);
 int pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...);
+const char * pkg_repo_binary_sql_prstatement(sql_prstmt_index s);
+sqlite3_stmt* pkg_repo_binary_stmt_prstatement(sql_prstmt_index s);
+void pkg_repo_binary_finalize_prstatements(void);
 /*
  * Warning: returns a pointer to static array
  */
