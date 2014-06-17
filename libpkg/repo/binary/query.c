@@ -41,3 +41,62 @@
 #include "private/utils.h"
 #include "binary.h"
 
+static struct pkg_repo_it* pkg_repo_binary_it_new(struct pkg_repo *repo,
+	sqlite3_stmt *s, short flags);
+static int pkg_repo_binary_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
+static void pkg_repo_binary_it_free(struct pkg_repo_it *it);
+static void pkg_repo_binary_it_reset(struct pkg_repo_it *it);
+
+static struct pkg_repo_it_ops pkg_repo_binary_it_ops = {
+	.next = pkg_repo_binary_it_next,
+	.free = pkg_repo_binary_it_free,
+	.reset = pkg_repo_binary_it_reset
+};
+
+static struct pkg_repo_it*
+pkg_repo_binary_it_new(struct pkg_repo *repo, sqlite3_stmt *s, short flags)
+{
+	struct pkg_repo_it *it;
+	struct pkgdb fakedb;
+
+	it = malloc(sizeof(*it));
+	if (it == NULL) {
+		pkg_emit_errno("malloc", "pkg_repo_it");
+		sqlite3_finalize(s);
+		return (NULL);
+	}
+
+	it->ops = &pkg_repo_binary_it_ops;
+	it->flags = flags;
+	it->repo = repo;
+
+	fakedb.sqlite = PRIV_GET(repo);
+	it->data = pkgdb_it_new_sqlite(&fakedb, s, PKG_REMOTE, flags);
+
+	if (it->data == NULL) {
+		free(it);
+		return (NULL);
+	}
+
+	return (it);
+}
+
+static int
+pkg_repo_binary_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags)
+{
+	return (pkgdb_it_next(it->data, pkg_p, flags));
+}
+
+static void
+pkg_repo_binary_it_free(struct pkg_repo_it *it)
+{
+	pkgdb_it_free(it->data);
+	free(it);
+}
+
+static void
+pkg_repo_binary_it_reset(struct pkg_repo_it *it)
+{
+	pkgdb_it_reset(it->data);
+}
+
