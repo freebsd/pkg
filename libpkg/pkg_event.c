@@ -112,16 +112,20 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_upd_remove.total
 		    );
 		break;
-	case PKG_EVENT_FETCHING:
-		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH\", "
+	case PKG_EVENT_FETCH_BEGIN:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
 		    "\"data\": { "
-		    "\"url\": \"%s\", "
-		    "\"fetched\": %" PRId64 ", "
-		    "\"total\": %" PRId64
+		    "\"url\": \"%s\" "
 		    "}}",
-		    sbuf_json_escape(buf, ev->e_fetching.url),
-		    ev->e_fetching.done,
-		    ev->e_fetching.total
+		    sbuf_json_escape(buf, ev->e_fetching.url)
+		    );
+		break;
+	case PKG_EVENT_FETCH_FINISHED:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
+		    "\"data\": { "
+		    "\"url\": \"%s\" "
+		    "}}",
+		    sbuf_json_escape(buf, ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
@@ -469,15 +473,23 @@ pkg_emit_already_installed(struct pkg *p)
 }
 
 void
-pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed)
+pkg_emit_fetch_begin(const char *url)
 {
 	struct pkg_event ev;
 
-	ev.type = PKG_EVENT_FETCHING;
+	ev.type = PKG_EVENT_FETCH_BEGIN;
 	ev.e_fetching.url = url;
-	ev.e_fetching.total = total;
-	ev.e_fetching.done = done;
-	ev.e_fetching.elapsed = elapsed;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_fetch_finished(const char *url)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_FETCH_FINISHED;
+	ev.e_fetching.url = url;
 
 	pkg_emit_event(&ev);
 }

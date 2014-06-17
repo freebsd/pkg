@@ -534,6 +534,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		sz = st.size;
 	}
 
+	pkg_emit_fetch_begin(url);
+	pkg_emit_progress_start(NULL);
 	begin_dl = time(NULL);
 	while (done < sz) {
 		time_t	now;
@@ -548,10 +550,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		}
 
 		done += r;
+
 		now = time(NULL);
 		/* Only call the callback every second */
 		if (now > last || done == sz) {
-			pkg_emit_fetching(url, sz, done, (now - begin_dl));
+			pkg_emit_progress_tick(done, sz);
 			last = now;
 		}
 	}
@@ -561,6 +564,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
+	pkg_emit_fetch_finished(url);
 
 	if (strcmp(u->scheme, "ssh") != 0 && ferror(remote)) {
 		pkg_emit_error("%s: %s", url, fetchLastErrString);

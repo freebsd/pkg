@@ -91,6 +91,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 	done = total = 0;
 	start = time(NULL);
 
+	pkg_emit_progress_start("Backing up");
 	do {
 		ret = sqlite3_backup_step(b, NPAGES);
 
@@ -109,12 +110,11 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 		/* Callout no more than once a second */
 		if (elapsed < time(NULL) - start) {
 			elapsed = time(NULL) - start;
-			pkg_emit_fetching(name, total, done, elapsed);
+			pkg_emit_progress_tick(done, total);
 		}
 	} while(done < total);
 
 	ret = sqlite3_backup_finish(b);
-	pkg_emit_fetching(name, total, done, time(NULL) - start); 
 
 	sqlite3_exec(dst, "PRAGMA main.locking_mode=NORMAL;"
 			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);

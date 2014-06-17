@@ -55,14 +55,89 @@
 #include "pkg.h"
 #include "pkgcli.h"
 
+#define STALL_TIME 5
+
 struct sbuf *messages = NULL;
 
 static char *progress_message = NULL;
 static struct sbuf *msg_buf = NULL;
 static int last_progress_percent = -1;
-static const int max_slots = 30;
 static bool progress_alarm = false;
 static bool progress_started = false;
+static bool progress_debit = false;
+static int64_t last_tick = 0;
+static int64_t stalled;
+static int64_t bytes_per_second;
+static int64_t last_update;
+static time_t begin = 0;
+
+/* units for format_size */
+static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
+static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
+
+static void
+format_rate_IEC(char *buf, int size, off_t bytes)
+{
+	int i;
+
+	bytes *= 100;
+	for (i = 0; bytes >= 100*1000 && unit_IEC[i][0] != 'T'; i++)
+		bytes = (bytes + 512) / 1024;
+	if (i == 0) {
+		i++;
+		bytes = (bytes + 512) / 1024;
+	}
+	snprintf(buf, size, "%3lld.%1lld%s%s",
+	    (long long) (bytes + 5) / 100,
+	    (long long) (bytes + 5) / 10 % 10,
+	    unit_IEC[i],
+	    i ? "B" : " ");
+}
+
+static void
+format_size_IEC(char *buf, int size, off_t bytes)
+{
+	int i;
+
+	for (i = 0; bytes >= 10000 && unit_IEC[i][0] != 'T'; i++)
+		bytes = (bytes + 512) / 1024;
+	snprintf(buf, size, "%4lld%s%s",
+	    (long long) bytes,
+	    unit_IEC[i],
+	    i ? "B" : " ");
+}
+
+static void
+format_rate_SI(char *buf, int size, off_t bytes)
+{
+        int i;
+
+        bytes *= 100;
+        for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
+                bytes = (bytes + 500) / 1000;
+        if (i == 0) {
+                i++;
+                bytes = (bytes + 500) / 1000;
+        }
+        snprintf(buf, size, "%3lld.%1lld%s%s",
+            (long long) (bytes + 5) / 100,
+            (long long) (bytes + 5) / 10 % 10,
+            unit_SI[i],
+            i ? "B" : " ");
+}
+
+static void
+format_size_SI(char *buf, int size, off_t bytes)
+{
+        int i;
+
+        for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
+                bytes = (bytes + 500) / 1000;
+        snprintf(buf, size, "%4lld%s%s",
+            (long long) bytes,
+            unit_SI[i],
+            i ? "B" : " ");
+}
 
 static void
 print_status_end(struct sbuf *msg)
@@ -264,7 +339,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 static void
 progress_alarm_handler(int signo)
 {
-	if (max_slots != last_progress_percent && progress_alarm && progress_started) {
+	if (progress_alarm && progress_started) {
 		last_progress_percent = -1;
 		alarm(1);
 	}
@@ -285,6 +360,13 @@ static void
 draw_progressbar(int64_t current, int64_t total)
 {
         int percent;
+	int64_t transferred;
+	time_t now;
+	char buf[10];
+	int64_t bytes_left;
+	int cur_speed;
+	int64_t elapsed;
+	int hours, minutes, seconds;
 
 	percent =  current * 100 / total;
 
@@ -292,6 +374,69 @@ draw_progressbar(int64_t current, int64_t total)
 		last_progress_percent = percent;
 
 		printf("\r%s: %d%%", progress_message, percent);
+		if (progress_debit) {
+			now = time(NULL);
+			transferred = current - last_tick;
+			last_tick = current;
+			bytes_left = total - current;
+			if (bytes_left > 0) {
+				elapsed = (now > last_update) ? now - last_update : 0;
+			} else {
+				elapsed = now - begin;
+			}
+
+			if (elapsed != 0)
+				cur_speed = (transferred / elapsed);  
+			else
+				cur_speed = transferred;
+
+#define AGE_FACTOR 0.9
+			if (bytes_per_second != 0) {
+				bytes_per_second = (bytes_per_second * AGE_FACTOR) +
+					(cur_speed * (1.0 - AGE_FACTOR));
+			} else {
+				bytes_per_second = cur_speed;
+			}
+
+			format_size_IEC(buf, sizeof(buf), current);
+			printf(" %s", buf);
+
+			format_rate_SI(buf, sizeof(buf), transferred);
+			printf(" %s/s", buf);
+
+			if (!transferred)
+				stalled += elapsed;
+			else
+				stalled = 0;
+
+			if (stalled >= STALL_TIME)
+				printf(" - stalled -");
+			else if (bytes_per_second == 0 && bytes_left)
+				printf("   --:-- ETA");
+			else {
+				if (bytes_left > 0)
+					seconds = bytes_left / bytes_per_second;
+				else
+					seconds = elapsed;
+
+				hours = seconds / 3600;
+				seconds -= hours * 3600;
+				minutes = seconds / 60;
+				seconds -= minutes * 60;
+
+				if (hours != 0) {
+					printf("%02d:%02d:%0d", hours, minutes, seconds);
+				} else {
+					printf("   %02d:%02d", minutes, seconds);
+				}
+
+				if (bytes_left > 0) {
+					printf(" ETA");
+				} else {
+					printf("    ");
+				}
+			}
+		}
 		fflush(stdout);
 	}
 	if (current >= total) {
@@ -316,6 +461,8 @@ event_callback(void *data, struct pkg_event *ev)
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
 	int *debug = data;
 	struct pkg_event_conflict *cur_conflict;
+	const char *filename;
+
 	if (msg_buf == NULL) {
 		msg_buf = sbuf_new_auto();
 	}
@@ -357,6 +504,27 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
 		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
 			printf("\n");
+		break;
+	case PKG_EVENT_FETCH_BEGIN:
+		if (quiet)
+			break;
+		filename = strrchr(ev->e_fetching.url, '/');
+		if (filename != NULL) {
+			filename++;
+		} else {
+			/*
+			 * We failed at being smart, so display
+			 * the entire url.
+			 */
+			filename = ev->e_fetching.url;
+		}
+		print_status_begin(msg_buf);
+		progress_debit = true;
+		sbuf_printf(msg_buf, "Fetching %s", filename);
+
+		break;
+	case PKG_EVENT_FETCH_FINISHED:
+		progress_debit = false;
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
@@ -581,6 +749,9 @@ event_callback(void *data, struct pkg_event *ev)
 				progress_message = strdup(sbuf_data(msg_buf));
 			}
 			last_progress_percent = -1;
+			last_tick = 0;
+			begin = last_update = time(NULL);
+			bytes_per_second = 0;
 			if (isatty(STDOUT_FILENO)) {
 				progress_started = true;
 			}
