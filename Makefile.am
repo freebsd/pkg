@@ -6,6 +6,7 @@ pkgconfig_DATA=	libpkg/pkg.pc
 
 $(pkgconfig_DATA): config.status
 
+CLEANFILES=	pkg_repos.h
 EXTRA_DIST=	docs
 dist-hook:
 	rm -rf `find $(distdir)/external -type d -name .deps`
