@@ -150,6 +150,10 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	cur_file = 1;
 
 	pkg_emit_progress_start(NULL);
+	/* fake to show a 100% progress */
+	if (nfiles == 0)
+		pkg_emit_progress_tick(1, 1);
+
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *sum = pkg_file_cksum(file);
 		const ucl_object_t *obj, *an;
