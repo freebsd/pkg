@@ -62,7 +62,7 @@ struct sbuf *messages = NULL;
 
 static char *progress_message = NULL;
 static struct sbuf *msg_buf = NULL;
-static int last_progress_slots = -1;
+static int last_progress_percent = -1;
 static const int max_slots = 30;
 static bool progress_alarm = false;
 static bool progress_started = false;
@@ -267,8 +267,8 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 static void
 progress_alarm_handler(int signo)
 {
-	if (max_slots != last_progress_slots && progress_alarm && progress_started) {
-		last_progress_slots = -1;
+	if (max_slots != last_progress_percent && progress_alarm && progress_started) {
+		last_progress_percent = -1;
 		alarm(1);
 	}
 }
@@ -279,7 +279,7 @@ stop_progressbar(void)
 	if (progress_alarm)
 		putchar('\n');
 
-	last_progress_slots = -1;
+	last_progress_percent = -1;
 	progress_alarm = false;
 	progress_started = false;
 }
@@ -287,28 +287,14 @@ stop_progressbar(void)
 static void
 draw_progressbar(int64_t current, int64_t total)
 {
-	int slots = nearbyint((double)max_slots * current / (double)total);
-	int remain;
+        int percent;
 
-	if (progress_started && slots <= max_slots &&
-			(slots != last_progress_slots || current == total)) {
-		char bar[80];
-		int r = 0;
+	percent =  current * 100 / total;
 
-		last_progress_slots = slots;
+	if (progress_started && (percent != last_progress_percent || current == total)) {
+		last_progress_percent = percent;
 
-		remain = max_slots - slots;
-		r = snprintf(bar, sizeof(bar), "\r%s: [", progress_message);
-		while (slots) {
-			bar[r++] = '+';
-			slots --;
-		}
-		while (remain) {
-			bar[r++] = '-';
-			remain --;
-		}
-		bar[r] = '\0';
-		printf("%s] %" PRId64 " / %" PRId64, bar, current, total);
+		printf("\r%s: %d%%", progress_message, percent);
 		fflush(stdout);
 	}
 	if (current >= total) {
@@ -621,17 +607,17 @@ event_callback(void *data, struct pkg_event *ev)
 			free(progress_message);
 			progress_message = NULL;
 		}
-		if (!quiet && isatty(STDOUT_FILENO)) {
+		if (!quiet) {
 			if (ev->e_progress_start.msg != NULL) {
-				printf("%s: ", ev->e_progress_start.msg);
 				progress_message = strdup(ev->e_progress_start.msg);
 			} else {
 				sbuf_finish(msg_buf);
-				printf("%s: ", sbuf_data(msg_buf));
 				progress_message = strdup(sbuf_data(msg_buf));
 			}
-			last_progress_slots = -1;
-			progress_started = true;
+			last_progress_percent = -1;
+			if (isatty(STDOUT_FILENO)) {
+				progress_started = true;
+			}
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
