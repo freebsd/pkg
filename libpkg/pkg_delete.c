@@ -142,11 +142,17 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	const char	*path;
 	char		fpath[MAXPATHLEN];
+	int		nfiles, cur_file;
 
+	nfiles = HASH_COUNT(pkg->files);
+	cur_file = 1;
+
+	pkg_emit_progress_start(NULL);
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *sum = pkg_file_cksum(file);
 		const ucl_object_t *obj, *an;
 
+		pkg_emit_progress_tick(cur_file++, nfiles);
 		if (file->keep == 1)
 			continue;
 

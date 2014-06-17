@@ -466,28 +466,17 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		else {
-			struct sbuf	*msg;
-
 			nbdone++;
 
-			msg = sbuf_new_auto();
-			if (msg == NULL) {
-				warn("sbuf_new_auto() failed");
-				break;
-			}
-
-			print_status_begin(msg);
+			print_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg, "Deleting %n-%v...", pkg, pkg);
-
-			print_status_end(msg);
+			pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
 		}
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
