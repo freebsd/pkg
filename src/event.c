@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
@@ -32,7 +32,6 @@
 #include "pkg_config.h"
 #endif
 
-#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/wait.h>
@@ -46,11 +45,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sysexits.h>
 #include <signal.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <math.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
