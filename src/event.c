@@ -613,8 +613,8 @@ event_callback(void *data, struct pkg_event *ev)
 				    pkg_old, pkg_old);
 				break;
 			case PKG_UPGRADE:
-				pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
-				    pkg_old, pkg_old);
+				pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v",
+				    pkg_new, pkg_new, pkg_old);
 				break;
 			}
 		}
