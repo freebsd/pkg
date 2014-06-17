@@ -2397,7 +2397,7 @@ pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
 }
 
 struct pkgdb_it *
-pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
+pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *reponame)
 {
 	sqlite3_stmt	*stmt = NULL;

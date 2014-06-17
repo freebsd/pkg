@@ -476,7 +476,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(origin, matchorigin) != 0)
 			continue;
 
-		it_remote = pkgdb_rquery(db, origin, MATCH_EXACT, reponame);
+		it_remote = pkgdb_repo_query(db, origin, MATCH_EXACT, reponame);
 		if (it_remote == NULL) {
 			retcode = EX_IOERR;
 			goto cleanup;
