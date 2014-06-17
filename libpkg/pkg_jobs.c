@@ -87,7 +87,7 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
-	if ((pkg_repo_find_ident(ident)) == NULL) {
+	if ((pkg_repo_find(ident)) == NULL) {
 		pkg_emit_error("Unknown repository: %s", ident);
 		return (EPKG_FATAL);
 	}
@@ -728,7 +728,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				continue;
 
 			/* Not found, search in the repos */
-			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
+			it = pkgdb_repo_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
 			if (it != NULL) {
 				rpkg = NULL;
 				prhead = NULL;
@@ -998,7 +998,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 	const char *fuid;
 	struct pkg_job_universe_item *unit;
 
-	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
 
 	qmsg = sbuf_new_auto();
@@ -1103,7 +1103,7 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
-	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
 		rc = EPKG_FATAL;
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
@@ -1264,7 +1264,7 @@ get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	}
 
-	if ((it = pkgdb_rquery(j->db, uid, MATCH_EXACT, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query(j->db, uid, MATCH_EXACT, j->reponame)) == NULL)
 		return (NULL);
 
 	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
@@ -1898,7 +1898,7 @@ pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 
 	sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE manifestdigest=%Q", digest);
 
-	it = pkgdb_rquery(j->db, sqlbuf, MATCH_CONDITION, j->reponame);
+	it = pkgdb_repo_query(j->db, sqlbuf, MATCH_CONDITION, j->reponame);
 	if (it != NULL) {
 		/*
 		 * If we have the same package in a remote repo, it is not an

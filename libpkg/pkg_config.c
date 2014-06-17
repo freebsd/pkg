@@ -47,8 +47,8 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "pkg_repos.h"
 
-#define REPO_NAME_PREFIX "repo-"
 #ifndef PORTSDIR
 #define PORTSDIR "/usr/ports"
 #endif
@@ -311,7 +311,8 @@ static struct config_entry c[] = {
 static bool parsed = false;
 static size_t c_size = NELEM(c);
 
-static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
+static struct pkg_repo* pkg_repo_new(const char *name,
+	const char *url, const char *type);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -397,15 +398,22 @@ disable_plugins_if_static(void)
 static void
 add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	const ucl_object_t *cur;
-	ucl_object_t *tmp = NULL;
+	const ucl_object_t *cur, *enabled;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
+	const char *type = NULL;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
+
+	enabled = ucl_object_find_key(obj, "enabled");
+	if (enabled != NULL && !ucl_object_toboolean(enabled)) {
+		pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
+		return;
+	}
+
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		if (key == NULL)
@@ -427,24 +435,6 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			pubkey = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "enabled") == 0) {
-			if (cur->type == UCL_STRING)
-				tmp = ucl_object_fromstring_common(ucl_object_tostring(cur),
-				    strlen(ucl_object_tostring(cur)), UCL_STRING_PARSE_BOOLEAN);
-			if (cur->type != UCL_BOOLEAN && (tmp != NULL && tmp->type != UCL_BOOLEAN)) {
-				pkg_emit_error("Expecting a boolean for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				if (tmp != NULL)
-					ucl_object_unref(tmp);
-				return;
-			}
-			if (tmp != NULL)
-				pkg_emit_error("Warning: expecting a boolean for the '%s' key of the '%s' repo, "
-				    " the value has been correctly converted, please consider fixing", key, rname);
-			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
-			if (tmp != NULL)
-				ucl_object_unref(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -469,6 +459,14 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			fingerprints = ucl_object_tostring(cur);
+		} else if (strcasecmp(key, "type") == 0) {
+			if (cur->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			type = ucl_object_tostring(cur);
 		}
 	}
 
@@ -478,7 +476,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	}
 
 	if (r == NULL)
-		r = pkg_repo_new(rname, url);
+		r = pkg_repo_new(rname, url, type);
 
 	if (signature_type != NULL) {
 		if (strcasecmp(signature_type, "pubkey") == 0)
@@ -523,7 +521,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file)
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		pkg_debug(1, "PkgConfig: parsing key '%s'", key);
-		r = pkg_repo_find_ident(key);
+		r = pkg_repo_find(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
@@ -917,20 +915,42 @@ pkg_init(const char *path, const char *reposdir)
 	return (EPKG_OK);
 }
 
+static struct pkg_repo_ops*
+pkg_repo_find_type(const char *type)
+{
+	struct pkg_repo_ops *found = NULL, **cur;
+
+	/* Default repo type */
+	if (type == NULL)
+		return (pkg_repo_find_type("binary"));
+
+	cur = &repos_ops[0];
+	while (*cur != NULL) {
+		if (strcasecmp(type, (*cur)->type) == 0) {
+			found = *cur;
+		}
+		cur ++;
+	}
+
+	if (found == NULL)
+		return (pkg_repo_find_type("binary"));
+
+	return (found);
+}
+
 static struct pkg_repo *
-pkg_repo_new(const char *name, const char *url)
+pkg_repo_new(const char *name, const char *url, const char *type)
 {
 	struct pkg_repo *r;
 
 	r = calloc(1, sizeof(struct pkg_repo));
-	r->type = REPO_BINARY_PKGS;
-	r->update = pkg_repo_update_binary_pkgs;
+	r->ops = pkg_repo_find_type(type);
 	r->url = strdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
-	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
+	r->name = strdup(name);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
 	return (r);
@@ -1000,23 +1020,6 @@ pkg_repo_url(struct pkg_repo *r)
 	return (r->url);
 }
 
-/* The repo identifier from pkg.conf(5): without the 'repo-' prefix */
-const char *
-pkg_repo_ident(struct pkg_repo *r)
-{
-	return (r->name + strlen(REPO_NAME_PREFIX));
-}
-
-/* Ditto: The repo identifier from pkg.conf(5): without the 'repo-' prefix */
-const char *
-pkg_repo_ident_from_name(const char *repo_name)
-{
-	if (repo_name == NULL)
-		return "local";
-
-	return (repo_name + strlen(REPO_NAME_PREFIX));
-}
-
 /* The basename of the sqlite DB file and the database name */
 const char *
 pkg_repo_name(struct pkg_repo *r)
@@ -1054,27 +1057,10 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
-/* Locate the repo by the identifying tag from pkg.conf(5) */
-struct pkg_repo *
-pkg_repo_find_ident(const char *repoident)
-{
-	struct pkg_repo *r;
-	char *name;
-
-	asprintf(&name, REPO_NAME_PREFIX"%s", repoident);
-	if (name == NULL)
-		return (NULL);	/* Out of memory */
-
-	r = pkg_repo_find_name(name);
-	free(name);
-
-	return (r);
-}
-
 
 /* Locate the repo by the file basename / database name */
 struct pkg_repo *
-pkg_repo_find_name(const char *reponame)
+pkg_repo_find(const char *reponame)
 {
 	struct pkg_repo *r;
 

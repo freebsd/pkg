@@ -79,7 +79,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 	int		 ret = EPKG_OK; 
 	int		 count = 0;
 
-	if ((it = pkgdb_query_shlib_provided(db, libname)) == NULL) {
+	if ((it = pkgdb_query_shlib_provide(db, libname)) == NULL) {
 		return (EPKG_FATAL);
 	}
 
@@ -113,7 +113,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 	int		 ret = EPKG_OK; 
 	int		 count = 0;
 
-	if ((it = pkgdb_query_shlib_required(db, libname)) == NULL) {
+	if ((it = pkgdb_query_shlib_require(db, libname)) == NULL) {
 		return (EPKG_FATAL);
 	}
 

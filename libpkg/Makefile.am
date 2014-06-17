@@ -41,7 +41,8 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_status.c \
 			pkg_version.c \
 			pkgdb.c \
-			pkgdb_repo.c \
+			pkgdb_iterator.c \
+			pkgdb_query.c \
 			rcscripts.c \
 			rsa.c \
 			ssh.c \
@@ -54,6 +55,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libyaml.la \
 			$(top_builddir)/external/libexpat.la \
+			@REPOS_LDADD@ \
 			@LIBELF_LIB@ \
 			@LIBSBUF_LIB@ \
 			@LIBEXECINFO_LIB@ \
@@ -73,7 +75,8 @@ libpkg_static_la_CFLAGS=	$(pkg_common_cflags) -static
 libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libexpat_static.la \
-			$(top_builddir)/external/libyaml_static.la
+			$(top_builddir)/external/libyaml_static.la \
+			@REPOS_LDADD_STATIC@
 
 libpkg_static_la_LDFLAGS=	-all-static
 
@@ -87,3 +90,5 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/repodb.h \
 			private/thd_repo.h \
 			private/utils.h
+
+SUBDIRS = repo .

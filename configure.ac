@@ -229,13 +229,43 @@ AC_SUBST([TESTS])
 AC_SUBST([LDNS_LIBS])
 AC_SUBST([LDNS_CFLAGS])
 
+dnl We now support merely binary repos
+m4_define([repos], [binary])
+m4_define([repos_ldadd], [])
+m4_define([repos_makefiles], [])
+m4_define([repos_ldadd_static], [])
+
+dnl Add ldadd for repo
+m4_define([repos_add_ldadd], [
+	m4_append([$1], [m4_join([], [$(top_builddir)/libpkg/repo/], 
+		[$3], [/librepo_], 
+		[$3], [$2.la ])])
+])
+dnl Create makefile definition for repo
+m4_define([repos_add_makefile], [
+	m4_append([$1], [m4_join([], [\], m4_newline(), [libpkg/repo/], 
+		[$2], [/Makefile ])])
+])
+dnl Apply macros to repos list
+m4_map([m4_curry([repos_add_ldadd], [repos_ldadd], [])], [repos])
+m4_map([m4_curry([repos_add_ldadd], [repos_ldadd_static], [_static])], [repos])
+m4_map([m4_curry([repos_add_makefile], [repos_makefiles])], [repos])
+
+REPOS="m4_expand([repos])"
+REPOS_LDADD='m4_normalize(m4_expand([repos_ldadd]))'
+REPOS_LDADD_STATIC='m4_normalize(m4_expand([repos_ldadd_static]))'
+AC_SUBST([REPOS])
+AC_SUBST([REPOS_LDADD])
+AC_SUBST([REPOS_LDADD_STATIC])
+
 AC_CONFIG_FILES(Makefile \
 		src/Makefile \
 		external/Makefile \
 		scripts/Makefile \
 		docs/Makefile \
 		tests/Makefile \
-		libpkg/Makefile
+		libpkg/Makefile \
+		libpkg/repo/Makefile \
 		libpkg/pkg.h \
 		libpkg/pkg.pc
 		scripts/periodic/400.status-pkg
@@ -246,6 +276,32 @@ AC_CONFIG_FILES(Makefile \
 		scripts/sbin/pkg2ng
 		scripts/completion/_pkg.bash
 		scripts/completion/_pkg.zsh)
+AC_CONFIG_FILES(m4_expand([repos_makefiles]))
+
 AC_CONFIG_HEADERS(pkg_config.h)
+AC_CONFIG_COMMANDS([pkg_repos.h], [[
+	NMODULES=pkg_repos.h.new
+	echo "#ifndef PKG_REPOS_H" > $NMODULES
+	echo "#define PKG_REPOS_H" >> $NMODULES
+	for rt in $REPOS ; do
+		echo "extern struct pkg_repo_ops pkg_repo_${rt}_ops;" >> $NMODULES;
+	done
+	echo "struct pkg_repo_ops* repos_ops[] = {" >> $NMODULES
+	for rt in $REPOS ; do
+		echo "&pkg_repo_${rt}_ops," >> $NMODULES
+	done
+	echo "NULL" >> $NMODULES
+	echo "};" >> $NMODULES
+	echo "#endif /* PKG_REPOS_H */" >> $NMODULES
+	if [ -f pkg_repos.h ] ; then
+		diff $NMODULES pkg_repos.h > /dev/null 2>&1
+		if [ $? -ne 0 ] ; then
+			cp $NMODULES pkg_repos.h
+		fi
+	else
+		cp $NMODULES pkg_repos.h
+	fi
+	rm $NMODULES
+]], [REPOS=$REPOS])
 
 AC_OUTPUT

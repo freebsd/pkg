@@ -255,7 +255,7 @@ exec_clean(int argc, char **argv)
 		}
 
 		if (sumlist == NULL && !sumloaded) {
-			it = pkgdb_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
+			it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 			while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				pkg_get(p, PKG_CKSUM, &sum);
 				slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);

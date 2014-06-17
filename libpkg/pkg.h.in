@@ -309,10 +309,6 @@ typedef enum {
 } pkg_list;
 
 typedef enum {
-	REPO_BINARY_PKGS,
-} repo_t;
-
-typedef enum {
 	SRV,
 	HTTP,
 	NOMIRROR,
@@ -1051,9 +1047,9 @@ bool pkgdb_case_sensitive(void);
  */
 struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
     match_t type);
-struct pkgdb_it * pkgdb_rquery(struct pkgdb *db, const char *pattern,
+struct pkgdb_it * pkgdb_repo_query(struct pkgdb *db, const char *pattern,
     match_t type, const char *reponame);
-struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
+struct pkgdb_it * pkgdb_repo_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
 
 /**
@@ -1061,8 +1057,8 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glob);
 
-struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
-struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_require(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib);
 
 struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db, 
     const char *provide, const char *repo);
@@ -1575,16 +1571,13 @@ int pkg_repos_total_count(void);
 int pkg_repos_activated_count(void);
 int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
-const char *pkg_repo_ident(struct pkg_repo *r);
 const char *pkg_repo_name(struct pkg_repo *r);
-const char * pkg_repo_ident_from_name(const char *repo_name);
 const char *pkg_repo_key(struct pkg_repo *r);
 const char *pkg_repo_fingerprints(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
-struct pkg_repo *pkg_repo_find_ident(const char *ident);
-struct pkg_repo *pkg_repo_find_name(const char *name);
+struct pkg_repo *pkg_repo_find(const char *name);
 
 /**
  * pkg_printf() and friends.  These parallel the similarly named libc

@@ -373,7 +373,7 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 
 	pkg_get(pkg, PKG_REPONAME, &reponame);
 	if (reponame != NULL) {
-		repo = pkg_repo_find_name(reponame);
+		repo = pkg_repo_find(reponame);
 
 		if (repo != NULL)
 			type = repo->meta->digest_format;

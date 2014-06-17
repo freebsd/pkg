@@ -320,8 +320,51 @@ struct pkg_repo_meta {
 	time_t eol;
 };
 
+struct pkg_repo_it;
+struct pkg_repo;
+
+struct pkg_repo_it_ops {
+	int (*next)(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
+	void (*free)(struct pkg_repo_it *it);
+	void (*reset)(struct pkg_repo_it *it);
+};
+
+struct pkg_repo_it {
+	struct pkg_repo *repo;
+	struct pkg_repo_it_ops *ops;
+	int flags;
+	void *data;
+};
+
+struct pkg_repo_ops {
+	const char *type;
+	/* Accessing repo */
+	int (*init)(struct pkg_repo *);
+	int (*access)(struct pkg_repo *, unsigned);
+	int (*open)(struct pkg_repo *, unsigned);
+	int (*create)(struct pkg_repo *);
+	int (*close)(struct pkg_repo *, bool);
+
+	/* Updating repo */
+	int (*update)(struct pkg_repo *, bool);
+
+	/* Query repo */
+	struct pkg_repo_it * (*query)(struct pkg_repo *,
+					const char *, match_t);
+	struct pkg_repo_it * (*shlib_required)(struct pkg_repo *,
+					const char *);
+	struct pkg_repo_it * (*shlib_provided)(struct pkg_repo *,
+					const char *);
+	struct pkg_repo_it * (*search)(struct pkg_repo *, const char *, match_t,
+					pkgdb_field field, pkgdb_field sort);
+
+	/* Fetch package from repo */
+	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
+};
+
 struct pkg_repo {
-	repo_t type;
+	struct pkg_repo_ops *ops;
+
 	char *name;
 	char *url;
 	char *pubkey;
@@ -345,10 +388,11 @@ struct pkg_repo {
 
 	struct pkg_repo_meta *meta;
 
-	int (*update)(struct pkg_repo *, bool);
-
 	bool enable;
 	UT_hash_handle hh;
+
+	/* Opaque repository data */
+	void *priv;
 };
 
 /* sql helpers */
@@ -503,8 +547,6 @@ const char* packing_format_to_string(pkg_formats format);
 int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, bool force);
 
-int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
-
 int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
@@ -525,23 +567,6 @@ int sql_exec(sqlite3 *, const char *, ...);
 int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 int get_sql_string(sqlite3 *, const char *sql, char **res);
 
-int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_files(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_options(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg);
-
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
@@ -557,7 +582,7 @@ int pkg_emit_filelist(struct pkg *, FILE *);
 
 int do_extract_mtree(char *mtree, const char *prefix);
 
-int pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
+int pkg_repo_binary_update(struct pkg_repo *repo, bool force);
 
 bool ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     struct sbuf **buf);
