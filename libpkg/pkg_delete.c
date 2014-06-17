@@ -50,6 +50,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	assert(pkg != NULL);
 	assert(db != NULL);
+#if 0
 	/*
 	 * Do not trust the existing entries as it may have changed if we
 	 * delete packages in batch.
@@ -70,6 +71,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		return (ret);
 	if ((ret = pkgdb_load_annotations(db, pkg)) != EPKG_OK)
 		return (ret);
+#endif
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_begin(pkg);

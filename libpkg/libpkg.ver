@@ -355,6 +355,10 @@ global:
 	pkgdb_upgrade_lock;
 	pkgshell_open;
 	ports_parse_plist;
+	pkgdb_repo_search;
+	pkgdb_repo_query;
+	pkgdb_query_shlib_provide;
+	pkgdb_query_shlib_require;
 local:
 	*;
 };
