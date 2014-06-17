@@ -79,6 +79,7 @@ print_status_end(struct sbuf *msg)
 static void
 print_status_begin(struct sbuf *msg)
 {
+	sbuf_clear(msg_buf);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
 	static int jailed = -1;
@@ -410,7 +411,6 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		else {
 			nbdone++;
-			sbuf_clear(msg_buf);
 			print_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
