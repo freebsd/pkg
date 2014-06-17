@@ -580,7 +580,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	/* Load local repo data */
 	fakedb.sqlite = sqlite;
 	fakedb.type = PKGDB_REMOTE;
-	it = pkgdb_it_new(&fakedb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
+	it = pkgdb_it_new_sqlite(&fakedb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,

@@ -819,7 +819,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 }
 
 struct pkgdb_it *
-pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
+pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 {
 	struct pkgdb_it	*it;
 

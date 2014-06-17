@@ -54,30 +54,6 @@
 #include "private/repodb.h"
 
 
-const char *
-pkgdb_get_reponame(struct pkgdb *db, const char *repo)
-{
-	const char	*reponame = NULL;
-	struct pkg_repo	*r;
-
-	assert(db->type == PKGDB_REMOTE);
-
-	if (repo != NULL) {
-		if ((r = pkg_repo_find(repo)) == NULL) {
-			pkg_emit_error("repository '%s' does not exist", repo);
-			return (NULL);
-		}
-		reponame = pkg_repo_name(r);
-
-		if (!pkgdb_is_attached(db->sqlite, reponame)) {
-			pkg_emit_error("repository '%s' does not exist", repo);
-			return (NULL);
-		}
-	}
-
-	return (reponame);
-}
-
 struct pkgdb_it *
 pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
     const char *repo)
@@ -143,7 +119,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -199,7 +175,7 @@ pkgdb_rquery_provide(struct pkgdb *db, const char *provide, const char *repo)
 
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -254,7 +230,7 @@ pkgdb_find_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -308,5 +284,5 @@ pkgdb_find_shlib_require(struct pkgdb *db, const char *provide, const char *repo
 
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }

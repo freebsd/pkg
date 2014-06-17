@@ -1321,7 +1321,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -1349,7 +1349,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -1376,7 +1376,7 @@ pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 
 	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -1403,7 +1403,7 @@ pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 
 	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 int
@@ -2737,7 +2737,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 int
@@ -2963,7 +2963,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *uniqueid)
 
 	sqlite3_bind_text(stmt, 1, uniqueid, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 static int
