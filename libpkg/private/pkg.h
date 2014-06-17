@@ -323,7 +323,7 @@ struct pkg_repo_meta {
 struct pkg_repo_it;
 struct pkg_repo;
 
-struct pkg_remote_it_ops {
+struct pkg_repo_it_ops {
 	int (*next)(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
 	void (*free)(struct pkg_repo_it *it);
 	void (*reset)(struct pkg_repo_it *it);
@@ -331,7 +331,7 @@ struct pkg_remote_it_ops {
 
 struct pkg_repo_it {
 	struct pkg_repo *repo;
-	struct pkg_remote_it_ops *ops;
+	struct pkg_repo_it_ops *ops;
 	int flags;
 	void *data;
 };
@@ -566,23 +566,6 @@ int pkg_set_mtree(struct pkg *, const char *mtree);
 int sql_exec(sqlite3 *, const char *, ...);
 int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 int get_sql_string(sqlite3 *, const char *sql, char **res);
-
-int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_files(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_options(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);

@@ -182,8 +182,8 @@ compare_column_func(const void *pkey, const void *pcolumn)
 	return strcmp(key, column->name);
 }
 
-int
-pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret = EPKG_OK;
@@ -196,17 +196,17 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 		"AND p.name = d.name "
 		"WHERE d.package_id = ?1 ORDER BY d.origin DESC;";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	if (pkg->flags & PKG_LOAD_DEPS)
 		return (EPKG_OK);
 
 
 	pkg_debug(4, "Pkgdb: running '%s'", mainsql);
-	ret = sqlite3_prepare_v2(db->sqlite, mainsql, -1, &stmt, NULL);
+	ret = sqlite3_prepare_v2(sqlite, mainsql, -1, &stmt, NULL);
 
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -223,7 +223,7 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_DEPS);
-		ERROR_SQLITE(db->sqlite, sql);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -231,8 +231,8 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
-int
-pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
@@ -244,17 +244,17 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 		"WHERE d.name = SPLIT_UID('name', ?1) AND "
 		"d.origin = SPLIT_UID('origin', ?1);";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	if (pkg->flags & PKG_LOAD_RDEPS)
 		return (EPKG_OK);
 
 
 	pkg_debug(4, "Pkgdb: running '%s'", mainsql);
-	ret = sqlite3_prepare_v2(db->sqlite, mainsql, -1, &stmt, NULL);
+	ret = sqlite3_prepare_v2(sqlite, mainsql, -1, &stmt, NULL);
 
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, mainsql);
+		ERROR_SQLITE(sqlite, mainsql);
 		return (EPKG_FATAL);
 	}
 
@@ -271,7 +271,7 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_RDEPS);
-		ERROR_SQLITE(db->sqlite, mainsql);
+		ERROR_SQLITE(sqlite, mainsql);
 		return (EPKG_FATAL);
 	}
 
@@ -279,8 +279,8 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
-int
-pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
@@ -291,15 +291,15 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 		"WHERE package_id = ?1 "
 		"ORDER BY PATH ASC";
 
-	assert(db != NULL && pkg != NULL);
+	assert( pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_FILES)
 		return (EPKG_OK);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -314,7 +314,7 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_FILES);
-		ERROR_SQLITE(db->sqlite, sql);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -322,8 +322,8 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
-int
-pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
 		"SELECT path, try "
@@ -335,15 +335,15 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 	int		 ret;
 	int64_t		 rowid;
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_DIRS)
 		return (EPKG_OK);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -358,7 +358,7 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_DIRS);
-		ERROR_SQLITE(db->sqlite, sql);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -367,8 +367,8 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
-int
-pkgdb_load_license(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_license(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -378,16 +378,16 @@ pkgdb_load_license(struct pkgdb *db, struct pkg *pkg)
 			"AND license_id = l.id "
 		"ORDER by name DESC";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_LICENSES,
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_LICENSES,
 	    pkg_addlicense, PKG_LICENSES));
 }
 
-int
-pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_category(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -397,16 +397,16 @@ pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 			"AND category_id = c.id "
 		"ORDER by name DESC";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES,
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_CATEGORIES,
 	    pkg_addcategory, PKG_CATEGORIES));
 }
 
-int
-pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 {
 	/*struct pkg_user *u = NULL;
 	struct passwd *pwd = NULL;*/
@@ -418,10 +418,10 @@ pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 			"AND user_id = users.id "
 		"ORDER by name DESC";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
-	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_USERS,
+	ret = load_val(sqlite, pkg, sql, PKG_LOAD_USERS,
 	    pkg_adduser, PKG_USERS);
 
 	/* TODO get user uidstr from local database */
@@ -435,8 +435,8 @@ pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 	return (ret);
 }
 
-int
-pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 {
 	struct pkg_group	*g = NULL;
 	struct group		*grp = NULL;
@@ -448,10 +448,10 @@ pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 			"AND group_id = groups.id "
 		"ORDER by name DESC";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
-	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_GROUPS,
+	ret = load_val(sqlite, pkg, sql, PKG_LOAD_GROUPS,
 	    pkg_addgroup, PKG_GROUPS);
 
 	while (pkg_groups(pkg, &g) == EPKG_OK) {
@@ -464,8 +464,8 @@ pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 	return (ret);
 }
 
-int
-pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -475,17 +475,17 @@ pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg)
 			"AND shlib_id = s.id "
 		"ORDER by name DESC";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
 	    pkg_addshlib_required, PKG_SHLIBS_REQUIRED));
 }
 
 
-int
-pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_shlib_provided(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -495,16 +495,16 @@ pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg)
 			"AND shlib_id = s.id "
 		"ORDER by name DESC";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS_PROVIDED,
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_PROVIDED,
 	    pkg_addshlib_provided, PKG_SHLIBS_PROVIDED));
 }
 
-int
-pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_annotations(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -518,12 +518,12 @@ pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main",
                     "main", "main");
 
-	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
+	return (load_tag_val(sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
 		   pkg_addannotation, PKG_ANNOTATIONS));
 }
 
-int
-pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
@@ -533,15 +533,15 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 		"FROM pkg_script JOIN script USING(script_id) "
 		"WHERE package_id = ?1";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_SCRIPTS)
 		return (EPKG_OK);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -555,7 +555,7 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		ERROR_SQLITE(db->sqlite, sql);
+		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
@@ -564,8 +564,8 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 }
 
 
-int
-pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_options(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	*reponame;
 	char		 sql[BUFSIZ];
@@ -606,7 +606,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 						 const char *val);
 	int			  nargs, ret;
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	if (pkg->flags & PKG_LOAD_OPTIONS)
 		return (EPKG_OK);
@@ -637,7 +637,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		}
 
 		pkg_debug(4, "Pkgdb> adding option");
-		ret = load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
+		ret = load_tag_val(sqlite, pkg, sql, PKG_LOAD_OPTIONS,
 				   pkg_addtagval, PKG_OPTIONS);
 		if (ret != EPKG_OK)
 			break;
@@ -645,8 +645,8 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	return (ret);
 }
 
-int
-pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_mtree(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT m.content "
@@ -654,14 +654,14 @@ pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 		"WHERE m.id = p.mtree_id "
 			"AND p.id = ?1;";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
 }
 
-int
-pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_conflicts(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -671,16 +671,16 @@ pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg)
 			"packages.id = pkg_conflicts.conflict_id "
 			"WHERE package_id = ?1";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
 			pkg_addconflict, PKG_CONFLICTS));
 }
 
-int
-pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg)
+static int
+pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -688,11 +688,11 @@ pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg)
 		"FROM %Q.provides "
 		"WHERE package_id = ?1";
 
-	assert(db != NULL && pkg != NULL);
+	assert(pkg != NULL);
 
 	sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_PROVIDES,
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_PROVIDES,
 			pkg_addconflict, PKG_PROVIDES));
 }
 
@@ -754,7 +754,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 
 static struct load_on_flag {
 	int	flag;
-	int	(*load)(struct pkgdb *db, struct pkg *p);
+	int	(*load)(sqlite3 *sqlite, struct pkg *p);
 } load_on_flag[] = {
 	{ PKG_LOAD_DEPS,		pkgdb_load_deps },
 	{ PKG_LOAD_RDEPS,		pkgdb_load_rdeps },
@@ -795,7 +795,7 @@ pkgdb_sqlite_it_free(struct pkgdb_sqlite_it *it)
 }
 
 static int
-pkgdb_sqlite_it_next(struct pkgdb *db, struct pkgdb_sqlite_it *it,
+pkgdb_sqlite_it_next(struct pkgdb_sqlite_it *it,
 	struct pkg **pkg_p, unsigned flags)
 {
 	struct pkg	*pkg;
@@ -835,8 +835,8 @@ pkgdb_sqlite_it_next(struct pkgdb *db, struct pkgdb_sqlite_it *it,
 
 		for (i = 0; load_on_flag[i].load != NULL; i++) {
 			if (flags & load_on_flag[i].flag) {
-				if (db != NULL) {
-					ret = load_on_flag[i].load(db, pkg);
+				if (it->sqlite != NULL) {
+					ret = load_on_flag[i].load(it->sqlite, pkg);
 					if (ret != EPKG_OK)
 						return (ret);
 				}
@@ -875,7 +875,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 	switch (it->type) {
 	case PKGDB_IT_LOCAL:
-		return (pkgdb_sqlite_it_next(it->db, &it->un.local, pkg_p, flags));
+		return (pkgdb_sqlite_it_next(&it->un.local, pkg_p, flags));
 		break;
 	case PKGDB_IT_REPO:
 		if (it->un.remote != NULL) {
