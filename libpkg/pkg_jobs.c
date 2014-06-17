@@ -1695,6 +1695,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				 * a package was1 explicitly requested to be installed
 				 */
 				if (j->type == PKG_JOBS_INSTALL) {
+					pkg_get(local->pkg, PKG_UNIQUEID, &uid);
 					HASH_FIND_STR(j->request_add, uid, req);
 					if (req != NULL)
 						automatic = 0;
