@@ -332,7 +332,8 @@ struct pkg_remote_it_ops {
 struct pkg_repo_it {
 	struct pkg_repo *repo;
 	struct pkg_remote_it_ops *ops;
-	char data[0];
+	int flags;
+	void *data;
 };
 
 struct pkg_repo_ops {

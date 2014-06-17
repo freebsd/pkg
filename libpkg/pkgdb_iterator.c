@@ -742,34 +742,6 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	}
 }
 
-struct pkgdb_it *
-pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
-{
-	struct pkgdb_it	*it;
-
-	assert(db != NULL && s != NULL);
-	assert(!(flags & (PKGDB_IT_FLAG_CYCLED & PKGDB_IT_FLAG_ONCE)));
-	assert(!(flags & (PKGDB_IT_FLAG_AUTO & (PKGDB_IT_FLAG_CYCLED | PKGDB_IT_FLAG_ONCE))));
-
-	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_it");
-		sqlite3_finalize(s);
-		return (NULL);
-	}
-
-	it->type = PKGDB_IT_LOCAL;
-
-	it->db = db;
-	it->un.local.sqlite = db->sqlite;
-	it->un.local.stmt = s;
-	it->un.local.pkg_type = type;
-
-	it->un.local.flags = flags;
-	it->un.local.finished = 0;
-
-	return (it);
-}
-
 static struct load_on_flag {
 	int	flag;
 	int	(*load)(struct pkgdb *db, struct pkg *p);
@@ -963,4 +935,65 @@ pkgdb_it_free(struct pkgdb_it *it)
 	}
 
 	free(it);
+}
+
+struct pkgdb_it *
+pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
+{
+	struct pkgdb_it	*it;
+
+	assert(db != NULL && s != NULL);
+	assert(!(flags & (PKGDB_IT_FLAG_CYCLED & PKGDB_IT_FLAG_ONCE)));
+	assert(!(flags & (PKGDB_IT_FLAG_AUTO & (PKGDB_IT_FLAG_CYCLED | PKGDB_IT_FLAG_ONCE))));
+
+	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
+		pkg_emit_errno("malloc", "pkgdb_it");
+		sqlite3_finalize(s);
+		return (NULL);
+	}
+
+	it->type = PKGDB_IT_LOCAL;
+
+	it->db = db;
+	it->un.local.sqlite = db->sqlite;
+	it->un.local.stmt = s;
+	it->un.local.pkg_type = type;
+
+	it->un.local.flags = flags;
+	it->un.local.finished = 0;
+
+	return (it);
+}
+
+struct pkgdb_it *
+pkgdb_it_new_repo(struct pkgdb *db)
+{
+	struct pkgdb_it	*it;
+
+	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
+		pkg_emit_errno("malloc", "pkgdb_it");
+		return (NULL);
+	}
+
+	it->type = PKGDB_IT_REPO;
+
+	it->db = db;
+
+	it->un.remote = NULL;
+
+	return (it);
+}
+
+void
+pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
+{
+	struct _pkg_repo_it_set *item;
+
+	if ((item = malloc(sizeof(struct _pkg_repo_it_set))) == NULL) {
+		pkg_emit_errno("malloc", "_pkg_repo_it_set");
+	}
+	else {
+		item->it = rit;
+		LL_PREPEND(it->un.remote, item);
+	}
 }

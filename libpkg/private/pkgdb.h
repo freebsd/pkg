@@ -85,7 +85,10 @@ int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
-struct pkgdb_it *pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
+struct pkgdb_it *pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s,
+	int type, short flags);
+struct pkgdb_it *pkgdb_it_new_repo(struct pkgdb *db);
+void pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit);
 
 void pkgshell_open(const char **r);
 
@@ -107,14 +110,6 @@ int pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
  * @return
  */
 const char * pkgdb_get_pattern_query(const char *pattern, match_t match);
-
-/**
- * Returns whether the specified database is attached
- * @param s
- * @param name
- * @return
- */
-bool pkgdb_is_attached(sqlite3 *s, const char *name);
 
 /**
  * Find provides for a specified require in repos
