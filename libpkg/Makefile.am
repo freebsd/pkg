@@ -41,6 +41,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_status.c \
 			pkg_version.c \
 			pkgdb.c \
+			pkgdb_iterator.c \
 			pkgdb_repo.c \
 			rcscripts.c \
 			rsa.c \
