@@ -68,13 +68,6 @@ struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short
 void pkgshell_open(const char **r);
 
 /**
- * Returns a list of all packages sorted by origin
- * @param sqlite database
- * @return new iterator
- */
-struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
-
-/**
  * Register a conflicts list in a repo
  * @param origin the origin of a package
  * @param conflicts a list of conflicts origins

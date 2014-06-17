@@ -466,6 +466,29 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 		free(linebuf);
 }
 
+sqlite3_stmt *
+pkg_repo_binary_get_origins(sqlite3 *sqlite)
+{
+	sqlite3_stmt *stmt = NULL;
+	int ret;
+	const char query_sql[] = ""
+		"SELECT id, origin, name, name || '~' || origin as uniqueid, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, path AS repopath, manifestdigest "
+		"FROM packages "
+		"ORDER BY origin;";
+
+	ret = sqlite3_prepare_v2(sqlite, query_sql, -1,
+			&stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, query_sql);
+		return (NULL);
+	}
+
+	return (stmt);
+}
+
 static int
 pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	time_t *mtime)
@@ -474,8 +497,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
 	sqlite3 *sqlite = PRIV_GET(repo);
+	sqlite3_stmt *stmt;
 	const char *origin, *digest, *offset, *length;
-	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0, pushed = 0;
 	long num_offset, num_length;
@@ -491,11 +514,14 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	size_t len = 0;
 	int hash_it = 0;
 	bool in_trans = false, new_repo = true, legacy_repo = false;
+	/* Required for making iterator */
+	struct pkgdb_it *it = NULL;
+	struct pkgdb fakedb;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 
-	it = pkgdb_repo_origins(sqlite);
-	if (it == NULL) {
+	stmt = pkg_repo_binary_get_origins(sqlite);
+	if (stmt == NULL) {
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -552,6 +578,10 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	fseek(fdigests, 0, SEEK_SET);
 
 	/* Load local repo data */
+	fakedb.sqlite = sqlite;
+	fakedb.type = PKGDB_REMOTE;
+	it = pkgdb_it_new(&fakedb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
+
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,
 				&digest);

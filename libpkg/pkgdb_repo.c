@@ -54,32 +54,6 @@
 #include "private/repodb.h"
 
 
-struct pkgdb_it *
-pkgdb_repo_origins(sqlite3 *sqlite)
-{
-	sqlite3_stmt *stmt = NULL;
-	int ret;
-	static struct pkgdb repodb;
-	const char query_sql[] = ""
-		"SELECT id, origin, name, name || '~' || origin as uniqueid, version, comment, "
-		"prefix, desc, arch, maintainer, www, "
-		"licenselogic, flatsize, pkgsize, "
-		"cksum, path AS repopath, manifestdigest "
-		"FROM packages "
-		"ORDER BY origin;";
-
-	ret = sqlite3_prepare_v2(sqlite, query_sql, -1,
-			&stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, query_sql);
-		return (NULL);
-	}
-	repodb.sqlite = sqlite;
-	repodb.type = PKGDB_REMOTE;
-
-	return pkgdb_it_new(&repodb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
-}
-
 const char *
 pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 {
