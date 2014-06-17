@@ -320,6 +320,9 @@ struct pkg_repo_meta {
 	time_t eol;
 };
 
+struct pkg_repo_it;
+struct pkg_repo;
+
 struct pkg_remote_it_ops {
 	int (*next)(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
 	void (*free)(struct pkg_repo_it *it);

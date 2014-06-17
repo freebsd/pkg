@@ -34,27 +34,39 @@
 
 struct pkgdb {
 	sqlite3		*sqlite;
-	pkgdb_t		 type;
 	int		 lock_count;
 	bool		 prstmt_initialized;
+
+	struct _pkg_repo_list_item {
+		struct pkg_repo *repo;
+		struct _pkg_repo_list_item *next;
+	} *repos;
+};
+
+enum pkgdb_iterator_type {
+	PKGDB_IT_LOCAL = 0,
+	PKGDB_IT_REPO
 };
 
 struct pkgdb_sqlite_it {
-	struct pkgdb	*db;
 	sqlite3	*sqlite;
 	sqlite3_stmt	*stmt;
 	short	flags;
 	short	finished;
+	short	pkg_type;
 };
 
+struct pkg_repo_it;
+
 struct pkgdb_it {
-	int	type;
+	enum pkgdb_iterator_type type;
+	struct pkgdb *db;
 	union _un_pkg_it {
 		struct _pkg_repo_it_set {
 			struct pkg_repo_it *it;
 			struct _pkg_repo_it_set *next;
 		} *remote;
-		struct pkgdb_sqlite_it *local;
+		struct pkgdb_sqlite_it local;
 	} un;
 };
 
