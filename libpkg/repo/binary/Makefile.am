@@ -10,6 +10,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 librepo_binary_la_SOURCES=	binary.c \
 							common.c \
 							init.c \
+							query.c \
 							update.c
 librepo_binary_la_CFLAGS=	$(pkg_common_cflags) -shared
 
