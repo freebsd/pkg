@@ -487,6 +487,8 @@ static const struct repo_changes repo_downgrades[] = {
 /* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
+#define REPO_NAME_PREFIX "repo-"
+
 typedef enum _sql_prstmt_index {
 	PKG = 0,
 	DEPS,
@@ -615,5 +617,9 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 };
 
 int pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...);
+/*
+ * Warning: returns a pointer to static array
+ */
+const char * pkg_repo_binary_get_filename(const char *name);
 
 #endif /* INIT_PRIVATE_H_ */

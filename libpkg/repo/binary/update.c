@@ -738,7 +738,8 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		got_meta = true;
 	}
 
-	snprintf(filepath, sizeof(filepath), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
+	snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
+		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 	if (stat(filepath, &st) != -1) {
 		if (!got_meta && !force)
 			t = st.st_mtime;

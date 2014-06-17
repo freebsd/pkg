@@ -49,7 +49,6 @@
 #include "private/event.h"
 #include "pkg_repos.h"
 
-#define REPO_NAME_PREFIX "repo-"
 #ifndef PORTSDIR
 #define PORTSDIR "/usr/ports"
 #endif
@@ -522,7 +521,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file)
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		pkg_debug(1, "PkgConfig: parsing key '%s'", key);
-		r = pkg_repo_find_ident(key);
+		r = pkg_repo_find(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
@@ -951,7 +950,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
-	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
+	r->name = strdup(name);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
 	return (r);
@@ -1021,23 +1020,6 @@ pkg_repo_url(struct pkg_repo *r)
 	return (r->url);
 }
 
-/* The repo identifier from pkg.conf(5): without the 'repo-' prefix */
-const char *
-pkg_repo_ident(struct pkg_repo *r)
-{
-	return (r->name + strlen(REPO_NAME_PREFIX));
-}
-
-/* Ditto: The repo identifier from pkg.conf(5): without the 'repo-' prefix */
-const char *
-pkg_repo_ident_from_name(const char *repo_name)
-{
-	if (repo_name == NULL)
-		return "local";
-
-	return (repo_name + strlen(REPO_NAME_PREFIX));
-}
-
 /* The basename of the sqlite DB file and the database name */
 const char *
 pkg_repo_name(struct pkg_repo *r)
@@ -1075,27 +1057,10 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
-/* Locate the repo by the identifying tag from pkg.conf(5) */
-struct pkg_repo *
-pkg_repo_find_ident(const char *repoident)
-{
-	struct pkg_repo *r;
-	char *name;
-
-	asprintf(&name, REPO_NAME_PREFIX"%s", repoident);
-	if (name == NULL)
-		return (NULL);	/* Out of memory */
-
-	r = pkg_repo_find_name(name);
-	free(name);
-
-	return (r);
-}
-
 
 /* Locate the repo by the file basename / database name */
 struct pkg_repo *
-pkg_repo_find_name(const char *reponame)
+pkg_repo_find(const char *reponame)
 {
 	struct pkg_repo *r;
 

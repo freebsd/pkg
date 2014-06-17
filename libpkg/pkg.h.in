@@ -1572,16 +1572,13 @@ int pkg_repos_total_count(void);
 int pkg_repos_activated_count(void);
 int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
-const char *pkg_repo_ident(struct pkg_repo *r);
 const char *pkg_repo_name(struct pkg_repo *r);
-const char * pkg_repo_ident_from_name(const char *repo_name);
 const char *pkg_repo_key(struct pkg_repo *r);
 const char *pkg_repo_fingerprints(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
-struct pkg_repo *pkg_repo_find_ident(const char *ident);
-struct pkg_repo *pkg_repo_find_name(const char *name);
+struct pkg_repo *pkg_repo_find(const char *name);
 
 /**
  * pkg_printf() and friends.  These parallel the similarly named libc

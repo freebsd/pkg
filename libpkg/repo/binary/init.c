@@ -340,7 +340,8 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
-	snprintf(filepath, sizeof(filepath), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
+	snprintf(filepath, sizeof(filepath), "%s/%s",
+		dbdir, pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 
 	/* Always want read mode here */
 	if (access(filepath, R_OK | mode) != 0)
@@ -405,7 +406,8 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
-	snprintf(filepath, sizeof(filepath), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
+	snprintf(filepath, sizeof(filepath), "%s/%s",
+		dbdir, pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 	/* Should never ever happen */
 	if (access(filepath, R_OK) != 0)
 		return (EPKG_CONFLICT);
@@ -518,7 +520,8 @@ pkg_repo_binary_access(struct pkg_repo *repo, unsigned mode)
 	o = pkg_config_get("PKG_DBDIR");
 	dbdir = pkg_object_string(o);
 
-	ret = pkgdb_check_access(mode, dbdir, pkg_repo_name(repo));
+	ret = pkgdb_check_access(mode, dbdir,
+		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 
 	return (ret);
 }

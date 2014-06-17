@@ -876,7 +876,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db,
 
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (reponame != NULL) {
-			if (strcmp(pkg_repo_ident(r), reponame) != 0)
+			if (strcmp(r->name, reponame) != 0)
 				continue;
 		} else {
 			if (!pkg_repo_enabled(r)) 
@@ -886,7 +886,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db,
 		/* is it already attached? */
 		if (pkgdb_is_attached(db->sqlite, pkg_repo_name(r))) {
 			pkg_emit_error("repository '%s' is already "
-			    "listed, ignoring", pkg_repo_ident(r));
+			    "listed, ignoring", r->name);
 			continue;
 		}
 
@@ -894,13 +894,13 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db,
 			 dbdir, pkg_repo_name(r));
 
 		if (access(remotepath, R_OK) != 0) {
-			pkg_emit_noremotedb(pkg_repo_ident(r));
+			pkg_emit_noremotedb(r->name);
 			pkgdb_close(db);
 			return (EPKG_ENODB);
 		}
 
 		ret = sql_exec(db->sqlite, "ATTACH '%s' AS '%s';",
-		          remotepath, pkg_repo_name(r));
+		          remotepath, r->name);
 		if (ret != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);

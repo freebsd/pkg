@@ -1313,7 +1313,7 @@ format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const char		*reponame;
 
 	pkg_get(pkg, PKG_REPONAME, &reponame);
-	return (string_val(sbuf, pkg_repo_ident_from_name(reponame), p));
+	return (string_val(sbuf, reponame, p));
 }
 
 /*

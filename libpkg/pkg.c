@@ -277,7 +277,6 @@ static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
-	struct pkg_repo *r;
 	char *buf = NULL;
 	const char *data;
 	const char *str;
@@ -297,13 +296,6 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			if (attr == PKG_MTREE && !STARTS_WITH(str, "#mtree")) {
 				asprintf(&buf, "#mtree\n%s", str);
 				data = buf;
-			}
-
-			if (attr == PKG_REPOURL) {
-				r = pkg_repo_find_ident(str);
-				if (r == NULL)
-					break;
-				data = pkg_repo_url(r);
 			}
 
 			if (data == NULL)

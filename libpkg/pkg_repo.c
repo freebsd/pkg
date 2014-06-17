@@ -153,7 +153,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
 	 */
-	repo = pkg_repo_find_name(reponame);
+	repo = pkg_repo_find(reponame);
 	packagesite = pkg_repo_url(repo);
 
 	if (packagesite == NULL || packagesite[0] == '\0') {

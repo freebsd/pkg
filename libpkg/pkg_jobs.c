@@ -87,7 +87,7 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
-	if ((pkg_repo_find_ident(ident)) == NULL) {
+	if ((pkg_repo_find(ident)) == NULL) {
 		pkg_emit_error("Unknown repository: %s", ident);
 		return (EPKG_FATAL);
 	}

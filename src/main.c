@@ -325,7 +325,7 @@ show_repository_info(void)
 		}
 
 		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s",
-		    pkg_repo_ident(repo),
+		    pkg_repo_name(repo),
                     "url", pkg_repo_url(repo),
 		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no");
 		if (pkg_repo_mirror_type(repo) != NOMIRROR)
