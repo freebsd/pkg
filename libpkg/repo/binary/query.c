@@ -217,7 +217,7 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 }
 
 static const char *
-pkgdb_get_match_how(match_t match)
+pkg_repo_binary_search_how(match_t match)
 {
 	const char	*how = NULL;
 
@@ -250,14 +250,14 @@ pkgdb_get_match_how(match_t match)
 }
 
 static int
-pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
+pkg_repo_binary_build_search_query(struct sbuf *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
 {
 	const char	*how = NULL;
 	const char	*what = NULL;
 	const char	*orderby = NULL;
 
-	how = pkgdb_get_match_how(match);
+	how = pkg_repo_binary_search_how(match);
 
 	switch (field) {
 	case FIELD_NONE:
@@ -331,9 +331,9 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	sbuf_printf(sql, multireposql, repo->name);
 
 	/* close the UNIONs and build the search query */
-	sbuf_cat(sql, ") WHERE ");
+	sbuf_cat(sql, "WHERE ");
 
-	pkgdb_search_build_search_query(sql, match, field, sort);
+	pkg_repo_binary_build_search_query(sql, match, field, sort);
 	sbuf_cat(sql, ";");
 	sbuf_finish(sql);
 
