@@ -1,4 +1,4 @@
-noinst_HEADERS=	pkgcli.h progressmeter.h
+noinst_HEADERS=	pkgcli.h
 
 pkg_SOURCES=		add.c \
 			annotate.c \
@@ -19,7 +19,6 @@ pkg_SOURCES=		add.c \
 			lock.c \
 			main.c \
 			plugins.c \
-			progressmeter.c \
 			query.c \
 			register.c \
 			repo.c \

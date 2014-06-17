@@ -53,11 +53,8 @@
 #include <math.h>
 
 #include "pkg.h"
-#include "progressmeter.h"
 #include "pkgcli.h"
 
-static off_t fetched = 0;
-static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
 
 static char *progress_message = NULL;
@@ -318,7 +315,6 @@ event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
 	int *debug = data;
-	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
 	if (msg_buf == NULL) {
 		msg_buf = sbuf_new_auto();
@@ -361,36 +357,6 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
 		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
 			printf("\n");
-		break;
-	case PKG_EVENT_FETCHING:
-		if (quiet)
-			break;
-		if (fetched == 0) {
-			filename = strrchr(ev->e_fetching.url, '/');
-			if (filename != NULL) {
-				filename++;
-			} else {
-				/*
-				 * We failed at being smart, so display
-				 * the entire url.
-				 */
-				filename = ev->e_fetching.url;
-			}
-			strlcpy(url, filename, sizeof(url));
-			if (isatty(STDOUT_FILENO))
-				start_progress_meter(url, ev->e_fetching.total,
-				    &fetched);
-			else
-				printf("Fetching %s...", url);
-		}
-		fetched = ev->e_fetching.done;
-		if (ev->e_fetching.done == ev->e_fetching.total) {
-			if (isatty(STDOUT_FILENO))
-				stop_progress_meter();
-			else
-				printf(" done\n");
-			fetched = 0;
-		}
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
