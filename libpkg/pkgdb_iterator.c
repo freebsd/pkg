@@ -190,7 +190,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	int64_t		 rowid;
 	char		 sql[BUFSIZ];
 	const char	*mainsql = ""
-		"SELECT d.name, d.origin, d.version, p.locked "
+		"SELECT d.name, d.origin, d.version, 0 "
 		"FROM main.deps AS d "
 		"LEFT JOIN main.packages AS p ON p.origin = d.origin "
 		"AND p.name = d.name "
@@ -213,6 +213,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	pkg_get(pkg, PKG_ROWID, &rowid);
 	sqlite3_bind_int64(stmt, 1, rowid);
 
+	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddep(pkg, sqlite3_column_text(stmt, 0),
 			   sqlite3_column_text(stmt, 1),
@@ -238,7 +239,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 	int		 ret;
 	const char	*uniqueid;
 	const char	*mainsql = ""
-		"SELECT p.name, p.origin, p.version, p.locked "
+		"SELECT p.name, p.origin, p.version, 0 "
 		"FROM main.packages AS p "
 		"INNER JOIN main.deps AS d ON p.id = d.package_id "
 		"WHERE d.name = SPLIT_UID('name', ?1) AND "
@@ -261,6 +262,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 	pkg_get(pkg, PKG_UNIQUEID, &uniqueid);
 	sqlite3_bind_text(stmt, 1, uniqueid, -1, SQLITE_STATIC);
 
+	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0),
 			    sqlite3_column_text(stmt, 1),

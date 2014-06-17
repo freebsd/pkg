@@ -112,7 +112,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 		"SELECT id, origin, name, name || '~' || origin as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
-		"cksum, manifestdigest, path AS repopath, '%1$s' AS dbname "
+		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
 		"FROM packages";
 
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
@@ -155,12 +155,13 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 			"p.name || '~' || p.origin as uniqueid, "
 			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
 			"p.licenselogic, p.flatsize, p.pkgsize, "
-			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
-			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_provided AS ps ON "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
+			"FROM packages AS p INNER JOIN pkg_shlibs_provided AS ps ON "
 			"p.id = ps.package_id "
-			"WHERE ps.shlib_id IN (SELECT id FROM '%1$s'.shlibs WHERE "
+			"WHERE ps.shlib_id IN (SELECT id FROM shlibs WHERE "
 			"name BETWEEN ?1 AND ?1 || '.9');";
 
+	sql = sbuf_new_auto();
 	sbuf_printf(sql, basesql, repo->name);
 
 	sbuf_finish(sql);
@@ -192,11 +193,12 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 			"p.name || '~' || p.origin as uniqueid, "
 			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
 			"p.licenselogic, p.flatsize, p.pkgsize, "
-			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
-			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_required AS ps ON "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
+			"FROM packages AS p INNER JOIN pkg_shlibs_required AS ps ON "
 			"p.id = ps.package_id "
-			"WHERE ps.shlib_id = (SELECT id FROM '%1$s'.shlibs WHERE name=?1);";
+			"WHERE ps.shlib_id = (SELECT id FROM shlibs WHERE name=?1);";
 
+	sql = sbuf_new_auto();
 	sbuf_printf(sql, basesql, repo->name);
 
 	sbuf_finish(sql);

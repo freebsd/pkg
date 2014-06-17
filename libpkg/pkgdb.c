@@ -864,6 +864,8 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 					pkg_emit_errno("malloc", "_pkg_repo_list_item");
 					return (EPKG_FATAL);
 				}
+
+				r->ops->init(r);
 				item->repo = r;
 				LL_PREPEND(db->repos, item);
 			}
