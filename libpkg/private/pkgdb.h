@@ -93,6 +93,7 @@ void pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit);
  * Load missing flags for a specific package from pkgdb
  */
 int pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags);
+int pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags);
 
 void pkgshell_open(const char **r);
 

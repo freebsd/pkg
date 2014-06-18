@@ -872,6 +872,7 @@ int
 pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 {
 	struct pkg_repo_it *rit;
+	int ret;
 
 	assert(it != NULL);
 
@@ -882,7 +883,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 	case PKGDB_IT_REPO:
 		if (it->un.remote != NULL) {
 			rit = it->un.remote->it;
-			if (rit->ops->next(rit, pkg_p, flags) != EPKG_OK) {
+			ret = rit->ops->next(rit, pkg_p, flags);
+			if (ret != EPKG_OK) {
 				/*
 				 * Detach this iterator from list and switch to another
 				 */
@@ -895,6 +897,9 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 				return (pkgdb_it_next(it, pkg_p, flags));
 			}
+
+			if (*pkg_p != NULL)
+				(*pkg_p)->repo = rit->repo;
 
 			return (EPKG_OK);
 		}
@@ -1030,7 +1035,7 @@ pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags)
 int
 pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
 {
-	int i, ret;
+	int ret;
 	struct _pkg_repo_list_item *cur;
 
 	if (pkg->type == PKG_INSTALLED) {
