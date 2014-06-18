@@ -47,5 +47,7 @@ struct pkg_repo_it *pkg_repo_binary_shlib_require(struct pkg_repo *repo,
 struct pkg_repo_it *pkg_repo_binary_search(struct pkg_repo *repo,
 	const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort);
+int pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
+	struct pkg *pkg, unsigned flags);
 
 #endif /* BINARY_H_ */

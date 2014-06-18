@@ -353,3 +353,19 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
+
+int
+pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
+	struct pkg *pkg, unsigned flags)
+{
+	sqlite3 *sqlite = PRIV_GET(repo);
+
+	if (flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS|PKG_LOAD_ANNOTATIONS)) {
+		/*
+		 * At the moment, we have no such information in repo
+		 */
+		return (EPKG_FATAL);
+	}
+
+	return (pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags));
+}
