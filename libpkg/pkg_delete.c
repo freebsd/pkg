@@ -47,31 +47,14 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	int		 ret;
 	bool		 handle_rc = false;
 	int64_t		id;
+	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
+					PKG_LOAD_SCRIPTS|PKG_LOAD_MTREE|PKG_LOAD_ANNOTATIONS;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
-#if 0
-	/*
-	 * Do not trust the existing entries as it may have changed if we
-	 * delete packages in batch.
-	 */
-	pkg_list_free(pkg, PKG_RDEPS);
-	/*
-	 * Ensure that we have all the informations we need
-	 */
-	if ((ret = pkgdb_load_rdeps(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_files(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_dirs(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_scripts(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_mtree(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_annotations(db, pkg)) != EPKG_OK)
-		return (ret);
-#endif
+
+	if (pkgdb_ensure_loaded(db, pkg, load_flags) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_begin(pkg);
