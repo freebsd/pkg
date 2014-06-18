@@ -611,7 +611,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		case PKG_UPGRADE:
 			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v",
-			    pkg_new, pkg_new, pkg_old);
+			    pkg_new, pkg_old, pkg_new);
 			break;
 		}
 		break;
