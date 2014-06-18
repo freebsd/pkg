@@ -1010,3 +1010,45 @@ pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 		LL_PREPEND(it->un.remote, item);
 	}
 }
+
+int
+pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags)
+{
+	int i, ret;
+
+	for (i = 0; load_on_flag[i].load != NULL; i++) {
+		if (~pkg->flags & flags & load_on_flag[i].flag) {
+			ret = load_on_flag[i].load(sqlite, pkg);
+			if (ret != EPKG_OK)
+				return (ret);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
+{
+	int i, ret;
+	struct _pkg_repo_list_item *cur;
+
+	if (pkg->type == PKG_INSTALLED) {
+		return (pkgdb_ensure_loaded_sqlite(db->sqlite, pkg, flags));
+	}
+	else {
+		/* Call repo functions */
+		LL_FOREACH(db->repos, cur) {
+			if (cur->repo == pkg->repo) {
+				if (cur->repo->ops->ensure_loaded) {
+					ret = cur->repo->ops->ensure_loaded(cur->repo, pkg, flags);
+					if (ret != EPKG_OK)
+						return (EPKG_FATAL);
+				}
+			}
+		}
+	}
+
+	/* Not reached */
+	return (EPKG_FATAL);
+}

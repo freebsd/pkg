@@ -126,6 +126,9 @@
 
 extern int eventpipe;
 
+struct pkg_repo_it;
+struct pkg_repo;
+
 struct pkg {
 	ucl_object_t	*fields;
 	bool		 direct;
@@ -141,8 +144,9 @@ struct pkg {
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
-	unsigned       	 flags;
+	unsigned			flags;
 	pkg_t		 type;
+	struct pkg_repo		*repo;
 	UT_hash_handle	 hh;
 	struct pkg	*next;
 };
@@ -320,9 +324,6 @@ struct pkg_repo_meta {
 	time_t eol;
 };
 
-struct pkg_repo_it;
-struct pkg_repo;
-
 struct pkg_repo_it_ops {
 	int (*next)(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
 	void (*free)(struct pkg_repo_it *it);
@@ -357,6 +358,8 @@ struct pkg_repo_ops {
 					const char *);
 	struct pkg_repo_it * (*search)(struct pkg_repo *, const char *, match_t,
 					pkgdb_field field, pkgdb_field sort);
+
+	int (*ensure_loaded)(struct pkg_repo *repo, struct pkg *pkg, unsigned flags);
 
 	/* Fetch package from repo */
 	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
