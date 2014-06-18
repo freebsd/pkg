@@ -362,6 +362,8 @@ struct pkg_repo_ops {
 	int (*ensure_loaded)(struct pkg_repo *repo, struct pkg *pkg, unsigned flags);
 
 	/* Fetch package from repo */
+	void (*get_cached_name)(struct pkg_repo *, struct pkg *,
+					char *dest, size_t destlen);
 	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
 };
 

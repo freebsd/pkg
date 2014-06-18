@@ -23,10 +23,11 @@
 #ifndef BINARY_H_
 #define BINARY_H_
 
+#include <assert.h>
 #include "pkg.h"
 #include "private/pkg.h"
 
-#define PRIV_GET(repo) (sqlite3 *)(repo)->priv;
+#define PRIV_GET(repo) repo->priv != NULL ? (sqlite3 *)(repo)->priv : (assert(0), NULL)
 
 extern struct pkg_repo_ops pkg_repo_binary_ops;
 
@@ -49,5 +50,9 @@ struct pkg_repo_it *pkg_repo_binary_search(struct pkg_repo *repo,
     pkgdb_field field, pkgdb_field sort);
 int pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *pkg, unsigned flags);
+
+int pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg);
+void pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
+	char *dest, size_t destlen);
 
 #endif /* BINARY_H_ */
