@@ -46,6 +46,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#include <termios.h>
+#include <libutil.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
@@ -357,7 +359,7 @@ draw_progressbar(int64_t current, int64_t total)
 	int percent;
 	int64_t transferred;
 	time_t now;
-	char buf[10];
+	char buf[7];
 	int64_t bytes_left;
 	int cur_speed;
 	int64_t elapsed;
@@ -370,66 +372,85 @@ draw_progressbar(int64_t current, int64_t total)
 
 		printf("\r%s: %d%%", progress_message, percent);
 		if (progress_debit) {
-			now = time(NULL);
-			transferred = current - last_tick;
-			last_tick = current;
-			bytes_left = total - current;
-			if (bytes_left > 0) {
-				elapsed = (now > last_update) ? now - last_update : 0;
-			} else {
-				elapsed = now - begin;
-			}
+			if (total > current) {
+				now = time(NULL);
+				transferred = current - last_tick;
+				last_tick = current;
+				bytes_left = total - current;
+				if (bytes_left > 0) {
+					elapsed = (now > last_update) ? now - last_update : 0;
+				} else {
+					elapsed = now - begin;
+				}
 
-			if (elapsed != 0)
-				cur_speed = (transferred / elapsed);  
-			else
-				cur_speed = transferred;
+				if (elapsed != 0)
+					cur_speed = (transferred / elapsed);
+				else
+					cur_speed = transferred;
 
 #define AGE_FACTOR 0.9
-			if (bytes_per_second != 0) {
-				bytes_per_second = (bytes_per_second * AGE_FACTOR) +
-					(cur_speed * (1.0 - AGE_FACTOR));
-			} else {
-				bytes_per_second = cur_speed;
-			}
+				if (bytes_per_second != 0) {
+					bytes_per_second = (bytes_per_second * AGE_FACTOR) +
+									(cur_speed * (1.0 - AGE_FACTOR));
+				} else {
+					bytes_per_second = cur_speed;
+				}
 
-			format_size_IEC(buf, sizeof(buf), current);
-			printf(" %s", buf);
+				humanize_number(buf, sizeof(buf),
+					current,"B", HN_AUTOSCALE, 0);
+				printf(" %*s", (int)sizeof(buf), buf);
 
-			format_rate_SI(buf, sizeof(buf), transferred);
-			printf(" %s/s", buf);
+				format_rate_SI(buf, sizeof(buf), transferred);
+				printf(" %s/s", buf);
 
-			if (!transferred)
-				stalled += elapsed;
-			else
-				stalled = 0;
-
-			if (stalled >= STALL_TIME)
-				printf(" - stalled -");
-			else if (bytes_per_second == 0 && bytes_left)
-				printf("   --:-- ETA");
-			else {
-				if (bytes_left > 0)
-					seconds = bytes_left / bytes_per_second;
+				if (!transferred)
+					stalled += elapsed;
 				else
-					seconds = elapsed;
+					stalled = 0;
 
-				hours = seconds / 3600;
-				seconds -= hours * 3600;
-				minutes = seconds / 60;
-				seconds -= minutes * 60;
+				if (stalled >= STALL_TIME)
+					printf(" - stalled -");
+				else if (bytes_per_second == 0 && bytes_left)
+					printf("   --:-- ETA");
+				else {
+					if (bytes_left > 0)
+						seconds = bytes_left / bytes_per_second;
+					else
+						seconds = elapsed;
 
-				if (hours != 0) {
-					printf("%02d:%02d:%0d", hours, minutes, seconds);
-				} else {
-					printf("   %02d:%02d", minutes, seconds);
+					hours = seconds / 3600;
+					seconds -= hours * 3600;
+					minutes = seconds / 60;
+					seconds -= minutes * 60;
+
+					if (hours != 0) {
+						printf("%02d:%02d:%0d", hours, minutes, seconds);
+					} else {
+						printf("   %02d:%02d", minutes, seconds);
+					}
+
+					if (bytes_left > 0) {
+						printf(" ETA");
+					} else {
+						printf("    ");
+					}
 				}
+			}
+			else {
+				struct winsize winsize;
+				int ttywidth = 80;
 
-				if (bytes_left > 0) {
-					printf(" ETA");
-				} else {
-					printf("    ");
-				}
+
+				/* Bad hack to erase string */
+				if (ioctl(fileno(stdout), TIOCGWINSZ, &winsize) != -1 &&
+								winsize.ws_col != 0)
+					ttywidth = winsize.ws_col;
+				else
+					ttywidth = 80;
+
+				humanize_number(buf, sizeof(buf),
+					current,"B", HN_AUTOSCALE, 0);
+				printf(" of %-*s", ttywidth - 20, buf);
 			}
 		}
 		fflush(stdout);
