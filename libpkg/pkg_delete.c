@@ -43,7 +43,6 @@
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
-	struct pkg_dep	*rdep = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
 	int64_t		id;
@@ -118,10 +117,9 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	const char	*path;
 	char		fpath[MAXPATHLEN];
-	int		nfiles, cur_file;
+	int		nfiles, cur_file = 0;
 
 	nfiles = HASH_COUNT(pkg->files);
-	cur_file = 1;
 
 	pkg_emit_progress_start(NULL);
 	/* fake to show a 100% progress */
@@ -160,6 +158,8 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 			continue;
 		}
 	}
+
+	pkg_emit_progress_tick(nfiles, nfiles);
 
 	return (EPKG_OK);
 }

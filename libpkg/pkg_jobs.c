@@ -1971,7 +1971,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 			candidates = pkg_jobs_find_install_candidates(j, &jcount);
 
-			pkg_emit_progress_start("Processing packages");
+			pkg_emit_progress_start("Checking for upgrades");
 
 			LL_FOREACH(candidates, c) {
 				pkg_emit_progress_tick(++elt_num, jcount);
