@@ -836,8 +836,8 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	return (EPKG_OK);
 }
 
-static int
-emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
+pkg_object*
+pkg_emit_object(struct pkg *pkg, short flags)
 {
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
@@ -1110,6 +1110,17 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
 		    "message", 7, false);
 	}
+
+	return (top);
+}
+
+
+static int
+emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
+{
+	ucl_object_t *top;
+
+	top = pkg_emit_object(pkg, flags);
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
 		ucl_object_emit_sbuf(top, UCL_EMIT_YAML, out);
