@@ -137,6 +137,10 @@ pkg_jobs_free(struct pkg_jobs *j)
 	}
 	HASH_ITER(hh, j->universe, un, untmp) {
 		HASH_DEL(j->universe, un);
+
+		if (un->reinstall != NULL)
+			pkg_free(un->reinstall);
+
 		LL_FOREACH_SAFE(un, cur, curtmp) {
 			pkg_free(cur->pkg);
 			free(cur);
@@ -934,7 +938,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
 			if (force)
-				seen->un->reinstall = true;
+				seen->un->reinstall = p;
 		}
 		return (EPKG_OK);
 	}
@@ -1477,7 +1481,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	    PKG_AUTOMATIC, automatic);
 
 	if (force) {
-		unit->reinstall = true;
+		unit->reinstall = rp;
 		return (true);
 	}
 
@@ -1670,7 +1674,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
 			}
 			else {
-				if (!unit->reinstall || j->type == PKG_JOBS_INSTALL) {
+				if (unit->reinstall == NULL || j->type == PKG_JOBS_INSTALL) {
 					automatic = 0;
 					pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
 				}
@@ -2203,12 +2207,14 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	struct pkg *new, *old;
 	const char *pkguid, *oldversion = NULL;
 	char path[MAXPATHLEN], *target;
-	bool automatic, need_free = false;
+	bool automatic;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
-	new = ps->items[0]->pkg;
+	new = (ps->items[0]->reinstall == NULL) ?
+					ps->items[0]->pkg : /* Just a remote package */
+					ps->items[0]->reinstall /* Package for reinstall */;
 
 	pkg_get(new, PKG_UNIQUEID, &pkguid, PKG_AUTOMATIC, &automatic);
 	if (old != NULL)
@@ -2221,18 +2227,6 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		target = ps->items[0]->jp->path;
 	}
 	else {
-		if (new->type == PKG_INSTALLED) {
-			/* We need to find the corresponding remote package */
-			const char *uid;
-			pkg_get(new, PKG_UNIQUEID, &uid);
-			new = get_remote_pkg(j, uid, 0);
-			if (new == NULL) {
-				pkg_emit_error("no remote package found for reinstallation of %s",
-						uid);
-				return (EPKG_FATAL);
-			}
-			need_free = true;
-		}
 		pkg_snprintf(path, sizeof(path), "%R", new);
 		if (*path != '/')
 			pkg_repo_cached_name(new, path, sizeof(path));
@@ -2278,9 +2272,6 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	retcode = EPKG_OK;
 
 cleanup:
-
-	if (need_free)
-		pkg_free(new);
 
 	return (retcode);
 }
@@ -2459,34 +2450,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	return (rc);
 }
 
-#define PKG_JOBS_FETCH_CALCULATE(list) do {										\
-	DL_FOREACH((list), ps) {														\
-		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {\
-			p = ps->items[0]->pkg;													\
-			if (p->type != PKG_REMOTE)												\
-				continue;															\
-			int64_t pkgsize;														\
-			pkg_get(p, PKG_PKGSIZE, &pkgsize);				\
-			pkg_repo_cached_name(p, cachedpath, sizeof(cachedpath));				\
-			if (stat(cachedpath, &st) == -1)										\
-				dlsize += pkgsize;													\
-			else																	\
-				dlsize += pkgsize - st.st_size;										\
-		}																			\
-	}																				\
-} while(0)
-
-#define PKG_JOBS_DO_FETCH(list) do {												\
-	DL_FOREACH((list), ps) {														\
-		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {\
-			p = ps->items[0]->pkg;													\
-			if (p->type != PKG_REMOTE)												\
-				continue;															\
-			if (pkg_repo_fetch_package(p) != EPKG_OK)								\
-				return (EPKG_FATAL);												\
-		}																			\
-	}																				\
-} while(0)
 
 static int
 pkg_jobs_fetch(struct pkg_jobs *j)
@@ -2502,7 +2465,24 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	/* check for available size to fetch */
-	PKG_JOBS_FETCH_CALCULATE(j->jobs);
+	DL_FOREACH(j->jobs, ps) {
+		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
+			if (ps->items[0]->reinstall)
+				p = ps->items[0]->reinstall;
+			else
+				p = ps->items[0]->pkg;
+
+			if (p->type != PKG_REMOTE)
+				continue;
+			int64_t pkgsize;
+			pkg_get(p, PKG_PKGSIZE, &pkgsize);
+			pkg_repo_cached_name(p, cachedpath, sizeof(cachedpath));
+			if (stat(cachedpath, &st) == -1)
+				dlsize += pkgsize;
+			else
+				dlsize += pkgsize - st.st_size;
+		}
+	}
 
 	if (dlsize == 0)
 		return (EPKG_OK);
@@ -2532,7 +2512,20 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
-	PKG_JOBS_DO_FETCH(j->jobs);
+	DL_FOREACH(j->jobs, ps) {
+		if (ps->type != PKG_SOLVED_DELETE
+						&& ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
+			if (ps->items[0]->reinstall)
+				p = ps->items[0]->reinstall;
+			else
+				p = ps->items[0]->pkg;
+
+			if (p->type != PKG_REMOTE)
+				continue;
+			if (pkg_repo_fetch_package(p) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
+	}
 
 	return (EPKG_OK);
 }
