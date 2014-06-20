@@ -366,7 +366,7 @@ draw_progressbar(int64_t current, int64_t total)
 	int hours, minutes, seconds;
 	int r = 0;
 
-	percent =  current * 100 / total;
+	percent = (total != 0) ? (current * 100 / total) : 100;
 
 	if (progress_started && (percent != last_progress_percent || current == total)) {
 		last_progress_percent = percent;
