@@ -56,7 +56,6 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/repodb.h"
-#include "private/thd_repo.h"
 
 struct digest_list_entry {
 	char *origin;
