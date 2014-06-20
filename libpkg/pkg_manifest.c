@@ -908,10 +908,12 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkgsize > 0)
 		ucl_object_insert_key(top, ucl_object_fromint(pkgsize), "pkgsize", 7, false);
 
-	urlencode(desc, &tmpsbuf);
-	ucl_object_insert_key(top,
-	    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
-	    "desc", 4, false);
+	if (desc != NULL) {
+		urlencode(desc, &tmpsbuf);
+		ucl_object_insert_key(top,
+			ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+			"desc", 4, false);
+	}
 
 	pkg_debug(4, "Emitting deps");
 	map = NULL;

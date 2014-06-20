@@ -384,14 +384,14 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 	struct sbuf *b = sbuf_new_auto();
 
-	mfd = open(mlfile, O_APPEND|O_CREAT, 00644);
+	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
 		pkg_emit_errno("pkg_create_repo_worker", "open");
 		return (EPKG_FATAL);
 	}
 
 	if (read_files) {
-		ffd = open(mlfile, O_APPEND|O_CREAT, 00644);
+		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
@@ -405,6 +405,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		return (EPKG_FATAL);
 		break;
 	case 0:
+		break;
+	default:
+		/* Parent */
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -433,7 +436,6 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				PKG_REPOPATH, cur->pkg_path,
 				PKG_PKGSIZE, cur->fts_size);
 			pkg_get(pkg, PKG_ORIGIN, &origin);
-
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -539,20 +541,25 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				dig = malloc(sizeof(*dig));
 				dig->origin = malloc(i - start + 1);
 				strlcpy(dig->origin, &buf[start], i - start + 1);
+				state = s_set_digest;
 				break;
 			case s_set_digest:
 				dig->digest = malloc(i - start + 1);
 				strlcpy(dig->digest, &buf[start], i - start + 1);
+				state = s_set_mpos;
 				break;
 			case s_set_mpos:
 				dig->manifest_pos = strtol(&buf[start], NULL, 10);
+				state = s_set_fpos;
 				break;
 			case s_set_fpos:
 				dig->files_pos = strtol(&buf[start], NULL, 10);
+				state = s_set_mlen;
 				break;
 			case s_set_mlen:
 				/* Record should actually not finish with ':' */
 				dig->manifest_length = strtol(&buf[start], NULL, 10);
+				state = s_set_origin;
 				break;
 			}
 			start = i + 1;
@@ -560,6 +567,8 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 		else if (buf[i] == '\n') {
 			dig->manifest_length = strtol(&buf[start], NULL, 10);
 			DL_APPEND(*dlist, dig);
+			state = s_set_origin;
+			start = i + 1;
 			break;
 		}
 	}
@@ -580,7 +589,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	size_t len, tasks_per_worker, ntask;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
-	int cur_pipe[2];
+	int cur_pipe[2], fd;
 
 	int retcode = EPKG_OK;
 
@@ -626,17 +635,19 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	snprintf(packagesite, sizeof(packagesite), "%s/%s", output_dir,
 	    repo_packagesite_file);
-	if (access(packagesite, W_OK) == -1) {
+	if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
+	close(fd);
 	if (filelist) {
 		snprintf(filesite, sizeof(filesite), "%s/%s", output_dir,
 		    repo_filesite_file);
-		if (access(filesite, W_OK) == -1) {
+		if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
+		close(fd);
 	}
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
 	    repo_digests_file);
@@ -700,7 +711,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 				goto cleanup;
 			}
 		}
-		else if (retcode > 1) {
+		else if (retcode > 0) {
 			for (i = 0; i < num_workers; i ++) {
 				if (pfd[i].revents & POLL_IN) {
 					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist) != EPKG_OK) {
@@ -718,6 +729,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			}
 		}
 	}
+
+	retcode = EPKG_OK;
 
 	/* Now sort all digests */
 	DL_SORT(dlist, pkg_digest_sort_compare_func);
@@ -757,9 +770,6 @@ cleanup:
 		free(cur_dig->origin);
 		free(cur_dig);
 	}
-
-	if (fts != NULL)
-		fts_close(fts);
 
 	if (mandigests != NULL)
 		fclose(mandigests);
