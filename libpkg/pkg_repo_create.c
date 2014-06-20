@@ -302,6 +302,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		break;
 	}
 
+	pkg_manifest_keys_new(&keys);
+
 	if (read_files)
 		flags = PKG_OPEN_MANIFEST_ONLY;
 	else
