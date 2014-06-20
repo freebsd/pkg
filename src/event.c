@@ -364,13 +364,14 @@ draw_progressbar(int64_t current, int64_t total)
 	int cur_speed;
 	int64_t elapsed;
 	int hours, minutes, seconds;
+	int r = 0;
 
 	percent =  current * 100 / total;
 
 	if (progress_started && (percent != last_progress_percent || current == total)) {
 		last_progress_percent = percent;
 
-		printf("\r%s: %d%%", progress_message, percent);
+		r = printf("\r%s: %d%%", progress_message, percent);
 		if (progress_debit) {
 			if (total > current) {
 				now = time(NULL);
@@ -423,17 +424,15 @@ draw_progressbar(int64_t current, int64_t total)
 					minutes = seconds / 60;
 					seconds -= minutes * 60;
 
-					if (hours != 0) {
+					if (hours != 0)
 						printf("%02d:%02d:%0d", hours, minutes, seconds);
-					} else {
+					else
 						printf("   %02d:%02d", minutes, seconds);
-					}
 
-					if (bytes_left > 0) {
+					if (bytes_left > 0)
 						printf(" ETA");
-					} else {
+					else
 						printf("    ");
-					}
 				}
 			}
 			else {
@@ -450,7 +449,8 @@ draw_progressbar(int64_t current, int64_t total)
 
 				humanize_number(buf, sizeof(buf),
 					current,"B", HN_AUTOSCALE, 0);
-				printf(" of %-*s", ttywidth - 20, buf);
+				if (ttywidth > r + sizeof(buf))
+					printf(" of %-*s", (int)(ttywidth - r - strlen(buf)), buf);
 			}
 		}
 		fflush(stdout);
