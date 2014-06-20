@@ -595,9 +595,20 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		return (EPKG_FATAL);
 	}
 
+	errno = 0;
 	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
-		return (EPKG_FATAL);
+		/* Try to create dir */
+		if (errno == ENOENT) {
+			if (mkdir(output_dir, 00755) == -1) {
+				pkg_emit_error("cannot create output directory %s: %s",
+					output_dir, strerror(errno));
+				return (EPKG_FATAL);
+			}
+		}
+		else {
+			pkg_emit_error("%s is not a directory", output_dir);
+			return (EPKG_FATAL);
+		}
 	}
 
 	repopath[0] = path;
