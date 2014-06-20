@@ -66,7 +66,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-lcrypto \
 			-lm
 
-libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -pthread -Wl,--version-script=$(srcdir)/libpkg.ver
+libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
 lib_LTLIBRARIES=	libpkg.la libpkg_static.la
 include_HEADERS=	pkg.h
 
@@ -88,7 +88,6 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/pkg_printf.h \
 			private/pkgdb.h \
 			private/repodb.h \
-			private/thd_repo.h \
 			private/utils.h
 
 SUBDIRS = repo .
