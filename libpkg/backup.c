@@ -91,7 +91,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 	done = total = 0;
 	start = time(NULL);
 
-	pkg_emit_progress_start("Backing up");
+	pkg_emit_progress_start(NULL);
 	do {
 		ret = sqlite3_backup_step(b, NPAGES);
 
@@ -157,6 +157,7 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 		return (EPKG_FATAL);
 	}
 
+	pkg_emit_backup();
 	ret = copy_database(db->sqlite, backup, dest);
 
 	sqlite3_close(backup);
@@ -183,6 +184,7 @@ pkgdb_load(struct pkgdb *db, const char *src)
 		return (EPKG_FATAL);
 	}
 
+	pkg_emit_restore();
 	ret = copy_database(restore, db->sqlite, src);
 
 	sqlite3_close(restore);

@@ -91,11 +91,9 @@ exec_backup(int argc, char **argv)
 
 	if (restore) {
 		if (!quiet)
-			printf("Restoring database...\n");
+			printf("Restoring database:\n");
 		if (pkgdb_load(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
-		if (!quiet)
-			printf("done\n");
 	}
 
 	pkgdb_close(db);

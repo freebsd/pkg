@@ -772,7 +772,14 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_PROGRESS_TICK:
 		if (!quiet && isatty(STDOUT_FILENO))
 			draw_progressbar(ev->e_progress_tick.current, ev->e_progress_tick.total);
-
+		break;
+	case PKG_EVENT_BACKUP:
+		sbuf_cat(msg_buf, "Backing up");
+		sbuf_finish(msg_buf);
+		break;
+	case PKG_EVENT_RESTORE:
+		sbuf_cat(msg_buf, "Restoring");
+		sbuf_finish(msg_buf);
 		break;
 	default:
 		break;

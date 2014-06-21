@@ -371,6 +371,9 @@ pipeevent(struct pkg_event *ev)
 		sbuf_printf(msg, "{ \"text\": \"%s\" } ] }}",
 			ev->e_query_select.items[i]);
 		break;
+	case PKG_EVENT_BACKUP:
+	case PKG_EVENT_RESTORE:
+		break;
 	default:
 		break;
 	}
@@ -888,6 +891,26 @@ pkg_debug(int level, const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_debug.msg);
+}
+
+void
+pkg_emit_backup(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_BACKUP;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_restore(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_RESTORE;
+
+	pkg_emit_event(&ev);
 }
 
 void
