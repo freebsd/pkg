@@ -182,7 +182,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		return (EPKG_FATAL);
 	}
 
-	i = snprintf(dest, destlen, "%d:%d:", PKG_CHECKSUM_CUR_VERSION, type);
+	i = snprintf(dest, destlen, "%d$%d$", PKG_CHECKSUM_CUR_VERSION, type);
 	checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
 
 	LL_FREE(entries, free);
@@ -193,14 +193,14 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 bool
 pkg_checksum_is_valid(const char *cksum, size_t clen)
 {
-	const char *semicolon;
+	const char *sep;
 	unsigned int value;
 
 	if (clen < 4)
 		return (false);
 
-	semicolon = strchr(cksum, ':');
-	if (semicolon == NULL || *semicolon == '\0')
+	sep = strchr(cksum, '$');
+	if (sep == NULL || *sep == '\0')
 		return (false);
 
 	/* Test version */
@@ -208,9 +208,9 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 	if (value != PKG_CHECKSUM_CUR_VERSION)
 		return (false);
 
-	cksum = semicolon + 1;
-	semicolon = strchr(cksum, ':');
-	if (semicolon == NULL || *semicolon == '\0')
+	cksum = sep + 1;
+	sep = strchr(cksum, '$');
+	if (sep == NULL || *sep == '\0')
 		return (false);
 
 	/* Test type */
@@ -225,12 +225,12 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 pkg_checksum_type_t
 pkg_checksum_get_type(const char *cksum, size_t clen)
 {
-	const char *semicolon;
+	const char *sep;
 	unsigned int value;
 
-	semicolon = strchr(cksum, ':');
-	if (semicolon != NULL && *semicolon != '\0') {
-		value = strtoul(semicolon + 1, NULL, 10);
+	sep = strchr(cksum, '$');
+	if (sep != NULL && *sep != '\0') {
+		value = strtoul(sep + 1, NULL, 10);
 		if (value < PKG_HASH_TYPE_UNKNOWN)
 			return (value);
 	}
