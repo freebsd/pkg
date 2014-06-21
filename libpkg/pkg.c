@@ -1495,12 +1495,8 @@ pkg_test_filesum(struct pkg *pkg)
 				return (EPKG_FATAL);
 			}
 			if (S_ISLNK(st.st_mode)) {
-				char linkbuf[MAXPATHLEN];
-				if ((ret = readlink(path, linkbuf, sizeof(linkbuf))) == -1) {
-					pkg_emit_errno("pkg_create_from_dir", "readlink failed");
+				if (pkg_symlink_cksum(path, NULL, sha256) != EPKG_OK)
 					return (EPKG_FATAL);
-				}
-				sha256_buf(linkbuf, ret, sha256);
 			}
 			else {
 				if (sha256_file(path, sha256) != EPKG_OK)

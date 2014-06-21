@@ -613,4 +613,6 @@ const char* pkg_checksum_type_to_string(pkg_checksum_type_t type);
 size_t pkg_checksum_type_size(pkg_checksum_type_t type);
 int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db);
 
+int pkg_symlink_cksum(const char *path, const char *root, char *cksum);
+
 #endif

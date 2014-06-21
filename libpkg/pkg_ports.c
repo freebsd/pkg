@@ -382,15 +382,12 @@ file(struct plist *p, char *line, struct file_attr *a)
 				regular = true;
 
 		} else if (S_ISLNK(st.st_mode)) {
-			char linkbuf[MAXPATHLEN];
-			int len;
-			if ((len = readlink(testpath, linkbuf, sizeof(linkbuf))) == -1) {
-				pkg_emit_errno("file", "readlink failed");
-				return (EPKG_FATAL);
+			if (pkg_symlink_cksum(testpath, p->stage, sha256) == EPKG_OK) {
+				buf = sha256;
+				regular = false;
 			}
-			sha256_buf(linkbuf, len, sha256);
-			buf = sha256;
-			regular = false;
+			else
+				return (EPKG_FATAL);
 		}
 
 		if (regular) {
