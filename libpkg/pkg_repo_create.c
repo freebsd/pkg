@@ -49,6 +49,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <poll.h>
+#include <sys/uio.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -267,6 +268,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_manifest_key *keys = NULL;
 	char checksum[SHA256_DIGEST_LENGTH * 2 + 1], *mdigest;
 	char digestbuf[1024];
+	struct iovec iov[2];
 
 	struct sbuf *b = sbuf_new_auto();
 
@@ -341,7 +343,12 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 			mpos = lseek(mfd, 0, SEEK_END);
 
-			if (write(mfd, sbuf_data(b), sbuf_len(b)) == -1) {
+			iov[0].iov_base = sbuf_data(b);
+			iov[0].iov_len = sbuf_len(b);
+			iov[1].iov_base = (void *)"\n";
+			iov[1].iov_len = 1;
+
+			if (writev(mfd, iov, 2) == -1) {
 				pkg_emit_errno("pkg_create_repo_worker", "write");
 				ret = EPKG_FATAL;
 				flock(mfd, LOCK_UN);
@@ -858,6 +865,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
+#if 0
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 		repo_conflicts_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
@@ -866,6 +874,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
+#endif
 
 	/* Now we need to set the equal mtime for all archives in the repo */
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
