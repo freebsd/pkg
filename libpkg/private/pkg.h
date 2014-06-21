@@ -322,6 +322,8 @@ struct pkg_repo_meta {
 	struct pkg_repo_meta_key *keys;
 
 	time_t eol;
+
+	int version;
 };
 
 struct pkg_repo_it_ops {
@@ -606,6 +608,7 @@ int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 bool pkg_checksum_is_valid(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_type_from_string(const char *name);
+const char* pkg_checksum_type_to_string(pkg_checksum_type_t type);
 size_t pkg_checksum_type_size(pkg_checksum_type_t type);
 int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db);
 

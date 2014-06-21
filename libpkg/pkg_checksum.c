@@ -356,6 +356,12 @@ pkg_checksum_type_from_string(const char *name)
 	return (PKG_HASH_TYPE_UNKNOWN);
 }
 
+const char*
+pkg_checksum_type_to_string(pkg_checksum_type_t type)
+{
+	return (checksum_types[type].name);
+}
+
 size_t
 pkg_checksum_type_size(pkg_checksum_type_t type)
 {

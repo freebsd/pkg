@@ -472,7 +472,8 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 }
 
 int
-pkg_create_repo(char *path, const char *output_dir, bool filelist)
+pkg_create_repo(char *path, const char *output_dir, bool filelist,
+	const char *metafile)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur;

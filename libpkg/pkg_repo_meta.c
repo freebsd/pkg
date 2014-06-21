@@ -170,6 +170,7 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	}
 
 	pkg_repo_meta_set_default(meta);
+	meta->version = version;
 
 	META_EXTRACT_STRING(maintainer);
 	META_EXTRACT_STRING(source);
@@ -290,3 +291,47 @@ pkg_repo_meta_default(void)
 
 	return (meta);
 }
+
+#define META_EXPORT_FIELD(result, meta, field, type)	do { 					\
+	if (strcmp(#type, "string") != 0 || meta->field != 0)					\
+		ucl_object_insert_key((result), ucl_object_from ## type (meta->field),	\
+				#field, 0, false); 												\
+	} while(0)
+
+#define META_EXPORT_FIELD_FUNC(result, meta, field, type, func)	do {			\
+	if (strcmp(#type, "string") != 0 || func(meta->field) != 0)				\
+		ucl_object_insert_key((result), ucl_object_from ## type (func(meta->field)), \
+				#field, 0, false); 												\
+	} while(0)
+
+
+ucl_object_t *
+pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
+{
+	ucl_object_t *result = ucl_object_typed_new(UCL_OBJECT);
+
+	META_EXPORT_FIELD(result, meta, version, int);
+	META_EXPORT_FIELD(result, meta, maintainer, string);
+	META_EXPORT_FIELD(result, meta, source, string);
+
+	META_EXPORT_FIELD_FUNC(result, meta, packing_format, string,
+		packing_format_to_string);
+	META_EXPORT_FIELD_FUNC(result, meta, digest_format, string,
+		pkg_checksum_type_to_string);
+
+	META_EXPORT_FIELD(result, meta, digests, string);
+	META_EXPORT_FIELD(result, meta, manifests, string);
+	META_EXPORT_FIELD(result, meta, conflicts, string);
+	META_EXPORT_FIELD(result, meta, fulldb, string);
+
+	META_EXPORT_FIELD(result, meta, source_identifier, string);
+	META_EXPORT_FIELD(result, meta, revision, int);
+	META_EXPORT_FIELD(result, meta, eol, int);
+
+	/* TODO: export keys */
+
+	return (result);
+}
+
+#undef META_EXPORT_FIELD
+#undef META_EXPORT_FIELD_FUNC
