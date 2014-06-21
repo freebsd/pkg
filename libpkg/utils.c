@@ -374,7 +374,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 }
 
 void
-sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
+sha256_buf(const char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	sha256_buf_bin(buf, len, hash);
@@ -383,7 +383,7 @@ sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 }
 
 void
-sha256_buf_bin(char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
+sha256_buf_bin(const char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
 {
 	SHA256_CTX sha256;
 
