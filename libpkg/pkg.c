@@ -1482,7 +1482,7 @@ pkg_test_filesum(struct pkg *pkg)
 	const char *sum;
 	struct stat	 st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	int rc = EPKG_OK, ret;
+	int rc = EPKG_OK;
 
 	assert(pkg != NULL);
 
