@@ -472,8 +472,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 }
 
 int
-pkg_create_repo(char *path, const char *output_dir, bool filelist,
-		void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, const char *output_dir, bool filelist)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur;
@@ -567,6 +566,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	tasks_per_worker = ceil((double)len / num_workers);
 
 	/* Launch workers */
+	pkg_emit_progress_start("Creating repository in %s", output_dir);
+
 	pfd = calloc(num_workers, sizeof(struct pollfd));
 	ntask = 0;
 	LL_FOREACH(fts_items, fts_cur) {
@@ -595,6 +596,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		ntask ++;
 	}
 
+	ntask = 0;
 	while(num_workers > 0) {
 		retcode = poll(pfd, num_workers, -1);
 		if (retcode == -1) {
@@ -620,11 +622,15 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 						num_workers --;
 					}
+					else {
+						pkg_emit_progress_tick(ntask++, len);
+					}
 				}
 			}
 		}
 	}
 
+	pkg_emit_progress_tick(len, len);
 	retcode = EPKG_OK;
 
 	/* Now sort all digests */
@@ -819,6 +825,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	struct rsa_key *rsa = NULL;
 	struct stat st;
 	int ret = EPKG_OK;
+	const int files_to_pack = 3;
 
 	if (!is_dir(output_dir)) {
 		pkg_emit_error("%s is not a directory", output_dir);
@@ -837,6 +844,9 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		argv++;
 	}
 
+	pkg_emit_progress_start("Packing files for repository", output_dir);
+	pkg_emit_progress_tick(0, files_to_pack);
+
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 	    repo_packagesite_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
@@ -845,6 +855,8 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
+
+	pkg_emit_progress_tick(1, files_to_pack);
 
 	if (filelist) {
 		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
@@ -857,6 +869,8 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		}
 	}
 
+	pkg_emit_progress_tick(2, files_to_pack);
+
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 	    repo_digests_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
@@ -865,6 +879,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
+
 #if 0
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 		repo_conflicts_file);
@@ -904,6 +919,8 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	}
 
 cleanup:
+	pkg_emit_progress_tick(files_to_pack, files_to_pack);
+
 	if (rsa)
 		rsa_free(rsa);
 

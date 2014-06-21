@@ -43,24 +43,6 @@ usage_repo(void)
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
-static const char ps[] = { '-', '\\', '|', '/' };
-
-static void
-progress(struct pkg *pkg, void *data)
-{
-	int *pos;
-
-	pos = (int *)data;
-
-	if (*pos == 3)
-		*pos = 0;
-	else
-		*pos = *pos + 1;
-
-	if (pkg != NULL)
-		printf("\b%c", ps[*pos]);
-}
-
 static int
 password_cb(char *buf, int size, int rwflag, void *key)
 {
@@ -137,28 +119,13 @@ exec_repo(int argc, char **argv)
 	if (output_dir == NULL)
 		output_dir = argv[0];
 
-	if (!quiet) {
-		printf("Generating repository catalog in %s:  ", argv[0]);
-		if (isatty(STDOUT_FILENO)) {
-			progress_fn = progress;
-			pos_ptr = &pos;
-		}
-	}
-
-	ret = pkg_create_repo(argv[0], output_dir, filelist, progress_fn,
-	    pos_ptr);
+	ret = pkg_create_repo(argv[0], output_dir, filelist);
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
 		return (EX_IOERR);
-	} else {
-		if (!quiet) {
-			if (progress_fn != NULL)
-				printf("\b");
-			printf("done!\n");
-		}
 	}
-	
+
 	if (pkg_finish_repo(output_dir, password_cb, argv + 1, argc - 1,
 	    filelist) != EPKG_OK)
 		return (EX_DATAERR);
