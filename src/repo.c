@@ -80,7 +80,7 @@ exec_repo(int argc, char **argv)
 		{ "list-files", no_argument,		NULL,	'l' },
 		{ "output-dir", required_argument,	NULL,	'o' },
 		{ "quiet",	no_argument,		NULL,	'q' },
-		{ "meta",	required_argument,	NULL,	'm' },
+		{ "meta-file",	required_argument,	NULL,	'm' },
 		{ "legacy",	no_argument,	NULL,	'L' },
 		{ NULL,		0,			NULL,	0   },
 	};
