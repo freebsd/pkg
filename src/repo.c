@@ -70,24 +70,22 @@ int
 exec_repo(int argc, char **argv)
 {
 	int	 ret;
-	int	 pos = 0;
 	int	 ch;
 	bool	 filelist = false;
 	char	*output_dir = NULL;
-	void	(*progress_fn)(struct pkg *, void *);
-	int	*pos_ptr;
+	char	*meta_file = NULL;
+	bool	legacy = false;
 
 	struct option longopts[] = {
 		{ "list-files", no_argument,		NULL,	'l' },
 		{ "output-dir", required_argument,	NULL,	'o' },
 		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "meta",	required_argument,	NULL,	'm' },
+		{ "legacy",	no_argument,	NULL,	'L' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	progress_fn = NULL;
-	pos_ptr = NULL;
-
-	while ((ch = getopt_long(argc, argv, "lo:q", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "lo:qm:L", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'l':
 			filelist = true;
@@ -97,6 +95,12 @@ exec_repo(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'm':
+			meta_file = optarg;
+			break;
+		case 'L':
+			legacy = true;
 			break;
 		default:
 			usage_repo();
@@ -119,7 +123,7 @@ exec_repo(int argc, char **argv)
 	if (output_dir == NULL)
 		output_dir = argv[0];
 
-	ret = pkg_create_repo(argv[0], output_dir, filelist);
+	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file, legacy);
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");

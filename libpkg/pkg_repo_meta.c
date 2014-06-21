@@ -44,6 +44,7 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->digests = strdup("digests");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
+	meta->version = 1;
 }
 
 void
@@ -293,13 +294,13 @@ pkg_repo_meta_default(void)
 }
 
 #define META_EXPORT_FIELD(result, meta, field, type)	do { 					\
-	if (strcmp(#type, "string") != 0 || meta->field != 0)					\
+	if (meta->field != 0)					\
 		ucl_object_insert_key((result), ucl_object_from ## type (meta->field),	\
 				#field, 0, false); 												\
 	} while(0)
 
 #define META_EXPORT_FIELD_FUNC(result, meta, field, type, func)	do {			\
-	if (strcmp(#type, "string") != 0 || func(meta->field) != 0)				\
+	if (func(meta->field) != 0)				\
 		ucl_object_insert_key((result), ucl_object_from ## type (func(meta->field)), \
 				#field, 0, false); 												\
 	} while(0)

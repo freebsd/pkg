@@ -39,6 +39,7 @@ static const char repo_digests_file[] = "digests";
 static const char repo_digests_archive[] = "digests";
 static const char repo_conflicts_file[] = "conflicts";
 static const char repo_conflicts_archive[] = "conflicts";
-
+static const char repo_meta_file[] = "meta";
+static const char repo_meta_archive[] = "meta";
 
 #endif	/* _REPODB */

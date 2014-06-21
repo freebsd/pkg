@@ -256,17 +256,19 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 
 static int
 pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
-	const char *mlfile, const char *flfile, int pip)
+	const char *mlfile, const char *flfile, int pip,
+	struct pkg_repo_meta *meta)
 {
 	pid_t pid;
 	int mfd, ffd;
 	bool read_files = (flfile != NULL);
+	bool legacy = (meta == NULL);
 	int flags, ret = EPKG_OK;
 	size_t cur_job = 0;
 	struct pkg_fts_item *cur;
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	char checksum[SHA256_DIGEST_LENGTH * 2 + 1], *mdigest;
+	char checksum[SHA256_DIGEST_LENGTH * 3 + 1], *mdigest = NULL;
 	char digestbuf[1024];
 	struct iovec iov[2];
 
@@ -331,7 +333,21 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			 * TODO: use pkg_checksum for new manifests
 			 */
 			sbuf_clear(b);
-			pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
+			if (legacy)
+				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
+			else {
+				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
+
+				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+				if (pkg_checksum_generate(pkg, mdigest,
+				     pkg_checksum_type_size(meta->digest_format),
+				     meta->digest_format) != EPKG_OK) {
+					pkg_emit_error("Cannot generate digest for a package");
+					ret = EPKG_FATAL;
+
+					goto cleanup;
+				}
+			}
 			mlen = sbuf_len(b);
 			sbuf_finish(b);
 
@@ -379,6 +395,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				(long)fpos,
 				(long)mlen);
 
+			free(mdigest);
+			mdigest = NULL;
 			write(pip, digestbuf, r);
 		}
 		cur_job ++;
@@ -391,6 +409,8 @@ cleanup:
 	close(mfd);
 	if (read_files)
 		close(ffd);
+	if (mdigest)
+		free(mdigest);
 
 	exit(ret);
 }
@@ -473,7 +493,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile)
+	const char *metafile, bool legacy)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur;
@@ -485,7 +505,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd;
-
+	struct pkg_repo_meta *meta;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
@@ -513,6 +533,16 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			pkg_emit_error("%s is not a directory", output_dir);
 			return (EPKG_FATAL);
 		}
+	}
+
+	if (metafile != NULL) {
+		if (pkg_repo_meta_load(metafile, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", metafile);
+			return (EPKG_FATAL);
+		}
+	}
+	else {
+		meta = pkg_repo_meta_default();
 	}
 
 	repopath[0] = path;
@@ -583,7 +613,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			}
 
 			if (pkg_create_repo_worker(fts_cur, tasks_per_worker, packagesite,
-				filelist ? filesite : NULL, cur_pipe[1]) == EPKG_FATAL) {
+				filelist ? filesite : NULL, cur_pipe[1],
+				legacy ? NULL : meta) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
 				retcode = EPKG_FATAL;
@@ -644,6 +675,23 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	pkg_repo_write_conflicts(conflicts, fconflicts);
 #endif
 
+	/* Write metafile */
+	if (!legacy) {
+		ucl_object_t *meta_dump;
+		FILE *mfile;
+
+		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+			"meta");
+		if ((mfile = fopen(repodb, "w")) != NULL) {
+			meta_dump = pkg_repo_meta_to_ucl(meta);
+			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
+			ucl_object_unref(meta_dump);
+			fclose(mfile);
+		}
+		else {
+			pkg_emit_notice("cannot create metafile at %s", repodb);
+		}
+	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
@@ -672,6 +720,8 @@ cleanup:
 		free(cur_dig->origin);
 		free(cur_dig);
 	}
+
+	pkg_repo_meta_free(meta);
 
 	if (mandigests != NULL)
 		fclose(mandigests);
@@ -826,7 +876,8 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	struct rsa_key *rsa = NULL;
 	struct stat st;
 	int ret = EPKG_OK;
-	const int files_to_pack = 3;
+	const int files_to_pack = 4;
+	bool legacy = false;
 
 	if (!is_dir(output_dir)) {
 		pkg_emit_error("%s is not a directory", output_dir);
@@ -881,6 +932,24 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		goto cleanup;
 	}
 
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+		repo_meta_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+		repo_meta_archive);
+	/*
+	 * If no meta is defined, then it is a legacy repo
+	 */
+	if (access(repo_path, R_OK) != -1) {
+		if (pkg_repo_pack_db(repo_meta_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+	else
+		legacy = true;
+
+	pkg_emit_progress_tick(3, files_to_pack);
+
 #if 0
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 		repo_conflicts_file);
@@ -915,6 +984,11 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		if (filelist) {
 			snprintf(repo_archive, sizeof(repo_archive),
 			    "%s/%s.txz", output_dir, repo_filesite_archive);
+			utimes(repo_archive, ftimes);
+		}
+		if (!legacy) {
+			snprintf(repo_archive, sizeof(repo_archive),
+				"%s/%s.txz", output_dir, repo_meta_archive);
 			utimes(repo_archive, ftimes);
 		}
 	}
