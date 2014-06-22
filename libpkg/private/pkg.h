@@ -312,9 +312,13 @@ struct pkg_repo_meta {
 	pkg_checksum_type_t digest_format;
 
 	char *digests;
+	char *digests_archive;
 	char *manifests;
+	char *manifests_archive;
 	char *conflicts;
+	char *conflicts_archive;
 	char *fulldb;
+	char *fulldb_archive;
 
 	char *source_identifier;
 	int64_t revision;
