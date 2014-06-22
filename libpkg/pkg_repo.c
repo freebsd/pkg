@@ -55,8 +55,6 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
-#include "private/repodb.h"
-
 
 struct sig_cert {
 	char name[MAXPATHLEN];

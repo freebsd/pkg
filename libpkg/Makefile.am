@@ -87,7 +87,6 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/pkg.h \
 			private/pkg_printf.h \
 			private/pkgdb.h \
-			private/repodb.h \
 			private/utils.h
 
 SUBDIRS = repo .

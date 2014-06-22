@@ -43,7 +43,6 @@
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkgdb.h"
-#include "private/repodb.h"
 #include "private/pkg.h"
 #include "binary.h"
 #include "binary_private.h"

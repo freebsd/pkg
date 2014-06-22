@@ -366,3 +366,20 @@ pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
 
 #undef META_EXPORT_FIELD
 #undef META_EXPORT_FIELD_FUNC
+
+#define META_SPECIAL_FILE(file, meta, field) \
+	special || (meta->field == NULL ? false : (strcmp(file, meta->field) == 0))
+
+bool
+pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta)
+{
+	bool special = false;
+
+	special = META_SPECIAL_FILE(file, meta, digests_archive);
+	special = META_SPECIAL_FILE(file, meta, manifests_archive);
+	special = META_SPECIAL_FILE(file, meta, filesite_archive);
+	special = META_SPECIAL_FILE(file, meta, conflicts_archive);
+	special = META_SPECIAL_FILE(file, meta, fulldb_archive);
+
+	return (special);
+}

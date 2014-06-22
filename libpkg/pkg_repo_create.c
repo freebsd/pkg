@@ -56,7 +56,6 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
-#include "private/repodb.h"
 
 struct digest_list_entry {
 	char *origin;
@@ -202,7 +201,7 @@ pkg_create_repo_fts_free(struct pkg_fts_item *item)
 
 static int
 pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
-	const char *repopath, size_t *plen)
+	const char *repopath, size_t *plen, struct pkg_repo_meta *meta)
 {
 	FTSENT *fts_ent;
 	struct pkg_fts_item *fts_cur;
@@ -220,19 +219,12 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		if (ext == NULL)
 			continue;
 
-		if (strcmp(ext, ".tgz") != 0 &&
-						strcmp(ext, ".tbz") != 0 &&
-						strcmp(ext, ".txz") != 0 &&
-						strcmp(ext, ".tar") != 0)
+		if (strcmp(ext + 1, packing_format_to_string(meta->packing_format)) != 0)
 			continue;
 
 		*ext = '\0';
 
-		if (strcmp(fts_ent->fts_name, repo_db_archive) == 0 ||
-						strcmp(fts_ent->fts_name, repo_packagesite_archive) == 0 ||
-						strcmp(fts_ent->fts_name, repo_filesite_archive) == 0 ||
-						strcmp(fts_ent->fts_name, repo_digests_archive) == 0 ||
-						strcmp(fts_ent->fts_name, repo_conflicts_archive) == 0) {
+		if (pkg_repo_meta_is_special_file(fts_ent->fts_name, meta)) {
 			*ext = '.';
 			continue;
 		}
@@ -559,7 +551,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	snprintf(packagesite, sizeof(packagesite), "%s/%s", output_dir,
-	    repo_packagesite_file);
+	    meta->manifests);
 	if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -567,7 +559,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	close(fd);
 	if (filelist) {
 		snprintf(filesite, sizeof(filesite), "%s/%s", output_dir,
-		    repo_filesite_file);
+		    meta->filesite);
 		if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
@@ -575,7 +567,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		close(fd);
 	}
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_digests_file);
+	    meta->digests);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -583,7 +575,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	len = 0;
 
-	pkg_create_repo_read_fts(&fts_items, fts, path, &len);
+	pkg_create_repo_read_fts(&fts_items, fts, path, &len, meta);
 
 	if (len == 0) {
 		/* Nothing to do */
@@ -800,7 +792,8 @@ done:
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-		struct rsa_key *rsa, char **argv, int argc)
+		struct rsa_key *rsa, struct pkg_repo_meta *meta,
+		char **argv, int argc)
 {
 	struct packing *pack;
 	unsigned char *sigret = NULL;
@@ -811,7 +804,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	sig = NULL;
 	pub = NULL;
 
-	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
+	if (packing_init(&pack, archive, meta->packing_format) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (rsa != NULL) {
@@ -874,8 +867,9 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	char repo_path[MAXPATHLEN];
 	char repo_archive[MAXPATHLEN];
 	struct rsa_key *rsa = NULL;
+	struct pkg_repo_meta *meta;
 	struct stat st;
-	int ret = EPKG_OK;
+	int ret = EPKG_OK, nfile = 0;
 	const int files_to_pack = 4;
 	bool legacy = false;
 
@@ -897,65 +891,77 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	}
 
 	pkg_emit_progress_start("Packing files for repository", output_dir);
-	pkg_emit_progress_tick(0, files_to_pack);
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_packagesite_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_packagesite_archive);
-	if (pkg_repo_pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	pkg_emit_progress_tick(1, files_to_pack);
-
-	if (filelist) {
-		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		    repo_filesite_file);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
-		    output_dir, repo_filesite_archive);
-		if (pkg_repo_pack_db(repo_filesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
-	pkg_emit_progress_tick(2, files_to_pack);
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_digests_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_digests_archive);
-	if (pkg_repo_pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
+	pkg_emit_progress_tick(nfile++, files_to_pack);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 		repo_meta_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		repo_meta_archive);
 	/*
 	 * If no meta is defined, then it is a legacy repo
 	 */
 	if (access(repo_path, R_OK) != -1) {
-		if (pkg_repo_pack_db(repo_meta_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", repo_path);
+			return (EPKG_FATAL);
+		}
+		else {
+			meta = pkg_repo_meta_default();
+		}
+		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,
+			argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
-	else
+	else {
 		legacy = true;
+		meta = pkg_repo_meta_default();
+	}
 
-	pkg_emit_progress_tick(3, files_to_pack);
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    meta->manifests);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+		meta->manifests_archive);
+	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, rsa, meta,
+		argv, argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
+	if (filelist) {
+		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+		    meta->filesite);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
+		    output_dir, meta->filesite_archive);
+		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, rsa, meta,
+			argv, argc) != EPKG_OK) {
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    meta->digests);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+	    meta->digests_archive);
+	if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, rsa, meta,
+		argv, argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_emit_progress_tick(nfile++, files_to_pack);
 
 #if 0
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		repo_conflicts_file);
+		meta->conflicts);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		repo_conflicts_archive);
-	if (pkg_repo_pack_db(repo_conflicts_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+		meta->conflicts_archive);
+	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, rsa, meta,
+		argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -963,7 +969,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 
 	/* Now we need to set the equal mtime for all archives in the repo */
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-	    output_dir, repo_db_archive);
+	    output_dir, repo_meta_file);
 	if (stat(repo_archive, &st) == 0) {
 		struct timeval ftimes[2] = {
 			{
@@ -976,25 +982,26 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 			}
 		};
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_packagesite_archive);
+		    output_dir, meta->manifests_archive);
 		utimes(repo_archive, ftimes);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_digests_archive);
+		    output_dir, meta->digests_archive);
 		utimes(repo_archive, ftimes);
 		if (filelist) {
 			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.txz", output_dir, repo_filesite_archive);
+			    "%s/%s.txz", output_dir, meta->filesite_archive);
 			utimes(repo_archive, ftimes);
 		}
 		if (!legacy) {
 			snprintf(repo_archive, sizeof(repo_archive),
-				"%s/%s.txz", output_dir, repo_meta_archive);
+				"%s/%s.txz", output_dir, repo_meta_file);
 			utimes(repo_archive, ftimes);
 		}
 	}
 
 cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
+	pkg_repo_meta_free(meta);
 
 	if (rsa)
 		rsa_free(rsa);
