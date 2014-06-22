@@ -45,6 +45,8 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->manifests_archive = strdup("packagesite");
 	meta->digests = strdup("digests");
 	meta->digests_archive = strdup("digests");
+	meta->filesite = strdup("filesite.yaml");
+	meta->filesite_archive = strdup("filesite");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
 	meta->fulldb_archive = NULL;
@@ -64,10 +66,12 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->manifests);
 		free(meta->digests);
 		free(meta->fulldb);
+		free(meta->filesite);
 		free(meta->conflicts_archive);
 		free(meta->manifests_archive);
 		free(meta->digests_archive);
 		free(meta->fulldb_archive);
+		free(meta->filesite_archive);
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
@@ -99,10 +103,12 @@ pkg_repo_meta_open_schema_v1()
 			"manifests = {type = string};\n"
 			"conflicts = {type = string};\n"
 			"fulldb = {type = string};\n"
+			"filesite = {type = string};\n"
 			"digests_archive = {type = string};\n"
 			"manifests_archive = {type = string};\n"
 			"conflicts_archive = {type = string};\n"
 			"fulldb_archive = {type = string};\n"
+			"filesite_archive = {type = string};\n"
 			"source_identifier = {type = string};\n"
 			"revision = {type = integer};\n"
 			"eol = {type = integer};\n"
@@ -192,10 +198,12 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	META_EXTRACT_STRING(digests);
 	META_EXTRACT_STRING(manifests);
 	META_EXTRACT_STRING(fulldb);
+	META_EXTRACT_STRING(filesite);
 	META_EXTRACT_STRING(conflicts_archive);
 	META_EXTRACT_STRING(digests_archive);
 	META_EXTRACT_STRING(manifests_archive);
 	META_EXTRACT_STRING(fulldb_archive);
+	META_EXTRACT_STRING(filesite_archive);
 
 	META_EXTRACT_STRING(source_identifier);
 
@@ -340,10 +348,12 @@ pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
 	META_EXPORT_FIELD(result, meta, manifests, string);
 	META_EXPORT_FIELD(result, meta, conflicts, string);
 	META_EXPORT_FIELD(result, meta, fulldb, string);
+	META_EXPORT_FIELD(result, meta, filesite, string);
 	META_EXPORT_FIELD(result, meta, digests_archive, string);
 	META_EXPORT_FIELD(result, meta, manifests_archive, string);
 	META_EXPORT_FIELD(result, meta, conflicts_archive, string);
 	META_EXPORT_FIELD(result, meta, fulldb_archive, string);
+	META_EXPORT_FIELD(result, meta, filesite_archive, string);
 
 	META_EXPORT_FIELD(result, meta, source_identifier, string);
 	META_EXPORT_FIELD(result, meta, revision, int);

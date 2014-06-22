@@ -303,6 +303,8 @@ typedef enum pkg_checksum_type_e {
 	PKG_HASH_TYPE_UNKNOWN
 } pkg_checksum_type_t;
 
+static const char repo_meta_file[] = "meta";
+
 struct pkg_repo_meta {
 
 	char *maintainer;
@@ -315,6 +317,8 @@ struct pkg_repo_meta {
 	char *digests_archive;
 	char *manifests;
 	char *manifests_archive;
+	char *filesite;
+	char *filesite_archive;
 	char *conflicts;
 	char *conflicts_archive;
 	char *fulldb;
