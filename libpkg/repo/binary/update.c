@@ -54,8 +54,10 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 	int ret = EPKG_FATAL;
 	const char *oversion;
 
-	if (pkg_repo_binary_run_prstatement(VERSION, origin) != SQLITE_ROW)
-		return (EPKG_FATAL); /* sqlite error */
+	if (pkg_repo_binary_run_prstatement(VERSION, origin) != SQLITE_ROW) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 	oversion = sqlite3_column_text(pkg_repo_binary_stmt_prstatement(VERSION), 0);
 	if (!forced) {
 		switch(pkg_version_cmp(oversion, version)) {
@@ -64,10 +66,12 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 					"version %s in repo with package %s for "
 					"origin %s", oversion, pkg_path, origin);
 
-			if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) != SQLITE_DONE)
-				return (EPKG_FATAL); /* sqlite error */
+			if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) !=
+							SQLITE_DONE)
+				ret = EPKG_FATAL;
+			else
+				ret = EPKG_OK;	/* conflict cleared */
 
-			ret = EPKG_OK;	/* conflict cleared */
 			break;
 		case 0:
 		case 1:
@@ -80,10 +84,14 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 	}
 	else {
 		if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) != SQLITE_DONE)
-			return (EPKG_FATAL); /* sqlite error */
+			ret = EPKG_FATAL;
 
 		ret = EPKG_OK;
 	}
+
+cleanup:
+	sqlite3_reset(pkg_repo_binary_stmt_prstatement(VERSION));
+
 	return (ret);
 }
 
@@ -589,6 +597,9 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 		pkgdb_it_free(it);
 	}
+	else {
+		sqlite3_finalize(stmt);
+	}
 
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
 	/* load the while digests */
@@ -656,10 +667,11 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
 
-	in_trans = true;
 	rc = pkgdb_transaction_begin(sqlite, "REPO");
 	if (rc != EPKG_OK)
 		goto cleanup;
+
+	in_trans = true;
 
 	removed = HASH_COUNT(ldel);
 	hash_it = 0;
@@ -737,8 +749,6 @@ cleanup:
 	if (linebuf != NULL)
 		free(linebuf);
 
-	repo->ops->close(repo, false);
-
 	return (rc);
 }
 
@@ -746,6 +756,13 @@ int
 pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 {
 	char filepath[MAXPATHLEN];
+	const char update_check_sql[] = ""
+		"INSERT INTO repo_update VALUES(1);";
+	const char update_start_sql[] = ""
+		"CREATE TABLE IF NOT EXISTS repo_update (n INT);";
+	const char update_finish_sql[] = ""
+		"DROP TABLE repo_update;";
+	sqlite3 *sqlite;
 
 	const char *dbdir = NULL;
 	struct stat st;
@@ -806,11 +823,23 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 
 	repo->ops->init(repo);
 
+	sqlite = PRIV_GET(repo);
+
+	if(sqlite3_exec(sqlite, update_check_sql, NULL, NULL, NULL) == SQLITE_OK) {
+		pkg_emit_notice("Previous update has not been finished, restart it");
+		t = 0;
+	}
+	else {
+		sql_exec(sqlite, update_start_sql);
+	}
+
 	res = pkg_repo_binary_update_incremental(filepath, repo, &t);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to update repository %s", repo->name);
 		goto cleanup;
 	}
+
+	sql_exec(sqlite, update_finish_sql);
 
 cleanup:
 	/* Set mtime from http request if possible */
@@ -831,6 +860,8 @@ cleanup:
 
 		utimes(filepath, ftimes);
 	}
+
+	repo->ops->close(repo, false);
 
 	return (res);
 }
