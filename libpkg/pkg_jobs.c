@@ -767,6 +767,13 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					}
 					/* Skip seen packages */
 					if (unit == NULL) {
+						if (digest == NULL) {
+							pkg_debug(3, "no digest found for package %s", uid);
+							if (pkg_checksum_calculate(pkg, j->db) != EPKG_OK) {
+								return (EPKG_FATAL);
+							}
+							pkg_get(pkg, PKG_DIGEST, &digest);
+						}
 						HASH_FIND_STR(j->seen, digest, seen);
 						if (seen == NULL) {
 							pkg_jobs_add_universe(j, rpkg, recursive, false,
