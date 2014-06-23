@@ -90,8 +90,9 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 	}
 }
 
-int
-pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg)
+static int
+pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
+	bool already_tried)
 {
 	char dest[MAXPATHLEN], link_dest[MAXPATHLEN],
 	     link_dest_tmp[MAXPATHLEN];
@@ -160,16 +161,24 @@ checksum:
 	/*	checksum calculation is expensive, if size does not
 		match, skip it and assume failed checksum. */
 	if (stat(dest, &st) == -1 || pkgsize != st.st_size) {
+		if (already_tried) {
+			pkg_emit_error("cached package %s-%s: "
+				"size mismatch, cannot continue",
+				name, version);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		unlink(dest);
 		pkg_emit_error("cached package %s-%s: "
 			"size mismatch, fetching from remote",
 			name, version);
-		unlink(dest);
-		return (pkg_repo_fetch_package(pkg));
+		return (pkg_repo_binary_try_fetch(repo, pkg, true));
 	}
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK) {
 		if (strcmp(cksum, sum)) {
-			if (fetched == 1) {
+			if (already_tried || fetched == 1) {
 				pkg_emit_error("%s-%s failed checksum "
 				    "from repository", name, version);
 				retcode = EPKG_FATAL;
@@ -178,7 +187,7 @@ checksum:
 				    "checksum mismatch, fetching from remote",
 				    name, version);
 				unlink(dest);
-				return (pkg_repo_fetch_package(pkg));
+				return (pkg_repo_binary_try_fetch(repo, pkg, true));
 			}
 		}
 	}
@@ -213,4 +222,10 @@ cleanup:
 		free(path);
 
 	return (retcode);
+}
+
+int
+pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg)
+{
+	return (pkg_repo_binary_try_fetch(repo, pkg, false));
 }
