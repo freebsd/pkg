@@ -1027,10 +1027,16 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 
 			rc = pkg_jobs_process_remote_pkg(j, p, true, false, true,
 				NULL, true);
+			/* Avoid freeing */
+			p = NULL;
 			break;
 		}
 		sbuf_reset(qmsg);
 	}
+
+
+	if (p != NULL)
+		pkg_free(p);
 
 	sbuf_free(qmsg);
 	pkgdb_it_free(it);
