@@ -1150,41 +1150,62 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			seen_del = 1;
 		}
 	}
-	if (seen_add > 1 || seen_del > 1) {
+	if (seen_add > 1) {
 		pkg_emit_error("internal solver error: more than two packages to install(%d) "
-				"or delete(%d) from the same uid: %s", seen_add, seen_del, var->uid);
+				"from the same uid: %s", seen_add, var->uid);
 		return;
 	}
 	else if (seen_add != 0 || seen_del != 0) {
-		res = calloc(1, sizeof(struct pkg_solved));
-		if (res == NULL) {
-			pkg_emit_errno("calloc", "pkg_solved");
-			return;
-		}
-		if (seen_add == 0 && seen_del != 0) {
-			res->items[0] = del_var->unit;
-			res->type = PKG_SOLVED_DELETE;
-			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
-					del_var->uid, del_var->digest);
-		}
-		else if (seen_del == 0 && seen_add != 0) {
-			res->items[0] = add_var->unit;
-			res->type = (j->type == PKG_JOBS_FETCH) ?
-					PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
-			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule installation of %s %s",
+		if (seen_add > 0) {
+			res = calloc(1, sizeof(struct pkg_solved));
+			if (res == NULL) {
+				pkg_emit_errno("calloc", "pkg_solved");
+				return;
+			}
+			/* Pure install */
+			if (seen_del == 0) {
+				res->items[0] = add_var->unit;
+				res->type = (j->type == PKG_JOBS_FETCH) ?
+								PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
+				DL_APPEND(j->jobs, res);
+				pkg_debug(3, "pkg_solve: schedule installation of %s %s",
 					add_var->uid, add_var->digest);
-		}
-		else {
-			res->items[0] = add_var->unit;
-			res->items[1] = del_var->unit;
-			res->type = PKG_SOLVED_UPGRADE;
-			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
+			}
+			else {
+				/* Upgrade */
+				res->items[0] = add_var->unit;
+				res->items[1] = del_var->unit;
+				res->type = PKG_SOLVED_UPGRADE;
+				DL_APPEND(j->jobs, res);
+				pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
+			}
 		}
 		j->count ++;
+
+		/*
+		 * For delete requests there could be multiple delete requests per UID,
+		 * so we need to re-process vars and add all delete jobs required.
+		 */
+		LL_FOREACH(var, cur_var) {
+			if (!cur_var->to_install && cur_var->unit->pkg->type == PKG_INSTALLED) {
+				/* Skip already added items */
+				if (seen_add > 0 && cur_var == del_var)
+					continue;
+
+				res = calloc(1, sizeof(struct pkg_solved));
+				if (res == NULL) {
+					pkg_emit_errno("calloc", "pkg_solved");
+					return;
+				}
+				res->items[0] = cur_var->unit;
+				res->type = PKG_SOLVED_DELETE;
+				DL_APPEND(j->jobs, res);
+				pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
+					cur_var->uid, cur_var->digest);
+				j->count ++;
+			}
+		}
 	}
 	else {
 		pkg_debug(2, "solver: ignoring package %s(%s) as its state has not been changed",
