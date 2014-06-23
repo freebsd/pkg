@@ -67,6 +67,8 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-lm
 
 libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
+EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@
+
 lib_LTLIBRARIES=	libpkg.la libpkg_static.la
 include_HEADERS=	pkg.h
 
@@ -77,6 +79,7 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libexpat_static.la \
 			$(top_builddir)/external/libyaml_static.la \
 			@REPOS_LDADD_STATIC@
+EXTRA_libpkg_static_la_DEPENDENCIES=	@REPOS_LDADD_STATIC@
 
 libpkg_static_la_LDFLAGS=	-all-static
 
