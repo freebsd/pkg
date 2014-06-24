@@ -764,9 +764,9 @@ event_callback(void *data, struct pkg_event *ev)
 			last_tick = 0;
 			begin = last_update = time(NULL);
 			bytes_per_second = 0;
-			if (isatty(STDOUT_FILENO)) {
+
+			if (isatty(STDOUT_FILENO))
 				progress_started = true;
-			}
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:

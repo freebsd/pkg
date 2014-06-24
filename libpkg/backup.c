@@ -41,7 +41,7 @@
 
 /* Number of pages to copy per call to sqlite3_backup_step()
    Default page size is 1024 bytes on Unix */
-#define NPAGES	512
+#define NPAGES	4
 
 static int
 ps_cb(void *ps, int ncols, char **coltext, __unused char **colnames)
@@ -63,8 +63,6 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 	off_t		 total;
 	off_t		 done;
 	off_t		 page_size;
-	time_t		 start;
-	time_t		 elapsed;
 	int		 ret;
 
 	assert(src != NULL);
@@ -87,34 +85,27 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
-	elapsed = -1;
 	done = total = 0;
-	start = time(NULL);
 
 	pkg_emit_progress_start(NULL);
 	do {
 		ret = sqlite3_backup_step(b, NPAGES);
+		total = sqlite3_backup_pagecount(b);
+		done = total - sqlite3_backup_remaining(b);
+		pkg_emit_progress_tick(done, total);
 
 		if (ret != SQLITE_OK && ret != SQLITE_DONE ) {
 			if (ret == SQLITE_BUSY) {
 				sqlite3_sleep(250);
 			} else {
-				ERROR_SQLITE(dst, "PRAGMA page_size");
+				ERROR_SQLITE(dst, "backup step");
 				break;
 			}
-		}
-
-		total = sqlite3_backup_pagecount(b) * page_size;
-		done = total - sqlite3_backup_remaining(b) * page_size; 
-
-		/* Callout no more than once a second */
-		if (elapsed < time(NULL) - start) {
-			elapsed = time(NULL) - start;
-			pkg_emit_progress_tick(done, total);
 		}
 	} while(done < total);
 
 	ret = sqlite3_backup_finish(b);
+	pkg_emit_progress_tick(total, total);
 
 	sqlite3_exec(dst, "PRAGMA main.locking_mode=NORMAL;"
 			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
