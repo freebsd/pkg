@@ -470,6 +470,7 @@ pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
 			treq->type = PKG_SOLVED_UPGRADE_REMOVE;
 			treq->items[0] = req->items[1];
 			DL_APPEND(j->jobs, treq);
+			j->count ++;
 			req->already_deleted = true;
 			pkg_get(treq->items[0]->pkg, PKG_UNIQUEID, &uid);
 			pkg_debug(2, "split upgrade request for %s", uid);
