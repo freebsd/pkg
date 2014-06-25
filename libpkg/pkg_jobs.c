@@ -1034,7 +1034,11 @@ pkg_jobs_change_uid(struct pkg_jobs *j, struct pkg_job_universe_item *unit,
 
 	HASH_DELETE(hh, j->universe, unit);
 	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
-	HASH_ADD_KEYPTR(hh, j->universe, new_uid, uidlen, unit);
+	HASH_FIND(hh, j->universe, new_uid, uidlen, found);
+	if (found != NULL)
+		DL_APPEND(found, unit);
+	else
+		HASH_ADD_KEYPTR(hh, j->universe, new_uid, uidlen, unit);
 }
 
 static int
