@@ -53,7 +53,7 @@ static int pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern, mat
 static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
 static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
-static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
+static bool pkg_jobs_newer_than_local(struct pkg_jobs *j, struct pkg *rp, bool force);
 static bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
@@ -976,7 +976,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	}
 	else {
 		if (j->type != PKG_JOBS_FETCH) {
-			if (!newer_than_local_pkg(j, p, force)) {
+			if (!pkg_jobs_newer_than_local(j, p, force)) {
 				return (EPKG_INSTALLED);
 			}
 		}
@@ -1022,13 +1022,18 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
 			HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
-			if (it != NULL)
+			if (unit != NULL) {
+				HASH_DELETE(hh, j->universe, unit);
 				pkg_set(unit->pkg, PKG_UNIQUEID, fuid);
+				HASH_ADD_KEYPTR(hh, j->universe, fuid, strlen(fuid), unit);
+			}
 
 			rc = pkg_jobs_process_remote_pkg(j, p, true, false, true,
 				NULL, true);
-			/* Avoid freeing */
-			p = NULL;
+			if (rc == EPKG_OK) {
+				/* Avoid freeing */
+				p = NULL;
+			}
 			break;
 		}
 		sbuf_reset(qmsg);
@@ -1144,6 +1149,8 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		p = get_local_pkg(j, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
 		if (p == NULL)
 			return (EPKG_END);
+
+		pkg_jobs_add_universe(j, p, true, false, NULL);
 
 		while(pkg_rdeps(p, &rdep) == EPKG_OK) {
 			struct pkg *rdep_package;
@@ -1451,7 +1458,7 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 }
 
 static bool
-newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
+pkg_jobs_newer_than_local(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *uid, *newversion, *oldversion, *reponame, *cksum;
 	const ucl_object_t *an, *obj;
