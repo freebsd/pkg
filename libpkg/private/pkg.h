@@ -242,6 +242,12 @@ struct pkg_job_provide {
 	UT_hash_handle hh;
 };
 
+struct pkg_job_replace {
+	char *new_uid;
+	char *old_uid;
+	struct pkg_job_replace *next;
+};
+
 struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
 	struct pkg_job_request	*request_add;
@@ -250,6 +256,7 @@ struct pkg_jobs {
 	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	struct pkg_job_provide *provides;
+	struct pkg_job_replace *uid_replaces;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
 	int		 solved;

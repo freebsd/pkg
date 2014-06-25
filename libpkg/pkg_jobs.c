@@ -118,11 +118,20 @@ pkg_jobs_provide_free(struct pkg_job_provide *pr)
 	}
 }
 
+static void
+pkg_jobs_replacement_free(struct pkg_job_replace *r)
+{
+	free(r->new_uid);
+	free(r->old_uid);
+	free(r);
+}
+
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *tmp;
 	struct pkg_job_universe_item *un, *untmp, *cur, *curtmp;
+
 
 	if (j == NULL)
 		return;
@@ -150,6 +159,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	HASH_FREE(j->patterns, pkg_jobs_pattern_free);
 	HASH_FREE(j->provides, pkg_jobs_provide_free);
 	LL_FREE(j->jobs, free);
+	LL_FREE(j->uid_replaces, pkg_jobs_replacement_free);
 
 	free(j);
 }
@@ -1010,9 +1020,11 @@ pkg_jobs_change_uid(struct pkg_jobs *j, struct pkg_job_universe_item *unit,
 	struct pkg_job_universe_item *found;
 	struct pkg *lp;
 	const char *old_uid;
+	struct pkg_job_replace *replacement;
+
+	pkg_get(unit->pkg, PKG_UNIQUEID, &old_uid);
 
 	if (update_rdeps) {
-		pkg_get(unit->pkg, PKG_UNIQUEID, &old_uid);
 		/* For all rdeps update deps accordingly */
 		while (pkg_rdeps(unit->pkg, &rd) == EPKG_OK) {
 			HASH_FIND(hh, j->universe, rd->uid, strlen(rd->uid), found);
@@ -1032,6 +1044,13 @@ pkg_jobs_change_uid(struct pkg_jobs *j, struct pkg_job_universe_item *unit,
 		}
 	}
 
+	replacement = calloc(1, sizeof(*replacement));
+	if (replacement != NULL) {
+		replacement->old_uid = strdup(old_uid);
+		replacement->new_uid = strdup(new_uid);
+		LL_PREPEND(j->uid_replaces, replacement);
+	}
+
 	HASH_DELETE(hh, j->universe, unit);
 	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
 	HASH_FIND(hh, j->universe, new_uid, uidlen, found);
@@ -1039,6 +1058,7 @@ pkg_jobs_change_uid(struct pkg_jobs *j, struct pkg_job_universe_item *unit,
 		DL_APPEND(found, unit);
 	else
 		HASH_ADD_KEYPTR(hh, j->universe, new_uid, uidlen, unit);
+
 }
 
 static int
@@ -2162,6 +2182,39 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
+static void
+pkg_jobs_apply_replacements(struct pkg_jobs *j)
+{
+	struct pkg_job_replace *r;
+	static const char sql[] = ""
+		"UPDATE packages SET name=SPLIT_UID('name', ?1), "
+		"origin=SPLIT_UID('origin', ?1) WHERE "
+		"name=SPLIT_UID('name', ?2) AND "
+		"origin=SPLIT_UID('origin', ?2);";
+	sqlite3_stmt *stmt;
+	int ret;
+
+	pkg_debug(4, "jobs: running '%s'", sql);
+	ret = sqlite3_prepare_v2(j->db->sqlite, sql, -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(j->db->sqlite, sql);
+		return;
+	}
+
+	LL_FOREACH(j->uid_replaces, r) {
+		pkg_debug(4, "changing uid %s -> %s", r->old_uid, r->new_uid);
+		sqlite3_bind_text(stmt, 1, r->new_uid, -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(stmt, 2, r->old_uid, -1, SQLITE_TRANSIENT);
+
+		if (sqlite3_step(stmt) != SQLITE_DONE)
+			ERROR_SQLITE(j->db->sqlite, sql);
+
+		sqlite3_reset(stmt);
+	}
+
+	sqlite3_finalize(stmt);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -2385,6 +2438,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
 	pkg_jobs_set_priorities(j);
+	pkg_jobs_apply_replacements(j);
 
 	DL_FOREACH(j->jobs, ps) {
 		switch (ps->type) {
