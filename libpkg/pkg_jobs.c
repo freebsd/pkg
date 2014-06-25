@@ -50,8 +50,8 @@
 
 static int pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
 		bool root, bool recursive, bool add_request);
-static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
-static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
+static struct pkg *pkg_jobs_get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
+static struct pkg *pkg_jobs_get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool pkg_jobs_newer_than_local(struct pkg_jobs *j, struct pkg *rp, bool force);
 static bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive);
@@ -621,7 +621,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		}
 
 		rpkg = NULL;
-		npkg = get_local_pkg(j, d->uid, 0);
+		npkg = pkg_jobs_get_local_pkg(j, d->uid, 0);
 		if (npkg == NULL && !IS_DELETE(j)) {
 			/*
 			 * We have a package installed, but its dependencies are not,
@@ -630,7 +630,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			pkg_get(pkg, PKG_NAME, &name);
 			pkg_debug(1, "dependency %s of local package %s is not installed",
 					pkg_dep_get(d, PKG_DEP_NAME), name);
-			npkg = get_remote_pkg(j, d->uid, 0);
+			npkg = pkg_jobs_get_remote_pkg(j, d->uid, 0);
 			if (npkg == NULL) {
 				/* Cannot continue */
 				pkg_emit_error("Missing dependency matching '%s'",
@@ -647,9 +647,13 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		}
 		else if (!IS_DELETE(j) && npkg->type == PKG_INSTALLED) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
-			rpkg = get_remote_pkg(j, d->uid, 0);
+			rpkg = pkg_jobs_get_remote_pkg(j, d->uid, 0);
 			if (rpkg != NULL) {
 				if (!pkg_need_upgrade(rpkg, npkg, false)) {
+					/*
+					 * We can do it safely here, as rpkg is definitely NOT in
+					 * the universe
+					 */
 					pkg_free(rpkg);
 					rpkg = NULL;
 				}
@@ -676,7 +680,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		if (unit != NULL)
 			continue;
 
-		npkg = get_local_pkg(j, d->uid, 0);
+		npkg = pkg_jobs_get_local_pkg(j, d->uid, 0);
 		if (npkg != NULL) {
 			/* Do not bother about remote deps */
 			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
@@ -695,7 +699,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			/* Check local and remote conflicts */
 			if (pkg->type == PKG_INSTALLED) {
 				/* Installed packages can conflict with remote ones */
-				npkg = get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
+				npkg = pkg_jobs_get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
 				if (npkg == NULL)
 					continue;
 
@@ -704,7 +708,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			}
 			else {
 				/* Remote packages can conflict with remote and local */
-				npkg = get_local_pkg(j, pkg_conflict_uniqueid(c), 0);
+				npkg = pkg_jobs_get_local_pkg(j, pkg_conflict_uniqueid(c), 0);
 				if (npkg == NULL)
 					continue;
 
@@ -712,7 +716,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					return (EPKG_FATAL);
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
-					npkg = get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
+					npkg = pkg_jobs_get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
 					if (npkg == NULL)
 						continue;
 
@@ -752,7 +756,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					}
 					else {
 						/* Maybe local package has just been not added */
-						npkg = get_local_pkg(j, uid, 0);
+						npkg = pkg_jobs_get_local_pkg(j, uid, 0);
 						if (npkg != NULL) {
 							if (pkg_jobs_add_universe(j, npkg, recursive, false,
 									&unit) != EPKG_OK)
@@ -846,12 +850,15 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 			npkg = unit->pkg;
 		}
 		else {
-			npkg = get_local_pkg(j, d->uid,
+			npkg = pkg_jobs_get_local_pkg(j, d->uid,
 					PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_ANNOTATIONS);
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			if (npkg == NULL)
 				return (false);
 			if (!automatic) {
+				/*
+				 * Safe to free, as d->uid is not in the universe
+				 */
 				pkg_free(npkg);
 				return (false);
 			}
@@ -880,11 +887,11 @@ new_pkg_version(struct pkg_jobs *j)
 	j->flags &= ~(PKG_FLAG_FORCE|PKG_FLAG_RECURSIVE);
 
 	/* determine local pkgng */
-	p = get_local_pkg(j, uid, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
+	p = pkg_jobs_get_local_pkg(j, uid, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
 
 	if (p == NULL) {
 		uid = "pkg~ports-mgmt/pkg-devel";
-		p = get_local_pkg(j, uid, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
+		p = pkg_jobs_get_local_pkg(j, uid, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS);
 	}
 
 	/* you are using git version skip */
@@ -995,6 +1002,41 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	return (rc);
 }
 
+static void
+pkg_jobs_change_uid(struct pkg_jobs *j, struct pkg_job_universe_item *unit,
+	const char *new_uid, size_t uidlen, bool update_rdeps)
+{
+	struct pkg_dep *rd = NULL, *d = NULL;
+	struct pkg_job_universe_item *found;
+	struct pkg *lp;
+	const char *old_uid;
+
+	if (update_rdeps) {
+		pkg_get(unit->pkg, PKG_UNIQUEID, &old_uid);
+		/* For all rdeps update deps accordingly */
+		while (pkg_rdeps(unit->pkg, &rd) == EPKG_OK) {
+			HASH_FIND(hh, j->universe, rd->uid, strlen(rd->uid), found);
+			if (found == NULL) {
+				lp = pkg_jobs_get_local_pkg(j, rd->uid, 0);
+				pkg_jobs_add_universe(j, lp, true, false, &found);
+			}
+
+			if (found != NULL) {
+				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
+					if (strcmp(d->uid, old_uid) == 0) {
+						free(d->uid);
+						d->uid = strdup(new_uid);
+					}
+				}
+			}
+		}
+	}
+
+	HASH_DELETE(hh, j->universe, unit);
+	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
+	HASH_ADD_KEYPTR(hh, j->universe, new_uid, uidlen, unit);
+}
+
 static int
 pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 		const char *uid, match_t m)
@@ -1022,11 +1064,8 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
 			HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
-			if (unit != NULL) {
-				HASH_DELETE(hh, j->universe, unit);
-				pkg_set(unit->pkg, PKG_UNIQUEID, fuid);
-				HASH_ADD_KEYPTR(hh, j->universe, fuid, strlen(fuid), unit);
-			}
+			if (unit != NULL)
+				pkg_jobs_change_uid(j, unit, fuid, strlen(fuid), false);
 
 			rc = pkg_jobs_process_remote_pkg(j, p, true, false, true,
 				NULL, true);
@@ -1146,7 +1185,7 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		 * Here we need to ensure that this package has no
 		 * reverse deps installed
 		 */
-		p = get_local_pkg(j, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
+		p = pkg_jobs_get_local_pkg(j, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
 		if (p == NULL)
 			return (EPKG_END);
 
@@ -1155,16 +1194,15 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		while(pkg_rdeps(p, &rdep) == EPKG_OK) {
 			struct pkg *rdep_package;
 
-			rdep_package = get_local_pkg(j, pkg_dep_get(rdep, PKG_DEP_ORIGIN),
+			rdep_package = pkg_jobs_get_local_pkg(j, rdep->uid,
 					PKG_LOAD_BASIC);
 			if (rdep_package != NULL) {
+				pkg_jobs_add_universe(j, rdep_package, true, false, NULL);
 				/* It is not a top level package */
-				pkg_free(p);
-				pkg_free(rdep_package);
 				return (EPKG_END);
 			}
 		}
-		pkg_free(p);
+
 		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
 		rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
@@ -1251,10 +1289,11 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 }
 
 static struct pkg *
-get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
+pkg_jobs_get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
+	struct pkg_job_universe_item *unit;
 
 	if (flag == 0) {
 		if (!IS_DELETE(j))
@@ -1263,6 +1302,12 @@ get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
 				PKG_LOAD_CONFLICTS;
 		else
 			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS;
+	}
+
+	HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
+	if (unit != NULL && unit->pkg->type == PKG_INSTALLED) {
+		pkgdb_ensure_loaded(j->db, unit->pkg, flag);
+		return (unit->pkg);
 	}
 
 	if ((it = pkgdb_query(j->db, uid, MATCH_EXACT)) == NULL)
@@ -1277,15 +1322,22 @@ get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
 }
 
 static struct pkg *
-get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
+pkg_jobs_get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
+	struct pkg_job_universe_item *unit;
 
 	if (flag == 0) {
 		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	}
+
+	HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
+	if (unit != NULL && unit->pkg->type != PKG_INSTALLED) {
+		pkgdb_ensure_loaded(j->db, unit->pkg, flag);
+		return (unit->pkg);
 	}
 
 	if ((it = pkgdb_repo_query(j->db, uid, MATCH_EXACT, j->reponame)) == NULL)
@@ -1470,7 +1522,7 @@ pkg_jobs_newer_than_local(struct pkg_jobs *j, struct pkg *rp, bool force)
 
 	pkg_get(rp, PKG_UNIQUEID, &uid,
 	    PKG_REPONAME, &reponame, PKG_CKSUM, &cksum);
-	lp = get_local_pkg(j, uid, 0);
+	lp = pkg_jobs_get_local_pkg(j, uid, 0);
 
 	/* obviously yes because local doesn't exists */
 	if (lp == NULL)
@@ -1516,9 +1568,9 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *uid)
 	struct pkg *npkg;
 
 
-	npkg = get_local_pkg(j, uid, 0);
+	npkg = pkg_jobs_get_local_pkg(j, uid, 0);
 	if (npkg == NULL) {
-		npkg = get_remote_pkg(j, uid, 0);
+		npkg = pkg_jobs_get_remote_pkg(j, uid, 0);
 		pkg_debug(2, "conflicts: add missing remote %s(%d)", uid);
 	}
 	else {
