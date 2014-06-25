@@ -1026,6 +1026,7 @@ pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags)
 			ret = load_on_flag[i].load(sqlite, pkg);
 			if (ret != EPKG_OK)
 				return (ret);
+			pkg->flags |= load_on_flag[i].flag;
 		}
 	}
 

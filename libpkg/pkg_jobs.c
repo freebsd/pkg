@@ -2557,31 +2557,22 @@ static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)
 {
 	struct pkg_solved *ps;
-	struct pkg_manifest_key *keys = NULL;
-	struct pkg *pkg = NULL, *p = NULL;
-	char path[MAXPATHLEN];
+	struct pkg *p = NULL;
 	int ret = EPKG_OK, res, added = 0;
 
 	pkg_emit_integritycheck_begin();
 
-	pkg_manifest_keys_new(&keys);
 	DL_FOREACH(j->jobs, ps) {
 		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
 			continue;
 		}
 		else {
 			p = ps->items[0]->pkg;
-			if (p->type == PKG_REMOTE) {
-				pkg_snprintf(path, sizeof(path), "%R", p);
-				if (*path != '/')
-					pkg_repo_cached_name(p, path, sizeof(path));
-				if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
-					return (EPKG_FATAL);
-				p = pkg;
-			}
-			else if (p->type != PKG_FILE) {
+
+			if (p->type == PKG_REMOTE)
+				pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS);
+			else if (p->type != PKG_FILE)
 				continue;
-			}
 		}
 		if ((res = pkg_conflicts_append_pkg(p, j)) != EPKG_OK)
 			ret = res;
@@ -2589,8 +2580,6 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			added ++;
 
 	}
-	pkg_manifest_keys_free(keys);
-	pkg_free(pkg);
 
 	if (added > 0) {
 		pkg_debug(1, "check integrity for %d items added", added);

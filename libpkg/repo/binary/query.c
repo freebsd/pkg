@@ -359,12 +359,28 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *pkg, unsigned flags)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
+	struct pkg_manifest_key *keys = NULL;
+	struct pkg *cached = NULL;
+	char path[MAXPATHLEN];
 
-	if (flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS|PKG_LOAD_ANNOTATIONS)) {
+	if (flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) {
 		/*
-		 * At the moment, we have no such information in repo
+		 * Try to get that information from fetched package in cache
 		 */
-		return (EPKG_FATAL);
+		pkg_manifest_keys_new(&keys);
+		pkg_repo_cached_name(pkg, path, sizeof(path));
+
+		if (pkg_open(&cached, path, keys, 0) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		/* Now move required elements to the provided package */
+		pkg->files = cached->files;
+		pkg->dirs = cached->dirs;
+		cached->files = NULL;
+		cached->dirs = NULL;
+
+		pkg_free(cached);
+		pkg->flags |= (flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS));
 	}
 
 	return (pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags));
