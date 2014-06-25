@@ -1688,7 +1688,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 			 */
 			pkg_get(unit->pkg, PKG_UNIQUEID, &uid);
 			HASH_FIND_STR(j->request_add, uid, req);
-			if (req == NULL) {
+			if (req == NULL && unit->pkg->type != PKG_INSTALLED) {
 				automatic = 1;
 				pkg_debug(2, "set automatic flag for %s", uid);
 				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
