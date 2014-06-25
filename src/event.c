@@ -578,21 +578,15 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		if (*debug == 0)
 			break;
-		printf("\nConflict found on path %s between %s-%s(%s) and ",
+		printf("\nConflict found on path %s between %s and ",
 		    ev->e_integrity_conflict.pkg_path,
-		    ev->e_integrity_conflict.pkg_name,
-		    ev->e_integrity_conflict.pkg_version,
-		    ev->e_integrity_conflict.pkg_origin);
+		    ev->e_integrity_conflict.pkg_uid);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict) {
 			if (cur_conflict->next)
-				printf("%s-%s(%s), ", cur_conflict->name,
-				    cur_conflict->version,
-				    cur_conflict->origin);
+				printf("%s, ", cur_conflict->uid);
 			else
-				printf("%s-%s(%s)", cur_conflict->name,
-				    cur_conflict->version,
-				    cur_conflict->origin);
+				printf("%s", cur_conflict->uid);
 
 			cur_conflict = cur_conflict->next;
 		}

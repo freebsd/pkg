@@ -156,30 +156,20 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
 			"\"data\": { "
-			"\"pkgname\": \"%s\", "
-			"\"pkgversion\": \"%s\", "
-			"\"pkgorigin\": \"%s\", "
+			"\"pkguid\": \"%s\", "
 			"\"pkgpath\": \"%s\", "
 			"\"conflicts\": [",
-			ev->e_integrity_conflict.pkg_name,
-			ev->e_integrity_conflict.pkg_version,
-			ev->e_integrity_conflict.pkg_origin,
+			ev->e_integrity_conflict.pkg_uid,
 			ev->e_integrity_conflict.pkg_path);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict != NULL) {
 			if (cur_conflict->next != NULL) {
-				sbuf_printf(msg, "{\"name\":\"%s\","
-						"\"version\":\"%s\","
-						"\"origin\":\"%s\"},",
-						cur_conflict->name, cur_conflict->version,
-						cur_conflict->origin);
+				sbuf_printf(msg, "{\"uid\":\"%s\"},",
+						cur_conflict->uid);
 			}
 			else {
-				sbuf_printf(msg, "{\"name\":\"%s\","
-						"\"version\":\"%s\","
-						"\"origin\":\"%s\"}",
-						cur_conflict->name, cur_conflict->version,
-						cur_conflict->origin);
+				sbuf_printf(msg, "{\"uid\":\"%s\"}",
+						cur_conflict->uid);
 				break;
 			}
 			cur_conflict = cur_conflict->next;
@@ -572,14 +562,12 @@ pkg_emit_integritycheck_finished(int conflicting)
 }
 
 void
-pkg_emit_integritycheck_conflict(const char *name, const char *version,
-		const char *origin, const char *path, struct pkg_event_conflict *conflicts)
+pkg_emit_integritycheck_conflict(const char *uid,
+	const char *path, struct pkg_event_conflict *conflicts)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_CONFLICT;
-	ev.e_integrity_conflict.pkg_name = name;
-	ev.e_integrity_conflict.pkg_version = version;
-	ev.e_integrity_conflict.pkg_origin = origin;
+	ev.e_integrity_conflict.pkg_uid = uid;
 	ev.e_integrity_conflict.pkg_path = path;
 	ev.e_integrity_conflict.conflicts = conflicts;
 

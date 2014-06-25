@@ -2360,20 +2360,18 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 	sqlite3_stmt	*stmt = NULL;
 	sqlite3_stmt	*stmt_conflicts = NULL;
 	struct pkg_file	*file = NULL;
-	const char *porigin;
+	const char *puid;
 
 	const char	 sql[] = ""
-		"INSERT INTO integritycheck (name, origin, version, path)"
-		"values (?1, ?2, ?3, ?4);";
+		"INSERT INTO integritycheck (uid, path)"
+		"values (?1, ?2);";
 	const char	 sql_conflicts[] = ""
-		"SELECT name, origin, version from integritycheck where path=?1;";
+		"SELECT uid FROM integritycheck where path=?1;";
 
 	assert(db != NULL && p != NULL);
 
 	sql_exec(db->sqlite, "CREATE TEMP TABLE IF NOT EXISTS integritycheck ("
-			"name TEXT, "
-			"origin TEXT, "
-			"version TEXT, "
+			"uid TEXT, "
 			"path TEXT UNIQUE);"
 		);
 
@@ -2384,20 +2382,17 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(p, PKG_ORIGIN, &porigin);
+	pkg_get(p, PKG_UNIQUEID, &puid);
 
-	pkg_debug(4, "Pkgdb: test conflicts for %s", porigin);
+	pkg_debug(4, "Pkgdb: test conflicts for %s", puid);
 	while (pkg_files(p, &file) == EPKG_OK) {
-		const char	*name, *origin, *version;
+		const char	*uid;
 		const char	*pkg_path = pkg_file_path(file);
 		struct pkg_event_conflict *conflicts_list = NULL, *cur;
 
-		pkg_get(p, PKG_NAME, &name, PKG_ORIGIN, &origin,
-		    PKG_VERSION, &version);
-		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 2, origin, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 3, version, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 4, pkg_path, -1, SQLITE_STATIC);
+		pkg_get(p, PKG_UNIQUEID, &uid);
+		sqlite3_bind_text(stmt, 1, uid, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 2, pkg_path, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
 
@@ -2415,23 +2410,20 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
 
 				cur = calloc(1, sizeof (struct pkg_event_conflict));
-				cur->name = strdup(sqlite3_column_text(stmt_conflicts, 0));
-				cur->origin = strdup(sqlite3_column_text(stmt_conflicts, 1));
-				cur->version = strdup(sqlite3_column_text(stmt_conflicts, 2));
+				cur->uid = strdup(sqlite3_column_text(stmt_conflicts, 0));
 				pkg_debug(3, "found conflict between %s and %s on path %s",
-						porigin, cur->origin, pkg_path);
+						puid, cur->uid, pkg_path);
 				LL_PREPEND(conflicts_list, cur);
 
 				if (cb != NULL)
-					cb (porigin, cur->origin, cbdata);
+					cb (puid, cur->uid, cbdata);
 			}
 			sqlite3_finalize(stmt_conflicts);
-			pkg_emit_integritycheck_conflict(name, version, origin, pkg_path, conflicts_list);
+			pkg_emit_integritycheck_conflict(uid, pkg_path, conflicts_list);
+
 			cur = conflicts_list;
 			while (cur) {
-				free(cur->name);
-				free(cur->origin);
-				free(cur->version);
+				free(cur->uid);
 				cur = cur->next;
 				free(conflicts_list);
 				conflicts_list = cur;
@@ -2461,16 +2453,20 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 		"WHERE p.id = f.package_id AND f.path = ?1;";
 
 	const char	 sql_conflicts[] = ""
-		"SELECT name, version, origin, name || '~' || origin as uniqueid FROM integritycheck WHERE path = ?1;";
+		"SELECT uid FROM integritycheck WHERE path = ?1;";
 
 	const char sql_integrity_prepare[] = ""
 		"SELECT f.path FROM files as f, integritycheck as i "
 		"LEFT JOIN packages as p ON "
 		"p.id = f.package_id "
 		"WHERE f.path = i.path AND "
-		"p.name || '~' || p.origin != i.name || '~' || i.origin "
+		"p.name || '~' || p.origin != i.uid "
 		"GROUP BY f.path";
 
+	/*
+	 * Select paths that are both in integritycheck and local table but their
+	 * UIDs are different
+	 */
 	pkg_debug(4, "Pkgdb: running '%s'", sql_integrity_prepare);
 	if (sqlite3_prepare_v2(db->sqlite,
 		sql_integrity_prepare,
@@ -2483,9 +2479,15 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 	uniqueid = sbuf_new_auto();
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		const char *conflict_path;
+
 		sbuf_clear(conflictmsg);
 		sbuf_clear(uniqueid);
 
+		/*
+		 * Conflict found on path, so find the corresponding local
+		 * package
+		 */
 		pkg_debug(4, "Pkgdb: running '%s'", sql_local_conflict);
 		ret = sqlite3_prepare_v2(db->sqlite, sql_local_conflict, -1,
 		    &stmt_conflicts, NULL);
@@ -2497,8 +2499,9 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 			return (EPKG_FATAL);
 		}
 
+		conflict_path = sqlite3_column_text(stmt, 0);
 		sqlite3_bind_text(stmt_conflicts, 1,
-		    sqlite3_column_text(stmt, 0), -1, SQLITE_STATIC);
+			conflict_path, -1, SQLITE_STATIC);
 
 		sqlite3_step(stmt_conflicts);
 
@@ -2510,6 +2513,9 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 		sbuf_cpy(uniqueid, sqlite3_column_text(stmt_conflicts, 3));
 		sqlite3_finalize(stmt_conflicts);
 
+		/*
+		 * Now match local and remote conflicting packages
+		 */
 		pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 		ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1,
 		    &stmt_conflicts, NULL);
@@ -2527,11 +2533,11 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 		    sqlite3_column_text(stmt, 0), -1, SQLITE_STATIC);
 
 		while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
-			sbuf_printf(conflictmsg, "\t- %s-%s\n",
-			    sqlite3_column_text(stmt_conflicts, 0),
-			    sqlite3_column_text(stmt_conflicts, 1));
+			/* Append UID of conflicting remote package */
+			sbuf_printf(conflictmsg, "\t- %s\n",
+			    sqlite3_column_text(stmt_conflicts, 0));
 			if (cb != NULL)
-				cb (sbuf_data(uniqueid), sqlite3_column_text(stmt_conflicts, 3), cbdata);
+				cb (sbuf_data(uniqueid), sqlite3_column_text(stmt_conflicts, 0), cbdata);
 		}
 
 		sbuf_finish(conflictmsg);
@@ -2563,8 +2569,8 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *uniqueid)
 		    "p.prefix "
 		"FROM packages AS p, files AS f, integritycheck AS i "
 		"WHERE p.id = f.package_id AND f.path = i.path "
-		"AND i.name || '~' || i.origin = ?1 AND "
-		"i.name || '~' || i.origin != p.name || '~' || p.origin";
+		"AND i.uid = ?1 AND "
+		"i.uid != p.name || '~' || p.origin";
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
