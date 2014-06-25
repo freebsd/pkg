@@ -374,7 +374,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 					goto cleanup;
 				}
 				fpos = lseek(ffd, 0, SEEK_END);
-				fl = fdopen(ffd, "a");
+				fl = fdopen(dup(ffd), "a");
 				pkg_emit_filelist(pkg, fl);
 				fclose(fl);
 
@@ -560,7 +560,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	if (filelist) {
 		snprintf(filesite, sizeof(filesite), "%s/%s", output_dir,
 		    meta->filesite);
-		if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
+		if ((fd = open(filesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -641,8 +641,13 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 						 */
 						int st;
 
-						if (wait(&st) == -1)
+						while (wait(&st) == -1) {
+							if (errno == EINTR)
+								continue;
+
 							pkg_emit_errno("pkg_create_repo", "wait");
+							break;
+						}
 
 						num_workers --;
 					}
