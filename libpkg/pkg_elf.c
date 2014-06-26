@@ -25,9 +25,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
+#ifdef HAVE_SYS_ENDIAN_H
 #include <sys/endian.h>
+#elif HAVE_ENDIAN_H
+#include <endian.h>
+#elif HAVE_MACHINE_ENDIAN_H
+#include <machine/endian.h>
+#endif
 #include <sys/types.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>
@@ -35,12 +45,11 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dlfcn.h>
-#include <elf-hints.h>
 #include <err.h>
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <link.h>
 #endif
 #include <paths.h>
@@ -53,6 +62,10 @@
 #include "private/event.h"
 #include "private/elf_tables.h"
 #include "private/ldconfig.h"
+
+#ifndef NT_ABI_TAG
+#define NT_ABI_TAG 1
+#endif
 
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
@@ -87,6 +100,8 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
 	const char *pkgname, *pkgversion;
+	struct pkg_file *file = NULL;
+	const char *filepath;
 
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
@@ -100,71 +115,20 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		warnx("(%s-%s) %s - shared library %s not found",
-		      pkgname, pkgversion, fpath, name);
-
-		return (EPKG_FATAL);
-	}
-}
-
-static int
-test_depends(void *actdata, struct pkg *pkg, const char *fpath,
-	     const char *name, bool is_shlib)
-{
-	struct pkgdb *db = actdata;
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *d;
-	const char *deporigin, *depname, *depversion;
-	const char *pkgname, *pkgversion;
-	bool deplocked;
-	char pathbuf[MAXPATHLEN];
-
-	assert(db != NULL);
-
-	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
-	case EPKG_OK:		/* A non-system library */
-		break;
-	case EPKG_END:		/* A system library */
-		return (EPKG_OK);
-	default:
-		/* Ignore link resolution errors if we're analysing a
-		   shared library. */
-		if (is_shlib)
-			return (EPKG_OK);
-
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		warnx("(%s-%s) %s - shared library %s not found",
-		      pkgname, pkgversion, fpath, name);
-		return (EPKG_FATAL);
-	}
-
-	pkg_addshlib_required(pkg, name);
-
-	if ((it = pkgdb_query_which(db, pathbuf, false)) == NULL)
-		return (EPKG_OK);
-
-	d = NULL;
-	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(d, PKG_ORIGIN,  &deporigin,
-			   PKG_NAME,    &depname,
-			   PKG_VERSION, &depversion,
-			   PKG_LOCKED,  &deplocked);
-
-		dep = pkg_dep_lookup(pkg, deporigin);
-
-		if (dep == NULL) {
-			pkg_debug(1, "Autodeps: adding unlisted depends (%s): %s-%s",
-			    pathbuf, depname, depversion);
-			pkg_adddep(pkg, depname, deporigin, depversion,
-			    deplocked);
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			filepath = pkg_file_path(file);
+			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
+				pkg_addshlib_required(pkg, name);
+				return (EPKG_OK);
+			}
 		}
-		pkg_free(d);
-	}
 
-	pkgdb_it_free(it);
-	return (EPKG_OK);
+		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
+		warnx("(%s-%s) %s - shared library %s not found",
+		      pkgname, pkgversion, fpath, name);
+
+		return (EPKG_FATAL);
+	}
 }
 
 static int
@@ -192,7 +156,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	bool developer = false;
 	bool is_shlib = false;
 
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	int fd;
 
@@ -228,16 +192,25 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup;
 	}
 
+	/* Elf file has sections header */
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath,
-			    elf_errmsg(-1));
+					elf_errmsg(-1));
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
 		case SHT_NOTE:
-			note = scn;
+			if ((data = elf_getdata(scn, NULL)) == NULL) {
+				ret = EPKG_END; /* Some error occurred, ignore this file */
+				goto cleanup;
+			}
+			else if (data->d_buf != NULL) {
+				Elf_Note *en = (Elf_Note *)data->d_buf;
+				if (en->n_type == NT_ABI_TAG)
+					note = scn;
+			}
 			break;
 		case SHT_DYNAMIC:
 			dynamic = scn;
@@ -262,6 +235,10 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	if (note != NULL) {
 		if ((data = elf_getdata(note, NULL)) == NULL) {
 			ret = EPKG_END; /* Some error occurred, ignore this file */
+			goto cleanup;
+		}
+		if (data->d_buf == NULL) {
+			ret = EPKG_END; /* No osname available */
 			goto cleanup;
 		}
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
@@ -310,7 +287,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			   *provided* by the package. Record this if
 			   appropriate */
 
-			pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
@@ -319,6 +296,16 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val), 
 				      dirname(fpath));
 		break;
+	}
+	if (!is_shlib) {
+		/*
+		 * Some shared libraries have no SONAME, but we still want
+		 * to manage them in provides list.
+		 */
+		if (elfhdr.e_type == ET_DYN) {
+			is_shlib = true;
+			pkg_addshlib_provided(pkg, basename(fpath));
+		}
 	}
 
 	/* Now find all of the NEEDED shared libraries. */
@@ -370,25 +357,17 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 }
 
 int
-pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
+pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
-	const char *fpath;
-	bool autodeps = false;
+	char fpath[MAXPATHLEN];
 	bool developer = false;
-	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
-
-	if (autodeps)
-		action = test_depends;
-	else
-		action = add_shlibs_to_pkg;
 
 	shlib_list_init();
 
@@ -403,9 +382,12 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 				PKG_CONTAINS_H_OR_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		fpath = pkg_file_path(file);
+		if (stage != NULL)
+			snprintf(fpath, sizeof(fpath), "%s/%s", stage, pkg_file_path(file));
+		else
+			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
 
-		ret = analyse_elf(pkg, fpath, action, db);
+		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
 				goto cleanup;
@@ -426,6 +408,8 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 {
 	struct pkg_file        *file = NULL;
 	char fpath[MAXPATHLEN];
+	struct pkg_shlib *sh, *shtmp, *found;
+	const char *origin;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
@@ -440,10 +424,23 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 
 	while(pkg_files(pkg, &file) == EPKG_OK) {
 		if (root != NULL) {
-			snprintf(fpath, MAXPATHLEN, "%s%s", root, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
 			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
 		} else
 			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	}
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	/*
+	 * Do not depend on libraries that a package provides itself
+	 */
+	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
+		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
+		if (found != NULL) {
+			pkg_debug(2, "remove %s from required shlibs as the package %s provides "
+					"this library itself", pkg_shlib_name(sh), origin);
+			HASH_DEL(pkg->shlibs_required, sh);
+		}
 	}
 
 	shlib_list_free();
@@ -462,6 +459,136 @@ elf_corres_to_string(const struct _elf_corres* m, int e)
 	return ("unknown");
 }
 
+static const char *
+aeabi_parse_arm_attributes(void *data, size_t length)
+{
+	uint32_t sect_len;
+	uint8_t *section = data;
+
+#define	MOVE(len) do {		\
+	assert(length >= (len)); \
+	section += (len);	\
+	length -= (len);	\
+} while (0)
+
+	if (length == 0 || *section != 'A')
+		return (NULL);
+	MOVE(1);
+
+	/* Read the section length */
+	if (length < sizeof(sect_len))
+		return (NULL);
+	memcpy(&sect_len, section, sizeof(sect_len));
+
+	/*
+	 * The section length should be no longer than the section it is within
+	 */
+	if (sect_len > length)
+		return (NULL);
+
+	MOVE(sizeof(sect_len));
+
+	/* Skip the vendor name */
+	while (length != 0) {
+		if (*section == '\0')
+			break;
+		MOVE(1);
+	}
+	if (length == 0)
+		return (NULL);
+	MOVE(1);
+
+	while (length != 0) {
+		uint32_t tag_length;
+
+		switch(*section) {
+		case 1: /* Tag_File */
+			MOVE(1);
+			if (length < sizeof(tag_length))
+				return (NULL);
+			memcpy(&tag_length, section, sizeof(tag_length));
+			break;
+		case 2: /* Tag_Section */
+		case 3: /* Tag_Symbol */
+		default:
+			return (NULL);
+		}
+		/* At least space for the tag and size */
+		if (tag_length <= 5)
+			return (NULL);
+		tag_length--;
+		/* Check the tag fits */
+		if (tag_length > length)
+			return (NULL);
+
+#define	MOVE_TAG(len) do {		\
+	assert(tag_length >= (len));	\
+	MOVE(len);			\
+	tag_length -= (len);		\
+} while(0)
+
+		MOVE(sizeof(tag_length));
+		tag_length -= sizeof(tag_length);
+
+		while (tag_length != 0) {
+			uint8_t tag;
+
+			assert(tag_length >= length);
+
+			tag = *section;
+			MOVE_TAG(1);
+
+			/*
+			 * These tag values come from:
+			 * 
+			 * Addenda to, and Errata in, the ABI for the
+			 * ARM Architecture. Release 2.08, section 2.3.
+			 */
+			if (tag == 6) { /* == Tag_CPU_arch */
+				uint8_t val;
+
+				val = *section;
+				/*
+				 * We don't support values that require
+				 * more than one byte.
+				 */
+				if (val & (1 << 7))
+					return (NULL);
+
+				/* We have an ARMv4 or ARMv5 */
+				if (val <= 5)
+					return ("arm");
+				else /* We have an ARMv6+ */
+					return ("armv6");
+			} else if (tag == 4 || tag == 5 || tag == 32 ||
+			    tag == 65 || tag == 67) {
+				while (*section != '\0' && length != 0)
+					MOVE_TAG(1);
+				if (tag_length == 0)
+					return (NULL);
+				/* Skip the last byte */
+				MOVE_TAG(1);
+			} else if ((tag >= 7 && tag <= 31) || tag == 34 ||
+			    tag == 36 || tag == 38 || tag == 42 || tag == 44 ||
+			    tag == 64 || tag == 66 || tag == 68 || tag == 70) { 
+				/* Skip the uleb128 data */
+				while (*section & (1 << 7) && length != 0)
+					MOVE_TAG(1);
+				if (tag_length == 0)
+					return (NULL);
+				/* Skip the last byte */
+				MOVE_TAG(1);
+			} else
+				return (NULL);
+#undef MOVE_TAG
+		}
+
+		break;
+	}
+	return (NULL);
+#undef MOVE
+}
+
 int
 pkg_get_myarch(char *dest, size_t sz)
 {
@@ -477,7 +604,12 @@ pkg_get_myarch(char *dest, size_t sz)
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	int i;
-	const char *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	const char *path;
+
+	path = getenv("ABI_FILE");
+	if (path == NULL)
+		path = _PATH_BSHELL;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -485,7 +617,7 @@ pkg_get_myarch(char *dest, size_t sz)
 		return (EPKG_FATAL);
 	}
 
-	if ((fd = open(_PATH_BSHELL, O_RDONLY)) < 0) {
+	if ((fd = open(path, O_RDONLY)) < 0) {
 		pkg_emit_errno("open", _PATH_BSHELL);
 		snprintf(dest, sz, "%s", "unknown");
 		return (EPKG_FATAL);
@@ -547,15 +679,13 @@ pkg_get_myarch(char *dest, size_t sz)
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
 
+	arch = elf_corres_to_string(mach_corres, (int) elfhdr.e_machine);
 #if defined(__DragonFly__)
-	snprintf(dest, sz, "%s:%d.%d:%s:%s",
-	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2,
+	snprintf(dest, sz, "%s:%d.%d",
+	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #else
-	snprintf(dest, sz, "%s:%d:%s:%s",
-	    osname, version / 100000,
+	snprintf(dest, sz, "%s:%d", osname, version / 100000);
 #endif
-	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-	    wordsize_corres_str);
 
 	switch (elfhdr.e_machine) {
 	case EM_ARM:
@@ -565,8 +695,57 @@ pkg_get_myarch(char *dest, size_t sz)
 		/* FreeBSD doesn't support the hard-float ABI yet */
 		fpu = "softfp";
 		if ((elfhdr.e_flags & 0xFF000000) != 0) {
+			const char *sh_name = NULL;
+			size_t shstrndx;
+
 			/* This is an EABI file, the conformance level is set */
 			abi = "eabi";
+
+			/* Find which TARGET_ARCH we are building for. */
+			elf_getshdrstrndx(elf, &shstrndx);
+			while ((scn = elf_nextscn(elf, scn)) != NULL) {
+				sh_name = NULL;
+				if (gelf_getshdr(scn, &shdr) != &shdr) {
+					scn = NULL;
+					break;
+				}
+
+				sh_name = elf_strptr(elf, shstrndx,
+				    shdr.sh_name);
+				if (sh_name == NULL)
+					continue;
+				if (strcmp(".ARM.attributes", sh_name) == 0)
+					break;
+			}
+			if (scn != NULL && sh_name != NULL) {
+				data = elf_getdata(scn, NULL);
+				/*
+				 * Prior to FreeBSD 10.0 libelf would return
+				 * NULL from elf_getdata on the .ARM.attributes
+				 * section. As this was the first release to
+				 * get armv6 support assume a NULL value means
+				 * arm.
+				 *
+				 * This assumption can be removed when 9.x
+				 * is unsupported.
+				 */
+				if (data != NULL) {
+					arch = aeabi_parse_arm_attributes(
+					    data->d_buf, data->d_size);
+					if (arch == NULL) {
+						ret = EPKG_FATAL;
+						pkg_emit_error(
+						    "unknown ARM ARCH");
+						goto cleanup;
+					}
+				}
+			} else {
+				ret = EPKG_FATAL;
+				pkg_emit_error("Unable to find the "
+				    ".ARM.attributes section");
+				goto cleanup;
+			}
+
 		} else if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_NONE) {
 			/*
 			 * EABI executables all have this field set to
@@ -579,10 +758,12 @@ pkg_get_myarch(char *dest, size_t sz)
 			 * set the ABI to unknown. If we end up here one of
 			 * the above cases should be fixed for the binary.
 			 */
+			ret = EPKG_FATAL;
 			pkg_emit_error("unknown ARM ABI");
 			goto cleanup;
 		}
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		snprintf(dest + strlen(dest), sz - strlen(dest),
+		    ":%s:%s:%s:%s:%s", arch, wordsize_corres_str,
 		    endian_corres_str, abi, fpu);
 		break;
 	case EM_MIPS:
@@ -611,10 +792,12 @@ pkg_get_myarch(char *dest, size_t sz)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
-		    endian_corres_str, abi);
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s:%s",
+		    arch, wordsize_corres_str, endian_corres_str, abi);
 		break;
 	default:
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+		    arch, wordsize_corres_str);
 		break;
 	}
 

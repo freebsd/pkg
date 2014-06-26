@@ -29,7 +29,34 @@
 #ifndef LDCONFIG_H
 #define LDCONFIG_H 1
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/cdefs.h>
+
+#ifdef HAVE_ELF_HINTS_H
+#include <elf-hints.h>
+#else
+/*
+ * Hints file produced by ldconfig.
+ */
+struct elfhints_hdr
+{
+	u_int32_t magic; /* Magic number */
+	u_int32_t version; /* File version (1) */
+	u_int32_t strtab; /* Offset of string table in file */
+	u_int32_t strsize; /* Size of string table */
+	u_int32_t dirlist; /* Offset of directory list in
+	 string table */
+	u_int32_t dirlistlen; /* strlen(dirlist) */
+	u_int32_t spare[26]; /* Room for expansion */
+};
+
+#define ELFHINTS_MAGIC  0x746e6845
+
+#define _PATH_ELF_HINTS "/var/run/ld-elf.so.hints"
+#endif
 
 extern int	insecure;	/* -i flag, needed here for elfhints.c */
 

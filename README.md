@@ -194,13 +194,17 @@ repositories, updating remote package repositories and installing from them, etc
 <a name="installpkgng"></a>
 ### Installing pkgng
 
-The first thing to start with is to get pkgng installed on your machine.
+In order to build pkgng from source, you will need to have Gnu
+autotools and some other tools installed.
 
-You can grap a development snapshot of pkgng from the [pkgng Github repository][1]
+	# pkg install autoconf automake libtool pkgconf
+
+The next thing to do is to get the pkgng sources installed on your machine.
+You can grab a development snapshot of pkgng from the [pkgng Github repository][1]
 
 To get the latest version of pkgng from the Git repo, just clone it:
 
-	# git clone https://github.com/freebsd/pkg
+	% git clone https://github.com/freebsd/pkg
 
 Or you can take an already tagged release of pkgng from the above web page as well.
 
@@ -208,18 +212,34 @@ Just open your browser and download the release you want.
 
 Once you have the pkgng sources, installing it is fairly easy:
 
-	# cd pkgng
-	# make && make install && make clean
+	% cd pkgng
+	% ./autogen.sh
+	% ./configure
+	% make
+	# make install
 
-Now you should have pkgng installed on your system.
+Now you should have the latest pkgng installed on your system.  Note
+that this build and install procedure does not update the local
+package database at all, so you will get some odd effects due to the
+packaging system being misled into thinking an older version of pkg is
+installed.
 
-Transferring your packages to pkgng is done by the ports/pkg2ng script (also
-installed by the port
+If you're on a 9.x system or earler and did not have a release version
+of pkg(8) installed previously, you will need to run the pkg2ng
+script.  This is only necesaary when converting your system from the
+old pkg_tools style packages.
 
 In order to register your installed packages to pkgng, execute the commands below:
 
 	# cd pkgng/ports
 	# sh pkg2ng
+
+Otherwise, running any pkg(8) command that will attempt to write to
+the local package database will automatically apply any schema
+updates.  Be aware that these may not be backwards compatible --
+although usually you should see no more than a warning message if you
+try and run an older version of pkg(8) against a newer database
+schema.
 
 <a name="pkghelp"></a>
 ### Getting help on the commands usage
@@ -311,7 +331,7 @@ pkgng is also able to work with multiple remote repositories. In the previous se
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing
-_PACKAGESITE_ each time, you can tell *pkg(1)* to work in multi-repos mode as well.
+_PACKAGESITE_ each time, you can tell *pkg(8)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
@@ -455,5 +475,5 @@ If you hit a bug when using pkgng, you can always submit an issue in the [pkgng 
 
 [1]: https://github.com/freebsd/pkg
 [2]: http://wiki.freebsd.org/pkgng
-[3]: http://jenkins.unix-heaven.org/jenkins/
+[3]: http://jenkins.mouf.net/job/pkg/
 [4]: https://github.com/freebsd/pkg/issues

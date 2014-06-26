@@ -133,7 +133,7 @@ test_manifest(void)
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
 	ATF_REQUIRE(p != NULL);
-	ATF_REQUIRE_EQ(EPKG_OK, pkg_parse_manifest(p, manifest, keys));
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_parse_manifest(p, manifest, strlen(manifest), keys));
 
 	pkg_manifest_keys_free(keys);
 

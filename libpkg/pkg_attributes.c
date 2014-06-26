@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -53,6 +54,7 @@ pkg_dep_free(struct pkg_dep *d)
 	sbuf_free(d->origin);
 	sbuf_free(d->name);
 	sbuf_free(d->version);
+	free(d->uid);
 	free(d);
 }
 
@@ -214,66 +216,6 @@ pkg_dir_try(struct pkg_dir const * const d)
 }
 
 /*
- * Category
- */
-
-int
-pkg_category_new(struct pkg_category **c)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_category))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-const char *
-pkg_category_name(struct pkg_category const * const c)
-{
-	assert(c != NULL);
-
-	return (sbuf_get(c->name));
-}
-
-void
-pkg_category_free(struct pkg_category *c)
-{
-
-	if (c == NULL)
-		return;
-
-	sbuf_free(c->name);
-	free(c);
-}
-
-/*
- * License
- */
-int
-pkg_license_new(struct pkg_license **l)
-{
-	if ((*l = calloc(1, sizeof(struct pkg_license))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_license");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_license_free(struct pkg_license *l)
-{
-	free(l);
-}
-
-const char *
-pkg_license_name(struct pkg_license const * const l)
-{
-	assert(l != NULL);
-
-	return (l->name);
-}
-
-/*
  * User
  */
 
@@ -382,6 +324,8 @@ pkg_option_free(struct pkg_option *option)
 
 	sbuf_free(option->key);
 	sbuf_free(option->value);
+	sbuf_free(option->default_value);
+	sbuf_free(option->description);
 	free(option);
 }
 
@@ -399,6 +343,22 @@ pkg_option_value(struct pkg_option const * const option)
 	assert(option != NULL);
 
 	return (sbuf_get(option->value));
+}
+
+const char *
+pkg_option_default_value(struct pkg_option const * const option)
+{
+	assert(option != NULL);
+
+	return (sbuf_get(option->default_value));
+}
+
+const char *
+pkg_option_description(struct pkg_option const * const option)
+{
+	assert(option != NULL);
+
+	return (sbuf_get(option->description));
 }
 
 /*
@@ -432,41 +392,62 @@ pkg_shlib_name(struct pkg_shlib const * const sl)
 }
 
 /*
- * Annotations
+ * Conflicts
  */
 
 int
-pkg_annotation_new(struct pkg_note **an)
+pkg_conflict_new(struct pkg_conflict **c)
 {
-	if ((*an = calloc(1, sizeof(struct pkg_note))) == NULL)
+	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);
 }
 
 void
-pkg_annotation_free(struct pkg_note *an)
+pkg_conflict_free(struct pkg_conflict *c)
 {
-	if (an == NULL)
+	if (c == NULL)
 		return;
 
-	sbuf_free(an->tag);
-	sbuf_free(an->value);
-	free(an);
+	sbuf_free(c->uniqueid);
+	free(c);
 }
 
 const char *
-pkg_annotation_tag(struct pkg_note const * const an)
+pkg_conflict_uniqueid(const struct pkg_conflict *c)
 {
-	assert(an != NULL);
+	assert(c != NULL);
 
-	return (sbuf_get(an->tag));
+	return (sbuf_get(c->uniqueid));
+}
+
+/*
+ * Provides
+ */
+int
+pkg_provide_new(struct pkg_provide **c)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_provide))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_provide_free(struct pkg_provide *c)
+{
+	if (c == NULL)
+		return;
+
+	sbuf_free(c->provide);
+	free(c);
 }
 
 const char *
-pkg_annotation_value(struct pkg_note const * const an)
+pkg_provide_name(const struct pkg_provide *c)
 {
-	assert(an != NULL);
+	assert(c != NULL);
 
-	return (sbuf_get(an->value));
+	return (sbuf_get(c->provide));
 }

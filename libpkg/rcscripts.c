@@ -45,7 +45,7 @@ int
 pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 {
 	struct pkg_file *file = NULL;
-	char rc_d_path[PATH_MAX + 1];
+	char rc_d_path[PATH_MAX];
 	const char *rcfile;
 	const char *rc;
 	size_t len = 0;
@@ -54,7 +54,7 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 
 	pkg_get(pkg, PKG_PREFIX, &prefix);
 
-	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", prefix);
+	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", prefix);
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
@@ -150,7 +150,7 @@ rc_start(const char *rc_file)
 	if ((error = posix_spawn(&pid, "/usr/sbin/service", NULL, NULL,
 	    __DECONST(char **, argv), environ)) != 0) {
 		errno = error;
-		pkg_emit_errno("Cannot stop service", rc_file);
+		pkg_emit_errno("Cannot start service", rc_file);
 		return (-1);
 	}
 

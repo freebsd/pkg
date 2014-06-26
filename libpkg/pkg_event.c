@@ -41,7 +41,7 @@ static char *
 sbuf_json_escape(struct sbuf *buf, const char *str)
 {
 	sbuf_clear(buf);
-	while (*str != '\0') {
+	while (str != NULL && *str != '\0') {
 		if (*str == '"' || *str == '\\')
 			sbuf_putc(buf, '\\');
 		sbuf_putc(buf, *str);
@@ -55,7 +55,7 @@ sbuf_json_escape(struct sbuf *buf, const char *str)
 static void
 pipeevent(struct pkg_event *ev)
 {
-	struct pkg *pkg = NULL;
+	int i;
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
 	const char *message;
@@ -92,16 +92,40 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
 		    sbuf_json_escape(buf, ev->e_pkg_error.msg));
 		break;
-	case PKG_EVENT_FETCHING:
-		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH\", "
+	case PKG_EVENT_UPDATE_ADD:
+		sbuf_printf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
 		    "\"data\": { "
-		    "\"url\": \"%s\", "
-		    "\"fetched\": %" PRId64 ", "
-		    "\"total\": %" PRId64
+		    "\"fetched\": %d, "
+		    "\"total\": %d"
 		    "}}",
-		    sbuf_json_escape(buf, ev->e_fetching.url),
-		    ev->e_fetching.done,
-		    ev->e_fetching.total
+		    ev->e_upd_add.done,
+		    ev->e_upd_add.total
+		    );
+		break;
+	case PKG_EVENT_UPDATE_REMOVE:
+		sbuf_printf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
+		    "\"data\": { "
+		    "\"fetched\": %d, "
+		    "\"total\": %d"
+		    "}}",
+		    ev->e_upd_remove.done,
+		    ev->e_upd_remove.total
+		    );
+		break;
+	case PKG_EVENT_FETCH_BEGIN:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
+		    "\"data\": { "
+		    "\"url\": \"%s\" "
+		    "}}",
+		    sbuf_json_escape(buf, ev->e_fetching.url)
+		    );
+		break;
+	case PKG_EVENT_FETCH_FINISHED:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
+		    "\"data\": { "
+		    "\"url\": \"%s\" "
+		    "}}",
+		    sbuf_json_escape(buf, ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
@@ -132,30 +156,20 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
 			"\"data\": { "
-			"\"pkgname\": \"%s\", "
-			"\"pkgversion\": \"%s\", "
-			"\"pkgorigin\": \"%s\", "
+			"\"pkguid\": \"%s\", "
 			"\"pkgpath\": \"%s\", "
 			"\"conflicts\": [",
-			ev->e_integrity_conflict.pkg_name,
-			ev->e_integrity_conflict.pkg_version,
-			ev->e_integrity_conflict.pkg_origin,
+			ev->e_integrity_conflict.pkg_uid,
 			ev->e_integrity_conflict.pkg_path);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict != NULL) {
 			if (cur_conflict->next != NULL) {
-				sbuf_printf(msg, "{\"name\":\"%s\","
-						"\"version\":\"%s\","
-						"\"origin\":\"%s\"},",
-						cur_conflict->name, cur_conflict->version,
-						cur_conflict->origin);
+				sbuf_printf(msg, "{\"uid\":\"%s\"},",
+						cur_conflict->uid);
 			}
 			else {
-				sbuf_printf(msg, "{\"name\":\"%s\","
-						"\"version\":\"%s\","
-						"\"origin\":\"%s\"}",
-						cur_conflict->name, cur_conflict->version,
-						cur_conflict->origin);
+				sbuf_printf(msg, "{\"uid\":\"%s\"}",
+						cur_conflict->uid);
 				break;
 			}
 			cur_conflict = cur_conflict->next;
@@ -164,7 +178,8 @@ pipeevent(struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
-		    "\"data\": {}}");
+		    "\"data\": {\"conflicting\": %d}}",
+		    ev->e_integrity_finished.conflicting);
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
@@ -188,23 +203,23 @@ pipeevent(struct pkg_event *ev)
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
-		    "\"pkgversion\": \"%V\" ,"
+		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg);
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.new);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
-		    "\"pkgversion\": \"%V\" ,"
+		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg);
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.new);
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
@@ -225,7 +240,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_required.pkg,
 		    ev->e_required.pkg,
 		    ev->e_required.force == 1 ? "true": "false");
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+		while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
 			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
 			    "\"pkgversion\": \"%s\" }, ",
 			    pkg_dep_name(dep),
@@ -320,6 +335,35 @@ pipeevent(struct pkg_event *ev)
 			ev->e_incremental_update.added,
 			ev->e_incremental_update.processed);
 		break;
+	case PKG_EVENT_QUERY_YESNO:
+		sbuf_printf(msg, "{\"type\": \"QUERY_YESNO\", "
+		    "\"data\": {"
+			"\"msg\": \"%s\","
+			"\"default\": \"%d\""
+			"}}", ev->e_query_yesno.msg,
+			ev->e_query_yesno.deft);
+		break;
+	case PKG_EVENT_QUERY_SELECT:
+		sbuf_printf(msg, "{\"type\": \"QUERY_SELECT\", "
+		    "\"data\": {"
+			"\"msg\": \"%s\","
+			"\"ncnt\": \"%d\","
+			"\"default\": \"%d\","
+			"\"items\": ["
+			, ev->e_query_select.msg,
+			ev->e_query_select.ncnt,
+			ev->e_query_select.deft);
+		for (i = 0; i < ev->e_query_select.ncnt - 1; i++)
+		{
+			sbuf_printf(msg, "{ \"text\": \"%s\" },",
+				ev->e_query_select.items[i]);
+		}
+		sbuf_printf(msg, "{ \"text\": \"%s\" } ] }}",
+			ev->e_query_select.items[i]);
+		break;
+	case PKG_EVENT_BACKUP:
+	case PKG_EVENT_RESTORE:
+		break;
 	default:
 		break;
 	}
@@ -336,13 +380,15 @@ pkg_event_register(pkg_event_cb cb, void *data)
 	_data = data;
 }
 
-static void
+static int
 pkg_emit_event(struct pkg_event *ev)
 {
+	int ret = 0;
 	pkg_plugins_hook_run(PKG_PLUGIN_HOOK_EVENT, ev, NULL);
 	if (_cb != NULL)
-		_cb(_data, ev);
+		ret = _cb(_data, ev);
 	pipeevent(ev);
+	return (ret);
 }
 
 void
@@ -359,6 +405,7 @@ pkg_emit_error(const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_pkg_error.msg);
+	print_trace();
 }
 
 void
@@ -404,6 +451,7 @@ pkg_emit_errno(const char *func, const char *arg)
 	ev.e_errno.no = errno;
 
 	pkg_emit_event(&ev);
+	print_trace();
 }
 
 void
@@ -418,15 +466,48 @@ pkg_emit_already_installed(struct pkg *p)
 }
 
 void
-pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed)
+pkg_emit_fetch_begin(const char *url)
 {
 	struct pkg_event ev;
 
-	ev.type = PKG_EVENT_FETCHING;
+	ev.type = PKG_EVENT_FETCH_BEGIN;
 	ev.e_fetching.url = url;
-	ev.e_fetching.total = total;
-	ev.e_fetching.done = done;
-	ev.e_fetching.elapsed = elapsed;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_fetch_finished(const char *url)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_FETCH_FINISHED;
+	ev.e_fetching.url = url;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_update_remove(int total, int done)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_UPDATE_REMOVE;
+	ev.e_upd_remove.total = total;
+	ev.e_upd_remove.done = done;
+
+	pkg_emit_event(&ev);
+}
+
+
+void
+pkg_emit_update_add(int total, int done)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_UPDATE_ADD;
+	ev.e_upd_add.total = total;
+	ev.e_upd_add.done = done;
 
 	pkg_emit_event(&ev);
 }
@@ -452,7 +533,7 @@ pkg_emit_install_finished(struct pkg *p)
 	ev.type = PKG_EVENT_INSTALL_FINISHED;
 	ev.e_install_finished.pkg = p;
 
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
 		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 		syslog(LOG_NOTICE, "%s-%s installed", name, version);
@@ -471,23 +552,22 @@ pkg_emit_integritycheck_begin(void)
 }
 
 void
-pkg_emit_integritycheck_finished(void)
+pkg_emit_integritycheck_finished(int conflicting)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_FINISHED;
+	ev.e_integrity_finished.conflicting = conflicting;
 
 	pkg_emit_event(&ev);
 }
 
 void
-pkg_emit_integritycheck_conflict(const char *name, const char *version,
-		const char *origin, const char *path, struct pkg_event_conflict *conflicts)
+pkg_emit_integritycheck_conflict(const char *uid,
+	const char *path, struct pkg_event_conflict *conflicts)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_CONFLICT;
-	ev.e_integrity_conflict.pkg_name = name;
-	ev.e_integrity_conflict.pkg_version = version;
-	ev.e_integrity_conflict.pkg_origin = origin;
+	ev.e_integrity_conflict.pkg_uid = uid;
 	ev.e_integrity_conflict.pkg_path = path;
 	ev.e_integrity_conflict.conflicts = conflicts;
 
@@ -515,7 +595,7 @@ pkg_emit_deinstall_finished(struct pkg *p)
 	ev.type = PKG_EVENT_DEINSTALL_FINISHED;
 	ev.e_deinstall_finished.pkg = p;
 
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
 		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 		syslog(LOG_NOTICE, "%s-%s deinstalled", name, version);
@@ -525,27 +605,29 @@ pkg_emit_deinstall_finished(struct pkg *p)
 }
 
 void
-pkg_emit_upgrade_begin(struct pkg *p)
+pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_UPGRADE_BEGIN;
-	ev.e_upgrade_begin.pkg = p;
+	ev.e_upgrade_begin.new = new;
+	ev.e_upgrade_begin.old = old;
 
 	pkg_emit_event(&ev);
 }
 
 void
-pkg_emit_upgrade_finished(struct pkg *p)
+pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *version, *newversion;
+	char *name, *oldversion, *version;
 
 	ev.type = PKG_EVENT_UPGRADE_FINISHED;
-	ev.e_upgrade_finished.pkg = p;
+	ev.e_upgrade_finished.new = new;
+	ev.e_upgrade_finished.old = old;
 
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
 		const char *actions[] = {
 			[PKG_DOWNGRADE] = "downgraded",
@@ -554,11 +636,14 @@ pkg_emit_upgrade_finished(struct pkg *p)
 		};
 		pkg_change_t action;
 
-		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
-		    PKG_VERSION, &newversion);
-		action = pkg_version_change(p);
-		syslog(LOG_NOTICE, "%s %s: %s -> %s ",
-		    name, actions[action], version, newversion);
+		pkg_get(new, PKG_NAME, &name, PKG_VERSION, &version);
+		pkg_get(old, PKG_VERSION, &oldversion);
+		action = pkg_version_change_between(new, old);
+		syslog(LOG_NOTICE, "%s %s: %s %s %s ",
+		    name, actions[action],
+		    oldversion != NULL ? oldversion : version,
+		    oldversion != NULL ? "->" : "",
+		    oldversion != NULL ? version : "");
 	}
 
 	pkg_emit_event(&ev);
@@ -713,6 +798,67 @@ pkg_emit_incremental_update(int updated, int removed, int added, int processed)
 	pkg_emit_event(&ev);
 }
 
+bool
+pkg_emit_query_yesno(bool deft, const char *msg)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_QUERY_YESNO;
+	ev.e_query_yesno.msg = msg;
+	ev.e_query_yesno.deft = deft;
+
+	ret = pkg_emit_event(&ev);
+	return (ret ? true : false);
+}
+
+int
+pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_QUERY_SELECT;
+	ev.e_query_select.msg = msg;
+	ev.e_query_select.items = items;
+	ev.e_query_select.ncnt = ncnt;
+	ev.e_query_select.deft = deft;
+
+	ret = pkg_emit_event(&ev);
+	return ret;
+}
+
+int
+pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_SANDBOX_GET_STRING;
+	ev.e_sandbox_call_str.call = call;
+	ev.e_sandbox_call_str.userdata = ud;
+	ev.e_sandbox_call_str.result = str;
+	ev.e_sandbox_call_str.len = len;
+
+	ret = pkg_emit_event(&ev);
+	return ret;
+}
+
+int
+pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_SANDBOX_CALL;
+	ev.e_sandbox_call.call = call;
+	ev.e_sandbox_call.fd = fd;
+	ev.e_sandbox_call.userdata = ud;
+
+	ret = pkg_emit_event(&ev);
+	return ret;
+}
+
 void
 pkg_debug(int level, const char *fmt, ...)
 {
@@ -720,7 +866,7 @@ pkg_debug(int level, const char *fmt, ...)
 	va_list ap;
 	int64_t expectlevel;
 
-	pkg_config_int64(PKG_CONFIG_DEBUG_LEVEL, &expectlevel);
+	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
 
 	if (expectlevel < level)
 		return;
@@ -733,4 +879,56 @@ pkg_debug(int level, const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_debug.msg);
+}
+
+void
+pkg_emit_backup(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_BACKUP;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_restore(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_RESTORE;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_progress_start(const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_PROGRESS_START;
+	if (fmt != NULL) {
+		va_start(ap, fmt);
+		vasprintf(&ev.e_progress_start.msg, fmt, ap);
+		va_end(ap);
+	} else {
+		ev.e_progress_start.msg = NULL;
+	}
+
+	pkg_emit_event(&ev);
+	free(ev.e_progress_start.msg);
+}
+
+void
+pkg_emit_progress_tick(int64_t current, int64_t total)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PROGRESS_TICK;
+	ev.e_progress_tick.current = current;
+	ev.e_progress_tick.total = total;
+
+	pkg_emit_event(&ev);
+
 }

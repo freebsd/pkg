@@ -34,7 +34,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <elf-hints.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -99,7 +98,7 @@ shlib_list_add(struct shlib_list **shlib_list, const char *dir,
 
 	/* If shlib_file is already in the shlib_list table, don't try
 	 * and add it again */
-	HASH_FIND_STR(*shlib_list, __DECONST(char *, shlib_file), sl);
+	HASH_FIND_STR(*shlib_list, shlib_file, sl);
 	if (sl != NULL)
 		return (EPKG_OK);
 
@@ -117,7 +116,7 @@ shlib_list_add(struct shlib_list **shlib_list, const char *dir,
 	
 	sl->name = sl->path + dir_len;
 
-	HASH_ADD_KEYPTR(hh, *shlib_list, __DECONST(char *, sl->name),
+	HASH_ADD_KEYPTR(hh, *shlib_list, sl->name,
 			strlen(sl->name), sl);
 
 	return (EPKG_OK);
@@ -130,11 +129,11 @@ shlib_list_find_by_name(const char *shlib_file)
 
 	assert(HASH_COUNT(shlibs) != 0);
 
-	HASH_FIND_STR(rpath, __DECONST(char *, shlib_file), sl);
+	HASH_FIND_STR(rpath, shlib_file, sl);
 	if (sl != NULL)
 		return (sl->path);
 
-	HASH_FIND_STR(shlibs, __DECONST(char *, shlib_file), sl);
+	HASH_FIND_STR(shlibs, shlib_file, sl);
 	if (sl != NULL)
 		return (sl->path);
 		

@@ -36,6 +36,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <limits.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -44,6 +46,7 @@
 static const char *packing_set_format(struct archive *a, pkg_formats format);
 
 struct packing {
+	bool pass;
 	struct archive *aread;
 	struct archive *awrite;
 	struct archive_entry_linkresolver *resolver;
@@ -67,11 +70,14 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	archive_read_disk_set_symlink_physical((*pack)->aread);
 
 	if (!is_dir(path)) {
+		(*pack)->pass = false;
 		(*pack)->awrite = archive_write_new();
 		archive_write_set_format_pax_restricted((*pack)->awrite);
 		ext = packing_set_format((*pack)->awrite, format);
 		if (ext == NULL) {
+			archive_read_close((*pack)->aread);
 			archive_read_free((*pack)->aread);
+			archive_write_close((*pack)->awrite);
 			archive_write_free((*pack)->awrite);
 			*pack = NULL;
 			return EPKG_FATAL; /* error set by _set_format() */
@@ -84,13 +90,16 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
 			pkg_emit_errno("archive_write_open_filename",
 			    archive_path);
+			archive_read_close((*pack)->aread);
 			archive_read_free((*pack)->aread);
+			archive_write_close((*pack)->awrite);
 			archive_write_free((*pack)->awrite);
 			*pack = NULL;
 			return EPKG_FATAL;
 		}
 	} else { /* pass mode directly write to the disk */
 		pkg_debug(1, "Packing to directory '%s' (pass mode)", path);
+		(*pack)->pass = true;
 		(*pack)->awrite = archive_write_disk_new();
 		archive_write_disk_set_options((*pack)->awrite,
 		    EXTRACT_ARCHIVE_FLAGS);
@@ -99,6 +108,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	(*pack)->resolver = archive_entry_linkresolver_new();
 	archive_entry_linkresolver_set_strategy((*pack)->resolver,
 	    ARCHIVE_FORMAT_TAR_PAX_RESTRICTED);
+
 	return (EPKG_OK);
 }
 
@@ -132,14 +142,6 @@ cleanup:
 	archive_entry_free(entry);
 
 	return (ret);
-}
-
-int
-packing_append_file(struct packing *pack, const char *filepath,
-    const char *newpath)
-{
-	return (packing_append_file_attr(pack, filepath, newpath,
-	    NULL, NULL, 0));
 }
 
 int
@@ -181,16 +183,36 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 		archive_entry_set_size(entry, 0);
 	}
 
-	if (uname != NULL && uname[0] != '\0')
+	if (uname != NULL && uname[0] != '\0') {
+		if (pack->pass) {
+			struct passwd* pw = getpwnam(uname);
+			if (pw == NULL) {
+				pkg_emit_error("Unknown user: '%s'", uname);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			archive_entry_set_uid(entry, pw->pw_uid);
+		}
 		archive_entry_set_uname(entry, uname);
+	}
 
-	if (gname != NULL && gname[0] != '\0')
+	if (gname != NULL && gname[0] != '\0') {
+		if (pack->pass) {
+			struct group *gr = (getgrnam(gname));
+			if (gr == NULL) {
+				pkg_emit_error("Unknown group: '%s'", gname);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			archive_entry_set_gid(entry, gr->gr_gid);
+		}
 		archive_entry_set_gname(entry, gname);
+	}
 
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
-	pkg_config_bool(PKG_CONFIG_UNSET_TIMESTAMP, &unset_timestamp);
+	unset_timestamp = pkg_object_bool(pkg_config_get("UNSET_TIMESTAMP"));
 
 	if (unset_timestamp) {
 		archive_entry_unset_atime(entry);
@@ -286,8 +308,8 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 /* +1 = skip trailing slash */
 			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
 			 sbuf_finish(sb);
-			 packing_append_file(pack, fts_e->fts_name,
-			    sbuf_get(sb));
+			 packing_append_file_attr(pack, fts_e->fts_name,
+			    sbuf_get(sb), NULL, NULL, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:
@@ -311,6 +333,7 @@ packing_finish(struct packing *pack)
 {
 	assert(pack != NULL);
 
+	archive_read_close(pack->aread);
 	archive_read_free(pack->aread);
 
 	archive_write_close(pack->awrite);
@@ -364,4 +387,27 @@ packing_format_from_string(const char *str)
 		return TAR;
 	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
+}
+
+const char*
+packing_format_to_string(pkg_formats format)
+{
+	const char *res = NULL;
+
+	switch (format) {
+	case TXZ:
+		res = "txz";
+		break;
+	case TBZ:
+		res = "tbz";
+		break;
+	case TGZ:
+		res = "tgz";
+		break;
+	case TAR:
+		res = "tar";
+		break;
+	}
+
+	return (res);
 }

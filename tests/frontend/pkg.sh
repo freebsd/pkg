@@ -48,7 +48,6 @@ pkg_config_defaults_body()
 	-o match:'^ *ASSUME_ALWAYS_YES: no$' \
 	-o match:'^ *PLIST_KEYWORDS_DIR: $' \
 	-o match:'^ *SYSLOG: yes$' \
-	-o match:'^ *AUTODEPS: no$' \
 	-o match:'^ *ABI: [a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$' \
 	-o match:'^ *DEVELOPER_MODE: no$' \
 	-o match:'^ *PORTAUDIT_SITE: http://portaudit.FreeBSD.org/auditfile.tbz$' \
@@ -72,7 +71,7 @@ pkg_config_defaults_body()
 	-o match:'^ *DISABLE_MTREE: no$' \
 	-e empty              \
 	-s exit:0             \
-	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -vv
+	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -R "" -vv
 }
 
 
