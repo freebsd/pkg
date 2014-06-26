@@ -440,6 +440,8 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				/* Treat it as the end of a connection */
 				return (EPKG_END);
 			}
+			else if (errno == EAGAIN || errno == EWOULDBLOCK)
+				return (EPKG_OK);
 
 			pkg_emit_errno("pkg_create_repo_read_pipe", "read");
 			return (EPKG_FATAL);
@@ -447,57 +449,58 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 		else if (r == 0)
 			return (EPKG_END);
 
-		break;
+		/*
+		 * XXX: can parse merely full lines
+		 */
+		start = 0;
+		for (i = 0; i < r; i ++) {
+			if (buf[i] == ':') {
+				switch(state) {
+				case s_set_origin:
+					dig = calloc(1, sizeof(*dig));
+					dig->origin = malloc(i - start + 1);
+					strlcpy(dig->origin, &buf[start], i - start + 1);
+					state = s_set_digest;
+					break;
+				case s_set_digest:
+					dig->digest = malloc(i - start + 1);
+					strlcpy(dig->digest, &buf[start], i - start + 1);
+					state = s_set_mpos;
+					break;
+				case s_set_mpos:
+					dig->manifest_pos = strtol(&buf[start], NULL, 10);
+					state = s_set_fpos;
+					break;
+				case s_set_fpos:
+					dig->files_pos = strtol(&buf[start], NULL, 10);
+					state = s_set_mlen;
+					break;
+				case s_set_mlen:
+					/* Record should actually not finish with ':' */
+					dig->manifest_length = strtol(&buf[start], NULL, 10);
+					state = s_set_origin;
+					break;
+				}
+				start = i + 1;
+			}
+			else if (buf[i] == '\n') {
+				dig->manifest_length = strtol(&buf[start], NULL, 10);
+				assert(dig->origin != NULL);
+				assert(dig->digest != NULL);
+				DL_APPEND(*dlist, dig);
+				state = s_set_origin;
+				start = i + 1;
+				break;
+			}
+			else if (buf[i] == '.' && buf[i + 1] == '\n') {
+				return (EPKG_END);
+			}
+		}
 	}
 
 	/*
-	 * XXX: can parse merely full lines
+	 * Never reached
 	 */
-	start = 0;
-	for (i = 0; i < r; i ++) {
-		if (buf[i] == ':') {
-			switch(state) {
-			case s_set_origin:
-				dig = calloc(1, sizeof(*dig));
-				dig->origin = malloc(i - start + 1);
-				strlcpy(dig->origin, &buf[start], i - start + 1);
-				state = s_set_digest;
-				break;
-			case s_set_digest:
-				dig->digest = malloc(i - start + 1);
-				strlcpy(dig->digest, &buf[start], i - start + 1);
-				state = s_set_mpos;
-				break;
-			case s_set_mpos:
-				dig->manifest_pos = strtol(&buf[start], NULL, 10);
-				state = s_set_fpos;
-				break;
-			case s_set_fpos:
-				dig->files_pos = strtol(&buf[start], NULL, 10);
-				state = s_set_mlen;
-				break;
-			case s_set_mlen:
-				/* Record should actually not finish with ':' */
-				dig->manifest_length = strtol(&buf[start], NULL, 10);
-				state = s_set_origin;
-				break;
-			}
-			start = i + 1;
-		}
-		else if (buf[i] == '\n') {
-			dig->manifest_length = strtol(&buf[start], NULL, 10);
-			assert(dig->origin != NULL);
-			assert(dig->digest != NULL);
-			DL_APPEND(*dlist, dig);
-			state = s_set_origin;
-			start = i + 1;
-			break;
-		}
-		else if (buf[i] == '.' && buf[i + 1] == '\n') {
-			return (EPKG_END);
-		}
-	}
-
 	return (EPKG_OK);
 }
 
