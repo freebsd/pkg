@@ -98,6 +98,7 @@ static struct manifest_key {
 	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_OBJECT, pkg_obj},
 	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
 	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
+	{ "repopath",            PKG_REPOPATH,            UCL_STRING, pkg_string},
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
 	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
 	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
