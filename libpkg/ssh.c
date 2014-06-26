@@ -63,8 +63,11 @@ pkg_sshserve(int fd)
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {
-		if ((linelen = getline(&line, &linecap, stdin)) <= 0)
-			continue;
+		if ((linelen = getline(&line, &linecap, stdin)) < 0)
+			break;
+
+		if (linelen == 0)
+			break;
 
 		/* trim cr */
 		if (line[linelen - 1] == '\n')
