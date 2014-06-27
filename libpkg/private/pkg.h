@@ -482,7 +482,7 @@ static struct pkg_key {
 	[PKG_TIME] = { "time", UCL_INT },
 	[PKG_ANNOTATIONS] = { "annotations", UCL_OBJECT },
 	[PKG_LICENSES] = { "licenses", UCL_ARRAY },
-	[PKG_CATEGORIES] = { "catagories", UCL_ARRAY },
+	[PKG_CATEGORIES] = { "categories", UCL_ARRAY },
 	[PKG_UNIQUEID] = { "uniqueid", UCL_STRING },
 	[PKG_OLD_DIGEST] = { "olddigest", UCL_STRING },
 };
