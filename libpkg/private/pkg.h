@@ -450,42 +450,10 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_NOSCRIPT (1<<2)
 #define PKG_DELETE_CONFLICT (1<<3)
 
-static struct pkg_key {
+extern struct pkg_key {
 	const char *name;
 	int type;
-} pkg_keys [] = {
-	[PKG_ORIGIN] = { "origin", UCL_STRING },
-	[PKG_NAME] = { "name", UCL_STRING },
-	[PKG_VERSION] = { "version", UCL_STRING },
-	[PKG_COMMENT] = { "comment", UCL_STRING },
-	[PKG_DESC] = { "desc", UCL_STRING },
-	[PKG_MTREE] = { "mtree", UCL_STRING },
-	[PKG_MESSAGE] = { "message", UCL_STRING },
-	[PKG_ARCH] = { "arch", UCL_STRING },
-	[PKG_MAINTAINER] = { "maintainer", UCL_STRING },
-	[PKG_WWW] = { "www", UCL_STRING },
-	[PKG_PREFIX] = { "prefix", UCL_STRING },
-	[PKG_REPOPATH] = { "repopath", UCL_STRING },
-	[PKG_CKSUM] = { "sum", UCL_STRING },
-	[PKG_OLD_VERSION] = { "oldversion", UCL_STRING },
-	[PKG_REPONAME] = { "reponame", UCL_STRING },
-	[PKG_REPOURL] = { "repourl", UCL_STRING },
-	[PKG_DIGEST] = { "digest", UCL_STRING },
-	[PKG_REASON] = { "reason", UCL_STRING },
-	[PKG_FLATSIZE] = { "flatsize", UCL_INT },
-	[PKG_OLD_FLATSIZE] = { "oldflatsize", UCL_INT },
-	[PKG_PKGSIZE] = { "pkgsize", UCL_INT },
-	[PKG_LICENSE_LOGIC] = { "licenselogic", UCL_INT },
-	[PKG_AUTOMATIC] = { "automatic", UCL_BOOLEAN },
-	[PKG_LOCKED] = { "locked", UCL_BOOLEAN },
-	[PKG_ROWID] = { "rowid", UCL_INT },
-	[PKG_TIME] = { "time", UCL_INT },
-	[PKG_ANNOTATIONS] = { "annotations", UCL_OBJECT },
-	[PKG_LICENSES] = { "licenses", UCL_ARRAY },
-	[PKG_CATEGORIES] = { "categories", UCL_ARRAY },
-	[PKG_UNIQUEID] = { "uniqueid", UCL_STRING },
-	[PKG_OLD_DIGEST] = { "olddigest", UCL_STRING },
-};
+} pkg_keys[PKG_NUM_FIELDS];
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,
 		int dest, time_t *t);
