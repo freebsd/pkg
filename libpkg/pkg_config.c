@@ -313,6 +313,7 @@ static size_t c_size = NELEM(c);
 
 static struct pkg_repo* pkg_repo_new(const char *name,
 	const char *url, const char *type);
+static void pkg_repo_free(struct pkg_repo *r);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -409,9 +410,22 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
 	enabled = ucl_object_find_key(obj, "enabled");
-	if (enabled != NULL && !ucl_object_toboolean(enabled)) {
-		pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
-		return;
+	if (enabled != NULL) {
+		enable = ucl_object_toboolean(enabled);
+		if (!enable && r == NULL) {
+			pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
+			return;
+		}
+		else if (!enable && r != NULL) {
+			/*
+			 * We basically want to remove the existing repo r and
+			 * forget all stuff parsed
+			 */
+			pkg_debug(1, "PkgConfig: disabling repo %s", rname);
+			HASH_DEL(repos, r);
+			pkg_repo_free(r);
+			return;
+		}
 	}
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
