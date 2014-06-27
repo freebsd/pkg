@@ -1304,7 +1304,10 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 			pkg->type = PKG_FILE;
 			rc = pkg_jobs_process_remote_pkg(j, pkg, true,
 					j->flags & PKG_FLAG_FORCE, false, &unit, true);
-			unit->jp = jp;
+
+			if (rc == EPKG_OK)
+				unit->jp = jp;
+
 			*got_local = true;
 		}
 		else {
