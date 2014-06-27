@@ -1180,8 +1180,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
 			}
+			j->count ++;
 		}
-		j->count ++;
 
 		/*
 		 * For delete requests there could be multiple delete requests per UID,
