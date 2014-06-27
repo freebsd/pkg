@@ -1212,7 +1212,7 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		 */
 		p = pkg_jobs_get_local_pkg(j, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
 		if (p == NULL)
-			return (EPKG_END);
+			return (EPKG_FATAL);
 
 		pkg_jobs_add_universe(j, p, true, false, NULL);
 
