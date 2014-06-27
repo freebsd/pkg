@@ -2352,9 +2352,10 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 
 	if (ps->items[0]->jp != NULL && ps->items[0]->jp->is_file) {
 		/*
-		 * We have package as a file
+		 * We have package as a file, set special repository name
 		 */
 		target = ps->items[0]->jp->path;
+		pkg_set(new, PKG_REPONAME, "local file");
 	}
 	else {
 		pkg_snprintf(path, sizeof(path), "%R", new);
