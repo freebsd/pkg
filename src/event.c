@@ -402,7 +402,7 @@ draw_progressbar(int64_t current, int64_t total)
 				printf(" %*s", (int)sizeof(buf), buf);
 
 				format_rate_SI(buf, sizeof(buf), transferred);
-				printf(" %s/s", buf);
+				printf(" %s/s ", buf);
 
 				if (!transferred)
 					stalled += elapsed;
