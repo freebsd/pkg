@@ -1463,6 +1463,46 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 }
 
 int
+pkg_validate(struct pkg *pkg)
+{
+	const char *uid, *md;
+
+	assert(pkg != NULL);
+
+	pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &md);
+
+	if (uid == NULL) {
+		/* Generate uid from name and origin */
+		const char *origin, *name;
+		char *out;
+		size_t outlen;
+
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
+		if (name == NULL || origin == NULL) {
+			/* Our package is invalid */
+			return (EPKG_FATAL);
+		}
+
+		outlen = strlen(name) + strlen(origin) + sizeof("~");
+		out = malloc(outlen);
+		if (out == NULL) {
+			pkg_emit_errno("malloc", "pkg_validate");
+			return (EPKG_FATAL);
+		}
+
+		snprintf(out, outlen, "%s~%s", name, origin);
+		pkg_set(pkg, PKG_UNIQUEID, out);
+	}
+
+	if (md == NULL || !pkg_checksum_is_valid(md, strlen(md))) {
+		/* Calculate new digest */
+		return (pkg_checksum_calculate(pkg, NULL));
+	}
+
+	return (EPKG_OK);
+}
+
+int
 pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 {
 	struct packing *pack;

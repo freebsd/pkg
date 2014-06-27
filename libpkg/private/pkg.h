@@ -491,6 +491,8 @@ int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
 	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
 
+int pkg_validate(struct pkg *pkg);
+
 void pkg_list_free(struct pkg *, pkg_list);
 
 int pkg_dep_new(struct pkg_dep **);

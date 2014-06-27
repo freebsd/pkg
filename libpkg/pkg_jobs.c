@@ -1289,7 +1289,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 		pkg_manifest_keys_new(&keys);
 		if (pkg_open(&pkg, jp->path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK)
 			rc = EPKG_FATAL;
-		else {
+		else if (pkg_validate(pkg) == EPKG_OK) {
 			if (j->type == PKG_JOBS_UPGRADE) {
 				pkg_get(pkg, PKG_NAME, &pkgname);
 				jfp.match = MATCH_EXACT;
@@ -1306,6 +1306,11 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 					j->flags & PKG_FLAG_FORCE, false, &unit, true);
 			unit->jp = jp;
 			*got_local = true;
+		}
+		else {
+			pkg_emit_error("cannot load %s: invalid format",
+					jfp.pattern);
+			rc = EPKG_FATAL;
 		}
 		pkg_manifest_keys_free(keys);
 	}
