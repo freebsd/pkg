@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -67,7 +67,7 @@ pkg_sshserve(int fd)
 			break;
 
 		if (linelen == 0)
-			break;
+			continue;
 
 		/* trim cr */
 		if (line[linelen - 1] == '\n')
