@@ -2028,7 +2028,8 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j, size_t *count)
 		return (NULL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		if (pkg_jobs_check_remote_candidate(j, pkg)) {
+		if ((j->flags & PKG_FLAG_FORCE) ||
+						pkg_jobs_check_remote_candidate(j, pkg)) {
 			c = pkg_jobs_new_candidate(pkg);
 			LL_PREPEND(candidates, c);
 			(*count)++;
