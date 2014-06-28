@@ -313,6 +313,15 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
+	snprintf(filepath, sizeof(filepath), "%s/%s.meta",
+		dbdir, pkg_repo_name(repo));
+
+	/* Open metafile */
+	if (access(filepath, R_OK) != -1) {
+		if (pkg_repo_meta_load(filepath, &repo->meta) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
 	snprintf(filepath, sizeof(filepath), "%s/%s",
 		dbdir, pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 
