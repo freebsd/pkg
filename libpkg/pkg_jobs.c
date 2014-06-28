@@ -1088,6 +1088,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 		sbuf_finish(qmsg);
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
+			pkg_validate(p);
 			HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
 			if (unit != NULL)
 				pkg_jobs_change_uid(j, unit, fuid, strlen(fuid), false);
