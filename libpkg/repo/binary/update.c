@@ -528,10 +528,11 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 
-	if (pkg_repo_fetch_meta(repo, NULL) == EPKG_FATAL)
+	if (pkg_repo_fetch_meta(repo, &local_t) == EPKG_FATAL)
 		pkg_emit_notice("repository %s has no meta file, using "
 		    "default settings", repo->name);
 
+	local_t = *mtime;
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->digests, &local_t, &rc);
 	if (fdigests == NULL) {
@@ -855,6 +856,7 @@ cleanup:
 			}
 		};
 
+		utimes(filepath, ftimes);
 		if (got_meta)
 			snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
 
