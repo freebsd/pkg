@@ -283,7 +283,8 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
  * @return true if guess is accepted
  */
 bool
-pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variable *var)
+pkg_solve_test_guess(struct pkg_solve_problem *problem,
+	struct pkg_solve_variable *var, bool free_var)
 {
 	bool test = false;
 	struct _pkg_solve_var_rule *rul;
@@ -306,8 +307,8 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variabl
 				}
 			}
 			if (!test) {
-				pkg_debug(2, "solver: guess test failed at variable %s, trying to %d",
-						var->uid, var->guess);
+				pkg_debug(2, "solver: guess test failed at variable %s(%s), trying to %d",
+						var->uid, free_var ? "free" : "inversed", var->guess);
 				pkg_debug_print_rule(it);
 				return (false);
 			}
@@ -331,11 +332,8 @@ pkg_solve_initial_guess(struct pkg_solve_problem *problem,
 			if (var->unit->next == NULL && var->unit->prev == var->unit)
 				return (true);
 		}
-		else {
-			/* For remote packages we return true if they are upgrades for local ones */
-			if (var->unit->next != NULL || var->unit->prev != var->unit)
-				return (true);
-		}
+		else
+			return (true);
 	}
 	else {
 		/* For all non-upgrade jobs be more conservative */
@@ -360,11 +358,12 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int propagated;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
-	bool rc, backtrack = false;
+	bool rc, backtrack = false, free_var;
 
 	struct _solver_tree_elt {
 		struct pkg_solve_variable *var;
 		int guess;
+		int inverses;
 		struct _solver_tree_elt *prev, *next;
 	} *solver_tree = NULL, *elt;
 
@@ -401,6 +400,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 					LL_FREE(solver_tree, free);
 					return (false);
 				}
+				elt->inverses = 0;
 				elt->var = var;
 				elt->guess = -1;
 				DL_APPEND(solver_tree, elt);
@@ -409,17 +409,22 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 			if (elt->guess == -1)
 				var->guess = pkg_solve_initial_guess(problem, var);
-			else
+			else {
 				/* For analyzed variables we can only inverse previous guess */
 				var->guess = !elt->guess;
+				elt->inverses ++;
+			}
 
 			unresolved ++;
 			iters ++;
-			if (!pkg_solve_test_guess(problem, var)) {
-				if (elt->guess == -1) {
+			free_var = elt->guess == -1;
+			pkg_debug(3, "setting guess for %s variable %s: %d(%d)",
+				free_var ? "free" : "inversed", var->uid, var->guess, elt->guess);
+			if (!pkg_solve_test_guess(problem, var, free_var) || elt->inverses > 1) {
+				if (free_var) {
 					/* This is free variable, so we can assign true or false to it */
 					var->guess = !var->guess;
-					rc = pkg_solve_test_guess(problem, var);
+					rc = pkg_solve_test_guess(problem, var, free_var);
 				}
 				else {
 					rc = false;
@@ -433,7 +438,10 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 						LL_FREE(solver_tree, free);
 						return (false);
 					}
+					pkg_debug(3, "backtrack from %s to %s", var->uid,
+						elt->prev->var->uid);
 					/* Set the current variable as free variable */
+					elt->inverses = 0;
 					elt->guess = -1;
 					var->guess = -1;
 					/* Go to the previous level */
