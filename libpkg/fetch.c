@@ -424,7 +424,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	 * SRV-style server discovery, and also to allow eg. Firefox
 	 * to run pkg-related stuff given a pkg+foo:// URL.
 	 *
-	 * Warn if using plain http://, https:// etc with SRV
+	 * Error if using plain http://, https:// etc with SRV
 	 */
 
 	if (strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
