@@ -176,12 +176,20 @@ check_again:
 					}
 					if (!ret) {
 						struct sbuf *err_msg = sbuf_new_auto();
+						const char *pkg_name;
+						int pkg_type;
 						sbuf_printf(err_msg, "cannot resolve conflict between ");
 						LL_FOREACH(unresolved, it) {
-							sbuf_printf(err_msg, "%s %s(want %s), ",
-									it->var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
-											it->var->uid,
-											it->var->to_install ? "install" : "remove");
+							pkg_get(it->var->unit->pkg, PKG_NAME, &pkg_name);
+							pkg_type = it->var->unit->pkg->type;
+							if (pkg_type == PKG_INSTALLED)
+								sbuf_printf(err_msg, "local %s(want %s), ",
+									pkg_name,
+									it->var->to_install ? "keep" : "remove");
+							else
+								sbuf_printf(err_msg, "remote %s(want %s), ",
+									pkg_name,
+									it->var->to_install ? "install" : "ignore");
 						}
 						sbuf_finish(err_msg);
 						pkg_emit_error("%splease resolve it manually", sbuf_data(err_msg));
