@@ -234,6 +234,8 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 			HASH_ADD_STR(meta->keys, name, cert);
 	}
 
+	*target = meta;
+
 	return (EPKG_OK);
 }
 
