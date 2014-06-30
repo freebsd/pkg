@@ -866,7 +866,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 
 	close(fd);
 
-	if (repo->trusted_fp == NULL) {
+	if (repo->signature_type == SIG_FINGERPRINT && repo->trusted_fp == NULL) {
 		if (pkg_repo_load_fingerprints(repo) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
@@ -891,41 +891,43 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		goto cleanup;
 	}
 
-	cbdata.len = st.st_size;
-	cbdata.map = map;
-	HASH_ITER(hh, sc, s, stmp) {
-		if (s->siglen != 0 && s->certlen == 0) {
-			/*
-			 * We need to load this pubkey from meta
-			 */
-			cbdata.name = s->name;
-			if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
-					(char **)&s->cert, &s->certlen) != EPKG_OK) {
-				rc = EPKG_FATAL;
-				goto cleanup;
+	if (repo->signature_type == SIG_FINGERPRINT) {
+		cbdata.len = st.st_size;
+		cbdata.map = map;
+		HASH_ITER(hh, sc, s, stmp) {
+			if (s->siglen != 0 && s->certlen == 0) {
+				/*
+				 * We need to load this pubkey from meta
+				 */
+				cbdata.name = s->name;
+				if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
+						(char **)&s->cert, &s->certlen) != EPKG_OK) {
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				s->cert_allocated = true;
 			}
-			s->cert_allocated = true;
 		}
-	}
 
-	if (!pkg_repo_check_fingerprint(repo, sc, true)) {
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
+		if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-	HASH_ITER(hh, sc, s, stmp) {
-		ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
+		HASH_ITER(hh, sc, s, stmp) {
+			ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
 				-1);
-		if (ret == EPKG_OK && s->trusted)
-			break;
+			if (ret == EPKG_OK && s->trusted)
+				break;
 
-		ret = EPKG_FATAL;
-	}
-	if (ret != EPKG_OK) {
-		pkg_emit_error("No trusted certificate has been used "
+			ret = EPKG_FATAL;
+		}
+		if (ret != EPKG_OK) {
+			pkg_emit_error("No trusted certificate has been used "
 				"to sign the repository");
-		rc = EPKG_FATAL;
-		goto cleanup;
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 load_meta:
