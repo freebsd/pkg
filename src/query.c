@@ -73,6 +73,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
+	{ 'R', "",              0, PKG_LOAD_ANNOTATIONS },
 };
 
 static void
