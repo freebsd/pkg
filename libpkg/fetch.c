@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +30,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <sys/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -139,10 +141,10 @@ ssh_read(void *data, char *buf, int len)
 		timeout.tv_sec += fetchTimeout;
 	}
 
-	deltams = INFTIM;
+	deltams = -1;
 	memset(&pfd, 0, sizeof pfd);
 	pfd.fd = repo->sshio.in;
-	pfd.events = POLLIN | POLLERR;
+	pfd.events = POLLIN;
 
 	for (;;) {
 		rlen = read(pfd.fd, buf, len);
@@ -150,14 +152,13 @@ ssh_read(void *data, char *buf, int len)
 			break;
 		} else if (rlen == -1) {
 			if (errno == EINTR)
-				break;
-			if (errno != EAGAIN) {
+				continue;
+			else if (errno != EAGAIN) {
 				pkg_emit_errno("timeout", "ssh");
 				return (-1);
 			}
-			if (errno == EAGAIN) {
+			else if (errno == EAGAIN)
 				break;
-			}
 		}
 
 		if (fetchTimeout > 0) {
@@ -184,12 +185,13 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 	struct pollfd pfd;
 	ssize_t wlen, total;
 	int deltams;
+	struct msghdr msg;
 
 	memset(&pfd, 0, sizeof pfd);
 
 	if (fetchTimeout) {
 		pfd.fd = fd;
-		pfd.events = POLLOUT | POLLERR;
+		pfd.events = POLLOUT;
 		gettimeofday(&timeout, NULL);
 		timeout.tv_sec += fetchTimeout;
 	}
@@ -207,19 +209,26 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 				delta.tv_usec / 1000;
 			errno = 0;
 			pfd.revents = 0;
-			if (poll(&pfd, 1, deltams) < 0) {
+			while (poll(&pfd, 1, deltams) == -1) {
+				if (errno == EINTR)
+					continue;
+
 				return (-1);
 			}
 		}
 		errno = 0;
-		wlen = writev(fd, iov, iovcnt);
+		memset(&msg, 0, sizeof(msg));
+		msg.msg_iov = iov;
+		msg.msg_iovlen = iovcnt;
+
+		wlen = sendmsg(fd, &msg, 0);
 		if (wlen == 0) {
-			errno = EPIPE;
+			errno = ECONNRESET;
 			return (-1);
 		}
-		if (wlen < 0) {
+		else if (wlen < 0)
 			return (-1);
-		}
+
 		total += wlen;
 
 		while (iovcnt > 0 && wlen >= (ssize_t)iov->iov_len) {

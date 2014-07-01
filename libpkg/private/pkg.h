@@ -31,6 +31,7 @@
 #define _PKG_PRIVATE_H
 
 #include <sys/param.h>
+#include <sys/cdefs.h>
 #include <sys/sbuf.h>
 #include <sys/types.h>
 

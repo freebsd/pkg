@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +27,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <assert.h>
 #include <sys/socket.h>
 #include <sys/utsname.h>
@@ -37,7 +40,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#ifdef HAVE_OSRELDATE_H
 #include <osreldate.h>
+#endif
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +66,7 @@
 #define TEXT(X)		#X
 #define INDEXFILE	"INDEX-" STRINGIFY(OSMAJOR)
 #else
-#define INDEXFILE	INDEX
+#define INDEXFILE	"INDEX"
 #endif
 
 int eventpipe = -1;
