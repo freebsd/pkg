@@ -43,6 +43,9 @@ struct pkg_checksum_entry {
 	struct pkg_checksum_entry *next, *prev;
 };
 
+/* Separate checksum parts */
+#define PKG_CKSUM_SEPARATOR '$'
+
 typedef void (*pkg_checksum_hash_func)(struct pkg_checksum_entry *entries,
 				unsigned char **out, size_t *outlen);
 typedef void (*pkg_checksum_encode_func)(unsigned char *in, size_t inlen,
@@ -182,7 +185,9 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		return (EPKG_FATAL);
 	}
 
-	i = snprintf(dest, destlen, "%d$%d$", PKG_CHECKSUM_CUR_VERSION, type);
+	i = snprintf(dest, destlen, "%d%c%d%c", PKG_CHECKSUM_CUR_VERSION,
+		PKG_CKSUM_SEPARATOR, type, PKG_CKSUM_SEPARATOR);
+	assert(i + checksum_types[type].hlen <= destlen);
 	checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
 
 	LL_FREE(entries, free);
@@ -199,7 +204,7 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 	if (clen < 4)
 		return (false);
 
-	sep = strchr(cksum, '$');
+	sep = strchr(cksum, PKG_CKSUM_SEPARATOR);
 	if (sep == NULL || *sep == '\0')
 		return (false);
 
@@ -209,7 +214,7 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 		return (false);
 
 	cksum = sep + 1;
-	sep = strchr(cksum, '$');
+	sep = strchr(cksum, PKG_CKSUM_SEPARATOR);
 	if (sep == NULL || *sep == '\0')
 		return (false);
 
@@ -228,7 +233,7 @@ pkg_checksum_get_type(const char *cksum, size_t clen)
 	const char *sep;
 	unsigned int value;
 
-	sep = strchr(cksum, '$');
+	sep = strchr(cksum, PKG_CKSUM_SEPARATOR);
 	if (sep != NULL && *sep != '\0') {
 		value = strtoul(sep + 1, NULL, 10);
 		if (value < PKG_HASH_TYPE_UNKNOWN)
