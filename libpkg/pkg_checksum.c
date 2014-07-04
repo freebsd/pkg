@@ -187,7 +187,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	i = snprintf(dest, destlen, "%d%c%d%c", PKG_CHECKSUM_CUR_VERSION,
 		PKG_CKSUM_SEPARATOR, type, PKG_CKSUM_SEPARATOR);
-	assert(i + checksum_types[type].hlen <= destlen);
+	assert(i < destlen);
 	checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
 
 	LL_FREE(entries, free);
