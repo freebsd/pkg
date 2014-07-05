@@ -37,5 +37,6 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.search = pkg_repo_binary_search,
 	.fetch_pkg = pkg_repo_binary_fetch,
 	.get_cached_name = pkg_repo_binary_get_cached_name,
-	.ensure_loaded = pkg_repo_binary_ensure_loaded
+	.ensure_loaded = pkg_repo_binary_ensure_loaded,
+	.stat = pkg_repo_binary_stat
 };

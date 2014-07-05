@@ -377,6 +377,8 @@ struct pkg_repo_ops {
 	struct pkg_repo_it * (*search)(struct pkg_repo *, const char *, match_t,
 					pkgdb_field field, pkgdb_field sort);
 
+	int64_t (*stat)(struct pkg_repo *, pkg_stats_t type);
+
 	int (*ensure_loaded)(struct pkg_repo *repo, struct pkg *pkg, unsigned flags);
 
 	/* Fetch package from repo */

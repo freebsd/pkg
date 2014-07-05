@@ -3056,6 +3056,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	int64_t		 stats = 0;
 	struct sbuf	*sql = NULL;
 	int		 ret;
+	struct _pkg_repo_list_item *rit;
 
 	assert(db != NULL);
 
@@ -3068,61 +3069,23 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	case PKG_STATS_LOCAL_SIZE:
 		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
 		break;
-	/* TODO: broken now */
-#if 0
 	case PKG_STATS_REMOTE_UNIQUE:
-		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
-
-		/* open parentheses for the compound statement */
-		sbuf_printf(sql, "(");
-
-		/* execute on all databases */
-		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT name || '~' || origin AS c FROM '%1$s'.packages", " UNION ");
-
-		/* close parentheses for the compound statement */
-		sbuf_printf(sql, ");");
-		break;
 	case PKG_STATS_REMOTE_COUNT:
-		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
-
-		/* open parentheses for the compound statement */
-		sbuf_printf(sql, "(");
-
-		/* execute on all databases */
-		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT  name || '~' || origin AS c FROM '%1$s'.packages", " UNION ALL ");
-
-		/* close parentheses for the compound statement */
-		sbuf_printf(sql, ");");
-		break;
 	case PKG_STATS_REMOTE_SIZE:
-		sbuf_printf(sql, "SELECT SUM(s) FROM ");
+		LL_FOREACH(db->repos, rit) {
+			struct pkg_repo *repo = rit->repo;
 
-		/* open parentheses for the compound statement */
-		sbuf_printf(sql, "(");
-
-		/* execute on all databases */
-		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT flatsize AS s FROM '%1$s'.packages", " UNION ALL ");
-
-		/* close parentheses for the compound statement */
-		sbuf_printf(sql, ");");
+			if (repo->ops->stat != NULL)
+				stats += repo->ops->stat(repo, type);
+		}
+		goto remote;
 		break;
 	case PKG_STATS_REMOTE_REPOS:
-		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
-
-		/* open parentheses for the compound statement */
-		sbuf_printf(sql, "(");
-
-		/* execute on all databases */
-		pkgdb_sql_all_attached(db->sqlite, sql,
-		    "SELECT '%1$s' AS c", " UNION ALL ");
-
-		/* close parentheses for the compound statement */
-		sbuf_printf(sql, ");");
+		LL_FOREACH(db->repos, rit) {
+			stats ++;
+		}
+		goto remote;
 		break;
-#endif
 	}
 
 	sbuf_finish(sql);
@@ -3138,8 +3101,10 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		stats = sqlite3_column_int64(stmt, 0);
 	}
 
-	sbuf_free(sql);
 	sqlite3_finalize(stmt);
+
+remote:
+	sbuf_free(sql);
 
 	return (stats);
 }

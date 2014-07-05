@@ -385,3 +385,56 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 
 	return (pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags));
 }
+
+
+int64_t
+pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
+{
+	sqlite3 *sqlite = PRIV_GET(repo);
+	sqlite3_stmt	*stmt = NULL;
+	int64_t		 stats = 0;
+	struct sbuf	*sql = NULL;
+	int		 ret;
+
+	sql = sbuf_new_auto();
+
+	switch(type) {
+	case PKG_STATS_LOCAL_COUNT:
+		goto out;
+		break;
+	case PKG_STATS_LOCAL_SIZE:
+		goto out;
+		break;
+	case PKG_STATS_REMOTE_UNIQUE:
+		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		break;
+	case PKG_STATS_REMOTE_COUNT:
+		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		break;
+	case PKG_STATS_REMOTE_SIZE:
+		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
+		break;
+	case PKG_STATS_REMOTE_REPOS:
+		goto out;
+		break;
+	}
+
+	sbuf_finish(sql);
+	pkg_debug(4, "binary_repo: running '%s'", sbuf_data(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
+		goto out;
+	}
+
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		stats = sqlite3_column_int64(stmt, 0);
+	}
+
+out:
+	sbuf_free(sql);
+	if (stmt != NULL)
+		sqlite3_finalize(stmt);
+
+	return (stats);
+}

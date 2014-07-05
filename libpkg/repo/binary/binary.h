@@ -50,6 +50,7 @@ struct pkg_repo_it *pkg_repo_binary_search(struct pkg_repo *repo,
     pkgdb_field field, pkgdb_field sort);
 int pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *pkg, unsigned flags);
+int64_t pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type);
 
 int pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg);
 void pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
