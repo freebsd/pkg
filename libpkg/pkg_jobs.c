@@ -2102,6 +2102,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				}
 				pkgdb_it_free(it);
 			}
+			pkg_emit_progress_tick(jcount, jcount);
 			LL_FREE(candidates, free);
 		}
 		else {

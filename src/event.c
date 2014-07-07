@@ -345,7 +345,7 @@ progress_alarm_handler(int signo)
 static void
 stop_progressbar(void)
 {
-	if (progress_alarm)
+	if (progress_started)
 		putchar('\n');
 
 	last_progress_percent = -1;
@@ -366,7 +366,7 @@ draw_progressbar(int64_t current, int64_t total)
 	int hours, minutes, seconds;
 	int r = 0;
 
-	percent = (total != 0) ? (current * 100 / total) : 100;
+	percent = (total != 0) ? (current * 100. / total) : 100;
 
 	if (progress_started && (percent != last_progress_percent || current == total)) {
 		last_progress_percent = percent;
