@@ -464,6 +464,7 @@ draw_progressbar(int64_t current, int64_t total)
 
 		memset(&sa, 0, sizeof(sa));
 		sa.sa_handler = progress_alarm_handler;
+		sa.sa_flags = SA_RESTART;
 		sigemptyset(&sa.sa_mask);
 		sigaction(SIGALRM, &sa, NULL);
 		alarm(1);
