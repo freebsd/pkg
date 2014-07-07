@@ -3117,11 +3117,17 @@ pkgdb_begin_solver(struct pkgdb *db)
 		"PRAGMA synchronous = OFF;"
 		"PRAGMA journal_mode = MEMORY;"
 		"BEGIN TRANSACTION;";
+	const char update_digests_sql[] = ""
+		"DROP INDEX IF EXISTS pkg_digest_id;"
+		"BEGIN TRANSACTION;";
+	const char end_update_sql[] = ""
+		"END TRANSACTION;"
+		"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);";
 	const char *digest;
 	struct pkgdb_it *it;
 	struct pkg *pkglist = NULL, *p = NULL;
-	int rc;
-	int64_t id;
+	int rc = EPKG_OK;
+	int64_t id, cnt = 0, cur = 0;
 
 	it = pkgdb_query(db, " WHERE manifestdigest IS NULL", MATCH_CONDITION);
 	if (it != NULL) {
@@ -3129,19 +3135,38 @@ pkgdb_begin_solver(struct pkgdb *db)
 			pkg_checksum_calculate(p, NULL);
 			LL_PREPEND(pkglist, p);
 			p = NULL;
+			cnt ++;
 		}
 		pkgdb_it_free(it);
-		rc = sql_exec(db->sqlite, solver_sql);
-		LL_FOREACH(pkglist, p) {
-			pkg_get(p, PKG_ROWID, &id, PKG_DIGEST, &digest);
-			rc = run_prstmt(UPDATE_DIGEST, digest, id);
-			if (rc != SQLITE_DONE) {
-				assert(0);
-				ERROR_SQLITE(db->sqlite, SQL(UPDATE_DIGEST));
+
+		if (pkglist != NULL) {
+			rc = sql_exec(db->sqlite, update_digests_sql);
+			if (rc != EPKG_OK) {
+				ERROR_SQLITE(db->sqlite, update_digests_sql);
+			}
+			else {
+				pkg_emit_progress_start("Updating database digests format");
+				LL_FOREACH(pkglist, p) {
+					pkg_emit_progress_tick(cur++, cnt);
+					pkg_get(p, PKG_ROWID, &id, PKG_DIGEST, &digest);
+					rc = run_prstmt(UPDATE_DIGEST, digest, id);
+					if (rc != SQLITE_DONE) {
+						assert(0);
+						ERROR_SQLITE(db->sqlite, SQL(UPDATE_DIGEST));
+					}
+				}
+
+				pkg_emit_progress_tick(cnt, cnt);
+				if (rc == SQLITE_DONE)
+					rc = sql_exec(db->sqlite, end_update_sql);
+
+				if (rc != SQLITE_OK)
+					ERROR_SQLITE(db->sqlite, end_update_sql);
 			}
 		}
-		if (rc == SQLITE_DONE)
-			rc = EPKG_OK;
+
+		if (rc == EPKG_OK)
+			rc = sql_exec(db->sqlite, solver_sql);
 
 		LL_FREE(pkglist, pkg_free);
 	}
