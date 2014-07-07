@@ -3129,7 +3129,8 @@ pkgdb_begin_solver(struct pkgdb *db)
 	int rc = EPKG_OK;
 	int64_t id, cnt = 0, cur = 0;
 
-	it = pkgdb_query(db, " WHERE manifestdigest IS NULL", MATCH_CONDITION);
+	it = pkgdb_query(db, " WHERE manifestdigest IS NULL OR manifestdigest==''",
+		MATCH_CONDITION);
 	if (it != NULL) {
 		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC|PKG_LOAD_OPTIONS) == EPKG_OK) {
 			pkg_checksum_calculate(p, NULL);
