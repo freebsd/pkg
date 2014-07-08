@@ -47,7 +47,6 @@ struct pkg_solve_item;
 struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
 	bool to_install;
-	int guess;
 	int priority;
 	const char *digest;
 	const char *uid;
@@ -81,6 +80,11 @@ struct pkg_solve_problem {
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables_by_uid;
 	struct pkg_solve_variable *variables_by_digest;
+};
+
+struct pkg_solve_impl_graph {
+	struct pkg_solve_variable *var;
+	struct pkg_solve_impl_graph *prev, *next;
 };
 
 /*
@@ -143,12 +147,34 @@ pkg_debug_print_rule (struct pkg_solve_item *rule)
 }
 
 /**
+ * Add variable to the implication graph
+ * @param graph
+ * @param var
+ */
+static void
+pkg_solve_add_implication_graph(struct pkg_solve_impl_graph **graph,
+	struct pkg_solve_variable *var)
+{
+	struct pkg_solve_impl_graph *it;
+
+	it = malloc(sizeof(*it));
+	if (it == NULL) {
+		pkg_emit_errno("pkg_solve_add_implication_graph", "pkg_solve_impl_graph");
+		return;
+	}
+
+	it->var = var;
+	DL_APPEND(*graph, it);
+}
+
+/**
  * Propagate all units, must be called recursively
  * @param rules
  * @return true if there are units propagated
  */
 static bool
-pkg_solve_propagate_units(struct pkg_solve_problem *problem, int *propagated)
+pkg_solve_propagate_units(struct pkg_solve_problem *problem,
+	int *propagated, struct pkg_solve_impl_graph **graph, bool top_level)
 {
 	struct pkg_solve_item *it, *unresolved = NULL;
 	int solved_vars;
@@ -175,26 +201,32 @@ check_again:
 						}
 					}
 					if (!ret) {
-						struct sbuf *err_msg = sbuf_new_auto();
-						const char *pkg_name;
-						int pkg_type;
-						sbuf_printf(err_msg, "cannot resolve conflict between ");
-						LL_FOREACH(unresolved, it) {
-							pkg_get(it->var->unit->pkg, PKG_NAME, &pkg_name);
-							pkg_type = it->var->unit->pkg->type;
-							if (pkg_type == PKG_INSTALLED)
-								sbuf_printf(err_msg, "local %s(want %s), ",
-									pkg_name,
-									it->var->to_install ? "keep" : "remove");
-							else
-								sbuf_printf(err_msg, "remote %s(want %s), ",
-									pkg_name,
-									it->var->to_install ? "install" : "ignore");
+						if (top_level) {
+							/*
+							 * If it is top level propagation, then report that
+							 * we have a conflicting clause there
+							 */
+							struct sbuf *err_msg = sbuf_new_auto();
+							const char *pkg_name;
+							int pkg_type;
+							sbuf_printf(err_msg, "cannot resolve conflict between ");
+							LL_FOREACH(unresolved, it) {
+								pkg_get(it->var->unit->pkg, PKG_NAME, &pkg_name);
+								pkg_type = it->var->unit->pkg->type;
+								if (pkg_type == PKG_INSTALLED)
+									sbuf_printf(err_msg, "local %s(want %s), ",
+										pkg_name,
+										it->var->to_install ? "keep" : "remove");
+								else
+									sbuf_printf(err_msg, "remote %s(want %s), ",
+										pkg_name,
+										it->var->to_install ? "install" : "ignore");
+							}
+							sbuf_finish(err_msg);
+							pkg_emit_error("%splease resolve it manually", sbuf_data(err_msg));
+							pkg_debug_print_rule(unresolved);
+							sbuf_delete(err_msg);
 						}
-						sbuf_finish(err_msg);
-						pkg_emit_error("%splease resolve it manually", sbuf_data(err_msg));
-						pkg_debug_print_rule(unresolved);
-						sbuf_delete(err_msg);
 						return (false);
 					}
 				}
@@ -231,11 +263,13 @@ check_again:
 						}
 						if (resolved == 0) {
 							pkg_debug_print_rule(unresolved);
-							assert (resolved > 0);
+							assert(resolved > 0);
 						}
 						solved_vars ++;
 						(*propagated) ++;
 						/* We want to try propagating all clauses for a single variable */
+						if (graph != NULL)
+							pkg_solve_add_implication_graph(graph, it->var);
 						goto check_again;
 					}
 				}
@@ -285,48 +319,6 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	return (true);
 }
 
-/**
- * Test intermediate SAT guess
- * @param problem
- * @return true if guess is accepted
- */
-bool
-pkg_solve_test_guess(struct pkg_solve_problem *problem,
-	struct pkg_solve_variable *var, bool free_var)
-{
-	bool test = false;
-	struct _pkg_solve_var_rule *rul;
-	struct pkg_solve_item *it, *cur;
-
-	LL_FOREACH(var->rules, rul) {
-		it = rul->rule;
-		if (it->nitems != it->nresolved) {
-			/* Check guess */
-			test = false;
-			LL_FOREACH(it, cur) {
-				if (cur->var->resolved)
-					test |= cur->var->to_install ^ cur->inverse;
-				else if (cur->var->guess != -1)
-					test |= cur->var->guess ^ cur->inverse;
-				else {
-					/* Free variables are assumed as true */
-					test = true;
-					break;
-				}
-			}
-			if (!test) {
-				pkg_debug(2, "solver: guess test failed at variable %s(%s), trying to %d",
-						var->uid, free_var ? "free" : "inversed", var->guess);
-				pkg_debug_print_rule(it);
-				return (false);
-			}
-		}
-	}
-
-
-	return (true);
-}
-
 /*
  * Set initial guess based on a variable passed
  */
@@ -356,6 +348,25 @@ pkg_solve_initial_guess(struct pkg_solve_problem *problem,
 	return (false);
 }
 
+/*
+ * For all variables in implication graph we reset their resolved values
+ * Also we remove all variables propagated by this guess
+ */
+static void
+pkg_solve_undo_guess(struct pkg_solve_impl_graph *graph)
+{
+	struct pkg_solve_impl_graph *cur, *tmp;
+
+	DL_FOREACH_SAFE(graph, cur, tmp) {
+		cur->var->resolved = false;
+		if (cur != graph)
+			free(cur);
+	}
+
+	graph->next = NULL;
+	graph->prev = graph;
+}
+
 /**
  * Try to solve sat problem
  * @param rules incoming rules to solve
@@ -375,6 +386,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		struct pkg_solve_variable *var;
 		int guess;
 		int inverses;
+		struct pkg_solve_impl_graph *graph;
 		struct _solver_tree_elt *prev, *next;
 	} *solver_tree = NULL, *elt;
 
@@ -385,7 +397,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 	/* Initially propagate explicit rules */
 	pkg_solve_propagate_pure(problem);
-	if (!pkg_solve_propagate_units(problem, &propagated)) {
+	if (!pkg_solve_propagate_units(problem, &propagated, NULL, true)) {
 		pkg_emit_error("SAT: conflicting request, cannot solve");
 		return (false);
 	}
@@ -414,32 +426,40 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				elt->inverses = 0;
 				elt->var = var;
 				elt->guess = -1;
+				elt->graph = NULL;
 				DL_APPEND(solver_tree, elt);
 			}
 			assert (var == elt->var);
 
-			if (elt->guess == -1)
-				var->guess = pkg_solve_initial_guess(problem, var);
+			if (elt->guess == -1) {
+				var->to_install = pkg_solve_initial_guess(problem, var);
+				var->resolved = true;
+			}
 			else {
 				/* For analyzed variables we can only inverse previous guess */
-				var->guess = !elt->guess;
+				var->to_install = !elt->guess;
+				var->resolved = true;
 				elt->inverses ++;
 			}
 
 			unresolved ++;
-			iters ++;
 			free_var = elt->guess == -1;
 			pkg_debug(3, "setting guess for %s variable %s: %d(%d)",
-				free_var ? "free" : "inversed", var->uid, var->guess, elt->guess);
-			if (!pkg_solve_test_guess(problem, var, free_var) || elt->inverses > 1) {
+				free_var ? "free" : "inversed", var->uid, var->to_install, elt->guess);
+			/* Propagate units */
+			pkg_solve_add_implication_graph(&elt->graph, var);
+
+			if (!pkg_solve_propagate_units(problem, NULL, &elt->graph, false)) {
+				pkg_solve_undo_guess(elt->graph);
 				if (free_var) {
 					/* This is free variable, so we can assign true or false to it */
-					var->guess = !var->guess;
-					rc = pkg_solve_test_guess(problem, var, free_var);
+					var->to_install = !var->to_install;
+					rc = pkg_solve_propagate_units(problem, NULL, &elt->graph, false);
 				}
 				else {
 					rc = false;
 				}
+
 				if (!rc) {
 					/* Need to backtrack */
 					iters ++;
@@ -453,8 +473,10 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 						elt->prev->var->uid);
 					/* Set the current variable as free variable */
 					elt->inverses = 0;
+					free(elt->graph);
+					elt->graph = NULL;
 					elt->guess = -1;
-					var->guess = -1;
+
 					/* Go to the previous level */
 					elt = elt->prev;
 					tvar = elt->var;
@@ -462,22 +484,14 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 					continue;
 				}
 			}
-
 			/* Assign the current guess */
-			elt->guess = var->guess;
+			elt->guess = var->to_install;
 			/* Move to the next elt */
 			elt = elt->next;
 		}
 	}
 
 	pkg_debug(1, "solved SAT problem in %d guesses", iters);
-
-	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
-		if (!var->resolved) {
-			var->to_install = var->guess;
-			var->resolved = true;
-		}
-	}
 
 	LL_FREE(solver_tree, free);
 
@@ -538,7 +552,6 @@ pkg_solve_variable_new(struct pkg_job_universe_item *item)
 	pkg_get(item->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 	/* XXX: Is it safe to save a ptr here ? */
 	result->digest = digest;
-	result->guess = -1;
 	result->uid = uid;
 	result->prev = result;
 
