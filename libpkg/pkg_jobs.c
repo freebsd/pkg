@@ -2451,7 +2451,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
 	pkg_jobs_set_priorities(j);
-	pkg_jobs_apply_replacements(j);
 
 	DL_FOREACH(j->jobs, ps) {
 		switch (ps->type) {
@@ -2540,6 +2539,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	case PKG_JOBS_UPGRADE:
 	case PKG_JOBS_DEINSTALL:
 	case PKG_JOBS_AUTOREMOVE:
+		pkg_jobs_apply_replacements(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
 		rc = pkg_jobs_fetch(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
