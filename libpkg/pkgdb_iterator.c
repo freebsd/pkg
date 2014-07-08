@@ -1048,13 +1048,11 @@ pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
 			if (cur->repo == pkg->repo) {
 				if (cur->repo->ops->ensure_loaded) {
 					ret = cur->repo->ops->ensure_loaded(cur->repo, pkg, flags);
-					if (ret != EPKG_OK)
-						return (EPKG_FATAL);
+					return (ret);
 				}
 			}
 		}
 	}
 
-	/* Not reached */
 	return (EPKG_FATAL);
 }
