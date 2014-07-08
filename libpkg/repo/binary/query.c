@@ -380,7 +380,7 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 		cached->dirs = NULL;
 
 		pkg_free(cached);
-		pkg->flags |= (flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS));
+		pkg->flags |= (PKG_LOAD_FILES|PKG_LOAD_DIRS);
 	}
 
 	return (pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags));
