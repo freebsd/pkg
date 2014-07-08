@@ -388,7 +388,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		int inverses;
 		struct pkg_solve_impl_graph *graph;
 		struct _solver_tree_elt *prev, *next;
-	} *solver_tree = NULL, *elt;
+	} *solver_tree = NULL, *elt, *tmp;
 
 
 	/* Obvious case */
@@ -493,7 +493,10 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 	pkg_debug(1, "solved SAT problem in %d guesses", iters);
 
-	LL_FREE(solver_tree, free);
+	DL_FOREACH_SAFE(solver_tree, elt, tmp) {
+		LL_FREE(elt->graph, free);
+		free(elt);
+	}
 
 	return (true);
 }
