@@ -340,8 +340,11 @@ pkg_solve_initial_guess(struct pkg_solve_problem *problem,
 			if (var->unit->next == NULL && var->unit->prev == var->unit)
 				return (true);
 		}
-		else
-			return (true);
+		else {
+			/* For remote packages we return true if they are upgrades for local ones */
+			if (var->unit->next != NULL || var->unit->prev != var->unit)
+				return (true);
+		}
 	}
 	else {
 		/* For all non-upgrade jobs be more conservative */
