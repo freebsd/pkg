@@ -264,6 +264,7 @@ struct pkg_jobs {
 	int count;
 	int total;
 	int conflicts_registered;
+	bool need_fetch;
 	const char *	 reponame;
 	struct job_pattern *patterns;
 };

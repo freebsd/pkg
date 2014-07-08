@@ -2232,6 +2232,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 {
 	int ret, pstatus;
 	struct pkg_solve_problem *problem;
+	struct pkg_solved *job;
 	const char *solver;
 	FILE *spipe[2];
 	pid_t pchild;
@@ -2313,6 +2314,37 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		pkg_jobs_set_deinstall_reasons(j);
 
 	pkgdb_end_solver(j->db);
+
+	pkg_jobs_apply_replacements(j);
+
+	/* Check if we need to fetch and re-run the solver */
+	DL_FOREACH(j->jobs, job) {
+		if (pkgdb_ensure_loaded(j->db, job->items[0]->pkg,
+		    PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_FATAL) {
+			j->need_fetch = true;
+			break;
+		}
+	}
+
+	if (j->solved == 1 && !j->need_fetch) {
+		int rc;
+		bool has_conflicts = false;
+		do {
+			j->conflicts_registered = 0;
+			rc = pkg_jobs_check_conflicts(j);
+			if (rc == EPKG_CONFLICT) {
+				/* Cleanup results */
+				LL_FREE(j->jobs, free);
+				j->jobs = NULL;
+				j->count = 0;
+				has_conflicts = true;
+				rc = pkg_jobs_solve(j);
+			}
+			else if (rc == EPKG_OK && !has_conflicts) {
+				break;
+			}
+		} while (j->conflicts_registered > 0);
+	}
 
 	return (ret);
 }
@@ -2539,44 +2571,50 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	case PKG_JOBS_UPGRADE:
 	case PKG_JOBS_DEINSTALL:
 	case PKG_JOBS_AUTOREMOVE:
-		pkg_jobs_apply_replacements(j);
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
-		rc = pkg_jobs_fetch(j);
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
-		if (rc == EPKG_OK) {
-			/* Check local conflicts in the first run */
-			if (j->solved == 1) {
-				do {
-					j->conflicts_registered = 0;
-					rc = pkg_jobs_check_conflicts(j);
-					if (rc == EPKG_CONFLICT) {
-						/* Cleanup results */
-						LL_FREE(j->jobs, free);
-						j->jobs = NULL;
-						j->count = 0;
-						has_conflicts = true;
-						rc = pkg_jobs_solve(j);
-					}
-					else if (rc == EPKG_OK && !has_conflicts) {
-						pkg_plugins_hook_run(pre, j, j->db);
-						rc = pkg_jobs_execute(j);
-						break;
-					}
-				} while (j->conflicts_registered > 0);
+		if (j->need_fetch) {
+			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
+			rc = pkg_jobs_fetch(j);
+			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
+			if (rc == EPKG_OK) {
+				/* Check local conflicts in the first run */
+				if (j->solved == 1) {
+					do {
+						j->conflicts_registered = 0;
+						rc = pkg_jobs_check_conflicts(j);
+						if (rc == EPKG_CONFLICT) {
+							/* Cleanup results */
+							LL_FREE(j->jobs, free);
+							j->jobs = NULL;
+							j->count = 0;
+							has_conflicts = true;
+							rc = pkg_jobs_solve(j);
+						}
+						else if (rc == EPKG_OK && !has_conflicts) {
+							pkg_plugins_hook_run(pre, j, j->db);
+							rc = pkg_jobs_execute(j);
+							break;
+						}
+					} while (j->conflicts_registered > 0);
 
-				if (has_conflicts) {
-					if (j->conflicts_registered == 0)
-						pkg_jobs_set_priorities(j);
+					if (has_conflicts) {
+						if (j->conflicts_registered == 0)
+							pkg_jobs_set_priorities(j);
 
-					return (EPKG_CONFLICT);
+						return (EPKG_CONFLICT);
+					}
+				}
+				else {
+					/* Not the first run, conflicts are resolved already */
+					pkg_plugins_hook_run(pre, j, j->db);
+					rc = pkg_jobs_execute(j);
 				}
 			}
-			else {
-				/* Not the first run, conflicts are resolved already */
-				pkg_plugins_hook_run(pre, j, j->db);
-				rc = pkg_jobs_execute(j);
-			}
 		}
+		else {
+			pkg_plugins_hook_run(pre, j, j->db);
+			rc = pkg_jobs_execute(j);
+		}
+
 		pkg_plugins_hook_run(post, j, j->db);
 		break;
 	case PKG_JOBS_FETCH:
