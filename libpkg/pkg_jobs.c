@@ -2319,7 +2319,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	/* Check if we need to fetch and re-run the solver */
 	DL_FOREACH(j->jobs, job) {
-		if (pkgdb_ensure_loaded(j->db, job->items[0]->pkg,
+		struct pkg *p = job->items[0]->pkg;
+		if (p->type == PKG_REMOTE && pkgdb_ensure_loaded(j->db, p,
 		    PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_FATAL) {
 			j->need_fetch = true;
 			break;
