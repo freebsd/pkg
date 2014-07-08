@@ -499,6 +499,7 @@ typedef enum {
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
+#define PKG_OPEN_TRY (0x1 << 2)
 
 /**
  * test if pkg is installed and activated.

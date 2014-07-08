@@ -370,7 +370,7 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 		pkg_manifest_keys_new(&keys);
 		pkg_repo_cached_name(pkg, path, sizeof(path));
 
-		if (pkg_open(&cached, path, keys, 0) != EPKG_OK)
+		if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK)
 			return (EPKG_FATAL);
 
 		/* Now move required elements to the provided package */

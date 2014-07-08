@@ -1342,15 +1342,19 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 		if (archive_read_open_filename(*a,
 		    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
-			pkg_emit_error("archive_read_open_filename(%s): %s", path,
-			    archive_error_string(*a));
+			if ((flags & PKG_OPEN_TRY) == 0)
+				pkg_emit_error("archive_read_open_filename(%s): %s", path,
+					archive_error_string(*a));
+
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 	} else {
 		if (archive_read_open_fd(*a, fd, 4096) != ARCHIVE_OK) {
-			pkg_emit_error("archive_read_open_fd: %s",
-			    archive_error_string(*a));
+			if ((flags & PKG_OPEN_TRY) == 0)
+				pkg_emit_error("archive_read_open_fd: %s",
+					archive_error_string(*a));
+
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1398,8 +1402,10 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 			ret = pkg_parse_manifest(pkg, buffer, len, keys);
 			free(buffer);
 			if (ret != EPKG_OK) {
-				pkg_emit_error("%s is not a valid package: "
-				    "Invalid manifest", path);
+				if ((flags & PKG_OPEN_TRY) == 0)
+					pkg_emit_error("%s is not a valid package: "
+						"Invalid manifest", path);
+
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1419,9 +1425,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 					else {
 						if (r == ARCHIVE_FATAL) {
 							retcode = EPKG_FATAL;
-							pkg_emit_error("%s is not a valid package: "
+							if ((flags & PKG_OPEN_TRY) == 0)
+								pkg_emit_error("%s is not a valid package: "
 									"%s is corrupted: %s", path, fpath,
-									archive_error_string(*a));
+										archive_error_string(*a));
+
 							goto cleanup;
 						}
 						else if (r == ARCHIVE_EOF)
@@ -1436,8 +1444,10 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
-		pkg_emit_error("archive_read_next_header(): %s",
-					   archive_error_string(*a));
+		if ((flags & PKG_OPEN_TRY) == 0)
+			pkg_emit_error("archive_read_next_header(): %s",
+				archive_error_string(*a));
+
 		retcode = EPKG_FATAL;
 	}
 
@@ -1446,7 +1456,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	if (!manifest) {
 		retcode = EPKG_FATAL;
-		pkg_emit_error("%s is not a valid package: no manifest found", path);
+		if ((flags & PKG_OPEN_TRY) == 0)
+			pkg_emit_error("%s is not a valid package: no manifest found", path);
 	}
 
 	cleanup:
