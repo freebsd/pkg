@@ -97,25 +97,14 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 static int
 pkg_repo_binary_set_version(sqlite3 *sqlite, int reposcver)
 {
-	int		 retcode = EPKG_OK;
-	const char	*sql = "PRAGMA user_version = ?1;" ;
-	sqlite3_stmt *stmt;
+	const char	*sql = "PRAGMA user_version = %d;";
 
-	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+	if (sql_exec(sqlite, sql, reposcver) != EPKG_OK) {
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int(stmt, 1, reposcver);
-
-	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		pkg_emit_error("sqlite: %s", sqlite3_errmsg(sqlite));
-		retcode = EPKG_FATAL;
-	}
-
-	sqlite3_finalize(stmt);
-
-	return (retcode);
+	return (EPKG_OK);
 }
 
 static int
