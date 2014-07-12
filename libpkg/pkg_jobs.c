@@ -930,14 +930,12 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		struct pkg_job_universe_item **unit,
 		bool add_request)
 {
-	struct pkg *p1;
 	struct pkg_job_universe_item *jit;
 	struct pkg_job_seen *seen;
 	struct pkg_job_request *jreq;
 	int rc = EPKG_FATAL;
 	const char *uid, *digest;
 
-	p1 = NULL;
 	pkg_get(p, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 
 	if (digest == NULL) {
