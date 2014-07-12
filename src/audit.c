@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +44,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
-#include <utlist.h>
+#include <uthash.h>
 
 #include <pkg.h>
 #include "pkgcli.h"
@@ -51,19 +52,21 @@
 void
 usage_audit(void)
 {
-	fprintf(stderr, "Usage: pkg audit [-Fq] <pattern>\n\n");
+	fprintf(stderr, "Usage: pkg audit [-Fqr] [-f file] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
 struct pkg_check_entry {
 	struct pkg *pkg;
-	struct pkg_check_entry *next;
+	UT_hash_handle hh;
+	UT_hash_handle hs;
 };
 
 static void
 add_to_check(struct pkg_check_entry **head, struct pkg *pkg)
 {
 	struct pkg_check_entry *e;
+	const char *uid;
 
 	e = malloc(sizeof(*e));
 	if (e == NULL) {
@@ -71,7 +74,42 @@ add_to_check(struct pkg_check_entry **head, struct pkg *pkg)
 		exit(EXIT_FAILURE);
 	}
 	e->pkg = pkg;
-	LL_PREPEND(*head, e);
+	pkg_get(pkg, PKG_UNIQUEID, &uid);
+
+	HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), e);
+}
+
+static void
+print_recursive_rdeps(struct pkg_check_entry *head, struct pkg *p,
+	struct sbuf *sb, struct pkg_check_entry **seen, bool top)
+{
+	struct pkg_dep *dep = NULL;
+	static char uidbuf[1024];
+	struct pkg_check_entry *r;
+
+	while(pkg_rdeps(p, &dep) == EPKG_OK) {
+		const char *name = pkg_dep_get(dep, PKG_DEP_NAME);
+
+		HASH_FIND(hs, *seen, name, strlen(name), r);
+
+		if (r == NULL) {
+			snprintf(uidbuf, sizeof(uidbuf), "%s~%s",
+				name, pkg_dep_get(dep, PKG_DEP_ORIGIN));
+			HASH_FIND(hh, head, uidbuf, strlen(uidbuf), r);
+
+			if (r != NULL) {
+				HASH_ADD_KEYPTR(hs, *seen, name, strlen(name), r);
+				if (!top)
+					sbuf_cat(sb, ", ");
+
+				sbuf_cat(sb, name);
+
+				print_recursive_rdeps(head, r->pkg, sb, seen, false);
+
+				top = false;
+			}
+		}
+	}
 }
 
 int
@@ -87,12 +125,12 @@ exec_audit(int argc, char **argv)
 	char				 audit_file_buf[MAXPATHLEN];
 	char				*audit_file = audit_file_buf;
 	unsigned int			 vuln = 0;
-	bool				 fetch = false;
+	bool				 fetch = false, recursive = false;
 	int				 ch;
 	int				 ret = EX_OK;
 	const char			*portaudit_site = NULL;
 	struct sbuf			*sb;
-	struct pkg_check_entry *check = NULL, *cur;
+	struct pkg_check_entry *check = NULL, *cur, *tmp;
 
 	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
@@ -100,11 +138,12 @@ exec_audit(int argc, char **argv)
 	struct option longopts[] = {
 		{ "fetch",	no_argument,		NULL,	'F' },
 		{ "file",	required_argument,	NULL,	'f' },
+		{ "recursive",	no_argument,	NULL,	'r' },
 		{ "quiet",	no_argument,		NULL,	'q' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "Ff:q", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "Ff:qr", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'F':
 			fetch = true;
@@ -114,6 +153,9 @@ exec_audit(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'r':
+			recursive = true;
 			break;
 		default:
 			usage_audit();
@@ -195,7 +237,8 @@ exec_audit(int argc, char **argv)
 			ret = EX_IOERR;
 		}
 		else {
-			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
+							== EPKG_OK) {
 				add_to_check(&check, pkg);
 				pkg = NULL;
 			}
@@ -220,10 +263,25 @@ exec_audit(int argc, char **argv)
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
-		LL_FOREACH(check, cur) {
+		HASH_ITER(hh, check, cur, tmp) {
 			if (pkg_audit_is_vulnerable(audit, cur->pkg, quiet, &sb)) {
 				vuln ++;
 				printf("%s", sbuf_data(sb));
+
+				if (recursive) {
+					const char *name;
+					struct pkg_check_entry *seen = NULL, *scur, *stmp;
+
+					pkg_get(cur->pkg, PKG_NAME, &name);
+					sbuf_printf(sb, "Packages that depend on %s: ", name);
+					print_recursive_rdeps(check, cur->pkg, sb, &seen, true);
+					sbuf_finish(sb);
+					printf("%s\n", sbuf_data(sb));
+
+					HASH_ITER(hs, seen, scur, stmp) {
+						HASH_DELETE(hs, seen, scur);
+					}
+				}
 				sbuf_delete(sb);
 			}
 		}
@@ -233,6 +291,12 @@ exec_audit(int argc, char **argv)
 
 		if (!quiet)
 			printf("%u problem(s) in the installed packages found.\n", vuln);
+
+		HASH_ITER(hh, check, cur, tmp) {
+			HASH_DELETE(hh, check, cur);
+			pkg_free(cur->pkg);
+			free(cur);
+		}
 	}
 	else {
 		warnx("cannot process vulnxml");

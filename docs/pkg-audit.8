@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd July 12, 2014
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -23,12 +23,12 @@
 .Nd Audits installed packages against known vulnerabilities.
 .Sh SYNOPSIS
 .Nm
-.Op Fl Fq
+.Op Fl Fqr
 .Op Fl f Ar filename
 .Ar pkg-name
 .Pp
 .Nm
-.Op Cm --{fetch,quiet}
+.Op Cm --{fetch,quiet,recursive}
 .Op Cm --file Ar filename
 .Ar pkg-name
 .Sh DESCRIPTION
@@ -75,6 +75,9 @@ Fetch the database before checking.
 Be ``quiet''.
 Prints only the requested information without
 displaying many hints.
+.It Fl r , Cm --recursive
+Prints packages that depend on vulnerable packages and are thus 
+potentially vulnerable as well.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
