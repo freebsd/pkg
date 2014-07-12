@@ -535,7 +535,7 @@ static int
 pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 		struct pkg_job_universe_item **found)
 {
-	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
+	struct pkg_job_universe_item *item, *tmp = NULL;
 	const char *uid, *digest, *version, *name;
 	struct pkg_job_seen *seen;
 
@@ -553,7 +553,6 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 
 	HASH_FIND_STR(j->seen, digest, seen);
 	if (seen != NULL) {
-		cur = seen->un;
 		if (found != NULL)
 			*found = seen->un;
 
