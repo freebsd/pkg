@@ -374,7 +374,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 }
 
 void
-sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
+sha256_buf(const char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	sha256_buf_bin(buf, len, hash);
@@ -383,7 +383,7 @@ sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 }
 
 void
-sha256_buf_bin(char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
+sha256_buf_bin(const char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
 {
 	SHA256_CTX sha256;
 
@@ -465,19 +465,19 @@ is_conf_file(const char *path, char *newpath, size_t len)
 }
 
 bool
-is_hardlink(struct hardlinks *hl, struct stat *st)
+check_for_hardlink(struct hardlinks *hl, struct stat *st)
 {
 	struct hardlinks *h;
 
 	HASH_FIND_INO(hl, &st->st_ino, h);
 	if (h != NULL)
-		return false;
+		return (true);
 
 	h = malloc(sizeof(struct hardlinks));
 	h->inode = st->st_ino;
 	HASH_ADD_INO(hl, inode, h);
 
-	return (true);
+	return (false);
 }
 
 bool
@@ -874,4 +874,34 @@ print_trace(void)
 
 	free(strings);
 #endif
+}
+
+int
+pkg_symlink_cksum(const char *path, const char *root, char *cksum)
+{
+	char linkbuf[MAXPATHLEN];
+	const char *lnk;
+	int ret;
+
+	if ((ret = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
+		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
+		return (EPKG_FATAL);
+	}
+
+	/* Null terminate */
+	linkbuf[ret] = '\0';
+	lnk = linkbuf;
+	if (root != NULL) {
+		/* Skip root from checksum, as it is meaningless */
+		if (strncmp(root, linkbuf, strlen(root)) == 0) {
+			lnk += strlen(root);
+		}
+	}
+	/* Skip heading slashes */
+	while(*lnk == '/')
+		lnk ++;
+
+	sha256_buf(lnk, ret, cksum);
+
+	return (EPKG_OK);
 }

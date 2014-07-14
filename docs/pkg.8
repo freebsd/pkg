@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd June 16, 2014
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ The following script is the safest way to detect if
 .Nm
 is installed and activated:
 .Bd -literal -offset indent
-  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
+  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=yes \\
        PACKAGESITE=file:///nonexistent \\
        pkg info -x 'pkg(-devel)?$' >/dev/null 2>&1; then
     # pkgng-specifics

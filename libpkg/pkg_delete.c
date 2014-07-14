@@ -43,33 +43,17 @@
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
-	struct pkg_dep	*rdep = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
 	int64_t		id;
+	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
+					PKG_LOAD_SCRIPTS|PKG_LOAD_MTREE|PKG_LOAD_ANNOTATIONS;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
-	/*
-	 * Do not trust the existing entries as it may have changed if we
-	 * delete packages in batch.
-	 */
-	pkg_list_free(pkg, PKG_RDEPS);
-	/*
-	 * Ensure that we have all the informations we need
-	 */
-	if ((ret = pkgdb_load_rdeps(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_files(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_dirs(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_scripts(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_mtree(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_load_annotations(db, pkg)) != EPKG_OK)
-		return (ret);
+
+	if (pkgdb_ensure_loaded(db, pkg, load_flags) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_begin(pkg);
@@ -78,15 +62,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if (pkg_is_locked(pkg)) {
 		pkg_emit_locked(pkg);
 		return (EPKG_LOCKED);
-	}
-
-	/* If there are dependencies */
-	if ((flags & (PKG_DELETE_UPGRADE|PKG_DELETE_CONFLICT)) == 0) {
-		if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
-			pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
-			if ((flags & PKG_DELETE_FORCE) == 0)
-				return (EPKG_REQUIRED);
-		}
 	}
 
 	/*
@@ -142,11 +117,20 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	const char	*path;
 	char		fpath[MAXPATHLEN];
+	int		nfiles, cur_file = 0;
+
+	nfiles = HASH_COUNT(pkg->files);
+
+	pkg_emit_progress_start(NULL);
+	/* fake to show a 100% progress */
+	if (nfiles == 0)
+		pkg_emit_progress_tick(1, 1);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *sum = pkg_file_cksum(file);
 		const ucl_object_t *obj, *an;
 
+		pkg_emit_progress_tick(cur_file++, nfiles);
 		if (file->keep == 1)
 			continue;
 
@@ -174,6 +158,8 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 			continue;
 		}
 	}
+
+	pkg_emit_progress_tick(nfiles, nfiles);
 
 	return (EPKG_OK);
 }

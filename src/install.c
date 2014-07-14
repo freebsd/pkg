@@ -61,8 +61,9 @@ exec_install(int argc, char **argv)
 	int		 updcode = EPKG_OK;
 	int		 ch;
 	int		 mode, repo_type;
+	int		 done = 0;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
-	bool		 rc = false;
+	bool		 rc = true;
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
@@ -221,8 +222,8 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	rc = yes;
 	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
+		rc = yes;
 		/* print a summary before applying the jobs */
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
@@ -240,6 +241,7 @@ exec_install(int argc, char **argv)
 
 		if (rc) {
 			retcode = pkg_jobs_apply(jobs);
+			done = 1;
 			if (retcode == EPKG_CONFLICT) {
 				printf("Conflicts with the existing packages "
 				    "have been found.\nOne more solver "
@@ -256,6 +258,9 @@ exec_install(int argc, char **argv)
 		}
 		break;
 	}
+
+	if (done == 0 && rc)
+		printf("The most recent version of packages are already installed\n");
 
 	retcode = EX_OK;
 

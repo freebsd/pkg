@@ -42,18 +42,44 @@
 #include "private/pkg.h"
 
 static int
-do_extract(struct archive *a, struct archive_entry *ae, const char *location)
+do_extract(struct archive *a, struct archive_entry *ae, const char *location,
+		int nfiles, struct pkg *pkg)
 {
 	int	retcode = EPKG_OK;
-	int	ret = 0;
-	char	path[MAXPATHLEN], pathname[MAXPATHLEN];
+	int	ret = 0, cur_file = 0;
+	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
 	struct stat st;
+	const char *name;
+	bool renamed = true;
+
+	pkg_get(pkg, PKG_NAME, &name);
+	pkg_emit_progress_start(NULL);
+	/* show a progression on package with no files */
+	if (nfiles == 0)
+		pkg_emit_progress_tick(1,1);
 
 	do {
 		snprintf(pathname, sizeof(pathname), "%s/%s",
 		    location ? location : "",
 		    archive_entry_pathname(ae)
 		);
+
+		if (stat(pathname, &st) != -1 && !S_ISDIR(st.st_mode)) {
+			/*
+			 * We have an existing file on the path, so handle it
+			 */
+
+			snprintf(rpath, sizeof(rpath), "%s.%jd", pathname,
+			    (intmax_t)time(NULL));
+			if (rename(pathname, rpath) == -1) {
+				pkg_emit_error("cannot rename %s to %s: %s", pathname, rpath,
+				    strerror(errno));
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			renamed = true;
+		}
+
 		archive_entry_set_pathname(ae, pathname);
 
 		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
@@ -73,6 +99,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 				goto cleanup;
 			}
 		}
+		pkg_emit_progress_tick(cur_file++, nfiles);
 
 		/*
 		 * if the file is a configuration file and the configuration
@@ -93,6 +120,10 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 				goto cleanup;
 			}
 		}
+		if (renamed) {
+			unlink(rpath);
+			renamed = false;
+		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF) {
@@ -102,6 +133,12 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 	}
 
 cleanup:
+
+	pkg_emit_progress_tick(nfiles, nfiles);
+
+	if (renamed && retcode == EPKG_FATAL)
+		rename(rpath, pathname);
+
 	return (retcode);
 }
 
@@ -175,6 +212,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	char		*prefix;
 	int		 retcode = EPKG_OK;
 	int		 ret;
+	int nfiles;
 
 	assert(path != NULL);
 
@@ -291,11 +329,16 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 	}
 	else {
-		/* Save reponame */
-		const char *reponame;
+		const char *manifestdigest;
 
-		pkg_get(remote, PKG_REPONAME, &reponame);
-		pkg_addannotation(pkg, "repository", reponame);
+		if (remote->repo != NULL) {
+			/* Save reponame */
+			pkg_addannotation(pkg, "repository", remote->repo->name);
+			pkg_addannotation(pkg, "repo_type", remote->repo->ops->type);
+		}
+
+		pkg_get(remote, PKG_DIGEST, &manifestdigest);
+		pkg_set(pkg, PKG_DIGEST, manifestdigest);
 	}
 
 	if (location != NULL)
@@ -333,10 +376,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* add the user and group if necessary */
 	/* pkg_add_user_group(pkg); */
 
+	nfiles = HASH_COUNT(pkg->files);
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract && (retcode = do_extract(a, ae, location)) != EPKG_OK) {
+	if (extract && (retcode = do_extract(a, ae, location, nfiles, pkg)) != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg, 1);

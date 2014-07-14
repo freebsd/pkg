@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd July 1, 2014
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -128,6 +128,11 @@ Returns 1 if the matched package is locked against modification or deletion, 0 o
 message contained in the matched package
 .It Cm \&%t
 Timestamp that the package was installed
+.It Cm \&%R
+The name of the repository from which the package was installed if
+available, or
+.Dq unknown-repository
+otherwise.
 .It Cm \&%? Ns Op drCFODLUGBbA
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent

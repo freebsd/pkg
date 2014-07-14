@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -56,6 +57,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
 	const ucl_object_t	*obj, *an;
+	struct hardlinks *hardlinks = NULL;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -79,19 +81,21 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			pkg_emit_errno("pkg_create_from_dir", "lstat failed");
 			return (EPKG_FATAL);
 		}
+
 		if (file->size == 0)
 			file->size = (int64_t)st.st_size;
-		flatsize += file->size;
+
+		if (st.st_nlink == 1 || !check_for_hardlink(hardlinks, &st)) {
+			flatsize += file->size;
+		}
 
 		if (S_ISLNK(st.st_mode)) {
-			char linkbuf[MAXPATHLEN];
-			if ((ret = readlink(fpath, linkbuf, sizeof(linkbuf))) == -1) {
-				pkg_emit_errno("pkg_create_from_dir", "readlink failed");
-				return (EPKG_FATAL);
-			}
+
 			if (pkg_sum == NULL || pkg_sum[0] == '\0') {
-				sha256_buf(linkbuf, ret, sha256);
-				strlcpy(file->sum, sha256, sizeof(file->sum));
+				if (pkg_symlink_cksum(fpath, root, sha256) == EPKG_OK)
+					strlcpy(file->sum, sha256, sizeof(file->sum));
+				else
+					return (EPKG_FATAL);
 			}
 		}
 		else {
@@ -108,6 +112,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		}
 	}
 	pkg_set(pkg, PKG_FLATSIZE, flatsize);
+	HASH_FREE(hardlinks, free);
 
 	if (pkg->type == PKG_OLD_FILE) {
 		const char *desc, *display, *comment;

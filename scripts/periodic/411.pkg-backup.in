@@ -15,7 +15,7 @@ case "${daily_backup_pkgng_enable:-YES}" in
 	;;
 	*)
 	bak="${daily_backup_pkgng_dir:-/var/backups}"
-	bak_file="${bak}/pkgng.db"
+	bak_file="${bak}/pkg.sql.xz"
 	pkgcmd=@prefix@/sbin/pkg
 
 	if ! ${pkgcmd} -N >/dev/null 2>&1 ; then
@@ -33,10 +33,10 @@ case "${daily_backup_pkgng_enable:-YES}" in
 		echo
 		echo 'Backing up pkgng database:'
 
-		[ -e "${bak_file}.txz" ] && \
-			mv -f "${bak_file}.txz" "${bak_file}.txz.2"
+		[ -e "${bak_file}" ] && \
+			mv -f "${bak_file}" "${bak_file}.2"
 
-		if ${pkgcmd} backup -d ${bak_file}; then
+		if ${pkgcmd} shell .dump | xz -c > ${bak_file}; then
 			rc=0
 		else
 			rc=3

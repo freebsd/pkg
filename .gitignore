@@ -50,10 +50,13 @@ scripts/sbin/pkg2ng
 /external/libelf/libelf_msize.c
 /external/libelf/native-elf-format.h
 /libpkg/Makefile
+/libpkg/repo/Makefile
+/libpkg/repo/binary/Makefile
 /libtool
 /ltmain.sh
 /pkg_config.h
 /pkg_config.h.in
+/pkg_repos.h
 /scripts/Makefile
 /src/Makefile
 /test-driver

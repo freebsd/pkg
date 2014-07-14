@@ -32,6 +32,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -45,14 +47,17 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <math.h>
+#include <poll.h>
+#include <sys/uio.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
-#include "private/repodb.h"
-#include "private/thd_repo.h"
+#include "pkg_config.h"
 
 struct digest_list_entry {
 	char *origin;
@@ -68,119 +73,6 @@ struct pkg_conflict_bulk {
 	char *file;
 	UT_hash_handle hh;
 };
-
-static void
-pkg_read_pkg_file(void *data)
-{
-	struct thd_data *d = (struct thd_data*) data;
-	struct pkg_result *r;
-	struct pkg_manifest_key *keys = NULL;
-
-	FTSENT *fts_ent = NULL;
-	char fts_accpath[MAXPATHLEN];
-	char fts_path[MAXPATHLEN];
-	char fts_name[MAXPATHLEN];
-	off_t st_size;
-	int fts_info, flags;
-
-	char *ext = NULL;
-	char *pkg_path;
-
-	pkg_manifest_keys_new(&keys);
-
-	for (;;) {
-		fts_ent = NULL;
-
-		/*
-		 * Get a file to read from.
-		 * Copy the data we need from the fts entry localy because as soon as
-		 * we unlock the fts_m mutex, we can not access it.
-		 */
-		pthread_mutex_lock(&d->fts_m);
-		if (!d->stop)
-			fts_ent = fts_read(d->fts);
-		if (fts_ent != NULL) {
-			strlcpy(fts_accpath, fts_ent->fts_accpath, sizeof(fts_accpath));
-			strlcpy(fts_path, fts_ent->fts_path, sizeof(fts_path));
-			strlcpy(fts_name, fts_ent->fts_name, sizeof(fts_name));
-			st_size = fts_ent->fts_statp->st_size;
-			fts_info = fts_ent->fts_info;
-		}
-		pthread_mutex_unlock(&d->fts_m);
-
-		/* There is no more jobs, exit the main loop. */
-		if (fts_ent == NULL)
-			break;
-
-		/* Skip everything that is not a file */
-		if (fts_info != FTS_F)
-			continue;
-
-		ext = strrchr(fts_name, '.');
-
-		if (ext == NULL)
-			continue;
-
-		if (strcmp(ext, ".tgz") != 0 &&
-				strcmp(ext, ".tbz") != 0 &&
-				strcmp(ext, ".txz") != 0 &&
-				strcmp(ext, ".tar") != 0)
-			continue;
-
-		*ext = '\0';
-
-		if (strcmp(fts_name, repo_db_archive) == 0 ||
-			strcmp(fts_name, repo_packagesite_archive) == 0 ||
-			strcmp(fts_name, repo_filesite_archive) == 0 ||
-			strcmp(fts_name, repo_digests_archive) == 0 ||
-			strcmp(fts_name, repo_conflicts_archive) == 0)
-			continue;
-		*ext = '.';
-
-		pkg_path = fts_path;
-		pkg_path += strlen(d->root_path);
-		while (pkg_path[0] == '/')
-			pkg_path++;
-
-		r = calloc(1, sizeof(struct pkg_result));
-		strlcpy(r->path, pkg_path, sizeof(r->path));
-
-		if (d->read_files)
-			flags = PKG_OPEN_MANIFEST_ONLY;
-		else
-			flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
-
-		if (pkg_open(&r->pkg, fts_accpath, keys, flags) != EPKG_OK) {
-			r->retcode = EPKG_WARN;
-		} else {
-			sha256_file(fts_accpath, r->cksum);
-			pkg_set(r->pkg, PKG_CKSUM, r->cksum,
-			    PKG_REPOPATH, pkg_path,
-			    PKG_PKGSIZE, st_size);
-		}
-
-
-		/* Add result to the FIFO and notify */
-		pthread_mutex_lock(&d->results_m);
-		while (d->num_results >= d->max_results) {
-			pthread_cond_wait(&d->has_room, &d->results_m);
-		}
-		DL_APPEND(d->results, r);
-		d->num_results++;
-		pthread_cond_signal(&d->has_result);
-		pthread_mutex_unlock(&d->results_m);
-	}
-
-	/*
-	 * This thread is about to exit.
-	 * Notify the main thread that we are done.
-	 */
-	pthread_mutex_lock(&d->results_m);
-	d->thd_finished++;
-	pthread_cond_signal(&d->has_result);
-	pthread_mutex_unlock(&d->results_m);
-	pkg_manifest_keys_free(keys);
-}
 
 static int
 pkg_digest_sort_compare_func(struct digest_list_entry *d1,
@@ -264,36 +156,406 @@ out:
 	return;
 }
 
+struct pkg_fts_item {
+	char *fts_accpath;
+	char *pkg_path;
+	char *fts_name;
+	off_t fts_size;
+	int fts_info;
+	struct pkg_fts_item *next;
+};
+
+static struct pkg_fts_item*
+pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
+{
+	struct pkg_fts_item *item;
+	char *pkg_path;
+
+	item = malloc(sizeof(*item));
+	if (item != NULL) {
+		item->fts_accpath = strdup(fts->fts_accpath);
+		item->fts_name = strdup(fts->fts_name);
+		item->fts_size = fts->fts_statp->st_size;
+		item->fts_info = fts->fts_info;
+
+		pkg_path = fts->fts_path;
+		pkg_path += strlen(root_path);
+		while (pkg_path[0] == '/')
+			pkg_path++;
+
+		item->pkg_path = strdup(pkg_path);
+	}
+	else {
+		pkg_emit_errno("malloc", "struct pkg_fts_item");
+	}
+
+	return (item);
+}
+
+static void
+pkg_create_repo_fts_free(struct pkg_fts_item *item)
+{
+	free(item->fts_accpath);
+	free(item->pkg_path);
+	free(item->fts_name);
+	free(item);
+}
+
+static int
+pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
+	const char *repopath, size_t *plen, struct pkg_repo_meta *meta)
+{
+	FTSENT *fts_ent;
+	struct pkg_fts_item *fts_cur;
+	char *ext;
+
+	errno = 0;
+
+	while ((fts_ent = fts_read(fts)) != NULL) {
+		/* Skip everything that is not a file */
+		if (fts_ent->fts_info != FTS_F)
+			continue;
+
+		ext = strrchr(fts_ent->fts_name, '.');
+
+		if (ext == NULL)
+			continue;
+
+		if (strcmp(ext + 1, packing_format_to_string(meta->packing_format)) != 0)
+			continue;
+
+		*ext = '\0';
+
+		if (pkg_repo_meta_is_special_file(fts_ent->fts_name, meta)) {
+			*ext = '.';
+			continue;
+		}
+
+		*ext = '.';
+		fts_cur = pkg_create_repo_fts_new(fts_ent, repopath);
+		if (fts_cur == NULL)
+			return (EPKG_FATAL);
+
+		LL_PREPEND(*items, fts_cur);
+		(*plen) ++;
+	}
+
+	if (errno != 0) {
+		pkg_emit_errno("fts_read", "pkg_create_repo_read_fts");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
+	const char *mlfile, const char *flfile, int pip,
+	struct pkg_repo_meta *meta)
+{
+	pid_t pid;
+	int mfd, ffd;
+	bool read_files = (flfile != NULL);
+	bool legacy = (meta == NULL);
+	int flags, ret = EPKG_OK;
+	size_t cur_job = 0;
+	struct pkg_fts_item *cur;
+	struct pkg *pkg = NULL;
+	struct pkg_manifest_key *keys = NULL;
+	char checksum[SHA256_DIGEST_LENGTH * 3 + 1], *mdigest = NULL;
+	char digestbuf[1024];
+	struct iovec iov[2];
+	struct msghdr msg;
+
+	struct sbuf *b = sbuf_new_auto();
+
+	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
+	if (mfd == -1) {
+		pkg_emit_errno("pkg_create_repo_worker", "open");
+		return (EPKG_FATAL);
+	}
+
+	if (read_files) {
+		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
+		if (ffd == -1) {
+			pkg_emit_errno("pkg_create_repo_worker", "open");
+			return (EPKG_FATAL);
+		}
+	}
+
+	pid = fork();
+	switch(pid) {
+	case -1:
+		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		return (EPKG_FATAL);
+		break;
+	case 0:
+		break;
+	default:
+		/* Parent */
+		close(mfd);
+		if (read_files)
+			close(ffd);
+
+		return (EPKG_OK);
+		break;
+	}
+
+	pkg_manifest_keys_new(&keys);
+
+	if (read_files)
+		flags = PKG_OPEN_MANIFEST_ONLY;
+	else
+		flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
+
+	LL_FOREACH(start, cur) {
+		if (cur_job >= nelts)
+			break;
+
+		if (pkg_open(&pkg, cur->fts_accpath, keys, flags) == EPKG_OK) {
+			int r;
+			off_t mpos, fpos = 0;
+			size_t mlen;
+			const char *origin;
+
+			sha256_file(cur->fts_accpath, checksum);
+			pkg_set(pkg, PKG_CKSUM, checksum,
+				PKG_REPOPATH, cur->pkg_path,
+				PKG_PKGSIZE, cur->fts_size);
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+
+			/*
+			 * TODO: use pkg_checksum for new manifests
+			 */
+			sbuf_clear(b);
+			if (legacy)
+				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
+			else {
+				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
+
+				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+				if (pkg_checksum_generate(pkg, mdigest,
+				     pkg_checksum_type_size(meta->digest_format),
+				     meta->digest_format) != EPKG_OK) {
+					pkg_emit_error("Cannot generate digest for a package");
+					ret = EPKG_FATAL;
+
+					goto cleanup;
+				}
+			}
+			mlen = sbuf_len(b);
+			sbuf_finish(b);
+
+			if (flock(mfd, LOCK_EX) == -1) {
+				pkg_emit_errno("pkg_create_repo_worker", "flock");
+				ret = EPKG_FATAL;
+				goto cleanup;
+			}
+
+			mpos = lseek(mfd, 0, SEEK_END);
+
+			iov[0].iov_base = sbuf_data(b);
+			iov[0].iov_len = sbuf_len(b);
+			iov[1].iov_base = (void *)"\n";
+			iov[1].iov_len = 1;
+
+			if (writev(mfd, iov, 2) == -1) {
+				pkg_emit_errno("pkg_create_repo_worker", "write");
+				ret = EPKG_FATAL;
+				flock(mfd, LOCK_UN);
+				goto cleanup;
+			}
+
+			flock(mfd, LOCK_UN);
+
+			if (read_files) {
+				FILE *fl;
+
+				if (flock(ffd, LOCK_EX) == -1) {
+					pkg_emit_errno("pkg_create_repo_worker", "flock");
+					ret = EPKG_FATAL;
+					goto cleanup;
+				}
+				fpos = lseek(ffd, 0, SEEK_END);
+				fl = fdopen(dup(ffd), "a");
+				pkg_emit_filelist(pkg, fl);
+				fclose(fl);
+
+				flock(ffd, LOCK_UN);
+			}
+
+			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld\n",
+				origin, mdigest,
+				(long)mpos,
+				(long)fpos,
+				(long)mlen);
+
+			free(mdigest);
+			mdigest = NULL;
+			iov[0].iov_base = digestbuf;
+			iov[0].iov_len = r;
+			memset(&msg, 0, sizeof(msg));
+			msg.msg_iov = iov;
+			msg.msg_iovlen = 1;
+			sendmsg(pip, &msg, MSG_EOR);
+		}
+		cur_job ++;
+	}
+
+cleanup:
+	pkg_manifest_keys_free(keys);
+
+	write(pip, ".\n", 2);
+	close(pip);
+	close(mfd);
+	if (read_files)
+		close(ffd);
+	if (mdigest)
+		free(mdigest);
+
+	exit(ret);
+}
+
+static int
+pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
+{
+	struct digest_list_entry *dig;
+	char buf[1024];
+	int r, i, start;
+	enum {
+		s_set_origin = 0,
+		s_set_digest,
+		s_set_mpos,
+		s_set_fpos,
+		s_set_mlen
+	} state = 0;
+
+	for (;;) {
+		r = read(fd, buf, sizeof(buf));
+
+		if (r == -1) {
+			if (errno == EINTR)
+				continue;
+			else if (errno == ECONNRESET) {
+				/* Treat it as the end of a connection */
+				return (EPKG_END);
+			}
+			else if (errno == EAGAIN || errno == EWOULDBLOCK)
+				return (EPKG_OK);
+
+			pkg_emit_errno("pkg_create_repo_read_pipe", "read");
+			return (EPKG_FATAL);
+		}
+		else if (r == 0)
+			return (EPKG_END);
+
+		/*
+		 * XXX: can parse merely full lines
+		 */
+		start = 0;
+		for (i = 0; i < r; i ++) {
+			if (buf[i] == ':') {
+				switch(state) {
+				case s_set_origin:
+					dig = calloc(1, sizeof(*dig));
+					dig->origin = malloc(i - start + 1);
+					strlcpy(dig->origin, &buf[start], i - start + 1);
+					state = s_set_digest;
+					break;
+				case s_set_digest:
+					dig->digest = malloc(i - start + 1);
+					strlcpy(dig->digest, &buf[start], i - start + 1);
+					state = s_set_mpos;
+					break;
+				case s_set_mpos:
+					dig->manifest_pos = strtol(&buf[start], NULL, 10);
+					state = s_set_fpos;
+					break;
+				case s_set_fpos:
+					dig->files_pos = strtol(&buf[start], NULL, 10);
+					state = s_set_mlen;
+					break;
+				case s_set_mlen:
+					/* Record should actually not finish with ':' */
+					dig->manifest_length = strtol(&buf[start], NULL, 10);
+					state = s_set_origin;
+					break;
+				}
+				start = i + 1;
+			}
+			else if (buf[i] == '\n') {
+				dig->manifest_length = strtol(&buf[start], NULL, 10);
+				assert(dig->origin != NULL);
+				assert(dig->digest != NULL);
+				DL_APPEND(*dlist, dig);
+				state = s_set_origin;
+				start = i + 1;
+				break;
+			}
+			else if (buf[i] == '.' && buf[i + 1] == '\n') {
+				return (EPKG_END);
+			}
+		}
+	}
+
+	/*
+	 * Never reached
+	 */
+	return (EPKG_OK);
+}
+
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
-		void (progress)(struct pkg *pkg, void *data), void *data)
+	const char *metafile, bool legacy)
 {
 	FTS *fts = NULL;
-	struct thd_data thd_data;
+	struct pkg_fts_item *fts_items = NULL, *fts_cur;
+
 	struct pkg_conflict *c, *ctmp;
 	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
-	int num_workers;
-	size_t len;
-	pthread_t *tids = NULL;
+	int num_workers, i, remaining_workers;
+	size_t len, tasks_per_worker, ntask;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
-
+	struct pollfd *pfd = NULL;
+	int cur_pipe[2], fd;
+	struct pkg_repo_meta *meta;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
-	char repodb[MAXPATHLEN];
-	char *manifest_digest;
-	FILE *psyml, *fsyml, *mandigests, *fconflicts;
-
-	psyml = fsyml = mandigests = fconflicts = NULL;
+	char packagesite[MAXPATHLEN],
+		 filesite[MAXPATHLEN],
+		 repodb[MAXPATHLEN];
+	FILE *mandigests = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
 		return (EPKG_FATAL);
 	}
 
+	errno = 0;
 	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
-		return (EPKG_FATAL);
+		/* Try to create dir */
+		if (errno == ENOENT) {
+			if (mkdir(output_dir, 00755) == -1) {
+				pkg_emit_error("cannot create output directory %s: %s",
+					output_dir, strerror(errno));
+				return (EPKG_FATAL);
+			}
+		}
+		else {
+			pkg_emit_error("%s is not a directory", output_dir);
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (metafile != NULL) {
+		if (pkg_repo_meta_load(metafile, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", metafile);
+			return (EPKG_FATAL);
+		}
+	}
+	else {
+		meta = pkg_repo_meta_default();
 	}
 
 	repopath[0] = path;
@@ -309,113 +571,157 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_packagesite_file);
-	if ((psyml = fopen(repodb, "w")) == NULL) {
+	snprintf(packagesite, sizeof(packagesite), "%s/%s", output_dir,
+	    meta->manifests);
+	if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
+	close(fd);
 	if (filelist) {
-		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-		    repo_filesite_file);
-		if ((fsyml = fopen(repodb, "w")) == NULL) {
+		snprintf(filesite, sizeof(filesite), "%s/%s", output_dir,
+		    meta->filesite);
+		if ((fd = open(filesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
+		close(fd);
 	}
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_digests_file);
+	    meta->digests);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir, repo_conflicts_file);
-	if ((fconflicts = fopen(repodb, "w")) == NULL) {
+	len = 0;
+
+	pkg_create_repo_read_fts(&fts_items, fts, path, &len, meta);
+
+	if (len == 0) {
+		/* Nothing to do */
+		pkg_emit_error("No package files have been found");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	thd_data.root_path = path;
-	thd_data.max_results = num_workers;
-	thd_data.num_results = 0;
-	thd_data.stop = false;
-	thd_data.fts = fts;
-	thd_data.read_files = filelist;
-	pthread_mutex_init(&thd_data.fts_m, NULL);
-	thd_data.results = NULL;
-	thd_data.thd_finished = 0;
-	pthread_mutex_init(&thd_data.results_m, NULL);
-	pthread_cond_init(&thd_data.has_result, NULL);
-	pthread_cond_init(&thd_data.has_room, NULL);
+	/* Split items over all workers */
+	num_workers = MIN(num_workers, len);
+	tasks_per_worker = ceil((double)len / num_workers);
 
 	/* Launch workers */
-	tids = calloc(num_workers, sizeof(pthread_t));
-	for (int i = 0; i < num_workers; i++) {
-		pthread_create(&tids[i], NULL, (void *)&pkg_read_pkg_file, &thd_data);
-	}
+	pkg_emit_progress_start("Creating repository in %s", output_dir);
 
-	for (;;) {
-		struct pkg_result *r;
-		const char *origin;
+	pfd = calloc(num_workers, sizeof(struct pollfd));
+	ntask = 0;
+	LL_FOREACH(fts_items, fts_cur) {
+		if (ntask % tasks_per_worker == 0) {
+			/* Create new worker */
+			int nworker = ntask / tasks_per_worker;
+			int ofl;
+			int st = SOCK_DGRAM;
 
-		long manifest_pos, files_pos, manifest_length;
+#ifdef HAVE_SEQPACKET
+			st = SOCK_SEQPACKET;
+#endif
 
-		pthread_mutex_lock(&thd_data.results_m);
-		while ((r = thd_data.results) == NULL) {
-			if (thd_data.thd_finished == num_workers) {
-				break;
+			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
+				pkg_emit_errno("pkg_create_repo", "pipe");
+				retcode = EPKG_FATAL;
+				goto cleanup;
 			}
-			pthread_cond_wait(&thd_data.has_result, &thd_data.results_m);
+
+			if (pkg_create_repo_worker(fts_cur, tasks_per_worker, packagesite,
+				filelist ? filesite : NULL, cur_pipe[1],
+				legacy ? NULL : meta) == EPKG_FATAL) {
+				close(cur_pipe[0]);
+				close(cur_pipe[1]);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+
+			pfd[nworker].fd = cur_pipe[0];
+			pfd[nworker].events = POLL_IN;
+			close(cur_pipe[1]);
+			/* Make our end of the pipe non-blocking */
+			ofl = fcntl(cur_pipe[0], F_GETFL, 0);
+			fcntl(cur_pipe[0], F_SETFL, ofl | O_NONBLOCK);
 		}
-		if (r != NULL) {
-			DL_DELETE(thd_data.results, thd_data.results);
-			thd_data.num_results--;
-			pthread_cond_signal(&thd_data.has_room);
-		}
-		pthread_mutex_unlock(&thd_data.results_m);
-		if (r == NULL) {
-			break;
-		}
-
-		if (r->retcode != EPKG_OK) {
-			free(r);
-			continue;
-		}
-
-		/* EPKG_END returned */
-
-		if (progress != NULL)
-			progress(r->pkg, data);
-
-		manifest_pos = ftell(psyml);
-		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
-		manifest_length = ftell(psyml) - manifest_pos;
-		if (filelist) {
-			files_pos = ftell(fsyml);
-			pkg_emit_filelist(r->pkg, fsyml);
-		} else {
-			files_pos = 0;
-		}
-
-		pkg_get(r->pkg, PKG_ORIGIN, &origin);
-
-		cur_dig = malloc(sizeof (struct digest_list_entry));
-		cur_dig->origin = strdup(origin);
-		cur_dig->digest = manifest_digest;
-		cur_dig->manifest_pos = manifest_pos;
-		cur_dig->files_pos = files_pos;
-		cur_dig->manifest_length = manifest_length;
-		DL_APPEND(dlist, cur_dig);
-
-		pkg_free(r->pkg);
-		free(r);
+		ntask ++;
 	}
+
+	ntask = 0;
+	remaining_workers = num_workers;
+	while(remaining_workers > 0) {
+		int st;
+
+		retcode = poll(pfd, num_workers, -1);
+		if (retcode == -1) {
+			if (errno == EINTR) {
+				continue;
+			}
+			else {
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+		else if (retcode > 0) {
+			for (i = 0; i < num_workers; i ++) {
+				if (pfd[i].revents & (POLL_IN|POLL_HUP|POLL_ERR)) {
+					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist) != EPKG_OK) {
+						/*
+						 * Wait for the worker finished
+						 */
+
+						while (wait(&st) == -1) {
+							if (errno == EINTR)
+								continue;
+
+							pkg_emit_errno("pkg_create_repo", "wait");
+							break;
+						}
+
+						remaining_workers --;
+						pfd[i].events = 0;
+					}
+					else {
+						pkg_emit_progress_tick(ntask++, len);
+					}
+				}
+			}
+		}
+	}
+
+	pkg_emit_progress_tick(len, len);
+	retcode = EPKG_OK;
 
 	/* Now sort all digests */
 	DL_SORT(dlist, pkg_digest_sort_compare_func);
 
+	/*
+	 * XXX: it is not used actually
+	 */
+#if 0
 	pkg_repo_write_conflicts(conflicts, fconflicts);
+#endif
+
+	/* Write metafile */
+	if (!legacy) {
+		ucl_object_t *meta_dump;
+		FILE *mfile;
+
+		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+			"meta");
+		if ((mfile = fopen(repodb, "w")) != NULL) {
+			meta_dump = pkg_repo_meta_to_ucl(meta);
+			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
+			ucl_object_unref(meta_dump);
+			fclose(mfile);
+		}
+		else {
+			pkg_emit_notice("cannot create metafile at %s", repodb);
+		}
+	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
@@ -426,6 +732,16 @@ cleanup:
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
 	}
+	/* Close pipes */
+	if (pfd != NULL) {
+		for (i = 0; i < num_workers; i ++)
+			close(pfd[i].fd);
+		free(pfd);
+	}
+	if (fts != NULL)
+		fts_close(fts);
+
+	LL_FREE(fts_items, pkg_create_repo_fts_free);
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
 		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
 		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
@@ -434,31 +750,8 @@ cleanup:
 		free(cur_dig->origin);
 		free(cur_dig);
 	}
-	if (tids != NULL) {
-		/* Cancel running threads */
-		if (retcode != EPKG_OK) {
-			pthread_mutex_lock(&thd_data.fts_m);
-			thd_data.stop = true;
-			pthread_mutex_unlock(&thd_data.fts_m);
-		}
-		/* Join on threads to release thread IDs */
-		for (int i = 0; i < num_workers; i++) {
-			pthread_join(tids[i], NULL);
-		}
-		free(tids);
-	}
 
-	if (fts != NULL)
-		fts_close(fts);
-
-	if (fsyml != NULL)
-		fclose(fsyml);
-
-	if (psyml != NULL)
-		fclose(psyml);
-
-	if (fconflicts != NULL)
-		fclose(fconflicts);
+	pkg_repo_meta_free(meta);
 
 	if (mandigests != NULL)
 		fclose(mandigests);
@@ -537,7 +830,8 @@ done:
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-		struct rsa_key *rsa, char **argv, int argc)
+		struct rsa_key *rsa, struct pkg_repo_meta *meta,
+		char **argv, int argc)
 {
 	struct packing *pack;
 	unsigned char *sigret = NULL;
@@ -548,7 +842,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	sig = NULL;
 	pub = NULL;
 
-	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
+	if (packing_init(&pack, archive, meta->packing_format) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (rsa != NULL) {
@@ -611,8 +905,11 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	char repo_path[MAXPATHLEN];
 	char repo_archive[MAXPATHLEN];
 	struct rsa_key *rsa = NULL;
+	struct pkg_repo_meta *meta;
 	struct stat st;
-	int ret = EPKG_OK;
+	int ret = EPKG_OK, nfile = 0;
+	const int files_to_pack = 4;
+	bool legacy = false;
 
 	if (!is_dir(output_dir)) {
 		pkg_emit_error("%s is not a directory", output_dir);
@@ -631,46 +928,86 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		argv++;
 	}
 
+	pkg_emit_progress_start("Packing files for repository", output_dir);
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_packagesite_file);
+		repo_meta_file);
+	/*
+	 * If no meta is defined, then it is a legacy repo
+	 */
+	if (access(repo_path, R_OK) != -1) {
+		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", repo_path);
+			return (EPKG_FATAL);
+		}
+		else {
+			meta = pkg_repo_meta_default();
+		}
+		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,
+			argv, argc) != EPKG_OK) {
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+	else {
+		legacy = true;
+		meta = pkg_repo_meta_default();
+	}
+
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_packagesite_archive);
-	if (pkg_repo_pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+		meta->manifests_archive);
+	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, rsa, meta,
+		argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
 	if (filelist) {
 		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		    repo_filesite_file);
+		    meta->filesite);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
-		    output_dir, repo_filesite_archive);
-		if (pkg_repo_pack_db(repo_filesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+		    output_dir, meta->filesite_archive);
+		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, rsa, meta,
+			argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
 
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_digests_file);
+	    meta->digests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_digests_archive);
-	if (pkg_repo_pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		repo_conflicts_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		repo_conflicts_archive);
-	if (pkg_repo_pack_db(repo_conflicts_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+	    meta->digests_archive);
+	if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, rsa, meta,
+		argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
+#if 0
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+		meta->conflicts);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+		meta->conflicts_archive);
+	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, rsa, meta,
+		argv, argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+#endif
+
 	/* Now we need to set the equal mtime for all archives in the repo */
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-	    output_dir, repo_db_archive);
+	    output_dir, repo_meta_file);
 	if (stat(repo_archive, &st) == 0) {
 		struct timeval ftimes[2] = {
 			{
@@ -683,19 +1020,27 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 			}
 		};
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_packagesite_archive);
+		    output_dir, meta->manifests_archive);
 		utimes(repo_archive, ftimes);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_digests_archive);
+		    output_dir, meta->digests_archive);
 		utimes(repo_archive, ftimes);
 		if (filelist) {
 			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.txz", output_dir, repo_filesite_archive);
+			    "%s/%s.txz", output_dir, meta->filesite_archive);
+			utimes(repo_archive, ftimes);
+		}
+		if (!legacy) {
+			snprintf(repo_archive, sizeof(repo_archive),
+				"%s/%s.txz", output_dir, repo_meta_file);
 			utimes(repo_archive, ftimes);
 		}
 	}
 
 cleanup:
+	pkg_emit_progress_tick(files_to_pack, files_to_pack);
+	pkg_repo_meta_free(meta);
+
 	if (rsa)
 		rsa_free(rsa);
 

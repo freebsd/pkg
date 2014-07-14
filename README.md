@@ -195,9 +195,9 @@ repositories, updating remote package repositories and installing from them, etc
 ### Installing pkgng
 
 In order to build pkgng from source, you will need to have Gnu
-autotools installed.
+autotools and some other tools installed.
 
-	# pkg install autoconf automake libtool
+	# pkg install autoconf automake libtool pkgconf
 
 The next thing to do is to get the pkgng sources installed on your machine.
 You can grab a development snapshot of pkgng from the [pkgng Github repository][1]
@@ -218,7 +218,11 @@ Once you have the pkgng sources, installing it is fairly easy:
 	% make
 	# make install
 
-Now you should have the latest pkgng installed on your system.
+Now you should have the latest pkgng installed on your system.  Note
+that this build and install procedure does not update the local
+package database at all, so you will get some odd effects due to the
+packaging system being misled into thinking an older version of pkg is
+installed.
 
 If you're on a 9.x system or earler and did not have a release version
 of pkg(8) installed previously, you will need to run the pkg2ng

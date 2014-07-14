@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -63,7 +63,10 @@ pkg_sshserve(int fd)
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {
-		if ((linelen = getline(&line, &linecap, stdin)) <= 0)
+		if ((linelen = getline(&line, &linecap, stdin)) < 0)
+			break;
+
+		if (linelen == 0)
 			continue;
 
 		/* trim cr */

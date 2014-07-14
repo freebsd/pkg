@@ -26,7 +26,7 @@
  * $Id: _libelf_config.h 2287 2011-12-04 06:45:47Z jkoshy $
  */
 
-#ifdef	__DragonFly__
+#if defined(__DragonFly__) || defined(__APPLE__)
 
 #if	defined(__amd64__)
 #define	LIBELF_ARCH		EM_X86_64

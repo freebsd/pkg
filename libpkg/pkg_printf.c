@@ -1310,10 +1310,19 @@ struct sbuf *
 format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const ucl_object_t	*an, *rn;
 	const char		*reponame;
 
 	pkg_get(pkg, PKG_REPONAME, &reponame);
-	return (string_val(sbuf, pkg_repo_ident_from_name(reponame), p));
+	if (reponame == NULL) {
+		pkg_get(pkg, PKG_ANNOTATIONS, &an);
+		rn = pkg_object_find(an, "repository");
+		if (rn != NULL)
+			reponame = ucl_object_tostring(rn);
+		else
+			reponame = "unknown-repository";
+	}
+	return (string_val(sbuf, reponame, p));
 }
 
 /*
@@ -1847,7 +1856,10 @@ format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p
 
 	pkg_get(pkg, PKG_CKSUM, &checksum);
 
-	slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	if (checksum != NULL)
+		slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	else
+		slen = 0;
 	memcpy(csum, checksum, slen);
 	csum[slen] = '\0';
 

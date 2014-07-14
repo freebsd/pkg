@@ -82,15 +82,23 @@ usage_rquery(void)
 static void
 print_index(struct pkg *pkg, const char *portsdir)
 {
-	const pkg_object *obj, *list;
-	pkg_iter iter = NULL;
 
-	pkg_printf("%n-%v|%S/%o|%p|%c|%S/%o/pkg-descr|%m|",
-	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg);
-	pkg_get(pkg, PKG_CATEGORIES, &list);
-	while ((obj = pkg_object_iterate(list, &iter)))
-		pkg_printf("%Cn ", obj);
-	printf("\n");
+	pkg_printf(
+	    "%n-%v|"			/* PKGNAME */
+	    "%S/%o|"			/* PORTDIR */
+	    "%p|"			/* PREFIX */
+	    "%c|"			/* COMMENT */
+	    "%S/%o/pkg-descr|"		/* _DESCR */
+	    "%m|"			/* MAINTAINER */
+	    "%C%{%Cn%| %}|"		/* CATEGORIES */
+	    "|"				/* BUILD_DEPENDS */
+	    "%d%{%dn-%dv%| %}|"		/* RUN_DEPENDS */
+	    "%w|"			/* WWW */
+	    "|"				/* EXTRACT_DEPENDS */
+	    "|"				/* PATCH_DEPENDS */
+	    "\n",			/* FETCH_DEPENDS */
+	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg, pkg, pkg,
+	    pkg);
 }
 
 int
@@ -218,13 +226,13 @@ exec_rquery(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (index_output)
-		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES;
+		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
 		if (match == MATCH_CONDITION && sqlcond)
 			condition_sql = sbuf_data(sqlcond);
-		if ((it = pkgdb_rquery(db, condition_sql, match, reponame)) == NULL)
+		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
@@ -242,7 +250,7 @@ exec_rquery(int argc, char **argv)
 		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_rquery(db, pkgname, match, reponame)) == NULL)
+			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL)
 				return (EX_IOERR);
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {

@@ -52,7 +52,7 @@ exec_autoremove(int argc, char **argv)
 	int ch;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
-	bool rc;
+	bool rc = false;
 
 	struct option longopts[] = {
 		{ "dry-run",	no_argument,	NULL,	'n' },
@@ -135,7 +135,7 @@ exec_autoremove(int argc, char **argv)
 			rc = query_yesno(false,
 		            "\nProceed with deinstalling packages [y/N]: ");
 	}
-	if (dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
+	if (!rc || dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
 		goto cleanup;
 	}
 

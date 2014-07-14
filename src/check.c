@@ -151,12 +151,6 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_ENODB);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
-	}
-
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
 		goto cleanup;
 	}
@@ -198,8 +192,6 @@ cleanup:
 		free(pkgs);
 	if (jobs != NULL)
 		pkg_jobs_free(jobs);
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
-	pkgdb_close(db);
 
 	return (EPKG_OK);
 }
@@ -401,7 +393,9 @@ exec_check(int argc, char **argv)
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
 						rc = EX_DATAERR;
 					}
-					pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+					pkgdb_downgrade_lock(db,
+					    PKGDB_LOCK_EXCLUSIVE,
+					    PKGDB_LOCK_ADVISORY);
 				}
 				else {
 					rc = EX_TEMPFAIL;
@@ -416,7 +410,9 @@ exec_check(int argc, char **argv)
 						pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
 						rc = EX_UNAVAILABLE;
 					}
-					pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+					pkgdb_downgrade_lock(db,
+					    PKGDB_LOCK_EXCLUSIVE,
+					    PKGDB_LOCK_ADVISORY);
 				}
 				else {
 					rc = EX_TEMPFAIL;
@@ -436,7 +432,8 @@ exec_check(int argc, char **argv)
 					db = NULL;
 					rc = EX_IOERR;
 				}
-				pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
+				    PKGDB_LOCK_ADVISORY);
 				if (rc == EX_IOERR)
 					goto cleanup;
 			}

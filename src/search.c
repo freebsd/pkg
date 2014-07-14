@@ -414,7 +414,7 @@ exec_search(int argc, char **argv)
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
 		return (EX_IOERR);
 
-	if ((it = pkgdb_search(db, pattern, match, search, search,
+	if ((it = pkgdb_repo_search(db, pattern, match, search, search,
 	    reponame)) == NULL) {
 		pkgdb_close(db);
 		return (EX_IOERR);

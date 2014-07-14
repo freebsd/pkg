@@ -33,10 +33,11 @@
 #define _PKG_H
 
 #include <sys/types.h>
+#include <sys/param.h>
+#include <sys/cdefs.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/sbuf.h>
-#include <stringlist.h>
 #include <openssl/pem.h>
 #include <sysexits.h>
 
@@ -64,6 +65,10 @@
 
 #ifdef __DragonFly__
 #define OSMAJOR	__DragonFly__
+#endif
+
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
 #endif
 
 /* Special exit status for worker processes indicating that a restart
@@ -254,6 +259,7 @@ typedef enum {
 	PKG_LICENSES,
 	PKG_CATEGORIES,
 	PKG_UNIQUEID,
+	PKG_OLD_DIGEST,
 	PKG_NUM_FIELDS, 	/* end of fields */
 } pkg_attr;
 
@@ -301,10 +307,6 @@ typedef enum {
 	PKG_CONFLICTS,
 	PKG_PROVIDES
 } pkg_list;
-
-typedef enum {
-	REPO_BINARY_PKGS,
-} repo_t;
 
 typedef enum {
 	SRV,
@@ -497,6 +499,7 @@ typedef enum {
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
+#define PKG_OPEN_TRY (0x1 << 2)
 
 /**
  * test if pkg is installed and activated.
@@ -956,12 +959,11 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
  * @param output_dir The path where the package repository should be created.
  * @param force If true, rebuild the repository catalogue from scratch
  * @param filesite If true, create a list of all files in repo
- * @param callback A function which is called at every step of the process.
- * @param data A pointer which is passed to the callback.
- * @param sum An 65 long char array to receive the sha256 sum
+ * @param metafile Open meta from the specified file
+ * @param legacy Create legacy (1.2 compatible) repo
  */
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
-    void (*callback)(struct pkg *, void *), void *);
+	const char *metafile, bool legacy);
 int pkg_finish_repo(const char *output_dir, pem_password_cb *cb, char **argv,
     int argc, bool filelist);
 
@@ -998,6 +1000,8 @@ int pkgdb_open_all(struct pkgdb **db, pkgdb_t type, const char *reponame);
  */
 int pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type);
 int pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type);
+int pkgdb_downgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type,
+    pkgdb_lock_t new_type);
 int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
 
 /**
@@ -1043,9 +1047,9 @@ bool pkgdb_case_sensitive(void);
  */
 struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
     match_t type);
-struct pkgdb_it * pkgdb_rquery(struct pkgdb *db, const char *pattern,
+struct pkgdb_it * pkgdb_repo_query(struct pkgdb *db, const char *pattern,
     match_t type, const char *reponame);
-struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
+struct pkgdb_it * pkgdb_repo_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
 
 /**
@@ -1053,8 +1057,8 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glob);
 
-struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
-struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_require(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib);
 
 struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db, 
     const char *provide, const char *repo);
@@ -1341,9 +1345,7 @@ int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
  * Special structure to report about conflicts
  */
 struct pkg_event_conflict {
-	char *name;
-	char *origin;
-	char *version;
+	char *uid;
 	struct pkg_event_conflict *next;
 };
 
@@ -1364,6 +1366,8 @@ typedef enum {
 	PKG_EVENT_UPGRADE_BEGIN,
 	PKG_EVENT_UPGRADE_FINISHED,
 	PKG_EVENT_FETCHING,
+	PKG_EVENT_FETCH_BEGIN,
+	PKG_EVENT_FETCH_FINISHED,
 	PKG_EVENT_UPDATE_ADD,
 	PKG_EVENT_UPDATE_REMOVE,
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
@@ -1377,6 +1381,10 @@ typedef enum {
 	PKG_EVENT_QUERY_SELECT,
 	PKG_EVENT_SANDBOX_CALL,
 	PKG_EVENT_SANDBOX_GET_STRING,
+	PKG_EVENT_PROGRESS_START,
+	PKG_EVENT_PROGRESS_TICK,
+	PKG_EVENT_BACKUP,
+	PKG_EVENT_RESTORE,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1421,9 +1429,6 @@ struct pkg_event {
 		} e_upd_remove;
 		struct {
 			const char *url;
-			off_t total;
-			off_t done;
-			time_t elapsed;
 		} e_fetching;
 		struct {
 			struct pkg *pkg;
@@ -1485,9 +1490,7 @@ struct pkg_event {
 			const char *pkg_name;
 		} e_not_found;
 		struct {
-			const char *pkg_name;
-			const char *pkg_version;
-			const char *pkg_origin;
+			const char *pkg_uid;
 			const char *pkg_path;
 			struct pkg_event_conflict *conflicts;
 		} e_integrity_conflict;
@@ -1525,6 +1528,13 @@ struct pkg_event {
 			char **result;
 			int64_t *len;
 		} e_sandbox_call_str;
+		struct {
+			char *msg;
+		} e_progress_start;
+		struct {
+			int64_t current;
+			int64_t total;
+		} e_progress_tick;
 	};
 };
 
@@ -1559,16 +1569,13 @@ int pkg_repos_total_count(void);
 int pkg_repos_activated_count(void);
 int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
-const char *pkg_repo_ident(struct pkg_repo *r);
 const char *pkg_repo_name(struct pkg_repo *r);
-const char * pkg_repo_ident_from_name(const char *repo_name);
 const char *pkg_repo_key(struct pkg_repo *r);
 const char *pkg_repo_fingerprints(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
-struct pkg_repo *pkg_repo_find_ident(const char *ident);
-struct pkg_repo *pkg_repo_find_name(const char *name);
+struct pkg_repo *pkg_repo_find(const char *name);
 
 /**
  * pkg_printf() and friends.  These parallel the similarly named libc

@@ -42,6 +42,40 @@
 
 static ucl_object_t *manifest_schema = NULL;
 
+struct pkg_key pkg_keys[PKG_NUM_FIELDS] = {
+	[PKG_ORIGIN] = { "origin", UCL_STRING },
+	[PKG_NAME] = { "name", UCL_STRING },
+	[PKG_VERSION] = { "version", UCL_STRING },
+	[PKG_COMMENT] = { "comment", UCL_STRING },
+	[PKG_DESC] = { "desc", UCL_STRING },
+	[PKG_MTREE] = { "mtree", UCL_STRING },
+	[PKG_MESSAGE] = { "message", UCL_STRING },
+	[PKG_ARCH] = { "arch", UCL_STRING },
+	[PKG_MAINTAINER] = { "maintainer", UCL_STRING },
+	[PKG_WWW] = { "www", UCL_STRING },
+	[PKG_PREFIX] = { "prefix", UCL_STRING },
+	[PKG_REPOPATH] = { "repopath", UCL_STRING },
+	[PKG_CKSUM] = { "sum", UCL_STRING },
+	[PKG_OLD_VERSION] = { "oldversion", UCL_STRING },
+	[PKG_REPONAME] = { "reponame", UCL_STRING },
+	[PKG_REPOURL] = { "repourl", UCL_STRING },
+	[PKG_DIGEST] = { "digest", UCL_STRING },
+	[PKG_REASON] = { "reason", UCL_STRING },
+	[PKG_FLATSIZE] = { "flatsize", UCL_INT },
+	[PKG_OLD_FLATSIZE] = { "oldflatsize", UCL_INT },
+	[PKG_PKGSIZE] = { "pkgsize", UCL_INT },
+	[PKG_LICENSE_LOGIC] = { "licenselogic", UCL_INT },
+	[PKG_AUTOMATIC] = { "automatic", UCL_BOOLEAN },
+	[PKG_LOCKED] = { "locked", UCL_BOOLEAN },
+	[PKG_ROWID] = { "rowid", UCL_INT },
+	[PKG_TIME] = { "time", UCL_INT },
+	[PKG_ANNOTATIONS] = { "annotations", UCL_OBJECT },
+	[PKG_LICENSES] = { "licenses", UCL_ARRAY },
+	[PKG_CATEGORIES] = { "categories", UCL_ARRAY },
+	[PKG_UNIQUEID] = { "uniqueid", UCL_STRING },
+	[PKG_OLD_DIGEST] = { "olddigest", UCL_STRING },
+};
+
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
@@ -277,7 +311,6 @@ static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
-	struct pkg_repo *r;
 	char *buf = NULL;
 	const char *data;
 	const char *str;
@@ -299,16 +332,12 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				data = buf;
 			}
 
-			if (attr == PKG_REPOURL) {
-				r = pkg_repo_find_ident(str);
-				if (r == NULL)
-					break;
-				data = pkg_repo_url(r);
-			}
-
-			ucl_object_replace_key(pkg->fields,
-			    ucl_object_fromstring_common(data, strlen(data), 0),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
+			if (data == NULL)
+				ucl_object_delete_key(pkg->fields, pkg_keys[attr].name);
+			else
+				ucl_object_replace_key(pkg->fields,
+				    ucl_object_fromstring_common(data, strlen(data), 0),
+				    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 
 			if (buf != NULL)
 				free(buf);
@@ -1313,15 +1342,19 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 		if (archive_read_open_filename(*a,
 		    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
-			pkg_emit_error("archive_read_open_filename(%s): %s", path,
-			    archive_error_string(*a));
+			if ((flags & PKG_OPEN_TRY) == 0)
+				pkg_emit_error("archive_read_open_filename(%s): %s", path,
+					archive_error_string(*a));
+
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 	} else {
 		if (archive_read_open_fd(*a, fd, 4096) != ARCHIVE_OK) {
-			pkg_emit_error("archive_read_open_fd: %s",
-			    archive_error_string(*a));
+			if ((flags & PKG_OPEN_TRY) == 0)
+				pkg_emit_error("archive_read_open_fd: %s",
+					archive_error_string(*a));
+
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1369,8 +1402,10 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 			ret = pkg_parse_manifest(pkg, buffer, len, keys);
 			free(buffer);
 			if (ret != EPKG_OK) {
-				pkg_emit_error("%s is not a valid package: "
-				    "Invalid manifest", path);
+				if ((flags & PKG_OPEN_TRY) == 0)
+					pkg_emit_error("%s is not a valid package: "
+						"Invalid manifest", path);
+
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1390,9 +1425,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 					else {
 						if (r == ARCHIVE_FATAL) {
 							retcode = EPKG_FATAL;
-							pkg_emit_error("%s is not a valid package: "
+							if ((flags & PKG_OPEN_TRY) == 0)
+								pkg_emit_error("%s is not a valid package: "
 									"%s is corrupted: %s", path, fpath,
-									archive_error_string(*a));
+										archive_error_string(*a));
+
 							goto cleanup;
 						}
 						else if (r == ARCHIVE_EOF)
@@ -1407,8 +1444,10 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
-		pkg_emit_error("archive_read_next_header(): %s",
-					   archive_error_string(*a));
+		if ((flags & PKG_OPEN_TRY) == 0)
+			pkg_emit_error("archive_read_next_header(): %s",
+				archive_error_string(*a));
+
 		retcode = EPKG_FATAL;
 	}
 
@@ -1417,7 +1456,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	if (!manifest) {
 		retcode = EPKG_FATAL;
-		pkg_emit_error("%s is not a valid package: no manifest found", path);
+		if ((flags & PKG_OPEN_TRY) == 0)
+			pkg_emit_error("%s is not a valid package: no manifest found", path);
 	}
 
 	cleanup:
@@ -1431,6 +1471,46 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	}
 
 	return (retcode);
+}
+
+int
+pkg_validate(struct pkg *pkg)
+{
+	const char *uid, *md;
+
+	assert(pkg != NULL);
+
+	pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &md);
+
+	if (uid == NULL) {
+		/* Generate uid from name and origin */
+		const char *origin, *name;
+		char *out;
+		size_t outlen;
+
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
+		if (name == NULL || origin == NULL) {
+			/* Our package is invalid */
+			return (EPKG_FATAL);
+		}
+
+		outlen = strlen(name) + strlen(origin) + sizeof("~");
+		out = malloc(outlen);
+		if (out == NULL) {
+			pkg_emit_errno("malloc", "pkg_validate");
+			return (EPKG_FATAL);
+		}
+
+		snprintf(out, outlen, "%s~%s", name, origin);
+		pkg_set(pkg, PKG_UNIQUEID, out);
+	}
+
+	if (md == NULL || !pkg_checksum_is_valid(md, strlen(md))) {
+		/* Calculate new digest */
+		return (pkg_checksum_calculate(pkg, NULL));
+	}
+
+	return (EPKG_OK);
 }
 
 int
@@ -1487,7 +1567,7 @@ pkg_test_filesum(struct pkg *pkg)
 	const char *sum;
 	struct stat	 st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	int rc = EPKG_OK, ret;
+	int rc = EPKG_OK;
 
 	assert(pkg != NULL);
 
@@ -1500,12 +1580,8 @@ pkg_test_filesum(struct pkg *pkg)
 				return (EPKG_FATAL);
 			}
 			if (S_ISLNK(st.st_mode)) {
-				char linkbuf[MAXPATHLEN];
-				if ((ret = readlink(path, linkbuf, sizeof(linkbuf))) == -1) {
-					pkg_emit_errno("pkg_create_from_dir", "readlink failed");
+				if (pkg_symlink_cksum(path, NULL, sha256) != EPKG_OK)
 					return (EPKG_FATAL);
-				}
-				sha256_buf(linkbuf, ret, sha256);
 			}
 			else {
 				if (sha256_file(path, sha256) != EPKG_OK)
@@ -1551,9 +1627,8 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 				}
 			}
 
-			/* special case for hardlinks */
 			if (st.st_nlink > 1)
-				regular = is_hardlink(hl, &st);
+				regular = !check_for_hardlink(hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;
@@ -1561,6 +1636,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 		if (strcmp(sha256, sum) != 0)
 			pkgdb_file_set_cksum(db, f, sha256);
 	}
+	HASH_FREE(hl, free);
 
 	pkg_get(pkg, PKG_FLATSIZE, &oldflatsize);
 	if (flatsize != oldflatsize)

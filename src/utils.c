@@ -103,9 +103,9 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	if (yes)
 		return (true);
 
-	for (;;) {
-		pkg_vprintf(msg, ap);
+	pkg_vprintf(msg, ap);
 
+	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
 
 			if (linelen == 1 && line[0] == '\n') {
@@ -132,11 +132,17 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				}
 			}
 			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
+			pkg_vprintf(msg, ap);
 		}
 		else {
-			/* Assume EOF as false */
-			r = false;
-			break;
+			if (errno == EINTR) {
+				continue;
+			}
+			else {
+				/* Assume EOF as false */
+				r = false;
+				break;
+			}
 		}
 	}
 
@@ -176,7 +182,13 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 		}
 	}
 
-	getline(&str, &n, stdin);
+	i = deft;
+	while (getline(&str, &n, stdin) == -1) {
+		if (errno == EINTR)
+			continue;
+		else
+			goto cleanup;
+	}
 	i = (int) strtoul(str, &endpntr, 10);
 
 	if (endpntr == NULL || *endpntr == '\0') {
@@ -187,8 +199,9 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 	} else
 		i = -1;
 
+cleanup:
 	free(str);
-	return i;
+	return (i);
 }
 
 /* unlike realpath(3), this routine does not expand symbolic links */

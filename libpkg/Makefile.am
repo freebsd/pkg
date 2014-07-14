@@ -1,6 +1,9 @@
+EXTRA_DIST=		libpkg.ver
+
 pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			@LIBELF_INCLUDE@ \
 			@LIBSBUF_INCLUDE@ \
+			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/uthash \
@@ -17,6 +20,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_add.c \
 			pkg_attributes.c \
 			pkg_audit.c \
+			pkg_checksum.c \
 			pkg_config.c \
 			pkg_conflicts.c \
 			pkg_cudf.c \
@@ -37,7 +41,8 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_status.c \
 			pkg_version.c \
 			pkgdb.c \
-			pkgdb_repo.c \
+			pkgdb_iterator.c \
+			pkgdb_query.c \
 			rcscripts.c \
 			rsa.c \
 			ssh.c \
@@ -50,16 +55,20 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libyaml.la \
 			$(top_builddir)/external/libexpat.la \
+			@REPOS_LDADD@ \
 			@LIBELF_LIB@ \
 			@LIBSBUF_LIB@ \
 			@LIBEXECINFO_LIB@ \
+			@LDNS_LIBS@ \
 			-larchive \
 			-lfetch \
 			-lutil \
 			-lcrypto \
 			-lm
 
-libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -pthread
+libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
+EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@
+
 lib_LTLIBRARIES=	libpkg.la libpkg_static.la
 include_HEADERS=	pkg.h
 
@@ -68,7 +77,9 @@ libpkg_static_la_CFLAGS=	$(pkg_common_cflags) -static
 libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libexpat_static.la \
-			$(top_builddir)/external/libyaml_static.la
+			$(top_builddir)/external/libyaml_static.la \
+			@REPOS_LDADD_STATIC@
+EXTRA_libpkg_static_la_DEPENDENCIES=	@REPOS_LDADD_STATIC@
 
 libpkg_static_la_LDFLAGS=	-all-static
 
@@ -79,6 +90,6 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/pkg.h \
 			private/pkg_printf.h \
 			private/pkgdb.h \
-			private/repodb.h \
-			private/thd_repo.h \
 			private/utils.h
+
+SUBDIRS = repo .

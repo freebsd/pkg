@@ -93,8 +93,8 @@ int format_exec_cmd(char **, const char *, const char *, const char *, char *);
 int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
-void sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
-void sha256_buf_bin(char *, size_t len, char[SHA256_DIGEST_LENGTH]);
+void sha256_buf(const char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
+void sha256_buf_bin(const char *, size_t len, char[SHA256_DIGEST_LENGTH]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
@@ -107,7 +107,7 @@ int rsa_verify(const char *path, const char *key,
 int rsa_verify_cert(const char *path, unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
-bool is_hardlink(struct hardlinks *hl, struct stat *st);
+bool check_for_hardlink(struct hardlinks *hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
 
 struct dns_srvinfo *

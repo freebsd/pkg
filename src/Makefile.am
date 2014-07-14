@@ -1,4 +1,4 @@
-noinst_HEADERS=	pkgcli.h progressmeter.h
+noinst_HEADERS=	pkgcli.h
 
 pkg_SOURCES=		add.c \
 			annotate.c \
@@ -19,7 +19,6 @@ pkg_SOURCES=		add.c \
 			lock.c \
 			main.c \
 			plugins.c \
-			progressmeter.c \
 			query.c \
 			register.c \
 			repo.c \
@@ -44,13 +43,14 @@ pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/expat/lib \
 			-DGITHASH=\"$(GIT_HEAD)\"
 pkg_static_SOURCES=
-pkg_static_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
+pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			$(top_builddir)/external/libexpat_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
 			@LIBSBUF_LIB@ \
 			@LIBEXECINFO_LIB@ \
 			@LIBELF_LIB@ \
+			@LDNS_LIBS@ \
 			-lfetch \
 			-larchive \
 			-lz \
@@ -62,7 +62,7 @@ pkg_static_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 			-lcrypto \
 			-lmd \
 			-lm
-pkg_static_LDFLAGS=	-all-static -pthread
+pkg_static_LDFLAGS=	-all-static
 sbin_PROGRAMS=		pkg pkg-static
 
 dist_sysconf_DATA=	pkg.conf.sample

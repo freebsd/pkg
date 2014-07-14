@@ -43,24 +43,6 @@ usage_repo(void)
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
-static const char ps[] = { '-', '\\', '|', '/' };
-
-static void
-progress(struct pkg *pkg, void *data)
-{
-	int *pos;
-
-	pos = (int *)data;
-
-	if (*pos == 3)
-		*pos = 0;
-	else
-		*pos = *pos + 1;
-
-	if (pkg != NULL)
-		printf("\b%c", ps[*pos]);
-}
-
 static int
 password_cb(char *buf, int size, int rwflag, void *key)
 {
@@ -88,19 +70,22 @@ int
 exec_repo(int argc, char **argv)
 {
 	int	 ret;
-	int	 pos = 0;
 	int	 ch;
 	bool	 filelist = false;
 	char	*output_dir = NULL;
+	char	*meta_file = NULL;
+	bool	legacy = false;
 
 	struct option longopts[] = {
 		{ "list-files", no_argument,		NULL,	'l' },
 		{ "output-dir", required_argument,	NULL,	'o' },
 		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "meta-file",	required_argument,	NULL,	'm' },
+		{ "legacy",	no_argument,	NULL,	'L' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "lo:q", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "lo:qm:L", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'l':
 			filelist = true;
@@ -110,6 +95,12 @@ exec_repo(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'm':
+			meta_file = optarg;
+			break;
+		case 'L':
+			legacy = true;
 			break;
 		default:
 			usage_repo();
@@ -132,20 +123,13 @@ exec_repo(int argc, char **argv)
 	if (output_dir == NULL)
 		output_dir = argv[0];
 
-	if (!quiet) {
-		printf("Generating repository catalog in %s:  ", argv[0]);
-		ret = pkg_create_repo(argv[0], output_dir, filelist, progress, &pos);
-	} else
-		ret = pkg_create_repo(argv[0], output_dir, filelist, NULL, NULL);
+	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file, legacy);
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
 		return (EX_IOERR);
-	} else {
-		if (!quiet)
-			printf("\bdone!\n");
 	}
-	
+
 	if (pkg_finish_repo(output_dir, password_cb, argv + 1, argc - 1,
 	    filelist) != EPKG_OK)
 		return (EX_DATAERR);

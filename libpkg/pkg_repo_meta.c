@@ -35,15 +35,22 @@ static ucl_object_t *repo_meta_schema_v1 = NULL;
 static void
 pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 {
-	meta->digest_format = strdup("sha256");
+	meta->digest_format = PKG_HASH_TYPE_SHA256_BASE32;
 	meta->packing_format = TXZ;
 
 	/* Not use conflicts for now */
 	meta->conflicts = NULL;
+	meta->conflicts_archive = NULL;
 	meta->manifests = strdup("packagesite.yaml");
+	meta->manifests_archive = strdup("packagesite");
 	meta->digests = strdup("digests");
+	meta->digests_archive = strdup("digests");
+	meta->filesite = strdup("filesite.yaml");
+	meta->filesite_archive = strdup("filesite");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
+	meta->fulldb_archive = NULL;
+	meta->version = 1;
 }
 
 void
@@ -59,7 +66,12 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->manifests);
 		free(meta->digests);
 		free(meta->fulldb);
-		free(meta->digest_format);
+		free(meta->filesite);
+		free(meta->conflicts_archive);
+		free(meta->manifests_archive);
+		free(meta->digests_archive);
+		free(meta->fulldb_archive);
+		free(meta->filesite_archive);
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
@@ -86,11 +98,17 @@ pkg_repo_meta_open_schema_v1()
 			"maintainer = {type = string};\n"
 			"source = {type = string};\n"
 			"packing_format = {enum = [txz, tbz, tgz]};\n"
-			"digest_format = {enum = [sha256]};\n"
+			"digest_format = {enum = [sha256_base32, sha256_hex]};\n"
 			"digests = {type = string};\n"
 			"manifests = {type = string};\n"
 			"conflicts = {type = string};\n"
 			"fulldb = {type = string};\n"
+			"filesite = {type = string};\n"
+			"digests_archive = {type = string};\n"
+			"manifests_archive = {type = string};\n"
+			"conflicts_archive = {type = string};\n"
+			"fulldb_archive = {type = string};\n"
+			"filesite_archive = {type = string};\n"
 			"source_identifier = {type = string};\n"
 			"revision = {type = integer};\n"
 			"eol = {type = integer};\n"
@@ -171,15 +189,21 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	}
 
 	pkg_repo_meta_set_default(meta);
+	meta->version = version;
 
 	META_EXTRACT_STRING(maintainer);
 	META_EXTRACT_STRING(source);
-	META_EXTRACT_STRING(digest_format);
 
 	META_EXTRACT_STRING(conflicts);
 	META_EXTRACT_STRING(digests);
 	META_EXTRACT_STRING(manifests);
 	META_EXTRACT_STRING(fulldb);
+	META_EXTRACT_STRING(filesite);
+	META_EXTRACT_STRING(conflicts_archive);
+	META_EXTRACT_STRING(digests_archive);
+	META_EXTRACT_STRING(manifests_archive);
+	META_EXTRACT_STRING(fulldb_archive);
+	META_EXTRACT_STRING(filesite_archive);
 
 	META_EXTRACT_STRING(source_identifier);
 
@@ -198,12 +222,19 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 		meta->packing_format = packing_format_from_string(ucl_object_tostring(obj));
 	}
 
+	obj = ucl_object_find_key(top, "digest_format");
+	if (obj != NULL && obj->type == UCL_STRING) {
+		meta->digest_format = pkg_checksum_type_from_string(ucl_object_tostring(obj));
+	}
+
 	obj = ucl_object_find_key(top, "cert");
 	while ((cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
 		cert = pkg_repo_meta_parse_cert(cur);
 		if (cert != NULL)
 			HASH_ADD_STR(meta->keys, name, cert);
 	}
+
+	*target = meta;
 
 	return (EPKG_OK);
 }
@@ -286,4 +317,71 @@ pkg_repo_meta_default(void)
 	pkg_repo_meta_set_default(meta);
 
 	return (meta);
+}
+
+#define META_EXPORT_FIELD(result, meta, field, type)	do { 					\
+	if (meta->field != 0)					\
+		ucl_object_insert_key((result), ucl_object_from ## type (meta->field),	\
+				#field, 0, false); 												\
+	} while(0)
+
+#define META_EXPORT_FIELD_FUNC(result, meta, field, type, func)	do {			\
+	if (func(meta->field) != 0)				\
+		ucl_object_insert_key((result), ucl_object_from ## type (func(meta->field)), \
+				#field, 0, false); 												\
+	} while(0)
+
+
+ucl_object_t *
+pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
+{
+	ucl_object_t *result = ucl_object_typed_new(UCL_OBJECT);
+
+	META_EXPORT_FIELD(result, meta, version, int);
+	META_EXPORT_FIELD(result, meta, maintainer, string);
+	META_EXPORT_FIELD(result, meta, source, string);
+
+	META_EXPORT_FIELD_FUNC(result, meta, packing_format, string,
+		packing_format_to_string);
+	META_EXPORT_FIELD_FUNC(result, meta, digest_format, string,
+		pkg_checksum_type_to_string);
+
+	META_EXPORT_FIELD(result, meta, digests, string);
+	META_EXPORT_FIELD(result, meta, manifests, string);
+	META_EXPORT_FIELD(result, meta, conflicts, string);
+	META_EXPORT_FIELD(result, meta, fulldb, string);
+	META_EXPORT_FIELD(result, meta, filesite, string);
+	META_EXPORT_FIELD(result, meta, digests_archive, string);
+	META_EXPORT_FIELD(result, meta, manifests_archive, string);
+	META_EXPORT_FIELD(result, meta, conflicts_archive, string);
+	META_EXPORT_FIELD(result, meta, fulldb_archive, string);
+	META_EXPORT_FIELD(result, meta, filesite_archive, string);
+
+	META_EXPORT_FIELD(result, meta, source_identifier, string);
+	META_EXPORT_FIELD(result, meta, revision, int);
+	META_EXPORT_FIELD(result, meta, eol, int);
+
+	/* TODO: export keys */
+
+	return (result);
+}
+
+#undef META_EXPORT_FIELD
+#undef META_EXPORT_FIELD_FUNC
+
+#define META_SPECIAL_FILE(file, meta, field) \
+	special || (meta->field == NULL ? false : (strcmp(file, meta->field) == 0))
+
+bool
+pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta)
+{
+	bool special = false;
+
+	special = META_SPECIAL_FILE(file, meta, digests_archive);
+	special = META_SPECIAL_FILE(file, meta, manifests_archive);
+	special = META_SPECIAL_FILE(file, meta, filesite_archive);
+	special = META_SPECIAL_FILE(file, meta, conflicts_archive);
+	special = META_SPECIAL_FILE(file, meta, fulldb_archive);
+
+	return (special);
 }

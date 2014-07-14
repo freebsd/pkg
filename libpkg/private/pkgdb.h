@@ -34,18 +34,39 @@
 
 struct pkgdb {
 	sqlite3		*sqlite;
-	pkgdb_t		 type;
-	int		 lock_count;
 	bool		 prstmt_initialized;
+
+	struct _pkg_repo_list_item {
+		struct pkg_repo *repo;
+		struct _pkg_repo_list_item *next;
+	} *repos;
 };
 
-struct pkgdb_it {
-	struct pkgdb	*db;
+enum pkgdb_iterator_type {
+	PKGDB_IT_LOCAL = 0,
+	PKGDB_IT_REPO
+};
+
+struct pkgdb_sqlite_it {
 	sqlite3	*sqlite;
 	sqlite3_stmt	*stmt;
-	short	type;
 	short	flags;
 	short	finished;
+	short	pkg_type;
+};
+
+struct pkg_repo_it;
+
+struct pkgdb_it {
+	enum pkgdb_iterator_type type;
+	struct pkgdb *db;
+	union _un_pkg_it {
+		struct _pkg_repo_it_set {
+			struct pkg_repo_it *it;
+			struct _pkg_repo_it_set *next;
+		} *remote;
+		struct pkgdb_sqlite_it local;
+	} un;
 };
 
 #define PKGDB_IT_FLAG_CYCLED (0x1)
@@ -63,81 +84,18 @@ int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
-struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
+struct pkgdb_it *pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s,
+	int type, short flags);
+struct pkgdb_it *pkgdb_it_new_repo(struct pkgdb *db);
+void pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit);
+
+/**
+ * Load missing flags for a specific package from pkgdb
+ */
+int pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags);
+int pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags);
 
 void pkgshell_open(const char **r);
-
-/**
- * Open repodb for specified path
- * @param repodb path of repodb
- * @param force create repository if not exists
- * @param sqlite destination db pointer
- * @return EPKG_OK if succeed
- */
-int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
-
-/**
- * Init repository for pkgdb_repo* functions
- * @param sqlite sqlite object
- * @return EPKG_OK if succeed
- */
-int pkgdb_repo_init(sqlite3 *sqlite);
-
-/**
- * Finalize prepared statements for a repo
- */
-void pkgdb_repo_finalize_statements(void);
-
-/**
- * Close repodb and commit/rollback transaction started
- * @param sqlite sqlite pointer
- * @param commit commit transaction if true, rollback otherwise
- * @return EPKG_OK if succeed
- */
-int pkgdb_repo_close(sqlite3 *sqlite, bool commit);
-
-/**
- * Check whether a package with the cehcksum specified exists in pkg_repo
- * @param sqlite sqlite pointer
- * @param cksum sha256 printed checksum
- * @return EPKG_OK if checksum exists, EPKG_END if not and EPKG_FATAL if error occurred
- */
-int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
-
-/**
- * Add a package to pkg_repo
- * @param pkg package structure
- * @param pkg_path path triggered package addition
- * @param sqlite sqlite pointer
- * @param manifest_digest sha256 checksum of the manifest of the package
- * @param forced force adding of package even if it is outdated
- * @return EPKG_OK if package added, EPKG_END if package already exists and is newer than
- * inserted one, EPKG_FATAL if error occurred
- */
-int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced);
-
-/**
- * Remove specified pkg from repo
- * @param origin the origin of package to remove
- * @return EPKG_OK if succeeded
- */
-int pkgdb_repo_remove_package(const char *origin);
-
-/**
- * Upgrade repo db version if required
- * @param db package database object
- * @param database name of database
- * @return EPKG_OK if succeeded
- */
-int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
-
-/**
- * Returns a list of all packages sorted by origin
- * @param sqlite database
- * @return new iterator
- */
-struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
 
 /**
  * Register a conflicts list in a repo
@@ -151,26 +109,6 @@ int pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		int conflicts_num, sqlite3 *sqlite);
 
 /**
- * Execute SQL statement on all attached databases
- * @param s
- * @param sql
- * @param multireposql
- * @param compound
- * @return
- */
-int
-pkgdb_sql_all_attached(sqlite3 *s, struct sbuf *sql, const char *multireposql,
-    const char *compound);
-
-/**
- * Get repository name
- * @param db
- * @param repo
- * @return
- */
-const char *pkgdb_get_reponame(struct pkgdb *db, const char *repo);
-
-/**
  * Get query for the specified match type
  * @param pattern
  * @param match
@@ -179,21 +117,13 @@ const char *pkgdb_get_reponame(struct pkgdb *db, const char *repo);
 const char * pkgdb_get_pattern_query(const char *pattern, match_t match);
 
 /**
- * Returns whether the specified database is attached
- * @param s
- * @param name
- * @return
- */
-bool pkgdb_is_attached(sqlite3 *s, const char *name);
-
-/**
  * Find provides for a specified require in repos
  * @param db
  * @param provide
  * @param repo
  * @return
  */
-struct pkgdb_it *pkgdb_find_shlib_require(struct pkgdb *db,
+struct pkgdb_it *pkgdb_repo_shlib_require(struct pkgdb *db,
 		const char *provide, const char *repo);
 /**
  * Find requires for a specified provide in repos
@@ -202,7 +132,7 @@ struct pkgdb_it *pkgdb_find_shlib_require(struct pkgdb *db,
  * @param repo
  * @return
  */
-struct pkgdb_it *pkgdb_find_shlib_provide(struct pkgdb *db,
+struct pkgdb_it *pkgdb_repo_shlib_provide(struct pkgdb *db,
 		const char *require, const char *repo);
 
 /**
@@ -211,5 +141,36 @@ struct pkgdb_it *pkgdb_find_shlib_provide(struct pkgdb *db,
  */
 int pkgdb_unregister_pkg(struct pkgdb *pkg, int64_t id);
 
+/**
+ * Optimize db for using of solver
+ */
+int pkgdb_begin_solver(struct pkgdb *db);
+
+/**
+ * Restore normal db operations
+ * @param db
+ * @return
+ */
+int pkgdb_end_solver(struct pkgdb *db);
+
+/**
+ * Check access mode for the specified file
+ * @param mode
+ * @param dbdir
+ * @param dbname
+ * @return
+ */
+int pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname);
+
+/*
+ * SQLite utility functions
+ */
+void pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv);
+void pkgdb_regex_delete(void *p);
+void pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv);
+void pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv);
+void pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv);
+void pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv);
+int pkgdb_sqlcmd_init(sqlite3 *db, const char **err, const void *noused);
 
 #endif
