@@ -143,7 +143,9 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	const char	*comp = NULL;
 
 	assert(db != NULL);
-	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
+
+	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
+		return (NULL);
 
 	comp = pkgdb_get_pattern_query(pattern, match);
 
@@ -174,8 +176,11 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 	sqlite3_stmt	*stmt;
 	char	sql[BUFSIZ];
 
-
 	assert(db != NULL);
+
+	if (path == NULL)
+		return (NULL);
+
 	sqlite3_snprintf(sizeof(sql), sql,
 			"SELECT p.id, p.origin, p.name, p.name || '~' || p.origin as uniqueid, "
 			"p.version, p.comment, p.desc, "
