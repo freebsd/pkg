@@ -713,13 +713,48 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 	return (res);
 }
 
+static void
+pkg_audit_print_entry(struct pkg_audit_entry *e, struct sbuf *sb,
+	const char *pkgname, const char *pkgversion, bool quiet)
+{
+	struct pkg_audit_cve *cve;
+
+	if (quiet) {
+		if (pkgversion != NULL)
+			sbuf_printf(sb, "%s-%s\n", pkgname, pkgversion);
+		else
+			sbuf_printf(sb, "%s\n", pkgname);
+		sbuf_finish(sb);
+	} else {
+		if (pkgversion != NULL)
+			sbuf_printf(sb, "%s-%s is vulnerable:\n", pkgname, pkgversion);
+		else
+			sbuf_printf(sb, "%s is vulnerable:\n", pkgname);
+
+		sbuf_printf(sb, "%s\n", e->desc);
+		/* XXX: for vulnxml we should use more clever approach indeed */
+		if (e->cve) {
+			cve = e->cve;
+			while (cve) {
+				sbuf_printf(sb, "CVE: %s\n", cve->cvename);
+				cve = cve->next;
+			}
+		}
+		if (e->url)
+			sbuf_printf(sb, "WWW: %s\n\n", e->url);
+		else if (e->id)
+			sbuf_printf(sb,
+				"WWW: http://portaudit.FreeBSD.org/%s.html\n\n",
+				e->id);
+	}
+}
+
 bool
 pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 		bool quiet, struct sbuf **result)
 {
 	struct pkg_audit_entry *e;
 	struct pkg_audit_versions_range *vers;
-	struct pkg_audit_cve *cve;
 	const char *pkgname;
 	const char *pkgversion;
 	struct sbuf *sb;
@@ -758,34 +793,23 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 			if (fnmatch(e->pkgname, pkgname, 0) != 0)
 				continue;
 
-			LL_FOREACH(e->versions, vers) {
-				res1 = pkg_audit_version_match(pkgversion, &vers->v1);
-				res2 = pkg_audit_version_match(pkgversion, &vers->v2);
-				if (res1 && res2) {
+			if (pkgversion == NULL) {
+				/*
+				 * Assume that all versions should be checked
+				 */
+				res = true;
+				pkg_audit_print_entry(e, sb, pkgname, NULL, quiet);
+			}
+			else {
+				LL_FOREACH(e->versions, vers) {
+					res1 = pkg_audit_version_match(pkgversion, &vers->v1);
+					res2 = pkg_audit_version_match(pkgversion, &vers->v2);
 
-					res = true;
-					if (quiet) {
-						sbuf_printf(sb, "%s-%s\n", pkgname, pkgversion);
-						sbuf_finish(sb);
-						*result = sb;
-						return (res);
-					} else {
-						sbuf_printf(sb, "%s-%s is vulnerable:\n", pkgname, pkgversion);
-						sbuf_printf(sb, "%s\n", e->desc);
-						/* XXX: for vulnxml we should use more clever approach indeed */
-						if (e->cve) {
-							cve = e->cve;
-							while (cve) {
-								sbuf_printf(sb, "CVE: %s\n", cve->cvename);
-								cve = cve->next;
-							}
-						}
-						if (e->url)
-							sbuf_printf(sb, "WWW: %s\n\n", e->url);
-						else if (e->id)
-							sbuf_printf(sb, "WWW: http://portaudit.FreeBSD.org/%s.html\n\n", e->id);
+					if (res1 && res2) {
+						res = true;
+						pkg_audit_print_entry(e, sb, pkgname, pkgversion, quiet);
+						break;
 					}
-					break;
 				}
 			}
 		}
