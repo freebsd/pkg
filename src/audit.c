@@ -126,7 +126,7 @@ exec_audit(int argc, char **argv)
 	char				*audit_file = audit_file_buf;
 	unsigned int			 vuln = 0;
 	bool				 fetch = false, recursive = false;
-	int				 ch;
+	int				 ch, i;
 	int				 ret = EX_OK;
 	const char			*portaudit_site = NULL;
 	struct sbuf			*sb;
@@ -186,24 +186,25 @@ exec_audit(int argc, char **argv)
 		return (EX_DATAERR);
 	}
 
-	if (argc > 2) {
-		usage_audit();
-		return (EX_USAGE);
-	}
-
-	if (argc == 1) {
-		name = argv[0];
-		version = strrchr(name, '-');
-		if (version == NULL)
-			err(EX_USAGE, "bad package name format: %s", name);
-		version[0] = '\0';
-		version++;
-		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
-			err(EX_OSERR, "malloc");
-		pkg_set(pkg,
-		    PKG_NAME, name,
-		    PKG_VERSION, version);
-		add_to_check(&check, pkg);
+	if (argc >= 1) {
+		for (i = 0; i < argc; i ++) {
+			name = argv[i];
+			version = strrchr(name, '-');
+			if (version != NULL) {
+				version[0] = '\0';
+				version++;
+			}
+			if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
+				err(EX_OSERR, "malloc");
+			if (version != NULL)
+				pkg_set(pkg, PKG_NAME, name, PKG_VERSION, version);
+			else
+				pkg_set(pkg, PKG_NAME, name);
+			/* Fake uniqueid */
+			pkg_set(pkg, PKG_UNIQUEID, name);
+			add_to_check(&check, pkg);
+			pkg = NULL;
+		}
 	}
 	else {
 
