@@ -58,6 +58,15 @@
 #define GT 4
 #define GTE 5
 
+static const char* vop_names[] = {
+	[0] = "",
+	[EQ] = "=",
+	[LT] = "<",
+	[LTE] = "<=",
+	[GT] = ">",
+	[GTE] = ">="
+};
+
 struct pkg_audit_version {
 	char *version;
 	int type;
@@ -714,6 +723,26 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 }
 
 static void
+pkg_audit_print_versions(struct pkg_audit_entry *e, struct sbuf *sb)
+{
+	struct pkg_audit_versions_range *vers;
+
+	sbuf_cat(sb, "Affected versions:\n");
+	LL_FOREACH(e->versions, vers) {
+		if (vers->v1.type > 0 && vers->v2.type > 0)
+			sbuf_printf(sb, "%s %s : %s %s\n",
+				vop_names[vers->v1.type], vers->v1.version,
+				vop_names[vers->v2.type], vers->v2.version);
+		else if (vers->v1.type > 0)
+			sbuf_printf(sb, "%s %s\n",
+				vop_names[vers->v1.type], vers->v1.version);
+		else
+			sbuf_printf(sb, "%s %s\n",
+				vop_names[vers->v2.type], vers->v2.version);
+	}
+}
+
+static void
 pkg_audit_print_entry(struct pkg_audit_entry *e, struct sbuf *sb,
 	const char *pkgname, const char *pkgversion, bool quiet)
 {
@@ -728,8 +757,10 @@ pkg_audit_print_entry(struct pkg_audit_entry *e, struct sbuf *sb,
 	} else {
 		if (pkgversion != NULL)
 			sbuf_printf(sb, "%s-%s is vulnerable:\n", pkgname, pkgversion);
-		else
+		else {
 			sbuf_printf(sb, "%s is vulnerable:\n", pkgname);
+			pkg_audit_print_versions(e, sb);
+		}
 
 		sbuf_printf(sb, "%s\n", e->desc);
 		/* XXX: for vulnxml we should use more clever approach indeed */
@@ -812,9 +843,13 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 					}
 				}
 			}
+
+			if (res && quiet)
+				goto out;
 		}
 	}
 
+out:
 	if (res) {
 		sbuf_finish(sb);
 		*result = sb;
