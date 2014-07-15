@@ -768,7 +768,7 @@ main(int argc, char **argv)
 #endif
 
 	if (!pkg_compiled_for_same_os_major())
-		warnx("Major version upgrade detected.  Running \"pkg_static "
+		warnx("Major version upgrade detected.  Running \"pkg-static "
 		      "install -f pkg\" recommended");
 
 	if (pkg_init(conffile, reposdir) != EPKG_OK)
