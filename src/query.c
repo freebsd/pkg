@@ -862,7 +862,7 @@ exec_query(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "aCe:F:gix", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCe:F:gix", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;

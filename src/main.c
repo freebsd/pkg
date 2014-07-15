@@ -681,9 +681,9 @@ main(int argc, char **argv)
 		err(EX_SOFTWARE, "setenv() failed");
 
 #ifdef HAVE_LIBJAIL
-	while ((ch = getopt_long(argc, argv, "dj:c:C:R:lNvo:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+dj:c:C:R:lNvo:", longopts, NULL)) != -1) {
 #else
-	while ((ch = getopt_long(argc, argv, "dc:C:R:lNvo:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+dc:C:R:lNvo:", longopts, NULL)) != -1) {
 #endif
 		switch (ch) {
 		case 'd':

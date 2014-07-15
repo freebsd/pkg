@@ -216,7 +216,7 @@ exec_create(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "agxf:r:m:M:o:np:O", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:O", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;

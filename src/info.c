@@ -129,7 +129,7 @@ exec_info(int argc, char **argv)
 	};
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt_long(argc, argv, "aAbBCdDeEfF:giIkloOpqrRsx", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aAbBCdDeEfF:giIkloOpqrRsx", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;

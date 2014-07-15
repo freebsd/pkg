@@ -143,7 +143,7 @@ exec_audit(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "Ff:qr", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Ff:qr", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'F':
 			fetch = true;

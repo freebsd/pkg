@@ -75,7 +75,7 @@ exec_delete(int argc, char **argv)
 
 	nbactions = nbdone = 0;
 
-	while ((ch = getopt_long(argc, argv, "aCDfginqRxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCDfginqRxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;

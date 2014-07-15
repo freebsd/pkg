@@ -290,7 +290,7 @@ exec_convert(__unused int argc, __unused char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "d:nr", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:nr", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			pkg_add_dbdir = optarg;

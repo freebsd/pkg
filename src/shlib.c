@@ -154,7 +154,7 @@ exec_shlib(int argc, char **argv)
 		{ NULL,		0,		NULL,	0 },
 	};
 
-	while ((ch = getopt_long(argc, argv, "PR", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+PR", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'P':
 			provides_only = true;

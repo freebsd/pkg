@@ -54,7 +54,7 @@ exec_plugins(int argc, char **argv)
 		{ NULL,		0,		NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "l", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+l", longopts, NULL)) != -1) {
                 switch (ch) {
 		case 'l':
 			list_only = true;

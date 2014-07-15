@@ -246,7 +246,7 @@ exec_annotate(int argc, char **argv)
                 pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
                 );
 
-	while ((ch = getopt_long(argc, argv, "aACDgiMqSxy", longopts, NULL))
+	while ((ch = getopt_long(argc, argv, "+aACDgiMqSxy", longopts, NULL))
 	       != -1) {
 		switch (ch) {
 		case 'a':

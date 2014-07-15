@@ -694,7 +694,7 @@ exec_version(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "Ce:g:hIiL:l:O:oPqRr:TtUvx:",
+	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':

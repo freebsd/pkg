@@ -119,7 +119,7 @@ exec_update(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "fqr:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+fqr:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'f':
 			force = true;

@@ -74,7 +74,7 @@ exec_which(int argc, char **argv)
 		{ NULL,			0,		NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "gopq", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+gopq", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'g':
 			glob = true;

@@ -140,7 +140,7 @@ exec_rquery(int argc, char **argv)
 
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
-	while ((ch = getopt_long(argc, argv, "aCgiIxe:r:U", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;

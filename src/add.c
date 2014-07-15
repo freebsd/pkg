@@ -86,7 +86,7 @@ exec_add(int argc, char **argv)
 		{ NULL,                  0,                      NULL,            0  }
 	};
 
-	while ((ch = getopt_long(argc, argv, "IAfqM", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+IAfqM", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'I':
 			f |= PKG_ADD_NOSCRIPT;

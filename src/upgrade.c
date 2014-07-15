@@ -76,7 +76,7 @@ exec_upgrade(int argc, char **argv)
 
 	nbactions = nbdone = 0;
 
-	while ((ch = getopt_long(argc, argv, "CfFgiInqr:Uxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
 			pkgdb_set_case_sensitivity(true);

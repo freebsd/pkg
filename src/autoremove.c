@@ -61,7 +61,7 @@ exec_autoremove(int argc, char **argv)
 		{ NULL,		0,		NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "nqy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+nqy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
