@@ -118,6 +118,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	const char	*path;
 	char		fpath[MAXPATHLEN];
 	int		nfiles, cur_file = 0;
+	struct stat st;
 
 	nfiles = HASH_COUNT(pkg->files);
 
@@ -143,8 +144,18 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 		/* Regular files and links */
 		/* check sha256 */
 		if (!force && sum[0] != '\0') {
-			if (sha256_file(fpath, sha256) != EPKG_OK)
+			if (lstat(fpath, &st) == -1) {
+				pkg_emit_error("cannot stat %s: %s", fpath, strerror(errno));
 				continue;
+			}
+			if (S_ISLNK(st.st_mode)) {
+				if (pkg_symlink_cksum(fpath, NULL, sha256) != EPKG_OK)
+					continue;
+			}
+			else {
+				if (sha256_file(fpath, sha256) != EPKG_OK)
+					continue;
+			}
 			if (strcmp(sha256, sum)) {
 				pkg_emit_error("%s fails original SHA256 "
 				    "checksum, not removing", path);
