@@ -140,6 +140,8 @@ ucl_common_cflags=	-I$(top_srcdir)/external//libucl/uthash \
 			-I$(top_srcdir)/external//libucl/src \
 			-Wno-unused-parameter -Wno-pointer-sign
 libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
+			libucl/src/ucl_emitter_utils.c \
+			libucl/src/ucl_emitter_streamline.c \
 			libucl/src/ucl_hash.c \
 			libucl/src/ucl_parser.c \
 			libucl/src/ucl_schema.c \
