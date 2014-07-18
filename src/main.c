@@ -451,8 +451,8 @@ start_process_worker(void)
 				break;
 			if (WIFSIGNALED(status)) {
 				/* Process got some terminating signal, hence stop the loop */
-				fprintf(stderr, "Child process pid=%d terminated abnormally by signal: %d\n",
-						(int)child_pid, WTERMSIG(status));
+				fprintf(stderr, "Child process pid=%d terminated abnormally: %s\n",
+						(int)child_pid, strsignal (WTERMSIG(status)));
 				ret = -(WTERMSIG(status));
 				break;
 			}
