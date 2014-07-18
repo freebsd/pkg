@@ -44,7 +44,8 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-dqUy] [-Cgix] <pkg-name> <...>\n");
+	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-o destdir] [-dqUym] "
+					"[-Cgix] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -a\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -u\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
@@ -56,6 +57,7 @@ exec_fetch(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
 	const char	*reponame = NULL;
+	const char *destdir = NULL;
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
 	bool		 upgrades_for_installed = false, rc;
@@ -75,10 +77,12 @@ exec_fetch(int argc, char **argv)
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
+		{ "mirror",		no_argument,		NULL,	'm' },
+		{ "output",		required_argument,	NULL,	'o' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxymo:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -113,6 +117,12 @@ exec_fetch(int argc, char **argv)
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case 'm':
+			f |= PKG_FLAG_FETCH_MIRROR;
+			break;
+		case 'o':
+			destdir = optarg;
 			break;
 		default:
 			usage_fetch();
@@ -177,6 +187,9 @@ exec_fetch(int argc, char **argv)
 		goto cleanup;
 
 	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
+		goto cleanup;
+
+	if (destdir != NULL && pkg_jobs_set_destdir(jobs, destdir) != EPKG_OK)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);
