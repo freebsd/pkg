@@ -755,6 +755,10 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 
 			if (pkgsize != st.st_size)
 				*dlsize += pkgsize;
+			else {
+				free(it);
+				return;
+			}
 		}
 		else
 			*dlsize += pkgsize;
@@ -853,14 +857,14 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 	[PKG_DISPLAY_MAX] = NULL
 };
 
-void
+int
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
 	char size[7];
 	va_list ap;
-	int type;
+	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
 	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
 
@@ -868,21 +872,22 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	type = pkg_jobs_type(jobs);
 	memset(disp, 0, sizeof (disp));
 
-	if (msg != NULL) {
-		va_start(ap, msg);
-		vprintf(msg, ap);
-		va_end(ap);
-	}
-
 	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type))
 		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
 			&newsize, &dlsize, disp);
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
 		if (disp[type] != NULL) {
+			if (msg != NULL) {
+				va_start(ap, msg);
+				vprintf(msg, ap);
+				va_end(ap);
+				msg = NULL;
+			}
 			printf("%s:\n", pkg_display_messages[type]);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
 				display_summary_item(cur, newsize, dlsize);
+				displayed ++;
 				free(cur);
 			}
 			puts("");
@@ -901,6 +906,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 		printf("%s to be downloaded\n", size);
 	}
+
+	return (displayed);
 }
 
 int

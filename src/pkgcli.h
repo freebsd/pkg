@@ -254,7 +254,7 @@ bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
-void print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
+int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 int hash_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 
 int event_callback(void *data, struct pkg_event *ev);

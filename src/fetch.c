@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -60,7 +61,7 @@ exec_fetch(int argc, char **argv)
 	const char *destdir = NULL;
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
-	bool		 upgrades_for_installed = false, rc;
+	bool		 upgrades_for_installed = false, rc, csum_only = false;
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
@@ -122,6 +123,7 @@ exec_fetch(int argc, char **argv)
 			f |= PKG_FLAG_FETCH_MIRROR;
 			break;
 		case 'o':
+			f |= PKG_FLAG_FETCH_MIRROR;
 			destdir = optarg;
 			break;
 		default:
@@ -205,8 +207,16 @@ exec_fetch(int argc, char **argv)
 		goto cleanup;
 
 	if (!quiet) {
-		print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
-		rc = query_yesno(false, "\nProceed with fetching packages [y/N]: ");
+		rc = print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
+
+		if (rc != 0)
+			rc = query_yesno(false, "\nProceed with fetching packages [y/N]: ");
+		else {
+			printf("No packages are required to be fetched.\n");
+			rc = query_yesno(false, "Check the integrity of packages "
+							"downloaded [y/N]: ");
+			csum_only = true;
+		}
 	}
 	else {
 		rc = true;
@@ -214,6 +224,9 @@ exec_fetch(int argc, char **argv)
 	
 	if (!rc || pkg_jobs_apply(jobs) != EPKG_OK)
 		goto cleanup;
+
+	if (csum_only && !quiet)
+		printf("Integrity check was successful.\n");
 
 	retcode = EX_OK;
 
