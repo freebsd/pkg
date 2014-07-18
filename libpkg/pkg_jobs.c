@@ -642,8 +642,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			npkg = pkg_jobs_get_remote_pkg(j, d->uid, 0);
 			if (npkg == NULL) {
 				/* Cannot continue */
-				pkg_emit_error("Missing dependency matching '%s'",
-						pkg_dep_get(d, PKG_DEP_NAME));
+				pkg_emit_error("%s has a missing dependency: %s",
+						name, pkg_dep_get(d, PKG_DEP_NAME));
 
 				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING)
 					continue;
