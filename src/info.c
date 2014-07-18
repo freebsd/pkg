@@ -125,6 +125,7 @@ exec_info(int argc, char **argv)
 		{ "raw",		no_argument,		NULL,	'R' },
 		{ "size",		no_argument,		NULL,	's' },
 		{ "regex",		no_argument,		NULL,	'x' },
+		{ "raw-format",		required_argument,	NULL, 	1   },
 		{ NULL,			0,			NULL,	0   },
 	};
 
@@ -204,6 +205,18 @@ exec_info(int argc, char **argv)
 		case 'x':
 			match = MATCH_REGEX;
 			break;
+		case 1:
+			if (strcasecmp(optarg, "json") == 0)
+			       opt |= INFO_RAW_JSON;
+			else if (strcasecmp(optarg, "json-compact") == 0)
+				opt |= INFO_RAW_JSON_COMPACT;
+			else if (strcasecmp(optarg, "yaml") == 0)
+				opt |= INFO_RAW_YAML;
+			else
+				errx(EX_USAGE, "Invalid format '%s' for the "
+				    "raw output, expecting json, json-compat "
+				    "or yaml", optarg);
+			break;
 		default:
 			usage_info();
 			return(EX_USAGE);
@@ -264,6 +277,11 @@ exec_info(int argc, char **argv)
 		if (opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
+		if (opt & INFO_RAW) {
+			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+				opt |= INFO_RAW_YAML;
+		}
+
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
 			open_flags = PKG_OPEN_MANIFEST_COMPACT;

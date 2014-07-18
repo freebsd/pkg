@@ -49,6 +49,7 @@
 .Op Cm --{pkg-message,dependencies,full,comment,list-files}
 .Op Cm --{quiet,prefix,raw,required-by,size}
 .Cm --file Ar pkg-file
+.Op Fl -raw-format Ar format
 .Sh DESCRIPTION
 .Nm
 is used for displaying information for packages.
@@ -73,6 +74,9 @@ This is the default.
 .It Fl R , Cm --raw
 Display the full manifest (raw) for the packages matching
 .Ar pkg-name .
+.It Fl -raw-format Ar format
+Allow to chose the output format for the raw output, format can be:
+json, json-conpact, yaml (default).
 .It Fl e , Cm --exists
 If
 .Ar pkg-name

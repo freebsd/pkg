@@ -277,6 +277,7 @@ exec_search(int argc, char **argv)
 		{ "size",		no_argument,		NULL,	's' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
+		{ "raw-format",		required_argument,	NULL, 	1   },
 		{ NULL,			0,			NULL,	0   },
 	};
 
@@ -338,6 +339,18 @@ exec_search(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
+			break;
+		case 1:
+			if (strcasecmp(optarg, "json") == 0)
+			       opt |= INFO_RAW_JSON;
+			else if (strcasecmp(optarg, "json-compact") == 0)
+				opt |= INFO_RAW_JSON_COMPACT;
+			else if (strcasecmp(optarg, "yaml") == 0)
+				opt |= INFO_RAW_YAML;
+			else
+				errx(EX_USAGE, "Invalid format '%s' for the "
+				    "raw output, expecting json, json-compat "
+				    "or yaml", optarg);
 			break;
 		default:
 			usage_search();
@@ -418,6 +431,11 @@ exec_search(int argc, char **argv)
 	    reponame)) == NULL) {
 		pkgdb_close(db);
 		return (EX_IOERR);
+	}
+
+	if (opt & INFO_RAW) {
+		if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+			opt |= INFO_RAW_YAML;
 	}
 
 	flags = info_flags(opt, true);

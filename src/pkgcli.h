@@ -228,7 +228,10 @@ void usage_config(void);
 #define INFO_TAG_NAMEVER	(1LL<<62)
 
 /* Output YAML format */
-#define INFO_RAW	(-1LL<<63)
+#define INFO_RAW		(-1LL<<63)
+#define INFO_RAW_YAML		(-1LL<<62)
+#define INFO_RAW_JSON		(-1LL<<61)
+#define INFO_RAW_JSON_COMPACT	(-1LL<<60)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \

@@ -318,6 +318,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
+	int outflags = 0;
 
 	pkg_get(pkg,
 		PKG_REPOURL,       &repourl,
@@ -326,10 +327,20 @@ print_info(struct pkg * const pkg, uint64_t options)
 		PKG_PKGSIZE,       &pkgsize);
 
 	if (options & INFO_RAW) {
-		if (pkg_type(pkg) != PKG_REMOTE)
-			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_PRETTY, NULL);
-		else
-			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_COMPACT|PKG_MANIFEST_EMIT_PRETTY, NULL);
+		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) {
+		case INFO_RAW_YAML:
+			outflags |= PKG_MANIFEST_EMIT_PRETTY;
+			break;
+		case INFO_RAW_JSON:
+			outflags |= PKG_MANIFEST_EMIT_JSON;
+		case INFO_RAW_JSON_COMPACT:
+			break;
+		}
+		if (pkg_type(pkg) == PKG_REMOTE)
+			outflags |= PKG_MANIFEST_EMIT_COMPACT;
+
+		pkg_emit_manifest_file(pkg, stdout, outflags, NULL);
+
 		return;
 	}
 

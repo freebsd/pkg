@@ -49,6 +49,7 @@
 .Op Cm --{quiet,raw,size,no-repo-update}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,exact,glob,case-insensitive,regex}
+.Op Fl -raw-format Ar format
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -178,7 +179,7 @@ status from
 By default all repository catalogues marked
 .Dq active
 are searched.
-.It Fl R , Cm --raw
+.It Fl R , Fl -raw
 Display the full manifest (raw) from the matching packages.
 .It Fl S Ar search , Cm --search Ar search
 Specify the field to search the repository catalogue on.
@@ -194,6 +195,9 @@ field.
 See the
 .Qq Sx Search and Label Options
 sections for more details.
+.It Fl -raw-format Ar format
+Allow to chose the output format for the raw output, format can be:
+json, json-conpact, yaml (default).
 .It Fl s , Cm --size
 Display the installed size of matched packages.
 Equivalent to
