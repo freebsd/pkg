@@ -89,6 +89,7 @@ global:
 	pkg_jobs_free;
 	pkg_jobs_iter;
 	pkg_jobs_new;
+	pkg_jobs_set_destdir;
 	pkg_jobs_set_flags;
 	pkg_jobs_set_repository;
 	pkg_jobs_solve;
