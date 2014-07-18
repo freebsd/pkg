@@ -86,6 +86,7 @@ global:
 	pkg_jobs_count;
 	pkg_jobs_cudf_emit_file;
 	pkg_jobs_cudf_parse_output;
+	pkg_jobs_destdir;
 	pkg_jobs_free;
 	pkg_jobs_iter;
 	pkg_jobs_new;

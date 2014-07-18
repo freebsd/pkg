@@ -108,6 +108,12 @@ pkg_jobs_set_destdir(struct pkg_jobs *j, const char *dir)
 	return (EPKG_OK);
 }
 
+const char*
+pkg_jobs_destdir(struct pkg_jobs *j)
+{
+	return (j->destdir);
+}
+
 static void
 pkg_jobs_pattern_free(struct job_pattern *jp)
 {

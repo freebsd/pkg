@@ -1125,14 +1125,12 @@ pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 {
 	struct pkg_repo *repo;
 
-	if (pkg->repo == NULL) {
+	if (pkg->repo == NULL)
 		return;
-	}
 
 	repo = pkg->repo;
-	if (repo->ops->get_cached_name == NULL) {
+	if (repo->ops->get_cached_name == NULL)
 		return;
-	}
 
 	repo->ops->get_cached_name(repo, pkg, dest, destlen);
 }

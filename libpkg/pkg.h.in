@@ -1162,6 +1162,7 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
 int pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc);
 int pkg_jobs_solve(struct pkg_jobs *j);
 int pkg_jobs_set_repository(struct pkg_jobs *j, const char *name);
+const char* pkg_jobs_destdir(struct pkg_jobs *j);
 int pkg_jobs_set_destdir(struct pkg_jobs *j, const char *name);
 void pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags f);
 pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
