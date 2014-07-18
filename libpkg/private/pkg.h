@@ -386,6 +386,8 @@ struct pkg_repo_ops {
 	void (*get_cached_name)(struct pkg_repo *, struct pkg *,
 					char *dest, size_t destlen);
 	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
+	int (*mirror_pkg)(struct pkg_repo *repo, struct pkg *pkg,
+		const char *destdir);
 };
 
 struct pkg_repo {

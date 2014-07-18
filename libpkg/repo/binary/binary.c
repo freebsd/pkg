@@ -36,6 +36,7 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.shlib_required = pkg_repo_binary_shlib_require,
 	.search = pkg_repo_binary_search,
 	.fetch_pkg = pkg_repo_binary_fetch,
+	.mirror_pkg = pkg_repo_binary_mirror,
 	.get_cached_name = pkg_repo_binary_get_cached_name,
 	.ensure_loaded = pkg_repo_binary_ensure_loaded,
 	.stat = pkg_repo_binary_stat
