@@ -92,7 +92,7 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 
 static int
 pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
-	bool already_tried)
+	bool already_tried, bool mirror, const char *destdir)
 {
 	char dest[MAXPATHLEN], link_dest[MAXPATHLEN],
 	     link_dest_tmp[MAXPATHLEN];
@@ -102,7 +102,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	int64_t pkgsize;
 	struct stat st;
 	char *path = NULL;
-	const char *packagesite = NULL, *dest_fname = NULL, *ext = NULL;
+	const char *packagesite = NULL, *dest_fname = NULL, *ext = NULL, *repourl;
 
 	int retcode = EPKG_OK;
 	const char *name, *version, *sum;
@@ -110,8 +110,22 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
 	pkg_get(pkg, PKG_CKSUM, &sum,
-			PKG_NAME, &name, PKG_VERSION, &version, PKG_PKGSIZE, &pkgsize);
-	pkg_repo_binary_get_cached_name(repo, pkg, dest, sizeof(dest));
+			PKG_NAME, &name, PKG_VERSION, &version, PKG_PKGSIZE, &pkgsize,
+			PKG_REPOPATH, &repourl);
+
+	if (mirror) {
+		const char *cachedir;
+
+		if (destdir != NULL)
+			cachedir = destdir;
+		else
+			cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+
+		snprintf(dest, sizeof(dest), "%s/%s",
+						cachedir, repourl);
+	}
+	else
+		pkg_repo_binary_get_cached_name(repo, pkg, dest, sizeof(dest));
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */
@@ -146,7 +160,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
-	if (strncasecmp(packagesite, "file://", 7) == 0) {
+	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0) {
 		pkg_set(pkg, PKG_REPOPATH, url + 7);
 		return (EPKG_OK);
 	}
@@ -173,7 +187,7 @@ checksum:
 		pkg_emit_error("cached package %s-%s: "
 			"size mismatch, fetching from remote",
 			name, version);
-		return (pkg_repo_binary_try_fetch(repo, pkg, true));
+		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK) {
@@ -187,7 +201,7 @@ checksum:
 				    "checksum mismatch, fetching from remote",
 				    name, version);
 				unlink(dest);
-				return (pkg_repo_binary_try_fetch(repo, pkg, true));
+				return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 			}
 		}
 	}
@@ -195,7 +209,7 @@ checksum:
 cleanup:
 	if (retcode != EPKG_OK)
 		unlink(dest);
-	else if (path != NULL) {
+	else if (!mirror && path != NULL) {
 		/* Create symlink from full pkgname */
 		ext = strrchr(dest, '.');
 		pkg_snprintf(link_dest, sizeof(link_dest), "%S/%n-%v%S",
@@ -227,5 +241,12 @@ cleanup:
 int
 pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg)
 {
-	return (pkg_repo_binary_try_fetch(repo, pkg, false));
+	return (pkg_repo_binary_try_fetch(repo, pkg, false, false, NULL));
+}
+
+int
+pkg_repo_binary_mirror(struct pkg_repo *repo, struct pkg *pkg,
+	const char *destdir)
+{
+	return (pkg_repo_binary_try_fetch(repo, pkg, false, true, destdir));
 }
