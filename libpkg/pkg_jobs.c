@@ -615,7 +615,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg_job_seen *seen;
 	int ret;
-	bool automatic = false;
+	bool automatic = false, mirror = false;
 	const char *uid, *name, *digest;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
@@ -633,6 +633,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			return (EPKG_FATAL);
 	}
 
+	mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
+
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
@@ -641,15 +643,20 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			continue;
 
 		rpkg = NULL;
-		npkg = pkg_jobs_get_local_pkg(j, d->uid, 0);
+		npkg = NULL;
+		if (!mirror)
+			npkg = pkg_jobs_get_local_pkg(j, d->uid, 0);
+
 		if (npkg == NULL && !IS_DELETE(j)) {
 			/*
 			 * We have a package installed, but its dependencies are not,
 			 * try to search a remote dependency
 			 */
-			pkg_get(pkg, PKG_NAME, &name);
-			pkg_debug(1, "dependency %s of local package %s is not installed",
+			if (!mirror) {
+				pkg_get(pkg, PKG_NAME, &name);
+				pkg_debug(1, "dependency %s of local package %s is not installed",
 					pkg_dep_get(d, PKG_DEP_NAME), name);
+			}
 			npkg = pkg_jobs_get_remote_pkg(j, d->uid, 0);
 			if (npkg == NULL) {
 				/* Cannot continue */
@@ -681,8 +688,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			}
 		}
 
-		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, recursive, false, &unit) != EPKG_OK)
 			continue;
+
+		if (mirror)
+			pkg_jobs_add_req(j, d->uid, unit);
+
 		if (rpkg != NULL) {
 			/* Save automatic flag */
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
@@ -692,6 +703,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				continue;
 		}
 	}
+
+	/*
+	 * XXX: handle shlibs somehow
+	 */
+	if (mirror)
+		return (EPKG_OK);
 
 	/* Go through all rdeps */
 	d = NULL;
@@ -2656,7 +2673,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	bool mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
 
 	
-	if (j->destdir == NULL)
+	if (j->destdir == NULL || !mirror)
 		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	else
 		cachedir = j->destdir;
