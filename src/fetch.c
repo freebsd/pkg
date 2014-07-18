@@ -45,7 +45,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-o destdir] [-dqUym] "
+	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-o destdir] [-dqUy] "
 					"[-Cgix] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -a\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -u\n\n");
@@ -78,12 +78,11 @@ exec_fetch(int argc, char **argv)
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
-		{ "mirror",		no_argument,		NULL,	'm' },
 		{ "output",		required_argument,	NULL,	'o' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxymo:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxyo:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -118,9 +117,6 @@ exec_fetch(int argc, char **argv)
 			break;
 		case 'y':
 			yes = true;
-			break;
-		case 'm':
-			f |= PKG_FLAG_FETCH_MIRROR;
 			break;
 		case 'o':
 			f |= PKG_FLAG_FETCH_MIRROR;
