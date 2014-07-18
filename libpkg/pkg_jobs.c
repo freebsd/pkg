@@ -97,6 +97,17 @@ pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 	return (EPKG_OK);
 }
 
+int
+pkg_jobs_set_destdir(struct pkg_jobs *j, const char *dir)
+{
+	if (dir == NULL)
+		return (EPKG_FATAL);
+
+	j->destdir = dir;
+
+	return (EPKG_OK);
+}
+
 static void
 pkg_jobs_pattern_free(struct job_pattern *jp)
 {
@@ -2640,14 +2651,21 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct statfs fs;
 	struct stat st;
 	int64_t dlsize = 0;
-	const char *cachedir = NULL;
+	const char *cachedir = NULL, *repopath;
 	char cachedpath[MAXPATHLEN];
+	bool mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
+
 	
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+	if (j->destdir == NULL)
+		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+	else
+		cachedir = j->destdir;
 
 	/* check for available size to fetch */
 	DL_FOREACH(j->jobs, ps) {
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
+			int64_t pkgsize;
+
 			if (ps->items[0]->reinstall)
 				p = ps->items[0]->reinstall;
 			else
@@ -2655,9 +2673,15 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 			if (p->type != PKG_REMOTE)
 				continue;
-			int64_t pkgsize;
-			pkg_get(p, PKG_PKGSIZE, &pkgsize);
-			pkg_repo_cached_name(p, cachedpath, sizeof(cachedpath));
+
+			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
+			if (mirror) {
+				snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir,
+					repopath);
+			}
+			else
+				pkg_repo_cached_name(p, cachedpath, sizeof(cachedpath));
+
 			if (stat(cachedpath, &st) == -1)
 				dlsize += pkgsize;
 			else
@@ -2703,16 +2727,20 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 			if (p->type != PKG_REMOTE)
 				continue;
-			if (pkg_repo_fetch_package(p) != EPKG_OK)
-				return (EPKG_FATAL);
+
+			if (mirror) {
+				if (pkg_repo_mirror_package(p, cachedir) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
+			else {
+				if (pkg_repo_fetch_package(p) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
 		}
 	}
 
 	return (EPKG_OK);
 }
-
-#undef PKG_JOBS_FETCH_CALCULATE
-#undef PKG_JOBS_DO_FETCH
 
 static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)

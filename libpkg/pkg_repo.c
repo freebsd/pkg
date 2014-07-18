@@ -1101,6 +1101,25 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	return (repo->ops->fetch_pkg(repo, pkg));
 }
 
+int
+pkg_repo_mirror_package(struct pkg *pkg, const char *destdir)
+{
+	struct pkg_repo *repo;
+
+	if (pkg->repo == NULL) {
+		pkg_emit_error("Trying to mirror package without repository");
+		return (EPKG_FATAL);
+	}
+
+	repo = pkg->repo;
+	if (repo->ops->mirror_pkg == NULL) {
+		pkg_emit_error("Repository %s does not support mirroring", repo->name);
+		return (EPKG_FATAL);
+	}
+
+	return (repo->ops->mirror_pkg(repo, pkg, destdir));
+}
+
 void
 pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 {

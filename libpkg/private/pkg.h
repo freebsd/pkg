@@ -265,7 +265,8 @@ struct pkg_jobs {
 	int total;
 	int conflicts_registered;
 	bool need_fetch;
-	const char *	 reponame;
+	const char *reponame;
+	const char *destdir;
 	struct job_pattern *patterns;
 };
 
@@ -464,6 +465,7 @@ extern struct pkg_key {
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,
 		int dest, time_t *t);
 int pkg_repo_fetch_package(struct pkg *pkg);
+int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
 FILE* pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo,
 		const char *filename, time_t *t, int *rc);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
