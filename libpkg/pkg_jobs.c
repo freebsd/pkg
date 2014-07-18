@@ -626,9 +626,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
 		HASH_FIND_STR(j->universe, d->uid, unit);
-		if (unit != NULL) {
+		if (unit != NULL)
 			continue;
-		}
 
 		rpkg = NULL;
 		npkg = pkg_jobs_get_local_pkg(j, d->uid, 0);
@@ -645,9 +644,10 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				/* Cannot continue */
 				pkg_emit_error("Missing dependency matching '%s'",
 						pkg_dep_get(d, PKG_DEP_NAME));
-				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING) {
+
+				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING)
 					continue;
-				}
+
 				return (EPKG_FATAL);
 			}
 		}
@@ -671,14 +671,14 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		}
 
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-			return (EPKG_FATAL);
+			continue;
 		if (rpkg != NULL) {
 			/* Save automatic flag */
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			pkg_set(rpkg, PKG_AUTOMATIC, automatic);
 
 			if (pkg_jobs_add_universe(j, rpkg, recursive, false, NULL) != EPKG_OK)
-				return (EPKG_FATAL);
+				continue;
 		}
 	}
 
@@ -694,7 +694,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		if (npkg != NULL) {
 			/* Do not bother about remote deps */
 			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-				return (EPKG_FATAL);
+				continue;
 		}
 	}
 
@@ -714,7 +714,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					continue;
 
 				if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-					return (EPKG_FATAL);
+					continue;
 			}
 			else {
 				/* Remote packages can conflict with remote and local */
@@ -723,7 +723,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					continue;
 
 				if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-					return (EPKG_FATAL);
+					continue;
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
 					npkg = pkg_jobs_get_remote_pkg(j, pkg_conflict_uniqueid(c), 0);
@@ -732,7 +732,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 
 					if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL)
 							!= EPKG_OK)
-						return (EPKG_FATAL);
+						continue;
 				}
 			}
 		}
@@ -759,7 +759,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 							/* Remote provide is newer, so we can add it */
 							if (pkg_jobs_add_universe(j, rpkg, recursive, false,
 																&unit) != EPKG_OK)
-								return (EPKG_FATAL);
+								continue;
 
 							rpkg = NULL;
 						}
@@ -775,7 +775,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 								/* Remote provide is newer, so we can add it */
 								if (pkg_jobs_add_universe(j, rpkg, recursive, false,
 										&unit) != EPKG_OK)
-									return (EPKG_FATAL);
+									continue;
 							}
 						}
 					}
@@ -807,8 +807,10 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 								"struct pkg_job_provide");
 						return (EPKG_FATAL);
 					}
+
 					pr->un = unit;
 					pr->provide = pkg_shlib_name(shlib);
+
 					if (prhead == NULL) {
 						DL_APPEND(prhead, pr);
 						HASH_ADD_KEYPTR(hh, j->provides, pr->provide,
