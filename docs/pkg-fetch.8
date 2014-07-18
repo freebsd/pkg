@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd July 18, 2014
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -30,7 +30,8 @@
 .Op ...
 .Nm
 .Op Fl r Ar reponame
-.Op Fl dqUy
+.Op Fl o Ar destdir
+.Op Fl dqUym
 .Fl a
 .Nm
 .Op Fl r Ar reponame
@@ -39,7 +40,8 @@
 .Pp
 .Nm
 .Op Cm --repository Ar reponame
-.Op Cm --{dependencies,quiet,no-repo-update,yes}
+.Op Cm --output Ar destdir
+.Op Cm --{dependencies,quiet,no-repo-update,yes,mirror}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name
 .Op ...
@@ -74,6 +76,14 @@ The following options are supported by
 .Bl -tag -width dependencies
 .It Fl a , Cm --all
 Fetch all packages.
+.It Fl m , Cm --mirror
+Make a mirror of packages from a repository. In this mode, packages are fetched for
+distribution instead of placing them to the internal cache.
+.It Fl o Ar destdir , Cm --output Ar destdir
+Place files to the specified directory instead of the cache directory. 
+This option implies
+.Cm mirror
+mode.
 .It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
