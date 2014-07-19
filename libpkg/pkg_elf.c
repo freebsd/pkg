@@ -49,7 +49,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#ifdef HAVE_LINK_H
+#ifdef HAVE_LINK_H && !defined(__DragonFly__)
 #include <link.h>
 #endif
 #include <paths.h>
