@@ -37,7 +37,7 @@
 #include <machine/endian.h>
 #endif
 #include <sys/types.h>
-#ifdef HAVE_SYS_ELF_COMMON_H && !defined(__DragonFly__)
+#if defined(HAVE_SYS_ELF_COMMON_H) && !defined(__DragonFly__)
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>
@@ -49,7 +49,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#ifdef HAVE_LINK_H && !defined(__DragonFly__)
+#if defined(HAVE_LINK_H) && !defined(__DragonFly__)
 #include <link.h>
 #endif
 #include <paths.h>
