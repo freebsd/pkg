@@ -132,7 +132,6 @@ ssh_read(void *data, char *buf, int len)
 	struct timeval now, timeout, delta;
 	struct pollfd pfd;
 	ssize_t rlen;
-	int deltams;
 
 	pkg_debug(2, "ssh: start reading");
 
@@ -141,7 +140,6 @@ ssh_read(void *data, char *buf, int len)
 		timeout.tv_sec += fetchTimeout;
 	}
 
-	deltams = -1;
 	memset(&pfd, 0, sizeof pfd);
 	pfd.fd = repo->sshio.in;
 	pfd.events = POLLIN;
@@ -168,8 +166,6 @@ ssh_read(void *data, char *buf, int len)
 				return (-1);
 			}
 			timersub(&timeout, &now, &delta);
-			deltams = delta.tv_sec * 1000 +
-				delta.tv_usec / 1000;
 		}
 	}
 
@@ -403,7 +399,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
-	time_t		 begin_dl;
 	time_t		 last = 0;
 	char		 buf[10240];
 	char		*doc = NULL;
@@ -545,7 +540,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	pkg_emit_fetch_begin(url);
 	pkg_emit_progress_start(NULL);
-	begin_dl = time(NULL);
 	while (done < sz) {
 		time_t	now;
 

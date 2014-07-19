@@ -645,7 +645,6 @@ main(int argc, char **argv)
 	const char	 *conffile = NULL;
 	const char	 *reposdir = NULL;
 	char		**save_argv;
-	int		  newargvl;
 	int		  j;
 
 	struct option longopts[] = {
@@ -665,8 +664,6 @@ main(int argc, char **argv)
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
-
-	newargvl = 0;
 
 	if (argc < 2)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");

@@ -99,7 +99,6 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 {
 	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
 	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
-	bool new;
 
 	/*
 	 * Here we reorder bulk hash from hash by file
@@ -123,7 +122,6 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 			}
 			/* Now add all new entries from this file to this conflict structure */
 			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				new = true;
 				if (strcmp(sbuf_get(c1->uniqueid), sbuf_get(c2->uniqueid)) == 0)
 					continue;
 
