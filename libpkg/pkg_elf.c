@@ -37,7 +37,7 @@
 #include <machine/endian.h>
 #endif
 #include <sys/types.h>
-#ifdef HAVE_SYS_ELF_COMMON_H
+#ifdef HAVE_SYS_ELF_COMMON_H && !defined(__DragonFly__)
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>
