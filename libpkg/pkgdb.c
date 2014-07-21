@@ -735,14 +735,14 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 	case PKGDB_MODE_WRITE:
 		retval = eaccess(dbpath, W_OK);
 		if (retval != 0 && errno == ENOENT) {
-			mkdirs(dbpath);
+			mkdirs(dbdir);
 			retval = eaccess(dbpath, W_OK);
 		}
 		break;
 	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
 		retval = eaccess(dbpath, R_OK|W_OK);
 		if (retval != 0 && errno == ENOENT) {
-			mkdirs(dbpath);
+			mkdirs(dbdir);
 			retval = eaccess(dbpath, W_OK);
 		}
 		break;
