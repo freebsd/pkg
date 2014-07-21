@@ -323,6 +323,11 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 
 			/*
+			 * XXX: dirty hack to be compatible with pkg 1.2
+			 */
+			ucl_object_insert_key(pkg->fields,
+				ucl_object_fromstring(cur->pkg_path), "path", 0, false);
+			/*
 			 * TODO: use pkg_checksum for new manifests
 			 */
 			sbuf_clear(b);
