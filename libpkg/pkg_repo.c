@@ -74,7 +74,6 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
 	int fd;
-	mode_t mask;
 	const char *tmpdir, *dot;
 
 	/*
@@ -700,7 +699,6 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		time_t *t, int *rc)
 {
 	int fd, dest_fd;
-	mode_t mask;
 	FILE *res = NULL;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
@@ -716,9 +714,7 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		tmpdir = "/tmp";
 	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, filename);
 
-	mask = umask(022);
 	dest_fd = mkstemp(tmp);
-	umask(mask);
 	if (dest_fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 				"aborting update.\n", tmp);

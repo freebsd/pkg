@@ -245,8 +245,6 @@ checksum:
 	}
 
 cleanup:
-	/* allowed even if dir is NULL */
-	free(dir);
 
 	if (retcode != EPKG_OK)
 		unlink(dest);
@@ -254,8 +252,8 @@ cleanup:
 		(void)pkg_repo_binary_create_symlink(pkg, dest, path);
 	}
 
-	if (path != NULL)
-		free(path);
+	/* allowed even if dir is NULL */
+	free(dir);
 
 	return (retcode);
 }
