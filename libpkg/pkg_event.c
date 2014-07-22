@@ -362,7 +362,7 @@ pipeevent(struct pkg_event *ev)
 			ev->e_query_select.items[i]);
 		break;
 	case PKG_EVENT_PROGRESS_START:
-		sbuf_printf(msg, "{\"type\": \"INFO_PROGRESS_START\", "
+		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_START\", "
 		  "\"data\": {}}");
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
