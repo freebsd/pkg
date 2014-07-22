@@ -63,7 +63,6 @@ AC_LINK_IFELSE([
 ],
 [
  	AC_MSG_RESULT([no])
-	AC_DEFINE([HAVE_ATOMIC_BUILTINS], [0], [Has gcc/MSVC atomic intrinsics])
 ])
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
