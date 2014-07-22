@@ -273,12 +273,14 @@ pkg_audit_fetch(const char *src, const char *dest)
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
+
 	strlcpy(tmp, tmpdir, sizeof(tmp));
-	strlcat(tmp, "/vuln.xml.bz2.XXXX", sizeof(tmp));
-	if (stat(dest, &st) != -1) {
+	strlcat(tmp, "/vuln.xml.bz2.XXXXXXXX", sizeof(tmp));
+
+	if (stat(dest, &st) != -1)
 		t = st.st_mtime;
-	}
-	switch (pkg_fetch_file(NULL, src, tmp, t)) {
+
+	switch (pkg_fetch_file_tmp(NULL, src, tmp, t)) {
 	case EPKG_OK:
 		break;
 	case EPKG_UPTODATE:

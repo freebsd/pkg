@@ -60,6 +60,7 @@ global:
 	pkg_emit_manifest_file;
 	pkg_event_register;
 	pkg_fetch_file;
+	pkg_fetch_file_tmp;
 	pkg_file_get;
 	pkg_file_keep;
 	pkg_file_mode;

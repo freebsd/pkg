@@ -86,17 +86,54 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 }
 
 int
+pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
+	time_t t)
+{
+	int fd = -1;
+	int retcode = EPKG_FATAL;
+
+	fd = mkstemp(dest);
+
+	if (fd == -1) {
+		pkg_emit_errno("mkstemp", dest);
+		return(EPKG_FATAL);
+	}
+
+	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t);
+
+	if (t != 0) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			}
+		};
+		futimes(fd, ftimes);
+	}
+
+	close(fd);
+
+	/* Remove local file if fetch failed */
+	if (retcode != EPKG_OK)
+		unlink(dest);
+
+	return (retcode);
+}
+
+int
 pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
-	mode_t mask;
 
-	mask = umask(022);
-	fd = mkstemp(dest);
-	umask(mask);
+	fd = creat(dest, 00644);
+
 	if (fd == -1) {
-		pkg_emit_errno("mkstemp", dest);
+		pkg_emit_errno("creat", dest);
 		return(EPKG_FATAL);
 	}
 
@@ -431,7 +468,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	 * Error if using plain http://, https:// etc with SRV
 	 */
 
-	if (strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
+	if (repo != NULL &&
+		strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
 		if (repo->mirror_type != SRV) {
 			pkg_emit_error("packagesite URL error for %s -- "
 				       URL_SCHEME_PREFIX
@@ -449,7 +487,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	if (t != NULL)
 		u->ims_time = *t;
 
-	if (strcmp(u->scheme, "ssh") == 0) {
+	if (repo != NULL && strcmp(u->scheme, "ssh") == 0) {
 		if ((retcode = start_ssh(repo, u, &sz)) != EPKG_OK)
 			goto cleanup;
 		remote = repo->ssh;

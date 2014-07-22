@@ -1331,6 +1331,11 @@ pkg_change_t pkg_version_change_between(const struct pkg * pkg1, const struct pk
  * @return An error code.
  */
 int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t);
+/**
+ * Fetch a file to temporary destination
+ */
+int pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
+	time_t t);
 
 /**
  * Get cached name of a package
