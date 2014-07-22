@@ -361,6 +361,15 @@ pipeevent(struct pkg_event *ev)
 		sbuf_printf(msg, "{ \"text\": \"%s\" } ] }}",
 			ev->e_query_select.items[i]);
 		break;
+	case PKG_EVENT_PROGRESS_START:
+		sbuf_printf(msg, "{\"type\": \"PROGRESS_START\", "
+		  "\"data\": {}}");
+		break;
+	case PKG_EVENT_PROGRESS_TICK:
+		sbuf_printf(msg, "{\"type\": \"PROGRESS_TICK\", "
+		  "\"data\": { \"current\": %ld, \"total\" : %ld}}",
+		  ev->e_progress_tick.current, ev->e_progress_tick.total);
+		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
 		break;
