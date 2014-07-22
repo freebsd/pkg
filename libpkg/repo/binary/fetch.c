@@ -91,19 +91,55 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 }
 
 static int
+pkg_repo_binary_create_symlink(struct pkg *pkg, const char *fname,
+	const char *dir)
+{
+	struct stat st;
+	const char *ext, *dest_fname;
+	char link_dest[MAXPATHLEN];
+
+
+	/* Create symlink from full pkgname */
+	ext = strrchr(fname, '.');
+	pkg_snprintf(link_dest, sizeof(link_dest), "%S/%n-%v%S",
+		dir, pkg, pkg, ext ? ext : "");
+	if (stat(link_dest, &st) != -1) {
+		/* We already have this path, check for symlink */
+		if (S_ISLNK(st.st_mode)) {
+			/* We can safely remove symlink */
+			if (unlink(link_dest) == -1) {
+				pkg_emit_errno("unlink", link_dest);
+				return (EPKG_FATAL);
+			}
+		}
+		/* Do not touch anything but symlinks */
+		return (EPKG_END);
+	}
+
+	/* Trim the path to just the filename. */
+	if ((dest_fname = strrchr(fname, '/')) != NULL)
+		++dest_fname;
+	if (symlink(dest_fname, link_dest) == -1) {
+		pkg_emit_errno("symlink", link_dest);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	bool already_tried, bool mirror, const char *destdir)
 {
-	char dest[MAXPATHLEN], link_dest[MAXPATHLEN],
-	     link_dest_tmp[MAXPATHLEN];
+	char dest[MAXPATHLEN];
 	char url[MAXPATHLEN];
 	char *dir = NULL;
-	int sym_fd, fetched = 0;
+	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	int64_t pkgsize;
 	struct stat st;
 	char *path = NULL;
-	const char *packagesite = NULL, *dest_fname = NULL, *ext = NULL, *repourl;
+	const char *packagesite = NULL, *repourl;
 
 	int retcode = EPKG_OK;
 	const char *name, *version, *sum;
@@ -136,8 +172,6 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	/* Create the dirs in cachedir */
 	dir = strdup(dest);
 	if (dir == NULL || (path = dirname(dir)) == NULL) {
-		/* allowed even if dir is NULL */
-		free(dir);
 		pkg_emit_errno("dirname", dest);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -211,29 +245,13 @@ checksum:
 	}
 
 cleanup:
+	/* allowed even if dir is NULL */
+	free(dir);
+
 	if (retcode != EPKG_OK)
 		unlink(dest);
 	else if (!mirror && path != NULL) {
-		/* Create symlink from full pkgname */
-		ext = strrchr(dest, '.');
-		pkg_snprintf(link_dest, sizeof(link_dest), "%S/%n-%v%S",
-		    path, pkg, pkg, ext ? ext : "");
-		/* Create a unique filename, avoiding annoying warning
-		 * from more useful mktemp(). */
-		snprintf(link_dest_tmp, sizeof(link_dest_tmp), "%s.new",
-		    link_dest);
-		if ((sym_fd = mkstemp(link_dest_tmp)) == -1)
-			pkg_emit_error("mkstemp", link_dest_tmp);
-		close(sym_fd);
-		if (unlink(link_dest_tmp))
-			pkg_emit_errno("unlink", link_dest_tmp);
-		/* Trim the path to just the filename. */
-		if ((dest_fname = strrchr(dest, '/')) != NULL)
-			++dest_fname;
-		if (symlink(dest_fname, link_dest_tmp))
-			pkg_emit_errno("symlink", link_dest_tmp);
-		if (rename(link_dest_tmp, link_dest))
-			pkg_emit_errno("rename", link_dest);
+		(void)pkg_repo_binary_create_symlink(pkg, dest, path);
 	}
 
 	if (path != NULL)
