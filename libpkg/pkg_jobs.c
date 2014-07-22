@@ -2352,9 +2352,18 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	/* Check if we need to fetch and re-run the solver */
 	DL_FOREACH(j->jobs, job) {
-		struct pkg *p = job->items[0]->pkg;
-		if (p->type == PKG_REMOTE && pkgdb_ensure_loaded(j->db, p,
-		    PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_FATAL) {
+		struct pkg *p;
+
+		if (job->items[0]->reinstall) {
+			p = job->items[0]->reinstall;
+		}
+		else {
+			p = job->items[0]->pkg;
+			if (p->type != PKG_REMOTE)
+				continue;
+		}
+		if (pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS)
+				== EPKG_FATAL) {
 			j->need_fetch = true;
 			break;
 		}
@@ -2689,13 +2698,14 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			int64_t pkgsize;
 
-			if (ps->items[0]->reinstall)
+			if (ps->items[0]->reinstall) {
 				p = ps->items[0]->reinstall;
-			else
+			}
+			else {
 				p = ps->items[0]->pkg;
-
-			if (p->type != PKG_REMOTE)
-				continue;
+				if (p->type != PKG_REMOTE)
+					continue;
+			}
 
 			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
 			if (mirror) {
@@ -2743,13 +2753,14 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	DL_FOREACH(j->jobs, ps) {
 		if (ps->type != PKG_SOLVED_DELETE
 						&& ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
-			if (ps->items[0]->reinstall)
+			if (ps->items[0]->reinstall) {
 				p = ps->items[0]->reinstall;
-			else
+			}
+			else {
 				p = ps->items[0]->pkg;
-
-			if (p->type != PKG_REMOTE)
-				continue;
+				if (p->type != PKG_REMOTE)
+					continue;
+			}
 
 			if (mirror) {
 				if (pkg_repo_mirror_package(p, cachedir) != EPKG_OK)
