@@ -97,6 +97,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	char dest[MAXPATHLEN], link_dest[MAXPATHLEN],
 	     link_dest_tmp[MAXPATHLEN];
 	char url[MAXPATHLEN];
+	char *dir = NULL;
 	int sym_fd, fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	int64_t pkgsize;
@@ -133,7 +134,10 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 		goto checksum;
 
 	/* Create the dirs in cachedir */
-	if ((path = strdup(dirname(dest))) == NULL) {
+	dir = strdup(dest);
+	if (dir == NULL || (path = dirname(dir)) == NULL) {
+		/* allowed even if dir is NULL */
+		free(dir);
 		pkg_emit_errno("dirname", dest);
 		retcode = EPKG_FATAL;
 		goto cleanup;
