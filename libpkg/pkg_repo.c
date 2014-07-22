@@ -97,9 +97,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	mkdirs(tmpdir);
 	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
-	mask = umask(022);
 	fd = mkstemp(tmp);
-	umask(mask);
 	if (fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
