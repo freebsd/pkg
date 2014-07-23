@@ -1432,8 +1432,10 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	const ucl_object_t *an, *obj;
 
 	/* Do not upgrade locked packages */
-	if (pkg_is_locked(lp))
+	if (pkg_is_locked(lp)) {
+		pkg_emit_locked(lp);
 		return (false);
+	}
 
 	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch, PKG_ORIGIN, &origin,
 			PKG_DIGEST, &ldigest);

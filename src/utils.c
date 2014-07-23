@@ -688,8 +688,9 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	it->solved_type = type;
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
-		pkg_printf("\tPackage %n-%v is locked ", old_pkg, old_pkg);
 		it->display_type = PKG_DISPLAY_LOCKED;
+		DL_APPEND(disp[it->display_type], it);
+		return;
 	}
 
 	destdir = pkg_jobs_destdir(jobs);
@@ -882,6 +883,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				va_start(ap, msg);
 				vprintf(msg, ap);
 				va_end(ap);
+				fflush(stdout);
 				msg = NULL;
 			}
 			printf("%s:\n", pkg_display_messages[type]);
