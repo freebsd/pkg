@@ -240,6 +240,16 @@ AC_CHECK_HEADER([sys/capability.h], [
 
 ])
 
+AC_CACHE_CHECK(for arc4random_uniform,
+               ac_cv_func_arc4random_uniform,
+               [AC_TRY_COMPILE([#include <stdlib.h>],
+                               [arc4random_uniform(255);],
+                               [ac_cv_func_arc4random_uniform=yes],
+                               [ac_cv_func_arc4random_uniform=no])])
+if test "$ac_cv_func_arc4random_uniform" = yes ; then
+	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
+fi
+
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])
