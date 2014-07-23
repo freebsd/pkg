@@ -644,15 +644,11 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
-		pkg_fprintf(stderr,
-		    "\n%n-%v is locked and may not be modified\n",
-		    pkg, pkg);
+		pkg_printf("\n%n-%v is locked and may not be modified\n", pkg, pkg);
 		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
-		pkg_fprintf(stderr,
-		    "\n%n-%v is required by: %r%{%rn-%rv%| %}",
-		    pkg, pkg, pkg);
+		pkg_printf("\n%n-%v is required by: %r%{%rn-%rv%| %}", pkg, pkg, pkg);
 		if (ev->e_required.force == 1)
 			fprintf(stderr, ", deleting anyway\n");
 		else
