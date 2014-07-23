@@ -740,6 +740,11 @@ main(int argc, char **argv)
 	if (debug == 0 && version == 0)
 		start_process_worker();
 
+#ifdef HAVE_ARC4RANDOM
+	/* Ensure that random is stirred after a possible fork */
+	arc4random_stir();
+#endif
+
 	if (jail_str != NULL && chroot_path != NULL) {
 		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS,
 				"-j and -c cannot be used at the same time!\n");
