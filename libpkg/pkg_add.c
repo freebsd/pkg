@@ -25,6 +25,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/utsname.h>
 
 #include <archive.h>
@@ -41,6 +45,36 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 
+static const unsigned char litchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+static void
+pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
+{
+	int nchars = strlen(buf);
+	char *pos;
+	int r;
+
+	if (nchars + suflen > buflen - 1) {
+		suflen = buflen - nchars - 1;
+		if (suflen <= 0)
+			return;
+	}
+
+	pos = buf + nchars;
+
+	while(suflen --) {
+#ifndef HAVE_ARC4RANDOM
+		r = rand() % (sizeof(litchar) - 1);
+#else
+		r = arc4random_uniform(sizeof(litchar) - 1);
+#endif
+		*pos++ = litchar[r];
+	}
+
+	*pos = '\0';
+}
+
 static int
 do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		int nfiles, struct pkg *pkg)
@@ -50,7 +84,11 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
 	struct stat st;
 	const char *name;
-	bool renamed = true;
+	bool renamed = false;
+
+#ifndef HAVE_ARC4RANDOM
+	srand(time(NULL));
+#endif
 
 	pkg_get(pkg, PKG_NAME, &name);
 	pkg_emit_progress_start(NULL);
@@ -63,24 +101,17 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		    location ? location : "",
 		    archive_entry_pathname(ae)
 		);
+		strlcpy(rpath, pathname, sizeof(rpath));
 
-		if (stat(pathname, &st) != -1 && !S_ISDIR(st.st_mode)) {
+		if (lstat(pathname, &st) != -1 && !S_ISDIR(st.st_mode)) {
 			/*
 			 * We have an existing file on the path, so handle it
 			 */
-
-			snprintf(rpath, sizeof(rpath), "%s.%jd", pathname,
-			    (intmax_t)time(NULL));
-			if (rename(pathname, rpath) == -1) {
-				pkg_emit_error("cannot rename %s to %s: %s", pathname, rpath,
-				    strerror(errno));
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
+			pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
 			renamed = true;
 		}
 
-		archive_entry_set_pathname(ae, pathname);
+		archive_entry_set_pathname(ae, rpath);
 
 		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 		if (ret != ARCHIVE_OK) {
@@ -120,10 +151,15 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				goto cleanup;
 			}
 		}
-		if (renamed) {
-			unlink(rpath);
-			renamed = false;
+		/* Rename old file */
+		if (renamed && rename(rpath, pathname) == -1) {
+			pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
+				strerror(errno));
+			retcode = EPKG_FATAL;
+			goto cleanup;
 		}
+
+		renamed = false;
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF) {
@@ -137,7 +173,7 @@ cleanup:
 	pkg_emit_progress_tick(nfiles, nfiles);
 
 	if (renamed && retcode == EPKG_FATAL)
-		rename(rpath, pathname);
+		unlink(rpath);
 
 	return (retcode);
 }
