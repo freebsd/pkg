@@ -37,6 +37,7 @@ pkg_SOURCES=		add.c \
 			which.c
 			
 pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
+			@LIBSBUF_LIB@ \
 			@LIBJAIL_LIB@
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/uthash \
@@ -55,7 +56,6 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-larchive \
 			-lz \
 			-lutil \
-			-lsbuf \
 			-lbz2 \
 			-llzma \
 			-lssl \
