@@ -300,6 +300,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	}
 
 	pkg_manifest_keys_new(&keys);
+	pkg_debug(1, "start worker to parse %d packages", nelts);
 
 	if (read_files)
 		flags = PKG_OPEN_MANIFEST_ONLY;
@@ -411,6 +412,7 @@ cleanup:
 	if (mdigest)
 		free(mdigest);
 
+	pkg_debug(1, "worker done");
 	exit(ret);
 }
 
@@ -656,6 +658,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	while(remaining_workers > 0) {
 		int st;
 
+		pkg_debug(1, "checking for %d workers", remaining_workers);
 		retcode = poll(pfd, num_workers, -1);
 		if (retcode == -1) {
 			if (errno == EINTR) {
