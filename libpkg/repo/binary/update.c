@@ -392,6 +392,8 @@ pkg_repo_binary_add_from_manifest(char *buf, const char *origin, const char *dig
 
 	if (pkg_arch == NULL || !is_valid_abi(pkg_arch, true)) {
 		rc = EPKG_FATAL;
+		pkg_emit_error("repository %s contains packages with wrong ABI: %s",
+			repo->name, pkg_arch);
 		goto cleanup;
 	}
 
@@ -682,6 +684,9 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);
 		}
+		else {
+			pkg_emit_progress_tick(removed, removed);
+		}
 		free(item->origin);
 		free(item->digest);
 		HASH_DEL(ldel, item);
@@ -719,13 +724,18 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 				    legacy_repo, repo);
 			}
 		}
+		else {
+			pkg_emit_progress_tick(pushed, pushed);
+		}
 		free(item->origin);
 		free(item->digest);
 		HASH_DEL(ladd, item);
 		free(item);
 	}
 	pkg_manifest_keys_free(keys);
-	pkg_emit_incremental_update(updated, removed, added, processed);
+
+	if (rc == EPKG_OK)
+		pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
 
