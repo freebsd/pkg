@@ -84,6 +84,7 @@ static struct column_mapping {
 	{ "pkgsize",	PKG_PKGSIZE, PKG_SQLITE_INT64 },
 	{ "prefix",	PKG_PREFIX, PKG_SQLITE_STRING },
 	{ "repopath",	PKG_REPOPATH, PKG_SQLITE_STRING },
+	{ "repourl",	PKG_REPOURL, PKG_SQLITE_STRING },
 	{ "rowid",	PKG_ROWID, PKG_SQLITE_INT64 },
 	{ "time",	PKG_TIME, PKG_SQLITE_INT64 },
 	{ "uniqueid",	PKG_UNIQUEID, PKG_SQLITE_STRING },
