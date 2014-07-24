@@ -513,7 +513,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	struct pkg_conflict *c, *ctmp;
 	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
-	int num_workers, i, remaining_workers;
+	int num_workers, i, remaining_workers, remain;
 	size_t len, tasks_per_worker, ntask;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
@@ -610,7 +610,10 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	/* Split items over all workers */
 	num_workers = MIN(num_workers, len);
-	tasks_per_worker = ceil((double)len / num_workers);
+	tasks_per_worker = len / num_workers;
+	/* How much extra tasks should be distributed over the workers */
+	remain = len % num_workers;
+	assert(tasks_per_worker > 0);
 
 	/* Launch workers */
 	pkg_emit_progress_start("Creating repository in %s", output_dir);
@@ -627,16 +630,17 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 #ifdef HAVE_SEQPACKET
 			st = SOCK_SEQPACKET;
 #endif
-
 			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
 				pkg_emit_errno("pkg_create_repo", "pipe");
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
-			if (pkg_create_repo_worker(fts_cur, tasks_per_worker, packagesite,
-				filelist ? filesite : NULL, cur_pipe[1],
-				legacy ? NULL : meta) == EPKG_FATAL) {
+
+			if (pkg_create_repo_worker(fts_cur, (remain-- > 0) ?
+					tasks_per_worker + 1 : tasks_per_worker,
+					packagesite, (filelist ? filesite : NULL), cur_pipe[1],
+					(legacy ? NULL : meta)) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
 				retcode = EPKG_FATAL;
