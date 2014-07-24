@@ -559,9 +559,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	repopath[0] = path;
 	repopath[1] = NULL;
 
-	len = sizeof(num_workers);
-	if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
-		num_workers = 6;
+	num_workers = pkg_object_int(pkg_config_get("WORKERS_COUNT"));
+	if (num_workers <= 0) {
+		len = sizeof(num_workers);
+		if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
+			num_workers = 6;
+	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
 		pkg_emit_errno("fts_open", path);
