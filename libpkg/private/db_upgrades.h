@@ -217,7 +217,7 @@ static struct db_upgrades {
 		"automatic, licenselogic, pkg_format_version) "
 		"SELECT id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version "
+		"automatic, licenselogic, time, pkg_format_version "
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
@@ -263,7 +263,7 @@ static struct db_upgrades {
 		"automatic, licenselogic, pkg_format_version) "
 		"SELECT id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version "
+		"automatic, licenselogic, time, pkg_format_version "
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
@@ -606,7 +606,7 @@ static struct db_upgrades {
 		"automatic, licenselogic, pkg_format_version) "
 		"SELECT id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version "
+		"automatic, licenselogic, time, pkg_format_version "
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	"ALTER TABLE deps RENAME TO olddeps;"
