@@ -224,7 +224,8 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 
 		*ext = '\0';
 
-		if (pkg_repo_meta_is_special_file(fts_ent->fts_name, meta)) {
+		if (strcmp(fts_ent->fts_name, "meta") == 0 ||
+				pkg_repo_meta_is_special_file(fts_ent->fts_name, meta)) {
 			*ext = '.';
 			continue;
 		}
