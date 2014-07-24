@@ -311,6 +311,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Profile sqlite queries"
 	},
+	{
+		PKG_INT,
+		"WORKERS_COUNT",
+		"0",
+		"How many workers are used for pkg-repo (hw.ncpu if 0)"
+	},
 };
 
 static bool parsed = false;
