@@ -48,7 +48,7 @@
 int
 pkgcli_update(bool force, const char *reponame)
 {
-	int retcode = EPKG_FATAL, update_count = 0;
+	int retcode = EPKG_FATAL, update_count = 0, total_count = 0;
 	struct pkg_repo *r = NULL;
 
 	/* Only auto update if the user has write access. */
@@ -79,20 +79,29 @@ pkgcli_update(bool force, const char *reponame)
 		}
 
 		retcode = pkg_update(r, force);
-		if (retcode == EPKG_UPTODATE) {
+		if (retcode == EPKG_UPTODATE)
 			if (!quiet)
-				printf("%s repository catalogue is "
-				       "up-to-date, no need to fetch "
-				       "fresh copy\n", pkg_repo_name(r));
-				retcode = EPKG_OK;
-		}
+				printf("%s repository is up-to-date\n", pkg_repo_name(r));
+
+		total_count ++;
+
 		if (retcode != EPKG_OK)
-			break;
+			continue;
+
 		update_count ++;
 	}
 
-	if (!quiet && update_count == 0)
-		printf("No repositories are enabled\n");
+	retcode = EPKG_OK;
+
+	if (total_count == 0) {
+		if (!quiet)
+			printf("No repositories are enabled\n");
+		retcode = EPKG_FATAL;
+	}
+	else if (update_count == 0) {
+		if (!quiet)
+			printf("All repositories are up-to-date\n");
+	}
 
 	return (retcode);
 }
