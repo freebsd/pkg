@@ -648,7 +648,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			}
 
 			pfd[nworker].fd = cur_pipe[0];
-			pfd[nworker].events = POLL_IN;
+			pfd[nworker].events = POLLIN;
 			close(cur_pipe[1]);
 			/* Make our end of the pipe non-blocking */
 			ofl = fcntl(cur_pipe[0], F_GETFL, 0);
@@ -675,7 +675,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		}
 		else if (retcode > 0) {
 			for (i = 0; i < num_workers; i ++) {
-				if (pfd[i].revents & (POLL_IN|POLL_HUP|POLL_ERR)) {
+				if (pfd[i].fd != -1 &&
+								(pfd[i].revents & (POLLIN|POLLHUP|POLLERR))) {
 					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist) != EPKG_OK) {
 						/*
 						 * Wait for the worker finished
@@ -690,7 +691,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 						}
 
 						remaining_workers --;
+						pkg_debug(1, "finished worker, %d remaining",
+							remaining_workers);
 						pfd[i].events = 0;
+						pfd[i].revents = 0;
+						close(pfd[i].fd);
+						pfd[i].fd = -1;
 					}
 					else {
 						pkg_emit_progress_tick(ntask++, len);
@@ -740,12 +746,9 @@ cleanup:
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
 	}
-	/* Close pipes */
-	if (pfd != NULL) {
-		for (i = 0; i < num_workers; i ++)
-			close(pfd[i].fd);
+
+	if (pfd != NULL)
 		free(pfd);
-	}
 	if (fts != NULL)
 		fts_close(fts);
 
