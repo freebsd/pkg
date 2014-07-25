@@ -11,4 +11,4 @@ dist_psecurity_DATA=	periodic/410.pkg-audit \
 			periodic/460.pkg-checksum
 dist_pweekly_DATA=	periodic/400.status-pkg
 dist_bashcomp_DATA=	completion/_pkg.bash
-dist_zshcomp_DATA=	completion/_pkg.zsh
+dist_zshcomp_DATA=	completion/_pkg
