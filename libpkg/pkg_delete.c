@@ -106,6 +106,51 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	return (pkgdb_unregister_pkg(db, id));
 }
 
+void
+pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
+{
+	const char *sum = pkg_file_cksum(file);
+	const ucl_object_t *obj, *an;
+	const char *path;
+	char fpath[MAXPATHLEN];
+	struct stat st;
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+
+	path = pkg_file_path(file);
+	pkg_get(pkg, PKG_ANNOTATIONS, &an);
+	obj = pkg_object_find(an, "relocated");
+	snprintf(fpath, sizeof(fpath), "%s%s",
+		obj ? pkg_object_string(obj) : "" , path );
+
+	/* Regular files and links */
+	/* check sha256 */
+	if (!force && sum[0] != '\0') {
+		if (lstat(fpath, &st) == -1) {
+			pkg_emit_error("cannot stat %s: %s", fpath, strerror(errno));
+			return;
+		}
+		if (S_ISLNK(st.st_mode)) {
+			if (pkg_symlink_cksum(fpath, NULL, sha256) != EPKG_OK)
+				return;
+		}
+		else {
+			if (sha256_file(fpath, sha256) != EPKG_OK)
+				return;
+		}
+		if (strcmp(sha256, sum)) {
+			pkg_emit_error("%s fails original SHA256 "
+				"checksum, not removing", path);
+			return;
+		}
+	}
+
+	if (unlink(fpath) == -1) {
+		if (force < 2)
+			pkg_emit_errno("unlink", fpath);
+		return;
+	}
+}
+
 int
 pkg_delete_files(struct pkg *pkg, unsigned force)
 	/* force: 0 ... be careful and vocal about it. 
@@ -114,11 +159,8 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	 */
 {
 	struct pkg_file	*file = NULL;
-	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	const char	*path;
-	char		fpath[MAXPATHLEN];
+
 	int		nfiles, cur_file = 0;
-	struct stat st;
 
 	nfiles = HASH_COUNT(pkg->files);
 
@@ -128,46 +170,11 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 		pkg_emit_progress_tick(1, 1);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		const char *sum = pkg_file_cksum(file);
-		const ucl_object_t *obj, *an;
-
 		pkg_emit_progress_tick(cur_file++, nfiles);
+
 		if (file->keep == 1)
 			continue;
-
-		path = pkg_file_path(file);
-		pkg_get(pkg, PKG_ANNOTATIONS, &an);
-		obj = pkg_object_find(an, "relocated");
-		snprintf(fpath, sizeof(fpath), "%s%s",
-		    obj ? pkg_object_string(obj) : "" , path );
-
-		/* Regular files and links */
-		/* check sha256 */
-		if (!force && sum[0] != '\0') {
-			if (lstat(fpath, &st) == -1) {
-				pkg_emit_error("cannot stat %s: %s", fpath, strerror(errno));
-				continue;
-			}
-			if (S_ISLNK(st.st_mode)) {
-				if (pkg_symlink_cksum(fpath, NULL, sha256) != EPKG_OK)
-					continue;
-			}
-			else {
-				if (sha256_file(fpath, sha256) != EPKG_OK)
-					continue;
-			}
-			if (strcmp(sha256, sum)) {
-				pkg_emit_error("%s fails original SHA256 "
-				    "checksum, not removing", path);
-				continue;
-			}
-		}
-
-		if (unlink(fpath) == -1) {
-			if (force < 2)
-				pkg_emit_errno("unlink", fpath);
-			continue;
-		}
+		pkg_delete_file(pkg, file, force);
 	}
 
 	pkg_emit_progress_tick(nfiles, nfiles);
@@ -175,30 +182,37 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	return (EPKG_OK);
 }
 
+void
+pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir, unsigned force)
+{
+	const ucl_object_t 	*obj, *an;
+	char			 fpath[MAXPATHLEN];
+
+	pkg_get(pkg, PKG_ANNOTATIONS, &an);
+	obj = pkg_object_find(an, "relocated");
+	snprintf(fpath, sizeof(fpath), "%s%s",
+		obj ? pkg_object_string(obj) : "" , pkg_dir_path(dir) );
+
+	if (pkg_dir_try(dir)) {
+		if (rmdir(fpath) == -1 &&
+						errno != ENOTEMPTY && errno != EBUSY && !force)
+			pkg_emit_errno("rmdir", fpath);
+	} else {
+		if (rmdir(fpath) == -1 && !force)
+			pkg_emit_errno("rmdir", fpath);
+	}
+}
+
 int
 pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 {
 	struct pkg_dir		*dir = NULL;
-	const ucl_object_t 	*obj, *an;
-	char			 fpath[MAXPATHLEN];
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (dir->keep == 1)
 			continue;
 
-		pkg_get(pkg, PKG_ANNOTATIONS, &an);
-		obj = pkg_object_find(an, "relocated");
-		snprintf(fpath, sizeof(fpath), "%s%s",
-		    obj ? pkg_object_string(obj) : "" , pkg_dir_path(dir) );
-
-		if (pkg_dir_try(dir)) {
-			if (rmdir(fpath) == -1 &&
-			    errno != ENOTEMPTY && errno != EBUSY && !force)
-				pkg_emit_errno("rmdir", fpath);
-		} else {
-			if (rmdir(fpath) == -1 && !force)
-				pkg_emit_errno("rmdir", fpath);
-		}
+		pkg_delete_dir(pkg, dir, force);
 	}
 
 	return (EPKG_OK);
