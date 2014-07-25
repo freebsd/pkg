@@ -804,14 +804,14 @@ pkg_init(const char *path, const char *reposdir)
 
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(ncfg, ucl_object_ref(cur), key, strlen(key), false);
+		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
 	}
 
 	if (ncfg != NULL) {
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
 		ucl_object_unref(ncfg);
 	}
@@ -903,7 +903,7 @@ pkg_init(const char *path, const char *reposdir)
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
 		ucl_object_unref(ncfg);
 	}
