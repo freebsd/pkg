@@ -2480,14 +2480,16 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	}
 #endif
 	if (upgrade)
+		retcode = pkg_add_upgrade(j->db, target, flags, keys, NULL, new, old);
+	else
+		retcode = pkg_add_from_remote(j->db, target, flags, keys, NULL, new);
 
-	if ((retcode = pkg_add_from_remote(j->db, target, flags, keys,
-			NULL, new)) != EPKG_OK) {
+	if (retcode != EPKG_OK) {
 		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 		goto cleanup;
 	}
 
-	if (oldversion != NULL)
+	if (upgrade)
 		pkg_emit_upgrade_finished(new, old);
 	else
 		pkg_emit_install_finished(new);
