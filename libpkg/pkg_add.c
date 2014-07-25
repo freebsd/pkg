@@ -44,6 +44,7 @@
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
 
 static const unsigned char litchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -329,9 +330,14 @@ pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(old, PKG_RC_START);
 
-	/* Execute pre-deinstall scripts */
+	/*
+	 * Execute pre deinstall scripts
+	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
+		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
+			ret = pkg_script_run(old, PKG_SCRIPT_PRE_UPGRADE);
+		else
+			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
 		if (ret != EPKG_OK)
 			return (ret);
 	}
@@ -534,5 +540,10 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location,
     struct pkg *rp, struct pkg *lp)
 {
+	if (pkgdb_ensure_loaded(db, lp,
+			      PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) !=
+			EPKG_OK)
+		return (EPKG_FATAL);
+
 	return pkg_add_common(db, path, flags, keys, location, rp, lp);
 }
