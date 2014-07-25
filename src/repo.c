@@ -25,6 +25,7 @@
  */
 
 #include <getopt.h>
+#include <signal.h>
 #include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
