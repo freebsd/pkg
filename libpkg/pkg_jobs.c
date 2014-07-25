@@ -1610,7 +1610,7 @@ pkg_jobs_newer_than_local(struct pkg_jobs *j, struct pkg *rp, bool force)
 			return (false);
 		}
 		else {
-			pkg_set(lp, PKG_REPONAME, &reponame, PKG_CKSUM, &cksum);
+			pkg_set(lp, PKG_REPONAME, reponame, PKG_CKSUM, cksum);
 		}
 	}
 
