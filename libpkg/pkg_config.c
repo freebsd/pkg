@@ -777,7 +777,7 @@ pkg_init(const char *path, const char *reposdir)
 	obj = NULL;
 	if (!ucl_parser_add_file(p, path)) {
 		if (errno != ENOENT)
-			pkg_emit_error("%s", ucl_parser_get_error(p));
+			pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
 	} else {
 		obj = ucl_parser_get_object(p);
 
