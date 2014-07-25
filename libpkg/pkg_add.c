@@ -318,6 +318,47 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 }
 
 static int
+pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
+{
+	struct pkg_file *f, *cf;
+	struct pkg_dir *d, *cd;
+	int ret;
+	bool handle_rc;
+
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
+	if (handle_rc)
+		pkg_start_stop_rc_scripts(old, PKG_RC_START);
+
+	/* Execute pre-deinstall scripts */
+	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
+		ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
+		if (ret != EPKG_OK)
+			return (ret);
+	}
+
+	/* Now remove files that no longer exist in the new package */
+	if (new != NULL) {
+		f = NULL;
+		while (pkg_files(old, &f) == EPKG_OK) {
+			HASH_FIND_STR(new->files, f->path, cf);
+
+			if (cf == NULL)
+				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
+		}
+
+		d = NULL;
+		while (pkg_dirs(old, &d) == EPKG_OK) {
+			HASH_FIND_STR(new->dirs, d->path, cd);
+
+			if (cd == NULL)
+				pkg_delete_dir(old, d, flags & PKG_DELETE_FORCE ? 1 : 0);
+		}
+	}
+
+	return (ret);
+}
+
+static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location, struct pkg *remote,
     struct pkg *local)
@@ -335,6 +376,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	int nfiles;
 
 	assert(path != NULL);
+
+	if (local != NULL)
+		flags |= PKG_ADD_UPGRADE;
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -407,6 +451,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
 			goto cleanup_reg;
 	}
+
+	if (local != NULL)
+		if (pkg_add_cleanup_old(local, remote, flags) != EPKG_OK) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 
 	/*
 	 * Execute pre-install scripts
