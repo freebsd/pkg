@@ -111,9 +111,9 @@
 	} while (0)
 
 #define HASH_FIND_UCLT(head,type,out)                            \
-	HASH_FIND(hh, head, type, sizeof(enum ucl_type), out)
+	HASH_FIND(hh, head, type, sizeof(uint16_t), out)
 #define HASH_ADD_UCLT(head,type,add)                             \
-	HASH_ADD(hh, head, type, sizeof(enum ucl_type), add)
+	HASH_ADD(hh, head, type, sizeof(uint16_t), add)
 
 #define HASH_FIND_YAMLT(head,type,out)                                   \
 	HASH_FIND(hh,head,type,sizeof(yaml_node_type_t),out)
