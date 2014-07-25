@@ -308,7 +308,7 @@ AC_CONFIG_FILES(Makefile \
 		scripts/periodic/490.status-pkg-changes
 		scripts/sbin/pkg2ng
 		scripts/completion/_pkg.bash
-		scripts/completion/_pkg.zsh)
+		scripts/completion/_pkg)
 AC_CONFIG_FILES(m4_expand([repos_makefiles]))
 
 AC_CONFIG_HEADERS(pkg_config.h)
