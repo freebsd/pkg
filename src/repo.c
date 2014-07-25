@@ -30,6 +30,7 @@
 #include <string.h>
 #include <readpassphrase.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <pkg.h>
 
