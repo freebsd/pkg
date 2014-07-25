@@ -323,7 +323,7 @@ pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 {
 	struct pkg_file *f, *cf;
 	struct pkg_dir *d, *cd;
-	int ret;
+	int ret = EPKG_OK;
 	bool handle_rc;
 
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
