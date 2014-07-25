@@ -2425,7 +2425,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	struct pkg *new, *old;
 	const char *pkguid, *oldversion = NULL;
 	char path[MAXPATHLEN], *target;
-	bool automatic;
+	bool automatic, upgrade = false;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
@@ -2435,8 +2435,10 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 					ps->items[0]->reinstall /* Package for reinstall */;
 
 	pkg_get(new, PKG_UNIQUEID, &pkguid, PKG_AUTOMATIC, &automatic);
-	if (old != NULL)
+	if (old != NULL) {
 		pkg_get(old, PKG_VERSION, &oldversion);
+		upgrade = true;
+	}
 
 	if (ps->items[0]->jp != NULL && ps->items[0]->jp->is_file) {
 		/*
@@ -2477,6 +2479,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		}
 	}
 #endif
+	if (upgrade)
+
 	if ((retcode = pkg_add_from_remote(j->db, target, flags, keys,
 			NULL, new)) != EPKG_OK) {
 		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");

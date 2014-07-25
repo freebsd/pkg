@@ -609,4 +609,8 @@ int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db);
 
 int pkg_symlink_cksum(const char *path, const char *root, char *cksum);
 
+int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location,
+    struct pkg *rp, struct pkg *lp);
+
 #endif
