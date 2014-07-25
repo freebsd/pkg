@@ -599,6 +599,8 @@ load_repo_file(const char *repofile)
 	}
 
 	obj = ucl_parser_get_object(p);
+	if (obj == NULL)
+		return;
 
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj, repofile);
