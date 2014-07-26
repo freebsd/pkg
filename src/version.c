@@ -564,29 +564,36 @@ exec_buf(struct sbuf *res, char **argv) {
 		return (0);
 	}
 
-	if ((spawn_err = posix_spawn_file_actions_init(&actions) != 0) ||
-	    (spawn_err = posix_spawn_file_actions_addclose(&actions,
-	    STDERR_FILENO)) != 0 ||
-	    (spawn_err = posix_spawn_file_actions_addclose(&actions,
-	    STDIN_FILENO)) != 0 ||
-	    (spawn_err = posix_spawn_file_actions_adddup2(&actions,
-	    pfd[1], STDOUT_FILENO)!= 0) ||
-	    (spawn_err = posix_spawnp(&pid, argv[0], &actions, NULL,
-	    argv, environ)) != 0) {
+	if ((spawn_err = posix_spawn_file_actions_init(&actions)) != 0) {
 		warnc(spawn_err, "%s", argv[0]);
 		return (0);
 	}
 
-	close(pfd[1]);
-	sbuf_clear(res);
-	while ((r = read(pfd[0], buf, BUFSIZ)) > 0) {
-		sbuf_bcat(res, buf, r);
-		if (waitpid(pid, &pstat, WNOHANG) == -1)
-			break;
+	if ((spawn_err = posix_spawn_file_actions_addopen(&actions,
+	    STDERR_FILENO, "/dev/null", O_RDWR, 0)) != 0 ||
+	    (spawn_err = posix_spawn_file_actions_addopen(&actions,
+	    STDIN_FILENO, "/dev/null", O_RDONLY, 0)) != 0 ||
+	    (spawn_err = posix_spawn_file_actions_adddup2(&actions,
+	    pfd[1], STDOUT_FILENO)!= 0) ||
+	    (spawn_err = posix_spawnp(&pid, argv[0], &actions, NULL,
+	    argv, environ)) != 0) {
+		posix_spawn_file_actions_destroy(&actions);
+		warnc(spawn_err, "%s", argv[0]);
+		return (0);
 	}
+	posix_spawn_file_actions_destroy(&actions);
+
+	close(pfd[1]);
+
+	sbuf_clear(res);
+	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
+		sbuf_bcat(res, buf, r);
 
 	close(pfd[0]);
-	posix_spawn_file_actions_destroy(&actions);
+	while (waitpid(pid, &pstat, 0) == -1) {
+		if (errno != EINTR)
+			return (-1);
+	}
 
 	sbuf_finish(res);
 
