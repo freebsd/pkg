@@ -1340,7 +1340,7 @@ int pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 /**
  * Get cached name of a package
  */
-void pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen);
+int pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, const char *, const char *);

@@ -1114,17 +1114,17 @@ pkg_repo_mirror_package(struct pkg *pkg, const char *destdir)
 	return (repo->ops->mirror_pkg(repo, pkg, destdir));
 }
 
-void
+int
 pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 {
 	struct pkg_repo *repo;
 
 	if (pkg->repo == NULL)
-		return;
+		return (EPKG_FATAL);
 
 	repo = pkg->repo;
 	if (repo->ops->get_cached_name == NULL)
-		return;
+		return (EPKG_FATAL);
 
-	repo->ops->get_cached_name(repo, pkg, dest, destlen);
+	return (repo->ops->get_cached_name(repo, pkg, dest, destlen));
 }
