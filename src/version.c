@@ -32,10 +32,13 @@
 #include <sys/param.h>
 #include <sys/sbuf.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 
 #define _WITH_GETLINE
 #include <err.h>
+#include <errno.h>
 #include <getopt.h>
+#include <fcntl.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -44,11 +47,14 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#include <spawn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <uthash.h>
 
 #include "pkgcli.h"
+
+extern char **environ;
 
 struct index_entry {
 	char *origin;
@@ -545,36 +551,66 @@ cleanup:
 }
 
 static int
-exec_buf(struct sbuf *cmd) {
-	FILE *fp;
+exec_buf(struct sbuf *res, char **argv) {
 	char buf[BUFSIZ];
+	int spawn_err;
+	pid_t pid;
+	int pfd[2];
+	int r, pstat;
+	posix_spawn_file_actions_t actions;
 
-	if ((fp = popen(sbuf_data(cmd), "r")) == NULL)
+	if (pipe(pfd) < 0) {
+		warn("pipe()");
 		return (0);
+	}
 
-	sbuf_clear(cmd);
-	while (fgets(buf, BUFSIZ, fp) != NULL)
-		sbuf_cat(cmd, buf);
+	if ((spawn_err = posix_spawn_file_actions_init(&actions) != 0) ||
+	    (spawn_err = posix_spawn_file_actions_addclose(&actions,
+	    STDERR_FILENO)) != 0 ||
+	    (spawn_err = posix_spawn_file_actions_addclose(&actions,
+	    STDIN_FILENO)) != 0 ||
+	    (spawn_err = posix_spawn_file_actions_adddup2(&actions,
+	    pfd[1], STDOUT_FILENO)!= 0) ||
+	    (spawn_err = posix_spawnp(&pid, argv[0], &actions, NULL,
+	    argv, environ)) != 0) {
+		warnc(spawn_err, "%s", argv[0]);
+		return (0);
+	}
 
-	pclose(fp);
-	sbuf_finish(cmd);
+	close(pfd[1]);
+	sbuf_clear(res);
+	while ((r = read(pfd[0], buf, BUFSIZ)) > 0) {
+		sbuf_bcat(res, buf, r);
+		if (waitpid(pid, &pstat, WNOHANG) == -1)
+			break;
+	}
 
-	return (sbuf_len(cmd));
+	close(pfd[0]);
+	posix_spawn_file_actions_destroy(&actions);
+
+	sbuf_finish(res);
+
+	return (sbuf_len(res));
 }
 
 static struct category *
-category_new(const char *categorypath, const char *category)
+category_new(char *categorypath, const char *category)
 {
 	struct sbuf		*makecmd;
 	struct port_entry	*port;
 	struct category		*cat = NULL;
 	char			*results, *d;
+	char			*argv[5];
 
 	makecmd = sbuf_new_auto();
 
-	sbuf_printf(makecmd, "make -C %s -VSUBDIR 2>/dev/null", categorypath);
+	argv[0] = "make";
+	argv[1] = "-C";
+	argv[2] = categorypath;
+	argv[3] = "-VSUBDIR";
+	argv[4] = NULL;
 
-	if (exec_buf(makecmd) <= 0)
+	if (exec_buf(makecmd, argv) <= 0)
 		goto cleanup;
 
 	results = sbuf_data(makecmd);
@@ -617,6 +653,9 @@ validate_origin(const char *portsdir, const char *origin)
 		cat = category_new(categorypath, category);
 	}
 
+	if (cat == NULL)
+		return (false);
+
 	buf = strrchr(origin, '/');
 	buf++;
 
@@ -630,17 +669,23 @@ port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 {
 	char	*output;
 	char	*version = NULL;
+	char	*argv[5];
 
 	/* Validate the port origin -- check the SUBDIR settings
 	   in the ports and category Makefiles, then extract the
 	   version from the port itself. */
 
 	if (validate_origin(portsdir, origin)) {
-		sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
-		     portsdir, origin);
+		sbuf_printf(cmd, "%s/%s", portsdir, origin);
 		sbuf_finish(cmd);
 
-		if (exec_buf(cmd) != 0) {
+		argv[0] = "make";
+		argv[1] = "-C";
+		argv[2] = sbuf_data(cmd);
+		argv[3] = "-VPKGVERSION";
+		argv[4] = NULL;
+
+		if (exec_buf(cmd, argv) != 0) {
 			output = sbuf_data(cmd);
 			version = strsep(&output, "\n");
 		}
