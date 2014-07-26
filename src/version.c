@@ -56,6 +56,19 @@ struct index_entry {
 	UT_hash_handle hh;
 };
 
+struct port_entry {
+	char *name;
+	UT_hash_handle hh;
+};
+
+struct category {
+	char *name;
+	struct port_entry *ports;
+	UT_hash_handle hh;
+};
+
+struct category *categories = NULL;
+
 void
 usage_version(void)
 {
@@ -328,6 +341,33 @@ hash_indexfile(const char *indexfilename)
 }
 
 static void
+free_port_entries(struct port_entry *entries)
+{
+	struct port_entry	*entry, *tmp;
+
+	HASH_ITER(hh, entries, entry, tmp) {
+		HASH_DEL(entries, entry);
+		free(entry->name);
+		free(entry);
+	}
+	return;
+}
+
+static void
+free_categories(void)
+{
+	struct category	*cat, *tmp;
+
+	HASH_ITER(hh, categories, cat, tmp) {
+		HASH_DEL(categories, cat);
+		free_port_entries(cat->ports);
+		free(cat->name);
+		free(cat);
+	}
+	return;
+}
+
+static void
 free_index(struct index_entry *indexhead)
 {
 	struct index_entry	*entry, *tmp;
@@ -522,56 +562,67 @@ exec_buf(struct sbuf *cmd) {
 	return (sbuf_len(cmd));
 }
 
-static bool
-validate_origin(const char *portsdir, const char *origin)
+static struct category *
+category_new(const char *categorypath, const char *category)
 {
-	bool		exists = false;
-	struct sbuf	*makecmd;
-	char		*category, *dir, *results, *d;
-	size_t		dirlen;
-
-	/* Strip the last path component from the absolute origin of
-	 * the port -- giving the category directory.  Use make(1) to
-	 * print out the SUBDIR variable from that category, and check
-	 * that the port directory appears in the list.
-	 *
-	 * Return false if (a) the category Makefile doesn't exist (or
-	 * make(1) fails for some other reason) or (b) the port is not
-	 * listed in SUBDIR
-	 *
-	 * FFR Memoize this? Hash the port directories from SUBDIR for
-	 * fast subsequent lookups?
-	 */
-
-	asprintf(&category, "%s/%s", portsdir, origin);
-	if (category == NULL)
-		err(EX_OSERR, "validate_origin()");
-
-	dir = strrchr(category, '/');
-	dir[0] = '\0';
-	dir++;
-	dirlen = strlen(dir);
+	struct sbuf		*makecmd;
+	struct port_entry	*port;
+	struct category		*cat = NULL;
+	char			*results, *d;
 
 	makecmd = sbuf_new_auto();
-	sbuf_printf(makecmd, "make -C %s -V SUBDIR 2>/dev/null", category);
-	
+
+	sbuf_printf(makecmd, "make -C %s -VSUBDIR 2>/dev/null", categorypath);
+
 	if (exec_buf(makecmd) <= 0)
 		goto cleanup;
 
 	results = sbuf_data(makecmd);
-	
+
+	cat = calloc(1, sizeof(struct category));
+	cat->name = strdup(category);
 	while ((d = strsep(&results, " ")) != NULL) {
-		if (d[0] == dir[0] && strncmp(d, dir, dirlen) == 0) {
-			exists = true;
-			break;
-		}
+		port = calloc(1, sizeof(struct port_entry));
+		port->name = strdup(d);
+		HASH_ADD_KEYPTR(hh, cat->ports, port->name,
+				strlen(port->name), port);
 	}
-			
+
+	HASH_ADD_KEYPTR(hh, categories, cat->name,
+			strlen(cat->name), cat);
+
 cleanup:
-	free(category);
 	sbuf_delete(makecmd);
 
-	return (exists);
+	return (cat);
+}
+
+static bool
+validate_origin(const char *portsdir, const char *origin)
+{
+	char			*category, *buf;
+	struct category		*cat;
+	struct port_entry	*port;
+	char			categorypath[MAXPATHLEN];
+
+	snprintf(categorypath, MAXPATHLEN, "%s/%s", portsdir, origin);
+
+	buf = strrchr(categorypath, '/');
+	buf[0] = '\0';
+	category = strrchr(categorypath, '/');
+	category++;
+
+	HASH_FIND_STR(categories, category, cat);
+	if (cat == NULL) {
+		cat = category_new(categorypath, category);
+	}
+
+	buf = strrchr(origin, '/');
+	buf++;
+
+	HASH_FIND_STR(cat->ports, buf, port);
+
+	return (port != NULL);
 }
 
 static const char *
@@ -650,6 +701,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 
+	free_categories();
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
