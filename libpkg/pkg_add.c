@@ -375,6 +375,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	bool		 disable_mtree;
+	bool		 automatic;
 	char		*mtree;
 	char		*prefix;
 	int		 retcode = EPKG_OK;
@@ -428,8 +429,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg_addannotation(pkg, "repo_type", remote->repo->ops->type);
 		}
 
-		pkg_get(remote, PKG_DIGEST, &manifestdigest);
-		pkg_set(pkg, PKG_DIGEST, manifestdigest);
+		pkg_get(remote, PKG_DIGEST, &manifestdigest, PKG_AUTOMATIC, &automatic);
+		pkg_set(pkg, PKG_DIGEST, manifestdigest, PKG_AUTOMATIC, automatic);
 	}
 
 	if (location != NULL)
@@ -458,11 +459,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			goto cleanup_reg;
 	}
 
-	if (local != NULL)
+	if (local != NULL) {
 		if (pkg_add_cleanup_old(local, remote, flags) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
+	}
 
 	/*
 	 * Execute pre-install scripts
