@@ -970,6 +970,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	struct pkg_job_seen *seen;
 	struct pkg_job_request *jreq;
 	int rc = EPKG_FATAL;
+	bool automatic;
 	const char *uid, *digest;
 
 	pkg_get(p, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
@@ -995,8 +996,11 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			HASH_FIND_STR(j->request_add, uid, jreq);
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
-			if (force)
+			if (force) {
 				seen->un->reinstall = p;
+				pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
+				pkg_set(p, PKG_AUTOMATIC, automatic);
+			}
 		}
 		return (EPKG_OK);
 	}
