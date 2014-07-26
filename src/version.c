@@ -581,7 +581,7 @@ category_new(const char *categorypath, const char *category)
 
 	cat = calloc(1, sizeof(struct category));
 	cat->name = strdup(category);
-	while ((d = strsep(&results, " ")) != NULL) {
+	while ((d = strsep(&results, " \n")) != NULL) {
 		port = calloc(1, sizeof(struct port_entry));
 		port->name = strdup(d);
 		HASH_ADD_KEYPTR(hh, cat->ports, port->name,
