@@ -665,6 +665,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 {
 	const char *oldversion, *repopath, *destdir;
 	char path[MAXPATHLEN];
+	int ret;
 	struct stat st;
 	int64_t flatsize, oldflatsize, pkgsize;
 	struct pkg_solved_display_item *it;
@@ -698,12 +699,16 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	switch (type) {
 	case PKG_SOLVED_INSTALL:
 	case PKG_SOLVED_UPGRADE:
-		if (destdir == NULL)
-			pkg_repo_cached_name(new_pkg, path, sizeof(path));
-		else
-			snprintf(path, sizeof(path), "%s/%s", destdir, repopath);
+		ret = EPKG_FATAL;
 
-		if (stat(path, &st) == -1 || pkgsize != st.st_size)
+		if (destdir == NULL)
+			ret = pkg_repo_cached_name(new_pkg, path, sizeof(path));
+		else if (repopath != NULL) {
+			snprintf(path, sizeof(path), "%s/%s", destdir, repopath);
+			ret = EPKG_OK;
+		}
+
+		if (ret == EPKG_OK && (stat(path, &st) == -1 || pkgsize != st.st_size))
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be

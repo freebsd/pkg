@@ -50,7 +50,7 @@
 #include "private/pkg.h"
 #include "binary.h"
 
-void
+int
 pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 	char *dest, size_t destlen)
 {
@@ -75,7 +75,7 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
 				cachedir, pkg, pkg, pkg);
 		if (stat (dest, &st) != -1)
-			return;
+			return (EPKG_FATAL);
 
 		/*
 		 * The real naming scheme:
@@ -88,6 +88,8 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
 				cachedir, pkg, pkg, pkg);
 	}
+
+	return (EPKG_OK);
 }
 
 static int
