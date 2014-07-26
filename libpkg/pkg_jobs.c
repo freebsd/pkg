@@ -148,7 +148,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *tmp;
 	struct pkg_job_universe_item *un, *untmp, *cur, *curtmp;
-
+	struct pkg *reinstall = NULL;
 
 	if (j == NULL)
 		return;
@@ -165,12 +165,16 @@ pkg_jobs_free(struct pkg_jobs *j)
 		HASH_DEL(j->universe, un);
 
 		if (un->reinstall != NULL)
-			pkg_free(un->reinstall);
+			reinstall = un->reinstall;
 
 		LL_FOREACH_SAFE(un, cur, curtmp) {
-			pkg_free(cur->pkg);
+			if (cur->pkg != reinstall)
+				pkg_free(cur->pkg);
 			free(cur);
 		}
+
+		if (reinstall != NULL)
+			pkg_free(reinstall);
 	}
 	HASH_FREE(j->seen, free);
 	HASH_FREE(j->patterns, pkg_jobs_pattern_free);
