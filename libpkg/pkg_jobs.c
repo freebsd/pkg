@@ -175,6 +175,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 
 		if (reinstall != NULL)
 			pkg_free(reinstall);
+
+		reinstall = NULL;
 	}
 	HASH_FREE(j->seen, free);
 	HASH_FREE(j->patterns, pkg_jobs_pattern_free);
