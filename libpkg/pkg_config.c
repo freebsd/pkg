@@ -673,42 +673,6 @@ pkg_compiled_for_same_os_major(void)
 #endif
 }
 
-static ucl_object_t *
-ucl_dup(const ucl_object_t *from)
-{
-	ucl_object_t *ret;
-	const ucl_object_t *cur;
-	ucl_object_iter_t it;
-	const char *key;
-
-	switch (from->type) {
-	case UCL_BOOLEAN:
-		ret = ucl_object_frombool(ucl_object_toboolean(from));
-		break;
-	case UCL_INT:
-		ret = ucl_object_fromint(ucl_object_toint(from));
-		break;
-	case UCL_STRING:
-		ret = ucl_object_fromstring(ucl_object_tostring(from));
-		break;
-	case UCL_ARRAY:
-		ret = ucl_object_typed_new(from->type);
-		it = NULL;
-		while ((cur = ucl_iterate_object(from, &it, true)))
-			ucl_array_append(ret, ucl_object_ref(cur));
-		break;
-	case UCL_OBJECT:
-		ret = ucl_object_typed_new(from->type);
-		it = NULL;
-		while ((cur = ucl_iterate_object(from, &it, true))) {
-			key = ucl_object_key(cur);
-			ucl_object_insert_key(ret, ucl_object_ref(cur), key, strlen(key), true);
-		}
-		break;
-	}
-
-	return (ret);
-}
 
 int
 pkg_init(const char *path, const char *reposdir)
@@ -838,7 +802,7 @@ pkg_init(const char *path, const char *reposdir)
 
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(ncfg, ucl_dup(cur), sbuf_data(ukey), sbuf_len(ukey), true);
+		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
 	}
 
 	if (ncfg != NULL) {
