@@ -179,11 +179,11 @@ ssh_read(void *data, char *buf, int len)
 
 	memset(&pfd, 0, sizeof pfd);
 	pfd.fd = repo->sshio.in;
-	pfd.events = POLLIN;
+	pfd.events = POLLIN | POLLERR;
 
 	for (;;) {
 		rlen = read(pfd.fd, buf, len);
-		if (rlen > 0) {
+		if (rlen >= 0) {
 			break;
 		} else if (rlen == -1) {
 			if (errno == EINTR)
@@ -224,7 +224,7 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 
 	if (fetchTimeout) {
 		pfd.fd = fd;
-		pfd.events = POLLOUT;
+		pfd.events = POLLOUT | POLLERR;
 		gettimeofday(&timeout, NULL);
 		timeout.tv_sec += fetchTimeout;
 	}
@@ -329,11 +329,6 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		    socketpair(AF_UNIX, SOCK_STREAM, 0, sshout) < 0)
 			return(EPKG_FATAL);
 
-		set_nonblocking(sshout[0]);
-		set_nonblocking(sshout[1]);
-		set_nonblocking(sshin[0]);
-		set_nonblocking(sshin[1]);
-
 		repo->sshio.pid = vfork();
 		if (repo->sshio.pid == -1) {
 			pkg_emit_errno("Cannot fork", "start_ssh");
@@ -379,28 +374,34 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			return (EPKG_FATAL);
 		}
 
+		pkg_debug(1, "SSH> connected");
+
 		repo->sshio.in = sshout[0];
 		repo->sshio.out = sshin[1];
-		set_nonblocking(repo->sshio.in);
-		set_nonblocking(repo->sshio.out);
 
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 
 		if (getline(&line, &linecap, repo->ssh) > 0) {
 			if (strncmp(line, "ok:", 3) != 0) {
+				pkg_debug(1, "SSH> server rejected, got: %s", line);
 				fclose(repo->ssh);
 				free(line);
 				return (EPKG_FATAL);
 			}
+			pkg_debug(1, "SSH> server is: %s", line +4);
 		} else {
+			pkg_debug(1, "SSH> nothing to read, got: %s", line);
 			fclose(repo->ssh);
 			return (EPKG_FATAL);
 		}
 	}
+	set_blocking(repo->sshio.in);
+	pkg_debug(1, "SSH> get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
 	fprintf(repo->ssh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
 	if ((linelen = getline(&line, &linecap, repo->ssh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
+		pkg_debug(1, "SSH> recv: %s", line);
 		if (strncmp(line, "ok:", 3) == 0) {
 			*sz = strtonum(line + 4, 0, LONG_MAX, &errstr);
 			if (errstr) {
@@ -413,6 +414,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 				return (EPKG_UPTODATE);
 			}
 
+			set_nonblocking(repo->sshio.in);
 			free(line);
 			return (EPKG_OK);
 		}
