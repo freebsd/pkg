@@ -132,7 +132,7 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
 
-libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c -shared
+libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
 sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
 libsbuf_la_CFLAGS=	$(sbuf_common_CFLAGS) -shared
 libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
