@@ -37,7 +37,7 @@ pkg_SOURCES=		add.c \
 			which.c
 			
 pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
-			@LIBSBUF_LIB@ \
+		$(top_builddir)/external/libsbuf.la \
 			@LIBJAIL_LIB@ \
 			-lutil \
 			-lcrypto
@@ -47,10 +47,9 @@ pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-DGITHASH=\"$(GIT_HEAD)\"
 pkg_static_SOURCES=
 pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
-			$(top_builddir)/external/libexpat_static.la \
+			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
-			@LIBSBUF_LIB@ \
 			@LIBEXECINFO_LIB@ \
 			@LIBELF_LIB@ \
 			@LDNS_LIBS@ \
