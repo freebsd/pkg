@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -534,7 +534,8 @@ void pkg_provide_free(struct pkg_provide *);
 
 struct packing;
 
-int packing_init(struct packing **pack, const char *path, pkg_formats format);
+int packing_init(struct packing **pack, const char *path, pkg_formats format,
+    bool passmode);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
 			     const char *newpath, const char *uname,
 			     const char *gname, mode_t perm);

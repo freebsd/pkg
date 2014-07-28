@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -1534,7 +1534,7 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	/* Execute pre-install scripts */
 	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
-	if (packing_init(&pack, dest, 0) != EPKG_OK) {
+	if (packing_init(&pack, dest, 0, true) != EPKG_OK) {
 		/* TODO */
 		return EPKG_FATAL;
 	}

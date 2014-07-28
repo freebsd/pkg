@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -200,7 +200,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 		return (NULL);
 	}
 
-	if (packing_init(&pkg_archive, pkg_path, format) != EPKG_OK)
+	if (packing_init(&pkg_archive, pkg_path, format, false) != EPKG_OK)
 		pkg_archive = NULL;
 
 	free(pkg_path);
