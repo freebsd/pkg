@@ -275,7 +275,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 	len = strlen(line);
 
 	while (isspace(line[len - 1]))
-		line[len - 1] = '\0';
+		line[--len] = '\0';
 
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s/", line);
@@ -344,7 +344,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 	len = strlen(line);
 
 	while (isspace(line[len - 1]))
-		line[len - 1] = '\0';
+		line[--len] = '\0';
 
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s", line);
