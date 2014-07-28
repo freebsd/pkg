@@ -222,6 +222,9 @@ exec_help(int argc, char **argv)
 	bool plugins_enabled = false;
 	struct plugcmd *c;
 	unsigned int i;
+	const pkg_object *all_aliases;
+	const pkg_object *alias;
+	pkg_iter it = NULL;
 
 	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
 		usage_help();
@@ -262,6 +265,15 @@ exec_help(int argc, char **argv)
 	} else if (strcmp(argv[1], "pkg.conf") == 0) {
 		system("/usr/bin/man 5 pkg.conf");
 		return (0);
+	}
+
+	/* Try aliases */
+	all_aliases = pkg_config_get("ALIAS");
+	while ((alias = pkg_object_iterate(all_aliases, &it))) {
+		if (strcmp(argv[1], pkg_object_key(alias)) == 0) {
+			printf("`%s` is an alias to `%s`\n", argv[1], pkg_object_string(alias));
+			return (0);
+		}
 	}
 
 	/* Command name not found */
