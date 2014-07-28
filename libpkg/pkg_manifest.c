@@ -72,7 +72,7 @@ static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
 static struct manifest_key {
 	const char *key;
 	int type;
-	enum ucl_type valid_type;
+	uint16_t valid_type;
 	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
 } manifest_keys[] = {
 	{ "annotations",         PKG_ANNOTATIONS,         UCL_OBJECT, pkg_obj},
@@ -117,7 +117,7 @@ static struct manifest_key {
 };
 
 struct dataparser {
-	enum ucl_type type;
+	uint16_t type;
 	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
 	UT_hash_handle hh;
 };
