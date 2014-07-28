@@ -2,8 +2,8 @@ EXTRA_DIST=		libpkg.ver
 
 pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			@LIBELF_INCLUDE@ \
-			@LIBSBUF_INCLUDE@ \
 			@LDNS_CFLAGS@ \
+			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/uthash \
@@ -55,9 +55,9 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libyaml.la \
 			$(top_builddir)/external/libexpat.la \
+			$(top_builddir)/external/libsbuf.la \
 			@REPOS_LDADD@ \
 			@LIBELF_LIB@ \
-			@LIBSBUF_LIB@ \
 			@LIBEXECINFO_LIB@ \
 			@LDNS_LIBS@ \
 			-larchive \
@@ -78,7 +78,9 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libexpat_static.la \
 			$(top_builddir)/external/libyaml_static.la \
+			$(top_builddir)/external/libsbuf_static.la \
 			@REPOS_LDADD_STATIC@
+
 EXTRA_libpkg_static_la_DEPENDENCIES=	@REPOS_LDADD_STATIC@
 
 libpkg_static_la_LDFLAGS=	-all-static

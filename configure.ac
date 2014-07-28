@@ -195,18 +195,6 @@ AC_CHECK_HEADERS([gelf.h libelf.h], [
 	]])
 	)])
 
-AC_CHECK_HEADER([sys/sbuf.h], [
-	AC_DEFINE(HAVE_SYS_SBUF_H, 1, [Define to 1 if you have the <sys/sbuf.h> header file.])
-	AC_CHECK_LIB(sbuf, sbuf_new, [
-		AC_DEFINE(HAVE_LIBSBUF, 1, [Define to 1 if you have the 'sbuf' library (-lsbuf).])
-		LIBSBUF_LIB="-lsbuf"
-	])
-], [
-	LIBSBUF_LIB="\$(top_builddir)/external/libsbuf.la"
-	LIBSBUF_BUNDLED="libsbuf.la"
-	LIBSBUF_INCLUDE="-I\$(top_srcdir)/external/libsbuf"
-])
-
 AC_CHECK_HEADER([execinfo.h], [
 	AC_DEFINE(HAVE_EXECINFO_H, 1, [Define to 1 if you have the <execinfo.h> header file.])
 	AC_CHECK_LIB(execinfo, backtrace, [
