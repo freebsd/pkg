@@ -668,7 +668,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 				cur_jobs = tasks_per_worker;
 
 			remain_jobs = cur_jobs;
-			fts_start = fts_cur;
+			fts_start = fts_cur->next;
 			nworker ++;
 		}
 		ntask ++;
