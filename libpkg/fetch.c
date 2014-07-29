@@ -399,6 +399,10 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		set_nonblocking(repo->sshio.in);
 
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
+		if (repo->ssh == NULL) {
+			pkg_emit_errno("Failed to open stream", "start_ssh");
+			return (EPKG_FATAL);
+		}
 
 		if (getline(&line, &linecap, repo->ssh) > 0) {
 			if (strncmp(line, "ok:", 3) != 0) {
@@ -600,12 +604,13 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	pkg_emit_progress_start(NULL);
 	while (done < sz) {
 		time_t	now;
+		int to_read = MIN(sizeof(buf), sz - done);
 
-		pkg_debug(1, "Reading status: %d over %d", done, sz);
-		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
+		pkg_debug(1, "Reading status: want read %d over %d, %d already done",
+			to_read, sz, done);
+		if ((r = fread(buf, 1, to_read, remote)) < 1)
 			break;
 
-		pkg_debug(1, "Read status: %d over %d", done, sz);
 		if (write(dest, buf, r) != r) {
 			pkg_emit_errno("write", "");
 			retcode = EPKG_FATAL;
@@ -613,6 +618,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		}
 
 		done += r;
+		pkg_debug(1, "Read status: %d over %d", done, sz);
 
 		now = time(NULL);
 		/* Only call the callback every second */
