@@ -357,7 +357,7 @@ pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 			HASH_FIND_STR(new->dirs, d->path, cd);
 
 			if (cd == NULL)
-				pkg_delete_dir(old, d, flags & PKG_DELETE_FORCE ? 1 : 0);
+				pkg_delete_dir(old, d);
 		}
 	}
 
@@ -486,7 +486,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (extract && (retcode = do_extract(a, ae, location, nfiles, pkg)) != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
-		pkg_delete_dirs(db, pkg, 1);
+		pkg_delete_dirs(db, pkg);
 		goto cleanup_reg;
 	}
 

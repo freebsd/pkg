@@ -94,7 +94,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 			return (ret);
 	}
 
-	ret = pkg_delete_dirs(db, pkg, flags & PKG_DELETE_FORCE);
+	ret = pkg_delete_dirs(db, pkg);
 	if (ret != EPKG_OK)
 		return (ret);
 
@@ -183,7 +183,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 }
 
 void
-pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir, unsigned force)
+pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 {
 	const ucl_object_t 	*obj, *an;
 	char			 fpath[MAXPATHLEN];
@@ -193,18 +193,13 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir, unsigned force)
 	snprintf(fpath, sizeof(fpath), "%s%s",
 		obj ? pkg_object_string(obj) : "" , pkg_dir_path(dir) );
 
-	if (pkg_dir_try(dir)) {
-		if (rmdir(fpath) == -1 &&
-						errno != ENOTEMPTY && errno != EBUSY && !force)
-			pkg_emit_errno("rmdir", fpath);
-	} else {
-		if (rmdir(fpath) == -1 && !force)
-			pkg_emit_errno("rmdir", fpath);
-	}
+	if (rmdir(fpath) == -1 &&
+	    errno != ENOTEMPTY && errno != EBUSY)
+		pkg_emit_errno("rmdir", fpath);
 }
 
 int
-pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
+pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_dir		*dir = NULL;
 
@@ -212,7 +207,7 @@ pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 		if (dir->keep == 1)
 			continue;
 
-		pkg_delete_dir(pkg, dir, force);
+		pkg_delete_dir(pkg, dir);
 	}
 
 	return (EPKG_OK);
