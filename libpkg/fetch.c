@@ -347,7 +347,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		    socketpair(AF_UNIX, SOCK_STREAM, 0, sshout) < 0)
 			return(EPKG_FATAL);
 
-		repo->sshio.pid = vfork();
+		repo->sshio.pid = fork();
 		if (repo->sshio.pid == -1) {
 			pkg_emit_errno("Cannot fork", "start_ssh");
 			return (EPKG_FATAL);
