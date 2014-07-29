@@ -135,7 +135,7 @@ pkg_sshserve(int fd)
 			}
 		}
 
-		if (fstatat(fd, file, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+		if (fstatat(fd, file, &st, 0) == -1) {
 			printf("ko: file not found\n");
 			continue;
 		}
