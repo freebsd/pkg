@@ -43,6 +43,7 @@
 #include <fcntl.h>
 
 #include "pkg.h"
+#include "private/event.h"
 
 int
 pkg_sshserve(int fd)
@@ -85,6 +86,8 @@ pkg_sshserve(int fd)
 
 		if (*file == '/')
 			file++;
+
+		pkg_debug(1, "SSH server> file requested: %s", file);
 
 		age = file;
 		while (!isspace(*age)) {
@@ -136,6 +139,7 @@ pkg_sshserve(int fd)
 		}
 
 		if (fstatat(fd, file, &st, 0) == -1) {
+			pkg_debug(1, "SSH server> fstatat failed");
 			printf("ko: file not found\n");
 			continue;
 		}
