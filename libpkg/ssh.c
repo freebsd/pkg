@@ -160,6 +160,7 @@ pkg_sshserve(int fd)
 		}
 
 		printf("ok: %" PRIdMAX "\n", (intmax_t)st.st_size);
+		pkg_debug(1, "SSH server> sending ok: %" PRIdMAX "\n", (intmax_t)st.st_size);
 
 		while ((r = read(ffd, buf, sizeof(buf))) > 0)
 			fwrite(buf, 1, r, stdout);
