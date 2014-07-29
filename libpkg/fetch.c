@@ -602,7 +602,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		time_t	now;
 
 		pkg_debug(1, "Reading status: %d over %d", done, sz);
-		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
+		if ((r = fread(buf, 1, sz > sizeof(buf) ? sizeof(buf) : sz,
+		    remote)) < 1)
 			break;
 
 		pkg_debug(1, "Read status: %d over %d", done, sz);
