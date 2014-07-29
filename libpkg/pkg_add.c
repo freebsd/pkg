@@ -407,8 +407,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		return (EPKG_FATAL);
 	}
 
-	if (flags & PKG_ADD_AUTOMATIC)
+	if (flags & PKG_ADD_AUTOMATIC) {
 		pkg_set(pkg, PKG_AUTOMATIC, (bool)true);
+	}
 
 	/*
 	 * Additional checks for non-remote package
@@ -430,7 +431,10 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 
 		pkg_get(remote, PKG_DIGEST, &manifestdigest, PKG_AUTOMATIC, &automatic);
-		pkg_set(pkg, PKG_DIGEST, manifestdigest, PKG_AUTOMATIC, automatic);
+		pkg_set(pkg, PKG_DIGEST, manifestdigest);
+		/* only preserve flags is -A has not been passed */
+		if ((flags & PKG_ADD_AUTOMATIC) == 0)
+			pkg_set(pkg, PKG_AUTOMATIC, automatic);
 	}
 
 	if (location != NULL)
