@@ -923,8 +923,9 @@ pkg_init(const char *path, const char *reposdir)
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
-	while ((cur = ucl_iterate_object(o, &it, true))) {
+	while ((cur = ucl_iterate_object(object, &it, true))) {
 		evkey = ucl_object_key(cur);
+		pkg_debug(1, "Setting env var: %s", evkey);
 		if (evkey != NULL && evkey[0] != '\0')
 			setenv(evkey, ucl_object_tostring_forced(cur), 1);
 	}
