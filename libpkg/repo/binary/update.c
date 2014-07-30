@@ -48,10 +48,10 @@
 #include "binary_private.h"
 
 static int
-pkg_repo_binary_init_update(struct pkg_repo *repo, bool forced)
+pkg_repo_binary_init_update(struct pkg_repo *repo, const char *name,
+	bool forced)
 {
 	sqlite3 *sqlite;
-	char filepath[MAXPATHLEN];
 	const char update_check_sql[] = ""
 					"INSERT INTO repo_update VALUES(1);";
 	const char update_start_sql[] = ""
@@ -61,7 +61,7 @@ pkg_repo_binary_init_update(struct pkg_repo *repo, bool forced)
 		/* Try to open repo */
 		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
 			/* Try to re-create it */
-			unlink(filepath);
+			unlink(name);
 			if (repo->ops->create(repo) != EPKG_OK) {
 				pkg_emit_notice("Unable to create repository %s", repo->name);
 				return (EPKG_FATAL);
@@ -74,7 +74,7 @@ pkg_repo_binary_init_update(struct pkg_repo *repo, bool forced)
 	}
 	else {
 		/* [Re]create repo */
-		unlink(filepath);
+		unlink(name);
 		if (repo->ops->create(repo) != EPKG_OK) {
 			pkg_emit_notice("Unable to create repository %s", repo->name);
 			return (EPKG_FATAL);
@@ -645,7 +645,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	fseek(fdigests, 0, SEEK_SET);
 
 	/* Load local repository data */
-	rc = pkg_repo_binary_init_update(repo, force);
+	rc = pkg_repo_binary_init_update(repo, name, force);
 	if (rc == EPKG_END) {
 		/* Need to perform forced update */
 		repo->ops->close(repo, false);
