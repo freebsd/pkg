@@ -48,6 +48,59 @@
 #include "binary_private.h"
 
 static int
+pkg_repo_binary_init_update(struct pkg_repo *repo, bool forced)
+{
+	sqlite3 *sqlite;
+	char filepath[MAXPATHLEN];
+	const char update_check_sql[] = ""
+					"INSERT INTO repo_update VALUES(1);";
+	const char update_start_sql[] = ""
+					"CREATE TABLE IF NOT EXISTS repo_update (n INT);";
+
+	if (!forced) {
+		/* Try to open repo */
+		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+			/* Try to re-create it */
+			unlink(filepath);
+			if (repo->ops->create(repo) != EPKG_OK) {
+				pkg_emit_notice("Unable to create repository %s", repo->name);
+				return (EPKG_FATAL);
+			}
+			if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+				pkg_emit_notice("Unable to open created repository %s", repo->name);
+				return (EPKG_FATAL);
+			}
+		}
+	}
+	else {
+		/* [Re]create repo */
+		unlink(filepath);
+		if (repo->ops->create(repo) != EPKG_OK) {
+			pkg_emit_notice("Unable to create repository %s", repo->name);
+			return (EPKG_FATAL);
+		}
+		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+			pkg_emit_notice("Unable to open created repository %s", repo->name);
+			return (EPKG_FATAL);
+		}
+	}
+
+	repo->ops->init(repo);
+
+	sqlite = PRIV_GET(repo);
+
+	if(sqlite3_exec(sqlite, update_check_sql, NULL, NULL, NULL) == SQLITE_OK) {
+		pkg_emit_notice("Previous update has not been finished, restart it");
+		return (EPKG_END);
+	}
+	else {
+		sql_exec(sqlite, update_start_sql);
+	}
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 			 const char *pkg_path, bool forced)
 {
@@ -501,18 +554,18 @@ pkg_repo_binary_get_origins(sqlite3 *sqlite)
 
 static int
 pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
-	time_t *mtime)
+	time_t *mtime, bool force)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL /*, *fconflicts = NULL*/;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
-	sqlite3 *sqlite = PRIV_GET(repo);
+	sqlite3 *sqlite = NULL;
 	sqlite3_stmt *stmt;
 	const char *origin, *digest, *offset, *length;
 	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0, pushed = 0;
 	long num_offset, num_length;
-	time_t local_t = *mtime;
+	time_t local_t;
 	time_t digest_t;
 	time_t packagesite_t;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
@@ -530,10 +583,17 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 
+	/* In forced mode, ignore mtime */
+	if (force)
+		*mtime = 0;
+
+	/* Fetch meta */
+	local_t = *mtime;
 	if (pkg_repo_fetch_meta(repo, &local_t) == EPKG_FATAL)
 		pkg_emit_notice("repository %s has no meta file, using "
 		    "default settings", repo->name);
 
+	/* Fetch digests */
 	local_t = *mtime;
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->digests, &local_t, &rc);
@@ -545,6 +605,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 		goto cleanup;
 	}
+
+	/* Fetch packagesite */
 	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = pkg_repo_fetch_remote_extract_tmp(repo,
@@ -582,7 +644,21 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	}
 	fseek(fdigests, 0, SEEK_SET);
 
-	/* Load local repo data */
+	/* Load local repository data */
+	rc = pkg_repo_binary_init_update(repo, force);
+	if (rc == EPKG_END) {
+		/* Need to perform forced update */
+		repo->ops->close(repo, false);
+		return (pkg_repo_binary_update_incremental(name, repo, mtime, true));
+	}
+	if (rc != EPKG_OK) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* Here sqlite is initialized */
+	sqlite = PRIV_GET(repo);
+
 	stmt = pkg_repo_binary_get_origins(sqlite);
 	if (stmt == NULL) {
 		rc = EPKG_FATAL;
@@ -767,10 +843,6 @@ int
 pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 {
 	char filepath[MAXPATHLEN];
-	const char update_check_sql[] = ""
-		"INSERT INTO repo_update VALUES(1);";
-	const char update_start_sql[] = ""
-		"CREATE TABLE IF NOT EXISTS repo_update (n INT);";
 	const char update_finish_sql[] = ""
 		"DROP TABLE repo_update;";
 	sqlite3 *sqlite;
@@ -803,54 +875,17 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 			t = st.st_mtime;
 	}
 
-	if (t != 0) {
-		/* Try to open repo */
-		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
-			/* Try to re-create it */
-			unlink(filepath);
-			if (repo->ops->create(repo) != EPKG_OK) {
-				pkg_emit_notice("Unable to create repository %s", repo->name);
-				goto cleanup;
-			}
-			t = 0;
-			if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
-				pkg_emit_notice("Unable to open created repository %s", repo->name);
-				goto cleanup;
-			}
-		}
-	}
-	else {
-		/* [Re]create repo */
-		unlink(filepath);
-		if (repo->ops->create(repo) != EPKG_OK) {
-			pkg_emit_notice("Unable to create repository %s", repo->name);
-			goto cleanup;
-		}
-		if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
-			pkg_emit_notice("Unable to open created repository %s", repo->name);
-			goto cleanup;
-		}
-	}
-
-	repo->ops->init(repo);
-
-	sqlite = PRIV_GET(repo);
-
-	if(sqlite3_exec(sqlite, update_check_sql, NULL, NULL, NULL) == SQLITE_OK) {
-		pkg_emit_notice("Previous update has not been finished, restart it");
-		t = 0;
-	}
-	else {
-		sql_exec(sqlite, update_start_sql);
-	}
-
-	res = pkg_repo_binary_update_incremental(filepath, repo, &t);
+	res = pkg_repo_binary_update_incremental(filepath, repo, &t, force);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to update repository %s", repo->name);
 		goto cleanup;
 	}
 
-	sql_exec(sqlite, update_finish_sql);
+	/* Finish updated repo */
+	if (res == EPKG_OK) {
+		sqlite = PRIV_GET(repo);
+		sql_exec(sqlite, update_finish_sql);
+	}
 
 cleanup:
 	/* Set mtime from http request if possible */
@@ -867,13 +902,14 @@ cleanup:
 		};
 
 		utimes(filepath, ftimes);
-		if (got_meta)
+		if (got_meta) {
 			snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
-
-		utimes(filepath, ftimes);
+			utimes(filepath, ftimes);
+		}
 	}
 
-	repo->ops->close(repo, false);
+	if (repo->priv != NULL)
+		repo->ops->close(repo, false);
 
 	return (res);
 }
