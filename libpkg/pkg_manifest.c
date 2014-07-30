@@ -457,8 +457,11 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type != UCL_STRING && cur->type != UCL_BOOLEAN)
 				pkg_emit_error("Skipping malformed option %s",
 				    key);
-			else
-				pkg_addoption(pkg, key, ucl_object_tostring_forced(cur));
+			else if (cur->type == UCL_STRING) {
+				pkg_addoption(pkg, key, ucl_object_tostring(cur));
+			} else {
+				pkg_addoption(pkg, key, ucl_object_toboolean(cur) ? "on" : "off");
+			}
 			break;
 		case PKG_OPTION_DEFAULTS:
 			if (cur->type != UCL_STRING)
