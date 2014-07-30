@@ -186,13 +186,16 @@ exec_set(int argc, char **argv)
 			return (EX_SOFTWARE);*/
 		}
 
-		if (pkg != NULL)
-			rc = query_yesno(false, "Change origin from %S to %S for %n-%v? [y/N]: ",
-					oldorigin, neworigin, pkg, pkg);
-		else
-			rc = query_yesno(false, "Change origin from %S to %S for all dependencies? "
-					"[y/N]: ", oldorigin, neworigin);
-		if (pkg != NULL && yes) {
+		rc = yes;
+		if (!yes) {
+			if (pkg != NULL)
+				rc = query_yesno(false, "Change origin from %S to %S for %n-%v? [y/N]: ",
+						oldorigin, neworigin, pkg, pkg);
+			else
+				rc = query_yesno(false, "Change origin from %S to %S for all dependencies? "
+						"[y/N]: ", oldorigin, neworigin);
+		}
+		if (pkg != NULL && rc) {
 			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK) {
 				retcode = EX_IOERR;
 				goto cleanup;
