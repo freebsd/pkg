@@ -609,7 +609,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	packagesite_t = local_t;
-	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
+	*mtime = digest_t;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
 			&rc, repo_conflicts_file);*/
