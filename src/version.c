@@ -493,7 +493,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	   user is forced to have a repo.sqlite */
 
 	if (auto_update) {
-		retcode = pkgcli_update(false, reponame);
+		retcode = pkgcli_update(false, false, reponame);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}

@@ -46,7 +46,7 @@
  * Fetch repository calalogues.
  */
 int
-pkgcli_update(bool force, const char *reponame)
+pkgcli_update(bool force, bool strict, const char *reponame)
 {
 	int retcode = EPKG_FATAL, update_count = 0, total_count = 0;
 	struct pkg_repo *r = NULL;
@@ -82,19 +82,19 @@ pkgcli_update(bool force, const char *reponame)
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
 				printf("%s repository is up-to-date\n", pkg_repo_name(r));
-			total_count ++;
 		}
-		else if (retcode == EPKG_OK) {
-			total_count ++;
-		}
+		else if (retcode != EPKG_OK && strict)
+			retcode = EPKG_FATAL;
 
+		total_count ++;
 		if (retcode != EPKG_OK)
 			continue;
 
 		update_count ++;
 	}
 
-	retcode = EPKG_OK;
+	if (!strict || retcode == EPKG_UPTODATE)
+		retcode = EPKG_OK;
 
 	if (total_count == 0) {
 		if (!quiet)
@@ -103,7 +103,8 @@ pkgcli_update(bool force, const char *reponame)
 	}
 	else if (update_count == 0) {
 		if (!quiet)
-			printf("All repositories are up-to-date\n");
+			if (retcode == EPKG_OK)
+				printf("All repositories are up-to-date\n");
 	}
 
 	return (retcode);
@@ -164,7 +165,8 @@ exec_update(int argc, char **argv)
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	ret = pkgcli_update(force, reponame);
+	/* For pkg-update update op is strict */
+	ret = pkgcli_update(force, true, reponame);
 
 	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }

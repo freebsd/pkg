@@ -168,7 +168,7 @@ exec_fetch(int argc, char **argv)
 
 	/* first update the remote repositories if needed */
 	if (auto_update &&
-	    (retcode = pkgcli_update(false, reponame)) != EPKG_OK)
+	    (retcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)

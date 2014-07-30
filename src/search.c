@@ -420,7 +420,7 @@ exec_search(int argc, char **argv)
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;
 	quiet = true;
-	if (auto_update && (ret = pkgcli_update(false, reponame)) != EPKG_OK)
+	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK)
 		return (ret);
 	quiet = old_quiet;
 
