@@ -576,7 +576,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	char *map = MAP_FAILED;
 	size_t len = 0;
 	int hash_it = 0;
-	bool in_trans = false, new_repo = true, legacy_repo = false;
+	bool in_trans = false, legacy_repo = false;
 	/* Required for making iterator */
 	struct pkgdb_it *it = NULL;
 	struct pkgdb fakedb;
@@ -597,29 +597,18 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	local_t = *mtime;
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->digests, &local_t, &rc);
-	if (fdigests == NULL) {
-		if (rc == EPKG_FATAL)
-			/* Destroy repo completely */
-			if (new_repo)
-				unlink(name);
-
+	if (fdigests == NULL)
 		goto cleanup;
-	}
 
 	/* Fetch packagesite */
 	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo->meta->manifests, &local_t, &rc);
-	if (fmanifest == NULL) {
-		if (rc == EPKG_FATAL)
-			/* Destroy repo completely */
-			if (new_repo)
-				unlink(name);
-
+	if (fmanifest == NULL)
 		goto cleanup;
-	}
-	packagesite_t = digest_t;
+
+	packagesite_t = local_t;
 	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
