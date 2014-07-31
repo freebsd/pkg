@@ -47,6 +47,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/pkg_jobs.h"
 
 static int pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
 		bool root, bool recursive, bool add_request);
