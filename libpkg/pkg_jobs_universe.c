@@ -698,3 +698,23 @@ pkg_jobs_universe_new(struct pkg_jobs *j)
 
 	return (universe);
 }
+
+struct pkg_job_universe_item *
+pkg_jobs_universe_find(struct pkg_jobs_universe *universe, const char *uid)
+{
+	struct pkg_job_universe_item *unit;
+
+	HASH_FIND_STR(universe->items, uid, unit);
+
+	return (unit);
+}
+
+bool
+pkg_jobs_universe_seen(struct pkg_jobs_universe *universe, const char *digest)
+{
+	struct pkg_job_seen *seen;
+
+	HASH_FIND_STR(universe->seen, digest, seen);
+
+	return (seen != NULL);
+}
