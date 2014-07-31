@@ -87,6 +87,7 @@ struct pkg_jobs_universe {
 	struct pkg_job_provide *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
+	size_t nitems;
 };
 
 struct pkg_jobs {
@@ -137,5 +138,17 @@ void pkg_jobs_update_conflict_priority(struct pkg_jobs_universe *universe,
  * Free universe
  */
 void pkg_jobs_universe_free(struct pkg_jobs_universe *universe);
+
+/*
+ * Add package to remove to the universe
+ */
+int pkg_jobs_universe_process_package_remove(struct pkg_jobs_universe *universe,
+	struct pkg *local);
+
+/*
+ * Add package to add to the universe
+ */
+int pkg_jobs_universe_process_package_add(struct pkg_jobs_universe *universe,
+	struct pkg *remote);
 
 #endif /* PKG_JOBS_H_ */
