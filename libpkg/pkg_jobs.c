@@ -126,24 +126,6 @@ pkg_jobs_pattern_free(struct job_pattern *jp)
 	free(jp);
 }
 
-static void
-pkg_jobs_provide_free(struct pkg_job_provide *pr)
-{
-	struct pkg_job_provide *cur, *tmp;
-
-	DL_FOREACH_SAFE(pr, cur, tmp) {
-		free (cur);
-	}
-}
-
-static void
-pkg_jobs_replacement_free(struct pkg_job_replace *r)
-{
-	free(r->new_uid);
-	free(r->old_uid);
-	free(r);
-}
-
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
@@ -864,69 +846,6 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 	}
 
 	return (rc);
-}
-
-static struct pkg *
-pkg_jobs_get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
-{
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it;
-	struct pkg_job_universe_item *unit;
-
-	if (flag == 0) {
-		if (!IS_DELETE(j))
-			flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
-				PKG_LOAD_CONFLICTS;
-		else
-			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS;
-	}
-
-	HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
-	if (unit != NULL && unit->pkg->type == PKG_INSTALLED) {
-		pkgdb_ensure_loaded(j->db, unit->pkg, flag);
-		return (unit->pkg);
-	}
-
-	if ((it = pkgdb_query(j->db, uid, MATCH_EXACT)) == NULL)
-		return (NULL);
-
-	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
-		pkg = NULL;
-
-	pkgdb_it_free(it);
-
-	return (pkg);
-}
-
-static struct pkg *
-pkg_jobs_get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag)
-{
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it;
-	struct pkg_job_universe_item *unit;
-
-	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
-	}
-
-	HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
-	if (unit != NULL && unit->pkg->type != PKG_INSTALLED) {
-		pkgdb_ensure_loaded(j->db, unit->pkg, flag);
-		return (unit->pkg);
-	}
-
-	if ((it = pkgdb_repo_query(j->db, uid, MATCH_EXACT, j->reponame)) == NULL)
-		return (NULL);
-
-	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
-		pkg = NULL;
-
-	pkgdb_it_free(it);
-
-	return (pkg);
 }
 
 static bool
