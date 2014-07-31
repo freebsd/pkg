@@ -315,155 +315,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 	HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), req);
 }
 
-enum pkg_priority_update_type {
-	PKG_PRIORITY_UPDATE_REQUEST = 0,
-	PKG_PRIORITY_UPDATE_UNIVERSE,
-	PKG_PRIORITY_UPDATE_CONFLICT,
-	PKG_PRIORITY_UPDATE_DELETE
-};
 
-#define RECURSION_LIMIT 1024
-
-static void
-pkg_jobs_update_universe_priority(struct pkg_jobs *j,
-		struct pkg_job_universe_item *item, int priority,
-		enum pkg_priority_update_type type)
-{
-	const char *uid, *digest;
-	struct pkg_dep *d = NULL;
-	struct pkg_conflict *c = NULL;
-	struct pkg_job_universe_item *found, *cur, *it;
-	const char *is_local;
-	int maxpri;
-
-	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
-	int (*rdeps_func)(const struct pkg *pkg, struct pkg_dep **d);
-
-	if (priority > RECURSION_LIMIT) {
-		pkg_debug(1, "recursion limit has been reached, something is bad"
-					" with dependencies/conflicts graph");
-		return;
-	}
-	else if (priority + 10 > RECURSION_LIMIT) {
-		pkg_get(item->pkg, PKG_UNIQUEID, &uid);
-		pkg_debug(2, "approaching recursion limit at %d, while processing of"
-					" package %s", priority, uid);
-	}
-
-	LL_FOREACH(item, it) {
-
-		pkg_get(it->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
-		if ((item->next != NULL || item->prev != NULL) &&
-				it->pkg->type != PKG_INSTALLED &&
-				(type == PKG_PRIORITY_UPDATE_CONFLICT ||
-				 type == PKG_PRIORITY_UPDATE_DELETE)) {
-			/*
-			 * We do not update priority of a remote part of conflict, as we know
-			 * that remote packages should not contain conflicts (they should be
-			 * resolved in request prior to calling of this function)
-			 */
-			pkg_debug(4, "skip update priority for %s-%s", uid, digest);
-			continue;
-		}
-		if (it->priority > priority)
-			continue;
-
-		is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
-		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
-				is_local, uid, digest, it->priority, priority, type);
-		it->priority = priority;
-
-		if (type == PKG_PRIORITY_UPDATE_DELETE) {
-			/*
-			 * For delete requests we inverse deps and rdeps logic
-			 */
-			deps_func = pkg_rdeps;
-			rdeps_func = pkg_deps;
-		}
-		else {
-			deps_func = pkg_deps;
-			rdeps_func = pkg_rdeps;
-		}
-
-		while (deps_func(it->pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->universe, d->uid, found);
-			if (found != NULL) {
-				LL_FOREACH(found, cur) {
-					if (cur->priority < priority + 1)
-						pkg_jobs_update_universe_priority(j, cur,
-								priority + 1, type);
-				}
-			}
-		}
-
-		d = NULL;
-		maxpri = priority;
-		while (rdeps_func(it->pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->universe, d->uid, found);
-			if (found != NULL) {
-				LL_FOREACH(found, cur) {
-					if (cur->priority >= maxpri) {
-						maxpri = cur->priority + 1;
-					}
-				}
-			}
-		}
-		if (maxpri != priority) {
-			pkg_jobs_update_universe_priority(j, it,
-					maxpri, type);
-			return;
-		}
-		if (it->pkg->type != PKG_INSTALLED) {
-			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
-				HASH_FIND_STR(j->universe, pkg_conflict_uniqueid(c), found);
-				if (found != NULL) {
-					LL_FOREACH(found, cur) {
-						if (cur->pkg->type == PKG_INSTALLED) {
-							/*
-							 * Move delete requests to be done before installing
-							 */
-							if (cur->priority <= it->priority)
-								pkg_jobs_update_universe_priority(j, cur,
-									it->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-static void
-pkg_jobs_update_conflict_priority(struct pkg_jobs *j, struct pkg_solved *req)
-{
-	struct pkg_conflict *c = NULL;
-	struct pkg *lp = req->items[1]->pkg;
-	struct pkg_job_universe_item *found, *cur, *rit = NULL;
-
-	while (pkg_conflicts(lp, &c) == EPKG_OK) {
-		rit = NULL;
-		HASH_FIND_STR(j->universe, pkg_conflict_uniqueid(c), found);
-		assert(found != NULL);
-
-		LL_FOREACH(found, cur) {
-			if (cur->pkg->type != PKG_INSTALLED) {
-				rit = cur;
-				break;
-			}
-		}
-
-		assert(rit != NULL);
-		if (rit->priority >= req->items[1]->priority) {
-			pkg_jobs_update_universe_priority(j, req->items[1],
-					rit->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
-			/*
-			 * Update priorities for a remote part as well
-			 */
-			pkg_jobs_update_universe_priority(j, req->items[0],
-					req->items[0]->priority, PKG_PRIORITY_UPDATE_REQUEST);
-		}
-	}
-}
 
 static int
 pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
@@ -478,7 +330,7 @@ pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
 		 * update priorities of local packages and try to update priorities of remote ones
 		 */
 		if (req->items[0]->priority == 0)
-			pkg_jobs_update_conflict_priority(j, req);
+			pkg_jobs_update_conflict_priority(j->universe, req);
 
 		if (req->items[1]->priority > req->items[0]->priority &&
 				!req->already_deleted) {
@@ -503,12 +355,12 @@ pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
 	}
 	else if (req->type == PKG_SOLVED_DELETE) {
 		if (req->items[0]->priority == 0)
-			pkg_jobs_update_universe_priority(j, req->items[0], 0,
+			pkg_jobs_update_universe_priority(j->universe, req->items[0],
 					PKG_PRIORITY_UPDATE_DELETE);
 	}
 	else {
 		if (req->items[0]->priority == 0)
-			pkg_jobs_update_universe_priority(j, req->items[0], 0,
+			pkg_jobs_update_universe_priority(j->universe, req->items[0],
 					PKG_PRIORITY_UPDATE_REQUEST);
 	}
 

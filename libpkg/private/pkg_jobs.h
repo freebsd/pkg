@@ -36,6 +36,9 @@
 #include "private/pkg.h"
 #include "pkg.h"
 
+struct pkg_jobs;
+struct job_pattern;
+
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	struct job_pattern *jp;
@@ -77,15 +80,21 @@ struct pkg_job_replace {
 	struct pkg_job_replace *next;
 };
 
+
+struct pkg_jobs_universe {
+	struct pkg_job_universe_item *items;
+	struct pkg_job_seen *seen;
+	struct pkg_job_provide *provides;
+	struct pkg_job_replace *uid_replaces;
+	struct pkg_jobs *j;
+};
+
 struct pkg_jobs {
-	struct pkg_job_universe_item *universe;
+	struct pkg_jobs_universe *universe;
 	struct pkg_job_request	*request_add;
 	struct pkg_job_request	*request_delete;
 	struct pkg_solved *jobs;
-	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
-	struct pkg_job_provide *provides;
-	struct pkg_job_replace *uid_replaces;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
 	int		 solved;
@@ -106,5 +115,22 @@ struct job_pattern {
 	UT_hash_handle hh;
 };
 
+enum pkg_priority_update_type {
+	PKG_PRIORITY_UPDATE_REQUEST = 0,
+	PKG_PRIORITY_UPDATE_UNIVERSE,
+	PKG_PRIORITY_UPDATE_CONFLICT,
+	PKG_PRIORITY_UPDATE_DELETE
+};
+
+/*
+ * Update priorities for all items related with the specified item
+ */
+void pkg_jobs_update_universe_priority(struct pkg_jobs_universe *universe,
+	struct pkg_job_universe_item *it, enum pkg_priority_update_type type);
+/*
+ * Update priority as the conflict was found
+ */
+void pkg_jobs_update_conflict_priority(struct pkg_jobs_universe *universe,
+	struct pkg_solved *req);
 
 #endif /* PKG_JOBS_H_ */
