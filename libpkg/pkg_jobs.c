@@ -71,6 +71,13 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 		return (EPKG_FATAL);
 	}
 
+	(*j)->universe = pkg_jobs_universe_new(*j);
+
+	if ((*j)->universe == NULL) {
+		free(*j);
+		return (EPKG_FATAL);
+	}
+
 	(*j)->db = db;
 	(*j)->type = t;
 	(*j)->solved = 0;
@@ -250,7 +257,7 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 	return (true);
 }
 
-static void
+void
 pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 		struct pkg_job_universe_item *item)
 {

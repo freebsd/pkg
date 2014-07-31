@@ -140,15 +140,20 @@ void pkg_jobs_update_conflict_priority(struct pkg_jobs_universe *universe,
 void pkg_jobs_universe_free(struct pkg_jobs_universe *universe);
 
 /*
- * Add package to remove to the universe
+ * Create universe for jobs
  */
-int pkg_jobs_universe_process_package_remove(struct pkg_jobs_universe *universe,
-	struct pkg *local);
+struct pkg_jobs_universe * pkg_jobs_universe_new(struct pkg_jobs *j);
 
 /*
- * Add package to add to the universe
+ * Add a package to the universe
  */
-int pkg_jobs_universe_process_package_add(struct pkg_jobs_universe *universe,
-	struct pkg *remote);
+int pkg_jobs_universe_process_package(struct pkg_jobs_universe *universe,
+	struct pkg *pkg);
+
+/*
+ * Add a universe item with package to the request
+ */
+void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
+	struct pkg_job_universe_item *item);
 
 #endif /* PKG_JOBS_H_ */
