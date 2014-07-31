@@ -156,4 +156,16 @@ int pkg_jobs_universe_process_package(struct pkg_jobs_universe *universe,
 void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 	struct pkg_job_universe_item *item);
 
+/*
+ * Check if the specified digest was seen in the universe
+ */
+bool pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
+	const char *digest);
+
+/*
+ * Search for an entry corresponding to the uid in the universe
+ */
+struct pkg_job_universe_item * pkg_jobs_universe_find(struct pkg_jobs_universe
+	*universe, const char *uid);
+
 #endif /* PKG_JOBS_H_ */
