@@ -78,7 +78,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		    obj ? pkg_object_string(obj) : "", pkg_path);
 
 		if (lstat(fpath, &st) == -1) {
-			pkg_emit_errno("pkg_create_from_dir", "lstat failed");
+			pkg_emit_error("file '%s' is missing": fpath);
 			return (EPKG_FATAL);
 		}
 
