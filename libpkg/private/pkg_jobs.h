@@ -133,4 +133,9 @@ void pkg_jobs_update_universe_priority(struct pkg_jobs_universe *universe,
 void pkg_jobs_update_conflict_priority(struct pkg_jobs_universe *universe,
 	struct pkg_solved *req);
 
+/*
+ * Free universe
+ */
+void pkg_jobs_universe_free(struct pkg_jobs_universe *universe);
+
 #endif /* PKG_JOBS_H_ */
