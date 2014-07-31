@@ -29,6 +29,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_elf.c \
 			pkg_event.c \
 			pkg_jobs.c \
+			pkg_jobs_universe.c \
 			pkg_manifest.c \
 			pkg_object.c \
 			pkg_ports.c \
