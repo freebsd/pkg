@@ -458,7 +458,7 @@ end:
 
 static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
-		bool force, bool recursive, struct pkg_job_universe_item **unit)
+		bool force, struct pkg_job_universe_item **unit)
 {
 	struct pkg_job_universe_item *jit;
 	struct pkg_job_seen *seen;
@@ -513,8 +513,6 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			else {
 				pkg_debug(3, "already added newer package %s to the universe, do not add it again",
 								uid);
-				if (add_request)
-					pkg_jobs_add_req(j, uid, jit);
 				return (EPKG_OK);
 			}
 		}
@@ -532,17 +530,12 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	}
 
 	rc = EPKG_OK;
-	p->direct = root;
 	/* Add a package to request chain and populate universe */
 	rc = pkg_jobs_process_universe(j->universe, p, &jit);
 
-	if (rc == EPKG_OK) {
-		if (add_request)
-			pkg_jobs_add_req(j, uid, jit);
-
+	if (rc == EPKG_OK)
 		if (unit != NULL)
 			*unit = jit;
-	}
 
 	return (rc);
 }
@@ -675,8 +668,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		rc = EPKG_FATAL;
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		rc = pkg_jobs_process_remote_pkg(j, p, root, force, recursive,
-				NULL, add_request);
+		rc = pkg_jobs_process_remote_pkg(j, p, force, NULL);
 		if (rc == EPKG_FATAL)
 			break;
 		else if (rc == EPKG_OK)
@@ -687,7 +679,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 
 	pkgdb_it_free(it);
 
-	if (root && !found && rc != EPKG_INSTALLED) {
+	if (!found && rc != EPKG_INSTALLED) {
 		/*
 		 * Here we need to ensure that this package has no
 		 * reverse deps installed
@@ -971,7 +963,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 	const char *uid;
 	bool automatic;
 
-	HASH_ITER(hh, j->universe, unit, utmp) {
+	HASH_ITER(hh, j->universe->items, unit, utmp) {
 		/* Rewind list */
 		while (unit->prev->next != NULL)
 			unit = unit->prev;
@@ -988,7 +980,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
 			}
 			else {
-				if (unit->reinstall == NULL || j->type == PKG_JOBS_INSTALL) {
+				if (j->type == PKG_JOBS_INSTALL) {
 					automatic = 0;
 					pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
 				}
@@ -1048,7 +1040,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 	HASH_FIND_STR(j->request_delete, uid, found);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->universe, d->uid, dep_item);
+			dep_item = pkg_jobs_universe_find(j->universe, d->uid);
 			if (dep_item) {
 				found = pkg_jobs_find_deinstall_request(dep_item, j, rec_level + 1);
 				if (found)
@@ -1148,7 +1140,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			== EPKG_OK) {
 		// Check if the pkg is locked
 		pkg_get(pkg, PKG_UNIQUEID, &uid);
-		HASH_FIND_STR(j->universe, uid, unit);
+		unit = pkg_jobs_universe_find(j->universe, uid);
 		if (unit == NULL) {
 			pkg_jobs_add_universe(j, pkg, false, false, &unit);
 			if(pkg_is_locked(pkg)) {
@@ -1421,7 +1413,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 		return;
 	}
 
-	LL_FOREACH(j->uid_replaces, r) {
+	LL_FOREACH(j->universe->uid_replaces, r) {
 		pkg_debug(4, "changing uid %s -> %s", r->old_uid, r->new_uid);
 		sqlite3_bind_text(stmt, 1, r->new_uid, -1, SQLITE_TRANSIENT);
 		sqlite3_bind_text(stmt, 2, r->old_uid, -1, SQLITE_TRANSIENT);
@@ -1529,14 +1521,10 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	DL_FOREACH(j->jobs, job) {
 		struct pkg *p;
 
-		if (job->items[0]->reinstall) {
-			p = job->items[0]->reinstall;
-		}
-		else {
-			p = job->items[0]->pkg;
-			if (p->type != PKG_REMOTE)
-				continue;
-		}
+		p = job->items[0]->pkg;
+		if (p->type != PKG_REMOTE)
+			continue;
+
 		if (pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS)
 				== EPKG_FATAL) {
 			j->need_fetch = true;
@@ -1603,9 +1591,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	int retcode = EPKG_FATAL;
 
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
-	new = (ps->items[0]->reinstall == NULL) ?
-					ps->items[0]->pkg : /* Just a remote package */
-					ps->items[0]->reinstall /* Package for reinstall */;
+	new = ps->items[0]->pkg;
 
 	pkg_get(new, PKG_UNIQUEID, &pkguid, PKG_AUTOMATIC, &automatic);
 	if (old != NULL) {
@@ -1879,14 +1865,9 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			int64_t pkgsize;
 
-			if (ps->items[0]->reinstall) {
-				p = ps->items[0]->reinstall;
-			}
-			else {
-				p = ps->items[0]->pkg;
-				if (p->type != PKG_REMOTE)
-					continue;
-			}
+			p = ps->items[0]->pkg;
+			if (p->type != PKG_REMOTE)
+				continue;
 
 			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
 			if (mirror) {
@@ -1934,14 +1915,9 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	DL_FOREACH(j->jobs, ps) {
 		if (ps->type != PKG_SOLVED_DELETE
 						&& ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
-			if (ps->items[0]->reinstall) {
-				p = ps->items[0]->reinstall;
-			}
-			else {
-				p = ps->items[0]->pkg;
-				if (p->type != PKG_REMOTE)
-					continue;
-			}
+			p = ps->items[0]->pkg;
+			if (p->type != PKG_REMOTE)
+				continue;
 
 			if (mirror) {
 				if (pkg_repo_mirror_package(p, cachedir) != EPKG_OK)

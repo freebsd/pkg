@@ -706,14 +706,14 @@ pkg_jobs_universe_find(struct pkg_jobs_universe *universe, const char *uid)
 	return (unit);
 }
 
-bool
+struct pkg_job_seen *
 pkg_jobs_universe_seen(struct pkg_jobs_universe *universe, const char *digest)
 {
 	struct pkg_job_seen *seen;
 
 	HASH_FIND_STR(universe->seen, digest, seen);
 
-	return (seen != NULL);
+	return (seen);
 }
 
 void
