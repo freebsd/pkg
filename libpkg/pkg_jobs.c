@@ -383,7 +383,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 	bool automatic;
 
 	while (pkg_rdeps(p, &d) == EPKG_OK && ret) {
-		HASH_FIND_STR(j->universe, d->uid, unit);
+		unit = pkg_jobs_universe_find(j->universe, d->uid);
 		if (unit != NULL) {
 			pkg_get(unit->pkg, PKG_AUTOMATIC, &automatic);
 			if (!automatic) {
@@ -404,7 +404,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 				pkg_free(npkg);
 				return (false);
 			}
-			if (pkg_jobs_add_universe(j, npkg, false, false, NULL) != EPKG_OK)
+			if (pkg_jobs_universe_process_package(j->universe, npkg) != EPKG_OK)
 				return (false);
 		}
 
@@ -442,7 +442,7 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
-	pkg_jobs_add_universe(j, p, true, false, NULL);
+	pkg_jobs_universe_process_package(j->universe, p);
 
 	/* Use maximum priority for pkg */
 	if (pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, false, true, true) == EPKG_OK) {
@@ -477,7 +477,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		}
 		pkg_get(p, PKG_DIGEST, &digest);
 	}
-	HASH_FIND_STR(j->seen, digest, seen);
+	seen = pkg_jobs_universe_seen(j->universe, digest);
 	if (seen != NULL) {
 		/* We have already added exactly the same package to the universe */
 		pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
@@ -493,14 +493,14 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
 			if (force) {
-				seen->un->reinstall = p;
+				pkg_jobs_universe_add_pkg(j->universe, p, true, NULL);
 				pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
 				pkg_set(p, PKG_AUTOMATIC, automatic);
 			}
 		}
 		return (EPKG_OK);
 	}
-	HASH_FIND_STR(j->universe, uid, jit);
+	jit = pkg_jobs_universe_find(j->universe, uid);
 	if (jit != NULL) {
 		/* We have a more recent package */
 		if (!force && !pkg_need_upgrade(p, jit->pkg, false)) {
@@ -536,64 +536,20 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	rc = EPKG_OK;
 	p->direct = root;
 	/* Add a package to request chain and populate universe */
-	rc = pkg_jobs_add_universe(j, p, recursive, false, &jit);
-	if (add_request)
-		pkg_jobs_add_req(j, uid, jit);
+	rc = pkg_jobs_process_universe(j->universe, p, &jit);
 
-	if (unit != NULL)
-		*unit = jit;
+	if (rc == EPKG_OK) {
+		if (add_request)
+			pkg_jobs_add_req(j, uid, jit);
+
+		if (unit != NULL)
+			*unit = jit;
+	}
 
 	return (rc);
 }
 
-static void
-pkg_jobs_change_uid(struct pkg_jobs *j, struct pkg_job_universe_item *unit,
-	const char *new_uid, size_t uidlen, bool update_rdeps)
-{
-	struct pkg_dep *rd = NULL, *d = NULL;
-	struct pkg_job_universe_item *found;
-	struct pkg *lp;
-	const char *old_uid;
-	struct pkg_job_replace *replacement;
-
-	pkg_get(unit->pkg, PKG_UNIQUEID, &old_uid);
-
-	if (update_rdeps) {
-		/* For all rdeps update deps accordingly */
-		while (pkg_rdeps(unit->pkg, &rd) == EPKG_OK) {
-			HASH_FIND(hh, j->universe, rd->uid, strlen(rd->uid), found);
-			if (found == NULL) {
-				lp = pkg_jobs_get_local_pkg(j, rd->uid, 0);
-				pkg_jobs_add_universe(j, lp, true, false, &found);
-			}
-
-			if (found != NULL) {
-				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
-					if (strcmp(d->uid, old_uid) == 0) {
-						free(d->uid);
-						d->uid = strdup(new_uid);
-					}
-				}
-			}
-		}
-	}
-
-	replacement = calloc(1, sizeof(*replacement));
-	if (replacement != NULL) {
-		replacement->old_uid = strdup(old_uid);
-		replacement->new_uid = strdup(new_uid);
-		LL_PREPEND(j->uid_replaces, replacement);
-	}
-
-	HASH_DELETE(hh, j->universe, unit);
-	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
-	HASH_FIND(hh, j->universe, new_uid, uidlen, found);
-	if (found != NULL)
-		DL_APPEND(found, unit);
-	else
-		HASH_ADD_KEYPTR(hh, j->universe, new_uid, uidlen, unit);
-
-}
+static
 
 static int
 pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
@@ -622,9 +578,9 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
 			pkg_validate(p);
-			HASH_FIND(hh, j->universe, uid, strlen(uid), unit);
+			unit = pkg_jobs_universe_find(j->universe, uid);
 			if (unit != NULL)
-				pkg_jobs_change_uid(j, unit, fuid, strlen(fuid), false);
+				pkg_jobs_universe_change_uid(j, unit, fuid, strlen(fuid), false);
 
 			rc = pkg_jobs_process_remote_pkg(j, p, true, false, true,
 				NULL, true);
@@ -659,8 +615,10 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 	/* First of all, try to search a package with the same name */
 	pos = strchr(pattern, '/');
 	if (pos != NULL && pos[1] != '\0') {
-		if (pkg_jobs_try_remote_candidate(j, pos + 1, opattern, MATCH_EXACT) == EPKG_OK)
+		if (pkg_jobs_try_remote_candidate(j, pos + 1, opattern, MATCH_EXACT)
+						== EPKG_OK)
 			return (EPKG_OK);
+
 		pos ++;
 		pattern = pos;
 	}

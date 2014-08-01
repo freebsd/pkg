@@ -110,9 +110,9 @@ pkg_universe_get_remote_pkg(struct pkg_jobs_universe *universe,
  * Check whether a package is in the universe already or add it
  * @return item or NULL
  */
-static int
+int
 pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
-		struct pkg_job_universe_item **found)
+		bool force, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *tmp = NULL;
 	const char *uid, *digest, *version, *name;
@@ -131,7 +131,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	HASH_FIND_STR(universe->seen, digest, seen);
-	if (seen != NULL) {
+	if (seen != NULL && !force) {
 		if (found != NULL)
 			*found = seen->un;
 
@@ -156,11 +156,17 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	DL_APPEND(tmp, item);
 
-	seen = calloc(1, sizeof(struct pkg_job_seen));
-	seen->digest = digest;
-	seen->un = item;
-	HASH_ADD_KEYPTR(hh, universe->seen, seen->digest, strlen(seen->digest),
-		seen);
+	if (seen == NULL) {
+		seen = calloc(1, sizeof(struct pkg_job_seen));
+		if (seen == NULL) {
+			pkg_emit_errno("pkg_jobs_universe_add_pkg", "calloc: struct pkg_job_seen)");
+			return (EPKG_FATAL);
+		}
+		seen->digest = digest;
+		seen->un = item;
+		HASH_ADD_KEYPTR(hh, universe->seen, seen->digest, strlen(seen->digest),
+			seen);
+	}
 
 	universe->nitems++;
 
@@ -413,7 +419,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 	return (EPKG_OK);
 }
 
-static int
+int
 pkg_jobs_process_universe(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		struct pkg_job_universe_item **result)
 {
@@ -424,7 +430,8 @@ pkg_jobs_process_universe(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	job_flags = universe->j->flags;
 
 	/* Add pkg itself */
-	rc = pkg_jobs_universe_add_pkg(universe, pkg, result);
+	rc = pkg_jobs_universe_add_pkg(universe, pkg, false,
+		result);
 	if (rc == EPKG_END)
 		return (EPKG_OK);
 	else if (rc != EPKG_OK)
@@ -658,24 +665,14 @@ void
 pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 {
 	struct pkg_job_universe_item *un, *untmp, *cur, *curtmp;
-	struct pkg *reinstall = NULL;
 
 	HASH_ITER(hh, universe->items, un, untmp) {
 		HASH_DEL(universe->items, un);
 
-		if (un->reinstall != NULL)
-			reinstall = un->reinstall;
-
 		LL_FOREACH_SAFE(un, cur, curtmp) {
-			if (cur->pkg != reinstall)
-				pkg_free(cur->pkg);
+			pkg_free(cur->pkg);
 			free(cur);
 		}
-
-		if (reinstall != NULL)
-			pkg_free(reinstall);
-
-		reinstall = NULL;
 	}
 	HASH_FREE(universe->seen, free);
 	HASH_FREE(universe->provides, pkg_jobs_universe_provide_free);
@@ -717,4 +714,54 @@ pkg_jobs_universe_seen(struct pkg_jobs_universe *universe, const char *digest)
 	HASH_FIND_STR(universe->seen, digest, seen);
 
 	return (seen != NULL);
+}
+
+void
+pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
+	struct pkg_job_universe_item *unit,
+	const char *new_uid, size_t uidlen, bool update_rdeps)
+{
+	struct pkg_dep *rd = NULL, *d = NULL;
+	struct pkg_job_universe_item *found;
+	struct pkg *lp;
+	const char *old_uid;
+	struct pkg_job_replace *replacement;
+
+	pkg_get(unit->pkg, PKG_UNIQUEID, &old_uid);
+
+	if (update_rdeps) {
+		/* For all rdeps update deps accordingly */
+		while (pkg_rdeps(unit->pkg, &rd) == EPKG_OK) {
+			found = pkg_jobs_universe_find(universe, rd->uid);
+			if (found == NULL) {
+				lp = pkg_universe_get_local_pkg(universe, rd->uid, 0);
+				pkg_jobs_process_universe(universe, lp, &found);
+			}
+
+			if (found != NULL) {
+				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
+					if (strcmp(d->uid, old_uid) == 0) {
+						free(d->uid);
+						d->uid = strdup(new_uid);
+					}
+				}
+			}
+		}
+	}
+
+	replacement = calloc(1, sizeof(*replacement));
+	if (replacement != NULL) {
+		replacement->old_uid = strdup(old_uid);
+		replacement->new_uid = strdup(new_uid);
+		LL_PREPEND(universe->uid_replaces, replacement);
+	}
+
+	HASH_DELETE(hh, universe->items, unit);
+	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
+	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
+	if (found != NULL)
+		DL_APPEND(found, unit);
+	else
+		HASH_ADD_KEYPTR(hh, universe->items, new_uid, uidlen, unit);
+
 }
