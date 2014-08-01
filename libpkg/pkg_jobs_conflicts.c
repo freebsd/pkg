@@ -181,9 +181,9 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *uid)
 	struct pkg *npkg;
 
 
-	npkg = pkg_universe_get_local_pkg(j->universe, uid, 0);
+	npkg = pkg_jobs_universe_get_local(j->universe, uid, 0);
 	if (npkg == NULL) {
-		npkg = pkg_universe_get_remote_pkg(j->universe, uid, 0);
+		npkg = pkg_jobs_universe_get_remote(j->universe, uid, 0);
 		pkg_debug(2, "conflicts: add missing remote %s(%d)", uid);
 	}
 	else {
@@ -196,7 +196,7 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *uid)
 		return (EPKG_FATAL);
 	}
 
-	return pkg_jobs_universe_process_package(j->universe, npkg);
+	return pkg_jobs_universe_process(j->universe, npkg);
 }
 
 

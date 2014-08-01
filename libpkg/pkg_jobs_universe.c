@@ -41,7 +41,7 @@
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
 struct pkg *
-pkg_universe_get_local_pkg(struct pkg_jobs_universe *universe,
+pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
@@ -75,7 +75,7 @@ pkg_universe_get_local_pkg(struct pkg_jobs_universe *universe,
 }
 
 struct pkg *
-pkg_universe_get_remote_pkg(struct pkg_jobs_universe *universe,
+pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
@@ -208,14 +208,14 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		rpkg = NULL;
 		npkg = NULL;
 		if (!(flags & DEPS_FLAG_MIRROR))
-			npkg = pkg_universe_get_local_pkg(universe, d->uid, 0);
+			npkg = pkg_jobs_universe_get_local(universe, d->uid, 0);
 
 		if (!(flags & DEPS_FLAG_FORCE_LOCAL)) {
 
 			/* Check for remote dependencies */
-			rpkg = pkg_universe_get_remote_pkg(universe, d->uid, 0);
+			rpkg = pkg_jobs_universe_get_remote(universe, d->uid, 0);
 			if (rpkg != NULL && !(flags & DEPS_FLAG_FORCE_UPGRADE)) {
-				if (!pkg_need_upgrade(rpkg, npkg, false)) {
+				if (!pkg_jobs_need_upgrade(rpkg, npkg, false)) {
 					/*
 					 * We can do it safely here, as rpkg is definitely NOT in
 					 * the universe
@@ -273,7 +273,7 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 		/* Check local and remote conflicts */
 		if (pkg->type == PKG_INSTALLED) {
 			/* Installed packages can conflict with remote ones */
-			npkg = pkg_universe_get_remote_pkg(universe, pkg_conflict_uniqueid(c), 0);
+			npkg = pkg_jobs_universe_get_remote(universe, pkg_conflict_uniqueid(c), 0);
 			if (npkg == NULL)
 				continue;
 
@@ -281,13 +281,13 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 		}
 		else {
 			/* Remote packages can conflict with remote and local */
-			npkg = pkg_universe_get_local_pkg(universe, pkg_conflict_uniqueid(c), 0);
+			npkg = pkg_jobs_universe_get_local(universe, pkg_conflict_uniqueid(c), 0);
 			if (npkg != NULL) {
 				if (pkg_jobs_process_universe_local(universe, npkg, NULL) != EPKG_OK)
 					continue;
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
-					npkg = pkg_universe_get_remote_pkg(universe,
+					npkg = pkg_jobs_universe_get_remote(universe,
 						pkg_conflict_uniqueid(c), 0);
 					if (npkg == NULL)
 						continue;
@@ -333,7 +333,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				/* Check for local packages */
 				HASH_FIND_STR(universe->items, uid, unit);
 				if (unit != NULL) {
-					if (pkg_need_upgrade (rpkg, unit->pkg, false)) {
+					if (pkg_jobs_need_upgrade (rpkg, unit->pkg, false)) {
 						/* Remote provide is newer, so we can add it */
 						if (pkg_jobs_process_universe(universe, rpkg,
 							&unit) != EPKG_OK)
@@ -344,12 +344,12 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				}
 				else {
 					/* Maybe local package has just been not added */
-					npkg = pkg_universe_get_local_pkg(universe, uid, 0);
+					npkg = pkg_jobs_universe_get_local(universe, uid, 0);
 					if (npkg != NULL) {
 						if (pkg_jobs_add_universe_local(universe, npkg,
 							&unit) != EPKG_OK)
 							return (EPKG_FATAL);
-						if (pkg_need_upgrade (rpkg, npkg, false)) {
+						if (pkg_jobs_need_upgrade (rpkg, npkg, false)) {
 							/* Remote provide is newer, so we can add it */
 							if (pkg_jobs_process_universe(universe, rpkg,
 								&unit) != EPKG_OK)
@@ -485,7 +485,7 @@ pkg_jobs_process_universe(struct pkg_jobs_universe *universe, struct pkg *pkg,
 }
 
 int
-pkg_jobs_universe_process_package(struct pkg_jobs_universe *universe,
+pkg_jobs_universe_process(struct pkg_jobs_universe *universe,
 	struct pkg *pkg)
 {
 	return (pkg_jobs_process_universe(universe, pkg, NULL));
@@ -734,7 +734,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 		while (pkg_rdeps(unit->pkg, &rd) == EPKG_OK) {
 			found = pkg_jobs_universe_find(universe, rd->uid);
 			if (found == NULL) {
-				lp = pkg_universe_get_local_pkg(universe, rd->uid, 0);
+				lp = pkg_jobs_universe_get_local(universe, rd->uid, 0);
 				pkg_jobs_process_universe(universe, lp, &found);
 			}
 

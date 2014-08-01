@@ -387,7 +387,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 			npkg = unit->pkg;
 		}
 		else {
-			npkg = pkg_universe_get_local_pkg(j->universe, d->uid,
+			npkg = pkg_jobs_universe_get_local(j->universe, d->uid,
 					PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_ANNOTATIONS);
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			if (npkg == NULL)
@@ -399,7 +399,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 				pkg_free(npkg);
 				return (false);
 			}
-			if (pkg_jobs_universe_process_package(j->universe, npkg) != EPKG_OK)
+			if (pkg_jobs_universe_process(j->universe, npkg) != EPKG_OK)
 				return (false);
 		}
 
@@ -424,11 +424,11 @@ new_pkg_version(struct pkg_jobs *j)
 	j->flags &= ~(PKG_FLAG_FORCE|PKG_FLAG_RECURSIVE);
 
 	/* determine local pkgng */
-	p = pkg_universe_get_local_pkg(j->universe, uid, 0);
+	p = pkg_jobs_universe_get_local(j->universe, uid, 0);
 
 	if (p == NULL) {
 		uid = "pkg~ports-mgmt/pkg-devel";
-		p = pkg_universe_get_local_pkg(j->universe, uid, 0);
+		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
 	}
 
 	/* you are using git version skip */
@@ -437,7 +437,7 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
-	pkg_jobs_universe_process_package(j->universe, p);
+	pkg_jobs_universe_process(j->universe, p);
 
 	/* Use maximum priority for pkg */
 	if (pkg_jobs_find_upgrade(j, uid, MATCH_EXACT) == EPKG_OK) {
@@ -496,7 +496,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	jit = pkg_jobs_universe_find(j->universe, uid);
 	if (jit != NULL) {
 		/* We have a more recent package */
-		if (!force && !pkg_need_upgrade(p, jit->pkg)) {
+		if (!force && !pkg_jobs_need_upgrade(p, jit->pkg)) {
 			/*
 			 * We can have package from another repo in the
 			 * universe, but if it is older than this one we just
@@ -526,7 +526,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 
 	rc = EPKG_OK;
 	/* Add a package to request chain and populate universe */
-	rc = pkg_jobs_process_universe(j->universe, p, &jit);
+	rc = pkg_jobs_universe_process_item(j->universe, p, &jit);
 
 	if (rc == EPKG_OK)
 		if (unit != NULL)
@@ -677,19 +677,19 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		 * Here we need to ensure that this package has no
 		 * reverse deps installed
 		 */
-		p = pkg_universe_get_local_pkg(j->universe, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
+		p = pkg_jobs_universe_get_local(j->universe, pattern, PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
 		if (p == NULL)
 			return (EPKG_FATAL);
 
-		pkg_jobs_universe_process_package(j->universe, p);
+		pkg_jobs_universe_process(j->universe, p);
 
 		while(pkg_rdeps(p, &rdep) == EPKG_OK) {
 			struct pkg *rdep_package;
 
-			rdep_package = pkg_universe_get_local_pkg(j->universe, rdep->uid,
+			rdep_package = pkg_jobs_universe_get_local(j->universe, rdep->uid,
 					PKG_LOAD_BASIC);
 			if (rdep_package != NULL) {
-				pkg_jobs_universe_process_package(j->universe, rdep_package);
+				pkg_jobs_universe_process(j->universe, rdep_package);
 				/* It is not a top level package */
 				return (EPKG_END);
 			}
@@ -789,7 +789,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 }
 
 bool
-pkg_need_upgrade(struct pkg *rp, struct pkg *lp)
+pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
 	const char *lversion, *rversion, *larch, *rarch, *reponame, *origin;
@@ -1097,7 +1097,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 				PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS) == EPKG_OK) {
 			// Check if the pkg is locked
 			pkg_get(pkg, PKG_UNIQUEID, &uid);
-			pkg_jobs_process_universe(j->universe, pkg, &unit);
+			pkg_jobs_universe_process_item(j->universe, pkg, &unit);
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
 			}
@@ -1135,7 +1135,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		pkg_get(pkg, PKG_UNIQUEID, &uid);
 		unit = pkg_jobs_universe_find(j->universe, uid);
 		if (unit == NULL) {
-			pkg_jobs_process_universe(j->universe, pkg, &unit);
+			pkg_jobs_universe_process_item(j->universe, pkg, &unit);
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
 			}
@@ -1286,7 +1286,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 				while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 					/* TODO: use repository priority here */
-					pkg_jobs_universe_process_package(j->universe, pkg);
+					pkg_jobs_universe_process(j->universe, pkg);
 					pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_AUTOMATIC, &automatic);
 					/* Do not test we ignore what doesn't exists remotely */
 					pkg_jobs_find_upgrade(j, uid, MATCH_EXACT);
@@ -1313,7 +1313,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				 * Need to iterate request one more time to recurse depends
 				 */
 				HASH_ITER(hh, j->request_add, req, rtmp) {
-					pkg_jobs_universe_process_package(j->universe, req->item->pkg);
+					pkg_jobs_universe_process(j->universe, req->item->pkg);
 				}
 			}
 		}
@@ -1324,7 +1324,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		 * request packages to the universe to find out any potential conflicts
 		 */
 		HASH_ITER(hh, j->request_add, req, rtmp) {
-			pkg_jobs_universe_process_package(j->universe, req->item->pkg);
+			pkg_jobs_universe_process(j->universe, req->item->pkg);
 		}
 	}
 

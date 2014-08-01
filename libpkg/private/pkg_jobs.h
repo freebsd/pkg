@@ -146,13 +146,13 @@ struct pkg_jobs_universe * pkg_jobs_universe_new(struct pkg_jobs *j);
 /*
  * Add a package to the universe
  */
-int pkg_jobs_universe_process_package(struct pkg_jobs_universe *universe,
+int pkg_jobs_universe_process(struct pkg_jobs_universe *universe,
 	struct pkg *pkg);
 
 /*
  * Add a package to the universe and store resulting item in `result`
  */
-int pkg_jobs_process_universe(struct pkg_jobs_universe *universe,
+int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, struct pkg_job_universe_item **result);
 
 /*
@@ -189,15 +189,13 @@ void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 /*
  * Find remote package in db or universe
  */
-struct pkg *
-pkg_universe_get_remote_pkg(struct pkg_jobs_universe *universe,
+struct pkg* pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag);
 
 /*
  * Find local package in db or universe
  */
-struct pkg *
-pkg_universe_get_local_pkg(struct pkg_jobs_universe *universe,
+struct pkg* pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag);
 
 /*
@@ -222,6 +220,6 @@ void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
 /*
  * Check whether `rp` is an upgrade for `lp`
  */
-bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp);
+bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
 
 #endif /* PKG_JOBS_H_ */
