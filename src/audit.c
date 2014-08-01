@@ -305,6 +305,8 @@ exec_audit(int argc, char **argv)
 	}
 
 	pkg_audit_free(audit);
+	if (vuln != 0)
+		ret = EXIT_FAILURE;
 
 	return (ret);
 }
