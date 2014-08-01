@@ -219,4 +219,9 @@ int pkg_conflicts_integrity_check(struct pkg_jobs *j);
 void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
 		enum pkg_conflict_type type);
 
+/*
+ * Check whether `rp` is an upgrade for `lp`
+ */
+bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp);
+
 #endif /* PKG_JOBS_H_ */
