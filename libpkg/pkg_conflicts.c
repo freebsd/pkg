@@ -34,6 +34,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/pkg_jobs.h"
 
 struct pkg_conflict_chain {
 	struct pkg_job_request *req;
