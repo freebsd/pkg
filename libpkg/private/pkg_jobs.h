@@ -164,13 +164,13 @@ void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 /*
  * Check if the specified digest was seen in the universe
  */
-bool pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
+struct pkg_job_seen* pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
 	const char *digest);
 
 /*
  * Search for an entry corresponding to the uid in the universe
  */
-struct pkg_job_universe_item * pkg_jobs_universe_find(struct pkg_jobs_universe
+struct pkg_job_universe_item* pkg_jobs_universe_find(struct pkg_jobs_universe
 	*universe, const char *uid);
 
 /*
