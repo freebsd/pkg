@@ -186,4 +186,37 @@ void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
 	const char *new_uid, size_t uidlen, bool update_rdeps);
 
+/*
+ * Find remote package in db or universe
+ */
+struct pkg *
+pkg_universe_get_remote_pkg(struct pkg_jobs_universe *universe,
+	const char *uid, unsigned flag);
+
+/*
+ * Find local package in db or universe
+ */
+struct pkg *
+pkg_universe_get_local_pkg(struct pkg_jobs_universe *universe,
+	const char *uid, unsigned flag);
+
+/*
+ * Resolve conflicts in request
+ */
+int pkg_conflicts_request_resolve(struct pkg_jobs *j);
+
+/*
+ * Append conflicts to a package
+ */
+int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
+/*
+ * Perform integrity check for the jobs specified
+ */
+int pkg_conflicts_integrity_check(struct pkg_jobs *j);
+/*
+ * Register a conflict between two packages
+ */
+void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
+		enum pkg_conflict_type type);
+
 #endif /* PKG_JOBS_H_ */

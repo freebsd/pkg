@@ -40,7 +40,7 @@
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
-static struct pkg *
+struct pkg *
 pkg_universe_get_local_pkg(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
@@ -74,7 +74,7 @@ pkg_universe_get_local_pkg(struct pkg_jobs_universe *universe,
 	return (pkg);
 }
 
-static struct pkg *
+struct pkg *
 pkg_universe_get_remote_pkg(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
