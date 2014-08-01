@@ -43,7 +43,6 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	struct job_pattern *jp;
 	int priority;
-	struct pkg *reinstall;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };
@@ -151,6 +150,12 @@ int pkg_jobs_universe_process_package(struct pkg_jobs_universe *universe,
 	struct pkg *pkg);
 
 /*
+ * Add a package to the universe and store resulting item in `result`
+ */
+int pkg_jobs_process_universe(struct pkg_jobs_universe *universe,
+	struct pkg *pkg, struct pkg_job_universe_item **result);
+
+/*
  * Add a universe item with package to the request
  */
 void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
@@ -167,5 +172,18 @@ bool pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
  */
 struct pkg_job_universe_item * pkg_jobs_universe_find(struct pkg_jobs_universe
 	*universe, const char *uid);
+
+/*
+ * Add a single package to the universe
+ */
+int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
+	struct pkg *pkg, bool force, struct pkg_job_universe_item **found);
+
+/*
+ * Change uid for universe item
+ */
+void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
+	struct pkg_job_universe_item *unit,
+	const char *new_uid, size_t uidlen, bool update_rdeps);
 
 #endif /* PKG_JOBS_H_ */
