@@ -345,8 +345,11 @@ progress_alarm_handler(int signo)
 static void
 stop_progressbar(void)
 {
-	if (progress_started)
+	if (progress_started) {
+		if (!isatty(STDOUT_FILENO))
+			printf(" done");
 		putchar('\n');
+	}
 
 	last_progress_percent = -1;
 	progress_alarm = false;
@@ -757,13 +760,19 @@ event_callback(void *data, struct pkg_event *ev)
 			begin = last_update = time(NULL);
 			bytes_per_second = 0;
 
-			if (isatty(STDOUT_FILENO))
-				progress_started = true;
+			progress_started = true;
+			if (!isatty(STDOUT_FILENO))
+				printf("%s...", progress_message);
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
-		if (!quiet && isatty(STDOUT_FILENO))
+		if (quiet)
+			break;
+		if (isatty(STDOUT_FILENO))
 			draw_progressbar(ev->e_progress_tick.current, ev->e_progress_tick.total);
+		else if (progress_started && ev->e_progress_tick.current >=
+		    ev->e_progress_tick.total)
+			stop_progressbar();
 		break;
 	case PKG_EVENT_BACKUP:
 		sbuf_cat(msg_buf, "Backing up");
