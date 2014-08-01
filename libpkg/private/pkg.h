@@ -480,12 +480,6 @@ const char* packing_format_to_string(pkg_formats format);
 int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg);
 
-int pkg_conflicts_request_resolve(struct pkg_jobs *j);
-int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
-int pkg_conflicts_integrity_check(struct pkg_jobs *j);
-void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
-		enum pkg_conflict_type type);
-
 typedef void (*conflict_func_cb)(const char *, const char *, void *);
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 		conflict_func_cb cb, void *cbdata);

@@ -49,7 +49,7 @@
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
 
-static int pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
+static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m,
 		bool root, bool recursive, bool add_request);
 static struct pkg *pkg_jobs_get_local_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
 static struct pkg *pkg_jobs_get_remote_pkg(struct pkg_jobs *j, const char *uid, unsigned flag);
@@ -445,7 +445,7 @@ new_pkg_version(struct pkg_jobs *j)
 	pkg_jobs_universe_process_package(j->universe, p);
 
 	/* Use maximum priority for pkg */
-	if (pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, false, true, true) == EPKG_OK) {
+	if (pkg_jobs_find_upgrade(j, uid, MATCH_EXACT, false, true, true) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
@@ -458,9 +458,7 @@ end:
 
 static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
-		bool root, bool force, bool recursive,
-		struct pkg_job_universe_item **unit,
-		bool add_request)
+		bool force, bool recursive, struct pkg_job_universe_item **unit)
 {
 	struct pkg_job_universe_item *jit;
 	struct pkg_job_seen *seen;
@@ -659,8 +657,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 }
 
 static int
-pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
-		match_t m, bool root, bool recursive, bool add_request)
+pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
@@ -671,14 +668,7 @@ pkg_jobs_find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
-	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
-		force = true;
-
-	if (((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE) &&
-	    ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE))
-	    force = true;
-
-	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+	if (j->flags & PKG_FLAG_FORCE)
 		force = true;
 
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
@@ -774,7 +764,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 				return (EPKG_FATAL);
 			}
 		}
-		rc = pkg_jobs_find_remote_pkg(j, jp->pattern, jp->match, true, true, true);
+		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match, true, true, true);
 		*got_local = false;
 	}
 	else {
@@ -813,8 +803,8 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 	return (rc);
 }
 
-static bool
-pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
+bool
+pkg_need_upgrade(struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
 	const char *lversion, *rversion, *larch, *rarch, *reponame, *origin;
@@ -971,218 +961,6 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	}
 
 	return (false);
-}
-
-static bool
-pkg_jobs_newer_than_local(struct pkg_jobs *j, struct pkg *rp, bool force)
-{
-	char *uid, *newversion, *oldversion, *reponame, *cksum;
-	const ucl_object_t *an, *obj;
-	struct pkg_job_universe_item *unit;
-	int64_t oldsize;
-	struct pkg *lp;
-	bool automatic;
-	int ret;
-
-	pkg_get(rp, PKG_UNIQUEID, &uid,
-	    PKG_REPONAME, &reponame, PKG_CKSUM, &cksum);
-	lp = pkg_jobs_get_local_pkg(j, uid, 0);
-
-	/* obviously yes because local doesn't exists */
-	if (lp == NULL)
-		return (true);
-
-	pkg_get(lp, PKG_AUTOMATIC, &automatic,
-	    PKG_VERSION, &oldversion,
-	    PKG_FLATSIZE, &oldsize,
-	    PKG_ANNOTATIONS, &obj);
-
-	/* Add repo name to the annotation */
-	an = pkg_object_find(obj, "repository");
-	if (an != NULL)  {
-		if (strcmp(reponame, ucl_object_tostring(an)) != 0)  {
-			pkg_jobs_add_universe(j, lp, true, false, NULL);
-			return (false);
-		}
-		else {
-			pkg_set(lp, PKG_REPONAME, reponame, PKG_CKSUM, cksum);
-		}
-	}
-
-	pkg_jobs_add_universe(j, lp, true, false, &unit);
-
-	pkg_get(rp, PKG_VERSION, &newversion);
-	pkg_set(rp, PKG_OLD_VERSION, oldversion,
-	    PKG_OLD_FLATSIZE, oldsize,
-	    PKG_AUTOMATIC, automatic);
-
-	if (force) {
-		unit->reinstall = rp;
-		return (true);
-	}
-
-	ret = pkg_need_upgrade(rp, lp, false);
-
-	return (ret);
-}
-
-static int
-pkg_conflicts_add_missing(struct pkg_jobs *j, const char *uid)
-{
-	struct pkg *npkg;
-
-
-	npkg = pkg_jobs_get_local_pkg(j, uid, 0);
-	if (npkg == NULL) {
-		npkg = pkg_jobs_get_remote_pkg(j, uid, 0);
-		pkg_debug(2, "conflicts: add missing remote %s(%d)", uid);
-	}
-	else {
-		pkg_debug(2, "conflicts: add missing local %s(%d)", uid);
-	}
-
-	if (npkg == NULL) {
-		pkg_emit_error("cannot register conflict with non-existing %s",
-				uid);
-		return (EPKG_FATAL);
-	}
-
-	return pkg_jobs_add_universe(j, npkg, true, false, NULL);
-}
-
-
-static void
-pkg_conflicts_register_universe(struct pkg_jobs *j,
-		struct pkg_job_universe_item *u1,
-		struct pkg_job_universe_item *u2, bool local_only,
-		enum pkg_conflict_type type)
-{
-
-	pkg_conflicts_register(u1->pkg, u2->pkg, type);
-}
-
-static void
-pkg_conflicts_add_from_pkgdb_local(const char *o1, const char *o2, void *ud)
-{
-	struct pkg_jobs *j = (struct pkg_jobs *)ud;
-	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
-	struct pkg_conflict *c;
-	const char *dig1, *dig2;
-
-	HASH_FIND_STR(j->universe, o1, u1);
-	HASH_FIND_STR(j->universe, o2, u2);
-
-	if (u1 == NULL && u2 == NULL) {
-		pkg_emit_error("cannot register conflict with non-existing %s and %s",
-				o1, o2);
-		return;
-	}
-	else if (u1 == NULL) {
-		if (pkg_conflicts_add_missing(j, o1) != EPKG_OK)
-			return;
-		HASH_FIND_STR(j->universe, o1, u1);
-	}
-	else if (u2 == NULL) {
-		if (pkg_conflicts_add_missing(j, o2) != EPKG_OK)
-			return;
-		HASH_FIND_STR(j->universe, o2, u2);
-	}
-	else {
-		/* Maybe we have registered this conflict already */
-		HASH_FIND(hh, u1->pkg->conflicts, o2, strlen(o2), c);
-		if (c != NULL)
-			return;
-	}
-
-	/*
-	 * Here we have some unit but we do not know, where is a conflict, e.g.
-	 * if we have several units U1 and U2 with the same uniqueid O that are in
-	 * the conflict with some origin O' provided by U1' and U2'. So we can
-	 * register the conflicts between all units in the chain.
-	 */
-	LL_FOREACH(u1, cur1) {
-		LL_FOREACH(u2, cur2) {
-			if (cur1->pkg->type == PKG_INSTALLED && cur2->pkg->type != PKG_INSTALLED) {
-				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
-				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-				pkg_conflicts_register_universe(j, cur1, cur2, true, PKG_CONFLICT_REMOTE_LOCAL);
-				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
-						o1, dig1, o2, dig2);
-				j->conflicts_registered ++;
-			}
-			else if (cur2->pkg->type == PKG_INSTALLED && cur1->pkg->type != PKG_INSTALLED) {
-				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
-				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-				pkg_conflicts_register_universe(j, cur1, cur2, true, PKG_CONFLICT_REMOTE_LOCAL);
-				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
-						o2, dig2, o1, dig1);
-				j->conflicts_registered ++;
-			}
-		}
-	}
-}
-
-static void
-pkg_conflicts_add_from_pkgdb_remote(const char *o1, const char *o2, void *ud)
-{
-	struct pkg_jobs *j = (struct pkg_jobs *)ud;
-	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
-	struct pkg_conflict *c;
-	const char *dig1, *dig2;
-
-	HASH_FIND_STR(j->universe, o1, u1);
-	HASH_FIND_STR(j->universe, o2, u2);
-
-	/*
-	 * In case of remote conflict we need to register it only between remote
-	 * packets
-	 */
-
-	if (u1 == NULL || u2 == NULL) {
-		pkg_emit_error("cannot register remote conflict with non-existing %s and %s",
-				o1, o2);
-		return;
-	}
-	else {
-		/* Maybe we have registered this conflict already */
-		HASH_FIND(hh, u1->pkg->conflicts, o2, strlen(o2), c);
-		if (c != NULL)
-			return;
-	}
-
-	LL_FOREACH(u1, cur1) {
-		if (cur1->pkg->type != PKG_INSTALLED) {
-			HASH_FIND(hh, cur1->pkg->conflicts, o2, strlen(o2), c);
-			if (c == NULL) {
-				LL_FOREACH(u2, cur2) {
-					HASH_FIND(hh, cur2->pkg->conflicts, o1, strlen(o1), c);
-					if (c == NULL && cur2->pkg->type != PKG_INSTALLED) {
-						/* No need to update priorities */
-						pkg_conflicts_register(cur1->pkg, cur2->pkg, PKG_CONFLICT_REMOTE_REMOTE);
-						j->conflicts_registered ++;
-						pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
-						pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-						pkg_debug(2, "register conflict between remote %s(%s) <-> %s(%s)",
-								o1, dig1, o2, dig2);
-						break;
-					}
-				}
-			}
-		}
-	}
-}
-
-int
-pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j)
-{
-	/* Now we can get conflicts only from pkgdb */
-	return (pkgdb_integrity_append(j->db, p, pkg_conflicts_add_from_pkgdb_remote, j));
-}
-
-int
-pkg_conflicts_integrity_check(struct pkg_jobs *j)
-{
-	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb_local, j));
 }
 
 static void
@@ -1526,7 +1304,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 					pkg_jobs_add_universe(j, pkg, true, false, NULL);
 					pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_AUTOMATIC, &automatic);
 					/* Do not test we ignore what doesn't exists remotely */
-					pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, !automatic,
+					pkg_jobs_find_upgrade(j, uid, MATCH_EXACT, !automatic,
 							true, !automatic);
 					pkg = NULL;
 				}
@@ -1603,7 +1381,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			else {
 				pkg_get(pkg, PKG_UNIQUEID, &uid);
 				/* Do not test we ignore what doesn't exists remotely */
-				pkg_jobs_find_remote_pkg(j, uid, MATCH_EXACT, false,
+				pkg_jobs_find_upgrade(j, uid, MATCH_EXACT, false,
 						j->flags & PKG_FLAG_RECURSIVE, true);
 			}
 			pkg = NULL;
@@ -1612,7 +1390,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	} else {
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
 			/* TODO: use repository priority here */
-			if (pkg_jobs_find_remote_pkg(j, jp->pattern, jp->match, true,
+			if (pkg_jobs_find_upgrade(j, jp->pattern, jp->match, true,
 					j->flags & PKG_FLAG_RECURSIVE, true) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
