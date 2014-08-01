@@ -40,6 +40,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/pkg_jobs.h"
 
 /*
  * CUDF does not support packages with '_' in theirs names, therefore
@@ -91,7 +92,7 @@ cudf_print_element(FILE *f, const char *line, bool has_next, int *column)
 }
 
 static inline int
-cudf_print_conflict(FILE *f, const char *origin, int ver, bool has_next, int *column)
+cudf_print_conflict(FILE *f, const char *uid, int ver, bool has_next, int *column)
 {
 	int ret = 0;
 	if (*column > 80) {
@@ -99,7 +100,7 @@ cudf_print_conflict(FILE *f, const char *origin, int ver, bool has_next, int *co
 		ret += fprintf(f, "\n ");
 	}
 
-	ret += cudf_print_package_name(f, origin);
+	ret += cudf_print_package_name(f, uid);
 	ret += fprintf(f, "=%d", ver);
 
 	if (has_next)
@@ -118,18 +119,18 @@ static int
 cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		struct pkg_job_universe_item *conflicts_chain)
 {
-	const char *origin;
+	const char *uid;
 	struct pkg_dep *dep, *dtmp;
 	struct pkg_provide *prov, *ptmp;
 	struct pkg_conflict *conflict, *ctmp;
 	struct pkg_job_universe_item *u;
 	int column = 0, ver;
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
+	pkg_get(pkg, PKG_UNIQUEID, &uid);
 	if (fprintf(f, "package: ") < 0)
 		return (EPKG_FATAL);
 
-	if (cudf_print_package_name(f, origin) < 0)
+	if (cudf_print_package_name(f, uid) < 0)
 		return (EPKG_FATAL);
 
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
@@ -173,7 +174,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		ver = 1;
 		LL_FOREACH(conflicts_chain, u) {
 			if (u->pkg != pkg && u->priority != INT_MIN) {
-				if (cudf_print_conflict(f, origin, ver,
+				if (cudf_print_conflict(f, uid, ver,
 						(u->next != NULL && u->next->pkg != pkg), &column) < 0) {
 					return (EPKG_FATAL);
 				}
@@ -193,7 +194,7 @@ static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
 	struct pkg_job_request *req, *tmp;
-	const char *origin;
+	const char *uid;
 	int column = 0;
 	bool printed = false;
 
@@ -202,8 +203,8 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		if (req->skip)
 			continue;
-		pkg_get(req->item->pkg, PKG_ORIGIN, &origin);
-		if (cudf_print_element(f, origin,
+		pkg_get(req->item->pkg, PKG_ORIGIN, &uid);
+		if (cudf_print_element(f, uid,
 				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
@@ -221,8 +222,8 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		if (req->skip)
 			continue;
-		pkg_get(req->item->pkg, PKG_ORIGIN, &origin);
-		if (cudf_print_element(f, origin,
+		pkg_get(req->item->pkg, PKG_ORIGIN, &uid);
+		if (cudf_print_element(f, uid,
 				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
@@ -268,7 +269,7 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	HASH_ITER(hh, j->universe, it, itmp) {
+	HASH_ITER(hh, j->universe->items, it, itmp) {
 		/* XXX
 		 * Here are dragons:
 		 * after sorting it we actually modify the head of the list, but there is
@@ -316,7 +317,7 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 }
 
 /*
- * Perform backward conversion of an origin replacing '@' to '_'
+ * Perform backward conversion of an uid replacing '@' to '_'
  */
 static char *
 cudf_strdup(const char *in)
@@ -366,7 +367,7 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 }
 
 struct pkg_cudf_entry {
-	char *origin;
+	char *uid;
 	bool was_installed;
 	bool installed;
 	char *version;
@@ -376,13 +377,13 @@ static int
 pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 {
 	struct pkg_job_universe_item *it, *cur, *selected = NULL, *old = NULL, *head;
-	const char *origin, *oldversion;
+	const char *uid, *oldversion;
 	int ver, n;
 
-	HASH_FIND(hh, j->universe, entry->origin, strlen(entry->origin), it);
+	it = pkg_jobs_universe_find(j->universe, entry->uid);
 	if (it == NULL) {
 		pkg_emit_error("package %s is found in CUDF output but not in the universe",
-				entry->origin);
+				entry->uid);
 		return (EPKG_FATAL);
 	}
 
@@ -412,21 +413,21 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 	if (selected == NULL) {
 		pkg_emit_error("package %s-%d is found in CUDF output but the "
 				"universe has no such version (only %d versions found)",
-				entry->origin, ver, n);
+				entry->uid, ver, n);
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(selected->pkg, PKG_ORIGIN, &origin);
+	pkg_get(selected->pkg, PKG_ORIGIN, &uid);
 	if (n == 1) {
 		if (entry->installed && selected->pkg->type != PKG_INSTALLED) {
 			pkg_debug(3, "pkg_cudf: schedule installation of %s(%d)",
-					entry->origin, ver);
+					entry->uid, ver);
 			pkg_jobs_cudf_insert_res_job (&j->jobs, selected, NULL, PKG_SOLVED_INSTALL);
 			j->count ++;
 		}
 		else if (!entry->installed && selected->pkg->type == PKG_INSTALLED) {
 			pkg_debug(3, "pkg_cudf: schedule removing of %s(%d)",
-					entry->origin, ver);
+					entry->uid, ver);
 			pkg_jobs_cudf_insert_res_job (&j->jobs, selected, NULL, PKG_SOLVED_DELETE);
 			j->count ++;
 		}
@@ -440,7 +441,7 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 			}
 		}
 		pkg_debug(3, "pkg_cudf: schedule upgrade of %s(to %d)",
-				entry->origin, ver);
+				entry->uid, ver);
 		assert(old != NULL);
 		/* XXX: this is a hack due to iterators stupidity */
 		pkg_get(old->pkg, PKG_VERSION, &oldversion);
@@ -471,28 +472,28 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 			value = strsep(&begin, " \t");
 
 		if (strcmp(param, "package") == 0) {
-			if (cur_pkg.origin != NULL) {
+			if (cur_pkg.uid != NULL) {
 				if (pkg_jobs_cudf_add_package(j, &cur_pkg) != EPKG_OK)  {
 					free(line);
 					return (EPKG_FATAL);
 				}
 			}
-			cur_pkg.origin = cudf_strdup(value);
+			cur_pkg.uid = cudf_strdup(value);
 			cur_pkg.was_installed = false;
 			cur_pkg.installed = false;
 			cur_pkg.version = NULL;
 		}
 		else if (strcmp(param, "version") == 0) {
-			if (cur_pkg.origin == NULL) {
-				pkg_emit_error("version line has no corresponding origin in CUDF output");
+			if (cur_pkg.uid == NULL) {
+				pkg_emit_error("version line has no corresponding uid in CUDF output");
 				free(line);
 				return (EPKG_FATAL);
 			}
 			cur_pkg.version = cudf_strdup(value);
 		}
 		else if (strcmp(param, "installed") == 0) {
-			if (cur_pkg.origin == NULL) {
-				pkg_emit_error("installed line has no corresponding origin in CUDF output");
+			if (cur_pkg.uid == NULL) {
+				pkg_emit_error("installed line has no corresponding uid in CUDF output");
 				free(line);
 				return (EPKG_FATAL);
 			}
@@ -500,8 +501,8 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 				cur_pkg.installed = true;
 		}
 		else if (strcmp(param, "was-installed") == 0) {
-			if (cur_pkg.origin == NULL) {
-				pkg_emit_error("was-installed line has no corresponding origin in CUDF output");
+			if (cur_pkg.uid == NULL) {
+				pkg_emit_error("was-installed line has no corresponding uid in CUDF output");
 				free(line);
 				return (EPKG_FATAL);
 			}
@@ -510,7 +511,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 		}
 	}
 
-	if (cur_pkg.origin != NULL) {
+	if (cur_pkg.uid != NULL) {
 		if (pkg_jobs_cudf_add_package(j, &cur_pkg) != EPKG_OK)  {
 			free(line);
 			return (EPKG_FATAL);
