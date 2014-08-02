@@ -547,8 +547,7 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg *rp, struct pkg *lp)
 {
 	if (pkgdb_ensure_loaded(db, lp,
-			      PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) !=
-			EPKG_OK)
+	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	return pkg_add_common(db, path, flags, keys, location, rp, lp);
