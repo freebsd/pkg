@@ -356,13 +356,31 @@ sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
 }
 
 int
+sha256_fileat(int rootfd, const char *path,
+    char out[SHA256_DIGEST_LENGTH * 2 + 1])
+{
+	int fd, ret;
+
+	if ((fd = openat(rootfd, path, O_RDONLY)) == -1) {
+		pkg_emit_errno("openat", path);
+		return (EPKG_FATAL);
+	}
+
+	ret = sha256_fd(fd, out);
+
+	close(fd);
+
+	return (ret);
+}
+
+int
 sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	int fd;
 	int ret;
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("fopen", path);
+		pkg_emit_errno("open", path);
 		return (EPKG_FATAL);
 	}
 
