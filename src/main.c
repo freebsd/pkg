@@ -56,6 +56,7 @@
 #include <jail.h>
 #include <sys/jail.h>
 #endif
+#include <signal.h>
 
 #include <pkg.h>
 
@@ -676,6 +677,9 @@ main(int argc, char **argv)
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
+
+	/* Ignore SIGPIPE */
+	signal(SIGPIPE, SIG_IGN);
 
 	if (argc < 2)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
