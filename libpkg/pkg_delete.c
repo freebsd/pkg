@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -33,6 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -110,31 +111,28 @@ void
 pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 {
 	const char *sum = pkg_file_cksum(file);
-	const ucl_object_t *obj, *an;
 	const char *path;
-	char fpath[MAXPATHLEN];
 	struct stat st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
+	pkg_open_root_fd(pkg);
+
 	path = pkg_file_path(file);
-	pkg_get(pkg, PKG_ANNOTATIONS, &an);
-	obj = pkg_object_find(an, "relocated");
-	snprintf(fpath, sizeof(fpath), "%s%s",
-		obj ? pkg_object_string(obj) : "" , path );
+	path++;
 
 	/* Regular files and links */
 	/* check sha256 */
 	if (!force && sum[0] != '\0') {
-		if (lstat(fpath, &st) == -1) {
-			pkg_emit_error("cannot stat %s: %s", fpath, strerror(errno));
+		if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+			pkg_emit_error("cannot stat %s: %s", path, strerror(errno));
 			return;
 		}
 		if (S_ISLNK(st.st_mode)) {
-			if (pkg_symlink_cksum(fpath, NULL, sha256) != EPKG_OK)
+			if (pkg_symlink_cksum(path, NULL, sha256) != EPKG_OK)
 				return;
 		}
 		else {
-			if (sha256_file(fpath, sha256) != EPKG_OK)
+			if (sha256_fileat(pkg->rootfd, path, sha256) != EPKG_OK)
 				return;
 		}
 		if (strcmp(sha256, sum)) {
@@ -144,9 +142,9 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 		}
 	}
 
-	if (unlink(fpath) == -1) {
+	if (unlinkat(pkg->rootfd, path, 0) == -1) {
 		if (force < 2)
-			pkg_emit_errno("unlink", fpath);
+			pkg_emit_errno("unlinkat", path);
 		return;
 	}
 }
@@ -185,17 +183,16 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 void
 pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 {
-	const ucl_object_t 	*obj, *an;
-	char			 fpath[MAXPATHLEN];
+	const char *path;
+	pkg_open_root_fd(pkg);
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &an);
-	obj = pkg_object_find(an, "relocated");
-	snprintf(fpath, sizeof(fpath), "%s%s",
-		obj ? pkg_object_string(obj) : "" , pkg_dir_path(dir) );
+	path = pkg_dir_path(dir);
+	/* remove the first / */
+	path++;
 
-	if (rmdir(fpath) == -1 &&
+	if (unlinkat(pkg->rootfd, path, AT_REMOVEDIR) == -1 &&
 	    errno != ENOTEMPTY && errno != EBUSY)
-		pkg_emit_errno("rmdir", fpath);
+		pkg_emit_errno("rmdir", pkg_dir_path(dir));
 }
 
 int
