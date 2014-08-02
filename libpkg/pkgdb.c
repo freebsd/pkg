@@ -2952,6 +2952,8 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 
 	switch (type) {
 	case PKGDB_LOCK_READONLY:
+		if (!ucl_object_toboolean(pkg_config_get("READ_LOCK")))
+				return (EPKG_OK);
 		lock_sql = readonly_lock_sql;
 		pkg_debug(1, "want to get a read only lock on a database");
 		break;
@@ -3026,8 +3028,12 @@ pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
 
 	switch (type) {
 	case PKGDB_LOCK_READONLY:
+		if (!ucl_object_toboolean(pkg_config_get("READ_LOCK")))
+			return (EPKG_OK);
+
 		unlock_sql = readonly_unlock_sql;
 		pkg_debug(1, "release a read only lock on a database");
+
 		break;
 	case PKGDB_LOCK_ADVISORY:
 		unlock_sql = advisory_unlock_sql;
