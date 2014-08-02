@@ -712,18 +712,13 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 			pkg_repo_binary_update_item_new(&ladd, origin, digest, num_offset,
 					num_length);
 		} else {
-			if (strcmp(digest, item->digest) == 0) {
-				free(item->origin);
-				free(item->digest);
-				HASH_DEL(ldel, item);
-				free(item);
-				item = NULL;
-			} else {
-				free(item->origin);
-				free(item->digest);
-				HASH_DEL(ldel, item);
-				free(item);
-				item = NULL;
+			free(item->origin);
+			free(item->digest);
+			HASH_DEL(ldel, item);
+			free(item);
+			item = NULL;
+
+			if (strcmp(digest, item->digest) != 0) {
 				pkg_repo_binary_update_item_new(&ladd, origin, digest,
 						num_offset, num_length);
 				updated++;
