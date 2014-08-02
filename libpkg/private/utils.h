@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -89,6 +89,7 @@ ssize_t sbuf_size(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
+int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, char *);
 int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
