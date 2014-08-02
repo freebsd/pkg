@@ -317,6 +317,12 @@ static struct config_entry c[] = {
 		"0",
 		"How many workers are used for pkg-repo (hw.ncpu if 0)"
 	},
+	{
+		PKG_BOOL,
+		"READ_LOCK",
+		"NO",
+		"Use read locking for query database"
+	},
 };
 
 static bool parsed = false;
