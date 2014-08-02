@@ -146,6 +146,7 @@ struct pkg {
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
 	unsigned			flags;
+	int		rootfd;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
 	UT_hash_handle	 hh;
@@ -536,5 +537,6 @@ int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg *rp, struct pkg *lp);
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir, unsigned force);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force);
+int pkg_open_root_fd(struct pkg *pkg);
 
 #endif
