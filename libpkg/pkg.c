@@ -118,6 +118,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
+	pkg->rootfd = -1;
 
 	pkg->type = type;
 }
