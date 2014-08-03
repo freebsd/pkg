@@ -906,6 +906,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	if (tmp != NULL) {
 		tmp[0] = '\0';
 		tmp++;
+		tmp[strlen(tmp) -1] = '\0';
 		owner = tmp;
 		if ((tmp = strchr(tmp, ',')) == NULL) {
 			pkg_emit_error("Malformed keyword %s, expecting @keyword "
