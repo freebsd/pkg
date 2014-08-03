@@ -20,6 +20,7 @@ global:
 	pkg_addrdep;
 	pkg_addscript;
 	pkg_addscript_file;
+	pkg_addscript_fileat;
 	pkg_addshlib_provided;
 	pkg_addshlib_required;
 	pkg_adduid;
@@ -125,6 +126,7 @@ global:
 	pkg_options;
 	pkg_parse_manifest;
 	pkg_parse_manifest_file;
+	pkg_parse_manifest_fileat;
 	pkg_plugin_conf;
 	pkg_plugin_conf_add;
 	pkg_plugin_errno;
@@ -163,6 +165,7 @@ global:
 	pkg_script_get;
 	pkg_set2;
 	pkg_set_from_file;
+	pkg_set_from_fileat;
 	pkg_shlib_name;
 	pkg_shlibs_provided;
 	pkg_shlibs_required;
