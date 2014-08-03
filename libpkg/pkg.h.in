@@ -63,8 +63,9 @@
 #define OSMAJOR	__FreeBSD__
 #endif
 
+/* Not supported under DragonFly */
 #ifdef __DragonFly__
-#define OSMAJOR	__DragonFly__
+#undef OSMAJOR
 #endif
 
 #ifndef __DECONST
