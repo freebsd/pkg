@@ -933,9 +933,9 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 		permstr[strlen(permstr) - 1] = '\0';
 		attr = calloc(1, sizeof(struct file_attr));
 		if (*owner != '\0')
-			attr->owner = owner;
+			attr->owner = strdup(owner);
 		if (*group != '\0')
-			attr->group = group;
+			attr->group = strdup(group);
 		if (*permstr != '\0') {
 			attr->mode = getmode(set, 0);
 			free(set);
