@@ -394,6 +394,29 @@ pkg_set_mtree(struct pkg *pkg, const char *mtree) {
 	return (pkg_set(pkg, PKG_MTREE, mtree));
 }
 
+int
+pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
+    bool trimcr)
+{
+	char *buf = NULL;
+	off_t size = 0;
+	int ret = EPKG_OK;
+
+	assert(pkg != NULL);
+	assert(path != NULL);
+
+	if ((ret = file_to_bufferat(fd, path, &buf, &size)) !=  EPKG_OK)
+		return (ret);
+
+	while (trimcr && buf[strlen(buf) - 1] == '\n')
+		buf[strlen(buf) - 1] = '\0';
+
+	ret = pkg_set(pkg, attr, buf);
+
+	free(buf);
+
+	return (ret);
+}
 
 int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
@@ -836,6 +859,61 @@ pkg_addscript(struct pkg *pkg, const char *data, pkg_script type)
 	sbuf_set(sbuf, data);
 
 	return (EPKG_OK);
+}
+
+int
+pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
+{
+	char *data;
+	pkg_script type;
+	int ret = EPKG_OK;
+	off_t sz = 0;
+
+	assert(pkg != NULL);
+	assert(filename != NULL);
+
+	pkg_debug(1, "Adding script from: '%s'", filename);
+
+	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
+		return (ret);
+
+	if (strcmp(filename, "pkg-pre-install") == 0 ||
+			strcmp(filename, "+PRE_INSTALL") == 0) {
+		type = PKG_SCRIPT_PRE_INSTALL;
+	} else if (strcmp(filename, "pkg-post-install") == 0 ||
+			strcmp(filename, "+POST_INSTALL") == 0) {
+		type = PKG_SCRIPT_POST_INSTALL;
+	} else if (strcmp(filename, "pkg-install") == 0 ||
+			strcmp(filename, "+INSTALL") == 0) {
+		type = PKG_SCRIPT_INSTALL;
+	} else if (strcmp(filename, "pkg-pre-deinstall") == 0 ||
+			strcmp(filename, "+PRE_DEINSTALL") == 0) {
+		type = PKG_SCRIPT_PRE_DEINSTALL;
+	} else if (strcmp(filename, "pkg-post-deinstall") == 0 ||
+			strcmp(filename, "+POST_DEINSTALL") == 0) {
+		type = PKG_SCRIPT_POST_DEINSTALL;
+	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
+			strcmp(filename, "+DEINSTALL") == 0) {
+		type = PKG_SCRIPT_DEINSTALL;
+	} else if (strcmp(filename, "pkg-pre-upgrade") == 0 ||
+			strcmp(filename, "+PRE_UPGRADE") == 0) {
+		type = PKG_SCRIPT_PRE_UPGRADE;
+	} else if (strcmp(filename, "pkg-post-upgrade") == 0 ||
+			strcmp(filename, "+POST_UPGRADE") == 0) {
+		type = PKG_SCRIPT_POST_UPGRADE;
+	} else if (strcmp(filename, "pkg-upgrade") == 0 ||
+			strcmp(filename, "+UPGRADE") == 0) {
+		type = PKG_SCRIPT_UPGRADE;
+	} else {
+		pkg_emit_error("unknown script '%s'", filename);
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	ret = pkg_addscript(pkg, data, type);
+cleanup:
+	free(data);
+	return (ret);
 }
 
 int
