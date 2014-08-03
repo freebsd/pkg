@@ -415,6 +415,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	ret = EPKG_OK;
 
 cleanup:
+	if (mfd != -1)
+		close(mfd);
 	free(pkg);
 	free(manifest);
 	pkg_manifest_keys_free(keys);
