@@ -962,7 +962,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 			attr->owner = strdup(owner);
 		if (*group != '\0')
 			attr->group = strdup(group);
-		if (set != NULL) {
+		if (*permstr != '\0') {
 			attr->mode = getmode(set, 0);
 			free(set);
 		}
