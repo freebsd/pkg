@@ -7,9 +7,9 @@ Table of Contents:
 * [libpkg](#libpkg)
 * [pkg package format](#pkgfmt)
 * [Local Database](#localdb)
-* [Installation of packages](#pkginst)
-* [Upgrades of packages](#pkgupg)
-* [Deletion of packages](#pkgdel)
+* [Installing packages](#pkginst)
+* [Upgrading packages](#pkgupg)
+* [Deleting packages](#pkgdel)
 * [Installing pkg](#installpkg)
 * [pkg bootstrap](#pkgbootstrap)
 * [pkg in Ports](#pkgports)
@@ -164,7 +164,7 @@ database from the ports. The register command can execute the install script,
 show pkg-message, ...
 
 <a name="pkginst"></a>
-### Installation of packages
+### Installing packages
 
 `pkg add` can install a package archive from the local disk, or from a
 remote FTP/HTTP server.
@@ -180,7 +180,7 @@ catalogue of the remote repository.
 for another arch or release.
 
 <a name="pkgupg"></a>
-### Upgrades of packages
+### Upgrading packages
 
 pkg also supports upgrades of binary packages.
 
@@ -188,9 +188,14 @@ pkg will compare the versions of installed packages and those available in
 the repository. It will compute the proper update order and apply them.
 
 <a name="pkgdel"></a>
-### Deletion packages
+### Deleting packages
 
-Directory leftovers are automatically removed if they are not in the MTREE.
+`pkg delete` will remove a package, and (delending on the command line
+arguments) any other packages that depend on what you're trying to
+delete.
+
+Directory leftovers are automatically removed if they are empty and
+not in the MTREE.
 
 <a name="installpkg"></a>
 ## Installing pkg
@@ -276,7 +281,7 @@ get on.
 
 If you're on a 9.x system or earler and did not have a release version
 of pkg(8) installed previously, you will need to run the pkg2ng
-script.  This is only necesaary when converting your system from the
+script.  This is only necessary when converting your system from the
 old pkg_tools style packages.
 
 In order to register your installed packages to pkg, execute the
