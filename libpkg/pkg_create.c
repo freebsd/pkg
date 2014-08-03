@@ -35,6 +35,7 @@
 #include <regex.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -283,6 +284,16 @@ cleanup:
 	return (ret);
 }
 
+static void
+pkg_load_from_file(int fd, struct pkg *pkg, pkg_attr attr, const char *path)
+{
+
+	if (faccessat(fd, path, F_OK, 0) == 0) {
+		pkg_debug(1, "Reading: '%s'", path);
+		pkg_set_from_fileat(fd, pkg, attr, path, false);
+	}
+}
+
 int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
     const char *md_dir, char *plist, bool old)
@@ -292,22 +303,24 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	struct pkg_dir	*dir = NULL;
 	struct packing	*pkg_archive = NULL;
 	char		*manifest = NULL;
-	char		 path[MAXPATHLEN];
 	char		 arch[BUFSIZ];
 	int		 ret = ENOMEM;
 	char		*buf;
-	int		 i;
+	int		 i, mfd;
 	regex_t		 preg;
 	regmatch_t	 pmatch[2];
 	size_t		 size;
 	char		*www = NULL;
 	struct pkg_manifest_key *keys = NULL;
 
+	mfd = -1;
+
 	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
 
-	/* Load the manifest from the metadata directory */
-	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
+	if ((mfd = open(md_dir, O_DIRECTORY)) == -1) {
+		pkg_emit_errno("open", md_dir);
 		goto cleanup;
+	}
 
 	if(pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE) != EPKG_OK) {
 		ret = EPKG_FATAL;
@@ -315,34 +328,22 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 	pkg_manifest_keys_new(&keys);
-	if ((ret = pkg_parse_manifest_file(pkg, path, keys)) != EPKG_OK) {
+	/* Load the manifest from the metadata directory */
+	if ((ret = pkg_parse_manifest_fileat(mfd, pkg, "+MANIFEST", keys))
+	    != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	/* if no descriptions provided then try to get it from a file */
-
 	pkg_get(pkg, PKG_DESC, &buf);
-	if (buf == NULL) {
-		if (snprintf(path, sizeof(path), "%s/+DESC", md_dir) == -1)
-			goto cleanup;
-		if (access(path, F_OK) == 0) {
-			pkg_debug(1, "Taking description from: '%s'", path);
-			pkg_set_from_file(pkg, PKG_DESC, path, false);
-		}
-	}
+	if (buf == NULL)
+		pkg_load_from_file(mfd, pkg, PKG_DESC, "+DESC");
 
 	/* if no message try to get it from a file */
 	pkg_get(pkg, PKG_MESSAGE, &buf);
-	if (buf == NULL) {
-		ret = snprintf(path, sizeof(path), "%s/+DISPLAY", md_dir);
-		if (ret == -1)
-			goto cleanup;
-		if (access(path, F_OK) == 0) {
-			pkg_debug(1, "Taking message from: '%s'", path);
-			pkg_set_from_file(pkg, PKG_MESSAGE, path, false);
-		}
-	}
+	if (buf == NULL)
+		pkg_load_from_file(mfd, pkg, PKG_MESSAGE, "+DISPLAY");
 
 	/* if no arch autodetermine it */
 	pkg_get(pkg, PKG_ARCH, &buf);
@@ -353,20 +354,12 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 
 	/* if no mtree try to get it from a file */
 	pkg_get(pkg, PKG_MTREE, &buf);
-	if (buf == NULL) {
-		ret = snprintf(path, sizeof(path), "%s/+MTREE_DIRS", md_dir);
-		if (ret == -1)
-			goto cleanup;
-		if (access(path, F_OK) == 0) {
-			pkg_debug(1, "Taking mtree definition from: '%s'", path);
-			pkg_set_from_file(pkg, PKG_MTREE, path, false);
-		}
-	}
+	if (buf == NULL)
+		pkg_load_from_file(mfd, pkg, PKG_MTREE, "+MTREE_DIRS");
 
 	for (i = 0; scripts[i] != NULL; i++) {
-		snprintf(path, sizeof(path), "%s/%s", md_dir, scripts[i]);
-		if (access(path, F_OK) == 0)
-			pkg_addscript_file(pkg, path);
+		if (faccessat(mfd, scripts[i], F_OK, 0) == 0)
+			pkg_addscript_fileat(mfd, pkg, scripts[i]);
 	}
 
 	if (plist != NULL &&

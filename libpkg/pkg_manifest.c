@@ -738,6 +738,42 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 }
 
 int
+pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
+    struct pkg_manifest_key *keys)
+{
+	struct ucl_parser *p = NULL;
+	ucl_object_t *obj = NULL;
+	int rc;
+	char *data;
+	size_t sz = 0;
+
+	assert(pkg != NULL);
+	assert(file != NULL);
+
+	pkg_debug(1, "Parsing manifest from '%s'", file);
+
+	errno = 0;
+
+	if ((rc = file_to_bufferat(dfd, file, &data, &sz)) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	p = ucl_parser_new(0);
+	if (!ucl_parser_add_string(p, data, sz)) {
+		ucl_parser_free(p);
+		return (EPKG_FATAL);
+	}
+
+	obj = ucl_parser_get_object(p);
+	rc = parse_manifest(pkg, keys, obj);
+
+	ucl_parser_free(p);
+	ucl_object_unref(obj);
+	free(data);
+
+	return (rc);
+}
+
+int
 pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_key *keys)
 {
 	struct ucl_parser *p = NULL;

@@ -158,7 +158,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 	assert(sz != NULL);
 
 	if ((fd = openat(dfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
+		pkg_emit_errno("openat", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
