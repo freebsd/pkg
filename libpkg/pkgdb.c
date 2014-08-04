@@ -3194,3 +3194,34 @@ pkgdb_end_solver(struct pkgdb *db)
 
 	return (sql_exec(db->sqlite, solver_sql));
 }
+
+int
+pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	const char sql[] = ""
+		"SELECT count(package_id) FROM pkg_directories, directories "
+		"WHERE directory_id = directories.id AND directories.path = ?1;";
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite, sql);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, dir, -1, SQLITE_TRANSIENT);
+
+	ret = sqlite3_step(stmt);
+
+	if (ret == SQLITE_ROW)
+		*res = sqlite3_column_int64(stmt, 0);
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_ROW) {
+		ERROR_SQLITE(db->sqlite, sql);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
