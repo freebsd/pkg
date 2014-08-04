@@ -170,7 +170,6 @@ exec_clean(int argc, char **argv)
 	bool		 all = false;
 	bool		 sumloaded = false;
 	int		 retcode;
-	int		 ret;
 	int		 ch;
 	size_t		 total = 0, slen;
 	ssize_t		 link_len;
@@ -249,7 +248,7 @@ exec_clean(int argc, char **argv)
 			continue;
 
 		if (all) {
-			ret = add_to_dellist(&dl, ent->fts_path);
+			retcode = add_to_dellist(&dl, ent->fts_path);
 			total += ent->fts_statp->st_size;
 			continue;
 		}
@@ -282,7 +281,7 @@ exec_clean(int argc, char **argv)
 		if (extract_filename_sum(name, csum))
 			HASH_FIND_STR(sumlist, csum, s);
 		if (s == NULL) {
-			ret = add_to_dellist(&dl, ent->fts_path);
+			retcode = add_to_dellist(&dl, ent->fts_path);
 			total += ent->fts_statp->st_size;
 			continue;
 		}
