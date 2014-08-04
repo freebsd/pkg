@@ -416,10 +416,10 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		fp_parse_siglen,
 		fp_parse_sig
 	} state = fp_parse_type;
-	char type;
+	char type = 0;
 	unsigned char *sig;
 	int len = 0, tlen;
-	struct sig_cert *s;
+	struct sig_cert *s = NULL;
 	bool new = false;
 
 	while (p < end) {
