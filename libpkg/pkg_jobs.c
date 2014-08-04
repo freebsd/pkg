@@ -299,7 +299,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 	else
 		head = &j->request_delete;
 
-	HASH_FIND(hh, *head, uid, strlen(uid), test);
+	HASH_FIND_PTR(*head, item, test);
 
 	if (test != NULL)
 		return;
@@ -311,7 +311,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 	}
 	req->item = item;
 
-	HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), req);
+	HASH_ADD_PTR(*head, item, req);
 }
 
 enum pkg_priority_update_type {
@@ -999,7 +999,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		}
 		else {
 			/* However, we may want to add it to the job request */
-			HASH_FIND_STR(j->request_add, uid, jreq);
+			HASH_FIND_PTR(j->request_add, seen->un, jreq);
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
 			if (force) {
@@ -1818,7 +1818,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 			 * we search them in the corresponding request
 			 */
 			pkg_get(unit->pkg, PKG_UNIQUEID, &uid);
-			HASH_FIND_STR(j->request_add, uid, req);
+			HASH_FIND_PTR(j->request_add, unit, req);
 			if (req == NULL && unit->pkg->type != PKG_INSTALLED) {
 				automatic = 1;
 				pkg_debug(2, "set automatic flag for %s", uid);
@@ -1851,7 +1851,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				 */
 				if (j->type == PKG_JOBS_INSTALL) {
 					pkg_get(local->pkg, PKG_UNIQUEID, &uid);
-					HASH_FIND_STR(j->request_add, uid, req);
+					HASH_FIND_PTR(j->request_add, local, req);
 					if (req != NULL)
 						automatic = 0;
 				}
@@ -1882,7 +1882,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 		return (NULL);
 	}
 
-	HASH_FIND_STR(j->request_delete, uid, found);
+	HASH_FIND_PTR(j->request_delete, item, found);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
 			HASH_FIND_STR(j->universe, d->uid, dep_item);
