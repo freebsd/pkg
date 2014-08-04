@@ -1013,7 +1013,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	}
 
 	problem->j = j;
-	problem->nvars = HASH_CNT(hh, j->universe->items);
+	problem->nvars = j->universe->nitems;
 	problem->variables = calloc(problem->nvars, sizeof(struct pkg_solve_variable));
 
 	if (problem->variables == NULL) {
