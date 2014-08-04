@@ -697,6 +697,9 @@ pkg_init(const char *path, const char *reposdir)
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
 
+	k = NULL;
+	o = NULL;
+
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
