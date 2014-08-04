@@ -521,7 +521,7 @@ pkg_object* pkg_emit_object(struct pkg *pkg, short flags);
 
 /* Hash is in format <version>:<typeid>:<hexhash> */
 #define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + sizeof("100") * 2 + 2)
-#define PKG_CHECKSUM_CUR_VERSION 1
+#define PKG_CHECKSUM_CUR_VERSION 2
 
 int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type);
