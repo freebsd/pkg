@@ -452,7 +452,7 @@ end:
 }
 
 static int
-pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
+pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		bool force, struct pkg_job_universe_item **unit)
 {
 	struct pkg_job_universe_item *jit;
@@ -461,14 +461,15 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	int rc = EPKG_FATAL;
 	bool automatic;
 	const char *uid, *digest;
+	struct pkg *lp = NULL;
 
-	pkg_get(p, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
+	pkg_get(rp, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 
 	if (digest == NULL) {
-		if (pkg_checksum_calculate(p, j->db) != EPKG_OK) {
+		if (pkg_checksum_calculate(rp, j->db) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
-		pkg_get(p, PKG_DIGEST, &digest);
+		pkg_get(rp, PKG_DIGEST, &digest);
 	}
 	seen = pkg_jobs_universe_seen(j->universe, digest);
 	if (seen != NULL) {
@@ -476,7 +477,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
 				uid, digest,
 				seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
-		if (seen->un->pkg->type != p->type && !force) {
+		if (seen->un->pkg->type != rp->type && !force) {
 			/* Remote package is the same as local */
 			return (EPKG_INSTALLED);
 		}
@@ -486,17 +487,33 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
 			if (force) {
-				pkg_jobs_universe_add_pkg(j->universe, p, true, NULL);
+				pkg_jobs_universe_add_pkg(j->universe, rp, true, NULL);
 				pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
-				pkg_set(p, PKG_AUTOMATIC, automatic);
+				pkg_set(rp, PKG_AUTOMATIC, automatic);
 			}
 		}
 		return (EPKG_OK);
 	}
 	jit = pkg_jobs_universe_find(j->universe, uid);
 	if (jit != NULL) {
-		/* We have a more recent package */
-		if (!force && !pkg_jobs_need_upgrade(p, jit->pkg)) {
+		lp = jit->pkg;
+
+		/*
+		 * XXX: what happens if we have multirepo enabled and we add
+		 * two packages from different repos?
+		 */
+	}
+	else {
+		if (j->type != PKG_JOBS_FETCH) {
+			lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
+			if (lp != NULL)
+				pkg_jobs_universe_process_item(j->universe, lp, &jit);
+		}
+	}
+
+	/* We have a more recent package */
+	if (lp != NULL) {
+		if (!force && !pkg_jobs_need_upgrade(rp, lp)) {
 			/*
 			 * We can have package from another repo in the
 			 * universe, but if it is older than this one we just
@@ -506,27 +523,16 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 				return (EPKG_INSTALLED);
 			}
 			else {
-				pkg_debug(3, "already added newer package %s to the universe, do not add it again",
-								uid);
+				pkg_debug(3, "already added newer package %s to the universe, "
+							"do not add it again", uid);
 				return (EPKG_OK);
-			}
-		}
-		/*
-		 * XXX: what happens if we have multirepo enabled and we add
-		 * two packages from different repos?
-		 */
-	}
-	else {
-		if (j->type != PKG_JOBS_FETCH) {
-			if (!pkg_jobs_newer_than_local(j, p, force)) {
-				return (EPKG_INSTALLED);
 			}
 		}
 	}
 
 	rc = EPKG_OK;
 	/* Add a package to request chain and populate universe */
-	rc = pkg_jobs_universe_process_item(j->universe, p, &jit);
+	rc = pkg_jobs_universe_process_item(j->universe, rp, &jit);
 
 	if (rc == EPKG_OK)
 		if (unit != NULL)
