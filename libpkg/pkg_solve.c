@@ -42,7 +42,6 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
-#include <utarray.h>
 
 struct pkg_solve_item;
 
@@ -80,7 +79,8 @@ struct pkg_solve_problem {
 	unsigned int rules_count;
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables_by_uid;
-	UT_array *variables;
+	struct pkg_solve_variable *variables;
+	size_t nvars;
 };
 
 struct pkg_solve_impl_graph {
@@ -96,8 +96,7 @@ struct pkg_solve_impl_graph {
 #define PKG_SOLVE_CHECK_ITEM(item)				\
 	((item)->var->to_install ^ (item)->inverse)
 
-UT_icd solve_var_icd = {sizeof(struct pkg_solve_variable), NULL,
-	NULL, NULL};
+#define PKG_SOLVE_VAR_NEXT(a, e) ((e) == NULL ? &a[0] : (e + 1))
 
 /**
  * Updates rules related to a single variable
@@ -185,11 +184,13 @@ pkg_solve_propagate_units(struct pkg_solve_problem *problem,
 	struct _pkg_solve_var_rule *rul;
 	struct pkg_solve_variable *var;
 	bool ret;
+	size_t i;
 
 	do {
 		solved_vars = 0;
 		var = NULL;
-		while(utarray_next(problem->variables, var)) {
+		for (i = 0; i < problem->nvars; i ++) {
+			var = &problem->variables[i];
 check_again:
 			/* Check for direct conflicts */
 			LL_FOREACH(var->rules, rul) {
@@ -295,9 +296,11 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	struct pkg_solve_variable *var;
 	struct _pkg_solve_var_rule *rul;
 	struct pkg_solve_item *it;
+	size_t i;
 
 	var = NULL;
-	while(utarray_next(problem->variables, var)) {
+	for (i = 0; i < problem->nvars; i ++) {
+		var = &problem->variables[i];
 		if (var->nrules == 0) {
 			/* This variable is independent and should not change its state */
 			assert (var->rules == NULL);
@@ -384,6 +387,7 @@ bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 	int propagated;
+	size_t i;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
 	bool rc, backtrack = false, free_var;
@@ -413,13 +417,15 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 	/* DPLL Algorithm */
 	var = NULL;
-	while (utarray_next(problem->variables, var)) {
+	for (i = 0; i < problem->nvars; i ++) {
+		var = &problem->variables[i];
 		if (!var->resolved) {
 
 			if (backtrack) {
 				/* Shift var back */
 				var = tvar;
 				backtrack = false;
+				i --;
 			}
 
 			if (elt == NULL) {
@@ -545,27 +551,18 @@ pkg_solve_rule_new(void)
 	return (result);
 }
 
-static struct pkg_solve_variable *
-pkg_solve_variable_new(struct pkg_job_universe_item *item)
+static void
+pkg_solve_variable_set(struct pkg_solve_variable *var,
+	struct pkg_job_universe_item *item)
 {
-	struct pkg_solve_variable *result;
 	const char *digest, *uid;
 
-	result = calloc(1, sizeof(struct pkg_solve_variable));
-
-	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_variable");
-		return (NULL);
-	}
-
-	result->unit = item;
+	var->unit = item;
 	pkg_get(item->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 	/* XXX: Is it safe to save a ptr here ? */
-	result->digest = digest;
-	result->uid = uid;
-	result->prev = result;
-
-	return (result);
+	var->digest = digest;
+	var->uid = uid;
+	var->prev = var;
 }
 
 static void
@@ -592,13 +589,13 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 	}
 
 	v = NULL;
-	while(utarray_next(problem->variables, v)) {
+	while((v = PKG_SOLVE_VAR_NEXT(problem->variables, v))) {
 		HASH_DELETE(hh, problem->variables_by_uid, v);
 		LL_FOREACH_SAFE(v->rules, vrule, vrtmp) {
 			free(vrule);
 		}
 	}
-	utarray_free(problem->variables);
+	free(problem->variables);
 }
 
 static int
@@ -945,10 +942,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Request */
-		HASH_FIND_PTR(j->request_add, cur_var->unit, jreq);
+		HASH_FIND_PTR(j->request_add, &cur_var->unit, jreq);
 		if (jreq != NULL)
 			pkg_solve_add_unary_rule(problem, cur_var, false);
-		HASH_FIND_PTR(j->request_delete, cur_var->unit, jreq);
+		HASH_FIND_PTR(j->request_delete, &cur_var->unit, jreq);
 		if (jreq != NULL)
 			pkg_solve_add_unary_rule(problem, cur_var, true);
 
@@ -972,26 +969,20 @@ err:
 
 static int
 pkg_solve_add_variable(struct pkg_job_universe_item *un,
-		struct pkg_solve_problem *problem, struct pkg_solve_variable **rvar)
+		struct pkg_solve_problem *problem, size_t *n)
 {
 	struct pkg_job_universe_item *ucur;
-	struct pkg_solve_variable *var = NULL, *tvar;
+	struct pkg_solve_variable *var = NULL, *tvar = NULL;
 	const char *uid, *digest;
 
-	/* Rewind universe pointer */
-	while (un->prev->next != NULL)
-		un = un->prev;
-
 	LL_FOREACH(un, ucur) {
+		assert(*n < problem->nvars);
+
 		pkg_get(ucur->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 		/* Add new variable */
-		var = pkg_solve_variable_new(ucur);
-		if (var == NULL)
-			return (EPKG_FATAL);
+		var = &problem->variables[*n];
+		pkg_solve_variable_set(var, ucur);
 
-		utarray_push_back(problem->variables, var);
-		/* Check uid */
-		HASH_FIND_STR(problem->variables_by_uid, uid, tvar);
 		if (tvar == NULL) {
 			pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
 			HASH_ADD_KEYPTR(hh, problem->variables_by_uid,
@@ -1001,10 +992,8 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 			/* Insert a variable to a chain */
 			DL_APPEND(tvar, var);
 		}
+		(*n) ++;
 	}
-
-	if (rvar != NULL)
-		*rvar = var;
 
 	return (EPKG_OK);
 }
@@ -1014,6 +1003,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 {
 	struct pkg_solve_problem *problem;
 	struct pkg_job_universe_item *un, *utmp;
+	size_t i = 0;
 
 	problem = calloc(1, sizeof(struct pkg_solve_problem));
 
@@ -1023,12 +1013,19 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	}
 
 	problem->j = j;
-	utarray_new(problem->variables, &solve_var_icd);
-	utarray_reserve(problem->variables, j->universe->nitems);
+	problem->nvars = HASH_CNT(hh, j->universe->items);
+	problem->variables = calloc(problem->nvars, sizeof(struct pkg_solve_variable));
+
+	if (problem->variables == NULL) {
+		pkg_emit_errno("calloc", "variables");
+		return (NULL);
+	}
+
 	/* Parse universe */
 	HASH_ITER(hh, j->universe->items, un, utmp) {
 		/* Add corresponding variables */
-		if (pkg_solve_add_variable(un, problem, NULL) == EPKG_FATAL)
+		if (pkg_solve_add_variable(un, problem, &i)
+						== EPKG_FATAL)
 			goto err;
 	}
 
@@ -1076,14 +1073,14 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 
 	/* Order variables */
 	var = NULL;
-	while (utarray_next(problem->variables, var)) {
+	while ((var = PKG_SOLVE_VAR_NEXT(problem->variables, var))) {
 		nord = calloc(1, sizeof(struct pkg_solve_ordered_variable));
 		nord->order = cur_ord ++;
 		nord->var = var;
 		HASH_ADD_PTR(ordered_variables, var, nord);
 	}
 
-	fprintf(f, "p cnf %d %d\n", problem->variables->i, problem->rules_count);
+	fprintf(f, "p cnf %d %d\n", (int)problem->nvars, problem->rules_count);
 
 	LL_FOREACH(problem->rules, rule) {
 		LL_FOREACH(rule->items, it) {
@@ -1188,7 +1185,7 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 	struct pkg_solve_variable *var;
 
 	var = NULL;
-	while (utarray_next(problem->variables, var)) {
+	while ((var = PKG_SOLVE_VAR_NEXT(problem->variables, var))) {
 		if (!var->resolved)
 			return (EPKG_FATAL);
 
@@ -1212,7 +1209,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 
 	/* Order variables */
 	var = NULL;
-	while (utarray_next(problem->variables, var)) {
+	while ((var = PKG_SOLVE_VAR_NEXT(problem->variables, var))) {
 		nord = calloc(1, sizeof(struct pkg_solve_ordered_variable));
 		nord->order = cur_ord ++;
 		nord->var = var;

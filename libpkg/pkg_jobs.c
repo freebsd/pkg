@@ -263,7 +263,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 	else
 		head = &j->request_delete;
 
-	HASH_FIND_PTR(*head, item, test);
+	HASH_FIND_PTR(*head, &item, test);
 
 	if (test != NULL)
 		return;
@@ -483,7 +483,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		}
 		else {
 			/* However, we may want to add it to the job request */
-			HASH_FIND_PTR(j->request_add, seen->un, jreq);
+			HASH_FIND_PTR(j->request_add, &seen->un, jreq);
 			if (jreq == NULL)
 				pkg_jobs_add_req(j, uid, seen->un);
 			if (force) {
@@ -534,9 +534,12 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	/* Add a package to request chain and populate universe */
 	rc = pkg_jobs_universe_process_item(j->universe, rp, &jit);
 
-	if (rc == EPKG_OK)
+	if (rc == EPKG_OK) {
 		if (unit != NULL)
 			*unit = jit;
+
+		pkg_jobs_add_req(j, uid, jit);
+	}
 
 	return (rc);
 }
@@ -807,6 +810,10 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	struct pkg_provide *lpr = NULL, *rpr = NULL;
 	const ucl_object_t *an, *obj;
 
+	/* If no local package, then rp is obviously need to be added */
+	if (lp == NULL)
+		return true;
+
 	/* Do not upgrade locked packages */
 	if (pkg_is_locked(lp)) {
 		pkg_emit_locked(lp);
@@ -963,16 +970,13 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 	bool automatic;
 
 	HASH_ITER(hh, j->universe->items, unit, utmp) {
-		/* Rewind list */
-		while (unit->prev->next != NULL)
-			unit = unit->prev;
 		if (unit->next == NULL) {
 			/*
 			 * For packages that are alone in the installation list
 			 * we search them in the corresponding request
 			 */
 			pkg_get(unit->pkg, PKG_UNIQUEID, &uid);
-			HASH_FIND_PTR(j->request_add, unit, req);
+			HASH_FIND_PTR(j->request_add, &unit, req);
 			if (req == NULL && unit->pkg->type != PKG_INSTALLED) {
 				automatic = 1;
 				pkg_debug(2, "set automatic flag for %s", uid);
@@ -996,25 +1000,13 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				if (cur->pkg->type == PKG_INSTALLED) {
 					local = cur;
 					pkg_get(local->pkg, PKG_AUTOMATIC, &automatic);
+					break;
 				}
 			}
-			if (local != NULL) {
-				/*
-				 * Turn off automatic22 flags for install job if
-				 * a package was1 explicitly requested to be installed
-				 */
-				if (j->type == PKG_JOBS_INSTALL) {
-					pkg_get(local->pkg, PKG_UNIQUEID, &uid);
-					HASH_FIND_PTR(j->request_add, local, req);
-					if (req != NULL)
-						automatic = 0;
-				}
-				LL_FOREACH(unit, cur) {
-					if (cur->pkg->type != PKG_INSTALLED) {
+			if (local != NULL)
+				LL_FOREACH(unit, cur)
+					if (cur->pkg->type != PKG_INSTALLED)
 						pkg_set(cur->pkg, PKG_AUTOMATIC, automatic);
-					}
-				}
-			}
 		}
 	}
 }
@@ -1036,7 +1028,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 		return (NULL);
 	}
 
-	HASH_FIND_PTR(j->request_delete, item, found);
+	HASH_FIND_PTR(j->request_delete, &item, found);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
 			dep_item = pkg_jobs_universe_find(j->universe, d->uid);
