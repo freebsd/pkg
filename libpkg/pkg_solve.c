@@ -42,6 +42,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
+#include <utarray.h>
 
 struct pkg_solve_item;
 
@@ -57,8 +58,7 @@ struct pkg_solve_variable {
 		struct _pkg_solve_var_rule *next;
 	} *rules;
 	int nrules;
-	UT_hash_handle hd;
-	UT_hash_handle ho;
+	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
 };
 
@@ -80,7 +80,7 @@ struct pkg_solve_problem {
 	unsigned int rules_count;
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables_by_uid;
-	struct pkg_solve_variable *variables_by_digest;
+	UT_array *variables;
 };
 
 struct pkg_solve_impl_graph {
@@ -95,6 +95,11 @@ struct pkg_solve_impl_graph {
  */
 #define PKG_SOLVE_CHECK_ITEM(item)				\
 	((item)->var->to_install ^ (item)->inverse)
+
+static void pkg_solve_var_dtor(struct pkg_solve_variable *v);
+
+UT_icd solve_var_icd = {sizeof(struct pkg_solve_variable), NULL,
+	NULL, pkg_solve_var_dtor};
 
 /**
  * Updates rules related to a single variable
@@ -690,8 +695,8 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 {
 	struct pkg_solve_item *it = NULL;
 	const char *uid, *digest;
-	struct pkg_solve_variable *var;
-	struct pkg_job_universe_item *un, *cur;
+	struct pkg_solve_variable *var, *curvar;
+	struct pkg_job_universe_item *un;
 	struct pkg_shlib *sh;
 
 	/* Find the first package in the universe list */
@@ -700,22 +705,13 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		un = un->prev;
 	}
 
-	LL_FOREACH(un, cur) {
-		/* For each provide */
-		pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
-		HASH_FIND(hd, problem->variables_by_digest, digest,
-				strlen(digest), var);
-		if (var == NULL) {
-			if (pkg_solve_add_universe_variable(problem, uid,
-					&var) != EPKG_OK)
-				continue;
-		}
-		/* Check if we have the specified require provided by this package */
-		HASH_FIND_STR(un->pkg->provides, pr->provide, sh);
-		if (sh == NULL)
-			continue;
+	/* Find the corresponding variables chain */
+	pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
+	HASH_FIND_STR(problem->variables_by_uid, uid, var);
 
-		it = pkg_solve_item_new(var);
+	LL_FOREACH(var, curvar) {
+		/* For each provide */
+		it = pkg_solve_item_new(curvar);
 		if (it == NULL)
 			return (EPKG_FATAL);
 
@@ -728,233 +724,317 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 }
 
 static int
-pkg_solve_add_pkg_rule(struct pkg_solve_problem *problem,
-		struct pkg_solve_variable *pvar, bool conflicting)
+pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var,
+		struct pkg_dep *dep)
 {
-	struct pkg_dep *dep, *dtmp;
-	struct pkg_conflict *conflict, *ctmp;
-	struct pkg *pkg;
-	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
-	struct pkg_solve_variable *var, *tvar, *cur_var;
-	struct pkg_shlib *shlib = NULL;
-	struct pkg_job_provide *pr, *prhead;
-	int cnt;
-	struct pkg_jobs *j = problem->j;
-
 	const char *uid;
+	struct pkg_solve_variable *depvar, *curvar;
+	struct pkg_solve_rule *rule = NULL;
+	struct pkg_solve_item *it = NULL;
+	int cnt;
 
-	/* Go through all deps in all variables*/
-	LL_FOREACH(pvar, cur_var) {
-		pkg = cur_var->unit->pkg;
-		HASH_ITER(hh, pkg->deps, dep, dtmp) {
-			rule = NULL;
-			it = NULL;
-			var = NULL;
+	uid = dep->uid;
+	HASH_FIND_STR(problem->variables_by_uid, uid, depvar);
+	if (depvar == NULL) {
+		pkg_emit_error("internal solver error: cannot find variable %s", uid);
+		return (EPKG_FATAL);
+	}
+	/* Dependency rule: (!A | B) */
+	rule = pkg_solve_rule_new();
+	if (rule == NULL)
+		return (EPKG_FATAL);
+	/* !A */
+	it = pkg_solve_item_new(var);
+	if (it == NULL)
+		return (EPKG_FATAL);
 
-			uid = dep->uid;
-			HASH_FIND(ho, problem->variables_by_uid, uid, strlen(uid), var);
-			if (var == NULL) {
-				if (pkg_solve_add_universe_variable(problem, uid, &var) != EPKG_OK)
+	it->inverse = true;
+	RULE_ITEM_PREPEND(rule, it);
+	/* B1 | B2 | ... */
+	cnt = 1;
+	LL_FOREACH(depvar, curvar) {
+		it = pkg_solve_item_new(curvar);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = false;
+		RULE_ITEM_PREPEND(rule, it);
+		cnt ++;
+	}
+	pkg_solve_add_var_rules (depvar, rule->items, cnt, true, "dependency");
+	pkg_solve_add_var_rules (var, rule->items, cnt, false, "dependency");
+
+	LL_PREPEND(problem->rules, rule);
+	problem->rules_count ++;
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
+		struct pkg *pkg,
+		struct pkg_solve_variable *var,
+		struct pkg_conflict *conflict)
+{
+	const char *uid;
+	struct pkg_solve_variable *confvar, *curvar;
+	struct pkg_solve_rule *rule = NULL;
+	struct pkg_solve_item *it = NULL;
+	int cnt;
+
+	uid = pkg_conflict_uniqueid(conflict);
+	HASH_FIND_STR(problem->variables_by_uid, uid, confvar);
+	if (confvar == NULL) {
+		pkg_emit_error("internal solver error: cannot find variable %s", uid);
+		return (EPKG_FATAL);
+	}
+
+	/* Add conflict rule from each of the alternative */
+	LL_FOREACH(confvar, curvar) {
+		if (conflict->type == PKG_CONFLICT_REMOTE_LOCAL) {
+			/* Skip unappropriate packages */
+			if (pkg->type == PKG_INSTALLED) {
+				if (curvar->unit->pkg->type == PKG_INSTALLED)
 					continue;
 			}
-			/* Dependency rule: (!A | B) */
-			rule = pkg_solve_rule_new();
-			if (rule == NULL)
-				goto err;
-			/* !A */
-			it = pkg_solve_item_new(cur_var);
-			if (it == NULL)
-				goto err;
-
-			it->inverse = true;
-			RULE_ITEM_PREPEND(rule, it);
-			/* B1 | B2 | ... */
-			cnt = 1;
-			LL_FOREACH(var, tvar) {
-				it = pkg_solve_item_new(tvar);
-				if (it == NULL)
-					goto err;
-
-				it->inverse = false;
-				RULE_ITEM_PREPEND(rule, it);
-				cnt ++;
+			else {
+				if (curvar->unit->pkg->type != PKG_INSTALLED)
+					continue;
 			}
-			pkg_solve_add_var_rules (var, rule->items, cnt, true, "dependency");
-			pkg_solve_add_var_rules (cur_var, rule->items, cnt, false, "dependency");
+		}
+		else if (conflict->type == PKG_CONFLICT_REMOTE_REMOTE) {
+			if (pkg->type == PKG_INSTALLED)
+				continue;
+
+			if (curvar->unit->pkg->type == PKG_INSTALLED)
+				continue;
+		}
+
+		/* Conflict rule: (!A | !Bx) */
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			return (EPKG_FATAL);
+		/* !A */
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = true;
+		RULE_ITEM_PREPEND(rule, it);
+		/* !Bx */
+		it = pkg_solve_item_new(curvar);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = true;
+		RULE_ITEM_PREPEND(rule, it);
+
+		LL_PREPEND(problem->rules, rule);
+		problem->rules_count ++;
+		pkg_solve_add_var_rules (curvar, rule->items, 2, false,
+			"explicit conflict");
+		pkg_solve_add_var_rules (var, rule->items, 2, false,
+			"explicit conflict");
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var,
+		struct pkg_shlib *shlib)
+{
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it = NULL;
+	struct pkg_job_provide *pr, *prhead;
+	int cnt;
+
+	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
+	if (prhead != NULL) {
+		/* Require rule !A | P1 | P2 | P3 ... */
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			return (EPKG_FATAL);
+		/* !A */
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = true;
+		RULE_ITEM_PREPEND(rule, it);
+		/* B1 | B2 | ... */
+		cnt = 1;
+		LL_FOREACH(prhead, pr) {
+			if (pkg_solve_handle_provide (problem, pr, rule,
+				&cnt) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
+
+		if (cnt > 1) {
+			pkg_solve_add_var_rules (var, rule->items, cnt, false, "provide");
 
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
 		}
+		else {
+			/* Missing dependencies... */
+			free(it);
+			free(rule);
+		}
+	}
+	else {
+		/*
+		 * XXX:
+		 * This is terribly broken now so ignore till provides/requires
+		 * are really fixed.
+		 */
+		pkg_debug(1, "solver: cannot find provide for required shlib %s",
+			pkg_shlib_name(shlib));
+	}
 
-		/* Go through all conflicts */
-		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
-			rule = NULL;
-			it = NULL;
-			var = NULL;
+	return (EPKG_OK);
+}
 
-			uid = pkg_conflict_uniqueid(conflict);
-			HASH_FIND(ho, problem->variables_by_uid, uid, strlen(uid), var);
-			if (var == NULL) {
-				if (pkg_solve_add_universe_variable(problem, uid, &var) != EPKG_OK)
-					continue;
-			}
-			/* Return the uid to the package's uid and not conflict */
-			pkg_get(pkg, PKG_UNIQUEID, &uid);
-			/* Add conflict rule from each of the alternative */
-			LL_FOREACH(var, tvar) {
-				if (conflict->type == PKG_CONFLICT_REMOTE_LOCAL) {
-					/* Skip unappropriate packages */
-					if (pkg->type == PKG_INSTALLED) {
-						if (tvar->unit->pkg->type == PKG_INSTALLED)
-							continue;
-					}
-					else {
-						if (tvar->unit->pkg->type != PKG_INSTALLED)
-							continue;
-					}
-				}
-				else if (conflict->type == PKG_CONFLICT_REMOTE_REMOTE) {
-					if (pkg->type == PKG_INSTALLED)
-						continue;
+static int
+pkg_solve_add_unary_rule(struct pkg_solve_problem *problem,
+	struct pkg_solve_variable *var, bool inverse)
+{
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it = NULL;
 
-					if (tvar->unit->pkg->type == PKG_INSTALLED)
-						continue;
-				}
+	pkg_debug(4, "solver: add variable from %s request with uid %s-%s",
+		inverse ? "delete" : "install", var->uid, var->digest);
 
-				/* Conflict rule: (!A | !Bx) */
-				rule = pkg_solve_rule_new();
-				if (rule == NULL)
-					goto err;
-				/* !A */
-				it = pkg_solve_item_new(cur_var);
-				if (it == NULL)
-					goto err;
+	it = pkg_solve_item_new(var);
+	if (it == NULL)
+		return (EPKG_FATAL);
 
-				it->inverse = true;
-				RULE_ITEM_PREPEND(rule, it);
-				/* !Bx */
-				it = pkg_solve_item_new(tvar);
-				if (it == NULL)
-					goto err;
+	it->inverse = inverse;
 
-				it->inverse = true;
-				RULE_ITEM_PREPEND(rule, it);
+	rule = pkg_solve_rule_new();
+	if (rule == NULL)
+		return (EPKG_FATAL);
 
-				LL_PREPEND(problem->rules, rule);
-				problem->rules_count ++;
-				pkg_solve_add_var_rules (tvar, rule->items, 2, false,
-						"explicit conflict");
-				pkg_solve_add_var_rules (cur_var, rule->items, 2, false,
-						"explicit conflict");
-			}
+	/* Requests are unary rules */
+	RULE_ITEM_PREPEND(rule, it);
+	pkg_solve_add_var_rules(var, it, 1, false, "unary request");
+	LL_PREPEND(problem->rules, rule);
+	problem->rules_count ++;
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
+	struct pkg_solve_variable *var)
+{
+	struct pkg_solve_variable *curvar;
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it = NULL;
+
+	LL_FOREACH(var->next, curvar) {
+		/* Conflict rule: (!Ax | !Ay) */
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			return (EPKG_FATAL);
+		/* !Ax */
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = true;
+		RULE_ITEM_PREPEND(rule, it);
+		/* !Ay */
+		it = pkg_solve_item_new(curvar);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		it->inverse = true;
+		RULE_ITEM_PREPEND(rule, it);
+
+		LL_PREPEND(problem->rules, rule);
+		problem->rules_count ++;
+
+		pkg_solve_add_var_rules (curvar, rule->items, 2, false, "chain conflict");
+		pkg_solve_add_var_rules (var, rule->items, 2, false, "chain conflict");
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var)
+{
+	struct pkg_dep *dep, *dtmp;
+	struct pkg_conflict *conflict, *ctmp;
+	struct pkg *pkg;
+	struct pkg_solve_variable *cur_var;
+	struct pkg_shlib *shlib = NULL;
+	struct pkg_job_provide *pr, *prhead;
+	int cnt;
+	struct pkg_jobs *j = problem->j;
+	struct pkg_job_request *jreq;
+	bool chain_added = false;
+
+	const char *uid;
+
+	LL_FOREACH(var, cur_var) {
+		pkg = cur_var->unit->pkg;
+
+		/* Depends */
+		HASH_ITER(hh, pkg->deps, dep, dtmp) {
+			if (pkg_solve_add_depend_rule(problem, cur_var, dep) != EPKG_OK)
+				goto err;
 		}
 
-		/* Check required shlibs */
+		/* Conflicts */
+		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
+			if (pkg_solve_add_conflict_rule(problem, pkg, cur_var, conflict) !=
+							EPKG_OK)
+				goto err;
+		}
+
+		/* Shlibs */
 		shlib = NULL;
 		if (pkg->type != PKG_INSTALLED) {
 			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-				rule = NULL;
-				it = NULL;
-				var = NULL;
-				HASH_FIND_STR(j->provides, pkg_shlib_name(shlib), prhead);
-				if (prhead != NULL) {
-					/* Require rule !A | P1 | P2 | P3 ... */
-					rule = pkg_solve_rule_new();
-					if (rule == NULL)
-						goto err;
-					/* !A */
-					it = pkg_solve_item_new(cur_var);
-					if (it == NULL)
-						goto err;
-
-					it->inverse = true;
-					RULE_ITEM_PREPEND(rule, it);
-					/* B1 | B2 | ... */
-					cnt = 1;
-					LL_FOREACH(prhead, pr) {
-						if (pkg_solve_handle_provide (problem, pr, rule,
-								&cnt) != EPKG_OK)
-							goto err;
-					}
-
-					if (cnt > 1) {
-						pkg_solve_add_var_rules (var, rule->items, cnt, true, "provide");
-						pkg_solve_add_var_rules (cur_var, rule->items, cnt, false, "provide");
-
-						LL_PREPEND(problem->rules, rule);
-						problem->rules_count ++;
-					}
-					else {
-						/* Missing dependencies... */
-						free(it);
-						free(rule);
-					}
-				}
-				else {
-					/*
-					 * XXX:
-					 * This is terribly broken now so ignore till provides/requires
-					 * are really fixed.
-					 */
-					pkg_debug(1, "solver: cannot find provide for required shlib %s",
-							pkg_shlib_name(shlib));
-				}
+				if (pkg_solve_add_require_rule(problem, cur_var, shlib) != EPKG_OK)
+					goto err;
 			}
 		}
 
-		if (conflicting) {
-			/*
-			 * If this var chain contains mutually conflicting vars
-			 * we need to register conflicts with all following
-			 * vars
-			 */
-			var = cur_var->next;
-			if (var != NULL) {
-				LL_FOREACH(var, tvar) {
-					/* Conflict rule: (!Ax | !Ay) */
-					rule = pkg_solve_rule_new();
-					if (rule == NULL)
-						goto err;
-					/* !Ax */
-					it = pkg_solve_item_new(cur_var);
-					if (it == NULL)
-						goto err;
+		/* Request */
+		HASH_FIND_PTR(j->request_add, cur_var->unit, jreq);
+		if (jreq != NULL)
+			pkg_solve_add_unary_rule(problem, cur_var, false);
+		HASH_FIND_PTR(j->request_delete, cur_var->unit, jreq);
+		if (jreq != NULL)
+			pkg_solve_add_unary_rule(problem, cur_var, true);
 
-					it->inverse = true;
-					RULE_ITEM_PREPEND(rule, it);
-					/* !Ay */
-					it = pkg_solve_item_new(tvar);
-					if (it == NULL)
-						goto err;
+		/*
+		 * If this var chain contains mutually conflicting vars
+		 * we need to register conflicts with all following
+		 * vars
+		 */
+		if (!chain_added && cur_var->next != NULL) {
+			if (pkg_solve_add_chain_rule(problem, cur_var) != EPKG_OK)
+				goto err;
 
-					it->inverse = true;
-					RULE_ITEM_PREPEND(rule, it);
-
-					LL_PREPEND(problem->rules, rule);
-					problem->rules_count ++;
-
-					pkg_solve_add_var_rules (tvar, rule->items, 2, false, "chain conflict");
-					pkg_solve_add_var_rules (cur_var, rule->items, 2, false, "chain conflict");
-				}
-			}
+			chain_added = true;
 		}
 	}
 
 	return (EPKG_OK);
 err:
-	if (it != NULL)
-		free(it);
-	if (var != NULL)
-		free(var);
-	if (rule != NULL)
-		pkg_solve_rule_free(rule);
 	return (EPKG_FATAL);
 }
 
 static int
-pkg_solve_add_universe_item(struct pkg_job_universe_item *un,
-		struct pkg_solve_problem *problem)
+pkg_solve_add_variable(struct pkg_job_universe_item *un,
+		struct pkg_solve_problem *problem, struct pkg_solve_variable **rvar)
 {
 	struct pkg_job_universe_item *ucur;
 	struct pkg_solve_variable *var = NULL, *tvar;
@@ -966,32 +1046,27 @@ pkg_solve_add_universe_item(struct pkg_job_universe_item *un,
 
 	LL_FOREACH(un, ucur) {
 		pkg_get(ucur->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
-		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), var);
-		if (var == NULL) {
-			/* Add new variable */
-			var = pkg_solve_variable_new(ucur);
-			if (var == NULL)
-				return (EPKG_FATAL);
-			HASH_ADD_KEYPTR(hd, problem->variables_by_digest,
-					var->digest, strlen(var->digest), var);
+		/* Add new variable */
+		var = pkg_solve_variable_new(ucur);
+		if (var == NULL)
+			return (EPKG_FATAL);
 
-			/* Check uid */
-			HASH_FIND(ho, problem->variables_by_uid, uid, strlen(uid), tvar);
-			if (tvar == NULL) {
-				pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
-				HASH_ADD_KEYPTR(ho, problem->variables_by_uid,
-						var->uid, strlen(var->uid), var);
-			}
-			else {
-				/* Insert a variable to a chain */
-				DL_APPEND(tvar, var);
-			}
+		utarray_push_back(problem->variables, var);
+		/* Check uid */
+		HASH_FIND_STR(problem->variables_by_uid, uid, tvar);
+		if (tvar == NULL) {
+			pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
+			HASH_ADD_KEYPTR(hh, problem->variables_by_uid,
+				var->uid, strlen(var->uid), var);
+		}
+		else {
+			/* Insert a variable to a chain */
+			DL_APPEND(tvar, var);
 		}
 	}
-	HASH_FIND(ho, problem->variables_by_uid, uid, strlen(uid), var);
-	/* Now `var' contains a variables chain related to this uid */
-	if (pkg_solve_add_pkg_rule(problem, var, true) == EPKG_FATAL)
-		return (EPKG_FATAL);
+
+	if (rvar != NULL)
+		*rvar = var;
 
 	return (EPKG_OK);
 }
@@ -1000,12 +1075,7 @@ struct pkg_solve_problem *
 pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 {
 	struct pkg_solve_problem *problem;
-	struct pkg_job_request *jreq, *jtmp;
-	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it;
 	struct pkg_job_universe_item *un, *utmp;
-	struct pkg_solve_variable *var;
-	const char *digest;
 
 	problem = calloc(1, sizeof(struct pkg_solve_problem));
 
@@ -1015,81 +1085,29 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	}
 
 	problem->j = j;
-
-	/* Add requests */
-	HASH_ITER(hh, j->request_add, jreq, jtmp) {
-		if (jreq->skip)
-			continue;
-
-		rule = NULL;
-		it = NULL;
-		var = NULL;
-
-		if (pkg_solve_add_universe_item(jreq->item, problem) == EPKG_FATAL)
+	utarray_new(problem->variables, &solve_var_icd);
+	utarray_reserve(problem->variables, j->universe->nitems);
+	/* Parse universe */
+	HASH_ITER(hh, j->universe->items, un, utmp) {
+		/* Add corresponding variables */
+		if (pkg_solve_add_variable(un, problem, NULL) == EPKG_FATAL)
 			goto err;
-
-		pkg_get(jreq->item->pkg, PKG_DIGEST, &digest);
-		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), var);
-
-		if (var == NULL) {
-			pkg_emit_error("solver: variable has not been added, internal error");
-			goto err;
-		}
-
-		pkg_debug(4, "solver: add variable from install request with uid %s-%s",
-						var->uid, var->digest);
-
-		it = pkg_solve_item_new(var);
-		if (it == NULL)
-			goto err;
-
-		rule = pkg_solve_rule_new();
-		if (rule == NULL)
-			goto err;
-
-		/* Requests are unary rules */
-		RULE_ITEM_PREPEND(rule, it);
-		pkg_solve_add_var_rules (var, it, 1, false, "unary add");
-		LL_PREPEND(problem->rules, rule);
-		problem->rules_count ++;
 	}
-	HASH_ITER(hh, j->request_delete, jreq, jtmp) {
-		if (jreq->skip)
-			continue;
 
-		rule = NULL;
-		it = NULL;
-		var = NULL;
+	/* Add rules for all conflict chains */
+	HASH_ITER(hh, j->universe->items, un, utmp) {
+		const char *uid;
+		struct pkg_solve_variable *var;
 
-		if (pkg_solve_add_universe_item(jreq->item, problem) == EPKG_FATAL)
-			goto err;
-
-		pkg_get(jreq->item->pkg, PKG_DIGEST, &digest);
-		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), var);
-
+		pkg_get(un->pkg, PKG_UNIQUEID, &uid);
+		HASH_FIND_STR(problem->variables_by_uid, uid, var);
 		if (var == NULL) {
-			pkg_emit_error("solver: variable has not been added, internal error");
+			pkg_emit_error("internal solver error: variable %s is not found",
+				uid);
 			goto err;
 		}
-
-		pkg_debug(4, "solver: add variable from delete request with uid %s-%s",
-				var->uid, var->digest);
-
-		it = pkg_solve_item_new(var);
-		if (it == NULL)
+		if (pkg_solve_process_universe_variable(problem, var) != EPKG_OK)
 			goto err;
-
-		it->inverse = true;
-
-		rule = pkg_solve_rule_new();
-		if (rule == NULL)
-			goto err;
-
-		/* Requests are unary rules */
-		RULE_ITEM_PREPEND(rule, it);
-		pkg_solve_add_var_rules (var, it, 1, false, "unary delete");
-		LL_PREPEND(problem->rules, rule);
-		problem->rules_count ++;
 	}
 
 	if (problem->rules_count == 0) {
@@ -1097,25 +1115,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		return (problem);
 	}
 
-	/* Parse universe */
-	HASH_ITER(hh, j->universe, un, utmp) {
-		rule = NULL;
-		it = NULL;
-		var = NULL;
-
-		/* Add corresponding variables */
-		if (pkg_solve_add_universe_item(un, problem) == EPKG_FATAL)
-			goto err;
-	}
-
 	return (problem);
+
 err:
-	if (it != NULL)
-		free(it);
-	if (var != NULL)
-		free(var);
-	if (rule != NULL)
-		pkg_solve_rule_free(rule);
 	return (NULL);
 }
 
