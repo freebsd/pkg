@@ -785,7 +785,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			vercnt ++;
 		}
 
-		if (vercnt > 2) {
+		if (vercnt > 1) {
 			/*
 			 * Here we have more than one upgrade candidate,
 			 * if local == NULL, then we have two remote repos,
@@ -796,8 +796,8 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				/* Select the most recent or one of packages */
 				struct pkg_job_universe_item *selected = NULL;
 				LL_FOREACH(unit, cur) {
-					if (selected != NULL && pkg_version_change_between(selected->pkg,
-						cur->pkg) > 0) {
+					if (selected != NULL && pkg_version_change_between(cur->pkg,
+						selected->pkg) == PKG_UPGRADE) {
 						selected = cur;
 					}
 					else if (selected == NULL) {
@@ -814,7 +814,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 					}
 				}
 			}
-			else {
+			else if (vercnt > 2) {
 				/*
 				 * We have no ideas what to select, but we need to remove
 				 * all install requests leaving only delete request for the
