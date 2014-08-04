@@ -235,18 +235,22 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			return (EPKG_FATAL);
 		}
 
-		if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK)
-			continue;
+		if (npkg != NULL)
+			if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK)
+				continue;
 
 		/* Explicitly request for a dependency for mirroring */
 		if (flags & DEPS_FLAG_MIRROR)
 			pkg_jobs_add_req(universe->j, d->uid, unit);
 
 		if (rpkg != NULL) {
-			/* Save automatic flag */
-			bool automatic;
-			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
-			pkg_set(rpkg, PKG_AUTOMATIC, automatic);
+			if (npkg != NULL) {
+				/* Save automatic flag */
+				bool automatic;
+
+				pkg_get(npkg, PKG_AUTOMATIC, &automatic);
+				pkg_set(rpkg, PKG_AUTOMATIC, automatic);
+			}
 
 			pkg_jobs_universe_process_item(universe, rpkg, NULL);
 		}
