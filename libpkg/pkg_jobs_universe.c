@@ -432,7 +432,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	job_flags = universe->j->flags;
 
 	/* Add pkg itself */
-	rc = pkg_jobs_universe_add_pkg(universe, pkg, false,
+	rc = pkg_jobs_universe_add_pkg(universe, pkg, job_flags & PKG_FLAG_FORCE,
 		result);
 	if (rc == EPKG_END)
 		return (EPKG_OK);
@@ -479,7 +479,8 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	case PKG_JOBS_AUTOREMOVE:
 		/* For delete jobs we worry only about local reverse deps */
 		flags |= DEPS_FLAG_REVERSE|DEPS_FLAG_FORCE_LOCAL;
-		rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
+		if (!(job_flags & PKG_FLAG_FORCE))
+			rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
 		break;
 	}
 
