@@ -52,7 +52,6 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/src/ucl_hash.h \
 		libucl/src/ucl_chartable.h \
 		libucl/src/tree.h \
-		libucl/uthash/utarray.h \
 		libucl/uthash/uthash.h \
 		libucl/uthash/utlist.h \
 		libucl/uthash/utstring.h \
@@ -60,6 +59,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libyaml/src/yaml_private.h \
 		libyaml/win32/config.h \
 		sqlite/sqlite3.h \
+		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
 		config.h
