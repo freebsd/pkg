@@ -118,11 +118,36 @@ pkg_checksum_add_option(const struct pkg_option *o,
 	DL_APPEND(*entries, e);
 }
 
+static void
+pkg_checksum_add_required_shlib(const struct pkg_shlib *l,
+	struct pkg_checksum_entry **entries)
+{
+	struct pkg_checksum_entry *e;
+
+	e = malloc(sizeof(*e));
+	if (e == NULL) {
+		pkg_emit_errno("malloc", "pkg_checksum_entry");
+		return;
+	}
+
+	e->field = "required_shlib";
+	e->value = pkg_shlib_name(l);
+	DL_APPEND(*entries, e);
+}
+
 static int
 pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
 	struct pkg_checksum_entry *e2)
 {
-	return (strcmp(e1->field, e2->field));
+	int r;
+
+	/* Compare field names first. */
+	r = strcmp(e1->field, e2->field);
+	if (r != 0)
+		return r;
+
+	/* If field names are the same, compare values. */
+	return (strcmp(e1->value, e2->value));
 }
 
 /*
@@ -137,6 +162,7 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
  * - message
  * - comment
  * - options
+ * - required_shlibs
  */
 
 int
@@ -149,6 +175,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_checksum_entry *entries = NULL;
 	const ucl_object_t *o;
 	struct pkg_option *option = NULL;
+	struct pkg_shlib *rshlib = NULL;
 	int i;
 	int recopies[] = {
 		PKG_NAME,
@@ -174,6 +201,10 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		pkg_checksum_add_option(option, &entries);
+	}
+
+	while (pkg_shlibs_required(pkg, &rshlib) == EPKG_OK) {
+		pkg_checksum_add_required_shlib(rshlib, &entries);
 	}
 
 	/* Sort before hashing */
