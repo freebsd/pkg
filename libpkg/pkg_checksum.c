@@ -158,10 +158,6 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
  * - origin
  * - version
  * - arch
- * - maintainer
- * - www
- * - message
- * - comment
  * - options
  * - required_shlibs
  * - provided_shlibs
@@ -184,10 +180,6 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		PKG_ORIGIN,
 		PKG_VERSION,
 		PKG_ARCH,
-		PKG_MAINTAINER,
-		PKG_WWW,
-		PKG_MESSAGE,
-		PKG_COMMENT,
 		-1
 	};
 
