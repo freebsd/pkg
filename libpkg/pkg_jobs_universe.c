@@ -215,7 +215,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			/* Check for remote dependencies */
 			rpkg = pkg_jobs_universe_get_remote(universe, d->uid, 0);
 			if (rpkg != NULL && !(flags & DEPS_FLAG_FORCE_UPGRADE)) {
-				if (!pkg_jobs_need_upgrade(rpkg, npkg, false)) {
+				if (!pkg_jobs_need_upgrade(rpkg, npkg)) {
 					/*
 					 * We can do it safely here, as rpkg is definitely NOT in
 					 * the universe
@@ -228,6 +228,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 		if (npkg == NULL && rpkg == NULL) {
 			const char *name;
+
+			pkg_get(pkg, PKG_NAME, &name);
 			pkg_emit_error("%s has a missing dependency: %s",
 				name, pkg_dep_get(d, PKG_DEP_NAME));
 
@@ -283,7 +285,7 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 			/* Remote packages can conflict with remote and local */
 			npkg = pkg_jobs_universe_get_local(universe, pkg_conflict_uniqueid(c), 0);
 			if (npkg != NULL) {
-				if (pkg_jobs_process_universe_local(universe, npkg, NULL) != EPKG_OK)
+				if (pkg_jobs_process_universe(universe, npkg, NULL) != EPKG_OK)
 					continue;
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
@@ -333,7 +335,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				/* Check for local packages */
 				HASH_FIND_STR(universe->items, uid, unit);
 				if (unit != NULL) {
-					if (pkg_jobs_need_upgrade (rpkg, unit->pkg, false)) {
+					if (pkg_jobs_need_upgrade (rpkg, unit->pkg)) {
 						/* Remote provide is newer, so we can add it */
 						if (pkg_jobs_process_universe(universe, rpkg,
 							&unit) != EPKG_OK)
@@ -346,10 +348,10 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 					/* Maybe local package has just been not added */
 					npkg = pkg_jobs_universe_get_local(universe, uid, 0);
 					if (npkg != NULL) {
-						if (pkg_jobs_add_universe_local(universe, npkg,
+						if (pkg_jobs_process_universe(universe, npkg,
 							&unit) != EPKG_OK)
 							return (EPKG_FATAL);
-						if (pkg_jobs_need_upgrade (rpkg, npkg, false)) {
+						if (pkg_jobs_need_upgrade (rpkg, npkg)) {
 							/* Remote provide is newer, so we can add it */
 							if (pkg_jobs_process_universe(universe, rpkg,
 								&unit) != EPKG_OK)
