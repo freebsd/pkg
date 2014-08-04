@@ -176,10 +176,6 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	return (EPKG_OK);
 }
 
-static int
-pkg_jobs_process_universe(struct pkg_jobs_universe *universe, struct pkg *pkg,
-		struct pkg_job_universe_item **result);
-
 #define DEPS_FLAG_REVERSE 0x1 << 1
 #define DEPS_FLAG_MIRROR 0x1 << 2
 #define DEPS_FLAG_FORCE_LOCAL 0x1 << 3
@@ -239,7 +235,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			return (EPKG_FATAL);
 		}
 
-		if (pkg_jobs_process_universe(universe, npkg, &unit) != EPKG_OK)
+		if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK)
 			continue;
 
 		/* Explicitly request for a dependency for mirroring */
@@ -252,7 +248,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			pkg_set(rpkg, PKG_AUTOMATIC, automatic);
 
-			pkg_jobs_process_universe(universe, rpkg, NULL);
+			pkg_jobs_universe_process_item(universe, rpkg, NULL);
 		}
 	}
 
@@ -279,13 +275,13 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 			if (npkg == NULL)
 				continue;
 
-			pkg_jobs_process_universe(universe, npkg, NULL);
+			pkg_jobs_universe_process_item(universe, npkg, NULL);
 		}
 		else {
 			/* Remote packages can conflict with remote and local */
 			npkg = pkg_jobs_universe_get_local(universe, pkg_conflict_uniqueid(c), 0);
 			if (npkg != NULL) {
-				if (pkg_jobs_process_universe(universe, npkg, NULL) != EPKG_OK)
+				if (pkg_jobs_universe_process_item(universe, npkg, NULL) != EPKG_OK)
 					continue;
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
@@ -294,7 +290,7 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 					if (npkg == NULL)
 						continue;
 
-					pkg_jobs_process_universe(universe, npkg, NULL);
+					pkg_jobs_universe_process_item(universe, npkg, NULL);
 				}
 			}
 		}
@@ -337,7 +333,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				if (unit != NULL) {
 					if (pkg_jobs_need_upgrade (rpkg, unit->pkg)) {
 						/* Remote provide is newer, so we can add it */
-						if (pkg_jobs_process_universe(universe, rpkg,
+						if (pkg_jobs_universe_process_item(universe, rpkg,
 							&unit) != EPKG_OK)
 							continue;
 
@@ -348,12 +344,12 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 					/* Maybe local package has just been not added */
 					npkg = pkg_jobs_universe_get_local(universe, uid, 0);
 					if (npkg != NULL) {
-						if (pkg_jobs_process_universe(universe, npkg,
+						if (pkg_jobs_universe_process_item(universe, npkg,
 							&unit) != EPKG_OK)
 							return (EPKG_FATAL);
 						if (pkg_jobs_need_upgrade (rpkg, npkg)) {
 							/* Remote provide is newer, so we can add it */
-							if (pkg_jobs_process_universe(universe, rpkg,
+							if (pkg_jobs_universe_process_item(universe, rpkg,
 								&unit) != EPKG_OK)
 								continue;
 						}
@@ -373,7 +369,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 					}
 					HASH_FIND_STR(universe->seen, digest, seen);
 					if (seen == NULL) {
-						pkg_jobs_process_universe(universe, rpkg,
+						pkg_jobs_universe_process_item(universe, rpkg,
 							&unit);
 
 						/* Reset package to avoid freeing */
@@ -422,7 +418,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 }
 
 int
-pkg_jobs_process_universe(struct pkg_jobs_universe *universe, struct pkg *pkg,
+pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		struct pkg_job_universe_item **result)
 {
 	unsigned flags = 0, job_flags;
@@ -490,7 +486,7 @@ int
 pkg_jobs_universe_process(struct pkg_jobs_universe *universe,
 	struct pkg *pkg)
 {
-	return (pkg_jobs_process_universe(universe, pkg, NULL));
+	return (pkg_jobs_universe_process_item(universe, pkg, NULL));
 }
 
 #define RECURSION_LIMIT 1024
@@ -737,7 +733,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 			found = pkg_jobs_universe_find(universe, rd->uid);
 			if (found == NULL) {
 				lp = pkg_jobs_universe_get_local(universe, rd->uid, 0);
-				pkg_jobs_process_universe(universe, lp, &found);
+				pkg_jobs_universe_process_item(universe, lp, &found);
 			}
 
 			if (found != NULL) {
