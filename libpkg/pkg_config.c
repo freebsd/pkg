@@ -707,6 +707,9 @@ pkg_init(const char *path, const char *reposdir)
 	k = NULL;
 	o = NULL;
 
+	k = NULL;
+	o = NULL;
+
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
