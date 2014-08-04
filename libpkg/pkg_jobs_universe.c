@@ -768,3 +768,74 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 		HASH_ADD_KEYPTR(hh, universe->items, new_uid, uidlen, unit);
 
 }
+
+void
+pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
+{
+	struct pkg_job_universe_item *unit, *tmp, *cur, *local;
+	struct pkg_job_request *req;
+
+	HASH_ITER(hh, j->universe->items, unit, tmp) {
+		unsigned vercnt = 0;
+
+		local = NULL;
+		LL_FOREACH(unit, cur) {
+			if (cur->pkg->type == PKG_INSTALLED)
+				local = cur;
+			vercnt ++;
+		}
+
+		if (vercnt > 2) {
+			/*
+			 * Here we have more than one upgrade candidate,
+			 * if local == NULL, then we have two remote repos,
+			 * if local != NULL, then we have unspecified upgrade path
+			 */
+
+			if (local == NULL) {
+				/* Select the most recent or one of packages */
+				struct pkg_job_universe_item *selected = NULL;
+				LL_FOREACH(unit, cur) {
+					if (selected != NULL && pkg_version_change_between(selected->pkg,
+						cur->pkg) > 0) {
+						selected = cur;
+					}
+					else if (selected == NULL) {
+						selected = cur;
+					}
+				}
+				/* Now remove all requests but selected */
+				assert(selected != NULL);
+				LL_FOREACH(unit, cur) {
+					if (cur != selected) {
+						HASH_FIND_PTR(j->request_add, &cur, req);
+						if (req != NULL)
+							HASH_DEL(j->request_add, req);
+					}
+				}
+			}
+			else {
+				/*
+				 * We have no ideas what to select, but we need to remove
+				 * all install requests leaving only delete request for the
+				 * local package
+				 */
+				req = calloc(1, sizeof (struct pkg_job_request));
+				if (req == NULL) {
+					pkg_emit_errno("malloc", "struct pkg_job_request");
+					return;
+				}
+				req->item = local;
+				HASH_ADD_PTR(j->request_delete, item, req);
+
+				LL_FOREACH(unit, cur) {
+					if (cur->pkg->type == PKG_INSTALLED) {
+						HASH_FIND_PTR(j->request_add, &cur, req);
+						if (req != NULL)
+							HASH_DEL(j->request_add, req);
+					}
+				}
+			}
+		}
+	}
+}
