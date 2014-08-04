@@ -59,6 +59,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libyaml/src/yaml_private.h \
 		libyaml/win32/config.h \
 		sqlite/sqlite3.h \
+		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
 		config.h
