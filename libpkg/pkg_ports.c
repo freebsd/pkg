@@ -112,7 +112,7 @@ static struct action_cmd {
 } list_actions[] = {
 	{ "setprefix", setprefix },
 	{ "dirrm", dirrm },
-	{ "dirrmtry", dirrm },
+	{ "dirrmtry", dirrmtry },
 	{ "file", file },
 	{ "setmode", setmod },
 	{ "setowner", setowner },
