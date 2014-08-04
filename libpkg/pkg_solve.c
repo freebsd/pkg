@@ -963,8 +963,6 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	}
 
 	return (EPKG_OK);
-err:
-	return (EPKG_FATAL);
 }
 
 static int
