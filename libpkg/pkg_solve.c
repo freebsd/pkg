@@ -677,8 +677,8 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	uid = dep->uid;
 	HASH_FIND_STR(problem->variables_by_uid, uid, depvar);
 	if (depvar == NULL) {
-		pkg_emit_error("internal solver error: cannot find variable %s", uid);
-		return (EPKG_FATAL);
+		pkg_debug(2, "cannot find variable dependency %s", uid);
+		return (EPKG_END);
 	}
 	/* Dependency rule: (!A | B) */
 	rule = pkg_solve_rule_new();
@@ -725,8 +725,8 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	uid = pkg_conflict_uniqueid(conflict);
 	HASH_FIND_STR(problem->variables_by_uid, uid, confvar);
 	if (confvar == NULL) {
-		pkg_emit_error("internal solver error: cannot find variable %s", uid);
-		return (EPKG_FATAL);
+		pkg_debug(2, "cannot find conflict %s", uid);
+		return (EPKG_END);
 	}
 
 	/* Add conflict rule from each of the alternative */
@@ -922,14 +922,14 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		/* Depends */
 		HASH_ITER(hh, pkg->deps, dep, dtmp) {
 			if (pkg_solve_add_depend_rule(problem, cur_var, dep) != EPKG_OK)
-				goto err;
+				continue;
 		}
 
 		/* Conflicts */
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
 			if (pkg_solve_add_conflict_rule(problem, pkg, cur_var, conflict) !=
 							EPKG_OK)
-				goto err;
+				continue;
 		}
 
 		/* Shlibs */
@@ -937,7 +937,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		if (pkg->type != PKG_INSTALLED) {
 			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
 				if (pkg_solve_add_require_rule(problem, cur_var, shlib) != EPKG_OK)
-					goto err;
+					continue;
 			}
 		}
 
@@ -956,7 +956,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		 */
 		if (!chain_added && cur_var->next != NULL) {
 			if (pkg_solve_add_chain_rule(problem, cur_var) != EPKG_OK)
-				goto err;
+				continue;
 
 			chain_added = true;
 		}
