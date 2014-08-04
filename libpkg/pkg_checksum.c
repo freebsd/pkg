@@ -85,7 +85,8 @@ static const struct _pkg_cksum_type {
 };
 
 static void
-pkg_checksum_add_object(const ucl_object_t *o, const char *key,
+pkg_checksum_add_entry(const char *key,
+	const char *value,
 	struct pkg_checksum_entry **entries)
 {
 	struct pkg_checksum_entry *e;
@@ -97,42 +98,7 @@ pkg_checksum_add_object(const ucl_object_t *o, const char *key,
 	}
 
 	e->field = key;
-	e->value = ucl_object_tostring(o);
-	DL_APPEND(*entries, e);
-}
-
-static void
-pkg_checksum_add_option(const struct pkg_option *o,
-	struct pkg_checksum_entry **entries)
-{
-	struct pkg_checksum_entry *e;
-
-	e = malloc(sizeof(*e));
-	if (e == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_entry");
-		return;
-	}
-
-	e->field = pkg_option_opt(o);
-	e->value = pkg_option_value(o);
-	DL_APPEND(*entries, e);
-}
-
-static void
-pkg_checksum_add_shlib(const struct pkg_shlib *l,
-	const char *field_name,
-	struct pkg_checksum_entry **entries)
-{
-	struct pkg_checksum_entry *e;
-
-	e = malloc(sizeof(*e));
-	if (e == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_entry");
-		return;
-	}
-
-	e->field = field_name;
-	e->value = pkg_shlib_name(l);
+	e->field = value;
 	DL_APPEND(*entries, e);
 }
 
@@ -161,6 +127,8 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
  * - options
  * - required_shlibs
  * - provided_shlibs
+ * - users
+ * - groups
  */
 
 int
@@ -174,6 +142,8 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	const ucl_object_t *o;
 	struct pkg_option *option = NULL;
 	struct pkg_shlib *shlib = NULL;
+	struct pkg_user *user = NULL;
+	struct pkg_group *group = NULL;
 	int i;
 	int recopies[] = {
 		PKG_NAME,
@@ -190,20 +160,29 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	for (i = 0; recopies[i] != -1; i++) {
 		key = pkg_keys[recopies[i]].name;
 		if ((o = ucl_object_find_key(pkg->fields, key)))
-			pkg_checksum_add_object(o, key, &entries);
+			pkg_checksum_add_entry(key, ucl_object_tostring(o), &entries);
 	}
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		pkg_checksum_add_option(option, &entries);
+		pkg_checksum_add_entry(pkg_option_opt(option), pkg_option_value(option),
+			&entries);
 	}
 
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		pkg_checksum_add_shlib(shlib, "required_shlib", &entries);
+		pkg_checksum_add_entry("required_shlib", pkg_shlib_name(shlib), &entries);
 	}
 
 	shlib = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-		pkg_checksum_add_shlib(shlib, "provided_shlib", &entries);
+		pkg_checksum_add_entry("provided_shlib", pkg_shlib_name(shlib), &entries);
+	}
+
+	while (pkg_users(pkg, &user) == EPKG_OK) {
+		pkg_checksum_add_entry("user", pkg_user_name(user), &entries);
+	}
+
+	while (pkg_groups(pkg, &group) == EPKG_OK) {
+		pkg_checksum_add_entry("group", pkg_group_name(group), &entries);
 	}
 
 	/* Sort before hashing */
