@@ -119,7 +119,8 @@ pkg_checksum_add_option(const struct pkg_option *o,
 }
 
 static void
-pkg_checksum_add_required_shlib(const struct pkg_shlib *l,
+pkg_checksum_add_shlib(const struct pkg_shlib *l,
+	const char *field_name,
 	struct pkg_checksum_entry **entries)
 {
 	struct pkg_checksum_entry *e;
@@ -130,7 +131,7 @@ pkg_checksum_add_required_shlib(const struct pkg_shlib *l,
 		return;
 	}
 
-	e->field = "required_shlib";
+	e->field = field_name;
 	e->value = pkg_shlib_name(l);
 	DL_APPEND(*entries, e);
 }
@@ -163,6 +164,7 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
  * - comment
  * - options
  * - required_shlibs
+ * - provided_shlibs
  */
 
 int
@@ -175,7 +177,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_checksum_entry *entries = NULL;
 	const ucl_object_t *o;
 	struct pkg_option *option = NULL;
-	struct pkg_shlib *rshlib = NULL;
+	struct pkg_shlib *shlib = NULL;
 	int i;
 	int recopies[] = {
 		PKG_NAME,
@@ -203,8 +205,13 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		pkg_checksum_add_option(option, &entries);
 	}
 
-	while (pkg_shlibs_required(pkg, &rshlib) == EPKG_OK) {
-		pkg_checksum_add_required_shlib(rshlib, &entries);
+	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+		pkg_checksum_add_shlib(shlib, "required_shlib", &entries);
+	}
+
+	shlib = NULL;
+	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+		pkg_checksum_add_shlib(shlib, "provided_shlib", &entries);
 	}
 
 	/* Sort before hashing */
