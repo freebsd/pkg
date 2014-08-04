@@ -171,6 +171,7 @@ pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
 {
 	ucl_object_t *o = NULL;
 	const char *walk, *buf, *value, *k;
+	k = NULL;
 
 	switch (type) {
 	case PKG_STRING:
