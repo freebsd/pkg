@@ -371,11 +371,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 		buf = NULL;
 		regular = false;
 
-		if (S_ISDIR(st.st_mode)) {
-			pkg_emit_error("Plist error, directory listed as a file: %s", line);
-			free_file_attr(a);
-			return (EPKG_FATAL);
-		} else if (S_ISREG(st.st_mode)) {
+		if (S_ISREG(st.st_mode)) {
 			if (st.st_nlink > 1)
 				regular = !check_for_hardlink(p->hardlinks, &st);
 			else
@@ -398,17 +394,30 @@ file(struct plist *p, char *line, struct file_attr *a)
 				sha256_file(testpath, sha256);
 			buf = sha256;
 		}
-		if (a != NULL)
-			ret = pkg_addfile_attr(p->pkg, path, buf,
-			    a->owner ? a->owner : p->uname,
-			    a->group ? a->group : p->gname,
-			    a->mode ? a->mode : p->perm, true);
-		else
-			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
-			    p->gname, p->perm, true);
+		if (S_ISDIR(st.st_mode)) {
+			if (a != NULL)
+				ret = pkg_adddir_attr(p->pkg, path,
+				    a->owner ? a->owner : p->uname,
+				    a->group ? a->group : p->gname,
+				    a->mode ? a->mode : p->perm,
+				    true, true);
+			else
+				ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
+				    p->perm, true, true);
+		} else {
+			if (a != NULL)
+				ret = pkg_addfile_attr(p->pkg, path, buf,
+				    a->owner ? a->owner : p->uname,
+				    a->group ? a->group : p->gname,
+				    a->mode ? a->mode : p->perm, true);
+			else
+				ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
+				    p->gname, p->perm, true);
+		}
 	}
 
 	free_file_attr(a);
+
 	return (ret);
 }
 
