@@ -987,6 +987,7 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 			pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
 			HASH_ADD_KEYPTR(hh, problem->variables_by_uid,
 				var->uid, strlen(var->uid), var);
+			tvar = var;
 		}
 		else {
 			/* Insert a variable to a chain */
@@ -1182,10 +1183,9 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_variable *var;
+	struct pkg_solve_variable *var, *tvar;
 
-	var = NULL;
-	while ((var = PKG_SOLVE_VAR_NEXT(problem->variables, var))) {
+	HASH_ITER(hh, problem->variables_by_uid, var, tvar) {
 		if (!var->resolved)
 			return (EPKG_FATAL);
 
