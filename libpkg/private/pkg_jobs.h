@@ -222,4 +222,9 @@ void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
  */
 bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
 
+/*
+ * Pre-process universe to fix complex upgrade chains
+ */
+void pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j);
+
 #endif /* PKG_JOBS_H_ */

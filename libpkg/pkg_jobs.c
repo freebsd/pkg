@@ -1462,6 +1462,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			waitpid(pchild, &pstatus, WNOHANG);
 		}
 		else {
+			pkg_jobs_universe_process_upgrade_chains(j);
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
 				if ((solver = pkg_object_string(pkg_config_get("SAT_SOLVER"))) != NULL) {
