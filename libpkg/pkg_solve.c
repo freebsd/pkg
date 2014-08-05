@@ -306,7 +306,8 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 			assert (var->rules == NULL);
 			var->to_install = (var->unit->pkg->type == PKG_INSTALLED);
 			var->resolved = true;
-			pkg_debug(2, "leave %s-%s(%d) to %s",
+			pkg_debug(2, "leave %s %s-%s(%d) to %s",
+					var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
 					var->uid, var->digest,
 					var->priority, var->to_install ? "install" : "delete");
 		}
@@ -710,6 +711,33 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	return (EPKG_OK);
 }
 
+static void
+pkg_solve_fill_provide_var(struct pkg_solve_problem *problem,
+	struct pkg_job_provide *pr, struct pkg_solve_variable **vars, int *pos)
+{
+	const char *uid, *digest;
+	struct pkg_solve_variable *var, *curvar;
+	struct pkg_job_universe_item *un;
+	int i = *pos;
+
+	/* Find the first package in the universe list */
+	un = pr->un;
+	while (un->prev->next != NULL) {
+		un = un->prev;
+	}
+
+	/* Find the corresponding variables chain */
+	pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
+	HASH_FIND_STR(problem->variables_by_uid, uid, var);
+
+	LL_FOREACH(var, curvar) {
+		vars[i] = curvar;
+		i ++;
+	}
+
+	*pos = i;
+}
+
 static int
 pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var,
@@ -835,7 +863,8 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_job_provide *pr, *prhead;
-	int cnt;
+	struct pkg_solve_variable **vars_affected;
+	int cnt, i;
 
 	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
 	if (prhead != NULL) {
@@ -853,14 +882,30 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		/* B1 | B2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
-			if (pkg_solve_handle_provide (problem, pr, rule,
-				&cnt) != EPKG_OK)
+			if (pkg_solve_handle_provide(problem, pr, rule, &cnt) != EPKG_OK)
 				return (EPKG_FATAL);
 		}
 
 		if (cnt > 1) {
-			pkg_solve_add_var_rules (var, rule->items, cnt, false, "provide");
+			vars_affected = calloc(cnt - 1, sizeof(struct pkg_solve_variable *));
+			if (vars_affected == NULL) {
+				pkg_emit_errno("calloc", "struct pkg_solve_variable");
+				return (EPKG_FATAL);
+			}
+			i = 0;
 
+			LL_FOREACH(prhead, pr)
+				pkg_solve_fill_provide_var(problem, pr, vars_affected, &i);
+
+			pkg_solve_add_var_rules(var, rule->items, cnt, false, "provide");
+
+			/* Add rules to all provides as well */
+			cnt = i;
+			for (i = 0; i < cnt; i ++)
+				pkg_solve_add_var_rules(vars_affected[i], rule->items, cnt,
+					false, "provide");
+
+			free(vars_affected);
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
 		}
