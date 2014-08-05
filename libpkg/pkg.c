@@ -116,6 +116,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_PROVIDES);
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
 	pkg->rootfd = -1;
