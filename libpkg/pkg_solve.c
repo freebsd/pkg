@@ -1202,10 +1202,20 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	}
 	/* Set initial guess */
 	for (i = 0; i < problem->nvars; i ++)
-		picosat_set_default_phase_lit(sat, i + 1,
-			pkg_solve_initial_guess(problem, &problem->variables[i]));
+	{
+		struct pkg_solve_variable *var = &problem->variables[i];
+		bool is_installed = var->unit->pkg->type == PKG_INSTALLED;
 
-	picosat_set_verbosity(sat, 10);
+		if (is_installed) {
+			picosat_set_default_phase_lit(sat, i + 1, 1);
+			picosat_set_more_important_lit(sat, i + 1);
+		}
+		else {
+			picosat_set_default_phase_lit(sat, i + 1, -1);
+			picosat_set_less_important_lit(sat, i + 1);
+		}
+	}
+
 	res = picosat_sat(sat, -1);
 
 	if (res != PICOSAT_SATISFIABLE) {
@@ -1218,6 +1228,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	for (i = 0; i < problem->nvars; i ++) {
 		int val = picosat_deref(sat, i + 1);
 		struct pkg_solve_variable *var = &problem->variables[i];
+
 		if (val > 0)
 			var->to_install = true;
 		else
