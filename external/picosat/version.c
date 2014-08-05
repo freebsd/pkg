@@ -1,4 +1,4 @@
-#include "config.h"
+#define PICOSAT_VERSION "959"
 
 const char *
 picosat_version (void)
@@ -9,6 +9,6 @@ picosat_version (void)
 const char *
 picosat_config (void)
 {
-  return PICOSAT_CC " " PICOSAT_CFLAGS;
+  return "";
 }
 
