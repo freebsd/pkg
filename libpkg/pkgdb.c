@@ -3225,3 +3225,17 @@ pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
 
 	return (EPKG_OK);
 }
+
+int
+pkgdb_repo_count(struct pkgdb *db)
+{
+	struct _pkg_repo_list_item *cur;
+	int result = 0;
+
+	if (db != NULL) {
+		LL_FOREACH(db->repos, cur)
+			result ++;
+	}
+
+	return (result);
+}

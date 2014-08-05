@@ -1188,30 +1188,40 @@ pkg_jobs_new_candidate(struct pkg *pkg)
 static bool
 pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 {
-	const char *digest;
-	char sqlbuf[256];
+	const char *digest, *uid;
 	struct pkgdb_it *it;
 	struct pkg *p = NULL;
 
-	pkg_get(pkg, PKG_DIGEST, &digest);
+	pkg_get(pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
 	/* If we have no digest, we need to check this package */
 	if (digest == NULL || digest[0] == '\0')
 		return (true);
 
-	sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE manifestdigest=%Q", digest);
-
-	it = pkgdb_repo_query(j->db, sqlbuf, MATCH_CONDITION, j->reponame);
+	it = pkgdb_repo_query(j->db, uid, MATCH_EXACT, j->reponame);
 	if (it != NULL) {
 		/*
 		 * If we have the same package in a remote repo, it is not an
 		 * installation candidate
 		 */
-		if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-			pkg_free(p);
-			pkgdb_it_free(it);
-			return (false);
+		int npkg = 0;
+
+		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+			const char *rdigest;
+
+			pkg_get(p, PKG_DIGEST, &rdigest);
+			/*
+			 * Check package with the same uid and explore whether digest
+			 * has been changed
+			 */
+			if (strcmp(rdigest, digest) != 0)
+				npkg ++;
 		}
+
+		pkg_free(p);
 		pkgdb_it_free(it);
+
+		if (npkg == 0)
+			return (false);
 	}
 
 	return (true);
