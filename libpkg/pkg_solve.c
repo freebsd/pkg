@@ -335,7 +335,54 @@ static bool
 pkg_solve_initial_guess(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var)
 {
-	if (problem->j->type == PKG_JOBS_UPGRADE) {
+	struct pkg_solve_variable *cur, *start, *local = NULL;
+	unsigned vercnt = 0;
+
+	/* Find start variable in the chain */
+	start = var;
+	while(start->prev->next != NULL)
+		start = start->prev;
+
+	LL_FOREACH(start, cur) {
+		if (cur->unit->pkg->type == PKG_INSTALLED)
+			local = cur;
+		vercnt ++;
+	}
+	if (vercnt > 2 && local != NULL) {
+		/* We need to find the largest version possible */
+		struct pkg_solve_variable *selected = NULL;
+		bool chosen = false;
+
+		LL_FOREACH(start, cur) {
+			if (selected != NULL && pkg_version_change_between(cur->unit->pkg,
+				selected->unit->pkg) == PKG_UPGRADE) {
+				selected = cur;
+				chosen = true;
+			}
+			else if (selected == NULL) {
+				selected = cur;
+			}
+		}
+		/* If not chosen then pin repository */
+		if (!chosen) {
+			const ucl_object_t *an, *obj;
+			pkg_get(local->unit->pkg, PKG_ANNOTATIONS, &obj);
+			an = pkg_object_find(obj, "repository");
+			if (an != NULL) {
+				LL_FOREACH(start, cur) {
+					const char *reponame;
+
+					pkg_get(cur->unit->pkg, PKG_REPONAME, &reponame);
+					if (reponame && strcmp(reponame, ucl_object_tostring(an)) == 0) {
+						selected = cur;
+						break;
+					}
+				}
+			}
+		}
+		return (var == selected);
+	}
+	else if (problem->j->type == PKG_JOBS_UPGRADE) {
 		if (var->unit->pkg->type == PKG_INSTALLED) {
 			/* For local packages assume true if we have no upgrade */
 			if (var->unit->next == NULL && var->unit->prev == var->unit)

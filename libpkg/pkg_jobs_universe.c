@@ -820,6 +820,11 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				 * all install requests leaving only delete request for the
 				 * local package
 				 */
+				LL_FOREACH(unit, cur) {
+					HASH_FIND_PTR(j->request_add, &cur, req);
+					if (req != NULL)
+						HASH_DEL(j->request_add, req);
+				}
 				req = calloc(1, sizeof (struct pkg_job_request));
 				if (req == NULL) {
 					pkg_emit_errno("malloc", "struct pkg_job_request");
@@ -827,14 +832,6 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				}
 				req->item = local;
 				HASH_ADD_PTR(j->request_delete, item, req);
-
-				LL_FOREACH(unit, cur) {
-					if (cur->pkg->type == PKG_INSTALLED) {
-						HASH_FIND_PTR(j->request_add, &cur, req);
-						if (req != NULL)
-							HASH_DEL(j->request_add, req);
-					}
-				}
 			}
 		}
 	}
