@@ -186,7 +186,7 @@ libyaml_static_la_LDFLAGS=	-all-static
 
 picosat_common_cflags=	-I$(top_srcdir)/external/picosat \
 			-Wno-strict-aliasing \
-			-Wno-unused		
+			-Wno-unused	
 libpicosat_la_SOURCES=	picosat/picosat.c \
 			picosat/version.c
 libpicosat_la_CFLAGS=	$(picosat_common_cflags) -shared
