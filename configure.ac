@@ -12,6 +12,8 @@ AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
 AM_SILENT_RULES([yes])
 
+AM_MAINTAINER_MODE([enable])
+
 dnl Here are rules for setting version-info for libpkg
 dnl we use 3 integers: current, revision and age:
 dnl - if you change ABI (meaning add/remove/modify), then always update `current`
