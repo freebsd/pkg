@@ -432,8 +432,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	job_flags = universe->j->flags;
 
 	/* Add pkg itself */
-	rc = pkg_jobs_universe_add_pkg(universe, pkg, job_flags & PKG_FLAG_FORCE,
-		result);
+	rc = pkg_jobs_universe_add_pkg(universe, pkg, false, result);
 	if (rc == EPKG_END)
 		return (EPKG_OK);
 	else if (rc != EPKG_OK)
@@ -792,7 +791,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * if local != NULL, then we have unspecified upgrade path
 			 */
 
-			if (local == NULL) {
+			if (local == NULL || (j->flags & PKG_FLAG_FORCE)) {
 				/* Select the most recent or one of packages */
 				struct pkg_job_universe_item *selected = NULL;
 				LL_FOREACH(unit, cur) {
@@ -800,7 +799,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 						selected->pkg) == PKG_UPGRADE) {
 						selected = cur;
 					}
-					else if (selected == NULL) {
+					else if (selected == NULL && cur != local) {
 						selected = cur;
 					}
 				}
