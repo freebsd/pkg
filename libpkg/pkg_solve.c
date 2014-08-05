@@ -113,6 +113,16 @@ pkg_solve_update_var_resolved (struct pkg_solve_variable *var)
 }
 
 static void
+pkg_solve_undo_var_resolved (struct pkg_solve_variable *var)
+{
+	struct _pkg_solve_var_rule *rul;
+
+	LL_FOREACH(var->rules, rul) {
+		rul->rule->nresolved --;
+	}
+}
+
+static void
 pkg_debug_print_rule (struct pkg_solve_item *rule)
 {
 	struct pkg_solve_item *it;
@@ -177,7 +187,7 @@ pkg_solve_add_implication_graph(struct pkg_solve_impl_graph **graph,
  */
 static bool
 pkg_solve_propagate_units(struct pkg_solve_problem *problem,
-	int *propagated, struct pkg_solve_impl_graph **graph, bool top_level)
+	struct pkg_solve_impl_graph **graph, bool top_level)
 {
 	struct pkg_solve_item *it, *unresolved = NULL;
 	int solved_vars;
@@ -235,11 +245,15 @@ check_again:
 						}
 						return (false);
 					}
+					//pkg_debug(4, "resolved");
+					//pkg_debug_print_rule(unresolved);
 				}
 			}
 			LL_FOREACH(var->rules, rul) {
 				unresolved = rul->rule;
 				if (unresolved->nresolved == unresolved->nitems - 1) {
+					//pkg_debug(4, "unit");
+					//pkg_debug_print_rule(unresolved);
 					/* Check for unit */
 					ret = false;
 					LL_FOREACH(unresolved, it) {
@@ -268,11 +282,12 @@ check_again:
 							}
 						}
 						if (resolved == 0) {
+							pkg_debug(4, "unit propagation conflict");
 							pkg_debug_print_rule(unresolved);
-							assert(resolved > 0);
+							return (false);
 						}
 						solved_vars ++;
-						(*propagated) ++;
+
 						/* We want to try propagating all clauses for a single variable */
 						if (graph != NULL)
 							pkg_solve_add_implication_graph(graph, it->var);
@@ -416,6 +431,7 @@ pkg_solve_undo_guess(struct pkg_solve_impl_graph *graph)
 
 	DL_FOREACH_SAFE(graph, cur, tmp) {
 		cur->var->resolved = false;
+		pkg_solve_undo_var_resolved(cur->var);
 		if (cur != graph)
 			free(cur);
 	}
@@ -434,7 +450,6 @@ pkg_solve_undo_guess(struct pkg_solve_impl_graph *graph)
 bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
-	int propagated;
 	size_t i;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
@@ -455,7 +470,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 	/* Initially propagate explicit rules */
 	pkg_solve_propagate_pure(problem);
-	if (!pkg_solve_propagate_units(problem, &propagated, NULL, true)) {
+	if (!pkg_solve_propagate_units(problem, NULL, true)) {
 		pkg_emit_error("SAT: conflicting request, cannot solve");
 		return (false);
 	}
@@ -505,17 +520,19 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 			unresolved ++;
 			free_var = elt->guess == -1;
-			pkg_debug(3, "setting guess for %s variable %s: %d(%d)",
-				free_var ? "free" : "inversed", var->uid, var->to_install, elt->guess);
+			pkg_debug(3, "setting guess for %s variable %s(%s): %d(%d)",
+				free_var ? "free" : "inversed", var->uid,
+				var->unit->pkg->type == PKG_INSTALLED ? "l" : "r",
+				var->to_install, elt->guess);
 			/* Propagate units */
 			pkg_solve_add_implication_graph(&elt->graph, var);
-
-			if (!pkg_solve_propagate_units(problem, NULL, &elt->graph, false)) {
+			rc = pkg_solve_propagate_units(problem, &elt->graph, false);
+			if (!rc) {
 				pkg_solve_undo_guess(elt->graph);
 				if (free_var) {
 					/* This is free variable, so we can assign true or false to it */
 					var->to_install = !var->to_install;
-					rc = pkg_solve_propagate_units(problem, NULL, &elt->graph, false);
+					rc = pkg_solve_propagate_units(problem, &elt->graph, false);
 				}
 				else {
 					rc = false;
@@ -524,7 +541,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				if (!rc) {
 					/* Need to backtrack */
 					iters ++;
-					if (elt == NULL || elt->prev->next == NULL) {
+					if (elt->prev->next == NULL) {
 						/* Cannot backtrack, UNSAT */
 						pkg_debug(1, "problem is UNSAT problem after %d guesses", iters);
 						LL_FREE(solver_tree, free);
@@ -545,6 +562,10 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 					continue;
 				}
 			}
+
+			if (rc)
+				pkg_solve_update_var_resolved(var);
+
 			/* Assign the current guess */
 			elt->guess = var->to_install;
 			/* Move to the next elt */
