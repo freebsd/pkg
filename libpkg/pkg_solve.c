@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,21 +42,18 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
+#include "picosat.h"
 
 struct pkg_solve_item;
 
 struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
 	bool to_install;
+	bool top_level;
 	int priority;
 	const char *digest;
 	const char *uid;
-	bool resolved;
-	struct _pkg_solve_var_rule {
-		struct pkg_solve_item *rule;
-		struct _pkg_solve_var_rule *next;
-	} *rules;
-	int nrules;
+	int order;
 	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
 };
@@ -65,7 +62,7 @@ struct pkg_solve_item {
 	int nitems;
 	int nresolved;
 	struct pkg_solve_variable *var;
-	bool inverse;
+	int inverse;
 	struct pkg_solve_item *next;
 };
 
@@ -80,6 +77,7 @@ struct pkg_solve_problem {
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables_by_uid;
 	struct pkg_solve_variable *variables;
+	PicoSAT *sat;
 	size_t nvars;
 };
 
@@ -98,6 +96,7 @@ struct pkg_solve_impl_graph {
 
 #define PKG_SOLVE_VAR_NEXT(a, e) ((e) == NULL ? &a[0] : (e + 1))
 
+#if 0
 /**
  * Updates rules related to a single variable
  * @param var
@@ -120,43 +119,6 @@ pkg_solve_undo_var_resolved (struct pkg_solve_variable *var)
 	LL_FOREACH(var->rules, rul) {
 		rul->rule->nresolved --;
 	}
-}
-
-static void
-pkg_debug_print_rule (struct pkg_solve_item *rule)
-{
-	struct pkg_solve_item *it;
-	struct sbuf *sb;
-	int64_t expectlevel;
-
-	/* Avoid expensive printing if debug level is less than required */
-	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
-
-	if (expectlevel < 2)
-		return;
-
-	sb = sbuf_new_auto();
-
-	sbuf_printf(sb, "%s", "rule: (");
-
-	LL_FOREACH(rule, it) {
-		if (it->var->resolved) {
-			sbuf_printf(sb, "%s%s%s(%c)%s", it->inverse ? "!" : "",
-					it->var->uid,
-					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-					(it->var->to_install) ? '+' : '-',
-					it->next ? " | " : ")");
-		}
-		else {
-			sbuf_printf(sb, "%s%s%s%s", it->inverse ? "!" : "",
-					it->var->uid,
-					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-					it->next ? " | " : ")");
-		}
-	}
-	sbuf_finish(sb);
-	pkg_debug(2, "%s", sbuf_data(sb));
-	sbuf_delete(sb);
 }
 
 /**
@@ -344,81 +306,7 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	return (true);
 }
 
-/*
- * Set initial guess based on a variable passed
- */
-static bool
-pkg_solve_initial_guess(struct pkg_solve_problem *problem,
-		struct pkg_solve_variable *var)
-{
-	struct pkg_solve_variable *cur, *start, *local = NULL;
-	unsigned vercnt = 0;
 
-	/* Find start variable in the chain */
-	start = var;
-	while(start->prev->next != NULL)
-		start = start->prev;
-
-	LL_FOREACH(start, cur) {
-		if (cur->unit->pkg->type == PKG_INSTALLED)
-			local = cur;
-		vercnt ++;
-	}
-	if (vercnt > 2 && local != NULL) {
-		/* We need to find the largest version possible */
-		struct pkg_solve_variable *selected = NULL;
-		bool chosen = false;
-
-		LL_FOREACH(start, cur) {
-			if (selected != NULL && pkg_version_change_between(cur->unit->pkg,
-				selected->unit->pkg) == PKG_UPGRADE) {
-				selected = cur;
-				chosen = true;
-			}
-			else if (selected == NULL) {
-				selected = cur;
-			}
-		}
-		/* If not chosen then pin repository */
-		if (!chosen) {
-			const ucl_object_t *an, *obj;
-			pkg_get(local->unit->pkg, PKG_ANNOTATIONS, &obj);
-			an = pkg_object_find(obj, "repository");
-			if (an != NULL) {
-				LL_FOREACH(start, cur) {
-					const char *reponame;
-
-					pkg_get(cur->unit->pkg, PKG_REPONAME, &reponame);
-					if (reponame && strcmp(reponame, ucl_object_tostring(an)) == 0) {
-						selected = cur;
-						break;
-					}
-				}
-			}
-		}
-		return (var == selected);
-	}
-	else if (problem->j->type == PKG_JOBS_UPGRADE) {
-		if (var->unit->pkg->type == PKG_INSTALLED) {
-			/* For local packages assume true if we have no upgrade */
-			if (var->unit->next == NULL && var->unit->prev == var->unit)
-				return (true);
-		}
-		else {
-			/* For remote packages we return true if they are upgrades for local ones */
-			if (var->unit->next != NULL || var->unit->prev != var->unit)
-				return (true);
-		}
-	}
-	else {
-		/* For all non-upgrade jobs be more conservative */
-		if (var->unit->pkg->type == PKG_INSTALLED)
-			return (true);
-	}
-
-	/* Otherwise set initial guess to false */
-	return (false);
-}
 
 /*
  * For all variables in implication graph we reset their resolved values
@@ -582,7 +470,114 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 	return (true);
 }
+#endif
 
+static void
+pkg_debug_print_rule (struct pkg_solve_item *rule)
+{
+	struct pkg_solve_item *it;
+	struct sbuf *sb;
+	int64_t expectlevel;
+
+	/* Avoid expensive printing if debug level is less than required */
+	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+
+	if (expectlevel < 2)
+		return;
+
+	sb = sbuf_new_auto();
+
+	sbuf_printf(sb, "%s", "rule: (");
+
+	LL_FOREACH(rule, it) {
+			sbuf_printf(sb, "%s%s%s%s", it->inverse < 0 ? "!" : "",
+					it->var->uid,
+					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+					it->next ? " | " : ")");
+	}
+	sbuf_finish(sb);
+	pkg_debug(2, "%s", sbuf_data(sb));
+	sbuf_delete(sb);
+}
+
+/*
+ * Set initial guess based on a variable passed
+ */
+static int
+pkg_solve_initial_guess(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var)
+{
+	struct pkg_solve_variable *cur, *start, *local = NULL;
+	unsigned vercnt = 0;
+	bool force;
+
+	force = problem->j->flags & PKG_FLAG_FORCE;
+
+	/* Find start variable in the chain */
+	start = var;
+	while(start->prev->next != NULL)
+		start = start->prev;
+
+	LL_FOREACH(start, cur) {
+		if (cur->unit->pkg->type == PKG_INSTALLED)
+			local = cur;
+		vercnt ++;
+	}
+	if (vercnt > 2 && local != NULL) {
+		/* We need to find the largest version possible */
+		struct pkg_solve_variable *selected = NULL;
+		bool chosen = false;
+
+		LL_FOREACH(start, cur) {
+			if (selected != NULL && pkg_version_change_between(cur->unit->pkg,
+				selected->unit->pkg) == PKG_UPGRADE) {
+				selected = cur;
+				chosen = true;
+			}
+			else if (selected == NULL) {
+				selected = cur;
+			}
+		}
+		/* If not chosen then pin repository */
+		if (!chosen) {
+			const ucl_object_t *an, *obj;
+			pkg_get(local->unit->pkg, PKG_ANNOTATIONS, &obj);
+			an = pkg_object_find(obj, "repository");
+			if (an != NULL) {
+				LL_FOREACH(start, cur) {
+					const char *reponame;
+
+					pkg_get(cur->unit->pkg, PKG_REPONAME, &reponame);
+					if (reponame && strcmp(reponame, ucl_object_tostring(an)) == 0) {
+						selected = cur;
+						break;
+					}
+				}
+			}
+		}
+		return (var == selected) ? 1 : -1;
+	}
+	else if (problem->j->type == PKG_JOBS_UPGRADE) {
+		if (var->unit->pkg->type == PKG_INSTALLED) {
+			/* For local packages assume true if we have no upgrade */
+			if (var->unit->next == NULL && var->unit->prev == var->unit)
+				return (1);
+		}
+		else {
+			/* For remote packages we return true if they are upgrades for local ones */
+			if (var->unit->next != NULL || var->unit->prev != var->unit)
+				return (1);
+		}
+	}
+	else {
+		/* For all non-upgrade jobs be more conservative */
+		if (var->unit->pkg->type == PKG_INSTALLED)
+			return (1);
+	}
+
+	/* Otherwise set initial guess to false */
+	return (-1);
+}
 /*
  * Utilities to convert jobs to SAT rule
  */
@@ -600,7 +595,7 @@ pkg_solve_item_new(struct pkg_solve_variable *var)
 	}
 
 	result->var = var;
-	result->inverse = false;
+	result->inverse = 1;
 
 	return (result);
 }
@@ -650,49 +645,21 @@ void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_rule *r, *rtmp;
-	struct pkg_solve_variable *v;
-	struct _pkg_solve_var_rule *vrule, *vrtmp;
+	struct pkg_solve_variable *v, *vtmp;
 
 	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
 		pkg_solve_rule_free(r);
 	}
 
-	v = NULL;
-	while((v = PKG_SOLVE_VAR_NEXT(problem->variables, v))) {
+	HASH_ITER(hh, problem->variables_by_uid, v, vtmp) {
 		HASH_DELETE(hh, problem->variables_by_uid, v);
-		LL_FOREACH_SAFE(v->rules, vrule, vrtmp) {
-			free(vrule);
-		}
 	}
+
+	picosat_reset(problem->sat);
 	free(problem->variables);
+	free(problem);
 }
 
-static int
-pkg_solve_add_var_rules (struct pkg_solve_variable *var,
-		struct pkg_solve_item *rule, int nrules, bool iterate_vars,
-		const char *desc)
-{
-	struct _pkg_solve_var_rule *head = NULL;
-	struct pkg_solve_variable *tvar;
-
-	LL_FOREACH(var, tvar) {
-		pkg_debug(4, "solver: add %d-ary %s clause to variable %s-%s",
-							nrules, desc, tvar->uid, tvar->digest);
-		tvar->nrules += nrules;
-		head = calloc(1, sizeof (struct _pkg_solve_var_rule));
-		if (head == NULL) {
-			pkg_emit_errno("calloc", "_pkg_solve_var_rule");
-			return (EPKG_FATAL);
-		}
-		head->rule = rule;
-		LL_PREPEND(tvar->rules, head);
-		if (!iterate_vars)
-			break;
-	}
-	pkg_debug_print_rule(head->rule);
-
-	return (EPKG_OK);
-}
 
 #define RULE_ITEM_PREPEND(rule, item) do {									\
 	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
@@ -724,7 +691,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = false;
+		it->inverse = 1;
 		RULE_ITEM_PREPEND(rule, it);
 		(*cnt) ++;
 	}
@@ -785,7 +752,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	if (it == NULL)
 		return (EPKG_FATAL);
 
-	it->inverse = true;
+	it->inverse = -1;
 	RULE_ITEM_PREPEND(rule, it);
 	/* B1 | B2 | ... */
 	cnt = 1;
@@ -794,12 +761,10 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = false;
+		it->inverse = 1;
 		RULE_ITEM_PREPEND(rule, it);
 		cnt ++;
 	}
-	pkg_solve_add_var_rules (depvar, rule->items, cnt, true, "dependency");
-	pkg_solve_add_var_rules (var, rule->items, cnt, false, "dependency");
 
 	LL_PREPEND(problem->rules, rule);
 	problem->rules_count ++;
@@ -855,22 +820,18 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = true;
+		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 		/* !Bx */
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = true;
+		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
-		pkg_solve_add_var_rules (curvar, rule->items, 2, false,
-			"explicit conflict");
-		pkg_solve_add_var_rules (var, rule->items, 2, false,
-			"explicit conflict");
 	}
 
 	return (EPKG_OK);
@@ -898,7 +859,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = true;
+		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 		/* B1 | B2 | ... */
 		cnt = 1;
@@ -917,14 +878,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 			LL_FOREACH(prhead, pr)
 				pkg_solve_fill_provide_var(problem, pr, vars_affected, &i);
-
-			pkg_solve_add_var_rules(var, rule->items, cnt, false, "provide");
-
-			/* Add rules to all provides as well */
-			cnt = i;
-			for (i = 0; i < cnt; i ++)
-				pkg_solve_add_var_rules(vars_affected[i], rule->items, cnt,
-					false, "provide");
 
 			free(vars_affected);
 			LL_PREPEND(problem->rules, rule);
@@ -951,28 +904,14 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 static int
 pkg_solve_add_unary_rule(struct pkg_solve_problem *problem,
-	struct pkg_solve_variable *var, bool inverse)
+	struct pkg_solve_variable *var, int inverse)
 {
-	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
-
 	pkg_debug(4, "solver: add variable from %s request with uid %s-%s",
-		inverse ? "delete" : "install", var->uid, var->digest);
+		inverse < 0 ? "delete" : "install", var->uid, var->digest);
 
-	it = pkg_solve_item_new(var);
-	if (it == NULL)
-		return (EPKG_FATAL);
-
-	it->inverse = inverse;
-
-	rule = pkg_solve_rule_new();
-	if (rule == NULL)
-		return (EPKG_FATAL);
-
-	/* Requests are unary rules */
-	RULE_ITEM_PREPEND(rule, it);
-	pkg_solve_add_var_rules(var, it, 1, false, "unary request");
-	LL_PREPEND(problem->rules, rule);
+	picosat_assume(problem->sat, var->order * inverse);
+	var->top_level = true;
+	var->to_install = inverse > 0;
 	problem->rules_count ++;
 
 	return (EPKG_OK);
@@ -996,21 +935,18 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = true;
+		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 		/* !Ay */
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL)
 			return (EPKG_FATAL);
 
-		it->inverse = true;
+		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
-
-		pkg_solve_add_var_rules (curvar, rule->items, 2, false, "chain conflict");
-		pkg_solve_add_var_rules (var, rule->items, 2, false, "chain conflict");
 	}
 
 	return (EPKG_OK);
@@ -1057,10 +993,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		/* Request */
 		HASH_FIND_PTR(j->request_add, &cur_var->unit, jreq);
 		if (jreq != NULL)
-			pkg_solve_add_unary_rule(problem, cur_var, false);
+			pkg_solve_add_unary_rule(problem, cur_var, 1);
 		HASH_FIND_PTR(j->request_delete, &cur_var->unit, jreq);
 		if (jreq != NULL)
-			pkg_solve_add_unary_rule(problem, cur_var, true);
+			pkg_solve_add_unary_rule(problem, cur_var, -1);
 
 		/*
 		 * If this var chain contains mutually conflicting vars
@@ -1105,6 +1041,7 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 			DL_APPEND(tvar, var);
 		}
 		(*n) ++;
+		var->order = *n;
 	}
 
 	return (EPKG_OK);
@@ -1127,11 +1064,19 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	problem->j = j;
 	problem->nvars = j->universe->nitems;
 	problem->variables = calloc(problem->nvars, sizeof(struct pkg_solve_variable));
+	problem->sat = picosat_init();
+
+	if (problem->sat == NULL) {
+		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
+		return (NULL);
+	}
 
 	if (problem->variables == NULL) {
 		pkg_emit_errno("calloc", "variables");
 		return (NULL);
 	}
+
+	picosat_adjust(problem->sat, problem->nvars);
 
 	/* Parse universe */
 	HASH_ITER(hh, j->universe->items, un, utmp) {
@@ -1166,6 +1111,80 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 
 err:
 	return (NULL);
+}
+
+bool
+pkg_solve_sat_problem(struct pkg_solve_problem *problem)
+{
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *item;
+	int res;
+	size_t i;
+
+	LL_FOREACH(problem->rules, rule) {
+		LL_FOREACH(rule->items, item) {
+			picosat_add(problem->sat, item->var->order * item->inverse);
+		}
+		picosat_add(problem->sat, 0);
+	}
+	/* Set initial guess */
+	for (i = 0; i < problem->nvars; i ++)
+	{
+		struct pkg_solve_variable *var = &problem->variables[i];
+		bool is_installed = var->unit->pkg->type == PKG_INSTALLED;
+
+		if (var->top_level)
+			continue;
+
+		if (is_installed) {
+			picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+			picosat_set_more_important_lit(problem->sat, i + 1);
+		}
+		else {
+			picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+			picosat_set_less_important_lit(problem->sat, i + 1);
+		}
+	}
+
+	res = picosat_sat(problem->sat, -1);
+
+	if (res != PICOSAT_SATISFIABLE) {
+		const int *failed = picosat_failed_assumptions(problem->sat);
+		struct sbuf *sb = sbuf_new_auto();
+
+		sbuf_printf(sb, "Cannot solve problem using SAT solver:\n");
+
+		do {
+			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
+			sbuf_printf(sb, "cannot %s package %s\n",
+				var->to_install ? "install" : "remove", var->uid);
+		} while (*++failed);
+
+		sbuf_finish(sb);
+		pkg_emit_error(sbuf_data(sb));
+		sbuf_free(sb);
+
+		return (false);
+	}
+
+	/* Assign vars */
+	for (i = 0; i < problem->nvars; i ++) {
+		int val = picosat_deref(problem->sat, i + 1);
+		struct pkg_solve_variable *var = &problem->variables[i];
+
+		if (val > 0)
+			var->to_install = true;
+		else
+			var->to_install = false;
+
+		pkg_debug(2, "decided %s %s-%s(%d) to %s",
+			var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
+			var->uid, var->digest,
+			var->priority,
+			var->to_install ? "install" : "delete");
+	}
+
+	return (true);
 }
 
 struct pkg_solve_ordered_variable {
@@ -1297,9 +1316,6 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 	struct pkg_solve_variable *var, *tvar;
 
 	HASH_ITER(hh, problem->variables_by_uid, var, tvar) {
-		if (!var->resolved)
-			return (EPKG_FATAL);
-
 		pkg_debug(4, "solver: check variable with uid %s", var->uid);
 		pkg_solve_insert_res_job(var, problem);
 	}
@@ -1346,10 +1362,8 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL) {
-					nord->var->resolved = true;
+				if (nord != NULL)
 					nord->var->to_install = (*var_str != '-');
-				}
 			} while (begin != NULL);
 		}
 		else if (strncmp(line, "v ", 2) == 0) {
@@ -1367,10 +1381,8 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL) {
-					nord->var->resolved = true;
+				if (nord != NULL)
 					nord->var->to_install = (*var_str != '-');
-				}
 			} while (begin != NULL);
 		}
 		else {

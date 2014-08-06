@@ -58,6 +58,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libyaml/include/yaml.h \
 		libyaml/src/yaml_private.h \
 		libyaml/win32/config.h \
+		picosat/picosat.h \
 		sqlite/sqlite3.h \
 		uthash/utarray.h \
 		uthash/uthash.h \
@@ -71,6 +72,7 @@ noinst_LTLIBRARIES=	libucl.la libucl_static.la \
 			libyaml.la libyaml_static.la \
 			libexpat.la libexpat_static.la \
 			libsbuf.la libsbuf_static.la \
+			libpicosat.la libpicosat_static.la \
 			@LIBELF_BUNDLED@
 
 libelf_la_SOURCES=	libelf/elf.c \
@@ -181,6 +183,16 @@ libyaml_la_CFLAGS=	$(yaml_common_cflags) -shared
 libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
 libyaml_static_la_CFLAGS= $(yaml_common_cflags) -static
 libyaml_static_la_LDFLAGS=	-all-static
+
+picosat_common_cflags=	-I$(top_srcdir)/external/picosat \
+			-Wno-strict-aliasing \
+			-Wno-unused	
+libpicosat_la_SOURCES=	picosat/picosat.c \
+			picosat/version.c
+libpicosat_la_CFLAGS=	$(picosat_common_cflags) -shared
+libpicosat_static_la_SOURCES=	$(libpicosat_la_SOURCES)
+libpicosat_static_la_CFLAGS= $(picosat_common_cflags) -static
+libpicosat_static_la_LDFLAGS=	-all-static
 
 sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-Wno-unused-variable \
