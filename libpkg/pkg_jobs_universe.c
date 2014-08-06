@@ -441,8 +441,6 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	/* Convert jobs flags to dependency logical flags */
 	if (job_flags & PKG_FLAG_FORCE_MISSING)
 		flags |= DEPS_FLAG_FORCE_MISSING;
-	if (job_flags & PKG_FLAG_FORCE)
-		flags |= DEPS_FLAG_FORCE_UPGRADE;
 
 	switch(type) {
 	case PKG_JOBS_FETCH:
