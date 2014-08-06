@@ -791,15 +791,18 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * if local != NULL, then we have unspecified upgrade path
 			 */
 
-			if (local == NULL || (j->flags & PKG_FLAG_FORCE)) {
+			if ((local == NULL && vercnt > 1) || (vercnt > 2)) {
 				/* Select the most recent or one of packages */
 				struct pkg_job_universe_item *selected = NULL;
 				LL_FOREACH(unit, cur) {
+					if (cur->pkg->type == PKG_INSTALLED)
+						continue;
+
 					if (selected != NULL && pkg_version_change_between(cur->pkg,
 						selected->pkg) == PKG_UPGRADE) {
 						selected = cur;
 					}
-					else if (selected == NULL && cur != local) {
+					else if (selected == NULL) {
 						selected = cur;
 					}
 				}
@@ -812,25 +815,6 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 							HASH_DEL(j->request_add, req);
 					}
 				}
-			}
-			else if (vercnt > 2) {
-				/*
-				 * We have no ideas what to select, but we need to remove
-				 * all install requests leaving only delete request for the
-				 * local package
-				 */
-				LL_FOREACH(unit, cur) {
-					HASH_FIND_PTR(j->request_add, &cur, req);
-					if (req != NULL)
-						HASH_DEL(j->request_add, req);
-				}
-				req = calloc(1, sizeof (struct pkg_job_request));
-				if (req == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_job_request");
-					return;
-				}
-				req->item = local;
-				HASH_ADD_PTR(j->request_delete, item, req);
 			}
 		}
 	}
