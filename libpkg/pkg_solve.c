@@ -910,6 +910,8 @@ pkg_solve_add_unary_rule(struct pkg_solve_problem *problem,
 		inverse < 0 ? "delete" : "install", var->uid, var->digest);
 
 	picosat_assume(problem->sat, var->order * inverse);
+	var->top_level = true;
+	var->to_install = inverse > 0;
 	problem->rules_count ++;
 
 	return (EPKG_OK);
@@ -1130,6 +1132,9 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	{
 		struct pkg_solve_variable *var = &problem->variables[i];
 		bool is_installed = var->unit->pkg->type == PKG_INSTALLED;
+
+		if (var->top_level)
+			continue;
 
 		if (is_installed) {
 			picosat_set_default_phase_lit(problem->sat, i + 1, 1);
