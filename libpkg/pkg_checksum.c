@@ -262,6 +262,7 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 	SHA256_Init(&sign_ctx);
 
 	while(entries) {
+		SHA256_Update(&sign_ctx, entries->field, strlen(entries->field));
 		SHA256_Update(&sign_ctx, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
