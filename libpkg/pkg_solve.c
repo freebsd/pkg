@@ -49,15 +49,10 @@ struct pkg_solve_item;
 struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
 	bool to_install;
+	bool top_level;
 	int priority;
 	const char *digest;
 	const char *uid;
-	bool resolved;
-	struct _pkg_solve_var_rule {
-		struct pkg_solve_item *rule;
-		struct _pkg_solve_var_rule *next;
-	} *rules;
-	int nrules;
 	int order;
 	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
@@ -495,19 +490,10 @@ pkg_debug_print_rule (struct pkg_solve_item *rule)
 	sbuf_printf(sb, "%s", "rule: (");
 
 	LL_FOREACH(rule, it) {
-		if (it->var->resolved) {
-			sbuf_printf(sb, "%s%s%s(%c)%s", it->inverse < 0 ? "!" : "",
-					it->var->uid,
-					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-					(it->var->to_install) ? '+' : '-',
-					it->next ? " | " : ")");
-		}
-		else {
 			sbuf_printf(sb, "%s%s%s%s", it->inverse < 0 ? "!" : "",
 					it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
 					it->next ? " | " : ")");
-		}
 	}
 	sbuf_finish(sb);
 	pkg_debug(2, "%s", sbuf_data(sb));
@@ -659,20 +645,16 @@ void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_rule *r, *rtmp;
-	struct pkg_solve_variable *v;
-	struct _pkg_solve_var_rule *vrule, *vrtmp;
+	struct pkg_solve_variable *v, *vtmp;
 
 	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
 		pkg_solve_rule_free(r);
 	}
 
-	v = NULL;
-	while((v = PKG_SOLVE_VAR_NEXT(problem->variables, v))) {
+	HASH_ITER(hh, problem->variables_by_uid, v, vtmp) {
 		HASH_DELETE(hh, problem->variables_by_uid, v);
-		LL_FOREACH_SAFE(v->rules, vrule, vrtmp) {
-			free(vrule);
-		}
 	}
+
 	picosat_reset(problem->sat);
 	free(problem->variables);
 	free(problem);
@@ -1375,10 +1357,8 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL) {
-					nord->var->resolved = true;
+				if (nord != NULL)
 					nord->var->to_install = (*var_str != '-');
-				}
 			} while (begin != NULL);
 		}
 		else if (strncmp(line, "v ", 2) == 0) {
@@ -1396,10 +1376,8 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL) {
-					nord->var->resolved = true;
+				if (nord != NULL)
 					nord->var->to_install = (*var_str != '-');
-				}
 			} while (begin != NULL);
 		}
 		else {
