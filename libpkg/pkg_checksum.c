@@ -98,7 +98,7 @@ pkg_checksum_add_entry(const char *key,
 	}
 
 	e->field = key;
-	e->field = value;
+	e->value = value;
 	DL_APPEND(*entries, e);
 }
 
