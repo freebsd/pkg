@@ -1162,7 +1162,21 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	res = picosat_sat(problem->sat, -1);
 
 	if (res != PICOSAT_SATISFIABLE) {
-		pkg_emit_error("cannot solve problem using SAT solver");
+		const int *failed = picosat_failed_assumptions(problem->sat);
+		struct sbuf *sb = sbuf_new_auto();
+
+		sbuf_printf(sb, "Cannot solve problem using SAT solver:\n");
+
+		do {
+			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
+			sbuf_printf(sb, "cannot %s package %s\n",
+				var->to_install ? "install" : "remove", var->uid);
+		} while (*++failed);
+
+		sbuf_finish(sb);
+		pkg_emit_error(sbuf_data(sb));
+		sbuf_free(sb);
+
 		return (false);
 	}
 
@@ -1182,7 +1196,6 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			var->priority,
 			var->to_install ? "install" : "delete");
 	}
-	picosat_reset(problem->sat);
 
 	return (true);
 }
