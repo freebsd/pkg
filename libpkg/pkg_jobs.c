@@ -560,6 +560,8 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 					else {
 						pkg_debug(3, "already added newer package %s to the universe, "
 							"do not add it again", uid);
+						/* But we still need to check request */
+						pkg_jobs_add_req(j, uid, rjit);
 						return (EPKG_OK);
 					}
 				}
