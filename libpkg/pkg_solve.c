@@ -82,6 +82,7 @@ struct pkg_solve_problem {
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables_by_uid;
 	struct pkg_solve_variable *variables;
+	PicoSAT *sat;
 	size_t nvars;
 };
 
@@ -672,35 +673,11 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 			free(vrule);
 		}
 	}
+	picosat_reset(problem->sat);
 	free(problem->variables);
+	free(problem);
 }
 
-static int
-pkg_solve_add_var_rules (struct pkg_solve_variable *var,
-		struct pkg_solve_item *rule, int nrules, bool iterate_vars,
-		const char *desc)
-{
-	struct _pkg_solve_var_rule *head = NULL;
-	struct pkg_solve_variable *tvar;
-
-	LL_FOREACH(var, tvar) {
-		pkg_debug(4, "solver: add %d-ary %s clause to variable %s-%s",
-							nrules, desc, tvar->uid, tvar->digest);
-		tvar->nrules += nrules;
-		head = calloc(1, sizeof (struct _pkg_solve_var_rule));
-		if (head == NULL) {
-			pkg_emit_errno("calloc", "_pkg_solve_var_rule");
-			return (EPKG_FATAL);
-		}
-		head->rule = rule;
-		LL_PREPEND(tvar->rules, head);
-		if (!iterate_vars)
-			break;
-	}
-	pkg_debug_print_rule(head->rule);
-
-	return (EPKG_OK);
-}
 
 #define RULE_ITEM_PREPEND(rule, item) do {									\
 	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
@@ -806,8 +783,6 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		RULE_ITEM_PREPEND(rule, it);
 		cnt ++;
 	}
-	pkg_solve_add_var_rules (depvar, rule->items, cnt, true, "dependency");
-	pkg_solve_add_var_rules (var, rule->items, cnt, false, "dependency");
 
 	LL_PREPEND(problem->rules, rule);
 	problem->rules_count ++;
@@ -875,10 +850,6 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
-		pkg_solve_add_var_rules (curvar, rule->items, 2, false,
-			"explicit conflict");
-		pkg_solve_add_var_rules (var, rule->items, 2, false,
-			"explicit conflict");
 	}
 
 	return (EPKG_OK);
@@ -926,14 +897,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 			LL_FOREACH(prhead, pr)
 				pkg_solve_fill_provide_var(problem, pr, vars_affected, &i);
 
-			pkg_solve_add_var_rules(var, rule->items, cnt, false, "provide");
-
-			/* Add rules to all provides as well */
-			cnt = i;
-			for (i = 0; i < cnt; i ++)
-				pkg_solve_add_var_rules(vars_affected[i], rule->items, cnt,
-					false, "provide");
-
 			free(vars_affected);
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
@@ -961,26 +924,10 @@ static int
 pkg_solve_add_unary_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, int inverse)
 {
-	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
-
 	pkg_debug(4, "solver: add variable from %s request with uid %s-%s",
 		inverse < 0 ? "delete" : "install", var->uid, var->digest);
 
-	it = pkg_solve_item_new(var);
-	if (it == NULL)
-		return (EPKG_FATAL);
-
-	it->inverse = inverse;
-
-	rule = pkg_solve_rule_new();
-	if (rule == NULL)
-		return (EPKG_FATAL);
-
-	/* Requests are unary rules */
-	RULE_ITEM_PREPEND(rule, it);
-	pkg_solve_add_var_rules(var, it, 1, false, "unary request");
-	LL_PREPEND(problem->rules, rule);
+	picosat_assume(problem->sat, var->order * inverse);
 	problem->rules_count ++;
 
 	return (EPKG_OK);
@@ -1016,9 +963,6 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
-
-		pkg_solve_add_var_rules (curvar, rule->items, 2, false, "chain conflict");
-		pkg_solve_add_var_rules (var, rule->items, 2, false, "chain conflict");
 	}
 
 	return (EPKG_OK);
@@ -1136,11 +1080,19 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	problem->j = j;
 	problem->nvars = j->universe->nitems;
 	problem->variables = calloc(problem->nvars, sizeof(struct pkg_solve_variable));
+	problem->sat = picosat_init();
+
+	if (problem->sat == NULL) {
+		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
+		return (NULL);
+	}
 
 	if (problem->variables == NULL) {
 		pkg_emit_errno("calloc", "variables");
 		return (NULL);
 	}
+
+	picosat_adjust(problem->sat, problem->nvars);
 
 	/* Parse universe */
 	HASH_ITER(hh, j->universe->items, un, utmp) {
@@ -1180,25 +1132,16 @@ err:
 bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
-	PicoSAT *sat;
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *item;
 	int res;
 	size_t i;
 
-	sat = picosat_init();
-	if (sat == NULL) {
-		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
-		return (false);
-	}
-
-	picosat_adjust(sat, problem->nvars);
-
 	LL_FOREACH(problem->rules, rule) {
 		LL_FOREACH(rule->items, item) {
-			picosat_add(sat, item->var->order * item->inverse);
+			picosat_add(problem->sat, item->var->order * item->inverse);
 		}
-		picosat_add(sat, 0);
+		picosat_add(problem->sat, 0);
 	}
 	/* Set initial guess */
 	for (i = 0; i < problem->nvars; i ++)
@@ -1207,26 +1150,25 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		bool is_installed = var->unit->pkg->type == PKG_INSTALLED;
 
 		if (is_installed) {
-			picosat_set_default_phase_lit(sat, i + 1, 1);
-			picosat_set_more_important_lit(sat, i + 1);
+			picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+			picosat_set_more_important_lit(problem->sat, i + 1);
 		}
 		else {
-			picosat_set_default_phase_lit(sat, i + 1, -1);
-			picosat_set_less_important_lit(sat, i + 1);
+			picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+			picosat_set_less_important_lit(problem->sat, i + 1);
 		}
 	}
 
-	res = picosat_sat(sat, -1);
+	res = picosat_sat(problem->sat, -1);
 
 	if (res != PICOSAT_SATISFIABLE) {
-		picosat_reset(sat);
 		pkg_emit_error("cannot solve problem using SAT solver");
 		return (false);
 	}
 
 	/* Assign vars */
 	for (i = 0; i < problem->nvars; i ++) {
-		int val = picosat_deref(sat, i + 1);
+		int val = picosat_deref(problem->sat, i + 1);
 		struct pkg_solve_variable *var = &problem->variables[i];
 
 		if (val > 0)
@@ -1240,7 +1182,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			var->priority,
 			var->to_install ? "install" : "delete");
 	}
-	picosat_reset(sat);
+	picosat_reset(problem->sat);
 
 	return (true);
 }
