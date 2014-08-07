@@ -481,6 +481,16 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 			pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
 					uid, digest,
 					seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
+			jit = seen->un;
+			do {
+				if (jit->pkg->type != PKG_INSTALLED)
+					break;
+				jit = jit->prev;
+			} while (jit != seen->un);
+
+			if (jit->pkg->type != PKG_INSTALLED)
+				pkg_jobs_add_req(j, uid, jit);
+
 			return (EPKG_INSTALLED);
 		}
 		else {
