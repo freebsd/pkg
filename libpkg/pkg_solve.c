@@ -631,7 +631,7 @@ err:
 	return (NULL);
 }
 
-bool
+int
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_rule *rule;
@@ -670,19 +670,43 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		const int *failed = picosat_failed_assumptions(problem->sat);
 		struct sbuf *sb = sbuf_new_auto();
 
-		sbuf_printf(sb, "Cannot solve problem using SAT solver:\n");
+		pkg_emit_error("Cannot solve problem using SAT solver:");
 
 		do {
 			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
-			sbuf_printf(sb, "cannot %s package %s\n",
+
+			sbuf_printf(sb, "cannot %s package %s, remove it from request [Y/n]: ",
 				var->to_install ? "install" : "remove", var->uid);
+			sbuf_finish(sb);
+
+			if (pkg_emit_query_yesno(true, sbuf_data(sb))) {
+				struct pkg_job_request *req;
+				/* Remove this assumption and the corresponding request */
+				if (var->to_install)
+					HASH_FIND_PTR(problem->j->request_add, &var->unit, req);
+				else
+					HASH_FIND_PTR(problem->j->request_delete, &var->unit, req);
+				if (req == NULL) {
+					pkg_emit_error("cannot find %s in the request", var->uid);
+					return (EPKG_FATAL);
+				}
+
+				if (var->to_install)
+					HASH_DEL(problem->j->request_add, req);
+				else
+					HASH_DEL(problem->j->request_delete, req);
+				sbuf_reset(sb);
+			}
+			else {
+				sbuf_free(sb);
+				return (EPKG_FATAL);
+			}
+
 		} while (*++failed);
 
-		sbuf_finish(sb);
-		pkg_emit_error(sbuf_data(sb));
 		sbuf_free(sb);
 
-		return (false);
+		return (EPKG_AGAIN);
 	}
 
 	/* Assign vars */
@@ -702,7 +726,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			var->to_install ? "install" : "delete");
 	}
 
-	return (true);
+	return (EPKG_OK);
 }
 
 struct pkg_solve_ordered_variable {

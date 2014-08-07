@@ -1527,6 +1527,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			waitpid(pchild, &pstatus, WNOHANG);
 		}
 		else {
+again:
 			pkg_jobs_universe_process_upgrade_chains(j);
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
@@ -1546,13 +1547,20 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					waitpid(pchild, &pstatus, WNOHANG);
 				}
 				else {
-					if (!pkg_solve_sat_problem(problem)) {
+					ret = pkg_solve_sat_problem(problem);
+					if (ret == EPKG_FATAL) {
 						pkg_emit_error("cannot solve job using SAT solver");
 						ret = EPKG_FATAL;
+						pkg_solve_problem_free(problem);
 						j->solved = 0;
+					}
+					else if (ret == EPKG_AGAIN) {
+						pkg_solve_problem_free(problem);
+						goto again;
 					}
 					else {
 						ret = pkg_solve_sat_to_jobs(problem);
+						pkg_solve_problem_free(problem);
 					}
 				}
 			}
@@ -1568,6 +1576,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		pkg_jobs_set_deinstall_reasons(j);
 
 	pkgdb_end_solver(j->db);
+
+	if (ret != EPKG_OK)
+		return (ret);
 
 	pkg_jobs_apply_replacements(j);
 
