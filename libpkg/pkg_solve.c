@@ -67,6 +67,7 @@ struct pkg_solve_item {
 };
 
 struct pkg_solve_rule {
+	const char *reason;
 	struct pkg_solve_item *items;
 	struct pkg_solve_rule *next;
 };
@@ -119,7 +120,7 @@ pkg_solve_item_new(struct pkg_solve_variable *var)
 }
 
 static struct pkg_solve_rule *
-pkg_solve_rule_new(void)
+pkg_solve_rule_new(const char *reason)
 {
 	struct pkg_solve_rule *result;
 
@@ -129,6 +130,8 @@ pkg_solve_rule_new(void)
 		pkg_emit_errno("calloc", "pkg_solve_rule");
 		return (NULL);
 	}
+
+	result->reason = reason;
 
 	return (result);
 }
@@ -183,6 +186,32 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
 	LL_PREPEND((rule)->items, (item));										\
 } while (0)
+
+static void
+pkg_debug_print_rule(struct pkg_solve_rule *rule)
+{
+	struct pkg_solve_item *it;
+	struct sbuf *sb;
+	int64_t expectlevel;
+
+	/* Avoid expensive printing if debug level is less than required */
+	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+
+	if (expectlevel < 3)
+		return;
+
+	sb = sbuf_new_auto();
+
+	sbuf_printf(sb, "%s rule: (", rule->reason);
+	LL_FOREACH(rule->items, it) {
+		sbuf_printf(sb, "%s%s%s%s", it->inverse < 0 ? "!" : "", it->var->uid,
+		    (it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+		    it->next ? " | " : ")");
+	}
+	sbuf_finish(sb);
+	pkg_debug(2, "%s", sbuf_data(sb));
+	sbuf_delete(sb);
+}
 
 static int
 pkg_solve_handle_provide (struct pkg_solve_problem *problem,
@@ -262,7 +291,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		return (EPKG_END);
 	}
 	/* Dependency rule: (!A | B) */
-	rule = pkg_solve_rule_new();
+	rule = pkg_solve_rule_new("dependency");
 	if (rule == NULL)
 		return (EPKG_FATAL);
 	/* !A */
@@ -330,7 +359,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		}
 
 		/* Conflict rule: (!A | !Bx) */
-		rule = pkg_solve_rule_new();
+		rule = pkg_solve_rule_new("explicit conflict");
 		if (rule == NULL)
 			return (EPKG_FATAL);
 		/* !A */
@@ -369,7 +398,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
 	if (prhead != NULL) {
 		/* Require rule !A | P1 | P2 | P3 ... */
-		rule = pkg_solve_rule_new();
+		rule = pkg_solve_rule_new("require");
 		if (rule == NULL)
 			return (EPKG_FATAL);
 		/* !A */
@@ -445,7 +474,7 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 
 	LL_FOREACH(var->next, curvar) {
 		/* Conflict rule: (!Ax | !Ay) */
-		rule = pkg_solve_rule_new();
+		rule = pkg_solve_rule_new("upgrade chain");
 		if (rule == NULL)
 			return (EPKG_FATAL);
 		/* !Ax */
@@ -644,6 +673,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			picosat_add(problem->sat, item->var->order * item->inverse);
 		}
 		picosat_add(problem->sat, 0);
+		pkg_debug_print_rule(rule);
 	}
 	/* Set initial guess */
 	for (i = 0; i < problem->nvars; i ++)
