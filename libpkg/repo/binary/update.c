@@ -846,17 +846,26 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	pkg_debug(1, "PkgRepo: verifying update for %s", pkg_repo_name(repo));
 
-	snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
-	if (stat(filepath, &st) != -1) {
-		t = force ? 0 : st.st_mtime;
-		got_meta = true;
+	/* First of all, try to open and init repo and check whether it is fine */
+	if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+		pkg_debug(1, "PkgRepo: need forced update of %s", pkg_repo_name(repo));
+		t = 0;
+		force = true;
 	}
+	else {
+		repo->ops->close(repo, false);
+		snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+		if (stat(filepath, &st) != -1) {
+			t = force ? 0 : st.st_mtime;
+			got_meta = true;
+		}
 
-	snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
-		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
-	if (stat(filepath, &st) != -1) {
-		if (!got_meta && !force)
-			t = st.st_mtime;
+		snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
+			pkg_repo_binary_get_filename(pkg_repo_name(repo)));
+		if (stat(filepath, &st) != -1) {
+			if (!got_meta && !force)
+				t = st.st_mtime;
+		}
 	}
 
 	res = pkg_repo_binary_update_incremental(filepath, repo, &t, force);
