@@ -92,13 +92,13 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[SHLIB_REQD] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_shlibs_required(package_id, shlib_id) "
+		"INSERT OR IGNORE INTO pkg_shlibs_required(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
 	[SHLIB_PROV] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_shlibs_provided(package_id, shlib_id) "
+		"INSERT OR IGNORE INTO pkg_shlibs_provided(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
