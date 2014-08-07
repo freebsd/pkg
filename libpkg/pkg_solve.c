@@ -246,33 +246,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	return (EPKG_OK);
 }
 
-static void
-pkg_solve_fill_provide_var(struct pkg_solve_problem *problem,
-	struct pkg_job_provide *pr, struct pkg_solve_variable **vars, int *pos)
-{
-	const char *uid, *digest;
-	struct pkg_solve_variable *var, *curvar;
-	struct pkg_job_universe_item *un;
-	int i = *pos;
-
-	/* Find the first package in the universe list */
-	un = pr->un;
-	while (un->prev->next != NULL) {
-		un = un->prev;
-	}
-
-	/* Find the corresponding variables chain */
-	pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
-	HASH_FIND_STR(problem->variables_by_uid, uid, var);
-
-	LL_FOREACH(var, curvar) {
-		vars[i] = curvar;
-		i ++;
-	}
-
-	*pos = i;
-}
-
 static int
 pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var,
@@ -392,8 +365,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_job_provide *pr, *prhead;
-	struct pkg_solve_variable **vars_affected;
-	int cnt, i;
+	int cnt;
 
 	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
 	if (prhead != NULL) {
@@ -416,17 +388,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		}
 
 		if (cnt > 1) {
-			vars_affected = calloc(cnt - 1, sizeof(struct pkg_solve_variable *));
-			if (vars_affected == NULL) {
-				pkg_emit_errno("calloc", "struct pkg_solve_variable");
-				return (EPKG_FATAL);
-			}
-			i = 0;
-
-			LL_FOREACH(prhead, pr)
-				pkg_solve_fill_provide_var(problem, pr, vars_affected, &i);
-
-			free(vars_affected);
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
 		}
