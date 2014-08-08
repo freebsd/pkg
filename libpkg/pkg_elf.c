@@ -222,12 +222,14 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	size_t sh_link = 0;
 	size_t dynidx;
 	const char *osname;
+	const char *myarch;
 	const char *shlib;
 
 	bool developer = false;
 	bool is_shlib = false;
 
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	int fd;
 
@@ -301,6 +303,11 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	if (dynamic == NULL) {
 		ret = EPKG_END;
 		goto cleanup; /* not a dynamically linked elf: no results */
+	}
+
+	if (!shlib_valid_abi(&elfhdr, myarch)) {
+		ret = EPKG_END;
+		goto cleanup; /* Invalid ABI */
 	}
 
 	if (note != NULL) {
