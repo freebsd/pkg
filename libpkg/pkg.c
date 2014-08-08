@@ -1048,20 +1048,22 @@ pkg_handle_sostr(const char *name, struct sbuf **sb)
 int
 pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
-	struct pkg_shlib *s = NULL;
+	struct pkg_shlib *s = NULL, *f;
 	const char *origin;
 
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs_required, name, s);
-	/* silently ignore duplicates in case of shlibs */
-	if (s != NULL)
-		return (EPKG_OK);
-
 	pkg_shlib_new(&s);
 	pkg_handle_sostr(name, &s->name);
+
+	HASH_FIND_STR(pkg->shlibs_required, pkg_shlib_name(s), f);
+	/* silently ignore duplicates in case of shlibs */
+	if (f != NULL) {
+		pkg_shlib_free(s);
+		return (EPKG_OK);
+	}
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_required,
 	    pkg_shlib_name(s),
@@ -1077,19 +1079,20 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 int
 pkg_addshlib_provided(struct pkg *pkg, const char *name)
 {
-	struct pkg_shlib *s = NULL;
+	struct pkg_shlib *s = NULL, *f;
 	const char *origin;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs_provided, name, s);
-	/* silently ignore duplicates in case of shlibs */
-	if (s != NULL)
-		return (EPKG_OK);
-
 	pkg_shlib_new(&s);
 	pkg_handle_sostr(name, &s->name);
+	HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(s), f);
+	/* silently ignore duplicates in case of shlibs */
+	if (f != NULL) {
+		pkg_shlib_free(s);
+		return (EPKG_OK);
+	}
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
 	    pkg_shlib_name(s),
