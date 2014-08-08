@@ -45,7 +45,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dlfcn.h>
-#include <err.h>
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
@@ -74,6 +73,8 @@
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
+
+static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
 
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
@@ -127,7 +128,7 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		}
 
 		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		warnx("(%s-%s) %s - shared library %s not found",
+		pkg_emit_notice("(%s-%s) %s - shared library %s not found",
 		      pkgname, pkgversion, fpath, name);
 
 		return (EPKG_FATAL);
@@ -460,6 +461,18 @@ elf_corres_to_string(const struct _elf_corres* m, int e)
 			return (m[i].string);
 
 	return ("unknown");
+}
+
+static int
+elf_string_to_corres(const struct _elf_corres* m, const char *s)
+{
+	int i = 0;
+
+	for (i = 0; m[i].string != NULL; i++)
+		if (strcmp(m[i].string, s) == 0)
+			return (m[i].elf_nb);
+
+	return (-1);
 }
 
 static const char *
