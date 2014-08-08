@@ -75,6 +75,7 @@
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 
 static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
+static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
 
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
@@ -133,6 +134,72 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 
 		return (EPKG_FATAL);
 	}
+}
+
+static bool
+shlib_valid_abi(GElf_Ehdr *hdr, const char *abi)
+{
+	int semicolon;
+	const char *p, *t;
+	char arch[64], wordsize[64];
+	int narch, wclass;
+
+	/*
+	 * ABI string is in format:
+	 * <osname>:<osversion>:<arch>:<wordsize>[.other]
+	 * We need here arch and wordsize only
+	 */
+	arch[0] = '\0';
+	wordsize[0] = '\0';
+	p = abi;
+	for(semicolon = 0; semicolon < 3 && p != NULL; semicolon ++, p ++) {
+		p = strchr(p, ':');
+		if (p != NULL) {
+			switch(semicolon) {
+			case 1:
+				/* We have arch here */
+				t = strchr(p + 1, ':');
+				/* Abi line is likely invalid */
+				if (t == NULL)
+					return (true);
+				strlcpy(arch, p + 1, MIN((long)sizeof(arch), t - p));
+				break;
+			case 2:
+				t = strchr(p + 1, ':');
+				if (t == NULL)
+					strlcpy(wordsize, p + 1, sizeof(wordsize));
+				else
+					strlcpy(wordsize, p + 1, MIN((long)sizeof(wordsize), t - p));
+				break;
+			}
+		}
+	}
+	/* Invalid ABI line */
+	if (arch[0] == '\0' || wordsize[0] == '\0')
+		return (true);
+
+	narch = elf_string_to_corres(mach_corres, arch);
+	if (narch == -1)
+		return (true);
+
+	wclass = elf_string_to_corres(wordsize_corres, wordsize);
+	if (wclass == -1)
+		return (true);
+
+
+	if ((int)hdr->e_machine != narch) {
+		pkg_debug(1, "not valid abi for shlib: %s",
+			elf_corres_to_string(mach_corres, (int)hdr->e_machine));
+		return (false);
+	}
+	if ((int)hdr->e_ident[EI_CLASS] != wclass) {
+		pkg_debug(1, "not valid elf class for shlib: %s",
+					elf_corres_to_string(wordsize_corres,
+						(int)hdr->e_ident[EI_CLASS]));
+		return (false);
+	}
+
+	return (true);
 }
 
 static int
