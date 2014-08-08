@@ -137,12 +137,13 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 }
 
 static bool
-shlib_valid_abi(GElf_Ehdr *hdr, const char *abi)
+shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 {
 	int semicolon;
 	const char *p, *t;
 	char arch[64], wordsize[64];
-	int narch, wclass;
+	int wclass;
+	const char *shlib_arch;
 
 	/*
 	 * ABI string is in format:
@@ -178,8 +179,8 @@ shlib_valid_abi(GElf_Ehdr *hdr, const char *abi)
 	if (arch[0] == '\0' || wordsize[0] == '\0')
 		return (true);
 
-	narch = elf_string_to_corres(mach_corres, arch);
-	if (narch == -1)
+	shlib_arch = elf_corres_to_string(mach_corres, (int)hdr->e_machine);
+	if (shlib_arch == NULL)
 		return (true);
 
 	wclass = elf_string_to_corres(wordsize_corres, wordsize);
@@ -187,15 +188,21 @@ shlib_valid_abi(GElf_Ehdr *hdr, const char *abi)
 		return (true);
 
 
-	if ((int)hdr->e_machine != narch) {
-		pkg_debug(1, "not valid abi for shlib: %s",
-			elf_corres_to_string(mach_corres, (int)hdr->e_machine));
+	/*
+	 * Compare wordsize first as the arch for amd64/i386 is an abmiguous
+	 * 'x86'
+	 */
+	if ((int)hdr->e_ident[EI_CLASS] != wclass) {
+		pkg_debug(1, "not valid elf class for shlib: %s: %s",
+		    elf_corres_to_string(wordsize_corres,
+		    (int)hdr->e_ident[EI_CLASS]),
+		    fpath);
 		return (false);
 	}
-	if ((int)hdr->e_ident[EI_CLASS] != wclass) {
-		pkg_debug(1, "not valid elf class for shlib: %s",
-					elf_corres_to_string(wordsize_corres,
-						(int)hdr->e_ident[EI_CLASS]));
+
+	if (strcmp(shlib_arch, arch) != 0) {
+		pkg_debug(1, "not valid abi for shlib: %s: %s", shlib_arch,
+		    fpath);
 		return (false);
 	}
 
@@ -305,7 +312,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	if (!shlib_valid_abi(&elfhdr, myarch)) {
+	if (!shlib_valid_abi(fpath, &elfhdr, myarch)) {
 		ret = EPKG_END;
 		goto cleanup; /* Invalid ABI */
 	}
