@@ -759,6 +759,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 
 	p = ucl_parser_new(0);
 	if (!ucl_parser_add_string(p, data, sz)) {
+		pkg_emit_error("manifest parsing error: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
 		return (EPKG_FATAL);
 	}
