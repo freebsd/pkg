@@ -78,7 +78,7 @@ struct pkg *
 pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
-	struct pkg *pkg = NULL;
+	struct pkg *pkg = NULL, *selected = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit;
 
@@ -98,12 +98,24 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		universe->j->reponame)) == NULL)
 		return (NULL);
 
-	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
-		pkg = NULL;
+	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
+
+		if (selected == NULL) {
+			selected = pkg;
+			pkg = NULL;
+		}
+		else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE) {
+			selected = pkg;
+			pkg = NULL;
+		}
+
+	}
+	if (pkg != NULL && pkg != selected)
+		pkg_free(pkg);
 
 	pkgdb_it_free(it);
 
-	return (pkg);
+	return (selected);
 }
 
 /**
