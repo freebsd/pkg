@@ -121,6 +121,8 @@ void set_blocking(int fd);
 void set_nonblocking(int fd);
 void print_trace(void);
 
+int pkg_symlink_cksum(const char *path, const char *root, char *cksum);
+
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 #endif
