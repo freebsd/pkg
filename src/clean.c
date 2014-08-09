@@ -67,6 +67,7 @@ static int
 add_to_dellist(struct dl_head *dl,  const char *path)
 {
 	struct deletion_list	*dl_entry;
+	static bool first_entry = true;
 
 	assert(path != NULL);
 
@@ -77,6 +78,15 @@ add_to_dellist(struct dl_head *dl,  const char *path)
 	}
 
 	dl_entry->path = strdup(path);
+
+	if (!quiet) {
+		if (first_entry) {
+			first_entry = false;
+			printf("The following package files will be deleted:"
+			    "\n");
+		}
+		printf("\t%s\n", dl_entry->path);
+	}
 
 	STAILQ_INSERT_TAIL(dl, dl_entry, next);
 
@@ -103,8 +113,6 @@ delete_dellist(struct dl_head *dl)
 	int			count = 0;
 
 	STAILQ_FOREACH(dl_entry, dl, next) {
-		if (!quiet)
-			printf("\t%s\n", dl_entry->path);
 		if (unlink(dl_entry->path) != 0) {
 			warn("unlink(%s)", dl_entry->path);
 			count++;
