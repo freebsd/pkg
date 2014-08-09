@@ -942,20 +942,12 @@ print_trace(void)
 #endif
 }
 
-int
-pkg_symlink_cksum(const char *path, const char *root, char *cksum)
+static int
+pkg_symlink_cksum_readlink(const char *linkbuf, int linklen, const char *root,
+    char *cksum)
 {
-	char linkbuf[MAXPATHLEN];
 	const char *lnk;
-	int ret;
 
-	if ((ret = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
-	}
-
-	/* Null terminate */
-	linkbuf[ret] = '\0';
 	lnk = linkbuf;
 	if (root != NULL) {
 		/* Skip root from checksum, as it is meaningless */
@@ -967,7 +959,38 @@ pkg_symlink_cksum(const char *path, const char *root, char *cksum)
 	while(*lnk == '/')
 		lnk ++;
 
-	sha256_buf(lnk, ret, cksum);
+	sha256_buf(lnk, linklen, cksum);
 
 	return (EPKG_OK);
+}
+
+int
+pkg_symlink_cksum(const char *path, const char *root, char *cksum)
+{
+	char linkbuf[MAXPATHLEN];
+	int linklen;
+
+	if ((linklen = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
+		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
+		return (EPKG_FATAL);
+	}
+	linkbuf[linklen] = '\0';
+
+	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
+}
+
+int
+pkg_symlink_cksumat(int fd, const char *path, const char *root, char *cksum)
+{
+	char linkbuf[MAXPATHLEN];
+	int linklen;
+
+	if ((linklen = readlinkat(fd, path, linkbuf, sizeof(linkbuf) - 1)) ==
+	    -1) {
+		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
+		return (EPKG_FATAL);
+	}
+	linkbuf[linklen] = '\0';
+
+	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
 }
