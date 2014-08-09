@@ -238,7 +238,8 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			return;
 		}
 		if (S_ISLNK(st.st_mode)) {
-			if (pkg_symlink_cksum(path, NULL, sha256) != EPKG_OK)
+			if (pkg_symlink_cksumat(pkg->rootfd, path, NULL,
+			    sha256) != EPKG_OK)
 				return;
 		}
 		else {
