@@ -86,6 +86,10 @@ pkg_sshserve(int fd)
 
 		if (*file == '/')
 			file++;
+		else if (*file == '\0') {
+			printf("ko: bad command get, expecting 'get file age'\n");
+			continue;
+		}
 
 		pkg_debug(1, "SSH server> file requested: %s", file);
 
