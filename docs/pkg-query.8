@@ -354,6 +354,9 @@ List non-automatic packages:
 .Pp
 List automatic packages:
 .Dl $ pkg query -e '%a = 1' %o
+.Pp
+List unmaintaned packages:
+.Dl $ pkg query -e '%m = ports@FreeBSD.org' %o
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
