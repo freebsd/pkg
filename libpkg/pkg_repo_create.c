@@ -502,7 +502,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				}
 				else if (state == s_set_checksum) {
 					dig->checksum =  malloc(i - start + 1);
-					strlcpy(dig->digest, &buf[start], i - start + 1);
+					strlcpy(dig->checksum, &buf[start], i - start + 1);
 				}
 				assert(dig->origin != NULL);
 				assert(dig->digest != NULL);
