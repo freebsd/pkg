@@ -45,6 +45,9 @@
 #include "pkg.h"
 #include "private/event.h"
 
+/*
+ * Fd here is a descriptor of an opened restricted dir.
+ */
 int
 pkg_sshserve(int fd)
 {
@@ -57,10 +60,6 @@ pkg_sshserve(int fd)
 	const char *errstr;
 	int ffd;
 	char buf[BUFSIZ];
-	char fpath[MAXPATHLEN];
-	const char *restricted = NULL;
-
-	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {
@@ -125,21 +124,7 @@ pkg_sshserve(int fd)
 			continue;
 		}
 
-#ifdef HAVE_CAPSICUM
-		if (!cap_sandboxed() && restricted != NULL) {
-#else
-		if (restricted != NULL) {
-#endif
-			chdir(restricted);
-
-			if (realpath(file, fpath) == NULL ||
-					strncmp(file, restricted, strlen(restricted)) != 0) {
-				printf("ko: file not found\n");
-				continue;
-			}
-		}
-
-		if (fstatat(fd, fpath, &st, 0) == -1) {
+		if (fstatat(fd, file, &st, 0) == -1) {
 			pkg_debug(1, "SSH server> fstatat failed");
 			printf("ko: file not found\n");
 			continue;
@@ -155,7 +140,7 @@ pkg_sshserve(int fd)
 			continue;
 		}
 
-		if ((ffd = openat(fd, fpath, O_RDONLY)) == -1) {
+		if ((ffd = openat(fd, file, O_RDONLY)) == -1) {
 			printf("ko: file not found\n");
 			continue;
 		}
