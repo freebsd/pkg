@@ -713,8 +713,10 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 					num_length);
 		} else {
 			HASH_DEL(ldel, item);
-
-			if (strcmp(digest, item->digest) != 0) {
+			/* XXX: this logic is broken now, so always update local package */
+			/* if (strcmp(digest, item->digest) != 0) {
+			 */
+			if (true) {
 				pkg_repo_binary_update_item_new(&ladd, origin, digest,
 						num_offset, num_length);
 				updated++;

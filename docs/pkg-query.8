@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 1, 2014
+.Dd August 10, 2014
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -354,6 +354,9 @@ List non-automatic packages:
 .Pp
 List automatic packages:
 .Dl $ pkg query -e '%a = 1' %o
+.Pp
+List unmaintained packages:
+.Dl $ pkg query -e '%m = ports@FreeBSD.org' %o
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
