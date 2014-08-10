@@ -256,6 +256,12 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			pkg_inst = NULL;
 			return (EPKG_INSTALLED);
 		}
+		else if (pkg_is_locked(pkg_inst)) {
+			pkg_emit_locked(pkg_inst);
+			pkg_free(pkg_inst);
+			pkg_inst = NULL;
+			return (EPKG_INSTALLED);
+		}
 		else {
 			pkg_emit_notice("package %s is already installed, forced install",
 				name);
