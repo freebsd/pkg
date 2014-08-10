@@ -65,6 +65,7 @@ struct digest_list_entry {
 	long manifest_pos;
 	long files_pos;
 	long manifest_length;
+	char *checksum;
 	struct digest_list_entry *prev, *next;
 };
 
@@ -389,11 +390,12 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				flock(ffd, LOCK_UN);
 			}
 
-			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld\n",
+			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld:%s\n",
 				origin, mdigest,
 				(long)mpos,
 				(long)fpos,
-				(long)mlen);
+				(long)mlen,
+				checksum);
 
 			free(mdigest);
 			mdigest = NULL;
@@ -433,7 +435,8 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 		s_set_digest,
 		s_set_mpos,
 		s_set_fpos,
-		s_set_mlen
+		s_set_mlen,
+		s_set_checksum
 	} state = 0;
 
 	for (;;) {
@@ -482,15 +485,25 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					state = s_set_mlen;
 					break;
 				case s_set_mlen:
-					/* Record should actually not finish with ':' */
 					dig->manifest_length = strtol(&buf[start], NULL, 10);
+					state = s_set_checksum;
+					break;
+				case s_set_checksum:
+					dig->checksum =  malloc(i - start + 1);
+					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_origin;
 					break;
 				}
 				start = i + 1;
 			}
 			else if (buf[i] == '\n') {
-				dig->manifest_length = strtol(&buf[start], NULL, 10);
+				if (state == s_set_mlen) {
+					dig->manifest_length = strtol(&buf[start], NULL, 10);
+				}
+				else if (state == s_set_checksum) {
+					dig->checksum =  malloc(i - start + 1);
+					strlcpy(dig->digest, &buf[start], i - start + 1);
+				}
 				assert(dig->origin != NULL);
 				assert(dig->digest != NULL);
 				DL_APPEND(*dlist, dig);
@@ -777,9 +790,15 @@ cleanup:
 
 	LL_FREE(fts_items, pkg_create_repo_fts_free);
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
-		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-		    cur_dig->manifest_length);
+		if (cur_dig->checksum != NULL)
+			fprintf(mandigests, "%s:%s:%ld:%ld:%ld:%s\n", cur_dig->origin,
+				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+				cur_dig->manifest_length, cur_dig->checksum);
+		else
+			fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
+				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+				cur_dig->manifest_length);
+
 		free(cur_dig->digest);
 		free(cur_dig->origin);
 		free(cur_dig);
