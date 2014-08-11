@@ -794,7 +794,14 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			vercnt ++;
 		}
 
-		if (vercnt > 1) {
+		if (local != NULL && pkg_is_locked(local->pkg)) {
+			LL_FOREACH(unit, cur) {
+				HASH_FIND_PTR(j->request_add, &cur, req);
+				if (req != NULL)
+					HASH_DEL(j->request_add, req);
+			}
+		}
+		else if (vercnt > 1) {
 			/*
 			 * Here we have more than one upgrade candidate,
 			 * if local == NULL, then we have two remote repos,
