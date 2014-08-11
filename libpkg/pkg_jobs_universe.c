@@ -78,7 +78,7 @@ struct pkg *
 pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
-	struct pkg *pkg = NULL;
+	struct pkg *pkg = NULL, *selected = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit;
 
@@ -98,12 +98,24 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		universe->j->reponame)) == NULL)
 		return (NULL);
 
-	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
-		pkg = NULL;
+	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
+
+		if (selected == NULL) {
+			selected = pkg;
+			pkg = NULL;
+		}
+		else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE) {
+			selected = pkg;
+			pkg = NULL;
+		}
+
+	}
+	if (pkg != NULL && pkg != selected)
+		pkg_free(pkg);
 
 	pkgdb_it_free(it);
 
-	return (pkg);
+	return (selected);
 }
 
 /**
@@ -441,8 +453,6 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	/* Convert jobs flags to dependency logical flags */
 	if (job_flags & PKG_FLAG_FORCE_MISSING)
 		flags |= DEPS_FLAG_FORCE_MISSING;
-	if (job_flags & PKG_FLAG_FORCE)
-		flags |= DEPS_FLAG_FORCE_UPGRADE;
 
 	switch(type) {
 	case PKG_JOBS_FETCH:
@@ -791,15 +801,18 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * if local != NULL, then we have unspecified upgrade path
 			 */
 
-			if (local == NULL || (j->flags & PKG_FLAG_FORCE)) {
+			if ((local == NULL && vercnt > 1) || (vercnt > 2)) {
 				/* Select the most recent or one of packages */
 				struct pkg_job_universe_item *selected = NULL;
 				LL_FOREACH(unit, cur) {
+					if (cur->pkg->type == PKG_INSTALLED)
+						continue;
+
 					if (selected != NULL && pkg_version_change_between(cur->pkg,
 						selected->pkg) == PKG_UPGRADE) {
 						selected = cur;
 					}
-					else if (selected == NULL && cur != local) {
+					else if (selected == NULL) {
 						selected = cur;
 					}
 				}
@@ -812,25 +825,6 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 							HASH_DEL(j->request_add, req);
 					}
 				}
-			}
-			else if (vercnt > 2) {
-				/*
-				 * We have no ideas what to select, but we need to remove
-				 * all install requests leaving only delete request for the
-				 * local package
-				 */
-				LL_FOREACH(unit, cur) {
-					HASH_FIND_PTR(j->request_add, &cur, req);
-					if (req != NULL)
-						HASH_DEL(j->request_add, req);
-				}
-				req = calloc(1, sizeof (struct pkg_job_request));
-				if (req == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_job_request");
-					return;
-				}
-				req->item = local;
-				HASH_ADD_PTR(j->request_delete, item, req);
 			}
 		}
 	}

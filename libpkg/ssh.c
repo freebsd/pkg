@@ -86,6 +86,10 @@ pkg_sshserve(int fd)
 
 		if (*file == '/')
 			file++;
+		else if (*file == '\0') {
+			printf("ko: bad command get, expecting 'get file age'\n");
+			continue;
+		}
 
 		pkg_debug(1, "SSH server> file requested: %s", file);
 
@@ -131,15 +135,14 @@ pkg_sshserve(int fd)
 		if (restricted != NULL) {
 #endif
 			chdir(restricted);
-
 			if (realpath(file, fpath) == NULL ||
-					strncmp(file, restricted, strlen(restricted)) != 0) {
+					strncmp(fpath, restricted, strlen(restricted)) != 0) {
 				printf("ko: file not found\n");
 				continue;
 			}
 		}
 
-		if (fstatat(fd, fpath, &st, 0) == -1) {
+		if (fstatat(fd, file, &st, 0) == -1) {
 			pkg_debug(1, "SSH server> fstatat failed");
 			printf("ko: file not found\n");
 			continue;
@@ -155,7 +158,7 @@ pkg_sshserve(int fd)
 			continue;
 		}
 
-		if ((ffd = openat(fd, fpath, O_RDONLY)) == -1) {
+		if ((ffd = openat(fd, file, O_RDONLY)) == -1) {
 			printf("ko: file not found\n");
 			continue;
 		}

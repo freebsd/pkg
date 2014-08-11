@@ -258,10 +258,14 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 {
 	struct pkg_job_request *req, *test, **head;
 
-	if (!IS_DELETE(j))
+	if (!IS_DELETE(j)) {
 		head = &j->request_add;
-	else
+		assert(item->pkg->type != PKG_INSTALLED);
+	}
+	else {
 		head = &j->request_delete;
+		assert(item->pkg->type == PKG_INSTALLED);
+	}
 
 	HASH_FIND_PTR(*head, &item, test);
 
@@ -455,9 +459,8 @@ static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		bool force, struct pkg_job_universe_item **unit)
 {
-	struct pkg_job_universe_item *jit;
+	struct pkg_job_universe_item *jit = NULL, *rjit = NULL;
 	struct pkg_job_seen *seen;
-	struct pkg_job_request *jreq;
 	int rc = EPKG_FATAL;
 	bool automatic;
 	const char *uid, *digest;
@@ -473,72 +476,133 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	}
 	seen = pkg_jobs_universe_seen(j->universe, digest);
 	if (seen != NULL) {
-		/* We have already added exactly the same package to the universe */
-		pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
-				uid, digest,
-				seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
-		if (seen->un->pkg->type != rp->type && !force) {
+		if (!force) {
 			/* Remote package is the same as local */
+			pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
+					uid, digest,
+					seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
+			jit = seen->un;
+			do {
+				if (jit->pkg->type != PKG_INSTALLED)
+					break;
+				jit = jit->prev;
+			} while (jit != seen->un);
+
+			if (jit->pkg->type != PKG_INSTALLED)
+				pkg_jobs_add_req(j, uid, jit);
+
 			return (EPKG_INSTALLED);
 		}
 		else {
-			/* However, we may want to add it to the job request */
-			HASH_FIND_PTR(j->request_add, &seen->un, jreq);
-			if (jreq == NULL)
-				pkg_jobs_add_req(j, uid, seen->un);
-			if (force) {
-				pkg_jobs_universe_add_pkg(j->universe, rp, true, NULL);
+			/*
+			 * In forced mode we need to check whether we seen any upgrade
+			 * candidates
+			 */
+			jit = seen->un;
+			while (jit != NULL && jit->pkg->type == PKG_INSTALLED)
+				jit = jit->next;
+
+			if (jit == NULL) {
+				/*
+				 * No other remote candidates with this digest
+				 */
+				pkg_debug(3, "force add of %s to the universe", uid);
+				pkg_jobs_universe_add_pkg(j->universe, rp, true, &jit);
 				pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
+				pkg_set(rp, PKG_AUTOMATIC, automatic);
+				rc = pkg_jobs_universe_process_item(j->universe, rp, NULL);
+
+				if (rc == EPKG_OK) {
+					if (unit != NULL)
+						*unit = jit;
+
+					pkg_jobs_add_req(j, uid, jit);
+				}
+			}
+			else {
+				struct pkg_job_request *jreq;
+
+				pkg_debug(3, "already have the same package to reinstall: %s",
+					uid);
+				if (pkg_jobs_need_upgrade(rp, jit->pkg)) {
+					pkg_debug(3, "force add of %s to the universe", uid);
+					pkg_jobs_universe_add_pkg(j->universe, rp, true, &jit);
+					pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
+					pkg_set(rp, PKG_AUTOMATIC, automatic);
+					rc = pkg_jobs_universe_process_item(j->universe, rp, NULL);
+				}
+				/* But we can still need to add it to the request */
+				HASH_FIND_PTR(j->request_add, jit, jreq);
+				if (jreq == NULL)
+					pkg_jobs_add_req(j, uid, jit);
+			}
+			if (unit != NULL)
+				*unit = jit;
+
+			return (EPKG_OK);
+		}
+	}
+	else {
+		jit = pkg_jobs_universe_find(j->universe, uid);
+		if (jit == NULL) {
+			if (j->type != PKG_JOBS_FETCH) {
+				lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
+				if (lp != NULL)
+					pkg_jobs_universe_process_item(j->universe, lp, &jit);
+			}
+		}
+
+		/* We have a more recent package */
+		if (jit != NULL) {
+			LL_FOREACH(jit, rjit) {
+				lp = rjit->pkg;
+
+				if (!pkg_jobs_need_upgrade(rp, lp)) {
+					/*
+					 * We can have package from another repo in the
+					 * universe, but if it is older than this one we just
+					 * do not add it.
+					 */
+					if (rjit->pkg->type == PKG_INSTALLED) {
+						if (!force)
+							return (EPKG_INSTALLED);
+					}
+					else {
+						pkg_debug(3, "already added newer package %s to the universe, "
+							"do not add it again", uid);
+						/* But we still need to check request */
+						pkg_jobs_add_req(j, uid, rjit);
+						return (EPKG_OK);
+					}
+				}
+				else {
+					/*
+					 * New package is an upgrade, no need to continue
+					 */
+					jit = NULL;
+					break;
+				}
+			}
+			if (rjit == NULL && force) {
+				pkg_debug(3, "force add of %s to the universe", uid);
+				pkg_jobs_universe_add_pkg(j->universe, rp, true, &jit);
+				pkg_get(jit->pkg, PKG_AUTOMATIC, &automatic);
 				pkg_set(rp, PKG_AUTOMATIC, automatic);
 			}
 		}
-		return (EPKG_OK);
-	}
-	jit = pkg_jobs_universe_find(j->universe, uid);
-	if (jit != NULL) {
-		lp = jit->pkg;
 
-		/*
-		 * XXX: what happens if we have multirepo enabled and we add
-		 * two packages from different repos?
-		 */
-	}
-	else {
-		if (j->type != PKG_JOBS_FETCH) {
-			lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
-			if (lp != NULL)
-				pkg_jobs_universe_process_item(j->universe, lp, &jit);
+		/* Add a package to request chain and populate universe */
+		if (jit == NULL)
+			rc = pkg_jobs_universe_process_item(j->universe, rp, &jit);
+		else
+			rc = pkg_jobs_universe_process_item(j->universe, rp, NULL);
+
+		if (rc == EPKG_OK) {
+			if (unit != NULL)
+				*unit = jit;
+
+			pkg_jobs_add_req(j, uid, jit);
 		}
-	}
-
-	/* We have a more recent package */
-	if (lp != NULL) {
-		if (!force && !pkg_jobs_need_upgrade(rp, lp)) {
-			/*
-			 * We can have package from another repo in the
-			 * universe, but if it is older than this one we just
-			 * do not add it.
-			 */
-			if (jit->pkg->type == PKG_INSTALLED) {
-				return (EPKG_INSTALLED);
-			}
-			else {
-				pkg_debug(3, "already added newer package %s to the universe, "
-							"do not add it again", uid);
-				return (EPKG_OK);
-			}
-		}
-	}
-
-	rc = EPKG_OK;
-	/* Add a package to request chain and populate universe */
-	rc = pkg_jobs_universe_process_item(j->universe, rp, &jit);
-
-	if (rc == EPKG_OK) {
-		if (unit != NULL)
-			*unit = jit;
-
-		pkg_jobs_add_req(j, uid, jit);
 	}
 
 	return (rc);
@@ -1258,7 +1322,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *uid;
 	char sqlbuf[256];
-	bool automatic, got_local;
+	bool got_local;
 	size_t jcount = 0;
 	struct job_pattern *jp, *jtmp;
 	struct pkg_job_request *req, *rtmp;
@@ -1283,7 +1347,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 			candidates = pkg_jobs_find_install_candidates(j, &jcount);
 
-			pkg_emit_progress_start("Checking for upgrades");
+			pkg_emit_progress_start("Checking for upgrades (%zd candidates)",
+				jcount);
 
 			LL_FOREACH(candidates, c) {
 				pkg_emit_progress_tick(++elt_num, jcount);
@@ -1292,14 +1357,14 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
 					return (EPKG_FATAL);
 
+				pkg = NULL;
 				while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 					/* TODO: use repository priority here */
-					pkg_jobs_universe_process(j->universe, pkg);
-					pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_AUTOMATIC, &automatic);
+					pkg_get(pkg, PKG_UNIQUEID, &uid);
 					/* Do not test we ignore what doesn't exists remotely */
 					pkg_jobs_find_upgrade(j, uid, MATCH_EXACT);
-					pkg = NULL;
 				}
+				pkg_free(pkg);
 				pkgdb_it_free(it);
 			}
 			pkg_emit_progress_tick(jcount, jcount);
@@ -1472,6 +1537,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			waitpid(pchild, &pstatus, WNOHANG);
 		}
 		else {
+again:
 			pkg_jobs_universe_process_upgrade_chains(j);
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
@@ -1491,13 +1557,20 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					waitpid(pchild, &pstatus, WNOHANG);
 				}
 				else {
-					if (!pkg_solve_sat_problem(problem)) {
+					ret = pkg_solve_sat_problem(problem);
+					if (ret == EPKG_FATAL) {
 						pkg_emit_error("cannot solve job using SAT solver");
 						ret = EPKG_FATAL;
+						pkg_solve_problem_free(problem);
 						j->solved = 0;
+					}
+					else if (ret == EPKG_AGAIN) {
+						pkg_solve_problem_free(problem);
+						goto again;
 					}
 					else {
 						ret = pkg_solve_sat_to_jobs(problem);
+						pkg_solve_problem_free(problem);
 					}
 				}
 			}
@@ -1513,6 +1586,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		pkg_jobs_set_deinstall_reasons(j);
 
 	pkgdb_end_solver(j->db);
+
+	if (ret != EPKG_OK)
+		return (ret);
 
 	pkg_jobs_apply_replacements(j);
 

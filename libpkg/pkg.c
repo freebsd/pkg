@@ -116,6 +116,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_PROVIDES);
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
 	pkg->rootfd = -1;
@@ -1107,23 +1108,47 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	return (EPKG_OK);
 }
 
+static void
+pkg_handle_sostr(const char *name, struct sbuf **sb)
+{
+	const char *sopos;
+
+	/* Cut off everything after .so */
+	sopos = strstr(name, ".so");
+	if (sopos != NULL) {
+		sopos += sizeof(".so") - 1;
+		if (*sopos == '.') {
+			int len = sopos - name;
+
+			*sb = sbuf_new_auto();
+			sbuf_bcat(*sb, name, len);
+		}
+		else
+			sbuf_set(sb, name);
+	}
+	else
+		sbuf_set(sb, name);
+}
+
 int
 pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
-	struct pkg_shlib *s = NULL;
+	struct pkg_shlib *s = NULL, *f;
 	const char *origin;
+
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs_required, name, s);
-	/* silently ignore duplicates in case of shlibs */
-	if (s != NULL)
-		return (EPKG_OK);
-
 	pkg_shlib_new(&s);
+	pkg_handle_sostr(name, &s->name);
 
-	sbuf_set(&s->name, name);
+	HASH_FIND_STR(pkg->shlibs_required, pkg_shlib_name(s), f);
+	/* silently ignore duplicates in case of shlibs */
+	if (f != NULL) {
+		pkg_shlib_free(s);
+		return (EPKG_OK);
+	}
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_required,
 	    pkg_shlib_name(s),
@@ -1139,20 +1164,20 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 int
 pkg_addshlib_provided(struct pkg *pkg, const char *name)
 {
-	struct pkg_shlib *s = NULL;
+	struct pkg_shlib *s = NULL, *f;
 	const char *origin;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs_provided, name, s);
-	/* silently ignore duplicates in case of shlibs */
-	if (s != NULL)
-		return (EPKG_OK);
-
 	pkg_shlib_new(&s);
-
-	sbuf_set(&s->name, name);
+	pkg_handle_sostr(name, &s->name);
+	HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(s), f);
+	/* silently ignore duplicates in case of shlibs */
+	if (f != NULL) {
+		pkg_shlib_free(s);
+		return (EPKG_OK);
+	}
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
 	    pkg_shlib_name(s),

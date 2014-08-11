@@ -45,7 +45,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dlfcn.h>
-#include <err.h>
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
@@ -74,6 +73,9 @@
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
+
+static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
+static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
 
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
@@ -127,11 +129,84 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		}
 
 		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		warnx("(%s-%s) %s - shared library %s not found",
+		pkg_emit_notice("(%s-%s) %s - shared library %s not found",
 		      pkgname, pkgversion, fpath, name);
 
 		return (EPKG_FATAL);
 	}
+}
+
+static bool
+shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
+{
+	int semicolon;
+	const char *p, *t;
+	char arch[64], wordsize[64];
+	int wclass;
+	const char *shlib_arch;
+
+	/*
+	 * ABI string is in format:
+	 * <osname>:<osversion>:<arch>:<wordsize>[.other]
+	 * We need here arch and wordsize only
+	 */
+	arch[0] = '\0';
+	wordsize[0] = '\0';
+	p = abi;
+	for(semicolon = 0; semicolon < 3 && p != NULL; semicolon ++, p ++) {
+		p = strchr(p, ':');
+		if (p != NULL) {
+			switch(semicolon) {
+			case 1:
+				/* We have arch here */
+				t = strchr(p + 1, ':');
+				/* Abi line is likely invalid */
+				if (t == NULL)
+					return (true);
+				strlcpy(arch, p + 1, MIN((long)sizeof(arch), t - p));
+				break;
+			case 2:
+				t = strchr(p + 1, ':');
+				if (t == NULL)
+					strlcpy(wordsize, p + 1, sizeof(wordsize));
+				else
+					strlcpy(wordsize, p + 1, MIN((long)sizeof(wordsize), t - p));
+				break;
+			}
+		}
+	}
+	/* Invalid ABI line */
+	if (arch[0] == '\0' || wordsize[0] == '\0')
+		return (true);
+
+	shlib_arch = elf_corres_to_string(mach_corres, (int)hdr->e_machine);
+	if (shlib_arch == NULL)
+		return (true);
+
+	wclass = elf_string_to_corres(wordsize_corres, wordsize);
+	if (wclass == -1)
+		return (true);
+
+
+	/*
+	 * Compare wordsize first as the arch for amd64/i386 is an abmiguous
+	 * 'x86'
+	 */
+	if ((int)hdr->e_ident[EI_CLASS] != wclass) {
+		pkg_debug(1, "not valid elf class for shlib: %s: %s",
+		    elf_corres_to_string(wordsize_corres,
+		    (int)hdr->e_ident[EI_CLASS]),
+		    fpath);
+		return (false);
+	}
+
+	if (strcmp(shlib_arch, arch) != 0) {
+		pkg_debug(1, "not valid abi for shlib: %s: %s", shlib_arch,
+		    fpath);
+		return (false);
+	}
+
+	return (true);
 }
 
 static int
@@ -154,12 +229,14 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	size_t sh_link = 0;
 	size_t dynidx;
 	const char *osname;
+	const char *myarch;
 	const char *shlib;
 
 	bool developer = false;
 	bool is_shlib = false;
 
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	int fd;
 
@@ -233,6 +310,11 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	if (dynamic == NULL) {
 		ret = EPKG_END;
 		goto cleanup; /* not a dynamically linked elf: no results */
+	}
+
+	if (!shlib_valid_abi(fpath, &elfhdr, myarch)) {
+		ret = EPKG_END;
+		goto cleanup; /* Invalid ABI */
 	}
 
 	if (note != NULL) {
@@ -460,6 +542,18 @@ elf_corres_to_string(const struct _elf_corres* m, int e)
 			return (m[i].string);
 
 	return ("unknown");
+}
+
+static int
+elf_string_to_corres(const struct _elf_corres* m, const char *s)
+{
+	int i = 0;
+
+	for (i = 0; m[i].string != NULL; i++)
+		if (strcmp(m[i].string, s) == 0)
+			return (m[i].elf_nb);
+
+	return (-1);
 }
 
 static const char *

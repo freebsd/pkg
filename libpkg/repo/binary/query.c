@@ -113,7 +113,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
-		"FROM packages";
+		"FROM packages AS p";
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);

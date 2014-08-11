@@ -488,6 +488,13 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg);
 		goto cleanup_reg;
+	} else if (!extract) {
+		/*
+		 * Meta packages will have no non-meta files. Still display
+		 * 100% progress.
+		 */
+		pkg_emit_progress_start(NULL);
+		pkg_emit_progress_tick(1,1);
 	}
 
 	/*

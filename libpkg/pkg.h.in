@@ -466,7 +466,11 @@ typedef enum {
 	/**
 	 * A conflict between packages found
 	 */
-	EPKG_CONFLICT
+	EPKG_CONFLICT,
+	/**
+	 * Need to repeat operation
+	 */
+	EPKG_AGAIN
 } pkg_error_t;
 
 /**
@@ -1211,7 +1215,7 @@ int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
  * Solve a SAT problem
  * @return true if a problem is solvable
  */
-bool pkg_solve_sat_problem(struct pkg_solve_problem *problem);
+int pkg_solve_sat_problem(struct pkg_solve_problem *problem);
 
 /**
  * Convert package jobs to a SAT problem
