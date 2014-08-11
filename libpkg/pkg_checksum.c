@@ -225,7 +225,7 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 
 	/* Test version */
 	value = strtoul(cksum, NULL, 10);
-	if (value > PKG_CHECKSUM_CUR_VERSION)
+	if (value != PKG_CHECKSUM_CUR_VERSION)
 		return (false);
 
 	cksum = sep + 1;
