@@ -144,6 +144,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_shlib *shlib = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
+	struct pkg_dep *dep = NULL;
 	int i;
 	int recopies[] = {
 		PKG_NAME,
@@ -183,6 +184,10 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
 		pkg_checksum_add_entry("group", pkg_group_name(group), &entries);
+	}
+
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		pkg_checksum_add_entry("depend", dep->uid, &entries);
 	}
 
 	/* Sort before hashing */
