@@ -1,4 +1,5 @@
-/* Copyright (c) 2014, Vsevolod Stakhov
+/* Copyright (c) 2014, Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2014, Google Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
