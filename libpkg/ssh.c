@@ -134,8 +134,9 @@ pkg_sshserve(int fd)
 #else
 		if (restricted != NULL) {
 #endif
+			chdir(restricted);
 			if (realpath(file, fpath) == NULL ||
-					strncmp(file, restricted, strlen(restricted)) != 0) {
+					strncmp(fpath, restricted, strlen(restricted)) != 0) {
 				printf("ko: file not found\n");
 				continue;
 			}
