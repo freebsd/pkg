@@ -299,6 +299,9 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	sqlite3 *sqlite = NULL;
 	int flags;
 	int64_t res;
+	struct pkg_repo_it *it;
+	struct pkg *pkg = NULL;
+	const char *digest;
 
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
@@ -371,6 +374,25 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	}
 
 	repo->priv = sqlite;
+	/* Check digests format */
+	if ((it = pkg_repo_binary_query(repo, NULL, MATCH_ALL)) == NULL)
+		return (EPKG_OK);
+
+	if (it->ops->next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
+		it->ops->free(it);
+		return (EPKG_OK);
+	}
+	it->ops->free(it);
+	pkg_get(pkg, PKG_DIGEST, &digest);
+	if (digest == NULL || !pkg_checksum_is_valid(digest, strlen(digest))) {
+		pkg_emit_notice("Repository %s has incompatible checksum format, need to "
+			"re-create database", repo->name);
+		pkg_free(pkg);
+		sqlite3_close(sqlite);
+		repo->priv = NULL;
+		return (EPKG_FATAL);
+	}
+	pkg_free(pkg);
 
 	return (EPKG_OK);
 }
