@@ -871,6 +871,8 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		pkg_debug(1, "PkgRepo: need forced update of %s", pkg_repo_name(repo));
 		t = 0;
 		force = true;
+		snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
+		    pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 	}
 	else {
 		repo->ops->close(repo, false);
