@@ -1,4 +1,5 @@
-/* Copyright (c) 2014, Vsevolod Stakhov
+/* Copyright (c) 2014, Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2014, Google Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -85,7 +86,8 @@ static const struct _pkg_cksum_type {
 };
 
 static void
-pkg_checksum_add_object(const ucl_object_t *o, const char *key,
+pkg_checksum_add_entry(const char *key,
+	const char *value,
 	struct pkg_checksum_entry **entries)
 {
 	struct pkg_checksum_entry *e;
@@ -97,24 +99,7 @@ pkg_checksum_add_object(const ucl_object_t *o, const char *key,
 	}
 
 	e->field = key;
-	e->value = ucl_object_tostring(o);
-	DL_APPEND(*entries, e);
-}
-
-static void
-pkg_checksum_add_option(const struct pkg_option *o,
-	struct pkg_checksum_entry **entries)
-{
-	struct pkg_checksum_entry *e;
-
-	e = malloc(sizeof(*e));
-	if (e == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_entry");
-		return;
-	}
-
-	e->field = pkg_option_opt(o);
-	e->value = pkg_option_value(o);
+	e->value = value;
 	DL_APPEND(*entries, e);
 }
 
@@ -122,7 +107,15 @@ static int
 pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
 	struct pkg_checksum_entry *e2)
 {
-	return (strcmp(e1->field, e2->field));
+	int r;
+
+	/* Compare field names first. */
+	r = strcmp(e1->field, e2->field);
+	if (r != 0)
+		return r;
+
+	/* If field names are the same, compare values. */
+	return (strcmp(e1->value, e2->value));
 }
 
 /*
@@ -132,11 +125,11 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
  * - origin
  * - version
  * - arch
- * - maintainer
- * - www
- * - message
- * - comment
  * - options
+ * - required_shlibs
+ * - provided_shlibs
+ * - users
+ * - groups
  */
 
 int
@@ -149,16 +142,16 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_checksum_entry *entries = NULL;
 	const ucl_object_t *o;
 	struct pkg_option *option = NULL;
+	struct pkg_shlib *shlib = NULL;
+	struct pkg_user *user = NULL;
+	struct pkg_group *group = NULL;
+	struct pkg_dep *dep = NULL;
 	int i;
 	int recopies[] = {
 		PKG_NAME,
 		PKG_ORIGIN,
 		PKG_VERSION,
 		PKG_ARCH,
-		PKG_MAINTAINER,
-		PKG_WWW,
-		PKG_MESSAGE,
-		PKG_COMMENT,
 		-1
 	};
 
@@ -169,11 +162,33 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	for (i = 0; recopies[i] != -1; i++) {
 		key = pkg_keys[recopies[i]].name;
 		if ((o = ucl_object_find_key(pkg->fields, key)))
-			pkg_checksum_add_object(o, key, &entries);
+			pkg_checksum_add_entry(key, ucl_object_tostring(o), &entries);
 	}
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		pkg_checksum_add_option(option, &entries);
+		pkg_checksum_add_entry(pkg_option_opt(option), pkg_option_value(option),
+			&entries);
+	}
+
+	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+		pkg_checksum_add_entry("required_shlib", pkg_shlib_name(shlib), &entries);
+	}
+
+	shlib = NULL;
+	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+		pkg_checksum_add_entry("provided_shlib", pkg_shlib_name(shlib), &entries);
+	}
+
+	while (pkg_users(pkg, &user) == EPKG_OK) {
+		pkg_checksum_add_entry("user", pkg_user_name(user), &entries);
+	}
+
+	while (pkg_groups(pkg, &group) == EPKG_OK) {
+		pkg_checksum_add_entry("group", pkg_group_name(group), &entries);
+	}
+
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		pkg_checksum_add_entry("depend", dep->uid, &entries);
 	}
 
 	/* Sort before hashing */
@@ -253,6 +268,7 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 	SHA256_Init(&sign_ctx);
 
 	while(entries) {
+		SHA256_Update(&sign_ctx, entries->field, strlen(entries->field));
 		SHA256_Update(&sign_ctx, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
