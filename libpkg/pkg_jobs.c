@@ -1146,11 +1146,6 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	char *uid;
 	struct pkg_job_universe_item *unit;
 
-	bool recursive = false;
-
-	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
-		recursive = true;
-
 	HASH_ITER(hh, j->patterns, jp, jtmp) {
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
