@@ -59,6 +59,7 @@ pkg_sshserve(int fd)
 	int ffd;
 	char buf[BUFSIZ];
 	char fpath[MAXPATHLEN];
+	char rpath[MAXPATHLEN];
 	const char *restricted = NULL;
 
 	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
@@ -137,7 +138,8 @@ pkg_sshserve(int fd)
 #endif
 			chdir(restricted);
 			if (realpath(file, fpath) == NULL ||
-					strncmp(fpath, restricted, strlen(restricted)) != 0) {
+					realpath(restricted, rpath) == NULL ||
+					strncmp(fpath, rpath, strlen(rpath)) != 0) {
 				printf("ko: file not found\n");
 				continue;
 			}
