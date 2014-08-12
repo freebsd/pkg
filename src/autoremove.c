@@ -132,6 +132,7 @@ exec_autoremove(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
+		if (!dry_run)
 			rc = query_yesno(false,
 		            "\nProceed with deinstalling packages [y/N]: ");
 	}
