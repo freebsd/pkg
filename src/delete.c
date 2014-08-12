@@ -211,7 +211,7 @@ exec_delete(int argc, char **argv)
 			goto cleanup;
 		}
 		rc = query_yesno(false,
-		            "\nProceed with deinstalling packages [y/N]: ");
+		            "\nProceed with deinstalling packages? [y/N]: ");
 	}
 	else
 		rc = yes;
