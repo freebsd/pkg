@@ -435,6 +435,11 @@ new_pkg_version(struct pkg_jobs *j)
 		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
 	}
 
+	if (p == NULL) {
+		uid = "pkg-devel~ports-mgmt/pkg-devel";
+		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
+	}
+
 	/* you are using git version skip */
 	if (p == NULL) {
 		ret = false;
