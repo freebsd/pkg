@@ -903,15 +903,15 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 	if (oldsize > newsize) {
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("The operation will free %s\n", size);
+		printf("The operation will free %s.\n", size);
 	} else if (newsize > oldsize) {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("The process will require %s more space\n", size);
+		printf("The process will require %s more space.\n", size);
 	}
 
 	if (dlsize > 0) {
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-		printf("%s to be downloaded\n", size);
+		printf("%s to be downloaded.\n", size);
 	}
 
 	return (displayed);
