@@ -471,12 +471,13 @@ struct pkg_increment_task_item {
 	char *olddigest;
 	long offset;
 	long length;
+	char *checksum;
 	UT_hash_handle hh;
 };
 
 static void
 pkg_repo_binary_update_item_new(struct pkg_increment_task_item **head, const char *origin,
-		const char *digest, long offset, long length)
+		const char *digest, long offset, long length, const char *checksum)
 {
 	struct pkg_increment_task_item *item;
 
@@ -487,6 +488,8 @@ pkg_repo_binary_update_item_new(struct pkg_increment_task_item **head, const cha
 	item->digest = strdup(digest);
 	item->offset = offset;
 	item->length = length;
+	if (checksum)
+		item->checksum = strdup(checksum);
 
 	HASH_ADD_KEYPTR(hh, *head, item->origin, strlen(item->origin), item);
 }
@@ -552,6 +555,17 @@ pkg_repo_binary_get_origins(sqlite3 *sqlite)
 	return (stmt);
 }
 
+static void
+pkg_repo_binary_update_item_free(struct pkg_increment_task_item *item)
+{
+	if (item != NULL) {
+		free(item->origin);
+		free(item->digest);
+		free(item->checksum);
+		free(item);
+	}
+}
+
 static int
 pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
@@ -561,7 +575,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	int rc = EPKG_FATAL;
 	sqlite3 *sqlite = NULL;
 	sqlite3_stmt *stmt;
-	const char *origin, *digest, *offset, *length;
+	const char *origin, *digest, *offset, *length, *checksum;
 	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0, pushed = 0;
 	long num_offset, num_length;
@@ -659,8 +673,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	if (it != NULL) {
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin, legacy_repo ? PKG_OLD_DIGEST : PKG_DIGEST,
-							&digest);
-			pkg_repo_binary_update_item_new(&ldel, origin, digest, 4, 0);
+							&digest, PKG_CKSUM, &checksum);
+			pkg_repo_binary_update_item_new(&ldel, origin, digest, 0, 0, checksum);
 		}
 
 		pkgdb_it_free(it);
@@ -678,7 +692,11 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		offset = strsep(&p, ":");
 		/* files offset */
 		strsep(&p, ":");
-		length = strsep(&p, ":");
+		if (p)
+			length = strsep(&p, ":\n");
+		/* Checksum */
+		if (p)
+			checksum = strsep(&p, ":\n");
 
 		if (origin == NULL || digest == NULL ||
 				offset == NULL) {
@@ -710,21 +728,25 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		if (item == NULL) {
 			added++;
 			pkg_repo_binary_update_item_new(&ladd, origin, digest, num_offset,
-					num_length);
+					num_length, checksum);
 		} else {
 			HASH_DEL(ldel, item);
 			/* XXX: this logic is broken now, so always update local package */
 			/* if (strcmp(digest, item->digest) != 0) {
 			 */
-			if (true) {
+			if (checksum == NULL || item->checksum == NULL) {
 				pkg_repo_binary_update_item_new(&ladd, origin, digest,
-						num_offset, num_length);
+						num_offset, num_length, checksum);
+				updated++;
+			}
+			else if (strcmp(checksum, item->checksum) != 0) {
+				/* Allow checksum to be used as unique mark */
+				pkg_repo_binary_update_item_new(&ladd, origin, digest,
+					num_offset, num_length, checksum);
 				updated++;
 			}
 
-			free(item->origin);
-			free(item->digest);
-			free(item);
+			pkg_repo_binary_update_item_free(item);
 		}
 	}
 
@@ -749,10 +771,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		else {
 			pkg_emit_progress_tick(removed, removed);
 		}
-		free(item->origin);
-		free(item->digest);
 		HASH_DEL(ldel, item);
-		free(item);
+		pkg_repo_binary_update_item_free(item);
 	}
 
 	pkg_debug(1, "Pkgrepo, pushing new entries for '%s'", name);
@@ -789,10 +809,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		else {
 			pkg_emit_progress_tick(pushed, pushed);
 		}
-		free(item->origin);
-		free(item->digest);
 		HASH_DEL(ladd, item);
-		free(item);
+		pkg_repo_binary_update_item_free(item);
 	}
 	pkg_manifest_keys_free(keys);
 
@@ -853,6 +871,8 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		pkg_debug(1, "PkgRepo: need forced update of %s", pkg_repo_name(repo));
 		t = 0;
 		force = true;
+		snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
+		    pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 	}
 	else {
 		repo->ops->close(repo, false);

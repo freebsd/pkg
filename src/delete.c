@@ -198,10 +198,12 @@ exec_delete(int argc, char **argv)
 	}
 
 	if (!quiet || dry_run) {
-		print_jobs_summary(jobs,
-		    "Deinstallation has been requested for the following %d packages "
-		    "(of %d packages in the universe):\n\n", nbactions,
-		    pkg_jobs_total(jobs));
+		if (!quiet) {
+			print_jobs_summary(jobs,
+				"Deinstallation has been requested for the following %d packages "
+				"(of %d packages in the universe):\n\n", nbactions,
+				pkg_jobs_total(jobs));
+		}
 		if (dry_run) {
 			retcode = EX_OK;
 			goto cleanup;
@@ -209,6 +211,9 @@ exec_delete(int argc, char **argv)
 		rc = query_yesno(false,
 		            "\nProceed with deinstalling packages [y/N]: ");
 	}
+	else
+		rc = yes;
+
 	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 

@@ -484,11 +484,13 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 				return (rc);
 		}
 		break;
-	case PKG_JOBS_DEINSTALL:
 	case PKG_JOBS_AUTOREMOVE:
+		/* XXX */
+		break;
+	case PKG_JOBS_DEINSTALL:
 		/* For delete jobs we worry only about local reverse deps */
 		flags |= DEPS_FLAG_REVERSE|DEPS_FLAG_FORCE_LOCAL;
-		if (!(job_flags & PKG_FLAG_FORCE))
+		if (job_flags & PKG_FLAG_RECURSIVE)
 			rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
 		break;
 	}
@@ -794,7 +796,14 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			vercnt ++;
 		}
 
-		if (vercnt > 1) {
+		if (local != NULL && pkg_is_locked(local->pkg)) {
+			LL_FOREACH(unit, cur) {
+				HASH_FIND_PTR(j->request_add, &cur, req);
+				if (req != NULL)
+					HASH_DEL(j->request_add, req);
+			}
+		}
+		else if (vercnt > 1) {
 			/*
 			 * Here we have more than one upgrade candidate,
 			 * if local == NULL, then we have two remote repos,

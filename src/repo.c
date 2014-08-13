@@ -25,12 +25,12 @@
  */
 
 #include <getopt.h>
+#include <signal.h>
 #include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
 #include <readpassphrase.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include <pkg.h>
 
