@@ -605,9 +605,15 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 							/*
 							 * Move delete requests to be done before installing
 							 */
-							if (cur->priority <= it->priority)
-								pkg_jobs_update_universe_item_priority(universe, cur,
-									it->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
+							if (cur->priority <= it->priority) {
+								if (pkg_is_locked(cur->pkg)) {
+									pkg_emit_locked(cur->pkg);
+								}
+								else {
+									pkg_jobs_update_universe_item_priority(universe, cur,
+										it->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
+								}
+							}
 						}
 					}
 				}
