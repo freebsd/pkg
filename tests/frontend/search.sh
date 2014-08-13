@@ -7,7 +7,7 @@ search_head() {
 
 search_body() {
 	REPOS_DIR=/nonexistent
-	atf_check -e inline:"pkg: No repositories configured\n" -o empty -s exit:74 pkg -C '' -R '' search -e -Q comment -S name pkg
+	atf_check -e inline:"pkg: No active remote repositories configured\n" -o empty -s exit:74 pkg -C '' -R '' search -e -Q comment -S name pkg
 }
 
 atf_init_test_cases() {
