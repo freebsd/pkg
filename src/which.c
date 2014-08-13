@@ -161,9 +161,10 @@ exec_which(int argc, char **argv)
 		if (!glob && !search)
 			absolutepath(argv[0], pathabs, sizeof(pathabs));
 		else if (!search) {
-			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
+			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
 				retcode = EX_USAGE;
 				goto cleanup;
+                        }
 		}
 
 
