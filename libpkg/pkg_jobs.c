@@ -435,6 +435,11 @@ new_pkg_version(struct pkg_jobs *j)
 		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
 	}
 
+	if (p == NULL) {
+		uid = "pkg-devel~ports-mgmt/pkg-devel";
+		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
+	}
+
 	/* you are using git version skip */
 	if (p == NULL) {
 		ret = false;
@@ -1145,11 +1150,6 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *uid;
 	struct pkg_job_universe_item *unit;
-
-	bool recursive = false;
-
-	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
-		recursive = true;
 
 	HASH_ITER(hh, j->patterns, jp, jtmp) {
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
