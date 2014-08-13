@@ -531,17 +531,17 @@ is_conf_file(const char *path, char *newpath, size_t len)
 }
 
 bool
-check_for_hardlink(struct hardlinks *hl, struct stat *st)
+check_for_hardlink(struct hardlinks **hl, struct stat *st)
 {
 	struct hardlinks *h;
 
-	HASH_FIND_INO(hl, &st->st_ino, h);
+	HASH_FIND_INO(*hl, &st->st_ino, h);
 	if (h != NULL)
 		return (true);
 
 	h = malloc(sizeof(struct hardlinks));
 	h->inode = st->st_ino;
-	HASH_ADD_INO(hl, inode, h);
+	HASH_ADD_INO(*hl, inode, h);
 
 	return (false);
 }
