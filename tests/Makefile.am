@@ -14,4 +14,4 @@ EXTRA_PROGRAMS=	$(tests_programs)
 check_PROGRAMS=	@TESTS@
 
 regression-test:
-	@echo "ATF/KYUA has change our testing framework is not compatible for now"
+	atf-run | atf-report
