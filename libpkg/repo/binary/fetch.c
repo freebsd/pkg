@@ -181,12 +181,12 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	/*
 	 * In multi-repos the remote URL is stored in pkg[PKG_REPOURL]
 	 * For a single attached database the repository URL should be
-	 * defined by PACKAGESITE.
+	 * defined by URL.
 	 */
 	packagesite = pkg_repo_url(repo);
 
 	if (packagesite == NULL || packagesite[0] == '\0') {
-		pkg_emit_error("PACKAGESITE is not defined");
+		pkg_emit_error("URL is not defined");
 		retcode = 1;
 		goto cleanup;
 	}
