@@ -873,6 +873,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
 	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
+	bool first = true;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
@@ -884,6 +885,11 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
 		if (disp[type] != NULL) {
+			/* Space between each section. */
+			if (!first)
+				puts("");
+			else
+				first = false;
 			if (msg != NULL) {
 				va_start(ap, msg);
 				vprintf(msg, ap);
@@ -897,9 +903,12 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				displayed ++;
 				free(cur);
 			}
-			puts("");
 		}
 	}
+
+	/* Add an extra line before the size output. */
+	if (oldsize != newsize || dlsize)
+		puts("");
 
 	if (oldsize > newsize) {
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
