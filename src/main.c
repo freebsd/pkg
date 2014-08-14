@@ -669,7 +669,6 @@ main(int argc, char **argv)
 		{ "config",		required_argument,	NULL,	'C' },
 		{ "repo-conf-dir",	required_argument,	NULL,	'R' },
 		{ "list",		no_argument,		NULL,	'l' },
-		{ "check-activation",	no_argument,		NULL,	'N' },
 		{ "version",		no_argument,		NULL,	'v' },
 		{ "option",		required_argument,	NULL,	'o' },
 		{ NULL,			0,			NULL,	0   },
