@@ -427,6 +427,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
 	enabled = ucl_object_find_key(obj, "enabled");
+	if (enabled == NULL)
+		enabled = ucl_object_find_key(obj, "ENABLED");
 	if (enabled != NULL) {
 		enable = ucl_object_toboolean(enabled);
 		if (!enable && r == NULL) {
