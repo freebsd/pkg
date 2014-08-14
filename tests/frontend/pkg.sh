@@ -26,7 +26,7 @@ pkg_version_body()
 	
 	[ ${PKGVERSION} ] || atf_fail 'eval $(newvers.sh) failed'
 
-	atf_check -o match:"^${PKGVERSION} " -e empty -s exit:0 pkg -v
+	atf_check -o match:"^${PKGVERSION}" -e empty -s exit:0 pkg -v
 }
 
 
