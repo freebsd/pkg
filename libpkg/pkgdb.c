@@ -771,7 +771,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	/*
 	 * This will return one of:
 	 *
-	 * EPKG_NODB:  a database doesn't exist and we don't want to create
+	 * EPKG_ENODB:  a database doesn't exist and we don't want to create
 	 *             it, or dbdir doesn't exist
 	 * 
 	 * EPKG_INSECURE: the dbfile or one of the directories in the
