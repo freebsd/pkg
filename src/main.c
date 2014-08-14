@@ -431,7 +431,7 @@ export_arg_option (char *arg)
 }
 
 static void
-start_process_worker(void)
+start_process_worker(char *const *save_argv)
 {
 	int	ret = EX_OK;
 	int	status;
@@ -447,9 +447,12 @@ start_process_worker(void)
 	while (1) {
 		child_pid = fork();
 
-		if (child_pid == 0)
+		if (child_pid == 0) {
+			/* Load the new Pkg image */
+			if (ret == EX_NEEDRESTART)
+				execvp(getprogname(), save_argv);
 			return;
-		else {
+		} else {
 			if (child_pid == -1)
 				err(EX_OSERR, "Failed to fork worker process");
 
@@ -692,6 +695,8 @@ main(int argc, char **argv)
 	if (setenv("POSIXLY_CORRECT", "1",  1) == -1)
 		err(EX_SOFTWARE, "setenv() failed");
 
+	save_argv = argv;
+
 #ifdef HAVE_LIBJAIL
 	while ((ch = getopt_long(argc, argv, "+dj:c:C:R:lNvo:", longopts, NULL)) != -1) {
 #else
@@ -753,7 +758,7 @@ main(int argc, char **argv)
 	optind = 1;
 
 	if (debug == 0 && version == 0)
-		start_process_worker();
+		start_process_worker(save_argv);
 
 #ifdef HAVE_ARC4RANDOM
 	/* Ensure that random is stirred after a possible fork */
