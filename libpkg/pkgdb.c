@@ -873,7 +873,9 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 				r->ops->init(r);
 				item->repo = r;
 				LL_PREPEND(db->repos, item);
-			}
+			} else
+				pkg_emit_error("Repository %s cannot be opened."
+				    " 'pkg update' required", r->name);
 		}
 	}
 
