@@ -241,6 +241,21 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	struct pkgdb	*db = NULL;
 	struct stat	 sb;
 	int		lock_type = PKGDB_LOCK_EXCLUSIVE;
+	int		ret;
+
+	if (dry_run)
+		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	else
+		ret = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|
+		    PKGDB_MODE_CREATE, PKGDB_DB_LOCAL);
+
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges to convert packages");
+		return (EX_NOPERM);
+	} else if (ret != EPKG_OK && ret != EPKG_ENODB) {
+		warnx("Error accessing the package database");
+		return (EX_SOFTWARE);
+	}
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
 		err(EX_NOINPUT, "%s", pkg_add_dbdir);
