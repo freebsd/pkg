@@ -370,7 +370,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
 	if (prhead != NULL) {
 		/* Require rule !A | P1 | P2 | P3 ... */
-		rule = pkg_solve_rule_new(pkg_shlib_name(shlib));
+		rule = pkg_solve_rule_new("require");
 		if (rule == NULL)
 			return (EPKG_FATAL);
 		/* !A */
