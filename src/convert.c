@@ -75,7 +75,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -225,7 +225,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 cleanup:
 	pkg_free(pkg);
 	pkgdb_it_free(it);
-	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
 	return (ret);
