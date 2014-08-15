@@ -449,7 +449,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
 	const char *origin;
-	bool developer = false;
+	bool developer = false, failures = false;
 
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
@@ -479,8 +479,10 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 
 		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
 		if (developer) {
-			if (ret != EPKG_OK && ret != EPKG_END)
-				goto cleanup;
+			if (ret != EPKG_OK && ret != EPKG_END) {
+				failures = true;
+				continue;
+			}
 			analyse_fpath(pkg, fpath);
 		}
 	}
@@ -498,6 +500,9 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			HASH_DEL(pkg->shlibs_required, sh);
 		}
 	}
+
+	if (failures)
+		goto cleanup;
 
 	ret = EPKG_OK;
 
