@@ -135,7 +135,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		 */
 		struct sbuf *b = sbuf_new_auto();
 
-		pkg_register_shlibs(pkg, root);
+		pkg_analyse_files(NULL, pkg, root);
 
 		pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 		packing_append_buffer(pkg_archive, sbuf_data(b), "+COMPACT_MANIFEST", sbuf_len(b));

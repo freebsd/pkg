@@ -453,6 +453,9 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
@@ -502,50 +505,6 @@ cleanup:
 	shlib_list_free();
 
 	return (ret);
-}
-
-int
-pkg_register_shlibs(struct pkg *pkg, const char *root)
-{
-	struct pkg_file        *file = NULL;
-	char fpath[MAXPATHLEN];
-	struct pkg_shlib *sh, *shtmp, *found;
-	const char *origin;
-
-	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-
-	if (elf_version(EV_CURRENT) == EV_NONE)
-		return (EPKG_FATAL);
-
-	shlib_list_init();
-	if (shlib_list_from_elf_hints(_PATH_ELF_HINTS) != EPKG_OK) {
-		shlib_list_free();
-		return (EPKG_FATAL);
-	}
-
-	while(pkg_files(pkg, &file) == EPKG_OK) {
-		if (root != NULL) {
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
-			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
-		} else
-			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
-	}
-
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-	/*
-	 * Do not depend on libraries that a package provides itself
-	 */
-	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
-		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
-		if (found != NULL) {
-			pkg_debug(2, "remove %s from required shlibs as the package %s provides "
-					"this library itself", pkg_shlib_name(sh), origin);
-			HASH_DEL(pkg->shlibs_required, sh);
-		}
-	}
-
-	shlib_list_free();
-	return (EPKG_OK);
 }
 
 static const char *
