@@ -260,7 +260,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			pkg_emit_locked(pkg_inst);
 			pkg_free(pkg_inst);
 			pkg_inst = NULL;
-			return (EPKG_INSTALLED);
+			return (EPKG_LOCKED);
 		}
 		else {
 			pkg_emit_notice("package %s is already installed, forced install",
@@ -423,7 +423,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (remote == NULL) {
 		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys, location);
 		if (ret != EPKG_OK) {
-			retcode = ret;
+			/* Do not return error on installed package */
+			retcode = (ret == EPKG_INSTALLED ? EPKG_OK : ret);
 			goto cleanup;
 		}
 	}
