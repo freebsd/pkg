@@ -113,7 +113,13 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 		pkg_old_emit_content(pkg, &content);
 
 		snprintf(path, sizeof(path), "%s/%s-%s", pkg_add_dbdir, name, version);
-		mkdir(path, 0755);
+		if (mkdir(path, 0755) != 0) {
+			fprintf(stderr, "Error converting %s-%s to %s: %s\n",
+			    name, version, path, strerror(errno));
+			printf("\n");
+			free(content);
+			continue;
+		}
 
 		snprintf(path, sizeof(path), "%s/%s-%s/+CONTENTS", pkg_add_dbdir, name, version);
 		fp = fopen(path, "w");
