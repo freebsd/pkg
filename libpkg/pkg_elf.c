@@ -445,8 +445,10 @@ int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
+	struct pkg_shlib *sh, *shtmp, *found;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
+	const char *origin;
 	bool developer = false;
 
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
@@ -477,6 +479,20 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			if (ret != EPKG_OK && ret != EPKG_END)
 				goto cleanup;
 			analyse_fpath(pkg, fpath);
+		}
+	}
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	/*
+	 * Do not depend on libraries that a package provides itself
+	 */
+	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
+		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
+		if (found != NULL) {
+			pkg_debug(2, "remove %s from required shlibs as the "
+			    "package %s provides this library itself",
+			    pkg_shlib_name(sh), origin);
+			HASH_DEL(pkg->shlibs_required, sh);
 		}
 	}
 
