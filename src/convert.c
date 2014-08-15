@@ -240,12 +240,21 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	char		 path[MAXPATHLEN];
 	struct pkgdb	*db = NULL;
 	struct stat	 sb;
+	int		lock_type = PKGDB_LOCK_EXCLUSIVE;
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
 		err(EX_NOINPUT, "%s", pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
+	}
+	if (dry_run)
+		lock_type = PKGDB_LOCK_READONLY;
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked"
+		    " by another process");
+		return (EX_TEMPFAIL);
 	}
 	while ((dp = readdir(d)) != NULL) {
 		if (fstatat(dirfd(d), dp->d_name, &sb, 0) == 0 &&
@@ -271,6 +280,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	}
 
 	pkg_free(p);
+	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 	return (EX_OK);
 }
