@@ -58,7 +58,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 	struct pkgdb_it	*it = NULL;
 	char		*content, *name, *version, *buf;
 	const char	*tmp;
-	int		 ret = EX_OK;
+	int		 ret;
 	char		 path[MAXPATHLEN];
 	int		 query_flags = PKG_LOAD_DEPS    | PKG_LOAD_FILES   |
 				       PKG_LOAD_DIRS    | PKG_LOAD_SCRIPTS |
@@ -71,6 +71,21 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 
 	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
 		err(EX_CANTCREAT, "%s", pkg_add_dbdir);
+
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges to read database");
+		return (EX_NOPERM);
+	} else if (ret == EPKG_ENODB) {
+		warnx("No package database installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (ret != EPKG_OK) {
+		warnx("Error accessing the package database");
+		return (EX_SOFTWARE);
+	}
+
+	ret = EX_OK;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
