@@ -731,9 +731,6 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 					num_length, checksum);
 		} else {
 			HASH_DEL(ldel, item);
-			/* XXX: this logic is broken now, so always update local package */
-			/* if (strcmp(digest, item->digest) != 0) {
-			 */
 			if (checksum == NULL || item->checksum == NULL) {
 				pkg_repo_binary_update_item_new(&ladd, origin, digest,
 						num_offset, num_length, checksum);
