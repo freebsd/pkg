@@ -171,7 +171,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	/* print a summary before applying the jobs */
 	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
 	
-	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies [y/N]: ");
+	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies? [y/N]: ");
 
 	if (rc) {
 		if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) ==

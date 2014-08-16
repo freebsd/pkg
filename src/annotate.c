@@ -131,7 +131,7 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	const char	*pkgname, *pkgversion;
 	int		 ret = EPKG_OK;
 
-	if (query_tty_yesno(false, "%n-%v: Delete annotation tagged: %S "
+	if (query_tty_yesno(false, "%n-%v: Delete annotation tagged: %S? "
 			 "[y/N]: ", pkg, pkg, tag)) {
 		ret = pkgdb_delete_annotation(db, pkg, tag);
 		if (ret == EPKG_OK) {

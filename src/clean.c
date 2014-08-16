@@ -311,7 +311,7 @@ exec_clean(int argc, char **argv)
 	printf("The cleanup will free %s\n", size);
 	if (!dry_run) {
 			if (query_yesno(false,
-			  "\nProceed with cleaning the cache [y/N]: ")) {
+			  "\nProceed with cleaning the cache? [y/N]: ")) {
 				retcode = delete_dellist(&dl);
 			}
 	} else {

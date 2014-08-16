@@ -630,7 +630,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		pkg_get(p, PKG_UNIQUEID, &fuid);
 		sbuf_printf(qmsg, "%s has no direct installation candidates, change it to "
-				"%s [Y/n]: ", uid, fuid);
+				"%s? [Y/n]: ", uid, fuid);
 		sbuf_finish(qmsg);
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
