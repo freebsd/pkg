@@ -374,7 +374,7 @@ draw_progressbar(int64_t current, int64_t total)
 	if (progress_started && (percent != last_progress_percent || current == total)) {
 		last_progress_percent = percent;
 
-		r = printf("\r%s: %d%%", progress_message, percent);
+		r = printf("\r%s: %2d%%", progress_message, percent);
 		if (progress_debit) {
 			if (total > current) {
 				now = time(NULL);
@@ -428,7 +428,7 @@ draw_progressbar(int64_t current, int64_t total)
 					seconds -= minutes * 60;
 
 					if (hours != 0)
-						printf("%02d:%02d:%0d", hours, minutes, seconds);
+						printf("%02d:%02d:%02d", hours, minutes, seconds);
 					else
 						printf("   %02d:%02d", minutes, seconds);
 
