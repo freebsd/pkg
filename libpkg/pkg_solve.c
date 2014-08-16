@@ -666,7 +666,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		do {
 			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
 
-			sbuf_printf(sb, "cannot %s package %s, remove it from request [Y/n]: ",
+			sbuf_printf(sb, "cannot %s package %s, remove it from request? [Y/n]: ",
 				var->to_install ? "install" : "remove", var->uid);
 			sbuf_finish(sb);
 
