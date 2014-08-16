@@ -326,11 +326,13 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
 		    "\"data\": {"
+		        "\"name\": \"%s\", "
 			"\"updated\": %d, "
 			"\"removed\": %d, "
 			"\"added\": %d, "
 			"\"processed\": %d"
-			"}}", ev->e_incremental_update.updated,
+			"}}", ev->e_incremental_update.reponame,
+			ev->e_incremental_update.updated,
 			ev->e_incremental_update.removed,
 			ev->e_incremental_update.added,
 			ev->e_incremental_update.processed);
@@ -794,11 +796,13 @@ pkg_emit_package_not_found(const char *p)
 }
 
 void
-pkg_emit_incremental_update(int updated, int removed, int added, int processed)
+pkg_emit_incremental_update(const char *reponame, int updated, int removed,
+    int added, int processed)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_INCREMENTAL_UPDATE;
+	ev.e_incremental_update.reponame = reponame;
 	ev.e_incremental_update.updated = updated;
 	ev.e_incremental_update.removed = removed;
 	ev.e_incremental_update.added = added;

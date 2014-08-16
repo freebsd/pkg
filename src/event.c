@@ -711,9 +711,9 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("Incremental update completed, %d packages "
-			    "processed:\n"
-			    "%d packages updated, %d removed and %d added.\n",
+			printf("%s repository update completed. %d packages processed:\n"
+			    "  %d updated, %d removed and %d added.\n",
+			    ev->e_incremental_update.reponame,
 			    ev->e_incremental_update.processed,
 			    ev->e_incremental_update.updated,
 			    ev->e_incremental_update.removed,

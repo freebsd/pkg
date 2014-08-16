@@ -759,7 +759,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 	removed = HASH_COUNT(ldel);
 	hash_it = 0;
-	pkg_emit_progress_start("Removing expired entries");
+	pkg_emit_progress_start("Removing expired repository entries");
 	HASH_ITER(hh, ldel, item, tmp_item) {
 		pkg_emit_progress_tick(++hash_it, removed);
 		if (rc == EPKG_OK) {
@@ -789,7 +789,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 	hash_it = 0;
 	pushed = HASH_COUNT(ladd);
-	pkg_emit_progress_start("Adding new entries");
+	pkg_emit_progress_start("Processing new repository entries");
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		pkg_emit_progress_tick(++hash_it, pushed);
 		if (rc == EPKG_OK) {
@@ -814,7 +814,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 	pkg_manifest_keys_free(keys);
 
 	if (rc == EPKG_OK)
-		pkg_emit_incremental_update(updated, removed, added, processed);
+		pkg_emit_incremental_update(repo->name, updated, removed,
+		    added, processed);
 
 cleanup:
 
