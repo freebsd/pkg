@@ -771,6 +771,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		HASH_DEL(ldel, item);
 		pkg_repo_binary_update_item_free(item);
 	}
+	pkg_emit_progress_tick(removed, removed);
 
 	pkg_debug(1, "Pkgrepo, pushing new entries for '%s'", name);
 	pkg = NULL;
@@ -809,6 +810,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		HASH_DEL(ladd, item);
 		pkg_repo_binary_update_item_free(item);
 	}
+	pkg_emit_progress_tick(pushed, pushed);
 	pkg_manifest_keys_free(keys);
 
 	if (rc == EPKG_OK)
