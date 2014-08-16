@@ -791,7 +791,7 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 
 	hash_it = 0;
 	pushed = HASH_COUNT(ladd);
-	pkg_emit_progress_start("Adding new entries");
+	pkg_emit_progress_start("Adding new entries into local cache");
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		pkg_emit_progress_tick(++hash_it, pushed);
 		if (rc == EPKG_OK) {
