@@ -186,7 +186,8 @@ exec_upgrade(int argc, char **argv)
 				nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run)
-				rc = query_yesno(false, "\nProceed with this action [y/N]: ");
+				rc = query_yesno(false, "\nProceed with this "
+				    "action? [y/N]: ");
 			else
 				rc = false;
 		}

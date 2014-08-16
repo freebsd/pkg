@@ -206,11 +206,12 @@ exec_fetch(int argc, char **argv)
 		rc = print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
 
 		if (rc != 0)
-			rc = query_yesno(false, "\nProceed with fetching packages [y/N]: ");
+			rc = query_yesno(false, "\nProceed with fetching "
+			    "packages? [y/N]: ");
 		else {
 			printf("No packages are required to be fetched.\n");
 			rc = query_yesno(false, "Check the integrity of packages "
-							"downloaded [y/N]: ");
+							"downloaded? [y/N]: ");
 			csum_only = true;
 		}
 	}
