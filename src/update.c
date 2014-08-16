@@ -56,14 +56,6 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 	    PKGDB_DB_REPO) == EPKG_ENOACCESS)
 		return (EPKG_OK);
 
-	if (!quiet) {
-		if (reponame != NULL)
-			printf("Updating \"%s\" repository catalogue...\n",
-			    reponame);
-		else
-			printf("Updating repository catalogue...\n");
-	}
-
 	if (pkg_repos_total_count() == 0) {
 		fprintf(stderr, "No valid repository found.\n");
 		return (EPKG_FATAL);
@@ -78,10 +70,14 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 				continue;
 		}
 
+		if (!quiet)
+			printf("Updating %s repository catalogue...\n",
+			    pkg_repo_name(r));
 		retcode = pkg_update(r, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
-				printf("%s repository is up-to-date.\n", pkg_repo_name(r));
+				printf("%s repository is up-to-date.\n",
+				    pkg_repo_name(r));
 		}
 		else if (retcode != EPKG_OK && strict)
 			retcode = EPKG_FATAL;

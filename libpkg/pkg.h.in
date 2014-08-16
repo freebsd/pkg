@@ -1515,6 +1515,7 @@ struct pkg_event {
 			int conflicting;
 		} e_integrity_finished;
 		struct {
+			const char *reponame;
 			int updated;
 			int removed;
 			int added;
