@@ -106,19 +106,23 @@ free_dellist(struct dl_head *dl)
 }
 
 static int
-delete_dellist(struct dl_head *dl)
+delete_dellist(struct dl_head *dl, int total)
 {
 	struct deletion_list	*dl_entry;
 	int			retcode = EX_OK;
-	int			count = 0;
+	int			count = 0, processed = 0;
 
+	progressbar_start("Deleting files");
 	STAILQ_FOREACH(dl_entry, dl, next) {
 		if (unlink(dl_entry->path) != 0) {
 			warn("unlink(%s)", dl_entry->path);
 			count++;
 			retcode = EX_SOFTWARE;
 		}
+		++processed;
+		progressbar_tick(processed, total);
 	}
+	progressbar_tick(processed, total);
 
 	if (!quiet) {
 		if (retcode == EX_OK)
@@ -178,7 +182,7 @@ exec_clean(int argc, char **argv)
 	bool		 all = false;
 	bool		 sumloaded = false;
 	int		 retcode;
-	int		 ch;
+	int		 ch, cnt = 0;
 	size_t		 total = 0, slen;
 	ssize_t		 link_len;
 	char		 size[7];
@@ -258,6 +262,7 @@ exec_clean(int argc, char **argv)
 		if (all) {
 			retcode = add_to_dellist(&dl, ent->fts_path);
 			total += ent->fts_statp->st_size;
+			++cnt;
 			continue;
 		}
 
@@ -291,6 +296,7 @@ exec_clean(int argc, char **argv)
 		if (s == NULL) {
 			retcode = add_to_dellist(&dl, ent->fts_path);
 			total += ent->fts_statp->st_size;
+			++cnt;
 			continue;
 		}
 	}
@@ -312,7 +318,7 @@ exec_clean(int argc, char **argv)
 	if (!dry_run) {
 			if (query_yesno(false,
 			  "\nProceed with cleaning the cache? [y/N]: ")) {
-				retcode = delete_dellist(&dl);
+				retcode = delete_dellist(&dl, cnt);
 			}
 	} else {
 		retcode = EX_OK;
