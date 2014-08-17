@@ -361,6 +361,7 @@ exec_check(int argc, char **argv)
 	}
 
 	i = 0;
+	nbdone = 0;
 	do {
 		/* XXX: This is really quirky, it would be cleaner to pass
 		 * in multiple matches and only run this top-loop once. */
@@ -381,15 +382,28 @@ exec_check(int argc, char **argv)
 			}
 			processed = 0;
 			total = pkgdb_it_count(it);
+		} else {
+			if (match == MATCH_ALL)
+				nbactions = pkgdb_it_count(it);
+			else
+				nbactions = argc;
 		}
 
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			if (!verbose)
 				progressbar_tick(processed, total);
+			else {
+				++nbdone;
+				job_status_begin(msg);
+				pkg_sbuf_printf(msg, "Checking %n-%v:",
+				    pkg, pkg);
+				sbuf_flush(msg);
+			}
+
 			/* check for missing dependencies */
 			if (dcheck) {
 				if (verbose)
-					pkg_printf("Checking dependencies: %n\n", pkg);
+					printf(" dependencies...");
 				nbpkgs += check_deps(db, pkg, &dh, noinstall);
 				if (noinstall && nbpkgs > 0) {
 					rc = EX_UNAVAILABLE;
@@ -397,7 +411,7 @@ exec_check(int argc, char **argv)
 			}
 			if (checksums) {
 				if (verbose)
-					pkg_printf("Checking checksums: %n\n", pkg);
+					printf(" checksums...");
 				if (pkg_test_filesum(pkg) != EPKG_OK) {
 					rc = EX_DATAERR;
 				}
@@ -406,7 +420,7 @@ exec_check(int argc, char **argv)
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
-						pkg_printf("Recomputing size and checksums: %n\n", pkg);
+						printf(" recomputing...");
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
 						rc = EX_DATAERR;
 					}
@@ -422,9 +436,11 @@ exec_check(int argc, char **argv)
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
-						pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
+						printf(" shared libraries...");
 					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
-						pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
+						pkg_fprintf(stderr, "Failed to "
+						    "reanalyse for shlibs: "
+						    "%n-%v\n", pkg, pkg);
 						rc = EX_UNAVAILABLE;
 					}
 					pkgdb_downgrade_lock(db,
@@ -436,6 +452,9 @@ exec_check(int argc, char **argv)
 				}
 			}
 			++processed;
+
+			if (verbose)
+				printf(" done\n");
 		}
 		if (!verbose)
 			progressbar_tick(processed, total);
