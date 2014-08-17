@@ -61,6 +61,7 @@ static struct sbuf *msg_buf = NULL;
 static int last_progress_percent = -1;
 static bool progress_alarm = false;
 static bool progress_started = false;
+static bool progress_interrupted = false;
 static bool progress_debit = false;
 static int64_t last_tick = 0;
 static int64_t stalled;
@@ -365,6 +366,7 @@ progressbar_start(const char *pmsg)
 	bytes_per_second = 0;
 
 	progress_started = true;
+	progress_interrupted = false;
 	if (!isatty(STDOUT_FILENO))
 		printf("%s...", progress_message);
 	else
@@ -374,6 +376,7 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
+	progress_interrupted = false;
 	if (quiet)
 		return;
 	if (isatty(STDOUT_FILENO))
@@ -394,6 +397,7 @@ progressbar_stop(void)
 	last_progress_percent = -1;
 	progress_alarm = false;
 	progress_started = false;
+	progress_interrupted = false;
 }
 
 static void
@@ -531,8 +535,10 @@ event_callback(void *data, struct pkg_event *ev)
 	 * If a progressbar has been interrupted by another event, then
 	 * we need to stop it immediately to avoid bad formatting
 	 */
-	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK) {
+	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
+	    !progress_interrupted) {
 		progressbar_stop();
+		progress_interrupted = true;
 		progress_started = true;
 	}
 
