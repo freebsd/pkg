@@ -243,6 +243,7 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
+	struct sbuf *msg = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EX_OK;
@@ -361,13 +362,23 @@ exec_check(int argc, char **argv)
 
 	i = 0;
 	do {
+		/* XXX: This is really quirky, it would be cleaner to pass
+		 * in multiple matches and only run this top-loop once. */
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			rc = EX_IOERR;
 			goto cleanup;
 		}
 
+		if (msg == NULL)
+			msg = sbuf_new_auto();
 		if (!verbose) {
-			progressbar_start("Checking packages");
+			if (match == MATCH_ALL)
+				progressbar_start("Checking all packages");
+			else {
+				sbuf_printf(msg, "Checking %s", argv[i]);
+				sbuf_finish(msg);
+				progressbar_start(sbuf_data(msg));
+			}
 			processed = 0;
 			total = pkgdb_it_count(it);
 		}
@@ -428,6 +439,10 @@ exec_check(int argc, char **argv)
 		}
 		if (!verbose)
 			progressbar_tick(processed, total);
+		if (msg != NULL) {
+			sbuf_delete(msg);
+			msg = NULL;
+		}
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
 			printf("\n>>> Missing package dependencies were detected.\n");
@@ -458,6 +473,8 @@ exec_check(int argc, char **argv)
 cleanup:
 	if (!verbose)
 		progressbar_stop();
+	if (msg != NULL)
+		sbuf_delete(msg);
 	deps_free(&dh);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
