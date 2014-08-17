@@ -26,6 +26,7 @@ Doxyfile
 libpkg/pkg.h
 scripts/completion/_pkg.bash
 scripts/completion/_pkg.zsh
+scripts/completion/_pkg
 scripts/periodic/400.status-pkg
 scripts/periodic/410.pkg-audit
 scripts/periodic/411.pkg-backup
