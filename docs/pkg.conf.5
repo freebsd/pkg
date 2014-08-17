@@ -161,6 +161,12 @@ or
 Default: INDEX-N where
 .Cm N
 is the OS major version number.
+.It Cm LOCK_RETRIES: integer
+Retries performed to obtain a lock.
+Default: 5.
+.It Cm LOCK_WAIT: integer
+Wait time in seconds to regain a lock if it is not available.
+Default: 1.
 .It Cm NAMESERVER: string
 Hostname or IPv4 or IPv6 address of name server to use for DNS
 resolution, overriding the system defaults in
@@ -223,6 +229,9 @@ Default:
 Specifies the location to the Ports directory.
 Default:
 .Pa /usr/ports
+.It Cm READ_LOCK: boolean
+Use read locking for query database.
+Default: no.
 .It Cm REPOS_DIR: array
 List of directories to search for repository configuration files.
 Default:
@@ -246,6 +255,9 @@ Default: yes.
 .It Cm SAT_SOLVER: string
 Experimental: tells pkg to use and external SAT solver.
 Default: not set.
+.It Cm SQLITE_PROFILE: boolean
+Profile sqlite queries.
+Default: no.
 .It Cm SSH_RESTRICT_DIR: string
 Directory which the ssh subsystem will be restricted to.
 Default: not set.
@@ -266,6 +278,11 @@ Specifies the URL to fetch the
 vulnerability database from.
 Default:
 .Pa http://www.vuxml.org/freebsd/vuln.xml.bz2 .
+.It Cm WORKERS_COUNT: integer
+How many workers are used for pkg-repo. If set to 0,
+.Va hw.ncpu
+is used.
+Default: 0.
 .El
 .Sh REPOSITORY CONFIGURATION
 To use a repository you will need at least one repository
