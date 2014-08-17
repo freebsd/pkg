@@ -261,8 +261,10 @@ exec_clean(int argc, char **argv)
 
 		if (all) {
 			retcode = add_to_dellist(&dl, ent->fts_path);
-			total += ent->fts_statp->st_size;
-			++cnt;
+			if (retcode == EPKG_OK) {
+				total += ent->fts_statp->st_size;
+				++cnt;
+			}
 			continue;
 		}
 
@@ -295,8 +297,10 @@ exec_clean(int argc, char **argv)
 			HASH_FIND_STR(sumlist, csum, s);
 		if (s == NULL) {
 			retcode = add_to_dellist(&dl, ent->fts_path);
-			total += ent->fts_statp->st_size;
-			++cnt;
+			if (retcode == EPKG_OK) {
+				total += ent->fts_statp->st_size;
+				++cnt;
+			}
 			continue;
 		}
 	}
