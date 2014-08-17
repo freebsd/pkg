@@ -964,3 +964,11 @@ hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 
 	return (EPKG_OK);
 }
+
+void
+sbuf_flush(struct sbuf *buf)
+{
+	sbuf_finish(buf);
+	printf("%s", sbuf_data(buf));
+	sbuf_clear(buf);
+}
