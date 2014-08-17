@@ -253,7 +253,7 @@ exec_check(int argc, char **argv)
 	bool reanalyse_shlibs = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
-	int i;
+	int i, processed, total;
 	int verbose = 0;
 
 	struct option longopts[] = {
@@ -366,7 +366,15 @@ exec_check(int argc, char **argv)
 			goto cleanup;
 		}
 
+		if (!verbose) {
+			progressbar_start("Checking packages");
+			processed = 0;
+			total = pkgdb_it_count(it);
+		}
+
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+			if (!verbose)
+				progressbar_tick(processed, total);
 			/* check for missing dependencies */
 			if (dcheck) {
 				if (verbose)
@@ -416,7 +424,10 @@ exec_check(int argc, char **argv)
 					rc = EX_TEMPFAIL;
 				}
 			}
+			++processed;
 		}
+		if (!verbose)
+			progressbar_tick(processed, total);
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
 			printf("\n>>> Missing package dependencies were detected.\n");
@@ -445,6 +456,8 @@ exec_check(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
+	if (!verbose)
+		progressbar_stop();
 	deps_free(&dh);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
