@@ -72,6 +72,8 @@ static time_t begin = 0;
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
 static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
 
+static void draw_progressbar(int64_t current, int64_t total);
+
 static void
 format_rate_IEC(char *buf, int size, off_t bytes)
 {
@@ -342,8 +344,46 @@ progress_alarm_handler(int signo)
 	}
 }
 
-static void
-stop_progressbar(void)
+void
+progressbar_start(const char *pmsg)
+{
+	if (progress_message != NULL) {
+		free(progress_message);
+		progress_message = NULL;
+	}
+	if (quiet)
+		return;
+	if (pmsg != NULL)
+		progress_message = strdup(pmsg);
+	else {
+		sbuf_finish(msg_buf);
+		progress_message = strdup(sbuf_data(msg_buf));
+	}
+	last_progress_percent = -1;
+	last_tick = 0;
+	begin = last_update = time(NULL);
+	bytes_per_second = 0;
+
+	progress_started = true;
+	if (!isatty(STDOUT_FILENO))
+		printf("%s...", progress_message);
+	else
+		printf("%s:   0%%", progress_message);
+}
+
+void
+progressbar_tick(int64_t current, int64_t total)
+{
+	if (quiet)
+		return;
+	if (isatty(STDOUT_FILENO))
+		draw_progressbar(current, total);
+	else if (progress_started && current >= total)
+		progressbar_stop();
+}
+
+void
+progressbar_stop(void)
 {
 	if (progress_started) {
 		if (!isatty(STDOUT_FILENO))
@@ -459,7 +499,7 @@ draw_progressbar(int64_t current, int64_t total)
 		fflush(stdout);
 	}
 	if (current >= total) {
-		stop_progressbar();
+		progressbar_stop();
 	}
 	else if (!progress_alarm && progress_started) {
 		/* Setup auxiliary alarm */
@@ -492,7 +532,7 @@ event_callback(void *data, struct pkg_event *ev)
 	 * we need to stop it immediately to avoid bad formatting
 	 */
 	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK) {
-		stop_progressbar();
+		progressbar_stop();
 		progress_started = true;
 	}
 
@@ -744,37 +784,11 @@ event_callback(void *data, struct pkg_event *ev)
 				ev->e_sandbox_call_str.userdata) );
 		break;
 	case PKG_EVENT_PROGRESS_START:
-		if (progress_message != NULL) {
-			free(progress_message);
-			progress_message = NULL;
-		}
-		if (!quiet) {
-			if (ev->e_progress_start.msg != NULL) {
-				progress_message = strdup(ev->e_progress_start.msg);
-			} else {
-				sbuf_finish(msg_buf);
-				progress_message = strdup(sbuf_data(msg_buf));
-			}
-			last_progress_percent = -1;
-			last_tick = 0;
-			begin = last_update = time(NULL);
-			bytes_per_second = 0;
-
-			progress_started = true;
-			if (!isatty(STDOUT_FILENO))
-				printf("%s...", progress_message);
-			else
-				printf("%s:   0%%", progress_message);
-		}
+		progressbar_start(ev->e_progress_start.msg);
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
-		if (quiet)
-			break;
-		if (isatty(STDOUT_FILENO))
-			draw_progressbar(ev->e_progress_tick.current, ev->e_progress_tick.total);
-		else if (progress_started && ev->e_progress_tick.current >=
-		    ev->e_progress_tick.total)
-			stop_progressbar();
+		progressbar_tick(ev->e_progress_tick.current,
+		    ev->e_progress_tick.total);
 		break;
 	case PKG_EVENT_BACKUP:
 		sbuf_cat(msg_buf, "Backing up");
