@@ -981,7 +981,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 		argv++;
 	}
 
-	pkg_emit_progress_start("Packing files for repository", output_dir);
+	pkg_emit_progress_start("Packing files for repository");
 	pkg_emit_progress_tick(nfile++, files_to_pack);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,

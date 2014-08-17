@@ -15,7 +15,7 @@ annotate_body() {
 
 	for pkg in 'png-1.5.14' 'sqlite3-3.7.14.1' ; do
 	    atf_check \
-		-o match:"^Installing $pkg\.\.\." \
+		-o empty \
 		-e empty \
 		-s exit:0 \
 		pkg register -t -M $(atf_get_srcdir)/$pkg.yaml

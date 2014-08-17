@@ -1108,28 +1108,6 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	return (EPKG_OK);
 }
 
-static void
-pkg_handle_sostr(const char *name, struct sbuf **sb)
-{
-	const char *sopos;
-
-	/* Cut off everything after .so */
-	sopos = strstr(name, ".so");
-	if (sopos != NULL) {
-		sopos += sizeof(".so") - 1;
-		if (*sopos == '.') {
-			int len = sopos - name;
-
-			*sb = sbuf_new_auto();
-			sbuf_bcat(*sb, name, len);
-		}
-		else
-			sbuf_set(sb, name);
-	}
-	else
-		sbuf_set(sb, name);
-}
-
 int
 pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
@@ -1141,7 +1119,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	pkg_shlib_new(&s);
-	pkg_handle_sostr(name, &s->name);
+	sbuf_set(&s->name, name);
 
 	HASH_FIND_STR(pkg->shlibs_required, pkg_shlib_name(s), f);
 	/* silently ignore duplicates in case of shlibs */
@@ -1171,7 +1149,7 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	pkg_shlib_new(&s);
-	pkg_handle_sostr(name, &s->name);
+	sbuf_set(&s->name, name);
 	HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(s), f);
 	/* silently ignore duplicates in case of shlibs */
 	if (f != NULL) {
@@ -1737,7 +1715,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			}
 
 			if (st.st_nlink > 1)
-				regular = !check_for_hardlink(hl, &st);
+				regular = !check_for_hardlink(&hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;

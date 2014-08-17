@@ -171,7 +171,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	/* print a summary before applying the jobs */
 	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
 	
-	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies [y/N]: ");
+	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies? [y/N]: ");
 
 	if (rc) {
 		if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) ==
@@ -243,6 +243,7 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
+	struct sbuf *msg = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EX_OK;
@@ -253,7 +254,7 @@ exec_check(int argc, char **argv)
 	bool reanalyse_shlibs = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
-	int i;
+	int i, processed, total;
 	int verbose = 0;
 
 	struct option longopts[] = {
@@ -360,17 +361,49 @@ exec_check(int argc, char **argv)
 	}
 
 	i = 0;
+	nbdone = 0;
 	do {
+		/* XXX: This is really quirky, it would be cleaner to pass
+		 * in multiple matches and only run this top-loop once. */
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			rc = EX_IOERR;
 			goto cleanup;
 		}
 
+		if (msg == NULL)
+			msg = sbuf_new_auto();
+		if (!verbose) {
+			if (match == MATCH_ALL)
+				progressbar_start("Checking all packages");
+			else {
+				sbuf_printf(msg, "Checking %s", argv[i]);
+				sbuf_finish(msg);
+				progressbar_start(sbuf_data(msg));
+			}
+			processed = 0;
+			total = pkgdb_it_count(it);
+		} else {
+			if (match == MATCH_ALL)
+				nbactions = pkgdb_it_count(it);
+			else
+				nbactions = argc;
+		}
+
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+			if (!verbose)
+				progressbar_tick(processed, total);
+			else {
+				++nbdone;
+				job_status_begin(msg);
+				pkg_sbuf_printf(msg, "Checking %n-%v:",
+				    pkg, pkg);
+				sbuf_flush(msg);
+			}
+
 			/* check for missing dependencies */
 			if (dcheck) {
 				if (verbose)
-					pkg_printf("Checking dependencies: %n\n", pkg);
+					printf(" dependencies...");
 				nbpkgs += check_deps(db, pkg, &dh, noinstall);
 				if (noinstall && nbpkgs > 0) {
 					rc = EX_UNAVAILABLE;
@@ -378,7 +411,7 @@ exec_check(int argc, char **argv)
 			}
 			if (checksums) {
 				if (verbose)
-					pkg_printf("Checking checksums: %n\n", pkg);
+					printf(" checksums...");
 				if (pkg_test_filesum(pkg) != EPKG_OK) {
 					rc = EX_DATAERR;
 				}
@@ -387,7 +420,7 @@ exec_check(int argc, char **argv)
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
-						pkg_printf("Recomputing size and checksums: %n\n", pkg);
+						printf(" recomputing...");
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
 						rc = EX_DATAERR;
 					}
@@ -403,9 +436,11 @@ exec_check(int argc, char **argv)
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
-						pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
+						printf(" shared libraries...");
 					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
-						pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
+						pkg_fprintf(stderr, "Failed to "
+						    "reanalyse for shlibs: "
+						    "%n-%v\n", pkg, pkg);
 						rc = EX_UNAVAILABLE;
 					}
 					pkgdb_downgrade_lock(db,
@@ -416,6 +451,16 @@ exec_check(int argc, char **argv)
 					rc = EX_TEMPFAIL;
 				}
 			}
+			++processed;
+
+			if (verbose)
+				printf(" done\n");
+		}
+		if (!verbose)
+			progressbar_tick(processed, total);
+		if (msg != NULL) {
+			sbuf_delete(msg);
+			msg = NULL;
 		}
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
@@ -445,6 +490,10 @@ exec_check(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
+	if (!verbose)
+		progressbar_stop();
+	if (msg != NULL)
+		sbuf_delete(msg);
 	deps_free(&dh);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);

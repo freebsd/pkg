@@ -186,7 +186,8 @@ exec_upgrade(int argc, char **argv)
 				nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run)
-				rc = query_yesno(false, "\nProceed with this action [y/N]: ");
+				rc = query_yesno(false, "\nProceed with this "
+				    "action? [y/N]: ");
 			else
 				rc = false;
 		}
@@ -212,7 +213,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (done == 0 && rc)
-		printf("Your packages are up to date\n");
+		printf("Your packages are up to date.\n");
 
 	retcode = EX_OK;
 

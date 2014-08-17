@@ -427,6 +427,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
 	enabled = ucl_object_find_key(obj, "enabled");
+	if (enabled == NULL)
+		enabled = ucl_object_find_key(obj, "ENABLED");
 	if (enabled != NULL) {
 		enable = ucl_object_toboolean(enabled);
 		if (!enable && r == NULL) {
@@ -696,6 +698,7 @@ pkg_init(const char *path, const char *reposdir)
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
+	bool fatal_errors = false;
 
 	k = NULL;
 	o = NULL;
@@ -802,6 +805,18 @@ pkg_init(const char *path, const char *reposdir)
 			sbuf_putc(ukey, toupper(key[i]));
 		sbuf_done(ukey);
 		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
+
+		if (strncasecmp(sbuf_data(ukey), "PACKAGESITE", sbuf_len(ukey))
+		    == 0 || strncasecmp(sbuf_data(ukey), "PUBKEY",
+		    sbuf_len(ukey)) == 0 || strncasecmp(sbuf_data(ukey),
+		    "MIRROR_TYPE", sbuf_len(ukey)) == 0) {
+			pkg_emit_error("%s in pkg.conf is no longer "
+			    "supported.  Convert to the new repository style."
+			    "  See pkg.conf(5)", sbuf_data(ukey));
+			fatal_errors = true;
+			continue;
+		}
+
 		/* ignore unknown keys */
 		if (object == NULL)
 			continue;
@@ -814,6 +829,12 @@ pkg_init(const char *path, const char *reposdir)
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
+	}
+
+	if (fatal_errors) {
+		ucl_object_unref(ncfg);
+		ucl_parser_free(p);
+		return (EPKG_FATAL);
 	}
 
 	if (ncfg != NULL) {

@@ -61,6 +61,7 @@ static struct sbuf *msg_buf = NULL;
 static int last_progress_percent = -1;
 static bool progress_alarm = false;
 static bool progress_started = false;
+static bool progress_interrupted = false;
 static bool progress_debit = false;
 static int64_t last_tick = 0;
 static int64_t stalled;
@@ -71,6 +72,8 @@ static time_t begin = 0;
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
 static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
+
+static void draw_progressbar(int64_t current, int64_t total);
 
 static void
 format_rate_IEC(char *buf, int size, off_t bytes)
@@ -136,19 +139,19 @@ format_size_SI(char *buf, int size, off_t bytes)
             i ? "B" : " ");
 }
 
-static void
-print_status_end(struct sbuf *msg)
+void
+job_status_end(struct sbuf *msg)
 {
 	sbuf_finish(msg);
 	printf("%s\n", sbuf_data(msg));
 	/*printf("\033]0; %s\007", sbuf_data(msg));*/
-	sbuf_delete(msg);
+	sbuf_clear(msg);
 }
 
-static void
-print_status_begin(struct sbuf *msg)
+void
+job_status_begin(struct sbuf *msg)
 {
-	sbuf_clear(msg_buf);
+	sbuf_clear(msg);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
 	static int jailed = -1;
@@ -342,8 +345,48 @@ progress_alarm_handler(int signo)
 	}
 }
 
-static void
-stop_progressbar(void)
+void
+progressbar_start(const char *pmsg)
+{
+	if (progress_message != NULL) {
+		free(progress_message);
+		progress_message = NULL;
+	}
+	if (quiet)
+		return;
+	if (pmsg != NULL)
+		progress_message = strdup(pmsg);
+	else {
+		sbuf_finish(msg_buf);
+		progress_message = strdup(sbuf_data(msg_buf));
+	}
+	last_progress_percent = -1;
+	last_tick = 0;
+	begin = last_update = time(NULL);
+	bytes_per_second = 0;
+
+	progress_started = true;
+	progress_interrupted = false;
+	if (!isatty(STDOUT_FILENO))
+		printf("%s...", progress_message);
+	else
+		printf("%s:   0%%", progress_message);
+}
+
+void
+progressbar_tick(int64_t current, int64_t total)
+{
+	progress_interrupted = false;
+	if (quiet)
+		return;
+	if (isatty(STDOUT_FILENO))
+		draw_progressbar(current, total);
+	else if (progress_started && current >= total)
+		progressbar_stop();
+}
+
+void
+progressbar_stop(void)
 {
 	if (progress_started) {
 		if (!isatty(STDOUT_FILENO))
@@ -354,6 +397,7 @@ stop_progressbar(void)
 	last_progress_percent = -1;
 	progress_alarm = false;
 	progress_started = false;
+	progress_interrupted = false;
 }
 
 static void
@@ -374,7 +418,7 @@ draw_progressbar(int64_t current, int64_t total)
 	if (progress_started && (percent != last_progress_percent || current == total)) {
 		last_progress_percent = percent;
 
-		r = printf("\r%s: %d%%", progress_message, percent);
+		r = printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
 			if (total > current) {
 				now = time(NULL);
@@ -428,7 +472,7 @@ draw_progressbar(int64_t current, int64_t total)
 					seconds -= minutes * 60;
 
 					if (hours != 0)
-						printf("%02d:%02d:%0d", hours, minutes, seconds);
+						printf("%02d:%02d:%02d", hours, minutes, seconds);
 					else
 						printf("   %02d:%02d", minutes, seconds);
 
@@ -459,7 +503,7 @@ draw_progressbar(int64_t current, int64_t total)
 		fflush(stdout);
 	}
 	if (current >= total) {
-		stop_progressbar();
+		progressbar_stop();
 	}
 	else if (!progress_alarm && progress_started) {
 		/* Setup auxiliary alarm */
@@ -491,8 +535,10 @@ event_callback(void *data, struct pkg_event *ev)
 	 * If a progressbar has been interrupted by another event, then
 	 * we need to stop it immediately to avoid bad formatting
 	 */
-	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK) {
-		stop_progressbar();
+	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
+	    !progress_interrupted) {
+		progressbar_stop();
+		progress_interrupted = true;
 		progress_started = true;
 	}
 
@@ -538,7 +584,7 @@ event_callback(void *data, struct pkg_event *ev)
 			 */
 			filename = ev->e_fetching.url;
 		}
-		print_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 		progress_debit = true;
 		sbuf_printf(msg_buf, "Fetching %s", filename);
 
@@ -551,7 +597,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		else {
 			nbdone++;
-			print_status_begin(msg_buf);
+			job_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
 			pkg_sbuf_printf(msg_buf, "Installing %n-%v", pkg, pkg);
@@ -601,7 +647,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		nbdone++;
 
-		print_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
 		pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
@@ -617,7 +663,7 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_old = ev->e_upgrade_begin.old;
 		nbdone++;
 
-		print_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
@@ -711,9 +757,9 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("Incremental update completed, %d packages "
-			    "processed:\n"
-			    "%d packages updated, %d removed and %d added.\n",
+			printf("%s repository update completed. %d packages processed:\n"
+			    "  %d updated, %d removed and %d added.\n",
+			    ev->e_incremental_update.reponame,
 			    ev->e_incremental_update.processed,
 			    ev->e_incremental_update.updated,
 			    ev->e_incremental_update.removed,
@@ -744,35 +790,11 @@ event_callback(void *data, struct pkg_event *ev)
 				ev->e_sandbox_call_str.userdata) );
 		break;
 	case PKG_EVENT_PROGRESS_START:
-		if (progress_message != NULL) {
-			free(progress_message);
-			progress_message = NULL;
-		}
-		if (!quiet) {
-			if (ev->e_progress_start.msg != NULL) {
-				progress_message = strdup(ev->e_progress_start.msg);
-			} else {
-				sbuf_finish(msg_buf);
-				progress_message = strdup(sbuf_data(msg_buf));
-			}
-			last_progress_percent = -1;
-			last_tick = 0;
-			begin = last_update = time(NULL);
-			bytes_per_second = 0;
-
-			progress_started = true;
-			if (!isatty(STDOUT_FILENO))
-				printf("%s...", progress_message);
-		}
+		progressbar_start(ev->e_progress_start.msg);
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
-		if (quiet)
-			break;
-		if (isatty(STDOUT_FILENO))
-			draw_progressbar(ev->e_progress_tick.current, ev->e_progress_tick.total);
-		else if (progress_started && ev->e_progress_tick.current >=
-		    ev->e_progress_tick.total)
-			stop_progressbar();
+		progressbar_tick(ev->e_progress_tick.current,
+		    ev->e_progress_tick.total);
 		break;
 	case PKG_EVENT_BACKUP:
 		sbuf_cat(msg_buf, "Backing up");

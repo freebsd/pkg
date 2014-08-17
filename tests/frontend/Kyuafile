@@ -1,0 +1,8 @@
+syntax('kyuafile', 1)
+
+test_suite('prop: test-suite = frontend')
+
+atf_test_program{name='pkg.sh'}
+atf_test_program{name='version.sh'}
+atf_test_program{name='search.sh'}
+atf_test_program{name='annotate.sh'}

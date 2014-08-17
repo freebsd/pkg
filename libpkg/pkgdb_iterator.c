@@ -914,6 +914,39 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 	return (EPKG_FATAL);
 }
 
+int
+pkgdb_it_count(struct pkgdb_it *it)
+{
+	int		 	i;
+	int		 	ret;
+	struct pkgdb_sqlite_it *sit;
+
+	assert(it != NULL);
+
+	i = 0;
+	sit = &it->un.local;
+
+	if (sit == NULL)
+		return (0);
+
+	while ((ret = sqlite3_step(sit->stmt))) {
+		switch (ret) {
+		case SQLITE_ROW:
+			++i;
+			break;
+		case SQLITE_DONE:
+			goto done;
+		default:
+			ERROR_SQLITE(sit->sqlite, "iterator");
+			return (-1);
+		}
+	}
+
+done:
+	pkgdb_it_reset(it);
+	return (i);
+}
+
 void
 pkgdb_it_reset(struct pkgdb_it *it)
 {

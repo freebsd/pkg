@@ -1120,6 +1120,12 @@ int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, unsigned flags);
 void pkgdb_it_reset(struct pkgdb_it *);
 
 /**
+ * Return the number of rows found.
+ * @return -1 on error
+ */
+int pkgdb_it_count(struct pkgdb_it *);
+
+/**
  * Free a struct pkgdb_it.
  */
 void pkgdb_it_free(struct pkgdb_it *);
@@ -1515,6 +1521,7 @@ struct pkg_event {
 			int conflicting;
 		} e_integrity_finished;
 		struct {
+			const char *reponame;
 			int updated;
 			int removed;
 			int added;

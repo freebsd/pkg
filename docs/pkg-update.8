@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd August 14, 2014
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
@@ -66,7 +66,7 @@ to false in
 .Ss Signed repositories
 If the repository catalogue is signed and
 .Ev PUBKEY
-is defined, the signature will be verified after download.
+is defined for the repository, the signature will be verified after download.
 See
 .Xr pkg.conf 5
 for more information.
@@ -93,9 +93,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev PACKAGESITE
 .It Ev PKG_DBDIR
-.It Ev PUBKEY
 .It Ev REPO_AUTOUPDATE
 .El
 .Sh FILES

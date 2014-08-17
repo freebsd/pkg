@@ -370,7 +370,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
 	if (prhead != NULL) {
 		/* Require rule !A | P1 | P2 | P3 ... */
-		rule = pkg_solve_rule_new(pkg_shlib_name(shlib));
+		rule = pkg_solve_rule_new("require");
 		if (rule == NULL)
 			return (EPKG_FATAL);
 		/* !A */
@@ -666,7 +666,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		do {
 			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
 
-			sbuf_printf(sb, "cannot %s package %s, remove it from request [Y/n]: ",
+			sbuf_printf(sb, "cannot %s package %s, remove it from request? [Y/n]: ",
 				var->to_install ? "install" : "remove", var->uid);
 			sbuf_finish(sb);
 

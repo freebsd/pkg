@@ -53,6 +53,7 @@ exec_autoremove(int argc, char **argv)
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
 	bool rc = false;
+	int lock_type = PKGDB_LOCK_ADVISORY;
 
 	struct option longopts[] = {
 		{ "dry-run",	no_argument,	NULL,	'n' },
@@ -66,6 +67,7 @@ exec_autoremove(int argc, char **argv)
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
+			lock_type = PKGDB_LOCK_READONLY;
 			break;
 		case 'q':
 			quiet = true;
@@ -106,7 +108,7 @@ exec_autoremove(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -134,7 +136,7 @@ exec_autoremove(int argc, char **argv)
 				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
 		if (!dry_run)
 			rc = query_yesno(false,
-		            "\nProceed with deinstalling packages [y/N]: ");
+		            "\nProceed with deinstalling packages? [y/N]: ");
 	}
 	if (!rc || dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
 		goto cleanup;
@@ -144,7 +146,7 @@ exec_autoremove(int argc, char **argv)
 
 cleanup:
 	pkg_jobs_free(jobs);
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
+	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 
 	return (retcode);

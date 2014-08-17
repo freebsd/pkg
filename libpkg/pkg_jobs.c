@@ -635,7 +635,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		pkg_get(p, PKG_UNIQUEID, &fuid);
 		sbuf_printf(qmsg, "%s has no direct installation candidates, change it to "
-				"%s [Y/n]: ", uid, fuid);
+				"%s? [Y/n]: ", uid, fuid);
 		sbuf_finish(qmsg);
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
@@ -1330,7 +1330,9 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_jobs_install_candidate *candidates, *c;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
+	/* Check for new pkg. Skip for 'upgrade -F'. */
+	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
+	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;

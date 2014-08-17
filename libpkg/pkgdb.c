@@ -771,7 +771,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	/*
 	 * This will return one of:
 	 *
-	 * EPKG_NODB:  a database doesn't exist and we don't want to create
+	 * EPKG_ENODB:  a database doesn't exist and we don't want to create
 	 *             it, or dbdir doesn't exist
 	 * 
 	 * EPKG_INSECURE: the dbfile or one of the directories in the
@@ -826,8 +826,13 @@ pkgdb_access(unsigned mode, unsigned database)
 				continue;
 
 			retval = r->ops->access(r, mode);
-			if (retval != EPKG_OK)
+			if (retval != EPKG_OK) {
+				if (retval == EPKG_ENODB &&
+				    mode == PKGDB_MODE_READ)
+					pkg_emit_error("Repository %s missing."
+					    " 'pkg update' required", r->name);
 				return (retval);
+			}
 		}
 	}
 	return (retval);
@@ -868,7 +873,9 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 				r->ops->init(r);
 				item->repo = r;
 				LL_PREPEND(db->repos, item);
-			}
+			} else
+				pkg_emit_error("Repository %s cannot be opened."
+				    " 'pkg update' required", r->name);
 		}
 	}
 
