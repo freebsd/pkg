@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 29, 2014
+.Dd August 17, 2014
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -117,7 +117,7 @@ data when installing a package.
 files are a legacy feature of the ports tree, which provide functionality
 necessary for
 .Xr pkg-install 8
-as it cannot handle creating arbitrary directory heirarcies otherwise.
+as it cannot handle creating arbitrary directory hierarchies otherwise.
 .Xr pkg 8
 can create such directory structures natively, but currently still uses the
 .Cm +MTREE
@@ -162,7 +162,7 @@ Default: INDEX-N where
 .Cm N
 is the OS major version number.
 .It Cm NAMESERVER: string
-Hostname or IPv4 or IPv6 address of nameserver to use for DNS
+Hostname or IPv4 or IPv6 address of name server to use for DNS
 resolution, overriding the system defaults in
 .Pa /etc/resolv.conf .
 When given as a hostname, will be converted to a list of IPv4 or IPv6
@@ -239,12 +239,12 @@ when running one of:
 .Nm pkg upgrade ,
 or
 .Nm pkg version -R .
-Ddefault: yes.
+Default: yes.
 .It Cm RUN_SCRIPTS: boolean
 Run pre-/post-installation action scripts.
 Default: yes.
 .It Cm SAT_SOLVER: string
-Expirmental: tels pkg to use and external SAT solver.
+Experimental: tells pkg to use and external SAT solver.
 Default: not set.
 .It Cm SSH_RESTRICT_DIR: string
 Directory which the ssh subsystem will be restricted to.
@@ -404,7 +404,7 @@ with this content:
 FreeBSD: { enabled: no }
 .Ed
 .Pp
-Repositories are prioritised in the order they are found on the
+Repositories are prioritized in the order they are found on the
 .Sy REPOS_DIR
 search path, with individual repository configuration files in the
 same directory processed in alphabetical order.
