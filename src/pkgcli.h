@@ -265,6 +265,8 @@ void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
+void sbuf_flush(struct sbuf *buf);
+
 extern struct sbuf *messages;
 
 
