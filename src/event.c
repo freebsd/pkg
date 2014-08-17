@@ -763,6 +763,8 @@ event_callback(void *data, struct pkg_event *ev)
 			progress_started = true;
 			if (!isatty(STDOUT_FILENO))
 				printf("%s...", progress_message);
+			else
+				printf("%s:   0%%", progress_message);
 		}
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
