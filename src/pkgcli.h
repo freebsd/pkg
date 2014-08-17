@@ -258,6 +258,9 @@ int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 int hash_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 
 int event_callback(void *data, struct pkg_event *ev);
+void progressbar_start(const char *pmsg);
+void progressbar_tick(int64_t current, int64_t total);
+void progressbar_stop(void);
 
 extern struct sbuf *messages;
 
