@@ -139,19 +139,19 @@ format_size_SI(char *buf, int size, off_t bytes)
             i ? "B" : " ");
 }
 
-static void
-print_status_end(struct sbuf *msg)
+void
+job_status_end(struct sbuf *msg)
 {
 	sbuf_finish(msg);
 	printf("%s\n", sbuf_data(msg));
 	/*printf("\033]0; %s\007", sbuf_data(msg));*/
-	sbuf_delete(msg);
+	sbuf_clear(msg);
 }
 
-static void
-print_status_begin(struct sbuf *msg)
+void
+job_status_begin(struct sbuf *msg)
 {
-	sbuf_clear(msg_buf);
+	sbuf_clear(msg);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
 	static int jailed = -1;
@@ -584,7 +584,7 @@ event_callback(void *data, struct pkg_event *ev)
 			 */
 			filename = ev->e_fetching.url;
 		}
-		print_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 		progress_debit = true;
 		sbuf_printf(msg_buf, "Fetching %s", filename);
 
@@ -597,7 +597,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		else {
 			nbdone++;
-			print_status_begin(msg_buf);
+			job_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
 			pkg_sbuf_printf(msg_buf, "Installing %n-%v", pkg, pkg);
@@ -647,7 +647,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		nbdone++;
 
-		print_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
 		pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
@@ -663,7 +663,7 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_old = ev->e_upgrade_begin.old;
 		nbdone++;
 
-		print_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
