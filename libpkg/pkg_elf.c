@@ -129,8 +129,8 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		}
 
 		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-		pkg_emit_notice("(%s-%s) %s - shared library %s not found",
-		      pkgname, pkgversion, fpath, name);
+		pkg_emit_notice("(%s-%s) %s - required shared library %s not "
+		    "found", pkgname, pkgversion, fpath, name);
 
 		return (EPKG_FATAL);
 	}
