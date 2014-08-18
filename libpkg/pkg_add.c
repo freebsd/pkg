@@ -334,7 +334,7 @@ pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 	if (handle_rc)
-		pkg_start_stop_rc_scripts(old, PKG_RC_START);
+		pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
 
 	/*
 	 * Execute pre deinstall scripts
