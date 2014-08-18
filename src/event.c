@@ -367,11 +367,15 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
-	if (!quiet) {
+	if (!quiet && progress_started) {
 		if (isatty(STDOUT_FILENO))
 			draw_progressbar(current, total);
-		else if (progress_started && current >= total)
-			progressbar_stop();
+		else {
+			if (progress_interrupted)
+				printf("%s...", progress_message);
+			if (current >= total)
+				progressbar_stop();
+		}
 	}
 	progress_interrupted = false;
 }
