@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd October 30, 2014
+.Dd November 09, 2014
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -262,6 +262,19 @@ archive.
 Normally, timestamps are copied from the staging directory the
 package is created from.
 Default: NO.
+.It Cm VERSION_SOURCE: string
+Default database for comparing version numbers in
+.Xr pkg-version 8 .
+Valid values are
+.Sy I
+for index,
+.Sy P ,
+for ports,
+.Sy R
+for remote.
+Default: If unset, the algorithm described in
+.Xr pkg-version 8
+is used to determine the version source automatically.
 .It Cm VULNXML_SITE: string
 Specifies the URL to fetch the
 .Pa vuln.xml

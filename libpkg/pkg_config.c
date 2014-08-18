@@ -336,6 +336,11 @@ static struct config_entry c[] = {
 		"YES",
 		"Automatically merge configuration files"
 	}
+		PKG_STRING,
+		"VERSION_SOURCE",
+		NULL,
+		"Version source for pkg-version (I, P, R), default is auto detect"
+	},
 };
 
 static bool parsed = false;

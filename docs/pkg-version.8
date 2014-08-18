@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 30, 2014
+.Dd November 09, 2014
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -59,7 +59,11 @@ installed packages may be chosen by specifying one of
 .Fl P ,
 .Fl R
 or
-.Fl I .
+.Fl I
+or by by setting
+.Cm VERSION_SOURCE
+in
+.Xr pkg.conf 5 .
 If not specified then the ports index file
 will be used if it exists
 .Fl ( I ) .
