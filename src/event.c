@@ -501,6 +501,7 @@ draw_progressbar(int64_t current, int64_t total)
 					printf(" of %-*s", (int)(ttywidth - r - strlen(buf)), buf);
 			}
 		}
+		last_update = now;
 		fflush(stdout);
 	}
 	if (current >= total)
