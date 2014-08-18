@@ -403,6 +403,7 @@ draw_progressbar(int64_t current, int64_t total)
 	int cur_speed;
 	int hours, minutes, seconds;
 	int r = 0;
+	float age_factor;
 
 	if (!progress_started) {
 		progressbar_stop();
@@ -446,11 +447,16 @@ draw_progressbar(int64_t current, int64_t total)
 			else
 				cur_speed = transferred;
 
-#define AGE_FACTOR 0.9
+#define AGE_FACTOR_SLOW_START 3
+			if (now - begin <= AGE_FACTOR_SLOW_START)
+				age_factor = 0.4;
+			else
+				age_factor = 0.9;
+
 			if (bytes_per_second != 0) {
 				bytes_per_second =
-				    (bytes_per_second * AGE_FACTOR) +
-				    (cur_speed * (1.0 - AGE_FACTOR));
+				    (bytes_per_second * age_factor) +
+				    (cur_speed * (1.0 - age_factor));
 			} else
 				bytes_per_second = cur_speed;
 
