@@ -394,7 +394,8 @@ progressbar_stop(void)
 			printf(" done");
 		putchar('\n');
 	}
-
+	if (progress_alarm)
+		alarm(0);
 	last_progress_percent = -1;
 	progress_alarm = false;
 	progress_started = false;
@@ -503,9 +504,8 @@ draw_progressbar(int64_t current, int64_t total)
 		}
 		fflush(stdout);
 	}
-	if (current >= total) {
+	if (current >= total)
 		progressbar_stop();
-	}
 	else if (!progress_alarm && progress_started) {
 		/* Setup auxiliary alarm */
 		struct sigaction sa;
