@@ -534,13 +534,12 @@ event_callback(void *data, struct pkg_event *ev)
 
 	/*
 	 * If a progressbar has been interrupted by another event, then
-	 * we need to stop it immediately to avoid bad formatting
+	 * we need to add a newline to prevent bad formatting.
 	 */
 	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
 	    !progress_interrupted) {
-		progressbar_stop();
+		putchar('\n');
 		progress_interrupted = true;
-		progress_started = true;
 	}
 
 	switch(ev->type) {
