@@ -364,6 +364,7 @@ progressbar_start(const char *pmsg)
 	last_tick = 0;
 	begin = last_update = time(NULL);
 	bytes_per_second = 0;
+	stalled = 0;
 
 	progress_started = true;
 	progress_interrupted = false;
