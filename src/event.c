@@ -59,14 +59,13 @@ struct sbuf *messages = NULL;
 static char *progress_message = NULL;
 static struct sbuf *msg_buf = NULL;
 static int last_progress_percent = -1;
-static bool progress_alarm = false;
 static bool progress_started = false;
 static bool progress_interrupted = false;
 static bool progress_debit = false;
 static int64_t last_tick = 0;
 static int64_t stalled;
 static int64_t bytes_per_second;
-static int64_t last_update;
+static time_t last_update;
 static time_t begin = 0;
 
 /* units for format_size */
@@ -336,15 +335,6 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	_exit(ret);
 }
 
-static void
-progress_alarm_handler(int signo)
-{
-	if (progress_alarm && progress_started) {
-		last_progress_percent = -1;
-		alarm(1);
-	}
-}
-
 void
 progressbar_start(const char *pmsg)
 {
@@ -377,13 +367,13 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
+	if (!quiet) {
+		if (isatty(STDOUT_FILENO))
+			draw_progressbar(current, total);
+		else if (progress_started && current >= total)
+			progressbar_stop();
+	}
 	progress_interrupted = false;
-	if (quiet)
-		return;
-	if (isatty(STDOUT_FILENO))
-		draw_progressbar(current, total);
-	else if (progress_started && current >= total)
-		progressbar_stop();
 }
 
 void
@@ -394,10 +384,7 @@ progressbar_stop(void)
 			printf(" done");
 		putchar('\n');
 	}
-	if (progress_alarm)
-		alarm(0);
 	last_progress_percent = -1;
-	progress_alarm = false;
 	progress_started = false;
 	progress_interrupted = false;
 }
@@ -407,31 +394,43 @@ draw_progressbar(int64_t current, int64_t total)
 {
 	int percent;
 	int64_t transferred;
-	time_t now;
+	time_t elapsed, now;
 	char buf[7];
 	int64_t bytes_left;
 	int cur_speed;
-	int64_t elapsed;
 	int hours, minutes, seconds;
 	int r = 0;
 
+	if (!progress_started) {
+		progressbar_stop();
+		return;
+	}
+
+	if (progress_debit) {
+		now = time(NULL);
+		elapsed = (now >= last_update) ? now - last_update : 0;
+	}
+
 	percent = (total != 0) ? (current * 100. / total) : 100;
 
-	if (progress_started && (percent != last_progress_percent || current == total)) {
+	/**
+	 * Wait for interval for debit bars to keep calc per second.
+	 * If not debit, show on every % change, or if ticking after
+	 * an interruption (which removed our progressbar output).
+	 */
+	if (current >= total || (progress_debit && elapsed >= 1) ||
+	    (!progress_debit &&
+	    (percent != last_progress_percent || progress_interrupted))) {
 		last_progress_percent = percent;
 
 		r = printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
 			if (total > current) {
-				now = time(NULL);
 				transferred = current - last_tick;
 				last_tick = current;
 				bytes_left = total - current;
-				if (bytes_left > 0) {
-					elapsed = (now > last_update) ? now - last_update : 0;
-				} else {
+				if (bytes_left <= 0)
 					elapsed = now - begin;
-				}
 
 				if (elapsed != 0)
 					cur_speed = (transferred / elapsed);
@@ -506,18 +505,6 @@ draw_progressbar(int64_t current, int64_t total)
 	}
 	if (current >= total)
 		progressbar_stop();
-	else if (!progress_alarm && progress_started) {
-		/* Setup auxiliary alarm */
-		struct sigaction sa;
-
-		memset(&sa, 0, sizeof(sa));
-		sa.sa_handler = progress_alarm_handler;
-		sa.sa_flags = SA_RESTART;
-		sigemptyset(&sa.sa_mask);
-		sigaction(SIGALRM, &sa, NULL);
-		alarm(1);
-		progress_alarm = true;
-	}
 }
 
 int
