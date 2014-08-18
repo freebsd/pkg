@@ -46,7 +46,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <termios.h>
 #include <libutil.h>
 
 #include "pkg.h"
@@ -429,80 +428,73 @@ draw_progressbar(int64_t current, int64_t total)
 
 		r = printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
-			if (total > current) {
-				transferred = current - last_tick;
-				last_tick = current;
-				bytes_left = total - current;
-				if (bytes_left <= 0)
-					elapsed = now - begin;
+			transferred = current - last_tick;
+			last_tick = current;
+			bytes_left = total - current;
+			if (bytes_left <= 0) {
+				elapsed = now - begin;
+				/* Always show at least 1 second at end. */
+				if (elapsed == 0)
+					elapsed = 1;
+				/* Calculate true total speed when done */
+				transferred = total;
+				bytes_per_second = 0;
+			}
 
-				if (elapsed != 0)
-					cur_speed = (transferred / elapsed);
-				else
-					cur_speed = transferred;
+			if (elapsed != 0)
+				cur_speed = (transferred / elapsed);
+			else
+				cur_speed = transferred;
 
 #define AGE_FACTOR 0.9
-				if (bytes_per_second != 0) {
-					bytes_per_second = (bytes_per_second * AGE_FACTOR) +
-									(cur_speed * (1.0 - AGE_FACTOR));
-				} else {
-					bytes_per_second = cur_speed;
-				}
+			if (bytes_per_second != 0) {
+				bytes_per_second =
+				    (bytes_per_second * AGE_FACTOR) +
+				    (cur_speed * (1.0 - AGE_FACTOR));
+			} else
+				bytes_per_second = cur_speed;
 
-				humanize_number(buf, sizeof(buf),
-					current,"B", HN_AUTOSCALE, 0);
-				printf(" %*s", (int)sizeof(buf), buf);
+			humanize_number(buf, sizeof(buf),
+			    current,"B", HN_AUTOSCALE, 0);
+			printf(" %*s", (int)sizeof(buf), buf);
 
+			if (bytes_left > 0)
 				format_rate_SI(buf, sizeof(buf), transferred);
-				printf(" %s/s ", buf);
+			else /* Show overall speed when done */
+				format_rate_SI(buf, sizeof(buf),
+				    bytes_per_second);
+			printf(" %s/s ", buf);
 
-				if (!transferred)
-					stalled += elapsed;
-				else
-					stalled = 0;
+			if (!transferred)
+				stalled += elapsed;
+			else
+				stalled = 0;
 
-				if (stalled >= STALL_TIME)
-					printf(" - stalled -");
-				else if (bytes_per_second == 0 && bytes_left)
-					printf("   --:-- ETA");
-				else {
-					if (bytes_left > 0)
-						seconds = bytes_left / bytes_per_second;
-					else
-						seconds = elapsed;
-
-					hours = seconds / 3600;
-					seconds -= hours * 3600;
-					minutes = seconds / 60;
-					seconds -= minutes * 60;
-
-					if (hours != 0)
-						printf("%02d:%02d:%02d", hours, minutes, seconds);
-					else
-						printf("   %02d:%02d", minutes, seconds);
-
-					if (bytes_left > 0)
-						printf(" ETA");
-					else
-						printf("    ");
-				}
-			}
+			if (stalled >= STALL_TIME)
+				printf(" - stalled -");
+			else if (bytes_per_second == 0 && bytes_left > 0)
+				printf("   --:-- ETA");
 			else {
-				struct winsize winsize;
-				int ttywidth = 80;
-
-
-				/* Bad hack to erase string */
-				if (ioctl(fileno(stdout), TIOCGWINSZ, &winsize) != -1 &&
-								winsize.ws_col != 0)
-					ttywidth = winsize.ws_col;
+				if (bytes_left > 0)
+					seconds = bytes_left / bytes_per_second;
 				else
-					ttywidth = 80;
+					seconds = elapsed;
 
-				humanize_number(buf, sizeof(buf),
-					current,"B", HN_AUTOSCALE, 0);
-				if (ttywidth > r + sizeof(buf))
-					printf(" of %-*s", (int)(ttywidth - r - strlen(buf)), buf);
+				hours = seconds / 3600;
+				seconds -= hours * 3600;
+				minutes = seconds / 60;
+				seconds -= minutes * 60;
+
+				if (hours != 0)
+					printf("%02d:%02d:%02d", hours,
+					    minutes, seconds);
+				else
+					printf("   %02d:%02d", minutes, seconds);
+
+				if (bytes_left > 0)
+					printf(" ETA");
+				else
+					printf("    ");
 			}
 		}
 		last_update = now;
