@@ -130,6 +130,7 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
  * - provided_shlibs
  * - users
  * - groups
+ * - dependencies
  */
 
 int
