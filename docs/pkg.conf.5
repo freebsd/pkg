@@ -51,7 +51,7 @@ The following options can be defined in
 .Nm :
 .Bl -tag -width ".Cm ABI: string"
 .It Cm ABI: string
-the abi of the package you want to install.
+the ABI of the package you want to install.
 Default: derived from the ABI of the /bin/sh binary.
 .It Cm ALIAS: key/value list
 Define local aliases for various
@@ -127,7 +127,7 @@ This option exists to facilitate developing
 free package sets.
 Default: no.
 .It Cm EVENT_PIPE: string
-Send all event messages to the specified fifo or Unix socket.
+Send all event messages to the specified FIFO or Unix socket.
 Events messages should be formatted as JSON.
 Default: not set.
 .It Cm FETCH_RETRY: integer
@@ -136,7 +136,7 @@ Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
 network, either by SSH or any of the protocols supported by
-.Xr fetch 3 
+.Xr fetch 3
 functions.
 Default: 30.
 .It Cm HANDLE_RC_SCRIPTS: boolean
@@ -180,7 +180,7 @@ conflicting files will not be recorded as owned by the new package.
 Default: no.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
-Default: 
+Default:
 .Pa /var/cache/pkg
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
@@ -217,7 +217,7 @@ Default: not set.
 Directory containing definitions of plist keywords.
 Default: not set.
 .It Cm PLUGINS: array
-List of plugins that 
+List of plugins that
 .Xr pkg 8
 should load.
 Default: not set.
@@ -256,7 +256,7 @@ Default: yes.
 Experimental: tells pkg to use and external SAT solver.
 Default: not set.
 .It Cm SQLITE_PROFILE: boolean
-Profile sqlite queries.
+Profile SQLite queries.
 Default: no.
 .It Cm SSH_RESTRICT_DIR: string
 Directory which the ssh subsystem will be restricted to.
@@ -266,7 +266,7 @@ Log all the installation/deinstallation/upgrade operation via
 .Xr syslog 3 .
 Default: yes.
 .It Cm UNSET_TIMESTAMP: boolean
-Do not include timestamps in the package 
+Do not include timestamps in the package
 .Xr tar 1
 archive.
 Normally, timestamps are copied from the staging directory the
@@ -374,7 +374,7 @@ is
 then the
 .Sy PUBKEY
 option will be used for signature verification.
-This option is for use with the builtin signing support.
+This option is for use with the built-in signing support.
 When
 .Sy SIGNATURE_TYPE
 is
@@ -428,12 +428,12 @@ same directory processed in alphabetical order.
 Earlier files take precedence, meaning that packages will be downloaded
 from them preferentially where the same package is available from several
 repositories.
-This behaviour may be overridden per-package by adding a 
+This behavior may be overridden per-package by adding a
 .Sy repository
 annotation to the installed package.
 See
 .Xr pkg-repository 8
-for details. 
+for details.
 .Pp
 It is possible to specify more than one repository per file.
 .Sh ENVIRONMENT

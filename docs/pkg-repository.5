@@ -88,7 +88,7 @@ package to be constructed.
 Where a package may be applicable to more than one
 .Sy ABI
 (e.g., it contains only text files) symbolic or hard links, URL mappings
-or other techniques may be utilised to avoid duplication of storage.
+or other techniques may be utilized to avoid duplication of storage.
 .Pp
 Although no specific filesystem organization is required, the usual
 convention (inherited from
@@ -134,7 +134,7 @@ or later.
 .It Pa $REPOSITORY_ROOT/repo.txz
 (Deprecated).
 Contains the package manifest data as above, but pre-loaded into
-an Sqlite database.
+an SQLite database.
 This is supplied for backwards compatibility with
 .Nm pkg-1.0 .
 .It Pa $REPOSITORY_ROOT/filesite.txz
@@ -223,7 +223,7 @@ all mirror sites.
 .Sh WORKING WITH MULTIPLE REPOSITORIES
 Where several different repositories are configured
 .Nm pkg
-will search amongst them all in the order specified,
+will search among them all in the order specified,
 unless directed to use a single repository by the
 .Fl r
 flag to
@@ -256,7 +256,7 @@ pkg install example-1.0.0
 will actually result in
 .Pa example-1.0.1
 being installed.
-To override this behaviour, on first installation of the package,
+To override this behavior, on first installation of the package,
 select the repository with the appropriate version:
 .Bd -literal -offset indent
 pkg install -r repo-a example-1.0.0
