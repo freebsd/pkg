@@ -783,9 +783,9 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		fclose(fmanifest);
 	} else {
 		if (len == 0)
-			pkg_emit_error("Empty catalogue");
+			pkg_emit_error("Empty catalog");
 		else
-			pkg_emit_error("Catalogue too large");
+			pkg_emit_error("Catalog too large");
 		goto cleanup;
 	}
 

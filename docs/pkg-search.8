@@ -20,7 +20,7 @@
 .Os
 .Sh NAME
 .Nm "pkg search"
-.Nd search package repository catalogues
+.Nd search package repository catalogs
 .Sh SYNOPSIS
 .Nm
 .Op Fl U
@@ -53,16 +53,16 @@
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
-is used for searching package repository catalogues.
+is used for searching package repository catalogs.
 Packages available for installation can be matched by name, by name
 and version, by origin or by text in the package comments or package
 descriptions.
 The output defaults to displaying the field matched by the search
 term, but any of the searchable fields may be displayed.
 The output may be modified to additionally show many other package
-data available from the repository catalogues.
+data available from the repository catalogs.
 .Pp
-Package repository catalogues will be automatically updated whenever
+Package repository catalogs will be automatically updated whenever
 .Nm
 is run by a user ID with write access to the package database,
 unless disabled by the
@@ -136,7 +136,7 @@ Select which identifying label is printed for each matched package,
 unless
 .Fl q
 is used.
-Several different fields from the repository catalogue database may be
+Several different fields from the repository catalog database may be
 used to search on, or to generate the label, as indicated by the
 .Ar label
 argument.
@@ -176,13 +176,13 @@ irrespective of the configured
 .Dq active
 status from
 .Pa repo.conf .
-By default all repository catalogues marked
+By default all repository catalogs marked
 .Dq active
 are searched.
 .It Fl R , Fl -raw
 Display the full manifest (raw) from the matching packages.
 .It Fl S Ar search , Cm --search Ar search
-Specify the field to search the repository catalogue on.
+Specify the field to search the repository catalog on.
 If unspecified, searches on
 .Ar pkg-name
 unless the search term contains a
@@ -203,9 +203,9 @@ Display the installed size of matched packages.
 Equivalent to
 .Fl "Q size" .
 .It Fl U, Cm --no-repo-update
-Suppress the automatic update of the local copy of the repository catalogue
+Suppress the automatic update of the local copy of the repository catalog
 from remote. 
-Automatic repository catalogue updates are only attempted when the
+Automatic repository catalog updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
 .It Fl x , Cm --regex
@@ -276,7 +276,7 @@ and
 .Fl "S description"
 are all equivalent.
 .Ss Output Modifier Options
-Additional data from the repository catalogue to print for each matched
+Additional data from the repository catalog to print for each matched
 package.
 Multiple output modifiers can be combined.
 Where more than one output field is required, either because multiple

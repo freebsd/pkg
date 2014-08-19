@@ -80,7 +80,7 @@ if [ "${periodic_update}" = "yes" ]; then
 
     # weekly_status_pkg_enable -- use 'pkg version'.  This will use
     # the ports tree or the ports INDEX if they exist in preference to
-    # the pkg repository catalogue.
+    # the pkg repository catalog.
 
     if [ "$pkg_version" = 'pkg_version' ]; then
 	echo "pkg_version='@prefix@/sbin/pkg version'"

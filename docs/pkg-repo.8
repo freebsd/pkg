@@ -20,7 +20,7 @@
 .Os
 .Sh NAME
 .Nm "pkg repo"
-.Nd creates a package repository catalogue
+.Nd creates a package repository catalog
 .Sh SYNOPSIS
 .Nm
 .Op Fl lqL
@@ -35,22 +35,22 @@
 .Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
 .Nm
-is used for creating a catalogue of the available
+is used for creating a catalog of the available
 packages in a repository.
 .Nm
-catalogues are necessary for sharing your package repository with
+catalogs are necessary for sharing your package repository with
 other people.
 .Pp
 When
 .Nm
-is invoked it creates a package repository catalogue (repo.sqlite),
+is invoked it creates a package repository catalog (repo.sqlite),
 with an optional cryptographic signature, as a compressed tarball
 (repo.txz).
 Repository users download and cache this on their local machines,
 for fast lookup of available packages by programs such as
 .Xr pkg-install 8 .
 .Pp
-To create a package repository catalogue you must specify the
+To create a package repository catalog you must specify the
 top-level directory where all the packages are stored as
 .Ar repo-path .
 .Nm
@@ -58,7 +58,7 @@ will search the filesystem beneath
 .Ar repo-path
 to find all the packages it contains.
 Symbolic links are ignored, and only the most recent package for each
-origin is included in the catalogue.
+origin is included in the catalog.
 .Pp
 The repository will be created in the package directory unless the
 .Fl o Ar output-dir
@@ -66,7 +66,7 @@ or
 .Cm --output-dir Ar output-dir
 is specified, in which case it will be created there.
 .Pp
-Optionally you may sign the repository catalogue by specifying the
+Optionally you may sign the repository catalog by specifying the
 path to an RSA private key as the
 .Ar rsa-key
 argument or an external command.
@@ -74,7 +74,7 @@ argument or an external command.
 If
 .Ar rsa-key
 is used, the SHA256 of the repository is signed using the provided key.
-The signature is added into the repository catalogue.
+The signature is added into the repository catalog.
 The client side should use
 .Sy SIGNATURE_TYPE
 set to
@@ -86,7 +86,7 @@ set to a local path of the public key in its repository configuration file.
 An external command can be useful to create a signing server to keep the
 private key separate from the repository.
 The external command is passed the SHA256 of the repository
-catalogue on its stdin.
+catalog on its stdin.
 It should output the following format:
 .Bd -literal -offset indent
 SIGNATURE
@@ -118,7 +118,7 @@ section and
 .Xr pkg.conf 5
 for more information.
 .Pp
-Signing the catalogue is strongly recommended.
+Signing the catalog is strongly recommended.
 .Sh OPTIONS
 The following options are supported by
 .Nm :

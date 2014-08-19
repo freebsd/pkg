@@ -62,7 +62,7 @@ Table of Contents:
 
 - search:
 
-	- Will search the repository catalogue to provide information
+	- Will search the repository catalog to provide information
 	  to the users.
 
 - info: 
@@ -87,7 +87,7 @@ Table of Contents:
 
 - upgrade:
 
-	- Will examine the repository catalogue to check if there are
+	- Will examine the repository catalog to check if there are
 	  any upgrades available and apply them.
 
 - update:

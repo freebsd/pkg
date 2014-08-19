@@ -40,10 +40,10 @@ is used for installation of packages from a package repository or
 local archives.
 Multiple package names can be specified on the command line, either
 explicitly or by matching against package names (or origins) in the repository
-catalogues using shell globbing or regular expressions.
+catalogs using shell globbing or regular expressions.
 .Pp
 .Nm
-first updates any out-of-date repository catalogues, unless
+first updates any out-of-date repository catalogs, unless
 .Cm REPO_AUTOUPDATE
 has been set to
 .Sy NO
@@ -99,7 +99,7 @@ See
 .Xr pkg-repository 5
 for details.
 .Pp
-Package repository catalogues will be automatically updated whenever
+Package repository catalogs will be automatically updated whenever
 .Nm
 is run by a user ID with write access to the package database,
 unless disabled by the
@@ -170,9 +170,9 @@ irrespective of the configured
 status from
 .Pa repo.conf .
 .It Fl U , Cm --no-repo-update
-Suppress the automatic update of the local copy of the repository catalogue
+Suppress the automatic update of the local copy of the repository catalog
 from remote. 
-Automatic repository catalogue updates are only attempted when the
+Automatic repository catalog updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
 .It Fl x , Cm --regex

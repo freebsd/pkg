@@ -232,7 +232,7 @@ _pkgng_repo () {
 
     opts=()
     lopts=()
-    small_info="Creates a package repository catalogue"
+    small_info="Creates a package repository catalog"
     large_info=""
 }
 
@@ -242,7 +242,7 @@ _pkgng_rquery () {
 
     opts=('-g' '-x' '-X' '-e' '-a')
     lopts=()
-    small_info="Queries information in repository catalogues"
+    small_info="Queries information in repository catalogs"
     large_info=""
 }
 
@@ -252,7 +252,7 @@ _pkgng_search () {
 
     opts=('-x' '-X' '-g')
     lopts=()
-    small_info="Performs a search of package repository catalogues"
+    small_info="Performs a search of package repository catalogs"
     large_info=""
 }
 
@@ -314,7 +314,7 @@ _pkgng_update () {
 
     opts=()
     lopts=()
-    small_info="Updates package repository catalogues"
+    small_info="Updates package repository catalogs"
     large_info=""
 }
 
@@ -404,14 +404,14 @@ _pkg () {
             'query[Queries information about installed packages]'
             'register[Registers a package into the local database]'
             'remove[Deletes packages from the database and the system]'
-            'repo[Creates a package repository catalogue]'
-            'rquery[Queries information in repository catalogues]'
-            'search[Performs a search of package repository catalogues]'
+            'repo[Creates a package repository catalog]'
+            'rquery[Queries information in repository catalogs]'
+            'search[Performs a search of package repository catalogs]'
             'set[Modifies information about packages in the local database]'
             'shell[Opens a debug shell]'
             'shlib[Displays which packages link against a specific shared library]'
             'stats[Displays package database statistics]'
-            'update[Updates package repository catalogues]'
+            'update[Updates package repository catalogs]'
             'updating[Displays UPDATING information for a package]'
             'upgrade[Performs upgrades of packaged software distributions]'
             'version[Displays the versions of installed packages]'

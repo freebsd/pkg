@@ -136,7 +136,7 @@ exec_repo(int argc, char **argv)
 	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file, legacy);
 
 	if (ret != EPKG_OK) {
-		printf("Cannot create repository catalogue\n");
+		printf("Cannot create repository catalog\n");
 		return (EX_IOERR);
 	}
 

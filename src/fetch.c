@@ -151,7 +151,7 @@ exec_fetch(int argc, char **argv)
 	retcode = pkgdb_access(mode, PKGDB_DB_REPO);
 
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privileges to access repo catalogue");
+		warnx("Insufficient privileges to access repo catalog");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);

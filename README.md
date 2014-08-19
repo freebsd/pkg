@@ -60,7 +60,7 @@ pkg uses several files for metadata:
 
 This is a subset of the information included in the main MANIFEST,
 omitting the lists of files, checksums, directories and scripts.
-It contains the information used to build the repository catalogue.
+It contains the information used to build the repository catalog.
 
 ##### MANIFEST
 
@@ -169,12 +169,12 @@ show pkg-message, ...
 `pkg add` can install a package archive from the local disk, or from a
 remote FTP/HTTP server.
 
-If only a package name is given, it will search the repository catalogues
+If only a package name is given, it will search the repository catalogs
 and download and install the package if it exists. Anydependencies will be
 downloaded and installed first.
 
 This is possible because we have the dependency information in the
-catalogue of the remote repository.
+catalog of the remote repository.
 
 `pkg add` will check if the user attempts to install a package built
 for another arch or release.
@@ -341,7 +341,7 @@ local compilation of software via the ports or from a pkg tarball
 independently obtained from some other source.
 
 A repository is a collection of packages which have been gathered
-together, had a catalogue created and then published, typically by
+together, had a catalog created and then published, typically by
 exposing the repository via HTTP or some other networking protocol.
 You can also publish a repository from a local or NFS mounted
 filesystem (using file:// style URLs) or via SSH (using ssh:// URLs.)
@@ -374,7 +374,7 @@ please refer to *pkg-add(1)*
 ### Working with a remote package repository
 
 While pkg(8) can deal with individual package tarballs, the real power
-comes from the use of repositories, which publish a 'catalogue' of
+comes from the use of repositories, which publish a 'catalog' of
 meta-data about the packages they contain.
 
 You can configure pkg(8) to use one or several repositories.
@@ -404,7 +404,7 @@ Note that the old style of setting _PACKAGESITE_ in pkg.conf is
 no-longer supported.  Setting _PACKAGESITE_ in the environment has
 meaning for the pkg(7) shim, but is ignored by pkg(8).
 
-Then fetch the repository catalogues using the command:
+Then fetch the repository catalogs using the command:
 
 	# pkg update
 
@@ -439,7 +439,7 @@ update from them.
 
 Updating remote repositories is done by the `pkg update` command.  By
 default his will first update the local copies of the repository
-catalogues, unless you specifically configure pkg(8) otherwise.
+catalogs, unless you specifically configure pkg(8) otherwise.
 
 So, to update your remote repositories, you would execute this command:
 

@@ -407,7 +407,7 @@ exec_search(int argc, char **argv)
 		return (EX_NOPERM);
 	case EPKG_ENODB:
 		if (!auto_update) {
-			warnx("Unable to open remote repository catalogues. Try running '%s update' first.", getprogname());
+			warnx("Unable to open remote repository catalogs. Try running '%s update' first.", getprogname());
 			return (EX_IOERR);
 		}
 		break;

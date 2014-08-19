@@ -207,7 +207,7 @@ static struct config_entry c[] = {
 		PKG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
-		"Automatically update repository catalogues prior to package updates",
+		"Automatically update repository catalogs prior to package updates",
 	},
 	{
 		PKG_STRING,
