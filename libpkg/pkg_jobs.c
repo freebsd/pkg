@@ -258,6 +258,9 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
 {
 	struct pkg_job_request *req, *test, **head;
 
+	assert(item);
+	assert(item->pkg);
+
 	if (!IS_DELETE(j)) {
 		head = &j->request_add;
 		assert(item->pkg->type != PKG_INSTALLED);
