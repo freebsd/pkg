@@ -502,8 +502,8 @@ draw_progressbar(int64_t current, int64_t total)
 				else
 					printf("    ");
 			}
+			last_update = now;
 		}
-		last_update = now;
 		fflush(stdout);
 	}
 	if (current >= total)
