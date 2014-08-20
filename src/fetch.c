@@ -140,9 +140,6 @@ exec_fetch(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	/* TODO: Allow the user to specify an output directory via -o
-	   outdir */
-
 	if (auto_update)
 		mode = PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE;
 	else
