@@ -451,9 +451,10 @@ exec_check(int argc, char **argv)
 					rc = EX_TEMPFAIL;
 				}
 			}
-			++processed;
 
-			if (verbose)
+			if (!verbose)
+				++processed;
+			else
 				printf(" done\n");
 		}
 		if (!verbose)
