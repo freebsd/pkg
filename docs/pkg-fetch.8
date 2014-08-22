@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 18, 2014
+.Dd August 20, 2014
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -77,11 +77,9 @@ The following options are supported by
 .It Fl a , Cm --all
 Fetch all packages.
 .It Fl o Ar destdir , Cm --output Ar destdir
-Place files to the specified directory instead of the cache directory. 
-This option implies
-.Cm mirror
-mode. In this mode, packages are fetched for
-distribution instead of placing them to the internal cache.
+Place files in a sub-directory called All of the specified directory.
+In this mode, packages are fetched for
+distribution instead of placing them into the internal cache.
 .It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
