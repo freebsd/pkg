@@ -120,7 +120,7 @@ exec_info(int argc, char **argv)
 		{ "origin",		no_argument,		NULL,	'o' },
 		{ "by-origin",		no_argument,		NULL,	'O' },
 		{ "prefix",		no_argument,		NULL,	'p' },
-		{ "guiet",		no_argument,		NULL,	'q' },
+		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "required-by",	no_argument,		NULL,	'r' },
 		{ "raw",		no_argument,		NULL,	'R' },
 		{ "size",		no_argument,		NULL,	's' },
