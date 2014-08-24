@@ -82,12 +82,12 @@ exec_config(int argc, char **argv)
 		printf("%"PRId64"\n", integer);
 		break;
 	case PKG_OBJECT:
-		while ((o = pkg_object_iterate(conf, it))) {
+		while ((o = pkg_object_iterate(conf, &it))) {
 			printf("%s: %s\n", pkg_object_key(o), pkg_object_string(o));
 		}
 		break;
 	case PKG_ARRAY:
-		while ((o = pkg_object_iterate(conf, it))) {
+		while ((o = pkg_object_iterate(conf, &it))) {
 			printf("%s\n", pkg_object_string(o));
 		}
 		break;

@@ -46,7 +46,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <termios.h>
 #include <libutil.h>
 
 #include "pkg.h"
@@ -59,14 +58,13 @@ struct sbuf *messages = NULL;
 static char *progress_message = NULL;
 static struct sbuf *msg_buf = NULL;
 static int last_progress_percent = -1;
-static bool progress_alarm = false;
 static bool progress_started = false;
 static bool progress_interrupted = false;
 static bool progress_debit = false;
 static int64_t last_tick = 0;
 static int64_t stalled;
 static int64_t bytes_per_second;
-static int64_t last_update;
+static time_t last_update;
 static time_t begin = 0;
 
 /* units for format_size */
@@ -336,15 +334,6 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	_exit(ret);
 }
 
-static void
-progress_alarm_handler(int signo)
-{
-	if (progress_alarm && progress_started) {
-		last_progress_percent = -1;
-		alarm(1);
-	}
-}
-
 void
 progressbar_start(const char *pmsg)
 {
@@ -364,6 +353,7 @@ progressbar_start(const char *pmsg)
 	last_tick = 0;
 	begin = last_update = time(NULL);
 	bytes_per_second = 0;
+	stalled = 0;
 
 	progress_started = true;
 	progress_interrupted = false;
@@ -376,13 +366,17 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
+	if (!quiet && progress_started) {
+		if (isatty(STDOUT_FILENO))
+			draw_progressbar(current, total);
+		else {
+			if (progress_interrupted)
+				printf("%s...", progress_message);
+			if (current >= total)
+				progressbar_stop();
+		}
+	}
 	progress_interrupted = false;
-	if (quiet)
-		return;
-	if (isatty(STDOUT_FILENO))
-		draw_progressbar(current, total);
-	else if (progress_started && current >= total)
-		progressbar_stop();
 }
 
 void
@@ -393,9 +387,7 @@ progressbar_stop(void)
 			printf(" done");
 		putchar('\n');
 	}
-
 	last_progress_percent = -1;
-	progress_alarm = false;
 	progress_started = false;
 	progress_interrupted = false;
 }
@@ -405,118 +397,117 @@ draw_progressbar(int64_t current, int64_t total)
 {
 	int percent;
 	int64_t transferred;
-	time_t now;
+	time_t elapsed, now;
 	char buf[7];
 	int64_t bytes_left;
 	int cur_speed;
-	int64_t elapsed;
 	int hours, minutes, seconds;
 	int r = 0;
+	float age_factor;
+
+	if (!progress_started) {
+		progressbar_stop();
+		return;
+	}
+
+	if (progress_debit) {
+		now = time(NULL);
+		elapsed = (now >= last_update) ? now - last_update : 0;
+	}
 
 	percent = (total != 0) ? (current * 100. / total) : 100;
 
-	if (progress_started && (percent != last_progress_percent || current == total)) {
+	/**
+	 * Wait for interval for debit bars to keep calc per second.
+	 * If not debit, show on every % change, or if ticking after
+	 * an interruption (which removed our progressbar output).
+	 */
+	if (current >= total || (progress_debit && elapsed >= 1) ||
+	    (!progress_debit &&
+	    (percent != last_progress_percent || progress_interrupted))) {
 		last_progress_percent = percent;
 
 		r = printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
-			if (total > current) {
-				now = time(NULL);
-				transferred = current - last_tick;
-				last_tick = current;
-				bytes_left = total - current;
-				if (bytes_left > 0) {
-					elapsed = (now > last_update) ? now - last_update : 0;
-				} else {
-					elapsed = now - begin;
-				}
+			transferred = current - last_tick;
+			last_tick = current;
+			bytes_left = total - current;
+			if (bytes_left <= 0) {
+				elapsed = now - begin;
+				/* Always show at least 1 second at end. */
+				if (elapsed == 0)
+					elapsed = 1;
+				/* Calculate true total speed when done */
+				transferred = total;
+				bytes_per_second = 0;
+			}
 
-				if (elapsed != 0)
-					cur_speed = (transferred / elapsed);
-				else
-					cur_speed = transferred;
+			if (elapsed != 0)
+				cur_speed = (transferred / elapsed);
+			else
+				cur_speed = transferred;
 
-#define AGE_FACTOR 0.9
-				if (bytes_per_second != 0) {
-					bytes_per_second = (bytes_per_second * AGE_FACTOR) +
-									(cur_speed * (1.0 - AGE_FACTOR));
-				} else {
-					bytes_per_second = cur_speed;
-				}
+#define AGE_FACTOR_SLOW_START 3
+			if (now - begin <= AGE_FACTOR_SLOW_START)
+				age_factor = 0.4;
+			else
+				age_factor = 0.9;
 
-				humanize_number(buf, sizeof(buf),
-					current,"B", HN_AUTOSCALE, 0);
-				printf(" %*s", (int)sizeof(buf), buf);
+			if (bytes_per_second != 0) {
+				bytes_per_second =
+				    (bytes_per_second * age_factor) +
+				    (cur_speed * (1.0 - age_factor));
+			} else
+				bytes_per_second = cur_speed;
 
+			humanize_number(buf, sizeof(buf),
+			    current,"B", HN_AUTOSCALE, 0);
+			printf(" %*s", (int)sizeof(buf), buf);
+
+			if (bytes_left > 0)
 				format_rate_SI(buf, sizeof(buf), transferred);
-				printf(" %s/s ", buf);
+			else /* Show overall speed when done */
+				format_rate_SI(buf, sizeof(buf),
+				    bytes_per_second);
+			printf(" %s/s ", buf);
 
-				if (!transferred)
-					stalled += elapsed;
-				else
-					stalled = 0;
+			if (!transferred)
+				stalled += elapsed;
+			else
+				stalled = 0;
 
-				if (stalled >= STALL_TIME)
-					printf(" - stalled -");
-				else if (bytes_per_second == 0 && bytes_left)
-					printf("   --:-- ETA");
-				else {
-					if (bytes_left > 0)
-						seconds = bytes_left / bytes_per_second;
-					else
-						seconds = elapsed;
-
-					hours = seconds / 3600;
-					seconds -= hours * 3600;
-					minutes = seconds / 60;
-					seconds -= minutes * 60;
-
-					if (hours != 0)
-						printf("%02d:%02d:%02d", hours, minutes, seconds);
-					else
-						printf("   %02d:%02d", minutes, seconds);
-
-					if (bytes_left > 0)
-						printf(" ETA");
-					else
-						printf("    ");
-				}
-			}
+			if (stalled >= STALL_TIME)
+				printf(" - stalled -");
+			else if (bytes_per_second == 0 && bytes_left > 0)
+				printf("   --:-- ETA");
 			else {
-				struct winsize winsize;
-				int ttywidth = 80;
-
-
-				/* Bad hack to erase string */
-				if (ioctl(fileno(stdout), TIOCGWINSZ, &winsize) != -1 &&
-								winsize.ws_col != 0)
-					ttywidth = winsize.ws_col;
+				if (bytes_left > 0)
+					seconds = bytes_left / bytes_per_second;
 				else
-					ttywidth = 80;
+					seconds = elapsed;
 
-				humanize_number(buf, sizeof(buf),
-					current,"B", HN_AUTOSCALE, 0);
-				if (ttywidth > r + sizeof(buf))
-					printf(" of %-*s", (int)(ttywidth - r - strlen(buf)), buf);
+				hours = seconds / 3600;
+				seconds -= hours * 3600;
+				minutes = seconds / 60;
+				seconds -= minutes * 60;
+
+				if (hours != 0)
+					printf("%02d:%02d:%02d", hours,
+					    minutes, seconds);
+				else
+					printf("   %02d:%02d", minutes, seconds);
+
+				if (bytes_left > 0)
+					printf(" ETA");
+				else
+					printf("    ");
 			}
+			last_update = now;
 		}
 		fflush(stdout);
 	}
-	if (current >= total) {
+	if (current >= total)
 		progressbar_stop();
-	}
-	else if (!progress_alarm && progress_started) {
-		/* Setup auxiliary alarm */
-		struct sigaction sa;
-
-		memset(&sa, 0, sizeof(sa));
-		sa.sa_handler = progress_alarm_handler;
-		sa.sa_flags = SA_RESTART;
-		sigemptyset(&sa.sa_mask);
-		sigaction(SIGALRM, &sa, NULL);
-		alarm(1);
-		progress_alarm = true;
-	}
 }
 
 int
@@ -533,13 +524,12 @@ event_callback(void *data, struct pkg_event *ev)
 
 	/*
 	 * If a progressbar has been interrupted by another event, then
-	 * we need to stop it immediately to avoid bad formatting
+	 * we need to add a newline to prevent bad formatting.
 	 */
 	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
 	    !progress_interrupted) {
-		progressbar_stop();
+		putchar('\n');
 		progress_interrupted = true;
-		progress_started = true;
 	}
 
 	switch(ev->type) {

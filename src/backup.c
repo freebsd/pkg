@@ -36,8 +36,8 @@
 void
 usage_backup(void)
 {
-	fprintf(stderr, "Usage: pkg backup -d <dest_file>\n");
-	fprintf(stderr, "       pkg backup -r <src_file>\n\n");
+	fprintf(stderr, "Usage: pkg backup [-q] -d <dest_file>\n");
+	fprintf(stderr, "       pkg backup [-q] -r <src_file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help backup'.\n");
 }
 
@@ -52,15 +52,19 @@ exec_backup(int argc, char **argv)
 
 	struct option longopts[] = {
 		{ "dump",	required_argument,	NULL,	'd' },
+		{ "quiet",	no_argument,		NULL,	'q' },
 		{ "restore",	required_argument,	NULL,	'r' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+d:r:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:qr:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			dump = true;
 			backup_file = optarg;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		case 'r':
 			restore = true;
@@ -83,8 +87,8 @@ exec_backup(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (dump) {
-		if (isatty(fileno(stdout)))
-				printf("Dumping database:\n");
+		if (!quiet)
+			printf("Dumping database:\n");
 		if (pkgdb_dump(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
 	}

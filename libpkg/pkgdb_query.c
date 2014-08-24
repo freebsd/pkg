@@ -100,8 +100,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
 				comp = " WHERE name GLOB ?1 "
-					"OR (name GLOB SPLIT_VERSION('name', ?1) AND "
-					" version GLOB SPLIT_VERSION('version', ?1))";
+					"OR name || '-' || version GLOB ?1";
 			else
 				comp = " WHERE origin GLOB ?1";
 		} else {

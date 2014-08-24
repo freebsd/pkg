@@ -460,7 +460,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
-	time_t		 last = 0;
 	char		 buf[10240];
 	char		*doc = NULL;
 	char		 docpath[MAXPATHLEN];
@@ -591,10 +590,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	if (strcmp(u->scheme, "ssh") != 0) {
 		if (t != NULL && st.mtime != 0) {
-			if (st.mtime < *t) {
+			if (st.mtime <= *t) {
 				retcode = EPKG_UPTODATE;
 				goto cleanup;
-			} else if (strncmp(u->scheme, "http", 4) == 0)
+			} else
 				*t = st.mtime;
 		}
 		sz = st.size;
@@ -603,7 +602,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	pkg_emit_fetch_begin(url);
 	pkg_emit_progress_start(NULL);
 	while (done < sz) {
-		time_t	now;
 		int to_read = MIN(sizeof(buf), sz - done);
 
 		pkg_debug(1, "Reading status: want read %d over %d, %d already done",
@@ -620,12 +618,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		done += r;
 		pkg_debug(1, "Read status: %d over %d", done, sz);
 
-		now = time(NULL);
-		/* Only call the callback every second */
-		if (now > last || done == sz) {
-			pkg_emit_progress_tick(done, sz);
-			last = now;
-		}
+		pkg_emit_progress_tick(done, sz);
 	}
 
 	if (done < sz) {

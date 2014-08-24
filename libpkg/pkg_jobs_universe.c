@@ -252,7 +252,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 				continue;
 
 		/* Explicitly request for a dependency for mirroring */
-		if (flags & DEPS_FLAG_MIRROR)
+		if (unit != NULL && flags & DEPS_FLAG_MIRROR)
 			pkg_jobs_add_req(universe->j, d->uid, unit);
 
 		if (rpkg != NULL) {
@@ -749,6 +749,8 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 			found = pkg_jobs_universe_find(universe, rd->uid);
 			if (found == NULL) {
 				lp = pkg_jobs_universe_get_local(universe, rd->uid, 0);
+				/* XXX */
+				assert(lp != NULL);
 				pkg_jobs_universe_process_item(universe, lp, &found);
 			}
 

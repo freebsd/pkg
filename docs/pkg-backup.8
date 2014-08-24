@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd August 18, 2014
 .Dt PKG-BACKUP 8
 .Os
 .Sh NAME
@@ -23,13 +23,17 @@
 .Nd backup and restore the local package database
 .Sh SYNOPSIS
 .Nm
+.Op Fl q
 .Fl d Ar dest_file
 .Nm
+.Op Fl q
 .Fl r Ar src_file
 .Pp
 .Nm
+.Op Cm --quiet
 .Cm --dump Ar dest_file
 .Nm
+.Op Cm --quiet
 .Cm --restore Ar src_file
 .Sh DESCRIPTION
 is used for backing up and restoring of the local package database.
@@ -39,11 +43,8 @@ The following options are supported by
 .Bl -tag -width restore
 .It Fl d Ar dest_file , Cm --dump Ar dest_file
 Dumps the local package database to a file specified on the command-line.
-If
-.Ar -
-is specified as the argument
-.Nm
-will use stdout for its output.
+.It Fl q , Cm --quiet
+Force quiet output.
 .It Fl r Ar src_file , Cm --restore Ar src_file
 Uses
 .Ar src_file
