@@ -91,6 +91,7 @@ static bool
 vquery_yesno(bool deft, const char *msg, va_list ap)
 {
 	char *line = NULL;
+	char *out;
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
@@ -103,7 +104,8 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	if (yes)
 		return (true);
 
-	pkg_vprintf(msg, ap);
+	pkg_vasprintf(&out, msg, ap);
+	printf("%s", out);
 
 	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
@@ -132,7 +134,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				}
 			}
 			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
-			pkg_vprintf(msg, ap);
+			printf("%s", out);
 		}
 		else {
 			if (errno == EINTR) {
@@ -145,6 +147,8 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 			}
 		}
 	}
+
+	free(out);
 
 	return (r);
 }
