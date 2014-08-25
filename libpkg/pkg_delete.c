@@ -163,10 +163,11 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 
 	nfiles = HASH_COUNT(pkg->files);
 
-	pkg_emit_progress_start(NULL);
-	/* fake to show a 100% progress */
 	if (nfiles == 0)
-		pkg_emit_progress_tick(1, 1);
+		return (EPKG_OK);
+
+	pkg_emit_delete_files_begin(pkg);
+	pkg_emit_progress_start(NULL);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		pkg_emit_progress_tick(cur_file++, nfiles);
@@ -177,6 +178,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	}
 
 	pkg_emit_progress_tick(nfiles, nfiles);
+	pkg_emit_delete_files_finished(pkg);
 
 	return (EPKG_OK);
 }

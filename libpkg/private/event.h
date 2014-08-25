@@ -74,5 +74,7 @@ void pkg_emit_add_deps_begin(struct pkg *p);
 void pkg_emit_add_deps_finished(struct pkg *p);
 void pkg_emit_extract_begin(struct pkg *p);
 void pkg_emit_extract_finished(struct pkg *p);
+void pkg_emit_delete_files_begin(struct pkg *p);
+void pkg_emit_delete_files_finished(struct pkg *p);
 
 #endif

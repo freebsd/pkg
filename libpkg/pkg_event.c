@@ -612,6 +612,28 @@ pkg_emit_extract_finished(struct pkg *p)
 }
 
 void
+pkg_emit_delete_files_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DELETE_FILES_BEGIN;
+	ev.e_delete_files_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_delete_files_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DELETE_FILES_FINISHED;
+	ev.e_delete_files_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_integritycheck_begin(void)
 {
 	struct pkg_event ev;

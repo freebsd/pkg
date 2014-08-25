@@ -675,11 +675,25 @@ event_callback(void *data, struct pkg_event *ev)
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
-		pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
+		pkg_sbuf_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
 			break;
+		break;
+	case PKG_EVENT_DELETE_FILES_BEGIN:
+		if (quiet)
+			break;
+		else {
+			job_status_begin(msg_buf);
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg_buf, "Deleting files for %n-%v",
+			    pkg, pkg);
+		}
+		break;
+	case PKG_EVENT_DELETE_FILES_FINISHED:
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
