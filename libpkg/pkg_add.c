@@ -237,7 +237,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char	*arch;
 	const char	*origin;
 	const char	*name;
-	int	ret;
+	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir;
 	char	dpath[MAXPATHLEN];
@@ -292,6 +292,9 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		basedir = NULL;
 	}
 
+	retcode = EPKG_FATAL;
+	pkg_emit_add_deps_begin(pkg);
+
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
 			continue;
@@ -308,22 +311,26 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
 
 				if (ret != EPKG_OK)
-					return (EPKG_FATAL);
+					goto cleanup;
 			} else {
 				pkg_emit_error("Missing dependency matching "
 					"Origin: '%s' Version: '%s'",
 					pkg_dep_get(dep, PKG_DEP_ORIGIN),
 					pkg_dep_get(dep, PKG_DEP_VERSION));
 				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-					return (EPKG_FATAL);
+					goto cleanup;
 			}
 		} else {
 			pkg_emit_missing_dep(pkg, dep);
-			return (EPKG_FATAL);
+			goto cleanup;
 		}
 	}
 
-	return (EPKG_OK);
+	retcode = EPKG_OK;
+cleanup:
+	pkg_emit_add_deps_finished(pkg);
+
+	return (retcode);
 }
 
 static int

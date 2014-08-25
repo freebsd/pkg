@@ -568,6 +568,28 @@ pkg_emit_install_finished(struct pkg *p)
 }
 
 void
+pkg_emit_add_deps_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ADD_DEPS_BEGIN;
+	ev.e_add_deps_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_add_deps_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ADD_DEPS_FINISHED;
+	ev.e_add_deps_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_extract_begin(struct pkg *p)
 {
 	struct pkg_event ev;

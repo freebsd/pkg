@@ -66,6 +66,7 @@ static int64_t stalled;
 static int64_t bytes_per_second;
 static time_t last_update;
 static time_t begin = 0;
+static int add_deps_depth;
 
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
@@ -149,6 +150,8 @@ job_status_end(struct sbuf *msg)
 void
 job_status_begin(struct sbuf *msg)
 {
+	int n;
+
 	sbuf_clear(msg);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
@@ -169,6 +172,19 @@ job_status_begin(struct sbuf *msg)
 		sbuf_printf(msg, "[%s] ", hostname);
 	}
 #endif
+
+	/* Only used for pkg-add right now. */
+	if (add_deps_depth) {
+		if (add_deps_depth > 1) {
+			for (n = 0; n < (2 * add_deps_depth); ++n) {
+				if (n % 4 == 0 && n < (2 * add_deps_depth))
+					sbuf_cat(msg, "|");
+				else
+					sbuf_cat(msg, " ");
+			}
+		}
+		sbuf_cat(msg, "`-- ");
+	}
 
 	if (nbactions > 0 && nbdone > 0)
 		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
@@ -617,6 +633,12 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		break;
 	case PKG_EVENT_EXTRACT_FINISHED:
+		break;
+	case PKG_EVENT_ADD_DEPS_BEGIN:
+		++add_deps_depth;
+		break;
+	case PKG_EVENT_ADD_DEPS_FINISHED:
+		--add_deps_depth;
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		if (quiet)

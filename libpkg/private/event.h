@@ -70,6 +70,8 @@ int pkg_emit_query_select(const char *msg, const char **items, int ncnt, int def
 void pkg_emit_progress_start(const char *fmt, ...);
 void pkg_emit_progress_tick(int64_t current, int64_t total);
 
+void pkg_emit_add_deps_begin(struct pkg *p);
+void pkg_emit_add_deps_finished(struct pkg *p);
 void pkg_emit_extract_begin(struct pkg *p);
 void pkg_emit_extract_finished(struct pkg *p);
 

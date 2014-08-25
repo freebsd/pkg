@@ -1390,6 +1390,8 @@ typedef enum {
 	PKG_EVENT_UPGRADE_FINISHED,
 	PKG_EVENT_EXTRACT_BEGIN,
 	PKG_EVENT_EXTRACT_FINISHED,
+	PKG_EVENT_ADD_DEPS_BEGIN,
+	PKG_EVENT_ADD_DEPS_FINISHED,
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_FETCH_BEGIN,
 	PKG_EVENT_FETCH_FINISHED,
@@ -1484,6 +1486,12 @@ struct pkg_event {
 		struct {
 			struct pkg *pkg;
 		} e_extract_finished;
+		struct {
+			struct pkg *pkg;
+		} e_add_deps_begin;
+		struct {
+			struct pkg *pkg;
+		} e_add_deps_finished;
 		struct {
 			struct pkg *pkg;
 			struct pkg_dep *dep;
