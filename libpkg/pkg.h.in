@@ -1388,6 +1388,8 @@ typedef enum {
 	PKG_EVENT_DEINSTALL_FINISHED,
 	PKG_EVENT_UPGRADE_BEGIN,
 	PKG_EVENT_UPGRADE_FINISHED,
+	PKG_EVENT_EXTRACT_BEGIN,
+	PKG_EVENT_EXTRACT_FINISHED,
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_FETCH_BEGIN,
 	PKG_EVENT_FETCH_FINISHED,
@@ -1476,6 +1478,12 @@ struct pkg_event {
 			struct pkg *new;
 			struct pkg *old;
 		} e_upgrade_finished;
+		struct {
+			struct pkg *pkg;
+		} e_extract_begin;
+		struct {
+			struct pkg *pkg;
+		} e_extract_finished;
 		struct {
 			struct pkg *pkg;
 			struct pkg_dep *dep;

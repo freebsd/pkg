@@ -91,11 +91,12 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	srand(time(NULL));
 #endif
 
-	pkg_get(pkg, PKG_NAME, &name);
-	pkg_emit_progress_start(NULL);
-	/* show a progression on package with no files */
 	if (nfiles == 0)
-		pkg_emit_progress_tick(1,1);
+		return (EPKG_OK);
+
+	pkg_get(pkg, PKG_NAME, &name);
+	pkg_emit_extract_begin(pkg);
+	pkg_emit_progress_start(NULL);
 
 	do {
 		snprintf(pathname, sizeof(pathname), "%s/%s",
@@ -172,6 +173,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 cleanup:
 
 	pkg_emit_progress_tick(nfiles, nfiles);
+	pkg_emit_extract_finished(pkg);
 
 	if (renamed && retcode == EPKG_FATAL)
 		unlink(rpath);
@@ -494,13 +496,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg);
 		goto cleanup_reg;
-	} else if (!extract) {
-		/*
-		 * Meta packages will have no non-meta files. Still display
-		 * 100% progress.
-		 */
-		pkg_emit_progress_start(NULL);
-		pkg_emit_progress_tick(1,1);
 	}
 
 	/*

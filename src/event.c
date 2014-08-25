@@ -590,20 +590,33 @@ event_callback(void *data, struct pkg_event *ev)
 			job_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Installing %n-%v", pkg, pkg);
+			pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
+			    pkg);
+			sbuf_finish(msg_buf);
+			printf("%s", sbuf_data(msg_buf));
 		}
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
-		if (pkg_has_message(ev->e_install_finished.pkg)) {
+		pkg = ev->e_install_finished.pkg;
+		if (pkg_has_message(pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
 			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg);
+			    pkg, pkg, pkg);
 		}
+		break;
+	case PKG_EVENT_EXTRACT_BEGIN:
+		if (quiet)
+			break;
+		else {
+			job_status_begin(msg_buf);
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg_buf, "Extracting %n-%v", pkg, pkg);
+		}
+		break;
+	case PKG_EVENT_EXTRACT_FINISHED:
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		if (quiet)
@@ -657,18 +670,20 @@ event_callback(void *data, struct pkg_event *ev)
 
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
-			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v",
+			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v...\n",
 			    pkg_new, pkg_new, pkg_old);
 			break;
 		case PKG_REINSTALL:
-			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
+			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v...\n",
 		    pkg_old, pkg_old);
 			break;
 		case PKG_UPGRADE:
-			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v",
+			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v...\n",
 			    pkg_new, pkg_old, pkg_new);
 			break;
 		}
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)

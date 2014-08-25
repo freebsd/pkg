@@ -135,6 +135,20 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_install_begin.pkg, ev->e_install_begin.pkg);
 		break;
+	case PKG_EVENT_EXTRACT_BEGIN:
+		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%n\", "
+		    "\"pkgversion\": \"%v\""
+		    "}}", ev->e_extract_begin.pkg, ev->e_extract_begin.pkg);
+		break;
+	case PKG_EVENT_EXTRACT_FINISHED:
+		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%n\", "
+		    "\"pkgversion\": \"%v\""
+		    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
+		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		pkg_get(ev->e_install_finished.pkg,
 		    PKG_MESSAGE, &message);
@@ -549,6 +563,28 @@ pkg_emit_install_finished(struct pkg *p)
 		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 		syslog(LOG_NOTICE, "%s-%s installed", name, version);
 	}
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_extract_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_EXTRACT_BEGIN;
+	ev.e_extract_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_extract_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_EXTRACT_FINISHED;
+	ev.e_extract_finished.pkg = p;
 
 	pkg_emit_event(&ev);
 }
