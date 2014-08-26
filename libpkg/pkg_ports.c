@@ -463,9 +463,8 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 	if (line[0] == '\0') {
 		if (p->uname != NULL)
 			free(p->uname);
-		p->uname = NULL;
-	}
-	else {
+		p->uname = strdup("root");
+	} else {
 		if (p->uname != NULL)
 			free(p->uname);
 		p->uname = strdup(line);
@@ -479,10 +478,15 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 static int
 setgroup(struct plist *p, char *line, struct file_attr *a)
 {
-	if (line[0] == '\0')
-		p->gname = NULL;
-	else
+	if (line[0] == '\0') {
+		if (p->gname != NULL)
+			free(p->gname);
+		p->gname = strdup("wheel");
+	} else {
+		if (p->gname != NULL)
+			free(p->gname);
 		p->gname = strdup(line);
+	}
 
 	free_file_attr(a);
 
