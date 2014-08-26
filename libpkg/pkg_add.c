@@ -414,9 +414,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		retcode = ret;
 		goto cleanup;
 	}
-	if ((flags & PKG_ADD_UPGRADE) == 0)
-		pkg_emit_install_begin(pkg);
-
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);
@@ -454,6 +451,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (location != NULL)
 		pkg_addannotation(pkg, "relocated", location);
+
+	if ((flags & PKG_ADD_UPGRADE) == 0)
+		pkg_emit_install_begin(pkg);
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
