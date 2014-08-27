@@ -803,7 +803,7 @@ pkg_init(const char *path, const char *reposdir)
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
 			sbuf_putc(ukey, toupper(key[i]));
-		sbuf_done(ukey);
+		sbuf_finish(ukey);
 		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
 
 		if (strncasecmp(sbuf_data(ukey), "PACKAGESITE", sbuf_len(ukey))
