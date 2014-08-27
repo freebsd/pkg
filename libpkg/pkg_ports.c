@@ -173,6 +173,20 @@ keyword_open_schema(void)
 	return (keyword_schema);
 }
 
+static void *
+parse_mode(const char *str)
+{
+	if (str == NULL || *str == '\0')
+		return (NULL);
+
+	if (strstr(str, "u+") || strstr(str, "o+") || strstr(str, "g+") ||
+	    strstr(str, "u-") || strstr(str, "o-") || strstr(str, "g-"))
+		return (NULL);
+
+	return (setmode(str));
+}
+
+
 static void
 free_file_attr(struct file_attr *a)
 {
@@ -431,10 +445,11 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 	if (line[0] == '\0')
 		return (EPKG_OK);
 
-	if ((set = setmode(line)) == NULL)
+	if ((set = parse_mode(line)) == NULL) {
 		pkg_emit_error("%s wrong mode value", line);
-	else
-		p->perm = getmode(set, 0);
+		return (EPKG_FATAL);
+	}
+	p->perm = getmode(set, 0);
 
 	free_file_attr(a);
 
@@ -739,7 +754,8 @@ parse_actions(const ucl_object_t *o, struct plist *p,
 }
 
 static void
-parse_attributes(const ucl_object_t *o, struct file_attr **a) {
+parse_attributes(const ucl_object_t *o, struct file_attr **a)
+{
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	const char *key;
@@ -764,10 +780,11 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a) {
 		if (!strcasecmp(key, "mode")) {
 			if (cur->type == UCL_STRING) {
 				void *set;
-				if ((set = setmode(ucl_object_tostring(cur))) == NULL)
+				if ((set = parse_mode(ucl_object_tostring(cur))) == NULL) {
 					pkg_emit_error("Bad format for the mode attribute: %s", ucl_object_tostring(cur));
-				else
-					(*a)->mode = getmode(set, 0);
+					return;
+				}
+				(*a)->mode = getmode(set, 0);
 				free(set);
 			} else {
 				pkg_emit_error("Expecting a string for the mode attribute, ignored");
@@ -933,7 +950,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 		tmp[0] = '\0';
 		tmp++;
 		permstr = tmp;
-		if (*permstr != '\0' && (set = setmode(permstr)) == NULL) {
+		if (*permstr != '\0' && ((set = parse_mode(permstr)) == NULL)) {
 			pkg_emit_error("Malformed keyword %s, wrong mode section",
 			    keyword);
 			return (ret);
@@ -946,7 +963,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 			attr->owner = strdup(owner);
 		if (*group != '\0')
 			attr->group = strdup(group);
-		if (*permstr != '\0') {
+		if (set != NULL) {
 			attr->mode = getmode(set, 0);
 			free(set);
 		}
