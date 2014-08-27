@@ -180,7 +180,8 @@ parse_mode(const char *str)
 		return (NULL);
 
 	if (strstr(str, "u+") || strstr(str, "o+") || strstr(str, "g+") ||
-	    strstr(str, "u-") || strstr(str, "o-") || strstr(str, "g-"))
+	    strstr(str, "u-") || strstr(str, "o-") || strstr(str, "g-") ||
+	    strstr(str, "a+") || strstr(str, "a-"))
 		return (NULL);
 
 	return (setmode(str));
