@@ -444,15 +444,12 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 static int
 setowner(struct plist *p, char *line, struct file_attr *a)
 {
-	if (line[0] == '\0') {
-		if (p->uname != NULL)
-			free(p->uname);
+	if (p->uname != NULL)
+		free(p->uname);
+	if (line[0] == '\0')
 		p->uname = strdup("root");
-	} else {
-		if (p->uname != NULL)
-			free(p->uname);
+	else
 		p->uname = strdup(line);
-	}
 
 	free_file_attr(a);
 
@@ -462,15 +459,12 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 static int
 setgroup(struct plist *p, char *line, struct file_attr *a)
 {
-	if (line[0] == '\0') {
-		if (p->gname != NULL)
-			free(p->gname);
+	if (p->gname != NULL)
+		free(p->gname);
+	if (line[0] == '\0')
 		p->gname = strdup("wheel");
-	} else {
-		if (p->gname != NULL)
-			free(p->gname);
+	else
 		p->gname = strdup(line);
-	}
 
 	free_file_attr(a);
 
