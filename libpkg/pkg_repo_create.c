@@ -836,7 +836,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 		else
 			sbuf_printf(cmd, " %s ", argv[i]);
 	}
-	sbuf_done(cmd);
+	sbuf_finish(cmd);
 
 	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
 		ret = EPKG_FATAL;
