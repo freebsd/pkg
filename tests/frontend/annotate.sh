@@ -4,24 +4,22 @@ atf_test_case annotate
 annotate_head() {
 	atf_set "descr" "pkg annotate"
 	atf_set "require.files" \
-	   "$(atf_get_srcdir)/png-1.5.14.yaml $(atf_get_srcdir)/sqlite3-3.7.14.1.yaml"
+	   "$(atf_get_srcdir)/png.ucl $(atf_get_srcdir)/sqlite3.ucl"
 }
 
 annotate_body() {
-        export PKG_DBDIR=$HOME/pkg
         export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
 
-	mkdir -p $PKG_DBDIR || atf_fail "can't create $PKG_DBDIR"
-
-	for pkg in 'png-1.5.14' 'sqlite3-3.7.14.1' ; do
+	for pkg in 'png' 'sqlite3' ; do
 	    atf_check \
-		-o empty \
+		-o match:"^Installing.*\.\.\.$" \
 		-e empty \
 		-s exit:0 \
-		pkg register -t -M $(atf_get_srcdir)/$pkg.yaml
+		pkg register -t -M $(atf_get_srcdir)/$pkg.ucl
 	done
 
-	[ -f "$PKG_DBDIR/local.sqlite" ] || \
+	[ -f "./local.sqlite" ] || \
 	    atf_fail "Can't populate $PKG_DBDIR/local.sqlite"
 
         atf_check \
