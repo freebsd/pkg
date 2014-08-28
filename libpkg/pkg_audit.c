@@ -174,22 +174,18 @@ pkg_audit_free_entry(struct pkg_audit_entry *e)
 	if (!e->ref) {
 		LL_FOREACH_SAFE(e->packages, ppkg, ppkg_tmp) {
 			LL_FOREACH_SAFE(ppkg->versions, vers, vers_tmp) {
-				if (vers->v1.version) {
-					free(vers->v1.version);
-				}
-				if (vers->v2.version) {
-					free(vers->v2.version);
-				}
+				free(vers->v1.version);
+				free(vers->v2.version);
 				free(vers);
 			}
 
 			LL_FOREACH_SAFE(ppkg->names, pname, pname_tmp) {
-					free(pname->pkgname);
+				free(pname->pkgname);
 				free(pname);
 			}
 		}
 		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-				free(cve->cvename);
+			free(cve->cvename);
 			free(cve);
 		}
 			free(e->url);

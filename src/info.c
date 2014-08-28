@@ -514,7 +514,7 @@ exec_info(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
-		pkg_free(pkg);
+	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

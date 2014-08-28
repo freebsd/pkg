@@ -518,7 +518,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 		}
 	}
 
-		free(line);
+	free(line);
 
 	return (EPKG_OK);
 }

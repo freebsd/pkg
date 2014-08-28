@@ -606,7 +606,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		cbdata.need_sig = false;
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
 			&cbdata, (char **)&sig, &siglen) == EPKG_OK) {
-				free(sig);
+			free(sig);
 		}
 		else {
 			pkg_emit_error("Repo extraction failed");

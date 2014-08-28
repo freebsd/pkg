@@ -417,7 +417,7 @@ cleanup:
 	close(mfd);
 	if (read_files)
 		close(ffd);
-		free(mdigest);
+	free(mdigest);
 
 	pkg_debug(1, "worker done");
 	exit(ret);
@@ -1093,7 +1093,7 @@ cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
 	pkg_repo_meta_free(meta);
 
-		rsa_free(rsa);
+	rsa_free(rsa);
 
 	return (ret);
 }

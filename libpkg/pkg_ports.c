@@ -267,9 +267,7 @@ static int
 pkgdep(struct plist *p, char *line, struct file_attr *a)
 {
 	if (*line != '\0') {
-		if (p->pkgdep != NULL) {
-			free(p->pkgdep);
-		}
+		free(p->pkgdep);
 		p->pkgdep = strdup(line);
 	}
 	free(a);
@@ -460,7 +458,7 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 static int
 setowner(struct plist *p, char *line, struct file_attr *a)
 {
-		free(p->uname);
+	free(p->uname);
 	if (line[0] == '\0')
 		p->uname = strdup("root");
 	else
@@ -474,7 +472,7 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 static int
 setgroup(struct plist *p, char *line, struct file_attr *a)
 {
-		free(p->gname);
+	free(p->gname);
 	if (line[0] == '\0')
 		p->gname = strdup("wheel");
 	else
@@ -1124,9 +1122,9 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	HASH_FREE(pplist.keywords, keyword_free);
 
-		free(pplist.pkgdep);
-		free(pplist.uname);
-		free(pplist.gname);
+	free(pplist.pkgdep);
+	free(pplist.uname);
+	free(pplist.gname);
 	free(pplist.post_patterns.buf);
 	free(pplist.post_patterns.patterns);
 

@@ -347,8 +347,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				    ucl_object_fromstring_common(data, strlen(data), 0),
 				    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 
-				free(buf);
-
+			free(buf);
 			break;
 		case UCL_BOOLEAN:
 			ucl_object_replace_key(pkg->fields,

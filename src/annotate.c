@@ -382,8 +382,8 @@ exec_annotate(int argc, char **argv)
 	}
 
 cleanup:
-		pkg_free(pkg);
-		pkgdb_it_free(it);
+	pkg_free(pkg);
+	pkgdb_it_free(it);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);

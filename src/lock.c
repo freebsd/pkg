@@ -245,8 +245,8 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		exitcode = EX_IOERR;
 
 cleanup:
-		pkg_free(pkg);
-		pkgdb_it_free(it);
+	pkg_free(pkg);
+	pkgdb_it_free(it);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);

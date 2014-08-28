@@ -186,7 +186,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	}
 
 cleanup:
-		free(pkgs);
+	free(pkgs);
 	if (jobs != NULL)
 		pkg_jobs_free(jobs);
 

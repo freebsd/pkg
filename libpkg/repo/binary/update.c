@@ -527,7 +527,7 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 		free(deps);
 	}
 
-		free(linebuf);
+	free(linebuf);
 }
 
 sqlite3_stmt *

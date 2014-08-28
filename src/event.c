@@ -354,7 +354,8 @@ void
 progressbar_start(const char *pmsg)
 {
 	free(progress_message);
-		progress_message = NULL;
+	progress_message = NULL;
+
 	if (quiet)
 		return;
 	if (pmsg != NULL)
