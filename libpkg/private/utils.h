@@ -127,4 +127,6 @@ int pkg_symlink_cksumat(int fd, const char *path, const char *root,
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
+void *parse_mode(const char *str);
+
 #endif
