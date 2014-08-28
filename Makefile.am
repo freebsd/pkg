@@ -34,5 +34,9 @@ cocci:
 		spatch ${COCCI_ARGS} -in_place -sp_file $$c -dir ${top_srcdir}/src ; \
 	done
 
+style-fix:
+	find ${top_srcdir}/src ${top_srcdir}/libpkg -name "*.[c]" | xargs \
+		uncrustify -c ${top_srcdir}/freebsd.cfg --no-backup
+
 
 SUBDIRS = external libpkg src tests scripts docs
