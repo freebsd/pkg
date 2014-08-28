@@ -198,6 +198,7 @@ manifest_schema_open(pkg_t type __unused)
 		"    origin,"
 		"    name,"
 		"    comment,"
+		"    version,"
 		"    desc,"
 		"    maintainer,"
 		"    arch,"
