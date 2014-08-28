@@ -24,11 +24,13 @@ annotate_body() {
 
         atf_check \
 	    -o match:"added annotation tagged: TEST1" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg annotate -Ay png TEST1 test1
 
 	atf_check \
 	    -o match:"TEST1 +: test1" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg info -A png
 
@@ -36,46 +38,54 @@ annotate_body() {
 
 	atf_check \
 	    -o match:"added annotation tagged: TEST2" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg annotate -Ay png TEST2 < $HOME/annotate-TEST2.txt
 
 	atf_check \
 	    -o match:"TEST1 +: test1" \
 	    -o match:"TEST2 +: test2" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg info -A png
 
 	atf_check \
 	    -o match:"Modified annotation tagged: TEST1" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg annotate -My png TEST1 test1-modified
 
 	atf_check \
 	    -o match:"TEST1 +: test1-modified" \
 	    -o match:"TEST2 +: test2" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg info -A png
 
 	atf_check \
 	    -o match:"Deleted annotation tagged: TEST1" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg annotate -Dy png TEST1
 
 	atf_check \
 	    -o not-match:"TEST1" \
 	    -o match:"TEST2 +: test2" \
+	    -e empty \
 	    -s exit:0 \
 	    pkg info -A png
 
 	atf_check \
 	    -o match:"Deleted annotation tagged: TEST2" \
 	    -s exit:0 \
+	    -e empty \
 	    pkg annotate -Dy png TEST2
 
 	atf_check \
 	    -o not-match:"TEST1" \
 	    -o not-match:"TEST2" \
 	    -s exit:0 \
+	    -e empty \
 	    pkg info -A png
 }
 
