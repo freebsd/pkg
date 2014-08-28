@@ -21,7 +21,7 @@ identifier release =~ "^(?x)
 | pkg(?:_reset
      |  db_(?:close|sqlite_it_reset)
      )
-| sbuf_(?:delete|reset)
+| sbuf_reset
 )$";
 @@
 -if (\(x != 0 \| x != NULL\))
@@ -50,7 +50,7 @@ identifier release =~ "^(?x)
 | pkg(?:_reset
      |  db_(?:close|sqlite_it_reset)
      )
-| sbuf_(?:delete|reset)
+| sbuf_reset
 )$";
 @@
 -if (\(x != 0 \| x != NULL\)) {
@@ -81,7 +81,7 @@ identifier release =~ "^(?x)
 | pkg(?:_reset
      |  db_(?:close|sqlite_it_reset)
      )
-| sbuf_(?:delete|reset)
+| sbuf_reset
 )$";
 @@
 -if (\(a != 0 \| a != NULL\) && \(b != 0 \| b != NULL\))
@@ -111,7 +111,7 @@ identifier release =~ "^(?x)
 | pkg(?:_reset
      |  db_(?:close|sqlite_it_reset)
      )
-| sbuf_(?:delete|reset)
+| sbuf_reset
 )$";
 @@
 -if (\(a != 0 \| a != NULL\) && \(b != 0 \| b != NULL\)) {
