@@ -11,4 +11,9 @@ EXTRA_DIST=	docs
 dist-hook:
 	rm -rf `find $(distdir)/external -type d -name .deps`
 
+check-local:
+	kyua --config=none test \
+		--kyuafile='$(top_srcdir)/Kyuafile' \
+		--build-root='$(top_builddir)'
+
 SUBDIRS = external libpkg src tests scripts docs
