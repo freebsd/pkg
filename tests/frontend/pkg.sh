@@ -13,23 +13,6 @@ pkg_no_database_body() {
 	-x PKG_DBDIR=/dev/null pkg -N
 }
 
-atf_test_case pkg_version
-pkg_version_head()
-{
-	atf_set "descr" "testing pkg -- latest compiled version"
-}
-
-pkg_version_body()
-{
-        NEWVERS_SH="$( atf_get_srcdir )/../../newvers.sh"
-	eval $($NEWVERS_SH)
-	
-	[ ${PKGVERSION} ] || atf_fail 'eval $(newvers.sh) failed'
-
-	atf_check -o match:"^${PKGVERSION}" -e empty -s exit:0 pkg -v
-}
-
-
 atf_test_case pkg_config_defaults
 pkg_config_defaults_head()
 {
@@ -72,6 +55,5 @@ atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment
 
 	atf_add_test_case pkg_no_database
-	atf_add_test_case pkg_version
 	atf_add_test_case pkg_config_defaults
 }
