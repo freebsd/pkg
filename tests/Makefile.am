@@ -10,8 +10,10 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		-larchive \
 		-lutil \
 		-lm \
+		-L/usr/local/lib \
 		-latf-c
-PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING
+PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING \
+		-I/usr/local/include
 PRIVATE_INCS=	$(PUBLIC_INCS) \
 		-I$(top_srcdir)/external/sqlite \
 		-I$(top_srcdir)/external/uthash \
@@ -32,11 +34,29 @@ plist_SOURCES=		lib/plist.c
 plist_CFLAGS=		$(PRIVATE_INCS)
 plist_LDADD=		$(GENERIC_LDADD)
 
+EXTRA_DIST=	frontend/png.ucl \
+		Kyuafile \
+		frontend/Kyuafile \
+		frontend/annotate.shin \
+		frontend/pkg.shin \
+		frontend/search.shin \
+		frontend/version.shin \
+		frontend/test_environment
+
+TESTS =
 tests_programs=	pkg_printf pkg_validation plist
 EXTRA_PROGRAMS=	$(tests_programs)
 check_PROGRAMS=	@TESTS@
+check_SCRIPTS=	frontend/pkg.sh \
+		frontend/annotate.sh \
+		frontend/search.sh \
+		frontend/version.sh
+CLEANFILES+=	${check_SCRIPTS}
+SUFFIXES = .sh
 
-check-local: $(tests_programs)
+.shin.sh:
+	@echo "    GEN   " $@;
+	@install -m 755 $< $@
 
 lib/pkg_printf.c:
 	@echo "    CP    " $@;
