@@ -219,10 +219,6 @@ AS_IF([test "x$with_ldns" = "xyes"], [
    ])
 ])
 
-AC_CHECK_HEADER([atf-c.h], [
-	 TESTS="\$(tests_programs)"
- ])
-
 AC_CHECK_HEADER([sys/capability.h], [
         AC_CHECK_LIB(c, cap_sandboxed, [
                 AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])

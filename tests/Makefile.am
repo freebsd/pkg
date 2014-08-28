@@ -46,7 +46,7 @@ EXTRA_DIST=	frontend/png.ucl \
 TESTS =
 tests_programs=	pkg_printf pkg_validation plist
 EXTRA_PROGRAMS=	$(tests_programs)
-check_PROGRAMS=	@TESTS@
+check_PROGRAMS=	$(tests_programs)
 check_SCRIPTS=	frontend/pkg.sh \
 		frontend/annotate.sh \
 		frontend/search.sh \
