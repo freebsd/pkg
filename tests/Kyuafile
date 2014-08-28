@@ -4,5 +4,6 @@ test_suite("pkg")
 
 atf_test_program{name='pkg_validation'}
 atf_test_program{name='pkg_printf'}
+atf_test_program{name='plist'}
 
 include('frontend/Kyuafile')
