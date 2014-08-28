@@ -220,7 +220,7 @@ AS_IF([test "x$with_ldns" = "xyes"], [
 ])
 
 AC_CHECK_HEADER([atf-c.h], [
-	 TESTS="\$(test_program)"
+	 TESTS="\$(tests_programs)"
  ])
 
 AC_CHECK_HEADER([sys/capability.h], [
@@ -326,5 +326,7 @@ AC_CONFIG_COMMANDS([pkg_repos.h], [[
 	fi
 	rm $NMODULES
 ]], [REPOS=$REPOS])
+
+AC_CONFIG_COMMANDS([mkdir], [$MKDIR_P tests/frontend])
 
 AC_OUTPUT
