@@ -29,6 +29,10 @@ COCCI_ARGS=	-I ${top_srcdir} \
 		-I ${top_srcdir}/external/sqlite  \
 		-I ${top_srcdir}/external/libelf
 
+1cocci:
+	spatch ${COCCI_ARGS} -in_place -sp_file $(top_srcdir)/tests/cocci/${COCCITEST} -dir ${top_srcdir}/libpkg ; \
+	spatch ${COCCI_ARGS} -in_place -sp_file $(top_srcdir)/tests/cocci/${COCCITEST} -dir ${top_srcdir}/src ;
+
 cocci:
 	for c in ${top_srcdir}/tests/cocci/*.cocci ; do \
 		spatch ${COCCI_ARGS} -in_place -sp_file $$c -dir ${top_srcdir}/libpkg ; \
