@@ -30,8 +30,8 @@ COCCI_ARGS=	-I ${top_srcdir} \
 
 cocci:
 	for c in ${top_srcdir}/tests/cocci/*.cocci ; do \
-		spatch ${COCCI_ARGS} -in_place -sp_file $c -dir libpkg ; \
-		spatch ${COCCI_ARGS} -in_place -sp_file $c -dir src ; \
+		spatch ${COCCI_ARGS} -in_place -sp_file $$c -dir ${top_srcdir}/libpkg ; \
+		spatch ${COCCI_ARGS} -in_place -sp_file $$c -dir ${top_srcdir}/src ; \
 	done
 
 
