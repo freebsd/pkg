@@ -932,7 +932,6 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 	}
 
 	HASH_FREE(ordered_variables, free);
-	if (line != NULL)
 		free(line);
 	return (ret);
 }

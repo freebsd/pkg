@@ -460,7 +460,6 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 static int
 setowner(struct plist *p, char *line, struct file_attr *a)
 {
-	if (p->uname != NULL)
 		free(p->uname);
 	if (line[0] == '\0')
 		p->uname = strdup("root");
@@ -475,7 +474,6 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 static int
 setgroup(struct plist *p, char *line, struct file_attr *a)
 {
-	if (p->gname != NULL)
 		free(p->gname);
 	if (line[0] == '\0')
 		p->gname = strdup("wheel");
@@ -1126,11 +1124,8 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	HASH_FREE(pplist.keywords, keyword_free);
 
-	if (pplist.pkgdep != NULL)
 		free(pplist.pkgdep);
-	if (pplist.uname != NULL)
 		free(pplist.uname);
-	if (pplist.gname != NULL)
 		free(pplist.gname);
 	free(pplist.post_patterns.buf);
 	free(pplist.post_patterns.patterns);

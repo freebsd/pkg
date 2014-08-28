@@ -353,10 +353,8 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 void
 progressbar_start(const char *pmsg)
 {
-	if (progress_message != NULL) {
-		free(progress_message);
+	free(progress_message);
 		progress_message = NULL;
-	}
 	if (quiet)
 		return;
 	if (pmsg != NULL)

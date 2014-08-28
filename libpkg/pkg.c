@@ -347,7 +347,6 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				    ucl_object_fromstring_common(data, strlen(data), 0),
 				    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
 
-			if (buf != NULL)
 				free(buf);
 
 			break;

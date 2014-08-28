@@ -120,9 +120,7 @@ pkg_jobs_destdir(struct pkg_jobs *j)
 static void
 pkg_jobs_pattern_free(struct job_pattern *jp)
 {
-	if (jp->pattern != NULL)
 		free(jp->pattern);
-	if (jp->path != NULL)
 		free(jp->path);
 
 	free(jp);
@@ -659,7 +657,6 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 	}
 
 
-	if (p != NULL)
 		pkg_free(p);
 
 	sbuf_free(qmsg);

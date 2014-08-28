@@ -184,21 +184,16 @@ pkg_audit_free_entry(struct pkg_audit_entry *e)
 			}
 
 			LL_FOREACH_SAFE(ppkg->names, pname, pname_tmp) {
-				if (pname->pkgname)
 					free(pname->pkgname);
 				free(pname);
 			}
 		}
 		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-			if (cve->cvename)
 				free(cve->cvename);
 			free(cve);
 		}
-		if (e->url)
 			free(e->url);
-		if (e->desc)
 			free(e->desc);
-		if (e->id)
 			free(e->id);
 	}
 	free(e);
