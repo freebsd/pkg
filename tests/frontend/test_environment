@@ -1,2 +1,1 @@
-export LD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg
-export PATH=$(atf_get_srcdir)/../../pkg:${PATH}
+export PATH=$(atf_get_srcdir)/../../src:${PATH}
