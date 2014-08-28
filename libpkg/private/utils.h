@@ -123,4 +123,6 @@ int pkg_symlink_cksum(const char *path, const char *root, char *cksum);
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
+void *parse_mode(const char *str);
+
 #endif

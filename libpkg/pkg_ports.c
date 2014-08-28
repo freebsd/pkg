@@ -173,7 +173,7 @@ keyword_open_schema(void)
 	return (keyword_schema);
 }
 
-static void *
+void *
 parse_mode(const char *str)
 {
 	if (str == NULL || *str == '\0')
