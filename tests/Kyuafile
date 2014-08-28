@@ -1,6 +1,8 @@
-syntax('kyuafile', 1)
+syntax("kyuafile", 1)
 
-test_suite('prop: test-suite = pkgng')
+test_suite("pkg")
+
+atf_test_program{name='pkg_validation'}
+atf_test_program{name='pkg_printf'}
 
 include('frontend/Kyuafile')
-include('lib/Kyuafile')

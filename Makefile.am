@@ -12,6 +12,7 @@ dist-hook:
 	rm -rf `find $(distdir)/external -type d -name .deps`
 
 check-local:
+	make -C $(top_srcdir)/tests/ check-local
 	kyua --config=none test \
 		--kyuafile='$(top_srcdir)/Kyuafile' \
 		--build-root='$(top_builddir)'
