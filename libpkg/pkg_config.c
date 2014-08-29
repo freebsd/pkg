@@ -323,6 +323,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Use read locking for query database"
 	},
+	{
+		PKG_STRING,
+		"VERSION_SOURCE",
+		NULL,
+		"Version source for pkg-version (I, P, R), default is auto detect"
+	},
 };
 
 static bool parsed = false;
