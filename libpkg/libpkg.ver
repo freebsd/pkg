@@ -188,6 +188,8 @@ global:
 	pkg_user_name;
 	pkg_user_uidstr;
 	pkg_users;
+	pkg_utils_count_spaces;
+	pkg_utils_tokenize;
 	pkg_vasprintf;
 	pkg_vdprintf;
 	pkg_version_change;
