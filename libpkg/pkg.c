@@ -1607,9 +1607,6 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	struct pkg_dir *dir = NULL;
 	char spath[MAXPATHLEN];
 	char dpath[MAXPATHLEN];
-	const char *prefix;
-	char *mtree;
-	const pkg_object *o;
 
 	/* Execute pre-install scripts */
 	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
