@@ -33,10 +33,10 @@ pkg_config_defaults_body()
 	-o match:'^ *DEVELOPER_MODE = false;$' \
 	-o match:'^ *VULNXML_SITE = "http://www.vuxml.org/freebsd/vuln.xml.bz2";$' \
 	-o match:'^ *FETCH_RETRY = 3;$' \
-	-o match:'^ *PKG_PLUGINS_DIR = "/usr/local/lib/pkg/";$' \
+	-o match:'^ *PKG_PLUGINS_DIR = ".*lib/pkg/";$' \
 	-o match:'^ *PKG_ENABLE_PLUGINS = true;$' \
 	-o match:'^ *DEBUG_SCRIPTS = false;$' \
-	-o match:'^ *PLUGINS_CONF_DIR = "/usr/local/etc/pkg/";$' \
+	-o match:'^ *PLUGINS_CONF_DIR = ".*/etc/pkg/";$' \
 	-o match:'^ *PERMISSIVE = false;$' \
 	-o match:'^ *REPO_AUTOUPDATE = true;$' \
 	-o match:'^ *NAMESERVER = "";$' \
