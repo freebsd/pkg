@@ -125,9 +125,9 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 
 	/* make sure to finish by a / */
 	if (path[len - 1] != '/') {
-		path[len - 1] = '/';
+		path[len] = '/';
 		len++;
-		path[len - 1] = '\0';
+		path[len] = '\0';
 	}
 
 	for (i = 0; i < pkg->dir_to_del_len ; i++) {
