@@ -109,20 +109,21 @@ static int pkgdep(struct plist *, char *, struct file_attr *);
 static struct action_cmd {
 	const char *name;
 	int (*perform)(struct plist *, char *, struct file_attr *);
+	size_t namelen;
 } list_actions[] = {
-	{ "setprefix", setprefix },
-	{ "dirrm", dirrm },
-	{ "dirrmtry", dirrmtry },
-	{ "file", file },
-	{ "setmode", setmod },
-	{ "setowner", setowner },
-	{ "setgroup", setgroup },
-	{ "comment", comment_key },
-	{ "ignore_next", ignore_next },
+	{ "setprefix", setprefix, 9},
+	{ "dirrm", dirrm, 5 },
+	{ "dirrmtry", dirrmtry, 7 },
+	{ "file", file, 4 },
+	{ "setmode", setmod, 6 },
+	{ "setowner", setowner, 8 },
+	{ "setgroup", setgroup, 8 },
+	{ "comment", comment_key, 7 },
+	{ "ignore_next", ignore_next, 11 },
 	/* compat with old packages */
-	{ "name", name_key },
-	{ "pkgdep", pkgdep },
-	{ NULL, NULL }
+	{ "name", name_key, 4 },
+	{ "pkgdep", pkgdep, 6 },
+	{ NULL, NULL, 0 }
 };
 
 static ucl_object_t *
@@ -585,7 +586,8 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 	regmatch_t pmatch[2];
 	int ret;
 
-	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL);
+	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL, 0,
+	    NULL);
 	if (ret != EPKG_OK)
 		return (EPKG_OK);
 
@@ -734,16 +736,31 @@ keyword_free(struct keyword *k)
 
 static int
 parse_actions(const ucl_object_t *o, struct plist *p,
-    char *line, struct file_attr *a)
+    char *line, struct file_attr *a, int argc, char **argv)
 {
 	const ucl_object_t *cur;
+	const char *actname;
 	ucl_object_iter_t it = NULL;
-	int i;
+	int i, j = 0;
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
+		actname = ucl_object_tostring(cur);
 		for (i = 0; list_actions[i].name != NULL; i++) {
-			if (!strcasecmp(ucl_object_tostring(cur), list_actions[i].name)) {
-				list_actions[i].perform(p, line, a);
+			if (!strncasecmp(actname, list_actions[i].name,
+			    list_actions[i].namelen) &&
+			    (actname[list_actions[i].namelen ] == '\0' ||
+			     actname[list_actions[i].namelen ] == '(' )) {
+				actname += list_actions[i].namelen;
+				if (*actname == '(') {
+					j = strtol(actname+1, NULL, 10);
+					if (j > argc) {
+						pkg_emit_error(
+						    "Invalid argument requested %d"
+						    " available: %d", j, argc);
+						return (EPKG_FATAL);
+					}
+				}
+				list_actions[i].perform(p, j > 0 ? argv[j - 1] : line, a);
 				break;
 			}
 		}
@@ -797,48 +814,71 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 {
 	const ucl_object_t *o;
 	char *cmd;
+	char **args = NULL;
+	char *buf, *tofree;
+	int spaces, argc = 0, i;
+
+	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
+		spaces = pkg_utils_count_spaces(line);
+		args = malloc((spaces + 1)* sizeof(char *));
+		tofree = buf = strdup(line);
+		while (buf != NULL) {
+			args[argc++] = pkg_utils_tokenize(&buf);
+		}
+	}
 
 	if ((o = ucl_object_find_key(obj,  "attributes")))
 		parse_attributes(o, &attr);
 
 	if ((o = ucl_object_find_key(obj, "pre-install"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args);
 		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "post-install"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args);
 		sbuf_printf(p->post_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "pre-deinstall"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args);
 		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "post-deinstall"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args);
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "pre-upgrade"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args);
 		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "post-upgrade"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args);
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj,  "actions")))
-		parse_actions(o, p, line, attr);
+		parse_actions(o, p, line, attr, argc, args);
+
+	for (i = 0; i < argc; i++)
+		free(args[i]);
+	free(args);
+	free(tofree);
 
 	return (EPKG_OK);
 }

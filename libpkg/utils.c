@@ -246,11 +246,12 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 int
 format_exec_cmd(char **dest, const char *in, const char *prefix,
-    const char *plist_file, char *line)
+    const char *plist_file, char *line, int argc, char **argv)
 {
 	struct sbuf *buf = sbuf_new_auto();
 	char path[MAXPATHLEN];
 	char *cp;
+	size_t sz;
 
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
@@ -323,7 +324,25 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 * given (default exec) %@ does not
 			 * exists
 			 */
+		case '#':
+			sbuf_putc(buf, argc);
+			break;
 		default:
+			if ((sz = strspn(in, "0123456789")) > 0) {
+				int pos = strtol(in, NULL, 10);
+				if (pos > argc) {
+					pkg_emit_error("Requesting argument "
+					    "%%%d while only %d arguments are"
+					    " available", pos, argc);
+					sbuf_finish(buf);
+					sbuf_free(buf);
+
+					return (EPKG_FATAL);
+				}
+				sbuf_cat(buf, argv[pos -1]);
+				in += sz -1;
+				break;
+			}
 			sbuf_putc(buf, '%');
 			sbuf_putc(buf, in[0]);
 			break;
