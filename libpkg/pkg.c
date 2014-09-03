@@ -1611,12 +1611,6 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	char *mtree;
 	const pkg_object *o;
 
-	o = pkg_config_get("DISABLE_MTREE");
-	if (o && !pkg_object_bool(o)) {
-		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
-		do_extract_mtree(mtree, prefix);
-	}
-
 	/* Execute pre-install scripts */
 	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 

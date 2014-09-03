@@ -52,7 +52,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct pkg_dir	*dir = NULL;
 	char		*m;
 	int		 ret;
-	const char	*mtree;
 	bool		 developer;
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
