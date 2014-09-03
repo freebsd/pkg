@@ -230,7 +230,7 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL) {
 		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) 
+		if (ret != EPKG_OK)
 			return (EX_IOERR);
 
 	} else {
@@ -247,10 +247,6 @@ exec_register(int argc, char **argv)
 		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 		if (access(fpath, F_OK) == 0)
 			pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
-
-		snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
 		for (i = 0; scripts[i] != NULL; i++) {
 			snprintf(fpath, sizeof(fpath), "%s/%s", mdir,
