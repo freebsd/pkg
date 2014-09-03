@@ -11,7 +11,7 @@ search_body() {
 }
 
 atf_init_test_cases() {
-        . $(atf_get_srcdir)/test_environment
+        . $(atf_get_srcdir)/test_environment.sh
 
 	unset PKG_DBDIR
 
