@@ -107,25 +107,6 @@ suggestions to the output of
 as an aide to port maintainers, including indicating when the port
 might be marked as architecture independent.
 Default: no.
-.It Cm DISABLE_MTREE: boolean
-For experimental purposes only.
-Not for use on production systems.
-All this option does is prevent processing of
-.Cm +MTREE
-data when installing a package.
-.Cm +MTREE
-files are a legacy feature of the ports tree, which provide functionality
-necessary for
-.Xr pkg-install 8
-as it cannot handle creating arbitrary directory hierarchies otherwise.
-.Xr pkg 8
-can create such directory structures natively, but currently still uses the
-.Cm +MTREE
-data.
-This option exists to facilitate developing
-.Cm +MTREE
-free package sets.
-Default: no.
 .It Cm EVENT_PIPE: string
 Send all event messages to the specified fifo or Unix socket.
 Events messages should be formatted as JSON.

@@ -246,12 +246,6 @@ static struct config_entry c[] = {
 		"Environment variables pkg will use",
 	},
 	{
-		PKG_BOOL,
-		"DISABLE_MTREE",
-		"NO",
-		"Experimental: disable MTREE processing on pkg installation",
-	},
-	{
 		PKG_STRING,
 		"PKG_SSH_ARGS",
 		NULL,
