@@ -107,18 +107,118 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	return (pkgdb_unregister_pkg(db, id));
 }
 
+static void
+pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
+{
+	char path[MAXPATHLEN];
+	char *tmp;
+	size_t i, len, len2;
+
+	strlcpy(path, file != NULL ? file : dir, MAXPATHLEN);
+
+	if (file != NULL) {
+		tmp = strrchr(path, '/');
+		tmp[1] = '\0';
+	}
+
+	len = strlen(path);
+
+	/* make sure to finish by a / */
+	if (path[len - 1] != '/') {
+		path[len - 1] = '/';
+		len++;
+		path[len - 1] = '\0';
+	}
+
+	for (i = 0; i < pkg->dir_to_del_len ; i++) {
+		len2 = strlen(pkg->dir_to_del[i]);
+		if (len2 >= len && strncmp(path, pkg->dir_to_del[i], len) == 0)
+			return;
+
+		if (strncmp(path, pkg->dir_to_del[i], len2) == 0) {
+			pkg_debug(1, "Replacing in deletion %s with %s",
+			    pkg->dir_to_del[i], path);
+			free(pkg->dir_to_del[i]);
+			pkg->dir_to_del[i] = strdup(path);
+			return;
+		}
+	}
+
+	pkg_debug(1, "Adding to deletion %s", path);
+
+	if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
+		pkg->dir_to_del_cap += 64;
+		pkg->dir_to_del = reallocf(pkg->dir_to_del,
+		    pkg->dir_to_del_cap * sizeof(char *));
+	}
+
+	pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+}
+
+static void
+rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
+{
+	char *tmp;
+	int64_t cnt;
+	char fullpath[MAXPATHLEN];
+
+	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1 &&
+	    errno != ENOTEMPTY && errno != EBUSY) {
+		pkg_emit_errno("unlinkat", dir);
+	}
+
+	tmp = strrchr(dir, '/');
+	if (tmp == dir)
+		return;
+
+	tmp[0] = '\0';
+	tmp = strrchr(dir, '/');
+	tmp[1] = '\0';
+
+	snprintf(fullpath, sizeof(fullpath), "/%s", dir);
+	if (pkgdb_is_dir_used(db, dir, &cnt) != EPKG_OK)
+		return;
+
+	if (cnt > 1)
+		return;
+
+	if (strcmp(prefix_r, dir) == 0)
+		return;
+
+	rmdir_p(db, pkg, dir, prefix_r);
+}
+
+static void
+pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
+{
+	char prefix_r[MAXPATHLEN];
+	const char *prefix;
+	size_t i;
+
+	pkg_get(pkg, PKG_PREFIX, &prefix);
+	snprintf(prefix_r, sizeof(prefix_r), "%s/", prefix + 1);
+	for (i = 0; i < pkg->dir_to_del_len; i++)
+		rmdir_p(db, pkg, pkg->dir_to_del[i], prefix_r);
+}
+
 void
 pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 {
 	const char *sum = pkg_file_cksum(file);
 	const char *path;
+	const char *prefix_rel;
 	struct stat st;
+	size_t len;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	pkg_open_root_fd(pkg);
 
 	path = pkg_file_path(file);
 	path++;
+
+	pkg_get(pkg, PKG_PREFIX, &prefix_rel);
+	prefix_rel++;
+	len = strlen(prefix_rel);
 
 	/* Regular files and links */
 	/* check sha256 */
@@ -147,6 +247,10 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			pkg_emit_errno("unlinkat", path);
 		return;
 	}
+
+	/* do not bother about directories not in prefix */
+	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/')
+		pkg_add_dir_to_del(pkg, path, NULL);
 }
 
 int
@@ -184,15 +288,29 @@ void
 pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir, unsigned force)
 {
 	const char *path;
+	const char *prefix_rel;
+	size_t len;
+
 	pkg_open_root_fd(pkg);
 
 	path = pkg_dir_path(dir);
 	/* remove the first / */
 	path++;
 
-	if (unlinkat(pkg->rootfd, path, AT_REMOVEDIR) == -1 &&
-	    errno != ENOTEMPTY && errno != EBUSY)
-		pkg_emit_errno("rmdir", pkg_dir_path(dir));
+	pkg_get(pkg, PKG_PREFIX, &prefix_rel);
+	prefix_rel++;
+	len = strlen(prefix_rel);
+
+	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
+		pkg_add_dir_to_del(pkg, NULL, path);
+	} else {
+		if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
+			pkg->dir_to_del_cap += 64;
+			pkg->dir_to_del = reallocf(pkg->dir_to_del,
+			    pkg->dir_to_del_cap * sizeof(char *));
+		}
+		pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+	}
 }
 
 int
@@ -206,6 +324,8 @@ pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 
 		pkg_delete_dir(pkg, dir, force);
 	}
+
+	pkg_effective_rmdir(db, pkg);
 
 	return (EPKG_OK);
 }
