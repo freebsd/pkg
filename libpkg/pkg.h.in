@@ -1785,5 +1785,7 @@ bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 		bool quiet, struct sbuf **result);
 		
 void pkg_audit_free (struct pkg_audit *audit);
+char *pkg_utils_tokenize(char **);
+int pkg_utils_count_spaces(const char *);
 
 #endif
