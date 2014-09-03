@@ -34,14 +34,15 @@ plist_SOURCES=		lib/plist.c
 plist_CFLAGS=		$(PRIVATE_INCS)
 plist_LDADD=		$(GENERIC_LDADD)
 
-EXTRA_DIST=	frontend/png.ucl \
+EXTRA_DIST=	frontend/png.uclin \
+		frontend/sqlite3.uclin \
 		Kyuafile \
 		frontend/Kyuafile \
 		frontend/annotate.shin \
 		frontend/pkg.shin \
 		frontend/search.shin \
 		frontend/version.shin \
-		frontend/test_environment
+		frontend/test_environment.shin
 
 TESTS =
 tests_programs=	pkg_printf pkg_validation plist
@@ -50,13 +51,20 @@ check_PROGRAMS=	$(tests_programs)
 check_SCRIPTS=	frontend/pkg.sh \
 		frontend/annotate.sh \
 		frontend/search.sh \
-		frontend/version.sh
+		frontend/version.sh \
+		frontend/test_environment.sh \
+		frontend/png.ucl \
+		frontend/sqlite3.ucl
 CLEANFILES+=	${check_SCRIPTS}
-SUFFIXES = .sh
+SUFFIXES = .sh .ucl
 
 .shin.sh:
 	@echo "    GEN   " $@;
 	@install -m 755 $< $@
+
+.uclin.ucl:
+	@echo "    GEN   " $@;
+	@install -m 644 $< $@
 
 lib/pkg_printf.c:
 	@echo "    CP    " $@;
