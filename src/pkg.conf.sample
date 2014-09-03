@@ -41,7 +41,6 @@
 #SSH_RESTRICT_DIR = "";
 #PKG_ENV {
 #}
-#DISABLE_MTREE = false;
 #PKG_SSH_ARGS = "";
 #DEBUG_LEVEL = 0;
 #ALIAS {

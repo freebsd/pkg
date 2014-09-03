@@ -44,7 +44,6 @@ pkg_config_defaults_body()
 	-o match:'^ *FETCH_TIMEOUT = 30;$' \
 	-o match:'^ *UNSET_TIMESTAMP = false;$' \
 	-o match:'^ *SSH_RESTRICT_DIR = "";$' \
-	-o match:'^ *DISABLE_MTREE = false;$' \
 	-e empty              \
 	-s exit:0             \
 	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -R "" -vv
