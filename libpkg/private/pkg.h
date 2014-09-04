@@ -539,5 +539,6 @@ int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir, unsigned force);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force);
 int pkg_open_root_fd(struct pkg *pkg);
+void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
 
 #endif

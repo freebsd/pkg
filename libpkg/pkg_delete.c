@@ -107,7 +107,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	return (pkgdb_unregister_pkg(db, id));
 }
 
-static void
+void
 pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 {
 	char path[MAXPATHLEN];

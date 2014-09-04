@@ -34,6 +34,10 @@ plist_SOURCES=		lib/plist.c
 plist_CFLAGS=		$(PRIVATE_INCS)
 plist_LDADD=		$(GENERIC_LDADD)
 
+pkg_add_dir_to_del_SOURCES=	lib/pkg_add_dir_to_del.c
+pkg_add_dir_to_del_CFLAGS=	$(PRIVATE_INCS)
+pkg_add_dir_to_del_LDADD=	$(GENERIC_LDADD)
+
 EXTRA_DIST=	frontend/png.uclin \
 		frontend/sqlite3.uclin \
 		Kyuafile \
@@ -45,7 +49,10 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/test_environment.shin
 
 TESTS =
-tests_programs=	pkg_printf pkg_validation plist
+tests_programs=	pkg_printf \
+		pkg_validation \
+		plist \
+		pkg_add_dir_to_del
 EXTRA_PROGRAMS=	$(tests_programs)
 check_PROGRAMS=	$(tests_programs)
 check_SCRIPTS=	frontend/pkg.sh \
