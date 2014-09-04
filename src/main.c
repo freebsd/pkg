@@ -691,15 +691,16 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
-	if (!pkg_compiled_for_same_os_major())
-		warnx("Warning: Major version upgrade detected.  Running \"pkg-static "
-		      "install -f pkg\" recommended");
-
 	if (pkg_init(conffile, reposdir) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
+
+	if (!pkg_compiled_for_same_os_major())
+		warnx("Warning: Major version upgrade detected.  Running \"pkg-static "
+		      "install -f pkg\" recommended");
+
 
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
