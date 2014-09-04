@@ -658,18 +658,14 @@ bool
 pkg_compiled_for_same_os_major(void)
 {
 #ifdef OSMAJOR
-	struct utsname	u;
-	int		osmajor;
+	const char	*myabi;
+	int		 osmajor;
 
-	/* Are we running the same OS major version as the one we were
-	 * compiled under? */
+	myabi = pkg_object_string(pkg_config_get("ABI"));
+	myabi = strchr(myabi,':');
+	myabi++;
 
-	if (uname(&u) != 0) {
-		pkg_emit_error("Cannot determine OS version number");
-		return (true);	/* Can't tell, so assume yes  */
-	}
-
-	osmajor = (int) strtol(u.release, NULL, 10);
+	osmajor = (int) strtol(myabi, NULL, 10);
 
 	return (osmajor == OSMAJOR);
 #else
