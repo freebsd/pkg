@@ -12,11 +12,14 @@ dist-hook:
 	rm -rf `find $(distdir)/external -type d -name .deps`
 
 check-local:
-	kyua --config=none test \
+	if [ "$(HTML)" != "" ]; then \
+		args="-r $(top_builddir)/res.db" ; \
+	fi ; \
+	kyua --config=none test $$args \
 		--kyuafile='$(top_srcdir)/Kyuafile' \
 		--build-root='$(top_builddir)' || FAILED=1 ; \
 	if [ "$(HTML)" != "" ]; then \
-		kyua report-html --force --output=$(HTML) ; \
+		kyua report-html --force $$args --output=$(HTML) ; \
 	fi ; \
 	exit $${FAILED}
 
