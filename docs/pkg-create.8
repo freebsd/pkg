@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 26, 2014
+.Dd September 5, 2014
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -269,12 +269,26 @@ The size that the files contained in this package will occupy on your system
 once uncompressed.
 This value does not take into account files stored in the
 package database.
-.It Cm dep Ar dep-name dep-origin dep-version
-Declare a dependency on the package which name, origin and version match
-.Ar dep-name , dep-origin
+.It Cm deps Ar dep-name dep-origin dep-version
+Associative array of package dependencies, keyed on
+.Ar dep-name
+and with values
+.Cm version Ar dep-version
 and
-.Ar dep-version
-respectively.
+.Cm origin Ar dep-origin .
+For example:
+.Bd -literal -offset indent
+"deps" : {
+   "pstree" : {
+      "version" : "2.36",
+      "origin" : "sysutils/pstree"
+   },
+   "cdiff" : {
+      "version" : "0.9.6.20140711,1",
+      "origin" : "textproc/cdiff"
+   },
+},
+.Ed
 .It Cm conflict Ar pkg-glob
 Flag this package as incompatible with the one designated by
 .Ar pkg-glob .
