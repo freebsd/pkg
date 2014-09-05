@@ -14,7 +14,11 @@ dist-hook:
 check-local:
 	kyua --config=none test \
 		--kyuafile='$(top_srcdir)/Kyuafile' \
-		--build-root='$(top_builddir)'
+		--build-root='$(top_builddir)' || FAILED=1 ; \
+	if [ "$(HTML)" != "" ]; then \
+		kyua report-html --force --output=$(HTML) ; \
+	fi ; \
+	exit $${FAILED}
 
 COCCI_ARGS=	-I ${top_srcdir} \
 		-I /usr/include \
