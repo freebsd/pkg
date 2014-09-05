@@ -20,7 +20,7 @@ check-local:
 		--build-root='$(top_builddir)' || FAILED=1 ; \
 	if [ "$(HTML)" != "" ]; then \
 		kyua report-html --force $$args --output=$(HTML) ; \
-		rm -f $(top_builddir)/res.db" ; \
+		rm -f $(top_builddir)/res.db ; \
 	fi ; \
 	exit $${FAILED}
 
