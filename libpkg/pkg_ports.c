@@ -280,7 +280,7 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
+meta_dir(struct plist *p, char *line, struct file_attr *a, bool try)
 {
 	size_t len;
 	char path[MAXPATHLEN];
@@ -336,7 +336,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_dirrm(p, line, a, true));
+	return (meta_dir(p, line, a, true));
 }
 
 static int
@@ -345,7 +345,7 @@ dirrm(struct plist *p, char *line, struct file_attr *a)
 	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
 		pkg_emit_error("Warning: @dirrm is deprecated please use @dir");
 
-	return (meta_dirrm(p, line, a, false));
+	return (meta_dir(p, line, a, false));
 }
 
 static int
@@ -354,7 +354,7 @@ dirrmtry(struct plist *p, char *line, struct file_attr *a)
 	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
 		pkg_emit_error("Warning: @dirrm is deprecated please use @dir");
 
-	return (meta_dirrm(p, line, a, true));
+	return (meta_dir(p, line, a, true));
 }
 
 static int
