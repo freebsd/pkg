@@ -408,6 +408,12 @@ file(struct plist *p, char *line, struct file_attr *a)
 				sha256_file(testpath, sha256);
 			buf = sha256;
 		}
+		if (S_ISDIR(st.st_mode) &&
+		    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
+			pkg_emit_error("Plist error, directory listed as a file: %s", line);
+			free_file_attr(a);
+			return (EPKG_FATAL);
+		}
 		if (S_ISDIR(st.st_mode)) {
 			if (a != NULL)
 				ret = pkg_adddir_attr(p->pkg, path,

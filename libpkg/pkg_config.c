@@ -317,6 +317,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Use read locking for query database"
 	},
+	{
+		PKG_BOOL,
+		"PLIST_ACCEPT_DIRECTORIES",
+		"NO",
+		"Accept directories listed like plain files in plist"
+	}
 };
 
 static bool parsed = false;
