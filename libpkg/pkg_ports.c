@@ -94,6 +94,9 @@ struct action {
 };
 
 static int setprefix(struct plist *, char *, struct file_attr *);
+static int dir(struct plist *, char *, struct file_attr *);
+static int dirrm(struct plist *, char *, struct file_attr *);
+static int dirrmtry(struct plist *, char *, struct file_attr *);
 static int dirrm(struct plist *, char *, struct file_attr *);
 static int dirrmtry(struct plist *, char *, struct file_attr *);
 static int file(struct plist *, char *, struct file_attr *);
@@ -114,6 +117,7 @@ static struct action_cmd {
 	{ "setprefix", setprefix, 9},
 	{ "dirrm", dirrm, 5 },
 	{ "dirrmtry", dirrmtry, 7 },
+	{ "dir", dir, 3 },
 	{ "file", file, 4 },
 	{ "setmode", setmod, 6 },
 	{ "setowner", setowner, 8 },
@@ -332,14 +336,26 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 }
 
 static int
+dir(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_dirrm(p, line, a, true));
+}
+
+static int
 dirrm(struct plist *p, char *line, struct file_attr *a)
 {
+	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+		pkg_emit_error("Warning: @dirrm is deprecated please use @dir");
+
 	return (meta_dirrm(p, line, a, false));
 }
 
 static int
 dirrmtry(struct plist *p, char *line, struct file_attr *a)
 {
+	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+		pkg_emit_error("Warning: @dirrm is deprecated please use @dir");
+
 	return (meta_dirrm(p, line, a, true));
 }
 
@@ -698,6 +714,7 @@ static struct keyact {
 	{ "cwd", setprefix },
 	{ "ignore", ignore_next },
 	{ "comment", comment_key },
+	{ "dir", dir },
 	{ "dirrm", dirrm },
 	{ "dirrmtry", dirrmtry },
 	{ "mode", setmod },
