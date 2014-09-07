@@ -41,7 +41,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <yaml.h>
 #include <ucl.h>
 #include <uthash.h>
 #include <utlist.h>

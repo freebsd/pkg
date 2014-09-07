@@ -55,9 +55,6 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/uthash/uthash.h \
 		libucl/uthash/utlist.h \
 		libucl/uthash/utstring.h \
-		libyaml/include/yaml.h \
-		libyaml/src/yaml_private.h \
-		libyaml/win32/config.h \
 		picosat/picosat.h \
 		sqlite/sqlite3.h \
 		uthash/utarray.h \
@@ -69,7 +66,6 @@ EXTRA_LTLIBRARIES=	libelf.la
 
 noinst_LTLIBRARIES=	libucl.la libucl_static.la \
 			libsqlite.la libsqlite_static.la \
-			libyaml.la libyaml_static.la \
 			libexpat.la libexpat_static.la \
 			libsbuf.la libsbuf_static.la \
 			libpicosat.la libpicosat_static.la \
@@ -169,20 +165,6 @@ libexpat_la_CFLAGS=	$(expat_common_cflags) -shared
 libexpat_static_la_SOURCES=	$(libexpat_la_SOURCES)
 libexpat_static_la_CFLAGS=	$(expat_common_cflags) -static
 libexpat_static_la_LDFLAGS=	-all-static
-
-yaml_common_cflags=	-I$(top_srcdir)/external/libyaml/include \
-			-I$(top_srcdir)/external/libyaml \
-			-Wno-strict-aliasing \
-			-Wno-unused		
-libyaml_la_SOURCES=	libyaml/src/api.c \
-			libyaml/src/loader.c \
-			libyaml/src/parser.c \
-			libyaml/src/reader.c \
-			libyaml/src/scanner.c
-libyaml_la_CFLAGS=	$(yaml_common_cflags) -shared
-libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
-libyaml_static_la_CFLAGS= $(yaml_common_cflags) -static
-libyaml_static_la_LDFLAGS=	-all-static
 
 picosat_common_cflags=	-I$(top_srcdir)/external/picosat \
 			-Wno-strict-aliasing \

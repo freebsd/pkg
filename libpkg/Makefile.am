@@ -9,7 +9,6 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/picosat \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
-			-I$(top_srcdir)/external/libyaml/include \
 			-DPREFIX=\"$(prefix)\" \
 			-Wno-pointer-sign
 libpkg_la_SOURCES=	pkg.c \
@@ -55,7 +54,6 @@ libpkg_la_SOURCES=	pkg.c \
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
 libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
-			$(top_builddir)/external/libyaml.la \
 			$(top_builddir)/external/libexpat.la \
 			$(top_builddir)/external/libsbuf.la \
 			$(top_builddir)/external/libpicosat.la \
@@ -81,7 +79,6 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libexpat_static.la \
 			$(top_builddir)/external/libpicosat_static.la \
-			$(top_builddir)/external/libyaml_static.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			@REPOS_LDADD_STATIC@
 
