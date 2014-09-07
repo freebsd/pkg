@@ -570,7 +570,6 @@ load_repo_file(const char *repofile)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
-	bool fallback = false;
 	const char *myarch = NULL;
 
 	p = ucl_parser_new(0);
@@ -582,28 +581,8 @@ load_repo_file(const char *repofile)
 	if (!ucl_parser_add_file(p, repofile)) {
 		pkg_emit_error("Error parsing: %s: %s", repofile,
 		    ucl_parser_get_error(p));
-		if (errno == ENOENT) {
-			ucl_parser_free(p);
-			return;
-		}
-		fallback = true;
-	}
-
-	if (fallback) {
-		obj = yaml_to_ucl(repofile, NULL, 0);
-		if (obj == NULL)
-			return;
-	}
-
-	if (fallback) {
-		pkg_emit_error("%s file is using a deprecated format. "
-		    "Please replace it with the following:\n"
-		    "====== BEGIN %s ======\n"
-		    "%s"
-		    "\n====== END %s ======\n",
-		    repofile, repofile,
-		    ucl_object_emit(obj, UCL_EMIT_YAML),
-		    repofile);
+		ucl_parser_free(p);
+		return;
 	}
 
 	obj = ucl_parser_get_object(p);
