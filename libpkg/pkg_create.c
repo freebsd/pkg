@@ -27,14 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
 #include <sys/stat.h>
 
-#include <assert.h>
 #include <errno.h>
 #include <regex.h>
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 
 #include "pkg.h"

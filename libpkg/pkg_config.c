@@ -31,22 +31,15 @@
 
 #include <assert.h>
 #include <sys/socket.h>
-#include <sys/utsname.h>
 #include <sys/un.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #ifdef HAVE_OSRELDATE_H
 #include <osreldate.h>
 #endif
-#include <pthread.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sysexits.h>
 #include <ucl.h>
 
 #include "pkg.h"

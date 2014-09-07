@@ -22,20 +22,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/sbuf.h>
-
 #include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ucl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
-#include "private/utils.h"
 #include "private/event.h"
 
 struct pkg_checksum_entry {
