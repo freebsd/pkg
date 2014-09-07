@@ -1045,9 +1045,8 @@ plist_parse_line(struct pkg *pkg, struct plist *plist, char *line)
 
 		switch (parse_keywords(plist, keyword, buf)) {
 		case EPKG_UNKNOWN:
-			pkg_emit_error("unknown keyword %s, ignoring %s",
+			pkg_emit_error("unknown keyword %s: %s",
 			    keyword, line);
-				return (EPKG_OK);
 		case EPKG_FATAL:
 			return (EPKG_FATAL);
 		}

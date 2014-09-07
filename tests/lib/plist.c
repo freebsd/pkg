@@ -119,6 +119,9 @@ ATF_TC_BODY(parse_plist, tc)
 	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(p, plist, buf));
 	ATF_REQUIRE_EQ(0, plist->perm);
 
+	strlcpy(buf, "@blabla", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(p, plist, buf));
+
 	pkg_free(p);
 	plist_free(plist);
 }
