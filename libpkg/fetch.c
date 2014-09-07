@@ -29,8 +29,6 @@
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include <sys/uio.h>
-#include <sys/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -38,8 +36,6 @@
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>

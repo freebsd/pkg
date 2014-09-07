@@ -29,14 +29,10 @@
 #include "pkg_config.h"
 #endif
 
-#include <sys/utsname.h>
-
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
 #include <libgen.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 

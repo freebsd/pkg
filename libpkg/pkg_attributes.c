@@ -27,7 +27,6 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
 
 #include "pkg.h"
 #include "private/event.h"

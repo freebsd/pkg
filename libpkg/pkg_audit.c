@@ -26,24 +26,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/queue.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 
 #define _WITH_GETLINE
 
 #include <archive.h>
-#include <archive.h>
 #include <err.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sysexits.h>
 #include <utlist.h>
 
 #include <expat.h>

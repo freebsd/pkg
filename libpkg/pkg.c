@@ -33,7 +33,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include "pkg.h"
 #include "private/event.h"

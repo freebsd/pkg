@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
@@ -25,14 +25,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/errno.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-
 #include <assert.h>
 #include <libgen.h>
 #include <string.h>
-#include <unistd.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/event.h"
