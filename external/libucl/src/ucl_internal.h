@@ -192,6 +192,7 @@ struct ucl_parser {
 	int flags;
 	ucl_object_t *top_obj;
 	ucl_object_t *cur_obj;
+	const char *cur_file;
 	struct ucl_macro *macroes;
 	struct ucl_stack *stack;
 	struct ucl_chunk *chunks;
@@ -200,6 +201,12 @@ struct ucl_parser {
 	ucl_variable_handler var_handler;
 	void *var_data;
 	UT_string *err;
+};
+
+struct ucl_object_userdata {
+	ucl_object_t obj;
+	ucl_userdata_dtor dtor;
+	ucl_userdata_emitter emitter;
 };
 
 /**
