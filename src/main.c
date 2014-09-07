@@ -698,8 +698,8 @@ main(int argc, char **argv)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
 
 	if (!pkg_compiled_for_same_os_major())
-		warnx("Warning: Major version upgrade detected.  Running \"pkg-static "
-		      "install -f pkg\" recommended");
+		warnx("Warning: Major OS version upgrade detected.  Running "
+		    "\"pkg-static install -f pkg\" recommended");
 
 
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
