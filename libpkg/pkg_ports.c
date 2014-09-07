@@ -856,25 +856,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	return (EPKG_OK);
 }
 
-static ucl_object_t *
-external_yaml_keyword(char *keyword)
-{
-	const char *keyword_dir = NULL;
-	char keyfile_path[MAXPATHLEN];
-
-	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
-	if (keyword_dir == NULL) {
-		keyword_dir = pkg_object_string(pkg_config_get("PORTSDIR"));
-		snprintf(keyfile_path, sizeof(keyfile_path),
-		    "%s/Keywords/%s.yaml", keyword_dir, keyword);
-	} else {
-		snprintf(keyfile_path, sizeof(keyfile_path),
-		    "%s/%s.yaml", keyword_dir, keyword);
-	}
-
-	return (yaml_to_ucl(keyfile_path, NULL, 0));
-}
-
 static int
 external_keyword(struct plist *plist, char *keyword, char *line, struct file_attr *attr)
 {
