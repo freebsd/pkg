@@ -47,52 +47,6 @@
 
 static ucl_object_t *keyword_schema = NULL;
 
-struct keyword {
-	/* 64 is more than enough for this */
-	char keyword[64];
-	struct action *actions;
-	UT_hash_handle hh;
-};
-
-struct plist {
-	char last_file[MAXPATHLEN];
-	const char *stage;
-	char prefix[MAXPATHLEN];
-	struct sbuf *pre_install_buf;
-	struct sbuf *post_install_buf;
-	struct sbuf *pre_deinstall_buf;
-	struct sbuf *post_deinstall_buf;
-	struct sbuf *pre_upgrade_buf;
-	struct sbuf *post_upgrade_buf;
-	struct pkg *pkg;
-	char *uname;
-	char *gname;
-	const char *slash;
-	char *pkgdep;
-	bool ignore_next;
-	int64_t flatsize;
-	struct hardlinks *hardlinks;
-	mode_t perm;
-	struct {
-		char *buf;
-		char **patterns;
-		size_t len;
-		size_t cap;
-	} post_patterns;
-	struct keyword *keywords;
-};
-
-struct file_attr {
-	char *owner;
-	char *group;
-	mode_t mode;
-};
-
-struct action {
-	int (*perform)(struct plist *, char *, struct file_attr *);
-	struct action *next;
-};
-
 static int setprefix(struct plist *, char *, struct file_attr *);
 static int dir(struct plist *, char *, struct file_attr *);
 static int dirrm(struct plist *, char *, struct file_attr *);
@@ -1060,15 +1014,121 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 		sbuf_finish(buf);
 		pkg_appendscript(p, sbuf_get(buf), type);
 	}
-	sbuf_delete(buf);
+}
+
+int
+plist_parse_line(struct pkg *pkg, struct plist *plist, char *line)
+{
+	char *keyword, *buf;
+
+	if (plist->ignore_next) {
+		plist->ignore_next = false;
+		return (EPKG_OK);
+	}
+
+	if (line[0] == '\0')
+		return (EPKG_OK);
+
+	pkg_debug(1, "Parsing plist line: '%s'", line);
+
+	if (line[0] == '@') {
+		keyword = line;
+		keyword++; /* skip the @ */
+		buf = keyword;
+		while (!(isspace(buf[0]) || buf[0] == '\0'))
+			buf++;
+
+		if (buf[0] != '\0') {
+			buf[0] = '\0';
+			buf++;
+		}
+		/* trim write spaces */
+		while (isspace(buf[0]))
+			buf++;
+		pkg_debug(1, "Parsing plist, found keyword: '%s", keyword);
+
+		switch (parse_keywords(plist, keyword, buf)) {
+		case EPKG_UNKNOWN:
+			pkg_emit_error("unknown keyword %s, ignoring %s",
+			    keyword, line);
+				return (EPKG_OK);
+		case EPKG_FATAL:
+			return (EPKG_FATAL);
+		}
+	} else {
+		buf = line;
+		strlcpy(plist->last_file, buf, sizeof(plist->last_file));
+
+		/* remove spaces at the begining and at the end */
+		while (isspace(buf[0]))
+			buf++;
+
+		if (file(plist, buf, NULL) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+struct plist *
+plist_new(struct pkg *pkg)
+{
+	struct plist *p;
+	const char *prefix;
+
+	p = calloc(1, sizeof(struct plist));
+	if (p == NULL)
+		return (NULL);
+
+	p->pkg = pkg;
+	pkg_get(pkg, PKG_PREFIX, &prefix);
+	strlcpy(p->prefix, prefix, sizeof(p->prefix));
+	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
+
+	p->pre_install_buf = sbuf_new_auto();
+	p->post_install_buf = sbuf_new_auto();
+	p->pre_deinstall_buf = sbuf_new_auto();
+	p->post_deinstall_buf = sbuf_new_auto();
+	p->pre_upgrade_buf = sbuf_new_auto();
+	p->post_upgrade_buf = sbuf_new_auto();
+
+	populate_keywords(p);
+
+	return (p);
+}
+
+void
+plist_free(struct plist *p)
+{
+	if (p == NULL)
+		return;
+
+	HASH_FREE(p->hardlinks, free);
+
+	HASH_FREE(p->keywords, keyword_free);
+
+	free(p->pkgdep);
+	free(p->uname);
+	free(p->gname);
+	free(p->post_patterns.buf);
+	free(p->post_patterns.patterns);
+
+	sbuf_delete(p->post_deinstall_buf);
+	sbuf_delete(p->post_install_buf);
+	sbuf_delete(p->post_upgrade_buf);
+	sbuf_delete(p->pre_deinstall_buf);
+	sbuf_delete(p->pre_install_buf);
+	sbuf_delete(p->pre_upgrade_buf);
+
+	free(p);
 }
 
 int
 ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 {
-	char *buf, *line = NULL, *tmpprefix;
+	char *line = NULL;
 	int ret = EPKG_OK;
-	struct plist pplist;
+	struct plist *pplist;
 	FILE *plist_f;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -1076,129 +1136,40 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	assert(pkg != NULL);
 	assert(plist != NULL);
 
-	pplist.last_file[0] = '\0';
-	pplist.prefix[0] = '\0';
-	pplist.stage = stage;
-	pplist.pre_install_buf = sbuf_new_auto();
-	pplist.post_install_buf = sbuf_new_auto();
-	pplist.pre_deinstall_buf = sbuf_new_auto();
-	pplist.post_deinstall_buf = sbuf_new_auto();
-	pplist.pre_upgrade_buf = sbuf_new_auto();
-	pplist.post_upgrade_buf = sbuf_new_auto();
-	pplist.uname = NULL;
-	pplist.gname = NULL;
-	pplist.perm = 0;
-	pplist.pkg = pkg;
-	pplist.slash = "";
-	pplist.ignore_next = false;
-	pplist.hardlinks = NULL;
-	pplist.flatsize = 0;
-	pplist.keywords = NULL;
-	pplist.post_patterns.buf = NULL;
-	pplist.post_patterns.patterns = NULL;
-	pplist.post_patterns.cap = 0;
-	pplist.post_patterns.len = 0;
-	pplist.pkgdep = NULL;
-
-	populate_keywords(&pplist);
-
-	buf = NULL;
+	if ((pplist = plist_new(pkg)) == NULL)
+		return (EPKG_FATAL);
 
 	if ((plist_f = fopen(plist, "r")) == NULL) {
 		pkg_emit_error("Unable to open plist file: %s", plist);
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(pkg, PKG_PREFIX, &tmpprefix);
-	if (tmpprefix) {
-		strlcpy(pplist.prefix, tmpprefix, sizeof(pplist.prefix));
-		pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
-	}
-
 	while ((linelen = getline(&line, &linecap, plist_f)) > 0) {
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
-
-		if (pplist.ignore_next) {
-			pplist.ignore_next = false;
-			continue;
-		}
-
-		if (line[0] == '\0')
-			continue;
-
-		pkg_debug(1, "Parsing plist line: '%s'", line);
-
-		if (line[0] == '@') {
-			char *keyword = line;
-
-			keyword++; /* skip the @ */
-			buf = keyword;
-			while (!(isspace(buf[0]) || buf[0] == '\0'))
-				buf++;
-
-			if (buf[0] != '\0') {
-				buf[0] = '\0';
-				buf++;
-			}
-			/* trim write spaces */
-			while (isspace(buf[0]))
-				buf++;
-			pkg_debug(1, "Parsing plist, found keyword: '%s", keyword);
-
-			switch (parse_keywords(&pplist, keyword, buf)) {
-			case EPKG_UNKNOWN:
-				pkg_emit_error("unknown keyword %s, ignoring %s",
-				    keyword, line);
-				break;
-			case EPKG_FATAL:
-				ret = EPKG_FATAL;
-				break;
-			}
-		} else {
-			buf = line;
-			strlcpy(pplist.last_file, buf, sizeof(pplist.last_file));
-
-			/* remove spaces at the begining and at the end */
-			while (isspace(buf[0]))
-				buf++;
-
-			if (file(&pplist, buf, NULL) != EPKG_OK)
-				ret = EPKG_FATAL;
-		}
+		ret = plist_parse_line(pkg, pplist, line);
 	}
 
 	free(line);
 
-	pkg_set(pkg, PKG_FLATSIZE, pplist.flatsize);
+	pkg_set(pkg, PKG_FLATSIZE, pplist->flatsize);
 
-	flush_script_buffer(pplist.pre_install_buf, pkg,
+	flush_script_buffer(pplist->pre_install_buf, pkg,
 	    PKG_SCRIPT_PRE_INSTALL);
-	flush_script_buffer(pplist.post_install_buf, pkg,
+	flush_script_buffer(pplist->post_install_buf, pkg,
 	    PKG_SCRIPT_POST_INSTALL);
-	flush_script_buffer(pplist.pre_deinstall_buf, pkg,
+	flush_script_buffer(pplist->pre_deinstall_buf, pkg,
 	    PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(pplist.post_deinstall_buf, pkg,
+	flush_script_buffer(pplist->post_deinstall_buf, pkg,
 	    PKG_SCRIPT_POST_DEINSTALL);
-	flush_script_buffer(pplist.pre_upgrade_buf, pkg,
+	flush_script_buffer(pplist->pre_upgrade_buf, pkg,
 	    PKG_SCRIPT_PRE_UPGRADE);
-	flush_script_buffer(pplist.post_upgrade_buf, pkg,
+	flush_script_buffer(pplist->post_upgrade_buf, pkg,
 	    PKG_SCRIPT_POST_UPGRADE);
 
-	HASH_FREE(pplist.hardlinks, free);
-
-	HASH_FREE(pplist.keywords, keyword_free);
-
-	if (pplist.pkgdep != NULL)
-		free(pplist.pkgdep);
-	if (pplist.uname != NULL)
-		free(pplist.uname);
-	if (pplist.gname != NULL)
-		free(pplist.gname);
-	free(pplist.post_patterns.buf);
-	free(pplist.post_patterns.patterns);
-
 	fclose(plist_f);
+
+	plist_free(pplist);
 
 	return (ret);
 }
