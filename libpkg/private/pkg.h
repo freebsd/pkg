@@ -358,6 +358,52 @@ struct pkg_repo {
 	void *priv;
 };
 
+struct keyword {
+	/* 64 is more than enough for this */
+	char keyword[64];
+	struct action *actions;
+	UT_hash_handle hh;
+};
+
+struct plist {
+	char last_file[MAXPATHLEN];
+	const char *stage;
+	char prefix[MAXPATHLEN];
+	struct sbuf *pre_install_buf;
+	struct sbuf *post_install_buf;
+	struct sbuf *pre_deinstall_buf;
+	struct sbuf *post_deinstall_buf;
+	struct sbuf *pre_upgrade_buf;
+	struct sbuf *post_upgrade_buf;
+	struct pkg *pkg;
+	char *uname;
+	char *gname;
+	const char *slash;
+	char *pkgdep;
+	bool ignore_next;
+	int64_t flatsize;
+	struct hardlinks *hardlinks;
+	mode_t perm;
+	struct {
+		char *buf;
+		char **patterns;
+		size_t len;
+		size_t cap;
+	} post_patterns;
+	struct keyword *keywords;
+};
+
+struct file_attr {
+	char *owner;
+	char *group;
+	mode_t mode;
+};
+
+struct action {
+	int (*perform)(struct plist *, char *, struct file_attr *);
+	struct action *next;
+};
+
 /* sql helpers */
 
 typedef struct _sql_prstmt {
@@ -540,5 +586,8 @@ void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force);
 int pkg_open_root_fd(struct pkg *pkg);
 void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
+struct plist *plist_new(struct pkg *p);
+int plist_parse_line(struct pkg *pkg, struct plist *p, char *line);
+void plist_free(struct plist *);
 
 #endif
