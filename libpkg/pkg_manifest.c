@@ -684,7 +684,6 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	int rc;
 	struct pkg_manifest_key *sk;
 	struct dataparser *dp;
-	bool fallback = false;
 	const char *key;
 
 	assert(pkg != NULL);
@@ -693,46 +692,41 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
 
 	p = ucl_parser_new(0);
-	if (!ucl_parser_add_chunk(p, buf, len))
-		fallback = true;
+	if (!ucl_parser_add_chunk(p, buf, len)) {
+		pkg_emit_error("Error parsing manifest: %s",
+		    ucl_parser_get_error(p));
+		ucl_parser_free(p);
 
-	if (!fallback) {
-		obj = ucl_parser_get_object(p);
-		if (obj != NULL) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				key = ucl_object_key(cur);
-				if (key == NULL)
-					continue;
-				HASH_FIND_STR(keys, key, sk);
-				if (sk != NULL) {
-					HASH_FIND_UCLT(sk->parser, &cur->type, dp);
-					if (dp == NULL) {
-						fallback = true;
-						break;
-					}
-				}
-			}
-		} else {
-			fallback = true;
-		}
+		return (EPKG_FATAL);
 	}
 
-	if (fallback) {
-		pkg_debug(2, "Falling back on yaml");
+	if ((obj = ucl_parser_get_object(p)) == NULL) {
 		ucl_parser_free(p);
-		p = NULL;
-		if (obj != NULL)
-			ucl_object_unref(obj);
-		obj = yaml_to_ucl(NULL, buf, len);
-		if (obj == NULL)
-			return (EPKG_FATAL);
+		return (EPKG_FATAL);
+	}
+
+	ucl_parser_free(p);
+
+	/* do a minimal validation */
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+		HASH_FIND_STR(keys, key, sk);
+		if (sk != NULL) {
+			HASH_FIND_UCLT(sk->parser, &cur->type, dp);
+			if (dp == NULL) {
+				pkg_emit_error("Bad format in manifest for key:"
+				    " %s", key);
+				ucl_object_unref(obj);
+				return (EPKG_FATAL);
+			}
+		}
 	}
 
 	rc = parse_manifest(pkg, keys, obj);
 
 	ucl_object_unref(obj);
-	if (p != NULL)
-		ucl_parser_free(p);
 
 	return (rc);
 }
@@ -782,7 +776,6 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	ucl_object_t *obj = NULL;
 	ucl_object_iter_t it = NULL;
 	int rc;
-	bool fallback = false;
 	struct pkg_manifest_key *sk;
 	struct dataparser *dp;
 	const char *key;
@@ -795,50 +788,38 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	errno = 0;
 	p = ucl_parser_new(0);
 	if (!ucl_parser_add_file(p, file)) {
-		if (errno == ENOENT) {
-			ucl_parser_free(p);
-			return (EPKG_FATAL);
-		}
-		fallback = true;
-	}
-
-	if (!fallback) {
-		obj = ucl_parser_get_object(p);
-		if (obj != NULL) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				key = ucl_object_key(cur);
-				if (key == NULL)
-					continue;
-				HASH_FIND_STR(keys, key, sk);
-				if (sk != NULL) {
-					HASH_FIND_UCLT(sk->parser, &cur->type, dp);
-					if (dp == NULL) {
-						fallback = true;
-						break;
-					}
-				}
-			}
-
-		} else {
-			fallback = true;
-		}
-	}
-
-	if (fallback) {
-		pkg_debug(2, "Falling back on yaml");
+		pkg_emit_error("Error parsing manifest: %s",
+		    ucl_parser_get_error(p));
 		ucl_parser_free(p);
-		p = NULL;
-		if (obj != NULL)
-			ucl_object_unref(obj);
-		obj = yaml_to_ucl(file, NULL, 0);
-		if (obj == NULL)
-			return (EPKG_FATAL);
+		return (EPKG_FATAL);
+	}
+
+	if ((obj = ucl_parser_get_object(p)) == NULL) {
+		ucl_parser_free(p);
+		return (EPKG_FATAL);
+	}
+
+	ucl_parser_free(p);
+
+	/* do a minimal validation */
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+		HASH_FIND_STR(keys, key, sk);
+		if (sk != NULL) {
+			HASH_FIND_UCLT(sk->parser, &cur->type, dp);
+			if (dp == NULL) {
+				pkg_emit_error("Bad format in manifest for key:"
+				    " %s", key);
+				ucl_object_unref(obj);
+				return (EPKG_FATAL);
+			}
+		}
 	}
 
 	rc = parse_manifest(pkg, keys, obj);
 
-	if (p != NULL)
-		ucl_parser_free(p);
 	ucl_object_unref(obj);
 
 	return (rc);
