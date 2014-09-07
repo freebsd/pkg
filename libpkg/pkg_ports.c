@@ -1084,6 +1084,8 @@ plist_new(struct pkg *pkg)
 	pkg_get(pkg, PKG_PREFIX, &prefix);
 	strlcpy(p->prefix, prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
+	p->uname = strdup("root");
+	p->gname = strdup("wheel");
 
 	p->pre_install_buf = sbuf_new_auto();
 	p->post_install_buf = sbuf_new_auto();

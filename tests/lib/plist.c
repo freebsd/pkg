@@ -80,6 +80,9 @@ ATF_TC_BODY(parse_plist, tc)
 	ATF_REQUIRE(plist->pkg == p);
 	ATF_REQUIRE_STREQ(plist->prefix, "/myprefix");
 
+	ATF_REQUIRE_STREQ(plist->uname, "root");
+	ATF_REQUIRE_STREQ(plist->gname, "wheel");
+
 	strlcpy(buf, "@owner bob", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(p, plist, buf));
 	ATF_REQUIRE_STREQ(plist->uname, "bob");
