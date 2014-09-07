@@ -355,6 +355,8 @@ ucl_emitter_common_elt (struct ucl_emitter_context *ctx,
 {
 	const struct ucl_emitter_functions *func = ctx->func;
 	bool flag;
+	struct ucl_object_userdata *ud;
+	const char *ud_out = "";
 
 	if (ctx->id != UCL_EMIT_CONFIG && !first) {
 		if (compact) {
@@ -413,6 +415,16 @@ ucl_emitter_common_elt (struct ucl_emitter_context *ctx,
 		ucl_emitter_common_end_array (ctx, obj, compact);
 		break;
 	case UCL_USERDATA:
+		ud = (struct ucl_object_userdata *)obj;
+		ucl_emitter_print_key (print_key, ctx, obj, compact);
+		if (ud->emitter) {
+			ud_out = ud->emitter (obj->value.ud);
+			if (ud_out == NULL) {
+				ud_out = "null";
+			}
+		}
+		ucl_elt_string_write_json (ud_out, strlen (ud_out), ctx);
+		ucl_emitter_finish_object (ctx, obj, compact, !print_key);
 		break;
 	}
 }

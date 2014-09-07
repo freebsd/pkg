@@ -28,6 +28,43 @@
 #include "ucl.h"
 #include "ucl_internal.h"
 #include "lua_ucl.h"
+#include <strings.h>
+
+/***
+ * @module ucl
+ * This lua module allows to parse objects from strings and to store data into
+ * ucl objects. It uses `libucl` C library to parse and manipulate with ucl objects.
+ * @example
+local ucl = require("ucl")
+
+local parser = ucl.parser()
+local res,err = parser:parse_string('{key=value}')
+
+if not res then
+	print('parser error: ' .. err)
+else
+	local obj = parser:get_object()
+	local got = ucl.to_format(obj, 'json')
+endif
+
+local table = {
+  str = 'value',
+  num = 100500,
+  null = ucl.null,
+  func = function ()
+    return 'huh'
+  end
+}
+
+print(ucl.to_format(table, 'ucl'))
+-- Output:
+--[[
+num = 100500;
+str = "value";
+null = null;
+func = "huh";
+--]]
+ */
 
 #define PARSER_META "ucl.parser.meta"
 #define EMITTER_META "ucl.emitter.meta"
@@ -39,6 +76,12 @@ static ucl_object_t* ucl_object_lua_fromtable (lua_State *L, int idx);
 static ucl_object_t* ucl_object_lua_fromelt (lua_State *L, int idx);
 
 static void *ucl_null;
+
+struct ucl_lua_funcdata {
+	lua_State *L;
+	int idx;
+	char *ret;
+};
 
 /**
  * Push a single element of an object to lua
@@ -53,6 +96,42 @@ ucl_object_lua_push_element (lua_State *L, const char *key,
 	lua_pushstring (L, key);
 	ucl_object_push_lua (L, obj, true);
 	lua_settable (L, -3);
+}
+
+static void
+lua_ucl_userdata_dtor (void *ud)
+{
+	struct ucl_lua_funcdata *fd = (struct ucl_lua_funcdata *)ud;
+
+	luaL_unref (fd->L, LUA_REGISTRYINDEX, fd->idx);
+	if (fd->ret != NULL) {
+		free (fd->ret);
+	}
+	free (fd);
+}
+
+static const char *
+lua_ucl_userdata_emitter (void *ud)
+{
+	struct ucl_lua_funcdata *fd = (struct ucl_lua_funcdata *)ud;
+	const char *out = "";
+
+	lua_rawgeti (fd->L, LUA_REGISTRYINDEX, fd->idx);
+
+	lua_pcall (fd->L, 0, 1, 0);
+	out = lua_tostring (fd->L, -1);
+
+	if (out != NULL) {
+		/* We need to store temporary string in a more appropriate place */
+		if (fd->ret) {
+			free (fd->ret);
+		}
+		fd->ret = strdup (out);
+	}
+
+	lua_settop (fd->L, 0);
+
+	return fd->ret;
 }
 
 /**
@@ -124,6 +203,8 @@ static int
 ucl_object_lua_push_scalar (lua_State *L, const ucl_object_t *obj,
 		bool allow_array)
 {
+	struct ucl_lua_funcdata *fd;
+
 	if (allow_array && obj->next != NULL) {
 		/* Actually we need to push this as an array */
 		return ucl_object_lua_push_array (L, obj);
@@ -150,6 +231,10 @@ ucl_object_lua_push_scalar (lua_State *L, const ucl_object_t *obj,
 	case UCL_NULL:
 		lua_getfield (L, LUA_REGISTRYINDEX, "ucl.null");
 		break;
+	case UCL_USERDATA:
+		fd = (struct ucl_lua_funcdata *)obj->value.ud;
+		lua_rawgeti (L, LUA_REGISTRYINDEX, fd->idx);
+		break;
 	default:
 		lua_pushnil (L);
 		break;
@@ -158,10 +243,20 @@ ucl_object_lua_push_scalar (lua_State *L, const ucl_object_t *obj,
 	return 1;
 }
 
-/**
- * Push an object to lua
- * @param L lua state
- * @param obj object to push
+/***
+ * @function ucl_object_push_lua(L, obj, allow_array)
+ * This is a `C` function to push `UCL` object as lua variable. This function
+ * converts `obj` to lua representation using the following conversions:
+ *
+ * - *scalar* values are directly presented by lua objects
+ * - *userdata* values are converted to lua function objects using `LUA_REGISTRYINDEX`,
+ * this can be used to pass functions from lua to c and vice-versa
+ * - *arrays* are converted to lua tables with numeric indicies suitable for `ipairs` iterations
+ * - *objects* are converted to lua tables with string indicies
+ * @param {lua_State} L lua state pointer
+ * @param {ucl_object_t} obj object to push
+ * @param {bool} allow_array expand implicit arrays (should be true for all but partial arrays)
+ * @return {int} `1` if an object is pushed to lua
  */
 int
 ucl_object_push_lua (lua_State *L, const ucl_object_t *obj, bool allow_array)
@@ -265,6 +360,7 @@ ucl_object_lua_fromelt (lua_State *L, int idx)
 	int type;
 	double num;
 	ucl_object_t *obj = NULL;
+	struct ucl_lua_funcdata *fd;
 
 	type = lua_type (L, idx);
 
@@ -302,14 +398,24 @@ ucl_object_lua_fromelt (lua_State *L, int idx)
 			}
 			lua_pop (L, 2);
 		}
-		if (type == LUA_TTABLE) {
-			obj = ucl_object_lua_fromtable (L, idx);
-		}
-		else if (type == LUA_TFUNCTION) {
-			lua_pushvalue (L, idx);
-			obj = ucl_object_new ();
-			obj->type = UCL_USERDATA;
-			obj->value.ud = (void *)(uintptr_t)(int)(luaL_ref (L, LUA_REGISTRYINDEX));
+		else {
+			if (type == LUA_TTABLE) {
+				obj = ucl_object_lua_fromtable (L, idx);
+			}
+			else if (type == LUA_TFUNCTION) {
+				fd = malloc (sizeof (*fd));
+				if (fd != NULL) {
+					lua_pushvalue (L, idx);
+					fd->L = L;
+					fd->ret = NULL;
+					fd->idx = luaL_ref (L, LUA_REGISTRYINDEX);
+
+					obj = ucl_object_new_userdata (lua_ucl_userdata_dtor,
+							lua_ucl_userdata_emitter);
+					obj->type = UCL_USERDATA;
+					obj->value.ud = (void *)fd;
+				}
+			}
 		}
 		break;
 	}
@@ -318,9 +424,13 @@ ucl_object_lua_fromelt (lua_State *L, int idx)
 }
 
 /**
- * Extract rcl object from lua object
- * @param L
- * @return
+ * @function ucl_object_lua_import(L, idx)
+ * Extracts ucl object from lua variable at `idx` position,
+ * @see ucl_object_push_lua for conversion definitions
+ * @param {lua_state} L lua state machine pointer
+ * @param {int} idx index where the source variable is placed
+ * @return {ucl_object_t} new ucl object extracted from lua variable. Reference count of this object is 1,
+ * this object thus needs to be unref'ed after usage.
  */
 ucl_object_t *
 ucl_object_lua_import (lua_State *L, int idx)
@@ -370,6 +480,21 @@ lua_ucl_parser_get (lua_State *L, int index)
 	return *((struct ucl_parser **) luaL_checkudata(L, index, PARSER_META));
 }
 
+/***
+ * @method parser:parse_file(name)
+ * Parse UCL object from file.
+ * @param {string} name filename to parse
+ * @return {bool[, string]} if res is `true` then file has been parsed successfully, otherwise an error string is also returned
+@example
+local parser = ucl.parser()
+local res,err = parser:parse_file('/some/file.conf')
+
+if not res then
+	print('parser error: ' .. err)
+else
+	-- Do something with object
+end
+ */
 static int
 lua_ucl_parser_parse_file (lua_State *L)
 {
@@ -398,6 +523,12 @@ lua_ucl_parser_parse_file (lua_State *L)
 	return ret;
 }
 
+/***
+ * @method parser:parse_string(input)
+ * Parse UCL object from file.
+ * @param {string} input string to parse
+ * @return {bool[, string]} if res is `true` then file has been parsed successfully, otherwise an error string is also returned
+ */
 static int
 lua_ucl_parser_parse_string (lua_State *L)
 {
@@ -427,6 +558,11 @@ lua_ucl_parser_parse_string (lua_State *L)
 	return ret;
 }
 
+/***
+ * @method parser:get_object()
+ * Get top object from parser and export it to lua representation.
+ * @return {variant or nil} ucl object as lua native variable
+ */
 static int
 lua_ucl_parser_get_object (lua_State *L)
 {
@@ -542,6 +678,40 @@ lua_ucl_to_config (lua_State *L)
 	return 1;
 }
 
+/***
+ * @function ucl.to_format(var, format)
+ * Converts lua variable `var` to the specified `format`. Formats supported are:
+ *
+ * - `json` - fine printed json
+ * - `json-compact` - compacted json
+ * - `config` - fine printed configuration
+ * - `ucl` - same as `config`
+ * - `yaml` - embedded yaml
+ *
+ * If `var` contains function, they are called during output formatting and if
+ * they return string value, then this value is used for ouptut.
+ * @param {variant} var any sort of lua variable (if userdata then metafield `__to_ucl` is searched for output)
+ * @param {string} format any available format
+ * @return {string} string representation of `var` in the specific `format`.
+ * @example
+local table = {
+  str = 'value',
+  num = 100500,
+  null = ucl.null,
+  func = function ()
+    return 'huh'
+  end
+}
+
+print(ucl.to_format(table, 'ucl'))
+-- Output:
+--[[
+num = 100500;
+str = "value";
+null = null;
+func = "huh";
+--]]
+ */
 static int
 lua_ucl_to_format (lua_State *L)
 {
@@ -549,10 +719,29 @@ lua_ucl_to_format (lua_State *L)
 	int format = UCL_EMIT_JSON;
 
 	if (lua_gettop (L) > 1) {
-		format = lua_tonumber (L, 2);
-		if (format < 0 || format >= UCL_EMIT_YAML) {
-			lua_pushnil (L);
-			return 1;
+		if (lua_type (L, 2) == LUA_TNUMBER) {
+			format = lua_tonumber (L, 2);
+			if (format < 0 || format >= UCL_EMIT_YAML) {
+				lua_pushnil (L);
+				return 1;
+			}
+		}
+		else if (lua_type (L, 2) == LUA_TSTRING) {
+			const char *strtype = lua_tostring (L, 2);
+
+			if (strcasecmp (strtype, "json") == 0) {
+				format = UCL_EMIT_JSON;
+			}
+			else if (strcasecmp (strtype, "json-compact") == 0) {
+				format = UCL_EMIT_JSON_COMPACT;
+			}
+			else if (strcasecmp (strtype, "yaml") == 0) {
+				format = UCL_EMIT_YAML;
+			}
+			else if (strcasecmp (strtype, "config") == 0 ||
+				strcasecmp (strtype, "ucl") == 0) {
+				format = UCL_EMIT_CONFIG;
+			}
 		}
 	}
 

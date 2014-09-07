@@ -129,11 +129,6 @@ static char* ucl_realpath(const char *path, char *resolved_path) {
 #define ucl_realpath realpath
 #endif
 
-/**
- * @file rcl_util.c
- * Utilities for rcl parsing
- */
-
 typedef void (*ucl_object_dtor) (ucl_object_t *obj);
 static void ucl_object_free_internal (ucl_object_t *obj, bool allow_rec,
 		ucl_object_dtor dtor);
@@ -148,7 +143,16 @@ ucl_object_dtor_free (ucl_object_t *obj)
 	if (obj->trash_stack[UCL_TRASH_VALUE] != NULL) {
 		UCL_FREE (obj->len, obj->trash_stack[UCL_TRASH_VALUE]);
 	}
-	UCL_FREE (sizeof (ucl_object_t), obj);
+	if (obj->type != UCL_USERDATA) {
+		UCL_FREE (sizeof (ucl_object_t), obj);
+	}
+	else {
+		struct ucl_object_userdata *ud = (struct ucl_object_userdata *)obj;
+		if (ud->dtor) {
+			ud->dtor (obj->value.ud);
+		}
+		UCL_FREE (sizeof (*ud), obj);
+	}
 }
 
 /*
@@ -818,6 +822,7 @@ ucl_include_file (const unsigned char *data, size_t len,
 #endif
 	}
 
+	parser->cur_file = realbuf;
 	ucl_parser_set_filevars (parser, realbuf, false);
 
 	prev_state = parser->state;
@@ -832,6 +837,7 @@ ucl_include_file (const unsigned char *data, size_t len,
 			UCL_FREE (sizeof (struct ucl_chunk), chunk);
 		}
 	}
+	parser->cur_file = NULL;
 
 	parser->state = prev_state;
 
@@ -947,12 +953,14 @@ ucl_parser_add_file (struct ucl_parser *parser, const char *filename)
 		return false;
 	}
 
+	parser->cur_file = realbuf;
 	ucl_parser_set_filevars (parser, realbuf, false);
 	ret = ucl_parser_add_chunk (parser, buf, len);
 
 	if (len > 0) {
 		ucl_munmap (buf, len);
 	}
+	parser->cur_file = NULL;
 
 	return ret;
 }
@@ -1194,9 +1202,8 @@ ucl_object_insert_key_common (ucl_object_t *top, ucl_object_t *elt,
 
 	found = __DECONST (ucl_object_t *, ucl_hash_search_obj (top->value.ov, elt));
 
-	if (!found) {
+	if (found == NULL) {
 		top->value.ov = ucl_hash_insert_object (top->value.ov, elt);
-		DL_APPEND (found, elt);
 		top->len ++;
 		if (replace) {
 			ret = false;
@@ -1204,11 +1211,8 @@ ucl_object_insert_key_common (ucl_object_t *top, ucl_object_t *elt,
 	}
 	else {
 		if (replace) {
-			ucl_hash_delete (top->value.ov, found);
+			ucl_hash_replace (top->value.ov, found, elt);
 			ucl_object_unref (found);
-			top->value.ov = ucl_hash_insert_object (top->value.ov, elt);
-			found = NULL;
-			DL_APPEND (found, elt);
 		}
 		else if (merge) {
 			if (found->type != UCL_OBJECT && elt->type == UCL_OBJECT) {
@@ -1451,27 +1455,49 @@ ucl_lookup_path (const ucl_object_t *top, const char *path_in) {
 ucl_object_t *
 ucl_object_new (void)
 {
-	ucl_object_t *new;
-	new = malloc (sizeof (ucl_object_t));
-	if (new != NULL) {
-		memset (new, 0, sizeof (ucl_object_t));
-		new->ref = 1;
-		new->type = UCL_NULL;
-	}
-	return new;
+	return ucl_object_typed_new (UCL_NULL);
 }
 
 ucl_object_t *
 ucl_object_typed_new (ucl_type_t type)
 {
 	ucl_object_t *new;
-	new = malloc (sizeof (ucl_object_t));
-	if (new != NULL) {
-		memset (new, 0, sizeof (ucl_object_t));
-		new->ref = 1;
-		new->type = (type <= UCL_NULL ? type : UCL_NULL);
+
+	if (type != UCL_USERDATA) {
+		new = UCL_ALLOC (sizeof (ucl_object_t));
+		if (new != NULL) {
+			memset (new, 0, sizeof (ucl_object_t));
+			new->ref = 1;
+			new->type = (type <= UCL_NULL ? type : UCL_NULL);
+			new->next = NULL;
+			new->prev = new;
+		}
 	}
+	else {
+		new = ucl_object_new_userdata (NULL, NULL);
+	}
+
 	return new;
+}
+
+ucl_object_t*
+ucl_object_new_userdata (ucl_userdata_dtor dtor, ucl_userdata_emitter emitter)
+{
+	struct ucl_object_userdata *new;
+	size_t nsize = sizeof (*new);
+
+	new = UCL_ALLOC (nsize);
+	if (new != NULL) {
+		memset (new, 0, nsize);
+		new->obj.ref = 1;
+		new->obj.type = UCL_USERDATA;
+		new->obj.next = NULL;
+		new->obj.prev = (ucl_object_t *)new;
+		new->dtor = dtor;
+		new->emitter = emitter;
+	}
+
+	return (ucl_object_t *)new;
 }
 
 ucl_type_t
