@@ -1071,7 +1071,7 @@ plist_parse_line(struct pkg *pkg, struct plist *plist, char *line)
 }
 
 struct plist *
-plist_new(struct pkg *pkg)
+plist_new(struct pkg *pkg, const char *stage)
 {
 	struct plist *p;
 	const char *prefix;
@@ -1084,6 +1084,7 @@ plist_new(struct pkg *pkg)
 	pkg_get(pkg, PKG_PREFIX, &prefix);
 	strlcpy(p->prefix, prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
+	p->stage = stage;
 	p->uname = strdup("root");
 	p->gname = strdup("wheel");
 
@@ -1138,7 +1139,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	assert(pkg != NULL);
 	assert(plist != NULL);
 
-	if ((pplist = plist_new(pkg)) == NULL)
+	if ((pplist = plist_new(pkg, stage)) == NULL)
 		return (EPKG_FATAL);
 
 	if ((plist_f = fopen(plist, "r")) == NULL) {

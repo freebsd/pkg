@@ -75,7 +75,7 @@ ATF_TC_BODY(parse_plist, tc)
 
 	pkg_set(p, PKG_PREFIX, "/myprefix");
 
-	plist = plist_new(p);
+	plist = plist_new(p, NULL);
 	ATF_REQUIRE(plist != NULL);
 	ATF_REQUIRE(plist->pkg == p);
 	ATF_REQUIRE_STREQ(plist->prefix, "/myprefix");
