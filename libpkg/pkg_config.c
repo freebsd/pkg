@@ -330,6 +330,8 @@ static size_t c_size = NELEM(c);
 
 static struct pkg_repo* pkg_repo_new(const char *name,
 	const char *url, const char *type);
+static void pkg_repo_overwrite(struct pkg_repo*, const char *name,
+	const char *url, const char *type);
 static void pkg_repo_free(struct pkg_repo *r);
 
 static void
@@ -510,6 +512,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 
 	if (r == NULL)
 		r = pkg_repo_new(rname, url, type);
+	else
+		pkg_repo_overwrite(r, rname, url, type);
 
 	if (signature_type != NULL) {
 		if (strcasecmp(signature_type, "pubkey") == 0)
@@ -1012,6 +1016,20 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
 	return (r);
+}
+
+static void
+pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
+    const char *type)
+{
+
+	free(r->name);
+	free(r->url);
+	r->name = strdup(name);
+	r->url = strdup(url);
+	r->ops = pkg_repo_find_type(type);
+	HASH_DEL(repos, r);
+	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
