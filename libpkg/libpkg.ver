@@ -2,6 +2,7 @@ LIBPKG_1.3 {
 global:
 	pkg_add;
 	pkg_add_from_remote;
+	pkg_add_port;
 	pkg_addannotation;
 	pkg_addcategory;
 	pkg_addconflict;

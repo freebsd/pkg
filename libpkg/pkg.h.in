@@ -1790,5 +1790,7 @@ bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 void pkg_audit_free (struct pkg_audit *audit);
 char *pkg_utils_tokenize(char **);
 int pkg_utils_count_spaces(const char *);
+int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \
+    const char *locationn, bool testing, bool old);
 
 #endif
