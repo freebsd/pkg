@@ -48,7 +48,8 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/pkg.shin \
 		frontend/search.shin \
 		frontend/version.shin \
-		frontend/test_environment.shin
+		frontend/test_environment.shin \
+		frontend/register.shin
 
 TESTS =
 tests_programs=	pkg_printf \
@@ -61,6 +62,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/annotate.sh \
 		frontend/search.sh \
 		frontend/version.sh \
+		frontend/register.sh \
 		frontend/test_environment.sh \
 		frontend/png.ucl \
 		frontend/sqlite3.ucl
