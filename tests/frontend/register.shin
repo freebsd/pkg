@@ -30,7 +30,7 @@ EOF
 	    -o match:".*Installing.*" \
 	    -e empty \
 	    -s exit:0 \
-	    pkg -o ABI="freebsd:11:x86:64" register --relocate . -i teststage \
+	    pkg register --relocate . -i teststage \
 	    -M test.ucl
 	atf_check \
 		-o inline:"$sum\n" \
@@ -57,7 +57,7 @@ EOF
 	    -o match:".*Installing.*" \
 	    -e match:".*conflicts.*" \
 	    -s exit:70 \
-	    pkg -o ABI="freebsd:11:x86:64" register --relocate . -i teststage \
+	    pkg register --relocate . -i teststage \
 	    -M test.ucl
 	atf_check \
 		-o inline:"$sum\n" \
