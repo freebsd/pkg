@@ -64,6 +64,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-larchive \
 			-lfetch \
 			-lutil \
+			-lssl \
 			-lcrypto \
 			-lm
 
