@@ -327,29 +327,13 @@ exec_register(int argc, char **argv)
 			pkg_suggest_arch(pkg, arch, false);
 	}
 
-	if (!testing_mode && input_path != NULL)
-		pkg_copy_tree(pkg, input_path, location ? location : "/");
-	
-	if (location != NULL)
-		pkg_addannotation(pkg, "relocated", location);
-
-	if (old) {
-		if (pkg_register_old(pkg) != EPKG_OK)
-			retcode = EX_SOFTWARE;
-	} else {
-		if (pkgdb_register_ports(db, pkg) != EPKG_OK)
-			retcode = EX_SOFTWARE;
-	}
+	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode, \
+	    old);
 
 	if (!legacy && pkg_has_message(pkg))
 		pkg_printf("%M\n", pkg);
 
-	if (!old) {
-		pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
-		pkgdb_close(db);
-	}
-
 	pkg_free(pkg);
 
-	return (retcode);
+	return (retcode != EPKG_OK ? EX_SOFTWARE : EX_OK);
 }

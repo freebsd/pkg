@@ -1,11 +1,11 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case register
-register_head() {
-	atf_set "descr" "testing pkg register"
+register_conflicts_head() {
+	atf_set "descr" "testing pkg register conflicts"
 }
 
-register_body() {
+register_conflicts_body() {
 	export INSTALL_AS_USER=yes
 	export PKG_DBDIR=.
 
@@ -71,5 +71,5 @@ atf_init_test_cases() {
 
 	unset PKG_DBDIR
 
-	atf_add_test_case register
+	atf_add_test_case register_conflicts
 }

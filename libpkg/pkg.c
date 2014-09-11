@@ -1607,9 +1607,6 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	char spath[MAXPATHLEN];
 	char dpath[MAXPATHLEN];
 
-	/* Execute pre-install scripts */
-	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
-
 	if (packing_init(&pack, dest, 0, true) != EPKG_OK) {
 		/* TODO */
 		return EPKG_FATAL;
@@ -1628,9 +1625,6 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 		packing_append_file_attr(pack, spath, dpath,
 		    file->uname, file->gname, file->perm);
 	}
-
-	/* Execute post-install scripts */
-	pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
 	return (packing_finish(pack));
 }

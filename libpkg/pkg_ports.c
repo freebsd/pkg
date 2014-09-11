@@ -1152,3 +1152,44 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	return (ret);
 }
+
+int
+pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
+    const char *location, bool testing, bool old)
+{
+	int rc = EPKG_OK;
+
+	if (location != NULL)
+		pkg_addannotation(pkg, "relocated", location);
+
+	pkg_emit_install_begin(pkg);
+
+	if (!old)
+		rc = pkgdb_register_pkg(db, pkg, 0, 0);
+
+	if (rc != EPKG_OK)
+		goto cleanup;
+
+	if (!testing) {
+		/* Execute pre-install scripts */
+		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
+
+		if (input_path != NULL)
+			pkg_copy_tree(pkg, input_path, \
+			    location ? location : "/");
+
+		/* Execute post-install scripts */
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+	}
+
+	if (rc == EPKG_OK)
+		pkg_emit_install_finished(pkg);
+
+cleanup:
+	if (old)
+		return (pkg_register_old(pkg));
+
+	pkgdb_register_finale(db, rc);
+
+	return (rc);
+}
