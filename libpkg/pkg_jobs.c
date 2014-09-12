@@ -876,7 +876,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	struct pkg_shlib *ls = NULL, *rs = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 	struct pkg_provide *lpr = NULL, *rpr = NULL;
-	const ucl_object_t *an, *obj;
+	const char *repository;
 
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
@@ -909,10 +909,9 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 
 	/* Check reponame */
 	pkg_get(rp, PKG_REPONAME, &reponame);
-	pkg_get(lp, PKG_ANNOTATIONS, &obj);
-	an = pkg_object_find(obj, "repository");
-	if (an != NULL)  {
-		if (strcmp(reponame, ucl_object_tostring(an)) != 0) {
+	repository = pkg_getannotation(lp, "repository");
+	if (repository != NULL) {
+		if (strcmp(reponame, repository) != 0) {
 			/*
 			 * If we have packages from some different repo, then
 			 * we should not try to detect options changed and so on,
@@ -920,7 +919,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			 */
 			pkg_debug(2, "package %s was installed from repo %s, so we ignore "
 					"the same version of %s in %s repository", origin,
-					ucl_object_tostring(an), origin, reponame);
+					repository , origin, reponame);
 			return (false);
 		}
 	}

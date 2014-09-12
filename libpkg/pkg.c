@@ -1215,10 +1215,25 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 	return (EPKG_OK);
 }
 
+const char *
+pkg_getannotation(const struct pkg *pkg, const char *tag)
+{
+	const ucl_object_t *an, *notes;
+
+	assert(pkg != NULL);
+	assert(tag != NULL);
+
+	pkg_get(pkg, PKG_ANNOTATIONS, &notes);
+	an = pkg_object_find(notes, tag);
+
+	if (an == NULL)
+		return (NULL);
+	return (pkg_object_string(an));
+}
+
 int
 pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
-	const ucl_object_t *an, *notes;
 	ucl_object_t *o, *annotations;
 
 	assert(pkg != NULL);
@@ -1227,9 +1242,7 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 
 	/* Tags are unique per-package */
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &notes);
-	an = pkg_object_find(notes, tag);
-	if (an != NULL) {
+	if (pkg_getannotation(pkg, tag) != NULL) {
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("duplicate annotation tag: %s value: %s,"
 			    " fatal (developer mode)", tag, value);

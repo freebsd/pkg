@@ -52,7 +52,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
-	const ucl_object_t	*obj, *an;
+	const char	*relocation;
 	struct hardlinks *hardlinks = NULL;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
@@ -60,8 +60,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &an);
-	obj = pkg_object_find(an, "relocated");
+	relocation = pkg_getannotation(pkg, "relocated");
+	if (relocation == NULL)
+		relocation = "";
 
 	/*
 	 * Get / compute size / checksum if not provided in the manifest
@@ -71,7 +72,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		const char *pkg_sum = pkg_file_cksum(file);
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    obj ? pkg_object_string(obj) : "", pkg_path);
+		    relocation, pkg_path);
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
@@ -145,7 +146,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		const char *pkg_path = pkg_file_path(file);
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    obj ? pkg_object_string(obj) : "", pkg_path);
+		    relocation, pkg_path);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
 		    file->uname, file->gname, file->perm);
@@ -158,7 +159,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		const char *pkg_path = pkg_dir_path(dir);
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    obj ? pkg_object_string(obj) : "", pkg_path);
+		    relocation, pkg_path);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
 		    dir->uname, dir->gname, dir->perm);
