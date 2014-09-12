@@ -589,5 +589,6 @@ void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
 struct plist *plist_new(struct pkg *p, const char *stage);
 int plist_parse_line(struct pkg *pkg, struct plist *p, char *line);
 void plist_free(struct plist *);
+const char *pkg_getannotation(const struct pkg *, const char *);
 
 #endif

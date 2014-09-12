@@ -1310,16 +1310,12 @@ struct sbuf *
 format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const ucl_object_t	*an, *rn;
 	const char		*reponame;
 
 	pkg_get(pkg, PKG_REPONAME, &reponame);
 	if (reponame == NULL) {
-		pkg_get(pkg, PKG_ANNOTATIONS, &an);
-		rn = pkg_object_find(an, "repository");
-		if (rn != NULL)
-			reponame = ucl_object_tostring(rn);
-		else
+		reponame = pkg_getannotation(pkg, "repository");
+		if (reponame == NULL)
 			reponame = "unknown-repository";
 	}
 	return (string_val(sbuf, reponame, p));
