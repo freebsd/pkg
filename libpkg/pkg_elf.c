@@ -378,7 +378,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
 			continue;
 		
-		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val), 
+		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val),
 				      dirname(fpath));
 		break;
 	}
@@ -500,6 +500,13 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			HASH_DEL(pkg->shlibs_required, sh);
 		}
 	}
+
+	/*
+	 * if the package is not supposed to provide share libraries then
+	 * drop the provided one
+	 */
+	if (pkg_getannotation(pkg, "no_provide_shlib") != NULL)
+		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
 
 	if (failures)
 		goto cleanup;
