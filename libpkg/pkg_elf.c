@@ -90,7 +90,7 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 
 	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
 	if (strncmp(shlib_path, "/lib", 4) == 0 ||
-	    strncmp(shlib_path, "/usr/lib", 7) == 0)
+	    strncmp(shlib_path, "/usr/lib", 8) == 0)
 		return (EPKG_END); /* ignore libs from base */
 
 	if (path != NULL)
