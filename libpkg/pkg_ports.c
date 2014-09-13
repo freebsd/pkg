@@ -788,8 +788,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	const ucl_object_t *o;
 	char *cmd;
 	char **args = NULL;
-	char *buf, *tofree;
-	int spaces, argc = 0, i;
+	char *buf, *tofree = NULL;
+	int spaces, argc = 0;
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
@@ -848,8 +848,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "actions")))
 		parse_actions(o, p, line, attr, argc, args);
 
-	for (i = 0; i < argc; i++)
-		free(args[i]);
 	free(args);
 	free(tofree);
 
