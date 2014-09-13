@@ -42,3 +42,4 @@ set_globals(void)
 	quiet = 0;
 	newpkgversion = 0;
 }
+

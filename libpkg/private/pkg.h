@@ -325,6 +325,11 @@ struct pkg_repo_ops {
 		const char *destdir);
 };
 
+typedef enum _pkg_repo_flags {
+	REPO_FLAGS_USE_IPV4 = (1U << 0),
+	REPO_FLAGS_USE_IPV6 = (1U << 1)
+} pkg_repo_flags;
+
 struct pkg_repo {
 	struct pkg_repo_ops *ops;
 
@@ -353,6 +358,8 @@ struct pkg_repo {
 
 	bool enable;
 	UT_hash_handle hh;
+
+	pkg_repo_flags flags;
 
 	/* Opaque repository data */
 	void *priv;

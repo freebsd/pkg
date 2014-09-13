@@ -144,6 +144,11 @@ typedef enum {
 	PKGDB_MAYBE_REMOTE
 } pkgdb_t;
 
+typedef enum {
+	PKG_INIT_FLAG_USE_IPV4 = (1U << 0),
+	PKG_INIT_FLAG_USE_IPV6 = (1U << 1)
+} pkg_init_flags;
+
 /**
  * Specify how an argument should be used by query functions.
  */
@@ -357,7 +362,9 @@ typedef enum _pkg_flags {
 	PKG_FLAG_UPGRADES_FOR_INSTALLED = (1U << 7),
 	PKG_FLAG_SKIP_INSTALL = (1U << 8),
 	PKG_FLAG_FORCE_MISSING = (1U << 9),
-	PKG_FLAG_FETCH_MIRROR = (1U << 10)
+	PKG_FLAG_FETCH_MIRROR = (1U << 10),
+	PKG_FLAG_USE_IPV4 = (1U << 11),
+	PKG_FLAG_USE_IPV6 = (1U << 12)
 } pkg_flags;
 
 typedef enum _pkg_stats_t {
@@ -1571,7 +1578,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 void pkg_event_register(pkg_event_cb cb, void *data);
 
 bool pkg_compiled_for_same_os_major(void);
-int pkg_init(const char *, const char *);
+int pkg_init(const char *, const char *, pkg_init_flags);
 int pkg_initialized(void);
 void pkg_shutdown(void);
 
