@@ -49,6 +49,7 @@
 #SAT_SOLVER = "";
 #RUN_SCRIPTS = true;
 #CASE_SENSITIVE_MATCH = false;
+#IP_VERSION = 0
 
 # Sample alias settings
 ALIAS              : {

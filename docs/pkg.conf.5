@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd August 17, 2014
+.Dd September 13, 2014
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -142,6 +142,11 @@ or
 Default: INDEX-N where
 .Cm N
 is the OS major version number.
+.It Cm IP_VERSION: integer
+Restrict network access to specified IP version.
+Could be 4 for IPv4, 6 for IPv6 or any other value for system default.
+Repositories or command line options could override this setting.
+Default: 0.
 .It Cm LOCK_RETRIES: integer
 Retries performed to obtain a lock.
 Default: 5.
@@ -313,6 +318,12 @@ This should be set to a path containing public key for this repository
 only. (default: NONE)
 .It Cm FINGERPRINTS: string
 This should be set to a path containing known signatures for the repository.
+.It Cm IP_VERSION: integer
+Restrict network access to specified IP version.
+Could be 4 for IPv4, 6 for IPv6 or any other value for system default.
+This option overrides the global setting with the same name and can be
+overwritten by a command line option.
+Default: 0.
 .El
 .El
 .Pp

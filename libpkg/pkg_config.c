@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
@@ -315,6 +315,12 @@ static struct config_entry c[] = {
 		"PLIST_ACCEPT_DIRECTORIES",
 		"NO",
 		"Accept directories listed like plain files in plist"
+	},
+	{
+		PKG_INT,
+		"IP_VERSION",
+		"0",
+		"Restrict network access to IPv4 or IPv6 only"
 	}
 };
 
@@ -409,7 +415,7 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
+add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_init_flags flags)
 {
 	const ucl_object_t *cur, *enabled;
 	ucl_object_iter_t it = NULL;
@@ -418,6 +424,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
 	const char *type = NULL;
+	int use_ipvx;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
@@ -495,6 +502,16 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			type = ucl_object_tostring(cur);
+		} else if (strcasecmp(key, "ip_version") == 0) {
+			if (cur->type != UCL_INT) {
+				pkg_emit_error("Expecting a integer for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			use_ipvx = ucl_object_toint(cur);
+			if (use_ipvx != 4 && use_ipvx != 6)
+				use_ipvx = 0;
 		}
 	}
 
@@ -538,10 +555,23 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 		else
 			r->mirror_type = NOMIRROR;
 	}
+
+	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
+		use_ipvx = 4;
+	else if ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)
+		use_ipvx = 6;
+
+	if (use_ipvx != 4 && use_ipvx != 6)
+		use_ipvx = pkg_object_int(pkg_config_get("IP_VERSION"));
+
+	if (use_ipvx == 4)
+		r->flags = REPO_FLAGS_USE_IPV4;
+	else if (use_ipvx == 6)
+		r->flags = REPO_FLAGS_USE_IPV6;
 }
 
 static void
-walk_repo_obj(const ucl_object_t *obj, const char *file)
+walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
@@ -555,7 +585,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file)
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
-			add_repo(cur, r, key);
+			add_repo(cur, r, key, flags);
 		else
 			pkg_emit_error("Ignoring bad configuration entry in %s: %s",
 			    file, ucl_object_emit(cur, UCL_EMIT_YAML));
@@ -563,7 +593,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file)
 }
 
 static void
-load_repo_file(const char *repofile)
+load_repo_file(const char *repofile, pkg_init_flags flags)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
@@ -587,13 +617,13 @@ load_repo_file(const char *repofile)
 		return;
 
 	if (obj->type == UCL_OBJECT)
-		walk_repo_obj(obj, repofile);
+		walk_repo_obj(obj, repofile, flags);
 
 	ucl_object_unref(obj);
 }
 
 static void
-load_repo_files(const char *repodir)
+load_repo_files(const char *repodir, pkg_init_flags flags)
 {
 	struct dirent *ent;
 	DIR *d;
@@ -614,26 +644,26 @@ load_repo_files(const char *repodir)
 			    repodir,
 			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
 			    ent->d_name);
-			load_repo_file(path);
+			load_repo_file(path, flags);
 		}
 	}
 	closedir(d);
 }
 
 static void
-load_repositories(const char *repodir)
+load_repositories(const char *repodir, pkg_init_flags flags)
 {
 	const pkg_object *reposlist, *cur;
 	pkg_iter it = NULL;
 
 	if (repodir != NULL) {
-		load_repo_files(repodir);
+		load_repo_files(repodir, flags);
 		return;
 	}
 
 	reposlist = pkg_config_get( "REPOS_DIR");
 	while ((cur = pkg_object_iterate(reposlist, &it)))
-		load_repo_files(pkg_object_string(cur));
+		load_repo_files(pkg_object_string(cur), flags);
 }
 
 bool
@@ -657,7 +687,7 @@ pkg_compiled_for_same_os_major(void)
 
 
 int
-pkg_init(const char *path, const char *reposdir)
+pkg_init(const char *path, const char *reposdir, pkg_init_flags flags)
 {
 	struct ucl_parser *p = NULL;
 	size_t i;
@@ -678,6 +708,12 @@ pkg_init(const char *path, const char *reposdir)
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
+		return (EPKG_FATAL);
+	}
+
+	if (((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4) &&
+	    ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)) {
+		pkg_emit_error("Invalid flags for pkg_init()");
 		return (EPKG_FATAL);
 	}
 
@@ -933,7 +969,7 @@ pkg_init(const char *path, const char *reposdir)
 	}
 
 	/* load the repositories */
-	load_repositories(reposdir);
+	load_repositories(reposdir, flags);
 
 	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 

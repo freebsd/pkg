@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2014
+.Dd September 13, 2014
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -33,6 +33,7 @@
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Op Fl C Ao configuration file Ac
 .Op Fl R Ao repository configuration directory Ac
+.Op Fl 4 | Fl 6
 .Ao command Ac Ao Ar flags Ac
 .Pp
 .Nm
@@ -43,6 +44,7 @@
 .Op Cm --jail Ao jail name or id Ac | Cm --chroot Ao chroot path Ac
 .Op Cm --config Ao configuration file Ac
 .Op Cm --repo-conf-dir Ao repository configuration directory Ac
+.Op Fl 4 | Fl 6
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
@@ -171,6 +173,12 @@ will search the directory for per-repository configuration files.
 This overrides any value of
 .Ev REPOS_DIR
 specified in the main configuration file.
+.It Fl 4
+.Nm
+will use IPv4 for fetching repository and packages.
+.It Fl 6
+.Nm
+will use IPv6 for fetching repository and packages.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS

@@ -164,9 +164,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 	}
 
 #ifdef HAVE_LIBJAIL
- 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
+ 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] [-4|-6] <command> [<args>]\n\n");
 #else
-	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] [-4|-6] <command> [<args>]\n\n");
 #endif
 	if (reason == PKG_USAGE_HELP) {
 		fprintf(out, "Global options supported:\n");
@@ -181,12 +181,14 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
 		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
 		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
+		fprintf(out, "\t%-15s%s\n", "-4", "Only use IPv4");
+		fprintf(out, "\t%-15s%s\n", "-6", "Only use IPv6");
 		fprintf(out, "Commands supported:\n");
 
 		for (i = 0; i < cmd_len; i++)
 			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
-		if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
+		if (!pkg_initialized() && pkg_init(conffile, reposdir, 0) != EPKG_OK)
 			errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 		plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
@@ -559,6 +561,7 @@ main(int argc, char **argv)
 	bool		  plugin_found = false;
 	bool		  show_commands = false;
 	bool		  activation_test = false;
+	pkg_init_flags	  init_flags = 0;
 	struct plugcmd	 *c;
 	const char	 *conffile = NULL;
 	const char	 *reposdir = NULL;
@@ -576,6 +579,8 @@ main(int argc, char **argv)
 		{ "list",		no_argument,		NULL,	'l' },
 		{ "version",		no_argument,		NULL,	'v' },
 		{ "option",		required_argument,	NULL,	'o' },
+		{ "only-ipv4",		no_argument,		NULL,	'4' },
+		{ "only-ipv6",		no_argument,		NULL,	'6' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
@@ -600,9 +605,9 @@ main(int argc, char **argv)
 	save_argv = argv;
 
 #ifdef HAVE_LIBJAIL
-	while ((ch = getopt_long(argc, argv, "+dj:c:C:R:lNvo:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+dj:c:C:R:lNvo:46", longopts, NULL)) != -1) {
 #else
-	while ((ch = getopt_long(argc, argv, "+dc:C:R:lNvo:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+dc:C:R:lNvo:46", longopts, NULL)) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -633,6 +638,12 @@ main(int argc, char **argv)
 			break;
 		case 'o':
 			export_arg_option (optarg);
+			break;
+		case '4':
+			init_flags = PKG_INIT_FLAG_USE_IPV4;
+			break;
+		case '6':
+			init_flags = PKG_INIT_FLAG_USE_IPV6;
 			break;
 		default:
 			break;
@@ -691,7 +702,7 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
-	if (pkg_init(conffile, reposdir) != EPKG_OK)
+	if (pkg_init(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	if (atexit(&pkg_shutdown) != 0)
