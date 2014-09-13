@@ -325,7 +325,7 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_INT,
-		"USE_IP_VERSION",
+		"IP_VERSION",
 		"0",
 		"Restrict network access to IPv4 or IPv6 only"
 	}
@@ -509,7 +509,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			type = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "use_ip_version") == 0) {
+		} else if (strcasecmp(key, "ip_version") == 0) {
 			if (cur->type != UCL_INT) {
 				pkg_emit_error("Expecting a integer for the "
 					"'%s' key of the '%s' repo",
@@ -517,12 +517,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			use_ipvx = ucl_object_toint(cur);
-			if (use_ipvx != 0 && use_ipvx != 4 && use_ipvx != 6) {
-				pkg_emit_error("Expecting a 0, 4 or 6 for the "
-					"'%s' key of the '%s' repo",
-					key, rname);
-				return;
-			}
+			if (use_ipvx != 4 && use_ipvx != 6)
+				use_ipvx = 0;
 		}
 	}
 
@@ -572,8 +568,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	else if ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)
 		use_ipvx = 6;
 
-	if (use_ipvx == 0)
-		use_ipvx = pkg_object_int(pkg_config_get("USE_IP_VERSION"));
+	if (use_ipvx != 4 && use_ipvx != 6)
+		use_ipvx = pkg_object_int(pkg_config_get("IP_VERSION"));
 
 	if (use_ipvx == 4)
 		r->flags = REPO_FLAGS_USE_IPV4;
