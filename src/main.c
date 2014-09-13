@@ -181,8 +181,8 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
 		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
 		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
-		fprintf(out, "\t%-15s%s\n", "-4", "Use only IPv4");
-		fprintf(out, "\t%-15s%s\n", "-6", "Use only IPv6");
+		fprintf(out, "\t%-15s%s\n", "-4", "Only use IPv4");
+		fprintf(out, "\t%-15s%s\n", "-6", "Only use IPv6");
 		fprintf(out, "Commands supported:\n");
 
 		for (i = 0; i < cmd_len; i++)
