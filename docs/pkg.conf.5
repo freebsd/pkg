@@ -266,6 +266,11 @@ How many workers are used for pkg-repo. If set to 0,
 .Va hw.ncpu
 is used.
 Default: 0.
+.It Cm USE_IP_VERSION: integer
+Restrict network access to specified IP version.
+Could be 0 (any), 4 or 6. Repositores or command line
+options could override this setting.
+Default: 0.
 .El
 .Sh REPOSITORY CONFIGURATION
 To use a repository you will need at least one repository
@@ -313,6 +318,11 @@ This should be set to a path containing public key for this repository
 only. (default: NONE)
 .It Cm FINGERPRINTS: string
 This should be set to a path containing known signatures for the repository.
+.It Cm USE_IP_VERSION: integer
+Restrict network access to specified IP version.
+Could be 0 (any), 4 or 6. This option override global setting with same name
+and could be overwritten by command line option.
+Default: 0.
 .El
 .El
 .Pp
