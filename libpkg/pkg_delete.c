@@ -162,19 +162,6 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	int64_t cnt;
 	char fullpath[MAXPATHLEN];
 
-	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1 &&
-	    errno != ENOTEMPTY && errno != EBUSY) {
-		pkg_emit_errno("unlinkat", dir);
-	}
-
-	tmp = strrchr(dir, '/');
-	if (tmp == dir)
-		return;
-
-	tmp[0] = '\0';
-	tmp = strrchr(dir, '/');
-	tmp[1] = '\0';
-
 	snprintf(fullpath, sizeof(fullpath), "/%s", dir);
 	if (pkgdb_is_dir_used(db, dir, &cnt) != EPKG_OK)
 		return;
@@ -184,6 +171,28 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 
 	if (strcmp(prefix_r, dir) == 0)
 		return;
+
+	pkg_debug(1, "removing directory %s\n", dir);
+	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1 &&
+	    errno != ENOTEMPTY && errno != EBUSY) {
+		pkg_emit_errno("unlinkat", dir);
+	}
+
+	/* No recursivity for packages out of the prefix */
+	if (strncmp(prefix_r, dir, strlen(prefix_r)) != 0)
+		return;
+
+	/* remove the trailing '/' */
+	tmp = strrchr(dir, '/');
+	if (tmp == dir)
+		return;
+
+	tmp[0] = '\0';
+	tmp = strrchr(dir, '/');
+	if (tmp == NULL)
+		return;
+
+	tmp[1] = '\0';
 
 	rmdir_p(db, pkg, dir, prefix_r);
 }
