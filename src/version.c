@@ -226,7 +226,7 @@ do_testpattern(unsigned int opt, int argc, char ** restrict argv)
 }
 
 static bool
-have_ports(const char **portsdir)
+have_ports(const char **portsdir, bool show_error)
 {
 	char		 portsdirmakefile[MAXPATHLEN];
 	struct stat	 sb;
@@ -244,7 +244,7 @@ have_ports(const char **portsdir)
 
 	have_ports = (stat(portsdirmakefile, &sb) == 0 && S_ISREG(sb.st_mode));
 
-	if (!have_ports)
+	if (show_error && !have_ports)
 		warnx("Cannot find ports tree: unable to open %s",
 		      portsdirmakefile);
 
@@ -389,7 +389,7 @@ free_index(struct index_entry *indexhead)
 
 static bool
 have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
-	       int argc, char ** restrict argv)
+	       int argc, char ** restrict argv, bool show_error)
 {
 	bool		have_indexfile = true;
 	struct stat	sb;
@@ -403,10 +403,11 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 	else
 		*indexfile = argv[0];
 
-	if (stat(*indexfile, &sb) == -1) {
+	if (stat(*indexfile, &sb) == -1)
 		have_indexfile = false;
+
+	if (show_error && !have_indexfile)
 		warn("Can't access %s", *indexfile);
-	}
 	
 	return (have_indexfile);
 }
@@ -901,7 +902,7 @@ exec_version(int argc, char **argv)
 
 	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX ) {
 		if (!have_indexfile(&indexfile, filebuf, sizeof(filebuf),
-                         argc, argv))
+		     argc, argv, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_index(opt, limchar, pattern, match,
@@ -913,7 +914,7 @@ exec_version(int argc, char **argv)
 			    auto_update, reponame, matchorigin));
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
-		if (!have_ports(&portsdir))
+		if (!have_ports(&portsdir, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_ports(opt, limchar, pattern,
@@ -924,11 +925,12 @@ exec_version(int argc, char **argv)
 	   Failing that, if portsdir exists and is valid, use that
 	   (slow) otherwise fallback to remote. */
 
-	if (have_indexfile(&indexfile, filebuf, sizeof(filebuf), argc, argv)) {
+	if (have_indexfile(&indexfile, filebuf, sizeof(filebuf), argc, argv,
+            false)) {
 		opt |= VERSION_SOURCE_INDEX;
 		return (do_source_index(opt, limchar, pattern, match,
 			    matchorigin, indexfile));
-	} else if (have_ports(&portsdir)) {
+	} else if (have_ports(&portsdir, false)) {
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
 			    matchorigin, portsdir));
