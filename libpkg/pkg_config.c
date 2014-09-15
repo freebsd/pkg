@@ -715,7 +715,13 @@ pkg_compiled_for_same_os_major(void)
 
 
 int
-pkg_init(const char *path, const char *reposdir, pkg_init_flags flags)
+pkg_init(const char *path, const char *reposdir)
+{
+	return (pkg_ini(path, reposdir, 0));
+}
+
+int
+pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 {
 	struct ucl_parser *p = NULL;
 	size_t i;
