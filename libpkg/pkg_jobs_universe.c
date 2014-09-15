@@ -892,12 +892,12 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	}
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
-		while ((p = utarray_next(candidates, p)) != NULL) {
+		while ((p = (struct pkg **)utarray_next(candidates, p)) != NULL) {
 			pkg_jobs_universe_add_pkg(universe, *p, false, NULL);
 		}
 	}
 	else {
-		while ((p = utarray_next(candidates, p)) != NULL) {
+		while ((p = (struct pkg **)utarray_next(candidates, p)) != NULL) {
 			pkg_free(*p);
 		}
 

@@ -252,7 +252,7 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 }
 
 static struct pkg_job_request_item*
-pkg_jobs_add_req_from_universe(struct pkg_job_request *head,
+pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 	struct pkg_job_universe_item *un, bool local)
 {
 	struct pkg_job_request *req;
@@ -261,7 +261,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request *head,
 	struct pkg_job_universe_item *uit;
 
 	pkg_get(un->pkg, PKG_UNIQUEID, &uid);
-	HASH_FIND_STR(head, uid, req);
+	HASH_FIND_STR(*head, uid, req);
 
 	if (req == NULL) {
 		req = calloc(1, sizeof(*req));
@@ -292,7 +292,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request *head,
 static struct pkg_job_request_item*
 pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
-	struct pkg_job_request *req, *head;
+	struct pkg_job_request *req, **head;
 	struct pkg_job_request_item *nit;
 	struct pkg_job_universe_item *un;
 	const char *uid;
@@ -315,6 +315,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		 * digest. In turn, that means that two upgrade candidates are equal,
 		 * we thus won't do anything with this item, as it is definitely useless
 		 */
+		pkg_get(pkg, PKG_UNIQUEID, &uid);
 		HASH_FIND_STR(*head, uid, req);
 		if (req != NULL) {
 			DL_FOREACH(req->item, nit) {
@@ -389,13 +390,12 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 	struct pkg *lp;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	UT_array *to_process = NULL;
-	const char *seen;
 
 	if (upgrade || reverse) {
 		utarray_new(to_process, &ut_ptr_icd);
 
 		HASH_ITER(hh, j->request_add, req, tmp) {
-			DL_FOREACH(req, it) {
+			DL_FOREACH(req->item, it) {
 				if (reverse)
 					deps_func = pkg_rdeps;
 				else
@@ -418,7 +418,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 					 */
 					un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
 						d->uid, lp, force);
-					utarray_push(to_process, &un);
+					utarray_push_back(to_process, &un);
 				}
 			}
 		}
@@ -429,8 +429,9 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 		struct pkg_job_universe_item **pun = NULL;
 
 		if (to_process->n > 0) {
-			while ((pun = utarray_next(to_process, pun)) != NULL) {
-				pkg_jobs_add_req_from_universe(j->request_add, *pun, false);
+			while ((pun = (struct pkg_job_universe_item **)
+							utarray_next(to_process, pun)) != NULL) {
+				pkg_jobs_add_req_from_universe(&j->request_add, *pun, false);
 			}
 			/* Now recursively process all items checked */
 			pkg_jobs_process_add_request(j, false);
@@ -516,9 +517,10 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 		struct pkg **ppkg = NULL;
 
 		if (to_process->n > 0) {
-			while ((ppkg = utarray_next(to_process, ppkg)) != NULL) {
+			while ((ppkg = (struct pkg **)
+							utarray_next(to_process, ppkg)) != NULL) {
 
-				pkg_jobs_add_req(j->request_delete, *ppkg);
+				pkg_jobs_add_req(j, *ppkg);
 			}
 			/* Now recursively process all items checked */
 			pkg_jobs_process_delete_request(j);
@@ -709,7 +711,7 @@ static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	struct pkg_job_request_item **req)
 {
-	const char *uid, *digest;
+	const char *digest;
 	struct pkg_job_request_item *nreq;
 
 	pkg_get(rp, PKG_DIGEST, &digest);
@@ -1726,6 +1728,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 {
 	struct pkg *new, *old;
 	const char *pkguid, *oldversion = NULL;
+	struct pkg_job_request *req;
 	char path[MAXPATHLEN], *target;
 	bool automatic, upgrade = false;
 	int flags = 0;
@@ -1740,11 +1743,12 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		upgrade = true;
 	}
 
-	if (ps->items[0]->jp != NULL && ps->items[0]->jp->is_file) {
+	HASH_FIND_STR(j->request_add, pkguid, req);
+	if (req != NULL && req->item->jp != NULL && req->item->jp->is_file) {
 		/*
 		 * We have package as a file, set special repository name
 		 */
-		target = ps->items[0]->jp->path;
+		target = req->item->jp->path;
 		pkg_set(new, PKG_REPONAME, "local file");
 	}
 	else {
