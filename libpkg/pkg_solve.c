@@ -410,11 +410,26 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	return (EPKG_OK);
 }
 
+static struct pkg_solve_variable *
+pkg_solve_find_var_in_chain(struct pkg_solve_variable *var,
+	struct pkg_job_universe_item *item)
+{
+	struct pkg_solve_variable *cur;
+
+	LL_FOREACH(var, cur) {
+		if (cur->unit == item) {
+			return (cur);
+		}
+	}
+
+	return (NULL);
+}
+
 static int
 pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
-	const char *digest;
+	const char *uid;
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_job_request_item *item, *confitem;
@@ -427,8 +442,9 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	pkg_get(req->item->pkg, PKG_DIGEST, &digest);
-	HASH_FIND_STR(problem->variables, digest, var);
+	pkg_get(req->item->pkg, PKG_UNIQUEID, &uid);
+	HASH_FIND_STR(problem->variables_by_uid, uid, var);
+	var = pkg_solve_find_var_in_chain(var, req->item->unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
 	picosat_assume(problem->sat, var->order * inverse);
@@ -442,8 +458,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		return (EPKG_FATAL);
 	cnt = 0;
 	LL_FOREACH(req->item, item) {
-		pkg_get(item->pkg, PKG_DIGEST, &digest);
-		HASH_FIND_STR(problem->variables, digest, curvar);
+		curvar = pkg_solve_find_var_in_chain(var, item->unit);
 		assert(curvar != NULL);
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL)
@@ -462,13 +477,11 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		problem->rules_count ++;
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
-			pkg_get(item->pkg, PKG_DIGEST, &digest);
-			HASH_FIND_STR(problem->variables, digest, curvar);
+			curvar = pkg_solve_find_var_in_chain(var, item->unit);
 			assert(curvar != NULL);
 
 			LL_FOREACH(item, confitem) {
-				pkg_get(confitem->pkg, PKG_DIGEST, &digest);
-				HASH_FIND_STR(problem->variables, digest, confvar);
+				confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
 				assert(confvar != NULL);
 				/* Conflict rule: (!A | !Bx) */
 				rule = pkg_solve_rule_new("request conflict");
