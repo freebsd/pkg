@@ -411,13 +411,94 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 }
 
 static int
-pkg_solve_add_unary_rule(struct pkg_solve_problem *problem,
-	struct pkg_solve_variable *var, int inverse)
+pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
+	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
+	const char *digest;
+	struct pkg_solve_rule *rule = NULL;
+	struct pkg_solve_item *it = NULL;
+	struct pkg_job_request_item *item, *confitem;
+	struct pkg_solve_variable *confvar, *curvar;
+	int cnt;
+
 	pkg_debug(4, "solver: add variable from %s request with uid %s-%s",
 		inverse < 0 ? "delete" : "install", var->uid, var->digest);
 
+	/*
+	 * Get the suggested item
+	 */
+	pkg_get(req->item->pkg, PKG_DIGEST, &digest);
+	HASH_FIND_STR(problem->variables, digest, var);
+	assert(var != NULL);
+	/* Assume the most significant variable */
 	picosat_assume(problem->sat, var->order * inverse);
+
+	/*
+	 * Add clause for any of candidates:
+	 * A1 | A2 | ... | An
+	 */
+	rule = pkg_solve_rule_new("request");
+	if (rule == NULL)
+		return (EPKG_FATAL);
+	cnt = 0;
+	LL_FOREACH(req->item, item) {
+		pkg_get(item->pkg, PKG_DIGEST, &digest);
+		HASH_FIND_STR(problem->variables, digest, curvar);
+		assert(curvar != NULL);
+		it = pkg_solve_item_new(curvar);
+		if (it == NULL)
+			return (EPKG_FATAL);
+
+		/* All request variables are top level */
+		curvar->top_level = true;
+		curvar->to_install = inverse > 0;
+		it->inverse = inverse;
+		RULE_ITEM_PREPEND(rule, it);
+		cnt ++;
+	}
+
+	if (cnt > 1) {
+		LL_PREPEND(problem->rules, rule);
+		problem->rules_count ++;
+		/* Also need to add pairs of conflicts */
+		LL_FOREACH(req->item, item) {
+			pkg_get(item->pkg, PKG_DIGEST, &digest);
+			HASH_FIND_STR(problem->variables, digest, curvar);
+			assert(curvar != NULL);
+
+			LL_FOREACH(item, confitem) {
+				pkg_get(confitem->pkg, PKG_DIGEST, &digest);
+				HASH_FIND_STR(problem->variables, digest, confvar);
+				assert(confvar != NULL);
+				/* Conflict rule: (!A | !Bx) */
+				rule = pkg_solve_rule_new("request conflict");
+				if (rule == NULL)
+					return (EPKG_FATAL);
+				/* !A */
+				it = pkg_solve_item_new(curvar);
+				if (it == NULL)
+					return (EPKG_FATAL);
+
+				it->inverse = -1;
+				RULE_ITEM_PREPEND(rule, it);
+				/* !Bx */
+				it = pkg_solve_item_new(confvar);
+				if (it == NULL)
+					return (EPKG_FATAL);
+
+				it->inverse = -1;
+				RULE_ITEM_PREPEND(rule, it);
+
+				LL_PREPEND(problem->rules, rule);
+				problem->rules_count ++;
+			}
+		}
+	}
+	else {
+		/* No need to add unary rules as we added the assumption already */
+		pkg_solve_rule_free(rule);
+	}
+
 	var->top_level = true;
 	var->to_install = inverse > 0;
 	problem->rules_count ++;
@@ -499,12 +580,14 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Request */
-		HASH_FIND_PTR(j->request_add, &cur_var->unit, jreq);
-		if (jreq != NULL)
-			pkg_solve_add_unary_rule(problem, cur_var, 1);
-		HASH_FIND_PTR(j->request_delete, &cur_var->unit, jreq);
-		if (jreq != NULL)
-			pkg_solve_add_unary_rule(problem, cur_var, -1);
+		if (!cur_var->top_level) {
+			HASH_FIND_STR(j->request_add, cur_var->uid, jreq);
+			if (jreq != NULL)
+				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
+			HASH_FIND_STR(j->request_delete, cur_var->uid, jreq);
+			if (jreq != NULL)
+				pkg_solve_add_request_rule(problem, cur_var, jreq, -1);
+		}
 
 		/*
 		 * If this var chain contains mutually conflicting vars
