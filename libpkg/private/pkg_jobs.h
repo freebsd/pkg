@@ -47,8 +47,14 @@ struct pkg_job_universe_item {
 	struct pkg_job_universe_item *next, *prev;
 };
 
+struct pkg_job_request_item {
+	struct pkg *p;
+	struct pkg_job_universe_item *unit;
+	struct pkg_job_request_item *prev, *next;
+};
+
 struct pkg_job_request {
-	struct pkg_job_universe_item *item;
+	struct pkg_job_request_item *item;
 	bool skip;
 	UT_hash_handle hh;
 };
