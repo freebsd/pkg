@@ -702,7 +702,7 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
-	if (pkg_init(conffile, reposdir, init_flags) != EPKG_OK)
+	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	if (atexit(&pkg_shutdown) != 0)
