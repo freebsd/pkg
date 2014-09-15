@@ -338,6 +338,11 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		return (NULL);
 	}
 
+	if (pkg_is_locked(pkg)) {
+		pkg_emit_locked(pkg);
+		return (NULL);
+	}
+
 	pkg_get(pkg, PKG_UNIQUEID, &uid);
 	HASH_FIND_STR(*head, uid, req);
 
@@ -472,6 +477,53 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 			DL_DELETE(req->item, selected);
 			DL_PREPEND(req->item, selected);
 		}
+	}
+}
+
+/*
+ * For delete request we merely check rdeps and force flag
+ */
+static void
+pkg_jobs_process_delete_request(struct pkg_jobs *j)
+{
+	bool force = j->flags & PKG_FLAG_FORCE;
+	struct pkg_job_request *req, *tmp, *found;
+	struct pkg_dep *d = NULL;
+	UT_array *to_process = NULL;
+	struct pkg *lp;
+
+	if (!force) {
+		/*
+		 * Need to add also all reverse deps here
+		 */
+		HASH_ITER(hh, j->request_add, req, tmp) {
+			d = NULL;
+			while (pkg_rdeps(req->item->pkg, &d) == EPKG_OK) {
+				HASH_FIND_STR(j->request_delete, d->uid, found);
+				if (found)
+					continue;
+
+				lp = pkg_jobs_universe_get_local(j->universe, d->uid, 0);
+				if (lp) {
+					utarray_push_back(to_process, &lp);
+				}
+			}
+		}
+	}
+
+	if (to_process) {
+		/* Add all items to the request */
+		struct pkg **ppkg = NULL;
+
+		if (to_process->n > 0) {
+			while ((ppkg = utarray_next(to_process, ppkg)) != NULL) {
+
+				pkg_jobs_add_req(j->request_delete, *ppkg);
+			}
+			/* Now recursively process all items checked */
+			pkg_jobs_process_delete_request(j);
+		}
+		utarray_free(to_process);
 	}
 }
 
@@ -1205,6 +1257,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	}
 
 	j->solved = 1;
+	pkg_jobs_process_delete_request(j);
 
 	return( EPKG_OK);
 }
@@ -1233,6 +1286,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	pkgdb_it_free(it);
 
 	j->solved = true;
+	pkg_jobs_process_delete_request(j);
 
 	return (EPKG_OK);
 }

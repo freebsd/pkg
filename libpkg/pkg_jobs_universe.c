@@ -253,10 +253,6 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK)
 				continue;
 
-		/* Explicitly request for a dependency for mirroring */
-		if (unit != NULL && flags & DEPS_FLAG_MIRROR)
-			pkg_jobs_add_req(universe->j, d->uid, unit);
-
 		if (rpkg != NULL) {
 			if (npkg != NULL) {
 				/* Save automatic flag */
