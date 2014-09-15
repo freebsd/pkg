@@ -473,7 +473,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		cnt ++;
 	}
 
-	if (cnt > 1) {
+	if (cnt > 1 && var->unit->hh.keylen != 0) {
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
 		/* Also need to add pairs of conflicts */

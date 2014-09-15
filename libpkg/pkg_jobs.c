@@ -790,13 +790,11 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 			else
 				assert(0);
 
-			rc = pkg_jobs_process_remote_pkg(j, p, NULL);
+			rc = EPKG_OK;
+			pkg_jobs_process_remote_pkg(j, p, NULL);
 			if (rc == EPKG_OK) {
 				/* Avoid freeing */
 				p = NULL;
-			}
-			else {
-				assert(0);
 			}
 			break;
 		}
