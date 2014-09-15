@@ -166,6 +166,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (pkgdb_is_dir_used(db, dir, &cnt) != EPKG_OK)
 		return;
 
+	pkg_debug(1, "Number of packages owning %d\n", cnt);
 	if (cnt > 1)
 		return;
 
