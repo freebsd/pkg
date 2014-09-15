@@ -318,49 +318,49 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 }
 
 static int
-pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
+pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 {
-	struct pkg_solved *treq;
+	struct pkg_solved *ts;
 	const char *uid;
 
-	if (req->type == PKG_SOLVED_UPGRADE
-			&& req->items[1]->pkg->conflicts != NULL) {
+	if (solved->type == PKG_SOLVED_UPGRADE
+			&& solved->items[1]->pkg->conflicts != NULL) {
 		/*
 		 * We have an upgrade request that has some conflicting packages, therefore
 		 * update priorities of local packages and try to update priorities of remote ones
 		 */
-		if (req->items[0]->priority == 0)
-			pkg_jobs_update_conflict_priority(j->universe, req);
+		if (solved->items[0]->priority == 0)
+			pkg_jobs_update_conflict_priority(j->universe, solved);
 
-		if (req->items[1]->priority > req->items[0]->priority &&
-				!req->already_deleted) {
+		if (solved->items[1]->priority > solved->items[0]->priority &&
+				!solved->already_deleted) {
 			/*
 			 * Split conflicting upgrade request into delete -> upgrade request
 			 */
-			treq = calloc(1, sizeof(struct pkg_solved));
-			if (treq == NULL) {
+			ts = calloc(1, sizeof(struct pkg_solved));
+			if (ts == NULL) {
 				pkg_emit_errno("calloc", "pkg_solved");
 				return (EPKG_FATAL);
 			}
 
-			treq->type = PKG_SOLVED_UPGRADE_REMOVE;
-			treq->items[0] = req->items[1];
-			DL_APPEND(j->jobs, treq);
+			ts->type = PKG_SOLVED_UPGRADE_REMOVE;
+			ts->items[0] = solved->items[1];
+			DL_APPEND(j->jobs, ts);
 			j->count ++;
-			req->already_deleted = true;
-			pkg_get(treq->items[0]->pkg, PKG_UNIQUEID, &uid);
+			solved->already_deleted = true;
+			pkg_get(ts->items[0]->pkg, PKG_UNIQUEID, &uid);
 			pkg_debug(2, "split upgrade request for %s", uid);
 			return (EPKG_CONFLICT);
 		}
 	}
-	else if (req->type == PKG_SOLVED_DELETE) {
-		if (req->items[0]->priority == 0)
-			pkg_jobs_update_universe_priority(j->universe, req->items[0],
+	else if (solved->type == PKG_SOLVED_DELETE) {
+		if (solved->items[0]->priority == 0)
+			pkg_jobs_update_universe_priority(j->universe, solved->items[0],
 					PKG_PRIORITY_UPDATE_DELETE);
 	}
 	else {
-		if (req->items[0]->priority == 0)
-			pkg_jobs_update_universe_priority(j->universe, req->items[0],
+		if (solved->items[0]->priority == 0)
+			pkg_jobs_update_universe_priority(j->universe, solved->items[0],
 					PKG_PRIORITY_UPDATE_REQUEST);
 	}
 
@@ -393,7 +393,7 @@ iter_again:
 			req->items[1]->priority = 0;
 	}
 	LL_FOREACH(j->jobs, req) {
-		if (pkg_jobs_set_request_priority(j, req) == EPKG_CONFLICT)
+		if (pkg_jobs_set_execute_priority(j, req) == EPKG_CONFLICT)
 			goto iter_again;
 	}
 
@@ -1029,8 +1029,8 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 
 	LL_FOREACH(j->jobs, sit) {
 		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j, 0);
-		if (jreq != NULL && jreq->item != sit->items[0]) {
-			req_pkg = jreq->item->p;
+		if (jreq != NULL && jreq->item->unit != sit->items[0]) {
+			req_pkg = jreq->item->pkg;
 			pkg = sit->items[0]->pkg;
 			/* Set the reason */
 			pkg_get(req_pkg, PKG_NAME, &name, PKG_VERSION, &version);
