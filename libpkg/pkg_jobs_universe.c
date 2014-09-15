@@ -737,6 +737,8 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 {
 	struct pkg_dep *rd = NULL, *d = NULL;
 	struct pkg_job_universe_item *found;
+	struct pkg_job_request *req;
+
 	struct pkg *lp;
 	const char *old_uid;
 	struct pkg_job_replace *replacement;
@@ -774,6 +776,8 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 	HASH_DELETE(hh, universe->items, unit);
 	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
+	/* This involves copying, so we need to get new_uid from a persistent storage */
+	pkg_get(unit->pkg, PKG_UNIQUEID, &new_uid);
 
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)
