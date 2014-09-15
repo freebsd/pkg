@@ -443,14 +443,21 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 		 * sorted based on the priority of a repo
 		 */
 		HASH_ITER(hh, j->request_add, req, tmp) {
-			const char *uid;
+			const char *uid, *lrepo, *rrepo;
 			struct pkg_job_request_item *selected = req->item;
 
 			pkg_get(req->item->pkg, PKG_UNIQUEID, &uid);
 			lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
+			/* Check reponame */
+			if (lp != NULL)
+				lrepo = pkg_getannotation(lp, "repository");
 
 			DL_FOREACH(req->item, it) {
-
+				pkg_get(it->pkg, PKG_REPONAME, &rrepo);
+				if (lrepo != NULL && rrepo != NULL && strcmp(rrepo, lrepo) == 0) {
+					selected = it;
+					break;
+				}
 			}
 		}
 	}
@@ -913,14 +920,13 @@ bool
 pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
-	const char *lversion, *rversion, *larch, *rarch, *reponame, *origin;
+	const char *lversion, *rversion, *larch, *rarch, *origin;
 	const char *ldigest, *rdigest;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 	struct pkg_provide *lpr = NULL, *rpr = NULL;
-	const char *repository;
 
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
@@ -951,22 +957,6 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	else if (ret < 0)
 		return (true);
 
-	/* Check reponame */
-	pkg_get(rp, PKG_REPONAME, &reponame);
-	repository = pkg_getannotation(lp, "repository");
-	if (repository != NULL) {
-		if (strcmp(reponame, repository) != 0) {
-			/*
-			 * If we have packages from some different repo, then
-			 * we should not try to detect options changed and so on,
-			 * basically, we need to check a version only and suggest upgrade
-			 */
-			pkg_debug(2, "package %s was installed from repo %s, so we ignore "
-					"the same version of %s in %s repository", origin,
-					repository , origin, reponame);
-			return (false);
-		}
-	}
 	/* Compare archs */
 	if (strcmp (larch, rarch) != 0) {
 		pkg_set(rp, PKG_REASON, "ABI changed");
