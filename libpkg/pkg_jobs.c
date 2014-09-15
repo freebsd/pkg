@@ -253,7 +253,7 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 
 static struct pkg_job_request_item*
 pkg_jobs_add_req_from_universe(struct pkg_job_request *head,
-	struct pkg_job_universe_item *un)
+	struct pkg_job_universe_item *un, bool local)
 {
 	struct pkg_job_request *req;
 	struct pkg_job_request_item *nit;
@@ -273,14 +273,17 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request *head,
 	}
 
 	DL_FOREACH(un, uit) {
-		nit = calloc(1, sizeof(*nit));
-		if (nit == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request_item");
-			return (NULL);
+		if ((uit->pkg->type == PKG_INSTALLED && local) ||
+				(uit->pkg->type != PKG_INSTALLED && !local)) {
+			nit = calloc(1, sizeof(*nit));
+			if (nit == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_job_request_item");
+				return (NULL);
+			}
+			nit->pkg = uit->pkg;
+			nit->unit = uit;
+			DL_APPEND(req->item, nit);
 		}
-		nit->pkg = uit->pkg;
-		nit->unit = uit;
-		DL_APPEND(req->item, nit);
 	}
 
 	return (req->item);
@@ -323,7 +326,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 			/*
 			 * We need to add request chain from the universe chain
 			 */
-			return (pkg_jobs_add_req_from_universe(head, un));
+			return (pkg_jobs_add_req_from_universe(head, un, !IS_DELETE(j)));
 		}
 
 		return (NULL);
@@ -422,7 +425,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 
 		if (to_process->n > 0) {
 			while ((pun = utarray_next(to_process, pun)) != NULL) {
-				pkg_jobs_add_req_from_universe(j->request_add, *pun);
+				pkg_jobs_add_req_from_universe(j->request_add, *pun, false);
 			}
 			/* Now recursively process all items checked */
 			pkg_jobs_process_add_request(j, false);
@@ -431,7 +434,25 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 	}
 
 	if (top) {
+		/*
+		 * Here we need to sort all install candidates following this logic:
+		 * 1) all items in the request are remote ones
+		 * 2) we select candidate from the same repo as local one - or -
+		 * 3) we select the candidate with the maximum version - or -
+		 * 4) we just use the first possible candidate assuming that they are
+		 * sorted based on the priority of a repo
+		 */
+		HASH_ITER(hh, j->request_add, req, tmp) {
+			const char *uid;
+			struct pkg_job_request_item *selected = req->item;
 
+			pkg_get(req->item->pkg, PKG_UNIQUEID, &uid);
+			lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
+
+			DL_FOREACH(req->item, it) {
+
+			}
+		}
 	}
 }
 
