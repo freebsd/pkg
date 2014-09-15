@@ -41,7 +41,6 @@ struct job_pattern;
 
 struct pkg_job_universe_item {
 	struct pkg *pkg;
-	struct job_pattern *jp;
 	int priority;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
@@ -50,6 +49,7 @@ struct pkg_job_universe_item {
 struct pkg_job_request_item {
 	struct pkg *p;
 	struct pkg_job_universe_item *unit;
+	struct job_pattern *jp;
 	struct pkg_job_request_item *prev, *next;
 };
 

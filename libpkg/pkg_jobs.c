@@ -249,7 +249,7 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 	return (true);
 }
 
-void
+static struct pkg_job_request_item*
 pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
 	struct pkg_job_request *req, *head;
@@ -270,18 +270,26 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 	pkg_get(pkg, PKG_UNIQUEID, &uid);
 	HASH_FIND_STR(*head, uid, req);
 
+	nit = calloc(1, sizeof(*nit));
+	if (nit == NULL) {
+		pkg_emit_errno("malloc", "struct pkg_job_request_item");
+		return (NULL);
+	}
+
 	if (req == NULL) {
 		/* Allocate new unique request item */
-		req = calloc(1, sizeof (struct pkg_job_request));
+		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
 			pkg_emit_errno("malloc", "struct pkg_job_request");
-			return;
+			return (NULL);
 		}
-		req->item = item;
 		HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), req);
 	}
 
+	/* Append candidate to the list of candidates */
+	DL_APPEND(req->item, nit);
 
+	return (nit);
 }
 
 static int
@@ -464,16 +472,12 @@ end:
 
 static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
-		bool force, struct pkg_job_universe_item **unit)
+	struct pkg_job_request_item **req)
 {
-	struct pkg_job_universe_item *jit = NULL, *rjit = NULL;
-	struct pkg_job_seen *seen;
-	int rc = EPKG_FATAL;
-	bool automatic;
 	const char *uid, *digest;
-	struct pkg *lp = NULL;
+	struct pkg_job_request_item *nreq;
 
-	pkg_get(rp, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
+	pkg_get(rp, PKG_DIGEST, &digest);
 
 	if (digest == NULL) {
 		if (pkg_checksum_calculate(rp, j->db) != EPKG_OK) {
@@ -481,138 +485,13 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		}
 		pkg_get(rp, PKG_DIGEST, &digest);
 	}
-	seen = pkg_jobs_universe_seen(j->universe, digest);
-	if (seen != NULL) {
-		if (!force) {
-			/* Remote package is the same as local */
-			pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
-					uid, digest,
-					seen->un->pkg->type == PKG_INSTALLED ? 'l' : 'r');
-			jit = seen->un;
-			do {
-				if (jit->pkg->type != PKG_INSTALLED)
-					break;
-				jit = jit->prev;
-			} while (jit != seen->un);
 
-			if (jit->pkg->type != PKG_INSTALLED)
-				pkg_jobs_add_req(j, uid, jit);
+	nreq = pkg_jobs_add_req(j, rp);
 
-			return (EPKG_INSTALLED);
-		}
-		else {
-			/*
-			 * In forced mode we need to check whether we seen any upgrade
-			 * candidates
-			 */
-			jit = seen->un;
-			while (jit != NULL && jit->pkg->type == PKG_INSTALLED)
-				jit = jit->next;
+	if (req != NULL)
+		*req = nreq;
 
-			if (jit == NULL) {
-				/*
-				 * No other remote candidates with this digest
-				 */
-				pkg_debug(3, "force add of %s to the universe", uid);
-				pkg_jobs_universe_add_pkg(j->universe, rp, true, &jit);
-				pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
-				pkg_set(rp, PKG_AUTOMATIC, automatic);
-				rc = pkg_jobs_universe_process_item(j->universe, rp, NULL);
-
-				if (rc == EPKG_OK) {
-					if (unit != NULL)
-						*unit = jit;
-
-					pkg_jobs_add_req(j, uid, jit);
-				}
-			}
-			else {
-				struct pkg_job_request *jreq;
-
-				pkg_debug(3, "already have the same package to reinstall: %s",
-					uid);
-				if (pkg_jobs_need_upgrade(rp, jit->pkg)) {
-					pkg_debug(3, "force add of %s to the universe", uid);
-					pkg_jobs_universe_add_pkg(j->universe, rp, true, &jit);
-					pkg_get(seen->un->pkg, PKG_AUTOMATIC, &automatic);
-					pkg_set(rp, PKG_AUTOMATIC, automatic);
-					rc = pkg_jobs_universe_process_item(j->universe, rp, NULL);
-				}
-				/* But we can still need to add it to the request */
-				HASH_FIND_PTR(j->request_add, jit, jreq);
-				if (jreq == NULL)
-					pkg_jobs_add_req(j, uid, jit);
-			}
-			if (unit != NULL)
-				*unit = jit;
-
-			return (EPKG_OK);
-		}
-	}
-	else {
-		jit = pkg_jobs_universe_find(j->universe, uid);
-		if (jit == NULL) {
-			if (j->type != PKG_JOBS_FETCH) {
-				lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
-				if (lp != NULL)
-					pkg_jobs_universe_process_item(j->universe, lp, &jit);
-			}
-		}
-
-		/* We have a more recent package */
-		if (jit != NULL) {
-			LL_FOREACH(jit, rjit) {
-				lp = rjit->pkg;
-
-				if (!pkg_jobs_need_upgrade(rp, lp)) {
-					/*
-					 * We can have package from another repo in the
-					 * universe, but if it is older than this one we just
-					 * do not add it.
-					 */
-					if (rjit->pkg->type == PKG_INSTALLED) {
-						if (!force)
-							return (EPKG_INSTALLED);
-					}
-					else {
-						pkg_debug(3, "already added newer package %s to the universe, "
-							"do not add it again", uid);
-						/* But we still need to check request */
-						pkg_jobs_add_req(j, uid, rjit);
-						return (EPKG_OK);
-					}
-				}
-				else {
-					/*
-					 * New package is an upgrade, no need to continue
-					 */
-					jit = NULL;
-					break;
-				}
-			}
-			if (rjit == NULL && force) {
-				pkg_debug(3, "force add of %s to the universe", uid);
-				pkg_jobs_universe_add_pkg(j->universe, rp, true, &jit);
-				pkg_get(jit->pkg, PKG_AUTOMATIC, &automatic);
-				pkg_set(rp, PKG_AUTOMATIC, automatic);
-			}
-		}
-
-		/* Add a package to request chain and populate universe */
-		if (jit == NULL)
-			rc = pkg_jobs_universe_process_item(j->universe, rp, &jit);
-		else
-			rc = pkg_jobs_universe_process_item(j->universe, rp, NULL);
-
-		if (rc == EPKG_OK) {
-			if (unit != NULL)
-				*unit = jit;
-
-			pkg_jobs_add_req(j, uid, jit);
-		}
-	}
-
-	return (rc);
+	return (nreq != NULL ? EPKG_OK : EPKG_FATAL);
 }
 
 static int
@@ -647,7 +526,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 				pkg_jobs_universe_change_uid(j->universe, unit, fuid,
 					strlen(fuid), false);
 
-			rc = pkg_jobs_process_remote_pkg(j, p, false, NULL);
+			rc = pkg_jobs_process_remote_pkg(j, p, NULL);
 			if (rc == EPKG_OK) {
 				/* Avoid freeing */
 				p = NULL;
@@ -1148,27 +1027,18 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct job_pattern *jp, *jtmp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	char *uid;
-	struct pkg_job_universe_item *unit;
-
 	HASH_ITER(hh, j->patterns, jp, jtmp) {
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg,
 				PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS) == EPKG_OK) {
-			// Check if the pkg is locked
-			pkg_get(pkg, PKG_UNIQUEID, &uid);
-			pkg_jobs_universe_process_item(j->universe, pkg, &unit);
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
 			}
 			else {
-				pkg_get(pkg, PKG_UNIQUEID, &uid);
-				pkg_jobs_add_req(j, uid, unit);
+				pkg_jobs_add_req(j, pkg);
 			}
-			/* TODO: use repository priority here */
-
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
@@ -1184,8 +1054,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	char *uid;
-	struct pkg_job_universe_item *unit;
 
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
@@ -1193,32 +1061,13 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	while (pkgdb_it_next(it, &pkg,
 			PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS)
 			== EPKG_OK) {
-		// Check if the pkg is locked
-		pkg_get(pkg, PKG_UNIQUEID, &uid);
-		unit = pkg_jobs_universe_find(j->universe, uid);
-		if (unit == NULL) {
-			pkg_jobs_universe_process_item(j->universe, pkg, &unit);
-			if(pkg_is_locked(pkg)) {
-				pkg_emit_locked(pkg);
-			}
-			else if (pkg_jobs_test_automatic(j, pkg)) {
-				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
-						uid);
-				pkg_jobs_add_req(j, uid, unit);
-			}
+		if(pkg_is_locked(pkg)) {
+			pkg_emit_locked(pkg);
 		}
-		else {
-			if(pkg_is_locked(unit->pkg)) {
-				pkg_emit_locked(unit->pkg);
-			}
-			else if (pkg_jobs_test_automatic(j, unit->pkg)) {
-				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
-						uid);
-				pkg_jobs_add_req(j, uid, unit);
-			}
+		else if (pkg_jobs_test_automatic(j, pkg)) {
+			pkg_jobs_add_req(j, pkg);
+		}
 
-			pkg_free(pkg);
-		}
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
