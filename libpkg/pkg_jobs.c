@@ -455,10 +455,22 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 			DL_FOREACH(req->item, it) {
 				pkg_get(it->pkg, PKG_REPONAME, &rrepo);
 				if (lrepo != NULL && rrepo != NULL && strcmp(rrepo, lrepo) == 0) {
+					/*
+					 * Always prefer the same repo
+					 */
 					selected = it;
 					break;
 				}
+				/* Find out the most fresh package */
+				if (selected == NULL)
+					selected = it;
+				else if (pkg_version_change_between(it->pkg, selected->pkg)
+								== PKG_UPGRADE)
+					selected = it;
 			}
+			/* Insert selected to the front of the list of candidates */
+			DL_DELETE(req->item, selected);
+			DL_PREPEND(req->item, selected);
 		}
 	}
 }
@@ -810,18 +822,13 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		if (p == NULL)
 			return (EPKG_FATAL);
 
-		pkg_jobs_universe_process(j->universe, p);
-
 		while(pkg_rdeps(p, &rdep) == EPKG_OK) {
 			struct pkg *rdep_package;
 
 			rdep_package = pkg_jobs_universe_get_local(j->universe, rdep->uid,
 					PKG_LOAD_BASIC);
-			if (rdep_package != NULL) {
-				pkg_jobs_universe_process(j->universe, rdep_package);
-				/* It is not a top level package */
+			if (rdep_package != NULL)
 				return (EPKG_END);
-			}
 		}
 
 		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
@@ -1411,6 +1418,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	}
 
 	pkg_jobs_propagate_automatic(j);
+	pkg_jobs_process_add_request(j, true);
 
 order:
 
