@@ -43,6 +43,8 @@
 #include <sys/wait.h>
 #include <ctype.h>
 
+#include "utarray.h"
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -250,6 +252,41 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 }
 
 static struct pkg_job_request_item*
+pkg_jobs_add_req_from_universe(struct pkg_job_request *head,
+	struct pkg_job_universe_item *un)
+{
+	struct pkg_job_request *req;
+	struct pkg_job_request_item *nit;
+	const char *uid;
+	struct pkg_job_universe_item *uit;
+
+	pkg_get(un->pkg, PKG_UNIQUEID, &uid);
+	HASH_FIND_STR(head, uid, req);
+
+	if (req == NULL) {
+		req = calloc(1, sizeof(*req));
+		if (req == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_job_request");
+			return (NULL);
+		}
+		HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), req);
+	}
+
+	DL_FOREACH(un, uit) {
+		nit = calloc(1, sizeof(*nit));
+		if (nit == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_job_request_item");
+			return (NULL);
+		}
+		nit->pkg = uit->pkg;
+		nit->unit = uit;
+		DL_APPEND(req->item, nit);
+	}
+
+	return (req->item);
+}
+
+static struct pkg_job_request_item*
 pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
 	struct pkg_job_request *req, *head;
@@ -260,6 +297,14 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	assert(pkg != NULL);
 
+	if (!IS_DELETE(j)) {
+		head = &j->request_add;
+		assert(pkg->type != PKG_INSTALLED);
+	}
+	else {
+		head = &j->request_delete;
+		assert(pkg->type == PKG_INSTALLED);
+	}
 	rc = pkg_jobs_universe_add_pkg(j->universe, pkg, false, &un);
 	if (rc == EPKG_END) {
 		/*
@@ -268,9 +313,17 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		 * we thus won't do anything with this item, as it is definitely useless
 		 */
 		HASH_FIND_STR(*head, uid, req);
-		DL_FOREACH(req->item, nit) {
-			if (nit->unit == un)
-				return (nit);
+		if (req != NULL) {
+			DL_FOREACH(req->item, nit) {
+				if (nit->unit == un)
+					return (nit);
+			}
+		}
+		else {
+			/*
+			 * We need to add request chain from the universe chain
+			 */
+			return (pkg_jobs_add_req_from_universe(head, un));
 		}
 
 		return (NULL);
@@ -280,14 +333,6 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		 * Something bad has happened
 		 */
 		return (NULL);
-	}
-	if (!IS_DELETE(j)) {
-		head = &j->request_add;
-		assert(pkg->type != PKG_INSTALLED);
-	}
-	else {
-		head = &j->request_delete;
-		assert(pkg->type == PKG_INSTALLED);
 	}
 
 	pkg_get(pkg, PKG_UNIQUEID, &uid);
@@ -315,6 +360,79 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 	DL_APPEND(req->item, nit);
 
 	return (nit);
+}
+
+/*
+ * Post-process add request and handle flags:
+ * upgrade - search for upgrades for dependencies and add them to the request
+ * force - all upgrades are forced
+ * reverse - try to upgrade reverse deps as well
+ */
+static void
+pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
+{
+	bool force = j->flags & PKG_FLAG_FORCE,
+		 reverse = j->flags & PKG_FLAG_RECURSIVE,
+		 upgrade = j->type == PKG_UPGRADE;
+	struct pkg_job_request *req, *tmp, *found;
+	struct pkg_job_request_item *it;
+	struct pkg_job_universe_item *un;
+	struct pkg_dep *d;
+	struct pkg *lp;
+	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
+	UT_array *to_process = NULL;
+	const char *seen;
+
+	if (upgrade || reverse) {
+		utarray_new(to_process, &ut_ptr_icd);
+
+		HASH_ITER(hh, j->request_add, req, tmp) {
+			DL_FOREACH(req, it) {
+				if (reverse)
+					deps_func = pkg_rdeps;
+				else
+					deps_func = pkg_deps;
+
+				d = NULL;
+				while (deps_func(it->pkg, &d) == EPKG_OK) {
+					/*
+					 * Do not add duplicated upgrade candidates
+					 */
+					HASH_FIND_STR(j->request_add, d->uid, found);
+					if (found != NULL)
+						continue;
+
+					lp = pkg_jobs_universe_get_local(j->universe,
+						d->uid, 0);
+					/*
+					 * Here we need to check whether specific remote package
+					 * is newer than a local one
+					 */
+					un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
+						d->uid, lp, force);
+					utarray_push(to_process, &un);
+				}
+			}
+		}
+	}
+
+	if (to_process) {
+		/* Add all items to the request */
+		struct pkg_job_universe_item **pun = NULL;
+
+		if (to_process->n > 0) {
+			while ((pun = utarray_next(to_process, pun)) != NULL) {
+				pkg_jobs_add_req_from_universe(j->request_add, *pun);
+			}
+			/* Now recursively process all items checked */
+			pkg_jobs_process_add_request(j, false);
+		}
+		utarray_free(to_process);
+	}
+
+	if (top) {
+
+	}
 }
 
 static int

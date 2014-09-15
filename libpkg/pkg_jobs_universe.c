@@ -32,6 +32,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "utarray.h"
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -839,4 +841,77 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			}
 		}
 	}
+}
+
+
+struct pkg_job_universe_item*
+pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
+	const char *uid, struct pkg *lp, bool force)
+{
+	struct pkg *pkg = NULL, *selected = lp;
+	struct pkgdb_it *it;
+	struct pkg_job_universe_item *unit;
+	int flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
+					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	UT_array *candidates;
+	struct pkg **p = NULL;
+
+	HASH_FIND(hh, universe->items, uid, strlen(uid), unit);
+	if (unit != NULL) {
+		/*
+		 * If a unit has been found, we have already found the potential
+		 * upgrade chain for it
+		 */
+		return (unit);
+	}
+
+	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_EXACT,
+		universe->j->reponame)) == NULL)
+		return (NULL);
+
+	utarray_new(candidates, &ut_ptr_icd);
+	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
+
+		if (force) {
+			/* Just add everything */
+			selected = pkg;
+		}
+		else {
+			if (selected == lp &&
+					(lp == NULL || pkg_jobs_need_upgrade(pkg, lp)))
+				selected = pkg;
+			else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE)
+				selected = pkg;
+		}
+		utarray_push_back(candidates, &pkg);
+		pkg = NULL;
+	}
+
+	pkgdb_it_free(it);
+
+	if (lp != NULL) {
+		/* Add local package to the universe as well */
+		pkg_jobs_universe_add_pkg(universe, lp, false, NULL);
+	}
+	if (selected != lp) {
+		/* We need to add the whole chain of upgrade candidates */
+		while ((p = utarray_next(candidates, p)) != NULL) {
+			pkg_jobs_universe_add_pkg(universe, *p, false, NULL);
+		}
+	}
+	else {
+		while ((p = utarray_next(candidates, p)) != NULL) {
+			pkg_free(*p);
+		}
+
+		utarray_free(candidates);
+
+		return (NULL);
+	}
+
+	HASH_FIND(hh, universe->items, uid, strlen(uid), unit);
+	utarray_free(candidates);
+
+	return (unit);
 }
