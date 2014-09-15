@@ -188,7 +188,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		for (i = 0; i < cmd_len; i++)
 			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
-		if (!pkg_initialized() && pkg_init(conffile, reposdir, 0) != EPKG_OK)
+		if (!pkg_initialized() && pkg_ini(conffile, reposdir, 0) != EPKG_OK)
 			errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 		plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));

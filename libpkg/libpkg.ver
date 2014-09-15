@@ -79,6 +79,7 @@ global:
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;
+	pkg_ini;
 	pkg_init;
 	pkg_initialized;
 	pkg_is_installed;
