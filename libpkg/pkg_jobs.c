@@ -250,36 +250,38 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 }
 
 void
-pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
-		struct pkg_job_universe_item *item)
+pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
-	struct pkg_job_request *req, *test, **head;
+	struct pkg_job_request *req, *head;
+	struct pkg_job_request_item *nit;
+	const char *uid;
 
-	assert(item);
-	assert(item->pkg);
+	assert(pkg != NULL);
 
 	if (!IS_DELETE(j)) {
 		head = &j->request_add;
-		assert(item->pkg->type != PKG_INSTALLED);
+		assert(pkg->type != PKG_INSTALLED);
 	}
 	else {
 		head = &j->request_delete;
-		assert(item->pkg->type == PKG_INSTALLED);
+		assert(pkg->type == PKG_INSTALLED);
 	}
 
-	HASH_FIND_PTR(*head, &item, test);
+	pkg_get(pkg, PKG_UNIQUEID, &uid);
+	HASH_FIND_STR(*head, uid, req);
 
-	if (test != NULL)
-		return;
-
-	req = calloc(1, sizeof (struct pkg_job_request));
 	if (req == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_job_request");
-		return;
+		/* Allocate new unique request item */
+		req = calloc(1, sizeof (struct pkg_job_request));
+		if (req == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_job_request");
+			return;
+		}
+		req->item = item;
+		HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), req);
 	}
-	req->item = item;
 
-	HASH_ADD_PTR(*head, item, req);
+
 }
 
 static int

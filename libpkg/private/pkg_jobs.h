@@ -162,12 +162,6 @@ int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, struct pkg_job_universe_item **result);
 
 /*
- * Add a universe item with package to the request
- */
-void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
-	struct pkg_job_universe_item *item);
-
-/*
  * Check if the specified digest was seen in the universe
  */
 struct pkg_job_seen* pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
