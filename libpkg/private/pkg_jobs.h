@@ -47,7 +47,7 @@ struct pkg_job_universe_item {
 };
 
 struct pkg_job_request_item {
-	struct pkg *p;
+	struct pkg *pkg;
 	struct pkg_job_universe_item *unit;
 	struct job_pattern *jp;
 	struct pkg_job_request_item *prev, *next;

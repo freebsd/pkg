@@ -254,10 +254,33 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
 	struct pkg_job_request *req, *head;
 	struct pkg_job_request_item *nit;
+	struct pkg_job_universe_item *un;
 	const char *uid;
+	int rc;
 
 	assert(pkg != NULL);
 
+	rc = pkg_jobs_universe_add_pkg(j->universe, pkg, false, &un);
+	if (rc == EPKG_END) {
+		/*
+		 * This means that we have a package in the universe with the same
+		 * digest. In turn, that means that two upgrade candidates are equal,
+		 * we thus won't do anything with this item, as it is definitely useless
+		 */
+		HASH_FIND_STR(*head, uid, req);
+		DL_FOREACH(req->item, nit) {
+			if (nit->unit == un)
+				return (nit);
+		}
+
+		return (NULL);
+	}
+	else if (rc == EPKG_FATAL) {
+		/*
+		 * Something bad has happened
+		 */
+		return (NULL);
+	}
 	if (!IS_DELETE(j)) {
 		head = &j->request_add;
 		assert(pkg->type != PKG_INSTALLED);
@@ -275,6 +298,8 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		pkg_emit_errno("malloc", "struct pkg_job_request_item");
 		return (NULL);
 	}
+	nit->pkg = pkg;
+	nit->unit = un;
 
 	if (req == NULL) {
 		/* Allocate new unique request item */
@@ -619,7 +644,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		rc = EPKG_FATAL;
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		rc = pkg_jobs_process_remote_pkg(j, p, force, NULL);
+		rc = pkg_jobs_process_remote_pkg(j, p, NULL);
 		if (rc == EPKG_FATAL)
 			break;
 		else if (rc == EPKG_OK)
@@ -691,7 +716,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 	int rc = EPKG_FATAL;
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	struct pkg_job_universe_item *unit;
+	struct pkg_job_request_item *req;
 	struct job_pattern jfp;
 	const char *pkgname;
 
@@ -727,11 +752,10 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 				}
 			}
 			pkg->type = PKG_FILE;
-			rc = pkg_jobs_process_remote_pkg(j, pkg, j->flags & PKG_FLAG_FORCE,
-				&unit);
+			rc = pkg_jobs_process_remote_pkg(j, pkg, &req);
 
 			if (rc == EPKG_OK)
-				unit->jp = jp;
+				req->jp = jp;
 
 			*got_local = true;
 		}
@@ -1006,7 +1030,7 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 	LL_FOREACH(j->jobs, sit) {
 		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j, 0);
 		if (jreq != NULL && jreq->item != sit->items[0]) {
-			req_pkg = jreq->item->pkg;
+			req_pkg = jreq->item->p;
 			pkg = sit->items[0]->pkg;
 			/* Set the reason */
 			pkg_get(req_pkg, PKG_NAME, &name, PKG_VERSION, &version);
