@@ -1814,7 +1814,7 @@ pkg_open_root_fd(struct pkg *pkg)
 	obj = pkg_object_find(an, "relocated");
 
 	if ((pkg->rootfd = open(obj ? pkg_object_string(obj) : "/" ,
-	    O_DIRECTORY)) >= 0 )
+	    O_DIRECTORY|O_CLOEXEC)) >= 0 )
 		return (EPKG_OK);
 
 	pkg_emit_errno("open", obj ? pkg_object_string(obj) : "/");
