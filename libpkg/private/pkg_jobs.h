@@ -41,14 +41,20 @@ struct job_pattern;
 
 struct pkg_job_universe_item {
 	struct pkg *pkg;
-	struct job_pattern *jp;
 	int priority;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };
 
+struct pkg_job_request_item {
+	struct pkg *pkg;
+	struct pkg_job_universe_item *unit;
+	struct job_pattern *jp;
+	struct pkg_job_request_item *prev, *next;
+};
+
 struct pkg_job_request {
-	struct pkg_job_universe_item *item;
+	struct pkg_job_request_item *item;
 	bool skip;
 	UT_hash_handle hh;
 };
@@ -156,12 +162,6 @@ int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, struct pkg_job_universe_item **result);
 
 /*
- * Add a universe item with package to the request
- */
-void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
-	struct pkg_job_universe_item *item);
-
-/*
  * Check if the specified digest was seen in the universe
  */
 struct pkg_job_seen* pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
@@ -226,5 +226,18 @@ bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
  * Pre-process universe to fix complex upgrade chains
  */
 void pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j);
+
+/*
+ * Find upgrade candidates for a specified local package `lp`
+ * This function updates universe as following:
+ * - if `lp` is not null it is always added to the universe
+ * - if `uid` is in the universe, then the existing upgrade chain is returned
+ * - if `force` is true then all candidates are added to the universe
+ * - if `forece` is false then *all* candidates are added to the universe, but
+ * merely if *any* of remote packages is an upgrade for local one
+ */
+struct pkg_job_universe_item*
+pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
+	const char *uid, struct pkg *lp, bool force);
 
 #endif /* PKG_JOBS_H_ */
