@@ -166,14 +166,14 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (pkgdb_is_dir_used(db, fullpath, &cnt) != EPKG_OK)
 		return;
 
-	pkg_debug(1, "Number of packages owning %d\n", cnt);
+	pkg_debug(1, "Number of packages owning %d", cnt);
 	if (cnt > 0)
 		return;
 
 	if (strcmp(prefix_r, dir) == 0)
 		return;
 
-	pkg_debug(1, "removing directory %s\n", dir);
+	pkg_debug(1, "removing directory %s", dir);
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1 &&
 	    errno != ENOTEMPTY && errno != EBUSY) {
 		pkg_emit_errno("unlinkat", dir);
