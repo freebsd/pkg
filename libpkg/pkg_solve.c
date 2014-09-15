@@ -416,6 +416,7 @@ pkg_solve_find_var_in_chain(struct pkg_solve_variable *var,
 {
 	struct pkg_solve_variable *cur;
 
+	assert(var != NULL);
 	LL_FOREACH(var, cur) {
 		if (cur->unit == item) {
 			return (cur);
@@ -479,31 +480,32 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		LL_FOREACH(req->item, item) {
 			curvar = pkg_solve_find_var_in_chain(var, item->unit);
 			assert(curvar != NULL);
+			if (item->next) {
+				LL_FOREACH(item->next, confitem) {
+					confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
+					assert(confvar != NULL && confvar != curvar && confvar != var);
+					/* Conflict rule: (!A | !Bx) */
+					rule = pkg_solve_rule_new("request conflict");
+					if (rule == NULL)
+						return (EPKG_FATAL);
+					/* !A */
+					it = pkg_solve_item_new(curvar);
+					if (it == NULL)
+						return (EPKG_FATAL);
 
-			LL_FOREACH(item, confitem) {
-				confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
-				assert(confvar != NULL);
-				/* Conflict rule: (!A | !Bx) */
-				rule = pkg_solve_rule_new("request conflict");
-				if (rule == NULL)
-					return (EPKG_FATAL);
-				/* !A */
-				it = pkg_solve_item_new(curvar);
-				if (it == NULL)
-					return (EPKG_FATAL);
+					it->inverse = -1;
+					RULE_ITEM_PREPEND(rule, it);
+					/* !Bx */
+					it = pkg_solve_item_new(confvar);
+					if (it == NULL)
+						return (EPKG_FATAL);
 
-				it->inverse = -1;
-				RULE_ITEM_PREPEND(rule, it);
-				/* !Bx */
-				it = pkg_solve_item_new(confvar);
-				if (it == NULL)
-					return (EPKG_FATAL);
+					it->inverse = -1;
+					RULE_ITEM_PREPEND(rule, it);
 
-				it->inverse = -1;
-				RULE_ITEM_PREPEND(rule, it);
-
-				LL_PREPEND(problem->rules, rule);
-				problem->rules_count ++;
+					LL_PREPEND(problem->rules, rule);
+					problem->rules_count ++;
+				}
 			}
 		}
 	}
@@ -759,7 +761,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 		pkg_emit_error("Cannot solve problem using SAT solver:");
 
-		do {
+		while (*failed) {
 			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
 
 			sbuf_printf(sb, "cannot %s package %s, remove it from request? [Y/n]: ",
@@ -789,7 +791,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				return (EPKG_FATAL);
 			}
 
-		} while (*++failed);
+			failed ++;
+		}
 
 		sbuf_free(sb);
 

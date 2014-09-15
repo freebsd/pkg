@@ -117,7 +117,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	struct pkg_conflict *c, *ctmp;
 	struct pkg_conflict_chain *chain;
 	struct pkg_job_universe_item *unit;
-	const char *origin;
+	const char *uid;
 
 	HASH_ITER(hh, j->request_add, req, rtmp) {
 		chain = NULL;
@@ -127,14 +127,14 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 		HASH_ITER(hh, req->item->pkg->conflicts, c, ctmp) {
 			unit = pkg_jobs_universe_find(j->universe, pkg_conflict_uniqueid(c));
 			if (unit != NULL) {
-				HASH_FIND_PTR(j->request_add, unit, found);
+				pkg_get(unit->pkg, PKG_UNIQUEID, &uid);
+				HASH_FIND_STR(j->request_add, uid, found);
 				if (found && !found->skip) {
 					pkg_conflicts_request_add_chain(&chain, found);
 				}
 			}
 		}
 		if (chain != NULL) {
-			pkg_get(req->item->pkg, PKG_ORIGIN, &origin);
 			/* Add package itself */
 			pkg_conflicts_request_add_chain(&chain, req);
 

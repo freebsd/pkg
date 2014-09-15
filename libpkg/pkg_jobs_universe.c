@@ -132,6 +132,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	const char *uid, *digest, *version, *name;
 	struct pkg_job_seen *seen;
 
+	pkg_validate(pkg);
 	pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest,
 			PKG_VERSION, &version, PKG_NAME, &name);
 	if (digest == NULL) {
@@ -163,6 +164,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	item->pkg = pkg;
+
 
 	HASH_FIND_STR(universe->items, uid, tmp);
 	if (tmp == NULL)
@@ -772,6 +774,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 	HASH_DELETE(hh, universe->items, unit);
 	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
+
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)
 		DL_APPEND(found, unit);
@@ -893,7 +896,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
 		while ((p = (struct pkg **)utarray_next(candidates, p)) != NULL) {
-			pkg_jobs_universe_add_pkg(universe, *p, false, NULL);
+			pkg_jobs_universe_add_pkg(universe, *p, force, NULL);
 		}
 	}
 	else {

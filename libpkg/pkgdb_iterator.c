@@ -826,8 +826,15 @@ pkgdb_sqlite_it_next(struct pkgdb_sqlite_it *it,
 			ret = pkg_new(pkg_p, it->pkg_type);
 			if (ret != EPKG_OK)
 				return (ret);
-		} else
+		} else {
 			pkg_reset(*pkg_p, it->pkg_type);
+#if 0
+			/*
+			 * This reset is extremely dangerous and leads to tons of errors!
+			 */
+			assert(0);
+#endif
+		}
 		pkg = *pkg_p;
 
 		populate_pkg(it->stmt, pkg);
