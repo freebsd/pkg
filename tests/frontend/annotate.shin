@@ -13,7 +13,7 @@ annotate_body() {
 
 	for pkg in 'png' 'sqlite3' ; do
 	    atf_check \
-		-o match:".*Installing.*\.\.\.$" \
+		-o empty \
 		-e empty \
 		-s exit:0 \
 		pkg register -t -M $(atf_get_srcdir)/$pkg.ucl

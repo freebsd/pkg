@@ -27,7 +27,7 @@ files: {
 }
 EOF
 	atf_check \
-	    -o match:".*Installing.*" \
+	    -o empty \
 	    -e empty \
 	    -s exit:0 \
 	    pkg register --relocate . -i teststage \
@@ -54,7 +54,7 @@ files: {
 }
 EOF
 	atf_check \
-	    -o match:".*Installing.*" \
+	    -o empty \
 	    -e match:".*conflicts.*" \
 	    -s exit:70 \
 	    pkg register --relocate . -i teststage \
