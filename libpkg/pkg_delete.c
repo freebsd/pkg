@@ -240,7 +240,9 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	/* check sha256 */
 	if (!force && sum[0] != '\0') {
 		if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
-			pkg_emit_error("cannot stat %s: %s", path, strerror(errno));
+			pkg_emit_error("cannot stat %s%s%s: %s", pkg->rootpath,
+			    pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
+			    path, strerror(errno));
 			return;
 		}
 		if (S_ISLNK(st.st_mode)) {
@@ -253,8 +255,10 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 				return;
 		}
 		if (strcmp(sha256, sum)) {
-			pkg_emit_error("%s fails original SHA256 "
-				"checksum, not removing", path);
+			pkg_emit_error("%s%s%s fails original SHA256 "
+				"checksum, not removing", pkg->rootpath,
+				pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
+				path);
 			return;
 		}
 	}
