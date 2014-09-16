@@ -548,7 +548,7 @@ int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
+int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);

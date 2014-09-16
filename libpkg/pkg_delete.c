@@ -163,7 +163,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	char fullpath[MAXPATHLEN];
 
 	snprintf(fullpath, sizeof(fullpath), "/%s", dir);
-	if (pkgdb_is_dir_used(db, fullpath, &cnt) != EPKG_OK)
+	if (pkgdb_is_dir_used(db, pkg, fullpath, &cnt) != EPKG_OK)
 		return;
 
 	pkg_debug(1, "Number of packages owning the directory '%s': %d",
