@@ -119,6 +119,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
 	pkg->rootfd = -1;
+	pkg->rootpath[0] = '\0';
 
 	pkg->type = type;
 }
@@ -1803,16 +1804,19 @@ pkg_has_dir(struct pkg *p, const char *path)
 int
 pkg_open_root_fd(struct pkg *pkg)
 {
+	const char *path;
 	const ucl_object_t 	*obj, *an;
 
 	if (pkg->rootfd != -1)
 		return (EPKG_OK);
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &an);
-	obj = pkg_object_find(an, "relocated");
+	path = pkg_getannotation(pkg, "relocated");
+	if (path == NULL)
+		path = "/";
 
-	if ((pkg->rootfd = open(obj ? pkg_object_string(obj) : "/" ,
-	    O_DIRECTORY|O_CLOEXEC)) >= 0 )
+	strlcpy(pkg->rootpath, path, sizeof(pkg->rootpath));
+
+	if ((pkg->rootfd = open(path , O_DIRECTORY|O_CLOEXEC)) >= 0 )
 		return (EPKG_OK);
 
 	pkg_emit_errno("open", obj ? pkg_object_string(obj) : "/");
