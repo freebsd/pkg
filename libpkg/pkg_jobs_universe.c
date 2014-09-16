@@ -859,7 +859,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 {
 	struct pkg *pkg = NULL, *selected = lp;
 	struct pkgdb_it *it;
-	struct pkg_job_universe_item *unit;
+	struct pkg_job_universe_item *unit, *ucur;
 	int flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
 					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
@@ -872,7 +872,20 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		 * If a unit has been found, we have already found the potential
 		 * upgrade chain for it
 		 */
-		return (unit);
+		if (force) {
+			/*
+			 * We also need to ensure that a chain contains remote packages
+			 * in case of forced upgrade
+			 */
+			DL_FOREACH(unit, ucur) {
+				if (ucur->pkg->type != PKG_INSTALLED) {
+					return (unit);
+				}
+			}
+		}
+		else {
+			return (unit);
+		}
 	}
 
 	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_EXACT,
