@@ -273,6 +273,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 		}
 		new_req = true;
 		req->automatic = automatic;
+		pkg_debug(4, "add new uid %s to the request", uid);
 	}
 	else {
 		if (req->item->unit == un) {
@@ -409,36 +410,45 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 	struct pkg *lp;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	UT_array *to_process = NULL;
+	const char *uid;
 
-	if (upgrade || reverse || force) {
+	if (upgrade || reverse) {
 		utarray_new(to_process, &ut_ptr_icd);
 
 		HASH_ITER(hh, j->request_add, req, tmp) {
-			DL_FOREACH(req->item, it) {
-				if (reverse)
-					deps_func = pkg_rdeps;
-				else
-					deps_func = pkg_deps;
+			it = req->item;
 
-				d = NULL;
-				while (deps_func(it->pkg, &d) == EPKG_OK) {
-					/*
-					 * Do not add duplicated upgrade candidates
-					 */
-					HASH_FIND_STR(j->request_add, d->uid, found);
-					if (found != NULL)
-						continue;
+			if (reverse)
+				deps_func = pkg_rdeps;
+			else
+				deps_func = pkg_deps;
 
-					lp = pkg_jobs_universe_get_local(j->universe,
-						d->uid, 0);
-					/*
-					 * Here we need to check whether specific remote package
-					 * is newer than a local one
-					 */
-					un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
-						d->uid, lp, force);
-					utarray_push_back(to_process, &un);
-				}
+			d = NULL;
+			pkg_get(it->pkg, PKG_UNIQUEID, &uid);
+			/*
+			 * Here we get deps of local packages only since we are pretty sure
+			 * that they are completely expanded
+			 */
+			lp = pkg_jobs_universe_get_local(j->universe,
+				uid, 0);
+			while (lp != NULL && deps_func(lp, &d) == EPKG_OK) {
+				/*
+				 * Do not add duplicated upgrade candidates
+				 */
+				HASH_FIND_STR(j->request_add, d->uid, found);
+				if (found != NULL)
+					continue;
+
+				pkg_debug(4, "adding dependency %s to request", d->uid);
+				lp = pkg_jobs_universe_get_local(j->universe,
+					d->uid, 0);
+				/*
+				 * Here we need to check whether specific remote package
+				 * is newer than a local one
+				 */
+				un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
+					d->uid, lp, force);
+				utarray_push_back(to_process, &un);
 			}
 		}
 	}
