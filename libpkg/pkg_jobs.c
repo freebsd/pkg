@@ -410,7 +410,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	UT_array *to_process = NULL;
 
-	if (upgrade || reverse) {
+	if (upgrade || reverse || force) {
 		utarray_new(to_process, &ut_ptr_icd);
 
 		HASH_ITER(hh, j->request_add, req, tmp) {
