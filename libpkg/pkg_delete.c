@@ -166,7 +166,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (pkgdb_is_dir_used(db, fullpath, &cnt) != EPKG_OK)
 		return;
 
-	pkg_debug(1, "Number of packages owning the directory "%s": %d",
+	pkg_debug(1, "Number of packages owning the directory '%s': %d",
 	    fullpath, cnt);
 	/*
 	 * At this moment the package we are removing have already been removed
