@@ -470,6 +470,8 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 			const char *uid, *lrepo, *rrepo;
 			struct pkg_job_request_item *selected = req->item;
 
+			lrepo = NULL;
+
 			pkg_get(req->item->pkg, PKG_UNIQUEID, &uid);
 			lp = pkg_jobs_universe_get_local(j->universe, uid, 0);
 			/* Check reponame */
