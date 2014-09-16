@@ -253,7 +253,7 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 
 static struct pkg_job_request_item*
 pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
-	struct pkg_job_universe_item *un, bool local)
+	struct pkg_job_universe_item *un, bool local, bool automatic)
 {
 	struct pkg_job_request *req;
 	struct pkg_job_request_item *nit;
@@ -272,6 +272,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 			return (NULL);
 		}
 		new_req = true;
+		req->automatic = automatic;
 	}
 	else {
 		if (req->item->unit == un) {
@@ -345,7 +346,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 			/*
 			 * We need to add request chain from the universe chain
 			 */
-			return (pkg_jobs_add_req_from_universe(head, un, !IS_DELETE(j)));
+			return (pkg_jobs_add_req_from_universe(head, un, !IS_DELETE(j), false));
 		}
 
 		return (NULL);
@@ -449,7 +450,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 		if (to_process->n > 0) {
 			while ((pun = (struct pkg_job_universe_item **)
 							utarray_next(to_process, pun)) != NULL) {
-				pkg_jobs_add_req_from_universe(&j->request_add, *pun, false);
+				pkg_jobs_add_req_from_universe(&j->request_add, *pun, false, true);
 			}
 			/* Now recursively process all items checked */
 			pkg_jobs_process_add_request(j, false);
@@ -747,7 +748,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		j->flags & PKG_FLAG_FORCE);
 
 	if (nit != NULL) {
-		nrit = pkg_jobs_add_req_from_universe(&j->request_add, nit, false);
+		nrit = pkg_jobs_add_req_from_universe(&j->request_add, nit, false, false);
 		if (req != NULL)
 			*req = nrit;
 	}
@@ -1175,7 +1176,8 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 			 */
 			pkg_get(unit->pkg, PKG_UNIQUEID, &uid);
 			HASH_FIND_STR(j->request_add, uid, req);
-			if (req == NULL && unit->pkg->type != PKG_INSTALLED) {
+			if ((req == NULL || req->automatic) &&
+							unit->pkg->type != PKG_INSTALLED) {
 				automatic = 1;
 				pkg_debug(2, "set automatic flag for %s", uid);
 				pkg_set(unit->pkg, PKG_AUTOMATIC, automatic);
