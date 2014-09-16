@@ -3203,20 +3203,29 @@ pkgdb_end_solver(struct pkgdb *db)
 }
 
 int
-pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
+pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res)
 {
 	sqlite3_stmt *stmt;
 	int ret;
+	const char *name;
+	const char *origin;
+
 	const char sql[] = ""
 		"SELECT count(package_id) FROM pkg_directories, directories "
-		"WHERE directory_id = directories.id AND directories.path = ?1;";
+		"WHERE directory_id = directories.id AND directories.path = ?1 "
+		"AND package_id != (SELECT id from PACKAGES where name=?2 and "
+		"origin=?3);";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
+	pkg_get(p, PKG_NAME, &name, PKG_ORIGIN, &origin);
+
 	sqlite3_bind_text(stmt, 1, dir, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, name, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, origin, -1, SQLITE_TRANSIENT);
 
 	ret = sqlite3_step(stmt);
 
