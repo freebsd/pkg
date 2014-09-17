@@ -563,10 +563,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
  
 		fetchOpts = sbuf_new_auto();
 		sbuf_cat(fetchOpts, "i");
-		if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
-			sbuf_cat(fetchOpts, "4");
-		else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
-			sbuf_cat(fetchOpts, "6");
+		if (repo != NULL) {
+			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
+			    REPO_FLAGS_USE_IPV4)
+				sbuf_cat(fetchOpts, "4");
+			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
+			    REPO_FLAGS_USE_IPV6)
+				sbuf_cat(fetchOpts, "6");
+		}
 
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
