@@ -1805,7 +1805,7 @@ int
 pkg_open_root_fd(struct pkg *pkg)
 {
 	const char *path;
-	const ucl_object_t 	*obj, *an;
+	const ucl_object_t 	*obj;
 
 	if (pkg->rootfd != -1)
 		return (EPKG_OK);
