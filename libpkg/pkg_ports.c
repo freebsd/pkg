@@ -306,7 +306,7 @@ static int
 dirrmtry(struct plist *p, char *line, struct file_attr *a)
 {
 	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
-		pkg_emit_error("Warning: @dirrm is deprecated please use @dir");
+		pkg_emit_error("Warning: @dirrmtry is deprecated please use @dir");
 
 	return (meta_dir(p, line, a, true));
 }
