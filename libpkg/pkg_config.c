@@ -424,7 +424,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
 	const char *type = NULL;
-	int use_ipvx;
+	int use_ipvx = 0;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
