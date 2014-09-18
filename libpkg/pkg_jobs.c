@@ -1012,7 +1012,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 		}
 		else {
 			pkg_emit_error("cannot load %s: invalid format",
-					jfp.pattern);
+					jp->pattern);
 			rc = EPKG_FATAL;
 		}
 		pkg_manifest_keys_free(keys);
