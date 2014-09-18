@@ -214,7 +214,7 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	bool need_close = false;
 	struct rsa_verify_cbdata cbdata;
 	unsigned char *key_buf;
-	off_t key_len;
+	size_t key_len;
 
 	if (file_to_buffer(key, (char**)&key_buf, &key_len) != EPKG_OK) {
 		pkg_emit_errno("rsa_verify", "cannot read key");

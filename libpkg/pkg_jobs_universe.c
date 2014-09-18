@@ -743,7 +743,6 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 {
 	struct pkg_dep *rd = NULL, *d = NULL;
 	struct pkg_job_universe_item *found;
-	struct pkg_job_request *req;
 
 	struct pkg *lp;
 	const char *old_uid;
