@@ -10,9 +10,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
 			-DPREFIX=\"$(prefix)\" \
-			-Wno-pointer-sign \
-			-Wno-unused-value \
-			-Werror
+			-Wno-pointer-sign
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
 			dns_utils.c \
