@@ -254,7 +254,7 @@ exec_check(int argc, char **argv)
 	bool reanalyse_shlibs = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
-	int i, processed, total;
+	int i, processed, total = 0;
 	int verbose = 0;
 
 	struct option longopts[] = {
