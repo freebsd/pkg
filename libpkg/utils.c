@@ -196,7 +196,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, size_t *sz)
 }
 
 int
-file_to_buffer(const char *path, char **buffer, off_t *sz)
+file_to_buffer(const char *path, char **buffer, size_t *sz)
 {
 	int fd = -1;
 	struct stat st;
