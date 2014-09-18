@@ -58,9 +58,9 @@
 
 struct sig_cert {
 	char name[MAXPATHLEN];
-	unsigned char *sig;
+	char *sig;
 	int64_t siglen;
-	unsigned char *cert;
+	char *cert;
 	int64_t certlen;
 	bool cert_allocated;
 	UT_hash_handle hh;
