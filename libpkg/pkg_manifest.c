@@ -739,7 +739,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	ucl_object_t *obj = NULL;
 	int rc;
 	char *data;
-	off_t sz = 0;
+	size_t sz = 0;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
