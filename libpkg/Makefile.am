@@ -11,7 +11,8 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/sqlite \
 			-I$(top_srcdir)/external/libyaml/include \
 			-DPREFIX=\"$(prefix)\" \
-			-Wno-pointer-sign
+			-Wno-pointer-sign \
+			-Werror
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
 			dns_utils.c \
