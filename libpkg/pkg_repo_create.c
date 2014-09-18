@@ -254,7 +254,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_repo_meta *meta)
 {
 	pid_t pid;
-	int mfd, ffd;
+	int mfd, ffd = -1;
 	bool read_files = (flfile != NULL);
 	bool legacy = (meta == NULL);
 	int flags, ret = EPKG_OK;
@@ -426,7 +426,7 @@ cleanup:
 static int
 pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 {
-	struct digest_list_entry *dig;
+	struct digest_list_entry *dig = NULL;
 	char buf[1024];
 	int r, i, start;
 	enum {
