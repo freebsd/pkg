@@ -74,6 +74,8 @@ exec_which(int argc, char **argv)
 		{ NULL,			0,		NULL,	0   },
 	};
 
+	path = NULL;
+
 	while ((ch = getopt_long(argc, argv, "+gopq", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'g':
