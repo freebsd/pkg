@@ -11,6 +11,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/sqlite \
 			-DPREFIX=\"$(prefix)\" \
 			-Wno-pointer-sign \
+			-Wno-unused-value \
 			-Werror
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \

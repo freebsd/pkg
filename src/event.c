@@ -412,12 +412,11 @@ draw_progressbar(int64_t current, int64_t total)
 {
 	int percent;
 	int64_t transferred;
-	time_t elapsed, now;
+	time_t elapsed = 0, now = 0;
 	char buf[7];
 	int64_t bytes_left;
 	int cur_speed;
 	int hours, minutes, seconds;
-	int r = 0;
 	float age_factor;
 
 	if (!progress_started) {
@@ -442,7 +441,7 @@ draw_progressbar(int64_t current, int64_t total)
 	    (percent != last_progress_percent || progress_interrupted))) {
 		last_progress_percent = percent;
 
-		r = printf("\r%s: %3d%%", progress_message, percent);
+		printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
 			transferred = current - last_tick;
 			last_tick = current;
