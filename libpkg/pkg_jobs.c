@@ -402,7 +402,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 {
 	bool force = j->flags & PKG_FLAG_FORCE,
 		 reverse = j->flags & PKG_FLAG_RECURSIVE,
-		 upgrade = j->type == PKG_UPGRADE;
+		 upgrade = j->type == PKG_JOBS_UPGRADE;
 	struct pkg_job_request *req, *tmp, *found;
 	struct pkg_job_request_item *it;
 	struct pkg_job_universe_item *un;
@@ -884,16 +884,13 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
-	bool force = false, found = false;
+	bool found = false;
 	int rc = EPKG_FATAL;
 	struct pkg_dep *rdep = NULL;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_job_universe_item *unit = NULL;
-
-	if (j->flags & PKG_FLAG_FORCE)
-		force = true;
 
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
 		rc = EPKG_FATAL;
