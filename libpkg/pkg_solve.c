@@ -888,7 +888,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
 					continue;
 				cur_ord = 0;
-				cur_ord = abs(strtol(var_str, NULL, 10));
+				cur_ord = abs((int)strtol(var_str, NULL, 10));
 				if (cur_ord == 0) {
 					done = true;
 					break;
@@ -907,7 +907,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
 					continue;
 				cur_ord = 0;
-				cur_ord = abs(strtol(var_str, NULL, 10));
+				cur_ord = abs((int)strtol(var_str, NULL, 10));
 				if (cur_ord == 0) {
 					done = true;
 					break;
