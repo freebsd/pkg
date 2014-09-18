@@ -399,7 +399,7 @@ pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
     bool trimcr)
 {
 	char *buf = NULL;
-	size_t size = 0;
+	off_t size = 0;
 	int ret = EPKG_OK;
 
 	assert(pkg != NULL);
@@ -422,7 +422,7 @@ int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 {
 	char *buf = NULL;
-	size_t size = 0;
+	off_t size = 0;
 	int ret = EPKG_OK;
 
 	assert(pkg != NULL);
@@ -867,7 +867,7 @@ pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 	char *data;
 	pkg_script type;
 	int ret = EPKG_OK;
-	size_t sz = 0;
+	off_t sz = 0;
 
 	assert(pkg != NULL);
 	assert(filename != NULL);
