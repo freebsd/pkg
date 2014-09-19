@@ -43,6 +43,7 @@ struct job_pattern;
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	int priority;
+	bool processed;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };
@@ -94,7 +95,6 @@ struct pkg_jobs_universe {
 	struct pkg_job_provide *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
-	bool processed;
 	size_t nitems;
 };
 

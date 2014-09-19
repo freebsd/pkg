@@ -440,6 +440,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	unsigned flags = 0, job_flags;
 	int rc = EPKG_OK;
 	pkg_jobs_t type = universe->j->type;
+	struct pkg_job_universe_item *found;
 
 	job_flags = universe->j->flags;
 
@@ -447,14 +448,19 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	 * Add pkg itself. If package is already seen then we check the `processed`
 	 * flag that means that we have already tried to check our universe
 	 */
-	rc = pkg_jobs_universe_add_pkg(universe, pkg, false, result);
+	rc = pkg_jobs_universe_add_pkg(universe, pkg, false, &found);
+	if (result)
+		*result = found;
+
 	if (rc == EPKG_END) {
-		if (universe->processed)
+		if (found->processed)
 			return (EPKG_OK);
 	}
 	else if (rc != EPKG_OK) {
 		return (rc);
 	}
+
+	found->processed = true;
 
 	/* Convert jobs flags to dependency logical flags */
 	if (job_flags & PKG_FLAG_FORCE_MISSING)

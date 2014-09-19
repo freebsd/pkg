@@ -1312,7 +1312,6 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 
 	j->solved = 1;
 	pkg_jobs_process_delete_request(j);
-	j->universe->processed = true;
 
 	return( EPKG_OK);
 }
@@ -1342,7 +1341,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 
 	j->solved = true;
 	pkg_jobs_process_delete_request(j);
-	j->universe->processed = true;
 
 	return (EPKG_OK);
 }
@@ -1494,10 +1492,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			pkg_emit_progress_tick(jcount, jcount);
 			LL_FREE(candidates, free);
 
-			HASH_ITER(hh, j->request_add, req, rtmp) {
+			HASH_ITER(hh, j->request_add, req, rtmp)
 				pkg_jobs_universe_process(j->universe, req->item->pkg);
-			}
-			j->universe->processed = true;
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
@@ -1513,10 +1509,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			/*
 			 * Need to iterate request one more time to recurse depends
 			 */
-			HASH_ITER(hh, j->request_add, req, rtmp) {
+			HASH_ITER(hh, j->request_add, req, rtmp)
 				pkg_jobs_universe_process(j->universe, req->item->pkg);
-			}
-			j->universe->processed = true;
 		}
 	}
 	else {
@@ -2002,7 +1996,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 						if (rc == EPKG_CONFLICT) {
 							/* Cleanup results */
 							LL_FREE(j->jobs, free);
-							j->universe->processed = false;
 							j->jobs = NULL;
 							j->count = 0;
 							has_conflicts = true;
