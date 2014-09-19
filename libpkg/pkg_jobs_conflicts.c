@@ -333,6 +333,117 @@ pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
 }
 
 /*
+ * Checks whether we need to add a conflict between two packages
+ */
+static bool
+pkg_conflicts_need_conflict(struct pkg *p1, struct pkg *p2)
+{
+	struct pkg_file *fcur, *ftmp, *ff;
+	struct pkg_dir *dcur, *dtmp, *df;
+	const char *uid1, *uid2;
+	struct pkg_conflict *c;
+
+	pkg_get(p1, PKG_UNIQUEID, &uid1);
+	pkg_get(p2, PKG_UNIQUEID, &uid2);
+
+	/*
+	 * Check if we already have this conflict registered
+	 */
+	HASH_FIND_STR(p1->conflicts, uid2, c);
+	if (c != NULL)
+		return false;
+
+	HASH_ITER(hh, p1->files, fcur, ftmp) {
+		HASH_FIND_STR(p2->files, fcur->path, ff);
+		if (ff != NULL)
+			return (true);
+		HASH_FIND_STR(p2->dirs, fcur->path, df);
+		if (df != NULL)
+			return (true);
+	}
+	HASH_ITER(hh, p1->dirs, dcur, dtmp) {
+		HASH_FIND_STR(p2->files, dcur->path, ff);
+		if (ff != NULL)
+			return (true);
+		HASH_FIND_STR(p2->dirs, dcur->path, df);
+		if (df != NULL)
+			return (true);
+	}
+
+	/* No common paths are found in p1 and p2 */
+	return (false);
+}
+
+static void
+pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
+	enum pkg_conflict_type type)
+{
+	const char *uid1, *uid2;
+	struct pkg_conflict *c1, *c2;
+
+	pkg_get(p1, PKG_UNIQUEID, &uid1);
+	pkg_get(p2, PKG_UNIQUEID, &uid2);
+
+	pkg_conflict_new(&c1);
+	pkg_conflict_new(&c2);
+	c1->type = c2->type = type;
+	sbuf_set(&c1->uniqueid, uid2);
+	sbuf_set(&c2->uniqueid, uid1);
+	HASH_ADD_KEYPTR(hh, p1->conflicts, pkg_conflict_uniqueid(c1),
+		sbuf_size(c1->uniqueid), c1);
+	HASH_ADD_KEYPTR(hh, p2->conflicts, pkg_conflict_uniqueid(c2),
+		sbuf_size(c2->uniqueid), c2);
+	pkg_debug(2, "registering conflict between %s and %s", uid1, uid2);
+}
+
+/*
+ * Register conflicts between packages in the universe chains
+ */
+static void
+pkg_conflicts_register(struct pkg_jobs *j, struct pkg_job_universe_item *u1,
+	struct pkg_job_universe_item *u2)
+{
+	struct pkg_job_universe_item *cur1, *cur2;
+	const char *uid1, *uid2;
+
+	pkg_get(cur1->pkg, PKG_UNIQUEID, &uid1);
+	pkg_get(cur2->pkg, PKG_UNIQUEID, &uid2);
+	cur1 = u1;
+
+	do {
+
+		cur2 = u2;
+		do {
+			struct pkg *p1 = cur1->pkg, *p2 = cur2->pkg;
+
+			if (p1->type == PKG_INSTALLED && p2->type == PKG_INSTALLED) {
+				/* Local and local packages cannot conflict */
+				continue;
+			}
+			else if (p1->type == PKG_INSTALLED || p2->type == PKG_INSTALLED) {
+				/* local <-> remote conflict */
+				if (pkg_conflicts_need_conflict(p1, p2)) {
+					pkg_conflicts_register_unsafe(p1, p2,
+						PKG_CONFLICT_REMOTE_LOCAL);
+					j->conflicts_registered ++;
+				}
+			}
+			else {
+				/* two remote packages */
+				if (pkg_conflicts_need_conflict(p1, p2)) {
+					pkg_conflicts_register_unsafe(p1, p2,
+						PKG_CONFLICT_REMOTE_REMOTE);
+					j->conflicts_registered ++;
+				}
+			}
+			cur2 = cur2->prev;
+		} while (cur2 != u2);
+
+		cur1 = cur1->prev;
+	} while (cur1 != u1);
+}
+
+/*
  * Check whether the specified path is registered locally and returns
  * the package that contains that path or NULL if no conflict was found
  */
@@ -400,6 +511,7 @@ pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
 				continue;
 		}
 		/* Check for local conflict in db */
+		pkg_conflicts_check_local_path(fcur->path, uid, j);
 	}
 	HASH_ITER(hh, it->pkg->dirs, dcur, dtmp) {
 		if (local != NULL) {
@@ -408,6 +520,7 @@ pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
 				continue;
 		}
 		/* Check for local conflict in db */
+		pkg_conflicts_check_local_path(fcur->path, uid, j);
 	}
 }
 
