@@ -405,7 +405,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 		 upgrade = j->type == PKG_JOBS_UPGRADE;
 	struct pkg_job_request *req, *tmp, *found;
 	struct pkg_job_request_item *it;
-	struct pkg_job_universe_item *un;
+	struct pkg_job_universe_item *un, *cur;
 	struct pkg_dep *d;
 	struct pkg *lp;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
@@ -448,7 +448,14 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 				 */
 				un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
 					d->uid, lp, force);
-				utarray_push_back(to_process, &un);
+				cur = un->prev;
+				while (cur != un) {
+					if (cur->pkg->type != PKG_INSTALLED) {
+						utarray_push_back(to_process, &un);
+						break;
+					}
+					cur = cur->prev;
+				}
 			}
 		}
 	}
