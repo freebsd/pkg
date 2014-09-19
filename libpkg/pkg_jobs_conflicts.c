@@ -42,6 +42,8 @@ struct pkg_conflict_chain {
 	struct pkg_conflict_chain *next;
 };
 
+TREE_DEFINE(pkg_jobs_conflict_item, entry);
+
 static int
 pkg_conflicts_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_chain *b)
 {
@@ -269,8 +271,6 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 	const char *uid1, *uid2;
 	bool ret = false;
 
-	pkg_get(cur1->pkg, PKG_UNIQUEID, &uid1);
-	pkg_get(cur2->pkg, PKG_UNIQUEID, &uid2);
 	cur1 = u1;
 
 	do {
@@ -278,6 +278,8 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 		cur2 = u2;
 		do {
 			struct pkg *p1 = cur1->pkg, *p2 = cur2->pkg;
+			pkg_get(p1, PKG_UNIQUEID, &uid1);
+			pkg_get(p2, PKG_UNIQUEID, &uid2);
 
 			if (p1->type == PKG_INSTALLED && p2->type == PKG_INSTALLED) {
 				/* Local and local packages cannot conflict */
@@ -352,7 +354,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 		assert(p != NULL);
 
 		pkg_get(p, PKG_UNIQUEID, &uido);
-		assert(strcmp(uid, uido) != NULL);
+		assert(strcmp(uid, uido) != 0);
 
 		HASH_FIND_STR(p->conflicts, uid, c);
 		if (c == NULL) {
@@ -375,7 +377,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 	struct pkg_conflict *c;
 	uint64_t sipkey;
 
-	sipkey = siphash24(path, strlen(path), &k);
+	sipkey = siphash24(path, strlen(path), k);
 	test.hash = sipkey;
 	cit = TREE_FIND(j->conflict_items, pkg_jobs_conflict_item, entry, &test);
 
@@ -482,8 +484,9 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *lp = NULL, *cur;
 
 	/* Ensure that we have a tree initialized */
-	if (j->conflict_items.th_cmp == NULL) {
-		j->conflict_items.th_cmp = pkg_conflicts_item_cmp;
+	if (j->conflict_items == NULL) {
+		j->conflict_items = malloc(sizeof(*j->conflict_items));
+		TREE_INIT(j->conflict_items, pkg_conflicts_item_cmp);
 	}
 
 	/* Find local package */

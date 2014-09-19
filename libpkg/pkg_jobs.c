@@ -2155,7 +2155,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			if (p->type == PKG_REMOTE)
 				pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS);
 		}
-		if ((res = pkg_conflicts_append_chain(p, j)) != EPKG_OK)
+		if ((res = pkg_conflicts_append_chain(ps->items[0], j)) != EPKG_OK)
 			ret = res;
 		else
 			added ++;
