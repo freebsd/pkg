@@ -575,6 +575,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		    u->host,
 		    u->doc,
 		    sbuf_data(fetchOpts));
+
+		sbuf_finish(fetchOpts);
 		
 		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
 		if (remote == NULL) {
@@ -658,6 +660,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	/* restore original doc */
 	u->doc = doc;
+	if (fetchOpts != NULL)
+		sbuf_delete(fetchOpts);
 
 	fetchFreeURL(u);
 
