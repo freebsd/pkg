@@ -320,7 +320,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 {
 	const char sql_local_conflict[] = ""
 		"SELECT p.name || '~' || p.origin as uniqueid FROM packages AS p "
-		"LEFT JOIN files AS f "
+		"INNER JOIN files AS f "
 		"ON p.id = f.package_id "
 		"WHERE f.path = ?1;";
 	sqlite3_stmt *stmt;
