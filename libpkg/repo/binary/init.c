@@ -132,8 +132,8 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 	}
 
 	/* begin transaction */
-	in_trans = true;
-	ret = pkgdb_transaction_begin(sqlite, "SCHEMA");
+	if ((ret = pkgdb_transaction_begin(sqlite, "SCHEMA")) == EPKG_OK)
+		in_trans = true;
 
 	/* apply change */
 	if (ret == EPKG_OK) {
