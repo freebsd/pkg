@@ -60,6 +60,8 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
+		include/tree.h \
+		include/siphash.h \
 		config.h
 
 EXTRA_LTLIBRARIES=	libelf.la
