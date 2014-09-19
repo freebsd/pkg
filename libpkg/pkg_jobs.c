@@ -448,6 +448,9 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 				 */
 				un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
 					d->uid, lp, force);
+				if (un == NULL)
+					continue;
+
 				cur = un->prev;
 				while (cur != un) {
 					if (cur->pkg->type != PKG_INSTALLED) {
