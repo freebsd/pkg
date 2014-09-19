@@ -2165,6 +2165,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_debug(1, "check integrity for %d items added", added);
 
 	pkg_emit_integritycheck_finished(j->conflicts_registered);
+	if (j->conflicts_registered > 0)
+		ret = EPKG_CONFLICT;
 
 	return (ret);
 }

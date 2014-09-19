@@ -194,15 +194,18 @@ pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
  * Checks whether we need to add a conflict between two packages
  */
 static bool
-pkg_conflicts_need_conflict(struct pkg *p1, struct pkg *p2)
+pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 {
 	struct pkg_file *fcur, *ftmp, *ff;
-	struct pkg_dir *dcur, *dtmp, *df;
+	struct pkg_dir *df;
 	const char *uid1, *uid2;
 	struct pkg_conflict *c;
 
 	pkg_get(p1, PKG_UNIQUEID, &uid1);
 	pkg_get(p2, PKG_UNIQUEID, &uid2);
+
+	assert(pkgdb_ensure_loaded(j->db, p1, PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_OK);
+	assert(pkgdb_ensure_loaded(j->db, p2, PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_OK);
 
 	/*
 	 * Check if we already have this conflict registered
@@ -222,14 +225,7 @@ pkg_conflicts_need_conflict(struct pkg *p1, struct pkg *p2)
 		if (df != NULL)
 			return (true);
 	}
-	HASH_ITER(hh, p1->dirs, dcur, dtmp) {
-		HASH_FIND_STR(p2->files, dcur->path, ff);
-		if (ff != NULL)
-			return (true);
-		HASH_FIND_STR(p2->dirs, dcur->path, df);
-		if (df != NULL)
-			return (true);
-	}
+	/* XXX pkg dirs are terribly broken */
 
 	/* No common paths are found in p1 and p2 */
 	return (false);
@@ -240,6 +236,7 @@ pkg_conflicts_need_conflict(struct pkg *p1, struct pkg *p2)
  */
 static void
 pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
+	const char *path,
 	enum pkg_conflict_type type)
 {
 	const char *uid1, *uid2;
@@ -257,7 +254,8 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		sbuf_size(c1->uniqueid), c1);
 	HASH_ADD_KEYPTR(hh, p2->conflicts, pkg_conflict_uniqueid(c2),
 		sbuf_size(c2->uniqueid), c2);
-	pkg_debug(2, "registering conflict between %s and %s", uid1, uid2);
+	pkg_debug(2, "registering conflict between %s and %s on path %s",
+		uid1, uid2, path);
 }
 
 /*
@@ -265,7 +263,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
  */
 static bool
 pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u1,
-	struct pkg_job_universe_item *u2)
+	struct pkg_job_universe_item *u2, const char *path)
 {
 	struct pkg_job_universe_item *cur1, *cur2;
 	const char *uid1, *uid2;
@@ -287,8 +285,8 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 			}
 			else if (p1->type == PKG_INSTALLED || p2->type == PKG_INSTALLED) {
 				/* local <-> remote conflict */
-				if (pkg_conflicts_need_conflict(p1, p2)) {
-					pkg_conflicts_register_unsafe(p1, p2,
+				if (pkg_conflicts_need_conflict(j, p1, p2)) {
+					pkg_conflicts_register_unsafe(p1, p2, path,
 						PKG_CONFLICT_REMOTE_LOCAL);
 					j->conflicts_registered ++;
 					ret = true;
@@ -296,8 +294,8 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 			}
 			else {
 				/* two remote packages */
-				if (pkg_conflicts_need_conflict(p1, p2)) {
-					pkg_conflicts_register_unsafe(p1, p2,
+				if (pkg_conflicts_need_conflict(j, p1, p2)) {
+					pkg_conflicts_register_unsafe(p1, p2, path,
 						PKG_CONFLICT_REMOTE_REMOTE);
 					j->conflicts_registered ++;
 					ret = true;
@@ -408,7 +406,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 
 		/* Here we can have either collision or a real conflict */
 		HASH_FIND_STR(it->pkg->conflicts, uid2, c);
-		if (c != NULL || !pkg_conflicts_register_chain(j, it, cit->item)) {
+		if (c != NULL || !pkg_conflicts_register_chain(j, it, cit->item, path)) {
 			/*
 			 * Collision found, change the key following the
 			 * Cuckoo principle
@@ -430,7 +428,6 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *local, struct pkg_jobs *j)
 {
 	struct pkg_file *fcur, *ftmp, *ff;
-	struct pkg_dir *dcur, *dtmp, *df;
 	const char *uid;
 	struct pkg *p;
 	struct pkg_job_universe_item *cun;
@@ -455,9 +452,12 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 		if (p != NULL) {
 			pkg_jobs_universe_process_item(j->universe, p, &cun);
 			assert(cun != NULL);
-			pkg_conflicts_register_chain(j, it, cun);
+			pkg_conflicts_register_chain(j, it, cun, fcur->path);
 		}
 	}
+	/* XXX: dirs are currently broken terribly */
+#if 0
+	struct pkg_dir *dcur, *dtmp, *df;
 	HASH_ITER(hh, it->pkg->dirs, dcur, dtmp) {
 		memset(&k, 0, sizeof(k));
 		cun = pkg_conflicts_check_all_paths(j, dcur->path, it, &k);
@@ -472,9 +472,10 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 		if (p != NULL) {
 			pkg_jobs_universe_process_item(j->universe, p, &cun);
 			assert(cun != NULL);
-			pkg_conflicts_register_chain(j, it, cun);
+			pkg_conflicts_register_chain(j, it, cun, dcur->path);
 		}
 	}
+#endif
 }
 
 int
