@@ -9,6 +9,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/picosat \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
+			-I$(top_srcdir)/external/include \
 			-DPREFIX=\"$(prefix)\" \
 			-Wno-pointer-sign
 libpkg_la_SOURCES=	pkg.c \

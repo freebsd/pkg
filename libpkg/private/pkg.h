@@ -528,13 +528,6 @@ const char* packing_format_to_string(pkg_formats format);
 int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg);
 
-typedef void (*conflict_func_cb)(const char *, const char *, void *);
-int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
-		conflict_func_cb cb, void *cbdata);
-int pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata);
-struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db,
-						const char *uniqueid);
-
 int pkg_set_mtree(struct pkg *, const char *mtree);
 
 /* pkgdb commands */

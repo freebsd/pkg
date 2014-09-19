@@ -2143,6 +2143,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	int ret = EPKG_OK, res, added = 0;
 
 	pkg_emit_integritycheck_begin();
+	j->conflicts_registered = 0;
 
 	DL_FOREACH(j->jobs, ps) {
 		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
@@ -2153,25 +2154,19 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 
 			if (p->type == PKG_REMOTE)
 				pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS);
-			else if (p->type != PKG_FILE)
-				continue;
 		}
-		if ((res = pkg_conflicts_append_pkg(p, j)) != EPKG_OK)
+		if ((res = pkg_conflicts_append_chain(ps->items[0], j)) != EPKG_OK)
 			ret = res;
 		else
 			added ++;
 
 	}
 
-	if (added > 0) {
-		pkg_debug(1, "check integrity for %d items added", added);
-		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK) {
-			pkg_emit_integritycheck_finished(j->conflicts_registered);
-			return (res);
-		}
-	}
+	pkg_debug(1, "check integrity for %d items added", added);
 
 	pkg_emit_integritycheck_finished(j->conflicts_registered);
+	if (j->conflicts_registered > 0)
+		ret = EPKG_CONFLICT;
 
 	return (ret);
 }
