@@ -325,6 +325,13 @@ pkg_conflicts_add_from_pkgdb_remote(const char *o1, const char *o2, void *ud)
 	}
 }
 
+static int
+pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
+	struct pkg_jobs_conflict_item *b)
+{
+	return (b->hash - a->hash);
+}
+
 static void
 pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *local, struct pkg_jobs *j)
@@ -357,12 +364,17 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 {
 	struct pkg_job_universe_item *lp = NULL, *cur;
 
+	/* Ensure that we have a tree initialized */
+	if (j->conflict_items.th_cmp == NULL) {
+		j->conflict_items.th_cmp = pkg_conflicts_item_cmp;
+	}
+
 	/* Find local package */
 	cur = it->prev;
 	while (cur != it) {
 		if (cur->pkg->type == PKG_INSTALLED) {
 			lp = cur;
-			if (pkgdb_ensure_loaded(j->db, PKG_LOAD_FILES|PKG_LOAD_DIRS)
+			if (pkgdb_ensure_loaded(j->db, cur->pkg, PKG_LOAD_FILES|PKG_LOAD_DIRS)
 							!= EPKG_OK)
 				return (EPKG_FATAL);
 
@@ -383,6 +395,8 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 
 		cur = cur->prev;
 	} while (cur != it);
+
+	return (EPKG_OK);
 }
 
 int
