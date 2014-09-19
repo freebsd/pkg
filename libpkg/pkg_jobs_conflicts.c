@@ -35,6 +35,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
+#include "siphash.h"
 
 struct pkg_conflict_chain {
 	struct pkg_job_request *req;
@@ -179,151 +180,6 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 }
 
 
-static int
-pkg_conflicts_add_missing(struct pkg_jobs *j, const char *uid)
-{
-	struct pkg *npkg;
-
-
-	npkg = pkg_jobs_universe_get_local(j->universe, uid, 0);
-	if (npkg == NULL) {
-		npkg = pkg_jobs_universe_get_remote(j->universe, uid, 0);
-		pkg_debug(2, "conflicts: add missing remote %s(%d)", uid);
-	}
-	else {
-		pkg_debug(2, "conflicts: add missing local %s(%d)", uid);
-	}
-
-	if (npkg == NULL) {
-		pkg_emit_error("cannot register conflict with non-existing %s",
-				uid);
-		return (EPKG_FATAL);
-	}
-
-	return pkg_jobs_universe_process(j->universe, npkg);
-}
-
-
-static void
-pkg_conflicts_register_universe(struct pkg_jobs *j,
-		struct pkg_job_universe_item *u1,
-		struct pkg_job_universe_item *u2, bool local_only,
-		enum pkg_conflict_type type)
-{
-
-	pkg_conflicts_register(u1->pkg, u2->pkg, type);
-}
-
-static void
-pkg_conflicts_add_from_pkgdb_local(const char *o1, const char *o2, void *ud)
-{
-	struct pkg_jobs *j = (struct pkg_jobs *)ud;
-	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
-	struct pkg_conflict *c;
-	const char *dig1, *dig2;
-
-	u1 = pkg_jobs_universe_find(j->universe, o1);
-	u2 = pkg_jobs_universe_find(j->universe, o2);
-
-	if (u1 == NULL && u2 == NULL) {
-		pkg_emit_error("cannot register conflict with non-existing %s and %s",
-				o1, o2);
-		return;
-	}
-	else if (u1 == NULL) {
-		if (pkg_conflicts_add_missing(j, o1) != EPKG_OK)
-			return;
-		u1 = pkg_jobs_universe_find(j->universe, o1);
-	}
-	else if (u2 == NULL) {
-		if (pkg_conflicts_add_missing(j, o2) != EPKG_OK)
-			return;
-		u2 = pkg_jobs_universe_find(j->universe, o2);
-	}
-	else {
-		/* Maybe we have registered this conflict already */
-		HASH_FIND(hh, u1->pkg->conflicts, o2, strlen(o2), c);
-		if (c != NULL)
-			return;
-	}
-
-	/*
-	 * Here we have some unit but we do not know, where is a conflict, e.g.
-	 * if we have several units U1 and U2 with the same uniqueid O that are in
-	 * the conflict with some origin O' provided by U1' and U2'. So we can
-	 * register the conflicts between all units in the chain.
-	 */
-	LL_FOREACH(u1, cur1) {
-		LL_FOREACH(u2, cur2) {
-			if (cur1->pkg->type == PKG_INSTALLED && cur2->pkg->type != PKG_INSTALLED) {
-				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
-				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-				pkg_conflicts_register_universe(j, cur1, cur2, true, PKG_CONFLICT_REMOTE_LOCAL);
-				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
-						o1, dig1, o2, dig2);
-				j->conflicts_registered ++;
-			}
-			else if (cur2->pkg->type == PKG_INSTALLED && cur1->pkg->type != PKG_INSTALLED) {
-				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
-				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-				pkg_conflicts_register_universe(j, cur1, cur2, true, PKG_CONFLICT_REMOTE_LOCAL);
-				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
-						o2, dig2, o1, dig1);
-				j->conflicts_registered ++;
-			}
-		}
-	}
-}
-
-static void
-pkg_conflicts_add_from_pkgdb_remote(const char *o1, const char *o2, void *ud)
-{
-	struct pkg_jobs *j = (struct pkg_jobs *)ud;
-	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
-	struct pkg_conflict *c;
-	const char *dig1, *dig2;
-
-	u1 = pkg_jobs_universe_find(j->universe, o1);
-	u2 = pkg_jobs_universe_find(j->universe, o2);
-
-	/*
-	 * In case of remote conflict we need to register it only between remote
-	 * packets
-	 */
-
-	if (u1 == NULL || u2 == NULL) {
-		pkg_emit_error("cannot register remote conflict with non-existing %s and %s",
-				o1, o2);
-		return;
-	}
-	else {
-		/* Maybe we have registered this conflict already */
-		HASH_FIND(hh, u1->pkg->conflicts, o2, strlen(o2), c);
-		if (c != NULL)
-			return;
-	}
-
-	LL_FOREACH(u1, cur1) {
-		if (cur1->pkg->type != PKG_INSTALLED) {
-			HASH_FIND(hh, cur1->pkg->conflicts, o2, strlen(o2), c);
-			if (c == NULL) {
-				LL_FOREACH(u2, cur2) {
-					HASH_FIND(hh, cur2->pkg->conflicts, o1, strlen(o1), c);
-					if (c == NULL && cur2->pkg->type != PKG_INSTALLED) {
-						/* No need to update priorities */
-						pkg_conflicts_register(cur1->pkg, cur2->pkg, PKG_CONFLICT_REMOTE_REMOTE);
-						j->conflicts_registered ++;
-						pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
-						pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-						pkg_debug(2, "register conflict between remote %s(%s) <-> %s(%s)",
-								o1, dig1, o2, dig2);
-						break;
-					}
-				}
-			}
-		}
-	}
-}
 
 static int
 pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
@@ -353,6 +209,9 @@ pkg_conflicts_need_conflict(struct pkg *p1, struct pkg *p2)
 	if (c != NULL)
 		return false;
 
+	/*
+	 * We need to check all files and dirs and find the similar ones
+	 */
 	HASH_ITER(hh, p1->files, fcur, ftmp) {
 		HASH_FIND_STR(p2->files, fcur->path, ff);
 		if (ff != NULL)
@@ -374,6 +233,9 @@ pkg_conflicts_need_conflict(struct pkg *p1, struct pkg *p2)
 	return (false);
 }
 
+/*
+ * Just insert new conflicts items to the packages
+ */
 static void
 pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	enum pkg_conflict_type type)
@@ -400,7 +262,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
  * Register conflicts between packages in the universe chains
  */
 static void
-pkg_conflicts_register(struct pkg_jobs *j, struct pkg_job_universe_item *u1,
+pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u1,
 	struct pkg_job_universe_item *u2)
 {
 	struct pkg_job_universe_item *cur1, *cur2;
@@ -451,11 +313,12 @@ static struct pkg *
 pkg_conflicts_check_local_path(const char *path, const char *uid,
 	struct pkg_jobs *j)
 {
+	/* XXX: name should be enough here */
 	const char sql_local_conflict[] = ""
 		"SELECT p.name || '~' || p.origin as uniqueid FROM packages AS p "
 		"LEFT JOIN files AS f "
 		"ON p.id = f.package_id "
-		"WHERE f.path = ?1;";
+		"WHERE f.path = ?1 AND p.name<>SPLIT_UID('name', ?2);";
 	sqlite3_stmt *stmt;
 	int ret;
 	struct pkg *p = NULL;
@@ -471,6 +334,8 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 
 	sqlite3_bind_text(stmt, 1,
 		path, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2,
+		uid, -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		/*
@@ -494,14 +359,20 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 }
 
 static void
-pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
+pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *local, struct pkg_jobs *j)
 {
 	struct pkg_file *fcur, *ftmp, *ff;
 	struct pkg_dir *dcur, *dtmp, *df;
 	const char *uid;
+	struct pkg *p;
+	struct pkg_job_universe_item *cun;
+	struct sipkey k;
 
 	pkg_get(it->pkg, PKG_UNIQUEID, &uid);
+
+	/* Initialize sip key with zero */
+	memset(&k, 0, sizeof(k));
 
 	HASH_ITER(hh, it->pkg->files, fcur, ftmp) {
 		if (local != NULL) {
@@ -511,7 +382,12 @@ pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
 				continue;
 		}
 		/* Check for local conflict in db */
-		pkg_conflicts_check_local_path(fcur->path, uid, j);
+		p = pkg_conflicts_check_local_path(fcur->path, uid, j);
+		if (p != NULL) {
+			pkg_jobs_universe_process_item(j->universe, p, &cun);
+			assert(cun != NULL);
+			pkg_conflicts_register_chain(j, it, cun);
+		}
 	}
 	HASH_ITER(hh, it->pkg->dirs, dcur, dtmp) {
 		if (local != NULL) {
@@ -520,7 +396,12 @@ pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
 				continue;
 		}
 		/* Check for local conflict in db */
-		pkg_conflicts_check_local_path(fcur->path, uid, j);
+		p = pkg_conflicts_check_local_path(fcur->path, uid, j);
+		if (p != NULL) {
+			pkg_jobs_universe_process_item(j->universe, p, &cun);
+			assert(cun != NULL);
+			pkg_conflicts_register_chain(j, it, cun);
+		}
 	}
 }
 
@@ -557,7 +438,7 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	cur = it;
 	do {
 		if (cur != lp)
-			pkg_conflicts_check_local_conflict(cur, lp, j);
+			pkg_conflicts_check_chain_conflict(cur, lp, j);
 
 		cur = cur->prev;
 	} while (cur != it);
