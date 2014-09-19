@@ -332,12 +332,65 @@ pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
 	return (b->hash - a->hash);
 }
 
+/*
+ * Check whether the specified path is registered locally and returns
+ * the package that contains that path or NULL if no conflict was found
+ */
+static struct pkg *
+pkg_conflicts_check_local_path(const char *path, const char *uid,
+	struct pkg_jobs *j)
+{
+	const char sql_local_conflict[] = ""
+		"SELECT p.name || '~' || p.origin as uniqueid FROM packages AS p "
+		"LEFT JOIN files AS f "
+		"ON p.id = f.package_id "
+		"WHERE f.path = ?1;";
+	sqlite3_stmt *stmt;
+	int ret;
+	struct pkg *p = NULL;
+	struct pkg_conflict *c;
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql_local_conflict);
+	ret = sqlite3_prepare_v2(j->db->sqlite, sql_local_conflict, -1,
+		&stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(j->db->sqlite, sql_local_conflict);
+		return (NULL);
+	}
+
+	sqlite3_bind_text(stmt, 1,
+		path, -1, SQLITE_STATIC);
+
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		/*
+		 * We have found the conflict with some other chain, so find that chain
+		 * or update the universe
+		 */
+		p = pkg_jobs_universe_get_local(j->universe,
+			sqlite3_column_text(stmt, 0), 0);
+		assert(p != NULL);
+
+		HASH_FIND_STR(p->conflicts, uid, c);
+		if (c == NULL) {
+			/* We need to register the conflict between two universe chains */
+			sqlite3_finalize(stmt);
+			return (p);
+		}
+	}
+
+	sqlite3_finalize(stmt);
+	return (NULL);
+}
+
 static void
 pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *local, struct pkg_jobs *j)
 {
 	struct pkg_file *fcur, *ftmp, *ff;
 	struct pkg_dir *dcur, *dtmp, *df;
+	const char *uid;
+
+	pkg_get(it->pkg, PKG_UNIQUEID, &uid);
 
 	HASH_ITER(hh, it->pkg->files, fcur, ftmp) {
 		if (local != NULL) {
