@@ -39,6 +39,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -99,12 +100,37 @@ exec_info(int argc, char **argv)
 	cap_rights_t rights;
 #endif
 
-	/* Set default case sensitivity for searching */
-	pkgdb_set_case_sensitivity(
-	    pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH")));
+	struct option longopts[] = {
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "annotations",	no_argument,		NULL,	'A' },
+		{ "provided-shlibs",	no_argument,		NULL,	'b' },
+		{ "required-shlibs",	no_argument,		NULL,	'B' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "dependencies",	no_argument,		NULL,	'd' },
+		{ "pkg-message",	no_argument,		NULL,	'D' },
+		{ "exists",		no_argument,		NULL,	'e' },
+		{ "show-name-only",	no_argument,		NULL,	'E' },
+		{ "full",		no_argument,		NULL,	'f' },
+		{ "file",		required_argument,	NULL,	'F' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "comment",		no_argument,		NULL,	'I' },
+		{ "locked",		no_argument,		NULL,	'k' },
+		{ "list-files",		no_argument,		NULL,	'l' },
+		{ "origin",		no_argument,		NULL,	'o' },
+		{ "by-origin",		no_argument,		NULL,	'O' },
+		{ "prefix",		no_argument,		NULL,	'p' },
+		{ "quiet",		no_argument,		NULL,	'q' },
+		{ "required-by",	no_argument,		NULL,	'r' },
+		{ "raw",		no_argument,		NULL,	'R' },
+		{ "size",		no_argument,		NULL,	's' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ "raw-format",		required_argument,	NULL, 	1   },
+		{ NULL,			0,			NULL,	0   },
+	};
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aACDegixEIdrklbBsqopOfF:R")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aAbBCdDeEfF:giIkloOpqrRsx", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -112,63 +138,27 @@ exec_info(int argc, char **argv)
 		case 'A':
 			opt |= INFO_ANNOTATIONS;
 			break;
-		case 'C':
-			pkgdb_set_case_sensitivity(true);
-			break;
-		case 'O':
-			origin_search = true;  /* only for ports compat */
-			break;
-		case 'e':
-			pkg_exists = true;;
-			retcode = 1;
-			break;
-		case 'g':
-			match = MATCH_GLOB;
-			break;
-		case 'i':
-			pkgdb_set_case_sensitivity(false);
-			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'D':
-			opt |= INFO_MESSAGE;
-			break;
-		case 'd':
-			opt |= INFO_DEPS;
-			break;
-		case 'I':
-			opt |= INFO_COMMENT;
-			break;
-		case 'r':
-			opt |= INFO_RDEPS;
-			break;
-		case 'k':
-			opt |= INFO_LOCKED;
-			break;
-		case 'l':
-			opt |= INFO_FILES;
-			break;
 		case 'b':
 			opt |= INFO_SHLIBS_PROVIDED;
 			break;
 		case 'B':
 			opt |= INFO_SHLIBS_REQUIRED;
 			break;
-		case 's':
-			opt |= INFO_FLATSIZE;
+		case 'C':
+			pkgdb_set_case_sensitivity(true);
+			break;
+		case 'd':
+			opt |= INFO_DEPS;
+			break;
+		case 'D':
+			opt |= INFO_MESSAGE;
+			break;
+		case 'e':
+			pkg_exists = true;;
+			retcode = 1;
 			break;
 		case 'E': /* ports compatibility */
 			e_flag = true;
-			break;
-		case 'q':
-			quiet = true;
-			break;
-		case 'o':
-			opt |= INFO_ORIGIN;
-			break;
-		case 'p':
-			opt |= INFO_PREFIX;
 			break;
 		case 'f':
 			opt |= INFO_FULL;
@@ -176,8 +166,56 @@ exec_info(int argc, char **argv)
 		case 'F':
 			file = optarg;
 			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
+			break;
+		case 'I':
+			opt |= INFO_COMMENT;
+			break;
+		case 'k':
+			opt |= INFO_LOCKED;
+			break;
+		case 'l':
+			opt |= INFO_FILES;
+			break;
+		case 'o':
+			opt |= INFO_ORIGIN;
+			break;
+		case 'O':
+			origin_search = true;  /* only for ports compat */
+			break;
+		case 'p':
+			opt |= INFO_PREFIX;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'r':
+			opt |= INFO_RDEPS;
+			break;
 		case 'R':
 			opt |= INFO_RAW;
+			break;
+		case 's':
+			opt |= INFO_FLATSIZE;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 1:
+			if (strcasecmp(optarg, "json") == 0)
+			       opt |= INFO_RAW_JSON;
+			else if (strcasecmp(optarg, "json-compact") == 0)
+				opt |= INFO_RAW_JSON_COMPACT;
+			else if (strcasecmp(optarg, "yaml") == 0)
+				opt |= INFO_RAW_YAML;
+			else
+				errx(EX_USAGE, "Invalid format '%s' for the "
+				    "raw output, expecting json, json-compat "
+				    "or yaml", optarg);
 			break;
 		default:
 			usage_info();
@@ -239,6 +277,11 @@ exec_info(int argc, char **argv)
 		if (opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
+		if (opt & INFO_RAW) {
+			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+				opt |= INFO_RAW_YAML;
+		}
+
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
 			open_flags = PKG_OPEN_MANIFEST_COMPACT;
@@ -377,16 +420,18 @@ exec_info(int argc, char **argv)
 
 		/* this is place for compatibility hacks */
 
-		/* ports infrastructure expects pkg info -q -O to always return 0 even
-		 * if the ports doesn't exists */
+		/* ports infrastructure expects pkg info -q -O to
+		 * always return 0 even if the ports doesn't exists */
+
 		if (origin_search)
 			gotone = true;
 
 		/* end of compatibility hacks */
 
 		/*
-		 * only show full version in case of match glob with a single argument specified
-		 * which does not contains any glob pattern
+		 * only show full version in case of match glob with a
+		 * single argument specified which does not contains
+		 * any glob pattern
 		 */
 		if (argc == 1 && !origin_search && !quiet && !e_flag &&
 		    match == MATCH_GLOB &&
@@ -469,8 +514,7 @@ exec_info(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

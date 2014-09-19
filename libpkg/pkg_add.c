@@ -25,14 +25,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/utsname.h>
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
 
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
 #include <libgen.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -40,21 +40,76 @@
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
+
+static const unsigned char litchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+static void
+pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
+{
+	int nchars = strlen(buf);
+	char *pos;
+	int r;
+
+	if (nchars + suflen > buflen - 1) {
+		suflen = buflen - nchars - 1;
+		if (suflen <= 0)
+			return;
+	}
+
+	pos = buf + nchars;
+
+	while(suflen --) {
+#ifndef HAVE_ARC4RANDOM
+		r = rand() % (sizeof(litchar) - 1);
+#else
+		r = arc4random_uniform(sizeof(litchar) - 1);
+#endif
+		*pos++ = litchar[r];
+	}
+
+	*pos = '\0';
+}
 
 static int
-do_extract(struct archive *a, struct archive_entry *ae, const char *location)
+do_extract(struct archive *a, struct archive_entry *ae, const char *location,
+		int nfiles, struct pkg *pkg)
 {
 	int	retcode = EPKG_OK;
-	int	ret = 0;
-	char	path[MAXPATHLEN], pathname[MAXPATHLEN];
+	int	ret = 0, cur_file = 0;
+	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
 	struct stat st;
+	const char *name;
+	bool renamed = false;
+
+#ifndef HAVE_ARC4RANDOM
+	srand(time(NULL));
+#endif
+
+	if (nfiles == 0)
+		return (EPKG_OK);
+
+	pkg_get(pkg, PKG_NAME, &name);
+	pkg_emit_extract_begin(pkg);
+	pkg_emit_progress_start(NULL);
 
 	do {
 		snprintf(pathname, sizeof(pathname), "%s/%s",
 		    location ? location : "",
 		    archive_entry_pathname(ae)
 		);
-		archive_entry_set_pathname(ae, pathname);
+		strlcpy(rpath, pathname, sizeof(rpath));
+
+		if (lstat(pathname, &st) != -1 && !S_ISDIR(st.st_mode)) {
+			/*
+			 * We have an existing file on the path, so handle it
+			 */
+			pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
+			renamed = true;
+		}
+
+		archive_entry_set_pathname(ae, rpath);
 
 		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 		if (ret != ARCHIVE_OK) {
@@ -73,6 +128,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 				goto cleanup;
 			}
 		}
+		pkg_emit_progress_tick(cur_file++, nfiles);
 
 		/*
 		 * if the file is a configuration file and the configuration
@@ -93,6 +149,15 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 				goto cleanup;
 			}
 		}
+		/* Rename old file */
+		if (renamed && rename(rpath, pathname) == -1) {
+			pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
+				strerror(errno));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		renamed = false;
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF) {
@@ -102,81 +167,185 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 	}
 
 cleanup:
-	return (retcode);
-}
 
-int
-do_extract_mtree(char *mtree, const char *prefix)
-{
-	struct archive *a = NULL;
-	struct archive_entry *ae;
-	char path[MAXPATHLEN];
-	const char *fpath;
-	int retcode = EPKG_OK;
-	int ret;
+	pkg_emit_progress_tick(nfiles, nfiles);
+	pkg_emit_extract_finished(pkg);
 
-	if (mtree == NULL || *mtree == '\0')
-		return EPKG_OK;
-
-	a = archive_read_new();
-	archive_read_support_filter_none(a);
-	archive_read_support_format_mtree(a);
-
-	if (archive_read_open_memory(a, mtree, strlen(mtree)) != ARCHIVE_OK) {
-		pkg_emit_error("Fail to extract the mtree: %s",
-		    archive_error_string(a));
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	while ((ret = archive_read_next_header(a, &ae)) != ARCHIVE_EOF) {
-		if (ret != ARCHIVE_OK) {
-			pkg_emit_error("Skipping unsupported mtree line: %s",
-			    archive_error_string(a));
-			continue;
-		}
-		fpath = archive_entry_pathname(ae);
-
-		if (*fpath != '/') {
-			snprintf(path, sizeof(path), "%s/%s", prefix, fpath);
-			archive_entry_set_pathname(ae, path);
-		}
-
-		/* Ignored failed extraction on purpose */
-		archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
-	}
-
-cleanup:
-	if (a != NULL)
-		archive_read_free(a);
+	if (renamed && retcode == EPKG_FATAL)
+		unlink(rpath);
 
 	return (retcode);
 }
 
-int
-pkg_add(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location)
+static int
+pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
+	const char *path, int flags,
+	struct pkg_manifest_key *keys, const char *location)
 {
 	const char	*arch;
 	const char	*origin;
 	const char	*name;
+	int	ret, retcode;
+	struct pkg_dep	*dep = NULL;
+	char	bd[MAXPATHLEN], *basedir;
+	char	dpath[MAXPATHLEN];
+	const char	*ext;
+	struct pkg	*pkg_inst = NULL;
+
+	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
+	if (!is_valid_abi(arch, true)) {
+		if ((flags & PKG_ADD_FORCE) == 0) {
+			return (EPKG_FATAL);
+		}
+	}
+	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
+	if (ret == EPKG_OK) {
+		if ((flags & PKG_ADD_FORCE) == 0) {
+			pkg_emit_already_installed(pkg_inst);
+			pkg_free(pkg_inst);
+			pkg_inst = NULL;
+			return (EPKG_INSTALLED);
+		}
+		else if (pkg_is_locked(pkg_inst)) {
+			pkg_emit_locked(pkg_inst);
+			pkg_free(pkg_inst);
+			pkg_inst = NULL;
+			return (EPKG_INSTALLED);
+		}
+		else {
+			pkg_emit_notice("package %s is already installed, forced install",
+				name);
+			pkg_free(pkg_inst);
+			pkg_inst = NULL;
+		}
+	} else if (ret != EPKG_END) {
+		return (ret);
+	}
+
+	/*
+	 * Check for dependencies by searching the same directory as
+	 * the package archive we're reading.  Of course, if we're
+	 * reading from a file descriptor or a unix domain socket or
+	 * whatever, there's no valid directory to search.
+	 */
+	strlcpy(bd, path, sizeof(bd));
+	if (strncmp(path, "-", 2) != 0) {
+		basedir = dirname(bd);
+		if ((ext = strrchr(path, '.')) == NULL) {
+			pkg_emit_error("%s has no extension", path);
+			return (EPKG_FATAL);
+		}
+	} else {
+		ext = NULL;
+		basedir = NULL;
+	}
+
+	retcode = EPKG_FATAL;
+	pkg_emit_add_deps_begin(pkg);
+
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
+			continue;
+
+		if (basedir != NULL) {
+			const char *dep_name = pkg_dep_name(dep);
+			const char *dep_ver = pkg_dep_version(dep);
+
+			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
+				dep_name, dep_ver, ext);
+
+			if ((flags & PKG_ADD_UPGRADE) == 0 &&
+							access(dpath, F_OK) == 0) {
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
+
+				if (ret != EPKG_OK)
+					goto cleanup;
+			} else {
+				pkg_emit_error("Missing dependency matching "
+					"Origin: '%s' Version: '%s'",
+					pkg_dep_get(dep, PKG_DEP_ORIGIN),
+					pkg_dep_get(dep, PKG_DEP_VERSION));
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+			}
+		} else {
+			pkg_emit_missing_dep(pkg, dep);
+			goto cleanup;
+		}
+	}
+
+	retcode = EPKG_OK;
+cleanup:
+	pkg_emit_add_deps_finished(pkg);
+
+	return (retcode);
+}
+
+static int
+pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
+{
+	struct pkg_file *f, *cf;
+	struct pkg_dir *d, *cd;
+	int ret = EPKG_OK;
+	bool handle_rc;
+
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
+	if (handle_rc)
+		pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
+
+	/*
+	 * Execute pre deinstall scripts
+	 */
+	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
+		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
+			ret = pkg_script_run(old, PKG_SCRIPT_PRE_UPGRADE);
+		else
+			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
+		if (ret != EPKG_OK)
+			return (ret);
+	}
+
+	/* Now remove files that no longer exist in the new package */
+	if (new != NULL) {
+		f = NULL;
+		while (pkg_files(old, &f) == EPKG_OK) {
+			HASH_FIND_STR(new->files, f->path, cf);
+
+			if (cf == NULL)
+				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
+		}
+
+		d = NULL;
+		while (pkg_dirs(old, &d) == EPKG_OK) {
+			HASH_FIND_STR(new->dirs, d->path, cd);
+
+			if (cd == NULL)
+				pkg_delete_dir(old, d);
+		}
+	}
+
+	return (ret);
+}
+
+static int
+pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location, struct pkg *remote,
+    struct pkg *local)
+{
 	struct archive	*a;
 	struct archive_entry *ae;
 	struct pkg	*pkg = NULL;
-	struct pkg_dep	*dep = NULL;
-	struct pkg      *pkg_inst = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
-	bool		 disable_mtree;
-	char		 dpath[MAXPATHLEN];
-	const char	*basedir;
-	const char	*ext;
-	char		*mtree;
-	char		*prefix;
+	bool		 automatic;
 	int		 retcode = EPKG_OK;
 	int		 ret;
+	int nfiles;
 
 	assert(path != NULL);
+
+	if (local != NULL)
+		flags |= PKG_ADD_UPGRADE;
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -198,97 +367,34 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 		return (EPKG_FATAL);
 	}
 
-	if (flags & PKG_ADD_AUTOMATIC)
+	if (flags & PKG_ADD_AUTOMATIC) {
 		pkg_set(pkg, PKG_AUTOMATIC, (bool)true);
-
-	/*
-	 * Check the architecture
-	 */
-
-	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
-
-	if (!is_valid_abi(arch, true)) {
-		if ((flags & PKG_ADD_FORCE) == 0) {
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
 	}
 
 	/*
-	 * Check if the package is already installed
+	 * Additional checks for non-remote package
 	 */
-
-	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
-	if (ret == EPKG_OK) {
-		if ((flags & PKG_ADD_FORCE) == 0) {
-			pkg_emit_already_installed(pkg_inst);
-			retcode = EPKG_INSTALLED;
-			pkg_free(pkg_inst);
-			pkg_inst = NULL;
+	if (remote == NULL) {
+		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys, location);
+		if (ret != EPKG_OK) {
+			retcode = ret;
 			goto cleanup;
 		}
-		else {
-			pkg_emit_notice("package %s is already installed, forced install", name);
-			pkg_free(pkg_inst);
-			pkg_inst = NULL;
-		}
-	} else if (ret != EPKG_END) {
-		retcode = ret;
-		goto cleanup;
 	}
+	else {
+		const char *manifestdigest;
 
-	/*
-	 * Check for dependencies by searching the same directory as
-	 * the package archive we're reading.  Of course, if we're
-	 * reading from a file descriptor or a unix domain socket or
-	 * somesuch, there's no valid directory to search.
-	 */
-
-	if (strncmp(path, "-", 2) != 0 && (flags & PKG_ADD_UPGRADE) == 0) {
-		basedir = dirname(path);
-		if ((ext = strrchr(path, '.')) == NULL) {
-			pkg_emit_error("%s has no extension", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
+		if (remote->repo != NULL) {
+			/* Save reponame */
+			pkg_addannotation(pkg, "repository", remote->repo->name);
+			pkg_addannotation(pkg, "repo_type", remote->repo->ops->type);
 		}
-	} else {
-		basedir = NULL;
-		ext = NULL;
-	}
 
-	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
-			continue;
-
-		if (basedir != NULL) {
-			const char *dep_name = pkg_dep_name(dep);
-			const char *dep_ver = pkg_dep_version(dep);
-
-			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
-			    dep_name, dep_ver, ext);
-
-			if ((flags & PKG_ADD_UPGRADE) == 0 &&
-			    access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
-				if (ret != EPKG_OK) {
-					retcode = EPKG_FATAL;
-					goto cleanup;
-				}
-			} else {
-				pkg_emit_error("Missing dependency matching "
-				    "Origin: '%s' Version: '%s'",
-				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
-				    pkg_dep_get(dep, PKG_DEP_VERSION));
-				if ((flags & PKG_ADD_FORCE_MISSING) == 0) {
-					retcode = EPKG_FATAL;
-					goto cleanup;
-				}
-			}
-		} else {
-			retcode = EPKG_FATAL;
-			pkg_emit_missing_dep(pkg, dep);
-			goto cleanup;
-		}
+		pkg_get(remote, PKG_DIGEST, &manifestdigest, PKG_AUTOMATIC, &automatic);
+		pkg_set(pkg, PKG_DIGEST, manifestdigest);
+		/* only preserve flags is -A has not been passed */
+		if ((flags & PKG_ADD_AUTOMATIC) == 0)
+			pkg_set(pkg, PKG_AUTOMATIC, automatic);
 	}
 
 	if (location != NULL)
@@ -296,23 +402,18 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
-	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_UPGRADE, flags & PKG_ADD_FORCE);
+	retcode = pkgdb_register_pkg(db, pkg,
+			flags & PKG_ADD_UPGRADE,
+			flags & PKG_ADD_FORCE);
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
-	/* MTREE replicates much of the standard functionality
-	 * inplicit in the way pkg works.  It has to remain available
-	 * in the ports for compatibility with the old pkg_tools, but
-	 * ultimately, MTREE should be made redundant.  Use this for
-	 * experimantal purposes and to develop MTREE-free versions of
-	 * packages. */
-
-	disable_mtree = pkg_object_bool(pkg_config_get("DISABLE_MTREE"));
-	if (!disable_mtree) {
-		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
-		if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
-			goto cleanup_reg;
+	if (local != NULL) {
+		if (pkg_add_cleanup_old(local, remote, flags) != EPKG_OK) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	/*
@@ -324,13 +425,14 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 	/* add the user and group if necessary */
 	/* pkg_add_user_group(pkg); */
 
+	nfiles = HASH_COUNT(pkg->files);
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract && (retcode = do_extract(a, ae, location)) != EPKG_OK) {
+	if (extract && (retcode = do_extract(a, ae, location, nfiles, pkg)) != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
-		pkg_delete_dirs(db, pkg, 1);
+		pkg_delete_dirs(db, pkg);
 		goto cleanup_reg;
 	}
 
@@ -368,8 +470,31 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 
 	pkg_free(pkg);
 
-	if (pkg_inst != NULL)
-		pkg_free(pkg_inst);
-
 	return (retcode);
+}
+
+int
+pkg_add(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location)
+{
+	return pkg_add_common(db, path, flags, keys, location, NULL, NULL);
+}
+
+int
+pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location, struct pkg *rp)
+{
+	return pkg_add_common(db, path, flags, keys, location, rp, NULL);
+}
+
+int
+pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location,
+    struct pkg *rp, struct pkg *lp)
+{
+	if (pkgdb_ensure_loaded(db, lp,
+	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return pkg_add_common(db, path, flags, keys, location, rp, lp);
 }

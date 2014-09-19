@@ -87,27 +87,81 @@ cleanup:
 	return (r);
 }
 
+static bool
+vquery_yesno(bool deft, const char *msg, va_list ap)
+{
+	char *line = NULL;
+	char *out;
+	size_t linecap = 0;
+	int linelen;
+	bool	 r = deft;
+
+	/* We use default value of yes or default in case of quiet mode */
+	if (quiet)
+		return (yes || r);
+
+	/* Do not query user if we have specified yes flag */
+	if (yes)
+		return (true);
+
+	pkg_vasprintf(&out, msg, ap);
+	printf("%s", out);
+
+	for (;;) {
+		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
+
+			if (linelen == 1 && line[0] == '\n') {
+				break;
+			}
+			else if (linelen == 2) {
+				if (line[0] == 'y' || line[0] == 'Y') {
+					r = true;
+					break;
+				}
+				else if (line[0] == 'n' || line[0] == 'N') {
+					r = false;
+					break;
+				}
+			}
+			else {
+				if (strcasecmp(line, "yes\n") == 0) {
+					r = true;
+					break;
+				}
+				else if (strcasecmp(line, "no\n") == 0) {
+					r = false;
+					break;
+				}
+			}
+			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
+			printf("%s", out);
+		}
+		else {
+			if (errno == EINTR) {
+				continue;
+			}
+			else {
+				/* Assume EOF as false */
+				r = false;
+				break;
+			}
+		}
+	}
+
+	free(out);
+
+	return (r);
+}
+
 bool
 query_yesno(bool deft, const char *msg, ...)
 {
-	int	 c;
-	bool	 r = deft;
 	va_list	 ap;
+	bool r;
 
 	va_start(ap, msg);
-	pkg_vprintf(msg, ap);
+	r = vquery_yesno(deft, msg, ap);
 	va_end(ap);
-
-	c = getchar();
-	if (c == 'y' || c == 'Y')
-		r = true;
-	else if (c == 'n' || c == 'N')
-		r = false;
-	else if (c == '\n' || c == EOF)
-		return r;
-
-	while ((c = getchar()) != '\n' && c != EOF)
-		continue;
 
 	return (r);
 }
@@ -132,7 +186,13 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 		}
 	}
 
-	getline(&str, &n, stdin);
+	i = deft;
+	while (getline(&str, &n, stdin) == -1) {
+		if (errno == EINTR)
+			continue;
+		else
+			goto cleanup;
+	}
 	i = (int) strtoul(str, &endpntr, 10);
 
 	if (endpntr == NULL || *endpntr == '\0') {
@@ -143,8 +203,9 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 	} else
 		i = -1;
 
+cleanup:
 	free(str);
-	return i;
+	return (i);
 }
 
 /* unlike realpath(3), this routine does not expand symbolic links */
@@ -261,6 +322,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
+	int outflags = 0;
 
 	pkg_get(pkg,
 		PKG_REPOURL,       &repourl,
@@ -269,10 +331,20 @@ print_info(struct pkg * const pkg, uint64_t options)
 		PKG_PKGSIZE,       &pkgsize);
 
 	if (options & INFO_RAW) {
-		if (pkg_type(pkg) != PKG_REMOTE)
-			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_PRETTY, NULL);
-		else
-			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_COMPACT|PKG_MANIFEST_EMIT_PRETTY, NULL);
+		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) {
+		case INFO_RAW_YAML:
+			outflags |= PKG_MANIFEST_EMIT_PRETTY;
+			break;
+		case INFO_RAW_JSON:
+			outflags |= PKG_MANIFEST_EMIT_JSON;
+		case INFO_RAW_JSON_COMPACT:
+			break;
+		}
+		if (pkg_type(pkg) == PKG_REMOTE)
+			outflags |= PKG_MANIFEST_EMIT_COMPACT;
+
+		pkg_emit_manifest_file(pkg, stdout, outflags, NULL);
+
 		return;
 	}
 
@@ -589,13 +661,15 @@ struct pkg_solved_display_item {
 };
 
 static void
-set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
+set_jobs_summary_pkg(struct pkg_jobs *jobs,
+		struct pkg *new_pkg, struct pkg *old_pkg,
 		pkg_solved_t type, int64_t *oldsize,
 		int64_t *newsize, int64_t *dlsize,
 		struct pkg_solved_display_item **disp)
 {
-	const char *oldversion;
+	const char *oldversion, *repopath, *destdir;
 	char path[MAXPATHLEN];
+	int ret;
 	struct stat st;
 	int64_t flatsize, oldflatsize, pkgsize;
 	struct pkg_solved_display_item *it;
@@ -603,7 +677,8 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	flatsize = oldflatsize = pkgsize = 0;
 	oldversion = NULL;
 
-	pkg_get(new_pkg, PKG_FLATSIZE, &flatsize, PKG_PKGSIZE, &pkgsize);
+	pkg_get(new_pkg, PKG_FLATSIZE, &flatsize, PKG_PKGSIZE, &pkgsize,
+		PKG_REPOPATH, &repopath);
 	if (old_pkg != NULL)
 		pkg_get(old_pkg, PKG_VERSION, &oldversion, PKG_FLATSIZE, &oldflatsize);
 
@@ -618,16 +693,26 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	it->solved_type = type;
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
-		pkg_printf("\tPackage %n-%v is locked ", old_pkg, old_pkg);
 		it->display_type = PKG_DISPLAY_LOCKED;
+		DL_APPEND(disp[it->display_type], it);
+		return;
 	}
+
+	destdir = pkg_jobs_destdir(jobs);
 
 	switch (type) {
 	case PKG_SOLVED_INSTALL:
 	case PKG_SOLVED_UPGRADE:
-		pkg_repo_cached_name(new_pkg, path, sizeof(path));
+		ret = EPKG_FATAL;
 
-		if (stat(path, &st) == -1 || pkgsize != st.st_size)
+		if (destdir == NULL)
+			ret = pkg_repo_cached_name(new_pkg, path, sizeof(path));
+		else if (repopath != NULL) {
+			snprintf(path, sizeof(path), "%s/%s", destdir, repopath);
+			ret = EPKG_OK;
+		}
+
+		if (ret == EPKG_OK && (stat(path, &st) == -1 || pkgsize != st.st_size))
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be
@@ -667,13 +752,27 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 		break;
 
 	case PKG_SOLVED_FETCH:
-		*dlsize += pkgsize;
 		*newsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
 
-		pkg_repo_cached_name(new_pkg, path, sizeof(path));
-		if (stat(path, &st) != -1)
+		if (destdir == NULL)
+			pkg_repo_cached_name(new_pkg, path, sizeof(path));
+		else
+			snprintf(path, sizeof(path), "%s/%s", destdir, repopath);
+
+		if (stat(path, &st) != -1) {
 			*oldsize += st.st_size;
+
+			if (pkgsize != st.st_size)
+				*dlsize += pkgsize;
+			else {
+				free(it);
+				return;
+			}
+		}
+		else
+			*dlsize += pkgsize;
+
 		break;
 	}
 	DL_APPEND(disp[it->display_type], it);
@@ -768,54 +867,67 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 	[PKG_DISPLAY_MAX] = NULL
 };
 
-void
+int
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
 	char size[7];
 	va_list ap;
-	int type;
+	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
 	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
+	bool first = true;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
 	memset(disp, 0, sizeof (disp));
 
-	if (msg != NULL) {
-		va_start(ap, msg);
-		vprintf(msg, ap);
-		va_end(ap);
-	}
-
-	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
-		set_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize, disp);
-	}
+	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type))
+		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
+			&newsize, &dlsize, disp);
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
 		if (disp[type] != NULL) {
+			/* Space between each section. */
+			if (!first)
+				puts("");
+			else
+				first = false;
+			if (msg != NULL) {
+				va_start(ap, msg);
+				vprintf(msg, ap);
+				va_end(ap);
+				fflush(stdout);
+				msg = NULL;
+			}
 			printf("%s:\n", pkg_display_messages[type]);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
 				display_summary_item(cur, newsize, dlsize);
+				displayed ++;
 				free(cur);
 			}
-			puts("");
 		}
 	}
 
+	/* Add an extra line before the size output. */
+	if (oldsize != newsize || dlsize)
+		puts("");
+
 	if (oldsize > newsize) {
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("The operation will free %s\n", size);
+		printf("The operation will free %s.\n", size);
 	} else if (newsize > oldsize) {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("The process will require %s more space\n", size);
+		printf("The process will require %s more space.\n", size);
 	}
 
 	if (dlsize > 0) {
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-		printf("%s to be downloaded\n", size);
+		printf("%s to be downloaded.\n", size);
 	}
+
+	return (displayed);
 }
 
 int
@@ -855,4 +967,12 @@ hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	out[SHA256_DIGEST_LENGTH * 2] = '\0';
 
 	return (EPKG_OK);
+}
+
+void
+sbuf_flush(struct sbuf *buf)
+{
+	sbuf_finish(buf);
+	printf("%s", sbuf_data(buf));
+	sbuf_clear(buf);
 }

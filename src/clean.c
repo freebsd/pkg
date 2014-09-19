@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <err.h>
 #include <fts.h>
+#include <getopt.h>
 #include <libutil.h>
 #include <pkg.h>
 #include <stdbool.h>
@@ -66,6 +67,7 @@ static int
 add_to_dellist(struct dl_head *dl,  const char *path)
 {
 	struct deletion_list	*dl_entry;
+	static bool first_entry = true;
 
 	assert(path != NULL);
 
@@ -76,6 +78,15 @@ add_to_dellist(struct dl_head *dl,  const char *path)
 	}
 
 	dl_entry->path = strdup(path);
+
+	if (!quiet) {
+		if (first_entry) {
+			first_entry = false;
+			printf("The following package files will be deleted:"
+			    "\n");
+		}
+		printf("\t%s\n", dl_entry->path);
+	}
 
 	STAILQ_INSERT_TAIL(dl, dl_entry, next);
 
@@ -95,21 +106,23 @@ free_dellist(struct dl_head *dl)
 }
 
 static int
-delete_dellist(struct dl_head *dl)
+delete_dellist(struct dl_head *dl, int total)
 {
 	struct deletion_list	*dl_entry;
 	int			retcode = EX_OK;
-	int			count = 0;
+	int			count = 0, processed = 0;
 
+	progressbar_start("Deleting files");
 	STAILQ_FOREACH(dl_entry, dl, next) {
-		if (!quiet)
-			printf("\t%s\n", dl_entry->path);
 		if (unlink(dl_entry->path) != 0) {
 			warn("unlink(%s)", dl_entry->path);
 			count++;
 			retcode = EX_SOFTWARE;
 		}
+		++processed;
+		progressbar_tick(processed, total);
 	}
+	progressbar_tick(processed, total);
 
 	if (!quiet) {
 		if (retcode == EX_OK)
@@ -163,21 +176,27 @@ exec_clean(int argc, char **argv)
 	FTS		*fts = NULL;
 	FTSENT		*ent = NULL;
 	struct dl_head	dl = STAILQ_HEAD_INITIALIZER(dl);
-	const char	*cachedir, *sum;
-	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1];
+	const char	*cachedir, *sum, *name;
+	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1],
+			link_buf[MAXPATHLEN];
 	bool		 all = false;
-	bool		 dry_run = false;
-	bool		 yes, sumloaded = false;
+	bool		 sumloaded = false;
 	int		 retcode;
-	int		 ret;
-	int		 ch;
+	int		 ch, cnt = 0;
 	size_t		 total = 0, slen;
+	ssize_t		 link_len;
 	char		 size[7];
 	struct pkg_manifest_key *keys = NULL;
 
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
+	struct option longopts[] = {
+		{ "all",	no_argument,	NULL,	'a' },
+		{ "dry-run",	no_argument,	NULL,	'n' },
+		{ "quiet",	no_argument,	NULL,	'q' },
+		{ "yes",	no_argument,	NULL,	'y' },
+		{ NULL,		0,		NULL,	0   },
+	};
 
-	while ((ch = getopt(argc, argv, "anqy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+anqy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			all = true;
@@ -237,17 +256,20 @@ exec_clean(int argc, char **argv)
 
 	pkg_manifest_keys_new(&keys);
 	while ((ent = fts_read(fts)) != NULL) {
-		if (ent->fts_info != FTS_F)
+		if (ent->fts_info != FTS_F && ent->fts_info != FTS_SL)
 			continue;
 
 		if (all) {
-			ret = add_to_dellist(&dl, ent->fts_path);
-			total += ent->fts_statp->st_size;
+			retcode = add_to_dellist(&dl, ent->fts_path);
+			if (retcode == EPKG_OK) {
+				total += ent->fts_statp->st_size;
+				++cnt;
+			}
 			continue;
 		}
 
 		if (sumlist == NULL && !sumloaded) {
-			it = pkgdb_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
+			it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 			while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				pkg_get(p, PKG_CKSUM, &sum);
 				slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
@@ -258,12 +280,27 @@ exec_clean(int argc, char **argv)
 			}
 		}
 
+		if (ent->fts_info == FTS_SL) {
+			/* Dereference the symlink and check it for being
+			 * recognized checksum file, or delete the symlink
+			 * later. */
+			if ((link_len = readlink(ent->fts_name, link_buf,
+			    sizeof(link_buf))) == -1)
+				continue;
+			link_buf[link_len] = '\0';
+			name = link_buf;
+		} else
+			name = ent->fts_name;
+
 		s = NULL;
-		if (extract_filename_sum(ent->fts_name, csum))
+		if (extract_filename_sum(name, csum))
 			HASH_FIND_STR(sumlist, csum, s);
 		if (s == NULL) {
-			ret = add_to_dellist(&dl, ent->fts_path);
-			total += ent->fts_statp->st_size;
+			retcode = add_to_dellist(&dl, ent->fts_path);
+			if (retcode == EPKG_OK) {
+				total += ent->fts_statp->st_size;
+				++cnt;
+			}
 			continue;
 		}
 	}
@@ -283,13 +320,13 @@ exec_clean(int argc, char **argv)
 
 	printf("The cleanup will free %s\n", size);
 	if (!dry_run) {
-		if (!yes)
-			yes = query_yesno(false,
-				"\nProceed with cleaning the cache [y/N]: ");
-		if (yes)
-			retcode = delete_dellist(&dl);
-	} else
+			if (query_yesno(false,
+			  "\nProceed with cleaning the cache? [y/N]: ")) {
+				retcode = delete_dellist(&dl, cnt);
+			}
+	} else {
 		retcode = EX_OK;
+	}
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);

@@ -32,9 +32,13 @@
 #include <sys/param.h>
 #include <sys/sbuf.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 
 #define _WITH_GETLINE
 #include <err.h>
+#include <errno.h>
+#include <getopt.h>
+#include <fcntl.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -43,17 +47,33 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#include <spawn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <uthash.h>
 
 #include "pkgcli.h"
 
+extern char **environ;
+
 struct index_entry {
 	char *origin;
 	char *version;
 	UT_hash_handle hh;
 };
+
+struct port_entry {
+	char *name;
+	UT_hash_handle hh;
+};
+
+struct category {
+	char *name;
+	struct port_entry *ports;
+	UT_hash_handle hh;
+};
+
+struct category *categories = NULL;
 
 void
 usage_version(void)
@@ -206,7 +226,7 @@ do_testpattern(unsigned int opt, int argc, char ** restrict argv)
 }
 
 static bool
-have_ports(const char **portsdir)
+have_ports(const char **portsdir, bool show_error)
 {
 	char		 portsdirmakefile[MAXPATHLEN];
 	struct stat	 sb;
@@ -224,7 +244,7 @@ have_ports(const char **portsdir)
 
 	have_ports = (stat(portsdirmakefile, &sb) == 0 && S_ISREG(sb.st_mode));
 
-	if (!have_ports)
+	if (show_error && !have_ports)
 		warnx("Cannot find ports tree: unable to open %s",
 		      portsdirmakefile);
 
@@ -327,6 +347,33 @@ hash_indexfile(const char *indexfilename)
 }
 
 static void
+free_port_entries(struct port_entry *entries)
+{
+	struct port_entry	*entry, *tmp;
+
+	HASH_ITER(hh, entries, entry, tmp) {
+		HASH_DEL(entries, entry);
+		free(entry->name);
+		free(entry);
+	}
+	return;
+}
+
+static void
+free_categories(void)
+{
+	struct category	*cat, *tmp;
+
+	HASH_ITER(hh, categories, cat, tmp) {
+		HASH_DEL(categories, cat);
+		free_port_entries(cat->ports);
+		free(cat->name);
+		free(cat);
+	}
+	return;
+}
+
+static void
 free_index(struct index_entry *indexhead)
 {
 	struct index_entry	*entry, *tmp;
@@ -342,7 +389,7 @@ free_index(struct index_entry *indexhead)
 
 static bool
 have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
-	       int argc, char ** restrict argv)
+	       int argc, char ** restrict argv, bool show_error)
 {
 	bool		have_indexfile = true;
 	struct stat	sb;
@@ -356,10 +403,11 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 	else
 		*indexfile = argv[0];
 
-	if (stat(*indexfile, &sb) == -1) {
+	if (stat(*indexfile, &sb) == -1)
 		have_indexfile = false;
+
+	if (show_error && !have_indexfile)
 		warn("Can't access %s", *indexfile);
-	}
 	
 	return (have_indexfile);
 }
@@ -446,7 +494,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	   user is forced to have a repo.sqlite */
 
 	if (auto_update) {
-		retcode = pkgcli_update(false, reponame);
+		retcode = pkgcli_update(false, false, reponame);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
@@ -475,7 +523,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(origin, matchorigin) != 0)
 			continue;
 
-		it_remote = pkgdb_rquery(db, origin, MATCH_EXACT, reponame);
+		it_remote = pkgdb_repo_query(db, origin, MATCH_EXACT, reponame);
 		if (it_remote == NULL) {
 			retcode = EX_IOERR;
 			goto cleanup;
@@ -504,73 +552,124 @@ cleanup:
 }
 
 static int
-exec_buf(struct sbuf *cmd) {
-	FILE *fp;
+exec_buf(struct sbuf *res, char **argv) {
 	char buf[BUFSIZ];
+	int spawn_err;
+	pid_t pid;
+	int pfd[2];
+	int r, pstat;
+	posix_spawn_file_actions_t actions;
 
-	if ((fp = popen(sbuf_data(cmd), "r")) == NULL)
+	if (pipe(pfd) < 0) {
+		warn("pipe()");
 		return (0);
+	}
 
-	sbuf_clear(cmd);
-	while (fgets(buf, BUFSIZ, fp) != NULL)
-		sbuf_cat(cmd, buf);
+	if ((spawn_err = posix_spawn_file_actions_init(&actions)) != 0) {
+		warnc(spawn_err, "%s", argv[0]);
+		return (0);
+	}
 
-	pclose(fp);
-	sbuf_finish(cmd);
+	if ((spawn_err = posix_spawn_file_actions_addopen(&actions,
+	    STDERR_FILENO, "/dev/null", O_RDWR, 0)) != 0 ||
+	    (spawn_err = posix_spawn_file_actions_addopen(&actions,
+	    STDIN_FILENO, "/dev/null", O_RDONLY, 0)) != 0 ||
+	    (spawn_err = posix_spawn_file_actions_adddup2(&actions,
+	    pfd[1], STDOUT_FILENO)!= 0) ||
+	    (spawn_err = posix_spawnp(&pid, argv[0], &actions, NULL,
+	    argv, environ)) != 0) {
+		posix_spawn_file_actions_destroy(&actions);
+		warnc(spawn_err, "%s", argv[0]);
+		return (0);
+	}
+	posix_spawn_file_actions_destroy(&actions);
 
-	return (sbuf_len(cmd));
+	close(pfd[1]);
+
+	sbuf_clear(res);
+	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
+		sbuf_bcat(res, buf, r);
+
+	close(pfd[0]);
+	while (waitpid(pid, &pstat, 0) == -1) {
+		if (errno != EINTR)
+			return (-1);
+	}
+
+	sbuf_finish(res);
+
+	return (sbuf_len(res));
+}
+
+static struct category *
+category_new(char *categorypath, const char *category)
+{
+	struct sbuf		*makecmd;
+	struct port_entry	*port;
+	struct category		*cat = NULL;
+	char			*results, *d;
+	char			*argv[5];
+
+	makecmd = sbuf_new_auto();
+
+	argv[0] = "make";
+	argv[1] = "-C";
+	argv[2] = categorypath;
+	argv[3] = "-VSUBDIR";
+	argv[4] = NULL;
+
+	if (exec_buf(makecmd, argv) <= 0)
+		goto cleanup;
+
+	results = sbuf_data(makecmd);
+
+	cat = calloc(1, sizeof(struct category));
+	cat->name = strdup(category);
+	while ((d = strsep(&results, " \n")) != NULL) {
+		port = calloc(1, sizeof(struct port_entry));
+		port->name = strdup(d);
+		HASH_ADD_KEYPTR(hh, cat->ports, port->name,
+				strlen(port->name), port);
+	}
+
+	HASH_ADD_KEYPTR(hh, categories, cat->name,
+			strlen(cat->name), cat);
+
+cleanup:
+	sbuf_delete(makecmd);
+
+	return (cat);
 }
 
 static bool
 validate_origin(const char *portsdir, const char *origin)
 {
-	bool		exists = false;
-	struct sbuf	*makecmd;
-	char		*category, *dir, *results, *d;
-	size_t		dirlen;
+	char			*category, *buf;
+	struct category		*cat;
+	struct port_entry	*port;
+	char			categorypath[MAXPATHLEN];
 
-	/* Strip the last path component from the absolute origin of
-	 * the port -- giving the category directory.  Use make(1) to
-	 * print out the SUBDIR variable from that category, and check
-	 * that the port directory appears in the list.
-	 *
-	 * Return false if (a) the category Makefile doesn't exist (or
-	 * make(1) fails for some other reason) or (b) the port is not
-	 * listed in SUBDIR
-	 *
-	 * FFR Memoize this? Hash the port directories from SUBDIR for
-	 * fast subsequent lookups?
-	 */
+	snprintf(categorypath, MAXPATHLEN, "%s/%s", portsdir, origin);
 
-	asprintf(&category, "%s/%s", portsdir, origin);
-	if (category == NULL)
-		err(EX_OSERR, "validate_origin()");
+	buf = strrchr(categorypath, '/');
+	buf[0] = '\0';
+	category = strrchr(categorypath, '/');
+	category++;
 
-	dir = strrchr(category, '/');
-	dir[0] = '\0';
-	dir++;
-	dirlen = strlen(dir);
-
-	makecmd = sbuf_new_auto();
-	sbuf_printf(makecmd, "make -C %s -V SUBDIR 2>/dev/null", category);
-	
-	if (exec_buf(makecmd) <= 0)
-		goto cleanup;
-
-	results = sbuf_data(makecmd);
-	
-	while ((d = strsep(&results, " ")) != NULL) {
-		if (d[0] == dir[0] && strncmp(d, dir, dirlen) == 0) {
-			exists = true;
-			break;
-		}
+	HASH_FIND_STR(categories, category, cat);
+	if (cat == NULL) {
+		cat = category_new(categorypath, category);
 	}
-			
-cleanup:
-	free(category);
-	sbuf_delete(makecmd);
 
-	return (exists);
+	if (cat == NULL)
+		return (false);
+
+	buf = strrchr(origin, '/');
+	buf++;
+
+	HASH_FIND_STR(cat->ports, buf, port);
+
+	return (port != NULL);
 }
 
 static const char *
@@ -578,17 +677,23 @@ port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 {
 	char	*output;
 	char	*version = NULL;
+	char	*argv[5];
 
 	/* Validate the port origin -- check the SUBDIR settings
 	   in the ports and category Makefiles, then extract the
 	   version from the port itself. */
 
 	if (validate_origin(portsdir, origin)) {
-		sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
-		     portsdir, origin);
+		sbuf_printf(cmd, "%s/%s", portsdir, origin);
 		sbuf_finish(cmd);
 
-		if (exec_buf(cmd) != 0) {
+		argv[0] = "make";
+		argv[1] = "-C";
+		argv[2] = sbuf_data(cmd);
+		argv[3] = "-VPKGVERSION";
+		argv[4] = NULL;
+
+		if (exec_buf(cmd, argv) != 0) {
 			output = sbuf_data(cmd);
 			version = strsep(&output, "\n");
 		}
@@ -649,6 +754,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 
+	free_categories();
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
@@ -666,19 +772,35 @@ exec_version(int argc, char **argv)
 	const char	*portsdir;
 	const char	*indexfile;
 	char		 filebuf[MAXPATHLEN];
-	bool		 auto_update;
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
 	int		 ch;
 
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
+	struct option longopts[] = {
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "exact",		required_argument,	NULL,	'e' },
+		{ "glob",		required_argument,	NULL,	'g' },
+		{ "help",		no_argument,		NULL,	'h' },
+		{ "index",		no_argument,		NULL,	'I' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "not-like",		required_argument,	NULL,	'L' },
+		{ "like",		required_argument,	NULL,	'l' },
+		{ "match-origin",	required_argument,	NULL,	'O' },
+		{ "origin",		no_argument,		NULL,	'o' },
+		{ "ports",		no_argument,		NULL,	'P' },
+		{ "quiet",		no_argument,		NULL,	'q' },
+		{ "remote",		no_argument,		NULL,	'R' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "test-pattern",	no_argument,		NULL,	'T' },
+		{ "test-version",	no_argument,		NULL,	't' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "verbose",		no_argument,		NULL,	'v' },
+		{ "regex",		required_argument,	NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
-
-	while ((ch = getopt(argc, argv, "Ce:g:hIiL:l:O:oPqRr:TtUvx:")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:O:oPqRr:TtUvx:",
+				 longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
@@ -780,7 +902,7 @@ exec_version(int argc, char **argv)
 
 	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX ) {
 		if (!have_indexfile(&indexfile, filebuf, sizeof(filebuf),
-                         argc, argv))
+		     argc, argv, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_index(opt, limchar, pattern, match,
@@ -792,7 +914,7 @@ exec_version(int argc, char **argv)
 			    auto_update, reponame, matchorigin));
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
-		if (!have_ports(&portsdir))
+		if (!have_ports(&portsdir, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_ports(opt, limchar, pattern,
@@ -803,11 +925,12 @@ exec_version(int argc, char **argv)
 	   Failing that, if portsdir exists and is valid, use that
 	   (slow) otherwise fallback to remote. */
 
-	if (have_indexfile(&indexfile, filebuf, sizeof(filebuf), argc, argv)) {
+	if (have_indexfile(&indexfile, filebuf, sizeof(filebuf), argc, argv,
+            false)) {
 		opt |= VERSION_SOURCE_INDEX;
 		return (do_source_index(opt, limchar, pattern, match,
 			    matchorigin, indexfile));
-	} else if (have_ports(&portsdir)) {
+	} else if (have_ports(&portsdir, false)) {
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
 			    matchorigin, portsdir));

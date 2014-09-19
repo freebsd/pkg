@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
  * 
@@ -25,8 +25,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#include <sys/stat.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -35,7 +33,6 @@
 #include <fts.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <limits.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -53,12 +50,17 @@ struct packing {
 };
 
 int
-packing_init(struct packing **pack, const char *path, pkg_formats format)
+packing_init(struct packing **pack, const char *path, pkg_formats format, bool passmode)
 {
 	char archive_path[MAXPATHLEN];
 	const char *ext;
 
 	assert(pack != NULL);
+
+	if (passmode && !is_dir(path)) {
+		pkg_emit_error("When using passmode, a directory should be provided");
+		return (EPKG_FATAL);
+	}
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
 		pkg_emit_errno("calloc", "packing");
@@ -69,7 +71,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	archive_read_disk_set_standard_lookup((*pack)->aread);
 	archive_read_disk_set_symlink_physical((*pack)->aread);
 
-	if (!is_dir(path)) {
+	if (!passmode) {
 		(*pack)->pass = false;
 		(*pack)->awrite = archive_write_new();
 		archive_write_set_format_pax_restricted((*pack)->awrite);

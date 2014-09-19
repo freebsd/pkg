@@ -55,160 +55,17 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
-#include "private/repodb.h"
-#include "private/thd_repo.h"
-
 
 struct sig_cert {
 	char name[MAXPATHLEN];
-	unsigned char *sig;
+	char *sig;
 	int64_t siglen;
-	unsigned char *cert;
+	char *cert;
 	int64_t certlen;
 	bool cert_allocated;
 	UT_hash_handle hh;
 	bool trusted;
 };
-
-void
-pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
-{
-	const char *sum, *name, *version, *reponame, *repourl, *ext = NULL;
-	const char *cachedir = NULL;
-	struct stat st;
-
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
-
-	pkg_get(pkg, PKG_REPONAME, &reponame,
-			PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version,
-			PKG_REPOPATH, &repourl);
-
-	if (repourl != NULL)
-		ext = strrchr(repourl, '.');
-
-	if (ext != NULL) {
-		/*
-		 * XXX:
-		 * This code tries to skip refetching but it should be removed as soon
-		 * as we transfer to new scheme.
-		 */
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
-				cachedir, pkg, pkg, pkg);
-		if (stat (dest, &st) != -1)
-			return;
-
-		/*
-		 * The real naming scheme:
-		 * <cachedir>/<name>-<version>-<checksum>.txz
-		 */
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
-				cachedir, pkg, pkg, pkg, ext);
-	}
-	else {
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
-				cachedir, pkg, pkg, pkg);
-	}
-}
-
-int
-pkg_repo_fetch_package(struct pkg *pkg)
-{
-	char dest[MAXPATHLEN];
-	char url[MAXPATHLEN];
-	int fetched = 0;
-	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
-	int64_t pkgsize;
-	struct stat st;
-	char *path = NULL;
-	const char *packagesite = NULL;
-
-	int retcode = EPKG_OK;
-	const char *reponame, *name, *version, *sum;
-	struct pkg_repo *repo;
-
-	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
-
-	pkg_get(pkg, PKG_REPONAME, &reponame, PKG_CKSUM, &sum,
-			PKG_NAME, &name, PKG_VERSION, &version, PKG_PKGSIZE, &pkgsize);
-	pkg_repo_cached_name(pkg, dest, sizeof(dest));
-
-	/* If it is already in the local cachedir, dont bother to
-	 * download it */
-	if (access(dest, F_OK) == 0)
-		goto checksum;
-
-	/* Create the dirs in cachedir */
-	if ((path = dirname(dest)) == NULL) {
-		pkg_emit_errno("dirname", dest);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((retcode = mkdirs(path)) != EPKG_OK)
-		goto cleanup;
-
-	/*
-	 * In multi-repos the remote URL is stored in pkg[PKG_REPOURL]
-	 * For a single attached database the repository URL should be
-	 * defined by PACKAGESITE.
-	 */
-	repo = pkg_repo_find_name(reponame);
-	packagesite = pkg_repo_url(repo);
-
-	if (packagesite == NULL || packagesite[0] == '\0') {
-		pkg_emit_error("PACKAGESITE is not defined");
-		retcode = 1;
-		goto cleanup;
-	}
-
-	if (packagesite[strlen(packagesite) - 1] == '/')
-		pkg_snprintf(url, sizeof(url), "%S%R", packagesite, pkg);
-	else
-		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
-
-	if (strncasecmp(packagesite, "file://", 7) == 0) {
-		pkg_set(pkg, PKG_REPOPATH, url + 7);
-		return (EPKG_OK);
-	}
-
-	retcode = pkg_fetch_file(repo, url, dest, 0);
-	fetched = 1;
-
-	if (retcode != EPKG_OK)
-		goto cleanup;
-
-	checksum:
-	/*	checksum calculation is expensive, if size does not
-		match, skip it and assume failed checksum. */
-	if (stat(dest, &st) == -1 || pkgsize != st.st_size) {
-		pkg_emit_error("cached package %s-%s: "
-			"size mismatch, fetching from remote",
-			name, version);
-		unlink(dest);
-		return (pkg_repo_fetch_package(pkg));
-	}
-	retcode = sha256_file(dest, cksum);
-	if (retcode == EPKG_OK)
-		if (strcmp(cksum, sum)) {
-			if (fetched == 1) {
-				pkg_emit_error("%s-%s failed checksum "
-				    "from repository", name, version);
-				retcode = EPKG_FATAL;
-			} else {
-				pkg_emit_error("cached package %s-%s: "
-				    "checksum mismatch, fetching from remote",
-				    name, version);
-				unlink(dest);
-				return (pkg_repo_fetch_package(pkg));
-			}
-		}
-
-	cleanup:
-	if (retcode != EPKG_OK)
-		unlink(dest);
-
-	return (retcode);
-}
 
 static int
 pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
@@ -217,7 +74,6 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
 	int fd;
-	mode_t mask;
 	const char *tmpdir, *dot;
 
 	/*
@@ -240,9 +96,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	mkdirs(tmpdir);
 	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
-	mask = umask(022);
 	fd = mkstemp(tmp);
-	umask(mask);
 	if (fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
@@ -411,7 +265,6 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 			}
 			free(sig);
 			rc = EPKG_OK;
-			break;
 		}
 		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
@@ -563,10 +416,10 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		fp_parse_siglen,
 		fp_parse_sig
 	} state = fp_parse_type;
-	char type;
+	char type = 0;
 	unsigned char *sig;
 	int len = 0, tlen;
-	struct sig_cert *s;
+	struct sig_cert *s = NULL;
 	bool new = false;
 
 	while (p < end) {
@@ -685,7 +538,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	struct sig_cert *sc = NULL, *s;
 	struct pkg_extract_cbdata cbdata;
 
-	unsigned char *sig = NULL;
+	char *sig = NULL;
 	int rc = EPKG_OK;
 	int64_t siglen = 0;
 
@@ -753,8 +606,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		cbdata.need_sig = false;
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
 			&cbdata, (char **)&sig, &siglen) == EPKG_OK) {
-			if (sig)
-				free(sig);
+			free(sig);
 		}
 		else {
 			pkg_emit_error("Repo extraction failed");
@@ -795,6 +647,12 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		return (EPKG_FATAL);
 
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if (pkg_repo_key(repo) == NULL) {
+			pkg_emit_error("No PUBKEY defined. Removing "
+			    "repository.");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 		if (sc == NULL) {
 			pkg_emit_error("No signature found in the repository.  "
 					"Can not validate against %s key.", pkg_repo_key(repo));
@@ -846,7 +704,6 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		time_t *t, int *rc)
 {
 	int fd, dest_fd;
-	mode_t mask;
 	FILE *res = NULL;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
@@ -862,9 +719,7 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		tmpdir = "/tmp";
 	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, filename);
 
-	mask = umask(022);
 	dest_fd = mkstemp(tmp);
-	umask(mask);
 	if (dest_fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 				"aborting update.\n", tmp);
@@ -1010,7 +865,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 
 	close(fd);
 
-	if (repo->trusted_fp == NULL) {
+	if (repo->signature_type == SIG_FINGERPRINT && repo->trusted_fp == NULL) {
 		if (pkg_repo_load_fingerprints(repo) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
@@ -1035,41 +890,43 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		goto cleanup;
 	}
 
-	cbdata.len = st.st_size;
-	cbdata.map = map;
-	HASH_ITER(hh, sc, s, stmp) {
-		if (s->siglen != 0 && s->certlen == 0) {
-			/*
-			 * We need to load this pubkey from meta
-			 */
-			cbdata.name = s->name;
-			if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
-					(char **)&s->cert, &s->certlen) != EPKG_OK) {
-				rc = EPKG_FATAL;
-				goto cleanup;
+	if (repo->signature_type == SIG_FINGERPRINT) {
+		cbdata.len = st.st_size;
+		cbdata.map = map;
+		HASH_ITER(hh, sc, s, stmp) {
+			if (s->siglen != 0 && s->certlen == 0) {
+				/*
+				 * We need to load this pubkey from meta
+				 */
+				cbdata.name = s->name;
+				if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
+						(char **)&s->cert, &s->certlen) != EPKG_OK) {
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				s->cert_allocated = true;
 			}
-			s->cert_allocated = true;
 		}
-	}
 
-	if (!pkg_repo_check_fingerprint(repo, sc, true)) {
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
+		if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-	HASH_ITER(hh, sc, s, stmp) {
-		ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
+		HASH_ITER(hh, sc, s, stmp) {
+			ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
 				-1);
-		if (ret == EPKG_OK && s->trusted)
-			break;
+			if (ret == EPKG_OK && s->trusted)
+				break;
 
-		ret = EPKG_FATAL;
-	}
-	if (ret != EPKG_OK) {
-		pkg_emit_error("No trusted certificate has been used "
+			ret = EPKG_FATAL;
+		}
+		if (ret != EPKG_OK) {
+			pkg_emit_error("No trusted certificate has been used "
 				"to sign the repository");
-		rc = EPKG_FATAL;
-		goto cleanup;
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 load_meta:
@@ -1220,4 +1077,59 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 	}
 
 	return (EPKG_OK);
+}
+
+
+
+int
+pkg_repo_fetch_package(struct pkg *pkg)
+{
+	struct pkg_repo *repo;
+
+	if (pkg->repo == NULL) {
+		pkg_emit_error("Trying to fetch package without repository");
+		return (EPKG_FATAL);
+	}
+
+	repo = pkg->repo;
+	if (repo->ops->fetch_pkg == NULL) {
+		pkg_emit_error("Repository %s does not support fetching", repo->name);
+		return (EPKG_FATAL);
+	}
+
+	return (repo->ops->fetch_pkg(repo, pkg));
+}
+
+int
+pkg_repo_mirror_package(struct pkg *pkg, const char *destdir)
+{
+	struct pkg_repo *repo;
+
+	if (pkg->repo == NULL) {
+		pkg_emit_error("Trying to mirror package without repository");
+		return (EPKG_FATAL);
+	}
+
+	repo = pkg->repo;
+	if (repo->ops->mirror_pkg == NULL) {
+		pkg_emit_error("Repository %s does not support mirroring", repo->name);
+		return (EPKG_FATAL);
+	}
+
+	return (repo->ops->mirror_pkg(repo, pkg, destdir));
+}
+
+int
+pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
+{
+	struct pkg_repo *repo;
+
+	if (pkg->repo == NULL)
+		return (EPKG_FATAL);
+
+	repo = pkg->repo;
+	if (repo->ops->get_cached_name == NULL)
+		return (EPKG_FATAL);
+
+	return (repo->ops->get_cached_name(repo, pkg, dest, destlen));
 }

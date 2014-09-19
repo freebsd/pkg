@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 26, 2014
+.Dd September 13, 2014
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -33,6 +33,18 @@
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Op Fl C Ao configuration file Ac
 .Op Fl R Ao repository configuration directory Ac
+.Op Fl 4 | Fl 6
+.Ao command Ac Ao Ar flags Ac
+.Pp
+.Nm
+.Op Cm --version
+.Op Cm --debug
+.Op Cm --list
+.Op Fl N
+.Op Cm --jail Ao jail name or id Ac | Cm --chroot Ao chroot path Ac
+.Op Cm --config Ao configuration file Ac
+.Op Cm --repo-conf-dir Ao repository configuration directory Ac
+.Op Fl 4 | Fl 6
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
@@ -52,12 +64,12 @@ for details.
 The following options are supported by
 .Nm :
 .Bl -tag -width indent
-.It Fl v
+.It Fl v , Cm --version
 Displays the current version of
 .Nm
-.It Fl d
+.It Fl d , Cm --debug
 Show debug information
-.It Fl l
+.It Fl l , Cm --list
 List all the available command names, and exit without performing any
 other action.
 The
@@ -67,7 +79,7 @@ option takes precedence over
 but
 .Fl l
 will override any other command line arguments.
-.It Fl o Ao option=value Ac
+.It Fl o Ao option=value Ac , Cm --option Ao option=value Ac
 Set configuration option for
 .Nm
 from the command line. Options that are set from the environment are
@@ -123,7 +135,7 @@ The following script is the safest way to detect if
 .Nm
 is installed and activated:
 .Bd -literal -offset indent
-  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
+  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=yes \\
        PACKAGESITE=file:///nonexistent \\
        pkg info -x 'pkg(-devel)?$' >/dev/null 2>&1; then
     # pkgng-specifics
@@ -131,7 +143,7 @@ is installed and activated:
     # pkg_install-specifics
   fi
 .Ed
-.It Fl j Ao jail name or id Ac
+.It Fl j Ao jail name or id Ac , Cm --jail Ao jail name or id Ac
 .Nm
 will execute in the given
 .Ao jail name or id Ac ,
@@ -147,20 +159,26 @@ See
 .Xr jail 8
 and
 .Xr jls 8 .
-.It Fl c Ao chroot path Ac
+.It Fl c Ao chroot path Ac , Cm --chroot Ao chroot path Ac
 .Nm
 will chroot in the
 .Ao chroot path Ac
 Environment
-.It Fl C Ao configuration file Ac
+.It Fl C Ao configuration file Ac , Cm --config Ao configuration file Ac
 .Nm
 will use the specified file as a configuration file
-.It Fl R Ao repository configuration directory Ac
+.It Fl R Ao repo conf dir Ac , Cm --repo-conf-dir Ao repo conf dir Ac
 .Nm
 will search the directory for per-repository configuration files.
 This overrides any value of
 .Ev REPOS_DIR
 specified in the main configuration file.
+.It Fl 4
+.Nm
+will use IPv4 for fetching repository and packages.
+.It Fl 6
+.Nm
+will use IPv6 for fetching repository and packages.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS

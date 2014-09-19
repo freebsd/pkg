@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 25, 2014
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -24,43 +24,58 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Bdsr
-.Op Fl vyn
+.Op Fl nvy
 .Op Fl a | Cgix Ar pattern
+.Pp
+.Nm
+.Op Cm --{shlibs,dependencies,checksums,recompute}
+.Op Cm --{dry-run,verbose,yes}
+.Op Cm --all | Cm --{case-sensitive,glob,case-insensitive,regex} Ar pattern
 .Sh DESCRIPTION
 .Nm
 .Fl B
+or
+.Nm
+.Cm --shlibs
 is used to reanalyse shared libraries of installed packages.
 .Pp
 .Nm
 .Fl d
+or
+.Nm
+.Cm --dependencies
 is used to check for and install missing dependencies.
 .Pp
 .Nm
 .Fl r
+or
+.Nm
+.Cm --recompute
 is used to recompute sizes and checksums of installed packages.
 .Pp
 .Nm
 .Fl s
+or
+.Nm
+.Cm --checksums
 is used to find invalid checksums for installed packages.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before installing missing dependencies.
-.It Fl v
-Be verbose.
-.It Fl n
-Merely check for missing dependencies and do not install them.
-.It Fl a
+.Bl -tag -width dependencies
+.It Fl a , Cm --all
 Process all packages.
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
 .Ar pattern
 case sensitive.
-.It Fl i
+.It Fl g , Cm --glob
+Treat
+.Ar pattern
+as a shell glob pattern.
+.It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
 matching against
@@ -70,16 +85,18 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH 
 to true in
 .Pa pkg.conf .
-.It Fl g
-Treat
-.Ar pattern
-as a shell glob pattern.
-.It Fl x
+.It Fl n , Cm --dry-run
+Merely check for missing dependencies and do not install them.
+.It Fl v , Cm --verbose
+Be verbose.
+.It Fl x , Cm --regex
 Treat
 .Ar pattern
 as a regular expression.
 This uses the "modern" or "extended" syntax described in
 .Xr re_format 7
+.It Fl y , Cm --yes
+Assume yes when asked for confirmation before installing missing dependencies.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

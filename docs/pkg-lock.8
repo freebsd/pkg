@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 10, 2014
+.Dd May 26, 2014
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -24,18 +24,33 @@
 .Nd lock or unlock packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl qy
-.Fl a
+.Op Fl lqy
+.Op Fl a
 .Nm
-.Op Fl qy
+.Op Fl lqy
 .Op Fl Cgix
 .Ar pkg-name
 .Nm "pkg unlock"
-.Op Fl qy
-.Fl a
+.Op Fl lqy
+.Op Fl a
 .Nm "pkg unlock"
-.Op Fl qy
+.Op Fl lqy
 .Op Fl Cgix
+.Ar pkg-name
+.Pp
+.Nm
+.Op Cm --{show-locked,quiet,yes}
+.Op Cm --all
+.Nm
+.Op Cm --{show-locked,quiet,yes}
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Ar pkg-name
+.Nm "pkg unlock"
+.Op Cm --{show-locked,quiet,yes}
+.Op Cm --all
+.Nm "pkg unlock"
+.Op Cm --{show-locked,quiet,yes}
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name
 .Sh DESCRIPTION
 .Nm
@@ -71,22 +86,20 @@ some third package.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl a
+.Bl -tag -width all
+.It Fl a , Cm --all
 Lock or unlock all installed packages.
-.It Fl l
-List of all locked packages.
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl g
+.It Fl g , Cm --glob
 Treat
 .Ar pkg-name
 as a shell glob pattern.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -96,15 +109,17 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl q
+.It Fl l , Cm --show-locked
+Show list of all locked packages after any lock or unlock operations.
+.It Fl q , Cm --quiet
 Operate quietly: do not output anything other than confirmatory questions.
-.It Fl x
+.It Fl x , Cm --regex
 Treat
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
-.It Fl y
+.It Fl y , Cm --yes
 Assume "yes" as the answer to all questions.
 .El
 .Sh ENVIRONMENT

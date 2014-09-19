@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2014
+.Dd May 17, 2014
 .Dt PKG-ANNOTATE 8
 .Os
 .Sh NAME
@@ -31,7 +31,7 @@
 .Op Ar value
 .Nm
 .Op Fl qy
-.Fl D
+.Fl S|D
 .Op Fl Cgix
 .Ar pkg-name
 .Ar tag
@@ -44,11 +44,36 @@
 .Nm
 .Op Fl qy
 .Fl a
-.Fl D
+.Fl S|D
+.Ar tag
+.Pp
+.Nm
+.Op Cm --{quiet,yes}
+.Cm --{add|modify}
+.Op Cm --{case-sensitive,case-insensitive,glob,regex}
+.Ar pkg-name
+.Ar tag
+.Op Ar value
+.Nm
+.Op Cm --{quiet,yes}
+.Cm --{show|delete}
+.Op Cm --{case-sensitive,case-insensitive,glob,regex}
+.Ar pkg-name
+.Ar tag
+.Nm
+.Op Cm --{quiet,yes}
+.Cm --all
+.Cm --{add|modify}
+.Ar tag
+.Op Ar value
+.Nm
+.Op Cm --{quiet,yes}
+.Cm --all
+.Cm --{show|delete}
 .Ar tag
 .Sh DESCRIPTION
 .Nm
-is used to add, modify or delete package annotations.
+is used to add, modify, delete or show package annotations.
 These are freeform tag-value pairs which may contain any arbitrary text.
 .Ar Tags
 must be unique per package, but there is no restriction on what
@@ -65,10 +90,10 @@ may be supplied either on the command line or as a text stream on stdin.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl a
+.Bl -tag -width modify
+.It Fl a , Cm --all
 Annotate all installed packages.
-.It Fl A
+.It Fl A , Cm --add
 The operation is to add a new annotation.
 Attempting to add an annotation with a
 .Ar tag
@@ -77,13 +102,13 @@ cause
 .Nm
 to exit before attempting to apply the annotation to all remaining
 matched packages.
-.It Fl C
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl D
+.It Fl D , Cm --delete
 The operation is to delete an annotation.
 Only the
 .Ar tag
@@ -92,11 +117,11 @@ Attempting to delete an annotation which does not exist on a package
 is an error, but this will not prevent
 .Nm
 carrying on to delete the annotation from all matched packages.
-.It Fl g
+.It Fl g , Cm --glob
 Treat
 .Ar pkg-name
 as a shell glob pattern.
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -106,21 +131,25 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl M
+.It Fl M , Cm --modify
 The operation is to modify a previously existing annotation.
 Functionally, this behaves similarly to
 .Fl A
 except that it will succeed irrespective of whether the tag already
 applies to all the matched packages.
-.It Fl q
+.It Fl q , Cm --quiet
 Operate quietly: do not output anything other than confirmatory questions.
-.It Fl x
+.It Fl S , Cm --show
+Display the annotation identified by
+.Ar tag
+for each matched package.
+.It Fl x , Cm --regex
 Treat
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
-.It Fl y
+.It Fl y , Cm --yes
 Assume "yes" as the answer to all questions.
 .El
 .Sh ENVIRONMENT

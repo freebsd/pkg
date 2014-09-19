@@ -89,7 +89,8 @@ pkg_object_type(const pkg_object *o)
 bool
 pkg_object_bool(const pkg_object *o)
 {
-	assert(o->type == UCL_BOOLEAN);
+	if (o == NULL || o->type != UCL_BOOLEAN)
+		return (false);
 
 	return (ucl_object_toboolean(o));
 }
@@ -112,7 +113,8 @@ pkg_object_string(const pkg_object *o)
 int64_t
 pkg_object_int(const pkg_object *o)
 {
-	assert(o->type == UCL_INT);
+	if (o == NULL || o->type != UCL_INT)
+		return (0);
 
 	return (ucl_object_toint(o));
 }

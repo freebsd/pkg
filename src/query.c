@@ -32,6 +32,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <getopt.h>
 #include <inttypes.h>
 #include <pkg.h>
 #include <stdio.h>
@@ -72,6 +73,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
+	{ 'R', "",              0, PKG_LOAD_ANNOTATIONS },
 };
 
 static void
@@ -513,52 +515,51 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 				case '#': /* FALLTHROUGH */
 				case '?':
 					str++;
-					const char *dbstr = for_remote ? "'%1$s'." : "";
 					const char *sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					switch (str[0]) {
 						case 'd':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %sdeps AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'r':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %sdeps AS d WHERE d.origin=p.origin)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM deps AS d WHERE d.origin=p.origin)", sqlop);
 							break;
 						case 'C':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_categories AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_categories AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'F':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT %s FROM %sfiles AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM files AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'O':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %soption JOIN %spkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop, dbstr, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM option JOIN pkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'D':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_directories AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_directories AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'L':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_licenses AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_licenses AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'U':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_users AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_users AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'G':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_groups AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_groups AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'B':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_shlibs_required AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_shlibs_required AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'b':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_shlibs_provided AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_shlibs_provided AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'A':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_annotation AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_annotation AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						default:
 							goto bad_option;
@@ -833,34 +834,47 @@ usage_query(void)
 int
 exec_query(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	struct pkg_manifest_key *keys = NULL;
-	char *pkgname = NULL;
-	int query_flags = PKG_LOAD_BASIC;
-	match_t match = MATCH_EXACT;
-	int ch;
-	int ret;
-	int retcode = EX_OK;
-	int i;
-	char multiline = 0;
-	char *condition = NULL;
-	struct sbuf *sqlcond = NULL;
-	const unsigned int q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
+	struct pkgdb		*db = NULL;
+	struct pkgdb_it		*it = NULL;
+	struct pkg		*pkg = NULL;
+	struct pkg_manifest_key	*keys = NULL;
+	char			*pkgname = NULL;
+	int			 query_flags = PKG_LOAD_BASIC;
+	match_t			 match = MATCH_EXACT;
+	int			 ch;
+	int			 ret;
+	int			 retcode = EX_OK;
+	int			 i;
+	char			 multiline = 0;
+	char			*condition = NULL;
+	struct sbuf		*sqlcond = NULL;
+	const unsigned int	 q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
 
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
+	struct option longopts[] = {
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "evaluate",		required_argument,	NULL,	'e' },
+		{ "file",		required_argument,	NULL,	'F' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
-	while ((ch = getopt(argc, argv, "aCgixF:e:")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCe:F:gix", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
+			break;
+		case 'e':
+			match = MATCH_CONDITION;
+			condition = optarg;
+			break;
+		case 'F':
+			pkgname = optarg;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -870,13 +884,6 @@ exec_query(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'F':
-			pkgname = optarg;
-			break;
-		case 'e':
-			match = MATCH_CONDITION;
-			condition = optarg;
 			break;
 		default:
 			usage_query();
@@ -943,7 +950,7 @@ exec_query(int argc, char **argv)
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
-		warnx("Cannot get an read lock on a database, it is locked by another process");
+		warnx("Cannot get a read lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
 	}
 
@@ -991,8 +998,7 @@ exec_query(int argc, char **argv)
 	}
 
 cleanup:
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

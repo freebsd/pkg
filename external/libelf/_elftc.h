@@ -216,7 +216,7 @@ struct name {							\
 #define	ELFTC_VCSID(ID)		__FBSDID(ID)
 #endif
 
-#if defined(__linux__) || defined(__GNU__) || defined(__GLIBC__)
+#if defined(__linux__) || defined(__GNU__) || defined(__GLIBC__) || defined(__APPLE__)
 #if defined(__GNUC__)
 #define	ELFTC_VCSID(ID)		__asm__(".ident\t\"" ID "\"")
 #else
@@ -253,7 +253,7 @@ struct name {							\
 #ifndef	ELFTC_GETPROGNAME
 
 #if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__minix) || \
-    defined(__NetBSD__)
+    defined(__NetBSD__) || defined(__APPLE__)
 
 #include <stdlib.h>
 
@@ -348,10 +348,15 @@ extern const char *__progname;
 #endif	/* __minix */
 
 
-#if defined(__NetBSD__)
+#if defined(__NetBSD__) || defined(__APPLE__)
 
 #include <sys/param.h>
+#ifndef __APPLE__
 #include <sys/endian.h>
+#else
+#include <machine/endian.h>
+#define	roundup2	roundup
+#endif
 
 #define	ELFTC_BYTE_ORDER			_BYTE_ORDER
 #define	ELFTC_BYTE_ORDER_LITTLE_ENDIAN		_LITTLE_ENDIAN

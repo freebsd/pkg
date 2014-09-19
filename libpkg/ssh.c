@@ -1,5 +1,6 @@
 /*-
- * Copyright (c) 2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -43,6 +44,7 @@
 #include <fcntl.h>
 
 #include "pkg.h"
+#include "private/event.h"
 
 int
 pkg_sshserve(int fd)
@@ -57,13 +59,17 @@ pkg_sshserve(int fd)
 	int ffd;
 	char buf[BUFSIZ];
 	char fpath[MAXPATHLEN];
+	char rpath[MAXPATHLEN];
 	const char *restricted = NULL;
 
 	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {
-		if ((linelen = getline(&line, &linecap, stdin)) <= 0)
+		if ((linelen = getline(&line, &linecap, stdin)) < 0)
+			break;
+
+		if (linelen == 0)
 			continue;
 
 		/* trim cr */
@@ -82,6 +88,12 @@ pkg_sshserve(int fd)
 
 		if (*file == '/')
 			file++;
+		else if (*file == '\0') {
+			printf("ko: bad command get, expecting 'get file age'\n");
+			continue;
+		}
+
+		pkg_debug(1, "SSH server> file requested: %s", file);
 
 		age = file;
 		while (!isspace(*age)) {
@@ -125,14 +137,16 @@ pkg_sshserve(int fd)
 		if (restricted != NULL) {
 #endif
 			chdir(restricted);
-			file = realpath(file, fpath);
-			if (strncmp(file, restricted, strlen(restricted)) != 0) {
+			if (realpath(file, fpath) == NULL ||
+			    realpath(restricted, rpath) == NULL ||
+			    strncmp(fpath, rpath, strlen(rpath)) != 0) {
 				printf("ko: file not found\n");
 				continue;
 			}
 		}
 
-		if (fstatat(fd, file, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+		if (fstatat(fd, file, &st, 0) == -1) {
+			pkg_debug(1, "SSH server> fstatat failed");
 			printf("ko: file not found\n");
 			continue;
 		}
@@ -153,9 +167,14 @@ pkg_sshserve(int fd)
 		}
 
 		printf("ok: %" PRIdMAX "\n", (intmax_t)st.st_size);
+		pkg_debug(1, "SSH server> sending ok: %" PRIdMAX "", (intmax_t)st.st_size);
 
-		while ((r = read(ffd, buf, sizeof(buf))) > 0)
+		while ((r = read(ffd, buf, sizeof(buf))) > 0) {
+			pkg_debug(1, "SSH server> sending data");
 			fwrite(buf, 1, r, stdout);
+		}
+
+		pkg_debug(1, "SSH server> finished");
 
 		close(ffd);
 	}

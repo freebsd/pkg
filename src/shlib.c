@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 #include <sys/param.h>
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <libgen.h>
@@ -78,7 +79,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 	int		 ret = EPKG_OK; 
 	int		 count = 0;
 
-	if ((it = pkgdb_query_shlib_provided(db, libname)) == NULL) {
+	if ((it = pkgdb_query_shlib_provide(db, libname)) == NULL) {
 		return (EPKG_FATAL);
 	}
 
@@ -112,7 +113,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 	int		 ret = EPKG_OK; 
 	int		 count = 0;
 
-	if ((it = pkgdb_query_shlib_required(db, libname)) == NULL) {
+	if ((it = pkgdb_query_shlib_require(db, libname)) == NULL) {
 		return (EPKG_FATAL);
 	}
 
@@ -146,8 +147,14 @@ exec_shlib(int argc, char **argv)
 	int		 ch;
 	bool		 provides_only = false;
 	bool		 requires_only = false;
+	
+	struct option longopts[] = {
+		{ "provides",	no_argument,	NULL,	'P' },
+		{ "requires",	no_argument,	NULL,	'R' },
+		{ NULL,		0,		NULL,	0 },
+	};
 
-	while ((ch = getopt(argc, argv, "PR")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+PR", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'P':
 			provides_only = true;

@@ -26,6 +26,7 @@ Doxyfile
 libpkg/pkg.h
 scripts/completion/_pkg.bash
 scripts/completion/_pkg.zsh
+scripts/completion/_pkg
 scripts/periodic/400.status-pkg
 scripts/periodic/410.pkg-audit
 scripts/periodic/411.pkg-backup
@@ -50,10 +51,13 @@ scripts/sbin/pkg2ng
 /external/libelf/libelf_msize.c
 /external/libelf/native-elf-format.h
 /libpkg/Makefile
+/libpkg/repo/Makefile
+/libpkg/repo/binary/Makefile
 /libtool
 /ltmain.sh
 /pkg_config.h
 /pkg_config.h.in
+/pkg_repos.h
 /scripts/Makefile
 /src/Makefile
 /test-driver

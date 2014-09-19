@@ -27,14 +27,12 @@
  * $FreeBSD: stable/8/sbin/ldconfig/elfhints.c 76224 2001-05-02 23:56:21Z obrien $
  */
 
-#include <sys/param.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <elf-hints.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>

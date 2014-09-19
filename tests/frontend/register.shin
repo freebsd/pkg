@@ -1,0 +1,75 @@
+#! /usr/bin/env atf-sh
+
+atf_test_case register
+register_conflicts_head() {
+	atf_set "descr" "testing pkg register conflicts"
+}
+
+register_conflicts_body() {
+	export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
+
+	mkdir teststage
+	echo a > teststage/plop
+	sum=$(sha256 -q teststage/plop)
+	cat > test.ucl << EOF
+name: "test"
+origin: "osef"
+version: "1"
+arch: "freebsd:*"
+maintainer: "non"
+prefix: "/"
+www: "unknown"
+comment: "need one"
+desc: "here as well"
+files: {
+	"/plop" : "$sum"
+}
+EOF
+	atf_check \
+	    -o match:".*Installing.*" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg register --relocate . -i teststage \
+	    -M test.ucl
+	atf_check \
+		-o inline:"$sum\n" \
+		-e empty \
+		-s exit:0 \
+		sha256 -q plop
+	rm -f test.ucl
+	echo b > teststage/plop
+	cat > test.ucl << EOF
+name: "test2"
+origin: "osef"
+version: "1"
+arch: "freebsd:*"
+maintainer: "non"
+prefix: "/"
+www: "unknown"
+comment: "need one"
+desc: "here as well"
+files: {
+	"/plop" : "$sum2"
+}
+EOF
+	atf_check \
+	    -o match:".*Installing.*" \
+	    -e match:".*conflicts.*" \
+	    -s exit:70 \
+	    pkg register --relocate . -i teststage \
+	    -M test.ucl
+	atf_check \
+		-o inline:"$sum\n" \
+		-e empty \
+		-s exit:0 \
+		sha256 -q plop
+}
+
+atf_init_test_cases() {
+	. $(atf_get_srcdir)/test_environment.sh
+
+	unset PKG_DBDIR
+
+	atf_add_test_case register_conflicts
+}

@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +38,7 @@
 #define _WITH_GETLINE
 #include <err.h>
 #include <errno.h>
+#include <getopt.h>
 #include <pkg.h>
 #include <stdio.h>
 #include <string.h>
@@ -61,29 +63,35 @@ usage_updating(void)
 int
 exec_updating(int argc, char **argv)
 {
-	char *date = NULL;
-	char *dateline = NULL;
-	char *updatingfile = NULL;
-	struct installed_ports *port;
+	char			*date = NULL;
+	char			*dateline = NULL;
+	char			*updatingfile = NULL;
+	struct installed_ports	*port;
 	SLIST_HEAD(,installed_ports) origins;
-	int ch;
-	char *line = NULL;
-	size_t linecap = 0;
-	ssize_t linelen;
-	char *tmp;
-	int head = 0;
-	int found = 0;
-	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
-	const char *origin;
-	FILE *fd;
-	int retcode = EXIT_SUCCESS;
+	int			 ch;
+	char			*line = NULL;
+	size_t			 linecap = 0;
+	ssize_t			 linelen;
+	char			*tmp;
+	int			 head = 0;
+	int			 found = 0;
+	struct pkgdb		*db = NULL;
+	struct pkg		*pkg = NULL;
+	struct pkgdb_it		*it = NULL;
+	const char		*origin;
+	FILE			*fd;
+	int			 retcode = EXIT_SUCCESS;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
 
-	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
+	struct option longopts[] = {
+		{ "date",	required_argument,	NULL,	'd' },
+		{ "file",	required_argument,	NULL,	'f' },
+		{ NULL,		0,			NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "+d:f:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			date = optarg;

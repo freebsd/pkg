@@ -214,10 +214,10 @@ static struct db_upgrades {
 	");"
 	"INSERT INTO packages (id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version) "
+		"automatic, licenselogic, time, pkg_format_version) "
 		"SELECT id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version "
+		"automatic, licenselogic, time, pkg_format_version "
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
@@ -260,10 +260,10 @@ static struct db_upgrades {
 	");"
 	"INSERT INTO packages (id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version) "
+		"automatic, licenselogic, time, pkg_format_version) "
 		"SELECT id, origin, name, version, comment, desc, "
 		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
-		"automatic, licenselogic, pkg_format_version "
+		"automatic, licenselogic, time, pkg_format_version "
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
@@ -561,8 +561,80 @@ static struct db_upgrades {
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	},
-
-
+	/* pkg_lock existed during 1.3 dev cycle before moving to schema */
+	{24,
+	"CREATE TABLE IF NOT EXISTS pkg_lock ("
+	    "exclusive INTEGER(1),"
+	    "advisory INTEGER(1),"
+	    "read INTEGER(8)"
+	");"
+	"CREATE TABLE IF NOT EXISTS pkg_lock_pid ("
+	    "pid INTEGER PRIMARY KEY"
+	");"
+	"DELETE FROM pkg_lock;"
+	"DELETE FROM pkg_lock_pid;"
+	"INSERT INTO pkg_lock VALUES(0,0,0);"
+	},
+	/* Move uniqueness outside of tables into indexes to simplify evolution */
+	{25,
+	"ALTER TABLE packages RENAME TO oldpkgs;"
+	"CREATE TABLE packages ("
+		"id INTEGER PRIMARY KEY,"
+		"origin TEXT NOT NULL,"
+		"name TEXT NOT NULL,"
+		"version TEXT NOT NULL,"
+		"comment TEXT NOT NULL,"
+		"desc TEXT NOT NULL,"
+		"mtree_id INTEGER REFERENCES mtree(id) ON DELETE RESTRICT"
+			" ON UPDATE CASCADE,"
+		"message TEXT,"
+		"arch TEXT NOT NULL,"
+		"maintainer TEXT NOT NULL, "
+		"www TEXT,"
+		"prefix TEXT NOT NULL,"
+		"flatsize INTEGER NOT NULL,"
+		"automatic INTEGER NOT NULL,"
+		"locked INTEGER NOT NULL DEFAULT 0,"
+		"licenselogic INTEGER NOT NULL,"
+		"infos TEXT, "
+		"time INTEGER,"
+		"pkg_format_version INTEGER"
+	");"
+	"CREATE UNIQUE INDEX packages_unique ON packages(origin, name);"
+	"INSERT INTO packages (id, origin, name, version, comment, desc, "
+		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
+		"automatic, licenselogic, time, pkg_format_version) "
+		"SELECT id, origin, name, version, comment, desc, "
+		"mtree_id, message, arch, maintainer, www, prefix, flatsize, "
+		"automatic, licenselogic, time, pkg_format_version "
+		"FROM oldpkgs;"
+	"DROP TABLE oldpkgs;"
+	"ALTER TABLE deps RENAME TO olddeps;"
+	"CREATE TABLE deps ("
+		"origin TEXT NOT NULL,"
+		"name TEXT NOT NULL,"
+		"version TEXT NOT NULL,"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE"
+	");"
+	"CREATE UNIQUE INDEX deps_unique ON deps(origin, version, package_id);"
+	"INSERT INTO deps (origin, name, version, package_id) "
+		"SELECT origin, name, version, package_id "
+		"FROM olddeps;"
+	"DROP TABLE olddeps;"
+	},
+	{26,
+	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
+	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
+	},
+	{27,
+	"CREATE INDEX IF NOT EXISTS packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX IF NOT EXISTS packages_uid ON packages(name, origin COLLATE NOCASE);"
+	"CREATE INDEX IF NOT EXISTS packages_version ON packages(name, version);"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 

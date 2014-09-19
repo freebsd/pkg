@@ -31,6 +31,7 @@
 
 #include <err.h>
 #include <assert.h>
+#include <getopt.h>
 #include <sysexits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -72,12 +73,10 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
-			if (noinstall)
-				printf("%s\n", pkg_dep_origin(dep));
-			else
-				printf("%s has a missing dependency: %s\n", origin,
-			       pkg_dep_origin(dep));
-			add_missing_dep(dep, dh, &nbpkgs);
+			 printf("%s has a missing dependency: %s\n", origin,
+                               pkg_dep_origin(dep));
+			if (!noinstall)
+				add_missing_dep(dep, dh, &nbpkgs);
 		}
 	}
 	
@@ -133,6 +132,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	struct deps_entry *e = NULL;
 	char **pkgs = NULL;
 	int i = 0;
+	bool rc;
 	pkg_flags f = PKG_FLAG_AUTOMATIC;
 
 	assert(db != NULL);
@@ -147,12 +147,6 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		free(pkgs);
 		return (EPKG_ENODB);
-	}
-
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
@@ -177,10 +171,9 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	/* print a summary before applying the jobs */
 	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
 	
-	if (!yes)
-		yes = query_yesno(false, "\n>>> Try to fix the missing dependencies [y/N]: ");
+	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies? [y/N]: ");
 
-	if (yes) {
+	if (rc) {
 		if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) ==
 		    EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to modify the package "
@@ -193,12 +186,9 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	}
 
 cleanup:
-	if (pkgs != NULL)
-		free(pkgs);
+	free(pkgs);
 	if (jobs != NULL)
 		pkg_jobs_free(jobs);
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
-	pkgdb_close(db);
 
 	return (EPKG_OK);
 }
@@ -252,30 +242,41 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
+	struct sbuf *msg = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EX_OK;
 	int ch;
-	bool yes;
 	bool dcheck = false;
 	bool checksums = false;
 	bool recompute = false;
 	bool reanalyse_shlibs = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
-	int i;
+	int i, processed, total = 0;
 	int verbose = 0;
 
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
+	struct option longopts[] = {
+		{ "all",		no_argument,	NULL,	'a' },
+		{ "shlibs",		no_argument,	NULL,	'B' },
+		{ "case-sensitive",	no_argument,	NULL,	'C' },
+		{ "dependencies",	no_argument,	NULL,	'd' },
+		{ "glob",		no_argument,	NULL,	'g' },
+		{ "case-insensitive",	no_argument,	NULL,	'i' },
+		{ "dry-run",		no_argument,	NULL,	'n' },
+		{ "recompute",		no_argument,	NULL,	'r' },
+		{ "checksums",		no_argument,	NULL,	's' },
+		{ "verbose",		no_argument,	NULL,	'v' },
+		{ "regex",		no_argument,	NULL,	'x' },
+		{ "yes",		no_argument,	NULL,	'y' },
+		{ NULL,			0,		NULL,	0   },
+	};
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "aBCdginrsvxy")) != -1) {
+	processed = 0;
+
+	while ((ch = getopt_long(argc, argv, "+aBCdginrsvxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -361,17 +362,49 @@ exec_check(int argc, char **argv)
 	}
 
 	i = 0;
+	nbdone = 0;
 	do {
+		/* XXX: This is really quirky, it would be cleaner to pass
+		 * in multiple matches and only run this top-loop once. */
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			rc = EX_IOERR;
 			goto cleanup;
 		}
 
+		if (msg == NULL)
+			msg = sbuf_new_auto();
+		if (!verbose) {
+			if (match == MATCH_ALL)
+				progressbar_start("Checking all packages");
+			else {
+				sbuf_printf(msg, "Checking %s", argv[i]);
+				sbuf_finish(msg);
+				progressbar_start(sbuf_data(msg));
+			}
+			processed = 0;
+			total = pkgdb_it_count(it);
+		} else {
+			if (match == MATCH_ALL)
+				nbactions = pkgdb_it_count(it);
+			else
+				nbactions = argc;
+		}
+
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+			if (!verbose)
+				progressbar_tick(processed, total);
+			else {
+				++nbdone;
+				job_status_begin(msg);
+				pkg_sbuf_printf(msg, "Checking %n-%v:",
+				    pkg, pkg);
+				sbuf_flush(msg);
+			}
+
 			/* check for missing dependencies */
 			if (dcheck) {
 				if (verbose)
-					pkg_printf("Checking dependencies: %n\n", pkg);
+					printf(" dependencies...");
 				nbpkgs += check_deps(db, pkg, &dh, noinstall);
 				if (noinstall && nbpkgs > 0) {
 					rc = EX_UNAVAILABLE;
@@ -379,7 +412,7 @@ exec_check(int argc, char **argv)
 			}
 			if (checksums) {
 				if (verbose)
-					pkg_printf("Checking checksums: %n\n", pkg);
+					printf(" checksums...");
 				if (pkg_test_filesum(pkg) != EPKG_OK) {
 					rc = EX_DATAERR;
 				}
@@ -388,11 +421,13 @@ exec_check(int argc, char **argv)
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
-						pkg_printf("Recomputing size and checksums: %n\n", pkg);
+						printf(" recomputing...");
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
 						rc = EX_DATAERR;
 					}
-					pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+					pkgdb_downgrade_lock(db,
+					    PKGDB_LOCK_EXCLUSIVE,
+					    PKGDB_LOCK_ADVISORY);
 				}
 				else {
 					rc = EX_TEMPFAIL;
@@ -402,17 +437,32 @@ exec_check(int argc, char **argv)
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 					if (verbose)
-						pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
+						printf(" shared libraries...");
 					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
-						pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
+						pkg_fprintf(stderr, "Failed to "
+						    "reanalyse for shlibs: "
+						    "%n-%v\n", pkg, pkg);
 						rc = EX_UNAVAILABLE;
 					}
-					pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+					pkgdb_downgrade_lock(db,
+					    PKGDB_LOCK_EXCLUSIVE,
+					    PKGDB_LOCK_ADVISORY);
 				}
 				else {
 					rc = EX_TEMPFAIL;
 				}
 			}
+
+			if (!verbose)
+				++processed;
+			else
+				printf(" done\n");
+		}
+		if (!verbose)
+			progressbar_tick(processed, total);
+		if (msg != NULL) {
+			sbuf_delete(msg);
+			msg = NULL;
 		}
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
@@ -427,7 +477,8 @@ exec_check(int argc, char **argv)
 					db = NULL;
 					rc = EX_IOERR;
 				}
-				pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
+				    PKGDB_LOCK_ADVISORY);
 				if (rc == EX_IOERR)
 					goto cleanup;
 			}
@@ -441,6 +492,10 @@ exec_check(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
+	if (!verbose)
+		progressbar_stop();
+	if (msg != NULL)
+		sbuf_delete(msg);
 	deps_free(&dh);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);

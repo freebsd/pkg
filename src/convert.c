@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +32,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <getopt.h>
 #include <string.h>
 #include <sysexits.h>
 #include <dirent.h>
@@ -50,29 +52,45 @@ usage_convert(void)
 static int
 convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 {
-	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL;
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	char *content, *name, *version, *buf;
-	const char *tmp;
-	int ret = EX_OK;
-	char path[MAXPATHLEN];
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
-	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE |
-	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_RDEPS;
-	FILE *fp, *rq;
-	struct sbuf *install_script = sbuf_new_auto();
-	struct sbuf *deinstall_script = sbuf_new_auto();
+	struct pkgdb	*db = NULL;
+	struct pkg	*pkg = NULL;
+	struct pkg_dep	*dep = NULL;
+	struct pkgdb_it	*it = NULL;
+	char		*content, *name, *version, *buf;
+	const char	*tmp;
+	int		 ret;
+	char		 path[MAXPATHLEN];
+	int		 query_flags = PKG_LOAD_DEPS    | PKG_LOAD_FILES   |
+				       PKG_LOAD_DIRS    | PKG_LOAD_SCRIPTS |
+				       PKG_LOAD_OPTIONS | PKG_LOAD_MTREE   |
+				       PKG_LOAD_USERS   | PKG_LOAD_GROUPS  |
+				       PKG_LOAD_RDEPS;
+	FILE		*fp, *rq;
+	struct sbuf	*install_script = sbuf_new_auto();
+	struct sbuf	*deinstall_script = sbuf_new_auto();
 
 	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
 		err(EX_CANTCREAT, "%s", pkg_add_dbdir);
 
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges to read database");
+		return (EX_NOPERM);
+	} else if (ret == EPKG_ENODB) {
+		warnx("No package database installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (ret != EPKG_OK) {
+		warnx("Error accessing the package database");
+		return (EX_SOFTWARE);
+	}
+
+	ret = EX_OK;
+
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -95,7 +113,13 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 		pkg_old_emit_content(pkg, &content);
 
 		snprintf(path, sizeof(path), "%s/%s-%s", pkg_add_dbdir, name, version);
-		mkdir(path, 0755);
+		if (mkdir(path, 0755) != 0) {
+			fprintf(stderr, "Error converting %s-%s to %s: %s\n",
+			    name, version, path, strerror(errno));
+			printf("\n");
+			free(content);
+			continue;
+		}
 
 		snprintf(path, sizeof(path), "%s/%s-%s/+CONTENTS", pkg_add_dbdir, name, version);
 		fp = fopen(path, "w");
@@ -222,7 +246,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 cleanup:
 	pkg_free(pkg);
 	pkgdb_it_free(it);
-	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
 	return (ret);
@@ -231,18 +255,42 @@ cleanup:
 static int
 convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 {
-	DIR *d;
-	struct dirent *dp;
-	struct pkg *p = NULL;
-	char path[MAXPATHLEN];
-	struct pkgdb *db = NULL;
-	struct stat sb;
+	DIR		*d;
+	struct dirent	*dp;
+	struct pkg	*p = NULL;
+	char		 path[MAXPATHLEN];
+	struct pkgdb	*db = NULL;
+	struct stat	 sb;
+	int		lock_type = PKGDB_LOCK_EXCLUSIVE;
+	int		ret;
+
+	if (dry_run)
+		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	else
+		ret = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|
+		    PKGDB_MODE_CREATE, PKGDB_DB_LOCAL);
+
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges to convert packages");
+		return (EX_NOPERM);
+	} else if (ret != EPKG_OK && ret != EPKG_ENODB) {
+		warnx("Error accessing the package database");
+		return (EX_SOFTWARE);
+	}
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
 		err(EX_NOINPUT, "%s", pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
+	}
+	if (dry_run)
+		lock_type = PKGDB_LOCK_READONLY;
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked"
+		    " by another process");
+		return (EX_TEMPFAIL);
 	}
 	while ((dp = readdir(d)) != NULL) {
 		if (fstatat(dirfd(d), dp->d_name, &sb, 0) == 0 &&
@@ -268,6 +316,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	}
 
 	pkg_free(p);
+	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 	return (EX_OK);
 }
@@ -275,12 +324,19 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 int
 exec_convert(__unused int argc, __unused char **argv)
 {
-	int ch;
-	bool revert = false;
-	bool dry_run = false;
-	const char *pkg_add_dbdir = "/var/db/pkg";
+	int		 ch;
+	bool		 revert = false;
+	bool		 dry_run = false;
+	const char	*pkg_add_dbdir = "/var/db/pkg";
 
-	while ((ch = getopt(argc, argv, "d:nr")) != -1) {
+	struct option longopts[] = {
+		{ "pkg-dbdir",	required_argument,	NULL,	'd' },
+		{ "dry-run",	no_argument,		NULL,	'n' },
+		{ "revert",	no_argument,		NULL,	'r' },
+		{ NULL,		0,			NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "+d:nr", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			pkg_add_dbdir = optarg;

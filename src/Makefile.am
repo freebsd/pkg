@@ -1,4 +1,4 @@
-noinst_HEADERS=	pkgcli.h progressmeter.h
+noinst_HEADERS=	pkgcli.h
 
 pkg_SOURCES=		add.c \
 			annotate.c \
@@ -13,12 +13,12 @@ pkg_SOURCES=		add.c \
 			delete.c \
 			event.c \
 			fetch.c \
+			globals.c \
 			info.c \
 			install.c \
 			lock.c \
 			main.c \
 			plugins.c \
-			progressmeter.c \
 			query.c \
 			register.c \
 			repo.c \
@@ -37,30 +37,34 @@ pkg_SOURCES=		add.c \
 			which.c
 			
 pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
-			@LIBJAIL_LIB@
+		$(top_builddir)/external/libsbuf.la \
+			@LIBJAIL_LIB@ \
+			-lutil \
+			-lcrypto
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
-			-DGITHASH=\"$(GIT_HEAD)\"
+			-DGITHASH=\"$(GIT_HEAD)\" \
+			-Werror
 pkg_static_SOURCES=
-pkg_static_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
-			$(top_builddir)/external/libexpat_static.la \
+pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
+			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
-			@LIBSBUF_LIB@ \
+			@LIBEXECINFO_LIB@ \
 			@LIBELF_LIB@ \
+			@LDNS_LIBS@ \
 			-lfetch \
 			-larchive \
 			-lz \
 			-lutil \
-			-lsbuf \
 			-lbz2 \
 			-llzma \
 			-lssl \
 			-lcrypto \
 			-lmd \
 			-lm
-pkg_static_LDFLAGS=	-all-static -pthread
+pkg_static_LDFLAGS=	-all-static
 sbin_PROGRAMS=		pkg pkg-static
 
 dist_sysconf_DATA=	pkg.conf.sample

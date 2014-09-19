@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
@@ -32,8 +32,8 @@
 #include "pkg_config.h"
 #endif
 
-#include <sys/param.h>
 #include <sys/types.h>
+#include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 
@@ -45,31 +45,148 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sysexits.h>
 #include <signal.h>
+#include <libutil.h>
 
 #include "pkg.h"
-#include "progressmeter.h"
 #include "pkgcli.h"
 
-static off_t fetched = 0;
-static char url[MAXPATHLEN];
+#define STALL_TIME 5
+
 struct sbuf *messages = NULL;
 
+static char *progress_message = NULL;
+static struct sbuf *msg_buf = NULL;
+static int last_progress_percent = -1;
+static bool progress_started = false;
+static bool progress_interrupted = false;
+static bool progress_debit = false;
+static int64_t last_tick = 0;
+static int64_t stalled;
+static int64_t bytes_per_second;
+static time_t last_update;
+static time_t begin = 0;
+static int add_deps_depth;
+
+/* units for format_size */
+static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
+static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
+
+static void draw_progressbar(int64_t current, int64_t total);
+
 static void
-print_status_end(struct sbuf *msg)
+format_rate_IEC(char *buf, int size, off_t bytes)
 {
-	sbuf_finish(msg);
-	printf("%s", sbuf_data(msg));
-	/*printf("\033]0; %s\007", sbuf_data(msg));*/
-	sbuf_delete(msg);
+	int i;
+
+	bytes *= 100;
+	for (i = 0; bytes >= 100*1000 && unit_IEC[i][0] != 'T'; i++)
+		bytes = (bytes + 512) / 1024;
+	if (i == 0) {
+		i++;
+		bytes = (bytes + 512) / 1024;
+	}
+	snprintf(buf, size, "%3lld.%1lld%s%s",
+	    (long long) (bytes + 5) / 100,
+	    (long long) (bytes + 5) / 10 % 10,
+	    unit_IEC[i],
+	    i ? "B" : " ");
 }
 
 static void
-print_status_begin(struct sbuf *msg)
+format_size_IEC(char *buf, int size, off_t bytes)
 {
+	int i;
 
-	if (nbactions > 0)
+	for (i = 0; bytes >= 10000 && unit_IEC[i][0] != 'T'; i++)
+		bytes = (bytes + 512) / 1024;
+	snprintf(buf, size, "%4lld%s%s",
+	    (long long) bytes,
+	    unit_IEC[i],
+	    i ? "B" : " ");
+}
+
+static void
+format_rate_SI(char *buf, int size, off_t bytes)
+{
+        int i;
+
+        bytes *= 100;
+        for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
+                bytes = (bytes + 500) / 1000;
+        if (i == 0) {
+                i++;
+                bytes = (bytes + 500) / 1000;
+        }
+        snprintf(buf, size, "%3lld.%1lld%s%s",
+            (long long) (bytes + 5) / 100,
+            (long long) (bytes + 5) / 10 % 10,
+            unit_SI[i],
+            i ? "B" : " ");
+}
+
+static void
+format_size_SI(char *buf, int size, off_t bytes)
+{
+        int i;
+
+        for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
+                bytes = (bytes + 500) / 1000;
+        snprintf(buf, size, "%4lld%s%s",
+            (long long) bytes,
+            unit_SI[i],
+            i ? "B" : " ");
+}
+
+void
+job_status_end(struct sbuf *msg)
+{
+	sbuf_finish(msg);
+	printf("%s\n", sbuf_data(msg));
+	/*printf("\033]0; %s\007", sbuf_data(msg));*/
+	sbuf_clear(msg);
+}
+
+void
+job_status_begin(struct sbuf *msg)
+{
+	int n;
+
+	sbuf_clear(msg);
+#ifdef HAVE_LIBJAIL
+	static char hostname[MAXHOSTNAMELEN] = "";
+	static int jailed = -1;
+	size_t intlen;
+
+	if (jailed == -1) {
+		intlen = sizeof(jailed);
+		if (sysctlbyname("security.jail.jailed", &jailed, &intlen,
+		    NULL, 0) == -1)
+			jailed = 0;
+	}
+
+	if (jailed == 1) {
+		if (hostname[0] == '\0')
+			gethostname(hostname, sizeof(hostname));
+
+		sbuf_printf(msg, "[%s] ", hostname);
+	}
+#endif
+
+	/* Only used for pkg-add right now. */
+	if (add_deps_depth) {
+		if (add_deps_depth > 1) {
+			for (n = 0; n < (2 * add_deps_depth); ++n) {
+				if (n % 4 == 0 && n < (2 * add_deps_depth))
+					sbuf_cat(msg, "|");
+				else
+					sbuf_cat(msg, " ");
+			}
+		}
+		sbuf_cat(msg, "`-- ");
+	}
+
+	if (nbactions > 0 && nbdone > 0)
 		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 }
 
@@ -233,13 +350,201 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	_exit(ret);
 }
 
+void
+progressbar_start(const char *pmsg)
+{
+	free(progress_message);
+	progress_message = NULL;
+
+	if (quiet)
+		return;
+	if (pmsg != NULL)
+		progress_message = strdup(pmsg);
+	else {
+		sbuf_finish(msg_buf);
+		progress_message = strdup(sbuf_data(msg_buf));
+	}
+	last_progress_percent = -1;
+	last_tick = 0;
+	begin = last_update = time(NULL);
+	bytes_per_second = 0;
+	stalled = 0;
+
+	progress_started = true;
+	progress_interrupted = false;
+	if (!isatty(STDOUT_FILENO))
+		printf("%s...", progress_message);
+	else
+		printf("%s:   0%%", progress_message);
+}
+
+void
+progressbar_tick(int64_t current, int64_t total)
+{
+	if (!quiet && progress_started) {
+		if (isatty(STDOUT_FILENO))
+			draw_progressbar(current, total);
+		else {
+			if (progress_interrupted)
+				printf("%s...", progress_message);
+			if (current >= total)
+				progressbar_stop();
+		}
+	}
+	progress_interrupted = false;
+}
+
+void
+progressbar_stop(void)
+{
+	if (progress_started) {
+		if (!isatty(STDOUT_FILENO))
+			printf(" done");
+		putchar('\n');
+	}
+	last_progress_percent = -1;
+	progress_started = false;
+	progress_interrupted = false;
+}
+
+static void
+draw_progressbar(int64_t current, int64_t total)
+{
+	int percent;
+	int64_t transferred;
+	time_t elapsed = 0, now = 0;
+	char buf[7];
+	int64_t bytes_left;
+	int cur_speed;
+	int hours, minutes, seconds;
+	float age_factor;
+
+	if (!progress_started) {
+		progressbar_stop();
+		return;
+	}
+
+	if (progress_debit) {
+		now = time(NULL);
+		elapsed = (now >= last_update) ? now - last_update : 0;
+	}
+
+	percent = (total != 0) ? (current * 100. / total) : 100;
+
+	/**
+	 * Wait for interval for debit bars to keep calc per second.
+	 * If not debit, show on every % change, or if ticking after
+	 * an interruption (which removed our progressbar output).
+	 */
+	if (current >= total || (progress_debit && elapsed >= 1) ||
+	    (!progress_debit &&
+	    (percent != last_progress_percent || progress_interrupted))) {
+		last_progress_percent = percent;
+
+		printf("\r%s: %3d%%", progress_message, percent);
+		if (progress_debit) {
+			transferred = current - last_tick;
+			last_tick = current;
+			bytes_left = total - current;
+			if (bytes_left <= 0) {
+				elapsed = now - begin;
+				/* Always show at least 1 second at end. */
+				if (elapsed == 0)
+					elapsed = 1;
+				/* Calculate true total speed when done */
+				transferred = total;
+				bytes_per_second = 0;
+			}
+
+			if (elapsed != 0)
+				cur_speed = (transferred / elapsed);
+			else
+				cur_speed = transferred;
+
+#define AGE_FACTOR_SLOW_START 3
+			if (now - begin <= AGE_FACTOR_SLOW_START)
+				age_factor = 0.4;
+			else
+				age_factor = 0.9;
+
+			if (bytes_per_second != 0) {
+				bytes_per_second =
+				    (bytes_per_second * age_factor) +
+				    (cur_speed * (1.0 - age_factor));
+			} else
+				bytes_per_second = cur_speed;
+
+			humanize_number(buf, sizeof(buf),
+			    current,"B", HN_AUTOSCALE, 0);
+			printf(" %*s", (int)sizeof(buf), buf);
+
+			if (bytes_left > 0)
+				format_rate_SI(buf, sizeof(buf), transferred);
+			else /* Show overall speed when done */
+				format_rate_SI(buf, sizeof(buf),
+				    bytes_per_second);
+			printf(" %s/s ", buf);
+
+			if (!transferred)
+				stalled += elapsed;
+			else
+				stalled = 0;
+
+			if (stalled >= STALL_TIME)
+				printf(" - stalled -");
+			else if (bytes_per_second == 0 && bytes_left > 0)
+				printf("   --:-- ETA");
+			else {
+				if (bytes_left > 0)
+					seconds = bytes_left / bytes_per_second;
+				else
+					seconds = elapsed;
+
+				hours = seconds / 3600;
+				seconds -= hours * 3600;
+				minutes = seconds / 60;
+				seconds -= minutes * 60;
+
+				if (hours != 0)
+					printf("%02d:%02d:%02d", hours,
+					    minutes, seconds);
+				else
+					printf("   %02d:%02d", minutes, seconds);
+
+				if (bytes_left > 0)
+					printf(" ETA");
+				else
+					printf("    ");
+			}
+			last_update = now;
+		}
+		fflush(stdout);
+	}
+	if (current >= total)
+		progressbar_stop();
+}
+
 int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
 	int *debug = data;
-	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
+	const char *filename;
+
+	if (msg_buf == NULL) {
+		msg_buf = sbuf_new_auto();
+	}
+
+	/*
+	 * If a progressbar has been interrupted by another event, then
+	 * we need to add a newline to prevent bad formatting.
+	 */
+	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
+	    !progress_interrupted) {
+		putchar('\n');
+		progress_interrupted = true;
+	}
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -257,77 +562,81 @@ event_callback(void *data, struct pkg_event *ev)
 		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
 		break;
 	case PKG_EVENT_UPDATE_ADD:
-		if (quiet || !isatty(fileno(stdin)))
+		if (quiet || !isatty(STDOUT_FILENO))
 			break;
 		printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
 		if (ev->e_upd_add.total == ev->e_upd_add.done)
 			printf("\n");
 		break;
 	case PKG_EVENT_UPDATE_REMOVE:
-		if (quiet || !isatty(fileno(stdin)))
+		if (quiet || !isatty(STDOUT_FILENO))
 			break;
 		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
 		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
 			printf("\n");
 		break;
-	case PKG_EVENT_FETCHING:
-		if (quiet || !isatty(fileno(stdin)))
+	case PKG_EVENT_FETCH_BEGIN:
+		if (quiet)
 			break;
-		if (fetched == 0) {
-			filename = strrchr(ev->e_fetching.url, '/');
-			if (filename != NULL) {
-				filename++;
-			} else {
-				/*
-				 * We failed at being smart, so display
-				 * the entire url.
-				 */
-				filename = ev->e_fetching.url;
-			}
-			strlcpy(url, filename, sizeof(url));
-			start_progress_meter(url, ev->e_fetching.total,
-			    &fetched);
+		filename = strrchr(ev->e_fetching.url, '/');
+		if (filename != NULL) {
+			filename++;
+		} else {
+			/*
+			 * We failed at being smart, so display
+			 * the entire url.
+			 */
+			filename = ev->e_fetching.url;
 		}
-		fetched = ev->e_fetching.done;
-		if (ev->e_fetching.done == ev->e_fetching.total) {
-			stop_progress_meter();
-			fetched = 0;
-		}
+		job_status_begin(msg_buf);
+		progress_debit = true;
+		sbuf_printf(msg_buf, "Fetching %s", filename);
+
+		break;
+	case PKG_EVENT_FETCH_FINISHED:
+		progress_debit = false;
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
 		else {
-			struct sbuf	*msg;
-
 			nbdone++;
-
-			msg = sbuf_new_auto();
-			if (msg == NULL) {
-				warn("sbuf_new_auto() failed");
-				break;
-			}
-
-			print_status_begin(msg);
+			job_status_begin(msg_buf);
 
 			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg, "Installing %n-%v...", pkg, pkg);
-
-			print_status_end(msg);
+			pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
+			    pkg);
+			sbuf_finish(msg_buf);
+			printf("%s", sbuf_data(msg_buf));
 		}
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
-		if (pkg_has_message(ev->e_install_finished.pkg)) {
+		pkg = ev->e_install_finished.pkg;
+		if (pkg_has_message(pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
 			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg);
+			    pkg, pkg, pkg);
 		}
+		break;
+	case PKG_EVENT_EXTRACT_BEGIN:
+		if (quiet)
+			break;
+		else {
+			job_status_begin(msg_buf);
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg_buf, "Extracting %n-%v", pkg, pkg);
+		}
+		break;
+	case PKG_EVENT_EXTRACT_FINISHED:
+		break;
+	case PKG_EVENT_ADD_DEPS_BEGIN:
+		++add_deps_depth;
+		break;
+	case PKG_EVENT_ADD_DEPS_FINISHED:
+		--add_deps_depth;
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		if (quiet)
@@ -342,21 +651,15 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		if (*debug == 0)
 			break;
-		printf("\nConflict found on path %s between %s-%s(%s) and ",
+		printf("\nConflict found on path %s between %s and ",
 		    ev->e_integrity_conflict.pkg_path,
-		    ev->e_integrity_conflict.pkg_name,
-		    ev->e_integrity_conflict.pkg_version,
-		    ev->e_integrity_conflict.pkg_origin);
+		    ev->e_integrity_conflict.pkg_uid);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict) {
 			if (cur_conflict->next)
-				printf("%s-%s(%s), ", cur_conflict->name,
-				    cur_conflict->version,
-				    cur_conflict->origin);
+				printf("%s, ", cur_conflict->uid);
 			else
-				printf("%s-%s(%s)", cur_conflict->name,
-				    cur_conflict->version,
-				    cur_conflict->origin);
+				printf("%s", cur_conflict->uid);
 
 			cur_conflict = cur_conflict->next;
 		}
@@ -365,71 +668,60 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		else {
-			struct sbuf	*msg;
+		nbdone++;
 
-			nbdone++;
+		job_status_begin(msg_buf);
 
-			msg = sbuf_new_auto();
-			if (msg == NULL) {
-				warn("sbuf_new_auto() failed");
-				break;
-			}
-
-			print_status_begin(msg);
-
-			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg, "Deleting %n-%v...", pkg, pkg);
-
-			print_status_end(msg);
-		}
+		pkg = ev->e_install_begin.pkg;
+		pkg_sbuf_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
+		break;
+	case PKG_EVENT_DELETE_FILES_BEGIN:
+		if (quiet)
+			break;
+		else {
+			job_status_begin(msg_buf);
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg_buf, "Deleting files for %n-%v",
+			    pkg, pkg);
+		}
+		break;
+	case PKG_EVENT_DELETE_FILES_FINISHED:
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		else {
-			struct sbuf	*msg;
+		pkg_new = ev->e_upgrade_begin.new;
+		pkg_old = ev->e_upgrade_begin.old;
+		nbdone++;
 
-			pkg_new = ev->e_upgrade_begin.new;
-			pkg_old = ev->e_upgrade_begin.old;
-			nbdone++;
+		job_status_begin(msg_buf);
 
-			msg = sbuf_new_auto();
-			if (msg == NULL) {
-				warn("sbuf_new_auto() failed");
-				break;
-			}
-
-			print_status_begin(msg);
-
-			switch (pkg_version_change_between(pkg_new, pkg_old)) {
-			case PKG_DOWNGRADE:
-				pkg_sbuf_printf(msg,
-				    "Downgrading %n from %v to %v...",
-				    pkg_new, pkg_new, pkg_old);
-				break;
-			case PKG_REINSTALL:
-				pkg_sbuf_printf(msg, "Reinstalling %n-%v...",
-				    pkg_old, pkg_old);
-				break;
-			case PKG_UPGRADE:
-				pkg_sbuf_printf(msg,
-				    "Upgrading %n from %v to %v...",
-						pkg_old, pkg_old, pkg_new);
-				break;
-			}
-			print_status_end(msg);
+		switch (pkg_version_change_between(pkg_new, pkg_old)) {
+		case PKG_DOWNGRADE:
+			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v...\n",
+			    pkg_new, pkg_new, pkg_old);
+			break;
+		case PKG_REINSTALL:
+			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v...\n",
+		    pkg_old, pkg_old);
+			break;
+		case PKG_UPGRADE:
+			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v...\n",
+			    pkg_new, pkg_old, pkg_new);
+			break;
 		}
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
 		pkg_new = ev->e_upgrade_begin.new;
 		if (pkg_has_message(pkg_new)) {
 			if (messages == NULL)
@@ -440,15 +732,11 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
-		pkg_fprintf(stderr,
-		    "\n%n-%v is locked and may not be modified\n",
-		    pkg, pkg);
+		pkg_printf("\n%n-%v is locked and may not be modified\n", pkg, pkg);
 		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
-		pkg_fprintf(stderr,
-		    "\n%n-%v is required by: %r%{%rn-%rv%| %}",
-		    pkg, pkg, pkg);
+		pkg_printf("\n%n-%v is required by: %r%{%rn-%rv%| %}", pkg, pkg, pkg);
 		if (ev->e_required.force == 1)
 			fprintf(stderr, ", deleting anyway\n");
 		else
@@ -508,16 +796,17 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("Incremental update completed, %d packages "
-			    "processed:\n"
-			    "%d packages updated, %d removed and %d added.\n",
+			printf("%s repository update completed. %d packages processed:\n"
+			    "  %d updated, %d removed and %d added.\n",
+			    ev->e_incremental_update.reponame,
 			    ev->e_incremental_update.processed,
 			    ev->e_incremental_update.updated,
 			    ev->e_incremental_update.removed,
 			    ev->e_incremental_update.added);
 		break;
 	case PKG_EVENT_DEBUG:
-		fprintf(stderr, "DBG(%d)> %s\n", ev->e_debug.level, ev->e_debug.msg);
+		fprintf(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,
+			(int)getpid(), ev->e_debug.msg);
 		break;
 	case PKG_EVENT_QUERY_YESNO:
 		return ( ev->e_query_yesno.deft ?
@@ -538,6 +827,21 @@ event_callback(void *data, struct pkg_event *ev)
 				ev->e_sandbox_call_str.result,
 				ev->e_sandbox_call_str.len,
 				ev->e_sandbox_call_str.userdata) );
+		break;
+	case PKG_EVENT_PROGRESS_START:
+		progressbar_start(ev->e_progress_start.msg);
+		break;
+	case PKG_EVENT_PROGRESS_TICK:
+		progressbar_tick(ev->e_progress_tick.current,
+		    ev->e_progress_tick.total);
+		break;
+	case PKG_EVENT_BACKUP:
+		sbuf_cat(msg_buf, "Backing up");
+		sbuf_finish(msg_buf);
+		break;
+	case PKG_EVENT_RESTORE:
+		sbuf_cat(msg_buf, "Restoring");
+		sbuf_finish(msg_buf);
 		break;
 	default:
 		break;

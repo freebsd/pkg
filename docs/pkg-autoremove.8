@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd May 25, 2014
 .Dt PKG-AUTOREMOVE 8
 .Os
 .Sh NAME
@@ -23,7 +23,10 @@
 .Nd removes orphan packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl ynq
+.Op Fl nqy
+.Pp
+.Nm
+.Op Cm --{dry-run,quiet,yes}
 .Sh DESCRIPTION
 .Nm
 is used for removing orphan packages, which were installed
@@ -31,15 +34,15 @@ during dependency resolution and are no longer needed.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before package autoremoval.
-.It Fl n
+.Bl -tag -width dry-run
+.It Fl n , Cm --dry-run
 Dry-run mode.
 The list of changes to packages is always printed, but
 no changes are actually made.
-.It Fl q
+.It Fl q , Cm --quiet
 Force quiet output
+.It Fl y , Cm --yes
+Assume yes when asked for confirmation before package autoremoval.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

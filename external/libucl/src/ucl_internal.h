@@ -192,12 +192,21 @@ struct ucl_parser {
 	int flags;
 	ucl_object_t *top_obj;
 	ucl_object_t *cur_obj;
+	const char *cur_file;
 	struct ucl_macro *macroes;
 	struct ucl_stack *stack;
 	struct ucl_chunk *chunks;
 	struct ucl_pubkey *keys;
 	struct ucl_variable *variables;
+	ucl_variable_handler var_handler;
+	void *var_data;
 	UT_string *err;
+};
+
+struct ucl_object_userdata {
+	ucl_object_t obj;
+	ucl_userdata_dtor dtor;
+	ucl_userdata_emitter emitter;
 };
 
 /**
@@ -339,6 +348,22 @@ ucl_hash_insert_object (ucl_hash_t *hashlin, const ucl_object_t *obj)
 
 	return hashlin;
 }
+
+/**
+ * Get standard emitter context for a specified emit_type
+ * @param emit_type type of emitter
+ * @return context or NULL if input is invalid
+ */
+const struct ucl_emitter_context *
+ucl_emit_get_standard_context (enum ucl_emitter emit_type);
+
+/**
+ * Serialise string
+ * @param str string to emit
+ * @param buf target buffer
+ */
+void ucl_elt_string_write_json (const char *str, size_t size,
+		struct ucl_emitter_context *ctx);
 
 /**
  * Emit a single object to string

@@ -213,7 +213,7 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	int ret;
 	bool need_close = false;
 	struct rsa_verify_cbdata cbdata;
-	unsigned char *key_buf;
+	char *key_buf;
 	off_t key_len;
 
 	if (file_to_buffer(key, (char**)&key_buf, &key_len) != EPKG_OK) {

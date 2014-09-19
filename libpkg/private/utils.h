@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -41,8 +41,11 @@
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
-#define ERROR_SQLITE(db) \
-	pkg_emit_error("sqlite error in file %s:%d: %s", __FILE__, __LINE__, sqlite3_errmsg(db))
+#define ERROR_SQLITE(db, query) do { \
+	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", (query), \
+	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
+	print_trace();																 \
+} while(0)
 
 #define HASH_FIND_INO(head,ino,out)                                          \
 	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
@@ -86,13 +89,16 @@ ssize_t sbuf_size(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
-int format_exec_cmd(char **, const char *, const char *, const char *, char *);
+int file_to_bufferat(int, const char *, char **, off_t *);
+int format_exec_cmd(char **, const char *, const char *, const char *, char *,
+    int argc, char **argv);
 int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
-void sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
-void sha256_buf_bin(char *, size_t len, char[SHA256_DIGEST_LENGTH]);
+void sha256_buf(const char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
+void sha256_buf_bin(const char *, size_t len, char[SHA256_DIGEST_LENGTH]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
+int sha256_fileat(int fd, const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
@@ -104,17 +110,23 @@ int rsa_verify(const char *path, const char *key,
 int rsa_verify_cert(const char *path, unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
-bool is_hardlink(struct hardlinks *hl, struct stat *st);
+bool check_for_hardlink(struct hardlinks **hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
 
 struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
-ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 void set_blocking(int fd);
 void set_nonblocking(int fd);
+void print_trace(void);
+
+int pkg_symlink_cksum(const char *path, const char *root, char *cksum);
+int pkg_symlink_cksumat(int fd, const char *path, const char *root,
+    char *cksum);
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
+
+void *parse_mode(const char *str);
 
 #endif

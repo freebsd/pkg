@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -43,35 +44,41 @@ usage_autoremove(void)
 }
 
 int
-exec_autoremove(__unused int argc, __unused char **argv)
+exec_autoremove(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode;
+	int retcode = EX_OK;
 	int ch;
-	bool yes = false;
-	bool dry_run = false;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
+	bool rc = false;
+	int lock_type = PKGDB_LOCK_ADVISORY;
 
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
+	struct option longopts[] = {
+		{ "dry-run",	no_argument,	NULL,	'n' },
+		{ "quiet",	no_argument,	NULL,	'q' },
+		{ "yes",	no_argument,	NULL,	'y' },
+		{ NULL,		0,		NULL,	0   },
+	};
 
-	while ((ch = getopt(argc, argv, "ynq")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+nqy", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'n':
+			f |= PKG_FLAG_DRY_RUN;
+			dry_run = true;
+			lock_type = PKGDB_LOCK_READONLY;
+			break;
 		case 'q':
 			quiet = true;
 			break;
 		case 'y':
 			yes = true;
 			break;
-		case 'n':
-			f |= PKG_FLAG_DRY_RUN;
-			dry_run = true;
-			break;
 		default:
 			break;
 		}
-        }
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -101,7 +108,7 @@ exec_autoremove(__unused int argc, __unused char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -126,25 +133,20 @@ exec_autoremove(__unused int argc, __unused char **argv)
 
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
-		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
-		if (!yes && !dry_run)
-			yes = query_yesno(false,
-		            "\nProceed with deinstalling packages [y/N]: ");
-		if (dry_run)
-			yes = false;
+				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
+		if (!dry_run)
+			rc = query_yesno(false,
+		            "\nProceed with deinstalling packages? [y/N]: ");
 	}
-	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
-		retcode = EX_SOFTWARE;
+	if (!rc || dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
 		goto cleanup;
 	}
 
 	pkgdb_compact(db);
 
-	retcode = EX_OK;
-
 cleanup:
 	pkg_jobs_free(jobs);
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
+	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 
 	return (retcode);

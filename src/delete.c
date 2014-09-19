@@ -28,6 +28,7 @@
  */
 
 #include <err.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
@@ -48,27 +49,34 @@ usage_delete(void)
 int
 exec_delete(int argc, char **argv)
 {
-	struct pkg_jobs *jobs = NULL;
-	struct pkgdb *db = NULL;
-	match_t match = MATCH_EXACT;
-	int ch;
-	bool force = false;
-	bool recursive_flag = false;
-	bool yes;
-	bool dry_run = false;
-	int retcode = EX_SOFTWARE;
+	struct pkg_jobs	*jobs = NULL;
+	struct pkgdb	*db = NULL;
+	match_t		 match = MATCH_EXACT;
+	pkg_flags	 f = PKG_FLAG_NONE;
+	bool		 recursive_flag = false, rc = false;
+	int		 retcode = EX_SOFTWARE;
+	int		 ch;
+	int		 i;
+	int		 lock_type = PKGDB_LOCK_ADVISORY;
+
+	struct option longopts[] = {
+		{ "all",			no_argument,	NULL,	'a' },
+		{ "case-sensitive",		no_argument,	NULL,	'C' },
+		{ "no-deinstall-script",	no_argument,	NULL,	'D' },
+		{ "force",			no_argument,	NULL,	'f' },
+		{ "glob",			no_argument,	NULL,	'g' },
+		{ "case-insensitive",		no_argument,	NULL,	'i' },
+		{ "dry-run",			no_argument,	NULL,	'n' },
+		{ "quiet",			no_argument,	NULL,	'q' },
+		{ "recursive",			no_argument,	NULL,	'R' },
+		{ "regex",			no_argument,	NULL,	'x' },
+		{ "yes",			no_argument,	NULL,	'y' },
+		{ NULL,				0,		NULL,	0   },
+	};
+
 	nbactions = nbdone = 0;
-	pkg_flags f = PKG_FLAG_NONE;
-	int i;
 
-	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
-
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
-
-	while ((ch = getopt(argc, argv, "aCDfginqRxy")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCDfginqRxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -91,6 +99,7 @@ exec_delete(int argc, char **argv)
 			break;
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
+			lock_type = PKGDB_LOCK_READONLY;
 			dry_run = true;
 			break;
 		case 'q':
@@ -139,7 +148,7 @@ exec_delete(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -191,19 +200,23 @@ exec_delete(int argc, char **argv)
 	}
 
 	if (!quiet || dry_run) {
-		print_jobs_summary(jobs,
-		    "Deinstallation has been requested for the following %d packages "
-		    "(of %d packages in the universe):\n\n", nbactions,
-		    pkg_jobs_total(jobs));
+		if (!quiet) {
+			print_jobs_summary(jobs,
+				"Deinstallation has been requested for the following %d packages "
+				"(of %d packages in the universe):\n\n", nbactions,
+				pkg_jobs_total(jobs));
+		}
 		if (dry_run) {
 			retcode = EX_OK;
 			goto cleanup;
 		}
-		if (!yes && !dry_run)
-			yes = query_yesno(false,
-		            "\nProceed with deinstalling packages [y/N]: ");
+		rc = query_yesno(false,
+		            "\nProceed with deinstalling packages? [y/N]: ");
 	}
-	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
+	else
+		rc = yes;
+
+	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
 	pkgdb_compact(db);
@@ -211,7 +224,7 @@ exec_delete(int argc, char **argv)
 	retcode = EX_OK;
 
 cleanup:
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
+	pkgdb_release_lock(db, lock_type);
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 

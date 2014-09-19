@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 26, 2014
+.Dd May 26, 2014
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -35,6 +35,20 @@
 .Fl t Ar version1 Ar version2
 .Nm
 .Fl T Ar pkgname Ar pattern
+.Pp
+.Nm
+.Op Cm --{index,ports,remote}
+.Op Cm --{help,origin,quiet,verbose,no-repo-update}
+.Op Cm --like Ar limchar
+.Op Cm --not-like Ar limchar
+.Op Cm --{case-sensitive,exact,glob,case-insensitive,regex} Ar pattern
+.Op Cm --repository Ar reponame
+.Op Cm --match-origin Ar origin
+.Op Ar index
+.Nm
+.Cm --test-version Ar version1 Ar version2
+.Nm
+.Cm --test-pattern Ar pkgname Ar pattern
 .Sh DESCRIPTION
 .Nm
 is used for generating a report of packages installed by
@@ -106,16 +120,17 @@ with the corresponding entry in the index.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl C
+.Bl -tag -width repository
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl h
+.It Fl h , Cm --help
 Displays usage information
-.It Fl I Op Ar index
+.It Fl I Op Ar index 
+.It Cm --index Op Ar index
 Use
 .Pa index
 file for determining if a package is out of date.
@@ -123,18 +138,18 @@ If no
 .Pa index
 file name is specified, uses the default index file.
 This is the default, if the index file exists.
-.It Fl P
+.It Fl P , Cm --ports
 Use ports for determining if a package is out of date.
 This is the default if the index file is not present and a ports tree
 exists.
 The tree used can be overridden by PORTSDIR, see
 .Xr pkg 5
 for more information.
-.It Fl R
+.It Fl R , Cm --remote
 Use repository catalogue for determining if a package is out of date.
 This is the default if neither the ports index nor the ports tree
 exists.
-.It Fl U
+.It Fl U , Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
 from remote.
 This only has any effect in combination with the
@@ -143,7 +158,7 @@ option.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
-.It Fl r Ar reponame
+.It Fl r Ar reponame , Cm --repository Ar reponame
 When using
 .Fl R
 compare installed package versions to packages available from the
@@ -155,24 +170,24 @@ By default all repository catalogues marked
 .Dq active
 are used for version comparisons.
 .Fl R
-.It Fl o
+.It Fl o , Cm --origin
 Display package origin, instead of package name.
-.It Fl q
+.It Fl q , Cm --quiet
 Be quiet.
 Less output will be produced.
-.It Fl v
+.It Fl v , Cm --verbose
 Be verbose.
-.It Fl l Ar limchar
+.It Fl l Ar limchar , Cm --like Ar limchar
 Display only the packages which status flag matches the one specified by
 .Ar limchar
-.It Fl L Ar limchar
+.It Fl L Ar limchar , Cm --not-like Ar limchar
 Does the opposite of
 .Fl l
 flag.
 Displays the packages which status flag does not match the one
 specified by
 .Ar limchar
-.It Fl i
+.It Fl i , Cm --case-insensitive
 Make the exact
 .Fl ( e )
 or regular expression
@@ -184,18 +199,18 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl x Ar pattern
+.It Fl x Ar pattern , Cm --regex Ar pattern
 Only display the packages that match the regular expression.
 Uses the "modern" or "extended" syntax of
 .Xr re_format 7 .
-.It Fl g Ar pattern
+.It Fl g Ar pattern , Cm --glob Ar pattern
 Only display the packages that match the glob expression.
-.It Fl e Ar string
+.It Fl e Ar string , Cm --exact Ar string
 Only display the packages that exactly match the string.
-.It Fl O Ar origin
+.It Fl O Ar origin , Cm --match-origin Ar origin
 Display only the packages which origin matches
 .Ar origin
-.It Fl t Ar version1 Ar version2
+.It Fl t Ar version1 Ar version2 , Cm --test-version Ar version1 Ar version2
 Test a pair of version number strings and exit.
 The output consists of one of the single characters
 .Li =
@@ -205,7 +220,7 @@ The output consists of one of the single characters
 .Li \&>
 (left-hand number greater) on standard output.
 This flag is mostly useful for scripts or for testing.
-.It Fl T Ar pkgname Ar pattern
+.It Fl T Ar pkgname Ar pattern , Cm --test-pattern Ar pkgname Ar pattern
 Compare
 .Ar pkgname
 against shell glob

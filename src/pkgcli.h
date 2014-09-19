@@ -128,7 +128,7 @@ void usage_stats(void);
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
-int pkgcli_update(bool, const char *);
+int pkgcli_update(bool, bool, const char *);
 
 /* pkg updating */
 int exec_updating(int, char **);
@@ -228,7 +228,10 @@ void usage_config(void);
 #define INFO_TAG_NAMEVER	(1LL<<62)
 
 /* Output YAML format */
-#define INFO_RAW	(-1LL<<63)
+#define INFO_RAW		(-1LL<<63)
+#define INFO_RAW_YAML		(-1LL<<62)
+#define INFO_RAW_JSON		(-1LL<<61)
+#define INFO_RAW_JSON_COMPACT	(-1LL<<60)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \
@@ -251,10 +254,18 @@ bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
-void print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
+int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 int hash_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 
+void job_status_begin(struct sbuf *);
+void job_status_end(struct sbuf *);
+
 int event_callback(void *data, struct pkg_event *ev);
+void progressbar_start(const char *pmsg);
+void progressbar_tick(int64_t current, int64_t total);
+void progressbar_stop(void);
+
+void sbuf_flush(struct sbuf *buf);
 
 extern struct sbuf *messages;
 
@@ -273,5 +284,14 @@ int format_sql_condition(const char *str, struct sbuf *sqlcond,
 int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,
 			 char *multiline);
+
+extern int yes;
+extern int dry_run;
+extern int auto_update;
+extern int case_sensitive;
+extern int force;
+extern bool quiet;
+extern bool newpkgversion;
+void set_globals(void);
 
 #endif

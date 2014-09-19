@@ -44,9 +44,8 @@ rm -f ${PKG_DBDIR}/pkgdb.db > /dev/null 2>&1
 
 # Build the shlibs_{provided,required} tables in the pkg database
 
-echo -n "Analysing shared libraries, this will take a while... "
+echo "Analysing shared libraries, this will take a while... "
 @prefix@/sbin/pkg check -Ba
-echo "done"
 
 # Fix up /etc/periodic.conf if requested.  Pull in the current
 # periodic settings, and update /etc/periodic.conf to disable any

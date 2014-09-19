@@ -24,21 +24,24 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl qlrb
+.Pp
+.Nm
+.Op Cm --{quiet,local,remote,bytes}
 .Sh DESCRIPTION
 .Nm
 is used to display different statistics about the package databases.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl q
+.Bl -tag -width quiet
+.It Fl q , Cm --quiet
 Quiet mode.
 Show less output.
-.It Fl l
+.It Fl l , Cm --local
 Display stats only for the local package database.
-.It Fl r
+.It Fl r , Cm --remote
 Display stats only for the remote package database(s).
-.It Fl b
+.It Fl b , Cm --bytes
 Display disk space usage in bytes only.
 .El
 .Sh ENVIRONMENT

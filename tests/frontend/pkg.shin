@@ -1,0 +1,58 @@
+#! /usr/bin/env atf-sh
+
+atf_test_case pkg_no_database
+pkg_no_database_head() {
+	atf_set "descr" "testing pkg -- no database"
+}
+
+pkg_no_database_body() {
+    atf_check \
+	-o empty \
+	-e inline:"pkg: package database non-existent\n" \
+	-s exit:69 \
+	-x PKG_DBDIR=/dev/null pkg -N
+}
+
+atf_test_case pkg_config_defaults
+pkg_config_defaults_head()
+{
+	atf_set "descr" "testing pkg -- compiled-in defaults"
+}
+
+pkg_config_defaults_body()
+{
+    atf_check                 \
+	-o match:'^ *PKG_DBDIR = "/var/db/pkg";$' \
+	-o match:'^ *PKG_CACHEDIR = "/var/cache/pkg";$' \
+	-o match:'^ *PORTSDIR = "/usr/ports";$' \
+	-o match:'^ *HANDLE_RC_SCRIPTS = false;$' \
+	-o match:'^ *ASSUME_ALWAYS_YES = false;$' \
+	-o match:'^ *PLIST_KEYWORDS_DIR = "";$' \
+	-o match:'^ *SYSLOG = true;$' \
+	-o match:'^ *ABI = "[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+";$' \
+	-o match:'^ *DEVELOPER_MODE = false;$' \
+	-o match:'^ *VULNXML_SITE = "http://www.vuxml.org/freebsd/vuln.xml.bz2";$' \
+	-o match:'^ *FETCH_RETRY = 3;$' \
+	-o match:'^ *PKG_PLUGINS_DIR = ".*lib/pkg/";$' \
+	-o match:'^ *PKG_ENABLE_PLUGINS = true;$' \
+	-o match:'^ *DEBUG_SCRIPTS = false;$' \
+	-o match:'^ *PLUGINS_CONF_DIR = ".*/etc/pkg/";$' \
+	-o match:'^ *PERMISSIVE = false;$' \
+	-o match:'^ *REPO_AUTOUPDATE = true;$' \
+	-o match:'^ *NAMESERVER = "";$' \
+	-o match:'^ *EVENT_PIPE = "";$' \
+	-o match:'^ *FETCH_TIMEOUT = 30;$' \
+	-o match:'^ *UNSET_TIMESTAMP = false;$' \
+	-o match:'^ *SSH_RESTRICT_DIR = "";$' \
+	-e empty              \
+	-s exit:0             \
+	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -R "" -vv
+}
+
+
+atf_init_test_cases() {
+        . $(atf_get_srcdir)/test_environment.sh
+
+	atf_add_test_case pkg_no_database
+	atf_add_test_case pkg_config_defaults
+}

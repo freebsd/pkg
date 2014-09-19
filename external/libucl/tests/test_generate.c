@@ -30,6 +30,7 @@ int
 main (int argc, char **argv)
 {
 	ucl_object_t *obj, *cur, *ar, *ref;
+	const ucl_object_t *found;
 	FILE *out;
 	unsigned char *emitted;
 	const char *fname_out = NULL;
@@ -53,6 +54,13 @@ main (int argc, char **argv)
 	}
 
 	obj = ucl_object_typed_new (UCL_OBJECT);
+
+	/* Keys replacing */
+	cur = ucl_object_fromstring_common ("value1", 0, UCL_STRING_TRIM);
+	ucl_object_insert_key (obj, cur, "key0", 0, false);
+	cur = ucl_object_fromdouble (0.1);
+	ucl_object_replace_key (obj, cur, "key0", 0, false);
+
 	/* Create some strings */
 	cur = ucl_object_fromstring_common ("  test string    ", 0, UCL_STRING_TRIM);
 	ucl_object_insert_key (obj, cur, "key1", 0, false);
@@ -113,6 +121,23 @@ main (int argc, char **argv)
 	ucl_object_insert_key (obj, cur, "key13", 0, false);
 	cur = ucl_object_frombool (true);
 	ucl_object_insert_key (obj, cur, "k=3", 0, false);
+
+	/* Try to find using path */
+	/* Should exist */
+	found = ucl_lookup_path (obj, "key4.1");
+	assert (found != NULL && ucl_object_toint (found) == 10);
+	/* . should be ignored */
+	found = ucl_lookup_path (obj, ".key4.1");
+	assert (found != NULL && ucl_object_toint (found) == 10);
+	/* moar dots... */
+	found = ucl_lookup_path (obj, ".key4........1...");
+	assert (found != NULL && ucl_object_toint (found) == 10);
+	/* No such index */
+	found = ucl_lookup_path (obj, ".key4.3");
+	assert (found == NULL);
+	/* No such key */
+	found = ucl_lookup_path (obj, "key9..key1");
+	assert (found == NULL);
 
 	emitted = ucl_object_emit (obj, UCL_EMIT_CONFIG);
 

@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -131,7 +131,7 @@ exec_register(int argc, char **argv)
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
 
-	while ((ch = getopt_long(argc, argv, "Adf:i:lM:m:Ot", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:Ot", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 		case 'd':
@@ -230,7 +230,7 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL) {
 		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) 
+		if (ret != EPKG_OK)
 			return (EX_IOERR);
 
 	} else {
@@ -247,10 +247,6 @@ exec_register(int argc, char **argv)
 		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 		if (access(fpath, F_OK) == 0)
 			pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
-
-		snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
 		for (i = 0; scripts[i] != NULL; i++) {
 			snprintf(fpath, sizeof(fpath), "%s/%s", mdir,
@@ -331,29 +327,13 @@ exec_register(int argc, char **argv)
 			pkg_suggest_arch(pkg, arch, false);
 	}
 
-	if (!testing_mode && input_path != NULL)
-		pkg_copy_tree(pkg, input_path, location ? location : "/");
-	
-	if (location != NULL)
-		pkg_addannotation(pkg, "relocated", location);
-
-	if (old) {
-		if (pkg_register_old(pkg) != EPKG_OK)
-			retcode = EX_SOFTWARE;
-	} else {
-		if (pkgdb_register_ports(db, pkg) != EPKG_OK)
-			retcode = EX_SOFTWARE;
-	}
+	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode, \
+	    old);
 
 	if (!legacy && pkg_has_message(pkg))
 		pkg_printf("%M\n", pkg);
 
-	if (!old) {
-		pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
-		pkgdb_close(db);
-	}
-
 	pkg_free(pkg);
 
-	return (retcode);
+	return (retcode != EPKG_OK ? EX_SOFTWARE : EX_OK);
 }

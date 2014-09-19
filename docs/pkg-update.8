@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 13, 2014
+.Dd August 14, 2014
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
@@ -26,6 +26,10 @@ package repositories
 .Nm
 .Op Fl fq
 .Op Fl r Ar reponame
+.Pp
+.Nm
+.Op Cm --{force,quiet}
+.Op Cm --repository Ar reponame
 .Sh DESCRIPTION
 .Nm
 is used for updating the local copy of a repository catalogue from
@@ -62,20 +66,20 @@ to false in
 .Ss Signed repositories
 If the repository catalogue is signed and
 .Ev PUBKEY
-is defined, the signature will be verified after download.
+is defined for the repository, the signature will be verified after download.
 See
 .Xr pkg.conf 5
 for more information.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
-.It Fl q
+.Bl -tag -width quiet
+.It Fl q , Cm --quiet
 Force quiet output
-.It Fl f
+.It Fl f , Cm --force
 Force a full download of the repository catalogue without regard to the
 respective ages of the local and remote copies of the catalogue
-.It Fl r Ar reponame
+.It Fl r Ar reponame , Cm --repository Ar reponame
 Download the catalogue for the named repository only.
 This will update only the named repository, irrespective of the configured
 .Dq active
@@ -89,9 +93,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev PACKAGESITE
 .It Ev PKG_DBDIR
-.It Ev PUBKEY
 .It Ev REPO_AUTOUPDATE
 .El
 .Sh FILES

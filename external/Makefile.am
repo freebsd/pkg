@@ -55,22 +55,21 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/uthash/uthash.h \
 		libucl/uthash/utlist.h \
 		libucl/uthash/utstring.h \
-		libyaml/include/yaml.h \
-		libyaml/src/yaml_private.h \
-		libyaml/win32/config.h \
+		picosat/picosat.h \
 		sqlite/sqlite3.h \
+		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
 		config.h
 
-EXTRA_LTLIBRARIES=	libelf.la libsbuf.la
+EXTRA_LTLIBRARIES=	libelf.la
 
 noinst_LTLIBRARIES=	libucl.la libucl_static.la \
-					libsqlite.la libsqlite_static.la \
-					libyaml.la libyaml_static.la \
-					libexpat.la libexpat_static.la \
-					@LIBELF_BUNDLED@ \
-					@LIBSBUF_BUNDLED@
+			libsqlite.la libsqlite_static.la \
+			libexpat.la libexpat_static.la \
+			libsbuf.la libsbuf_static.la \
+			libpicosat.la libpicosat_static.la \
+			@LIBELF_BUNDLED@
 
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \
@@ -133,13 +132,19 @@ libelf_la_SOURCES=	libelf/elf.c \
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
 
 libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
-libsbuf_la_CFLAGS=	-I$(top_srcdir)/external/libsbuf
+sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
+libsbuf_la_CFLAGS=	$(sbuf_common_CFLAGS) -shared
+libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
+libsbuf_static_la_CFLAGS=	$(sbuf_common_CFLAGS) -static
+libsbuf_static_la_LDFLAGS=	-all-static
 
 ucl_common_cflags=	-I$(top_srcdir)/external//libucl/uthash \
 			-I$(top_srcdir)/external/libucl/include  \
 			-I$(top_srcdir)/external//libucl/src \
 			-Wno-unused-parameter -Wno-pointer-sign
 libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
+			libucl/src/ucl_emitter_utils.c \
+			libucl/src/ucl_emitter_streamline.c \
 			libucl/src/ucl_hash.c \
 			libucl/src/ucl_parser.c \
 			libucl/src/ucl_schema.c \
@@ -161,24 +166,21 @@ libexpat_static_la_SOURCES=	$(libexpat_la_SOURCES)
 libexpat_static_la_CFLAGS=	$(expat_common_cflags) -static
 libexpat_static_la_LDFLAGS=	-all-static
 
-yaml_common_cflags=	-I$(top_srcdir)/external/libyaml/include \
-			-I$(top_srcdir)/external/libyaml \
+picosat_common_cflags=	-I$(top_srcdir)/external/picosat \
 			-Wno-strict-aliasing \
-			-Wno-unused		
-libyaml_la_SOURCES=	libyaml/src/api.c \
-			libyaml/src/loader.c \
-			libyaml/src/parser.c \
-			libyaml/src/reader.c \
-			libyaml/src/scanner.c
-libyaml_la_CFLAGS=	$(yaml_common_cflags) -shared
-libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
-libyaml_static_la_CFLAGS= $(yaml_common_cflags) -static
-libyaml_static_la_LDFLAGS=	-all-static
+			-Wno-unused	
+libpicosat_la_SOURCES=	picosat/picosat.c \
+			picosat/version.c
+libpicosat_la_CFLAGS=	$(picosat_common_cflags) -shared
+libpicosat_static_la_SOURCES=	$(libpicosat_la_SOURCES)
+libpicosat_static_la_CFLAGS= $(picosat_common_cflags) -static
+libpicosat_static_la_LDFLAGS=	-all-static
 
 sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-Wno-unused-variable \
 			-Wno-unused-function \
 			-Wno-strict-aliasing \
+			-DHAVE_USLEEP=1 \
 			-DSQLITE_OMIT_AUTOVACUUM \
 			-DSQLITE_OMIT_BLOB_LITERAL \
 			-DSQLITE_OMIT_DECLTYPE \
@@ -201,7 +203,6 @@ sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-DSQLITE_TEMP_STORE=3 \
 			-DSQLITE_ENABLE_FTS4 \
 			-DSQLITE_SHELL_DBNAME_PROC=pkgshell_open \
-			-Dmain=sqlite3_shell \
 			-DNDEBUG
 libsqlite_la_SOURCES=	sqlite/sqlite3.c \
 			sqlite/shell.c

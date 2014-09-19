@@ -24,6 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <getopt.h>
+#include <signal.h>
 #include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
@@ -37,27 +39,9 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "Usage: pkg repo [-lq] [-o output-dir] <repo-path> "
+	fprintf(stderr, "Usage: pkg repo [-lqL] [-o output-dir] <repo-path> "
 	    "[<rsa-key>|signing_command: <the command>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
-}
-
-static const char ps[] = { '-', '\\', '|', '/' };
-
-static void
-progress(struct pkg *pkg, void *data)
-{
-	int *pos;
-
-	pos = (int *)data;
-
-	if (*pos == 3)
-		*pos = 0;
-	else
-		*pos = *pos + 1;
-
-	if (pkg != NULL)
-		printf("\b%c", ps[*pos]);
 }
 
 static int
@@ -65,10 +49,17 @@ password_cb(char *buf, int size, int rwflag, void *key)
 {
 	int len = 0;
 	char pass[BUFSIZ];
+	sigset_t sig, oldsig;
+
 	(void)rwflag;
 	(void)key;
 
-	if (readpassphrase("Enter passphrase: ", pass, BUFSIZ, RPP_ECHO_OFF) == NULL)
+	/* Block sigalarm temporary */
+	sigemptyset(&sig);
+	sigaddset(&sig, SIGALRM);
+	sigprocmask(SIG_BLOCK, &sig, &oldsig);
+
+	if (readpassphrase("\nEnter passphrase: ", pass, BUFSIZ, RPP_ECHO_OFF) == NULL)
 		return 0;
 
 	len = strlen(pass);
@@ -80,28 +71,46 @@ password_cb(char *buf, int size, int rwflag, void *key)
 	memcpy(buf, pass, len);
 	memset(pass, 0, BUFSIZ);
 
+	sigprocmask(SIG_SETMASK, &oldsig, NULL);
+
 	return (len);
 }
 
 int
 exec_repo(int argc, char **argv)
 {
-	int ret;
-	int pos = 0;
-	int ch;
-	bool filelist = false;
-	char *output_dir = NULL;
+	int	 ret;
+	int	 ch;
+	bool	 filelist = false;
+	char	*output_dir = NULL;
+	char	*meta_file = NULL;
+	bool	legacy = false;
 
-	while ((ch = getopt(argc, argv, "lo:q")) != -1) {
+	struct option longopts[] = {
+		{ "list-files", no_argument,		NULL,	'l' },
+		{ "output-dir", required_argument,	NULL,	'o' },
+		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "meta-file",	required_argument,	NULL,	'm' },
+		{ "legacy",	no_argument,	NULL,	'L' },
+		{ NULL,		0,			NULL,	0   },
+	};
+
+	while ((ch = getopt_long(argc, argv, "+lo:qm:L", longopts, NULL)) != -1) {
 		switch (ch) {
-		case 'q':
-			quiet = true;
-			break;
 		case 'l':
 			filelist = true;
 			break;
 		case 'o':
 			output_dir = optarg;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'm':
+			meta_file = optarg;
+			break;
+		case 'L':
+			legacy = true;
 			break;
 		default:
 			usage_repo();
@@ -124,20 +133,13 @@ exec_repo(int argc, char **argv)
 	if (output_dir == NULL)
 		output_dir = argv[0];
 
-	if (!quiet) {
-		printf("Generating repository catalog in %s:  ", argv[0]);
-		ret = pkg_create_repo(argv[0], output_dir, filelist, progress, &pos);
-	} else
-		ret = pkg_create_repo(argv[0], output_dir, filelist, NULL, NULL);
+	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file, legacy);
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
 		return (EX_IOERR);
-	} else {
-		if (!quiet)
-			printf("\bdone!\n");
 	}
-	
+
 	if (pkg_finish_repo(output_dir, password_cb, argv + 1, argc - 1,
 	    filelist) != EPKG_OK)
 		return (EX_DATAERR);

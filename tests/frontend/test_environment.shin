@@ -1,0 +1,1 @@
+export PATH=$(atf_get_srcdir)/../../src:${PATH}

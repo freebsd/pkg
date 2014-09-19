@@ -112,16 +112,20 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_upd_remove.total
 		    );
 		break;
-	case PKG_EVENT_FETCHING:
-		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH\", "
+	case PKG_EVENT_FETCH_BEGIN:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
 		    "\"data\": { "
-		    "\"url\": \"%s\", "
-		    "\"fetched\": %" PRId64 ", "
-		    "\"total\": %" PRId64
+		    "\"url\": \"%s\" "
 		    "}}",
-		    sbuf_json_escape(buf, ev->e_fetching.url),
-		    ev->e_fetching.done,
-		    ev->e_fetching.total
+		    sbuf_json_escape(buf, ev->e_fetching.url)
+		    );
+		break;
+	case PKG_EVENT_FETCH_FINISHED:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
+		    "\"data\": { "
+		    "\"url\": \"%s\" "
+		    "}}",
+		    sbuf_json_escape(buf, ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
@@ -130,6 +134,20 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_install_begin.pkg, ev->e_install_begin.pkg);
+		break;
+	case PKG_EVENT_EXTRACT_BEGIN:
+		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%n\", "
+		    "\"pkgversion\": \"%v\""
+		    "}}", ev->e_extract_begin.pkg, ev->e_extract_begin.pkg);
+		break;
+	case PKG_EVENT_EXTRACT_FINISHED:
+		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%n\", "
+		    "\"pkgversion\": \"%v\""
+		    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		pkg_get(ev->e_install_finished.pkg,
@@ -152,30 +170,20 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
 			"\"data\": { "
-			"\"pkgname\": \"%s\", "
-			"\"pkgversion\": \"%s\", "
-			"\"pkgorigin\": \"%s\", "
+			"\"pkguid\": \"%s\", "
 			"\"pkgpath\": \"%s\", "
 			"\"conflicts\": [",
-			ev->e_integrity_conflict.pkg_name,
-			ev->e_integrity_conflict.pkg_version,
-			ev->e_integrity_conflict.pkg_origin,
+			ev->e_integrity_conflict.pkg_uid,
 			ev->e_integrity_conflict.pkg_path);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict != NULL) {
 			if (cur_conflict->next != NULL) {
-				sbuf_printf(msg, "{\"name\":\"%s\","
-						"\"version\":\"%s\","
-						"\"origin\":\"%s\"},",
-						cur_conflict->name, cur_conflict->version,
-						cur_conflict->origin);
+				sbuf_printf(msg, "{\"uid\":\"%s\"},",
+						cur_conflict->uid);
 			}
 			else {
-				sbuf_printf(msg, "{\"name\":\"%s\","
-						"\"version\":\"%s\","
-						"\"origin\":\"%s\"}",
-						cur_conflict->name, cur_conflict->version,
-						cur_conflict->origin);
+				sbuf_printf(msg, "{\"uid\":\"%s\"}",
+						cur_conflict->uid);
 				break;
 			}
 			cur_conflict = cur_conflict->next;
@@ -332,17 +340,19 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
 		    "\"data\": {"
+		        "\"name\": \"%s\", "
 			"\"updated\": %d, "
 			"\"removed\": %d, "
 			"\"added\": %d, "
 			"\"processed\": %d"
-			"}}", ev->e_incremental_update.updated,
+			"}}", ev->e_incremental_update.reponame,
+			ev->e_incremental_update.updated,
 			ev->e_incremental_update.removed,
 			ev->e_incremental_update.added,
 			ev->e_incremental_update.processed);
 		break;
 	case PKG_EVENT_QUERY_YESNO:
-		sbuf_printf(msg, "{\"type\": \"QUERY_YESNO\", "
+		sbuf_printf(msg, "{ \"type\": \"QUERY_YESNO\", "
 		    "\"data\": {"
 			"\"msg\": \"%s\","
 			"\"default\": \"%d\""
@@ -350,7 +360,7 @@ pipeevent(struct pkg_event *ev)
 			ev->e_query_yesno.deft);
 		break;
 	case PKG_EVENT_QUERY_SELECT:
-		sbuf_printf(msg, "{\"type\": \"QUERY_SELECT\", "
+		sbuf_printf(msg, "{ \"type\": \"QUERY_SELECT\", "
 		    "\"data\": {"
 			"\"msg\": \"%s\","
 			"\"ncnt\": \"%d\","
@@ -366,6 +376,18 @@ pipeevent(struct pkg_event *ev)
 		}
 		sbuf_printf(msg, "{ \"text\": \"%s\" } ] }}",
 			ev->e_query_select.items[i]);
+		break;
+	case PKG_EVENT_PROGRESS_START:
+		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_START\", "
+		  "\"data\": {}}");
+		break;
+	case PKG_EVENT_PROGRESS_TICK:
+		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
+		  "\"data\": { \"current\": %ld, \"total\" : %ld}}",
+		  ev->e_progress_tick.current, ev->e_progress_tick.total);
+		break;
+	case PKG_EVENT_BACKUP:
+	case PKG_EVENT_RESTORE:
 		break;
 	default:
 		break;
@@ -408,6 +430,7 @@ pkg_emit_error(const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_pkg_error.msg);
+	print_trace();
 }
 
 void
@@ -453,6 +476,7 @@ pkg_emit_errno(const char *func, const char *arg)
 	ev.e_errno.no = errno;
 
 	pkg_emit_event(&ev);
+	print_trace();
 }
 
 void
@@ -467,15 +491,23 @@ pkg_emit_already_installed(struct pkg *p)
 }
 
 void
-pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed)
+pkg_emit_fetch_begin(const char *url)
 {
 	struct pkg_event ev;
 
-	ev.type = PKG_EVENT_FETCHING;
+	ev.type = PKG_EVENT_FETCH_BEGIN;
 	ev.e_fetching.url = url;
-	ev.e_fetching.total = total;
-	ev.e_fetching.done = done;
-	ev.e_fetching.elapsed = elapsed;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_fetch_finished(const char *url)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_FETCH_FINISHED;
+	ev.e_fetching.url = url;
 
 	pkg_emit_event(&ev);
 }
@@ -536,6 +568,72 @@ pkg_emit_install_finished(struct pkg *p)
 }
 
 void
+pkg_emit_add_deps_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ADD_DEPS_BEGIN;
+	ev.e_add_deps_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_add_deps_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ADD_DEPS_FINISHED;
+	ev.e_add_deps_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_extract_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_EXTRACT_BEGIN;
+	ev.e_extract_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_extract_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_EXTRACT_FINISHED;
+	ev.e_extract_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_delete_files_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DELETE_FILES_BEGIN;
+	ev.e_delete_files_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_delete_files_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DELETE_FILES_FINISHED;
+	ev.e_delete_files_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_integritycheck_begin(void)
 {
 	struct pkg_event ev;
@@ -555,14 +653,12 @@ pkg_emit_integritycheck_finished(int conflicting)
 }
 
 void
-pkg_emit_integritycheck_conflict(const char *name, const char *version,
-		const char *origin, const char *path, struct pkg_event_conflict *conflicts)
+pkg_emit_integritycheck_conflict(const char *uid,
+	const char *path, struct pkg_event_conflict *conflicts)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_CONFLICT;
-	ev.e_integrity_conflict.pkg_name = name;
-	ev.e_integrity_conflict.pkg_version = version;
-	ev.e_integrity_conflict.pkg_origin = origin;
+	ev.e_integrity_conflict.pkg_uid = uid;
 	ev.e_integrity_conflict.pkg_path = path;
 	ev.e_integrity_conflict.conflicts = conflicts;
 
@@ -780,11 +876,13 @@ pkg_emit_package_not_found(const char *p)
 }
 
 void
-pkg_emit_incremental_update(int updated, int removed, int added, int processed)
+pkg_emit_incremental_update(const char *reponame, int updated, int removed,
+    int added, int processed)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_INCREMENTAL_UPDATE;
+	ev.e_incremental_update.reponame = reponame;
 	ev.e_incremental_update.updated = updated;
 	ev.e_incremental_update.removed = removed;
 	ev.e_incremental_update.added = added;
@@ -874,4 +972,56 @@ pkg_debug(int level, const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_debug.msg);
+}
+
+void
+pkg_emit_backup(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_BACKUP;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_restore(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_RESTORE;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_progress_start(const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_PROGRESS_START;
+	if (fmt != NULL) {
+		va_start(ap, fmt);
+		vasprintf(&ev.e_progress_start.msg, fmt, ap);
+		va_end(ap);
+	} else {
+		ev.e_progress_start.msg = NULL;
+	}
+
+	pkg_emit_event(&ev);
+	free(ev.e_progress_start.msg);
+}
+
+void
+pkg_emit_progress_tick(int64_t current, int64_t total)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PROGRESS_TICK;
+	ev.e_progress_tick.current = current;
+	ev.e_progress_tick.total = total;
+
+	pkg_emit_event(&ev);
+
 }

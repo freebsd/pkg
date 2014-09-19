@@ -1,7 +1,8 @@
-/*-
+/*
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -26,29 +27,26 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <assert.h>
 #include <sys/socket.h>
-#include <sys/utsname.h>
 #include <sys/un.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
+#ifdef HAVE_OSRELDATE_H
 #include <osreldate.h>
-#include <pthread.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sysexits.h>
+#endif
 #include <ucl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "pkg_repos.h"
 
-#define REPO_NAME_PREFIX "repo-"
 #ifndef PORTSDIR
 #define PORTSDIR "/usr/ports"
 #endif
@@ -61,7 +59,7 @@
 #define TEXT(X)		#X
 #define INDEXFILE	"INDEX-" STRINGIFY(OSMAJOR)
 #else
-#define INDEXFILE	INDEX
+#define INDEXFILE	"INDEX"
 #endif
 
 int eventpipe = -1;
@@ -241,12 +239,6 @@ static struct config_entry c[] = {
 		"Environment variables pkg will use",
 	},
 	{
-		PKG_BOOL,
-		"DISABLE_MTREE",
-		"NO",
-		"Experimental: disable MTREE processing on pkg installation",
-	},
-	{
 		PKG_STRING,
 		"PKG_SSH_ARGS",
 		NULL,
@@ -299,13 +291,47 @@ static struct config_entry c[] = {
 		"LOCK_RETRIES",
 		"5",
 		"Retries performed to obtain a lock"
+	},
+	{
+		PKG_BOOL,
+		"SQLITE_PROFILE",
+		"NO",
+		"Profile sqlite queries"
+	},
+	{
+		PKG_INT,
+		"WORKERS_COUNT",
+		"0",
+		"How many workers are used for pkg-repo (hw.ncpu if 0)"
+	},
+	{
+		PKG_BOOL,
+		"READ_LOCK",
+		"NO",
+		"Use read locking for query database"
+	},
+	{
+		PKG_BOOL,
+		"PLIST_ACCEPT_DIRECTORIES",
+		"NO",
+		"Accept directories listed like plain files in plist"
+	},
+	{
+		PKG_INT,
+		"IP_VERSION",
+		"0",
+		"Restrict network access to IPv4 or IPv6 only"
 	}
 };
 
 static bool parsed = false;
 static size_t c_size = NELEM(c);
 
-static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
+static struct pkg_repo* pkg_repo_new(const char *name,
+	const char *url, const char *type);
+static void pkg_repo_overwrite(struct pkg_repo*, const char *name,
+	const char *url, const char *type);
+static void pkg_repo_free(struct pkg_repo *r);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -389,17 +415,40 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
+add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_init_flags flags)
 {
-	const ucl_object_t *cur;
-	ucl_object_t *tmp = NULL;
+	const ucl_object_t *cur, *enabled;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
+	const char *type = NULL;
+	int use_ipvx = 0;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
+
+	enabled = ucl_object_find_key(obj, "enabled");
+	if (enabled == NULL)
+		enabled = ucl_object_find_key(obj, "ENABLED");
+	if (enabled != NULL) {
+		enable = ucl_object_toboolean(enabled);
+		if (!enable && r == NULL) {
+			pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
+			return;
+		}
+		else if (!enable && r != NULL) {
+			/*
+			 * We basically want to remove the existing repo r and
+			 * forget all stuff parsed
+			 */
+			pkg_debug(1, "PkgConfig: disabling repo %s", rname);
+			HASH_DEL(repos, r);
+			pkg_repo_free(r);
+			return;
+		}
+	}
+
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		if (key == NULL)
@@ -421,24 +470,6 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			pubkey = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "enabled") == 0) {
-			if (cur->type == UCL_STRING)
-				tmp = ucl_object_fromstring_common(ucl_object_tostring(cur),
-				    strlen(ucl_object_tostring(cur)), UCL_STRING_PARSE_BOOLEAN);
-			if (cur->type != UCL_BOOLEAN && (tmp != NULL && tmp->type != UCL_BOOLEAN)) {
-				pkg_emit_error("Expecting a boolean for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				if (tmp != NULL)
-					ucl_object_unref(tmp);
-				return;
-			}
-			if (tmp != NULL)
-				pkg_emit_error("Warning: expecting a boolean for the '%s' key of the '%s' repo, "
-				    " the value has been correctly converted, please consider fixing", key, rname);
-			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
-			if (tmp != NULL)
-				ucl_object_unref(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -463,6 +494,24 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			fingerprints = ucl_object_tostring(cur);
+		} else if (strcasecmp(key, "type") == 0) {
+			if (cur->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			type = ucl_object_tostring(cur);
+		} else if (strcasecmp(key, "ip_version") == 0) {
+			if (cur->type != UCL_INT) {
+				pkg_emit_error("Expecting a integer for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			use_ipvx = ucl_object_toint(cur);
+			if (use_ipvx != 4 && use_ipvx != 6)
+				use_ipvx = 0;
 		}
 	}
 
@@ -472,7 +521,9 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	}
 
 	if (r == NULL)
-		r = pkg_repo_new(rname, url);
+		r = pkg_repo_new(rname, url, type);
+	else
+		pkg_repo_overwrite(r, rname, url, type);
 
 	if (signature_type != NULL) {
 		if (strcasecmp(signature_type, "pubkey") == 0)
@@ -504,10 +555,23 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 		else
 			r->mirror_type = NOMIRROR;
 	}
+
+	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
+		use_ipvx = 4;
+	else if ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)
+		use_ipvx = 6;
+
+	if (use_ipvx != 4 && use_ipvx != 6)
+		use_ipvx = pkg_object_int(pkg_config_get("IP_VERSION"));
+
+	if (use_ipvx == 4)
+		r->flags = REPO_FLAGS_USE_IPV4;
+	else if (use_ipvx == 6)
+		r->flags = REPO_FLAGS_USE_IPV6;
 }
 
 static void
-walk_repo_obj(const ucl_object_t *obj, const char *file)
+walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
@@ -517,11 +581,11 @@ walk_repo_obj(const ucl_object_t *obj, const char *file)
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		pkg_debug(1, "PkgConfig: parsing key '%s'", key);
-		r = pkg_repo_find_ident(key);
+		r = pkg_repo_find(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
-			add_repo(cur, r, key);
+			add_repo(cur, r, key, flags);
 		else
 			pkg_emit_error("Ignoring bad configuration entry in %s: %s",
 			    file, ucl_object_emit(cur, UCL_EMIT_YAML));
@@ -529,11 +593,10 @@ walk_repo_obj(const ucl_object_t *obj, const char *file)
 }
 
 static void
-load_repo_file(const char *repofile)
+load_repo_file(const char *repofile, pkg_init_flags flags)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
-	bool fallback = false;
 	const char *myarch = NULL;
 
 	p = ucl_parser_new(0);
@@ -545,40 +608,22 @@ load_repo_file(const char *repofile)
 	if (!ucl_parser_add_file(p, repofile)) {
 		pkg_emit_error("Error parsing: %s: %s", repofile,
 		    ucl_parser_get_error(p));
-		if (errno == ENOENT) {
-			ucl_parser_free(p);
-			return;
-		}
-		fallback = true;
-	}
-
-	if (fallback) {
-		obj = yaml_to_ucl(repofile, NULL, 0);
-		if (obj == NULL)
-			return;
-	}
-
-	if (fallback) {
-		pkg_emit_error("%s file is using a deprecated format. "
-		    "Please replace it with the following:\n"
-		    "====== BEGIN %s ======\n"
-		    "%s"
-		    "\n====== END %s ======\n",
-		    repofile, repofile,
-		    ucl_object_emit(obj, UCL_EMIT_YAML),
-		    repofile);
+		ucl_parser_free(p);
+		return;
 	}
 
 	obj = ucl_parser_get_object(p);
+	if (obj == NULL)
+		return;
 
 	if (obj->type == UCL_OBJECT)
-		walk_repo_obj(obj, repofile);
+		walk_repo_obj(obj, repofile, flags);
 
 	ucl_object_unref(obj);
 }
 
 static void
-load_repo_files(const char *repodir)
+load_repo_files(const char *repodir, pkg_init_flags flags)
 {
 	struct dirent *ent;
 	DIR *d;
@@ -599,44 +644,40 @@ load_repo_files(const char *repodir)
 			    repodir,
 			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
 			    ent->d_name);
-			load_repo_file(path);
+			load_repo_file(path, flags);
 		}
 	}
 	closedir(d);
 }
 
 static void
-load_repositories(const char *repodir)
+load_repositories(const char *repodir, pkg_init_flags flags)
 {
 	const pkg_object *reposlist, *cur;
 	pkg_iter it = NULL;
 
 	if (repodir != NULL) {
-		load_repo_files(repodir);
+		load_repo_files(repodir, flags);
 		return;
 	}
 
 	reposlist = pkg_config_get( "REPOS_DIR");
 	while ((cur = pkg_object_iterate(reposlist, &it)))
-		load_repo_files(pkg_object_string(cur));
+		load_repo_files(pkg_object_string(cur), flags);
 }
 
 bool
 pkg_compiled_for_same_os_major(void)
 {
 #ifdef OSMAJOR
-	struct utsname	u;
-	int		osmajor;
+	const char	*myabi;
+	int		 osmajor;
 
-	/* Are we running the same OS major version as the one we were
-	 * compiled under? */
+	myabi = pkg_object_string(pkg_config_get("ABI"));
+	myabi = strchr(myabi,':');
+	myabi++;
 
-	if (uname(&u) != 0) {
-		pkg_emit_error("Cannot determine OS version number");
-		return (true);	/* Can't tell, so assume yes  */
-	}
-
-	osmajor = (int) strtol(u.release, NULL, 10);
+	osmajor = (int) strtol(myabi, NULL, 10);
 
 	return (osmajor == OSMAJOR);
 #else
@@ -647,6 +688,12 @@ pkg_compiled_for_same_os_major(void)
 
 int
 pkg_init(const char *path, const char *reposdir)
+{
+	return (pkg_ini(path, reposdir, 0));
+}
+
+int
+pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 {
 	struct ucl_parser *p = NULL;
 	size_t i;
@@ -659,10 +706,20 @@ pkg_init(const char *path, const char *reposdir)
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
+	bool fatal_errors = false;
+
+	k = NULL;
+	o = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
+		return (EPKG_FATAL);
+	}
+
+	if (((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4) &&
+	    ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)) {
+		pkg_emit_error("Invalid flags for pkg_init()");
 		return (EPKG_FATAL);
 	}
 
@@ -748,7 +805,7 @@ pkg_init(const char *path, const char *reposdir)
 	obj = NULL;
 	if (!ucl_parser_add_file(p, path)) {
 		if (errno != ENOENT)
-			pkg_emit_error("%s", ucl_parser_get_error(p));
+			pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
 	} else {
 		obj = ucl_parser_get_object(p);
 
@@ -760,8 +817,20 @@ pkg_init(const char *path, const char *reposdir)
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
 			sbuf_putc(ukey, toupper(key[i]));
-		sbuf_done(ukey);
+		sbuf_finish(ukey);
 		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
+
+		if (strncasecmp(sbuf_data(ukey), "PACKAGESITE", sbuf_len(ukey))
+		    == 0 || strncasecmp(sbuf_data(ukey), "PUBKEY",
+		    sbuf_len(ukey)) == 0 || strncasecmp(sbuf_data(ukey),
+		    "MIRROR_TYPE", sbuf_len(ukey)) == 0) {
+			pkg_emit_error("%s in pkg.conf is no longer "
+			    "supported.  Convert to the new repository style."
+			    "  See pkg.conf(5)", sbuf_data(ukey));
+			fatal_errors = true;
+			continue;
+		}
+
 		/* ignore unknown keys */
 		if (object == NULL)
 			continue;
@@ -773,14 +842,20 @@ pkg_init(const char *path, const char *reposdir)
 
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(ncfg, ucl_object_ref(cur), key, strlen(key), false);
+		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
+	}
+
+	if (fatal_errors) {
+		ucl_object_unref(ncfg);
+		ucl_parser_free(p);
+		return (EPKG_FATAL);
 	}
 
 	if (ncfg != NULL) {
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
 		ucl_object_unref(ncfg);
 	}
@@ -872,7 +947,7 @@ pkg_init(const char *path, const char *reposdir)
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
 		ucl_object_unref(ncfg);
 	}
@@ -892,14 +967,15 @@ pkg_init(const char *path, const char *reposdir)
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
-	while ((cur = ucl_iterate_object(o, &it, true))) {
+	while ((cur = ucl_iterate_object(object, &it, true))) {
 		evkey = ucl_object_key(cur);
+		pkg_debug(1, "Setting env var: %s", evkey);
 		if (evkey != NULL && evkey[0] != '\0')
 			setenv(evkey, ucl_object_tostring_forced(cur), 1);
 	}
 
 	/* load the repositories */
-	load_repositories(reposdir);
+	load_repositories(reposdir, flags);
 
 	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
@@ -911,23 +987,59 @@ pkg_init(const char *path, const char *reposdir)
 	return (EPKG_OK);
 }
 
+static struct pkg_repo_ops*
+pkg_repo_find_type(const char *type)
+{
+	struct pkg_repo_ops *found = NULL, **cur;
+
+	/* Default repo type */
+	if (type == NULL)
+		return (pkg_repo_find_type("binary"));
+
+	cur = &repos_ops[0];
+	while (*cur != NULL) {
+		if (strcasecmp(type, (*cur)->type) == 0) {
+			found = *cur;
+		}
+		cur ++;
+	}
+
+	if (found == NULL)
+		return (pkg_repo_find_type("binary"));
+
+	return (found);
+}
+
 static struct pkg_repo *
-pkg_repo_new(const char *name, const char *url)
+pkg_repo_new(const char *name, const char *url, const char *type)
 {
 	struct pkg_repo *r;
 
 	r = calloc(1, sizeof(struct pkg_repo));
-	r->type = REPO_BINARY_PKGS;
-	r->update = pkg_repo_update_binary_pkgs;
+	r->ops = pkg_repo_find_type(type);
 	r->url = strdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
-	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
+	r->name = strdup(name);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
 	return (r);
+}
+
+static void
+pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
+    const char *type)
+{
+
+	free(r->name);
+	free(r->url);
+	r->name = strdup(name);
+	r->url = strdup(url);
+	r->ops = pkg_repo_find_type(type);
+	HASH_DEL(repos, r);
+	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
@@ -994,23 +1106,6 @@ pkg_repo_url(struct pkg_repo *r)
 	return (r->url);
 }
 
-/* The repo identifier from pkg.conf(5): without the 'repo-' prefix */
-const char *
-pkg_repo_ident(struct pkg_repo *r)
-{
-	return (r->name + strlen(REPO_NAME_PREFIX));
-}
-
-/* Ditto: The repo identifier from pkg.conf(5): without the 'repo-' prefix */
-const char *
-pkg_repo_ident_from_name(const char *repo_name)
-{
-	if (repo_name == NULL)
-		return "local";
-
-	return (repo_name + strlen(REPO_NAME_PREFIX));
-}
-
 /* The basename of the sqlite DB file and the database name */
 const char *
 pkg_repo_name(struct pkg_repo *r)
@@ -1048,27 +1143,10 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
-/* Locate the repo by the identifying tag from pkg.conf(5) */
-struct pkg_repo *
-pkg_repo_find_ident(const char *repoident)
-{
-	struct pkg_repo *r;
-	char *name;
-
-	asprintf(&name, REPO_NAME_PREFIX"%s", repoident);
-	if (name == NULL)
-		return (NULL);	/* Out of memory */
-
-	r = pkg_repo_find_name(name);
-	free(name);
-
-	return (r);
-}
-
 
 /* Locate the repo by the file basename / database name */
 struct pkg_repo *
-pkg_repo_find_name(const char *reponame)
+pkg_repo_find(const char *reponame)
 {
 	struct pkg_repo *r;
 

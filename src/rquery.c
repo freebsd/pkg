@@ -32,6 +32,7 @@
 
 #include <ctype.h>
 #include <err.h>
+#include <getopt.h>
 #include <inttypes.h>
 #include <pkg.h>
 #include <stdio.h>
@@ -81,51 +82,65 @@ usage_rquery(void)
 static void
 print_index(struct pkg *pkg, const char *portsdir)
 {
-	const pkg_object *obj, *list;
-	pkg_iter iter = NULL;
 
-	pkg_printf("%n-%v|%S/%o|%p|%c|%S/%o/pkg-descr|%m|",
-	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg);
-	pkg_get(pkg, PKG_CATEGORIES, &list);
-	while ((obj = pkg_object_iterate(list, &iter)))
-		pkg_printf("%Cn ", obj);
-	printf("\n");
+	pkg_printf(
+	    "%n-%v|"			/* PKGNAME */
+	    "%S/%o|"			/* PORTDIR */
+	    "%p|"			/* PREFIX */
+	    "%c|"			/* COMMENT */
+	    "%S/%o/pkg-descr|"		/* _DESCR */
+	    "%m|"			/* MAINTAINER */
+	    "%C%{%Cn%| %}|"		/* CATEGORIES */
+	    "|"				/* BUILD_DEPENDS */
+	    "%d%{%dn-%dv%| %}|"		/* RUN_DEPENDS */
+	    "%w|"			/* WWW */
+	    "|"				/* EXTRACT_DEPENDS */
+	    "|"				/* PATCH_DEPENDS */
+	    "\n",			/* FETCH_DEPENDS */
+	    pkg, pkg, portsdir, pkg, pkg, pkg, portsdir, pkg, pkg, pkg, pkg,
+	    pkg);
 }
 
 int
 exec_rquery(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	char *pkgname = NULL;
-	int query_flags = PKG_LOAD_BASIC;
-	match_t match = MATCH_EXACT;
-	int ch;
-	int ret = EPKG_OK;
-	int retcode = EX_OK;
-	int i;
-	char multiline = 0;
-	char *condition = NULL;
-	const char *portsdir;
-	struct sbuf *sqlcond = NULL;
-	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
-	const char *reponame = NULL;
-	bool auto_update;
-	bool onematched = false;
-	bool old_quiet;
-	bool index_output = false;
+	struct pkgdb		*db = NULL;
+	struct pkgdb_it		*it = NULL;
+	struct pkg		*pkg = NULL;
+	char			*pkgname = NULL;
+	int			 query_flags = PKG_LOAD_BASIC;
+	match_t			 match = MATCH_EXACT;
+	int			 ch;
+	int			 ret = EPKG_OK;
+	int			 retcode = EX_OK;
+	int			 i;
+	char			 multiline = 0;
+	char			*condition = NULL;
+	const char		*portsdir;
+	struct sbuf		*sqlcond = NULL;
+	const unsigned int	 q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
+	const char		*reponame = NULL;
+	bool			 auto_update;
+	bool			 onematched = false;
+	bool			 old_quiet;
+	bool			 index_output = false;
 
-	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
+	struct option longopts[] = {
+		{ "all",		no_argument,		NULL,	'a' },
+		{ "case-sensitive",	no_argument,		NULL,	'C' },
+		{ "evaluate",		required_argument,	NULL,	'e' },
+		{ "glob",		no_argument,		NULL,	'g' },
+		{ "case-insensitive",	no_argument,		NULL,	'i' },
+		{ "index-line",		no_argument,		NULL,	'I' },
+		{ "repository",		required_argument,	NULL,	'r' },
+		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "regex",		no_argument,		NULL,	'x' },
+		{ NULL,			0,			NULL,	0   },
+	};
 
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
-
-	while ((ch = getopt(argc, argv, "aCgiIxe:r:U")) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -133,27 +148,27 @@ exec_rquery(int argc, char **argv)
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
 			break;
+		case 'e':
+			match = MATCH_CONDITION;
+			condition = optarg;
+			break;
 		case 'g':
 			match = MATCH_GLOB;
-			break;
-		case 'I':
-			index_output = true;
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'e':
-			match = MATCH_CONDITION;
-			condition = optarg;
+		case 'I':
+			index_output = true;
 			break;
 		case 'r':
 			reponame = optarg;
 			break;
 		case 'U':
 			auto_update = false;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
 			break;
 		default:
 			usage_rquery();
@@ -173,7 +188,7 @@ exec_rquery(int argc, char **argv)
 	if (!index_output) {
 		if (argc == 1 && condition == NULL && match == MATCH_EXACT) {
 			match = MATCH_ALL;
-		} else if ((argc == 1) ^ (match == MATCH_ALL ) && condition == NULL) {
+		} else if (((argc == 1) ^ (match == MATCH_ALL )) && condition == NULL) {
 			usage_rquery();
 			return (EX_USAGE);
 		}
@@ -202,7 +217,7 @@ exec_rquery(int argc, char **argv)
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;
 	quiet = true;
-	if (auto_update && (ret = pkgcli_update(false, reponame)) != EPKG_OK)
+	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK)
 		return (ret);
 	quiet = old_quiet;
 
@@ -211,13 +226,13 @@ exec_rquery(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (index_output)
-		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES;
+		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
 		if (match == MATCH_CONDITION && sqlcond)
 			condition_sql = sbuf_data(sqlcond);
-		if ((it = pkgdb_rquery(db, condition_sql, match, reponame)) == NULL)
+		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
@@ -235,7 +250,7 @@ exec_rquery(int argc, char **argv)
 		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_rquery(db, pkgname, match, reponame)) == NULL)
+			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL)
 				return (EX_IOERR);
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
