@@ -2156,7 +2156,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			else if (p->type != PKG_FILE)
 				continue;
 		}
-		if ((res = pkg_conflicts_append_pkg(p, j)) != EPKG_OK)
+		if ((res = pkg_conflicts_append_chain(p, j)) != EPKG_OK)
 			ret = res;
 		else
 			added ++;

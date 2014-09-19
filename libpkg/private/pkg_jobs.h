@@ -208,7 +208,8 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 /*
  * Append conflicts to a package
  */
-int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
+int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
+	struct pkg_jobs *j);
 /*
  * Perform integrity check for the jobs specified
  */

@@ -325,11 +325,64 @@ pkg_conflicts_add_from_pkgdb_remote(const char *o1, const char *o2, void *ud)
 	}
 }
 
-int
-pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j)
+static void
+pkg_conflicts_check_local_conflict(struct pkg_job_universe_item *it,
+	struct pkg_job_universe_item *local, struct pkg_jobs *j)
 {
-	/* Now we can get conflicts only from pkgdb */
-	return (pkgdb_integrity_append(j->db, p, pkg_conflicts_add_from_pkgdb_remote, j));
+	struct pkg_file *fcur, *ftmp, *ff;
+	struct pkg_dir *dcur, *dtmp, *df;
+
+	HASH_ITER(hh, it->pkg->files, fcur, ftmp) {
+		if (local != NULL) {
+			/* Filter only new files for remote packages */
+			HASH_FIND_STR(local->pkg->files, fcur->path, ff);
+			if (ff != NULL)
+				continue;
+		}
+		/* Check for local conflict in db */
+	}
+	HASH_ITER(hh, it->pkg->dirs, dcur, dtmp) {
+		if (local != NULL) {
+			HASH_FIND_STR(local->pkg->dirs, dcur->path, df);
+			if (df != NULL)
+				continue;
+		}
+		/* Check for local conflict in db */
+	}
+}
+
+int
+pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
+	struct pkg_jobs *j)
+{
+	struct pkg_job_universe_item *lp = NULL, *cur;
+
+	/* Find local package */
+	cur = it->prev;
+	while (cur != it) {
+		if (cur->pkg->type == PKG_INSTALLED) {
+			lp = cur;
+			if (pkgdb_ensure_loaded(j->db, PKG_LOAD_FILES|PKG_LOAD_DIRS)
+							!= EPKG_OK)
+				return (EPKG_FATAL);
+
+			/* Local package is found */
+			break;
+		}
+		cur = cur->prev;
+	}
+
+	/*
+	 * Now we go through the all packages in the chain and check them against
+	 * conflicts with the locally installed files
+	 */
+	cur = it;
+	do {
+		if (cur != lp)
+			pkg_conflicts_check_local_conflict(cur, lp, j);
+
+		cur = cur->prev;
+	} while (cur != it);
 }
 
 int
