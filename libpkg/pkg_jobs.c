@@ -1764,7 +1764,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	p = NULL;
 	pkg_manifest_keys_new(&keys);
 	/* Install */
-	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
+	if ((retcode = pkgdb_transaction_begin(j->db->sqlite, "upgrade")) !=
+	    EPKG_OK)
+		return (retcode);
 
 	pkg_jobs_set_priorities(j);
 
