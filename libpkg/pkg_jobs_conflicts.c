@@ -460,7 +460,7 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	}
 	HASH_ITER(hh, it->pkg->dirs, dcur, dtmp) {
 		memset(&k, 0, sizeof(k));
-		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, &k);
+		cun = pkg_conflicts_check_all_paths(j, dcur->path, it, &k);
 
 		if (local != NULL) {
 			HASH_FIND_STR(local->pkg->dirs, dcur->path, df);
