@@ -29,7 +29,7 @@ pkg_config_defaults_body()
 	-o match:'^ *ASSUME_ALWAYS_YES = false;$' \
 	-o match:'^ *PLIST_KEYWORDS_DIR = "";$' \
 	-o match:'^ *SYSLOG = true;$' \
-	-o match:'^ *ABI = "[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+";$' \
+	-o match:'^ *ALTABI = "[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+";$' \
 	-o match:'^ *DEVELOPER_MODE = false;$' \
 	-o match:'^ *VULNXML_SITE = "http://www.vuxml.org/freebsd/vuln.xml.bz2";$' \
 	-o match:'^ *FETCH_RETRY = 3;$' \
