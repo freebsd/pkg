@@ -673,8 +673,8 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 #undef MOVE
 }
 
-int
-pkg_get_myarch(char *dest, size_t sz)
+static int
+pkg_get_myarch_elfparse(char *dest, size_t sz)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -687,7 +687,6 @@ pkg_get_myarch(char *dest, size_t sz)
 	char *osname;
 	uint32_t version = 0;
 	int ret = EPKG_OK;
-	int i;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	const char *path;
 
@@ -756,9 +755,6 @@ pkg_get_myarch(char *dest, size_t sz)
 		version = be32dec(src);
 	else
 		version = le32dec(src);
-
-	for (i = 0; osname[i] != '\0'; i++)
-		osname[i] = (char)tolower(osname[i]);
 
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
@@ -891,6 +887,53 @@ cleanup:
 
 	close(fd);
 	return (ret);
+}
+
+int
+pkg_get_myarch_legacy(char *dest, size_t sz)
+{
+	int i, err;
+
+	err = pkg_get_myarch_elfparse(dest, sz);
+	if (err)
+		return (err);
+
+	for (i = 0; i < strlen(dest); i++)
+		dest[i] = tolower(dest[i]);
+
+	return (0);
+}
+
+int
+pkg_get_myarch(char *dest, size_t sz)
+{
+	struct arch_trans *arch_trans;
+	char *arch_tweak;
+
+	int err;
+	err = pkg_get_myarch_elfparse(dest, sz);
+	if (err)
+		return (err);
+
+	/* Translate architecture string back to regular OS one */
+	arch_tweak = strchr(dest, ':');
+	if (arch_tweak == NULL)
+		return (0);
+	arch_tweak++;
+	arch_tweak = strchr(arch_tweak, ':');
+	if (arch_tweak == NULL)
+		return (0);
+	arch_tweak++;
+	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
+	    arch_trans++) {
+		if (strcmp(arch_tweak, arch_trans->elftype) == 0) {
+			strlcpy(arch_tweak, arch_trans->archid,
+			    sz - (arch_tweak - dest));
+			break;
+		}
+	}
+
+	return (0);
 }
 
 int

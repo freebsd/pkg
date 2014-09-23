@@ -566,12 +566,14 @@ check_for_hardlink(struct hardlinks **hl, struct stat *st)
 
 bool
 is_valid_abi(const char *arch, bool emit_error) {
-	const char *myarch;
+	const char *myarch, *myarch_legacy;
 
 	myarch = pkg_object_string(pkg_config_get("ABI"));
+	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 
 	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    strncmp(arch, myarch, strlen(myarch)) != 0) {
+	    strncasecmp(arch, myarch, strlen(myarch)) != 0 &&
+	    strncasecmp(arch, myarch_legacy, strlen(myarch_legacy)) != 0) {
 		if (emit_error)
 			pkg_emit_error("wrong architecture: %s instead of %s",
 			    arch, myarch);

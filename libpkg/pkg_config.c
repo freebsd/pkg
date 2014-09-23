@@ -71,7 +71,7 @@ struct config_entry {
 	const char *desc;
 };
 
-static char myabi[BUFSIZ];
+static char myabi[BUFSIZ], myabi_legacy[BUFSIZ];
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -141,6 +141,12 @@ static struct config_entry c[] = {
 		"ABI",
 		myabi,
 		"Override the automatically detected ABI",
+	},
+	{
+		PKG_STRING,
+		"ALTABI",
+		myabi_legacy,
+		"Override the automatically detected old-form ABI",
 	},
 	{
 		PKG_BOOL,
@@ -712,6 +718,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	o = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
+	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
