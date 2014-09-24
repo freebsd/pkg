@@ -691,11 +691,8 @@ pkg_repo_binary_update_incremental(const char *name, struct pkg_repo *repo,
 		offset = strsep(&p, ":");
 		/* files offset */
 		strsep(&p, ":");
-		if (p)
-			length = strsep(&p, ":\n");
-		/* Checksum */
-		if (p)
-			checksum = strsep(&p, ":\n");
+		length = p ? strsep(&p, ":\n") : NULL;
+		checksum = p ? strsep(&p, ":\n") : NULL;
 
 		if (origin == NULL || digest == NULL ||
 				offset == NULL) {
