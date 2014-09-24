@@ -604,11 +604,15 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	const char *myarch = NULL;
+	const char *myarch_legacy = NULL;
 
 	p = ucl_parser_new(0);
 
 	myarch = pkg_object_string(pkg_config_get("ABI"));
 	ucl_parser_register_variable (p, "ABI", myarch);
+
+	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
+	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
 
 	pkg_debug(1, "PKgConfig: loading %s", repofile);
 	if (!ucl_parser_add_file(p, repofile)) {
