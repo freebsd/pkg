@@ -1045,9 +1045,11 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 {
 
 	free(r->name);
-	free(r->url);
 	r->name = strdup(name);
-	r->url = strdup(url);
+	if (url != NULL) {
+		free(r->url);
+		r->url = strdup(url);
+	}
 	r->ops = pkg_repo_find_type(type);
 	HASH_DEL(repos, r);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
