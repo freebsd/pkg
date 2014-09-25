@@ -10,6 +10,66 @@ fi
 
 . /etc/periodic/security/security.functions
 
+checksum_pkg() {
+    local pkgargs="$1"
+    local rc
+
+    rc=$(${pkgcmd} ${pkgargs} check -sa 2>&1 |
+	sed -e 's/ checksum mismatch for//' |
+	tee /dev/stderr |
+	wc -l)
+    [ $rc -gt 1 ] && rc=1
+
+    return $rc
+}
+
+checksum_pkg_all() {
+    local rc
+
+    : ${daily_status_security_pkg_checksum_chroots=$pkg_chroots}
+    : ${daily_status_security_pkg_checksum_jails=$pkg_jails}
+
+    # We always check the checksums for the host system, but only
+    # print a banner line if we're also checking on any chroots or
+    # jails.
+
+    if [ -n "${daily_status_security_pkg_checksum_chroots}" -o \
+	 -n "${daily_status_security_pkg_checksum_jails}" ];
+    then
+	echo "Host system:"
+    fi
+
+    checksum_pkg ''
+
+    for c in $daily_status_security_pkg_checksum_chroots ; do
+	echo
+	echo "chroot: $c"
+	checksum_pkg "-c $c"
+	[ $? -eq 1 ] && rc=1
+    done
+
+    case $daily_status_security_pkg_checksum_jails in
+	\*)
+	    jails=$(jls -q -h name | sed -e 1d)
+	    ;;
+	'')
+	    jails=
+	    ;;
+	*)
+	    jails=$daily_status_security_pkg_checksum_jails
+	    ;;
+    esac
+
+    for j in $jails ; do
+	echo
+	echo "jail: $j"
+	checksum_pkg "-j $j"
+	[ $? -eq 1 ] && rc=1
+    done
+
+    return $rc
+}
+
 case "${daily_status_security_pkg_checksum_enable}" in
 	[Yy][Ee][Ss])
 	pkgcmd=@prefix@/sbin/pkg
@@ -21,11 +81,8 @@ case "${daily_status_security_pkg_checksum_enable}" in
 		echo 'pkg-checksum is enabled but pkg is not used'
 		rc=2
 	else
-		rc=$(${pkgcmd} check -sa 2>&1 |
-		sed -e 's/ checksum mismatch for//' |
-		tee /dev/stderr |
-		wc -l)
-		[ $rc -gt 1 ] && rc=1
+	    checksum_pkg_all
+	    rc=$?
 	fi
 	;;
 	*)
