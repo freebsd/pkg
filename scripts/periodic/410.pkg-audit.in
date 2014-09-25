@@ -1,6 +1,7 @@
 #!/bin/sh -f
 #
 # Copyright (c) 2004 Oliver Eikemeier. All rights reserved.
+# Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -41,6 +42,93 @@ pkgcmd=@prefix@/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
 auditfile="${PKG_DBDIR}/vuln.xml"
 
+audit_pkgs() {
+    local pkgargs="$1"
+    local basedir="$2"
+    local rc
+    local then
+    local now
+    
+    then=`stat -f '%m' "${basedir}${auditfile}" 2> /dev/null` || rc=3
+    now=`date +%s` || rc=3
+    # Add 10 minutes of padding since the check is in seconds.
+    if [ $rc -ne 0 -o \
+	$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
+	-le $(( ${now} - ${then} + 600 )) ]; then
+	${pkgcmd} ${pkgargs} audit -F $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
+    else
+	echo -n 'Database fetched: '
+	date -r "${then}" || rc=3
+	${pkgcmd} ${pkgargs} audit $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
+    fi
+
+    return $rc
+}
+
+# Use $pkg_chroots to provide a default list of chroots, and
+# $pkg_jails to provide a default list of jails (or '*' for all jails)
+# for all pkg periodic scripts, or set
+# $daily_status_security_pkgaudit_chroots and
+# $daily_status_security_pkgaudit_jails for this script only.
+
+audit_pkgs_all() {
+    local rc
+    local last_rc
+    local jails
+
+    : ${daily_status_security_pkgaudit_chroots=$pkg_chroots}
+    : ${daily_status_security_pkgaudit_jails=$pkg_jails}
+
+    # We always show audit results for the base system, but only print
+    # a banner line if we're also showing audit results for any
+    # chroots or jails.
+
+    if [ -n "${daily_status_security_pkgaudit_chroots}" -o \
+	 -n "${daily_status_security_pkgaudit_jails}" ];
+    then
+	echo "Host system:"
+    fi
+
+    audit_pkgs '' ''
+    last_rc=$?
+    [ $last_rc -gt 1 ] && rc=$last_rc 
+
+    for c in $daily_status_security_pkgaudit_chroots ; do
+	echo
+	echo "chroot: $c"
+	audit_pkgs "-c $c" $c
+	last_rc=$?
+	[ $last_rc -gt 1 ] && rc=$last_rc 
+    done
+
+    case $daily_status_security_pkgaudit_jails in
+	\*)
+	    jails=$(jls -q -h name path | sed -e 1d -e 's/ /|/')
+	    ;;
+	'')
+	    jails=
+	    ;;
+	*)
+	    # Given the jail name or jid, find the jail path
+	    jails=
+	    for j in $daily_status_security_pkgaudit_jails ; do
+		p=$(jls -j $j -h name path | sed -e 1d -e 's/ /|/')
+		jails="${jails} ${p}"
+	    done
+	    ;;
+    esac
+
+    for j in $jails ; do
+	echo
+	echo "jail: ${j%|*}"
+	audit_pkgs "-j ${j%|*}" ${j##*|}
+	last_rc=$?
+	[ $last_rc -gt 1 ] && rc=$last_rc 
+    done
+
+    return $rc
+}
+
 rc=0
 
 case "${daily_status_security_pkgaudit_enable:-YES}" in
@@ -64,18 +152,7 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 			;;
 		esac
 
-		then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
-		now=`date +%s` || rc=3
-		# Add 10 minutes of padding since the check is in seconds.
-		if [ $rc -ne 0 -o \
-			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
-			-le $(( ${now} - ${then} + 600 )) ]; then
-			${pkgcmd} audit -F $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
-		else
-			echo -n 'Database fetched: '
-			date -r "${then}" || rc=3
-			${pkgcmd} audit $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
-		fi
+		audit_pkgs_all ; rc=$?
 	fi
 	;;
 esac
