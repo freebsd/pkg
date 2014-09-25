@@ -14,7 +14,7 @@ checksum_pkg() {
     local pkgargs="$1"
     local rc
 
-    rc=$(${pkgcmd} ${pkgargs} check -sa 2>&1 |
+    rc=$(${pkgcmd} ${pkgargs} check -qsa 2>&1 |
 	sed -e 's/ checksum mismatch for//' |
 	tee /dev/stderr |
 	wc -l)
