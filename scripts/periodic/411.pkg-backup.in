@@ -10,11 +10,103 @@ fi
 
 rc=0
 
-case "${daily_backup_pkgng_enable:-YES}" in
+
+backup_pkg() {
+    local pkgargs="$1"
+    local bak_file="$2"
+    local rc
+
+    [ -e "${bak_file}" ] && \
+	mv -f "${bak_file}" "${bak_file}.2"
+
+    if ${pkgcmd} ${pkgargs} shell .dump | xz -c > ${bak_file}; then
+	rc=0
+    else
+	rc=3
+    fi
+    
+    return $rc
+}
+
+backup_pkg_all() {
+    local bak=$1
+    local last_rc
+
+    : ${daily_backup_pkg_chroots=$pkg_chroots}
+    : ${daily_backup_pkg_jails=$pkg_jails}
+
+    if [ ! -d $bak ]
+    then
+	install -d -o root -g wheel -m 750 $bak || {
+	    echo 'pkg-backup is enabled but' \
+		"$daily_backup_pkgng_dbdir doesn't exist" ;
+	    exit 2 ; }
+    fi
+
+    echo
+    echo 'Backing up pkgng database:'
+
+    # We always backup the pkg database for the host system, but only
+    # print a banner line if we're also backing up for any chroots or
+    # jails.
+
+    if [ -n "${daily_backup_pkg_chroots}" -o \
+	 -n "${daily_backup_pkg_jails}" ];
+    then
+	echo "Host system:"
+    fi
+
+    backup_pkg '' "${bak}/pkg.sql.xz"
+    rc=$?
+
+    for c in $daily_backup_pkg_chroots ; do
+	echo
+	echo "chroot: $c"
+	bak_file="${bak}/pkg.chroot-$(echo $c | tr -C a-zA-Z0-9.- _).sql.xz"
+	backup_pkg "-c $c" $bak_file
+	last_rc=$?
+	[ $last_rc -gt 1 ] && rc=$last_rc
+    done
+
+    case $daily_backup_pkg_jails in
+	\*)
+	    jails=$(jls -q -h name | sed -e 1d)
+	    ;;
+	'')
+	    jails=
+	    ;;
+	*)
+	    jails=$daily_backup_pkg_jails
+	    ;;
+    esac
+
+    for j in $jails ; do
+	echo
+	echo "jail: $j"
+	bak_file="${bak}/pkg.jail-$(echo $j | tr -C a-zA-Z0-9._- _).sql.xz"
+	backup_pkg "-j $j" $bak_file
+	last_rc=$?
+	[ $last_rc -gt 1 ] && rc=$last_rc
+    done
+
+    return $rc
+}
+
+# $daily_backup_pkgng_{enable,dir} are deprecated -- use
+# daily_backup_pkg_{enable,dir} instead.
+
+case "$daily_backup_pkgng_enable" in
+    [Yy][Ee][Ss])
+	: ${daily_backup_pkg_enable:="$daily_backup_pkgng_enable"}
+	: ${daily_backup_pkg_dir:="$daily_backup_pkgng_dir"}
+	;;
+esac
+
+case "${daily_backup_pkg_enable:-YES}" in
 	[Nn][Oo])
 	;;
 	*)
-	bak="${daily_backup_pkgng_dir:-/var/backups}"
+	bak="${daily_backup_pkg_dir:-/var/backups}"
 	bak_file="${bak}/pkg.sql.xz"
 	pkgcmd=@prefix@/sbin/pkg
 
@@ -22,25 +114,7 @@ case "${daily_backup_pkgng_enable:-YES}" in
 		echo 'pkg-backup is enabled but pkg is not used'
 		rc=2
  	else
-		if [ ! -d "$bak" ]
-		then
-			install -d -o root -g wheel -m 750 $bak || {
-			echo 'pkg-backup is enabled but' \
-				"$daily_backup_pkgng_dbdir doesn't exist" ;
-			exit 2 ; }
-		fi
-
-		echo
-		echo 'Backing up pkgng database:'
-
-		[ -e "${bak_file}" ] && \
-			mv -f "${bak_file}" "${bak_file}.2"
-
-		if ${pkgcmd} shell .dump | xz -c > ${bak_file}; then
-			rc=0
-		else
-			rc=3
-		fi
+	    backup_pkg_all $bak
 	fi
 	;;
 esac
