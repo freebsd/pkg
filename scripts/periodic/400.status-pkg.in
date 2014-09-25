@@ -86,7 +86,7 @@ status_pkg_all() {
 
 case "$weekly_status_pkgng_enable" in
         [Yy][Ee][Ss])
-	weekly_status_pkg_enable="$weekly_status_pkgng_enable"
+	: ${weekly_status_pkg_enable="$weekly_status_pkgng_enable"}
 	;;
 esac
 
