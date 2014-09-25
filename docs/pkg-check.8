@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd September 26, 2014
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -24,12 +24,12 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Bdsr
-.Op Fl nvy
+.Op Fl nqvy
 .Op Fl a | Cgix Ar pattern
 .Pp
 .Nm
 .Op Cm --{shlibs,dependencies,checksums,recompute}
-.Op Cm --{dry-run,verbose,yes}
+.Op Cm --{dry-run,quiet,verbose,yes}
 .Op Cm --all | Cm --{case-sensitive,glob,case-insensitive,regex} Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -89,6 +89,10 @@ to true in
 Merely check for missing dependencies and do not install them.
 .It Fl v , Cm --verbose
 Be verbose.
+.It Fl q , Cm --quiet
+Suppress most output, except for error messages and data that the
+command explicitly requests.
+This is primarily intended for scripting use.
 .It Fl x , Cm --regex
 Treat
 .Ar pattern
