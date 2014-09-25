@@ -13,10 +13,13 @@ fi
 # same configuration variables, so allow the setting of 
 # $daily_status_pkgng_changes_enable to turn on this script without
 # enabling the pkg_tools equivalent
+#
+# $daily_status_pkgng_changes_enable is deprecated: use
+# $daily_status_pkg_changes_enable instead.
 
 case "$daily_status_pkgng_changes_enable" in
         [Yy][Ee][Ss])
-	daily_status_pkg_changes_enable="$daily_status_pkgng_changes_enable"
+	: ${daily_status_pkg_changes_enable="$daily_status_pkgng_changes_enable"}
 	;;
 esac
 
