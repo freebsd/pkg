@@ -91,6 +91,48 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)false));
 }
 
+static int
+do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
+    enum action action)
+{
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	int		 retcode;
+	int		 exitcode = EX_OK;
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on database. "
+		      "It is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
+		exitcode = EX_IOERR;
+		goto cleanup;
+	}
+
+	while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
+		if (action == LOCK)
+			retcode = do_lock(db, pkg);
+		else
+			retcode = do_unlock(db, pkg);
+
+		if (retcode != EPKG_OK) {
+			exitcode = EX_IOERR;
+			goto cleanup;
+		}
+	}
+
+cleanup:
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+
+	return (exitcode);
+}
+
 int
 exec_lock(int argc, char **argv)
 {
@@ -108,7 +150,7 @@ list_locked(struct pkgdb *db)
 {
         struct pkgdb_it	*it = NULL;
         struct pkg	*pkg = NULL;
-                         
+
 	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
 		pkgdb_close(db);
 		return (EX_UNAVAILABLE);
@@ -119,6 +161,10 @@ list_locked(struct pkgdb *db)
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_printf("%n-%v\n", pkg, pkg);
 	}
+
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+
 	return (EX_OK);
 }
 
@@ -126,14 +172,13 @@ static int
 exec_lock_unlock(int argc, char **argv, enum action action)
 {
 	struct pkgdb	*db = NULL;
-	struct pkgdb_it	*it = NULL;
-	struct pkg	*pkg = NULL;
 	const char	*pkgname;
 	int		 match = MATCH_EXACT;
 	int		 retcode;
 	int		 exitcode = EX_OK;
 	int		 ch;
 	bool		 show_locked = false;
+	bool		 read_only = false;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -180,9 +225,15 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	argc -= optind;
 	argv += optind;
 
-	
+	/* Allow 'pkg lock -l' (or 'pkg unlock -l') without any
+	 * package arguments to just display what packages are
+	 * currently locked.  In this case, we only need a read_only
+	 * connection to the DB. */
 
-	if (!(match == MATCH_ALL && argc == 0) && argc != 1 && !show_locked) {
+	if (show_locked && match != MATCH_ALL && argc == 0)
+		read_only = true;
+
+	if (!show_locked && match != MATCH_ALL && argc == 0) {
 		usage_lock();
 		return (EX_USAGE);
 	}
@@ -192,7 +243,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	else
 		pkgname = argv[0];
 
-	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+	if (read_only)
+		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	else
+		retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
 		if (match == MATCH_ALL)
@@ -212,43 +266,15 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	if (retcode != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an exclusive lock on database. "
-		      "It is locked by another process");
-		return (EX_TEMPFAIL);
-	}
+	if (!read_only)
+		exitcode = do_lock_unlock(db, match, pkgname, action);
 
-	if (match == MATCH_ALL || argc != 0) {
-		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			exitcode = EX_IOERR;
-			goto cleanup;
-		}
-
-		while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
-			if (action == LOCK)
-				retcode = do_lock(db, pkg);
-			else
-				retcode = do_unlock(db, pkg);
-
-			if (retcode != EPKG_OK) {
-				exitcode = EX_IOERR;
-				goto cleanup;
-			}
-		}
-	}
-
-	if (show_locked) 
+	if (show_locked) { 
 		retcode = list_locked(db);
+		if (retcode != EPKG_END)
+			exitcode = EX_IOERR;
+	}
 
-	if (retcode != EPKG_END)
-		exitcode = EX_IOERR;
-
-cleanup:
-	pkg_free(pkg);
-	pkgdb_it_free(it);
-
-	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 
 	return (exitcode);
