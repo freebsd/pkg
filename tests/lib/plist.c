@@ -70,14 +70,20 @@ ATF_TC_BODY(parse_plist, tc)
 	struct pkg *p;
 	struct plist *plist;
 	char buf[BUFSIZ];
+	const char *prefix;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
-
-	pkg_set(p, PKG_PREFIX, "/myprefix");
 
 	plist = plist_new(p, NULL);
 	ATF_REQUIRE(plist != NULL);
 	ATF_REQUIRE(plist->pkg == p);
+	ATF_REQUIRE_EQ(plist->prefix[0], '\0');
+
+	strlcpy(buf, "@cwd /myprefix", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(p, plist, buf));
+	pkg_get(p, PKG_PREFIX, &prefix);
+	ATF_REQUIRE_STREQ(prefix, "/myprefix");
+
 	ATF_REQUIRE_STREQ(plist->prefix, "/myprefix");
 
 	ATF_REQUIRE_STREQ(plist->uname, "root");
