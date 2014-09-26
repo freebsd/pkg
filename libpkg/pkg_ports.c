@@ -1056,7 +1056,8 @@ plist_new(struct pkg *pkg, const char *stage)
 
 	p->pkg = pkg;
 	pkg_get(pkg, PKG_PREFIX, &prefix);
-	strlcpy(p->prefix, prefix, sizeof(p->prefix));
+	if (prefix != NULL)
+		strlcpy(p->prefix, prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
 	p->uname = strdup("root");
