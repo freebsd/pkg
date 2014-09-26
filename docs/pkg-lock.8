@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd September 26, 2014
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -110,7 +110,10 @@ This is the default, unless modified by setting
 to true in
 .Pa pkg.conf .
 .It Fl l , Cm --show-locked
-Show list of all locked packages after any lock or unlock operations.
+Show a list of all locked packages.
+This can be used without locking or unlocking any packages, in which
+case privileged access to the package database is not required.
+Otherwise it will be displayed after any lock or unlock operations.
 .It Fl q , Cm --quiet
 Operate quietly: do not output anything other than confirmatory questions.
 .It Fl x , Cm --regex
