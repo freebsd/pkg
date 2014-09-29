@@ -293,21 +293,33 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	return (meta_dir(p, line, a, true));
 }
 
+static void
+warn_deprecated_dir(void)
+{
+	static bool warned_deprecated_dir = false;
+
+	if (warned_deprecated_dir)
+		return;
+	warned_deprecated_dir = true;
+
+	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+		pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
+		    " use @dir");
+}
+
 static int
 dirrm(struct plist *p, char *line, struct file_attr *a)
 {
-	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
-		pkg_emit_error("Warning: @dirrm is deprecated please use @dir");
 
+	warn_deprecated_dir();
 	return (meta_dir(p, line, a, false));
 }
 
 static int
 dirrmtry(struct plist *p, char *line, struct file_attr *a)
 {
-	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
-		pkg_emit_error("Warning: @dirrmtry is deprecated please use @dir");
 
+	warn_deprecated_dir();
 	return (meta_dir(p, line, a, true));
 }
 
