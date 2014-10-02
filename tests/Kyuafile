@@ -6,5 +6,6 @@ atf_test_program{name='pkg_validation'}
 atf_test_program{name='pkg_printf'}
 atf_test_program{name='plist'}
 atf_test_program{name='pkg_add_dir_to_del'}
+atf_test_program{name='merge'}
 
 include('frontend/Kyuafile')
