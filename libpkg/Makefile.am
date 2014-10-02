@@ -51,7 +51,9 @@ libpkg_la_SOURCES=	pkg.c \
 			scripts.c \
 			utils.c \
 			plugins.c \
-			pkg_old.c
+			pkg_old.c \
+			merge3.c \
+			diff.c
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
 libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \

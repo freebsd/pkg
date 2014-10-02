@@ -128,5 +128,7 @@ int pkg_symlink_cksumat(int fd, const char *path, const char *root,
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 void *parse_mode(const char *str);
+int *text_diff(char *a, char *b);
+int merge_3way(char *pivot, char *v1, char *v2, struct sbuf *out);
 
 #endif
