@@ -246,10 +246,5 @@ int merge_3way(
   int rc;             /* Return code of subroutines and this routine */
 
   rc = sbuf_merge(pPivot, pV1, pV2, pOut);
-  if( rc!=0 ) {
-	  /* impossible to merge */
-	  /* TODO */
-	  printf("la\n");
-  }
   return rc;
 }
