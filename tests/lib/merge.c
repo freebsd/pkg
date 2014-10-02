@@ -46,6 +46,7 @@ ATF_TC_BODY(merge, tc)
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
 	ATF_REQUIRE_STREQ(sbuf_data(b), "test1\n#test2\ntest3\n");
+	sbuf_delete(b);
 }
 
 ATF_TP_ADD_TCS(tp)
