@@ -171,11 +171,11 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_users(pkg, &user) == EPKG_OK) {
-		pkg_checksum_add_entry("user", pkg_user_name(user), &entries);
+		pkg_checksum_add_entry("user", user->name, &entries);
 	}
 
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		pkg_checksum_add_entry("group", pkg_group_name(group), &entries);
+		pkg_checksum_add_entry("group", group->name, &entries);
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {

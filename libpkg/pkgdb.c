@@ -1755,10 +1755,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_users(pkg, &user) == EPKG_OK) {
-		if (run_prstmt(USERS1, pkg_user_name(user))
+		if (run_prstmt(USERS1, user->name)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(USERS2, package_id, pkg_user_name(user))
+		    run_prstmt(USERS2, package_id, user->name)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(USERS2));
 			goto cleanup;
@@ -1770,10 +1770,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		if (run_prstmt(GROUPS1, pkg_group_name(group))
+		if (run_prstmt(GROUPS1, group->name)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(GROUPS2, package_id, pkg_group_name(group))
+		    run_prstmt(GROUPS2, package_id, group->name)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(GROUPS2));
 			goto cleanup;

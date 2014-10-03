@@ -1157,7 +1157,7 @@ format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_group	*group = data;
 
-	return (string_val(sbuf, pkg_group_gidstr(group), p));
+	return (string_val(sbuf, group->gidstr, p));
 }
 
 /*
@@ -1168,7 +1168,7 @@ format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_group	*group = data;
 
-	return (string_val(sbuf, pkg_group_name(group), p));
+	return (string_val(sbuf, group->name, p));
 }
 
 /*
@@ -1401,7 +1401,7 @@ format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_user	*user = data;
 
-	return (string_val(sbuf, pkg_user_name(user), p));
+	return (string_val(sbuf, user->name, p));
 }
 
 /*
@@ -1412,7 +1412,7 @@ format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_user	*user = data;
 
-	return (string_val(sbuf, pkg_user_uidstr(user), p));
+	return (string_val(sbuf, user->uidstr, p));
 }
 
 /*

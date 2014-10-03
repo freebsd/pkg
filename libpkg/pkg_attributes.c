@@ -149,22 +149,6 @@ pkg_user_free(struct pkg_user *u)
 	free(u);
 }
 
-const char *
-pkg_user_name(struct pkg_user const * const u)
-{
-	assert(u != NULL);
-
-	return (u->name);
-}
-
-const char *
-pkg_user_uidstr(struct pkg_user const * const u)
-{
-	assert(u != NULL);
-
-	return (u->uidstr);
-}
-
 /*
  * Group
  */
@@ -184,22 +168,6 @@ void
 pkg_group_free(struct pkg_group *g)
 {
 	free(g);
-}
-
-const char *
-pkg_group_name(struct pkg_group const * const g)
-{
-	assert(g != NULL);
-
-	return (g->name);
-}
-
-const char *
-pkg_group_gidstr(struct pkg_group const * const g)
-{
-	assert(g != NULL);
-
-	return (g->gidstr);
 }
 
 /*

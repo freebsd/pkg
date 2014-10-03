@@ -429,7 +429,7 @@ pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 
 	/* TODO get user uidstr from local database */
 /*	while (pkg_users(pkg, &u) == EPKG_OK) {
-		pwd = getpwnam(pkg_user_name(u));
+		pwd = getpwnam(u->name);
 		if (pwd == NULL)
 			continue;
 		strlcpy(u->uidstr, pw_make(pwd), sizeof(u->uidstr));
@@ -458,7 +458,7 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 	    pkg_addgroup, PKG_GROUPS);
 
 	while (pkg_groups(pkg, &g) == EPKG_OK) {
-		grp = getgrnam(pkg_group_name(g));
+		grp = getgrnam(g->name);
 		if (grp == NULL)
 			continue;
 		strlcpy(g->gidstr, gr_make(grp), sizeof(g->gidstr));

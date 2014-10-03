@@ -66,8 +66,6 @@ global:
 	pkg_from_old;
 	pkg_get2;
 	pkg_get_myarch;
-	pkg_group_gidstr;
-	pkg_group_name;
 	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
@@ -180,8 +178,6 @@ global:
 	pkg_try_installed;
 	pkg_type;
 	pkg_update;
-	pkg_user_name;
-	pkg_user_uidstr;
 	pkg_users;
 	pkg_utils_count_spaces;
 	pkg_utils_tokenize;

@@ -973,7 +973,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	while (pkg_users(pkg, &user) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_user_name(user)));
+		ucl_array_append(seq, ucl_object_fromstring(user->name));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "users", 5, false);
@@ -983,7 +983,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_group_name(group)));
+		ucl_array_append(seq, ucl_object_fromstring(group->name));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "groups", 6, false);
