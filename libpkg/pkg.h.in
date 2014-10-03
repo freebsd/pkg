@@ -564,8 +564,6 @@ int pkg_list_count(const struct pkg *, pkg_list);
  */
 int pkg_deps(const struct pkg *, struct pkg_dep **dep);
 
-struct pkg_dep *pkg_dep_lookup(const struct pkg *, const char *origin);
-
 /**
  * Iterates over the reverse dependencies of the package.
  * That is, the packages which require this package.
@@ -669,17 +667,6 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
 /**
- * update the checksum of a file in the database (and the object)
- * XXX I don't think this function should be part of a public API.
- * @param db A pointer to a struct pkgdb object
- * @param file A pointer to a struct pkg_file object
- * @param sha256 The new checksum
- * @return An error code
- */
-int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
-			 const char *sha256);
-
-/**
  * Read the content of a file into a buffer, then call pkg_set().
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
@@ -694,91 +681,6 @@ int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
 int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
 			   char *version, bool locked);
 
-//int pkg_addfile(struct pkg *, const char *fmt);
-/**
- * Allocate a new struct pkg_file and add it to the files of pkg.
- * @param sha256 The ascii representation of the sha256 or a NULL pointer.
- * @param check_duplicates ensure no duplicate files are added to the pkg?
- * @return An error code.
- */
-int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
-		bool check_duplicates);
-
-/**
- * Allocate a new struct pkg_file and add it to the files of pkg;
- * @param path path of the file
- * @param sha256 The ascii representation of the sha256 or a NULL pointer.
- * @param uname the user name of the file
- * @param gname the group name of the file
- * @param perm the permission
- * @param check_duplicates ensure no duplicate files are added to the pkg?
- * @return An error code.
- */
-int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
-		     const char *uname, const char *gname, mode_t perm,
-		     bool check_duplicates);
-
-/**
- * Add a path
- * @return An error code.
- */
-int pkg_adddir(struct pkg *pkg, const char *path, bool try,
-		    bool check_duplicates);
-
-/**
- * Allocate a new struct pkg_file and add it to the files of pkg;
- * @param path path of the file
- * @param uname the user name of the file
- * @param gname the group name of the file
- * @param perm the permission
- * @return An error code.
- */
-int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
-		    const char *gname, mode_t perm, bool try,
-		    bool check_duplicates);
-
-/**
- * Add a category
- * @return An error code.
- */
-int pkg_addcategory(struct pkg *pkg, const char *name);
-
-/**
- * Add a license
- * @return An error code.
- */
-int pkg_addlicense(struct pkg *pkg, const char *name);
-
-/**
- * Add a user
- * @return An error code.
- */
-int pkg_adduser(struct pkg *pkg, const char *name);
-
-/**
- * Add a group
- * @return An error code.
- */
-int pkg_addgroup(struct pkg *pkg, const char *group);
-
-/**
- * Add a user
- * @return An error code.
- */
-int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
-
-/**
- * Add a gid
- * @return an error code
- */
-int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
-
-/**
- * Allocate a new struct pkg_script and add it to the scripts of pkg.
- * @param path The path to the script on disk.
- @ @return An error code.
- */
-int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
 
 /**
  * Helper which call pkg_addscript() with the content of the file and
@@ -786,51 +688,6 @@ int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
  */
 int pkg_addscript_file(struct pkg *pkg, const char *path);
 int pkg_addscript_fileat(int fd, struct pkg *pkg, const char *path);
-int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
-
-/**
- * Allocate a new struct pkg_option and add it to the options of pkg.
- * @return An error code.
- */
-int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
-
-/**
- * Add a default value to an already existing struct pkg_option
- * @return An error code
- */
-int pkg_addoption_default(struct pkg *pkg, const char *key,
-                          const char *default_value);
-
-/**
- * Add a description to an already exsting struct pkg_option
- * @return An error code.
- */
-int pkg_addoption_description(struct pkg *pkg, const char *key,
-                              const char *description);
-
-/**
- * Add a shared library used by this package
- * @return An error code.
- */
-int pkg_addshlib_required(struct pkg *pkg, const char *name);
-
-/**
- * Add a shared library provided by this package
- * @return An error code.
- */
-int pkg_addshlib_provided(struct pkg *pkg, const char *name);
-
-/**
- * Add a conflict registered with this package
- * @return An error code.
- */
-int pkg_addconflict(struct pkg *pkg, const char *name);
-
-/**
- * Add a provide registered with this package
- * @return An error code.
- */
-int pkg_addprovide(struct pkg *pkg, const char *name);
 
 /**
  * Add annotation key+value pair

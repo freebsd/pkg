@@ -540,6 +540,8 @@ int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res);
+int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
+
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
@@ -578,5 +580,34 @@ struct plist *plist_new(struct pkg *p, const char *stage);
 int plist_parse_line(struct pkg *pkg, struct plist *p, char *line);
 void plist_free(struct plist *);
 const char *pkg_getannotation(const struct pkg *, const char *);
+int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
+
+int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
+int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates);
+int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
+		     const char *uname, const char *gname, mode_t perm,
+		     bool check_duplicates);
+
+
+int pkg_adddir(struct pkg *pkg, const char *path, bool try,
+		    bool check_duplicates);
+int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
+		    const char *gname, mode_t perm, bool try,
+		    bool check_duplicates);
+
+int pkg_addcategory(struct pkg *pkg, const char *name);
+int pkg_addlicense(struct pkg *pkg, const char *name);
+int pkg_adduser(struct pkg *pkg, const char *name);
+int pkg_addgroup(struct pkg *pkg, const char *group);
+int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
+int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
+int pkg_addshlib_required(struct pkg *pkg, const char *name);
+int pkg_addshlib_provided(struct pkg *pkg, const char *name);
+int pkg_addconflict(struct pkg *pkg, const char *name);
+int pkg_addprovide(struct pkg *pkg, const char *name);
+
+int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
+int pkg_addoption_default(struct pkg *pkg, const char *key, const char *default_value);
+int pkg_addoption_description(struct pkg *pkg, const char *key, const char *description);
 
 #endif

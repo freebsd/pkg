@@ -465,19 +465,6 @@ pkg_deps(const struct pkg *pkg, struct pkg_dep **d)
 	HASH_NEXT(pkg->deps, (*d));
 }
 
-struct pkg_dep *
-pkg_dep_lookup(const struct pkg *pkg, const char *origin)
-{
-	struct pkg_dep *d = NULL;
-
-	assert(pkg != NULL);
-	assert(origin != NULL);
-
-	HASH_FIND_STR(pkg->deps, origin, d);
-
-	return (d);
-}
-
 int
 pkg_rdeps(const struct pkg *pkg, struct pkg_dep **d)
 {
