@@ -50,9 +50,6 @@ static ucl_object_t *keyword_schema = NULL;
 static int setprefix(struct plist *, char *, struct file_attr *);
 static int dir(struct plist *, char *, struct file_attr *);
 static int dirrm(struct plist *, char *, struct file_attr *);
-static int dirrmtry(struct plist *, char *, struct file_attr *);
-static int dirrm(struct plist *, char *, struct file_attr *);
-static int dirrmtry(struct plist *, char *, struct file_attr *);
 static int file(struct plist *, char *, struct file_attr *);
 static int setmod(struct plist *, char *, struct file_attr *);
 static int setowner(struct plist *, char *, struct file_attr *);
@@ -70,7 +67,7 @@ static struct action_cmd {
 } list_actions[] = {
 	{ "setprefix", setprefix, 9},
 	{ "dirrm", dirrm, 5 },
-	{ "dirrmtry", dirrmtry, 7 },
+	{ "dirrmtry", dirrm, 7 },
 	{ "dir", dir, 3 },
 	{ "file", file, 4 },
 	{ "setmode", setmod, 6 },
@@ -234,7 +231,7 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-meta_dir(struct plist *p, char *line, struct file_attr *a, bool try)
+dir(struct plist *p, char *line, struct file_attr *a)
 {
 	size_t len;
 	char path[MAXPATHLEN];
@@ -277,20 +274,14 @@ meta_dir(struct plist *p, char *line, struct file_attr *a, bool try)
 			    a->owner ? a->owner : p->uname,
 			    a->group ? a->group : p->gname,
 			    a->mode ? a->mode : p->perm,
-			    try, true);
+			    true, true);
 		else
 			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-			    p->perm, try, true);
+			    p->perm, true, true);
 	}
 
 	free_file_attr(a);
 	return (ret);
-}
-
-static int
-dir(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_dir(p, line, a, true));
 }
 
 static void
@@ -312,15 +303,7 @@ dirrm(struct plist *p, char *line, struct file_attr *a)
 {
 
 	warn_deprecated_dir();
-	return (meta_dir(p, line, a, false));
-}
-
-static int
-dirrmtry(struct plist *p, char *line, struct file_attr *a)
-{
-
-	warn_deprecated_dir();
-	return (meta_dir(p, line, a, true));
+	return (dir(p, line, a));
 }
 
 static int
@@ -629,7 +612,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
-					dirrmtry(p, path, a);
+					dir(p, path, a);
 					a = NULL;
 				}
 			} else {
@@ -641,7 +624,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
-					dirrmtry(p, path, a);
+					dir(p, path, a);
 					a = NULL;
 				}
 			}
@@ -678,7 +661,7 @@ static struct keyact {
 	{ "comment", comment_key },
 	{ "dir", dir },
 	{ "dirrm", dirrm },
-	{ "dirrmtry", dirrmtry },
+	{ "dirrmtry", dirrm },
 	{ "mode", setmod },
 	{ "owner", setowner },
 	{ "group", setgroup },
