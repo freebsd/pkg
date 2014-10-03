@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  *~
  * Redistribution and use in source and binary forms, with or without
@@ -40,12 +40,21 @@ ATF_TC_HEAD(merge, tc)
 ATF_TC_BODY(merge, tc)
 {
 	struct sbuf *b = sbuf_new_auto();
-	char pivot[] = "test1\ntest2\n";
-	char modified[] = "test1\n#test2\n";
-	char new[] = "test1\ntest2\ntest3\n";
+	char *pivot = "test1\ntest2\n";
+	char *modified = "test1\n#test2\n";
+	char *new = "test1\ntest2\ntest3\n";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
 	ATF_REQUIRE_STREQ(sbuf_data(b), "test1\n#test2\ntest3\n");
+
+	sbuf_clear(b);
+	pivot = "test1\ntest2";
+	modified = "test1\n#test2";
+	new = "test1\ntest2\ntest3";
+
+	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
+	ATF_REQUIRE_STREQ(sbuf_data(b), "test1\n#test2\ntest3");
+
 	sbuf_delete(b);
 }
 
