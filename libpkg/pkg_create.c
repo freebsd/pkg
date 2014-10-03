@@ -68,11 +68,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		const char *pkg_path = pkg_file_path(file);
-		const char *pkg_sum = pkg_file_cksum(file);
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    relocation, pkg_path);
+		    relocation, file->path);
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
@@ -88,7 +86,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		if (S_ISLNK(st.st_mode)) {
 
-			if (pkg_sum == NULL || pkg_sum[0] == '\0') {
+			if (file->sum[0] == '\0') {
 				if (pkg_symlink_cksum(fpath, root, sha256) == EPKG_OK)
 					strlcpy(file->sum, sha256, sizeof(file->sum));
 				else
@@ -96,7 +94,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			}
 		}
 		else {
-			if (pkg_sum == NULL || pkg_sum[0] == '\0') {
+			if (file->sum[0] == '\0') {
 				if (pkg->type == PKG_OLD_FILE) {
 					if (md5_file(fpath, sha256) != EPKG_OK)
 						return (EPKG_FATAL);
@@ -143,12 +141,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		const char *pkg_path = pkg_file_path(file);
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    relocation, pkg_path);
+		    relocation, file->path);
 
-		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
+		ret = packing_append_file_attr(pkg_archive, fpath, file->path,
 		    file->uname, file->gname, file->perm);
 		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 		if (developer && ret != EPKG_OK)

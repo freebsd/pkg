@@ -739,10 +739,10 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 		HASH_FIND_STR(pkg->files, path, f);
 		if (f != NULL) {
 			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-				pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", pkg_file_path(f));
+				pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", f->path);
 				return (EPKG_FATAL);
 			} else {
-				pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
+				pkg_emit_error("duplicate file listing: %s, ignoring", f->path);
 				return (EPKG_OK);
 			}
 		}
@@ -1632,8 +1632,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_path(file));
-		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_path(file));
+		snprintf(spath, sizeof(spath), "%s%s", src, file->path);
+		snprintf(dpath, sizeof(dpath), "%s%s", dest, file->path);
 		packing_append_file_attr(pack, spath, dpath,
 		    file->uname, file->gname, file->perm);
 	}
@@ -1645,8 +1645,6 @@ int
 pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
-	const char *path;
-	const char *sum;
 	struct stat	 st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int rc = EPKG_OK;
@@ -1654,24 +1652,22 @@ pkg_test_filesum(struct pkg *pkg)
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		path = pkg_file_path(f);
-		sum = pkg_file_cksum(f);
-		if (*sum != '\0') {
-			if (lstat(path, &st) == -1) {
+		if (f->sum[0] != '\0') {
+			if (lstat(f->path, &st) == -1) {
 				pkg_emit_errno("pkg_create_from_dir", "lstat failed");
 				return (EPKG_FATAL);
 			}
 			if (S_ISLNK(st.st_mode)) {
-				if (pkg_symlink_cksum(path, NULL, sha256) != EPKG_OK)
+				if (pkg_symlink_cksum(f->path, NULL, sha256) != EPKG_OK)
 					return (EPKG_FATAL);
 			}
 			else {
-				if (sha256_file(path, sha256) != EPKG_OK)
+				if (sha256_file(f->path, sha256) != EPKG_OK)
 					return (EPKG_FATAL);
 
 			}
-			if (strcmp(sha256, sum) != 0) {
-				pkg_emit_file_mismatch(pkg, f, sum);
+			if (strcmp(sha256, f->sum) != 0) {
+				pkg_emit_file_mismatch(pkg, f, f->sum);
 				rc = EPKG_FATAL;
 			}
 		}
@@ -1684,26 +1680,22 @@ int
 pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
-	const char *path;
 	struct hardlinks *hl = NULL;
 	int64_t flatsize = 0;
 	int64_t oldflatsize;
 	struct stat st;
 	bool regular = false;
-	const char *sum;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int rc = EPKG_OK;
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		path = pkg_file_path(f);
-		sum = pkg_file_cksum(f);
-		if (lstat(path, &st) == 0) {
+		if (lstat(f->path, &st) == 0) {
 			regular = true;
 			if (S_ISLNK(st.st_mode)) {
 				regular = false;
 				*sha256 = '\0';
 			} else {
-				if (sha256_file(path, sha256) != EPKG_OK) {
+				if (sha256_file(f->path, sha256) != EPKG_OK) {
 					rc = EPKG_FATAL;
 					break;
 				}
@@ -1715,7 +1707,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			if (regular)
 				flatsize += st.st_size;
 		}
-		if (strcmp(sha256, sum) != 0)
+		if (strcmp(sha256, f->sum) != 0)
 			pkgdb_file_set_cksum(db, f, sha256);
 	}
 	HASH_FREE(hl, free);

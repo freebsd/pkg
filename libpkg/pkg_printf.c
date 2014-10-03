@@ -1069,7 +1069,7 @@ format_file_group(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(sbuf, pkg_file_gname(file), p));
+	return (string_val(sbuf, file->gname, p));
 }
 
 /*
@@ -1080,7 +1080,7 @@ format_file_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(sbuf, pkg_file_path(file), p));
+	return (string_val(sbuf, file->path, p));
 }
 
 /*
@@ -1091,7 +1091,7 @@ format_file_perms(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (mode_val(sbuf, pkg_file_mode(file), p));
+	return (mode_val(sbuf, file->perm, p));
 }
 
 /*
@@ -1102,7 +1102,7 @@ format_file_sha256(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(sbuf, pkg_file_cksum(file), p));
+	return (string_val(sbuf, file->sum, p));
 }
 
 /*
@@ -1113,7 +1113,7 @@ format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(sbuf, pkg_file_uname(file), p));
+	return (string_val(sbuf, file->uname, p));
 }
 
 /*

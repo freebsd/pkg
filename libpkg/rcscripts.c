@@ -58,8 +58,8 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, pkg_file_path(file), len) == 0) {
-			rcfile = pkg_file_path(file);
+		if (strncmp(rc_d_path, file->path, len) == 0) {
+			rcfile = file->path;
 			rcfile += len;
 			rc = strrchr(rcfile, '/');
 			rc++;

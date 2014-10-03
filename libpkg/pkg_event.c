@@ -304,7 +304,7 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_file_mismatch.pkg,
 		    ev->e_file_mismatch.pkg,
-		    sbuf_json_escape(buf, pkg_file_path(ev->e_file_mismatch.file)));
+		    sbuf_json_escape(buf, ev->e_file_mismatch.file->path));
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "

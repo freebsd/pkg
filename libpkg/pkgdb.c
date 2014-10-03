@@ -1638,19 +1638,17 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		const char	*pkg_path = pkg_file_path(file);
-		const char	*pkg_sum  = pkg_file_cksum(file);
 		bool		permissive = false;
 		bool		devmode = false;
 
-		ret = run_prstmt(FILES, pkg_path, pkg_sum, package_id);
+		ret = run_prstmt(FILES, file->path, file->sum, package_id);
 		if (ret == SQLITE_DONE)
 			continue;
 		if (ret != SQLITE_CONSTRAINT) {
 			ERROR_SQLITE(s, SQL(FILES));
 			goto cleanup;
 		}
-		it = pkgdb_query_which(db, pkg_path, false);
+		it = pkgdb_query_which(db, file->path, false);
 		if (it == NULL) {
 			ERROR_SQLITE(s, "pkg which");
 			goto cleanup;
@@ -1660,7 +1658,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		if (ret == EPKG_END) {
 			/* Stray entry in the files table not related to
 			   any known package: overwrite this */
-			ret = run_prstmt(FILES_REPLACE, pkg_path, pkg_sum,
+			ret = run_prstmt(FILES_REPLACE, file->path, file->sum,
 					 package_id);
 			pkgdb_it_free(it);
 			if (ret == SQLITE_DONE)
@@ -1683,7 +1681,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 			pkg_emit_error("%s-%s conflicts with %s-%s"
 					" (installs files into the same place). "
 					" Problematic file: %s%s",
-					name, version, name2, version2, pkg_path,
+					name, version, name2, version2, file->path,
 					permissive ? " ignored by permissive mode" : "");
 			pkg_free(pkg2);
 			if (!permissive) {
@@ -1694,7 +1692,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 			pkg_emit_error("%s-%s conflicts with %s-%s"
 					" (installs files into the same place). "
 					" Problematic file: %s ignored by forced mode",
-					name, version, name2, version2, pkg_path);
+					name, version, name2, version2, file->path);
 			pkg_free(pkg2);
 		}
 		pkgdb_it_free(it);
@@ -2503,7 +2501,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 		return (EPKG_FATAL);
 	}
 	sqlite3_bind_text(stmt, 1, sha256, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 2, pkg_file_path(file), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, file->path, -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite, sql_file_update);

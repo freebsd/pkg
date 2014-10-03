@@ -107,38 +107,6 @@ pkg_file_free(struct pkg_file *file)
 	free(file);
 }
 
-const char *
-pkg_file_get(struct pkg_file const * const f, const pkg_file_attr attr)
-{
-	assert(f != NULL);
-
-	switch (attr) {
-	case PKG_FILE_PATH:
-		return (f->path);
-		break;
-	case PKG_FILE_SUM:
-		return (f->sum);
-		break;
-	case PKG_FILE_UNAME:
-		return (f->uname);
-		break;
-	case PKG_FILE_GNAME:
-		return (f->gname);
-		break;
-	default:
-		return (NULL);
-		break;
-	}
-}
-
-mode_t
-pkg_file_mode(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->perm);
-}
-
 /*
  * Dir
  */

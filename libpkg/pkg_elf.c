@@ -121,7 +121,7 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 			return (EPKG_OK);
 
 		while (pkg_files(pkg, &file) == EPKG_OK) {
-			filepath = pkg_file_path(file);
+			filepath = file->path;
 			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
 				pkg_addshlib_required(pkg, name);
 				return (EPKG_OK);
@@ -473,9 +473,9 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
-			snprintf(fpath, sizeof(fpath), "%s/%s", stage, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s/%s", stage, file->path);
 		else
-			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
+			strlcpy(fpath, file->path, sizeof(fpath));
 
 		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
 		if (developer) {

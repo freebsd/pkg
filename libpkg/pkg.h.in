@@ -288,13 +288,6 @@ typedef enum {
 } pkg_dep_attr;
 
 typedef enum {
-	PKG_FILE_PATH = 0,
-	PKG_FILE_SUM,
-	PKG_FILE_UNAME,
-	PKG_FILE_GNAME
-} pkg_file_attr;
-
-typedef enum {
 	PKG_DIR_PATH = 0,
 	PKG_DIR_UNAME,
 	PKG_DIR_GNAME
@@ -893,14 +886,6 @@ const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
 #define pkg_dep_origin(d) pkg_dep_get(d, PKG_DEP_ORIGIN)
 #define pkg_dep_version(d) pkg_dep_get(d, PKG_DEP_VERSION)
 bool pkg_dep_is_locked(struct pkg_dep const * const);
-
-/* pkg_file */
-const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
-#define pkg_file_path(f) pkg_file_get(f, PKG_FILE_PATH)
-#define pkg_file_cksum(f) pkg_file_get(f, PKG_FILE_SUM)
-#define pkg_file_uname(f) pkg_file_get(f, PKG_FILE_UNAME)
-#define pkg_file_gname(f) pkg_file_get(f, PKG_FILE_GNAME)
-mode_t pkg_file_mode(struct pkg_file const * const);
 
 bool pkg_has_dir(struct pkg *, const char *);
 bool pkg_has_file(struct pkg *, const char *);

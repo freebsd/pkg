@@ -220,7 +220,6 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 void
 pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 {
-	const char *sum = pkg_file_cksum(file);
 	const char *path;
 	const char *prefix_rel;
 	struct stat st;
@@ -229,7 +228,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 
 	pkg_open_root_fd(pkg);
 
-	path = pkg_file_path(file);
+	path = file->path;
 	path++;
 
 	pkg_get(pkg, PKG_PREFIX, &prefix_rel);
@@ -238,7 +237,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 
 	/* Regular files and links */
 	/* check sha256 */
-	if (!force && sum[0] != '\0') {
+	if (!force && file->sum[0] != '\0') {
 		if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
 			pkg_emit_error("cannot stat %s%s%s: %s", pkg->rootpath,
 			    pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
@@ -254,7 +253,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			if (sha256_fileat(pkg->rootfd, path, sha256) != EPKG_OK)
 				return;
 		}
-		if (strcmp(sha256, sum)) {
+		if (strcmp(sha256, file->sum)) {
 			pkg_emit_error("%s%s%s fails original SHA256 "
 				"checksum, not removing", pkg->rootpath,
 				pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",

@@ -773,8 +773,8 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg = ev->e_file_mismatch.pkg;
-		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %S\n", pkg,
-		    pkg, pkg_file_path(ev->e_file_mismatch.file));
+		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
+		    pkg, ev->e_file_mismatch.file);
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		warnx("%s: %s(%s): %s",

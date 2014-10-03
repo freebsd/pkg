@@ -145,8 +145,8 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 		sbuf_printf(content,
 		    "%s\n"
 		    "@comment MD5:%s\n",
-		     pkg_file_path(file) + 1,
-		     pkg_file_cksum(file));
+		     file->path + 1,
+		     file->sum);
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -183,14 +183,12 @@ pkg_to_old(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
 	char md5[MD5_DIGEST_LENGTH * 2 + 1];
-	const char *sum;
 
 	p->type = PKG_OLD_FILE;
 	while (pkg_files(p, &f) == EPKG_OK) {
-		sum = pkg_file_cksum(f);
-		if (sum == NULL || sum[0] == '\0')
+		if (f->sum[0] == '\0')
 			continue;
-		if (md5_file(pkg_file_path(f), md5) == EPKG_OK)
+		if (md5_file(f->path, md5) == EPKG_OK)
 			strlcpy(f->sum, md5, sizeof(f->sum));
 	}
 
@@ -202,14 +200,12 @@ pkg_from_old(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	const char *sum;
 
 	p->type = PKG_INSTALLED;
 	while (pkg_files(p, &f) == EPKG_OK) {
-		sum = pkg_file_cksum(f);
-		if (sum == NULL || sum[0] == '\0')
+		if (f->sum[0] == '\0')
 			continue;
-		if (sha256_file(pkg_file_path(f), sha256) == EPKG_OK)
+		if (sha256_file(f->path, sha256) == EPKG_OK)
 			strlcpy(f->sum, sha256, sizeof(f->sum));
 	}
 

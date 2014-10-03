@@ -841,7 +841,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 
 	seq = NULL;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		urlencode(pkg_file_path(file), &b);
+		urlencode(file->path, &b);
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
 		ucl_array_append(seq, ucl_object_fromlstring(sbuf_data(b), sbuf_len(b)));
@@ -1067,16 +1067,14 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			pkg_debug(4, "Emitting files");
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
-				const char *pkg_sum = pkg_file_cksum(file);
+				if (file->sum[0] == '\0')
+					file->sum[1] = '-';
 
-				if (pkg_sum == NULL || pkg_sum[0] == '\0')
-					pkg_sum = "-";
-
-				urlencode(pkg_file_path(file), &tmpsbuf);
+				urlencode(file->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
-				    ucl_object_fromstring(pkg_sum),
+				    ucl_object_fromstring(file->sum),
 				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
 			}
 			if (map)
