@@ -227,7 +227,7 @@ print the mode in the style of
 .Xr strmode 3 .
 .Pp
 For boolean valued formats
-.Cm ( Dk , \^Dt , Fk , dk , rk , a
+.Cm ( dk , rk , a
 and
 .Cm k )
 generate either
@@ -280,7 +280,7 @@ or
 print the mode as an octal integer with a leading 0.
 .Pp
 For boolean valued formats
-.Cm ( Dk , \^Dt , Fk , dk , rk , a
+.Cm ( dk , rk , a
 and
 .Cm k )
 generate either
@@ -503,17 +503,11 @@ Default row format:
 .It Cm %Dg
 Directory ownership: group name [string]
 .Vt struct pkg_dir *
-.It Cm %Dk
-Directory keep flag [boolean]
-.Vt struct pkg_dir *
 .It Cm %Dn
 Directory path name [string]
 .Vt struct pkg_dir *
 .It Cm %Dp
 Directory permissions [mode]
-.Vt struct pkg_dir *
-.It Cm %Dt
-Directory try flag [boolean]
 .Vt struct pkg_dir *
 .It Cm %Du
 Directory ownership: user name [string]
@@ -526,9 +520,6 @@ Default row format:
 .Cm "%F%{%Fn\en%|%}"
 .It Cm %Fg
 File ownership: group name [string]
-.Vt struct pkg_file *
-.It Cm %Fk
-File keep flag [boolean]
 .Vt struct pkg_file *
 .It Cm %\^Fn
 File path name [string]
