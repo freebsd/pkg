@@ -295,9 +295,6 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		pkg_emit_progress_tick(cur_file++, nfiles);
-
-		if (file->keep == 1)
-			continue;
 		pkg_delete_file(pkg, file, force);
 	}
 
@@ -341,12 +338,8 @@ pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_dir		*dir = NULL;
 
-	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (dir->keep == 1)
-			continue;
-
+	while (pkg_dirs(pkg, &dir) == EPKG_OK)
 		pkg_delete_dir(pkg, dir);
-	}
 
 	pkg_effective_rmdir(db, pkg);
 

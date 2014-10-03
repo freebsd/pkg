@@ -1086,13 +1086,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 				urlencode(pkg_dir_path(dir), &tmpsbuf);
-				/* For now append y/n to stay compatible with libyaml version 
-				 * obj_append_boolean(map, sbuf_get(tmpsbuf), pkg_dir_try(dir));
-				 */
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
-				    ucl_object_fromstring(pkg_dir_try(dir) ? "y" : "n"),
+				    ucl_object_fromstring("y"),
 				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
 			}
 			if (map)

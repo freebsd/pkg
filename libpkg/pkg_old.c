@@ -150,15 +150,9 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (pkg_dir_try(dir)) {
-			sbuf_printf(content,
-			    "@dirrm %s\n",
-			    pkg_dir_path(dir));
-		} else {
-			sbuf_printf(content,
-			    "@unexec /sbin/rmdir \"%s\" 2>/dev/null\n",
-			    pkg_dir_path(dir));
-		}
+		sbuf_printf(content,
+		    "@unexec /sbin/rmdir \"%s\" 2>/dev/null\n",
+		    pkg_dir_path(dir));
 	}
 
 	sbuf_printf(content, "@comment OPTIONS:");

@@ -97,7 +97,6 @@ pkg_file_new(struct pkg_file **file)
 		return (EPKG_FATAL);
 
 	(*file)->perm = 0;
-	(*file)->keep = 0;
 
 	return (EPKG_OK);
 }
@@ -140,14 +139,6 @@ pkg_file_mode(struct pkg_file const * const f)
 	return (f->perm);
 }
 
-bool
-pkg_file_keep(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->keep);
-}
-
 /*
  * Dir
  */
@@ -159,8 +150,6 @@ pkg_dir_new(struct pkg_dir **d)
 		return (EPKG_FATAL);
 
 	(*d)->perm = 0;
-	(*d)->keep = 0;
-	(*d)->try = false;
 
 	return (EPKG_OK);
 }
@@ -196,22 +185,6 @@ pkg_dir_mode(struct pkg_dir const * const d)
 	assert(d != NULL);
 
 	return (d->perm);
-}
-
-bool
-pkg_dir_keep(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->keep);
-}
-
-bool
-pkg_dir_try(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->try);
 }
 
 /*

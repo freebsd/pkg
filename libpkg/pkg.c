@@ -809,7 +809,7 @@ pkg_adddir(struct pkg *pkg, const char *path, bool try, bool check_duplicates)
 }
 
 int
-pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try, bool check_duplicates)
+pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try __unused, bool check_duplicates)
 {
 	struct pkg_dir *d = NULL;
 
@@ -841,8 +841,6 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 
 	if (perm != 0)
 		d->perm = perm;
-
-	d->try = try;
 
 	HASH_ADD_STR(pkg->dirs, path, d);
 

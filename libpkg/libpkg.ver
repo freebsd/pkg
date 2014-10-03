@@ -53,9 +53,7 @@ global:
 	pkg_dep_lookup;
 	pkg_deps;
 	pkg_dir_get;
-	pkg_dir_keep;
 	pkg_dir_mode;
-	pkg_dir_try;
 	pkg_dirs;
 	pkg_dprintf;
 	pkg_emit_manifest;
@@ -64,7 +62,6 @@ global:
 	pkg_fetch_file;
 	pkg_fetch_file_tmp;
 	pkg_file_get;
-	pkg_file_keep;
 	pkg_file_mode;
 	pkg_files;
 	pkg_finish_repo;

@@ -247,15 +247,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG|PP_D,
 		&format_directory_group,
 	},
-	[PP_PKG_DIRECTORY_KEEPFLAG] =
-	{
-		'D',
-		'k',
-		false,
-		false,
-		PP_PKG|PP_D,
-		&format_directory_keepflag,
-	},
 	[PP_PKG_DIRECTORY_PATH] =
 	{
 		'D',
@@ -273,15 +264,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		false,
 		PP_PKG|PP_D,
 		&format_directory_perms,
-	},
-	[PP_PKG_DIRECTORY_TRYFLAG] =
-	{
-		'D',
-		't',
-		false,
-		false,
-		PP_PKG|PP_D,
-		&format_directory_tryflag,
 	},
 	[PP_PKG_DIRECTORY_USER] =
 	{
@@ -309,15 +291,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		false,
 		PP_PKG|PP_F,
 		&format_file_group,
-	},
-	[PP_PKG_FILE_KEEPFLAG] =
-	{
-		'F',
-		'k',
-		false,
-		false,
-		PP_PKG|PP_F,
-		&format_file_keepflag,
 	},
 	[PP_PKG_FILE_PATH] =
 	{
@@ -1021,17 +994,6 @@ format_directory_group(struct sbuf *sbuf, const void *data,
 }
 
 /*
- * %Dk -- Directory Keep flag.
- */
-struct sbuf *
-format_directory_keepflag(struct sbuf *sbuf, const void *data,
-		       struct percent_esc *p)
-{
-	const struct pkg_dir	*dir = data;
-	return (bool_val(sbuf, pkg_dir_keep(dir), p));
-}
-
-/*
  * %Dn -- Directory path name.
  */
 struct sbuf *
@@ -1052,18 +1014,6 @@ format_directory_perms(struct sbuf *sbuf, const void *data,
 	const struct pkg_dir	*dir = data;
 
 	return (mode_val(sbuf, pkg_dir_mode(dir), p));
-}
-
-/*
- * %Dt -- Directory Try flag.
- */
-struct sbuf *
-format_directory_tryflag(struct sbuf *sbuf, const void *data,
-			 struct percent_esc *p)
-{
-	const struct pkg_dir	*dir = data;
-
-	return (bool_val(sbuf, pkg_dir_try(dir), p));
 }
 
 /*
@@ -1120,17 +1070,6 @@ format_file_group(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg_file	*file = data;
 
 	return (string_val(sbuf, pkg_file_gname(file), p));
-}
-
-/*
- * %Fk -- File Keep flag.
- */
-struct sbuf *
-format_file_keepflag(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_file	*file = data;
-
-	return (bool_val(sbuf, pkg_file_keep(file), p));
 }
 
 /*
