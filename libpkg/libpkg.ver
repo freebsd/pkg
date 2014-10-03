@@ -52,8 +52,6 @@ global:
 	pkg_dep_is_locked;
 	pkg_dep_lookup;
 	pkg_deps;
-	pkg_dir_get;
-	pkg_dir_mode;
 	pkg_dirs;
 	pkg_dprintf;
 	pkg_emit_manifest;

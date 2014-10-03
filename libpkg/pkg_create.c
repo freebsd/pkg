@@ -153,12 +153,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		const char *pkg_path = pkg_dir_path(dir);
-
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    relocation, pkg_path);
+		    relocation, dir->path);
 
-		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
+		ret = packing_append_file_attr(pkg_archive, fpath, dir->path,
 		    dir->uname, dir->gname, dir->perm);
 		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 		if (developer && ret != EPKG_OK)

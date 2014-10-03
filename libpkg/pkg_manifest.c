@@ -1083,7 +1083,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			pkg_debug(4, "Emitting directories");
 			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-				urlencode(pkg_dir_path(dir), &tmpsbuf);
+				urlencode(dir->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,

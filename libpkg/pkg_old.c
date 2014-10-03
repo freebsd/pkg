@@ -152,7 +152,7 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		sbuf_printf(content,
 		    "@unexec /sbin/rmdir \"%s\" 2>/dev/null\n",
-		    pkg_dir_path(dir));
+		    dir->path);
 	}
 
 	sbuf_printf(content, "@comment OPTIONS:");

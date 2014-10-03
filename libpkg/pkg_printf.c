@@ -990,7 +990,7 @@ format_directory_group(struct sbuf *sbuf, const void *data,
 {
 	const struct pkg_dir	*dir = data;
 
-	return (string_val(sbuf, pkg_dir_gname(dir), p));
+	return (string_val(sbuf, dir->gname, p));
 }
 
 /*
@@ -1001,7 +1001,7 @@ format_directory_path(struct sbuf *sbuf, const void *data, struct percent_esc *p
 {
 	const struct pkg_dir	*dir = data;
 
-	return (string_val(sbuf, pkg_dir_path(dir), p));
+	return (string_val(sbuf, dir->path, p));
 }
 
 /*
@@ -1013,7 +1013,7 @@ format_directory_perms(struct sbuf *sbuf, const void *data,
 {
 	const struct pkg_dir	*dir = data;
 
-	return (mode_val(sbuf, pkg_dir_mode(dir), p));
+	return (mode_val(sbuf, dir->perm, p));
 }
 
 /*
@@ -1025,7 +1025,7 @@ format_directory_user(struct sbuf *sbuf, const void *data,
 {
 	const struct pkg_dir	*dir = data;
 
-	return (string_val(sbuf, pkg_dir_uname(dir), p));
+	return (string_val(sbuf, dir->uname, p));
 }
 
 /*

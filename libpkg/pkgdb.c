@@ -1703,16 +1703,16 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (run_prstmt(DIRS1, pkg_dir_path(dir)) != SQLITE_DONE) {
+		if (run_prstmt(DIRS1, dir->path) != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(DIRS1));
 			goto cleanup;
 		}
-		if ((ret = run_prstmt(DIRS2, package_id, pkg_dir_path(dir),
+		if ((ret = run_prstmt(DIRS2, package_id, dir->path,
 		    true)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("Another package is already "
 				    "providing directory: %s",
-				    pkg_dir_path(dir));
+				    dir->path);
 			} else
 				ERROR_SQLITE(s, SQL(DIRS2));
 			goto cleanup;

@@ -128,33 +128,6 @@ pkg_dir_free(struct pkg_dir *d)
 	free(d);
 }
 
-const char *
-pkg_dir_get(struct pkg_dir const * const d, const pkg_dir_attr attr)
-{
-	assert(d != NULL);
-	switch (attr) {
-	case PKG_DIR_PATH:
-		return (d->path);
-		break;
-	case PKG_DIR_UNAME:
-		return (d->uname);
-		break;
-	case PKG_DIR_GNAME:
-		return (d->gname);
-		break;
-	default:
-		return(NULL);
-	}
-}
-
-mode_t
-pkg_dir_mode(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->perm);
-}
-
 /*
  * User
  */

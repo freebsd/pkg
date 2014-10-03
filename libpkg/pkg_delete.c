@@ -312,7 +312,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 
 	pkg_open_root_fd(pkg);
 
-	path = pkg_dir_path(dir);
+	path = dir->path;
 	/* remove the first / */
 	path++;
 
