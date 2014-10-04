@@ -711,10 +711,12 @@ int
 pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm, bool check_duplicates)
 {
 	struct pkg_file *f = NULL;
+	char abspath[MAXPATHLEN];
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
+	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates) {
@@ -794,19 +796,21 @@ int
 pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try __unused, bool check_duplicates)
 {
 	struct pkg_dir *d = NULL;
+	char abspath[MAXPATHLEN];
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
+	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->dirs, path, d);
 		if (d != NULL) {
 			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-				pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
+				pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", d->path);
 				return (EPKG_FATAL);
 			} else {
-				pkg_emit_error("duplicate directory listing: %s, ignoring", path);
+				pkg_emit_error("duplicate directory listing: %s, ignoring", d->path);
 				return (EPKG_OK);
 			}
 		}
