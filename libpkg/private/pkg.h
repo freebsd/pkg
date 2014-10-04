@@ -525,8 +525,6 @@ const char* packing_format_to_string(pkg_formats format);
 int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg);
 
-int pkg_set_mtree(struct pkg *, const char *mtree);
-
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
 int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);

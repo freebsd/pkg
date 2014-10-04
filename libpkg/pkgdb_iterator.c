@@ -649,21 +649,6 @@ pkgdb_load_options(sqlite3 *sqlite, struct pkg *pkg)
 }
 
 static int
-pkgdb_load_mtree(sqlite3 *sqlite, struct pkg *pkg)
-{
-	const char	sql[] = ""
-		"SELECT m.content "
-		"FROM mtree AS m, packages AS p "
-		"WHERE m.id = p.mtree_id "
-			"AND p.id = ?1;";
-
-	assert(pkg != NULL);
-	assert(pkg->type == PKG_INSTALLED);
-
-	return (load_val(sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
-}
-
-static int
 pkgdb_load_conflicts(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
@@ -765,7 +750,6 @@ static struct load_on_flag {
 	{ PKG_LOAD_DIRS,		pkgdb_load_dirs },
 	{ PKG_LOAD_SCRIPTS,		pkgdb_load_scripts },
 	{ PKG_LOAD_OPTIONS,		pkgdb_load_options },
-	{ PKG_LOAD_MTREE,		pkgdb_load_mtree },
 	{ PKG_LOAD_CATEGORIES,		pkgdb_load_category },
 	{ PKG_LOAD_LICENSES,		pkgdb_load_license },
 	{ PKG_LOAD_USERS,		pkgdb_load_user },

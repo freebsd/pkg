@@ -62,7 +62,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 	char		 path[MAXPATHLEN];
 	int		 query_flags = PKG_LOAD_DEPS    | PKG_LOAD_FILES   |
 				       PKG_LOAD_DIRS    | PKG_LOAD_SCRIPTS |
-				       PKG_LOAD_OPTIONS | PKG_LOAD_MTREE   |
+				       PKG_LOAD_OPTIONS |
 				       PKG_LOAD_USERS   | PKG_LOAD_GROUPS  |
 				       PKG_LOAD_RDEPS;
 	FILE		*fp, *rq;
@@ -141,14 +141,6 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 		pkg_get(pkg, PKG_MESSAGE, &buf);
 		if (buf != NULL && buf[0] != '\0') {
 			snprintf(path, sizeof(path), "%s/%s-%s/+DISPLAY", pkg_add_dbdir, name, version);
-			fp = fopen(path, "w");
-			fputs(buf, fp);
-			fclose(fp);
-		}
-
-		pkg_get(pkg, PKG_MTREE, &buf);
-		if (buf != NULL && buf[0] != '\0') {
-			snprintf(path, sizeof(path), "%s/%s-%s/+MTREE_DIRS", pkg_add_dbdir, name, version);
 			fp = fopen(path, "w");
 			fputs(buf, fp);
 			fclose(fp);

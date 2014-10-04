@@ -390,11 +390,6 @@ pkg_set2(struct pkg *pkg, ...)
 }
 
 int
-pkg_set_mtree(struct pkg *pkg, const char *mtree) {
-	return (pkg_set(pkg, PKG_MTREE, mtree));
-}
-
-int
 pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
     bool trimcr)
 {

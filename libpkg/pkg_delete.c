@@ -48,7 +48,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	bool		 handle_rc = false;
 	int64_t		id;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
-					PKG_LOAD_SCRIPTS|PKG_LOAD_MTREE|PKG_LOAD_ANNOTATIONS;
+					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS;
 
 	assert(pkg != NULL);
 	assert(db != NULL);

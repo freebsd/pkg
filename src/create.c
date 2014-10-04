@@ -80,7 +80,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	struct pkgdb_it *it = NULL;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
+	    PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS;
 	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
