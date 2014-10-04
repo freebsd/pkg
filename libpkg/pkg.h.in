@@ -1643,5 +1643,6 @@ char *pkg_utils_tokenize(char **);
 int pkg_utils_count_spaces(const char *);
 int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \
     const char *locationn, bool testing, bool old);
+char *pkg_absolutepath(const char *src, char *dest, size_t dest_len);
 
 #endif

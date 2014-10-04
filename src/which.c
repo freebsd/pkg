@@ -154,14 +154,14 @@ exec_which(int argc, char **argv)
 					retcode = EX_OSERR;
 					goto cleanup;
 				} else {
-					absolutepath(match, pathabs, sizeof(pathabs));
+					pkg_absolutepath(match, pathabs, sizeof(pathabs));
 					free(match);
 				}
 			}
 		}
 
 		if (!glob && !search)
-			absolutepath(argv[0], pathabs, sizeof(pathabs));
+			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs));
 		else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
 				retcode = EX_USAGE;

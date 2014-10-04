@@ -208,58 +208,6 @@ cleanup:
 	return (i);
 }
 
-/* unlike realpath(3), this routine does not expand symbolic links */
-char *
-absolutepath(const char *src, char *dest, size_t dest_size) {
-	size_t dest_len, src_len, cur_len;
-	const char *cur, *next;
-
-	src_len = strlen(src);
-	bzero(dest, dest_size);
-	if (src_len != 0 && src[0] != '/') {
-		/* relative path, we use cwd */
-		if (getcwd(dest, dest_size) == NULL)
-			return (NULL);
-	}
-	dest_len = strlen(dest);
-
-	for (cur = next = src; next != NULL; cur = next + 1) {
-		next = strchr(cur, '/');
-		if (next != NULL)
-			cur_len = next - cur;
-		else
-			cur_len = strlen(cur);
-
-		/* check for special cases "", "." and ".." */
-		if (cur_len == 0)
-			continue;
-		else if (cur_len == 1 && cur[0] == '.')
-			continue;
-		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
-			const char *slash = strrchr(dest, '/');
-			if (slash != NULL) {
-				dest_len = slash - dest;
-				dest[dest_len] = '\0';
-			}
-			continue;
-		}
-
-		if (dest_len + 1 + cur_len >= dest_size)
-			return (NULL);
-		dest[dest_len++] = '/';
-		(void)memcpy(dest + dest_len, cur, cur_len);
-		dest_len += cur_len;
-		dest[dest_len] = '\0';
-	}
-
-	if (dest_len == 0) {
-		if (strlcpy(dest, "/", dest_size) >= dest_size)
-			return (NULL);
-	}
-
-	return (dest);
-}
-
 /* what the pkg needs to load in order to display the requested info */
 int
 info_flags(uint64_t opt, bool remote)
