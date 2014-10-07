@@ -126,7 +126,8 @@ shlib_list_find_by_name(const char *shlib_file)
 {
 	struct shlib_list *sl;
 
-	assert(HASH_COUNT(shlibs) != 0);
+	if (HASH_COUNT(shlibs) == 0)
+		return (NULL);
 
 	HASH_FIND_STR(rpath, shlib_file, sl);
 	if (sl != NULL)
