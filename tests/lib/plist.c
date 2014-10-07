@@ -74,7 +74,7 @@ ATF_TC_BODY(parse_plist, tc)
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
 
-	plist = plist_new(p, NULL);
+	plist = plist_new(p, "/plop");
 	ATF_REQUIRE(plist != NULL);
 	ATF_REQUIRE(plist->pkg == p);
 	ATF_REQUIRE_EQ(plist->prefix[0], '\0');
@@ -129,6 +129,9 @@ ATF_TC_BODY(parse_plist, tc)
 	ATF_REQUIRE_EQ(0, plist->perm);
 
 	strlcpy(buf, "@blabla", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(p, plist, buf));
+
+	strlcpy(buf, "nonexisting/file", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(p, plist, buf));
 
 	pkg_free(p);
