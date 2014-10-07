@@ -1141,7 +1141,7 @@ int
 ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 {
 	char *line = NULL;
-	int ret = EPKG_OK;
+	int ret, rc = EPKG_OK;
 	struct plist *pplist;
 	FILE *plist_f;
 	size_t linecap = 0;
@@ -1162,6 +1162,8 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
 		ret = plist_parse_line(pkg, pplist, line);
+		if (rc == EPKG_OK)
+			rc = ret;
 	}
 
 	free(line);
@@ -1185,7 +1187,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	plist_free(pplist);
 
-	return (ret);
+	return (rc);
 }
 
 int
