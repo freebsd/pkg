@@ -544,8 +544,17 @@ should_be_post(char *cmd, struct plist *p)
 	return (false);
 }
 
+typedef enum {
+	EXEC = 0,
+	UNEXEC,
+	PREEXEC,
+	POSTEXEC,
+	PREUNEXEC,
+	POSTUNEXEC
+} exec_t;
+
 static int
-meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
+meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 {
 	char *cmd, *buf, *tmp;
 	char comment[2];
@@ -558,7 +567,20 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 	if (ret != EPKG_OK)
 		return (EPKG_OK);
 
-	if (unexec) {
+	switch (type) {
+	case PREEXEC:
+		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
+		break;
+	case POSTEXEC:
+		sbuf_printf(p->post_install_buf, "%s\n", cmd);
+		break;
+	case PREUNEXEC:
+		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		break;
+	case POSTUNEXEC:
+		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
+		break;
+	case UNEXEC:
 		comment[0] = '\0';
 		/* workaround to detect the @dirrmtry */
 		if (STARTS_WITH(cmd, "rmdir ") || STARTS_WITH(cmd, "/bin/rmdir ")) {
@@ -631,9 +653,12 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 			regfree(&preg);
 
 		}
-	} else {
+		break;
+	case EXEC:
 		exec_append(p->post_install_buf, "%s\n", cmd);
+		break;
 	}
+
 	free_file_attr(a);
 	free(cmd);
 
@@ -641,15 +666,39 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 }
 
 static int
+preunexec(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_exec(p, line, a, PREUNEXEC));
+}
+
+static int
+postunexec(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_exec(p, line, a, POSTUNEXEC));
+}
+
+static int
+preexec(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_exec(p, line, a, PREEXEC));
+}
+
+static int
+postexec(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_exec(p, line, a, POSTEXEC));
+}
+
+static int
 exec(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_exec(p, line, a, false));
+	return (meta_exec(p, line, a, EXEC));
 }
 
 static int
 unexec(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_exec(p, line, a, true));
+	return (meta_exec(p, line, a, UNEXEC));
 }
 
 static struct keyact {
@@ -667,6 +716,10 @@ static struct keyact {
 	{ "group", setgroup },
 	{ "exec", exec },
 	{ "unexec", unexec },
+	{ "preexec", preexec },
+	{ "postexec", postexec },
+	{ "preunexec", preunexec },
+	{ "postunexec", postunexec },
 	/* old pkg compat */
 	{ "name", name_key },
 	{ "pkgdep", pkgdep },
