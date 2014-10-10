@@ -1545,7 +1545,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	const char		*mtree, *origin, *name, *version, *name2;
 	const char		*version2, *comment, *desc, *message;
 	const char		*arch, *maintainer, *www, *prefix;
-	const char		*digest;
+	const char		*digest, *abi;
 
 	bool			 automatic;
 	int64_t			 flatsize, licenselogic;
@@ -1572,6 +1572,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		PKG_DESC,	&desc,
 		PKG_MESSAGE,	&message,
 		PKG_ARCH,	&arch,
+		PKG_ABI,	&abi,
 		PKG_MAINTAINER,	&maintainer,
 		PKG_WWW,	&www,
 		PKG_PREFIX,	&prefix,
@@ -1583,6 +1584,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		PKG_LICENSES,	&licenses,
 		PKG_CATEGORIES,	&categories);
 
+	/* Prefer new ABI over old one */
+	if (abi != NULL)
+		arch = abi;
 	/*
 	 * Insert mtree record
 	 */

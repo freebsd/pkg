@@ -183,6 +183,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	struct pkg_manifest_key *keys, const char *location)
 {
 	const char	*arch;
+	const char	*abi;
 	const char	*origin;
 	const char	*name;
 	int	ret, retcode;
@@ -192,7 +193,10 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char	*ext;
 	struct pkg	*pkg_inst = NULL;
 
-	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
+	pkg_get(pkg, PKG_ARCH, &arch, PKG_ABI, &abi, PKG_ORIGIN, &origin, PKG_NAME, &name);
+	if (abi != NULL)
+		arch = abi;
+
 	if (!is_valid_abi(arch, true)) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			return (EPKG_FATAL);

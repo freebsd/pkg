@@ -76,6 +76,7 @@ static struct manifest_key {
 	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
 } manifest_keys[] = {
 	{ "annotations",         PKG_ANNOTATIONS,         UCL_OBJECT, pkg_obj},
+	{ "abi",                 PKG_ABI,                 UCL_STRING, pkg_string},
 	{ "arch",                PKG_ARCH,                UCL_STRING, pkg_string},
 	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
 	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
@@ -873,8 +874,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_provide	*provide  = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int i;
-	const char *comment, *desc, *message, *repopath;
+	const char *comment, *desc, *message, *repopath, *abi;
 	const char *script_types = NULL;
+	char legacyarch[BUFSIZ];
 	lic_t licenselogic;
 	int64_t pkgsize;
 	ucl_object_iter_t it = NULL;
@@ -887,6 +889,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		PKG_NAME,
 		PKG_ORIGIN,
 		PKG_VERSION,
+		PKG_ABI,
 		PKG_ARCH,
 		PKG_MAINTAINER,
 		PKG_PREFIX,
@@ -902,6 +905,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	    PKG_ANNOTATIONS, &annotations, PKG_LICENSES, &licenses,
 	    PKG_CATEGORIES, &categories, PKG_REPOPATH, &repopath);
 
+	pkg_get(pkg, PKG_ABI, &abi);
+	pkg_arch_to_legacy(abi, legacyarch, BUFSIZ);
+	pkg_set(pkg, PKG_ARCH, legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
 	for (i = 0; recopies[i] != -1; i++) {
 		key = pkg_keys[recopies[i]].name;

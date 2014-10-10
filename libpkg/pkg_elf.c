@@ -890,11 +890,12 @@ cleanup:
 }
 
 int
-arch_to_legacy(char *arch, char *dest, size_t sz)
+pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 {
 	int i = 0;
 	struct arch_trans *arch_trans;
 
+	bzero(dest, sz);
 	/* Lower case the OS */
 	while (arch[i] != ':') {
 		dest[i] = tolower(arch[i]);
@@ -915,7 +916,7 @@ arch_to_legacy(char *arch, char *dest, size_t sz)
 
 	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
 	    arch_trans++) {
-		if (strcmp(arch, arch_trans->archid) == 0) {
+		if (strcmp(arch + i, arch_trans->archid) == 0) {
 			strlcpy(dest + i, arch_trans->elftype,
 			    sz - (arch - dest));
 			break;

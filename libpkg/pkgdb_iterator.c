@@ -64,7 +64,7 @@ static struct column_mapping {
 		PKG_SQLITE_BOOL
 	} pkg_type;
 } columns[] = {
-	{ "arch",	PKG_ARCH, PKG_SQLITE_STRING },
+	{ "arch",	PKG_ABI, PKG_SQLITE_STRING },
 	{ "automatic",	PKG_AUTOMATIC, PKG_SQLITE_BOOL },
 	{ "cksum",	PKG_CKSUM, PKG_SQLITE_STRING },
 	{ "comment",	PKG_COMMENT, PKG_SQLITE_STRING },

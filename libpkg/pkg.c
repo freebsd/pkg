@@ -49,6 +49,7 @@ struct pkg_key pkg_keys[PKG_NUM_FIELDS] = {
 	[PKG_DESC] = { "desc", UCL_STRING },
 	[PKG_MTREE] = { "mtree", UCL_STRING },
 	[PKG_MESSAGE] = { "message", UCL_STRING },
+	[PKG_ABI] = { "abi", UCL_STRING },
 	[PKG_ARCH] = { "arch", UCL_STRING },
 	[PKG_MAINTAINER] = { "maintainer", UCL_STRING },
 	[PKG_WWW] = { "www", UCL_STRING },

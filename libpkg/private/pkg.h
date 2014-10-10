@@ -608,6 +608,6 @@ int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 int pkg_addoption_default(struct pkg *pkg, const char *key, const char *default_value);
 int pkg_addoption_description(struct pkg *pkg, const char *key, const char *description);
 
-int pkg_arch_to_legacy(char *arch, char *dest, size_t sz);
+int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
 
 #endif
