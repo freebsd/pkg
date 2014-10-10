@@ -890,6 +890,42 @@ cleanup:
 }
 
 int
+arch_to_legacy(char *arch, char *dest, size_t sz)
+{
+	int i = 0;
+	struct arch_trans *arch_trans;
+
+	/* Lower case the OS */
+	while (arch[i] != ':') {
+		dest[i] = tolower(arch[i]);
+		i++;
+	}
+	dest[i++] = ':';
+
+	/* Copy the version */
+	while (arch[i] != ':') {
+		dest[i] = arch[i];
+		i++;
+	}
+	dest[i++] = ':';
+	if (arch[i] == '*') {
+		dest[i++] = '*';
+		return (0);
+	}
+
+	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
+	    arch_trans++) {
+		if (strcmp(arch, arch_trans->archid) == 0) {
+			strlcpy(dest + i, arch_trans->elftype,
+			    sz - (arch - dest));
+			break;
+		}
+	}
+
+	return (0);
+}
+
+int
 pkg_get_myarch_legacy(char *dest, size_t sz)
 {
 	int i, err;
