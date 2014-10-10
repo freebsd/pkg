@@ -918,10 +918,11 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	    arch_trans++) {
 		if (strcmp(arch + i, arch_trans->archid) == 0) {
 			strlcpy(dest + i, arch_trans->elftype,
-			    sz - (arch - dest));
-			break;
+			    sz - (arch + i - dest));
+			return (0);
 		}
 	}
+	strlcpy(dest + i, arch + i, sz - (arch + i  - dest));
 
 	return (0);
 }
