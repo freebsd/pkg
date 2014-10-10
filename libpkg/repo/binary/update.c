@@ -154,7 +154,7 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
-	const char *olddigest, *manifestdigest;
+	const char *olddigest, *manifestdigest, *abi;
 	int64_t			 flatsize, pkgsize;
 	int64_t			 licenselogic;
 	int			 ret;
@@ -168,6 +168,7 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 			    PKG_VERSION, &version, PKG_COMMENT, &comment,
 			    PKG_DESC, &desc, PKG_ARCH, &arch,
+			    PKG_ABI, &abi,
 			    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
 			    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
@@ -175,6 +176,9 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 			    PKG_LICENSES, &licenses, PKG_CATEGORIES, &categories,
 			    PKG_ANNOTATIONS, &annotations, PKG_OLD_DIGEST, &olddigest,
 			    PKG_DIGEST, &manifestdigest);
+
+	if (abi != NULL)
+		arch = abi;
 
 try_again:
 	if ((ret = pkg_repo_binary_run_prstatement(PKG, origin, name, version,
