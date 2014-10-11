@@ -688,6 +688,8 @@ static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	int		 icol = 0;
 	const char	*colname;
+	char legacyarch[BUFSIZ];
+	const char *abi;
 
 	assert(stmt != NULL);
 
@@ -738,6 +740,10 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			break;
 		}
 	}
+
+	pkg_get(pkg, PKG_ABI, &abi);
+	pkg_arch_to_legacy(abi, legacyarch, BUFSIZ);
+	pkg_set(pkg, PKG_ARCH, legacyarch);
 }
 
 static struct load_on_flag {
