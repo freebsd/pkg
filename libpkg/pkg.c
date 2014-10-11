@@ -1479,8 +1479,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
 			manifest = true;
 			char *buffer;
-			char legacyarch[BUFSIZ];
-			const char *abi;
 
 			size_t len = archive_entry_size(*ae);
 			buffer = malloc(len);
@@ -1495,10 +1493,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-
-			pkg_get(pkg, PKG_ABI, &abi);
-			pkg_arch_to_legacy(abi, legacyarch, BUFSIZ);
-			pkg_set(pkg, PKG_ARCH, legacyarch);
 
 			if (flags & PKG_OPEN_MANIFEST_ONLY)
 				break;
