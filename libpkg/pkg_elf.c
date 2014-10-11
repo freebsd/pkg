@@ -897,22 +897,24 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 
 	bzero(dest, sz);
 	/* Lower case the OS */
-	while (arch[i] != ':') {
+	while (arch[i] != ':' && arch[i] != '\0') {
 		dest[i] = tolower(arch[i]);
 		i++;
 	}
+	if (arch[i] == '\0')
+		return (0);
+
 	dest[i++] = ':';
 
 	/* Copy the version */
-	while (arch[i] != ':') {
+	while (arch[i] != ':' && arch[i] != '\0') {
 		dest[i] = arch[i];
 		i++;
 	}
-	dest[i++] = ':';
-	if (arch[i] == '*') {
-		dest[i++] = '*';
+	if (arch[i] == '\0')
 		return (0);
-	}
+
+	dest[i++] = ':';
 
 	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
 	    arch_trans++) {
