@@ -347,9 +347,11 @@ exec_search(int argc, char **argv)
 				opt |= INFO_RAW_JSON_COMPACT;
 			else if (strcasecmp(optarg, "yaml") == 0)
 				opt |= INFO_RAW_YAML;
+			else if (strcasecmp(optarg, "ucl") == 0)
+				opt |= INFO_RAW_UCL;
 			else
 				errx(EX_USAGE, "Invalid format '%s' for the "
-				    "raw output, expecting json, json-compat "
+				    "raw output, expecting json, json-compact "
 				    "or yaml", optarg);
 			break;
 		default:

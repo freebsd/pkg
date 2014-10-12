@@ -279,9 +279,13 @@ print_info(struct pkg * const pkg, uint64_t options)
 		PKG_PKGSIZE,       &pkgsize);
 
 	if (options & INFO_RAW) {
-		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) {
+		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) {
 		case INFO_RAW_YAML:
 			outflags |= PKG_MANIFEST_EMIT_PRETTY;
+			break;
+		case INFO_RAW_UCL:
+			printf("ici\n");
+			outflags |= PKG_MANIFEST_EMIT_UCL;
 			break;
 		case INFO_RAW_JSON:
 			outflags |= PKG_MANIFEST_EMIT_JSON;

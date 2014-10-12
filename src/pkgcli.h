@@ -232,6 +232,7 @@ void usage_config(void);
 #define INFO_RAW_YAML		(-1LL<<62)
 #define INFO_RAW_JSON		(-1LL<<61)
 #define INFO_RAW_JSON_COMPACT	(-1LL<<60)
+#define INFO_RAW_UCL		(-1LL<<59)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \

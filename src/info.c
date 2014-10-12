@@ -207,14 +207,16 @@ exec_info(int argc, char **argv)
 			break;
 		case 1:
 			if (strcasecmp(optarg, "json") == 0)
-			       opt |= INFO_RAW_JSON;
+				opt |= INFO_RAW_JSON;
 			else if (strcasecmp(optarg, "json-compact") == 0)
 				opt |= INFO_RAW_JSON_COMPACT;
 			else if (strcasecmp(optarg, "yaml") == 0)
 				opt |= INFO_RAW_YAML;
+			else if (strcasecmp(optarg, "ucl") == 0)
+				opt |= INFO_RAW_UCL;
 			else
 				errx(EX_USAGE, "Invalid format '%s' for the "
-				    "raw output, expecting json, json-compat "
+				    "raw output, expecting json, json-compact "
 				    "or yaml", optarg);
 			break;
 		default:

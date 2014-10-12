@@ -1168,6 +1168,8 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
 		ucl_object_emit_sbuf(top, UCL_EMIT_YAML, out);
+	else if ((flags & PKG_MANIFEST_EMIT_UCL) == PKG_MANIFEST_EMIT_UCL)
+		ucl_object_emit_sbuf(top, UCL_EMIT_CONFIG, out);
 	else if ((flags & PKG_MANIFEST_EMIT_JSON) == PKG_MANIFEST_EMIT_JSON)
 		ucl_object_emit_sbuf(top, UCL_EMIT_JSON, out);
 	else
