@@ -131,7 +131,7 @@ ucl_emitter_print_key (bool print_key, struct ucl_emitter_context *ctx,
 		}
 	}
 	else if (ctx->id == UCL_EMIT_YAML) {
-		if (obj->keylen > 0 && obj->flags & UCL_OBJECT_NEED_KEY_ESCAPE) {
+		if (obj->keylen > 0 && (obj->flags & UCL_OBJECT_NEED_KEY_ESCAPE)) {
 			ucl_elt_string_write_json (obj->key, obj->keylen, ctx);
 		}
 		else if (obj->keylen > 0) {
@@ -398,7 +398,12 @@ ucl_emitter_common_elt (struct ucl_emitter_context *ctx,
 		break;
 	case UCL_STRING:
 		ucl_emitter_print_key (print_key, ctx, obj, compact);
-		ucl_elt_string_write_json (obj->value.sv, obj->len, ctx);
+		if (ctx->id == UCL_EMIT_CONFIG && ucl_maybe_long_string (obj)) {
+			ucl_elt_string_write_multiline (obj->value.sv, obj->len, ctx);
+		}
+		else {
+			ucl_elt_string_write_json (obj->value.sv, obj->len, ctx);
+		}
 		ucl_emitter_finish_object (ctx, obj, compact, !print_key);
 		break;
 	case UCL_NULL:

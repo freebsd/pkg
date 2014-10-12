@@ -138,6 +138,17 @@ ucl_elt_string_write_json (const char *str, size_t size,
 	func->ucl_emitter_append_character ('"', 1, func->ud);
 }
 
+void
+ucl_elt_string_write_multiline (const char *str, size_t size,
+		struct ucl_emitter_context *ctx)
+{
+	const struct ucl_emitter_functions *func = ctx->func;
+
+	func->ucl_emitter_append_len ("<<EOD\n", sizeof ("<<EOD\n") - 1, func->ud);
+	func->ucl_emitter_append_len (str, size, func->ud);
+	func->ucl_emitter_append_len ("\nEOD", sizeof ("\nEOD") - 1, func->ud);
+}
+
 /*
  * Generic utstring output
  */
@@ -457,4 +468,19 @@ ucl_object_emit_single_json (const ucl_object_t *obj)
 	}
 
 	return res;
+}
+
+#define LONG_STRING_LIMIT 80
+
+bool
+ucl_maybe_long_string (const ucl_object_t *obj)
+{
+	if (obj->len > LONG_STRING_LIMIT || (obj->flags & UCL_OBJECT_MULTILINE)) {
+		/* String is long enough, so search for newline characters in it */
+		if (memchr (obj->value.sv, '\n', obj->len) != NULL) {
+			return true;
+		}
+	}
+
+	return false;
 }
