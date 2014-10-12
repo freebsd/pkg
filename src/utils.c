@@ -284,7 +284,6 @@ print_info(struct pkg * const pkg, uint64_t options)
 			outflags |= PKG_MANIFEST_EMIT_PRETTY;
 			break;
 		case INFO_RAW_UCL:
-			printf("ici\n");
 			outflags |= PKG_MANIFEST_EMIT_UCL;
 			break;
 		case INFO_RAW_JSON:
