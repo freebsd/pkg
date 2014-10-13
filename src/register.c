@@ -312,7 +312,7 @@ exec_register(int argc, char **argv)
 	if (!testing_mode)
 		pkg_analyse_files(db, pkg, input_path);
 
-	pkg_get(pkg, PKG_ARCH, &arch);
+	pkg_get(pkg, PKG_ABI, &arch);
 	if (arch == NULL) {
 		/*
 		 * do not take the one from configuration on purpose
@@ -321,7 +321,7 @@ exec_register(int argc, char **argv)
 		pkg_get_myarch(myarch, BUFSIZ);
 		if (developer)
 			pkg_suggest_arch(pkg, myarch, true);
-		pkg_set(pkg, PKG_ARCH, myarch);
+		pkg_set(pkg, PKG_ABI, myarch);
 	} else {
 		if (developer)
 			pkg_suggest_arch(pkg, arch, false);
