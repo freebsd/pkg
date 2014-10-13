@@ -332,7 +332,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		pkg_load_from_file(mfd, pkg, PKG_MESSAGE, "+DISPLAY");
 
 	/* if no arch autodetermine it */
-	pkg_get(pkg, PKG_ARCH, &buf);
+	pkg_get(pkg, PKG_ABI, &buf);
 	if (buf == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
 		pkg_set(pkg, PKG_ABI, arch);
