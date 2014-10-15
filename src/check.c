@@ -61,23 +61,19 @@ static int
 check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall)
 {
 	struct pkg_dep *dep = NULL;
-	char *name, *version, *origin;
 	int nbpkgs = 0;
 
 	assert(db != NULL);
 	assert(p != NULL);
 
-	name = version = origin = NULL;
-	pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
-
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
-			if (quiet) 
-				printf("%s\t%s\n", origin, pkg_dep_origin(dep));
+			if (quiet)
+				pkg_printf("%o\t%so\n", p, dep);
 			else
-				printf("%s has a missing dependency: %s\n",
-				    origin, pkg_dep_origin(dep));
+				pkg_printf("%o has a missing dependency: %do\n",
+				    p, dep);
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
 		}
