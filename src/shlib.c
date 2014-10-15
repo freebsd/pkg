@@ -75,8 +75,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 {
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-	const char	*name, *version;
-	int		 ret = EPKG_OK; 
+	int		 ret = EPKG_OK;
 	int		 count = 0;
 
 	if ((it = pkgdb_query_shlib_provide(db, libname)) == NULL) {
@@ -88,8 +87,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 			printf("%s is provided by the following packages:\n",
 			       libname);
 		count++;
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		printf("%s-%s\n", name, version);
+		pkg_printf("%n-%v\n", pkg, pkg);
 	}
 
 	if (ret == EPKG_END) {
@@ -109,8 +107,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 {
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-	const char	*name, *version;
-	int		 ret = EPKG_OK; 
+	int		 ret = EPKG_OK;
 	int		 count = 0;
 
 	if ((it = pkgdb_query_shlib_require(db, libname)) == NULL) {
@@ -122,8 +119,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 			printf("%s is linked to by the following packages:\n",
 			       libname);
 		count++;
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		printf("%s-%s\n", name, version);
+		pkg_printf("%n-%v\n", pkg, pkg);
 	}
 
 	if (ret == EPKG_END) {
