@@ -28,6 +28,8 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+#define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%s" fmt, getprogname(), __VA_ARGS__, -1)
+
 extern bool quiet;
 extern int nbactions;
 int nbactions;

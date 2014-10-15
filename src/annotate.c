@@ -68,8 +68,7 @@ usage_annotate(void)
 static int
 do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 {
-	const char	*pkgname, *pkgversion;
-	int		 ret = EPKG_OK;
+	int	ret = EPKG_OK;
 
 
 	if (yes || query_tty_yesno(false, "%n-%v: Add annotation tagged: %S with "
@@ -82,19 +81,12 @@ do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 				    " %S\n", pkg, pkg, tag);
 		} else if (ret == EPKG_WARN) {
 			if (!quiet) {
-				pkg_get(pkg, PKG_NAME, &pkgname,
-					PKG_VERSION, &pkgversion);
-			
-				warnx("%s-%s: Cannot add annotation tagged: "
-				      "%s -- already exists", pkgname,
-				      pkgversion, tag);
+				pkg_warnx("%n-%v: Cannot add annotation tagged:"
+				    " %S\n", pkg, pkg, tag);
 			}
 		} else {
-			pkg_get(pkg, PKG_NAME, &pkgname,
-				PKG_VERSION, &pkgversion);
-
-			warnx("%s-%s: Failed to add annotation tagged: %s",
-			    pkgname, pkgversion, tag);
+			pkg_warnx("%n-%v: Failed to add annotation tagged:"
+			    " %S\n", pkg, pkg, tag);
 		}
 	}
 	return (ret);
@@ -103,8 +95,7 @@ do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 static int
 do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 {
-	const char	*pkgname, *pkgversion;
-	int		 ret = EPKG_OK;
+	int	ret = EPKG_OK;
 
 
 	if (yes || query_tty_yesno(false, "%n-%v: Change annotation tagged: %S to "
@@ -115,11 +106,8 @@ do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 				pkg_printf("%n-%v: Modified annotation "
 				       "tagged: %S\n", pkg, pkg, tag);
 		} else {
-			pkg_get(pkg, PKG_NAME, &pkgname,
-				PKG_VERSION, &pkgversion);
-
-			warnx("%s-%s: Failed to modify annotation tagged: %s",
-			     pkgname, pkgversion, tag);
+			pkg_warnx("%n-%v: Failed to modify annotation tagged:"
+			    " %S", pkg, pkg, tag);
 		}
 	}
 	return (ret);
@@ -128,8 +116,7 @@ do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 static int
 do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 {
-	const char	*pkgname, *pkgversion;
-	int		 ret = EPKG_OK;
+	int	ret = EPKG_OK;
 
 	if (yes || query_tty_yesno(false, "%n-%v: Delete annotation tagged: %S? "
 			 "[y/N]: ", pkg, pkg, tag)) {
@@ -140,19 +127,13 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 				       "tagged: %S\n", pkg, pkg, tag);
 		} else if (ret == EPKG_WARN) {
 			if (!quiet) {
-				pkg_get(pkg, PKG_NAME, &pkgname,
-					PKG_VERSION, &pkgversion);
-
-				warnx("%s-%s: Cannot delete annotation "
-				     "tagged: %s -- because there is none",
-				     pkgname, pkgversion, tag);
+				pkg_warnx("%n-%v: Cannot delete annotation "
+				     "tagged: %S -- because there is none",
+				     pkg, pkg, tag);
 			}
 		} else {
-			pkg_get(pkg, PKG_NAME, &pkgname,
-				PKG_VERSION, &pkgversion);
-
-			warnx("%s-%s: Failed to delete annotation tagged: %s",
-			     pkgname, pkgversion, tag);
+			pkg_warnx("%n-%v: Failed to delete annotation tagged: %S",
+			     pkg, pkg, tag);
 		}
 	}
 	return (ret);
