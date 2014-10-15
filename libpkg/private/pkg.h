@@ -468,9 +468,6 @@ int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
 int pkg_script_run(struct pkg *, pkg_script type);
 
-int pkg_add_user_group(struct pkg *pkg);
-int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
-
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
 	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
 
@@ -543,8 +540,6 @@ int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sh
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
-
-int pkg_repo_binary_update(struct pkg_repo *repo, bool force);
 
 bool ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     struct sbuf **buf);
