@@ -333,10 +333,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_dep		*dep    = NULL;
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
-	struct pkg_dir		*dir    = NULL;
-	struct pkg_user		*user   = NULL;
-	struct pkg_group	*group  = NULL;
-	struct pkg_shlib	*shlib  = NULL;
 	const pkg_object	*o, *list;
 	pkg_iter		 it;
 
@@ -354,12 +350,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		it = NULL;
-		pkg_get(pkg, PKG_CATEGORIES, &list);
-		while ((o = pkg_object_iterate(list, &it))) {
-			format_str(pkg, output, qstr, o);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%C%{%Cn\n%|%}", pkg);
 		break;
 	case 'O':
 		while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -374,42 +365,22 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'D':
-		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-			format_str(pkg, output, qstr, dir);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%D", pkg);
 		break;
 	case 'L':
-		it = NULL;
-		pkg_get(pkg, PKG_LICENSES, &list);
-		while ((o = pkg_object_iterate(list, &it))) {
-			format_str(pkg, output, qstr, o);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%L%{%Ln\n%|%}", pkg);
 		break;
 	case 'U':
-		while (pkg_users(pkg, &user) == EPKG_OK) {
-			format_str(pkg, output, qstr, user);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%U", pkg);
 		break;
 	case 'G':
-		while (pkg_groups(pkg, &group) == EPKG_OK) {
-			format_str(pkg, output, qstr, group);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%G", pkg);
 		break;
 	case 'B':
-		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-			format_str(pkg, output, qstr, shlib);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%B", pkg);
 		break;
 	case 'b':
-		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-			format_str(pkg, output, qstr, shlib);
-			printf("%s\n", sbuf_data(output));
-		}
+		pkg_printf("%b", pkg);
 		break;
 	case 'A':
 		it = NULL;
