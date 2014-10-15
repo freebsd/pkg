@@ -332,3 +332,25 @@ pkg_provide_name(const struct pkg_provide *c)
 
 	return (sbuf_get(c->provide));
 }
+
+/*
+ * Config files
+ */
+int
+pkg_config_file_new(struct pkg_config_file **c)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_config_file))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_config_file_free(struct pkg_config_file *c)
+{
+	if (c == NULL)
+		return;
+
+	free(c->content);
+	free(c);
+}

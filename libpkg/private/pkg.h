@@ -135,6 +135,7 @@ struct pkg {
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
+	struct pkg_config_file	*config_files;
 	unsigned			flags;
 	int		rootfd;
 	char		rootpath[MAXPATHLEN];
@@ -399,6 +400,12 @@ struct action {
 	struct action *next;
 };
 
+struct pkg_config_file {
+	char path[MAXPATHLEN];
+	char *content;
+	UT_hash_handle hh;
+};
+
 /* sql helpers */
 
 typedef struct _sql_prstmt {
@@ -504,6 +511,9 @@ void pkg_conflict_free(struct pkg_conflict *);
 int pkg_provide_new(struct pkg_provide **);
 void pkg_provide_free(struct pkg_provide *);
 
+int pkg_config_file_new(struct pkg_config_file **);
+void pkg_config_file_free(struct pkg_config_file *);
+
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format,
@@ -598,6 +608,7 @@ int pkg_addshlib_required(struct pkg *pkg, const char *name);
 int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 int pkg_addconflict(struct pkg *pkg, const char *name);
 int pkg_addprovide(struct pkg *pkg, const char *name);
+int pkg_addconfig_file(struct pkg *pkg, const char *name, const char *buf);
 
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 int pkg_addoption_default(struct pkg *pkg, const char *key, const char *default_value);

@@ -56,6 +56,7 @@ static int setowner(struct plist *, char *, struct file_attr *);
 static int setgroup(struct plist *, char *, struct file_attr *);
 static int ignore_next(struct plist *, char *, struct file_attr *);
 static int comment_key(struct plist *, char *, struct file_attr *);
+static int config(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
 static int name_key(struct plist *, char *, struct file_attr *);
 static int pkgdep(struct plist *, char *, struct file_attr *);
@@ -75,6 +76,7 @@ static struct action_cmd {
 	{ "setgroup", setgroup, 8 },
 	{ "comment", comment_key, 7 },
 	{ "ignore_next", ignore_next, 11 },
+	{ "config", config, 6 },
 	/* compat with old packages */
 	{ "name", name_key, 4 },
 	{ "pkgdep", pkgdep, 6 },
@@ -307,7 +309,7 @@ dirrm(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-file(struct plist *p, char *line, struct file_attr *a)
+meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 {
 	size_t len;
 	char path[MAXPATHLEN];
@@ -372,6 +374,18 @@ file(struct plist *p, char *line, struct file_attr *a)
 			else
 				sha256_file(testpath, sha256);
 			buf = sha256;
+			if (is_config) {
+				size_t sz;
+				char *content;
+				file_to_buffer(testpath, &content, &sz);
+				pkg_addconfig_file(p->pkg, path, content);
+				free(content);
+			}
+		} else {
+			if (is_config) {
+				pkg_emit_error("Plist error, @config %s: not a regular file", line);
+				return (EPKG_FATAL);
+			}
 		}
 		if (S_ISDIR(st.st_mode) &&
 		    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
@@ -404,6 +418,18 @@ file(struct plist *p, char *line, struct file_attr *a)
 	free_file_attr(a);
 
 	return (ret);
+}
+
+static int
+config(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_file(p, line, a, true));
+}
+
+static int
+file(struct plist *p, char *line, struct file_attr *a)
+{
+	return (meta_file(p, line, a, false));
 }
 
 static int
@@ -708,6 +734,7 @@ static struct keyact {
 	{ "cwd", setprefix },
 	{ "ignore", ignore_next },
 	{ "comment", comment_key },
+	{ "config", config },
 	{ "dir", dir },
 	{ "dirrm", dirrm },
 	{ "dirrmtry", dirrm },

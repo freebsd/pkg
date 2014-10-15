@@ -81,6 +81,7 @@ static struct manifest_key {
 	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
 	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
 	{ "conflicts",           PKG_CONFLICTS,           UCL_ARRAY,  pkg_array},
+	{ "config",              PKG_CONFIG_FILES,        UCL_ARRAY,  pkg_array},
 	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_obj},
 	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
 	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_obj},
@@ -375,6 +376,12 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 				pkg_emit_error("Skipping malformed provide name");
 			else
 				pkg_addprovide(pkg, ucl_object_tostring(cur));
+			break;
+		case PKG_CONFIG_FILES:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed config file name");
+			else
+				pkg_addconfig_file(pkg, ucl_object_tostring(cur), NULL);
 			break;
 		}
 	}
@@ -872,6 +879,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_provide	*provide  = NULL;
+	struct pkg_config_file	*cf       = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int i;
 	const char *comment, *desc, *message, *repopath, *abi;
@@ -1085,6 +1093,18 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "files", 5, false);
+
+			pkg_debug(3, "Emitting config files");
+			seq = NULL;
+			while (pkg_config_files(pkg, &cf) == EPKG_OK) {
+				urlencode(cf->path, &tmpsbuf);
+				if (seq == NULL)
+					seq = ucl_object_typed_new(UCL_ARRAY);
+				printf("%s\n", cf->path);
+				ucl_array_append(seq, ucl_object_fromstring(sbuf_data(tmpsbuf)));
+			}
+			if (seq)
+				ucl_object_insert_key(top, seq, "config", 6, false);
 
 			pkg_debug(4, "Emitting directories");
 			map = NULL;

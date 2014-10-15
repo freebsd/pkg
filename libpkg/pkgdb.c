@@ -73,7 +73,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	27
+#define DB_SCHEMA_MINOR	28
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -511,6 +511,12 @@ pkgdb_init(sqlite3 *sdb)
 	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, provide_id)"
+	");"
+	"CREATE TABLE config_files ("
+		"path TEXT NOT NULL UNIQUE, "
+		"content TEXT, "
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE"
 	");"
 
 	/* FTS search table */
@@ -1231,6 +1237,7 @@ typedef enum _sql_prstmt_index {
 	PROVIDE,
 	FTS_APPEND,
 	UPDATE_DIGEST,
+	CONFIG_FILES,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -1438,6 +1445,12 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"UPDATE packages SET manifestdigest=?1 WHERE id=?2;",
 		"TI"
+	},
+	[CONFIG_FILES] = {
+		NULL,
+		"INSERT INTO config_files(path, content, package_id) "
+		"VALUES (?1, ?2, ?3);",
+		"TTI"
 	}
 	/* PRSTMT_LAST */
 };
@@ -1532,6 +1545,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_user		*user = NULL;
 	struct pkg_group	*group = NULL;
 	struct pkg_conflict	*conflict = NULL;
+	struct pkg_config_file	*cf = NULL;
 	struct pkgdb_it		*it = NULL;
 	const pkg_object	*obj;
 	pkg_iter		 iter;
@@ -1700,6 +1714,20 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 			pkg_free(pkg2);
 		}
 		pkgdb_it_free(it);
+	}
+
+	/* Insert config files */
+	while (pkg_config_files(pkg, &cf) == EPKG_OK)
+	{
+		if ((ret = run_prstmt(CONFIG_FILES, cf->path, cf->content, package_id)
+		    != SQLITE_DONE)) {
+			if (ret == SQLITE_CONSTRAINT) {
+				pkg_emit_error("Another package already owns :%s",
+				    cf->path);
+			} else
+				ERROR_SQLITE(s, SQL(CONFIG_FILES));
+			goto cleanup;
+		}
 	}
 
 	/*

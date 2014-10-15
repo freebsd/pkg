@@ -478,6 +478,14 @@ pkg_files(const struct pkg *pkg, struct pkg_file **f)
 }
 
 int
+pkg_config_files(const struct pkg *pkg, struct pkg_config_file **f)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->config_files, (*f));
+}
+
+int
 pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
@@ -749,6 +757,35 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 		f->perm = perm;
 
 	HASH_ADD_STR(pkg->files, path, f);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
+{
+	struct pkg_config_file *f;
+	char abspath[MAXPATHLEN];
+
+	path = pkg_absolutepath(path, abspath, sizeof(abspath));
+	pkg_debug(3, "Pkg: add new config file '%s'", path);
+
+	HASH_FIND_STR(pkg->config_files, path, f);
+	if (f != NULL) {
+		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", f->path);
+			return (EPKG_FATAL);
+		} else {
+			pkg_emit_error("duplicate file listing: %s, ignoring", f->path);
+		}
+	}
+	pkg_config_file_new(&f);
+	strlcpy(f->path, path, sizeof(f->path));
+
+	if (content != NULL)
+		f->content = strdup(content);
+
+	HASH_ADD_STR(pkg->config_files, path, f);
 
 	return (EPKG_OK);
 }
@@ -1296,6 +1333,8 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->conflicts));
 	case PKG_PROVIDES:
 		return (HASH_COUNT(pkg->provides));
+	case PKG_CONFIG_FILES:
+		return (HASH_COUNT(pkg->config_files));
 	}
 	
 	return (0);
@@ -1317,7 +1356,9 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
+	case PKG_CONFIG_FILES:
 		HASH_FREE(pkg->files, pkg_file_free);
+		HASH_FREE(pkg->config_files, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:

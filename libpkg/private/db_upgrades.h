@@ -635,6 +635,14 @@ static struct db_upgrades {
 	"CREATE INDEX IF NOT EXISTS packages_uid ON packages(name, origin COLLATE NOCASE);"
 	"CREATE INDEX IF NOT EXISTS packages_version ON packages(name, version);"
 	},
+	{28,
+	"CREATE TABLE config_files ("
+		"path TEXT NOT NULL UNIQUE, "
+		"content TEXT, "
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE"
+	");"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 

@@ -293,6 +293,11 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 		"FROM files "
 		"WHERE package_id = ?1 "
 		"ORDER BY PATH ASC";
+	const char	 sql2[] = ""
+		"SELECT path, content "
+		"FROM config_files "
+		"WHERE package_id = ?1 "
+		"ORDER BY PATH ASC";
 
 	assert( pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -315,6 +320,20 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	}
 	sqlite3_finalize(stmt);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql2);
+	if (sqlite3_prepare_v2(sqlite, sql2, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sql2);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_int64(stmt, 1, rowid);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_addconfig_file(pkg, sqlite3_column_text(stmt, 0),
+		    sqlite3_column_text(stmt, 1));
+	}
+
+	sqlite3_finalize(stmt);
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_FILES);
 		ERROR_SQLITE(sqlite, sql);
