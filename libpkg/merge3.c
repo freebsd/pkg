@@ -131,7 +131,7 @@ sbuf_copy_lines(struct sbuf *to, const char *from, int N)
 	sbuf_bcat(to, from, i);
 	sbuf_finish(to);
 
-	return (i+1);
+	return (i);
 }
 
 /*
