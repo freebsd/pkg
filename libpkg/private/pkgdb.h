@@ -178,5 +178,6 @@ void pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 void pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv);
 void pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 int pkgdb_sqlcmd_init(sqlite3 *db, const char **err, const void *noused);
+int pkgdb_update_config_file_content(struct pkg *pkg, sqlite3 *s);
 
 #endif

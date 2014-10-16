@@ -35,6 +35,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -58,6 +59,7 @@ pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
 			return;
 	}
 
+	buf[nchars++] = '.';
 	pos = buf + nchars;
 
 	while(suflen --) {
@@ -72,16 +74,102 @@ pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
 	*pos = '\0';
 }
 
+static void
+attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file *rcf,
+  struct pkg *local, char *pathname, const char *path, struct sbuf *newconf)
+{
+	const struct pkg_file *lf = NULL;
+	struct pkg_config_file *lcf = NULL;
+
+	char *localconf = NULL;
+	size_t sz;
+	char localsum[SHA256_DIGEST_LENGTH];
+
+	if (!renamed) {
+		pkg_debug(3, "Not renamed");
+		return;
+	}
+
+	if (rcf == NULL) {
+		pkg_debug(3, "No remote config file");
+		return;
+	}
+
+	if (local == NULL) {
+		pkg_debug(3, "No local package");
+		return;
+	}
+
+	if (!pkg_is_config_file(local, path, &lf, &lcf)) {
+		pkg_debug(3, "No local package");
+		return;
+	}
+
+	if (lcf->content == NULL) {
+		pkg_debug(3, "Empty configuration content for local package");
+		return;
+	}
+	
+	pkg_debug(1, "Config file found %s", pathname);
+	file_to_buffer(pathname, &localconf, &sz);
+
+	FILE *f = fopen("/tmp/4", "w+");
+	fprintf(f, "%s", localconf);
+	fclose(f);
+
+	pkg_debug(2, "size: %d vs %d", sz, strlen(lcf->content));
+
+	if (sz == strlen(lcf->content)) {
+		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
+		sha256_buf(localconf, sz, localsum);
+		if (strcmp(localsum, lf->sum) == 0) {
+			pkg_debug(2, "Checksum are the same %d", strlen(localconf));
+			free(localconf);
+			return;
+		}
+		pkg_debug(2, "Checksum are different %d", strlen(localconf));
+	}
+
+	pkg_debug(1, "Attempting to merge %s", pathname);
+	f = fopen("/tmp/1", "w+");
+	fprintf(f, "%s", lcf->content);
+	fclose(f);
+	f = fopen("/tmp/2", "w+");
+	fprintf(f, "%s", localconf);
+	fclose(f);
+	f = fopen("/tmp/3", "w+");
+	fprintf(f, "%s", rcf->content);
+	fclose(f);
+	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
+		pkg_emit_error("Impossible to merge configuration file");
+		sbuf_clear(newconf);
+		strlcat(pathname, ".pkgnew", MAXPATHLEN);
+	}
+	unlink("/tmp/5");
+	f = fopen("/tmp/5", "w+");
+	fprintf(f, "%s", localconf);
+	fclose(f);
+
+	unlink("/tmp/7");
+	f = fopen("/tmp/7", "w+");
+	fprintf(f, "%s", sbuf_data(newconf));
+	fclose(f);
+	free(localconf);
+}
+
 static int
 do_extract(struct archive *a, struct archive_entry *ae, const char *location,
-		int nfiles, struct pkg *pkg)
+    int nfiles, struct pkg *pkg, struct pkg *local)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
-	struct stat st;
 	const char *name;
+	struct stat st;
 	bool renamed = false;
+	const struct pkg_file *lf, *rf;
+	struct pkg_config_file *lcf, *rcf;
+	struct sbuf *newconf;
 
 #ifndef HAVE_ARC4RANDOM
 	srand(time(NULL));
@@ -94,24 +182,63 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	pkg_emit_extract_begin(pkg);
 	pkg_emit_progress_start(NULL);
 
+	newconf = sbuf_new_auto();
+
 	do {
+		ret = ARCHIVE_OK;
+		sbuf_clear(newconf);
+		lf = NULL;
+		rf = NULL;
+		lcf = NULL;
+		rcf = NULL;
+		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path));
 		snprintf(pathname, sizeof(pathname), "%s/%s",
 		    location ? location : "",
-		    archive_entry_pathname(ae)
+		    path
 		);
 		strlcpy(rpath, pathname, sizeof(rpath));
 
-		if (lstat(pathname, &st) != -1 && !S_ISDIR(st.st_mode)) {
+		if (lstat(rpath, &st) != -1 && !S_ISDIR(st.st_mode)) {
 			/*
 			 * We have an existing file on the path, so handle it
 			 */
+			pkg_debug(2, "Old version found, renaming");
 			pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
 			renamed = true;
 		}
 
 		archive_entry_set_pathname(ae, rpath);
 
-		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+		/* load in memory the content of config files */
+		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
+			pkg_debug(1, "Populating config_file %s", pathname);
+			size_t len = archive_entry_size(ae);
+			rcf->content = malloc(len);
+			archive_read_data(a, rcf->content, len);
+			if (renamed && local == NULL)
+				strlcat(pathname, ".pkgnew", sizeof(pathname));
+		}
+
+		/*
+		 * check if the file is already provided by previous package
+		 */
+		attempt_to_merge(renamed, rf, rcf, local, pathname, path, newconf);
+
+		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
+			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));
+			ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+		} else {
+			if (sbuf_len(newconf) == 0) {
+				sbuf_cat(newconf, rcf->content);
+				sbuf_finish(newconf);
+			}
+			pkg_debug(2, "Writing conf in %s", pathname);
+			unlink(rpath);
+			int f = open(rpath, O_TRUNC|O_CREAT|O_WRONLY);
+			dprintf(f, "%s", sbuf_data(newconf));
+			close(f);
+		}
+
 		if (ret != ARCHIVE_OK) {
 			/*
 			 * show error except when the failure is during
@@ -130,32 +257,19 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		}
 		pkg_emit_progress_tick(cur_file++, nfiles);
 
-		/*
-		 * if the file is a configuration file and the configuration
-		 * file does not already exist on the file system, then
-		 * extract it
-		 * ex: conf1.cfg.pkgconf:
-		 * if conf1.cfg doesn't exists create it based on
-		 * conf1.cfg.pkgconf
-		 */
-		if (is_conf_file(pathname, path, sizeof(path))
-		    && lstat(path, &st) == -1 && errno == ENOENT) {
-			archive_entry_set_pathname(ae, path);
-			ret = archive_read_extract(a,ae, EXTRACT_ARCHIVE_FLAGS);
-			if (ret != ARCHIVE_OK) {
-				pkg_emit_error("archive_read_extract(): %s",
-				    archive_error_string(a));
+		/* Rename old file */
+		if (renamed) {
+			pkg_debug(1, "Renaming %s -> %s", rpath, pathname);
+			if (rename(rpath, pathname) == -1) {
+				pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
+					strerror(errno));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 		}
-		/* Rename old file */
-		if (renamed && rename(rpath, pathname) == -1) {
-			pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
-				strerror(errno));
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
+
+		if (string_end_with(pathname, ".pkgnew"))
+			pkg_emit_error("New configuration file: %s", pathname);
 
 		renamed = false;
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
@@ -288,7 +402,7 @@ cleanup:
 static int
 pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 {
-	struct pkg_file *f, *cf;
+	struct pkg_file *f;
 	struct pkg_dir *d, *cd;
 	int ret = EPKG_OK;
 	bool handle_rc;
@@ -313,10 +427,10 @@ pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 	if (new != NULL) {
 		f = NULL;
 		while (pkg_files(old, &f) == EPKG_OK) {
-			HASH_FIND_STR(new->files, f->path, cf);
-
-			if (cf == NULL)
+			if (!pkg_has_file(new, f->path)) {
+				pkg_debug(2, "File %s is not in the new package", f->path);
 				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
+			}
 		}
 
 		d = NULL;
@@ -414,7 +528,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		goto cleanup;
 
 	if (local != NULL) {
-		if (pkg_add_cleanup_old(local, remote, flags) != EPKG_OK) {
+		pkg_debug(1, "Cleaning up old version");
+		if (pkg_add_cleanup_old(local, pkg, flags) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -432,12 +547,17 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract && (retcode = do_extract(a, ae, location, nfiles, pkg)) != EPKG_OK) {
+	if (extract &&
+	    (retcode = do_extract(a, ae, location, nfiles, pkg, local))
+	    != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg);
 		goto cleanup_reg;
 	}
+
+	/* Update configuration file content with db with newer versions */
+	pkgdb_update_config_file_content(pkg, db->sqlite);
 
 	/*
 	 * Execute post install scripts

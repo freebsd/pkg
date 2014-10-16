@@ -1801,6 +1801,31 @@ pkg_is_locked(const struct pkg * restrict p)
 }
 
 bool
+pkg_is_config_file(struct pkg *p, const char *path,
+    const struct pkg_file **file,
+    struct pkg_config_file **cfile)
+{
+	struct pkg_file *f;
+	struct pkg_config_file *cf;
+
+	*file = NULL;
+	*cfile = NULL;
+
+	HASH_FIND_STR(p->files, path, f);
+	if (f == NULL)
+		return (false);
+
+	HASH_FIND_STR(p->config_files, path, cf);
+	if (cf == NULL)
+		return (false);
+
+	*file = f;
+	*cfile = cf;
+
+	return (true);
+}
+
+bool
 pkg_has_file(struct pkg *p, const char *path)
 {
 	struct pkg_file *f;

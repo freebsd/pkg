@@ -1238,6 +1238,7 @@ typedef enum _sql_prstmt_index {
 	FTS_APPEND,
 	UPDATE_DIGEST,
 	CONFIG_FILES,
+	UPDATE_CONFIG_FILE,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -1451,6 +1452,11 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT INTO config_files(path, content, package_id) "
 		"VALUES (?1, ?2, ?3);",
 		"TTI"
+	},
+	[UPDATE_CONFIG_FILE] = {
+		NULL,
+		"UPDATE config_files SET content=?1 WHERE path=?2;",
+		"TT"
 	}
 	/* PRSTMT_LAST */
 };
@@ -1716,9 +1722,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		pkgdb_it_free(it);
 	}
 
-	/* Insert config files */
-	while (pkg_config_files(pkg, &cf) == EPKG_OK)
-	{
+	/*
+	 * Insert config files
+	 */
+	while (pkg_config_files(pkg, &cf) == EPKG_OK) {
 		if ((ret = run_prstmt(CONFIG_FILES, cf->path, cf->content, package_id)
 		    != SQLITE_DONE)) {
 			if (ret == SQLITE_CONSTRAINT) {
@@ -1903,6 +1910,22 @@ pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(SHLIBS_REQD, package_id, pkg_shlib_name(shlib))
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s, SQL(SHLIBS_REQD));
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_update_config_file_content(struct pkg *p, sqlite3 *s)
+{
+	struct pkg_config_file	*cf = NULL;
+
+	while (pkg_config_files(p, &cf) == EPKG_OK) {
+		if (run_prstmt(UPDATE_CONFIG_FILE, cf->content, cf->path)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(SHLIBS_REQD));
 			return (EPKG_FATAL);

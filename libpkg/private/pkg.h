@@ -615,5 +615,7 @@ int pkg_addoption_default(struct pkg *pkg, const char *key, const char *default_
 int pkg_addoption_description(struct pkg *pkg, const char *key, const char *description);
 
 int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
+bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file **file, struct pkg_config_file **cfile);
+
 
 #endif
