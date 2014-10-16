@@ -147,6 +147,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	const struct pkg_file *lf, *rf;
 	struct pkg_config_file *lcf, *rcf;
 	struct sbuf *newconf;
+	bool automerge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
 
 #ifndef HAVE_ARC4RANDOM
 	srand(time(NULL));
@@ -192,14 +193,15 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			size_t len = archive_entry_size(ae);
 			rcf->content = malloc(len);
 			archive_read_data(a, rcf->content, len);
-			if (renamed && local == NULL)
+			if (renamed && (!automerge || local == NULL))
 				strlcat(pathname, ".pkgnew", sizeof(pathname));
 		}
 
 		/*
 		 * check if the file is already provided by previous package
 		 */
-		attempt_to_merge(renamed, rf, rcf, local, pathname, path, newconf);
+		if (!automerge)
+			attempt_to_merge(renamed, rf, rcf, local, pathname, path, newconf);
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
 			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));

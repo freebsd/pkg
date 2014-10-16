@@ -327,6 +327,12 @@ static struct config_entry c[] = {
 		"IP_VERSION",
 		"0",
 		"Restrict network access to IPv4 or IPv6 only"
+	},
+	{
+		PKG_BOOL,
+		"AUTOMERGE",
+		"YES",
+		"Automatically merge configuration files"
 	}
 };
 
