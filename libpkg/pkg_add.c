@@ -35,7 +35,6 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -113,10 +112,6 @@ attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file
 	pkg_debug(1, "Config file found %s", pathname);
 	file_to_buffer(pathname, &localconf, &sz);
 
-	FILE *f = fopen("/tmp/4", "w+");
-	fprintf(f, "%s", localconf);
-	fclose(f);
-
 	pkg_debug(2, "size: %d vs %d", sz, strlen(lcf->content));
 
 	if (sz == strlen(lcf->content)) {
@@ -131,29 +126,11 @@ attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file
 	}
 
 	pkg_debug(1, "Attempting to merge %s", pathname);
-	f = fopen("/tmp/1", "w+");
-	fprintf(f, "%s", lcf->content);
-	fclose(f);
-	f = fopen("/tmp/2", "w+");
-	fprintf(f, "%s", localconf);
-	fclose(f);
-	f = fopen("/tmp/3", "w+");
-	fprintf(f, "%s", rcf->content);
-	fclose(f);
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		pkg_emit_error("Impossible to merge configuration file");
 		sbuf_clear(newconf);
 		strlcat(pathname, ".pkgnew", MAXPATHLEN);
 	}
-	unlink("/tmp/5");
-	f = fopen("/tmp/5", "w+");
-	fprintf(f, "%s", localconf);
-	fclose(f);
-
-	unlink("/tmp/7");
-	f = fopen("/tmp/7", "w+");
-	fprintf(f, "%s", sbuf_data(newconf));
-	fclose(f);
 	free(localconf);
 }
 
@@ -234,9 +211,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 			pkg_debug(2, "Writing conf in %s", pathname);
 			unlink(rpath);
-			int f = open(rpath, O_TRUNC|O_CREAT|O_WRONLY);
-			dprintf(f, "%s", sbuf_data(newconf));
-			close(f);
+			FILE *f = fopen(rpath, "w+");
+			fprintf(f, "%s", sbuf_data(newconf));
+			fclose(f);
 		}
 
 		if (ret != ARCHIVE_OK) {
