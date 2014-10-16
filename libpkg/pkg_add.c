@@ -248,7 +248,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		}
 
 		if (string_end_with(pathname, ".pkgnew"))
-			pkg_emit_error("New configuration file: %s", pathname);
+			pkg_emit_notice("New configuration file: %s", pathname);
 
 		renamed = false;
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
