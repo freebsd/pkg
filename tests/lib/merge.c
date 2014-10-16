@@ -63,6 +63,14 @@ ATF_TC_BODY(merge, tc)
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
 	ATF_REQUIRE_STREQ(sbuf_data(b), "test1\ntest3");
 
+	sbuf_clear(b);
+	pivot = "test1\ntest2\ntest3";
+	modified = "test1\na\ntest2\ntest3";
+	new = "test1\ntest2\ntest3";
+
+	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
+	ATF_REQUIRE_STREQ(sbuf_data(b), "test1\na\ntest2\ntest3");
+
 	sbuf_delete(b);
 }
 
