@@ -30,6 +30,7 @@
 
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <sys/stat.h>
 #include <sys/param.h>
 #include <uthash.h>
 #include <ucl.h>
