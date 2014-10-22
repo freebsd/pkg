@@ -1036,4 +1036,3 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size) {
 
 	return (dest);
 }
-
