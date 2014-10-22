@@ -546,8 +546,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	}
 
 	if (rc == EPKG_OK)
-		pkg_emit_incremental_update(repo->name, 0, 0,
-		    0, cnt);
+		pkg_emit_incremental_update(repo->name, cnt);
 
 cleanup:
 

@@ -1382,9 +1382,6 @@ struct pkg_event {
 		} e_integrity_finished;
 		struct {
 			const char *reponame;
-			int updated;
-			int removed;
-			int added;
 			int processed;
 		} e_incremental_update;
 		struct {
