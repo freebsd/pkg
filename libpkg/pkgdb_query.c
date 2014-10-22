@@ -79,8 +79,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				else
 					comp = " WHERE origin = ?1";
 			} else {
-				comp = " WHERE name = SPLIT_UID('name', ?1) AND "
-						"origin = SPLIT_UID('origin', ?1)";
+				comp = " WHERE name = ?1";
 			}
 		} else {
 			if (checkuid == NULL) {
@@ -91,8 +90,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				else
 					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {
-				comp = " WHERE name = SPLIT_UID('name', ?1) COLLATE NOCASE AND "
-						"origin = SPLIT_UID('origin', ?1) COLLATE NOCASE";
+				comp = " WHERE name = ?1 COLLATE NOCASE";
 			}
 		}
 		break;
@@ -104,8 +102,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			else
 				comp = " WHERE origin GLOB ?1";
 		} else {
-			comp = " WHERE name = SPLIT_UID('name', ?1) AND "
-					"origin = SPLIT_UID('origin', ?1)";
+			comp = " WHERE name = ?1";
 		}
 		break;
 	case MATCH_REGEX:
@@ -116,8 +113,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 			else
 				comp = " WHERE origin REGEXP ?1";
 		} else {
-			comp = " WHERE name = SPLIT_UID('name', ?1) AND "
-					"origin = SPLIT_UID('origin', ?1)";
+			comp = " WHERE name = ?1";
 		}
 		break;
 	case MATCH_CONDITION:

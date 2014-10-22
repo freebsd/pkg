@@ -243,8 +243,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 		"SELECT p.name, p.origin, p.version, 0 "
 		"FROM main.packages AS p "
 		"INNER JOIN main.deps AS d ON p.id = d.package_id "
-		"WHERE d.name = SPLIT_UID('name', ?1) AND "
-		"d.origin = SPLIT_UID('origin', ?1);";
+		"WHERE d.name = ?1;";
 
 	assert(pkg != NULL);
 

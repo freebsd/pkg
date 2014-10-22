@@ -126,16 +126,16 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 static void
 pkgdb_split_common(sqlite3_context *ctx, int argc, sqlite3_value **argv,
-		char delim, const char *first, const char *second)
+    char delim, const char *first, const char *second)
 {
 	const unsigned char *what = NULL;
 	const unsigned char *data;
 	const unsigned char *pos;
 
 	if (argc != 2 || (what = sqlite3_value_text(argv[0])) == NULL ||
-			(data = sqlite3_value_text(argv[1])) == NULL) {
+	    (data = sqlite3_value_text(argv[1])) == NULL) {
 		sqlite3_result_error(ctx, "SQL function split_*() called "
-				"with invalid arguments.\n", -1);
+		    "with invalid arguments.\n", -1);
 		return;
 	}
 
@@ -155,14 +155,8 @@ pkgdb_split_common(sqlite3_context *ctx, int argc, sqlite3_value **argv,
 	}
 	else {
 		sqlite3_result_error(ctx, "SQL function split_*() called "
-				"with invalid arguments.\n", -1);
+		    "with invalid arguments.\n", -1);
 	}
-}
-
-void
-pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_split_common(ctx, argc, argv, '~', "name", "origin");
 }
 
 void
@@ -334,7 +328,7 @@ pkgdb_init(sqlite3 *sdb)
 		"manifestdigest TEXT NULL, "
 		"pkg_format_version INTEGER"
 	");"
-	"CREATE UNIQUE INDEX packages_unique ON packages(origin, name);"
+	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
 	"CREATE TABLE mtree ("
 		"id INTEGER PRIMARY KEY,"
 		"content TEXT NOT NULL UNIQUE"
@@ -1398,7 +1392,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES ("
-		" (SELECT id FROM packages WHERE name || '~' || origin = ?1 ),"
+		" (SELECT id FROM packages WHERE name = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
 		"TTTT",
@@ -1407,7 +1401,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"DELETE FROM pkg_annotation WHERE "
 		"package_id IN"
-                " (SELECT id FROM packages WHERE name || '~' || origin = ?1) "
+                " (SELECT id FROM packages WHERE name = ?1) "
 		"AND tag_id IN"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2)",
 		"TTT",
@@ -1422,7 +1416,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[CONFLICT] = {
 		NULL,
 		"INSERT INTO pkg_conflicts(package_id, conflict_id) "
-		"VALUES (?1, (SELECT id FROM packages WHERE name || '~' || origin = ?2))",
+		"VALUES (?1, (SELECT id FROM packages WHERE name = ?2))",
 		"IT",
 	},
 	[PKG_PROVIDE] = {
@@ -2117,7 +2111,7 @@ int
 pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
         const char *value)
 {
-	int		 rows_changed; 
+	int		 rows_changed;
 	const char	*uniqueid;
 
 	assert(pkg!= NULL);
@@ -2426,7 +2420,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *uniqueid)
 		"FROM packages AS p, files AS f, integritycheck AS i "
 		"WHERE p.id = f.package_id AND f.path = i.path "
 		"AND i.uid = ?1 AND "
-		"i.uid != p.name || '~' || p.origin";
+		"i.uid != p.name" ;
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
@@ -2574,21 +2568,20 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
  * Used both in the shell and pkgdb_open
  */
 int
-pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err, 
-	    __unused const void *noused)
+pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
+    __unused const void *noused)
 {
 	sqlite3_create_function(db, "now", 0, SQLITE_ANY, NULL,
-				pkgdb_now, NULL, NULL);
+	    pkgdb_now, NULL, NULL);
 	sqlite3_create_function(db, "myarch", 0, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
+	    pkgdb_myarch, NULL, NULL);
 	sqlite3_create_function(db, "myarch", 1, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
+	    pkgdb_myarch, NULL, NULL);
 	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex, NULL, NULL);
-	sqlite3_create_function(db, "split_uid", 2, SQLITE_ANY, NULL,
-				pkgdb_split_uid, NULL, NULL);
+	    pkgdb_regex, NULL, NULL);
 	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY, NULL,
-				pkgdb_split_version, NULL, NULL);
+	    pkgdb_split_version, NULL, NULL);
+
 
 	return SQLITE_OK;
 }

@@ -1609,26 +1609,15 @@ pkg_validate(struct pkg *pkg)
 	pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &md);
 
 	if (uid == NULL) {
-		/* Generate uid from name and origin */
-		const char *origin, *name;
-		char *out;
-		size_t outlen;
+		/* Keep that part for the day we have to change it */
+		/* Generate uid from name*/
+		char *name;
 
-		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
-		if (name == NULL || origin == NULL) {
-			/* Our package is invalid */
+		pkg_get(pkg, PKG_NAME, &name);
+		if (name == NULL)
 			return (EPKG_FATAL);
-		}
 
-		outlen = strlen(name) + strlen(origin) + sizeof("~");
-		out = malloc(outlen);
-		if (out == NULL) {
-			pkg_emit_errno("malloc", "pkg_validate");
-			return (EPKG_FATAL);
-		}
-
-		snprintf(out, outlen, "%s~%s", name, origin);
-		pkg_set(pkg, PKG_UNIQUEID, out);
+		pkg_set(pkg, PKG_UNIQUEID, name);
 	}
 
 	if (md == NULL || !pkg_checksum_is_valid(md, strlen(md))) {
