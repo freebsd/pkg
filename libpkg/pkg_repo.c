@@ -766,7 +766,7 @@ pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo, const char *filename,
 		return (MAP_FAILED);
 	}
 
-	map = mmap(NULL, st.st_size, PROT_WRITE|PROT_READ, MAP_SHARED, fd, 0);
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 	close(fd);
 	if (map == MAP_FAILED) {
 		pkg_emit_errno("pkg_repo_fetch_remote_mmap", "cannot mmap fetched");

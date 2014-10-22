@@ -515,13 +515,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sqlite = PRIV_GET(repo);
 
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
-	/* count entries */
-	for (int i = 0; i < len; i++) {
-		if (map[i] == '\n') {
-			map[i] = '\0';
-			cnt++;
-		}
-	}
 
 	pkg_emit_progress_start("Processing entries");
 
@@ -530,20 +523,24 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	in_trans = true;
+
 	walk = map;
-	for (int i = 0; i < cnt; i++) {
-		len = strlen(walk);
-		if ((i % 10) == 0)
-			pkg_emit_progress_tick(i, cnt);
-		rc = pkg_repo_binary_add_from_manifest(walk, sqlite, len,
+	unsigned char *next;
+
+	while (walk -map < len) {
+		cnt++;
+		next = strchr(walk, '\n');
+		if ((cnt % 10 ) == 0)
+			pkg_emit_progress_tick(next - map, len);
+		rc = pkg_repo_binary_add_from_manifest(walk, sqlite, next - walk,
 		    &keys, &pkg, legacy_repo, repo);
 		if (rc != EPKG_OK) {
-			pkg_emit_progress_tick(cnt, cnt);
+			pkg_emit_progress_tick(len, len);
 			break;
 		}
-		if (i != cnt)
-			walk += len + 1;
+		walk = next + 1;
 	}
+	pkg_emit_progress_tick(len, len);
 
 	if (rc == EPKG_OK)
 		pkg_emit_incremental_update(repo->name, cnt);
