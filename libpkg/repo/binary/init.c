@@ -432,8 +432,8 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	if (retcode == EPKG_OK) {
 		sqlite3_stmt *stmt;
 		const char sql[] = ""
-						"INSERT OR REPLACE INTO repodata (key, value) "
-						"VALUES (\"packagesite\", ?1);";
+			"INSERT OR REPLACE INTO repodata (key, value) "
+			"VALUES (\"packagesite\", ?1);";
 
 		/* register the packagesite */
 		if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
