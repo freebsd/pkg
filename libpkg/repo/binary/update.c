@@ -518,6 +518,12 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	pkg_emit_progress_start("Processing entries");
 
+	/*sql_exec(sqlite, "PRAGMA synchronous = OFF;");
+	sql_exec(sqlite, "PRAGMA journal_mode = DELETE;");
+	sql_exec(sqlite, "PRAGMA temp_store = MEMORY;");*/
+	sql_exec(sqlite, "PRAGMA page_size = 4096;");
+	sql_exec(sqlite, "PRAGMA cache_size = 10000;");
+
 	rc = pkgdb_transaction_begin(sqlite, "REPO");
 	if (rc != EPKG_OK)
 		goto cleanup;
