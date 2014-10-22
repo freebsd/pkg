@@ -981,7 +981,7 @@ pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 {
 	bool iswildcard;
 
-	iswildcard = (strchr(arch, 'c') != NULL);
+	iswildcard = (strchr(arch, '*') != NULL);
 
 	if (iswildcard && isdefault)
 		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
