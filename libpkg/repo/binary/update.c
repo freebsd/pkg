@@ -540,7 +540,7 @@ pkg_repo_binary_get_origins(sqlite3 *sqlite)
 	sqlite3_stmt *stmt = NULL;
 	int ret;
 	const char query_sql[] = ""
-		"SELECT id, origin, name, name || '~' || origin as uniqueid, version, comment, "
+		"SELECT id, origin, name, name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, path AS repopath, manifestdigest "

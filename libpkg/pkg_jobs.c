@@ -707,7 +707,7 @@ static bool
 new_pkg_version(struct pkg_jobs *j)
 {
 	struct pkg *p;
-	const char *uid = "pkg~ports-mgmt/pkg";
+	const char *uid = "pkg";
 	pkg_flags old_flags;
 	bool ret = false;
 
@@ -719,12 +719,7 @@ new_pkg_version(struct pkg_jobs *j)
 	p = pkg_jobs_universe_get_local(j->universe, uid, 0);
 
 	if (p == NULL) {
-		uid = "pkg~ports-mgmt/pkg-devel";
-		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
-	}
-
-	if (p == NULL) {
-		uid = "pkg-devel~ports-mgmt/pkg-devel";
+		uid = "pkg-devel";
 		p = pkg_jobs_universe_get_local(j->universe, uid, 0);
 	}
 

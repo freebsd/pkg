@@ -676,7 +676,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	sbuf_set(&d->origin, origin);
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
-	asprintf(&d->uid, "%s~%s", name, origin);
+	d->uid = strdup(name);
 	d->locked = locked;
 
 	HASH_ADD_KEYPTR(hh, pkg->deps, pkg_dep_get(d, PKG_DEP_ORIGIN),
@@ -701,7 +701,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->origin, origin);
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
-	asprintf(&d->uid, "%s~%s", name, origin);
+	d->uid = strdup(name);
 	d->locked = locked;
 
 	HASH_ADD_KEYPTR(hh, pkg->rdeps, pkg_dep_get(d, PKG_DEP_ORIGIN),

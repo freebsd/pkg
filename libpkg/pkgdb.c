@@ -2059,7 +2059,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 
 int
 pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
-        const char *value)
+    const char *value)
 {
 	int		 rows_changed;
 	const char	*uniqueid;
