@@ -546,28 +546,6 @@ string_end_with(const char *path, const char *str)
 	return (false);
 }
 
-int
-is_conf_file(const char *path, char *newpath, size_t len)
-{
-	size_t n;
-	const char *p = NULL;
-
-	n = strlen(path);
-
-	if (n < 8)
-		return (0);
-
-	p = &path[n - 8];
-
-	if (strcmp(p, ".pkgconf") == 0) {
-		strlcpy(newpath, path, len);
-		newpath[n - 8] = '\0';
-		return (1);
-	}
-
-	return (0);
-}
-
 bool
 check_for_hardlink(struct hardlinks **hl, struct stat *st)
 {
