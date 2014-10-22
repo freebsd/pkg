@@ -1589,7 +1589,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 {
 	struct pkg_job_replace *r;
 	static const char sql[] = ""
-		"UPDATE packages SET name=?1, "
+		"UPDATE packages SET name=?1 "
 		" WHERE name=?2;" ;
 	sqlite3_stmt *stmt;
 	int ret;
