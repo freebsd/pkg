@@ -533,7 +533,8 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	walk = map;
 	for (int i = 0; i < cnt; i++) {
 		len = strlen(walk);
-		pkg_emit_progress_tick(i, cnt);
+		if ((i % 10) == 0)
+			pkg_emit_progress_tick(i, cnt);
 		rc = pkg_repo_binary_add_from_manifest(walk, sqlite, len,
 		    &keys, &pkg, legacy_repo, repo);
 		if (rc != EPKG_OK) {
