@@ -216,7 +216,7 @@ int
 pkg_register_old(struct pkg *pkg)
 {
 	FILE *fp;
-	char *name, *version, *content, *buf;
+	char *content;
 	const char *pkgdbdir, *tmp;
 	char path[MAXPATHLEN];
 	struct sbuf *install_script = sbuf_new_auto();
@@ -224,35 +224,31 @@ pkg_register_old(struct pkg *pkg)
 	struct pkg_dep *dep = NULL;
 
 	pkg_to_old(pkg);
-	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 	pkg_old_emit_content(pkg, &content);
 
 	pkgdbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-	snprintf(path, sizeof(path), "%s/%s-%s", pkgdbdir, name, version);
+	pkg_snprintf(path, sizeof(path), "%S/%n-%v", pkgdbdir, pkg, pkg);
 	mkdir(path, 0755);
 
-	snprintf(path, sizeof(path), "%s/%s-%s/+CONTENTS", pkgdbdir, name, version);
+	pkg_snprintf(path, sizeof(path), "%S/%n-%v/+CONTENTS", pkgdbdir, pkg, pkg);
 	fp = fopen(path, "w");
 	fputs(content, fp);
 	fclose(fp);
 
-	pkg_get(pkg, PKG_DESC, &buf);
-	snprintf(path, sizeof(path), "%s/%s-%s/+DESC", pkgdbdir, name, version);
+	pkg_snprintf(path, sizeof(path), "%S/%n-%v/+DESC", pkgdbdir, pkg, pkg);
 	fp = fopen(path, "w");
-	fputs(buf, fp);
+	pkg_fprintf(fp, "%e", pkg);
 	fclose(fp);
 
-	pkg_get(pkg, PKG_COMMENT, &buf);
-	snprintf(path, sizeof(path), "%s/%s-%s/+COMMENT", pkgdbdir, name, version);
+	pkg_snprintf(path, sizeof(path), "%s/%n-%v/+COMMENT", pkgdbdir, pkg, pkg);
 	fp = fopen(path, "w");
-	fprintf(fp, "%s\n", buf);
+	pkg_fprintf(fp, "%c\n", pkg);
 	fclose(fp);
 
-	pkg_get(pkg, PKG_MESSAGE, &buf);
-	if (buf != NULL && *buf != '\0') {
-		snprintf(path, sizeof(path), "%s/%s-%s/+DISPLAY", pkgdbdir, name, version);
+	if (pkg_has_message(pkg)) {
+		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+DISPLAY", pkgdbdir, pkg, pkg);
 		fp = fopen(path, "w");
-		fputs(buf, fp);
+		pkg_fprintf(fp, "%M", pkg);
 		fclose(fp);
 	}
 
@@ -287,7 +283,7 @@ pkg_register_old(struct pkg *pkg)
 	}
 	if (sbuf_len(install_script) > 0) {
 		sbuf_finish(install_script);
-		snprintf(path, sizeof(path), "%s/%s-%s/+INSTALL", pkgdbdir, name, version);
+		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+INSTALL", pkgdbdir, pkg, pkg);
 		fp = fopen(path, "w");
 		fputs(sbuf_data(install_script), fp);
 		fclose(fp);
@@ -324,7 +320,7 @@ pkg_register_old(struct pkg *pkg)
 	}
 	if (sbuf_len(deinstall_script) > 0) {
 		sbuf_finish(deinstall_script);
-		snprintf(path, sizeof(path), "%s/%s-%s/+DEINSTALL", pkgdbdir, name, version);
+		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+DEINSTALL", pkgdbdir, pkg, pkg);
 		fp = fopen(path, "w");
 		fputs(sbuf_data(deinstall_script), fp);
 		fclose(fp);
@@ -334,7 +330,7 @@ pkg_register_old(struct pkg *pkg)
 		snprintf(path, sizeof(path), "%s/%s-%s/+REQUIRED_BY", pkgdbdir,
 		    pkg_dep_name(dep), pkg_dep_version(dep));
 		fp = fopen(path, "a");
-		fprintf(fp, "%s-%s\n", name, version);
+		pkg_fprintf(fp, "%n-%v\n", pkg, pkg);
 		fclose(fp);
 	}
 
