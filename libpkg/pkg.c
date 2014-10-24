@@ -275,7 +275,6 @@ static int
 pkg_vget(const struct pkg * restrict pkg, va_list ap)
 {
 	pkg_attr attr;
-	const ucl_object_t *obj;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 
@@ -284,7 +283,6 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			return (EPKG_FATAL);
 		}
 
-		obj = ucl_object_find_key(pkg->fields, pkg_keys[attr].name);
 		switch (attr) {
 		case PKG_ORIGIN:
 			*va_arg(ap, const char **) = pkg->origin;
