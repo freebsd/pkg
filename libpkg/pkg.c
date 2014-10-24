@@ -133,6 +133,25 @@ pkg_free(struct pkg *pkg)
 
 	ucl_object_unref(pkg->fields);
 
+	free(pkg->name);
+	free(pkg->origin);
+	free(pkg->old_version);
+	free(pkg->maintainer);
+	free(pkg->www);
+	free(pkg->arch);
+	free(pkg->abi);
+	free(pkg->uid);
+	free(pkg->digest);
+	free(pkg->old_digest);
+	free(pkg->message);
+	free(pkg->prefix);
+	free(pkg->comment);
+	free(pkg->desc);
+	free(pkg->sum);
+	free(pkg->repopath);
+	free(pkg->repourl);
+	free(pkg->reason);
+
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		sbuf_free(pkg->scripts[i]);
 
@@ -649,7 +668,6 @@ int
 pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version, bool locked)
 {
 	struct pkg_dep *d = NULL;
-	const char *n1, *v1;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -659,14 +677,13 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
 	HASH_FIND_STR(pkg->deps, origin, d);
 	if (d != NULL) {
-		pkg_get(pkg, PKG_NAME, &n1, PKG_VERSION, &v1);
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, fatal (developer mode)",
-			    n1, v1, name, version);
+			    pkg->name, pkg->version, name, version);
 			return (EPKG_FATAL);
 		} else {
 			pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, ignoring",
-			    n1, v1, name, version);
+			    pkg->name, pkg->version, name, version);
 			return (EPKG_OK);
 		}
 	}
@@ -1133,8 +1150,6 @@ int
 pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
 	struct pkg_shlib *s = NULL, *f;
-	const char *origin;
-
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -1153,9 +1168,8 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	    pkg_shlib_name(s),
 	    strlen(pkg_shlib_name(s)), s);
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
 	pkg_debug(3, "added shlib deps for %s on %s",
-			origin, name);
+	    pkg->name, name);
 
 	return (EPKG_OK);
 }
@@ -1164,7 +1178,6 @@ int
 pkg_addshlib_provided(struct pkg *pkg, const char *name)
 {
 	struct pkg_shlib *s = NULL, *f;
-	const char *origin;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -1182,9 +1195,8 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	    pkg_shlib_name(s),
 	    strlen(pkg_shlib_name(s)), s);
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
 	pkg_debug(3, "added shlib provide %s for %s",
-			name, origin);
+	    pkg->name, pkg->origin);
 
 	return (EPKG_OK);
 }
@@ -1193,7 +1205,6 @@ int
 pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 {
 	struct pkg_conflict *c = NULL;
-	const char *uid;
 
 	assert(pkg != NULL);
 	assert(uniqueid != NULL && uniqueid[0] != '\0');
@@ -1205,8 +1216,7 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 
 	pkg_conflict_new(&c);
 	sbuf_set(&c->uniqueid, uniqueid);
-	pkg_get(pkg, PKG_UNIQUEID, &uid);
-	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", uid, uniqueid);
+	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
 	HASH_ADD_KEYPTR(hh, pkg->conflicts,
 	    __DECONST(char *, pkg_conflict_uniqueid(c)),
@@ -1485,12 +1495,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		}
 	}
 
-	if (*pkg_p == NULL) {
-		retcode = pkg_new(pkg_p, PKG_FILE);
-		if (retcode != EPKG_OK)
-			goto cleanup;
-	} else
-		pkg_reset(*pkg_p, PKG_FILE);
+	retcode = pkg_new(pkg_p, PKG_FILE);
+	if (retcode != EPKG_OK)
+		goto cleanup;
 
 	pkg = *pkg_p;
 
@@ -1562,8 +1569,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 							break;
 					}
 				}
-				sbuf_finish(sbuf);
-				pkg_set(pkg, PKG_MTREE, sbuf_data(sbuf));
 				sbuf_delete(sbuf);
 			}
 		}
@@ -1602,25 +1607,18 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 int
 pkg_validate(struct pkg *pkg)
 {
-	const char *uid, *md;
-
 	assert(pkg != NULL);
 
-	pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &md);
-
-	if (uid == NULL) {
+	if (pkg->uid == NULL) {
 		/* Keep that part for the day we have to change it */
 		/* Generate uid from name*/
-		char *name;
-
-		pkg_get(pkg, PKG_NAME, &name);
-		if (name == NULL)
+		if (pkg->name == NULL)
 			return (EPKG_FATAL);
 
-		pkg_set(pkg, PKG_UNIQUEID, name);
+		pkg->uid = strdup(pkg->name);
 	}
 
-	if (md == NULL || !pkg_checksum_is_valid(md, strlen(md))) {
+	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest))) {
 		/* Calculate new digest */
 		return (pkg_checksum_calculate(pkg, NULL));
 	}
@@ -1700,7 +1698,6 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_file *f = NULL;
 	struct hardlinks *hl = NULL;
 	int64_t flatsize = 0;
-	int64_t oldflatsize;
 	struct stat st;
 	bool regular = false;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
@@ -1730,9 +1727,8 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	}
 	HASH_FREE(hl, free);
 
-	pkg_get(pkg, PKG_FLATSIZE, &oldflatsize);
-	if (flatsize != oldflatsize)
-		pkgdb_set(db, pkg, PKG_SET_FLATSIZE, flatsize);
+	if (flatsize != pkg->flatsize)
+		pkg->flatsize = flatsize;
 
 	return (rc);
 }
@@ -1767,26 +1763,15 @@ pkg_is_installed(struct pkgdb *db, const char *origin)
 bool
 pkg_has_message(struct pkg *p)
 {
-	const char *msg;
-
-	pkg_get(p, PKG_MESSAGE, &msg);
-
-	if (msg != NULL)
-		return (true);
-
-	return (false);
+	return (p->message != NULL);
 }
 
 bool
 pkg_is_locked(const struct pkg * restrict p)
 {
-	bool ret;
-
 	assert(p != NULL);
 
-	pkg_get(p, PKG_LOCKED, &ret);
-
-	return (ret);
+	return (p->locked);
 }
 
 bool

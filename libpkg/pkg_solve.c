@@ -160,13 +160,10 @@ static void
 pkg_solve_variable_set(struct pkg_solve_variable *var,
 	struct pkg_job_universe_item *item)
 {
-	const char *digest, *uid;
-
 	var->unit = item;
-	pkg_get(item->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 	/* XXX: Is it safe to save a ptr here ? */
-	var->digest = digest;
-	var->uid = uid;
+	var->digest = item->pkg->digest;
+	var->uid = item->pkg->uid;
 	var->prev = var;
 }
 
@@ -211,7 +208,6 @@ static void
 pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 {
 	struct pkg_solve_item *it = rule->items, *key_elt = NULL;
-	const char *v1, *v2;
 
 	sbuf_printf(sb, "%s rule: ", rule_reasons[rule->reason]);
 	switch(rule->reason) {
@@ -234,16 +230,14 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 		}
 		break;
 	case PKG_RULE_UPGRADE_CONFLICT:
-		pkg_get(it->next->var->unit->pkg, PKG_VERSION, &v1);
-		pkg_get(it->var->unit->pkg, PKG_VERSION, &v2);
 		sbuf_printf(sb, "upgrade local %s-%s to remote %s-%s",
-			it->next->var->uid, v1, it->var->uid, v2);
+			it->next->var->uid, it->next->var->unit->pkg->version,
+			it->var->uid, it->var->unit->pkg->version);
 		break;
 	case PKG_RULE_EXPLICIT_CONFLICT:
 		sbuf_printf(sb, "The following packages conflict with each other: ");
 		LL_FOREACH(rule->items, it) {
-			pkg_get(it->var->unit->pkg, PKG_VERSION, &v1);
-			sbuf_printf(sb, "%s-%s%s%s", it->var->uid, v1,
+			sbuf_printf(sb, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
 				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
 				it->next ? ", " : "");
 		}
@@ -270,8 +264,7 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 	case PKG_RULE_REQUEST_CONFLICT:
 		sbuf_printf(sb, "The following packages in request are candidates for installation: ");
 		LL_FOREACH(rule->items, it) {
-			pkg_get(it->var->unit->pkg, PKG_VERSION, &v1);
-			sbuf_printf(sb, "%s-%s%s", it->var->uid, v1,
+			sbuf_printf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					it->next ? ", " : "");
 		}
 		break;
@@ -307,7 +300,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		struct pkg_job_provide *pr, struct pkg_solve_rule *rule, int *cnt)
 {
 	struct pkg_solve_item *it = NULL;
-	const char *uid, *digest;
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
 
@@ -318,8 +310,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	}
 
 	/* Find the corresponding variables chain */
-	pkg_get(un->pkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
-	HASH_FIND_STR(problem->variables_by_uid, uid, var);
+	HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
 
 	LL_FOREACH(var, curvar) {
 		/* For each provide */
@@ -519,7 +510,6 @@ static int
 pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
-	const char *uid;
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_job_request_item *item, *confitem;
@@ -532,8 +522,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	pkg_get(req->item->pkg, PKG_UNIQUEID, &uid);
-	HASH_FIND_STR(problem->variables_by_uid, uid, var);
+	HASH_FIND_STR(problem->variables_by_uid, req->item->pkg->uid, var);
 	var = pkg_solve_find_var_in_chain(var, req->item->unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
@@ -715,12 +704,10 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 {
 	struct pkg_job_universe_item *ucur;
 	struct pkg_solve_variable *var = NULL, *tvar = NULL;
-	const char *uid, *digest;
 
 	LL_FOREACH(un, ucur) {
 		assert(*n < problem->nvars);
 
-		pkg_get(ucur->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 		/* Add new variable */
 		var = &problem->variables[*n];
 		pkg_solve_variable_set(var, ucur);
@@ -783,14 +770,12 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 
 	/* Add rules for all conflict chains */
 	HASH_ITER(hh, j->universe->items, un, utmp) {
-		const char *uid;
 		struct pkg_solve_variable *var;
 
-		pkg_get(un->pkg, PKG_UNIQUEID, &uid);
-		HASH_FIND_STR(problem->variables_by_uid, uid, var);
+		HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
-				uid);
+			    var->uid);
 			goto err;
 		}
 		if (pkg_solve_process_universe_variable(problem, var) != EPKG_OK)

@@ -286,9 +286,6 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	struct pkg_manifest_key *keys, const char *location)
 {
 	const char	*arch;
-	const char	*abi;
-	const char	*origin;
-	const char	*name;
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir;
@@ -296,16 +293,16 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char	*ext;
 	struct pkg	*pkg_inst = NULL;
 
-	pkg_get(pkg, PKG_ARCH, &arch, PKG_ABI, &abi, PKG_ORIGIN, &origin, PKG_NAME, &name);
-	if (abi != NULL)
-		arch = abi;
+	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
 	if (!is_valid_abi(arch, true)) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			return (EPKG_FATAL);
 		}
 	}
-	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
+
+	/* XX check */
+	ret = pkg_try_installed(db, pkg->origin, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			pkg_emit_already_installed(pkg_inst);
@@ -321,7 +318,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		}
 		else {
 			pkg_emit_notice("package %s is already installed, forced install",
-				name);
+				pkg->name);
 			pkg_free(pkg_inst);
 			pkg_inst = NULL;
 		}
@@ -444,7 +441,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct pkg	*pkg = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
-	bool		 automatic;
 	int		 retcode = EPKG_OK;
 	int		 ret;
 	int nfiles;
@@ -474,9 +470,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		return (EPKG_FATAL);
 	}
 
-	if (flags & PKG_ADD_AUTOMATIC) {
-		pkg_set(pkg, PKG_AUTOMATIC, (bool)true);
-	}
+	if (flags & PKG_ADD_AUTOMATIC)
+		pkg->automatic = true;
 
 	/*
 	 * Additional checks for non-remote package
@@ -489,19 +484,17 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 	}
 	else {
-		const char *manifestdigest;
-
 		if (remote->repo != NULL) {
 			/* Save reponame */
 			pkg_addannotation(pkg, "repository", remote->repo->name);
 			pkg_addannotation(pkg, "repo_type", remote->repo->ops->type);
 		}
 
-		pkg_get(remote, PKG_DIGEST, &manifestdigest, PKG_AUTOMATIC, &automatic);
-		pkg_set(pkg, PKG_DIGEST, manifestdigest);
+		free(pkg->digest);
+		pkg->digest = strdup(remote->digest);
 		/* only preserve flags is -A has not been passed */
 		if ((flags & PKG_ADD_AUTOMATIC) == 0)
-			pkg_set(pkg, PKG_AUTOMATIC, automatic);
+			pkg->automatic = remote->automatic;
 	}
 
 	if (location != NULL)

@@ -1236,10 +1236,8 @@ struct sbuf *
 format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*message;
 
-	pkg_get(pkg, PKG_MESSAGE, &message);
-	return (string_val(sbuf, message, p));
+	return (string_val(sbuf, pkg->message, p));
 }
 
 /*
@@ -1251,7 +1249,7 @@ format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 	const char		*reponame;
 
-	pkg_get(pkg, PKG_REPONAME, &reponame);
+	reponame = pkg->reponame;
 	if (reponame == NULL) {
 		reponame = pkg_getannotation(pkg, "repository");
 		if (reponame == NULL)
@@ -1343,10 +1341,8 @@ struct sbuf *
 format_repo_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*repo_path;
 
-	pkg_get(pkg, PKG_REPOPATH, &repo_path);
-	return (string_val(sbuf, repo_path, p));
+	return (string_val(sbuf, pkg->repopath, p));
 }
 
 /*
@@ -1422,10 +1418,8 @@ struct sbuf *
 format_old_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*old_version;
 
-	pkg_get(pkg, PKG_OLD_VERSION, &old_version);
-	return (string_val(sbuf, old_version, p));
+	return (string_val(sbuf, pkg->old_version, p));
 }
 
 /*
@@ -1437,10 +1431,8 @@ struct sbuf *
 format_autoremove(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	bool			 automatic;
 
-	pkg_get(pkg, PKG_AUTOMATIC, &automatic);
-	return (bool_val(sbuf, automatic, p));
+	return (bool_val(sbuf, pkg->automatic, p));
 }
 
 
@@ -1483,10 +1475,8 @@ struct sbuf *
 format_comment(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*comment;
 
-	pkg_get(pkg, PKG_COMMENT, &comment);
-	return (string_val(sbuf, comment, p));
+	return (string_val(sbuf, pkg->comment, p));
 }
 
 /*
@@ -1576,10 +1566,8 @@ struct sbuf *
 format_description(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*desc;
 
-	pkg_get(pkg, PKG_DESC, &desc);
-	return (string_val(sbuf, desc, p));
+	return (string_val(sbuf, pkg->desc, p));
 }
 
 /*
@@ -1604,10 +1592,8 @@ struct sbuf *
 format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	int64_t			 licenselogic;
 
-	pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
-	return (liclog_val(sbuf, licenselogic, p));
+	return (liclog_val(sbuf, pkg->licenselogic, p));
 }
 
 /*
@@ -1617,10 +1603,8 @@ struct sbuf *
 format_maintainer(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*maintainer;
 
-	pkg_get(pkg, PKG_MAINTAINER, &maintainer);
-	return (string_val(sbuf, maintainer, p));
+	return (string_val(sbuf, pkg->maintainer, p));
 }
 
 /*
@@ -1630,10 +1614,8 @@ struct sbuf *
 format_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*name;
 
-	pkg_get(pkg, PKG_NAME, &name);
-	return (string_val(sbuf, name, p));
+	return (string_val(sbuf, pkg->name, p));
 }
 
 /*
@@ -1643,10 +1625,8 @@ struct sbuf *
 format_origin(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*origin;
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-	return (string_val(sbuf, origin, p));
+	return (string_val(sbuf, pkg->origin, p));
 }
 
 /*
@@ -1656,10 +1636,8 @@ struct sbuf *
 format_prefix(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*prefix;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix);
-	return (string_val(sbuf, prefix, p));
+	return (string_val(sbuf, pkg->prefix, p));
 }
 
 /*
@@ -1669,10 +1647,8 @@ struct sbuf *
 format_architecture(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*arch;
 
-	pkg_get(pkg, PKG_ARCH, &arch);
-	return (string_val(sbuf, arch, p));
+	return (string_val(sbuf, pkg->arch, p));
 }
 
 /*
@@ -1718,10 +1694,8 @@ struct sbuf *
 format_flatsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	int64_t			 flatsize;
 
-	pkg_get(pkg, PKG_FLATSIZE, &flatsize);
-	return (int_val(sbuf, flatsize, p));
+	return (int_val(sbuf, pkg->flatsize, p));
 }
 
 /*
@@ -1734,17 +1708,14 @@ struct sbuf *
 format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	int64_t			 timestamp;
-
-	pkg_get(pkg, PKG_TIME, &timestamp);
 
 	if (sbuf_len(p->item_fmt) == 0)
-		return (int_val(sbuf, timestamp, p));
+		return (int_val(sbuf, pkg->timestamp, p));
 	else {
 		char	 buf[1024];
 		time_t	 tsv;
 
-		tsv = (time_t)timestamp;
+		tsv = (time_t)pkg->timestamp;
 		strftime(buf, sizeof(buf), sbuf_data(p->item_fmt),
 			 localtime(&tsv));
 		sbuf_cat(sbuf, buf); 
@@ -1759,10 +1730,8 @@ struct sbuf *
 format_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*version;
 
-	pkg_get(pkg, PKG_VERSION, &version);
-	return (string_val(sbuf, version, p));
+	return (string_val(sbuf, pkg->version, p));
 }
 
 /*
@@ -1772,10 +1741,8 @@ struct sbuf *
 format_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*checksum;
 
-	pkg_get(pkg, PKG_CKSUM, &checksum);
-	return (string_val(sbuf, checksum, p));
+	return (string_val(sbuf, pkg->sum, p));
 }
 
 /*
@@ -1785,17 +1752,14 @@ struct sbuf *
 format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*checksum;
 	char	 csum[PKG_FILE_CKSUM_CHARS + 1];
 	int slen;
 
-	pkg_get(pkg, PKG_CKSUM, &checksum);
-
-	if (checksum != NULL)
-		slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	if (pkg->sum != NULL)
+		slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(pkg->sum));
 	else
 		slen = 0;
-	memcpy(csum, checksum, slen);
+	memcpy(csum, pkg->sum, slen);
 	csum[slen] = '\0';
 
 	return (string_val(sbuf, csum, p));
@@ -1808,10 +1772,8 @@ struct sbuf *
 format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*url;
 
-	pkg_get(pkg, PKG_WWW, &url);
-	return (string_val(sbuf, url, p));
+	return (string_val(sbuf, pkg->www, p));
 }
 
 /*

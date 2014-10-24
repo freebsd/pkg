@@ -46,7 +46,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
 	int		 ret;
 	bool		 handle_rc = false;
-	int64_t		id;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
 					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS;
 
@@ -102,9 +101,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_finished(pkg);
 
-	pkg_get(pkg, PKG_ROWID, &id);
-
-	return (pkgdb_unregister_pkg(db, id));
+	return (pkgdb_unregister_pkg(db, pkg->id));
 }
 
 void
@@ -208,11 +205,9 @@ static void
 pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 {
 	char prefix_r[MAXPATHLEN];
-	const char *prefix;
 	size_t i;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix);
-	snprintf(prefix_r, sizeof(prefix_r), "%s/", prefix + 1);
+	snprintf(prefix_r, sizeof(prefix_r), "%s/", pkg->prefix + 1);
 	for (i = 0; i < pkg->dir_to_del_len; i++)
 		rmdir_p(db, pkg, pkg->dir_to_del[i], prefix_r);
 }
@@ -231,7 +226,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	path = file->path;
 	path++;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix_rel);
+	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
 
@@ -316,7 +311,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	/* remove the first / */
 	path++;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix_rel);
+	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
 

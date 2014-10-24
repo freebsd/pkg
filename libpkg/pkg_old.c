@@ -56,8 +56,6 @@ static const char * const scripts[] = {
 int
 pkg_old_load_from_path(struct pkg *pkg, const char *path)
 {
-	char *desc;
-	char *www;
 	char fpath[MAXPATHLEN];
 	regex_t preg;
 	regmatch_t pmatch[2];
@@ -95,17 +93,14 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 	}
 
 	pkg_get_myarch(myarch, BUFSIZ);
-	pkg_set(pkg, PKG_ARCH, myarch);
-	pkg_set(pkg, PKG_MAINTAINER, "unknown");
-	pkg_get(pkg, PKG_DESC, &desc);
+	pkg->arch = strdup(myarch);
+	pkg->maintainer = strdup("unknown");
 	regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-	if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
+	if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
 		size = pmatch[1].rm_eo - pmatch[1].rm_so;
-		www = strndup(&desc[pmatch[1].rm_so], size);
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
+		pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
 	} else {
-		pkg_set(pkg, PKG_WWW, "UNKNOWN");
+		pkg->www = strdup("UNKNOWN");
 	}
 	regfree(&preg);
 

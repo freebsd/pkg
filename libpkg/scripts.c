@@ -49,7 +49,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	size_t i, j;
 	int error, pstat;
 	pid_t pid;
-	const char *prefix, *script_cmd_p;
+	const char *script_cmd_p;
 	const char *argv[4];
 	char **ep;
 	int ret = EPKG_OK;
@@ -78,8 +78,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS")))
 		return (EPKG_OK);
 
-	pkg_get(pkg, PKG_PREFIX, &prefix);
-
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
 			break;
@@ -92,7 +90,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			continue;
 		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
-			setenv("PKG_PREFIX", prefix, 1);
+			setenv("PKG_PREFIX", pkg->prefix, 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
 				sbuf_printf(script_cmd, "set -x\n");

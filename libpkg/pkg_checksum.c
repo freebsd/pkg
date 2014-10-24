@@ -127,34 +127,24 @@ int
 pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type)
 {
-	const char *key;
 	unsigned char *bdigest;
 	size_t blen;
 	struct pkg_checksum_entry *entries = NULL;
-	const ucl_object_t *o;
 	struct pkg_option *option = NULL;
 	struct pkg_shlib *shlib = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
 	struct pkg_dep *dep = NULL;
 	int i;
-	int recopies[] = {
-		PKG_NAME,
-		PKG_ORIGIN,
-		PKG_VERSION,
-		PKG_ARCH,
-		-1
-	};
 
 	if (pkg == NULL || type >= PKG_HASH_TYPE_UNKNOWN ||
 					destlen < checksum_types[type].hlen)
 		return (EPKG_FATAL);
 
-	for (i = 0; recopies[i] != -1; i++) {
-		key = pkg_keys[recopies[i]].name;
-		if ((o = ucl_object_find_key(pkg->fields, key)))
-			pkg_checksum_add_entry(key, ucl_object_tostring(o), &entries);
-	}
+	pkg_checksum_add_entry("name", pkg->name, &entries);
+	pkg_checksum_add_entry("origin", pkg->origin, &entries);
+	pkg_checksum_add_entry("version", pkg->version, &entries);
+	pkg_checksum_add_entry("arch", pkg->arch, &entries);
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		pkg_checksum_add_entry(pkg_option_opt(option), pkg_option_value(option),
@@ -385,13 +375,11 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 {
 	char *new_digest;
 	struct pkg_repo *repo;
-	const char *reponame;
 	int rc = EPKG_OK;
 	pkg_checksum_type_t type = 0;
 
-	pkg_get(pkg, PKG_REPONAME, &reponame);
-	if (reponame != NULL) {
-		repo = pkg_repo_find(reponame);
+	if (pkg->reponame != NULL) {
+		repo = pkg_repo_find(pkg->reponame);
 
 		if (repo != NULL)
 			type = repo->meta->digest_format;
@@ -409,12 +397,11 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 		return (EPKG_FATAL);
 	}
 
-	pkg_set(pkg, PKG_DIGEST, new_digest);
+	free(pkg->digest);
+	pkg->digest = new_digest;
 
 	if (db != NULL)
 		pkgdb_set_pkg_digest(db, pkg);
-
-	free(new_digest);
 
 	return (rc);
 }

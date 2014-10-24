@@ -155,23 +155,19 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		bool force, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *tmp = NULL;
-	const char *uid, *digest, *version, *name;
 	struct pkg_job_seen *seen;
 
 	pkg_validate(pkg);
-	pkg_get(pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest,
-			PKG_VERSION, &version, PKG_NAME, &name);
-	if (digest == NULL) {
-		pkg_debug(3, "no digest found for package %s (%s-%s)", uid,
-				name, version);
+	if (pkg->digest == NULL) {
+		pkg_debug(3, "no digest found for package %s (%s-%s)",
+		    pkg->uid, pkg->name, pkg->version);
 		if (pkg_checksum_calculate(pkg, universe->j->db) != EPKG_OK) {
 			*found = NULL;
 			return (EPKG_FATAL);
 		}
-		pkg_get(pkg, PKG_DIGEST, &digest);
 	}
 
-	HASH_FIND_STR(universe->seen, digest, seen);
+	HASH_FIND_STR(universe->seen, pkg->digest, seen);
 	if (seen != NULL && !force) {
 		if (found != NULL)
 			*found = seen->un;
@@ -180,8 +176,8 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s:%s)",
-				(pkg->type == PKG_INSTALLED ? "local" : "remote"), uid,
-				name, version, digest);
+	    (pkg->type == PKG_INSTALLED ? "local" : "remote"), pkg->uid,
+	    pkg->name, pkg->version, pkg->digest);
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
@@ -192,9 +188,9 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	item->pkg = pkg;
 
 
-	HASH_FIND_STR(universe->items, uid, tmp);
+	HASH_FIND_STR(universe->items, pkg->uid, tmp);
 	if (tmp == NULL)
-		HASH_ADD_KEYPTR(hh, universe->items, uid, strlen(uid), item);
+		HASH_ADD_KEYPTR(hh, universe->items, pkg->uid, strlen(pkg->uid), item);
 
 	DL_APPEND(tmp, item);
 
@@ -204,7 +200,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 			pkg_emit_errno("pkg_jobs_universe_add_pkg", "calloc: struct pkg_job_seen)");
 			return (EPKG_FATAL);
 		}
-		seen->digest = digest;
+		seen->digest = pkg->digest;
 		seen->un = item;
 		HASH_ADD_KEYPTR(hh, universe->seen, seen->digest, strlen(seen->digest),
 			seen);
@@ -265,11 +261,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		}
 
 		if (npkg == NULL && rpkg == NULL) {
-			const char *name;
-
-			pkg_get(pkg, PKG_NAME, &name);
 			pkg_emit_error("%s has a missing dependency: %s",
-				name, pkg_dep_get(d, PKG_DEP_NAME));
+				pkg->name, pkg_dep_get(d, PKG_DEP_NAME));
 
 			if (flags & DEPS_FLAG_FORCE_MISSING)
 				continue;
@@ -284,10 +277,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		if (rpkg != NULL) {
 			if (npkg != NULL) {
 				/* Save automatic flag */
-				bool automatic;
-
-				pkg_get(npkg, PKG_AUTOMATIC, &automatic);
-				pkg_set(rpkg, PKG_AUTOMATIC, automatic);
+				rpkg->automatic = npkg->automatic;
 			}
 
 			pkg_jobs_universe_process_item(universe, rpkg, NULL);
@@ -367,11 +357,8 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			rpkg = NULL;
 			prhead = NULL;
 			while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
-				const char *digest, *uid;
-
-				pkg_get(rpkg, PKG_DIGEST, &digest, PKG_UNIQUEID, &uid);
 				/* Check for local packages */
-				HASH_FIND_STR(universe->items, uid, unit);
+				HASH_FIND_STR(universe->items, rpkg->uid, unit);
 				if (unit != NULL) {
 					if (pkg_jobs_need_upgrade (rpkg, unit->pkg)) {
 						/* Remote provide is newer, so we can add it */
@@ -384,7 +371,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				}
 				else {
 					/* Maybe local package has just been not added */
-					npkg = pkg_jobs_universe_get_local(universe, uid, 0);
+					npkg = pkg_jobs_universe_get_local(universe, rpkg->uid, 0);
 					if (npkg != NULL) {
 						if (pkg_jobs_universe_process_item(universe, npkg,
 							&unit) != EPKG_OK)
@@ -402,14 +389,13 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				if (unit == NULL) {
 					struct pkg_job_seen *seen;
 
-					if (digest == NULL) {
-						pkg_debug(3, "no digest found for package %s", uid);
+					if (rpkg->digest == NULL) {
+						pkg_debug(3, "no digest found for package %s", rpkg->uid);
 						if (pkg_checksum_calculate(pkg, universe->j->db) != EPKG_OK) {
 							return (EPKG_FATAL);
 						}
-						pkg_get(pkg, PKG_DIGEST, &digest);
 					}
-					HASH_FIND_STR(universe->seen, digest, seen);
+					HASH_FIND_STR(universe->seen, rpkg->digest, seen);
 					if (seen == NULL) {
 						pkg_jobs_universe_process_item(universe, rpkg,
 							&unit);
@@ -443,11 +429,8 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			}
 			pkgdb_it_free(it);
 			if (prhead == NULL) {
-				const char *name;
-
-				pkg_get(pkg, PKG_NAME, &name);
 				pkg_debug(1, "cannot find packages that provide %s required for %s",
-					pkg_shlib_name(shlib), name);
+				    pkg_shlib_name(shlib), pkg->name);
 				/*
 				 * XXX: this is not normal but it is very common for the existing
 				 * repos, hence we just ignore this stale dependency
@@ -550,7 +533,6 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		struct pkg_job_universe_item *item, int priority,
 		enum pkg_priority_update_type type)
 {
-	const char *uid, *digest;
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
 	struct pkg_job_universe_item *found, *cur, *it;
@@ -566,24 +548,22 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		return;
 	}
 	else if (priority + 10 > RECURSION_LIMIT) {
-		pkg_get(item->pkg, PKG_UNIQUEID, &uid);
 		pkg_debug(2, "approaching recursion limit at %d, while processing of"
-					" package %s", priority, uid);
+		    " package %s", priority, item->pkg->uid);
 	}
 
 	LL_FOREACH(item, it) {
-
-		pkg_get(it->pkg, PKG_UNIQUEID, &uid, PKG_DIGEST, &digest);
 		if ((item->next != NULL || item->prev != NULL) &&
-				it->pkg->type != PKG_INSTALLED &&
-				(type == PKG_PRIORITY_UPDATE_CONFLICT ||
-				 type == PKG_PRIORITY_UPDATE_DELETE)) {
+		    it->pkg->type != PKG_INSTALLED &&
+		    (type == PKG_PRIORITY_UPDATE_CONFLICT ||
+		     type == PKG_PRIORITY_UPDATE_DELETE)) {
 			/*
 			 * We do not update priority of a remote part of conflict, as we know
 			 * that remote packages should not contain conflicts (they should be
 			 * resolved in request prior to calling of this function)
 			 */
-			pkg_debug(4, "skip update priority for %s-%s", uid, digest);
+			pkg_debug(4, "skip update priority for %s-%s",
+			    it->pkg->uid, it->pkg->digest);
 			continue;
 		}
 		if (it->priority > priority)
@@ -591,7 +571,7 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 
 		is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
 		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
-				is_local, uid, digest, it->priority, priority, type);
+		    is_local, it->pkg->uid, it->pkg->digest, it->priority, priority, type);
 		it->priority = priority;
 
 		if (type == PKG_PRIORITY_UPDATE_DELETE) {
@@ -777,10 +757,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *found;
 
 	struct pkg *lp;
-	const char *old_uid;
 	struct pkg_job_replace *replacement;
-
-	pkg_get(unit->pkg, PKG_UNIQUEID, &old_uid);
 
 	if (update_rdeps) {
 		/* For all rdeps update deps accordingly */
@@ -795,7 +772,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 			if (found != NULL) {
 				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
-					if (strcmp(d->uid, old_uid) == 0) {
+					if (strcmp(d->uid, unit->pkg->uid) == 0) {
 						free(d->uid);
 						d->uid = strdup(new_uid);
 					}
@@ -806,15 +783,14 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 	replacement = calloc(1, sizeof(*replacement));
 	if (replacement != NULL) {
-		replacement->old_uid = strdup(old_uid);
+		replacement->old_uid = strdup(unit->pkg->uid);
 		replacement->new_uid = strdup(new_uid);
 		LL_PREPEND(universe->uid_replaces, replacement);
 	}
 
 	HASH_DELETE(hh, universe->items, unit);
-	pkg_set(unit->pkg, PKG_UNIQUEID, new_uid);
-	/* This involves copying, so we need to get new_uid from a persistent storage */
-	pkg_get(unit->pkg, PKG_UNIQUEID, &new_uid);
+	free(unit->pkg->uid);
+	unit->pkg->uid = strdup(new_uid);
 
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)

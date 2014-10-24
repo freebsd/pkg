@@ -58,7 +58,6 @@ pipeevent(struct pkg_event *ev)
 	int i;
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
-	const char *message;
 	struct pkg_event_conflict *cur_conflict;
 	if (eventpipe < 0)
 		return;
@@ -150,9 +149,6 @@ pipeevent(struct pkg_event *ev)
 		    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
-		pkg_get(ev->e_install_finished.pkg,
-		    PKG_MESSAGE, &message);
-
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
@@ -161,7 +157,7 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
-		    sbuf_json_escape(buf, message));
+		    sbuf_json_escape(buf, ev->e_install_finished.pkg->message));
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
@@ -547,15 +543,14 @@ pkg_emit_install_finished(struct pkg *p)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *version;
 
 	ev.type = PKG_EVENT_INSTALL_FINISHED;
 	ev.e_install_finished.pkg = p;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
-		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
-		syslog(LOG_NOTICE, "%s-%s installed", name, version);
+		syslog(LOG_NOTICE, "%s-%s installed",
+		    p->name, p->version);
 	}
 
 	pkg_emit_event(&ev);
@@ -675,15 +670,14 @@ pkg_emit_deinstall_finished(struct pkg *p)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *version;
 
 	ev.type = PKG_EVENT_DEINSTALL_FINISHED;
 	ev.e_deinstall_finished.pkg = p;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
-		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
-		syslog(LOG_NOTICE, "%s-%s deinstalled", name, version);
+		syslog(LOG_NOTICE, "%s-%s deinstalled",
+		    p->name, p->version);
 	}
 
 	pkg_emit_event(&ev);
@@ -706,7 +700,6 @@ pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *oldversion, *version;
 
 	ev.type = PKG_EVENT_UPGRADE_FINISHED;
 	ev.e_upgrade_finished.new = new;
@@ -721,14 +714,12 @@ pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 		};
 		pkg_change_t action;
 
-		pkg_get(new, PKG_NAME, &name, PKG_VERSION, &version);
-		pkg_get(old, PKG_VERSION, &oldversion);
 		action = pkg_version_change_between(new, old);
 		syslog(LOG_NOTICE, "%s %s: %s %s %s ",
-		    name, actions[action],
-		    oldversion != NULL ? oldversion : version,
-		    oldversion != NULL ? "->" : "",
-		    oldversion != NULL ? version : "");
+		    new->name, actions[action],
+		    old->version != NULL ? old->version : new->version,
+		    old->version != NULL ? "->" : "",
+		    old->version != NULL ? new->version : "");
 	}
 
 	pkg_emit_event(&ev);

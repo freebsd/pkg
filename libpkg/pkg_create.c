@@ -106,21 +106,19 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			}
 		}
 	}
-	pkg_set(pkg, PKG_FLATSIZE, flatsize);
+	pkg->flatsize = flatsize;
 	HASH_FREE(hardlinks, free);
 
 	if (pkg->type == PKG_OLD_FILE) {
-		const char *desc, *display, *comment;
 		char oldcomment[BUFSIZ];
 
 		pkg_old_emit_content(pkg, &m);
 		packing_append_buffer(pkg_archive, m, "+CONTENTS", strlen(m));
 		free(m);
 
-		pkg_get(pkg, PKG_DESC, &desc, PKG_MESSAGE, &display, PKG_COMMENT, &comment);
-		packing_append_buffer(pkg_archive, desc, "+DESC", strlen(desc));
-		packing_append_buffer(pkg_archive, display, "+DISPLAY", strlen(display));
-		snprintf(oldcomment, sizeof(oldcomment), "%s\n", comment);
+		packing_append_buffer(pkg_archive, pkg->desc, "+DESC", strlen(pkg->desc));
+		packing_append_buffer(pkg_archive, pkg->message, "+DISPLAY", strlen(pkg->message));
+		pkg_snprintf(oldcomment, sizeof(oldcomment), "%c\n", pkg);
 		packing_append_buffer(pkg_archive, oldcomment, "+COMMENT", strlen(oldcomment));
 	} else {
 		/*
@@ -229,7 +227,6 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 	struct packing	*pkg_archive = NULL;
 	char		 arch[BUFSIZ];
 	int		 ret = ENOMEM;
-	char		*buf;
 	struct pkg_manifest_key *keys = NULL;
 
 	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
@@ -246,10 +243,9 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 	}
 
 	/* if no arch autodetermine it */
-	pkg_get(pkg, PKG_ABI, &buf);
-	if (buf == NULL) {
+	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
-		pkg_set(pkg, PKG_ABI, arch);
+		pkg->abi = strdup(arch);
 	}
 
 	/* Create the archive */
@@ -291,12 +287,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	char		*manifest = NULL;
 	char		 arch[BUFSIZ];
 	int		 ret = ENOMEM;
-	char		*buf;
 	int		 i, mfd;
 	regex_t		 preg;
 	regmatch_t	 pmatch[2];
 	size_t		 size;
-	char		*www = NULL;
 	struct pkg_manifest_key *keys = NULL;
 
 	mfd = -1;
@@ -322,20 +316,17 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 	/* if no descriptions provided then try to get it from a file */
-	pkg_get(pkg, PKG_DESC, &buf);
-	if (buf == NULL)
+	if (pkg->desc == NULL)
 		pkg_load_from_file(mfd, pkg, PKG_DESC, "+DESC");
 
 	/* if no message try to get it from a file */
-	pkg_get(pkg, PKG_MESSAGE, &buf);
-	if (buf == NULL)
+	if (pkg->message == NULL)
 		pkg_load_from_file(mfd, pkg, PKG_MESSAGE, "+DISPLAY");
 
 	/* if no arch autodetermine it */
-	pkg_get(pkg, PKG_ABI, &buf);
-	if (buf == NULL) {
+	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
-		pkg_set(pkg, PKG_ABI, arch);
+		pkg->abi = strdup(arch);
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {
@@ -349,29 +340,19 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		goto cleanup;
 	}
 
-	/* if www is not given then try to determine it from description */
-	if (www != NULL) {
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
-	}
-
-	pkg_get(pkg, PKG_WWW, &www);
-	if (www == NULL) {
-		pkg_get(pkg, PKG_DESC, &buf);
-		if (buf == NULL) {
+	if (pkg->www == NULL) {
+		if (pkg->desc == NULL) {
 			pkg_emit_error("No www or desc defined in manifest");
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
 		regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
 		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-		if (regexec(&preg, buf, 2, pmatch, 0) == 0) {
+		if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
 			size = pmatch[1].rm_eo - pmatch[1].rm_so;
-			www = strndup(&buf[pmatch[1].rm_so], size);
-			pkg_set(pkg, PKG_WWW, www);
-			free(www);
+			pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
 		} else {
-			pkg_set(pkg, PKG_WWW, "UNKNOWN");
+			pkg->www = strdup("UNKNOWN");
 		}
 		regfree(&preg);
 	}

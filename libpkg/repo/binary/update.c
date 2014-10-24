@@ -134,42 +134,31 @@ static int
 pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 		sqlite3 *sqlite, bool forced)
 {
-	const char *name, *version, *origin, *comment, *desc;
-	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
-	const char *olddigest, *manifestdigest, *abi;
-	int64_t			 flatsize, pkgsize;
-	int64_t			 licenselogic;
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
 	const pkg_object	*obj, *licenses, *categories, *annotations;
+	const char		*arch;
 	pkg_iter		 it;
 	int64_t			 package_id;
 
-	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
-			    PKG_VERSION, &version, PKG_COMMENT, &comment,
-			    PKG_DESC, &desc, PKG_ARCH, &arch,
-			    PKG_ABI, &abi,
-			    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
-			    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
-			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
-			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath,
-			    PKG_LICENSES, &licenses, PKG_CATEGORIES, &categories,
-			    PKG_ANNOTATIONS, &annotations, PKG_OLD_DIGEST, &olddigest,
-			    PKG_DIGEST, &manifestdigest);
+	pkg_get(pkg,
+	    PKG_LICENSES, &licenses, PKG_CATEGORIES, &categories,
+	    PKG_ANNOTATIONS, &annotations);
 
-	if (abi != NULL)
-		arch = abi;
+	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
 try_again:
-	if ((ret = pkg_repo_binary_run_prstatement(PKG, origin, name, version,
-			comment, desc, arch, maintainer, www, prefix,
-			pkgsize, flatsize, (int64_t)licenselogic, sum,
-			rpath, manifestdigest, olddigest)) != SQLITE_DONE) {
+	if ((ret = pkg_repo_binary_run_prstatement(PKG,
+	    pkg->origin, pkg->name, pkg->version, pkg->comment, pkg->desc,
+	    arch, pkg->maintainer, pkg->www, pkg->prefix, pkg->pkgsize,
+	    pkg->flatsize, (int64_t)pkg->licenselogic, pkg->sum, pkg->repopath,
+	    pkg->digest, pkg->old_digest)) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
-			switch(pkg_repo_binary_delete_conflicting(origin,
-					version, pkg_path, forced)) {
+			ERROR_SQLITE(sqlite, "grmbl");
+			switch(pkg_repo_binary_delete_conflicting(pkg->origin,
+			    pkg->version, pkg_path, forced)) {
 			case EPKG_FATAL: /* sqlite error */
 				ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PKG));
 				return (EPKG_FATAL);
@@ -383,47 +372,39 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 
 static int
 pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
-		struct pkg_manifest_key **keys, struct pkg **p, bool is_legacy,
+		struct pkg_manifest_key **keys, struct pkg **p __unused, bool is_legacy,
 		struct pkg_repo *repo)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
-	const char *pkg_arch;
 
-	if (*p == NULL) {
-		rc = pkg_new(p, PKG_REMOTE);
-		if (rc != EPKG_OK)
-			return (EPKG_FATAL);
-	} else {
-		pkg_reset(*p, PKG_REMOTE);
-	}
-
-	pkg = *p;
+	rc = pkg_new(&pkg, PKG_REMOTE);
+	if (rc != EPKG_OK)
+		return (EPKG_FATAL);
 
 	pkg_manifest_keys_new(keys);
 	rc = pkg_parse_manifest(pkg, buf, len, *keys);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
-	rc = pkg_is_valid(pkg);
-	if (rc != EPKG_OK) {
-		goto cleanup;
-	}
 
-	pkg_checksum_calculate(pkg, NULL);
-	pkg_get(pkg, PKG_ARCH, &pkg_arch);
-	if (pkg_arch == NULL || !is_valid_abi(pkg_arch, true)) {
+	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
+		pkg_checksum_calculate(pkg, NULL);
+	if (pkg->arch == NULL || !is_valid_abi(pkg->arch, true)) {
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages with wrong ABI: %s",
-			repo->name, pkg_arch);
+			repo->name, pkg->arch);
 		goto cleanup;
 	}
 
-	pkg_set(pkg, PKG_REPONAME, repo->name);
+	free(pkg->reponame);
+	pkg->reponame = strdup(repo->name);
 
 	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
 
 cleanup:
+	pkg_free(pkg);
+
 	return (rc);
 }
 

@@ -322,13 +322,11 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			int r;
 			off_t mpos, fpos = 0;
 			size_t mlen;
-			const char *origin;
 
 			sha256_file(cur->fts_accpath, checksum);
-			pkg_set(pkg, PKG_CKSUM, checksum,
-				PKG_REPOPATH, cur->pkg_path,
-				PKG_PKGSIZE, cur->fts_size);
-			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg->pkgsize = cur->fts_size;
+			pkg->sum = strdup(checksum);
+			pkg->repopath = strdup(cur->pkg_path);
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -391,11 +389,12 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			}
 
 			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld:%s\n",
-				origin, mdigest,
+				pkg->origin,
+				mdigest,
 				(long)mpos,
 				(long)fpos,
 				(long)mlen,
-				checksum);
+				pkg->sum);
 
 			free(mdigest);
 			mdigest = NULL;

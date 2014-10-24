@@ -176,19 +176,15 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 static int
 setprefix(struct plist *p, char *line, struct file_attr *a)
 {
-	char *pkgprefix;
-
 	/* if no arguments then set default prefix */
 	if (line[0] == '\0') {
-		pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
-		strlcpy(p->prefix, pkgprefix, sizeof(p->prefix));
+		strlcpy(p->prefix, p->pkg->prefix, sizeof(p->prefix));
 	}
 	else
 		strlcpy(p->prefix, line, sizeof(p->prefix));
 
-	pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
-	if (pkgprefix == NULL || *pkgprefix == '\0')
-		pkg_set(p->pkg, PKG_PREFIX, line);
+	if (p->pkg->prefix == NULL)
+		p->pkg->prefix = strdup(line);
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
@@ -204,18 +200,17 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 static int
 name_key(struct plist *p, char *line, struct file_attr *a)
 {
-	char *name;
 	char *tmp;
 
-	pkg_get(p->pkg, PKG_NAME, &name);
-	if (name != NULL && *name != '\0') {
+	if (p->pkg->name != NULL) {
 		free(a);
 		return (EPKG_OK);
 	}
 	tmp = strrchr(line, '-');
 	tmp[0] = '\0';
 	tmp++;
-	pkg_set(p->pkg, PKG_NAME, line, PKG_VERSION, tmp);
+	p->pkg->name = strdup(line);
+	p->pkg->version = strdup(tmp);
 
 	free(a);
 	return (EPKG_OK);
@@ -499,7 +494,8 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 		p->pkgdep = NULL;
 	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
-		pkg_set(p->pkg, PKG_ORIGIN, line);
+		free(p->pkg->origin);
+		p->pkg->origin = strdup(line);
 	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
 		line += 8;
 		/* OPTIONS:+OPTION -OPTION */
@@ -1123,16 +1119,14 @@ struct plist *
 plist_new(struct pkg *pkg, const char *stage)
 {
 	struct plist *p;
-	const char *prefix;
 
 	p = calloc(1, sizeof(struct plist));
 	if (p == NULL)
 		return (NULL);
 
 	p->pkg = pkg;
-	pkg_get(pkg, PKG_PREFIX, &prefix);
-	if (prefix != NULL)
-		strlcpy(p->prefix, prefix, sizeof(p->prefix));
+	if (pkg->prefix != NULL)
+		strlcpy(p->prefix, pkg->prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
 	p->uname = strdup("root");
@@ -1207,7 +1201,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	free(line);
 
-	pkg_set(pkg, PKG_FLATSIZE, pplist->flatsize);
+	pkg->flatsize = pplist->flatsize;
 
 	flush_script_buffer(pplist->pre_install_buf, pkg,
 	    PKG_SCRIPT_PRE_INSTALL);

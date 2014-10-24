@@ -104,7 +104,6 @@ static int
 add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
-	const char *pkgname, *pkgversion;
 	struct pkg_file *file = NULL;
 	const char *filepath;
 
@@ -128,9 +127,8 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 			}
 		}
 
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		pkg_emit_notice("(%s-%s) %s - required shared library %s not "
-		    "found", pkgname, pkgversion, fpath, name);
+		    "found", pkg->name, pkg->version, fpath, name);
 
 		return (EPKG_FATAL);
 	}
@@ -448,7 +446,6 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	struct pkg_shlib *sh, *shtmp, *found;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
-	const char *origin;
 	bool developer = false, failures = false;
 
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
@@ -487,7 +484,6 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		}
 	}
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
@@ -496,7 +492,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		if (found != NULL) {
 			pkg_debug(2, "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    pkg_shlib_name(sh), origin);
+			    pkg_shlib_name(sh), pkg->name);
 			HASH_DEL(pkg->shlibs_required, sh);
 		}
 	}
