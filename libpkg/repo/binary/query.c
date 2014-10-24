@@ -365,7 +365,8 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *cached = NULL;
 	char path[MAXPATHLEN];
 
-	if (flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) {
+	if ((flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) != 0 &&
+			(pkg->flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) == 0) {
 		/*
 		 * Try to get that information from fetched package in cache
 		 */
@@ -376,6 +377,8 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 			return (EPKG_FATAL);
 
 		/* Now move required elements to the provided package */
+		pkg_list_free(pkg, PKG_FILES);
+		pkg_list_free(pkg, PKG_DIRS);
 		pkg->files = cached->files;
 		pkg->dirs = cached->dirs;
 		cached->files = NULL;
