@@ -391,11 +391,7 @@ pkg_get2(const struct pkg * restrict pkg, ...)
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
-	int attr;
-	char *buf = NULL;
-	const char *data;
-	const char *str;
-	ucl_object_t *o;
+	pkg_attr attr;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -403,43 +399,105 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			return (EPKG_FATAL);
 		}
 
-		switch (pkg_keys[attr].type) {
-		case UCL_STRING:
-			str = va_arg(ap, const char *);
-			data = str;
-
-			if (attr == PKG_MTREE && !STARTS_WITH(str, "#mtree")) {
-				asprintf(&buf, "#mtree\n%s", str);
-				data = buf;
-			}
-
-			if (data == NULL)
-				ucl_object_delete_key(pkg->fields, pkg_keys[attr].name);
-			else
-				ucl_object_replace_key(pkg->fields,
-				    ucl_object_fromstring_common(data, strlen(data), 0),
-				    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
-
-			free(buf);
+		switch (attr) {
+		case PKG_NAME:
+			free(pkg->name);
+			pkg->name = strdup(va_arg(ap, const char *));
 			break;
-		case UCL_BOOLEAN:
-			ucl_object_replace_key(pkg->fields,
-			    ucl_object_frombool((bool)va_arg(ap, int)),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
+		case PKG_ORIGIN:
+			free(pkg->origin);
+			pkg->origin = strdup(va_arg(ap, const char *));
 			break;
-		case UCL_INT:
-			ucl_object_replace_key(pkg->fields,
-			    ucl_object_fromint(va_arg(ap, int64_t)),
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
+		case PKG_VERSION:
+			free(pkg->version);
+			pkg->version = strdup(va_arg(ap, const char *));
 			break;
-		case UCL_OBJECT:
-		case UCL_ARRAY:
-			o = va_arg(ap, ucl_object_t *);
-			ucl_object_replace_key(pkg->fields, o,
-			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false);
+		case PKG_COMMENT:
+			free(pkg->comment);
+			pkg->comment = strdup(va_arg(ap, const char *));
 			break;
-		default:
-			(void) va_arg(ap, void *);
+		case PKG_DESC:
+			free(pkg->desc);
+			pkg->desc = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_MTREE:
+			(void)va_arg(ap, const char *);
+			break;
+		case PKG_MESSAGE:
+			free(pkg->message);
+			pkg->message = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_ARCH:
+			free(pkg->arch);
+			pkg->arch = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_ABI:
+			free(pkg->abi);
+			pkg->abi = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_MAINTAINER:
+			free(pkg->maintainer);
+			pkg->maintainer = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_WWW:
+			free(pkg->www);
+			pkg->www = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_PREFIX:
+			free(pkg->prefix);
+			pkg->prefix = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_REPOPATH:
+			free(pkg->repopath);
+			pkg->repopath = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_CKSUM:
+			free(pkg->sum);
+			pkg->sum = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_OLD_VERSION:
+			free(pkg->old_version);
+			pkg->old_version = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_REPONAME:
+			free(pkg->reponame);
+			pkg->reponame = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_REPOURL:
+			free(pkg->repourl);
+			pkg->repourl = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_DIGEST:
+			free(pkg->digest);
+			pkg->digest = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_REASON:
+			free(pkg->digest);
+			pkg->digest = strdup(va_arg(ap, const char *));
+			break;
+		case PKG_FLATSIZE:
+			pkg->flatsize = va_arg(ap, int64_t);
+			break;
+		case PKG_OLD_FLATSIZE:
+			pkg->old_flatsize = va_arg(ap, int64_t);
+			break;
+		case PKG_PKGSIZE:
+			pkg->pkgsize = va_arg(ap, int64_t);
+			break;
+		case PKG_LICENSE_LOGIC:
+			pkg->pkgsize = (bool)va_arg(ap, int);
+			break;
+		case PKG_AUTOMATIC:
+			pkg->automatic = (bool)va_arg(ap, int);
+			break;
+		case PKG_ROWID:
+			pkg->id = va_arg(ap, int64_t);
+			break;
+		case PKG_LOCKED:
+			pkg->locked = (bool)va_arg(ap, int);
+			break;
+		case PKG_TIME:
+			pkg->timestamp = va_arg(ap, int64_t);
 			break;
 		}
 	}
