@@ -255,16 +255,48 @@ manifest_schema_open(pkg_t type __unused)
 int
 pkg_is_valid(const struct pkg * restrict pkg)
 {
-	ucl_object_t *schema;
-	struct ucl_schema_error err;
-
-	schema = manifest_schema_open(pkg->type);
-
-	if (schema == NULL)
+	if (pkg == NULL) {
+		pkg_emit_error("Invalid package: not allocated");
 		return (EPKG_FATAL);
+	}
 
-	if (!ucl_object_validate(schema, pkg->fields, &err)) {
-		pkg_emit_error("Invalid package: %s", err.msg);
+	if (pkg->origin == NULL) {
+		pkg_emit_error("Invalid package: object has missing property origin");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->name == NULL) {
+		pkg_emit_error("Invalid package: object has missing property name");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->comment == NULL) {
+		pkg_emit_error("Invalid package: object has missing property comment");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->version == NULL) {
+		pkg_emit_error("Invalid package: object has missing property version");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->desc == NULL) {
+		pkg_emit_error("Invalid package: object has missing property desc");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->maintainer == NULL) {
+		pkg_emit_error("Invalid package: object has missing property maintainer");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->www == NULL) {
+		pkg_emit_error("Invalid package: object has missing property www");
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->prefix == NULL) {
+		pkg_emit_error("Invalid package: object has missing property prefix");
 		return (EPKG_FATAL);
 	}
 
@@ -274,7 +306,7 @@ pkg_is_valid(const struct pkg * restrict pkg)
 static int
 pkg_vget(const struct pkg * restrict pkg, va_list ap)
 {
-	pkg_attr attr;
+	int attr;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 
@@ -404,7 +436,7 @@ pkg_get2(const struct pkg * restrict pkg, ...)
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
-	pkg_attr attr;
+	int attr;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -422,6 +454,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			pkg->origin = strdup(va_arg(ap, const char *));
 			break;
 		case PKG_VERSION:
+			printf("la\n");
 			free(pkg->version);
 			pkg->version = strdup(va_arg(ap, const char *));
 			break;
