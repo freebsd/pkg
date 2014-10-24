@@ -335,7 +335,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 	struct pkg_jobs *j)
 {
 	const char sql_local_conflict[] = ""
-		"SELECT p.name || '~' || p.origin as uniqueid FROM packages AS p "
+		"SELECT p.name as uniqueid FROM packages AS p "
 		"INNER JOIN files AS f "
 		"ON p.id = f.package_id "
 		"WHERE f.path = ?1;";
@@ -358,13 +358,15 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 	sqlite3_bind_text(stmt, 2,
 		uid, -1, SQLITE_STATIC);
 
-	if (sqlite3_step(stmt) != SQLITE_DONE) {
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
 		/*
 		 * We have found the conflict with some other chain, so find that chain
 		 * or update the universe
 		 */
+		const char *uid_local = sqlite3_column_text(stmt, 0);
+
 		p = pkg_jobs_universe_get_local(j->universe,
-			sqlite3_column_text(stmt, 0), 0);
+			uid_local, 0);
 		assert(p != NULL);
 
 		pkg_get(p, PKG_UNIQUEID, &uido);

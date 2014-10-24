@@ -48,7 +48,7 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	struct pkg_job_universe_item *unit;
+	struct pkg_job_universe_item *unit, *cur, *found;
 
 	if (flag == 0) {
 		if (!IS_DELETE(universe->j))
@@ -60,9 +60,22 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	}
 
 	HASH_FIND(hh, universe->items, uid, strlen(uid), unit);
-	if (unit != NULL && unit->pkg->type == PKG_INSTALLED) {
-		pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
-		return (unit->pkg);
+	if (unit != NULL) {
+		/* Search local in a universe chain */
+		cur = unit;
+		found = NULL;
+		do {
+			if (cur->pkg->type == PKG_INSTALLED) {
+				found = cur;
+				break;
+			}
+			cur = cur->prev;
+		} while (cur != unit);
+
+		if (found) {
+			pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
+			return (unit->pkg);
+		}
 	}
 
 	if ((it = pkgdb_query(universe->j->db, uid, MATCH_EXACT)) == NULL)
@@ -82,7 +95,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 {
 	struct pkg *pkg = NULL, *selected = NULL;
 	struct pkgdb_it *it;
-	struct pkg_job_universe_item *unit;
+	struct pkg_job_universe_item *unit, *cur, *found;
 
 	if (flag == 0) {
 		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
@@ -92,8 +105,21 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 
 	HASH_FIND(hh, universe->items, uid, strlen(uid), unit);
 	if (unit != NULL && unit->pkg->type != PKG_INSTALLED) {
-		pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
-		return (unit->pkg);
+		/* Search local in a universe chain */
+		cur = unit;
+		found = NULL;
+		do {
+			if (cur->pkg->type != PKG_INSTALLED) {
+				found = cur;
+				break;
+			}
+			cur = cur->prev;
+		} while (cur != unit);
+
+		if (found) {
+			pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
+			return (unit->pkg);
+		}
 	}
 
 	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_EXACT,
