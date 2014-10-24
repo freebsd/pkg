@@ -274,7 +274,7 @@ pkg_is_valid(const struct pkg * restrict pkg)
 static int
 pkg_vget(const struct pkg * restrict pkg, va_list ap)
 {
-	int attr;
+	pkg_attr attr;
 	const ucl_object_t *obj;
 
 	while ((attr = va_arg(ap, int)) > 0) {
@@ -285,34 +285,87 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 		}
 
 		obj = ucl_object_find_key(pkg->fields, pkg_keys[attr].name);
-		switch (pkg_keys[attr].type) {
-		case UCL_STRING:
-			if (obj == NULL) {
-				*va_arg(ap, const char **) = NULL;
-				break;
-			}
-			*va_arg(ap, const char **) = ucl_object_tostring_forced(obj);
+		switch (attr) {
+		case PKG_ORIGIN:
+			*va_arg(ap, const char **) = pkg->origin;
 			break;
-		case UCL_BOOLEAN:
-			if (obj == NULL) {
-				*va_arg(ap, bool *) = false;
-				break;
-			}
-			*va_arg(ap, bool *) = ucl_object_toboolean(obj);
+		case PKG_NAME:
+			*va_arg(ap, const char **) = pkg->name;
 			break;
-		case UCL_INT:
-			if (obj == NULL) {
-				*va_arg(ap, int64_t *) = 0;
-				break;
-			}
-			*va_arg(ap, int64_t *) = ucl_object_toint(obj);
+		case PKG_VERSION:
+			*va_arg(ap, const char **) = pkg->version;
 			break;
-		case UCL_OBJECT:
-		case UCL_ARRAY:
-			*va_arg(ap, const pkg_object **) = obj;
+		case PKG_COMMENT:
+			*va_arg(ap, const char **) = pkg->comment;
 			break;
-		default:
-			va_arg(ap, void *); /* ignore */
+		case PKG_DESC:
+			*va_arg(ap, const char **) = pkg->desc;
+			break;
+		case PKG_MTREE:
+			*va_arg(ap, const char **) = NULL;
+			break;
+		case PKG_MESSAGE:
+			*va_arg(ap, const char **) = pkg->message;
+			break;
+		case PKG_ARCH:
+			*va_arg(ap, const char **) = pkg->arch;
+			break;
+		case PKG_ABI:
+			*va_arg(ap, const char **) = pkg->abi;
+			break;
+		case PKG_WWW:
+			*va_arg(ap, const char **) = pkg->www;
+			break;
+		case PKG_MAINTAINER:
+			*va_arg(ap, const char **) = pkg->maintainer;
+			break;
+		case PKG_PREFIX:
+			*va_arg(ap, const char **) = pkg->prefix;
+			break;
+		case PKG_REPOPATH:
+			*va_arg(ap, const char **) = pkg->repopath;
+			break;
+		case PKG_CKSUM:
+			*va_arg(ap, const char **) = pkg->sum;
+			break;
+		case PKG_OLD_VERSION:
+			*va_arg(ap, const char **) = pkg->old_version;
+			break;
+		case PKG_REPONAME:
+			*va_arg(ap, const char **) = pkg->reponame;
+			break;
+		case PKG_REPOURL:
+			*va_arg(ap, const char **) = pkg->repourl;
+			break;
+		case PKG_DIGEST:
+			*va_arg(ap, const char **) = pkg->digest;
+			break;
+		case PKG_REASON:
+			*va_arg(ap, const char **) = pkg->reason;
+			break;
+		case PKG_FLATSIZE:
+			*va_arg(ap, int64_t *) = pkg->flatsize;
+			break;
+		case PKG_OLD_FLATSIZE:
+			*va_arg(ap, int64_t *) = pkg->old_flatsize;
+			break;
+		case PKG_PKGSIZE:
+			*va_arg(ap, int64_t *) = pkg->pkgsize;
+			break;
+		case PKG_LICENSE_LOGIC:
+			*va_arg(ap, lic_t *) = pkg->licenselogic;
+			break;
+		case PKG_AUTOMATIC:
+			*va_arg(ap, bool *) = pkg->automatic;
+			break;
+		case PKG_LOCKED:
+			*va_arg(ap, bool *) = pkg->locked;
+			break;
+		case PKG_ROWID:
+			*va_arg(ap, int64_t *) = pkg->id;
+			break;
+		case PKG_TIME:
+			*va_arg(ap, int64_t *) = pkg->timestamp;
 			break;
 		}
 	}
