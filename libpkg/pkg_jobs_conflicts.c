@@ -296,6 +296,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 
 			if (p1->type == PKG_INSTALLED && p2->type == PKG_INSTALLED) {
 				/* Local and local packages cannot conflict */
+				cur2 = cur2->prev;
 				continue;
 			}
 			else if (p1->type == PKG_INSTALLED || p2->type == PKG_INSTALLED) {
@@ -426,7 +427,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 			 * Collision found, change the key following the
 			 * Cuckoo principle
 			 */
-			pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
+			pkg_debug(1, "found a collision on path %s between %s and %s, key: %lu",
 				path, uid1, uid2, (unsigned long)k->k[0]);
 			k->k[0] ++;
 			return (pkg_conflicts_check_all_paths(j, path, it, k));

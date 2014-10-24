@@ -2161,7 +2161,6 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			ret = res;
 		else
 			added ++;
-
 	}
 
 	pkg_debug(1, "check integrity for %d items added", added);
