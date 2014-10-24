@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <openssl/rand.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -42,7 +43,21 @@ struct pkg_conflict_chain {
 	struct pkg_conflict_chain *next;
 };
 
+
 TREE_DEFINE(pkg_jobs_conflict_item, entry);
+
+static struct sipkey *
+pkg_conflicts_sipkey_init(void)
+{
+	static struct sipkey *kinit;
+
+	if (kinit == NULL) {
+		kinit = malloc(sizeof(*kinit));
+		RAND_bytes((unsigned char*)kinit, sizeof(*kinit));
+	}
+
+	return (kinit);
+}
 
 static int
 pkg_conflicts_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_chain *b)
@@ -373,10 +388,10 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 	const char *uid1, *uid2;
 	struct pkg_jobs_conflict_item *cit, test;
 	struct pkg_conflict *c;
-	uint64_t sipkey;
+	uint64_t hv;
 
-	sipkey = siphash24(path, strlen(path), k);
-	test.hash = sipkey;
+	hv = siphash24(path, strlen(path), k);
+	test.hash = hv;
 	cit = TREE_FIND(j->conflict_items, pkg_jobs_conflict_item, entry, &test);
 
 	if (cit == NULL) {
@@ -386,7 +401,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 			pkg_emit_errno("malloc failed", "pkg_conflicts_check_all_paths");
 		}
 		else {
-			cit->hash = sipkey;
+			cit->hash = hv;
 			cit->item = it;
 			TREE_INSERT(j->conflict_items, pkg_jobs_conflict_item, entry, cit);
 		}
@@ -431,15 +446,14 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	const char *uid;
 	struct pkg *p;
 	struct pkg_job_universe_item *cun;
-	struct sipkey k;
+	struct sipkey *k;
 
 	pkg_get(it->pkg, PKG_UNIQUEID, &uid);
 
 	HASH_ITER(hh, it->pkg->files, fcur, ftmp) {
-		/* Initialize sip key with zero */
-		memset(&k, 0, sizeof(k));
+		k = pkg_conflicts_sipkey_init();
 		/* Check in hash tree */
-		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, &k);
+		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, k);
 
 		if (local != NULL) {
 			/* Filter only new files for remote packages */
