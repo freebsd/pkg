@@ -279,7 +279,7 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 	while ((attr = va_arg(ap, int)) > 0) {
 
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
-			pkg_emit_error("Bad argument on pkg_get");
+			pkg_emit_error("Bad argument on pkg_get %d", attr);
 			return (EPKG_FATAL);
 		}
 
@@ -364,6 +364,21 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			break;
 		case PKG_TIME:
 			*va_arg(ap, int64_t *) = pkg->timestamp;
+			break;
+		case PKG_ANNOTATIONS:
+			*va_arg(ap, const pkg_object **) = ucl_object_find_key(pkg->fields, "annotations");
+			break;
+		case PKG_CATEGORIES:
+			*va_arg(ap, const pkg_object **) = ucl_object_find_key(pkg->fields, "categories");
+			break;
+		case PKG_LICENSES:
+			*va_arg(ap, const pkg_object **) = ucl_object_find_key(pkg->fields, "licenses");
+			break;
+		case PKG_UNIQUEID:
+			*va_arg(ap, const char **) = pkg->uid;
+			break;
+		case PKG_OLD_DIGEST:
+			*va_arg(ap, const char **) = pkg->old_digest;
 			break;
 		}
 	}
