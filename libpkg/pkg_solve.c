@@ -188,9 +188,22 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 } while (0)
 
 static void
-pkg_debug_print_rule(struct pkg_solve_rule *rule)
+pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 {
 	struct pkg_solve_item *it;
+
+	sbuf_printf(sb, "%s rule: (", rule->reason);
+	LL_FOREACH(rule->items, it) {
+		sbuf_printf(sb, "%s%s%s%s", it->inverse < 0 ? "not " : "", it->var->uid,
+						(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+										it->next ? " or " : ")");
+	}
+	sbuf_finish(sb);
+}
+
+static void
+pkg_debug_print_rule(struct pkg_solve_rule *rule)
+{
 	struct sbuf *sb;
 	int64_t expectlevel;
 
@@ -202,13 +215,8 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 
 	sb = sbuf_new_auto();
 
-	sbuf_printf(sb, "%s rule: (", rule->reason);
-	LL_FOREACH(rule->items, it) {
-		sbuf_printf(sb, "%s%s%s%s", it->inverse < 0 ? "!" : "", it->var->uid,
-		    (it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-		    it->next ? " | " : ")");
-	}
-	sbuf_finish(sb);
+	pkg_print_rule_sbuf(rule, sb);
+
 	pkg_debug(2, "%s", sbuf_data(sb));
 	sbuf_delete(sb);
 }
@@ -763,6 +771,16 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 		while (*failed) {
 			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
+
+			LL_FOREACH(problem->rules, rule) {
+				LL_FOREACH(rule->items, item) {
+					if (item->var == var) {
+						pkg_print_rule_sbuf(rule, sb);
+						sbuf_putc(sb, '\n');
+					}
+					break;
+				}
+			}
 
 			sbuf_printf(sb, "cannot %s package %s, remove it from request? [Y/n]: ",
 				var->to_install ? "install" : "remove", var->uid);
