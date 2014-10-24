@@ -188,11 +188,11 @@ try_again:
 	}
 	package_id = sqlite3_last_insert_rowid(sqlite);
 
-	if (pkg_repo_binary_run_prstatement (FTS_APPEND, package_id,
+/*	if (pkg_repo_binary_run_prstatement (FTS_APPEND, package_id,
 			name, version, origin) != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(FTS_APPEND));
 		return (EPKG_FATAL);
-	}
+	}*/
 
 	dep = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
@@ -523,6 +523,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sql_exec(sqlite, "PRAGMA temp_store = MEMORY;");*/
 	sql_exec(sqlite, "PRAGMA page_size = %d;", getpagesize());
 	sql_exec(sqlite, "PRAGMA cache_size = 10000;");
+	sql_exec(sqlite, "PRAGMA foreign_keys = OFF;");
 
 	rc = pkgdb_transaction_begin(sqlite, "REPO");
 	if (rc != EPKG_OK)
@@ -550,6 +551,18 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	if (rc == EPKG_OK)
 		pkg_emit_incremental_update(repo->name, cnt);
+
+	sql_exec(sqlite, ""
+	 "INSERT INTO pkg_search SELECT id, name || '-' || version, origin FROM packages;"
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX packages_uid ON packages(name, origin);"
+	"CREATE INDEX packages_version ON packages(name, version);"
+	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
+	 );
+	/* FTS search table */
 
 cleanup:
 
