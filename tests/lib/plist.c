@@ -70,7 +70,6 @@ ATF_TC_BODY(parse_plist, tc)
 	struct pkg *p;
 	struct plist *plist;
 	char buf[BUFSIZ];
-	const char *prefix;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
 
@@ -81,8 +80,7 @@ ATF_TC_BODY(parse_plist, tc)
 
 	strlcpy(buf, "@cwd /myprefix", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(p, plist, buf));
-	pkg_get(p, PKG_PREFIX, &prefix);
-	ATF_REQUIRE_STREQ(prefix, "/myprefix");
+	ATF_REQUIRE_STREQ(p->prefix, "/myprefix");
 
 	ATF_REQUIRE_STREQ(plist->prefix, "/myprefix");
 
