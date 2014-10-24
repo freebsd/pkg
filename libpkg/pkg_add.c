@@ -141,7 +141,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
-	const char *name;
 	struct stat st;
 	bool renamed = false;
 	const struct pkg_file *lf, *rf;
@@ -156,7 +155,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	if (nfiles == 0)
 		return (EPKG_OK);
 
-	pkg_get(pkg, PKG_NAME, &name);
 	pkg_emit_extract_begin(pkg);
 	pkg_emit_progress_start(NULL);
 
