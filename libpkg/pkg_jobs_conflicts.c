@@ -429,10 +429,14 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 			 * Collision found, change the key following the
 			 * Cuckoo principle
 			 */
-			pkg_debug(1, "found a collision on path %s between %s and %s, key: %lu",
+			struct sipkey nk;
+
+			pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
 				path, uid1, uid2, (unsigned long)k->k[0]);
-			k->k[0] ++;
-			return (pkg_conflicts_check_all_paths(j, path, it, k));
+
+			nk = *k;
+			nk.k[0] ++;
+			return (pkg_conflicts_check_all_paths(j, path, it, &nk));
 		}
 
 		return (cit->item);
