@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <utlist.h>
 
 #include "pkg.h"
 #include <private/pkg_printf.h>
@@ -910,27 +911,22 @@ struct sbuf *
 format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const pkg_object	*obj;
+	struct pkg_strel	*el;
+	int			 count = 0;
 
-	pkg_get(pkg, PKG_CATEGORIES, &obj);
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_object_count(obj), p));
-	else {
-		const pkg_object	*cat;
-		pkg_iter		 it = NULL;
-		int			 count;
-
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
+		LL_COUNT(pkg->categories, el, count);
+		return (list_count(sbuf, count, p));
+	} else {
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		while ((cat = pkg_object_iterate(obj, &it))) {
+		LL_FOREACH(pkg->categories, el) {
 			if (count > 1)
-				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-					     cat, count, PP_C);
+				iterate_item(sbuf, pkg, el->value, el, count,
+				    PP_C);
 
-			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), 
-				     cat, count, PP_C);
+			iterate_item(sbuf, pkg, el->value, el, count, PP_C);
 			count++;
 		}
 	}
@@ -1191,27 +1187,22 @@ struct sbuf *
 format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const pkg_object	*obj;
+	struct pkg_strel	*el;
+	int			 count = 0;
 
-	pkg_get(pkg, PKG_LICENSES, &obj);
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_object_count(obj), p));
-	else {
-		const pkg_object	*lic;
-		pkg_iter		 iter = NULL;
-		int			 count;
-
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
+		LL_COUNT(pkg->licenses, el, count);
+		return (list_count(sbuf, count, p));
+	} else {
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		while ((lic = pkg_object_iterate(obj, &iter))) {
+		LL_FOREACH(pkg->licenses, el) {
 			if (count > 1)
-				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-					     lic, count, PP_L);
+				iterate_item(sbuf, pkg, el->value, el, count,
+				    PP_L);
 
-			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
-				     lic, count, PP_L);
+			iterate_item(sbuf, pkg, el->value, el, count, PP_L);
 			count++;
 		}
 	}
@@ -1251,7 +1242,7 @@ format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	reponame = pkg->reponame;
 	if (reponame == NULL) {
-		reponame = pkg_getannotation(pkg, "repository");
+		reponame = pkg_kv_get(&pkg->annotations, "repository");
 		if (reponame == NULL)
 			reponame = "unknown-repository";
 	}

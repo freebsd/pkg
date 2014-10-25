@@ -142,23 +142,22 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 static int
 do_show(struct pkg *pkg, const char *tag)
 {
-	const pkg_object	*annotations, *note;
-	pkg_iter		 it = NULL;
-	int			 ret = EPKG_OK;
+	struct pkg_kv *note;
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &annotations);
-	while ((note = pkg_object_iterate(annotations, &it)) != NULL) {
-		if (strcmp(tag, pkg_object_key(note)) == 0) {
+	pkg_get(pkg, PKG_ANNOTATIONS, &note);
+	while (note != NULL) {
+		if (strcmp(tag, note->key) == 0) {
 			if (quiet)
-				printf("%s\n", pkg_object_string(note));
+				printf("%s\n", note->value);
 			else
 				pkg_printf("%n-%v: Tag: %S Value: %S\n",
-				    pkg, pkg, pkg_object_key(note),
-				    pkg_object_string(note));
+				    pkg, pkg, note->key, note->value);
+			return (EPKG_OK);
 		}
+		note = note->next;
 	}
 
-	return (ret);
+	return (EPKG_FATAL);
 }
 
 

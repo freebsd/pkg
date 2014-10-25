@@ -486,8 +486,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	else {
 		if (remote->repo != NULL) {
 			/* Save reponame */
-			pkg_addannotation(pkg, "repository", remote->repo->name);
-			pkg_addannotation(pkg, "repo_type", remote->repo->ops->type);
+			pkg_kv_add(&pkg->annotations, "repository", remote->repo->name, "annotation");
+			pkg_kv_add(&pkg->annotations, "repo_type", remote->repo->ops->type, "annotation");
 		}
 
 		free(pkg->digest);
@@ -498,7 +498,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 	if (location != NULL)
-		pkg_addannotation(pkg, "relocated", location);
+		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */

@@ -138,14 +138,10 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
-	const pkg_object	*obj, *licenses, *categories, *annotations;
+	struct pkg_strel	*el;
+	struct pkg_kv		*kv;
 	const char		*arch;
-	pkg_iter		 it;
 	int64_t			 package_id;
-
-	pkg_get(pkg,
-	    PKG_LICENSES, &licenses, PKG_CATEGORIES, &categories,
-	    PKG_ANNOTATIONS, &annotations);
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
@@ -195,30 +191,28 @@ try_again:
 		}
 	}
 
-	it = NULL;
-	while ((obj = pkg_object_iterate(categories, &it))) {
-		ret = pkg_repo_binary_run_prstatement(CAT1, pkg_object_string(obj));
+	LL_FOREACH(pkg->categories, el) {
+		ret = pkg_repo_binary_run_prstatement(CAT1, el->value);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(CAT2, package_id,
-			    pkg_object_string(obj));
-		if (ret != SQLITE_DONE)
-		{
+			    el->value);
+		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
 	}
 
-	it = NULL;
-	while ((obj = pkg_object_iterate(licenses, &it))) {
-		ret = pkg_repo_binary_run_prstatement(LIC1, pkg_object_string(obj));
+	LL_FOREACH(pkg->licenses, el) {
+		ret = pkg_repo_binary_run_prstatement(LIC1, el->value);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
-			    pkg_object_string(obj));
+			    el->value);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
 		}
 	}
+
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		ret = pkg_repo_binary_run_prstatement(OPT1, pkg_option_opt(option));
@@ -259,17 +253,13 @@ try_again:
 		}
 	}
 
-	it = NULL;
-	while ((obj = pkg_object_iterate(annotations, &it))) {
-		const char *note_tag = pkg_object_key(obj);
-		const char *note_val = pkg_object_string(obj);
-
-		ret = pkg_repo_binary_run_prstatement(ANNOTATE1, note_tag);
+	LL_FOREACH(pkg->annotations, kv) {
+		ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->key);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(ANNOTATE1, note_val);
+			ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->value);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(ANNOTATE2, package_id,
-				  note_tag, note_val);
+				  kv->key, kv->value);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(ANNOTATE2));
 			return (EPKG_FATAL);

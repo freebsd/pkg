@@ -83,7 +83,7 @@ struct pkg_dep;
 struct pkg_conflict;
 struct pkg_file;
 struct pkg_dir;
-struct pkg_category;
+struct pkg_strel;
 struct pkg_option;
 struct pkg_license;
 struct pkg_user;
@@ -107,6 +107,12 @@ struct pkg_manifest_parser;
 
 typedef struct ucl_object_s pkg_object;
 typedef void * pkg_iter;
+
+struct pkg_kv {
+	char *key;
+	char *value;
+	struct pkg_kv *next;
+};
 
 /**
  * The system-wide pkg(8) status: ie. is it a) installed or otherwise
@@ -700,18 +706,6 @@ int pkg_addscript_file(struct pkg *pkg, const char *path);
 int pkg_addscript_fileat(int fd, struct pkg *pkg, const char *path);
 
 /**
- * Add annotation key+value pair
- * @return An error code
- */
-int pkg_addannotation(struct pkg *pkg, const char *tag, const char *value);
-
-/**
- * Delete annotation identified by the key
- * @return An error code
- */
-int pkg_delannotation(struct pkg *pkg, const char *tag);
-
-/**
  * Parse a manifest and set the attributes of pkg accordingly.
  * @param buf An NULL-terminated buffer containing the manifest data.
  * @return An error code.
@@ -751,9 +745,6 @@ bool pkg_dep_is_locked(struct pkg_dep const * const);
 
 bool pkg_has_dir(struct pkg *, const char *);
 bool pkg_has_file(struct pkg *, const char *);
-
-/* pkg_category */
-const char *pkg_category_name(struct pkg_category const * const);
 
 /* pkg_license */
 const char *pkg_license_name(struct pkg_license const * const);

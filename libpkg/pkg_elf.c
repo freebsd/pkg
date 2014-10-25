@@ -501,7 +501,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	 * if the package is not supposed to provide share libraries then
 	 * drop the provided one
 	 */
-	if (pkg_getannotation(pkg, "no_provide_shlib") != NULL)
+	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL)
 		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
 
 	if (failures)

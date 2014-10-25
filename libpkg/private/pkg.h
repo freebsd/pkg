@@ -121,7 +121,6 @@ struct pkg_repo_it;
 struct pkg_repo;
 
 struct pkg {
-	ucl_object_t	*fields;
 	bool		 direct;
 	bool		 locked;
 	bool		 automatic;
@@ -154,6 +153,8 @@ struct pkg {
 	int64_t			 timestamp;
 	struct pkg_dep		*deps;
 	struct pkg_dep		*rdeps;
+	struct pkg_strel	*categories;
+	struct pkg_strel	*licenses;
 	struct pkg_file		*files;
 	struct pkg_dir		*dirs;
 	struct pkg_option	*options;
@@ -164,6 +165,7 @@ struct pkg {
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
 	struct pkg_config_file	*config_files;
+	struct pkg_kv		*annotations;
 	unsigned			flags;
 	int		rootfd;
 	char		rootpath[MAXPATHLEN];
@@ -183,6 +185,11 @@ struct pkg_dep {
 	char		*uid;
 	bool		 locked;
 	UT_hash_handle	 hh;
+};
+
+struct pkg_strel {
+	char *value;
+	struct pkg_strel *next;
 };
 
 enum pkg_conflict_type {
@@ -512,6 +519,12 @@ int pkg_validate(struct pkg *pkg);
 
 void pkg_list_free(struct pkg *, pkg_list);
 
+int pkg_strel_new(struct pkg_strel **, const char *val);
+void pkg_strel_free(struct pkg_strel *);
+
+int pkg_kv_new(struct pkg_kv **, const char *key, const char *val);
+void pkg_kv_free(struct pkg_kv *);
+
 int pkg_dep_new(struct pkg_dep **);
 void pkg_dep_free(struct pkg_dep *);
 
@@ -612,7 +625,6 @@ void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
 struct plist *plist_new(struct pkg *p, const char *stage);
 int plist_parse_line(struct pkg *pkg, struct plist *p, char *line);
 void plist_free(struct plist *);
-const char *pkg_getannotation(const struct pkg *, const char *);
 int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 
 int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
@@ -628,8 +640,9 @@ int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		    const char *gname, mode_t perm, bool try,
 		    bool check_duplicates);
 
-int pkg_addcategory(struct pkg *pkg, const char *name);
-int pkg_addlicense(struct pkg *pkg, const char *name);
+int pkg_strel_add(struct pkg_strel **l, const char *name, const char *title);
+int pkg_kv_add(struct pkg_kv **kv, const char *key, const char *value, const char *title);
+const char *pkg_kv_get(struct pkg_kv *const*kv, const char *key);
 int pkg_adduser(struct pkg *pkg, const char *name);
 int pkg_addgroup(struct pkg *pkg, const char *group);
 int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
@@ -646,6 +659,5 @@ int pkg_addoption_description(struct pkg *pkg, const char *key, const char *desc
 
 int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
 bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file **file, struct pkg_config_file **cfile);
-
 
 #endif

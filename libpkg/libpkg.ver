@@ -17,10 +17,10 @@ global:
 	pkg_audit_load;
 	pkg_audit_new;
 	pkg_audit_process;
-	pkg_category_name;
 	pkg_compiled_for_same_os_major;
 	pkg_conf;
 	pkg_config_dump;
+	pkg_config_files;
 	pkg_config_get;
 	pkg_conflict_uniqueid;
 	pkg_conflicts;
@@ -29,7 +29,6 @@ global:
 	pkg_create_installed;
 	pkg_create_repo;
 	pkg_create_staged;
-	pkg_delannotation;
 	pkg_dep_get;
 	pkg_dep_is_locked;
 	pkg_deps;

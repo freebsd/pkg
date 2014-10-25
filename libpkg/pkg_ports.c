@@ -1230,7 +1230,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	int rc = EPKG_OK;
 
 	if (location != NULL)
-		pkg_addannotation(pkg, "relocated", location);
+		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	pkg_emit_install_begin(pkg);
 

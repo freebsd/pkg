@@ -60,7 +60,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		return (EPKG_FATAL);
 	}
 
-	relocation = pkg_getannotation(pkg, "relocated");
+	relocation = pkg_kv_get(&pkg->annotations, "relocated");
 	if (relocation == NULL)
 		relocation = "";
 

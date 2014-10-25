@@ -361,13 +361,15 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed category");
 			else
-				pkg_addcategory(pkg, ucl_object_tostring(cur));
+				pkg_strel_add(&pkg->categories,
+				    ucl_object_tostring(cur), "category");
 			break;
 		case PKG_LICENSES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed license");
 			else
-				pkg_addlicense(pkg, ucl_object_tostring(cur));
+				pkg_strel_add(&pkg->licenses,
+				    ucl_object_tostring(cur), "license");
 			break;
 		case PKG_USERS:
 			if (cur->type == UCL_STRING)
@@ -548,7 +550,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 				pkg_emit_error("Skipping malformed annotation %s",
 				    key);
 			else
-				pkg_addannotation(pkg, key, ucl_object_tostring(cur));
+				pkg_kv_add(&pkg->annotations, key, ucl_object_tostring(cur), "annotation");
 			break;
 		}
 	}
@@ -908,6 +910,8 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 pkg_object*
 pkg_emit_object(struct pkg *pkg, short flags)
 {
+	struct pkg_strel	*el;
+	struct pkg_kv		*kv;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
@@ -922,17 +926,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	int i;
 	const char *script_types = NULL;
 	char legacyarch[BUFSIZ];
-	ucl_object_iter_t it = NULL;
-	ucl_object_t *annotations, *categories, *licenses;
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
-	const ucl_object_t *o;
-	const char *key;
-	size_t key_len;
-
-	pkg_get(pkg, 
-	    PKG_ANNOTATIONS, &annotations, PKG_LICENSES, &licenses,
-	    PKG_CATEGORIES, &categories);
 
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
 	pkg->arch = strdup(pkg->arch);
@@ -942,7 +937,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->origin, 0,
 	    UCL_STRING_TRIM), "origin", 6, false);
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->version, 0,
-	    UCL_STRING_TRIM), "version", 6, false);
+	    UCL_STRING_TRIM), "version", 7, false);
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->comment, 0,
 	    UCL_STRING_TRIM), "comment", 7, false);
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->maintainer, 0,
@@ -952,7 +947,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->abi, 0,
 	    UCL_STRING_TRIM), "abi", 3, false);
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->arch, 0,
-	    UCL_STRING_TRIM), "arch", 3, false);
+	    UCL_STRING_TRIM), "arch", 4, false);
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->prefix, 0,
 	    UCL_STRING_TRIM), "prefix", 6, false);
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->sum, 0,
@@ -981,9 +976,15 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 
 	pkg_debug(4, "Emitting licenses");
-	if (licenses != NULL)
-		ucl_object_insert_key(top,
-		    ucl_object_ref(licenses), "licenses", 8, false);
+	seq = NULL;
+	el = NULL;
+	LL_FOREACH(pkg->licenses, el) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(el->value));
+	}
+	if (seq)
+		ucl_object_insert_key(top, seq, "licenses", 8, false);
 
 	if (pkg->pkgsize > 0)
 		ucl_object_insert_key(top, ucl_object_fromint(pkg->pkgsize), "pkgsize", 7, false);
@@ -1009,9 +1010,15 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		ucl_object_insert_key(top, map, "deps", 4, false);
 
 	pkg_debug(4, "Emitting categories");
-	if (categories != NULL)
-		ucl_object_insert_key(top,
-		    ucl_object_ref(categories), "categories", 10, false);
+	seq = NULL;
+	el = NULL;
+	LL_FOREACH(pkg->categories, el) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(el->value));
+	}
+	if (seq)
+		ucl_object_insert_key(top, seq, "categories", 10, false);
 
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
@@ -1090,22 +1097,20 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (map)
 		ucl_object_insert_key(top, map, "options", 7, false);
 
-	if (annotations != NULL) {
-		it = NULL;
-		map = ucl_object_typed_new(UCL_OBJECT);
+	map = NULL;
+	kv = NULL;
+	LL_FOREACH(pkg->annotations, kv) {
+		if (map == NULL)
+			map = ucl_object_typed_new(UCL_OBJECT);
 		/* Add annotations except for internal ones. */
-		while ((o = ucl_iterate_object(annotations, &it, true))) {
-			if ((key = ucl_object_keyl(o, &key_len)) == NULL)
-				continue;
-			/* Internal annotations. */
-			if (strcmp(key, "repository") == 0 ||
-			    strcmp(key, "relocated") == 0)
-				continue;
-			ucl_object_insert_key(map, ucl_object_ref(o), key,
-			    key_len, true);
-		}
-		ucl_object_insert_key(top, map, "annotations", 11, false);
+		if (strcmp(kv->key, "repository") == 0 ||
+		    strcmp(kv->key, "relocated") == 0)
+			continue;
+		ucl_object_insert_key(map, ucl_object_fromstring(kv->value),
+		    kv->key, strlen(kv->key), true);
 	}
+	if (map)
+		ucl_object_insert_key(top, map, "annotations", 11, false);
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {

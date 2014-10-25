@@ -333,8 +333,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_dep		*dep    = NULL;
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
-	const pkg_object	*o, *list;
-	pkg_iter		 it;
+	struct pkg_kv		*kv;
 
 	switch (multiline) {
 	case 'd':
@@ -383,11 +382,11 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		pkg_printf("%b", pkg);
 		break;
 	case 'A':
-		it = NULL;
-		pkg_get(pkg, PKG_ANNOTATIONS, &list);
-		while ((o = pkg_object_iterate(list, &it))) {
-			format_str(pkg, output, qstr, o);
+		pkg_get(pkg, PKG_ANNOTATIONS, &kv);
+		while (kv != NULL) {
+			format_str(pkg, output, qstr, kv);
 			printf("%s\n", sbuf_data(output));
+			kv = kv->next;
 		}
 		break;
 	default:

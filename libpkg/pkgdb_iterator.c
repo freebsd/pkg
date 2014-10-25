@@ -95,6 +95,24 @@ static struct column_mapping {
 };
 
 static int
+pkg_addcategory(struct pkg *pkg, const char *data)
+{
+	return (pkg_strel_add(&pkg->categories, data, "category"));
+}
+
+static int
+pkg_addlicense(struct pkg *pkg, const char *data)
+{
+	return (pkg_strel_add(&pkg->licenses, data, "license"));
+}
+
+static int
+pkg_addannotation(struct pkg *pkg, const char *k, const char *v)
+{
+	return (pkg_kv_add(&pkg->annotations, k, v, "annotation"));
+}
+
+static int
 load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
     int (*pkg_adddata)(struct pkg *pkg, const char *data), int list)
 {

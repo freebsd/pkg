@@ -84,7 +84,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		return EPKG_FATAL;
 	}
 
-	(*pkg)->fields = ucl_object_typed_new(UCL_OBJECT);
 	(*pkg)->type = type;
 	(*pkg)->rootfd = -1;
 
@@ -99,8 +98,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	if (pkg == NULL)
 		return;
 
-	ucl_object_unref(pkg->fields);
-	pkg->fields = ucl_object_typed_new(UCL_OBJECT);
 	pkg->flags &= ~PKG_LOAD_CATEGORIES;
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 	pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
@@ -130,8 +127,6 @@ pkg_free(struct pkg *pkg)
 {
 	if (pkg == NULL)
 		return;
-
-	ucl_object_unref(pkg->fields);
 
 	free(pkg->name);
 	free(pkg->origin);
@@ -164,6 +159,11 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+
+	LL_FREE(pkg->categories, pkg_strel_free);
+	LL_FREE(pkg->licenses, pkg_strel_free);
+	LL_FREE(pkg->annotations, pkg_kv_free);
+
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
 
@@ -398,13 +398,13 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			*va_arg(ap, int64_t *) = pkg->timestamp;
 			break;
 		case PKG_ANNOTATIONS:
-			*va_arg(ap, const pkg_object **) = ucl_object_find_key(pkg->fields, "annotations");
+			*va_arg(ap, const struct pkg_kv **) = pkg->annotations;
 			break;
 		case PKG_CATEGORIES:
-			*va_arg(ap, const pkg_object **) = ucl_object_find_key(pkg->fields, "categories");
+			*va_arg(ap, const struct pkg_strel **) = pkg->categories;
 			break;
 		case PKG_LICENSES:
-			*va_arg(ap, const pkg_object **) = ucl_object_find_key(pkg->fields, "licenses");
+			*va_arg(ap, const struct pkg_strel **) = pkg->licenses;
 			break;
 		case PKG_UNIQUEID:
 			*va_arg(ap, const char **) = pkg->uid;
@@ -439,8 +439,9 @@ pkg_vset(struct pkg *pkg, va_list ap)
 	int attr;
 
 	while ((attr = va_arg(ap, int)) > 0) {
+		printf("%d\n", attr);
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
-			pkg_emit_error("Bad argument on pkg_get");
+			pkg_emit_error("Bad argument on pkg_set %s", attr);
 			return (EPKG_FATAL);
 		}
 
@@ -710,41 +711,6 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 }
 
 int
-pkg_addlicense(struct pkg *pkg, const char *name)
-{
-	const pkg_object *o, *licenses;
-	pkg_object *l, *lic;
-	pkg_iter iter = NULL;
-
-	assert(pkg != NULL);
-	assert(name != NULL && name[0] != '\0');
-
-	pkg_get(pkg, PKG_LICENSES, &licenses);
-
-	while ((o = pkg_object_iterate(licenses, &iter))) {
-		if (strcmp(pkg_object_string(o), name) == 0) {
-			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-				pkg_emit_error("duplicate license listing: %s, fatal (developer mode)", name);
-				return (EPKG_FATAL);
-			} else {
-				pkg_emit_error("duplicate license listing: %s, ignoring", name);
-				return (EPKG_OK);
-			}
-		}
-	}
-
-	pkg_get(pkg, PKG_LICENSES, &lic);
-	l = ucl_object_fromstring_common(name, strlen(name), 0);
-	if (lic == NULL) {
-		lic = ucl_object_typed_new(UCL_ARRAY);
-		pkg_set(pkg, PKG_LICENSES, lic);
-	}
-	ucl_array_append(lic, l);
-
-	return (EPKG_OK);
-}
-
-int
 pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
 {
 	struct pkg_user *u = NULL;
@@ -965,35 +931,29 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 }
 
 int
-pkg_addcategory(struct pkg *pkg, const char *name)
+pkg_strel_add(struct pkg_strel **list, const char *val, const char *title)
 {
-	const pkg_object *o, *categories;
-	pkg_object *c, *cat;
-	pkg_iter iter = NULL;
+	struct pkg_strel *c;
 
-	assert(pkg != NULL);
-	assert(name != NULL && name[0] != '\0');
+	assert(val != NULL);
+	assert(title != NULL);
 
-	pkg_get(pkg, PKG_CATEGORIES, &categories);
-	while ((o = (pkg_object_iterate(categories, &iter)))) {
-		if (strcmp(pkg_object_string(o), name) == 0) {
+	LL_FOREACH(*list, c) {
+		if (strcmp(c->value, val) == 0) {
 			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-				pkg_emit_error("duplicate category listing: %s, fatal (developer mode)", name);
+				pkg_emit_error("duplicate %s listing: %s, fatal"
+				    " (developer mode)", title, val);
 				return (EPKG_FATAL);
 			} else {
-				pkg_emit_error("duplicate category listing: %s, ignoring", name);
+				pkg_emit_error("duplicate %s listing: %s, "
+				    "ignoring", title, val);
 				return (EPKG_OK);
 			}
 		}
 	}
 
-	pkg_get(pkg, PKG_CATEGORIES, &cat);
-	c = ucl_object_fromstring_common(name, strlen(name), 0);
-	if (cat == NULL) {
-		cat = ucl_object_typed_new(UCL_ARRAY);
-		pkg_set(pkg, PKG_CATEGORIES, cat);
-	}
-	ucl_array_append(cat, c);
+	pkg_strel_new(&c, val);
+	LL_APPEND(*list, c);
 
 	return (EPKG_OK);
 }
@@ -1406,72 +1366,46 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 }
 
 const char *
-pkg_getannotation(const struct pkg *pkg, const char *tag)
+pkg_kv_get(struct pkg_kv *const *kv, const char *tag)
 {
-	const ucl_object_t *an, *notes;
+	struct pkg_kv *k;
 
-	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &notes);
-	an = pkg_object_find(notes, tag);
+	LL_FOREACH(*kv, k) {
+		if (strcmp(k->key, tag) == 0)
+			return (k->value);
+	}
 
-	if (an == NULL)
-		return (NULL);
-	return (pkg_object_string(an));
+	return (NULL);
 }
 
 int
-pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
+pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *title)
 {
-	ucl_object_t *o, *annotations;
+	struct pkg_kv *kv;
 
-	assert(pkg != NULL);
-	assert(tag != NULL);
-	assert(value != NULL);
+	assert(val != NULL);
+	assert(title != NULL);
 
-	/* Tags are unique per-package */
-
-	if (pkg_getannotation(pkg, tag) != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-			pkg_emit_error("duplicate annotation tag: %s value: %s,"
-			    " fatal (developer mode)", tag, value);
-			return (EPKG_OK);
-		} else {
-			pkg_emit_error("duplicate annotation tag: %s value: %s,"
-			    " ignoring", tag, value);
-			return (EPKG_OK);
+	LL_FOREACH(*list, kv) {
+		if (strcmp(kv->key, key) == 0) {
+			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+				pkg_emit_error("duplicate %s: %s, fatal"
+				    " (developer mode)", title, key);
+				return (EPKG_FATAL);
+			} else {
+				pkg_emit_error("duplicate %s: %s, "
+				    "ignoring", title, val);
+				return (EPKG_OK);
+			}
 		}
 	}
-	o = ucl_object_fromstring_common(value, strlen(value), 0);
-	pkg_get(pkg, PKG_ANNOTATIONS, &annotations);
-	if (annotations == NULL) {
-		annotations = ucl_object_typed_new(UCL_OBJECT);
-		pkg_set(pkg, PKG_ANNOTATIONS, annotations);
-	}
-	ucl_object_insert_key(annotations, o, tag, strlen(tag), true);
+
+	pkg_kv_new(&kv, key, val);
+	LL_APPEND(*list, kv);
 
 	return (EPKG_OK);
-}
-
-int
-pkg_delannotation(struct pkg *pkg, const char *tag)
-{
-	ucl_object_t *an, *notes;
-
-	assert(pkg != NULL);
-	assert(tag != NULL);
-
-	pkg_get(pkg, PKG_ANNOTATIONS, &notes);
-	an = ucl_object_pop_keyl(notes, tag, strlen(tag));
-	if (an != NULL) {
-		ucl_object_unref(an);
-		return (EPKG_OK);
-	} else {
-		pkg_emit_error("deleting annotation tagged \'%s\' -- "
-	           "not found", tag);
-		return (EPKG_WARN);
-	}
 }
 
 int
@@ -1986,7 +1920,7 @@ pkg_open_root_fd(struct pkg *pkg)
 	if (pkg->rootfd != -1)
 		return (EPKG_OK);
 
-	path = pkg_getannotation(pkg, "relocated");
+	path = pkg_kv_get(&pkg->annotations, "relocated");
 	if (path == NULL)
 		path = "/";
 

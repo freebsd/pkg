@@ -489,7 +489,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 			lp = pkg_jobs_universe_get_local(j->universe, req->item->pkg->uid, 0);
 			/* Check reponame */
 			if (lp != NULL)
-				lrepo = pkg_getannotation(lp, "repository");
+				lrepo = pkg_kv_get(&lp->annotations, "repository");
 
 			DL_FOREACH(req->item, it) {
 				rrepo = it->pkg->reponame;

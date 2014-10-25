@@ -354,3 +354,55 @@ pkg_config_file_free(struct pkg_config_file *c)
 	free(c->content);
 	free(c);
 }
+
+/*
+ * strel
+ */
+
+int
+pkg_strel_new(struct pkg_strel **c, const char *val)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_strel))) == NULL)
+		return (EPKG_FATAL);
+
+	(*c)->value = strdup(val);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_strel_free(struct pkg_strel *c)
+{
+	if (c == NULL)
+		return;
+
+	free(c->value);
+	free(c);
+}
+
+/*
+ * kv
+ */
+
+int
+pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_kv))) == NULL)
+		return (EPKG_FATAL);
+
+	(*c)->key = strdup(key);
+	(*c)->value = strdup(val);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_kv_free(struct pkg_kv *c)
+{
+	if (c == NULL)
+		return;
+
+	free(c->key);
+	free(c->value);
+	free(c);
+}
