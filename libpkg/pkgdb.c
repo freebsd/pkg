@@ -1538,6 +1538,7 @@ int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 {
 	struct pkg		*pkg2 = NULL;
+	struct pkg_strel	*el;
 	struct pkg_dep		*dep = NULL;
 	struct pkg_file		*file = NULL;
 	struct pkg_dir		*dir = NULL;
@@ -1547,8 +1548,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf = NULL;
 	struct pkgdb_it		*it = NULL;
-	const pkg_object	*obj;
-	pkg_iter		 iter;
 
 	sqlite3			*s;
 
@@ -1557,8 +1556,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	int64_t			 package_id;
 
 	const char		*arch;
-
-	const pkg_object	*licenses, *categories;
 
 	assert(db != NULL);
 
@@ -1572,9 +1569,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	if (!complete && pkgdb_transaction_begin(s, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_get(pkg,
-	    PKG_LICENSES,	&licenses,
-	    PKG_CATEGORIES,	&categories); 
 	/* Prefer new ABI over old one */
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
@@ -1726,11 +1720,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert categories
 	 */
 
-	iter = NULL;
-	while ((obj = pkg_object_iterate(categories, &iter))) {
-		ret = run_prstmt(CATEGORY1, pkg_object_string(obj));
+	LL_FOREACH(pkg->categories, el) {
+		ret = run_prstmt(CATEGORY1, el->value);
 		if (ret == SQLITE_DONE)
-			ret = run_prstmt(CATEGORY2, package_id, pkg_object_string(obj));
+			ret = run_prstmt(CATEGORY2, package_id, el->value);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(CATEGORY2));
 			goto cleanup;
@@ -1741,12 +1734,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert licenses
 	 */
 
-	iter = NULL;
-	while ((obj = pkg_object_iterate(licenses, &iter))) {
-		if (run_prstmt(LICENSES1, pkg_object_string(obj))
+	LL_FOREACH(pkg->licenses, el) {
+		if (run_prstmt(LICENSES1, el->value)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(LICENSES2, package_id, pkg_object_string(obj))
+		    run_prstmt(LICENSES2, package_id, el->value)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(LICENSES2));
 			goto cleanup;
@@ -1940,20 +1932,17 @@ pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	const pkg_object	*note, *annotations;
-	pkg_iter		 it = NULL;
+	struct pkg_kv	*kv;
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &annotations);
-	while ((note = pkg_object_iterate(annotations, &it))) {
-		if (run_prstmt(ANNOTATE1, pkg_object_key(note))
+	LL_FOREACH(pkg->annotations, kv) {
+		if (run_prstmt(ANNOTATE1, kv->key)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ANNOTATE1, pkg_object_string(note))
+		    run_prstmt(ANNOTATE1,kv->value)
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(ANNOTATE2, package_id,
-			pkg_object_key(note),
-			pkg_object_string(note))
+			kv->key, kv->value)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(ANNOTATE2));
 			return (EPKG_FATAL);

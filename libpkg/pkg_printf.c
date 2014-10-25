@@ -809,26 +809,23 @@ struct sbuf *
 format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const pkg_object	*an;
+	struct pkg_kv		*kv;
+	int			count;
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &an);
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_object_count(an), p));
-	else {
-		const pkg_object	*note;
-		pkg_iter		it = NULL;
-		int			 count;
-
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
+		LL_COUNT(pkg->annotations, kv, count)
+		return (list_count(sbuf, count, p));
+	} else {
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
-		while ((note = pkg_object_iterate(an, &it))) {
+		LL_FOREACH(pkg->annotations, kv) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-					     note, count, PP_A);
+					     kv, count, PP_A);
 
 			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
-				     note, count, PP_A);
+				     kv, count, PP_A);
 			count++;
 		}
 	}
@@ -841,9 +838,9 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	pkg_object	*o = (pkg_object *)data;
+	const struct pkg_kv	*kv = data;
 
-	return (string_val(sbuf, pkg_object_key(o), p));
+	return (string_val(sbuf, kv->key, p));
 }
 
 /*
@@ -852,9 +849,9 @@ format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *
 struct sbuf *
 format_annotation_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	pkg_object	*o = (pkg_object *)data;
+	const struct pkg_kv	*kv = data;
 
-	return (string_val(sbuf, pkg_object_string(o), p));
+	return (string_val(sbuf, kv->value, p));
 }
 
 /*
@@ -923,10 +920,11 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		count = 1;
 		LL_FOREACH(pkg->categories, el) {
 			if (count > 1)
-				iterate_item(sbuf, pkg, el->value, el, count,
-				    PP_C);
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+				    el, count, PP_C);
 
-			iterate_item(sbuf, pkg, el->value, el, count, PP_C);
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), el,
+			    count, PP_C);
 			count++;
 		}
 	}
@@ -939,9 +937,9 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	pkg_object	*o = (pkg_object *)data;
+	const struct pkg_strel	*el = data;
 
-	return (string_val(sbuf, pkg_object_string(o), p));
+	return (string_val(sbuf, el->value, p));
 }
 
 /*
@@ -966,7 +964,7 @@ format_directories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		count = 1;
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt), 
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     dir, count, PP_D);
 
 			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
@@ -1199,10 +1197,11 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		count = 1;
 		LL_FOREACH(pkg->licenses, el) {
 			if (count > 1)
-				iterate_item(sbuf, pkg, el->value, el, count,
-				    PP_L);
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+				    el, count, PP_L);
 
-			iterate_item(sbuf, pkg, el->value, el, count, PP_L);
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), el,
+			    count, PP_L);
 			count++;
 		}
 	}
@@ -1215,9 +1214,9 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	pkg_object *o = (pkg_object *) data;
+	const struct pkg_strel	*el = data;
 
-	return (string_val(sbuf, pkg_object_string(o), p));
+	return (string_val(sbuf, el->value, p));
 }
 
 /*
