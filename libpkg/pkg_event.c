@@ -938,11 +938,8 @@ pkg_debug(int level, const char *fmt, ...)
 {
 	struct pkg_event ev;
 	va_list ap;
-	int64_t expectlevel;
 
-	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
-
-	if (expectlevel < level)
+	if (debug_level < level)
 		return;
 
 	ev.type = PKG_EVENT_DEBUG;

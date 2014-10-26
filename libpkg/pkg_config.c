@@ -63,6 +63,7 @@
 #endif
 
 int eventpipe = -1;
+int64_t debug_level = 0;
 
 struct config_entry {
 	uint8_t type;
@@ -981,6 +982,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
+
+	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");

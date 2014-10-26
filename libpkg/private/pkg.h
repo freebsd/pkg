@@ -116,6 +116,7 @@
 	HASH_ADD(hh, head, type, sizeof(uint16_t), add)
 
 extern int eventpipe;
+extern int64_t debug_level;
 
 struct pkg_repo_it;
 struct pkg_repo;
