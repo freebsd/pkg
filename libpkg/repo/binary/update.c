@@ -533,7 +533,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	"CREATE INDEX packages_version ON packages(name, version);"
 	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
 	 );
-	/* FTS search table */
 
 cleanup:
 
