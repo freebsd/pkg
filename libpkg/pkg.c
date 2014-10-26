@@ -439,7 +439,6 @@ pkg_vset(struct pkg *pkg, va_list ap)
 	int attr;
 
 	while ((attr = va_arg(ap, int)) > 0) {
-		printf("%d\n", attr);
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
 			pkg_emit_error("Bad argument on pkg_set %s", attr);
 			return (EPKG_FATAL);
@@ -455,7 +454,6 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			pkg->origin = strdup(va_arg(ap, const char *));
 			break;
 		case PKG_VERSION:
-			printf("la\n");
 			free(pkg->version);
 			pkg->version = strdup(va_arg(ap, const char *));
 			break;

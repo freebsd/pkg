@@ -1136,7 +1136,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				urlencode(cf->path, &tmpsbuf);
 				if (seq == NULL)
 					seq = ucl_object_typed_new(UCL_ARRAY);
-				printf("%s\n", cf->path);
 				ucl_array_append(seq, ucl_object_fromstring(sbuf_data(tmpsbuf)));
 			}
 			if (seq)
