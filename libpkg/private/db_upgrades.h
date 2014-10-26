@@ -643,6 +643,10 @@ static struct db_upgrades {
 			" ON UPDATE CASCADE"
 	");"
 	},
+	{29,
+	"DROP INDEX packages_unique;"
+	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 
