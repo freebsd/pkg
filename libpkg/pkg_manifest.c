@@ -930,7 +930,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
-	pkg->arch = strdup(pkg->arch);
+	pkg->arch = strdup(legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
 	    UCL_STRING_TRIM), "name", 4, false);
