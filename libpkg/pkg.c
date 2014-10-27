@@ -1297,6 +1297,10 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
+	/* ignore files which are not starting with lib */
+	if (strncmp(name, "lib", 3) != 0)
+		return (EPKG_OK);
+
 	pkg_shlib_new(&s);
 	sbuf_set(&s->name, name);
 	HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(s), f);
