@@ -479,8 +479,6 @@ sha256_buf_bin(const char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
 int
 sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
-	int my_fd = -1;
-	FILE *fp = NULL;
 	char buffer[BUFSIZ];
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	size_t r = 0;
@@ -489,38 +487,14 @@ sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 
 	out[0] = '\0';
 
-	/* Duplicate the fd so that fclose(3) does not close it. */
-	if ((my_fd = dup(fd)) == -1) {
-		pkg_emit_errno("dup", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((fp = fdopen(my_fd, "rb")) == NULL) {
-		pkg_emit_errno("fdopen", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
 	SHA256_Init(&sha256);
 
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
+	while ((r = read(fd, buffer, BUFSIZ)) > 0)
 		SHA256_Update(&sha256, buffer, r);
-
-	if (ferror(fp) != 0) {
-		pkg_emit_errno("fread", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
 
 	SHA256_Final(hash, &sha256);
 	sha256_hash(hash, out);
-cleanup:
 
-	if (fp != NULL)
-		fclose(fp);
-	else if (my_fd != -1)
-		close(my_fd);
 	(void)lseek(fd, 0, SEEK_SET);
 
 	return (ret);
