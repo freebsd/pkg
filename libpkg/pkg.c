@@ -1801,7 +1801,11 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			regular = true;
 			if (S_ISLNK(st.st_mode)) {
 				regular = false;
-				*sha256 = '\0';
+				if (pkg_symlink_cksum(f->path, NULL, sha256)
+				    != EPKG_OK) {
+					rc = EPKG_FATAL;
+					break;
+				}
 			} else {
 				if (sha256_file(f->path, sha256) != EPKG_OK) {
 					rc = EPKG_FATAL;
