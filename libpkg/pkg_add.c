@@ -177,7 +177,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		if (lstat(rpath, &st) != -1 && !S_ISDIR(st.st_mode)) {
 			/* check is the old version is the same as the new version */
 			if (S_ISREG(st.st_mode) && st.st_size == archive_entry_size(ae)) {
-				char localsum[SHA256_DIGEST_LENGTH + 2 + 1];
+				char localsum[SHA256_DIGEST_LENGTH * 2 + 1];
 				if (sha256_file(rpath, localsum) == EPKG_OK) {
 					HASH_FIND_STR(pkg->files, path, rf);
 					if (strcmp(localsum, rf->sum) == 0) {
