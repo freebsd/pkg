@@ -1,4 +1,4 @@
-pkg_common_cflags=	-I$(top_srcdir)/libpkg \
+pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			@LIBSBUF_INCLUDE@ \
 			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/expat/lib \
