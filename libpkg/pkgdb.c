@@ -1254,7 +1254,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[DEPS_UPDATE] = {
 		NULL,
-		"UPDATE deps SET name=?1, version=?2 WHERE origin=?3;",
+		"UPDATE deps SET origin=?1, version=?2 WHERE name=?3;",
 		"TTT",
 	},
 	[DEPS] = {
@@ -1597,7 +1597,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * package
 	 */
 
-	if (run_prstmt(DEPS_UPDATE, pkg->name, pkg->version, pkg->origin)
+	if (run_prstmt(DEPS_UPDATE, pkg->origin, pkg->version, pkg->name)
 	    != SQLITE_DONE) {
 		ERROR_SQLITE(s, SQL(DEPS_UPDATE));
 		goto cleanup;
@@ -2995,8 +2995,7 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 	const char sql[] = ""
 		"SELECT count(package_id) FROM pkg_directories, directories "
 		"WHERE directory_id = directories.id AND directories.path = ?1 "
-		"AND package_id != (SELECT id from PACKAGES where name=?2 and "
-		"origin=?3);";
+		"AND package_id != (SELECT id from PACKAGES where name=?2);";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite, sql);
@@ -3005,7 +3004,6 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 
 	sqlite3_bind_text(stmt, 1, dir, -1, SQLITE_TRANSIENT);
 	sqlite3_bind_text(stmt, 2, p->name, -1, SQLITE_TRANSIENT);
-	sqlite3_bind_text(stmt, 3, p->origin, -1, SQLITE_TRANSIENT);
 
 	ret = sqlite3_step(stmt);
 
