@@ -1576,7 +1576,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert package record
 	 */
 	ret = run_prstmt(PKG, pkg->origin, pkg->name, pkg->version,
-	    pkg->comment, pkg->desc, pkg->message, pkg->arch, pkg->maintainer,
+	    pkg->comment, pkg->desc, pkg->message, arch, pkg->maintainer,
 	    pkg->www, pkg->prefix, pkg->flatsize, (int64_t)pkg->automatic,
 	    (int64_t)pkg->licenselogic, NULL, pkg->digest);
 	if (ret != SQLITE_DONE) {
