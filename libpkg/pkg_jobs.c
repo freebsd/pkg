@@ -530,7 +530,8 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 		/*
 		 * Need to add also all reverse deps here
 		 */
-		HASH_ITER(hh, j->request_add, req, tmp) {
+		utarray_new(to_process, &ut_ptr_icd);
+		HASH_ITER(hh, j->request_delete, req, tmp) {
 			d = NULL;
 			while (pkg_rdeps(req->item->pkg, &d) == EPKG_OK) {
 				HASH_FIND_STR(j->request_delete, d->uid, found);
