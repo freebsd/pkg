@@ -407,6 +407,8 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			*va_arg(ap, const struct pkg_strel **) = pkg->licenses;
 			break;
 		case PKG_UNIQUEID:
+			if (pkg->uid == NULL)
+				pkg->uid = strdup(pkg->name);
 			*va_arg(ap, const char **) = pkg->uid;
 			break;
 		case PKG_OLD_DIGEST:
