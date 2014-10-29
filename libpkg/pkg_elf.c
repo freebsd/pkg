@@ -738,7 +738,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		src += sizeof(Elf_Note);
 		if (note.n_type == NT_VERSION)
 			break;
-		src += note.n_namesz + note.n_descsz;
+		src += roundup2(note.n_namesz + note.n_descsz, 4);
 	}
 	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
 		ret = EPKG_FATAL;
