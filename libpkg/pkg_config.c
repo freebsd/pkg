@@ -976,6 +976,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
+	if (strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
+		pkg_emit_error("Unable to determine ABI");
+		return (EPKG_FATAL);
+	}
+
 	pkg_debug(1, "%s", "pkg initialized");
 
 	/* Start the event pipe */
