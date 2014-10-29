@@ -929,6 +929,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
+	if (pkg->abi == NULL && pkg->arch != NULL)
+		pkg->abi = strdup(pkg->arch);
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
 	pkg->arch = strdup(legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
