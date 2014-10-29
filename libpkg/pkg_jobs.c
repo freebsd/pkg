@@ -1078,8 +1078,10 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
-					pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
+			if ((strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
+			    pkg_dep_get(ld, PKG_DEP_NAME)) != 0) ||
+			    (strcmp(pkg_dep_get(rd, PKG_DEP_ORIGIN),
+			    pkg_dep_get(ld, PKG_DEP_ORIGIN)) != 0)) {
 				free(rp->reason);
 				rp->reason = strdup("direct dependency changed");
 				return (true);
