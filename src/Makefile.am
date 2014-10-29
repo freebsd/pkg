@@ -42,6 +42,7 @@ pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
 			-lutil \
 			-lcrypto
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
+			-I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
 			-DGITHASH=\"$(GIT_HEAD)\" \

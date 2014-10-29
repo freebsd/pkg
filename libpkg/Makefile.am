@@ -1,6 +1,6 @@
 EXTRA_DIST=		libpkg.ver
 
-pkg_common_cflags=	-I$(top_srcdir)/libpkg \
+pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			@LIBELF_INCLUDE@ \
 			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/libsbuf \
