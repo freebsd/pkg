@@ -90,7 +90,7 @@ of
 .Xr re_format 7 .
 .El
 .Sh QUERY FORMAT
-There are two type of keyword for the query format: the multiline and the normal
+There are two types of keywords for the query format: the multiline and the normal
 one. Only one type of multiline pattern is accepted for a given query.
 .Ss Normal patterns:
 .Bl -tag -width F1
@@ -111,13 +111,13 @@ Description of the matched package
 .It Cm \&%w
 Home page of the matched package
 .It Cm \&%l
-license logic of the matched package - nothing for single, & for AND, and | for OR
+License logic of the matched package - nothing for single, & for AND, and | for OR
 .It Cm \&%s Ns Op bh
-The flat size of the matched package, where
+Flat size of the matched package, where
 .Cm b
 is in bytes, and
 .Cm h
-is in human readable format.
+is in human readable format
 .It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It Cm \&%q
@@ -129,10 +129,10 @@ message contained in the matched package
 .It Cm \&%t
 Timestamp that the package was installed
 .It Cm \&%R
-The name of the repository from which the package was installed if
+Name of the repository from which the package was installed if
 available, or
 .Dq unknown-repository
-otherwise.
+otherwise
 .It Cm \&%? Ns Op drCFODLUGBbA
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
