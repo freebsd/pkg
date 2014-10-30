@@ -517,7 +517,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 /*
  * For delete request we merely check rdeps and force flag
  */
-static void
+static int
 pkg_jobs_process_delete_request(struct pkg_jobs *j)
 {
 	bool force = j->flags & PKG_FLAG_FORCE;
@@ -525,6 +525,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	struct pkg_dep *d = NULL;
 	UT_array *to_process = NULL;
 	struct pkg *lp;
+	int rc = EPKG_OK;
 
 	if (!force) {
 		/*
@@ -554,13 +555,18 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 			while ((ppkg = (struct pkg **)
 							utarray_next(to_process, ppkg)) != NULL) {
 
-				pkg_jobs_add_req(j, *ppkg);
+				if (pkg_jobs_add_req(j, *ppkg) == NULL) {
+					utarray_free(to_process);
+					return (EPKG_FATAL);
+				}
 			}
 			/* Now recursively process all items checked */
-			pkg_jobs_process_delete_request(j);
+			rc = pkg_jobs_process_delete_request(j);
 		}
 		utarray_free(to_process);
 	}
+
+	return (rc);
 }
 
 static int
@@ -1284,9 +1290,8 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	}
 
 	j->solved = 1;
-	pkg_jobs_process_delete_request(j);
 
-	return( EPKG_OK);
+	return (pkg_jobs_process_delete_request(j));
 }
 
 static int
