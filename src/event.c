@@ -722,7 +722,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_begin.new;
+		pkg_new = ev->e_upgrade_finished.new;
 		if (pkg_has_message(pkg_new)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();

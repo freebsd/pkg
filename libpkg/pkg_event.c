@@ -227,9 +227,9 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.new);
+		    ev->e_upgrade_finished.old,
+		    ev->e_upgrade_finished.old,
+		    ev->e_upgrade_finished.new);
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
