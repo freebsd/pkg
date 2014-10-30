@@ -20,7 +20,7 @@
 .Os
 .Sh NAME
 .Nm "pkg register"
-.Nd registers a package into the local package database
+.Nd register a package into the local package database
 .Sh SYNOPSIS
 .Nm
 .Op Fl dlOt
@@ -46,15 +46,15 @@
 is used for registering a package into the local package database.
 .Pp
 .Nm
-assembles a full set of package meta-data from various possible inputs,
-and writes the meta-data into the package registry database.
+assembles a full set of package metadata from various possible inputs,
+and writes the metadata into the package registry database.
 This is one of the final steps when installing software from ports:
 the package files are installed into the filesystem, and then
 .Nm
 is called to record what was installed into the package database.
 .Pp
 .Nm
-can derive package meta-data from a number of different sources:
+can derive package metadata from a number of different sources:
 .Bl -bullet
 .It
 The package manifest
@@ -66,8 +66,8 @@ Direct analysis of files installed by the package
 .Pp
 The package manifest is a
 .Cm UCL
-format listing of package meta-data.
-It can contain all of the necessary meta-data needed by the package,
+format listing of package metadata.
+It can contain all of the necessary metadata needed by the package,
 but the more usual approach is to provide selected items via the
 manifest, and fill in the rest, either from legacy files such as
 .Fa pkg-plist ,
@@ -95,7 +95,7 @@ with the old style
 command.
 .Pp
 Reading in a complete and comprehensive manifest from one file is a
-simpler alternative, but requires all the meta-data to have been
+simpler alternative, but requires all the metadata to have been
 assembled beforehand.
 .Pp
 Direct analysis of the installed files can be suppressed by use of
@@ -133,7 +133,7 @@ database.
 .It  Fl M Ar manifest , Cm --manifest Ar manifest
 Specifies the package manifest file.
 Use of this option means that the only file which will be used as a
-source of package meta-data is the named
+source of package metadata is the named
 .Ar manifest
 file.
 The
