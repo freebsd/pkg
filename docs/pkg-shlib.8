@@ -20,11 +20,11 @@
 .Os
 .Sh NAME
 .Nm "pkg shlib"
-.Nd displays which installed packages provide a specfic shared library,
-and those which require it by containg binaries that link to it
+.Nd display which installed package provides a specfic shared library,
+and the installed packages which require it
 .Pp
 .Ar library
-is the filename of the library, without any leading path, but
+is the filename of the library without any leading path, but
 including the ABI version number.
 Only exact matches are handled.
 .Sh SYNOPSIS
@@ -47,7 +47,7 @@ The following mutually exclusive options are supported by
 .Nm :
 .Bl -tag -width provides
 .It Fl P , Cm --provides
-Show only the installed packages which provide the named
+Show only the installed packages which provide
 .Ar library .
 .It Fl R , Cm --requires
 Show only the installed packages which require
