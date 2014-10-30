@@ -767,9 +767,9 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		if (req != NULL)
 			*req = nrit;
 	}
-	else if (lp) {
+
+	if (nrit == NULL && lp)
 		return (EPKG_INSTALLED);
-	}
 
 	return (nrit != NULL ? EPKG_OK : EPKG_FATAL);
 }
