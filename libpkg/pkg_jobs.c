@@ -541,6 +541,12 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 
 				lp = pkg_jobs_universe_get_local(j->universe, d->uid, 0);
 				if (lp) {
+					if (lp->locked) {
+						pkg_emit_error("%s is locked, "
+						   "cannot delete %s", lp->name,
+						   req->item->pkg->name);
+						rc = EPKG_FATAL;
+					}
 					utarray_push_back(to_process, &lp);
 				}
 			}
@@ -551,7 +557,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 		/* Add all items to the request */
 		struct pkg **ppkg = NULL;
 
-		if (to_process->n > 0) {
+		if (to_process->n > 0 && rc != EPKG_FATAL) {
 			while ((ppkg = (struct pkg **)
 							utarray_next(to_process, ppkg)) != NULL) {
 
