@@ -464,6 +464,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkg_emit_install_begin(pkg);
+	else {
+		if (local != NULL)
+			pkg_emit_upgrade_begin(pkg, local);
+		else
+			pkg_emit_install_begin(pkg);
+	}
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -564,8 +570,16 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkgdb_register_finale(db, retcode);
 
-	if (retcode == EPKG_OK && (flags & PKG_ADD_UPGRADE) == 0)
-		pkg_emit_install_finished(pkg);
+	if (retcode == EPKG_OK) {
+		if ((flags & PKG_ADD_UPGRADE) == 0)
+			pkg_emit_install_finished(pkg);
+		else {
+			if (local != NULL)
+				pkg_emit_upgrade_finished(pkg, local);
+			else
+				pkg_emit_install_finished(pkg);
+		}
+	}
 
 	cleanup:
 	if (a != NULL) {
