@@ -144,7 +144,7 @@ It can be one of
 .Ar txz , tbz , tgz
 or
 .Ar tar
-which are currently the only supported format.
+which are currently the only supported formats.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
@@ -154,7 +154,7 @@ Specify the directory containing the package manifest,
 and optionally three other files; one containing a message to be
 displayed on package installation,
 .Pa +DISPLAY .
-Another containing the description for the packages,
+Another containing the description for the package,
 .Pa +DESC .
 The last containing an mtree specification,
 .Pa +MTREE_DIRS ,
@@ -192,7 +192,7 @@ or
 .Fl x
 options.
 .It Fl n , Cm --no-clobber
-Do not overwrite already existing packages
+Do not overwrite already existing packages.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
@@ -214,7 +214,7 @@ Only has any effect when used with
 .Ar metadatadir .
 See
 .Sx "PLIST FORMAT"
-for details
+for details.
 .It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
@@ -244,7 +244,7 @@ This entry sets the package's origin to
 .Ar pkg-origin .
 This is a string of the form
 .Pa category/port-dir
-which designate the port this package was built from.
+which designates the port this package was built from.
 .It Cm comment Ar comment-string
 .Ar comment-string
 is a one-line description of this package.
@@ -411,9 +411,9 @@ Set default group ownership for all subsequent files to
 Use without an arg to set back to default (wheel)
 group ownership.
 .It Cm @comment Ar string
-The line will be ignored when packing
+The line will be ignored when packing.
 .It Cm @dirrm Ar name
-Declare directory
+Declare directory.
 .Pa name
 to be deleted at deinstall time.
 By default, directories created by a package installation are not
