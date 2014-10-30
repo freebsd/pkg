@@ -756,7 +756,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		}
 	}
 	lp = pkg_jobs_universe_get_local(j->universe, rp->uid, 0);
-	if (lp->locked)
+	if (lp && lp->locked)
 		return (EPKG_LOCKED);
 
 	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
