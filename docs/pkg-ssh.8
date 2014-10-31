@@ -20,17 +20,17 @@
 .Os
 .Sh NAME
 .Nm "pkg ssh"
-.Nd package server
+.Nd serve the package repository
 .Sh SYNOPSIS
 .Nm
 .Sh DESCRIPTION
 .Nm
-provides a minimal package server and it's most commonly used with the SSH
-transport protocol.
+provides a minimal daemon for serving the package repository. It's most
+commonly used with the SSH transport protocol.
 .Pp
 This command is not meant to be used by the user.
 .Xr pkg 8
-will do start the server automatically through
+will start the server automatically through
 .Xr ssh 1
 when the ssh:// scheme is specified in the repository configuration.
 .Sh OPTIONS
