@@ -705,7 +705,7 @@ event_callback(void *data, struct pkg_event *ev)
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
 			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v...\n",
-			    pkg_new, pkg_new, pkg_old);
+			    pkg_new, pkg_old, pkg_new);
 			break;
 		case PKG_REINSTALL:
 			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v...\n",
