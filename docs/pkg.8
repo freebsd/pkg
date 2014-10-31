@@ -22,7 +22,7 @@
 .Sh NAME
 .Nm pkg ,
 .Nm pkg-static
-.Nd a utility for manipulating packages
+.Nd manipulate packages
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
@@ -48,8 +48,9 @@
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
-provides an interface for manipulating packages - registering,
-adding, removing and upgrading of packages.
+.Nm pkg
+provides an interface for manipulating packages: registering,
+adding, removing and upgrading packages.
 .Nm pkg-static
 is a statically linked variant of
 .Nm
@@ -65,10 +66,10 @@ The following options are supported by
 .Nm :
 .Bl -tag -width indent
 .It Fl v , Cm --version
-Displays the current version of
-.Nm
+Display the current version of
+.Nm .
 .It Fl d , Cm --debug
-Show debug information
+Show debug information.
 .It Fl l , Cm --list
 List all the available command names, and exit without performing any
 other action.
@@ -163,10 +164,10 @@ and
 .Nm
 will chroot in the
 .Ao chroot path Ac
-Environment
+environment.
 .It Fl C Ao configuration file Ac , Cm --config Ao configuration file Ac
 .Nm
-will use the specified file as a configuration file
+will use the specified file as a configuration file.
 .It Fl R Ao repo conf dir Ac , Cm --repo-conf-dir Ao repo conf dir Ac
 .Nm
 will search the directory for per-repository configuration files.
@@ -197,7 +198,7 @@ Currently supported protocols are FTP, HTTP and HTTPS.
 .It Ic annotate
 Add, modify or delete tag-value style annotations on packages.
 .It Ic audit
-Audits installed packages against known vulnerabilities.
+Audit installed packages against known vulnerabilities.
 .It Ic autoremove
 Delete packages which were automatically installed as dependencies and are not required any more.
 .It Ic backup
@@ -220,17 +221,17 @@ This is not supported on FreeBSD 8.3 as it did not have
 .It Ic check
 Sanity checks installed packages.
 .It Ic clean
-Cleans the local cache of fetched remote packages.
+Clean the local cache of fetched remote packages.
 .It Ic convert
 Convert to and from the old
 .Xr pkg_add 1
 format.
 .It Ic create
-Create a package
+Create a package.
 .It Ic delete
 Delete a package from the database and the system.
 .It Ic fetch
-Fetches packages from a remote repository.
+Fetch packages from a remote repository.
 .It Ic info
 Display information about installed packages.
 .It Ic install
@@ -257,19 +258,19 @@ repositories.
 .It Ic set
 Modify information in the installed database.
 .It Ic shell
-Fires up a sqlite shell to the local or remote database.
+Open a sqlite shell to the local or remote database.
 Extreme care should be taken when using this command.
 .It Ic shlib
 Displays which packages link to a specific shared library.
 .It Ic stats
 Display package database statistics.
 .It Ic unlock
-Unlocks packages, allowing them to be modified or deleted
+Permit modification or deletion of a package.
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
 .It Ic updating
-Displays UPDATING entries of installed packages.
+Display UPDATING entries of installed packages.
 .It Ic upgrade
 Upgrade a package to a newer version.
 .It Ic version
