@@ -15,13 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2014
+.Dd October 30, 2014
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
 .Nm "pkg update"
-.Nd updates the local copies of repository catalogues from the configured
-package repositories
+.Nd update the local catalogues of the enabled package repositories
 .Sh SYNOPSIS
 .Nm
 .Op Fl fq
@@ -32,8 +31,8 @@ package repositories
 .Op Cm --repository Ar reponame
 .Sh DESCRIPTION
 .Nm
-is used for updating the local copy of a repository catalogue from
-each of the package repository databases.
+is used for updating the local copy of the repository catalogues
+from the remote package repository databases.
 Updates to catalogues are normally downloaded only when the master
 copy on the remote package repository is newer than the local copy.
 .Pp
@@ -75,10 +74,10 @@ The following options are supported by
 .Nm :
 .Bl -tag -width quiet
 .It Fl q , Cm --quiet
-Force quiet output
+Force quiet output.
 .It Fl f , Cm --force
 Force a full download of the repository catalogue without regard to the
-respective ages of the local and remote copies of the catalogue
+respective ages of the local and remote copies of the catalogue.
 .It Fl r Ar reponame , Cm --repository Ar reponame
 Download the catalogue for the named repository only.
 This will update only the named repository, irrespective of the configured

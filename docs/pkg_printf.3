@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 29, 2013
+.Dd October 30, 2014
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -747,10 +747,10 @@ is expanded to contain the conversion result.
 Effective format modifiers:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \&?
-1st Alternate Form: 0 if the array is empty, 1 if it has any number
+First Alternate Form: 0 if the array is empty, 1 if it has any number
 of elements within it
 .It Cm #
-2nd Alternate Form: The number of elements in the array
+Second Alternate Form: The number of elements in the array
 .El
 .Ss STRING VALUES
 Effective format modifiers:
@@ -764,9 +764,9 @@ Effective format modifiers:
 .It Cm \-
 Left align
 .It Cm \&?
-1st Alternate Form: humanized number (decimal)
+First Alternate Form: humanized number (decimal)
 .It Cm #
-2nd Alternate Form: humanized number (binary)
+Second Alternate Form: humanized number (binary)
 .It Cm 0
 Zero pad
 .It So "\ " Sc
@@ -794,9 +794,9 @@ The second alternate form produces no output for
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent
 .It Cm \&?
-1st Alternate Form
+First Alternate Form
 .It Cm #
-2nd Alternate Form
+Second Alternate Form
 .It Cm \-
 Left align
 .El
@@ -829,11 +829,11 @@ Effective format modifiers (all forms):
 Left align
 .El
 .Pp
-Additionally, when the value is printed as an integer (ie. plain
+Additionally, when the value is printed as an integer (i.e., plain
 or alternate form 1), these additional modifiers take effect:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \&?
-1st Alternate Form: add leading zero to octal integer
+First Alternate Form: add leading zero to octal integer
 .It Cm 0
 Zero pad
 .El
@@ -858,9 +858,9 @@ and 2 specified using format modifiers.
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent
 .It Cm \&?
-1st Alternate Form
+First Alternate Form
 .It Cm #
-2nd Alternate Form
+Second Alternate Form
 .It Cm \-
 Left align
 .El
@@ -884,7 +884,7 @@ Effective format modifiers:
 Left align
 .El
 .Pp
-Additionally, when the value is printed as an integer (ie. without
+Additionally, when the value is printed as an integer (i.e., without
 .Xr strftime 3
 format codes enclosed in
 .Cm %{
@@ -893,9 +893,9 @@ and
 the following format modifiers are also effective:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \&?
-1st Alternate Form: humanized number (decimal)
+First Alternate Form: humanized number (decimal)
 .It Cm #
-2nd Alternate Form: humanized number (binary)
+Second Alternate Form: humanized number (binary)
 .It Cm 0
 Zero pad
 .It So "\ " Sc

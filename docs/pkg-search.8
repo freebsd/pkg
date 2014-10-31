@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2014
+.Dd October 30, 2014
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -55,7 +55,7 @@
 .Nm
 is used for searching package repository catalogues.
 Packages available for installation can be matched by name, by name
-and version, by origin or by text in the package comments or package
+and version, by origin, or by text in the package comments or package
 descriptions.
 The output defaults to displaying the field matched by the search
 term, but any of the searchable fields may be displayed.
@@ -67,7 +67,7 @@ Package repository catalogues will be automatically updated whenever
 is run by a user ID with write access to the package database,
 unless disabled by the
 .Fl U
-flag  or setting
+flag or setting
 .Cm REPO_AUTOUPDATE
 to
 .Sy NO
@@ -77,8 +77,8 @@ in
 Package repositories are defined in the
 .Fa pkg.conf
 file or by creating repository definitions in
-.Pa /usr/local/etc/pkg/repos ;
-see
+.Pa /usr/local/etc/pkg/repos.
+See
 .Xr pkg.conf 5
 for details.
 .Sh OPTIONS
@@ -196,7 +196,8 @@ See the
 .Qq Sx Search and Label Options
 sections for more details.
 .It Fl -raw-format Ar format
-Allow to chose the output format for the raw output, format can be:
+Choose the format of the raw output.
+The format can be:
 json, json-conpact, yaml (default).
 .It Fl s , Cm --size
 Display the installed size of matched packages.
@@ -204,7 +205,7 @@ Equivalent to
 .Fl "Q size" .
 .It Fl U, Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
+from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.

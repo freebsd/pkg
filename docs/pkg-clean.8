@@ -15,12 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd October 30, 2014
 .Dt PKG-CLEAN 8
 .Os
 .Sh NAME
 .Nm "pkg clean"
-.Nd Cleans the local cache of fetched remote packages.
+.Nd clean the local cache of fetched remote packages
 .Sh SYNOPSIS
 .Nm
 .Op Fl anqy
@@ -40,7 +40,7 @@ The following options are supported by
 .It Fl a , Cm --all
 Delete all cached packages.
 .It Fl n , Cm --dry-run
-Does not delete any package files from the cache, but show what
+Do not delete any package files from the cache, but show what
 would be done instead.
 Forces the preview of the packages that would be deleted to be shown,
 even when used with
@@ -55,7 +55,7 @@ All output is suppressed if
 is also used.
 .It Fl y , Cm --yes
 Assume a yes answer instead of asking for confirmation before deleting
-any out-of-date or redundant packages from the cache.
+any out of date or redundant packages from the cache.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
