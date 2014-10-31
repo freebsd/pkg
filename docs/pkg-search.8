@@ -196,7 +196,8 @@ See the
 .Qq Sx Search and Label Options
 sections for more details.
 .It Fl -raw-format Ar format
-Allow to chose the output format for the raw output, format can be:
+Choose the format of the raw output.
+The format can be:
 json, json-conpact, yaml (default).
 .It Fl s , Cm --size
 Display the installed size of matched packages.
@@ -204,7 +205,7 @@ Equivalent to
 .Fl "Q size" .
 .It Fl U, Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
+from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
