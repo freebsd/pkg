@@ -59,7 +59,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */
-	if (pkg_is_locked(pkg)) {
+	if (pkg->locked) {
 		pkg_emit_locked(pkg);
 		return (EPKG_LOCKED);
 	}

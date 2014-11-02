@@ -355,7 +355,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		return (NULL);
 	}
 
-	if (pkg_is_locked(pkg)) {
+	if (pkg->locked) {
 		pkg_emit_locked(pkg);
 		return (NULL);
 	}
@@ -1036,7 +1036,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		return true;
 
 	/* Do not upgrade locked packages */
-	if (pkg_is_locked(lp)) {
+	if (lp->locked) {
 		pkg_emit_locked(lp);
 		return (false);
 	}
@@ -1283,7 +1283,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg,
 				PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS) == EPKG_OK) {
-			if(pkg_is_locked(pkg)) {
+			if(pkg->locked) {
 				pkg_emit_locked(pkg);
 			}
 			else {
@@ -1311,7 +1311,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	while (pkgdb_it_next(it, &pkg,
 			PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS)
 			== EPKG_OK) {
-		if(pkg_is_locked(pkg)) {
+		if(pkg->locked) {
 			pkg_emit_locked(pkg);
 		}
 		else if (pkg_jobs_test_automatic(j, pkg)) {
@@ -1534,7 +1534,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			if(pkg_is_locked(pkg)) {
+			if(pkg->locked) {
 				pkg_emit_locked(pkg);
 			}
 			else {

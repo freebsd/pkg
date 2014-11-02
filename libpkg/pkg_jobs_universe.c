@@ -816,7 +816,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			vercnt ++;
 		}
 
-		if (local != NULL && pkg_is_locked(local->pkg)) {
+		if (local != NULL && local->pkg->locked) {
 			LL_FOREACH(unit, cur) {
 				HASH_FIND_PTR(j->request_add, &cur, req);
 				if (req != NULL)

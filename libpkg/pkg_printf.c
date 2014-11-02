@@ -1570,7 +1570,7 @@ format_lock_status(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (bool_val(sbuf, pkg_is_locked(pkg), p));
+	return (bool_val(sbuf, pkg->locked, p));
 }
 
 /*
