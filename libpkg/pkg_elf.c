@@ -230,10 +230,8 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	const char *myarch;
 	const char *shlib;
 
-	bool developer = false;
 	bool is_shlib = false;
 
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	int fd;
@@ -261,7 +259,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup;
 	}
 
-	if (developer)
+	if (developer_mode)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
@@ -446,9 +444,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	struct pkg_shlib *sh, *shtmp, *found;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
-	bool developer = false, failures = false;
-
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	bool failures = false;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
@@ -463,7 +459,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		goto cleanup;
 
 	/* Assume no architecture dependence, for contradiction */
-	if (developer)
+	if (developer_mode)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 				PKG_CONTAINS_STATIC_LIBS |
 				PKG_CONTAINS_H_OR_LA);
@@ -475,7 +471,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			strlcpy(fpath, file->path, sizeof(fpath));
 
 		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
-		if (developer) {
+		if (developer_mode) {
 			if (ret != EPKG_OK && ret != EPKG_END) {
 				failures = true;
 				continue;

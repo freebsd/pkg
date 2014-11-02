@@ -48,7 +48,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct pkg_dir	*dir = NULL;
 	char		*m;
 	int		 ret;
-	bool		 developer;
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
@@ -145,8 +144,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, file->path,
 		    file->uname, file->gname, file->perm);
-		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
-		if (developer && ret != EPKG_OK)
+		if (developer_mode && ret != EPKG_OK)
 			return (ret);
 	}
 
@@ -156,8 +154,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dir->path,
 		    dir->uname, dir->gname, dir->perm);
-		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
-		if (developer && ret != EPKG_OK)
+		if (developer_mode && ret != EPKG_OK)
 			return (ret);
 	}
 

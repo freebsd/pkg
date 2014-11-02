@@ -64,6 +64,7 @@
 
 int eventpipe = -1;
 int64_t debug_level = 0;
+bool developer_mode = false;
 
 struct config_entry {
 	uint8_t type;
@@ -989,6 +990,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		connect_evpipe(evpipe);
 
 	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");

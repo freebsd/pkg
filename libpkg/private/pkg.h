@@ -117,6 +117,7 @@
 
 extern int eventpipe;
 extern int64_t debug_level;
+extern bool developer_mode;
 
 struct pkg_repo_it;
 struct pkg_repo;

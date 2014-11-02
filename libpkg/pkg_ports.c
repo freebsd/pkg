@@ -235,7 +235,6 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	char stagedpath[MAXPATHLEN];
 	char *testpath;
 	struct stat st;
-	bool developer;
 	int ret = EPKG_OK;
 
 	len = strlen(line);
@@ -260,8 +259,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
-		if (developer) {
+		if (developer_mode) {
 			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
 			ret = EPKG_FATAL;
 		}
@@ -290,7 +288,7 @@ warn_deprecated_dir(void)
 		return;
 	warned_deprecated_dir = true;
 
-	if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+	if (developer_mode)
 		pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
 		    " use @dir");
 }
@@ -313,7 +311,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	struct stat st;
 	char *buf;
 	bool regular = false;
-	bool developer;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int ret = EPKG_OK;
 
@@ -338,8 +335,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
-		if (developer) {
+		if (developer_mode) {
 			pkg_emit_developer_mode("Plist error, missing file: %s", line);
 			ret = EPKG_FATAL;
 		}

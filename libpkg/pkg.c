@@ -720,7 +720,7 @@ pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
 
 	HASH_FIND_STR(pkg->users, name, u);
 	if (u != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
 		} else {
@@ -759,7 +759,7 @@ pkg_addgid(struct pkg *pkg, const char *name, const char *gidstr)
 
 	HASH_FIND_STR(pkg->groups, name, g);
 	if (g != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
 		} else {
@@ -800,7 +800,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
 	HASH_FIND_STR(pkg->deps, name, d);
 	if (d != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, fatal (developer mode)",
 			    pkg->name, pkg->version, name, version);
 			return (EPKG_FATAL);
@@ -869,7 +869,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->files, path, f);
 		if (f != NULL) {
-			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+			if (developer_mode) {
 				pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", f->path);
 				return (EPKG_FATAL);
 			} else {
@@ -910,7 +910,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 
 	HASH_FIND_STR(pkg->config_files, path, f);
 	if (f != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", f->path);
 			return (EPKG_FATAL);
 		} else {
@@ -938,7 +938,7 @@ pkg_strel_add(struct pkg_strel **list, const char *val, const char *title)
 
 	LL_FOREACH(*list, c) {
 		if (strcmp(c->value, val) == 0) {
-			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+			if (developer_mode) {
 				pkg_emit_error("duplicate %s listing: %s, fatal"
 				    " (developer mode)", title, val);
 				return (EPKG_FATAL);
@@ -976,7 +976,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->dirs, path, d);
 		if (d != NULL) {
-			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+			if (developer_mode) {
 				pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", d->path);
 				return (EPKG_FATAL);
 			} else {
@@ -1169,7 +1169,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 		pkg_option_new(&o);
 		o->key = strdup(key);
 	} else if ( o->value != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1205,7 +1205,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 		pkg_option_new(&o);
 		o->key = strdup(key);
 	} else if ( o->default_value != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("duplicate default value for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1241,7 +1241,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 		pkg_option_new(&o);
 		o->key = strdup(key);
 	} else if ( o->description != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (developer_mode) {
 			pkg_emit_error("duplicate description for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1378,7 +1378,7 @@ pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *t
 
 	LL_FOREACH(*list, kv) {
 		if (strcmp(kv->key, key) == 0) {
-			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+			if (developer_mode) {
 				pkg_emit_error("duplicate %s: %s, fatal"
 				    " (developer mode)", title, key);
 				return (EPKG_FATAL);
