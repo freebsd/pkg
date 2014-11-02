@@ -199,7 +199,6 @@ exec_create(int argc, char **argv)
 	pkg_formats	 fmt;
 	int		 ch;
 	bool		 overwrite = true;
-	bool		 old = false;
 
 	struct option longopts[] = {
 		{ "all",	no_argument,		NULL,	'a' },
@@ -212,11 +211,10 @@ exec_create(int argc, char **argv)
 		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "no-clobber", no_argument,		NULL,	'n' },
 		{ "plist",	required_argument,	NULL,	'p' },
-		{ "old",	no_argument,		NULL,	'O' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:O", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -248,9 +246,6 @@ exec_create(int argc, char **argv)
 		case 'p':
 			plist = optarg;
 			break;
-		case 'O':
-			old = true;
-			break;
 		default:
 			usage_create();
 			return (EX_USAGE);
@@ -275,7 +270,7 @@ exec_create(int argc, char **argv)
 		outdir = "./";
 
 	if (format == NULL) {
-		fmt = old ? TBZ : TXZ;
+		fmt = TXZ;
 	} else {
 		if (format[0] == '.')
 			++format;
@@ -289,24 +284,19 @@ exec_create(int argc, char **argv)
 			fmt = TAR;
 		else {
 			warnx("unknown format %s, using txz", format);
-			fmt = old ? TBZ : TXZ;
+			fmt = TXZ;
 		}
 	}
 
 	if (metadatadir == NULL && manifest == NULL) {
-		if (old) {
-			warnx("Can only create an old package format"
-			    " out of a staged directory");
-			return (EX_SOFTWARE);
-		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,
 		    overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else if (metadatadir != NULL) {
 		return (pkg_create_staged(outdir, fmt, rootdir, metadatadir,
-		    plist, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else  { /* (manifest != NULL) */
 		return (pkg_create_from_manifest(outdir, fmt, rootdir,
-		    manifest, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    manifest) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	}
 }
 

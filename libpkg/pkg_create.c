@@ -204,7 +204,7 @@ static const char * const scripts[] = {
  * from the manifest */
 int
 pkg_create_from_manifest(const char *outdir, pkg_formats format,
-			 const char *rootdir, const char *manifest, bool old)
+    const char *rootdir, const char *manifest)
 {
 	struct pkg	*pkg = NULL;
 	struct packing	*pkg_archive = NULL;
@@ -214,7 +214,7 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 
 	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
 
-	if(pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE) != EPKG_OK) {
+	if(pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -261,7 +261,7 @@ pkg_load_from_file(int fd, struct pkg *pkg, pkg_attr attr, const char *path)
 
 int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
-    const char *md_dir, char *plist, bool old)
+    const char *md_dir, char *plist)
 {
 	struct pkg	*pkg = NULL;
 	struct pkg_file	*file = NULL;
@@ -285,7 +285,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		goto cleanup;
 	}
 
-	if(pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE) != EPKG_OK) {
+	if(pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}

@@ -1078,14 +1078,12 @@ int pkg_create_installed(const char *, pkg_formats, struct pkg *);
  * Create package from stage install using just the manifest --
  * no old pkg_tools compatibility stuff
  */
-int pkg_create_from_manifest(const char *, pkg_formats, const char *,
-			     const char *, bool);
+int pkg_create_from_manifest(const char *, pkg_formats, const char *, const char *);
 
 /**
  * Create package from stage install with a metadata directory
  */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *,
-		      char *, bool);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
 
 /**
  * Download the latest repo db file and checks its signature if any
