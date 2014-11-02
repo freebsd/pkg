@@ -68,9 +68,9 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "Usage: pkg register [-Oldt] [-i <input-path>]"
+	fprintf(stderr, "Usage: pkg register [-ldt] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
-	fprintf(stderr, "       pkg register [-Oldt] [-i <input_path>]"
+	fprintf(stderr, "       pkg register [-ldt] [-i <input_path>]"
 		        " -M <manifest>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
@@ -102,7 +102,6 @@ exec_register(int argc, char **argv)
 
 	bool		 developer;
 	bool		 legacy        = false;
-	bool		 old           = false;
 	bool		 __unused metadata_only = false;
 	bool		 testing_mode  = false;
 
@@ -118,7 +117,6 @@ exec_register(int argc, char **argv)
 		{ "legacy",	no_argument,		NULL,	'l' },
 		{ "manifest",	required_argument,	NULL,	'M' },
 		{ "metadata",	required_argument,	NULL,	'm' },
-		{ "old",	no_argument,		NULL,	'O' },
 		{ "plist",	required_argument,	NULL,	'f' },
 		{ "relocate",	required_argument,	NULL, 	1 },
 		{ "root",	required_argument,	NULL,	'i' },
@@ -131,7 +129,7 @@ exec_register(int argc, char **argv)
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
 
-	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:Ot", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:t", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 		case 'd':
@@ -153,9 +151,6 @@ exec_register(int argc, char **argv)
 		case 'm':
 			mdir = optarg;
 			break;
-		case 'O':
-			old = true;
-			break;
 		case 't':
 			testing_mode = true;
 			break;
@@ -169,19 +164,17 @@ exec_register(int argc, char **argv)
 		}
 	}
 
-	if (!old) {
-		retcode = pkgdb_access(PKGDB_MODE_READ  |
-				       PKGDB_MODE_WRITE |
-				       PKGDB_MODE_CREATE,
-				       PKGDB_DB_LOCAL);
-		if (retcode == EPKG_ENOACCESS) {
-			warnx("Insufficient privileges to register packages");
-			return (EX_NOPERM);
-		} else if (retcode != EPKG_OK)
-			return (EX_IOERR);
-		else
-			retcode = EX_OK;
-	}
+	retcode = pkgdb_access(PKGDB_MODE_READ  |
+			       PKGDB_MODE_WRITE |
+			       PKGDB_MODE_CREATE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges to register packages");
+		return (EX_NOPERM);
+	} else if (retcode != EPKG_OK)
+		return (EX_IOERR);
+	else
+		retcode = EX_OK;
 
 	/*
 	 * Ideally, the +MANIFEST should be all that is necessary,
@@ -291,15 +284,13 @@ exec_register(int argc, char **argv)
 	}
 
 
-	if (!old) {
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-			return (EX_IOERR);
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		return (EX_IOERR);
 
-		if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
-			pkgdb_close(db);
-			warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-			return (EX_TEMPFAIL);
-		}
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
 	}
 
 	/*
@@ -327,8 +318,7 @@ exec_register(int argc, char **argv)
 			pkg_suggest_arch(pkg, arch, false);
 	}
 
-	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode, \
-	    old);
+	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
 	if (!legacy && pkg_has_message(pkg))
 		pkg_printf("%M\n", pkg);

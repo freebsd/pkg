@@ -45,207 +45,8 @@
 void
 usage_convert(void)
 {
-	fprintf(stderr, "Usage: pkg convert [-d dir] [-nr]\n\n");
+	fprintf(stderr, "Usage: pkg convert [-d dir] [-n]\n\n");
 	fprintf(stderr, "For more information see 'pkg help convert'.\n");
-}
-
-static int
-convert_to_old(const char *pkg_add_dbdir, bool dry_run)
-{
-	struct pkgdb	*db = NULL;
-	struct pkg	*pkg = NULL;
-	struct pkg_dep	*dep = NULL;
-	struct pkgdb_it	*it = NULL;
-	char		*content;
-	const char	*tmp;
-	int		 ret;
-	char		 path[MAXPATHLEN];
-	int		 query_flags = PKG_LOAD_DEPS    | PKG_LOAD_FILES   |
-				       PKG_LOAD_DIRS    | PKG_LOAD_SCRIPTS |
-				       PKG_LOAD_OPTIONS |
-				       PKG_LOAD_USERS   | PKG_LOAD_GROUPS  |
-				       PKG_LOAD_RDEPS;
-	FILE		*fp, *rq;
-	struct sbuf	*install_script = sbuf_new_auto();
-	struct sbuf	*deinstall_script = sbuf_new_auto();
-
-	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
-		err(EX_CANTCREAT, "%s", pkg_add_dbdir);
-
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
-
-	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privileges to read database");
-		return (EX_NOPERM);
-	} else if (ret == EPKG_ENODB) {
-		warnx("No package database installed.  Nothing to do!");
-		return (EX_OK);
-	} else if (ret != EPKG_OK) {
-		warnx("Error accessing the package database");
-		return (EX_SOFTWARE);
-	}
-
-	ret = EX_OK;
-
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
-
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
-	}
-
-	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	while (pkgdb_it_next(it, &pkg, query_flags) == EPKG_OK) {
-		rq = NULL;
-		pkg_printf("Converting %n-%v...", pkg, pkg);
-		if (dry_run) {
-			printf("\n");
-			continue;
-		}
-		pkg_to_old(pkg);
-		pkg_old_emit_content(pkg, &content);
-
-		pkg_snprintf(path, sizeof(path), "%S/%n-%V", pkg_add_dbdir,
-		    pkg, pkg);
-		if (mkdir(path, 0755) != 0) {
-			pkg_fprintf(stderr, "Error converting %n-%v to %s: %s\n",
-			    pkg, pkg, path, strerror(errno));
-			printf("\n");
-			free(content);
-			continue;
-		}
-
-		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+CONTENTS",
-		    pkg_add_dbdir, pkg, pkg);
-		fp = fopen(path, "w");
-		fputs(content, fp);
-		fclose(fp);
-
-		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+DESC",
-		    pkg_add_dbdir, pkg, pkg);
-		fp = fopen(path, "w");
-		pkg_fprintf(fp, "%e", pkg);
-		fclose(fp);
-
-		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+COMMENT",
-		    pkg_add_dbdir, pkg, pkg);
-		fp = fopen(path, "w");
-		pkg_fprintf(fp, "%c\n", pkg);
-		fclose(fp);
-
-		if (pkg_has_message(pkg)) {
-			pkg_snprintf(path, sizeof(path), "%s/%n-%v/+DISPLAY",
-			    pkg_add_dbdir, pkg, pkg);
-			fp = fopen(path, "w");
-			pkg_fprintf(fp, "%M", pkg);
-			fclose(fp);
-		}
-
-		sbuf_clear(install_script);
-		tmp = pkg_script_get(pkg, PKG_SCRIPT_PRE_INSTALL);
-		if (tmp != NULL && tmp[0] != '\0') {
-			if (sbuf_len(install_script) == 0)
-				sbuf_cat(install_script, "#!/bin/sh\n\n");
-			sbuf_printf(install_script,
-			    "if [ \"$2\" = \"PRE-INSTALL\" ]; then\n"
-			    "%s\n"
-			    "fi\n",
-			    tmp);
-		}
-
-		tmp = pkg_script_get(pkg, PKG_SCRIPT_INSTALL);
-		if (tmp != NULL && tmp[0] != '\0') {
-			if (sbuf_len(install_script) == 0)
-				sbuf_cat(install_script, "#!/bin/sh\n\n");
-			sbuf_cat(install_script, tmp);
-		}
-
-		tmp = pkg_script_get(pkg, PKG_SCRIPT_POST_INSTALL);
-		if (tmp != NULL && tmp[0] != '\0') {
-			if (sbuf_len(install_script) == 0)
-				sbuf_cat(install_script, "#!/bin/sh\n\n");
-			sbuf_printf(install_script,
-			    "if [ \"$2\" = \"POST-INSTALL\" ]; then\n"
-			    "%s\n"
-			    "fi\n",
-			    tmp);
-		}
-		if (sbuf_len(install_script) > 0) {
-			sbuf_finish(install_script);
-			pkg_snprintf(path, sizeof(path), "%s/%n-%v/+INSTALL",
-			    pkg_add_dbdir, pkg, pkg);
-			fp = fopen(path, "w");
-			fputs(sbuf_data(install_script), fp);
-			fclose(fp);
-		}
-
-		sbuf_clear(deinstall_script);
-		tmp = pkg_script_get(pkg, PKG_SCRIPT_PRE_DEINSTALL);
-		if (tmp != NULL && tmp[0] != '\0') {
-			if (sbuf_len(deinstall_script) == 0)
-				sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
-			sbuf_printf(deinstall_script,
-			    "if [ \"$2\" = \"DEINSTALL\" ]; then\n"
-			    "%s\n"
-			    "fi\n",
-			    tmp);
-		}
-
-		tmp = pkg_script_get(pkg, PKG_SCRIPT_DEINSTALL);
-		if (tmp != NULL && tmp[0] != '\0') {
-			if (sbuf_len(deinstall_script) == 0)
-				sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
-			sbuf_cat(deinstall_script, tmp);
-		}
-
-		tmp = pkg_script_get(pkg, PKG_SCRIPT_POST_DEINSTALL);
-		if (tmp != NULL && tmp[0] != '\0') {
-			if (sbuf_len(deinstall_script) == 0)
-				sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
-			sbuf_printf(deinstall_script,
-			    "if [ \"$2\" = \"POST-DEINSTALL\" ]; then\n"
-			    "%s\n"
-			    "fi\n",
-			    tmp);
-		}
-		if (sbuf_len(deinstall_script) > 0) {
-			sbuf_finish(deinstall_script);
-			pkg_snprintf(path, sizeof(path), "%s/%n-%v/+DEINSTALL",
-			    pkg_add_dbdir, pkg, pkg);
-			fp = fopen(path, "w");
-			fputs(sbuf_data(deinstall_script), fp);
-			fclose(fp);
-		}
-
-		pkg_snprintf(path, sizeof(path), "%s/%n-%v/+REQUIRED_BY",
-		    pkg_add_dbdir, pkg, pkg);
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-			if (rq == NULL)
-				rq = fopen(path, "w");
-			pkg_fprintf(rq, "%dn-%dv\n", dep, dep);
-		}
-		if (rq != NULL)
-			fclose(rq);
-		printf("done.\n");
-
-		free(content);
-	}
-	sbuf_delete(install_script);
-	sbuf_delete(deinstall_script);
-
-cleanup:
-	pkg_free(pkg);
-	pkgdb_it_free(it);
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
-
-	return (ret);
 }
 
 static int
@@ -294,11 +95,10 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 			if (strcmp(dp->d_name, ".") == 0 ||
 			    strcmp(dp->d_name, "..") == 0)
 				continue;
-			if (p == NULL) {
-				if (pkg_new(&p, PKG_OLD_FILE) != EPKG_OK)
-					err(EX_OSERR, "malloc");
-			} else
-				pkg_reset(p, PKG_OLD_FILE);
+			if (p != NULL)
+				pkg_free(p);
+			if (pkg_new(&p, PKG_OLD_FILE) != EPKG_OK)
+				err(EX_OSERR, "malloc");
 			printf("Converting %s...\n", dp->d_name);
 			snprintf(path, sizeof(path), "%s/%s", pkg_add_dbdir, dp->d_name);
 			if (pkg_old_load_from_path(p, path) != EPKG_OK) {
@@ -321,27 +121,22 @@ int
 exec_convert(__unused int argc, __unused char **argv)
 {
 	int		 ch;
-	bool		 revert = false;
 	bool		 dry_run = false;
 	const char	*pkg_add_dbdir = "/var/db/pkg";
 
 	struct option longopts[] = {
 		{ "pkg-dbdir",	required_argument,	NULL,	'd' },
 		{ "dry-run",	no_argument,		NULL,	'n' },
-		{ "revert",	no_argument,		NULL,	'r' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+d:nr", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:n", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			pkg_add_dbdir = optarg;
 			break;
 		case 'n':
 			dry_run = true;
-			break;
-		case 'r':
-			revert = true;
 			break;
 		default:
 			usage_convert();
@@ -356,10 +151,7 @@ exec_convert(__unused int argc, __unused char **argv)
 		return (EX_USAGE);
 	}
 
-	printf("Converting packages %s %s\n", revert ? "to" : "from", pkg_add_dbdir);
+	printf("Converting packages from %s\n", pkg_add_dbdir);
 
-	if (revert)
-		return (convert_to_old(pkg_add_dbdir, dry_run));
-	else
-		return (convert_from_old(pkg_add_dbdir, dry_run));
+	return (convert_from_old(pkg_add_dbdir, dry_run));
 }

@@ -46,7 +46,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	char		 fpath[MAXPATHLEN];
 	struct pkg_file	*file = NULL;
 	struct pkg_dir	*dir = NULL;
-	char		*m;
 	int		 ret;
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
@@ -109,16 +108,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	HASH_FREE(hardlinks, free);
 
 	if (pkg->type == PKG_OLD_FILE) {
-		char oldcomment[BUFSIZ];
-
-		pkg_old_emit_content(pkg, &m);
-		packing_append_buffer(pkg_archive, m, "+CONTENTS", strlen(m));
-		free(m);
-
-		packing_append_buffer(pkg_archive, pkg->desc, "+DESC", strlen(pkg->desc));
-		packing_append_buffer(pkg_archive, pkg->message, "+DISPLAY", strlen(pkg->message));
-		pkg_snprintf(oldcomment, sizeof(oldcomment), "%c\n", pkg);
-		packing_append_buffer(pkg_archive, oldcomment, "+COMMENT", strlen(oldcomment));
+		pkg_emit_error("Cannot create an old format package");
+		return (EPKG_FATAL);
 	} else {
 		/*
 		 * Register shared libraries used by the package if
