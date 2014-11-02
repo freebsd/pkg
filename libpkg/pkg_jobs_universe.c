@@ -346,13 +346,13 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		HASH_FIND_STR(universe->provides, pkg_shlib_name(shlib), pr);
+		HASH_FIND_STR(universe->provides, shlib->name, pr);
 		if (pr != NULL)
 			continue;
 
 		/* Not found, search in the repos */
 		it = pkgdb_repo_shlib_provide(universe->j->db,
-			pkg_shlib_name(shlib), universe->j->reponame);
+			shlib->name, universe->j->reponame);
 		if (it != NULL) {
 			rpkg = NULL;
 			prhead = NULL;
@@ -416,7 +416,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				}
 
 				pr->un = unit;
-				pr->provide = pkg_shlib_name(shlib);
+				pr->provide = shlib->name;
 
 				if (prhead == NULL) {
 					DL_APPEND(prhead, pr);
@@ -430,7 +430,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 			if (prhead == NULL) {
 				pkg_debug(1, "cannot find packages that provide %s required for %s",
-				    pkg_shlib_name(shlib), pkg->name);
+				    shlib->name, pkg->name);
 				/*
 				 * XXX: this is not normal but it is very common for the existing
 				 * repos, hence we just ignore this stale dependency

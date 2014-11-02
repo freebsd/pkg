@@ -260,16 +260,8 @@ pkg_shlib_free(struct pkg_shlib *sl)
 	if (sl == NULL)
 		return;
 
-	sbuf_free(sl->name);
+	free(sl->name);
 	free(sl);
-}
-
-const char *
-pkg_shlib_name(struct pkg_shlib const * const sl)
-{
-	assert(sl != NULL);
-
-	return (sbuf_get(sl->name));
 }
 
 /*

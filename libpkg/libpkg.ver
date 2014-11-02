@@ -4,7 +4,6 @@ global:
 	pkg_add;
 	pkg_add_from_remote;
 	pkg_add_port;
-	pkg_addannotation;
 	pkg_adddep;
 	pkg_addrdep;
 	pkg_addscript_file;
@@ -140,7 +139,6 @@ global:
 	pkg_set2;
 	pkg_set_from_file;
 	pkg_set_from_fileat;
-	pkg_shlib_name;
 	pkg_shlibs_provided;
 	pkg_shlibs_required;
 	pkg_shutdown;

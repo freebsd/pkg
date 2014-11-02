@@ -224,12 +224,10 @@ try_again:
 
 	shlib = NULL;
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		const char *shlib_name = pkg_shlib_name(shlib);
-
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, shlib_name);
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, shlib->name);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id,
-					shlib_name);
+					shlib->name);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
@@ -238,12 +236,10 @@ try_again:
 
 	shlib = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-		const char *shlib_name = pkg_shlib_name(shlib);
-
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, shlib_name);
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, shlib->name);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id,
-					shlib_name);
+					shlib->name);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);

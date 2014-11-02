@@ -443,7 +443,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg_job_provide *pr, *prhead;
 	int cnt;
 
-	HASH_FIND_STR(problem->j->universe->provides, pkg_shlib_name(shlib), prhead);
+	HASH_FIND_STR(problem->j->universe->provides, shlib->name, prhead);
 	if (prhead != NULL) {
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
@@ -480,7 +480,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		 * are really fixed.
 		 */
 		pkg_debug(1, "solver: cannot find provide for required shlib %s",
-			pkg_shlib_name(shlib));
+			shlib->name);
 	}
 
 	return (EPKG_OK);

@@ -1270,21 +1270,18 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	pkg_shlib_new(&s);
-	sbuf_set(&s->name, name);
+	s->name = strdup(name);
 
-	HASH_FIND_STR(pkg->shlibs_required, pkg_shlib_name(s), f);
+	HASH_FIND_STR(pkg->shlibs_required, s->name, f);
 	/* silently ignore duplicates in case of shlibs */
 	if (f != NULL) {
 		pkg_shlib_free(s);
 		return (EPKG_OK);
 	}
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs_required,
-	    pkg_shlib_name(s),
-	    strlen(pkg_shlib_name(s)), s);
+	HASH_ADD_KEYPTR(hh, pkg->shlibs_required, s->name, strlen(s->name), s);
 
-	pkg_debug(3, "added shlib deps for %s on %s",
-	    pkg->name, name);
+	pkg_debug(3, "added shlib deps for %s on %s", pkg->name, name);
 
 	return (EPKG_OK);
 }
@@ -1302,20 +1299,17 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	pkg_shlib_new(&s);
-	sbuf_set(&s->name, name);
-	HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(s), f);
+	s->name = strdup(name);
+	HASH_FIND_STR(pkg->shlibs_provided, s->name, f);
 	/* silently ignore duplicates in case of shlibs */
 	if (f != NULL) {
 		pkg_shlib_free(s);
 		return (EPKG_OK);
 	}
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
-	    pkg_shlib_name(s),
-	    strlen(pkg_shlib_name(s)), s);
+	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided, s->name, strlen(s->name), s);
 
-	pkg_debug(3, "added shlib provide %s for %s",
-	    pkg->name, pkg->origin);
+	pkg_debug(3, "added shlib provide %s for %s", pkg->name, pkg->origin);
 
 	return (EPKG_OK);
 }

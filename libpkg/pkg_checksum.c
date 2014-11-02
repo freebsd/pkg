@@ -153,12 +153,12 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		pkg_checksum_add_entry("required_shlib", pkg_shlib_name(shlib), &entries);
+		pkg_checksum_add_entry("required_shlib", shlib->name, &entries);
 	}
 
 	shlib = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-		pkg_checksum_add_entry("provided_shlib", pkg_shlib_name(shlib), &entries);
+		pkg_checksum_add_entry("provided_shlib", shlib->name, &entries);
 	}
 
 	while (pkg_users(pkg, &user) == EPKG_OK) {

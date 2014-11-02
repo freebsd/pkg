@@ -488,11 +488,11 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	 * Do not depend on libraries that a package provides itself
 	 */
 	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
-		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
+		HASH_FIND_STR(pkg->shlibs_provided, sh->name, found);
 		if (found != NULL) {
 			pkg_debug(2, "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    pkg_shlib_name(sh), pkg->name);
+			    sh->name, pkg->name);
 			HASH_DEL(pkg->shlibs_required, sh);
 		}
 	}

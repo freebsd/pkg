@@ -1157,11 +1157,11 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_shlib_name(rs),
-					pkg_shlib_name(ls)) != 0) {
+			if (strcmp(rs->name, ls->name) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("needed shared library changed");
-				pkg_debug(1, "shlib changed %s->%s", pkg_shlib_name(ls), pkg_shlib_name(rs));
+				pkg_debug(1, "shlib changed %s -> %s",
+				    ls->name, rs->name);
 				return (true);
 			}
 		}

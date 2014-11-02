@@ -895,7 +895,7 @@ format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_shlib	*shlib = data;
 
-	return (string_val(sbuf, pkg_shlib_name(shlib), p));
+	return (string_val(sbuf, shlib->name, p));
 }
 
 /*

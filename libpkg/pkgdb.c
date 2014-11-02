@@ -1861,10 +1861,10 @@ pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	struct pkg_shlib	*shlib = NULL;
 
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
+		if (run_prstmt(SHLIBS1, shlib->name)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_REQD, package_id, pkg_shlib_name(shlib))
+		    run_prstmt(SHLIBS_REQD, package_id, shlib->name)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(SHLIBS_REQD));
 			return (EPKG_FATAL);
@@ -1896,10 +1896,10 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	struct pkg_shlib	*shlib = NULL;
 
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
+		if (run_prstmt(SHLIBS1, shlib->name)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_PROV, package_id, pkg_shlib_name(shlib))
+		    run_prstmt(SHLIBS_PROV, package_id, shlib->name)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(SHLIBS_PROV));
 			return (EPKG_FATAL);

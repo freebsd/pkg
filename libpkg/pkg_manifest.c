@@ -1047,7 +1047,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
+		ucl_array_append(seq, ucl_object_fromstring(shlib->name));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
@@ -1057,7 +1057,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
+		ucl_array_append(seq, ucl_object_fromstring(shlib->name));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);

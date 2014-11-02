@@ -250,7 +250,7 @@ struct pkg_group {
 };
 
 struct pkg_shlib {
-	struct sbuf	*name;
+	char *name;
 	UT_hash_handle	hh;
 };
 
