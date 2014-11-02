@@ -212,10 +212,10 @@ try_again:
 
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(OPT1, pkg_option_opt(option));
+		ret = pkg_repo_binary_run_prstatement(OPT1, option->key);
 		if (ret == SQLITE_DONE)
-		    ret = pkg_repo_binary_run_prstatement(OPT2, pkg_option_opt(option),
-				pkg_option_value(option), package_id);
+		    ret = pkg_repo_binary_run_prstatement(OPT2, option->key,
+				option->value, package_id);
 		if(ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(OPT2));
 			return (EPKG_FATAL);

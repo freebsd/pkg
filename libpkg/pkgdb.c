@@ -1786,10 +1786,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prstmt(OPTION1, pkg_option_opt(option)) != SQLITE_DONE
+		if (run_prstmt(OPTION1, option->key) != SQLITE_DONE
 		    ||
-		    run_prstmt(OPTION2, package_id, pkg_option_opt(option),
-			       pkg_option_value(option)) != SQLITE_DONE) {
+		    run_prstmt(OPTION2, package_id, option->key, option->value)
+			       != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(OPTION2));
 			goto cleanup;
 		}

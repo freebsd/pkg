@@ -1063,38 +1063,34 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
 
 	pkg_debug(4, "Emitting conflicts");
-	map = NULL;
+	seq = NULL;
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		if (map == NULL)
-			map = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_option_value(option)),
-		    conflict->uid, 0, false);
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(conflict->uid));
 	}
-	if (map)
-		ucl_object_insert_key(top, map, "conflicts", 9, false);
+	if (seq)
+		ucl_object_insert_key(top, seq, "conflicts", 9, false);
 
 	pkg_debug(4, "Emitting provides");
-	map = NULL;
+	seq = NULL;
 	while (pkg_provides(pkg, &provide) == EPKG_OK) {
-		if (map == NULL)
-			map = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_option_value(option)),
-		    provide->provide, 0, false);
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(provide->provide));
 	}
-	if (map)
-		ucl_object_insert_key(top, map, "provides", 8, false);
+	if (seq)
+		ucl_object_insert_key(top, seq, "provides", 8, false);
 
 	pkg_debug(4, "Emitting options");
 	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		pkg_debug(2, "Emiting option: %s", pkg_option_value(option));
+		pkg_debug(2, "Emiting option: %s", option->value);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_option_value(option)),
-		    pkg_option_opt(option), 0, false);
+		    ucl_object_fromstring(option->value),
+		    option->key, 0, false);
 	}
 	if (map)
 		ucl_object_insert_key(top, map, "options", 7, false);

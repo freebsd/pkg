@@ -148,8 +148,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_add_entry("arch", pkg->arch, &entries);
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		pkg_checksum_add_entry(pkg_option_opt(option), pkg_option_value(option),
-			&entries);
+		pkg_checksum_add_entry(option->key, option->value, &entries);
 	}
 
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {

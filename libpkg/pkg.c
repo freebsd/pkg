@@ -1167,7 +1167,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
-		sbuf_set(&o->key, key);
+		o->key = strdup(key);
 	} else if ( o->value != NULL) {
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
@@ -1178,10 +1178,8 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 		}
 	}
 
-	sbuf_set(&o->value, value);
-	HASH_ADD_KEYPTR(hh, pkg->options,
-			pkg_option_opt(o),
-			strlen(pkg_option_opt(o)), o);
+	o->value = strdup(value);
+	HASH_ADD_KEYPTR(hh, pkg->options, o->key, strlen(o->key), o);
 
 	return (EPKG_OK);
 }
@@ -1205,7 +1203,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
-		sbuf_set(&o->key, key);
+		o->key = strdup(key);
 	} else if ( o->default_value != NULL) {
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("duplicate default value for option: %s, fatal (developer mode)", key);
@@ -1216,10 +1214,9 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 		}
 	}
 
-	sbuf_set(&o->default_value, default_value);
-	HASH_ADD_KEYPTR(hh, pkg->options,
-			pkg_option_default_value(o),
-			strlen(pkg_option_default_value(o)), o);
+	o->default_value = strdup(default_value);
+	HASH_ADD_KEYPTR(hh, pkg->options, o->default_value,
+	    strlen(o->default_value), o);
 
 	return (EPKG_OK);
 }
@@ -1242,7 +1239,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
-		sbuf_set(&o->key, key);
+		o->key = strdup(key);
 	} else if ( o->description != NULL) {
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("duplicate description for option: %s, fatal (developer mode)", key);
@@ -1253,10 +1250,9 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 		}
 	}
 
-	sbuf_set(&o->description, description);
-	HASH_ADD_KEYPTR(hh, pkg->options,
-			pkg_option_description(o),
-			strlen(pkg_option_description(o)), o);
+	o->description = strdup(description);
+	HASH_ADD_KEYPTR(hh, pkg->options, o->description,
+	    strlen(o->description), o);
 
 	return (EPKG_OK);
 }

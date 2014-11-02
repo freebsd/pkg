@@ -230,10 +230,10 @@ struct pkg_dir {
 };
 
 struct pkg_option {
-	struct sbuf	*key;
-	struct sbuf	*value;
-	struct sbuf	*default_value;
-	struct sbuf	*description;
+	char	*key;
+	char	*value;
+	char	*default_value;
+	char	*description;
 	UT_hash_handle	hh;
 };
 

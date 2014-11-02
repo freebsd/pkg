@@ -1288,7 +1288,7 @@ format_option_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(sbuf, pkg_option_opt(option), p));
+	return (string_val(sbuf, option->key, p));
 }
 
 /*
@@ -1299,7 +1299,7 @@ format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(sbuf, pkg_option_value(option), p));
+	return (string_val(sbuf, option->value, p));
 }
 
 /*
@@ -1310,7 +1310,7 @@ format_option_default(struct sbuf *sbuf, const void *data, struct percent_esc *p
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(sbuf, pkg_option_default_value(option), p));
+	return (string_val(sbuf, option->value, p));
 }
 
 /*
@@ -1321,7 +1321,7 @@ format_option_description(struct sbuf *sbuf, const void *data, struct percent_es
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(sbuf, pkg_option_description(option), p));
+	return (string_val(sbuf, option->description, p));
 }
 
 /*

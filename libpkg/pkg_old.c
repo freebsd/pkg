@@ -156,13 +156,13 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 		if (option_type != 0)
 			sbuf_cat(content, " ");
 
-		if (strcmp(pkg_option_value(option), "on") == 0)
+		if (strcmp(option->value, "on") == 0)
 			option_type = '+';
 		else
 			option_type = '-';
 		sbuf_printf(content, "%c%s",
 		    option_type,
-		    pkg_option_opt(option));
+		    option->key);
 	}
 	sbuf_printf(content, "\n");
 

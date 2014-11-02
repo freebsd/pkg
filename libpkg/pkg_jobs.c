@@ -1073,8 +1073,8 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
-					strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
+			if (strcmp(lo->key, ro->key) != 0 ||
+			    strcmp(lo->value, ro->value) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("options changed");
 				return (true);
