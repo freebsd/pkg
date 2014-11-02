@@ -360,10 +360,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 
 		if (regular) {
 			p->flatsize += st.st_size;
-			if (pkg_type(p->pkg) == PKG_OLD_FILE)
-				md5_file(testpath, sha256);
-			else
-				sha256_file(testpath, sha256);
+			sha256_file(testpath, sha256);
 			buf = sha256;
 			if (is_config) {
 				size_t sz;

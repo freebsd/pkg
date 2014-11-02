@@ -100,7 +100,6 @@ void sha256_buf_bin(const char *, size_t len, char[SHA256_DIGEST_LENGTH]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fileat(int fd, const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
-int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
 int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
 void rsa_free(struct rsa_key *);

@@ -93,13 +93,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		}
 		else {
 			if (file->sum[0] == '\0') {
-				if (pkg->type == PKG_OLD_FILE) {
-					if (md5_file(fpath, sha256) != EPKG_OK)
-						return (EPKG_FATAL);
-				} else {
-					if (sha256_file(fpath, sha256) != EPKG_OK)
-						return (EPKG_FATAL);
-				}
+				if (sha256_file(fpath, sha256) != EPKG_OK)
+					return (EPKG_FATAL);
 				strlcpy(file->sum, sha256, sizeof(file->sum));
 			}
 		}
