@@ -131,9 +131,9 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 		sbuf_printf(content,
 		    "@pkgdep %s-%s\n"
 		    "@comment DEPORIGIN:%s\n",
-		    pkg_dep_name(dep),
-		    pkg_dep_version(dep),
-		    pkg_dep_origin(dep));
+		    dep->name,
+		    dep->version,
+		    dep->origin);
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
@@ -323,7 +323,7 @@ pkg_register_old(struct pkg *pkg)
 
 	while (pkg_deps(pkg, &dep)) {
 		snprintf(path, sizeof(path), "%s/%s-%s/+REQUIRED_BY", pkgdbdir,
-		    pkg_dep_name(dep), pkg_dep_version(dep));
+		    dep->name, dep->version);
 		fp = fopen(path, "a");
 		pkg_fprintf(fp, "%n-%v\n", pkg, pkg);
 		fclose(fp);

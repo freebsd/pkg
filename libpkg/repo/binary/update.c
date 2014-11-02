@@ -181,11 +181,8 @@ try_again:
 
 	dep = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_repo_binary_run_prstatement(DEPS,
-				pkg_dep_origin(dep),
-				pkg_dep_name(dep),
-				pkg_dep_version(dep),
-				package_id) != SQLITE_DONE) {
+		if (pkg_repo_binary_run_prstatement(DEPS, dep->origin,
+		    dep->name, dep->version, package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(DEPS));
 			return (EPKG_FATAL);
 		}

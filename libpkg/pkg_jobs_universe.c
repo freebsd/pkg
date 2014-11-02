@@ -262,7 +262,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 		if (npkg == NULL && rpkg == NULL) {
 			pkg_emit_error("%s has a missing dependency: %s",
-				pkg->name, pkg_dep_get(d, PKG_DEP_NAME));
+				pkg->name, d->name);
 
 			if (flags & DEPS_FLAG_FORCE_MISSING)
 				continue;

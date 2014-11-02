@@ -50,9 +50,9 @@ pkg_dep_free(struct pkg_dep *d)
 	if (d == NULL)
 		return;
 
-	sbuf_free(d->origin);
-	sbuf_free(d->name);
-	sbuf_free(d->version);
+	free(d->origin);
+	free(d->name);
+	free(d->version);
 	free(d->uid);
 	free(d);
 }
@@ -64,13 +64,13 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 
 	switch (attr) {
 	case PKG_DEP_NAME:
-		return (sbuf_get(d->name));
+		return (d->name);
 		break;
 	case PKG_DEP_ORIGIN:
-		return (sbuf_get(d->origin));
+		return (d->origin);
 		break;
 	case PKG_DEP_VERSION:
-		return (sbuf_get(d->version));
+		return (d->version);
 		break;
 	default:
 		return (NULL);

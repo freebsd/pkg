@@ -170,7 +170,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		asprintf(&olduid, "%s~%s", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_ORIGIN));
+		asprintf(&olduid, "%s~%s", dep->name, dep->origin);
 		pkg_checksum_add_entry("depend", olduid, &entries);
 		free(olduid);
 	}

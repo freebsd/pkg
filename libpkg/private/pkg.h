@@ -180,9 +180,9 @@ struct pkg {
 };
 
 struct pkg_dep {
-	struct sbuf	*origin;
-	struct sbuf	*name;
-	struct sbuf	*version;
+	char		*origin;
+	char		*name;
+	char		*version;
 	char		*uid;
 	bool		 locked;
 	UT_hash_handle	 hh;

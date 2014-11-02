@@ -253,8 +253,7 @@ pipeevent(struct pkg_event *ev)
 		while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
 			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
 			    "\"pkgversion\": \"%s\" }, ",
-			    pkg_dep_name(dep),
-			    pkg_dep_version(dep));
+			    dep->name, dep->version);
 		sbuf_setpos(msg, sbuf_len(msg) - 2);
 		sbuf_cat(msg, "]}}");
 		break;
@@ -273,8 +272,8 @@ pipeevent(struct pkg_event *ev)
 		    "\"depname\": \"%s\", "
 		    "\"depversion\": \"%s\""
 		    "}}" ,
-		    pkg_dep_name(ev->e_missing_dep.dep),
-		    pkg_dep_version(ev->e_missing_dep.dep));
+		    ev->e_missing_dep.dep->name,
+		    ev->e_missing_dep.dep->version);
 		break;
 	case PKG_EVENT_NOREMOTEDB:
 		sbuf_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "

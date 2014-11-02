@@ -1002,11 +1002,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	map = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		submap = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_origin(dep)), "origin", 6, false);
-		ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_version(dep)), "version", 7, false);
+		ucl_object_insert_key(submap, ucl_object_fromstring(dep->origin), "origin", 6, false);
+		ucl_object_insert_key(submap, ucl_object_fromstring(dep->version), "version", 7, false);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(map, submap, pkg_dep_name(dep), 0, false);
+		ucl_object_insert_key(map, submap, dep->name, 0, false);
 	}
 	if (map)
 		ucl_object_insert_key(top, map, "deps", 4, false);

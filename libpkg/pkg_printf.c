@@ -1522,7 +1522,7 @@ format_dependency_name(struct sbuf *sbuf, const void *data,
 {
 	const struct pkg_dep	*dep = data;
 
-	return (string_val(sbuf, pkg_dep_name(dep), p));
+	return (string_val(sbuf, dep->name, p));
 }
 
 /*
@@ -1534,7 +1534,7 @@ format_dependency_origin(struct sbuf *sbuf, const void *data,
 {
 	const struct pkg_dep	*dep = data;
 
-	return (string_val(sbuf, pkg_dep_origin(dep), p));
+	return (string_val(sbuf, dep->origin, p));
 }
 
 /*
@@ -1546,7 +1546,7 @@ format_dependency_version(struct sbuf *sbuf, const void *data,
 {
 	const struct pkg_dep	*dep = data;
 
-	return (string_val(sbuf, pkg_dep_version(dep), p));
+	return (string_val(sbuf, dep->version, p));
 }
 
 /*

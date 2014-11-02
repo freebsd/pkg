@@ -798,7 +798,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(version != NULL && version[0] != '\0');
 
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
-	HASH_FIND_STR(pkg->deps, origin, d);
+	HASH_FIND_STR(pkg->deps, name, d);
 	if (d != NULL) {
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, fatal (developer mode)",
@@ -813,14 +813,13 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 
 	pkg_dep_new(&d);
 
-	sbuf_set(&d->origin, origin);
-	sbuf_set(&d->name, name);
-	sbuf_set(&d->version, version);
+	d->origin = strdup(origin);
+	d->name = strdup(name);
+	d->version = strdup(version);
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->deps, pkg_dep_get(d, PKG_DEP_ORIGIN),
-	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
+	HASH_ADD_KEYPTR(hh, pkg->deps, d->name, strlen(d->name), d);
 
 	return (EPKG_OK);
 }
@@ -838,14 +837,13 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s, version: %s", origin, name, version);
 	pkg_dep_new(&d);
 
-	sbuf_set(&d->origin, origin);
-	sbuf_set(&d->name, name);
-	sbuf_set(&d->version, version);
+	d->origin = strdup(origin);
+	d->name = strdup(name);
+	d->version = strdup(version);
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->rdeps, pkg_dep_get(d, PKG_DEP_ORIGIN),
-	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
+	HASH_ADD_KEYPTR(hh, pkg->rdeps, d->origin, strlen(d->origin), d);
 
 	return (EPKG_OK);
 }
