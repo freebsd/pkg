@@ -21,7 +21,6 @@ global:
 	pkg_config_dump;
 	pkg_config_files;
 	pkg_config_get;
-	pkg_conflict_uniqueid;
 	pkg_conflicts;
 	pkg_copy_tree;
 	pkg_create_from_manifest;
@@ -92,10 +91,6 @@ global:
 	pkg_old_load_from_path;
 	pkg_open;
 	pkg_open_fd;
-	pkg_option_default_value;
-	pkg_option_description;
-	pkg_option_opt;
-	pkg_option_value;
 	pkg_options;
 	pkg_parse_manifest;
 	pkg_parse_manifest_file;
@@ -115,7 +110,6 @@ global:
 	pkg_plugins_init;
 	pkg_plugins_shutdown;
 	pkg_printf;
-	pkg_provide_name;
 	pkg_provides;
 	pkg_rdeps;
 	pkg_recompute;
