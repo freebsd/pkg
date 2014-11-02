@@ -379,7 +379,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg_solve_item *it = NULL;
 
-	uid = pkg_conflict_uniqueid(conflict);
+	uid = conflict->uid;
 	HASH_FIND_STR(problem->variables_by_uid, uid, confvar);
 	if (confvar == NULL) {
 		pkg_debug(2, "cannot find conflict %s", uid);

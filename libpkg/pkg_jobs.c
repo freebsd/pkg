@@ -1115,8 +1115,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_conflict_uniqueid(rc),
-					pkg_conflict_uniqueid(lc)) != 0) {
+			if (strcmp(rc->uid, lc->uid) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("direct conflict changed");
 				return (true);

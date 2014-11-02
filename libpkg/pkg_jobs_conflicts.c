@@ -140,7 +140,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			continue;
 
 		HASH_ITER(hh, req->item->pkg->conflicts, c, ctmp) {
-			unit = pkg_jobs_universe_find(j->universe, pkg_conflict_uniqueid(c));
+			unit = pkg_jobs_universe_find(j->universe, c->uid);
 			if (unit != NULL) {
 				HASH_FIND_STR(j->request_add, unit->pkg->uid, found);
 				if (found && !found->skip) {
@@ -174,15 +174,15 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 		c1->type = c2->type = type;
 		HASH_FIND_STR(p1->conflicts, p2->uid, test);
 		if (test == NULL) {
-			sbuf_set(&c1->uniqueid, p2->uid);
-			HASH_ADD_KEYPTR(hh, p1->conflicts, pkg_conflict_uniqueid(c1), sbuf_size(c1->uniqueid), c1);
+			c1->uid = strdup(p2->uid);
+			HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
 			pkg_debug(2, "registering conflict between %s and %s", p1->uid, p2->uid);
 		}
 
 		HASH_FIND_STR(p2->conflicts, p1->uid, test);
 		if (test == NULL) {
-			sbuf_set(&c2->uniqueid, p1->uid);
-			HASH_ADD_KEYPTR(hh, p2->conflicts, pkg_conflict_uniqueid(c2), sbuf_size(c2->uniqueid), c2);
+			c1->uid = strdup(p1->uid);
+			HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
 			pkg_debug(2, "registering conflict between %s and %s", p2->uid, p1->uid);
 		}
 	}
@@ -247,12 +247,10 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	pkg_conflict_new(&c1);
 	pkg_conflict_new(&c2);
 	c1->type = c2->type = type;
-	sbuf_set(&c1->uniqueid, p2->uid);
-	sbuf_set(&c2->uniqueid, p1->uid);
-	HASH_ADD_KEYPTR(hh, p1->conflicts, pkg_conflict_uniqueid(c1),
-		sbuf_size(c1->uniqueid), c1);
-	HASH_ADD_KEYPTR(hh, p2->conflicts, pkg_conflict_uniqueid(c2),
-		sbuf_size(c2->uniqueid), c2);
+	c1->uid = strdup(p2->uid);
+	c2->uid = strdup(p2->uid);
+	HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
+	HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c1->uid), c2);
 	pkg_debug(2, "registering conflict between %s and %s on path %s",
 		p1->uid, p2->uid, path);
 }

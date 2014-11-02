@@ -296,14 +296,14 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 	struct pkg *npkg;
 
 	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
-		HASH_FIND_STR(universe->items, pkg_conflict_uniqueid(c), unit);
+		HASH_FIND_STR(universe->items, c->uid, unit);
 		if (unit != NULL)
 			continue;
 
 		/* Check local and remote conflicts */
 		if (pkg->type == PKG_INSTALLED) {
 			/* Installed packages can conflict with remote ones */
-			npkg = pkg_jobs_universe_get_remote(universe, pkg_conflict_uniqueid(c), 0);
+			npkg = pkg_jobs_universe_get_remote(universe, c->uid, 0);
 			if (npkg == NULL)
 				continue;
 
@@ -311,14 +311,14 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 		}
 		else {
 			/* Remote packages can conflict with remote and local */
-			npkg = pkg_jobs_universe_get_local(universe, pkg_conflict_uniqueid(c), 0);
+			npkg = pkg_jobs_universe_get_local(universe, c->uid, 0);
 			if (npkg != NULL) {
 				if (pkg_jobs_universe_process_item(universe, npkg, NULL) != EPKG_OK)
 					continue;
 
 				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
 					npkg = pkg_jobs_universe_get_remote(universe,
-						pkg_conflict_uniqueid(c), 0);
+					    c->uid, 0);
 					if (npkg == NULL)
 						continue;
 
@@ -616,7 +616,7 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		}
 		if (it->pkg->type != PKG_INSTALLED) {
 			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
-				HASH_FIND_STR(universe->items, pkg_conflict_uniqueid(c), found);
+				HASH_FIND_STR(universe->items, c->uid, found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
 						if (cur->pkg->type == PKG_INSTALLED) {
@@ -644,7 +644,7 @@ pkg_jobs_update_conflict_priority(struct pkg_jobs_universe *universe,
 
 	while (pkg_conflicts(lp, &c) == EPKG_OK) {
 		rit = NULL;
-		HASH_FIND_STR(universe->items, pkg_conflict_uniqueid(c), found);
+		HASH_FIND_STR(universe->items, c->uid, found);
 		assert(found != NULL);
 
 		LL_FOREACH(found, cur) {

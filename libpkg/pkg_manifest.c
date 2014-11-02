@@ -1069,7 +1069,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(map,
 		    ucl_object_fromstring(pkg_option_value(option)),
-		    pkg_conflict_uniqueid(conflict), 0, false);
+		    conflict->uid, 0, false);
 	}
 	if (map)
 		ucl_object_insert_key(top, map, "conflicts", 9, false);

@@ -1328,12 +1328,10 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 		return (EPKG_OK);
 
 	pkg_conflict_new(&c);
-	sbuf_set(&c->uniqueid, uniqueid);
+	c->uid = strdup(uniqueid);
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
-	HASH_ADD_KEYPTR(hh, pkg->conflicts,
-	    __DECONST(char *, pkg_conflict_uniqueid(c)),
-	    sbuf_size(c->uniqueid), c);
+	HASH_ADD_KEYPTR(hh, pkg->conflicts, c->uid, strlen(c->uid), c);
 
 	return (EPKG_OK);
 }

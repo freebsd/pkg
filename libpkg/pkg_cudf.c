@@ -156,7 +156,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
-			if (cudf_print_element(f, pkg_conflict_uniqueid(conflict),
+			if (cudf_print_element(f, conflict->uid,
 					(conflict->hh.next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}

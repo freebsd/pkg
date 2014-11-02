@@ -283,16 +283,8 @@ pkg_conflict_free(struct pkg_conflict *c)
 	if (c == NULL)
 		return;
 
-	sbuf_free(c->uniqueid);
+	free(c->uid);
 	free(c);
-}
-
-const char *
-pkg_conflict_uniqueid(const struct pkg_conflict *c)
-{
-	assert(c != NULL);
-
-	return (sbuf_get(c->uniqueid));
 }
 
 /*
