@@ -1135,8 +1135,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_provide_name(rpr),
-					pkg_provide_name(lpr)) != 0) {
+			if (strcmp(rpr->provide, lpr->provide) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("provides changed");
 				return (true);

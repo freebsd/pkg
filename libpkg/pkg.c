@@ -1350,11 +1350,9 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	pkg_provide_new(&p);
-	sbuf_set(&p->provide, name);
+	p->provide = strdup(name);
 
-	HASH_ADD_KEYPTR(hh, pkg->provides,
-	    __DECONST(char *, pkg_provide_name(p)),
-	    sbuf_size(p->provide), p);
+	HASH_ADD_KEYPTR(hh, pkg->provides, p->provide, strlen(p->provide), p);
 
 	return (EPKG_OK);
 }

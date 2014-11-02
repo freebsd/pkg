@@ -758,9 +758,6 @@ const char *pkg_option_value(struct pkg_option const * const);
 const char *pkg_option_default_value(struct pkg_option const * const);
 const char *pkg_option_description(struct pkg_option const * const);
 
-/* pkg_provide */
-const char *pkg_provide_name(const struct pkg_provide *);
-
 /**
  * @param db A pointer to a struct pkgdb object
  * @param origin Package origin

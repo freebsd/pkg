@@ -207,7 +207,7 @@ struct pkg_conflict {
 };
 
 struct pkg_provide {
-	struct sbuf		*provide;
+	char	*provide;
 	UT_hash_handle	hh;
 };
 

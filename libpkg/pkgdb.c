@@ -1915,10 +1915,10 @@ pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	struct pkg_provide	*provide = NULL;
 
 	while (pkg_provides(pkg, &provide) == EPKG_OK) {
-		if (run_prstmt(PROVIDE, pkg_provide_name(provide))
+		if (run_prstmt(PROVIDE, provide->provide)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_PROVIDE, package_id, pkg_provide_name(provide))
+		    run_prstmt(PKG_PROVIDE, package_id, provide->provide)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(PKG_PROVIDE));
 			return (EPKG_FATAL);
