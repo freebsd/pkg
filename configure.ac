@@ -231,17 +231,17 @@ if test "$ac_cv_func_arc4random_uniform" = yes ; then
 fi
 
 AC_MSG_CHECKING([whether we should only build the static version of pkg])
-AC_ARG_ENABLE([staticonly],
-	      [AS_HELP_STRING([--enable-staticonly],
+AC_ARG_WITH([staticonly],
+	      [AS_HELP_STRING([--with-staticonly],
 			      [Only build the static version (default is no)])])
 
-if test "$enable_staticonly" = "yes"; then
+if test "$with_staticonly" = "yes"; then
 	AC_MSG_RESULT([yes])
 else
 	AC_MSG_RESULT([no])
 fi
 
-AM_CONDITIONAL(DYNAMIC, test "$enable_staticonly" = "no")
+AM_CONDITIONAL(DYNAMIC, test "$with_staticonly" = "no")
 AM_CONDITIONAL(LIBELF_BUNDLED, test "$libelf_bundled" != "no")
 
 AC_SUBST([LIBJAIL_LIB])
