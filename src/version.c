@@ -889,7 +889,9 @@ exec_version(int argc, char **argv)
 	if (opt & (VERSION_STATUS|VERSION_NOSTATUS)) {
 		if (limchar != '<' &&
 		    limchar != '>' &&
-		    limchar != '=') {
+		    limchar != '=' &&
+		    limchar != '?' &&
+		    limchar != '!') {
 			usage_version();
 			return (EX_USAGE);
 		}
