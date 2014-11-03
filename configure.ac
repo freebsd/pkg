@@ -241,7 +241,7 @@ else
 	AC_MSG_RESULT([no])
 fi
 
-AM_CONDITIONAL(DYNAMIC, test "$with_staticonly" = "no")
+AM_CONDITIONAL(DYNAMIC, test "$with_staticonly" != "no")
 AM_CONDITIONAL(LIBELF_BUNDLED, test "$libelf_bundled" != "no")
 
 AC_SUBST([LIBJAIL_LIB])
