@@ -19,5 +19,10 @@ librepo_binary_static_la_LDFLAGS=	-all-static
 librepo_binary_static_la_SOURCES=	$(librepo_binary_la_SOURCES)
 librepo_binary_static_la_CFLAGS=	$(pkg_common_cflags) -static
 
-noinst_LTLIBRARIES= librepo_binary.la librepo_binary_static.la
+DYNLIBS=		librepo_binary.la
+noinst_LTLIBRARIES= librepo_binary_static.la
+if DYNAMIC
+noinst_LTLIBRARIES+=	$(DYNLIBS)
+endif
+
 noinst_HEADERS=		binary.h binary_private.h

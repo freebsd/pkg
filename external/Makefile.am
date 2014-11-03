@@ -64,14 +64,25 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		include/siphash.h \
 		config.h
 
-EXTRA_LTLIBRARIES=	libelf.la
+DYNLIBS=		libucl.la \
+			libsqlite.la \
+			libexpat.la \
+			libsbuf.la \
+			libpicosat.la
+noinst_LTLIBRARIES=	libucl_static.la \
+			libsqlite_static.la \
+			libexpat_static.la \
+			libsbuf_static.la \
+			libpicosat_static.la
+if LIBELF_BUNDLED
+DYNLIBS+=		libelf.la
+noinst_LTLIBRARIES+=	libelf_static.la
+endif
 
-noinst_LTLIBRARIES=	libucl.la libucl_static.la \
-			libsqlite.la libsqlite_static.la \
-			libexpat.la libexpat_static.la \
-			libsbuf.la libsbuf_static.la \
-			libpicosat.la libpicosat_static.la \
-			@LIBELF_BUNDLED@
+if DYNAMIC
+noinst_LTLIBRARIES+=	$(DYNLIBS)
+endif
+
 
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \

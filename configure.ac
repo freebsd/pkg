@@ -176,18 +176,12 @@ AC_SEARCH_LIBS([jail_getid], [jail], [
 	LIBJAIL_LIB="-ljail"
 	], [])
 
-LIBELF_LIB="\$(top_builddir)/external/libelf.la"
-LIBELF_BUNDLED="libelf.la"
-LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
-
 AC_CHECK_HEADERS([gelf.h libelf.h], [
 	AC_CHECK_TYPES([Elf_Note], [
 		AC_DEFINE(HAVE_GELF_H, 1, [Define to 1 if you have the <gelf.h> header file.])
 		AC_CHECK_LIB(elf, gelf_getehdr, [
 			AC_DEFINE(HAVE_LIBELF, 1, [Define to 1 if you have the 'elf' library (-lelf).])
-			LIBELF_LIB="-lelf"
-			LIBELF_BUNDLED=
-			LIBELF_INCLUDE=
+			libelf_bundled=no
 		]) dnl AC_CHECK_LIB
 	], dnl AC_CHECK_TYPES
 	[], AC_LANG_SOURCE(
@@ -236,9 +230,20 @@ if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
 fi
 
-AC_SUBST([LIBELF_LIB])
-AC_SUBST([LIBELF_BUNDLED])
-AC_SUBST([LIBELF_INCLUDE])
+AC_MSG_CHECKING([whether we should only build the static version of pkg])
+AC_ARG_ENABLE([staticonly],
+	      [AS_HELP_STRING([--enable-staticonly],
+			      [Only build the static version (default is no)])])
+
+if test "$enable_staticonly" = "yes"; then
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
+
+AM_CONDITIONAL(DYNAMIC, test "$enable_staticonly" = "no")
+AM_CONDITIONAL(LIBELF_BUNDLED, test "$libelf_bundled" != "no")
+
 AC_SUBST([LIBSBUF_LIB])
 AC_SUBST([LIBSBUF_BUNDLED])
 AC_SUBST([LIBSBUF_INCLUDE])

@@ -53,7 +53,6 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
 			@LIBEXECINFO_LIB@ \
-			@LIBELF_LIB@ \
 			@LDNS_LIBS@ \
 			-lfetch \
 			-larchive \
@@ -65,7 +64,15 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-lcrypto \
 			-lmd \
 			-lm
+if !LIBELF_BUNDLED
+pkg_static_LDADD+=	-lelf
+endif
+
 pkg_static_LDFLAGS=	-all-static
-sbin_PROGRAMS=		pkg pkg-static
+DYNPROG=		pkg
+sbin_PROGRAMS=		pkg-static
+if DYNAMIC
+sbin_PROGRAMS+=		$(DYNPROG)
+endif
 
 dist_sysconf_DATA=	pkg.conf.sample
