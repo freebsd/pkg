@@ -4,8 +4,7 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		$(top_builddir)/external/libsbuf_static.la \
 		@LIBJAIL_LIB@ \
 		@LIBEXECINFO_LIB@ \
-		@LIBELF_LIB@ \
-		@LDNS_LIBS@ \
+		-lelf \
 		-lfetch \
 		-larchive \
 		-lutil \
@@ -14,6 +13,12 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		-lcrypto \
 		-L/usr/local/lib \
 		-latf-c
+if LIBELF_BUNDLED
+GENERIC_LDADD+=	$(top_builddir)/external/libelf/libelf_static.la
+else
+GENERIC_LDADD+=	-lelf
+endif
+
 PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING \
 		-I/usr/local/include
 PRIVATE_INCS=	$(PUBLIC_INCS) \
