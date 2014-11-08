@@ -412,24 +412,18 @@ Use without an arg to set back to default (wheel)
 group ownership.
 .It Cm @comment Ar string
 The line will be ignored when packing.
-.It Cm @dirrm Ar name
-Declare directory.
+.It Cm @dir Ar name
+Declare directory
 .Pa name
 to be deleted at deinstall time.
-By default, directories created by a package installation are not
-deleted when the package is deinstalled.
-This provides an explicit directory cleanup method.
+By default, most directories created by a package installation are
+deleted automatically when the package is deinstalled, so this directive is
+only needed for empty directories or directories outside of
+.Ev PREFIX .
 These directives should appear at the end of the package list.
 If the directory is not empty a warning will be printed, and the
 directory will not be removed.
-.It Cm @dirrmtry Ar name
-Declare directory
-.Pa name
-to be removed, as for
-.Cm @dirrm ,
-but does not issue a warning if the directory cannot be removed.
-.It Cm @dir Ar name
-Declare a directory
+(Subdirectories should be listed before parent directories.)
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
