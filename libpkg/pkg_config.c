@@ -335,7 +335,8 @@ static struct config_entry c[] = {
 		"AUTOMERGE",
 		"YES",
 		"Automatically merge configuration files"
-	}
+	},
+	{
 		PKG_STRING,
 		"VERSION_SOURCE",
 		NULL,
