@@ -190,7 +190,7 @@ the repository. It will compute the proper update order and apply them.
 <a name="pkgdel"></a>
 ### Deleting packages
 
-`pkg delete` will remove a package, and (delending on the command line
+`pkg delete` will remove a package, and (depending on the command line
 arguments) any other packages that depend on what you're trying to
 delete.
 
