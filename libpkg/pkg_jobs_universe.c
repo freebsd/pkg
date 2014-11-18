@@ -805,7 +805,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 {
 	struct pkg_job_universe_item *unit, *tmp, *cur, *local;
 	struct pkg_job_request *req;
-	struct pkg_job_request_item *rit;
+	struct pkg_job_request_item *rit, *rtmp;
 
 	HASH_ITER(hh, j->universe->items, unit, tmp) {
 		unsigned vercnt = 0;
@@ -859,11 +859,10 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				assert(selected != NULL);
 				LL_FOREACH(unit, cur) {
 					if (cur != selected) {
-						DL_FOREACH(req->item, rit) {
+						DL_FOREACH_SAFE(req->item, rit, rtmp) {
 							if (rit->unit == cur) {
 								DL_DELETE(req->item, rit);
 								free(rit);
-								break;
 							}
 						}
 					}
