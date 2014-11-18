@@ -55,7 +55,7 @@ Table of Contents:
 	  The first repo contains all information about a package, except for
 	  the files (which will be in the second one) + it will compute and 
 	  add a sha256 sum for each package.
-	- The database will be a sqlite file compressed with the xz format.
+	- The database will be a SQLite file compressed with the xz format.
 	- The database will be signed so we can trust the sha256 of the
 	  packages, and if a package has the expected hash, it is considered
 	  trusted.
@@ -92,7 +92,7 @@ Table of Contents:
 
 - update:
 
-	- Will fetch the remote repository sqlite database file.
+	- Will fetch the remote repository SQLite database file.
 
 - lint: 
 
