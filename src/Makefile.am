@@ -65,7 +65,7 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-lmd \
 			-lm
 if LIBELF_BUNDLED
-pkg_static_LDADD+=	$(top_builddir)/libpkg/libelf_static.la
+pkg_static_LDADD+=	$(top_builddir)/external/libelf_static.la
 else
 pkg_static_LDADD+=	-lelf
 endif
