@@ -805,9 +805,16 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 {
 	struct pkg_job_universe_item *unit, *tmp, *cur, *local;
 	struct pkg_job_request *req;
+	struct pkg_job_request_item *rit;
 
 	HASH_ITER(hh, j->universe->items, unit, tmp) {
 		unsigned vercnt = 0;
+
+		HASH_FIND_STR(j->request_add, unit->pkg->uid, req);
+		if (req == NULL) {
+			/* Not obviously requested */
+			continue;
+		}
 
 		local = NULL;
 		LL_FOREACH(unit, cur) {
@@ -817,11 +824,11 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 		}
 
 		if (local != NULL && local->pkg->locked) {
-			LL_FOREACH(unit, cur) {
-				HASH_FIND_PTR(j->request_add, &cur, req);
-				if (req != NULL)
-					HASH_DEL(j->request_add, req);
-			}
+			pkg_debug(1, "removing %s from the request as it is locked",
+				cur->pkg->uid);
+			HASH_DEL(j->request_add, req);
+			/* XXX: need to free all items */
+			free(req);
 		}
 		else if (vercnt > 1) {
 			/*
@@ -845,13 +852,21 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 						selected = cur;
 					}
 				}
-				/* Now remove all requests but selected */
+
+				/*
+				 * Now remove all requests but selected from the requested
+				 * candidates
+				 */
 				assert(selected != NULL);
 				LL_FOREACH(unit, cur) {
 					if (cur != selected) {
-						HASH_FIND_PTR(j->request_add, &cur, req);
-						if (req != NULL)
-							HASH_DEL(j->request_add, req);
+						DL_FOREACH(req->item, rit) {
+							if (rit->unit == cur) {
+								DL_DELETE(req->item, rit);
+								/* XXX: need to free it here */
+								break;
+							}
+						}
 					}
 				}
 			}

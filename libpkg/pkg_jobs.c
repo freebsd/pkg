@@ -137,10 +137,12 @@ pkg_jobs_free(struct pkg_jobs *j)
 
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		HASH_DEL(j->request_add, req);
+		/* XXX: need to free all items */
 		free(req);
 	}
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		HASH_DEL(j->request_delete, req);
+		/* XXX: need to free all items */
 		free(req);
 	}
 
