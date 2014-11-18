@@ -128,6 +128,20 @@ pkg_jobs_pattern_free(struct job_pattern *jp)
 }
 
 void
+pkg_jobs_request_free(struct pkg_job_request *req)
+{
+	struct pkg_job_request_item *it, *tmp;
+
+	if (req != NULL) {
+		DL_FOREACH_SAFE(req->item, it, tmp) {
+			free(it);
+		}
+
+		free(req);
+	}
+}
+
+void
 pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *tmp;
@@ -137,13 +151,11 @@ pkg_jobs_free(struct pkg_jobs *j)
 
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		HASH_DEL(j->request_add, req);
-		/* XXX: need to free all items */
-		free(req);
+		pkg_jobs_request_free(req);
 	}
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		HASH_DEL(j->request_delete, req);
-		/* XXX: need to free all items */
-		free(req);
+		pkg_jobs_request_free(req);
 	}
 
 	pkg_jobs_universe_free(j->universe);

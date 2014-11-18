@@ -827,8 +827,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			pkg_debug(1, "removing %s from the request as it is locked",
 				cur->pkg->uid);
 			HASH_DEL(j->request_add, req);
-			/* XXX: need to free all items */
-			free(req);
+			pkg_jobs_request_free(req);
 		}
 		else if (vercnt > 1) {
 			/*
@@ -863,7 +862,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 						DL_FOREACH(req->item, rit) {
 							if (rit->unit == cur) {
 								DL_DELETE(req->item, rit);
-								/* XXX: need to free it here */
+								free(rit);
 								break;
 							}
 						}

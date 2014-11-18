@@ -251,4 +251,9 @@ struct pkg_job_universe_item*
 pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	const char *uid, struct pkg *lp, bool force);
 
+/*
+ * Free job request (with all candidates)
+ */
+void pkg_jobs_request_free(struct pkg_job_request *req);
+
 #endif /* PKG_JOBS_H_ */
