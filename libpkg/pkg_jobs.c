@@ -357,7 +357,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 			/*
 			 * We need to add request chain from the universe chain
 			 */
-			return (pkg_jobs_add_req_from_universe(head, un, !IS_DELETE(j), false));
+			return (pkg_jobs_add_req_from_universe(head, un, IS_DELETE(j), false));
 		}
 
 		return (NULL);
@@ -1329,7 +1329,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			pkg_emit_locked(pkg);
 		}
 		else if (pkg_jobs_test_automatic(j, pkg)) {
-			pkg_jobs_add_req(j, pkg);
+			assert(pkg_jobs_add_req(j, pkg));
 		}
 
 		pkg = NULL;
