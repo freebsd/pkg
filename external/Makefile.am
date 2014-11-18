@@ -83,7 +83,6 @@ if DYNAMIC
 noinst_LTLIBRARIES+=	$(DYNLIBS)
 endif
 
-
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \
 			libelf/elf_cntl.c \
@@ -143,6 +142,9 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
+libelf_static_la_SOURCES=	${libelf_la_SOURCES}
+libelf_static_la_CFLAGS=	$(libelf_la_CFLAGS) -static
+libelf_static_la_LDFLAGS=	-all-static
 
 libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
 sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
