@@ -77,7 +77,8 @@ If the repository is not signed by a public key, NULL will be returned.
 .Pp
 .Fn pkg_repo_fingerprints
 takes a pointer to a repository as argument and returns the path to
-the fingerprints. If the repository is not signed using the
+the fingerprints.
+If the repository is not signed using the
 .Qq FINGERPRINT
 method, NULL will be returned.
 .Pp
@@ -115,10 +116,11 @@ The repository does not have any mirror.
 .Pp
 .Fn pkg_repo_find_ident
 Take an internal indentification string as argument and return a pointer to
-a repository. If no repository matches, NULL is returned.
+a repository.
+If no repository matches, NULL is returned.
 .Pp
 .Fn pkg_repo_find_name
 Take a repository
 .Qq name
-as argument and return a pointer to a repository. If no repository matches,
-NULL is returned.
+as argument and return a pointer to a repository.
+If no repository matches, NULL is returned.

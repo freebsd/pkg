@@ -158,11 +158,13 @@ Hostname or IPv4 or IPv6 address of name server to use for DNS
 resolution, overriding the system defaults in
 .Pa /etc/resolv.conf .
 When given as a hostname, will be converted to a list of IPv4 or IPv6
-addresses by the default mechanisms configured on the system. See
+addresses by the default mechanisms configured on the system.
+See
 .Xr getaddrinfo 3 .
 .It Cm PERMISSIVE: boolean
-Ignore conflicts while registering a package. Note that the
-conflicting files will not be recorded as owned by the new package.
+Ignore conflicts while registering a package.
+Note that the conflicting files will not be recorded as owned by the new
+package.
 Default: NO.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
@@ -281,7 +283,8 @@ vulnerability database from.
 Default:
 .Pa http://www.vuxml.org/freebsd/vuln.xml.bz2 .
 .It Cm WORKERS_COUNT: integer
-How many workers are used for pkg-repo. If set to 0,
+How many workers are used for pkg-repo.
+If set to 0,
 .Va hw.ncpu
 is used.
 Default: 0.
