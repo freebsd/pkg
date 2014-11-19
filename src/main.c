@@ -116,7 +116,7 @@ static struct commands {
 	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
 };
 
-static const unsigned int cmd_len = sizeof(cmd) / sizeof(cmd[0]);
+static const unsigned int cmd_len = NELEM(cmd);
 
 static STAILQ_HEAD(, plugcmd) plugins = STAILQ_HEAD_INITIALIZER(plugins);
 struct plugcmd {

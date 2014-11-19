@@ -339,7 +339,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[3].iov_len = sizeof(siglen);
 			iov[4].iov_base = sig;
 			iov[4].iov_len = siglen;
-			if (writev(fd, iov, sizeof(iov) / sizeof(iov[0])) == -1) {
+			if (writev(fd, iov, NELEM(iov)) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"writev failed");
 				free(sig);
@@ -378,7 +378,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[3].iov_len = sizeof(siglen);
 			iov[4].iov_base = sig;
 			iov[4].iov_len = siglen;
-			if (writev(fd, iov, sizeof(iov) / sizeof(iov[0])) == -1) {
+			if (writev(fd, iov, NELEM(iov)) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"writev failed");
 				free(sig);

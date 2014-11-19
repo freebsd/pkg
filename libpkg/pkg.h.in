@@ -72,6 +72,10 @@
 #define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
 #endif
 
+#ifndef NELEM
+#define NELEM(array)    (sizeof(array) / sizeof((array)[0]))
+#endif
+
 /* Special exit status for worker processes indicating that a restart
  * is desired -- eg. after a child has updated pkg(8) itself.  Don't
  * clash with any of the sysexits values */

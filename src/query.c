@@ -818,7 +818,7 @@ exec_query(int argc, char **argv)
 	char			 multiline = 0;
 	char			*condition = NULL;
 	struct sbuf		*sqlcond = NULL;
-	const unsigned int	 q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
+	const unsigned int	 q_flags_len = NELEM(accepted_query_flags);
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
