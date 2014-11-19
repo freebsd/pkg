@@ -118,7 +118,7 @@ exec_rquery(int argc, char **argv)
 	char			*condition = NULL;
 	const char		*portsdir;
 	struct sbuf		*sqlcond = NULL;
-	const unsigned int	 q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
+	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
 	const char		*reponame = NULL;
 	bool			 auto_update;
 	bool			 onematched = false;

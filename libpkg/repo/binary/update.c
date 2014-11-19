@@ -534,8 +534,7 @@ cleanup:
 			rc = EPKG_FATAL;
 	}
 
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkg_free(pkg);
 	if (map != NULL && map != MAP_FAILED)
 		munmap(map, len);
 
