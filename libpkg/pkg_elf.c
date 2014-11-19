@@ -936,6 +936,7 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 	return (0);
 }
 
+#ifndef __DragonFly__
 int
 pkg_get_myarch(char *dest, size_t sz)
 {
@@ -967,6 +968,7 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	return (0);
 }
+#endif
 
 int
 pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
