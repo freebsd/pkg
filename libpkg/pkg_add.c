@@ -143,8 +143,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
 	struct stat st;
 	bool renamed = false;
-	const struct pkg_file *lf, *rf;
-	struct pkg_config_file *lcf, *rcf;
+	const struct pkg_file *rf;
+	struct pkg_config_file *rcf;
 	struct sbuf *newconf;
 	bool automerge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
 
@@ -163,9 +163,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	do {
 		ret = ARCHIVE_OK;
 		sbuf_clear(newconf);
-		lf = NULL;
 		rf = NULL;
-		lcf = NULL;
 		rcf = NULL;
 		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path));
 		snprintf(pathname, sizeof(pathname), "%s/%s",

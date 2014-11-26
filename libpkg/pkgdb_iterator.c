@@ -901,8 +901,7 @@ pkgdb_sqlite_it_next(struct pkgdb_sqlite_it *it,
 
 	switch (sqlite3_step(it->stmt)) {
 	case SQLITE_ROW:
-		if (*pkg_p != NULL)
-			pkg_free(*pkg_p);
+		pkg_free(*pkg_p);
 		ret = pkg_new(pkg_p, it->pkg_type);
 		if (ret != EPKG_OK)
 			return (ret);
