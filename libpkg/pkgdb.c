@@ -73,7 +73,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	29
+#define DB_SCHEMA_MINOR	30
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -386,7 +386,7 @@ pkgdb_init(sqlite3 *sdb)
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
 	");"
-	"CREATE UNIQUE INDEX deps_unique ON deps(origin, version, package_id);"
+	"CREATE UNIQUE INDEX deps_unique ON deps(name, version, package_id);"
 	"CREATE TABLE files ("
 		"path TEXT PRIMARY KEY,"
 		"sha256 TEXT,"

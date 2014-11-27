@@ -647,6 +647,10 @@ static struct db_upgrades {
 	"DROP INDEX packages_unique;"
 	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
 	},
+	{30,
+	"DROP INDEX deps_unique;"
+	"CREATE UNIQUE INDEX deps_unique ON deps(name, version, package_id);"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 
