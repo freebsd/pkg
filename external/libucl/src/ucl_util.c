@@ -25,6 +25,8 @@
 #include "ucl_internal.h"
 #include "ucl_chartable.h"
 
+#include <glob.h>
+
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h> /* For dirname */
 #endif
@@ -430,7 +432,11 @@ ucl_parser_free (struct ucl_parser *parser)
 	}
 
 	if (parser->err != NULL) {
-		utstring_free(parser->err);
+		utstring_free (parser->err);
+	}
+
+	if (parser->cur_file) {
+		free (parser->cur_file);
 	}
 
 	UCL_FREE (sizeof (struct ucl_parser), parser);
@@ -708,7 +714,8 @@ ucl_sig_check (const unsigned char *data, size_t datalen,
  */
 static bool
 ucl_include_url (const unsigned char *data, size_t len,
-		struct ucl_parser *parser, bool check_signature, bool must_exist)
+		struct ucl_parser *parser, bool check_signature, bool must_exist,
+		unsigned priority)
 {
 
 	bool res;
@@ -751,7 +758,7 @@ ucl_include_url (const unsigned char *data, size_t len,
 	prev_state = parser->state;
 	parser->state = UCL_STATE_INIT;
 
-	res = ucl_parser_add_chunk (parser, buf, buflen);
+	res = ucl_parser_add_chunk_priority (parser, buf, buflen, priority);
 	if (res == true) {
 		/* Remove chunk from the stack */
 		chunk = parser->chunks;
@@ -768,23 +775,30 @@ ucl_include_url (const unsigned char *data, size_t len,
 }
 
 /**
- * Include a file to configuration
+ * Include a single file to the parser
  * @param data
  * @param len
  * @param parser
- * @param err
+ * @param check_signature
+ * @param must_exist
+ * @param allow_glob
+ * @param priority
  * @return
  */
 static bool
-ucl_include_file (const unsigned char *data, size_t len,
-		struct ucl_parser *parser, bool check_signature, bool must_exist)
+ucl_include_file_single (const unsigned char *data, size_t len,
+		struct ucl_parser *parser, bool check_signature, bool must_exist,
+		unsigned priority)
 {
 	bool res;
 	struct ucl_chunk *chunk;
 	unsigned char *buf = NULL;
+	char *old_curfile;
 	size_t buflen;
 	char filebuf[PATH_MAX], realbuf[PATH_MAX];
 	int prev_state;
+	struct ucl_variable *cur_var, *tmp_var, *old_curdir = NULL,
+			*old_filename = NULL;
 
 	snprintf (filebuf, sizeof (filebuf), "%.*s", (int)len, data);
 	if (ucl_realpath (filebuf, realbuf) == NULL) {
@@ -794,6 +808,13 @@ ucl_include_file (const unsigned char *data, size_t len,
 		ucl_create_err (&parser->err, "cannot open file %s: %s",
 									filebuf,
 									strerror (errno));
+		return false;
+	}
+
+	if (parser->cur_file && strcmp (realbuf, parser->cur_file) == 0) {
+		/* We are likely including the file itself */
+		ucl_create_err (&parser->err, "trying to include the file %s from itself",
+				realbuf);
 		return false;
 	}
 
@@ -825,22 +846,67 @@ ucl_include_file (const unsigned char *data, size_t len,
 #endif
 	}
 
-	parser->cur_file = realbuf;
+	old_curfile = parser->cur_file;
+	parser->cur_file = strdup (realbuf);
+
+	/* Store old file vars */
+	DL_FOREACH_SAFE (parser->variables, cur_var, tmp_var) {
+		if (strcmp (cur_var->var, "CURDIR") == 0) {
+			old_curdir = cur_var;
+			DL_DELETE (parser->variables, cur_var);
+		}
+		else if (strcmp (cur_var->var, "FILENAME") == 0) {
+			old_filename = cur_var;
+			DL_DELETE (parser->variables, cur_var);
+		}
+	}
+
 	ucl_parser_set_filevars (parser, realbuf, false);
 
 	prev_state = parser->state;
 	parser->state = UCL_STATE_INIT;
 
-	res = ucl_parser_add_chunk (parser, buf, buflen);
-	if (res == true) {
-		/* Remove chunk from the stack */
-		chunk = parser->chunks;
-		if (chunk != NULL) {
-			parser->chunks = chunk->next;
-			UCL_FREE (sizeof (struct ucl_chunk), chunk);
+	res = ucl_parser_add_chunk_priority (parser, buf, buflen, priority);
+	if (!res && !must_exist) {
+		/* Free error */
+		utstring_free (parser->err);
+		parser->err = NULL;
+		parser->state = UCL_STATE_AFTER_VALUE;
+	}
+
+	/* Remove chunk from the stack */
+	chunk = parser->chunks;
+	if (chunk != NULL) {
+		parser->chunks = chunk->next;
+		UCL_FREE (sizeof (struct ucl_chunk), chunk);
+		parser->recursion --;
+	}
+
+	/* Restore old file vars */
+	parser->cur_file = old_curfile;
+	DL_FOREACH_SAFE (parser->variables, cur_var, tmp_var) {
+		if (strcmp (cur_var->var, "CURDIR") == 0 && old_curdir) {
+			DL_DELETE (parser->variables, cur_var);
+			free (cur_var->var);
+			free (cur_var->value);
+			UCL_FREE (sizeof (struct ucl_variable), cur_var);
+		}
+		else if (strcmp (cur_var->var, "FILENAME") == 0 && old_filename) {
+			DL_DELETE (parser->variables, cur_var);
+			free (cur_var->var);
+			free (cur_var->value);
+			UCL_FREE (sizeof (struct ucl_variable), cur_var);
 		}
 	}
-	parser->cur_file = NULL;
+	if (old_filename) {
+		DL_APPEND (parser->variables, old_filename);
+	}
+	if (old_curdir) {
+		DL_APPEND (parser->variables, old_curdir);
+	}
+	if (old_curfile) {
+		free (old_curfile);
+	}
 
 	parser->state = prev_state;
 
@@ -852,6 +918,138 @@ ucl_include_file (const unsigned char *data, size_t len,
 }
 
 /**
+ * Include a file to configuration
+ * @param data
+ * @param len
+ * @param parser
+ * @param err
+ * @return
+ */
+static bool
+ucl_include_file (const unsigned char *data, size_t len,
+		struct ucl_parser *parser, bool check_signature, bool must_exist,
+		bool allow_glob, unsigned priority)
+{
+	const unsigned char *p = data, *end = data + len;
+	bool need_glob = false;
+	int cnt = 0;
+	glob_t globbuf;
+	char glob_pattern[PATH_MAX];
+	size_t i;
+
+	if (!allow_glob) {
+		return ucl_include_file_single (data, len, parser, check_signature,
+			must_exist, priority);
+	}
+	else {
+		/* Check for special symbols in a filename */
+		while (p != end) {
+			if (*p == '*' || *p == '?') {
+				need_glob = true;
+				break;
+			}
+			p ++;
+		}
+		if (need_glob) {
+			memset (&globbuf, 0, sizeof (globbuf));
+			ucl_strlcpy (glob_pattern, (const char *)data, sizeof (glob_pattern));
+			if (glob (glob_pattern, 0, NULL, &globbuf) != 0) {
+				return (!must_exist || false);
+			}
+			for (i = 0; i < globbuf.gl_pathc; i ++) {
+				if (!ucl_include_file_single ((unsigned char *)globbuf.gl_pathv[i],
+						strlen (globbuf.gl_pathv[i]), parser, check_signature,
+						must_exist, priority)) {
+					globfree (&globbuf);
+					return false;
+				}
+				cnt ++;
+			}
+			globfree (&globbuf);
+
+			if (cnt == 0 && must_exist) {
+				ucl_create_err (&parser->err, "cannot match any files for pattern %s",
+					glob_pattern);
+				return false;
+			}
+		}
+		else {
+			return ucl_include_file_single (data, len, parser, check_signature,
+				must_exist, priority);
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Common function to handle .*include* macros
+ * @param data
+ * @param len
+ * @param args
+ * @param parser
+ * @param default_try
+ * @param default_sign
+ * @return
+ */
+static bool
+ucl_include_common (const unsigned char *data, size_t len,
+		const ucl_object_t *args, struct ucl_parser *parser,
+		bool default_try,
+		bool default_sign)
+{
+	bool try_load, allow_glob, allow_url, need_sign;
+	unsigned priority;
+	const ucl_object_t *param;
+	ucl_object_iter_t it = NULL;
+
+	/* Default values */
+	try_load = default_try;
+	allow_glob = false;
+	allow_url = true;
+	need_sign = default_sign;
+	priority = 0;
+
+	/* Process arguments */
+	if (args != NULL && args->type == UCL_OBJECT) {
+		while ((param = ucl_iterate_object (args, &it, true)) != NULL) {
+			if (param->type == UCL_BOOLEAN) {
+				if (strcmp (param->key, "try") == 0) {
+					try_load = ucl_object_toboolean (param);
+				}
+				else if (strcmp (param->key, "sign") == 0) {
+					need_sign = ucl_object_toboolean (param);
+				}
+				else if (strcmp (param->key, "glob") == 0) {
+					allow_glob =  ucl_object_toboolean (param);
+				}
+				else if (strcmp (param->key, "url") == 0) {
+					allow_url =  ucl_object_toboolean (param);
+				}
+			}
+			else if (param->type == UCL_INT) {
+				if (strcmp (param->key, "priority") == 0) {
+					priority = ucl_object_toint (param);
+				}
+			}
+		}
+	}
+
+	if (*data == '/' || *data == '.') {
+		/* Try to load a file */
+		return ucl_include_file (data, len, parser, need_sign, !try_load,
+				allow_glob, priority);
+	}
+	else if (allow_url) {
+		/* Globbing is not used for URL's */
+		return ucl_include_url (data, len, parser, need_sign, !try_load,
+				priority);
+	}
+
+	return false;
+}
+
+/**
  * Handle include macro
  * @param data include data
  * @param len length of data
@@ -860,16 +1058,12 @@ ucl_include_file (const unsigned char *data, size_t len,
  * @return
  */
 UCL_EXTERN bool
-ucl_include_handler (const unsigned char *data, size_t len, void* ud)
+ucl_include_handler (const unsigned char *data, size_t len,
+		const ucl_object_t *args, void* ud)
 {
 	struct ucl_parser *parser = ud;
 
-	if (*data == '/' || *data == '.') {
-		/* Try to load a file */
-		return ucl_include_file (data, len, parser, false, true);
-	}
-
-	return ucl_include_url (data, len, parser, false, true);
+	return ucl_include_common (data, len, args, parser, false, false);
 }
 
 /**
@@ -881,30 +1075,22 @@ ucl_include_handler (const unsigned char *data, size_t len, void* ud)
  * @return
  */
 UCL_EXTERN bool
-ucl_includes_handler (const unsigned char *data, size_t len, void* ud)
+ucl_includes_handler (const unsigned char *data, size_t len,
+		const ucl_object_t *args, void* ud)
 {
 	struct ucl_parser *parser = ud;
 
-	if (*data == '/' || *data == '.') {
-		/* Try to load a file */
-		return ucl_include_file (data, len, parser, true, true);
-	}
-
-	return ucl_include_url (data, len, parser, true, true);
+	return ucl_include_common (data, len, args, parser, false, true);
 }
 
 
 UCL_EXTERN bool
-ucl_try_include_handler (const unsigned char *data, size_t len, void* ud)
+ucl_try_include_handler (const unsigned char *data, size_t len,
+		const ucl_object_t *args, void* ud)
 {
 	struct ucl_parser *parser = ud;
 
-	if (*data == '/' || *data == '.') {
-		/* Try to load a file */
-		return ucl_include_file (data, len, parser, false, false);
-	}
-
-	return ucl_include_url (data, len, parser, false, false);
+	return ucl_include_common (data, len, args, parser, true, false);
 }
 
 UCL_EXTERN bool
@@ -956,14 +1142,16 @@ ucl_parser_add_file (struct ucl_parser *parser, const char *filename)
 		return false;
 	}
 
-	parser->cur_file = realbuf;
+	if (parser->cur_file) {
+		free (parser->cur_file);
+	}
+	parser->cur_file = strdup (realbuf);
 	ucl_parser_set_filevars (parser, realbuf, false);
 	ret = ucl_parser_add_chunk (parser, buf, len);
 
 	if (len > 0) {
 		ucl_munmap (buf, len);
 	}
-	parser->cur_file = NULL;
 
 	return ret;
 }
@@ -987,6 +1175,9 @@ ucl_parser_add_fd (struct ucl_parser *parser, int fd)
 		return false;
 	}
 
+	if (parser->cur_file) {
+		free (parser->cur_file);
+	}
 	parser->cur_file = NULL;
 	len = st.st_size;
 	ret = ucl_parser_add_chunk (parser, buf, len);
@@ -1356,6 +1547,40 @@ ucl_object_replace_key (ucl_object_t *top, ucl_object_t *elt,
 	return ucl_object_insert_key_common (top, elt, key, keylen, copy_key, false, true);
 }
 
+bool
+ucl_object_merge (ucl_object_t *top, ucl_object_t *elt, bool copy)
+{
+	ucl_object_t *cur = NULL, *cp = NULL, *found = NULL;
+	ucl_object_iter_t iter = NULL;
+
+	if (top == NULL || top->type != UCL_OBJECT || elt == NULL || elt->type != UCL_OBJECT) {
+		return false;
+	}
+
+	/* Mix two hashes */
+	while ((cur = (ucl_object_t*)ucl_hash_iterate (elt->value.ov, &iter))) {
+		if (copy) {
+			cp = ucl_object_copy (cur);
+		}
+		else {
+			cp = ucl_object_ref (cur);
+		}
+		found = __DECONST(ucl_object_t *, ucl_hash_search (top->value.ov, cp->key, cp->keylen));
+		if (found == NULL) {
+			/* The key does not exist */
+			top->value.ov = ucl_hash_insert_object (top->value.ov, cp);
+			top->len ++;
+		}
+		else {
+			/* The key already exists, replace it */
+			ucl_hash_replace (top->value.ov, found, cp);
+			ucl_object_unref (found);
+		}
+	}
+
+	return true;
+}
+
 const ucl_object_t *
 ucl_object_find_keyl (const ucl_object_t *obj, const char *key, size_t klen)
 {
@@ -1491,6 +1716,12 @@ ucl_object_new (void)
 ucl_object_t *
 ucl_object_typed_new (ucl_type_t type)
 {
+	return ucl_object_new_full (type, 0);
+}
+
+ucl_object_t *
+ucl_object_new_full (ucl_type_t type, unsigned priority)
+{
 	ucl_object_t *new;
 
 	if (type != UCL_USERDATA) {
@@ -1501,10 +1732,12 @@ ucl_object_typed_new (ucl_type_t type)
 			new->type = (type <= UCL_NULL ? type : UCL_NULL);
 			new->next = NULL;
 			new->prev = new;
+			ucl_object_set_priority (new, priority);
 		}
 	}
 	else {
 		new = ucl_object_new_userdata (NULL, NULL);
+		ucl_object_set_priority (new, priority);
 	}
 
 	return new;
@@ -1641,6 +1874,30 @@ ucl_array_prepend (ucl_object_t *top, ucl_object_t *elt)
 	return true;
 }
 
+bool
+ucl_array_merge (ucl_object_t *top, ucl_object_t *elt, bool copy)
+{
+	ucl_object_t *cur, *tmp, *cp;
+
+	if (elt == NULL || top == NULL || top->type != UCL_ARRAY || elt->type != UCL_ARRAY) {
+		return false;
+	}
+
+	DL_FOREACH_SAFE (elt->value.av, cur, tmp) {
+		if (copy) {
+			cp = ucl_object_copy (cur);
+		}
+		else {
+			cp = ucl_object_ref (cur);
+		}
+		if (cp != NULL) {
+			ucl_array_append (top, cp);
+		}
+	}
+
+	return true;
+}
+
 ucl_object_t *
 ucl_array_delete (ucl_object_t *top, ucl_object_t *elt)
 {
@@ -1718,6 +1975,28 @@ ucl_array_find_index (const ucl_object_t *top, unsigned int index)
 	while ((ret = ucl_iterate_object (top, &it, true)) != NULL) {
 		if (index == 0) {
 			return ret;
+		}
+		--index;
+	}
+
+	return NULL;
+}
+
+ucl_object_t *
+ucl_array_replace_index (ucl_object_t *top, ucl_object_t *elt,
+	unsigned int index)
+{
+	ucl_object_t *cur, *tmp;
+
+	if (top == NULL || top->type != UCL_ARRAY || elt == NULL ||
+			top->len == 0 || (index + 1) > top->len) {
+		return NULL;
+	}
+
+	DL_FOREACH_SAFE (top->value.av, cur, tmp) {
+		if (index == 0) {
+			DL_REPLACE_ELEM (top->value.av, cur, elt);
+			return cur;
 		}
 		--index;
 	}
@@ -2103,4 +2382,26 @@ ucl_object_array_sort (ucl_object_t *ar,
 	}
 
 	DL_SORT (ar->value.av, cmp);
+}
+
+#define PRIOBITS 4
+
+unsigned int
+ucl_object_get_priority (const ucl_object_t *obj)
+{
+	if (obj == NULL) {
+		return 0;
+	}
+
+	return (obj->flags >> ((sizeof (obj->flags) * NBBY) - PRIOBITS));
+}
+
+void
+ucl_object_set_priority (ucl_object_t *obj,
+		unsigned int priority)
+{
+	if (obj != NULL) {
+		priority &= (0x1 << PRIOBITS) - 1;
+		obj->flags |= priority << ((sizeof (obj->flags) * NBBY) - PRIOBITS);
+	}
 }
