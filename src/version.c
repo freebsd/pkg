@@ -455,9 +455,8 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 			continue;
 		
 		HASH_FIND_STR(indexhead, origin, entry);
-		if (entry != NULL)
-			print_version(pkg, "index", entry->version,
-			    limchar, opt);
+		print_version(pkg, "index",
+		    entry != NULL ? entry->version : NULL, limchar, opt);
 	}
 
 cleanup:
