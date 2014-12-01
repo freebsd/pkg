@@ -383,7 +383,6 @@ static int
 pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flags)
 {
 	struct pkg_file *f;
-	struct pkg_dir *d, *cd;
 	int ret = EPKG_OK;
 	bool handle_rc;
 
@@ -413,7 +412,6 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 			}
 		}
 
-		d = NULL;
 		pkg_delete_dirs(db, old, new);
 	}
 
