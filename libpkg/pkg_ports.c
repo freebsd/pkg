@@ -192,7 +192,7 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 	pre_unexec_append(p->pre_deinstall_buf, "cd %s\n", p->prefix);
 	post_unexec_append(p->post_deinstall_buf, "cd %s\n", p->prefix);
 
-	free(a);
+	free_file_attr(a);
 
 	return (EPKG_OK);
 }
@@ -203,7 +203,8 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	char *tmp;
 
 	if (p->pkg->name != NULL) {
-		free(a);
+		free_file_attr(a);
+
 		return (EPKG_OK);
 	}
 	tmp = strrchr(line, '-');
@@ -212,7 +213,8 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	p->pkg->name = strdup(line);
 	p->pkg->version = strdup(tmp);
 
-	free(a);
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
@@ -223,7 +225,8 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 		free(p->pkgdep);
 		p->pkgdep = strdup(line);
 	}
-	free(a);
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
