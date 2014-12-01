@@ -187,6 +187,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 				/* Dot pos is one character after the dot */
 				int len = dot_pos - pattern;
 
+				pkg_debug(1, "Jobs> Adding file: %s", pattern);
 				jp->is_file = true;
 				jp->path = pkg_path;
 				jp->pattern = malloc(len);
@@ -976,10 +977,9 @@ pkg_jobs_check_local_pkg(struct pkg_jobs *j, struct job_pattern *jp)
 }
 
 static int
-pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
-		bool *got_local)
+pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 {
-	int rc = EPKG_FATAL;
+	int rc = EPKG_OK;
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
 	struct pkg_job_request *req;
@@ -998,13 +998,12 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 			}
 		}
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
-		*got_local = false;
 	}
 	else {
 		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, jp->path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK)
+		if (pkg_open(&pkg, jp->path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
 			rc = EPKG_FATAL;
-		else if (pkg_validate(pkg) == EPKG_OK) {
+		} else if (pkg_validate(pkg) == EPKG_OK) {
 			if (j->type == PKG_JOBS_UPGRADE) {
 				jfp.match = MATCH_EXACT;
 				jfp.pattern = pkg->name;
@@ -1021,8 +1020,6 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 			HASH_FIND_STR(j->request_add, pkg->uid, req);
 			if (req != NULL)
 				req->item->jp = jp;
-
-			*got_local = true;
 		}
 		else {
 			pkg_emit_error("cannot load %s: invalid format",
@@ -1431,7 +1428,6 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char sqlbuf[256];
-	bool got_local;
 	size_t jcount = 0;
 	struct job_pattern *jp, *jtmp;
 	struct pkg_job_request *req, *rtmp;
@@ -1491,7 +1487,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
-				if (pkg_jobs_find_remote_pattern(j, jp, &got_local) == EPKG_FATAL) {
+				if (pkg_jobs_find_remote_pattern(j, jp) == EPKG_FATAL) {
 					pkg_emit_error("No packages available to %s matching '%s' "
 							"have been found in the "
 							"repositories",
