@@ -675,7 +675,7 @@ pkgdb_load_conflicts(sqlite3 *sqlite, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
-			"SELECT packages.origin "
+			"SELECT packages.name "
 			"FROM %Q.pkg_conflicts "
 			"LEFT JOIN %Q.packages ON "
 			"packages.id = pkg_conflicts.conflict_id "
