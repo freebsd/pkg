@@ -380,7 +380,7 @@ cleanup:
 }
 
 static int
-pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
+pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flags)
 {
 	struct pkg_file *f;
 	struct pkg_dir *d, *cd;
@@ -414,12 +414,7 @@ pkg_add_cleanup_old(struct pkg *old, struct pkg *new, int flags)
 		}
 
 		d = NULL;
-		while (pkg_dirs(old, &d) == EPKG_OK) {
-			HASH_FIND_STR(new->dirs, d->path, cd);
-
-			if (cd == NULL)
-				pkg_delete_dir(old, d);
-		}
+		pkg_delete_dirs(db, old, new);
 	}
 
 	return (ret);
@@ -512,7 +507,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (local != NULL) {
 		pkg_debug(1, "Cleaning up old version");
-		if (pkg_add_cleanup_old(local, pkg, flags) != EPKG_OK) {
+		if (pkg_add_cleanup_old(db, local, pkg, flags) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -535,7 +530,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	    != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
-		pkg_delete_dirs(db, pkg);
+		pkg_delete_dirs(db, pkg, NULL);
 		goto cleanup_reg;
 	}
 

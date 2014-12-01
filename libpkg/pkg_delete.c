@@ -94,7 +94,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 			return (ret);
 	}
 
-	ret = pkg_delete_dirs(db, pkg);
+	ret = pkg_delete_dirs(db, pkg, NULL);
 	if (ret != EPKG_OK)
 		return (ret);
 
@@ -328,12 +328,18 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 }
 
 int
-pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg)
+pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, struct pkg *new)
 {
-	struct pkg_dir		*dir = NULL;
+	struct pkg_dir	*dir = NULL;
+	struct pkg_dir	*d;
 
-	while (pkg_dirs(pkg, &dir) == EPKG_OK)
-		pkg_delete_dir(pkg, dir);
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		d = NULL;
+		if (new != NULL)
+			HASH_FIND_STR(new->dirs, dir->path, d);
+		if (d == NULL)
+			pkg_delete_dir(pkg, dir);
+	}
 
 	pkg_effective_rmdir(db, pkg);
 
