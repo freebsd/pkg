@@ -1526,20 +1526,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	int		 ret;
 	const char	*fpath;
 	bool		 manifest = false;
-	const void	*buf;
-	size_t		 size;
-	off_t		 offset = 0;
-	struct sbuf	*sbuf;
-	int		 i, r;
 	bool		 read_from_stdin = 0;
-
-	struct {
-		const char *name;
-		pkg_attr attr;
-	} files[] = {
-		{ "+MTREE_DIRS", PKG_MTREE },
-		{ NULL, 0 }
-	};
 
 	*a = archive_read_new();
 	archive_read_support_filter_all(*a);
@@ -1623,33 +1610,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 			if (flags & PKG_OPEN_MANIFEST_ONLY)
 				break;
-		}
-
-		for (i = 0; files[i].name != NULL; i++) {
-			if (strcmp(fpath, files[i].name) == 0) {
-				sbuf = sbuf_new_auto();
-				offset = 0;
-				for (;;) {
-					if ((r = archive_read_data_block(*a, &buf,
-							&size, &offset)) == 0) {
-						sbuf_bcat(sbuf, buf, size);
-					}
-					else {
-						if (r == ARCHIVE_FATAL) {
-							retcode = EPKG_FATAL;
-							if ((flags & PKG_OPEN_TRY) == 0)
-								pkg_emit_error("%s is not a valid package: "
-									"%s is corrupted: %s", path, fpath,
-										archive_error_string(*a));
-
-							goto cleanup;
-						}
-						else if (r == ARCHIVE_EOF)
-							break;
-					}
-				}
-				sbuf_delete(sbuf);
-			}
 		}
 	}
 
