@@ -335,75 +335,83 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", testpath);
+		pkg_emit_error("Unable to access file %s: %s", testpath,
+		    strerror(errno));
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (developer_mode) {
-			pkg_emit_developer_mode("Plist error, missing file: %s", line);
+			pkg_emit_developer_mode("Plist error, missing file: %s",
+			    line);
 			ret = EPKG_FATAL;
 		}
-	} else {
-		buf = NULL;
-		regular = false;
+		free_file_attr(a);
+		return (ret);
+	}
+	buf = NULL;
+	regular = false;
 
-		if (S_ISREG(st.st_mode)) {
-			if (st.st_nlink > 1)
-				regular = !check_for_hardlink(&(p->hardlinks), &st);
-			else
-				regular = true;
-
-		} else if (S_ISLNK(st.st_mode)) {
-			if (pkg_symlink_cksum(testpath, p->stage, sha256) == EPKG_OK) {
-				buf = sha256;
-				regular = false;
-			}
-			else
-				return (EPKG_FATAL);
-		}
-
-		if (regular) {
-			p->flatsize += st.st_size;
-			sha256_file(testpath, sha256);
+	if (S_ISREG(st.st_mode)) {
+		if (st.st_nlink > 1)
+			regular = !check_for_hardlink(&(p->hardlinks), &st);
+		else
+			regular = true;
+	} else if (S_ISLNK(st.st_mode)) {
+		if (pkg_symlink_cksum(testpath, p->stage, sha256) == EPKG_OK) {
 			buf = sha256;
-			if (is_config) {
-				size_t sz;
-				char *content;
-				file_to_buffer(testpath, &content, &sz);
-				pkg_addconfig_file(p->pkg, path, content);
-				free(content);
-			}
+			regular = false;
 		} else {
-			if (is_config) {
-				pkg_emit_error("Plist error, @config %s: not a regular file", line);
-				return (EPKG_FATAL);
-			}
-		}
-		if (S_ISDIR(st.st_mode) &&
-		    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
-			pkg_emit_error("Plist error, directory listed as a file: %s", line);
 			free_file_attr(a);
 			return (EPKG_FATAL);
 		}
-		if (S_ISDIR(st.st_mode)) {
-			if (a != NULL)
-				ret = pkg_adddir_attr(p->pkg, path,
-				    a->owner ? a->owner : p->uname,
-				    a->group ? a->group : p->gname,
-				    a->mode ? a->mode : p->perm,
-				    true, true);
-			else
-				ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-				    p->perm, true, true);
-		} else {
-			if (a != NULL)
-				ret = pkg_addfile_attr(p->pkg, path, buf,
-				    a->owner ? a->owner : p->uname,
-				    a->group ? a->group : p->gname,
-				    a->mode ? a->mode : p->perm, true);
-			else
-				ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
-				    p->gname, p->perm, true);
+	}
+
+	if (regular) {
+		p->flatsize += st.st_size;
+		sha256_file(testpath, sha256);
+		buf = sha256;
+		if (is_config) {
+			size_t sz;
+			char *content;
+			file_to_buffer(testpath, &content, &sz);
+			pkg_addconfig_file(p->pkg, path, content);
+			free(content);
 		}
+	} else {
+		if (is_config) {
+			pkg_emit_error("Plist error, @config %s: not a regular "
+			    "file", line);
+			free_file_attr(a);
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (S_ISDIR(st.st_mode) &&
+	    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
+		pkg_emit_error("Plist error, directory listed as a file: %s",
+		    line);
+		free_file_attr(a);
+		return (EPKG_FATAL);
+	}
+
+	if (S_ISDIR(st.st_mode)) {
+		if (a != NULL)
+			ret = pkg_adddir_attr(p->pkg, path,
+			    a->owner ? a->owner : p->uname,
+			    a->group ? a->group : p->gname,
+			    a->mode ? a->mode : p->perm,
+			    true, true);
+		else
+			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
+			    p->perm, true, true);
+	} else {
+		if (a != NULL)
+			ret = pkg_addfile_attr(p->pkg, path, buf,
+			    a->owner ? a->owner : p->uname,
+			    a->group ? a->group : p->gname,
+			    a->mode ? a->mode : p->perm, true);
+		else
+			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
+			    p->gname, p->perm, true);
 	}
 
 	free_file_attr(a);
