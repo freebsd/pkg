@@ -7,3 +7,4 @@ atf_test_program{name='version.sh'}
 atf_test_program{name='search.sh'}
 atf_test_program{name='annotate.sh'}
 atf_test_program{name='register.sh'}
+atf_test_program{name='packagesplit.sh'}
