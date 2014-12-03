@@ -353,11 +353,11 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		/* Now traverse the file directories, adding to the archive */
 		packing_append_tree(pkg_archive, md_dir, NULL);
 		packing_append_tree(pkg_archive, rootdir, "/");
+		ret = EPKG_OK;
 	} else {
-		pkg_create_from_dir(pkg, rootdir, pkg_archive);
+		ret = pkg_create_from_dir(pkg, rootdir, pkg_archive);
 	}
 
-	ret = EPKG_OK;
 
 cleanup:
 	if (mfd != -1)
