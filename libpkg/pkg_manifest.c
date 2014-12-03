@@ -717,7 +717,11 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 			if (dp != NULL) {
 				pkg_debug(3, "Manifest: key is valid");
 				dp->parse_data(pkg, cur, selected_key->type);
+			} else {
+				pkg_emit_error("Skipping malformed key '%s'", key);
 			}
+		} else {
+			pkg_emit_error("Skipping unknown key '%s'", key);
 		}
 	}
 
