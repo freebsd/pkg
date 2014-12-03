@@ -646,32 +646,39 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 	ucl_object_unref(obj);
 }
 
+static int
+nodots(const struct dirent *dp)
+{
+	return (dp->d_name[0] != '.');
+}
+
 static void
 load_repo_files(const char *repodir, pkg_init_flags flags)
 {
-	struct dirent *ent;
-	DIR *d;
+	struct dirent **ent;
 	char *p;
 	size_t n;
+	int nents, i;
 	char path[MAXPATHLEN];
 
-	if ((d = opendir(repodir)) == NULL)
-		return;
-
 	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
-	while ((ent = readdir(d))) {
-		if ((n = strlen(ent->d_name)) <= 5)
+
+	nents = scandir(repodir, &ent, nodots, alphasort);
+	for (i = 0; i < nents; i++) {
+		if ((n = strlen(ent[i]->d_name)) <= 5)
 			continue;
-		p = &ent->d_name[n - 5];
+		p = &ent[i]->d_name[n - 5];
 		if (strcmp(p, ".conf") == 0) {
 			snprintf(path, sizeof(path), "%s%s%s",
 			    repodir,
 			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
-			    ent->d_name);
+			    ent[i]->d_name);
 			load_repo_file(path, flags);
 		}
+		free(ent[i]);
 	}
-	closedir(d);
+	if (nents >= 0)
+		free(ent);
 }
 
 static void

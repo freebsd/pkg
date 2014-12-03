@@ -84,10 +84,31 @@ EOF
 		-s exit:0 test -f test-1.txz
 }
 
+atf_test_case pkg_repo_load_order
+pkg_repo_load_order_head()
+{
+	atf_set "descr" "Testing the order the repository configuration files are loaded"
+}
+
+pkg_repo_load_order_body()
+{
+	echo "03_repo: { url: file:///03_repo }" > plop.conf
+	echo "02_repo: { url: file:///02_repo }" > 02.conf
+	echo "01_repo: { url: file:///01_repo }" > 01.conf
+
+	out=$(pkg -o REPOS_DIR=. -vv | tail -13)
+	atf_check \
+		-o match:'.*01_repo\:.*02_repo\:.*03_repo\:.*' \
+		-e empty \
+		-s exit:0 \
+		echo $out
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
 	atf_add_test_case pkg_no_database
 	atf_add_test_case pkg_config_defaults
 	atf_add_test_case pkg_create_manifest_bad_syntax
+	atf_add_test_case pkg_repo_load_order
 }
