@@ -645,6 +645,10 @@ static struct db_upgrades {
 	},
 	{29,
 	"DROP INDEX packages_unique;"
+	"UPDATE packages SET name= name || \"~pkg-renamed~\" || hex(randomblob(2)) "
+		"WHERE name IN ("
+			"SELECT name FROM packages GROUP BY name HAVING count(name) > 1 "
+		");"
 	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
 	},
 	{30,
