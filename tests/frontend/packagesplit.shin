@@ -137,9 +137,9 @@ local: {
 }
 EOF
 	atf_check \
-		-o empty \
+		-o ignore \
 		-e ignore \
-		-s ignore \
+		-s exit:0 \
 		pkg -o REPOS_DIR="$tmpdir" -o PKG_CACHEDIR="$tmpdir" upgrade -y
 }
 
