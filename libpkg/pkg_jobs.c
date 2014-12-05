@@ -1534,6 +1534,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct job_pattern *jp, *jtmp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
+	struct pkg_job_request *req, *rtmp;
 	unsigned flag = PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS;
 
 	if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
@@ -1561,6 +1562,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
 		}
+		HASH_ITER(hh, j->request_add, req, rtmp)
+			pkg_jobs_universe_process(j->universe, req->item->pkg);
 	}
 
 	j->solved ++;
