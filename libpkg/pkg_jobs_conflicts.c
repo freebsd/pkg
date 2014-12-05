@@ -444,6 +444,9 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 		}
 		/* Check for local conflict in db */
 		p = pkg_conflicts_check_local_path(fcur->path, it->pkg->uid, j);
+		pkg_debug(4, "integrity: check path %s of package %s", fcur->path,
+			it->pkg->uid);
+
 		if (p != NULL) {
 			pkg_jobs_universe_process_item(j->universe, p, &cun);
 			assert(cun != NULL);
@@ -506,8 +509,16 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	 */
 	cur = it;
 	do {
-		if (cur != lp)
+		if (cur != lp) {
+			if (pkgdb_ensure_loaded(j->db, cur->pkg, PKG_LOAD_FILES|PKG_LOAD_DIRS)
+							!= EPKG_OK) {
+				pkg_emit_error("cannot load files from %s to check integrity",
+					cur->pkg->name);
+				return (EPKG_FATAL);
+			}
+
 			pkg_conflicts_check_chain_conflict(cur, lp, j);
+		}
 
 		cur = cur->prev;
 	} while (cur != it);
