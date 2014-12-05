@@ -186,11 +186,12 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
+	/*
 	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0) {
 		free(pkg->repopath);
 		pkg->repopath = strdup(url + 7);
 		return (EPKG_OK);
-	}
+	}*/
 
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;

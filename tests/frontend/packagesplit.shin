@@ -137,10 +137,10 @@ local: {
 }
 EOF
 	atf_check \
-		-o ignore \
-		-e empty \
-		-s exit:0 \
-		pkg -o REPOS_DIR="$tmpdir" upgrade -y
+		-o empty \
+		-e ignore \
+		-s ignore \
+		pkg -o REPOS_DIR="$tmpdir" -o PKG_CACHEDIR="$tmpdir" upgrade -y
 }
 
 atf_init_test_cases() {
