@@ -1927,7 +1927,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	pkg_plugin_hook_t pre, post;
 	bool has_conflicts = false;
 
-	printf("plop\n");
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
 		return (EPKG_FATAL);
