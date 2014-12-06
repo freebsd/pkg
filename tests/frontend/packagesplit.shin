@@ -12,6 +12,7 @@ package_split_body() {
 	tmpdir=`pwd`
 	touch file1
 	touch file2
+
 	cat << EOF >> pkg1.ucl
 name: test
 origin: test
@@ -25,8 +26,8 @@ desc: <<EOD
 Yet another test
 EOD
 files: {
-    ${tmpdir}/file1: "1a27340cd0ef9fbaf340d81b72419a071e38cda2ae2bc75ec4d7ae04362d0f43",
-    ${tmpdir}/file2: "1a27340cd0ef9fbaf340d81b72419a071e38cda2ae2bc75ec4d7ae04362d0f43",
+    ${tmpdir}/file1: "",
+    ${tmpdir}/file2: "",
 }
 EOF
 
@@ -113,7 +114,7 @@ EOF
 			-o match:".*Installing.*\.\.\.$" \
 			-e empty \
 			-s exit:0 \
-			pkg register -t -M ${p}.ucl
+			pkg register -M ${p}.ucl
 	done
 
 	for p in dep1 pkg2 pkg3 pkg4; do
@@ -138,9 +139,11 @@ local: {
 EOF
 	atf_check \
 		-o ignore \
-		-e ignore \
+		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR="$tmpdir" -o PKG_CACHEDIR="$tmpdir" upgrade -y
+
+	test -f file1 || atf_fail "file1 is not present"
 }
 
 atf_init_test_cases() {

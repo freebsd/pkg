@@ -617,6 +617,8 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 
 			ts->type = PKG_SOLVED_UPGRADE_REMOVE;
 			ts->items[0] = solved->items[1];
+			solved->items[1] = NULL;
+			solved->type = PKG_SOLVED_INSTALL;
 			DL_APPEND(j->jobs, ts);
 			j->count ++;
 			solved->already_deleted = true;
