@@ -765,16 +765,18 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 {
 	struct pkg_job_universe_item *nit;
 	struct pkg_job_request_item *nrit = NULL;
-	struct pkg *lp;
+	struct pkg *lp = NULL;
 
 	if (rp->digest == NULL) {
 		if (pkg_checksum_calculate(rp, j->db) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 	}
-	lp = pkg_jobs_universe_get_local(j->universe, rp->uid, 0);
-	if (lp && lp->locked)
-		return (EPKG_LOCKED);
+	if (j->type != PKG_JOBS_FETCH) {
+		lp = pkg_jobs_universe_get_local(j->universe, rp->uid, 0);
+		if (lp && lp->locked)
+			return (EPKG_LOCKED);
+	}
 
 	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
 		j->flags & PKG_FLAG_FORCE);
@@ -1925,6 +1927,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	pkg_plugin_hook_t pre, post;
 	bool has_conflicts = false;
 
+	printf("plop\n");
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
 		return (EPKG_FATAL);
