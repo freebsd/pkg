@@ -1723,7 +1723,7 @@ again:
 		}
 	}
 
-	if (j->solved == 1 && !j->need_fetch) {
+	if (j->solved == 1 && !j->need_fetch && j->type != PKG_JOBS_FETCH) {
 		int rc;
 		bool has_conflicts = false;
 		do {
