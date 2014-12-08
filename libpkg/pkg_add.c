@@ -142,6 +142,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
 	struct stat st;
+	const struct stat *aest;
 	bool renamed = false;
 	const struct pkg_file *rf;
 	struct pkg_config_file *rcf;
@@ -172,7 +173,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		);
 		strlcpy(rpath, pathname, sizeof(rpath));
 
-		if (lstat(rpath, &st) != -1 && !S_ISDIR(st.st_mode)) {
+		if (lstat(rpath, &st) != -1) {
 			/* check is the old version is the same as the new version */
 			if (S_ISREG(st.st_mode) && st.st_size == archive_entry_size(ae)) {
 				char localsum[SHA256_DIGEST_LENGTH * 2 + 1];
@@ -188,9 +189,24 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			/*
 			 * We have an existing file on the path, so handle it
 			 */
-			pkg_debug(2, "Old version found, renaming");
-			pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
-			renamed = true;
+			aest = archive_entry_stat(ae);
+			if (!S_ISDIR(aest->st_mode)) {
+				pkg_debug(2, "Old version found, renaming");
+				pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
+				renamed = true;
+			}
+
+			if (!S_ISDIR(st.st_mode) && S_ISDIR(aest->st_mode)) {
+				if (S_ISLNK(st.st_mode)) {
+					if (stat(rpath, &st) == -1) {
+						pkg_emit_error("Dead symlink %s", rpath);
+					} else {
+						pkg_debug(2, "Directory is a symlink, use it");
+						pkg_emit_progress_tick(cur_file++, nfiles);
+						continue;
+					}
+				}
+			}
 		}
 
 		archive_entry_set_pathname(ae, rpath);
