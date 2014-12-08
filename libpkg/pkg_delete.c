@@ -158,8 +158,13 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	char *tmp;
 	int64_t cnt;
 	char fullpath[MAXPATHLEN];
+	size_t len;
 
-	snprintf(fullpath, sizeof(fullpath), "/%s", dir);
+	len = snprintf(fullpath, sizeof(fullpath), "/%s", dir);
+	while (fullpath[len -1] == '/') {
+		fullpath[len - 1] = '\0';
+		len--;
+	}
 	if (pkgdb_is_dir_used(db, pkg, fullpath, &cnt) != EPKG_OK)
 		return;
 
@@ -176,7 +181,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (strcmp(prefix_r, dir) == 0)
 		return;
 
-	pkg_debug(1, "removing directory %s", dir);
+	pkg_debug(1, "removing directory %s", fullpath);
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1 &&
 	    errno != ENOTEMPTY && errno != EBUSY) {
 		pkg_emit_errno("unlinkat", dir);
@@ -207,7 +212,7 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 	char prefix_r[MAXPATHLEN];
 	size_t i;
 
-	snprintf(prefix_r, sizeof(prefix_r), "%s/", pkg->prefix + 1);
+	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix + 1);
 	for (i = 0; i < pkg->dir_to_del_len; i++)
 		rmdir_p(db, pkg, pkg->dir_to_del[i], prefix_r);
 }

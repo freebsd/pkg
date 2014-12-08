@@ -2994,7 +2994,7 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 	const char sql[] = ""
 		"SELECT count(package_id) FROM pkg_directories, directories "
 		"WHERE directory_id = directories.id AND directories.path = ?1 "
-		"AND package_id != (SELECT id from PACKAGES where name=?2);";
+		"AND package_id != ?2;";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite, sql);
@@ -3002,7 +3002,7 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 	}
 
 	sqlite3_bind_text(stmt, 1, dir, -1, SQLITE_TRANSIENT);
-	sqlite3_bind_text(stmt, 2, p->name, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(stmt, 2, p->id);
 
 	ret = sqlite3_step(stmt);
 
