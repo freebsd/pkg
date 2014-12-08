@@ -47,6 +47,39 @@ usage_set(void)
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
+static bool
+check_change_values(const char *opt, char **oldv, char **newv, char guard)
+{
+	const char *semicolon;
+
+	if (opt == NULL)
+		return (false);
+
+	semicolon = strrchr(opt, ':');
+
+	if (semicolon == NULL)
+		return (false);
+
+	*oldv = malloc(semicolon - opt);
+	strlcpy(*oldv, opt, semicolon - opt);
+	*newv = strdup(semicolon + 1);
+
+	if (guard != '\0') {
+		/* Check guard symbol in both new and old values */
+		if (strrchr(*oldv, guard) == NULL ||
+			strrchr(*newv, guard) == NULL) {
+			free(*oldv);
+			free(*newv);
+			*oldv = NULL;
+			*newv = NULL;
+
+			return (false);
+		}
+	}
+
+	return (true);
+}
+
 int
 exec_set(int argc, char **argv)
 {
