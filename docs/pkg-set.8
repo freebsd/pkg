@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd November 18, 2014
+.Dd December 8, 2014
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -25,6 +25,7 @@
 .Nm
 .Op Fl a
 .Op Fl A Op Ar 01
+.Op Fl n Ar oldname:newname
 .Op Fl o Ar oldorigin:neworigin
 .Op Fl y
 .Op Fl Cgix
@@ -33,6 +34,7 @@
 .Nm
 .Op Cm --all
 .Op Cm --automatic Op Ar 01
+.Op Cm --change-name Ar oldname:newname
 .Op Cm --change-origin Ar oldorigin:neworigin
 .Op Cm --yes
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
