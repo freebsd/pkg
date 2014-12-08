@@ -2387,11 +2387,11 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 	sqlite3_stmt	*stmt;
 	int64_t		 flatsize;
 	bool automatic, locked;
-	char		*oldorigin;
-	char		*neworigin;
+	char		*oldval;
+	char		*newval;
 
 	/* Ensure there is an entry for each of the pkg_set_attr enum values */
-	const char *sql[PKG_SET_ORIGIN + 1] = {
+	const char *sql[PKG_SET_MAX] = {
 		[PKG_SET_FLATSIZE]  =
 		    "UPDATE packages SET flatsize = ?1 WHERE id = ?2",
 		[PKG_SET_AUTOMATIC] =
@@ -2405,6 +2405,12 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		    "WHERE package_id = ?2 AND origin = ?3",
 		[PKG_SET_ORIGIN]    =
 		    "UPDATE packages SET origin=?1 WHERE id=?2",
+		[PKG_SET_DEPNAME] =
+		    "UPDATE deps SET name = ?1, "
+		    "version=(SELECT version FROM packages WHERE name = ?1) "
+		    "WHERE package_id = ?2 AND name = ?3",
+		[PKG_SET_NAME]    =
+		    "UPDATE packages SET name=?1 WHERE id=?2",
 	};
 
 	while ((attr = va_arg(ap, int)) > 0) {
@@ -2438,15 +2444,17 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
 		case PKG_SET_DEPORIGIN:
-			oldorigin = va_arg(ap, char *);
-			neworigin = va_arg(ap, char *);
-			sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
+		case PKG_SET_DEPNAME:
+			oldval = va_arg(ap, char *);
+			newval = va_arg(ap, char *);
+			sqlite3_bind_text(stmt, 1, newval, -1, SQLITE_STATIC);
 			sqlite3_bind_int64(stmt, 2, id);
-			sqlite3_bind_text(stmt, 3, oldorigin, -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt, 3, oldval, -1, SQLITE_STATIC);
 			break;
 		case PKG_SET_ORIGIN:
-			neworigin = va_arg(ap, char *);
-			sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
+		case PKG_SET_NAME:
+			newval = va_arg(ap, char *);
+			sqlite3_bind_text(stmt, 1, newval, -1, SQLITE_STATIC);
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
 		}
