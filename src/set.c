@@ -218,6 +218,12 @@ exec_set(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
+	if (pkgdb_transaction_begin(db, NULL) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot start transaction for update");
+		return (EX_TEMPFAIL);
+	}
+
  
 	if (oldvalue != NULL) {
 		match = MATCH_ALL;
@@ -301,6 +307,13 @@ exec_set(int argc, char **argv)
 cleanup:
 	free(oldvalue);
 	pkg_free(pkg);
+
+	if (retcode == 0) {
+		pkgdb_transaction_commit(db, NULL);
+	}
+	else {
+		pkgdb_transaction_rollback(db, NULL);
+	}
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
