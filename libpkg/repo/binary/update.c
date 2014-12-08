@@ -486,7 +486,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sql_exec(sqlite, "PRAGMA cache_size = 10000;");
 	sql_exec(sqlite, "PRAGMA foreign_keys = OFF;");
 
-	rc = pkgdb_transaction_begin(sqlite, "REPO");
+	rc = pkgdb_transaction_begin_sqlite(sqlite, "REPO");
 	if (rc != EPKG_OK)
 		goto cleanup;
 
@@ -528,9 +528,9 @@ cleanup:
 
 	if (in_trans) {
 		if (rc != EPKG_OK)
-			pkgdb_transaction_rollback(sqlite, "REPO");
+			pkgdb_transaction_rollback_sqlite(sqlite, "REPO");
 
-		if (pkgdb_transaction_commit(sqlite, "REPO") != EPKG_OK)
+		if (pkgdb_transaction_commit_sqlite(sqlite, "REPO") != EPKG_OK)
 			rc = EPKG_FATAL;
 	}
 

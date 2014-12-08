@@ -835,6 +835,16 @@ int pkgdb_downgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type,
 int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
 
 /**
+ * Transaction/savepoint handling.
+ * @param savepoint -- if NULL or an empty string, use BEGIN, ROLLBACK, COMMIT
+ * otherwise use SAVEPOINT, ROLLBACK TO, RELEASE.
+ * @return an error code.
+ */
+int pkgdb_transaction_begin(struct pkgdb *db, const char *savepoint);
+int pkgdb_transaction_commit(struct pkgdb *db, const char *savepoint);
+int pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint);
+
+/**
  * Close and free the struct pkgdb.
  */
 void pkgdb_close(struct pkgdb *db);

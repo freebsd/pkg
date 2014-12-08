@@ -80,9 +80,9 @@ struct pkgdb_it {
  * otherwise use SAVEPOINT, ROLLBACK TO, RELEASE.
  * @return an error code.
  */
-int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
-int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
-int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_commit_sqlite(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_rollback_sqlite(sqlite3 *sqlite, const char *savepoint);
 
 struct pkgdb_it *pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s,
 	int type, short flags);

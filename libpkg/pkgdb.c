@@ -265,22 +265,22 @@ pkgdb_upgrade(struct pkgdb *db)
 			return (EPKG_FATAL);
 		}
 
-		if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
+		if (pkgdb_transaction_begin_sqlite(db->sqlite, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 
 		if (sql_exec(db->sqlite, sql_upgrade) != EPKG_OK) {
-			pkgdb_transaction_rollback(db->sqlite, NULL);
+			pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 			return (EPKG_FATAL);
 		}
 
 		sql_str = "PRAGMA user_version = %" PRId64 ";";
 		ret = sql_exec(db->sqlite, sql_str, db_version);
 		if (ret != EPKG_OK) {
-			pkgdb_transaction_rollback(db->sqlite, NULL);
+			pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 			return (EPKG_FATAL);
 		}
 
-		if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
+		if (pkgdb_transaction_commit_sqlite(db->sqlite, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -1057,7 +1057,7 @@ pkgdb_close(struct pkgdb *db)
 	    sqlite3_sleep(BUSY_SLEEP))
 
 int
-pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
+pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
 	sqlite3_stmt	*stmt;
@@ -1096,7 +1096,7 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 }
 
 int
-pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
+pkgdb_transaction_commit_sqlite(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
 	sqlite3_stmt	*stmt;
@@ -1136,7 +1136,7 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 }
 
 int
-pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
+pkgdb_transaction_rollback_sqlite(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
 	sqlite3_stmt	*stmt;
@@ -1174,7 +1174,24 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
 }
 
-
+/*
+ * Public API
+ */
+int
+pkgdb_transaction_begin(struct pkgdb *db, const char *savepoint)
+{
+	return (pkgdb_transaction_begin_sqlite(db->sqlite, savepoint));
+}
+int
+pkgdb_transaction_commit(struct pkgdb *db, const char *savepoint)
+{
+	return (pkgdb_transaction_commit_sqlite(db->sqlite, savepoint));
+}
+int
+pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint)
+{
+	return (pkgdb_transaction_rollback_sqlite(db->sqlite, savepoint));
+}
 
 
 /* By default, MATCH_EXACT and MATCH_REGEX are case sensitive.  This
@@ -1566,7 +1583,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 
 	s = db->sqlite;
 
-	if (!complete && pkgdb_transaction_begin(s, NULL) != EPKG_OK)
+	if (!complete && pkgdb_transaction_begin_sqlite(s, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	/* Prefer new ABI over old one */
@@ -2032,7 +2049,7 @@ pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	    run_prstmt(ANNOTATE_ADD1, pkg->uid, tag, value)
 	    != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite, SQL(ANNOTATE_ADD1));
-		pkgdb_transaction_rollback(db->sqlite, NULL);
+		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 		return (EPKG_FATAL);
 	}
 
@@ -2069,7 +2086,7 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	assert(tag != NULL);
 	assert(value != NULL);
 
-	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
+	if (pkgdb_transaction_begin_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (run_prstmt(ANNOTATE_DEL1, pkg->uid, tag) != SQLITE_DONE
@@ -2083,7 +2100,7 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	    ||
 	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite, SQL(ANNOTATE_DEL2));
-		pkgdb_transaction_rollback(db->sqlite, NULL);
+		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 
 		return (EPKG_FATAL);
 	}
@@ -2092,7 +2109,7 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 
 	rows_changed = sqlite3_changes(db->sqlite);
 
-	if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
+	if (pkgdb_transaction_commit_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	return (rows_changed == 1 ? EPKG_OK : EPKG_WARN);
@@ -2107,7 +2124,7 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
+	if (pkgdb_transaction_begin_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	result = (run_prstmt(ANNOTATE_DEL1, pkg->uid, tag)
@@ -2119,11 +2136,11 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	    ||
 	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite, SQL(ANNOTATE_DEL2));
-		pkgdb_transaction_rollback(db->sqlite, NULL);
+		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 		return (EPKG_FATAL);
 	}
 
-	if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
+	if (pkgdb_transaction_commit_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	return (rows_changed == 1 ? EPKG_OK : EPKG_WARN);
@@ -2138,9 +2155,9 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 	assert(db != NULL);
 
 	if (retcode == EPKG_OK) 
-		ret = pkgdb_transaction_commit(db->sqlite, NULL);
+		ret = pkgdb_transaction_commit_sqlite(db->sqlite, NULL);
 	else
-		ret = pkgdb_transaction_rollback(db->sqlite, NULL);
+		ret = pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 
 	return (ret);
 }

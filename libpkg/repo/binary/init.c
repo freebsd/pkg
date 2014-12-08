@@ -132,7 +132,7 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 	}
 
 	/* begin transaction */
-	if ((ret = pkgdb_transaction_begin(sqlite, "SCHEMA")) == EPKG_OK)
+	if ((ret = pkgdb_transaction_begin_sqlite(sqlite, "SCHEMA")) == EPKG_OK)
 		in_trans = true;
 
 	/* apply change */
@@ -155,9 +155,9 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 	/* commit or rollback */
 	if (in_trans) {
 		if (ret != EPKG_OK)
-			pkgdb_transaction_rollback(sqlite, "SCHEMA");
+			pkgdb_transaction_rollback_sqlite(sqlite, "SCHEMA");
 
-		if (pkgdb_transaction_commit(sqlite, "SCHEMA") != EPKG_OK)
+		if (pkgdb_transaction_commit_sqlite(sqlite, "SCHEMA") != EPKG_OK)
 			ret = EPKG_FATAL;
 	}
 
@@ -505,7 +505,7 @@ pkg_repo_binary_close(struct pkg_repo *repo, bool commit)
 		return (retcode);
 
 	if (commit) {
-		if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
+		if (pkgdb_transaction_commit_sqlite(sqlite, NULL) != SQLITE_OK)
 			retcode = EPKG_FATAL;
 	}
 

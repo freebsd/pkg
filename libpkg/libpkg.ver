@@ -191,6 +191,9 @@ global:
 	pkgdb_set2;
 	pkgdb_set_case_sensitivity;
 	pkgdb_stats;
+	pkgdb_transaction_begin;
+	pkgdb_transaction_commit;
+	pkgdb_transaction_rollback;
 	pkgdb_upgrade_lock;
 	ports_parse_plist;
 local:
