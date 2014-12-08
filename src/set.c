@@ -62,8 +62,8 @@ check_change_values(const char *opt, char **oldv, char **newv, char guard)
 	if (semicolon == NULL)
 		return (false);
 
-	*oldv = malloc(semicolon - opt);
-	strlcpy(*oldv, opt, semicolon - opt);
+	*oldv = malloc(semicolon - opt + 1);
+	strlcpy(*oldv, opt, semicolon - opt + 1);
 	*newv = strdup(semicolon + 1);
 
 	if (guard != '\0') {
@@ -238,10 +238,10 @@ exec_set(int argc, char **argv)
 		rc = yes;
 		if (!yes) {
 			if (pkg != NULL)
-				rc = query_yesno(false, "Change %s from %S to %S for %n-%v? [y/N]: ",
+				rc = query_yesno(false, "Change %S from %S to %S for %n-%v? [y/N]: ",
 						changed, oldvalue, newvalue, pkg, pkg);
 			else
-				rc = query_yesno(false, "Change %s from %S to %S for all dependencies? "
+				rc = query_yesno(false, "Change %S from %S to %S for all dependencies? "
 						"[y/N]: ", changed, oldvalue, newvalue);
 		}
 		if (pkg != NULL && rc) {
@@ -280,7 +280,7 @@ exec_set(int argc, char **argv)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
 				rc = saved_rc;
 			}
-			if ((sets & ORIGIN) == ORIGIN) {
+			if (sets & (ORIGIN|NAME)) {
 				struct pkg_dep *d = NULL;
 				while (pkg_deps(pkg, &d) == EPKG_OK) {
 					/*
