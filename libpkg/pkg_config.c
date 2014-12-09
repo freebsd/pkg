@@ -451,6 +451,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	const char *key;
 	const char *type = NULL;
 	int use_ipvx = 0;
+	int priority = 0;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
@@ -545,7 +546,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 					key, rname);
 				return;
 			}
-			r->priority = ucl_object_toint(cur);
+			priority = ucl_object_toint(cur);
 		}
 	}
 
@@ -580,6 +581,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	}
 
 	r->enable = enable;
+	r->priority = priority;
 
 	if (mirror_type != NULL) {
 		if (strcasecmp(mirror_type, "srv") == 0)
