@@ -100,7 +100,7 @@ exec_set(int argc, char **argv)
 	char		*oldvalue = NULL;
 	unsigned int	 loads = PKG_LOAD_BASIC;
 	unsigned int	 sets = 0;
-	unsigned int	 field, depfield;
+	unsigned int	 field = 0, depfield = 0;
 	int		 retcode;
 
 	struct option longopts[] = {
