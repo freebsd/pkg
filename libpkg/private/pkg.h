@@ -385,6 +385,8 @@ struct pkg_repo {
 	bool enable;
 	UT_hash_handle hh;
 
+	unsigned int priority;
+
 	pkg_repo_flags flags;
 
 	/* Opaque repository data */
