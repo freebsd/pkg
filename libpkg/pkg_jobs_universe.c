@@ -989,7 +989,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * if local != NULL, then we have unspecified upgrade path
 			 */
 
-			if ((local == NULL && vercnt > 1) || (vercnt >= 2)) {
+			if ((local == NULL && vercnt > 1) || (vercnt > 2)) {
 				/* Select the most recent or one of packages */
 				struct pkg_job_universe_item *selected;
 
