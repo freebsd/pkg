@@ -532,6 +532,14 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			use_ipvx = ucl_object_toint(cur);
 			if (use_ipvx != 4 && use_ipvx != 6)
 				use_ipvx = 0;
+		} else if (strcasecmp(key, "priority") == 0) {
+			if (cur->type != UCL_INT) {
+				pkg_emit_error("Expecting a integer for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			r->priority = ucl_object_toint(cur);
 		}
 	}
 
