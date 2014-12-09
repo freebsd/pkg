@@ -800,12 +800,165 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 }
 
+static struct pkg_job_universe_item *
+pkg_jobs_universe_select_max_ver(struct pkg_job_universe_item *chain)
+{
+	struct pkg_job_universe_item *cur, *res = NULL;
+	bool found = false;
+	int r;
+
+	LL_FOREACH(chain, cur) {
+		if (cur->pkg->type == PKG_INSTALLED)
+			continue;
+
+		if (res != NULL) {
+			r = pkg_version_change_between(cur->pkg, res->pkg);
+			if (r == PKG_UPGRADE) {
+				res = cur;
+				found = true;
+			}
+			else if (r != PKG_REINSTALL) {
+				/*
+				 * Actually the selected package is newer than some other
+				 * packages in the chain
+				 */
+				found = true;
+			}
+		}
+		else {
+			res = cur;
+		}
+	}
+
+	return (found ? res : NULL);
+}
+
+static struct pkg_job_universe_item *
+pkg_jobs_universe_select_max_prio(struct pkg_job_universe_item *chain)
+{
+	struct pkg_repo *repo;
+	unsigned int max_pri = 0;
+	struct pkg_job_universe_item *cur, *res = NULL;
+
+	LL_FOREACH(chain, cur) {
+		if (cur->pkg->type == PKG_INSTALLED)
+			continue;
+
+		if (cur->pkg->reponame) {
+			repo = pkg_repo_find(cur->pkg->reponame);
+			if (repo && repo->priority > max_pri) {
+				res = cur;
+				max_pri = repo->priority;
+			}
+		}
+	}
+
+	return (res);
+}
+
+static struct pkg_job_universe_item *
+pkg_jobs_universe_select_same_repo(struct pkg_job_universe_item *chain,
+	struct pkg_job_universe_item *local)
+{
+	struct pkg_repo *local_repo = NULL, *repo;
+	struct pkg_job_universe_item *cur, *res = NULL;
+
+	if (local->pkg->reponame) {
+		local_repo = pkg_repo_find(local->pkg->reponame);
+	}
+	else {
+		const char *lrepo = pkg_kv_get(&local->pkg->annotations, "repository");
+		if (lrepo) {
+			local_repo = pkg_repo_find(lrepo);
+		}
+	}
+
+	if (local_repo == NULL) {
+		/* Return any package */
+		LL_FOREACH(chain, cur) {
+			if (cur->pkg->type == PKG_INSTALLED)
+				continue;
+			else
+				return (cur);
+		}
+	}
+	else {
+		LL_FOREACH(chain, cur) {
+			if (cur->pkg->type == PKG_INSTALLED)
+				continue;
+
+			if (cur->pkg->reponame) {
+				repo = pkg_repo_find(cur->pkg->reponame);
+				if (repo == local_repo) {
+					res = cur;
+					break;
+				}
+			}
+		}
+	}
+
+	return (res);
+}
+
+static struct pkg_job_universe_item *
+pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
+	struct pkg_job_universe_item *local, bool conservative)
+{
+	struct pkg_job_universe_item *res;
+
+	if (local == NULL) {
+		/* New package selection */
+		if (conservative) {
+			/* Priority -> version */
+			res = pkg_jobs_universe_select_max_prio(chain);
+			if (res == NULL) {
+				res = pkg_jobs_universe_select_max_ver(chain);
+			}
+		}
+		else {
+			/* Version -> priority */
+			res = pkg_jobs_universe_select_max_ver(chain);
+			if (res == NULL) {
+				res = pkg_jobs_universe_select_max_prio(chain);
+			}
+		}
+	}
+	else {
+		if (conservative) {
+			/* same -> prio -> version */
+			res = pkg_jobs_universe_select_same_repo(chain, local);
+			if (res == NULL) {
+				res = pkg_jobs_universe_select_max_prio(chain);
+			}
+			if (res == NULL) {
+				res = pkg_jobs_universe_select_max_ver(chain);
+			}
+		}
+		else {
+			/* version -> prio -> same */
+			res = pkg_jobs_universe_select_max_ver(chain);
+			if (res == NULL) {
+				res = pkg_jobs_universe_select_max_prio(chain);
+			}
+			if (res == NULL) {
+				res = pkg_jobs_universe_select_same_repo(chain, local);
+			}
+		}
+	}
+
+	/* Fallback to any */
+	return (res != NULL ? res : chain);
+}
+
 void
 pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 {
 	struct pkg_job_universe_item *unit, *tmp, *cur, *local;
 	struct pkg_job_request *req;
 	struct pkg_job_request_item *rit, *rtmp;
+	bool conservative = false;
+
+	conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
 
 	HASH_ITER(hh, j->universe->items, unit, tmp) {
 		unsigned vercnt = 0;
@@ -838,20 +991,10 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 
 			if ((local == NULL && vercnt > 1) || (vercnt > 2)) {
 				/* Select the most recent or one of packages */
-				struct pkg_job_universe_item *selected = NULL;
-				LL_FOREACH(unit, cur) {
-					if (cur->pkg->type == PKG_INSTALLED)
-						continue;
+				struct pkg_job_universe_item *selected;
 
-					if (selected != NULL && pkg_version_change_between(cur->pkg,
-						selected->pkg) == PKG_UPGRADE) {
-						selected = cur;
-					}
-					else if (selected == NULL) {
-						selected = cur;
-					}
-				}
-
+				selected = pkg_jobs_universe_select_candidate(unit, local,
+					conservative);
 				/*
 				 * Now remove all requests but selected from the requested
 				 * candidates
