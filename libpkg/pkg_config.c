@@ -342,6 +342,12 @@ static struct config_entry c[] = {
 		NULL,
 		"Version source for pkg-version (I, P, R), default is auto detect"
 	},
+	{
+		PKG_BOOL,
+		"CONSERVATIVE_UPGRADE",
+		NULL,
+		"Prefer repos with higher priority during upgrade"
+	},
 };
 
 static bool parsed = false;
