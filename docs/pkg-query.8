@@ -119,7 +119,10 @@ is in bytes, and
 .Cm h
 is in human readable format.
 .It Cm \&%a
-Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+Returns 1 if the matched package was automatically installed
+as a dependency of another package, 0 otherwise.
+It can be pkg-autoremove(1)'d when this flag is set and
+it is an orphan package.
 .It Cm \&%q
 Architecture of the matched package
 .It Cm \&%k
