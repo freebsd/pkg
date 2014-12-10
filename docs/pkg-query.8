@@ -121,8 +121,9 @@ is in human readable format.
 .It Cm \&%a
 Returns 1 if the matched package was automatically installed
 as a dependency of another package, 0 otherwise.
-It can be pkg-autoremove(1)'d when this flag is set and
-it is an orphan package.
+The package can be automatically removed via
+.Sq pkg autoremove
+when this flag is set and no other package depends on it.
 .It Cm \&%q
 Architecture of the matched package
 .It Cm \&%k
