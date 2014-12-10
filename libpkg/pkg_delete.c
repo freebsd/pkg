@@ -182,9 +182,10 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 		return;
 
 	pkg_debug(1, "removing directory %s", fullpath);
-	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1 &&
-	    errno != ENOTEMPTY && errno != EBUSY) {
-		pkg_emit_errno("unlinkat", dir);
+	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1) {
+		if (errno != ENOTEMPTY && errno != EBUSY)
+			pkg_emit_errno("unlinkat", dir);
+		return;
 	}
 
 	/* No recursivity for packages out of the prefix */
