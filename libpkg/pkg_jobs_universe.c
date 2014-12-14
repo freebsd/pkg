@@ -1000,6 +1000,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				 * candidates
 				 */
 				assert(selected != NULL);
+				HASH_DEL(j->request_add, req);
 				LL_FOREACH(unit, cur) {
 					if (cur != selected) {
 						DL_FOREACH_SAFE(req->item, rit, rtmp) {
@@ -1010,6 +1011,8 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 						}
 					}
 				}
+				HASH_ADD_KEYPTR(hh, j->request_add, selected->pkg->uid,
+					strlen (selected->pkg->uid), req);
 			}
 		}
 	}
