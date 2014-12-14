@@ -365,7 +365,8 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *cached = NULL;
 	char path[MAXPATHLEN];
 
-	if ((flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) != 0 &&
+	if (pkg->type != PKG_INSTALLED &&
+			(flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) != 0 &&
 			(pkg->flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) == 0) {
 		/*
 		 * Try to get that information from fetched package in cache
