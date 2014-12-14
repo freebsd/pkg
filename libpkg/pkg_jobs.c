@@ -485,48 +485,6 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 		}
 		utarray_free(to_process);
 	}
-
-	if (top) {
-		/*
-		 * Here we need to sort all install candidates following this logic:
-		 * 1) all items in the request are remote ones
-		 * 2) we select candidate from the same repo as local one - or -
-		 * 3) we select the candidate with the maximum version - or -
-		 * 4) we just use the first possible candidate assuming that they are
-		 * sorted based on the priority of a repo
-		 */
-		HASH_ITER(hh, j->request_add, req, tmp) {
-			const char *lrepo, *rrepo;
-			struct pkg_job_request_item *selected = req->item;
-
-			lrepo = NULL;
-
-			lp = pkg_jobs_universe_get_local(j->universe, req->item->pkg->uid, 0);
-			/* Check reponame */
-			if (lp != NULL)
-				lrepo = pkg_kv_get(&lp->annotations, "repository");
-
-			DL_FOREACH(req->item, it) {
-				rrepo = it->pkg->reponame;
-				if (lrepo != NULL && rrepo != NULL && strcmp(rrepo, lrepo) == 0) {
-					/*
-					 * Always prefer the same repo
-					 */
-					selected = it;
-					break;
-				}
-				/* Find out the most fresh package */
-				if (selected == NULL)
-					selected = it;
-				else if (pkg_version_change_between(it->pkg, selected->pkg)
-								== PKG_UPGRADE)
-					selected = it;
-			}
-			/* Insert selected to the front of the list of candidates */
-			DL_DELETE(req->item, selected);
-			DL_PREPEND(req->item, selected);
-		}
-	}
 }
 
 /*
