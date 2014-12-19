@@ -973,7 +973,6 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			}
 			/* Pure install */
 			if (seen_del == 0) {
-				j->count++;
 				res->items[0] = add_var->unit;
 				res->type = (j->type == PKG_JOBS_FETCH) ?
 								PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
@@ -981,8 +980,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				pkg_debug(3, "pkg_solve: schedule installation of %s %s",
 					add_var->uid, add_var->digest);
 			}
-			else if (strcmp(del_var->digest,add_var->digest) != 0) {
-				j->count++;
+			else {
 				/* Upgrade */
 				res->items[0] = add_var->unit;
 				res->items[1] = del_var->unit;
@@ -991,6 +989,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
 			}
+			j->count ++;
 		}
 
 		/*
@@ -1013,7 +1012,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				DL_APPEND(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
 					cur_var->uid, cur_var->digest);
-				j->count++;
+				j->count ++;
 			}
 		}
 	}

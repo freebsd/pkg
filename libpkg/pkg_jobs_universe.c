@@ -155,7 +155,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		bool force, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *tmp = NULL;
-	/*struct pkg_job_seen *seen;*/
+	struct pkg_job_seen *seen;
 
 	pkg_validate(pkg);
 	if (pkg->digest == NULL) {
@@ -167,13 +167,13 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 
-/*	HASH_FIND_STR(universe->seen, pkg->digest, seen);
+	HASH_FIND_STR(universe->seen, pkg->digest, seen);
 	if (seen != NULL && !force) {
 		if (found != NULL)
 			*found = seen->un;
 
 		return (EPKG_END);
-	}*/
+	}
 
 	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s:%s)",
 	    (pkg->type == PKG_INSTALLED ? "local" : "remote"), pkg->uid,
@@ -194,7 +194,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	DL_APPEND(tmp, item);
 
-	/*if (seen == NULL) {
+	if (seen == NULL) {
 		seen = calloc(1, sizeof(struct pkg_job_seen));
 		if (seen == NULL) {
 			pkg_emit_errno("pkg_jobs_universe_add_pkg", "calloc: struct pkg_job_seen)");
@@ -204,7 +204,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		seen->un = item;
 		HASH_ADD_KEYPTR(hh, universe->seen, seen->digest, strlen(seen->digest),
 			seen);
-	}*/
+	}
 
 	universe->nitems++;
 
