@@ -518,7 +518,6 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 			}
 
 			pkg_conflicts_check_chain_conflict(cur, lp, j);
-			break;
 		}
 
 		cur = cur->prev;
