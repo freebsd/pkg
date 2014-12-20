@@ -1001,6 +1001,20 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				 */
 				assert(selected != NULL);
 				HASH_DEL(j->request_add, req);
+
+				/*
+				 * We also check if the selected package has different digest,
+				 * and if it has the same digest we proceed only if we have a
+				 * forced job
+				 */
+				if (local != NULL && strcmp(local->pkg->digest,
+					selected->pkg->digest) == 0 &&
+					(j->flags & PKG_FLAG_FORCE) == 0) {
+					pkg_debug (1, "removing %s from the request as it is the "
+									"same as local", selected->pkg->uid);
+					continue;
+				}
+
 				LL_FOREACH(unit, cur) {
 					if (cur != selected) {
 						DL_FOREACH_SAFE(req->item, rit, rtmp) {
@@ -1085,7 +1099,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
 		while ((p = (struct pkg **)utarray_next(candidates, p)) != NULL) {
-			pkg_jobs_universe_add_pkg(universe, *p, force, NULL);
+			pkg_jobs_universe_add_pkg(universe, *p, true, NULL);
 		}
 	}
 	else {
