@@ -85,6 +85,43 @@ file_chdir_unlock(int dfd)
 }
 #endif
 
+#if !HAVE_FACCESSAT
+int
+faccessat(int fd, const char *path, int mode, int flag)
+{
+	int ret;
+
+	if ((ret = file_chdir_lock(fd) != 0))
+		return ret;
+
+	if (flag & AT_EACCESS) {
+		ret = eaccess(path, mode);
+	} else {
+		ret = access(path, mode);
+	}
+
+	file_chdir_unlock(fd);
+	return ret;
+}
+#endif
+
+#if !HAVE_READLINKAT
+ssize_t
+readlinkat(int fd, const char *restrict path, char *restrict buf,
+	   size_t bufsize)
+{
+	int ret;
+
+	if ((ret = file_chdir_lock(fd) != 0))
+		return ret;
+
+	ret = readlink(path, buf, bufsize);
+
+	file_chdir_unlock(fd);
+	return ret;
+}
+#endif
+
 #if !HAVE_FSTATAT
 int
 fstatat(int fd, const char *path, struct stat *buf, int flag)

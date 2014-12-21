@@ -51,17 +51,32 @@ char *bsd_basename(const char *);
 void closefrom(int lowfd);
 #endif
 
-#if !HAVE_FSTATAT || !HAVE_OPENAT || !HAVE_UNLINKAT || !HAVE_FACCESSAT || !HAVE_READLINKAT
+#ifndef AT_FDCWD
 #define AT_FDCWD		-100
 #endif
 
-#if !HAVE_FSTATAT
+#ifndef AT_EACCESS
+#define AT_EACCESS		0x100
+#endif
+
+#ifndef AT_SYMLINK_NOFOLLOW
 #define	AT_SYMLINK_NOFOLLOW	0x200
+#endif
+
+#if !HAVE_FACCESSAT
+int faccessat(int fd, const char *path, int mode, int flag);
+#endif
+
+#if !HAVE_FSTATAT
 int fstatat(int fd, const char *path, struct stat *buf, int flag);
 #endif
 
 #if !HAVE_OPENAT
 int openat(int fd, const char *path, int flags, ...);
+#endif
+
+#if !HAVE_READLINKAT
+ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t bufsize);
 #endif
 
 #if !HAVE_UNLINKAT
