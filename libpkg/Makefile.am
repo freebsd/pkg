@@ -2,6 +2,7 @@ EXTRA_DIST=		libpkg.ver
 
 pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			@LDNS_CFLAGS@ \
+			-I$(top_srcdir)/compat \
 			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
@@ -59,7 +60,8 @@ libpkg_la_SOURCES=	pkg.c \
 			merge3.c \
 			diff.c
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
-libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
+libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
+			$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libexpat.la \
 			$(top_builddir)/external/libsbuf.la \
@@ -79,8 +81,13 @@ else
 libpkg_la_LIBADD+=	-lelf
 endif
 
-libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
-EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@ libpkg.ver
+libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@
+EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@
+
+if HAVE_LD_VERSION_SCRIPT
+libpkg_la_LDFLAGS+=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
+EXTRA_libpkg_la_DEPENDENCIES+=	libpkg.ver
+endif
 
 DYNLIBS=		libpkg.la
 lib_LTLIBRARIES=	libpkg_static.la

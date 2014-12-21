@@ -67,6 +67,8 @@ AC_LINK_IFELSE([
  	AC_MSG_RESULT([no])
 ])
 
+gl_LD_VERSION_SCRIPT
+
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
 AC_CHECK_HEADERS_ONCE([sys/endian.h])
@@ -116,6 +118,9 @@ AC_CHECK_FUNCS_ONCE([usleep])
 AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
+AC_CHECK_FUNCS_ONCE([strtonum])
+AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat])
+AC_CHECK_FUNCS_ONCE([flopen])
 
 PKG_PROG_PKG_CONFIG
 
@@ -230,6 +235,34 @@ if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
 fi
 
+AC_CACHE_CHECK(for BSD dirname(const char *),
+               ac_cv_func_dirname,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="-Werror $CFLAGS"
+		AC_TRY_COMPILE([#include <libgen.h>],
+                               [static char *(*ac_test_dirname)(const char *) = dirname; ac_test_dirname("");],
+                               [ac_cv_func_dirname=yes],
+                               [ac_cv_func_dirname=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_dirname" = yes ; then
+	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
+fi
+
+AC_CHECK_FUNCS(basename_r)
+AC_CACHE_CHECK(for BSD basename(const char *),
+               ac_cv_func_basename,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="-Werror $CFLAGS"
+		AC_TRY_COMPILE([#include <libgen.h>],
+                               [static char *(*ac_test_basename)(const char *) = basename; ac_test_basename("");],
+                               [ac_cv_func_basename=yes],
+                               [ac_cv_func_basename=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_basename" = yes ; then
+	AC_DEFINE(HAVE_BSD_BASENAME, 1, [Define 1 if you have 'basename(const char *)' function.])
+fi
+
+
 AC_MSG_CHECKING([whether we should only build the static version of pkg])
 AC_ARG_WITH([staticonly],
 	      [AS_HELP_STRING([--with-staticonly],
@@ -285,6 +318,7 @@ AC_CONFIG_FILES(Makefile \
 		scripts/Makefile \
 		docs/Makefile \
 		tests/Makefile \
+		compat/Makefile \
 		libpkg/Makefile \
 		libpkg/repo/Makefile \
 		libpkg/pkg.h \
