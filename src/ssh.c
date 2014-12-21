@@ -52,7 +52,7 @@ usage_ssh(void)
 int
 exec_ssh(int argc, char **argv __unused)
 {
-	int fd = AT_FDCWD;
+	int fd = -1;
 	const char *restricted = NULL;
 
 #ifdef HAVE_CAPSICUM
