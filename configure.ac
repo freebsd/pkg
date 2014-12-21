@@ -106,6 +106,7 @@ AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([float.h])
 AC_CHECK_HEADERS_ONCE([math.h])
 AC_CHECK_HEADERS_ONCE([osreldate.h])
+AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
@@ -119,8 +120,14 @@ AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
-AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat])
+AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat], [readlinkat], [faccessat])
+AC_CHECK_FUNCS_ONCE([be16dec], [be32dec], [be64dec], [le16dec], [le32dec], [le64dec],
+		    [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc])
 AC_CHECK_FUNCS_ONCE([flopen])
+AC_CHECK_FUNCS_ONCE([eaccess])
+AC_CHECK_FUNCS_ONCE([closefrom])
+AC_CHECK_FUNCS_ONCE([dirfd])
+AC_CHECK_FUNCS_ONCE([sysconf])
 
 PKG_PROG_PKG_CONFIG
 
@@ -262,6 +269,20 @@ if test "$ac_cv_func_basename" = yes ; then
 	AC_DEFINE(HAVE_BSD_BASENAME, 1, [Define 1 if you have 'basename(const char *)' function.])
 fi
 
+AC_MSG_CHECKING([for /proc/pid/fd directory])
+if test -d "/proc/$$/fd" ; then
+        AC_DEFINE([HAVE_PROC_PID], [1], [Define if you have /proc/$pid/fd])
+        AC_MSG_RESULT([yes])
+else
+        AC_MSG_RESULT([no])
+fi
+
+AC_CHECK_DECL([F_CLOSEM],
+        AC_DEFINE([HAVE_FCNTL_CLOSEM], [1], [Use F_CLOSEM fcntl for closefrom]),
+        [],
+        [ #include <limits.h>
+          #include <fcntl.h> ]
+)
 
 AC_MSG_CHECKING([whether we should only build the static version of pkg])
 AC_ARG_WITH([staticonly],
