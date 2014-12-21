@@ -46,7 +46,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
