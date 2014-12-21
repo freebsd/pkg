@@ -30,9 +30,14 @@
 #include <sys/stat.h>
 
 #include "pkg_config.h"
+#include "endian_util.h"
 
 char *bsd_dirname(const char *);
 char *bsd_basename(const char *);
+
+#if !HAVE_EACCESS
+#define eaccess(_p, _m) access(_p, _m)
+#endif
 
 #if !HAVE_GR_MAKE
 #include "gr_util.h"
@@ -42,7 +47,11 @@ char *bsd_basename(const char *);
 #include "humanize_number.h"
 #endif
 
-#if !HAVE_FSTATAT || !HAVE_OPENAT || !HAVE_UNLINKAT
+#if !HAVE_CLOSEFROM
+void closefrom(int lowfd);
+#endif
+
+#if !HAVE_FSTATAT || !HAVE_OPENAT || !HAVE_UNLINKAT || !HAVE_FACCESSAT || !HAVE_READLINKAT
 #define AT_FDCWD		-100
 #endif
 
