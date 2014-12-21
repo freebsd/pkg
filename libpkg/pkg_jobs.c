@@ -28,6 +28,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/types.h>
@@ -36,12 +40,16 @@
 #include <archive_entry.h>
 #include <assert.h>
 #include <errno.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <ctype.h>
+
+#include <bsd_compat.h>
 
 #include "utarray.h"
 

@@ -35,6 +35,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+#include <bsd_compat.h>
+
 /* Number of pages to copy per call to sqlite3_backup_step()
    Default page size is 1024 bytes on Unix */
 #define NPAGES	4
@@ -129,8 +131,8 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 		}
 
 		/* Could we create the Sqlite DB file? */
-		if (eaccess(dirname(dest), W_OK)) {
-			pkg_emit_error("eaccess(%s) -- %s", dirname(dest),
+		if (eaccess(bsd_dirname(dest), W_OK)) {
+			pkg_emit_error("eaccess(%s) -- %s", bsd_dirname(dest),
 			    strerror(errno));
 			return (EPKG_FATAL);
 		}

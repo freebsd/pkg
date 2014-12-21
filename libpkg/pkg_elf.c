@@ -59,6 +59,8 @@
 #include <libelf.h>
 #endif
 
+#include <bsd_compat.h>
+
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -377,7 +379,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			continue;
 		
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val),
-				      dirname(fpath));
+				      bsd_dirname(fpath));
 		break;
 	}
 	if (!is_shlib) {
@@ -387,7 +389,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		 */
 		if (elfhdr.e_type == ET_DYN) {
 			is_shlib = true;
-			pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, bsd_basename(fpath));
 		}
 	}
 

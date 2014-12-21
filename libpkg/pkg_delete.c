@@ -35,6 +35,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+#include <bsd_compat.h>
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"

@@ -32,11 +32,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <assert.h>
 #include <errno.h>
 #include <regex.h>
 #include <grp.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>

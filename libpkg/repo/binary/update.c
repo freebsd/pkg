@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 #define _WITH_GETLINE
 #include <stdio.h>
@@ -89,11 +90,11 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 	int ret = EPKG_FATAL;
 	const char *oversion;
 
-	if (pkg_repo_binary_run_prstatement(VERSION, origin) != SQLITE_ROW) {
+	if (pkg_repo_binary_run_prstatement(REPO_VERSION, origin) != SQLITE_ROW) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
-	oversion = sqlite3_column_text(pkg_repo_binary_stmt_prstatement(VERSION), 0);
+	oversion = sqlite3_column_text(pkg_repo_binary_stmt_prstatement(REPO_VERSION), 0);
 	if (!forced) {
 		switch(pkg_version_cmp(oversion, version)) {
 		case -1:
@@ -125,7 +126,7 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 	}
 
 cleanup:
-	sqlite3_reset(pkg_repo_binary_stmt_prstatement(VERSION));
+	sqlite3_reset(pkg_repo_binary_stmt_prstatement(REPO_VERSION));
 
 	return (ret);
 }
