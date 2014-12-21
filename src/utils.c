@@ -28,13 +28,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <err.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -43,6 +49,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <pkg.h>
+
+#include <bsd_compat.h>
 
 #include "utlist.h"
 #include "pkgcli.h"
@@ -56,7 +64,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
 
-#ifndef __DragonFly__
+#if !defined(__DragonFly__) && !defined(__APPLE__)
 	tty_flags |= O_TTY_INIT;
 #endif
 	tty_fd = open(_PATH_TTY, tty_flags);

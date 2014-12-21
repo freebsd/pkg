@@ -51,6 +51,7 @@ pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-Werror
 pkg_static_SOURCES=
 pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
+			$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
@@ -64,7 +65,6 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-llzma \
 			-lssl \
 			-lcrypto \
-			-lmd \
 			-lm
 if LIBELF_BUNDLED
 pkg_static_LDADD+=	$(top_builddir)/external/libelf_static.la
