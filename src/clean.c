@@ -26,6 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/stat.h>
 #include <sys/queue.h>
 /* For MIN */
@@ -35,13 +39,17 @@
 #include <err.h>
 #include <fts.h>
 #include <getopt.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <pkg.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <uthash.h>
+
+#include <bsd_compat.h>
 
 #include "pkgcli.h"
 

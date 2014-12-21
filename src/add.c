@@ -26,6 +26,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/sbuf.h>
 
 #include <err.h>
 #include <errno.h>
