@@ -66,10 +66,13 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-lssl \
 			-lcrypto \
 			-lm
+
+if HAVE_ELF_ABI
 if LIBELF_BUNDLED
 pkg_static_LDADD+=	$(top_builddir)/external/libelf_static.la
 else
 pkg_static_LDADD+=	-lelf
+endif
 endif
 
 pkg_static_LDFLAGS=	-all-static

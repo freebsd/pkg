@@ -14,10 +14,13 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		-lcrypto \
 		-L/usr/local/lib \
 		-latf-c
+
+if HAVE_ELF_ABI
 if LIBELF_BUNDLED
 GENERIC_LDADD+=	$(top_builddir)/external/libelf_static.la
 else
 GENERIC_LDADD+=	-lelf
+endif
 endif
 
 PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING \

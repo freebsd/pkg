@@ -23,6 +23,7 @@ libpkg_la_SOURCES=	pkg.c \
 			fetch.c \
 			packing.c \
 			pkg_add.c \
+			pkg_arch.c \
 			pkg_attributes.c \
 			pkg_audit.c \
 			pkg_checksum.c \
@@ -64,7 +65,7 @@ libpkg_la_SOURCES+=	elfhints.c \
 endif
 
 if HAVE_MACHO_ABI
-# TODO
+libpkg_la_SOURCES+=	pkg_macho.c
 endif
 
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
