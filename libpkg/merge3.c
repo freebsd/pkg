@@ -153,7 +153,6 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
   int i1, i2;            /* Index into aC1[] and aC2[] */
   int nCpy, nDel, nIns;  /* Number of lines to copy, delete, or insert */
   int limit1, limit2;    /* Sizes of aC1[] and aC2[] */
-  int nConflict = 0;     /* Number of merge conflicts seen so far */
 
   sbuf_clear(pOut);         /* Merge results stored in pOut */
 
@@ -249,7 +248,7 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
 
   free(aC1);
   free(aC2);
-  return nConflict;
+  return 0;
 }
 
 /*
