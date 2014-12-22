@@ -20,7 +20,6 @@ endif
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
 			dns_utils.c \
-			elfhints.c \
 			fetch.c \
 			packing.c \
 			pkg_add.c \
@@ -31,7 +30,6 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_cudf.c \
 			pkg_create.c \
 			pkg_delete.c \
-			pkg_elf.c \
 			pkg_event.c \
 			pkg_jobs.c \
 			pkg_jobs_conflicts.c \
@@ -59,6 +57,16 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_old.c \
 			merge3.c \
 			diff.c
+
+if HAVE_ELF_ABI
+libpkg_la_SOURCES+=	elfhints.c \
+			pkg_elf.c
+endif
+
+if HAVE_MACHO_ABI
+# TODO
+endif
+
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
 libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libucl.la \
@@ -75,10 +83,13 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			-lssl \
 			-lcrypto \
 			-lm
+
+if HAVE_ELF_ABI
 if LIBELF_BUNDLED
 libpkg_la_LIBADD+=	$(top_builddir)/external/libelf.la
 else
 libpkg_la_LIBADD+=	-lelf
+endif
 endif
 
 libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@

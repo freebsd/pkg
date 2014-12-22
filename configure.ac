@@ -296,7 +296,17 @@ else
 fi
 
 AM_CONDITIONAL(DYNAMIC, test "$with_staticonly" != "no")
-AM_CONDITIONAL(LIBELF_BUNDLED, test "$libelf_bundled" != "no")
+
+dnl Select appropriate ABI
+AS_CASE(
+	[$host_os],
+	[darwin*],
+	[ac_cv_binary_abi=macho],
+	[ac_cv_binary_abi=elf]
+)
+AM_CONDITIONAL(HAVE_MACHO_ABI, test "$ac_cv_binary_abi" = "macho")
+AM_CONDITIONAL(HAVE_ELF_ABI, test "$ac_cv_binary_abi" = "elf")
+AM_CONDITIONAL(LIBELF_BUNDLED, test "$ac_cv_binary_abi" = "elf" -a "$libelf_bundled" != "no")
 
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBEXECINFO_LIB])
