@@ -75,6 +75,10 @@ pkg_static_LDADD+=	-lelf
 endif
 endif
 
+if HAVE_MACHO_ABI
+pkg_static_LDADD+=	$(top_builddir)/external/libmachista_static.la
+endif
+
 pkg_static_LDFLAGS=	-all-static
 DYNPROG=		pkg
 sbin_PROGRAMS=		pkg-static

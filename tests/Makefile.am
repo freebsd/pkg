@@ -23,6 +23,10 @@ GENERIC_LDADD+=	-lelf
 endif
 endif
 
+if HAVE_MACHO_ABI
+GENERIC_LDADD+=	$(top_builddir)/external/libmachista_static.la
+endif
+
 PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING \
 		-I/usr/local/include
 PRIVATE_INCS=	$(PUBLIC_INCS) \
