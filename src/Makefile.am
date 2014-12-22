@@ -43,7 +43,7 @@ pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
 			-lcrypto
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_builddir)/libpkg \
-			-I$(top_builddir)/compat \
+			-I$(top_srcdir)/compat \
 			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
