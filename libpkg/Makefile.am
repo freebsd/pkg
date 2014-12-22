@@ -66,6 +66,7 @@ endif
 
 if HAVE_MACHO_ABI
 libpkg_la_SOURCES+=	pkg_macho.c
+pkg_common_cflags+=	-I$(top_srcdir)/external/libmachista
 endif
 
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
@@ -91,6 +92,10 @@ libpkg_la_LIBADD+=	$(top_builddir)/external/libelf.la
 else
 libpkg_la_LIBADD+=	-lelf
 endif
+endif
+
+if HAVE_MACHO_ABI
+libpkg_la_LIBADD+=	$(top_builddir)/external/libmachista_static.la
 endif
 
 libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@
