@@ -744,7 +744,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 {
 	struct ucl_parser *p = NULL;
 	size_t i;
-	int debug_level_cli, debug_level_ini;
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key, *k;
 	const char *evkey = NULL;
@@ -1019,9 +1018,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	debug_level_cli = debug_level;
-	debug_level_ini = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
-	debug_level = MAX(debug_level_cli, debug_level_ini);
+	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
 	developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	it = NULL;
