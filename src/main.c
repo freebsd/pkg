@@ -652,6 +652,8 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	debug_level = debug;
+
 	if (version == 1)
 		show_version_info(version);
 
@@ -704,6 +706,9 @@ main(int argc, char **argv)
 
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
+
+	if (debug > 0)
+		debug_level = debug;
 
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
