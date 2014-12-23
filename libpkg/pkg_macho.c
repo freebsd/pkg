@@ -142,6 +142,9 @@ cleanup:
 /**
  * Extract the major release number from an XNU kernel
  * version returned by uname().
+ *
+ * @param src A major.minor.revision version string, e.g., as returned from uname(3).
+ * @param release On success, the parsed major version.
  */
 static int
 parse_major_release(const char *src, long long *release)
@@ -172,6 +175,11 @@ cleanup:
 	return ret;
 }
 
+/**
+ * Fetch the host's CPU type.
+ *
+ * @param result On success, the fetched CPU type.
+ */
 static int
 host_cpu_type (cpu_type_t *result)
 {
@@ -189,6 +197,13 @@ host_cpu_type (cpu_type_t *result)
     return EPKG_OK;
 }
 
+/**
+ * Fetch the OS name and major version.
+ *
+ * @param osname On success, the OS name (e.g. Darwin).
+ * @param sz The maximum number of bytes to be written to osname.
+ * @param major_version On success, the major version of the host.
+ */
 static int
 host_os_info(char *osname, size_t sz, long long *major_version)
 {
