@@ -81,28 +81,35 @@ information about the package:
 	users: [USER1, USER2]
 	groups: [GROUP1, GROUP2]
 	options: { OPT1: off, OPT2: on }
-	desc: |-
+	desc: <<EOD
 	  This is the description
 	  Of foo
 	  
 	  A component of bar
+	EOD
 	categories: [bar, plop]
-	deps:
-	  libiconv: {origin: converters/libiconv, version: 1.13.1_2}
-	  perl: {origin: lang/perl5.12, version: 5.12.4 }
-	files:
-	  /usr/local/bin/foo: 'sha256sum'
-	  /usr/local/bin/i_am_a_link: '-'
-	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum'
-	dirs:
-	- /usr/local/share/foo-1.0
-	scripts:
-	  post-install: |-
+	deps: {
+	  libiconv: {origin: converters/libiconv, version: 1.13.1_2};
+	  perl: {origin: lang/perl5.12, version: 5.12.4 };
+	}
+	files: {
+	  /usr/local/bin/foo: 'sha256sum',
+	  /usr/local/bin/i_am_a_link: '-';
+	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum;
+	}
+	directories: {
+	  /usr/local/share/foo-1.0 : 'y';
+	}
+	scripts: {
+	  post-install: <<EOD
 	    #!/bin/sh
 	    echo post-install
-	  pre-install: |-
+	EOD
+	  pre-install: <<EOD
 	    #!/bin/sh
 	    echo pre-install
+	EOD
+	}
 
 Valid scripts are:
 
