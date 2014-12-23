@@ -121,8 +121,11 @@ AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
 AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat], [readlinkat], [faccessat])
-AC_CHECK_FUNCS_ONCE([be16dec], [be32dec], [be64dec], [le16dec], [le32dec], [le64dec],
-		    [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc])
+AC_CHECK_DECLS(
+	[[be16dec], [be32dec], [be64dec], [le16dec], [le32dec], [le64dec],
+	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
+	[], [], [#include <sys/endian.h>]
+)
 AC_CHECK_FUNCS_ONCE([flopen])
 AC_CHECK_FUNCS_ONCE([eaccess])
 AC_CHECK_FUNCS_ONCE([closefrom])

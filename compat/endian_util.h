@@ -36,7 +36,7 @@
 
 /* Alignment-agnostic encode/decode bytestream to/from little/big endian. */
 
-#if !HAVE_BE16DEC
+#if defined(HAVE_DECL_BE16DEC) && !HAVE_DECL_BE16DEC
 static __inline uint16_t
 be16dec(const void *pp)
 {
@@ -46,7 +46,7 @@ be16dec(const void *pp)
 }
 #endif
 
-#if !HAVE_BE32DEC
+#if defined(HAVE_DECL_BE32DEC) && !HAVE_DECL_BE32DEC
 static __inline uint32_t
 be32dec(const void *pp)
 {
@@ -56,7 +56,7 @@ be32dec(const void *pp)
 }
 #endif
 
-#if !HAVE_BE64DEC
+#if defined(HAVE_DECL_BE64DEC) && !HAVE_DECL_BE64DEC
 static __inline uint64_t
 be64dec(const void *pp)
 {
@@ -66,7 +66,7 @@ be64dec(const void *pp)
 }
 #endif
 
-#if !HAVE_LE16DEC
+#if defined(HAVE_DECL_LE16DEC) && !HAVE_DECL_LE16DEC
 static __inline uint16_t
 le16dec(const void *pp)
 {
@@ -76,7 +76,7 @@ le16dec(const void *pp)
 }
 #endif
 
-#if !HAVE_LE32DEC
+#if defined(HAVE_DECL_LE32DEC) && !HAVE_DECL_LE32DEC
 static __inline uint32_t
 le32dec(const void *pp)
 {
@@ -86,7 +86,7 @@ le32dec(const void *pp)
 }
 #endif
 
-#if !HAVE_LE64DEC
+#if defined(HAVE_DECL_LE64DEC) && !HAVE_DECL_LE64DEC
 static __inline uint64_t
 le64dec(const void *pp)
 {
@@ -96,7 +96,7 @@ le64dec(const void *pp)
 }
 #endif
 
-#if !HAVE_BE16ENC
+#if defined(HAVE_DECL_BE16ENC) && !HAVE_DECL_BE16ENC
 static __inline void
 be16enc(void *pp, uint16_t u)
 {
@@ -107,7 +107,7 @@ be16enc(void *pp, uint16_t u)
 }
 #endif
 
-#if !HAVE_BE32ENC
+#if defined(HAVE_DECL_BE32ENC) && !HAVE_DECL_BE32ENC
 static __inline void
 be32enc(void *pp, uint32_t u)
 {
@@ -120,7 +120,7 @@ be32enc(void *pp, uint32_t u)
 }
 #endif
 
-#if !HAVE_BE64ENC
+#if defined(HAVE_DECL_BE64ENC) && !HAVE_DECL_BE64ENC
 static __inline void
 be64enc(void *pp, uint64_t u)
 {
@@ -131,7 +131,7 @@ be64enc(void *pp, uint64_t u)
 }
 #endif
 
-#if !HAVE_LE16ENC
+#if defined(HAVE_DECL_LE16ENC) && !HAVE_DECL_LE16ENC
 static __inline void
 le16enc(void *pp, uint16_t u)
 {
@@ -142,7 +142,7 @@ le16enc(void *pp, uint16_t u)
 }
 #endif
 
-#if !HAVE_LE32ENC
+#if defined(HAVE_DECL_LE32ENC) && !HAVE_DECL_LE32ENC
 static __inline void
 le32enc(void *pp, uint32_t u)
 {
@@ -155,7 +155,7 @@ le32enc(void *pp, uint32_t u)
 }
 #endif
 
-#if !HAVE_LE64ENC
+#if defined(HAVE_DECL_LE64ENC) && !HAVE_DECL_LE64ENC
 static __inline void
 le64enc(void *pp, uint64_t u)
 {
