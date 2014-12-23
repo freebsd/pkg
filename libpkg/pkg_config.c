@@ -736,11 +736,11 @@ pkg_compiled_for_same_os_major(void)
 int
 pkg_init(const char *path, const char *reposdir)
 {
-	return (pkg_ini(path, reposdir, 0));
+	return (pkg_ini(path, reposdir, 0, 0));
 }
 
 int
-pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
+pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags, int debug)
 {
 	struct ucl_parser *p = NULL;
 	size_t i;
@@ -757,6 +757,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	k = NULL;
 	o = NULL;
+
+	if (debug)
+		debug_level = debug;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
@@ -1018,7 +1021,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	if (!debug_level)
+		debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
 	developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	it = NULL;

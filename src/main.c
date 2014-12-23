@@ -188,7 +188,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		for (i = 0; i < cmd_len; i++)
 			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
-		if (!pkg_initialized() && pkg_ini(conffile, reposdir, 0) != EPKG_OK)
+		if (!pkg_initialized() && pkg_ini(conffile, reposdir, 0, 0) != EPKG_OK)
 			errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 		plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
@@ -652,8 +652,6 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	debug_level = debug;
-
 	if (version == 1)
 		show_version_info(version);
 
@@ -704,11 +702,8 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
-	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
+	if (pkg_ini(conffile, reposdir, init_flags, debug) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
-
-	if (debug > 0)
-		debug_level = debug;
 
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
