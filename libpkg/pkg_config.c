@@ -1211,3 +1211,11 @@ pkg_repo_find(const char *reponame)
 	HASH_FIND_STR(repos, reponame, r);
 	return (r);
 }
+
+int64_t
+pkg_set_debug_level(int64_t new_debug_level) {
+	int64_t old_debug_level = debug_level;
+
+	debug_level = new_debug_level;
+	return old_debug_level;
+}

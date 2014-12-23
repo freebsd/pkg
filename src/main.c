@@ -554,7 +554,7 @@ main(int argc, char **argv)
 	const char	 *jail_str = NULL;
 	size_t		  len;
 	signed char	  ch;
-	int		  debug = 0;
+	int64_t		  debug = 0;
 	int		  version = 0;
 	int		  ret = EX_OK;
 	bool		  plugins_enabled = false;
@@ -652,7 +652,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	debug_level = debug;
+	pkg_set_debug_level(debug);
 
 	if (version == 1)
 		show_version_info(version);
@@ -708,7 +708,7 @@ main(int argc, char **argv)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	if (debug > 0)
-		debug_level = debug;
+		pkg_set_debug_level(debug);
 
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
