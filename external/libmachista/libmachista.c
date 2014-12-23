@@ -280,7 +280,8 @@ static int parse_macho (macho_t *mt, macho_input_t *input) {
                 return MACHO_EMEM;
 
             /* 32-bit Mach-O */
-            mat->mat_arch = swap32(header->cputype);
+            mat->mat_cputype = swap32(header->cputype);
+            mat->mat_cpusubtype = swap32(header->cpusubtype);
             break;
 
 
@@ -301,7 +302,8 @@ static int parse_macho (macho_t *mt, macho_input_t *input) {
             header = (struct mach_header *) header64;
 
             /* 64-bit Macho-O */
-            mat->mat_arch = swap32(header->cputype);
+            mat->mat_cputype = swap32(header->cputype);
+            mat->mat_cpusubtype = swap32(header->cpusubtype);
             break;
 
         case FAT_CIGAM:
@@ -346,7 +348,8 @@ static int parse_macho (macho_t *mt, macho_input_t *input) {
     }
 
     /* Copy the architecture */
-    mat->mat_arch = swap32(header->cputype);
+    mat->mat_cputype = swap32(header->cputype);
+    mat->mat_cpusubtype = swap32(header->cpusubtype);
 
     /* Parse the Mach-O load commands */
     uint32_t ncmds = swap32(header->ncmds);

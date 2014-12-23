@@ -36,6 +36,7 @@
 
 #include <mach/machine.h>
 #include <mach-o/arch.h>
+#include <mach-o/loader.h>
 
 #include <ctype.h>
 #include <limits.h>
@@ -47,9 +48,16 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
+static const char * const system_dylib_prefixes[] = {
+	"/System/",
+	"/usr/lib",
+	"/lib",
+	NULL
+ };
+
 static int
 analyse_macho(struct pkg *pkg, const char *fpath,
-	      macho_handle_t *macho_handle,
+	      cpu_type_t cpu_type, macho_handle_t *macho_handle,
 	      int (action)(void *, struct pkg *, const char *, const char *, bool),
 	      void *actdata)
 {
@@ -57,26 +65,83 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 	struct stat sb;
 	int mret;
 
+	/* We're only interested in the generic CPU type */
+	cpu_type = cpu_type & ~CPU_ARCH_MASK;
+
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 
 	/* ignore empty files and non regular files */
 	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
-		return (EPKG_END); /* Empty file or sym-link: no results */
+		return EPKG_END; /* Empty file or sym-link: no results */
 
 
 	/* Try to parse the file */
 	if ((mret = macho_parse_file(macho_handle, fpath, &macho)) != MACHO_SUCCESS) {
 		if (mret != MACHO_EMAGIC && mret != MACHO_ERANGE) {
 			pkg_emit_error("macho_parse_file() for %s failed: %s", fpath, macho_strerror(mret));
-			return EPKG_FATAL;
+			return EPKG_FATAL; /* Empty file or sym-link: no results */
 		}
 
 		/* Not a Mach-O file; no results */
 		return EPKG_END;
 	}
 
-	// TODO
+	for (macho_arch_t *march = macho->mt_archs; march != NULL; march = march->next) {
+		const NXArchInfo *ai;
+		bool is_shlib = false;
+
+		/* Determine the architecture name */
+		ai = NXGetArchInfoFromCpuType(march->mat_cputype, march->mat_cpusubtype);
+		if (ai == NULL) {
+			pkg_emit_notice("Could not determine architecture type for cpu %d subtype %d", march->mat_cputype, march->mat_cpusubtype);
+			continue;
+		}
+
+		/* Register non-relative libraries as provided. */
+		// MACTODO: How to handle @rpath/@loader_path/etc?
+		if (march->mat_install_name != NULL && march->mat_install_name[0] != '/') {
+			// XXX MACTODO: To get things working, we're shoving library metadata into the library name;
+			// these should instead be added as supported attributes of package shared library declarations.
+			char *libname;
+			asprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
+			pkg_addshlib_provided(pkg, libname);
+			is_shlib = true;
+		}
+
+		/* Now find all dependencies */
+		for (macho_loadcmd_t *cmd = march->mat_loadcmds; cmd != NULL; cmd = cmd->next) {
+			/* Skip everything except for non-weak dylib references */
+			if (cmd->mlt_type != LC_LOAD_DYLIB)
+				continue;
+
+			/* Prevent cyclic self-references. A valid dylib shouldn't include a
+			 * LC_LOAD_DYLIB referencing itself, but there's nothing that would
+			 * actually prevent it */
+			if (strcmp(cmd->mlt_install_name, march->mat_install_name) == 0)
+				continue;
+
+			/* Skip non-resolvable library paths. */
+			switch (cmd->mlt_install_name[0]) {
+				case '/':
+					break;
+				case '@':
+					// MACTODO: How to handle @rpath/@loader_path/etc?
+					continue;
+				default:
+					continue;
+			}
+
+			// XXX MACTODO: To get things working, we're shoving library metadata into the library name;
+			// these should instead be added as supported attributes of package shared library declarations.
+			// XXX: This duplicates (and must be kept identical to) the libname construction above.
+			char *libname;
+			asprintf(&libname, "%s.%s", cmd->mlt_install_name, ai->name);
+
+			action(actdata, pkg, fpath, libname, is_shlib);
+		}
+	}
+
 	return EPKG_OK;
 }
 
@@ -84,59 +149,17 @@ static int
 add_dylibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
-	// TODO
+	/* Skip references to system libraries */
+	for (size_t i = 0; i < sizeof(system_dylib_prefixes) / sizeof(system_dylib_prefixes[0]); i++) {
+		const char *prefix = system_dylib_prefixes[i];
+		if (strncmp(name, prefix, strlen(prefix)) == 0)
+			return EPKG_OK;
+	}
+
+	/* Record the library requirement. */
+	pkg_addshlib_required(pkg, name);
+
 	return EPKG_OK;
-}
-
-int
-pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
-{
-	macho_handle_t *macho_handle = NULL;
-	struct pkg_file *file = NULL;
-	char *fpath = NULL;
-	bool failures = false;
-	int ret = EPKG_OK;
-
-	/* Create our mach-o handle */
-	macho_handle = macho_create_handle();
-	if (macho_handle == NULL) {
-			pkg_emit_error("macho_create_handle() failed");
-			ret = EPKG_FATAL;
-			goto cleanup;
-	}
-
-	/* Evaluate all package files */
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (stage != NULL)
-			free(fpath);
-
-		if (stage != NULL)
-			asprintf(&fpath, "%s/%s", stage, file->path);
-		else
-			fpath = file->path;
-
-		if (fpath == NULL) {
-			pkg_emit_error("pkg_analyse_files(): path allocation failed");
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-
-		ret = analyse_macho(pkg, fpath, macho_handle, add_dylibs_to_pkg, db);
-		if (ret != EPKG_OK && ret != EPKG_END) {
-			failures = true;
-		}
-	}
-
-cleanup:
-	macho_destroy_handle(macho_handle);
-
-	if (stage != NULL)
-		free(fpath);
-
-	if (failures)
-		ret = EPKG_FATAL;
-
-	return (ret);
 }
 
 /**
@@ -181,20 +204,20 @@ cleanup:
  * @param result On success, the fetched CPU type.
  */
 static int
-host_cpu_type (cpu_type_t *result)
+host_cpu_type(cpu_type_t *result)
 {
 	size_t len;
-    int resint;
+	int resint;
 
-    /* Fetch CPU type */
-    len = sizeof(resint);
-    if (sysctlbyname("hw.cputype", &resint, &len, NULL, 0) != 0) {
-    	pkg_emit_errno("sysctlbyname", "hw.cputype");
-        return EPKG_FATAL;
-    }
+	/* Fetch CPU type */
+	len = sizeof(resint);
+	if (sysctlbyname("hw.cputype", &resint, &len, NULL, 0) != 0) {
+		pkg_emit_errno("sysctlbyname", "hw.cputype");
+		return EPKG_FATAL;
+	}
 
-    *result = resint;
-    return EPKG_OK;
+	*result = resint;
+	return EPKG_OK;
 }
 
 /**
@@ -225,6 +248,65 @@ host_os_info(char *osname, size_t sz, long long *major_version)
 
 	/* Parse the major release version */
 	return parse_major_release(ut.release, major_version);
+}
+
+int
+pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
+{
+	macho_handle_t *macho_handle = NULL;
+	struct pkg_file *file = NULL;
+	bool failures = false;
+	cpu_type_t cpu_type;
+	char *fpath = NULL;
+	int ret = EPKG_OK;
+
+	/* Determine our system's CPU type */
+	if ((ret = host_cpu_type(&cpu_type)) != EPKG_OK)
+		goto cleanup;
+
+	/* Create our mach-o handle */
+	macho_handle = macho_create_handle();
+	if (macho_handle == NULL) {
+			pkg_emit_error("macho_create_handle() failed");
+			ret = EPKG_FATAL;
+			goto cleanup;
+	}
+
+	/* Evaluate all package files */
+	while ((ret = pkg_files(pkg, &file)) == EPKG_OK) {
+		if (stage != NULL)
+			free(fpath);
+
+		if (stage != NULL)
+			asprintf(&fpath, "%s/%s", stage, file->path);
+		else
+			fpath = file->path;
+
+		if (fpath == NULL) {
+			pkg_emit_error("pkg_analyse_files(): path allocation failed");
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		ret = analyse_macho(pkg, fpath, cpu_type, macho_handle, add_dylibs_to_pkg, db);
+		if (ret != EPKG_OK && ret != EPKG_END) {
+			failures = true;
+		}
+	}
+
+	if (ret != EPKG_OK)
+		goto cleanup;
+
+cleanup:
+	macho_destroy_handle(macho_handle);
+
+	if (stage != NULL)
+		free(fpath);
+
+	if (failures)
+		ret = EPKG_FATAL;
+
+	return (ret);
 }
 
 int
@@ -265,17 +347,17 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 
 	/* Fetch the base architecture name */
 	arch_name = macho_get_arch_name(ai->cputype & ~CPU_ARCH_ABI64);
-    if (arch_name == NULL) {
-    	pkg_emit_error("macho_get_arch_name() failed for %x", ai->cputype);
-    	return EPKG_FATAL;
-    }
+	if (arch_name == NULL) {
+		pkg_emit_error("macho_get_arch_name() failed for %x", ai->cputype);
+		return EPKG_FATAL;
+	}
 
-    /* Determine word size */
-    is64 = (ai->cputype & CPU_ARCH_ABI64) != 0;
+	/* Determine word size */
+	is64 = (ai->cputype & CPU_ARCH_ABI64) != 0;
 
-    /* Emit the result */
-    snprintf(dest + i, sz - (arch + i - dest), "%s:%s", arch_name, is64 ? "64" : "32");
-    return EPKG_OK;
+	/* Emit the result */
+	snprintf(dest + i, sz - (arch + i - dest), "%s:%s", arch_name, is64 ? "64" : "32");
+	return EPKG_OK;
 }
 
 int

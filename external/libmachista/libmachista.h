@@ -74,8 +74,10 @@ typedef struct macho_loadcmd {
 typedef struct macho_arch {
     char *mat_install_name;         /* install name of the library or NULL if none */
     char *mat_rpath;                /* rpath of the binary of NULL if none */
-    cpu_type_t mat_arch;            /* cpu_type_t describing the CPU this part of the binary is
+    cpu_type_t mat_cputype;         /* cpu_type_t describing the CPU this part of the binary is
                                        intended for */
+    cpu_type_t mat_cpusubtype;      /* cpu_subtype_t describing the CPU subtype this part of the
+                                       binary is intended for */
     uint32_t mat_comp_version;      /* compatibility version of this part of the binary */
     uint32_t mat_version;           /* current version of this part of the binary */
     macho_loadcmd_t *mat_loadcmds;  /* array of macho_loadcmd_t's describing the different load
