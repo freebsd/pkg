@@ -30,24 +30,72 @@
 #include "pkg_config.h"
 #endif
 
-#include <mach-o/arch.h>
-#include <libmachista.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <sys/utsname.h>
 
+#include <mach/machine.h>
+#include <mach-o/arch.h>
+
+#include <ctype.h>
+#include <limits.h>
+
+#include <libmachista.h>
 #include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 
+static int
+analyse_macho(struct pkg *pkg, const char *fpath,
+	      macho_handle_t *macho_handle,
+	      int (action)(void *, struct pkg *, const char *, const char *, bool),
+	      void *actdata)
+{
+	const macho_t *macho = NULL;
+	struct stat sb;
+	int mret;
+
+	if (lstat(fpath, &sb) != 0)
+		pkg_emit_errno("fstat() failed for", fpath);
+
+	/* ignore empty files and non regular files */
+	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
+		return (EPKG_END); /* Empty file or sym-link: no results */
+
+
+	/* Try to parse the file */
+	if ((mret = macho_parse_file(macho_handle, fpath, &macho)) != MACHO_SUCCESS) {
+		if (mret != MACHO_EMAGIC && mret != MACHO_ERANGE) {
+			pkg_emit_error("macho_parse_file() for %s failed: %s", fpath, macho_strerror(mret));
+			return EPKG_FATAL;
+		}
+
+		/* Not a Mach-O file; no results */
+		return EPKG_END;
+	}
+
+	// TODO
+	return EPKG_OK;
+}
+
+static int
+add_dylibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
+		  const char *name, bool is_shlib)
+{
+	// TODO
+	return EPKG_OK;
+}
+
 int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 {
 	macho_handle_t *macho_handle = NULL;
-	const macho_t *macho = NULL;
 	struct pkg_file *file = NULL;
 	char *fpath = NULL;
+	bool failures = false;
 	int ret = EPKG_OK;
-	int mret;
 
 	/* Create our mach-o handle */
 	macho_handle = macho_create_handle();
@@ -73,16 +121,10 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			goto cleanup;
 		}
 
-		if ((mret = macho_parse_file(macho_handle, fpath, &macho)) != MACHO_SUCCESS) {
-			if (mret != MACHO_EMAGIC && mret != MACHO_ERANGE) {
-				pkg_emit_error("macho_parse_file() for %s failed: %s", fpath, macho_strerror(mret));
-				ret = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			/* Not a Mach-O file; no results */
-			continue;
-		}		
+		ret = analyse_macho(pkg, fpath, macho_handle, add_dylibs_to_pkg, db);
+		if (ret != EPKG_OK && ret != EPKG_END) {
+			failures = true;
+		}
 	}
 
 cleanup:
@@ -91,29 +133,180 @@ cleanup:
 	if (stage != NULL)
 		free(fpath);
 
+	if (failures)
+		ret = EPKG_FATAL;
+
 	return (ret);
 }
 
+/**
+ * Extract the major release number from an XNU kernel
+ * version returned by uname().
+ */
+static int
+parse_major_release(const char *src, long long *release)
+{
+	int ret = EPKG_OK;
+	char *parsed = NULL;
+	const char *errstr;
+	char *eos;
+
+	parsed = strdup(src);
+	eos = strchr(parsed, '.');
+	if (eos == NULL) {
+		pkg_emit_error("failed to parse major release version from %s", src);
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	*eos = '\0';
+	*release = strtonum(parsed, 1, LONG_LONG_MAX, &errstr);
+	if (errstr != NULL) {
+		pkg_emit_error("failed to parse major release version from %s: %s", src, errstr);
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+cleanup:
+	free(parsed);
+	return ret;
+}
+
+static int
+host_cpu_type (cpu_type_t *result)
+{
+	size_t len;
+    int resint;
+
+    /* Fetch CPU type */
+    len = sizeof(resint);
+    if (sysctlbyname("hw.cputype", &resint, &len, NULL, 0) != 0) {
+    	pkg_emit_errno("sysctlbyname", "hw.cputype");
+        return EPKG_FATAL;
+    }
+
+    *result = resint;
+    return EPKG_OK;
+}
+
+static int
+host_os_info(char *osname, size_t sz, long long *major_version)
+{
+	struct utsname ut;
+
+	/* Fetch OS info from uname() */
+	if (uname(&ut) != 0) {
+		pkg_emit_errno("uname", "&ut");
+		return EPKG_FATAL;
+	}
+
+	/* Provide the OS name to the caller. */
+	if (sz < strlen(ut.sysname) + 1) {
+		pkg_emit_error("provided buffer is too small for os name: %s", strlen(ut.sysname));
+		return EPKG_FATAL;
+	}
+
+	strlcpy(osname, ut.sysname, sz);
+
+	/* Parse the major release version */
+	return parse_major_release(ut.release, major_version);
+}
 
 int
 pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 {
-	strlcpy(dest, arch, sz);
-	return (0);
+	int i = 0;
+	const NXArchInfo *ai;
+	const char *arch_name;
+	bool is64;
+
+	bzero(dest, sz);
+	/* Lower case the OS */
+	while (arch[i] != ':' && arch[i] != '\0') {
+		dest[i] = tolower(arch[i]);
+		i++;
+	}
+	if (arch[i] == '\0')
+		return (0);
+
+	dest[i++] = ':';
+
+	/* Copy the version */
+	while (arch[i] != ':' && arch[i] != '\0') {
+		dest[i] = arch[i];
+		i++;
+	}
+	if (arch[i] == '\0')
+		return (0);
+
+	dest[i++] = ':';
+
+	/* Map the architecture name to its CPU type */
+	ai = NXGetArchInfoFromName(arch + i);
+	if (ai == NULL) {
+		pkg_emit_error("could not find architecture info for %s", arch + i);
+		return EPKG_FATAL;
+	}
+
+	/* Fetch the base architecture name */
+	arch_name = macho_get_arch_name(ai->cputype & ~CPU_ARCH_ABI64);
+    if (arch_name == NULL) {
+    	pkg_emit_error("macho_get_arch_name() failed for %x", ai->cputype);
+    	return EPKG_FATAL;
+    }
+
+    /* Determine word size */
+    is64 = (ai->cputype & CPU_ARCH_ABI64) != 0;
+
+    /* Emit the result */
+    snprintf(dest + i, sz - (arch + i - dest), "%s:%s", arch_name, is64 ? "64" : "32");
+    return EPKG_OK;
 }
 
 int
 pkg_get_myarch_legacy(char *dest, size_t sz)
 {
-	return pkg_get_myarch(dest, sz);
+	char current[sz];
+	int ret;
+
+	if ((ret = pkg_get_myarch(current, sizeof(current))) != EPKG_OK)
+		return ret;
+
+	return pkg_arch_to_legacy(current, dest, sz);
 }
 
 int
 pkg_get_myarch(char *dest, size_t sz)
 {
-	const NXArchInfo *ai = NXGetLocalArchInfo();
-	assert(ai != NULL);
+	cpu_type_t cpu_type;
+	const char *cpu_name = NULL;
+	long long major_version;
+	char os_name[BUFSIZ];
+	char *spec = NULL;
+	int ret = EPKG_OK;
 
-	strlcpy(dest, ai->name, sz);
-	return (0);
+	/* Fetch basic OS info */
+	if ((ret = host_os_info(os_name, sizeof(os_name), &major_version)) != EPKG_OK)
+		goto cleanup;
+
+	/* Fetch host CPU type */
+	if ((ret = host_cpu_type(&cpu_type)) != EPKG_OK)
+		goto cleanup;
+
+	/* Fetch the name for the base CPU family */
+	cpu_name = macho_get_arch_name(cpu_type);
+
+	/* Produce the result */
+	asprintf(&spec, "%s:%lld:%s", os_name, major_version, cpu_name);
+	if (spec == NULL) {
+		pkg_emit_error("asprintf() failed to allocate output string");
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	strlcpy(dest, spec, sz);
+
+cleanup:
+	free(spec);
+	return ret;
 }
