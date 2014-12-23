@@ -1,4 +1,4 @@
-.Dd November 29, 2013
+.Dd November 18, 2014
 .Dt PKG_REPOS 3
 .Os
 .Sh NAME
@@ -42,11 +42,11 @@
 .Fn pkg_repo_find_name "const char *name";
 .Sh DESCRIPTION
 .Fn pkg_repos
-Takes the address of a pointer to the repository. The pointer should be
-initialized to NULL before being passed to the function, on each iteration
-the r will point to the next repository. Returns EPKG_FATAL if an error
-occured, otherwise return EPKG_OK until the last repository is found in that
-case EPKG_END is returned.
+Takes the address of a pointer to the repository.
+The pointer should be initialised to NULL before being passed to the
+function, on each iteration the r will point to the new repository.
+Returns EPKG_FATAL if an error occurred, otherwise return EPKG_OK until
+the last repository is found in that case EPKG_END is returned.
 .Pp
 .Fn pkg_repos_total_count
 returns the total number of defined repositories.
@@ -72,12 +72,13 @@ of the repository.
 .Pp
 .Fn pkg_repo_key
 takes a pointer to a repository as argument and returns the path to
-the public key. If the repository is not signed by a public key, NULL
-will be returned.
+the public key.
+If the repository is not signed by a public key, NULL will be returned.
 .Pp
 .Fn pkg_repo_fingerprints
 takes a pointer to a repository as argument and returns the path to
-the fingerprints. If the repository is not signed using the
+the fingerprints.
+If the repository is not signed using the
 .Qq FINGERPRINT
 method, NULL will be returned.
 .Pp
@@ -86,7 +87,7 @@ Take a pointer to a repository as argument and return the type of
 signature it uses.
 .Bl -tag -width SIG_FINGERPRINT
 .It Cm SIG_NONE
-The repository isn't signed
+The repository is not signed
 .It Cm SIG_PUBKEY
 The repository is signed using the PUBKEY method
 .It Cm SIG_FINGERPRINT
@@ -115,10 +116,11 @@ The repository does not have any mirror.
 .Pp
 .Fn pkg_repo_find_ident
 Take an internal indentification string as argument and return a pointer to
-a reprository. If no repository matches, NULL is returned.
+a repository.
+If no repository matches, NULL is returned.
 .Pp
 .Fn pkg_repo_find_name
 Take a repository
 .Qq name
-as argument and return a pointer to a reprository. If no repository matches,
-NULL is returned.
+as argument and return a pointer to a repository.
+If no repository matches, NULL is returned.

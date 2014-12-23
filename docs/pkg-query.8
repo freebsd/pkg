@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 10, 2014
+.Dd November 18, 2014
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -90,7 +90,7 @@ of
 .Xr re_format 7 .
 .El
 .Sh QUERY FORMAT
-There are two type of keyword for the query format: the multiline and the normal
+There are two types of keywords for the query format: the multiline and the normal
 one. Only one type of multiline pattern is accepted for a given query.
 .Ss Normal patterns:
 .Bl -tag -width F1
@@ -111,7 +111,7 @@ Description of the matched package
 .It Cm \&%w
 Home page of the matched package
 .It Cm \&%l
-license logic of the matched package - nothing for single, & for AND, and | for OR
+License logic of the matched package - nothing for single, & for AND, and | for OR
 .It Cm \&%s Ns Op bh
 The flat size of the matched package, where
 .Cm b
@@ -119,7 +119,11 @@ is in bytes, and
 .Cm h
 is in human readable format.
 .It Cm \&%a
-Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+Returns 1 if the matched package was automatically installed
+as a dependency of another package, 0 otherwise.
+The package can be automatically removed via
+.Sq pkg autoremove
+when this flag is set and no other package depends on it.
 .It Cm \&%q
 Architecture of the matched package
 .It Cm \&%k
@@ -231,7 +235,7 @@ for option default value and
 .Cm D
 for option description.
 Option default values and descriptions are optional metadata and may
-beblank for certain packages.
+be blank for certain packages.
 .It Cm \&%L
 Expands to the list of license(s) for the matched package.
 .It Cm \&%U
@@ -292,7 +296,7 @@ Message of the package (type string)
 .It Cm \&%t
 Timestamp that the package was installed (type integer)
 .It Cm \&%i
-Additionnal information about the package (type string)
+Additional information about the package (type string)
 .It Cm \&%# Ns Op drCFODLUGBbA
 Number of elements in the list of information (type integer).
 See

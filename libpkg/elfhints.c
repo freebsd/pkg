@@ -27,7 +27,6 @@
  * $FreeBSD: stable/8/sbin/ldconfig/elfhints.c 76224 2001-05-02 23:56:21Z obrien $
  */
 
-#include <sys/param.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
@@ -127,7 +126,8 @@ shlib_list_find_by_name(const char *shlib_file)
 {
 	struct shlib_list *sl;
 
-	assert(HASH_COUNT(shlibs) != 0);
+	if (HASH_COUNT(shlibs) == 0)
+		return (NULL);
 
 	HASH_FIND_STR(rpath, shlib_file, sl);
 	if (sl != NULL)

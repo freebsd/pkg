@@ -88,11 +88,9 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 	struct pkg_conflict *new;
 
 	pkg_conflict_new(&new);
-	sbuf_set(&new->uniqueid, uniqueid);
+	new->uid = strdup(uniqueid);
 
-	HASH_ADD_KEYPTR(hh, bulk->conflicts,
-			pkg_conflict_uniqueid(new),
-			sbuf_size(new->uniqueid), new);
+	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
 }
 
 static void
@@ -109,7 +107,7 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 
 	HASH_ITER (hh, bulk, cur, tmp) {
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->uniqueid), s);
+			HASH_FIND_STR(pkg_bulk, c1->uid, s);
 			if (s == NULL) {
 				/* New entry required */
 				s = malloc(sizeof(struct pkg_conflict_bulk));
@@ -118,17 +116,17 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 					goto out;
 				}
 				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = sbuf_get(c1->uniqueid);
+				s->file = c1->uid;
 				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
 			}
 			/* Now add all new entries from this file to this conflict structure */
 			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				if (strcmp(sbuf_get(c1->uniqueid), sbuf_get(c2->uniqueid)) == 0)
+				if (strcmp(c1->uid, c2->uid) == 0)
 					continue;
 
-				HASH_FIND_STR(s->conflicts, sbuf_get(c2->uniqueid), ctmp);
+				HASH_FIND_STR(s->conflicts, c2->uid, ctmp);
 				if (ctmp == NULL)
-					pkg_repo_new_conflict(sbuf_get(c2->uniqueid), s);
+					pkg_repo_new_conflict(c2->uid, s);
 			}
 		}
 	}
@@ -137,16 +135,16 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 		fprintf(out, "%s:", cur->file);
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
 			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", sbuf_get(c1->uniqueid));
+				fprintf(out, "%s,", c1->uid);
 			else
-				fprintf(out, "%s\n", sbuf_get(c1->uniqueid));
+				fprintf(out, "%s\n", c1->uid);
 		}
 	}
 out:
 	HASH_ITER (hh, pkg_bulk, cur, tmp) {
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
 			HASH_DEL(cur->conflicts, c1);
-			sbuf_free(c1->uniqueid);
+			free(c1->uid);
 			free(c1);
 		}
 		HASH_DEL(pkg_bulk, cur);
@@ -254,7 +252,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_repo_meta *meta)
 {
 	pid_t pid;
-	int mfd, ffd;
+	int mfd, ffd = -1;
 	bool read_files = (flfile != NULL);
 	bool legacy = (meta == NULL);
 	int flags, ret = EPKG_OK;
@@ -322,13 +320,11 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			int r;
 			off_t mpos, fpos = 0;
 			size_t mlen;
-			const char *origin;
 
 			sha256_file(cur->fts_accpath, checksum);
-			pkg_set(pkg, PKG_CKSUM, checksum,
-				PKG_REPOPATH, cur->pkg_path,
-				PKG_PKGSIZE, cur->fts_size);
-			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg->pkgsize = cur->fts_size;
+			pkg->sum = strdup(checksum);
+			pkg->repopath = strdup(cur->pkg_path);
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -391,11 +387,12 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			}
 
 			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld:%s\n",
-				origin, mdigest,
+				pkg->origin,
+				mdigest,
 				(long)mpos,
 				(long)fpos,
 				(long)mlen,
-				checksum);
+				pkg->sum);
 
 			free(mdigest);
 			mdigest = NULL;
@@ -417,8 +414,7 @@ cleanup:
 	close(mfd);
 	if (read_files)
 		close(ffd);
-	if (mdigest)
-		free(mdigest);
+	free(mdigest);
 
 	pkg_debug(1, "worker done");
 	exit(ret);
@@ -427,7 +423,7 @@ cleanup:
 static int
 pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 {
-	struct digest_list_entry *dig;
+	struct digest_list_entry *dig = NULL;
 	char buf[1024];
 	int r, i, start;
 	enum {
@@ -775,7 +771,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			sbuf_free(c->uniqueid);
+			free(c->uid);
 			HASH_DEL(curcb->conflicts, c);
 			free(c);
 		}
@@ -836,7 +832,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 		else
 			sbuf_printf(cmd, " %s ", argv[i]);
 	}
-	sbuf_done(cmd);
+	sbuf_finish(cmd);
 
 	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
 		ret = EPKG_FATAL;
@@ -1094,8 +1090,7 @@ cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
 	pkg_repo_meta_free(meta);
 
-	if (rsa)
-		rsa_free(rsa);
+	rsa_free(rsa);
 
 	return (ret);
 }

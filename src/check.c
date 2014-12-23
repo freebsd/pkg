@@ -61,20 +61,19 @@ static int
 check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall)
 {
 	struct pkg_dep *dep = NULL;
-	char *name, *version, *origin;
 	int nbpkgs = 0;
 
 	assert(db != NULL);
 	assert(p != NULL);
 
-	name = version = origin = NULL;
-	pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
-
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
-			 printf("%s has a missing dependency: %s\n", origin,
-                               pkg_dep_origin(dep));
+			if (quiet)
+				pkg_printf("%o\t%so\n", p, dep);
+			else
+				pkg_printf("%o has a missing dependency: %do\n",
+				    p, dep);
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
 		}
@@ -186,8 +185,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	}
 
 cleanup:
-	if (pkgs != NULL)
-		free(pkgs);
+	free(pkgs);
 	if (jobs != NULL)
 		pkg_jobs_free(jobs);
 
@@ -233,7 +231,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "Usage: pkg check [-Bdsr] [-vy] [-a | -Cgix <pattern>]\n\n");
+	fprintf(stderr, "Usage: pkg check [-Bdsr] [-qvy] [-a | -Cgix <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -254,7 +252,7 @@ exec_check(int argc, char **argv)
 	bool reanalyse_shlibs = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
-	int i, processed, total;
+	int i, processed, total = 0;
 	int verbose = 0;
 
 	struct option longopts[] = {
@@ -268,6 +266,7 @@ exec_check(int argc, char **argv)
 		{ "recompute",		no_argument,	NULL,	'r' },
 		{ "checksums",		no_argument,	NULL,	's' },
 		{ "verbose",		no_argument,	NULL,	'v' },
+		{ "quiet",              no_argument,    NULL,   'q' },
 		{ "regex",		no_argument,	NULL,	'x' },
 		{ "yes",		no_argument,	NULL,	'y' },
 		{ NULL,			0,		NULL,	0   },
@@ -275,7 +274,9 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt_long(argc, argv, "+aBCdginrsvxy", longopts, NULL)) != -1) {
+	processed = 0;
+
+	while ((ch = getopt_long(argc, argv, "+aBCdginqrsvxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -299,6 +300,9 @@ exec_check(int argc, char **argv)
 			break;
 		case 'n':
 			noinstall = true;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		case 'r':
 			recompute = true;
@@ -340,7 +344,8 @@ exec_check(int argc, char **argv)
 		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 
 	if (ret == EPKG_ENODB) {
-		warnx("No packages installed.  Nothing to do!");
+		if (!quiet)
+			warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to access the package database");
@@ -373,12 +378,14 @@ exec_check(int argc, char **argv)
 		if (msg == NULL)
 			msg = sbuf_new_auto();
 		if (!verbose) {
-			if (match == MATCH_ALL)
-				progressbar_start("Checking all packages");
-			else {
-				sbuf_printf(msg, "Checking %s", argv[i]);
-				sbuf_finish(msg);
-				progressbar_start(sbuf_data(msg));
+			if (!quiet) {
+				if (match == MATCH_ALL)
+					progressbar_start("Checking all packages");
+				else {
+					sbuf_printf(msg, "Checking %s", argv[i]);
+					sbuf_finish(msg);
+					progressbar_start(sbuf_data(msg));
+				}
 			}
 			processed = 0;
 			total = pkgdb_it_count(it);
@@ -390,19 +397,21 @@ exec_check(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-			if (!verbose)
-				progressbar_tick(processed, total);
-			else {
-				++nbdone;
-				job_status_begin(msg);
-				pkg_sbuf_printf(msg, "Checking %n-%v:",
-				    pkg, pkg);
-				sbuf_flush(msg);
+			if (!quiet) {
+				if (!verbose)
+					progressbar_tick(processed, total);
+				else {
+					++nbdone;
+					job_status_begin(msg);
+					pkg_sbuf_printf(msg, "Checking %n-%v:",
+					    pkg, pkg);
+					sbuf_flush(msg);
+				}
 			}
 
 			/* check for missing dependencies */
 			if (dcheck) {
-				if (verbose)
+				if (!quiet && verbose)
 					printf(" dependencies...");
 				nbpkgs += check_deps(db, pkg, &dh, noinstall);
 				if (noinstall && nbpkgs > 0) {
@@ -410,7 +419,7 @@ exec_check(int argc, char **argv)
 				}
 			}
 			if (checksums) {
-				if (verbose)
+				if (!quiet && verbose)
 					printf(" checksums...");
 				if (pkg_test_filesum(pkg) != EPKG_OK) {
 					rc = EX_DATAERR;
@@ -419,7 +428,7 @@ exec_check(int argc, char **argv)
 			if (recompute) {
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-					if (verbose)
+					if (!quiet && verbose)
 						printf(" recomputing...");
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
 						rc = EX_DATAERR;
@@ -435,7 +444,7 @@ exec_check(int argc, char **argv)
 			if (reanalyse_shlibs) {
 				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-					if (verbose)
+					if (!quiet && verbose)
 						printf(" shared libraries...");
 					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
 						pkg_fprintf(stderr, "Failed to "
@@ -452,12 +461,14 @@ exec_check(int argc, char **argv)
 				}
 			}
 
-			if (!verbose)
-				++processed;
-			else
-				printf(" done\n");
+			if (!quiet) {
+				if (!verbose)
+					++processed;
+				else
+					printf(" done\n");
+			}
 		}
-		if (!verbose)
+		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
 		if (msg != NULL) {
 			sbuf_delete(msg);

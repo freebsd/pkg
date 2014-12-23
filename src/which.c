@@ -60,7 +60,7 @@ exec_which(int argc, char **argv)
 	char		*p, *path, *match;
 	int		 ret = EPKG_OK, retcode = EX_SOFTWARE;
 	int		 ch;
-	int		 res, pathlen;
+	int		 res, pathlen = 0;
 	bool		 orig = false;
 	bool		 glob = false;
 	bool		 search = false;
@@ -73,6 +73,8 @@ exec_which(int argc, char **argv)
 		{ "quiet",		no_argument,	NULL,	'q' },
 		{ NULL,			0,		NULL,	0   },
 	};
+
+	path = NULL;
 
 	while ((ch = getopt_long(argc, argv, "+gopq", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -152,14 +154,14 @@ exec_which(int argc, char **argv)
 					retcode = EX_OSERR;
 					goto cleanup;
 				} else {
-					absolutepath(match, pathabs, sizeof(pathabs));
+					pkg_absolutepath(match, pathabs, sizeof(pathabs));
 					free(match);
 				}
 			}
 		}
 
 		if (!glob && !search)
-			absolutepath(argv[0], pathabs, sizeof(pathabs));
+			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs));
 		else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
 				retcode = EX_USAGE;

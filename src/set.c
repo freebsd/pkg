@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -39,12 +40,46 @@
 
 #define AUTOMATIC 1U<<0
 #define ORIGIN 1U<<1
+#define NAME 1U<<2
 
 void
 usage_set(void)
 {
-	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-Cgix] <pkg-name>\n\n");
+	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-n <oldname>:<newname>] [-y] [-Cgix] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
+}
+
+static bool
+check_change_values(const char *opt, char **oldv, char **newv, char guard)
+{
+	const char *semicolon;
+
+	if (opt == NULL)
+		return (false);
+
+	semicolon = strrchr(opt, ':');
+
+	if (semicolon == NULL)
+		return (false);
+
+	*oldv = malloc(semicolon - opt + 1);
+	strlcpy(*oldv, opt, semicolon - opt + 1);
+	*newv = strdup(semicolon + 1);
+
+	if (guard != '\0') {
+		/* Check guard symbol in both new and old values */
+		if (strrchr(*oldv, guard) == NULL ||
+			strrchr(*newv, guard) == NULL) {
+			free(*oldv);
+			free(*newv);
+			*oldv = NULL;
+			*newv = NULL;
+
+			return (false);
+		}
+	}
+
+	return (true);
 }
 
 int
@@ -60,10 +95,12 @@ exec_set(int argc, char **argv)
 	bool		 automatic = false;
 	bool		 rc = false;
 	const char	*errstr;
-	char		*neworigin = NULL;
-	char		*oldorigin = NULL;
+	const char	*changed = NULL;
+	char		*newvalue = NULL;
+	char		*oldvalue = NULL;
 	unsigned int	 loads = PKG_LOAD_BASIC;
 	unsigned int	 sets = 0;
+	unsigned int	 field = 0, depfield = 0;
 	int		 retcode;
 
 	struct option longopts[] = {
@@ -73,12 +110,13 @@ exec_set(int argc, char **argv)
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "change-origin",	required_argument,	NULL,	'o' },
+		{ "change-name",	required_argument,	NULL,	'n' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+A:aCgio:xy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+A:aCgio:xyn:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
@@ -104,21 +142,22 @@ exec_set(int argc, char **argv)
 			sets |= ORIGIN;
 			loads |= PKG_LOAD_DEPS;
 			match = MATCH_ALL;
-			oldorigin = strdup(optarg);
-			neworigin = strrchr(oldorigin, ':');
-			if (neworigin == NULL) {
-				free(oldorigin);
-				errx(EX_USAGE, "Wrong format for -o. "
-				    "Expecting oldorigin:neworigin, got: %s",
-				    optarg);
+			changed = "origin";
+			if (!check_change_values(optarg, &oldvalue, &newvalue, '/')) {
+				 errx(EX_USAGE, "Wrong format for -o. "
+					 "Expecting oldorigin:neworigin, got: %s",
+					 optarg);
 			}
-			*neworigin = '\0';
-			neworigin++;
-			if (strrchr(oldorigin, '/') == NULL ||
-			    strrchr(neworigin, '/') == NULL) {
-				free(oldorigin);
-				errx(EX_USAGE,
-				    "Bad origin format, got: %s", optarg);
+			break;
+		case 'n':
+			sets |= NAME;
+			loads |= PKG_LOAD_DEPS;
+			match = MATCH_ALL;
+			changed = "name";
+			if (!check_change_values(optarg, &oldvalue, &newvalue, '\0')) {
+				 errx(EX_USAGE, "Wrong format for -n. "
+					 "Expecting oldname:newname, got: %s",
+					 optarg);
 			}
 			break;
 		case 'x':
@@ -128,8 +167,7 @@ exec_set(int argc, char **argv)
 			yes = true;
 			break;
 		default:
-			if (oldorigin != NULL)
-				free(oldorigin);
+			free(oldvalue);
 			
 			usage_set();
 			return (EX_USAGE);
@@ -139,9 +177,20 @@ exec_set(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if ((argc < 1 && match != MATCH_ALL) || (newautomatic == -1 && neworigin == NULL)) {
+	if ((argc < 1 && match != MATCH_ALL) ||
+		(newautomatic == -1 && newvalue == NULL) ||
+		(sets & (NAME|ORIGIN)) == (NAME|ORIGIN)) {
 		usage_set();
 		return (EX_USAGE);
+	}
+
+	if (sets & NAME) {
+		field = PKG_SET_NAME;
+		depfield = PKG_SET_DEPNAME;
+	}
+	else if (sets & ORIGIN) {
+		field = PKG_SET_ORIGIN;
+		depfield = PKG_SET_DEPORIGIN;
 	}
 
 	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
@@ -169,10 +218,16 @@ exec_set(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
+	if (pkgdb_transaction_begin(db, NULL) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot start transaction for update");
+		return (EX_TEMPFAIL);
+	}
+
  
-	if (oldorigin != NULL) {
+	if (oldvalue != NULL) {
 		match = MATCH_ALL;
-		if ((it = pkgdb_query(db, oldorigin, MATCH_EXACT)) == NULL) {
+		if ((it = pkgdb_query(db, oldvalue, MATCH_EXACT)) == NULL) {
 			retcode = EX_IOERR;
 			goto cleanup;
 		}
@@ -189,14 +244,14 @@ exec_set(int argc, char **argv)
 		rc = yes;
 		if (!yes) {
 			if (pkg != NULL)
-				rc = query_yesno(false, "Change origin from %S to %S for %n-%v? [y/N]: ",
-						oldorigin, neworigin, pkg, pkg);
+				rc = query_yesno(false, "Change %S from %S to %S for %n-%v? [y/N]: ",
+						changed, oldvalue, newvalue, pkg, pkg);
 			else
-				rc = query_yesno(false, "Change origin from %S to %S for all dependencies? "
-						"[y/N]: ", oldorigin, neworigin);
+				rc = query_yesno(false, "Change %S from %S to %S for all dependencies? "
+						"[y/N]: ", changed, oldvalue, newvalue);
 		}
 		if (pkg != NULL && rc) {
-			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK) {
+			if (pkgdb_set(db, pkg, field, newvalue) != EPKG_OK) {
 				retcode = EX_IOERR;
 				goto cleanup;
 			}
@@ -231,14 +286,14 @@ exec_set(int argc, char **argv)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
 				rc = saved_rc;
 			}
-			if ((sets & ORIGIN) == ORIGIN) {
+			if (sets & (ORIGIN|NAME)) {
 				struct pkg_dep *d = NULL;
 				while (pkg_deps(pkg, &d) == EPKG_OK) {
 					/*
 					 * Do not query user when he has already
 					 * been queried.
 					 */
-					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK) {
+					if (pkgdb_set(db, pkg, depfield, oldvalue, newvalue) != EPKG_OK) {
 						retcode = EX_IOERR;
 						goto cleanup;
 					}
@@ -250,11 +305,15 @@ exec_set(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
-	if (oldorigin)
-		free(oldorigin);
+	free(oldvalue);
+	pkg_free(pkg);
 
-	if (pkg != NULL)
-		pkg_free(pkg);
+	if (retcode == 0) {
+		pkgdb_transaction_commit(db, NULL);
+	}
+	else {
+		pkgdb_transaction_rollback(db, NULL);
+	}
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);

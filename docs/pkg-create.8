@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 26, 2014
+.Dd November 18, 2014
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@
 .Nm
 is used to create packages from binaries or other files installed on
 your computer.
-Package tarballs can created from the files of a previously installed
+Package tarballs can be created from the files of a previously installed
 package using metadata from the local package database.
 Any number of packages may be created in one invocation of this style.
 .Pp
@@ -144,7 +144,7 @@ It can be one of
 .Ar txz , tbz , tgz
 or
 .Ar tar
-which are currently the only supported format.
+which are currently the only supported formats.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
@@ -154,7 +154,7 @@ Specify the directory containing the package manifest,
 and optionally three other files; one containing a message to be
 displayed on package installation,
 .Pa +DISPLAY .
-Another containing the description for the packages,
+Another containing the description for the package,
 .Pa +DESC .
 The last containing an mtree specification,
 .Pa +MTREE_DIRS ,
@@ -184,7 +184,7 @@ file.
 This is exactly the same format as
 .Pa +MANIFEST
 mentioned above, but any file name can be used, and no
-other file will be used to read package metada from.
+other file will be used to read package metadata from.
 If specified, only a single package will be created.
 This option is incompatible with the
 .Fl m, a, g
@@ -192,7 +192,7 @@ or
 .Fl x
 options.
 .It Fl n , Cm --no-clobber
-Do not overwrite already existing packages
+Do not overwrite already existing packages.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
@@ -214,7 +214,7 @@ Only has any effect when used with
 .Ar metadatadir .
 See
 .Sx "PLIST FORMAT"
-for details
+for details.
 .It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
@@ -244,7 +244,7 @@ This entry sets the package's origin to
 .Ar pkg-origin .
 This is a string of the form
 .Pa category/port-dir
-which designate the port this package was built from.
+which designates the port this package was built from.
 .It Cm comment Ar comment-string
 .Ar comment-string
 is a one-line description of this package.
@@ -269,12 +269,26 @@ The size that the files contained in this package will occupy on your system
 once uncompressed.
 This value does not take into account files stored in the
 package database.
-.It Cm dep Ar dep-name dep-origin dep-version
-Declare a dependency on the package which name, origin and version match
-.Ar dep-name , dep-origin
+.It Cm deps Ar dep-name dep-origin dep-version
+Associative array of package dependencies, keyed on
+.Ar dep-name
+and with values
+.Cm version Ar dep-version
 and
-.Ar dep-version
-respectively.
+.Cm origin Ar dep-origin .
+For example:
+.Bd -literal -offset indent
+"deps" : {
+   "pstree" : {
+      "version" : "2.36",
+      "origin" : "sysutils/pstree"
+   },
+   "cdiff" : {
+      "version" : "0.9.6.20140711,1",
+      "origin" : "textproc/cdiff"
+   },
+},
+.Ed
 .It Cm conflict Ar pkg-glob
 Flag this package as incompatible with the one designated by
 .Ar pkg-glob .
@@ -397,23 +411,19 @@ Set default group ownership for all subsequent files to
 Use without an arg to set back to default (wheel)
 group ownership.
 .It Cm @comment Ar string
-The line will be ignored when packing
-.It Cm @dirrm Ar name
+The line will be ignored when packing.
+.It Cm @dir Ar name
 Declare directory
 .Pa name
 to be deleted at deinstall time.
-By default, directories created by a package installation are not
-deleted when the package is deinstalled.
-This provides an explicit directory cleanup method.
+By default, most directories created by a package installation are
+deleted automatically when the package is deinstalled, so this directive is
+only needed for empty directories or directories outside of
+.Ev PREFIX .
 These directives should appear at the end of the package list.
 If the directory is not empty a warning will be printed, and the
 directory will not be removed.
-.It Cm @dirrmtry Ar name
-Declare directory
-.Pa name
-to be removed, as for
-.Cm @dirrm ,
-but does not issue a warning if the directory cannot be removed.
+(Subdirectories should be listed before parent directories.)
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT

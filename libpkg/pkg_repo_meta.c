@@ -168,8 +168,7 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 #define META_EXTRACT_STRING(field) do { 						\
 	obj = ucl_object_find_key(top, (#field)); 					\
 	if (obj != NULL && obj->type == UCL_STRING) { 				\
-	    if (meta->field != NULL) 								\
-	    	free(meta->field);									\
+	    free(meta->field);									\
 	    meta->field = strdup(ucl_object_tostring(obj));			\
 	}															\
 } while (0)

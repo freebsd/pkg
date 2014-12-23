@@ -281,7 +281,7 @@ pkg_plugins_init(void)
 	plugdir = pkg_object_string(pkg_config_get("PKG_PLUGINS_DIR"));
 
 	obj = pkg_config_get("PLUGINS");
-	while ((cur = ucl_iterate_object(obj, &it, false))) {
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		/*
 		 * Load the plugin
 		 */

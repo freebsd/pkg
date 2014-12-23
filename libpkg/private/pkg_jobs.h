@@ -35,21 +35,30 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "pkg.h"
+#include "tree.h"
 
 struct pkg_jobs;
 struct job_pattern;
 
 struct pkg_job_universe_item {
 	struct pkg *pkg;
-	struct job_pattern *jp;
 	int priority;
+	bool processed;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };
 
+struct pkg_job_request_item {
+	struct pkg *pkg;
+	struct pkg_job_universe_item *unit;
+	struct job_pattern *jp;
+	struct pkg_job_request_item *prev, *next;
+};
+
 struct pkg_job_request {
-	struct pkg_job_universe_item *item;
+	struct pkg_job_request_item *item;
 	bool skip;
+	bool automatic;
 	UT_hash_handle hh;
 };
 
@@ -89,6 +98,12 @@ struct pkg_jobs_universe {
 	size_t nitems;
 };
 
+struct pkg_jobs_conflict_item {
+	uint64_t hash;
+	struct pkg_job_universe_item *item;
+	TREE_ENTRY(pkg_jobs_conflict_item) entry;
+};
+
 struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
 	struct pkg_job_request	*request_add;
@@ -104,6 +119,7 @@ struct pkg_jobs {
 	bool need_fetch;
 	const char *reponame;
 	const char *destdir;
+	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
 	struct job_pattern *patterns;
 };
 
@@ -156,12 +172,6 @@ int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, struct pkg_job_universe_item **result);
 
 /*
- * Add a universe item with package to the request
- */
-void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
-	struct pkg_job_universe_item *item);
-
-/*
  * Check if the specified digest was seen in the universe
  */
 struct pkg_job_seen* pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
@@ -206,7 +216,8 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 /*
  * Append conflicts to a package
  */
-int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
+int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
+	struct pkg_jobs *j);
 /*
  * Perform integrity check for the jobs specified
  */
@@ -226,5 +237,23 @@ bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
  * Pre-process universe to fix complex upgrade chains
  */
 void pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j);
+
+/*
+ * Find upgrade candidates for a specified local package `lp`
+ * This function updates universe as following:
+ * - if `lp` is not null it is always added to the universe
+ * - if `uid` is in the universe, then the existing upgrade chain is returned
+ * - if `force` is true then all candidates are added to the universe
+ * - if `forece` is false then *all* candidates are added to the universe, but
+ * merely if *any* of remote packages is an upgrade for local one
+ */
+struct pkg_job_universe_item*
+pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
+	const char *uid, struct pkg *lp, bool force);
+
+/*
+ * Free job request (with all candidates)
+ */
+void pkg_jobs_request_free(struct pkg_job_request *req);
 
 #endif /* PKG_JOBS_H_ */

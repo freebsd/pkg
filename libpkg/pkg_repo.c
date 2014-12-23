@@ -58,9 +58,9 @@
 
 struct sig_cert {
 	char name[MAXPATHLEN];
-	unsigned char *sig;
+	char *sig;
 	int64_t siglen;
-	unsigned char *cert;
+	char *cert;
 	int64_t certlen;
 	bool cert_allocated;
 	UT_hash_handle hh;
@@ -339,7 +339,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[3].iov_len = sizeof(siglen);
 			iov[4].iov_base = sig;
 			iov[4].iov_len = siglen;
-			if (writev(fd, iov, sizeof(iov) / sizeof(iov[0])) == -1) {
+			if (writev(fd, iov, NELEM(iov)) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"writev failed");
 				free(sig);
@@ -378,7 +378,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[3].iov_len = sizeof(siglen);
 			iov[4].iov_base = sig;
 			iov[4].iov_len = siglen;
-			if (writev(fd, iov, sizeof(iov) / sizeof(iov[0])) == -1) {
+			if (writev(fd, iov, NELEM(iov)) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"writev failed");
 				free(sig);
@@ -532,13 +532,13 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 
 static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
-		const char *dest, struct pkg_repo *repo, int dest_fd,
-		struct sig_cert **signatures)
+    const char *dest, struct pkg_repo *repo, int dest_fd,
+    struct sig_cert **signatures)
 {
 	struct sig_cert *sc = NULL, *s;
 	struct pkg_extract_cbdata cbdata;
 
-	unsigned char *sig = NULL;
+	char *sig = NULL;
 	int rc = EPKG_OK;
 	int64_t siglen = 0;
 
@@ -606,8 +606,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		cbdata.need_sig = false;
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
 			&cbdata, (char **)&sig, &siglen) == EPKG_OK) {
-			if (sig)
-				free(sig);
+			free(sig);
 		}
 		else {
 			pkg_emit_error("Repo extraction failed");
@@ -637,7 +636,7 @@ cleanup:
 
 static int
 pkg_repo_archive_extract_check_archive(int fd, const char *file,
-		const char *dest, struct pkg_repo *repo, int dest_fd)
+    const char *dest, struct pkg_repo *repo, int dest_fd)
 {
 	struct sig_cert *sc = NULL, *s, *stmp;
 
@@ -679,7 +678,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		HASH_ITER(hh, sc, s, stmp) {
 			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen,
-					dest_fd);
+				dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
 				break;
 			}
@@ -700,20 +699,18 @@ cleanup:
 	return rc;
 }
 
-FILE *
-pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
-		time_t *t, int *rc)
+static int
+pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
+    time_t *t, int *rc)
 {
 	int fd, dest_fd;
-	FILE *res = NULL;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
 
 	fd = pkg_repo_fetch_remote_tmp(repo, filename,
 			packing_format_to_string(repo->meta->packing_format), t, rc);
-	if (fd == -1) {
-		return (NULL);
-	}
+	if (fd == -1)
+		return (-1);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
@@ -724,30 +721,84 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	if (dest_fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 				"aborting update.\n", tmp);
+		close(fd);
 		*rc = EPKG_FATAL;
-		goto cleanup;
+		return (-1);
 	}
+
 	(void)unlink(tmp);
 	if (pkg_repo_archive_extract_check_archive(fd, filename, NULL, repo, dest_fd)
 			!= EPKG_OK) {
 		*rc = EPKG_FATAL;
-		goto cleanup;
+		close(dest_fd);
+		close(fd);
+		return (-1);
+	}
+
+	/* Thus removing archived file as well */
+	close(fd);
+
+	return (dest_fd);
+}
+
+unsigned char *
+pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo, const char *filename,
+    time_t *t, int *rc, size_t *sz)
+{
+	int fd;
+	struct stat st;
+	unsigned char *map;
+
+	fd = pkg_repo_fetch_remote_extract_fd(repo, filename, t, rc);
+	if (fd == -1) {
+		return (NULL);
+	}
+
+	if (fstat(fd, &st) == -1) {
+		close(fd);
+		return (MAP_FAILED);
+	}
+
+	*sz = st.st_size;
+	if (st.st_size > SSIZE_MAX) {
+		pkg_emit_error("%s too large", filename);
+		close(fd);
+		return (MAP_FAILED);
+	}
+
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	close(fd);
+	if (map == MAP_FAILED) {
+		pkg_emit_errno("pkg_repo_fetch_remote_mmap", "cannot mmap fetched");
+		*rc = EPKG_FATAL;
+		return (MAP_FAILED);
+	}
+
+	return (map);
+}
+
+FILE *
+pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
+		time_t *t, int *rc)
+{
+	int dest_fd;
+	FILE *res;
+
+	dest_fd = pkg_repo_fetch_remote_extract_fd(repo, filename, t, rc);
+	if (dest_fd == -1) {
+		*rc = EPKG_FATAL;
+		return (NULL);
 	}
 
 	res = fdopen(dest_fd, "r");
 	if (res == NULL) {
 		pkg_emit_errno("fdopen", "digest open failed");
 		*rc = EPKG_FATAL;
-		goto cleanup;
-	}
-	dest_fd = -1;
-	*rc = EPKG_OK;
-
-cleanup:
-	if (dest_fd != -1)
 		close(dest_fd);
-	/* Thus removing archived file as well */
-	close(fd);
+		return (NULL);
+	}
+
+	*rc = EPKG_OK;
 	return (res);
 }
 

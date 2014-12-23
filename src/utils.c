@@ -208,58 +208,6 @@ cleanup:
 	return (i);
 }
 
-/* unlike realpath(3), this routine does not expand symbolic links */
-char *
-absolutepath(const char *src, char *dest, size_t dest_size) {
-	size_t dest_len, src_len, cur_len;
-	const char *cur, *next;
-
-	src_len = strlen(src);
-	bzero(dest, dest_size);
-	if (src_len != 0 && src[0] != '/') {
-		/* relative path, we use cwd */
-		if (getcwd(dest, dest_size) == NULL)
-			return (NULL);
-	}
-	dest_len = strlen(dest);
-
-	for (cur = next = src; next != NULL; cur = next + 1) {
-		next = strchr(cur, '/');
-		if (next != NULL)
-			cur_len = next - cur;
-		else
-			cur_len = strlen(cur);
-
-		/* check for special cases "", "." and ".." */
-		if (cur_len == 0)
-			continue;
-		else if (cur_len == 1 && cur[0] == '.')
-			continue;
-		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
-			const char *slash = strrchr(dest, '/');
-			if (slash != NULL) {
-				dest_len = slash - dest;
-				dest[dest_len] = '\0';
-			}
-			continue;
-		}
-
-		if (dest_len + 1 + cur_len >= dest_size)
-			return (NULL);
-		dest[dest_len++] = '/';
-		(void)memcpy(dest + dest_len, cur, cur_len);
-		dest_len += cur_len;
-		dest[dest_len] = '\0';
-	}
-
-	if (dest_len == 0) {
-		if (strlcpy(dest, "/", dest_size) >= dest_size)
-			return (NULL);
-	}
-
-	return (dest);
-}
-
 /* what the pkg needs to load in order to display the requested info */
 int
 info_flags(uint64_t opt, bool remote)
@@ -317,7 +265,6 @@ print_info(struct pkg * const pkg, uint64_t options)
 	bool show_locks = false;
 	char size[7];
 	const char *repourl;
-	const pkg_object	*o;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
@@ -331,9 +278,12 @@ print_info(struct pkg * const pkg, uint64_t options)
 		PKG_PKGSIZE,       &pkgsize);
 
 	if (options & INFO_RAW) {
-		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) {
+		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) {
 		case INFO_RAW_YAML:
 			outflags |= PKG_MANIFEST_EMIT_PRETTY;
+			break;
+		case INFO_RAW_UCL:
+			outflags |= PKG_MANIFEST_EMIT_UCL;
 			break;
 		case INFO_RAW_JSON:
 			outflags |= PKG_MANIFEST_EMIT_JSON;
@@ -445,22 +395,14 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_CATEGORIES:
-			pkg_get(pkg, PKG_CATEGORIES, &o);
-			if (pkg_object_count(o) > 0) {
-				if (print_tag)
-					printf("%-15s: ", "Categories");
-				pkg_printf("%C%{%Cn%| %}\n", pkg);
-			} else if (!print_tag)
-				printf("\n");
+			if (print_tag)
+				printf("%-15s: ", "Categories");
+			pkg_printf("%C%{%Cn%| %}\n", pkg);
 			break;
 		case INFO_LICENSES:
-			pkg_get(pkg, PKG_LICENSES, &o);
-			if (pkg_object_count(o) > 0) {
-				if (print_tag)
-					printf("%-15s: ", "Licenses");
-				pkg_printf("%L%{%Ln%| %l %}\n", pkg);
-			} else if (!print_tag)
-				printf("\n");
+			if (print_tag)
+				printf("%-15s: ", "Licenses");
+			pkg_printf("%L%{%Ln%| %l %}\n", pkg);
 			break;
 		case INFO_MAINTAINER:
 			if (print_tag)
@@ -508,15 +450,12 @@ print_info(struct pkg * const pkg, uint64_t options)
 			}
 			break;
 		case INFO_ANNOTATIONS:
-			pkg_get(pkg, PKG_ANNOTATIONS, &o);
-			if (pkg_object_count(o) > 0) {
-				if (print_tag)
-					printf("%-15s:\n", "Annotations");
-				if (quiet)
-					pkg_printf("%A%{%-15An: %Av\n%|%}", pkg);
-				else
-					pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);					
-			}
+			if (print_tag)
+				printf("%-15s:\n", "Annotations");
+			if (quiet)
+				pkg_printf("%A%{%-15An: %Av\n%|%}", pkg);
+			else
+				pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);
 			break;
 		case INFO_FLATSIZE:
 			if (print_tag)

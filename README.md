@@ -82,7 +82,7 @@ information about the package:
 	groups: [GROUP1, GROUP2]
 	options: { OPT1: off, OPT2: on }
 	desc: |-
-	  This is the descrpition
+	  This is the description
 	  Of foo
 	  
 	  A component of bar
@@ -170,7 +170,7 @@ show pkg-message, ...
 remote FTP/HTTP server.
 
 If only a package name is given, it will search the repository catalogues
-and download and install the package if it exists. Anydependencies will be
+and download and install the package if it exists. Any dependencies will be
 downloaded and installed first.
 
 This is possible because we have the dependency information in the
@@ -190,7 +190,7 @@ the repository. It will compute the proper update order and apply them.
 <a name="pkgdel"></a>
 ### Deleting packages
 
-`pkg delete` will remove a package, and (delending on the command line
+`pkg delete` will remove a package, and (depending on the command line
 arguments) any other packages that depend on what you're trying to
 delete.
 
@@ -240,7 +240,7 @@ autotools and some other tools installed.
 	# pkg install autoconf automake libtool pkgconf
 
 The next thing to do is to get the pkg sources installed on your machine.
-You can grab a development snapshot of pkg from the [pkg Github repository][1]
+You can grab a development snapshot of pkg from the [pkg GitHub repository][1]
 
 To get the latest version of pkg from the Git repo, just clone it:
 
@@ -270,7 +270,7 @@ installed.
 
 Note: if you're running anything other than FreeBSD or DragonFly, you
 will need to do some porting work.  The pkg(8) codebase should be
-reasoably portable onto anything with a c99 compiler, posix compliant
+reasonably portable onto anything with a c99 compiler, POSIX compliant
 system and capable of running Gnu autotools.  However, various places
 in the pkg(8) code make assumptions about OS specific behaviour.  If
 you do try anything like this, we'd be very interested to hear how you
@@ -279,7 +279,7 @@ get on.
 <a name="pkg2ng"></a>
 ### Converting an old-style pkg database
 
-If you're on a 9.x system or earler and did not have a release version
+If you're on a 9.x system or earlier and did not have a release version
 of pkg(8) installed previously, you will need to run the pkg2ng
 script.  This is only necessary when converting your system from the
 old pkg_tools style packages.
@@ -394,11 +394,11 @@ To disable the default FreeBSD.conf, create a file
 FreeBSD: { enabled: no }
 ```
 
-To check quickly what repositories you have onfigured, run `pkg -vv`.
+To check quickly what repositories you have configured, run `pkg -vv`.
 
 See *pkg.conf(5)* for details of the format of `pkg.conf` and the
 per-repository `repo.conf` files.  See *pkg-repository(5)* for more
-details about package repositories and how to work ith them.
+details about package repositories and how to work with them.
 
 Note that the old style of setting _PACKAGESITE_ in pkg.conf is
 no-longer supported.  Setting _PACKAGESITE_ in the environment has
@@ -531,7 +531,7 @@ your repository :)
 <a name="resources"></a>
 ### Additional resources
 
-* The Git repository of [pkg is hosted on Github][1]
+* The Git repository of [pkg is hosted on GitHub][1]
 
 * The [pkg Wiki page][2]
 

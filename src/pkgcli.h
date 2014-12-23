@@ -28,6 +28,8 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+#define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%s" fmt, getprogname(), __VA_ARGS__, -1)
+
 extern bool quiet;
 extern int nbactions;
 int nbactions;
@@ -232,6 +234,7 @@ void usage_config(void);
 #define INFO_RAW_YAML		(-1LL<<62)
 #define INFO_RAW_JSON		(-1LL<<61)
 #define INFO_RAW_JSON_COMPACT	(-1LL<<60)
+#define INFO_RAW_UCL		(-1LL<<59)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \
@@ -253,7 +256,6 @@ int query_select(const char *msg, const char **opts, int ncnt, int deft);
 bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
-char *absolutepath(const char *src, char *dest, size_t dest_len);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 int hash_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 

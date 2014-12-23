@@ -1,5 +1,5 @@
-pkg_common_cflags=	-I$(top_srcdir)/libpkg \
-			@LIBSBUF_INCLUDE@ \
+pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
+			-I$(top_srcdir)/external/libsbuf \
 			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
@@ -19,5 +19,10 @@ librepo_binary_static_la_LDFLAGS=	-all-static
 librepo_binary_static_la_SOURCES=	$(librepo_binary_la_SOURCES)
 librepo_binary_static_la_CFLAGS=	$(pkg_common_cflags) -static
 
-noinst_LTLIBRARIES= librepo_binary.la librepo_binary_static.la
+DYNLIBS=		librepo_binary.la
+noinst_LTLIBRARIES= librepo_binary_static.la
+if DYNAMIC
+noinst_LTLIBRARIES+=	$(DYNLIBS)
+endif
+
 noinst_HEADERS=		binary.h binary_private.h

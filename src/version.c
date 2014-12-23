@@ -226,7 +226,7 @@ do_testpattern(unsigned int opt, int argc, char ** restrict argv)
 }
 
 static bool
-have_ports(const char **portsdir)
+have_ports(const char **portsdir, bool show_error)
 {
 	char		 portsdirmakefile[MAXPATHLEN];
 	struct stat	 sb;
@@ -244,7 +244,7 @@ have_ports(const char **portsdir)
 
 	have_ports = (stat(portsdirmakefile, &sb) == 0 && S_ISREG(sb.st_mode));
 
-	if (!have_ports)
+	if (show_error && !have_ports)
 		warnx("Cannot find ports tree: unable to open %s",
 		      portsdirmakefile);
 
@@ -389,7 +389,7 @@ free_index(struct index_entry *indexhead)
 
 static bool
 have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
-	       int argc, char ** restrict argv)
+	       int argc, char ** restrict argv, bool show_error)
 {
 	bool		have_indexfile = true;
 	struct stat	sb;
@@ -403,10 +403,11 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 	else
 		*indexfile = argv[0];
 
-	if (stat(*indexfile, &sb) == -1) {
+	if (stat(*indexfile, &sb) == -1)
 		have_indexfile = false;
+
+	if (show_error && !have_indexfile)
 		warn("Can't access %s", *indexfile);
-	}
 	
 	return (have_indexfile);
 }
@@ -454,9 +455,8 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 			continue;
 		
 		HASH_FIND_STR(indexhead, origin, entry);
-		if (entry != NULL)
-			print_version(pkg, "index", entry->version,
-			    limchar, opt);
+		print_version(pkg, "index",
+		    entry != NULL ? entry->version : NULL, limchar, opt);
 	}
 
 cleanup:
@@ -770,6 +770,7 @@ exec_version(int argc, char **argv)
 	const char	*reponame = NULL;
 	const char	*portsdir;
 	const char	*indexfile;
+	const char	*versionsource;
 	char		 filebuf[MAXPATHLEN];
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
@@ -888,7 +889,9 @@ exec_version(int argc, char **argv)
 	if (opt & (VERSION_STATUS|VERSION_NOSTATUS)) {
 		if (limchar != '<' &&
 		    limchar != '>' &&
-		    limchar != '=') {
+		    limchar != '=' &&
+		    limchar != '?' &&
+		    limchar != '!') {
 			usage_version();
 			return (EX_USAGE);
 		}
@@ -899,9 +902,30 @@ exec_version(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
+	if ( !(opt & VERSION_SOURCES ) ) {
+		versionsource = pkg_object_string(
+		    pkg_config_get("VERSION_SOURCE"));
+		if (versionsource != NULL) {
+			switch (versionsource[0]) {
+			case 'I':
+				opt |= VERSION_SOURCE_INDEX;
+				break;
+			case 'P':
+				opt |= VERSION_SOURCE_PORTS;
+				break;
+			case 'R':
+				opt |= VERSION_SOURCE_REMOTE;
+				break;
+			default:
+				warnx("Invalid VERSION_SOURCE"
+				    " in configuration.");
+			}
+		}
+	}
+
 	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX ) {
 		if (!have_indexfile(&indexfile, filebuf, sizeof(filebuf),
-                         argc, argv))
+		     argc, argv, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_index(opt, limchar, pattern, match,
@@ -913,7 +937,7 @@ exec_version(int argc, char **argv)
 			    auto_update, reponame, matchorigin));
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
-		if (!have_ports(&portsdir))
+		if (!have_ports(&portsdir, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_ports(opt, limchar, pattern,
@@ -924,11 +948,12 @@ exec_version(int argc, char **argv)
 	   Failing that, if portsdir exists and is valid, use that
 	   (slow) otherwise fallback to remote. */
 
-	if (have_indexfile(&indexfile, filebuf, sizeof(filebuf), argc, argv)) {
+	if (have_indexfile(&indexfile, filebuf, sizeof(filebuf), argc, argv,
+            false)) {
 		opt |= VERSION_SOURCE_INDEX;
 		return (do_source_index(opt, limchar, pattern, match,
 			    matchorigin, indexfile));
-	} else if (have_ports(&portsdir)) {
+	} else if (have_ports(&portsdir, false)) {
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
 			    matchorigin, portsdir));

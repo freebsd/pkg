@@ -1,6 +1,6 @@
 m4_define([maj_ver], [1])
 m4_define([med_ver], [4])
-m4_define([min_ver], [0])
+m4_define([min_ver], [99])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
 m4_define([dev_ver], m4_expand([m4_normalize(m4_sinclude([dev_version.m4]))]))
 m4_ifset([dev_ver],
@@ -176,18 +176,12 @@ AC_SEARCH_LIBS([jail_getid], [jail], [
 	LIBJAIL_LIB="-ljail"
 	], [])
 
-LIBELF_LIB="\$(top_builddir)/external/libelf.la"
-LIBELF_BUNDLED="libelf.la"
-LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
-
 AC_CHECK_HEADERS([gelf.h libelf.h], [
 	AC_CHECK_TYPES([Elf_Note], [
 		AC_DEFINE(HAVE_GELF_H, 1, [Define to 1 if you have the <gelf.h> header file.])
 		AC_CHECK_LIB(elf, gelf_getehdr, [
 			AC_DEFINE(HAVE_LIBELF, 1, [Define to 1 if you have the 'elf' library (-lelf).])
-			LIBELF_LIB="-lelf"
-			LIBELF_BUNDLED=
-			LIBELF_INCLUDE=
+			libelf_bundled=no
 		]) dnl AC_CHECK_LIB
 	], dnl AC_CHECK_TYPES
 	[], AC_LANG_SOURCE(
@@ -219,10 +213,6 @@ AS_IF([test "x$with_ldns" = "xyes"], [
    ])
 ])
 
-AC_CHECK_HEADER([atf-c.h], [
-	 TESTS="\$(test_program)"
- ])
-
 AC_CHECK_HEADER([sys/capability.h], [
         AC_CHECK_LIB(c, cap_sandboxed, [
                 AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
@@ -240,12 +230,20 @@ if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
 fi
 
-AC_SUBST([LIBELF_LIB])
-AC_SUBST([LIBELF_BUNDLED])
-AC_SUBST([LIBELF_INCLUDE])
-AC_SUBST([LIBSBUF_LIB])
-AC_SUBST([LIBSBUF_BUNDLED])
-AC_SUBST([LIBSBUF_INCLUDE])
+AC_MSG_CHECKING([whether we should only build the static version of pkg])
+AC_ARG_WITH([staticonly],
+	      [AS_HELP_STRING([--with-staticonly],
+			      [Only build the static version (default is no)])])
+
+if test "$with_staticonly" = "yes"; then
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
+
+AM_CONDITIONAL(DYNAMIC, test "$with_staticonly" != "no")
+AM_CONDITIONAL(LIBELF_BUNDLED, test "$libelf_bundled" != "no")
+
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBEXECINFO_LIB])
 AC_SUBST([TESTS])
@@ -326,5 +324,7 @@ AC_CONFIG_COMMANDS([pkg_repos.h], [[
 	fi
 	rm $NMODULES
 ]], [REPOS=$REPOS])
+
+AC_CONFIG_COMMANDS([mkdir], [$MKDIR_P tests/frontend])
 
 AC_OUTPUT

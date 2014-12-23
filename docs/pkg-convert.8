@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd November 02, 2014
 .Dt PKG-CONVERT 8
 .Os
 .Sh NAME
@@ -24,11 +24,11 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl d Ar pkg_dbdir
-.Op Fl nr
+.Op Fl n
 .Pp
 .Nm
 .Op Cm --pkg-dbdir Ar pkg_dbdir
-.Op Cm --{dry-run,revert}
+.Op Cm --dry-run
 .Sh DESCRIPTION
 .Nm
 is used to convert from/to
@@ -48,8 +48,6 @@ Defaults to
 Dry-run mode.
 Do not actually convert anything.
 Just show what would be done.
-.It Fl r , Cm --revert
-Revert conversion
 .El
 .Sh FILES
 See

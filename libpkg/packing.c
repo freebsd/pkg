@@ -25,8 +25,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#include <sys/stat.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -35,7 +33,6 @@
 #include <fts.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <limits.h>
 #include <pwd.h>
 #include <grp.h>
 

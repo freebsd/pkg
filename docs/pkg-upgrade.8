@@ -15,12 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2014
+.Dd November 18, 2014
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
 .Nm "pkg upgrade"
-.Nd performs upgrades of package software distributions
+.Nd perform upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
 .Op Fl fInFqUy
@@ -41,14 +41,15 @@ is used for upgrading packaged software distributions.
 .Nm
 compares the versions of all or specific packages installed on the system
 to what is available in the configured package repositories.
-Any out-of-date packages are added to a work list for processing.
-The difference to 
+Any out of date packages are added to a work list for processing.
+The difference to
 .Xr pkg-install 8
 is that
 .Nm
 tries to upgrade dependencies of packages matched as well while
 .Xr pkg-install 8
-is more conservative during dependencies upgrade. Moreover,
+is more conservative during dependencies upgrade.
+Moreover,
 .Nm
 cannot install new packages, so a caller should ensure that patterns specified
 as arguments have installed candidates for matching.
@@ -153,7 +154,7 @@ to true in
 Dry-run mode: show what packages have updates available, but do not perform
 any upgrades.
 Repository catalogues will be updated as usual unless the
-.Fl U 
+.Fl U
 option is also given.
 .It Fl q , Cm --quiet
 Force quiet output, except when
@@ -167,7 +168,7 @@ status from
 .Pa repo.conf .
 .It Fl U , Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
+from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.

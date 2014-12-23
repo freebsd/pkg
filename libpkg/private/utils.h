@@ -30,6 +30,7 @@
 
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <sys/stat.h>
 #include <sys/param.h>
 #include <uthash.h>
 #include <ucl.h>
@@ -51,10 +52,6 @@
 	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
 #define HASH_ADD_INO(head,ino,add)                                          \
 	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
-
-#ifndef NELEM
-#define	NELEM(array)	(sizeof(array) / sizeof((array)[0]))
-#endif
 
 struct hardlinks {
 	ino_t inode;
@@ -90,16 +87,15 @@ ssize_t sbuf_size(struct sbuf *);
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
 int file_to_bufferat(int, const char *, char **, off_t *);
-int format_exec_cmd(char **, const char *, const char *, const char *, char *);
+int format_exec_cmd(char **, const char *, const char *, const char *, char *,
+    int argc, char **argv);
 int is_dir(const char *);
-int is_conf_file(const char *path, char *newpath, size_t len);
 
 void sha256_buf(const char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
 void sha256_buf_bin(const char *, size_t len, char[SHA256_DIGEST_LENGTH]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fileat(int fd, const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
-int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
 int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
@@ -116,7 +112,6 @@ struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
-ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 void set_blocking(int fd);
 void set_nonblocking(int fd);
 void print_trace(void);
@@ -126,5 +121,10 @@ int pkg_symlink_cksumat(int fd, const char *path, const char *root,
     char *cksum);
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
+
+void *parse_mode(const char *str);
+int *text_diff(char *a, char *b);
+int merge_3way(char *pivot, char *v1, char *v2, struct sbuf *out);
+bool string_end_with(const char *path, const char *str);
 
 #endif

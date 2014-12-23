@@ -27,7 +27,6 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -51,9 +50,9 @@ pkg_dep_free(struct pkg_dep *d)
 	if (d == NULL)
 		return;
 
-	sbuf_free(d->origin);
-	sbuf_free(d->name);
-	sbuf_free(d->version);
+	free(d->origin);
+	free(d->name);
+	free(d->version);
 	free(d->uid);
 	free(d);
 }
@@ -65,13 +64,13 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 
 	switch (attr) {
 	case PKG_DEP_NAME:
-		return (sbuf_get(d->name));
+		return (d->name);
 		break;
 	case PKG_DEP_ORIGIN:
-		return (sbuf_get(d->origin));
+		return (d->origin);
 		break;
 	case PKG_DEP_VERSION:
-		return (sbuf_get(d->version));
+		return (d->version);
 		break;
 	default:
 		return (NULL);
@@ -98,7 +97,6 @@ pkg_file_new(struct pkg_file **file)
 		return (EPKG_FATAL);
 
 	(*file)->perm = 0;
-	(*file)->keep = 0;
 
 	return (EPKG_OK);
 }
@@ -107,46 +105,6 @@ void
 pkg_file_free(struct pkg_file *file)
 {
 	free(file);
-}
-
-const char *
-pkg_file_get(struct pkg_file const * const f, const pkg_file_attr attr)
-{
-	assert(f != NULL);
-
-	switch (attr) {
-	case PKG_FILE_PATH:
-		return (f->path);
-		break;
-	case PKG_FILE_SUM:
-		return (f->sum);
-		break;
-	case PKG_FILE_UNAME:
-		return (f->uname);
-		break;
-	case PKG_FILE_GNAME:
-		return (f->gname);
-		break;
-	default:
-		return (NULL);
-		break;
-	}
-}
-
-mode_t
-pkg_file_mode(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->perm);
-}
-
-bool
-pkg_file_keep(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->keep);
 }
 
 /*
@@ -160,8 +118,6 @@ pkg_dir_new(struct pkg_dir **d)
 		return (EPKG_FATAL);
 
 	(*d)->perm = 0;
-	(*d)->keep = 0;
-	(*d)->try = false;
 
 	return (EPKG_OK);
 }
@@ -170,49 +126,6 @@ void
 pkg_dir_free(struct pkg_dir *d)
 {
 	free(d);
-}
-
-const char *
-pkg_dir_get(struct pkg_dir const * const d, const pkg_dir_attr attr)
-{
-	assert(d != NULL);
-	switch (attr) {
-	case PKG_DIR_PATH:
-		return (d->path);
-		break;
-	case PKG_DIR_UNAME:
-		return (d->uname);
-		break;
-	case PKG_DIR_GNAME:
-		return (d->gname);
-		break;
-	default:
-		return(NULL);
-	}
-}
-
-mode_t
-pkg_dir_mode(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->perm);
-}
-
-bool
-pkg_dir_keep(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->keep);
-}
-
-bool
-pkg_dir_try(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->try);
 }
 
 /*
@@ -236,22 +149,6 @@ pkg_user_free(struct pkg_user *u)
 	free(u);
 }
 
-const char *
-pkg_user_name(struct pkg_user const * const u)
-{
-	assert(u != NULL);
-
-	return (u->name);
-}
-
-const char *
-pkg_user_uidstr(struct pkg_user const * const u)
-{
-	assert(u != NULL);
-
-	return (u->uidstr);
-}
-
 /*
  * Group
  */
@@ -271,22 +168,6 @@ void
 pkg_group_free(struct pkg_group *g)
 {
 	free(g);
-}
-
-const char *
-pkg_group_name(struct pkg_group const * const g)
-{
-	assert(g != NULL);
-
-	return (g->name);
-}
-
-const char *
-pkg_group_gidstr(struct pkg_group const * const g)
-{
-	assert(g != NULL);
-
-	return (g->gidstr);
 }
 
 /*
@@ -322,43 +203,11 @@ pkg_option_free(struct pkg_option *option)
 	if (option == NULL)
 		return;
 
-	sbuf_free(option->key);
-	sbuf_free(option->value);
-	sbuf_free(option->default_value);
-	sbuf_free(option->description);
+	free(option->key);
+	free(option->value);
+	free(option->default_value);
+	free(option->description);
 	free(option);
-}
-
-const char *
-pkg_option_opt(struct pkg_option const * const option)
-{
-	assert(option != NULL);
-
-	return (sbuf_get(option->key));
-}
-
-const char *
-pkg_option_value(struct pkg_option const * const option)
-{
-	assert(option != NULL);
-
-	return (sbuf_get(option->value));
-}
-
-const char *
-pkg_option_default_value(struct pkg_option const * const option)
-{
-	assert(option != NULL);
-
-	return (sbuf_get(option->default_value));
-}
-
-const char *
-pkg_option_description(struct pkg_option const * const option)
-{
-	assert(option != NULL);
-
-	return (sbuf_get(option->description));
 }
 
 /*
@@ -379,16 +228,8 @@ pkg_shlib_free(struct pkg_shlib *sl)
 	if (sl == NULL)
 		return;
 
-	sbuf_free(sl->name);
+	free(sl->name);
 	free(sl);
-}
-
-const char *
-pkg_shlib_name(struct pkg_shlib const * const sl)
-{
-	assert(sl != NULL);
-
-	return (sbuf_get(sl->name));
 }
 
 /*
@@ -410,16 +251,8 @@ pkg_conflict_free(struct pkg_conflict *c)
 	if (c == NULL)
 		return;
 
-	sbuf_free(c->uniqueid);
+	free(c->uid);
 	free(c);
-}
-
-const char *
-pkg_conflict_uniqueid(const struct pkg_conflict *c)
-{
-	assert(c != NULL);
-
-	return (sbuf_get(c->uniqueid));
 }
 
 /*
@@ -440,14 +273,80 @@ pkg_provide_free(struct pkg_provide *c)
 	if (c == NULL)
 		return;
 
-	sbuf_free(c->provide);
+	free(c->provide);
 	free(c);
 }
 
-const char *
-pkg_provide_name(const struct pkg_provide *c)
+/*
+ * Config files
+ */
+int
+pkg_config_file_new(struct pkg_config_file **c)
 {
-	assert(c != NULL);
+	if ((*c = calloc(1, sizeof(struct pkg_config_file))) == NULL)
+		return (EPKG_FATAL);
 
-	return (sbuf_get(c->provide));
+	return (EPKG_OK);
+}
+
+void
+pkg_config_file_free(struct pkg_config_file *c)
+{
+	if (c == NULL)
+		return;
+
+	free(c->content);
+	free(c);
+}
+
+/*
+ * strel
+ */
+
+int
+pkg_strel_new(struct pkg_strel **c, const char *val)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_strel))) == NULL)
+		return (EPKG_FATAL);
+
+	(*c)->value = strdup(val);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_strel_free(struct pkg_strel *c)
+{
+	if (c == NULL)
+		return;
+
+	free(c->value);
+	free(c);
+}
+
+/*
+ * kv
+ */
+
+int
+pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_kv))) == NULL)
+		return (EPKG_FATAL);
+
+	(*c)->key = strdup(key);
+	(*c)->value = strdup(val);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_kv_free(struct pkg_kv *c)
+{
+	if (c == NULL)
+		return;
+
+	free(c->key);
+	free(c->value);
+	free(c);
 }

@@ -353,10 +353,9 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 void
 progressbar_start(const char *pmsg)
 {
-	if (progress_message != NULL) {
-		free(progress_message);
-		progress_message = NULL;
-	}
+	free(progress_message);
+	progress_message = NULL;
+
 	if (quiet)
 		return;
 	if (pmsg != NULL)
@@ -413,12 +412,11 @@ draw_progressbar(int64_t current, int64_t total)
 {
 	int percent;
 	int64_t transferred;
-	time_t elapsed, now;
+	time_t elapsed = 0, now = 0;
 	char buf[7];
 	int64_t bytes_left;
 	int cur_speed;
 	int hours, minutes, seconds;
-	int r = 0;
 	float age_factor;
 
 	if (!progress_started) {
@@ -443,7 +441,7 @@ draw_progressbar(int64_t current, int64_t total)
 	    (percent != last_progress_percent || progress_interrupted))) {
 		last_progress_percent = percent;
 
-		r = printf("\r%s: %3d%%", progress_message, percent);
+		printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
 			transferred = current - last_tick;
 			last_tick = current;
@@ -707,7 +705,7 @@ event_callback(void *data, struct pkg_event *ev)
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
 			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v...\n",
-			    pkg_new, pkg_new, pkg_old);
+			    pkg_new, pkg_old, pkg_new);
 			break;
 		case PKG_REINSTALL:
 			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v...\n",
@@ -724,7 +722,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_begin.new;
+		pkg_new = ev->e_upgrade_finished.new;
 		if (pkg_has_message(pkg_new)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
@@ -775,8 +773,8 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg = ev->e_file_mismatch.pkg;
-		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %S\n", pkg,
-		    pkg, pkg_file_path(ev->e_file_mismatch.file));
+		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
+		    pkg, ev->e_file_mismatch.file);
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		warnx("%s: %s(%s): %s",
@@ -798,13 +796,9 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("%s repository update completed. %d packages processed:\n"
-			    "  %d updated, %d removed and %d added.\n",
+			printf("%s repository update completed. %d packages processed\n",
 			    ev->e_incremental_update.reponame,
-			    ev->e_incremental_update.processed,
-			    ev->e_incremental_update.updated,
-			    ev->e_incremental_update.removed,
-			    ev->e_incremental_update.added);
+			    ev->e_incremental_update.processed);
 		break;
 	case PKG_EVENT_DEBUG:
 		fprintf(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,

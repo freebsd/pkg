@@ -216,7 +216,7 @@ exec_fetch(int argc, char **argv)
 		rc = true;
 	}
 	
-	if (!rc || pkg_jobs_apply(jobs) != EPKG_OK)
+	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
 	if (csum_only && !quiet)

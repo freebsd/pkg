@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
@@ -29,8 +29,6 @@
 
 #include <sys/stat.h> /* for private.utils.h */
 
-#include <stdbool.h> /* for private/utils.h */
-#include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
 #ifdef HAVE_LDNS

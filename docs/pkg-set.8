@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd December 8, 2014
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -25,6 +25,7 @@
 .Nm
 .Op Fl a
 .Op Fl A Op Ar 01
+.Op Fl n Ar oldname:newname
 .Op Fl o Ar oldorigin:neworigin
 .Op Fl y
 .Op Fl Cgix
@@ -33,6 +34,7 @@
 .Nm
 .Op Cm --all
 .Op Cm --automatic Op Ar 01
+.Op Cm --change-name Ar oldname:newname
 .Op Cm --change-origin Ar oldorigin:neworigin
 .Op Cm --yes
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -105,7 +107,7 @@ See
 .Xr pkg.conf 5 .
 .Sh EXAMPLES
 Upgrade perl from 5.12 to 5.14.
-This involes moving the origin from
+This involves moving the origin from
 .Sy lang/perl5.12
 to
 .Sy lang/perl5.14 :
@@ -113,7 +115,7 @@ to
 .Dl % pkg install -Rf lang/perl5.14
 .Pp
 Upgrade ruby from 1.8 to 1.9.
-This involes moving the origin from
+This involves moving the origin from
 .Sy lang/ruby18
 to
 .Sy lang/ruby19 :

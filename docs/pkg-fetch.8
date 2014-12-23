@@ -15,12 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 20, 2014
+.Dd October 30, 2014
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
 .Nm "pkg fetch"
-.Nd Fetches remote packages.
+.Nd fetch remote packages
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
@@ -115,7 +115,7 @@ See
 Fetch all available updates for the currently installed packages.
 .It Fl U , Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
+from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.

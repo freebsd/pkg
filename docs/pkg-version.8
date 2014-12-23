@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd November 09, 2014
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -59,7 +59,11 @@ installed packages may be chosen by specifying one of
 .Fl P ,
 .Fl R
 or
-.Fl I .
+.Fl I
+or by by setting
+.Cm VERSION_SOURCE
+in
+.Xr pkg.conf 5 .
 If not specified then the ports index file
 will be used if it exists
 .Fl ( I ) .
@@ -84,7 +88,7 @@ is the OS major version number.)
 .Pp
 When
 .Fl R
-is used, 
+is used,
 package repository catalogues will be automatically updated whenever
 .Nm
 is run by a user ID with write access to the package database,
@@ -105,7 +109,7 @@ The installed version of the package is current.
 The installed version of the package is older than the current version.
 .It Li \&>
 The installed version of the package is newer than the current version.
-This situation can arise with an out-of-date index file, or when
+This situation can arise with an out of date index file, or when
 testing new ports.
 .It Li \&?
 The installed package does not appear in the index.
@@ -129,7 +133,7 @@ matching against
 case sensitive.
 .It Fl h , Cm --help
 Displays usage information
-.It Fl I Op Ar index 
+.It Fl I Op Ar index
 .It Cm --index Op Ar index
 Use
 .Pa index
@@ -179,7 +183,7 @@ Less output will be produced.
 Be verbose.
 .It Fl l Ar limchar , Cm --like Ar limchar
 Display only the packages which status flag matches the one specified by
-.Ar limchar
+.Ar limchar.
 .It Fl L Ar limchar , Cm --not-like Ar limchar
 Does the opposite of
 .Fl l
@@ -209,7 +213,7 @@ Only display the packages that match the glob expression.
 Only display the packages that exactly match the string.
 .It Fl O Ar origin , Cm --match-origin Ar origin
 Display only the packages which origin matches
-.Ar origin
+.Ar origin.
 .It Fl t Ar version1 Ar version2 , Cm --test-version Ar version1 Ar version2
 Test a pair of version number strings and exit.
 The output consists of one of the single characters
@@ -252,7 +256,7 @@ file is searched for in
 or if that is not set,
 .Ev PORTSDIR .
 .Ev INDEXFILE
-is the name of the 
+is the name of the
 .Pa index
 relative to that directory.
 If

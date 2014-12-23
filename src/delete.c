@@ -183,8 +183,11 @@ exec_delete(int argc, char **argv)
 	if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
 		goto cleanup;
 
-	if (pkg_jobs_solve(jobs) != EPKG_OK)
+	if (pkg_jobs_solve(jobs) != EPKG_OK) {
+		fprintf(stderr, "Cannot perform request\n");
+		retcode = EX_NOPERM;
 		goto cleanup;
+	}
 
 	/* check if we have something to deinstall */
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {

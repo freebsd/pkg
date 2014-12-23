@@ -82,14 +82,11 @@ typedef enum _fmt_code_t {
 	PP_PKG_CATEGORY_NAME,
 	PP_PKG_CATEGORIES,
 	PP_PKG_DIRECTORY_GROUP,
-	PP_PKG_DIRECTORY_KEEPFLAG,
 	PP_PKG_DIRECTORY_PATH,
 	PP_PKG_DIRECTORY_PERMS,
-	PP_PKG_DIRECTORY_TRYFLAG,
 	PP_PKG_DIRECTORY_USER,
 	PP_PKG_DIRECTORIES,
 	PP_PKG_FILE_GROUP,
-	PP_PKG_FILE_KEEPFLAG,
 	PP_PKG_FILE_PATH,
 	PP_PKG_FILE_PERMS,
 	PP_PKG_FILE_SHA256,
@@ -171,14 +168,11 @@ _static struct sbuf *format_categories(struct sbuf *, const void *, struct perce
 _static struct sbuf *format_category_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_directories(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_directory_group(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directory_keepflag(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_directory_path(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_directory_perms(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directory_tryflag(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_directory_user(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_files(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_file_group(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_file_keepflag(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_file_path(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_file_perms(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_file_sha256(struct sbuf *, const void *, struct percent_esc *);

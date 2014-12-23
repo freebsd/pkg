@@ -32,3 +32,17 @@ function test_simple()
 end
 
 test_simple()
+
+local table = {
+  str = 'value',
+  num = 100500,
+  null = ucl.null,
+  func = function ()
+    return 'huh'
+  end,
+  badfunc = function()
+    print("I'm bad")
+  end
+}
+
+print(ucl.to_format(table, 'ucl'))

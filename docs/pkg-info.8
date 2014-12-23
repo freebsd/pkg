@@ -15,12 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd December 1, 2014
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
 .Nm "pkg info"
-.Nd displays information for packages
+.Nd display information for packages
 .Sh SYNOPSIS
 .Nm
 .Ar pkg-name
@@ -61,7 +61,7 @@ The following options are supported by
 Display all installed packages.
 .It Fl A , Cm --annotations
 Display any annotations added to the package.
-.It Fl C , Cm --case-insensitive
+.It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -75,7 +75,8 @@ This is the default.
 Display the full manifest (raw) for the packages matching
 .Ar pkg-name .
 .It Fl -raw-format Ar format
-Allow to chose the output format for the raw output, format can be:
+Choose the format of the raw output.
+The format can be:
 json, json-conpact, yaml (default).
 .It Fl e , Cm --exists
 If
@@ -98,6 +99,8 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
+.It Fl I , Cm --comment
+Display the specified packages and their comments.
 .It Fl x , Cm --regex
 Treat
 .Ar pkg-name
@@ -135,7 +138,7 @@ Display all shared libraries used by
 .Ar pkg-name .
 .It Fl s , Cm --size
 Display the total size of files installed by
-.Ar pkg-name
+.Ar pkg-name .
 .It Fl q , Cm --quiet
 Be
 .Dq quiet .

@@ -635,6 +635,26 @@ static struct db_upgrades {
 	"CREATE INDEX IF NOT EXISTS packages_uid ON packages(name, origin COLLATE NOCASE);"
 	"CREATE INDEX IF NOT EXISTS packages_version ON packages(name, version);"
 	},
+	{28,
+	"CREATE TABLE config_files ("
+		"path TEXT NOT NULL UNIQUE, "
+		"content TEXT, "
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE"
+	");"
+	},
+	{29,
+	"DROP INDEX packages_unique;"
+	"UPDATE packages SET name= name || \"~pkg-renamed~\" || hex(randomblob(2)) "
+		"WHERE name IN ("
+			"SELECT name FROM packages GROUP BY name HAVING count(name) > 1 "
+		");"
+	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
+	},
+	{30,
+	"DROP INDEX deps_unique;"
+	"CREATE UNIQUE INDEX deps_unique ON deps(name, version, package_id);"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 

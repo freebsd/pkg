@@ -1,5 +1,5 @@
 .\"
-.\" Freebsd pkg - a next generation package for the installation and
+.\" FreeBSD pkg - a next generation package for the installation and
 .\" maintenance of non-core utilities.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2014
+.Dd November 18, 2014
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -55,7 +55,7 @@
 .Nm
 is used for searching package repository catalogues.
 Packages available for installation can be matched by name, by name
-and version, by origin or by text in the package comments or package
+and version, by origin, or by text in the package comments or package
 descriptions.
 The output defaults to displaying the field matched by the search
 term, but any of the searchable fields may be displayed.
@@ -67,7 +67,7 @@ Package repository catalogues will be automatically updated whenever
 is run by a user ID with write access to the package database,
 unless disabled by the
 .Fl U
-flag  or setting
+flag or setting
 .Cm REPO_AUTOUPDATE
 to
 .Sy NO
@@ -77,8 +77,8 @@ in
 Package repositories are defined in the
 .Fa pkg.conf
 file or by creating repository definitions in
-.Pa /usr/local/etc/pkg/repos ;
-see
+.Pa /usr/local/etc/pkg/repos.
+See
 .Xr pkg.conf 5
 for details.
 .Sh OPTIONS
@@ -118,7 +118,7 @@ Equivalent to
 Treat
 .Ar pattern
 as a shell globbing expression.
-The glob pattern must match the entire field being seached.
+The glob pattern must match the entire field being searched.
 .It Fl i , Cm --case-insensitive
 Make the exact
 .Fl ( e )
@@ -196,7 +196,8 @@ See the
 .Qq Sx Search and Label Options
 sections for more details.
 .It Fl -raw-format Ar format
-Allow to chose the output format for the raw output, format can be:
+Choose the format of the raw output.
+The format can be:
 json, json-conpact, yaml (default).
 .It Fl s , Cm --size
 Display the installed size of matched packages.
@@ -204,7 +205,7 @@ Equivalent to
 .Fl "Q size" .
 .It Fl U, Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
+from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
@@ -230,7 +231,7 @@ The one line comment field describing the port, derived from the
 variable in the port's
 .Fa Makefile .
 When chosen as a label option, the output format will additionally
-include the packge name, equivalent to
+include the package name, equivalent to
 .Fl "L pkg-name"
 .Fl "Q comment" .
 When chosen as a search option, only the
@@ -349,7 +350,7 @@ and
 .Sy descr
 fields, in that order.
 .It Sy licenses
-Displays a list of all the licenses the package is relesed under on a
+Displays a list of all the licenses the package is released under on a
 single line.
 Where more than one license applies, indicate if the terms of all
 licenses should apply
@@ -379,7 +380,7 @@ need to be downloaded from the repository.
 Display the installation prefix for the package, usually
 .Fa /usr/local .
 .It Sy repository
-Displays the repository name and the corresponding base Url for the
+Displays the repository name and the corresponding base URL for the
 repository.
 For a default repository defined in
 .Pa pkg.conf .

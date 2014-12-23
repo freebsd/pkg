@@ -29,8 +29,6 @@
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include <sys/uio.h>
-#include <sys/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -38,8 +36,6 @@
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>
@@ -366,6 +362,10 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
 			if (ssh_args != NULL)
 				sbuf_printf(cmd, "%s ", ssh_args);
+			if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+				sbuf_cat(cmd, "-4 ");
+			else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+				sbuf_cat(cmd, "-6 ");
 			if (u->port > 0)
 				sbuf_printf(cmd, "-p %d ", u->port);
 			if (u->user[0] != '\0')
@@ -469,6 +469,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	struct http_mirror	*http_current = NULL;
 	off_t		 sz = 0;
 	bool		 pkg_url_scheme = false;
+	struct sbuf	*fetchOpts = NULL;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
@@ -555,13 +556,29 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			u->port = http_current->url->port;
 		}
 
-		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s",
+ 
+		fetchOpts = sbuf_new_auto();
+		sbuf_cat(fetchOpts, "i");
+		if (repo != NULL) {
+			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
+			    REPO_FLAGS_USE_IPV4)
+				sbuf_cat(fetchOpts, "4");
+			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
+			    REPO_FLAGS_USE_IPV6)
+				sbuf_cat(fetchOpts, "6");
+		}
+
+		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
 		    u->user,
 		    u->user[0] != '\0' ? "@" : "",
 		    u->host,
-		    u->doc);
-		remote = fetchXGet(u, &st, "i");
+		    u->doc,
+		    sbuf_data(fetchOpts));
+
+		sbuf_finish(fetchOpts);
+		
+		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;
@@ -643,6 +660,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	/* restore original doc */
 	u->doc = doc;
+	if (fetchOpts != NULL)
+		sbuf_delete(fetchOpts);
 
 	fetchFreeURL(u);
 

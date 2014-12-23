@@ -15,30 +15,30 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd November 02, 2014
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
 .Nm "pkg register"
-.Nd registers a package into the local package database
+.Nd register a package into the local package database
 .Sh SYNOPSIS
 .Nm
-.Op Fl dlOt
+.Op Fl dlt
 .Op Fl f Ar plist-file
 .Fl m Ar metadatadir
 .Fl i Ar input-path
 .Nm
-.Op Fl dlOt
+.Op Fl dlt
 .Fl M Ar metadatafile
 .Pp
 .Nm
-.Op Cm --{debug,legacy,old,test}
+.Op Cm --{debug,legacy,test}
 .Op Cm --relocate Ar location
 .Op Cm --plist Ar plist-file
 .Cm --metadata Ar metadatadir
 .Cm --root Ar input-path
 .Nm
-.Op Cm --{debug,legacy,old,test}
+.Op Cm --{debug,legacy,test}
 .Op Cm --relocate Ar location
 .Cm --manifest Ar metadatafile
 .Sh DESCRIPTION
@@ -46,15 +46,15 @@
 is used for registering a package into the local package database.
 .Pp
 .Nm
-assembles a full set of package meta-data from various possible inputs,
-and writes the meta-data into the package registry database.
+assembles a full set of package metadata from various possible inputs,
+and writes the metadata into the package registry database.
 This is one of the final steps when installing software from ports:
 the package files are installed into the filesystem, and then
 .Nm
 is called to record what was installed into the package database.
 .Pp
 .Nm
-can derive package meta-data from a number of different sources:
+can derive package metadata from a number of different sources:
 .Bl -bullet
 .It
 The package manifest
@@ -66,8 +66,8 @@ Direct analysis of files installed by the package
 .Pp
 The package manifest is a
 .Cm UCL
-format listing of package meta-data.
-It can contain all of the necessary meta-data needed by the package,
+format listing of package metadata.
+It can contain all of the necessary metadata needed by the package,
 but the more usual approach is to provide selected items via the
 manifest, and fill in the rest, either from legacy files such as
 .Fa pkg-plist ,
@@ -95,7 +95,7 @@ with the old style
 command.
 .Pp
 Reading in a complete and comprehensive manifest from one file is a
-simpler alternative, but requires all the meta-data to have been
+simpler alternative, but requires all the metadata to have been
 assembled beforehand.
 .Pp
 Direct analysis of the installed files can be suppressed by use of
@@ -109,17 +109,17 @@ itself, and should not be routinely used.
 The following options are supported by
 .Nm :
 .Bl -tag -width metadata
-.It Fl A , Cm --automatic 
+.It Fl A , Cm --automatic
 Mark the package to be automatically removed if no other packages
 depend on it.
 For more information please refer to
 .Xr pkg-autoremove 8
-.It Fl d , Cm --debug 
+.It Fl d , Cm --debug
 Enable debugging output.
 .It Fl f Ar plist-file , Cm --plist Ar plist-file
 Specifies a
 .Fa pkg-plist
-style packing list file
+style packing list file.
 .It Fl i Ar input-path , Cm --root Ar input-path
 Specifies the package input path or staging directory.
 .It Fl l , Cm --legacy
@@ -133,7 +133,7 @@ database.
 .It  Fl M Ar manifest , Cm --manifest Ar manifest
 Specifies the package manifest file.
 Use of this option means that the only file which will be used as a
-source of package meta-data is the named
+source of package metadata is the named
 .Ar manifest
 file.
 The
@@ -141,7 +141,7 @@ The
 option is mutually exclusive with
 .Fl m .
 .It  Fl m Ar metadatadir , Cm --metadata Ar metadatadir
-Specifies the meta data directory to use when registering the package.
+Specifies the metadata directory to use when registering the package.
 This directory will hold the package manifest, and optionally may contain
 a number of other old-style metadata input files.
 The
@@ -158,15 +158,6 @@ This option should only be used with caution, and preferably only
 for the intended purpose of performing regression tests on
 .Xr pkg 8
 itself.
-.It Fl O, Cm --old
-This is a temporary compatibility flag for internal use within the
-ports tree only.
-This flag will be removed once
-.Xr pkg_tools 8
-reaches end-of-life.
-Generates an old-style packing list on
-.Pa stdout ,
-without registering the port in the package database.
 .It Cm --relocate Ar location
 Annotates the package as having been relocated to
 .Pa location ,

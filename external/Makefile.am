@@ -55,25 +55,33 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/uthash/uthash.h \
 		libucl/uthash/utlist.h \
 		libucl/uthash/utstring.h \
-		libyaml/include/yaml.h \
-		libyaml/src/yaml_private.h \
-		libyaml/win32/config.h \
 		picosat/picosat.h \
 		sqlite/sqlite3.h \
 		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
+		include/tree.h \
+		include/siphash.h \
 		config.h
 
-EXTRA_LTLIBRARIES=	libelf.la
+DYNLIBS=		libucl.la \
+			libsqlite.la \
+			libexpat.la \
+			libsbuf.la \
+			libpicosat.la
+noinst_LTLIBRARIES=	libucl_static.la \
+			libsqlite_static.la \
+			libexpat_static.la \
+			libsbuf_static.la \
+			libpicosat_static.la
+if LIBELF_BUNDLED
+DYNLIBS+=		libelf.la
+noinst_LTLIBRARIES+=	libelf_static.la
+endif
 
-noinst_LTLIBRARIES=	libucl.la libucl_static.la \
-			libsqlite.la libsqlite_static.la \
-			libyaml.la libyaml_static.la \
-			libexpat.la libexpat_static.la \
-			libsbuf.la libsbuf_static.la \
-			libpicosat.la libpicosat_static.la \
-			@LIBELF_BUNDLED@
+if DYNAMIC
+noinst_LTLIBRARIES+=	$(DYNLIBS)
+endif
 
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \
@@ -134,6 +142,9 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
+libelf_static_la_SOURCES=	${libelf_la_SOURCES}
+libelf_static_la_CFLAGS=	$(libelf_la_CFLAGS) -static
+libelf_static_la_LDFLAGS=	-all-static
 
 libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
 sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
@@ -170,20 +181,6 @@ libexpat_static_la_SOURCES=	$(libexpat_la_SOURCES)
 libexpat_static_la_CFLAGS=	$(expat_common_cflags) -static
 libexpat_static_la_LDFLAGS=	-all-static
 
-yaml_common_cflags=	-I$(top_srcdir)/external/libyaml/include \
-			-I$(top_srcdir)/external/libyaml \
-			-Wno-strict-aliasing \
-			-Wno-unused		
-libyaml_la_SOURCES=	libyaml/src/api.c \
-			libyaml/src/loader.c \
-			libyaml/src/parser.c \
-			libyaml/src/reader.c \
-			libyaml/src/scanner.c
-libyaml_la_CFLAGS=	$(yaml_common_cflags) -shared
-libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
-libyaml_static_la_CFLAGS= $(yaml_common_cflags) -static
-libyaml_static_la_LDFLAGS=	-all-static
-
 picosat_common_cflags=	-I$(top_srcdir)/external/picosat \
 			-Wno-strict-aliasing \
 			-Wno-unused	
@@ -217,7 +214,7 @@ sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-DSQLITE_OMIT_SHARED_CACHE \
 			-DSQLITE_ENABLE_UNLOCK_NOTIFY=1 \
 			-DUSE_PREAD \
-			-DSQLITE_THREADSAFE=1 \
+			-DSQLITE_THREADSAFE=0 \
 			-DSQLITE_TEMP_STORE=3 \
 			-DSQLITE_ENABLE_FTS4 \
 			-DSQLITE_SHELL_DBNAME_PROC=pkgshell_open \

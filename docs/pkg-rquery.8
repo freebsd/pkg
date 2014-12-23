@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 12, 2014
+.Dd October 30, 2014
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -72,7 +72,7 @@ Package repository catalogues will be automatically updated whenever
 is run by a user ID with write access to the package database,
 unless disabled by the
 .Fl U
-flag  or setting
+flag or setting
 .Cm REPO_AUTOUPDATE
 to
 .Sy NO
@@ -83,7 +83,7 @@ The following options are supported by
 .Nm :
 .Bl -tag -width repository
 .It Fl a , Cm --all
-Match all packages from the database
+Match all packages from the database.
 .It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
@@ -141,7 +141,7 @@ of
 .Xr re_format 7 .
 .El
 .Sh QUERY FORMAT
-There are two type of keyword for the query format: the multiline and the normal
+There are two types of keywords for the query format: the multiline and the normal
 one. Only one type of multiline pattern is accepted for a given query.
 .Ss Normal patterns:
 .Bl -tag -width F1

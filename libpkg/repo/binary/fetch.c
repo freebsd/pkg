@@ -54,17 +54,14 @@ int
 pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 	char *dest, size_t destlen)
 {
-	const char *sum, *name, *version, *repourl, *ext = NULL;
+	const char *ext = NULL;
 	const char *cachedir = NULL;
 	struct stat st;
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
-	pkg_get(pkg, PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version,
-			PKG_REPOPATH, &repourl);
-
-	if (repourl != NULL)
-		ext = strrchr(repourl, '.');
+	if (pkg->repopath != NULL)
+		ext = strrchr(pkg->repopath, '.');
 
 	if (ext != NULL) {
 		/*
@@ -134,19 +131,13 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	char *dir = NULL;
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
-	int64_t pkgsize;
 	struct stat st;
 	char *path = NULL;
-	const char *packagesite = NULL, *repourl;
+	const char *packagesite = NULL;
 
 	int retcode = EPKG_OK;
-	const char *name, *version, *sum;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
-
-	pkg_get(pkg, PKG_CKSUM, &sum,
-			PKG_NAME, &name, PKG_VERSION, &version, PKG_PKGSIZE, &pkgsize,
-			PKG_REPOPATH, &repourl);
 
 	if (mirror) {
 		const char *cachedir;
@@ -156,8 +147,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 		else
 			cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
-		snprintf(dest, sizeof(dest), "%s/%s",
-						cachedir, repourl);
+		snprintf(dest, sizeof(dest), "%s/%s", cachedir, pkg->repopath);
 	}
 	else
 		pkg_repo_binary_get_cached_name(repo, pkg, dest, sizeof(dest));
@@ -196,10 +186,12 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
+	/*
 	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0) {
-		pkg_set(pkg, PKG_REPOPATH, url + 7);
+		free(pkg->repopath);
+		pkg->repopath = strdup(url + 7);
 		return (EPKG_OK);
-	}
+	}*/
 
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
@@ -210,32 +202,32 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 checksum:
 	/*	checksum calculation is expensive, if size does not
 		match, skip it and assume failed checksum. */
-	if (stat(dest, &st) == -1 || pkgsize != st.st_size) {
+	if (stat(dest, &st) == -1 || pkg->pkgsize != st.st_size) {
 		if (already_tried) {
 			pkg_emit_error("cached package %s-%s: "
-				"size mismatch, cannot continue",
-				name, version);
+			    "size mismatch, cannot continue",
+			    pkg->name, pkg->version);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 
 		unlink(dest);
 		pkg_emit_error("cached package %s-%s: "
-			"size mismatch, fetching from remote",
-			name, version);
+		    "size mismatch, fetching from remote",
+		    pkg->name, pkg->version);
 		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK) {
-		if (strcmp(cksum, sum)) {
+		if (strcmp(cksum, pkg->sum)) {
 			if (already_tried || fetched == 1) {
 				pkg_emit_error("%s-%s failed checksum "
-				    "from repository", name, version);
+				    "from repository", pkg->name, pkg->version);
 				retcode = EPKG_FATAL;
 			} else {
 				pkg_emit_error("cached package %s-%s: "
 				    "checksum mismatch, fetching from remote",
-				    name, version);
+				    pkg->name, pkg->version);
 				unlink(dest);
 				return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 			}

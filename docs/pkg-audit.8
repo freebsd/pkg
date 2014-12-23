@@ -15,12 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 12, 2014
+.Dd October 30, 2014
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
 .Nm "pkg audit"
-.Nd Audits installed packages against known vulnerabilities.
+.Nd audit installed packages against known vulnerabilities
 .Sh SYNOPSIS
 .Nm
 .Op Fl Fqr
@@ -76,7 +76,7 @@ Be ``quiet''.
 Prints only the requested information without
 displaying many hints.
 .It Fl r , Cm --recursive
-Prints packages that depend on vulnerable packages and are thus 
+Prints packages that depend on vulnerable packages and are thus
 potentially vulnerable as well.
 .El
 .Sh ENVIRONMENT
