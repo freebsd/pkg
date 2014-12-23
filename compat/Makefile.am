@@ -9,5 +9,4 @@ libbsd_compat_la_SOURCES=	basename.c \
 				humanize_number.c \
 				strtonum.c
 
-libbsd_compat_la_CFLAGS=	$(pkg_common_cflags) -static
-libbsd_compat_la_LDFLAGS=	-all-static
+libbsd_compat_la_CFLAGS=	$(pkg_common_cflags) -shared
