@@ -129,6 +129,7 @@ global:
 	pkg_sbuf_vprintf;
 	pkg_script_get;
 	pkg_set2;
+	pkg_set_debug_level;
 	pkg_set_from_file;
 	pkg_set_from_fileat;
 	pkg_shlibs_provided;
