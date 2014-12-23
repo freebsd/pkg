@@ -81,7 +81,7 @@ EOF
 	atf_check \
 		-o empty \
 		-e empty \
-		-s exit:0 test -f test-1.txz
+		-s exit:1 test -f test-1.txz
 }
 
 atf_test_case pkg_repo_load_order
