@@ -320,7 +320,7 @@ exec_register(int argc, char **argv)
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (!legacy && pkg_has_message(pkg))
+	if (!legacy && retcode != EPKG_OK && pkg_has_message(pkg))
 		pkg_printf("%M\n", pkg);
 
 	pkg_free(pkg);
