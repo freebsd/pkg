@@ -167,8 +167,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		rf = NULL;
 		rcf = NULL;
 		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path));
-		snprintf(pathname, sizeof(pathname), "%s/%s",
-		    location ? location : "",
+		snprintf(pathname, sizeof(pathname), "%s%s%s",
+		    location ? location : "", *path == '/' ? "" : "/",
 		    path
 		);
 		strlcpy(rpath, pathname, sizeof(rpath));
