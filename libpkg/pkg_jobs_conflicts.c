@@ -512,12 +512,17 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 		if (cur != lp) {
 			if (pkgdb_ensure_loaded(j->db, cur->pkg, PKG_LOAD_FILES|PKG_LOAD_DIRS)
 							!= EPKG_OK) {
-				pkg_emit_error("cannot load files from %s to check integrity",
+				/*
+				 * This means that a package was not downloaded, so we can safely
+				 * ignore this conflict, since we are not going to install it
+				 * anyway
+				 */
+				pkg_debug (3, "cannot load files from %s to check integrity",
 					cur->pkg->name);
-				return (EPKG_FATAL);
 			}
-
-			pkg_conflicts_check_chain_conflict(cur, lp, j);
+			else {
+				pkg_conflicts_check_chain_conflict(cur, lp, j);
+			}
 		}
 
 		cur = cur->prev;
