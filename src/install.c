@@ -135,6 +135,7 @@ exec_install(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			yes = true;
 			break;
 		case 'r':
 			reponame = optarg;

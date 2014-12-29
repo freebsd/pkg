@@ -104,6 +104,7 @@ exec_delete(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			yes = true;
 			break;
 		case 'R':
 			recursive_flag = true;

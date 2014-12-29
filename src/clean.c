@@ -206,6 +206,7 @@ exec_clean(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			yes = true;
 			break;
 		case 'y':
 			yes = true;
