@@ -16,8 +16,7 @@ before_script:
 
 script:
   - ./configure
-  - make
-  - make dist
+  - make V=1
   - make check
 
 after_failure:
