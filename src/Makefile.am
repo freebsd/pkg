@@ -47,8 +47,7 @@ pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
-			-DGITHASH=\"$(GIT_HEAD)\" \
-			-Werror
+			-DGITHASH=\"$(GIT_HEAD)\" 
 pkg_static_SOURCES=
 pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			$(top_builddir)/compat/libbsd_compat.la \

@@ -64,7 +64,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
 
-#if !defined(__DragonFly__) && !defined(__APPLE__)
+#ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
 #endif
 	tty_fd = open(_PATH_TTY, tty_flags);
