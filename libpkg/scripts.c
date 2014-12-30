@@ -210,7 +210,7 @@ cleanup:
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
 		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0)
-			warnx("Fail to kill children");
+			pkg_emit_error("Fail to kill children of the scripts");
 	}
 	procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
 #endif
