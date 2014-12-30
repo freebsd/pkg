@@ -34,6 +34,7 @@
 #ifdef HAVE_LDNS
 #include <ldns/ldns.h>
 #else
+#include <arpa/nameser.h>
 #include <resolv.h>
 #endif
 #include <netdb.h>
