@@ -110,5 +110,16 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #define ENEEDAUTH 81
 #endif
 
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#endif
+
+#ifndef __unused
+#ifdef __GNUC__
+# define __unused __attribute__((__unused__))
+#else
+# define __unused
+#endif
+#endif
 
 #endif
