@@ -104,6 +104,7 @@ AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([float.h])
 AC_CHECK_HEADERS_ONCE([math.h])
 AC_CHECK_HEADERS_ONCE([osreldate.h])
+AC_CHECK_HEADERS_ONCE([sys/procctl.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
