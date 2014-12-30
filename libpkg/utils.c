@@ -366,17 +366,6 @@ is_dir(const char *path)
 }
 
 static void
-md5_hash(unsigned char hash[MD5_DIGEST_LENGTH],
-    char out[MD5_DIGEST_LENGTH * 2 + 1])
-{
-	int i;
-	for (i = 0; i < MD5_DIGEST_LENGTH; i++)
-		sprintf(out + (i *2), "%02x", hash[i]);
-
-	out[MD5_DIGEST_LENGTH * 2] = '\0';
-}
-
-static void
 sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
     char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
