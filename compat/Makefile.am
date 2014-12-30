@@ -8,6 +8,8 @@ libbsd_compat_la_SOURCES=	basename.c \
 				file_at.c \
 				gr_util.c \
 				humanize_number.c \
-				strtonum.c
+				strtonum.c \
+				strnstr.c \
+				funopen.c
 
 libbsd_compat_la_CFLAGS=	$(pkg_common_cflags) -shared

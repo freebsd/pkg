@@ -243,7 +243,7 @@ libsqlite_static_la_SOURCES=	$(libsqlite_la_SOURCES)
 libsqlite_static_la_CFLAGS=	$(sqlite_common_cflags) -static
 libsqlite_static_la_LDFLAGS=	-all-static
 
-libfetch_common_cflags=	-DWITH_SSL -Wno-pointer-sign
+libfetch_common_cflags=	-I$(top_srcdir)/compat -DWITH_SSL -Wno-pointer-sign
 libfetch_la_CFLAGS=	$(libfetch_common_cflags) -shared
 libfetch_la_SOURCES=	libfetch/common.c \
 			libfetch/fetch.c \

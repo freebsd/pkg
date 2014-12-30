@@ -596,7 +596,7 @@ __gr_scan(char *line, struct group *gr)
 	gr->gr_mem = NULL;
 	ndx = 0;
 	do {
-		gr->gr_mem = reallocf(gr->gr_mem, sizeof(*gr->gr_mem) *
+		gr->gr_mem = realloc(gr->gr_mem, sizeof(*gr->gr_mem) *
 		    (ndx + 1));
 		if (gr->gr_mem == NULL)
 			return (false);

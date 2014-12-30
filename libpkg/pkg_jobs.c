@@ -32,6 +32,8 @@
 #include "pkg_config.h"
 #endif
 
+#include <bsd_compat.h>
+
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/types.h>
@@ -49,7 +51,9 @@
 #include <sys/wait.h>
 #include <ctype.h>
 
-#include <bsd_compat.h>
+#ifdef HAVE_SYS_STATFS_H
+#include <sys/statfs.h>
+#endif
 
 #include "utarray.h"
 

@@ -26,7 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <sys/wait.h>
+#ifdef HAVE_SYS_PROCCTL_H
+#include <sys/procctl.h>
+#endif
 
 #include <assert.h>
 #include <errno.h>
@@ -60,6 +65,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	ssize_t bytes_written;
 	size_t script_cmd_len;
 	long argmax;
+#ifdef PROC_REAP_KILL
+	struct procctl_reaper_status info;
+	struct procctl_reaper_kill killemall;
+#endif
 
 	struct {
 		const char * const arg;
@@ -85,6 +94,9 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 	assert(i < sizeof(map) / sizeof(map[0]));
 
+#ifdef PROC_REAP_KILL
+	procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL);
+#endif
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
 			continue;
@@ -191,6 +203,17 @@ cleanup:
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)
 		close(stdin_pipe[1]);
+
+#ifdef PROC_REAP_KILL
+	procctl(P_PID, getpid(), PROC_REAP_STATUS, &info);
+	if (info.rs_children != 0) {
+		killemall.rk_sig = SIGKILL;
+		killemall.rk_flags = 0;
+		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0)
+			pkg_emit_error("Fail to kill children of the scripts");
+	}
+	procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
+#endif
 
 	return (ret);
 }

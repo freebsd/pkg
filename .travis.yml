@@ -16,5 +16,8 @@ before_script:
 
 script:
   - ./configure
-  - make
+  - make V=1
   - make check
+
+after_failure:
+  - kyua report --verbose

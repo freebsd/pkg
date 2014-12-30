@@ -26,6 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -45,6 +47,10 @@
 #include <unistd.h>
 #include <sysexits.h>
 #include <uthash.h>
+
+#ifdef HAVE_SYS_CAPSICUM_H
+#include <sys/capsicum.h>
+#endif
 
 #include <pkg.h>
 #include "pkgcli.h"

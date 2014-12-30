@@ -70,7 +70,7 @@ libpkg_la_SOURCES+=	pkg_macho.c
 pkg_common_cflags+=	-I$(top_srcdir)/external/libmachista
 endif
 
-libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
+libpkg_la_CFLAGS=	@OS_CFLAGS@ $(pkg_common_cflags) -shared
 libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \

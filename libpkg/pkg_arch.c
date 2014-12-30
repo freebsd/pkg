@@ -1,5 +1,4 @@
 /*-
- * Copyright (c) 2014 Landon Fuller <landon@landonf.org>
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.

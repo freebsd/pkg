@@ -25,6 +25,7 @@ LIBPKG_AGE=0
 LIBPKG_SO_VERSION="$LIBPKG_CURRENT:$LIBPKG_REVISION:$LIBPKG_AGE"
 AC_SUBST(LIBPKG_SO_VERSION)
 
+AC_GNU_SOURCE
 AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
@@ -69,6 +70,28 @@ AC_LINK_IFELSE([
 
 gl_LD_VERSION_SCRIPT
 
+AC_CANONICAL_HOST
+case $host_os in
+  linux*)
+        OS_CFLAGS="-pthread"
+        OS_LDFLAGS="-pthread"
+        OS_LIBS="-ldl -lrt"
+        OS_STATIC="false"
+        ;;
+    *)
+        OS_CFLAGS=
+        OS_LDFLAGS=
+        OS_LIBS=
+        OS_STATIC="true"
+        ;;
+esac
+
+AC_SUBST(OS_CFLAGS)
+AC_SUBST(OS_LDFLAGS)
+AC_SUBST(OS_LIBS)
+AC_SUBST(OS_STATIC)
+AM_CONDITIONAL([BUILD_STATIC], [test x$OS_STATIC = xtrue])
+
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
 AC_CHECK_HEADERS_ONCE([sys/endian.h])
@@ -106,7 +129,22 @@ AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([float.h])
 AC_CHECK_HEADERS_ONCE([math.h])
 AC_CHECK_HEADERS_ONCE([osreldate.h])
+AC_CHECK_HEADERS_ONCE([sys/socket.h])
+AC_CHECK_HEADERS_ONCE([netinet/in.h])
+AC_CHECK_HEADERS_ONCE([netinet/in6.h])
+AC_CHECK_HEADERS_ONCE([sys/statfs.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
+AC_CHECK_HEADERS_ONCE([sys/capability.h])
+AC_CHECK_HEADERS_ONCE([sys/capsicum.h])
+AC_CHECK_HEADERS_ONCE([bsd/stdlib.h])
+AC_CHECK_HEADERS_ONCE([bsd/string.h])
+AC_CHECK_HEADERS_ONCE([bsd/stdio.h])
+AC_CHECK_HEADERS_ONCE([bsd/readpassphrase.h])
+AC_CHECK_HEADERS_ONCE([bsd/libutil.h])
+AC_CHECK_HEADERS_ONCE([bsd/err.h])
+AC_CHECK_HEADERS_ONCE([bsd/unistd.h])
+AC_CHECK_HEADERS_ONCE([bsd/sys/cdefs.h])
+AC_CHECK_HEADERS_ONCE([sys/procctl.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
@@ -120,7 +158,18 @@ AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
-AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat], [readlinkat], [faccessat])
+AC_CHECK_FUNCS_ONCE([strnstr])
+AC_CHECK_FUNCS_ONCE([funopen])
+AC_CHECK_FUNCS_ONCE([fopencookie])
+AC_CHECK_FUNCS_ONCE([sysctlbyname])
+AC_CHECK_DECLS(
+	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
+	[], [], [
+		#include <sys/types.h>
+		#include <fcntl.h>
+		#include <sys/stat.h>
+		#include <unistd.h>
+	])
 AC_CHECK_DECLS(
 	[[be16dec], [be32dec], [be64dec], [le16dec], [le32dec], [le64dec],
 	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
@@ -131,6 +180,25 @@ AC_CHECK_FUNCS_ONCE([eaccess])
 AC_CHECK_FUNCS_ONCE([closefrom])
 AC_CHECK_FUNCS_ONCE([dirfd])
 AC_CHECK_FUNCS_ONCE([sysconf])
+
+AC_CHECK_MEMBERS([struct in6_addr.s6_addr32, 
+	struct in6_addr.s6_addr16, 
+	struct sockaddr_in.sin_len, 
+	struct sockaddr_in6.sin6_len, 
+	struct sockaddr_storage.ss_len,
+	struct sockaddr_storage.ss_family,
+	struct sockaddr_storage.__ss_family], [], [],
+[#include <sys/types.h>
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+#ifdef HAVE_NETINET_IN6_H
+#include <netinet/in6.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+])
 
 PKG_PROG_PKG_CONFIG
 
@@ -190,6 +258,11 @@ AC_SEARCH_LIBS([jail_getid], [jail], [
 	AC_DEFINE(HAVE_LIBJAIL, 1, [Define to 1 if you have the 'jail' library (-ljail).])
 	LIBJAIL_LIB="-ljail"
 	], [])
+	
+AC_SEARCH_LIBS([getprogname], [bsd], [
+	AC_DEFINE(HAVE_LIBBSD, 1, [Define to 1 if you have the 'bsd' library (-lbsd).])
+	LIBBSD_LIB="-lbsd"
+	], [])
 
 AC_CHECK_HEADERS([gelf.h libelf.h], [
 	AC_CHECK_TYPES([Elf_Note], [
@@ -217,23 +290,27 @@ AC_CHECK_HEADER([execinfo.h], [
 AC_ARG_WITH([ldns], AS_HELP_STRING([--with-ldns], [Build with ldns for name resolving]))
 
 AS_IF([test "x$with_ldns" = "xyes"], [
-   PKG_CHECK_MODULES([LDNS], [libldns], [AC_DEFINE([HAVE_LDNS], [1], [Use ldns])],
+   PKG_CHECK_MODULES([LDNS], [libldns], [
+   	AC_DEFINE([HAVE_LDNS], [1], [Use ldns])
+   	AC_SUBST([HAVE_LDNS], [1], [Use ldns])
+   ],
    [
    	AC_CHECK_HEADER([ldns/ldns.h], [
    		AC_CHECK_LIB(ldns, ldns_resolver_new_frm_file, [
    			AC_DEFINE([HAVE_LDNS], [1], [Use ldns])
-   			AC_DEFINE([LDNS_LIBS], [-lldns], [LDNS library])
+   			AC_SUBST([HAVE_LDNS], [1], [Use ldns])
+   			AC_SUBST([LDNS_LIBS], [-lldns], [LDNS library])
    		])
    	])
    ])
+   AS_IF([test "x$HAVE_LDNS" != "x1"],
+	[AC_MSG_ERROR([Unable to find the libdns])])
 ])
 
-AC_CHECK_HEADER([sys/capability.h], [
-        AC_CHECK_LIB(c, cap_sandboxed, [
-                AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
-        ])
-
+AC_CHECK_LIB(c, cap_sandboxed, [
+   AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
 ])
+
 
 AC_CACHE_CHECK(for arc4random_uniform,
                ac_cv_func_arc4random_uniform,
@@ -313,6 +390,7 @@ AM_CONDITIONAL(LIBELF_BUNDLED, test "$ac_cv_binary_abi" = "elf" -a "$libelf_bund
 
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBEXECINFO_LIB])
+AC_SUBST([LIBBSD_LIB])
 AC_SUBST([TESTS])
 AC_SUBST([LDNS_LIBS])
 AC_SUBST([LDNS_CFLAGS])

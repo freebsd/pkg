@@ -28,6 +28,8 @@
  */
 
 #include <sys/cdefs.h>
+#include "bsd_compat.h"
+
 __FBSDID("$FreeBSD: head/lib/libfetch/common.c 273124 2014-10-15 07:35:50Z des $");
 
 #include <sys/param.h>
@@ -224,7 +226,9 @@ fetch_reopen(int sd)
 	if ((conn = calloc(1, sizeof(*conn))) == NULL)
 		return (NULL);
 	fcntl(sd, F_SETFD, FD_CLOEXEC);
+#ifdef SO_NOSIGPIPE
 	setsockopt(sd, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof opt);
+#endif
 	conn->sd = sd;
 	++conn->ref;
 	return (conn);
@@ -682,10 +686,14 @@ fetch_ssl_setup_transport_layer(SSL_CTX *ctx, int verbose)
 		ssl_ctx_options |= SSL_OP_NO_SSLv3;
 	if (getenv("SSL_NO_TLS1") != NULL)
 		ssl_ctx_options |= SSL_OP_NO_TLSv1;
+#ifdef SSL_OP_NO_TLSv1_1
 	if (getenv("SSL_NO_TLS1_1") != NULL)
 		ssl_ctx_options |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
 	if (getenv("SSL_NO_TLS1_2") != NULL)
 		ssl_ctx_options |= SSL_OP_NO_TLSv1_2;
+#endif
 	if (verbose)
 		fetch_info("SSL options: %lx", ssl_ctx_options);
 	SSL_CTX_set_options(ctx, ssl_ctx_options);

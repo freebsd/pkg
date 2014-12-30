@@ -36,6 +36,8 @@
 #include "pkg_config.h"
 #endif
 
+#include <bsd_compat.h>
+
 #include <sys/param.h>
 #include <sys/mount.h>
 
@@ -55,7 +57,9 @@
 
 #include <sqlite3.h>
 
-#include <bsd_compat.h>
+#ifdef HAVE_SYS_STATFS_H
+#include <sys/statfs.h>
+#endif
 
 #include "pkg.h"
 #include "private/event.h"
@@ -950,6 +954,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 
 		sqlite3_initialize();
 
+#ifdef MNT_LOCAL
 		/*
 		 * Fall back on unix-dotfile locking strategy if on a network filesystem
 		 */
@@ -957,7 +962,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 			if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 				sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 		}
-
+#endif
 		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
 			pkgdb_close(db);
