@@ -75,7 +75,9 @@ endif
 endif
 
 if HAVE_MACHO_ABI
-pkg_static_LDADD+=	$(top_builddir)/external/libmachista_static.la
+pkg_static_LDADD+=	$(top_builddir)/external/libmachista_static.la \
+			-lresolv
+pkg_LDADD+=		-lresolv
 endif
 
 pkg_static_LDFLAGS=	-all-static
