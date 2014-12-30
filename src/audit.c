@@ -26,6 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
