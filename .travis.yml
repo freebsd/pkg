@@ -1,0 +1,14 @@
+language: c
+
+os: osx
+
+compiler:
+  - clang
+  - gcc
+
+before_script:
+  - autoreconf -i
+
+script:
+  - ./configure
+  - make
