@@ -11,8 +11,10 @@ before_script:
   - brew update
   - brew install libarchive
   - brew install openssl
+  - brew install kyua
   - autoreconf -i
 
 script:
   - ./configure
   - make
+  - make check
