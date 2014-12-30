@@ -25,6 +25,7 @@ LIBPKG_AGE=0
 LIBPKG_SO_VERSION="$LIBPKG_CURRENT:$LIBPKG_REVISION:$LIBPKG_AGE"
 AC_SUBST(LIBPKG_SO_VERSION)
 
+AC_GNU_SOURCE
 AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
@@ -120,7 +121,14 @@ AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
-AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat], [readlinkat], [faccessat])
+AC_CHECK_DECLS(
+	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
+	[], [], [
+		#include <sys/types.h>
+		#include <fcntl.h>
+		#include <sys/stat.h>
+		#include <unistd.h>
+	])
 AC_CHECK_DECLS(
 	[[be16dec], [be32dec], [be64dec], [le16dec], [le32dec], [le64dec],
 	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
