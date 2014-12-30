@@ -150,4 +150,13 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #endif
 #endif
 
+#if !HAVE_FUNOPEN
+#if !HAVE_FOPENCOOKIE
+# error "Your system has neither funopen nor fopencookie, cannot continue"
+#endif
+FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
+         int (*writefn)(void *, const char *, int),
+         off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *));
+#endif
+
 #endif

@@ -34,6 +34,7 @@
 #include <sys/cdefs.h>
 #include <string.h>
 
+#if !HAVE_STRNSTR
 /*
  * Find the first occurrence of find in s, where the search is limited to the
  * first slen characters of s.
@@ -58,4 +59,4 @@ strnstr(const char *s, const char *find, size_t slen)
         }
         return ((char *)s);
 }
-
+#endif

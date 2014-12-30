@@ -9,10 +9,7 @@ libbsd_compat_la_SOURCES=	basename.c \
 				gr_util.c \
 				humanize_number.c \
 				strtonum.c \
-				strnstr.c
+				strnstr.c \
+				funopen.c
 
 libbsd_compat_la_CFLAGS=	$(pkg_common_cflags) -shared
-
-if HAVE_LIBBSD
-libbsd_compat_la_LIBADD=	-lbsd
-endif

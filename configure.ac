@@ -110,6 +110,7 @@ AC_CHECK_HEADERS_ONCE([osreldate.h])
 AC_CHECK_HEADERS_ONCE([sys/socket.h])
 AC_CHECK_HEADERS_ONCE([netinet/in.h])
 AC_CHECK_HEADERS_ONCE([netinet/in6.h])
+AC_CHECK_HEADERS_ONCE([sys/statfs.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
 AC_CHECK_HEADERS_ONCE([bsd/stdlib.h])
 AC_CHECK_HEADERS_ONCE([bsd/string.h]) 
@@ -133,6 +134,7 @@ AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
 AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_FUNCS_ONCE([funopen])
+AC_CHECK_FUNCS_ONCE([fopencookie])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
@@ -158,7 +160,7 @@ AC_CHECK_MEMBERS([struct in6_addr.s6_addr32,
 	struct sockaddr_in6.sin6_len, 
 	struct sockaddr_storage.ss_len,
 	struct sockaddr_storage.ss_family,
-	struct sockaddr_storage.__ss_family], , ,
+	struct sockaddr_storage.__ss_family], [], [],
 [#include <sys/types.h>
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
