@@ -64,18 +64,24 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		uthash/utlist.h \
 		include/tree.h \
 		include/siphash.h \
-		config.h
+		config.h \
+		libfetch/common.h \
+		libfetch/fetch.h \
+		libfetch/httperr.h \
+		libfetch/ftperr.h
 
 DYNLIBS=		libucl.la \
 			libsqlite.la \
 			libexpat.la \
 			libsbuf.la \
-			libpicosat.la
+			libpicosat.la \
+			libfetch.la
 noinst_LTLIBRARIES=	libucl_static.la \
 			libsqlite_static.la \
 			libexpat_static.la \
 			libsbuf_static.la \
-			libpicosat_static.la
+			libpicosat_static.la \
+			libfetch_static.la
 if LIBELF_BUNDLED
 DYNLIBS+=		libelf.la
 noinst_LTLIBRARIES+=	libelf_static.la
@@ -237,6 +243,16 @@ libsqlite_static_la_SOURCES=	$(libsqlite_la_SOURCES)
 libsqlite_static_la_CFLAGS=	$(sqlite_common_cflags) -static
 libsqlite_static_la_LDFLAGS=	-all-static
 
+libfetch_common_cflags=	-DWITH_SSL -Wno-pointer-sign
+libfetch_la_CFLAGS=	$(libfetch_common_cflags) -shared
+libfetch_la_SOURCES=	libfetch/common.c \
+			libfetch/fetch.c \
+			libfetch/file.c \
+			libfetch/ftp.c \
+			libfetch/http.c
+libfetch_static_la_CFLAGS=	$(libfetch_common_cflags) -static
+libfetch_static_la_SOURCES=	${libfetch_la_SOURCES}
+
 if HAVE_ELF_ABI
 CLEANFILES=	libelf/libelf_fsize.c \
 			libelf/libelf_msize.c \
@@ -260,4 +276,5 @@ libelf/libelf_msize.c:
 	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)/libelf/libelf_msize.m4 > $@
 libelf/native-elf-format.h:
 	$(srcdir)/libelf/native-elf-format > libelf/native-elf-format.h
+
 endif
