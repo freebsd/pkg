@@ -112,6 +112,12 @@ AC_CHECK_HEADERS_ONCE([netinet/in.h])
 AC_CHECK_HEADERS_ONCE([netinet/in6.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
 AC_CHECK_HEADERS_ONCE([bsd/stdlib.h])
+AC_CHECK_HEADERS_ONCE([bsd/string.h]) 
+AC_CHECK_HEADERS_ONCE([bsd/stdio.h]) 
+AC_CHECK_HEADERS_ONCE([bsd/readpassphrase.h])
+AC_CHECK_HEADERS_ONCE([bsd/libutil.h]) 
+AC_CHECK_HEADERS_ONCE([bsd/err.h]) 
+AC_CHECK_HEADERS_ONCE([bsd/sys/cdefs.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
@@ -126,6 +132,7 @@ AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
 AC_CHECK_FUNCS_ONCE([strnstr])
+AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
@@ -350,6 +357,7 @@ AM_CONDITIONAL(LIBELF_BUNDLED, test "$ac_cv_binary_abi" = "elf" -a "$libelf_bund
 
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBEXECINFO_LIB])
+AC_SUBST([LIBBSD_LIB])
 AC_SUBST([TESTS])
 AC_SUBST([LDNS_LIBS])
 AC_SUBST([LDNS_CFLAGS])

@@ -29,12 +29,31 @@
 
 #include "pkg_config.h"
 
-#include <sys/stat.h>
+#ifdef HAVE_BSD_SYS_CDEFS_H
+#include <bsd/sys/cdefs.h>
+#endif
 
 #ifdef HAVE_BSD_STDLIB_H
 #include <bsd/stdlib.h>
 #endif
 
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
+
+#ifdef HAVE_BSD_STDIO_H
+#include <bsd/stdio.h>
+#endif
+
+#ifdef HAVE_BSD_ERR_H
+#include <bsd/err.h>
+#endif
+
+#ifdef HAVE_BSD_LIBUTIL_H
+#include <bsd/libutil.h>
+#endif
+
+#include <sys/stat.h>
 #include "endian_util.h"
 
 char *bsd_dirname(const char *);
