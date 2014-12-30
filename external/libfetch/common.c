@@ -56,6 +56,10 @@ __FBSDID("$FreeBSD: head/lib/libfetch/common.c 273124 2014-10-15 07:35:50Z des $
 #include "fetch.h"
 #include "common.h"
 
+#ifndef INFTIM
+#define INFTIM (-1)
+# define INFTIM (-1)
+#
 
 /*** Local data **************************************************************/
 
