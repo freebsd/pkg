@@ -1,6 +1,7 @@
 language: c
 
-os: osx
+os:
+  - osx
 
 compiler:
   - clang
