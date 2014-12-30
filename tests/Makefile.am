@@ -24,7 +24,8 @@ endif
 endif
 
 if HAVE_MACHO_ABI
-GENERIC_LDADD+=	$(top_builddir)/external/libmachista_static.la
+GENERIC_LDADD+=	$(top_builddir)/external/libmachista_static.la \
+		-lresolv
 endif
 
 PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING \
