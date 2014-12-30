@@ -9,7 +9,7 @@ compiler:
 
 before_script:
   - brew update
-  - brew install libarchive
+  - brew install libarchive --with-xz
   - brew install openssl
   - brew install kyua
   - autoreconf -i
