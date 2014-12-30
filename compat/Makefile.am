@@ -12,3 +12,7 @@ libbsd_compat_la_SOURCES=	basename.c \
 				strnstr.c
 
 libbsd_compat_la_CFLAGS=	$(pkg_common_cflags) -shared
+
+if HAVE_LIBBSD
+libbsd_compat_la_LIBADD=	-lbsd
+endif

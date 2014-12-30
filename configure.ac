@@ -111,6 +111,7 @@ AC_CHECK_HEADERS_ONCE([sys/socket.h])
 AC_CHECK_HEADERS_ONCE([netinet/in.h])
 AC_CHECK_HEADERS_ONCE([netinet/in6.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
+AC_CHECK_HEADERS_ONCE([bsd/stdlib.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
@@ -148,7 +149,8 @@ AC_CHECK_MEMBERS([struct in6_addr.s6_addr32,
 	struct in6_addr.s6_addr16, 
 	struct sockaddr_in.sin_len, 
 	struct sockaddr_in6.sin6_len, 
-	struct sockaddr_storage.ss_family, 
+	struct sockaddr_storage.ss_len,
+	struct sockaddr_storage.ss_family,
 	struct sockaddr_storage.__ss_family], , ,
 [#include <sys/types.h>
 #ifdef HAVE_NETINET_IN_H
@@ -219,6 +221,11 @@ AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
 AC_SEARCH_LIBS([jail_getid], [jail], [
 	AC_DEFINE(HAVE_LIBJAIL, 1, [Define to 1 if you have the 'jail' library (-ljail).])
 	LIBJAIL_LIB="-ljail"
+	], [])
+	
+AC_SEARCH_LIBS([getprogname], [bsd], [
+	AC_DEFINE(HAVE_LIBBSD, 1, [Define to 1 if you have the 'bsd' library (-lbsd).])
+	LIBBSD_LIB="-lbsd"
 	], [])
 
 AC_CHECK_HEADERS([gelf.h libelf.h], [

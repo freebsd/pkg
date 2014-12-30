@@ -27,9 +27,14 @@
 #ifndef _BSD_COMPAT_H
 #define _BSD_COMPAT_H
 
+#include "pkg_config.h"
+
 #include <sys/stat.h>
 
-#include "pkg_config.h"
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
+
 #include "endian_util.h"
 
 char *bsd_dirname(const char *);
@@ -108,6 +113,10 @@ char * strnstr(const char *s, const char *find, size_t slen);
 
 #ifndef ENEEDAUTH
 #define ENEEDAUTH 81
+#endif
+
+#ifndef MAXLOGNAME
+#define MAXLOGNAME 33
 #endif
 
 #ifndef __DECONST
