@@ -107,6 +107,9 @@ AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([float.h])
 AC_CHECK_HEADERS_ONCE([math.h])
 AC_CHECK_HEADERS_ONCE([osreldate.h])
+AC_CHECK_HEADERS_ONCE([sys/socket.h])
+AC_CHECK_HEADERS_ONCE([netinet/in.h])
+AC_CHECK_HEADERS_ONCE([netinet/in6.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
 
 AC_CHECK_HEADER([regex.h], [
@@ -140,6 +143,24 @@ AC_CHECK_FUNCS_ONCE([eaccess])
 AC_CHECK_FUNCS_ONCE([closefrom])
 AC_CHECK_FUNCS_ONCE([dirfd])
 AC_CHECK_FUNCS_ONCE([sysconf])
+
+AC_CHECK_MEMBERS([struct in6_addr.s6_addr32, 
+	struct in6_addr.s6_addr16, 
+	struct sockaddr_in.sin_len, 
+	struct sockaddr_in6.sin6_len, 
+	struct sockaddr_storage.ss_family, 
+	struct sockaddr_storage.__ss_family], , ,
+[#include <sys/types.h>
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+#ifdef HAVE_NETINET_IN6_H
+#include <netinet/in6.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+])
 
 PKG_PROG_PKG_CONFIG
 
