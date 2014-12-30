@@ -10,6 +10,7 @@ compiler:
 before_script:
   - brew update
   - brew install libarchive
+  - brew install openssl
   - autoreconf -i
 
 script:
