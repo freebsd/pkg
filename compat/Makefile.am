@@ -1,5 +1,6 @@
 noinst_LTLIBRARIES=	libbsd_compat.la
-noinst_HEADERS=		bsd_compat.h
+noinst_HEADERS=		bsd_compat.h endian_util.h gr_util.h \
+			humanize_number.h
 
 libbsd_compat_la_SOURCES=	basename.c \
 				closefrom.c \
