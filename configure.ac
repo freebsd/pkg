@@ -121,6 +121,7 @@ AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
 AC_CHECK_FUNCS_ONCE([strtonum])
+AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
