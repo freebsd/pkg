@@ -144,6 +144,7 @@ AC_CHECK_HEADERS_ONCE([bsd/libutil.h])
 AC_CHECK_HEADERS_ONCE([bsd/err.h])
 AC_CHECK_HEADERS_ONCE([bsd/unistd.h])
 AC_CHECK_HEADERS_ONCE([bsd/sys/cdefs.h])
+AC_CHECK_HEADERS_ONCE([sys/procctl.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
