@@ -80,12 +80,31 @@ ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t
 #endif
 
 #if !HAVE_UNLINKAT
-#define AT_REMOVEDIR	0x800
+# ifndef AT_REMOVEDIR
+#  define AT_REMOVEDIR	0x800
+# endif
 int unlinkat(int fd, const char *path, int flag);
 #endif
 
 #if !HAVE_STRTONUM
 long long strtonum(const char *, long long, long long, const char **);
 #endif
+
+#ifndef _PATH_GROUP
+#define _PATH_GROUP "/etc/group"
+#endif
+
+#ifndef __FBSDID
+#define __FBSDID(x)
+#endif
+
+#ifndef EAUTH
+#define EAUTH 80
+#endif
+
+#ifndef ENEEDAUTH
+#define ENEEDAUTH 81
+#endif
+
 
 #endif
