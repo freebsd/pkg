@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Landon Fuller <landon@landonf.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -24,70 +24,68 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
+#ifndef _BSD_COMPAT_H
+#define _BSD_COMPAT_H
+
+#include <sys/stat.h>
+
 #include "pkg_config.h"
+#include "endian_util.h"
+
+char *bsd_dirname(const char *);
+char *bsd_basename(const char *);
+
+#if !HAVE_EACCESS
+#define eaccess(_p, _m) access(_p, _m)
 #endif
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#if !HAVE_GR_MAKE
+#include "gr_util.h"
 #endif
 
-#include <sysexits.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <err.h>
-#include <errno.h>
-
-#include <pkg.h>
-
-#include "pkgcli.h"
-
-void
-usage_ssh(void)
-{
-	fprintf(stderr, "Usage: pkg ssh\n\n");
-	fprintf(stderr, "For more information see 'pkg help ssh'.\n");
-}
-
-int
-exec_ssh(int argc, char **argv __unused)
-{
-	int fd = -1;
-	const char *restricted = NULL;
-
-#ifdef HAVE_CAPSICUM
-	cap_rights_t rights;
+#if !HAVE_HUMANIZE_NUMBER
+#include "humanize_number.h"
 #endif
 
-	if (argc > 1) {
-		usage_ssh();
-		return (EX_USAGE);
-	}
+#if !HAVE_CLOSEFROM
+void closefrom(int lowfd);
+#endif
 
-	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
-	if (restricted == NULL)
-		restricted = "/";
+#ifndef AT_FDCWD
+#define AT_FDCWD		-100
+#endif
 
-	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY)) < 0) {
-		warn("Impossible to open the restricted directory");
-		return (EX_SOFTWARE);
-	}
+#ifndef AT_EACCESS
+#define AT_EACCESS		0x100
+#endif
 
-#ifdef HAVE_CAPSICUM
-	cap_rights_init(&rights, CAP_READ, CAP_FSTATAT, CAP_FCNTL);
-	if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
-		warn("cap_rights_limit() failed");
-		return (EX_SOFTWARE);
-	}
+#ifndef AT_SYMLINK_NOFOLLOW
+#define	AT_SYMLINK_NOFOLLOW	0x200
+#endif
 
-	if (cap_enter() < 0 && errno != ENOSYS) {
-		warn("cap_enter() failed");
-		return (EX_SOFTWARE);
-	}
+#if !HAVE_FACCESSAT
+int faccessat(int fd, const char *path, int mode, int flag);
+#endif
+
+#if !HAVE_FSTATAT
+int fstatat(int fd, const char *path, struct stat *buf, int flag);
+#endif
+
+#if !HAVE_OPENAT
+int openat(int fd, const char *path, int flags, ...);
+#endif
+
+#if !HAVE_READLINKAT
+ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t bufsize);
+#endif
+
+#if !HAVE_UNLINKAT
+#define AT_REMOVEDIR	0x800
+int unlinkat(int fd, const char *path, int flag);
+#endif
+
+#if !HAVE_STRTONUM
+long long strtonum(const char *, long long, long long, const char **);
+#endif
 
 #endif
-	if (pkg_sshserve(fd) != EPKG_OK)
-		return (EX_SOFTWARE);
-
-	return (EX_OK);
-}

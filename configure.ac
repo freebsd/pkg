@@ -67,6 +67,8 @@ AC_LINK_IFELSE([
  	AC_MSG_RESULT([no])
 ])
 
+gl_LD_VERSION_SCRIPT
+
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
 AC_CHECK_HEADERS_ONCE([sys/endian.h])
@@ -104,6 +106,7 @@ AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([float.h])
 AC_CHECK_HEADERS_ONCE([math.h])
 AC_CHECK_HEADERS_ONCE([osreldate.h])
+AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
 
 AC_CHECK_HEADER([regex.h], [
 	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
@@ -116,6 +119,18 @@ AC_CHECK_FUNCS_ONCE([usleep])
 AC_CHECK_FUNCS_ONCE([localtime_r])
 AC_CHECK_FUNCS_ONCE([gmtime_r])
 AC_CHECK_FUNCS_ONCE([strerror_r])
+AC_CHECK_FUNCS_ONCE([strtonum])
+AC_CHECK_FUNCS_ONCE([fstatat], [openat], [unlinkat], [readlinkat], [faccessat])
+AC_CHECK_DECLS(
+	[[be16dec], [be32dec], [be64dec], [le16dec], [le32dec], [le64dec],
+	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
+	[], [], [#include <sys/endian.h>]
+)
+AC_CHECK_FUNCS_ONCE([flopen])
+AC_CHECK_FUNCS_ONCE([eaccess])
+AC_CHECK_FUNCS_ONCE([closefrom])
+AC_CHECK_FUNCS_ONCE([dirfd])
+AC_CHECK_FUNCS_ONCE([sysconf])
 
 PKG_PROG_PKG_CONFIG
 
@@ -230,6 +245,48 @@ if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
 fi
 
+AC_CACHE_CHECK(for BSD dirname(const char *),
+               ac_cv_func_dirname,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="-Werror $CFLAGS"
+		AC_TRY_COMPILE([#include <libgen.h>],
+                               [static char *(*ac_test_dirname)(const char *) = dirname; ac_test_dirname("");],
+                               [ac_cv_func_dirname=yes],
+                               [ac_cv_func_dirname=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_dirname" = yes ; then
+	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
+fi
+
+AC_CHECK_FUNCS(basename_r)
+AC_CACHE_CHECK(for BSD basename(const char *),
+               ac_cv_func_basename,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="-Werror $CFLAGS"
+		AC_TRY_COMPILE([#include <libgen.h>],
+                               [static char *(*ac_test_basename)(const char *) = basename; ac_test_basename("");],
+                               [ac_cv_func_basename=yes],
+                               [ac_cv_func_basename=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_basename" = yes ; then
+	AC_DEFINE(HAVE_BSD_BASENAME, 1, [Define 1 if you have 'basename(const char *)' function.])
+fi
+
+AC_MSG_CHECKING([for /proc/pid/fd directory])
+if test -d "/proc/$$/fd" ; then
+        AC_DEFINE([HAVE_PROC_PID], [1], [Define if you have /proc/$pid/fd])
+        AC_MSG_RESULT([yes])
+else
+        AC_MSG_RESULT([no])
+fi
+
+AC_CHECK_DECL([F_CLOSEM],
+        AC_DEFINE([HAVE_FCNTL_CLOSEM], [1], [Use F_CLOSEM fcntl for closefrom]),
+        [],
+        [ #include <limits.h>
+          #include <fcntl.h> ]
+)
+
 AC_MSG_CHECKING([whether we should only build the static version of pkg])
 AC_ARG_WITH([staticonly],
 	      [AS_HELP_STRING([--with-staticonly],
@@ -242,7 +299,17 @@ else
 fi
 
 AM_CONDITIONAL(DYNAMIC, test "$with_staticonly" != "no")
-AM_CONDITIONAL(LIBELF_BUNDLED, test "$libelf_bundled" != "no")
+
+dnl Select appropriate ABI
+AS_CASE(
+	[$host_os],
+	[darwin*],
+	[ac_cv_binary_abi=macho],
+	[ac_cv_binary_abi=elf]
+)
+AM_CONDITIONAL(HAVE_MACHO_ABI, test "$ac_cv_binary_abi" = "macho")
+AM_CONDITIONAL(HAVE_ELF_ABI, test "$ac_cv_binary_abi" = "elf")
+AM_CONDITIONAL(LIBELF_BUNDLED, test "$ac_cv_binary_abi" = "elf" -a "$libelf_bundled" != "no")
 
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBEXECINFO_LIB])
@@ -285,6 +352,7 @@ AC_CONFIG_FILES(Makefile \
 		scripts/Makefile \
 		docs/Makefile \
 		tests/Makefile \
+		compat/Makefile \
 		libpkg/Makefile \
 		libpkg/repo/Makefile \
 		libpkg/pkg.h \

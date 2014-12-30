@@ -59,6 +59,8 @@
 #include <libelf.h>
 #endif
 
+#include <bsd_compat.h>
+
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -377,7 +379,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			continue;
 		
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val),
-				      dirname(fpath));
+				      bsd_dirname(fpath));
 		break;
 	}
 	if (!is_shlib) {
@@ -387,7 +389,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		 */
 		if (elfhdr.e_type == ET_DYN) {
 			is_shlib = true;
-			pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, bsd_basename(fpath));
 		}
 	}
 
@@ -972,40 +974,3 @@ pkg_get_myarch(char *dest, size_t sz)
 }
 #endif
 
-int
-pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
-{
-	bool iswildcard;
-
-	iswildcard = (strchr(arch, '*') != NULL);
-
-	if (iswildcard && isdefault)
-		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
-		    "cannot use wildcards as default", arch);
-
-	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
-		if (iswildcard) {
-			/* Definitely has to be arch specific */
-			pkg_emit_developer_mode("Error: arch \"%s\" -- package "
-			    "installs architecture specific files", arch);
-		}
-	} else {
-		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
-			if (iswildcard) {
-				/* Could well be arch specific */
-				pkg_emit_developer_mode("Warning: arch \"%s\" "
-				    "-- package installs C/C++ headers or "
-				    "libtool files,\n**** which are often "
-				    "architecture specific", arch);
-			}
-		} else {
-			/* Might be arch independent */
-			if (!iswildcard)
-				pkg_emit_developer_mode("Notice: arch \"%s\" -- "
-				    "no architecture specific files found:\n"
-				    "**** could this package use a wildcard "
-				    "architecture?", arch);
-		}
-	}
-	return (EPKG_OK);
-}

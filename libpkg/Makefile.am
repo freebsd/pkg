@@ -2,6 +2,7 @@ EXTRA_DIST=		libpkg.ver
 
 pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			@LDNS_CFLAGS@ \
+			-I$(top_srcdir)/compat \
 			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
@@ -19,10 +20,10 @@ endif
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
 			dns_utils.c \
-			elfhints.c \
 			fetch.c \
 			packing.c \
 			pkg_add.c \
+			pkg_arch.c \
 			pkg_attributes.c \
 			pkg_audit.c \
 			pkg_checksum.c \
@@ -30,7 +31,6 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_cudf.c \
 			pkg_create.c \
 			pkg_delete.c \
-			pkg_elf.c \
 			pkg_event.c \
 			pkg_jobs.c \
 			pkg_jobs_conflicts.c \
@@ -58,8 +58,20 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_old.c \
 			merge3.c \
 			diff.c
+
+if HAVE_ELF_ABI
+libpkg_la_SOURCES+=	elfhints.c \
+			pkg_elf.c
+endif
+
+if HAVE_MACHO_ABI
+libpkg_la_SOURCES+=	pkg_macho.c
+pkg_common_cflags+=	-I$(top_srcdir)/external/libmachista
+endif
+
 libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
-libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
+libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
+			$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libexpat.la \
 			$(top_builddir)/external/libsbuf.la \
@@ -73,14 +85,26 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-lssl \
 			-lcrypto \
 			-lm
+
+if HAVE_ELF_ABI
 if LIBELF_BUNDLED
 libpkg_la_LIBADD+=	$(top_builddir)/external/libelf.la
 else
 libpkg_la_LIBADD+=	-lelf
 endif
+endif
 
-libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
-EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@ libpkg.ver
+if HAVE_MACHO_ABI
+libpkg_la_LIBADD+=	$(top_builddir)/external/libmachista_static.la
+endif
+
+libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@
+EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@
+
+if HAVE_LD_VERSION_SCRIPT
+libpkg_la_LDFLAGS+=	-version-info @LIBPKG_SO_VERSION@ -Wl,--version-script=$(srcdir)/libpkg.ver
+EXTRA_libpkg_la_DEPENDENCIES+=	libpkg.ver
+endif
 
 DYNLIBS=		libpkg.la
 lib_LTLIBRARIES=	libpkg_static.la

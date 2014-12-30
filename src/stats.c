@@ -25,15 +25,23 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <err.h>
 #include <getopt.h>
 #include <inttypes.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
+
+#include <bsd_compat.h>
 
 #include "pkgcli.h"
 

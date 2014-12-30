@@ -539,7 +539,7 @@ typedef enum _sql_prstmt_index {
 	ANNOTATE1,
 	ANNOTATE2,
 	EXISTS,
-	VERSION,
+	REPO_VERSION,
 	DELETE,
 	FTS_APPEND,
 	PRSTMT_LAST,

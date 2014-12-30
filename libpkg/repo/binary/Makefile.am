@@ -1,4 +1,5 @@
 pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
+			-I$(top_srcdir)/compat \
 			-I$(top_srcdir)/external/libsbuf \
 			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/expat/lib \

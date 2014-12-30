@@ -46,7 +46,7 @@ pkg_config_defaults_body()
 	-o match:'^ *SSH_RESTRICT_DIR = "";$' \
 	-e empty              \
 	-s exit:0             \
-	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -R "" -vv
+	env -i PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
 }
 
 atf_test_case pkg_create_manifest_bad_syntax
@@ -81,7 +81,7 @@ EOF
 	atf_check \
 		-o empty \
 		-e empty \
-		-s exit:0 test -f test-1.txz
+		-s exit:1 test -f test-1.txz
 }
 
 atf_test_case pkg_repo_load_order

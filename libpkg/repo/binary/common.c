@@ -121,7 +121,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
 		"ITT",
 	},
-	[VERSION] = {
+	[REPO_VERSION] = {
 		NULL,
 		"SELECT version FROM packages WHERE origin=?1",
 		"T",

@@ -1,5 +1,7 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014 Landon Fuller <landon@landonf.org>
+ * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -28,66 +30,46 @@
 #include "pkg_config.h"
 #endif
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
-#endif
+#include <bsd_compat.h>
 
-#include <sysexits.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <err.h>
-#include <errno.h>
-
-#include <pkg.h>
-
-#include "pkgcli.h"
-
-void
-usage_ssh(void)
-{
-	fprintf(stderr, "Usage: pkg ssh\n\n");
-	fprintf(stderr, "For more information see 'pkg help ssh'.\n");
-}
+#include "pkg.h"
+#include "private/pkg.h"
+#include "private/event.h"
 
 int
-exec_ssh(int argc, char **argv __unused)
+pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 {
-	int fd = -1;
-	const char *restricted = NULL;
+	bool iswildcard;
 
-#ifdef HAVE_CAPSICUM
-	cap_rights_t rights;
-#endif
+	iswildcard = (strchr(arch, '*') != NULL);
 
-	if (argc > 1) {
-		usage_ssh();
-		return (EX_USAGE);
+	if (iswildcard && isdefault)
+		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
+		    "cannot use wildcards as default", arch);
+
+	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
+		if (iswildcard) {
+			/* Definitely has to be arch specific */
+			pkg_emit_developer_mode("Error: arch \"%s\" -- package "
+			    "installs architecture specific files", arch);
+		}
+	} else {
+		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
+			if (iswildcard) {
+				/* Could well be arch specific */
+				pkg_emit_developer_mode("Warning: arch \"%s\" "
+				    "-- package installs C/C++ headers or "
+				    "libtool files,\n**** which are often "
+				    "architecture specific", arch);
+			}
+		} else {
+			/* Might be arch independent */
+			if (!iswildcard)
+				pkg_emit_developer_mode("Notice: arch \"%s\" -- "
+				    "no architecture specific files found:\n"
+				    "**** could this package use a wildcard "
+				    "architecture?", arch);
+		}
 	}
-
-	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
-	if (restricted == NULL)
-		restricted = "/";
-
-	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY)) < 0) {
-		warn("Impossible to open the restricted directory");
-		return (EX_SOFTWARE);
-	}
-
-#ifdef HAVE_CAPSICUM
-	cap_rights_init(&rights, CAP_READ, CAP_FSTATAT, CAP_FCNTL);
-	if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
-		warn("cap_rights_limit() failed");
-		return (EX_SOFTWARE);
-	}
-
-	if (cap_enter() < 0 && errno != ENOSYS) {
-		warn("cap_enter() failed");
-		return (EX_SOFTWARE);
-	}
-
-#endif
-	if (pkg_sshserve(fd) != EPKG_OK)
-		return (EX_SOFTWARE);
-
-	return (EX_OK);
+	return (EPKG_OK);
 }

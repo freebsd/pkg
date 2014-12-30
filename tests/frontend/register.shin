@@ -11,7 +11,7 @@ register_conflicts_body() {
 
 	mkdir teststage
 	echo a > teststage/plop
-	sum=$(sha256 -q teststage/plop)
+	sum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	cat > test.ucl << EOF
 name: "test"
 origin: "osef"
@@ -36,7 +36,7 @@ EOF
 		-o inline:"$sum\n" \
 		-e empty \
 		-s exit:0 \
-		sha256 -q plop
+		openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"'
 	rm -f test.ucl
 	echo b > teststage/plop
 	cat > test.ucl << EOF
@@ -63,7 +63,7 @@ EOF
 		-o inline:"$sum\n" \
 		-e empty \
 		-s exit:0 \
-		sha256 -q plop
+		openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"'
 }
 
 atf_init_test_cases() {

@@ -29,6 +29,7 @@
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -39,6 +40,8 @@
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -174,7 +177,7 @@ ssh_read(void *data, char *buf, int len)
 		timeout.tv_sec += fetchTimeout;
 	}
 
-	deltams = INFTIM;
+	deltams = -1;
 	memset(&pfd, 0, sizeof pfd);
 	pfd.fd = repo->sshio.in;
 	pfd.events = POLLIN | POLLERR;

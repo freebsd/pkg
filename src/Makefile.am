@@ -43,12 +43,15 @@ pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
 			-lcrypto
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_builddir)/libpkg \
+			-I$(top_srcdir)/compat \
+			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
 			-DGITHASH=\"$(GIT_HEAD)\" \
 			-Werror
 pkg_static_SOURCES=
 pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
+			$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
@@ -62,12 +65,18 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-llzma \
 			-lssl \
 			-lcrypto \
-			-lmd \
 			-lm
+
+if HAVE_ELF_ABI
 if LIBELF_BUNDLED
 pkg_static_LDADD+=	$(top_builddir)/external/libelf_static.la
 else
 pkg_static_LDADD+=	-lelf
+endif
+endif
+
+if HAVE_MACHO_ABI
+pkg_static_LDADD+=	$(top_builddir)/external/libmachista_static.la
 endif
 
 pkg_static_LDFLAGS=	-all-static

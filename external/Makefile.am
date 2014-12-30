@@ -45,6 +45,8 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libelf/elfdefinitions.h \
 		libelf/gelf.h \
 		libelf/libelf.h \
+		libmachista/hashmap.h \
+		libmachista/libmachista.h \
 		libsbuf/sys/sbuf.h \
 		libucl/include/ucl.h \
 		libucl/src/xxhash.h \
@@ -77,6 +79,10 @@ noinst_LTLIBRARIES=	libucl_static.la \
 if LIBELF_BUNDLED
 DYNLIBS+=		libelf.la
 noinst_LTLIBRARIES+=	libelf_static.la
+endif
+
+if HAVE_MACHO_ABI
+noinst_LTLIBRARIES+=	libmachista_static.la
 endif
 
 if DYNAMIC
@@ -145,6 +151,11 @@ libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
 libelf_static_la_SOURCES=	${libelf_la_SOURCES}
 libelf_static_la_CFLAGS=	$(libelf_la_CFLAGS) -static
 libelf_static_la_LDFLAGS=	-all-static
+
+libmachista_static_la_SOURCES=	libmachista/libmachista.c \
+				libmachista/hashmap.c
+libmachista_static_la_CFLAGS=	-I$(tip_srcdir)/external/libmachista -static
+libmachista_static_la_LDFLAGS=	-all-static
 
 libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
 sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
@@ -226,6 +237,7 @@ libsqlite_static_la_SOURCES=	$(libsqlite_la_SOURCES)
 libsqlite_static_la_CFLAGS=	$(sqlite_common_cflags) -static
 libsqlite_static_la_LDFLAGS=	-all-static
 
+if HAVE_ELF_ABI
 CLEANFILES=	libelf/libelf_fsize.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c \
@@ -248,3 +260,4 @@ libelf/libelf_msize.c:
 	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)/libelf/libelf_msize.m4 > $@
 libelf/native-elf-format.h:
 	$(srcdir)/libelf/native-elf-format > libelf/native-elf-format.h
+endif

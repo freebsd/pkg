@@ -33,6 +33,8 @@
 
 #include <sqlite3.h>
 
+#include <bsd_compat.h>
+
 #include "pkg.h"
 
 
