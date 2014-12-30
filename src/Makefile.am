@@ -83,11 +83,20 @@ pkg_static_LDADD+=	$(top_builddir)/external/libmachista_static.la \
 pkg_LDADD+=		-lresolv
 endif
 
-pkg_static_LDFLAGS=	-all-static
 DYNPROG=		pkg
+
+if BUILD_STATIC
+
+pkg_static_LDFLAGS=	-all-static
 sbin_PROGRAMS=		pkg-static
+
 if DYNAMIC
 sbin_PROGRAMS+=		$(DYNPROG)
+endif
+
+else
+
+sbin_PROGRAMS=	$(DYNPROG)
 endif
 
 dist_sysconf_DATA=	pkg.conf.sample

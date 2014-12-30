@@ -75,18 +75,22 @@ case $host_os in
   linux*)
         OS_CFLAGS="-pthread"
         OS_LDFLAGS="-pthread"
-        OS_LIBS="-ldl -lrt -llzo2 -llzma"
+        OS_LIBS="-ldl -lrt"
+        OS_STATIC="false"
         ;;
     *)
         OS_CFLAGS=
         OS_LDFLAGS=
         OS_LIBS=
+        OS_STATIC="true"
         ;;
 esac
 
 AC_SUBST(OS_CFLAGS)
 AC_SUBST(OS_LDFLAGS)
 AC_SUBST(OS_LIBS)
+AC_SUBST(OS_STATIC)
+AM_CONDITIONAL([BUILD_STATIC], [test x$OS_STATIC = xtrue])
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
