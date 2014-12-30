@@ -7,6 +7,7 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		@LDNS_LIBS@ \
 		@LIBJAIL_LIB@ \
 		@LIBEXECINFO_LIB@ \
+		@OS_LIBS@ \
 		-larchive \
 		-lutil \
 		-lm \
@@ -28,7 +29,9 @@ GENERIC_LDADD+=	$(top_builddir)/external/libmachista_static.la \
 		-lresolv
 endif
 
-PUBLIC_INCS=	-I$(top_srcdir)/libpkg -DTESTING \
+PUBLIC_INCS=	-DTESTING \
+		-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/libpkg \
 		-I/usr/local/include
 PRIVATE_INCS=	$(PUBLIC_INCS) \
 		-I$(top_srcdir)/external/libsbuf \
