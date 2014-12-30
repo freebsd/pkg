@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdarg.h>
+#define _GNU_SOURCE
 #include <unistd.h>
 
 #include <bsd_compat.h>

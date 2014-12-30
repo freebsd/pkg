@@ -72,17 +72,21 @@ gl_LD_VERSION_SCRIPT
 
 AC_CANONICAL_HOST
 case $host_os in
-  darwin* )
-        # Do something specific for mac
-        ;;
   linux*)
-        CFLAGS+= "-pthread"
-        LIBS+= "-ldl -lrt"
+        OS_CFLAGS="-pthread"
+        OS_LDFLAGS="-pthread"
+        OS_LIBS="-ldl -lrt -llzo2 -llzma"
         ;;
-   *BSD*)
-        # Do something specific for BSD
+    *)
+        OS_CFLAGS=
+        OS_LDFLAGS=
+        OS_LIBS=
         ;;
 esac
+
+AC_SUBST(OS_CFLAGS)
+AC_SUBST(OS_LDFLAGS)
+AC_SUBST(OS_LIBS)
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
@@ -280,15 +284,21 @@ AC_CHECK_HEADER([execinfo.h], [
 AC_ARG_WITH([ldns], AS_HELP_STRING([--with-ldns], [Build with ldns for name resolving]))
 
 AS_IF([test "x$with_ldns" = "xyes"], [
-   PKG_CHECK_MODULES([LDNS], [libldns], [AC_DEFINE([HAVE_LDNS], [1], [Use ldns])],
+   PKG_CHECK_MODULES([LDNS], [libldns], [
+   	AC_DEFINE([HAVE_LDNS], [1], [Use ldns])
+   	AC_SUBST([HAVE_LDNS], [1], [Use ldns])
+   ],
    [
    	AC_CHECK_HEADER([ldns/ldns.h], [
    		AC_CHECK_LIB(ldns, ldns_resolver_new_frm_file, [
    			AC_DEFINE([HAVE_LDNS], [1], [Use ldns])
-   			AC_DEFINE([LDNS_LIBS], [-lldns], [LDNS library])
+   			AC_SUBST([HAVE_LDNS], [1], [Use ldns])
+   			AC_SUBST([LDNS_LIBS], [-lldns], [LDNS library])
    		])
    	])
    ])
+   AS_IF([test "x$HAVE_LDNS" != "x1"],
+	[AC_MSG_ERROR([Unable to find the libdns])])
 ])
 
 AC_CHECK_LIB(c, cap_sandboxed, [
