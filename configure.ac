@@ -117,7 +117,8 @@ AC_CHECK_HEADERS_ONCE([bsd/string.h])
 AC_CHECK_HEADERS_ONCE([bsd/stdio.h]) 
 AC_CHECK_HEADERS_ONCE([bsd/readpassphrase.h])
 AC_CHECK_HEADERS_ONCE([bsd/libutil.h]) 
-AC_CHECK_HEADERS_ONCE([bsd/err.h]) 
+AC_CHECK_HEADERS_ONCE([bsd/err.h])
+AC_CHECK_HEADERS_ONCE([bsd/unistd.h])  
 AC_CHECK_HEADERS_ONCE([bsd/sys/cdefs.h])
 
 AC_CHECK_HEADER([regex.h], [

@@ -24,6 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "bsd_compat.h"
 #include <sys/types.h>
 #include <sys/sbuf.h>
 #include <sys/stat.h>

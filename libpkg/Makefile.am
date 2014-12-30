@@ -99,10 +99,6 @@ if HAVE_MACHO_ABI
 libpkg_la_LIBADD+=	$(top_builddir)/external/libmachista_static.la
 endif
 
-if HAVE_LIBBSD
-libpkg_la_LIBADD+=	-lbsd
-endif
-
 libpkg_la_LDFLAGS=	-version-info @LIBPKG_SO_VERSION@
 EXTRA_libpkg_la_DEPENDENCIES=	@REPOS_LDADD@
 
