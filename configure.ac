@@ -156,6 +156,7 @@ AC_CHECK_FUNCS_ONCE([strtonum])
 AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_FUNCS_ONCE([fopencookie])
+AC_CHECK_FUNCS_ONCE([sysctlbyname])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
