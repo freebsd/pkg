@@ -70,6 +70,20 @@ AC_LINK_IFELSE([
 
 gl_LD_VERSION_SCRIPT
 
+AC_CANONICAL_HOST
+case $host_os in
+  darwin* )
+        # Do something specific for mac
+        ;;
+  linux*)
+        CFLAGS+= "-pthread"
+        LIBS+= "-ldl -lrt"
+        ;;
+   *BSD*)
+        # Do something specific for BSD
+        ;;
+esac
+
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
 AC_CHECK_HEADERS_ONCE([sys/endian.h])
@@ -112,6 +126,8 @@ AC_CHECK_HEADERS_ONCE([netinet/in.h])
 AC_CHECK_HEADERS_ONCE([netinet/in6.h])
 AC_CHECK_HEADERS_ONCE([sys/statfs.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
+AC_CHECK_HEADERS_ONCE([sys/capability.h])
+AC_CHECK_HEADERS_ONCE([sys/capsicum.h])
 AC_CHECK_HEADERS_ONCE([bsd/stdlib.h])
 AC_CHECK_HEADERS_ONCE([bsd/string.h]) 
 AC_CHECK_HEADERS_ONCE([bsd/stdio.h]) 
@@ -275,12 +291,10 @@ AS_IF([test "x$with_ldns" = "xyes"], [
    ])
 ])
 
-AC_CHECK_HEADER([sys/capability.h], [
-        AC_CHECK_LIB(c, cap_sandboxed, [
-                AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
-        ])
-
+AC_CHECK_LIB(c, cap_sandboxed, [
+   AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
 ])
+
 
 AC_CACHE_CHECK(for arc4random_uniform,
                ac_cv_func_arc4random_uniform,
