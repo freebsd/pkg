@@ -8,6 +8,8 @@ compiler:
   - gcc
 
 before_script:
+  - brew update
+  - brew install libarchive
   - autoreconf -i
 
 script:
