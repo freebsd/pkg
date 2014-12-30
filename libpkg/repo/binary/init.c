@@ -39,6 +39,10 @@
 
 #include <bsd_compat.h>
 
+#ifdef HAVE_SYS_STATFS_H
+#include <sys/statfs.h>
+#endif
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -296,7 +300,6 @@ int
 pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 {
 	char filepath[MAXPATHLEN];
-	struct statfs stfs;
 	const char *dbdir = NULL;
 	sqlite3 *sqlite = NULL;
 	int flags;
@@ -307,6 +310,8 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
+#ifdef MNT_LOCAL
+	struct statfs stfs;
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
@@ -314,6 +319,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 	}
+#endif
 
 	snprintf(filepath, sizeof(filepath), "%s/%s.meta",
 		dbdir, pkg_repo_name(repo));
@@ -401,7 +407,6 @@ int
 pkg_repo_binary_create(struct pkg_repo *repo)
 {
 	char filepath[MAXPATHLEN];
-	struct statfs stfs;
 	const char *dbdir = NULL;
 	sqlite3 *sqlite = NULL;
 	int retcode;
@@ -415,6 +420,8 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	if (access(filepath, R_OK) == 0)
 		return (EPKG_CONFLICT);
 
+#ifdef MNT_LOCAL
+	struct statfs stfs;
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
@@ -422,6 +429,7 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 	}
+#endif
 
 	/* Open for read/write/create */
 	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK)

@@ -27,6 +27,7 @@
  */
 
 #include <sys/cdefs.h>
+#include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libfetch/http.c 267133 2014-06-05 22:16:26Z bapt $");
 
 /*
@@ -60,7 +61,7 @@ __FBSDID("$FreeBSD: head/lib/libfetch/http.c 267133 2014-06-05 22:16:26Z bapt $"
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
+#define _XOPEN_SOURCE
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -1421,9 +1422,10 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 		fetch_syserr();
 		return (NULL);
 	}
-
+#ifdef TCP_NOPUSH
 	val = 1;
 	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
+#endif
 
 	return (conn);
 }
@@ -1725,9 +1727,11 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		 * be compatible with such configurations, fiddle with socket
 		 * options to force the pending data to be written.
 		 */
+#ifdef TCP_NOPUSH
 		val = 0;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 			   sizeof(val));
+#endif
 		val = 1;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
 			   sizeof(val));

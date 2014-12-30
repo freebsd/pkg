@@ -27,9 +27,37 @@
 #ifndef _BSD_COMPAT_H
 #define _BSD_COMPAT_H
 
-#include <sys/stat.h>
-
 #include "pkg_config.h"
+
+#ifdef HAVE_BSD_SYS_CDEFS_H
+#include <bsd/sys/cdefs.h>
+#endif
+
+#ifdef HAVE_BSD_STDLIB_H
+#include <bsd/stdlib.h>
+#endif
+
+#ifdef HAVE_BSD_UNISTD_H
+#include <bsd/unistd.h>
+#endif
+
+#ifdef HAVE_BSD_STRING_H
+#include <bsd/string.h>
+#endif
+
+#ifdef HAVE_BSD_STDIO_H
+#include <bsd/stdio.h>
+#endif
+
+#ifdef HAVE_BSD_ERR_H
+#include <bsd/err.h>
+#endif
+
+#ifdef HAVE_BSD_LIBUTIL_H
+#include <bsd/libutil.h>
+#endif
+
+#include <sys/stat.h>
 #include "endian_util.h"
 
 char *bsd_dirname(const char *);
@@ -80,12 +108,59 @@ ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t
 #endif
 
 #if !HAVE_UNLINKAT
-#define AT_REMOVEDIR	0x800
+# ifndef AT_REMOVEDIR
+#  define AT_REMOVEDIR	0x800
+# endif
 int unlinkat(int fd, const char *path, int flag);
 #endif
 
 #if !HAVE_STRTONUM
 long long strtonum(const char *, long long, long long, const char **);
+#endif
+
+#if !HAVE_STRNSTR
+char * strnstr(const char *s, const char *find, size_t slen);
+#endif
+
+#ifndef _PATH_GROUP
+#define _PATH_GROUP "/etc/group"
+#endif
+
+#ifndef __FBSDID
+#define __FBSDID(x)
+#endif
+
+#ifndef EAUTH
+#define EAUTH 80
+#endif
+
+#ifndef ENEEDAUTH
+#define ENEEDAUTH 81
+#endif
+
+#ifndef MAXLOGNAME
+#define MAXLOGNAME 33
+#endif
+
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#endif
+
+#ifndef __unused
+#ifdef __GNUC__
+# define __unused __attribute__((__unused__))
+#else
+# define __unused
+#endif
+#endif
+
+#if !HAVE_FUNOPEN
+#if !HAVE_FOPENCOOKIE
+# error "Your system has neither funopen nor fopencookie, cannot continue"
+#endif
+FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
+         int (*writefn)(void *, const char *, int),
+         off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *));
 #endif
 
 #endif

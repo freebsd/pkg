@@ -30,6 +30,8 @@
 #ifndef _PKG_PRIVATE_H
 #define _PKG_PRIVATE_H
 
+#include "bsd_compat.h"
+
 #include <sys/param.h>
 #include <sys/cdefs.h>
 #include <sys/sbuf.h>

@@ -46,6 +46,10 @@
 #include <sysexits.h>
 #include <uthash.h>
 
+#ifdef HAVE_SYS_CAPSICUM_H
+#include <sys/capsicum.h>
+#endif
+
 #include <pkg.h>
 #include "pkgcli.h"
 

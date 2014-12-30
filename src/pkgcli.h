@@ -28,6 +28,9 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+#include <stdint.h>
+#include <bsd_compat.h>
+
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%s" fmt, getprogname(), __VA_ARGS__, -1)
 
 extern bool quiet;

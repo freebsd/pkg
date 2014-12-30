@@ -36,27 +36,30 @@ pkg_SOURCES=		add.c \
 			version.c \
 			which.c
 			
-pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
-		$(top_builddir)/external/libsbuf.la \
+pkg_LDADD=	@OS_LDFLAGS@ \
+			$(top_builddir)/libpkg/libpkg.la \
+			$(top_builddir)/external/libsbuf.la \
 			@LIBJAIL_LIB@ \
 			-lutil \
 			-lcrypto
-pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
+pkg_CFLAGS=	 @OS_CFLAGS@ \
+			-I$(top_srcdir)/libpkg \
 			-I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/compat \
 			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
-			-DGITHASH=\"$(GIT_HEAD)\" \
-			-Werror
+			-DGITHASH=\"$(GIT_HEAD)\" 
 pkg_static_SOURCES=
-pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
+pkg_static_LDADD= @OS_LDFLAGS@ \
+			$(top_builddir)/libpkg/libpkg_static.la \
 			$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
 			@LIBEXECINFO_LIB@ \
 			@LDNS_LIBS@ \
+			@OS_LIBS@ \
 			-larchive \
 			-lz \
 			-lutil \

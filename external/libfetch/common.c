@@ -28,6 +28,8 @@
  */
 
 #include <sys/cdefs.h>
+#include "bsd_compat.h"
+
 __FBSDID("$FreeBSD: head/lib/libfetch/common.c 273124 2014-10-15 07:35:50Z des $");
 
 #include <sys/param.h>
@@ -224,7 +226,9 @@ fetch_reopen(int sd)
 	if ((conn = calloc(1, sizeof(*conn))) == NULL)
 		return (NULL);
 	fcntl(sd, F_SETFD, FD_CLOEXEC);
+#ifdef SO_NOSIGPIPE
 	setsockopt(sd, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof opt);
+#endif
 	conn->sd = sd;
 	++conn->ref;
 	return (conn);
