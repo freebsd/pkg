@@ -234,7 +234,7 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
-		"SELECT p.id, p.origin, p.name, p.name p.origin as uniqueid, "
+		"SELECT p.id, p.origin, p.name, p.name as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
