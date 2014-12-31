@@ -419,7 +419,7 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_SIZE:
-		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
+		sbuf_printf(sql, "SELECT SUM(pkgsize) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_REPOS:
 		goto out;
