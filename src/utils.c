@@ -869,45 +869,6 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	return (displayed);
 }
 
-int
-hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	FILE *fp;
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	SHA256_CTX sha256;
-	int i;
-
-	if ((fp = fopen(path, "rb")) == NULL) {
-		warn("fopen(%s)", path);
-		return (EPKG_FATAL);
-	}
-
-	SHA256_Init(&sha256);
-
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
-		SHA256_Update(&sha256, buffer, r);
-
-	if (ferror(fp) != 0) {
-		fclose(fp);
-		out[0] = '\0';
-		warn("fread(%s)", path);
-		return (EPKG_FATAL);
-	}
-
-	fclose(fp);
-
-	SHA256_Final(hash, &sha256);
-
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		sprintf(out + (i * 2), "%02x", hash[i]);
-
-	out[SHA256_DIGEST_LENGTH * 2] = '\0';
-
-	return (EPKG_OK);
-}
-
 void
 sbuf_flush(struct sbuf *buf)
 {

@@ -257,7 +257,6 @@ bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
-int hash_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 
 void job_status_begin(struct sbuf *);
 void job_status_end(struct sbuf *);
