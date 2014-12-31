@@ -35,6 +35,8 @@
 #include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/file.h>
+#include <sys/time.h>
 
 #include <archive_entry.h>
 #include <assert.h>

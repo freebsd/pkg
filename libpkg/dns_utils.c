@@ -27,6 +27,7 @@
 
 #include <pkg_config.h>
 
+#include <bsd_compat.h>
 #include <sys/stat.h> /* for private.utils.h */
 
 #include <string.h>
