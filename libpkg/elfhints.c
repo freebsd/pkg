@@ -27,6 +27,7 @@
  * $FreeBSD: stable/8/sbin/ldconfig/elfhints.c 76224 2001-05-02 23:56:21Z obrien $
  */
 
+#include <bsd_compat.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
