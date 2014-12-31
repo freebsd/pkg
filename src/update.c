@@ -57,7 +57,7 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 		return (EPKG_OK);
 
 	if (pkg_repos_total_count() == 0) {
-		fprintf(stderr, "No valid repository found.\n");
+		fprintf(stderr, "No active remote repositories configured.\n");
 		return (EPKG_FATAL);
 	}
 
