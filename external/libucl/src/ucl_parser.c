@@ -570,7 +570,7 @@ ucl_add_parser_stack (ucl_object_t *obj, struct ucl_parser *parser, bool is_arra
 		else {
 			obj->type = UCL_OBJECT;
 		}
-		obj->value.ov = ucl_hash_create ();
+		obj->value.ov = ucl_hash_create (parser->flags & UCL_PARSER_KEY_LOWERCASE);
 		parser->state = UCL_STATE_KEY;
 	}
 	else {
@@ -975,7 +975,7 @@ ucl_parser_append_elt (struct ucl_parser *parser, ucl_hash_t *cont,
 	else {
 		if ((top->flags & UCL_OBJECT_MULTIVALUE) != 0) {
 			/* Just add to the explicit array */
-			DL_APPEND (top->value.av, elt);
+			ucl_array_append (top, elt);
 		}
 		else {
 			/* Convert to an array */
@@ -984,8 +984,8 @@ ucl_parser_append_elt (struct ucl_parser *parser, ucl_hash_t *cont,
 			nobj->key = top->key;
 			nobj->keylen = top->keylen;
 			nobj->flags |= UCL_OBJECT_MULTIVALUE;
-			DL_APPEND (nobj->value.av, top);
-			DL_APPEND (nobj->value.av, elt);
+			ucl_array_append (nobj, top);
+			ucl_array_append (nobj, elt);
 			ucl_hash_insert (cont, nobj, nobj->key, nobj->keylen);
 		}
 	}
@@ -1195,7 +1195,8 @@ ucl_parse_key (struct ucl_parser *parser, struct ucl_chunk *chunk, bool *next_ke
 	nobj->keylen = keylen;
 	tobj = __DECONST (ucl_object_t *, ucl_hash_search_obj (container, nobj));
 	if (tobj == NULL) {
-		container = ucl_hash_insert_object (container, nobj);
+		container = ucl_hash_insert_object (container, nobj,
+				parser->flags & UCL_PARSER_KEY_LOWERCASE);
 		nobj->prev = nobj;
 		nobj->next = NULL;
 		parser->stack->obj->len ++;
@@ -1366,11 +1367,9 @@ ucl_get_value_object (struct ucl_parser *parser)
 	if (parser->stack->obj->type == UCL_ARRAY) {
 		/* Object must be allocated */
 		obj = ucl_object_new_full (UCL_NULL, parser->chunks->priority);
-		t = parser->stack->obj->value.av;
-		DL_APPEND (t, obj);
+		t = parser->stack->obj;
+		ucl_array_append (t, obj);
 		parser->cur_obj = obj;
-		parser->stack->obj->value.av = t;
-		parser->stack->obj->len ++;
 	}
 	else {
 		/* Object has been already allocated */
