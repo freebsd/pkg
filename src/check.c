@@ -487,10 +487,10 @@ exec_check(int argc, char **argv)
 					db = NULL;
 					rc = EX_IOERR;
 				}
-				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
-				    PKGDB_LOCK_ADVISORY);
 				if (rc == EX_IOERR)
 					goto cleanup;
+				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
+				    PKGDB_LOCK_ADVISORY);
 			}
 			else {
 				rc = EX_TEMPFAIL;
