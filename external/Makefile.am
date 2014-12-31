@@ -46,6 +46,8 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libelf/gelf.h \
 		libelf/libelf.h \
 		libsbuf/sys/sbuf.h \
+		libucl/klib/kvec.h \
+		libucl/klib/khash.h \
 		libucl/include/ucl.h \
 		libucl/src/xxhash.h \
 		libucl/src/ucl_internal.h \
@@ -153,9 +155,10 @@ libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
 libsbuf_static_la_CFLAGS=	$(sbuf_common_CFLAGS) -static
 libsbuf_static_la_LDFLAGS=	-all-static
 
-ucl_common_cflags=	-I$(top_srcdir)/external//libucl/uthash \
+ucl_common_cflags=	-I$(top_srcdir)/external/libucl/uthash \
+			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/libucl/include  \
-			-I$(top_srcdir)/external//libucl/src \
+			-I$(top_srcdir)/external/libucl/src \
 			-Wno-unused-parameter -Wno-pointer-sign
 libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_emitter_utils.c \
