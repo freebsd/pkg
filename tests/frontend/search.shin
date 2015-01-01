@@ -9,7 +9,7 @@ search_body() {
 	export REPOS_DIR=/nonexistent
 	export PKG_DBDIR=.
 	export INSTALL_AS_USER=yes
-	atf_check -e inline:"No valid repository found.\n" -o empty -s exit:3 pkg -C '' -R '' search -e -Q comment -S name pkg
+	atf_check -e inline:"No active remote repositories configured.\n" -o empty -s exit:3 pkg -C '' -R '' search -e -Q comment -S name pkg
 }
 
 atf_init_test_cases() {
