@@ -281,3 +281,5 @@ libelf/native-elf-format.h:
 	$(srcdir)/libelf/native-elf-format > libelf/native-elf-format.h
 
 endif
+
+SUBDIRS=	blake2
