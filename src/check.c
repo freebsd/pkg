@@ -28,6 +28,7 @@
 
 #include <sys/param.h>
 #include <sys/queue.h>
+#include <sys/sbuf.h>
 
 #include <err.h>
 #include <assert.h>
@@ -51,14 +52,15 @@ struct deps_entry {
 
 STAILQ_HEAD(deps_head, deps_entry);
 
-static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh, bool noinstall);
+static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh,
+    bool noinstall, struct sbuf *out);
 static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs);
 static void deps_free(struct deps_head *dh);
 static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
 static void check_summary(struct pkgdb *db, struct deps_head *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall)
+check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall, struct sbuf *out)
 {
 	struct pkg_dep *dep = NULL;
 	int nbpkgs = 0;
@@ -70,15 +72,15 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
 			if (quiet)
-				pkg_printf("%o\t%so\n", p, dep);
+				pkg_sbuf_printf(out, "%n\t%sn\n", p, dep);
 			else
-				pkg_printf("%o has a missing dependency: %do\n",
+				pkg_sbuf_printf(out, "%n has a missing dependency: %dn\n",
 				    p, dep);
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
 		}
 	}
-	
+
 	return (nbpkgs);
 }
 
@@ -396,6 +398,7 @@ exec_check(int argc, char **argv)
 				nbactions = argc;
 		}
 
+		struct sbuf *out = sbuf_new_auto();
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			if (!quiet) {
 				if (!verbose)
@@ -413,7 +416,7 @@ exec_check(int argc, char **argv)
 			if (dcheck) {
 				if (!quiet && verbose)
 					printf(" dependencies...");
-				nbpkgs += check_deps(db, pkg, &dh, noinstall);
+				nbpkgs += check_deps(db, pkg, &dh, noinstall, out);
 				if (noinstall && nbpkgs > 0) {
 					rc = EX_UNAVAILABLE;
 				}
@@ -470,6 +473,11 @@ exec_check(int argc, char **argv)
 		}
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
+		if (sbuf_len(out) > 0) {
+			sbuf_finish(out);
+			printf("%s", sbuf_data(out));
+		}
+		sbuf_delete(out);
 		if (msg != NULL) {
 			sbuf_delete(msg);
 			msg = NULL;
