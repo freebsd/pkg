@@ -429,6 +429,7 @@ AC_SUBST([REPOS_LDADD_STATIC])
 AC_CONFIG_FILES(Makefile \
 		src/Makefile \
 		external/Makefile \
+		external/blake2/Makefile \
 		scripts/Makefile \
 		docs/Makefile \
 		tests/Makefile \

@@ -11,6 +11,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
 			-I$(top_srcdir)/external/include \
+			-I$(top_srcdir)/external/blake2 \
 			-DPREFIX=\"$(prefix)\" \
 			-Wno-pointer-sign
 
@@ -78,6 +79,7 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf.la \
 			$(top_builddir)/external/libpicosat.la \
 			$(top_builddir)/external/libfetch.la \
+			$(top_builddir)/external/blake2/libblake2.la \
 			@REPOS_LDADD@ \
 			@LIBEXECINFO_LIB@ \
 			@LDNS_LIBS@ \
@@ -122,6 +124,7 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libpicosat_static.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(top_builddir)/external/libfetch_static.la \
+			$(top_builddir)/external/blake2/libblake2_static.la \
 			@REPOS_LDADD_STATIC@
 
 EXTRA_libpkg_static_la_DEPENDENCIES=	@REPOS_LDADD_STATIC@ libpkg.ver

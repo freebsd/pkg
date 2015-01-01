@@ -27,6 +27,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "blake2.h"
 
 struct pkg_checksum_entry {
 	const char *field;
@@ -43,6 +44,8 @@ typedef void (*pkg_checksum_encode_func)(unsigned char *in, size_t inlen,
 				char *out, size_t outlen);
 
 static void pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
 				unsigned char **out, size_t *outlen);
 static void pkg_checksum_encode_base32(unsigned char *in, size_t inlen,
 				char *out, size_t outlen);
@@ -65,6 +68,12 @@ static const struct _pkg_cksum_type {
 		"sha256_hex",
 		PKG_CHECKSUM_SHA256_LEN,
 		pkg_checksum_hash_sha256,
+		pkg_checksum_encode_hex
+	},
+	[PKG_HASH_TYPE_BLAKE2_BASE32] = {
+		"blake2_base32",
+		PKG_CHECKSUM_BLAKE2_LEN,
+		pkg_checksum_hash_blake2,
 		pkg_checksum_encode_hex
 	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
@@ -262,6 +271,30 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 	}
 	else {
 		pkg_emit_errno("malloc", "pkg_checksum_hash_sha256");
+		*outlen = 0;
+	}
+}
+
+static void
+pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
+		unsigned char **out, size_t *outlen)
+{
+	blake2b_state st;
+
+	blake2b_init (&st, BLAKE2B_OUTBYTES);
+
+	while(entries) {
+		blake2b_update (&st, entries->field, strlen(entries->field));
+		blake2b_update (&st, entries->value, strlen(entries->value));
+		entries = entries->next;
+	}
+	*out = malloc(BLAKE2B_OUTBYTES);
+	if (*out != NULL) {
+		blake2b_final (&st, *out, BLAKE2B_OUTBYTES);
+		*outlen = BLAKE2B_OUTBYTES;
+	}
+	else {
+		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2");
 		*outlen = 0;
 	}
 }
