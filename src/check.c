@@ -88,15 +88,15 @@ static void
 add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 {
 	struct deps_entry *e = NULL;
-	const char *origin = NULL;
+	const char *name = NULL;
 
 	assert(d != NULL);
 
 	/* do not add duplicate entries in the queue */
-	origin = pkg_dep_origin(d);
+	name = pkg_dep_name(d);
 
 	STAILQ_FOREACH(e, dh, next)
-		if (strcmp(e->origin, origin) == 0)
+		if (strcmp(e->name, name) == 0)
 			return;
 
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
@@ -143,7 +143,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		err(1, "calloc()");
 
 	STAILQ_FOREACH(e, dh, next)
-		pkgs[i++] = e->origin;
+		pkgs[i++] = e->name;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		free(pkgs);
@@ -207,14 +207,14 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 	printf(">>> Summary of actions performed:\n\n");
 		
 	STAILQ_FOREACH(e, dh, next) {
-		if ((it = pkgdb_query(db, e->origin, MATCH_EXACT)) == NULL)
+		if ((it = pkgdb_query(db, e->name, MATCH_EXACT)) == NULL)
 			return;
 		
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
 			fixed = false;
-			printf("%s dependency failed to be fixed\n", e->origin);
+			printf("%s dependency failed to be fixed\n", e->name);
 		} else
-			printf("%s dependency has been fixed\n", e->origin);
+			printf("%s dependency has been fixed\n", e->name);
 
 		pkgdb_it_free(it);
 	}
