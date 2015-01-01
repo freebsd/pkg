@@ -57,7 +57,6 @@ pkg_static_LDADD= @OS_LDFLAGS@ \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
-			@LIBEXECINFO_LIB@ \
 			@LDNS_LIBS@ \
 			@OS_LIBS@ \
 			-larchive \

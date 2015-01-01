@@ -281,14 +281,6 @@ AC_CHECK_HEADERS([gelf.h libelf.h], [
 	]])
 	)])
 
-AC_CHECK_HEADER([execinfo.h], [
-	AC_DEFINE(HAVE_EXECINFO_H, 1, [Define to 1 if you have the <execinfo.h> header file.])
-	AC_CHECK_LIB(execinfo, backtrace, [
-		AC_DEFINE(HAVE_LIBEXECINFO, 1, [Define to 1 if you have the 'execinfo' library (-lexecinfo).])
-		LIBEXECINFO_LIB="-lexecinfo"
-	])
-])
-
 AC_ARG_WITH([ldns], AS_HELP_STRING([--with-ldns], [Build with ldns for name resolving]))
 
 AS_IF([test "x$with_ldns" = "xyes"], [
@@ -391,7 +383,6 @@ AM_CONDITIONAL(HAVE_ELF_ABI, test "$ac_cv_binary_abi" = "elf")
 AM_CONDITIONAL(LIBELF_BUNDLED, test "$ac_cv_binary_abi" = "elf" -a "$libelf_bundled" != "no")
 
 AC_SUBST([LIBJAIL_LIB])
-AC_SUBST([LIBEXECINFO_LIB])
 AC_SUBST([LIBBSD_LIB])
 AC_SUBST([TESTS])
 AC_SUBST([LDNS_LIBS])

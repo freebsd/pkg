@@ -6,7 +6,6 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		$(top_builddir)/external/libfetch_static.la \
 		@LDNS_LIBS@ \
 		@LIBJAIL_LIB@ \
-		@LIBEXECINFO_LIB@ \
 		@OS_LIBS@ \
 		-larchive \
 		-lutil \

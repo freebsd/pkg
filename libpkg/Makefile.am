@@ -81,7 +81,6 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libfetch.la \
 			$(top_builddir)/external/blake2/libblake2.la \
 			@REPOS_LDADD@ \
-			@LIBEXECINFO_LIB@ \
 			@LDNS_LIBS@ \
 			-larchive \
 			-lutil \
