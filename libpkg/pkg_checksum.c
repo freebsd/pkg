@@ -76,6 +76,18 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_hash_blake2,
 		pkg_checksum_encode_hex
 	},
+	[PKG_HASH_TYPE_SHA256_RAW] = {
+		"sha256_raw",
+		SHA256_DIGEST_LENGTH,
+		pkg_checksum_hash_sha256,
+		NULL
+	},
+	[PKG_HASH_TYPE_BLAKE2_RAW] = {
+		"blake2_raw",
+		BLAKE2B_OUTBYTES,
+		pkg_checksum_hash_blake2,
+		NULL
+	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
 		NULL,
 		-1,
@@ -192,10 +204,17 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		return (EPKG_FATAL);
 	}
 
-	i = snprintf(dest, destlen, "%d%c%d%c", PKG_CHECKSUM_CUR_VERSION,
-		PKG_CKSUM_SEPARATOR, type, PKG_CKSUM_SEPARATOR);
-	assert(i < destlen);
-	checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
+	if (checksum_types[type].encfunc) {
+		i = snprintf(dest, destlen, "%d%c%d%c", PKG_CHECKSUM_CUR_VERSION,
+				PKG_CKSUM_SEPARATOR, type, PKG_CKSUM_SEPARATOR);
+		assert(i < destlen);
+		checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
+	}
+	else {
+		/* For raw formats we just output digest */
+		assert(destlen >= blen);
+		memcpy(dest, bdigest, blen);
+	}
 
 	free(bdigest);
 	LL_FREE(entries, free);
