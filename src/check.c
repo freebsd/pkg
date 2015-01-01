@@ -357,6 +357,11 @@ exec_check(int argc, char **argv)
 		return (EX_SOFTWARE);
 	}
 
+	if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges");
+		return (EX_NOPERM);
+	}
+
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
