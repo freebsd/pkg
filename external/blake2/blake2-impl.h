@@ -14,7 +14,22 @@
 #ifndef __BLAKE2_IMPL_H__
 #define __BLAKE2_IMPL_H__
 
+#include <pkg_config.h>
 #include <stdint.h>
+
+#ifdef HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#elif HAVE_ENDIAN_H
+#include <endian.h>
+#elif HAVE_MACHINE_ENDIAN_H
+#include <machine/endian.h>
+#endif
+
+#ifdef __BYTE_ORDER
+# if __BYTE_ORDER == __LITTLE_ENDIAN
+#  define NATIVE_LITTLE_ENDIAN
+# endif
+#endif
 
 static inline uint32_t load32( const void *src )
 {
