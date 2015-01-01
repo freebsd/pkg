@@ -618,6 +618,13 @@ pkg_object* pkg_emit_object(struct pkg *pkg, short flags);
 int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type);
 
+/*
+ * Calculates checksum for any data.
+ * Caller must free resulting hash after usage
+ */
+unsigned char * pkg_checksum_data(const unsigned char *in, size_t inlen,
+	pkg_checksum_type_t type);
+
 bool pkg_checksum_is_valid(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_type_from_string(const char *name);
