@@ -3,8 +3,6 @@ AUTOMAKE_OPTIONS=	subdir-objects
 GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		$(top_builddir)/external/libsbuf_static.la \
 		@LIBJAIL_LIB@ \
-		@LIBEXECINFO_LIB@ \
-		-lelf \
 		-lfetch \
 		-larchive \
 		-lutil \

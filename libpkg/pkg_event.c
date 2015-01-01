@@ -419,7 +419,6 @@ pkg_emit_error(const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_pkg_error.msg);
-	print_trace();
 }
 
 void
@@ -465,7 +464,6 @@ pkg_emit_errno(const char *func, const char *arg)
 	ev.e_errno.no = errno;
 
 	pkg_emit_event(&ev);
-	print_trace();
 }
 
 void

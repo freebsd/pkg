@@ -44,7 +44,6 @@
 #define ERROR_SQLITE(db, query) do { \
 	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", (query), \
 	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
-	print_trace();																 \
 } while(0)
 
 #define HASH_FIND_INO(head,ino,out)                                          \
@@ -113,7 +112,6 @@ struct dns_srvinfo *
 int set_nameserver(const char *nsname);
 void set_blocking(int fd);
 void set_nonblocking(int fd);
-void print_trace(void);
 
 int pkg_symlink_cksum(const char *path, const char *root, char *cksum);
 int pkg_symlink_cksumat(int fd, const char *path, const char *root,

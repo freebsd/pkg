@@ -65,7 +65,6 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsbuf.la \
 			$(top_builddir)/external/libpicosat.la \
 			@REPOS_LDADD@ \
-			@LIBEXECINFO_LIB@ \
 			@LDNS_LIBS@ \
 			-larchive \
 			-lfetch \
