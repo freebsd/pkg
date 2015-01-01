@@ -197,6 +197,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	assert(i < destlen);
 	checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);
 
+	free(bdigest);
 	LL_FREE(entries, free);
 
 	return (EPKG_OK);
