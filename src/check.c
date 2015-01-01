@@ -70,7 +70,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
-		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_name(dep)) != EPKG_OK) {
 			if (quiet)
 				pkg_sbuf_printf(out, "%n\t%sn\n", p, dep);
 			else

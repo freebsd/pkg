@@ -788,7 +788,7 @@ int pkg_try_installed(struct pkgdb *db, const char *origin,
  * Match will be case sensitive or insensitive depending on
  * pkgdb_case_sensitive()
  */
-int pkg_is_installed(struct pkgdb *db, const char *origin);
+int pkg_is_installed(struct pkgdb *db, const char *name);
 
 /**
  * Create a repository database.

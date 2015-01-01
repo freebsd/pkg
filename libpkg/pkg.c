@@ -1792,12 +1792,12 @@ pkg_try_installed(struct pkgdb *db, const char *origin,
 }
 
 int
-pkg_is_installed(struct pkgdb *db, const char *origin)
+pkg_is_installed(struct pkgdb *db, const char *name)
 {
 	struct pkg *pkg = NULL;
 	int ret = EPKG_FATAL;
 
-	ret = pkg_try_installed(db, origin, &pkg, PKG_LOAD_BASIC);
+	ret = pkg_try_installed(db, name, &pkg, PKG_LOAD_BASIC);
 	pkg_free(pkg);
 
 	return (ret);
