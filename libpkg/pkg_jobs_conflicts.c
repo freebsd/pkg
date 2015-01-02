@@ -207,8 +207,18 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	struct pkg_dir *df;
 	struct pkg_conflict *c;
 
-	assert(pkgdb_ensure_loaded(j->db, p1, PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_OK);
-	assert(pkgdb_ensure_loaded(j->db, p2, PKG_LOAD_FILES|PKG_LOAD_DIRS) == EPKG_OK);
+	if (pkgdb_ensure_loaded(j->db, p1, PKG_LOAD_FILES|PKG_LOAD_DIRS) != EPKG_OK ||
+			pkgdb_ensure_loaded(j->db, p2, PKG_LOAD_FILES|PKG_LOAD_DIRS)
+						!= EPKG_OK) {
+		/*
+		 * If some of packages are not loaded we could silently and safely
+		 * ignore them
+		 */
+		pkg_debug(1, "cannot load files from %s and %s to check conflicts",
+			p1->name, p2->name);
+
+		return (false);
+	}
 
 	/*
 	 * Check if we already have this conflict registered
