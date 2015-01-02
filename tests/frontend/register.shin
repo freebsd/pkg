@@ -11,7 +11,7 @@ register_conflicts_body() {
 
 	mkdir teststage
 	echo a > teststage/plop
-	sum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
+	sum=$(openssl dgst -sha256 -binary teststage/plop | hexdump -v -e '/1 "%x"')
 	cat > test.ucl << EOF
 name: "test"
 origin: "osef"
@@ -32,11 +32,8 @@ EOF
 	    -s exit:0 \
 	    pkg register --relocate . -i teststage \
 	    -M test.ucl
-	atf_check \
-		-o inline:"$sum\n" \
-		-e empty \
-		-s exit:0 \
-		openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"'
+	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
+	atf_check_equal ${sum} ${nsum}
 	rm -f test.ucl
 	echo b > teststage/plop
 	cat > test.ucl << EOF
@@ -59,11 +56,8 @@ EOF
 	    -s exit:70 \
 	    pkg register --relocate . -i teststage \
 	    -M test.ucl
-	atf_check \
-		-o inline:"$sum\n" \
-		-e empty \
-		-s exit:0 \
-		openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"'
+	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
+	atf_check_equal ${sum} ${nsum}
 }
 
 atf_init_test_cases() {
