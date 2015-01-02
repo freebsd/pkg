@@ -9,7 +9,18 @@ _pkg_available_name() {
 }
 
 _pkg_available() {
-	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n-%v")
+	local ret=1
+	_tags files packages
+	while _tags; do
+		if _requested files; then
+			_files "$@" -g "*.t?z" && ret=0
+		fi
+		if _requested packages; then
+			compadd "$@" - $(@prefix@/sbin/pkg rquery "%n-%v") && ret=0
+		fi
+		(( ret )) || break
+	done
+	return ret
 }
 
 _pkg() {
