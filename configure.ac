@@ -75,7 +75,7 @@ case $host_os in
   linux*)
         OS_CFLAGS="-D_XOPEN_SOURCE -D_GNU_SOURCE -pthread"
         OS_LDFLAGS="-pthread"
-        OS_LIBS="-ldl -lrt"
+        OS_LIBS="-ldl -lrt -lbsd"
         OS_STATIC="false"
         ;;
     *)
