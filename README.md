@@ -29,6 +29,8 @@ Table of Contents:
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
+[<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
+
 <a name="libpkg"></a>
 ### libpkg
 
