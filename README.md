@@ -30,7 +30,7 @@ Table of Contents:
 * [Additional resources](#resources)
 
 [<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
-
+[![Build Status](http://jenkins.mouf.net/view/auto/job/pkg/badge/icon)](http://jenkins.mouf.net/view/auto/job/pkg/)
 <a name="libpkg"></a>
 ### libpkg
 
