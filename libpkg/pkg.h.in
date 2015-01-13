@@ -118,6 +118,11 @@ struct pkg_kv {
 	struct pkg_kv *next;
 };
 
+struct pkg_strel {
+	char *value;
+	struct pkg_strel *next;
+};
+
 /**
  * The system-wide pkg(8) status: ie. is it a) installed or otherwise
  * available on the sysem, b) database (local.sqlite) initialised and

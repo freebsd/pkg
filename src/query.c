@@ -333,7 +333,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_dep		*dep    = NULL;
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
+	struct pkg_dir		*dir    = NULL;
+	struct pkg_user		*user   = NULL;
+	struct pkg_group	*group  = NULL;
+	struct pkg_shlib	*shlib  = NULL;
 	struct pkg_kv		*kv;
+	struct pkg_strel	*list;
 
 	switch (multiline) {
 	case 'd':
@@ -349,7 +354,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		pkg_printf("%C%{%Cn\n%|%}", pkg);
+		pkg_get(pkg, PKG_CATEGORIES, &list);
+		while (list != NULL) {
+			format_str(pkg, output, qstr, list);
+			printf("%s\n", sbuf_data(output));
+			list = list->next;
+		}
 		break;
 	case 'O':
 		while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -364,22 +374,42 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'D':
-		pkg_printf("%D", pkg);
+		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+			format_str(pkg, output, qstr, dir);
+			printf("%s\n", sbuf_data(output));
+		}
 		break;
 	case 'L':
-		pkg_printf("%L%{%Ln\n%|%}", pkg);
+		pkg_get(pkg, PKG_LICENSES, &list);
+		while (list != NULL) {
+			format_str(pkg, output, qstr, list);
+			printf("%s\n", sbuf_data(output));
+			list = list->next;
+		}
 		break;
 	case 'U':
-		pkg_printf("%U", pkg);
+		while (pkg_users(pkg, &user) == EPKG_OK) {
+			format_str(pkg, output, qstr, user);
+			printf("%s\n", sbuf_data(output));
+		}
 		break;
 	case 'G':
-		pkg_printf("%G", pkg);
+		while (pkg_groups(pkg, &group) == EPKG_OK) {
+			format_str(pkg, output, qstr, group);
+			printf("%s\n", sbuf_data(output));
+		}
 		break;
 	case 'B':
-		pkg_printf("%B", pkg);
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			format_str(pkg, output, qstr, shlib);
+			printf("%s\n", sbuf_data(output));
+		}
 		break;
 	case 'b':
-		pkg_printf("%b", pkg);
+		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+			format_str(pkg, output, qstr, shlib);
+			printf("%s\n", sbuf_data(output));
+		}
 		break;
 	case 'A':
 		pkg_get(pkg, PKG_ANNOTATIONS, &kv);

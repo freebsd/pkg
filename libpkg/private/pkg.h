@@ -188,11 +188,6 @@ struct pkg_dep {
 	UT_hash_handle	 hh;
 };
 
-struct pkg_strel {
-	char *value;
-	struct pkg_strel *next;
-};
-
 enum pkg_conflict_type {
 	PKG_CONFLICT_ALL = 0,
 	PKG_CONFLICT_REMOTE_LOCAL,
