@@ -56,9 +56,18 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 {
 	const char *ext = NULL;
 	const char *cachedir = NULL;
+	const char *packagesite;
 	struct stat st;
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+
+	packagesite = pkg_repo_url(repo);
+
+	if (strncmp(packagesite, "file://", 7) == 0) {
+		snprintf(dest, destlen, "%s/%s", packagesite + 7,
+		    pkg->repopath);
+		return (EPKG_OK);
+	}
 
 	if (pkg->repopath != NULL)
 		ext = strrchr(pkg->repopath, '.');
@@ -186,12 +195,8 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
-	/*
-	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0) {
-		free(pkg->repopath);
-		pkg->repopath = strdup(url + 7);
+	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0)
 		return (EPKG_OK);
-	}*/
 
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
