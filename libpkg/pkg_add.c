@@ -246,6 +246,10 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				goto cleanup;
 			}
 		}
+		/* Reapply modes to the directories to work around a problem on FreeBSD 9 */
+		if (archive_entry_filetype(ae) == AE_IFDIR)
+			chmod(pathname, aest->st_mode);
+
 		pkg_emit_progress_tick(cur_file++, nfiles);
 
 		/* Rename old file */
