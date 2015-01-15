@@ -42,6 +42,9 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
+
+
 static const unsigned char litchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -254,13 +257,29 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 
 		/* Rename old file */
 		if (renamed) {
+			bool old = false;
+
 			pkg_debug(1, "Renaming %s -> %s", rpath, pathname);
+			if (aest->st_flags & NOCHANGESFLAGS)
+				chflags(rpath, aest->st_flags & ~NOCHANGESFLAGS);
+
+			if (lstat(pathname, &st) != -1) {
+				old = true;
+				if (st.st_flags & NOCHANGESFLAGS)
+					chflags(pathname, aest->st_flags & ~NOCHANGESFLAGS);
+			}
+
 			if (rename(rpath, pathname) == -1) {
+				/* restore flags */
+				if (old)
+					chflags(pathname, st.st_flags);
 				pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
 					strerror(errno));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
+			/* Restore flags on the final file */
+			chflags(pathname, aest->st_flags);
 		}
 
 		if (string_end_with(pathname, ".pkgnew"))
@@ -280,8 +299,11 @@ cleanup:
 	pkg_emit_progress_tick(nfiles, nfiles);
 	pkg_emit_extract_finished(pkg);
 
-	if (renamed && retcode == EPKG_FATAL)
+	if (renamed && retcode == EPKG_FATAL) {
+		if (aest->st_flags & NOCHANGESFLAGS)
+			chflags(rpath, aest->st_flags & ~NOCHANGESFLAGS);
 		unlink(rpath);
+	}
 
 	return (retcode);
 }

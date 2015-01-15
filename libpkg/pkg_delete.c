@@ -41,6 +41,8 @@
 #include "private/pkgdb.h"
 #include "private/utils.h"
 
+#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
+
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
@@ -159,6 +161,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	int64_t cnt;
 	char fullpath[MAXPATHLEN];
 	size_t len;
+	struct stat st;
 
 	len = snprintf(fullpath, sizeof(fullpath), "/%s", dir);
 	while (fullpath[len -1] == '/') {
@@ -182,6 +185,12 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 		return;
 
 	pkg_debug(1, "removing directory %s", fullpath);
+	if (fstatat(pkg->rootfd, dir, &st, AT_SYMLINK_NOFOLLOW) != -1)
+		if (st.st_flags & NOCHANGESFLAGS)
+			chflagsat(pkg->rootfd, dir,
+			    st.st_flags & ~NOCHANGESFLAGS,
+			    AT_SYMLINK_NOFOLLOW);
+
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1) {
 		if (errno != ENOTEMPTY && errno != EBUSY)
 			pkg_emit_errno("unlinkat", dir);
@@ -264,6 +273,12 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			return;
 		}
 	}
+
+	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1)
+		if (st.st_flags & NOCHANGESFLAGS)
+			chflagsat(pkg->rootfd, path,
+			    st.st_flags & ~NOCHANGESFLAGS,
+			    AT_SYMLINK_NOFOLLOW);
 
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
 		if (force < 2)
