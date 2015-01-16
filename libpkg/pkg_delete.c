@@ -166,6 +166,9 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	char fullpath[MAXPATHLEN];
 	size_t len;
 	struct stat st;
+#if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
+	int fd;
+#endif
 
 	len = snprintf(fullpath, sizeof(fullpath), "/%s", dir);
 	while (fullpath[len -1] == '/') {
@@ -197,8 +200,6 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 			    st.st_flags & ~NOCHANGESFLAGS,
 			    AT_SYMLINK_NOFOLLOW);
 #else
-			int fd;
-
 			fd = openat(pkg->rootfd, dir, O_NOFOLLOW);
 			if (fd > 0) {
 				fchflags(fd, st.st_flags & ~NOCHANGESFLAGS);
@@ -254,6 +255,9 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	struct stat st;
 	size_t len;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+#if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
+	int fd;
+#endif
 
 	pkg_open_root_fd(pkg);
 
@@ -299,8 +303,6 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			    st.st_flags & ~NOCHANGESFLAGS,
 			    AT_SYMLINK_NOFOLLOW);
 #else
-			int fd;
-
 			fd = openat(pkg->rootfd, path, O_NOFOLLOW);
 			if (fd > 0) {
 				fchflags(fd, st.st_flags & ~NOCHANGESFLAGS);
