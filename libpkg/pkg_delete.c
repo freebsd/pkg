@@ -28,6 +28,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
@@ -187,11 +191,24 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 		return;
 
 	pkg_debug(1, "removing directory %s", fullpath);
-	if (fstatat(pkg->rootfd, dir, &st, AT_SYMLINK_NOFOLLOW) != -1)
+#ifdef HAVE_CHFLAGS
+	if (fstatat(pkg->rootfd, dir, &st, AT_SYMLINK_NOFOLLOW) != -1) {
 		if (st.st_flags & NOCHANGESFLAGS)
+#ifdef HAVE_CHFLAGSAT
 			chflagsat(pkg->rootfd, dir,
 			    st.st_flags & ~NOCHANGESFLAGS,
 			    AT_SYMLINK_NOFOLLOW);
+#else
+			int fd;
+
+			fd = openat(pkg->rootfd, dir, O_NOFOLLOW);
+			if (fd > 0) {
+				fchflags(fd, st.st_flags & ~NOCHANGESFLAGS);
+				close(fd);
+			}
+#endif
+	}
+#endif
 
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1) {
 		if (errno != ENOTEMPTY && errno != EBUSY)
@@ -276,12 +293,24 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 		}
 	}
 
-	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1)
+#ifdef HAVE_CHFLAGS
+	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1) {
 		if (st.st_flags & NOCHANGESFLAGS)
+#ifdef HAVE_CHFLAGSAT
 			chflagsat(pkg->rootfd, path,
 			    st.st_flags & ~NOCHANGESFLAGS,
 			    AT_SYMLINK_NOFOLLOW);
+#else
+			int fd;
 
+			fd = openat(pkg->rootfd, path, O_NOFOLLOW);
+			if (fd > 0) {
+				fchflags(fd, st.st_flags & ~NOCHANGESFLAGS);
+				close(fd);
+			}
+#endif
+	}
+#endif
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
 		if (force < 2)
 			pkg_emit_errno("unlinkat", path);

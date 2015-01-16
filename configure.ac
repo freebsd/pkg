@@ -329,6 +329,8 @@ if test "$ac_cv_func_dirname" = yes ; then
 	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
 fi
 
+AC_CHECK_FUNCS(chflags chflagsat)
+
 AC_CHECK_FUNCS(basename_r)
 AC_CACHE_CHECK(for BSD basename(const char *),
                ac_cv_func_basename,
