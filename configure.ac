@@ -223,6 +223,7 @@ if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
 fi
 
+AC_CHECK_FUNCS(chflags chflagsat)
 AC_MSG_CHECKING([whether we should only build the static version of pkg])
 AC_ARG_WITH([staticonly],
 	      [AS_HELP_STRING([--with-staticonly],
