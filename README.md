@@ -98,7 +98,7 @@ information about the package:
 	}
 	files: {
 	  /usr/local/bin/foo: 'sha256sum',
-	  /usr/local/bin/i_am_a_link: '-';
+	  /usr/local/bin/i_am_a_link: 'sha256sum';
 	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum;
 	}
 	directories: {
