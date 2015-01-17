@@ -55,7 +55,7 @@ struct installed_ports {
 void
 usage_updating(void)
 {
-	fprintf(stderr, "Usage: pkg updating [-d YYYYMMDD] [-f file] [portname ...]\n");
+	fprintf(stderr, "Usage: pkg updating [-i] [-d YYYYMMDD] [-f file] [portname ...]\n");
 	fprintf(stderr, "For more information see 'pkg help updating'.\n");
 
 }
@@ -66,6 +66,7 @@ exec_updating(int argc, char **argv)
 	char			*date = NULL;
 	char			*dateline = NULL;
 	char			*updatingfile = NULL;
+	bool			caseinsensitive = false;
 	struct installed_ports	*port;
 	SLIST_HEAD(,installed_ports) origins;
 	int			 ch;
@@ -87,16 +88,20 @@ exec_updating(int argc, char **argv)
 	struct option longopts[] = {
 		{ "date",	required_argument,	NULL,	'd' },
 		{ "file",	required_argument,	NULL,	'f' },
+		{ "case-insensitive",	no_argument,	NULL,	'i' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+d:f:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:f:i", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			date = optarg;
 			break;
 		case 'f':
 			updatingfile = optarg;
+			break;
+		case 'i':
+			caseinsensitive = true;
 			break;
 		default:
 			usage_updating();
@@ -182,8 +187,14 @@ exec_updating(int argc, char **argv)
 		if (found == 0) {
 			if (strstr(line, "AFFECTS") != NULL) {
 				SLIST_FOREACH(port, &origins, next) {
-					if ((tmp = strstr(line, port->origin)) != NULL) {
-						break;
+					if (caseinsensitive) {
+						if ((tmp = strcasestr(line, port->origin)) != NULL) {
+							break;
+						}
+					} else {
+						if ((tmp = strstr(line, port->origin)) != NULL) {
+							break;
+						}
 					}
 				}
 				if (tmp != NULL) {
