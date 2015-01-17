@@ -59,7 +59,6 @@ pkg uses several files for metadata:
 
 * +COMPACT\_MANIFEST
 * +MANIFEST
-* +MTREE\_DIRS (optional)
 
 ##### COMPACT\_MANIFEST
 
@@ -147,17 +146,6 @@ This allows overriding the users, groups and mode of files and
 directories during package creation.
 So, for example, this allows to creation of a package containing
 root-owned files without being packaged by the root user.
-
-##### MTREE\_DIRS
-
-This is optional.  It is used by the package the same way as done by
-the legacy tools. The MTREE is extracted in prefix before each
-installation.
-
-In the future we hope that mtree will be deprecated in favour of a
-hier package or a single MTREE that won't be customisable in per
-package basis. Since pkg supports packing of empty directories, per
-package MTREE is superfluous.
 
 <a name="localdb"></a>
 ### Local database
