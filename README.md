@@ -134,12 +134,14 @@ The shebang is not required.
 When the manifest is read by pkg\_create files and dirs can use an
 alternate format:
 
-	files:
-	  /usr/local/bin/foo, 'sha256sum'
+	files: {
+	  /usr/local/bin/foo: 'sha256sum',
 	  /usr/local/bin/bar: {sum: 'sha256sum', uname: baruser, gname: foogroup, perm: 0644 }
-	dirs:
-	- /usr/local/share/foo-1.0
-	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+	}
+	directories: {
+	  /usr/local/share/foo-1.0: 'y',
+	  /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+	}
 
 
 This allows overriding the users, groups and mode of files and
