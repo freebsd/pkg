@@ -29,7 +29,10 @@ Table of Contents:
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
+OSX:
 [<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
+
+FreeBSD:
 [![Build Status](http://jenkins.mouf.net/view/auto/job/pkg/badge/icon)](http://jenkins.mouf.net/view/auto/job/pkg/)
 <a name="libpkg"></a>
 ### libpkg
