@@ -366,9 +366,13 @@ print_info(struct pkg * const pkg, uint64_t options)
 			pkg_printf("%n\n", pkg);
 			break;
 		case INFO_INSTALLED:
-			if (print_tag)
-				printf("%-15s: ", "Installed on");
-			pkg_printf("%t%{%+%}\n", pkg);
+			if (pkg_type(pkg) != PKG_REMOTE) {
+				if (print_tag) {
+					printf("%-15s: ", "Installed on");
+					pkg_printf("%t%{%+%}\n", pkg);
+				}
+			} else if (!print_tag)
+				printf("\n");
 			break;
 		case INFO_VERSION:
 			if (print_tag)
