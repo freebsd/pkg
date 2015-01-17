@@ -66,7 +66,7 @@ It contains the information used to build the repository catalogue.
 
 ##### MANIFEST
 
-The manifest is in [YAML](http://yaml.org) format, it contains all the
+The manifest is in [UCL](https://github.com/vstakhov/libucl) format, it contains all the
 information about the package:
 
 	name: foo
