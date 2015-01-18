@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
@@ -263,7 +263,6 @@ print_info(struct pkg * const pkg, uint64_t options)
 {
 	bool print_tag = false;
 	bool show_locks = false;
-	char size[7];
 	const char *repourl;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
@@ -468,12 +467,9 @@ print_info(struct pkg * const pkg, uint64_t options)
 			break;
 		case INFO_PKGSIZE: /* Remote pkgs only */
 			if (pkg_type(pkg) == PKG_REMOTE) {
-				humanize_number(size, sizeof(size),
-						pkgsize,"B",
-						HN_AUTOSCALE, 0);
 				if (print_tag)
 					printf("%-15s: ", "Pkg size");
-				printf("%s\n", size);
+				pkg_printf("%#xB\n", pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
