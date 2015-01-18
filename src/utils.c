@@ -731,7 +731,7 @@ display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
 {
 	const char *why;
 	int64_t pkgsize;
-	char size[7], tlsize[7];
+	char size[8], tlsize[8];
 
 	pkg_get(it->new, PKG_PKGSIZE, &pkgsize);
 
@@ -790,8 +790,10 @@ display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
 		printf("\n");
 		break;
 	case PKG_DISPLAY_FETCH:
-		humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
-		humanize_number(tlsize, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), pkgsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
+		humanize_number(tlsize, sizeof(size), dlsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 		pkg_printf("\t%n-%v ", it->new, it->new);
 		printf("(%.2f%% of %s: %s)\n", ((double)100 * pkgsize) / (double)dlsize,
@@ -862,15 +864,18 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		puts("");
 
 	if (oldsize > newsize) {
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), oldsize - newsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("The operation will free %s.\n", size);
 	} else if (newsize > oldsize) {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), newsize - oldsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("The process will require %s more space.\n", size);
 	}
 
 	if (dlsize > 0) {
-		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), dlsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
 	}
 

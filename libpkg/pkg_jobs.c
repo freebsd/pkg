@@ -2057,10 +2057,12 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bavail)) {
 		int64_t fsize = (int64_t)fs.f_bsize * (int64_t)fs.f_bavail;
-		char dlsz[8], fsz[8];
+		char dlsz[9], fsz[9];
 
-		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
-		humanize_number(fsz, sizeof(fsz), fsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(dlsz, sizeof(dlsz), dlsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
+		humanize_number(fsz, sizeof(fsz), fsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		pkg_emit_error("Not enough space in %s, needed %s available %s",
 		    cachedir, dlsz, fsz);
 		return (EPKG_FATAL);

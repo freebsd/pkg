@@ -193,7 +193,7 @@ exec_clean(int argc, char **argv)
 	int		 ch, cnt = 0;
 	size_t		 total = 0, slen;
 	ssize_t		 link_len;
-	char		 size[7];
+	char		 size[8];
 	struct pkg_manifest_key *keys = NULL;
 
 	struct option longopts[] = {
@@ -324,7 +324,8 @@ exec_clean(int argc, char **argv)
 		goto cleanup;
 	}
 
-	humanize_number(size, sizeof(size), total, "B", HN_AUTOSCALE, 0);
+	humanize_number(size, sizeof(size), total, "B",
+	    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 	printf("The cleanup will free %s\n", size);
 	if (!dry_run) {

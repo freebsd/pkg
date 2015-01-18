@@ -417,7 +417,7 @@ draw_progressbar(int64_t current, int64_t total)
 	int percent;
 	int64_t transferred;
 	time_t elapsed = 0, now = 0;
-	char buf[7];
+	char buf[8];
 	int64_t bytes_left;
 	int cur_speed;
 	int hours, minutes, seconds;
@@ -479,7 +479,7 @@ draw_progressbar(int64_t current, int64_t total)
 				bytes_per_second = cur_speed;
 
 			humanize_number(buf, sizeof(buf),
-			    current,"B", HN_AUTOSCALE, 0);
+			    current,"B", HN_AUTOSCALE, HN_IEC_PREFIXES);
 			printf(" %*s", (int)sizeof(buf), buf);
 
 			if (bytes_left > 0)
