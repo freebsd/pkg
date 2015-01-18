@@ -29,7 +29,10 @@ Table of Contents:
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
+OSX:
 [<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
+
+FreeBSD:
 [![Build Status](http://jenkins.mouf.net/view/auto/job/pkg/badge/icon)](http://jenkins.mouf.net/view/auto/job/pkg/)
 <a name="libpkg"></a>
 ### libpkg
@@ -56,7 +59,6 @@ pkg uses several files for metadata:
 
 * +COMPACT\_MANIFEST
 * +MANIFEST
-* +MTREE\_DIRS (optional)
 
 ##### COMPACT\_MANIFEST
 
@@ -66,7 +68,7 @@ It contains the information used to build the repository catalogue.
 
 ##### MANIFEST
 
-The manifest is in [YAML](http://yaml.org) format, it contains all the
+The manifest is in [UCL](https://github.com/vstakhov/libucl) format, it contains all the
 information about the package:
 
 	name: foo
@@ -96,7 +98,7 @@ information about the package:
 	}
 	files: {
 	  /usr/local/bin/foo: 'sha256sum',
-	  /usr/local/bin/i_am_a_link: '-';
+	  /usr/local/bin/i_am_a_link: 'sha256sum';
 	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum;
 	}
 	directories: {
@@ -132,29 +134,20 @@ The shebang is not required.
 When the manifest is read by pkg\_create files and dirs can use an
 alternate format:
 
-	files:
-	  /usr/local/bin/foo, 'sha256sum'
+	files: {
+	  /usr/local/bin/foo: 'sha256sum',
 	  /usr/local/bin/bar: {sum: 'sha256sum', uname: baruser, gname: foogroup, perm: 0644 }
-	dirs:
-	- /usr/local/share/foo-1.0
-	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+	}
+	directories: {
+	  /usr/local/share/foo-1.0: 'y',
+	  /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+	}
 
 
 This allows overriding the users, groups and mode of files and
 directories during package creation.
 So, for example, this allows to creation of a package containing
 root-owned files without being packaged by the root user.
-
-##### MTREE\_DIRS
-
-This is optional.  It is used by the package the same way as done by
-the legacy tools. The MTREE is extracted in prefix before each
-installation.
-
-In the future we hope that mtree will be deprecated in favour of a
-hier package or a single MTREE that won't be customisable in per
-package basis. Since pkg supports packing of empty directories, per
-package MTREE is superfluous.
 
 <a name="localdb"></a>
 ### Local database

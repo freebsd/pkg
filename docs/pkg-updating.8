@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 30, 2014
+.Dd January 17, 2015
 .Dt PKG-UPDATING 8
 .Os
 .Sh NAME
@@ -23,11 +23,13 @@
 .Nd display UPDATING entries of software packages
 .Sh SYNOPSIS
 .Nm
+.Op Fl i
 .Op Fl d Ar date
 .Op Fl f Ar file
 .Op Ar pkg-name ...
 .Pp
 .Nm
+.Op Cm --case-insensitive
 .Op Cm --date Ar date
 .Op Cm --file Ar file
 .Op Ar pkg-name ...
@@ -43,6 +45,8 @@ The following options are supported by
 .Bl -tag -width file
 .It Ar pkg-name ...
 UPDATING entries for the named packages are displayed.
+.It Fl i, Cm --case-insensitive
+Matching against pkg-name case insensitive.
 .It Fl d Ar date , Cm --date Ar date
 Only entries newer than
 .Ar date

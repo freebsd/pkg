@@ -176,11 +176,11 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		);
 		strlcpy(rpath, pathname, sizeof(rpath));
 
+		aest = archive_entry_stat(ae);
 		if (lstat(rpath, &st) != -1) {
 			/*
 			 * We have an existing file on the path, so handle it
 			 */
-			aest = archive_entry_stat(ae);
 			if (!S_ISDIR(aest->st_mode)) {
 				pkg_debug(2, "Old version found, renaming");
 				pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
