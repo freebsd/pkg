@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
@@ -45,6 +45,14 @@
 #include <unistd.h>
 #include <sysexits.h>
 #include <uthash.h>
+
+#ifdef HAVE_SYS_CAPSICUM_H
+#include <sys/capsicum.h>
+#endif
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
 
 #include <pkg.h>
 #include "pkgcli.h"
