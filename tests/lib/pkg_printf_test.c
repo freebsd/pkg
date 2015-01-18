@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -1411,8 +1411,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_PKG, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_PKG, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_PKG, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_PKG, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_PKG, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_PKG, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_PKG, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_PKG, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_B, PP_PKG_SHLIB_REQUIRED_NAME, 2, '\0', },
 		{ "B",  PP_B, PP_UNKNOWN,                 0, 'B',  },
@@ -1478,8 +1480,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_B, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_B, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_B, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_B, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_B, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_B, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_B, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_B, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_C, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_C, PP_UNKNOWN,                 0, 'B',  },
@@ -1545,8 +1549,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_C, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_C, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_C, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_C, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_C, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_C, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_C, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_C, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_D, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_D, PP_UNKNOWN,                 0, 'B',  },
@@ -1610,8 +1616,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_D, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_D, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_D, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_D, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_D, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_D, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_D, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_D, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_F, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_F, PP_UNKNOWN,                 0, 'B',  },
@@ -1676,8 +1684,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_F, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_F, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_F, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_F, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_F, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_F, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_F, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_F, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_G, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_G, PP_UNKNOWN,                 0, 'B',  },
@@ -1743,8 +1753,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_G, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_G, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_G, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_G, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_G, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_G, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_G, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_G, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_L, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_L, PP_UNKNOWN,                 0, 'B',  },
@@ -1810,8 +1822,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_L, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_L, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_L, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_L, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_L, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_L, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_L, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_L, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_O, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_O, PP_UNKNOWN,                 0, 'B',  },
@@ -1877,8 +1891,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_O, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_O, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_O, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_O, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_O, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_O, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_O, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_O, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_U, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_U, PP_UNKNOWN,                 0, 'B',  },
@@ -1944,8 +1960,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_U, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_U, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_U, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_U, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_U, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_U, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_U, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_U, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_b, PP_UNKNOWN,                 0, 'B', },
 		{ "B",  PP_b, PP_UNKNOWN,                 0, 'B',  },
@@ -2011,9 +2029,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_b, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_b, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_b, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_b, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_b, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_b, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_b, PP_UNKNOWN,                 0, 'x',  },
-
+		{ "Z",  PP_b, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_d, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_d, PP_UNKNOWN,                 0, 'B',  },
@@ -2079,8 +2098,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_d, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_d, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_d, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_d, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_d, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_d, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_d, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_d, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ "Bn", PP_r, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_r, PP_UNKNOWN,                 0, 'B',  },
@@ -2146,8 +2167,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "u",  PP_r, PP_PKG_CHECKSUM,            1, '\0', },
 		{ "v",  PP_r, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_r, PP_PKG_HOME_PAGE,           1, '\0', },
+		{ "x",  PP_r, PP_PKG_PKGSIZE,             1, '\0', },
+		{ "z",  PP_r, PP_PKG_SHORT_CHECKSUM,      1, '\0', },
 		{ "%",  PP_r, PP_LITERAL_PERCENT,         1, '\0', },
-		{ "x",  PP_r, PP_UNKNOWN,                 0, 'x',  },
+		{ "Z",  PP_r, PP_UNKNOWN,                 0, 'Z',  },
 
 		{ NULL, 0,    0,                          0, '\0', },
 	};
