@@ -155,7 +155,7 @@
  * v  pkg          version
  * w  pkg          home page URL
  *
- * x
+ * x  pkg	   pkg tarball size
  * y
  *
  * z  pkg          short checksum
@@ -734,15 +734,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_checksum,
 	},
-	[PP_PKG_SHORT_CHECKSUM] =
-	{
-		'z',
-		'\0',
-		false,
-		true,
-		PP_ALL,
-		&format_short_checksum,
-	},
 	[PP_PKG_VERSION] =
 	{
 		'v',
@@ -760,6 +751,24 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_home_url,
+	},
+	[PP_PKG_PKGSIZE] =
+	{
+		'x',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_pkgsize,
+	},
+	[PP_PKG_SHORT_CHECKSUM] =
+	{
+		'z',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_short_checksum,
 	},
 	[PP_LITERAL_PERCENT] =
 	{
@@ -1737,6 +1746,32 @@ format_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %w -- Home page URL.  string.  Accepts field width, left align
+ */
+struct sbuf *
+format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	return (string_val(sbuf, pkg->www, p));
+}
+
+/*
+ * %x - Package tarball size. Integer. Accepts field-width,
+ * left-align, zero-fill, space-for-plus, explicit-plus and
+ * alternate-form.  Alternate form is a humanized number using decimal
+ * exponents (k, M, G).  Alternate form 2, ditto, but using binary
+ * scale prefixes (ki, Mi, Gi etc.)
+ */
+struct sbuf *
+format_pkgsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	return (int_val(sbuf, pkg->pkgsize, p));
+}
+
+/*
  * %z -- Package short checksum. string. Accepts field width, left align
  */
 struct sbuf *
@@ -1755,18 +1790,6 @@ format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p
 
 	return (string_val(sbuf, csum, p));
 }
-
-/*
- * %w -- Home page URL.  string.  Accepts field width, left align
- */
-struct sbuf *
-format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg	*pkg = data;
-
-	return (string_val(sbuf, pkg->www, p));
-}
-
 /*
  * %% -- Output a literal '%' character
  */

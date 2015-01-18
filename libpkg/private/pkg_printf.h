@@ -138,6 +138,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_CHECKSUM,
 	PP_PKG_VERSION,
 	PP_PKG_HOME_PAGE,
+	PP_PKG_PKGSIZE,
 	PP_PKG_SHORT_CHECKSUM,
 	PP_LAST_FORMAT = PP_PKG_SHORT_CHECKSUM,
 	PP_LITERAL_PERCENT,
@@ -216,9 +217,10 @@ _static struct sbuf *format_requirements(struct sbuf *, const void *, struct per
 _static struct sbuf *format_flatsize(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_install_tstamp(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_checksum(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_short_checksum(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_version(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_home_url(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_pkgsize(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_short_checksum(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
 _static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
 
