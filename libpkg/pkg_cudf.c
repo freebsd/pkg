@@ -130,7 +130,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->deps, dep, dtmp) {
-			if (cudf_print_element(f, dep->origin,
+			if (cudf_print_element(f, dep->name,
 					(dep->hh.next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}
