@@ -209,8 +209,11 @@ cleanup:
 	if (info.rs_children != 0) {
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
-		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0)
+		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0) {
 			pkg_emit_error("Fail to kill children of the scripts");
+			if (errno == EINVAL)
+				pkg_emit_errno("procctl", "PROC_REAP_ACQUIRE");
+		}
 	}
 	procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
 #endif
