@@ -2184,7 +2184,8 @@ ATF_TC_BODY(format_code, tc)
 		f = format_code(fc_test_vals[i].in, fc_test_vals[i].context, p);
 
 		ATF_CHECK_EQ_MSG(p->fmt_code, fc_test_vals[i].fmt_code,
-				    "(test %d)", i);
+				    "(test %d: %d != %d)", i,
+				    p->fmt_code, fc_test_vals[i].fmt_code);
 		ATF_CHECK_EQ_MSG(f - fc_test_vals[i].in,
 				 fc_test_vals[i].fend_offset,
 				 "(test %d)", i);
