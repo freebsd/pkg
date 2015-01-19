@@ -101,6 +101,6 @@ SUFFIXES = .sh .ucl
 	@echo "    GEN   " $@;
 	@install -m 644 $< $@
 
-lib/pkg_printf.c:
+lib/pkg_printf.c: $(top_srcdir)/libpkg/pkg_printf.c
 	@echo "    CP    " $@;
 	@cp $(top_srcdir)/libpkg/pkg_printf.c $@
