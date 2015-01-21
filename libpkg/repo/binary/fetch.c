@@ -80,7 +80,7 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 		 */
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
 				cachedir, pkg, pkg, pkg);
-		if (stat (dest, &st) != -1)
+		if (stat (dest, &st) != -1 || pkg->pkgsize != st.st_size)
 			return (EPKG_FATAL);
 
 		/*
