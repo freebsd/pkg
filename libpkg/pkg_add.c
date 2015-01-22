@@ -42,7 +42,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
+#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
 
 
 static const unsigned char litchar[] =
