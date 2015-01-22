@@ -47,7 +47,7 @@
 #include "private/pkgdb.h"
 #include "private/utils.h"
 
-#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
+#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
 
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
