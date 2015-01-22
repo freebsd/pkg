@@ -262,12 +262,12 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 #ifdef HAVE_CHFLAGS
 			bool old = false;
 			if (aest->st_flags & NOCHANGESFLAGS)
-				chflags(rpath, aest->st_flags & ~NOCHANGESFLAGS);
+				chflags(rpath, 0);
 
 			if (lstat(pathname, &st) != -1) {
 				old = true;
 				if (st.st_flags & NOCHANGESFLAGS)
-					chflags(pathname, aest->st_flags & ~NOCHANGESFLAGS);
+					chflags(pathname, 0);
 			}
 #endif
 
