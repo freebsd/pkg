@@ -198,13 +198,12 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (fstatat(pkg->rootfd, dir, &st, AT_SYMLINK_NOFOLLOW) != -1) {
 		if (st.st_flags & NOCHANGESFLAGS)
 #ifdef HAVE_CHFLAGSAT
-			chflagsat(pkg->rootfd, dir,
-			    st.st_flags & ~NOCHANGESFLAGS,
-			    AT_SYMLINK_NOFOLLOW);
+			/* Disable all flags*/
+			chflagsat(pkg->rootfd, dir, 0, AT_SYMLINK_NOFOLLOW);
 #else
 			fd = openat(pkg->rootfd, dir, O_NOFOLLOW);
 			if (fd > 0) {
-				fchflags(fd, st.st_flags & ~NOCHANGESFLAGS);
+				fchflags(fd, 0);
 				close(fd);
 			}
 #endif
