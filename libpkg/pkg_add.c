@@ -287,8 +287,11 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				goto cleanup;
 			}
 #ifdef HAVE_CHFLAGS
-			/* Restore flags on the final file */
+			/* Restore flags on the final file exept on libarchive pre 3.x*/
+#if ARCHIVE_VERSION_NUMBER >= 3000002
 			chflags(pathname, aest->st_flags);
+#endif
+
 #endif
 		}
 
