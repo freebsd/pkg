@@ -1,8 +1,9 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -36,6 +37,13 @@
 
 static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
+
+static const char *counter_states[] = {
+	[PKG_EVENT_COUNTER_START]      = "start",
+	[PKG_EVENT_COUNTER_MINOR_TICK] = "minor_tick",
+	[PKG_EVENT_COUNTER_MAJOR_TICK] = "major_tick",
+	[PKG_EVENT_COUNTER_END]        = "end",
+};
 
 static char *
 sbuf_json_escape(struct sbuf *buf, const char *str)
@@ -374,6 +382,11 @@ pipeevent(struct pkg_event *ev)
 		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
 		  "\"data\": { \"current\": %ld, \"total\" : %ld}}",
 		  ev->e_progress_tick.current, ev->e_progress_tick.total);
+		break;
+	case PKG_EVENT_COUNTER:
+		sbuf_printf(msg, "{ \"type\": \"COUNTER\", "
+		    "\"data\": %ld, \"state\": %s}",
+		    ev->e_counter.count, counter_states[ev->e_counter.state]);
 		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
@@ -999,4 +1012,16 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 
 	pkg_emit_event(&ev);
 
+}
+
+void
+pkg_emit_counter(int64_t count, pkg_event_counter_t state)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_COUNTER;
+	ev.e_counter.count = count;
+	ev.e_counter.state = state;
+
+	pkg_emit_event(&ev);
 }
