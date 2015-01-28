@@ -23,12 +23,12 @@
 .Nd audit installed packages against known vulnerabilities
 .Sh SYNOPSIS
 .Nm
-.Op Fl Fqr
+.Op Fl FNqr
 .Op Fl f Ar filename
 .Ar pkg-name
 .Pp
 .Nm
-.Op Cm --{fetch,quiet,recursive}
+.Op Cm --{fetch,nagios,quiet,recursive}
 .Op Cm --file Ar filename
 .Ar pkg-name
 .Sh DESCRIPTION
@@ -71,6 +71,10 @@ download the vulnerability database to the named
 before auditing installed ports against it.
 .It Fl F , Cm --fetch
 Fetch the database before checking.
+.It Fl N , Cm --nagios
+Output results in a nagios friendly format. Implies
+.Fl q
+parameter.
 .It Fl q , Cm --quiet
 Be ``quiet''.
 Prints only the requested information without

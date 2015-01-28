@@ -135,7 +135,7 @@ exec_audit(int argc, char **argv)
 	char				 audit_file_buf[MAXPATHLEN];
 	char				*audit_file = audit_file_buf;
 	unsigned int			 vuln = 0;
-	bool				 fetch = false, recursive = false;
+	bool				 fetch = false, recursive = false, nagios = false;
 	int				 ch, i;
 	int				 ret = EX_OK;
 	const char			*portaudit_site = NULL;
@@ -150,16 +150,21 @@ exec_audit(int argc, char **argv)
 		{ "file",	required_argument,	NULL,	'f' },
 		{ "recursive",	no_argument,	NULL,	'r' },
 		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "nagios", no_argument,		NULL,	'N' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+Ff:qr", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Ff:Nqr", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'F':
 			fetch = true;
 			break;
 		case 'f':
 			audit_file = optarg;
+			break;
+		case 'N':
+			nagios = true;
+			quiet = true;
 			break;
 		case 'q':
 			quiet = true;
@@ -277,9 +282,10 @@ exec_audit(int argc, char **argv)
 		HASH_ITER(hh, check, cur, tmp) {
 			if (pkg_audit_is_vulnerable(audit, cur->pkg, quiet, &sb)) {
 				vuln ++;
-				printf("%s", sbuf_data(sb));
+				if (!nagios)
+					printf("%s", sbuf_data(sb));
 
-				if (recursive) {
+				if (recursive && !nagios) {
 					const char *name;
 					struct pkg_check_entry *seen = NULL, *scur, *stmp;
 
@@ -295,6 +301,14 @@ exec_audit(int argc, char **argv)
 				}
 				sbuf_delete(sb);
 			}
+		}
+
+		if (nagios) {
+			vuln = 0;
+			if (vuln == 0)
+				printf("PKG OK: 0 packages vulnerable|\n");
+			else
+				printf("PKG CRITICAL: %d packages vulnerable|\n", vuln);
 		}
 
 		if (ret == EPKG_END && vuln == 0)
@@ -315,8 +329,12 @@ exec_audit(int argc, char **argv)
 	}
 
 	pkg_audit_free(audit);
-	if (vuln != 0)
-		ret = EXIT_FAILURE;
+	if (vuln != 0) {
+		if (nagios)
+			ret = 2; // nagios CRITICAL
+		else
+			ret = EXIT_FAILURE;
+	}
 
 	return (ret);
 }
