@@ -411,7 +411,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 					goto cleanup;
 			}
 		} else {
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0) {
 				pkg_emit_missing_dep(pkg, dep);
 				goto cleanup;
 			}
