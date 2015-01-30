@@ -821,7 +821,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
-	char size[7];
+	char size[8];
 	va_list ap;
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
