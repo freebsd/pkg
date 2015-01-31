@@ -96,7 +96,6 @@ exec_set(int argc, char **argv)
 	int64_t		 newautomatic = -1;
 	bool		 automatic = false;
 	bool		 rc = false;
-	const char	*errstr;
 	const char	*changed = NULL;
 	char		*newvalue = NULL;
 	char		*oldvalue = NULL;
@@ -122,11 +121,11 @@ exec_set(int argc, char **argv)
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
-			newautomatic = strtonum(optarg, 0, 1, &errstr);
-			if (errstr)
+			newautomatic = optarg[0] - '0';
+			if (newautomatic != 0 & newautomatic != 1)
 				errx(EX_USAGE, "Wrong value for -A. "
-				    "Expecting 0 or 1, got: %s (%s)",
-				    optarg, errstr);
+				    "Expecting 0 or 1, got: %s",
+				    optarg);
 			break;
 		case 'a':
 			match = MATCH_ALL;
