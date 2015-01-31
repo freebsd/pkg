@@ -162,7 +162,6 @@ AC_CHECK_FUNCS_ONCE([strtonum])
 AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_FUNCS_ONCE([fopencookie])
-AC_CHECK_FUNCS_ONCE([statfs])
 AC_CHECK_FUNCS_ONCE([sysctlbyname])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
@@ -327,6 +326,20 @@ AC_CACHE_CHECK(for BSD dirname(const char *),
 		CFLAGS="$ac_save_CFLAGS"])
 if test "$ac_cv_func_dirname" = yes ; then
 	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
+fi
+
+AC_CACHE_CHECK(for BSD statfs(const char *path, struct statfs *buf),
+               ac_cv_func_dirname,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="-Werror $CFLAGS"
+		AC_TRY_COMPILE([#include <sys/param.h>
+     					#include <sys/mount.h>],
+                               [static int *(*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("");],
+                               [ac_cv_func_statfs=yes],
+                               [ac_cv_func_statfs=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_statfs" = yes ; then
+	AC_DEFINE(HAVE_STATFS, 1, [Define 1 if you have 'statfs(const char *path, struct statfs *buf)' function.])
 fi
 
 AC_CHECK_FUNCS(chflags chflagsat)
