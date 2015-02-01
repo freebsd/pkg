@@ -565,7 +565,7 @@ exec_buf(struct sbuf *res, char **argv) {
 	}
 
 	if ((spawn_err = posix_spawn_file_actions_init(&actions)) != 0) {
-		warnc(spawn_err, "%s", argv[0]);
+		warnx("%s:%s", argv[0], strerror(spawn_err));
 		return (0);
 	}
 
@@ -578,7 +578,7 @@ exec_buf(struct sbuf *res, char **argv) {
 	    (spawn_err = posix_spawnp(&pid, argv[0], &actions, NULL,
 	    argv, environ)) != 0) {
 		posix_spawn_file_actions_destroy(&actions);
-		warnc(spawn_err, "%s", argv[0]);
+		warnx("%s:%s", argv[0], strerror(spawn_err));
 		return (0);
 	}
 	posix_spawn_file_actions_destroy(&actions);

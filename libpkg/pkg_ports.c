@@ -546,7 +546,7 @@ parse_post(struct plist *p)
 			continue;
 		if (p->post_patterns.len >= p->post_patterns.cap) {
 			p->post_patterns.cap += 10;
-			p->post_patterns.patterns = reallocf(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
+			p->post_patterns.patterns = realloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
 		}
 		p->post_patterns.patterns[p->post_patterns.len++] = token;
 	}

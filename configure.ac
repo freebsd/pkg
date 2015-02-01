@@ -100,8 +100,6 @@ AC_CHECK_HEADERS_ONCE([sys/endian.h])
 AC_CHECK_HEADERS_ONCE([fcntl.h])
 AC_CHECK_HEADERS_ONCE([dlfcn.h])
 AC_CHECK_HEADERS_ONCE([memory.h])
-AC_CHECK_HEADERS_ONCE([sys/types.h])
-AC_CHECK_HEADERS_ONCE([sys/stat.h])
 AC_CHECK_HEADERS_ONCE([stdlib.h])
 AC_CHECK_HEADERS_ONCE([string.h])
 AC_CHECK_HEADERS_ONCE([memory.h])
@@ -130,11 +128,13 @@ AC_CHECK_HEADERS_ONCE([libgen.h])
 AC_CHECK_HEADERS_ONCE([stdio.h])
 AC_CHECK_HEADERS_ONCE([float.h])
 AC_CHECK_HEADERS_ONCE([math.h])
+AC_CHECK_HEADERS_ONCE([readpassphrase.h])
 AC_CHECK_HEADERS_ONCE([osreldate.h])
 AC_CHECK_HEADERS_ONCE([sys/socket.h])
 AC_CHECK_HEADERS_ONCE([netinet/in.h])
 AC_CHECK_HEADERS_ONCE([netinet/in6.h])
 AC_CHECK_HEADERS_ONCE([sys/statfs.h])
+AC_CHECK_HEADERS_ONCE([sys/statvfs.h])
 AC_CHECK_HEADERS_ONCE([dirent.h], [sys/ndir.h], [sys/dir.h], [ndir.h])
 AC_CHECK_HEADERS_ONCE([sys/capability.h])
 AC_CHECK_HEADERS_ONCE([sys/capsicum.h])
@@ -327,6 +327,20 @@ AC_CACHE_CHECK(for BSD dirname(const char *),
 		CFLAGS="$ac_save_CFLAGS"])
 if test "$ac_cv_func_dirname" = yes ; then
 	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
+fi
+
+AC_CACHE_CHECK(for BSD statfs(const char *path, struct statfs *buf),
+               ac_cv_func_dirname,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="-Werror $CFLAGS"
+		AC_TRY_COMPILE([#include <sys/param.h>
+     					#include <sys/mount.h>],
+                               [static int *(*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("");],
+                               [ac_cv_func_statfs=yes],
+                               [ac_cv_func_statfs=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_statfs" = yes ; then
+	AC_DEFINE(HAVE_STATFS, 1, [Define 1 if you have 'statfs(const char *path, struct statfs *buf)' function.])
 fi
 
 AC_CHECK_FUNCS(chflags chflagsat)
