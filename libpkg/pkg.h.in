@@ -1428,6 +1428,7 @@ struct pkg_event {
 			int64_t total;
 		} e_progress_tick;
 		struct {
+			const char *what;
 			int64_t count;
 			pkg_event_counter_t state;
 		} e_counter;
