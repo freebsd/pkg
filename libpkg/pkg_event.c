@@ -385,8 +385,9 @@ pipeevent(struct pkg_event *ev)
 		break;
 	case PKG_EVENT_COUNTER:
 		sbuf_printf(msg, "{ \"type\": \"COUNTER\", "
-		    "\"data\": %ld, \"state\": %s}",
-		    ev->e_counter.count, counter_states[ev->e_counter.state]);
+		    "\"what\": %s, \"data\": %ld, \"state\": %s}",
+		    ev->e_counter.what, ev->e_counter.count,
+		    counter_states[ev->e_counter.state]);
 		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
@@ -1015,11 +1016,12 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 }
 
 void
-pkg_emit_counter(int64_t count, pkg_event_counter_t state)
+pkg_emit_counter(const char *what, int64_t count, pkg_event_counter_t state)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_COUNTER;
+	ev.e_counter.what  = what;
 	ev.e_counter.count = count;
 	ev.e_counter.state = state;
 
