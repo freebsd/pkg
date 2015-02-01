@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -831,6 +832,24 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_PROGRESS_TICK:
 		progressbar_tick(ev->e_progress_tick.current,
 		    ev->e_progress_tick.total);
+		break;
+	case PKG_EVENT_COUNTER:
+		if (!quiet) {
+			switch (ev->e_counter.state) {
+			case PKG_EVENT_COUNTER_START:
+				printf("\n");
+				break;
+			case PKG_EVENT_COUNTER_MINOR_TICK:
+				printf(".");
+				break;
+			case PKG_EVENT_COUNTER_MAJOR_TICK:
+				printf("[%ld]\n", ev->e_counter.count);
+				break;
+			case PKG_EVENT_COUNTER_END:
+				printf("<%ld>\n", ev->e_counter.count);
+				break;
+			}
+		}
 		break;
 	case PKG_EVENT_BACKUP:
 		sbuf_cat(msg_buf, "Backing up");
