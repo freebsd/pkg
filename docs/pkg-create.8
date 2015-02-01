@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd November 18, 2014
+.Dd February 1, 2015
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -25,26 +25,26 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl n
+.Op Fl nq
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
 .Fl m Ar metadatadir
 .Nm
-.Op Fl n
+.Op Fl nq
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Fl M Ar manifest
 .Nm
-.Op Fl gnx
+.Op Fl gnqx
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Ar pkg-name ...
 .Nm
-.Op Fl n
+.Op Fl nq
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -53,6 +53,7 @@
 .Pp
 .Nm
 .Op Cm --no-clobber
+.Op Cm --quiet
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --plist Ar plist
@@ -60,18 +61,21 @@
 .Cm --metadata Ar metadatadir
 .Nm
 .Op Cm --no-clobber
+.Op Cm --quiet
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Cm --manifest Ar manifest
 .Nm
 .Op Cm --{glob,no-clobber,regex}
+.Op Cm --quiet
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Ar pkg-name ...
 .Nm
 .Op Cm --no-clobber
+.Op Cm --quiet
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
@@ -215,6 +219,8 @@ Only has any effect when used with
 See
 .Sx "PLIST FORMAT"
 for details.
+.It Fl q , Cm --quiet
+Force quiet output.
 .It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
