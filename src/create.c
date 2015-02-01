@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,13 +60,13 @@ STAILQ_HEAD(pkg_head, pkg_entry);
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Onq] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Onq] [-f format] [-o outdir] "
 		"[-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ognx] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Ognqx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Onq] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -181,6 +182,7 @@ cleanup:
  * -g: globbing
  * -r: rootdir for the package
  * -m: path to dir where to find the metadata
+ * -q: quiet mode
  * -M: manifest file
  * -f <format>: format could be txz, tgz, tbz or tar
  * -o: output directory where to create packages by default ./ is used
@@ -211,10 +213,11 @@ exec_create(int argc, char **argv)
 		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "no-clobber", no_argument,		NULL,	'n' },
 		{ "plist",	required_argument,	NULL,	'p' },
+		{ "quiet",	no_argument,		NULL,	'q' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:q", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -245,6 +248,9 @@ exec_create(int argc, char **argv)
 			break;
 		case 'p':
 			plist = optarg;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		default:
 			usage_create();
