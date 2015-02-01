@@ -74,7 +74,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	counter_init("file size/checksum");
+	counter_init("file sizes/checksums");
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
@@ -139,7 +139,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		sbuf_delete(b);
 	}
 
-	counter_init("packaging files");
+	counter_init("packing files");
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
@@ -155,7 +155,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	counter_init("directories");
+	counter_init("packing directories");
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
