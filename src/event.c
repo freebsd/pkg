@@ -837,7 +837,7 @@ event_callback(void *data, struct pkg_event *ev)
 		if (!quiet) {
 			switch (ev->e_counter.state) {
 			case PKG_EVENT_COUNTER_START:
-				printf(":");
+				printf("%-16s:", ev->e_counter.what);
 				break;
 			case PKG_EVENT_COUNTER_MINOR_TICK:
 				printf(".");
