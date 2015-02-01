@@ -840,13 +840,13 @@ event_callback(void *data, struct pkg_event *ev)
 		if (!quiet) {
 			switch (ev->e_counter.state) {
 			case PKG_EVENT_COUNTER_START:
-				printf("\n");
+				printf(":");
 				break;
 			case PKG_EVENT_COUNTER_MINOR_TICK:
 				printf(".");
 				break;
 			case PKG_EVENT_COUNTER_MAJOR_TICK:
-				printf("[%ld]\n", ev->e_counter.count);
+				printf("[%ld]", ev->e_counter.count);
 				break;
 			case PKG_EVENT_COUNTER_END:
 				printf("<%ld>\n", ev->e_counter.count);
