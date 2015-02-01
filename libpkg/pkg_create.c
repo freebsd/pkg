@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
@@ -39,7 +39,13 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
+#define MINOR_TICK	100
+#define MAJOR_TICK	1000
+
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
+static void counter_init(int64_t *count);
+static void counter_count(int64_t *count);
+static void counter_end(int64_t *count);
 
 static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
@@ -52,6 +58,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
+	int64_t		 count;
 	const char	*relocation;
 	struct hardlinks *hardlinks = NULL;
 
@@ -67,6 +74,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	/*
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
+
+	counter_init(&count);
+
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
@@ -100,7 +110,12 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 				strlcpy(file->sum, sha256, sizeof(file->sum));
 			}
 		}
+
+		counter_count(&count);
 	}
+
+	counter_end(&count);
+
 	pkg->flatsize = flatsize;
 	HASH_FREE(hardlinks, free);
 
@@ -125,6 +140,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		sbuf_delete(b);
 	}
 
+	counter_init(&count);
+
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
@@ -134,7 +151,12 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		    file->uname, file->gname, file->perm);
 		if (developer_mode && ret != EPKG_OK)
 			return (ret);
+		counter_count(&count);
 	}
+
+	counter_end(&count);
+
+	counter_init(&count);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
@@ -144,7 +166,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		    dir->uname, dir->gname, dir->perm);
 		if (developer_mode && ret != EPKG_OK)
 			return (ret);
+		counter_count(&count);
 	}
+
+	counter_end(&count);
 
 	return (EPKG_OK);
 }
@@ -392,4 +417,33 @@ pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
 	pkg_create_from_dir(pkg, NULL, pkg_archive);
 
 	return packing_finish(pkg_archive);
+}
+
+static void
+counter_init(int64_t *count)
+{
+	*count = 0;
+	pkg_emit_counter(*count, PKG_EVENT_COUNTER_START);
+
+	return;
+}
+
+static void
+counter_count(int64_t *count)
+{
+	(*count)++;
+
+	if (*count % MAJOR_TICK == 0)
+		pkg_emit_counter(*count, PKG_EVENT_COUNTER_MAJOR_TICK);
+	else if (*count % MINOR_TICK == 0)
+		pkg_emit_counter(*count, PKG_EVENT_COUNTER_MINOR_TICK);
+
+	return;
+}
+
+static void
+counter_end(int64_t *count)
+{
+	pkg_emit_counter(*count, PKG_EVENT_COUNTER_END);
+	return;
 }
