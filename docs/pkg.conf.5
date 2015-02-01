@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd December 29, 2014
+.Dd February 1, 2015
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -348,7 +348,8 @@ This option overrides the global setting with the same name and can be
 overwritten by a command line option.
 Default: 0.
 .It Cm PRIORITY: integer
-Set the priority of the repository the higher is the prefered repository.
+Set the priority of the repository.
+Higher values are prefered.
 Default: 0
 .El
 .El
@@ -441,16 +442,23 @@ with this content:
 FreeBSD: { enabled: NO }
 .Ed
 .Pp
-Repositories are prioritized in the order they are found on the
+Repositories are processedin the order they are found on the
 .Sy REPOS_DIR
 search path, with individual repository configuration files in the
 same directory processed in alphabetical order.
-Earlier files take precedence, meaning that packages will be downloaded
-from them preferentially where the same package is available from several
-repositories.
-This behaviour may be overridden per-package by adding a
+Settings from files later in the search path will override those from
+earlier ones.
+Packages are selected preferentially out of all the repositories that contain
+them from the repository with the highest priority, so long as they are
+suitable to solve the necessary dependency requirements.
+However, this preference may be overruled when
+.Sy CONSERVATIVE_UPGRADE
+is set to
+.Dv true ,
+in which case a package will as far as possible always be upgraded from the
+same repository the older installed version came from, as given in the
 .Sy repository
-annotation to the installed package.
+annotation of the installed package.
 See
 .Xr pkg-repository 8
 for details.

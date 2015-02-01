@@ -15,7 +15,7 @@
 .\"     @(#)pkg-repository.5
 .\" $FreeBSD$
 .\"
-.Dd December 29, 2014
+.Dd February 1, 2015
 .Dt PKG-REPOSITORY 5
 .Os
 .Sh NAME
@@ -103,7 +103,7 @@ Packages are stored as package tarballs identified by name and
 version.
 This directory may contain several different versions of each package
 accumulated over time, but the repository catalogue will only record
-the latest version for each distinct package origin.
+the latest version for each distinct package name.
 .It Pa $REPOSITORY_ROOT/Latest/
 May contains symbolic links to the latest versions of packages in the
 .Pa All
@@ -148,7 +148,7 @@ ports tree.
 .Pp
 Each of the packages listed in the repository catalogue must have a
 unique
-.Cm origin .
+.Cm name .
 There are no other constraints: package sets are not required to be
 either complete (i.e., with all dependencies satisfied) or
 self-consistent within a single repository.
@@ -221,8 +221,11 @@ all mirror sites.
 .Sh WORKING WITH MULTIPLE REPOSITORIES
 Where several different repositories are configured
 .Nm pkg
-will search amongst them all in the order specified,
-unless directed to use a single repository by the
+will search amongst them all in the order specified by the
+.Cm PRIORITY
+settings in the
+.Pa repo.conf
+files, unless directed to use a single repository by the
 .Fl r
 flag to
 .Xr pkg-fetch 8 ,
@@ -231,10 +234,6 @@ flag to
 .Xr pkg-search 8
 or
 .Xr pkg-rquery 8 .
-The search order is as displayed in the output of
-.Bd -literal -offset indent
-pkg -v -v
-.Ed
 .Pp
 Where several different versions of the same package are available,
 .Nm pkg
@@ -262,10 +261,12 @@ pkg install -r repo-a example-1.0.0
 .Pp
 and then to make updates to that package
 .Dq sticky
-to the same repository, add an annotation to the package:
-.Bd -literal -offset indent
-pkg annotate -A example repository repo-a
-.Ed
+to the same repository, set the value
+.Cm CONSERVATIVE_UPGRADE
+to
+.Sy true
+in
+.Pa pkg.conf .
 .Pp
 .Sh SEE ALSO
 .Xr fetch 3 ,
