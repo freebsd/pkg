@@ -119,7 +119,7 @@ EOF
 
 	for p in dep1 pkg2 pkg3 pkg4; do
 		atf_check \
-			-o empty \
+			-o ignore \
 			-e empty \
 			-s exit:0 \
 			pkg create -M ./${p}.ucl
