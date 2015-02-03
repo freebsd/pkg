@@ -276,6 +276,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	if (read_files) {
 		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
+			close(mfd);
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
 		}
@@ -285,6 +286,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		close(mfd);
+		if (read_files)
+			close(ffd);
 		return (EPKG_FATAL);
 		break;
 	case 0:
