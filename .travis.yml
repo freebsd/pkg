@@ -26,6 +26,6 @@ notifications:
   email: false
   irc:
     channels:
-      - "irc.freenode.org#pkgconf"
+      - "irc.freenode.org#pkgng"
     on_success: change
     on_failure: always
