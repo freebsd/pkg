@@ -540,7 +540,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd;
-	struct pkg_repo_meta *meta;
+	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
