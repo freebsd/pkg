@@ -643,8 +643,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
     const char *dest, struct pkg_repo *repo, int dest_fd)
 {
 	struct sig_cert *sc = NULL, *s, *stmp;
+	int ret, rc;
 
-	int ret = rc = EPKG_OK;
+	ret = rc = EPKG_OK;
 
 	if (pkg_repo_archive_extract_archive(fd, file, dest, repo, dest_fd, &sc)
 			!= EPKG_OK)
