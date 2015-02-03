@@ -377,8 +377,10 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 			return (EPKG_FATAL);
 
 		pkg_debug(1, "Binary> loading %s", path);
-		if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK)
+		if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK) {
+			pkg_free(cached);
 			return (EPKG_FATAL);
+		}
 
 		/* Now move required elements to the provided package */
 		pkg_list_free(pkg, PKG_FILES);
