@@ -218,6 +218,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
+	free(dateline);
 
 	return (retcode);
 }
