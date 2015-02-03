@@ -34,6 +34,7 @@
 
 #include <sysexits.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <err.h>
 #include <errno.h>
