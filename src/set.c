@@ -210,17 +210,21 @@ exec_set(int argc, char **argv)
 		return (EX_SOFTWARE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		free(newvalue);
 		return (EX_IOERR);
+	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
+		free(newvalue);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
 	}
 
 	if (pkgdb_transaction_begin(db, NULL) != EPKG_OK) {
 		pkgdb_close(db);
+		free(newvalue);
 		warnx("Cannot start transaction for update");
 		return (EX_TEMPFAIL);
 	}
@@ -307,6 +311,7 @@ exec_set(int argc, char **argv)
 
 cleanup:
 	free(oldvalue);
+	free(newvalue);
 	pkg_free(pkg);
 
 	if (retcode == 0) {
