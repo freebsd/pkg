@@ -77,17 +77,22 @@ exec_ssh(int argc, char **argv __unused)
 	cap_rights_init(&rights, CAP_READ, CAP_FSTATAT, CAP_FCNTL);
 	if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 		warn("cap_rights_limit() failed");
+		close(fd);
 		return (EX_SOFTWARE);
 	}
 
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
+		close(fd);
 		return (EX_SOFTWARE);
 	}
 
 #endif
-	if (pkg_sshserve(fd) != EPKG_OK)
+	if (pkg_sshserve(fd) != EPKG_OK) {
+		close(fd);
 		return (EX_SOFTWARE);
+	}
 
+	close(fd);
 	return (EX_OK);
 }
