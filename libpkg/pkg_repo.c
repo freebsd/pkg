@@ -987,8 +987,12 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 load_meta:
-	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK)
+	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK) {
+		if (map != NULL)
+			munmap(map, st.st_size);
+
 		return (rc);
+	}
 
 	if (repo->meta != NULL)
 		pkg_repo_meta_free(repo->meta);
