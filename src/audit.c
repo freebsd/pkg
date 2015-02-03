@@ -180,6 +180,7 @@ exec_audit(int argc, char **argv)
 	if (fetch == true) {
 		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
 		if (pkg_audit_fetch(portaudit_site, audit_file) != EPKG_OK) {
+			pkg_audit_free(audit);
 			return (EX_IOERR);
 		}
 	}
@@ -193,6 +194,7 @@ exec_audit(int argc, char **argv)
 			warn("unable to open vulnxml file %s",
 					audit_file);
 
+		pkg_audit_free(audit);
 		return (EX_DATAERR);
 	}
 
@@ -234,11 +236,14 @@ exec_audit(int argc, char **argv)
 			return (EX_IOERR);
 		}
 
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+			pkg_audit_free(audit);
 			return (EX_IOERR);
+		}
 
 		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 			pkgdb_close(db);
+			pkg_audit_free(audit);
 			warnx("Cannot get a read lock on a database, it is locked by another process");
 			return (EX_TEMPFAIL);
 		}
@@ -261,14 +266,17 @@ exec_audit(int argc, char **argv)
 			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 			pkgdb_close(db);
 		}
-		if (ret != EX_OK)
+		if (ret != EX_OK) {
+			pkg_audit_free(audit);
 			return (ret);
+		}
 	}
 
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
+		pkg_audit_free(audit);
 		return (EPKG_FATAL);
 	}
 #endif
