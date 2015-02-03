@@ -194,8 +194,9 @@ static int
 event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
 	pid_t pid;
-	int	status, ret;
+	int status, ret;
 
+	ret = -1;
 	pid = fork();
 
 	switch(pid) {
