@@ -864,6 +864,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	char *cmd;
 	char **args = NULL;
 	char *buf, *tofree = NULL;
+	struct file_attr *freeattr = NULL;
 	int spaces, argc = 0;
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
@@ -876,7 +877,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	}
 
 	if ((o = ucl_object_find_key(obj,  "attributes")))
-		parse_attributes(o, &attr);
+		parse_attributes(o, attr != NULL ? &attr : &freeattr);
 
 	if ((o = ucl_object_find_key(obj, "pre-install"))) {
 		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
@@ -925,6 +926,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 
 	free(args);
 	free(tofree);
+	free_file_attr(freeattr);
 
 	return (EPKG_OK);
 }
@@ -954,6 +956,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		pkg_emit_error("cannot parse keyword: %s",
 				ucl_parser_get_error(parser));
 		ucl_parser_free(parser);
+		free_file_attr(attr);
 		return (EPKG_UNKNOWN);
 	}
 
@@ -966,11 +969,13 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		if (!ucl_object_validate(schema, o, &err)) {
 			pkg_emit_error("Keyword definition %s cannot be validated: %s", keyfile_path, err.msg);
 			ucl_object_unref(o);
+			free_file_attr(attr);
 			return (EPKG_FATAL);
 		}
 	}
 
 	ret = apply_keyword_file(o, plist, line, attr);
+	free_file_attr(attr);
 
 	return (ret);
 }
