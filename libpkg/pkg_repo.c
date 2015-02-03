@@ -456,6 +456,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			else if (len >= MAXPATHLEN) {
 				pkg_emit_error("filename is incorrect for signature_fingerprints"
 						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
+				free(s);
 				return (EPKG_FATAL);
 			}
 			HASH_FIND(hh, *sc, p, len, s);
@@ -484,6 +485,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			if (end - p < sizeof (int)) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
 						"output", type);
+				free(s);
 				return (EPKG_FATAL);
 			}
 			len = *(int *)p;
@@ -526,6 +528,8 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			break;
 		}
 	}
+
+	free(s);
 
 	return (rc);
 }

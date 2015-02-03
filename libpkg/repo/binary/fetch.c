@@ -195,8 +195,10 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
-	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0)
+	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0) {
+		free(dir);
 		return (EPKG_OK);
+	}
 
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
@@ -217,6 +219,7 @@ checksum:
 		}
 
 		unlink(dest);
+		free(dir);
 		pkg_emit_error("cached package %s-%s: "
 		    "size mismatch, fetching from remote",
 		    pkg->name, pkg->version);
