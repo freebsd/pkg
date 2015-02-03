@@ -196,6 +196,7 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL && mdir != NULL) {
 		warnx("Cannot use both -m and -M together");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
@@ -203,18 +204,21 @@ exec_register(int argc, char **argv)
 	if (mfile == NULL && mdir == NULL) {
 		warnx("One of either -m or -M flags is required");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
 	if (mfile != NULL && plist != NULL) {
 		warnx("-M incompatible with -f option");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
 	if (testing_mode && input_path != NULL) {
 		warnx("-i incompatible with -t option");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
@@ -223,16 +227,19 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL) {
 		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK)
+		if (ret != EPKG_OK) {
+			pkg_free(pkg);
 			return (EX_IOERR);
+		}
 
 	} else {
 		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
 		ret = pkg_parse_manifest_file(pkg, fpath, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK)
+		if (ret != EPKG_OK) {
+			pkg_free(pkg);
 			return (EX_IOERR);
-
+		}
 
 		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
 		pkg_set_from_file(pkg, PKG_DESC, fpath, false);
@@ -280,15 +287,19 @@ exec_register(int argc, char **argv)
 	}
 
 	if (ret != EPKG_OK) {
+		pkg_free(pkg);
 		return (EX_IOERR);
 	}
 
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		pkg_free(pkg);
 		return (EX_IOERR);
+	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
+		pkg_free(pkg);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
 	}
