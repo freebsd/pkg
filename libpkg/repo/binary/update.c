@@ -438,7 +438,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
-	time_t packagesite_t;
 	struct pkg_manifest_key *keys = NULL;
 	unsigned char *map = MAP_FAILED;
 	size_t len = 0;
@@ -463,7 +462,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	if (map == NULL || map == MAP_FAILED)
 		goto cleanup;
 
-	packagesite_t = local_t;
 	*mtime = local_t;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,

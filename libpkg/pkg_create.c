@@ -302,8 +302,6 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	size_t		 size;
 	struct pkg_manifest_key *keys = NULL;
 
-	mfd = -1;
-
 	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
 
 	if ((mfd = open(md_dir, O_DIRECTORY)) == -1) {

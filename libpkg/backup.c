@@ -83,7 +83,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
-	done = total = 0;
+	total = 0;
 
 	pkg_emit_progress_start(NULL);
 	do {
