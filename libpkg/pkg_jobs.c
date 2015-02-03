@@ -1184,10 +1184,8 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				unit->pkg->automatic = automatic;
 			}
 			else {
-				if (j->type == PKG_JOBS_INSTALL) {
-					automatic = false;
+				if (j->type == PKG_JOBS_INSTALL)
 					unit->pkg->automatic = false;
-				}
 			}
 		}
 		else {
