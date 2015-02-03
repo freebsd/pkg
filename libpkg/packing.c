@@ -330,10 +330,11 @@ cleanup:
 	return EPKG_OK;
 }
 
-int
+void
 packing_finish(struct packing *pack)
 {
-	assert(pack != NULL);
+	if (pack == NULL)
+		return;
 
 	archive_read_close(pack->aread);
 	archive_read_free(pack->aread);
@@ -342,8 +343,6 @@ packing_finish(struct packing *pack)
 	archive_write_free(pack->awrite);
 
 	free(pack);
-
-	return (EPKG_OK);
 }
 
 static const char *

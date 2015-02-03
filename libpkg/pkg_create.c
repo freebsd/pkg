@@ -270,8 +270,8 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 cleanup:
 	free(pkg);
 	pkg_manifest_keys_free(keys);
-	if (ret == EPKG_OK)
-		ret = packing_finish(pkg_archive);
+	packing_finish(pkg_archive);
+
 	return (ret);
 }
 
@@ -389,8 +389,8 @@ cleanup:
 	free(pkg);
 	free(manifest);
 	pkg_manifest_keys_free(keys);
-	if (ret == EPKG_OK)
-		ret = packing_finish(pkg_archive);
+	packing_finish(pkg_archive);
+
 	return (ret);
 }
 
@@ -413,7 +413,9 @@ pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
 
 	pkg_create_from_dir(pkg, NULL, pkg_archive);
 
-	return packing_finish(pkg_archive);
+	packing_finish(pkg_archive);
+
+	return (EPKG_OK);
 }
 
 static int64_t	count;

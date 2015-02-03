@@ -1693,7 +1693,9 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 		    file->uname, file->gname, file->perm);
 	}
 
-	return (packing_finish(pack));
+	packing_finish(pack);
+
+	return (EPKG_OK);
 }
 
 int
