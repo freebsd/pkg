@@ -992,6 +992,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	if (access(repo_path, R_OK) != -1) {
 		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
+			rsa_free(rsa);
 			return (EPKG_FATAL);
 		}
 		else {
