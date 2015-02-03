@@ -1011,8 +1011,10 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
 		if (reponame != NULL || pkg_repos_activated_count() > 0) {
 			ret = pkgdb_open_repos(db, reponame);
-			if (ret != EPKG_OK)
+			if (ret != EPKG_OK) {
+				pkgdb_close(db);
 				return (ret);
+			}
 		} else if (type == PKGDB_REMOTE) {
 			if (*db_p == NULL)
 				pkgdb_close(db);
