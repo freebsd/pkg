@@ -315,6 +315,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 			nit = calloc(1, sizeof(*nit));
 			if (nit == NULL) {
 				pkg_emit_errno("malloc", "struct pkg_job_request_item");
+				free(req);
 				return (NULL);
 			}
 			nit->pkg = uit->pkg;
