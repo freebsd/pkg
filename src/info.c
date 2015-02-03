@@ -273,6 +273,7 @@ exec_info(int argc, char **argv)
 
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
+			close(fd);
 			return (EX_SOFTWARE);
 		}
 #endif
