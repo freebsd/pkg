@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd December 8, 2014
+.Dd February 4, 2015
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -74,6 +74,11 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
+.It Fl n Ar oldname:newname , Cm --change-name Ar oldname:newname
+Change the package name of a given dependency from
+.Ar oldname
+to
+.Ar newname .
 .It Fl o Ar oldorigin:neworigin , Cm --change-origin Ar oldorigin:neworigin
 Change the port origin of a given dependency from
 .Ar oldorigin
@@ -82,7 +87,7 @@ to
 This corresponds to the port directory that the package originated from.
 Typically, this is only needed for upgrading a library or package that
 has MOVED or when the default version of a major port dependency
-changes.
+changes. (DEPRECATED)
 Usually this will be explained in /usr/ports/UPDATING.
 Also see
 .Xr pkg-updating 8
