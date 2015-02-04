@@ -529,8 +529,6 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		}
 	}
 
-	free(s);
-
 	return (rc);
 }
 
