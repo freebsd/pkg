@@ -975,7 +975,6 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	}
 
 	ret = apply_keyword_file(o, plist, line, attr);
-	free_file_attr(attr);
 
 	return (ret);
 }
