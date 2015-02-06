@@ -1,6 +1,7 @@
 noinst_HEADERS=	pkgcli.h
 
 pkg_SOURCES=		add.c \
+			alias.c \
 			annotate.c \
 			audit.c \
 			autoremove.c \

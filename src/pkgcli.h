@@ -44,6 +44,10 @@ int nbdone;
 int exec_add(int, char **);
 void usage_add(void);
 
+/* pkg alias */
+int exec_alias(int, char **);
+void usage_alias(void);
+
 /* pkg annotate */
 int exec_annotate(int, char **);
 void usage_annotate(void);
