@@ -202,6 +202,13 @@ exec_create(int argc, char **argv)
 	int		 ch;
 	bool		 overwrite = true;
 
+
+	/* POLA: pkg create is quiet by default, unless
+	 * PKG_CREATE_VERBOSE is set in pkg.conf.  This is for
+	 * historical reasons. */
+
+	quiet = !pkg_object_bool(pkg_config_get("PKG_CREATE_VERBOSE"));
+
 	struct option longopts[] = {
 		{ "all",	no_argument,		NULL,	'a' },
 		{ "glob",	no_argument,		NULL,	'g' },
@@ -214,10 +221,11 @@ exec_create(int argc, char **argv)
 		{ "no-clobber", no_argument,		NULL,	'n' },
 		{ "plist",	required_argument,	NULL,	'p' },
 		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "verbose",	no_argument,		NULL,	'v' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:q", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:qv", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -251,6 +259,9 @@ exec_create(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'v':
+			quiet = false;
 			break;
 		default:
 			usage_create();
