@@ -1,4 +1,4 @@
-.Dd November 18, 2014
+.Dd February 8, 2015
 .Dt PKG_REPOS 3
 .Os
 .Sh NAME
@@ -6,7 +6,7 @@
 .Nm pkg_repo_url , pkg_repo_ident , pkg_repo_name , pkg_repo_ident_from_name
 .Nm pkg_repo_key , pkg_repo_fingerprints
 .Nm pkg_repo_signature_type , pkg_repo_mirror_type , pkg_repo_enabled
-.Nm pkg_repo_find_ident , pkg_repo_find_name
+.Nm pkg_repo_priority , pkg_repo_find_ident , pkg_repo_find_name
 .Nd manipulate repositories
 .Sh LIBRARY
 .Lb libpkg
@@ -34,6 +34,8 @@
 .Fn pkg_repo_signature_type "struct pkg_repo *"
 .Ft bool
 .Fn pkg_repo_enabled "struct pkg_repo *"
+.Ft unsigned int
+.Fn pkg_repo_priority "struct pkg_repo *"
 .Ft mirror_t
 .Fn pkg_repo_mirror_type "struct pkg_repo *"
 .Ft struct pkg_repo *
@@ -101,6 +103,12 @@ if the repository is
 .Qq enabled .
 Otherwise, return
 .Cm false .
+.Pp
+.Fn pkg_repo_priority
+takes a pointer to a repository as argument and returns
+the priority of the repository as an unsigned integer.
+Packages ae chosed preferentially from the repository with the highest
+priority value and which has that package available. 
 .Pp
 .Fn pkg_repo_mirror_type
 takes a pointer to a repository as argument and returns the type of
