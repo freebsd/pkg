@@ -1251,7 +1251,6 @@ typedef enum {
 	PKG_EVENT_SANDBOX_GET_STRING,
 	PKG_EVENT_PROGRESS_START,
 	PKG_EVENT_PROGRESS_TICK,
-	PKG_EVENT_COUNTER,
 	PKG_EVENT_BACKUP,
 	PKG_EVENT_RESTORE,
 	/* errors */
@@ -1273,13 +1272,6 @@ typedef enum {
 	PKG_EVENT_PLUGIN_INFO,
 	PKG_EVENT_NOT_FOUND,
 } pkg_event_t;
-
-typedef enum {
-  PKG_EVENT_COUNTER_START,
-  PKG_EVENT_COUNTER_MINOR_TICK,
-  PKG_EVENT_COUNTER_MAJOR_TICK,
-  PKG_EVENT_COUNTER_END,
-} pkg_event_counter_t;
 
 struct pkg_event {
 	pkg_event_t type;
@@ -1427,11 +1419,6 @@ struct pkg_event {
 			int64_t current;
 			int64_t total;
 		} e_progress_tick;
-		struct {
-			const char *what;
-			int64_t count;
-			pkg_event_counter_t state;
-		} e_counter;
 	};
 };
 

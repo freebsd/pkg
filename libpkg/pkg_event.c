@@ -38,13 +38,6 @@
 static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
 
-static const char *counter_states[] = {
-	[PKG_EVENT_COUNTER_START]      = "start",
-	[PKG_EVENT_COUNTER_MINOR_TICK] = "minor_tick",
-	[PKG_EVENT_COUNTER_MAJOR_TICK] = "major_tick",
-	[PKG_EVENT_COUNTER_END]        = "end",
-};
-
 static char *
 sbuf_json_escape(struct sbuf *buf, const char *str)
 {
@@ -382,12 +375,6 @@ pipeevent(struct pkg_event *ev)
 		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
 		  "\"data\": { \"current\": %ld, \"total\" : %ld}}",
 		  ev->e_progress_tick.current, ev->e_progress_tick.total);
-		break;
-	case PKG_EVENT_COUNTER:
-		sbuf_printf(msg, "{ \"type\": \"COUNTER\", "
-		    "\"what\": %s, \"data\": %ld, \"state\": %s}",
-		    ev->e_counter.what, ev->e_counter.count,
-		    counter_states[ev->e_counter.state]);
 		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
@@ -1013,17 +1000,4 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 
 	pkg_emit_event(&ev);
 
-}
-
-void
-pkg_emit_counter(const char *what, int64_t count, pkg_event_counter_t state)
-{
-	struct pkg_event ev;
-
-	ev.type = PKG_EVENT_COUNTER;
-	ev.e_counter.what  = what;
-	ev.e_counter.count = count;
-	ev.e_counter.state = state;
-
-	pkg_emit_event(&ev);
 }

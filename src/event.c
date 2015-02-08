@@ -837,24 +837,6 @@ event_callback(void *data, struct pkg_event *ev)
 		progressbar_tick(ev->e_progress_tick.current,
 		    ev->e_progress_tick.total);
 		break;
-	case PKG_EVENT_COUNTER:
-		if (!quiet) {
-			switch (ev->e_counter.state) {
-			case PKG_EVENT_COUNTER_START:
-				printf("%-24s:", ev->e_counter.what);
-				break;
-			case PKG_EVENT_COUNTER_MINOR_TICK:
-				printf(".");
-				break;
-			case PKG_EVENT_COUNTER_MAJOR_TICK:
-				printf("[%ld]", ev->e_counter.count);
-				break;
-			case PKG_EVENT_COUNTER_END:
-				printf("<%ld>\n", ev->e_counter.count);
-				break;
-			}
-		}
-		break;
 	case PKG_EVENT_BACKUP:
 		sbuf_cat(msg_buf, "Backing up");
 		sbuf_finish(msg_buf);
