@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 1, 2015
+.Dd February 8, 2015
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -25,26 +25,26 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl nq
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
 .Fl m Ar metadatadir
 .Nm
-.Op Fl nq
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Fl M Ar manifest
 .Nm
-.Op Fl gnqx
+.Op Fl gnqvx
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Ar pkg-name ...
 .Nm
-.Op Fl nq
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -54,6 +54,7 @@
 .Nm
 .Op Cm --no-clobber
 .Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --plist Ar plist
@@ -62,6 +63,7 @@
 .Nm
 .Op Cm --no-clobber
 .Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
@@ -69,6 +71,7 @@
 .Nm
 .Op Cm --{glob,no-clobber,regex}
 .Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
@@ -76,6 +79,7 @@
 .Nm
 .Op Cm --no-clobber
 .Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
@@ -221,6 +225,15 @@ See
 for details.
 .It Fl q , Cm --quiet
 Force quiet output.
+This is the default, unless
+.Cm PKG_CREATE_VERBOSE
+is set to
+.Ar yes
+in
+.Pa pkg.conf .
+.It Fl v , Cm --verbose
+Force verbose output, the opposite of
+.Cm --quiet .
 .It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
