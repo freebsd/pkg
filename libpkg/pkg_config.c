@@ -1201,6 +1201,11 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
+unsigned int
+pkg_repo_priority(struct pkg_repo *r)
+{
+	return (r->priority);
+}
 
 /* Locate the repo by the file basename / database name */
 struct pkg_repo *
