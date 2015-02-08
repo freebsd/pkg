@@ -37,11 +37,10 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
-#define MINOR_TICK	100
-#define MAJOR_TICK	1000
+#define TICK	100
 
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
-static void counter_init(const char *what);
+static void counter_init(const char *what, int64_t max);
 static void counter_count();
 static void counter_end();
 
@@ -56,6 +55,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
+	int64_t		 nfiles;
 	const char	*relocation;
 	struct hardlinks *hardlinks = NULL;
 
@@ -72,7 +72,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	counter_init("file size/checksum");
+	nfiles = HASH_COUNT(pkg->files);
+	counter_init("file sizes/checksums", nfiles);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
@@ -137,7 +138,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		sbuf_delete(b);
 	}
 
-	counter_init("packaging files");
+	counter_init("packing files", nfiles);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
@@ -153,7 +154,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	counter_init("directories");
+	nfiles = HASH_COUNT(pkg->dirs);
+	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
@@ -417,14 +419,32 @@ pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
 }
 
 static int64_t	count;
+static int64_t  maxcount;
 static const char *what;
 
+static int magnitude(int64_t num)
+{
+	int oom;
+
+	if (num == 0)
+		return (1);
+	if (num < 0)
+		num = -num;
+
+	for (oom = 1; num >= 10; oom++)
+		num /= 10;
+
+	return (oom);
+}
+
 static void
-counter_init(const char *count_what)
+counter_init(const char *count_what, int64_t max)
 {
 	count = 0;
 	what = count_what;
-	pkg_emit_counter(what, count, PKG_EVENT_COUNTER_START);
+	maxcount = max;
+	pkg_emit_progress_start("%-20s%*s[%ld]", what,
+	    6 - magnitude(maxcount), " ", maxcount);
 
 	return;
 }
@@ -434,10 +454,8 @@ counter_count()
 {
 	count++;
 
-	if (count % MAJOR_TICK == 0)
-		pkg_emit_counter(what, count, PKG_EVENT_COUNTER_MAJOR_TICK);
-	else if (count % MINOR_TICK == 0)
-		pkg_emit_counter(what, count, PKG_EVENT_COUNTER_MINOR_TICK);
+	if (count % TICK == 0)
+		pkg_emit_progress_tick(count, maxcount);
 
 	return;
 }
@@ -445,6 +463,6 @@ counter_count()
 static void
 counter_end()
 {
-	pkg_emit_counter(what, count, PKG_EVENT_COUNTER_END);
+	pkg_emit_progress_tick(count, maxcount);
 	return;
 }
