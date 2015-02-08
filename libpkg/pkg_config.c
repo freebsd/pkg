@@ -348,6 +348,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Prefer repos with higher priority during upgrade"
 	},
+	{
+		PKG_BOOL,
+		"PKG_CREATE_VERBOSE",
+		"NO",
+		"Enable verbose mode for 'pkg create'",
+	},
 };
 
 static bool parsed = false;
