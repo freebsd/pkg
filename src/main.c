@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
@@ -340,10 +340,13 @@ show_repository_info(void)
 			break;
 		}
 
-		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s",
+		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s,\n"
+		       "    %-16s: %u",
 		    pkg_repo_name(repo),
                     "url", pkg_repo_url(repo),
-		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no");
+		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
+		    "priority", pkg_repo_priority(repo));
+
 		if (pkg_repo_mirror_type(repo) != NOMIRROR)
 			printf(",\n    %-16s: \"%s\"",
 			    "mirror_type", mirror);
@@ -374,7 +377,7 @@ show_version_info(int version)
 	printf("%s\n", pkg_config_dump());
 	show_plugin_info();
 	show_repository_info();
-	
+
 	exit(EX_OK);
 	/* NOTREACHED */
 }
@@ -493,7 +496,7 @@ expand_aliases(int argc, char ***argv)
 	char			**oldargv = *argv;
 	char			**newargv;
 	char			 *args;
-	int			  newargc; 
+	int			  newargc;
 	int			  spaces;
 	int			  i;
 	size_t			  veclen;
@@ -516,7 +519,7 @@ expand_aliases(int argc, char ***argv)
 	 * counting the number of whitespace characters in it. This
 	 * will be at minimum one less than the final argc. We'll be
 	 * consuming one of the orginal argv, so that balances
-	 * out. */ 
+	 * out. */
 
 	spaces = pkg_utils_count_spaces(alias_value);
 	arglen = strlen(alias_value) + 1;
