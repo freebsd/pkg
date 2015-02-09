@@ -116,6 +116,12 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"DEFAULT_ALWAYS_YES",
+		"NO",
+		"Default to 'yes' for all pkg(8) questions",
+	},
+	{
+		PKG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		"NO",
 		"Answer 'yes' to all pkg(8) questions",

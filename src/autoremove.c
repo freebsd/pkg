@@ -136,7 +136,7 @@ exec_autoremove(int argc, char **argv)
 				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
 		if (!dry_run)
 			rc = query_yesno(false,
-		            "\nProceed with deinstalling packages? [y/N]: ");
+		            "\nProceed with deinstalling packages? ");
 	}
 	if (!rc || dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
 		goto cleanup;

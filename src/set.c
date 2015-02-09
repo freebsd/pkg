@@ -249,11 +249,11 @@ exec_set(int argc, char **argv)
 		rc = yes;
 		if (!yes) {
 			if (pkg != NULL)
-				rc = query_yesno(false, "Change %S from %S to %S for %n-%v? [y/N]: ",
+				rc = query_yesno(false, "Change %S from %S to %S for %n-%v? ",
 						changed, oldvalue, newvalue, pkg, pkg);
 			else
-				rc = query_yesno(false, "Change %S from %S to %S for all dependencies? "
-						"[y/N]: ", changed, oldvalue, newvalue);
+				rc = query_yesno(false, "Change %S from %S to %S for all dependencies? ",
+						changed, oldvalue, newvalue);
 		}
 		if (pkg != NULL && rc) {
 			if (pkgdb_set(db, pkg, field, newvalue) != EPKG_OK) {
@@ -280,11 +280,11 @@ exec_set(int argc, char **argv)
 				if (!rc) {
 					if (newautomatic)
 						rc = query_yesno(false,
-								"Mark %n-%v as automatically installed? [y/N]: ",
+								"Mark %n-%v as automatically installed? ",
 								pkg, pkg);
 					else
 						rc = query_yesno(false,
-								"Mark %n-%v as not automatically installed? [y/N]: ",
+								"Mark %n-%v as not automatically installed? ",
 								pkg, pkg);
 				}
 				if (rc)

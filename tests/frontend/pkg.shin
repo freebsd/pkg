@@ -26,6 +26,7 @@ pkg_config_defaults_body()
 	-o match:'^ *PKG_CACHEDIR = "/var/cache/pkg";$' \
 	-o match:'^ *PORTSDIR = "/usr/ports";$' \
 	-o match:'^ *HANDLE_RC_SCRIPTS = false;$' \
+	-o match:'^ *DEFAULT_ALWAYS_YES = false;$' \
 	-o match:'^ *ASSUME_ALWAYS_YES = false;$' \
 	-o match:'^ *PLIST_KEYWORDS_DIR = "";$' \
 	-o match:'^ *SYSLOG = true;$' \

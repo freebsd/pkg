@@ -187,7 +187,7 @@ exec_upgrade(int argc, char **argv)
 
 			if (!dry_run)
 				rc = query_yesno(false, "\nProceed with this "
-				    "action? [y/N]: ");
+				    "action? ");
 			else
 				rc = false;
 		}
