@@ -122,7 +122,7 @@ exec_set(int argc, char **argv)
 		case 'A':
 			sets |= AUTOMATIC;
 			newautomatic = optarg[0] - '0';
-			if (newautomatic != 0 & newautomatic != 1)
+			if (newautomatic != 0 && newautomatic != 1)
 				errx(EX_USAGE, "Wrong value for -A. "
 				    "Expecting 0 or 1, got: %s",
 				    optarg);
