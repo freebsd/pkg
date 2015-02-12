@@ -303,7 +303,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 
 #ifdef HAVE_CHFLAGS
 	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1) {
-		if (st.st_flags & NOCHANGESFLAGS)
+		if (st.st_flags & NOCHANGESFLAGS) {
 #ifdef HAVE_CHFLAGSAT
 			chflagsat(pkg->rootfd, path,
 			    st.st_flags & ~NOCHANGESFLAGS,
@@ -315,6 +315,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 				close(fd);
 			}
 #endif
+		}
 	}
 #endif
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
