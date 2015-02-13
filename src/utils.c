@@ -726,8 +726,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 }
 
 static void
-display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
-		int64_t dlsize)
+display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 {
 	const char *why;
 	int64_t pkgsize;
@@ -852,7 +851,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			}
 			printf("%s:\n", pkg_display_messages[type]);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
-				display_summary_item(cur, newsize, dlsize);
+				display_summary_item(cur, dlsize);
 				displayed ++;
 				free(cur);
 			}
