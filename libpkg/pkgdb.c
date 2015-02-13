@@ -853,7 +853,7 @@ pkgdb_access(unsigned mode, unsigned database)
 }
 
 static void
-pkgdb_profile_callback(void *ud, const char *req, sqlite3_uint64 nsec)
+pkgdb_profile_callback(void *ud __unused, const char *req, sqlite3_uint64 nsec)
 {
 	/* According to sqlite3 documentation, nsec has milliseconds accuracy */
 	nsec /= 1000000LLU;
