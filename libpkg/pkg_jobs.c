@@ -1655,7 +1655,7 @@ again:
 					fclose(spipe[1]);
 
 					if (ret == EPKG_OK) {
-						ret = pkg_solve_parse_sat_output(spipe[0], problem, j);
+						ret = pkg_solve_parse_sat_output(spipe[0], problem);
 					}
 
 					fclose(spipe[0]);
@@ -1760,7 +1760,7 @@ pkg_jobs_type(struct pkg_jobs *j)
 }
 
 static int
-pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_rc,
+pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 		struct pkg_manifest_key *keys)
 {
 	struct pkg *new, *old;
@@ -1830,7 +1830,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	struct pkg_manifest_key *keys = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
-	bool handle_rc = false;
 
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
@@ -1840,8 +1839,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
-
-	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
 			PKGDB_LOCK_EXCLUSIVE);
@@ -1881,14 +1878,12 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				goto cleanup;
 			break;
 		case PKG_SOLVED_INSTALL:
-			retcode = pkg_jobs_handle_install(ps,
-					j, handle_rc, keys);
+			retcode = pkg_jobs_handle_install(ps, j, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
 		case PKG_SOLVED_UPGRADE:
-			retcode = pkg_jobs_handle_install(ps,
-					j, handle_rc, keys);
+			retcode = pkg_jobs_handle_install(ps, j, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
