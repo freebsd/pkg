@@ -232,7 +232,7 @@ exec_install(int argc, char **argv)
 
 			if (!dry_run) {
 				rc = query_yesno(false,
-				    "\nProceed with this action? [y/N]: ");
+				    "\nProceed with this action? ");
 			}
 			else {
 				rc = false;

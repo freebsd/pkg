@@ -293,6 +293,7 @@ int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,
 			 char *multiline);
 
+extern int default_yes;
 extern int yes;
 extern int dry_run;
 extern int auto_update;

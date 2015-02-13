@@ -63,26 +63,40 @@ query_tty_yesno(bool r, const char *msg, ...)
 	int	 tty_fd;
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
+	char	yesnomsg[1024];
 
 #ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
 #endif
 	tty_fd = open(_PATH_TTY, tty_flags);
-	if (tty_fd == -1)
-		return (r);		/* No ctty -- return the
-					 * default answer */
+	if (tty_fd == -1) {
+		/* No ctty -- return the default answer */
+		if (default_yes)
+			return (true);
+		return (r);
+	}
 
 	tty = fdopen(tty_fd, "r+");
 
+	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
+	if (default_yes || r)
+		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
+	else
+		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+
 	va_start(ap, msg);
-	pkg_vfprintf(tty, msg, ap);
+	pkg_vfprintf(tty, yesnomsg, ap);
 	va_end(ap);
 
 	c = getc(tty);
 	if (c == 'y' || c == 'Y')
 		r = true;
-	else if (c == '\n' || c == EOF) {
+	else if (c == 'n' || c == 'N')
 		r = false;
+	else if (c == '\n' || c == EOF) {
+                if (default_yes)
+			r = true;
+		/* Else, r is not modified. It's default value is kept. */
 		goto cleanup;
 	}
 
@@ -103,22 +117,31 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
+	char	yesnomsg[1024];
 
 	/* We use default value of yes or default in case of quiet mode */
 	if (quiet)
-		return (yes || r);
+		return (yes || default_yes || r);
 
 	/* Do not query user if we have specified yes flag */
 	if (yes)
 		return (true);
 
-	pkg_vasprintf(&out, msg, ap);
+	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
+	if (default_yes || r)
+		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
+	else
+		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+
+	pkg_vasprintf(&out, yesnomsg, ap);
 	printf("%s", out);
 
 	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
 
 			if (linelen == 1 && line[0] == '\n') {
+				if (default_yes)
+					r = true;
 				break;
 			}
 			else if (linelen == 2) {
@@ -149,7 +172,9 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				continue;
 			}
 			else {
-				/* Assume EOF as false */
+				if (default_yes)
+					r = true;
+				/* Else, assume EOF as false */
 				r = false;
 				break;
 			}
