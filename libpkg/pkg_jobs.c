@@ -423,7 +423,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
  * reverse - try to upgrade reverse deps as well
  */
 static void
-pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
+pkg_jobs_process_add_request(struct pkg_jobs *j)
 {
 	bool force = j->flags & PKG_FLAG_FORCE,
 		 reverse = j->flags & PKG_FLAG_RECURSIVE,
@@ -496,7 +496,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j, bool top)
 				pkg_jobs_add_req_from_universe(&j->request_add, *pun, false, true);
 			}
 			/* Now recursively process all items checked */
-			pkg_jobs_process_add_request(j, false);
+			pkg_jobs_process_add_request(j);
 		}
 		utarray_free(to_process);
 	}
@@ -1506,7 +1506,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		}
 	}
 
-	pkg_jobs_process_add_request(j, true);
+	pkg_jobs_process_add_request(j);
 	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
