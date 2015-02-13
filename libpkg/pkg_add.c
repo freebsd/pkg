@@ -81,7 +81,7 @@ pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
 }
 
 static void
-attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file *rcf,
+attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
   struct pkg *local, char *pathname, const char *path, struct sbuf *newconf)
 {
 	const struct pkg_file *lf = NULL;
@@ -222,7 +222,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		 * check if the file is already provided by previous package
 		 */
 		if (!automerge)
-			attempt_to_merge(renamed, rf, rcf, local, pathname, path, newconf);
+			attempt_to_merge(renamed, rcf, local, pathname, path, newconf);
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
 			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));

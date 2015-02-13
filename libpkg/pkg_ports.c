@@ -1071,7 +1071,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 }
 
 int
-plist_parse_line(struct pkg *pkg, struct plist *plist, char *line)
+plist_parse_line(struct plist *plist, char *line)
 {
 	char *keyword, *buf;
 
@@ -1202,7 +1202,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	while ((linelen = getline(&line, &linecap, plist_f)) > 0) {
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
-		ret = plist_parse_line(pkg, pplist, line);
+		ret = plist_parse_line(pplist, line);
 		if (rc == EPKG_OK)
 			rc = ret;
 	}

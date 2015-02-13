@@ -356,7 +356,7 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 
 static int
 pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
-		struct pkg_manifest_key **keys, struct pkg **p __unused, bool is_legacy,
+		struct pkg_manifest_key **keys, struct pkg **p __unused,
 		struct pkg_repo *repo)
 {
 	int rc = EPKG_OK;
@@ -441,7 +441,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	struct pkg_manifest_key *keys = NULL;
 	unsigned char *map = MAP_FAILED;
 	size_t len = 0;
-	bool in_trans = false, legacy_repo = false;
+	bool in_trans = false;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -500,7 +500,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		if ((cnt % 10 ) == 0)
 			pkg_emit_progress_tick(next - map, len);
 		rc = pkg_repo_binary_add_from_manifest(walk, sqlite, next - walk,
-		    &keys, &pkg, legacy_repo, repo);
+		    &keys, &pkg, repo);
 		if (rc != EPKG_OK) {
 			pkg_emit_progress_tick(len, len);
 			break;

@@ -1054,7 +1054,7 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 }
 
 int
-pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pkg_jobs *j)
+pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_ordered_variable *ordered_variables = NULL, *nord;
 	struct pkg_solve_variable *var;

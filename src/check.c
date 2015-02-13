@@ -56,7 +56,7 @@ static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh,
     bool noinstall, struct sbuf *out);
 static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs);
 static void deps_free(struct deps_head *dh);
-static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
+static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs);
 static void check_summary(struct pkgdb *db, struct deps_head *dh);
 
 static int
@@ -127,7 +127,7 @@ deps_free(struct deps_head *dh)
 }
 
 static int
-fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
+fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs)
 {
 	struct pkg_jobs *jobs = NULL;
 	struct deps_entry *e = NULL;
@@ -493,7 +493,7 @@ exec_check(int argc, char **argv)
 			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
 			if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 					PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-				ret = fix_deps(db, &dh, nbpkgs, yes);
+				ret = fix_deps(db, &dh, nbpkgs);
 				if (ret == EPKG_OK)
 					check_summary(db, &dh);
 				else if (ret == EPKG_ENODB) {
