@@ -60,13 +60,13 @@ STAILQ_HEAD(pkg_head, pkg_entry);
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-Onq] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Onqv] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-Onq] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Onqv] [-f format] [-o outdir] "
 		"[-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ognqx] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Ognqvx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-Onq] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Onqv] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
