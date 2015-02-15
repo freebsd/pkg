@@ -2,7 +2,7 @@
 
 atf_test_case package_split
 package_split_head() {
-	atf_set "descr" "testig package splitting"
+	atf_set "descr" "testing package splitting"
 }
 
 package_split_body() {
