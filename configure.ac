@@ -206,7 +206,7 @@ PKG_PROG_PKG_CONFIG
 
 AC_DEFUN([AC_PROG_GIT], [AC_CHECK_PROG(GITBIN,git,yes)])
 AC_PROG_GIT
-if test x"${GITBIN}" == x"yes" ; then
+if test x"${GITBIN}" = x"yes" ; then
 	AC_MSG_CHECKING([for git head])
 	if test -d "${GIT_DIR:-${ac_top_srcdir:-./}/.git}" ; then
 		GIT_HEAD=`git rev-parse --short HEAD`
