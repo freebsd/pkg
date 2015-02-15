@@ -318,6 +318,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 		}
 	}
 #endif
+	pkg_debug(1, "Deleting file: '%s'", path);
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
 		if (force < 2)
 			pkg_emit_errno("unlinkat", path);
