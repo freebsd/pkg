@@ -1,0 +1,183 @@
+#! /usr/bin/env atf-sh
+
+atf_test_case create_from_plist
+create_from_plist_head() {
+	atf_set "descr" "Testing pkg create from plist"
+}
+
+genmanifest() {
+	cat << EOF >> +MANIFEST
+name: test
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+desc: <<EOD
+Yet another test
+EOD
+EOF
+}
+
+genplist() {
+	cat << EOF >> test.plist
+$@
+EOF
+}
+
+preparetestcredentials() {
+	export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
+
+	touch file1
+
+	genmanifest
+	genplist "@$1 file1"
+}
+
+basic_validation() {
+	test -f test-1.txz || atf_fail "Package not created"
+	xz -t test-1.txz || atf_fail "XZ integrity check failed"
+}
+
+create_from_plist_body() {
+	export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
+
+	TMPDIR=`pwd`
+	touch file1
+	genmanifest
+	genplist "file1"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	basic_validation
+	atf_check \
+		-o match:"-rw-r--r-- .*root +wheel.* /file1$" \
+		-e empty \
+		-s exit:0 \
+		tar tvf test-1.txz
+}
+
+atf_test_case create_from_plist_set_owner
+create_from_plist_set_owner_head() {
+	atf_set "descr" "Testing credentials set from the plist"
+}
+
+create_from_plist_set_owner_body() {
+
+	preparetestcredentials "(plop,,)"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+
+	atf_check \
+		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
+		-e empty \
+		-s exit:0 \
+		tar tvf test-1.txz
+}
+
+atf_test_case create_from_plist_set_group
+create_from_plist_set_owner_head() {
+	atf_set "descr" "Testing credentials set from the plist"
+}
+
+create_from_plist_set_group_body() {
+
+	preparetestcredentials "(,bla,)"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+
+	atf_check \
+		-o match:"-rw-r--r-- .*root +bla.* /file1$" \
+		-e empty \
+		-s exit:0 \
+		tar tvf test-1.txz
+}
+
+atf_test_case create_from_plist_gather_mode
+create_from_plist_gather_mode_head() {
+	atf_set "descr" "Testing credentials set from the plist"
+}
+
+create_from_plist_gather_mode_body() {
+
+	preparetestcredentials "(plop,bla,)"
+
+	chmod 2755 file1
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check \
+		-o match:"-rwxr-sr-x .*plop +bla.* /file1$" \
+		-e empty \
+		-s exit:0 \
+		tar tvf test-1.txz
+}
+
+atf_test_case create_from_plist_set_mode
+create_from_plist_set_mode_head() {
+	atf_set "descr" "Testing credentials set from the plist"
+}
+create_from_plist_set_mode_body() {
+
+	preparetestcredentials "(,,2755)"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check \
+		-o match:"-rwxr-sr-x .*root +wheel.* /file1$" \
+		-e empty \
+		-s exit:0 \
+		tar tvf test-1.txz
+}
+
+atf_test_case create_from_plist_bad_creds
+create_from_plist_bad_creds_head() {
+	atf_set "descr" "Testing credentials set from the plist"
+}
+create_from_plist_bad_creds_body() {
+
+	preparetestcredentials "(plop,)"
+
+	atf_check \
+		-o empty \
+		-e inline:"pkg: Malformed keyword , expecting @keyword or @keyword(owner,group,mode)\n" \
+		-s exit:70 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+atf_init_test_cases() {
+        . $(atf_get_srcdir)/test_environment.sh
+
+	atf_add_test_case create_from_plist
+	atf_add_test_case create_from_plist_set_owner
+	atf_add_test_case create_from_plist_set_group
+	atf_add_test_case create_from_plist_gather_mode
+	atf_add_test_case create_from_plist_set_mode
+	atf_add_test_case create_from_plist_bad_creds
+}

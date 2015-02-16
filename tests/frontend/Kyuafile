@@ -10,4 +10,4 @@ atf_test_program{name='register.sh'}
 atf_test_program{name='packagesplit.sh'}
 atf_test_program{name='lock.sh'}
 atf_test_program{name='delete.sh'}
-
+atf_test_program{name='create.sh'}
