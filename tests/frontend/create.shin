@@ -120,7 +120,7 @@ create_from_plist_gather_mode_body() {
 
 	preparetestcredentials "(plop,bla,)"
 
-	chmod 2755 file1 || atf_fail "Impossible to change mode"
+	chmod 777 file1 || atf_fail "Impossible to change mode"
 
 	atf_check \
 		-o empty \
@@ -129,7 +129,7 @@ create_from_plist_gather_mode_body() {
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
 	atf_check \
-		-o match:"-rwxr-sr-x .*plop +bla.* /file1$" \
+		-o match:"-rwxrwxrwx .*plop +bla.* /file1$" \
 		-e empty \
 		-s exit:0 \
 		tar tvf test-1.txz
