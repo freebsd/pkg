@@ -528,6 +528,9 @@ ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 	p->ignore_next = true;
 	free_file_attr(a);
 
+	if (developer_mode)
+		pkg_emit_error("Warning: @ignore is deprecated");
+
 	return (EPKG_OK);
 }
 

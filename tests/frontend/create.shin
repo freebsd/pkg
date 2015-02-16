@@ -203,6 +203,35 @@ create_from_plist_dirrm_body() {
 	done
 }
 
+atf_test_case create_from_plist_ignore
+create_from_plist_ignore_head() {
+	atf_set "descr" "Testing @ignore"
+}
+create_from_plist_ignore_body() {
+	export INSTALL_AS_USER=yes
+
+	genmanifest
+	genplist "@ignore
+aline"
+	atf_check \
+		-o empty \
+		-e empty \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	basic_validation
+
+	atf_check \
+		-o inline:"+COMPACT_MANIFEST\n+MANIFEST\n" \
+		-e empty \
+		-s exit:0 \
+		tar tf test-1.txz
+
+	atf_check \
+		-o empty \
+		-e inline:"pkg: Warning: @ignore is deprecated\n" \
+		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
@@ -213,4 +242,5 @@ atf_init_test_cases() {
 	atf_add_test_case create_from_plist_set_mode
 	atf_add_test_case create_from_plist_bad_creds
 	atf_add_test_case create_from_plist_dirrm
+	atf_add_test_case create_from_plist_ignore
 }
