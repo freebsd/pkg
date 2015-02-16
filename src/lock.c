@@ -269,11 +269,8 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	if (!read_only)
 		exitcode = do_lock_unlock(db, match, pkgname, action);
 
-	if (show_locked) { 
+	if (show_locked)
 		retcode = list_locked(db);
-		if (retcode != EPKG_END)
-			exitcode = EX_IOERR;
-	}
 
 	pkgdb_close(db);
 
