@@ -31,7 +31,7 @@ lock_body() {
 	atf_check \
 		-o match:"sqlite3-3.8.6" \
 		-e empty \
-		-s exit:74 \
+		-s exit:0 \
 		pkg lock -l
 
 	atf_check \
@@ -50,7 +50,7 @@ lock_body() {
 	atf_check \
                 -o inline:"Currently locked packages:\n" \
                 -e empty \
-                -s exit:74 \
+                -s exit:0 \
                 pkg lock -l
 
 	atf_check \
@@ -69,7 +69,7 @@ lock_body() {
                 -o match:"sqlite3.*" \
 		-o match:"png.*" \
                 -e empty \
-                -s exit:74 \
+                -s exit:0 \
                 pkg lock -l
 
        atf_check \
@@ -81,7 +81,7 @@ lock_body() {
         atf_check \
                 -o inline:"Currently locked packages:\n" \
                 -e empty \
-                -s exit:74 \
+                -s exit:0 \
                 pkg lock -l
 
 
