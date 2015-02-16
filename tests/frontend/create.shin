@@ -80,7 +80,7 @@ create_from_plist_set_owner_body() {
 		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
-
+	basic_validation
 	atf_check \
 		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
 		-e empty \
@@ -103,7 +103,7 @@ create_from_plist_set_group_body() {
 		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
-
+	basic_validation
 	atf_check \
 		-o match:"-rw-r--r-- .*root +bla.* /file1$" \
 		-e empty \
@@ -128,6 +128,7 @@ create_from_plist_gather_mode_body() {
 		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
+	basic_validation
 	atf_check \
 		-o match:"-rwxrwxrwx .*plop +bla.* /file1$" \
 		-e empty \
@@ -149,6 +150,7 @@ create_from_plist_set_mode_body() {
 		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
+	basic_validation
 	atf_check \
 		-o match:"-rwxr-sr-x .*root +wheel.* /file1$" \
 		-e empty \
@@ -171,6 +173,36 @@ create_from_plist_bad_creds_body() {
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
+atf_test_case create_from_plist_dirrm
+create_from_plist_dirrm_head() {
+	atf_set "descr" "Testing @dirrm(try) set from the plist"
+}
+
+create_from_plist_dirrm_body() {
+	export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
+
+	mkdir testdir
+
+	genmanifest
+	for dir in dirrm dirrmtry ; do
+		rm test.plist
+		genplist "@${dir} testdir"
+
+		atf_check \
+			-o empty \
+			-e empty \
+			pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+		basic_validation
+
+		atf_check \
+			-o empty \
+			-e inline:"pkg: Warning: @dirrm[try] is deprecated, please use @dir\n" \
+			pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
+	done
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
@@ -180,4 +212,5 @@ atf_init_test_cases() {
 	atf_add_test_case create_from_plist_gather_mode
 	atf_add_test_case create_from_plist_set_mode
 	atf_add_test_case create_from_plist_bad_creds
+	atf_add_test_case create_from_plist_dirrm
 }
