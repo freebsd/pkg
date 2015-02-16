@@ -50,8 +50,64 @@ EOF
 	test -d ${tmpdir} || atf_fail "Prefix have been removed"
 }
 
+atf_test_case simple_delete_prefix_ending_with_slash
+simple_delete_prefix_ending_with_slash_head() {
+	atf_set "descr" "Testing pkg delete when prefix end with /"
+}
+
+simple_delete_prefix_ending_with_slash_body() {
+	export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
+
+	tmpdir=`pwd`
+	touch file1
+	mkdir dir
+	touch dir/file2
+
+	cat << EOF >> test.ucl
+name: test
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: ${tmpdir}/
+desc: <<EOD
+Yet another test
+EOD
+files: {
+    ${tmpdir}/file1: "",
+    ${tmpdir}/dir/file2: "",
+}
+EOF
+
+	atf_check \
+		-o match:".*Installing.*\.\.\.$" \
+		-e empty \
+		-s exit:0 \
+		pkg register -M test.ucl
+
+	atf_check \
+		-o match:".*Deinstalling.*" \
+		-e empty \
+		-s exit:0 \
+		pkg delete -y test
+
+	test -f file1 && atf_fail "'file1' still present"
+	test -f dir/file2 && atf_fail "'dir/file2' still present"
+	test -d dir && atf_fail "'dir' still present"
+	test -d ${tmpdir} || atf_fail "Prefix have been removed"
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
 	atf_add_test_case simple_delete
+}
+atf_init_test_cases() {
+        . $(atf_get_srcdir)/test_environment.sh
+
+	atf_add_test_case simple_delete
+	atf_add_test_case simple_delete_prefix_ending_with_slash
 }

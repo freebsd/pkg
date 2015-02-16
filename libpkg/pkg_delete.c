@@ -273,6 +273,8 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
+	while (prefix_rel[len - 1] == '/')
+		len--;
 
 	/* Regular files and links */
 	/* check sha256 */
@@ -376,6 +378,8 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
+	while (prefix_rel[len - 1] == '/')
+		len--;
 
 	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
 		pkg_add_dir_to_del(pkg, NULL, path);
