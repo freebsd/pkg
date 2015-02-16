@@ -442,6 +442,7 @@ struct file_attr {
 	char *owner;
 	char *group;
 	mode_t mode;
+	u_long fflags;
 };
 
 struct action {

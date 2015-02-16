@@ -158,19 +158,26 @@ create_from_plist_set_mode_body() {
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_bad_creds
-create_from_plist_bad_creds_head() {
+atf_test_case create_from_plist_mini
+create_from_plist_mini_head() {
 	atf_set "descr" "Testing credentials set from the plist"
 }
-create_from_plist_bad_creds_body() {
+create_from_plist_mini_body() {
 
 	preparetestcredentials "(plop,)"
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Malformed keyword , expecting @keyword or @keyword(owner,group,mode)\n" \
-		-s exit:70 \
+		-e empty \
+		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	basic_validation
+	atf_check \
+		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
+		-e empty \
+		-s exit:0 \
+		tar tvf test-1.txz
 }
 
 atf_test_case create_from_plist_dirrm
@@ -232,6 +239,36 @@ aline"
 		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
+atf_test_case create_from_plist_fflags
+create_from_plist_fflags_head() {
+	atf_set "descr" "Test fflags set from plist"
+}
+
+create_from_plist_fflags_body() {
+	preparetestcredentials "(,,,schg)"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+atf_test_case create_from_plist_bad_fflags
+create_from_plist_bad_fflags_head() {
+	atf_set "descr" "Test bad fflags set from plist"
+}
+
+create_from_plist_bad_fflags_body() {
+	preparetestcredentials "(,,,schg,bad)"
+
+	atf_check \
+		-o empty \
+		-e inline:"pkg: Malformed keyword '', wrong fflags\n" \
+		-s exit:70 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
@@ -240,7 +277,9 @@ atf_init_test_cases() {
 	atf_add_test_case create_from_plist_set_group
 	atf_add_test_case create_from_plist_gather_mode
 	atf_add_test_case create_from_plist_set_mode
-	atf_add_test_case create_from_plist_bad_creds
+	atf_add_test_case create_from_plist_mini
 	atf_add_test_case create_from_plist_dirrm
 	atf_add_test_case create_from_plist_ignore
+	atf_add_test_case create_from_plist_fflags
+	atf_add_test_case create_from_plist_bad_fflags
 }

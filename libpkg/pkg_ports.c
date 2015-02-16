@@ -982,6 +982,71 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	return (ret);
 }
 
+static struct file_attr *
+parse_keyword_args(char *args, char *keyword)
+{
+	struct file_attr *attr;
+	char *owner, *group, *permstr, *fflags;
+	void *set = NULL;
+	u_long fset = 0;
+
+	owner = group = permstr = fflags = NULL;
+
+	/* remove last ')' */
+	args[strlen(args) -1] = '\0';
+
+	do {
+		args[0] = '\0';
+		args++;
+		if (*args == '\0')
+			break;
+		if (owner == NULL) {
+			owner = args;
+		} else if (group == NULL) {
+			group = args;
+		} else if (permstr == NULL) {
+			permstr = args;
+		} else if (fflags == NULL) {
+			fflags = args;
+			break;
+		} else {
+			pkg_emit_error("Malformed keyword '%s', expecting "
+			    "keyword or keyword(owner,group,mode,fflags...)",
+			    keyword);
+			return (NULL);
+		}
+	} while ((args = strchr(args, ',')) != NULL);
+
+	if (fflags != NULL && *fflags != '\0') {
+		if (strtofflags(&fflags, &fset, NULL) != 0) {
+			pkg_emit_error("Malformed keyword '%s', wrong fflags",
+			    keyword);
+			return (NULL);
+		}
+	}
+
+	if (permstr != NULL && *permstr != '\0') {
+		if ((set = parse_mode(permstr)) == NULL) {
+			pkg_emit_error("Malformed keyword '%s', wrong mode "
+			    "section", keyword);
+			return (NULL);
+		}
+	}
+
+	attr = calloc(1, sizeof(struct file_attr));
+	if (owner != NULL && *owner != '\0')
+		attr->owner = strdup(owner);
+	if (group != NULL && *group != '\0')
+		attr->group = strdup(group);
+	if (set != NULL) {
+		attr->mode = getmode(set, 0);
+		free(set);
+	}
+	attr->fflags = fset;
+
+	return (attr);
+}
+
 static int
 parse_keywords(struct plist *plist, char *keyword, char *line)
 {
@@ -990,10 +1055,6 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	struct file_attr *attr = NULL;
 	char *tmp;
 	int ret = EPKG_FATAL;
-	char *owner = NULL;
-	char *group = NULL;
-	char *permstr = NULL;
-	void *set = NULL;
 
 	if ((tmp = strchr(keyword, '(')) != NULL &&
 	    keyword[strlen(keyword) -1] != ')') {
@@ -1003,43 +1064,9 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	}
 
 	if (tmp != NULL) {
-		tmp[0] = '\0';
-		tmp++;
-		tmp[strlen(tmp) -1] = '\0';
-		owner = tmp;
-		if ((tmp = strchr(tmp, ',')) == NULL) {
-			pkg_emit_error("Malformed keyword %s, expecting @keyword "
-			    "or @keyword(owner,group,mode)", keyword);
+		attr = parse_keyword_args(tmp, keyword);
+		if (attr == NULL)
 			return (ret);
-		}
-		tmp[0] = '\0';
-		tmp++;
-		group = tmp;
-		if ((tmp = strchr(tmp, ',')) == NULL) {
-			pkg_emit_error("Malformed keyword %s, expecting @keyword "
-			    "or @keyword(owner,group,mode)", keyword);
-			return (ret);
-		}
-		tmp[0] = '\0';
-		tmp++;
-		permstr = tmp;
-		if (*permstr != '\0' && ((set = parse_mode(permstr)) == NULL)) {
-			pkg_emit_error("Malformed keyword %s, wrong mode section",
-			    keyword);
-			return (ret);
-		}
-
-		/* remove the trailing ) */
-		permstr[strlen(permstr) - 1] = '\0';
-		attr = calloc(1, sizeof(struct file_attr));
-		if (*owner != '\0')
-			attr->owner = strdup(owner);
-		if (*group != '\0')
-			attr->group = strdup(group);
-		if (set != NULL) {
-			attr->mode = getmode(set, 0);
-			free(set);
-		}
 	}
 
 	/* if keyword is empty consider it as a file */
