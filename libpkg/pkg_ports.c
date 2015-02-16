@@ -1018,11 +1018,16 @@ parse_keyword_args(char *args, char *keyword)
 	} while ((args = strchr(args, ',')) != NULL);
 
 	if (fflags != NULL && *fflags != '\0') {
+#ifdef HAVE_STRTOFFLAGS
 		if (strtofflags(&fflags, &fset, NULL) != 0) {
 			pkg_emit_error("Malformed keyword '%s', wrong fflags",
 			    keyword);
 			return (NULL);
 		}
+#else
+		pkg_emit_error("Malformed keyword '%s', maximum 3 arguments "
+		    "are accepted", keyword);
+#endif
 	}
 
 	if (permstr != NULL && *permstr != '\0') {

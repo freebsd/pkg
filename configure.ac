@@ -154,6 +154,7 @@ AC_CHECK_HEADER([regex.h], [
 	[AC_MSG_ERROR([unable to find the regex.h header])],
 	[#include <sys/types.h>])
 
+AC_CHECK_FUNCS_ONCE([strtofflags])
 AC_CHECK_FUNCS_ONCE([posix_fallocate])
 AC_CHECK_FUNCS_ONCE([usleep])
 AC_CHECK_FUNCS_ONCE([localtime_r])

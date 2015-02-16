@@ -280,6 +280,8 @@ atf_init_test_cases() {
 	atf_add_test_case create_from_plist_mini
 	atf_add_test_case create_from_plist_dirrm
 	atf_add_test_case create_from_plist_ignore
-	atf_add_test_case create_from_plist_fflags
-	atf_add_test_case create_from_plist_bad_fflags
+	if [ `uname -s` != "Linux" ] ; then
+		atf_add_test_case create_from_plist_fflags
+		atf_add_test_case create_from_plist_bad_fflags
+	fi
 }
