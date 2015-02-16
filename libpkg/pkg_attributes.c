@@ -97,6 +97,7 @@ pkg_file_new(struct pkg_file **file)
 		return (EPKG_FATAL);
 
 	(*file)->perm = 0;
+	(*file)->fflags = 0;
 
 	return (EPKG_OK);
 }
@@ -118,6 +119,7 @@ pkg_dir_new(struct pkg_dir **d)
 		return (EPKG_FATAL);
 
 	(*d)->perm = 0;
+	(*d)->fflags = 0;
 
 	return (EPKG_OK);
 }

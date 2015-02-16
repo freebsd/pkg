@@ -386,8 +386,7 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_bind_int64(stmt, 1, pkg->id);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_adddir(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_int(stmt, 1), false);
+		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), false);
 	}
 
 	sqlite3_finalize(stmt);

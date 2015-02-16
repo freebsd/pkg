@@ -389,7 +389,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			break;
 		case PKG_DIRS:
 			if (cur->type == UCL_STRING)
-				pkg_adddir(pkg, ucl_object_tostring(cur), 1, false);
+				pkg_adddir(pkg, ucl_object_tostring(cur), false);
 			else if (cur->type == UCL_OBJECT)
 				pkg_obj(pkg, cur, attr);
 			else
@@ -478,15 +478,12 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 		case PKG_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {
 				urldecode(key, &tmp);
-				pkg_adddir(pkg, sbuf_data(tmp), ucl_object_toboolean(cur), false);
+				pkg_adddir(pkg, sbuf_data(tmp), false);
 			} else if (cur->type == UCL_OBJECT) {
 				pkg_set_dirs_from_object(pkg, cur);
 			} else if (cur->type == UCL_STRING) {
 				urldecode(key, &tmp);
-				if (ucl_object_tostring(cur)[0] == 'y')
-					pkg_adddir(pkg, sbuf_data(tmp), 1, false);
-				else
-					pkg_adddir(pkg, sbuf_data(tmp), 0, false);
+				pkg_adddir(pkg, sbuf_data(tmp), false);
 			} else {
 				pkg_emit_error("Skipping malformed directories %s",
 				    key);
@@ -601,7 +598,8 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		}
 	}
 
-	pkg_addfile_attr(pkg, sbuf_data(fname), sum, uname, gname, perm, false);
+	pkg_addfile_attr(pkg, sbuf_data(fname), sum, uname, gname, perm, 0,
+	    false);
 	sbuf_delete(fname);
 
 	return (EPKG_OK);
@@ -647,7 +645,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		}
 	}
 
-	pkg_adddir_attr(pkg, sbuf_data(dirname), uname, gname, perm, try, false);
+	pkg_adddir_attr(pkg, sbuf_data(dirname), uname, gname, perm, 0, false);
 	sbuf_delete(dirname);
 
 	return (EPKG_OK);

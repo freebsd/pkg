@@ -148,7 +148,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		    relocation, file->path);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, file->path,
-		    file->uname, file->gname, file->perm);
+		    file->uname, file->gname, file->perm, file->fflags);
 		if (developer_mode && ret != EPKG_OK)
 			return (ret);
 		counter_count();
@@ -164,7 +164,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		    relocation, dir->path);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dir->path,
-		    dir->uname, dir->gname, dir->perm);
+		    dir->uname, dir->gname, dir->perm, dir->fflags);
 		if (developer_mode && ret != EPKG_OK)
 			return (ret);
 		counter_count();

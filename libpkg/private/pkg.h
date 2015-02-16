@@ -226,6 +226,7 @@ struct pkg_file {
 	char		 uname[MAXLOGNAME];
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
+	u_long		 fflags;
 	UT_hash_handle	 hh;
 };
 
@@ -234,6 +235,7 @@ struct pkg_dir {
 	char		 uname[MAXLOGNAME];
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
+	u_long		 fflags;
 	UT_hash_handle	 hh;
 };
 
@@ -578,8 +580,8 @@ struct packing;
 int packing_init(struct packing **pack, const char *path, pkg_formats format,
     bool passmode);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
-			     const char *newpath, const char *uname,
-			     const char *gname, mode_t perm);
+     const char *newpath, const char *uname, const char *gname, mode_t perm,
+     u_long fflags);
 int packing_append_buffer(struct packing *pack, const char *buffer,
 			  const char *path, int size);
 int packing_append_tree(struct packing *pack, const char *treepath,
@@ -652,17 +654,15 @@ void plist_free(struct plist *);
 int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 
 int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
-int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates);
+int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
+    bool check_duplicates);
 int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
-		     const char *uname, const char *gname, mode_t perm,
-		     bool check_duplicates);
+    const char *uname, const char *gname, mode_t perm, u_long fflags,
+    bool check_duplicates);
 
-
-int pkg_adddir(struct pkg *pkg, const char *path, bool try,
-		    bool check_duplicates);
+int pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates);
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
-		    const char *gname, mode_t perm, bool try,
-		    bool check_duplicates);
+    const char *gname, mode_t perm, u_long fflags, bool check_duplicates);
 
 int pkg_strel_add(struct pkg_strel **l, const char *name, const char *title);
 int pkg_kv_add(struct pkg_kv **kv, const char *key, const char *value, const char *title);

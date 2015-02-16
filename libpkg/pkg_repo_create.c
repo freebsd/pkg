@@ -946,7 +946,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		}
 
 	}
-	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
+	packing_append_file_attr(pack, path, name, "root", "wheel", 0644, 0);
 
 	packing_finish(pack);
 	unlink(path);

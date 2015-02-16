@@ -851,11 +851,13 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates)
 {
-	return (pkg_addfile_attr(pkg, path, sha256, NULL, NULL, 0, check_duplicates));
+	return (pkg_addfile_attr(pkg, path, sha256, NULL, NULL, 0, 0, check_duplicates));
 }
 
 int
-pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm, bool check_duplicates)
+pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
+    const char *uname, const char *gname, mode_t perm, u_long fflags,
+    bool check_duplicates)
 {
 	struct pkg_file *f = NULL;
 	char abspath[MAXPATHLEN];
@@ -893,6 +895,9 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 
 	if (perm != 0)
 		f->perm = perm;
+
+	if (fflags != 0)
+		f->fflags = fflags;
 
 	HASH_ADD_STR(pkg->files, path, f);
 
@@ -957,13 +962,14 @@ pkg_strel_add(struct pkg_strel **list, const char *val, const char *title)
 }
 
 int
-pkg_adddir(struct pkg *pkg, const char *path, bool try, bool check_duplicates)
+pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates)
 {
-	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, try, check_duplicates));
+	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, 0, check_duplicates));
 }
 
 int
-pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try __unused, bool check_duplicates)
+pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
+    const char *gname, mode_t perm, u_long fflags, bool check_duplicates)
 {
 	struct pkg_dir *d = NULL;
 	char abspath[MAXPATHLEN];
@@ -997,6 +1003,9 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 
 	if (perm != 0)
 		d->perm = perm;
+
+	if (fflags != 0)
+		d->fflags = fflags;
 
 	HASH_ADD_STR(pkg->dirs, path, d);
 
@@ -1683,14 +1692,14 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 		snprintf(spath, sizeof(spath), "%s%s", src, dir->path);
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, dir->path);
 		packing_append_file_attr(pack, spath, dpath,
-		    dir->uname, dir->gname, dir->perm);
+		    dir->uname, dir->gname, dir->perm, dir->fflags);
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		snprintf(spath, sizeof(spath), "%s%s", src, file->path);
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, file->path);
 		packing_append_file_attr(pack, spath, dpath,
-		    file->uname, file->gname, file->perm);
+		    file->uname, file->gname, file->perm, file->fflags);
 	}
 
 	packing_finish(pack);

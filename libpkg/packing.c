@@ -148,7 +148,8 @@ cleanup:
 
 int
 packing_append_file_attr(struct packing *pack, const char *filepath,
-    const char *newpath, const char *uname, const char *gname, mode_t perm)
+    const char *newpath, const char *uname, const char *gname, mode_t perm,
+    u_long fflags)
 {
 	int fd;
 	char *map;
@@ -210,6 +211,9 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 		}
 		archive_entry_set_gname(entry, gname);
 	}
+
+	if (fflags > 0)
+		archive_entry_set_fflags(entry, fflags, 0);
 
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
@@ -311,7 +315,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
 			 sbuf_finish(sb);
 			 packing_append_file_attr(pack, fts_e->fts_name,
-			    sbuf_get(sb), NULL, NULL, 0);
+			    sbuf_get(sb), NULL, NULL, 0, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:

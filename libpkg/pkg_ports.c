@@ -272,10 +272,10 @@ dir(struct plist *p, char *line, struct file_attr *a)
 			    a->owner ? a->owner : p->uname,
 			    a->group ? a->group : p->gname,
 			    a->mode ? a->mode : p->perm,
-			    true, true);
+			    a->fflags, true);
 		else
 			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-			    p->perm, true, true);
+			    p->perm, 0, true);
 	}
 
 	free_file_attr(a);
@@ -408,10 +408,11 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			ret = pkg_addfile_attr(p->pkg, path, buf,
 			    a->owner ? a->owner : p->uname,
 			    a->group ? a->group : p->gname,
-			    a->mode ? a->mode : p->perm, true);
+			    a->mode ? a->mode : p->perm,
+			    a->fflags, true);
 		else
 			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
-			    p->gname, p->perm, true);
+			    p->gname, p->perm, 0, true);
 	}
 
 	free_file_attr(a);
