@@ -132,6 +132,9 @@ ATF_TC_BODY(parse_plist, tc)
 	strlcpy(buf, "nonexisting/file", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(plist, buf));
 
+	strlcpy(buf, "@dir nonexisting", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(plist, buf));
+
 	pkg_free(p);
 	plist_free(plist);
 }
