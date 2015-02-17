@@ -15,6 +15,7 @@ categories: [test]
 comment: a test
 www: http://test
 prefix: /
+abi = "*";
 desc: <<EOD
 Yet another test
 EOD
@@ -339,8 +340,8 @@ version = "1";
 comment = "a test";
 maintainer = "test";
 www = "http://test";
-abi = "FreeBSD:11:amd64";
-arch = "freebsd:11:x86:64";
+abi = "*";
+arch = "*";
 prefix = "/";
 flatsize = 0;
 desc = "Yet another test";
