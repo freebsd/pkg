@@ -269,6 +269,68 @@ create_from_plist_bad_fflags_body() {
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
+atf_test_case create_from_plist_with_keyword_arguments
+create_from_plist_with_keyword_arguments_head() {
+	atf_set "descr" "Test keywords with arguments"
+}
+
+create_from_plist_with_keyword_arguments_body() {
+	preparetestcredentials "testkeyword"
+
+	atf_check \
+		-o empty \
+		-e inline:"pkg: cannot parse keyword: cannot open file ./testkeyword.ucl: No such file or directory\npkg: unknown keyword testkeyword: @testkeyword\n" \
+		-s exit:70 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF >> testkeyword.ucl
+actions: [file]
+arguments: true
+post-install:
+	echo %1 %2
+EOF
+
+	atf_check \
+		-o empty \
+		-e inline:"pkg: Requesting argument %2 while only 1 arguments are available\n" \
+		-s exit:70 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+	echo "@testkeyword A B" > test.plist
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF >> output.ucl
+name = "test";
+origin = "test";
+version = "1";
+comment = "a test";
+maintainer = "test";
+www = "http://test";
+abi = "FreeBSD:11:amd64";
+arch = "freebsd:11:x86:64";
+prefix = "/";
+flatsize = 0;
+desc = "Yet another test";
+categories [
+    "test",
+]
+scripts {
+    post-install = "echo A B";
+}
+
+EOF
+	atf_check \
+		-o file:output.ucl \
+		-e empty \
+		-s exit:0 \
+		pkg info -R --raw-format=ucl -F test-1.txz
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
@@ -284,4 +346,5 @@ atf_init_test_cases() {
 		atf_add_test_case create_from_plist_fflags
 		atf_add_test_case create_from_plist_bad_fflags
 	fi
+	atf_add_test_case create_from_plist_with_keyword_arguments
 }
