@@ -296,7 +296,35 @@ EOF
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
+cat << EOF > testkeyword.ucl
+actions: [file(%1)]
+arguments: true
+post-install:
+	echo %1 %2
+EOF
+
 	echo "@testkeyword A B" > test.plist
+
+	atf_check \
+		-o empty \
+		-e inline:"pkg: Invalid argument: expecting a number got (%1)\n" \
+		-s exit:70 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF > testkeyword.ucl
+actions: [file(1), dir(2)]
+arguments: true
+post-install:
+	echo %1 %2
+EOF
+	touch A
+	mkdir B
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 	atf_check \
 		-o empty \
@@ -319,6 +347,12 @@ desc = "Yet another test";
 categories [
     "test",
 ]
+files {
+    /A = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+}
+directories {
+    /B = "y";
+}
 scripts {
     post-install = "echo A B";
 }
