@@ -804,6 +804,14 @@ parse_actions(const ucl_object_t *o, struct plist *p,
 			     actname[list_actions[i].namelen ] == '(' )) {
 				actname += list_actions[i].namelen;
 				if (*actname == '(') {
+					if (strspn(actname + 1, "1234567890")
+					    != strlen(actname + 1) - 1) {
+						pkg_emit_error(
+						    "Invalid argument: "
+						    "expecting a number "
+						    "got %s", actname);
+						return (EPKG_FATAL);
+					}
 					j = strtol(actname+1, NULL, 10);
 					if (j > argc) {
 						pkg_emit_error(
@@ -870,6 +878,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	char *buf, *tofree = NULL;
 	struct file_attr *freeattr = NULL;
 	int spaces, argc = 0;
+	int ret = EPKG_OK;
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
@@ -932,13 +941,13 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	}
 
 	if ((o = ucl_object_find_key(obj,  "actions")))
-		parse_actions(o, p, line, attr, argc, args);
+		ret = parse_actions(o, p, line, attr, argc, args);
 
 	free(args);
 	free(tofree);
 	free_file_attr(freeattr);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 static int
