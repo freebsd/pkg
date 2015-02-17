@@ -884,43 +884,49 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		parse_attributes(o, attr != NULL ? &attr : &freeattr);
 
 	if ((o = ucl_object_find_key(obj, "pre-install"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args);
+		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args) != EPKG_OK)
+			return (EPKG_FATAL);
 		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "post-install"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args);
+		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args) != EPKG_OK)
+			return (EPKG_FATAL);
 		sbuf_printf(p->post_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "pre-deinstall"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args);
+		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args) != EPKG_OK)
+			return (EPKG_FATAL);
 		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "post-deinstall"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args);
+		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args) != EPKG_OK)
+			return (EPKG_FATAL);
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "pre-upgrade"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args);
+		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args) != EPKG_OK)
+			return (EPKG_FATAL);
 		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "post-upgrade"))) {
-		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args);
+		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+		    p->last_file, line, argc, args) != EPKG_OK)
+			return (EPKG_FATAL);
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}

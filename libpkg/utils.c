@@ -334,7 +334,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					    " available", pos, argc);
 					sbuf_finish(buf);
 					sbuf_free(buf);
-
 					return (EPKG_FATAL);
 				}
 				sbuf_cat(buf, argv[pos -1]);
