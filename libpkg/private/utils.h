@@ -47,8 +47,6 @@
 	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
 } while(0)
 
-#define HASH_FIND_INO(head,ino,out)                                          \
-	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
 #define HASH_ADD_INO(head,ino,add)                                          \
 	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
 
