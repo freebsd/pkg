@@ -1746,13 +1746,14 @@ int
 pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
-	struct hardlinks *hl = NULL;
+	hardlinks_t *hl = NULL;
 	int64_t flatsize = 0;
 	struct stat st;
 	bool regular = false;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int rc = EPKG_OK;
 
+	hl = kh_init_hardlinks();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (lstat(f->path, &st) == 0) {
 			regular = true;
@@ -1771,7 +1772,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			}
 
 			if (st.st_nlink > 1)
-				regular = !check_for_hardlink(&hl, &st);
+				regular = !check_for_hardlink(hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;
@@ -1779,7 +1780,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 		if (strcmp(sha256, f->sum) != 0)
 			pkgdb_file_set_cksum(db, f, sha256);
 	}
-	HASH_FREE(hl, free);
+	kh_destroy_hardlinks(hl);
 
 	if (flatsize != pkg->flatsize)
 		pkg->flatsize = flatsize;

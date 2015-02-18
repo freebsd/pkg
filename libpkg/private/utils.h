@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <uthash.h>
 #include <ucl.h>
+#include <khash.h>
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -51,10 +52,8 @@
 #define HASH_ADD_INO(head,ino,add)                                          \
 	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
 
-struct hardlinks {
-	ino_t inode;
-	UT_hash_handle hh;
-};
+KHASH_MAP_INIT_INT(hardlinks, int)
+typedef khash_t(hardlinks) hardlinks_t;
 
 struct dns_srvinfo {
 	unsigned int type;
@@ -103,7 +102,7 @@ int rsa_verify(const char *path, const char *key,
 int rsa_verify_cert(const char *path, unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
-bool check_for_hardlink(struct hardlinks **hl, struct stat *st);
+bool check_for_hardlink(hardlinks_t *hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
 
 struct dns_srvinfo *

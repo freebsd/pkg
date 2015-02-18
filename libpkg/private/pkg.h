@@ -429,7 +429,7 @@ struct plist {
 	char *pkgdep;
 	bool ignore_next;
 	int64_t flatsize;
-	struct hardlinks *hardlinks;
+	hardlinks_t *hardlinks;
 	mode_t perm;
 	struct {
 		char *buf;

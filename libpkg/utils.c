@@ -474,17 +474,15 @@ string_end_with(const char *path, const char *str)
 }
 
 bool
-check_for_hardlink(struct hardlinks **hl, struct stat *st)
+check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	struct hardlinks *h;
+	khint_t k;
+	int absent;
 
-	HASH_FIND_INO(*hl, &st->st_ino, h);
-	if (h != NULL)
+	kh_put_hardlinks(hl, st->st_ino, &absent);
+	k = kh_get_hardlinks(hl, st->st_ino);
+	if (absent == 0)
 		return (true);
-
-	h = malloc(sizeof(struct hardlinks));
-	h->inode = st->st_ino;
-	HASH_ADD_INO(*hl, inode, h);
 
 	return (false);
 }
