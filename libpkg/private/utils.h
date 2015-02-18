@@ -47,9 +47,6 @@
 	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
 } while(0)
 
-#define HASH_ADD_INO(head,ino,add)                                          \
-	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
-
 KHASH_MAP_INIT_INT(hardlinks, int)
 typedef khash_t(hardlinks) hardlinks_t;
 
