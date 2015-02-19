@@ -31,7 +31,6 @@
 #endif
 
 #include <sys/stat.h>
-#include <sys/queue.h>
 /* For MIN */
 #include <sys/param.h>
 
@@ -47,21 +46,15 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <uthash.h>
+#include <khash.h>
+#include <kvec.h>
 
 #include <bsd_compat.h>
 
 #include "pkgcli.h"
 
-struct deletion_list {
-	STAILQ_ENTRY(deletion_list) next;
-	char	*path;
-};
-
-struct sumlist {
-	char sum[PKG_FILE_CKSUM_CHARS + 1];
-	UT_hash_handle hh;
-};
+KHASH_MAP_INIT_STR(sum, char *);
+typedef kvec_t(char *) dl_list;
 
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
@@ -69,23 +62,15 @@ struct sumlist {
 #define SIZE_MISMATCH	(1U<<3)
 #define ALL		(1U<<4)
 
-STAILQ_HEAD(dl_head, deletion_list);
-
 static int
-add_to_dellist(struct dl_head *dl,  const char *path)
+add_to_dellist(dl_list *dl,  const char *path)
 {
-	struct deletion_list	*dl_entry;
 	static bool first_entry = true;
+	char *store_path;
 
 	assert(path != NULL);
 
-	dl_entry = calloc(1, sizeof(struct deletion_list));
-	if (dl_entry == NULL) {
-		warn("adding deletion list entry");
-		return (EPKG_FATAL);
-	}
-
-	dl_entry->path = strdup(path);
+	store_path = strdup(path);
 
 	if (!quiet) {
 		if (first_entry) {
@@ -93,40 +78,40 @@ add_to_dellist(struct dl_head *dl,  const char *path)
 			printf("The following package files will be deleted:"
 			    "\n");
 		}
-		printf("\t%s\n", dl_entry->path);
+		printf("\t%s\n", store_path);
 	}
 
-	STAILQ_INSERT_TAIL(dl, dl_entry, next);
+	kv_push(char *, *dl, store_path);
 
 	return (EPKG_OK);
 }
 
 static void
-free_dellist(struct dl_head *dl)
+free_dellist(dl_list *dl)
 {
-	struct deletion_list	*dl_entry;
+	unsigned int i;
 
-	while (!STAILQ_EMPTY(dl)) {
-		dl_entry = STAILQ_FIRST(dl);
-		STAILQ_REMOVE_HEAD(dl, next);
-		free(dl_entry->path);
-	}
+	for (i = 0; i < kv_size(*dl); i++)
+		free(kv_A(*dl, i));
+	kv_destroy(*dl);
 }
 
 static int
-delete_dellist(struct dl_head *dl, int total)
+delete_dellist(dl_list *dl, int total)
 {
-	struct deletion_list	*dl_entry;
-	int			retcode = EX_OK;
-	int			count = 0, processed = 0;
+	int retcode = EX_OK;
+	unsigned int count = 0, processed = 0;
+	char *file;
 
+	count = kv_size(*dl);
 	progressbar_start("Deleting files");
-	STAILQ_FOREACH(dl_entry, dl, next) {
-		if (unlink(dl_entry->path) != 0) {
-			warn("unlink(%s)", dl_entry->path);
-			count++;
+	while (kv_size(*dl) > 0) {
+		file = kv_pop(*dl);
+		if (unlink(file) != 0) {
+			warn("unlink(%s)", file);
 			retcode = EX_SOFTWARE;
 		}
+		free(file);
 		++processed;
 		progressbar_tick(processed, total);
 	}
@@ -137,7 +122,7 @@ delete_dellist(struct dl_head *dl, int total)
 			printf("All done\n");
 		else
 			printf("%d package%s could not be deleted\n",
-			       count, count > 1 ? "s" : "");
+			      count, count > 1 ? "s" : "");
 	}
 	return (retcode);
 }
@@ -180,20 +165,21 @@ exec_clean(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*p = NULL;
-	struct sumlist	*sumlist = NULL, *s, *t;
+	kh_sum_t	*sumlist;
 	FTS		*fts = NULL;
 	FTSENT		*ent = NULL;
-	struct dl_head	dl = STAILQ_HEAD_INITIALIZER(dl);
+	dl_list		 dl;
 	const char	*cachedir, *sum, *name;
 	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1],
 			link_buf[MAXPATHLEN];
 	bool		 all = false;
-	bool		 sumloaded = false;
-	int		 retcode;
+	int		 retcode, ret;
 	int		 ch, cnt = 0;
 	size_t		 total = 0, slen;
 	ssize_t		 link_len;
 	char		 size[8];
+	char		*cksum;
+	khint_t		k;
 	struct pkg_manifest_key *keys = NULL;
 
 	struct option longopts[] = {
@@ -255,6 +241,7 @@ exec_clean(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
+	kv_init(dl);
 	if ((fts = fts_open(paths, FTS_PHYSICAL, NULL)) == NULL) {
 		warn("fts_open(%s)", cachedir);
 		goto cleanup;
@@ -276,15 +263,16 @@ exec_clean(int argc, char **argv)
 			continue;
 		}
 
-		if (sumlist == NULL && !sumloaded) {
+		if (sumlist == NULL) {
+			sumlist = kh_init_sum();
 			it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 			while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				pkg_get(p, PKG_CKSUM, &sum);
 				slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
-				s = calloc(1, sizeof(struct sumlist));
-				memcpy(s->sum, sum, slen);
-				s->sum[slen] = '\0';
-				HASH_ADD_STR(sumlist, sum, s);
+				cksum = strndup(sum, slen);
+				k = kh_put_sum(sumlist, cksum, &ret);
+				if (ret != 0)
+					kh_value(sumlist, k) = cksum;
 			}
 		}
 
@@ -300,10 +288,10 @@ exec_clean(int argc, char **argv)
 		} else
 			name = ent->fts_name;
 
-		s = NULL;
+		k = kh_end(sumlist);
 		if (extract_filename_sum(name, csum))
-			HASH_FIND_STR(sumlist, csum, s);
-		if (s == NULL) {
+			k = kh_get_sum(sumlist, csum);
+		if (k == kh_end(sumlist)) {
 			retcode = add_to_dellist(&dl, ent->fts_path);
 			if (retcode == EPKG_OK) {
 				total += ent->fts_statp->st_size;
@@ -312,12 +300,12 @@ exec_clean(int argc, char **argv)
 			continue;
 		}
 	}
-	HASH_ITER(hh, sumlist, s, t) {
-		HASH_DEL(sumlist, s);
-		free(s);
+	if (sumlist != NULL) {
+		kh_foreach(sumlist, sum, cksum, free(cksum));
+		kh_destroy_sum(sumlist);
 	}
 
-	if (STAILQ_EMPTY(&dl)) {
+	if (kv_size(dl) == 0) {
 		if (!quiet)
 			printf("Nothing to do.\n");
 		retcode = EX_OK;
