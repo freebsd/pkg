@@ -46,7 +46,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
-#include <uthash.h>
+#include <khash.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
@@ -66,55 +66,44 @@ usage_audit(void)
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
-struct pkg_check_entry {
-	struct pkg *pkg;
-	UT_hash_handle hh;
-	UT_hash_handle hs;
-};
+KHASH_MAP_INIT_STR(pkgs, struct pkg *);
 
 static void
-add_to_check(struct pkg_check_entry **head, struct pkg *pkg)
+add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 {
-	struct pkg_check_entry *e;
 	const char *uid;
+	int ret;
+	khint_t k;
 
-	e = malloc(sizeof(*e));
-	if (e == NULL) {
-		warnx("malloc failed for pkg_check_entry");
-		exit(EXIT_FAILURE);
-	}
-	e->pkg = pkg;
 	pkg_get(pkg, PKG_UNIQUEID, &uid);
 
-	HASH_ADD_KEYPTR(hh, *head, uid, strlen(uid), e);
+	k = kh_put_pkgs(check, uid, &ret);
+	if (ret != 0)
+		kh_value(check, k) = pkg;
 }
 
 static void
-print_recursive_rdeps(struct pkg_check_entry *head, struct pkg *p,
-	struct sbuf *sb, struct pkg_check_entry **seen, bool top)
+print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
+    kh_pkgs_t *seen, bool top)
 {
 	struct pkg_dep *dep = NULL;
-	static char uidbuf[1024];
-	struct pkg_check_entry *r;
+	int ret;
+	khint_t k, h;
 
 	while(pkg_rdeps(p, &dep) == EPKG_OK) {
 		const char *name = pkg_dep_get(dep, PKG_DEP_NAME);
 
-		HASH_FIND(hs, *seen, name, strlen(name), r);
-
-		if (r == NULL) {
-			snprintf(uidbuf, sizeof(uidbuf), "%s~%s",
-				name, pkg_dep_get(dep, PKG_DEP_ORIGIN));
-			HASH_FIND(hh, head, uidbuf, strlen(uidbuf), r);
-
-			if (r != NULL) {
-				HASH_ADD_KEYPTR(hs, *seen, name, strlen(name), r);
+		k = kh_get_pkgs(seen, name);
+		if (k == kh_end(seen)) {
+			h = kh_get_pkgs(head, name);
+			if (h != kh_end(head)) {
+				k = kh_put_pkgs(seen, name, &ret);
 				if (!top)
 					sbuf_cat(sb, ", ");
 
 				sbuf_cat(sb, name);
 
-				print_recursive_rdeps(head, r->pkg, sb, seen, false);
+				print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
 
 				top = false;
 			}
@@ -126,21 +115,22 @@ int
 exec_audit(int argc, char **argv)
 {
 	struct pkg_audit	*audit;
-	struct pkgdb			*db = NULL;
-	struct pkgdb_it			*it = NULL;
-	struct pkg			*pkg = NULL;
-	const char			*db_dir;
-	char				*name;
-	char				*version;
-	char				 audit_file_buf[MAXPATHLEN];
-	char				*audit_file = audit_file_buf;
-	unsigned int			 vuln = 0;
-	bool				 fetch = false, recursive = false;
-	int				 ch, i;
-	int				 ret = EX_OK;
-	const char			*portaudit_site = NULL;
-	struct sbuf			*sb;
-	struct pkg_check_entry *check = NULL, *cur, *tmp;
+	struct pkgdb		*db = NULL;
+	struct pkgdb_it		*it = NULL;
+	struct pkg		*pkg = NULL;
+	const char		*db_dir;
+	char			*name;
+	char			*version;
+	char			 audit_file_buf[MAXPATHLEN];
+	char			*audit_file = audit_file_buf;
+	unsigned int		 vuln = 0;
+	bool			 fetch = false, recursive = false;
+	int			 ch, i;
+	int			 ret = EX_OK;
+	const char		*portaudit_site = NULL;
+	struct sbuf		*sb;
+	const char		*key;
+	kh_pkgs_t		*check = NULL;
 
 	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
@@ -198,6 +188,7 @@ exec_audit(int argc, char **argv)
 		return (EX_DATAERR);
 	}
 
+	check = kh_init_pkgs();
 	if (argc >= 1) {
 		for (i = 0; i < argc; i ++) {
 			name = argv[i];
@@ -214,7 +205,7 @@ exec_audit(int argc, char **argv)
 				pkg_set(pkg, PKG_NAME, name);
 			/* Fake uniqueid */
 			pkg_set(pkg, PKG_UNIQUEID, name);
-			add_to_check(&check, pkg);
+			add_to_check(check, pkg);
 			pkg = NULL;
 		}
 	}
@@ -255,7 +246,7 @@ exec_audit(int argc, char **argv)
 		else {
 			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
 							== EPKG_OK) {
-				add_to_check(&check, pkg);
+				add_to_check(check, pkg);
 				pkg = NULL;
 			}
 			ret = EX_OK;
@@ -282,40 +273,35 @@ exec_audit(int argc, char **argv)
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
-		HASH_ITER(hh, check, cur, tmp) {
-			if (pkg_audit_is_vulnerable(audit, cur->pkg, quiet, &sb)) {
+		kh_foreach(check, key, pkg, {
+			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb)) {
 				vuln ++;
 				printf("%s", sbuf_data(sb));
 
 				if (recursive) {
 					const char *name;
-					struct pkg_check_entry *seen = NULL, *scur, *stmp;
+					kh_pkgs_t *seen = kh_init_pkgs();
 
-					pkg_get(cur->pkg, PKG_NAME, &name);
+					pkg_get(pkg, PKG_NAME, &name);
+					sbuf_clear(sb);
 					sbuf_printf(sb, "Packages that depend on %s: ", name);
-					print_recursive_rdeps(check, cur->pkg, sb, &seen, true);
+					print_recursive_rdeps(check, pkg , sb, seen, true);
 					sbuf_finish(sb);
 					printf("%s\n", sbuf_data(sb));
 
-					HASH_ITER(hs, seen, scur, stmp) {
-						HASH_DELETE(hs, seen, scur);
-					}
+					kh_destroy_pkgs(seen);
 				}
 				sbuf_delete(sb);
 			}
-		}
+			pkg_free(pkg);
+		});
+		kh_destroy_pkgs(check);
 
 		if (ret == EPKG_END && vuln == 0)
 			ret = EX_OK;
 
 		if (!quiet)
 			printf("%u problem(s) in the installed packages found.\n", vuln);
-
-		HASH_ITER(hh, check, cur, tmp) {
-			HASH_DELETE(hh, check, cur);
-			pkg_free(cur->pkg);
-			free(cur);
-		}
 	}
 	else {
 		warnx("cannot process vulnxml");
