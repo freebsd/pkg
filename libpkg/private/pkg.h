@@ -122,11 +122,6 @@
 			return (EPKG_OK);     \
 	} while (0)
 
-#define HASH_FIND_UCLT(head,type,out)                            \
-	HASH_FIND(hh, head, type, sizeof(uint16_t), out)
-#define HASH_ADD_UCLT(head,type,add)                             \
-	HASH_ADD(hh, head, type, sizeof(uint16_t), add)
-
 extern int eventpipe;
 extern int64_t debug_level;
 extern bool developer_mode;

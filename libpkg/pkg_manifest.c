@@ -118,25 +118,23 @@ static struct manifest_key {
 	{ NULL, -99, -99, NULL}
 };
 
-struct dataparser {
-	uint16_t type;
-	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
-	UT_hash_handle hh;
-};
+typedef int (*parse_data)(struct pkg *, const ucl_object_t *, int);
+KHASH_MAP_INIT_INT(dataparser, parse_data);
+typedef khash_t(dataparser) dataparser_t;
 
 struct pkg_manifest_key {
 	const char *key;
 	int type;
-	struct dataparser *parser;
+	dataparser_t *parser;
 	UT_hash_handle hh;
 };
 
 int
 pkg_manifest_keys_new(struct pkg_manifest_key **key)
 {
-	int i;
+	int i, absent;
 	struct pkg_manifest_key *k;
-	struct dataparser *dp;
+	khint_t h;
 
 	if (*key != NULL)
 		return (EPKG_OK);
@@ -147,15 +145,13 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 			k = calloc(1, sizeof(struct pkg_manifest_key));
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
+			k->parser = kh_init(dataparser);
 			HASH_ADD_KEYPTR(hh, *key, k->key, strlen(k->key), k);
 		}
-		HASH_FIND_UCLT(k->parser, &manifest_keys[i].valid_type, dp);
-		if (dp != NULL)
+		h = kh_put_dataparser(k->parser, manifest_keys[i].valid_type, &absent);
+		if (absent == 0)
 			continue;
-		dp = calloc(1, sizeof(struct dataparser));
-		dp->type = manifest_keys[i].valid_type;
-		dp->parse_data = manifest_keys[i].parse_data;
-		HASH_ADD_UCLT(k->parser, type, dp);
+		kh_value(k->parser, h) = manifest_keys[i].parse_data;
 	}
 
 	return (EPKG_OK);
@@ -163,8 +159,7 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 
 static void
 pmk_free(struct pkg_manifest_key *key) {
-	HASH_FREE(key->parser, free);
-
+	kh_destroy_dataparser(key->parser);
 	free(key);
 }
 
@@ -701,8 +696,9 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	struct pkg_manifest_key *selected_key;
-	struct dataparser *dp;
+	parse_data dp;
 	const char *key;
+	khint_t k;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
@@ -711,10 +707,11 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		pkg_debug(3, "Manifest: found key: '%s'", key);
 		HASH_FIND_STR(keys, key, selected_key);
 		if (selected_key != NULL) {
-			HASH_FIND_UCLT(selected_key->parser, &cur->type, dp);
-			if (dp != NULL) {
+			k = kh_get_dataparser(selected_key->parser, cur->type);
+			if (k != kh_end(selected_key->parser)) {
 				pkg_debug(3, "Manifest: key is valid");
-				dp->parse_data(pkg, cur, selected_key->type);
+				dp = kh_value(selected_key->parser, k);
+				dp(pkg, cur, selected_key->type);
 			} else {
 				pkg_emit_error("Skipping malformed key '%s'", key);
 			}
@@ -735,8 +732,8 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	ucl_object_iter_t it = NULL;
 	int rc;
 	struct pkg_manifest_key *sk;
-	struct dataparser *dp;
 	const char *key;
+	khint_t k;
 
 	assert(pkg != NULL);
 	assert(buf != NULL);
@@ -766,8 +763,8 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 			continue;
 		HASH_FIND_STR(keys, key, sk);
 		if (sk != NULL) {
-			HASH_FIND_UCLT(sk->parser, &cur->type, dp);
-			if (dp == NULL) {
+			k = kh_get_dataparser(sk->parser, cur->type);
+			if (k == kh_end(sk->parser)) {
 				pkg_emit_error("Bad format in manifest for key:"
 				    " %s", key);
 				ucl_object_unref(obj);
@@ -829,8 +826,8 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	ucl_object_iter_t it = NULL;
 	int rc;
 	struct pkg_manifest_key *sk;
-	struct dataparser *dp;
 	const char *key;
+	khint_t k;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
@@ -860,8 +857,8 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 			continue;
 		HASH_FIND_STR(keys, key, sk);
 		if (sk != NULL) {
-			HASH_FIND_UCLT(sk->parser, &cur->type, dp);
-			if (dp == NULL) {
+			k = kh_get_dataparser(sk->parser, cur->type);
+			if (k == kh_end(sk->parser)) {
 				pkg_emit_error("Bad format in manifest for key:"
 				    " %s", key);
 				ucl_object_unref(obj);
