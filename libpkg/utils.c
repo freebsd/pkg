@@ -476,11 +476,9 @@ string_end_with(const char *path, const char *str)
 bool
 check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	khint_t k;
 	int absent;
 
 	kh_put_hardlinks(hl, st->st_ino, &absent);
-	k = kh_get_hardlinks(hl, st->st_ino);
 	if (absent == 0)
 		return (true);
 
