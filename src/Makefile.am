@@ -48,6 +48,7 @@ pkg_CFLAGS=	 @OS_CFLAGS@ \
 			-I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/compat \
 			-I$(top_srcdir)/external/libsbuf \
+			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
 			-DGITHASH=\"$(GIT_HEAD)\" 
