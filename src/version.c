@@ -51,7 +51,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <khash.h>
-#include <uthash.h>
 
 #include "pkgcli.h"
 
@@ -60,9 +59,9 @@ extern char **environ;
 struct index_entry {
 	char *origin;
 	char *version;
-	UT_hash_handle hh;
 };
 
+KHASH_MAP_INIT_STR(index, struct index_entry *);
 KHASH_MAP_INIT_STR(ports, char);
 KHASH_MAP_INIT_STR(categories, kh_ports_t *);
 
@@ -278,16 +277,17 @@ indexfilename(char *filebuf, size_t filebuflen)
 	return (filebuf);
 }
 
-static struct index_entry *
+static kh_index_t *
 hash_indexfile(const char *indexfilename)
 {
 	FILE			*indexfile;
-	struct index_entry	*indexhead = NULL;
+	kh_index_t		*index = NULL;
 	struct index_entry	*entry;
 	char			*version, *origin;
 	char			*line = NULL, *l, *p;
 	size_t			 linecap = 0;
-	int			 dirs;
+	int			 dirs, ret;
+	khint_t			 k;
 
 
 	/* Create a hash table of all the package names and port
@@ -329,14 +329,17 @@ hash_indexfile(const char *indexfilename)
 			err(EX_SOFTWARE, "Out of memory while reading %s",
 			    indexfilename);
 
-		HASH_ADD_KEYPTR(hh, indexhead, entry->origin,
-				strlen(entry->origin), entry);
+		if (index == NULL)
+			index = kh_init_index();
+		k = kh_put_index(index, entry->origin, &ret);
+		if (ret != 0)
+			kh_value(index, k) = entry;
 	}
 
 	free(line);
 	fclose(indexfile);
 
-	return (indexhead);
+	return (index);
 }
 
 static void
@@ -350,17 +353,20 @@ free_categories(void)
 }
 
 static void
-free_index(struct index_entry *indexhead)
+free_index(kh_index_t *index)
 {
-	struct index_entry	*entry, *tmp;
+	const char *key;
+	struct index_entry *entry;
 
-	HASH_ITER(hh, indexhead, entry, tmp) {
-		HASH_DEL(indexhead, entry);
+	if (index == NULL)
+		return;
+
+	kh_foreach(index, key, entry, {
 		free(entry->origin);
 		free(entry->version);
 		free(entry);
-	}
-	return;
+	});
+	kh_destroy_index(index);
 }
 
 static bool
@@ -392,12 +398,12 @@ static int
 do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 	        const char *matchorigin, const char *indexfile)
 {
-	struct index_entry	*indexhead;
-	struct index_entry	*entry;
-	struct pkgdb		*db = NULL;
-	struct pkgdb_it		*it = NULL;
-	struct pkg		*pkg = NULL;
-	const char		*origin;
+	kh_index_t	*index;
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	const char	*origin;
+	khint_t		 k;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX) {
 		usage_version();
@@ -407,11 +413,11 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	indexhead = hash_indexfile(indexfile);
+	index = hash_indexfile(indexfile);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
-		free_index(indexhead);
+		free_index(index);
 		warnx("Cannot get a read lock on the database. "
 		      "It is locked by another process");
 		return (EX_TEMPFAIL);
@@ -430,14 +436,14 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(origin, matchorigin) != 0)
 			continue;
 		
-		HASH_FIND_STR(indexhead, origin, entry);
+		k = kh_get_index(index, origin);
 		print_version(pkg, "index",
-		    entry != NULL ? entry->version : NULL, limchar, opt);
+		    k != kh_end(index) ? (kh_value(index, k))->version : NULL, limchar, opt);
 	}
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	free_index(indexhead);
+	free_index(index);
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
