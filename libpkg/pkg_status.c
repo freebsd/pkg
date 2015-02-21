@@ -38,7 +38,9 @@
 #include "pkg.h"
 
 
+#ifndef _LOCALBASE
 #define _LOCALBASE	"/usr/local"
+#endif
 
 static bool is_exec_at_localbase(const char *progname);
 
