@@ -74,21 +74,14 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 
 	if (ext != NULL) {
 		/*
-		 * XXX:
-		 * This code tries to skip refetching but it should be removed as soon
-		 * as we transfer to new scheme.
-		 */
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
-				cachedir, pkg, pkg, pkg);
-		if (stat (dest, &st) != -1 || pkg->pkgsize != st.st_size)
-			return (EPKG_FATAL);
-
-		/*
 		 * The real naming scheme:
 		 * <cachedir>/<name>-<version>-<checksum>.txz
 		 */
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
 				cachedir, pkg, pkg, pkg, ext);
+		if (stat (dest, &st) == -1 || pkg->pkgsize != st.st_size)
+			return (EPKG_FATAL);
+
 	}
 	else {
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
