@@ -75,7 +75,8 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/packagesplit.shin \
 		frontend/lock.shin \
 		frontend/delete.shin \
-		frontend/create.shin
+		frontend/create.shin \
+		frontend/conflicts.shin
 
 TESTS =
 tests_programs=	pkg_printf \
@@ -94,6 +95,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/lock.sh \
 		frontend/delete.sh \
 		frontend/create.sh \
+		frontend/conflicts.sh \
 		frontend/test_environment.sh \
 		frontend/png.ucl \
 		frontend/sqlite3.ucl
