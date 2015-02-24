@@ -781,7 +781,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
-			    var->uid);
+			    un->pkg->uid);
 			goto err;
 		}
 		if (pkg_solve_process_universe_variable(problem, var) != EPKG_OK)
