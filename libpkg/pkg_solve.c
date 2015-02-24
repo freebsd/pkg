@@ -36,6 +36,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <kvec.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -89,13 +90,11 @@ struct pkg_solve_item {
 struct pkg_solve_rule {
 	enum pkg_solve_rule_type reason;
 	struct pkg_solve_item *items;
-	struct pkg_solve_rule *next;
 };
 
 struct pkg_solve_problem {
 	struct pkg_jobs *j;
-	unsigned int rules_count;
-	struct pkg_solve_rule *rules;
+	kvec_t(struct pkg_solve_rule *) rules;
 	struct pkg_solve_variable *variables_by_uid;
 	struct pkg_solve_variable *variables;
 	PicoSAT *sat;
@@ -182,11 +181,10 @@ pkg_solve_rule_free(struct pkg_solve_rule *rule)
 void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_rule *r, *rtmp;
 	struct pkg_solve_variable *v, *vtmp;
 
-	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
-		pkg_solve_rule_free(r);
+	while (kv_size(problem->rules)) {
+		pkg_solve_rule_free(kv_pop(problem->rules));
 	}
 
 	HASH_ITER(hh, problem->variables_by_uid, v, vtmp) {
@@ -366,8 +364,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		cnt ++;
 	}
 
-	LL_PREPEND(problem->rules, rule);
-	problem->rules_count ++;
+	kv_prepend(typeof(rule), problem->rules, rule);
 
 	return (EPKG_OK);
 }
@@ -434,8 +431,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 
-		LL_PREPEND(problem->rules, rule);
-		problem->rules_count ++;
+		kv_prepend(typeof(rule), problem->rules, rule);
 	}
 
 	return (EPKG_OK);
@@ -474,8 +470,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		}
 
 		if (cnt > 1) {
-			LL_PREPEND(problem->rules, rule);
-			problem->rules_count ++;
+			kv_prepend(typeof(rule), problem->rules, rule);
 		}
 		else {
 			/* Missing dependencies... */
@@ -560,8 +555,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	}
 
 	if (cnt > 1 && var->unit->hh.keylen != 0) {
-		LL_PREPEND(problem->rules, rule);
-		problem->rules_count ++;
+		kv_prepend(typeof(rule), problem->rules, rule);
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
 			curvar = pkg_solve_find_var_in_chain(var, item->unit);
@@ -593,8 +587,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 					it->inverse = -1;
 					RULE_ITEM_PREPEND(rule, it);
 
-					LL_PREPEND(problem->rules, rule);
-					problem->rules_count ++;
+					kv_prepend(typeof(rule), problem->rules, rule);
 				}
 			}
 		}
@@ -606,7 +599,6 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 
 	var->top_level = true;
 	var->to_install = inverse > 0;
-	problem->rules_count ++;
 
 	return (EPKG_OK);
 }
@@ -641,8 +633,7 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
 
-		LL_PREPEND(problem->rules, rule);
-		problem->rules_count ++;
+		kv_prepend(typeof(rule), problem->rules, rule);
 	}
 
 	return (EPKG_OK);
@@ -761,6 +752,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	problem->nvars = j->universe->nitems;
 	problem->variables = calloc(problem->nvars, sizeof(struct pkg_solve_variable));
 	problem->sat = picosat_init();
+	kv_init(problem->rules);
 
 	if (problem->sat == NULL) {
 		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
@@ -796,7 +788,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 	}
 
-	if (problem->rules_count == 0) {
+	if (kv_size(problem->rules) == 0) {
 		pkg_debug(1, "problem has no requests");
 		return (problem);
 	}
@@ -815,7 +807,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int res;
 	size_t i;
 
-	LL_FOREACH(problem->rules, rule) {
+	for (i = 0; i < kv_size(problem->rules); i++) {
+		rule = kv_A(problem->rules, i);
 		LL_FOREACH(rule->items, item) {
 			picosat_add(problem->sat, item->var->order * item->inverse);
 		}
@@ -852,7 +845,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		while (*failed) {
 			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
 
-			LL_FOREACH(problem->rules, rule) {
+			for (i = 0; i < kv_size(problem->rules); i++) {
+				rule = kv_A(problem->rules, i);
 				LL_FOREACH(rule->items, item) {
 					if (item->var == var) {
 						pkg_print_rule_sbuf(rule, sb);
@@ -941,9 +935,10 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 		HASH_ADD_PTR(ordered_variables, var, nord);
 	}
 
-	fprintf(f, "p cnf %d %d\n", (int)problem->nvars, problem->rules_count);
+	fprintf(f, "p cnf %d %zu\n", (int)problem->nvars, kv_size(problem->rules));
 
-	LL_FOREACH(problem->rules, rule) {
+	for (unsigned int i = 0; i < kv_size(problem->rules); i++) {
+		rule = kv_A(problem->rules, i);
 		LL_FOREACH(rule->items, it) {
 			HASH_FIND_PTR(ordered_variables, &it->var, nord);
 			if (nord != NULL) {
