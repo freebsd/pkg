@@ -43,7 +43,8 @@
 void
 usage_alias(void)
 {
-	fprintf(stderr, "Usage: pkg alias [alias]\n");
+	fprintf(stderr, "Usage: pkg alias [-q] [alias]\n\n");
+	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
 
 int
@@ -52,35 +53,53 @@ exec_alias(int argc, char **argv)
 	const pkg_object *all_aliases;
 	const pkg_object *alias;
 	pkg_iter it = NULL;
-	int found_alias = 0;
+	int ch;
+	int ret = EX_OK;
 
-	if (argc > 2) {
-		usage_alias();
-		return(EX_USAGE);
+	struct option longopts[] = {
+		{ "quiet",	no_argument,	NULL, 'q' },
+		{ NULL,		0,		NULL, 0 },
+	};
+
+	while ((ch = getopt_long(argc, argv, "+quiet", longopts, NULL)) != -1) {
+		switch (ch) {
+		case 'q':
+			quiet = true;
+			break;
+		default:
+			usage_alias();
+			return (EX_USAGE);
+		}
 	}
+
+	argc -= optind;
+	argv += optind;
 
 	all_aliases = pkg_config_get("ALIAS");
 
-	if (argc == 2) {
-		while ((alias = pkg_object_iterate(all_aliases, &it))) {
-			if (strcmp(argv[1], pkg_object_key(alias)) == 0) {
-				printf("\t%-15s -> '%s'\n", argv[1], pkg_object_string(alias));
-				found_alias = 1;
-				return (0);
-			}
-		}
-	} else {
-		printf("%-20s %-45s\n", "ALIAS", "ARGUMENTS");
+	if (argc == 0) {
+		if (!quiet)
+			printf("%-20s %s\n", "ALIAS", "ARGUMENTS");
 		while ((alias = pkg_object_iterate(all_aliases, &it))) {
 			printf("%-20s '%s'\n", pkg_object_key(alias), pkg_object_string(alias));
 		}
+		return (ret);
 	}
 
-	if ((argc == 2) && (found_alias == 0)) {
-		printf("No alias configured named '%s'\n", argv[1]);
-		return(EX_USAGE);
+	for (int i = 0; i < argc; i++) {
+		it = NULL;
+		while ((alias = pkg_object_iterate(all_aliases, &it))) {
+			if (strcmp(argv[i], pkg_object_key(alias)) == 0)
+				break;
+		}
+		if (alias) {
+			printf("%-20s '%s'\n", argv[i], pkg_object_string(alias));
+		} else {
+			warnx("No such alias: '%s'", argv[i]);
+			ret = EX_UNAVAILABLE;
+		}
 	}
 
-	return (0);
+	return (ret);
 }
 
