@@ -214,6 +214,76 @@ post-install
 		pkg add -
 }
 
+atf_test_case add_stdin_missing
+add_stdin_body_head() {
+	atf_set "descr" "pkg add -M -"
+}
+
+add_stdin_missing_body() {
+	export INSTALL_AS_USER=yes
+	export PKG_DBDIR=.
+
+	jailed=$(sysctl -n security.jail.jailed || :)
+	if [ "$jailed" = "1" ]; then
+		JAILED="[`hostname`] "
+	fi
+	touch a
+	cat << EOF > test.ucl
+name: test
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+deps: {
+	b: {
+		origin: "wedontcare",
+		version: "1"
+	}
+}
+files: {
+	${TMPDIR}/a: ""
+}
+scripts: {
+	pre-install: <<EOD
+echo "pre-install"
+EOD
+	post-install: <<EOD
+echo "post-install"
+EOD
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	cat test-1.txz | atf_check \
+		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): -\n" \
+		-e inline:"pkg: Missing dependency 'b-1'\n" \
+		-s exit:70 \
+		pkg add -
+
+OUTPUT="${JAILED}Installing test-1...
+pre-install
+${JAILED}Extracting test-1... done
+post-install
+"
+	cat test-1.txz | atf_check \
+		-o inline:"${OUTPUT}" \
+		-e inline:"pkg: Missing dependency 'b-1'\n" \
+		-s exit:0 \
+		pkg add -M -
+}
+
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
 
@@ -224,4 +294,5 @@ atf_init_test_cases() {
 	atf_add_test_case add_accept_missing
 	atf_add_test_case add_quiet
 	atf_add_test_case add_stdin
+	atf_add_test_case add_stdin_missing
 }
