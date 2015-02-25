@@ -404,8 +404,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				if (ret != EPKG_OK)
 					goto cleanup;
 			} else {
-				pkg_emit_error("Missing dependency '%s-%s'",
-					dep->name, dep->version);
+				pkg_emit_missing_dep(pkg, dep);
 				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 					goto cleanup;
 			}
