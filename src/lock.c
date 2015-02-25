@@ -68,7 +68,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 	if (!quiet)
 		pkg_printf("Locking %n-%v\n", pkg, pkg);
 
-	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)true));
+	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int)true));
 }
 
 
