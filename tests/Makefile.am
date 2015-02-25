@@ -66,6 +66,7 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/sqlite3.uclin \
 		Kyuafile \
 		frontend/Kyuafile \
+		frontend/add.shin \
 		frontend/annotate.shin \
 		frontend/pkg.shin \
 		frontend/search.shin \
@@ -87,6 +88,7 @@ tests_programs=	pkg_printf \
 EXTRA_PROGRAMS=	$(tests_programs)
 check_PROGRAMS=	$(tests_programs)
 check_SCRIPTS=	frontend/pkg.sh \
+		frontend/add.sh \
 		frontend/annotate.sh \
 		frontend/search.sh \
 		frontend/version.sh \

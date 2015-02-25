@@ -12,3 +12,4 @@ atf_test_program{name='lock.sh'}
 atf_test_program{name='delete.sh'}
 atf_test_program{name='create.sh'}
 atf_test_program{name='conflicts.sh'}
+atf_test_program{name='add.sh'}
