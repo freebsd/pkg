@@ -969,7 +969,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 				buf++;
 				walk = buf;
 			}
-			key = walk;
+			k = walk;
 			value = walk;
 			while (*value != '\0') {
 				if (*value == '=')
