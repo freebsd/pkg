@@ -165,7 +165,7 @@ exec_clean(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*p = NULL;
-	kh_sum_t	*sumlist;
+	kh_sum_t	*sumlist = NULL;
 	FTS		*fts = NULL;
 	FTSENT		*ent = NULL;
 	dl_list		 dl;
