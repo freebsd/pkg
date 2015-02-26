@@ -345,7 +345,7 @@ hash_indexfile(const char *indexfilename)
 static void
 free_categories(void)
 {
-	const char *key;
+	const char *key __unused;
 	kh_ports_t *ports;
 
 	kh_foreach(categories, key, ports, kh_destroy_ports(ports));
@@ -355,7 +355,7 @@ free_categories(void)
 static void
 free_index(kh_index_t *index)
 {
-	const char *key;
+	const char *key __unused;
 	struct index_entry *entry;
 
 	if (index == NULL)

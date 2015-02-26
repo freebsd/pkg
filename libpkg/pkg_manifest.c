@@ -609,7 +609,6 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
-	bool try = false;
 	struct sbuf *dirname = NULL;
 	const char *key, *okey;
 
@@ -633,7 +632,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 		} else if (!strcasecmp(key, "try") && cur->type == UCL_BOOLEAN) {
-				try = ucl_object_toint(cur);
+			/* ignore on purpose : compatibility*/
 		} else {
 			pkg_emit_error("Skipping unknown key for dir(%s): %s",
 			    sbuf_data(dirname), key);
