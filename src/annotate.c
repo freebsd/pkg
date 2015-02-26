@@ -143,8 +143,9 @@ static int
 do_show(struct pkg *pkg, const char *tag)
 {
 	struct pkg_kv *note;
+	int ret = EPKG_OK;
 
-	pkg_get(pkg, PKG_ANNOTATIONS, &note);
+	ret = pkg_get(pkg, PKG_ANNOTATIONS, &note);
 	while (note != NULL) {
 		if (strcmp(tag, note->key) == 0) {
 			if (quiet)
@@ -157,7 +158,7 @@ do_show(struct pkg *pkg, const char *tag)
 		note = note->next;
 	}
 
-	return (EPKG_FATAL);
+	return (ret);
 }
 
 

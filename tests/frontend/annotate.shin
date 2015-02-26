@@ -22,7 +22,7 @@ annotate_body() {
 	[ -f "./local.sqlite" ] || \
 	    atf_fail "Can't populate $PKG_DBDIR/local.sqlite"
 
-        atf_check \
+	atf_check \
 	    -o match:"added annotation tagged: TEST1" \
 	    -e empty \
 	    -s exit:0 \
@@ -87,6 +87,27 @@ annotate_body() {
 	    -s exit:0 \
 	    -e empty \
 	    pkg info -A png
+
+	# Check multiple annotations
+	atf_check \
+	    -o match:"added annotation tagged: TEST1" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate -Ay png TEST1 test1
+
+	atf_check \
+	    -o match:"added annotation tagged: TEST1" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate -Ay sqlite3 TEST1 test1
+
+	atf_check \
+	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1$" \
+			-o match:"^sqlite3-3.8.6: Tag: TEST1 Value: test1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate --all --show TEST1
+
 }
 
 atf_init_test_cases() {
