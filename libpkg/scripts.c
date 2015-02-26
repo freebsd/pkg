@@ -66,6 +66,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	size_t script_cmd_len;
 	long argmax;
 #ifdef PROC_REAP_KILL
+	bool do_reap;
 	struct procctl_reaper_status info;
 	struct procctl_reaper_kill killemall;
 #endif
@@ -95,7 +96,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	assert(i < sizeof(map) / sizeof(map[0]));
 
 #ifdef PROC_REAP_KILL
-	procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL);
+	do_reap = procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL) == 0;
 #endif
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
@@ -205,15 +206,19 @@ cleanup:
 		close(stdin_pipe[1]);
 
 #ifdef PROC_REAP_KILL
+	/*
+	 * If the prior PROCCTL_REAP_ACQUIRE call failed, the kernel
+	 * probably doesn't support this, so don't try.
+	 */
+	if (!do_reap)
+		return (ret);
+
 	procctl(P_PID, getpid(), PROC_REAP_STATUS, &info);
 	if (info.rs_children != 0) {
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
-		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0) {
-			pkg_emit_error("Fail to kill children of the scripts");
-			if (errno == EINVAL)
-				pkg_emit_errno("procctl", "PROC_REAP_ACQUIRE");
-		}
+		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0)
+			pkg_emit_errno("procctl", "PROC_REAP_KILL");
 	}
 	procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
 #endif
