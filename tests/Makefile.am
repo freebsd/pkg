@@ -69,16 +69,17 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/add.shin \
 		frontend/alias.shin \
 		frontend/annotate.shin \
-		frontend/pkg.shin \
-		frontend/search.shin \
-		frontend/version.shin \
-		frontend/test_environment.shin \
-		frontend/register.shin \
-		frontend/packagesplit.shin \
-		frontend/lock.shin \
-		frontend/delete.shin \
+		frontend/conflicts.shin \
 		frontend/create.shin \
-		frontend/conflicts.shin
+		frontend/delete.shin \
+		frontend/lock.shin \
+		frontend/packagesplit.shin \
+		frontend/pkg.shin \
+		frontend/register.shin \
+		frontend/search.shin \
+		frontend/set.shin \
+		frontend/test_environment.shin \
+		frontend/version.shin
 
 TESTS =
 tests_programs=	pkg_printf \
@@ -92,14 +93,15 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/add.sh \
 		frontend/alias.sh \
 		frontend/annotate.sh \
-		frontend/search.sh \
-		frontend/version.sh \
-		frontend/register.sh \
-		frontend/packagesplit.sh \
-		frontend/lock.sh \
-		frontend/delete.sh \
-		frontend/create.sh \
 		frontend/conflicts.sh \
+		frontend/create.sh \
+		frontend/delete.sh \
+		frontend/lock.sh \
+		frontend/packagesplit.sh \
+		frontend/register.sh \
+		frontend/search.sh \
+		frontend/set.sh \
+		frontend/version.sh \
 		frontend/test_environment.sh \
 		frontend/png.ucl \
 		frontend/sqlite3.ucl
