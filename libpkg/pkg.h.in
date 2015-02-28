@@ -68,6 +68,10 @@
 #undef OSMAJOR
 #endif
 
+#ifdef __NetBSD_Version__
+#define OSMAJOR __NetBSD_Version__
+#endif
+
 #ifndef __DECONST
 #define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
 #endif
