@@ -167,6 +167,20 @@ for further description.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXAMPLES
+Annotate the nginx package with the tag foo and a value of bar:
+.Dl # pkg annotate -A nginx foo bar
+.Pp
+View all annotations on a package:
+.Dl $ pkg info nginx
+.Pp
+Remove the annotation:
+.Dl # pkg annotate -D nginx foo
+.Pp
+Show all packages with the foo annotation:
+.Dl # pkg annotate --all --show foo
+.Pp
+.\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
