@@ -223,7 +223,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	checksum_types[type].hfunc(entries, &bdigest, &blen);
 	if (blen == 0 || bdigest == NULL) {
-		LL_FREE(entries, free);
+		LL_FREE(entries, pkg_checksum_free_entry);
 		return (EPKG_FATAL);
 	}
 
