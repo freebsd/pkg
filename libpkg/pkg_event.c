@@ -217,9 +217,9 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.new);
+		    ev->e_upgrade_begin.o,
+		    ev->e_upgrade_begin.o,
+		    ev->e_upgrade_begin.n);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
@@ -228,9 +228,9 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_finished.old,
-		    ev->e_upgrade_finished.old,
-		    ev->e_upgrade_finished.new);
+		    ev->e_upgrade_finished.o,
+		    ev->e_upgrade_finished.o,
+		    ev->e_upgrade_finished.n);
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
@@ -687,8 +687,8 @@ pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old)
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_UPGRADE_BEGIN;
-	ev.e_upgrade_begin.new = new;
-	ev.e_upgrade_begin.old = old;
+	ev.e_upgrade_begin.n = new;
+	ev.e_upgrade_begin.o = old;
 
 	pkg_emit_event(&ev);
 }
@@ -700,8 +700,8 @@ pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 	bool syslog_enabled = false;
 
 	ev.type = PKG_EVENT_UPGRADE_FINISHED;
-	ev.e_upgrade_finished.new = new;
-	ev.e_upgrade_finished.old = old;
+	ev.e_upgrade_finished.n = new;
+	ev.e_upgrade_finished.o = old;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {

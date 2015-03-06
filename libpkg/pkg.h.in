@@ -32,6 +32,11 @@
 #ifndef _PKG_H
 #define _PKG_H
 
+#ifdef __cplusplus
+extern "C" {
+#define restrict
+#endif
+
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/cdefs.h>
@@ -1318,12 +1323,12 @@ struct pkg_event {
 			struct pkg *pkg;
 		} e_deinstall_finished;
 		struct {
-			struct pkg *new;
-			struct pkg *old;
+			struct pkg *n;
+			struct pkg *o;
 		} e_upgrade_begin;
 		struct {
-			struct pkg *new;
-			struct pkg *old;
+			struct pkg *n;
+			struct pkg *o;
 		} e_upgrade_finished;
 		struct {
 			struct pkg *pkg;
@@ -1662,4 +1667,7 @@ int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \
     const char *locationn, bool testing);
 char *pkg_absolutepath(const char *src, char *dest, size_t dest_len);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

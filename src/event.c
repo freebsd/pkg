@@ -702,8 +702,8 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_begin.new;
-		pkg_old = ev->e_upgrade_begin.old;
+		pkg_new = ev->e_upgrade_begin.n;
+		pkg_old = ev->e_upgrade_begin.o;
 		nbdone++;
 
 		job_status_begin(msg_buf);
@@ -728,7 +728,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_finished.new;
+		pkg_new = ev->e_upgrade_finished.n;
 		if (pkg_has_message(pkg_new)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
