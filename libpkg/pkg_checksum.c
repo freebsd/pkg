@@ -31,7 +31,7 @@
 
 struct pkg_checksum_entry {
 	const char *field;
-	const char *value;
+	char *value;
 	struct pkg_checksum_entry *next, *prev;
 };
 
@@ -109,6 +109,17 @@ static const struct _pkg_cksum_type {
 };
 
 static void
+pkg_checksum_free_entry(struct pkg_checksum_entry *e)
+{
+	if (e != NULL) {
+		if (e->value) {
+			free(e->value);
+		}
+		free(e);
+	}
+}
+
+static void
 pkg_checksum_add_entry(const char *key,
 	const char *value,
 	struct pkg_checksum_entry **entries)
@@ -122,7 +133,7 @@ pkg_checksum_add_entry(const char *key,
 	}
 
 	e->field = key;
-	e->value = value;
+	e->value = strdup(value);
 	DL_APPEND(*entries, e);
 }
 
@@ -229,7 +240,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	free(bdigest);
-	LL_FREE(entries, free);
+	LL_FREE(entries, pkg_checksum_free_entry);
 
 	return (EPKG_OK);
 }
