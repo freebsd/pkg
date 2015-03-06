@@ -76,6 +76,7 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/packagesplit.shin \
 		frontend/pkg.shin \
 		frontend/register.shin \
+		frontend/rubypuppet.shin \
 		frontend/search.shin \
 		frontend/set.shin \
 		frontend/test_environment.shin \
@@ -99,6 +100,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/lock.sh \
 		frontend/packagesplit.sh \
 		frontend/register.sh \
+		frontend/rubypuppet.sh \
 		frontend/search.sh \
 		frontend/set.sh \
 		frontend/version.sh \
