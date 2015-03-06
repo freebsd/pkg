@@ -354,9 +354,13 @@ local: {
 }
 EOF
 
+	jailed=$(sysctl -n security.jail.jailed || :)
+	if [ "$jailed" = "1" ]; then
+		JAILED="[`hostname`] "
+	fi
 OUTPUT="Updating local repository catalogue...
-Fetching meta.txz... done
-Fetching packagesite.txz... done
+${JAILED}Fetching meta.txz... done
+${JAILED}Fetching packagesite.txz... done
 Processing entries... done
 local repository update completed. 5 packages processed.
 Checking for upgrades (4 candidates)... done
