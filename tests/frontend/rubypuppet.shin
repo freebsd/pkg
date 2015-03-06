@@ -359,16 +359,14 @@ Fetching meta.txz... done
 Fetching packagesite.txz... done
 Processing entries... done
 local repository update completed. 5 packages processed.
-Checking for upgrades (2 candidates)... done
-Processing candidates (2 candidates)... done
+Checking for upgrades (4 candidates)... done
+Processing candidates (4 candidates)... done
 Checking integrity... done (1 conflicting)
 Checking integrity... done (0 conflicting)
 The following 6 packages will be affected (of 0 checked):
 
 Installed packages to be REMOVED:
 	ruby20-gems-1.0
-	rubygem-ruby-augeas-1.0
-	puppet-1.0
 
 New packages to be INSTALLED:
 	ruby21-gems: 1.0
@@ -377,12 +375,14 @@ Installed packages to be UPGRADED:
 	ruby: 2.0 -> 2.1
 
 Installed packages to be REINSTALLED:
+	rubygem-ruby-augeas-1.0 (direct dependency changed)
 	rubygem-hiera-1.0 (direct dependency changed)
+	puppet-1.0 (direct dependency changed)
 "
 	
 
  atf_check \
-                -o not-inline:"${OUTPUT}" \
+                -o inline:"${OUTPUT}" \
                 -e empty \
                 -s exit:0 \
                 pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -yn
