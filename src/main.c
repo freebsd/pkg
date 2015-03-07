@@ -165,10 +165,11 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 	}
 
 #ifdef HAVE_LIBJAIL
- 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] [-4|-6] <command> [<args>]\n");
+#define JAIL_ARG	"-j <jail name or id>|"
 #else
-	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] [-4|-6] <command> [<args>]\n");
+#define JAIL_ARG
 #endif
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] ["JAIL_ARG"-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] [-4|-6] <command> [<args>]\n");
 	if (reason == PKG_USAGE_HELP) {
 		fprintf(out, "Global options supported:\n");
 		fprintf(out, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -609,10 +610,11 @@ main(int argc, char **argv)
 	save_argv = argv;
 
 #ifdef HAVE_LIBJAIL
-	while ((ch = getopt_long(argc, argv, "+dj:c:C:R:lNvo:46", longopts, NULL)) != -1) {
+#define JAIL_OPT	"j:"
 #else
-	while ((ch = getopt_long(argc, argv, "+dc:C:R:lNvo:46", longopts, NULL)) != -1) {
+#define JAIL_OPT
 #endif
+	while ((ch = getopt_long(argc, argv, "+d"JAIL_OPT"c:C:R:lNvo:46", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			debug++;
