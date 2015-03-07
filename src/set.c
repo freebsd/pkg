@@ -288,7 +288,7 @@ exec_set(int argc, char **argv)
 								pkg, pkg);
 				}
 				if (rc)
-					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
+					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, (int)newautomatic);
 				rc = saved_rc;
 			}
 			if (sets & (ORIGIN|NAME)) {

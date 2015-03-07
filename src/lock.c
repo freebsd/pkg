@@ -88,7 +88,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 	if (!quiet)
 		pkg_printf("Unlocking %n-%v\n", pkg, pkg);
 
-	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)false));
+	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int)false));
 }
 
 static int
