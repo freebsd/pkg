@@ -54,8 +54,9 @@ proceeds to remove the listed packages.
 If the set of packages to be deleted would leave installed packages
 with unfulfilled dependencies,
 .Nm
-will emit an error message and quit without deleting anything unless
-forced to proceed by the
+will add the packages with unfulfilled dependencies to the list of
+packages to be deleted, unless force to proceed without deleting any
+other packages by the
 .Fl f
 option.
 .Sh OPTIONS
