@@ -87,7 +87,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	30
+#define DB_SCHEMA_MINOR	31
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -646,6 +646,17 @@ pkgdb_init(sqlite3 *sdb)
 		"WHERE option_id NOT IN "
 			"( SELECT DISTINCT option_id FROM pkg_option );"
 	"END;"
+	"CREATE TABLE requires("
+	"    id INTEGER PRIMARY KEY,"
+	"    require TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_requires ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "require_id INTEGER NOT NULL REFERENCES requires(id)"
+	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+	    "UNIQUE(package_id, require_id)"
+	");"
 
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
@@ -1276,6 +1287,8 @@ typedef enum _sql_prstmt_index {
 	UPDATE_DIGEST,
 	CONFIG_FILES,
 	UPDATE_CONFIG_FILE,
+	PKG_REQUIRE,
+	REQUIRE,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -1494,6 +1507,17 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"UPDATE config_files SET content=?1 WHERE path=?2;",
 		"TT"
+	},
+	[PKG_REQUIRE] = {
+		NULL,
+		"INSERT INTO pkg_requires(package_id, require_id) "
+		"VALUES (?1, (SELECT id FROM requires WHERE require = ?2))",
+		"IT",
+	},
+	[REQUIRE] = {
+		NULL,
+		"INSERT OR IGNORE INTO requires(require) VALUES(?1)",
+		"T"
 	}
 	/* PRSTMT_LAST */
 };

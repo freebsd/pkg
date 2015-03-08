@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -654,6 +654,19 @@ static struct db_upgrades {
 	{30,
 	"DROP INDEX deps_unique;"
 	"CREATE UNIQUE INDEX deps_unique ON deps(name, version, package_id);"
+	},
+	{31,
+	"CREATE TABLE requires("
+	"    id INTEGER PRIMARY KEY,"
+	"    require TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_requires ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		"  ON DELETE CASCADE ON UPDATE CASCADE,"
+		"require_id INTEGER NOT NULL REFERENCES requires(id)"
+		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE(package_id, require_id)"
+	");"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

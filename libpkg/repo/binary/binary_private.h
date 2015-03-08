@@ -163,6 +163,17 @@ static const char binary_repo_initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, provide_id)"
 	");"
+	"CREATE TABLE requires("
+	"    id INTEGER PRIMARY KEY,"
+	"    require TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_requires ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		"  ON DELETE CASCADE ON UPDATE CASCADE,"
+		"require_id INTEGER NOT NULL REFERENCES requires(id)"
+		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE(package_id, require_id)"
+	");"
 /*	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
@@ -517,7 +528,7 @@ static const struct repo_changes repo_downgrades[] = {
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 10
+#define REPO_SCHEMA_MINOR 11
 
 /* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)

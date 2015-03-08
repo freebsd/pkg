@@ -114,6 +114,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 	pkg_list_free(pkg, PKG_PROVIDES);
+	pkg_list_free(pkg, PKG_REQUIRES);
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
 	pkg->rootfd = -1;
@@ -159,6 +160,8 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_PROVIDES);
+	pkg_list_free(pkg, PKG_REQUIRES);
 
 	LL_FREE(pkg->categories, pkg_strel_free);
 	LL_FREE(pkg->licenses, pkg_strel_free);
@@ -708,6 +711,14 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 	assert(pkg != NULL);
 
 	HASH_NEXT(pkg->provides, (*c));
+}
+
+int
+pkg_requires(const struct pkg *pkg, struct pkg_provide **c)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->requires, (*c));
 }
 
 int
@@ -1431,6 +1442,8 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->conflicts));
 	case PKG_PROVIDES:
 		return (HASH_COUNT(pkg->provides));
+	case PKG_REQUIRES:
+		return (HASH_COUNT(pkg->requires));
 	case PKG_CONFIG_FILES:
 		return (HASH_COUNT(pkg->config_files));
 	}
@@ -1486,6 +1499,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_PROVIDES:
 		HASH_FREE(pkg->provides, pkg_provide_free);
 		pkg->flags &= ~PKG_LOAD_PROVIDES;
+		break;
+	case PKG_REQUIRES:
+		HASH_FREE(pkg->requires, pkg_provide_free);
+		pkg->flags &= ~PKG_LOAD_REQUIRES;
 		break;
 	}
 }

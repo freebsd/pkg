@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -173,6 +173,7 @@ struct pkg {
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
+	struct pkg_provide	*requires;
 	struct pkg_config_file	*config_files;
 	struct pkg_kv		*annotations;
 	unsigned			flags;

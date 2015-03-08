@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -57,6 +57,7 @@
 #define PKG_SHLIBS_PROVIDED	-15
 #define PKG_CONFLICTS		-17
 #define PKG_PROVIDES		-18
+#define PKG_REQUIRES		-19
 
 static int pkg_string(struct pkg *, const ucl_object_t *, int);
 static int pkg_obj(struct pkg *, const ucl_object_t *, int);
@@ -105,6 +106,7 @@ static struct manifest_key {
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
 	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
 	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
+	{ "requires",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
 	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_obj},
 	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
@@ -919,6 +921,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_provide	*provide  = NULL;
+	struct pkg_provide	*require  = NULL;
 	struct pkg_config_file	*cf       = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int i;
@@ -1079,6 +1082,16 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "provides", 8, false);
+
+	pkg_debug(4, "Emitting requires");
+	seq = NULL;
+	while (pkg_requires(pkg, &require) == EPKG_OK) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(require->provide));
+	}
+	if (seq)
+		ucl_object_insert_key(top, seq, "requires", 8, false);
 
 	pkg_debug(4, "Emitting options");
 	map = NULL;

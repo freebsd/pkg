@@ -125,6 +125,7 @@ global:
 	pkg_repos;
 	pkg_repos_activated_count;
 	pkg_repos_total_count;
+	pkg_requires;
 	pkg_reset;
 	pkg_sbuf_printf;
 	pkg_sbuf_vprintf;

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -671,6 +671,20 @@ pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_PROVIDES,
 			pkg_addconflict, PKG_PROVIDES));
+}
+
+static int
+pkgdb_load_requires(sqlite3 *sqlite, struct pkg *pkg)
+{
+	const char	sql[] = ""
+		"SELECT require"
+		" FROM requires"
+		" WHERE package_id = ?1";
+
+	assert(pkg != NULL);
+
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_REQUIRES,
+	    pkg_addconflict, PKG_REQUIRES));
 }
 
 static void
