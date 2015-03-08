@@ -1098,14 +1098,18 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		ret2 = pkg_deps(lp, &ld);
 		if (ret1 != ret2) {
 			free(rp->reason);
-			rp->reason = strdup("direct dependency changed");
+			asprintf(&rp->reason, "direct dependency changed: %s", 
+			    rd->name);
+			assert (rp->reason != NULL);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if ((strcmp(rd->name, ld->name) != 0) ||
 			    (strcmp(rd->origin, ld->origin) != 0)) {
 				free(rp->reason);
-				rp->reason = strdup("direct dependency changed");
+				asprintf(&rp->reason, "direct dependency changed: %s",
+				    rd->name);
+				assert (rp->reason != NULL);
 				return (true);
 			}
 		}
