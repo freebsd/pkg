@@ -671,6 +671,7 @@ int pkg_addshlib_required(struct pkg *pkg, const char *name);
 int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 int pkg_addconflict(struct pkg *pkg, const char *name);
 int pkg_addprovide(struct pkg *pkg, const char *name);
+int pkg_addrequire(struct pkg *pkg, const char *name);
 int pkg_addconfig_file(struct pkg *pkg, const char *name, const char *buf);
 
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);

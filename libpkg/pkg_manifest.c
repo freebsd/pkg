@@ -106,7 +106,7 @@ static struct manifest_key {
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
 	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
 	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
-	{ "requires",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
+	{ "requires",            PKG_REQUIRES,            UCL_ARRAY,  pkg_array},
 	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_obj},
 	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
@@ -421,6 +421,12 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 				pkg_emit_error("Skipping malformed config file name");
 			else
 				pkg_addconfig_file(pkg, ucl_object_tostring(cur), NULL);
+			break;
+		case PKG_REQUIRES:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed require name");
+			else
+				pkg_addrequire(pkg, ucl_object_tostring(cur));
 			break;
 		}
 	}

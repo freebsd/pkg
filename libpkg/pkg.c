@@ -1353,6 +1353,27 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 }
 
 int
+pkg_addrequire(struct pkg *pkg, const char *name)
+{
+	struct pkg_provide *p = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->requires, __DECONST(char *, name), p);
+	/* silently ignore duplicates in case of conflicts */
+	if (p != NULL)
+		return (EPKG_OK);
+
+	pkg_provide_new(&p);
+	p->provide = strdup(name);
+
+	HASH_ADD_KEYPTR(hh, pkg->requires, p->provide, strlen(p->provide), p);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_addprovide(struct pkg *pkg, const char *name)
 {
 	struct pkg_provide *p = NULL;
