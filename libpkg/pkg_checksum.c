@@ -180,6 +180,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
 	struct pkg_dep *dep = NULL;
+	struct pkg_provide *p = NULL;
 	int i;
 
 	if (pkg == NULL || type >= PKG_HASH_TYPE_UNKNOWN ||
@@ -216,6 +217,15 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		asprintf(&olduid, "%s~%s", dep->name, dep->origin);
 		pkg_checksum_add_entry("depend", olduid, &entries);
 		free(olduid);
+	}
+
+	while (pkg_provides(pkg, &p) == EPKG_OK) {
+		pkg_checksum_add_entry("provide", p->provide, &entries);
+	}
+
+	p = NULL;
+	while (pkg_requires(pkg, &p) == EPKG_OK) {
+		pkg_checksum_add_entry("require", p->provide, &entries);
 	}
 
 	/* Sort before hashing */
