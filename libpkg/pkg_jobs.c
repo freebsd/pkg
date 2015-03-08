@@ -1156,6 +1156,27 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		else
 			break;
 	}
+	/* Requires */
+	rpr = NULL;
+	lpr = NULL;
+	for (;;) {
+		ret1 = pkg_requires(rp, &rpr);
+		ret1 = pkg_requires(lp, &lpr);
+		if (ret1 != ret2) {
+			free(rp->reason);
+			rp->reason = strdup("requires changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(rpr->provide, lpr->provide) != 0) {
+				free(rp->reason);
+				rp->reason = strdup("requires changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
 
 	/* Finish by the shlibs */
 	for (;;) {
