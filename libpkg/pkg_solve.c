@@ -648,6 +648,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg *pkg;
 	struct pkg_solve_variable *cur_var;
 	struct pkg_shlib *shlib = NULL;
+	struct pkg_provide *p = NULL;
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq;
 	bool chain_added = false;
@@ -672,7 +673,15 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		shlib = NULL;
 		if (pkg->type != PKG_INSTALLED) {
 			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-				if (pkg_solve_add_require_rule(problem, cur_var, shlib->name) != EPKG_OK)
+				if (pkg_solve_add_require_rule(problem, cur_var,
+				    shlib->name) != EPKG_OK)
+					continue;
+			}
+		}
+		if (pkg->type != PKG_INSTALLED) {
+			while (pkg_requires(pkg, &p) == EPKG_OK) {
+				if (pkg_solve_add_require_rule(problem, cur_var,
+				    p->provide) != EPKG_OK)
 					continue;
 			}
 		}
