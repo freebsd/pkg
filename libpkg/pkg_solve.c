@@ -440,14 +440,14 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 static int
 pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var,
-		struct pkg_shlib *shlib)
+		const char *requirement)
 {
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_job_provide *pr, *prhead;
 	int cnt;
 
-	HASH_FIND_STR(problem->j->universe->provides, shlib->name, prhead);
+	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
 	if (prhead != NULL) {
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
@@ -484,8 +484,8 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		 * This is terribly broken now so ignore till provides/requires
 		 * are really fixed.
 		 */
-		pkg_debug(1, "solver: cannot find provide for required shlib %s",
-			shlib->name);
+		pkg_debug(1, "solver: cannot find provide for requirement: %s",
+		    requirement);
 	}
 
 	return (EPKG_OK);
@@ -672,7 +672,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		shlib = NULL;
 		if (pkg->type != PKG_INSTALLED) {
 			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-				if (pkg_solve_add_require_rule(problem, cur_var, shlib) != EPKG_OK)
+				if (pkg_solve_add_require_rule(problem, cur_var, shlib->name) != EPKG_OK)
 					continue;
 			}
 		}
