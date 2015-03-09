@@ -59,6 +59,7 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
+	jailed=$(sysctl -n security.jail.jailed || :)
 	if [ "$jailed" = "1" ]; then
 		JAILED="[`hostname`] "
 	fi
