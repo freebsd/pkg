@@ -59,6 +59,7 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	if (flag == 0) {
 		if (!IS_DELETE(universe->j))
 			flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
+				PKG_LOAD_REQUIRES|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
 				PKG_LOAD_CONFLICTS;
 		else
@@ -105,6 +106,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 
 	if (flag == 0) {
 		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+			PKG_LOAD_PROVIDES|PKG_LOAD_REQUIRES|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	}
@@ -337,7 +339,6 @@ pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
 	return (EPKG_OK);
 }
 
-
 static int
 pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 	struct pkg *pkg)
@@ -348,6 +349,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 	struct pkgdb_it *it;
 	struct pkg *npkg, *rpkg;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
@@ -359,6 +361,119 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 		/* Not found, search in the repos */
 		it = pkgdb_repo_shlib_provide(universe->j->db,
 			shlib->name, universe->j->reponame);
+		if (it != NULL) {
+			rpkg = NULL;
+			prhead = NULL;
+			while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
+				/* Check for local packages */
+				HASH_FIND_STR(universe->items, rpkg->uid, unit);
+				if (unit != NULL) {
+					if (pkg_jobs_need_upgrade (rpkg, unit->pkg)) {
+						/* Remote provide is newer, so we can add it */
+						if (pkg_jobs_universe_process_item(universe, rpkg,
+							&unit) != EPKG_OK)
+							continue;
+
+						rpkg = NULL;
+					}
+				}
+				else {
+					/* Maybe local package has just been not added */
+					npkg = pkg_jobs_universe_get_local(universe, rpkg->uid, 0);
+					if (npkg != NULL) {
+						if (pkg_jobs_universe_process_item(universe, npkg,
+							&unit) != EPKG_OK) {
+							return (EPKG_FATAL);
+						}
+						if (pkg_jobs_need_upgrade (rpkg, npkg)) {
+							/* Remote provide is newer, so we can add it */
+							if (pkg_jobs_universe_process_item(universe, rpkg,
+								&unit) != EPKG_OK)
+								continue;
+						}
+					}
+				}
+
+				/* Skip seen packages */
+				if (unit == NULL) {
+					struct pkg_job_seen *seen;
+
+					if (rpkg->digest == NULL) {
+						pkg_debug(3, "no digest found for package %s", rpkg->uid);
+						if (pkg_checksum_calculate(pkg, universe->j->db) != EPKG_OK) {
+							return (EPKG_FATAL);
+						}
+					}
+					HASH_FIND_STR(universe->seen, rpkg->digest, seen);
+					if (seen == NULL) {
+						pkg_jobs_universe_process_item(universe, rpkg,
+							&unit);
+
+						/* Reset package to avoid freeing */
+						rpkg = NULL;
+					}
+					else {
+						unit = seen->un;
+					}
+				}
+
+				pr = calloc (1, sizeof (*pr));
+				if (pr == NULL) {
+					pkg_emit_errno("pkg_jobs_add_universe", "calloc: "
+						"struct pkg_job_provide");
+					return (EPKG_FATAL);
+				}
+
+				pr->un = unit;
+				pr->provide = shlib->name;
+
+				if (prhead == NULL) {
+					DL_APPEND(prhead, pr);
+					HASH_ADD_KEYPTR(hh, universe->provides, pr->provide,
+						strlen(pr->provide), prhead);
+				}
+				else {
+					DL_APPEND(prhead, pr);
+				}
+			}
+			pkgdb_it_free(it);
+			if (prhead == NULL) {
+				pkg_debug(1, "cannot find packages that provide %s required for %s",
+				    shlib->name, pkg->name);
+				/*
+				 * XXX: this is not normal but it is very common for the existing
+				 * repos, hence we just ignore this stale dependency
+				 */
+			}
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
+	struct pkg *pkg)
+{
+	struct pkg_provide *p = NULL;
+	struct pkg_job_universe_item *unit;
+	struct pkg_job_provide *pr, *prhead;
+	struct pkgdb_it *it;
+	struct pkg *npkg, *rpkg;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
+				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
+				PKG_LOAD_PROVIDES|
+				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+
+	while (pkg_requires(pkg, &p) == EPKG_OK) {
+		HASH_FIND_STR(universe->provides, p->provide, pr);
+		if (pr != NULL)
+			continue;
+
+		/* Not found, search in the repos */
+		it = pkgdb_repo_provide(universe->j->db,
+			p->provide, universe->j->reponame);
 		if (it != NULL) {
 			rpkg = NULL;
 			prhead = NULL;
@@ -422,7 +537,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 				}
 
 				pr->un = unit;
-				pr->provide = shlib->name;
+				pr->provide = p->provide;
 
 				if (prhead == NULL) {
 					DL_APPEND(prhead, pr);
@@ -436,7 +551,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 			if (prhead == NULL) {
 				pkg_debug(1, "cannot find packages that provide %s required for %s",
-				    shlib->name, pkg->name);
+				    p->provide, pkg->name);
 				/*
 				 * XXX: this is not normal but it is very common for the existing
 				 * repos, hence we just ignore this stale dependency
@@ -507,6 +622,9 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 		/* For remote packages we should also handle shlib deps */
 		if (pkg->type != PKG_INSTALLED) {
 			rc = pkg_jobs_universe_process_shlibs(universe, pkg);
+			if (rc != EPKG_OK)
+				return (rc);
+			rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
 			if (rc != EPKG_OK)
 				return (rc);
 		}
@@ -1047,6 +1165,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *ucur;
 	int flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+					PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
 					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	UT_array *candidates;

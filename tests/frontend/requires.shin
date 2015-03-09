@@ -1,0 +1,90 @@
+#! /usr/bin/env atf-sh
+
+atf_test_case requires
+requires_head() {
+	atf_set "descr" "Testings requires"
+}
+
+requires_body() {
+	export PKG_DBDIR=.
+	export INSTALL_AS_USER=yes
+
+	cat << EOF >> repo.conf
+local1: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	cat << EOF > a.ucl
+name: a
+origin: a
+version: "1.0"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /usr/local
+desc: <<EOD
+Yet another test
+EOD
+provides: [a]
+EOF
+
+	cat << EOF > b.ucl
+name: b
+origin: b
+version: "1.0"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /usr/local
+desc: <<EOD
+Yet another test
+EOD
+requires: [a]
+EOF
+	for p in a b; do
+		atf_check \
+			-o ignore \
+			-e empty \
+			-s exit:0 \
+			pkg create -M ./${p}.ucl
+	done
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg repo .
+
+	if [ "$jailed" = "1" ]; then
+		JAILED="[`hostname`] "
+	fi
+OUTPUT="Updating local1 repository catalogue...
+${JAILED}Fetching meta.txz... done
+${JAILED}Fetching packagesite.txz... done
+Processing entries... done
+local1 repository update completed. 2 packages processed.
+Checking integrity... done (0 conflicting)
+The following 2 packages will be affected (of 0 checked):
+
+New packages to be INSTALLED:
+	b: 1.0
+	a: 1.0
+"
+
+	atf_check \
+		-o inline:"${OUTPUT}" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}" install -n b
+}
+
+atf_init_test_cases() {
+        . $(atf_get_srcdir)/test_environment.sh
+
+	atf_add_test_case requires
+}
+

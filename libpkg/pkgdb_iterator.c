@@ -664,13 +664,15 @@ pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT provide"
-		"  FROM provides"
-		"  WHERE package_id = ?1";
+		"  FROM pkg_provides, provides AS s"
+		"  WHERE package_id = ?1"
+		"    AND provide_id = s.id"
+		"  ORDER by provide DESC";
 
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_PROVIDES,
-			pkg_addconflict, PKG_PROVIDES));
+	    pkg_addprovide, PKG_PROVIDES));
 }
 
 static int
@@ -678,13 +680,15 @@ pkgdb_load_requires(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT require"
-		" FROM requires"
-		" WHERE package_id = ?1";
+		"  FROM pkg_requires, requires AS s"
+		"  WHERE package_id = ?1"
+		"    AND require_id = s.id"
+		"  ORDER by require DESC";
 
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_REQUIRES,
-	    pkg_addconflict, PKG_REQUIRES));
+	    pkg_addrequire, PKG_REQUIRES));
 }
 
 static void
@@ -836,6 +840,7 @@ static struct load_on_flag {
 	{ PKG_LOAD_ANNOTATIONS,		pkgdb_load_annotations },
 	{ PKG_LOAD_CONFLICTS,		pkgdb_load_conflicts },
 	{ PKG_LOAD_PROVIDES,		pkgdb_load_provides },
+	{ PKG_LOAD_REQUIRES,		pkgdb_load_requires },
 	{ -1,			        NULL }
 };
 

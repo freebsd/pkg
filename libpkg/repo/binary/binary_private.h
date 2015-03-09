@@ -553,6 +553,10 @@ typedef enum _sql_prstmt_index {
 	REPO_VERSION,
 	DELETE,
 	FTS_APPEND,
+	PROVIDE,
+	PROVIDES,
+	REQUIRE,
+	REQUIRES,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 

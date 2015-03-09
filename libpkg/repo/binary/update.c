@@ -139,6 +139,7 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
+	struct pkg_provide	*provide  = NULL;
 	struct pkg_strel	*el;
 	struct pkg_kv		*kv;
 	const char		*arch;
@@ -243,6 +244,30 @@ try_again:
 					shlib->name);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
+			return (EPKG_FATAL);
+		}
+	}
+
+	provide = NULL;
+	while (pkg_provides(pkg, &provide) == EPKG_OK) {
+		ret = pkg_repo_binary_run_prstatement(PROVIDE, provide->provide);
+		if (ret == SQLITE_DONE)
+			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id,
+			    provide->provide);
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PROVIDES));
+			return (EPKG_FATAL);
+		}
+	}
+
+	provide = NULL;
+	while (pkg_requires(pkg, &provide) == EPKG_OK) {
+		ret = pkg_repo_binary_run_prstatement(REQUIRE, provide->provide);
+		if (ret == SQLITE_DONE)
+			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id,
+			    provide->provide);
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(REQUIRES));
 			return (EPKG_FATAL);
 		}
 	}

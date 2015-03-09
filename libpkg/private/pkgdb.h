@@ -135,6 +135,12 @@ struct pkgdb_it *pkgdb_repo_shlib_require(struct pkgdb *db,
 struct pkgdb_it *pkgdb_repo_shlib_provide(struct pkgdb *db,
 		const char *require, const char *repo);
 
+struct pkgdb_it *pkgdb_repo_provide(struct pkgdb *db, const char *require,
+    const char *repo);
+
+struct pkgdb_it *pkgdb_repo_require(struct pkgdb *db, const char *provide,
+    const char *repo);
+
 /**
  * Unregister a package from the database
  * @return An error code.

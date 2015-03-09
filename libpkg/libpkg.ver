@@ -181,6 +181,8 @@ global:
 	pkgdb_open;
 	pkgdb_open_all;
 	pkgdb_query;
+	pkgdb_query_provide;
+	pkgdb_query_require;
 	pkgdb_query_shlib_provide;
 	pkgdb_query_shlib_require;
 	pkgdb_query_which;
