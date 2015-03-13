@@ -623,7 +623,7 @@ event_callback(void *data, struct pkg_event *ev)
 		if (pkg_has_message(pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
+			pkg_sbuf_printf(messages, "Message for %n-%v:\n%M\n",
 			    pkg, pkg, pkg);
 		}
 		break;
