@@ -2,6 +2,7 @@ syntax('kyuafile', 1)
 
 test_suite('prop: test-suite = frontend')
 
+atf_test_program{name='001sanity.sh'}
 atf_test_program{name='add.sh'}
 atf_test_program{name='alias.sh'}
 atf_test_program{name='annotate.sh'}
