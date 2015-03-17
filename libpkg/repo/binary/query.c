@@ -199,7 +199,7 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 			"FROM packages AS p INNER JOIN pkg_provides AS ps ON "
 			"p.id = ps.package_id "
 			"WHERE ps.provide_id IN (SELECT id from provides WHERE "
-			"name BETWEEN ?1 AND ?1 || '.9');";
+			"provide = ?1 );";
 
 	sql = sbuf_new_auto();
 	sbuf_printf(sql, basesql, repo->name);
@@ -274,7 +274,7 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 			"p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
 			"FROM packages AS p INNER JOIN pkg_requires AS ps ON "
 			"p.id = ps.package_id "
-			"WHERE ps.require_id = (SELECT id FROM requires WHERE name=?1);";
+			"WHERE ps.require_id = (SELECT id FROM requires WHERE require=?1);";
 
 	sql = sbuf_new_auto();
 	sbuf_printf(sql, basesql, repo->name);
