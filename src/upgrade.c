@@ -182,7 +182,7 @@ exec_upgrade(int argc, char **argv)
 		rc = yes;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-				"The following %d packages will be affected (of %d checked):\n\n",
+				"The following %d package(s) will be affected (of %d checked):\n\n",
 				nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run)
