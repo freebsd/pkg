@@ -214,19 +214,21 @@ void usage_config(void);
 #define INFO_FLATSIZE		(1LL<<16)
 #define INFO_PKGSIZE		(1LL<<17)
 #define INFO_DESCR		(1LL<<18)
+#define INFO_PROVIDED		(1LL<<19)
+#define INFO_REQUIRED		(1LL<<20)
 
 /* Other fields not part of the Full output */
-#define INFO_MESSAGE		(1LL<<19)
-#define INFO_DEPS		(1LL<<20)
-#define INFO_RDEPS		(1LL<<21)
-#define INFO_FILES		(1LL<<22)
-#define INFO_DIRS		(1LL<<23)
-#define INFO_USERS		(1LL<<24)
-#define INFO_GROUPS		(1LL<<25)
-#define INFO_REPOURL		(1LL<<26)
-#define INFO_LOCKED		(1LL<<27)
-#define INFO_OPTION_DEFAULTS    (1LL<<28)
-#define INFO_OPTION_DESCRIPTIONS (1LL<<29)
+#define INFO_MESSAGE		(1LL<<21)
+#define INFO_DEPS		(1LL<<22)
+#define INFO_RDEPS		(1LL<<23)
+#define INFO_FILES		(1LL<<24)
+#define INFO_DIRS		(1LL<<25)
+#define INFO_USERS		(1LL<<26)
+#define INFO_GROUPS		(1LL<<27)
+#define INFO_REPOURL		(1LL<<28)
+#define INFO_LOCKED		(1LL<<29)
+#define INFO_OPTION_DEFAULTS    (1LL<<30)
+#define INFO_OPTION_DESCRIPTIONS (1LL<<31)
 
 #define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
@@ -250,7 +252,7 @@ void usage_config(void);
 			 INFO_WWW|INFO_COMMENT|INFO_OPTIONS|		 \
 			 INFO_SHLIBS_REQUIRED|INFO_SHLIBS_PROVIDED|	 \
 			 INFO_ANNOTATIONS|INFO_FLATSIZE|INFO_PKGSIZE|	 \
-			 INFO_DESCR)
+			 INFO_DESCR|INFO_PROVIDED|INFO_REQUIRED)
 
 /* Everything that can take more than one line to print */
 #define INFO_MULTILINE	(INFO_OPTIONS|INFO_SHLIBS_REQUIRED|	       \

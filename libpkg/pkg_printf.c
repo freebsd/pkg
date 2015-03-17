@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -97,7 +98,7 @@
  * Od pkg_option   Option default value (if known)
  * OD pkg_option   Option description
  *
- * P
+ * P pkg
  * Q
  *
  * R  pkg          Repopath
@@ -112,7 +113,8 @@
  * V  pkg          old version
  * W
  * X
- * Y
+ * Y  pkg          List of requires
+ * Yn pkg_provide  Name of the require
  * Z
  *
  * a  pkg          autoremove flag
@@ -155,8 +157,9 @@
  * v  pkg          version
  * w  pkg          home page URL
  *
- * x  pkg	   pkg tarball size
- * y
+ * x  pkg          pkg tarball size
+ * y  pkg          List of provides
+ * yn pkg_provide  name of the provide
  *
  * z  pkg          short checksum
  */
@@ -510,6 +513,22 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_old_version,
 	},
+	[PP_PKG_REQUIRED_NAME] = {
+		'Y',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_Y,
+		&format_provide_name,
+	},
+	[PP_PKG_REQUIRED] = {
+		'Y',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_required,
+	},
 	[PP_PKG_AUTOREMOVE] =
 	{
 		'a',
@@ -760,6 +779,22 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_pkgsize,
+	},
+	[PP_PKG_PROVIDED_NAME] = {
+		'y',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_y,
+		&format_provide_name,
+	},
+	[PP_PKG_PROVIDED] = {
+		'y',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_provided,
 	},
 	[PP_PKG_SHORT_CHECKSUM] =
 	{
@@ -1423,6 +1458,48 @@ format_old_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %Y -- Required pattern.  List of pattern required by
+ * binaries in the pkg.  Optionally accepts per-field format in %{ %|
+ * %}.  Default %{%Yn\n%|%}
+ */
+struct sbuf *
+format_required(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_REQUIRES), p));
+	else {
+		struct pkg_provide	*provide = NULL;
+		int			 count;
+
+		set_list_defaults(p, "%Yn\n", "");
+
+		count = 1;
+		while (pkg_requires(pkg, &provide) == EPKG_OK) {
+			if (count > 1)
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+					     provide, count, PP_Y);
+
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
+				     provide, count, PP_Y);
+			count++;
+		}
+	}
+	return (sbuf);
+}
+
+/*
+ * %Yn -- Required name or %yn -- Provided name
+ */
+struct sbuf *
+format_provide_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_provide	*provide = data;
+
+	return (string_val(sbuf, provide->provide, p));
+}
+/*
  * %a -- Autoremove flag. boolean.  Accepts field-width, left-align.
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
  * false, true
@@ -1769,6 +1846,38 @@ format_pkgsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	return (int_val(sbuf, pkg->pkgsize, p));
+}
+
+/*
+ * %y -- Provided pattern.  List of pattern provided by
+ * binaries in the pkg.  Optionally accepts per-field format in %{ %|
+ * %}.  Default %{%yn\n%|%}
+ */
+struct sbuf *
+format_provided(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_PROVIDES), p));
+	else {
+		struct pkg_provide	*provide = NULL;
+		int			 count;
+
+		set_list_defaults(p, "%yn\n", "");
+
+		count = 1;
+		while (pkg_provides(pkg, &provide) == EPKG_OK) {
+			if (count > 1)
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+					     provide, count, PP_y);
+
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
+				     provide, count, PP_y);
+			count++;
+		}
+	}
+	return (sbuf);
 }
 
 /*

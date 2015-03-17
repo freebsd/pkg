@@ -56,9 +56,11 @@
 #define PP_L	(1U << 7)	/* licence */
 #define PP_O	(1U << 8)	/* option */
 #define PP_U	(1U << 9)	/* user */
-#define PP_b	(1U << 10)	/* shlib provided */
-#define PP_d	(1U << 11)	/* dependency */
-#define PP_r	(1U << 12)	/* requirement */
+#define PP_Y	(1U << 10)	/* required */
+#define PP_b	(1U << 11)	/* shlib provided */
+#define PP_d	(1U << 12)	/* dependency */
+#define PP_r	(1U << 13)	/* requirement */
+#define PP_y	(1U << 14)	/* provided */
 
 #define _PP_last	PP_r
 #define PP_ALL	((_PP_last << 1) - 1) /* All contexts */
@@ -139,6 +141,10 @@ typedef enum _fmt_code_t {
 	PP_PKG_VERSION,
 	PP_PKG_HOME_PAGE,
 	PP_PKG_PKGSIZE,
+	PP_PKG_REQUIRED,
+	PP_PKG_REQUIRED_NAME,
+	PP_PKG_PROVIDED,
+	PP_PKG_PROVIDED_NAME,
 	PP_PKG_SHORT_CHECKSUM,
 	PP_LAST_FORMAT = PP_PKG_SHORT_CHECKSUM,
 	PP_LITERAL_PERCENT,
@@ -223,6 +229,9 @@ _static struct sbuf *format_pkgsize(struct sbuf *, const void *, struct percent_
 _static struct sbuf *format_short_checksum(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
 _static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
+_static struct sbuf *format_provided(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_required(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_provide_name(struct sbuf *, const void *, struct percent_esc *);
 
 /* Other static function prototypes */
 

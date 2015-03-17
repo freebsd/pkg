@@ -257,6 +257,10 @@ info_flags(uint64_t opt, bool remote)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
 	if (opt & INFO_SHLIBS_PROVIDED)
 		flags |= PKG_LOAD_SHLIBS_PROVIDED;
+	if (opt & INFO_PROVIDED)
+		flags |= PKG_LOAD_PROVIDES;
+	if (opt & INFO_REQUIRED)
+		flags |= PKG_LOAD_REQUIRES;
 	if (opt & INFO_ANNOTATIONS)
 		flags |= PKG_LOAD_ANNOTATIONS;
 	if (opt & INFO_DEPS)
@@ -277,6 +281,8 @@ info_flags(uint64_t opt, bool remote)
 			 PKG_LOAD_OPTIONS         |
 			 PKG_LOAD_SHLIBS_REQUIRED |
 			 PKG_LOAD_SHLIBS_PROVIDED |
+			 PKG_LOAD_PROVIDES        |
+			 PKG_LOAD_REQUIRES        |
 			 PKG_LOAD_ANNOTATIONS     |
 			 PKG_LOAD_DEPS;
 		if (!remote) {
@@ -483,6 +489,26 @@ print_info(struct pkg * const pkg, uint64_t options)
 					pkg_printf("%b%{%bn\n%|%}", pkg);
 				else
 					pkg_printf("%b%{\t%bn\n%|%}", pkg);
+			}
+			break;
+		case INFO_REQUIRED:
+			if (pkg_list_count(pkg, PKG_REQUIRES) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Requires");
+				if (quiet)
+					pkg_printf("%Y%{%Yn\n%|%}", pkg);
+				else
+					pkg_printf("%Y%{\t%Yn\n%|%}", pkg);
+			}
+			break;
+		case INFO_PROVIDED:
+			if (pkg_list_count(pkg, PKG_PROVIDES) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Provides");
+				if (quiet)
+					pkg_printf("%y%{%yn\n%|%}", pkg);
+				else
+					pkg_printf("%y%{\t%yn\n%|%}", pkg);
 			}
 			break;
 		case INFO_ANNOTATIONS:
