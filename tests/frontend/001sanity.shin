@@ -20,7 +20,7 @@ ldd_head() {
 
 ldd_body() {
 	atf_check \
-	    -o match:".*libpkg.so.3 => /home/bapt/dev/pkg/tests/frontend/.*$" \
+	    -o match:".*libpkg.so.3 => $(atf_get_srcdir).*$" \
 	    -e empty \
 	    -s exit:0 \
 	    ldd -a $(atf_get_srcdir)/../../src/.libs/pkg
