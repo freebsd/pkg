@@ -5,8 +5,6 @@ find_conflicts_head() {
 }
 
 find_conflicts_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
 	touch a
 	cat << EOF >> manifest
 name: test
@@ -68,10 +66,6 @@ local: {
 }
 EOF
 
-	jailed=$(sysctl -n security.jail.jailed || :)
-	if [ "$jailed" = "1" ]; then
-		JAILED="[`hostname`] "
-	fi
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.txz... done
 ${JAILED}Fetching packagesite.txz... done

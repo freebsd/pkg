@@ -11,10 +11,6 @@ pkg_puppet_head() {
 }
 
 pkg_puppet_body() {
-
-	export PKG_DBDIR=.
-	export INSTALL_AS_USER=yes
-
 	touch puppet.file
 	touch ruby.file
 	touch rubygemrubyaugeas.file
@@ -354,10 +350,6 @@ local: {
 }
 EOF
 
-	jailed=$(sysctl -n security.jail.jailed || :)
-	if [ "$jailed" = "1" ]; then
-		JAILED="[`hostname`] "
-	fi
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.txz... done
 ${JAILED}Fetching packagesite.txz... done

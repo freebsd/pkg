@@ -7,15 +7,10 @@ search_head() {
 
 search_body() {
 	export REPOS_DIR=/nonexistent
-	export PKG_DBDIR=.
-	export INSTALL_AS_USER=yes
 	atf_check -e inline:"No active remote repositories configured.\n" -o empty -s exit:3 pkg -C '' -R '' search -e -Q comment -S name pkg
 }
 
 atf_init_test_cases() {
         . $(atf_get_srcdir)/test_environment.sh
-
-	unset PKG_DBDIR
-
 	atf_add_test_case search
 }

@@ -8,9 +8,6 @@ lock_head() {
 }
 
 lock_body() {
-        export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
 	for pkg in 'png' 'sqlite3' ; do
 	    atf_check \
 		-o match:".*Installing.*\.\.\.$" \

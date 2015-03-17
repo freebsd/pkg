@@ -1,13 +1,6 @@
 #! /usr/bin/env atf-sh
 
 initialize_pkg() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	jailed=$(sysctl -n security.jail.jailed || :)
-	if [ "$jailed" = "1" ]; then
-		JAILED="[`hostname`] "
-	fi
 	touch a
 	cat << EOF > test.ucl
 name: test
@@ -119,13 +112,6 @@ add_accept_missing_head() {
 	atf_set "descr" "pkg add -M"
 }
 add_accept_missing_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	jailed=$(sysctl -n security.jail.jailed || :)
-	if [ "$jailed" = "1" ]; then
-		JAILED="[`hostname`] "
-	fi
 	touch a
 	cat << EOF > test.ucl
 name: test
@@ -220,13 +206,6 @@ add_stdin_body_head() {
 }
 
 add_stdin_missing_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	jailed=$(sysctl -n security.jail.jailed || :)
-	if [ "$jailed" = "1" ]; then
-		JAILED="[`hostname`] "
-	fi
 	touch a
 	cat << EOF > test.ucl
 name: test

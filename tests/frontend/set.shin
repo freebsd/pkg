@@ -1,13 +1,6 @@
 #! /usr/bin/env atf-sh
 
 initialize_pkg() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	jailed=$(sysctl -n security.jail.jailed || :)
-	if [ "$jailed" = "1" ]; then
-		JAILED="[`hostname`] "
-	fi
 	cat << EOF > test.ucl
 name: test
 origin: origin/test
@@ -32,8 +25,6 @@ EOF
 
 atf_test_case set_automatic
 set_automatic_body() {
-	export INSTALL_AS_USER=yes
-
 	initialize_pkg
 
 	atf_check \

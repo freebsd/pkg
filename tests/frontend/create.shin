@@ -29,9 +29,6 @@ EOF
 }
 
 preparetestcredentials() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
 	touch file1
 
 	genmanifest
@@ -44,10 +41,6 @@ basic_validation() {
 }
 
 create_from_plist_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	TMPDIR=`pwd`
 	touch file1
 	genmanifest
 	genplist "file1"
@@ -187,9 +180,6 @@ create_from_plist_dirrm_head() {
 }
 
 create_from_plist_dirrm_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
 	mkdir testdir
 
 	genmanifest
@@ -216,8 +206,6 @@ create_from_plist_ignore_head() {
 	atf_set "descr" "Testing @ignore"
 }
 create_from_plist_ignore_body() {
-	export INSTALL_AS_USER=yes
-
 	genmanifest
 	genplist "@ignore
 aline"

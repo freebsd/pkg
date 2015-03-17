@@ -6,10 +6,6 @@ simple_delete_head() {
 }
 
 simple_delete_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	tmpdir=`pwd`
 	touch file1
 	mkdir dir
 	touch dir/file2
@@ -22,13 +18,13 @@ maintainer: test
 categories: [test]
 comment: a test
 www: http://test
-prefix: ${tmpdir}
+prefix: ${TMPDIR}
 desc: <<EOD
 Yet another test
 EOD
 files: {
-    ${tmpdir}/file1: "",
-    ${tmpdir}/dir/file2: "",
+    ${TMPDIR}/file1: "",
+    ${TMPDIR}/dir/file2: "",
 }
 EOF
 
@@ -47,7 +43,7 @@ EOF
 	test -f file1 && atf_fail "'file1' still present"
 	test -f dir/file2 && atf_fail "'dir/file2' still present"
 	test -d dir && atf_fail "'dir' still present"
-	test -d ${tmpdir} || atf_fail "Prefix have been removed"
+	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
 }
 
 atf_test_case simple_delete_prefix_ending_with_slash
@@ -56,10 +52,6 @@ simple_delete_prefix_ending_with_slash_head() {
 }
 
 simple_delete_prefix_ending_with_slash_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	tmpdir=`pwd`
 	touch file1
 	mkdir dir
 	touch dir/file2
@@ -72,13 +64,13 @@ maintainer: test
 categories: [test]
 comment: a test
 www: http://test
-prefix: ${tmpdir}/
+prefix: ${TMPDIR}/
 desc: <<EOD
 Yet another test
 EOD
 files: {
-    ${tmpdir}/file1: "",
-    ${tmpdir}/dir/file2: "",
+    ${TMPDIR}/file1: "",
+    ${TMPDIR}/dir/file2: "",
 }
 EOF
 
@@ -97,7 +89,7 @@ EOF
 	test -f file1 && atf_fail "'file1' still present"
 	test -f dir/file2 && atf_fail "'dir/file2' still present"
 	test -d dir && atf_fail "'dir' still present"
-	test -d ${tmpdir} || atf_fail "Prefix have been removed"
+	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
 }
 
 atf_test_case delete_with_directory_owned
@@ -106,10 +98,6 @@ delete_with_directory_owned_head() {
 }
 
 delete_with_directory_owned_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	tmpdir=`pwd`
 	touch file1
 	mkdir dir
 	touch dir/file2
@@ -122,13 +110,13 @@ maintainer: test
 categories: [test]
 comment: a test
 www: http://test
-prefix: ${tmpdir}/
+prefix: ${TMPDIR}/
 desc: <<EOD
 Yet another test
 EOD
 files: {
-    ${tmpdir}/file1: "",
-    ${tmpdir}/dir/file2: "",
+    ${TMPDIR}/file1: "",
+    ${TMPDIR}/dir/file2: "",
 }
 EOF
 
@@ -140,12 +128,12 @@ maintainer: test
 categories: [test]
 comment: a test
 www: http://test
-prefix: ${tmpdir}/
+prefix: ${TMPDIR}/
 desc: <<EOD
 Yet another test
 EOD
 directories: {
-    ${tmpdir}/dir: 'y',
+    ${TMPDIR}/dir: 'y',
 }
 EOF
 	atf_check \
@@ -177,7 +165,7 @@ EOF
 		pkg delete -y test2
 
 	test -d dir && atf_fail "'dir' still present"
-	test -d ${tmpdir} || atf_fail "Prefix has been removed"
+	test -d ${TMPDIR} || atf_fail "Prefix has been removed"
 }
 
 atf_init_test_cases() {
