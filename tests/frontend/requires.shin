@@ -44,17 +44,17 @@ requires: [a]
 EOF
 	for p in a b; do
 		atf_check \
-			-o ignore \
-			-e empty \
-			-s exit:0 \
-			pkg create -M ./${p}.ucl
+		    -o ignore \
+		    -e empty \
+		    -s exit:0 \
+		    pkg create -M ./${p}.ucl
 	done
 
 	atf_check \
-		-o ignore \
-		-e empty \
-		-s exit:0 \
-		pkg repo .
+	    -o ignore \
+	    -e empty \
+	    -s exit:0 \
+	    pkg repo .
 
 OUTPUT="Updating local1 repository catalogue...
 ${JAILED}Fetching meta.txz... done
@@ -70,14 +70,14 @@ New packages to be INSTALLED:
 "
 
 	atf_check \
-		-o inline:"${OUTPUT}" \
-		-e empty \
-		-s exit:0 \
-		pkg -o REPOS_DIR="${TMPDIR}" install -n b
+	    -o inline:"${OUTPUT}" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg -o REPOS_DIR="${TMPDIR}" install -n b
 }
 
 atf_init_test_cases() {
-        . $(atf_get_srcdir)/test_environment.sh
+	. $(atf_get_srcdir)/test_environment.sh
 
 	atf_add_test_case requires
 }

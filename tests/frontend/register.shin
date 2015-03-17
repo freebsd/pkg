@@ -27,8 +27,7 @@ EOF
 	    -o match:".*Installing.*" \
 	    -e empty \
 	    -s exit:0 \
-	    pkg register --relocate . -i teststage \
-	    -M test.ucl
+	    pkg register --relocate . -i teststage -M test.ucl
 	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	atf_check_equal ${sum} ${nsum}
 	rm -f test.ucl
@@ -51,13 +50,13 @@ EOF
 	    -o match:".*Installing.*" \
 	    -e match:".*conflicts.*" \
 	    -s exit:70 \
-	    pkg register --relocate . -i teststage \
-	    -M test.ucl
+	    pkg register --relocate . -i teststage -M test.ucl
 	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	atf_check_equal ${sum} ${nsum}
 }
 
 atf_init_test_cases() {
 	. $(atf_get_srcdir)/test_environment.sh
+
 	atf_add_test_case register_conflicts
 }
