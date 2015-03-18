@@ -104,6 +104,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
 			setenv("PKG_PREFIX", pkg->prefix, 1);
+			if (pkg_rootdir != NULL)
+				setenv("PKG_ROOTDIR", pkg_rootdir, 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
 				sbuf_printf(script_cmd, "set -x\n");
