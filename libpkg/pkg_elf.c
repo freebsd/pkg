@@ -120,8 +120,9 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 	default:
 		/* Report link resolution errors in shared library. */
 		if (is_shlib) {
-			pkg_emit_error("(%s-%s) %s - shared library %s not found",
-			      pkg->name, pkg->version, fpath, name);
+			pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
+			warnx("(%s-%s) %s - shared library %s not found",
+			      pkgname, pkgversion, fpath, name);
 			return (EPKG_OK);
 		}
 
