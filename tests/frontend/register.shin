@@ -6,51 +6,51 @@ register_conflicts_head() {
 }
 
 register_conflicts_body() {
-	mkdir teststage
-	echo a > teststage/plop
-	sum=$(openssl dgst -sha256 -binary teststage/plop | hexdump -v -e '/1 "%x"')
+	mkdir -p teststage/${TMPDIR}
+	echo a > teststage/${TMPDIR}/plop
+	sum=$(openssl dgst -sha256 -binary teststage/${TMPDIR}/plop | hexdump -v -e '/1 "%x"')
 	cat > test.ucl << EOF
 name: "test"
 origin: "osef"
 version: "1"
 arch: "freebsd:*"
 maintainer: "non"
-prefix: "/"
+prefix: "${TMPDIR}"
 www: "unknown"
 comment: "need one"
 desc: "here as well"
 files: {
-	"/plop" : "$sum"
+	"${TMPDIR}/plop" : "$sum"
 }
 EOF
 	atf_check \
 	    -o match:".*Installing.*" \
 	    -e empty \
 	    -s exit:0 \
-	    pkg register --relocate . -i teststage -M test.ucl
+	    pkg register -i teststage -M test.ucl
 	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	atf_check_equal ${sum} ${nsum}
 	rm -f test.ucl
-	echo b > teststage/plop
+	echo b > teststage/${TMPDIR}/plop
 	cat > test.ucl << EOF
 name: "test2"
 origin: "osef"
 version: "1"
 arch: "freebsd:*"
 maintainer: "non"
-prefix: "/"
+prefix: "${TMPDIR}"
 www: "unknown"
 comment: "need one"
 desc: "here as well"
 files: {
-	"/plop" : "$sum2"
+	"${TMPDIR}/plop" : "$sum2"
 }
 EOF
 	atf_check \
 	    -o match:".*Installing.*" \
 	    -e match:".*conflicts.*" \
 	    -s exit:70 \
-	    pkg register --relocate . -i teststage -M test.ucl
+	    pkg register -i teststage -M test.ucl
 	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	atf_check_equal ${sum} ${nsum}
 }
