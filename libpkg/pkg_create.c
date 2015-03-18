@@ -69,6 +69,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	relocation = pkg_kv_get(&pkg->annotations, "relocated");
 	if (relocation == NULL)
 		relocation = "";
+	if (pkg_rootdir != NULL)
+		relocation = pkg_rootdir;
 
 	/*
 	 * Get / compute size / checksum if not provided in the manifest

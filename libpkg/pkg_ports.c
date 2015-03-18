@@ -1284,11 +1284,16 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 int
 pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
-    const char *location, bool testing)
+    const char *reloc, bool testing)
 {
+	const char *location;
 	int rc = EPKG_OK;
 
-	if (location != NULL)
+	location = reloc;
+	if (pkg_rootdir != NULL)
+		location = pkg_rootdir;
+
+	if (pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	pkg_emit_install_begin(pkg);

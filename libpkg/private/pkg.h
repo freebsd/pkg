@@ -125,6 +125,7 @@
 extern int eventpipe;
 extern int64_t debug_level;
 extern bool developer_mode;
+extern const char *pkg_rootdir;
 
 struct pkg_repo_it;
 struct pkg_repo;

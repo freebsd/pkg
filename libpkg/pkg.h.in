@@ -717,6 +717,7 @@ int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file
  * @return Previous debug level.
  */
 int64_t pkg_set_debug_level(int64_t debug_level);
+void pkg_set_rootdir(const char *rootdir);
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.

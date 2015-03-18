@@ -65,6 +65,7 @@
 int eventpipe = -1;
 int64_t debug_level = 0;
 bool developer_mode = false;
+const char *pkg_rootdir = NULL;
 
 struct config_entry {
 	uint8_t type;
@@ -766,6 +767,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
 	bool fatal_errors = false;
+	char *rootedpath = NULL;
+	char *tmp = NULL;
 
 	k = NULL;
 	o = NULL;
@@ -788,8 +791,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	for (i = 0; i < c_size; i++) {
 		switch (c[i].type) {
 		case PKG_STRING:
+			tmp = NULL;
+			if (c[i].def != NULL && c[i].def[0] == '/' &&
+			    pkg_rootdir != NULL) {
+				asprintf(&tmp, "%s%s", pkg_rootdir, c[i].def);
+			}
 			obj = ucl_object_fromstring_common(
-			    c[i].def != NULL ? c[i].def : "", 0, UCL_STRING_TRIM);
+			    c[i].def != NULL ? tmp != NULL ? tmp : c[i].def : "", 0, UCL_STRING_TRIM);
+			free(tmp);
 			ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
 			break;
@@ -859,11 +868,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (path == NULL)
 		path = PREFIX"/etc/pkg.conf";
 
+	if (pkg_rootdir != NULL)
+		asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+
 	p = ucl_parser_new(0);
 
 	errno = 0;
 	obj = NULL;
-	if (!ucl_parser_add_file(p, path)) {
+	if (!ucl_parser_add_file(p, rootedpath != NULL ? rootedpath : path)) {
 		if (errno != ENOENT)
 			pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
 	} else {
@@ -908,6 +920,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
+		free(rootedpath);
 		return (EPKG_FATAL);
 	}
 
@@ -1017,6 +1030,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	parsed = true;
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
+	free(rootedpath);
 
 	if (strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
 		pkg_emit_error("Unable to determine ABI");
@@ -1235,4 +1249,12 @@ pkg_set_debug_level(int64_t new_debug_level) {
 
 	debug_level = new_debug_level;
 	return old_debug_level;
+}
+
+void
+pkg_set_rootdir(const char *rootdir) {
+	if (pkg_initialized())
+		return;
+
+	pkg_rootdir = rootdir;
 }

@@ -1923,6 +1923,8 @@ pkg_open_root_fd(struct pkg *pkg)
 		return (EPKG_OK);
 
 	path = pkg_kv_get(&pkg->annotations, "relocated");
+	if (pkg_rootdir != NULL)
+		path = pkg_rootdir;
 	if (path == NULL)
 		path = "/";
 

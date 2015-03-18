@@ -463,12 +463,13 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location, struct pkg *remote,
+    struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
     struct pkg *local)
 {
 	struct archive	*a;
 	struct archive_entry *ae;
 	struct pkg	*pkg = NULL;
+	const char	*location;
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	int		 retcode = EPKG_OK;
@@ -479,6 +480,10 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (local != NULL)
 		flags |= PKG_ADD_UPGRADE;
+
+	location = reloc;
+	if (pkg_rootdir != NULL)
+		location = pkg_rootdir;
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -513,7 +518,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Additional checks for non-remote package
 	 */
 	if (remote == NULL) {
-		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys, location);
+		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys,
+		    location);
 		if (ret != EPKG_OK) {
 			/* Do not return error on installed package */
 			retcode = (ret == EPKG_INSTALLED ? EPKG_OK : ret);
@@ -534,7 +540,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg->automatic = remote->automatic;
 	}
 
-	if (location != NULL)
+	if (pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	/* register the package before installing it in case there are

@@ -134,6 +134,7 @@ global:
 	pkg_set_debug_level;
 	pkg_set_from_file;
 	pkg_set_from_fileat;
+	pkg_set_rootdir;
 	pkg_shlibs_provided;
 	pkg_shlibs_required;
 	pkg_shutdown;
