@@ -1121,7 +1121,8 @@ int pkg_create_installed(const char *, pkg_formats, struct pkg *);
  * Create package from stage install using just the manifest --
  * no old pkg_tools compatibility stuff
  */
-int pkg_create_from_manifest(const char *, pkg_formats, const char *, const char *);
+int pkg_create_from_manifest(const char *, pkg_formats, const char *,
+    const char *, const char *);
 
 /**
  * Create package from stage install with a metadata directory

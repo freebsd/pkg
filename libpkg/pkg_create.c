@@ -233,7 +233,7 @@ static const char * const scripts[] = {
  * from the manifest */
 int
 pkg_create_from_manifest(const char *outdir, pkg_formats format,
-    const char *rootdir, const char *manifest)
+    const char *rootdir, const char *manifest, const char *plist)
 {
 	struct pkg	*pkg = NULL;
 	struct packing	*pkg_archive = NULL;
@@ -258,6 +258,12 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
 		pkg->abi = strdup(arch);
+	}
+
+	if (plist != NULL &&
+	    ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	/* Create the archive */

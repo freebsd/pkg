@@ -347,6 +347,50 @@ scripts {
 }
 
 EOF
+
+	atf_check \
+		-o file:output.ucl \
+		-e empty \
+		-s exit:0 \
+		pkg info -R --raw-format=ucl -F test-1.txz
+}
+
+atf_test_case create_from_manifest_and_plist
+create_from_manifest_and_plist_head() {
+	atf_set "descr" "Testing pkg create with manifest and plist"
+}
+
+create_from_manifest_and_plist_body() {
+	genmanifest
+	touch testfile
+	genplist "testfile"
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M ./+MANIFEST -p test.plist -r ${TMPDIR}
+
+	cat << EOF > output.ucl
+name = "test";
+origin = "test";
+version = "1";
+comment = "a test";
+maintainer = "test";
+www = "http://test";
+abi = "*";
+arch = "*";
+prefix = "/";
+flatsize = 0;
+desc = "Yet another test";
+categories [
+    "test",
+]
+files {
+    /testfile = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+}
+
+EOF
+
 	atf_check \
 		-o file:output.ucl \
 		-e empty \
@@ -370,4 +414,5 @@ atf_init_test_cases() {
 		atf_add_test_case create_from_plist_bad_fflags
 	fi
 	atf_add_test_case create_from_plist_with_keyword_arguments
+	atf_add_test_case create_from_manifest_and_plist
 }

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
@@ -314,7 +314,7 @@ exec_create(int argc, char **argv)
 		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else  { /* (manifest != NULL) */
 		return (pkg_create_from_manifest(outdir, fmt, rootdir,
-		    manifest) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    manifest, plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	}
 }
 
