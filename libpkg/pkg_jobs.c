@@ -238,7 +238,8 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	for (i = 0; i < argc; i++) {
 		jp = calloc(1, sizeof(struct job_pattern));
-		if (!pkg_jobs_maybe_match_file(jp, argv[i])) {
+		if (j->type == PKG_JOBS_DEINSTALL ||
+		    !pkg_jobs_maybe_match_file(jp, argv[i])) {
 			jp->pattern = strdup(argv[i]);
 			jp->match = match;
 		}
