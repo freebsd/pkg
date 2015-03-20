@@ -1070,7 +1070,9 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	/* Compare archs */
 	if (strcmp (lp->arch, rp->arch) != 0) {
 		free(rp->reason);
-		rp->reason = strdup("ABI changed");
+		asprintf(&rp->reason, "ABI changed: '%s' -> '%s'",
+		    lp->arch, rp->arch);
+		assert(rp->reason != NULL);
 		return (true);
 	}
 
@@ -1080,14 +1082,23 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		ret2 = pkg_options(lp, &lo);
 		if (ret1 != ret2) {
 			free(rp->reason);
-			rp->reason = strdup("options changed");
+			if (ro == NULL)
+				asprintf(&rp->reason, "option removed: %s",
+				    lo->key);
+			else if (lo == NULL)
+				asprintf(&rp->reason, "option added: %s",
+				    ro->key);
+			else
+				asprintf(&rp->reason, "option changed: %s",
+				    ro->key);
+			assert(rp->reason != NULL);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(lo->key, ro->key) != 0 ||
 			    strcmp(lo->value, ro->value) != 0) {
 				free(rp->reason);
-				rp->reason = strdup("options changed");
+				asprintf(&rp->reason, "options changed");
 				return (true);
 			}
 		}
@@ -1102,13 +1113,13 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			if (rd == NULL)
-				asprintf(&rp->reason, "Direct dependency removed: %s",
+				asprintf(&rp->reason, "direct dependency removed: %s",
 				    ld->name);
 			else if (ld == NULL)
-				asprintf(&rp->reason, "Direct dependency added: %s",
+				asprintf(&rp->reason, "direct dependency added: %s",
 				    rd->name);
 			else
-				asprintf(&rp->reason, "Direct dependency changed: %s",
+				asprintf(&rp->reason, "direct dependency changed: %s",
 				    rd->name);
 			assert (rp->reason != NULL);
 			return (true);
