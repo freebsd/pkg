@@ -1101,8 +1101,15 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		ret2 = pkg_deps(lp, &ld);
 		if (ret1 != ret2) {
 			free(rp->reason);
-			asprintf(&rp->reason, "direct dependency changed: %s", 
-			    rd->name);
+			if (rd == NULL)
+				asprintf(&rp->reason, "Direct dependency removed: %s",
+				    ld->name);
+			else if (ld == NULL)
+				asprintf(&rp->reason, "Direct dependency added: %s",
+				    rd->name);
+			else
+				asprintf(&rp->reason, "Direct dependency changed: %s",
+				    rd->name);
 			assert (rp->reason != NULL);
 			return (true);
 		}
