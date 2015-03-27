@@ -250,7 +250,8 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 static void
 pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	const char *path,
-	enum pkg_conflict_type type)
+	enum pkg_conflict_type type,
+	bool use_digest)
 {
 	struct pkg_conflict *c1, *c2;
 
@@ -259,6 +260,13 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	c1->type = c2->type = type;
 	c1->uid = strdup(p2->uid);
 	c2->uid = strdup(p2->uid);
+
+	if (use_digest) {
+		/* We also add digest information into account */
+		c1->digest = strdup(p2->digest);
+		c2->digest = strdup(p1->digest);
+	}
+
 	HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
 	HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c1->uid), c2);
 	pkg_debug(2, "registering conflict between %s and %s on path %s",
@@ -292,7 +300,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				/* local <-> remote conflict */
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
 					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_LOCAL);
+						PKG_CONFLICT_REMOTE_LOCAL, true);
 					j->conflicts_registered ++;
 					ret = true;
 				}
@@ -301,7 +309,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				/* two remote packages */
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
 					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_REMOTE);
+						PKG_CONFLICT_REMOTE_REMOTE, true);
 					j->conflicts_registered ++;
 					ret = true;
 				}

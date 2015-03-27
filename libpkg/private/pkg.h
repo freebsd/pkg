@@ -207,6 +207,7 @@ enum pkg_conflict_type {
 
 struct pkg_conflict {
 	char *uid;
+	char *digest;
 	enum pkg_conflict_type type;
 	UT_hash_handle	hh;
 };
