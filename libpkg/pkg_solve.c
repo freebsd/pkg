@@ -379,6 +379,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *confvar, *curvar;
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg_solve_item *it = NULL;
+	struct pkg *other;
 
 	uid = conflict->uid;
 	HASH_FIND_STR(problem->variables_by_uid, uid, confvar);
@@ -389,14 +390,15 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 
 	/* Add conflict rule from each of the alternative */
 	LL_FOREACH(confvar, curvar) {
+		other = curvar->unit->pkg;
 		if (conflict->type == PKG_CONFLICT_REMOTE_LOCAL) {
 			/* Skip unappropriate packages */
 			if (pkg->type == PKG_INSTALLED) {
-				if (curvar->unit->pkg->type == PKG_INSTALLED)
+				if (other->type == PKG_INSTALLED)
 					continue;
 			}
 			else {
-				if (curvar->unit->pkg->type != PKG_INSTALLED)
+				if (other->type != PKG_INSTALLED)
 					continue;
 			}
 		}
@@ -404,7 +406,16 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 			if (pkg->type == PKG_INSTALLED)
 				continue;
 
-			if (curvar->unit->pkg->type == PKG_INSTALLED)
+			if (other->type == PKG_INSTALLED)
+				continue;
+		}
+
+		/*
+		 * Also if a conflict is digest specific then we skip
+		 * variables with mismatched digests
+		 */
+		if (conflict->digest) {
+			if (strcmp (conflict->digest, other->digest) != 0)
 				continue;
 		}
 

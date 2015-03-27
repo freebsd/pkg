@@ -254,6 +254,7 @@ pkg_conflict_free(struct pkg_conflict *c)
 		return;
 
 	free(c->uid);
+	free(c->digest);
 	free(c);
 }
 
