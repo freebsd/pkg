@@ -71,6 +71,7 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/alias.shin \
 		frontend/annotate.shin \
 		frontend/conflicts.shin \
+		frontend/conflicts-multirepo.shin \
 		frontend/create.shin \
 		frontend/delete.shin \
 		frontend/lock.shin \
@@ -99,6 +100,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/alias.sh \
 		frontend/annotate.sh \
 		frontend/conflicts.sh \
+		frontend/conflicts-multirepo.sh \
 		frontend/create.sh \
 		frontend/delete.sh \
 		frontend/lock.sh \

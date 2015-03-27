@@ -7,6 +7,7 @@ atf_test_program{name='add.sh'}
 atf_test_program{name='alias.sh'}
 atf_test_program{name='annotate.sh'}
 atf_test_program{name='conflicts.sh'}
+atf_test_program{name='conflicts-multirepo.sh'}
 atf_test_program{name='create.sh'}
 atf_test_program{name='delete.sh'}
 atf_test_program{name='lock.sh'}
