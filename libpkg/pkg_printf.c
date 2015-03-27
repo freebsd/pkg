@@ -858,7 +858,7 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	int			count;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->annotations, kv, count)
+		LL_COUNT(pkg->annotations, kv, count);
 		return (list_count(sbuf, count, p));
 	} else {
 		set_list_defaults(p, "%An: %Av\n", "");
