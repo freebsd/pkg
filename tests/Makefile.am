@@ -32,12 +32,12 @@ PUBLIC_INCS=	-DTESTING \
 		-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/libpkg \
 		-I/usr/local/include
-PRIVATE_INCS=	$(PUBLIC_INCS) \
-		-I$(top_srcdir)/external/libsbuf \
+PRIVATE_INCS=	-I$(top_srcdir)/external/libsbuf \
 		-I$(top_srcdir)/external/sqlite \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/libucl/include \
-		-I$(top_srcdir)/external/libucl/klib
+		-I$(top_srcdir)/external/libucl/klib \
+		$(PUBLIC_INCS)
 
 pkg_printf_SOURCES=	lib/pkg_printf_test.c \
 			lib/pkg_printf.c
