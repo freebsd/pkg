@@ -248,7 +248,7 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 			}
 		}
 		if (key_elt) {
-			sbuf_printf(sb, "package %s%s depends on shared library provided by: ",
+			sbuf_printf(sb, "package %s%s depends on a requirement provided by: ",
 				key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
@@ -460,7 +460,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
 	if (prhead != NULL) {
-		pkg_debug(4, "Solver> Add require rule: %s", requirement);
+		pkg_debug(4, "solver: Add require rule: %s", requirement);
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
 		if (rule == NULL)
