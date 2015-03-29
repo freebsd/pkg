@@ -460,6 +460,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
 	if (prhead != NULL) {
+		pkg_debug(4, "Solver> Add require rule: %s", requirement);
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
 		if (rule == NULL)
