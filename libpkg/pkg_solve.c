@@ -211,7 +211,7 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 	switch(rule->reason) {
 	case PKG_RULE_DEPEND:
 		LL_FOREACH(rule->items, it) {
-			if (it->inverse) {
+			if (it->inverse == -1) {
 				key_elt = it;
 				break;
 			}
@@ -242,7 +242,7 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 		break;
 	case PKG_RULE_REQUIRE:
 		LL_FOREACH(rule->items, it) {
-			if (it->inverse) {
+			if (it->inverse == -1) {
 				key_elt = it;
 				break;
 			}
