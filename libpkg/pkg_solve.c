@@ -709,19 +709,16 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Shlibs */
 		shlib = NULL;
-		if (pkg->type != PKG_INSTALLED) {
-			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-				if (pkg_solve_add_require_rule(problem, cur_var,
-				    shlib->name) != EPKG_OK)
-					continue;
-			}
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			if (pkg_solve_add_require_rule(problem, cur_var,
+					shlib->name) != EPKG_OK)
+				continue;
 		}
-		if (pkg->type != PKG_INSTALLED) {
-			while (pkg_requires(pkg, &p) == EPKG_OK) {
-				if (pkg_solve_add_require_rule(problem, cur_var,
-				    p->provide) != EPKG_OK)
-					continue;
-			}
+		p = NULL;
+		while (pkg_requires(pkg, &p) == EPKG_OK) {
+			if (pkg_solve_add_require_rule(problem, cur_var,
+					p->provide) != EPKG_OK)
+				continue;
 		}
 
 		/* Request */
