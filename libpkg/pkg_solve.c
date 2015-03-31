@@ -660,21 +660,19 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 			break;
 		}
 
-		rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
-		if (rule == NULL)
-			return (EPKG_FATAL);
-		/* !Ax */
-		it = pkg_solve_item_new(curvar);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
-		it->inverse = -1;
-		RULE_ITEM_PREPEND(rule, it);
-
 		LL_FOREACH(curvar->next, confvar) {
+			rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
+			if (rule == NULL)
+				return (EPKG_FATAL);
+			/* !Ax */
+			it = pkg_solve_item_new(curvar);
+			if (it == NULL) {
+				pkg_solve_rule_free(rule);
+				return (EPKG_FATAL);
+			}
 
+			it->inverse = -1;
+			RULE_ITEM_PREPEND(rule, it);
 			/* !Ay */
 			it = pkg_solve_item_new(confvar);
 			if (it == NULL)
