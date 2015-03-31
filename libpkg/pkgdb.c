@@ -1892,6 +1892,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 	if (pkgdb_update_provides(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
+	if (pkgdb_update_requires(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
 
 	retcode = EPKG_OK;
 
@@ -1969,6 +1971,25 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		    run_prstmt(SHLIBS_PROV, package_id, shlib->name)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(SHLIBS_PROV));
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_provide	*provide = NULL;
+
+	while (pkg_requires(pkg, &provide) == EPKG_OK) {
+		if (run_prstmt(REQUIRE, provide->provide)
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(PKG_REQUIRE, package_id, provide->provide)
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s, SQL(PKG_REQUIRE));
 			return (EPKG_FATAL);
 		}
 	}

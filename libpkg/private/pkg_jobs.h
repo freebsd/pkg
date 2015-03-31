@@ -78,6 +78,7 @@ struct pkg_job_seen {
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
 	const char *provide;
+	bool is_shlib;
 	struct pkg_job_provide *next, *prev;
 	UT_hash_handle hh;
 };

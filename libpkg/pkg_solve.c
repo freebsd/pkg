@@ -296,6 +296,9 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
+	struct pkg_shlib *shlp;
+	struct pkg_provide *np;
+	struct pkg *pkg;
 
 	/* Find the first package in the universe list */
 	un = pr->un;
@@ -307,7 +310,28 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
 
 	LL_FOREACH(var, curvar) {
-		/* For each provide */
+		/*
+		 * For each provide we need to check whether this package
+		 * actually provides this require
+		 */
+		shlp = NULL;
+		np = NULL;
+		pkg = curvar->unit->pkg;
+
+		if (pr->is_shlib) {
+			HASH_FIND_STR(pkg->shlibs_provided, pr->provide, shlp);
+		}
+		else {
+			HASH_FIND_STR(pkg->provides, pr->provide, np);
+		}
+
+		if (np == NULL && shlp == NULL) {
+			pkg_debug(4, "%s provide is not satisfied by %s-%s(%c)", pr->provide,
+					pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
+							'l' : 'r');
+			continue;
+		}
+
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL)
 			return (EPKG_FATAL);
@@ -685,19 +709,16 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Shlibs */
 		shlib = NULL;
-		if (pkg->type != PKG_INSTALLED) {
-			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-				if (pkg_solve_add_require_rule(problem, cur_var,
-				    shlib->name) != EPKG_OK)
-					continue;
-			}
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			if (pkg_solve_add_require_rule(problem, cur_var,
+					shlib->name) != EPKG_OK)
+				continue;
 		}
-		if (pkg->type != PKG_INSTALLED) {
-			while (pkg_requires(pkg, &p) == EPKG_OK) {
-				if (pkg_solve_add_require_rule(problem, cur_var,
-				    p->provide) != EPKG_OK)
-					continue;
-			}
+		p = NULL;
+		while (pkg_requires(pkg, &p) == EPKG_OK) {
+			if (pkg_solve_add_require_rule(problem, cur_var,
+					p->provide) != EPKG_OK)
+				continue;
 		}
 
 		/* Request */
@@ -852,7 +873,14 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			picosat_set_more_important_lit(problem->sat, i + 1);
 		}
 		else {
-			picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+			if (!var->next && var->prev == var) {
+				/* Prefer not to install if have no local version */
+				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+			}
+			else {
+				/* Prefer to upgrade if possible */
+				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+			}
 			picosat_set_less_important_lit(problem->sat, i + 1);
 		}
 	}

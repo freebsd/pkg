@@ -265,10 +265,10 @@ pkgdb_query_require(struct pkgdb *db, const char *req)
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
-			"FROM packages AS p, pkg_requires AS ps, require AS s "
+			"FROM packages AS p, pkg_requires AS ps, requires AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.require_id = s.id "
-				"AND s.name = ?1;";
+				"AND s.require = ?1;";
 
 	assert(db != NULL);
 
@@ -292,10 +292,10 @@ pkgdb_query_provide(struct pkgdb *db, const char *req)
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
-			"FROM packages AS p, pkg_provides AS ps, provide AS s "
+			"FROM packages AS p, pkg_provides AS ps, provides AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.provide_id = s.id "
-				"AND s.name = ?1;";
+				"AND s.provide = ?1;";
 
 	assert(db != NULL);
 
