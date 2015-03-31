@@ -444,6 +444,18 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 		if (pr != NULL)
 			continue;
 
+		/* Check for local provides */
+		it = pkgdb_query_shlib_provide(universe->j->db, shlib->name);
+		if (it != NULL) {
+			rc = pkg_jobs_universe_handle_provide(universe, it, shlib->name, true);
+			pkgdb_it_free(it);
+
+			if (rc != EPKG_OK) {
+				pkg_debug(1, "cannot find local packages that provide library %s "
+						"required for %s",
+						shlib->name, pkg->name);
+			}
+		}
 		/* Not found, search in the repos */
 		it = pkgdb_repo_shlib_provide(universe->j->db,
 			shlib->name, universe->j->reponame);
@@ -453,7 +465,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
-				pkg_debug(1, "cannot find packages that provide library %s "
+				pkg_debug(1, "cannot find remote packages that provide library %s "
 						"required for %s",
 				    shlib->name, pkg->name);
 			}
@@ -468,16 +480,9 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 	struct pkg *pkg)
 {
 	struct pkg_provide *p = NULL;
-	struct pkg_job_universe_item *unit;
-	struct pkg_job_provide *pr, *prhead;
+	struct pkg_job_provide *pr;
 	struct pkgdb_it *it;
-	struct pkg *npkg, *rpkg;
 	int rc;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
-				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-				PKG_LOAD_PROVIDES|
-				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	while (pkg_requires(pkg, &p) == EPKG_OK) {
 		HASH_FIND_STR(universe->provides, p->provide, pr);
