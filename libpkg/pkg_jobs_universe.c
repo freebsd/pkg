@@ -426,6 +426,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 
 				pr->un = unit;
 				pr->provide = shlib->name;
+				pr->is_shlib = true;
 
 				if (prhead == NULL) {
 					DL_APPEND(prhead, pr);
@@ -538,6 +539,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 
 				pr->un = unit;
 				pr->provide = p->provide;
+				pr->is_shlib = false;
 
 				if (prhead == NULL) {
 					DL_APPEND(prhead, pr);
