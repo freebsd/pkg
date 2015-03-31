@@ -522,8 +522,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		 */
 		pkg_debug(1, "solver: cannot find provide for requirement: %s",
 		    requirement);
-		pkg_emit_error("Solver: cannot find a provide for requirement:"
-		    "    %s", requirement);
 	}
 
 	return (EPKG_OK);
