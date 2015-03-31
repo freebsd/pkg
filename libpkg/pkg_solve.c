@@ -649,6 +649,11 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 
+	/* Rewind to first */
+	while (var->prev->next != NULL) {
+		var = var->prev;
+	}
+
 	LL_FOREACH(var->next, curvar) {
 		/* Conflict rule: (!Ax | !Ay) */
 		rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
@@ -663,6 +668,7 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 
 		it->inverse = -1;
 		RULE_ITEM_PREPEND(rule, it);
+
 		/* !Ay */
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL)
