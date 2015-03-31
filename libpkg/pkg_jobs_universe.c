@@ -621,15 +621,13 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 		rc = pkg_jobs_universe_process_conflicts(universe, pkg);
 		if (rc != EPKG_OK)
 			return (rc);
-		/* For remote packages we should also handle shlib deps */
-		if (pkg->type != PKG_INSTALLED) {
-			rc = pkg_jobs_universe_process_shlibs(universe, pkg);
-			if (rc != EPKG_OK)
-				return (rc);
-			rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
-			if (rc != EPKG_OK)
-				return (rc);
-		}
+		/* Provides/requires */
+		rc = pkg_jobs_universe_process_shlibs(universe, pkg);
+		if (rc != EPKG_OK)
+			return (rc);
+		rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
+		if (rc != EPKG_OK)
+			return (rc);
 		break;
 	case PKG_JOBS_AUTOREMOVE:
 		/* XXX */
