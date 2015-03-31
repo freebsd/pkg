@@ -645,33 +645,44 @@ static int
 pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var)
 {
-	struct pkg_solve_variable *curvar;
+	struct pkg_solve_variable *curvar, *confvar;
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 
-	LL_FOREACH(var->next, curvar) {
+	/* Rewind to first */
+	while (var->prev->next != NULL) {
+		var = var->prev;
+	}
+
+	LL_FOREACH(var, curvar) {
 		/* Conflict rule: (!Ax | !Ay) */
-		rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
-		if (rule == NULL)
-			return (EPKG_FATAL);
-		/* !Ax */
-		it = pkg_solve_item_new(var);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
+		if (curvar->next == NULL) {
+			break;
 		}
 
-		it->inverse = -1;
-		RULE_ITEM_PREPEND(rule, it);
-		/* !Ay */
-		it = pkg_solve_item_new(curvar);
-		if (it == NULL)
-			return (EPKG_FATAL);
+		LL_FOREACH(curvar->next, confvar) {
+			rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
+			if (rule == NULL)
+				return (EPKG_FATAL);
+			/* !Ax */
+			it = pkg_solve_item_new(curvar);
+			if (it == NULL) {
+				pkg_solve_rule_free(rule);
+				return (EPKG_FATAL);
+			}
 
-		it->inverse = -1;
-		RULE_ITEM_PREPEND(rule, it);
+			it->inverse = -1;
+			RULE_ITEM_PREPEND(rule, it);
+			/* !Ay */
+			it = pkg_solve_item_new(confvar);
+			if (it == NULL)
+				return (EPKG_FATAL);
 
-		kv_prepend(typeof(rule), problem->rules, rule);
+			it->inverse = -1;
+			RULE_ITEM_PREPEND(rule, it);
+
+			kv_prepend(typeof(rule), problem->rules, rule);
+		}
 	}
 
 	return (EPKG_OK);
@@ -736,7 +747,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		 * we need to register conflicts with all following
 		 * vars
 		 */
-		if (!chain_added && cur_var->next != NULL) {
+		if (!chain_added && (cur_var->next != NULL || cur_var->prev != var)) {
 			if (pkg_solve_add_chain_rule(problem, cur_var) != EPKG_OK)
 				continue;
 
