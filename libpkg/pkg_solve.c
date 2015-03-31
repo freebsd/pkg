@@ -873,7 +873,14 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			picosat_set_more_important_lit(problem->sat, i + 1);
 		}
 		else {
-			picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+			if (!var->next && var->prev == var) {
+				/* Prefer not to install if have no local version */
+				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+			}
+			else {
+				/* Prefer to upgrade if possible */
+				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+			}
 			picosat_set_less_important_lit(problem->sat, i + 1);
 		}
 	}
