@@ -106,7 +106,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/delete.sh \
 		frontend/lock.sh \
 		frontend/packagesplit.sh \
-		frontend/php-pr.sh
+		frontend/php-pr.sh \
 		frontend/register.sh \
 		frontend/requires.sh \
 		frontend/rootdir.sh \
