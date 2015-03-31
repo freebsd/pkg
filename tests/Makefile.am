@@ -76,6 +76,7 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/delete.shin \
 		frontend/lock.shin \
 		frontend/packagesplit.shin \
+		frontend/php-pr.shin \
 		frontend/pkg.shin \
 		frontend/register.shin \
 		frontend/requires.shin \
@@ -105,6 +106,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/delete.sh \
 		frontend/lock.sh \
 		frontend/packagesplit.sh \
+		frontend/php-pr.sh
 		frontend/register.sh \
 		frontend/requires.sh \
 		frontend/rootdir.sh \
