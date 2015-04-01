@@ -621,30 +621,50 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	pkg_emit_fetch_begin(url);
 	pkg_emit_progress_start(NULL);
-	while (done < sz) {
-		int to_read = MIN(sizeof(buf), sz - done);
+        if (sz > 0) {
+		while (done < sz) {
+			int to_read = MIN(sizeof(buf), sz - done);
 
-		pkg_debug(1, "Reading status: want read %d over %d, %d already done",
-			to_read, sz, done);
-		if ((r = fread(buf, 1, to_read, remote)) < 1)
-			break;
+			pkg_debug(1, "Reading status: want read %d over %d, %d already done",
+				to_read, sz, done);
+			if ((r = fread(buf, 1, to_read, remote)) < 1)
+				break;
 
-		if (write(dest, buf, r) != r) {
-			pkg_emit_errno("write", "");
+			if (write(dest, buf, r) != r) {
+				pkg_emit_errno("write", "");
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+
+			done += r;
+			pkg_debug(1, "Read status: %d over %d", done, sz);
+
+			pkg_emit_progress_tick(done, sz);
+		}
+
+		if (done < sz) {
+			pkg_emit_error("An error occurred while fetching package");
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
-
-		done += r;
-		pkg_debug(1, "Read status: %d over %d", done, sz);
-
-		pkg_emit_progress_tick(done, sz);
-	}
-
-	if (done < sz) {
-		pkg_emit_error("An error occurred while fetching package");
-		retcode = EPKG_FATAL;
-		goto cleanup;
+        }
+	else {
+		while ((r = fread(buf, 1, sizeof(buf), remote)) > 0) {
+			if (write(dest, buf, r) != r) {
+				pkg_emit_errno("write", "");
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			done += r;
+		}
+		if (r != 0) {
+			pkg_emit_error("An error occurred while fetching package");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+		else {
+			pkg_emit_progress_tick(done, done);
+		}
 	}
 	pkg_emit_fetch_finished(url);
 
