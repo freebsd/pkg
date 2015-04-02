@@ -1030,7 +1030,7 @@ reiterate:
 			 */
 			if (failed_var) {
 				pkg_debug (1, "trying to delete local package %s-%s on install/upgrade,"
-					" retiterate on SAT",
+					" reiterate on SAT",
 					var->unit->pkg->name, var->unit->pkg->version);
 				need_reiterate = true;
 
