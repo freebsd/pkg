@@ -323,10 +323,10 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		if (pr->is_shlib) {
 			HASH_FIND_STR(pkg->shlibs_provided, pr->provide, shlp);
 			/* Skip incompatible ABI as well */
-			if (shlp != NULL && strcmp(pkg->abi, orig->abi) != 0) {
+			if (shlp != NULL && strcmp(pkg->arch, orig->arch) != 0) {
 				pkg_debug(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
-					pkg->type == PKG_INSTALLED ? 'l' : 'r');
+					pkg->type == PKG_INSTALLED ? 'l' : 'r', orig->arch, pkg->arch);
 				continue;
 			}
 		}
