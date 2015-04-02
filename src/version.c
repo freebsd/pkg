@@ -636,8 +636,9 @@ validate_origin(const char *portsdir, const char *origin)
 	category = strrchr(categorypath, '/');
 	category++;
 
-	k = kh_get_categories(categories, category);
-	if (k == kh_end(categories)) {
+	if (categories != NULL)
+		k = kh_get_categories(categories, category);
+	if (categories == NULL || k == kh_end(categories)) {
 		ports = category_new(categorypath, category);
 	} else {
 		ports = kh_value(categories, k);
