@@ -491,9 +491,13 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg *pkg;
 	int cnt;
 
+	pkg = var->unit->pkg;
+
 	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
 	if (prhead != NULL) {
-		pkg_debug(4, "solver: Add require rule: %s", requirement);
+		pkg_debug(4, "solver: Add require rule: %s-%s(%c) wants %s",
+			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
+			requirement);
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
 		if (rule == NULL)
@@ -509,7 +513,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		RULE_ITEM_PREPEND(rule, it);
 		/* B1 | B2 | ... */
 		cnt = 1;
-		pkg = var->unit->pkg;
 		LL_FOREACH(prhead, pr) {
 			if (pkg_solve_handle_provide(problem, pr, rule, pkg, &cnt) != EPKG_OK)
 				return (EPKG_FATAL);
@@ -862,27 +865,24 @@ err:
 	return (NULL);
 }
 
-int
-pkg_solve_sat_problem(struct pkg_solve_problem *problem)
+static int
+pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 {
-	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *item;
-	int res;
-	size_t i;
+	int res, i;
+	struct pkg_solve_variable *var, *cur;
+	bool is_installed = false;
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
-		LL_FOREACH(rule->items, item) {
-			picosat_add(problem->sat, item->var->order * item->inverse);
-		}
-		picosat_add(problem->sat, 0);
-		pkg_debug_print_rule(rule);
-	}
 	/* Set initial guess */
-	for (i = 0; i < problem->nvars; i ++)
-	{
-		struct pkg_solve_variable *var = &problem->variables[i];
-		bool is_installed = var->unit->pkg->type == PKG_INSTALLED;
+	for (i = 0; i < problem->nvars; i ++) {
+		var = &problem->variables[i];
+		is_installed = false;
+
+		LL_FOREACH(var, cur) {
+			if (cur->unit->pkg->type == PKG_INSTALLED) {
+				is_installed = true;
+				break;
+			}
+		}
 
 		if (var->top_level)
 			continue;
@@ -896,7 +896,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				/* Prefer not to install if have no local version */
 				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
 			}
-			else {
+			else if (iter > 0) {
 				/* Prefer to upgrade if possible */
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
 			}
@@ -905,6 +905,31 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	}
 
 	res = picosat_sat(problem->sat, -1);
+
+	return (res);
+}
+
+int
+pkg_solve_sat_problem(struct pkg_solve_problem *problem)
+{
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *item;
+	int res, iter = 0;
+	size_t i;
+	bool need_reiterate = false;
+
+	for (i = 0; i < kv_size(problem->rules); i++) {
+		rule = kv_A(problem->rules, i);
+		LL_FOREACH(rule->items, item) {
+			picosat_add(problem->sat, item->var->order * item->inverse);
+		}
+		picosat_add(problem->sat, 0);
+		pkg_debug_print_rule(rule);
+	}
+
+reiterate:
+
+	res = pkg_solve_picosat_iter(problem, iter);
 
 	if (res != PICOSAT_SATISFIABLE) {
 		const int *failed = picosat_failed_assumptions(problem->sat);
@@ -964,7 +989,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	/* Assign vars */
 	for (i = 0; i < problem->nvars; i ++) {
 		int val = picosat_deref(problem->sat, i + 1);
-		struct pkg_solve_variable *var = &problem->variables[i];
+		struct pkg_solve_variable *var = &problem->variables[i], *cur;
+		bool is_installed = false;
 
 		if (val > 0)
 			var->to_install = true;
@@ -976,6 +1002,42 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			var->uid, var->digest,
 			var->priority,
 			var->to_install ? "install" : "delete");
+
+		/*
+		 * If we want to delete local packages on installation, do one more SAT
+		 * iteration to ensure that we have no other choices
+		 */
+		LL_FOREACH(var, cur) {
+			if (cur->unit->pkg->type == PKG_INSTALLED) {
+				is_installed = true;
+				break;
+			}
+		}
+
+		if (!need_reiterate && !var->to_install && is_installed &&
+			(problem->j->type == PKG_JOBS_INSTALL ||
+			problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
+			pkg_debug (1, "trying to delete local packages on install/upgrade,"
+					" retiterate on SAT");
+			need_reiterate = true;
+		}
+	}
+
+	if (need_reiterate) {
+		iter ++;
+
+		/* Restore top-level assumptions */
+		for (i = 0; i < problem->nvars; i ++) {
+			struct pkg_solve_variable *var = &problem->variables[i];
+
+			if (var->top_level) {
+				picosat_assume(problem->sat, var->order * (var->to_install ? 1 : -1));
+			}
+		}
+
+		need_reiterate = false;
+
+		goto reiterate;
 	}
 
 	return (EPKG_OK);
