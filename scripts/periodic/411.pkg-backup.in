@@ -10,6 +10,10 @@ fi
 
 rc=0
 
+do_dump() {
+	echo "pragma user_version=" $(${pkgcmd} ${pkgargs} shell "pragma user_version")";"
+	${pkgcmd} ${pkgargs} shell .dump
+}
 
 backup_pkg() {
 	local pkgargs="$1"
@@ -19,7 +23,7 @@ backup_pkg() {
 	[ -e "${bak_file}" ] && \
 		mv -f "${bak_file}" "${bak_file}.2"
 
-	if ${pkgcmd} ${pkgargs} shell .dump | xz -c > ${bak_file}; then
+	if do_dump | xz -c > ${bak_file}; then
 		rc=0
 	else
 		rc=3
