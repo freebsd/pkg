@@ -1325,7 +1325,7 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided, s->name, strlen(s->name), s);
 
-	pkg_debug(3, "added shlib provide %s for %s", pkg->name, pkg->origin);
+	pkg_debug(3, "added shlib provide %s for %s", name, pkg->name);
 
 	return (EPKG_OK);
 }
