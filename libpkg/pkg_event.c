@@ -937,8 +937,8 @@ pkg_debug(int level, const char *fmt, ...)
 	struct pkg_event ev;
 	va_list ap;
 
-	if (debug_level < level)
-		return;
+	//if (debug_level < level)
+	//	return;
 
 	ev.type = PKG_EVENT_DEBUG;
 	ev.e_debug.level = level;

@@ -291,7 +291,8 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 
 static int
 pkg_solve_handle_provide (struct pkg_solve_problem *problem,
-		struct pkg_job_provide *pr, struct pkg_solve_rule *rule, int *cnt)
+		struct pkg_job_provide *pr, struct pkg_solve_rule *rule,
+		struct pkg *orig, int *cnt)
 {
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *curvar;
@@ -320,6 +321,13 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 
 		if (pr->is_shlib) {
 			HASH_FIND_STR(pkg->shlibs_provided, pr->provide, shlp);
+			/* Skip incompatible ABI as well */
+			if (shlp != NULL && strcmp(pkg->abi, orig->abi) != 0) {
+				pkg_debug(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
+					"wanted %s", pr->provide, pkg->name, pkg->version,
+					pkg->type == PKG_INSTALLED ? 'l' : 'r');
+				continue;
+			}
 		}
 		else {
 			HASH_FIND_STR(pkg->provides, pr->provide, np);
@@ -480,6 +488,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_job_provide *pr, *prhead;
+	struct pkg *pkg;
 	int cnt;
 
 	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
@@ -500,8 +509,9 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		RULE_ITEM_PREPEND(rule, it);
 		/* B1 | B2 | ... */
 		cnt = 1;
+		pkg = var->unit->pkg;
 		LL_FOREACH(prhead, pr) {
-			if (pkg_solve_handle_provide(problem, pr, rule, &cnt) != EPKG_OK)
+			if (pkg_solve_handle_provide(problem, pr, rule, pkg, &cnt) != EPKG_OK)
 				return (EPKG_FATAL);
 		}
 
