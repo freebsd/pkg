@@ -71,6 +71,7 @@ struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
 	bool to_install;
 	bool top_level;
+	bool failed;
 	int priority;
 	const char *digest;
 	const char *uid;
@@ -896,9 +897,10 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 				/* Prefer not to install if have no local version */
 				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
 			}
-			else if (iter > 0) {
+			else if (var->failed) {
 				/* Prefer to upgrade if possible */
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+				var->failed = false;
 			}
 			picosat_set_less_important_lit(problem->sat, i + 1);
 		}
@@ -989,8 +991,7 @@ reiterate:
 	/* Assign vars */
 	for (i = 0; i < problem->nvars; i ++) {
 		int val = picosat_deref(problem->sat, i + 1);
-		struct pkg_solve_variable *var = &problem->variables[i], *cur;
-		bool is_installed = false;
+		struct pkg_solve_variable *var = &problem->variables[i];
 
 		if (val > 0)
 			var->to_install = true;
@@ -1002,24 +1003,41 @@ reiterate:
 			var->uid, var->digest,
 			var->priority,
 			var->to_install ? "install" : "delete");
+	}
 
-		/*
-		 * If we want to delete local packages on installation, do one more SAT
-		 * iteration to ensure that we have no other choices
-		 */
-		LL_FOREACH(var, cur) {
-			if (cur->unit->pkg->type == PKG_INSTALLED) {
-				is_installed = true;
-				break;
-			}
-		}
-
-		if (!need_reiterate && !var->to_install && is_installed &&
-			(problem->j->type == PKG_JOBS_INSTALL ||
+	/* Check for reiterations */
+	if ((problem->j->type == PKG_JOBS_INSTALL ||
 			problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
-			pkg_debug (1, "trying to delete local packages on install/upgrade,"
-					" retiterate on SAT");
-			need_reiterate = true;
+		for (i = 0; i < problem->nvars; i ++) {
+			bool failed_var = false;
+			struct pkg_solve_variable *var = &problem->variables[i], *cur;
+
+			if (!var->to_install) {
+				LL_FOREACH(var, cur) {
+					if (cur->to_install) {
+						failed_var = false;
+						break;
+					}
+					else if (cur->unit->pkg->type == PKG_INSTALLED) {
+						failed_var = true;
+					}
+				}
+			}
+
+			/*
+			 * If we want to delete local packages on installation, do one more SAT
+			 * iteration to ensure that we have no other choices
+			 */
+			if (failed_var) {
+				pkg_debug (1, "trying to delete local package %s-%s on install/upgrade,"
+					" retiterate on SAT",
+					var->unit->pkg->name, var->unit->pkg->version);
+				need_reiterate = true;
+
+				LL_FOREACH(var, cur) {
+					cur->failed = true;
+				}
+			}
 		}
 	}
 
