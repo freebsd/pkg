@@ -145,26 +145,33 @@ exec_unlock(int argc, char **argv)
 	return (exec_lock_unlock(argc, argv, UNLOCK));
 }
 
-static int 
-list_locked(struct pkgdb *db)
+static int
+list_locked(struct pkgdb *db, bool has_locked)
 {
-        struct pkgdb_it	*it = NULL;
-        struct pkg	*pkg = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	bool		 gotone = false;
 
 	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
 		pkgdb_close(db);
 		return (EX_UNAVAILABLE);
 	}
 
-	if (!quiet)
+	if (!quiet && !has_locked)
 		printf("Currently locked packages:\n");
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		gotone = true;
+		if (has_locked)
+			break;
 		pkg_printf("%n-%v\n", pkg, pkg);
 	}
 
 	pkg_free(pkg);
 	pkgdb_it_free(it);
+
+	if (has_locked)
+		return (gotone ? EXIT_SUCCESS : EXIT_FAILURE);
 
 	return (EX_OK);
 }
@@ -180,6 +187,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	int		 ch;
 	bool		 show_locked = false;
 	bool		 read_only = false;
+	bool		 has_locked_packages = false;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -219,7 +227,9 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		case 'y':
 			yes = true;
 			break;
-		case '1':
+		case 1:
+			show_locked = true;
+			has_locked_packages = true;
 			break;
 		default:
 			usage_lock();
@@ -274,7 +284,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		exitcode = do_lock_unlock(db, match, pkgname, action);
 
 	if (show_locked)
-		retcode = list_locked(db);
+		exitcode = list_locked(db, has_locked_packages);
 
 	pkgdb_close(db);
 
