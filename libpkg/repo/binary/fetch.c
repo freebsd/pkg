@@ -136,6 +136,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	struct stat st;
 	char *path = NULL;
 	const char *packagesite = NULL;
+	ssize_t offset = -1;
 
 	int retcode = EPKG_OK;
 
@@ -156,8 +157,15 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */
-	if (access(dest, F_OK) == 0)
-		goto checksum;
+	if (stat(dest, &st) == 0) {
+		/* try to resume */
+		if (pkg->pkgsize > st.st_size) {
+			offset = st.st_size;
+			pkg_debug(1, "Resuming fetch");
+		} else {
+			goto checksum;
+		}
+	}
 
 	/* Create the dirs in cachedir */
 	dir = strdup(dest);
@@ -193,7 +201,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 		return (EPKG_OK);
 	}
 
-	retcode = pkg_fetch_file(repo, url, dest, 0);
+	retcode = pkg_fetch_file(repo, url, dest, 0, offset, pkg->pkgsize);
 	fetched = 1;
 
 	if (retcode != EPKG_OK)

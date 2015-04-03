@@ -1199,7 +1199,8 @@ pkg_change_t pkg_version_change_between(const struct pkg * pkg1, const struct pk
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t);
+int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
+    ssize_t offset, int64_t size);
 /**
  * Fetch a file to temporary destination
  */

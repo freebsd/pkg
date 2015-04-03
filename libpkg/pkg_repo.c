@@ -105,7 +105,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	}
 	(void)unlink(tmp);
 
-	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t)) != EPKG_OK) {
+	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t, -1, 0)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}

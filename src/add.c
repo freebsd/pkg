@@ -146,7 +146,7 @@ exec_add(int argc, char **argv)
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "%s/%s.XXXXX",
 			    getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp", basename(argv[i]));
-			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0)) != EPKG_OK)
+			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0, 0, 0)) != EPKG_OK)
 				break;
 
 			file = path;
