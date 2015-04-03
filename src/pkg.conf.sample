@@ -62,7 +62,8 @@ ALIAS              : {
   cinfo: info -Cx,
   isearch: search -ix,
   csearch: search -Cx,
-  leaf: "query -e '%#r == 0' '%n auto: %a'"
+  leaf: "query -e '%#r == 0' '%n-%v'"
+  noauto = "query -e '%a == 0' '%n-%v'";
   list: info -ql,
   origin: info -qo,
   provided-depends: info -qb,
