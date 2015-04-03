@@ -156,7 +156,8 @@ list_locked(struct pkgdb *db)
 		return (EX_UNAVAILABLE);
 	}
 
-	printf("Currently locked packages:\n");
+	if (!quiet)
+		printf("Currently locked packages:\n");
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_printf("%n-%v\n", pkg, pkg);
