@@ -189,6 +189,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		{ "quiet",		no_argument,	NULL,	'q' },
 		{ "regex",		no_argument,	NULL,	'x' },
 		{ "yes",		no_argument,	NULL,	'y' },
+		{ "has-locked-packages",no_argument,	NULL,	1 },
 		{ NULL,		0,			NULL,	0   },
 	};
 
@@ -217,6 +218,8 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case '1':
 			break;
 		default:
 			usage_lock();
