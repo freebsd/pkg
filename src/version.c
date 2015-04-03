@@ -51,6 +51,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <khash.h>
+#include <kvec.h>
 
 #include "pkgcli.h"
 
@@ -62,8 +63,12 @@ struct index_entry {
 };
 
 KHASH_MAP_INIT_STR(index, struct index_entry *);
-KHASH_MAP_INIT_STR(ports, char);
-KHASH_MAP_INIT_STR(categories, kh_ports_t *);
+KHASH_MAP_INIT_STR(ports, char *);
+struct category {
+	char *name;
+	kh_ports_t *ports;
+};
+KHASH_MAP_INIT_STR(categories, struct category *);
 
 kh_categories_t *categories = NULL;
 
@@ -345,10 +350,16 @@ hash_indexfile(const char *indexfilename)
 static void
 free_categories(void)
 {
-	const char *key __unused;
-	kh_ports_t *ports;
+	const char *key, *k;
+	char *v;
+	struct category *cat;
 
-	kh_foreach(categories, key, ports, kh_destroy_ports(ports));
+	kh_foreach(categories, key, cat, {
+		free(cat->name);
+		kh_foreach(cat->ports, k, v, free(v));
+		kh_destroy_ports(cat->ports);
+		free(cat);
+	});
 	kh_destroy_categories(categories);
 }
 
@@ -582,12 +593,12 @@ exec_buf(struct sbuf *res, char **argv) {
 	return (sbuf_len(res));
 }
 
-static kh_ports_t *
+static struct category *
 category_new(char *categorypath, const char *category)
 {
+	struct category	*cat = NULL;
 	struct sbuf	*makecmd;
-	kh_ports_t	*ports = NULL;
-	char		*results, *d;
+	char		*results, *d, *key;
 	char		*argv[5];
 	int		 ret;
 	khint_t		 k;
@@ -608,24 +619,35 @@ category_new(char *categorypath, const char *category)
 	if (categories == NULL)
 		categories = kh_init_categories();
 
-	ports = kh_init_ports();
-	k = kh_put_categories(categories, category, &ret);
-	kh_value(categories, k) = ports;
+	cat = calloc(1, sizeof(*cat));
+	if (cat == NULL)
+		goto cleanup;
+
+	cat->name = strdup(category);
+	cat->ports = kh_init_ports();
+
+	k = kh_put_categories(categories, cat->name, &ret);
+	kh_value(categories, k) = cat;
 	while ((d = strsep(&results, " \n")) != NULL) {
-		kh_put_ports(ports, d, &ret);
+		key = strdup(d);
+		k = kh_put_ports(cat->ports, key, &ret);
+		if (k != kh_end(cat->ports))
+			kh_value(cat->ports, k) = key;
+		else
+			free(key);
 	}
 
 cleanup:
 	sbuf_delete(makecmd);
 
-	return (ports);
+	return (cat);
 }
 
 static bool
 validate_origin(const char *portsdir, const char *origin)
 {
+	struct category	*cat;
 	char		*category, *buf;
-	kh_ports_t	*ports;
 	char		 categorypath[MAXPATHLEN];
 	khint_t		 k;
 
@@ -639,20 +661,20 @@ validate_origin(const char *portsdir, const char *origin)
 	if (categories != NULL)
 		k = kh_get_categories(categories, category);
 	if (categories == NULL || k == kh_end(categories)) {
-		ports = category_new(categorypath, category);
+		cat = category_new(categorypath, category);
 	} else {
-		ports = kh_value(categories, k);
+		cat = kh_value(categories, k);
 	}
 
-	if (ports == NULL)
+	if (cat == NULL)
 		return (false);
 
 	buf = strrchr(origin, '/');
 	buf++;
 
-	k = kh_get_ports(ports, buf);
+	k = kh_get_ports(cat->ports, buf);
 
-	return (k != kh_end(ports));
+	return (k != kh_end(cat->ports));
 }
 
 static const char *
@@ -681,6 +703,7 @@ port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 			version = strsep(&output, "\n");
 		}
 	}
+
 	return (version);
 }
 
