@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -352,7 +352,7 @@ static struct config_entry c[] = {
 	{
 		PKG_BOOL,
 		"CONSERVATIVE_UPGRADE",
-		"NO",
+		"YES",
 		"Prefer repos with higher priority during upgrade"
 	},
 	{
