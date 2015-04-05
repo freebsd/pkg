@@ -182,11 +182,11 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
 		fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
 		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
-		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
-		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
+		fprintf(out, "\t%-15s%s\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+		fprintf(out, "\t%-15s%s\n", "-o", "Override configuration option from the command line");
 		fprintf(out, "\t%-15s%s\n", "-4", "Only use IPv4");
 		fprintf(out, "\t%-15s%s\n", "-6", "Only use IPv6");
-		fprintf(out, "Commands supported:\n");
+		fprintf(out, "\nCommands supported:\n");
 
 		for (i = 0; i < cmd_len; i++)
 			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
