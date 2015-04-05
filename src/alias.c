@@ -43,7 +43,7 @@
 void
 usage_alias(void)
 {
-	fprintf(stderr, "Usage: pkg alias [-q] [alias]\n\n");
+	fprintf(stderr, "Usage: pkg alias [-ql] [alias]\n\n");
 	fprintf(stderr, "For more information see 'pkg help alias'.\n");
 }
 
@@ -55,16 +55,21 @@ exec_alias(int argc, char **argv)
 	pkg_iter it = NULL;
 	int ch;
 	int ret = EX_OK;
+	bool list = false;
 
 	struct option longopts[] = {
 		{ "quiet",	no_argument,	NULL, 'q' },
+		{ "list",	no_argument,	NULL, 'l' },
 		{ NULL,		0,		NULL, 0 },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+quiet", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+ql", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
+			break;
+		case 'l':
+			list = true;
 			break;
 		default:
 			usage_alias();
@@ -81,7 +86,10 @@ exec_alias(int argc, char **argv)
 		if (!quiet)
 			printf("%-20s %s\n", "ALIAS", "ARGUMENTS");
 		while ((alias = pkg_object_iterate(all_aliases, &it))) {
-			printf("%-20s '%s'\n", pkg_object_key(alias), pkg_object_string(alias));
+			if (list)
+				printf("%s\n", pkg_object_key(alias));
+			else
+				printf("%-20s '%s'\n", pkg_object_key(alias), pkg_object_string(alias));
 		}
 		return (ret);
 	}
@@ -93,7 +101,10 @@ exec_alias(int argc, char **argv)
 				break;
 		}
 		if (alias) {
-			printf("%-20s '%s'\n", argv[i], pkg_object_string(alias));
+			if (list)
+				printf("%s\n", argv[i]);
+			else
+				printf("%-20s '%s'\n", argv[i], pkg_object_string(alias));
 		} else {
 			warnx("No such alias: '%s'", argv[i]);
 			ret = EX_UNAVAILABLE;
