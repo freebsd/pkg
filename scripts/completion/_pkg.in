@@ -8,6 +8,10 @@ _pkg_available_name() {
 	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n")
 }
 
+_pkg_aliases() {
+	compadd "$@" - $(@prefix@/sbin/pkg alias -ql)
+}
+
 _pkg_available() {
 	local ret=1
 	_tags files packages
@@ -37,12 +41,15 @@ _pkg() {
 	)
 
 	subcmd=(
-		'add[Registers a package and installs it on the system]'
+		'add[Compatibility interface to install a package]'
+		'alias[List the command line aliases]'
+		'annotate[Add, modify or delete tag-value style annotations on packages]'
 		'audit[Reports vulnerable packages]'
 		'autoremove[Removes orphan packages]'
 		'backup[Backs-up and restores the local package database]'
 		'check[Checks for missing dependencies and database consistency]'
 		'clean[Cleans old packages from the cache]'
+		'config[Display the value of the configuration options]'
 		'convert[Convert database from/to pkgng]'
 		'create[Creates software package distributions]'
 		'delete[Deletes packages from the database and the system]'
@@ -50,6 +57,7 @@ _pkg() {
 		'help[Displays help information]'
 		'info[Displays information about installed packages]'
 		'install[Installs packages from remote package repositories]'
+		'lock[Locks package against modifications or deletion]'
 		'query[Queries information about installed packages]'
 		'register[Registers a package into the local database]'
 		'remove[Deletes packages from the database and the system]'
@@ -60,6 +68,7 @@ _pkg() {
 		'shell[Opens a debug shell]'
 		'shlib[Displays which packages link against a specific shared library]'
 		'stats[Displays package database statistics]'
+		'unlock[Unlocks a package, allowing modification or deletion]'
 		'update[Updates package repository catalogues]'
 		'updating[Displays UPDATING information for a package]'
 		'upgrade[Performs upgrades of packaged software distributions]'
@@ -86,10 +95,18 @@ _pkg() {
 		(add) _arguments -A 'package' \
 			'*:package:_files -g "*.t?z"' && return 0
 			;;
+		(alias)
+			_arguments -s \
+				'-q[Quiet]' \
+				'*:aliases:_pkg_aliases' \
+				&& return 0
+			;;
 		(audit)
 			_arguments -s \
 				'-F[Fetch the database before checking.]' \
 				'-q[Quiet]' \
+				'-r[Prints packages that depend on vulnerable packages]' \
+				'-f[local copy of the vulnerability database]:audit file:_files' \
 				'*:package:_pkg_installed' \
 				&& return 0
 			;;
