@@ -352,7 +352,7 @@ static struct config_entry c[] = {
 	{
 		PKG_BOOL,
 		"CONSERVATIVE_UPGRADE",
-		"NO",
+		"YES",
 		"Prefer repos with higher priority during upgrade"
 	},
 	{
