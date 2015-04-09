@@ -710,7 +710,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 			ret = EPKG_OK;
 		}
 
-		if (ret == EPKG_OK && (stat(path, &st) == -1 || pkgsize != st.st_size))
+		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size))
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be
