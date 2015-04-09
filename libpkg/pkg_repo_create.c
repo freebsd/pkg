@@ -209,6 +209,34 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	errno = 0;
 
 	while ((fts_ent = fts_read(fts)) != NULL) {
+		/*
+		 * Skip directories starting with '.' to avoid Poudriere
+		 * symlinks.
+		 */
+		if ((fts_ent->fts_info == FTS_D ||
+		    fts_ent->fts_info == FTS_DP) &&
+		    fts_ent->fts_namelen > 2 &&
+		    fts_ent->fts_name[0] == '.') {
+			fts_set(fts, fts_ent, FTS_SKIP);
+			continue;
+		}
+		/*
+		 * Ignore 'Latest' directory as it is just symlinks back to
+		 * already-processed packages.
+		 */
+		if ((fts_ent->fts_info == FTS_D ||
+		    fts_ent->fts_info == FTS_DP ||
+		    fts_ent->fts_info == FTS_SL) &&
+		    strcmp(fts_ent->fts_name, "Latest") == 0) {
+			fts_set(fts, fts_ent, FTS_SKIP);
+			continue;
+		}
+		/* Follow symlinks. */
+		if (fts_ent->fts_info == FTS_SL) {
+			fts_set(fts, fts_ent, FTS_FOLLOW);
+			/* Restart. Next entry will be the resolved file. */
+			continue;
+		}
 		/* Skip everything that is not a file */
 		if (fts_ent->fts_info != FTS_F)
 			continue;
