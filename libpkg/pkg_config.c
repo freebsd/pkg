@@ -446,7 +446,7 @@ disable_plugins_if_static(void)
 
 	/* if dlh is NULL then we are in static binary */
 	if (dlh == NULL)
-		ucl_object_replace_key(config, ucl_object_frombool(false), "ENABLE_PLUGINS", 14, false);
+		ucl_object_replace_key(config, ucl_object_frombool(false), "PKG_ENABLE_PLUGINS", 18, false);
 	else
 		dlclose(dlh);
 
