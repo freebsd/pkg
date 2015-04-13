@@ -445,6 +445,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 {
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
+	const char *sqlop;
 
 	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
@@ -514,8 +515,8 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					break;
 				case '#': /* FALLTHROUGH */
 				case '?':
+					sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					str++;
-					const char *sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					switch (str[0]) {
 						case 'd':
 							sbuf_printf(sqlcond, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
@@ -532,7 +533,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT %s FROM files AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'O':
-							sbuf_printf(sqlcond, "(SELECT %s FROM option JOIN pkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_option AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'D':
 							if (for_remote)
