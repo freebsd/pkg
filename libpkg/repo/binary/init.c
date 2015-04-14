@@ -132,8 +132,8 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 		}
 	}
 	if (!found) {
-		pkg_emit_error("Failed to %s \"%s\" repo schema "
-			" version %d (target version %d) "
+		pkg_emit_error("Unable to %s \"%s\" repo schema "
+			"version %d (target version %d) "
 			"-- change not found", updown, repo->name, version,
 			REPO_SCHEMA_VERSION);
 		return (EPKG_FATAL);
