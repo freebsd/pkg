@@ -78,7 +78,7 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/packagesplit.shin \
 		frontend/php-pr.shin \
 		frontend/pkg.shin \
-		frontend/query.sh \
+		frontend/query.shin \
 		frontend/register.shin \
 		frontend/repo.shin \
 		frontend/requires.shin \
