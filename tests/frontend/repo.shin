@@ -48,6 +48,10 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
+	if [ `uname -s` != "Darwin" ]; then
+		exit 0
+	fi
+
 	nb=$(tar -xf digests.txz -O digests | wc -l)
 	atf_check_equal $nb 2
 
