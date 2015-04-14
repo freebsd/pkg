@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -47,6 +48,7 @@ void
 usage_lock(void)
 {
 	fprintf(stderr, "Usage: pkg lock [-lqy] [-a|[-Cgix] <pkg-name>]\n");
+	fpritnf(stderr, "       pkg lock --has-locked-packages\n");
 	fprintf(stderr, "       pkg unlock [-lqy] [-a|[-Cgix] <pkg-name>]\n");
 	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
