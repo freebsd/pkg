@@ -285,10 +285,23 @@ file.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
-The list of environment variables that affect the execution of
+All configuration options from
+.Xr pkg.conf.5
+can be passed as environment variables.
+.Pp
+Extra environment variables are:
+.Bl -tag -width "INSTALL_AS_USER"
+.It INSTALL_AS_USER
+Allow to do all manipulation as a regular user instead of checking for root
+credentials when appropriate.
+.br
+It is expected that the user makes sure everything single file and directory
+manipulated by
 .Nm
-is in
-.Xr pkg.conf 5 .
+are readable
+.Pq or writable where appropriate
+by the user.
+.El
 .\" ---------------------------------------------------------------------------
 .Sh FILES
 See
