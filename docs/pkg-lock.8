@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd September 26, 2014
+.Dd April 14, 2015
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -41,6 +40,8 @@
 .Nm
 .Op Cm --{show-locked,quiet,yes}
 .Op Cm --all
+.Nm
+.Fl -has-locked-packages
 .Nm
 .Op Cm --{show-locked,quiet,yes}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -87,19 +88,19 @@ some third package.
 The following options are supported by
 .Nm :
 .Bl -tag -width all
-.It Fl a , Cm --all
+.It Fl a , Fl --all
 Lock or unlock all installed packages.
-.It Fl C , Cm --case-sensitive
+.It Fl C , Fl -case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl g , Cm --glob
+.It Fl g , Fl -glob
 Treat
 .Ar pkg-name
 as a shell glob pattern.
-.It Fl i , Cm --case-insensitive
+.It Fl i , Fl -case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -109,21 +110,23 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl l , Cm --show-locked
+.It Fl l , Fl -show-locked
 Show a list of all locked packages.
 This can be used without locking or unlocking any packages, in which
 case privileged access to the package database is not required.
 Otherwise it will be displayed after any lock or unlock operations.
-.It Fl q , Cm --quiet
+.It Fl q , Fl -quiet
 Operate quietly: do not output anything other than confirmatory questions.
-.It Fl x , Cm --regex
+.It Fl x , Fl -regex
 Treat
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
-.It Fl y , Cm --yes
+.It Fl y , Fl -yes
 Assume "yes" as the answer to all questions.
+.It Fl -has-locked-packages
+Return 0 if at least one package is locked, 1 otherwise
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
