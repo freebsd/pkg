@@ -16,6 +16,7 @@ atf_test_program{name='php-pr.sh'}
 atf_test_program{name='pkg.sh'}
 atf_test_program{name='query.sh'}
 atf_test_program{name='register.sh'}
+atf_test_program{name='repo.sh'}
 atf_test_program{name='requires.sh'}
 atf_test_program{name='rootdir.sh'}
 atf_test_program{name='rubypuppet.sh'}

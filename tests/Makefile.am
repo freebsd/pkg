@@ -80,6 +80,7 @@ EXTRA_DIST=	frontend/png.uclin \
 		frontend/pkg.shin \
 		frontend/query.sh \
 		frontend/register.shin \
+		frontend/repo.shin \
 		frontend/requires.shin \
 		frontend/rootdir.shin \
 		frontend/rubypuppet.shin \
@@ -110,6 +111,7 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/php-pr.sh \
 		frontend/query.sh \
 		frontend/register.sh \
+		frontend/repo.sh \
 		frontend/requires.sh \
 		frontend/rootdir.sh \
 		frontend/rubypuppet.sh \
