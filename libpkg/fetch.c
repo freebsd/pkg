@@ -471,6 +471,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	struct dns_srvinfo	*srv_current = NULL;
 	struct http_mirror	*http_current = NULL;
 	off_t		 sz = 0;
+	size_t		 buflen = 0;
+	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
 	struct sbuf	*fetchOpts = NULL;
 
@@ -627,7 +629,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	pkg_emit_progress_start(NULL);
 	if (offset > 0)
 		done += offset;
-	while ((r = fread(buf, 1, sizeof(buf), remote)) > 0) {
+	buflen = sizeof(buf);
+	left = sizeof(buf);
+	if (sz > 0)
+		left = sz - done;
+	while ((r = fread(buf, 1, left < buflen ? left : buflen, remote)) > 0) {
 		if (write(dest, buf, r) != r) {
 			pkg_emit_errno("write", "");
 			retcode = EPKG_FATAL;
@@ -635,6 +641,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		}
 		done += r;
 		if (sz > 0) {
+			left -= r;
 			pkg_debug(1, "Read status: %d over %d", done, sz);
 		} else
 			pkg_debug(1, "Read status: %d", done);
