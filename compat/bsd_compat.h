@@ -91,7 +91,7 @@ void closefrom(int lowfd);
 #define	AT_SYMLINK_NOFOLLOW	0x200
 #endif
 
-#if !HAVE_FACCESSAT
+#if !HAVE_DECL_FACCESSAT
 int faccessat(int fd, const char *path, int mode, int flag);
 #endif
 
@@ -99,15 +99,15 @@ int faccessat(int fd, const char *path, int mode, int flag);
 int fstatat(int fd, const char *path, struct stat *buf, int flag);
 #endif
 
-#if !HAVE_OPENAT
+#if !HAVE_DECL_OPENAT
 int openat(int fd, const char *path, int flags, ...);
 #endif
 
-#if !HAVE_READLINKAT
+#if !HAVE_DECL_READLINKAT
 ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t bufsize);
 #endif
 
-#if !HAVE_UNLINKAT
+#if !HAVE_DECL_UNLINKAT
 # ifndef AT_REMOVEDIR
 #  define AT_REMOVEDIR	0x800
 # endif
