@@ -80,10 +80,11 @@ EOF
 	    -e inline:"pkg: Skipping malformed key 'files'\n" \
 	    -s exit:0 \
 	    pkg create -q -m testpkg/.metadir -r testpkg
+
 	atf_check \
 	    -o empty \
 	    -e empty \
-	    -s exit:1 \
+	    -s exit:0 \
 	    test -f test-1.txz
 }
 
