@@ -83,7 +83,9 @@ exec_alias(int argc, char **argv)
 	all_aliases = pkg_config_get("ALIAS");
 
 	if (argc == 0) {
-		if (!quiet)
+		if (!quiet && list)
+			printf("%s\n", "ALIAS");
+		else if (!quiet)
 			printf("%-20s %s\n", "ALIAS", "ARGUMENTS");
 		while ((alias = pkg_object_iterate(all_aliases, &it))) {
 			if (list)
