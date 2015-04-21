@@ -382,16 +382,6 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 				      bsd_dirname(fpath));
 		break;
 	}
-	if (!is_shlib) {
-		/*
-		 * Some shared libraries have no SONAME, but we still want
-		 * to manage them in provides list.
-		 */
-		if (elfhdr.e_type == ET_DYN) {
-			is_shlib = true;
-			pkg_addshlib_provided(pkg, bsd_basename(fpath));
-		}
-	}
 
 	/* Now find all of the NEEDED shared libraries. */
 
