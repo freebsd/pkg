@@ -1201,6 +1201,27 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 
 	/* Finish by the shlibs */
 	for (;;) {
+		ret1 = pkg_shlibs_provided(rp, &rs);
+		ret2 = pkg_shlibs_provided(lp, &ls);
+		if (ret1 != ret2) {
+			free(rp->reason);
+			rp->reason = strdup("provided shared library changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(rs->name, ls->name) != 0) {
+				free(rp->reason);
+				rp->reason = strdup("provided shared library changed");
+				pkg_debug(1, "provided shlib changed %s -> %s",
+				    ls->name, rs->name);
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	for (;;) {
 		ret1 = pkg_shlibs_required(rp, &rs);
 		ret2 = pkg_shlibs_required(lp, &ls);
 		if (ret1 != ret2) {
@@ -1212,7 +1233,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			if (strcmp(rs->name, ls->name) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("needed shared library changed");
-				pkg_debug(1, "shlib changed %s -> %s",
+				pkg_debug(1, "Required shlib changed %s -> %s",
 				    ls->name, rs->name);
 				return (true);
 			}
