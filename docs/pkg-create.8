@@ -271,6 +271,22 @@ It is the equivalent of the
 variable for a port, not a way to put comments in a
 .Pa +MANIFEST
 file.
+.It Cm desc Ar description
+.Ar description
+is a longer description of the package.
+It is the equivalent of the
+.Pa pkg-descr
+file for a port.
+It may be one to a few paragraphs.
+For example:
+.Bd -literal -offset indent
+desc = <<EOD
+   This is a longer description of the package.
+   It can span multiple lines.
+
+   It can also span multiple paragraphs.
+EOD
+.Ed
 .It Cm arch Ar cpu-type
 The architecture of the machine the package was built on.
 .Ar cpu-type
