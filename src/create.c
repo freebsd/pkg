@@ -279,7 +279,8 @@ exec_create(int argc, char **argv)
 	}
 
 	if (metadatadir == NULL && manifest == NULL && rootdir != NULL) {
-		warnx("Do not specify a rootdir when creating a package from an installed package");
+		warnx("Do not specify a rootdir without also specifying "
+		    "either a metadatadir or manifest");
 		usage_create();
 		return (EX_USAGE);
 	}
