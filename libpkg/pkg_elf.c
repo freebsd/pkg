@@ -105,8 +105,8 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 
 /* ARGSUSED */
 static int
-add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
-		  const char *name, bool is_shlib)
+add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
+    bool is_shlib)
 {
 	struct pkg_file *file = NULL;
 	const char *filepath;
@@ -212,9 +212,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 }
 
 static int
-analyse_elf(struct pkg *pkg, const char *fpath,
-	int (action)(void *, struct pkg *, const char *, const char *, bool),
-	void *actdata)
+analyse_elf(struct pkg *pkg, const char *fpath)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -398,7 +396,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
 
-		action(actdata, pkg, fpath, shlib, is_shlib);
+		add_shlibs_to_pkg(pkg, fpath, shlib, is_shlib);
 	}
 
 cleanup:
@@ -464,7 +462,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		else
 			strlcpy(fpath, file->path, sizeof(fpath));
 
-		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
+		ret = analyse_elf(pkg, fpath);
 		if (developer_mode) {
 			if (ret != EPKG_OK && ret != EPKG_END) {
 				failures = true;
