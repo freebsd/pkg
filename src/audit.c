@@ -287,7 +287,7 @@ exec_audit(int argc, char **argv)
 					sbuf_printf(sb, "Packages that depend on %s: ", name);
 					print_recursive_rdeps(check, pkg , sb, seen, true);
 					sbuf_finish(sb);
-					printf("%s\n", sbuf_data(sb));
+					printf("%s\n\n", sbuf_data(sb));
 
 					kh_destroy_pkgs(seen);
 				}
