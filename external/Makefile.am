@@ -70,20 +70,23 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libfetch/common.h \
 		libfetch/fetch.h \
 		libfetch/httperr.h \
-		libfetch/ftperr.h
+		libfetch/ftperr.h \
+		linenoise/linenoise.h
 
 DYNLIBS=		libucl.la \
 			libsqlite.la \
 			libexpat.la \
 			libsbuf.la \
 			libpicosat.la \
-			libfetch.la
+			libfetch.la \
+			liblinenoise.la
 noinst_LTLIBRARIES=	libucl_static.la \
 			libsqlite_static.la \
 			libexpat_static.la \
 			libsbuf_static.la \
 			libpicosat_static.la \
-			libfetch_static.la
+			libfetch_static.la \
+			liblinenoise_static.la
 if LIBELF_BUNDLED
 DYNLIBS+=		libelf.la
 noinst_LTLIBRARIES+=	libelf_static.la
@@ -172,6 +175,12 @@ libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
 libsbuf_static_la_CFLAGS=	$(sbuf_common_CFLAGS) -static
 libsbuf_static_la_LDFLAGS=	-all-static
 
+liblinenoise_la_SOURCES=	linenoise/linenoise.c
+liblinenoise_la_CFLAGS=	-shared
+liblinenoise_static_la_SOURCES=	$(liblinenoise_la_SOURCES)
+liblinenoise_static_CFLAGS=	-static
+liblinenoise_static_la_LDFLAGS=	-all-static
+
 ucl_common_cflags=	-I$(top_srcdir)/external/libucl/uthash \
 			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/libucl/include  \
@@ -211,7 +220,9 @@ libpicosat_static_la_SOURCES=	$(libpicosat_la_SOURCES)
 libpicosat_static_la_CFLAGS= $(picosat_common_cflags) -static
 libpicosat_static_la_LDFLAGS=	-all-static
 
-sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
+sqlite_common_cflags=	-I$(top_srcdir)/external/linenoise \
+			-DHAVE_SQLITE_CONFIG_H \
+			-DHAVE_LINENOISE \
 			-Wno-unused-variable \
 			-Wno-unused-function \
 			-Wno-strict-aliasing \
