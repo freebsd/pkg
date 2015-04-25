@@ -597,7 +597,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 				perm = getmode(set, 0);
 		} else {
 			pkg_emit_error("Skipping unknown key for file(%s): %s",
-			    sbuf_data(fname), ucl_object_tostring(cur));
+			    sbuf_data(fname), key);
 		}
 	}
 
