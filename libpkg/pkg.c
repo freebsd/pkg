@@ -575,6 +575,7 @@ pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
     bool trimcr)
 {
 	char *buf = NULL;
+	char *cp;
 	off_t size = 0;
 	int ret = EPKG_OK;
 
@@ -584,8 +585,13 @@ pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
 	if ((ret = file_to_bufferat(fd, path, &buf, &size)) !=  EPKG_OK)
 		return (ret);
 
-	while (trimcr && buf[strlen(buf) - 1] == '\n')
-		buf[strlen(buf) - 1] = '\0';
+	if (trimcr) {
+		cp = buf + strlen(buf) - 1;
+		while (cp > buf && *cp == '\n') {
+			*cp = 0;
+			cp--;
+		}
+	}
 
 	ret = pkg_set(pkg, attr, buf);
 
@@ -598,6 +604,7 @@ int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 {
 	char *buf = NULL;
+	char *cp;
 	off_t size = 0;
 	int ret = EPKG_OK;
 
@@ -607,8 +614,13 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 	if ((ret = file_to_buffer(path, &buf, &size)) !=  EPKG_OK)
 		return (ret);
 
-	while (trimcr && buf[strlen(buf) - 1] == '\n')
-		buf[strlen(buf) - 1] = '\0';
+	if (trimcr) {
+		cp = buf + strlen(buf) - 1;
+		while (cp > buf && *cp == '\n') {
+			*cp = 0;
+			cp--;
+		}
+	}
 
 	ret = pkg_set(pkg, attr, buf);
 
