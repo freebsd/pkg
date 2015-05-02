@@ -236,14 +236,17 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	size_t len;
 	char path[MAXPATHLEN];
 	char stagedpath[MAXPATHLEN];
-	char *testpath;
+	char *testpath, *cp;
 	struct stat st;
 	int ret = EPKG_OK;
 
 	len = strlen(line);
 
-	while (isspace(line[len - 1]))
-		line[--len] = '\0';
+	cp = line + strlen(line) -1;
+	while (cp > line && isspace(*cp)) {
+		*cp = 0;
+		cp--;
+	}
 
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s/", line);
