@@ -442,7 +442,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 						"output", type);
 				return (EPKG_FATAL);
 			}
-			len = *(int *)p;
+			memcpy(&len, p, sizeof(int));
 			state = fp_parse_file;
 			p += sizeof(int);
 			s = NULL;
@@ -488,7 +488,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 				free(s);
 				return (EPKG_FATAL);
 			}
-			len = *(int *)p;
+			memcpy(&len, p, sizeof(int));
 			state = fp_parse_sig;
 			p += sizeof(int);
 			break;
