@@ -270,6 +270,12 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
+	if (elfhdr.e_type != ET_DYN && elfhdr.e_type != ET_EXEC &&
+	    elfhdr.e_type != ET_REL) {
+		ret = EPKG_END;
+		goto cleanup;
+	}
+
 	/* Elf file has sections header */
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
@@ -701,6 +707,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
+
 
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
