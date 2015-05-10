@@ -233,7 +233,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "Usage: pkg check [-Bdsr] [-qvy] [-a | -Cgix <pattern>]\n\n");
+	fprintf(stderr, "Usage: pkg check [-Bdsr] [-qvy] <-a | -Cgix <pattern>>\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 

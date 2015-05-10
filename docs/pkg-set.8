@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl a
-.Op Fl A Op Ar 01
+.Op Fl A Ao 0 | 1 Ac
 .Op Fl n Ar oldname:newname
 .Op Fl o Ar oldorigin:neworigin
 .Op Fl y
@@ -32,7 +32,7 @@
 .Pp
 .Nm
 .Op Cm --all
-.Op Cm --automatic Op Ar 01
+.Op Cm --automatic Ao 0 | 1 Ac
 .Op Cm --change-name Ar oldname:newname
 .Op Cm --change-origin Ar oldorigin:neworigin
 .Op Cm --yes
@@ -47,7 +47,7 @@ should always be used with caution.
 The following options are supported by
 .Nm :
 .Bl -tag -width automatic
-.It Fl A Ar 01 , Cm --automatic Ar 01
+.It Fl A Ao 0 | 1 Ac , Cm --automatic Ao 0 | 1 Ac
 Set automatic flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
