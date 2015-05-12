@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd August 18, 2014
+.Dd May 12, 2015
 .Dt PKG-BACKUP 8
 .Os
 .Sh NAME
@@ -35,21 +35,23 @@
 .Op Cm --quiet
 .Cm --restore Ar src_file
 .Sh DESCRIPTION
-is used for backing up and restoring of the local package database.
+.Nm
+is used to backup and restore the local package database.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width restore
 .It Fl d Ar dest_file , Cm --dump Ar dest_file
-Dumps the local package database to a file specified on the command-line.
+Dumps the local package database to a file specified on the
+command-line.
 .It Fl q , Cm --quiet
 Force quiet output.
 .It Fl r Ar src_file , Cm --restore Ar src_file
 Uses
 .Ar src_file
 in order to restore the local package database.
-Useful in case of a database
-crash or loss to restore your database from a previously made backup.
+Useful in case of a database crash or loss, to restore your database
+from a previous backup.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
