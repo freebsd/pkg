@@ -386,8 +386,11 @@ from the official package repositories.
 
 To add additional repositories, create a per-repository configuration
 file in `/usr/local/etc/pkg/repos` -- it doesn't matter what the
-filename is other than it must match '*.conf' and you should make your
-preferred repositories sort earlier in the list.
+filename is other than it must match '*.conf' and you should add a
+'priority' setting indicating the preference order.  This is just an
+integer, where higher values indicate the more preferred repositories.
+Priority defaults to 0 unless explicitly stated.  This is the value
+for the default `/etc/pkg/FreeBSD.conf`
 
 To disable the default FreeBSD.conf, create a file
 `/usr/local/etc/pkg/repos/FreeBSD.conf` with the contents:
@@ -406,12 +409,18 @@ Note that the old style of setting _PACKAGESITE_ in pkg.conf is
 no-longer supported.  Setting _PACKAGESITE_ in the environment has
 meaning for the pkg(7) shim, but is ignored by pkg(8).
 
+<a name="pkgupdate"></a>
+### Updating from remote repositories
+
 Then fetch the repository catalogues using the command:
 
 	# pkg update
 
-This would fetch the remote package database to your local system. Now
-in order to install packages from the remote repository, you would use
+For more information on updating from remote repositories, please
+refer to *pkg-update(1)*.
+
+This will fetch the remote package database to your local system. Now
+in order to install packages from the remote repository, you can use
 the `pkg install` command:
 
 	# pkg install zsh cfengine3
@@ -427,61 +436,47 @@ You can install a package from a specific repository:
 
     	# pkg install -r myrepo zsh
 
-where `myrepo` is one of the tags shown in the `pkg -vv` output.  You
-can then tell pkg to always use the named repository for upgrades to
-that package by:
+where `myrepo` is one of the tags shown in the `pkg -vv` output.
+pkg(8) will automatically create an annotation showing which
+repository a package came from, similarly to the effect of running:
 
-        # pkg annotate -A zsh repository myrepo
+        # pkg annotate -A pkgname repository myrepo
 
-<a name="pkgupdate"></a>
-### Updating remote repositories
-
-The first thing to do when working with remote repositories is to
-update from them.
-
-Updating remote repositories is done by the `pkg update` command.  By
-default his will first update the local copies of the repository
-catalogues, unless you specifically configure pkg(8) otherwise.
-
-So, to update your remote repositories, you would execute this command:
-
-	# pkg update
-
-For more information on the remote repositories, please refer to *pkg-update(1)*.
+pkg(8) will attempt to use the same repository for any updates to this
+package, even if there are more recent versions available from other
+repositories.  This is usually the desired behaviour.  Otherwise see
+the documentation for `CONSERVATIVE_UPGRADE` in pkg.conf(5).
 
 <a name="pkgsearch"></a>
 ### Searching in remote package repositories
 
-You can search in the remote package repositories using the `pkg search` command.
+You can search in the remote package repositories using the `pkg
+search` command.
 
-In order to search in multiple package repositories the environment variable
-_PACKAGESITE_ should NOT be defined, in which case `pkg search` will query
-the remote package databases found in the /etc/pkg/repositories file.
+If you have multiple repositories configured, `pkg search` will return
+results from searching each of them.  Use the `-r reponame` option to
+confine your search to a specific repository.
 
 An example search for a package could be done like this:
 
 	# pkg search -x apache
 
-For more information on the repositories search, please refer to *pkg-search(1)*
+For more information on the repositories search, please refer to
+*pkg-search(1)*
 
 <a name="pkginstall"></a>
 ### Installing from remote repositories
 
-In order to install a package from a remote repository you need to set the
-_PACKAGESITE_ environment variable to point to the remote server.
+pkg(8) will install a package from the highest priority repository
+that contains the package and that allows the solver to satisfy the
+package dependencies.  This may entail reinstalling existing packages
+from a different repository.
 
-If _PACKAGESITE_ is not defined then the installation process will use
-multiple repositories as defined in the /etc/pkg/repositories file.
+The process continues until the package is fetched and installed, or
+all remote repositories fail to fetch the package.
 
-During installation from multiple repositories the first repository
-that is found to has the package is the first one that pkg will use
-during the installation. If that repository is not accessible for some reason,
-then the next repository which contains the package is the one that is tried.
-
-The process continues until the package is fetched and installed, or all
-remote repositories fail to fetch the package.
-
-Remote installations of packages using pkg are done by the `pkg install` command.
+Remote installations of packages using pkg are done by the `pkg
+install` command.
 
 Here's an example installation of few packages:
 
@@ -493,7 +488,8 @@ Or you could also install the packages using only one command, like this:
 
 	# pkg install www/apache22 zsh perl5-5.18.2_4
 
-For more information on the remote package installs, please refer to *pkg-install(1)*
+For more information on the remote package installs, please refer to
+*pkg-install(1)*
 
 <a name="pkgbackup"></a>
 ### Backing up your package database
