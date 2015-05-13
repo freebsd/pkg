@@ -315,7 +315,8 @@ exec_clean(int argc, char **argv)
 	humanize_number(size, sizeof(size), total, "B",
 	    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
-	printf("The cleanup will free %s\n", size);
+	if (!quiet)
+		printf("The cleanup will free %s\n", size);
 	if (!dry_run) {
 			if (query_yesno(false,
 			  "\nProceed with cleaning the cache? ")) {
