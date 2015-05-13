@@ -115,7 +115,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		if (count == 0)
+		if (count == 0 && !quiet)
 			printf("%s is linked to by the following packages:\n",
 			       libname);
 		count++;
@@ -123,7 +123,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 	}
 
 	if (ret == EPKG_END) {
-		if (count == 0)
+		if (count == 0 && !quiet)
 			printf("No packages require %s.\n", libname);
 		ret = EPKG_OK;
 	}
