@@ -56,39 +56,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 }
 
 void
-pkg_reset(struct pkg *pkg, pkg_t type)
-{
-	int i;
-
-	if (pkg == NULL)
-		return;
-
-	pkg->flags &= ~PKG_LOAD_CATEGORIES;
-	pkg->flags &= ~PKG_LOAD_LICENSES;
-	pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
-
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++)
-		sbuf_reset(pkg->scripts[i]);
-	pkg_list_free(pkg, PKG_DEPS);
-	pkg_list_free(pkg, PKG_RDEPS);
-	pkg_list_free(pkg, PKG_FILES);
-	pkg_list_free(pkg, PKG_DIRS);
-	pkg_list_free(pkg, PKG_OPTIONS);
-	pkg_list_free(pkg, PKG_USERS);
-	pkg_list_free(pkg, PKG_GROUPS);
-	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
-	pkg_list_free(pkg, PKG_PROVIDES);
-	pkg_list_free(pkg, PKG_REQUIRES);
-	if (pkg->rootfd != -1)
-		close(pkg->rootfd);
-	pkg->rootfd = -1;
-	pkg->rootpath[0] = '\0';
-
-	pkg->type = type;
-}
-
-void
 pkg_free(struct pkg *pkg)
 {
 	if (pkg == NULL)
