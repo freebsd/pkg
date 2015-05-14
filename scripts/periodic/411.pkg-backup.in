@@ -20,8 +20,19 @@ backup_pkg() {
 	local bak_file="$2"
 	local rc
 
-	[ -e "${bak_file}" ] && \
-		mv -f "${bak_file}" "${bak_file}.2"
+	local count="${daily_backup_pkg_count:-7}"
+	local lower=$(( ${count} - 1 ))
+	for i in $(jot ${count} ${lower} 0); do
+		local higher=$(( ${i} + 1 ))
+		local file
+		if [ ${i} == 0 ]; then
+			file=${bak_file}
+		else
+			file=${bak_file}.${i}
+		fi
+		[ -e "${file}" ] && \
+			mv -f "${file}" "${bak_file}.${higher}"
+	done
 
 	if do_dump | xz -c > ${bak_file}; then
 		rc=0
