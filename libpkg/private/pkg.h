@@ -493,11 +493,6 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_NOSCRIPT (1<<2)
 #define PKG_DELETE_CONFLICT (1<<3)
 
-extern struct pkg_key {
-	const char *name;
-	int type;
-} pkg_keys[PKG_NUM_FIELDS];
-
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size);
 int pkg_repo_fetch_package(struct pkg *pkg);
