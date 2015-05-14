@@ -21,9 +21,9 @@ backup_pkg() {
 	local rc
 
 	local count="${daily_backup_pkg_count:-7}"
-	local lower=$(expr ${count} - 1)
+	local lower=$(( ${count} - 1 ))
 	for i in $(jot ${count} ${lower} 0); do
-		local higher=$(expr ${i} + 1)
+		local higher=$(( ${i} + 1 ))
 		local file
 		if [ ${i} == 0 ]; then
 			file=${bak_file}
