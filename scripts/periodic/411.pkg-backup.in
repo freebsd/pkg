@@ -40,6 +40,12 @@ backup_pkg() {
 		rc=3
 	fi
 
+	# Prune very old backups
+	local OLDBACKUPS="pkgng.db pkgdb.bak.tbz pkgdb.bak.tbz.2"
+	for file in ${OLDBACKUPS}; do
+		[ -f /var/backups/${file} ] && rm /var/backups/${file}
+	done
+
 	return $rc
 }
 
