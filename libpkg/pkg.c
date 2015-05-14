@@ -39,8 +39,6 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 
-static ucl_object_t *manifest_schema = NULL;
-
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
@@ -111,80 +109,6 @@ pkg_type(const struct pkg * restrict pkg)
 	assert(pkg != NULL);
 
 	return (pkg->type);
-}
-
-static ucl_object_t *
-manifest_schema_open(pkg_t type __unused)
-{
-	struct ucl_parser *parser;
-	static const char manifest_schema_str[] = ""
-		"{"
-		"  type = object;"
-		"  properties {"
-		"    origin = { type = string };"
-		"    name = { type = string };"
-		"    comment = { type = string };"
-		"    desc = { type = string };"
-		"    mtree = { type = string };"
-		"    message = { type = string };"
-		"    maintainer = { type = string };"
-		"    arch = { type = string };"
-		"    abi = { type = string };"
-		"    www = { type = string };"
-		"    prefix = { type = string };"
-		"    digest = { type = string };"
-		"    repopath = { type = string };"
-		"    sum = { type = string };"
-		"    oldversion = { type = string };"
-		"    reponame = { type = string };"
-		"    repourl = { type = string };"
-		"    reason = { type = string };"
-		"    flatsize = { type = integer }; "
-		"    oldflatsize = { type = integer }; "
-		"    pkgsize = { type = integer }; "
-		"    locked = { type = boolean }; "
-		"    rowid = { type = integer }; "
-		"    time = { type = integer }; "
-		"    annotations = { type = object }; "
-		"    licenses = { "
-		"      type = array; "
-		"      items = { type = string }; "
-		"      uniqueItems = true ;"
-		"    };"
-		"    categories = { "
-		"      type = array; "
-		"      items = { type = string }; "
-		"      uniqueItems = true ;"
-		"    };"
-		"  }\n"
-		"  required = ["
-		"    origin,"
-		"    name,"
-		"    comment,"
-		"    version,"
-		"    desc,"
-		"    maintainer,"
-		"    www,"
-		"    prefix,"
-		"  ]"
-		"}";
-
-	if (manifest_schema != NULL)
-		return (manifest_schema);
-
-	parser = ucl_parser_new(0);
-	if (!ucl_parser_add_chunk(parser, manifest_schema_str,
-	    sizeof(manifest_schema_str) -1)) {
-		pkg_emit_error("Cannot parse manifest schema: %s",
-		    ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
-		return (NULL);
-	}
-
-	manifest_schema = ucl_parser_get_object(parser);
-	ucl_parser_free(parser);
-
-	return (manifest_schema);
 }
 
 int
