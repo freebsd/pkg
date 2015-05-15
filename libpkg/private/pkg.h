@@ -631,6 +631,14 @@ int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
  */
 unsigned char * pkg_checksum_data(const unsigned char *in, size_t inlen,
 	pkg_checksum_type_t type);
+unsigned char *pkg_checksum_fd(int fd, pkg_checksum_type_t type);
+unsigned char *pkg_checksum_file(const char *path, pkg_checksum_type_t type);
+unsigned char *pkg_checksum_fileat(int fd, const char *path,
+    pkg_checksum_type_t type);
+unsigned char *pkg_checksum_symlink(const char *path, const char *root,
+    pkg_checksum_type_t type);
+unsigned char *pkg_checksum_symlinkat(int fd, const char *path,
+    const char *root, pkg_checksum_type_t type);
 
 bool pkg_checksum_is_valid(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);

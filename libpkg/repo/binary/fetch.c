@@ -132,7 +132,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	char url[MAXPATHLEN];
 	char *dir = NULL;
 	int fetched = 0;
-	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	char *cksum;
 	struct stat st;
 	char *path = NULL;
 	const char *packagesite = NULL;
@@ -226,8 +226,8 @@ checksum:
 		    pkg->name, pkg->version);
 		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
-	retcode = sha256_file(dest, cksum);
-	if (retcode == EPKG_OK) {
+	cksum = pkg_checksum_file(dest, PKG_HASH_TYPE_SHA256_HEX);;
+	if (cksum != NULL) {
 		if (strcmp(cksum, pkg->sum)) {
 			if (already_tried || fetched == 1) {
 				pkg_emit_error("%s-%s failed checksum "
@@ -238,9 +238,11 @@ checksum:
 				    "checksum mismatch, fetching from remote",
 				    pkg->name, pkg->version);
 				unlink(dest);
+				free(cksum);
 				return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 			}
 		}
+		free(cksum);
 	}
 
 cleanup:

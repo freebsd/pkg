@@ -133,7 +133,7 @@ static bool
 pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fatal)
 {
 	struct fingerprint *f = NULL;
-	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *hash;
 	int nbgood = 0;
 	struct sig_cert *s = NULL, *stmp = NULL;
 	struct pkg_repo_meta_key *mk = NULL;
@@ -175,17 +175,20 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 		}
 
 		s->trusted = false;
-		sha256_buf(s->cert, s->certlen, hash);
+		hash = pkg_checksum_data(s->cert, s->certlen,
+		    PKG_HASH_TYPE_SHA256_HEX);
 		HASH_FIND_STR(repo->revoked_fp, hash, f);
 		if (f != NULL) {
 			if (fatal)
 				pkg_emit_error("At least one of the "
 					" certificates has been revoked");
 
+			free(hash);
 			return (false);
 		}
 
 		HASH_FIND_STR(repo->trusted_fp, hash, f);
+		free(hash);
 		if (f != NULL) {
 			nbgood++;
 			s->trusted = true;

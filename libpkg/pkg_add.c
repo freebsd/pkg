@@ -89,7 +89,7 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 
 	char *localconf = NULL;
 	size_t sz;
-	char localsum[SHA256_DIGEST_LENGTH];
+	char *localsum;
 
 	if (!renamed) {
 		pkg_debug(3, "Not renamed");
@@ -123,12 +123,15 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 
 	if (sz == strlen(lcf->content)) {
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
-		sha256_buf(localconf, sz, localsum);
-		if (strcmp(localsum, lf->sum) == 0) {
+		localsum = pkg_checksum_data(localconf, sz,
+		    PKG_HASH_TYPE_SHA256_HEX);
+		if (localsum && strcmp(localsum, lf->sum) == 0) {
 			pkg_debug(2, "Checksum are the same %d", strlen(localconf));
 			free(localconf);
+			free(localsum);
 			return;
 		}
+		free(localsum);
 		pkg_debug(2, "Checksum are different %d", strlen(localconf));
 	}
 

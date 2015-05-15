@@ -55,7 +55,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct pkg_dir	*dir = NULL;
 	int		 ret;
 	struct stat	 st;
-	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		*sha256;
 	int64_t		 flatsize = 0;
 	int64_t		 nfiles;
 	const char	*relocation;
@@ -100,17 +100,22 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		if (S_ISLNK(st.st_mode)) {
 
 			if (file->sum[0] == '\0') {
-				if (pkg_symlink_cksum(fpath, root, sha256) == EPKG_OK)
-					strlcpy(file->sum, sha256, sizeof(file->sum));
-				else
+				sha256 = pkg_checksum_symlink(fpath, root,
+				    PKG_HASH_TYPE_SHA256_HEX);
+				if (sha256 == NULL)
 					return (EPKG_FATAL);
+				strlcpy(file->sum, sha256, sizeof(file->sum));
+				free(sha256);
 			}
 		}
 		else {
 			if (file->sum[0] == '\0') {
-				if (sha256_file(fpath, sha256) != EPKG_OK)
+				sha256 = pkg_checksum_file(fpath,
+				    PKG_HASH_TYPE_SHA256_HEX);
+				if (sha256 == NULL)
 					return (EPKG_FATAL);
 				strlcpy(file->sum, sha256, sizeof(file->sum));
+				free(sha256);
 			}
 		}
 

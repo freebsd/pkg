@@ -1618,7 +1618,7 @@ pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	struct stat	 st;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *sha256;
 	int rc = EPKG_OK;
 
 	assert(pkg != NULL);
@@ -1629,19 +1629,19 @@ pkg_test_filesum(struct pkg *pkg)
 				pkg_emit_errno("pkg_create_from_dir", "lstat failed");
 				return (EPKG_FATAL);
 			}
-			if (S_ISLNK(st.st_mode)) {
-				if (pkg_symlink_cksum(f->path, NULL, sha256) != EPKG_OK)
-					return (EPKG_FATAL);
-			}
-			else {
-				if (sha256_file(f->path, sha256) != EPKG_OK)
-					return (EPKG_FATAL);
-
-			}
+			if (S_ISLNK(st.st_mode))
+				sha256 = pkg_checksum_symlink(f->path, NULL,
+				    PKG_HASH_TYPE_SHA256_HEX);
+			else
+				sha256 = pkg_checksum_file(f->path,
+				    PKG_HASH_TYPE_SHA256_HEX);
+			if (sha256 == NULL)
+				return (EPKG_FATAL);
 			if (strcmp(sha256, f->sum) != 0) {
 				pkg_emit_file_mismatch(pkg, f, f->sum);
 				rc = EPKG_FATAL;
 			}
+			free(sha256);
 		}
 	}
 
@@ -1656,7 +1656,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	int64_t flatsize = 0;
 	struct stat st;
 	bool regular = false;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *sha256;
 	int rc = EPKG_OK;
 
 	hl = kh_init_hardlinks();
@@ -1665,16 +1665,15 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			regular = true;
 			if (S_ISLNK(st.st_mode)) {
 				regular = false;
-				if (pkg_symlink_cksum(f->path, NULL, sha256)
-				    != EPKG_OK) {
-					rc = EPKG_FATAL;
-					break;
-				}
+				sha256 = pkg_checksum_symlink(f->path, NULL,
+				    PKG_HASH_TYPE_SHA256_HEX);
 			} else {
-				if (sha256_file(f->path, sha256) != EPKG_OK) {
-					rc = EPKG_FATAL;
-					break;
-				}
+				sha256 = pkg_checksum_file(f->path,
+				    PKG_HASH_TYPE_SHA256_HEX);
+			}
+			if (sha256 == NULL) {
+				rc = EPKG_FATAL;
+				break;
 			}
 
 			if (st.st_nlink > 1)
@@ -1685,6 +1684,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 		}
 		if (strcmp(sha256, f->sum) != 0)
 			pkgdb_file_set_cksum(db, f, sha256);
+		free(sha256);
 	}
 	kh_destroy_hardlinks(hl);
 

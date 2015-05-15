@@ -260,7 +260,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	const char *prefix_rel;
 	struct stat st;
 	size_t len;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *sha256;
 #if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
 	int fd;
 #endif
@@ -286,12 +286,15 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			return;
 		}
 		if (S_ISLNK(st.st_mode)) {
-			if (pkg_symlink_cksumat(pkg->rootfd, path, NULL,
-			    sha256) != EPKG_OK)
+			sha256 = pkg_checksum_symlinkat(pkg->rootfd, path, NULL,
+			    PKG_HASH_TYPE_SHA256_HEX);
+			if (!sha256)
 				return;
 		}
 		else {
-			if (sha256_fileat(pkg->rootfd, path, sha256) != EPKG_OK)
+			sha256 = pkg_checksum_fileat(pkg->rootfd, path,
+			    PKG_HASH_TYPE_SHA256_HEX);
+			if (!sha256)
 				return;
 		}
 		if (strcmp(sha256, file->sum)) {
@@ -299,8 +302,10 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 				"checksum, not removing", pkg->rootpath,
 				pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
 				path);
+			free(sha256);
 			return;
 		}
+		free(sha256);
 	}
 
 #ifdef HAVE_CHFLAGS

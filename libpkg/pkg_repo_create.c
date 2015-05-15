@@ -291,7 +291,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_fts_item *cur;
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	char checksum[SHA256_DIGEST_LENGTH * 3 + 1], *mdigest = NULL;
+	char *mdigest = NULL;
 	char digestbuf[1024];
 	struct iovec iov[2];
 	struct msghdr msg;
@@ -356,9 +356,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			off_t mpos, fpos = 0;
 			size_t mlen;
 
-			sha256_file(cur->fts_accpath, checksum);
+			pkg->sum = pkg_checksum_file(cur->fts_accpath,
+			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
-			pkg->sum = strdup(checksum);
 			pkg->repopath = strdup(cur->pkg_path);
 
 			/*
@@ -852,7 +852,7 @@ static int
 pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
 {
 	FILE *fp;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *sha256;
 	struct sbuf *cmd = NULL;
 	struct sbuf *buf = NULL;
 	char *line = NULL;
@@ -860,7 +860,8 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	ssize_t linelen;
 	int i, ret = EPKG_OK;
 
-	if (sha256_file(path, sha256) != EPKG_OK)
+	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+	if (!sha256)
 		return (EPKG_FATAL);
 
 	cmd = sbuf_new_auto();
@@ -875,10 +876,12 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 
 	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
 		ret = EPKG_FATAL;
+		free(sha256);
 		goto done;
 	}
 
 	fprintf(fp, "%s\n", sha256);
+	free(sha256);
 
 	if (*sig == NULL)
 		*sig = sbuf_new_auto();

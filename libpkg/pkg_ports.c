@@ -317,7 +317,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	struct stat st;
 	char *buf;
 	bool regular = false;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int ret = EPKG_OK;
 
 	len = strlen(line);
@@ -359,19 +358,18 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		else
 			regular = true;
 	} else if (S_ISLNK(st.st_mode)) {
-		if (pkg_symlink_cksum(testpath, p->stage, sha256) == EPKG_OK) {
-			buf = sha256;
-			regular = false;
-		} else {
+		buf = pkg_checksum_symlink(testpath, p->stage,
+		    PKG_HASH_TYPE_SHA256_HEX);
+		if (buf == NULL) {
 			free_file_attr(a);
 			return (EPKG_FATAL);
 		}
+		regular = false;
 	}
 
 	if (regular) {
 		p->flatsize += st.st_size;
-		sha256_file(testpath, sha256);
-		buf = sha256;
+		buf = pkg_checksum_file(testpath, PKG_HASH_TYPE_SHA256_HEX);
 		if (is_config) {
 			size_t sz;
 			char *content;
@@ -384,6 +382,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			pkg_emit_error("Plist error, @config %s: not a regular "
 			    "file", line);
 			free_file_attr(a);
+			free(buf);
 			return (EPKG_FATAL);
 		}
 	}
@@ -393,6 +392,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		pkg_emit_error("Plist error, directory listed as a file: %s",
 		    line);
 		free_file_attr(a);
+		free(buf);
 		return (EPKG_FATAL);
 	}
 
@@ -418,6 +418,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			    p->gname, p->perm, 0, true);
 	}
 
+	free(buf);
 	free_file_attr(a);
 
 	return (ret);
