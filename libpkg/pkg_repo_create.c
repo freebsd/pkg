@@ -876,12 +876,10 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 
 	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
 		ret = EPKG_FATAL;
-		free(sha256);
 		goto done;
 	}
 
 	fprintf(fp, "%s\n", sha256);
-	free(sha256);
 
 	if (*sig == NULL)
 		*sig = sbuf_new_auto();
@@ -913,6 +911,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
 done:
+	free(sha256);
 	if (cmd)
 		sbuf_delete(cmd);
 
