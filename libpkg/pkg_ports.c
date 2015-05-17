@@ -315,7 +315,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	char stagedpath[MAXPATHLEN];
 	char *testpath;
 	struct stat st;
-	char *buf;
+	char *buf = NULL;
 	bool regular = false;
 	int ret = EPKG_OK;
 
