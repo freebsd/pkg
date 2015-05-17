@@ -70,11 +70,11 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 	if (access(fpath, R_OK) == 0) {
 		cksum = pkg_checksum_file(fpath, PKG_HASH_TYPE_SHA256_HEX);
-		if (cksum && strcmp(cksum, sqlite3_value_text(argv[1])) == 0) {
+		if (cksum && strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
 			sqlite3_result_int(ctx, 1);
-			free(cksum);
-		} else
+		else
 			sqlite3_result_int(ctx, 0);
+		free(cksum);
 	} else {
 		sqlite3_result_int(ctx, 0);
 	}
