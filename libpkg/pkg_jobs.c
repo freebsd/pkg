@@ -1731,9 +1731,13 @@ again:
 				}
 				else {
 					/* SAT solver will prompt user to intervene */
-					if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
-						return EPKG_CONFLICT;
-					ret = pkg_solve_sat_problem(problem);
+					if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN) {
+						pkg_emit_error("cannot solve job using SAT solver in non-interactive mode");
+						ret = EPKG_FATAL;
+						j->solved = 0;
+					} else {
+						ret = pkg_solve_sat_problem(problem);
+					}
 					if (ret == EPKG_FATAL) {
 						pkg_emit_error("cannot solve job using SAT solver");
 						ret = EPKG_FATAL;
