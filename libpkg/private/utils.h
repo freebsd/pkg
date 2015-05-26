@@ -73,7 +73,6 @@ int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
-ssize_t sbuf_size(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);

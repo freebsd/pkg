@@ -130,7 +130,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_get(sql),
 	     pattern == NULL ? "all": pattern);
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), sbuf_size(sql), &stmt, NULL);
+	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), sbuf_len(sql), &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sbuf_get(sql));
 		sbuf_delete(sql);
