@@ -128,11 +128,12 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 	sbuf_cat(sql, " ORDER BY name;");
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_get(sql),
+	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_data(sql),
 	     pattern == NULL ? "all": pattern);
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), sbuf_len(sql), &stmt, NULL);
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), sbuf_len(sql), &stmt,
+	    NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -168,10 +169,10 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -206,10 +207,10 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -243,10 +244,10 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -281,10 +282,10 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}
@@ -417,10 +418,10 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	sbuf_cat(sql, ";");
 	sbuf_finish(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
+	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_get(sql));
+		ERROR_SQLITE(sqlite, sbuf_data(sql));
 		sbuf_delete(sql);
 		return (NULL);
 	}

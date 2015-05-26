@@ -76,18 +76,6 @@ sbuf_set(struct sbuf **buf, const char *str)
 	return (0);
 }
 
-char *
-sbuf_get(struct sbuf *buf)
-{
-	if (buf == NULL)
-		return (__DECONST(char *, ""));
-
-	if (sbuf_done(buf) == 0)
-		sbuf_finish(buf);
-
-	return (sbuf_data(buf));
-}
-
 void
 sbuf_reset(struct sbuf *buf)
 {

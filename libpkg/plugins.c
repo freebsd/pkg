@@ -162,7 +162,13 @@ pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 {
 	assert(p != NULL);
 
-	return (sbuf_get(p->fields[key]));
+	if (p->fields[key] == NULL)
+		return (NULL);
+
+	if (sbuf_done(p->fields[key]) == 0)
+		sbuf_finish(p->fields[key]);
+
+	return (sbuf_data(p->fields[key]));
 }
 
 int

@@ -496,7 +496,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type == UCL_STRING) {
 				buf = ucl_object_tolstring(cur, &len);
 				urldecode(key, &tmp);
-				pkg_addfile(pkg, sbuf_get(tmp), len == 64 ? buf : NULL, false);
+				pkg_addfile(pkg, sbuf_data(tmp), len == 64 ? buf : NULL, false);
 			} else if (cur->type == UCL_OBJECT)
 				pkg_set_files_from_object(pkg, cur);
 			else
@@ -1332,7 +1332,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 	}
 
 	sbuf_finish(b);
-	*dest = strdup(sbuf_get(b));
+	*dest = strdup(sbuf_data(b));
 	sbuf_delete(b);
 
 	return (rc);

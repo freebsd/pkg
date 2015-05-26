@@ -315,7 +315,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
 			 sbuf_finish(sb);
 			 packing_append_file_attr(pack, fts_e->fts_name,
-			    sbuf_get(sb), NULL, NULL, 0, 0);
+			    sbuf_data(sb), NULL, NULL, 0, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:

@@ -182,7 +182,10 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 	if (p->scripts[i] == NULL)
 		return (NULL);
 
-	return (sbuf_get(p->scripts[i]));
+	if (sbuf_done(p->scripts[i]) == 0)
+		sbuf_finish(p->scripts[i]);
+
+	return (sbuf_data(p->scripts[i]));
 }
 
 /*

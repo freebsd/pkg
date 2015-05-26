@@ -1121,7 +1121,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 {
 	if (sbuf_len(buf) > 0) {
 		sbuf_finish(buf);
-		pkg_appendscript(p, sbuf_get(buf), type);
+		pkg_appendscript(p, sbuf_data(buf), type);
 	}
 }
 

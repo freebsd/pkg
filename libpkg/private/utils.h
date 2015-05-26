@@ -70,7 +70,6 @@ struct rsa_key {
 
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
-char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
 
