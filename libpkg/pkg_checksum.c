@@ -739,7 +739,7 @@ pkg_checksum_validate_file(const char *path, const char *sum)
 	}
 
 	if (lstat(path, &st) == -1) {
-		pkg_emit_errno("pkg_create_from_dir", "lstat");
+		pkg_emit_errno("pkg_checksum_validate_file", "lstat");
 		return (false);
 	}
 
