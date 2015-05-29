@@ -47,8 +47,14 @@ ATF_TC_BODY(check_symlinks, tc)
 	ATF_REQUIRE_STREQ(sum, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae");
 
 	ATF_CHECK(pkg_checksum_validate_file("bar", "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"));
-
 	free(sum);
+
+	sum = pkg_checksum_generate_file("bar", PKG_HASH_TYPE_SHA256_HEX);
+	ATF_REQUIRE_STREQ(sum, "1$2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae");
+	free(sum);
+
+	sum = pkg_checksum_generate_file("bar", PKG_HASH_TYPE_BLAKE2_BASE32);
+	ATF_REQUIRE_STREQ(sum, "2$kgygnaah7wxsgn1wkuic4j78zq8dicmx53picmma99ogmkbd7k5nhuxr5xxemz6yzjab15oor3tjt7nupj8mh764y7kddbne7qw9agn");
 }
 
 ATF_TP_ADD_TCS(tp)
