@@ -98,7 +98,7 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_hash_blake2,
 		pkg_checksum_hash_blake2_bulk,
 		pkg_checksum_hash_blake2_file,
-		pkg_checksum_encode_hex
+		pkg_checksum_encode_base32
 	},
 	[PKG_HASH_TYPE_SHA256_RAW] = {
 		"sha256_raw",
