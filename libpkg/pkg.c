@@ -728,13 +728,13 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 }
 
 int
-pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates)
+pkg_addfile(struct pkg *pkg, const char *path, const char *sum, bool check_duplicates)
 {
-	return (pkg_addfile_attr(pkg, path, sha256, NULL, NULL, 0, 0, check_duplicates));
+	return (pkg_addfile_attr(pkg, path, sum, NULL, NULL, 0, 0, check_duplicates));
 }
 
 int
-pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
+pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
     const char *uname, const char *gname, mode_t perm, u_long fflags,
     bool check_duplicates)
 {
@@ -763,8 +763,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
 	pkg_file_new(&f);
 	strlcpy(f->path, path, sizeof(f->path));
 
-	if (sha256 != NULL)
-		strlcpy(f->sum, sha256, sizeof(f->sum));
+	if (sum != NULL)
+		f->sum = strdup(sum);
 
 	if (uname != NULL)
 		strlcpy(f->uname, uname, sizeof(f->uname));
@@ -1622,7 +1622,7 @@ pkg_test_filesum(struct pkg *pkg)
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		if (f->sum[0] != '\0') {
+		if (f->sum != NULL) {
 			if (!pkg_checksum_validate_file(f->path, f->sum)) {
 				pkg_emit_file_mismatch(pkg, f, f->sum);
 				rc = EPKG_FATAL;
@@ -1641,22 +1641,20 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	int64_t flatsize = 0;
 	struct stat st;
 	bool regular = false;
-	char *sha256;
+	char *sum;
 	int rc = EPKG_OK;
 
 	hl = kh_init_hardlinks();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (lstat(f->path, &st) == 0) {
 			regular = true;
-			if (S_ISLNK(st.st_mode)) {
+			sum = pkg_checksum_generate_file(f->path,
+			    PKG_HASH_TYPE_SHA256_HEX);
+
+			if (S_ISLNK(st.st_mode))
 				regular = false;
-				sha256 = pkg_checksum_symlink(f->path, NULL,
-				    PKG_HASH_TYPE_SHA256_HEX);
-			} else {
-				sha256 = pkg_checksum_file(f->path,
-				    PKG_HASH_TYPE_SHA256_HEX);
-			}
-			if (sha256 == NULL) {
+
+			if (sum == NULL) {
 				rc = EPKG_FATAL;
 				break;
 			}
@@ -1667,9 +1665,9 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			if (regular)
 				flatsize += st.st_size;
 		}
-		if (strcmp(sha256, f->sum) != 0)
-			pkgdb_file_set_cksum(db, f, sha256);
-		free(sha256);
+		if (strcmp(sum, f->sum) != 0)
+			pkgdb_file_set_cksum(db, f, sum);
+		free(sum);
 	}
 	kh_destroy_hardlinks(hl);
 

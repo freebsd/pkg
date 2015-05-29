@@ -1132,8 +1132,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			pkg_debug(4, "Emitting files");
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
-				if (file->sum[0] == '\0')
-					file->sum[1] = '-';
+				if (file->sum == NULL)
+					file->sum = strdup("-");
 
 				urlencode(file->path, &tmpsbuf);
 				if (map == NULL)

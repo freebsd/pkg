@@ -2575,7 +2575,7 @@ pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...)
 
 int
 pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
-		     const char *sha256)
+     const char *sum)
 {
 	sqlite3_stmt	*stmt = NULL;
 	const char	 sql_file_update[] = ""
@@ -2588,7 +2588,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 		ERROR_SQLITE(db->sqlite, sql_file_update);
 		return (EPKG_FATAL);
 	}
-	sqlite3_bind_text(stmt, 1, sha256, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 1, sum, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 2, file->path, -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -2597,7 +2597,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 		return (EPKG_FATAL);
 	}
 	sqlite3_finalize(stmt);
-	strlcpy(file->sum, sha256, sizeof(file->sum));
+	file->sum = strdup(sum);
 
 	return (EPKG_OK);
 }

@@ -219,7 +219,7 @@ struct pkg_provide {
 struct pkg_file {
 	char		 path[MAXPATHLEN];
 	int64_t		 size;
-	char		 sum[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		*sum;
 	char		 uname[MAXLOGNAME];
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;

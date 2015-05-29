@@ -105,6 +105,7 @@ pkg_file_new(struct pkg_file **file)
 void
 pkg_file_free(struct pkg_file *file)
 {
+	free(file->sum);
 	free(file);
 }
 

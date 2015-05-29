@@ -278,7 +278,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 
 	/* Regular files and links */
 	/* check sha256 */
-	if (!force && file->sum[0] != '\0') {
+	if (!force && file->sum != NULL) {
 		if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
 			pkg_emit_error("cannot stat %s%s%s: %s", pkg->rootpath,
 			    pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
