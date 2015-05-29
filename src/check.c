@@ -63,6 +63,8 @@ static int
 check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall, struct sbuf *out)
 {
 	struct pkg_dep *dep = NULL;
+	struct pkg_shlib *shlib = NULL;
+	struct pkg_provide *provide = NULL;
 	int nbpkgs = 0;
 
 	assert(db != NULL);
@@ -79,6 +81,24 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
 		}
+	}
+
+	/* checking libraries required */
+	while (pkg_shlibs_required(p, &shlib) == EPKG_OK) {
+		if (quiet)
+			pkg_sbuf_printf(out, "%n\t%Bn\n", p, shlib);
+		else
+			pkg_sbuf_printf(out, "%n has require a missing libraries: %Bn\n",
+			    p, shlib);
+	}
+
+	/* checking requires */
+	while (pkg_requires(p, &provide) == EPKG_OK) {
+		if (quiet)
+			pkg_sbuf_printf(out, "%n\tYn\n", p, provide);
+		else
+			pkg_sbuf_printf(out, "%n has a missing requirement: %Yn\n",
+			    p, provide);
 	}
 
 	return (nbpkgs);
