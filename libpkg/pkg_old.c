@@ -116,7 +116,7 @@ pkg_from_old(struct pkg *p)
 	while (pkg_files(p, &f) == EPKG_OK) {
 		if (f->sum == NULL)
 			continue;
-		f->sum = pkg_checksum_file(f->path, PKG_HASH_TYPE_SHA256_HEX);
+		f->sum = pkg_checksum_generate_file(f->path, PKG_HASH_TYPE_SHA256_HEX);
 	}
 
 	return (EPKG_OK);
