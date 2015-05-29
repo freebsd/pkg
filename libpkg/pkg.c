@@ -1617,31 +1617,16 @@ int
 pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
-	struct stat	 st;
-	char *sha256;
 	int rc = EPKG_OK;
 
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (f->sum[0] != '\0') {
-			if (lstat(f->path, &st) == -1) {
-				pkg_emit_errno("pkg_create_from_dir", "lstat failed");
-				return (EPKG_FATAL);
-			}
-			if (S_ISLNK(st.st_mode))
-				sha256 = pkg_checksum_symlink(f->path, NULL,
-				    PKG_HASH_TYPE_SHA256_HEX);
-			else
-				sha256 = pkg_checksum_file(f->path,
-				    PKG_HASH_TYPE_SHA256_HEX);
-			if (sha256 == NULL)
-				return (EPKG_FATAL);
-			if (strcmp(sha256, f->sum) != 0) {
+			if (!pkg_checksum_validate_file(f->path, f->sum)) {
 				pkg_emit_file_mismatch(pkg, f, f->sum);
 				rc = EPKG_FATAL;
 			}
-			free(sha256);
 		}
 	}
 

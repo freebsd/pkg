@@ -24,6 +24,8 @@
 
 #include <assert.h>
 
+#include <sys/stat.h>
+
 #include <fcntl.h>
 #include "pkg.h"
 #include "private/pkg.h"
@@ -301,7 +303,23 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 	return (true);
 }
 
+/* <hashtype>$<hash> */
+pkg_checksum_type_t
+pkg_checksum_file_get_type(const char *cksum, size_t clen)
+{
+	unsigned int value;
 
+	if (strchr(cksum, PKG_CKSUM_SEPARATOR) == NULL)
+		return (PKG_HASH_TYPE_UNKNOWN);
+
+	value = strtoul(cksum, NULL, 10);
+	if (value < PKG_HASH_TYPE_UNKNOWN)
+		return (value);
+
+	return (PKG_HASH_TYPE_UNKNOWN);
+}
+
+/* <version>$<hashtype>$<hash> */
 pkg_checksum_type_t
 pkg_checksum_get_type(const char *cksum, size_t clen)
 {
@@ -703,4 +721,42 @@ pkg_checksum_symlinkat(int fd, const char *path, const char *root, pkg_checksum_
 	linkbuf[linklen] = '\0';
 
 	return (pkg_checksum_symlink_readlink(linkbuf, linklen, root, type));
+}
+
+bool
+pkg_checksum_validate_file(const char *path, const char *sum)
+{
+	struct stat st;
+	char *newsum;
+	pkg_checksum_type_t type;
+
+	type = pkg_checksum_file_get_type(sum, strlen(sum));
+	if (type == PKG_HASH_TYPE_UNKNOWN) {
+		type = PKG_HASH_TYPE_SHA256_HEX;
+	} else {
+		sum = strchr(sum, PKG_CKSUM_SEPARATOR);
+		sum++;
+	}
+
+	if (lstat(path, &st) == -1) {
+		pkg_emit_errno("pkg_create_from_dir", "lstat");
+		return (false);
+	}
+
+	if (S_ISLNK(st.st_mode))
+		newsum = pkg_checksum_symlink(path, NULL, type);
+	else
+		newsum = pkg_checksum_file(path, type);
+
+	if (newsum == NULL)
+		return (false);
+
+	if (strcmp(sum, newsum) != 0) {
+		free(newsum);
+		return (false);
+	}
+
+	free(newsum);
+
+	return (true);
 }
