@@ -357,19 +357,17 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			regular = !check_for_hardlink(p->hardlinks, &st);
 		else
 			regular = true;
-	} else if (S_ISLNK(st.st_mode)) {
-		buf = pkg_checksum_symlink(testpath, p->stage,
-		    PKG_HASH_TYPE_SHA256_HEX);
-		if (buf == NULL) {
-			free_file_attr(a);
-			return (EPKG_FATAL);
-		}
+	} else if (S_ISLNK(st.st_mode))
 		regular = false;
+
+	buf = pkg_checksum_generate_file(testpath, PKG_HASH_TYPE_SHA256_HEX);
+	if (buf == NULL) {
+		free_file_attr(a);
+		return (EPKG_FATAL);
 	}
 
 	if (regular) {
 		p->flatsize += st.st_size;
-		buf = pkg_checksum_file(testpath, PKG_HASH_TYPE_SHA256_HEX);
 		if (is_config) {
 			size_t sz;
 			char *content;
