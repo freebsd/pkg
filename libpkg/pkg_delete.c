@@ -260,7 +260,6 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	const char *prefix_rel;
 	struct stat st;
 	size_t len;
-	char *sha256;
 #if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
 	int fd;
 #endif
