@@ -123,6 +123,9 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	if (quiet)
 		return (yes || default_yes || r);
 
+	if (dry_run)
+		return (yes || default_yes || r );
+
 	/* Do not query user if we have specified yes flag */
 	if (yes)
 		return (true);
