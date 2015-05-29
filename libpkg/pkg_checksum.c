@@ -787,3 +787,30 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 
 	return (cksum);
 }
+
+char *
+pkg_checksum_generate_fileat(int rootfd, const char *path,
+    pkg_checksum_type_t type)
+{
+	struct stat st;
+	unsigned char *sum;
+	char *cksum;
+
+	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_errno("pkg_checksum_generate_file", "lstat");
+		return (NULL);
+	}
+
+	if (S_ISLNK(st.st_mode))
+		sum = pkg_checksum_symlinkat(rootfd, path, NULL, type);
+	else
+		sum = pkg_checksum_fileat(rootfd, path, type);
+
+	if (sum == NULL)
+		return (NULL);
+
+	asprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
+	free(sum);
+
+	return (cksum);
+}
