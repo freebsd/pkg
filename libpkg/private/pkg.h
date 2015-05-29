@@ -639,6 +639,7 @@ unsigned char *pkg_checksum_symlink(const char *path, const char *root,
 unsigned char *pkg_checksum_symlinkat(int fd, const char *path,
     const char *root, pkg_checksum_type_t type);
 bool pkg_checksum_validate_file(const char *path, const  char *sum);
+bool pkg_checksum_validate_fileat(int fd, const char *path, const  char *sum);
 
 bool pkg_checksum_is_valid(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);

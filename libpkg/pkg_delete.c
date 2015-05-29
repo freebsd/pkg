@@ -277,35 +277,15 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 		len--;
 
 	/* Regular files and links */
-	/* check sha256 */
+	/* check checksum */
 	if (!force && file->sum != NULL) {
-		if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
-			pkg_emit_error("cannot stat %s%s%s: %s", pkg->rootpath,
+		if (!pkg_checksum_validate_fileat(pkg->rootfd, path, file->sum)) {
+			pkg_emit_error("%s%s%s different from original "
+			    "checksum, not removing", pkg->rootpath,
 			    pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
-			    path, strerror(errno));
+			    path);
 			return;
 		}
-		if (S_ISLNK(st.st_mode)) {
-			sha256 = pkg_checksum_symlinkat(pkg->rootfd, path, NULL,
-			    PKG_HASH_TYPE_SHA256_HEX);
-			if (!sha256)
-				return;
-		}
-		else {
-			sha256 = pkg_checksum_fileat(pkg->rootfd, path,
-			    PKG_HASH_TYPE_SHA256_HEX);
-			if (!sha256)
-				return;
-		}
-		if (strcmp(sha256, file->sum)) {
-			pkg_emit_error("%s%s%s fails original SHA256 "
-				"checksum, not removing", pkg->rootpath,
-				pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
-				path);
-			free(sha256);
-			return;
-		}
-		free(sha256);
 	}
 
 #ifdef HAVE_CHFLAGS

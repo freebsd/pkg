@@ -788,6 +788,44 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 	return (cksum);
 }
 
+bool
+pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
+{
+	struct stat st;
+	char *newsum;
+	pkg_checksum_type_t type;
+
+	type = pkg_checksum_file_get_type(sum, strlen(sum));
+	if (type == PKG_HASH_TYPE_UNKNOWN) {
+		type = PKG_HASH_TYPE_SHA256_HEX;
+	} else {
+		sum = strchr(sum, PKG_CKSUM_SEPARATOR);
+		sum++;
+	}
+
+	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_errno("pkg_checksum_validate_file", "lstat");
+		return (false);
+	}
+
+	if (S_ISLNK(st.st_mode))
+		newsum = pkg_checksum_symlinkat(rootfd, path, NULL, type);
+	else
+		newsum = pkg_checksum_fileat(rootfd, path, type);
+
+	if (newsum == NULL)
+		return (false);
+
+	if (strcmp(sum, newsum) != 0) {
+		free(newsum);
+		return (false);
+	}
+
+	free(newsum);
+
+	return (true);
+}
+
 char *
 pkg_checksum_generate_fileat(int rootfd, const char *path,
     pkg_checksum_type_t type)
