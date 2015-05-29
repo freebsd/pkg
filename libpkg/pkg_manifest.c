@@ -496,7 +496,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type == UCL_STRING) {
 				buf = ucl_object_tolstring(cur, &len);
 				urldecode(key, &tmp);
-				pkg_addfile(pkg, sbuf_data(tmp), len == 64 ? buf : NULL, false);
+				pkg_addfile(pkg, sbuf_data(tmp), len >= 2 ? buf : NULL, false);
 			} else if (cur->type == UCL_OBJECT)
 				pkg_set_files_from_object(pkg, cur);
 			else
