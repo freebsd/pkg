@@ -433,6 +433,7 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2b_update(&st, buffer, r);
 
+	*out = malloc(BLAKE2B_OUTBYTES);
 	blake2b_final(&st, *out, BLAKE2B_OUTBYTES);
 	*outlen = BLAKE2B_OUTBYTES;
 }
