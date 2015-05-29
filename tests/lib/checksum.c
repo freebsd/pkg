@@ -61,9 +61,36 @@ ATF_TC_BODY(check_symlinks, tc)
 	ATF_CHECK(pkg_checksum_validate_file("bar", "1$2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"));
 }
 
+ATF_TC(check_files);
+
+ATF_TC_HEAD(check_files, tc)
+{
+	atf_tc_set_md_var(tc, "descr", "testing checksums on files");
+}
+
+ATF_TC_BODY(check_files, tc)
+{
+	FILE *f;
+	unsigned char *sum;
+
+	f = fopen("foo", "w");
+	fprintf(f, "bar\n");
+	fclose(f);
+
+	sum = pkg_checksum_file("foo", PKG_HASH_TYPE_SHA256_HEX);
+	ATF_REQUIRE_STREQ(sum, "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730");
+
+	ATF_CHECK(pkg_checksum_validate_file("foo", "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"));
+	free(sum);
+
+	sum=pkg_checksum_generate_file("foo", PKG_HASH_TYPE_SHA256_HEX);
+	ATF_REQUIRE_STREQ(sum, "1$7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730");
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, check_symlinks);
+	ATF_TP_ADD_TC(tp, check_files);
 
 	return (atf_no_error());
 }
