@@ -131,7 +131,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	char dest[MAXPATHLEN];
 	char url[MAXPATHLEN];
 	char *dir = NULL;
-	int fetched = 0;
+	bool fetched = false;
 	struct stat st;
 	char *path = NULL;
 	const char *packagesite = NULL;
@@ -201,7 +201,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	}
 
 	retcode = pkg_fetch_file(repo, url, dest, 0, offset, pkg->pkgsize);
-	fetched = 1;
+	fetched = true;
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
@@ -226,7 +226,7 @@ checksum:
 		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
 	if (!pkg_checksum_validate_file(dest, pkg->sum)) {
-		if (already_tried || fetched == 1) {
+		if (already_tried || fetched) {
 			pkg_emit_error("%s-%s failed checksum "
 			    "from repository", pkg->name, pkg->version);
 			retcode = EPKG_FATAL;
