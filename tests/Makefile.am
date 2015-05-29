@@ -55,6 +55,10 @@ plist_SOURCES=		lib/plist.c
 plist_CFLAGS=		$(PRIVATE_INCS)
 plist_LDADD=		$(GENERIC_LDADD)
 
+checksum_SOURCES=	lib/checksum.c
+checksum_CFLAGS=	$(PRIVATE_INCS)
+checksum_LDADD=		$(GENERIC_LDADD)
+
 pkg_add_dir_to_del_SOURCES=	lib/pkg_add_dir_to_del.c
 pkg_add_dir_to_del_CFLAGS=	$(PRIVATE_INCS)
 pkg_add_dir_to_del_LDADD=	$(GENERIC_LDADD)
@@ -93,6 +97,7 @@ TESTS =
 tests_programs=	pkg_printf \
 		pkg_validation \
 		plist \
+		checksum \
 		pkg_add_dir_to_del \
 		merge
 EXTRA_PROGRAMS=	$(tests_programs)
