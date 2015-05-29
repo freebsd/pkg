@@ -96,23 +96,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			flatsize += file->size;
 		}
 
-		if (S_ISLNK(st.st_mode)) {
-
-			if (file->sum == NULL) {
-				file->sum = pkg_checksum_symlink(fpath, root,
-				    PKG_HASH_TYPE_SHA256_HEX);
-				if (file->sum == NULL)
-					return (EPKG_FATAL);
-			}
-		}
-		else {
-			if (file->sum == NULL) {
-				file->sum = pkg_checksum_file(fpath,
-				    PKG_HASH_TYPE_SHA256_HEX);
-				if (file->sum == NULL)
-					return (EPKG_FATAL);
-			}
-		}
+		file->sum = pkg_checksum_generate_file(fpath,
+		    PKG_HASH_TYPE_SHA256_HEX);
+		printf("%s\n", file->sum);
+		if (file->sum == NULL)
+			return (EPKG_FATAL);
 
 		counter_count();
 	}
