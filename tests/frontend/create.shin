@@ -337,7 +337,7 @@ categories [
     "test",
 ]
 files {
-    /A = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    /A = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 }
 directories {
     /B = "y";
@@ -386,7 +386,7 @@ categories [
     "test",
 ]
 files {
-    /testfile = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    /testfile = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 }
 
 EOF
