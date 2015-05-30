@@ -45,7 +45,7 @@ add_body() {
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
-${JAILED}Extracting test-1... done
+${JAILED}Extracting test-1:  done
 post-install
 "
 	atf_check \
@@ -69,7 +69,7 @@ add_automatic_body() {
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
-${JAILED}Extracting test-1... done
+${JAILED}Extracting test-1:  done
 post-install
 "
 	atf_check \
@@ -92,7 +92,7 @@ add_noscript_body() {
 	initialize_pkg
 
 OUTPUT="${JAILED}Installing test-1...
-${JAILED}Extracting test-1... done
+${JAILED}Extracting test-1:  done
 "
 	cat test-1.txz | atf_check \
 		-o inline:"${OUTPUT}" \
@@ -159,7 +159,7 @@ EOF
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
-${JAILED}Extracting test-1... done
+${JAILED}Extracting test-1:  done
 post-install
 "
 	atf_check \
@@ -191,7 +191,7 @@ add_stdin_body() {
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
-${JAILED}Extracting test-1... done
+${JAILED}Extracting test-1:  done
 post-install
 "
 	cat test-1.txz | atf_check \
@@ -253,7 +253,7 @@ EOF
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
-${JAILED}Extracting test-1... done
+${JAILED}Extracting test-1:  done
 post-install
 "
 	cat test-1.txz | atf_check \

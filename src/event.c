@@ -395,7 +395,7 @@ progressbar_tick(int64_t current, int64_t total)
 		else {
 			if (progress_interrupted) {
 				printf("%s...", progress_message);
-			} else {
+			} else if (!getenv("NO_TICK")){
 				percent = (total != 0) ? (current * 100. / total) : 100;
 				if (last_progress_percent / 10 < percent / 10) {
 					last_progress_percent = percent;

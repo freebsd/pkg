@@ -122,7 +122,7 @@ EOF
 	done
 
 	atf_check \
-	    -o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+	    -o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 	    -e empty \
 	    -s exit:0 \
 	    pkg repo .

@@ -98,7 +98,7 @@ EOF
 	done
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo .
@@ -221,7 +221,7 @@ EOF
 	done
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo .
@@ -240,9 +240,9 @@ php53-gd-5.3.27
 "
 
 OUTPUT="Updating local repository catalogue...
-${JAILED}Fetching meta.txz... done
-${JAILED}Fetching packagesite.txz... done
-Processing entries... done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
+Processing entries:  done
 local repository update completed. 4 packages processed.
 Checking integrity... done (0 conflicting)
 The following 4 package(s) will be affected (of 0 checked):
@@ -268,8 +268,8 @@ Installed packages to be REINSTALLED:
 OUTPUT="Updating local repository catalogue...
 local repository is up-to-date.
 All repositories are up-to-date.
-Checking for upgrades (3 candidates)... done
-Processing candidates (3 candidates)... done
+Checking for upgrades (3 candidates):  done
+Processing candidates (3 candidates):  done
 Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
