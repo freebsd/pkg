@@ -646,6 +646,8 @@ int pkg_shlibs_required(const struct pkg *pkg, struct pkg_shlib **shlib);
  */
 int pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **shlib);
 
+const char *pkg_shlib_name(const struct pkg_shlib *shlib);
+
 /**
  * Iterates over the conflicts registered in the package.
  * @param conflict must be set to NULL for the first call.
@@ -660,6 +662,8 @@ int pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **conflict);
  */
 int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
 int pkg_requires(const struct pkg *pkg, struct pkg_provide **require);
+
+const char *pkg_provide_name(const struct pkg_provide *provide);
 
 /**
  * Iterates over the config files registered in the package.

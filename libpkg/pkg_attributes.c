@@ -238,6 +238,15 @@ pkg_shlib_free(struct pkg_shlib *sl)
 	free(sl);
 }
 
+const char *
+pkg_shlib_name(const struct pkg_shlib *sl)
+{
+	if (sl == NULL)
+		return (NULL);
+
+	return (sl->name);
+}
+
 /*
  * Conflicts
  */
@@ -356,4 +365,16 @@ pkg_kv_free(struct pkg_kv *c)
 	free(c->key);
 	free(c->value);
 	free(c);
+}
+
+/*
+ * provide
+ */
+const char *
+pkg_provide_name(const struct pkg_provide *provide)
+{
+	if (provide == NULL)
+		return (NULL);
+
+	return (provide->provide);
 }

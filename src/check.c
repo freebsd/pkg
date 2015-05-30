@@ -64,6 +64,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 {
 	struct pkg_dep *dep = NULL;
 	struct pkg_shlib *shlib = NULL;
+	struct pkgdb_it *it;
 	struct pkg_provide *provide = NULL;
 	int nbpkgs = 0;
 
@@ -85,6 +86,12 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 
 	/* checking libraries required */
 	while (pkg_shlibs_required(p, &shlib) == EPKG_OK) {
+		it = pkgdb_query_shlib_provide(db, pkg_shlib_name(shlib));
+		if (it != NULL && pkgdb_it_count(it) > 0) {
+			pkgdb_it_free(it);
+			continue;
+		}
+		pkgdb_it_free(it);
 		if (quiet)
 			pkg_sbuf_printf(out, "%n\t%Bn\n", p, shlib);
 		else
@@ -94,6 +101,12 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 
 	/* checking requires */
 	while (pkg_requires(p, &provide) == EPKG_OK) {
+		it = pkgdb_query_provide(db, pkg_provide_name(provide));
+		if (it != NULL && pkgdb_it_count(it) > 0) {
+			pkgdb_it_free(it);
+			continue;
+		}
+		pkgdb_it_free(it);
 		if (quiet)
 			pkg_sbuf_printf(out, "%n\tYn\n", p, provide);
 		else
@@ -312,7 +325,7 @@ exec_check(int argc, char **argv)
 			break;
 		case 'd':
 			dcheck = true;
-			flags |= PKG_LOAD_DEPS;
+			flags |= PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|PKG_LOAD_SHLIBS_REQUIRED;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
