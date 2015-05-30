@@ -379,7 +379,7 @@ progressbar_start(const char *pmsg)
 	progress_started = true;
 	progress_interrupted = false;
 	if (!isatty(STDOUT_FILENO))
-		printf("%s...", progress_message);
+		printf("%s: ", progress_message);
 	else
 		printf("%s:   0%%", progress_message);
 }
@@ -387,12 +387,22 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
+	int percent;
+
 	if (!quiet && progress_started) {
 		if (isatty(STDOUT_FILENO))
 			draw_progressbar(current, total);
 		else {
-			if (progress_interrupted)
+			if (progress_interrupted) {
 				printf("%s...", progress_message);
+			} else {
+				percent = (total != 0) ? (current * 100. / total) : 100;
+				if (last_progress_percent / 10 < percent / 10) {
+					last_progress_percent = percent;
+					printf(".");
+					fflush(stdout);
+				}
+			}
 			if (current >= total)
 				progressbar_stop();
 		}
