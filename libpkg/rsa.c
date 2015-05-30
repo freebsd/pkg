@@ -133,8 +133,9 @@ rsa_verify_cert_cb(int fd, void *ud)
 		free(hash);
 		return (EPKG_FATAL);
 	}
-	ret = RSA_verify(NID_sha256, hash, sizeof(hash), cbdata->sig,
-			cbdata->siglen, rsa);
+	ret = RSA_verify(NID_sha256, hash,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_RAW), cbdata->sig,
+	    cbdata->siglen, rsa);
 	free(hash);
 	if (ret == 0) {
 		pkg_emit_error("rsa verify failed: %s",
