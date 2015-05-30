@@ -35,7 +35,7 @@ EOF
 		pkg create -M test.ucl
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo .
@@ -43,7 +43,7 @@ EOF
 	ln -s test-1.txz test.txz
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo .
@@ -59,7 +59,7 @@ EOF
 	ln -s test-1.txz Latest/test.txz
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo .

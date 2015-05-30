@@ -119,13 +119,13 @@ EOF
 		pkg create -M manifest4 -o repo2/
 
 	atf_check \
-		-o inline:"Creating repository in repo1... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in repo1:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo repo1
 
 	atf_check \
-		-o inline:"Creating repository in repo2... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in repo2:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo repo2
@@ -142,18 +142,18 @@ local2: {
 EOF
 
 OUTPUT="Updating local1 repository catalogue...
-${JAILED}Fetching meta.txz... done
-${JAILED}Fetching packagesite.txz... done
-Processing entries... done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
+Processing entries:  done
 local1 repository update completed. 2 packages processed.
 Updating local2 repository catalogue...
-${JAILED}Fetching meta.txz... done
-${JAILED}Fetching packagesite.txz... done
-Processing entries... done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
+Processing entries:  done
 local2 repository update completed. 2 packages processed.
-Updating database digests format... done
-Checking for upgrades (2 candidates)... done
-Processing candidates (2 candidates)... done
+Updating database digests format:  done
+Checking for upgrades (2 candidates):  done
+Processing candidates (2 candidates):  done
 Checking integrity... done (1 conflicting)
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
@@ -162,9 +162,9 @@ Installed packages to be UPGRADED:
 	test2: 1 -> 1.1 [local2]
 	test: 1 -> 1.1 [local2]
 ${JAILED}[1/2] Upgrading test2 from 1 to 1.1...
-${JAILED}[1/2] Extracting test2-1.1... done
+${JAILED}[1/2] Extracting test2-1.1:  done
 ${JAILED}[2/2] Upgrading test from 1 to 1.1...
-${JAILED}[2/2] Extracting test-1.1... done
+${JAILED}[2/2] Extracting test-1.1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \

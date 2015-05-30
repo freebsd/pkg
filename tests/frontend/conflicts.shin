@@ -54,7 +54,7 @@ EOF
 		pkg create -M manifest2 -o .
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo .
@@ -67,11 +67,11 @@ local: {
 EOF
 
 OUTPUT="Updating local repository catalogue...
-${JAILED}Fetching meta.txz... done
-${JAILED}Fetching packagesite.txz... done
-Processing entries... done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
+Processing entries:  done
 local repository update completed. 1 packages processed.
-Updating database digests format... done
+Updating database digests format:  done
 Checking integrity... done (1 conflicting)
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
@@ -82,9 +82,9 @@ Installed packages to be REMOVED:
 New packages to be INSTALLED:
 	test2: 1
 ${JAILED}[1/2] Deinstalling test-1...
-${JAILED}[1/2] Deleting files for test-1... done
+${JAILED}[1/2] Deleting files for test-1:  done
 ${JAILED}[2/2] Installing test2-1...
-${JAILED}[2/2] Extracting test2-1... done
+${JAILED}[2/2] Extracting test2-1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
