@@ -442,6 +442,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	struct pkg_shlib *sh, *shtmp, *found;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
+	const char *lib;
 	bool failures = false;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
@@ -488,6 +489,18 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			    "package %s provides this library itself",
 			    sh->name, pkg->name);
 			HASH_DEL(pkg->shlibs_required, sh);
+			continue;
+		}
+		file = NULL;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			if ((lib = strstr(file->path, sh->name)) != NULL &&
+			    strlen(lib) == strlen(sh->name) && lib[-1] == '/') {
+				pkg_debug(2, "remove %s from required shlibs as "
+				    "the package %s provides this library itself",
+				    sh->name, pkg->name);
+				HASH_DEL(pkg->shlibs_required, sh);
+				break;
+			}
 		}
 	}
 
