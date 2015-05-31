@@ -2,6 +2,7 @@ export PATH=$(atf_get_srcdir)/../../src:${PATH}
 export LD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg/.libs/
 export INSTALL_AS_USER=yes
 export PKG_DBDIR=.
+export NO_TICK=yes
 jailed=$(sysctl -n security.jail.jailed 2>/dev/null || :)
 if [ "$jailed" = "1" ]; then
 	export JAILED="[`hostname`] "
