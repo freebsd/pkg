@@ -873,6 +873,8 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 	struct pkg_solve_variable *var, *cur;
 	bool is_installed = false;
 
+	picosat_reset_phases(problem->sat);
+	picosat_reset_scores(problem->sat);
 	/* Set initial guess */
 	for (i = 0; i < problem->nvars; i ++) {
 		var = &problem->variables[i];
@@ -889,20 +891,28 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 			continue;
 
 		if (is_installed) {
-			picosat_set_default_phase_lit(problem->sat, i + 1, 1);
-			picosat_set_more_important_lit(problem->sat, i + 1);
-		}
-		else {
-			if (!var->next && var->prev == var) {
-				/* Prefer not to install if have no local version */
-				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
-			}
-			else if (var->failed) {
-				/* Prefer to upgrade if possible */
+			if (!var->failed) {
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+				picosat_set_more_important_lit(problem->sat, i + 1);
+			}
+			else {
+				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+				picosat_set_less_important_lit(problem->sat, i + 1);
 				var->failed = false;
 			}
-			picosat_set_less_important_lit(problem->sat, i + 1);
+		}
+		else {
+			if (var->failed) {
+				/* Prefer to upgrade/install if local failed */
+				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+				picosat_set_more_important_lit(problem->sat, i + 1);
+				var->failed = false;
+			}
+			else if (!var->next && var->prev == var) {
+				/* Prefer not to install if have no local version */
+				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+				picosat_set_less_important_lit(problem->sat, i + 1);
+			}
 		}
 	}
 
