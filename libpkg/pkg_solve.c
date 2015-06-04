@@ -890,29 +890,28 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 		if (var->top_level)
 			continue;
 
-		if (is_installed) {
-			if (!var->failed) {
+		if (!var->failed) {
+			if (is_installed) {
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
 				picosat_set_more_important_lit(problem->sat, i + 1);
 			}
-			else {
-				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
-				picosat_set_less_important_lit(problem->sat, i + 1);
-				var->failed = false;
-			}
-		}
-		else {
-			if (var->failed) {
-				/* Prefer to upgrade/install if local failed */
-				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
-				picosat_set_more_important_lit(problem->sat, i + 1);
-				var->failed = false;
-			}
-			else if (!var->next && var->prev == var) {
+			else if  (!var->next && var->prev == var) {
 				/* Prefer not to install if have no local version */
 				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
 				picosat_set_less_important_lit(problem->sat, i + 1);
 			}
+		}
+		else {
+			if (var->unit->pkg->type == PKG_INSTALLED) {
+				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
+				picosat_set_less_important_lit(problem->sat, i + 1);
+			}
+			else {
+				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
+				picosat_set_more_important_lit(problem->sat, i + 1);
+			}
+
+			var->failed = false;
 		}
 	}
 
