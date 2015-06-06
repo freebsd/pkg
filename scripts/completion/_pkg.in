@@ -1,14 +1,20 @@
 #compdef pkg
 
 _pkg_installed() {
+	local expl
+	_wanted packages expl Packages \
 	compadd "$@" - $(@prefix@/sbin/pkg query "%n-%v")
 }
 
 _pkg_available_name() {
+	local expl
+	_wanted packages expl Packages \
 	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n")
 }
 
 _pkg_aliases() {
+	local expl
+	_wanted aliases expl Aliases \
 	compadd "$@" - $(@prefix@/sbin/pkg alias -ql)
 }
 
