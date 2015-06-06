@@ -32,7 +32,7 @@ _pkg() {
 	local subcmd_list cmd
 	earlyargs=(
 	'-d[Increment debug level]'
-	'-j[Execute pkg(8) inside a jail(8)]:jail:'
+	'-j[Execute pkg(8) inside a jail(8)]:jail:_jails'
 	'-c[Execute pkg(8) inside a chroot(8)]:chroot:_files -/'
 	'-C[Use the specified configuration file]'
 	'-l[List available command and exit]'
