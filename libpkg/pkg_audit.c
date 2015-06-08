@@ -764,7 +764,7 @@ pkg_audit_print_entry(struct pkg_audit_entry *e, struct sbuf *sb,
 			sbuf_printf(sb, "WWW: %s\n\n", e->url);
 		else if (e->id)
 			sbuf_printf(sb,
-				"WWW: http://vuxml.FreeBSD.org/freebsd/%s.html\n\n",
+				"WWW: https://vuxml.FreeBSD.org/freebsd/%s.html\n\n",
 				e->id);
 	}
 }
