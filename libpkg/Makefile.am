@@ -34,6 +34,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_cudf.c \
 			pkg_create.c \
 			pkg_delete.c \
+			pkg_deps.c \
 			pkg_event.c \
 			pkg_jobs.c \
 			pkg_jobs_conflicts.c \
@@ -141,6 +142,7 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/pkg_printf.h \
 			private/pkgdb.h \
 			private/utils.h \
-			private/pkg_jobs.h
+			private/pkg_jobs.h \
+			private/pkg_deps.h
 
 SUBDIRS = repo .
