@@ -79,4 +79,6 @@ struct pkg_dep_formula* pkg_deps_parse_formula(const char *in);
 
 void pkg_deps_formula_free(struct pkg_dep_formula *f);
 
+char* pkg_deps_formula_tostring(struct pkg_dep_formula *f);
+
 #endif /* LIBPKG_PRIVATE_PKG_DEPS_H_ */

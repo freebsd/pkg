@@ -26,20 +26,23 @@
 #include "pkg_config.h"
 #endif
 
+#include "bsd_compat.h"
+
 #include <stddef.h>
 #include <ctype.h>
 #include <assert.h>
+#include <string.h>
 
 #include "pkg.h"
-#include "private/pkg.h"
-#include "pkg_deps.h"
-
+#include "private/event.h"
+#include "private/pkg_deps.h"
+#include "utlist.h"
 
 struct pkg_dep_formula *
 pkg_deps_parse_formula(const char *in)
 {
 	struct pkg_dep_formula *res = NULL, *cur = NULL;
-	struct pkg_dep_formula_item *items = NULL, *cur_item = NULL;
+	struct pkg_dep_formula_item *cur_item = NULL;
 	struct pkg_dep_version_item *cur_ver = NULL;
 	struct pkg_dep_option_item *cur_opt = NULL;
 	const char *p, *c, *end;
@@ -342,6 +345,136 @@ pkg_deps_parse_formula(const char *in)
 		pkg_deps_formula_free (res);
 
 		return (NULL);
+	}
+
+	return (res);
+}
+
+void
+pkg_deps_formula_free(struct pkg_dep_formula *f)
+{
+	struct pkg_dep_formula *cf, *cftmp;
+	struct pkg_dep_formula_item *cit, *cittmp;
+	struct pkg_dep_version_item *cver, *cvertmp;
+	struct pkg_dep_option_item *copt, *copttmp;
+
+	DL_FOREACH_SAFE(f, cf, cftmp) {
+		DL_FOREACH_SAFE(cf->items, cit, cittmp) {
+			free(cit->name);
+
+			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+				free(cver->ver);
+				free(cver);
+			}
+
+			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
+				free(copt->opt);
+				free(copt);
+			}
+
+			free(cit);
+		}
+
+		free(cf);
+	}
+}
+
+char*
+pkg_deps_formula_tostring(struct pkg_dep_formula *f)
+{
+	struct pkg_dep_formula *cf, *cftmp;
+	struct pkg_dep_formula_item *cit, *cittmp;
+	struct pkg_dep_version_item *cver, *cvertmp;
+	struct pkg_dep_option_item *copt, *copttmp;
+	char *res = NULL, *p;
+	const char *op_str;
+	int rlen = 0, r;
+
+	DL_FOREACH_SAFE(f, cf, cftmp) {
+		DL_FOREACH_SAFE(cf->items, cit, cittmp) {
+			rlen += strlen(cit->name);
+
+			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+				rlen += strlen(cver->ver);
+				rlen += 4; /* <OP><SP><VER><SP> */
+			}
+
+			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
+				rlen += strlen(copt->opt);
+				rlen += 2; /* <+-><OPT><SP> */
+			}
+
+			rlen += 2; /* |<SP> */
+		}
+
+		rlen += 2; /* <,><SP> */
+	}
+
+	if (rlen == 0) {
+		return (NULL);
+	}
+
+	res = malloc(rlen + 1);
+
+	if (res == NULL) {
+		pkg_emit_errno("malloc", "string");
+
+		return (NULL);
+	}
+
+	p = res;
+
+	DL_FOREACH_SAFE(f, cf, cftmp) {
+		DL_FOREACH_SAFE(cf->items, cit, cittmp) {
+			r = snprintf(p, rlen, "%s", cit->name);
+			p += r;
+			rlen -= r;
+
+			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+				switch (cver->op) {
+				case VERSION_ANY:
+				default:
+					op_str = "?";
+					break;
+				case VERSION_EQ:
+					op_str = "=";
+					break;
+				case VERSION_LE:
+					op_str = "<=";
+					break;
+				case VERSION_GE:
+					op_str = ">=";
+					break;
+				case VERSION_LT:
+					op_str = "<";
+					break;
+				case VERSION_GT:
+					op_str = ">";
+					break;
+				case VERSION_NOT:
+					op_str = "!=";
+					break;
+				}
+
+				r = snprintf(p, rlen, "%s %s ", op_str, cver->ver);
+				p += r;
+				rlen -= r;
+			}
+
+			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
+				r = snprintf(p, rlen, "%c%s ", copt->on ? '+' : '-', copt->opt);
+				p += r;
+				rlen -= r;
+			}
+
+			r = snprintf(p, rlen, " %s", cit->next ? "| " : "");
+			p += r;
+			rlen -= r;
+		}
+
+		r = snprintf(p, rlen, " %s", cit->next ? ", " : "");
+		p += r;
+		rlen -= r;
 	}
 
 	return (res);
