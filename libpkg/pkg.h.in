@@ -292,6 +292,7 @@ typedef enum {
 	PKG_CATEGORIES,
 	PKG_UNIQUEID,
 	PKG_OLD_DIGEST,
+	PKG_DEP_FORMULA,
 	PKG_NUM_FIELDS,		/* end of fields */
 } pkg_attr;
 

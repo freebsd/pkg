@@ -77,6 +77,7 @@ static struct column_mapping {
 	{ "cksum",	PKG_CKSUM, PKG_SQLITE_STRING },
 	{ "comment",	PKG_COMMENT, PKG_SQLITE_STRING },
 	{ "dbname",	PKG_REPONAME, PKG_SQLITE_STRING },
+	{ "dep_formula",	PKG_DEP_FORMULA, PKG_SQLITE_STRING },
 	{ "desc",	PKG_DESC, PKG_SQLITE_STRING },
 	{ "flatsize",	PKG_FLATSIZE, PKG_SQLITE_INT64 },
 	{ "id",		PKG_ROWID, PKG_SQLITE_INT64 },
@@ -762,6 +763,9 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				break;
 			case PKG_WWW:
 				pkg->www = strdup(sqlite3_column_text(stmt, icol));
+				break;
+			case PKG_DEP_FORMULA:
+				pkg->dep_formula = strdup(sqlite3_column_text(stmt, icol));
 				break;
 			default:
 				pkg_emit_error("Unexpected text value for %s", colname);

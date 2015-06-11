@@ -155,6 +155,7 @@ struct pkg {
 	char			*reponame;
 	char			*repourl;
 	char			*reason;
+	char			*dep_formula;
 	lic_t			 licenselogic;
 	int64_t			 pkgsize;
 	int64_t			 flatsize;

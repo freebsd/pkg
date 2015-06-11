@@ -83,6 +83,7 @@ static struct manifest_key {
 	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
 	{ "conflicts",           PKG_CONFLICTS,           UCL_ARRAY,  pkg_array},
 	{ "config",              PKG_CONFIG_FILES,        UCL_ARRAY,  pkg_array},
+	{ "dep_formula",         PKG_DEP_FORMULA,         UCL_STRING, pkg_string},
 	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_obj},
 	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
 	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_obj},
@@ -325,6 +326,9 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, int attr)
 		break;
 	case PKG_WWW:
 		pkg->www = strdup(str);
+		break;
+	case PKG_DEP_FORMULA:
+		pkg->dep_formula = strdup(str);
 		break;
 	}
 

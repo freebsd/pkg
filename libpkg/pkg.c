@@ -77,6 +77,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->repopath);
 	free(pkg->repourl);
 	free(pkg->reason);
+	free(pkg->dep_formula);
 
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		sbuf_free(pkg->scripts[i]);
@@ -271,6 +272,9 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 		case PKG_OLD_DIGEST:
 			*va_arg(ap, const char **) = pkg->old_digest;
 			break;
+		case PKG_DEP_FORMULA:
+			*va_arg(ap, const char **) = pkg->dep_formula;
+			break;
 		}
 	}
 
@@ -404,6 +408,10 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			break;
 		case PKG_TIME:
 			pkg->timestamp = va_arg(ap, int64_t);
+			break;
+		case PKG_DEP_FORMULA:
+			free(pkg->dep_formula);
+			pkg->dep_formula = strdup(va_arg(ap, const char *));
 			break;
 		}
 	}
