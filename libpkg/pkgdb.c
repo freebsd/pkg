@@ -87,7 +87,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	31
+#define DB_SCHEMA_MINOR	32
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -340,7 +340,8 @@ pkgdb_init(sqlite3 *sdb)
 		"licenselogic INTEGER NOT NULL,"
 		"time INTEGER, "
 		"manifestdigest TEXT NULL, "
-		"pkg_format_version INTEGER"
+		"pkg_format_version INTEGER,"
+		"dep_formula TEXT NULL"
 	");"
 	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
 	"CREATE TABLE mtree ("

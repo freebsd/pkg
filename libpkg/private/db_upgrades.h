@@ -668,6 +668,9 @@ static struct db_upgrades {
 		"UNIQUE(package_id, require_id)"
 	");"
 	},
+	{32,
+	"ALTER TABLE packages ADD COLUMN dep_formula TEXT NULL;"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 
