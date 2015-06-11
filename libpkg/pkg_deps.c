@@ -380,6 +380,39 @@ pkg_deps_formula_free(struct pkg_dep_formula *f)
 	}
 }
 
+static const char*
+pkg_deps_op_tostring(enum pkg_dep_version_op op)
+{
+	const char *op_str;
+
+	switch (op) {
+	case VERSION_ANY:
+	default:
+		op_str = "?";
+		break;
+	case VERSION_EQ:
+		op_str = "=";
+		break;
+	case VERSION_LE:
+		op_str = "<=";
+		break;
+	case VERSION_GE:
+		op_str = ">=";
+		break;
+	case VERSION_LT:
+		op_str = "<";
+		break;
+	case VERSION_GT:
+		op_str = ">";
+		break;
+	case VERSION_NOT:
+		op_str = "!=";
+		break;
+	}
+
+	return (op_str);
+}
+
 char*
 pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 {
@@ -388,7 +421,7 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 	struct pkg_dep_version_item *cver, *cvertmp;
 	struct pkg_dep_option_item *copt, *copttmp;
 	char *res = NULL, *p;
-	const char *op_str;
+
 	int rlen = 0, r;
 
 	DL_FOREACH_SAFE(f, cf, cftmp) {
@@ -432,32 +465,8 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 			rlen -= r;
 
 			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
-				switch (cver->op) {
-				case VERSION_ANY:
-				default:
-					op_str = "?";
-					break;
-				case VERSION_EQ:
-					op_str = "=";
-					break;
-				case VERSION_LE:
-					op_str = "<=";
-					break;
-				case VERSION_GE:
-					op_str = ">=";
-					break;
-				case VERSION_LT:
-					op_str = "<";
-					break;
-				case VERSION_GT:
-					op_str = ">";
-					break;
-				case VERSION_NOT:
-					op_str = "!=";
-					break;
-				}
-
-				r = snprintf(p, rlen, "%s %s ", op_str, cver->ver);
+				r = snprintf(p, rlen, "%s %s ", pkg_deps_op_tostring(cver->op),
+						cver->ver);
 				p += r;
 				rlen -= r;
 			}
@@ -474,6 +483,61 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 		}
 
 		r = snprintf(p, rlen, " %s", cit->next ? ", " : "");
+		p += r;
+		rlen -= r;
+	}
+
+	return (res);
+}
+
+char*
+pkg_deps_formula_tosql(struct pkg_dep_formula_item *f)
+{
+	struct pkg_dep_formula_item *cit, *cittmp;
+	struct pkg_dep_version_item *cver, *cvertmp;
+	char *res = NULL, *p;
+
+	int rlen = 0, r;
+
+	DL_FOREACH_SAFE(f, cit, cittmp) {
+		rlen += sizeof("AND (name='' )");
+		rlen += strlen(cit->name);
+
+		DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+			rlen += sizeof(" AND vercmp(>=, version,'') ");
+			rlen += strlen(cver->ver);
+		}
+
+		rlen += sizeof(" OR ");
+	}
+
+	if (rlen == 0) {
+		return (NULL);
+	}
+
+	res = malloc(rlen + 1);
+
+	if (res == NULL) {
+		pkg_emit_errno("malloc", "string");
+
+		return (NULL);
+	}
+
+	p = res;
+
+	DL_FOREACH_SAFE(f, cit, cittmp) {
+		r = snprintf(p, rlen, "(name='%s'", cit->name);
+		p += r;
+		rlen -= r;
+
+		DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+			r = snprintf(p, rlen, " AND vercmp('%s',version,'%s')",
+					pkg_deps_op_tostring(cver->op),
+					cver->ver);
+			p += r;
+			rlen -= r;
+		}
+		r = snprintf(p, rlen, ")%s", cit->next ? " OR " : "");
 		p += r;
 		rlen -= r;
 	}

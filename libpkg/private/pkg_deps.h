@@ -83,4 +83,6 @@ char* pkg_deps_formula_tostring(struct pkg_dep_formula *f);
 
 enum pkg_dep_version_op pkg_deps_string_toop(const char *in);
 
+char* pkg_deps_formula_tosql(struct pkg_dep_formula_item *f);
+
 #endif /* LIBPKG_PRIVATE_PKG_DEPS_H_ */
