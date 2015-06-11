@@ -220,6 +220,59 @@ pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	sqlite3_result_text(ctx, arch, strlen(arch), NULL);
 }
 
+static void
+pkgdb_vercmp(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	const char *op_str, *arg1, *arg2;
+	enum pkg_dep_version_op op;
+	int cmp;
+	bool ret;
+
+	if (argc != 3) {
+		sqlite3_result_error(ctx, "Invalid usage of vercmp\n", -1);
+		return;
+	}
+
+	op_str = sqlite3_value_text(argv[0]);
+	arg1 = sqlite3_value_text(argv[1]);
+	arg2 = sqlite3_value_text(argv[2]);
+
+	if (op_str == NULL || arg1 == NULL || arg2 == NULL) {
+		sqlite3_result_error(ctx, "Invalid usage of vercmp\n", -1);
+		return;
+	}
+
+	op = pkg_deps_string_toop(op_str);
+	cmp = pkg_version_cmp(arg1, arg2);
+
+	switch(op) {
+	case VERSION_ANY:
+	default:
+		ret = true;
+		break;
+	case VERSION_EQ:
+		ret = (cmp == 0);
+		break;
+	case VERSION_GE:
+		ret = (cmp >= 0);
+		break;
+	case VERSION_LE:
+		ret = (cmp <= 0);
+		break;
+	case VERSION_GT:
+		ret = (cmp > 0);
+		break;
+	case VERSION_LT:
+		ret = (cmp < 0);
+		break;
+	case VERSION_NOT:
+		ret = (cmp != 0);
+		break;
+	}
+
+	sqlite3_result_int(ctx, ret);
+}
+
 static int
 pkgdb_upgrade(struct pkgdb *db)
 {
@@ -2622,7 +2675,8 @@ pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
 	    pkgdb_regex, NULL, NULL);
 	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_split_version, NULL, NULL);
-
+	sqlite3_create_function(db, "vercmp", 3, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
+	    pkgdb_vercmp, NULL, NULL);
 
 	return SQLITE_OK;
 }
