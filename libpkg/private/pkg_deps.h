@@ -81,4 +81,6 @@ void pkg_deps_formula_free(struct pkg_dep_formula *f);
 
 char* pkg_deps_formula_tostring(struct pkg_dep_formula *f);
 
+enum pkg_dep_version_op pkg_deps_string_toop(const char *in);
+
 #endif /* LIBPKG_PRIVATE_PKG_DEPS_H_ */

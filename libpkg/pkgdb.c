@@ -68,6 +68,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/utils.h"
+#include "private/pkg_deps.h"
 
 #include "private/db_upgrades.h"
 

@@ -480,3 +480,39 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 
 	return (res);
 }
+
+enum pkg_dep_version_op
+pkg_deps_string_toop(const char *in)
+{
+	enum pkg_dep_version_op ret = VERSION_ANY;
+	int len;
+
+	if (in != NULL) {
+		len = strlen(in);
+
+		if (len == 2) {
+			if (memcmp(in, ">=", 2) == 0) {
+				ret = VERSION_GE;
+			}
+			else if (memcmp(in, "<=", 2) == 0) {
+				ret = VERSION_LE;
+			}
+			else if (memcmp(in, "!=", 2) == 0) {
+				ret = VERSION_NOT;
+			}
+		}
+		else if (len == 1) {
+			if (*in == '>') {
+				ret = VERSION_GT;
+			}
+			else if (*in == '<') {
+				ret = VERSION_LT;
+			}
+			else if (*in == '!') {
+				ret = VERSION_NOT;
+			}
+		}
+	}
+
+	return (ret);
+}
