@@ -59,6 +59,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/utils.h"
+#include "private/pkg_deps.h"
 
 /*
  * Keep entries sorted by name!
@@ -209,8 +210,13 @@ compare_column_func(const void *pkey, const void *pcolumn)
 static int
 pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 {
-	sqlite3_stmt	*stmt = NULL;
+	sqlite3_stmt	*stmt = NULL, *opt_stmt = NULL;
 	int		 ret = EPKG_OK;
+	struct pkg_dep_formula *f;
+	struct pkg_dep_formula_item *fit;
+	struct pkg_dep_option_item *optit;
+	bool options_match;
+	char *formula_sql, *clause;
 	const char	 sql[] = ""
 		"SELECT d.name, d.origin, d.version, 0"
 		"  FROM deps AS d"
@@ -218,6 +224,14 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		"    (p.origin = d.origin AND p.name = d.name)"
 		"  WHERE d.package_id = ?1"
 		"  ORDER BY d.origin DESC";
+	const char formula_preamble[] = ""
+		"SELECT id,name,origin,version,locked FROM packages WHERE ";
+	const char options_sql[] = ""
+		"SELECT option, value"
+		"  FROM option"
+		"    JOIN pkg_option USING(option_id)"
+		"  WHERE package_id = ?1"
+		"  ORDER BY option";
 
 	assert(pkg != NULL);
 
@@ -248,6 +262,92 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		pkg_list_free(pkg, PKG_DEPS);
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
+	}
+
+	if (pkg->dep_formula) {
+		pkg_debug(4, "Pkgdb: reading package formula '%s'", pkg->dep_formula);
+
+		f = pkg_deps_parse_formula (pkg->dep_formula);
+
+		if (f != NULL) {
+			DL_FOREACH(f->items, fit) {
+				clause = pkg_deps_formula_tosql(fit);
+
+				if (clause) {
+					asprintf(&formula_sql, "%s%s", formula_preamble, clause);
+					pkg_debug(4, "Pkgdb: running '%s'", sql);
+					ret = sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL);
+
+					if (ret != SQLITE_OK) {
+						ERROR_SQLITE(sqlite, sql);
+						free(clause);
+						free(formula_sql);
+						pkg_deps_formula_free(f);
+						return (EPKG_FATAL);
+					}
+
+					/* Fetch matching packages */
+					while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+						/*
+						 * Load options for a package and check
+						 * if they are compatible
+						 */
+						options_match = true;
+
+						if (fit->options) {
+							pkg_debug(4, "Pkgdb: running '%s'", options_sql);
+							if (sqlite3_prepare_v2(sqlite, options_sql, -1,
+									&opt_stmt, NULL) != SQLITE_OK) {
+								ERROR_SQLITE(sqlite, options_sql);
+								return (EPKG_FATAL);
+							}
+
+							sqlite3_bind_int64(opt_stmt, 1,
+									sqlite3_column_int(stmt, 0));
+
+							while ((ret = sqlite3_step(opt_stmt))
+									== SQLITE_ROW) {
+								DL_FOREACH(fit->options, optit) {
+									if(strcmp(optit->opt,
+											sqlite3_column_text(opt_stmt, 0))
+											== 0) {
+										if ((strcmp(
+												sqlite3_column_text(opt_stmt, 1),
+												"on") && !optit->on)
+											|| (strcmp(
+												sqlite3_column_text(opt_stmt, 1),
+												"off") && optit->on)) {
+											pkg_debug(4, "incompatible option for"
+													"%s: %s",
+													sqlite3_column_text(opt_stmt, 1),
+													optit->opt);
+											options_match = false;
+											break;
+										}
+									}
+								}
+							}
+
+							sqlite3_finalize(opt_stmt);
+						}
+
+						if (options_match) {
+							pkg_adddep(pkg, sqlite3_column_text(stmt, 1),
+									sqlite3_column_text(stmt, 2),
+									sqlite3_column_text(stmt, 3),
+									sqlite3_column_int(stmt, 4));
+						}
+					}
+
+					free(clause);
+					free(formula_sql);
+					sqlite3_finalize(stmt);
+				}
+
+			}
+
+			pkg_deps_formula_free(f);
+		}
 	}
 
 	pkg->flags |= PKG_LOAD_DEPS;
