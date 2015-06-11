@@ -2611,15 +2611,15 @@ int
 pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
     __unused const void *noused)
 {
-	sqlite3_create_function(db, "now", 0, SQLITE_ANY, NULL,
+	sqlite3_create_function(db, "now", 0, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_now, NULL, NULL);
-	sqlite3_create_function(db, "myarch", 0, SQLITE_ANY, NULL,
+	sqlite3_create_function(db, "myarch", 0, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_myarch, NULL, NULL);
-	sqlite3_create_function(db, "myarch", 1, SQLITE_ANY, NULL,
+	sqlite3_create_function(db, "myarch", 1, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_myarch, NULL, NULL);
-	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
+	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_regex, NULL, NULL);
-	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY, NULL,
+	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_split_version, NULL, NULL);
 
 
