@@ -198,7 +198,8 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_version_number:
-			if (isalnum(*p) || *p == '-' || *p == '_') {
+			if (isalnum(*p) || *p == '-' || *p == '_' ||
+					(*p == ',' && isdigit(*(p + 1)))) {
 				p ++;
 			}
 			else {
