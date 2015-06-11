@@ -71,7 +71,7 @@ pkg_deps_parse_formula(const char *in)
 	while (p <= end) {
 		switch (state) {
 		case st_parse_dep_name:
-			if (isspace(*p)) {
+			if (isspace(*p) || *p == '\0') {
 				state = st_skip_spaces;
 
 				if (p == c) {
@@ -97,6 +97,30 @@ pkg_deps_parse_formula(const char *in)
 
 					strlcpy(cur_item->name, c, p - c + 1);
 					next_state = st_parse_after_name;
+				}
+			}
+			else if (*p == ',') {
+				if (p == c) {
+					state = st_error;
+				}
+				else {
+					cur_item = calloc(1, sizeof(*cur_item));
+
+					if (cur_item == NULL) {
+						pkg_emit_errno("malloc", "struct pkg_dep_formula_item");
+
+						return (NULL);
+					}
+					cur_item->name = malloc(p - c + 1);
+
+					if (cur_item->name == NULL) {
+						pkg_emit_errno("malloc", "cur->name");
+
+						return (NULL);
+					}
+
+					strlcpy(cur_item->name, c, p - c + 1);
+					state = st_parse_after_name;
 				}
 			}
 			else if (!isprint(*p)) {
@@ -157,6 +181,9 @@ pkg_deps_parse_formula(const char *in)
 					else if (memcmp(c, "!=", 2) == 0) {
 						cur_op = VERSION_NOT;
 					}
+					else if (memcmp(c, "==", 2) == 0) {
+						cur_op = VERSION_EQ;
+					}
 					else {
 						state = st_error;
 					}
@@ -170,6 +197,9 @@ pkg_deps_parse_formula(const char *in)
 					}
 					else if (*c == '!') {
 						cur_op = VERSION_NOT;
+					}
+					else if (*c == '=') {
+						cur_op = VERSION_EQ;
 					}
 					else {
 						state = st_error;
@@ -198,7 +228,7 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_version_number:
-			if (isalnum(*p) || *p == '-' || *p == '_' ||
+			if (isalnum(*p) || *p == '-' || *p == '_' || *p == '.' ||
 					(*p == ',' && isdigit(*(p + 1)))) {
 				p ++;
 			}
@@ -321,8 +351,11 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_skip_spaces:
-			if (isspace(*p) || *p == '\0') {
+			if (isspace(*p)) {
 				p ++;
+			}
+			else if (*p == '\0') {
+				state = st_parse_comma;
 			}
 			else {
 				c = p;
@@ -341,7 +374,7 @@ pkg_deps_parse_formula(const char *in)
 		}
 	}
 
-	if (state != st_skip_spaces) {
+	if (state != st_skip_spaces && state != st_parse_comma) {
 		pkg_emit_error ("cannot parse pkg formula: %s", in);
 		pkg_deps_formula_free (res);
 
@@ -465,7 +498,7 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 			rlen -= r;
 
 			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
-				r = snprintf(p, rlen, "%s %s ", pkg_deps_op_tostring(cver->op),
+				r = snprintf(p, rlen, " %s %s", pkg_deps_op_tostring(cver->op),
 						cver->ver);
 				p += r;
 				rlen -= r;
@@ -477,12 +510,12 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 				rlen -= r;
 			}
 
-			r = snprintf(p, rlen, " %s", cit->next ? "| " : "");
+			r = snprintf(p, rlen, "%s", cit->next ? " | " : "");
 			p += r;
 			rlen -= r;
 		}
 
-		r = snprintf(p, rlen, " %s", cit->next ? ", " : "");
+		r = snprintf(p, rlen, "%s", cf->next ? ", " : "");
 		p += r;
 		rlen -= r;
 	}
@@ -564,6 +597,9 @@ pkg_deps_string_toop(const char *in)
 			else if (memcmp(in, "!=", 2) == 0) {
 				ret = VERSION_NOT;
 			}
+			else if (memcmp(in, "==", 2) == 0) {
+				ret = VERSION_EQ;
+			}
 		}
 		else if (len == 1) {
 			if (*in == '>') {
@@ -574,6 +610,9 @@ pkg_deps_string_toop(const char *in)
 			}
 			else if (*in == '!') {
 				ret = VERSION_NOT;
+			}
+			else if (*in == '=') {
+				ret = VERSION_EQ;
 			}
 		}
 	}
