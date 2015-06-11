@@ -36,6 +36,7 @@
 #PERMISSIVE = false;
 #REPO_AUTOUPDATE = true;
 #NAMESERVER = "";
+#HTTP_USER_AGENT = "Custom_User_Manager";
 #EVENT_PIPE = "";
 #FETCH_TIMEOUT = 30;
 #UNSET_TIMESTAMP = false;
