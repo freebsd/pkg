@@ -31,6 +31,7 @@
 #include <private/pkg_deps.h>
 
 ATF_TC(check_parsing);
+ATF_TC(check_sql);
 
 ATF_TC_HEAD(check_parsing, tc)
 {
@@ -46,7 +47,8 @@ ATF_TC_BODY(check_parsing, tc)
 		"name >= 1.0,1",
 		"name1, name2",
 		"name1 | name2, name3",
-		"name1 = 1.0 | name2 != 1.0, name3 > 1.0 < 2.0 != 1.5"
+		"name1 = 1.0 | name2 != 1.0, name3 > 1.0 < 2.0 != 1.5",
+		"name1 = 1.0 | name2 != 1.0, name3 > 1.0 < 2.0 != 1.5, name4 +opt1 -opt2"
 	};
 	char *r;
 	int i;
@@ -61,9 +63,38 @@ ATF_TC_BODY(check_parsing, tc)
 	}
 }
 
+ATF_TC_HEAD(check_sql, tc)
+{
+	atf_tc_set_md_var(tc, "descr", "testing creating sql queries from formulas");
+}
+
+ATF_TC_BODY(check_sql, tc)
+{
+	struct pkg_dep_formula *f;
+	const char *cases[] = {
+		"name", "(name='name')",
+		"name = 1.0", "(name='name' AND vercmp('=',version,'1.0'))",
+		"name >= 1.0,1", "(name='name' AND vercmp('>=',version,'1.0,1'))",
+		"name1 | name2", "(name='name1') OR (name='name2')",
+		"name1 = 1.0 | name2 != 1.0", "(name='name1' AND vercmp('=',version,'1.0')) OR (name='name2' AND vercmp('!=',version,'1.0'))"
+	};
+	char *r;
+	int i;
+
+	for (i = 0; i < sizeof(cases) / sizeof(cases[0]) / 2; i ++) {
+		f = pkg_deps_parse_formula(cases[i * 2]);
+		ATF_REQUIRE(f != NULL);
+		r = pkg_deps_formula_tosql(f->items);
+		ATF_REQUIRE_STREQ(r, cases[i * 2 + 1]);
+		free(r);
+		pkg_deps_formula_free(f);
+	}
+}
+
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, check_parsing);
-
+	ATF_TP_ADD_TC(tp, check_sql);
 	return (atf_no_error());
 }
