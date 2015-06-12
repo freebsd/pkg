@@ -505,7 +505,7 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 			}
 
 			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
-				r = snprintf(p, rlen, "%c%s ", copt->on ? '+' : '-', copt->opt);
+				r = snprintf(p, rlen, " %c%s", copt->on ? '+' : '-', copt->opt);
 				p += r;
 				rlen -= r;
 			}
