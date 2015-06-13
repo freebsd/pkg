@@ -879,6 +879,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
 
 	p = ucl_parser_new(0);
+	ucl_parser_register_variable (p, "ABI", myabi);
+	ucl_parser_register_variable (p, "ALTABI", myabi_legacy);
 
 	errno = 0;
 	obj = NULL;
