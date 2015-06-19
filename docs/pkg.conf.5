@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd February 8, 2015
+.Dd June 19, 2015
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -154,11 +154,12 @@ Default: INDEX-N where
 is the OS major version number.
 .It Cm IP_VERSION: integer
 Restrict network access to specified IP version.
-Could be 4 for IPv4, 6 for IPv6 or any other value for system default.
-Repositories or command line options could override this setting.
+4 will only allow IPv4 and 6 will only allow IPv6.
+Any other value will use the system default.
+Repositories or command line options can override this setting.
 Default: 0.
 .It Cm LOCK_RETRIES: integer
-Retries performed to obtain a lock.
+Number of attempts to obtain a lock before giving up and exiting.
 Default: 5.
 .It Cm LOCK_WAIT: integer
 Wait time in seconds to regain a lock if it is not available.
@@ -184,7 +185,7 @@ Default:
 When set to a
 .Sy true
 value, make
-.Xr pkg_create 8
+.Xr pkg-create 8
 use verbose mode as standard.
 Default:
 .Sy false
@@ -262,7 +263,7 @@ Default: YES.
 Run pre-/post-installation action scripts.
 Default: YES.
 .It Cm SAT_SOLVER: string
-Experimental: tells pkg to use and external SAT solver.
+Experimental: tells pkg to use an external SAT solver.
 Default: not set.
 .It Cm SQLITE_PROFILE: boolean
 Profile SQLite queries.
@@ -271,7 +272,7 @@ Default: NO.
 Directory which the ssh subsystem will be restricted to.
 Default: not set.
 .It Cm SYSLOG: boolean
-Log all the installation/deinstallation/upgrade operation via
+Log all of the installation/deinstallation/upgrade operations via
 .Xr syslog 3 .
 Default: YES.
 .It Cm UNSET_TIMESTAMP: boolean
@@ -357,13 +358,14 @@ only. (default: NONE)
 This should be set to a path containing known signatures for the repository.
 .It Cm IP_VERSION: integer
 Restrict network access to specified IP version.
-Could be 4 for IPv4, 6 for IPv6 or any other value for system default.
+4 will only allow IPv4 and 6 will only allow IPv6.
+Any other value will use the system default.
 This option overrides the global setting with the same name and can be
 overwritten by a command line option.
 Default: 0.
 .It Cm PRIORITY: integer
 Set the priority of the repository.
-Higher values are prefered.
+Higher values are preferred.
 Default: 0
 .El
 .El
@@ -392,9 +394,9 @@ you should use a
 or
 .Dv pkg+https://
 (etc.) URL scheme.
-Using
+Using an
 .Dv http://
-URLS implies that the hostname part is a simple hostname according to
+URL implies that the hostname part is a simple hostname according to
 RFC 2616, and is no longer accepted.
 .Pp
 When
@@ -456,7 +458,7 @@ with this content:
 FreeBSD: { enabled: NO }
 .Ed
 .Pp
-Repositories are processedin the order they are found on the
+Repositories are processed in the order they are found on the
 .Sy REPOS_DIR
 search path, with individual repository configuration files in the
 same directory processed in alphabetical order.
@@ -493,7 +495,8 @@ FreeBSD: {
     mirror_type: "srv"
 }
 .Ed
-Example for pkg.conf
+.Pp
+Example for pkg.conf:
 .Bd -literal -offset indent
 pkg_dbdir: "/var/db/pkg"
 pkg_cachedir: "/var/cache/pkg"
@@ -515,13 +518,14 @@ alias: {
     nonauto: "query -e '%a == 0' '%n-%v'"
 }
 .Ed
+.Pp
 To bootstrap
 .Xr pkg 8
 using a private repository (Assuming a
 .Xr pkg 7
 new enough to support the
 .Cm bootstrap
-command.)
+command.):
 .Bd -literal -offset indent
 # cat > /usr/local/etc/pkg/repos/example.conf <<EOF
 example: {
@@ -536,6 +540,7 @@ EOF
 # env PACKAGESITE='http://pkgrepo.example.com/${ABI}' \
     /usr/sbin/pkg bootstrap
 .Ed
+.Pp
 Note that
 .Xr pkg 7
 uses
