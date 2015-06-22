@@ -22,6 +22,7 @@ endif
 
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
+			clean_cache.c \
 			dns_utils.c \
 			fetch.c \
 			packing.c \

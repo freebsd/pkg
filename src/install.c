@@ -269,6 +269,9 @@ cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 
+	if (!dry_run)
+		pkg_cache_full_clean();
+
 	if (!rc && newpkgversion)
 		newpkgversion = false;
 

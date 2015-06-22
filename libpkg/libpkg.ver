@@ -16,6 +16,7 @@ global:
 	pkg_audit_load;
 	pkg_audit_new;
 	pkg_audit_process;
+	pkg_cache_full_clean;
 	pkg_compiled_for_same_os_major;
 	pkg_conf;
 	pkg_config_dump;

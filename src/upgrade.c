@@ -222,6 +222,9 @@ cleanup:
 	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 
+	if (!dry_run)
+		pkg_cache_full_clean();
+
 	if (!rc && newpkgversion)
 		newpkgversion = false;
 
