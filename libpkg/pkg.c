@@ -522,8 +522,8 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			pkg->digest = strdup(va_arg(ap, const char *));
 			break;
 		case PKG_REASON:
-			free(pkg->digest);
-			pkg->digest = strdup(va_arg(ap, const char *));
+			free(pkg->reason);
+			pkg->reason = strdup(va_arg(ap, const char *));
 			break;
 		case PKG_FLATSIZE:
 			pkg->flatsize = va_arg(ap, int64_t);
@@ -535,7 +535,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			pkg->pkgsize = va_arg(ap, int64_t);
 			break;
 		case PKG_LICENSE_LOGIC:
-			pkg->pkgsize = (bool)va_arg(ap, int);
+			pkg->licenselogic = (lic_t)va_arg(ap, int);
 			break;
 		case PKG_AUTOMATIC:
 			pkg->automatic = (bool)va_arg(ap, int);
