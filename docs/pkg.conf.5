@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 19, 2015
+.Dd June 22, 2015
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -72,6 +72,13 @@ a syntactically correct
 command line when substituted in and followed by any remaining tokens from
 the original command line.
 Default: not set.
+.It Cm AUTOCLEAN: boolean
+Automatically cleanout the content of
+.Em PKG_CACHEDIR
+after each non dry-run call to
+.Xr pkg-install 8
+or
+.Xr pkg-upgrade 8
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1

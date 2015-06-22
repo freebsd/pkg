@@ -361,6 +361,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Enable verbose mode for 'pkg create'",
 	},
+	{
+		PKG_BOOL,
+		"AUTOCLEAN",
+		"NO",
+		"Always cleanup the cache directory after install/upgrade",
+	},
 };
 
 static bool parsed = false;
