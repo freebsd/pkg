@@ -92,7 +92,7 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	}
 
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
-		*reposcver = sqlite3_column_int(stmt, 0);
+		*reposcver = sqlite3_column_int64(stmt, 0);
 		retcode = EPKG_OK;
 	} else {
 		*reposcver = -1;

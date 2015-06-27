@@ -239,7 +239,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		pkg_adddep(pkg, sqlite3_column_text(stmt, 0),
 			   sqlite3_column_text(stmt, 1),
 			   sqlite3_column_text(stmt, 2),
-			   sqlite3_column_int(stmt, 3));
+			   sqlite3_column_int64(stmt, 3));
 	}
 	sqlite3_finalize(stmt);
 
@@ -285,7 +285,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0),
 			    sqlite3_column_text(stmt, 1),
 			    sqlite3_column_text(stmt, 2),
-			    sqlite3_column_int(stmt, 3));
+			    sqlite3_column_int64(stmt, 3));
 	}
 	sqlite3_finalize(stmt);
 
@@ -567,7 +567,7 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addscript(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_int(stmt, 1));
+		    sqlite3_column_int64(stmt, 1));
 	}
 	sqlite3_finalize(stmt);
 
@@ -778,28 +778,28 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 
 			switch (column->type) {
 			case PKG_AUTOMATIC:
-				pkg->automatic = (bool)sqlite3_column_int(stmt, icol);
+				pkg->automatic = (bool)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_LOCKED:
-				pkg->locked = (bool)sqlite3_column_int(stmt, icol);
+				pkg->locked = (bool)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_FLATSIZE:
-				pkg->flatsize = sqlite3_column_int(stmt, icol);
+				pkg->flatsize = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_ROWID:
-				pkg->id = sqlite3_column_int(stmt, icol);
+				pkg->id = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_LICENSE_LOGIC:
-				pkg->licenselogic = (lic_t)sqlite3_column_int(stmt, icol);
+				pkg->licenselogic = (lic_t)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_OLD_FLATSIZE:
-				pkg->old_flatsize = sqlite3_column_int(stmt, icol);
+				pkg->old_flatsize = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_PKGSIZE:
-				pkg->pkgsize = sqlite3_column_int(stmt, icol);
+				pkg->pkgsize = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_TIME:
-				pkg->timestamp = sqlite3_column_int(stmt, icol);
+				pkg->timestamp = sqlite3_column_int64(stmt, icol);
 				break;
 			default:
 				pkg_emit_error("Unexpected integer value for %s", colname);
