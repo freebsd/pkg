@@ -89,7 +89,7 @@ pkg_status(int *count)
 			if (dbsuccess) {
 				dbsuccess = (sqlite3_step(stmt) == SQLITE_ROW);
 				if (dbsuccess) {
-					numpkgs = sqlite3_column_int(stmt, 0);
+					numpkgs = sqlite3_column_int64(stmt, 0);
 				}
 				sqlite3_finalize(stmt);
 			}
