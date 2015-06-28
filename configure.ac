@@ -425,6 +425,7 @@ AC_SUBST([LDNS_CFLAGS])
 dnl We now support merely binary repos
 m4_define([repos], [binary])
 m4_define([repos_ldadd], [])
+m4_define([repos_list], [])
 m4_define([repos_makefiles], [])
 m4_define([repos_ldadd_static], [])
 
@@ -439,12 +440,14 @@ m4_define([repos_add_makefile], [
 	m4_append([$1], [m4_join([], [\], m4_newline(), [libpkg/repo/], 
 		[$2], [/Makefile ])])
 ])
+m4_define([repos_add_list], [ m4_append([$1], [m4_join([],[ ],[$2])]) ])
 dnl Apply macros to repos list
 m4_map([m4_curry([repos_add_ldadd], [repos_ldadd], [])], [repos])
 m4_map([m4_curry([repos_add_ldadd], [repos_ldadd_static], [_static])], [repos])
 m4_map([m4_curry([repos_add_makefile], [repos_makefiles])], [repos])
+m4_map([m4_curry([repos_add_list], [repos_list])], [repos])
 
-REPOS="m4_expand([repos])"
+REPOS='m4_normalize(m4_expand([repos_list]))'
 REPOS_LDADD='m4_normalize(m4_expand([repos_ldadd]))'
 REPOS_LDADD_STATIC='m4_normalize(m4_expand([repos_ldadd_static]))'
 AC_SUBST([REPOS])
