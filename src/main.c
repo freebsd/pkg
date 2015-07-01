@@ -354,18 +354,16 @@ show_repository_info(void)
 		}
 
 		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s,\n"
-		       "    %-16s: %u",
+		       "    %-16s: %u,\n    %-16s: \"%s\"",
 		    pkg_repo_name(repo),
                     "url", pkg_repo_url(repo),
 		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
-		    "priority", pkg_repo_priority(repo));
+		    "priority", pkg_repo_priority(repo),
+		    "type", type);
 
 		if (pkg_repo_mirror_type(repo) != NOMIRROR)
 			printf(",\n    %-16s: \"%s\"",
 			    "mirror_type", mirror);
-		if (pkg_repo_type(repo) != REPO_NONE)
-			printf(",\n    %-16s: \"%s\"",
-			    "type", type);
 		if (pkg_repo_signature_type(repo) != SIG_NONE)
 			printf(",\n    %-16s: \"%s\"",
 			    "signature_type", sig);

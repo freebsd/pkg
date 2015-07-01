@@ -618,12 +618,10 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	}
 
 	if (type != NULL) {
-		if (strcasecmp(type, "pkg") == 0)
-			r->type = REPO_PKG;
-		else if (strcasecmp(type, "debian") == 0)
+		if (strcasecmp(type, "debian") == 0)
 			r->type = REPO_DEBIAN;
 		else 
-			r->type = REPO_NONE;
+			r->type = REPO_PKG;
 	}
 
 	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)

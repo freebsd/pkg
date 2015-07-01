@@ -340,8 +340,7 @@ typedef enum {
 } mirror_t;
 
 typedef enum {
-	REPO_NONE = 0,
-	REPO_PKG,
+	REPO_PKG = 0,
 	REPO_DEBIAN,
 
 } type_t;
