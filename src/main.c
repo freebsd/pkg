@@ -308,7 +308,7 @@ show_plugin_info(void)
 static void
 show_repository_info(void)
 {
-	const char	*mirror, *sig;
+	const char	*mirror, *type, *sig;
 	struct pkg_repo	*repo = NULL;
 
 	printf("\nRepositories:\n");
@@ -326,6 +326,17 @@ show_repository_info(void)
 		default:
 			mirror = "-unknown-";
 			break;
+		}
+		switch(pkg_repo_type(repo)) {
+		case REPO_PKG:
+			type = "PKG";
+		break;
+		case REPO_DEBIAN:
+			type = "DEBIAN";
+		break;
+		default:
+			type = "-unknown-";
+		break;
 		}
 		switch (pkg_repo_signature_type(repo)) {
 		case SIG_PUBKEY:
@@ -352,6 +363,9 @@ show_repository_info(void)
 		if (pkg_repo_mirror_type(repo) != NOMIRROR)
 			printf(",\n    %-16s: \"%s\"",
 			    "mirror_type", mirror);
+		if (pkg_repo_type(repo) != REPO_NONE)
+			printf(",\n    %-16s: \"%s\"",
+			    "type", type);
 		if (pkg_repo_signature_type(repo) != SIG_NONE)
 			printf(",\n    %-16s: \"%s\"",
 			    "signature_type", sig);
