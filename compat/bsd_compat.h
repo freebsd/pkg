@@ -154,9 +154,9 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #if !HAVE_FOPENCOOKIE
 # error "Your system has neither funopen nor fopencookie, cannot continue"
 #endif
-FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
-         int (*writefn)(void *, const char *, int),
-         off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *));
+FILE * funopen(const void *cookie, cookie_read_function_t readfn,
+         cookie_write_function_t writefn, cookie_seek_function_t seekfn,
+         cookie_close_function_t closefn);
 #endif
 
 #endif

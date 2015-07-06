@@ -195,9 +195,11 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	int64_t cnt;
 	char fullpath[MAXPATHLEN];
 	size_t len;
+#ifdef HAVE_CHFLAGS
 	struct stat st;
-#if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
+#ifndef HAVE_CHFLAGSAT
 	int fd;
+#endif
 #endif
 
 	len = snprintf(fullpath, sizeof(fullpath), "/%s", dir);
@@ -282,10 +284,12 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 {
 	const char *path;
 	const char *prefix_rel;
-	struct stat st;
 	size_t len;
-#if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
+#ifdef HAVE_CHFLAGS
+	struct stat st;
+#ifndef HAVE_CHFLAGSAT
 	int fd;
+#endif
 #endif
 
 	pkg_open_root_fd(pkg);

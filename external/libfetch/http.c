@@ -59,7 +59,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
+#endif
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -263,8 +265,8 @@ http_fillbuf(struct httpio *io, size_t len)
 /*
  * Read function
  */
-static int
-http_readfn(void *v, char *buf, int len)
+static ssize_t
+http_readfn(void *v, char *buf, size_t len)
 {
 	struct httpio *io = (struct httpio *)v;
 	int rlen;
@@ -296,8 +298,8 @@ http_readfn(void *v, char *buf, int len)
 /*
  * Write function
  */
-static int
-http_writefn(void *v, const char *buf, int len)
+static ssize_t
+http_writefn(void *v, const char *buf, size_t len)
 {
 	struct httpio *io = (struct httpio *)v;
 
@@ -1377,7 +1379,10 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 	struct url *curl;
 	conn_t *conn;
 	int verbose;
-	int af, val;
+	int af;
+#ifdef TCP_NOPUSH
+	int val;
+#endif
 
 #ifdef INET6
 	af = AF_UNSPEC;

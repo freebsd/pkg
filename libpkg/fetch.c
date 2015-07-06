@@ -161,8 +161,8 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 	return (retcode);
 }
 
-static int
-ssh_read(void *data, char *buf, int len)
+static ssize_t
+ssh_read(void *data, char *buf, size_t len)
 {
 	struct pkg_repo *repo = (struct pkg_repo *) data;
 	struct timeval now, timeout, delta;
@@ -293,8 +293,8 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 	return (total);
 }
 
-static int
-ssh_write(void *data, const char *buf, int l)
+static ssize_t
+ssh_write(void *data, const char *buf, size_t l)
 {
 	struct pkg_repo *repo = (struct pkg_repo *)data;
 	struct iovec iov;

@@ -138,7 +138,10 @@ pkg_sshserve(int fd)
 #else
 		if (restricted != NULL) {
 #endif
-			chdir(restricted);
+			if (chdir(restricted) != 0) {
+				printf("ko: chdir failed (%s)\n", restricted);
+				continue;
+			}
 			if (realpath(file, fpath) == NULL ||
 			    realpath(restricted, rpath) == NULL ||
 			    strncmp(fpath, rpath, strlen(rpath)) != 0) {

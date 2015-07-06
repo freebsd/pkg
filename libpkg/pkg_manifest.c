@@ -922,7 +922,6 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 pkg_object*
 pkg_emit_object(struct pkg *pkg, short flags)
 {
-	struct pkg_strel	*el;
 	struct pkg_kv		*kv;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
@@ -988,7 +987,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting licenses");
 	seq = NULL;
-	el = NULL;
 	kh_each_value(pkg->licenses, buf, {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
@@ -1022,7 +1020,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting categories");
 	seq = NULL;
-	el = NULL;
 	kh_each_value(pkg->categories, buf, {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
