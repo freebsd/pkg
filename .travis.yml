@@ -1,23 +1,32 @@
 language: c
 
 os:
+  - linux
   - osx
+
+addons:
+  apt:
+    packages:
+      - libbsd-dev
+      - libarchive-dev
+      - libssl-dev
+      - liblzma-dev
+      - libldns-dev
+
+sudo: false
 
 compiler:
   - clang
   - gcc
 
+before_install:
+  - scripts/install_deps.sh
+
 before_script:
-  - brew update
-  - brew install libarchive --with-xz
-  - brew install openssl
-  - brew install kyua
   - autoreconf -i
 
 script:
-  - ./configure
-  - make V=1
-  - make check
+  - scripts/travis_build.sh
 
 after_failure:
   - kyua report --verbose
