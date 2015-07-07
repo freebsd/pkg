@@ -229,7 +229,13 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
 			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));
-			ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+			int install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+			int extract_flags = EXTRACT_ARCHIVE_FLAGS;
+			if (install_as_user) {
+				/* when installing as user don't try to set file ownership */
+				extract_flags &= ~ARCHIVE_EXTRACT_OWNER;
+			}
+			ret = archive_read_extract(a, ae, extract_flags);
 		} else {
 			if (sbuf_len(newconf) == 0) {
 				sbuf_cat(newconf, rcf->content);
