@@ -682,18 +682,17 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 	assert(origin != NULL && origin[0] != '\0');
-	assert(version != NULL && version[0] != '\0');
 
-	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
+	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin, name);
 	HASH_FIND_STR(pkg->deps, name, d);
 	if (d != NULL) {
 		if (developer_mode) {
-			pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, fatal (developer mode)",
-			    pkg->name, pkg->version, name, version);
+			pkg_emit_error("%s: duplicate dependency listing: %s, fatal (developer mode)",
+			    pkg->name, name);
 			return (EPKG_FATAL);
 		} else {
-			pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, ignoring",
-			    pkg->name, pkg->version, name, version);
+			pkg_emit_error("%s-%s: duplicate dependency listing: %s, ignoring",
+			    pkg->name, pkg->version, name);
 			return (EPKG_OK);
 		}
 	}
@@ -702,7 +701,8 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 
 	d->origin = strdup(origin);
 	d->name = strdup(name);
-	d->version = strdup(version);
+	if (version != NULL && version[0] != '\0')
+		d->version = strdup(version);
 	d->uid = strdup(name);
 	d->locked = locked;
 
@@ -719,14 +719,14 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 	assert(origin != NULL && origin[0] != '\0');
-	assert(version != NULL && version[0] != '\0');
 
-	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s, version: %s", origin, name, version);
+	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s", origin, name);
 	pkg_dep_new(&d);
 
 	d->origin = strdup(origin);
 	d->name = strdup(name);
-	d->version = strdup(version);
+	if (version != NULL && version[0] != '\0')
+		d->version = strdup(version);
 	d->uid = strdup(name);
 	d->locked = locked;
 

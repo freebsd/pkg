@@ -692,7 +692,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			if (strcasecmp(key, "version") == 0)
 				version = ucl_object_tostring(cur);
 		}
-		if (origin != NULL && version != NULL)
+		if (origin != NULL)
 			pkg_adddep(pkg, okey, origin, version, false);
 		else
 			pkg_emit_error("Skipping malformed dependency %s", okey);

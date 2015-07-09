@@ -1730,7 +1730,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (run_prstmt(DEPS, dep->origin, dep->name, dep->version,
+		if (run_prstmt(DEPS, dep->origin, dep->name,
+		    dep->version ? dep->version : "",
 		    package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(DEPS));
 			goto cleanup;

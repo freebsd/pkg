@@ -263,6 +263,65 @@ post-install
 		pkg add -M -
 }
 
+atf_test_case add_no_version
+add_no_version_body() {
+	cat << EOF > test.ucl
+name: test
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+EOF
+
+	cat << EOF > test-lib.ucl
+name: test-lib
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+EOF
+
+	cat << EOF > final.ucl
+name: final
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+deps {
+	test {
+		origin = "test";
+	}
+}
+EOF
+	for p in test test-lib final ; do
+		atf_check -o ignore -s exit:0 \
+			pkg create -M ${p}.ucl
+	done
+	atf_check -o ignore -s exit:0 \
+		pkg add final-1.txz
+}
+
 atf_init_test_cases() {
 	. $(atf_get_srcdir)/test_environment.sh
 
@@ -274,4 +333,5 @@ atf_init_test_cases() {
 	atf_add_test_case add_quiet
 	atf_add_test_case add_stdin
 	atf_add_test_case add_stdin_missing
+	atf_add_test_case add_no_version
 }

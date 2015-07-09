@@ -35,6 +35,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
+#include <glob.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -331,6 +332,46 @@ cleanup:
 	return (retcode);
 }
 
+static char *
+pkg_globmatch(char *pattern, const char *name)
+{
+	glob_t g;
+	int i;
+	char *buf, *buf2;
+	char *path = NULL;
+
+	if (glob(pattern, 0, NULL, &g) == GLOB_NOMATCH) {
+		globfree(&g);
+
+		return (NULL);
+	}
+
+	for (i = 0; i < g.gl_matchc; i++) {
+		/* the version starts here */
+		buf = strrchr(g.gl_pathv[i], '-');
+		if (buf == NULL)
+			continue;
+		buf2 = strchr(g.gl_pathv[i], '/');
+		if (buf2 == NULL)
+			buf2 = g.gl_pathv[i];
+		else
+			buf2++;
+		/* ensure we have match the proper name */
+		if (strncmp(buf2, name, buf - buf2) != 0)
+			continue;
+		if (path == NULL) {
+			path = g.gl_pathv[i];
+			continue;
+		}
+		if (pkg_version_cmp(path, g.gl_pathv[i]) == '>')
+			path = g.gl_pathv[i];
+	}
+	path = strdup(path);
+	globfree(&g);
+
+	return (path);
+}
+
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags,
@@ -340,7 +381,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir;
-	char	dpath[MAXPATHLEN];
+	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext;
 	struct pkg	*pkg_inst = NULL;
 
@@ -402,13 +443,21 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
 
-		if (basedir != NULL) {
+		if (basedir == NULL) {
+			pkg_emit_missing_dep(pkg, dep);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
+		}
+
+		if (dep->version != NULL && dep->version[0] != '\0') {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
 				dep->name, dep->version, ext);
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 &&
-							access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
+			    access(dpath, F_OK) == 0) {
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC,
+				    keys, location);
 
 				if (ret != EPKG_OK)
 					goto cleanup;
@@ -418,9 +467,30 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 					goto cleanup;
 			}
 		} else {
-			pkg_emit_missing_dep(pkg, dep);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
+			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", basedir,
+			    dep->name, ext);
+			ppath = pkg_globmatch(dpath, dep->name);
+			if (ppath == NULL) {
+				pkg_emit_missing_dep(pkg, dep);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
+			if ((flags & PKG_ADD_UPGRADE) == 0 &&
+			    access(ppath, F_OK) == 0) {
+				ret = pkg_add(db, ppath, PKG_ADD_AUTOMATIC,
+				    keys, location);
+
+				free(ppath);
+				if (ret != EPKG_OK)
+					goto cleanup;
+			} else {
+				free(ppath);
+				pkg_emit_missing_dep(pkg, dep);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
 		}
 	}
 
