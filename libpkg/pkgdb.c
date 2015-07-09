@@ -1720,7 +1720,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	if (run_prstmt(DEPS_UPDATE, pkg->origin,
-	    pkg->version ? pkg-version : "", pkg->name)
+	    pkg->version ? pkg->version : "", pkg->name)
 	    != SQLITE_DONE) {
 		ERROR_SQLITE(s, SQL(DEPS_UPDATE));
 		goto cleanup;
