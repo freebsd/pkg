@@ -500,7 +500,7 @@ AC_CONFIG_COMMANDS([pkg_repos.h], [[
 		cp $NMODULES pkg_repos.h
 	fi
 	rm $NMODULES
-]], [REPOS=$REPOS])
+]], [REPOS="$REPOS"])
 
 AC_CONFIG_COMMANDS([mkdir], [$MKDIR_P tests/frontend])
 
