@@ -39,8 +39,8 @@ PRIVATE_INCS=	-I$(top_srcdir)/external/libsbuf \
 		-I$(top_srcdir)/external/libucl/klib \
 		$(PUBLIC_INCS)
 
-pkg_printf_SOURCES=	lib/pkg_printf_test.c \
-			lib/pkg_printf.c
+pkg_printf_SOURCES=	lib/pkg_printf_test.c
+nodist_pkg_printf_SOURCES=	lib/pkg_printf.c
 CLEANFILES=		lib/pkg_printf.c
 BUILT_SOURCES=		lib/pkg_printf.c
 pkg_printf_CFLAGS=	$(PRIVATE_INCS)

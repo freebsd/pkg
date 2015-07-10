@@ -151,12 +151,13 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_open.c \
 			libelf/libelf_phdr.c \
 			libelf/libelf_shdr.c \
-			libelf/libelf_xlate.c \
-			libelf/libelf_fsize.c \
-			libelf/libelf_msize.c \
-			libelf/libelf_convert.c
+			libelf/libelf_xlate.c
+nodist_libelf_la_SOURCES=	libelf/libelf_fsize.c \
+				libelf/libelf_msize.c \
+				libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
 libelf_static_la_SOURCES=	${libelf_la_SOURCES}
+nodist_libelf_static_la_SOURCES=	$(nodist_libelf_la_SOURCES)
 libelf_static_la_CFLAGS=	$(libelf_la_CFLAGS) -static
 libelf_static_la_LDFLAGS=	-all-static
 
@@ -258,9 +259,9 @@ libfetch_static_la_SOURCES=	${libfetch_la_SOURCES}
 
 if HAVE_ELF_ABI
 CLEANFILES=	libelf/libelf_fsize.c \
-			libelf/libelf_msize.c \
-			libelf/libelf_convert.c \
-			libelf/native-elf-format.h
+		libelf/libelf_msize.c \
+		libelf/libelf_convert.c \
+		libelf/native-elf-format.h
 BUILT_SOURCES = libelf/native-elf-format.h \
 		libelf/libelf_convert.c \
 		libelf/libelf_fsize.c \
