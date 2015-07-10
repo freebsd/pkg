@@ -4,7 +4,7 @@ atf_test_case annotate
 annotate_head() {
 	atf_set "descr" "pkg annotate"
 	atf_set "require.files" \
-	   "$(atf_get_srcdir)/png.ucl $(atf_get_srcdir)/sqlite3.ucl"
+	   "${RESOURCEDIR}/png.ucl ${RESOURCEDIR}/sqlite3.ucl"
 }
 
 annotate_body() {
@@ -13,7 +13,7 @@ annotate_body() {
 		-o match:".*Installing.*\.\.\.$" \
 		-e empty \
 		-s exit:0 \
-		pkg register -t -M $(atf_get_srcdir)/$pkg.ucl
+		pkg register -t -M ${RESOURCEDIR}/$pkg.ucl
 	done
 
 	[ -f "./local.sqlite" ] || \

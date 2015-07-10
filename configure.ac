@@ -455,12 +455,16 @@ AC_SUBST([REPOS_LDADD])
 AC_SUBST([REPOS_LDADD_STATIC])
 
 AC_CONFIG_FILES(Makefile \
+		Kyuafile \
 		src/Makefile \
 		external/Makefile \
 		external/blake2/Makefile \
 		scripts/Makefile \
 		docs/Makefile \
 		tests/Makefile \
+		tests/Kyuafile \
+		tests/frontend/Kyuafile \
+		tests/frontend/test_environment.sh \
 		compat/Makefile \
 		libpkg/Makefile \
 		libpkg/repo/Makefile \

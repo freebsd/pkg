@@ -4,7 +4,7 @@ atf_test_case lock
 lock_head() {
 	atf_set "descr" "pkg lock"
 	atf_set "require.files" \
-	   "$(atf_get_srcdir)/png.ucl $(atf_get_srcdir)/sqlite3.ucl"
+	   "${RESOURCEDIR}/png.ucl ${RESOURCEDIR}/sqlite3.ucl"
 }
 
 lock_body() {
@@ -13,7 +13,7 @@ lock_body() {
 		    -o match:".*Installing.*\.\.\.$" \
 		    -e empty \
 		    -s exit:0 \
-		    pkg register -t -M $(atf_get_srcdir)/$pkg.ucl
+		    pkg register -t -M ${RESOURCEDIR}/$pkg.ucl
 	done
 
 	test -f "./local.sqlite" || \

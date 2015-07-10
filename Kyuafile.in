@@ -1,0 +1,4 @@
+syntax(2)
+test_suite("pkg")
+
+include("@top_builddir@/tests/Kyuafile")

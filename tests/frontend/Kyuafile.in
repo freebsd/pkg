@@ -1,0 +1,25 @@
+syntax('kyuafile', 1)
+
+test_suite('prop: test-suite = frontend')
+
+atf_test_program{name='001sanity'}
+atf_test_program{name='add'}
+atf_test_program{name='alias'}
+atf_test_program{name='annotate'}
+atf_test_program{name='conflicts'}
+atf_test_program{name='conflicts-multirepo'}
+atf_test_program{name='create'}
+atf_test_program{name='delete'}
+atf_test_program{name='lock'}
+atf_test_program{name='packagesplit'}
+atf_test_program{name='php-pr'}
+atf_test_program{name='pkg'}
+atf_test_program{name='query'}
+atf_test_program{name='register'}
+atf_test_program{name='repo'}
+atf_test_program{name='requires'}
+atf_test_program{name='rootdir'}
+atf_test_program{name='rubypuppet'}
+atf_test_program{name='search'}
+atf_test_program{name='set'}
+atf_test_program{name='version'}

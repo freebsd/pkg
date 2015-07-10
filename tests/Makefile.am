@@ -70,44 +70,12 @@ merge_SOURCES=	lib/merge.c
 merge_CFLAGS=	$(PRIVATE_INCS)
 merge_LDADD=	$(GENERIC_LDADD)
 
-EXTRA_DIST=	frontend/png.uclin \
-		frontend/sqlite3.uclin \
-		Kyuafile \
-		frontend/Kyuafile \
-		frontend/001sanity.shin \
-		frontend/add.shin \
-		frontend/alias.shin \
-		frontend/annotate.shin \
-		frontend/conflicts.shin \
-		frontend/conflicts-multirepo.shin \
-		frontend/create.shin \
-		frontend/delete.shin \
-		frontend/lock.shin \
-		frontend/packagesplit.shin \
-		frontend/php-pr.shin \
-		frontend/pkg.shin \
-		frontend/query.shin \
-		frontend/register.shin \
-		frontend/repo.shin \
-		frontend/requires.shin \
-		frontend/rootdir.shin \
-		frontend/rubypuppet.shin \
-		frontend/search.shin \
-		frontend/set.shin \
-		frontend/test_environment.shin \
-		frontend/version.shin
+EXTRA_DIST=	frontend/png.ucl \
+		frontend/sqlite3.ucl \
+		$(tests_scripts)
 
-TESTS =
-tests_programs=	pkg_printf \
-		pkg_validation \
-		plist \
-		checksum \
-		deps_formula \
-		pkg_add_dir_to_del \
-		merge
-EXTRA_PROGRAMS=	$(tests_programs)
-check_PROGRAMS=	$(tests_programs)
-check_SCRIPTS=	frontend/pkg.sh \
+tests_scripts=	\
+		frontend/pkg.sh \
 		frontend/add.sh \
 		frontend/001sanity.sh \
 		frontend/alias.sh \
@@ -127,21 +95,29 @@ check_SCRIPTS=	frontend/pkg.sh \
 		frontend/rubypuppet.sh \
 		frontend/search.sh \
 		frontend/set.sh \
-		frontend/version.sh \
-		frontend/test_environment.sh \
-		frontend/png.ucl \
-		frontend/sqlite3.ucl
-CLEANFILES+=	${check_SCRIPTS}
-SUFFIXES = .sh .ucl
+		frontend/version.sh
+		frontend/test_environment.sh
 
-.shin.sh:
-	@echo "    GEN   " $@;
-	@install -m 755 $< $@
+check_SCRIPTS=	$(tests_scripts:.sh=)
+CLEANFILES+=	$(check_SCRIPTS)
 
-.uclin.ucl:
-	@echo "    GEN   " $@;
-	@install -m 644 $< $@
+TESTS =
+tests_programs=	pkg_printf \
+		pkg_validation \
+		plist \
+		checksum \
+		deps_formula \
+		pkg_add_dir_to_del \
+		merge
+EXTRA_PROGRAMS=	$(tests_programs)
+check_PROGRAMS=	$(tests_programs)
+
+SUFFIXES= .sh
 
 lib/pkg_printf.c: $(top_srcdir)/libpkg/pkg_printf.c
 	@echo "    CP    " $@;
 	@cp $(top_srcdir)/libpkg/pkg_printf.c $@
+
+.sh:
+	@echo "    CP    " $@:
+	@install -m 755 $< $@
