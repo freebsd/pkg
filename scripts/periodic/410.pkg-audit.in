@@ -55,6 +55,10 @@ audit_pkgs() {
     if [ $rc -ne 0 -o \
 	$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
 	-le $(( ${now} - ${then} + 600 )) ]; then
+	# Random delay so the mirrors do not get slammed when run by periodic(8)
+	if [ ! -t 0 ]; then
+	    sleep `jot -r 1 0 3600`
+	fi
 	${pkgcmd} ${pkgargs} audit -F $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
     else
 	echo -n 'Database fetched: '
