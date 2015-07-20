@@ -511,6 +511,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sql_exec(sqlite, "PRAGMA page_size = %d;", getpagesize());
 	sql_exec(sqlite, "PRAGMA foreign_keys = OFF;");
 	sql_exec(sqlite, "PRAGMA locking_mode = EXCLUSIVE;");
+	sql_exec(sqlite, "PRAGMA synchronous = OFF;");
 
 	rc = pkgdb_transaction_begin_sqlite(sqlite, "REPO");
 	if (rc != EPKG_OK)
