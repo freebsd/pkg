@@ -348,12 +348,12 @@ if test "$ac_cv_func_dirname" = yes ; then
 fi
 
 AC_CACHE_CHECK(for BSD statfs(const char *path, struct statfs *buf),
-               ac_cv_func_dirname,
+               ac_cv_func_statfs,
                [ac_save_CFLAGS="$CFLAGS"
 		CFLAGS="-Werror $CFLAGS"
 		AC_TRY_COMPILE([#include <sys/param.h>
      					#include <sys/mount.h>],
-                               [static int *(*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("");],
+                               [struct statfs stfs; static int (*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("", &stfs);],
                                [ac_cv_func_statfs=yes],
                                [ac_cv_func_statfs=no])
 		CFLAGS="$ac_save_CFLAGS"])
