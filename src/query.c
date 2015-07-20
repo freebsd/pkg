@@ -126,7 +126,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *dat
 			case 's':
 				qstr++;
 				if (qstr[0] == 'h') 
-					pkg_sbuf_printf(dest, "%?sB", pkg);
+					pkg_sbuf_printf(dest, "%#sB", pkg);
 			        else if (qstr[0] == 'b')
 					pkg_sbuf_printf(dest, "%s", pkg);
 				break;
