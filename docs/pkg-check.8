@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd July 20, 2015
+.Dd July 21, 2015
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -119,8 +119,8 @@ for additional information.
 See
 .Xr pkg.conf 5 .
 .Sh EXAMPLES
-Check the shared libraries of all installed packages, reinstalling any
-that differ from those included with the package:
+Regenerate the library dependency metadata of all installed packages
+from the library information in each package's binary ELF files:
 .Bd -literal -offset indent
 pkg check -Ba
 .Ed
