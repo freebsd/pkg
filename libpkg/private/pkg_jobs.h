@@ -197,11 +197,7 @@ void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
 	const char *new_uid, size_t uidlen, bool update_rdeps);
 
-/*
- * Find remote package in db or universe
- */
-struct pkg* pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
-	const char *uid, unsigned flag);
+
 
 /*
  * Find local package in db or universe

@@ -118,7 +118,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
-	struct pkg_chain *result = NULL, r;
+	struct pkg_chain *result = NULL, *r;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *cur, *found;
 
@@ -143,8 +143,8 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		} while (cur != unit);
 
 		if (found) {
-			pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
-			return (unit->pkg);
+			/* Assume processed */
+			return (NULL);
 		}
 	}
 
