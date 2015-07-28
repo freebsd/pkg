@@ -302,50 +302,6 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 }
 
 static int
-pkg_jobs_universe_process_conflicts(struct pkg_jobs_universe *universe,
-	struct pkg *pkg)
-{
-	struct pkg_conflict *c = NULL;
-	struct pkg_job_universe_item *unit;
-	struct pkg *npkg;
-
-	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
-		HASH_FIND_STR(universe->items, c->uid, unit);
-		if (unit != NULL)
-			continue;
-
-		/* Check local and remote conflicts */
-		if (pkg->type == PKG_INSTALLED) {
-			/* Installed packages can conflict with remote ones */
-			npkg = pkg_jobs_universe_get_remote(universe, c->uid, 0);
-			if (npkg == NULL)
-				continue;
-
-			pkg_jobs_universe_process_item(universe, npkg, NULL);
-		}
-		else {
-			/* Remote packages can conflict with remote and local */
-			npkg = pkg_jobs_universe_get_local(universe, c->uid, 0);
-			if (npkg != NULL) {
-				if (pkg_jobs_universe_process_item(universe, npkg, NULL) != EPKG_OK)
-					continue;
-
-				if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
-					npkg = pkg_jobs_universe_get_remote(universe,
-					    c->uid, 0);
-					if (npkg == NULL)
-						continue;
-
-					pkg_jobs_universe_process_item(universe, npkg, NULL);
-				}
-			}
-		}
-	}
-
-	return (EPKG_OK);
-}
-
-static int
 pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 		struct pkgdb_it *it, const char *name, bool is_shlib)
 {
@@ -580,10 +536,6 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 			flags|DEPS_FLAG_REVERSE);
 		if (rc != EPKG_OK)
 				return (rc);
-		/* Handle conflicts */
-		rc = pkg_jobs_universe_process_conflicts(universe, pkg);
-		if (rc != EPKG_OK)
-			return (rc);
 		/* Provides/requires */
 		rc = pkg_jobs_universe_process_shlibs(universe, pkg);
 		if (rc != EPKG_OK)
