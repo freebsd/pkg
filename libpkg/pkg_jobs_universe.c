@@ -48,6 +48,11 @@
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
+struct pkg_chain {
+	struct pkg *p;
+	struct pkg_chain *next;
+};
+
 struct pkg *
 pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
@@ -96,11 +101,24 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	return (pkg);
 }
 
-struct pkg *
+static void
+pkg_jobs_universe_free_chain(struct pkg_chain *chain)
+{
+	struct pkg_chain *cur, *tmp;
+
+	if (chain) {
+		LL_FOREACH_SAFE(chain, cur, tmp) {
+			free(cur);
+		}
+	}
+}
+
+static struct pkg_chain *
 pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
-	struct pkg *pkg = NULL, *selected = NULL;
+	struct pkg *pkg = NULL;
+	struct pkg_chain *result = NULL, r;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *cur, *found;
 
@@ -135,23 +153,15 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		return (NULL);
 
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
-
-		if (selected == NULL) {
-			selected = pkg;
-			pkg = NULL;
-		}
-		else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE) {
-			selected = pkg;
-			pkg = NULL;
-		}
-
+		r = malloc(sizeof(*r));
+		r->p = pkg;
+		pkg = NULL;
+		LL_PREPEND(result, r);
 	}
-	if (pkg != NULL && pkg != selected)
-		pkg_free(pkg);
 
 	pkgdb_it_free(it);
 
-	return (selected);
+	return (result);
 }
 
 /**
@@ -236,6 +246,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	struct pkg_job_universe_item *unit;
 	struct pkg *npkg, *rpkg;
+	struct pkg_chain *rpkgs, *cur_remote;
 
 	if (flags & DEPS_FLAG_REVERSE)
 		deps_func = pkg_rdeps;
@@ -247,7 +258,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		if (unit != NULL)
 			continue;
 
-		rpkg = NULL;
+		rpkgs = NULL;
 		npkg = NULL;
 		if (!(flags & DEPS_FLAG_MIRROR))
 			npkg = pkg_jobs_universe_get_local(universe, d->uid, 0);
@@ -255,20 +266,10 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		if (!(flags & DEPS_FLAG_FORCE_LOCAL)) {
 
 			/* Check for remote dependencies */
-			rpkg = pkg_jobs_universe_get_remote(universe, d->uid, 0);
-			if (rpkg != NULL && !(flags & DEPS_FLAG_FORCE_UPGRADE)) {
-				if (!pkg_jobs_need_upgrade(rpkg, npkg)) {
-					/*
-					 * We can do it safely here, as rpkg is definitely NOT in
-					 * the universe
-					 */
-					pkg_free(rpkg);
-					rpkg = NULL;
-				}
-			}
+			rpkgs = pkg_jobs_universe_get_remote(universe, d->uid, 0);
 		}
 
-		if (npkg == NULL && rpkg == NULL) {
+		if (npkg == NULL && rpkgs == NULL) {
 			pkg_emit_error("%s has a missing dependency: %s",
 				pkg->name, d->name);
 
@@ -282,13 +283,18 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK)
 				continue;
 
-		if (rpkg != NULL) {
-			if (npkg != NULL) {
-				/* Save automatic flag */
-				rpkg->automatic = npkg->automatic;
+		if (rpkgs != NULL) {
+			LL_FOREACH(rpkgs, cur_remote) {
+				rpkg = cur_remote->p;
+				if (npkg != NULL) {
+					/* Save automatic flag */
+					rpkg->automatic = npkg->automatic;
+				}
+
+				pkg_jobs_universe_process_item(universe, rpkg, NULL);
 			}
 
-			pkg_jobs_universe_process_item(universe, rpkg, NULL);
+			pkg_jobs_universe_free_chain(rpkgs);
 		}
 	}
 
