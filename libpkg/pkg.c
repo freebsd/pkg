@@ -1672,10 +1672,11 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 
 			if (regular)
 				flatsize += st.st_size;
+		
+			if (strcmp(sum, f->sum) != 0)
+				pkgdb_file_set_cksum(db, f, sum);
+			free(sum);
 		}
-		if (strcmp(sum, f->sum) != 0)
-			pkgdb_file_set_cksum(db, f, sum);
-		free(sum);
 	}
 	kh_destroy_hardlinks(hl);
 
