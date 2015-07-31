@@ -67,15 +67,18 @@ static const char *rule_reasons[] = {
 	[PKG_RULE_MAX] = NULL
 };
 
+enum pkg_solve_variable_flags {
+	PKG_VAR_INSTALL = (1 << 0),
+	PKG_VAR_TOP = (1 << 1),
+	PKG_VAR_FAILED = (1 << 2),
+	PKG_VAR_ASSUMED = (1 << 3)
+};
 struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
-	bool to_install;
-	bool top_level;
-	bool failed;
-	int priority;
+	unsigned int flags;
+	int order;
 	const char *digest;
 	const char *uid;
-	int order;
 	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
 };
@@ -586,7 +589,9 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	rule = pkg_solve_rule_new(PKG_RULE_REQUEST);
 	if (rule == NULL)
 		return (EPKG_FATAL);
+
 	cnt = 0;
+
 	LL_FOREACH(req->item, item) {
 		curvar = pkg_solve_find_var_in_chain(var, item->unit);
 		assert(curvar != NULL);
@@ -597,8 +602,12 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		}
 
 		/* All request variables are top level */
-		curvar->top_level = true;
-		curvar->to_install = inverse > 0;
+		curvar->flags |= PKG_VAR_TOP;
+
+		if (inverse > 0) {
+			curvar->flags = PKG_VAR_INSTALL;
+		}
+
 		it->inverse = inverse;
 		RULE_ITEM_PREPEND(rule, it);
 		cnt ++;
@@ -647,8 +656,10 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		pkg_solve_rule_free(rule);
 	}
 
-	var->top_level = true;
-	var->to_install = inverse > 0;
+	var->flags |= PKG_VAR_TOP;
+	if (inverse > 0) {
+		curvar->flags = PKG_VAR_INSTALL;
+	}
 
 	return (EPKG_OK);
 }
@@ -745,7 +756,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Request */
-		if (!cur_var->top_level) {
+		if (!(cur_var->flags & PKG_VAR_TOP)) {
 			HASH_FIND_STR(j->request_add, cur_var->uid, jreq);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
@@ -887,10 +898,10 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 			}
 		}
 
-		if (var->top_level)
+		if (var->flags & PKG_VAR_TOP)
 			continue;
 
-		if (!var->failed) {
+		if (!(var->flags & (PKG_VAR_FAILED|PKG_VAR_ASSUMED))) {
 			if (is_installed) {
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
 				picosat_set_more_important_lit(problem->sat, i + 1);
@@ -911,7 +922,7 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 				picosat_set_more_important_lit(problem->sat, i + 1);
 			}
 
-			var->failed = false;
+			var->flags &= ~PKG_VAR_FAILED;
 		}
 	}
 
@@ -967,11 +978,18 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			while (var != NULL) {
 				if (var->unit == selected) {
 					picosat_set_default_phase_lit(problem->sat, var->order, 1);
-					pkg_debug(2, "solver: assumed %s-%s(%s) to be installed",
+					pkg_debug(4, "solver: assumed %s-%s(%s) to be installed",
 							selected->pkg->name, selected->pkg->version,
 							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
-					break;
 				}
+				else {
+					pkg_debug(4, "solver: assumed %s-%s(%s) to be NOT installed",
+							selected->pkg->name, selected->pkg->version,
+							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
+					picosat_set_default_phase_lit(problem->sat, var->order, 0);
+				}
+
+				var->flags |= PKG_VAR_ASSUMED;
 				var = var->next;
 			}
 		}
@@ -1031,13 +1049,13 @@ reiterate:
 			}
 
 			sbuf_printf(sb, "cannot %s package %s, remove it from request? ",
-				var->to_install ? "install" : "remove", var->uid);
+				var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
 			sbuf_finish(sb);
 
 			if (pkg_emit_query_yesno(true, sbuf_data(sb))) {
 				struct pkg_job_request *req;
 				/* Remove this assumption and the corresponding request */
-				if (var->to_install)
+				if (var->flags & PKG_VAR_INSTALL)
 					HASH_FIND_PTR(problem->j->request_add, &var->unit, req);
 				else
 					HASH_FIND_PTR(problem->j->request_delete, &var->unit, req);
@@ -1046,7 +1064,7 @@ reiterate:
 					return (EPKG_FATAL);
 				}
 
-				if (var->to_install)
+				if (var->flags & PKG_VAR_INSTALL)
 					HASH_DEL(problem->j->request_add, req);
 				else
 					HASH_DEL(problem->j->request_delete, req);
@@ -1071,15 +1089,14 @@ reiterate:
 		struct pkg_solve_variable *var = &problem->variables[i];
 
 		if (val > 0)
-			var->to_install = true;
+			var->flags |= PKG_VAR_INSTALL;
 		else
-			var->to_install = false;
+			var->flags &= ~PKG_VAR_INSTALL;
 
-		pkg_debug(2, "decided %s %s-%s(%d) to %s",
+		pkg_debug(2, "decided %s %s-%s to %s",
 			var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
 			var->uid, var->digest,
-			var->priority,
-			var->to_install ? "install" : "delete");
+			var->flags & PKG_VAR_INSTALL ? "install" : "delete");
 	}
 
 	/* Check for reiterations */
@@ -1089,9 +1106,9 @@ reiterate:
 			bool failed_var = false;
 			struct pkg_solve_variable *var = &problem->variables[i], *cur;
 
-			if (!var->to_install) {
+			if (!(var->flags & PKG_VAR_INSTALL)) {
 				LL_FOREACH(var, cur) {
-					if (cur->to_install) {
+					if (cur->flags & PKG_VAR_INSTALL) {
 						failed_var = false;
 						break;
 					}
@@ -1112,7 +1129,7 @@ reiterate:
 				need_reiterate = true;
 
 				LL_FOREACH(var, cur) {
-					cur->failed = true;
+					cur->flags |= PKG_VAR_FAILED;
 				}
 			}
 		}
@@ -1125,8 +1142,9 @@ reiterate:
 		for (i = 0; i < problem->nvars; i ++) {
 			struct pkg_solve_variable *var = &problem->variables[i];
 
-			if (var->top_level) {
-				picosat_assume(problem->sat, var->order * (var->to_install ? 1 : -1));
+			if (var->flags & PKG_VAR_TOP) {
+				picosat_assume(problem->sat, var->order *
+						(var->flags & PKG_VAR_INSTALL ? 1 : -1));
 			}
 		}
 
@@ -1190,15 +1208,18 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 	struct pkg_jobs *j = problem->j;
 
 	LL_FOREACH(var, cur_var) {
-		if (cur_var->to_install && cur_var->unit->pkg->type != PKG_INSTALLED) {
+		if ((cur_var->flags & PKG_VAR_INSTALL) &&
+				cur_var->unit->pkg->type != PKG_INSTALLED) {
 			add_var = cur_var;
 			seen_add ++;
 		}
-		else if (!cur_var->to_install && cur_var->unit->pkg->type == PKG_INSTALLED) {
+		else if (!(cur_var->flags & PKG_VAR_INSTALL)
+				&& cur_var->unit->pkg->type == PKG_INSTALLED) {
 			del_var = cur_var;
 			seen_del ++;
 		}
 	}
+
 	if (seen_add > 1) {
 		pkg_emit_error("internal solver error: more than two packages to install(%d) "
 				"from the same uid: %s", seen_add, var->uid);
@@ -1237,7 +1258,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		 * so we need to re-process vars and add all delete jobs required.
 		 */
 		LL_FOREACH(var, cur_var) {
-			if (!cur_var->to_install && cur_var->unit->pkg->type == PKG_INSTALLED) {
+			if (!(cur_var->flags & PKG_VAR_INSTALL) &&
+					cur_var->unit->pkg->type == PKG_INSTALLED) {
 				/* Skip already added items */
 				if (seen_add > 0 && cur_var == del_var)
 					continue;
@@ -1314,8 +1336,14 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL)
-					nord->var->to_install = (*var_str != '-');
+				if (nord != NULL) {
+					if (*var_str == '-') {
+						nord->var->flags &= ~PKG_VAR_INSTALL;
+					}
+					else {
+						nord->var->flags |= PKG_VAR_INSTALL;
+					}
+				}
 			} while (begin != NULL);
 		}
 		else if (strncmp(line, "v ", 2) == 0) {
@@ -1333,8 +1361,15 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL)
-					nord->var->to_install = (*var_str != '-');
+
+				if (nord != NULL) {
+					if (*var_str == '-') {
+						nord->var->flags &= ~PKG_VAR_INSTALL;
+					}
+					else {
+						nord->var->flags |= PKG_VAR_INSTALL;
+					}
+				}
 			} while (begin != NULL);
 		}
 		else {
