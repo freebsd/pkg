@@ -920,6 +920,71 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 	return (res);
 }
 
+static void
+pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
+		struct pkg_solve_rule *rule)
+{
+	struct pkg_job_universe_item *selected, *cur, *local, *first;
+	struct pkg_solve_item *item;
+	struct pkg_solve_variable *var;
+	bool conservative = false;
+
+	conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
+
+	switch (rule->reason) {
+	case PKG_RULE_DEPEND:
+		/*
+		 * The first item is dependent item, the next items are
+		 * dependencies. We assume that all deps belong to a single
+		 * upgrade chain.
+		 */
+		assert (rule->items != NULL);
+		item = rule->items->next;
+		assert (item != NULL);
+		var = item->var;
+		first = var->unit;
+
+		/* Rewind chain */
+		while (first->prev->next != NULL) {
+			first = first->prev;
+		}
+		/* Forward chain to find local package */
+		local = NULL;
+
+		DL_FOREACH (first, cur) {
+			if (cur->pkg->type == PKG_INSTALLED) {
+				local = cur;
+				break;
+			}
+		}
+
+		selected = pkg_jobs_universe_select_candidate(first, local, conservative);
+		/* Now we can find the according var */
+		if (selected != NULL) {
+			while (var->prev->next != NULL) {
+				var = var->prev;
+			}
+			while (var != NULL) {
+				if (var->unit == selected) {
+					picosat_set_default_phase_lit(problem->sat, var->order, 1);
+					pkg_debug(2, "solver: assumed %s-%s(%s) to be installed",
+							selected->pkg->name, selected->pkg->version,
+							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
+					break;
+				}
+				var = var->next;
+			}
+		}
+		break;
+	case PKG_RULE_REQUIRE:
+		/* XXX: deal with require rules somehow */
+		break;
+	default:
+		/* No nothing */
+		return;
+	}
+}
+
 int
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
@@ -931,9 +996,12 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 	for (i = 0; i < kv_size(problem->rules); i++) {
 		rule = kv_A(problem->rules, i);
+
 		LL_FOREACH(rule->items, item) {
 			picosat_add(problem->sat, item->var->order * item->inverse);
 		}
+
+		pkg_solve_set_initial_assumption(problem, rule);
 		picosat_add(problem->sat, 0);
 		pkg_debug_print_rule(rule);
 	}

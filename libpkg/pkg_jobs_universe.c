@@ -939,7 +939,7 @@ pkg_jobs_universe_select_same_repo(struct pkg_job_universe_item *chain,
 	return (res);
 }
 
-static struct pkg_job_universe_item *
+struct pkg_job_universe_item *
 pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 	struct pkg_job_universe_item *local, bool conservative)
 {
