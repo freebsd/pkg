@@ -89,7 +89,7 @@ struct pkg_solve_item {
 	int nresolved;
 	struct pkg_solve_variable *var;
 	int inverse;
-	struct pkg_solve_item *next;
+	struct pkg_solve_item *prev,*next;
 };
 
 struct pkg_solve_rule {
@@ -202,9 +202,9 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 }
 
 
-#define RULE_ITEM_PREPEND(rule, item) do {									\
+#define RULE_ITEM_APPEND(rule, item) do {									\
 	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
-	LL_PREPEND((rule)->items, (item));										\
+	DL_APPEND((rule)->items, (item));										\
 } while (0)
 
 static void
@@ -350,7 +350,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			return (EPKG_FATAL);
 
 		it->inverse = 1;
-		RULE_ITEM_PREPEND(rule, it);
+		RULE_ITEM_APPEND(rule, it);
 		(*cnt) ++;
 	}
 
@@ -386,7 +386,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	}
 
 	it->inverse = -1;
-	RULE_ITEM_PREPEND(rule, it);
+	RULE_ITEM_APPEND(rule, it);
 	/* B1 | B2 | ... */
 	cnt = 1;
 	LL_FOREACH(depvar, curvar) {
@@ -397,7 +397,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		}
 
 		it->inverse = 1;
-		RULE_ITEM_PREPEND(rule, it);
+		RULE_ITEM_APPEND(rule, it);
 		cnt ++;
 	}
 
@@ -468,7 +468,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		}
 
 		it->inverse = -1;
-		RULE_ITEM_PREPEND(rule, it);
+		RULE_ITEM_APPEND(rule, it);
 		/* !Bx */
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL) {
@@ -477,7 +477,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		}
 
 		it->inverse = -1;
-		RULE_ITEM_PREPEND(rule, it);
+		RULE_ITEM_APPEND(rule, it);
 
 		kv_prepend(typeof(rule), problem->rules, rule);
 	}
@@ -515,7 +515,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		}
 
 		it->inverse = -1;
-		RULE_ITEM_PREPEND(rule, it);
+		RULE_ITEM_APPEND(rule, it);
 		/* B1 | B2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
@@ -606,11 +606,11 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		curvar->flags |= PKG_VAR_TOP;
 
 		if (inverse > 0) {
-			curvar->flags = PKG_VAR_INSTALL;
+			curvar->flags |= PKG_VAR_INSTALL;
 		}
 
 		it->inverse = inverse;
-		RULE_ITEM_PREPEND(rule, it);
+		RULE_ITEM_APPEND(rule, it);
 		cnt ++;
 	}
 
@@ -636,7 +636,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 					}
 
 					it->inverse = -1;
-					RULE_ITEM_PREPEND(rule, it);
+					RULE_ITEM_APPEND(rule, it);
 					/* !Bx */
 					it = pkg_solve_item_new(confvar);
 					if (it == NULL) {
@@ -645,7 +645,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 					}
 
 					it->inverse = -1;
-					RULE_ITEM_PREPEND(rule, it);
+					RULE_ITEM_APPEND(rule, it);
 
 					kv_prepend(typeof(rule), problem->rules, rule);
 				}
@@ -696,14 +696,14 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 			}
 
 			it->inverse = -1;
-			RULE_ITEM_PREPEND(rule, it);
+			RULE_ITEM_APPEND(rule, it);
 			/* !Ay */
 			it = pkg_solve_item_new(confvar);
 			if (it == NULL)
 				return (EPKG_FATAL);
 
 			it->inverse = -1;
-			RULE_ITEM_PREPEND(rule, it);
+			RULE_ITEM_APPEND(rule, it);
 
 			kv_prepend(typeof(rule), problem->rules, rule);
 		}
