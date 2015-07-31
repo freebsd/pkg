@@ -357,7 +357,11 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		head = &j->request_delete;
 		assert(pkg->type == PKG_INSTALLED);
 	}
+
+	pkg_debug(4, "universe: add package %s-%s to the request", pkg->name,
+			pkg->version);
 	rc = pkg_jobs_universe_add_pkg(j->universe, pkg, false, &un);
+
 	if (rc == EPKG_END) {
 		/*
 		 * This means that we have a package in the universe with the same
@@ -1574,7 +1578,10 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		}
 	}
 
+#if 0
+	/* XXX: check if we can safely remove this function */
 	pkg_jobs_process_add_request(j);
+#endif
 	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
