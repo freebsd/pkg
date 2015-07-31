@@ -659,7 +659,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 
 	var->flags |= PKG_VAR_TOP;
 	if (inverse > 0) {
-		curvar->flags = PKG_VAR_INSTALL;
+		var->flags |= PKG_VAR_INSTALL;
 	}
 
 	return (EPKG_OK);
@@ -913,7 +913,7 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter)
 				picosat_set_less_important_lit(problem->sat, i + 1);
 			}
 		}
-		else {
+		else if (var->flags & PKG_VAR_FAILED) {
 			if (var->unit->pkg->type == PKG_INSTALLED) {
 				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
 				picosat_set_less_important_lit(problem->sat, i + 1);
@@ -938,12 +938,13 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 {
 	struct pkg_job_universe_item *selected, *cur, *local, *first;
 	struct pkg_solve_item *item;
-	struct pkg_solve_variable *var;
-	bool conservative = false;
+	struct pkg_solve_variable *var, *cvar;
+	bool conservative = false, prefer_local = false;
 
-	if (problem->j == PKG_JOBS_INSTALL) {
+	if (problem->j->type == PKG_JOBS_INSTALL) {
 		/* Avoid upgrades on INSTALL job */
 		conservative = true;
+		prefer_local = true;
 	}
 	else {
 		conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
@@ -966,17 +967,33 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			 * We are interested merely in dependencies of top variables
 			 * or of previously assumed dependencies
 			 */
+			pkg_debug(4, "solver: not interested in dependencies for %s-%s",
+					var->unit->pkg->name, var->unit->pkg->version);
 			return;
 		}
+		else {
+			pkg_debug(4, "solver: examine dependencies for %s-%s",
+					var->unit->pkg->name, var->unit->pkg->version);
+		}
+
 
 		item = rule->items->next;
 		assert (item != NULL);
 		var = item->var;
 		first = var->unit;
 
-		/* Rewind chain */
+		/* Rewind chains */
 		while (first->prev->next != NULL) {
 			first = first->prev;
+		}
+		while (var->prev->next != NULL) {
+			var = var->prev;
+		}
+		LL_FOREACH(var, cvar) {
+			if (cvar->flags & PKG_VAR_ASSUMED) {
+				/* Do not reassume packages */
+				return;
+			}
 		}
 		/* Forward chain to find local package */
 		local = NULL;
@@ -988,30 +1005,35 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			}
 		}
 
-		selected = pkg_jobs_universe_select_candidate(first, local, conservative);
+		if (prefer_local && local != NULL) {
+			selected = local;
+		}
+		else {
+			selected = pkg_jobs_universe_select_candidate(first, local,
+					conservative);
+		}
+
 		/* Now we can find the according var */
 		if (selected != NULL) {
-			while (var->prev->next != NULL) {
-				var = var->prev;
-			}
-			while (var != NULL) {
-				if (var->unit == selected) {
-					picosat_set_default_phase_lit(problem->sat, var->order, 1);
+
+			LL_FOREACH(var, cvar) {
+				if (cvar->unit == selected) {
+					picosat_set_default_phase_lit(problem->sat, cvar->order, 1);
 					pkg_debug(4, "solver: assumed %s-%s(%s) to be installed",
 							selected->pkg->name, selected->pkg->version,
 							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
-					var->flags |= PKG_VAR_ASSUMED_TRUE;
+					cvar->flags |= PKG_VAR_ASSUMED_TRUE;
 				}
 				else {
 					pkg_debug(4, "solver: assumed %s-%s(%s) to be NOT installed",
-							selected->pkg->name, selected->pkg->version,
-							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
-					picosat_set_default_phase_lit(problem->sat, var->order, 0);
+							cvar->unit->pkg->name, cvar->unit->pkg->version,
+							cvar->unit->pkg->type == PKG_INSTALLED ? "l" : "r");
+					picosat_set_default_phase_lit(problem->sat, cvar->order, -1);
 				}
 
-				var->flags |= PKG_VAR_ASSUMED;
-				var = var->next;
+				cvar->flags |= PKG_VAR_ASSUMED;
 			}
+
 		}
 		break;
 	case PKG_RULE_REQUIRE:
@@ -1039,9 +1061,13 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			picosat_add(problem->sat, item->var->order * item->inverse);
 		}
 
-		pkg_solve_set_initial_assumption(problem, rule);
 		picosat_add(problem->sat, 0);
 		pkg_debug_print_rule(rule);
+	}
+
+	for (i = 0; i < kv_size(problem->rules); i++) {
+		rule = kv_A(problem->rules, i);
+		pkg_solve_set_initial_assumption(problem, rule);
 	}
 
 reiterate:
