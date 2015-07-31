@@ -71,7 +71,8 @@ enum pkg_solve_variable_flags {
 	PKG_VAR_INSTALL = (1 << 0),
 	PKG_VAR_TOP = (1 << 1),
 	PKG_VAR_FAILED = (1 << 2),
-	PKG_VAR_ASSUMED = (1 << 3)
+	PKG_VAR_ASSUMED = (1 << 3),
+	PKG_VAR_ASSUMED_TRUE = (1 << 4)
 };
 struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
@@ -940,7 +941,13 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var;
 	bool conservative = false;
 
-	conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
+	if (problem->j == PKG_JOBS_INSTALL) {
+		/* Avoid upgrades on INSTALL job */
+		conservative = true;
+	}
+	else {
+		conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
+	}
 
 	switch (rule->reason) {
 	case PKG_RULE_DEPEND:
@@ -950,6 +957,18 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		 * upgrade chain.
 		 */
 		assert (rule->items != NULL);
+		item = rule->items;
+		var = item->var;
+
+		/* Check what we are depending on */
+		if (!(var->flags & (PKG_VAR_TOP|PKG_VAR_ASSUMED_TRUE))) {
+			/*
+			 * We are interested merely in dependencies of top variables
+			 * or of previously assumed dependencies
+			 */
+			return;
+		}
+
 		item = rule->items->next;
 		assert (item != NULL);
 		var = item->var;
@@ -981,6 +1000,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 					pkg_debug(4, "solver: assumed %s-%s(%s) to be installed",
 							selected->pkg->name, selected->pkg->version,
 							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
+					var->flags |= PKG_VAR_ASSUMED_TRUE;
 				}
 				else {
 					pkg_debug(4, "solver: assumed %s-%s(%s) to be NOT installed",
