@@ -287,6 +287,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			LL_FOREACH(rpkgs, cur_remote) {
 				rpkg = cur_remote->p;
 				if (npkg != NULL) {
+					/* Set reason for upgrades */
+					pkg_jobs_need_upgrade(rpkg, npkg);
 					/* Save automatic flag */
 					rpkg->automatic = npkg->automatic;
 				}
