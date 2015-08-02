@@ -243,6 +243,19 @@ AC_SUBST([GIT_HEAD])
 AC_DEFINE_UNQUOTED([GIT_HEAD], $GIT_HEAD)
 AC_DEFINE([PKG_API], [api_ver])
 
+AC_RUN_IFELSE(
+  [AC_LANG_SOURCE(
+    [[
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    int main() { return socket(AF_LOCAL, SOCK_SEQPACKET, 0) == -1 ? -1 : 0; }
+    ]]
+  )],
+  [AC_DEFINE([HAVE_SEQPACKET], 1, [Define to 1 if you have SOCK_SEQPACKET working])]
+)
+
+AC_SUBST([HAVE_SEQPACKET])
+
 AC_SEARCH_LIBS([lzma_version_string], [lzma], [], [
   AC_MSG_ERROR([unable to find the liblzma])
 ])

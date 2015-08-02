@@ -683,8 +683,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		if (--remain_jobs == 0) {
 			/* Create new worker */
 			int ofl;
+			int st = SOCK_DGRAM;
 
-			if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, cur_pipe) == -1) {
+#ifdef HAVE_SEQPACKET
+			st = SOCK_SEQPACKET;
+#endif
+			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
 				pkg_emit_errno("pkg_create_repo", "pipe");
 				retcode = EPKG_FATAL;
 				goto cleanup;
