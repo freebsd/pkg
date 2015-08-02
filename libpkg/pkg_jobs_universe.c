@@ -187,10 +187,25 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	HASH_FIND_STR(universe->seen, pkg->digest, seen);
 	if (seen != NULL && !force) {
-		if (found != NULL)
-			*found = seen->un;
+		/*
+		 * For remote packages we could have the same digest but different repos
+		 * therefore we should also compare reponames
+		 */
+		bool other_candidate = false;
 
-		return (EPKG_END);
+		if (seen->un->pkg->type != PKG_INSTALLED && pkg->type != PKG_INSTALLED) {
+			if (pkg->reponame && seen->un->pkg->reponame) {
+				other_candidate =
+						(strcmp(pkg->reponame, seen->un->pkg->reponame) != 0);
+			}
+		}
+
+		if (!other_candidate) {
+			if (found != NULL)
+				*found = seen->un;
+
+			return (EPKG_END);
+		}
 	}
 
 	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s:%s)",
