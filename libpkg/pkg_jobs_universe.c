@@ -1022,57 +1022,60 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				cur->pkg->uid);
 			HASH_DEL(j->request_add, req);
 			pkg_jobs_request_free(req);
+			continue;
 		}
-		else if (vercnt > 1) {
+
+		if (vercnt <= 1)
+			continue;
+
+		/*
+		 * Here we have more than one upgrade candidate,
+		 * if local == NULL, then we have two remote repos,
+		 * if local != NULL, then we have unspecified upgrade path
+		 */
+
+		if ((local == NULL && vercnt > 1) || (vercnt > 2)) {
+			/* Select the most recent or one of packages */
+			struct pkg_job_universe_item *selected;
+
+			selected = pkg_jobs_universe_select_candidate(unit, local,
+				conservative);
 			/*
-			 * Here we have more than one upgrade candidate,
-			 * if local == NULL, then we have two remote repos,
-			 * if local != NULL, then we have unspecified upgrade path
+			 * Now remove all requests but selected from the requested
+			 * candidates
 			 */
+			assert(selected != NULL);
+			HASH_DEL(j->request_add, req);
 
-			if ((local == NULL && vercnt > 1) || (vercnt > 2)) {
-				/* Select the most recent or one of packages */
-				struct pkg_job_universe_item *selected;
+			/*
+			 * We also check if the selected package has different digest,
+			 * and if it has the same digest we proceed only if we have a
+			 * forced job
+			 */
+			if (local != NULL && strcmp(local->pkg->digest,
+				selected->pkg->digest) == 0 &&
+				(j->flags & PKG_FLAG_FORCE) == 0) {
+				pkg_debug (1, "removing %s from the request as it is the "
+								"same as local", selected->pkg->uid);
+				continue;
+			}
 
-				selected = pkg_jobs_universe_select_candidate(unit, local,
-					conservative);
-				/*
-				 * Now remove all requests but selected from the requested
-				 * candidates
-				 */
-				assert(selected != NULL);
-				HASH_DEL(j->request_add, req);
-
-				/*
-				 * We also check if the selected package has different digest,
-				 * and if it has the same digest we proceed only if we have a
-				 * forced job
-				 */
-				if (local != NULL && strcmp(local->pkg->digest,
-					selected->pkg->digest) == 0 &&
-					(j->flags & PKG_FLAG_FORCE) == 0) {
-					pkg_debug (1, "removing %s from the request as it is the "
-									"same as local", selected->pkg->uid);
+			LL_FOREACH(unit, cur) {
+				if (cur == selected)
 					continue;
-				}
 
-				LL_FOREACH(unit, cur) {
-					if (cur != selected) {
-						DL_FOREACH_SAFE(req->item, rit, rtmp) {
-							if (rit->unit == cur) {
-								DL_DELETE(req->item, rit);
-								free(rit);
-							}
-						}
+				DL_FOREACH_SAFE(req->item, rit, rtmp) {
+					if (rit->unit == cur) {
+						DL_DELETE(req->item, rit);
+						free(rit);
 					}
 				}
-				HASH_ADD_KEYPTR(hh, j->request_add, selected->pkg->uid,
-					strlen (selected->pkg->uid), req);
 			}
+			HASH_ADD_KEYPTR(hh, j->request_add, selected->pkg->uid,
+				strlen (selected->pkg->uid), req);
 		}
 	}
 }
-
 
 struct pkg_job_universe_item*
 pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
