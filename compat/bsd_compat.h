@@ -146,12 +146,14 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
 #endif
 
-#ifndef __unused
-#ifdef __GNUC__
-# define __unused __attribute__((__unused__))
+#ifdef __unused
+# define __UNUSED __unused
 #else
-# define __unused
-#endif
+# ifdef __GNUC__
+#  define __UNUSED __attribute__((__unused__))
+# else
+#  define __UNUSED
+# endif
 #endif
 
 #if !HAVE_FUNOPEN

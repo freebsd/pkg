@@ -122,7 +122,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 }
 
 int
-exec_convert(__unused int argc, __unused char **argv)
+exec_convert(__UNUSED int argc, __UNUSED char **argv)
 {
 	int		 ch;
 	bool		 dry_run = false;

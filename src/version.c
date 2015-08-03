@@ -365,7 +365,7 @@ free_categories(void)
 static void
 free_index(kh_index_t *index)
 {
-	const char *key __unused;
+	const char *key __UNUSED;
 	struct index_entry *entry;
 
 	if (index == NULL)

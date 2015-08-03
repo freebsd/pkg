@@ -47,7 +47,7 @@ exec_plugins(int argc, char **argv)
 {
 	struct pkg_plugin *p = NULL;
 	int ch;
-	bool __unused list_only = true;
+	bool __UNUSED list_only = true;
 
 	struct option longopts[] = {
 		{ "list-only",	no_argument,	NULL,	'l' },

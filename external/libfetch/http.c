@@ -2042,7 +2042,7 @@ fetchGetHTTP(struct url *URL, const char *flags)
  * Store a file by HTTP
  */
 FILE *
-fetchPutHTTP(struct url *URL __unused, const char *flags __unused)
+fetchPutHTTP(struct url *URL __UNUSED, const char *flags __UNUSED)
 {
 	warnx("fetchPutHTTP(): not implemented");
 	return (NULL);
@@ -2067,7 +2067,7 @@ fetchStatHTTP(struct url *URL, struct url_stat *us, const char *flags)
  * List a directory
  */
 struct url_ent *
-fetchListHTTP(struct url *url __unused, const char *flags __unused)
+fetchListHTTP(struct url *url __UNUSED, const char *flags __UNUSED)
 {
 	warnx("fetchListHTTP(): not implemented");
 	return (NULL);

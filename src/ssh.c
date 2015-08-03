@@ -51,7 +51,7 @@ usage_ssh(void)
 }
 
 int
-exec_ssh(int argc, char **argv __unused)
+exec_ssh(int argc, char **argv __UNUSED)
 {
 	int fd = -1;
 	const char *restricted = NULL;

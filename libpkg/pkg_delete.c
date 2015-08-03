@@ -378,7 +378,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 }
 
 int
-pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, struct pkg *new)
+pkg_delete_dirs(__UNUSED struct pkgdb *db, struct pkg *pkg, struct pkg *new)
 {
 	struct pkg_dir	*dir = NULL;
 	struct pkg_dir	*d;

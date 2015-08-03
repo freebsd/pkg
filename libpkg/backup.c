@@ -42,7 +42,7 @@
 #define NPAGES	4
 
 static int
-ps_cb(void *ps, int ncols, char **coltext, __unused char **colnames)
+ps_cb(void *ps, int ncols, char **coltext, __UNUSED char **colnames)
 {
 	/* We should have exactly one row and one column of output */
 	if (ncols != 1)
