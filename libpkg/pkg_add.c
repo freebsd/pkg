@@ -346,7 +346,7 @@ pkg_globmatch(char *pattern, const char *name)
 		return (NULL);
 	}
 
-	for (i = 0; i < g.gl_matchc; i++) {
+	for (i = 0; i < g.gl_pathc; i++) {
 		/* the version starts here */
 		buf = strrchr(g.gl_pathv[i], '-');
 		if (buf == NULL)
