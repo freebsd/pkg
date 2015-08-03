@@ -234,8 +234,8 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 		break;
 	case PKG_RULE_UPGRADE_CONFLICT:
 		sbuf_printf(sb, "upgrade local %s-%s to remote %s-%s",
-			it->next->var->uid, it->next->var->unit->pkg->version,
-			it->var->uid, it->var->unit->pkg->version);
+			it->var->uid, it->var->unit->pkg->version,
+			it->next->var->uid, it->next->var->unit->pkg->version);
 		break;
 	case PKG_RULE_EXPLICIT_CONFLICT:
 		sbuf_printf(sb, "The following packages conflict with each other: ");
