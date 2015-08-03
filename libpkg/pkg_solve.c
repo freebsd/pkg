@@ -538,8 +538,8 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		 * This is terribly broken now so ignore till provides/requires
 		 * are really fixed.
 		 */
-		pkg_debug(1, "solver: cannot find provide for requirement: %s",
-		    requirement);
+		pkg_debug(1, "solver: for package: %s cannot find provide for requirement: %s",
+		    pkg->name, requirement);
 	}
 
 	return (EPKG_OK);
