@@ -446,7 +446,6 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 			if (other->type == PKG_INSTALLED)
 				continue;
 		}
-
 		/*
 		 * Also if a conflict is digest specific then we skip
 		 * variables with mismatched digests
@@ -1086,13 +1085,13 @@ reiterate:
 			for (i = 0; i < kv_size(problem->rules); i++) {
 				rule = kv_A(problem->rules, i);
 
-				if (rule->reason == PKG_RULE_EXPLICIT_CONFLICT) {
+				if (rule->reason != PKG_RULE_DEPEND) {
 					LL_FOREACH(rule->items, item) {
 						if (item->var == var) {
 							pkg_print_rule_sbuf(rule, sb);
 							sbuf_putc(sb, '\n');
+							break;
 						}
-						break;
 					}
 				}
 			}
