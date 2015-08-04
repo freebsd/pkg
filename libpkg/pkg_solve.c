@@ -446,7 +446,6 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 			if (other->type == PKG_INSTALLED)
 				continue;
 		}
-
 		/*
 		 * Also if a conflict is digest specific then we skip
 		 * variables with mismatched digests
@@ -1085,12 +1084,15 @@ reiterate:
 
 			for (i = 0; i < kv_size(problem->rules); i++) {
 				rule = kv_A(problem->rules, i);
-				LL_FOREACH(rule->items, item) {
-					if (item->var == var) {
-						pkg_print_rule_sbuf(rule, sb);
-						sbuf_putc(sb, '\n');
+
+				if (rule->reason != PKG_RULE_DEPEND) {
+					LL_FOREACH(rule->items, item) {
+						if (item->var == var) {
+							pkg_print_rule_sbuf(rule, sb);
+							sbuf_putc(sb, '\n');
+							break;
+						}
 					}
-					break;
 				}
 			}
 
@@ -1099,83 +1101,80 @@ reiterate:
 			sbuf_finish(sb);
 
 			if (pkg_emit_query_yesno(true, sbuf_data(sb))) {
-				struct pkg_job_request *req;
-				/* Remove this assumption and the corresponding request */
-				if (var->flags & PKG_VAR_INSTALL)
-					HASH_FIND_PTR(problem->j->request_add, &var->unit, req);
-				else
-					HASH_FIND_PTR(problem->j->request_delete, &var->unit, req);
-				if (req == NULL) {
-					pkg_emit_error("cannot find %s in the request", var->uid);
-					return (EPKG_FATAL);
-				}
+				var->flags |= PKG_VAR_FAILED;
+			}
 
-				if (var->flags & PKG_VAR_INSTALL)
-					HASH_DEL(problem->j->request_add, req);
-				else
-					HASH_DEL(problem->j->request_delete, req);
-				sbuf_reset(sb);
-			}
-			else {
-				sbuf_free(sb);
-				return (EPKG_FATAL);
-			}
+			sbuf_reset(sb);
+
+			failed ++;
+			need_reiterate = true;
+		}
+
+		sbuf_free(sb);
+#if 0
+		failed = picosat_next_maximal_satisfiable_subset_of_assumptions(problem->sat);
+
+		while (*failed) {
+			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
+
+			pkg_emit_notice("var: %s", var->uid);
 
 			failed ++;
 		}
 
-		sbuf_free(sb);
-
 		return (EPKG_AGAIN);
+#endif
 	}
+	else {
 
-	/* Assign vars */
-	for (i = 0; i < problem->nvars; i ++) {
-		int val = picosat_deref(problem->sat, i + 1);
-		struct pkg_solve_variable *var = &problem->variables[i];
-
-		if (val > 0)
-			var->flags |= PKG_VAR_INSTALL;
-		else
-			var->flags &= ~PKG_VAR_INSTALL;
-
-		pkg_debug(2, "decided %s %s-%s to %s",
-			var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
-			var->uid, var->digest,
-			var->flags & PKG_VAR_INSTALL ? "install" : "delete");
-	}
-
-	/* Check for reiterations */
-	if ((problem->j->type == PKG_JOBS_INSTALL ||
-			problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
+		/* Assign vars */
 		for (i = 0; i < problem->nvars; i ++) {
-			bool failed_var = false;
-			struct pkg_solve_variable *var = &problem->variables[i], *cur;
+			int val = picosat_deref(problem->sat, i + 1);
+			struct pkg_solve_variable *var = &problem->variables[i];
 
-			if (!(var->flags & PKG_VAR_INSTALL)) {
-				LL_FOREACH(var, cur) {
-					if (cur->flags & PKG_VAR_INSTALL) {
-						failed_var = false;
-						break;
-					}
-					else if (cur->unit->pkg->type == PKG_INSTALLED) {
-						failed_var = true;
+			if (val > 0)
+				var->flags |= PKG_VAR_INSTALL;
+			else
+				var->flags &= ~PKG_VAR_INSTALL;
+
+			pkg_debug(2, "decided %s %s-%s to %s",
+					var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
+							var->uid, var->digest,
+							var->flags & PKG_VAR_INSTALL ? "install" : "delete");
+		}
+
+		/* Check for reiterations */
+		if ((problem->j->type == PKG_JOBS_INSTALL ||
+				problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
+			for (i = 0; i < problem->nvars; i ++) {
+				bool failed_var = false;
+				struct pkg_solve_variable *var = &problem->variables[i], *cur;
+
+				if (!(var->flags & PKG_VAR_INSTALL)) {
+					LL_FOREACH(var, cur) {
+						if (cur->flags & PKG_VAR_INSTALL) {
+							failed_var = false;
+							break;
+						}
+						else if (cur->unit->pkg->type == PKG_INSTALLED) {
+							failed_var = true;
+						}
 					}
 				}
-			}
 
-			/*
-			 * If we want to delete local packages on installation, do one more SAT
-			 * iteration to ensure that we have no other choices
-			 */
-			if (failed_var) {
-				pkg_debug (1, "trying to delete local package %s-%s on install/upgrade,"
-					" reiterate on SAT",
-					var->unit->pkg->name, var->unit->pkg->version);
-				need_reiterate = true;
+				/*
+				 * If we want to delete local packages on installation, do one more SAT
+				 * iteration to ensure that we have no other choices
+				 */
+				if (failed_var) {
+					pkg_debug (1, "trying to delete local package %s-%s on install/upgrade,"
+							" reiterate on SAT",
+							var->unit->pkg->name, var->unit->pkg->version);
+					need_reiterate = true;
 
-				LL_FOREACH(var, cur) {
-					cur->flags |= PKG_VAR_FAILED;
+					LL_FOREACH(var, cur) {
+						cur->flags |= PKG_VAR_FAILED;
+					}
 				}
 			}
 		}
@@ -1189,6 +1188,10 @@ reiterate:
 			struct pkg_solve_variable *var = &problem->variables[i];
 
 			if (var->flags & PKG_VAR_TOP) {
+				if (var->flags & PKG_VAR_FAILED) {
+					var->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
+				}
+
 				picosat_assume(problem->sat, var->order *
 						(var->flags & PKG_VAR_INSTALL ? 1 : -1));
 			}

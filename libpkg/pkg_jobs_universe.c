@@ -336,14 +336,12 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 		/* Check for local packages */
 		HASH_FIND_STR(universe->items, rpkg->uid, unit);
 		if (unit != NULL) {
-			if (pkg_jobs_need_upgrade (rpkg, unit->pkg)) {
-				/* Remote provide is newer, so we can add it */
-				if (pkg_jobs_universe_process_item(universe, rpkg,
-						&unit) != EPKG_OK)
-					continue;
+			/* Remote provide is newer, so we can add it */
+			if (pkg_jobs_universe_process_item(universe, rpkg,
+					&unit) != EPKG_OK)
+				continue;
 
-				rpkg = NULL;
-			}
+			rpkg = NULL;
 		}
 		else {
 			/* Maybe local package has just been not added */
@@ -353,12 +351,9 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 						&unit) != EPKG_OK) {
 					return (EPKG_FATAL);
 				}
-				if (pkg_jobs_need_upgrade (rpkg, npkg)) {
-					/* Remote provide is newer, so we can add it */
-					if (pkg_jobs_universe_process_item(universe, rpkg,
-							&unit) != EPKG_OK)
-						continue;
-				}
+				if (pkg_jobs_universe_process_item(universe, rpkg,
+						&unit) != EPKG_OK)
+					continue;
 			}
 		}
 
@@ -372,17 +367,11 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 					return (EPKG_FATAL);
 				}
 			}
-			HASH_FIND_STR(universe->seen, rpkg->digest, seen);
-			if (seen == NULL) {
-				pkg_jobs_universe_process_item(universe, rpkg,
-						&unit);
+			pkg_jobs_universe_process_item(universe, rpkg,
+					&unit);
 
-				/* Reset package to avoid freeing */
-				rpkg = NULL;
-			}
-			else {
-				unit = seen->un;
-			}
+			/* Reset package to avoid freeing */
+			rpkg = NULL;
 		}
 
 		pr = calloc (1, sizeof (*pr));
