@@ -1085,12 +1085,15 @@ reiterate:
 
 			for (i = 0; i < kv_size(problem->rules); i++) {
 				rule = kv_A(problem->rules, i);
-				LL_FOREACH(rule->items, item) {
-					if (item->var == var) {
-						pkg_print_rule_sbuf(rule, sb);
-						sbuf_putc(sb, '\n');
+
+				if (rule->reason == PKG_RULE_EXPLICIT_CONFLICT) {
+					LL_FOREACH(rule->items, item) {
+						if (item->var == var) {
+							pkg_print_rule_sbuf(rule, sb);
+							sbuf_putc(sb, '\n');
+						}
+						break;
 					}
-					break;
 				}
 			}
 
