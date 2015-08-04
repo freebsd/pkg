@@ -154,17 +154,19 @@ local2 repository update completed. 2 packages processed.
 Updating database digests format:  done
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
-Checking integrity... done (1 conflicting)
+Checking integrity... done (2 conflicting)
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 Installed packages to be UPGRADED:
 	test2: 1 -> 1.1 [local2]
 	test: 1 -> 1.1 [local2]
-${JAILED}[1/2] Upgrading test2 from 1 to 1.1...
-${JAILED}[1/2] Extracting test2-1.1:  done
-${JAILED}[2/2] Upgrading test from 1 to 1.1...
-${JAILED}[2/2] Extracting test-1.1:  done
+${JAILED}[1/3] Deinstalling test2-1...
+${JAILED}[1/3] Deleting files for test2-1:  done
+${JAILED}[2/3] Installing test2-1.1...
+${JAILED}[2/3] Extracting test2-1.1:  done
+${JAILED}[3/3] Upgrading test from 1 to 1.1...
+${JAILED}[3/3] Extracting test-1.1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
