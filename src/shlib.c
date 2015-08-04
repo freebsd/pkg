@@ -175,6 +175,11 @@ exec_shlib(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
+	if (argc >= 2) {
+		warnx("multiple libraries per run not allowed");
+		return (EX_USAGE);
+	}
+
 	if (sanitize(libname, argv[0], sizeof(libname)) == NULL) {
 		usage_shlib();
 		return (EX_USAGE);
