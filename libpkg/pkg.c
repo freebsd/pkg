@@ -303,7 +303,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
-			pkg_emit_error("Bad argument on pkg_set %s", attr);
+			pkg_emit_error("Bad argument on pkg_set %d", attr);
 			return (EPKG_FATAL);
 		}
 
