@@ -27,7 +27,6 @@
  */
 
 #include <sys/cdefs.h>
-#include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libfetch/ftp.c 226537 2011-10-19 11:43:51Z des $");
 
 /*
@@ -74,6 +73,7 @@ __FBSDID("$FreeBSD: head/lib/libfetch/ftp.c 226537 2011-10-19 11:43:51Z des $");
 #include <time.h>
 #include <unistd.h>
 
+#include "bsd_compat.h"
 #include "fetch.h"
 #include "common.h"
 #include "ftperr.h"

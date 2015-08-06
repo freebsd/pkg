@@ -28,7 +28,6 @@
  */
 
 #include <sys/cdefs.h>
-#include "bsd_compat.h"
 
 __FBSDID("$FreeBSD: head/lib/libfetch/common.c 273124 2014-10-15 07:35:50Z des $");
 
@@ -55,6 +54,7 @@ __FBSDID("$FreeBSD: head/lib/libfetch/common.c 273124 2014-10-15 07:35:50Z des $
 #include <openssl/x509v3.h>
 #endif
 
+#include "bsd_compat.h"
 #include "fetch.h"
 #include "common.h"
 

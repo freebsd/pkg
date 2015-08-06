@@ -27,7 +27,6 @@
 
 #include <pkg_config.h>
 
-#include <bsd_compat.h>
 #include <sys/stat.h> /* for private.utils.h */
 
 #include <string.h>
@@ -41,6 +40,7 @@
 #endif
 #include <netdb.h>
 
+#include <bsd_compat.h>
 #include "private/utils.h"
 #include "pkg.h"
 
