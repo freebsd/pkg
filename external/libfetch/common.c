@@ -29,8 +29,6 @@
 
 #include <sys/cdefs.h>
 
-__FBSDID("$FreeBSD: head/lib/libfetch/common.c 273124 2014-10-15 07:35:50Z des $");
-
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
