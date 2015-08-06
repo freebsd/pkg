@@ -772,7 +772,6 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    fetch_bind(sd, sa.ss_family, bindaddr) != 0)
 			goto sysouch;
-
 		if (connect(sd, (struct sockaddr *)&sa, l) == -1)
 			goto sysouch;
 
