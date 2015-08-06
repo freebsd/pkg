@@ -1903,8 +1903,8 @@ format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p
  * %% -- Output a literal '%' character
  */
 struct sbuf *
-format_literal_percent(struct sbuf *sbuf, __unused const void *data,
-		       __unused struct percent_esc *p)
+format_literal_percent(struct sbuf *sbuf, __UNUSED const void *data,
+		       __UNUSED struct percent_esc *p)
 {
 	sbuf_putc(sbuf, '%');
 	return (sbuf);
@@ -1915,8 +1915,8 @@ format_literal_percent(struct sbuf *sbuf, __unused const void *data,
  * the text through unchanged.
  */
 struct sbuf *
-format_unknown(struct sbuf *sbuf, __unused const void *data,
-		       __unused struct percent_esc *p)
+format_unknown(struct sbuf *sbuf, __UNUSED const void *data,
+		       __UNUSED struct percent_esc *p)
 {
 	sbuf_putc(sbuf, '%');
 	return (NULL);

@@ -190,7 +190,7 @@ pkgdb_regex_delete(void *p)
 }
 
 void
-pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
+pkgdb_now(sqlite3_context *ctx, int argc, __UNUSED sqlite3_value **argv)
 {
 	if (argc != 0) {
 		sqlite3_result_error(ctx, "Invalid usage of now() "
@@ -919,7 +919,7 @@ pkgdb_access(unsigned mode, unsigned database)
 }
 
 static void
-pkgdb_profile_callback(void *ud __unused, const char *req, sqlite3_uint64 nsec)
+pkgdb_profile_callback(void *ud __UNUSED, const char *req, sqlite3_uint64 nsec)
 {
 	/* According to sqlite3 documentation, nsec has milliseconds accuracy */
 	nsec /= 1000000LLU;
@@ -2664,8 +2664,8 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
  * Used both in the shell and pkgdb_open
  */
 int
-pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
-    __unused const void *noused)
+pkgdb_sqlcmd_init(sqlite3 *db, __UNUSED const char **err,
+    __UNUSED const void *noused)
 {
 	sqlite3_create_function(db, "now", 0, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_now, NULL, NULL);

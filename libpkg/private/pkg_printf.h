@@ -28,7 +28,7 @@
 #ifndef _PKG_PRINTF_H
 #define _PKG_PRINTF_H
 
-#include <pkg.h>
+#include <private/pkg.h>
 
 #ifdef TESTING
 #define _static	
@@ -227,8 +227,8 @@ _static struct sbuf *format_version(struct sbuf *, const void *, struct percent_
 _static struct sbuf *format_home_url(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_pkgsize(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_short_checksum(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
-_static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
+_static struct sbuf *format_literal_percent(struct sbuf *, __UNUSED const void *, __UNUSED struct percent_esc *);
+_static struct sbuf *format_unknown(struct sbuf *, __UNUSED const void *, __UNUSED struct percent_esc *);
 _static struct sbuf *format_provided(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_required(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_provide_name(struct sbuf *, const void *, struct percent_esc *);

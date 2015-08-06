@@ -157,7 +157,7 @@ free_file_attr(struct file_attr *a)
 }
 
 static void
-sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...)
+sbuf_append(struct sbuf *buf, __UNUSED const char *comment, const char *str, ...)
 {
 	va_list ap;
 
@@ -526,7 +526,7 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
+ignore_next(struct plist *p, __UNUSED char *line, struct file_attr *a)
 {
 	p->ignore_next = true;
 	free_file_attr(a);

@@ -146,7 +146,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 }
 
 static int
-add_dylibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
+add_dylibs_to_pkg(__UNUSED void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
 	/* Skip references to system libraries */

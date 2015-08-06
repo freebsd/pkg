@@ -552,7 +552,7 @@ ftp_writefn(void *v, const char *buf, int len)
 }
 
 static off_t
-ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
+ftp_seekfn(void *v, off_t pos __UNUSED, int whence __UNUSED)
 {
 	struct ftpio *io;
 
@@ -1207,7 +1207,7 @@ fetchStatFTP(struct url *url, struct url_stat *us, const char *flags)
  * List a directory
  */
 struct url_ent *
-fetchListFTP(struct url *url __unused, const char *flags __unused)
+fetchListFTP(struct url *url __UNUSED, const char *flags __UNUSED)
 {
 	warnx("fetchListFTP(): not implemented");
 	return (NULL);
