@@ -121,6 +121,74 @@
 			return (EPKG_OK);     \
 	} while (0)
 
+#define kh_string_next(head, data) do {                  \
+	khint_t k;                                       \
+	if (head == NULL)                                \
+		return (EPKG_END);                       \
+	if (data == NULL) {                              \
+		k = kh_begin(head);                      \
+	} else {                                         \
+		k = kh_get_strings(head, (data));        \
+		k++;                                     \
+	}                                                \
+	while (k != kh_end(head) && !kh_exist(head, k))  \
+		k++;                                     \
+	if (k == kh_end(head))                           \
+		return (EPKG_END);                       \
+	data = kh_value(head, k);                        \
+	return (EPKG_OK);                                \
+} while (0)
+
+#define kh_next(name, head, data, attrib) do {           \
+	khint_t k;                                       \
+	if (head == NULL)                                \
+		return (EPKG_END);                       \
+	if (data == NULL) {                              \
+		k = kh_begin(head);                      \
+	} else {                                         \
+		k = kh_get_##name(head, (data)->attrib); \
+		k++;                                     \
+	}                                                \
+	while (k != kh_end(head) && !kh_exist(head, k))  \
+		k++;                                     \
+	if (k == kh_end(head)) {                         \
+		data = NULL;                             \
+		return (EPKG_END);                       \
+	}                                                \
+	data = kh_value(head, k);                        \
+	return (EPKG_OK);                                \
+} while (0)
+
+#define kh_free(name, head, type, free_func) do {			\
+	if (head) {							\
+		type *_todelete;					\
+		kh_foreach_value(head, _todelete, free_func(_todelete));\
+		kh_destroy_##name(head);				\
+		head = NULL;						\
+	}								\
+} while (0)
+
+#define kh_contains(name, h, v) ((h)?(kh_get_##name(h, v) != kh_end(h)):false)
+
+#define kh_each_value(h, vvar, code)							\
+	for (khint_t __i = kh_begin(h); h != NULL && __i != kh_end(h); __i++) {		\
+		if (!kh_exist(h, __i)) continue;					\
+		(vvar) = kh_val(h, __i);						\
+		code;									\
+	}
+
+#define kh_count(h) ((h)?((h)->size):0)
+
+#define kh_add(name, h, val, k) do {		\
+	int __ret;				\
+	khint_t __i;				\
+	if (!h) h = kh_init_##name();		\
+	__i = kh_put_##name(h, k, &__ret);	\
+	if (__ret != 0)				\
+		kh_val(h, __i) = val;		\
+} while (0)
+
+
 extern int eventpipe;
 extern int64_t debug_level;
 extern bool developer_mode;
