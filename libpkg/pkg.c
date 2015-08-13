@@ -756,10 +756,10 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 
 	if (check_duplicates && kh_contains(pkg_files, pkg->files, path)) {
 		if (developer_mode) {
-			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", f->path);
+			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
-			pkg_emit_error("duplicate file listing: %s, ignoring", f->path);
+			pkg_emit_error("duplicate file listing: %s, ignoring", path);
 			return (EPKG_OK);
 		}
 	}
