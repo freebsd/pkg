@@ -327,7 +327,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 
 	int		nfiles, cur_file = 0;
 
-	nfiles = HASH_COUNT(pkg->files);
+	nfiles = kh_count(pkg->files);
 
 	if (nfiles == 0)
 		return (EPKG_OK);

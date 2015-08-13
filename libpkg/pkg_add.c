@@ -647,7 +647,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = HASH_COUNT(pkg->files);
+	nfiles = kh_count(pkg->files);
 	/*
 	 * Extract the files on disk.
 	 */

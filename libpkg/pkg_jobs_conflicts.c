@@ -207,7 +207,7 @@ pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
 static bool
 pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 {
-	struct pkg_file *fcur, *ftmp, *ff;
+	struct pkg_file *fcur;
 	struct pkg_dir *df;
 	struct pkg_conflict *c1, *c2;
 
@@ -235,14 +235,13 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	/*
 	 * We need to check all files and dirs and find the similar ones
 	 */
-	HASH_ITER(hh, p1->files, fcur, ftmp) {
-		HASH_FIND_STR(p2->files, fcur->path, ff);
-		if (ff != NULL)
+	kh_each_value(p1->files, fcur, {
+		if (pkg_has_file(p2, fcur->path))
 			return (true);
 		HASH_FIND_STR(p2->dirs, fcur->path, df);
 		if (df != NULL)
 			return (true);
-	}
+	});
 	/* XXX pkg dirs are terribly broken */
 
 	/* No common paths are found in p1 and p2 */
@@ -466,20 +465,19 @@ static void
 pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *local, struct pkg_jobs *j)
 {
-	struct pkg_file *fcur, *ftmp, *ff;
+	struct pkg_file *fcur;
 	struct pkg *p;
 	struct pkg_job_universe_item *cun;
 	struct sipkey *k;
 
-	HASH_ITER(hh, it->pkg->files, fcur, ftmp) {
+	kh_each_value(it->pkg->files, fcur, {
 		k = pkg_conflicts_sipkey_init();
 		/* Check in hash tree */
 		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, k);
 
 		if (local != NULL) {
 			/* Filter only new files for remote packages */
-			HASH_FIND_STR(local->pkg->files, fcur->path, ff);
-			if (ff != NULL)
+			if (pkg_has_file(local->pkg, fcur->path))
 				continue;
 		}
 		/* Check for local conflict in db */
@@ -492,7 +490,7 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 			assert(cun != NULL);
 			pkg_conflicts_register_chain(j, it, cun, fcur->path);
 		}
-	}
+	});
 	/* XXX: dirs are currently broken terribly */
 #if 0
 	struct pkg_dir *dcur, *dtmp, *df;

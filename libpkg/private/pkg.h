@@ -198,6 +198,7 @@ struct pkg_repo_it;
 struct pkg_repo;
 
 KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
+KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
 
 struct pkg {
 	bool		 direct;
@@ -235,7 +236,7 @@ struct pkg {
 	kh_pkg_deps_t		*rdeps;
 	struct pkg_strel	*categories;
 	struct pkg_strel	*licenses;
-	struct pkg_file		*files;
+	kh_pkg_files_t		*files;
 	struct pkg_dir		*dirs;
 	struct pkg_option	*options;
 	struct pkg_user		*users;
@@ -294,7 +295,6 @@ struct pkg_file {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
-	UT_hash_handle	 hh;
 };
 
 struct pkg_dir {
