@@ -514,7 +514,7 @@ pkg_deps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->deps, (*d));
+	kh_next(pkg_deps, pkg->deps, (*d), name);
 }
 
 int
@@ -522,7 +522,7 @@ pkg_rdeps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->rdeps, (*d));
+	kh_next(pkg_deps, pkg->rdeps, (*d), name);
 }
 
 int
@@ -684,8 +684,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin, name);
-	HASH_FIND_STR(pkg->deps, name, d);
-	if (d != NULL) {
+	if (kh_contains(pkg_deps, pkg->deps, name)) {
 		if (developer_mode) {
 			pkg_emit_error("%s: duplicate dependency listing: %s, fatal (developer mode)",
 			    pkg->name, name);
@@ -706,7 +705,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->deps, d->name, strlen(d->name), d);
+	kh_add(pkg_deps, pkg->deps, d, d->name);
 
 	return (EPKG_OK);
 }
@@ -730,7 +729,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->rdeps, d->origin, strlen(d->origin), d);
+	kh_add(pkg_deps, pkg->rdeps, d, d->name);
 
 	return (EPKG_OK);
 }
@@ -1318,9 +1317,9 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 {
 	switch (list) {
 	case PKG_DEPS:
-		return (HASH_COUNT(pkg->deps));
+		return (kh_count(pkg->deps));
 	case PKG_RDEPS:
-		return (HASH_COUNT(pkg->rdeps));
+		return (kh_count(pkg->rdeps));
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
 	case PKG_FILES:
@@ -1352,11 +1351,11 @@ void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	switch (list) {
 	case PKG_DEPS:
-		HASH_FREE(pkg->deps, pkg_dep_free);
+		kh_free(pkg_deps, pkg->deps, struct pkg_dep, pkg_dep_free);
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
 	case PKG_RDEPS:
-		HASH_FREE(pkg->rdeps, pkg_dep_free);
+		kh_free(pkg_deps, pkg->rdeps, struct pkg_dep, pkg_dep_free);
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:

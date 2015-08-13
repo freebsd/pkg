@@ -197,6 +197,8 @@ extern const char *pkg_rootdir;
 struct pkg_repo_it;
 struct pkg_repo;
 
+KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
+
 struct pkg {
 	bool		 direct;
 	bool		 locked;
@@ -229,8 +231,8 @@ struct pkg {
 	int64_t			 flatsize;
 	int64_t			 old_flatsize;
 	int64_t			 timestamp;
-	struct pkg_dep		*deps;
-	struct pkg_dep		*rdeps;
+	kh_pkg_deps_t		*deps;
+	kh_pkg_deps_t		*rdeps;
 	struct pkg_strel	*categories;
 	struct pkg_strel	*licenses;
 	struct pkg_file		*files;
@@ -263,7 +265,6 @@ struct pkg_dep {
 	char		*version;
 	char		*uid;
 	bool		 locked;
-	UT_hash_handle	 hh;
 };
 
 enum pkg_conflict_type {

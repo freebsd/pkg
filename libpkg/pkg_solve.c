@@ -715,7 +715,7 @@ static int
 pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var)
 {
-	struct pkg_dep *dep, *dtmp;
+	struct pkg_dep *dep;
 	struct pkg_conflict *conflict, *ctmp;
 	struct pkg *pkg;
 	struct pkg_solve_variable *cur_var;
@@ -729,10 +729,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		pkg = cur_var->unit->pkg;
 
 		/* Depends */
-		HASH_ITER(hh, pkg->deps, dep, dtmp) {
+		kh_each_value(pkg->deps, dep, {
 			if (pkg_solve_add_depend_rule(problem, cur_var, dep) != EPKG_OK)
 				continue;
-		}
+		});
 
 		/* Conflicts */
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
