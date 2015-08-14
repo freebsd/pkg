@@ -69,6 +69,7 @@
 #include "private/pkgdb.h"
 #include "private/utils.h"
 #include "private/pkg_deps.h"
+#include "kvec.h"
 
 #include "private/db_upgrades.h"
 
@@ -3076,29 +3077,32 @@ pkgdb_begin_solver(struct pkgdb *db)
 		"END TRANSACTION;"
 		"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);";
 	struct pkgdb_it *it;
-	struct pkg *pkglist = NULL, *p = NULL;
+	struct pkg *p = NULL;
+	kvec_t(struct pkg *) pkglist;
 	int rc = EPKG_OK;
 	int64_t cnt = 0, cur = 0;
 
 	it = pkgdb_query(db, " WHERE manifestdigest IS NULL OR manifestdigest==''",
 		MATCH_CONDITION);
 	if (it != NULL) {
+		kv_init(pkglist);
 		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC|PKG_LOAD_OPTIONS) == EPKG_OK) {
 			pkg_checksum_calculate(p, NULL);
-			LL_PREPEND(pkglist, p);
+			kv_prepend(typeof(p), pkglist, p);
 			p = NULL;
 			cnt ++;
 		}
 		pkgdb_it_free(it);
 
-		if (pkglist != NULL) {
+		if (kv_size(pkglist) > 0) {
 			rc = sql_exec(db->sqlite, update_digests_sql);
 			if (rc != EPKG_OK) {
 				ERROR_SQLITE(db->sqlite, update_digests_sql);
 			}
 			else {
 				pkg_emit_progress_start("Updating database digests format");
-				LL_FOREACH(pkglist, p) {
+				for (int i = 0; i < kv_size(pkglist); i++) {
+					p = kv_A(pkglist, i);
 					pkg_emit_progress_tick(cur++, cnt);
 					rc = run_prstmt(UPDATE_DIGEST, p->digest, p->id);
 					if (rc != SQLITE_DONE) {
@@ -3119,9 +3123,10 @@ pkgdb_begin_solver(struct pkgdb *db)
 		if (rc == EPKG_OK)
 			rc = sql_exec(db->sqlite, solver_sql);
 
-		LL_FREE(pkglist, pkg_free);
-	}
-	else {
+		while (kv_size(pkglist) > 0 && (p = kv_pop(pkglist)))
+			pkg_free(p);
+		kv_destroy(pkglist);
+	} else {
 		rc = sql_exec(db->sqlite, solver_sql);
 	}
 
