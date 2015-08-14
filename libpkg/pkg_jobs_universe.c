@@ -45,13 +45,11 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
+#include "kvec.h"
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
-struct pkg_chain {
-	struct pkg *p;
-	struct pkg_chain *next;
-};
+typedef kvec_t(struct pkg *) pkg_chain_t;
 
 static struct pkg_job_universe_item *
 pkg_jobs_seen_find(struct pkg_jobs_universe *universe, const char *digest)
@@ -114,24 +112,12 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	return (pkg);
 }
 
-static void
-pkg_jobs_universe_free_chain(struct pkg_chain *chain)
-{
-	struct pkg_chain *cur, *tmp;
-
-	if (chain) {
-		LL_FOREACH_SAFE(chain, cur, tmp) {
-			free(cur);
-		}
-	}
-}
-
-static struct pkg_chain *
+static pkg_chain_t *
 pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
-	struct pkg_chain *result = NULL, *r;
+	pkg_chain_t *result = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *cur, *found;
 
@@ -166,10 +152,10 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		return (NULL);
 
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
-		r = malloc(sizeof(*r));
-		r->p = pkg;
+		if (result == NULL)
+			result = calloc(1, sizeof(pkg_chain_t));
+		kv_prepend(typeof(pkg), *result, pkg);
 		pkg = NULL;
-		LL_PREPEND(result, r);
 	}
 
 	pkgdb_it_free(it);
@@ -264,7 +250,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	struct pkg_job_universe_item *unit;
 	struct pkg *npkg, *rpkg;
-	struct pkg_chain *rpkgs, *cur_remote;
+	pkg_chain_t *rpkgs = NULL;
 
 	if (flags & DEPS_FLAG_REVERSE)
 		deps_func = pkg_rdeps;
@@ -302,8 +288,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 				continue;
 
 		if (rpkgs != NULL) {
-			LL_FOREACH(rpkgs, cur_remote) {
-				rpkg = cur_remote->p;
+			for (int i = 0; i < kv_size(*rpkgs); i++) {
+				rpkg = kv_A(*rpkgs, i);
 				if (npkg != NULL) {
 					/* Set reason for upgrades */
 					pkg_jobs_need_upgrade(rpkg, npkg);
@@ -314,7 +300,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 				pkg_jobs_universe_process_item(universe, rpkg, NULL);
 			}
 
-			pkg_jobs_universe_free_chain(rpkgs);
+			kv_destroy(*rpkgs);
+			free(rpkgs);
 		}
 	}
 
