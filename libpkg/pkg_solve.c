@@ -319,6 +319,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		 * For each provide we need to check whether this package
 		 * actually provides this require
 		 */
+		libfound = providefound = false;
 		pkg = curvar->unit->pkg;
 
 		if (pr->is_shlib) {
