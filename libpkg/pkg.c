@@ -538,7 +538,7 @@ pkg_config_files(const struct pkg *pkg, struct pkg_config_file **f)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->config_files, (*f));
+	kh_next(pkg_config_files, pkg->config_files, (*f), path);
 }
 
 int
@@ -546,7 +546,7 @@ pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->dirs, (*d));
+	kh_next(pkg_dirs, pkg->dirs, (*d), path);
 }
 
 int
@@ -790,19 +790,18 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 int
 pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 {
-	struct pkg_config_file *f;
+	struct pkg_config_file *f = NULL;
 	char abspath[MAXPATHLEN];
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new config file '%s'", path);
 
-	HASH_FIND_STR(pkg->config_files, path, f);
-	if (f != NULL) {
+	if (kh_contains(pkg_config_files, pkg->config_files, path)) {
 		if (developer_mode) {
-			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", f->path);
+			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
-			pkg_emit_error("duplicate file listing: %s, ignoring", f->path);
+			pkg_emit_error("duplicate file listing: %s, ignoring", path);
 		}
 	}
 	pkg_config_file_new(&f);
@@ -811,7 +810,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	if (content != NULL)
 		f->content = strdup(content);
 
-	HASH_ADD_STR(pkg->config_files, path, f);
+	kh_add(pkg_config_files, pkg->config_files, f, f->path);
 
 	return (EPKG_OK);
 }
@@ -862,16 +861,13 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
-	if (check_duplicates) {
-		HASH_FIND_STR(pkg->dirs, path, d);
-		if (d != NULL) {
-			if (developer_mode) {
-				pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", d->path);
-				return (EPKG_FATAL);
-			} else {
-				pkg_emit_error("duplicate directory listing: %s, ignoring", d->path);
-				return (EPKG_OK);
-			}
+	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirs, path)) {
+		if (developer_mode) {
+			pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
+			return (EPKG_FATAL);
+		} else {
+			pkg_emit_error("duplicate directory listing: %s, ignoring", path);
+			return (EPKG_OK);
 		}
 	}
 
@@ -890,7 +886,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	if (fflags != 0)
 		d->fflags = fflags;
 
-	HASH_ADD_STR(pkg->dirs, path, d);
+	kh_add(pkg_dirs, pkg->dirs, d, d->path);
 
 	return (EPKG_OK);
 }
@@ -1309,7 +1305,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_FILES:
 		return (kh_count(pkg->files));
 	case PKG_DIRS:
-		return (HASH_COUNT(pkg->dirs));
+		return (kh_count(pkg->dirs));
 	case PKG_USERS:
 		return (HASH_COUNT(pkg->users));
 	case PKG_GROUPS:
@@ -1325,7 +1321,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_REQUIRES:
 		return (kh_count(pkg->requires));
 	case PKG_CONFIG_FILES:
-		return (HASH_COUNT(pkg->config_files));
+		return (kh_count(pkg->config_files));
 	}
 	
 	return (0);
@@ -1349,11 +1345,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
 		kh_free(pkg_files, pkg->files, struct pkg_file, pkg_file_free);
-		HASH_FREE(pkg->config_files, pkg_config_file_free);
+		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		HASH_FREE(pkg->dirs, pkg_dir_free);
+		kh_free(pkg_dirs, pkg->dirs, struct pkg_dir, pkg_dir_free);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:
@@ -1715,22 +1711,24 @@ pkg_is_config_file(struct pkg *p, const char *path,
     const struct pkg_file **file,
     struct pkg_config_file **cfile)
 {
-	struct pkg_config_file *cf;
-	khint_t k;
+	khint_t k, k2;
 
 	*file = NULL;
 	*cfile = NULL;
+
+	if (kh_count(p->config_files) == 0)
+		return (false);
 
 	k = kh_get_pkg_files(p->files, path);
 	if (k == kh_end(p->files))
 		return (false);
 
-	HASH_FIND_STR(p->config_files, path, cf);
-	if (cf == NULL)
+	k2 = kh_get_pkg_config_files(p->config_files, path);
+	if (k2 == kh_end(p->config_files))
 		return (false);
 
 	*file = kh_value(p->files, k);
-	*cfile = cf;
+	*cfile = kh_value(p->config_files, k2);
 
 	return (true);
 }
@@ -1744,11 +1742,7 @@ pkg_has_file(struct pkg *p, const char *path)
 bool
 pkg_has_dir(struct pkg *p, const char *path)
 {
-	struct pkg_dir *d;
-
-	HASH_FIND_STR(p->dirs, path, d);
-
-	return (d != NULL ? true : false);
+	return (kh_contains(pkg_dirs, p->dirs, path));
 }
 
 int

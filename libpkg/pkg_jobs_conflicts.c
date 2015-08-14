@@ -208,7 +208,6 @@ static bool
 pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 {
 	struct pkg_file *fcur;
-	struct pkg_dir *df;
 	struct pkg_conflict *c1, *c2;
 
 	if (pkgdb_ensure_loaded(j->db, p1, PKG_LOAD_FILES|PKG_LOAD_DIRS) != EPKG_OK ||
@@ -238,8 +237,7 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	kh_each_value(p1->files, fcur, {
 		if (pkg_has_file(p2, fcur->path))
 			return (true);
-		HASH_FIND_STR(p2->dirs, fcur->path, df);
-		if (df != NULL)
+		if (pkg_has_dir(p2, fcur->path))
 			return (true);
 	});
 	/* XXX pkg dirs are terribly broken */

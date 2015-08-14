@@ -199,6 +199,8 @@ struct pkg_repo;
 
 KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
 KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
+KHASH_MAP_INIT_STR(pkg_dirs, struct pkg_dir *);
+KHASH_MAP_INIT_STR(pkg_config_files, struct pkg_config_file *);
 KHASH_MAP_INIT_STR(strings, char *);
 
 struct pkg {
@@ -238,7 +240,7 @@ struct pkg {
 	struct pkg_strel	*categories;
 	struct pkg_strel	*licenses;
 	kh_pkg_files_t		*files;
-	struct pkg_dir		*dirs;
+	kh_pkg_dirs_t		*dirs;
 	struct pkg_option	*options;
 	struct pkg_user		*users;
 	struct pkg_group	*groups;
@@ -247,7 +249,7 @@ struct pkg {
 	struct pkg_conflict *conflicts;
 	kh_strings_t		*provides;
 	kh_strings_t		*requires;
-	struct pkg_config_file	*config_files;
+	kh_pkg_config_files_t	*config_files;
 	struct pkg_kv		*annotations;
 	unsigned			flags;
 	int		rootfd;
@@ -299,7 +301,6 @@ struct pkg_dir {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
-	UT_hash_handle	 hh;
 };
 
 struct pkg_option {
@@ -517,7 +518,6 @@ struct action {
 struct pkg_config_file {
 	char path[MAXPATHLEN];
 	char *content;
-	UT_hash_handle hh;
 };
 
 /* sql helpers */

@@ -381,14 +381,11 @@ int
 pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, struct pkg *new)
 {
 	struct pkg_dir	*dir = NULL;
-	struct pkg_dir	*d;
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		d = NULL;
-		if (new != NULL)
-			HASH_FIND_STR(new->dirs, dir->path, d);
-		if (d == NULL)
-			pkg_delete_dir(pkg, dir);
+		if (new != NULL && !pkg_has_dir(new, dir->path))
+			continue;
+		pkg_delete_dir(pkg, dir);
 	}
 
 	pkg_effective_rmdir(db, pkg);
