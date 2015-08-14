@@ -928,12 +928,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_dir		*dir      = NULL;
 	struct pkg_user		*user     = NULL;
 	struct pkg_group	*group    = NULL;
-	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_conflict	*conflict = NULL;
-	struct pkg_provide	*provide  = NULL;
-	struct pkg_provide	*require  = NULL;
 	struct pkg_config_file	*cf       = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
+	char			*buf;
 	int i;
 	const char *script_types = NULL;
 	char legacyarch[BUFSIZ];
@@ -1055,20 +1053,22 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting required");
 	seq = NULL;
-	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(shlib->name));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
 
 	pkg_debug(4, "Emitting shlibs_provided");
 	seq = NULL;
-	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(shlib->name));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
@@ -1085,20 +1085,22 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting provides");
 	seq = NULL;
-	while (pkg_provides(pkg, &provide) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_provides(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(provide->provide));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "provides", 8, false);
 
 	pkg_debug(4, "Emitting requires");
 	seq = NULL;
-	while (pkg_requires(pkg, &require) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_requires(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(require->provide));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "requires", 8, false);

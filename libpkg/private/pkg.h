@@ -199,6 +199,7 @@ struct pkg_repo;
 
 KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
 KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
+KHASH_MAP_INIT_STR(strings, char *);
 
 struct pkg {
 	bool		 direct;
@@ -241,11 +242,11 @@ struct pkg {
 	struct pkg_option	*options;
 	struct pkg_user		*users;
 	struct pkg_group	*groups;
-	struct pkg_shlib	*shlibs_required;
-	struct pkg_shlib	*shlibs_provided;
+	kh_strings_t		*shlibs_required;
+	kh_strings_t		*shlibs_provided;
 	struct pkg_conflict *conflicts;
-	struct pkg_provide	*provides;
-	struct pkg_provide	*requires;
+	kh_strings_t		*provides;
+	kh_strings_t		*requires;
 	struct pkg_config_file	*config_files;
 	struct pkg_kv		*annotations;
 	unsigned			flags;
@@ -279,11 +280,6 @@ struct pkg_conflict {
 	char *uid;
 	char *digest;
 	enum pkg_conflict_type type;
-	UT_hash_handle	hh;
-};
-
-struct pkg_provide {
-	char	*provide;
 	UT_hash_handle	hh;
 };
 
@@ -323,11 +319,6 @@ struct pkg_user {
 struct pkg_group {
 	char		 name[MAXLOGNAME];
 	char		 gidstr[8192]; /* taken from gw_util.c */
-	UT_hash_handle	hh;
-};
-
-struct pkg_shlib {
-	char *name;
 	UT_hash_handle	hh;
 };
 
@@ -629,14 +620,8 @@ void pkg_group_free(struct pkg_group *);
 
 int pkg_jobs_resolv(struct pkg_jobs *jobs);
 
-int pkg_shlib_new(struct pkg_shlib **);
-void pkg_shlib_free(struct pkg_shlib *);
-
 int pkg_conflict_new(struct pkg_conflict **);
 void pkg_conflict_free(struct pkg_conflict *);
-
-int pkg_provide_new(struct pkg_provide **);
-void pkg_provide_free(struct pkg_provide *);
 
 int pkg_config_file_new(struct pkg_config_file **);
 void pkg_config_file_free(struct pkg_config_file *);

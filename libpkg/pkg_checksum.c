@@ -189,15 +189,13 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type)
 {
 	unsigned char *bdigest;
-	char *olduid;
+	char *olduid, *buf;
 	size_t blen;
 	struct pkg_checksum_entry *entries = NULL;
 	struct pkg_option *option = NULL;
-	struct pkg_shlib *shlib = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
 	struct pkg_dep *dep = NULL;
-	struct pkg_provide *p = NULL;
 	int i;
 
 	if (pkg == NULL || type >= PKG_HASH_TYPE_UNKNOWN ||
@@ -213,13 +211,14 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		pkg_checksum_add_entry(option->key, option->value, &entries);
 	}
 
-	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		pkg_checksum_add_entry("required_shlib", shlib->name, &entries);
+	buf = NULL;
+	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
+		pkg_checksum_add_entry("required_shlib", buf, &entries);
 	}
 
-	shlib = NULL;
-	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-		pkg_checksum_add_entry("provided_shlib", shlib->name, &entries);
+	buf = NULL;
+	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
+		pkg_checksum_add_entry("provided_shlib", buf, &entries);
 	}
 
 	while (pkg_users(pkg, &user) == EPKG_OK) {
@@ -236,13 +235,14 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		free(olduid);
 	}
 
-	while (pkg_provides(pkg, &p) == EPKG_OK) {
-		pkg_checksum_add_entry("provide", p->provide, &entries);
+	buf = NULL;
+	while (pkg_provides(pkg, &buf) == EPKG_OK) {
+		pkg_checksum_add_entry("provide", buf, &entries);
 	}
 
-	p = NULL;
-	while (pkg_requires(pkg, &p) == EPKG_OK) {
-		pkg_checksum_add_entry("require", p->provide, &entries);
+	buf = NULL;
+	while (pkg_requires(pkg, &buf) == EPKG_OK) {
+		pkg_checksum_add_entry("require", buf, &entries);
 	}
 
 	/* Sort before hashing */

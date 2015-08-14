@@ -63,9 +63,8 @@ static int
 check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall, struct sbuf *out)
 {
 	struct pkg_dep *dep = NULL;
-	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it;
-	struct pkg_provide *provide = NULL;
+	char *buf = NULL;
 	int nbpkgs = 0;
 
 	assert(db != NULL);
@@ -85,33 +84,35 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 	}
 
 	/* checking libraries required */
-	while (pkg_shlibs_required(p, &shlib) == EPKG_OK) {
-		it = pkgdb_query_shlib_provide(db, pkg_shlib_name(shlib));
+	buf = NULL;
+	while (pkg_shlibs_required(p, & buf) == EPKG_OK) {
+		it = pkgdb_query_shlib_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
 			continue;
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_sbuf_printf(out, "%n\t%Bn\n", p, shlib);
+			pkg_sbuf_printf(out, "%n\t%S\n", p, buf);
 		else
-			pkg_sbuf_printf(out, "%n has require a missing libraries: %Bn\n",
-			    p, shlib);
+			pkg_sbuf_printf(out, "%n has require a missing libraries: %S\n",
+			    p, buf);
 	}
 
 	/* checking requires */
-	while (pkg_requires(p, &provide) == EPKG_OK) {
-		it = pkgdb_query_provide(db, pkg_provide_name(provide));
+	buf = NULL;
+	while (pkg_requires(p, &buf) == EPKG_OK) {
+		it = pkgdb_query_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
 			continue;
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_sbuf_printf(out, "%n\tYn\n", p, provide);
+			pkg_sbuf_printf(out, "%n\tS\n", p, buf);
 		else
-			pkg_sbuf_printf(out, "%n has a missing requirement: %Yn\n",
-			    p, provide);
+			pkg_sbuf_printf(out, "%n has a missing requirement: %S\n",
+			    p, buf);
 	}
 
 	return (nbpkgs);

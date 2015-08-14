@@ -302,9 +302,8 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
-	struct pkg_shlib *shlp;
-	struct pkg_provide *np;
 	struct pkg *pkg;
+	bool libfound, providefound;
 
 	/* Find the first package in the universe list */
 	un = pr->un;
@@ -320,14 +319,12 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		 * For each provide we need to check whether this package
 		 * actually provides this require
 		 */
-		shlp = NULL;
-		np = NULL;
 		pkg = curvar->unit->pkg;
 
 		if (pr->is_shlib) {
-			HASH_FIND_STR(pkg->shlibs_provided, pr->provide, shlp);
+			libfound = kh_contains(strings, pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
-			if (shlp != NULL && strcmp(pkg->arch, orig->arch) != 0) {
+			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
 				pkg_debug(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
 					pkg->type == PKG_INSTALLED ? 'l' : 'r', orig->arch, pkg->arch);
@@ -335,10 +332,10 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			}
 		}
 		else {
-			HASH_FIND_STR(pkg->provides, pr->provide, np);
+			providefound = kh_contains(strings, pkg->provides, pr->provide);
 		}
 
-		if (np == NULL && shlp == NULL) {
+		if (!providefound && !libfound) {
 			pkg_debug(4, "%s provide is not satisfied by %s-%s(%c)", pr->provide,
 					pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 							'l' : 'r');
@@ -719,10 +716,9 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_conflict *conflict, *ctmp;
 	struct pkg *pkg;
 	struct pkg_solve_variable *cur_var;
-	struct pkg_shlib *shlib = NULL;
-	struct pkg_provide *p = NULL;
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq;
+	char *buf;
 	bool chain_added = false;
 
 	LL_FOREACH(var, cur_var) {
@@ -742,16 +738,16 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Shlibs */
-		shlib = NULL;
-		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+		buf = NULL;
+		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-					shlib->name) != EPKG_OK)
+					buf) != EPKG_OK)
 				continue;
 		}
-		p = NULL;
-		while (pkg_requires(pkg, &p) == EPKG_OK) {
+		buf = NULL;
+		while (pkg_requires(pkg, &buf) == EPKG_OK) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-					p->provide) != EPKG_OK)
+					buf) != EPKG_OK)
 				continue;
 		}
 

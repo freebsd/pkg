@@ -912,19 +912,19 @@ format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
 	else {
-		struct pkg_shlib	*shlib = NULL;
+		char	*buf = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Bn\n", "");
 
 		count = 1;
-		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-					     shlib, count, PP_B);
+					     buf, count, PP_B);
 
 			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
-				     shlib, count, PP_B);
+				     buf, count, PP_B);
 			count++;
 		}
 	}
@@ -938,9 +938,9 @@ format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *
 struct sbuf *
 format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_shlib	*shlib = data;
+	const char	*shlib = data;
 
-	return (string_val(sbuf, shlib->name, p));
+	return (string_val(sbuf, shlib, p));
 }
 
 /*
@@ -1470,8 +1470,8 @@ format_required(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_REQUIRES), p));
 	else {
-		struct pkg_provide	*provide = NULL;
-		int			 count;
+		char	*provide = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%Yn\n", "");
 
@@ -1495,9 +1495,9 @@ format_required(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_provide_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_provide	*provide = data;
+	const char	*provide = data;
 
-	return (string_val(sbuf, provide->provide, p));
+	return (string_val(sbuf, provide, p));
 }
 /*
  * %a -- Autoremove flag. boolean.  Accepts field-width, left-align.
@@ -1526,8 +1526,8 @@ format_shlibs_provided(struct sbuf *sbuf, const void *data, struct percent_esc *
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
 	else {
-		struct pkg_shlib	*shlib = NULL;
-		int			 count;
+		char	*shlib = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%bn\n", "");
 
@@ -1861,8 +1861,8 @@ format_provided(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_PROVIDES), p));
 	else {
-		struct pkg_provide	*provide = NULL;
-		int			 count;
+		char	*provide = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%yn\n", "");
 

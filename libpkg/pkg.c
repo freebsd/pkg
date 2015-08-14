@@ -558,19 +558,19 @@ pkg_options(const struct pkg *pkg, struct pkg_option **o)
 }
 
 int
-pkg_shlibs_required(const struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_required(const struct pkg *pkg, char **s)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->shlibs_required, (*s));
+	kh_string_next(pkg->shlibs_required, (*s));
 }
 
 int
-pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_provided(const struct pkg *pkg, char **s)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->shlibs_provided, (*s));
+	kh_string_next(pkg->shlibs_provided, (*s));
 }
 
 int
@@ -582,19 +582,19 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 }
 
 int
-pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
+pkg_provides(const struct pkg *pkg, char **c)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->provides, (*c));
+	kh_string_next(pkg->provides, (*c));
 }
 
 int
-pkg_requires(const struct pkg *pkg, struct pkg_provide **c)
+pkg_requires(const struct pkg *pkg, char **c)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->requires, (*c));
+	kh_string_next(pkg->requires, (*c));
 }
 
 int
@@ -1152,22 +1152,17 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 int
 pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
-	struct pkg_shlib *s = NULL, *f;
+	char *storename;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	pkg_shlib_new(&s);
-	s->name = strdup(name);
-
-	HASH_FIND_STR(pkg->shlibs_required, s->name, f);
 	/* silently ignore duplicates in case of shlibs */
-	if (f != NULL) {
-		pkg_shlib_free(s);
+	if (kh_contains(strings, pkg->shlibs_required, name))
 		return (EPKG_OK);
-	}
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs_required, s->name, strlen(s->name), s);
+	storename = strdup(name);
+	kh_add(strings, pkg->shlibs_required, storename, storename);
 
 	pkg_debug(3, "added shlib deps for %s on %s", pkg->name, name);
 
@@ -1177,7 +1172,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 int
 pkg_addshlib_provided(struct pkg *pkg, const char *name)
 {
-	struct pkg_shlib *s = NULL, *f;
+	char *storename;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -1186,16 +1181,12 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	if (strncmp(name, "lib", 3) != 0)
 		return (EPKG_OK);
 
-	pkg_shlib_new(&s);
-	s->name = strdup(name);
-	HASH_FIND_STR(pkg->shlibs_provided, s->name, f);
 	/* silently ignore duplicates in case of shlibs */
-	if (f != NULL) {
-		pkg_shlib_free(s);
+	if (kh_contains(strings, pkg->shlibs_provided, name))
 		return (EPKG_OK);
-	}
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided, s->name, strlen(s->name), s);
+	storename = strdup(name);
+	kh_add(strings, pkg->shlibs_provided, storename, storename);
 
 	pkg_debug(3, "added shlib provide %s for %s", name, pkg->name);
 
@@ -1227,20 +1218,18 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 int
 pkg_addrequire(struct pkg *pkg, const char *name)
 {
-	struct pkg_provide *p = NULL;
+	char *storename;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->requires, __DECONST(char *, name), p);
 	/* silently ignore duplicates in case of conflicts */
-	if (p != NULL)
+	if (kh_contains(strings, pkg->requires, name))
 		return (EPKG_OK);
 
-	pkg_provide_new(&p);
-	p->provide = strdup(name);
+	storename = strdup(name);
 
-	HASH_ADD_KEYPTR(hh, pkg->requires, p->provide, strlen(p->provide), p);
+	kh_add(strings, pkg->requires, storename, storename);
 
 	return (EPKG_OK);
 }
@@ -1248,20 +1237,18 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 int
 pkg_addprovide(struct pkg *pkg, const char *name)
 {
-	struct pkg_provide *p = NULL;
+	char *storename;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->provides, __DECONST(char *, name), p);
 	/* silently ignore duplicates in case of conflicts */
-	if (p != NULL)
+	if (kh_contains(strings, pkg->provides, name))
 		return (EPKG_OK);
 
-	pkg_provide_new(&p);
-	p->provide = strdup(name);
+	storename = strdup(name);
 
-	HASH_ADD_KEYPTR(hh, pkg->provides, p->provide, strlen(p->provide), p);
+	kh_add(strings, pkg->provides, storename, storename);
 
 	return (EPKG_OK);
 }
@@ -1328,15 +1315,15 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_GROUPS:
 		return (HASH_COUNT(pkg->groups));
 	case PKG_SHLIBS_REQUIRED:
-		return (HASH_COUNT(pkg->shlibs_required));
+		return (kh_count(pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
-		return (HASH_COUNT(pkg->shlibs_provided));
+		return (kh_count(pkg->shlibs_provided));
 	case PKG_CONFLICTS:
 		return (HASH_COUNT(pkg->conflicts));
 	case PKG_PROVIDES:
-		return (HASH_COUNT(pkg->provides));
+		return (kh_count(pkg->provides));
 	case PKG_REQUIRES:
-		return (HASH_COUNT(pkg->requires));
+		return (kh_count(pkg->requires));
 	case PKG_CONFIG_FILES:
 		return (HASH_COUNT(pkg->config_files));
 	}
@@ -1378,11 +1365,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_GROUPS;
 		break;
 	case PKG_SHLIBS_REQUIRED:
-		HASH_FREE(pkg->shlibs_required, pkg_shlib_free);
+		kh_free(strings, pkg->shlibs_required, char, free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
 		break;
 	case PKG_SHLIBS_PROVIDED:
-		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
+		kh_free(strings, pkg->shlibs_provided, char, free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_CONFLICTS:
@@ -1390,11 +1377,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
 		break;
 	case PKG_PROVIDES:
-		HASH_FREE(pkg->provides, pkg_provide_free);
+		kh_free(strings, pkg->provides, char, free);
 		pkg->flags &= ~PKG_LOAD_PROVIDES;
 		break;
 	case PKG_REQUIRES:
-		HASH_FREE(pkg->requires, pkg_provide_free);
+		kh_free(strings, pkg->requires, char, free);
 		pkg->flags &= ~PKG_LOAD_REQUIRES;
 		break;
 	}

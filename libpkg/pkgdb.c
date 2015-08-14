@@ -1984,13 +1984,13 @@ pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_shlib	*shlib = NULL;
+	char	*shlib = NULL;
 
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-		if (run_prstmt(SHLIBS1, shlib->name)
+		if (run_prstmt(SHLIBS1, shlib)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_REQD, package_id, shlib->name)
+		    run_prstmt(SHLIBS_REQD, package_id, shlib)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(SHLIBS_REQD));
 			return (EPKG_FATAL);
@@ -2019,13 +2019,13 @@ pkgdb_update_config_file_content(struct pkg *p, sqlite3 *s)
 int
 pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_shlib	*shlib = NULL;
+	char	*shlib = NULL;
 
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-		if (run_prstmt(SHLIBS1, shlib->name)
+		if (run_prstmt(SHLIBS1, shlib)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_PROV, package_id, shlib->name)
+		    run_prstmt(SHLIBS_PROV, package_id, shlib)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(SHLIBS_PROV));
 			return (EPKG_FATAL);
@@ -2038,13 +2038,13 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_provide	*provide = NULL;
+	char	*require = NULL;
 
-	while (pkg_requires(pkg, &provide) == EPKG_OK) {
-		if (run_prstmt(REQUIRE, provide->provide)
+	while (pkg_requires(pkg, &require) == EPKG_OK) {
+		if (run_prstmt(REQUIRE, require)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_REQUIRE, package_id, provide->provide)
+		    run_prstmt(PKG_REQUIRE, package_id, require)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(PKG_REQUIRE));
 			return (EPKG_FATAL);
@@ -2057,13 +2057,13 @@ pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_provide	*provide = NULL;
+	char	*provide = NULL;
 
 	while (pkg_provides(pkg, &provide) == EPKG_OK) {
-		if (run_prstmt(PROVIDE, provide->provide)
+		if (run_prstmt(PROVIDE, provide)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_PROVIDE, package_id, provide->provide)
+		    run_prstmt(PKG_PROVIDE, package_id, provide)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(PKG_PROVIDE));
 			return (EPKG_FATAL);

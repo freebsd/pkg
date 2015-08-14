@@ -336,7 +336,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_dir		*dir    = NULL;
 	struct pkg_user		*user   = NULL;
 	struct pkg_group	*group  = NULL;
-	struct pkg_shlib	*shlib  = NULL;
+	char			*buf;
 	struct pkg_kv		*kv;
 	struct pkg_strel	*list;
 
@@ -400,14 +400,16 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'B':
-		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-			format_str(pkg, output, qstr, shlib);
+		buf = NULL;
+		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'b':
-		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-			format_str(pkg, output, qstr, shlib);
+		buf = NULL;
+		while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;

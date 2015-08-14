@@ -217,37 +217,6 @@ pkg_option_free(struct pkg_option *option)
 }
 
 /*
- * Shared Libraries
- */
-int
-pkg_shlib_new(struct pkg_shlib **sl)
-{
-	if ((*sl = calloc(1, sizeof(struct pkg_shlib))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_shlib_free(struct pkg_shlib *sl)
-{
-	if (sl == NULL)
-		return;
-
-	free(sl->name);
-	free(sl);
-}
-
-const char *
-pkg_shlib_name(const struct pkg_shlib *sl)
-{
-	if (sl == NULL)
-		return (NULL);
-
-	return (sl->name);
-}
-
-/*
  * Conflicts
  */
 
@@ -268,28 +237,6 @@ pkg_conflict_free(struct pkg_conflict *c)
 
 	free(c->uid);
 	free(c->digest);
-	free(c);
-}
-
-/*
- * Provides
- */
-int
-pkg_provide_new(struct pkg_provide **c)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_provide))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_provide_free(struct pkg_provide *c)
-{
-	if (c == NULL)
-		return;
-
-	free(c->provide);
 	free(c);
 }
 
@@ -365,16 +312,4 @@ pkg_kv_free(struct pkg_kv *c)
 	free(c->key);
 	free(c->value);
 	free(c);
-}
-
-/*
- * provide
- */
-const char *
-pkg_provide_name(const struct pkg_provide *provide)
-{
-	if (provide == NULL)
-		return (NULL);
-
-	return (provide->provide);
 }
