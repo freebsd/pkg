@@ -69,11 +69,7 @@ struct pkg_solved {
 	struct pkg_solved *prev, *next;
 };
 
-struct pkg_job_seen {
-	struct pkg_job_universe_item *un;
-	const char *digest;
-	UT_hash_handle hh;
-};
+KHASH_MAP_INIT_STR(pkg_jobs_seen, struct pkg_job_universe_item *);
 
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
@@ -89,10 +85,9 @@ struct pkg_job_replace {
 	struct pkg_job_replace *next;
 };
 
-
 struct pkg_jobs_universe {
 	struct pkg_job_universe_item *items;
-	struct pkg_job_seen *seen;
+	kh_pkg_jobs_seen_t *seen;
 	struct pkg_job_provide *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
@@ -171,12 +166,6 @@ int pkg_jobs_universe_process(struct pkg_jobs_universe *universe,
  */
 int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, struct pkg_job_universe_item **result);
-
-/*
- * Check if the specified digest was seen in the universe
- */
-struct pkg_job_seen* pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
-	const char *digest);
 
 /*
  * Search for an entry corresponding to the uid in the universe

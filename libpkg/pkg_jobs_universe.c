@@ -53,6 +53,19 @@ struct pkg_chain {
 	struct pkg_chain *next;
 };
 
+static struct pkg_job_universe_item *
+pkg_jobs_seen_find(struct pkg_jobs_universe *universe, const char *digest)
+{
+	khint_t k;
+
+	if (universe->seen == NULL)
+		return (NULL);
+	k = kh_get_pkg_jobs_seen(universe->seen, digest);
+	if (k == kh_end(universe->seen))
+		return (NULL);
+	return (kh_value(universe->seen, k));
+}
+
 struct pkg *
 pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
@@ -172,8 +185,7 @@ int
 pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		bool force, struct pkg_job_universe_item **found)
 {
-	struct pkg_job_universe_item *item, *tmp = NULL;
-	struct pkg_job_seen *seen;
+	struct pkg_job_universe_item *item, *seen, *tmp = NULL;
 
 	pkg_validate(pkg);
 	if (pkg->digest == NULL) {
@@ -185,7 +197,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 
-	HASH_FIND_STR(universe->seen, pkg->digest, seen);
+	seen = pkg_jobs_seen_find(universe, pkg->digest);
 	if (seen != NULL && !force) {
 		/*
 		 * For remote packages we could have the same digest but different repos
@@ -193,16 +205,16 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		 */
 		bool other_candidate = false;
 
-		if (seen->un->pkg->type != PKG_INSTALLED && pkg->type != PKG_INSTALLED) {
-			if (pkg->reponame && seen->un->pkg->reponame) {
+		if (seen->pkg->type != PKG_INSTALLED && pkg->type != PKG_INSTALLED) {
+			if (pkg->reponame && seen->pkg->reponame) {
 				other_candidate =
-						(strcmp(pkg->reponame, seen->un->pkg->reponame) != 0);
+						(strcmp(pkg->reponame, seen->pkg->reponame) != 0);
 			}
 		}
 
 		if (!other_candidate) {
 			if (found != NULL)
-				*found = seen->un;
+				*found = seen;
 
 			return (EPKG_END);
 		}
@@ -227,17 +239,8 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	DL_APPEND(tmp, item);
 
-	if (seen == NULL) {
-		seen = calloc(1, sizeof(struct pkg_job_seen));
-		if (seen == NULL) {
-			pkg_emit_errno("pkg_jobs_universe_add_pkg", "calloc: struct pkg_job_seen)");
-			return (EPKG_FATAL);
-		}
-		seen->digest = pkg->digest;
-		seen->un = item;
-		HASH_ADD_KEYPTR(hh, universe->seen, seen->digest, strlen(seen->digest),
-			seen);
-	}
+	if (seen == NULL)
+		kh_add(pkg_jobs_seen, universe->seen, item, item->pkg->digest);
 
 	universe->nitems++;
 
@@ -359,8 +362,6 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 		/* Skip seen packages */
 		if (unit == NULL) {
-			struct pkg_job_seen *seen;
-
 			if (rpkg->digest == NULL) {
 				pkg_debug(3, "no digest found for package %s", rpkg->uid);
 				if (pkg_checksum_calculate(rpkg, universe->j->db) != EPKG_OK) {
@@ -752,11 +753,10 @@ pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 			free(cur);
 		}
 	}
-	HASH_FREE(universe->seen, free);
+	kh_destroy_pkg_jobs_seen(universe->seen);
 	HASH_FREE(universe->provides, pkg_jobs_universe_provide_free);
 	LL_FREE(universe->uid_replaces, pkg_jobs_universe_replacement_free);
 }
-
 
 struct pkg_jobs_universe *
 pkg_jobs_universe_new(struct pkg_jobs *j)
@@ -782,16 +782,6 @@ pkg_jobs_universe_find(struct pkg_jobs_universe *universe, const char *uid)
 	HASH_FIND_STR(universe->items, uid, unit);
 
 	return (unit);
-}
-
-struct pkg_job_seen *
-pkg_jobs_universe_seen(struct pkg_jobs_universe *universe, const char *digest)
-{
-	struct pkg_job_seen *seen;
-
-	HASH_FIND_STR(universe->seen, digest, seen);
-
-	return (seen);
 }
 
 void
