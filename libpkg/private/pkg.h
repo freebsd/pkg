@@ -259,7 +259,6 @@ struct pkg {
 	size_t		dir_to_del_len;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
-	UT_hash_handle	 hh;
 	struct pkg	*next;
 };
 
