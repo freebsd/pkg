@@ -85,7 +85,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 
 	/* checking libraries required */
 	buf = NULL;
-	while (pkg_shlibs_required(p, & buf) == EPKG_OK) {
+	while (pkg_shlibs_required(p, &buf) == EPKG_OK) {
 		it = pkgdb_query_shlib_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
