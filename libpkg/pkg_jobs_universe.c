@@ -38,8 +38,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "utarray.h"
-
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -1070,8 +1068,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 					PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
 					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
-	UT_array *candidates;
-	struct pkg **p = NULL;
+	kvec_t(struct pkg *) candidates;
 
 	HASH_FIND(hh, universe->items, uid, strlen(uid), unit);
 	if (unit != NULL) {
@@ -1099,7 +1096,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		universe->j->reponame)) == NULL)
 		return (NULL);
 
-	utarray_new(candidates, &ut_ptr_icd);
+	kv_init(candidates);
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
 
 		if (force) {
@@ -1113,7 +1110,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 			else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE)
 				selected = pkg;
 		}
-		utarray_push_back(candidates, &pkg);
+		kv_prepend(typeof(pkg), candidates, pkg);
 		pkg = NULL;
 	}
 
@@ -1125,22 +1122,20 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	}
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
-		while ((p = (struct pkg **)utarray_next(candidates, p)) != NULL) {
-			pkg_jobs_universe_add_pkg(universe, *p, true, NULL);
+		for (int i = 0; i < kv_size(candidates); i++) {
+			pkg_jobs_universe_add_pkg(universe, kv_A(candidates, i), true, NULL);
 		}
 	}
 	else {
-		while ((p = (struct pkg **)utarray_next(candidates, p)) != NULL) {
-			pkg_free(*p);
-		}
-
-		utarray_free(candidates);
+		while (kv_size(candidates) > 0)
+			pkg_free(kv_pop(candidates));
+		kv_destroy(candidates);
 
 		return (NULL);
 	}
 
 	HASH_FIND(hh, universe->items, uid, strlen(uid), unit);
-	utarray_free(candidates);
+	kv_destroy(candidates);
 
 	return (unit);
 }
