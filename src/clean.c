@@ -301,7 +301,7 @@ exec_clean(int argc, char **argv)
 		}
 	}
 	if (sumlist != NULL) {
-		kh_foreach(sumlist, sum, cksum, free(cksum));
+		kh_foreach_value(sumlist, cksum, free(cksum));
 		kh_destroy_sum(sumlist);
 	}
 

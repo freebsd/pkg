@@ -349,13 +349,12 @@ hash_indexfile(const char *indexfilename)
 static void
 free_categories(void)
 {
-	const char *key, *k;
 	char *v;
 	struct category *cat;
 
-	kh_foreach(categories, key, cat, {
+	kh_foreach_value(categories, cat, {
 		free(cat->name);
-		kh_foreach(cat->ports, k, v, free(v));
+		kh_foreach_value(cat->ports, v, free(v));
 		kh_destroy_ports(cat->ports);
 		free(cat);
 	});
@@ -365,13 +364,12 @@ free_categories(void)
 static void
 free_index(kh_index_t *index)
 {
-	const char *key __unused;
 	struct index_entry *entry;
 
 	if (index == NULL)
 		return;
 
-	kh_foreach(index, key, entry, {
+	kh_foreach_value(index, entry, {
 		free(entry->origin);
 		free(entry->version);
 		free(entry);
