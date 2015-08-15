@@ -58,13 +58,12 @@
 #include <sys/statvfs.h>
 #endif
 
-#include "utarray.h"
-
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
+#include "kvec.h"
 
 static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
@@ -440,72 +439,68 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 	struct pkg_dep *d;
 	struct pkg *lp;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
-	UT_array *to_process = NULL;
+	kvec_t(struct pkg_job_universe_item *) to_process;
 
-	if (upgrade || reverse) {
-		utarray_new(to_process, &ut_ptr_icd);
+	if (!upgrade && !reverse)
+		return;
 
-		HASH_ITER(hh, j->request_add, req, tmp) {
-			it = req->item;
+	kv_init(to_process);
+	HASH_ITER(hh, j->request_add, req, tmp) {
+		it = req->item;
 
-			if (reverse)
-				deps_func = pkg_rdeps;
-			else
-				deps_func = pkg_deps;
+		if (reverse)
+			deps_func = pkg_rdeps;
+		else
+			deps_func = pkg_deps;
 
-			d = NULL;
+		d = NULL;
+		/*
+		 * Here we get deps of local packages only since we are pretty sure
+		 * that they are completely expanded
+		 */
+		lp = pkg_jobs_universe_get_local(j->universe,
+		    it->pkg->uid, 0);
+		while (lp != NULL && deps_func(lp, &d) == EPKG_OK) {
 			/*
-			 * Here we get deps of local packages only since we are pretty sure
-			 * that they are completely expanded
+			 * Do not add duplicated upgrade candidates
 			 */
+			HASH_FIND_STR(j->request_add, d->uid, found);
+			if (found != NULL)
+				continue;
+
+			pkg_debug(4, "adding dependency %s to request", d->uid);
 			lp = pkg_jobs_universe_get_local(j->universe,
-			    it->pkg->uid, 0);
-			while (lp != NULL && deps_func(lp, &d) == EPKG_OK) {
-				/*
-				 * Do not add duplicated upgrade candidates
-				 */
-				HASH_FIND_STR(j->request_add, d->uid, found);
-				if (found != NULL)
-					continue;
+				d->uid, 0);
+			/*
+			 * Here we need to check whether specific remote package
+			 * is newer than a local one
+			 */
+			un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
+				d->uid, lp, force);
+			if (un == NULL)
+				continue;
 
-				pkg_debug(4, "adding dependency %s to request", d->uid);
-				lp = pkg_jobs_universe_get_local(j->universe,
-					d->uid, 0);
-				/*
-				 * Here we need to check whether specific remote package
-				 * is newer than a local one
-				 */
-				un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
-					d->uid, lp, force);
-				if (un == NULL)
-					continue;
-
-				cur = un->prev;
-				while (cur != un) {
-					if (cur->pkg->type != PKG_INSTALLED) {
-						utarray_push_back(to_process, &un);
-						break;
-					}
-					cur = cur->prev;
+			cur = un->prev;
+			while (cur != un) {
+				if (cur->pkg->type != PKG_INSTALLED) {
+					kv_push(typeof(un), to_process, un);
+					break;
 				}
+				cur = cur->prev;
 			}
 		}
 	}
 
-	if (to_process) {
-		/* Add all items to the request */
-		struct pkg_job_universe_item **pun = NULL;
-
-		if (to_process->n > 0) {
-			while ((pun = (struct pkg_job_universe_item **)
-							utarray_next(to_process, pun)) != NULL) {
-				pkg_jobs_add_req_from_universe(&j->request_add, *pun, false, true);
-			}
-			/* Now recursively process all items checked */
-			pkg_jobs_process_add_request(j);
-		}
-		utarray_free(to_process);
+	/* Add all items to the request */
+	for (int i = 0; i < kv_size(to_process); i++) {
+		un = kv_A(to_process, i);
+		pkg_jobs_add_req_from_universe(&j->request_add, un, false, true);
 	}
+	/* Now recursively process all items checked */
+	if (kv_size(to_process) > 0)
+		pkg_jobs_process_add_request(j);
+
+	kv_destroy(to_process);
 }
 
 /*
@@ -517,54 +512,50 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	bool force = j->flags & PKG_FLAG_FORCE;
 	struct pkg_job_request *req, *tmp, *found;
 	struct pkg_dep *d = NULL;
-	UT_array *to_process = NULL;
 	struct pkg *lp;
 	int rc = EPKG_OK;
+	kvec_t(struct pkg *) to_process;
 
-	if (!force) {
-		/*
-		 * Need to add also all reverse deps here
-		 */
-		utarray_new(to_process, &ut_ptr_icd);
-		HASH_ITER(hh, j->request_delete, req, tmp) {
-			d = NULL;
-			while (pkg_rdeps(req->item->pkg, &d) == EPKG_OK) {
-				HASH_FIND_STR(j->request_delete, d->uid, found);
-				if (found)
-					continue;
+	if (force)
+		return (EPKG_OK);
 
-				lp = pkg_jobs_universe_get_local(j->universe, d->uid, 0);
-				if (lp) {
-					if (lp->locked) {
-						pkg_emit_error("%s is locked, "
-						   "cannot delete %s", lp->name,
-						   req->item->pkg->name);
-						rc = EPKG_FATAL;
-					}
-					utarray_push_back(to_process, &lp);
+	kv_init(to_process);
+	/*
+	 * Need to add also all reverse deps here
+	 */
+	HASH_ITER(hh, j->request_delete, req, tmp) {
+		d = NULL;
+		while (pkg_rdeps(req->item->pkg, &d) == EPKG_OK) {
+			HASH_FIND_STR(j->request_delete, d->uid, found);
+			if (found)
+				continue;
+
+			lp = pkg_jobs_universe_get_local(j->universe, d->uid, 0);
+			if (lp) {
+				if (lp->locked) {
+					pkg_emit_error("%s is locked, "
+					    "cannot delete %s", lp->name,
+					   req->item->pkg->name);
+					rc = EPKG_FATAL;
 				}
+				kv_push(typeof(lp), to_process, lp);
 			}
 		}
 	}
 
-	if (to_process) {
-		/* Add all items to the request */
-		struct pkg **ppkg = NULL;
+	if (rc == EPKG_FATAL)
+		return (rc);
 
-		if (to_process->n > 0 && rc != EPKG_FATAL) {
-			while ((ppkg = (struct pkg **)
-							utarray_next(to_process, ppkg)) != NULL) {
-
-				if (pkg_jobs_add_req(j, *ppkg) == NULL) {
-					utarray_free(to_process);
-					return (EPKG_FATAL);
-				}
-			}
-			/* Now recursively process all items checked */
-			rc = pkg_jobs_process_delete_request(j);
+	for (int i = 0; i < kv_size(to_process); i++) {
+		lp = kv_A(to_process, i);
+		if (pkg_jobs_add_req(j, lp) == NULL) {
+			kv_destroy(to_process);
+			return (EPKG_FATAL);
 		}
-		utarray_free(to_process);
 	}
+	if (kv_size(to_process) > 0)
+		rc = pkg_jobs_process_delete_request(j);
+	kv_destroy(to_process);
 
 	return (rc);
 }
