@@ -61,7 +61,6 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/uthash/utstring.h \
 		picosat/picosat.h \
 		sqlite/sqlite3.h \
-		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
 		include/tree.h \
