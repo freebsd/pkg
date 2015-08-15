@@ -110,7 +110,6 @@ global:
 	pkg_plugins_init;
 	pkg_plugins_shutdown;
 	pkg_printf;
-	pkg_provide_name;
 	pkg_provides;
 	pkg_rdeps;
 	pkg_recompute;
@@ -136,7 +135,6 @@ global:
 	pkg_set_from_file;
 	pkg_set_from_fileat;
 	pkg_set_rootdir;
-	pkg_shlib_name;
 	pkg_shlibs_provided;
 	pkg_shlibs_required;
 	pkg_shutdown;
