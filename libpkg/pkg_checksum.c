@@ -193,8 +193,6 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	size_t blen;
 	struct pkg_checksum_entry *entries = NULL;
 	struct pkg_option *option = NULL;
-	struct pkg_user *user = NULL;
-	struct pkg_group *group = NULL;
 	struct pkg_dep *dep = NULL;
 	int i;
 
@@ -221,12 +219,14 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		pkg_checksum_add_entry("provided_shlib", buf, &entries);
 	}
 
-	while (pkg_users(pkg, &user) == EPKG_OK) {
-		pkg_checksum_add_entry("user", user->name, &entries);
+	buf = NULL;
+	while (pkg_users(pkg, &buf) == EPKG_OK) {
+		pkg_checksum_add_entry("user", buf, &entries);
 	}
 
-	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		pkg_checksum_add_entry("group", group->name, &entries);
+	buf = NULL;
+	while (pkg_groups(pkg, &buf) == EPKG_OK) {
+		pkg_checksum_add_entry("group", buf, &entries);
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {

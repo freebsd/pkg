@@ -334,8 +334,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
-	struct pkg_user		*user   = NULL;
-	struct pkg_group	*group  = NULL;
 	char			*buf;
 	struct pkg_kv		*kv;
 	struct pkg_strel	*list;
@@ -388,14 +386,16 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'U':
-		while (pkg_users(pkg, &user) == EPKG_OK) {
-			format_str(pkg, output, qstr, user);
+		buf = NULL;
+		while (pkg_users(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'G':
-		while (pkg_groups(pkg, &group) == EPKG_OK) {
-			format_str(pkg, output, qstr, group);
+		buf = NULL;
+		while (pkg_groups(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;

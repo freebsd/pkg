@@ -132,48 +132,6 @@ pkg_dir_free(struct pkg_dir *d)
 }
 
 /*
- * User
- */
-
-int
-pkg_user_new(struct pkg_user **u)
-{
-	if ((*u = calloc(1, sizeof(struct pkg_user))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_user");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_user_free(struct pkg_user *u)
-{
-	free(u);
-}
-
-/*
- * Group
- */
-
-int
-pkg_group_new(struct pkg_group **g)
-{
-	if ((*g = calloc(1, sizeof(struct pkg_group))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_group");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_group_free(struct pkg_group *g)
-{
-	free(g);
-}
-
-/*
  * Script
  */
 
@@ -197,7 +155,7 @@ int
 pkg_option_new(struct pkg_option **option)
 {
 	if ((*option = calloc(1, sizeof(struct pkg_option))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_user");
+		pkg_emit_errno("calloc", "pkg_option");
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);

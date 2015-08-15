@@ -910,8 +910,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
 	struct pkg_dir		*dir      = NULL;
-	struct pkg_user		*user     = NULL;
-	struct pkg_group	*group    = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf       = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
@@ -1017,20 +1015,22 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
-	while (pkg_users(pkg, &user) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_users(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(user->name));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "users", 5, false);
 
 	pkg_debug(4, "Emitting groups");
 	seq = NULL;
-	while (pkg_groups(pkg, &group) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_groups(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(group->name));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "groups", 6, false);

@@ -494,19 +494,19 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 }
 
 int
-pkg_users(const struct pkg *pkg, struct pkg_user **u)
+pkg_users(const struct pkg *pkg, char **u)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->users, (*u));
+	kh_string_next(pkg->users, (*u));
 }
 
 int
-pkg_groups(const struct pkg *pkg, struct pkg_group **g)
+pkg_groups(const struct pkg *pkg, char **g)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->groups, (*g));
+	kh_string_next(pkg->users, (*g));
 }
 
 int
@@ -600,13 +600,12 @@ pkg_requires(const struct pkg *pkg, char **c)
 int
 pkg_adduser(struct pkg *pkg, const char *name)
 {
-	struct pkg_user *u = NULL;
+	char *storename;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->users, name, u);
-	if (u != NULL) {
+	if (kh_contains(strings, pkg->users, name)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
@@ -616,11 +615,8 @@ pkg_adduser(struct pkg *pkg, const char *name)
 		}
 	}
 
-	pkg_user_new(&u);
-
-	strlcpy(u->name, name, sizeof(u->name));
-
-	HASH_ADD_STR(pkg->users, name, u);
+	storename = strdup(name);
+	kh_add(strings, pkg->users, storename, storename);
 
 	return (EPKG_OK);
 }
@@ -628,13 +624,12 @@ pkg_adduser(struct pkg *pkg, const char *name)
 int
 pkg_addgroup(struct pkg *pkg, const char *name)
 {
-	struct pkg_group *g = NULL;
+	char *storename;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->groups, name, g);
-	if (g != NULL) {
+	if (kh_contains(strings, pkg->groups, name)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
@@ -644,11 +639,8 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 		}
 	}
 
-	pkg_group_new(&g);
-
-	strlcpy(g->name, name, sizeof(g->name));
-
-	HASH_ADD_STR(pkg->groups, name, g);
+	storename = strdup(name);
+	kh_add(strings, pkg->groups, storename, storename);
 
 	return (EPKG_OK);
 }
@@ -1286,9 +1278,9 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_DIRS:
 		return (kh_count(pkg->dirs));
 	case PKG_USERS:
-		return (HASH_COUNT(pkg->users));
+		return (kh_count(pkg->users));
 	case PKG_GROUPS:
-		return (HASH_COUNT(pkg->groups));
+		return (kh_count(pkg->groups));
 	case PKG_SHLIBS_REQUIRED:
 		return (kh_count(pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
@@ -1332,11 +1324,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:
-		HASH_FREE(pkg->users, pkg_user_free);
+		kh_free(strings, pkg->users, char, free);
 		pkg->flags &= ~PKG_LOAD_USERS;
 		break;
 	case PKG_GROUPS:
-		HASH_FREE(pkg->groups, pkg_group_free);
+		kh_free(strings, pkg->groups, char, free);
 		pkg->flags &= ~PKG_LOAD_GROUPS;
 		break;
 	case PKG_SHLIBS_REQUIRED:

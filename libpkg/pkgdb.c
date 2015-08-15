@@ -1666,11 +1666,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_file		*file = NULL;
 	struct pkg_dir		*dir = NULL;
 	struct pkg_option	*option = NULL;
-	struct pkg_user		*user = NULL;
-	struct pkg_group	*group = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf = NULL;
 	struct pkgdb_it		*it = NULL;
+	char			*buf;
 
 	sqlite3			*s;
 
@@ -1873,11 +1872,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert users
 	 */
 
-	while (pkg_users(pkg, &user) == EPKG_OK) {
-		if (run_prstmt(USERS1, user->name)
+	buf = NULL;
+	while (pkg_users(pkg, &buf) == EPKG_OK) {
+		if (run_prstmt(USERS1, buf)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(USERS2, package_id, user->name)
+		    run_prstmt(USERS2, package_id, buf)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(USERS2));
 			goto cleanup;
@@ -1888,11 +1888,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert groups
 	 */
 
-	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		if (run_prstmt(GROUPS1, group->name)
+	buf = NULL;
+	while (pkg_groups(pkg, &buf) == EPKG_OK) {
+		if (run_prstmt(GROUPS1, buf)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(GROUPS2, package_id, group->name)
+		    run_prstmt(GROUPS2, package_id, buf)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(GROUPS2));
 			goto cleanup;

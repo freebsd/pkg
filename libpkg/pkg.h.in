@@ -99,8 +99,6 @@ struct pkg_dir;
 struct pkg_strel;
 struct pkg_option;
 struct pkg_license;
-struct pkg_user;
-struct pkg_group;
 struct pkg_config_file;
 
 struct pkgdb;
@@ -615,14 +613,14 @@ int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_users(const struct pkg *pkg, struct pkg_user **user);
+int pkg_users(const struct pkg *pkg, char **user);
 
 /**
  * Iterates over the groups of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_groups(const struct pkg *pkg, struct pkg_group **group);
+int pkg_groups(const struct pkg *pkg, char **group);
 
 /**
  * Iterates over the options of the package.

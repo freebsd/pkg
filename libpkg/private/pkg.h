@@ -242,8 +242,8 @@ struct pkg {
 	kh_pkg_files_t		*files;
 	kh_pkg_dirs_t		*dirs;
 	struct pkg_option	*options;
-	struct pkg_user		*users;
-	struct pkg_group	*groups;
+	kh_strings_t		*users;
+	kh_strings_t		*groups;
 	kh_strings_t		*shlibs_required;
 	kh_strings_t		*shlibs_provided;
 	struct pkg_conflict *conflicts;
@@ -306,16 +306,6 @@ struct pkg_option {
 	char	*value;
 	char	*default_value;
 	char	*description;
-	UT_hash_handle	hh;
-};
-
-struct pkg_user {
-	char		 name[MAXLOGNAME];
-	UT_hash_handle	hh;
-};
-
-struct pkg_group {
-	char		 name[MAXLOGNAME];
 	UT_hash_handle	hh;
 };
 
@@ -607,12 +597,6 @@ void pkg_dir_free(struct pkg_dir *);
 
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
-
-int pkg_user_new(struct pkg_user **);
-void pkg_user_free(struct pkg_user *);
-
-int pkg_group_new(struct pkg_group **);
-void pkg_group_free(struct pkg_group *);
 
 int pkg_jobs_resolv(struct pkg_jobs *jobs);
 

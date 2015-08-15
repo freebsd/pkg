@@ -1149,8 +1149,8 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
-		struct pkg_group	*group = NULL;
-		int			 count;
+		char	*group = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%Gn\n", "");
 
@@ -1174,9 +1174,9 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_group	*group = data;
+	const char	*group = data;
 
-	return (string_val(sbuf, group->name, p));
+	return (string_val(sbuf, group, p));
 }
 
 /*
@@ -1374,8 +1374,8 @@ format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
-		struct pkg_user	*user = NULL;
-		int		 count;
+		char	*user = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%Un\n", "");
 
@@ -1399,9 +1399,9 @@ format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_user	*user = data;
+	const char	*user = data;
 
-	return (string_val(sbuf, user->name, p));
+	return (string_val(sbuf, user, p));
 }
 
 /*
