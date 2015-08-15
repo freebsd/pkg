@@ -488,22 +488,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 }
 
 int
-pkg_users(const struct pkg *pkg, char **u)
-{
-	assert(pkg != NULL);
-
-	kh_string_next(pkg->users, (*u));
-}
-
-int
-pkg_groups(const struct pkg *pkg, char **g)
-{
-	assert(pkg != NULL);
-
-	kh_string_next(pkg->users, (*g));
-}
-
-int
 pkg_deps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
@@ -552,35 +536,11 @@ pkg_options(const struct pkg *pkg, struct pkg_option **o)
 }
 
 int
-pkg_shlibs_required(const struct pkg *pkg, char **s)
-{
-	assert(pkg != NULL);
-
-	kh_string_next(pkg->shlibs_required, (*s));
-}
-
-int
-pkg_shlibs_provided(const struct pkg *pkg, char **s)
-{
-	assert(pkg != NULL);
-
-	kh_string_next(pkg->shlibs_provided, (*s));
-}
-
-int
 pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 {
 	assert(pkg != NULL);
 
 	HASH_NEXT(pkg->conflicts, (*c));
-}
-
-int
-pkg_provides(const struct pkg *pkg, char **c)
-{
-	assert(pkg != NULL);
-
-	kh_string_next(pkg->provides, (*c));
 }
 
 #define pkg_each_strings(name)			\
@@ -592,14 +552,12 @@ pkg_##name(const struct pkg *pkg, char **c) {	\
 
 pkg_each_strings(categories);
 pkg_each_strings(licenses);
-
-int
-pkg_requires(const struct pkg *pkg, char **c)
-{
-	assert(pkg != NULL);
-
-	kh_string_next(pkg->requires, (*c));
-}
+pkg_each_strings(requires);
+pkg_each_strings(provides);
+pkg_each_strings(shlibs_required);
+pkg_each_strings(shlibs_provides);
+pkg_each_strings(users);
+pkg_each_strings(groups);
 
 int
 pkg_adduser(struct pkg *pkg, const char *name)
