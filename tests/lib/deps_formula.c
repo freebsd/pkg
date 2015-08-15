@@ -32,6 +32,7 @@
 
 ATF_TC(check_parsing);
 ATF_TC(check_sql);
+ATF_TC(check_op_parsing);
 
 ATF_TC_HEAD(check_parsing, tc)
 {
@@ -91,10 +92,38 @@ ATF_TC_BODY(check_sql, tc)
 	}
 }
 
+ATF_TC_HEAD(check_op_parsing, tc)
+{
+	atf_tc_set_md_var(tc, "descr", "testing parsing operands");
+}
+ATF_TC_BODY(check_op_parsing, tc)
+{
+	struct cases {
+		const char *val;
+		int expect;
+	} cases[] = {
+		{ "=", VERSION_EQ },
+		{ "==", VERSION_EQ },
+		{ ">=", VERSION_GE },
+		{ ">", VERSION_GT },
+		{ "<=", VERSION_LE },
+		{ "<", VERSION_LT },
+		{ "!", VERSION_NOT },
+		{ "!=", VERSION_NOT },
+		{ "*", VERSION_ANY },
+		{ NULL, VERSION_ANY },
+		{ "=>", VERSION_ANY },
+	};
+
+	for (int i = 0; i < sizeof(cases) / sizeof(cases[0]); i ++) {
+		ATF_REQUIRE_EQ(pkg_deps_string_toop(cases[i].val), cases[i].expect);
+	}
+}
 
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, check_parsing);
 	ATF_TP_ADD_TC(tp, check_sql);
+	ATF_TP_ADD_TC(tp, check_op_parsing);
 	return (atf_no_error());
 }
