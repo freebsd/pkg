@@ -555,7 +555,7 @@ pkg_each_strings(licenses);
 pkg_each_strings(requires);
 pkg_each_strings(provides);
 pkg_each_strings(shlibs_required);
-pkg_each_strings(shlibs_provides);
+pkg_each_strings(shlibs_provided);
 pkg_each_strings(users);
 pkg_each_strings(groups);
 
