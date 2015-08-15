@@ -360,14 +360,14 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed category");
 			else
-				pkg_strel_add(&pkg->categories,
+				pkg_addstring(&pkg->categories,
 				    ucl_object_tostring(cur), "category");
 			break;
 		case PKG_LICENSES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed license");
 			else
-				pkg_strel_add(&pkg->licenses,
+				pkg_addstring(&pkg->licenses,
 				    ucl_object_tostring(cur), "license");
 			break;
 		case PKG_USERS:
@@ -971,11 +971,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting licenses");
 	seq = NULL;
 	el = NULL;
-	LL_FOREACH(pkg->licenses, el) {
+	kh_each_value(pkg->licenses, buf, {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(el->value));
-	}
+		ucl_array_append(seq, ucl_object_fromstring(buf));
+	});
 	if (seq)
 		ucl_object_insert_key(top, seq, "licenses", 8, false);
 
@@ -1005,11 +1005,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting categories");
 	seq = NULL;
 	el = NULL;
-	LL_FOREACH(pkg->categories, el) {
+	kh_each_value(pkg->categories, buf, {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(el->value));
-	}
+		ucl_array_append(seq, ucl_object_fromstring(buf));
+	});
 	if (seq)
 		ucl_object_insert_key(top, seq, "categories", 10, false);
 

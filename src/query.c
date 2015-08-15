@@ -336,7 +336,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_dir		*dir    = NULL;
 	char			*buf;
 	struct pkg_kv		*kv;
-	struct pkg_strel	*list;
 
 	switch (multiline) {
 	case 'd':
@@ -352,11 +351,10 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		pkg_get(pkg, PKG_CATEGORIES, &list);
-		while (list != NULL) {
-			format_str(pkg, output, qstr, list);
+		buf = NULL;
+		while (pkg_categories(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
-			list = list->next;
 		}
 		break;
 	case 'O':
@@ -378,11 +376,10 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'L':
-		pkg_get(pkg, PKG_LICENSES, &list);
-		while (list != NULL) {
-			format_str(pkg, output, qstr, list);
+		buf = NULL;
+		while (pkg_licenses(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
-			list = list->next;
 		}
 		break;
 	case 'U':

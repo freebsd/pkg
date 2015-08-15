@@ -933,25 +933,24 @@ struct sbuf *
 format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	struct pkg_strel	*el;
 	int			 count = 0;
+	char			*cat;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->categories, el, count);
-		return (list_count(sbuf, count, p));
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES), p));
 	} else {
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		LL_FOREACH(pkg->categories, el) {
+		kh_each_value(pkg->categories, cat, {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-				    el, count, PP_C);
+				    cat, count, PP_C);
 
-			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), el,
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), cat,
 			    count, PP_C);
 			count++;
-		}
+		});
 	}
 	return (sbuf);
 }
@@ -962,9 +961,9 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_strel	*el = data;
+	const char *cat = data;
 
-	return (string_val(sbuf, el->value, p));
+	return (string_val(sbuf, cat, p));
 }
 
 /*
@@ -1199,25 +1198,24 @@ struct sbuf *
 format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	struct pkg_strel	*el;
+	char			*lic;
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->licenses, el, count);
-		return (list_count(sbuf, count, p));
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES), p));
 	} else {
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		LL_FOREACH(pkg->licenses, el) {
+		kh_each_value(pkg->licenses, lic, {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-				    el, count, PP_L);
+				    lic, count, PP_L);
 
-			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), el,
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), lic,
 			    count, PP_L);
 			count++;
-		}
+		});
 	}
 	return (sbuf);
 }
@@ -1228,9 +1226,9 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_strel	*el = data;
+	const char *lic = data;
 
-	return (string_val(sbuf, el->value, p));
+	return (string_val(sbuf, lic, p));
 }
 
 /*

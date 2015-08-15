@@ -1661,7 +1661,6 @@ int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 {
 	struct pkg		*pkg2 = NULL;
-	struct pkg_strel	*el;
 	struct pkg_dep		*dep = NULL;
 	struct pkg_file		*file = NULL;
 	struct pkg_dir		*dir = NULL;
@@ -1843,30 +1842,30 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert categories
 	 */
 
-	LL_FOREACH(pkg->categories, el) {
-		ret = run_prstmt(CATEGORY1, el->value);
+	kh_each_value(pkg->categories, buf, {
+		ret = run_prstmt(CATEGORY1, buf);
 		if (ret == SQLITE_DONE)
-			ret = run_prstmt(CATEGORY2, package_id, el->value);
+			ret = run_prstmt(CATEGORY2, package_id, buf);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(CATEGORY2));
 			goto cleanup;
 		}
-	}
+	});
 
 	/*
 	 * Insert licenses
 	 */
 
-	LL_FOREACH(pkg->licenses, el) {
-		if (run_prstmt(LICENSES1, el->value)
+	kh_each_value(pkg->licenses, buf, {
+		if (run_prstmt(LICENSES1, buf)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(LICENSES2, package_id, el->value)
+		    run_prstmt(LICENSES2, package_id, buf)
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s, SQL(LICENSES2));
 			goto cleanup;
 		}
-	}
+	});
 
 	/*
 	 * Insert users

@@ -107,13 +107,13 @@ static struct column_mapping {
 static int
 pkg_addcategory(struct pkg *pkg, const char *data)
 {
-	return (pkg_strel_add(&pkg->categories, data, "category"));
+	return (pkg_addstring(&pkg->categories, data, "category"));
 }
 
 static int
 pkg_addlicense(struct pkg *pkg, const char *data)
 {
-	return (pkg_strel_add(&pkg->licenses, data, "license"));
+	return (pkg_addstring(&pkg->licenses, data, "license"));
 }
 
 static int

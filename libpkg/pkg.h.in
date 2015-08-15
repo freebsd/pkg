@@ -96,7 +96,6 @@ struct pkg_dep;
 struct pkg_conflict;
 struct pkg_file;
 struct pkg_dir;
-struct pkg_strel;
 struct pkg_option;
 struct pkg_license;
 struct pkg_config_file;
@@ -121,11 +120,6 @@ struct pkg_kv {
 	char *key;
 	char *value;
 	struct pkg_kv *next;
-};
-
-struct pkg_strel {
-	char *value;
-	struct pkg_strel *next;
 };
 
 /**
@@ -284,8 +278,6 @@ typedef enum {
 	PKG_ROWID,
 	PKG_TIME,
 	PKG_ANNOTATIONS,
-	PKG_LICENSES,
-	PKG_CATEGORIES,
 	PKG_UNIQUEID,
 	PKG_OLD_DIGEST,
 	PKG_DEP_FORMULA,
@@ -327,6 +319,8 @@ typedef enum {
 	PKG_PROVIDES,
 	PKG_CONFIG_FILES,
 	PKG_REQUIRES,
+	PKG_CATEGORIES,
+	PKG_LICENSES
 } pkg_list;
 
 typedef enum {
@@ -657,6 +651,9 @@ int pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **conflict);
  */
 int pkg_provides(const struct pkg *pkg, char **provide);
 int pkg_requires(const struct pkg *pkg, char **require);
+
+int pkg_categories(const struct pkg *pkg, char **category);
+int pkg_licenses(const struct pkg *pkg, char **licenses);
 
 /**
  * Iterates over the config files registered in the package.

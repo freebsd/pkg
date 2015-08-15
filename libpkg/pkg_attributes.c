@@ -220,30 +220,6 @@ pkg_config_file_free(struct pkg_config_file *c)
 	free(c);
 }
 
-/*
- * strel
- */
-
-int
-pkg_strel_new(struct pkg_strel **c, const char *val)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_strel))) == NULL)
-		return (EPKG_FATAL);
-
-	(*c)->value = strdup(val);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_strel_free(struct pkg_strel *c)
-{
-	if (c == NULL)
-		return;
-
-	free(c->value);
-	free(c);
-}
 
 /*
  * kv

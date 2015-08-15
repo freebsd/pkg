@@ -93,9 +93,9 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 	pkg_list_free(pkg, PKG_PROVIDES);
 	pkg_list_free(pkg, PKG_REQUIRES);
+	pkg_list_free(pkg, PKG_CATEGORIES);
+	pkg_list_free(pkg, PKG_LICENSES);
 
-	LL_FREE(pkg->categories, pkg_strel_free);
-	LL_FREE(pkg->licenses, pkg_strel_free);
 	LL_FREE(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
@@ -259,12 +259,6 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			break;
 		case PKG_ANNOTATIONS:
 			*va_arg(ap, const struct pkg_kv **) = pkg->annotations;
-			break;
-		case PKG_CATEGORIES:
-			*va_arg(ap, const struct pkg_strel **) = pkg->categories;
-			break;
-		case PKG_LICENSES:
-			*va_arg(ap, const struct pkg_strel **) = pkg->licenses;
 			break;
 		case PKG_UNIQUEID:
 			*va_arg(ap, const char **) = pkg->uid;
@@ -589,6 +583,16 @@ pkg_provides(const struct pkg *pkg, char **c)
 	kh_string_next(pkg->provides, (*c));
 }
 
+#define pkg_each_strings(name)			\
+int						\
+pkg_##name(const struct pkg *pkg, char **c) {	\
+	assert(pkg != NULL);			\
+	kh_string_next(pkg->name, (*c));	\
+}
+
+pkg_each_strings(categories);
+pkg_each_strings(licenses);
+
 int
 pkg_requires(const struct pkg *pkg, char **c)
 {
@@ -787,29 +791,27 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 }
 
 int
-pkg_strel_add(struct pkg_strel **list, const char *val, const char *title)
+pkg_addstring(kh_strings_t **list, const char *val, const char *title)
 {
-	struct pkg_strel *c;
+	char *store;
 
 	assert(val != NULL);
 	assert(title != NULL);
 
-	LL_FOREACH(*list, c) {
-		if (strcmp(c->value, val) == 0) {
-			if (developer_mode) {
-				pkg_emit_error("duplicate %s listing: %s, fatal"
-				    " (developer mode)", title, val);
-				return (EPKG_FATAL);
-			} else {
-				pkg_emit_error("duplicate %s listing: %s, "
-				    "ignoring", title, val);
-				return (EPKG_OK);
-			}
+	if (kh_contains(strings, *list, val)) {
+		if (developer_mode) {
+			pkg_emit_error("duplicate %s listing: %s, fatal"
+			    " (developer mode)", title, val);
+			return (EPKG_FATAL);
+		} else {
+			pkg_emit_error("duplicate %s listing: %s, "
+			    "ignoring", title, val);
+			return (EPKG_OK);
 		}
 	}
 
-	pkg_strel_new(&c, val);
-	LL_APPEND(*list, c);
+	store = strdup(val);
+	kh_add(strings, *list, store, store);
 
 	return (EPKG_OK);
 }
@@ -1293,6 +1295,10 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (kh_count(pkg->requires));
 	case PKG_CONFIG_FILES:
 		return (kh_count(pkg->config_files));
+	case PKG_CATEGORIES:
+		return (kh_count(pkg->categories));
+	case PKG_LICENSES:
+		return (kh_count(pkg->licenses));
 	}
 	
 	return (0);
@@ -1350,6 +1356,14 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_REQUIRES:
 		kh_free(strings, pkg->requires, char, free);
 		pkg->flags &= ~PKG_LOAD_REQUIRES;
+		break;
+	case PKG_CATEGORIES:
+		kh_free(strings, pkg->categories, char, free);
+		pkg->flags &= ~PKG_LOAD_CATEGORIES;
+		break;
+	case PKG_LICENSES:
+		kh_free(strings, pkg->licenses, char, free);
+		pkg->flags &= ~PKG_LOAD_LICENSES;
 		break;
 	}
 }

@@ -139,7 +139,6 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	char			*buf;
-	struct pkg_strel	*el;
 	struct pkg_kv		*kv;
 	const char		*arch;
 	int64_t			 package_id;
@@ -189,27 +188,27 @@ try_again:
 		}
 	}
 
-	LL_FOREACH(pkg->categories, el) {
-		ret = pkg_repo_binary_run_prstatement(CAT1, el->value);
+	kh_each_value(pkg->categories, buf, {
+		ret = pkg_repo_binary_run_prstatement(CAT1, buf);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(CAT2, package_id,
-			    el->value);
+			    buf);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
-	}
+	});
 
-	LL_FOREACH(pkg->licenses, el) {
-		ret = pkg_repo_binary_run_prstatement(LIC1, el->value);
+	kh_each_value(pkg->licenses, buf, {
+		ret = pkg_repo_binary_run_prstatement(LIC1, buf);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
-			    el->value);
+			    buf);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
 		}
-	}
+	});
 
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {

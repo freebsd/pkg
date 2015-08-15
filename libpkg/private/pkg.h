@@ -237,8 +237,8 @@ struct pkg {
 	int64_t			 timestamp;
 	kh_pkg_deps_t		*deps;
 	kh_pkg_deps_t		*rdeps;
-	struct pkg_strel	*categories;
-	struct pkg_strel	*licenses;
+	kh_strings_t		*categories;
+	kh_strings_t		*licenses;
 	kh_pkg_files_t		*files;
 	kh_pkg_dirs_t		*dirs;
 	struct pkg_option	*options;
@@ -580,9 +580,6 @@ int pkg_validate(struct pkg *pkg);
 
 void pkg_list_free(struct pkg *, pkg_list);
 
-int pkg_strel_new(struct pkg_strel **, const char *val);
-void pkg_strel_free(struct pkg_strel *);
-
 int pkg_kv_new(struct pkg_kv **, const char *key, const char *val);
 void pkg_kv_free(struct pkg_kv *);
 
@@ -710,7 +707,7 @@ int pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates);
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
     const char *gname, mode_t perm, u_long fflags, bool check_duplicates);
 
-int pkg_strel_add(struct pkg_strel **l, const char *name, const char *title);
+int pkg_addstring(kh_strings_t **s, const char *value, const char *title);
 int pkg_kv_add(struct pkg_kv **kv, const char *key, const char *value, const char *title);
 const char *pkg_kv_get(struct pkg_kv *const*kv, const char *key);
 int pkg_adduser(struct pkg *pkg, const char *name);

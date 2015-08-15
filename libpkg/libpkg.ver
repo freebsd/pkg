@@ -17,6 +17,7 @@ global:
 	pkg_audit_new;
 	pkg_audit_process;
 	pkg_cache_full_clean;
+	pkg_categories;
 	pkg_compiled_for_same_os_major;
 	pkg_conf;
 	pkg_config_dump;
@@ -72,6 +73,7 @@ global:
 	pkg_jobs_total;
 	pkg_jobs_type;
 	pkg_license_name;
+	pkg_licenses;
 	pkg_list_count;
 	pkg_manifest_keys_free;
 	pkg_manifest_keys_new;
