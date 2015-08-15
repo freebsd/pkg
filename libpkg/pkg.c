@@ -488,46 +488,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 }
 
 int
-pkg_deps(const struct pkg *pkg, struct pkg_dep **d)
-{
-	assert(pkg != NULL);
-
-	kh_next(pkg_deps, pkg->deps, (*d), name);
-}
-
-int
-pkg_rdeps(const struct pkg *pkg, struct pkg_dep **d)
-{
-	assert(pkg != NULL);
-
-	kh_next(pkg_deps, pkg->rdeps, (*d), name);
-}
-
-int
-pkg_files(const struct pkg *pkg, struct pkg_file **f)
-{
-	assert(pkg != NULL);
-
-	kh_next(pkg_files, pkg->files, (*f), path);
-}
-
-int
-pkg_config_files(const struct pkg *pkg, struct pkg_config_file **f)
-{
-	assert(pkg != NULL);
-
-	kh_next(pkg_config_files, pkg->config_files, (*f), path);
-}
-
-int
-pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
-{
-	assert(pkg != NULL);
-
-	kh_next(pkg_dirs, pkg->dirs, (*d), path);
-}
-
-int
 pkg_options(const struct pkg *pkg, struct pkg_option **o)
 {
 	assert(pkg != NULL);
@@ -542,6 +502,18 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 
 	HASH_NEXT(pkg->conflicts, (*c));
 }
+
+#define pkg_each_hash(name, htype, type, attrib)	\
+int							\
+pkg_##name(const struct pkg *pkg, type **c) {		\
+	assert(pkg != NULL);				\
+	kh_next(htype, pkg->name, (*c), attrib);	\
+}
+pkg_each_hash(deps, pkg_deps, struct pkg_dep, name);
+pkg_each_hash(rdeps, pkg_deps, struct pkg_dep, name);
+pkg_each_hash(files, pkg_files, struct pkg_file, path);
+pkg_each_hash(config_files, pkg_config_files, struct pkg_config_file, path);
+pkg_each_hash(dirs, pkg_dirs, struct pkg_dir, path);
 
 #define pkg_each_strings(name)			\
 int						\
