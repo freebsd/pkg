@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 18, 2015
+.Dd August 15, 2015
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -539,20 +539,6 @@ Groups [array]
 .Pp
 Default row format:
 .Cm "%G%{%Gn\en%|%}"
-.It Cm %Gg
-Group GID-string [string]
-.Vt struct pkg_group *
-.Pp
-The GID-string consists of a colon-separated list containing the
-group name,
-.Sq *
-as a place holder instead of any hashed password for the group,
-the group identifier number and a possibly empty comma separated list
-of the group members,
-equivalent to one line from
-.Fa /etc/group
-as described in
-.Xr group 5 .
 .It Cm %Gn
 Group name [string]
 .Vt struct pkg_group *
@@ -613,23 +599,6 @@ Default row format:
 .It Cm %Un
 User name [string]
 .Vt struct pkg_user *
-.It Cm %Uu
-User UID-str [string]
-.Vt struct pkg_user *
-.Pp
-The UID-string consists of a colon-separated list containing the
-user name,
-.Sq *
-as a place holder instead of any hashed password for the user, the
-user identifier number, the user's login group id, an empty field for
-the user login class, zero for the password change time, zero for the
-account expiry time,
-.Sq gecos
-string (general information about the user), the user's home directory
-and the user's login shell; equivalent to one line from
-.Fa /etc/master.passwd
-as described in
-.Xr passwd 5 .
 .It Cm \^%V
 Old version [string].
 Valid only during operations when one version of a package is being

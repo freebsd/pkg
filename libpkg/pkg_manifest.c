@@ -90,7 +90,6 @@ static struct manifest_key {
 	{ "dirs",                PKG_DIRS,                UCL_ARRAY,  pkg_array},
 	{ "files",               PKG_FILES,               UCL_OBJECT, pkg_obj},
 	{ "flatsize",            PKG_FLATSIZE,            UCL_INT,    pkg_int},
-	{ "groups",              PKG_GROUPS,              UCL_OBJECT, pkg_obj},
 	{ "groups",              PKG_GROUPS,              UCL_ARRAY,  pkg_array},
 	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
 	{ "licenses",            PKG_LICENSES,            UCL_ARRAY,  pkg_array},
@@ -113,7 +112,6 @@ static struct manifest_key {
 	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
 	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array},
 	{ "sum",                 PKG_CKSUM,               UCL_STRING, pkg_string},
-	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_obj},
 	{ "users",               PKG_USERS,               UCL_ARRAY,  pkg_array},
 	{ "version",             PKG_VERSION,             UCL_STRING, pkg_string},
 	{ "version",             PKG_VERSION,             UCL_INT,    pkg_string},
@@ -467,20 +465,6 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 				    key);
 			else
 				pkg_set_dirs_from_object(pkg, cur);
-			break;
-		case PKG_USERS:
-			if (cur->type == UCL_STRING)
-				pkg_adduid(pkg, key, ucl_object_tostring(cur));
-			else
-				pkg_emit_error("Skipping malformed users %s",
-				    key);
-			break;
-		case PKG_GROUPS:
-			if (cur->type == UCL_STRING)
-				pkg_addgid(pkg, key, ucl_object_tostring(cur));
-			else
-				pkg_emit_error("Skipping malformed groups %s",
-				    key);
 			break;
 		case PKG_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {

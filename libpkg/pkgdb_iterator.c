@@ -537,8 +537,6 @@ pkgdb_load_category(sqlite3 *sqlite, struct pkg *pkg)
 static int
 pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 {
-	/*struct pkg_user *u = NULL;
-	struct passwd *pwd = NULL;*/
 	int		ret;
 	const char	sql[] = ""
 		"SELECT users.name"
@@ -553,22 +551,12 @@ pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_USERS,
 	    pkg_adduser, PKG_USERS);
 
-	/* TODO get user uidstr from local database */
-/*	while (pkg_users(pkg, &u) == EPKG_OK) {
-		pwd = getpwnam(u->name);
-		if (pwd == NULL)
-			continue;
-		strlcpy(u->uidstr, pw_make(pwd), sizeof(u->uidstr));
-	}*/
-
 	return (ret);
 }
 
 static int
 pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 {
-	struct pkg_group	*g = NULL;
-	struct group		*grp = NULL;
 	int			 ret;
 	const char		 sql[] = ""
 		"SELECT groups.name"
@@ -582,13 +570,6 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_GROUPS,
 	    pkg_addgroup, PKG_GROUPS);
-
-	while (pkg_groups(pkg, &g) == EPKG_OK) {
-		grp = getgrnam(g->name);
-		if (grp == NULL)
-			continue;
-		strlcpy(g->gidstr, gr_make(grp), sizeof(g->gidstr));
-	}
 
 	return (ret);
 }

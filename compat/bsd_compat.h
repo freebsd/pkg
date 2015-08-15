@@ -67,10 +67,6 @@ char *bsd_basename(const char *);
 #define eaccess(_p, _m) access(_p, _m)
 #endif
 
-#if !HAVE_GR_MAKE
-#include "gr_util.h"
-#endif
-
 #if !HAVE_HUMANIZE_NUMBER
 #include "humanize_number.h"
 #endif

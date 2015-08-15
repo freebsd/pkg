@@ -311,13 +311,11 @@ struct pkg_option {
 
 struct pkg_user {
 	char		 name[MAXLOGNAME];
-	char		 uidstr[8192];/* taken from pw_util.c */
 	UT_hash_handle	hh;
 };
 
 struct pkg_group {
 	char		 name[MAXLOGNAME];
-	char		 gidstr[8192]; /* taken from gw_util.c */
 	UT_hash_handle	hh;
 };
 
@@ -733,8 +731,6 @@ int pkg_kv_add(struct pkg_kv **kv, const char *key, const char *value, const cha
 const char *pkg_kv_get(struct pkg_kv *const*kv, const char *key);
 int pkg_adduser(struct pkg *pkg, const char *name);
 int pkg_addgroup(struct pkg *pkg, const char *group);
-int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
-int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
 int pkg_addshlib_required(struct pkg *pkg, const char *name);
 int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 int pkg_addconflict(struct pkg *pkg, const char *name);

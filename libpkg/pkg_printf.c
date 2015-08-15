@@ -76,7 +76,6 @@
  * Fu pkg_file     User owner of file 
  *
  * G  pkg          List of groups
- * Gg pkg_group    gidstr (parse this using gr_scan()?)
  * Gn pkg_group    Group name
  *
  * H
@@ -108,7 +107,6 @@
  *
  * U  pkg          List of users
  * Un pkg_user     User name
- * Uu pkg_user     uidstr (parse this using pw_scan()?)
  *
  * V  pkg          old version
  * W
@@ -342,15 +340,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG,
 		&format_files,
 	},
-	[PP_PKG_GROUP_GIDSTR] =
-	{
-		'G',
-		'g',
-		false,
-		false,
-		PP_PKG|PP_G,
-		&format_group_gidstr,
-	},
 	[PP_PKG_GROUP_NAME] =
 	{
 		'G',
@@ -485,15 +474,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		false,
 		PP_PKG|PP_U,
 		&format_user_name,
-	},
-	[PP_PKG_USER_UIDSTR] =
-	{
-		'U',
-		'u',
-		false,
-		false,
-		PP_PKG|PP_U,
-		&format_user_uidstr,
 	},
 	[PP_PKG_USERS] =
 	{
@@ -1158,7 +1138,7 @@ format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %G -- Groups. list of string values.  Optionally accepts following
  * per-field format in %{ %| %} where %Gn will be replaced by each
- * groupname or %#Gn by the gid or %Gg by the "gidstr" -- a line from
+ * groupname or %#Gn by the gid -- a line from
  * /etc/group. Default %{%Gn\n%|%}
  */
 struct sbuf *
@@ -1186,17 +1166,6 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		}
 	}
 	return (sbuf);
-}
-
-/*
- * %Gg -- Group 'gidstr' (one line from /etc/group).
- */
-struct sbuf *
-format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_group	*group = data;
-
-	return (string_val(sbuf, group->gidstr, p));
 }
 
 /*
@@ -1394,7 +1363,7 @@ format_char_string(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %U -- Users. list of string values.  Optionally accepts following
  * per-field format in %{ %| %} where %Un will be replaced by each
- * username or %#Un by the uid or %Uu by the uidstr -- a line from
+ * username or %#Un by the uid -- a line from
  * /etc/passwd. Default %{%Un\n%|%}
  */
 struct sbuf *
@@ -1433,17 +1402,6 @@ format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg_user	*user = data;
 
 	return (string_val(sbuf, user->name, p));
-}
-
-/*
- * %Uu -- User uidstr (one line from /etc/passwd).
- */
-struct sbuf *
-format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_user	*user = data;
-
-	return (string_val(sbuf, user->uidstr, p));
 }
 
 /*

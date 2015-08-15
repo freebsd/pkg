@@ -598,7 +598,7 @@ pkg_requires(const struct pkg *pkg, char **c)
 }
 
 int
-pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
+pkg_adduser(struct pkg *pkg, const char *name)
 {
 	struct pkg_user *u = NULL;
 
@@ -620,24 +620,13 @@ pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
 
 	strlcpy(u->name, name, sizeof(u->name));
 
-	if (uidstr != NULL)
-		strlcpy(u->uidstr, uidstr, sizeof(u->uidstr));
-	else
-		u->uidstr[0] = '\0';
-
 	HASH_ADD_STR(pkg->users, name, u);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_adduser(struct pkg *pkg, const char *name)
-{
-	return (pkg_adduid(pkg, name, NULL));
-}
-
-int
-pkg_addgid(struct pkg *pkg, const char *name, const char *gidstr)
+pkg_addgroup(struct pkg *pkg, const char *name)
 {
 	struct pkg_group *g = NULL;
 
@@ -658,20 +647,10 @@ pkg_addgid(struct pkg *pkg, const char *name, const char *gidstr)
 	pkg_group_new(&g);
 
 	strlcpy(g->name, name, sizeof(g->name));
-	if (gidstr != NULL)
-		strlcpy(g->gidstr, gidstr, sizeof(g->gidstr));
-	else
-		g->gidstr[0] = '\0';
 
 	HASH_ADD_STR(pkg->groups, name, g);
 
 	return (EPKG_OK);
-}
-
-int
-pkg_addgroup(struct pkg *pkg, const char *name)
-{
-	return (pkg_addgid(pkg, name, NULL));
 }
 
 int
