@@ -302,7 +302,10 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, int attr)
 		pkg->maintainer = strdup(str);
 		break;
 	case PKG_MESSAGE:
-		pkg->message = strdup(str);
+		urldecode(str, &buf);
+		sbuf_finish(buf);
+		pkg->message = strdup(sbuf_data(buf));
+		sbuf_delete(buf);
 		break;
 	case PKG_NAME:
 		pkg->name = strdup(str);
