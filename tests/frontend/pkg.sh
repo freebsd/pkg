@@ -77,15 +77,9 @@ files:
 EOF
 	atf_check \
 	    -o empty \
-	    -e inline:"pkg: Skipping malformed key 'files'\n" \
-	    -s exit:0 \
+	    -e inline:"pkg: Bad format in manifest for key: files\n" \
+	    -s exit:70 \
 	    pkg create -q -m testpkg/.metadir -r testpkg
-
-	atf_check \
-	    -o empty \
-	    -e empty \
-	    -s exit:0 \
-	    test -f test-1.txz
 }
 
 atf_test_case pkg_repo_load_order
