@@ -142,7 +142,7 @@ static struct pkg_manifest_key {
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
 
 	{ "name",                offsetof(struct pkg, name),
-			TYPE_SHIFT(UCL_STRING), pkg_string},
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 
 	{ "options",             PKG_OPTIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
