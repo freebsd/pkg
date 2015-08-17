@@ -196,6 +196,7 @@ extern const char *pkg_rootdir;
 
 struct pkg_repo_it;
 struct pkg_repo;
+struct pkg_message;
 
 KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
 KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
@@ -220,7 +221,7 @@ struct pkg {
 	char			*uid;
 	char			*digest;
 	char			*old_digest;
-	char			*message;
+	struct pkg_message	*message;
 	char			*prefix;
 	char			*comment;
 	char			*desc;
@@ -267,6 +268,11 @@ struct pkg_dep {
 	char		*version;
 	char		*uid;
 	bool		 locked;
+};
+
+struct pkg_message {
+	char		*str;
+	char		*minimum_version;
 };
 
 enum pkg_conflict_type {

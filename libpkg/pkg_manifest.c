@@ -63,6 +63,7 @@ static int pkg_string(struct pkg *, const ucl_object_t *, int);
 static int pkg_obj(struct pkg *, const ucl_object_t *, int);
 static int pkg_array(struct pkg *, const ucl_object_t *, int);
 static int pkg_int(struct pkg *, const ucl_object_t *, int);
+static int pkg_message(struct pkg *, const ucl_object_t *, int);
 static int pkg_set_deps_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_files_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
@@ -94,7 +95,7 @@ static struct manifest_key {
 	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
 	{ "licenses",            PKG_LICENSES,            UCL_ARRAY,  pkg_array},
 	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
-	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
+	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_message},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
 	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_obj},
@@ -547,6 +548,45 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 	}
 
 	sbuf_free(tmp);
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
+{
+	struct pkg_message *msg;
+	const ucl_object_t *elt;
+
+	msg = calloc(1, sizeof(*msg));
+
+	if (msg == NULL) {
+		pkg_emit_errno("malloc", "struct pkg_message");
+		return (EPKG_FATAL);
+	}
+
+	if (ucl_object_type(obj) == UCL_STRING) {
+		msg->str = strdup(ucl_object_tostring(obj));
+	}
+	else if (ucl_object_type(obj) == UCL_OBJECT) {
+		/* New format of pkg message */
+		elt = ucl_object_find_key(obj, "message");
+
+		if (elt == NULL || ucl_object_type(elt) != UCL_STRING) {
+			pkg_emit_error("package message lacks 'message' key that is required");
+
+			return (EPKG_FATAL);
+		}
+
+		msg->str = strdup(ucl_object_tostring(elt));
+		elt = ucl_object_find_key(obj, "minimum_version");
+
+		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
+			msg->minimum_version = strdup(ucl_object_tostring(elt));
+		}
+	}
+
+	pkg->message = msg;
 
 	return (EPKG_OK);
 }
