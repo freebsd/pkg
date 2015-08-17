@@ -1668,7 +1668,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf = NULL;
 	struct pkgdb_it		*it = NULL;
-	char			*buf;
+	char			*buf, *msg = NULL;
 
 	sqlite3			*s;
 
@@ -1696,8 +1696,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	/*
 	 * Insert package record
 	 */
+	msg = pkg_message_to_str(pkg);
 	ret = run_prstmt(PKG, pkg->origin, pkg->name, pkg->version,
-	    pkg->comment, pkg->desc, pkg->message, arch, pkg->maintainer,
+	    pkg->comment, pkg->desc, msg, arch, pkg->maintainer,
 	    pkg->www, pkg->prefix, pkg->flatsize, (int64_t)pkg->automatic,
 	    (int64_t)pkg->licenselogic, NULL, pkg->digest, pkg->dep_formula);
 	if (ret != SQLITE_DONE) {
@@ -1956,6 +1957,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	retcode = EPKG_OK;
 
 	cleanup:
+
+	free(msg);
 
 	return (retcode);
 }

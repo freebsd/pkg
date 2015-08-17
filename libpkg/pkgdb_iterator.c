@@ -777,7 +777,7 @@ static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	int		 icol = 0;
 	const char	*colname;
-	char		 legacyarch[BUFSIZ];
+	char		 legacyarch[BUFSIZ], *msg;
 
 	assert(stmt != NULL);
 
@@ -816,7 +816,20 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				pkg->digest = strdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_MESSAGE:
-				pkg->message = strdup(sqlite3_column_text(stmt, icol));
+				msg = sqlite3_column_text(stmt, icol);
+				if (msg) {
+					/* A stupid logic to detect legacy pkg message */
+					if (msg[0] == '{') {
+						pkg_message_from_str(pkg, msg, 0);
+					}
+					else {
+						pkg->message = calloc(1, sizeof(*pkg->message));
+						pkg->message->str = strdup(msg);
+					}
+				}
+				else {
+					pkg->message = NULL;
+				}
 				break;
 			case PKG_NAME:
 				pkg->name = strdup(sqlite3_column_text(stmt, icol));

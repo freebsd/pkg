@@ -289,8 +289,7 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_uc
 	char *buf = NULL;
 	char *cp;
 	off_t size = 0;
-	int ret = EPKG_OK;
-	struct ucl_parser *parser;
+	int ret;
 	struct ucl_object *obj;
 
 	assert(pkg != NULL);
@@ -300,25 +299,14 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_uc
 		pkg_debug(1, "Reading message: '%s'", path);
 
 		if ((ret = file_to_bufferat(fd, path, &buf, &size)) != EPKG_OK) {
-			return (false);
+			return (ret);
 		}
 
 		if (is_ucl) {
-			parser = ucl_parser_new(0);
-
-			if (ucl_parser_add_chunk(parser, (const unsigned char*)buf, size)) {
-				obj = ucl_parser_get_object(parser);
-				ucl_parser_free(parser);
-				free(buf);
-
-				ret = pkg_message_from_ucl(pkg, obj);
-				ucl_object_unref(obj);
-
-				return (ret);
-			}
-
-			ucl_parser_free (parser);
+			ret = pkg_message_from_str(pkg, buf, size);
 			free(buf);
+
+			return (ret);
 		}
 		else {
 			obj = ucl_object_fromlstring(buf, size);

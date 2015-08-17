@@ -552,45 +552,6 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 	return (EPKG_OK);
 }
 
-int
-pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
-{
-	struct pkg_message *msg;
-	const ucl_object_t *elt;
-
-	msg = calloc(1, sizeof(*msg));
-
-	if (msg == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_message");
-		return (EPKG_FATAL);
-	}
-
-	if (ucl_object_type(obj) == UCL_STRING) {
-		msg->str = strdup(ucl_object_tostring(obj));
-	}
-	else if (ucl_object_type(obj) == UCL_OBJECT) {
-		/* New format of pkg message */
-		elt = ucl_object_find_key(obj, "message");
-
-		if (elt == NULL || ucl_object_type(elt) != UCL_STRING) {
-			pkg_emit_error("package message lacks 'message' key that is required");
-
-			return (EPKG_FATAL);
-		}
-
-		msg->str = strdup(ucl_object_tostring(elt));
-		elt = ucl_object_find_key(obj, "minimum_version");
-
-		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
-			msg->minimum_version = strdup(ucl_object_tostring(elt));
-		}
-	}
-
-	pkg->message = msg;
-
-	return (EPKG_OK);
-}
-
 static int
 pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
 {

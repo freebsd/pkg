@@ -273,6 +273,7 @@ struct pkg_dep {
 struct pkg_message {
 	char		*str;
 	char		*minimum_version;
+	char		*maximum_version;
 };
 
 enum pkg_conflict_type {
@@ -732,5 +733,7 @@ int pkg_addoption_description(struct pkg *pkg, const char *key, const char *desc
 int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
 bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file **file, struct pkg_config_file **cfile);
 int pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj);
+int pkg_message_from_str(struct pkg *pkg, const char *str, size_t len);
+char* pkg_message_to_str(struct pkg *pkg);
 
 #endif
