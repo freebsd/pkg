@@ -283,6 +283,56 @@ pkg_load_from_file(int fd, struct pkg *pkg, pkg_attr attr, const char *path)
 	}
 }
 
+static int
+pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_ucl)
+{
+	char *buf = NULL;
+	char *cp;
+	off_t size = 0;
+	int ret = EPKG_OK;
+	struct ucl_parser *parser;
+	struct ucl_object *obj;
+
+	assert(pkg != NULL);
+	assert(path != NULL);
+
+	if (faccessat(fd, path, F_OK, 0) == 0) {
+		pkg_debug(1, "Reading message: '%s'", path);
+
+		if ((ret = file_to_bufferat(fd, path, &buf, &size)) != EPKG_OK) {
+			return (false);
+		}
+
+		if (is_ucl) {
+			parser = ucl_parser_new(0);
+
+			if (ucl_parser_add_chunk(parser, (const unsigned char*)buf, size)) {
+				obj = ucl_parser_get_object(parser);
+				ucl_parser_free(parser);
+				free(buf);
+
+				ret = pkg_message_from_ucl(pkg, obj);
+				ucl_object_unref(obj);
+
+				return (ret);
+			}
+
+			ucl_parser_free (parser);
+			free(buf);
+		}
+		else {
+			obj = ucl_object_fromlstring(buf, size);
+			ret = pkg_message_from_ucl(pkg, obj);
+			ucl_object_unref(obj);
+			free(buf);
+
+			return (ret);
+		}
+	}
+
+	return (EPKG_FATAL);
+}
+
 int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
     const char *md_dir, char *plist)
@@ -325,8 +375,13 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		pkg_load_from_file(mfd, pkg, PKG_DESC, "+DESC");
 
 	/* if no message try to get it from a file */
-	if (pkg->message == NULL)
-		pkg_load_from_file(mfd, pkg, PKG_MESSAGE, "+DISPLAY");
+	if (pkg->message == NULL) {
+		/* Try ucl version first */
+		if (pkg_load_message_from_file(mfd, pkg, "+DISPLAY.ucl", true)
+				!= EPKG_OK) {
+			pkg_load_message_from_file(mfd, pkg, "+DISPLAY", false);
+		}
+	}
 
 	/* if no arch autodetermine it */
 	if (pkg->abi == NULL) {

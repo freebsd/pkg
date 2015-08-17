@@ -552,8 +552,8 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 	return (EPKG_OK);
 }
 
-static int
-pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
+int
+pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 {
 	struct pkg_message *msg;
 	const ucl_object_t *elt;
@@ -589,6 +589,12 @@ pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
 	pkg->message = msg;
 
 	return (EPKG_OK);
+}
+
+static int
+pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
+{
+	return pkg_message_from_ucl(pkg, obj);
 }
 
 static int

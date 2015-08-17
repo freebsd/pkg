@@ -195,7 +195,7 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			*va_arg(ap, const char **) = NULL;
 			break;
 		case PKG_MESSAGE:
-			*va_arg(ap, const char **) = pkg->message;
+			*va_arg(ap, const char **) = pkg->message ? pkg->message->str : NULL;
 			break;
 		case PKG_ARCH:
 			*va_arg(ap, const char **) = pkg->arch;
@@ -329,7 +329,8 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			break;
 		case PKG_MESSAGE:
 			free(pkg->message);
-			pkg->message = strdup(va_arg(ap, const char *));
+			pkg->message = calloc(1, sizeof(*pkg->message));
+			pkg->message->str = strdup(va_arg(ap, const char *));
 			break;
 		case PKG_ARCH:
 			free(pkg->arch);
