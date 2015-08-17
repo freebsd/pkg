@@ -158,7 +158,9 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
-		    sbuf_json_escape(buf, ev->e_install_finished.pkg->message));
+			ev->e_install_finished.pkg->message ?
+				sbuf_json_escape(buf, ev->e_install_finished.pkg->message->str) :
+				"");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "

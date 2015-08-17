@@ -1735,7 +1735,7 @@ int
 pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 {
 	struct ucl_parser *parser;
-	struct ucl_object *obj;
+	ucl_object_t *obj;
 	int ret = EPKG_FATAL;
 
 	assert(str != NULL);
@@ -1761,17 +1761,13 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 	return (ret);
 }
 
-char*
-pkg_message_to_str(struct pkg *pkg)
+ucl_object_t*
+pkg_message_to_ucl(struct pkg *pkg)
 {
 	ucl_object_t *obj;
-	char *ret = NULL;
-
-	if (pkg->message == NULL) {
-		return (NULL);
-	}
 
 	obj = ucl_object_typed_new (UCL_OBJECT);
+
 	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->message->str),
 			"message", 0, false);
 
@@ -1786,7 +1782,22 @@ pkg_message_to_str(struct pkg *pkg)
 				"minimum_version", 0, false);
 	}
 
+	return (obj);
+}
+
+char*
+pkg_message_to_str(struct pkg *pkg)
+{
+	ucl_object_t *obj;
+	char *ret = NULL;
+
+	if (pkg->message == NULL) {
+		return (NULL);
+	}
+
+	obj = pkg_message_to_ucl(pkg);
 	ret = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
+	ucl_object_unref(obj);
 
 	return (ret);
 }

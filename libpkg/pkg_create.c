@@ -287,10 +287,9 @@ static int
 pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_ucl)
 {
 	char *buf = NULL;
-	char *cp;
 	off_t size = 0;
 	int ret;
-	struct ucl_object *obj;
+	ucl_object_t *obj;
 
 	assert(pkg != NULL);
 	assert(path != NULL);

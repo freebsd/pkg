@@ -776,8 +776,8 @@ pkgdb_load_requires(sqlite3 *sqlite, struct pkg *pkg)
 static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	int		 icol = 0;
-	const char	*colname;
-	char		 legacyarch[BUFSIZ], *msg;
+	const char	*colname, *msg;
+	char		 legacyarch[BUFSIZ];
 
 	assert(stmt != NULL);
 

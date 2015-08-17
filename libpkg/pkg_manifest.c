@@ -303,10 +303,8 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, int attr)
 		pkg->maintainer = strdup(str);
 		break;
 	case PKG_MESSAGE:
-		urldecode(str, &buf);
-		sbuf_finish(buf);
-		pkg->message = strdup(sbuf_data(buf));
-		sbuf_delete(buf);
+		/* Should no longer be handled here */
+		assert(0);
 		break;
 	case PKG_NAME:
 		pkg->name = strdup(str);
@@ -1219,9 +1217,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting message");
 	if (pkg->message != NULL) {
-		urlencode(pkg->message, &tmpsbuf);
 		ucl_object_insert_key(top,
-		    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+			pkg_message_to_ucl(pkg),
 		    "message", 7, false);
 	}
 
