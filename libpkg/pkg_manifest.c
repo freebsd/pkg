@@ -193,7 +193,7 @@ static struct pkg_manifest_key {
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "version",             offsetof(struct pkg, version),
-			TYPE_SHIFT(UCL_STRING), pkg_string},
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 
 	{ "www",                 offsetof(struct pkg, www),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
