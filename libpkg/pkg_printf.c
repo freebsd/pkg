@@ -1239,7 +1239,7 @@ format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(sbuf, pkg->message, p));
+	return (string_val(sbuf, pkg->message ? pkg->message->str : NULL, p));
 }
 
 /*

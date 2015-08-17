@@ -631,10 +631,13 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		pkg = ev->e_install_finished.pkg;
 		if (pkg_has_message(pkg)) {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n%M\n",
-			    pkg, pkg, pkg);
+
+			if (pkg_need_message(pkg, ev->e_install_finished.old)) {
+				if (messages == NULL)
+					messages = sbuf_new_auto();
+				pkg_sbuf_printf(messages, "Message for %n-%v:\n%M\n",
+						pkg, pkg, pkg);
+			}
 		}
 		break;
 	case PKG_EVENT_EXTRACT_BEGIN:
@@ -740,10 +743,13 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		pkg_new = ev->e_upgrade_finished.n;
 		if (pkg_has_message(pkg_new)) {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-				pkg_new, pkg_new, pkg_new);
+
+			if (pkg_need_message(pkg_new, ev->e_upgrade_finished.o)) {
+				if (messages == NULL)
+					messages = sbuf_new_auto();
+				pkg_sbuf_printf(messages, "Message for %n-%v:\n%M\n",
+						pkg_new, pkg_new, pkg_new);
+			}
 		}
 		break;
 	case PKG_EVENT_LOCKED:

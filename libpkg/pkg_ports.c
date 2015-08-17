@@ -1318,7 +1318,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	}
 
 	if (rc == EPKG_OK)
-		pkg_emit_install_finished(pkg);
+		pkg_emit_install_finished(pkg, NULL);
 
 cleanup:
 	pkgdb_register_finale(db, rc);

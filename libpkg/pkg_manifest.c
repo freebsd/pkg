@@ -63,6 +63,7 @@ static int pkg_string(struct pkg *, const ucl_object_t *, int);
 static int pkg_obj(struct pkg *, const ucl_object_t *, int);
 static int pkg_array(struct pkg *, const ucl_object_t *, int);
 static int pkg_int(struct pkg *, const ucl_object_t *, int);
+static int pkg_message(struct pkg *, const ucl_object_t *, int);
 static int pkg_set_deps_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_files_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
@@ -94,7 +95,7 @@ static struct manifest_key {
 	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
 	{ "licenses",            PKG_LICENSES,            UCL_ARRAY,  pkg_array},
 	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
-	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
+	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_message},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
 	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_obj},
@@ -302,10 +303,8 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, int attr)
 		pkg->maintainer = strdup(str);
 		break;
 	case PKG_MESSAGE:
-		urldecode(str, &buf);
-		sbuf_finish(buf);
-		pkg->message = strdup(sbuf_data(buf));
-		sbuf_delete(buf);
+		/* Should no longer be handled here */
+		assert(0);
 		break;
 	case PKG_NAME:
 		pkg->name = strdup(str);
@@ -549,6 +548,12 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 	sbuf_free(tmp);
 
 	return (EPKG_OK);
+}
+
+static int
+pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
+{
+	return pkg_message_from_ucl(pkg, obj);
 }
 
 static int
@@ -1212,9 +1217,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting message");
 	if (pkg->message != NULL) {
-		urlencode(pkg->message, &tmpsbuf);
 		ucl_object_insert_key(top,
-		    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+			pkg_message_to_ucl(pkg),
 		    "message", 7, false);
 	}
 

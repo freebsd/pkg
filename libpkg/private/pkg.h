@@ -196,6 +196,7 @@ extern const char *pkg_rootdir;
 
 struct pkg_repo_it;
 struct pkg_repo;
+struct pkg_message;
 
 KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
 KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
@@ -220,7 +221,7 @@ struct pkg {
 	char			*uid;
 	char			*digest;
 	char			*old_digest;
-	char			*message;
+	struct pkg_message	*message;
 	char			*prefix;
 	char			*comment;
 	char			*desc;
@@ -267,6 +268,12 @@ struct pkg_dep {
 	char		*version;
 	char		*uid;
 	bool		 locked;
+};
+
+struct pkg_message {
+	char		*str;
+	char		*minimum_version;
+	char		*maximum_version;
 };
 
 enum pkg_conflict_type {
@@ -725,5 +732,9 @@ int pkg_addoption_description(struct pkg *pkg, const char *key, const char *desc
 
 int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
 bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file **file, struct pkg_config_file **cfile);
+int pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj);
+int pkg_message_from_str(struct pkg *pkg, const char *str, size_t len);
+ucl_object_t* pkg_message_to_ucl(struct pkg *pkg);
+char* pkg_message_to_str(struct pkg *pkg);
 
 #endif
