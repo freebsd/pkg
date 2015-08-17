@@ -539,13 +539,14 @@ pkg_emit_install_begin(struct pkg *p)
 }
 
 void
-pkg_emit_install_finished(struct pkg *p)
+pkg_emit_install_finished(struct pkg *p, struct pkg *old)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
 
 	ev.type = PKG_EVENT_INSTALL_FINISHED;
 	ev.e_install_finished.pkg = p;
+	ev.e_install_finished.old = old;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {

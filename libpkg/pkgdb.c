@@ -2303,7 +2303,7 @@ pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
 
 	ret = pkgdb_register_pkg(db, pkg, 0, 0);
 	if (ret == EPKG_OK)
-		pkg_emit_install_finished(pkg);
+		pkg_emit_install_finished(pkg, NULL);
 
 	pkgdb_register_finale(db, ret);
 

@@ -688,12 +688,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (retcode == EPKG_OK) {
 		if ((flags & PKG_ADD_UPGRADE) == 0)
-			pkg_emit_install_finished(pkg);
+			pkg_emit_install_finished(pkg, local);
 		else {
 			if (local != NULL)
 				pkg_emit_upgrade_finished(pkg, local);
 			else
-				pkg_emit_install_finished(pkg);
+				pkg_emit_install_finished(pkg, local);
 		}
 	}
 

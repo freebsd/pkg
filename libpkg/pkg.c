@@ -1609,6 +1609,25 @@ pkg_is_installed(struct pkgdb *db, const char *name)
 }
 
 bool
+pkg_need_message(struct pkg *p, struct pkg *old)
+{
+	bool ret = true;
+
+	if (old != NULL) {
+		if (p->message->maximum_version) {
+			ret = (pkg_version_cmp(old->version, p->message->maximum_version)
+					<= 0);
+		}
+		if (ret && p->message->minimum_version) {
+			ret = (pkg_version_cmp(old->version, p->message->maximum_version)
+								>= 0);
+		}
+	}
+
+	return (ret);
+}
+
+bool
 pkg_has_message(struct pkg *p)
 {
 	return (p->message != NULL);

@@ -39,7 +39,7 @@ void pkg_emit_fetch_finished(const char *url);
 void pkg_emit_update_add(int total, int done);
 void pkg_emit_update_remove(int total, int done);
 void pkg_emit_install_begin(struct pkg *p);
-void pkg_emit_install_finished(struct pkg *p);
+void pkg_emit_install_finished(struct pkg *p, struct pkg *old);
 void pkg_emit_deinstall_begin(struct pkg *p);
 void pkg_emit_deinstall_finished(struct pkg *p);
 void pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old);
