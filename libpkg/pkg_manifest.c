@@ -99,8 +99,7 @@ static struct pkg_manifest_key {
 	{ "maintainer",          PKG_MAINTAINER,          TYPE_SHIFT(UCL_STRING), pkg_string},
 	{ "message",             PKG_MESSAGE,
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
-	{ "name",                PKG_NAME,                TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "name",                PKG_NAME,                TYPE_SHIFT(UCL_INT),    pkg_string},
+	{ "name",                PKG_NAME,                TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 	{ "options",             PKG_OPTIONS,             TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 	{ "option_defaults",     PKG_OPTION_DEFAULTS,     TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, TYPE_SHIFT(UCL_OBJECT), pkg_obj},
@@ -117,8 +116,7 @@ static struct pkg_manifest_key {
 	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,     TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 	{ "sum",                 PKG_CKSUM,               TYPE_SHIFT(UCL_STRING), pkg_string},
 	{ "users",               PKG_USERS,               TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "version",             PKG_VERSION,             TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "version",             PKG_VERSION,             TYPE_SHIFT(UCL_INT),    pkg_string},
+	{ "version",             PKG_VERSION,             TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 	{ "www",                 PKG_WWW,                 TYPE_SHIFT(UCL_STRING), pkg_string},
 	{ NULL, -99, -99, NULL}
 };
