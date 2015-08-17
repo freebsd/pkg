@@ -28,6 +28,7 @@
 
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <stddef.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -59,11 +60,11 @@
 #define PKG_PROVIDES		-18
 #define PKG_REQUIRES		-19
 
-static int pkg_string(struct pkg *, const ucl_object_t *, int);
-static int pkg_obj(struct pkg *, const ucl_object_t *, int);
-static int pkg_array(struct pkg *, const ucl_object_t *, int);
-static int pkg_int(struct pkg *, const ucl_object_t *, int);
-static int pkg_message(struct pkg *, const ucl_object_t *, int);
+static int pkg_string(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_obj(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_array(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_int(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_message(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_set_deps_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_files_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
@@ -72,54 +73,131 @@ static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
  * Keep sorted
  */
 #define TYPE_SHIFT(x) (1 << (x))
+#define STRING_FLAG_LICENSE (1U << 31)
+#define STRING_FLAG_URLDECODE (1U << 30)
+#define STRING_FLAG_MASK ~(STRING_FLAG_LICENSE|STRING_FLAG_URLDECODE)
+
 static struct pkg_manifest_key {
 	const char *key;
-	int type;
+	uint32_t type;
 	uint16_t valid_type;
-	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
+	int (*parse_data)(struct pkg *, const ucl_object_t *, uint32_t);
 	UT_hash_handle hh;
 } manifest_keys[] = {
-	{ "annotations",         PKG_ANNOTATIONS,         TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "abi",                 PKG_ABI,                 TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "arch",                PKG_ARCH,                TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "categories",          PKG_CATEGORIES,          TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "comment",             PKG_COMMENT,             TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "conflicts",           PKG_CONFLICTS,           TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "config",              PKG_CONFIG_FILES,        TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "dep_formula",         PKG_DEP_FORMULA,         TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "deps",                PKG_DEPS,                TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "desc",                PKG_DESC,                TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "directories",         PKG_DIRECTORIES,         TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "dirs",                PKG_DIRS,                TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "files",               PKG_FILES,               TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "flatsize",            PKG_FLATSIZE,            TYPE_SHIFT(UCL_INT),    pkg_int},
-	{ "groups",              PKG_GROUPS,              TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "licenselogic",        PKG_LICENSE_LOGIC,       TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "licenses",            PKG_LICENSES,            TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "maintainer",          PKG_MAINTAINER,          TYPE_SHIFT(UCL_STRING), pkg_string},
+	{ "annotations",         PKG_ANNOTATIONS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "abi",                 offsetof(struct pkg, abi),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "arch",                offsetof(struct pkg, arch),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "categories",          PKG_CATEGORIES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "comment",             offsetof(struct pkg, comment),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "conflicts",           PKG_CONFLICTS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "config",              PKG_CONFIG_FILES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "dep_formula",         offsetof(struct pkg, dep_formula),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "deps",                PKG_DEPS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "desc",                offsetof(struct pkg, desc) | STRING_FLAG_URLDECODE,
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "directories",         PKG_DIRECTORIES,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "dirs",                PKG_DIRS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "files",               PKG_FILES,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "flatsize",            offsetof(struct pkg, flatsize),
+			TYPE_SHIFT(UCL_INT),    pkg_int},
+
+	{ "groups",              PKG_GROUPS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "licenselogic",        offsetof(struct pkg, licenselogic) | STRING_FLAG_LICENSE,
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "licenses",            PKG_LICENSES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "maintainer",          offsetof(struct pkg, maintainer),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
 	{ "message",             PKG_MESSAGE,
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
-	{ "name",                PKG_NAME,                TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "name",                PKG_NAME,                TYPE_SHIFT(UCL_INT),    pkg_string},
-	{ "options",             PKG_OPTIONS,             TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "option_defaults",     PKG_OPTION_DEFAULTS,     TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "origin",              PKG_ORIGIN,              TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "path",                PKG_REPOPATH,            TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "repopath",            PKG_REPOPATH,            TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "pkgsize",             PKG_PKGSIZE,             TYPE_SHIFT(UCL_INT),    pkg_int},
-	{ "prefix",              PKG_PREFIX,              TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "provides",            PKG_PROVIDES,            TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "requires",            PKG_REQUIRES,            TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "scripts",             PKG_SCRIPTS,             TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-	{ "shlibs",              PKG_SHLIBS_REQUIRED,     TYPE_SHIFT(UCL_ARRAY),  pkg_array}, /* Backwards compat with 1.0.x packages */
-	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,     TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "sum",                 PKG_CKSUM,               TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "users",               PKG_USERS,               TYPE_SHIFT(UCL_ARRAY),  pkg_array},
-	{ "version",             PKG_VERSION,             TYPE_SHIFT(UCL_STRING), pkg_string},
-	{ "version",             PKG_VERSION,             TYPE_SHIFT(UCL_INT),    pkg_string},
-	{ "www",                 PKG_WWW,                 TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "name",                offsetof(struct pkg, name),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "options",             PKG_OPTIONS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "option_defaults",     PKG_OPTION_DEFAULTS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "origin",              offsetof(struct pkg, origin),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "path",                offsetof(struct pkg, repopath),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "repopath",            offsetof(struct pkg, repopath),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "pkgsize",             offsetof(struct pkg, pkgsize),
+			TYPE_SHIFT(UCL_INT),    pkg_int},
+
+	{ "prefix",              offsetof(struct pkg, prefix),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "provides",            PKG_PROVIDES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "requires",            PKG_REQUIRES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "scripts",             PKG_SCRIPTS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "shlibs",              PKG_SHLIBS_REQUIRED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array}, /* Backwards compat with 1.0.x packages */
+
+	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "sum",                 offsetof(struct pkg, sum),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "users",               PKG_USERS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "version",             offsetof(struct pkg, version),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "www",                 offsetof(struct pkg, www),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
 	{ NULL, -99, -99, NULL}
 };
 
@@ -248,97 +326,62 @@ script_type_str(const char *str)
 }
 
 static int
-pkg_string(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 {
-	int ret = EPKG_OK;
 	const char *str;
+	char **dest;
 	struct sbuf *buf = NULL;
 
 	str = ucl_object_tostring_forced(obj);
 
-	switch (attr)
-	{
-	case PKG_LICENSE_LOGIC:
+	if (offset & STRING_FLAG_LICENSE) {
 		if (!strcmp(str, "single"))
 			pkg->licenselogic = LICENSE_SINGLE;
 		else if (!strcmp(str, "or") ||
-		         !strcmp(str, "dual"))
+				!strcmp(str, "dual"))
 			pkg->licenselogic = LICENSE_OR;
 		else if (!strcmp(str, "and") ||
-		         !strcmp(str, "multi"))
+				!strcmp(str, "multi"))
 			pkg->licenselogic = LICENSE_AND;
 		else {
 			pkg_emit_error("Unknown license logic: %s", str);
-			ret = EPKG_FATAL;
+			return (EPKG_FATAL);
 		}
-		break;
-	case PKG_ABI:
-		pkg->abi = strdup(str);
-		break;
-	case PKG_ARCH:
-		pkg->arch = strdup(str);
-		break;
-	case PKG_COMMENT:
-		pkg->comment = strdup(str);
-		break;
-	case PKG_DESC:
-		urldecode(str, &buf);
-		sbuf_finish(buf);
-		pkg->desc = strdup(sbuf_data(buf));
-		sbuf_delete(buf);
-		break;
-	case PKG_MAINTAINER:
-		pkg->maintainer = strdup(str);
-		break;
-	case PKG_MESSAGE:
-		/* Should no longer be handled here */
-		assert(0);
-		break;
-	case PKG_NAME:
-		pkg->name = strdup(str);
-		break;
-	case PKG_ORIGIN:
-		pkg->origin = strdup(str);
-		break;
-	case PKG_PREFIX:
-		pkg->prefix = strdup(str);
-		break;
-	case PKG_REPOPATH:
-		pkg->repopath = strdup(str);
-		break;
-	case PKG_CKSUM:
-		pkg->sum = strdup(str);
-		break;
-	case PKG_VERSION:
-		pkg->version = strdup(str);
-		break;
-	case PKG_WWW:
-		pkg->www = strdup(str);
-		break;
-	case PKG_DEP_FORMULA:
-		pkg->dep_formula = strdup(str);
-		break;
+	}
+	else {
+
+		if (offset & STRING_FLAG_URLDECODE) {
+			urldecode(str, &buf);
+			sbuf_finish(buf);
+			str = sbuf_data(buf);
+		}
+
+		/* Remove flags from the offset */
+		offset &= STRING_FLAG_MASK;
+		dest = (char **) ((unsigned char *)pkg + offset);
+		*dest = strdup(str);
+
+		if (buf) {
+			sbuf_delete(buf);
+		}
 	}
 
-	return (ret);
-}
-
-static int
-pkg_int(struct pkg *pkg, const ucl_object_t *obj, int attr)
-{
-	switch (attr) {
-	case PKG_FLATSIZE:
-		pkg->flatsize = ucl_object_toint(obj);
-		break;
-	case PKG_PKGSIZE:
-		pkg->pkgsize = ucl_object_toint(obj);
-		break;
-	}
 	return (EPKG_OK);
 }
 
 static int
-pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_int(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
+{
+	int64_t *dest;
+
+	dest = (int64_t *)((unsigned char *)pkg + offset);
+	*dest = ucl_object_toint(obj);
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
@@ -427,7 +470,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 }
 
 static int
-pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
 	struct sbuf *tmp = NULL;
 	const ucl_object_t *cur;
@@ -539,7 +582,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 }
 
 static int
-pkg_message(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_message(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
 	return pkg_message_from_ucl(pkg, obj);
 }
