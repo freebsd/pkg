@@ -237,7 +237,7 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 		"SELECT p.id, p.origin, p.name, p.name as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize, p.time "
+			"p.prefix, p.flatsize, p.manifestdigest, p.time "
 			"FROM packages AS p, pkg_shlibs_provided AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.shlib_id = s.id "
