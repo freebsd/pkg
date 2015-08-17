@@ -171,7 +171,8 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 {
 	struct pkg_job_universe_item *item, *seen, *tmp = NULL;
 
-	pkg_validate(pkg);
+	pkg_validate(pkg, universe->j->db);
+
 	if (pkg->digest == NULL) {
 		pkg_debug(3, "no digest found for package %s (%s-%s)",
 		    pkg->uid, pkg->name, pkg->version);

@@ -583,7 +583,7 @@ int pkg_script_run(struct pkg *, pkg_script type);
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
 	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
 
-int pkg_validate(struct pkg *pkg);
+int pkg_validate(struct pkg *pkg, struct pkgdb *db);
 
 void pkg_list_free(struct pkg *, pkg_list);
 

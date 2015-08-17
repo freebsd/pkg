@@ -807,7 +807,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 		sbuf_finish(qmsg);
 		if (pkg_emit_query_yesno(true, sbuf_data(qmsg))) {
 			/* Change the origin of the local package */
-			pkg_validate(p);
+			pkg_validate(p, j->db);
 			unit = pkg_jobs_universe_find(j->universe, uid);
 			if (unit != NULL)
 				pkg_jobs_universe_change_uid(j->universe, unit, p->uid,
@@ -998,7 +998,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 		pkg_manifest_keys_new(&keys);
 		if (pkg_open(&pkg, jp->path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
 			rc = EPKG_FATAL;
-		} else if (pkg_validate(pkg) == EPKG_OK) {
+		} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
 			if (j->type == PKG_JOBS_UPGRADE) {
 				jfp.match = MATCH_EXACT;
 				jfp.pattern = pkg->name;

@@ -37,6 +37,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
 #include "private/utils.h"
 
 int
@@ -1462,9 +1463,13 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 }
 
 int
-pkg_validate(struct pkg *pkg)
+pkg_validate(struct pkg *pkg, struct pkgdb *db)
 {
 	assert(pkg != NULL);
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+					PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
+					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
+					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if (pkg->uid == NULL) {
 		/* Keep that part for the day we have to change it */
@@ -1475,9 +1480,13 @@ pkg_validate(struct pkg *pkg)
 		pkg->uid = strdup(pkg->name);
 	}
 
-	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest))) {
+	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest,
+			strlen(pkg->digest))) {
 		/* Calculate new digest */
-		return (pkg_checksum_calculate(pkg, NULL));
+		if (pkgdb_ensure_loaded(db, pkg, flags)) {
+			return (pkg_checksum_calculate(pkg, db));
+		}
+		return (EPKG_FATAL);
 	}
 
 	return (EPKG_OK);
