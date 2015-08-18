@@ -92,6 +92,7 @@
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
+
 #define HASH_FREE(data, free_func) do {      \
 	__typeof(data) hf1, hf2;                    \
 	HASH_ITER(hh, data, hf1, hf2) {            \
@@ -120,6 +121,9 @@
 		else                          \
 			return (EPKG_OK);     \
 	} while (0)
+
+#define KHASH_MAP_INIT_STRING(name, khval_t)                                             \
+	KHASH_INIT(name, kh_cstr_t, khval_t, 1, string_hash_func, kh_str_hash_equal)
 
 #define kh_string_next(head, data) do {                  \
 	khint_t k;                                       \
@@ -198,11 +202,11 @@ struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
 
-KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
-KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
-KHASH_MAP_INIT_STR(pkg_dirs, struct pkg_dir *);
-KHASH_MAP_INIT_STR(pkg_config_files, struct pkg_config_file *);
-KHASH_MAP_INIT_STR(strings, char *);
+KHASH_MAP_INIT_STRING(pkg_deps, struct pkg_dep *);
+KHASH_MAP_INIT_STRING(pkg_files, struct pkg_file *);
+KHASH_MAP_INIT_STRING(pkg_dirs, struct pkg_dir *);
+KHASH_MAP_INIT_STRING(pkg_config_files, struct pkg_config_file *);
+KHASH_MAP_INIT_STRING(strings, char *);
 
 struct pkg {
 	bool		 direct;

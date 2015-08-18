@@ -8,6 +8,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/libucl/klib \
+			-I$(top_srcdir)/external/libucl/src \
 			-I$(top_srcdir)/external/picosat \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \

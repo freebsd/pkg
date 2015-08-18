@@ -67,7 +67,7 @@ struct rsa_key {
 	RSA *key;
 };
 
-
+int32_t string_hash_func(const char *);
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
 void sbuf_reset(struct sbuf *);
