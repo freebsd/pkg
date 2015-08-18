@@ -1202,6 +1202,79 @@ reiterate:
 	return (EPKG_OK);
 }
 
+void
+pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
+{
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it, *key_elt = NULL;
+	int res, iter = 0;
+	size_t i;
+
+	fprintf(file, "digraph {\n");
+
+	for (i = 0; i < problem->nvars; i ++) {
+		struct pkg_solve_variable *var = &problem->variables[i];
+
+		fprintf(file, "\tp%d [shape=%s label=\"%s-%s\"]\n", var->order,
+				var->unit->pkg->type == PKG_INSTALLED ? "ellipse" : "octagon",
+				var->uid, var->unit->pkg->version);
+	}
+
+	/* Print all variables as nodes */
+
+	for (i = 0; i < kv_size(problem->rules); i++) {
+		rule = kv_A(problem->rules, i);
+		struct pkg_solve_item *it = rule->items, *key_elt = NULL;
+
+		switch(rule->reason) {
+		case PKG_RULE_DEPEND:
+			LL_FOREACH(rule->items, it) {
+				if (it->inverse == -1) {
+					key_elt = it;
+					break;
+				}
+			}
+			assert (key_elt != NULL);
+
+			LL_FOREACH(rule->items, it) {
+				if (it != key_elt) {
+					fprintf(file, "\tp%d -> p%d;\n", key_elt->var->order,
+							it->var->order);
+				}
+			}
+			break;
+		case PKG_RULE_UPGRADE_CONFLICT:
+		case PKG_RULE_EXPLICIT_CONFLICT:
+		case PKG_RULE_REQUEST_CONFLICT:
+			LL_FOREACH(rule->items, it) {
+				fprintf(file, "\tp%d -> p%d [arrowhead=none,color=red];\n",
+						it->var->order, it->next->var->order);
+			}
+			break;
+		case PKG_RULE_REQUIRE:
+			LL_FOREACH(rule->items, it) {
+				if (it->inverse == -1) {
+					key_elt = it;
+					break;
+				}
+			}
+			assert (key_elt != NULL);
+
+			LL_FOREACH(rule->items, it) {
+				if (it != key_elt) {
+					fprintf(file, "\tp%d -> p%d[arrowhead=diamond];\n", key_elt->var->order,
+							it->var->order);
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	fprintf(file, "}\n");
+}
+
 struct pkg_solve_ordered_variable {
 	struct pkg_solve_variable *var;
 	int order;
