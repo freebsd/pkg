@@ -1244,10 +1244,8 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 		case PKG_RULE_UPGRADE_CONFLICT:
 		case PKG_RULE_EXPLICIT_CONFLICT:
 		case PKG_RULE_REQUEST_CONFLICT:
-			LL_FOREACH(rule->items, it) {
-				fprintf(file, "\tp%d -> p%d [arrowhead=none,color=red];\n",
-						it->var->order, it->next->var->order);
-			}
+			fprintf(file, "\tp%d -> p%d [arrowhead=none,color=red];\n",
+					it->var->order, it->next->var->order);
 			break;
 		case PKG_RULE_REQUIRE:
 			LL_FOREACH(rule->items, it) {
