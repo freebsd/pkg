@@ -391,7 +391,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 {
 	struct pkg_job_provide *pr;
 	struct pkgdb_it *it;
-	char *buf;
+	char *buf = NULL;
 	int rc;
 
 	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
