@@ -1206,8 +1206,6 @@ void
 pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 {
 	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it, *key_elt = NULL;
-	int res, iter = 0;
 	size_t i;
 
 	fprintf(file, "digraph {\n");

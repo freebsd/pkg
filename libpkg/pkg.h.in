@@ -1070,6 +1070,11 @@ int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
 int pkg_solve_sat_problem(struct pkg_solve_problem *problem);
 
 /**
+ * Export SAT problem to a dot graph description
+ */
+void pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file);
+
+/**
  * Convert package jobs to a SAT problem
  * @return SAT problem or NULL if failed
  */

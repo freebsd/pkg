@@ -373,6 +373,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Always cleanup the cache directory after install/upgrade",
 	},
+	{
+		PKG_STRING,
+		"DOT_FILE",
+		NULL,
+		"Save SAT problem to the specified dot file"
+	},
 };
 
 static bool parsed = false;

@@ -1668,8 +1668,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	int ret, pstatus;
 	struct pkg_solve_problem *problem;
 	struct pkg_solved *job;
-	const char *solver;
-	FILE *spipe[2];
+	const char *solver, *dotfile;
+	FILE *spipe[2], *dot = NULL;
 	pid_t pchild;
 
 	pkgdb_begin_solver(j->db);
@@ -1729,10 +1729,25 @@ again:
 					waitpid(pchild, &pstatus, WNOHANG);
 				}
 				else {
+					if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
+							!= NULL) {
+						dot = fopen(dotfile, "w");
+
+						if (dot == NULL) {
+							pkg_emit_errno("fopen", dotfile);
+						}
+					}
+
 					ret = pkg_solve_sat_problem(problem);
 					if (ret == EPKG_FATAL) {
 						pkg_emit_error("cannot solve job using SAT solver");
 						ret = EPKG_FATAL;
+
+						if (dot) {
+							pkg_solve_dot_export(problem, dot);
+							fclose(dot);
+						}
+
 						pkg_solve_problem_free(problem);
 						j->solved = 0;
 					}
@@ -1742,6 +1757,12 @@ again:
 					}
 					else {
 						ret = pkg_solve_sat_to_jobs(problem);
+
+						if (dot) {
+							pkg_solve_dot_export(problem, dot);
+							fclose(dot);
+						}
+
 						pkg_solve_problem_free(problem);
 					}
 				}
