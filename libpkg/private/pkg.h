@@ -278,6 +278,7 @@ struct pkg_message {
 	char		*str;
 	char		*minimum_version;
 	char		*maximum_version;
+	bool		legacy;
 };
 
 enum pkg_conflict_type {

@@ -1718,27 +1718,59 @@ pkg_open_root_fd(struct pkg *pkg)
 int
 pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 {
-	struct pkg_message *msg;
+	struct pkg_message *msg = NULL;
 	const ucl_object_t *elt;
 
-	msg = calloc(1, sizeof(*msg));
-
-	if (msg == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_message");
-		return (EPKG_FATAL);
-	}
 
 	if (ucl_object_type(obj) == UCL_STRING) {
-		msg->str = strdup(ucl_object_tostring(obj));
+		if (pkg->message == NULL) {
+			msg = calloc(1, sizeof(*msg));
+
+			if (msg == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_message");
+				return (EPKG_FATAL);
+			}
+			msg->str = strdup(ucl_object_tostring(obj));
+			msg->legacy = true;
+		}
+		else {
+			/* Do no rewrite message with legacy message */
+			return (EPKG_OK);
+		}
+
 	}
-	else if (ucl_object_type(obj) == UCL_OBJECT) {
+	else {
 		/* New format of pkg message */
+
 		elt = ucl_object_find_key(obj, "message");
 
 		if (elt == NULL || ucl_object_type(elt) != UCL_STRING) {
 			pkg_emit_error("package message lacks 'message' key that is required");
 
 			return (EPKG_FATAL);
+		}
+
+		if (pkg->message != NULL) {
+			if (pkg->message->legacy) {
+				/* We can re-use legacy message */
+				msg = pkg->message;
+				msg->legacy = false;
+				free(msg->str);
+				msg->str = NULL;
+			}
+			else {
+				pkg_emit_error("trying to rewrite message in a package");
+
+				return (EPKG_FATAL);
+			}
+		}
+		else {
+			msg = calloc(1, sizeof(*msg));
+
+			if (msg == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_message");
+				return (EPKG_FATAL);
+			}
 		}
 
 		msg->str = strdup(ucl_object_tostring(elt));

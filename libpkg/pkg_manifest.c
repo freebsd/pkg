@@ -60,6 +60,9 @@
 #define PKG_PROVIDES		-18
 #define PKG_REQUIRES		-19
 
+#define PKG_MESSAGE_LEGACY	1
+#define PKG_MESSAGE_NEW 2
+
 static int pkg_string(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_obj(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_array(struct pkg *, const ucl_object_t *, uint32_t);
@@ -138,7 +141,10 @@ static struct pkg_manifest_key {
 	{ "maintainer",          offsetof(struct pkg, maintainer),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "message",             PKG_MESSAGE,
+	{ "message_new",             PKG_MESSAGE_NEW,
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
+
+	{ "message",             PKG_MESSAGE_LEGACY,
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
 
 	{ "name",                offsetof(struct pkg, name),
@@ -1223,7 +1229,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->message != NULL) {
 		ucl_object_insert_key(top,
 			pkg_message_to_ucl(pkg),
-		    "message", 7, false);
+			"message_new", sizeof("message_new") - 1, false);
+		ucl_object_insert_key(top,
+			ucl_object_fromstring(pkg->message->str),
+			"message", sizeof("message") - 1, false);
 	}
 
 	return (top);
