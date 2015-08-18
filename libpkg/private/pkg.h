@@ -202,11 +202,11 @@ struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
 
-KHASH_MAP_INIT_STRING(pkg_deps, struct pkg_dep *);
-KHASH_MAP_INIT_STRING(pkg_files, struct pkg_file *);
-KHASH_MAP_INIT_STRING(pkg_dirs, struct pkg_dir *);
-KHASH_MAP_INIT_STRING(pkg_config_files, struct pkg_config_file *);
-KHASH_MAP_INIT_STRING(strings, char *);
+KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
+KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
+KHASH_MAP_INIT_STR(pkg_dirs, struct pkg_dir *);
+KHASH_MAP_INIT_STR(pkg_config_files, struct pkg_config_file *);
+KHASH_MAP_INIT_STR(strings, char *);
 
 struct pkg {
 	bool		 direct;
