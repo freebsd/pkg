@@ -615,16 +615,14 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
-		else {
-			nbdone++;
-			job_status_begin(msg_buf);
+		nbdone++;
+		job_status_begin(msg_buf);
 
-			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
-			    pkg);
-			sbuf_finish(msg_buf);
-			printf("%s", sbuf_data(msg_buf));
-		}
+		pkg = ev->e_install_begin.pkg;
+		pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
+		    pkg);
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
