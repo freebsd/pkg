@@ -615,7 +615,6 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
-		nbdone++;
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
@@ -685,7 +684,6 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		nbdone++;
 
 		job_status_begin(msg_buf);
 
@@ -715,7 +713,6 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		pkg_new = ev->e_upgrade_begin.n;
 		pkg_old = ev->e_upgrade_begin.o;
-		nbdone++;
 
 		job_status_begin(msg_buf);
 
@@ -857,6 +854,9 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_RESTORE:
 		sbuf_cat(msg_buf, "Restoring");
 		sbuf_finish(msg_buf);
+		break;
+	case PKG_EVENT_NEW_ACTION:
+		nbdone++;
 		break;
 	default:
 		break;

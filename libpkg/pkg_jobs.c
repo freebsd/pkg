@@ -588,7 +588,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			ts->type = PKG_SOLVED_UPGRADE_REMOVE;
 			ts->items[0] = solved->items[1];
 			solved->items[1] = NULL;
-			solved->type = PKG_SOLVED_INSTALL;
+			solved->type = PKG_SOLVED_UPGRADE_INSTALL;
 			DL_APPEND(j->jobs, ts);
 			j->count ++;
 			solved->already_deleted = true;
@@ -1865,6 +1865,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 	if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING)
 		flags |= PKG_ADD_FORCE_MISSING;
 	flags |= PKG_ADD_UPGRADE;
+	if (ps->type == PKG_SOLVED_UPGRADE_INSTALL)
+		flags |= PKG_ADD_SPLITTED_UPGRADE;
 	if (new->automatic || (j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
 		flags |= PKG_ADD_AUTOMATIC;
 
@@ -1945,6 +1947,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				goto cleanup;
 			break;
 		case PKG_SOLVED_INSTALL:
+		case PKG_SOLVED_UPGRADE_INSTALL:
 			retcode = pkg_jobs_handle_install(ps, j, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;

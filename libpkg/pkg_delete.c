@@ -67,8 +67,10 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if (pkgdb_ensure_loaded(db, pkg, load_flags) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if ((flags & PKG_DELETE_UPGRADE) == 0)
+	if ((flags & PKG_DELETE_UPGRADE) == 0) {
+		pkg_emit_new_action();
 		pkg_emit_deinstall_begin(pkg);
+	}
 
 	/* If the package is locked */
 	if (pkg->locked) {

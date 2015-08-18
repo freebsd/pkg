@@ -516,7 +516,8 @@ typedef enum {
 	PKG_SOLVED_DELETE,
 	PKG_SOLVED_UPGRADE,
 	PKG_SOLVED_UPGRADE_REMOVE,
-	PKG_SOLVED_FETCH
+	PKG_SOLVED_FETCH,
+	PKG_SOLVED_UPGRADE_INSTALL
 } pkg_solved_t;
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
@@ -1000,6 +1001,7 @@ int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
 #define PKG_ADD_FORCE			(1U << 3)
 #define PKG_ADD_NOSCRIPT		(1U << 4)
 #define PKG_ADD_FORCE_MISSING		(1U << 5)
+#define PKG_ADD_SPLITTED_UPGRADE	(1U << 6)
 
 /**
  * Allocate a new pkg_jobs.
@@ -1276,6 +1278,7 @@ typedef enum {
 	PKG_EVENT_PLUGIN_ERROR,
 	PKG_EVENT_PLUGIN_INFO,
 	PKG_EVENT_NOT_FOUND,
+	PKG_EVENT_NEW_ACTION,
 } pkg_event_t;
 
 struct pkg_event {

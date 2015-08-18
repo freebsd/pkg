@@ -576,6 +576,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		retcode = ret;
 		goto cleanup;
 	}
+	if ((flags & PKG_ADD_SPLITTED_UPGRADE) != PKG_ADD_SPLITTED_UPGRADE)
+		pkg_emit_new_action();
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkg_emit_install_begin(pkg);
 	else {

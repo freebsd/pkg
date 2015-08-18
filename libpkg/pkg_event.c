@@ -1004,3 +1004,13 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 	pkg_emit_event(&ev);
 
 }
+
+void
+pkg_emit_new_action(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_NEW_ACTION;
+
+	pkg_emit_event(&ev);
+}

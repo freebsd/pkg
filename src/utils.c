@@ -746,6 +746,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 		it->display_type = PKG_DISPLAY_DELETE;
 
 		break;
+	case PKG_SOLVED_UPGRADE_INSTALL:
 	case PKG_SOLVED_UPGRADE_REMOVE:
 		/* Ignore split-upgrade packages for display */
 		free(it);
@@ -794,6 +795,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		switch (it->solved_type) {
 		case PKG_SOLVED_INSTALL:
 		case PKG_SOLVED_UPGRADE:
+		case PKG_SOLVED_UPGRADE_INSTALL:
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
 			pkg_printf("and may not be upgraded to version %v\n", it->new);
