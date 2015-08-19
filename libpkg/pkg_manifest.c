@@ -1231,7 +1231,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			pkg_message_to_ucl(pkg),
 			"message_new", sizeof("message_new") - 1, false);
 		ucl_object_insert_key(top,
-			ucl_object_fromstring(pkg->message->str),
+			ucl_object_fromstring_common(pkg->message->str, 0,
+					UCL_STRING_RAW|UCL_STRING_TRIM),
 			"message", sizeof("message") - 1, false);
 	}
 
