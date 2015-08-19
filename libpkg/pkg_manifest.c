@@ -629,7 +629,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 		} else {
-			pkg_emit_error("Skipping unknown key for file(%s): %s",
+			pkg_debug(1, "Skipping unknown key for file(%s): %s",
 			    sbuf_data(fname), key);
 		}
 	}
@@ -675,7 +675,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		} else if (!strcasecmp(key, "try") && cur->type == UCL_BOOLEAN) {
 			/* ignore on purpose : compatibility*/
 		} else {
-			pkg_emit_error("Skipping unknown key for dir(%s): %s",
+			pkg_debug(1, "Skipping unknown key for dir(%s): %s",
 			    sbuf_data(dirname), key);
 		}
 	}
@@ -751,7 +751,7 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 				pkg_emit_error("Skipping malformed key '%s'", key);
 			}
 		} else {
-			pkg_emit_error("Skipping unknown key '%s'", key);
+			pkg_debug(1, "Skipping unknown key '%s'", key);
 		}
 	}
 
