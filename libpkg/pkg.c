@@ -1828,7 +1828,9 @@ pkg_message_to_ucl(struct pkg *pkg)
 
 	obj = ucl_object_typed_new (UCL_OBJECT);
 
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->message->str),
+	ucl_object_insert_key(obj,
+			ucl_object_fromstring_common (pkg->message->str, 0,
+					UCL_STRING_RAW|UCL_STRING_TRIM),
 			"message", 0, false);
 
 	if (pkg->message->maximum_version) {
