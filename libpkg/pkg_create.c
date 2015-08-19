@@ -308,7 +308,8 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_uc
 			return (ret);
 		}
 		else {
-			obj = ucl_object_fromlstring(buf, size);
+			obj = ucl_object_fromstring_common(buf, size,
+					UCL_STRING_RAW|UCL_STRING_TRIM);
 			ret = pkg_message_from_ucl(pkg, obj);
 			ucl_object_unref(obj);
 			free(buf);
