@@ -1086,8 +1086,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
-	if (nsname != NULL)
-		set_nameserver(ucl_object_tostring_forced(o));
+	if (nsname != NULL) {
+		if (set_nameserver(ucl_object_tostring_forced(o)) != 0) {
+			pkg_emit_error("Unable to set nameserver");
+			return (EPKG_FATAL);
+		}
+	}
 
 	return (EPKG_OK);
 }
