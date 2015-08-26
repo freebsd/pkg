@@ -75,10 +75,10 @@ case $host_os in
   linux*)
         OS_CFLAGS="-D_XOPEN_SOURCE -D_GNU_SOURCE -pthread"
         OS_LDFLAGS="-pthread"
-        OS_LIBS="-ldl -lrt -lbsd"
+        OS_LIBS="-ldl -lrt"
         OS_STATIC="false"
         ;;
-    *)
+  *)
         OS_CFLAGS="-D_BSD_SOURCE"
         OS_LDFLAGS=
         OS_LIBS=
@@ -282,7 +282,13 @@ AC_SEARCH_LIBS([jail_getid], [jail], [
 AC_SEARCH_LIBS([getprogname], [bsd], [
 	AC_DEFINE(HAVE_LIBBSD, 1, [Define to 1 if you have the 'bsd' library (-lbsd).])
 	LIBBSD_LIB="-lbsd"
-	], [])
+  ], [
+    case $host_os in
+      linux*)
+        AC_MSG_ERROR([Unable to find the libbsd])
+        ;;
+    esac
+  ])
 
 AC_CHECK_HEADERS([gelf.h libelf.h], [
 	AC_CHECK_TYPES([Elf_Note], [
