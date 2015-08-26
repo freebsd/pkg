@@ -157,6 +157,7 @@ AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_FUNCS_ONCE([fopencookie])
 AC_CHECK_FUNCS_ONCE([sysctlbyname])
+AC_CHECK_FUNCS_ONCE([res_setservers])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
@@ -268,6 +269,7 @@ AC_SEARCH_LIBS([zlibVersion], [z], [], [
 AC_SEARCH_LIBS([archive_read_open], [archive], [], [
   AC_MSG_ERROR([unable to find the archive_read() function])
 ])
+AC_SEARCH_LIBS([__res_query], [resolv], [], [])
 
 AC_CHECK_HEADER([archive.h],
 	[pkg_found_archive_headers=yes])
