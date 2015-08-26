@@ -157,7 +157,7 @@ libelf_la_SOURCES=	libelf/elf.c \
 nodist_libelf_la_SOURCES=	libelf/libelf_fsize.c \
 				libelf/libelf_msize.c \
 				libelf/libelf_convert.c
-libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
+libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf -I$(top_builddir)/external/libelf
 libelf_static_la_SOURCES=	${libelf_la_SOURCES}
 nodist_libelf_static_la_SOURCES=	$(nodist_libelf_la_SOURCES)
 libelf_static_la_CFLAGS=	$(libelf_la_CFLAGS) -static
