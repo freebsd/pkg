@@ -152,6 +152,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
+	char	bd[MAXPATHLEN], *cp;
 	struct stat st;
 	const struct stat *aest;
 	bool renamed = false;
@@ -245,7 +246,20 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 			pkg_debug(2, "Writing conf in %s", pathname);
 			unlink(rpath);
+			strlcpy(bd, rpath, sizeof(bd));
+			if ((cp = strrchr(bd, '/')) != NULL)
+				*cp = '\0';
+			if (mkdirs(bd) != EPKG_OK) {
+				pkg_emit_error("mkdirs(%s)", bd);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			FILE *f = fopen(rpath, "w+");
+			if (!f) {
+				pkg_emit_error("fopen() for write: %s", rpath);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			fprintf(f, "%s", sbuf_data(newconf));
 			fclose(f);
 		}
