@@ -201,7 +201,8 @@ rsa_verify_cb(int fd, void *ud)
 		return(EPKG_FATAL);
 	}
 
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), cbdata->sig,
+	ret = RSA_verify(NID_sha1, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX), cbdata->sig,
 	    cbdata->siglen, rsa);
 	free(sha256);
 	if (ret == 0) {
