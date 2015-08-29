@@ -14,6 +14,7 @@ atf_test_program{name='lock'}
 atf_test_program{name='packagesplit'}
 atf_test_program{name='php-pr'}
 atf_test_program{name='pkg'}
+atf_test_program{name='pubkey'}
 atf_test_program{name='query'}
 atf_test_program{name='register'}
 atf_test_program{name='repo'}

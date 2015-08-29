@@ -87,6 +87,7 @@ tests_scripts=	\
 		frontend/lock.sh \
 		frontend/packagesplit.sh \
 		frontend/php-pr.sh \
+		frontend/pubkey.sh \
 		frontend/query.sh \
 		frontend/register.sh \
 		frontend/repo.sh \
