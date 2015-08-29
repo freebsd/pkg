@@ -216,8 +216,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
 			pkg_debug(1, "Populating config_file %s", pathname);
 			size_t len = archive_entry_size(ae);
-			rcf->content = malloc(len);
+			rcf->content = malloc(len + 1);
 			archive_read_data(a, rcf->content, len);
+			rcf->content[len] = '\0';
 			if (renamed && (!automerge || local == NULL))
 				strlcat(pathname, ".pkgnew", sizeof(pathname));
 		}
