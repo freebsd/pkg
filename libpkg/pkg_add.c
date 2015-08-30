@@ -227,7 +227,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		/*
 		 * check if the file is already provided by previous package
 		 */
-		if (!automerge)
+		if (automerge)
 			attempt_to_merge(renamed, rcf, local, pathname, path, newconf);
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
