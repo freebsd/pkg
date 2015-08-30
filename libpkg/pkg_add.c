@@ -262,6 +262,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 			fprintf(f, "%s", sbuf_data(newconf));
 			fclose(f);
+			/* Apply expect mode setting */
+			chmod(rpath, aest->st_mode);
 		}
 
 		if (ret != ARCHIVE_OK) {
