@@ -264,6 +264,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			fclose(f);
 			/* Apply expect mode setting */
 			chmod(rpath, aest->st_mode);
+			if (getenv("INSTALL_AS_USER") == NULL) {
+				chown(rpath, aest->st_uid, aest->st_gid);
+			}
 		}
 
 		if (ret != ARCHIVE_OK) {
