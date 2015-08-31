@@ -1,5 +1,24 @@
 #! /usr/bin/env atf-sh
 
+. $(atf_get_srcdir)/test_environment.sh
+
+if [ `uname -s` != "Linux" ] ; then
+	nonlinux="create_from_plist_fflags create_from_plist_bad_fflags"
+fi
+
+tests_init \
+	create_from_plist \
+	create_from_plist_set_owner \
+	create_from_plist_set_group \
+	create_from_plist_gather_mode \
+	create_from_plist_set_mode \
+	create_from_plist_mini \
+	create_from_plist_dirrm \
+	create_from_plist_ignore \
+	${nonlinux} \
+	create_from_plist_with_keyword_arguments \
+	create_from_manifest_and_plist
+
 genmanifest() {
 	cat << EOF >> +MANIFEST
 name: test
@@ -35,7 +54,6 @@ basic_validation() {
 	xz -t test-1.txz || atf_fail "XZ integrity check failed"
 }
 
-atf_test_case create_from_plist
 create_from_plist_body() {
 	touch file1
 	genmanifest
@@ -55,7 +73,6 @@ create_from_plist_body() {
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_set_owner
 create_from_plist_set_owner_body() {
 
 	preparetestcredentials "(plop,,)"
@@ -74,11 +91,6 @@ create_from_plist_set_owner_body() {
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_set_group
-create_from_plist_set_owner_head() {
-	atf_set "descr" "Testing credentials set from the plist"
-}
-
 create_from_plist_set_group_body() {
 
 	preparetestcredentials "(,bla,)"
@@ -95,11 +107,6 @@ create_from_plist_set_group_body() {
 		-e empty \
 		-s exit:0 \
 		tar tvf test-1.txz
-}
-
-atf_test_case create_from_plist_gather_mode
-create_from_plist_gather_mode_head() {
-	atf_set "descr" "Testing credentials set from the plist"
 }
 
 create_from_plist_gather_mode_body() {
@@ -122,10 +129,6 @@ create_from_plist_gather_mode_body() {
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_set_mode
-create_from_plist_set_mode_head() {
-	atf_set "descr" "Testing credentials set from the plist"
-}
 create_from_plist_set_mode_body() {
 
 	preparetestcredentials "(,,2755)"
@@ -144,10 +147,6 @@ create_from_plist_set_mode_body() {
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_mini
-create_from_plist_mini_head() {
-	atf_set "descr" "Testing credentials set from the plist"
-}
 create_from_plist_mini_body() {
 
 	preparetestcredentials "(plop,)"
@@ -164,11 +163,6 @@ create_from_plist_mini_body() {
 		-e empty \
 		-s exit:0 \
 		tar tvf test-1.txz
-}
-
-atf_test_case create_from_plist_dirrm
-create_from_plist_dirrm_head() {
-	atf_set "descr" "Testing @dirrm(try) set from the plist"
 }
 
 create_from_plist_dirrm_body() {
@@ -193,10 +187,6 @@ create_from_plist_dirrm_body() {
 	done
 }
 
-atf_test_case create_from_plist_ignore
-create_from_plist_ignore_head() {
-	atf_set "descr" "Testing @ignore"
-}
 create_from_plist_ignore_body() {
 	genmanifest
 	genplist "@ignore
@@ -220,11 +210,6 @@ aline"
 		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
-atf_test_case create_from_plist_fflags
-create_from_plist_fflags_head() {
-	atf_set "descr" "Test fflags set from plist"
-}
-
 create_from_plist_fflags_body() {
 	preparetestcredentials "(,,,schg)"
 
@@ -235,11 +220,6 @@ create_from_plist_fflags_body() {
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
-atf_test_case create_from_plist_bad_fflags
-create_from_plist_bad_fflags_head() {
-	atf_set "descr" "Test bad fflags set from plist"
-}
-
 create_from_plist_bad_fflags_body() {
 	preparetestcredentials "(,,,schg,bad)"
 
@@ -248,11 +228,6 @@ create_from_plist_bad_fflags_body() {
 		-e inline:"pkg: Malformed keyword '', wrong fflags\n" \
 		-s exit:70 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
-}
-
-atf_test_case create_from_plist_with_keyword_arguments
-create_from_plist_with_keyword_arguments_head() {
-	atf_set "descr" "Test keywords with arguments"
 }
 
 create_from_plist_with_keyword_arguments_body() {
@@ -345,11 +320,6 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg info -R --raw-format=ucl -F test-1.txz
-}
-
-atf_test_case create_from_manifest_and_plist
-create_from_manifest_and_plist_head() {
-	atf_set "descr" "Testing pkg create with manifest and plist"
 }
 
 create_from_manifest_and_plist_body() {

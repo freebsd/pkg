@@ -1,6 +1,10 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case package_split
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	package_split
+
 package_split_body() {
 	touch file1
 	touch file2
@@ -136,10 +140,4 @@ EOF
 	    pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 
 	test -f file1 || atf_fail "file1 is not present"
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case package_split
 }

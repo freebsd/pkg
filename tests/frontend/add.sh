@@ -1,5 +1,18 @@
 #! /usr/bin/env atf-sh
 
+. $(atf_get_srcdir)/test_environment.sh
+tests_init	\
+		add \
+		add_automatic \
+		add_noscript \
+		add_noscript \
+		add_force \
+		add_accept_missing \
+		add_quiet \
+		add_stdin \
+		add_stdin_missing \
+		add_no_version
+
 initialize_pkg() {
 	touch a
 	cat << EOF > test.ucl
@@ -35,7 +48,6 @@ EOF
 		pkg create -M test.ucl
 }
 
-atf_test_case add
 add_body() {
 	initialize_pkg
 
@@ -56,7 +68,6 @@ post-install
 		pkg query "%a" test
 }
 
-atf_test_case add_automatic
 add_automatic_body() {
 	initialize_pkg
 
@@ -77,10 +88,6 @@ post-install
 
 }
 
-atf_test_case add_noscript
-add_noscript_head() {
-	atf_set "descr" "pkg add -I"
-}
 add_noscript_body() {
 	initialize_pkg
 
@@ -92,12 +99,12 @@ ${JAILED}Extracting test-1:  done
 		-e empty \
 		pkg add -I test-1.txz
 }
-atf_test_case add_force
+
 add_force_body() {
 	initialize_pkg
 }
 
-atf_test_case add_accept_missing
+
 add_accept_missing_body() {
 	touch a
 	cat << EOF > test.ucl
@@ -156,7 +163,6 @@ post-install
 		pkg add -M test-1.txz
 }
 
-atf_test_case add_quiet
 add_quiet_body() {
 	initialize_pkg
 
@@ -166,7 +172,6 @@ add_quiet_body() {
 		pkg add -q ./test-1.txz
 }
 
-atf_test_case add_stdin
 add_stdin_body() {
 	initialize_pkg
 
@@ -179,11 +184,6 @@ post-install
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		pkg add -
-}
-
-atf_test_case add_stdin_missing
-add_stdin_body_head() {
-	atf_set "descr" "pkg add -M -"
 }
 
 add_stdin_missing_body() {
@@ -244,7 +244,6 @@ post-install
 		pkg add -M -
 }
 
-atf_test_case add_no_version
 add_no_version_body() {
 	cat << EOF > test.ucl
 name: test
@@ -301,18 +300,4 @@ EOF
 	done
 	atf_check -o ignore -s exit:0 \
 		pkg add final-1.txz
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case add
-	atf_add_test_case add_automatic
-	atf_add_test_case add_noscript
-	atf_add_test_case add_force
-	atf_add_test_case add_accept_missing
-	atf_add_test_case add_quiet
-	atf_add_test_case add_stdin
-	atf_add_test_case add_stdin_missing
-	atf_add_test_case add_no_version
 }

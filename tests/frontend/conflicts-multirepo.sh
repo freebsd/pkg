@@ -1,5 +1,9 @@
 #! /usr/bin/env atf-sh
-atf_test_case conflicts_multirepo
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	conflicts_multirepo
+
 conflicts_multirepo_head() {
 	atf_set "timeout" "20"
 }
@@ -172,10 +176,4 @@ ${JAILED}[2/2] Extracting test-1.1:  done
 		-e empty \
 		-s exit:0 \
 		pkg -o CONSERVATIVE_UPGRADE=no -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case conflicts_multirepo
 }

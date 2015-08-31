@@ -1,6 +1,10 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case register_conflicts
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	register_conflicts
+
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
 	echo a > teststage/${TMPDIR}/plop
@@ -49,10 +53,4 @@ EOF
 	    pkg register -i teststage -M test.ucl
 	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	atf_check_equal ${sum} ${nsum}
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case register_conflicts
 }

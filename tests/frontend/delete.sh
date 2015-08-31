@@ -1,6 +1,12 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case simple_delete
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	simple_delete \
+	simple_delete_prefix_ending_with_slash \
+	delete_with_directory_owned
+
 simple_delete_body() {
 	touch file1
 	mkdir dir
@@ -42,7 +48,6 @@ EOF
 	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
 }
 
-atf_test_case simple_delete_prefix_ending_with_slash
 simple_delete_prefix_ending_with_slash_body() {
 	touch file1
 	mkdir dir
@@ -84,7 +89,6 @@ EOF
 	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
 }
 
-atf_test_case delete_with_directory_owned
 delete_with_directory_owned_body() {
 	touch file1
 	mkdir dir
@@ -154,12 +158,4 @@ EOF
 
 	test -d dir && atf_fail "'dir' still present"
 	test -d ${TMPDIR} || atf_fail "Prefix has been removed"
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case simple_delete
-	atf_add_test_case simple_delete_prefix_ending_with_slash
-	atf_add_test_case delete_with_directory_owned
 }

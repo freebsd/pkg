@@ -1,6 +1,10 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case pubkey
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	pubkey
+
 pubkey_body() {
 	atf_check -o ignore -e ignore \
 		openssl genrsa -out repo.key 2048
@@ -40,9 +44,4 @@ EOF
 		-o ignore \
 		pkg -o REPOS_DIR="${TMPDIR}" \
 		-o ${PKG_CACHEDIR}="${TMPDIR}" update
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-	atf_add_test_case pubkey
 }

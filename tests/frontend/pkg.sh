@@ -1,6 +1,13 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case pkg_no_database
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	pkg_no_database \
+	pkg_config_defaults \
+	pkg_create_manifest_bad_syntax \
+	pkg_repo_load_order
+
 pkg_no_database_body() {
 	atf_check \
 	    -o empty \
@@ -9,7 +16,6 @@ pkg_no_database_body() {
 	    -x PKG_DBDIR=/dev/null pkg -N
 }
 
-atf_test_case pkg_config_defaults
 pkg_config_defaults_body()
 {
 	atf_check \
@@ -41,7 +47,6 @@ pkg_config_defaults_body()
 	    env -i PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
 }
 
-atf_test_case pkg_create_manifest_bad_syntax
 pkg_create_manifest_bad_syntax_body()
 {
 	mkdir -p testpkg/.metadir
@@ -67,7 +72,6 @@ EOF
 	    pkg create -q -m testpkg/.metadir -r testpkg
 }
 
-atf_test_case pkg_repo_load_order
 pkg_repo_load_order_body()
 {
 	echo "03_repo: { url: file:///03_repo }" > plop.conf
@@ -80,13 +84,4 @@ pkg_repo_load_order_body()
 	    -e empty \
 	    -s exit:0 \
 	    echo $out
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case pkg_no_database
-	atf_add_test_case pkg_config_defaults
-	atf_add_test_case pkg_create_manifest_bad_syntax
-	atf_add_test_case pkg_repo_load_order
 }

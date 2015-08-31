@@ -1,6 +1,13 @@
 #!/usr/bin/env atf-sh
 
-atf_test_case which
+. $(atf_get_srcdir)/test_environment.sh
+if [ `uname -s` != "Darwin" ]; then
+	ldd=ldd
+fi
+tests_init \
+	which \
+	${ldd}
+
 which_body() {
 	atf_check \
 	    -o inline:"$(atf_get_srcdir)/../../src/pkg\n" \
@@ -9,20 +16,11 @@ which_body() {
 	    which pkg
 }
 
-atf_test_case ldd
+
 ldd_body() {
 	atf_check \
 	    -o match:".*libpkg.so.3 => $(atf_get_srcdir).*$" \
 	    -e empty \
 	    -s exit:0 \
 	    ldd -a $(atf_get_srcdir)/../../src/.libs/pkg
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case which
-	if [ `uname -s` != "Darwin" ]; then
-		atf_add_test_case ldd
-	fi
 }

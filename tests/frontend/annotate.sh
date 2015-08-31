@@ -1,10 +1,9 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case annotate
-annotate_head() {
-	atf_set "require.files" \
-	   "${RESOURCEDIR}/png.ucl ${RESOURCEDIR}/sqlite3.ucl"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	annotate
 
 annotate_body() {
 	for pkg in 'png' 'sqlite3' ; do
@@ -123,13 +122,5 @@ annotate_body() {
 	    -e empty \
 	    -s exit:0 \
 	    pkg annotate --all --show TEST1
-
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	# Tests are run in alphabetical order
-	atf_add_test_case annotate
 
 }
