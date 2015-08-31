@@ -36,10 +36,6 @@ EOF
 }
 
 atf_test_case add
-add_head() {
-	atf_set "descr" "pkg add"
-}
-
 add_body() {
 	initialize_pkg
 
@@ -61,9 +57,6 @@ post-install
 }
 
 atf_test_case add_automatic
-add_automatic_head() {
-	atf_set "descr" "pkg add -A"
-}
 add_automatic_body() {
 	initialize_pkg
 
@@ -100,17 +93,11 @@ ${JAILED}Extracting test-1:  done
 		pkg add -I test-1.txz
 }
 atf_test_case add_force
-add_force_head() {
-	atf_set "descr" "pkg add -f"
-}
 add_force_body() {
 	initialize_pkg
 }
 
 atf_test_case add_accept_missing
-add_accept_missing_head() {
-	atf_set "descr" "pkg add -M"
-}
 add_accept_missing_body() {
 	touch a
 	cat << EOF > test.ucl
@@ -170,9 +157,6 @@ post-install
 }
 
 atf_test_case add_quiet
-add_quiet_head() {
-	atf_set "descr" "pkg add -q"
-}
 add_quiet_body() {
 	initialize_pkg
 
@@ -183,9 +167,6 @@ add_quiet_body() {
 }
 
 atf_test_case add_stdin
-add_stdin_head() {
-	atf_set "descr" "pkg add -"
-}
 add_stdin_body() {
 	initialize_pkg
 

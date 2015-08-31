@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case query
-query_head() {
-	atf_set "descr" "testing pkg query"
-}
-
 query_body() {
 	touch plop
 	touch bla

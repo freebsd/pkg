@@ -1,7 +1,6 @@
 #! /usr/bin/env atf-sh
 atf_test_case conflicts_multirepo
 conflicts_multirepo_head() {
-	atf_set "descr" "Testing dynamic conflicts resolution in mutlirepo"
 	atf_set "timeout" "20"
 }
 

@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case simple_delete
-simple_delete_head() {
-	atf_set "descr" "Testing pkg delete"
-}
-
 simple_delete_body() {
 	touch file1
 	mkdir dir
@@ -47,10 +43,6 @@ EOF
 }
 
 atf_test_case simple_delete_prefix_ending_with_slash
-simple_delete_prefix_ending_with_slash_head() {
-	atf_set "descr" "Testing pkg delete when prefix end with /"
-}
-
 simple_delete_prefix_ending_with_slash_body() {
 	touch file1
 	mkdir dir
@@ -93,10 +85,6 @@ EOF
 }
 
 atf_test_case delete_with_directory_owned
-delete_with_directory_owned_head() {
-	atf_set "descr" "Testing pkg delete when a directory is owned by another package"
-}
-
 delete_with_directory_owned_body() {
 	touch file1
 	mkdir dir

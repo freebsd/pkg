@@ -5,11 +5,6 @@
 
 
 atf_test_case pkg_puppet
-
-pkg_puppet_head() {
-	atf_set "descr" "testing pkg -- ruby upgrade and puppet removal"
-}
-
 pkg_puppet_body() {
 	touch puppet.file
 	touch ruby.file

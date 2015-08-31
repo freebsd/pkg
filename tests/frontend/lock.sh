@@ -2,7 +2,6 @@
 
 atf_test_case lock
 lock_head() {
-	atf_set "descr" "pkg lock"
 	atf_set "require.files" \
 	   "${RESOURCEDIR}/png.ucl ${RESOURCEDIR}/sqlite3.ucl"
 }

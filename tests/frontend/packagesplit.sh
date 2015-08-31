@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case package_split
-package_split_head() {
-	atf_set "descr" "testing package splitting"
-}
-
 package_split_body() {
 	touch file1
 	touch file2

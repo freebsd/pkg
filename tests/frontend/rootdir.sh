@@ -1,10 +1,6 @@
 #!/usr/bin/env atf-sh
 
 atf_test_case rootdir
-rootdir_head() {
-	atf_set "descr" "pkg -r <rootdir>"
-}
-
 rootdir_body() {
 	unset PKG_DBDIR
 

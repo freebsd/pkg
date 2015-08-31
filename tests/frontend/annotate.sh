@@ -2,7 +2,6 @@
 
 atf_test_case annotate
 annotate_head() {
-	atf_set "descr" "pkg annotate"
 	atf_set "require.files" \
 	   "${RESOURCEDIR}/png.ucl ${RESOURCEDIR}/sqlite3.ucl"
 }

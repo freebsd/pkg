@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case register
-register_conflicts_head() {
-	atf_set "descr" "testing pkg register conflicts"
-}
-
+atf_test_case register_conflicts
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
 	echo a > teststage/${TMPDIR}/plop

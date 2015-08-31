@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case pkg_no_database
-pkg_no_database_head() {
-	atf_set "descr" "testing pkg -- no database"
-}
-
 pkg_no_database_body() {
 	atf_check \
 	    -o empty \
@@ -14,11 +10,6 @@ pkg_no_database_body() {
 }
 
 atf_test_case pkg_config_defaults
-pkg_config_defaults_head()
-{
-	atf_set "descr" "testing pkg -- compiled-in defaults"
-}
-
 pkg_config_defaults_body()
 {
 	atf_check \
@@ -51,12 +42,6 @@ pkg_config_defaults_body()
 }
 
 atf_test_case pkg_create_manifest_bad_syntax
-pkg_create_manifest_bad_syntax_head()
-{
-	atf_set "descr" "Testing bad syntax in manifest"
-
-}
-
 pkg_create_manifest_bad_syntax_body()
 {
 	mkdir -p testpkg/.metadir
@@ -83,11 +68,6 @@ EOF
 }
 
 atf_test_case pkg_repo_load_order
-pkg_repo_load_order_head()
-{
-	atf_set "descr" "Testing the order the repository configuration files are loaded"
-}
-
 pkg_repo_load_order_body()
 {
 	echo "03_repo: { url: file:///03_repo }" > plop.conf

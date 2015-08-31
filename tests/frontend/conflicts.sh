@@ -1,9 +1,5 @@
 #! /usr/bin/env atf-sh
 atf_test_case find_conflicts
-find_conflicts_head() {
-	atf_set "descr" "Testing dynamic conflicts resolution"
-}
-
 find_conflicts_body() {
 	touch a
 	cat << EOF >> manifest

@@ -1,11 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case pkg_phpextensions
-
-pkg_phpextensions_head() {
-	atf_set "descr" "testing pkg -- install php module wich dep on newer php version even with upgrade"
-}
-
 pkg_phpextensions_body() {
 	touch php53.file
 	touch php53extension.file

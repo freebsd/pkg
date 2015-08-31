@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case requires
-requires_head() {
-	atf_set "descr" "Testings requires"
-}
-
 requires_body() {
 	cat << EOF >> repo.conf
 local1: {

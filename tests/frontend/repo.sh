@@ -1,10 +1,6 @@
 #! /usr/bin/env atf-sh
 
 atf_test_case repo
-repo_head() {
-	atf_set "descr" "testing pkg repo"
-}
-
 repo_body() {
 	touch plop
 	touch bla

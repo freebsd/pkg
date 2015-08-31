@@ -1,10 +1,5 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case create_from_plist
-create_from_plist_head() {
-	atf_set "descr" "Testing pkg create from plist"
-}
-
 genmanifest() {
 	cat << EOF >> +MANIFEST
 name: test
@@ -40,6 +35,7 @@ basic_validation() {
 	xz -t test-1.txz || atf_fail "XZ integrity check failed"
 }
 
+atf_test_case create_from_plist
 create_from_plist_body() {
 	touch file1
 	genmanifest
@@ -60,10 +56,6 @@ create_from_plist_body() {
 }
 
 atf_test_case create_from_plist_set_owner
-create_from_plist_set_owner_head() {
-	atf_set "descr" "Testing credentials set from the plist"
-}
-
 create_from_plist_set_owner_body() {
 
 	preparetestcredentials "(plop,,)"
