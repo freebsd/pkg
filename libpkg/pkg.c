@@ -506,6 +506,21 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 }
 
 int
+pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
+{
+	assert(pkg != NULL);
+
+	if ((*d) == NULL)
+		(*d) = pkg->dirs;
+	else
+		(*d) = (*d)->next;
+	if ((*d) == NULL)
+		return (EPKG_END);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_files(const struct pkg *pkg, struct pkg_file **f)
 {
 	assert(pkg != NULL);
@@ -529,7 +544,6 @@ pkg_##name(const struct pkg *pkg, type **c) {		\
 pkg_each_hash(deps, pkg_deps, struct pkg_dep, name);
 pkg_each_hash(rdeps, pkg_deps, struct pkg_dep, name);
 pkg_each_hash(config_files, pkg_config_files, struct pkg_config_file, path);
-pkg_each_hash(dirs, pkg_dirs, struct pkg_dir, path);
 
 #define pkg_each_strings(name)			\
 int						\
@@ -781,7 +795,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
-	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirs, path)) {
+	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirhash, path)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
@@ -806,7 +820,8 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	if (fflags != 0)
 		d->fflags = fflags;
 
-	kh_add(pkg_dirs, pkg->dirs, d, d->path);
+	kh_add(pkg_dirs, pkg->dirhash, d, d->path);
+	LL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
 }
@@ -1225,7 +1240,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_FILES:
 		return (kh_count(pkg->filehash));
 	case PKG_DIRS:
-		return (kh_count(pkg->dirs));
+		return (kh_count(pkg->dirhash));
 	case PKG_USERS:
 		return (kh_count(pkg->users));
 	case PKG_GROUPS:
@@ -1269,11 +1284,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
 		kh_free(pkg_files, pkg->filehash, struct pkg_file, pkg_file_free);
+		pkg->files = NULL;
 		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		kh_free(pkg_dirs, pkg->dirs, struct pkg_dir, pkg_dir_free);
+		kh_free(pkg_dirs, pkg->dirhash, struct pkg_dir, pkg_dir_free);
+		pkg->files = NULL;
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:
@@ -1701,7 +1718,7 @@ pkg_has_file(struct pkg *p, const char *path)
 bool
 pkg_has_dir(struct pkg *p, const char *path)
 {
-	return (kh_contains(pkg_dirs, p->dirs, path));
+	return (kh_contains(pkg_dirs, p->dirhash, path));
 }
 
 int

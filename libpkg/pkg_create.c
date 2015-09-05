@@ -146,7 +146,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	nfiles = kh_count(pkg->dirs);
+	nfiles = kh_count(pkg->dirhash);
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
