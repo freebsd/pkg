@@ -75,7 +75,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	nfiles = kh_count(pkg->files);
+	nfiles = kh_count(pkg->filehash);
 	counter_init("file sizes/checksums", nfiles);
 
 	hardlinks = kh_init_hardlinks();

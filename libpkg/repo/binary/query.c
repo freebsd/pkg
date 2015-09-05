@@ -463,8 +463,10 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 		pkg_list_free(pkg, PKG_FILES);
 		pkg_list_free(pkg, PKG_DIRS);
 		pkg->files = cached->files;
+		pkg->filehash = cached->filehash;
 		pkg->dirs = cached->dirs;
 		cached->files = NULL;
+		cached->filehash = NULL;
 		cached->dirs = NULL;
 
 		pkg_free(cached);

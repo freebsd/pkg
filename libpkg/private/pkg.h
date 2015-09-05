@@ -244,7 +244,8 @@ struct pkg {
 	kh_pkg_deps_t		*rdeps;
 	kh_strings_t		*categories;
 	kh_strings_t		*licenses;
-	kh_pkg_files_t		*files;
+	kh_pkg_files_t		*filehash;
+	struct pkg_file		*files;
 	kh_pkg_dirs_t		*dirs;
 	struct pkg_option	*options;
 	kh_strings_t		*users;
@@ -303,6 +304,7 @@ struct pkg_file {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
+	struct pkg_file	*next;
 };
 
 struct pkg_dir {

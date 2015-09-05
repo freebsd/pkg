@@ -505,6 +505,21 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 	HASH_NEXT(pkg->conflicts, (*c));
 }
 
+int
+pkg_files(const struct pkg *pkg, struct pkg_file **f)
+{
+	assert(pkg != NULL);
+
+	if ((*f) == NULL)
+		(*f) = pkg->files;
+	else
+		(*f) = (*f)->next;
+	if ((*f) == NULL)
+		return (EPKG_END);
+
+	return (EPKG_OK);
+}
+
 #define pkg_each_hash(name, htype, type, attrib)	\
 int							\
 pkg_##name(const struct pkg *pkg, type **c) {		\
@@ -513,7 +528,6 @@ pkg_##name(const struct pkg *pkg, type **c) {		\
 }
 pkg_each_hash(deps, pkg_deps, struct pkg_dep, name);
 pkg_each_hash(rdeps, pkg_deps, struct pkg_dep, name);
-pkg_each_hash(files, pkg_files, struct pkg_file, path);
 pkg_each_hash(config_files, pkg_config_files, struct pkg_config_file, path);
 pkg_each_hash(dirs, pkg_dirs, struct pkg_dir, path);
 
@@ -661,7 +675,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
-	if (check_duplicates && kh_contains(pkg_files, pkg->files, path)) {
+	if (check_duplicates && kh_contains(pkg_files, pkg->filehash, path)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
@@ -689,7 +703,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	if (fflags != 0)
 		f->fflags = fflags;
 
-	kh_add(pkg_files, pkg->files, f, f->path);
+	kh_add(pkg_files, pkg->filehash, f, f->path);
+	LL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
 }
@@ -1208,7 +1223,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
 	case PKG_FILES:
-		return (kh_count(pkg->files));
+		return (kh_count(pkg->filehash));
 	case PKG_DIRS:
 		return (kh_count(pkg->dirs));
 	case PKG_USERS:
@@ -1253,7 +1268,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		break;
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
-		kh_free(pkg_files, pkg->files, struct pkg_file, pkg_file_free);
+		kh_free(pkg_files, pkg->filehash, struct pkg_file, pkg_file_free);
 		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
@@ -1663,15 +1678,15 @@ pkg_is_config_file(struct pkg *p, const char *path,
 	if (kh_count(p->config_files) == 0)
 		return (false);
 
-	k = kh_get_pkg_files(p->files, path);
-	if (k == kh_end(p->files))
+	k = kh_get_pkg_files(p->filehash, path);
+	if (k == kh_end(p->filehash))
 		return (false);
 
 	k2 = kh_get_pkg_config_files(p->config_files, path);
 	if (k2 == kh_end(p->config_files))
 		return (false);
 
-	*file = kh_value(p->files, k);
+	*file = kh_value(p->filehash, k);
 	*cfile = kh_value(p->config_files, k2);
 
 	return (true);
@@ -1680,7 +1695,7 @@ pkg_is_config_file(struct pkg *p, const char *path,
 bool
 pkg_has_file(struct pkg *p, const char *path)
 {
-	return (kh_contains(pkg_files, p->files, path));
+	return (kh_contains(pkg_files, p->filehash, path));
 }
 
 bool
