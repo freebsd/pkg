@@ -402,6 +402,11 @@ exec_search(int argc, char **argv)
 		break;
 	}
 
+	if (quiet) {
+		opt = INFO_TAG_NAMEVER;
+		quiet = false;
+	}
+
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 	switch(ret) {
 	case EPKG_ENOACCESS:
