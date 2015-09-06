@@ -56,6 +56,8 @@
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
+	struct pkg_message	*msg;
+	struct sbuf	*message;
 	int		 ret;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
@@ -112,8 +114,28 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if (ret != EPKG_OK)
 		return (ret);
 
-	if ((flags & PKG_DELETE_UPGRADE) == 0)
+	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
+		if (pkg->message != NULL)
+			message = sbuf_new_auto();
+		LL_FOREACH(pkg->message, msg) {
+			if (msg->type == PKG_MESSAGE_REMOVE) {
+				if (sbuf_len(message) == 0) {
+					pkg_sbuf_printf(message, "Message from "
+					    "%n-%v:\n", pkg, pkg);
+				}
+				sbuf_printf(message, "%s\n", msg->str);
+			}
+		}
+		if (pkg->message != NULL) {
+			if (sbuf_len(message) > 0) {
+				sbuf_finish(message);
+				pkg_emit_message(sbuf_data(message));
+			}
+			sbuf_delete(message);
+		}
+
+	}
 
 	return (pkgdb_unregister_pkg(db, pkg->id));
 }

@@ -1290,6 +1290,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 {
 	const char *location;
 	int rc = EPKG_OK;
+	struct sbuf *message;
+	struct pkg_message *msg;
 
 	location = reloc;
 	if (pkg_rootdir != NULL)
@@ -1317,8 +1319,24 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 	}
 
-	if (rc == EPKG_OK)
+	if (rc == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
+		if (pkg->message != NULL)
+			message = sbuf_new_auto();
+		LL_FOREACH(pkg->message, msg) {
+			if (msg->type == PKG_MESSAGE_ALWAYS ||
+			    msg->type == PKG_MESSAGE_INSTALL) {
+				sbuf_printf(message, "%s\n", msg->str);
+			}
+		}
+		if (pkg->message != NULL) {
+			if (sbuf_len(message) > 0) {
+				sbuf_finish(message);
+				pkg_emit_message(sbuf_data(message));
+			}
+			sbuf_delete(message);
+		}
+	}
 
 cleanup:
 	pkgdb_register_finale(db, rc);

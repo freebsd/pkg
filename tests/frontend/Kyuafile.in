@@ -11,6 +11,7 @@ atf_test_program{name='conflicts-multirepo'}
 atf_test_program{name='create'}
 atf_test_program{name='delete'}
 atf_test_program{name='lock'}
+atf_test_program{name='messages'}
 atf_test_program{name='packagesplit'}
 atf_test_program{name='php-pr'}
 atf_test_program{name='pkg'}

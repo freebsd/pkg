@@ -77,5 +77,6 @@ void pkg_emit_extract_finished(struct pkg *p);
 void pkg_emit_delete_files_begin(struct pkg *p);
 void pkg_emit_delete_files_finished(struct pkg *p);
 void pkg_emit_new_action(void);
+void pkg_emit_message(const char *msg);
 
 #endif

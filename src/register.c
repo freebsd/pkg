@@ -331,8 +331,10 @@ exec_register(int argc, char **argv)
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (!legacy && retcode == EPKG_OK && pkg_has_message(pkg))
-		pkg_printf("%M\n", pkg);
+	if (!legacy && retcode == EPKG_OK && messages != NULL) {
+		sbuf_finish(messages);
+		printf("%s\n", sbuf_data(messages));
+	}
 
 	pkg_free(pkg);
 

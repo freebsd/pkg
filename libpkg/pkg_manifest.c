@@ -141,11 +141,11 @@ static struct pkg_manifest_key {
 	{ "maintainer",          offsetof(struct pkg, maintainer),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "message_new",             PKG_MESSAGE_NEW,
-			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
+	{ "messages",            PKG_MESSAGE_NEW,
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_ARRAY), pkg_message},
 
 	{ "message",             PKG_MESSAGE_LEGACY,
-			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_ARRAY), pkg_message},
 
 	{ "name",                offsetof(struct pkg, name),
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
@@ -1229,11 +1229,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->message != NULL) {
 		ucl_object_insert_key(top,
 			pkg_message_to_ucl(pkg),
-			"message_new", sizeof("message_new") - 1, false);
-		ucl_object_insert_key(top,
-			ucl_object_fromstring_common(pkg->message->str, 0,
-					UCL_STRING_RAW|UCL_STRING_TRIM),
-			"message", sizeof("message") - 1, false);
+			"messages", sizeof("messages") - 1, false);
 	}
 
 	return (top);

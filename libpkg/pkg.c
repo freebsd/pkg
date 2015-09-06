@@ -1751,74 +1751,75 @@ int
 pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 {
 	struct pkg_message *msg = NULL;
-	const ucl_object_t *elt;
-
+	const ucl_object_t *elt, *cur;
+	ucl_object_iter_t it = NULL;
 
 	if (ucl_object_type(obj) == UCL_STRING) {
-		if (pkg->message == NULL) {
-			msg = calloc(1, sizeof(*msg));
+		msg = calloc(1, sizeof(*msg));
 
-			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
-				return (EPKG_FATAL);
-			}
-			msg->str = strdup(ucl_object_tostring(obj));
-			msg->legacy = true;
+		if (msg == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_message");
+			return (EPKG_FATAL);
 		}
-		else {
-			/* Do no rewrite message with legacy message */
-			return (EPKG_OK);
-		}
-
+		msg->str = strdup(ucl_object_tostring(obj));
+		msg->type = PKG_MESSAGE_ALWAYS;
+		LL_APPEND(pkg->message, msg);
+		return (EPKG_OK);
 	}
-	else {
-		/* New format of pkg message */
 
-		elt = ucl_object_find_key(obj, "message");
+	/* New format of pkg message */
+	if (ucl_object_type(obj) != UCL_ARRAY)
+		pkg_emit_error("package message badly formatted, an array was"
+		    " expected");
+
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		elt = ucl_object_find_key(cur, "message");
 
 		if (elt == NULL || ucl_object_type(elt) != UCL_STRING) {
-			pkg_emit_error("package message lacks 'message' key that is required");
+			pkg_emit_error("package message lacks 'message' key"
+			    " that is required");
 
 			return (EPKG_FATAL);
 		}
 
-		if (pkg->message != NULL) {
-			if (pkg->message->legacy) {
-				/* We can re-use legacy message */
-				msg = pkg->message;
-				msg->legacy = false;
-				free(msg->str);
-				msg->str = NULL;
-			}
-			else {
-				pkg_emit_error("trying to rewrite message in a package");
+		msg = calloc(1, sizeof(*msg));
 
-				return (EPKG_FATAL);
-			}
-		}
-		else {
-			msg = calloc(1, sizeof(*msg));
-
-			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
-				return (EPKG_FATAL);
-			}
+		if (msg == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_message");
+			return (EPKG_FATAL);
 		}
 
 		msg->str = strdup(ucl_object_tostring(elt));
-		elt = ucl_object_find_key(obj, "minimum_version");
+		msg->type = PKG_MESSAGE_ALWAYS;
+		elt = ucl_object_find_key(cur, "type");
+		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
+			if (strcasecmp(ucl_object_tostring(elt), "install") == 0)
+				msg->type = PKG_MESSAGE_INSTALL;
+			else if (strcasecmp(ucl_object_tostring(elt), "remove") == 0)
+				msg->type = PKG_MESSAGE_REMOVE;
+			else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
+				msg->type = PKG_MESSAGE_UPGRADE;
+			else
+				pkg_emit_error("Unknown message type,"
+				    " message will always be printed");
+		}
+		if (msg->type != PKG_MESSAGE_UPGRADE) {
+			LL_APPEND(pkg->message, msg);
+			continue;
+		}
 
+		elt = ucl_object_find_key(cur, "minimum_version");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
 			msg->minimum_version = strdup(ucl_object_tostring(elt));
 		}
-		elt = ucl_object_find_key(obj, "maximum_version");
 
+		elt = ucl_object_find_key(cur, "maximum_version");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
 			msg->maximum_version = strdup(ucl_object_tostring(elt));
 		}
-	}
 
-	pkg->message = msg;
+		LL_APPEND(pkg->message, msg);
+	}
 
 	return (EPKG_OK);
 }
@@ -1856,27 +1857,52 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 ucl_object_t*
 pkg_message_to_ucl(struct pkg *pkg)
 {
+	struct pkg_message *msg;
+	ucl_object_t *array;
 	ucl_object_t *obj;
 
-	obj = ucl_object_typed_new (UCL_OBJECT);
+	array = ucl_object_typed_new(UCL_ARRAY);
+	LL_FOREACH(pkg->message, msg) {
+		obj = ucl_object_typed_new (UCL_OBJECT);
 
-	ucl_object_insert_key(obj,
-			ucl_object_fromstring_common(pkg->message->str, 0,
-					UCL_STRING_RAW|UCL_STRING_TRIM),
-			"message", 0, false);
-
-	if (pkg->message->maximum_version) {
 		ucl_object_insert_key(obj,
-				ucl_object_fromstring(pkg->message->maximum_version),
-				"maximum_version", 0, false);
-	}
-	if (pkg->message->minimum_version) {
-		ucl_object_insert_key(obj,
-				ucl_object_fromstring(pkg->message->minimum_version),
-				"minimum_version", 0, false);
+		    ucl_object_fromstring_common(msg->str, 0,
+		    UCL_STRING_RAW|UCL_STRING_TRIM),
+		    "message", 0, false);
+
+		switch (msg->type) {
+		case PKG_MESSAGE_ALWAYS:
+			break;
+		case PKG_MESSAGE_INSTALL:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("install"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_UPGRADE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("upgrade"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_REMOVE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("remove"),
+			    "type", 0, false);
+			break;
+		}
+		if (msg->maximum_version) {
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring(msg->maximum_version),
+			    "maximum_version", 0, false);
+		}
+		if (msg->minimum_version) {
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring(msg->minimum_version),
+			    "minimum_version", 0, false);
+		}
+		ucl_array_append(array, obj);
 	}
 
-	return (obj);
+	return (array);
 }
 
 char*

@@ -383,7 +383,7 @@ pkg_globmatch(char *pattern, const char *name)
 			path = g.gl_pathv[i];
 			continue;
 		}
-		if (pkg_version_cmp(path, g.gl_pathv[i]) == '>')
+		if (pkg_version_cmp(path, g.gl_pathv[i]) == 1)
 			path = g.gl_pathv[i];
 	}
 	path = strdup(path);
@@ -565,15 +565,17 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
     struct pkg *local)
 {
-	struct archive	*a;
-	struct archive_entry *ae;
-	struct pkg	*pkg = NULL;
-	const char	*location;
-	bool		 extract = true;
-	bool		 handle_rc = false;
-	int		 retcode = EPKG_OK;
-	int		 ret;
-	int nfiles;
+	struct archive		*a;
+	struct archive_entry	*ae;
+	struct pkg		*pkg = NULL;
+	struct sbuf		*message;
+	struct pkg_message	*msg;
+	const char		*location, *msgstr;
+	bool			 extract = true;
+	bool			 handle_rc = false;
+	int			 retcode = EPKG_OK;
+	int			 ret;
+	int			 nfiles;
 
 	assert(path != NULL);
 
@@ -716,6 +718,49 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 				pkg_emit_upgrade_finished(pkg, local);
 			else
 				pkg_emit_install_finished(pkg, local);
+		}
+
+		if (pkg->message != NULL)
+			message = sbuf_new_auto();
+		LL_FOREACH(pkg->message, msg) {
+			msgstr = NULL;
+			if (msg->type == PKG_MESSAGE_ALWAYS) {
+				msgstr = msg->str;
+			} else if (local != NULL &&
+			     msg->type == PKG_MESSAGE_UPGRADE) {
+				if (msg->maximum_version == NULL &&
+				    msg->minimum_version == NULL) {
+					msgstr = msg->str;
+				} else if (msg->maximum_version == NULL) {
+					if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+						msgstr = msg->str;
+					}
+				} else if (msg->minimum_version == NULL) {
+					if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
+						msgstr = msg->str;
+					}
+				} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
+					    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+					msgstr = msg->str;
+				}
+			} else if (local == NULL &&
+			    msg->type == PKG_MESSAGE_INSTALL) {
+				msgstr = msg->str;
+			}
+			if (msgstr != NULL) {
+				if (sbuf_len(message) == 0) {
+					pkg_sbuf_printf(message, "Message from "
+					    "%n-%v:\n", pkg, pkg);
+				}
+				sbuf_printf(message, "%s\n", msgstr);
+			}
+		}
+		if (pkg->message != NULL) {
+			if (sbuf_len(message) > 0) {
+				sbuf_finish(message);
+				pkg_emit_message(sbuf_data(message));
+			}
+			sbuf_delete(message);
 		}
 	}
 

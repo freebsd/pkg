@@ -276,11 +276,19 @@ struct pkg_dep {
 	bool		 locked;
 };
 
+typedef enum {
+	PKG_MESSAGE_ALWAYS = 0,
+	PKG_MESSAGE_INSTALL,
+	PKG_MESSAGE_REMOVE,
+	PKG_MESSAGE_UPGRADE,
+} pkg_message_t;
+
 struct pkg_message {
-	char		*str;
-	char		*minimum_version;
-	char		*maximum_version;
-	bool		legacy;
+	char			*str;
+	char			*minimum_version;
+	char			*maximum_version;
+	pkg_message_t		 type;
+	struct pkg_message	*next;
 };
 
 enum pkg_conflict_type {

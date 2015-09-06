@@ -85,6 +85,7 @@ tests_scripts=	\
 		frontend/create.sh \
 		frontend/delete.sh \
 		frontend/lock.sh \
+		frontend/messages.sh \
 		frontend/packagesplit.sh \
 		frontend/php-pr.sh \
 		frontend/pubkey.sh \
