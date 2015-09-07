@@ -54,6 +54,15 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	return (EPKG_OK);
 }
 
+static void
+pkg_message_free(struct pkg_message *m)
+{
+	free(m->str);
+	free(m->maximum_version);
+	free(m->minimum_version);
+	free(m);
+}
+
 void
 pkg_free(struct pkg *pkg)
 {
@@ -70,7 +79,6 @@ pkg_free(struct pkg *pkg)
 	free(pkg->uid);
 	free(pkg->digest);
 	free(pkg->old_digest);
-	free(pkg->message);
 	free(pkg->prefix);
 	free(pkg->comment);
 	free(pkg->desc);
@@ -97,6 +105,7 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_LICENSES);
 
+	LL_FREE(pkg->message, pkg_message_free);
 	LL_FREE(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
