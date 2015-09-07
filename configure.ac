@@ -274,6 +274,30 @@ AC_CHECK_HEADER([archive.h],
 AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
 	[AC_MSG_ERROR([Unable to find the libarchive headers])])
 
+AC_SEARCH_LIBS([SHA256_Init], [privatecrypto], [
+	AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the 'crypto' library (-lcrypto).])
+	LIBCRYPTO_LIB="-lprivatecrypto"
+	], [
+	AC_SEARCH_LIBS([SHA256_Init], [crypto], [
+		AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the 'crypto' library (-lcrypto).])
+		LIBCRYPTO_LIB="-lcrypto"
+	], [
+		AC_MSG_ERROR([unable to find the libcrypto])
+	])
+])
+
+AC_SEARCH_LIBS([SSL_accept], [privatessl], [
+	AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the 'ssl' library (-lssl).])
+	LIBSSL_LIB="-lprivatessl"
+	], [
+	AC_SEARCH_LIBS([SSL_accept], [ssl], [
+		AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the 'ssl' library (-lssl).])
+		LIBSSL_LIB="-lssl"
+	], [
+		AC_MSG_ERROR([unable to find the libssl])
+	])
+])
+
 AC_SEARCH_LIBS([jail_getid], [jail], [
 	AC_DEFINE(HAVE_LIBJAIL, 1, [Define to 1 if you have the 'jail' library (-ljail).])
 	LIBJAIL_LIB="-ljail"
@@ -416,6 +440,8 @@ AM_CONDITIONAL(HAVE_MACHO_ABI, test "$ac_cv_binary_abi" = "macho")
 AM_CONDITIONAL(HAVE_ELF_ABI, test "$ac_cv_binary_abi" = "elf")
 AM_CONDITIONAL(LIBELF_BUNDLED, test "$ac_cv_binary_abi" = "elf" -a "$libelf_bundled" != "no")
 
+AC_SUBST([LIBCRYPTO_LIB])
+AC_SUBST([LIBSSL_LIB])
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([LIBBSD_LIB])
 AC_SUBST([TESTS])

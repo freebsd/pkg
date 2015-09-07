@@ -10,8 +10,8 @@ GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 		-larchive \
 		-lutil \
 		-lm \
-		-lssl \
-		-lcrypto \
+		@LIBSSL_LIB@ \
+		@LIBCRYPTO_LIB@ \
 		-L/usr/local/lib \
 		-latf-c
 

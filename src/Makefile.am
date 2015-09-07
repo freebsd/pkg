@@ -42,7 +42,7 @@ pkg_LDADD=	@OS_LDFLAGS@ \
 			$(top_builddir)/external/libsbuf.la \
 			@LIBJAIL_LIB@ \
 			-lutil \
-			-lcrypto
+			@LIBCRYPTO_LIB@
 pkg_CFLAGS=	 @OS_CFLAGS@ \
 			-I$(top_srcdir)/libpkg \
 			-I$(top_builddir)/libpkg \
@@ -66,8 +66,8 @@ pkg_static_LDADD= @OS_LDFLAGS@ \
 			-lutil \
 			-lbz2 \
 			-llzma \
-			-lssl \
-			-lcrypto \
+			@LIBSSL_LIB@ \
+			@LIBCRYPTO_LIB@ \
 			-lm
 
 if HAVE_ELF_ABI

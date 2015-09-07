@@ -89,8 +89,8 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			@LDNS_LIBS@ \
 			-larchive \
 			-lutil \
-			-lssl \
-			-lcrypto \
+			@LIBSSL_LIB@ \
+			@LIBCRYPTO_LIB@ \
 			-lm
 
 if HAVE_ELF_ABI
