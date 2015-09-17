@@ -129,7 +129,7 @@ exec_audit(int argc, char **argv)
 	int			 ret = EX_OK;
 	const char		*portaudit_site = NULL;
 	struct sbuf		*sb;
-	const char		*key;
+	const char		__unused *key;
 	kh_pkgs_t		*check = NULL;
 
 	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));

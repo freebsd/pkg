@@ -486,13 +486,8 @@ struct ftpio {
 	int	 err;		/* Error code */
 };
 
-static int	 ftp_readfn(void *, char *, int);
-static int	 ftp_writefn(void *, const char *, int);
-static off_t	 ftp_seekfn(void *, off_t, int);
-static int	 ftp_closefn(void *);
-
-static int
-ftp_readfn(void *v, char *buf, int len)
+static ssize_t
+ftp_readfn(void *v, char *buf, size_t len)
 {
 	struct ftpio *io;
 	int r;
@@ -524,8 +519,8 @@ ftp_readfn(void *v, char *buf, int len)
 	return (-1);
 }
 
-static int
-ftp_writefn(void *v, const char *buf, int len)
+static ssize_t
+ftp_writefn(void *v, const char *buf, size_t len)
 {
 	struct ftpio *io;
 	int w;
@@ -549,20 +544,6 @@ ftp_writefn(void *v, const char *buf, int len)
 	if (errno != EINTR)
 		io->err = errno;
 	return (-1);
-}
-
-static off_t
-ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
-{
-	struct ftpio *io;
-
-	io = (struct ftpio *)v;
-	if (io == NULL) {
-		errno = EBADF;
-		return ((off_t)-1);
-	}
-	errno = ESPIPE;
-	return ((off_t)-1);
 }
 
 static int
@@ -608,7 +589,7 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 	io->dconn = dconn;
 	io->dir = mode;
 	io->eof = io->err = 0;
-	f = funopen(io, ftp_readfn, ftp_writefn, ftp_seekfn, ftp_closefn);
+	f = funopen(io, ftp_readfn, ftp_writefn, NULL, ftp_closefn);
 	if (f == NULL)
 		free(io);
 	return (f);
@@ -627,14 +608,19 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	const char *bindaddr;
 	const char *filename;
 	int filenamelen, type;
-	int low, pasv, verbose;
+#ifdef IP_PORTRANGE
+	int low
+#endif
+	int pasv, verbose;
 	int e, sd = -1;
 	socklen_t l;
 	char *s;
 	FILE *df;
 
 	/* check flags */
+#ifdef IP_PORTRANGE
 	low = CHECK_FLAG('l');
+#endif
 	pasv = CHECK_FLAG('p') || !CHECK_FLAG('P');
 	verbose = CHECK_FLAG('v');
 
@@ -785,8 +771,11 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	} else {
 		u_int32_t a;
 		u_short p;
-		int arg, d;
-		socklen_t sslen;
+#ifdef IPV6_PORTRANGE
+		int arg;
+#endif
+		int d;
+		socklen_t sslen = 0;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 

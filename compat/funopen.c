@@ -20,7 +20,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <stdio.h>
 
 #include "bsd_compat.h"
@@ -28,9 +30,9 @@
 #ifndef HAVE_FUNOPEN
 
 FILE *
-funopen(const void *cookie, int (*readfn)(void *, char *, int),
-         int (*writefn)(void *, const char *, int),
-         off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *))
+funopen(const void *cookie, cookie_read_function_t readfn,
+         cookie_write_function_t writefn, cookie_seek_function_t seekfn,
+         cookie_close_function_t closefn)
 {
 	cookie_io_functions_t c;
 	c.read = readfn;
