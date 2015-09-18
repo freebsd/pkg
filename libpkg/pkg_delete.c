@@ -195,8 +195,9 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	int64_t cnt;
 	char fullpath[MAXPATHLEN];
 	size_t len;
+#if defined(HAVE_CHFLAGSAT)
 	struct stat st;
-#if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
+#elif defined(HAVE_CHFLAGS)
 	int fd;
 #endif
 
