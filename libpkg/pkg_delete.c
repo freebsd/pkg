@@ -283,9 +283,10 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 {
 	const char *path;
 	const char *prefix_rel;
-	struct stat st;
 	size_t len;
-#if defined(HAVE_CHFLAGS) && !defined(HAVE_CHFLAGSAT)
+#if defined(HAVE_CHFLAGSAT)
+	struct stat st;
+#elif defined(HAVE_CHFLAGS)
 	int fd;
 #endif
 
