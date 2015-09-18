@@ -233,14 +233,11 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
-	size_t len;
 	char path[MAXPATHLEN];
 	char stagedpath[MAXPATHLEN];
 	char *testpath, *cp;
 	struct stat st;
 	int ret = EPKG_OK;
-
-	len = strlen(line);
 
 	cp = line + strlen(line) -1;
 	while (cp > line && isspace(*cp)) {
