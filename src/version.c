@@ -75,7 +75,7 @@ void
 usage_version(void)
 {
 	fprintf(stderr, "Usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [-Cegix pattern]\n");
-	fprintf(stderr, "		    [-r reponame] [-O origin] [index]\n");
+	fprintf(stderr, "		    [-r reponame] [-O origin|-n pkgname] [index]\n");
 	fprintf(stderr, "	pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "	pkg version -T <pkgname> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
@@ -404,12 +404,13 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 
 static int
 do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
-	        const char *matchorigin, const char *indexfile)
+    const char *matchorigin, const char *matchname, const char *indexfile)
 {
 	kh_index_t	*index;
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
+	const char	*name;
 	const char	*origin;
 	khint_t		 k;
 
@@ -436,14 +437,18 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
-
 		if ((opt & VERSION_WITHORIGIN) &&
 		    strcmp(origin, matchorigin) != 0)
 			continue;
-		
+
+		/* If -n was specified, check if this name matches */
+		if ((opt & VERSION_WITHNAME) &&
+		    strcmp(name, matchname) != 0)
+			continue;
+
 		k = kh_get_index(index, origin);
 		print_version(pkg, "index",
 		    k != kh_end(index) ? (kh_value(index, k))->version : NULL, limchar, opt);
@@ -461,14 +466,15 @@ cleanup:
 
 static int
 do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
-		 bool auto_update, const char *reponame,
-		 const char *matchorigin)
+    bool auto_update, const char *reponame, const char *matchorigin,
+    const char *matchname)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkgdb_it	*it_remote = NULL;
 	struct pkg	*pkg = NULL;
 	struct pkg	*pkg_remote = NULL;
+	const char	*name;
 	const char	*origin;
 	const char	*version_remote;
 
@@ -505,11 +511,16 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
 		    strcmp(origin, matchorigin) != 0)
+			continue;
+
+		/* If -n was specified, check if this name matches */
+		if ((opt & VERSION_WITHNAME) &&
+		    strcmp(name, matchname) != 0)
 			continue;
 
 		it_remote = pkgdb_repo_query(db, origin, MATCH_EXACT, reponame);
@@ -706,12 +717,13 @@ port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 
 static int
 do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
-		const char *matchorigin, const char *portsdir)
+    const char *matchorigin, const char *matchname, const char *portsdir)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	struct sbuf	*cmd;
+	const char	*name;
 	const char	*origin;
 	const char	*version;
 
@@ -740,11 +752,16 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	cmd = sbuf_new_auto();
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
 		    strcmp(origin, matchorigin) != 0)
+			continue;
+
+		/* If -n was specified, check if this name matches */
+		if ((opt & VERSION_WITHNAME) &&
+		    strcmp(name, matchname) != 0)
 			continue;
 
 		version = port_version(cmd, portsdir, origin);
@@ -771,6 +788,7 @@ exec_version(int argc, char **argv)
 	unsigned int	 opt = 0;
 	char		 limchar = '-';
 	const char	*matchorigin = NULL;
+	const char	*matchname = NULL;
 	const char	*reponame = NULL;
 	const char	*portsdir;
 	const char	*indexfile;
@@ -789,6 +807,7 @@ exec_version(int argc, char **argv)
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "not-like",		required_argument,	NULL,	'L' },
 		{ "like",		required_argument,	NULL,	'l' },
+		{ "match-name",		required_argument,	NULL,	'n' },
 		{ "match-origin",	required_argument,	NULL,	'O' },
 		{ "origin",		no_argument,		NULL,	'o' },
 		{ "ports",		no_argument,		NULL,	'P' },
@@ -803,7 +822,7 @@ exec_version(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:O:oPqRr:TtUvx:",
+	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:n:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
@@ -833,6 +852,10 @@ exec_version(int argc, char **argv)
 		case 'l':
 			opt |= VERSION_STATUS;
 			limchar = *optarg;
+			break;
+		case 'n':
+			opt |= VERSION_WITHNAME;
+			matchname = optarg;
 			break;
 		case 'O':
 			opt |= VERSION_WITHORIGIN;
@@ -884,6 +907,11 @@ exec_version(int argc, char **argv)
 	 *   Only one of -I -P -R can be given
 	 */
 
+	if (matchorigin != NULL && matchname != NULL) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
 	if ( (opt & VERSION_TESTVERSION) == VERSION_TESTVERSION )
 		return (do_testversion(opt, argc, argv));
 
@@ -933,19 +961,19 @@ exec_version(int argc, char **argv)
 			return (EX_SOFTWARE);
 		else
 			return (do_source_index(opt, limchar, pattern, match,
-				    matchorigin, indexfile));
+				    matchorigin, matchname, indexfile));
 	}
 
 	if ( (opt & VERSION_SOURCE_REMOTE) == VERSION_SOURCE_REMOTE )
 		return (do_source_remote(opt, limchar, pattern, match,
-			    auto_update, reponame, matchorigin));
+			    auto_update, reponame, matchorigin, matchname));
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
 		if (!have_ports(&portsdir, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_ports(opt, limchar, pattern,
-				    match, matchorigin, portsdir));
+				    match, matchorigin, matchname, portsdir));
 	}
 
 	/* If none of -IPR were specified, and INDEX exists use that.
@@ -956,15 +984,15 @@ exec_version(int argc, char **argv)
             false)) {
 		opt |= VERSION_SOURCE_INDEX;
 		return (do_source_index(opt, limchar, pattern, match,
-			    matchorigin, indexfile));
+			    matchorigin, matchname, indexfile));
 	} else if (have_ports(&portsdir, false)) {
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
-			    matchorigin, portsdir));
+			    matchorigin, matchname, portsdir));
 	} else {
 		opt |= VERSION_SOURCE_REMOTE;
 		return (do_source_remote(opt, limchar, pattern, match,
-			    auto_update, reponame, matchorigin));
+			    auto_update, reponame, matchorigin, matchname));
 	}
 
 	/* NOTREACHED */
