@@ -28,6 +28,8 @@
 #ifndef _PKG_PRINTF_H
 #define _PKG_PRINTF_H
 
+#include "bsd_compat.h"
+
 #include <pkg.h>
 
 #ifdef TESTING
