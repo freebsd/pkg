@@ -343,6 +343,10 @@ hash_indexfile(const char *indexfilename)
 	free(line);
 	fclose(indexfile);
 
+	if (index == NULL)
+		errx(EX_DATAERR, "No valid entries found in '%s'",
+		    indexfilename);
+
 	return (index);
 }
 
