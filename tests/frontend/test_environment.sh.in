@@ -1,5 +1,5 @@
 export RESOURCEDIR=@abs_srcdir@
-export PATH=$(atf_get_srcdir)/../../src:${PATH}
+export PATH=$(atf_get_srcdir)/../../src/.libs:$(atf_get_srcdir)/../../src:${PATH}
 export LD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg/.libs/
 export INSTALL_AS_USER=yes
 export PKG_DBDIR=.
