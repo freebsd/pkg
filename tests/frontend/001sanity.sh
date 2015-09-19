@@ -22,5 +22,5 @@ ldd_body() {
 	    -o match:".*libpkg.so.3 => $(atf_get_srcdir).*$" \
 	    -e empty \
 	    -s exit:0 \
-	    ldd -a $(atf_get_srcdir)/../../src/.libs/pkg
+	    ldd $(atf_get_srcdir)/../../src/.libs/pkg
 }
