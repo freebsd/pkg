@@ -1,7 +1,7 @@
 #!/usr/bin/env atf-sh
 
 . $(atf_get_srcdir)/test_environment.sh
-if [ `uname -s` != "Darwin" ]; then
+if [ "${OS}" != "Darwin" ]; then
 	ldd=ldd
 fi
 tests_init \
