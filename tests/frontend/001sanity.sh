@@ -10,7 +10,7 @@ tests_init \
 
 which_body() {
 	atf_check \
-	    -o inline:"$(atf_get_srcdir)/../../src/pkg\n" \
+	    -o inline:"$(atf_get_srcdir)/../../src/.libs/pkg\n" \
 	    -e empty \
 	    -s exit:0 \
 	    which pkg
