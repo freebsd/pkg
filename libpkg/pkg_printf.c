@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
@@ -2084,13 +2084,14 @@ string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 {
 	char	format[16];
 
-	/* The '#' '?' '+' ' ' and '\'' modifiers have no meaning for
-	   strings */
+	/* The '#' '?' '+' ' ' '0' and '\'' modifiers have no meaning
+	   for strings */
 
 	p->flags &= ~(PP_ALTERNATE_FORM1 |
 		      PP_ALTERNATE_FORM2 |
 		      PP_EXPLICIT_PLUS   |
 		      PP_SPACE_FOR_PLUS  |
+		      PP_ZERO_PAD        |
 		      PP_THOUSANDS_SEP);
 
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)
