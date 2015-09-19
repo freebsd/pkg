@@ -460,7 +460,7 @@ disable_plugins_if_static(void)
 {
 	void *dlh;
 
-	dlh = dlopen(0, 0);
+	dlh = dlopen(0, RTLD_NOW);
 
 	/* if dlh is NULL then we are in static binary */
 	if (dlh == NULL)
