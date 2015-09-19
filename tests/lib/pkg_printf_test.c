@@ -359,13 +359,16 @@ ATF_TC_BODY(string_val, tc)
 		{ "xxy", "xxy  ",  5, PP_LEFT_ALIGN, },
 		{ "xxy", "xxy   ", 6, PP_LEFT_ALIGN, },
 
+		/* Zero padding a string is non-portable, so ignore 
+		   that flag when printing string values */
+
 		{ "xxz", "xxz",    0, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    1, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    2, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    3, PP_ZERO_PAD, },
-		{ "xxz", "0xxz",   4, PP_ZERO_PAD, },
-		{ "xxz", "00xxz",  5, PP_ZERO_PAD, },
-		{ "xxz", "000xxz", 6, PP_ZERO_PAD, },
+		{ "xxz", " xxz",   4, PP_ZERO_PAD, },
+		{ "xxz", "  xxz",  5, PP_ZERO_PAD, },
+		{ "xxz", "   xxz", 6, PP_ZERO_PAD, },
 
 		/* Seems you can't zero pad on the RHS of a string */
 
