@@ -67,7 +67,7 @@ create_from_plist_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*root +wheel.* /file1$" \
+		-o match:"-rw-r--r-- .*root[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
@@ -85,7 +85,7 @@ create_from_plist_set_owner_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
+		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
@@ -103,7 +103,7 @@ create_from_plist_set_group_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*root +bla.* /file1$" \
+		-o match:"-rw-r--r-- .*root[ /]+bla.* /file1$" \
 		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
@@ -123,7 +123,7 @@ create_from_plist_gather_mode_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rwxrwxrwx .*plop +bla.* /file1$" \
+		-o match:"-rwxrwxrwx .*plop[ /]+bla.* /file1$" \
 		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
@@ -141,7 +141,7 @@ create_from_plist_set_mode_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rwxr-sr-x .*root +wheel.* /file1$" \
+		-o match:"-rwxr-sr-x .*root[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
@@ -159,7 +159,7 @@ create_from_plist_mini_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
+		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
