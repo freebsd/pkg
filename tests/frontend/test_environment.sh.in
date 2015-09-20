@@ -1,11 +1,8 @@
 export RESOURCEDIR=@abs_srcdir@
 export OS=`uname -s`
-if [ "${OS}" != "Darwin" ]; then
-	export PATH=$(atf_get_srcdir)/../../src/.libs:$(atf_get_srcdir)/../../src:${PATH}
-else
-	export PATH=$(atf_get_srcdir)/../../src:${PATH}
-fi
+export PATH=$(atf_get_srcdir)/../../src/.libs:$(atf_get_srcdir)/../../src:${PATH}
 export LD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg/.libs/
+export DYLD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg/.libs/
 export INSTALL_AS_USER=yes
 export PKG_DBDIR=.
 export NO_TICK=yes
