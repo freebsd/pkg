@@ -320,7 +320,9 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	rpkg = NULL;
-	prhead = NULL;
+
+	HASH_FIND_STR(universe->provides, name, prhead);
+
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
 		/* Check for local packages */
 		HASH_FIND_STR(universe->items, rpkg->uid, unit);
