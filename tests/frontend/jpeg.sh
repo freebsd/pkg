@@ -6,7 +6,7 @@ tests_init \
 	jpeg
 
 jpeg_body() {
-	if [ "${OS}" = "FreeBSD" ]; then
+	if [ "${OS}" = "Darwin" ]; then
 		return
 	fi
 	cc -shared -Wl,-soname=libjpeg.so.3 -o libjpeg.so.3
