@@ -2,8 +2,11 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 
+if [ "${OS}" != "Darwin" ]; then
+	jpeg=jpeg
+fi
 tests_init \
-	jpeg
+	${jpeg}
 
 jpeg_body() {
 	cc -shared -Wl,-soname=libjpeg.so.3 -o libjpeg.so.3
