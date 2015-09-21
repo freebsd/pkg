@@ -242,7 +242,8 @@ exec_register(int argc, char **argv)
 		}
 
 		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-		pkg_set_from_file(pkg, PKG_DESC, fpath, false);
+		if (access(fpath, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_DESC, fpath, false);
 
 		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 		if (access(fpath, F_OK) == 0)
