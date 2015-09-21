@@ -1864,7 +1864,7 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 }
 
 ucl_object_t*
-pkg_message_to_ucl(struct pkg *pkg)
+pkg_message_to_ucl(const struct pkg *pkg)
 {
 	struct pkg_message *msg;
 	ucl_object_t *array;

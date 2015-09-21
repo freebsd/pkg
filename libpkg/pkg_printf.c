@@ -1237,9 +1237,52 @@ format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	struct sbuf		*buf, *bufmsg;
 	const struct pkg	*pkg = data;
+	struct pkg_message	*msg;
+	char			*message;
 
-	return (string_val(sbuf, pkg->message ? pkg->message->str : NULL, p));
+	bufmsg = sbuf_new_auto();
+	LL_FOREACH(pkg->message, msg) {
+		if (sbuf_len(bufmsg) > 0)
+			sbuf_putc(bufmsg, '\n');
+		switch(msg->type) {
+		case PKG_MESSAGE_ALWAYS:
+			sbuf_printf(bufmsg, "Always:\n");
+			break;
+		case PKG_MESSAGE_UPGRADE:
+			sbuf_printf(bufmsg, "On upgrade");
+			if (msg->minimum_version != NULL ||
+			    msg->maximum_version != NULL) {
+				sbuf_printf(bufmsg, " from %s", pkg->name);
+			}
+			if (msg->minimum_version != NULL) {
+				sbuf_printf(bufmsg, ">%s", msg->minimum_version);
+			}
+			if (msg->maximum_version != NULL) {
+				sbuf_printf(bufmsg, "<%s", msg->maximum_version);
+			}
+			sbuf_printf(bufmsg, ":\n");
+			break;
+		case PKG_MESSAGE_INSTALL:
+			sbuf_printf(bufmsg, "On install:\n");
+			break;
+		case PKG_MESSAGE_REMOVE:
+			sbuf_printf(bufmsg, "On remove:\n");
+			break;
+		}
+		sbuf_printf(bufmsg, "%s\n", msg->str);
+	}
+	sbuf_finish(bufmsg);
+	if (sbuf_len(bufmsg) == 0)
+		message = NULL;
+	else
+		message = sbuf_data(bufmsg);
+
+	buf = string_val(sbuf, message, p);
+	sbuf_delete(bufmsg);
+
+	return (buf);
 }
 
 /*
