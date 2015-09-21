@@ -385,24 +385,13 @@ EOF
 
 OUTPUT='test-1:
 Always:
-[
-	{ message: "message" },
-	{ message: "message upgrade", type = "upgrade" },
-]
-
-'
-	atf_check pkg create -m . -r ${TMPDIR}
-	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
-
-OUTPUT='test-1:
-Always:
 message
 
 On upgrade:
 message upgrade
 
 '
-	mv +DISPLAY +DISPLAY.ucl
+
 	atf_check pkg create -m . -r ${TMPDIR}
 	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
 

@@ -305,6 +305,8 @@ pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
 	const char *buf;
+	ucl_object_t *obj;
+	struct pkg_message *msg;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -339,9 +341,18 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			(void)va_arg(ap, const char *);
 			break;
 		case PKG_MESSAGE:
-			pkg_message_free(pkg->message);
+			LL_FOREACH(pkg->message, msg) {
+				pkg_message_free(msg);
+			}
 			buf = va_arg(ap, const char *);
-			pkg_message_from_str(pkg, buf, strlen(buf));
+			if (*buf == '[') {
+				pkg_message_from_str(pkg, buf, strlen(buf));
+			} else {
+				obj = ucl_object_fromstring_common(buf, strlen(buf),
+				    UCL_STRING_RAW|UCL_STRING_TRIM);
+				pkg_message_from_ucl(pkg, obj);
+				ucl_object_unref(obj);
+			}
 			break;
 		case PKG_ARCH:
 			free(pkg->arch);
