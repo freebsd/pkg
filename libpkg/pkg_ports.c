@@ -110,6 +110,17 @@ keyword_open_schema(void)
 		"    post-deinstall = { type = string }; "
 		"    pre-upgrade = { type = string }; "
 		"    post-upgrade = { type = string }; "
+		"    messages: {"
+		"        type = array; "
+		"        items = {"
+		"            type = object;"
+		"            properties {"
+		"                message = { type = string };"
+		"                type = { enum = [ upgrade, remove, install ] };"
+		"            };"
+		"            required [ message ];"
+		"        };"
+		"    };"
 		"  }"
 		"}";
 
@@ -871,7 +882,9 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 static int
 apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	const ucl_object_t *o;
+	const ucl_object_t *o, *cur, *elt;
+	ucl_object_iter_t it = NULL;
+	struct pkg_message *msg;
 	char *cmd;
 	char **args = NULL;
 	char *buf, *tofree = NULL;
@@ -937,6 +950,31 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			return (EPKG_FATAL);
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj, "messages"))) {
+		while ((cur = ucl_iterate_object(o, &it, true))) {
+			elt = ucl_object_find_key(cur, "message");
+			msg = calloc(1, sizeof(*msg));
+
+			if (msg == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_message");
+				return (EPKG_FATAL);
+			}
+
+			msg->str = strdup(ucl_object_tostring(elt));
+			msg->type = PKG_MESSAGE_ALWAYS;
+			elt = ucl_object_find_key(cur, "type");
+			if (elt != NULL) {
+				if (strcasecmp(ucl_object_tostring(elt), "install") == 0)
+					msg->type = PKG_MESSAGE_INSTALL;
+				else if (strcasecmp(ucl_object_tostring(elt), "remove") == 0)
+					msg->type = PKG_MESSAGE_REMOVE;
+				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
+					msg->type = PKG_MESSAGE_UPGRADE;
+			}
+			LL_APPEND(p->pkg->message, msg);
+		}
 	}
 
 	if ((o = ucl_object_find_key(obj,  "actions")))
