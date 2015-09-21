@@ -304,6 +304,7 @@ static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
+	const char *buf;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -338,9 +339,9 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			(void)va_arg(ap, const char *);
 			break;
 		case PKG_MESSAGE:
-			free(pkg->message);
-			pkg->message = calloc(1, sizeof(*pkg->message));
-			pkg->message->str = strdup(va_arg(ap, const char *));
+			pkg_message_free(pkg->message);
+			buf = va_arg(ap, const char *);
+			pkg_message_from_str(pkg, buf, strlen(buf));
 			break;
 		case PKG_ARCH:
 			free(pkg->arch);
