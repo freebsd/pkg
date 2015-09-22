@@ -326,7 +326,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			libfound = kh_contains(strings, pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
 			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
-				pkg_debug(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
+				pkg_debug(2, "solver: require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
 					pkg->type == PKG_INSTALLED ? 'l' : 'r', orig->arch, pkg->arch);
 				continue;
@@ -337,11 +337,14 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		}
 
 		if (!providefound && !libfound) {
-			pkg_debug(4, "%s provide is not satisfied by %s-%s(%c)", pr->provide,
+			pkg_debug(4, "solver: %s provide is not satisfied by %s-%s(%c)", pr->provide,
 					pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 							'l' : 'r');
 			continue;
 		}
+		pkg_debug(4, "solver: %s provide is satisfied by %s-%s(%c)", pr->provide,
+				pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
+				'l' : 'r');
 
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL)

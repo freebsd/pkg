@@ -84,6 +84,7 @@ tests_scripts=	\
 		frontend/conflicts-multirepo.sh \
 		frontend/create.sh \
 		frontend/delete.sh \
+		frontend/jpeg.sh \
 		frontend/lock.sh \
 		frontend/messages.sh \
 		frontend/packagesplit.sh \

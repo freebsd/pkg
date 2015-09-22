@@ -320,7 +320,9 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	rpkg = NULL;
-	prhead = NULL;
+
+	HASH_FIND_STR(universe->provides, name, prhead);
+
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
 		/* Check for local packages */
 		HASH_FIND_STR(universe->items, rpkg->uid, unit);
@@ -376,9 +378,17 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			DL_APPEND(prhead, pr);
 			HASH_ADD_KEYPTR(hh, universe->provides, pr->provide,
 					strlen(pr->provide), prhead);
+			pkg_debug (4, "universe: add new provide %s-%s(%s) for require %s",
+					pr->un->pkg->name, pr->un->pkg->version,
+					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
+					pr->provide);
 		}
 		else {
 			DL_APPEND(prhead, pr);
+			pkg_debug (4, "universe: append provide %s-%s(%s) for require %s",
+					pr->un->pkg->name, pr->un->pkg->version,
+					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
+					pr->provide);
 		}
 	}
 

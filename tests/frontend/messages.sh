@@ -92,4 +92,28 @@ EOF
 		-o match:"^Upgrading from >1.0 < 3.0.*" \
 		-o match:"^Upgrading from higher than 1.0.*" \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
+OUTPUT='test-5.20_3:
+Always:
+Always print
+
+On remove:
+package being removed
+
+On install:
+package being installed
+
+On upgrade:
+package is being upgraded
+
+On upgrade from test<1.0:
+Upgrading from lower than 1.0
+
+On upgrade from test>1.0:
+Upgrading from higher than 1.0
+
+On upgrade from test>1.0<3.0:
+Upgrading from >1.0 < 3.0
+
+'
+	atf_check -o inline:"${OUTPUT}" pkg info -D test
 }
