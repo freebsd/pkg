@@ -1066,7 +1066,7 @@ format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Fn\n", "");
 
 		count = 1;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
+		LL_FOREACH(pkg->files, file) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     file, count, PP_F);
