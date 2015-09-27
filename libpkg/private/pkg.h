@@ -42,7 +42,6 @@
 #include <stdbool.h>
 #include <uthash.h>
 #include <utlist.h>
-#include <kvec.h>
 #include <ucl.h>
 
 #include "private/utils.h"
