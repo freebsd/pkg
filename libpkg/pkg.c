@@ -739,7 +739,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 		f->fflags = fflags;
 
 	kh_add(pkg_files, pkg->filehash, f, f->path);
-	LL_APPEND(pkg->files, f);
+	DL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
 }
@@ -842,7 +842,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		d->fflags = fflags;
 
 	kh_add(pkg_dirs, pkg->dirhash, d, d->path);
-	LL_APPEND(pkg->dirs, d);
+	DL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
 }
@@ -1784,7 +1784,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		}
 		msg->str = strdup(ucl_object_tostring(obj));
 		msg->type = PKG_MESSAGE_ALWAYS;
-		LL_APPEND(pkg->message, msg);
+		DL_APPEND(pkg->message, msg);
 		return (EPKG_OK);
 	}
 
@@ -1825,7 +1825,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				    " message will always be printed");
 		}
 		if (msg->type != PKG_MESSAGE_UPGRADE) {
-			LL_APPEND(pkg->message, msg);
+			DL_APPEND(pkg->message, msg);
 			continue;
 		}
 
@@ -1839,7 +1839,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 			msg->maximum_version = strdup(ucl_object_tostring(elt));
 		}
 
-		LL_APPEND(pkg->message, msg);
+		DL_APPEND(pkg->message, msg);
 	}
 
 	return (EPKG_OK);

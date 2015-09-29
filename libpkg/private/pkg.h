@@ -288,6 +288,7 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
+	struct pkg_message	*prev;
 	struct pkg_message	*next;
 };
 
@@ -313,6 +314,7 @@ struct pkg_file {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
+	struct pkg_file	*prev;
 	struct pkg_file	*next;
 };
 
@@ -322,6 +324,7 @@ struct pkg_dir {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
+	struct pkg_dir	*prev;
 	struct pkg_dir	*next;
 };
 
