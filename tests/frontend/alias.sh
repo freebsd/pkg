@@ -1,6 +1,12 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case alias
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	alias \
+	alias_from_env \
+	alias_from_conf
+
 alias_body() {
 	. $(atf_get_srcdir)/test_environment.sh
 
@@ -23,7 +29,6 @@ alias_body() {
 		pkg -C "" alias nonexistent
 }
 
-atf_test_case alias_from_env
 alias_from_env_body() {
 	. $(atf_get_srcdir)/test_environment.sh
 	export ALIAS="showaliases=alias -q,list=info -q"
@@ -56,7 +61,6 @@ list                 'info -q'
 		pkg -C "" alias nonexistent
 }
 
-atf_test_case alias_from_conf
 alias_from_conf_body() {
 	. $(atf_get_srcdir)/test_environment.sh
 	unset ALIAS
@@ -94,12 +98,4 @@ list                 'info -q'
 		-e inline:"pkg: No such alias: 'nonexistent'\n" \
 		-s exit:69 \
 		pkg -C config alias nonexistent
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case alias
-	atf_add_test_case alias_from_env
-	atf_add_test_case alias_from_conf
 }

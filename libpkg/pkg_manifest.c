@@ -141,11 +141,11 @@ static struct pkg_manifest_key {
 	{ "maintainer",          offsetof(struct pkg, maintainer),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "message_new",             PKG_MESSAGE_NEW,
-			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
+	{ "messages",            PKG_MESSAGE_NEW,
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_ARRAY), pkg_message},
 
 	{ "message",             PKG_MESSAGE_LEGACY,
-			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_OBJECT), pkg_message},
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_ARRAY), pkg_message},
 
 	{ "name",                offsetof(struct pkg, name),
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
@@ -922,7 +922,6 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 pkg_object*
 pkg_emit_object(struct pkg *pkg, short flags)
 {
-	struct pkg_strel	*el;
 	struct pkg_kv		*kv;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
@@ -988,7 +987,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting licenses");
 	seq = NULL;
-	el = NULL;
 	kh_each_value(pkg->licenses, buf, {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
@@ -1022,7 +1020,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting categories");
 	seq = NULL;
-	el = NULL;
 	kh_each_value(pkg->categories, buf, {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
@@ -1229,11 +1226,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->message != NULL) {
 		ucl_object_insert_key(top,
 			pkg_message_to_ucl(pkg),
-			"message_new", sizeof("message_new") - 1, false);
-		ucl_object_insert_key(top,
-			ucl_object_fromstring_common(pkg->message->str, 0,
-					UCL_STRING_RAW|UCL_STRING_TRIM),
-			"message", sizeof("message") - 1, false);
+			"messages", sizeof("messages") - 1, false);
 	}
 
 	return (top);

@@ -54,6 +54,15 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	return (EPKG_OK);
 }
 
+static void
+pkg_message_free(struct pkg_message *m)
+{
+	free(m->str);
+	free(m->maximum_version);
+	free(m->minimum_version);
+	free(m);
+}
+
 void
 pkg_free(struct pkg *pkg)
 {
@@ -70,7 +79,6 @@ pkg_free(struct pkg *pkg)
 	free(pkg->uid);
 	free(pkg->digest);
 	free(pkg->old_digest);
-	free(pkg->message);
 	free(pkg->prefix);
 	free(pkg->comment);
 	free(pkg->desc);
@@ -97,6 +105,7 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_LICENSES);
 
+	LL_FREE(pkg->message, pkg_message_free);
 	LL_FREE(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
@@ -295,6 +304,9 @@ static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
+	const char *buf;
+	ucl_object_t *obj;
+	struct pkg_message *msg;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -329,9 +341,18 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			(void)va_arg(ap, const char *);
 			break;
 		case PKG_MESSAGE:
-			free(pkg->message);
-			pkg->message = calloc(1, sizeof(*pkg->message));
-			pkg->message->str = strdup(va_arg(ap, const char *));
+			LL_FOREACH(pkg->message, msg) {
+				pkg_message_free(msg);
+			}
+			buf = va_arg(ap, const char *);
+			if (*buf == '[') {
+				pkg_message_from_str(pkg, buf, strlen(buf));
+			} else {
+				obj = ucl_object_fromstring_common(buf, strlen(buf),
+				    UCL_STRING_RAW|UCL_STRING_TRIM);
+				pkg_message_from_ucl(pkg, obj);
+				ucl_object_unref(obj);
+			}
 			break;
 		case PKG_ARCH:
 			free(pkg->arch);
@@ -505,6 +526,36 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 	HASH_NEXT(pkg->conflicts, (*c));
 }
 
+int
+pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
+{
+	assert(pkg != NULL);
+
+	if ((*d) == NULL)
+		(*d) = pkg->dirs;
+	else
+		(*d) = (*d)->next;
+	if ((*d) == NULL)
+		return (EPKG_END);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_files(const struct pkg *pkg, struct pkg_file **f)
+{
+	assert(pkg != NULL);
+
+	if ((*f) == NULL)
+		(*f) = pkg->files;
+	else
+		(*f) = (*f)->next;
+	if ((*f) == NULL)
+		return (EPKG_END);
+
+	return (EPKG_OK);
+}
+
 #define pkg_each_hash(name, htype, type, attrib)	\
 int							\
 pkg_##name(const struct pkg *pkg, type **c) {		\
@@ -513,9 +564,7 @@ pkg_##name(const struct pkg *pkg, type **c) {		\
 }
 pkg_each_hash(deps, pkg_deps, struct pkg_dep, name);
 pkg_each_hash(rdeps, pkg_deps, struct pkg_dep, name);
-pkg_each_hash(files, pkg_files, struct pkg_file, path);
 pkg_each_hash(config_files, pkg_config_files, struct pkg_config_file, path);
-pkg_each_hash(dirs, pkg_dirs, struct pkg_dir, path);
 
 #define pkg_each_strings(name)			\
 int						\
@@ -661,7 +710,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
-	if (check_duplicates && kh_contains(pkg_files, pkg->files, path)) {
+	if (check_duplicates && kh_contains(pkg_files, pkg->filehash, path)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
@@ -689,7 +738,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	if (fflags != 0)
 		f->fflags = fflags;
 
-	kh_add(pkg_files, pkg->files, f, f->path);
+	kh_add(pkg_files, pkg->filehash, f, f->path);
+	DL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
 }
@@ -766,7 +816,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath));
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
-	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirs, path)) {
+	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirhash, path)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
@@ -791,7 +841,8 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	if (fflags != 0)
 		d->fflags = fflags;
 
-	kh_add(pkg_dirs, pkg->dirs, d, d->path);
+	kh_add(pkg_dirs, pkg->dirhash, d, d->path);
+	DL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
 }
@@ -1208,9 +1259,9 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
 	case PKG_FILES:
-		return (kh_count(pkg->files));
+		return (kh_count(pkg->filehash));
 	case PKG_DIRS:
-		return (kh_count(pkg->dirs));
+		return (kh_count(pkg->dirhash));
 	case PKG_USERS:
 		return (kh_count(pkg->users));
 	case PKG_GROUPS:
@@ -1253,12 +1304,14 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		break;
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
-		kh_free(pkg_files, pkg->files, struct pkg_file, pkg_file_free);
+		kh_free(pkg_files, pkg->filehash, struct pkg_file, pkg_file_free);
+		pkg->files = NULL;
 		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		kh_free(pkg_dirs, pkg->dirs, struct pkg_dir, pkg_dir_free);
+		kh_free(pkg_dirs, pkg->dirhash, struct pkg_dir, pkg_dir_free);
+		pkg->files = NULL;
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:
@@ -1663,15 +1716,15 @@ pkg_is_config_file(struct pkg *p, const char *path,
 	if (kh_count(p->config_files) == 0)
 		return (false);
 
-	k = kh_get_pkg_files(p->files, path);
-	if (k == kh_end(p->files))
+	k = kh_get_pkg_files(p->filehash, path);
+	if (k == kh_end(p->filehash))
 		return (false);
 
 	k2 = kh_get_pkg_config_files(p->config_files, path);
 	if (k2 == kh_end(p->config_files))
 		return (false);
 
-	*file = kh_value(p->files, k);
+	*file = kh_value(p->filehash, k);
 	*cfile = kh_value(p->config_files, k2);
 
 	return (true);
@@ -1680,13 +1733,13 @@ pkg_is_config_file(struct pkg *p, const char *path,
 bool
 pkg_has_file(struct pkg *p, const char *path)
 {
-	return (kh_contains(pkg_files, p->files, path));
+	return (kh_contains(pkg_files, p->filehash, path));
 }
 
 bool
 pkg_has_dir(struct pkg *p, const char *path)
 {
-	return (kh_contains(pkg_dirs, p->dirs, path));
+	return (kh_contains(pkg_dirs, p->dirhash, path));
 }
 
 int
@@ -1719,74 +1772,75 @@ int
 pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 {
 	struct pkg_message *msg = NULL;
-	const ucl_object_t *elt;
-
+	const ucl_object_t *elt, *cur;
+	ucl_object_iter_t it = NULL;
 
 	if (ucl_object_type(obj) == UCL_STRING) {
-		if (pkg->message == NULL) {
-			msg = calloc(1, sizeof(*msg));
+		msg = calloc(1, sizeof(*msg));
 
-			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
-				return (EPKG_FATAL);
-			}
-			msg->str = strdup(ucl_object_tostring(obj));
-			msg->legacy = true;
+		if (msg == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_message");
+			return (EPKG_FATAL);
 		}
-		else {
-			/* Do no rewrite message with legacy message */
-			return (EPKG_OK);
-		}
-
+		msg->str = strdup(ucl_object_tostring(obj));
+		msg->type = PKG_MESSAGE_ALWAYS;
+		DL_APPEND(pkg->message, msg);
+		return (EPKG_OK);
 	}
-	else {
-		/* New format of pkg message */
 
-		elt = ucl_object_find_key(obj, "message");
+	/* New format of pkg message */
+	if (ucl_object_type(obj) != UCL_ARRAY)
+		pkg_emit_error("package message badly formatted, an array was"
+		    " expected");
+
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		elt = ucl_object_find_key(cur, "message");
 
 		if (elt == NULL || ucl_object_type(elt) != UCL_STRING) {
-			pkg_emit_error("package message lacks 'message' key that is required");
+			pkg_emit_error("package message lacks 'message' key"
+			    " that is required");
 
 			return (EPKG_FATAL);
 		}
 
-		if (pkg->message != NULL) {
-			if (pkg->message->legacy) {
-				/* We can re-use legacy message */
-				msg = pkg->message;
-				msg->legacy = false;
-				free(msg->str);
-				msg->str = NULL;
-			}
-			else {
-				pkg_emit_error("trying to rewrite message in a package");
+		msg = calloc(1, sizeof(*msg));
 
-				return (EPKG_FATAL);
-			}
-		}
-		else {
-			msg = calloc(1, sizeof(*msg));
-
-			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
-				return (EPKG_FATAL);
-			}
+		if (msg == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_message");
+			return (EPKG_FATAL);
 		}
 
 		msg->str = strdup(ucl_object_tostring(elt));
-		elt = ucl_object_find_key(obj, "minimum_version");
+		msg->type = PKG_MESSAGE_ALWAYS;
+		elt = ucl_object_find_key(cur, "type");
+		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
+			if (strcasecmp(ucl_object_tostring(elt), "install") == 0)
+				msg->type = PKG_MESSAGE_INSTALL;
+			else if (strcasecmp(ucl_object_tostring(elt), "remove") == 0)
+				msg->type = PKG_MESSAGE_REMOVE;
+			else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
+				msg->type = PKG_MESSAGE_UPGRADE;
+			else
+				pkg_emit_error("Unknown message type,"
+				    " message will always be printed");
+		}
+		if (msg->type != PKG_MESSAGE_UPGRADE) {
+			DL_APPEND(pkg->message, msg);
+			continue;
+		}
 
+		elt = ucl_object_find_key(cur, "minimum_version");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
 			msg->minimum_version = strdup(ucl_object_tostring(elt));
 		}
-		elt = ucl_object_find_key(obj, "maximum_version");
 
+		elt = ucl_object_find_key(cur, "maximum_version");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
 			msg->maximum_version = strdup(ucl_object_tostring(elt));
 		}
-	}
 
-	pkg->message = msg;
+		DL_APPEND(pkg->message, msg);
+	}
 
 	return (EPKG_OK);
 }
@@ -1822,29 +1876,54 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 }
 
 ucl_object_t*
-pkg_message_to_ucl(struct pkg *pkg)
+pkg_message_to_ucl(const struct pkg *pkg)
 {
+	struct pkg_message *msg;
+	ucl_object_t *array;
 	ucl_object_t *obj;
 
-	obj = ucl_object_typed_new (UCL_OBJECT);
+	array = ucl_object_typed_new(UCL_ARRAY);
+	LL_FOREACH(pkg->message, msg) {
+		obj = ucl_object_typed_new (UCL_OBJECT);
 
-	ucl_object_insert_key(obj,
-			ucl_object_fromstring_common(pkg->message->str, 0,
-					UCL_STRING_RAW|UCL_STRING_TRIM),
-			"message", 0, false);
-
-	if (pkg->message->maximum_version) {
 		ucl_object_insert_key(obj,
-				ucl_object_fromstring(pkg->message->maximum_version),
-				"maximum_version", 0, false);
-	}
-	if (pkg->message->minimum_version) {
-		ucl_object_insert_key(obj,
-				ucl_object_fromstring(pkg->message->minimum_version),
-				"minimum_version", 0, false);
+		    ucl_object_fromstring_common(msg->str, 0,
+		    UCL_STRING_RAW|UCL_STRING_TRIM),
+		    "message", 0, false);
+
+		switch (msg->type) {
+		case PKG_MESSAGE_ALWAYS:
+			break;
+		case PKG_MESSAGE_INSTALL:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("install"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_UPGRADE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("upgrade"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_REMOVE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("remove"),
+			    "type", 0, false);
+			break;
+		}
+		if (msg->maximum_version) {
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring(msg->maximum_version),
+			    "maximum_version", 0, false);
+		}
+		if (msg->minimum_version) {
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring(msg->minimum_version),
+			    "minimum_version", 0, false);
+		}
+		ucl_array_append(array, obj);
 	}
 
-	return (obj);
+	return (array);
 }
 
 char*

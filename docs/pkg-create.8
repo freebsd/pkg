@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd February 8, 2015
+.Dd September 26, 2015
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -374,6 +374,22 @@ Available keywords are the following:
 Set the internal directory pointer to point to
 .Ar directory .
 All subsequent filenames will be assumed relative to this directory.
+.It Cm @preexec Ar Command
+Execute
+.Ar command
+as part of the pre-install scripts.
+.It Cm @preunexec Ar command
+Execute
+.Ar command
+as part of the pre-deinstall scripts.
+.It Cm @postexec Ar command
+Execute
+.Ar command
+as part of the post-install scripts.
+.It Cm @postunexec Ar command
+Execute
+.Ar command
+as part of the post-deinstall scripts.
 .It Cm @exec Ar command Pq deprecated
 Execute
 .Ar command

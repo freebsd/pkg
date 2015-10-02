@@ -1,9 +1,9 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case requires
-requires_head() {
-	atf_set "descr" "Testings requires"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	requires
 
 requires_body() {
 	cat << EOF >> repo.conf
@@ -74,10 +74,3 @@ New packages to be INSTALLED:
 	    -s exit:0 \
 	    pkg -o REPOS_DIR="${TMPDIR}" install -n b
 }
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case requires
-}
-

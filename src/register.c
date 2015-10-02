@@ -242,7 +242,8 @@ exec_register(int argc, char **argv)
 		}
 
 		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-		pkg_set_from_file(pkg, PKG_DESC, fpath, false);
+		if (access(fpath, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_DESC, fpath, false);
 
 		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 		if (access(fpath, F_OK) == 0)
@@ -331,8 +332,10 @@ exec_register(int argc, char **argv)
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (!legacy && retcode == EPKG_OK && pkg_has_message(pkg))
-		pkg_printf("%M\n", pkg);
+	if (!legacy && retcode == EPKG_OK && messages != NULL) {
+		sbuf_finish(messages);
+		printf("%s\n", sbuf_data(messages));
+	}
 
 	pkg_free(pkg);
 

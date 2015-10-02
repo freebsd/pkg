@@ -1,9 +1,9 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case repo
-repo_head() {
-	atf_set "descr" "testing pkg repo"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	repo
 
 repo_body() {
 	touch plop
@@ -67,10 +67,4 @@ EOF
 	nb=$(tar -xf digests.txz -O digests | wc -l)
 	atf_check_equal $nb 2
 
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case repo
 }

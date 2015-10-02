@@ -699,9 +699,11 @@ main(int argc, char **argv)
 		    "-j, -c and/or -r cannot be used at the same time!\n");
 	}
 
-	if (chroot_path != NULL)
-		if (chroot(chroot_path) == -1)
-			errx(EX_SOFTWARE, "chroot failed!");
+	if (chroot_path != NULL) {
+		if (chroot(chroot_path) == -1) {
+			err(EX_SOFTWARE, "chroot failed");
+		}
+	}
 
 #ifdef HAVE_LIBJAIL
 	if (jail_str != NULL) {

@@ -212,7 +212,7 @@ exec_upgrade(int argc, char **argv)
 		break;
 	}
 
-	if (done == 0 && rc)
+	if (done == 0 && rc && !quiet)
 		printf("Your packages are up to date.\n");
 
 	retcode = EX_OK;

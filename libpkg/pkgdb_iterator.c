@@ -819,7 +819,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				msg = sqlite3_column_text(stmt, icol);
 				if (msg) {
 					/* A stupid logic to detect legacy pkg message */
-					if (msg[0] == '{') {
+					if (msg[0] == '[') {
 						pkg_message_from_str(pkg, msg, 0);
 					}
 					else {

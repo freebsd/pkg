@@ -1,9 +1,12 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case pkg_no_database
-pkg_no_database_head() {
-	atf_set "descr" "testing pkg -- no database"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	pkg_no_database \
+	pkg_config_defaults \
+	pkg_create_manifest_bad_syntax \
+	pkg_repo_load_order
 
 pkg_no_database_body() {
 	atf_check \
@@ -11,12 +14,6 @@ pkg_no_database_body() {
 	    -e inline:"pkg: package database non-existent\n" \
 	    -s exit:69 \
 	    -x PKG_DBDIR=/dev/null pkg -N
-}
-
-atf_test_case pkg_config_defaults
-pkg_config_defaults_head()
-{
-	atf_set "descr" "testing pkg -- compiled-in defaults"
 }
 
 pkg_config_defaults_body()
@@ -47,14 +44,7 @@ pkg_config_defaults_body()
 	    -o match:'^ *SSH_RESTRICT_DIR = "";$' \
 	    -e empty              \
 	    -s exit:0             \
-	    env -i PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
-}
-
-atf_test_case pkg_create_manifest_bad_syntax
-pkg_create_manifest_bad_syntax_head()
-{
-	atf_set "descr" "Testing bad syntax in manifest"
-
+	    env -i PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
 }
 
 pkg_create_manifest_bad_syntax_body()
@@ -82,12 +72,6 @@ EOF
 	    pkg create -q -m testpkg/.metadir -r testpkg
 }
 
-atf_test_case pkg_repo_load_order
-pkg_repo_load_order_head()
-{
-	atf_set "descr" "Testing the order the repository configuration files are loaded"
-}
-
 pkg_repo_load_order_body()
 {
 	echo "03_repo: { url: file:///03_repo }" > plop.conf
@@ -100,13 +84,4 @@ pkg_repo_load_order_body()
 	    -e empty \
 	    -s exit:0 \
 	    echo $out
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case pkg_no_database
-	atf_add_test_case pkg_config_defaults
-	atf_add_test_case pkg_create_manifest_bad_syntax
-	atf_add_test_case pkg_repo_load_order
 }

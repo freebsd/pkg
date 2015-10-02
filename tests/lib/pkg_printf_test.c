@@ -359,13 +359,16 @@ ATF_TC_BODY(string_val, tc)
 		{ "xxy", "xxy  ",  5, PP_LEFT_ALIGN, },
 		{ "xxy", "xxy   ", 6, PP_LEFT_ALIGN, },
 
+		/* Zero padding a string is non-portable, so ignore 
+		   that flag when printing string values */
+
 		{ "xxz", "xxz",    0, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    1, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    2, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    3, PP_ZERO_PAD, },
-		{ "xxz", "0xxz",   4, PP_ZERO_PAD, },
-		{ "xxz", "00xxz",  5, PP_ZERO_PAD, },
-		{ "xxz", "000xxz", 6, PP_ZERO_PAD, },
+		{ "xxz", " xxz",   4, PP_ZERO_PAD, },
+		{ "xxz", "  xxz",  5, PP_ZERO_PAD, },
+		{ "xxz", "   xxz", 6, PP_ZERO_PAD, },
 
 		/* Seems you can't zero pad on the RHS of a string */
 
@@ -783,7 +786,11 @@ ATF_TC_BODY(mode_val, tc)
 		{ 0100000, "---------- ", 0, PP_ALTERNATE_FORM1, }, /* Regular file */
 		{ 0120000, "l--------- ", 0, PP_ALTERNATE_FORM1, }, /* Sym-link */
 		{ 0140000, "s--------- ", 0, PP_ALTERNATE_FORM1, }, /* socket */
+#ifndef __linux__
 		{ 0160000, "w--------- ", 0, PP_ALTERNATE_FORM1, }, /* whiteout */
+#else
+		{ 0160000, "?--------- ", 0, PP_ALTERNATE_FORM1, }, /* whiteout */
+#endif
 
 		{ 0010000, "10000",  0, PP_EXPLICIT_PLUS, }, /* FIFO */
 		{ 0020000, "20000",  0, PP_EXPLICIT_PLUS, }, /* Char special */

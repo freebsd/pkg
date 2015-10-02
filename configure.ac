@@ -1,5 +1,5 @@
 m4_define([maj_ver], [1])
-m4_define([med_ver], [5])
+m4_define([med_ver], [6])
 m4_define([min_ver], [99])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
 m4_define([dev_ver], m4_expand([m4_normalize(m4_sinclude([dev_version.m4]))]))
@@ -75,10 +75,10 @@ case $host_os in
   linux*)
         OS_CFLAGS="-D_XOPEN_SOURCE -D_GNU_SOURCE -pthread"
         OS_LDFLAGS="-pthread"
-        OS_LIBS="-ldl -lrt -lbsd"
+        OS_LIBS="-ldl -lrt"
         OS_STATIC="false"
         ;;
-    *)
+  *)
         OS_CFLAGS="-D_BSD_SOURCE"
         OS_LDFLAGS=
         OS_LIBS=
@@ -157,6 +157,7 @@ AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_FUNCS_ONCE([fopencookie])
 AC_CHECK_FUNCS_ONCE([sysctlbyname])
+AC_CHECK_FUNCS_ONCE([res_setservers])
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
@@ -268,6 +269,7 @@ AC_SEARCH_LIBS([zlibVersion], [z], [], [
 AC_SEARCH_LIBS([archive_read_open], [archive], [], [
   AC_MSG_ERROR([unable to find the archive_read() function])
 ])
+AC_SEARCH_LIBS([__res_query], [resolv], [], [])
 
 AC_CHECK_HEADER([archive.h],
 	[pkg_found_archive_headers=yes])
@@ -306,7 +308,13 @@ AC_SEARCH_LIBS([jail_getid], [jail], [
 AC_SEARCH_LIBS([getprogname], [bsd], [
 	AC_DEFINE(HAVE_LIBBSD, 1, [Define to 1 if you have the 'bsd' library (-lbsd).])
 	LIBBSD_LIB="-lbsd"
-	], [])
+  ], [
+    case $host_os in
+      linux*)
+        AC_MSG_ERROR([Unable to find the libbsd])
+        ;;
+    esac
+  ])
 
 AC_CHECK_HEADERS([gelf.h libelf.h], [
 	AC_CHECK_TYPES([Elf_Note], [

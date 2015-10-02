@@ -1,10 +1,9 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case pkg_phpextensions
+. $(atf_get_srcdir)/test_environment.sh
 
-pkg_phpextensions_head() {
-	atf_set "descr" "testing pkg -- install php module wich dep on newer php version even with upgrade"
-}
+tests_init \
+	pkg_phpextensions
 
 pkg_phpextensions_body() {
 	touch php53.file
@@ -286,10 +285,3 @@ Installed packages to be REINSTALLED:
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -n
 }
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case pkg_phpextensions
-}
-

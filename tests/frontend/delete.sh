@@ -1,9 +1,11 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case simple_delete
-simple_delete_head() {
-	atf_set "descr" "Testing pkg delete"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	simple_delete \
+	simple_delete_prefix_ending_with_slash \
+	delete_with_directory_owned
 
 simple_delete_body() {
 	touch file1
@@ -46,11 +48,6 @@ EOF
 	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
 }
 
-atf_test_case simple_delete_prefix_ending_with_slash
-simple_delete_prefix_ending_with_slash_head() {
-	atf_set "descr" "Testing pkg delete when prefix end with /"
-}
-
 simple_delete_prefix_ending_with_slash_body() {
 	touch file1
 	mkdir dir
@@ -90,11 +87,6 @@ EOF
 	test -f dir/file2 && atf_fail "'dir/file2' still present"
 	test -d dir && atf_fail "'dir' still present"
 	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
-}
-
-atf_test_case delete_with_directory_owned
-delete_with_directory_owned_head() {
-	atf_set "descr" "Testing pkg delete when a directory is owned by another package"
 }
 
 delete_with_directory_owned_body() {
@@ -166,12 +158,4 @@ EOF
 
 	test -d dir && atf_fail "'dir' still present"
 	test -d ${TMPDIR} || atf_fail "Prefix has been removed"
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case simple_delete
-	atf_add_test_case simple_delete_prefix_ending_with_slash
-	atf_add_test_case delete_with_directory_owned
 }

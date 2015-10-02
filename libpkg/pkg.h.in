@@ -1284,6 +1284,7 @@ typedef enum {
 	PKG_EVENT_PLUGIN_INFO,
 	PKG_EVENT_NOT_FOUND,
 	PKG_EVENT_NEW_ACTION,
+	PKG_EVENT_MESSAGE,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1433,6 +1434,9 @@ struct pkg_event {
 			int64_t current;
 			int64_t total;
 		} e_progress_tick;
+		struct {
+			const char *msg;
+		} e_pkg_message;
 	};
 };
 

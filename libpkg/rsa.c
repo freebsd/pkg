@@ -201,7 +201,8 @@ rsa_verify_cb(int fd, void *ud)
 		return(EPKG_FATAL);
 	}
 
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), cbdata->sig,
+	ret = RSA_verify(NID_sha1, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX), cbdata->sig,
 	    cbdata->siglen, rsa);
 	free(sha256);
 	if (ret == 0) {
@@ -283,7 +284,9 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-	ret = RSA_sign(NID_sha1, sha256, sizeof(sha256), *sigret, siglen, rsa->key);
+	ret = RSA_sign(NID_sha1, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
+	    *sigret, siglen, rsa->key);
 	free(sha256);
 	if (ret == 0) {
 		/* XXX pass back RSA errors correctly */

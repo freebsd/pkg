@@ -1014,3 +1014,13 @@ pkg_emit_new_action(void)
 
 	pkg_emit_event(&ev);
 }
+
+void
+pkg_emit_message(const char *message)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_MESSAGE;
+	ev.e_pkg_message.msg = message;
+	pkg_emit_event(&ev);
+}

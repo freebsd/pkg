@@ -1,9 +1,25 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case create_from_plist
-create_from_plist_head() {
-	atf_set "descr" "Testing pkg create from plist"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+if [ `uname -s` != "Linux" ] ; then
+	nonlinux="create_from_plist_fflags create_from_plist_bad_fflags"
+fi
+
+tests_init \
+	create_from_plist \
+	create_from_plist_set_owner \
+	create_from_plist_set_group \
+	create_from_plist_gather_mode \
+	create_from_plist_set_mode \
+	create_from_plist_mini \
+	create_from_plist_dirrm \
+	create_from_plist_ignore \
+	${nonlinux} \
+	create_from_plist_with_keyword_arguments \
+	create_from_manifest_and_plist \
+	create_from_plist_pkg_descr \
+	create_from_plist_with_keyword_and_message
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -53,15 +69,10 @@ create_from_plist_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*root +wheel.* /file1$" \
-		-e empty \
+		-o match:"-rw-r--r-- .*root[ /]+wheel.* /file1$" \
+		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
-}
-
-atf_test_case create_from_plist_set_owner
-create_from_plist_set_owner_head() {
-	atf_set "descr" "Testing credentials set from the plist"
 }
 
 create_from_plist_set_owner_body() {
@@ -76,15 +87,10 @@ create_from_plist_set_owner_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
-		-e empty \
+		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /file1$" \
+		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
-}
-
-atf_test_case create_from_plist_set_group
-create_from_plist_set_owner_head() {
-	atf_set "descr" "Testing credentials set from the plist"
 }
 
 create_from_plist_set_group_body() {
@@ -99,15 +105,10 @@ create_from_plist_set_group_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*root +bla.* /file1$" \
-		-e empty \
+		-o match:"-rw-r--r-- .*root[ /]+bla.* /file1$" \
+		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
-}
-
-atf_test_case create_from_plist_gather_mode
-create_from_plist_gather_mode_head() {
-	atf_set "descr" "Testing credentials set from the plist"
 }
 
 create_from_plist_gather_mode_body() {
@@ -124,16 +125,12 @@ create_from_plist_gather_mode_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rwxrwxrwx .*plop +bla.* /file1$" \
-		-e empty \
+		-o match:"-rwxrwxrwx .*plop[ /]+bla.* /file1$" \
+		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_set_mode
-create_from_plist_set_mode_head() {
-	atf_set "descr" "Testing credentials set from the plist"
-}
 create_from_plist_set_mode_body() {
 
 	preparetestcredentials "(,,2755)"
@@ -146,16 +143,12 @@ create_from_plist_set_mode_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rwxr-sr-x .*root +wheel.* /file1$" \
-		-e empty \
+		-o match:"-rwxr-sr-x .*root[ /]+wheel.* /file1$" \
+		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
 }
 
-atf_test_case create_from_plist_mini
-create_from_plist_mini_head() {
-	atf_set "descr" "Testing credentials set from the plist"
-}
 create_from_plist_mini_body() {
 
 	preparetestcredentials "(plop,)"
@@ -168,15 +161,10 @@ create_from_plist_mini_body() {
 
 	basic_validation
 	atf_check \
-		-o match:"-rw-r--r-- .*plop +wheel.* /file1$" \
-		-e empty \
+		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /file1$" \
+		-e ignore \
 		-s exit:0 \
 		tar tvf test-1.txz
-}
-
-atf_test_case create_from_plist_dirrm
-create_from_plist_dirrm_head() {
-	atf_set "descr" "Testing @dirrm(try) set from the plist"
 }
 
 create_from_plist_dirrm_body() {
@@ -201,10 +189,6 @@ create_from_plist_dirrm_body() {
 	done
 }
 
-atf_test_case create_from_plist_ignore
-create_from_plist_ignore_head() {
-	atf_set "descr" "Testing @ignore"
-}
 create_from_plist_ignore_body() {
 	genmanifest
 	genplist "@ignore
@@ -228,11 +212,6 @@ aline"
 		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
-atf_test_case create_from_plist_fflags
-create_from_plist_fflags_head() {
-	atf_set "descr" "Test fflags set from plist"
-}
-
 create_from_plist_fflags_body() {
 	preparetestcredentials "(,,,schg)"
 
@@ -243,11 +222,6 @@ create_from_plist_fflags_body() {
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
-atf_test_case create_from_plist_bad_fflags
-create_from_plist_bad_fflags_head() {
-	atf_set "descr" "Test bad fflags set from plist"
-}
-
 create_from_plist_bad_fflags_body() {
 	preparetestcredentials "(,,,schg,bad)"
 
@@ -256,11 +230,6 @@ create_from_plist_bad_fflags_body() {
 		-e inline:"pkg: Malformed keyword '', wrong fflags\n" \
 		-s exit:70 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
-}
-
-atf_test_case create_from_plist_with_keyword_arguments
-create_from_plist_with_keyword_arguments_head() {
-	atf_set "descr" "Test keywords with arguments"
 }
 
 create_from_plist_with_keyword_arguments_body() {
@@ -355,11 +324,6 @@ EOF
 		pkg info -R --raw-format=ucl -F test-1.txz
 }
 
-atf_test_case create_from_manifest_and_plist
-create_from_manifest_and_plist_head() {
-	atf_set "descr" "Testing pkg create with manifest and plist"
-}
-
 create_from_manifest_and_plist_body() {
 	genmanifest
 	touch testfile
@@ -398,21 +362,71 @@ EOF
 		pkg info -R --raw-format=ucl -F test-1.txz
 }
 
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
+create_from_plist_pkg_descr_body() {
+	genmanifest
+cat << EOF > ./+DISPLAY
+Message
+EOF
 
-	atf_add_test_case create_from_plist
-	atf_add_test_case create_from_plist_set_owner
-	atf_add_test_case create_from_plist_set_group
-	atf_add_test_case create_from_plist_gather_mode
-	atf_add_test_case create_from_plist_set_mode
-	atf_add_test_case create_from_plist_mini
-	atf_add_test_case create_from_plist_dirrm
-	atf_add_test_case create_from_plist_ignore
-	if [ `uname -s` != "Linux" ] ; then
-		atf_add_test_case create_from_plist_fflags
-		atf_add_test_case create_from_plist_bad_fflags
-	fi
-	atf_add_test_case create_from_plist_with_keyword_arguments
-	atf_add_test_case create_from_manifest_and_plist
+OUTPUT="test-1:
+Always:
+Message
+
+"
+	atf_check pkg create -m . -r ${TMPDIR}
+	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
+
+cat << EOF > ./+DISPLAY
+[
+	{ message: "message" },
+	{ message: "message upgrade", type = "upgrade" },
+]
+EOF
+
+OUTPUT='test-1:
+Always:
+message
+
+On upgrade:
+message upgrade
+
+'
+
+	atf_check pkg create -m . -r ${TMPDIR}
+	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
+
+}
+
+create_from_plist_with_keyword_and_message_body() {
+	genmanifest
+	genplist "@showmsg plop"
+cat << EOF > showmsg.ucl
+actions: []
+messages: [
+	{ message: "always" },
+	{ message: "on upgrade";type = "upgrade" },
+	{ message: "on install"; type = "install" },
+]
+EOF
+cat << EOF > +DISPLAY
+old message
+EOF
+
+OUTPUT='test-1:
+Always:
+old message
+
+Always:
+always
+
+On upgrade:
+on upgrade
+
+On install:
+on install
+
+'
+	atf_check pkg -o PLIST_KEYWORDS_DIR=. create -m . -r ${TMPDIR} -p test.plist
+	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
+
 }

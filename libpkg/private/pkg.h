@@ -244,8 +244,10 @@ struct pkg {
 	kh_pkg_deps_t		*rdeps;
 	kh_strings_t		*categories;
 	kh_strings_t		*licenses;
-	kh_pkg_files_t		*files;
-	kh_pkg_dirs_t		*dirs;
+	kh_pkg_files_t		*filehash;
+	struct pkg_file		*files;
+	kh_pkg_dirs_t		*dirhash;
+	struct pkg_dir		*dirs;
 	struct pkg_option	*options;
 	kh_strings_t		*users;
 	kh_strings_t		*groups;
@@ -274,11 +276,20 @@ struct pkg_dep {
 	bool		 locked;
 };
 
+typedef enum {
+	PKG_MESSAGE_ALWAYS = 0,
+	PKG_MESSAGE_INSTALL,
+	PKG_MESSAGE_REMOVE,
+	PKG_MESSAGE_UPGRADE,
+} pkg_message_t;
+
 struct pkg_message {
-	char		*str;
-	char		*minimum_version;
-	char		*maximum_version;
-	bool		legacy;
+	char			*str;
+	char			*minimum_version;
+	char			*maximum_version;
+	pkg_message_t		 type;
+	struct pkg_message	*prev;
+	struct pkg_message	*next;
 };
 
 enum pkg_conflict_type {
@@ -303,6 +314,8 @@ struct pkg_file {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
+	struct pkg_file	*prev;
+	struct pkg_file	*next;
 };
 
 struct pkg_dir {
@@ -311,6 +324,8 @@ struct pkg_dir {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
+	struct pkg_dir	*prev;
+	struct pkg_dir	*next;
 };
 
 struct pkg_option {
@@ -661,7 +676,7 @@ bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 pkg_object* pkg_emit_object(struct pkg *pkg, short flags);
 
 /* Hash is in format <version>:<typeid>:<hexhash> */
-#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + sizeof("100") * 2 + 2)
+#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 1)
 #define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
 #define PKG_CHECKSUM_CUR_VERSION 2
 
@@ -739,7 +754,7 @@ int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
 bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file **file, struct pkg_config_file **cfile);
 int pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj);
 int pkg_message_from_str(struct pkg *pkg, const char *str, size_t len);
-ucl_object_t* pkg_message_to_ucl(struct pkg *pkg);
+ucl_object_t* pkg_message_to_ucl(const struct pkg *pkg);
 char* pkg_message_to_str(struct pkg *pkg);
 
 #endif

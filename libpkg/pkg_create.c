@@ -75,7 +75,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	nfiles = kh_count(pkg->files);
+	nfiles = kh_count(pkg->filehash);
 	counter_init("file sizes/checksums", nfiles);
 
 	hardlinks = kh_init_hardlinks();
@@ -146,7 +146,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	nfiles = kh_count(pkg->dirs);
+	nfiles = kh_count(pkg->dirhash);
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -284,7 +284,7 @@ pkg_load_from_file(int fd, struct pkg *pkg, pkg_attr attr, const char *path)
 }
 
 static int
-pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_ucl)
+pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 {
 	char *buf = NULL;
 	off_t size = 0;
@@ -301,13 +301,11 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path, bool is_uc
 			return (ret);
 		}
 
-		if (is_ucl) {
+		if (*buf == '[') {
 			ret = pkg_message_from_str(pkg, buf, size);
 			free(buf);
-
 			return (ret);
-		}
-		else {
+		} else {
 			obj = ucl_object_fromstring_common(buf, size,
 					UCL_STRING_RAW|UCL_STRING_TRIM);
 			ret = pkg_message_from_ucl(pkg, obj);
@@ -365,10 +363,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	/* if no message try to get it from a file */
 	if (pkg->message == NULL) {
 		/* Try ucl version first */
-		if (pkg_load_message_from_file(mfd, pkg, "+DISPLAY.ucl", true)
-				!= EPKG_OK) {
-			pkg_load_message_from_file(mfd, pkg, "+DISPLAY", false);
-		}
+		pkg_load_message_from_file(mfd, pkg, "+DISPLAY");
 	}
 
 	/* if no arch autodetermine it */

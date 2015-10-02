@@ -1,9 +1,10 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case register
-register_conflicts_head() {
-	atf_set "descr" "testing pkg register conflicts"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	register_conflicts \
+	register_message
 
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
@@ -55,8 +56,49 @@ EOF
 	atf_check_equal ${sum} ${nsum}
 }
 
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
+register_message_body() {
+	cat << EOF > +MANIFEST
+name: "test2"
+origin: "osef"
+version: "1"
+arch: "freebsd:*"
+maintainer: "non"
+prefix: "${TMPDIR}"
+www: "unknown"
+comment: "need one"
+desc: "here as well"
+EOF
+	cat << EOF > +DISPLAY
+message
+EOF
 
-	atf_add_test_case register_conflicts
+OUTPUT='test2-1:
+Always:
+message
+
+'
+	atf_check -o match:"message" pkg register -m .
+	atf_check -o inline:"${OUTPUT}" pkg info -D test2
+
+	cat << EOF > +DISPLAY
+[
+	{ message: "hey"},
+	{ message: "install", type = install},
+	{ message: "remove", type = remove},
+]
+EOF
+OUTPUT='test2-1:
+Always:
+hey
+
+On install:
+install
+
+On remove:
+remove
+
+'
+	atf_check -o match:"hey" -o match:"install" -o not-match:"remove" pkg register -m .
+	atf_check -o inline:"${OUTPUT}" pkg info -D test2
+
 }

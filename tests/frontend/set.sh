@@ -1,5 +1,12 @@
 #! /usr/bin/env atf-sh
 
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	set_automatic \
+	set_change_name \
+	set_change_origin
+
 initialize_pkg() {
 	cat << EOF > test.ucl
 name: test
@@ -23,7 +30,6 @@ EOF
 		pkg register -t -M test.ucl
 }
 
-atf_test_case set_automatic
 set_automatic_body() {
 	initialize_pkg
 
@@ -58,7 +64,6 @@ set_automatic_body() {
 		pkg query "%a" test
 }
 
-atf_test_case set_change_name
 set_change_name_body() {
 	initialize_pkg
 
@@ -75,7 +80,6 @@ set_change_name_body() {
 		pkg info -q
 }
 
-atf_test_case set_change_origin
 set_change_origin_body() {
 	initialize_pkg
 
@@ -90,12 +94,4 @@ set_change_origin_body() {
 		-e empty \
 		-s exit:0 \
 		pkg info -qo
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case set_automatic
-	atf_add_test_case set_change_name
-	atf_add_test_case set_change_origin
 }

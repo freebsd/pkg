@@ -152,6 +152,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
+	char	bd[MAXPATHLEN], *cp;
 	struct stat st;
 	const struct stat *aest;
 	bool renamed = false;
@@ -216,8 +217,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
 			pkg_debug(1, "Populating config_file %s", pathname);
 			size_t len = archive_entry_size(ae);
-			rcf->content = malloc(len);
+			rcf->content = malloc(len + 1);
 			archive_read_data(a, rcf->content, len);
+			rcf->content[len] = '\0';
 			if (renamed && (!automerge || local == NULL))
 				strlcat(pathname, ".pkgnew", sizeof(pathname));
 		}
@@ -225,7 +227,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		/*
 		 * check if the file is already provided by previous package
 		 */
-		if (!automerge)
+		if (automerge)
 			attempt_to_merge(renamed, rcf, local, pathname, path, newconf);
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
@@ -244,9 +246,27 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 			pkg_debug(2, "Writing conf in %s", pathname);
 			unlink(rpath);
+			strlcpy(bd, rpath, sizeof(bd));
+			if ((cp = strrchr(bd, '/')) != NULL)
+				*cp = '\0';
+			if (mkdirs(bd) != EPKG_OK) {
+				pkg_emit_error("mkdirs(%s)", bd);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			FILE *f = fopen(rpath, "w+");
+			if (!f) {
+				pkg_emit_error("fopen() for write: %s", rpath);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			fprintf(f, "%s", sbuf_data(newconf));
 			fclose(f);
+			/* Apply expect mode setting */
+			chmod(rpath, aest->st_mode);
+			if (getenv("INSTALL_AS_USER") == NULL) {
+				chown(rpath, aest->st_uid, aest->st_gid);
+			}
 		}
 
 		if (ret != ARCHIVE_OK) {
@@ -363,7 +383,7 @@ pkg_globmatch(char *pattern, const char *name)
 			path = g.gl_pathv[i];
 			continue;
 		}
-		if (pkg_version_cmp(path, g.gl_pathv[i]) == '>')
+		if (pkg_version_cmp(path, g.gl_pathv[i]) == 1)
 			path = g.gl_pathv[i];
 	}
 	path = strdup(path);
@@ -545,15 +565,17 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
     struct pkg *local)
 {
-	struct archive	*a;
-	struct archive_entry *ae;
-	struct pkg	*pkg = NULL;
-	const char	*location;
-	bool		 extract = true;
-	bool		 handle_rc = false;
-	int		 retcode = EPKG_OK;
-	int		 ret;
-	int nfiles;
+	struct archive		*a;
+	struct archive_entry	*ae;
+	struct pkg		*pkg = NULL;
+	struct sbuf		*message;
+	struct pkg_message	*msg;
+	const char		*location, *msgstr;
+	bool			 extract = true;
+	bool			 handle_rc = false;
+	int			 retcode = EPKG_OK;
+	int			 ret;
+	int			 nfiles;
 
 	assert(path != NULL);
 
@@ -649,7 +671,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = kh_count(pkg->files);
+	nfiles = kh_count(pkg->filehash);
 	/*
 	 * Extract the files on disk.
 	 */
@@ -696,6 +718,49 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 				pkg_emit_upgrade_finished(pkg, local);
 			else
 				pkg_emit_install_finished(pkg, local);
+		}
+
+		if (pkg->message != NULL)
+			message = sbuf_new_auto();
+		LL_FOREACH(pkg->message, msg) {
+			msgstr = NULL;
+			if (msg->type == PKG_MESSAGE_ALWAYS) {
+				msgstr = msg->str;
+			} else if (local != NULL &&
+			     msg->type == PKG_MESSAGE_UPGRADE) {
+				if (msg->maximum_version == NULL &&
+				    msg->minimum_version == NULL) {
+					msgstr = msg->str;
+				} else if (msg->maximum_version == NULL) {
+					if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+						msgstr = msg->str;
+					}
+				} else if (msg->minimum_version == NULL) {
+					if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
+						msgstr = msg->str;
+					}
+				} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
+					    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+					msgstr = msg->str;
+				}
+			} else if (local == NULL &&
+			    msg->type == PKG_MESSAGE_INSTALL) {
+				msgstr = msg->str;
+			}
+			if (msgstr != NULL) {
+				if (sbuf_len(message) == 0) {
+					pkg_sbuf_printf(message, "Message from "
+					    "%n-%v:\n", pkg, pkg);
+				}
+				sbuf_printf(message, "%s\n", msgstr);
+			}
+		}
+		if (pkg->message != NULL) {
+			if (sbuf_len(message) > 0) {
+				sbuf_finish(message);
+				pkg_emit_message(sbuf_data(message));
+			}
+			sbuf_delete(message);
 		}
 	}
 

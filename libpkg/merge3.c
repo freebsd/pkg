@@ -104,6 +104,14 @@ static int sameEdit(
   return 0;
 }
 
+/*
+** Copy N lines of text from from into to.
+** The return value is the number of characters copied, normally including
+** the \n and should be used to advance the 'from' pointer.
+**
+** If to==NULL then this routine simply counts characters for N lines.
+*/
+
 static int
 sbuf_copy_lines(struct sbuf *to, const char *from, int N)
 {
@@ -112,25 +120,19 @@ sbuf_copy_lines(struct sbuf *to, const char *from, int N)
 
 	if (N == 0)
 		return (0);
-
-	for (i = 0; from[i] != '\0'; i++) {
+	i = 0;
+	while (from[i] != 0) {
 		if (from[i] == '\n') {
 			cnt++;
-			continue;
+			if (cnt == N) {
+				i++;
+				break;
+			}
 		}
-		if (cnt == N)
-			break;
+		i++;
 	}
-
-	if (to == NULL)
-		return (i);
-		
-	if (sbuf_len(to) > 0 &&
-	    sbuf_data(to)[sbuf_len(to)-1] != '\n')
-		sbuf_putc(to, '\n');
-	sbuf_bcat(to, from, i);
-	sbuf_finish(to);
-
+	if (to)
+		sbuf_bcat(to, from, i);
 	return (i);
 }
 
@@ -277,5 +279,6 @@ int merge_3way(
   int rc;             /* Return code of subroutines and this routine */
 
   rc = sbuf_merge(pPivot, pV1, pV2, pOut);
+  sbuf_finish(pOut);
   return rc;
 }

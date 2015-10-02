@@ -1,8 +1,9 @@
 #! /usr/bin/env atf-sh
-atf_test_case find_conflicts
-find_conflicts_head() {
-	atf_set "descr" "Testing dynamic conflicts resolution"
-}
+
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	find_conflicts
 
 find_conflicts_body() {
 	touch a
@@ -91,10 +92,4 @@ ${JAILED}[2/2] Extracting test2-1:  done
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case find_conflicts
 }

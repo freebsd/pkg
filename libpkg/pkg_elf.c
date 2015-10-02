@@ -238,6 +238,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	int fd;
 
+	pkg_debug(1, "analysing elf");
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */

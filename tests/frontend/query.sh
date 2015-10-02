@@ -1,9 +1,9 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case query
-query_head() {
-	atf_set "descr" "testing pkg query"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	query
 
 query_body() {
 	touch plop
@@ -63,10 +63,4 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg query -e "%#O == 0" "%n"
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case query
 }

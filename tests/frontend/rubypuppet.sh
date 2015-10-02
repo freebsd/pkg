@@ -3,12 +3,10 @@
 # If you remove rubygem-ruby-augeas from puppet as deps pkg will not remove puppet
 # but also don't reinstall it which is also wrong.
 
+. $(atf_get_srcdir)/test_environment.sh
 
-atf_test_case pkg_puppet
-
-pkg_puppet_head() {
-	atf_set "descr" "testing pkg -- ruby upgrade and puppet removal"
-}
+tests_init \
+	pkg_puppet
 
 pkg_puppet_body() {
 	touch puppet.file
@@ -357,10 +355,4 @@ Installed packages to be REINSTALLED:
 	    -e empty \
 	    -s exit:0 \
 	    pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -yn
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case pkg_puppet
 }

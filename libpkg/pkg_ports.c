@@ -110,6 +110,17 @@ keyword_open_schema(void)
 		"    post-deinstall = { type = string }; "
 		"    pre-upgrade = { type = string }; "
 		"    post-upgrade = { type = string }; "
+		"    messages: {"
+		"        type = array; "
+		"        items = {"
+		"            type = object;"
+		"            properties {"
+		"                message = { type = string };"
+		"                type = { enum = [ upgrade, remove, install ] };"
+		"            };"
+		"            required [ message ];"
+		"        };"
+		"    };"
 		"  }"
 		"}";
 
@@ -233,14 +244,11 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
-	size_t len;
 	char path[MAXPATHLEN];
 	char stagedpath[MAXPATHLEN];
 	char *testpath, *cp;
 	struct stat st;
 	int ret = EPKG_OK;
-
-	len = strlen(line);
 
 	cp = line + strlen(line) -1;
 	while (cp > line && isspace(*cp)) {
@@ -874,7 +882,9 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 static int
 apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	const ucl_object_t *o;
+	const ucl_object_t *o, *cur, *elt;
+	ucl_object_iter_t it = NULL;
+	struct pkg_message *msg;
 	char *cmd;
 	char **args = NULL;
 	char *buf, *tofree = NULL;
@@ -940,6 +950,31 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			return (EPKG_FATAL);
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj, "messages"))) {
+		while ((cur = ucl_iterate_object(o, &it, true))) {
+			elt = ucl_object_find_key(cur, "message");
+			msg = calloc(1, sizeof(*msg));
+
+			if (msg == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_message");
+				return (EPKG_FATAL);
+			}
+
+			msg->str = strdup(ucl_object_tostring(elt));
+			msg->type = PKG_MESSAGE_ALWAYS;
+			elt = ucl_object_find_key(cur, "type");
+			if (elt != NULL) {
+				if (strcasecmp(ucl_object_tostring(elt), "install") == 0)
+					msg->type = PKG_MESSAGE_INSTALL;
+				else if (strcasecmp(ucl_object_tostring(elt), "remove") == 0)
+					msg->type = PKG_MESSAGE_REMOVE;
+				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
+					msg->type = PKG_MESSAGE_UPGRADE;
+			}
+			LL_APPEND(p->pkg->message, msg);
+		}
 	}
 
 	if ((o = ucl_object_find_key(obj,  "actions")))
@@ -1290,6 +1325,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 {
 	const char *location;
 	int rc = EPKG_OK;
+	struct sbuf *message;
+	struct pkg_message *msg;
 
 	location = reloc;
 	if (pkg_rootdir != NULL)
@@ -1317,8 +1354,24 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 	}
 
-	if (rc == EPKG_OK)
+	if (rc == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
+		if (pkg->message != NULL)
+			message = sbuf_new_auto();
+		LL_FOREACH(pkg->message, msg) {
+			if (msg->type == PKG_MESSAGE_ALWAYS ||
+			    msg->type == PKG_MESSAGE_INSTALL) {
+				sbuf_printf(message, "%s\n", msg->str);
+			}
+		}
+		if (pkg->message != NULL) {
+			if (sbuf_len(message) > 0) {
+				sbuf_finish(message);
+				pkg_emit_message(sbuf_data(message));
+			}
+			sbuf_delete(message);
+		}
+	}
 
 cleanup:
 	pkgdb_register_finale(db, rc);

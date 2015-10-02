@@ -1,8 +1,11 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case lock
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	lock
+
 lock_head() {
-	atf_set "descr" "pkg lock"
 	atf_set "require.files" \
 	   "${RESOURCEDIR}/png.ucl ${RESOURCEDIR}/sqlite3.ucl"
 }
@@ -79,11 +82,4 @@ lock_body() {
 	    -e empty \
 	    -s exit:0 \
 	    pkg lock -l
-}
-
-atf_init_test_cases() {
-	. $(atf_get_srcdir)/test_environment.sh
-
-	# Tests are run in alphabetical order
-	atf_add_test_case lock
 }

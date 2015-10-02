@@ -234,12 +234,12 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	/*
 	 * We need to check all files and dirs and find the similar ones
 	 */
-	kh_each_value(p1->files, fcur, {
+	LL_FOREACH(p1->files, fcur) {
 		if (pkg_has_file(p2, fcur->path))
 			return (true);
 		if (pkg_has_dir(p2, fcur->path))
 			return (true);
-	});
+	}
 	/* XXX pkg dirs are terribly broken */
 
 	/* No common paths are found in p1 and p2 */
@@ -468,7 +468,7 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *cun;
 	struct sipkey *k;
 
-	kh_each_value(it->pkg->files, fcur, {
+	LL_FOREACH(it->pkg->files, fcur) {
 		k = pkg_conflicts_sipkey_init();
 		/* Check in hash tree */
 		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, k);
@@ -488,7 +488,7 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 			assert(cun != NULL);
 			pkg_conflicts_register_chain(j, it, cun, fcur->path);
 		}
-	});
+	}
 	/* XXX: dirs are currently broken terribly */
 #if 0
 	struct pkg_dir *dcur, *dtmp, *df;

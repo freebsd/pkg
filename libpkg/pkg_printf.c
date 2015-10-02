@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
@@ -1066,7 +1066,7 @@ format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Fn\n", "");
 
 		count = 1;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
+		LL_FOREACH(pkg->files, file) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     file, count, PP_F);
@@ -1237,9 +1237,52 @@ format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	struct sbuf		*buf, *bufmsg;
 	const struct pkg	*pkg = data;
+	struct pkg_message	*msg;
+	char			*message;
 
-	return (string_val(sbuf, pkg->message ? pkg->message->str : NULL, p));
+	bufmsg = sbuf_new_auto();
+	LL_FOREACH(pkg->message, msg) {
+		if (sbuf_len(bufmsg) > 0)
+			sbuf_putc(bufmsg, '\n');
+		switch(msg->type) {
+		case PKG_MESSAGE_ALWAYS:
+			sbuf_printf(bufmsg, "Always:\n");
+			break;
+		case PKG_MESSAGE_UPGRADE:
+			sbuf_printf(bufmsg, "On upgrade");
+			if (msg->minimum_version != NULL ||
+			    msg->maximum_version != NULL) {
+				sbuf_printf(bufmsg, " from %s", pkg->name);
+			}
+			if (msg->minimum_version != NULL) {
+				sbuf_printf(bufmsg, ">%s", msg->minimum_version);
+			}
+			if (msg->maximum_version != NULL) {
+				sbuf_printf(bufmsg, "<%s", msg->maximum_version);
+			}
+			sbuf_printf(bufmsg, ":\n");
+			break;
+		case PKG_MESSAGE_INSTALL:
+			sbuf_printf(bufmsg, "On install:\n");
+			break;
+		case PKG_MESSAGE_REMOVE:
+			sbuf_printf(bufmsg, "On remove:\n");
+			break;
+		}
+		sbuf_printf(bufmsg, "%s\n", msg->str);
+	}
+	sbuf_finish(bufmsg);
+	if (sbuf_len(bufmsg) == 0)
+		message = NULL;
+	else
+		message = sbuf_data(bufmsg);
+
+	buf = string_val(sbuf, message, p);
+	sbuf_delete(bufmsg);
+
+	return (buf);
 }
 
 /*
@@ -2084,13 +2127,14 @@ string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 {
 	char	format[16];
 
-	/* The '#' '?' '+' ' ' and '\'' modifiers have no meaning for
-	   strings */
+	/* The '#' '?' '+' ' ' '0' and '\'' modifiers have no meaning
+	   for strings */
 
 	p->flags &= ~(PP_ALTERNATE_FORM1 |
 		      PP_ALTERNATE_FORM2 |
 		      PP_EXPLICIT_PLUS   |
 		      PP_SPACE_FOR_PLUS  |
+		      PP_ZERO_PAD        |
 		      PP_THOUSANDS_SEP);
 
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)
