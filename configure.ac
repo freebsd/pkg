@@ -244,17 +244,19 @@ AC_SUBST([GIT_HEAD])
 AC_DEFINE_UNQUOTED([GIT_HEAD], $GIT_HEAD)
 AC_DEFINE([PKG_API], [api_ver])
 
-AC_RUN_IFELSE(
-  [AC_LANG_SOURCE(
-    [[
-    #include <sys/types.h>
-    #include <sys/socket.h>
-    int main() { return socket(AF_LOCAL, SOCK_SEQPACKET, 0) == -1 ? -1 : 0; }
-    ]]
-  )],
-  [AC_DEFINE([HAVE_SEQPACKET], 1, [Define to 1 if you have SOCK_SEQPACKET working])]
-)
-
+AC_CACHE_VAL(ac_cv_seqpacket,
+      AC_TRY_RUN([
+#include <sys/types.h>
+#include <sys/socket.h>
+int main() { return socket(AF_LOCAL, SOCK_SEQPACKET, 0) == -1 ? -1 : 0; }
+	],
+	ac_cv_seqpacket=yes,
+	ac_cv_seqpacket=no,
+	ac_cv_seqpacket=no))
+AC_MSG_RESULT($ac_cv_seqpacket)
+if test $ac_cv_seqpacket = yes ; then
+	AC_DEFINE([HAVE_SEQPACKET], 1,Define [Define to 1 if you have SOCK_SEQPACKET working])
+fi
 AC_SUBST([HAVE_SEQPACKET])
 
 AC_SEARCH_LIBS([lzma_version_string], [lzma], [], [
