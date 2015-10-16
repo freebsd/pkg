@@ -95,7 +95,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 		if (quiet)
 			pkg_sbuf_printf(out, "%n\t%S\n", p, buf);
 		else
-			pkg_sbuf_printf(out, "%n has require a missing libraries: %S\n",
+			pkg_sbuf_printf(out, "%n is missing a required shared library: %S\n",
 			    p, buf);
 	}
 
