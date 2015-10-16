@@ -257,7 +257,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 		printf("\n>>> Missing dependencies were fixed successfully.\n");
 	} else {
 		printf("\n>>> There are still missing dependencies.\n");
-		printf(">>> You are advised to try fixing them manually.\n");
+		printf(">>> Try fixing them manually.\n");
 		printf("\n>>> Also make sure to check 'pkg updating' for known issues.\n");
 	}
 
