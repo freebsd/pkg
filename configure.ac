@@ -336,12 +336,28 @@ AC_CHECK_LIB(c, cap_sandboxed, [
 
 AC_CACHE_CHECK(for arc4random_uniform,
                ac_cv_func_arc4random_uniform,
-               [AC_TRY_COMPILE([#include <stdlib.h>],
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="-Werror $CFLAGS"
+                AC_TRY_COMPILE([#include <stdlib.h>],
                                [arc4random_uniform(255);],
                                [ac_cv_func_arc4random_uniform=yes],
-                               [ac_cv_func_arc4random_uniform=no])])
+                               [ac_cv_func_arc4random_uniform=no])
+		CFLAGS="$ac_save_CFLAGS"])
 if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
+fi
+
+AC_CACHE_CHECK(for arc4random_stir,
+               ac_cv_func_arc4random_stir,
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="-Werror $CFLAGS"
+                AC_TRY_COMPILE([#include <stdlib.h>],
+                               [arc4random_stir();],
+                               [ac_cv_func_arc4random_stir=yes],
+                               [ac_cv_func_arc4random_stir=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_arc4random_stir" = yes ; then
+   AC_DEFINE(HAVE_ARC4RANDOM_STIR, 1, [Define 1 if you have 'arc4random_stir' function.])
 fi
 
 AC_CACHE_CHECK(for BSD dirname(const char *),

@@ -25,8 +25,13 @@
  */
 
 #include <libelf.h>
+/*
+#include "/usr/include/sys/exec_elf.h"
+*/
 
 #include "_libelf.h"
+
+#define EM_AMD64    62
 
 ELFTC_VCSID("$Id$");
 

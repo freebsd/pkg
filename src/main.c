@@ -62,6 +62,22 @@
 
 #include "pkgcli.h"
 
+#ifndef _HUMANIZE_NUMBER
+#define _HUMANIZE_NUMBER
+
+#include <util.h>
+#include <errno.h>
+int humanize_number(char *buf, size_t len, int64_t number, const char *suffix, int scale, int flags) {
+    if (len < FMT_SCALED_STRSIZE) {
+        return -1;
+    }
+    else if (fmt_scaled(number, buf) == 0)
+        return 0;
+    else
+        return errno;
+}
+#endif
+
 /* Used to define why do we show usage message to a user */
 enum pkg_usage_reason {
 	PKG_USAGE_ERROR,
@@ -687,7 +703,7 @@ main(int argc, char **argv)
 	if (debug == 0 && version == 0)
 		start_process_worker(save_argv);
 
-#ifdef HAVE_ARC4RANDOM
+#ifdef HAVE_ARC4RANDOM_STIR
 	/* Ensure that random is stirred after a possible fork */
 	arc4random_stir();
 #endif
