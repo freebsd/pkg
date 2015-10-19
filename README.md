@@ -234,7 +234,7 @@ latest release version:
 
 
 <a name="pkggit"></a>
-### Building pkg using sources from Git
+### Building pkg using sources from Git [FreeBSD]
 
 In order to build pkg from source, you will need to have Gnu
 autotools and some other tools installed.
@@ -277,6 +277,37 @@ system and capable of running Gnu autotools.  However, various places
 in the pkg(8) code make assumptions about OS specific behaviour.  If
 you do try anything like this, we'd be very interested to hear how you
 get on.
+
+<a name="pkggit-openbsd"></a>
+### Building pkg using sources from Git [OpenBSD and Bitrig]
+
+	# Install packages
+	pkg_add autoconf automake libtool bitrig-binutils bzip2 git libarchive
+	
+	# set environment variables
+	export AUTOMAKE_VERSION=1.15
+	export AUTOCONF_VERSION=2.69
+	
+	# create a download directory
+	mkdir ~/git
+	
+	# install pkgconf
+	cd ~/git
+	git clone https://github.com/pkgconf/pkgconf
+	cd pkgconf
+	./autogen.sh
+	./configure
+	make
+	sudo make install
+	
+	# install pkg
+	cd ~/git
+	git clone https://github.com/yonas/pkg
+	cd pkg
+	./autogen.sh
+	env LDFLAGS='-L/usr/local/lib' CPPFLAGS='-I/usr/local/include' ./configure
+	env LDFLAGS='-L/usr/local/lib' CPPFLAGS='-I/usr/local/include' make
+	sudo make install
 
 <a name="pkg2ng"></a>
 ### Converting an old-style pkg database
