@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 #include <bsd_compat.h>
+#include "external/libelf/_elftc.h"
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
 
