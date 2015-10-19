@@ -51,6 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+#include <utlist.h>
 #include <unistd.h>
 #ifdef HAVE_LIBJAIL
 #include <jail.h>
@@ -119,13 +120,14 @@ static struct commands {
 
 static const unsigned int cmd_len = NELEM(cmd);
 
-static STAILQ_HEAD(, plugcmd) plugins = STAILQ_HEAD_INITIALIZER(plugins);
 struct plugcmd {
 	const char *name;
 	const char *desc;
 	int (*exec)(int argc, char **argv);
-	STAILQ_ENTRY(plugcmd) next;
+	struct plugcmd *next;
+	struct plugcmd *prev;
 };
+static struct plugcmd *plugins = NULL;
 
 typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
 typedef int (nb_cmd)(void);
@@ -202,8 +204,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
-			STAILQ_FOREACH(c, &plugins, next)
-			fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			DL_FOREACH(plugins, c) {
+				fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			}
 		}
 		fprintf(out, "\nFor more information on the different commands"
 					" see 'pkg help <command>'.\n");
@@ -252,7 +255,7 @@ exec_help(int argc, char **argv)
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 	if (plugins_enabled) {
-		STAILQ_FOREACH(c, &plugins, next) {
+		DL_FOREACH(plugins, c) {
 			if (strcmp(c->name, argv[1]) == 0) {
 				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
 					errx(EX_SOFTWARE, "cannot allocate memory");
@@ -763,7 +766,7 @@ main(int argc, char **argv)
 				for (j = 0; j < n ; j++) {
 					c = malloc(sizeof(struct plugcmd));
 					reg(j, &c->name, &c->desc, &c->exec);
-					STAILQ_INSERT_TAIL(&plugins, c, next);
+					DL_APPEND(plugins, c);
 				}
 			}
 		}
@@ -829,7 +832,7 @@ main(int argc, char **argv)
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
-			STAILQ_FOREACH(c, &plugins, next) {
+			DL_FOREACH(plugins, c) {
 				if (strcmp(c->name, argv[0]) == 0) {
 					plugin_found = true;
 					ret = c->exec(argc, argv);
