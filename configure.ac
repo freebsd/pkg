@@ -359,6 +359,19 @@ if test "$ac_cv_func_arc4random_stir" = yes ; then
    AC_DEFINE(HAVE_ARC4RANDOM_STIR, 1, [Define 1 if you have 'arc4random_stir' function.])
 fi
 
+AC_CACHE_CHECK(for humanize_number,
+               ac_cv_func_humanize_number,
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="-Werror $CFLAGS"
+                AC_TRY_COMPILE([#include <libutil.h>],
+                               [humanize_number(NULL, 0, 0, NULL, 0, 0);],
+                               [ac_cv_func_humanize_number=yes],
+                               [ac_cv_func_humanize_number=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_humanize_number" = yes ; then
+   AC_DEFINE(HAVE_HUMANIZE_NUMBER, 1, [Define 1 if you have 'humanize_number' function.])
+fi
+
 AC_CACHE_CHECK(for BSD dirname(const char *),
                ac_cv_func_dirname,
                [ac_save_CFLAGS="$CFLAGS"
