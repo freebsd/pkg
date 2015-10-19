@@ -25,13 +25,13 @@
  */
 
 #include <libelf.h>
-/*
-#include "/usr/include/sys/exec_elf.h"
-*/
-
 #include "_libelf.h"
 
-#define EM_AMD64    62
+#ifdef __OpenBSD__
+ #ifndef EM_AMD64
+  #define EM_AMD64    62
+ #endif
+#endif
 
 ELFTC_VCSID("$Id$");
 
