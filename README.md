@@ -1,5 +1,5 @@
-pkg - a binary package manager for FreeBSD and OpenBSD
-========================================================
+pkg - a binary package manager for FreeBSD
+============================================
 
 Table of Contents:
 ------------------
