@@ -262,11 +262,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 			fprintf(f, "%s", sbuf_data(newconf));
 			fclose(f);
-			/* Apply expect mode setting */
-			chmod(rpath, aest->st_mode);
-			if (getenv("INSTALL_AS_USER") == NULL) {
-				chown(rpath, aest->st_uid, aest->st_gid);
-			}
 		}
 
 		if (ret != ARCHIVE_OK) {
@@ -285,9 +280,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				goto cleanup;
 			}
 		}
-		/* Reapply modes to the directories to work around a problem on FreeBSD 9 */
-		if (archive_entry_filetype(ae) == AE_IFDIR)
-			chmod(pathname, aest->st_mode);
 
 		pkg_emit_progress_tick(cur_file++, nfiles);
 
@@ -318,11 +310,16 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-#ifdef HAVE_CHFLAGS
-			/* Restore flags */
-			chflags(pathname, set);
-#endif
 		}
+		/* enforce modes and creds */
+		chmod(pathname, aest->st_mode);
+		if (getenv("INSTALL_AS_USER") == NULL) {
+			chown(pathname, aest->st_uid, aest->st_gid);
+		}
+#ifdef HAVE_CHFLAGS
+		/* Restore flags */
+		chflags(pathname, set);
+#endif
 
 		if (string_end_with(pathname, ".pkgnew"))
 			pkg_emit_notice("New configuration file: %s", pathname);
