@@ -47,6 +47,8 @@
 #include <float.h>
 #include <math.h>
 #include <xxhash.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
 
 #include <bsd_compat.h>
 
@@ -800,3 +802,39 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size) {
 
 	return (dest);
 }
+
+char *
+pkg_get_jailname(void)
+{
+	static char hostname[MAXHOSTNAMELEN] = "";
+#ifdef HAVE_LIBJAIL
+
+	if (pkg_is_jailed()) {
+		if (hostname[0] == '\0')
+			gethostname(hostname, sizeof(hostname));
+	}
+
+#endif
+	return hostname;
+}
+
+bool
+pkg_is_jailed(void)
+{
+#ifdef HAVE_LIBJAIL
+	static int jailed = -1;
+	size_t intlen;
+
+	if (jailed == -1) {
+		intlen = sizeof(jailed);
+		if (sysctlbyname("security.jail.jailed", &jailed, &intlen,
+		    NULL, 0) == -1)
+			jailed = 0;
+	}
+
+	return (bool)jailed;
+#else
+	return 0;
+#endif
+}
+

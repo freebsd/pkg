@@ -1684,6 +1684,9 @@ char *pkg_absolutepath(const char *src, char *dest, size_t dest_len);
 
 void pkg_cache_full_clean(void);
 
+char *pkg_get_jailname(void);
+bool pkg_is_jailed(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -28,6 +28,7 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+#include <stdarg.h>
 #include <stdint.h>
 #include <bsd_compat.h>
 
@@ -277,6 +278,12 @@ void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
 void sbuf_flush(struct sbuf *buf);
+
+int printf_pref(const char *format, ...);
+int fprintf_pref(FILE *f, const char *format, ...);
+int vfprintf_pref(FILE *f, const char *format, va_list args);
+int sbuf_printf_pref(struct sbuf *s, const char *format, ...);
+int sbuf_vprintf_pref(struct sbuf *s, const char *format, va_list args);
 
 extern struct sbuf *messages;
 

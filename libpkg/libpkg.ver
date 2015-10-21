@@ -45,6 +45,7 @@ global:
 	pkg_free;
 	pkg_from_old;
 	pkg_get2;
+	pkg_get_jailname;
 	pkg_get_myarch;
 	pkg_get_myarch_legacy;
 	pkg_groups;
@@ -55,6 +56,7 @@ global:
 	pkg_init;
 	pkg_initialized;
 	pkg_is_installed;
+	pkg_is_jailed;
 	pkg_is_locked;
 	pkg_is_valid;
 	pkg_jobs_add;

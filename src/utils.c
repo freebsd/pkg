@@ -944,3 +944,78 @@ sbuf_flush(struct sbuf *buf)
 	printf("%s", sbuf_data(buf));
 	sbuf_clear(buf);
 }
+
+int
+printf_pref(const char *format, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, format);
+	ret = vfprintf_pref(stdout, format, args);
+	va_end(args);
+
+	return (ret);
+}
+
+int
+fprintf_pref(FILE *f, const char *format, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, format);
+	ret = vfprintf_pref(f, format, args);
+	va_end(args);
+
+	return (ret);
+}
+
+int
+vfprintf_pref(FILE *f, const char *format, va_list args)
+{
+	int ret = 0;
+	int adder;
+
+	if (! pkg_is_jailed())
+		return vfprintf(f, format, args);
+
+	if ((ret = fprintf(f, "[%s] ", pkg_get_jailname())) == -1)
+		return ret;
+
+	if ((adder = vfprintf(f, format, args)) == -1)
+		return adder;
+
+	return (ret + adder);
+}
+
+int
+sbuf_printf_pref(struct sbuf *s, const char *format, ...)
+{
+	int ret;
+	va_list args;
+
+	va_start(args, format);
+	ret = sbuf_vprintf_pref(s, format, args);
+	va_end(args);
+
+	return ret;
+}
+
+int
+sbuf_vprintf_pref(struct sbuf *s, const char *format, va_list args)
+{
+	int ret = 0;
+	int adder;
+
+	if (! pkg_is_jailed())
+		return sbuf_vprintf(s, format, args);
+
+	if ((ret = sbuf_printf(s, "[%s] ", pkg_get_jailname())) == -1)
+		return -1;
+
+	if ((adder = sbuf_vprintf(s, format, args)) == -1)
+		return -1;
+
+	return (ret + adder);
+}
