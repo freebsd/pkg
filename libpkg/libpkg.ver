@@ -51,7 +51,6 @@ global:
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;
-	pkg_need_message;
 	pkg_ini;
 	pkg_init;
 	pkg_initialized;
@@ -80,6 +79,7 @@ global:
 	pkg_manifest_keys_new;
 	pkg_manifest_parser_free;
 	pkg_manifest_parser_new;
+	pkg_need_message;
 	pkg_new;
 	pkg_object_bool;
 	pkg_object_count;
@@ -143,6 +143,7 @@ global:
 	pkg_shutdown;
 	pkg_snprintf;
 	pkg_solve_dimacs_export;
+	pkg_solve_dot_export;
 	pkg_solve_jobs_to_sat;
 	pkg_solve_parse_sat_output;
 	pkg_solve_problem_free;
