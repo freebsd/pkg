@@ -305,8 +305,8 @@ get on.
 	git clone https://github.com/yonas/pkg
 	cd pkg
 	./autogen.sh
-	env LDFLAGS='-L/usr/local/lib' CPPFLAGS='-I/usr/local/include' ./configure
-	env LDFLAGS='-L/usr/local/lib' CPPFLAGS='-I/usr/local/include' make
+	./configure
+	make
 	sudo make install
 
 <a name="pkg2ng"></a>
