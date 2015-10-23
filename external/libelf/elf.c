@@ -25,6 +25,7 @@
  */
 
 #include <libelf.h>
+
 #include "_libelf.h"
 
 #ifdef __OpenBSD__
