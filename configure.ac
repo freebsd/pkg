@@ -78,6 +78,12 @@ case $host_os in
         OS_LIBS="-ldl -lrt"
         OS_STATIC="false"
         ;;
+  openbsd*|bitrig*)
+        OS_CFLAGS="-D_BSD_SOURCE -I/usr/local/include"
+        OS_LDFLAGS="-L/usr/local/lib"
+        OS_LIBS=
+        OS_STATIC="true"
+        ;;
   *)
         OS_CFLAGS="-D_BSD_SOURCE"
         OS_LDFLAGS=
@@ -93,6 +99,7 @@ AC_SUBST(OS_STATIC)
 AM_CONDITIONAL([BUILD_STATIC], [test x$OS_STATIC = xtrue])
 
 CFLAGS="$CFLAGS $OS_CFLAGS"
+LDFLAGS="$LDFLAGS $OS_LDFLAGS"
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
