@@ -40,6 +40,7 @@ pkg_SOURCES=		add.c \
 pkg_LDADD=	@OS_LDFLAGS@ \
 			$(top_builddir)/libpkg/libpkg.la \
 			$(top_builddir)/external/libsbuf.la \
+			$(top_builddir)/compat/libbsd_compat.la \
 			@LIBJAIL_LIB@ \
 			-lutil \
 			-lcrypto
