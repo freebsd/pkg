@@ -557,7 +557,7 @@ cleanup:
 		if (pkgdb_transaction_commit_sqlite(sqlite, "REPO") != EPKG_OK)
 			rc = EPKG_FATAL;
 	}
-
+	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
 	if (map != NULL && map != MAP_FAILED)
 		munmap(map, len);
