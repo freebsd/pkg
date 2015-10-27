@@ -1644,12 +1644,12 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkg_try_installed(struct pkgdb *db, const char *origin,
+pkg_try_installed(struct pkgdb *db, const char *names,
 		struct pkg **pkg, unsigned flags) {
 	struct pkgdb_it *it = NULL;
 	int ret = EPKG_FATAL;
 
-	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) == NULL)
+	if ((it = pkgdb_query(db, name, MATCH_EXACT)) == NULL)
 		return (EPKG_FATAL);
 
 	ret = pkgdb_it_next(it, pkg, flags);
