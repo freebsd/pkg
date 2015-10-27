@@ -171,7 +171,6 @@ AC_CHECK_DECLS(
 	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
 	[], [], [#include <sys/endian.h>]
 )
-AC_CHECK_FUNCS_ONCE([flopen])
 AC_CHECK_FUNCS_ONCE([eaccess])
 AC_CHECK_FUNCS_ONCE([closefrom])
 AC_CHECK_FUNCS_ONCE([dirfd])
