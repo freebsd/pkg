@@ -1644,7 +1644,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkg_try_installed(struct pkgdb *db, const char *names,
+pkg_try_installed(struct pkgdb *db, const char *name,
 		struct pkg **pkg, unsigned flags) {
 	struct pkgdb_it *it = NULL;
 	int ret = EPKG_FATAL;
