@@ -329,7 +329,7 @@ AS_IF([test "x$with_ldns" = "xyes"], [
 	[AC_MSG_ERROR([Unable to find the libdns])])
 ])
 
-AC_CHECK_LIB(c, cap_sandboxed, [
+AC_CHECK_FUNCS(cap_sandboxed, [
    AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
 ])
 
