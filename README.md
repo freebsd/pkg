@@ -1,5 +1,16 @@
 pkg - a binary package manager for FreeBSD
-============================================
+==========================================
+
+Known to fully work on (official package manager:
+
+- DragonflyBSD
+
+Known work on (has been ported to):
+
+- Linux
+- NetBSD/EdgeBSD
+- OpenBSD/Bitrig
+- OSX
 
 Table of Contents:
 ------------------
