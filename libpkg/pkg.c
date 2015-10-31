@@ -1583,13 +1583,18 @@ pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	int rc = EPKG_OK;
+	int ret;
 
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (f->sum != NULL) {
-			if (!pkg_checksum_validate_file(f->path, f->sum)) {
-				pkg_emit_file_mismatch(pkg, f, f->sum);
+			ret = pkg_checksum_validate_file(f->path, f->sum);
+			if (ret != 0) {
+				if (ret == ENOENT)
+					pkg_emit_file_missing(pkg, f);
+				else
+					pkg_emit_file_mismatch(pkg, f, f->sum);
 				rc = EPKG_FATAL;
 			}
 		}

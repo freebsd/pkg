@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 
 #include <fcntl.h>
+#include <errno.h>
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -724,7 +725,7 @@ pkg_checksum_symlinkat(int fd, const char *path, const char *root, pkg_checksum_
 	return (pkg_checksum_symlink_readlink(linkbuf, linklen, root, type));
 }
 
-bool
+int
 pkg_checksum_validate_file(const char *path, const char *sum)
 {
 	struct stat st;
@@ -740,8 +741,7 @@ pkg_checksum_validate_file(const char *path, const char *sum)
 	}
 
 	if (lstat(path, &st) == -1) {
-		pkg_emit_errno("pkg_checksum_validate_file", "lstat");
-		return (false);
+		return (errno);
 	}
 
 	if (S_ISLNK(st.st_mode))
@@ -750,16 +750,16 @@ pkg_checksum_validate_file(const char *path, const char *sum)
 		newsum = pkg_checksum_file(path, type);
 
 	if (newsum == NULL)
-		return (false);
+		return (-1);
 
 	if (strcmp(sum, newsum) != 0) {
 		free(newsum);
-		return (false);
+		return (-1);
 	}
 
 	free(newsum);
 
-	return (true);
+	return (0);
 }
 
 char *
@@ -788,7 +788,7 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 	return (cksum);
 }
 
-bool
+int
 pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 {
 	struct stat st;
@@ -804,8 +804,7 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 	}
 
 	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_errno("pkg_checksum_validate_file", "lstat");
-		return (false);
+		return (errno);
 	}
 
 	if (S_ISLNK(st.st_mode))
@@ -814,16 +813,16 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 		newsum = pkg_checksum_fileat(rootfd, path, type);
 
 	if (newsum == NULL)
-		return (false);
+		return (-1);
 
 	if (strcmp(sum, newsum) != 0) {
 		free(newsum);
-		return (false);
+		return (-1);
 	}
 
 	free(newsum);
 
-	return (true);
+	return (0);
 }
 
 char *

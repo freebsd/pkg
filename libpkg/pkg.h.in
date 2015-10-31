@@ -1285,6 +1285,7 @@ typedef enum {
 	PKG_EVENT_NOT_FOUND,
 	PKG_EVENT_NEW_ACTION,
 	PKG_EVENT_MESSAGE,
+	PKG_EVENT_FILE_MISSING,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1437,6 +1438,10 @@ struct pkg_event {
 		struct {
 			const char *msg;
 		} e_pkg_message;
+		struct {
+			struct pkg *pkg;
+			struct pkg_file *file;
+		} e_file_missing;
 	};
 };
 

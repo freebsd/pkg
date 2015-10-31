@@ -225,7 +225,7 @@ checksum:
 		    pkg->name, pkg->version);
 		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
-	if (!pkg_checksum_validate_file(dest, pkg->sum)) {
+	if (pkg_checksum_validate_file(dest, pkg->sum) != 0) {
 		if (already_tried || fetched) {
 			pkg_emit_error("%s-%s failed checksum "
 			    "from repository", pkg->name, pkg->version);

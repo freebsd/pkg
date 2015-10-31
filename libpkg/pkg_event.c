@@ -791,13 +791,26 @@ pkg_emit_newpkgversion(void)
 }
 
 void
-pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum) {
+pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum)
+{
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_FILE_MISMATCH;
 
 	ev.e_file_mismatch.pkg = pkg;
 	ev.e_file_mismatch.file = f;
 	ev.e_file_mismatch.newsum = newsum;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_file_missing(struct pkg *pkg, struct pkg_file *f)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_FILE_MISSING;
+
+	ev.e_file_missing.pkg = pkg;
+	ev.e_file_missing.file = f;
 
 	pkg_emit_event(&ev);
 }

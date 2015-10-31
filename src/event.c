@@ -774,6 +774,11 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
 		    pkg, ev->e_file_mismatch.file);
 		break;
+	case PKG_EVENT_FILE_MISSING:
+		pkg = ev->e_file_missing.pkg;
+		pkg_fprintf(stderr, "%n-%v: missing file %Fn\n", pkg, pkg,
+		    ev->e_file_missing.file);
+		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		warnx("%s: %s(%s): %s",
 		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
