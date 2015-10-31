@@ -194,6 +194,7 @@ libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_schema.c \
 			libucl/src/ucl_util.c \
 			libucl/src/ucl_msgpack.c \
+			libucl/src/ucl_sexp.c \
 			libucl/src/xxhash.c
 libucl_la_CFLAGS=	$(ucl_common_cflags) -shared
 libucl_static_la_SOURCES=	$(libucl_la_SOURCES)

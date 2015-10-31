@@ -29,6 +29,14 @@
 
 #include "pkg_config.h"
 
+#ifdef __OpenBSD__
+ #include "../external/libelf/_elftc.h"
+
+ #ifndef EPROTO
+  #define EPROTO EINTR
+ #endif
+#endif
+
 #ifdef HAVE_BSD_SYS_CDEFS_H
 #include <bsd/sys/cdefs.h>
 #endif

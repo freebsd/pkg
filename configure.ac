@@ -78,6 +78,12 @@ case $host_os in
         OS_LIBS="-ldl -lrt"
         OS_STATIC="false"
         ;;
+  openbsd*|bitrig*)
+        OS_CFLAGS="-D_BSD_SOURCE -I/usr/local/include"
+        OS_LDFLAGS="-L/usr/local/lib"
+        OS_LIBS=
+        OS_STATIC="true"
+        ;;
   *)
         OS_CFLAGS="-D_BSD_SOURCE"
         OS_LDFLAGS=
@@ -93,6 +99,7 @@ AC_SUBST(OS_STATIC)
 AM_CONDITIONAL([BUILD_STATIC], [test x$OS_STATIC = xtrue])
 
 CFLAGS="$CFLAGS $OS_CFLAGS"
+LDFLAGS="$LDFLAGS $OS_LDFLAGS"
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
@@ -171,7 +178,6 @@ AC_CHECK_DECLS(
 	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
 	[], [], [#include <sys/endian.h>]
 )
-AC_CHECK_FUNCS_ONCE([flopen])
 AC_CHECK_FUNCS_ONCE([eaccess])
 AC_CHECK_FUNCS_ONCE([closefrom])
 AC_CHECK_FUNCS_ONCE([dirfd])
@@ -329,19 +335,48 @@ AS_IF([test "x$with_ldns" = "xyes"], [
 	[AC_MSG_ERROR([Unable to find the libdns])])
 ])
 
-AC_CHECK_LIB(c, cap_sandboxed, [
+AC_CHECK_FUNCS(cap_sandboxed, [
    AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
 ])
 
 
 AC_CACHE_CHECK(for arc4random_uniform,
                ac_cv_func_arc4random_uniform,
-               [AC_TRY_COMPILE([#include <stdlib.h>],
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="-Werror $CFLAGS"
+                AC_TRY_COMPILE([#include <stdlib.h>],
                                [arc4random_uniform(255);],
                                [ac_cv_func_arc4random_uniform=yes],
-                               [ac_cv_func_arc4random_uniform=no])])
+                               [ac_cv_func_arc4random_uniform=no])
+		CFLAGS="$ac_save_CFLAGS"])
 if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
+fi
+
+AC_CACHE_CHECK(for arc4random_stir,
+               ac_cv_func_arc4random_stir,
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="-Werror $CFLAGS"
+                AC_TRY_COMPILE([#include <stdlib.h>],
+                               [arc4random_stir();],
+                               [ac_cv_func_arc4random_stir=yes],
+                               [ac_cv_func_arc4random_stir=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_arc4random_stir" = yes ; then
+   AC_DEFINE(HAVE_ARC4RANDOM_STIR, 1, [Define 1 if you have 'arc4random_stir' function.])
+fi
+
+AC_CACHE_CHECK(for humanize_number,
+               ac_cv_func_humanize_number,
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="-Werror $CFLAGS"
+                AC_TRY_COMPILE([#include <libutil.h>],
+                               [humanize_number(NULL, 0, 0, NULL, 0, 0);],
+                               [ac_cv_func_humanize_number=yes],
+                               [ac_cv_func_humanize_number=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_humanize_number" = yes ; then
+   AC_DEFINE(HAVE_HUMANIZE_NUMBER, 1, [Define 1 if you have 'humanize_number' function.])
 fi
 
 AC_CACHE_CHECK(for BSD dirname(const char *),

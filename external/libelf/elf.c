@@ -28,6 +28,12 @@
 
 #include "_libelf.h"
 
+#ifdef __OpenBSD__
+ #ifndef EM_AMD64
+  #define EM_AMD64    62
+ #endif
+#endif
+
 ELFTC_VCSID("$Id$");
 
 struct _libelf_globals _libelf = {

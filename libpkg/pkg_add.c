@@ -411,7 +411,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	}
 
 	/* XX check */
-	ret = pkg_try_installed(db, pkg->origin, &pkg_inst, PKG_LOAD_BASIC);
+	ret = pkg_try_installed(db, pkg->name, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			pkg_emit_already_installed(pkg_inst);

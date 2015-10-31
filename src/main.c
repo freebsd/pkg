@@ -690,7 +690,7 @@ main(int argc, char **argv)
 	if (debug == 0 && version == 0)
 		start_process_worker(save_argv);
 
-#ifdef HAVE_ARC4RANDOM
+#ifdef HAVE_ARC4RANDOM_STIR
 	/* Ensure that random is stirred after a possible fork */
 	arc4random_stir();
 #endif

@@ -40,6 +40,39 @@
 #endif
 #include <netdb.h>
 
+#ifndef NS_QFIXEDSZ
+#define NS_QFIXEDSZ     4       /*%< #/bytes of fixed data in query */
+#endif
+
+#ifndef NS_INT16SZ
+#define NS_INT16SZ      2       /*%< #/bytes of data in a u_int16_t */
+#endif
+
+#ifndef NS_INT32SZ
+#define NS_INT32SZ      4       /*%< #/bytes of data in a u_int32_t */
+#endif
+
+/*%
+ * Inline versions of get/put short/long.  Pointer is advanced.
+ */
+#define NS_GET16(s, cp) do { \
+        register const u_char *t_cp = (const u_char *)(cp); \
+        (s) = ((u_int16_t)t_cp[0] << 8) \
+            | ((u_int16_t)t_cp[1]) \
+            ; \
+        (cp) += NS_INT16SZ; \
+} while (0)
+
+#define NS_GET32(l, cp) do { \
+        register const u_char *t_cp = (const u_char *)(cp); \
+        (l) = ((u_int32_t)t_cp[0] << 24) \
+            | ((u_int32_t)t_cp[1] << 16) \
+            | ((u_int32_t)t_cp[2] << 8) \
+            | ((u_int32_t)t_cp[3]) \
+            ; \
+        (cp) += NS_INT32SZ; \
+} while (0)
+
 #include <bsd_compat.h>
 #include "private/utils.h"
 #include "pkg.h"

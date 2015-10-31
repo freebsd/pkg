@@ -291,6 +291,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	int fd;
 #endif
 #endif
+	int ret;
 
 	pkg_open_root_fd(pkg);
 
@@ -306,7 +307,12 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	/* Regular files and links */
 	/* check checksum */
 	if (!force && file->sum != NULL) {
-		if (!pkg_checksum_validate_fileat(pkg->rootfd, path, file->sum)) {
+		ret = pkg_checksum_validate_fileat(pkg->rootfd, path, file->sum);
+		if (ret == ENOENT) {
+			pkg_emit_file_missing(pkg, file);
+			return;
+		}
+		if (ret != 0) {
 			pkg_emit_error("%s%s%s different from original "
 			    "checksum, not removing", pkg->rootpath,
 			    pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
@@ -334,8 +340,12 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 #endif
 	pkg_debug(1, "Deleting file: '%s'", path);
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
-		if (force < 2)
-			pkg_emit_errno("unlinkat", path);
+		if (force < 2) {
+			if (errno == ENOENT)
+				pkg_emit_file_missing(pkg, file);
+			else
+				pkg_emit_errno("unlinkat", path);
+		}
 		return;
 	}
 
