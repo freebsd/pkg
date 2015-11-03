@@ -247,6 +247,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 {
 	struct pkg_dep *d = NULL;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
+	int rc;
 	struct pkg_job_universe_item *unit;
 	struct pkg *npkg, *rpkg;
 	pkg_chain_t *rpkgs = NULL;
@@ -296,7 +297,11 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 					rpkg->automatic = npkg->automatic;
 				}
 
-				pkg_jobs_universe_process_item(universe, rpkg, NULL);
+				rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
+
+				/* Special case if we cannot find any package */
+				if (npkg == NULL && rc != EPKG_OK)
+					return (rc);
 			}
 
 			kv_destroy(*rpkgs);
@@ -314,6 +319,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit;
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg *npkg, *rpkg;
+	int rc;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
@@ -356,8 +362,11 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 					return (EPKG_FATAL);
 				}
 			}
-			pkg_jobs_universe_process_item(universe, rpkg,
+			rc = pkg_jobs_universe_process_item(universe, rpkg,
 					&unit);
+
+			if (rc != EPKG_OK)
+				return (rc);
 
 			/* Reset package to avoid freeing */
 			rpkg = NULL;
