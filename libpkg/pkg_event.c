@@ -53,6 +53,38 @@ sbuf_json_escape(struct sbuf *buf, const char *str)
 	return (sbuf_data(buf));
 }
 
+static int
+vasprintf_pref(char **str, const char *format, va_list ap)
+{
+	const char *jailname;
+	size_t siz, namelen;
+	int ret, adder;
+	va_list ap2;
+
+	if (! pkg_is_jailed())
+		return vasprintf(str, format, ap);
+
+	jailname = pkg_get_jailname();
+	namelen = strlen(jailname) + 3;
+
+	va_copy(ap2, ap);
+	siz = namelen + vsnprintf(NULL, 0, format, ap2) + 1;
+	va_end(ap2);
+	if (siz == namelen)
+		return -1;
+
+	if (! (*str = malloc(siz)))
+		return -1;
+
+	if ((ret = snprintf(*str, siz, "[%s] ", jailname)) == -1)
+		return -1;
+
+	if ((adder = vsnprintf((*str) + namelen, siz - namelen, format, ap)) == -1)
+		return -1;
+
+	return (ret + adder);
+}
+
 static void
 pipeevent(struct pkg_event *ev)
 {
@@ -417,7 +449,7 @@ pkg_emit_error(const char *fmt, ...)
 	ev.type = PKG_EVENT_ERROR;
 
 	va_start(ap, fmt);
-	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
+	vasprintf_pref(&ev.e_pkg_error.msg, fmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);
@@ -433,7 +465,7 @@ pkg_emit_notice(const char *fmt, ...)
 	ev.type = PKG_EVENT_NOTICE;
 
 	va_start(ap, fmt);
-	vasprintf(&ev.e_pkg_notice.msg, fmt, ap);
+	vasprintf_pref(&ev.e_pkg_notice.msg, fmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);
@@ -449,7 +481,7 @@ pkg_emit_developer_mode(const char *fmt, ...)
 	ev.type = PKG_EVENT_DEVELOPER_MODE;
 
 	va_start(ap, fmt);
-	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
+	vasprintf_pref(&ev.e_pkg_error.msg, fmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);
@@ -839,7 +871,7 @@ pkg_plugin_error(struct pkg_plugin *p, const char *fmt, ...)
 	ev.e_plugin_error.plugin = p;
 
 	va_start(ap, fmt);
-	vasprintf(&ev.e_plugin_error.msg, fmt, ap);
+	vasprintf_pref(&ev.e_plugin_error.msg, fmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);
@@ -856,7 +888,7 @@ pkg_plugin_info(struct pkg_plugin *p, const char *fmt, ...)
 	ev.e_plugin_info.plugin = p;
 
 	va_start(ap, fmt);
-	vasprintf(&ev.e_plugin_info.msg, fmt, ap);
+	vasprintf_pref(&ev.e_plugin_info.msg, fmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);
@@ -995,7 +1027,7 @@ pkg_emit_progress_start(const char *fmt, ...)
 	ev.type = PKG_EVENT_PROGRESS_START;
 	if (fmt != NULL) {
 		va_start(ap, fmt);
-		vasprintf(&ev.e_progress_start.msg, fmt, ap);
+		vasprintf_pref(&ev.e_progress_start.msg, fmt, ap);
 		va_end(ap);
 	} else {
 		ev.e_progress_start.msg = NULL;
