@@ -84,7 +84,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		if (count == 0 && !quiet)
-			printf("%s is provided by the following packages:\n",
+			printf_pref("%s is provided by the following packages:\n",
 			       libname);
 		count++;
 		pkg_printf("%n-%v\n", pkg, pkg);
@@ -92,7 +92,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 
 	if (ret == EPKG_END) {
 		if (count == 0 && !quiet)
-			printf("No packages provide %s.\n", libname);
+			printf_pref("No packages provide %s.\n", libname);
 		ret = EPKG_OK;
 	}
 
@@ -116,7 +116,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		if (count == 0 && !quiet)
-			printf("%s is linked to by the following packages:\n",
+			printf_pref("%s is linked to by the following packages:\n",
 			       libname);
 		count++;
 		pkg_printf("%n-%v\n", pkg, pkg);
@@ -124,7 +124,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 
 	if (ret == EPKG_END) {
 		if (count == 0 && !quiet)
-			printf("No packages require %s.\n", libname);
+			printf_pref("No packages require %s.\n", libname);
 		ret = EPKG_OK;
 	}
 

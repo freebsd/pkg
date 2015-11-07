@@ -107,34 +107,34 @@ exec_stats(int argc, char **argv)
 	}
 
 	if (opt & STATS_LOCAL) {
-		printf("Local package database:\n");
-		printf("\tInstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_LOCAL_COUNT));
+		printf_pref("Local package database:\n");
+		printf_pref("\tInstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_LOCAL_COUNT));
 
 		flatsize = pkgdb_stats(db, PKG_STATS_LOCAL_SIZE);
 
 		if (show_bytes)
-			printf("\tDisk space occupied: %" PRId64 "\n\n", flatsize);
+			printf_pref("\tDisk space occupied: %" PRId64 "\n\n", flatsize);
 		else {
 			humanize_number(size, sizeof(size), flatsize, "B",
 			    HN_AUTOSCALE, HN_IEC_PREFIXES);
-			printf("\tDisk space occupied: %s\n\n", size);
+			printf_pref("\tDisk space occupied: %s\n\n", size);
 		}
 	}
 
 	if ((opt & STATS_REMOTE) && pkg_repos_total_count() > 0) {
-		printf("Remote package database(s):\n");
-		printf("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
-		printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
-		printf("\tUnique packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_UNIQUE));
+		printf_pref("Remote package database(s):\n");
+		printf_pref("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
+		printf_pref("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
+		printf_pref("\tUnique packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_UNIQUE));
 
 		flatsize = pkgdb_stats(db, PKG_STATS_REMOTE_SIZE);
 
 		if (show_bytes)
-			printf("\tTotal size of packages: %" PRId64 "\n", flatsize);
+			printf_pref("\tTotal size of packages: %" PRId64 "\n", flatsize);
 		else {
 			humanize_number(size, sizeof(size), flatsize, "B",
 			    HN_AUTOSCALE, HN_IEC_PREFIXES);
-			printf("\tTotal size of packages: %s\n", size);
+			printf_pref("\tTotal size of packages: %s\n", size);
 		}
 	}
 

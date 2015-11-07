@@ -132,7 +132,7 @@ exec_which(int argc, char **argv)
 
 	if (search_s) {
 		if ((path = getenv("PATH")) == NULL) {
-			printf("$PATH is not set, falling back to non-search behaviour\n");
+			printf_pref("$PATH is not set, falling back to non-search behaviour\n");
 			search_s = false;
 		} else {
 			pathlen = strlen(path) + 1;
@@ -168,7 +168,7 @@ exec_which(int argc, char **argv)
 						break;
 
 					if (res == (EX_USAGE)) {
-						printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
+						printf_pref("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
 						search = false;
 					} else if (res == (EX_OSERR)) {
 						retcode = EX_OSERR;
@@ -217,7 +217,7 @@ exec_which(int argc, char **argv)
 					pkg_printf("%S was installed by package %n-%v\n", kv_A(patterns, i), pkg, pkg);
 			}
 			if (retcode != EX_OK && !quiet)
-				printf("%s was not found in the database\n", kv_A(patterns, i));
+				printf_pref("%s was not found in the database\n", kv_A(patterns, i));
 
 			pkg_free(pkg);
 			pkgdb_it_free(it);

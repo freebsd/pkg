@@ -274,7 +274,7 @@ exec_audit(int argc, char **argv)
 		kh_foreach_value(check, pkg, {
 			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb)) {
 				vuln ++;
-				printf("%s", sbuf_data(sb));
+				printf_pref("%s", sbuf_data(sb));
 
 				if (recursive) {
 					const char *name;
@@ -285,7 +285,7 @@ exec_audit(int argc, char **argv)
 					sbuf_printf(sb, "Packages that depend on %s: ", name);
 					print_recursive_rdeps(check, pkg , sb, seen, true);
 					sbuf_finish(sb);
-					printf("%s\n\n", sbuf_data(sb));
+					printf_pref("%s\n\n", sbuf_data(sb));
 
 					kh_destroy_pkgs(seen);
 				}
@@ -299,7 +299,7 @@ exec_audit(int argc, char **argv)
 			ret = EX_OK;
 
 		if (!quiet)
-			printf("%u problem(s) in the installed packages found.\n", vuln);
+			printf_pref("%u problem(s) in the installed packages found.\n", vuln);
 	}
 	else {
 		warnx("cannot process vulnxml");

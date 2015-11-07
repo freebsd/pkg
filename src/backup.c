@@ -88,14 +88,14 @@ exec_backup(int argc, char **argv)
 
 	if (dump) {
 		if (!quiet)
-			printf("Dumping database:\n");
+			printf_pref("Dumping database:\n");
 		if (pkgdb_dump(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
 	}
 
 	if (restore) {
 		if (!quiet)
-			printf("Restoring database:\n");
+			printf_pref("Restoring database:\n");
 		if (pkgdb_load(db, backup_file) == EPKG_FATAL)
 			return (EX_IOERR);
 	}

@@ -206,7 +206,7 @@ exec_fetch(int argc, char **argv)
 			rc = query_yesno(false, "\nProceed with fetching "
 			    "packages? ");
 		else {
-			printf("No packages are required to be fetched.\n");
+			printf_pref("No packages are required to be fetched.\n");
 			rc = query_yesno(false, "Check the integrity of packages "
 							"downloaded? ");
 			csum_only = true;
@@ -220,7 +220,7 @@ exec_fetch(int argc, char **argv)
 		goto cleanup;
 
 	if (csum_only && !quiet)
-		printf("Integrity check was successful.\n");
+		printf_pref("Integrity check was successful.\n");
 
 	retcode = EX_OK;
 

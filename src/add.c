@@ -189,14 +189,15 @@ exec_add(int argc, char **argv)
 	
 	if(failedpkgcount > 0) {
 		sbuf_finish(failedpkgs);
-		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, sbuf_data(failedpkgs));
+		printf("\n");
+		printf_pref("Failed to install the following %d package(s): %s\n", failedpkgcount, sbuf_data(failedpkgs));
 		retcode = EPKG_FATAL;
 	}
 	sbuf_delete(failedpkgs);
 
 	if (messages != NULL) {
 		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
+		printf_pref("%s", sbuf_data(messages));
 	}
 
 	return (retcode == EPKG_OK ? EX_OK : EX_SOFTWARE);

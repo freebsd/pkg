@@ -34,7 +34,6 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 
@@ -158,25 +157,6 @@ job_status_begin(struct sbuf *msg)
 	int n;
 
 	sbuf_clear(msg);
-#ifdef HAVE_LIBJAIL
-	static char hostname[MAXHOSTNAMELEN] = "";
-	static int jailed = -1;
-	size_t intlen;
-
-	if (jailed == -1) {
-		intlen = sizeof(jailed);
-		if (sysctlbyname("security.jail.jailed", &jailed, &intlen,
-		    NULL, 0) == -1)
-			jailed = 0;
-	}
-
-	if (jailed == 1) {
-		if (hostname[0] == '\0')
-			gethostname(hostname, sizeof(hostname));
-
-		sbuf_printf(msg, "[%s] ", hostname);
-	}
-#endif
 
 	/* Only used for pkg-add right now. */
 	if (add_deps_depth) {
@@ -226,7 +206,7 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 		}
 		if (WIFSIGNALED(status)) {
 			/* Process got some terminating signal, hence stop the loop */
-			fprintf(stderr, "Sandboxed process pid=%d terminated abnormally by signal: %d\n",
+			fprintf_pref(stderr, "Sandboxed process pid=%d terminated abnormally by signal: %d\n",
 					(int)pid, WTERMSIG(status));
 			ret = -1;
 		}
@@ -328,7 +308,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 		}
 		if (WIFSIGNALED(status)) {
 			/* Process got some terminating signal, hence stop the loop */
-			fprintf(stderr, "Sandboxed process pid=%d terminated abnormally by signal: %d\n",
+			fprintf_pref(stderr, "Sandboxed process pid=%d terminated abnormally by signal: %d\n",
 					(int)pid, WTERMSIG(status));
 			ret = -1;
 		}
@@ -457,7 +437,8 @@ draw_progressbar(int64_t current, int64_t total)
 	    (percent != last_progress_percent || progress_interrupted))) {
 		last_progress_percent = percent;
 
-		printf("\r%s: %3d%%", progress_message, percent);
+		printf("\r");
+		printf("%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
 			transferred = current - last_tick;
 			last_tick = current;
@@ -580,14 +561,16 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPDATE_ADD:
 		if (quiet || !isatty(STDOUT_FILENO))
 			break;
-		printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
+		printf("\r");
+		printf_pref("Pushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
 		if (ev->e_upd_add.total == ev->e_upd_add.done)
 			printf("\n");
 		break;
 	case PKG_EVENT_UPDATE_REMOVE:
 		if (quiet || !isatty(STDOUT_FILENO))
 			break;
-		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
+		printf("\r");
+		printf_pref("Removing entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
 		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
 			printf("\n");
 		break;
@@ -606,7 +589,7 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		job_status_begin(msg_buf);
 		progress_debit = true;
-		sbuf_printf(msg_buf, "Fetching %s", filename);
+		sbuf_printf_pref(msg_buf, "Fetching %s", filename);
 
 		break;
 	case PKG_EVENT_FETCH_FINISHED:
@@ -648,7 +631,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		if (quiet)
 			break;
-		printf("Checking integrity...");
+		printf_pref("Checking integrity...");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		if (quiet)
@@ -658,7 +641,8 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		if (*debug == 0)
 			break;
-		printf("\nConflict found on path %s between %s and ",
+		printf("\n");
+		printf_pref("Conflict found on path %s between %s and ",
 		    ev->e_integrity_conflict.pkg_path,
 		    ev->e_integrity_conflict.pkg_uid);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
@@ -681,7 +665,7 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg = ev->e_install_begin.pkg;
 		pkg_sbuf_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
 		sbuf_finish(msg_buf);
-		printf("%s", sbuf_data(msg_buf));
+		printf_pref("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -722,7 +706,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		}
 		sbuf_finish(msg_buf);
-		printf("%s", sbuf_data(msg_buf));
+		printf_pref("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
@@ -749,7 +733,7 @@ event_callback(void *data, struct pkg_event *ev)
 				pkg, pkg);
 		break;
 	case PKG_EVENT_NOT_FOUND:
-		printf("Package '%s' was not found in "
+		printf_pref("Package '%s' was not found in "
 		    "the repositories\n", ev->e_not_found.pkg_name);
 		break;
 	case PKG_EVENT_MISSING_DEP:
@@ -766,7 +750,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
 		newpkgversion = true;
-		printf("New version of pkg detected; it needs to be "
+		printf_pref("New version of pkg detected; it needs to be "
 		    "installed first.\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
@@ -799,12 +783,12 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("%s repository update completed. %d packages processed.\n",
+			printf_pref("%s repository update completed. %d packages processed.\n",
 			    ev->e_incremental_update.reponame,
 			    ev->e_incremental_update.processed);
 		break;
 	case PKG_EVENT_DEBUG:
-		fprintf(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,
+		fprintf_pref(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,
 			(int)getpid(), ev->e_debug.msg);
 		break;
 	case PKG_EVENT_QUERY_YESNO:

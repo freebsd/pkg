@@ -423,7 +423,7 @@ exec_check(int argc, char **argv)
 				if (match == MATCH_ALL)
 					progressbar_start("Checking all packages");
 				else {
-					sbuf_printf(msg, "Checking %s", argv[i]);
+					sbuf_printf_pref(msg, "Checking %s", argv[i]);
 					sbuf_finish(msg);
 					progressbar_start(sbuf_data(msg));
 				}
@@ -514,7 +514,7 @@ exec_check(int argc, char **argv)
 			progressbar_tick(processed, total);
 		if (sbuf_len(out) > 0) {
 			sbuf_finish(out);
-			printf("%s", sbuf_data(out));
+			printf_pref("%s", sbuf_data(out));
 		}
 		sbuf_delete(out);
 		if (msg != NULL) {
@@ -523,8 +523,9 @@ exec_check(int argc, char **argv)
 		}
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
-			printf("\n>>> Missing package dependencies were detected.\n");
-			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
+			printf("\n");
+			printf_pref(">>> Missing package dependencies were detected.\n");
+			printf_pref(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
 			if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 					PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
 				ret = fix_deps(db, dh, nbpkgs);

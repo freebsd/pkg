@@ -184,7 +184,7 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK) {
-		fprintf(stderr, "Cannot perform request\n");
+		fprintf_pref(stderr, "Cannot perform request\n");
 		retcode = EX_NOPERM;
 		goto cleanup;
 	}
@@ -193,10 +193,10 @@ exec_delete(int argc, char **argv)
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		if (argc == 0) {
 			if (!quiet)
-				printf("Nothing to do.\n");
+				printf_pref("Nothing to do.\n");
 			retcode = EX_OK;
 		} else {
-			fprintf(stderr, "Package(s) not found!\n");
+			fprintf_pref(stderr, "Package(s) not found!\n");
 			retcode = EX_DATAERR;
 		}
 		goto cleanup;
@@ -224,7 +224,7 @@ exec_delete(int argc, char **argv)
 
 	if (messages != NULL) {
 		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
+		printf_pref("%s", sbuf_data(messages));
 	}
 	pkgdb_compact(db);
 

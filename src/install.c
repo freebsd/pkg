@@ -243,7 +243,7 @@ exec_install(int argc, char **argv)
 			retcode = pkg_jobs_apply(jobs);
 			done = 1;
 			if (retcode == EPKG_CONFLICT) {
-				printf("Conflicts with the existing packages "
+				printf_pref("Conflicts with the existing packages "
 				    "have been found.\nOne more solver "
 				    "iteration is needed to resolve them.\n");
 				continue;
@@ -260,7 +260,7 @@ exec_install(int argc, char **argv)
 	}
 
 	if (done == 0 && rc)
-		printf("The most recent version of packages are already installed\n");
+		printf_pref("The most recent version of packages are already installed\n");
 
 	retcode = EX_OK;
 

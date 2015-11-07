@@ -101,10 +101,10 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 			pkg_free(p);
 			if (pkg_new(&p, PKG_OLD_FILE) != EPKG_OK)
 				err(EX_OSERR, "malloc");
-			printf("Converting %s...\n", dp->d_name);
+			printf_pref("Converting %s...\n", dp->d_name);
 			snprintf(path, sizeof(path), "%s/%s", pkg_add_dbdir, dp->d_name);
 			if (pkg_old_load_from_path(p, path) != EPKG_OK) {
-				fprintf(stderr, "Skipping invalid package: %s\n", path);
+				fprintf_pref(stderr, "Skipping invalid package: %s\n", path);
 				continue;
 			}
 			pkg_from_old(p);
@@ -154,7 +154,7 @@ exec_convert(__unused int argc, __unused char **argv)
 		return (EX_USAGE);
 	}
 
-	printf("Converting packages from %s\n", pkg_add_dbdir);
+	printf_pref("Converting packages from %s\n", pkg_add_dbdir);
 
 	return (convert_from_old(pkg_add_dbdir, dry_run));
 }

@@ -71,24 +71,24 @@ exec_config(int argc, char **argv)
 	switch (pkg_object_type(conf)) {
 	case PKG_STRING:
 		buf = pkg_object_string(conf);
-		printf("%s\n", buf == NULL ? "" : buf);
+		printf_pref("%s\n", buf == NULL ? "" : buf);
 		break;
 	case PKG_BOOL:
 		b = pkg_object_bool(conf);
-		printf("%s\n", b ? "yes" : "no");
+		printf_pref("%s\n", b ? "yes" : "no");
 		break;
 	case PKG_INT:
 		integer = pkg_object_int(conf);
-		printf("%"PRId64"\n", integer);
+		printf_pref("%"PRId64"\n", integer);
 		break;
 	case PKG_OBJECT:
 		while ((o = pkg_object_iterate(conf, &it))) {
-			printf("%s: %s\n", pkg_object_key(o), pkg_object_string(o));
+			printf_pref("%s: %s\n", pkg_object_key(o), pkg_object_string(o));
 		}
 		break;
 	case PKG_ARRAY:
 		while ((o = pkg_object_iterate(conf, &it))) {
-			printf("%s\n", pkg_object_string(o));
+			printf_pref("%s\n", pkg_object_string(o));
 		}
 		break;
 	default:

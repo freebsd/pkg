@@ -75,7 +75,7 @@ add_to_dellist(dl_list *dl,  const char *path)
 	if (!quiet) {
 		if (first_entry) {
 			first_entry = false;
-			printf("The following package files will be deleted:"
+			printf_pref("The following package files will be deleted:"
 			    "\n");
 		}
 		printf("\t%s\n", store_path);
@@ -119,9 +119,9 @@ delete_dellist(dl_list *dl, int total)
 
 	if (!quiet) {
 		if (retcode == EX_OK)
-			printf("All done\n");
+			printf_pref("All done\n");
 		else
-			printf("%d package%s could not be deleted\n",
+			printf_pref("%d package%s could not be deleted\n",
 			      count, count > 1 ? "s" : "");
 	}
 	return (retcode);
@@ -307,7 +307,7 @@ exec_clean(int argc, char **argv)
 
 	if (kv_size(dl) == 0) {
 		if (!quiet)
-			printf("Nothing to do.\n");
+			printf_pref("Nothing to do.\n");
 		retcode = EX_OK;
 		goto cleanup;
 	}
@@ -316,7 +316,7 @@ exec_clean(int argc, char **argv)
 	    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 	if (!quiet)
-		printf("The cleanup will free %s\n", size);
+		printf_pref("The cleanup will free %s\n", size);
 	if (!dry_run) {
 			if (query_yesno(false,
 			  "\nProceed with cleaning the cache? ")) {

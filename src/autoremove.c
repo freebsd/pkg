@@ -127,7 +127,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
-		printf("Nothing to do.\n");
+		printf_pref("Nothing to do.\n");
 		goto cleanup;
 	}
 

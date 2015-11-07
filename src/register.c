@@ -334,7 +334,7 @@ exec_register(int argc, char **argv)
 
 	if (!legacy && retcode == EPKG_OK && messages != NULL) {
 		sbuf_finish(messages);
-		printf("%s\n", sbuf_data(messages));
+		printf_pref("%s\n", sbuf_data(messages));
 	}
 
 	pkg_free(pkg);

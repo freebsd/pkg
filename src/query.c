@@ -341,86 +341,86 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	case 'd':
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'r':
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'C':
 		buf = NULL;
 		while (pkg_categories(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'O':
 		while (pkg_options(pkg, &option) == EPKG_OK) {
 			format_str(pkg, output, qstr, option);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'F':
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			format_str(pkg, output, qstr, file);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'D':
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			format_str(pkg, output, qstr, dir);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'L':
 		buf = NULL;
 		while (pkg_licenses(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'U':
 		buf = NULL;
 		while (pkg_users(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'G':
 		buf = NULL;
 		while (pkg_groups(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'B':
 		buf = NULL;
 		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'b':
 		buf = NULL;
 		while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'A':
 		pkg_get(pkg, PKG_ANNOTATIONS, &kv);
 		while (kv != NULL) {
 			format_str(pkg, output, qstr, kv);
-			printf("%s\n", sbuf_data(output));
+			printf_pref("%s\n", sbuf_data(output));
 			kv = kv->next;
 		}
 		break;
 	default:
 		format_str(pkg, output, qstr, dep);
-		printf("%s\n", sbuf_data(output));
+		printf_pref("%s\n", sbuf_data(output));
 		break;
 	}
 	sbuf_delete(output);
@@ -568,7 +568,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					break;
 				default:
 bad_option:
-					fprintf(stderr, "malformed evaluation string\n");
+					fprintf_pref(stderr, "malformed evaluation string\n");
 					return (EPKG_FATAL);
 				}
 			} else {
@@ -581,7 +581,7 @@ bad_option:
 				case '\t':
 					break;
 				default:
-					fprintf(stderr, "unexpected character: %c\n", str[0]);
+					fprintf_pref(stderr, "unexpected character: %c\n", str[0]);
 					return (EPKG_FATAL);
 				}
 			}
@@ -589,7 +589,7 @@ bad_option:
 			switch (str[0]) {
 			case ')':
 				if (bracket_level == 0) {
-					fprintf(stderr, "too many closing brackets.\n");
+					fprintf_pref(stderr, "too many closing brackets.\n");
 					return (EPKG_FATAL);
 				}
 				bracket_level--;
@@ -605,7 +605,7 @@ bad_option:
 					sbuf_cat(sqlcond, " OR ");
 					break;
 				} else {
-					fprintf(stderr, "unexpected character %c\n", str[1]);
+					fprintf_pref(stderr, "unexpected character %c\n", str[1]);
 					return (EPKG_FATAL);
 				}
 			case '&':
@@ -615,11 +615,11 @@ bad_option:
 					sbuf_cat(sqlcond, " AND ");
 					break;
 				} else {
-					fprintf(stderr, "unexpected character %c\n", str[1]);
+					fprintf_pref(stderr, "unexpected character %c\n", str[1]);
 					return (EPKG_FATAL);
 				}
 			default:
-				fprintf(stderr, "unexpected character %c\n", str[0]);
+				fprintf_pref(stderr, "unexpected character %c\n", str[0]);
 				return (EPKG_FATAL);
 			}
 		} else if (state == OPERATOR_STRING || state == OPERATOR_INT) {
@@ -628,14 +628,14 @@ bad_option:
 				/* do nothing */
 			} else if (str[0] == '~' ) {
 				if (state != OPERATOR_STRING) {
-					fprintf(stderr, "~ expected only for string testing\n");
+					fprintf_pref(stderr, "~ expected only for string testing\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_STRING;
 				sbuf_cat(sqlcond, " GLOB ");
 			} else if (str[0] == '>' || str[0] == '<') {
 				if (state != OPERATOR_INT) {
-					fprintf(stderr, "> expected only for integers\n");
+					fprintf_pref(stderr, "> expected only for integers\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_INT;
@@ -657,7 +657,7 @@ bad_option:
 				}
 			} else if (str[0] == '!') {
 				if (str[1] != '=') {
-					fprintf(stderr, "expecting = after !\n");
+					fprintf_pref(stderr, "expecting = after !\n");
 					return (EPKG_FATAL);
 				}
 				if (state == OPERATOR_STRING) {
@@ -669,7 +669,7 @@ bad_option:
 				str++;
 				sbuf_putc(sqlcond, str[0]);
 			} else {
-				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
+				fprintf_pref(stderr, "an operator is expected, got %c\n", str[0]);
 				return (EPKG_FATAL);
 			}
 		} else if (state == NEXT_IS_STRING || state == NEXT_IS_INT) {
@@ -688,7 +688,7 @@ bad_option:
 					sbuf_putc(sqlcond, '\'');
 				} else {
 					if (!isdigit(str[0])) {
-						fprintf(stderr, "a number is expected, got: %c\n", str[0]);
+						fprintf_pref(stderr, "a number is expected, got: %c\n", str[0]);
 						return (EPKG_FATAL);
 					}
 					state = INT;
@@ -724,10 +724,10 @@ bad_option:
 	}
 
 	if (state != POST_EXPR && state != INT) {
-		fprintf(stderr, "unexpected end of expression\n");
+		fprintf_pref(stderr, "unexpected end of expression\n");
 		return (EPKG_FATAL);
 	} else if (bracket_level > 0) {
-		fprintf(stderr, "unexpected end of expression (too many open brackets)\n");
+		fprintf_pref(stderr, "unexpected end of expression (too many open brackets)\n");
 		return (EPKG_FATAL);
 	}
 
@@ -744,7 +744,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 	j = 0; /* shut up scanbuild */
 
 	if (strchr(qstr, '%') == NULL) {
-		fprintf(stderr, "Invalid query: query should contain a format string\n");
+		fprintf_pref(stderr, "Invalid query: query should contain a format string\n");
 		return (EPKG_FATAL);
 	}
 
@@ -771,10 +771,10 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 						}
 
 						if (valid_opts == 0) {
-							fprintf(stderr, "Invalid query: '%%%c' should be followed by:", q_flags[i].flag);
+							fprintf_pref(stderr, "Invalid query: '%%%c' should be followed by:", q_flags[i].flag);
 
 							for (j = 0; j < strlen(q_flags[i].options); j++)
-								fprintf(stderr, " %c%c", q_flags[i].options[j],
+								fprintf_pref(stderr, " %c%c", q_flags[i].options[j],
 										q_flags[i].options[j + 1] == '\0' ?
 										'\n' : ',');
 
@@ -785,7 +785,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 					/* if this is a multiline flag */
 					if (q_flags[i].multiline == 1) {
 						if (*multiline != 0 && *multiline != q_flags[i].flag) {
-							fprintf(stderr, "Invalid query: '%%%c' and '%%%c' cannot be queried at the same time\n",
+							fprintf_pref(stderr, "Invalid query: '%%%c' and '%%%c' cannot be queried at the same time\n",
 									*multiline, q_flags[i].flag);
 							return (EPKG_FATAL);
 						} else {
@@ -809,7 +809,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 			}
 
 			if (valid_flag == 0) {
-				fprintf(stderr, "Unknown query format key: '%%%c'\n", qstr[0]);
+				fprintf_pref(stderr, "Unknown query format key: '%%%c'\n", qstr[0]);
 				return (EPKG_FATAL);
 			}
 		}
