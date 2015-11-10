@@ -62,8 +62,8 @@ usage_info(void)
 {
 	fprintf(stderr, "Usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
-	fprintf(stderr, "       pkg info [-AbBDdefIklOqRrs] [-Cgix] <pkg-name>\n");
-	fprintf(stderr, "       pkg info [-AbBDdfIlqRrs] -F <pkg-file>\n\n");
+	fprintf(stderr, "       pkg info [-AbBDdeEfIklOqRrs] [-Cgix] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-AbBDdEfIlqRrs] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
@@ -242,7 +242,7 @@ exec_info(int argc, char **argv)
 	/* When no other data is requested, default is to print
 	 * 'name-ver comment' For -O, just print name-ver */
 	if (!origin_search && (opt & INFO_ALL) == 0 && match == MATCH_ALL &&
-	    !quiet)
+	    !quiet && !e_flag)
 		opt |= INFO_COMMENT;
 
 	/* Special compatibility: handle -O and -q -O */
