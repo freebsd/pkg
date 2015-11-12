@@ -303,7 +303,6 @@ exec_audit(int argc, char **argv)
 		kh_destroy_pkgs(check);
 
 		if (nagios) {
-			vuln = 0;
 			if (vuln == 0)
 				printf("PKG OK: 0 packages vulnerable|\n");
 			else
