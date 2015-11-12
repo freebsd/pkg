@@ -290,12 +290,12 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 #ifdef HAVE_CHFLAGS
 			bool old = false;
 			if (set & NOCHANGESFLAGS)
-				chflags(rpath, 0);
+				lchflags(rpath, 0);
 
 			if (lstat(pathname, &st) != -1) {
 				old = true;
 				if (st.st_flags & NOCHANGESFLAGS)
-					chflags(pathname, 0);
+					lchflags(pathname, 0);
 			}
 #endif
 
@@ -303,7 +303,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 #ifdef HAVE_CHFLAGS
 				/* restore flags */
 				if (old)
-					chflags(pathname, st.st_flags);
+					lchflags(pathname, st.st_flags);
 #endif
 				pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
 					strerror(errno));
@@ -312,13 +312,13 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 		}
 		/* enforce modes and creds */
-		chmod(pathname, aest->st_mode);
+		lchmod(pathname, aest->st_mode & 07777);
 		if (getenv("INSTALL_AS_USER") == NULL) {
-			chown(pathname, aest->st_uid, aest->st_gid);
+			lchown(pathname, aest->st_uid, aest->st_gid);
 		}
 #ifdef HAVE_CHFLAGS
 		/* Restore flags */
-		chflags(pathname, set);
+		lchflags(pathname, set);
 #endif
 
 		if (string_end_with(pathname, ".pkgnew"))

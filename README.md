@@ -313,7 +313,7 @@ get on.
 	
 	# install pkg
 	cd ~/git
-	git clone https://github.com/yonas/pkg
+	git clone https://github.com/freebsd/pkg
 	cd pkg
 	./autogen.sh
 	./configure
