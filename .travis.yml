@@ -1,0 +1,39 @@
+language: c
+
+os:
+  - linux
+  - osx
+
+addons:
+  apt:
+    packages:
+      - libbsd-dev
+      - libarchive-dev
+      - libssl-dev
+      - liblzma-dev
+
+sudo: false
+
+compiler:
+  - clang
+  - gcc
+
+before_install:
+  - scripts/install_deps.sh
+
+before_script:
+  - autoreconf -i
+
+script:
+  - scripts/travis_build.sh
+
+after_failure:
+  - kyua report --verbose
+
+notifications:
+  email: false
+  irc:
+    channels:
+      - "irc.freenode.org#pkgng"
+    on_success: change
+    on_failure: always

@@ -111,44 +111,42 @@ static int
 cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		struct pkg_job_universe_item *conflicts_chain)
 {
-	const char *uid;
-	struct pkg_dep *dep, *dtmp;
-	struct pkg_provide *prov, *ptmp;
+	struct pkg_dep *dep;
 	struct pkg_conflict *conflict, *ctmp;
 	struct pkg_job_universe_item *u;
+	char *buf;
 	int column = 0, ver;
 
-	pkg_get(pkg, PKG_UNIQUEID, &uid);
 	if (fprintf(f, "package: ") < 0)
 		return (EPKG_FATAL);
 
-	if (cudf_print_package_name(f, uid) < 0)
+	if (cudf_print_package_name(f, pkg->uid) < 0)
 		return (EPKG_FATAL);
 
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
 		return (EPKG_FATAL);
 
-	if (HASH_COUNT(pkg->deps) > 0) {
+	if (kh_count(pkg->deps) > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
-		HASH_ITER(hh, pkg->deps, dep, dtmp) {
-			if (cudf_print_element(f, pkg_dep_get(dep, PKG_DEP_ORIGIN),
-					(dep->hh.next != NULL), &column) < 0) {
+		kh_each_value(pkg->deps, dep, {
+			if (cudf_print_element(f, dep->name,
+			    column + 1 == kh_count(pkg->deps), &column) < 0) {
 				return (EPKG_FATAL);
 			}
-		}
+		});
 	}
 
 	column = 0;
-	if (HASH_COUNT(pkg->provides) > 0) {
+	if (kh_count(pkg->provides) > 0) {
 		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
-		HASH_ITER(hh, pkg->provides, prov, ptmp) {
-			if (cudf_print_element(f, pkg_provide_name(prov),
-					(prov->hh.next != NULL), &column) < 0) {
+		kh_each_value(pkg->provides, buf, {
+			if (cudf_print_element(f, buf,
+			    column + 1 == kh_count(pkg->provides), &column) < 0) {
 				return (EPKG_FATAL);
 			}
-		}
+		});
 	}
 
 	column = 0;
@@ -158,7 +156,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
-			if (cudf_print_element(f, pkg_conflict_uniqueid(conflict),
+			if (cudf_print_element(f, conflict->uid,
 					(conflict->hh.next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}
@@ -166,8 +164,8 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		ver = 1;
 		LL_FOREACH(conflicts_chain, u) {
 			if (u->pkg != pkg && u->priority != INT_MIN) {
-				if (cudf_print_conflict(f, uid, ver,
-						(u->next != NULL && u->next->pkg != pkg), &column) < 0) {
+				if (cudf_print_conflict(f, pkg->uid, ver,
+				   (u->next != NULL && u->next->pkg != pkg), &column) < 0) {
 					return (EPKG_FATAL);
 				}
 			}
@@ -186,7 +184,6 @@ static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
 	struct pkg_job_request *req, *tmp;
-	const char *uid;
 	int column = 0;
 	bool printed = false;
 
@@ -195,9 +192,8 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		if (req->skip)
 			continue;
-		pkg_get(req->item->pkg, PKG_ORIGIN, &uid);
-		if (cudf_print_element(f, uid,
-				(req->hh.next != NULL), &column) < 0) {
+		if (cudf_print_element(f, req->item->pkg->uid,
+		    (req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 		printed = true;
@@ -214,9 +210,8 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		if (req->skip)
 			continue;
-		pkg_get(req->item->pkg, PKG_ORIGIN, &uid);
-		if (cudf_print_element(f, uid,
-				(req->hh.next != NULL), &column) < 0) {
+		if (cudf_print_element(f, req->item->pkg->uid,
+		    (req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 		printed = true;
@@ -232,13 +227,9 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 static int
 pkg_cudf_version_cmp(struct pkg_job_universe_item *a, struct pkg_job_universe_item *b)
 {
-	const char *vera, *verb;
 	int ret;
 
-	pkg_get(a->pkg, PKG_VERSION, &vera);
-	pkg_get(b->pkg, PKG_VERSION, &verb);
-
-	ret = pkg_version_cmp(vera, verb);
+	ret = pkg_version_cmp(a->pkg->version, b->pkg->version);
 	if (ret == 0) {
 		/* Ignore remote packages whose versions are equal to ours */
 		if (a->pkg->type != PKG_INSTALLED)
@@ -369,7 +360,6 @@ static int
 pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 {
 	struct pkg_job_universe_item *it, *cur, *selected = NULL, *old = NULL, *head;
-	const char *uid, *oldversion;
 	int ver, n;
 
 	it = pkg_jobs_universe_find(j->universe, entry->uid);
@@ -409,7 +399,6 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(selected->pkg, PKG_ORIGIN, &uid);
 	if (n == 1) {
 		if (entry->installed && selected->pkg->type != PKG_INSTALLED) {
 			pkg_debug(3, "pkg_cudf: schedule installation of %s(%d)",
@@ -436,8 +425,7 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 				entry->uid, ver);
 		assert(old != NULL);
 		/* XXX: this is a hack due to iterators stupidity */
-		pkg_get(old->pkg, PKG_VERSION, &oldversion);
-		pkg_set(selected->pkg, PKG_OLD_VERSION, oldversion);
+		selected->pkg->old_version = old->pkg->version;
 		pkg_jobs_cudf_insert_res_job (&j->jobs, selected, old, PKG_SOLVED_UPGRADE);
 		j->count ++;
 	}

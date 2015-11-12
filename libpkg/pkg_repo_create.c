@@ -28,12 +28,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include "pkg_config.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/file.h>
+#include <sys/time.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -57,7 +60,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
-#include "pkg_config.h"
+
 
 struct digest_list_entry {
 	char *origin;
@@ -88,11 +91,9 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 	struct pkg_conflict *new;
 
 	pkg_conflict_new(&new);
-	sbuf_set(&new->uniqueid, uniqueid);
+	new->uid = strdup(uniqueid);
 
-	HASH_ADD_KEYPTR(hh, bulk->conflicts,
-			pkg_conflict_uniqueid(new),
-			sbuf_size(new->uniqueid), new);
+	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
 }
 
 static void
@@ -109,7 +110,7 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 
 	HASH_ITER (hh, bulk, cur, tmp) {
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->uniqueid), s);
+			HASH_FIND_STR(pkg_bulk, c1->uid, s);
 			if (s == NULL) {
 				/* New entry required */
 				s = malloc(sizeof(struct pkg_conflict_bulk));
@@ -118,17 +119,17 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 					goto out;
 				}
 				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = sbuf_get(c1->uniqueid);
+				s->file = c1->uid;
 				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
 			}
 			/* Now add all new entries from this file to this conflict structure */
 			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				if (strcmp(sbuf_get(c1->uniqueid), sbuf_get(c2->uniqueid)) == 0)
+				if (strcmp(c1->uid, c2->uid) == 0)
 					continue;
 
-				HASH_FIND_STR(s->conflicts, sbuf_get(c2->uniqueid), ctmp);
+				HASH_FIND_STR(s->conflicts, c2->uid, ctmp);
 				if (ctmp == NULL)
-					pkg_repo_new_conflict(sbuf_get(c2->uniqueid), s);
+					pkg_repo_new_conflict(c2->uid, s);
 			}
 		}
 	}
@@ -137,16 +138,16 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 		fprintf(out, "%s:", cur->file);
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
 			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", sbuf_get(c1->uniqueid));
+				fprintf(out, "%s,", c1->uid);
 			else
-				fprintf(out, "%s\n", sbuf_get(c1->uniqueid));
+				fprintf(out, "%s\n", c1->uid);
 		}
 	}
 out:
 	HASH_ITER (hh, pkg_bulk, cur, tmp) {
 		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
 			HASH_DEL(cur->conflicts, c1);
-			sbuf_free(c1->uniqueid);
+			free(c1->uid);
 			free(c1);
 		}
 		HASH_DEL(pkg_bulk, cur);
@@ -211,6 +212,34 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	errno = 0;
 
 	while ((fts_ent = fts_read(fts)) != NULL) {
+		/*
+		 * Skip directories starting with '.' to avoid Poudriere
+		 * symlinks.
+		 */
+		if ((fts_ent->fts_info == FTS_D ||
+		    fts_ent->fts_info == FTS_DP) &&
+		    fts_ent->fts_namelen > 2 &&
+		    fts_ent->fts_name[0] == '.') {
+			fts_set(fts, fts_ent, FTS_SKIP);
+			continue;
+		}
+		/*
+		 * Ignore 'Latest' directory as it is just symlinks back to
+		 * already-processed packages.
+		 */
+		if ((fts_ent->fts_info == FTS_D ||
+		    fts_ent->fts_info == FTS_DP ||
+		    fts_ent->fts_info == FTS_SL) &&
+		    strcmp(fts_ent->fts_name, "Latest") == 0) {
+			fts_set(fts, fts_ent, FTS_SKIP);
+			continue;
+		}
+		/* Follow symlinks. */
+		if (fts_ent->fts_info == FTS_SL) {
+			fts_set(fts, fts_ent, FTS_FOLLOW);
+			/* Restart. Next entry will be the resolved file. */
+			continue;
+		}
 		/* Skip everything that is not a file */
 		if (fts_ent->fts_info != FTS_F)
 			continue;
@@ -262,7 +291,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_fts_item *cur;
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	char checksum[SHA256_DIGEST_LENGTH * 3 + 1], *mdigest = NULL;
+	char *mdigest = NULL;
 	char digestbuf[1024];
 	struct iovec iov[2];
 	struct msghdr msg;
@@ -278,6 +307,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	if (read_files) {
 		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
+			close(mfd);
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
 		}
@@ -287,6 +317,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		close(mfd);
+		if (read_files)
+			close(ffd);
 		return (EPKG_FATAL);
 		break;
 	case 0:
@@ -322,13 +355,11 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			int r;
 			off_t mpos, fpos = 0;
 			size_t mlen;
-			const char *origin;
 
-			sha256_file(cur->fts_accpath, checksum);
-			pkg_set(pkg, PKG_CKSUM, checksum,
-				PKG_REPOPATH, cur->pkg_path,
-				PKG_PKGSIZE, cur->fts_size);
-			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg->sum = pkg_checksum_file(cur->fts_accpath,
+			    PKG_HASH_TYPE_SHA256_HEX);
+			pkg->pkgsize = cur->fts_size;
+			pkg->repopath = strdup(cur->pkg_path);
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -391,11 +422,12 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			}
 
 			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld:%s\n",
-				origin, mdigest,
+				pkg->origin,
+				mdigest,
 				(long)mpos,
 				(long)fpos,
 				(long)mlen,
-				checksum);
+				pkg->sum);
 
 			free(mdigest);
 			mdigest = NULL;
@@ -536,7 +568,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd;
-	struct pkg_repo_meta *meta;
+	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
@@ -582,8 +614,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	num_workers = pkg_object_int(pkg_config_get("WORKERS_COUNT"));
 	if (num_workers <= 0) {
 		len = sizeof(num_workers);
+#ifdef HAVE_SYSCTLBYNAME
 		if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
 			num_workers = 6;
+#else
+		num_workers = 6;
+#endif
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
@@ -774,7 +810,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			sbuf_free(c->uniqueid);
+			free(c->uid);
 			HASH_DEL(curcb->conflicts, c);
 			free(c);
 		}
@@ -816,7 +852,7 @@ static int
 pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
 {
 	FILE *fp;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *sha256;
 	struct sbuf *cmd = NULL;
 	struct sbuf *buf = NULL;
 	char *line = NULL;
@@ -824,7 +860,8 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	ssize_t linelen;
 	int i, ret = EPKG_OK;
 
-	if (sha256_file(path, sha256) != EPKG_OK)
+	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+	if (!sha256)
 		return (EPKG_FATAL);
 
 	cmd = sbuf_new_auto();
@@ -874,6 +911,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
 done:
+	free(sha256);
 	if (cmd)
 		sbuf_delete(cmd);
 
@@ -938,7 +976,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		}
 
 	}
-	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
+	packing_append_file_attr(pack, path, name, "root", "wheel", 0644, 0);
 
 	packing_finish(pack);
 	unlink(path);
@@ -991,6 +1029,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	if (access(repo_path, R_OK) != -1) {
 		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
+			rsa_free(rsa);
 			return (EPKG_FATAL);
 		}
 		else {

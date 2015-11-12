@@ -162,7 +162,13 @@ pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 {
 	assert(p != NULL);
 
-	return (sbuf_get(p->fields[key]));
+	if (p->fields[key] == NULL)
+		return (NULL);
+
+	if (sbuf_done(p->fields[key]) == 0)
+		sbuf_finish(p->fields[key]);
+
+	return (sbuf_data(p->fields[key]));
 }
 
 int
@@ -281,7 +287,7 @@ pkg_plugins_init(void)
 	plugdir = pkg_object_string(pkg_config_get("PKG_PLUGINS_DIR"));
 
 	obj = pkg_config_get("PLUGINS");
-	while ((cur = ucl_iterate_object(obj, &it, false))) {
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		/*
 		 * Load the plugin
 		 */

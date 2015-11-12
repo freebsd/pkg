@@ -1,6 +1,6 @@
 .\" Copyright (c) 1990, 1991, 1993
 .\"     The Regents of the University of California.  All rights reserved.
-.\" Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+.\" Copyright (c) 2013-2015 Matthew Seaman <matthew@FreeBSD.org>
 .\"
 .\" This code is derived from software contributed to Berkeley by
 .\" Chris Torek and the American National Standards Committee X3,
@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd November 29, 2013
+.Dd August 15, 2015
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -199,9 +199,9 @@ The value should be converted to the
 .Dq first alternate form .
 .Pp
 For integer valued conversions
-.Cm ( I , s
+.Cm ( I , s , t
 and
-.Cm t )
+.Cm x )
 this is a
 .Vt humanized
 form as a floating point value scaled to the range 0 \- 1000
@@ -227,7 +227,7 @@ print the mode in the style of
 .Xr strmode 3 .
 .Pp
 For boolean valued formats
-.Cm ( Dk , \^Dt , Fk , dk , rk , a
+.Cm ( dk , rk , a
 and
 .Cm k )
 generate either
@@ -259,7 +259,7 @@ The value should be converted to the
 .Dq second alternate form .
 .Pp
 For the integer valued conversions
-.Cm ( I , s , t  )
+.Cm ( I , s , t , x )
 this is a
 .Dq humanized
 form as a floating point value scaled to the range 0 \- 1024
@@ -280,7 +280,7 @@ or
 print the mode as an octal integer with a leading 0.
 .Pp
 For boolean valued formats
-.Cm ( Dk , \^Dt , Fk , dk , rk , a
+.Cm ( dk , rk , a
 and
 .Cm k )
 generate either
@@ -310,6 +310,8 @@ respectively.
 Zero padding.
 For all integer valued conversions and humanized numbers the converted
 value is padded on the left with zeros rather than blanks.
+For string valued conversions, this has no effect and the converted
+value is padded on the left with blanks.
 .It Cm \-
 A negative field width flag;
 the converted value is to be left adjusted on the field boundary.
@@ -323,9 +325,9 @@ if both are given.
 .It So "\ " Sc (space)
 A blank should be left before a positive number
 produced by a signed conversion
-.Cm ( I , s ,
+.Cm ( I , s , t ,
 or
-.Cm t ) .
+.Cm x ) .
 .It Cm +
 A sign must always be placed before an integer or humanized
 number produced by a numerical conversion.
@@ -503,17 +505,11 @@ Default row format:
 .It Cm %Dg
 Directory ownership: group name [string]
 .Vt struct pkg_dir *
-.It Cm %Dk
-Directory keep flag [boolean]
-.Vt struct pkg_dir *
 .It Cm %Dn
 Directory path name [string]
 .Vt struct pkg_dir *
 .It Cm %Dp
 Directory permissions [mode]
-.Vt struct pkg_dir *
-.It Cm %Dt
-Directory try flag [boolean]
 .Vt struct pkg_dir *
 .It Cm %Du
 Directory ownership: user name [string]
@@ -526,9 +522,6 @@ Default row format:
 .Cm "%F%{%Fn\en%|%}"
 .It Cm %Fg
 File ownership: group name [string]
-.Vt struct pkg_file *
-.It Cm %Fk
-File keep flag [boolean]
 .Vt struct pkg_file *
 .It Cm %\^Fn
 File path name [string]
@@ -548,20 +541,6 @@ Groups [array]
 .Pp
 Default row format:
 .Cm "%G%{%Gn\en%|%}"
-.It Cm %Gg
-Group GID-string [string]
-.Vt struct pkg_group *
-.Pp
-The GID-string consists of a colon-separated list containing the
-group name,
-.Sq *
-as a place holder instead of any hashed password for the group,
-the group identifier number and a possibly empty comma separated list
-of the group members,
-equivalent to one line from
-.Fa /etc/group
-as described in
-.Xr group 5 .
 .It Cm %Gn
 Group name [string]
 .Vt struct pkg_group *
@@ -622,23 +601,6 @@ Default row format:
 .It Cm %Un
 User name [string]
 .Vt struct pkg_user *
-.It Cm %Uu
-User UID-str [string]
-.Vt struct pkg_user *
-.Pp
-The UID-string consists of a colon-separated list containing the
-user name,
-.Sq *
-as a place holder instead of any hashed password for the user, the
-user identifier number, the user's login group id, an empty field for
-the user login class, zero for the password change time, zero for the
-account expiry time,
-.Sq gecos
-string (general information about the user), the user's home directory
-and the user's login shell; equivalent to one line from
-.Fa /etc/master.passwd
-as described in
-.Xr passwd 5 .
 .It Cm \^%V
 Old version [string].
 Valid only during operations when one version of a package is being
@@ -734,6 +696,12 @@ Package version [string]
 .It Cm %w
 Home page URL [string]
 .Vt struct pkg *
+.It Cm %x
+Package tarball size [integer]
+.Vt struct pkg *
+.It Cm %z
+Package short checksum [string]
+.Vt struct pkg *
 .It Cm %%
 A
 .Ql %
@@ -756,10 +724,10 @@ is expanded to contain the conversion result.
 Effective format modifiers:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \&?
-1st Alternate Form: 0 if the array is empty, 1 if it has any number
+First Alternate Form: 0 if the array is empty, 1 if it has any number
 of elements within it
 .It Cm #
-2nd Alternate Form: The number of elements in the array
+Second Alternate Form: The number of elements in the array
 .El
 .Ss STRING VALUES
 Effective format modifiers:
@@ -773,9 +741,9 @@ Effective format modifiers:
 .It Cm \-
 Left align
 .It Cm \&?
-1st Alternate Form: humanized number (decimal)
+First Alternate Form: humanized number (decimal)
 .It Cm #
-2nd Alternate Form: humanized number (binary)
+Second Alternate Form: humanized number (binary)
 .It Cm 0
 Zero pad
 .It So "\ " Sc
@@ -803,9 +771,9 @@ The second alternate form produces no output for
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent
 .It Cm \&?
-1st Alternate Form
+First Alternate Form
 .It Cm #
-2nd Alternate Form
+Second Alternate Form
 .It Cm \-
 Left align
 .El
@@ -838,11 +806,11 @@ Effective format modifiers (all forms):
 Left align
 .El
 .Pp
-Additionally, when the value is printed as an integer (ie. plain
+Additionally, when the value is printed as an integer (i.e., plain
 or alternate form 1), these additional modifiers take effect:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \&?
-1st Alternate Form: add leading zero to octal integer
+First Alternate Form: add leading zero to octal integer
 .It Cm 0
 Zero pad
 .El
@@ -854,7 +822,7 @@ or
 .Sq AND ,
 which shows whether the package is distributed under the terms of a
 single license, or when there are several applicable licenses, whether
-these should be treated as alternatives or applied in agregate.
+these should be treated as alternatives or applied in aggregate.
 There are three different output styles: plain; or alternate forms 1
 and 2 specified using format modifiers.
 .Bl -column "SINGLE" "Plain (%l)" "Alt 1 (%?l)" "Alt 2 (%#l)" -offset indent
@@ -867,9 +835,9 @@ and 2 specified using format modifiers.
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent
 .It Cm \&?
-1st Alternate Form
+First Alternate Form
 .It Cm #
-2nd Alternate Form
+Second Alternate Form
 .It Cm \-
 Left align
 .El
@@ -893,7 +861,7 @@ Effective format modifiers:
 Left align
 .El
 .Pp
-Additionally, when the value is printed as an integer (ie. without
+Additionally, when the value is printed as an integer (i.e., without
 .Xr strftime 3
 format codes enclosed in
 .Cm %{
@@ -902,9 +870,9 @@ and
 the following format modifiers are also effective:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \&?
-1st Alternate Form: humanized number (decimal)
+First Alternate Form: humanized number (decimal)
 .It Cm #
-2nd Alternate Form: humanized number (binary)
+Second Alternate Form: humanized number (binary)
 .It Cm 0
 Zero pad
 .It So "\ " Sc

@@ -16,7 +16,7 @@ check-local:
 		args="-r $(top_builddir)/res.db" ; \
 	fi ; \
 	kyua --config=none test $$args \
-		--kyuafile='$(top_srcdir)/Kyuafile' \
+		--kyuafile='$(top_builddir)/Kyuafile' \
 		--build-root='$(top_builddir)' || FAILED=1 ; \
 	if [ "$(HTML)" != "" ]; then \
 		kyua report-html --force $$args --output=$(HTML) ; \
@@ -27,6 +27,7 @@ check-local:
 COCCI_ARGS=	-I ${top_srcdir} \
 		-I /usr/include \
 		-I /usr/local/include \
+		-I ${top_srcdir}/compat \
 		-I ${top_srcdir}/libpkg \
 		-I ${top_srcdir}/src \
 		-I ${top_srcdir}/external/expat/lib \
@@ -53,4 +54,4 @@ style-fix:
 		uncrustify -c ${top_srcdir}/freebsd.cfg --no-backup
 
 
-SUBDIRS = external libpkg src tests scripts docs
+SUBDIRS = compat external libpkg src tests scripts docs

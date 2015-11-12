@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd February 4, 2015
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -25,6 +24,7 @@
 .Nm
 .Op Fl a
 .Op Fl A Op Ar 01
+.Op Fl n Ar oldname:newname
 .Op Fl o Ar oldorigin:neworigin
 .Op Fl y
 .Op Fl Cgix
@@ -33,6 +33,7 @@
 .Nm
 .Op Cm --all
 .Op Cm --automatic Op Ar 01
+.Op Cm --change-name Ar oldname:newname
 .Op Cm --change-origin Ar oldorigin:neworigin
 .Op Cm --yes
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -72,6 +73,11 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
+.It Fl n Ar oldname:newname , Cm --change-name Ar oldname:newname
+Change the package name of a given dependency from
+.Ar oldname
+to
+.Ar newname .
 .It Fl o Ar oldorigin:neworigin , Cm --change-origin Ar oldorigin:neworigin
 Change the port origin of a given dependency from
 .Ar oldorigin
@@ -80,7 +86,7 @@ to
 This corresponds to the port directory that the package originated from.
 Typically, this is only needed for upgrading a library or package that
 has MOVED or when the default version of a major port dependency
-changes.
+changes. (DEPRECATED)
 Usually this will be explained in /usr/ports/UPDATING.
 Also see
 .Xr pkg-updating 8
@@ -104,26 +110,6 @@ options are used, the default is to match pkg-name exactly.
 See
 .Xr pkg.conf 5 .
 .Sh EXAMPLES
-Upgrade perl from 5.12 to 5.14.
-This involes moving the origin from
-.Sy lang/perl5.12
-to
-.Sy lang/perl5.14 :
-.Dl % pkg set -o lang/perl5.12:lang/perl5.14
-.Dl % pkg install -Rf lang/perl5.14
-.Pp
-Upgrade ruby from 1.8 to 1.9.
-This involes moving the origin from
-.Sy lang/ruby18
-to
-.Sy lang/ruby19 :
-.Dl % pkg set -o lang/ruby18:lang/ruby19
-.Dl % pkg install -Rf lang/ruby19
-.Pp
-Move the origin libglut to freeglut, and then reinstall everything depending on glut to use the new shared library:
-.Dl % pkg set -o graphics/libglut:graphics/freeglut
-.Dl % pkg install -Rf graphics/freeglut
-.Pp
 Change a package from automatic to non-automatic, which will prevent
 .Ic autoremove
 from removing it:

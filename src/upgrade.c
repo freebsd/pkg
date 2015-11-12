@@ -182,12 +182,12 @@ exec_upgrade(int argc, char **argv)
 		rc = yes;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-				"The following %d packages will be affected (of %d checked):\n\n",
+				"The following %d package(s) will be affected (of %d checked):\n\n",
 				nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run)
 				rc = query_yesno(false, "\nProceed with this "
-				    "action? [y/N]: ");
+				    "action? ");
 			else
 				rc = false;
 		}
@@ -212,7 +212,7 @@ exec_upgrade(int argc, char **argv)
 		break;
 	}
 
-	if (done == 0 && rc)
+	if (done == 0 && rc && !quiet)
 		printf("Your packages are up to date.\n");
 
 	retcode = EX_OK;
@@ -221,6 +221,9 @@ cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
+
+	if (!dry_run)
+		pkg_cache_full_clean();
 
 	if (!rc && newpkgversion)
 		newpkgversion = false;

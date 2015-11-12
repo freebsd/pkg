@@ -48,7 +48,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#if defined(HAVE_LINK_H) && !defined(__DragonFly__)
+#if defined(HAVE_LINK_H) && !defined(__DragonFly__) && defined(HAVE_LIBELF)
 #include <link.h>
 #endif
 #include <paths.h>
@@ -58,6 +58,8 @@
 #ifdef HAVE_LIBELF
 #include <libelf.h>
 #endif
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -72,7 +74,9 @@
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
+#ifndef roundup2
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
+#endif
 
 static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
 static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
@@ -101,10 +105,9 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 
 /* ARGSUSED */
 static int
-add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
-		  const char *name, bool is_shlib)
+add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
+    bool is_shlib)
 {
-	const char *pkgname, *pkgversion;
 	struct pkg_file *file = NULL;
 	const char *filepath;
 
@@ -121,16 +124,15 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 			return (EPKG_OK);
 
 		while (pkg_files(pkg, &file) == EPKG_OK) {
-			filepath = pkg_file_path(file);
+			filepath = file->path;
 			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
 				pkg_addshlib_required(pkg, name);
 				return (EPKG_OK);
 			}
 		}
 
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		pkg_emit_notice("(%s-%s) %s - required shared library %s not "
-		    "found", pkgname, pkgversion, fpath, name);
+		    "found", pkg->name, pkg->version, fpath, name);
 
 		return (EPKG_FATAL);
 	}
@@ -210,9 +212,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 }
 
 static int
-analyse_elf(struct pkg *pkg, const char *fpath,
-	int (action)(void *, struct pkg *, const char *, const char *, bool),
-	void *actdata)
+analyse_elf(struct pkg *pkg, const char *fpath)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -232,14 +232,13 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	const char *myarch;
 	const char *shlib;
 
-	bool developer = false;
 	bool is_shlib = false;
 
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	int fd;
 
+	pkg_debug(1, "analysing elf");
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */
@@ -263,12 +262,18 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		goto cleanup;
 	}
 
-	if (developer)
+	if (developer_mode)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
+		goto cleanup;
+	}
+
+	if (elfhdr.e_type != ET_DYN && elfhdr.e_type != ET_EXEC &&
+	    elfhdr.e_type != ET_REL) {
+		ret = EPKG_END;
 		goto cleanup;
 	}
 
@@ -379,18 +384,8 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			continue;
 		
 		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val),
-				      dirname(fpath));
+				      bsd_dirname(fpath));
 		break;
-	}
-	if (!is_shlib) {
-		/*
-		 * Some shared libraries have no SONAME, but we still want
-		 * to manage them in provides list.
-		 */
-		if (elfhdr.e_type == ET_DYN) {
-			is_shlib = true;
-			pkg_addshlib_provided(pkg, basename(fpath));
-		}
 	}
 
 	/* Now find all of the NEEDED shared libraries. */
@@ -408,7 +403,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
 
-		action(actdata, pkg, fpath, shlib, is_shlib);
+		add_shlibs_to_pkg(pkg, fpath, shlib, is_shlib);
 	}
 
 cleanup:
@@ -445,16 +440,17 @@ int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
-	struct pkg_shlib *sh, *shtmp, *found;
+	char *sh;
+	khint_t k;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
-	const char *origin;
-	bool developer = false, failures = false;
+	const char *lib;
+	bool failures = false;
 
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
-
-	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	if (kh_count(pkg->shlibs_required) != 0)
+		pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	if (kh_count(pkg->shlibs_provided) != 0)
+		pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
@@ -466,19 +462,19 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		goto cleanup;
 
 	/* Assume no architecture dependence, for contradiction */
-	if (developer)
+	if (developer_mode)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 				PKG_CONTAINS_STATIC_LIBS |
 				PKG_CONTAINS_H_OR_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
-			snprintf(fpath, sizeof(fpath), "%s/%s", stage, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s/%s", stage, file->path);
 		else
-			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
+			strlcpy(fpath, file->path, sizeof(fpath));
 
-		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
-		if (developer) {
+		ret = analyse_elf(pkg, fpath);
+		if (developer_mode) {
 			if (ret != EPKG_OK && ret != EPKG_END) {
 				failures = true;
 				continue;
@@ -487,26 +483,38 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		}
 	}
 
-	pkg_get(pkg, PKG_ORIGIN, &origin);
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
-		HASH_FIND_STR(pkg->shlibs_provided, pkg_shlib_name(sh), found);
-		if (found != NULL) {
+	kh_each_value(pkg->shlibs_required, sh, {
+		if (kh_contains(strings, pkg->shlibs_provided, sh)) {
 			pkg_debug(2, "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    pkg_shlib_name(sh), origin);
-			HASH_DEL(pkg->shlibs_required, sh);
+			    sh, pkg->name);
+			k = kh_get_strings(pkg->shlibs_required, sh);
+			kh_del_strings(pkg->shlibs_required, k);
+			continue;
 		}
-	}
+		file = NULL;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			if ((lib = strstr(file->path, sh)) != NULL &&
+			    strlen(lib) == strlen(sh) && lib[-1] == '/') {
+				pkg_debug(2, "remove %s from required shlibs as "
+				    "the package %s provides this library itself",
+				    sh, pkg->name);
+				k = kh_get_strings(pkg->shlibs_required, sh);
+				kh_del_strings(pkg->shlibs_required, k);
+				break;
+			}
+		}
+	});
 
 	/*
 	 * if the package is not supposed to provide share libraries then
 	 * drop the provided one
 	 */
-	if (pkg_getannotation(pkg, "no_provide_shlib") != NULL)
-		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
+	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL)
+		kh_free(strings, pkg->shlibs_provided, char, free);
 
 	if (failures)
 		goto cleanup;
@@ -673,8 +681,8 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 #undef MOVE
 }
 
-int
-pkg_get_myarch(char *dest, size_t sz)
+static int
+pkg_get_myarch_elfparse(char *dest, size_t sz)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -687,7 +695,6 @@ pkg_get_myarch(char *dest, size_t sz)
 	char *osname;
 	uint32_t version = 0;
 	int ret = EPKG_OK;
-	int i;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	const char *path;
 
@@ -719,6 +726,7 @@ pkg_get_myarch(char *dest, size_t sz)
 		goto cleanup;
 	}
 
+
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
@@ -743,7 +751,7 @@ pkg_get_myarch(char *dest, size_t sz)
 		src += sizeof(Elf_Note);
 		if (note.n_type == NT_VERSION)
 			break;
-		src += note.n_namesz + note.n_descsz;
+		src += roundup2(note.n_namesz + note.n_descsz, 4);
 	}
 	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
 		ret = EPKG_FATAL;
@@ -756,9 +764,6 @@ pkg_get_myarch(char *dest, size_t sz)
 		version = be32dec(src);
 	else
 		version = le32dec(src);
-
-	for (i = 0; osname[i] != '\0'; i++)
-		osname[i] = (char)tolower(osname[i]);
 
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
@@ -894,39 +899,91 @@ cleanup:
 }
 
 int
-pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
+pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 {
-	bool iswildcard;
+	int i = 0;
+	struct arch_trans *arch_trans;
 
-	iswildcard = (strchr(arch, 'c') != NULL);
+	bzero(dest, sz);
+	/* Lower case the OS */
+	while (arch[i] != ':' && arch[i] != '\0') {
+		dest[i] = tolower(arch[i]);
+		i++;
+	}
+	if (arch[i] == '\0')
+		return (0);
 
-	if (iswildcard && isdefault)
-		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
-		    "cannot use wildcards as default", arch);
+	dest[i++] = ':';
 
-	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
-		if (iswildcard) {
-			/* Definitely has to be arch specific */
-			pkg_emit_developer_mode("Error: arch \"%s\" -- package "
-			    "installs architecture specific files", arch);
-		}
-	} else {
-		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
-			if (iswildcard) {
-				/* Could well be arch specific */
-				pkg_emit_developer_mode("Warning: arch \"%s\" "
-				    "-- package installs C/C++ headers or "
-				    "libtool files,\n**** which are often "
-				    "architecture specific", arch);
-			}
-		} else {
-			/* Might be arch independent */
-			if (!iswildcard)
-				pkg_emit_developer_mode("Notice: arch \"%s\" -- "
-				    "no architecture specific files found:\n"
-				    "**** could this package use a wildcard "
-				    "architecture?", arch);
+	/* Copy the version */
+	while (arch[i] != ':' && arch[i] != '\0') {
+		dest[i] = arch[i];
+		i++;
+	}
+	if (arch[i] == '\0')
+		return (0);
+
+	dest[i++] = ':';
+
+	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
+	    arch_trans++) {
+		if (strcmp(arch + i, arch_trans->archid) == 0) {
+			strlcpy(dest + i, arch_trans->elftype,
+			    sz - (arch + i - dest));
+			return (0);
 		}
 	}
-	return (EPKG_OK);
+	strlcpy(dest + i, arch + i, sz - (arch + i  - dest));
+
+	return (0);
 }
+
+int
+pkg_get_myarch_legacy(char *dest, size_t sz)
+{
+	int i, err;
+
+	err = pkg_get_myarch_elfparse(dest, sz);
+	if (err)
+		return (err);
+
+	for (i = 0; i < strlen(dest); i++)
+		dest[i] = tolower(dest[i]);
+
+	return (0);
+}
+
+#ifndef __DragonFly__
+int
+pkg_get_myarch(char *dest, size_t sz)
+{
+	struct arch_trans *arch_trans;
+	char *arch_tweak;
+
+	int err;
+	err = pkg_get_myarch_elfparse(dest, sz);
+	if (err)
+		return (err);
+
+	/* Translate architecture string back to regular OS one */
+	arch_tweak = strchr(dest, ':');
+	if (arch_tweak == NULL)
+		return (0);
+	arch_tweak++;
+	arch_tweak = strchr(arch_tweak, ':');
+	if (arch_tweak == NULL)
+		return (0);
+	arch_tweak++;
+	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
+	    arch_trans++) {
+		if (strcmp(arch_tweak, arch_trans->elftype) == 0) {
+			strlcpy(arch_tweak, arch_trans->archid,
+			    sz - (arch_tweak - dest));
+			break;
+		}
+	}
+
+	return (0);
+}
+#endif
+

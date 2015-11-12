@@ -13,14 +13,13 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd August 20, 2014
+.Dd September 20, 2015
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
 .Nm "pkg fetch"
-.Nd Fetches remote packages.
+.Nd fetch remote packages
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
@@ -102,7 +101,7 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl q , Cm --glob
+.It Fl q , Cm --quiet
 Quiet mode.
 Show less output.
 .It Fl r Ar reponame , Cm --repository Ar reponame
@@ -115,7 +114,7 @@ See
 Fetch all available updates for the currently installed packages.
 .It Fl U , Cm --no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
-from remote. 
+from remote.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.

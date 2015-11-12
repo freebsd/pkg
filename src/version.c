@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
@@ -50,7 +50,7 @@
 #include <spawn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <uthash.h>
+#include <khash.h>
 
 #include "pkgcli.h"
 
@@ -59,27 +59,23 @@ extern char **environ;
 struct index_entry {
 	char *origin;
 	char *version;
-	UT_hash_handle hh;
 };
 
-struct port_entry {
-	char *name;
-	UT_hash_handle hh;
-};
-
+KHASH_MAP_INIT_STR(index, struct index_entry *);
+KHASH_MAP_INIT_STR(ports, char *);
 struct category {
 	char *name;
-	struct port_entry *ports;
-	UT_hash_handle hh;
+	kh_ports_t *ports;
 };
+KHASH_MAP_INIT_STR(categories, struct category *);
 
-struct category *categories = NULL;
+kh_categories_t *categories = NULL;
 
 void
 usage_version(void)
 {
 	fprintf(stderr, "Usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [-Cegix pattern]\n");
-	fprintf(stderr, "		    [-r reponame] [-O origin] [index]\n");
+	fprintf(stderr, "		    [-r reponame] [-O origin|-n pkgname] [index]\n");
 	fprintf(stderr, "	pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "	pkg version -T <pkgname> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
@@ -285,16 +281,17 @@ indexfilename(char *filebuf, size_t filebuflen)
 	return (filebuf);
 }
 
-static struct index_entry *
+static kh_index_t *
 hash_indexfile(const char *indexfilename)
 {
 	FILE			*indexfile;
-	struct index_entry	*indexhead = NULL;
+	kh_index_t		*index = NULL;
 	struct index_entry	*entry;
 	char			*version, *origin;
 	char			*line = NULL, *l, *p;
 	size_t			 linecap = 0;
-	int			 dirs;
+	int			 dirs, ret;
+	khint_t			 k;
 
 
 	/* Create a hash table of all the package names and port
@@ -336,55 +333,52 @@ hash_indexfile(const char *indexfilename)
 			err(EX_SOFTWARE, "Out of memory while reading %s",
 			    indexfilename);
 
-		HASH_ADD_KEYPTR(hh, indexhead, entry->origin,
-				strlen(entry->origin), entry);
+		if (index == NULL)
+			index = kh_init_index();
+		k = kh_put_index(index, entry->origin, &ret);
+		if (ret != 0)
+			kh_value(index, k) = entry;
 	}
 
 	free(line);
 	fclose(indexfile);
 
-	return (indexhead);
-}
+	if (index == NULL)
+		errx(EX_DATAERR, "No valid entries found in '%s'",
+		    indexfilename);
 
-static void
-free_port_entries(struct port_entry *entries)
-{
-	struct port_entry	*entry, *tmp;
-
-	HASH_ITER(hh, entries, entry, tmp) {
-		HASH_DEL(entries, entry);
-		free(entry->name);
-		free(entry);
-	}
-	return;
+	return (index);
 }
 
 static void
 free_categories(void)
 {
-	struct category	*cat, *tmp;
+	char *v;
+	struct category *cat;
 
-	HASH_ITER(hh, categories, cat, tmp) {
-		HASH_DEL(categories, cat);
-		free_port_entries(cat->ports);
+	kh_foreach_value(categories, cat, {
 		free(cat->name);
+		kh_foreach_value(cat->ports, v, free(v));
+		kh_destroy_ports(cat->ports);
 		free(cat);
-	}
-	return;
+	});
+	kh_destroy_categories(categories);
 }
 
 static void
-free_index(struct index_entry *indexhead)
+free_index(kh_index_t *index)
 {
-	struct index_entry	*entry, *tmp;
+	struct index_entry *entry;
 
-	HASH_ITER(hh, indexhead, entry, tmp) {
-		HASH_DEL(indexhead, entry);
+	if (index == NULL)
+		return;
+
+	kh_foreach_value(index, entry, {
 		free(entry->origin);
 		free(entry->version);
 		free(entry);
-	}
-	return;
+	});
+	kh_destroy_index(index);
 }
 
 static bool
@@ -414,14 +408,15 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 
 static int
 do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
-	        const char *matchorigin, const char *indexfile)
+    const char *matchorigin, const char *matchname, const char *indexfile)
 {
-	struct index_entry	*indexhead;
-	struct index_entry	*entry;
-	struct pkgdb		*db = NULL;
-	struct pkgdb_it		*it = NULL;
-	struct pkg		*pkg = NULL;
-	const char		*origin;
+	kh_index_t	*index;
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	const char	*name;
+	const char	*origin;
+	khint_t		 k;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX) {
 		usage_version();
@@ -431,11 +426,11 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	indexhead = hash_indexfile(indexfile);
+	index = hash_indexfile(indexfile);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
-		free_index(indexhead);
+		free_index(index);
 		warnx("Cannot get a read lock on the database. "
 		      "It is locked by another process");
 		return (EX_TEMPFAIL);
@@ -446,23 +441,26 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
-
 		if ((opt & VERSION_WITHORIGIN) &&
 		    strcmp(origin, matchorigin) != 0)
 			continue;
-		
-		HASH_FIND_STR(indexhead, origin, entry);
-		if (entry != NULL)
-			print_version(pkg, "index", entry->version,
-			    limchar, opt);
+
+		/* If -n was specified, check if this name matches */
+		if ((opt & VERSION_WITHNAME) &&
+		    strcmp(name, matchname) != 0)
+			continue;
+
+		k = kh_get_index(index, origin);
+		print_version(pkg, "index",
+		    k != kh_end(index) ? (kh_value(index, k))->version : NULL, limchar, opt);
 	}
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	free_index(indexhead);
+	free_index(index);
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
@@ -472,14 +470,15 @@ cleanup:
 
 static int
 do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
-		 bool auto_update, const char *reponame,
-		 const char *matchorigin)
+    bool auto_update, const char *reponame, const char *matchorigin,
+    const char *matchname)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkgdb_it	*it_remote = NULL;
 	struct pkg	*pkg = NULL;
 	struct pkg	*pkg_remote = NULL;
+	const char	*name;
 	const char	*origin;
 	const char	*version_remote;
 
@@ -516,11 +515,16 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
 		    strcmp(origin, matchorigin) != 0)
+			continue;
+
+		/* If -n was specified, check if this name matches */
+		if ((opt & VERSION_WITHNAME) &&
+		    strcmp(name, matchname) != 0)
 			continue;
 
 		it_remote = pkgdb_repo_query(db, origin, MATCH_EXACT, reponame);
@@ -566,7 +570,7 @@ exec_buf(struct sbuf *res, char **argv) {
 	}
 
 	if ((spawn_err = posix_spawn_file_actions_init(&actions)) != 0) {
-		warnc(spawn_err, "%s", argv[0]);
+		warnx("%s:%s", argv[0], strerror(spawn_err));
 		return (0);
 	}
 
@@ -579,7 +583,7 @@ exec_buf(struct sbuf *res, char **argv) {
 	    (spawn_err = posix_spawnp(&pid, argv[0], &actions, NULL,
 	    argv, environ)) != 0) {
 		posix_spawn_file_actions_destroy(&actions);
-		warnc(spawn_err, "%s", argv[0]);
+		warnx("%s:%s", argv[0], strerror(spawn_err));
 		return (0);
 	}
 	posix_spawn_file_actions_destroy(&actions);
@@ -604,11 +608,12 @@ exec_buf(struct sbuf *res, char **argv) {
 static struct category *
 category_new(char *categorypath, const char *category)
 {
-	struct sbuf		*makecmd;
-	struct port_entry	*port;
-	struct category		*cat = NULL;
-	char			*results, *d;
-	char			*argv[5];
+	struct category	*cat = NULL;
+	struct sbuf	*makecmd;
+	char		*results, *d, *key;
+	char		*argv[5];
+	int		 ret;
+	khint_t		 k;
 
 	makecmd = sbuf_new_auto();
 
@@ -623,17 +628,26 @@ category_new(char *categorypath, const char *category)
 
 	results = sbuf_data(makecmd);
 
-	cat = calloc(1, sizeof(struct category));
-	cat->name = strdup(category);
-	while ((d = strsep(&results, " \n")) != NULL) {
-		port = calloc(1, sizeof(struct port_entry));
-		port->name = strdup(d);
-		HASH_ADD_KEYPTR(hh, cat->ports, port->name,
-				strlen(port->name), port);
-	}
+	if (categories == NULL)
+		categories = kh_init_categories();
 
-	HASH_ADD_KEYPTR(hh, categories, cat->name,
-			strlen(cat->name), cat);
+	cat = calloc(1, sizeof(*cat));
+	if (cat == NULL)
+		goto cleanup;
+
+	cat->name = strdup(category);
+	cat->ports = kh_init_ports();
+
+	k = kh_put_categories(categories, cat->name, &ret);
+	kh_value(categories, k) = cat;
+	while ((d = strsep(&results, " \n")) != NULL) {
+		key = strdup(d);
+		k = kh_put_ports(cat->ports, key, &ret);
+		if (k != kh_end(cat->ports))
+			kh_value(cat->ports, k) = key;
+		else
+			free(key);
+	}
 
 cleanup:
 	sbuf_delete(makecmd);
@@ -644,10 +658,10 @@ cleanup:
 static bool
 validate_origin(const char *portsdir, const char *origin)
 {
-	char			*category, *buf;
-	struct category		*cat;
-	struct port_entry	*port;
-	char			categorypath[MAXPATHLEN];
+	struct category	*cat;
+	char		*category, *buf;
+	char		 categorypath[MAXPATHLEN];
+	khint_t		 k;
 
 	snprintf(categorypath, MAXPATHLEN, "%s/%s", portsdir, origin);
 
@@ -656,9 +670,12 @@ validate_origin(const char *portsdir, const char *origin)
 	category = strrchr(categorypath, '/');
 	category++;
 
-	HASH_FIND_STR(categories, category, cat);
-	if (cat == NULL) {
+	if (categories != NULL)
+		k = kh_get_categories(categories, category);
+	if (categories == NULL || k == kh_end(categories)) {
 		cat = category_new(categorypath, category);
+	} else {
+		cat = kh_value(categories, k);
 	}
 
 	if (cat == NULL)
@@ -667,9 +684,9 @@ validate_origin(const char *portsdir, const char *origin)
 	buf = strrchr(origin, '/');
 	buf++;
 
-	HASH_FIND_STR(cat->ports, buf, port);
+	k = kh_get_ports(cat->ports, buf);
 
-	return (port != NULL);
+	return (k != kh_end(cat->ports));
 }
 
 static const char *
@@ -698,17 +715,19 @@ port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 			version = strsep(&output, "\n");
 		}
 	}
+
 	return (version);
 }
 
 static int
 do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
-		const char *matchorigin, const char *portsdir)
+    const char *matchorigin, const char *matchname, const char *portsdir)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	struct sbuf	*cmd;
+	const char	*name;
 	const char	*origin;
 	const char	*version;
 
@@ -737,11 +756,16 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	cmd = sbuf_new_auto();
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
 		    strcmp(origin, matchorigin) != 0)
+			continue;
+
+		/* If -n was specified, check if this name matches */
+		if ((opt & VERSION_WITHNAME) &&
+		    strcmp(name, matchname) != 0)
 			continue;
 
 		version = port_version(cmd, portsdir, origin);
@@ -768,9 +792,11 @@ exec_version(int argc, char **argv)
 	unsigned int	 opt = 0;
 	char		 limchar = '-';
 	const char	*matchorigin = NULL;
+	const char	*matchname = NULL;
 	const char	*reponame = NULL;
 	const char	*portsdir;
 	const char	*indexfile;
+	const char	*versionsource;
 	char		 filebuf[MAXPATHLEN];
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
@@ -785,6 +811,7 @@ exec_version(int argc, char **argv)
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "not-like",		required_argument,	NULL,	'L' },
 		{ "like",		required_argument,	NULL,	'l' },
+		{ "match-name",		required_argument,	NULL,	'n' },
 		{ "match-origin",	required_argument,	NULL,	'O' },
 		{ "origin",		no_argument,		NULL,	'o' },
 		{ "ports",		no_argument,		NULL,	'P' },
@@ -799,7 +826,7 @@ exec_version(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:O:oPqRr:TtUvx:",
+	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:n:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
@@ -829,6 +856,10 @@ exec_version(int argc, char **argv)
 		case 'l':
 			opt |= VERSION_STATUS;
 			limchar = *optarg;
+			break;
+		case 'n':
+			opt |= VERSION_WITHNAME;
+			matchname = optarg;
 			break;
 		case 'O':
 			opt |= VERSION_WITHORIGIN;
@@ -880,6 +911,11 @@ exec_version(int argc, char **argv)
 	 *   Only one of -I -P -R can be given
 	 */
 
+	if (matchorigin != NULL && matchname != NULL) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
 	if ( (opt & VERSION_TESTVERSION) == VERSION_TESTVERSION )
 		return (do_testversion(opt, argc, argv));
 
@@ -889,7 +925,9 @@ exec_version(int argc, char **argv)
 	if (opt & (VERSION_STATUS|VERSION_NOSTATUS)) {
 		if (limchar != '<' &&
 		    limchar != '>' &&
-		    limchar != '=') {
+		    limchar != '=' &&
+		    limchar != '?' &&
+		    limchar != '!') {
 			usage_version();
 			return (EX_USAGE);
 		}
@@ -900,25 +938,46 @@ exec_version(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
+	if ( !(opt & VERSION_SOURCES ) ) {
+		versionsource = pkg_object_string(
+		    pkg_config_get("VERSION_SOURCE"));
+		if (versionsource != NULL) {
+			switch (versionsource[0]) {
+			case 'I':
+				opt |= VERSION_SOURCE_INDEX;
+				break;
+			case 'P':
+				opt |= VERSION_SOURCE_PORTS;
+				break;
+			case 'R':
+				opt |= VERSION_SOURCE_REMOTE;
+				break;
+			default:
+				warnx("Invalid VERSION_SOURCE"
+				    " in configuration.");
+			}
+		}
+	}
+
 	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX ) {
 		if (!have_indexfile(&indexfile, filebuf, sizeof(filebuf),
 		     argc, argv, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_index(opt, limchar, pattern, match,
-				    matchorigin, indexfile));
+				    matchorigin, matchname, indexfile));
 	}
 
 	if ( (opt & VERSION_SOURCE_REMOTE) == VERSION_SOURCE_REMOTE )
 		return (do_source_remote(opt, limchar, pattern, match,
-			    auto_update, reponame, matchorigin));
+			    auto_update, reponame, matchorigin, matchname));
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
 		if (!have_ports(&portsdir, true))
 			return (EX_SOFTWARE);
 		else
 			return (do_source_ports(opt, limchar, pattern,
-				    match, matchorigin, portsdir));
+				    match, matchorigin, matchname, portsdir));
 	}
 
 	/* If none of -IPR were specified, and INDEX exists use that.
@@ -929,15 +988,15 @@ exec_version(int argc, char **argv)
             false)) {
 		opt |= VERSION_SOURCE_INDEX;
 		return (do_source_index(opt, limchar, pattern, match,
-			    matchorigin, indexfile));
+			    matchorigin, matchname, indexfile));
 	} else if (have_ports(&portsdir, false)) {
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
-			    matchorigin, portsdir));
+			    matchorigin, matchname, portsdir));
 	} else {
 		opt |= VERSION_SOURCE_REMOTE;
 		return (do_source_remote(opt, limchar, pattern, match,
-			    auto_update, reponame, matchorigin));
+			    auto_update, reponame, matchorigin, matchname));
 	}
 
 	/* NOTREACHED */

@@ -35,6 +35,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+#include <bsd_compat.h>
+
 /* Number of pages to copy per call to sqlite3_backup_step()
    Default page size is 1024 bytes on Unix */
 #define NPAGES	4
@@ -52,7 +54,7 @@ ps_cb(void *ps, int ncols, char **coltext, __unused char **colnames)
 }
 
 static int
-copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
+copy_database(sqlite3 *src, sqlite3 *dst)
 {
 	sqlite3_backup	*b;
 	char		*errmsg;
@@ -81,7 +83,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
-	done = total = 0;
+	total = 0;
 
 	pkg_emit_progress_start(NULL);
 	do {
@@ -129,8 +131,8 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 		}
 
 		/* Could we create the Sqlite DB file? */
-		if (eaccess(dirname(dest), W_OK)) {
-			pkg_emit_error("eaccess(%s) -- %s", dirname(dest),
+		if (eaccess(bsd_dirname(dest), W_OK)) {
+			pkg_emit_error("eaccess(%s) -- %s", bsd_dirname(dest),
 			    strerror(errno));
 			return (EPKG_FATAL);
 		}
@@ -145,7 +147,7 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 	}
 
 	pkg_emit_backup();
-	ret = copy_database(db->sqlite, backup, dest);
+	ret = copy_database(db->sqlite, backup);
 
 	sqlite3_close(backup);
 
@@ -172,7 +174,7 @@ pkgdb_load(struct pkgdb *db, const char *src)
 	}
 
 	pkg_emit_restore();
-	ret = copy_database(restore, db->sqlite, src);
+	ret = copy_database(restore, db->sqlite);
 
 	sqlite3_close(restore);
 

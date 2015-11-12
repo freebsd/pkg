@@ -24,16 +24,28 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
+#include <bsd_compat.h>
 #include <getopt.h>
 #include <signal.h>
 #include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef HAVE_READPASSPHRASE_H
 #include <readpassphrase.h>
+#elif defined(HAVE_BSD_READPASSPHRASE_H)
+#include <bsd/readpassphrase.h>
+#else
+#include "readpassphrase_compat.h"
+#endif
+
 #include <unistd.h>
 
 #include <pkg.h>
-
 #include "pkgcli.h"
 
 void

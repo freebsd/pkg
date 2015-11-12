@@ -40,6 +40,10 @@
 
 #include <expat.h>
 
+#ifdef HAVE_SYS_CAPSICUM_H
+#include <sys/capsicum.h>
+#endif
+
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -760,7 +764,7 @@ pkg_audit_print_entry(struct pkg_audit_entry *e, struct sbuf *sb,
 			sbuf_printf(sb, "WWW: %s\n\n", e->url);
 		else if (e->id)
 			sbuf_printf(sb,
-				"WWW: http://portaudit.FreeBSD.org/%s.html\n\n",
+				"WWW: https://vuxml.FreeBSD.org/freebsd/%s.html\n\n",
 				e->id);
 	}
 }
@@ -771,8 +775,6 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 {
 	struct pkg_audit_entry *e;
 	struct pkg_audit_versions_range *vers;
-	const char *pkgname;
-	const char *pkgversion;
 	struct sbuf *sb;
 	struct pkg_audit_item *a;
 	bool res = false, res1, res2;
@@ -780,13 +782,8 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 	if (!audit->parsed)
 		return false;
 
-	pkg_get(pkg,
-		PKG_NAME, &pkgname,
-		PKG_VERSION, &pkgversion
-	);
-
 	a = audit->items;
-	a += audit_entry_first_byte_idx[(size_t)pkgname[0]];
+	a += audit_entry_first_byte_idx[(size_t)pkg->name[0]];
 	sb = sbuf_new_auto();
 
 	for (; (e = a->e) != NULL; a += a->next_pfx_incr) {
@@ -798,7 +795,7 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 		 * that is lexicographically greater than our name,
 		 * it and the rest won't match our name.
 		 */
-		cmp = strncmp(pkgname, e->pkgname, a->noglob_len);
+		cmp = strncmp(pkg->name, e->pkgname, a->noglob_len);
 		if (cmp > 0)
 			continue;
 		else if (cmp < 0)
@@ -806,24 +803,24 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 
 		for (i = 0; i < a->next_pfx_incr; i++) {
 			e = a[i].e;
-			if (fnmatch(e->pkgname, pkgname, 0) != 0)
+			if (fnmatch(e->pkgname, pkg->name, 0) != 0)
 				continue;
 
-			if (pkgversion == NULL) {
+			if (pkg->version == NULL) {
 				/*
 				 * Assume that all versions should be checked
 				 */
 				res = true;
-				pkg_audit_print_entry(e, sb, pkgname, NULL, quiet);
+				pkg_audit_print_entry(e, sb, pkg->name, NULL, quiet);
 			}
 			else {
 				LL_FOREACH(e->versions, vers) {
-					res1 = pkg_audit_version_match(pkgversion, &vers->v1);
-					res2 = pkg_audit_version_match(pkgversion, &vers->v2);
+					res1 = pkg_audit_version_match(pkg->version, &vers->v1);
+					res2 = pkg_audit_version_match(pkg->version, &vers->v2);
 
 					if (res1 && res2) {
 						res = true;
-						pkg_audit_print_entry(e, sb, pkgname, pkgversion, quiet);
+						pkg_audit_print_entry(e, sb, pkg->name, pkg->version, quiet);
 						break;
 					}
 				}

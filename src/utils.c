@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
@@ -28,13 +28,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <err.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -43,6 +49,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <pkg.h>
+
+#include <bsd_compat.h>
 
 #include "utlist.h"
 #include "pkgcli.h"
@@ -55,26 +63,40 @@ query_tty_yesno(bool r, const char *msg, ...)
 	int	 tty_fd;
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
+	char	yesnomsg[1024];
 
-#ifndef __DragonFly__
+#ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
 #endif
 	tty_fd = open(_PATH_TTY, tty_flags);
-	if (tty_fd == -1)
-		return (r);		/* No ctty -- return the
-					 * default answer */
+	if (tty_fd == -1) {
+		/* No ctty -- return the default answer */
+		if (default_yes)
+			return (true);
+		return (r);
+	}
 
 	tty = fdopen(tty_fd, "r+");
 
+	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
+	if (default_yes || r)
+		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
+	else
+		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+
 	va_start(ap, msg);
-	pkg_vfprintf(tty, msg, ap);
+	pkg_vfprintf(tty, yesnomsg, ap);
 	va_end(ap);
 
 	c = getc(tty);
 	if (c == 'y' || c == 'Y')
 		r = true;
-	else if (c == '\n' || c == EOF) {
+	else if (c == 'n' || c == 'N')
 		r = false;
+	else if (c == '\n' || c == EOF) {
+                if (default_yes)
+			r = true;
+		/* Else, r is not modified. It's default value is kept. */
 		goto cleanup;
 	}
 
@@ -95,22 +117,34 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
+	char	yesnomsg[1024];
 
 	/* We use default value of yes or default in case of quiet mode */
 	if (quiet)
-		return (yes || r);
+		return (yes || default_yes || r);
+
+	if (dry_run)
+		return (yes || default_yes || r );
 
 	/* Do not query user if we have specified yes flag */
 	if (yes)
 		return (true);
 
-	pkg_vasprintf(&out, msg, ap);
+	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
+	if (default_yes || r)
+		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
+	else
+		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+
+	pkg_vasprintf(&out, yesnomsg, ap);
 	printf("%s", out);
 
 	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
 
 			if (linelen == 1 && line[0] == '\n') {
+				if (default_yes)
+					r = true;
 				break;
 			}
 			else if (linelen == 2) {
@@ -141,7 +175,9 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				continue;
 			}
 			else {
-				/* Assume EOF as false */
+				if (default_yes)
+					r = true;
+				/* Else, assume EOF as false */
 				r = false;
 				break;
 			}
@@ -208,58 +244,6 @@ cleanup:
 	return (i);
 }
 
-/* unlike realpath(3), this routine does not expand symbolic links */
-char *
-absolutepath(const char *src, char *dest, size_t dest_size) {
-	size_t dest_len, src_len, cur_len;
-	const char *cur, *next;
-
-	src_len = strlen(src);
-	bzero(dest, dest_size);
-	if (src_len != 0 && src[0] != '/') {
-		/* relative path, we use cwd */
-		if (getcwd(dest, dest_size) == NULL)
-			return (NULL);
-	}
-	dest_len = strlen(dest);
-
-	for (cur = next = src; next != NULL; cur = next + 1) {
-		next = strchr(cur, '/');
-		if (next != NULL)
-			cur_len = next - cur;
-		else
-			cur_len = strlen(cur);
-
-		/* check for special cases "", "." and ".." */
-		if (cur_len == 0)
-			continue;
-		else if (cur_len == 1 && cur[0] == '.')
-			continue;
-		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
-			const char *slash = strrchr(dest, '/');
-			if (slash != NULL) {
-				dest_len = slash - dest;
-				dest[dest_len] = '\0';
-			}
-			continue;
-		}
-
-		if (dest_len + 1 + cur_len >= dest_size)
-			return (NULL);
-		dest[dest_len++] = '/';
-		(void)memcpy(dest + dest_len, cur, cur_len);
-		dest_len += cur_len;
-		dest[dest_len] = '\0';
-	}
-
-	if (dest_len == 0) {
-		if (strlcpy(dest, "/", dest_size) >= dest_size)
-			return (NULL);
-	}
-
-	return (dest);
-}
-
 /* what the pkg needs to load in order to display the requested info */
 int
 info_flags(uint64_t opt, bool remote)
@@ -276,6 +260,10 @@ info_flags(uint64_t opt, bool remote)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
 	if (opt & INFO_SHLIBS_PROVIDED)
 		flags |= PKG_LOAD_SHLIBS_PROVIDED;
+	if (opt & INFO_PROVIDED)
+		flags |= PKG_LOAD_PROVIDES;
+	if (opt & INFO_REQUIRED)
+		flags |= PKG_LOAD_REQUIRES;
 	if (opt & INFO_ANNOTATIONS)
 		flags |= PKG_LOAD_ANNOTATIONS;
 	if (opt & INFO_DEPS)
@@ -296,6 +284,8 @@ info_flags(uint64_t opt, bool remote)
 			 PKG_LOAD_OPTIONS         |
 			 PKG_LOAD_SHLIBS_REQUIRED |
 			 PKG_LOAD_SHLIBS_PROVIDED |
+			 PKG_LOAD_PROVIDES        |
+			 PKG_LOAD_REQUIRES        |
 			 PKG_LOAD_ANNOTATIONS     |
 			 PKG_LOAD_DEPS;
 		if (!remote) {
@@ -315,9 +305,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 {
 	bool print_tag = false;
 	bool show_locks = false;
-	char size[7];
 	const char *repourl;
-	const pkg_object	*o;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
@@ -331,9 +319,12 @@ print_info(struct pkg * const pkg, uint64_t options)
 		PKG_PKGSIZE,       &pkgsize);
 
 	if (options & INFO_RAW) {
-		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) {
+		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) {
 		case INFO_RAW_YAML:
 			outflags |= PKG_MANIFEST_EMIT_PRETTY;
+			break;
+		case INFO_RAW_UCL:
+			outflags |= PKG_MANIFEST_EMIT_UCL;
 			break;
 		case INFO_RAW_JSON:
 			outflags |= PKG_MANIFEST_EMIT_JSON;
@@ -416,9 +407,13 @@ print_info(struct pkg * const pkg, uint64_t options)
 			pkg_printf("%n\n", pkg);
 			break;
 		case INFO_INSTALLED:
-			if (print_tag)
-				printf("%-15s: ", "Installed on");
-			pkg_printf("%t%{%+%}\n", pkg);
+			if (pkg_type(pkg) != PKG_REMOTE) {
+				if (print_tag) {
+					printf("%-15s: ", "Installed on");
+					pkg_printf("%t%{%c %Z%}\n", pkg);
+				}
+			} else if (!print_tag)
+				printf("\n");
 			break;
 		case INFO_VERSION:
 			if (print_tag)
@@ -445,22 +440,14 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_CATEGORIES:
-			pkg_get(pkg, PKG_CATEGORIES, &o);
-			if (pkg_object_count(o) > 0) {
-				if (print_tag)
-					printf("%-15s: ", "Categories");
-				pkg_printf("%C%{%Cn%| %}\n", pkg);
-			} else if (!print_tag)
-				printf("\n");
+			if (print_tag)
+				printf("%-15s: ", "Categories");
+			pkg_printf("%C%{%Cn%| %}\n", pkg);
 			break;
 		case INFO_LICENSES:
-			pkg_get(pkg, PKG_LICENSES, &o);
-			if (pkg_object_count(o) > 0) {
-				if (print_tag)
-					printf("%-15s: ", "Licenses");
-				pkg_printf("%L%{%Ln%| %l %}\n", pkg);
-			} else if (!print_tag)
-				printf("\n");
+			if (print_tag)
+				printf("%-15s: ", "Licenses");
+			pkg_printf("%L%{%Ln%| %l %}\n", pkg);
 			break;
 		case INFO_MAINTAINER:
 			if (print_tag)
@@ -507,16 +494,33 @@ print_info(struct pkg * const pkg, uint64_t options)
 					pkg_printf("%b%{\t%bn\n%|%}", pkg);
 			}
 			break;
-		case INFO_ANNOTATIONS:
-			pkg_get(pkg, PKG_ANNOTATIONS, &o);
-			if (pkg_object_count(o) > 0) {
+		case INFO_REQUIRED:
+			if (pkg_list_count(pkg, PKG_REQUIRES) > 0) {
 				if (print_tag)
-					printf("%-15s:\n", "Annotations");
+					printf("%-15s:\n", "Requires");
 				if (quiet)
-					pkg_printf("%A%{%-15An: %Av\n%|%}", pkg);
+					pkg_printf("%Y%{%Yn\n%|%}", pkg);
 				else
-					pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);					
+					pkg_printf("%Y%{\t%Yn\n%|%}", pkg);
 			}
+			break;
+		case INFO_PROVIDED:
+			if (pkg_list_count(pkg, PKG_PROVIDES) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Provides");
+				if (quiet)
+					pkg_printf("%y%{%yn\n%|%}", pkg);
+				else
+					pkg_printf("%y%{\t%yn\n%|%}", pkg);
+			}
+			break;
+		case INFO_ANNOTATIONS:
+			if (print_tag)
+				printf("%-15s:\n", "Annotations");
+			if (quiet)
+				pkg_printf("%A%{%-15An: %Av\n%|%}", pkg);
+			else
+				pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);
 			break;
 		case INFO_FLATSIZE:
 			if (print_tag)
@@ -525,12 +529,9 @@ print_info(struct pkg * const pkg, uint64_t options)
 			break;
 		case INFO_PKGSIZE: /* Remote pkgs only */
 			if (pkg_type(pkg) == PKG_REMOTE) {
-				humanize_number(size, sizeof(size),
-						pkgsize,"B",
-						HN_AUTOSCALE, 0);
 				if (print_tag)
 					printf("%-15s: ", "Pkg size");
-				printf("%s\n", size);
+				pkg_printf("%#xB\n", pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
@@ -712,7 +713,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 			ret = EPKG_OK;
 		}
 
-		if (ret == EPKG_OK && (stat(path, &st) == -1 || pkgsize != st.st_size))
+		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size))
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be
@@ -745,6 +746,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 		it->display_type = PKG_DISPLAY_DELETE;
 
 		break;
+	case PKG_SOLVED_UPGRADE_INSTALL:
 	case PKG_SOLVED_UPGRADE_REMOVE:
 		/* Ignore split-upgrade packages for display */
 		free(it);
@@ -779,12 +781,11 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 }
 
 static void
-display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
-		int64_t dlsize)
+display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 {
 	const char *why;
 	int64_t pkgsize;
-	char size[7], tlsize[7];
+	char size[8], tlsize[8];
 
 	pkg_get(it->new, PKG_PKGSIZE, &pkgsize);
 
@@ -794,6 +795,7 @@ display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
 		switch (it->solved_type) {
 		case PKG_SOLVED_INSTALL:
 		case PKG_SOLVED_UPGRADE:
+		case PKG_SOLVED_UPGRADE_INSTALL:
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
 			pkg_printf("and may not be upgraded to version %v\n", it->new);
@@ -843,8 +845,10 @@ display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
 		printf("\n");
 		break;
 	case PKG_DISPLAY_FETCH:
-		humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
-		humanize_number(tlsize, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), pkgsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
+		humanize_number(tlsize, sizeof(size), dlsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 		pkg_printf("\t%n-%v ", it->new, it->new);
 		printf("(%.2f%% of %s: %s)\n", ((double)100 * pkgsize) / (double)dlsize,
@@ -872,7 +876,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
-	char size[7];
+	char size[8];
 	va_list ap;
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
@@ -903,7 +907,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			}
 			printf("%s:\n", pkg_display_messages[type]);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
-				display_summary_item(cur, newsize, dlsize);
+				display_summary_item(cur, dlsize);
 				displayed ++;
 				free(cur);
 			}
@@ -915,58 +919,22 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		puts("");
 
 	if (oldsize > newsize) {
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), oldsize - newsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("The operation will free %s.\n", size);
 	} else if (newsize > oldsize) {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), newsize - oldsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("The process will require %s more space.\n", size);
 	}
 
 	if (dlsize > 0) {
-		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(size, sizeof(size), dlsize, "B",
+		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
 	}
 
 	return (displayed);
-}
-
-int
-hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	FILE *fp;
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	SHA256_CTX sha256;
-	int i;
-
-	if ((fp = fopen(path, "rb")) == NULL) {
-		warn("fopen(%s)", path);
-		return (EPKG_FATAL);
-	}
-
-	SHA256_Init(&sha256);
-
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
-		SHA256_Update(&sha256, buffer, r);
-
-	if (ferror(fp) != 0) {
-		fclose(fp);
-		out[0] = '\0';
-		warn("fread(%s)", path);
-		return (EPKG_FATAL);
-	}
-
-	fclose(fp);
-
-	SHA256_Final(hash, &sha256);
-
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		sprintf(out + (i * 2), "%02x", hash[i]);
-
-	out[SHA256_DIGEST_LENGTH * 2] = '\0';
-
-	return (EPKG_OK);
 }
 
 void

@@ -34,9 +34,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#ifdef HAVE_EXECINFO_H
-#include <execinfo.h>
-#endif
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -49,10 +46,38 @@
 #include <paths.h>
 #include <float.h>
 #include <math.h>
+#include <xxhash.h>
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+
+int64_t
+pkg_hash_seed(void)
+{
+	static int64_t seed = 0;
+
+	if (seed == 0)
+		seed = time(NULL);
+	return (seed);
+}
+
+#if (defined(WORD_BIT) && WORD_BIT == 64) || \
+	(defined(__WORDSIZE) && __WORDSIZE == 64) || \
+	defined(__x86_64__) || \
+	defined(__amd64__)
+#define XXHASHIMPL XXH64
+#else
+#define XXHASHIMPL XXH32
+#endif
+
+int32_t
+string_hash_func(const char *key)
+{
+	return (XXHASHIMPL(key, strlen(key), pkg_hash_seed()));
+}
 
 void
 sbuf_init(struct sbuf **buf)
@@ -77,18 +102,6 @@ sbuf_set(struct sbuf **buf, const char *str)
 	return (0);
 }
 
-char *
-sbuf_get(struct sbuf *buf)
-{
-	if (buf == NULL)
-		return (__DECONST(char *, ""));
-
-	if (sbuf_done(buf) == 0)
-		sbuf_finish(buf);
-
-	return (sbuf_data(buf));
-}
-
 void
 sbuf_reset(struct sbuf *buf)
 {
@@ -103,15 +116,6 @@ sbuf_free(struct sbuf *buf)
 {
 	if (buf != NULL)
 		sbuf_delete(buf);
-}
-
-ssize_t
-sbuf_size(struct sbuf *buf)
-{
-	if (buf != NULL)
-		return sbuf_len(buf);
-
-	return 0;
 }
 
 int
@@ -335,7 +339,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					    " available", pos, argc);
 					sbuf_finish(buf);
 					sbuf_free(buf);
-
 					return (EPKG_FATAL);
 				}
 				sbuf_cat(buf, argv[pos -1]);
@@ -365,213 +368,48 @@ is_dir(const char *path)
 	return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
-static void
-md5_hash(unsigned char hash[MD5_DIGEST_LENGTH],
-    char out[MD5_DIGEST_LENGTH * 2 + 1])
+bool
+string_end_with(const char *path, const char *str)
 {
-	int i;
-	for (i = 0; i < MD5_DIGEST_LENGTH; i++)
-		sprintf(out + (i *2), "%02x", hash[i]);
-
-	out[MD5_DIGEST_LENGTH * 2] = '\0';
-}
-
-int
-md5_file(const char *path, char out[MD5_DIGEST_LENGTH * 2 + 1])
-{
-	FILE *fp;
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	MD5_CTX md5;
-
-	if ((fp = fopen(path, "rb")) == NULL) {
-		pkg_emit_errno("fopen", path);
-		return EPKG_FATAL;
-	}
-
-	MD5_Init(&md5);
-
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
-		MD5_Update(&md5, buffer, r);
-
-	if (ferror(fp) != 0) {
-		fclose(fp);
-		out[0] = '\0';
-		pkg_emit_errno("fread", path);
-		return EPKG_FATAL;
-	}
-
-	fclose(fp);
-
-	MD5_Final(hash, &md5);
-	md5_hash(hash, out);
-
-	return (EPKG_OK);
-}
-
-static void
-sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
-    char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int i;
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		sprintf(out + (i * 2), "%02x", hash[i]);
-
-	out[SHA256_DIGEST_LENGTH * 2] = '\0';
-}
-
-int
-sha256_fileat(int rootfd, const char *path,
-    char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int fd, ret;
-
-	if ((fd = openat(rootfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("openat", path);
-		return (EPKG_FATAL);
-	}
-
-	ret = sha256_fd(fd, out);
-
-	close(fd);
-
-	return (ret);
-}
-
-int
-sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int fd;
-	int ret;
-
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
-		return (EPKG_FATAL);
-	}
-
-	ret = sha256_fd(fd, out);
-
-	close(fd);
-
-	return (ret);
-}
-
-void
-sha256_buf(const char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	sha256_buf_bin(buf, len, hash);
-	out[0] = '\0';
-	sha256_hash(hash, out);
-}
-
-void
-sha256_buf_bin(const char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
-{
-	SHA256_CTX sha256;
-
-	SHA256_Init(&sha256);
-	SHA256_Update(&sha256, buf, len);
-	SHA256_Final(hash, &sha256);
-}
-
-int
-sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int my_fd = -1;
-	FILE *fp = NULL;
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	int ret = EPKG_OK;
-	SHA256_CTX sha256;
-
-	out[0] = '\0';
-
-	/* Duplicate the fd so that fclose(3) does not close it. */
-	if ((my_fd = dup(fd)) == -1) {
-		pkg_emit_errno("dup", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((fp = fdopen(my_fd, "rb")) == NULL) {
-		pkg_emit_errno("fdopen", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	SHA256_Init(&sha256);
-
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
-		SHA256_Update(&sha256, buffer, r);
-
-	if (ferror(fp) != 0) {
-		pkg_emit_errno("fread", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	SHA256_Final(hash, &sha256);
-	sha256_hash(hash, out);
-cleanup:
-
-	if (fp != NULL)
-		fclose(fp);
-	else if (my_fd != -1)
-		close(my_fd);
-	(void)lseek(fd, 0, SEEK_SET);
-
-	return (ret);
-}
-
-int
-is_conf_file(const char *path, char *newpath, size_t len)
-{
-	size_t n;
+	size_t n, s;
 	const char *p = NULL;
 
+	s = strlen(str);
 	n = strlen(path);
 
-	if (n < 8)
-		return (0);
+	if (n < s)
+		return (false);
 
-	p = &path[n - 8];
+	p = &path[n - s];
 
-	if (strcmp(p, ".pkgconf") == 0) {
-		strlcpy(newpath, path, len);
-		newpath[n - 8] = '\0';
-		return (1);
-	}
+	if (strcmp(p, str) == 0)
+		return (true);
 
-	return (0);
+	return (false);
 }
 
 bool
-check_for_hardlink(struct hardlinks **hl, struct stat *st)
+check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	struct hardlinks *h;
+	int absent;
 
-	HASH_FIND_INO(*hl, &st->st_ino, h);
-	if (h != NULL)
+	kh_put_hardlinks(hl, st->st_ino, &absent);
+	if (absent == 0)
 		return (true);
-
-	h = malloc(sizeof(struct hardlinks));
-	h->inode = st->st_ino;
-	HASH_ADD_INO(*hl, inode, h);
 
 	return (false);
 }
 
 bool
 is_valid_abi(const char *arch, bool emit_error) {
-	const char *myarch;
+	const char *myarch, *myarch_legacy;
 
 	myarch = pkg_object_string(pkg_config_get("ABI"));
+	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 
 	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    strncmp(arch, myarch, strlen(myarch)) != 0) {
+	    strncasecmp(arch, myarch, strlen(myarch)) != 0 &&
+	    strncasecmp(arch, myarch_legacy, strlen(myarch_legacy)) != 0) {
 		if (emit_error)
 			pkg_emit_error("wrong architecture: %s instead of %s",
 			    arch, myarch);
@@ -814,80 +652,6 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 	return (ret);
 }
 
-void
-print_trace(void)
-{
-	return;
-
-#ifdef HAVE_EXECINFO_H
-	void *array[10];
-	size_t size;
-	char **strings;
-	size_t i;
-
-	size = backtrace(array, 10);
-	strings = backtrace_symbols(array, size);
-
-	for (i = 0; i < size; i++)
-		fprintf(stderr, "%s\n", strings[i]);
-
-	free(strings);
-#endif
-}
-
-static int
-pkg_symlink_cksum_readlink(const char *linkbuf, int linklen, const char *root,
-    char *cksum)
-{
-	const char *lnk;
-
-	lnk = linkbuf;
-	if (root != NULL) {
-		/* Skip root from checksum, as it is meaningless */
-		if (strncmp(root, linkbuf, strlen(root)) == 0) {
-			lnk += strlen(root);
-		}
-	}
-	/* Skip heading slashes */
-	while(*lnk == '/')
-		lnk ++;
-
-	sha256_buf(lnk, linklen, cksum);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_symlink_cksum(const char *path, const char *root, char *cksum)
-{
-	char linkbuf[MAXPATHLEN];
-	int linklen;
-
-	if ((linklen = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
-	}
-	linkbuf[linklen] = '\0';
-
-	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
-}
-
-int
-pkg_symlink_cksumat(int fd, const char *path, const char *root, char *cksum)
-{
-	char linkbuf[MAXPATHLEN];
-	int linklen;
-
-	if ((linklen = readlinkat(fd, path, linkbuf, sizeof(linkbuf) - 1)) ==
-	    -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
-	}
-	linkbuf[linklen] = '\0';
-
-	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
-}
-
 /* A bit like strsep(), except it accounts for "double" and 'single'
    quotes.  Unlike strsep(), returns the next arg string, trimmed of
    whitespace or enclosing quotes, and updates **args to point at the
@@ -985,4 +749,54 @@ pkg_utils_count_spaces(const char *args)
 	return (spaces);
 }
 
+/* unlike realpath(3), this routine does not expand symbolic links */
+char *
+pkg_absolutepath(const char *src, char *dest, size_t dest_size) {
+	size_t dest_len, src_len, cur_len;
+	const char *cur, *next;
 
+	src_len = strlen(src);
+	bzero(dest, dest_size);
+	if (src_len != 0 && src[0] != '/') {
+		/* relative path, we use cwd */
+		if (getcwd(dest, dest_size) == NULL)
+			return (NULL);
+	}
+	dest_len = strlen(dest);
+
+	for (cur = next = src; next != NULL; cur = next + 1) {
+		next = strchr(cur, '/');
+		if (next != NULL)
+			cur_len = next - cur;
+		else
+			cur_len = strlen(cur);
+
+		/* check for special cases "", "." and ".." */
+		if (cur_len == 0)
+			continue;
+		else if (cur_len == 1 && cur[0] == '.')
+			continue;
+		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
+			const char *slash = strrchr(dest, '/');
+			if (slash != NULL) {
+				dest_len = slash - dest;
+				dest[dest_len] = '\0';
+			}
+			continue;
+		}
+
+		if (dest_len + 1 + cur_len >= dest_size)
+			return (NULL);
+		dest[dest_len++] = '/';
+		(void)memcpy(dest + dest_len, cur, cur_len);
+		dest_len += cur_len;
+		dest[dest_len] = '\0';
+	}
+
+	if (dest_len == 0) {
+		if (strlcpy(dest, "/", dest_size) >= dest_size)
+			return (NULL);
+	}
+
+	return (dest);
+}

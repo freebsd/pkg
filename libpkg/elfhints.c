@@ -27,6 +27,7 @@
  * $FreeBSD: stable/8/sbin/ldconfig/elfhints.c 76224 2001-05-02 23:56:21Z obrien $
  */
 
+#include <bsd_compat.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
@@ -126,7 +127,8 @@ shlib_list_find_by_name(const char *shlib_file)
 {
 	struct shlib_list *sl;
 
-	assert(HASH_COUNT(shlibs) != 0);
+	if (HASH_COUNT(shlibs) == 0)
+		return (NULL);
 
 	HASH_FIND_STR(rpath, shlib_file, sl);
 	if (sl != NULL)
@@ -319,7 +321,9 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 int 
 shlib_list_from_elf_hints(const char *hintsfile)
 {
+#ifndef __linux__
 	read_elf_hints(hintsfile, 1);
+#endif
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));
 }

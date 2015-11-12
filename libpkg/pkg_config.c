@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -51,7 +51,7 @@
 #define PORTSDIR "/usr/ports"
 #endif
 #ifndef DEFAULT_VULNXML_URL
-#define DEFAULT_VULNXML_URL "http://www.vuxml.org/freebsd/vuln.xml.bz2"
+#define DEFAULT_VULNXML_URL "http://vuxml.freebsd.org/freebsd/vuln.xml.bz2"
 #endif
 
 #ifdef	OSMAJOR
@@ -63,6 +63,9 @@
 #endif
 
 int eventpipe = -1;
+int64_t debug_level = 0;
+bool developer_mode = false;
+const char *pkg_rootdir = NULL;
 
 struct config_entry {
 	uint8_t type;
@@ -71,7 +74,7 @@ struct config_entry {
 	const char *desc;
 };
 
-static char myabi[BUFSIZ];
+static char myabi[BUFSIZ], myabi_legacy[BUFSIZ];
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -114,6 +117,12 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"DEFAULT_ALWAYS_YES",
+		"NO",
+		"Default to 'yes' for all pkg(8) questions",
+	},
+	{
+		PKG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		"NO",
 		"Answer 'yes' to all pkg(8) questions",
@@ -141,6 +150,12 @@ static struct config_entry c[] = {
 		"ABI",
 		myabi,
 		"Override the automatically detected ABI",
+	},
+	{
+		PKG_STRING,
+		"ALTABI",
+		myabi_legacy,
+		"Override the automatically detected old-form ABI",
 	},
 	{
 		PKG_BOOL,
@@ -207,6 +222,12 @@ static struct config_entry c[] = {
 		"NAMESERVER",
 		NULL,
 		"Use this nameserver when looking up addresses",
+	},
+	{
+		PKG_STRING,
+		"HTTP_USER_AGENT",
+		"pkg/"PKGVERSION,
+		"HTTP User-Agent",
 	},
 	{
 		PKG_STRING,
@@ -321,7 +342,43 @@ static struct config_entry c[] = {
 		"IP_VERSION",
 		"0",
 		"Restrict network access to IPv4 or IPv6 only"
-	}
+	},
+	{
+		PKG_BOOL,
+		"AUTOMERGE",
+		"YES",
+		"Automatically merge configuration files"
+	},
+	{
+		PKG_STRING,
+		"VERSION_SOURCE",
+		NULL,
+		"Version source for pkg-version (I, P, R), default is auto detect"
+	},
+	{
+		PKG_BOOL,
+		"CONSERVATIVE_UPGRADE",
+		"YES",
+		"Prefer repos with higher priority during upgrade"
+	},
+	{
+		PKG_BOOL,
+		"PKG_CREATE_VERBOSE",
+		"NO",
+		"Enable verbose mode for 'pkg create'",
+	},
+	{
+		PKG_BOOL,
+		"AUTOCLEAN",
+		"NO",
+		"Always cleanup the cache directory after install/upgrade",
+	},
+	{
+		PKG_STRING,
+		"DOT_FILE",
+		NULL,
+		"Save SAT problem to the specified dot file"
+	},
 };
 
 static bool parsed = false;
@@ -403,11 +460,11 @@ disable_plugins_if_static(void)
 {
 	void *dlh;
 
-	dlh = dlopen(0, 0);
+	dlh = dlopen(0, RTLD_NOW);
 
 	/* if dlh is NULL then we are in static binary */
 	if (dlh == NULL)
-		ucl_object_replace_key(config, ucl_object_frombool(false), "ENABLE_PLUGINS", 14, false);
+		ucl_object_replace_key(config, ucl_object_frombool(false), "PKG_ENABLE_PLUGINS", 18, false);
 	else
 		dlclose(dlh);
 
@@ -425,6 +482,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	const char *key;
 	const char *type = NULL;
 	int use_ipvx = 0;
+	int priority = 0;
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
@@ -512,6 +570,14 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			use_ipvx = ucl_object_toint(cur);
 			if (use_ipvx != 4 && use_ipvx != 6)
 				use_ipvx = 0;
+		} else if (strcasecmp(key, "priority") == 0) {
+			if (cur->type != UCL_INT) {
+				pkg_emit_error("Expecting a integer for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			priority = ucl_object_toint(cur);
 		}
 	}
 
@@ -546,6 +612,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	}
 
 	r->enable = enable;
+	r->priority = priority;
 
 	if (mirror_type != NULL) {
 		if (strcasecmp(mirror_type, "srv") == 0)
@@ -598,11 +665,15 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	const char *myarch = NULL;
+	const char *myarch_legacy = NULL;
 
 	p = ucl_parser_new(0);
 
 	myarch = pkg_object_string(pkg_config_get("ABI"));
 	ucl_parser_register_variable (p, "ABI", myarch);
+
+	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
+	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
 
 	pkg_debug(1, "PKgConfig: loading %s", repofile);
 	if (!ucl_parser_add_file(p, repofile)) {
@@ -622,32 +693,39 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 	ucl_object_unref(obj);
 }
 
+static int
+nodots(const struct dirent *dp)
+{
+	return (dp->d_name[0] != '.');
+}
+
 static void
 load_repo_files(const char *repodir, pkg_init_flags flags)
 {
-	struct dirent *ent;
-	DIR *d;
+	struct dirent **ent;
 	char *p;
 	size_t n;
+	int nents, i;
 	char path[MAXPATHLEN];
 
-	if ((d = opendir(repodir)) == NULL)
-		return;
-
 	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
-	while ((ent = readdir(d))) {
-		if ((n = strlen(ent->d_name)) <= 5)
+
+	nents = scandir(repodir, &ent, nodots, alphasort);
+	for (i = 0; i < nents; i++) {
+		if ((n = strlen(ent[i]->d_name)) <= 5)
 			continue;
-		p = &ent->d_name[n - 5];
+		p = &ent[i]->d_name[n - 5];
 		if (strcmp(p, ".conf") == 0) {
 			snprintf(path, sizeof(path), "%s%s%s",
 			    repodir,
 			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
-			    ent->d_name);
+			    ent[i]->d_name);
 			load_repo_file(path, flags);
 		}
+		free(ent[i]);
 	}
-	closedir(d);
+	if (nents >= 0)
+		free(ent);
 }
 
 static void
@@ -701,17 +779,21 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const char *buf, *walk, *value, *key, *k;
 	const char *evkey = NULL;
 	const char *nsname = NULL;
+	const char *useragent = NULL;
 	const char *evpipe = NULL;
 	const ucl_object_t *cur, *object;
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
 	bool fatal_errors = false;
+	char *rootedpath = NULL;
+	char *tmp = NULL;
 
 	k = NULL;
 	o = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
+	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
@@ -728,8 +810,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	for (i = 0; i < c_size; i++) {
 		switch (c[i].type) {
 		case PKG_STRING:
+			tmp = NULL;
+			if (c[i].def != NULL && c[i].def[0] == '/' &&
+			    pkg_rootdir != NULL) {
+				asprintf(&tmp, "%s%s", pkg_rootdir, c[i].def);
+			}
 			obj = ucl_object_fromstring_common(
-			    c[i].def != NULL ? c[i].def : "", 0, UCL_STRING_TRIM);
+			    c[i].def != NULL ? tmp != NULL ? tmp : c[i].def : "", 0, UCL_STRING_TRIM);
+			free(tmp);
 			ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
 			break;
@@ -799,11 +887,16 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (path == NULL)
 		path = PREFIX"/etc/pkg.conf";
 
+	if (pkg_rootdir != NULL)
+		asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+
 	p = ucl_parser_new(0);
+	ucl_parser_register_variable (p, "ABI", myabi);
+	ucl_parser_register_variable (p, "ALTABI", myabi_legacy);
 
 	errno = 0;
 	obj = NULL;
-	if (!ucl_parser_add_file(p, path)) {
+	if (!ucl_parser_add_file(p, rootedpath != NULL ? rootedpath : path)) {
 		if (errno != ENOENT)
 			pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
 	} else {
@@ -848,6 +941,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
+		free(rootedpath);
 		return (EPKG_FATAL);
 	}
 
@@ -909,7 +1003,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 				buf++;
 				walk = buf;
 			}
-			key = walk;
+			k = walk;
 			value = walk;
 			while (*value != '\0') {
 				if (*value == '=')
@@ -957,6 +1051,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	parsed = true;
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
+	free(rootedpath);
+
+	if (strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
+		pkg_emit_error("Unable to determine ABI");
+		return (EPKG_FATAL);
+	}
 
 	pkg_debug(1, "%s", "pkg initialized");
 
@@ -964,6 +1064,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
+
+	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
@@ -974,15 +1077,21 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			setenv(evkey, ucl_object_tostring_forced(cur), 1);
 	}
 
+	/* Set user-agent */
+	useragent = pkg_object_string(pkg_config_get("HTTP_USER_AGENT"));
+	setenv("HTTP_USER_AGENT", useragent, 1);
+
 	/* load the repositories */
 	load_repositories(reposdir, flags);
 
-	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
-
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
-	if (nsname != NULL)
-		set_nameserver(ucl_object_tostring_forced(o));
+	if (nsname != NULL) {
+		if (set_nameserver(ucl_object_tostring_forced(o)) != 0) {
+			pkg_emit_error("Unable to set nameserver");
+			return (EPKG_FATAL);
+		}
+	}
 
 	return (EPKG_OK);
 }
@@ -1034,9 +1143,11 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 {
 
 	free(r->name);
-	free(r->url);
 	r->name = strdup(name);
-	r->url = strdup(url);
+	if (url != NULL) {
+		free(r->url);
+		r->url = strdup(url);
+	}
 	r->ops = pkg_repo_find_type(type);
 	HASH_DEL(repos, r);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
@@ -1143,6 +1254,11 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
+unsigned int
+pkg_repo_priority(struct pkg_repo *r)
+{
+	return (r->priority);
+}
 
 /* Locate the repo by the file basename / database name */
 struct pkg_repo *
@@ -1152,4 +1268,20 @@ pkg_repo_find(const char *reponame)
 
 	HASH_FIND_STR(repos, reponame, r);
 	return (r);
+}
+
+int64_t
+pkg_set_debug_level(int64_t new_debug_level) {
+	int64_t old_debug_level = debug_level;
+
+	debug_level = new_debug_level;
+	return old_debug_level;
+}
+
+void
+pkg_set_rootdir(const char *rootdir) {
+	if (pkg_initialized())
+		return;
+
+	pkg_rootdir = rootdir;
 }

@@ -24,6 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/sbuf.h>
+
 #include <string.h>
 
 #include <atf-c.h>
@@ -85,10 +87,6 @@ check_valid(struct pkg *p)
 	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property maintainer");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_MAINTAINER, "tester"));
-	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property arch");
-
-	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ARCH, "freebsd:N"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
 	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property www");
 

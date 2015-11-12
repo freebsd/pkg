@@ -223,8 +223,7 @@ test_manifest(void)
 	ATF_REQUIRE(i == 2);
 
 	ATF_REQUIRE(pkg_files(p, &file) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_file_path(file), "/usr/local/bin/foo") ==
-				0);
+	ATF_REQUIRE(strcmp(file->path, "/usr/local/bin/foo") == 0);
 #if 0
 	ATF_REQUIRE(strcmp(pkg_file_sha256(file),
 				"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
