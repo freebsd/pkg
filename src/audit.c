@@ -139,7 +139,7 @@ exec_audit(int argc, char **argv)
 		{ "file",	required_argument,	NULL,	'f' },
 		{ "recursive",	no_argument,	NULL,	'r' },
 		{ "quiet",	no_argument,		NULL,	'q' },
-		{ "nagios", no_argument,		NULL,	'N' },
+		{ "nagios",	no_argument,		NULL,	'N' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
