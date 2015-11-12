@@ -204,11 +204,11 @@ exec_fetch(int argc, char **argv)
 
 		if (rc != 0)
 			rc = query_yesno(false, "\nProceed with fetching "
-			    "packages? [y/N]: ");
+			    "packages? ");
 		else {
 			printf("No packages are required to be fetched.\n");
 			rc = query_yesno(false, "Check the integrity of packages "
-							"downloaded? [y/N]: ");
+							"downloaded? ");
 			csum_only = true;
 		}
 	}

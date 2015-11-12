@@ -24,6 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/param.h>
+
 #include <bsd_compat.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -31,10 +33,11 @@
 #include <stdarg.h>
 #include <unistd.h>
 
-#if !HAVE_UNLINKAT || !HAVE_FSTATAT
+#if !HAVE_DECL_UNLINKAT || !HAVE_DECL_FSTATAT
 
 static pthread_mutex_t file_at_lock = PTHREAD_MUTEX_INITIALIZER;
 static int file_at_dfd = -1;
+static char saved_cwd[MAXPATHLEN];
 
 /**
  * Acquire the cwd mutex and perform fchdir(dfd).
@@ -52,6 +55,9 @@ file_chdir_lock(int dfd)
 	int ret;
 
 	pthread_mutex_lock(&file_at_lock);
+
+	if (getcwd(saved_cwd, sizeof(saved_cwd)) == NULL)
+		saved_cwd[0] = '\0';
 
 	assert(file_at_dfd == -1);
 	file_at_dfd = dfd;
@@ -80,15 +86,22 @@ file_chdir_unlock(int dfd)
 	if (dfd == AT_FDCWD)
 		return;
 
+	if (saved_cwd[0] != '\0')
+		chdir(saved_cwd);
 	pthread_mutex_unlock(&file_at_lock);
 }
 #endif
 
-#if !HAVE_FACCESSAT
+#if !HAVE_DECL_FACCESSAT
 int
 faccessat(int fd, const char *path, int mode, int flag)
 {
 	int ret;
+	char saved_cwd[MAXPATHLEN];
+	const char *cwd;
+
+	if ((cwd = getcwd(saved_cwd, sizeof(saved_cwd))) == NULL)
+		return (-1);
 
 	if ((ret = file_chdir_lock(fd) != 0))
 		return ret;
@@ -104,7 +117,7 @@ faccessat(int fd, const char *path, int mode, int flag)
 }
 #endif
 
-#if !HAVE_READLINKAT
+#if !HAVE_DECL_READLINKAT
 ssize_t
 readlinkat(int fd, const char *restrict path, char *restrict buf,
 	   size_t bufsize)
@@ -121,7 +134,7 @@ readlinkat(int fd, const char *restrict path, char *restrict buf,
 }
 #endif
 
-#if !HAVE_FSTATAT
+#if !HAVE_DECL_FSTATAT
 int
 fstatat(int fd, const char *path, struct stat *buf, int flag)
 {
@@ -141,7 +154,7 @@ fstatat(int fd, const char *path, struct stat *buf, int flag)
 }
 #endif
 
-#if !HAVE_OPENAT
+#if !HAVE_DECL_OPENAT
 int
 openat(int fd, const char *path, int flags, ...)
 {
@@ -164,7 +177,7 @@ openat(int fd, const char *path, int flags, ...)
 }
 #endif
 
-#if !HAVE_UNLINKAT
+#if !HAVE_DECL_UNLINKAT
 int
 unlinkat(int fd, const char *path, int flag)
 {

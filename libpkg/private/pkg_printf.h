@@ -28,6 +28,8 @@
 #ifndef _PKG_PRINTF_H
 #define _PKG_PRINTF_H
 
+#include "bsd_compat.h"
+
 #include <pkg.h>
 
 #ifdef TESTING
@@ -56,9 +58,11 @@
 #define PP_L	(1U << 7)	/* licence */
 #define PP_O	(1U << 8)	/* option */
 #define PP_U	(1U << 9)	/* user */
-#define PP_b	(1U << 10)	/* shlib provided */
-#define PP_d	(1U << 11)	/* dependency */
-#define PP_r	(1U << 12)	/* requirement */
+#define PP_Y	(1U << 10)	/* required */
+#define PP_b	(1U << 11)	/* shlib provided */
+#define PP_d	(1U << 12)	/* dependency */
+#define PP_r	(1U << 13)	/* requirement */
+#define PP_y	(1U << 14)	/* provided */
 
 #define _PP_last	PP_r
 #define PP_ALL	((_PP_last << 1) - 1) /* All contexts */
@@ -92,7 +96,6 @@ typedef enum _fmt_code_t {
 	PP_PKG_FILE_SHA256,
 	PP_PKG_FILE_USER,
 	PP_PKG_FILES,
-	PP_PKG_GROUP_GIDSTR,
 	PP_PKG_GROUP_NAME,
 	PP_PKG_GROUPS,
 	PP_ROW_COUNTER,
@@ -108,7 +111,6 @@ typedef enum _fmt_code_t {
 	PP_PKG_REPO_PATH,
 	PP_PKG_CHAR_STRING,
 	PP_PKG_USER_NAME,
-	PP_PKG_USER_UIDSTR,
 	PP_PKG_USERS,
 	PP_PKG_OLD_VERSION,
 	PP_PKG_AUTOREMOVE,
@@ -139,6 +141,10 @@ typedef enum _fmt_code_t {
 	PP_PKG_VERSION,
 	PP_PKG_HOME_PAGE,
 	PP_PKG_PKGSIZE,
+	PP_PKG_REQUIRED,
+	PP_PKG_REQUIRED_NAME,
+	PP_PKG_PROVIDED,
+	PP_PKG_PROVIDED_NAME,
 	PP_PKG_SHORT_CHECKSUM,
 	PP_LAST_FORMAT = PP_PKG_SHORT_CHECKSUM,
 	PP_LITERAL_PERCENT,
@@ -223,6 +229,9 @@ _static struct sbuf *format_pkgsize(struct sbuf *, const void *, struct percent_
 _static struct sbuf *format_short_checksum(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
 _static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
+_static struct sbuf *format_provided(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_required(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_provide_name(struct sbuf *, const void *, struct percent_esc *);
 
 /* Other static function prototypes */
 

@@ -81,6 +81,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 		err(EX_NOINPUT, "%s", pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		closedir(d);
 		return (EX_IOERR);
 	}
 	if (dry_run)
@@ -116,6 +117,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	pkg_free(p);
 	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
+	closedir(d);
 	return (EX_OK);
 }
 

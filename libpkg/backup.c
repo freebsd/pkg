@@ -54,7 +54,7 @@ ps_cb(void *ps, int ncols, char **coltext, __unused char **colnames)
 }
 
 static int
-copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
+copy_database(sqlite3 *src, sqlite3 *dst)
 {
 	sqlite3_backup	*b;
 	char		*errmsg;
@@ -83,7 +83,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
-	done = total = 0;
+	total = 0;
 
 	pkg_emit_progress_start(NULL);
 	do {
@@ -147,7 +147,7 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 	}
 
 	pkg_emit_backup();
-	ret = copy_database(db->sqlite, backup, dest);
+	ret = copy_database(db->sqlite, backup);
 
 	sqlite3_close(backup);
 
@@ -174,7 +174,7 @@ pkgdb_load(struct pkgdb *db, const char *src)
 	}
 
 	pkg_emit_restore();
-	ret = copy_database(restore, db->sqlite, src);
+	ret = copy_database(restore, db->sqlite);
 
 	sqlite3_close(restore);
 

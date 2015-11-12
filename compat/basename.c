@@ -17,7 +17,13 @@
  */
 
 #include <errno.h>
+#ifndef __GLIBC__
+/*
+ * GLIBC provides basename in string.h, and defines basename to
+ * __xpg_basename (which can modify its input argument) in libgen.h.
+ */
 #include <libgen.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>

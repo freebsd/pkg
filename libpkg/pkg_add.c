@@ -35,6 +35,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
+#include <glob.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -42,10 +43,10 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-#if defined(__APPLE__)
-#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
-#else
+#if defined(UF_NOUNLINK)
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
+#else
+#define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
 
 
@@ -81,7 +82,7 @@ pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
 }
 
 static void
-attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file *rcf,
+attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
   struct pkg *local, char *pathname, const char *path, struct sbuf *newconf)
 {
 	const struct pkg_file *lf = NULL;
@@ -89,7 +90,7 @@ attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file
 
 	char *localconf = NULL;
 	size_t sz;
-	char localsum[SHA256_DIGEST_LENGTH];
+	char *localsum;
 
 	if (!renamed) {
 		pkg_debug(3, "Not renamed");
@@ -123,12 +124,15 @@ attempt_to_merge(bool renamed, const struct pkg_file *rf, struct pkg_config_file
 
 	if (sz == strlen(lcf->content)) {
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
-		sha256_buf(localconf, sz, localsum);
-		if (strcmp(localsum, lf->sum) == 0) {
+		localsum = pkg_checksum_data(localconf, sz,
+		    PKG_HASH_TYPE_SHA256_HEX);
+		if (localsum && strcmp(localsum, lf->sum) == 0) {
 			pkg_debug(2, "Checksum are the same %d", strlen(localconf));
 			free(localconf);
+			free(localsum);
 			return;
 		}
+		free(localsum);
 		pkg_debug(2, "Checksum are different %d", strlen(localconf));
 	}
 
@@ -148,6 +152,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
+	char	bd[MAXPATHLEN], *cp;
 	struct stat st;
 	const struct stat *aest;
 	bool renamed = false;
@@ -212,8 +217,9 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
 			pkg_debug(1, "Populating config_file %s", pathname);
 			size_t len = archive_entry_size(ae);
-			rcf->content = malloc(len);
+			rcf->content = malloc(len + 1);
 			archive_read_data(a, rcf->content, len);
+			rcf->content[len] = '\0';
 			if (renamed && (!automerge || local == NULL))
 				strlcat(pathname, ".pkgnew", sizeof(pathname));
 		}
@@ -221,12 +227,18 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		/*
 		 * check if the file is already provided by previous package
 		 */
-		if (!automerge)
-			attempt_to_merge(renamed, rf, rcf, local, pathname, path, newconf);
+		if (automerge)
+			attempt_to_merge(renamed, rcf, local, pathname, path, newconf);
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
 			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));
-			ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+			int install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+			int extract_flags = EXTRACT_ARCHIVE_FLAGS;
+			if (install_as_user) {
+				/* when installing as user don't try to set file ownership */
+				extract_flags &= ~ARCHIVE_EXTRACT_OWNER;
+			}
+			ret = archive_read_extract(a, ae, extract_flags);
 		} else {
 			if (sbuf_len(newconf) == 0) {
 				sbuf_cat(newconf, rcf->content);
@@ -234,7 +246,20 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 			pkg_debug(2, "Writing conf in %s", pathname);
 			unlink(rpath);
+			strlcpy(bd, rpath, sizeof(bd));
+			if ((cp = strrchr(bd, '/')) != NULL)
+				*cp = '\0';
+			if (mkdirs(bd) != EPKG_OK) {
+				pkg_emit_error("mkdirs(%s)", bd);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			FILE *f = fopen(rpath, "w+");
+			if (!f) {
+				pkg_emit_error("fopen() for write: %s", rpath);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			fprintf(f, "%s", sbuf_data(newconf));
 			fclose(f);
 		}
@@ -255,9 +280,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 				goto cleanup;
 			}
 		}
-		/* Reapply modes to the directories to work around a problem on FreeBSD 9 */
-		if (archive_entry_filetype(ae) == AE_IFDIR)
-			chmod(pathname, aest->st_mode);
 
 		pkg_emit_progress_tick(cur_file++, nfiles);
 
@@ -268,12 +290,12 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 #ifdef HAVE_CHFLAGS
 			bool old = false;
 			if (set & NOCHANGESFLAGS)
-				chflags(rpath, 0);
+				lchflags(rpath, 0);
 
 			if (lstat(pathname, &st) != -1) {
 				old = true;
 				if (st.st_flags & NOCHANGESFLAGS)
-					chflags(pathname, 0);
+					lchflags(pathname, 0);
 			}
 #endif
 
@@ -281,18 +303,23 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 #ifdef HAVE_CHFLAGS
 				/* restore flags */
 				if (old)
-					chflags(pathname, st.st_flags);
+					lchflags(pathname, st.st_flags);
 #endif
 				pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
 					strerror(errno));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-#ifdef HAVE_CHFLAGS
-			/* Restore flags */
-			chflags(pathname, set);
-#endif
 		}
+		/* enforce modes and creds */
+		lchmod(pathname, aest->st_mode & 07777);
+		if (getenv("INSTALL_AS_USER") == NULL) {
+			lchown(pathname, aest->st_uid, aest->st_gid);
+		}
+#ifdef HAVE_CHFLAGS
+		/* Restore flags */
+		lchflags(pathname, set);
+#endif
 
 		if (string_end_with(pathname, ".pkgnew"))
 			pkg_emit_notice("New configuration file: %s", pathname);
@@ -322,6 +349,46 @@ cleanup:
 	return (retcode);
 }
 
+static char *
+pkg_globmatch(char *pattern, const char *name)
+{
+	glob_t g;
+	int i;
+	char *buf, *buf2;
+	char *path = NULL;
+
+	if (glob(pattern, 0, NULL, &g) == GLOB_NOMATCH) {
+		globfree(&g);
+
+		return (NULL);
+	}
+
+	for (i = 0; i < g.gl_pathc; i++) {
+		/* the version starts here */
+		buf = strrchr(g.gl_pathv[i], '-');
+		if (buf == NULL)
+			continue;
+		buf2 = strchr(g.gl_pathv[i], '/');
+		if (buf2 == NULL)
+			buf2 = g.gl_pathv[i];
+		else
+			buf2++;
+		/* ensure we have match the proper name */
+		if (strncmp(buf2, name, buf - buf2) != 0)
+			continue;
+		if (path == NULL) {
+			path = g.gl_pathv[i];
+			continue;
+		}
+		if (pkg_version_cmp(path, g.gl_pathv[i]) == 1)
+			path = g.gl_pathv[i];
+	}
+	path = strdup(path);
+	globfree(&g);
+
+	return (path);
+}
+
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags,
@@ -331,7 +398,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir;
-	char	dpath[MAXPATHLEN];
+	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext;
 	struct pkg	*pkg_inst = NULL;
 
@@ -344,7 +411,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	}
 
 	/* XX check */
-	ret = pkg_try_installed(db, pkg->origin, &pkg_inst, PKG_LOAD_BASIC);
+	ret = pkg_try_installed(db, pkg->name, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			pkg_emit_already_installed(pkg_inst);
@@ -393,26 +460,54 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
 
-		if (basedir != NULL) {
+		if (basedir == NULL) {
+			pkg_emit_missing_dep(pkg, dep);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
+		}
+
+		if (dep->version != NULL && dep->version[0] != '\0') {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
 				dep->name, dep->version, ext);
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 &&
-							access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
+			    access(dpath, F_OK) == 0) {
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC,
+				    keys, location);
 
 				if (ret != EPKG_OK)
 					goto cleanup;
 			} else {
-				pkg_emit_error("Missing dependency matching "
-					"Origin: '%s' Version: '%s'",
-					dep->origin, dep->version);
+				pkg_emit_missing_dep(pkg, dep);
 				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 					goto cleanup;
 			}
 		} else {
-			pkg_emit_missing_dep(pkg, dep);
-			goto cleanup;
+			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", basedir,
+			    dep->name, ext);
+			ppath = pkg_globmatch(dpath, dep->name);
+			if (ppath == NULL) {
+				pkg_emit_missing_dep(pkg, dep);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
+			if ((flags & PKG_ADD_UPGRADE) == 0 &&
+			    access(ppath, F_OK) == 0) {
+				ret = pkg_add(db, ppath, PKG_ADD_AUTOMATIC,
+				    keys, location);
+
+				free(ppath);
+				if (ret != EPKG_OK)
+					goto cleanup;
+			} else {
+				free(ppath);
+				pkg_emit_missing_dep(pkg, dep);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
 		}
 	}
 
@@ -464,22 +559,29 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location, struct pkg *remote,
+    struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
     struct pkg *local)
 {
-	struct archive	*a;
-	struct archive_entry *ae;
-	struct pkg	*pkg = NULL;
-	bool		 extract = true;
-	bool		 handle_rc = false;
-	int		 retcode = EPKG_OK;
-	int		 ret;
-	int nfiles;
+	struct archive		*a;
+	struct archive_entry	*ae;
+	struct pkg		*pkg = NULL;
+	struct sbuf		*message;
+	struct pkg_message	*msg;
+	const char		*location, *msgstr;
+	bool			 extract = true;
+	bool			 handle_rc = false;
+	int			 retcode = EPKG_OK;
+	int			 ret;
+	int			 nfiles;
 
 	assert(path != NULL);
 
 	if (local != NULL)
 		flags |= PKG_ADD_UPGRADE;
+
+	location = reloc;
+	if (pkg_rootdir != NULL)
+		location = pkg_rootdir;
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -493,6 +595,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		retcode = ret;
 		goto cleanup;
 	}
+	if ((flags & PKG_ADD_SPLITTED_UPGRADE) != PKG_ADD_SPLITTED_UPGRADE)
+		pkg_emit_new_action();
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkg_emit_install_begin(pkg);
 	else {
@@ -514,7 +618,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Additional checks for non-remote package
 	 */
 	if (remote == NULL) {
-		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys, location);
+		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys,
+		    location);
 		if (ret != EPKG_OK) {
 			/* Do not return error on installed package */
 			retcode = (ret == EPKG_INSTALLED ? EPKG_OK : ret);
@@ -535,7 +640,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg->automatic = remote->automatic;
 	}
 
-	if (location != NULL)
+	if (pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	/* register the package before installing it in case there are
@@ -563,7 +668,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = HASH_COUNT(pkg->files);
+	nfiles = kh_count(pkg->filehash);
 	/*
 	 * Extract the files on disk.
 	 */
@@ -604,12 +709,55 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (retcode == EPKG_OK) {
 		if ((flags & PKG_ADD_UPGRADE) == 0)
-			pkg_emit_install_finished(pkg);
+			pkg_emit_install_finished(pkg, local);
 		else {
 			if (local != NULL)
 				pkg_emit_upgrade_finished(pkg, local);
 			else
-				pkg_emit_install_finished(pkg);
+				pkg_emit_install_finished(pkg, local);
+		}
+
+		if (pkg->message != NULL)
+			message = sbuf_new_auto();
+		LL_FOREACH(pkg->message, msg) {
+			msgstr = NULL;
+			if (msg->type == PKG_MESSAGE_ALWAYS) {
+				msgstr = msg->str;
+			} else if (local != NULL &&
+			     msg->type == PKG_MESSAGE_UPGRADE) {
+				if (msg->maximum_version == NULL &&
+				    msg->minimum_version == NULL) {
+					msgstr = msg->str;
+				} else if (msg->maximum_version == NULL) {
+					if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+						msgstr = msg->str;
+					}
+				} else if (msg->minimum_version == NULL) {
+					if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
+						msgstr = msg->str;
+					}
+				} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
+					    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+					msgstr = msg->str;
+				}
+			} else if (local == NULL &&
+			    msg->type == PKG_MESSAGE_INSTALL) {
+				msgstr = msg->str;
+			}
+			if (msgstr != NULL) {
+				if (sbuf_len(message) == 0) {
+					pkg_sbuf_printf(message, "Message from "
+					    "%n-%v:\n", pkg, pkg);
+				}
+				sbuf_printf(message, "%s\n", msgstr);
+			}
+		}
+		if (pkg->message != NULL) {
+			if (sbuf_len(message) > 0) {
+				sbuf_finish(message);
+				pkg_emit_message(sbuf_data(message));
+			}
+			sbuf_delete(message);
 		}
 	}
 

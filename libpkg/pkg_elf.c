@@ -74,7 +74,9 @@
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
+#ifndef roundup2
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
+#endif
 
 static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
 static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
@@ -103,8 +105,8 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 
 /* ARGSUSED */
 static int
-add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
-		  const char *name, bool is_shlib)
+add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
+    bool is_shlib)
 {
 	struct pkg_file *file = NULL;
 	const char *filepath;
@@ -116,12 +118,10 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
-		/* Report link resolution errors in shared library. */
-		if (is_shlib) {
-			pkg_emit_error("(%s-%s) %s - shared library %s not found",
-			      pkg->name, pkg->version, fpath, name);
+		/* Ignore link resolution errors if we're analysing a
+		   shared library. */
+		if (is_shlib)
 			return (EPKG_OK);
-		}
 
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			filepath = file->path;
@@ -212,9 +212,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 }
 
 static int
-analyse_elf(struct pkg *pkg, const char *fpath,
-	int (action)(void *, struct pkg *, const char *, const char *, bool),
-	void *actdata)
+analyse_elf(struct pkg *pkg, const char *fpath)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -240,6 +238,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 	int fd;
 
+	pkg_debug(1, "analysing elf");
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */
@@ -269,6 +268,12 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
+		goto cleanup;
+	}
+
+	if (elfhdr.e_type != ET_DYN && elfhdr.e_type != ET_EXEC &&
+	    elfhdr.e_type != ET_REL) {
+		ret = EPKG_END;
 		goto cleanup;
 	}
 
@@ -382,16 +387,6 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 				      bsd_dirname(fpath));
 		break;
 	}
-	if (!is_shlib) {
-		/*
-		 * Some shared libraries have no SONAME, but we still want
-		 * to manage them in provides list.
-		 */
-		if (elfhdr.e_type == ET_DYN) {
-			is_shlib = true;
-			pkg_addshlib_provided(pkg, bsd_basename(fpath));
-		}
-	}
 
 	/* Now find all of the NEEDED shared libraries. */
 
@@ -408,7 +403,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
 
-		action(actdata, pkg, fpath, shlib, is_shlib);
+		add_shlibs_to_pkg(pkg, fpath, shlib, is_shlib);
 	}
 
 cleanup:
@@ -445,13 +440,17 @@ int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
-	struct pkg_shlib *sh, *shtmp, *found;
+	char *sh;
+	khint_t k;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN];
+	const char *lib;
 	bool failures = false;
 
-	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	if (kh_count(pkg->shlibs_required) != 0)
+		pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	if (kh_count(pkg->shlibs_provided) != 0)
+		pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
@@ -474,7 +473,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		else
 			strlcpy(fpath, file->path, sizeof(fpath));
 
-		ret = analyse_elf(pkg, fpath, add_shlibs_to_pkg, db);
+		ret = analyse_elf(pkg, fpath);
 		if (developer_mode) {
 			if (ret != EPKG_OK && ret != EPKG_END) {
 				failures = true;
@@ -487,22 +486,35 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	HASH_ITER(hh, pkg->shlibs_required, sh, shtmp) {
-		HASH_FIND_STR(pkg->shlibs_provided, sh->name, found);
-		if (found != NULL) {
+	kh_each_value(pkg->shlibs_required, sh, {
+		if (kh_contains(strings, pkg->shlibs_provided, sh)) {
 			pkg_debug(2, "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    sh->name, pkg->name);
-			HASH_DEL(pkg->shlibs_required, sh);
+			    sh, pkg->name);
+			k = kh_get_strings(pkg->shlibs_required, sh);
+			kh_del_strings(pkg->shlibs_required, k);
+			continue;
 		}
-	}
+		file = NULL;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			if ((lib = strstr(file->path, sh)) != NULL &&
+			    strlen(lib) == strlen(sh) && lib[-1] == '/') {
+				pkg_debug(2, "remove %s from required shlibs as "
+				    "the package %s provides this library itself",
+				    sh, pkg->name);
+				k = kh_get_strings(pkg->shlibs_required, sh);
+				kh_del_strings(pkg->shlibs_required, k);
+				break;
+			}
+		}
+	});
 
 	/*
 	 * if the package is not supposed to provide share libraries then
 	 * drop the provided one
 	 */
 	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL)
-		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
+		kh_free(strings, pkg->shlibs_provided, char, free);
 
 	if (failures)
 		goto cleanup;
@@ -713,6 +725,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
+
 
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {

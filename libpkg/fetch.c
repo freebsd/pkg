@@ -98,7 +98,7 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t);
+	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, 0, -1);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -124,19 +124,19 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 }
 
 int
-pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t)
+pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
+    ssize_t offset, int64_t size)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
 
-	fd = creat(dest, 00644);
-
+	fd = open(dest, O_CREAT|O_APPEND|O_WRONLY, 00644);
 	if (fd == -1) {
-		pkg_emit_errno("creat", dest);
+		pkg_emit_errno("open", dest);
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t);
+	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, offset, size);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -453,14 +453,14 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 #define URL_SCHEME_PREFIX	"pkg+"
 
 int
-pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t)
+pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
+    time_t *t, ssize_t offset, int64_t size)
 {
 	FILE		*remote = NULL;
 	struct url	*u = NULL;
 	struct url_stat	 st;
 	off_t		 done = 0;
 	off_t		 r;
-
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
 	char		 buf[10240];
@@ -471,6 +471,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	struct dns_srvinfo	*srv_current = NULL;
 	struct http_mirror	*http_current = NULL;
 	off_t		 sz = 0;
+	size_t		 buflen = 0;
+	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
 	struct sbuf	*fetchOpts = NULL;
 
@@ -559,7 +561,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			u->port = http_current->url->port;
 		}
 
- 
 		fetchOpts = sbuf_new_auto();
 		sbuf_cat(fetchOpts, "i");
 		if (repo != NULL) {
@@ -580,7 +581,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		    sbuf_data(fetchOpts));
 
 		sbuf_finish(fetchOpts);
-		
+
+		if (offset > 0)
+			u->offset = offset;
 		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
@@ -619,32 +622,39 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		sz = st.size;
 	}
 
+	if (sz <= 0 && size > 0)
+		sz = size;
+
 	pkg_emit_fetch_begin(url);
 	pkg_emit_progress_start(NULL);
-	while (done < sz) {
-		int to_read = MIN(sizeof(buf), sz - done);
-
-		pkg_debug(1, "Reading status: want read %d over %d, %d already done",
-			to_read, sz, done);
-		if ((r = fread(buf, 1, to_read, remote)) < 1)
-			break;
-
+	if (offset > 0)
+		done += offset;
+	buflen = sizeof(buf);
+	left = sizeof(buf);
+	if (sz > 0)
+		left = sz - done;
+	while ((r = fread(buf, 1, left < buflen ? left : buflen, remote)) > 0) {
 		if (write(dest, buf, r) != r) {
 			pkg_emit_errno("write", "");
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
-
 		done += r;
-		pkg_debug(1, "Read status: %d over %d", done, sz);
-
-		pkg_emit_progress_tick(done, sz);
+		if (sz > 0) {
+			left -= r;
+			pkg_debug(1, "Read status: %d over %d", done, sz);
+		} else
+			pkg_debug(1, "Read status: %d", done);
+		if (sz > 0)
+			pkg_emit_progress_tick(done, sz);
 	}
 
-	if (done < sz) {
+	if (r != 0) {
 		pkg_emit_error("An error occurred while fetching package");
 		retcode = EPKG_FATAL;
 		goto cleanup;
+	} else {
+		pkg_emit_progress_tick(done, done);
 	}
 	pkg_emit_fetch_finished(url);
 
@@ -654,8 +664,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		goto cleanup;
 	}
 
-	cleanup:
-
+cleanup:
 	if (u != NULL) {
 		if (remote != NULL &&  repo != NULL && remote != repo->ssh)
 			fclose(remote);

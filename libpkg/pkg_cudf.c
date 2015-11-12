@@ -111,10 +111,10 @@ static int
 cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		struct pkg_job_universe_item *conflicts_chain)
 {
-	struct pkg_dep *dep, *dtmp;
-	struct pkg_provide *prov, *ptmp;
+	struct pkg_dep *dep;
 	struct pkg_conflict *conflict, *ctmp;
 	struct pkg_job_universe_item *u;
+	char *buf;
 	int column = 0, ver;
 
 	if (fprintf(f, "package: ") < 0)
@@ -126,27 +126,27 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
 		return (EPKG_FATAL);
 
-	if (HASH_COUNT(pkg->deps) > 0) {
+	if (kh_count(pkg->deps) > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
-		HASH_ITER(hh, pkg->deps, dep, dtmp) {
+		kh_each_value(pkg->deps, dep, {
 			if (cudf_print_element(f, dep->name,
-					(dep->hh.next != NULL), &column) < 0) {
+			    column + 1 == kh_count(pkg->deps), &column) < 0) {
 				return (EPKG_FATAL);
 			}
-		}
+		});
 	}
 
 	column = 0;
-	if (HASH_COUNT(pkg->provides) > 0) {
+	if (kh_count(pkg->provides) > 0) {
 		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
-		HASH_ITER(hh, pkg->provides, prov, ptmp) {
-			if (cudf_print_element(f, prov->provide,
-					(prov->hh.next != NULL), &column) < 0) {
+		kh_each_value(pkg->provides, buf, {
+			if (cudf_print_element(f, buf,
+			    column + 1 == kh_count(pkg->provides), &column) < 0) {
 				return (EPKG_FATAL);
 			}
-		}
+		});
 	}
 
 	column = 0;

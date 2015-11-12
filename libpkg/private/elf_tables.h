@@ -33,6 +33,9 @@ struct _elf_corres {
 static const struct _elf_corres mach_corres[] = {
 	{ EM_386, "x86" },
 	{ EM_X86_64, "x86" },
+#ifdef EM_AARCH64
+	{ EM_AARCH64, "aarch64" },
+#endif
 	{ EM_ARM, "arm" },
 	{ EM_MIPS, "mips" },
 	{ EM_PPC, "powerpc" },
@@ -87,6 +90,7 @@ static struct arch_trans machine_arch_translation[] = {
 	{ "arm:32:eb:eabi:softfp", "armeb" },
 	{ "arm:32:eb:oabi:softfp", "armeb" },
 	{ "armv6:32:el:eabi:softfp", "armv6" },
+	{ "aarch64:64", "aarch64" },
 	/* And now MIPS */
 	{ "mips:32:el:o32", "mipsel" },
 	{ "mips:32:el:n32", "mipsn32el" },

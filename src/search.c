@@ -386,13 +386,13 @@ exec_search(int argc, char **argv)
 	case FIELD_NONE:
 		break;		/* should never happen */
 	case FIELD_ORIGIN:
-		opt |= INFO_TAG_ORIGIN;
+		opt |= INFO_TAG_ORIGIN|INFO_COMMENT;
 		break;
 	case FIELD_NAME:
-		opt |= INFO_TAG_NAME;
+		opt |= INFO_TAG_NAME|INFO_COMMENT;
 		break;
 	case FIELD_NAMEVER:
-		opt |= INFO_TAG_NAMEVER;
+		opt |= INFO_TAG_NAMEVER|INFO_COMMENT;
 		break;
 	case FIELD_COMMENT:
 		opt |= INFO_TAG_NAMEVER|INFO_COMMENT;
@@ -400,6 +400,11 @@ exec_search(int argc, char **argv)
 	case FIELD_DESC:
 		opt |= INFO_TAG_NAMEVER|INFO_DESCR;
 		break;
+	}
+
+	if (quiet) {
+		opt = INFO_TAG_NAMEVER;
+		quiet = false;
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);

@@ -42,7 +42,7 @@
 void
 usage_shlib(void)
 {
-	fprintf(stderr, "Usage: pkg shlib [-P|R] <library>\n\n");
+	fprintf(stderr, "Usage: pkg shlib [-q] [-P|R] <library>\n\n");
 	fprintf(stderr, "<library> should be a filename without leading path.\n");
 	fprintf(stderr, "For more information see 'pkg help shlib'.\n");
 }
@@ -83,7 +83,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		if (count == 0)
+		if (count == 0 && !quiet)
 			printf("%s is provided by the following packages:\n",
 			       libname);
 		count++;
@@ -91,7 +91,7 @@ pkgs_providing_lib(struct pkgdb *db, const char *libname)
 	}
 
 	if (ret == EPKG_END) {
-		if (count == 0)
+		if (count == 0 && !quiet)
 			printf("No packages provide %s.\n", libname);
 		ret = EPKG_OK;
 	}
@@ -115,7 +115,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		if (count == 0)
+		if (count == 0 && !quiet)
 			printf("%s is linked to by the following packages:\n",
 			       libname);
 		count++;
@@ -123,7 +123,7 @@ pkgs_requiring_lib(struct pkgdb *db, const char *libname)
 	}
 
 	if (ret == EPKG_END) {
-		if (count == 0)
+		if (count == 0 && !quiet)
 			printf("No packages require %s.\n", libname);
 		ret = EPKG_OK;
 	}
@@ -147,16 +147,20 @@ exec_shlib(int argc, char **argv)
 	struct option longopts[] = {
 		{ "provides",	no_argument,	NULL,	'P' },
 		{ "requires",	no_argument,	NULL,	'R' },
+		{ "quiet" ,	no_argument,	NULL,	'q' },
 		{ NULL,		0,		NULL,	0 },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+PR", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+qPR", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'P':
 			provides_only = true;
 			break;
 		case 'R':
 			requires_only = true;
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		default:
 			usage_shlib();
@@ -168,6 +172,11 @@ exec_shlib(int argc, char **argv)
 
 	if (argc < 1 || (provides_only && requires_only)) {
 		usage_shlib();
+		return (EX_USAGE);
+	}
+
+	if (argc >= 2) {
+		warnx("multiple libraries per run not allowed");
 		return (EX_USAGE);
 	}
 

@@ -13,7 +13,6 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
 .Dd May 25, 2014
 .Dt PKG-ADD 8
@@ -98,6 +97,7 @@ which is an alternate system root.
 This is an experimental feature and intended for cross-architecture
 package management.
 There is no corresponding single letter option.
+.Pq DEPRECATED
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -106,6 +106,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev DEFAULT_ALWAYS_YES
 .It Ev ASSUME_ALWAYS_YES
 .It Ev HANDLE_RC_SCRIPTS
 .It Ev PKG_DBDIR

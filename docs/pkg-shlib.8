@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd November 18, 2014
+.Dd April 9, 2015
 .Dt PKG-SHLIB 8
 .Os
 .Sh NAME
@@ -29,10 +28,12 @@ including the ABI version number.
 Only exact matches are handled.
 .Sh SYNOPSIS
 .Nm
+.Op Fl q
 .Op Fl PR
 .Ar library
 .Pp
 .Nm
+.Op Cm --quiet
 .Op Cm --{provides,requires}
 .Ar library
 .Sh DESCRIPTION
@@ -52,6 +53,8 @@ Show only the installed packages which provide the named
 .It Fl R , Cm --requires
 Show only the installed packages which require
 .Ar library.
+.It Fl q , Cm --quiet
+Force quiet output.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

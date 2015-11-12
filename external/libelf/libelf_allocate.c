@@ -38,7 +38,7 @@
 
 #include "_libelf.h"
 
-ELFTC_VCSID("$Id: libelf_allocate.c 2272 2011-12-03 17:07:31Z jkoshy $");
+ELFTC_VCSID("$Id$");
 
 Elf *
 _libelf_allocate_elf(void)

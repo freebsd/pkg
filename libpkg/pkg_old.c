@@ -111,14 +111,12 @@ int
 pkg_from_old(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	p->type = PKG_INSTALLED;
 	while (pkg_files(p, &f) == EPKG_OK) {
-		if (f->sum[0] == '\0')
+		if (f->sum == NULL)
 			continue;
-		if (sha256_file(f->path, sha256) == EPKG_OK)
-			strlcpy(f->sum, sha256, sizeof(f->sum));
+		f->sum = pkg_checksum_generate_file(f->path, PKG_HASH_TYPE_SHA256_HEX);
 	}
 
 	return (EPKG_OK);

@@ -1,28 +1,23 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case annotate
-annotate_head() {
-	atf_set "descr" "pkg annotate"
-	atf_set "require.files" \
-	   "$(atf_get_srcdir)/png.ucl $(atf_get_srcdir)/sqlite3.ucl"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	annotate
 
 annotate_body() {
-        export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
 	for pkg in 'png' 'sqlite3' ; do
 	    atf_check \
 		-o match:".*Installing.*\.\.\.$" \
 		-e empty \
 		-s exit:0 \
-		pkg register -t -M $(atf_get_srcdir)/$pkg.ucl
+		pkg register -t -M ${RESOURCEDIR}/$pkg.ucl
 	done
 
 	[ -f "./local.sqlite" ] || \
 	    atf_fail "Can't populate $PKG_DBDIR/local.sqlite"
 
-        atf_check \
+	atf_check \
 	    -o match:"added annotation tagged: TEST1" \
 	    -e empty \
 	    -s exit:0 \
@@ -33,6 +28,12 @@ annotate_body() {
 	    -e empty \
 	    -s exit:0 \
 	    pkg info -A png
+
+	atf_check \
+	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate -S png TEST1
 
 	echo test2 > $HOME/annotate-TEST2.txt
 
@@ -63,6 +64,12 @@ annotate_body() {
 	    pkg info -A png
 
 	atf_check \
+	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1-modified$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate --show png TEST1
+
+	atf_check \
 	    -o match:"Deleted annotation tagged: TEST1" \
 	    -e empty \
 	    -s exit:0 \
@@ -87,12 +94,33 @@ annotate_body() {
 	    -s exit:0 \
 	    -e empty \
 	    pkg info -A png
-}
 
-atf_init_test_cases() {
-        . $(atf_get_srcdir)/test_environment.sh
+	# Check multiple annotations
+	atf_check \
+	    -o match:"^png-1.5.18: added annotation tagged: TEST1$" \
+	    -o match:"^sqlite3-3.8.6: added annotation tagged: TEST1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate -aAy TEST1 test1
 
-	# Tests are run in alphabetical order
-	atf_add_test_case annotate
+	atf_check \
+	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1$" \
+	    -o match:"^sqlite3-3.8.6: Tag: TEST1 Value: test1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate --all --show TEST1
+
+	atf_check \
+	    -o match:"^png-1.5.18: Deleted annotation tagged: TEST1$" \
+	    -o match:"^sqlite3-3.8.6: Deleted annotation tagged: TEST1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate --yes --all --delete TEST1
+
+	atf_check \
+	    -o empty \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate --all --show TEST1
 
 }

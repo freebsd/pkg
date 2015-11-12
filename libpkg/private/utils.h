@@ -34,10 +34,10 @@
 #include <sys/param.h>
 #include <uthash.h>
 #include <ucl.h>
+#include <khash.h>
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <openssl/sha.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
@@ -46,15 +46,8 @@
 	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
 } while(0)
 
-#define HASH_FIND_INO(head,ino,out)                                          \
-	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
-#define HASH_ADD_INO(head,ino,add)                                          \
-	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
-
-struct hardlinks {
-	ino_t inode;
-	UT_hash_handle hh;
-};
+KHASH_MAP_INIT_INT(hardlinks, int)
+typedef khash_t(hardlinks) hardlinks_t;
 
 struct dns_srvinfo {
 	unsigned int type;
@@ -74,13 +67,11 @@ struct rsa_key {
 	RSA *key;
 };
 
-
+int32_t string_hash_func(const char *);
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
-char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
-ssize_t sbuf_size(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
@@ -88,12 +79,6 @@ int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, char *,
     int argc, char **argv);
 int is_dir(const char *);
-
-void sha256_buf(const char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
-void sha256_buf_bin(const char *, size_t len, char[SHA256_DIGEST_LENGTH]);
-int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
-int sha256_fileat(int fd, const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
-int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 
 int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
@@ -103,7 +88,7 @@ int rsa_verify(const char *path, const char *key,
 int rsa_verify_cert(const char *path, unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
-bool check_for_hardlink(struct hardlinks **hl, struct stat *st);
+bool check_for_hardlink(hardlinks_t *hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
 
 struct dns_srvinfo *

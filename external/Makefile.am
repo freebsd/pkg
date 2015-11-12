@@ -61,7 +61,6 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/uthash/utstring.h \
 		picosat/picosat.h \
 		sqlite/sqlite3.h \
-		uthash/utarray.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
 		include/tree.h \
@@ -70,20 +69,23 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libfetch/common.h \
 		libfetch/fetch.h \
 		libfetch/httperr.h \
-		libfetch/ftperr.h
+		libfetch/ftperr.h \
+		linenoise/linenoise.h
 
 DYNLIBS=		libucl.la \
 			libsqlite.la \
 			libexpat.la \
 			libsbuf.la \
 			libpicosat.la \
-			libfetch.la
+			libfetch.la \
+			liblinenoise.la
 noinst_LTLIBRARIES=	libucl_static.la \
 			libsqlite_static.la \
 			libexpat_static.la \
 			libsbuf_static.la \
 			libpicosat_static.la \
-			libfetch_static.la
+			libfetch_static.la \
+			liblinenoise_static.la
 if LIBELF_BUNDLED
 DYNLIBS+=		libelf.la
 noinst_LTLIBRARIES+=	libelf_static.la
@@ -151,12 +153,13 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_open.c \
 			libelf/libelf_phdr.c \
 			libelf/libelf_shdr.c \
-			libelf/libelf_xlate.c \
-			libelf/libelf_fsize.c \
-			libelf/libelf_msize.c \
-			libelf/libelf_convert.c
-libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
+			libelf/libelf_xlate.c
+nodist_libelf_la_SOURCES=	libelf/libelf_fsize.c \
+				libelf/libelf_msize.c \
+				libelf/libelf_convert.c
+libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf -I$(top_builddir)/external/libelf
 libelf_static_la_SOURCES=	${libelf_la_SOURCES}
+nodist_libelf_static_la_SOURCES=	$(nodist_libelf_la_SOURCES)
 libelf_static_la_CFLAGS=	$(libelf_la_CFLAGS) -static
 libelf_static_la_LDFLAGS=	-all-static
 
@@ -172,6 +175,12 @@ libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
 libsbuf_static_la_CFLAGS=	$(sbuf_common_CFLAGS) -static
 libsbuf_static_la_LDFLAGS=	-all-static
 
+liblinenoise_la_SOURCES=	linenoise/linenoise.c
+liblinenoise_la_CFLAGS=	-shared
+liblinenoise_static_la_SOURCES=	$(liblinenoise_la_SOURCES)
+liblinenoise_static_CFLAGS=	-static
+liblinenoise_static_la_LDFLAGS=	-all-static
+
 ucl_common_cflags=	-I$(top_srcdir)/external/libucl/uthash \
 			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/libucl/include  \
@@ -184,6 +193,8 @@ libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_parser.c \
 			libucl/src/ucl_schema.c \
 			libucl/src/ucl_util.c \
+			libucl/src/ucl_msgpack.c \
+			libucl/src/ucl_sexp.c \
 			libucl/src/xxhash.c
 libucl_la_CFLAGS=	$(ucl_common_cflags) -shared
 libucl_static_la_SOURCES=	$(libucl_la_SOURCES)
@@ -211,7 +222,9 @@ libpicosat_static_la_SOURCES=	$(libpicosat_la_SOURCES)
 libpicosat_static_la_CFLAGS= $(picosat_common_cflags) -static
 libpicosat_static_la_LDFLAGS=	-all-static
 
-sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
+sqlite_common_cflags=	-I$(top_srcdir)/external/linenoise \
+			-DHAVE_SQLITE_CONFIG_H \
+			-DHAVE_LINENOISE \
 			-Wno-unused-variable \
 			-Wno-unused-function \
 			-Wno-strict-aliasing \
@@ -258,9 +271,9 @@ libfetch_static_la_SOURCES=	${libfetch_la_SOURCES}
 
 if HAVE_ELF_ABI
 CLEANFILES=	libelf/libelf_fsize.c \
-			libelf/libelf_msize.c \
-			libelf/libelf_convert.c \
-			libelf/native-elf-format.h
+		libelf/libelf_msize.c \
+		libelf/libelf_convert.c \
+		libelf/native-elf-format.h
 BUILT_SOURCES = libelf/native-elf-format.h \
 		libelf/libelf_convert.c \
 		libelf/libelf_fsize.c \

@@ -96,7 +96,6 @@ exec_set(int argc, char **argv)
 	int64_t		 newautomatic = -1;
 	bool		 automatic = false;
 	bool		 rc = false;
-	const char	*errstr;
 	const char	*changed = NULL;
 	char		*newvalue = NULL;
 	char		*oldvalue = NULL;
@@ -122,11 +121,11 @@ exec_set(int argc, char **argv)
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
-			newautomatic = strtonum(optarg, 0, 1, &errstr);
-			if (errstr)
+			newautomatic = optarg[0] - '0';
+			if (newautomatic != 0 && newautomatic != 1)
 				errx(EX_USAGE, "Wrong value for -A. "
-				    "Expecting 0 or 1, got: %s (%s)",
-				    optarg, errstr);
+				    "Expecting 0 or 1, got: %s",
+				    optarg);
 			break;
 		case 'a':
 			match = MATCH_ALL;
@@ -211,17 +210,21 @@ exec_set(int argc, char **argv)
 		return (EX_SOFTWARE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		free(newvalue);
 		return (EX_IOERR);
+	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
+		free(newvalue);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
 	}
 
 	if (pkgdb_transaction_begin(db, NULL) != EPKG_OK) {
 		pkgdb_close(db);
+		free(newvalue);
 		warnx("Cannot start transaction for update");
 		return (EX_TEMPFAIL);
 	}
@@ -246,11 +249,11 @@ exec_set(int argc, char **argv)
 		rc = yes;
 		if (!yes) {
 			if (pkg != NULL)
-				rc = query_yesno(false, "Change %S from %S to %S for %n-%v? [y/N]: ",
+				rc = query_yesno(false, "Change %S from %S to %S for %n-%v? ",
 						changed, oldvalue, newvalue, pkg, pkg);
 			else
-				rc = query_yesno(false, "Change %S from %S to %S for all dependencies? "
-						"[y/N]: ", changed, oldvalue, newvalue);
+				rc = query_yesno(false, "Change %S from %S to %S for all dependencies? ",
+						changed, oldvalue, newvalue);
 		}
 		if (pkg != NULL && rc) {
 			if (pkgdb_set(db, pkg, field, newvalue) != EPKG_OK) {
@@ -277,15 +280,15 @@ exec_set(int argc, char **argv)
 				if (!rc) {
 					if (newautomatic)
 						rc = query_yesno(false,
-								"Mark %n-%v as automatically installed? [y/N]: ",
+								"Mark %n-%v as automatically installed? ",
 								pkg, pkg);
 					else
 						rc = query_yesno(false,
-								"Mark %n-%v as not automatically installed? [y/N]: ",
+								"Mark %n-%v as not automatically installed? ",
 								pkg, pkg);
 				}
 				if (rc)
-					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
+					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, (int)newautomatic);
 				rc = saved_rc;
 			}
 			if (sets & (ORIGIN|NAME)) {
@@ -308,6 +311,7 @@ exec_set(int argc, char **argv)
 
 cleanup:
 	free(oldvalue);
+	free(newvalue);
 	pkg_free(pkg);
 
 	if (retcode == 0) {

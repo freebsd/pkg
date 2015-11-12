@@ -237,7 +237,7 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 		"SELECT p.id, p.origin, p.name, p.name as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize, p.time "
+			"p.prefix, p.flatsize, p.manifestdigest, p.time "
 			"FROM packages AS p, pkg_shlibs_provided AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.shlib_id = s.id "
@@ -256,6 +256,59 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
+struct pkgdb_it *
+pkgdb_query_require(struct pkgdb *db, const char *req)
+{
+	sqlite3_stmt	*stmt;
+	const char	 sql[] = ""
+		"SELECT p.id, p.origin, p.name, p.name as uniqueid, "
+			"p.version, p.comment, p.desc, "
+			"p.message, p.arch, p.maintainer, p.www, "
+			"p.prefix, p.flatsize, p.time "
+			"FROM packages AS p, pkg_requires AS ps, requires AS s "
+			"WHERE p.id = ps.package_id "
+				"AND ps.require_id = s.id "
+				"AND s.require = ?1;";
+
+	assert(db != NULL);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite, sql);
+		return (NULL);
+	}
+
+	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkgdb_it *
+pkgdb_query_provide(struct pkgdb *db, const char *req)
+{
+	sqlite3_stmt	*stmt;
+	const char	 sql[] = ""
+		"SELECT p.id, p.origin, p.name, p.name as uniqueid, "
+			"p.version, p.comment, p.desc, "
+			"p.message, p.arch, p.maintainer, p.www, "
+			"p.prefix, p.flatsize, p.time "
+			"FROM packages AS p, pkg_provides AS ps, provides AS s "
+			"WHERE p.id = ps.package_id "
+				"AND ps.provide_id = s.id "
+				"AND s.provide = ?1;";
+
+	assert(db != NULL);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite, sql);
+		return (NULL);
+	}
+
+	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+}
 
 struct pkgdb_it *
 pkgdb_repo_query(struct pkgdb *db, const char *pattern, match_t match,
@@ -328,6 +381,53 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 	return (it);
 }
 
+struct pkgdb_it *
+pkgdb_repo_require(struct pkgdb *db, const char *require, const char *repo)
+{
+	struct pkgdb_it *it;
+	struct pkg_repo_it *rit;
+	struct _pkg_repo_list_item *cur;
+
+	it = pkgdb_it_new_repo(db);
+	if (it == NULL)
+		return (NULL);
+
+	LL_FOREACH(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
+			if (cur->repo->ops->required != NULL) {
+				rit = cur->repo->ops->required(cur->repo, require);
+				if (rit != NULL)
+					pkgdb_it_repo_attach(it, rit);
+			}
+		}
+	}
+
+	return (it);
+}
+
+struct pkgdb_it *
+pkgdb_repo_provide(struct pkgdb *db, const char *require, const char *repo)
+{
+	struct pkgdb_it *it;
+	struct pkg_repo_it *rit;
+	struct _pkg_repo_list_item *cur;
+
+	it = pkgdb_it_new_repo(db);
+	if (it == NULL)
+		return (NULL);
+
+	LL_FOREACH(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
+			if (cur->repo->ops->required != NULL) {
+				rit = cur->repo->ops->provided(cur->repo, require);
+				if (rit != NULL)
+					pkgdb_it_repo_attach(it, rit);
+			}
+		}
+	}
+
+	return (it);
+}
 struct pkgdb_it *
 pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)

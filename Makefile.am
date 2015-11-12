@@ -16,7 +16,7 @@ check-local:
 		args="-r $(top_builddir)/res.db" ; \
 	fi ; \
 	kyua --config=none test $$args \
-		--kyuafile='$(top_srcdir)/Kyuafile' \
+		--kyuafile='$(top_builddir)/Kyuafile' \
 		--build-root='$(top_builddir)' || FAILED=1 ; \
 	if [ "$(HTML)" != "" ]; then \
 		kyua report-html --force $$args --output=$(HTML) ; \

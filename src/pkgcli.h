@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <bsd_compat.h>
 
-#define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%s" fmt, getprogname(), __VA_ARGS__, -1)
+#define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
 
 extern bool quiet;
 extern int nbactions;
@@ -43,6 +43,10 @@ int nbdone;
 /* pkg add */
 int exec_add(int, char **);
 void usage_add(void);
+
+/* pkg alias */
+int exec_alias(int, char **);
+void usage_alias(void);
 
 /* pkg annotate */
 int exec_annotate(int, char **);
@@ -163,7 +167,8 @@ void usage_shell(void);
 #define VERSION_TESTPATTERN	(1U<<9)
 #define VERSION_SOURCE_PORTS	(1U<<10)
 #define VERSION_SOURCE_REMOTE	(1U<<11)
-#define VERSION_INDEX_FILE_NAME (1U<<12)
+#define VERSION_INDEX_FILE_NAME	(1U<<12)
+#define VERSION_WITHNAME	(1U<<13)
 
 #define VERSION_SOURCES	(VERSION_SOURCE_PORTS | \
 			 VERSION_SOURCE_INDEX | \
@@ -210,19 +215,21 @@ void usage_config(void);
 #define INFO_FLATSIZE		(1LL<<16)
 #define INFO_PKGSIZE		(1LL<<17)
 #define INFO_DESCR		(1LL<<18)
+#define INFO_PROVIDED		(1LL<<19)
+#define INFO_REQUIRED		(1LL<<20)
 
 /* Other fields not part of the Full output */
-#define INFO_MESSAGE		(1LL<<19)
-#define INFO_DEPS		(1LL<<20)
-#define INFO_RDEPS		(1LL<<21)
-#define INFO_FILES		(1LL<<22)
-#define INFO_DIRS		(1LL<<23)
-#define INFO_USERS		(1LL<<24)
-#define INFO_GROUPS		(1LL<<25)
-#define INFO_REPOURL		(1LL<<26)
-#define INFO_LOCKED		(1LL<<27)
-#define INFO_OPTION_DEFAULTS    (1LL<<28)
-#define INFO_OPTION_DESCRIPTIONS (1LL<<29)
+#define INFO_MESSAGE		(1LL<<21)
+#define INFO_DEPS		(1LL<<22)
+#define INFO_RDEPS		(1LL<<23)
+#define INFO_FILES		(1LL<<24)
+#define INFO_DIRS		(1LL<<25)
+#define INFO_USERS		(1LL<<26)
+#define INFO_GROUPS		(1LL<<27)
+#define INFO_REPOURL		(1LL<<28)
+#define INFO_LOCKED		(1LL<<29)
+#define INFO_OPTION_DEFAULTS    (1LL<<30)
+#define INFO_OPTION_DESCRIPTIONS (1LL<<31)
 
 #define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
@@ -246,7 +253,7 @@ void usage_config(void);
 			 INFO_WWW|INFO_COMMENT|INFO_OPTIONS|		 \
 			 INFO_SHLIBS_REQUIRED|INFO_SHLIBS_PROVIDED|	 \
 			 INFO_ANNOTATIONS|INFO_FLATSIZE|INFO_PKGSIZE|	 \
-			 INFO_DESCR)
+			 INFO_DESCR|INFO_PROVIDED|INFO_REQUIRED)
 
 /* Everything that can take more than one line to print */
 #define INFO_MULTILINE	(INFO_OPTIONS|INFO_SHLIBS_REQUIRED|	       \
@@ -289,6 +296,7 @@ int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,
 			 char *multiline);
 
+extern int default_yes;
 extern int yes;
 extern int dry_run;
 extern int auto_update;

@@ -7,6 +7,8 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
+			-I$(top_srcdir)/external/libucl/klib \
+			-I$(top_srcdir)/external/libucl/src \
 			-I$(top_srcdir)/external/picosat \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
@@ -21,6 +23,7 @@ endif
 
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
+			clean_cache.c \
 			dns_utils.c \
 			fetch.c \
 			packing.c \
@@ -33,6 +36,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_cudf.c \
 			pkg_create.c \
 			pkg_delete.c \
+			pkg_deps.c \
 			pkg_event.c \
 			pkg_jobs.c \
 			pkg_jobs_conflicts.c \
@@ -79,6 +83,7 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf.la \
 			$(top_builddir)/external/libpicosat.la \
 			$(top_builddir)/external/libfetch.la \
+			$(top_builddir)/external/liblinenoise.la \
 			$(top_builddir)/external/blake2/libblake2.la \
 			@REPOS_LDADD@ \
 			@LDNS_LIBS@ \
@@ -123,6 +128,7 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libpicosat_static.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(top_builddir)/external/libfetch_static.la \
+			$(top_builddir)/external/liblinenoise_static.la \
 			$(top_builddir)/external/blake2/libblake2_static.la \
 			@REPOS_LDADD_STATIC@
 
@@ -138,6 +144,7 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/pkg_printf.h \
 			private/pkgdb.h \
 			private/utils.h \
-			private/pkg_jobs.h
+			private/pkg_jobs.h \
+			private/pkg_deps.h
 
 SUBDIRS = repo .

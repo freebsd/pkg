@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -198,8 +199,9 @@ static int
 event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
 	pid_t pid;
-	int	status, ret;
+	int status, ret;
 
+	ret = -1;
 	pid = fork();
 
 	switch(pid) {
@@ -377,7 +379,7 @@ progressbar_start(const char *pmsg)
 	progress_started = true;
 	progress_interrupted = false;
 	if (!isatty(STDOUT_FILENO))
-		printf("%s...", progress_message);
+		printf("%s: ", progress_message);
 	else
 		printf("%s:   0%%", progress_message);
 }
@@ -385,12 +387,22 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
+	int percent;
+
 	if (!quiet && progress_started) {
 		if (isatty(STDOUT_FILENO))
 			draw_progressbar(current, total);
 		else {
-			if (progress_interrupted)
+			if (progress_interrupted) {
 				printf("%s...", progress_message);
+			} else if (!getenv("NO_TICK")){
+				percent = (total != 0) ? (current * 100. / total) : 100;
+				if (last_progress_percent / 10 < percent / 10) {
+					last_progress_percent = percent;
+					printf(".");
+					fflush(stdout);
+				}
+			}
 			if (current >= total)
 				progressbar_stop();
 		}
@@ -560,7 +572,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NOTICE:
 		if (!quiet)
-			warnx("%s", ev->e_pkg_notice.msg);
+			printf("%s\n", ev->e_pkg_notice.msg);
 		break;
 	case PKG_EVENT_DEVELOPER_MODE:
 		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
@@ -603,27 +615,18 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
-		else {
-			nbdone++;
-			job_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 
-			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
-			    pkg);
-			sbuf_finish(msg_buf);
-			printf("%s", sbuf_data(msg_buf));
-		}
+		pkg = ev->e_install_begin.pkg;
+		pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
+		    pkg);
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
 		pkg = ev->e_install_finished.pkg;
-		if (pkg_has_message(pkg)) {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-			    pkg, pkg, pkg);
-		}
 		break;
 	case PKG_EVENT_EXTRACT_BEGIN:
 		if (quiet)
@@ -672,7 +675,6 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		nbdone++;
 
 		job_status_begin(msg_buf);
 
@@ -700,9 +702,8 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_begin.new;
-		pkg_old = ev->e_upgrade_begin.old;
-		nbdone++;
+		pkg_new = ev->e_upgrade_begin.n;
+		pkg_old = ev->e_upgrade_begin.o;
 
 		job_status_begin(msg_buf);
 
@@ -726,13 +727,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_finished.new;
-		if (pkg_has_message(pkg_new)) {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-				pkg_new, pkg_new, pkg_new);
-		}
+		pkg_new = ev->e_upgrade_finished.n;
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
@@ -758,9 +753,8 @@ event_callback(void *data, struct pkg_event *ev)
 		    "the repositories\n", ev->e_not_found.pkg_name);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		fprintf(stderr, "missing dependency %s-%s\n",
-		    pkg_dep_name(ev->e_missing_dep.dep),
-		    pkg_dep_version(ev->e_missing_dep.dep));
+		warnx("Missing dependency '%s'",
+		    pkg_dep_name(ev->e_missing_dep.dep));
 		break;
 	case PKG_EVENT_NOREMOTEDB:
 		fprintf(stderr, "Unable to open remote database \"%s\". "
@@ -779,6 +773,11 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg = ev->e_file_mismatch.pkg;
 		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
 		    pkg, ev->e_file_mismatch.file);
+		break;
+	case PKG_EVENT_FILE_MISSING:
+		pkg = ev->e_file_missing.pkg;
+		pkg_fprintf(stderr, "%n-%v: missing file %Fn\n", pkg, pkg,
+		    ev->e_file_missing.file);
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		warnx("%s: %s(%s): %s",
@@ -842,6 +841,14 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_RESTORE:
 		sbuf_cat(msg_buf, "Restoring");
 		sbuf_finish(msg_buf);
+		break;
+	case PKG_EVENT_NEW_ACTION:
+		nbdone++;
+		break;
+	case PKG_EVENT_MESSAGE:
+		if (messages == NULL)
+			messages = sbuf_new_auto();
+		sbuf_cat(messages, ev->e_pkg_message.msg);
 		break;
 	default:
 		break;

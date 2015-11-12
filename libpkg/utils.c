@@ -46,12 +46,38 @@
 #include <paths.h>
 #include <float.h>
 #include <math.h>
+#include <xxhash.h>
 
 #include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+
+int64_t
+pkg_hash_seed(void)
+{
+	static int64_t seed = 0;
+
+	if (seed == 0)
+		seed = time(NULL);
+	return (seed);
+}
+
+#if (defined(WORD_BIT) && WORD_BIT == 64) || \
+	(defined(__WORDSIZE) && __WORDSIZE == 64) || \
+	defined(__x86_64__) || \
+	defined(__amd64__)
+#define XXHASHIMPL XXH64
+#else
+#define XXHASHIMPL XXH32
+#endif
+
+int32_t
+string_hash_func(const char *key)
+{
+	return (XXHASHIMPL(key, strlen(key), pkg_hash_seed()));
+}
 
 void
 sbuf_init(struct sbuf **buf)
@@ -76,18 +102,6 @@ sbuf_set(struct sbuf **buf, const char *str)
 	return (0);
 }
 
-char *
-sbuf_get(struct sbuf *buf)
-{
-	if (buf == NULL)
-		return (__DECONST(char *, ""));
-
-	if (sbuf_done(buf) == 0)
-		sbuf_finish(buf);
-
-	return (sbuf_data(buf));
-}
-
 void
 sbuf_reset(struct sbuf *buf)
 {
@@ -102,15 +116,6 @@ sbuf_free(struct sbuf *buf)
 {
 	if (buf != NULL)
 		sbuf_delete(buf);
-}
-
-ssize_t
-sbuf_size(struct sbuf *buf)
-{
-	if (buf != NULL)
-		return sbuf_len(buf);
-
-	return 0;
 }
 
 int
@@ -334,7 +339,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					    " available", pos, argc);
 					sbuf_finish(buf);
 					sbuf_free(buf);
-
 					return (EPKG_FATAL);
 				}
 				sbuf_cat(buf, argv[pos -1]);
@@ -364,96 +368,6 @@ is_dir(const char *path)
 	return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
-static void
-sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
-    char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int i;
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		sprintf(out + (i * 2), "%02x", hash[i]);
-
-	out[SHA256_DIGEST_LENGTH * 2] = '\0';
-}
-
-int
-sha256_fileat(int rootfd, const char *path,
-    char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int fd, ret;
-
-	if ((fd = openat(rootfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("openat", path);
-		return (EPKG_FATAL);
-	}
-
-	ret = sha256_fd(fd, out);
-
-	close(fd);
-
-	return (ret);
-}
-
-int
-sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int fd;
-	int ret;
-
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
-		return (EPKG_FATAL);
-	}
-
-	ret = sha256_fd(fd, out);
-
-	close(fd);
-
-	return (ret);
-}
-
-void
-sha256_buf(const char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	sha256_buf_bin(buf, len, hash);
-	out[0] = '\0';
-	sha256_hash(hash, out);
-}
-
-void
-sha256_buf_bin(const char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
-{
-	SHA256_CTX sha256;
-
-	SHA256_Init(&sha256);
-	SHA256_Update(&sha256, buf, len);
-	SHA256_Final(hash, &sha256);
-}
-
-int
-sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	int ret = EPKG_OK;
-	SHA256_CTX sha256;
-
-	out[0] = '\0';
-
-	SHA256_Init(&sha256);
-
-	while ((r = read(fd, buffer, BUFSIZ)) > 0)
-		SHA256_Update(&sha256, buffer, r);
-
-	SHA256_Final(hash, &sha256);
-	sha256_hash(hash, out);
-
-	(void)lseek(fd, 0, SEEK_SET);
-
-	return (ret);
-}
-
 bool
 string_end_with(const char *path, const char *str)
 {
@@ -475,17 +389,13 @@ string_end_with(const char *path, const char *str)
 }
 
 bool
-check_for_hardlink(struct hardlinks **hl, struct stat *st)
+check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	struct hardlinks *h;
+	int absent;
 
-	HASH_FIND_INO(*hl, &st->st_ino, h);
-	if (h != NULL)
+	kh_put_hardlinks(hl, st->st_ino, &absent);
+	if (absent == 0)
 		return (true);
-
-	h = malloc(sizeof(struct hardlinks));
-	h->inode = st->st_ino;
-	HASH_ADD_INO(*hl, inode, h);
 
 	return (false);
 }
@@ -740,59 +650,6 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 	sbuf_finish(*buf);
 
 	return (ret);
-}
-
-static int
-pkg_symlink_cksum_readlink(const char *linkbuf, int linklen, const char *root,
-    char *cksum)
-{
-	const char *lnk;
-
-	lnk = linkbuf;
-	if (root != NULL) {
-		/* Skip root from checksum, as it is meaningless */
-		if (strncmp(root, linkbuf, strlen(root)) == 0) {
-			lnk += strlen(root);
-		}
-	}
-	/* Skip heading slashes */
-	while(*lnk == '/')
-		lnk ++;
-
-	sha256_buf(lnk, linklen, cksum);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_symlink_cksum(const char *path, const char *root, char *cksum)
-{
-	char linkbuf[MAXPATHLEN];
-	int linklen;
-
-	if ((linklen = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
-	}
-	linkbuf[linklen] = '\0';
-
-	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
-}
-
-int
-pkg_symlink_cksumat(int fd, const char *path, const char *root, char *cksum)
-{
-	char linkbuf[MAXPATHLEN];
-	int linklen;
-
-	if ((linklen = readlinkat(fd, path, linkbuf, sizeof(linkbuf) - 1)) ==
-	    -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
-	}
-	linkbuf[linklen] = '\0';
-
-	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
 }
 
 /* A bit like strsep(), except it accounts for "double" and 'single'

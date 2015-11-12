@@ -1,19 +1,15 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case package_split
-package_split_head() {
-	atf_set "descr" "testig package splitting"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	package_split
 
 package_split_body() {
-	export INSTALL_AS_USER=yes
-	export PKG_DBDIR=.
-
-	tmpdir=`pwd`
 	touch file1
 	touch file2
 
-	cat << EOF >> pkg1.ucl
+	cat << EOF > pkg1.ucl
 name: test
 origin: test
 version: 1
@@ -26,12 +22,12 @@ desc: <<EOD
 Yet another test
 EOD
 files: {
-    ${tmpdir}/file1: "",
-    ${tmpdir}/file2: "",
+	${TMPDIR}/file1: "",
+	${TMPDIR}/file2: "",
 }
 EOF
 
-	cat << EOF >> dep1.ucl
+	cat << EOF > dep1.ucl
 name: master
 origin: test
 version: 1
@@ -51,7 +47,7 @@ deps: {
 }
 EOF
 
-cat << EOF >> pkg2.ucl
+cat << EOF > pkg2.ucl
 name: sub-test
 origin: test
 version: 1
@@ -64,11 +60,11 @@ desc: <<EOD
 Yet another test
 EOD
 files: {
-	${tmpdir}/file1: "",
+	${TMPDIR}/file1: "",
 }
 EOF
 
-cat << EOF >> pkg3.ucl
+cat << EOF > pkg3.ucl
 name: sub-test2
 origin: test
 version: 1
@@ -81,11 +77,11 @@ desc: <<EOD
 Yet another test
 EOD
 files: {
-	${tmpdir}/file2: "",
+	${TMPDIR}/file2: "",
 }
 EOF
 
-	cat << EOF >> pkg4.ucl
+	cat << EOF > pkg4.ucl
 name: test
 origin: test
 version: 1
@@ -108,46 +104,40 @@ deps: {
 	}
 }
 EOF
-	
+
 	for p in pkg1 dep1; do
 		atf_check \
-			-o match:".*Installing.*\.\.\.$" \
-			-e empty \
-			-s exit:0 \
-			pkg register -M ${p}.ucl
+		    -o match:".*Installing.*\.\.\.$" \
+		    -e empty \
+		    -s exit:0 \
+		    pkg register -M ${p}.ucl
 	done
 
 	for p in dep1 pkg2 pkg3 pkg4; do
 		atf_check \
-			-o empty \
-			-e empty \
-			-s exit:0 \
-			pkg create -M ./${p}.ucl
+		    -o ignore \
+		    -e empty \
+		    -s exit:0 \
+		    pkg create -M ./${p}.ucl
 	done
 
 	atf_check \
-		-o inline:"Creating repository in .... done\nPacking files for repository... done\n" \
-		-e empty \
-		-s exit:0 \
-		pkg repo .
+	    -o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg repo .
 
-	cat << EOF >> repo.conf
+	cat << EOF > repo.conf
 local: {
-	url: file:///$tmpdir,
+	url: file:///$TMPDIR,
 	enabled: true
 }
 EOF
 	atf_check \
-		-o ignore \
-		-e empty \
-		-s exit:0 \
-		pkg -o REPOS_DIR="$tmpdir" -o PKG_CACHEDIR="$tmpdir" upgrade -y
+	    -o ignore \
+	    -e empty \
+	    -s exit:0 \
+	    pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 
 	test -f file1 || atf_fail "file1 is not present"
-}
-
-atf_init_test_cases() {
-        . $(atf_get_srcdir)/test_environment.sh
-
-	atf_add_test_case package_split
 }

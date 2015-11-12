@@ -37,8 +37,11 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <kvec.h>
 
 #include "pkgcli.h"
+
+typedef kvec_t(char *) charlist;
 
 void
 usage_which(void)
@@ -48,7 +51,19 @@ usage_which(void)
 }
 
 static bool is_there(char *);
-int get_match(char **, char *, char *);
+int get_match(char **, char **, char *);
+
+static bool
+already_in_list(charlist *list, const char *pattern)
+{
+	int i;
+
+	for (i = 0; i < kv_size(*list); i++)
+		if (strcmp(kv_A(*list, i), pattern) == 0)
+			return (true);
+
+	return (false);
+}
 
 int
 exec_which(int argc, char **argv)
@@ -57,14 +72,15 @@ exec_which(int argc, char **argv)
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	char		 pathabs[MAXPATHLEN];
-	char		*p, *path, *match;
+	char		*p, *path, *match, *savedpath;
 	int		 ret = EPKG_OK, retcode = EX_SOFTWARE;
-	int		 ch;
+	int		 ch, i;
 	int		 res, pathlen = 0;
 	bool		 orig = false;
 	bool		 glob = false;
 	bool		 search = false;
 	bool		 search_s = false;
+	charlist	 patterns;
 
 	struct option longopts[] = {
 		{ "glob",		no_argument,	NULL,	'g' },
@@ -124,6 +140,7 @@ exec_which(int argc, char **argv)
 	}
 
 	while (argc >= 1) {
+		kv_init(patterns);
 		retcode = EX_SOFTWARE;
 		if (search_s) {
 			if ((argv[0][0] == '.') || (argv[0][0] == '/')) {
@@ -144,25 +161,36 @@ exec_which(int argc, char **argv)
 				strlcpy(p, path, pathlen);
 
 				match = NULL;
-				res = get_match(&match, p, argv[0]);
-				free(p);
+				savedpath=p;
+				for (;;) {
+					res = get_match(&match, &p, argv[0]);
+					if (p == NULL)
+						break;
 
-				if (res == (EX_USAGE)) {
-					printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
-					search = false;
-				} else if (res == (EX_OSERR)) {
-					retcode = EX_OSERR;
-					goto cleanup;
-				} else {
-					pkg_absolutepath(match, pathabs, sizeof(pathabs));
-					free(match);
+					if (res == (EX_USAGE)) {
+						printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
+						search = false;
+					} else if (res == (EX_OSERR)) {
+						retcode = EX_OSERR;
+						free(savedpath);
+						goto cleanup;
+					} else {
+						pkg_absolutepath(match, pathabs, sizeof(pathabs));
+						/* ensure not not append twice an entry if PATH is messy */
+						if (already_in_list(&patterns, pathabs))
+							continue;
+						kv_push(char *, patterns, strdup(pathabs));
+						free(match);
+					}
 				}
+				free(savedpath);
 			}
 		}
 
-		if (!glob && !search)
+		if (!glob && !search) {
 			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs));
-		else if (!search) {
+			kv_push(char *, patterns, strdup(pathabs));
+		} else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
 				retcode = EX_USAGE;
 				goto cleanup;
@@ -170,29 +198,32 @@ exec_which(int argc, char **argv)
 		}
 
 
-		if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL) {
-			retcode = EX_IOERR;
-			goto cleanup;
+		for (i = 0; i < kv_size(patterns); i++) {
+			if ((it = pkgdb_query_which(db, kv_A(patterns, i), glob)) == NULL) {
+				retcode = EX_IOERR;
+				goto cleanup;
+			}
+
+			pkg = NULL;
+			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+				retcode = EX_OK;
+				if (quiet && orig)
+					pkg_printf("%o\n", pkg);
+				else if (quiet && !orig)
+					pkg_printf("%n-%v\n", pkg, pkg);
+				else if (!quiet && orig)
+					pkg_printf("%S was installed by package %o\n", kv_A(patterns, i), pkg);
+				else if (!quiet && !orig)
+					pkg_printf("%S was installed by package %n-%v\n", kv_A(patterns, i), pkg, pkg);
+			}
+			if (retcode != EX_OK && !quiet)
+				printf("%s was not found in the database\n", kv_A(patterns, i));
+
+			pkg_free(pkg);
+			pkgdb_it_free(it);
+
 		}
-
-		pkg = NULL;
-		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-			retcode = EX_OK;
-			if (quiet && orig)
-				pkg_printf("%o\n", pkg);
-			else if (quiet && !orig)
-				pkg_printf("%n-%v\n", pkg, pkg);
-			else if (!quiet && orig)
-				pkg_printf("%S was installed by package %o\n", pathabs, pkg);
-			else if (!quiet && !orig)
-				pkg_printf("%S was installed by package %n-%v\n", pathabs, pkg, pkg);
-		}
-
-		if (retcode != EX_OK && !quiet)
-			printf("%s was not found in the database\n", pathabs);
-
-		pkg_free(pkg);
-		pkgdb_it_free(it);
+		kv_destroy(patterns);
 
 		argc--;
 		argv++;
@@ -214,13 +245,13 @@ is_there(char *candidate)
 }
 
 int
-get_match(char **pathabs, char *path, char *filename)
+get_match(char **pathabs, char **path, char *filename)
 {
 	char candidate[PATH_MAX];
 	const char *d;
 	int len;
 
-	while ((d = strsep(&path, ":")) != NULL) {
+	while ((d = strsep(path, ":")) != NULL) {
 		if (snprintf(candidate, sizeof(candidate), "%s/%s", d,
 		    filename) >= (int)sizeof(candidate))
 			continue;

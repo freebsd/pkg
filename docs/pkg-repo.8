@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd November 18, 2014
+.Dd April 9, 2015
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -57,7 +56,12 @@ top-level directory where all the packages are stored as
 will search the filesystem beneath
 .Ar repo-path
 to find all the packages it contains.
-Symbolic links are ignored.
+Directories starting with
+.Qq . Qc
+or
+named
+.Pa Latest
+are not traversed.
 .Pp
 The repository will be created in the package directory unless the
 .Fl o Ar output-dir

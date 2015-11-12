@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd January 24, 2015
+.Dd April 14, 2015
 .Dt PKG-ALIAS 8
 .Os
 .Sh NAME
@@ -23,6 +22,12 @@
 .Nd display configured aliases
 .Sh SYNOPSIS
 .Nm
+.Op Fl q
+.Op Fl l
+.Pp
+.Nm "pkg alias"
+.Op Cm --quiet
+.Op Cm --list
 .Ar [alias]
 .Sh DESCRIPTION
 .Nm
@@ -32,6 +37,13 @@ If given the name of an existing alias only shows the aliased arguments to
 Without arguments all aliases and their respective
 .Xr pkg 8 .
 arguments are printed.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width quiet
+.It Fl l, Cm --list
+.It Fl q, Cm --quiet
+Force quiet output. (aka suppress the header)
 .Sh FILES
 .Xr pkg.conf 5
 .Sh EXAMPLES

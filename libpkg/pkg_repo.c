@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  *
  * All rights reserved.
@@ -105,7 +105,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	}
 	(void)unlink(tmp);
 
-	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t)) != EPKG_OK) {
+	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t, -1, 0)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
@@ -133,7 +133,7 @@ static bool
 pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fatal)
 {
 	struct fingerprint *f = NULL;
-	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *hash;
 	int nbgood = 0;
 	struct sig_cert *s = NULL, *stmp = NULL;
 	struct pkg_repo_meta_key *mk = NULL;
@@ -175,17 +175,20 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 		}
 
 		s->trusted = false;
-		sha256_buf(s->cert, s->certlen, hash);
+		hash = pkg_checksum_data(s->cert, s->certlen,
+		    PKG_HASH_TYPE_SHA256_HEX);
 		HASH_FIND_STR(repo->revoked_fp, hash, f);
 		if (f != NULL) {
 			if (fatal)
 				pkg_emit_error("At least one of the "
 					" certificates has been revoked");
 
+			free(hash);
 			return (false);
 		}
 
 		HASH_FIND_STR(repo->trusted_fp, hash, f);
+		free(hash);
 		if (f != NULL) {
 			nbgood++;
 			s->trusted = true;
@@ -442,7 +445,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 						"output", type);
 				return (EPKG_FATAL);
 			}
-			len = *(int *)p;
+			memcpy(&len, p, sizeof(int));
 			state = fp_parse_file;
 			p += sizeof(int);
 			s = NULL;
@@ -456,6 +459,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			else if (len >= MAXPATHLEN) {
 				pkg_emit_error("filename is incorrect for signature_fingerprints"
 						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
+				free(s);
 				return (EPKG_FATAL);
 			}
 			HASH_FIND(hh, *sc, p, len, s);
@@ -484,9 +488,10 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			if (end - p < sizeof (int)) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
 						"output", type);
+				free(s);
 				return (EPKG_FATAL);
 			}
-			len = *(int *)p;
+			memcpy(&len, p, sizeof(int));
 			state = fp_parse_sig;
 			p += sizeof(int);
 			break;
@@ -639,8 +644,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
     const char *dest, struct pkg_repo *repo, int dest_fd)
 {
 	struct sig_cert *sc = NULL, *s, *stmp;
+	int ret, rc;
 
-	int ret, rc = EPKG_OK;
+	ret = rc = EPKG_OK;
 
 	if (pkg_repo_archive_extract_archive(fd, file, dest, repo, dest_fd, &sc)
 			!= EPKG_OK)
@@ -982,8 +988,12 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 load_meta:
-	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK)
+	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK) {
+		if (map != NULL)
+			munmap(map, st.st_size);
+
 		return (rc);
+	}
 
 	if (repo->meta != NULL)
 		pkg_repo_meta_free(repo->meta);

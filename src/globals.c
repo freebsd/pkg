@@ -23,6 +23,7 @@
 
 #include <pkg.h>
 
+int default_yes; /* Default always yes */
 int yes; /* Assume always yes */
 int dry_run; /* Do not perform any actions */
 int auto_update; /* Do not update repo */
@@ -34,6 +35,7 @@ int newpkgversion; /* New package version is available */
 void
 set_globals(void)
 {
+	default_yes = pkg_object_bool(pkg_config_get("DEFAULT_ALWAYS_YES"));
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 	dry_run = 0;
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));

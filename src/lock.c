@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -47,6 +48,7 @@ void
 usage_lock(void)
 {
 	fprintf(stderr, "Usage: pkg lock [-lqy] [-a|[-Cgix] <pkg-name>]\n");
+	fprintf(stderr, "       pkg lock --has-locked-packages\n");
 	fprintf(stderr, "       pkg unlock [-lqy] [-a|[-Cgix] <pkg-name>]\n");
 	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
@@ -61,14 +63,14 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 	}
 
-	if (!query_yesno(false, "%n-%v: lock this package? [y/N]: ",
+	if (!query_yesno(false, "%n-%v: lock this package? ",
 				 pkg, pkg))
 		return (EPKG_OK);
 
 	if (!quiet)
 		pkg_printf("Locking %n-%v\n", pkg, pkg);
 
-	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)true));
+	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int)true));
 }
 
 
@@ -81,14 +83,14 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 	}
 
-	if (!query_yesno(false, "%n-%v: unlock this package? [y/N]: ",
+	if (!query_yesno(false, "%n-%v: unlock this package? ",
 				 pkg, pkg))
 		return (EPKG_OK);
 
 	if (!quiet)
 		pkg_printf("Unlocking %n-%v\n", pkg, pkg);
 
-	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)false));
+	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int)false));
 }
 
 static int
@@ -145,25 +147,33 @@ exec_unlock(int argc, char **argv)
 	return (exec_lock_unlock(argc, argv, UNLOCK));
 }
 
-static int 
-list_locked(struct pkgdb *db)
+static int
+list_locked(struct pkgdb *db, bool has_locked)
 {
-        struct pkgdb_it	*it = NULL;
-        struct pkg	*pkg = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	bool		 gotone = false;
 
 	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
 		pkgdb_close(db);
 		return (EX_UNAVAILABLE);
 	}
 
-	printf("Currently locked packages:\n");
+	if (!quiet && !has_locked)
+		printf("Currently locked packages:\n");
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		gotone = true;
+		if (has_locked)
+			break;
 		pkg_printf("%n-%v\n", pkg, pkg);
 	}
 
 	pkg_free(pkg);
 	pkgdb_it_free(it);
+
+	if (has_locked)
+		return (gotone ? EXIT_SUCCESS : EXIT_FAILURE);
 
 	return (EX_OK);
 }
@@ -179,6 +189,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	int		 ch;
 	bool		 show_locked = false;
 	bool		 read_only = false;
+	bool		 has_locked_packages = false;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -188,6 +199,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		{ "quiet",		no_argument,	NULL,	'q' },
 		{ "regex",		no_argument,	NULL,	'x' },
 		{ "yes",		no_argument,	NULL,	'y' },
+		{ "has-locked-packages",no_argument,	NULL,	1 },
 		{ NULL,		0,			NULL,	0   },
 	};
 
@@ -216,6 +228,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case 1:
+			show_locked = true;
+			has_locked_packages = true;
 			break;
 		default:
 			usage_lock();
@@ -269,11 +285,8 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	if (!read_only)
 		exitcode = do_lock_unlock(db, match, pkgname, action);
 
-	if (show_locked) { 
-		retcode = list_locked(db);
-		if (retcode != EPKG_END)
-			exitcode = EX_IOERR;
-	}
+	if (show_locked)
+		exitcode = list_locked(db, has_locked_packages);
 
 	pkgdb_close(db);
 

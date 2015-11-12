@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -38,7 +39,7 @@ void pkg_emit_fetch_finished(const char *url);
 void pkg_emit_update_add(int total, int done);
 void pkg_emit_update_remove(int total, int done);
 void pkg_emit_install_begin(struct pkg *p);
-void pkg_emit_install_finished(struct pkg *p);
+void pkg_emit_install_finished(struct pkg *p, struct pkg *old);
 void pkg_emit_deinstall_begin(struct pkg *p);
 void pkg_emit_deinstall_finished(struct pkg *p);
 void pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old);
@@ -75,5 +76,8 @@ void pkg_emit_extract_begin(struct pkg *p);
 void pkg_emit_extract_finished(struct pkg *p);
 void pkg_emit_delete_files_begin(struct pkg *p);
 void pkg_emit_delete_files_finished(struct pkg *p);
+void pkg_emit_new_action(void);
+void pkg_emit_message(const char *msg);
+void pkg_emit_file_missing(struct pkg *p, struct pkg_file *f);
 
 #endif

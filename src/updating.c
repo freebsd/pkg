@@ -144,11 +144,13 @@ exec_updating(int argc, char **argv)
 	cap_rights_init(&rights, CAP_READ);
 	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
 		warn("cap_rights_limit() failed");
+		fclose(fd);
 		return (EX_SOFTWARE);
 	}
 
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
+		fclose(fd);
 		return (EX_SOFTWARE);
 	}
 #endif
@@ -157,6 +159,7 @@ exec_updating(int argc, char **argv)
 	if (argc == 0) {
 		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
 			retcode = EX_UNAVAILABLE;
+			fclose(fd);
 			goto cleanup;
 		}
 
@@ -215,6 +218,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
+	free(dateline);
 
 	return (retcode);
 }

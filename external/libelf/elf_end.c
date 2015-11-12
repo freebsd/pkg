@@ -36,7 +36,7 @@
 #include <sys/mman.h>
 #endif
 
-ELFTC_VCSID("$Id: elf_end.c 2240 2011-11-28 06:36:48Z jkoshy $");
+ELFTC_VCSID("$Id$");
 
 int
 elf_end(Elf *e)

@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd November 18, 2014
+.Dd April 17, 2015
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -51,8 +50,10 @@ tries to upgrade dependencies of packages matched as well while
 is more conservative during dependencies upgrade.
 Moreover,
 .Nm
-cannot install new packages, so a caller should ensure that patterns specified
-as arguments have installed candidates for matching.
+will not install new packages, except as required to fulfil dependencies of
+the packages listed on the command line.
+A caller should ensure that patterns specified as arguments have installed
+candidates for matching.
 If the
 .Fl f
 (force) flag is given, all installed packages are added to the work
@@ -182,6 +183,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev DEFAULT_ALWAYS_YES
 .It Ev ASSUME_ALWAYS_YES
 .It Ev HANDLE_RC_SCRIPTS
 .It Ev PKG_CACHEDIR

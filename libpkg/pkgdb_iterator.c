@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -59,6 +59,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/utils.h"
+#include "private/pkg_deps.h"
 
 /*
  * Keep entries sorted by name!
@@ -77,6 +78,7 @@ static struct column_mapping {
 	{ "cksum",	PKG_CKSUM, PKG_SQLITE_STRING },
 	{ "comment",	PKG_COMMENT, PKG_SQLITE_STRING },
 	{ "dbname",	PKG_REPONAME, PKG_SQLITE_STRING },
+	{ "dep_formula",	PKG_DEP_FORMULA, PKG_SQLITE_STRING },
 	{ "desc",	PKG_DESC, PKG_SQLITE_STRING },
 	{ "flatsize",	PKG_FLATSIZE, PKG_SQLITE_INT64 },
 	{ "id",		PKG_ROWID, PKG_SQLITE_INT64 },
@@ -105,13 +107,13 @@ static struct column_mapping {
 static int
 pkg_addcategory(struct pkg *pkg, const char *data)
 {
-	return (pkg_strel_add(&pkg->categories, data, "category"));
+	return (pkg_addstring(&pkg->categories, data, "category"));
 }
 
 static int
 pkg_addlicense(struct pkg *pkg, const char *data)
 {
-	return (pkg_strel_add(&pkg->licenses, data, "license"));
+	return (pkg_addstring(&pkg->licenses, data, "license"));
 }
 
 static int
@@ -208,8 +210,13 @@ compare_column_func(const void *pkey, const void *pcolumn)
 static int
 pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 {
-	sqlite3_stmt	*stmt = NULL;
+	sqlite3_stmt	*stmt = NULL, *opt_stmt = NULL;
 	int		 ret = EPKG_OK;
+	struct pkg_dep_formula *f;
+	struct pkg_dep_formula_item *fit;
+	struct pkg_dep_option_item *optit;
+	bool options_match;
+	char *formula_sql, *clause;
 	const char	 sql[] = ""
 		"SELECT d.name, d.origin, d.version, 0"
 		"  FROM deps AS d"
@@ -217,6 +224,14 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		"    (p.origin = d.origin AND p.name = d.name)"
 		"  WHERE d.package_id = ?1"
 		"  ORDER BY d.origin DESC";
+	const char formula_preamble[] = ""
+		"SELECT id,name,origin,version,locked FROM packages WHERE ";
+	const char options_sql[] = ""
+		"SELECT option, value"
+		"  FROM option"
+		"    JOIN pkg_option USING(option_id)"
+		"  WHERE package_id = ?1"
+		"  ORDER BY option";
 
 	assert(pkg != NULL);
 
@@ -239,7 +254,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		pkg_adddep(pkg, sqlite3_column_text(stmt, 0),
 			   sqlite3_column_text(stmt, 1),
 			   sqlite3_column_text(stmt, 2),
-			   sqlite3_column_int(stmt, 3));
+			   sqlite3_column_int64(stmt, 3));
 	}
 	sqlite3_finalize(stmt);
 
@@ -247,6 +262,92 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		pkg_list_free(pkg, PKG_DEPS);
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
+	}
+
+	if (pkg->dep_formula) {
+		pkg_debug(4, "Pkgdb: reading package formula '%s'", pkg->dep_formula);
+
+		f = pkg_deps_parse_formula (pkg->dep_formula);
+
+		if (f != NULL) {
+			DL_FOREACH(f->items, fit) {
+				clause = pkg_deps_formula_tosql(fit);
+
+				if (clause) {
+					asprintf(&formula_sql, "%s%s", formula_preamble, clause);
+					pkg_debug(4, "Pkgdb: running '%s'", sql);
+					ret = sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL);
+
+					if (ret != SQLITE_OK) {
+						ERROR_SQLITE(sqlite, sql);
+						free(clause);
+						free(formula_sql);
+						pkg_deps_formula_free(f);
+						return (EPKG_FATAL);
+					}
+
+					/* Fetch matching packages */
+					while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+						/*
+						 * Load options for a package and check
+						 * if they are compatible
+						 */
+						options_match = true;
+
+						if (fit->options) {
+							pkg_debug(4, "Pkgdb: running '%s'", options_sql);
+							if (sqlite3_prepare_v2(sqlite, options_sql, -1,
+									&opt_stmt, NULL) != SQLITE_OK) {
+								ERROR_SQLITE(sqlite, options_sql);
+								return (EPKG_FATAL);
+							}
+
+							sqlite3_bind_int64(opt_stmt, 1,
+									sqlite3_column_int64(stmt, 0));
+
+							while ((ret = sqlite3_step(opt_stmt))
+									== SQLITE_ROW) {
+								DL_FOREACH(fit->options, optit) {
+									if(strcmp(optit->opt,
+											sqlite3_column_text(opt_stmt, 0))
+											== 0) {
+										if ((strcmp(
+												sqlite3_column_text(opt_stmt, 1),
+												"on") && !optit->on)
+											|| (strcmp(
+												sqlite3_column_text(opt_stmt, 1),
+												"off") && optit->on)) {
+											pkg_debug(4, "incompatible option for"
+													"%s: %s",
+													sqlite3_column_text(opt_stmt, 1),
+													optit->opt);
+											options_match = false;
+											break;
+										}
+									}
+								}
+							}
+
+							sqlite3_finalize(opt_stmt);
+						}
+
+						if (options_match) {
+							pkg_adddep(pkg, sqlite3_column_text(stmt, 1),
+									sqlite3_column_text(stmt, 2),
+									sqlite3_column_text(stmt, 3),
+									sqlite3_column_int64(stmt, 4));
+						}
+					}
+
+					free(clause);
+					free(formula_sql);
+					sqlite3_finalize(stmt);
+				}
+
+			}
+
+			pkg_deps_formula_free(f);
+		}
 	}
 
 	pkg->flags |= PKG_LOAD_DEPS;
@@ -285,7 +386,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0),
 			    sqlite3_column_text(stmt, 1),
 			    sqlite3_column_text(stmt, 2),
-			    sqlite3_column_int(stmt, 3));
+			    sqlite3_column_int64(stmt, 3));
 	}
 	sqlite3_finalize(stmt);
 
@@ -386,8 +487,7 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_bind_int64(stmt, 1, pkg->id);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_adddir(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_int(stmt, 1), false);
+		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), false);
 	}
 
 	sqlite3_finalize(stmt);
@@ -437,8 +537,6 @@ pkgdb_load_category(sqlite3 *sqlite, struct pkg *pkg)
 static int
 pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 {
-	/*struct pkg_user *u = NULL;
-	struct passwd *pwd = NULL;*/
 	int		ret;
 	const char	sql[] = ""
 		"SELECT users.name"
@@ -453,22 +551,12 @@ pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_USERS,
 	    pkg_adduser, PKG_USERS);
 
-	/* TODO get user uidstr from local database */
-/*	while (pkg_users(pkg, &u) == EPKG_OK) {
-		pwd = getpwnam(u->name);
-		if (pwd == NULL)
-			continue;
-		strlcpy(u->uidstr, pw_make(pwd), sizeof(u->uidstr));
-	}*/
-
 	return (ret);
 }
 
 static int
 pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 {
-	struct pkg_group	*g = NULL;
-	struct group		*grp = NULL;
 	int			 ret;
 	const char		 sql[] = ""
 		"SELECT groups.name"
@@ -482,13 +570,6 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_GROUPS,
 	    pkg_addgroup, PKG_GROUPS);
-
-	while (pkg_groups(pkg, &g) == EPKG_OK) {
-		grp = getgrnam(g->name);
-		if (grp == NULL)
-			continue;
-		strlcpy(g->gidstr, gr_make(grp), sizeof(g->gidstr));
-	}
 
 	return (ret);
 }
@@ -568,7 +649,7 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addscript(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_int(stmt, 1));
+		    sqlite3_column_int64(stmt, 1));
 	}
 	sqlite3_finalize(stmt);
 
@@ -665,19 +746,37 @@ pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT provide"
-		"  FROM provides"
-		"  WHERE package_id = ?1";
+		"  FROM pkg_provides, provides AS s"
+		"  WHERE package_id = ?1"
+		"    AND provide_id = s.id"
+		"  ORDER by provide DESC";
 
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_PROVIDES,
-			pkg_addconflict, PKG_PROVIDES));
+	    pkg_addprovide, PKG_PROVIDES));
+}
+
+static int
+pkgdb_load_requires(sqlite3 *sqlite, struct pkg *pkg)
+{
+	const char	sql[] = ""
+		"SELECT require"
+		"  FROM pkg_requires, requires AS s"
+		"  WHERE package_id = ?1"
+		"    AND require_id = s.id"
+		"  ORDER by require DESC";
+
+	assert(pkg != NULL);
+
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_REQUIRES,
+	    pkg_addrequire, PKG_REQUIRES));
 }
 
 static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	int		 icol = 0;
-	const char	*colname;
+	const char	*colname, *msg;
 	char		 legacyarch[BUFSIZ];
 
 	assert(stmt != NULL);
@@ -717,7 +816,20 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				pkg->digest = strdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_MESSAGE:
-				pkg->message = strdup(sqlite3_column_text(stmt, icol));
+				msg = sqlite3_column_text(stmt, icol);
+				if (msg) {
+					/* A stupid logic to detect legacy pkg message */
+					if (msg[0] == '[') {
+						pkg_message_from_str(pkg, msg, 0);
+					}
+					else {
+						pkg->message = calloc(1, sizeof(*pkg->message));
+						pkg->message->str = strdup(msg);
+					}
+				}
+				else {
+					pkg->message = NULL;
+				}
 				break;
 			case PKG_NAME:
 				pkg->name = strdup(sqlite3_column_text(stmt, icol));
@@ -746,6 +858,9 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			case PKG_WWW:
 				pkg->www = strdup(sqlite3_column_text(stmt, icol));
 				break;
+			case PKG_DEP_FORMULA:
+				pkg->dep_formula = strdup(sqlite3_column_text(stmt, icol));
+				break;
 			default:
 				pkg_emit_error("Unexpected text value for %s", colname);
 				break;
@@ -761,28 +876,28 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 
 			switch (column->type) {
 			case PKG_AUTOMATIC:
-				pkg->automatic = (bool)sqlite3_column_int(stmt, icol);
+				pkg->automatic = (bool)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_LOCKED:
-				pkg->locked = (bool)sqlite3_column_int(stmt, icol);
+				pkg->locked = (bool)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_FLATSIZE:
-				pkg->flatsize = sqlite3_column_int(stmt, icol);
+				pkg->flatsize = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_ROWID:
-				pkg->id = sqlite3_column_int(stmt, icol);
+				pkg->id = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_LICENSE_LOGIC:
-				pkg->licenselogic = (lic_t)sqlite3_column_int(stmt, icol);
+				pkg->licenselogic = (lic_t)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_OLD_FLATSIZE:
-				pkg->old_flatsize = sqlite3_column_int(stmt, icol);
+				pkg->old_flatsize = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_PKGSIZE:
-				pkg->pkgsize = sqlite3_column_int(stmt, icol);
+				pkg->pkgsize = sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_TIME:
-				pkg->timestamp = sqlite3_column_int(stmt, icol);
+				pkg->timestamp = sqlite3_column_int64(stmt, icol);
 				break;
 			default:
 				pkg_emit_error("Unexpected integer value for %s", colname);
@@ -823,6 +938,7 @@ static struct load_on_flag {
 	{ PKG_LOAD_ANNOTATIONS,		pkgdb_load_annotations },
 	{ PKG_LOAD_CONFLICTS,		pkgdb_load_conflicts },
 	{ PKG_LOAD_PROVIDES,		pkgdb_load_provides },
+	{ PKG_LOAD_REQUIRES,		pkgdb_load_requires },
 	{ -1,			        NULL }
 };
 

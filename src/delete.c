@@ -214,7 +214,7 @@ exec_delete(int argc, char **argv)
 			goto cleanup;
 		}
 		rc = query_yesno(false,
-		            "\nProceed with deinstalling packages? [y/N]: ");
+		            "\nProceed with deinstalling packages? ");
 	}
 	else
 		rc = yes;
@@ -222,6 +222,10 @@ exec_delete(int argc, char **argv)
 	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
+	if (messages != NULL) {
+		sbuf_finish(messages);
+		printf("%s", sbuf_data(messages));
+	}
 	pkgdb_compact(db);
 
 	retcode = EX_OK;

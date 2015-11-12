@@ -43,7 +43,8 @@
 void
 usage_alias(void)
 {
-	fprintf(stderr, "Usage: pkg alias [alias]\n");
+	fprintf(stderr, "Usage: pkg alias [-ql] [alias]\n\n");
+	fprintf(stderr, "For more information see 'pkg help alias'.\n");
 }
 
 int
@@ -52,35 +53,66 @@ exec_alias(int argc, char **argv)
 	const pkg_object *all_aliases;
 	const pkg_object *alias;
 	pkg_iter it = NULL;
-	int found_alias = 0;
+	int ch;
+	int ret = EX_OK;
+	bool list = false;
 
-	if (argc > 2) {
-		usage_alias();
-		return(EX_USAGE);
+	struct option longopts[] = {
+		{ "quiet",	no_argument,	NULL, 'q' },
+		{ "list",	no_argument,	NULL, 'l' },
+		{ NULL,		0,		NULL, 0 },
+	};
+
+	while ((ch = getopt_long(argc, argv, "+ql", longopts, NULL)) != -1) {
+		switch (ch) {
+		case 'q':
+			quiet = true;
+			break;
+		case 'l':
+			list = true;
+			break;
+		default:
+			usage_alias();
+			return (EX_USAGE);
+		}
 	}
+
+	argc -= optind;
+	argv += optind;
 
 	all_aliases = pkg_config_get("ALIAS");
 
-	if (argc == 2) {
+	if (argc == 0) {
+		if (!quiet && list)
+			printf("%s\n", "ALIAS");
+		else if (!quiet)
+			printf("%-20s %s\n", "ALIAS", "ARGUMENTS");
 		while ((alias = pkg_object_iterate(all_aliases, &it))) {
-			if (strcmp(argv[1], pkg_object_key(alias)) == 0) {
-				printf("\t%-15s -> '%s'\n", argv[1], pkg_object_string(alias));
-				found_alias = 1;
-				return (0);
-			}
+			if (list)
+				printf("%s\n", pkg_object_key(alias));
+			else
+				printf("%-20s '%s'\n", pkg_object_key(alias), pkg_object_string(alias));
 		}
-	} else {
-		printf("%-20s %-45s\n", "ALIAS", "ARGUMENTS");
+		return (ret);
+	}
+
+	for (int i = 0; i < argc; i++) {
+		it = NULL;
 		while ((alias = pkg_object_iterate(all_aliases, &it))) {
-			printf("%-20s '%s'\n", pkg_object_key(alias), pkg_object_string(alias));
+			if (strcmp(argv[i], pkg_object_key(alias)) == 0)
+				break;
+		}
+		if (alias) {
+			if (list)
+				printf("%s\n", argv[i]);
+			else
+				printf("%-20s '%s'\n", argv[i], pkg_object_string(alias));
+		} else {
+			warnx("No such alias: '%s'", argv[i]);
+			ret = EX_UNAVAILABLE;
 		}
 	}
 
-	if ((argc == 2) && (found_alias == 0)) {
-		printf("No alias configured named '%s'\n", argv[1]);
-		return(EX_USAGE);
-	}
-
-	return (0);
+	return (ret);
 }
 

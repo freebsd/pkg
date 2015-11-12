@@ -97,6 +97,7 @@ pkg_file_new(struct pkg_file **file)
 		return (EPKG_FATAL);
 
 	(*file)->perm = 0;
+	(*file)->fflags = 0;
 
 	return (EPKG_OK);
 }
@@ -104,6 +105,7 @@ pkg_file_new(struct pkg_file **file)
 void
 pkg_file_free(struct pkg_file *file)
 {
+	free(file->sum);
 	free(file);
 }
 
@@ -118,6 +120,7 @@ pkg_dir_new(struct pkg_dir **d)
 		return (EPKG_FATAL);
 
 	(*d)->perm = 0;
+	(*d)->fflags = 0;
 
 	return (EPKG_OK);
 }
@@ -126,48 +129,6 @@ void
 pkg_dir_free(struct pkg_dir *d)
 {
 	free(d);
-}
-
-/*
- * User
- */
-
-int
-pkg_user_new(struct pkg_user **u)
-{
-	if ((*u = calloc(1, sizeof(struct pkg_user))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_user");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_user_free(struct pkg_user *u)
-{
-	free(u);
-}
-
-/*
- * Group
- */
-
-int
-pkg_group_new(struct pkg_group **g)
-{
-	if ((*g = calloc(1, sizeof(struct pkg_group))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_group");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_group_free(struct pkg_group *g)
-{
-	free(g);
 }
 
 /*
@@ -180,7 +141,10 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 	if (p->scripts[i] == NULL)
 		return (NULL);
 
-	return (sbuf_get(p->scripts[i]));
+	if (sbuf_done(p->scripts[i]) == 0)
+		sbuf_finish(p->scripts[i]);
+
+	return (sbuf_data(p->scripts[i]));
 }
 
 /*
@@ -191,7 +155,7 @@ int
 pkg_option_new(struct pkg_option **option)
 {
 	if ((*option = calloc(1, sizeof(struct pkg_option))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_user");
+		pkg_emit_errno("calloc", "pkg_option");
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
@@ -208,28 +172,6 @@ pkg_option_free(struct pkg_option *option)
 	free(option->default_value);
 	free(option->description);
 	free(option);
-}
-
-/*
- * Shared Libraries
- */
-int
-pkg_shlib_new(struct pkg_shlib **sl)
-{
-	if ((*sl = calloc(1, sizeof(struct pkg_shlib))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_shlib_free(struct pkg_shlib *sl)
-{
-	if (sl == NULL)
-		return;
-
-	free(sl->name);
-	free(sl);
 }
 
 /*
@@ -252,28 +194,7 @@ pkg_conflict_free(struct pkg_conflict *c)
 		return;
 
 	free(c->uid);
-	free(c);
-}
-
-/*
- * Provides
- */
-int
-pkg_provide_new(struct pkg_provide **c)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_provide))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_provide_free(struct pkg_provide *c)
-{
-	if (c == NULL)
-		return;
-
-	free(c->provide);
+	free(c->digest);
 	free(c);
 }
 
@@ -299,30 +220,6 @@ pkg_config_file_free(struct pkg_config_file *c)
 	free(c);
 }
 
-/*
- * strel
- */
-
-int
-pkg_strel_new(struct pkg_strel **c, const char *val)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_strel))) == NULL)
-		return (EPKG_FATAL);
-
-	(*c)->value = strdup(val);
-
-	return (EPKG_OK);
-}
-
-void
-pkg_strel_free(struct pkg_strel *c)
-{
-	if (c == NULL)
-		return;
-
-	free(c->value);
-	free(c);
-}
 
 /*
  * kv

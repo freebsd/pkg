@@ -63,26 +63,40 @@ query_tty_yesno(bool r, const char *msg, ...)
 	int	 tty_fd;
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
+	char	yesnomsg[1024];
 
 #ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
 #endif
 	tty_fd = open(_PATH_TTY, tty_flags);
-	if (tty_fd == -1)
-		return (r);		/* No ctty -- return the
-					 * default answer */
+	if (tty_fd == -1) {
+		/* No ctty -- return the default answer */
+		if (default_yes)
+			return (true);
+		return (r);
+	}
 
 	tty = fdopen(tty_fd, "r+");
 
+	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
+	if (default_yes || r)
+		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
+	else
+		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+
 	va_start(ap, msg);
-	pkg_vfprintf(tty, msg, ap);
+	pkg_vfprintf(tty, yesnomsg, ap);
 	va_end(ap);
 
 	c = getc(tty);
 	if (c == 'y' || c == 'Y')
 		r = true;
-	else if (c == '\n' || c == EOF) {
+	else if (c == 'n' || c == 'N')
 		r = false;
+	else if (c == '\n' || c == EOF) {
+                if (default_yes)
+			r = true;
+		/* Else, r is not modified. It's default value is kept. */
 		goto cleanup;
 	}
 
@@ -103,22 +117,34 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
+	char	yesnomsg[1024];
 
 	/* We use default value of yes or default in case of quiet mode */
 	if (quiet)
-		return (yes || r);
+		return (yes || default_yes || r);
+
+	if (dry_run)
+		return (yes || default_yes || r );
 
 	/* Do not query user if we have specified yes flag */
 	if (yes)
 		return (true);
 
-	pkg_vasprintf(&out, msg, ap);
+	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
+	if (default_yes || r)
+		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
+	else
+		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+
+	pkg_vasprintf(&out, yesnomsg, ap);
 	printf("%s", out);
 
 	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
 
 			if (linelen == 1 && line[0] == '\n') {
+				if (default_yes)
+					r = true;
 				break;
 			}
 			else if (linelen == 2) {
@@ -149,7 +175,9 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				continue;
 			}
 			else {
-				/* Assume EOF as false */
+				if (default_yes)
+					r = true;
+				/* Else, assume EOF as false */
 				r = false;
 				break;
 			}
@@ -232,6 +260,10 @@ info_flags(uint64_t opt, bool remote)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
 	if (opt & INFO_SHLIBS_PROVIDED)
 		flags |= PKG_LOAD_SHLIBS_PROVIDED;
+	if (opt & INFO_PROVIDED)
+		flags |= PKG_LOAD_PROVIDES;
+	if (opt & INFO_REQUIRED)
+		flags |= PKG_LOAD_REQUIRES;
 	if (opt & INFO_ANNOTATIONS)
 		flags |= PKG_LOAD_ANNOTATIONS;
 	if (opt & INFO_DEPS)
@@ -252,6 +284,8 @@ info_flags(uint64_t opt, bool remote)
 			 PKG_LOAD_OPTIONS         |
 			 PKG_LOAD_SHLIBS_REQUIRED |
 			 PKG_LOAD_SHLIBS_PROVIDED |
+			 PKG_LOAD_PROVIDES        |
+			 PKG_LOAD_REQUIRES        |
 			 PKG_LOAD_ANNOTATIONS     |
 			 PKG_LOAD_DEPS;
 		if (!remote) {
@@ -376,7 +410,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 			if (pkg_type(pkg) != PKG_REMOTE) {
 				if (print_tag) {
 					printf("%-15s: ", "Installed on");
-					pkg_printf("%t%{%+%}\n", pkg);
+					pkg_printf("%t%{%c %Z%}\n", pkg);
 				}
 			} else if (!print_tag)
 				printf("\n");
@@ -458,6 +492,26 @@ print_info(struct pkg * const pkg, uint64_t options)
 					pkg_printf("%b%{%bn\n%|%}", pkg);
 				else
 					pkg_printf("%b%{\t%bn\n%|%}", pkg);
+			}
+			break;
+		case INFO_REQUIRED:
+			if (pkg_list_count(pkg, PKG_REQUIRES) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Requires");
+				if (quiet)
+					pkg_printf("%Y%{%Yn\n%|%}", pkg);
+				else
+					pkg_printf("%Y%{\t%Yn\n%|%}", pkg);
+			}
+			break;
+		case INFO_PROVIDED:
+			if (pkg_list_count(pkg, PKG_PROVIDES) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Provides");
+				if (quiet)
+					pkg_printf("%y%{%yn\n%|%}", pkg);
+				else
+					pkg_printf("%y%{\t%yn\n%|%}", pkg);
 			}
 			break;
 		case INFO_ANNOTATIONS:
@@ -659,7 +713,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 			ret = EPKG_OK;
 		}
 
-		if (ret == EPKG_OK && (stat(path, &st) == -1 || pkgsize != st.st_size))
+		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size))
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be
@@ -692,6 +746,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 		it->display_type = PKG_DISPLAY_DELETE;
 
 		break;
+	case PKG_SOLVED_UPGRADE_INSTALL:
 	case PKG_SOLVED_UPGRADE_REMOVE:
 		/* Ignore split-upgrade packages for display */
 		free(it);
@@ -726,8 +781,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 }
 
 static void
-display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
-		int64_t dlsize)
+display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 {
 	const char *why;
 	int64_t pkgsize;
@@ -741,6 +795,7 @@ display_summary_item (struct pkg_solved_display_item *it, int64_t total_size,
 		switch (it->solved_type) {
 		case PKG_SOLVED_INSTALL:
 		case PKG_SOLVED_UPGRADE:
+		case PKG_SOLVED_UPGRADE_INSTALL:
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
 			pkg_printf("and may not be upgraded to version %v\n", it->new);
@@ -821,7 +876,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
-	char size[7];
+	char size[8];
 	va_list ap;
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
@@ -852,7 +907,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			}
 			printf("%s:\n", pkg_display_messages[type]);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
-				display_summary_item(cur, newsize, dlsize);
+				display_summary_item(cur, dlsize);
 				displayed ++;
 				free(cur);
 			}

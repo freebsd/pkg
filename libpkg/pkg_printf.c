@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -75,7 +76,6 @@
  * Fu pkg_file     User owner of file 
  *
  * G  pkg          List of groups
- * Gg pkg_group    gidstr (parse this using gr_scan()?)
  * Gn pkg_group    Group name
  *
  * H
@@ -97,7 +97,7 @@
  * Od pkg_option   Option default value (if known)
  * OD pkg_option   Option description
  *
- * P
+ * P pkg
  * Q
  *
  * R  pkg          Repopath
@@ -107,12 +107,12 @@
  *
  * U  pkg          List of users
  * Un pkg_user     User name
- * Uu pkg_user     uidstr (parse this using pw_scan()?)
  *
  * V  pkg          old version
  * W
  * X
- * Y
+ * Y  pkg          List of requires
+ * Yn pkg_provide  Name of the require
  * Z
  *
  * a  pkg          autoremove flag
@@ -155,8 +155,9 @@
  * v  pkg          version
  * w  pkg          home page URL
  *
- * x  pkg	   pkg tarball size
- * y
+ * x  pkg          pkg tarball size
+ * y  pkg          List of provides
+ * yn pkg_provide  name of the provide
  *
  * z  pkg          short checksum
  */
@@ -339,15 +340,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG,
 		&format_files,
 	},
-	[PP_PKG_GROUP_GIDSTR] =
-	{
-		'G',
-		'g',
-		false,
-		false,
-		PP_PKG|PP_G,
-		&format_group_gidstr,
-	},
 	[PP_PKG_GROUP_NAME] =
 	{
 		'G',
@@ -483,15 +475,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG|PP_U,
 		&format_user_name,
 	},
-	[PP_PKG_USER_UIDSTR] =
-	{
-		'U',
-		'u',
-		false,
-		false,
-		PP_PKG|PP_U,
-		&format_user_uidstr,
-	},
 	[PP_PKG_USERS] =
 	{
 		'U',
@@ -509,6 +492,22 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_old_version,
+	},
+	[PP_PKG_REQUIRED_NAME] = {
+		'Y',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_Y,
+		&format_provide_name,
+	},
+	[PP_PKG_REQUIRED] = {
+		'Y',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_required,
 	},
 	[PP_PKG_AUTOREMOVE] =
 	{
@@ -761,6 +760,22 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_pkgsize,
 	},
+	[PP_PKG_PROVIDED_NAME] = {
+		'y',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_y,
+		&format_provide_name,
+	},
+	[PP_PKG_PROVIDED] = {
+		'y',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_provided,
+	},
 	[PP_PKG_SHORT_CHECKSUM] =
 	{
 		'z',
@@ -823,7 +838,7 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	int			count;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->annotations, kv, count)
+		LL_COUNT(pkg->annotations, kv, count);
 		return (list_count(sbuf, count, p));
 	} else {
 		set_list_defaults(p, "%An: %Av\n", "");
@@ -877,19 +892,19 @@ format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
 	else {
-		struct pkg_shlib	*shlib = NULL;
+		char	*buf = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Bn\n", "");
 
 		count = 1;
-		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-					     shlib, count, PP_B);
+					     buf, count, PP_B);
 
 			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
-				     shlib, count, PP_B);
+				     buf, count, PP_B);
 			count++;
 		}
 	}
@@ -903,9 +918,9 @@ format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *
 struct sbuf *
 format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_shlib	*shlib = data;
+	const char	*shlib = data;
 
-	return (string_val(sbuf, shlib->name, p));
+	return (string_val(sbuf, shlib, p));
 }
 
 /*
@@ -918,25 +933,24 @@ struct sbuf *
 format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	struct pkg_strel	*el;
 	int			 count = 0;
+	char			*cat;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->categories, el, count);
-		return (list_count(sbuf, count, p));
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES), p));
 	} else {
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		LL_FOREACH(pkg->categories, el) {
+		kh_each_value(pkg->categories, cat, {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-				    el, count, PP_C);
+				    cat, count, PP_C);
 
-			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), el,
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), cat,
 			    count, PP_C);
 			count++;
-		}
+		});
 	}
 	return (sbuf);
 }
@@ -947,9 +961,9 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_strel	*el = data;
+	const char *cat = data;
 
-	return (string_val(sbuf, el->value, p));
+	return (string_val(sbuf, cat, p));
 }
 
 /*
@@ -1052,7 +1066,7 @@ format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Fn\n", "");
 
 		count = 1;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
+		LL_FOREACH(pkg->files, file) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     file, count, PP_F);
@@ -1123,7 +1137,7 @@ format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %G -- Groups. list of string values.  Optionally accepts following
  * per-field format in %{ %| %} where %Gn will be replaced by each
- * groupname or %#Gn by the gid or %Gg by the "gidstr" -- a line from
+ * groupname or %#Gn by the gid -- a line from
  * /etc/group. Default %{%Gn\n%|%}
  */
 struct sbuf *
@@ -1134,8 +1148,8 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
-		struct pkg_group	*group = NULL;
-		int			 count;
+		char	*group = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%Gn\n", "");
 
@@ -1154,25 +1168,14 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
- * %Gg -- Group 'gidstr' (one line from /etc/group).
- */
-struct sbuf *
-format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_group	*group = data;
-
-	return (string_val(sbuf, group->gidstr, p));
-}
-
-/*
  * %Gn -- Group name.
  */
 struct sbuf *
 format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_group	*group = data;
+	const char	*group = data;
 
-	return (string_val(sbuf, group->name, p));
+	return (string_val(sbuf, group, p));
 }
 
 /*
@@ -1195,25 +1198,24 @@ struct sbuf *
 format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	struct pkg_strel	*el;
+	char			*lic;
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->licenses, el, count);
-		return (list_count(sbuf, count, p));
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES), p));
 	} else {
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		LL_FOREACH(pkg->licenses, el) {
+		kh_each_value(pkg->licenses, lic, {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
-				    el, count, PP_L);
+				    lic, count, PP_L);
 
-			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), el,
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt), lic,
 			    count, PP_L);
 			count++;
-		}
+		});
 	}
 	return (sbuf);
 }
@@ -1224,9 +1226,9 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_strel	*el = data;
+	const char *lic = data;
 
-	return (string_val(sbuf, el->value, p));
+	return (string_val(sbuf, lic, p));
 }
 
 /*
@@ -1235,9 +1237,52 @@ format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	struct sbuf		*buf, *bufmsg;
 	const struct pkg	*pkg = data;
+	struct pkg_message	*msg;
+	char			*message;
 
-	return (string_val(sbuf, pkg->message, p));
+	bufmsg = sbuf_new_auto();
+	LL_FOREACH(pkg->message, msg) {
+		if (sbuf_len(bufmsg) > 0)
+			sbuf_putc(bufmsg, '\n');
+		switch(msg->type) {
+		case PKG_MESSAGE_ALWAYS:
+			sbuf_printf(bufmsg, "Always:\n");
+			break;
+		case PKG_MESSAGE_UPGRADE:
+			sbuf_printf(bufmsg, "On upgrade");
+			if (msg->minimum_version != NULL ||
+			    msg->maximum_version != NULL) {
+				sbuf_printf(bufmsg, " from %s", pkg->name);
+			}
+			if (msg->minimum_version != NULL) {
+				sbuf_printf(bufmsg, ">%s", msg->minimum_version);
+			}
+			if (msg->maximum_version != NULL) {
+				sbuf_printf(bufmsg, "<%s", msg->maximum_version);
+			}
+			sbuf_printf(bufmsg, ":\n");
+			break;
+		case PKG_MESSAGE_INSTALL:
+			sbuf_printf(bufmsg, "On install:\n");
+			break;
+		case PKG_MESSAGE_REMOVE:
+			sbuf_printf(bufmsg, "On remove:\n");
+			break;
+		}
+		sbuf_printf(bufmsg, "%s\n", msg->str);
+	}
+	sbuf_finish(bufmsg);
+	if (sbuf_len(bufmsg) == 0)
+		message = NULL;
+	else
+		message = sbuf_data(bufmsg);
+
+	buf = string_val(sbuf, message, p);
+	sbuf_delete(bufmsg);
+
+	return (buf);
 }
 
 /*
@@ -1359,7 +1404,7 @@ format_char_string(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %U -- Users. list of string values.  Optionally accepts following
  * per-field format in %{ %| %} where %Un will be replaced by each
- * username or %#Un by the uid or %Uu by the uidstr -- a line from
+ * username or %#Un by the uid -- a line from
  * /etc/passwd. Default %{%Un\n%|%}
  */
 struct sbuf *
@@ -1370,8 +1415,8 @@ format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
-		struct pkg_user	*user = NULL;
-		int		 count;
+		char	*user = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%Un\n", "");
 
@@ -1395,20 +1440,9 @@ format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_user	*user = data;
+	const char	*user = data;
 
-	return (string_val(sbuf, user->name, p));
-}
-
-/*
- * %Uu -- User uidstr (one line from /etc/passwd).
- */
-struct sbuf *
-format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_user	*user = data;
-
-	return (string_val(sbuf, user->uidstr, p));
+	return (string_val(sbuf, user, p));
 }
 
 /*
@@ -1422,6 +1456,48 @@ format_old_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	return (string_val(sbuf, pkg->old_version, p));
 }
 
+/*
+ * %Y -- Required pattern.  List of pattern required by
+ * binaries in the pkg.  Optionally accepts per-field format in %{ %|
+ * %}.  Default %{%Yn\n%|%}
+ */
+struct sbuf *
+format_required(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_REQUIRES), p));
+	else {
+		char	*provide = NULL;
+		int	 count;
+
+		set_list_defaults(p, "%Yn\n", "");
+
+		count = 1;
+		while (pkg_requires(pkg, &provide) == EPKG_OK) {
+			if (count > 1)
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+					     provide, count, PP_Y);
+
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
+				     provide, count, PP_Y);
+			count++;
+		}
+	}
+	return (sbuf);
+}
+
+/*
+ * %Yn -- Required name or %yn -- Provided name
+ */
+struct sbuf *
+format_provide_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const char	*provide = data;
+
+	return (string_val(sbuf, provide, p));
+}
 /*
  * %a -- Autoremove flag. boolean.  Accepts field-width, left-align.
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
@@ -1449,8 +1525,8 @@ format_shlibs_provided(struct sbuf *sbuf, const void *data, struct percent_esc *
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
 	else {
-		struct pkg_shlib	*shlib = NULL;
-		int			 count;
+		char	*shlib = NULL;
+		int	 count;
 
 		set_list_defaults(p, "%bn\n", "");
 
@@ -1772,6 +1848,38 @@ format_pkgsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %y -- Provided pattern.  List of pattern provided by
+ * binaries in the pkg.  Optionally accepts per-field format in %{ %|
+ * %}.  Default %{%yn\n%|%}
+ */
+struct sbuf *
+format_provided(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_PROVIDES), p));
+	else {
+		char	*provide = NULL;
+		int	 count;
+
+		set_list_defaults(p, "%yn\n", "");
+
+		count = 1;
+		while (pkg_provides(pkg, &provide) == EPKG_OK) {
+			if (count > 1)
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+					     provide, count, PP_y);
+
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
+				     provide, count, PP_y);
+			count++;
+		}
+	}
+	return (sbuf);
+}
+
+/*
  * %z -- Package short checksum. string. Accepts field width, left align
  */
 struct sbuf *
@@ -2019,13 +2127,14 @@ string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 {
 	char	format[16];
 
-	/* The '#' '?' '+' ' ' and '\'' modifiers have no meaning for
-	   strings */
+	/* The '#' '?' '+' ' ' '0' and '\'' modifiers have no meaning
+	   for strings */
 
 	p->flags &= ~(PP_ALTERNATE_FORM1 |
 		      PP_ALTERNATE_FORM2 |
 		      PP_EXPLICIT_PLUS   |
 		      PP_SPACE_FOR_PLUS  |
+		      PP_ZERO_PAD        |
 		      PP_THOUSANDS_SEP);
 
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)

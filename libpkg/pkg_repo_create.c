@@ -212,6 +212,34 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	errno = 0;
 
 	while ((fts_ent = fts_read(fts)) != NULL) {
+		/*
+		 * Skip directories starting with '.' to avoid Poudriere
+		 * symlinks.
+		 */
+		if ((fts_ent->fts_info == FTS_D ||
+		    fts_ent->fts_info == FTS_DP) &&
+		    fts_ent->fts_namelen > 2 &&
+		    fts_ent->fts_name[0] == '.') {
+			fts_set(fts, fts_ent, FTS_SKIP);
+			continue;
+		}
+		/*
+		 * Ignore 'Latest' directory as it is just symlinks back to
+		 * already-processed packages.
+		 */
+		if ((fts_ent->fts_info == FTS_D ||
+		    fts_ent->fts_info == FTS_DP ||
+		    fts_ent->fts_info == FTS_SL) &&
+		    strcmp(fts_ent->fts_name, "Latest") == 0) {
+			fts_set(fts, fts_ent, FTS_SKIP);
+			continue;
+		}
+		/* Follow symlinks. */
+		if (fts_ent->fts_info == FTS_SL) {
+			fts_set(fts, fts_ent, FTS_FOLLOW);
+			/* Restart. Next entry will be the resolved file. */
+			continue;
+		}
 		/* Skip everything that is not a file */
 		if (fts_ent->fts_info != FTS_F)
 			continue;
@@ -263,7 +291,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_fts_item *cur;
 	struct pkg *pkg = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	char checksum[SHA256_DIGEST_LENGTH * 3 + 1], *mdigest = NULL;
+	char *mdigest = NULL;
 	char digestbuf[1024];
 	struct iovec iov[2];
 	struct msghdr msg;
@@ -279,6 +307,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	if (read_files) {
 		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
+			close(mfd);
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
 		}
@@ -288,6 +317,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		close(mfd);
+		if (read_files)
+			close(ffd);
 		return (EPKG_FATAL);
 		break;
 	case 0:
@@ -324,9 +356,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			off_t mpos, fpos = 0;
 			size_t mlen;
 
-			sha256_file(cur->fts_accpath, checksum);
+			pkg->sum = pkg_checksum_file(cur->fts_accpath,
+			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
-			pkg->sum = strdup(checksum);
 			pkg->repopath = strdup(cur->pkg_path);
 
 			/*
@@ -536,7 +568,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd;
-	struct pkg_repo_meta *meta;
+	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
@@ -820,7 +852,7 @@ static int
 pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
 {
 	FILE *fp;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char *sha256;
 	struct sbuf *cmd = NULL;
 	struct sbuf *buf = NULL;
 	char *line = NULL;
@@ -828,7 +860,8 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	ssize_t linelen;
 	int i, ret = EPKG_OK;
 
-	if (sha256_file(path, sha256) != EPKG_OK)
+	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+	if (!sha256)
 		return (EPKG_FATAL);
 
 	cmd = sbuf_new_auto();
@@ -878,6 +911,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
 done:
+	free(sha256);
 	if (cmd)
 		sbuf_delete(cmd);
 
@@ -942,7 +976,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		}
 
 	}
-	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
+	packing_append_file_attr(pack, path, name, "root", "wheel", 0644, 0);
 
 	packing_finish(pack);
 	unlink(path);
@@ -995,6 +1029,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	if (access(repo_path, R_OK) != -1) {
 		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
+			rsa_free(rsa);
 			return (EPKG_FATAL);
 		}
 		else {

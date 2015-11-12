@@ -359,13 +359,16 @@ ATF_TC_BODY(string_val, tc)
 		{ "xxy", "xxy  ",  5, PP_LEFT_ALIGN, },
 		{ "xxy", "xxy   ", 6, PP_LEFT_ALIGN, },
 
+		/* Zero padding a string is non-portable, so ignore 
+		   that flag when printing string values */
+
 		{ "xxz", "xxz",    0, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    1, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    2, PP_ZERO_PAD, },
 		{ "xxz", "xxz",    3, PP_ZERO_PAD, },
-		{ "xxz", "0xxz",   4, PP_ZERO_PAD, },
-		{ "xxz", "00xxz",  5, PP_ZERO_PAD, },
-		{ "xxz", "000xxz", 6, PP_ZERO_PAD, },
+		{ "xxz", " xxz",   4, PP_ZERO_PAD, },
+		{ "xxz", "  xxz",  5, PP_ZERO_PAD, },
+		{ "xxz", "   xxz", 6, PP_ZERO_PAD, },
 
 		/* Seems you can't zero pad on the RHS of a string */
 
@@ -783,7 +786,11 @@ ATF_TC_BODY(mode_val, tc)
 		{ 0100000, "---------- ", 0, PP_ALTERNATE_FORM1, }, /* Regular file */
 		{ 0120000, "l--------- ", 0, PP_ALTERNATE_FORM1, }, /* Sym-link */
 		{ 0140000, "s--------- ", 0, PP_ALTERNATE_FORM1, }, /* socket */
+#ifndef __linux__
 		{ 0160000, "w--------- ", 0, PP_ALTERNATE_FORM1, }, /* whiteout */
+#else
+		{ 0160000, "?--------- ", 0, PP_ALTERNATE_FORM1, }, /* whiteout */
+#endif
 
 		{ 0010000, "10000",  0, PP_EXPLICIT_PLUS, }, /* FIFO */
 		{ 0020000, "20000",  0, PP_EXPLICIT_PLUS, }, /* Char special */
@@ -1365,7 +1372,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_PKG, PP_PKG_FILE_SHA256,         2, '\0', },
 		{ "Fu", PP_PKG, PP_PKG_FILE_USER,           2, '\0', },
 		{ "F",  PP_PKG, PP_PKG_FILES,               1, '\0', },
-		{ "Gg", PP_PKG, PP_PKG_GROUP_GIDSTR,        2, '\0', },
 		{ "Gn", PP_PKG, PP_PKG_GROUP_NAME,          2, '\0', },
 		{ "G",  PP_PKG, PP_PKG_GROUPS,              1, '\0', },
 		{ "I",  PP_PKG, PP_UNKNOWN,                 0, 'I',  },
@@ -1381,7 +1387,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_PKG, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_PKG, PP_PKG_CHAR_STRING,         1, '\0', },
 		{ "Un", PP_PKG, PP_PKG_USER_NAME,           2, '\0', },
-		{ "Uu", PP_PKG, PP_PKG_USER_UIDSTR,         2, '\0', },
 		{ "U",  PP_PKG, PP_PKG_USERS,               1, '\0', },
 		{ "V",  PP_PKG, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_PKG, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1434,7 +1439,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_B, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_B, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_B, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_B, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_B, PP_ROW_COUNTER,             1, '\0', },
@@ -1450,7 +1454,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_B, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_B, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_B, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_B, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_B, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_B, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_B, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1503,7 +1506,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_C, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_C, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_C, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_C, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_C, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_C, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_C, PP_ROW_COUNTER,             1, '\0', },
@@ -1519,7 +1521,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_C, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_C, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_C, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_C, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_C, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_C, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_C, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1570,7 +1571,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_D, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_D, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_D, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_D, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_D, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_D, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_D, PP_ROW_COUNTER,             1, '\0', },
@@ -1586,7 +1586,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_D, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_D, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_D, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_D, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_D, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_D, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_D, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1638,7 +1637,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_F, PP_PKG_FILE_SHA256,         2, '\0', },
 		{ "Fu", PP_F, PP_PKG_FILE_USER,           2, '\0', },
 		{ "F",  PP_F, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_F, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_F, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_F, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_F, PP_ROW_COUNTER,             1, '\0', },
@@ -1654,7 +1652,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_F, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_F, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_F, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_F, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_F, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_F, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_F, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1707,7 +1704,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_G, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_G, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_G, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_G, PP_PKG_GROUP_GIDSTR,        2, '\0', },
 		{ "Gn", PP_G, PP_PKG_GROUP_NAME,          2, '\0', },
 		{ "G",  PP_G, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_G, PP_ROW_COUNTER,             1, '\0', },
@@ -1723,7 +1719,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_G, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_G, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_G, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_G, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_G, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_G, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_G, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1776,7 +1771,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_L, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_L, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_L, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_L, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_L, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_L, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_L, PP_ROW_COUNTER,             1, '\0', },
@@ -1792,7 +1786,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_L, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_L, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_L, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_L, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_L, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_L, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_L, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1845,7 +1838,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_O, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_O, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_O, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_O, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_O, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_O, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_O, PP_ROW_COUNTER,             1, '\0', },
@@ -1861,7 +1853,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_O, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_O, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_O, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_O, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_O, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_O, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_O, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1914,7 +1905,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_U, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_U, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_U, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_U, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_U, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_U, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_U, PP_ROW_COUNTER,             1, '\0', },
@@ -1930,7 +1920,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_U, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_U, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_U, PP_PKG_USER_NAME,           2, '\0', },
-		{ "Uu", PP_U, PP_PKG_USER_UIDSTR,         2, '\0', },
 		{ "U",  PP_U, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_U, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_U, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -1983,7 +1972,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_b, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_b, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_b, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_b, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_b, PP_ROW_COUNTER,             1, '\0', },
@@ -1999,7 +1987,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_b, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_b, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_b, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_b, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_b, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_b, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_b, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -2052,7 +2039,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_d, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_d, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_d, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_d, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_d, PP_ROW_COUNTER,             1, '\0', },
@@ -2068,7 +2054,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_d, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_d, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_d, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_d, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_d, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_d, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_d, PP_PKG_AUTOREMOVE,          1, '\0', },
@@ -2121,7 +2106,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_r, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_r, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_r, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_r, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_r, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_r, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_r, PP_ROW_COUNTER,             1, '\0', },
@@ -2137,7 +2121,6 @@ ATF_TC_BODY(format_code, tc)
 		{ "R",  PP_r, PP_PKG_REPO_PATH,           1, '\0', },
 		{ "S",  PP_r, PP_UNKNOWN,                 0, 'S',  },
 		{ "Un", PP_r, PP_UNKNOWN,                 0, 'U',  },
-		{ "Uu", PP_r, PP_UNKNOWN,                 0, 'U',  },
 		{ "U",  PP_r, PP_UNKNOWN,                 0, 'U',  },
 		{ "V",  PP_r, PP_PKG_OLD_VERSION,         1, '\0', },
 		{ "a",  PP_r, PP_PKG_AUTOREMOVE,          1, '\0', },

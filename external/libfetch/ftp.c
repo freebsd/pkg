@@ -27,8 +27,6 @@
  */
 
 #include <sys/cdefs.h>
-#include "bsd_compat.h"
-__FBSDID("$FreeBSD: head/lib/libfetch/ftp.c 226537 2011-10-19 11:43:51Z des $");
 
 /*
  * Portions of this code were taken from or based on ftpio.c:
@@ -74,6 +72,7 @@ __FBSDID("$FreeBSD: head/lib/libfetch/ftp.c 226537 2011-10-19 11:43:51Z des $");
 #include <time.h>
 #include <unistd.h>
 
+#include "bsd_compat.h"
 #include "fetch.h"
 #include "common.h"
 #include "ftperr.h"
@@ -773,7 +772,6 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    fetch_bind(sd, sa.ss_family, bindaddr) != 0)
 			goto sysouch;
-
 		if (connect(sd, (struct sockaddr *)&sa, l) == -1)
 			goto sysouch;
 

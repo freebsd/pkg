@@ -176,14 +176,18 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 		if (test == NULL) {
 			c1->uid = strdup(p2->uid);
 			HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
-			pkg_debug(2, "registering conflict between %s and %s", p1->uid, p2->uid);
+			pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
+					p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
+					p2->uid, p2->type == PKG_INSTALLED ? "l" : "r");
 		}
 
 		HASH_FIND_STR(p2->conflicts, p1->uid, test);
 		if (test == NULL) {
 			c1->uid = strdup(p1->uid);
 			HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
-			pkg_debug(2, "registering conflict between %s and %s", p2->uid, p1->uid);
+			pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
+					p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
+					p1->uid, p1->type == PKG_INSTALLED ? "l" : "r");
 		}
 	}
 }
@@ -203,9 +207,8 @@ pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
 static bool
 pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 {
-	struct pkg_file *fcur, *ftmp, *ff;
-	struct pkg_dir *df;
-	struct pkg_conflict *c;
+	struct pkg_file *fcur;
+	struct pkg_conflict *c1, *c2;
 
 	if (pkgdb_ensure_loaded(j->db, p1, PKG_LOAD_FILES|PKG_LOAD_DIRS) != EPKG_OK ||
 			pkgdb_ensure_loaded(j->db, p2, PKG_LOAD_FILES|PKG_LOAD_DIRS)
@@ -223,19 +226,18 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	/*
 	 * Check if we already have this conflict registered
 	 */
-	HASH_FIND_STR(p1->conflicts, p2->uid, c);
-	if (c != NULL)
+	HASH_FIND_STR(p1->conflicts, p2->uid, c1);
+	HASH_FIND_STR(p2->conflicts, p1->uid, c2);
+	if (c1 != NULL && c2 != NULL)
 		return false;
 
 	/*
 	 * We need to check all files and dirs and find the similar ones
 	 */
-	HASH_ITER(hh, p1->files, fcur, ftmp) {
-		HASH_FIND_STR(p2->files, fcur->path, ff);
-		if (ff != NULL)
+	LL_FOREACH(p1->files, fcur) {
+		if (pkg_has_file(p2, fcur->path))
 			return (true);
-		HASH_FIND_STR(p2->dirs, fcur->path, df);
-		if (df != NULL)
+		if (pkg_has_dir(p2, fcur->path))
 			return (true);
 	}
 	/* XXX pkg dirs are terribly broken */
@@ -250,19 +252,44 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 static void
 pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	const char *path,
-	enum pkg_conflict_type type)
+	enum pkg_conflict_type type,
+	bool use_digest)
 {
 	struct pkg_conflict *c1, *c2;
 
-	pkg_conflict_new(&c1);
-	pkg_conflict_new(&c2);
-	c1->type = c2->type = type;
-	c1->uid = strdup(p2->uid);
-	c2->uid = strdup(p2->uid);
-	HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
-	HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c1->uid), c2);
-	pkg_debug(2, "registering conflict between %s and %s on path %s",
-		p1->uid, p2->uid, path);
+	HASH_FIND_STR(p1->conflicts, p2->uid, c1);
+	HASH_FIND_STR(p2->conflicts, p1->uid, c2);
+
+	if (c1 == NULL) {
+		pkg_conflict_new(&c1);
+		c1->type = type;
+		c1->uid = strdup(p2->uid);
+
+		if (use_digest) {
+			c1->digest = strdup(p2->digest);
+		}
+
+		HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
+	}
+
+	if (c2 == NULL) {
+		pkg_conflict_new(&c2);
+		c2->type = type;
+
+		c2->uid = strdup(p1->uid);
+
+		if (use_digest) {
+			/* We also add digest information into account */
+
+			c2->digest = strdup(p1->digest);
+		}
+
+		HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
+	}
+
+	pkg_debug(2, "registering conflict between %s(%s) and %s(%s) on path %s",
+			p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
+			p2->uid, p2->type == PKG_INSTALLED ? "l" : "r", path);
 }
 
 /*
@@ -292,7 +319,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				/* local <-> remote conflict */
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
 					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_LOCAL);
+						PKG_CONFLICT_REMOTE_LOCAL, true);
 					j->conflicts_registered ++;
 					ret = true;
 				}
@@ -301,7 +328,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				/* two remote packages */
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
 					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_REMOTE);
+						PKG_CONFLICT_REMOTE_REMOTE, true);
 					j->conflicts_registered ++;
 					ret = true;
 				}
@@ -436,20 +463,19 @@ static void
 pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *local, struct pkg_jobs *j)
 {
-	struct pkg_file *fcur, *ftmp, *ff;
+	struct pkg_file *fcur;
 	struct pkg *p;
 	struct pkg_job_universe_item *cun;
 	struct sipkey *k;
 
-	HASH_ITER(hh, it->pkg->files, fcur, ftmp) {
+	LL_FOREACH(it->pkg->files, fcur) {
 		k = pkg_conflicts_sipkey_init();
 		/* Check in hash tree */
 		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, k);
 
 		if (local != NULL) {
 			/* Filter only new files for remote packages */
-			HASH_FIND_STR(local->pkg->files, fcur->path, ff);
-			if (ff != NULL)
+			if (pkg_has_file(local->pkg, fcur->path))
 				continue;
 		}
 		/* Check for local conflict in db */

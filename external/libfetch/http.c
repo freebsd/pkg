@@ -27,8 +27,6 @@
  */
 
 #include <sys/cdefs.h>
-#include "bsd_compat.h"
-__FBSDID("$FreeBSD: head/lib/libfetch/http.c 267133 2014-06-05 22:16:26Z bapt $");
 
 /*
  * The following copyright applies to the base64 code:
@@ -90,6 +88,7 @@ __FBSDID("$FreeBSD: head/lib/libfetch/http.c 267133 2014-06-05 22:16:26Z bapt $"
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
+#include "bsd_compat.h"
 #include "fetch.h"
 #include "common.h"
 #include "httperr.h"
@@ -1331,7 +1330,6 @@ static int
 http_authorize(conn_t *conn, const char *hdr, http_auth_challenges_t *cs,
 	       http_auth_params_t *parms, struct url *url)
 {
-	http_auth_challenge_t *basic = NULL;
 	http_auth_challenge_t *digest = NULL;
 	int i;
 
@@ -1341,10 +1339,8 @@ http_authorize(conn_t *conn, const char *hdr, http_auth_challenges_t *cs,
 		return (-1);
 	}
 
-	/* Look for a Digest and a Basic challenge */
+	/* Look for a Digest */
 	for (i = 0; i < cs->count; i++) {
-		if (cs->challenges[i]->scheme == HTTPAS_BASIC)
-			basic = cs->challenges[i];
 		if (cs->challenges[i]->scheme == HTTPAS_DIGEST)
 			digest = cs->challenges[i];
 	}
@@ -1627,10 +1623,8 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 			http_auth_params_t aparams;
 			init_http_auth_params(&aparams);
 			if (*purl->user || *purl->pwd) {
-				aparams.user = purl->user ?
-					strdup(purl->user) : strdup("");
-				aparams.password = purl->pwd?
-					strdup(purl->pwd) : strdup("");
+				aparams.user = strdup(purl->user);
+				aparams.password = strdup(purl->pwd);
 			} else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL &&
 				   *p != '\0') {
 				if (http_authfromenv(p, &aparams) < 0) {
@@ -1656,10 +1650,8 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 			http_auth_params_t aparams;
 			init_http_auth_params(&aparams);
 			if (*url->user || *url->pwd) {
-				aparams.user = url->user ?
-					strdup(url->user) : strdup("");
-				aparams.password = url->pwd ?
-					strdup(url->pwd) : strdup("");
+				aparams.user = strdup(url->user);
+				aparams.password = strdup(url->pwd);
 			} else if ((p = getenv("HTTP_AUTH")) != NULL &&
 				   *p != '\0') {
 				if (http_authfromenv(p, &aparams) < 0) {
@@ -1668,10 +1660,8 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 				}
 			} else if (fetchAuthMethod &&
 				   fetchAuthMethod(url) == 0) {
-				aparams.user = url->user ?
-					strdup(url->user) : strdup("");
-				aparams.password = url->pwd ?
-					strdup(url->pwd) : strdup("");
+				aparams.user = strdup(url->user);
+				aparams.password = strdup(url->pwd);
 			} else {
 				http_seterr(HTTP_NEED_AUTH);
 				goto ouch;

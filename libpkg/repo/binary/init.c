@@ -41,6 +41,8 @@
 
 #ifdef HAVE_SYS_STATFS_H
 #include <sys/statfs.h>
+#elif defined(HAVE_SYS_STATVFS_H)
+#include <sys/statvfs.h>
 #endif
 
 #include "pkg.h"
@@ -57,7 +59,7 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	char	 fpath[MAXPATHLEN];
 	sqlite3	*db = sqlite3_context_db_handle(ctx);
 	char	*path = bsd_dirname(sqlite3_db_filename(db, "main"));
-	char	 cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	char	*cksum;
 
 	if (argc != 2) {
 		sqlite3_result_error(ctx, "file_exists needs two argument", -1);
@@ -67,11 +69,12 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	snprintf(fpath, sizeof(fpath), "%s/%s", path, sqlite3_value_text(argv[0]));
 
 	if (access(fpath, R_OK) == 0) {
-		sha256_file(fpath, cksum);
-		if (strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
+		cksum = pkg_checksum_file(fpath, PKG_HASH_TYPE_SHA256_HEX);
+		if (cksum && strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
 			sqlite3_result_int(ctx, 1);
 		else
 			sqlite3_result_int(ctx, 0);
+		free(cksum);
 	} else {
 		sqlite3_result_int(ctx, 0);
 	}
@@ -90,7 +93,7 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	}
 
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
-		*reposcver = sqlite3_column_int(stmt, 0);
+		*reposcver = sqlite3_column_int64(stmt, 0);
 		retcode = EPKG_OK;
 	} else {
 		*reposcver = -1;
@@ -130,8 +133,8 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 		}
 	}
 	if (!found) {
-		pkg_emit_error("Failed to %s \"%s\" repo schema "
-			" version %d (target version %d) "
+		pkg_emit_error("Unable to %s \"%s\" repo schema "
+			"version %d (target version %d) "
 			"-- change not found", updown, repo->name, version,
 			REPO_SCHEMA_VERSION);
 		return (EPKG_FATAL);
@@ -310,11 +313,19 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
-#ifdef MNT_LOCAL
-	struct statfs stfs;
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
+#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	struct statvfs stfs;
+
+	if (statvfs(dbdir, &stfs) == 0) {
+		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
+			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+	}
+#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
+	struct statfs stfs;
+
 	if (statfs(dbdir, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
@@ -420,11 +431,19 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	if (access(filepath, R_OK) == 0)
 		return (EPKG_CONFLICT);
 
-#ifdef MNT_LOCAL
-	struct statfs stfs;
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
+#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	struct statvfs stfs;
+
+	if (statvfs(dbdir, &stfs) == 0) {
+		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
+			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+	}
+#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
+	struct statfs stfs;
+
 	if (statfs(dbdir, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
