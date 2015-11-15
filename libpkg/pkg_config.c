@@ -884,11 +884,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 	}
 
-	if (path == NULL)
+	if (path == NULL) {
 		path = PREFIX"/etc/pkg.conf";
 
-	if (pkg_rootdir != NULL)
-		asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+		if (pkg_rootdir != NULL)
+			asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+	}
 
 	p = ucl_parser_new(0);
 	ucl_parser_register_variable (p, "ABI", myabi);
