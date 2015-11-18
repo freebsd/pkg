@@ -251,8 +251,7 @@ exec_audit(int argc, char **argv)
 			ret = EX_OK;
 		}
 		if (db != NULL) {
-			if (it != NULL)
-				pkgdb_it_free(it);
+			pkgdb_it_free(it);
 			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 			pkgdb_close(db);
 		}
