@@ -1498,6 +1498,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
 	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
+			j->flags &= ~PKG_FLAG_PKG_VERSION_TEST;
 			pkg_emit_newpkgversion();
 			goto order;
 		}
