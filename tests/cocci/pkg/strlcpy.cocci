@@ -9,4 +9,5 @@ expression E, E1, S;
 @@
 
 - strlcpy(E, E1, S);
-+ assert(strlcpy(E, E1, S) < S)/* FIXME: strlcpy.cocci */;
++ if (strlcpy(E, E1, S) >= S)
++ 	pkg_emit_errno("strlcpy", TEXT(S));
