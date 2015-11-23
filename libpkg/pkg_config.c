@@ -379,6 +379,12 @@ static struct config_entry c[] = {
 		NULL,
 		"Save SAT problem to the specified dot file"
 	},
+	{
+		PKG_OBJECT,
+		"REPOSITORIES",
+		NULL,
+		"Repository config in pkg.conf"
+	},
 };
 
 static bool parsed = false;
@@ -635,6 +641,20 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		r->flags = REPO_FLAGS_USE_IPV4;
 	else if (use_ipvx == 6)
 		r->flags = REPO_FLAGS_USE_IPV6;
+}
+
+static void
+add_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
+{
+	struct pkg_repo *r;
+	const char *key;
+
+	key = ucl_object_key(obj);
+	pkg_debug(1, "PkgConfig: parsing repo key '%s' in file '%s'", key, file);
+	r = pkg_repo_find(key);
+	if (r != NULL)
+		pkg_debug(1, "PkgConfig: overwriting repository %s", key);
+       add_repo(obj, r, key, flags);
 }
 
 static void
@@ -1084,6 +1104,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	/* load the repositories */
 	load_repositories(reposdir, flags);
+
+	object = ucl_object_find_key(config, "REPOSITORIES");
+	while ((cur = ucl_iterate_object(object, &it, true))) {
+		add_repo_obj(cur, path, flags);
+	}
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
