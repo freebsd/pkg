@@ -80,6 +80,7 @@ tests_scripts=	\
 		frontend/001sanity.sh \
 		frontend/alias.sh \
 		frontend/annotate.sh \
+		frontend/config.sh \
 		frontend/conflicts.sh \
 		frontend/conflicts-multirepo.sh \
 		frontend/create.sh \
