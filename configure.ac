@@ -197,20 +197,11 @@ AC_CHECK_MEMBERS([struct in6_addr.s6_addr32,
 
 AC_MSG_CHECKING(for IPv6 support)
 AC_CACHE_VAL(ac_cv_ipv6,
-      AC_TRY_RUN([
+	AC_TRY_COMPILE([
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-	/* Make sure the definitions for AF_INET6 and struct sockaddr_in6
-	 * are defined, and that we can actually create an IPv6 TCP socket.
-	 */
-	main()
-	{
-		int fd;
-		struct sockaddr_in6 foo;
-		fd = socket(AF_INET6, SOCK_STREAM, 0);
-		exit(fd >= 0 ? 0 : 1);
-	}],
+#include <netinet/in.h>],
+	[ int domain = AF_INET6; ],
 	ac_cv_ipv6=yes,
 	ac_cv_ipv6=no,
 	ac_cv_ipv6=no))
