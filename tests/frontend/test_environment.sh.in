@@ -25,3 +25,10 @@ atf_init_test_cases() {
 		atf_add_test_case $t
 	done
 }
+
+atf_skip_on() {
+	if [ "${OS}" = "$1" ]; then
+		shift
+		atf_skip "$@"
+	fi
+}
