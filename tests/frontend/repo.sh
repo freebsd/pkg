@@ -114,12 +114,21 @@ EOF
 		pkg -C ./pkg.conf update
 
 	# Ensure we can pickup the old version
-	#atf_check -o match:"Installing test-1\.\.\." \
-	#	pkg -C ./pkg.conf install -y test-1.0
+	atf_check -o match:"Installing test-1\.0" \
+		pkg -C ./pkg.conf install -y test-1.0
 
-	#atf_check pkg -C ./pkg.conf upgrade -y
+	atf_check -o match:"Upgrading.*to 1\.1" \
+		pkg -C ./pkg.conf install -y test
 
-	#atf_check -o ignore pkg -C ./pkg.conf delete test
+	atf_check -o ignore pkg delete -y test
+
+	atf_check -o match:"Installing test-1\.0" \
+		pkg -C ./pkg.conf install -y test-1.0
+
+	atf_check -o match:"Upgrading.*to 1\.1" \
+		pkg -C ./pkg.conf upgrade -y
+
+	atf_check -o ignore pkg -C ./pkg.conf delete -y test
 
 	# Ensure the latest version is installed
 	atf_check -o match:"Installing test-1.1" \

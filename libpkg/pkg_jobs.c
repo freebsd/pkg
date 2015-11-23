@@ -476,7 +476,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 			 * is newer than a local one
 			 */
 			un = pkg_jobs_universe_get_upgrade_candidates(j->universe,
-				d->uid, lp, force);
+				d->uid, lp, force, NULL);
 			if (un == NULL)
 				continue;
 
@@ -731,7 +731,7 @@ end:
 
 static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
-	struct pkg_job_request_item **req)
+	struct pkg_job_request_item **req, int with_version)
 {
 	struct pkg_job_universe_item *nit;
 	struct pkg_job_request_item *nrit = NULL;
@@ -749,7 +749,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	}
 
 	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
-		j->flags & PKG_FLAG_FORCE);
+		j->flags & PKG_FLAG_FORCE, with_version != 0 ? rp->version : NULL);
 
 	if (nit != NULL) {
 		nrit = pkg_jobs_add_req_from_universe(&j->request_add, nit, false, false);
@@ -816,7 +816,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 				assert(0);
 
 			rc = EPKG_OK;
-			pkg_jobs_process_remote_pkg(j, p, NULL);
+			pkg_jobs_process_remote_pkg(j, p, NULL, 0);
 			if (rc == EPKG_OK) {
 				/* Avoid freeing */
 				p = NULL;
@@ -909,7 +909,8 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		rc = EPKG_FATAL;
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		rc = pkg_jobs_process_remote_pkg(j, p, NULL);
+		rc = pkg_jobs_process_remote_pkg(j, p, NULL,
+		    strcmp(p->name, pattern));
 		if (rc == EPKG_FATAL)
 			break;
 		else if (rc == EPKG_OK)
