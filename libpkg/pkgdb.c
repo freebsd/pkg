@@ -2824,6 +2824,9 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 	int ret = EPKG_END;
 	const pkg_object *timeout, *max_tries;
 	int64_t num_timeout = 1, num_maxtries = 1;
+	const char reset_lock_sql[] = ""
+			"DELETE FROM pkg_lock; INSERT INTO pkg_lock VALUES (0,0,0);";
+
 
 	timeout = pkg_config_get("LOCK_WAIT");
 	max_tries = pkg_config_get("LOCK_RETRIES");
@@ -2850,6 +2853,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 				/* No live processes found, so we can safely reset lock */
 				pkg_debug(1, "no concurrent processes found, cleanup the lock");
 				pkgdb_reset_lock(db);
+
 				if (upgrade) {
 					/*
 					 * In case of upgrade we should obtain a lock from the beginning,
@@ -2858,7 +2862,15 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 					pkgdb_remove_lock_pid(db, (int64_t)getpid());
 					return pkgdb_obtain_lock(db, type);
 				}
-				continue;
+				else {
+					/*
+					 * We might have inconsistent db, or some strange issue, so
+					 * just insert new record and go forward
+					 */
+					pkgdb_remove_lock_pid(db, (int64_t)getpid());
+					sqlite3_exec(db->sqlite, reset_lock_sql, NULL, NULL, NULL);
+					return pkgdb_obtain_lock(db, type);
+				}
 			}
 			else if (num_timeout > 0) {
 				ts.tv_sec = (int)num_timeout;
