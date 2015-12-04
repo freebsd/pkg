@@ -231,7 +231,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 
 	if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
 		if (source_date_epoch[strspn(source_date_epoch, "0123456789")] != '\0') {
-			pkg_emit_error("Bad environement variable "
+			pkg_emit_error("Bad environment variable "
 			    "SOURCE_DATE_EPOCH: %s", source_date_epoch);
 			retcode = EPKG_FATAL;
 			goto cleanup;
