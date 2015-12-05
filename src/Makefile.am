@@ -102,3 +102,11 @@ sbin_PROGRAMS=	$(DYNPROG)
 endif
 
 dist_sysconf_DATA=	pkg.conf.sample
+CLEANFILES=		$(dist_sysconf_DATA)
+EXTRA_DIST=		pkg.conf.sample.in
+
+pkg.conf.sample: pkg.conf.sample.in
+	$(SED)  -e "s,@@LIBDIR@@,$(libdir),g" \
+		-e "s,@@SYSCONFDIR@@,$(sysconfdir),g" \
+		$? > $@
+

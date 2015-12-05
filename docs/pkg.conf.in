@@ -29,7 +29,7 @@ is the system-wide configuration file used by the
 tools.
 .Pp
 The default location of this file is
-.Pa /usr/local/etc/pkg.conf
+.Pa @@SYSCONFDIR@@/pkg.conf
 .Pp
 Lines in the file beginning with a "#" are comments
 and are ignored.
@@ -225,7 +225,7 @@ Directory which
 .Xr pkg 8
 will load plugins from.
 Default:
-.Pa /usr/local/lib/pkg
+.Pa @@LIBDIR@@/pkg
 .It Cm PKG_SSH_ARGS: string
 Extra arguments to pass to
 .Xr ssh 1 .
@@ -244,7 +244,7 @@ Default: not set.
 .It Cm PLUGINS_CONF_DIR: string
 Directory containing per-plugin configuration files.
 Default:
-.Pa /usr/local/etc/pkg
+.Pa @@SYSCONFDIR@@/pkg
 .It Cm PORTSDIR: string
 Specifies the location to the Ports directory.
 Default:
@@ -256,7 +256,7 @@ Default: NO.
 List of directories to search for repository configuration files.
 Default:
 .Pa /etc/pkg/ ,
-.Pa /usr/local/etc/pkg/repos/ .
+.Pa @@SYSCONFDIR@@/pkg/repos/ .
 .It Cm REPO_AUTOUPDATE: boolean
 When true, automatically check for and download updates to
 .Pa /var/db/pkg/repo.sqlite
@@ -329,12 +329,12 @@ array,
 which defaults to
 .Pa /etc/pkg/
 and
-.Pa /usr/local/etc/pkg/repos/ .
+.Pa @@SYSCONFDIR@@/pkg/repos/ .
 .Pp
 Filenames are arbitrary, but should end in
 .Sq .conf
 For example
-.Pa /usr/local/etc/pkg/repos/myrepo.conf .
+.Pa @@SYSCONFDIR@@/pkg/repos/myrepo.conf .
 .Pp
 A repository file is in UCL format and has the following form:
 .Bl -tag -width ".Cm myrepo:"
@@ -437,11 +437,11 @@ for more discussion on signature types.
 If
 .Sy FINGERPRINTS
 is set to
-.Pa /usr/local/etc/pkg/fingerprints/myrepo ,
+.Pa @@SYSCONFDIR@@/pkg/fingerprints/myrepo ,
 then the directories
-.Pa /usr/local/etc/pkg/fingerprints/myrepo/trusted
+.Pa @@SYSCONFDIR@@/pkg/fingerprints/myrepo/trusted
 and
-.Pa /usr/local/etc/pkg/fingerprints/myrepo/revoked
+.Pa @@SYSCONFDIR@@/pkg/fingerprints/myrepo/revoked
 should exist with known good and bad fingerprints, respectively.
 Files in those directories should be in the format:
 .Bd -literal -offset indent
@@ -462,7 +462,7 @@ Hence the very common idiom, used to turn off the default
 configuration shipped in
 .Pa /etc/pkg/FreeBSD.conf .
 Rather than editing that file directly, create
-.Pa /usr/local/etc/pkg/repos/FreeBSD.conf
+.Pa @@SYSCONFDIR@@/pkg/repos/FreeBSD.conf
 with this content:
 .Bd -literal -offset indent
 FreeBSD: { enabled: NO }
@@ -515,7 +515,7 @@ handle_rc_scripts: false
 assume_always_yes: false
 repos_dir: [
      "/etc/pkg",
-     "/usr/local/etc/pkg/repos",
+     "@@SYSCONFDIR@@/pkg/repos",
 ]
 syslog: true
 autodeps: true
@@ -537,12 +537,12 @@ new enough to support the
 .Cm bootstrap
 command.):
 .Bd -literal -offset indent
-# cat > /usr/local/etc/pkg/repos/example.conf <<EOF
+# cat > @@SYSCONFDIR@@/pkg/repos/example.conf <<EOF
 example: {
     url: http://pkgrepo.example.com/${ABI}
 }
 EOF
-# cat > /usr/local/etc/pkg/repos/FreeBSD.conf <<EOF
+# cat > @@SYSCONFDIR@@/pkg/repos/FreeBSD.conf <<EOF
 FreeBSD: {
     enabled: NO
 }

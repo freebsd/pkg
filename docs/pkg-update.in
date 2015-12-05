@@ -38,7 +38,7 @@ copy on the remote package repository is newer than the local copy.
 The repository catalogues to be updated are defined in the
 .Xr pkg.conf 5
 file or by the entries in
-.Pa /usr/local/etc/pkg/repos .
+.Pa @@SYSCONFDIR@@/pkg/repos .
 See
 .Xr pkg.conf 5
 for details.

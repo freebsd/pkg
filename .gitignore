@@ -46,6 +46,9 @@ scripts/sbin/pkg2ng
 /config.sub
 /compat/Makefile
 /docs/Makefile
+/docs/*.3
+/docs/*.5
+/docs/*.8
 /external/Makefile
 external/blake2/Makefile
 /external/libelf/libelf_convert.c
@@ -62,6 +65,7 @@ external/blake2/Makefile
 /pkg_repos.h
 /scripts/Makefile
 /src/Makefile
+/src/pkg.conf.sample
 /test-driver
 /tests/Makefile
 

@@ -225,8 +225,8 @@ EOF
 % sh -c '( echo "function: sha256"; echo "fingerprint: $(sha256 -q repo.pub)"; ) > fingerprint'
 # The 'fingerprint' file should be distributed to all clients.
 
-# On clients with FINGERPRINTS: /usr/local/etc/pkg/fingerprints/myrepo:
-$ mkdir -p /usr/local/etc/pkg/fingerprints/myrepo/trusted
-# Add 'fingerprint' into /usr/local/etc/pkg/fingerprints/myrepo/trusted
+# On clients with FINGERPRINTS: @@SYSCONFDIR@@/pkg/fingerprints/myrepo:
+$ mkdir -p @@SYSCONFDIR@@/pkg/fingerprints/myrepo/trusted
+# Add 'fingerprint' into @@SYSCONFDIR@@/pkg/fingerprints/myrepo/trusted
 
 .Ed

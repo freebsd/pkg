@@ -19,7 +19,7 @@
 #ASSUME_ALWAYS_YES = false;
 #REPOS_DIR [
 #    "/etc/pkg/",
-#    "/usr/local/etc/pkg/repos/",
+#    "@@SYSCONFDIR@@/pkg/repos/",
 #]
 #PLIST_KEYWORDS_DIR = "";
 #SYSLOG = true;
@@ -27,12 +27,12 @@
 #DEVELOPER_MODE = false;
 #VULNXML_SITE = "http://vuxml.freebsd.org/freebsd/vuln.xml.bz2";
 #FETCH_RETRY = 3;
-#PKG_PLUGINS_DIR = "/usr/local/lib/pkg/";
+#PKG_PLUGINS_DIR = "@@LIBDIR@@/pkg/";
 #PKG_ENABLE_PLUGINS = true;
 #PLUGINS [
 #]
 #DEBUG_SCRIPTS = false;
-#PLUGINS_CONF_DIR = "/usr/local/etc/pkg/";
+#PLUGINS_CONF_DIR = "@@SYSCONFDIR@@/pkg/";
 #PERMISSIVE = false;
 #REPO_AUTOUPDATE = true;
 #NAMESERVER = "";

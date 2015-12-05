@@ -98,7 +98,7 @@ Packages may be downloaded from any of the repositories mentioned
 in
 .Xr pkg.conf 5
 or in the files in
-.Pa /usr/local/etc/pkg/repo .
+.Pa @@SYSCONFDIR@@/pkg/repo .
 See
 .Xr pkg-repository 5
 for details.
