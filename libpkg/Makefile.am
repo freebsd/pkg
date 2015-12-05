@@ -15,6 +15,7 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/external/include \
 			-I$(top_srcdir)/external/blake2 \
 			-DPREFIX=\"$(prefix)\" \
+			-DSYSCONFDIR=\"$(sysconfdir)\" \
 			-Wno-pointer-sign
 
 if LIBELF_BUNDLED

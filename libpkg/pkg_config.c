@@ -130,7 +130,11 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"REPOS_DIR",
-		"/etc/pkg/,"PREFIX"/etc/pkg/repos/",
+#if defined(__FreeBSD__)
+		"/etc/pkg/,"SYSCONFDIR"/pkg/repos/",
+#else
+		SYSCONFDIR"/pkg/repos/",
+#endif
 		"Location of the repository configuration files"
 	},
 	{
@@ -202,7 +206,7 @@ static struct config_entry c[] = {
 	{
 		PKG_STRING,
 		"PLUGINS_CONF_DIR",
-		PREFIX"/etc/pkg/",
+		SYSCONFDIR"/pkg/",
 		"Directory containing plugin configuration data",
 	},
 	{
@@ -912,7 +916,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	if (path == NULL) {
-		path = PREFIX"/etc/pkg.conf";
+		path = SYSCONFDIR"/pkg.conf";
 
 		if (pkg_rootdir != NULL)
 			asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
