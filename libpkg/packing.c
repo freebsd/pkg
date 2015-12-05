@@ -155,9 +155,11 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	char *map;
 	int retcode = EPKG_OK;
 	int ret;
+	time_t source_time;
 	struct stat st;
 	struct archive_entry *entry, *sparse_entry;
 	bool unset_timestamp;
+	const char *source_date_epoch;
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
@@ -225,6 +227,20 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 		archive_entry_unset_ctime(entry);
 		archive_entry_unset_mtime(entry);
 		archive_entry_unset_birthtime(entry);
+	}
+
+	if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
+		if (source_date_epoch[strspn(source_date_epoch, "0123456789")] != '\0') {
+			pkg_emit_error("Bad environment variable "
+			    "SOURCE_DATE_EPOCH: %s", source_date_epoch);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+		source_time = strtoll(source_date_epoch, NULL, 10);
+		archive_entry_set_atime(entry, source_time, 0);
+		archive_entry_set_ctime(entry, source_time, 0);
+		archive_entry_set_mtime(entry, source_time, 0);
+		archive_entry_set_birthtime(entry, source_time, 0);
 	}
 
 	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);

@@ -379,6 +379,17 @@ static struct config_entry c[] = {
 		NULL,
 		"Save SAT problem to the specified dot file"
 	},
+	{
+		PKG_OBJECT,
+		"REPOSITORIES",
+		NULL,
+		"Repository config in pkg.conf"
+	},
+	{
+		PKG_ARRAY,
+		"VALID_URL_SCHEME",
+		"pkg+http,pkg+https,https,http,ftp,file,ssh",
+	},
 };
 
 static bool parsed = false;
@@ -638,6 +649,20 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 }
 
 static void
+add_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
+{
+	struct pkg_repo *r;
+	const char *key;
+
+	key = ucl_object_key(obj);
+	pkg_debug(1, "PkgConfig: parsing repo key '%s' in file '%s'", key, file);
+	r = pkg_repo_find(key);
+	if (r != NULL)
+		pkg_debug(1, "PkgConfig: overwriting repository %s", key);
+       add_repo(obj, r, key, flags);
+}
+
+static void
 walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 {
 	const ucl_object_t *cur;
@@ -781,6 +806,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const char *nsname = NULL;
 	const char *useragent = NULL;
 	const char *evpipe = NULL;
+	const char *url;
+	struct pkg_repo *repo = NULL;
 	const ucl_object_t *cur, *object;
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
@@ -884,11 +911,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 	}
 
-	if (path == NULL)
+	if (path == NULL) {
 		path = PREFIX"/etc/pkg.conf";
 
-	if (pkg_rootdir != NULL)
-		asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+		if (pkg_rootdir != NULL)
+			asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+	}
 
 	p = ucl_parser_new(0);
 	ucl_parser_register_variable (p, "ABI", myabi);
@@ -1083,6 +1111,35 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	/* load the repositories */
 	load_repositories(reposdir, flags);
+
+	object = ucl_object_find_key(config, "REPOSITORIES");
+	while ((cur = ucl_iterate_object(object, &it, true))) {
+		add_repo_obj(cur, path, flags);
+	}
+
+	/* validate the different scheme */
+	while (pkg_repos(&repo) == EPKG_OK) {
+		object = ucl_object_find_key(config, "VALID_URL_SCHEME");
+		url = pkg_repo_url(repo);
+		buf = strstr(url, "://");
+		if (buf == NULL) {
+			pkg_emit_error("invalid url: %s", url);
+			return (EPKG_FATAL);
+		}
+		fatal_errors = true;
+		while ((cur = ucl_iterate_object(object, &it, true))) {
+			if (strncmp(url, ucl_object_tostring_forced(cur),
+			    buf - url) == 0) {
+				fatal_errors = false;
+				break;
+			}
+		}
+
+		if (fatal_errors) {
+			pkg_emit_error("invalid scheme %.*s", buf - url, url);
+			return (EPKG_FATAL);
+		}
+	}
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));

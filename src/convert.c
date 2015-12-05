@@ -98,8 +98,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 			if (strcmp(dp->d_name, ".") == 0 ||
 			    strcmp(dp->d_name, "..") == 0)
 				continue;
-			if (p != NULL)
-				pkg_free(p);
+			pkg_free(p);
 			if (pkg_new(&p, PKG_OLD_FILE) != EPKG_OK)
 				err(EX_OSERR, "malloc");
 			printf("Converting %s...\n", dp->d_name);

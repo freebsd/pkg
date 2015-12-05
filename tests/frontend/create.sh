@@ -2,10 +2,6 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 
-if [ `uname -s` != "Linux" ] ; then
-	nonlinux="create_from_plist_fflags create_from_plist_bad_fflags"
-fi
-
 tests_init \
 	create_from_plist \
 	create_from_plist_set_owner \
@@ -15,7 +11,7 @@ tests_init \
 	create_from_plist_mini \
 	create_from_plist_dirrm \
 	create_from_plist_ignore \
-	${nonlinux} \
+	create_from_plist_fflags create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
 	create_from_manifest_and_plist \
 	create_from_plist_pkg_descr \
@@ -213,6 +209,7 @@ aline"
 }
 
 create_from_plist_fflags_body() {
+	atf_skip_on Linux does not support fflags
 	preparetestcredentials "(,,,schg)"
 
 	atf_check \
@@ -223,6 +220,7 @@ create_from_plist_fflags_body() {
 }
 
 create_from_plist_bad_fflags_body() {
+	atf_skip_on Linux does not support fflags
 	preparetestcredentials "(,,,schg,bad)"
 
 	atf_check \

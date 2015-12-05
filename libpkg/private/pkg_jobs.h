@@ -230,12 +230,14 @@ void pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j);
  * - if `lp` is not null it is always added to the universe
  * - if `uid` is in the universe, then the existing upgrade chain is returned
  * - if `force` is true then all candidates are added to the universe
- * - if `forece` is false then *all* candidates are added to the universe, but
+ * - if `force` is false then *all* candidates are added to the universe, but
  * merely if *any* of remote packages is an upgrade for local one
+ * - if `version` is not null then ensure we are only adding to the universe
+ * packages that match the given version
  */
 struct pkg_job_universe_item*
 pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
-	const char *uid, struct pkg *lp, bool force);
+	const char *uid, struct pkg *lp, bool force, const char *version);
 
 /*
  * Among a set of job candidates, select the most matching one, depending on job

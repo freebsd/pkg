@@ -6,9 +6,8 @@ tests_init \
 	jpeg
 
 jpeg_body() {
-	if [ "${OS}" = "Darwin" ]; then
-		return
-	fi
+	atf_skip_on Darwin Irrelevant on OSX
+
 	cc -shared -Wl,-soname=libjpeg.so.3 -o libjpeg.so.3
 	ln -sf libjpeg.so.3 libjpeg.so
 	cc -shared -Wl,-rpath=${TMPDIR} -L. -ljpeg -o deponjpeg.so

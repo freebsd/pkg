@@ -1079,7 +1079,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 
 struct pkg_job_universe_item*
 pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
-	const char *uid, struct pkg *lp, bool force)
+	const char *uid, struct pkg *lp, bool force, const char *version)
 {
 	struct pkg *pkg = NULL, *selected = lp;
 	struct pkgdb_it *it;
@@ -1118,6 +1118,9 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 
 	kv_init(candidates);
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
+
+		if (version != NULL && strcmp(pkg->version, version) != 0)
+			continue;
 
 		if (force) {
 			/* Just add everything */
