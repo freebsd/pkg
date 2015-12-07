@@ -46,21 +46,19 @@
 
 struct deps_entry {
 	char *name;
-	char *version;
-	char *origin;
 	struct deps_entry *next;
 	struct deps_entry *prev;
 };
 
-static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_entry *dh,
+static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_entry **dh,
     bool noinstall, struct sbuf *out);
-static void add_missing_dep(struct pkg_dep *d, struct deps_entry *dh, int *nbpkgs);
+static void add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs);
 static void deps_free(struct deps_entry *dh);
 static int fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs);
 static void check_summary(struct pkgdb *db, struct deps_entry *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry *dh, bool noinstall, struct sbuf *out)
+check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinstall, struct sbuf *out)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
@@ -119,7 +117,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry *dh, bool noinstal
 }
 
 static void
-add_missing_dep(struct pkg_dep *d, struct deps_entry *dh, int *nbpkgs)
+add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs)
 {
 	struct deps_entry *e = NULL;
 	const char *name = NULL;
@@ -129,7 +127,7 @@ add_missing_dep(struct pkg_dep *d, struct deps_entry *dh, int *nbpkgs)
 	/* do not add duplicate entries in the queue */
 	name = pkg_dep_name(d);
 
-	DL_FOREACH(dh, e) {
+	DL_FOREACH(*dh, e) {
 		if (strcmp(e->name, name) == 0)
 			return;
 	}
@@ -137,13 +135,11 @@ add_missing_dep(struct pkg_dep *d, struct deps_entry *dh, int *nbpkgs)
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
 		err(1, "calloc(deps_entry)");
 
-	e->name = strdup(pkg_dep_name(d));
-	e->version = strdup(pkg_dep_version(d));
-	e->origin = strdup(pkg_dep_origin(d));
+	e->name = strdup(name);
 
 	(*nbpkgs)++;
 
-	DL_APPEND(dh, e);
+	DL_APPEND(*dh, e);
 }
 
 static void
@@ -154,8 +150,6 @@ deps_free(struct deps_entry *dh)
 	DL_FOREACH_SAFE(dh, e, etmp) {
 		DL_DELETE(dh, e);
 		free(e->name);
-		free(e->version);
-		free(e->origin);
 		free(e);
 	}
 }
@@ -455,7 +449,7 @@ exec_check(int argc, char **argv)
 			if (dcheck) {
 				if (!quiet && verbose)
 					printf(" dependencies...");
-				nbpkgs += check_deps(db, pkg, dh, noinstall, out);
+				nbpkgs += check_deps(db, pkg, &dh, noinstall, out);
 				if (noinstall && nbpkgs > 0) {
 					rc = EX_UNAVAILABLE;
 				}
