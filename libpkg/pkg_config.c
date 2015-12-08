@@ -1126,6 +1126,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			return (EPKG_FATAL);
 		}
 		fatal_errors = true;
+		it = NULL;
 		while ((cur = ucl_iterate_object(object, &it, true))) {
 			if (strncmp(url, ucl_object_tostring_forced(cur),
 			    buf - url) == 0) {
