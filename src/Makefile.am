@@ -1,5 +1,7 @@
 noinst_HEADERS=	pkgcli.h
 
+LDFLAGS+=	-Wl,--enable-new-dtags
+
 pkg_SOURCES=		add.c \
 			alias.c \
 			annotate.c \
