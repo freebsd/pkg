@@ -281,7 +281,7 @@ exec_info(int argc, char **argv)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
 		if (opt & INFO_RAW) {
-			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
 				opt |= INFO_RAW_YAML;
 		}
 
