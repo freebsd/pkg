@@ -328,7 +328,9 @@ print_info(struct pkg * const pkg, uint64_t options)
 			break;
 		case INFO_RAW_JSON:
 			outflags |= PKG_MANIFEST_EMIT_JSON;
+			break;
 		case INFO_RAW_JSON_COMPACT:
+			outflags |= PKG_MANIFEST_EMIT_COMPACT;
 			break;
 		}
 		if (pkg_type(pkg) == PKG_REMOTE)
@@ -551,7 +553,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
 				if (quiet) {
-					if (show_locks) 
+					if (show_locks)
 						pkg_printf("%d%{%dn-%dv%#dk\n%|%}", pkg);
 					else
 						pkg_printf("%d%{%dn-%dv\n%|%}", pkg);
