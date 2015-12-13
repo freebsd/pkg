@@ -36,6 +36,8 @@
 #include <string.h>
 #include <errno.h>
 #include <glob.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -143,6 +145,34 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 		strlcat(pathname, ".pkgnew", MAXPATHLEN);
 	}
 	free(localconf);
+}
+
+static uid_t
+get_uid_from_archive(struct archive_entry *ae)
+{
+	char buffer[128];
+	struct passwd pwent, *result;
+
+	if ((getpwnam_r(archive_entry_uname(ae), &pwent, buffer, sizeof(buffer),
+	    &result)) < 0)
+		return (0);
+	if (result == NULL)
+		return (0);
+	return (pwent.pw_uid);
+}
+
+static gid_t
+get_gid_from_archive(struct archive_entry *ae)
+{
+	char buffer[128];
+	struct group grent, *result;
+
+	if ((getgrnam_r(archive_entry_gname(ae), &grent, buffer, sizeof(buffer),
+	    &result)) < 0)
+		return (0);
+	if (result == NULL)
+		return (0);
+	return (grent.gr_gid);
 }
 
 static int
@@ -314,7 +344,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		/* enforce modes and creds */
 		lchmod(pathname, archive_entry_perm(ae));
 		if (getenv("INSTALL_AS_USER") == NULL) {
-			lchown(pathname, aest->st_uid, aest->st_gid);
+			lchown(pathname, get_uid_from_archive(ae),
+			    get_gid_from_archive(ae));
 		}
 #ifdef HAVE_CHFLAGS
 		/* Restore flags */
