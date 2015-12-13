@@ -125,7 +125,7 @@ _pkg() {
 		'which[display which package installed a specific file]'
 	)
 
-	_arguments -C \
+	_arguments -C -A "-*" \
 		'(-d --debug)'{-d,--debug}'[increment debug level]' \
 		'(-j --jail)'{-j,--jail}'[execute pkg(8) inside a jail(8)]:jail:_jails' \
 		'(-c --chroot)'{-c,--chroot}'[execute pkg(8) inside a chroot(8)]:chroot:_files -/' \
