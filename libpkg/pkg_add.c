@@ -312,7 +312,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 		}
 		/* enforce modes and creds */
-		lchmod(pathname, aest->st_mode & 07777);
+		lchmod(pathname, archive_entry_perm(ae));
 		if (getenv("INSTALL_AS_USER") == NULL) {
 			lchown(pathname, aest->st_uid, aest->st_gid);
 		}
