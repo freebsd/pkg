@@ -1080,7 +1080,7 @@ reiterate:
 		pkg_emit_error("Cannot solve problem using SAT solver:");
 
 		while (*failed) {
-			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
+			struct pkg_solve_variable *var = &problem->variables[abs(*failed) - 1];
 
 			for (i = 0; i < kv_size(problem->rules); i++) {
 				rule = kv_A(problem->rules, i);
