@@ -77,6 +77,7 @@
 #define archive_read_support_filter_none(a) archive_read_support_compression_none(a)
 #define archive_read_free archive_read_finish
 #define archive_write_free archive_write_finish
+#define archive_entry_perm archive_entry_mode
 
 #ifndef UF_NOUNLINK
 #define UF_NOUNLINK 0
