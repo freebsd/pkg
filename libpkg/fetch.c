@@ -572,6 +572,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				sbuf_cat(fetchOpts, "6");
 		}
 
+        if (debug_level >= 4)
+            sbuf_cat(fetchOpts, "v");
+
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
 		    u->user,
