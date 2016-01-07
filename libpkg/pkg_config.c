@@ -1110,7 +1110,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (useragent != NULL)
 		setenv("HTTP_USER_AGENT", useragent, 1);
 	else
-		setenv("HTTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
+		setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
 	/* load the repositories */
 	load_repositories(reposdir, flags);
