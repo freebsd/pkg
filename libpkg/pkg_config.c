@@ -1109,6 +1109,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	useragent = pkg_object_string(pkg_config_get("HTTP_USER_AGENT"));
 	if (useragent != NULL)
 		setenv("HTTP_USER_AGENT", useragent, 1);
+	else
+		setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
 	/* load the repositories */
 	load_repositories(reposdir, flags);
