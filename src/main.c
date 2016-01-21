@@ -364,6 +364,9 @@ show_repository_info(void)
 		if (pkg_repo_key(repo) != NULL)
 			printf(",\n    %-16s: \"%s\"",
 			    "pubkey", pkg_repo_key(repo));
+		if (pkg_repo_ip_version(repo) != 0)
+			printf(",\n    %-16s: %u",
+				"ip_version", pkg_repo_ip_version(repo));
 		printf("\n  }\n");
 	}
 }
