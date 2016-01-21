@@ -1333,6 +1333,17 @@ pkg_repo_priority(struct pkg_repo *r)
 	return (r->priority);
 }
 
+unsigned int
+pkg_repo_ip_version(struct pkg_repo *r)
+{
+	if ((r->flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
+		return 4;
+	else if ((r->flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)
+		return 6;
+	else
+		return 0;
+}
+
 /* Locate the repo by the file basename / database name */
 struct pkg_repo *
 pkg_repo_find(const char *reponame)
