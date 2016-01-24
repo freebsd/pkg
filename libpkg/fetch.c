@@ -513,6 +513,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 
 	u = fetchParseURL(url);
+	if (u == NULL) {
+		pkg_emit_error("%s: parse error", url);
+		/* Too early for there to be anything to cleanup */
+		return(EPKG_FATAL);
+	}
+
 	if (t != NULL)
 		u->ims_time = *t;
 
