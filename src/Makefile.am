@@ -1,6 +1,8 @@
 noinst_HEADERS=	pkgcli.h
 
+if HAVE_ELF_ABI
 LDFLAGS+=	-Wl,--enable-new-dtags
+endif
 
 pkg_SOURCES=		add.c \
 			alias.c \
