@@ -262,8 +262,8 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 		goto cleanup;
 	}
 
-	pkg_create_from_dir(pkg, rootdir, pkg_archive);
-	ret = EPKG_OK;
+	if ((ret = pkg_create_from_dir(pkg, rootdir, pkg_archive)) != EPKG_OK)
+		pkg_emit_error("package creation failed");
 
 cleanup:
 	free(pkg);
