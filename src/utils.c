@@ -330,8 +330,9 @@ print_info(struct pkg * const pkg, uint64_t options)
 			outflags |= PKG_MANIFEST_EMIT_JSON;
 			break;
 		case INFO_RAW_JSON_COMPACT:
-			outflags |= PKG_MANIFEST_EMIT_COMPACT;
 			break;
+		default:
+			outflags |= PKG_MANIFEST_EMIT_UCL;
 		}
 		if (pkg_type(pkg) == PKG_REMOTE)
 			outflags |= PKG_MANIFEST_EMIT_COMPACT;
