@@ -390,6 +390,12 @@ static struct config_entry c[] = {
 		"VALID_URL_SCHEME",
 		"pkg+http,pkg+https,https,http,ftp,file,ssh",
 	},
+	{
+		PKG_BOOL,
+		"ALLOW_BASE_SHLIBS",
+		"NO",
+		"Enable base libraries analysis",
+	},
 };
 
 static bool parsed = false;
