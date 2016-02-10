@@ -178,7 +178,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 #ifdef HAVE_LIBJAIL
 		fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
 #endif
-		fprintf(out, "\t%-15s%s\n", "-R", "Execute pkg(8) using relocating installation to <rootdir>");
+		fprintf(out, "\t%-15s%s\n", "-r", "Execute pkg(8) using relocating installation to <rootdir>");
 		fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
 		fprintf(out, "\t%-15s%s\n", "-C", "Use the specified configuration file");
 		fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
