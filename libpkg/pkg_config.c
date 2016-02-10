@@ -1130,7 +1130,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	while (pkg_repos(&repo) == EPKG_OK) {
 		object = ucl_object_find_key(config, "VALID_URL_SCHEME");
 		url = pkg_repo_url(repo);
-		buf = strstr(url, "://");
+		buf = strstr(url, ":/");
 		if (buf == NULL) {
 			pkg_emit_error("invalid url: %s", url);
 			return (EPKG_FATAL);
