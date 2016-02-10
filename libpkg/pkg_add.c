@@ -318,8 +318,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			 */
 			if (archive_entry_filetype(ae) != AE_IFDIR ||
 			    !is_dir(pathname)) {
-				pkg_emit_error("archive_read_extract(): %s",
-				    archive_error_string(a));
+				pkg_emit_error("archive_read_extract() errno %d: %s",
+				    archive_errno(a), archive_error_string(a));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
