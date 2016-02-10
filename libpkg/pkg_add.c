@@ -91,7 +91,7 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 	struct pkg_config_file *lcf = NULL;
 
 	char *localconf = NULL;
-	size_t sz;
+	off_t sz;
 	char *localsum;
 
 	if (!renamed) {
