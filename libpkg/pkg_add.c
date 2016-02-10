@@ -152,7 +152,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
-	char	bd[MAXPATHLEN], *cp;
+	char	linkpath[MAXPATHLEN], bd[MAXPATHLEN], *cp;
+	const char *lp;
 	struct stat st;
 	const struct stat *aest;
 	bool renamed = false;
@@ -212,6 +213,19 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		}
 
 		archive_entry_set_pathname(ae, rpath);
+		/*
+		 * Deal with hardlinks to rooted path.  Use pathname as
+		 * temporary work space, restore it from rpath for use below.
+		 */
+		lp = archive_entry_hardlink(ae);
+		if (lp != NULL) {
+			pkg_absolutepath(lp, linkpath, sizeof(linkpath));
+			snprintf(pathname, sizeof(pathname), "%s%s%s",
+			    location ? location : "", *linkpath == '/' ? "" : "/",
+			    linkpath);
+			archive_entry_set_hardlink(ae, pathname);
+			strcpy(pathname, rpath);
+		}
 
 		/* load in memory the content of config files */
 		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
