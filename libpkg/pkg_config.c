@@ -388,7 +388,7 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"VALID_URL_SCHEME",
-		"pkg+http,pkg+https,https,http,ftp,file,ssh",
+		"pkg+http,pkg+https,https,http,file,ssh,ftp,ftps,pkg+ssh,pkg+ftp,pkg+ftps",
 	},
 	{
 		PKG_BOOL,
