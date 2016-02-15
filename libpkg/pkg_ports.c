@@ -377,7 +377,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	if (regular) {
 		p->flatsize += st.st_size;
 		if (is_config) {
-			size_t sz;
+			off_t sz;
 			char *content;
 			file_to_buffer(testpath, &content, &sz);
 			pkg_addconfig_file(p->pkg, path, content);
