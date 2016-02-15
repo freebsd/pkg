@@ -26,15 +26,28 @@
 #include <assert.h>
 #include "ucl.h"
 
+static void
+ud_dtor (void *ptr)
+{
+	assert (ptr == NULL);
+}
+
+static const char *
+ud_emit (void *ptr)
+{
+	return "test userdata emit";
+}
+
 int
 main (int argc, char **argv)
 {
-	ucl_object_t *obj, *cur, *ar, *ref;
+	ucl_object_t *obj, *cur, *ar, *ar1, *ref, *test_obj;
 	ucl_object_iter_t it;
-	const ucl_object_t *found, *it_obj;
+	const ucl_object_t *found, *it_obj, *test;
 	FILE *out;
 	unsigned char *emitted;
 	const char *fname_out = NULL;
+	struct ucl_parser *parser;
 	int ret = 0;
 
 	switch (argc) {
@@ -65,7 +78,8 @@ main (int argc, char **argv)
 	/* Create some strings */
 	cur = ucl_object_fromstring_common ("  test string    ", 0, UCL_STRING_TRIM);
 	ucl_object_insert_key (obj, cur, "key1", 0, false);
-	cur = ucl_object_fromstring_common ("  test \nstring\n    ", 0, UCL_STRING_TRIM | UCL_STRING_ESCAPE);
+	cur = ucl_object_fromstring_common ("  test \nstring\n\r\n\b\t\f\\\"    ", 0,
+			UCL_STRING_TRIM | UCL_STRING_ESCAPE);
 	ucl_object_insert_key (obj, cur, "key2", 0, false);
 	cur = ucl_object_fromstring_common ("  test string    \n", 0, 0);
 	ucl_object_insert_key (obj, cur, "key3", 0, false);
@@ -73,10 +87,34 @@ main (int argc, char **argv)
 	ar = ucl_object_typed_new (UCL_ARRAY);
 	cur = ucl_object_fromint (10);
 	ucl_array_append (ar, cur);
+	assert (ucl_array_index_of (ar, cur) == 0);
 	cur = ucl_object_fromdouble (10.1);
 	ucl_array_append (ar, cur);
+	assert (ucl_array_index_of (ar, cur) == 1);
 	cur = ucl_object_fromdouble (9.999);
 	ucl_array_prepend (ar, cur);
+	assert (ucl_array_index_of (ar, cur) == 0);
+
+	ar1 = ucl_object_copy (ar);
+	cur = ucl_object_fromstring ("abc");
+	ucl_array_prepend (ar1, cur);
+	cur = ucl_object_fromstring ("cde");
+	ucl_array_prepend (ar1, cur);
+	cur = ucl_object_fromstring ("абв"); /* UTF8 */
+	ucl_array_prepend (ar1, cur);
+	cur = ucl_object_fromstring ("Ебв"); /* UTF8 */
+	ucl_array_prepend (ar1, cur);
+/*
+ * This is ususally broken or fragile as utf collate is far from perfect
+	cur = ucl_object_fromstring ("ёбв");
+	ucl_array_prepend (ar1, cur);
+	cur = ucl_object_fromstring ("Ёбв"); // hello to @bapt
+	ucl_array_prepend (ar1, cur);
+*/
+	cur = ucl_object_fromstring ("😎"); /* everybody likes emoji in the code */
+	ucl_array_prepend (ar1, cur);
+
+	ucl_object_array_sort (ar1, ucl_object_compare_qsort);
 
 	/* Removing from an array */
 	cur = ucl_object_fromdouble (1.0);
@@ -122,6 +160,46 @@ main (int argc, char **argv)
 	ucl_object_insert_key (obj, cur, "key13", 0, false);
 	cur = ucl_object_frombool (true);
 	ucl_object_insert_key (obj, cur, "k=3", 0, false);
+	ucl_object_insert_key (obj, ar1, "key14", 0, false);
+	cur = ucl_object_new_userdata (ud_dtor, ud_emit, NULL);
+	ucl_object_insert_key (obj, cur, "key15", 0, false);
+
+	/* More tests for keys */
+	cur = ucl_object_fromlstring ("test", 3);
+	ucl_object_insert_key (obj, cur, "key16", 0, false);
+	test = ucl_object_find_any_key (obj, "key100", "key200", "key300", "key16", NULL);
+	assert (test == cur);
+	test = ucl_object_find_keyl (obj, "key160", 5);
+	assert (test == cur);
+	cur = ucl_object_pop_key (obj, "key16");
+	assert (test == cur);
+	test = ucl_object_pop_key (obj, "key16");
+	assert (test == NULL);
+	test = ucl_object_find_keyl (obj, "key160", 5);
+	assert (test == NULL);
+	/* Objects merging tests */
+	test_obj = ucl_object_new_full (UCL_OBJECT, 2);
+	ucl_object_insert_key (test_obj, cur, "key16", 0, true);
+	ucl_object_merge (obj, test_obj, true);
+	ucl_object_unref (test_obj);
+	/* Array merging test */
+	test_obj = ucl_object_new_full (UCL_ARRAY, 3);
+	ucl_array_append (test_obj, ucl_object_fromstring ("test"));
+	ucl_array_merge (test_obj, ar1, false);
+	ucl_object_insert_key (obj, test_obj, "key17", 0, true);
+	/* Object deletion */
+	cur = ucl_object_fromstring ("test");
+	ucl_object_insert_key (obj, cur, "key18", 0, true);
+	assert (ucl_object_delete_key (obj, "key18"));
+	assert (!ucl_object_delete_key (obj, "key18"));
+
+	/* Array replace */
+	ar1 = ucl_object_typed_new (UCL_ARRAY);
+	cur = ucl_object_fromstring ("test");
+	cur = ucl_elt_append (cur, ucl_object_fromstring ("test1"));
+	ucl_array_append (ar1, cur);
+	test = ucl_array_replace_index (ar1, ucl_object_fromstring ("test2"), 0);
+	assert (test == cur);
 
 	/* Try to find using path */
 	/* Should exist */
@@ -171,6 +249,30 @@ main (int argc, char **argv)
 
 	fprintf (out, "%s\n", emitted);
 	ucl_object_unref (obj);
+
+	parser = ucl_parser_new (UCL_PARSER_NO_IMPLICIT_ARRAYS);
+
+	if (ucl_parser_add_chunk_full (parser, emitted, strlen (emitted),
+			3, UCL_DUPLICATE_ERROR, UCL_PARSE_UCL)) {
+		/* Should fail due to duplicate */
+		assert (0);
+	}
+	else {
+		assert (ucl_parser_get_error (parser) != NULL);
+		ucl_parser_clear_error (parser);
+		ucl_parser_free (parser);
+		parser = ucl_parser_new (0);
+		ucl_parser_add_chunk_full (parser, emitted, strlen (emitted),
+					3, UCL_DUPLICATE_MERGE, UCL_PARSE_UCL);
+	}
+
+	assert (ucl_parser_get_column (parser) == 0);
+	assert (ucl_parser_get_linenum (parser) != 0);
+	ucl_parser_clear_error (parser);
+	assert (ucl_parser_get_error_code (parser) == 0);
+	obj = ucl_parser_get_object (parser);
+	ucl_parser_free (parser);
+	ucl_object_free (obj);
 
 	if (emitted != NULL) {
 		free (emitted);

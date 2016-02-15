@@ -622,7 +622,7 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = out;
 
-	return (ucl_object_emit_full(obj, emit_type, &func));
+	return (ucl_object_emit_full(obj, emit_type, &func, NULL));
 
 
 }
@@ -646,7 +646,7 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = *buf;
 
-	ret = ucl_object_emit_full(obj, emit_type, &func);
+	ret = ucl_object_emit_full(obj, emit_type, &func, NULL);
 	sbuf_finish(*buf);
 
 	return (ret);
