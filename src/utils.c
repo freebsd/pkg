@@ -167,7 +167,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 					break;
 				}
 			}
-			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
+			printf("Please type 'Y[es]' or 'N[o]' to make a selection\n");
 			printf("%s", out);
 		}
 		else {
