@@ -55,6 +55,23 @@
 #include "utlist.h"
 #include "pkgcli.h"
 
+void
+append_yesno(bool r, char *yesnomsg, size_t len)
+{
+	static const char	trunc[] = "\n[truncated] ";
+	/* These two strings must be the same length. */
+	static const char	yes[] = "[Y/n]: ";
+	static const char	no[] = "[y/N]: ";
+
+	size_t	msglen = strlen(yesnomsg);
+
+	if (msglen > len - sizeof yes) {
+		yesnomsg[len - sizeof trunc - sizeof yes] = '\0';
+		strlcat(yesnomsg, trunc, len);
+	}
+	strlcat(yesnomsg, r ? yes : no, len);
+}
+
 bool
 query_tty_yesno(bool r, const char *msg, ...)
 {
@@ -63,7 +80,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	int	 tty_fd;
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
-	char	yesnomsg[1024];
+	char	yesnomsg[65536];
 
 #ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
@@ -79,10 +96,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	tty = fdopen(tty_fd, "r+");
 
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
-	if (default_yes || r)
-		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
-	else
-		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
 	va_start(ap, msg);
 	pkg_vfprintf(tty, yesnomsg, ap);
@@ -117,7 +131,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
-	char	yesnomsg[1024];
+	char	yesnomsg[65536];
 
 	/* We use default value of yes or default in case of quiet mode */
 	if (quiet)
@@ -131,10 +145,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 		return (true);
 
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
-	if (default_yes || r)
-		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
-	else
-		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
 	pkg_vasprintf(&out, yesnomsg, ap);
 	printf("%s", out);
