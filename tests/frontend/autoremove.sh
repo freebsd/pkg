@@ -4,7 +4,8 @@
 
 tests_init \
 	autoremove \
-	autoremove_quiet
+	autoremove_quiet \
+	autoremove_dryrun
 
 autoremove_prep() {
 	touch file1
@@ -101,4 +102,23 @@ autoremove_quiet_body() {
 	    pkg info
 
 	test ! -f ${TMPDIR}/file1 -o ! -f ${TMPDIR}/file2 || atf_fail "Files are still present"
+}
+
+autoremove_dryrun_body() {
+	autoremove_prep
+
+	atf_check \
+	    -o match:"^Installed packages to be REMOVED:$" \
+	    -o match:"^	test-1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg autoremove -yn
+
+	atf_check \
+	    -o match:"^test-1                         a test$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg info
+
+	test -f ${TMPDIR}/file1 -o -f ${TMPDIR}/file2 || atf_fail "Files are missing"
 }
