@@ -3,9 +3,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -369,7 +369,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	   style to show on a new line.  */
 
 	info_num = 0;
-	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1) 
+	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1)
 		if ((opt & options) != 0)
 			info_num++;
 
@@ -457,7 +457,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("%-15s: ", "Maintainer");
 			pkg_printf("%m\n", pkg);
 			break;
-		case INFO_WWW:	
+		case INFO_WWW:
 			if (print_tag)
 				printf("%-15s: ", "WWW");
 			pkg_printf("%w\n", pkg);
@@ -471,7 +471,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Options");
-				if (quiet) 
+				if (quiet)
 					pkg_printf("%O%{%-15On: %Ov\n%|%}", pkg);
 				else
 					pkg_printf("%O%{\t%-15On: %Ov\n%|%}", pkg);
@@ -571,7 +571,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
 				if (quiet) {
-					if (show_locks) 
+					if (show_locks)
 						pkg_printf("%r%{%rn-%rv%#rk\n%|%}", pkg);
 					else
 						pkg_printf("%r%{%rn-%rv\n%|%}", pkg);
@@ -875,7 +875,8 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 };
 
 int
-print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
+print_jobs_summary(struct pkg_jobs *jobs, size_t *bytes_change, size_t *bytes_download,
+		const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
@@ -935,6 +936,14 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		humanize_number(size, sizeof(size), dlsize, "B",
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
+	}
+
+	if (bytes_download) {
+		*bytes_download = dlsize;
+	}
+
+	if (bytes_change) {
+		*bytes_change = labs(newsize - oldsize);
 	}
 
 	return (displayed);
