@@ -4,8 +4,9 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -67,6 +68,9 @@ exec_install(int argc, char **argv)
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
+	size_t dlbytes, diffbytes, limbytes;
+
+	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 
 	struct option longopts[] = {
 		{ "automatic",		no_argument,		NULL,	'A' },
@@ -226,13 +230,18 @@ exec_install(int argc, char **argv)
 		rc = yes;
 		/* print a summary before applying the jobs */
 		if (!quiet || dry_run) {
-			print_jobs_summary(jobs,
+			print_jobs_summary(jobs, &diffbytes, &dlbytes,
 			    "The following %d package(s) will be affected (of %d checked):\n\n",
 			    nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run) {
-				rc = query_yesno(false,
-				    "\nProceed with this action? ");
+				if (limbytes && (diffbytes > limbytes || dlbytes > limbytes)) {
+					rc = query_yesno(false,
+				      "\nProceed with this action? ");
+				}
+				else {
+					rc = true;
+				}
 			}
 			else {
 				rc = false;

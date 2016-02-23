@@ -2,8 +2,9 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -198,8 +199,9 @@ fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs)
 	}
 
 	/* print a summary before applying the jobs */
-	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
-	
+	print_jobs_summary(jobs, NULL, NULL,
+			"The following packages will be installed:\n\n");
+
 	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies? ");
 
 	if (rc) {
@@ -233,11 +235,11 @@ check_summary(struct pkgdb *db, struct deps_entry *dh)
 	assert(db != NULL);
 
 	printf(">>> Summary of actions performed:\n\n");
-		
+
 	DL_FOREACH(dh, e) {
 		if ((it = pkgdb_query(db, e->name, MATCH_EXACT)) == NULL)
 			return;
-		
+
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
 			fixed = false;
 			printf("%s dependency failed to be fixed\n", e->name);
@@ -246,7 +248,7 @@ check_summary(struct pkgdb *db, struct deps_entry *dh)
 
 		pkgdb_it_free(it);
 	}
-	
+
 	if (fixed) {
 		printf("\n>>> Missing dependencies were fixed successfully.\n");
 	} else {

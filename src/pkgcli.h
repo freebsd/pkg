@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -266,7 +266,10 @@ int query_select(const char *msg, const char **opts, int ncnt, int deft);
 bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
-int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
+int print_jobs_summary(struct pkg_jobs *j,
+		size_t *bytes_change,
+		size_t *bytes_download,
+		const char *msg, ...);
 
 void job_status_begin(struct sbuf *);
 void job_status_end(struct sbuf *);
