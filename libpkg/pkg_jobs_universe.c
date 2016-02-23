@@ -205,6 +205,11 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 
+	if (pkg_is_locked(pkg)) {
+		pkg_emit_locked(pkg);
+		return (EPKG_LOCKED);
+	}
+
 	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s:%s)",
 	    (pkg->type == PKG_INSTALLED ? "local" : "remote"), pkg->uid,
 	    pkg->name, pkg->version, pkg->digest);
