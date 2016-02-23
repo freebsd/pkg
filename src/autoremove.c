@@ -138,9 +138,6 @@ exec_autoremove(int argc, char **argv)
 			rc = query_yesno(false,
 		            "\nProceed with deinstalling packages? ");
 	}
-//printf("yes: %d\n", yes);
-//printf("rc: %d\n", rc);
-//printf("dry_run: %d\n", dry_run);
 	if ((yes || rc ) && !dry_run && ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)) {
 		goto cleanup;
 	}
