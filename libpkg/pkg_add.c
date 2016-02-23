@@ -1,8 +1,9 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2016, Vsevolod Stakhov
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -116,7 +117,7 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 		pkg_debug(3, "Empty configuration content for local package");
 		return;
 	}
-	
+
 	pkg_debug(1, "Config file found %s", pathname);
 	file_to_buffer(pathname, &localconf, &sz);
 
@@ -152,7 +153,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
-	char	linkpath[MAXPATHLEN], bd[MAXPATHLEN], *cp;
+	char	linkpath[MAXPATHLEN], tmppath[MAXPATHLEN], bd[MAXPATHLEN], *cp;
 	const char *lp;
 	struct stat st;
 	const struct stat *aest;
@@ -214,17 +215,16 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 
 		archive_entry_set_pathname(ae, rpath);
 		/*
-		 * Deal with hardlinks to rooted path.  Use pathname as
-		 * temporary work space, restore it from rpath for use below.
+		 * Deal with hardlinks to rooted path.  Use tmppath as
+		 * temporary work space
 		 */
 		lp = archive_entry_hardlink(ae);
 		if (lp != NULL) {
 			pkg_absolutepath(lp, linkpath, sizeof(linkpath));
-			snprintf(pathname, sizeof(pathname), "%s%s%s",
+			snprintf(tmppath, sizeof(tmppath), "%s%s%s",
 			    location ? location : "", *linkpath == '/' ? "" : "/",
 			    linkpath);
-			archive_entry_set_hardlink(ae, pathname);
-			strcpy(pathname, rpath);
+			archive_entry_set_hardlink(ae, tmppath);
 		}
 
 		/* load in memory the content of config files */
