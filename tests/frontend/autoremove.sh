@@ -4,7 +4,7 @@
 
 tests_init \
 	autoremove \
-	autoremove_q
+	autoremove_quiet
 
 autoremove_prep() {
 	touch file1
@@ -85,7 +85,7 @@ autoremove_body() {
 	test ! -f ${TMPDIR}/file1 -o ! -f ${TMPDIR}/file2 || atf_fail "Files are still present"
 }
 
-autoremove_q_body() {
+autoremove_quiet_body() {
 	autoremove_prep
 
 	atf_check \
