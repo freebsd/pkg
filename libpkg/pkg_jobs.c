@@ -1005,7 +1005,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 			if (pkg_jobs_check_local_pkg(j, jp) != EPKG_OK) {
 				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
 						jp->pattern);
-				return (EPKG_FATAL);
+				return (EPKG_NOTINSTALLED);
 			}
 		}
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
@@ -1022,7 +1022,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 					pkg_emit_error("%s is not installed, therefore upgrade is impossible",
 							jfp.pattern);
 					pkg_manifest_keys_free(keys);
-					return (EPKG_FATAL);
+					return (EPKG_NOTINSTALLED);
 				}
 			}
 			pkg->type = PKG_FILE;
