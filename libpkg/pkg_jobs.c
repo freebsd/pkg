@@ -963,8 +963,10 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 
 		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
-		pkg_jobs_universe_add_pkg(j->universe, p, false, &unit);
-		rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
+		rc = pkg_jobs_universe_add_pkg(j->universe, p, false, &unit);
+		if (rc == EPKG_OK) {
+			rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
+		}
 	}
 
 	return (rc);
@@ -1514,6 +1516,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_jobs_install_candidate *candidates, *c;
+	int retcode = 0;
 
 	/* Check for new pkg. Skip for 'upgrade -F'. */
 	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
@@ -1567,13 +1570,17 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
-				if (pkg_jobs_find_remote_pattern(j, jp) == EPKG_FATAL) {
+				retcode = pkg_jobs_find_remote_pattern(j, jp);
+				if (retcode == EPKG_FATAL) {
 					pkg_emit_error("No packages available to %s matching '%s' "
 							"have been found in the "
 							"repositories",
 							(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
 							jp->pattern);
-					return (EPKG_FATAL);
+					return (retcode);
+				}
+				if (retcode != EPKG_OK) {
+					return (retcode);
 				}
 			}
 			/*
