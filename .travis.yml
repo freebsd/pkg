@@ -12,7 +12,7 @@ addons:
       - libssl-dev
       - liblzma-dev
 
-sudo: false
+sudo: required
 
 compiler:
   - clang
