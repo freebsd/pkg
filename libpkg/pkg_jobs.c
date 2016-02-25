@@ -944,14 +944,6 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		if (p == NULL)
 			return (EPKG_FATAL);
 
-		/*
-		 * For locked packages we don't need to perform this
-		 * heuristic
-		 */
-		if (p->locked) {
-			return (EPKG_END);
-		}
-
 		while(pkg_rdeps(p, &rdep) == EPKG_OK) {
 			struct pkg *rdep_package;
 
