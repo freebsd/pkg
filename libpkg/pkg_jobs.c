@@ -698,6 +698,7 @@ new_pkg_version(struct pkg_jobs *j)
 	const char *uid = "pkg";
 	pkg_flags old_flags;
 	bool ret = false;
+	struct pkg_job_universe_item *nit, *cit;
 
 	/* Disable -f for pkg self-check, and restore at end. */
 	old_flags = j->flags;
@@ -719,8 +720,20 @@ new_pkg_version(struct pkg_jobs *j)
 
 	/* Use maximum priority for pkg */
 	if (pkg_jobs_find_upgrade(j, uid, MATCH_EXACT) == EPKG_OK) {
-		ret = true;
-		goto end;
+		/*
+		 * Now we can have *potential* upgrades, but we can have a situation,
+		 * when our upgrade candidate comes from another repo
+		 */
+		nit = pkg_jobs_universe_find(j->universe, uid);
+
+		if (nit) {
+			DL_FOREACH(nit, cit) {
+				if (pkg_version_change_between (p, cit->pkg) == PKG_UPGRADE) {
+					/* We really have newer version which is not installed */
+					ret = true;
+				}
+			}
+		}
 	}
 
 end:
