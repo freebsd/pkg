@@ -1278,8 +1278,9 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				unit->pkg->automatic = automatic;
 			}
 			else {
-				if (j->type == PKG_JOBS_INSTALL)
+				if (j->type == PKG_JOBS_INSTALL) {
 					unit->pkg->automatic = false;
+				}
 			}
 		}
 		else {
@@ -1296,10 +1297,33 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 					break;
 				}
 			}
-			if (local != NULL)
-				LL_FOREACH(unit, cur)
-					if (cur->pkg->type != PKG_INSTALLED)
+			if (local != NULL) {
+				LL_FOREACH(unit, cur) {
+					/*
+					 * Propagate automatic from local package
+					 */
+					if (cur->pkg->type != PKG_INSTALLED) {
 						cur->pkg->automatic = automatic;
+					}
+				}
+			}
+			else {
+				/*
+				 * For packages that are not unique, we might still have
+				 * a situation when we need to set automatic for all
+				 * non-local packages
+				 *
+				 * See #1374
+				 */
+				HASH_FIND_STR(j->request_add, unit->pkg->uid, req);
+				if ((req == NULL || req->automatic)) {
+					automatic = true;
+					pkg_debug(2, "set automatic flag for %s", unit->pkg->uid);
+					LL_FOREACH(unit, cur) {
+						cur->pkg->automatic = automatic;
+					}
+				}
+			}
 		}
 	}
 }
