@@ -622,7 +622,7 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = out;
 
-	return (ucl_object_emit_full(obj, emit_type, &func));
+	return (ucl_object_emit_full(obj, emit_type, &func, NULL));
 
 
 }
@@ -646,7 +646,7 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = *buf;
 
-	ret = ucl_object_emit_full(obj, emit_type, &func);
+	ret = ucl_object_emit_full(obj, emit_type, &func, NULL);
 	sbuf_finish(*buf);
 
 	return (ret);
@@ -691,7 +691,7 @@ pkg_utils_tokenize(char **args)
 					parse_state = ORDINARY_TEXT;
 					p_start = p;
 				}				
-			} else 
+			} else
 				p_start = p;
 			break;
 		case ORDINARY_TEXT:
@@ -742,7 +742,7 @@ pkg_utils_count_spaces(const char *args)
 	int		spaces;
 	const char	*p;
 
-	for (spaces = 0, p = args; *p != '\0'; p++) 
+	for (spaces = 0, p = args; *p != '\0'; p++)
 		if (isspace(*p))
 			spaces++;
 

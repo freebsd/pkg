@@ -1,8 +1,9 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2016, Vsevolod Stakhov
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -36,6 +37,8 @@
 #include <string.h>
 #include <errno.h>
 #include <glob.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -89,7 +92,7 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 	struct pkg_config_file *lcf = NULL;
 
 	char *localconf = NULL;
-	size_t sz;
+	off_t sz;
 	char *localsum;
 
 	if (!renamed) {
@@ -116,7 +119,7 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 		pkg_debug(3, "Empty configuration content for local package");
 		return;
 	}
-	
+
 	pkg_debug(1, "Config file found %s", pathname);
 	file_to_buffer(pathname, &localconf, &sz);
 
@@ -145,6 +148,34 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 	free(localconf);
 }
 
+static uid_t
+get_uid_from_archive(struct archive_entry *ae)
+{
+	char buffer[128];
+	struct passwd pwent, *result;
+
+	if ((getpwnam_r(archive_entry_uname(ae), &pwent, buffer, sizeof(buffer),
+	    &result)) < 0)
+		return (0);
+	if (result == NULL)
+		return (0);
+	return (pwent.pw_uid);
+}
+
+static gid_t
+get_gid_from_archive(struct archive_entry *ae)
+{
+	char buffer[128];
+	struct group grent, *result;
+
+	if ((getgrnam_r(archive_entry_gname(ae), &grent, buffer, sizeof(buffer),
+	    &result)) < 0)
+		return (0);
+	if (result == NULL)
+		return (0);
+	return (grent.gr_gid);
+}
+
 static int
 do_extract(struct archive *a, struct archive_entry *ae, const char *location,
     int nfiles, struct pkg *pkg, struct pkg *local)
@@ -152,7 +183,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
-	char	bd[MAXPATHLEN], *cp;
+	char	linkpath[MAXPATHLEN], tmppath[MAXPATHLEN], bd[MAXPATHLEN], *cp;
+	const char *lp;
 	struct stat st;
 	const struct stat *aest;
 	bool renamed = false;
@@ -212,6 +244,18 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		}
 
 		archive_entry_set_pathname(ae, rpath);
+		/*
+		 * Deal with hardlinks to rooted path.  Use tmppath as
+		 * temporary work space
+		 */
+		lp = archive_entry_hardlink(ae);
+		if (lp != NULL) {
+			pkg_absolutepath(lp, linkpath, sizeof(linkpath));
+			snprintf(tmppath, sizeof(tmppath), "%s%s%s",
+			    location ? location : "", *linkpath == '/' ? "" : "/",
+			    linkpath);
+			archive_entry_set_hardlink(ae, tmppath);
+		}
 
 		/* load in memory the content of config files */
 		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
@@ -274,8 +318,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			 */
 			if (archive_entry_filetype(ae) != AE_IFDIR ||
 			    !is_dir(pathname)) {
-				pkg_emit_error("archive_read_extract(): %s",
-				    archive_error_string(a));
+				pkg_emit_error("archive_read_extract() errno %d: %s",
+				    archive_errno(a), archive_error_string(a));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -312,9 +356,10 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			}
 		}
 		/* enforce modes and creds */
-		lchmod(pathname, aest->st_mode & 07777);
+		lchmod(pathname, archive_entry_perm(ae));
 		if (getenv("INSTALL_AS_USER") == NULL) {
-			lchown(pathname, aest->st_uid, aest->st_gid);
+			lchown(pathname, get_uid_from_archive(ae),
+			    get_gid_from_archive(ae));
 		}
 #ifdef HAVE_CHFLAGS
 		/* Restore flags */

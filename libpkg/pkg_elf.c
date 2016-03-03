@@ -92,10 +92,16 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 		return (EPKG_FATAL);
 	}
 
-	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
-	if (strncmp(shlib_path, "/lib", 4) == 0 ||
-	    strncmp(shlib_path, "/usr/lib", 8) == 0)
-		return (EPKG_END); /* ignore libs from base */
+	if (pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
+		if (strncmp(shlib_path, "/usr/lib32", 10) == 0) {
+			return (EPKG_END);
+		}
+	} else {
+		/* match /lib, /lib32, /usr/lib and /usr/lib32 */
+		if (strncmp(shlib_path, "/lib", 4) == 0 ||
+		    strncmp(shlib_path, "/usr/lib", 8) == 0)
+			return (EPKG_END); /* ignore libs from base */
+	}
 
 	if (path != NULL)
 		strncpy(path, shlib_path, pathlen);

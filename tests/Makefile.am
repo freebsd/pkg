@@ -80,6 +80,7 @@ tests_scripts=	\
 		frontend/001sanity.sh \
 		frontend/alias.sh \
 		frontend/annotate.sh \
+		frontend/autoremove.sh \
 		frontend/config.sh \
 		frontend/conflicts.sh \
 		frontend/conflicts-multirepo.sh \
@@ -99,8 +100,9 @@ tests_scripts=	\
 		frontend/rubypuppet.sh \
 		frontend/search.sh \
 		frontend/set.sh \
-		frontend/version.sh
-		frontend/test_environment.sh
+		frontend/version.sh \
+		frontend/test_environment.sh \
+		frontend/issue1374.sh
 
 check_SCRIPTS=	$(tests_scripts:.sh=)
 CLEANFILES+=	$(check_SCRIPTS)

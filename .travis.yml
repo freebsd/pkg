@@ -11,8 +11,9 @@ addons:
       - libarchive-dev
       - libssl-dev
       - liblzma-dev
+      - liblua5.2-dev
 
-sudo: false
+sudo: required
 
 compiler:
   - clang

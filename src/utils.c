@@ -3,9 +3,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -55,6 +55,23 @@
 #include "utlist.h"
 #include "pkgcli.h"
 
+void
+append_yesno(bool r, char *yesnomsg, size_t len)
+{
+	static const char	trunc[] = "\n[truncated] ";
+	/* These two strings must be the same length. */
+	static const char	yes[] = "[Y/n]: ";
+	static const char	no[] = "[y/N]: ";
+
+	size_t	msglen = strlen(yesnomsg);
+
+	if (msglen > len - sizeof yes) {
+		yesnomsg[len - sizeof trunc - sizeof yes] = '\0';
+		strlcat(yesnomsg, trunc, len);
+	}
+	strlcat(yesnomsg, r ? yes : no, len);
+}
+
 bool
 query_tty_yesno(bool r, const char *msg, ...)
 {
@@ -63,7 +80,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	int	 tty_fd;
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
-	char	yesnomsg[1024];
+	char	yesnomsg[65536];
 
 #ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
@@ -79,10 +96,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	tty = fdopen(tty_fd, "r+");
 
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
-	if (default_yes || r)
-		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
-	else
-		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
 	va_start(ap, msg);
 	pkg_vfprintf(tty, yesnomsg, ap);
@@ -117,7 +131,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
-	char	yesnomsg[1024];
+	char	yesnomsg[65536];
 
 	/* We use default value of yes or default in case of quiet mode */
 	if (quiet)
@@ -131,10 +145,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 		return (true);
 
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
-	if (default_yes || r)
-		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
-	else
-		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
 	pkg_vasprintf(&out, yesnomsg, ap);
 	printf("%s", out);
@@ -167,7 +178,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 					break;
 				}
 			}
-			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
+			printf("Please type 'Y[es]' or 'N[o]' to make a selection\n");
 			printf("%s", out);
 		}
 		else {
@@ -330,8 +341,9 @@ print_info(struct pkg * const pkg, uint64_t options)
 			outflags |= PKG_MANIFEST_EMIT_JSON;
 			break;
 		case INFO_RAW_JSON_COMPACT:
-			outflags |= PKG_MANIFEST_EMIT_COMPACT;
 			break;
+		default:
+			outflags |= PKG_MANIFEST_EMIT_UCL;
 		}
 		if (pkg_type(pkg) == PKG_REMOTE)
 			outflags |= PKG_MANIFEST_EMIT_COMPACT;
@@ -368,7 +380,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	   style to show on a new line.  */
 
 	info_num = 0;
-	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1) 
+	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1)
 		if ((opt & options) != 0)
 			info_num++;
 
@@ -456,7 +468,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("%-15s: ", "Maintainer");
 			pkg_printf("%m\n", pkg);
 			break;
-		case INFO_WWW:	
+		case INFO_WWW:
 			if (print_tag)
 				printf("%-15s: ", "WWW");
 			pkg_printf("%w\n", pkg);
@@ -470,7 +482,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Options");
-				if (quiet) 
+				if (quiet)
 					pkg_printf("%O%{%-15On: %Ov\n%|%}", pkg);
 				else
 					pkg_printf("%O%{\t%-15On: %Ov\n%|%}", pkg);
@@ -570,7 +582,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
 				if (quiet) {
-					if (show_locks) 
+					if (show_locks)
 						pkg_printf("%r%{%rn-%rv%#rk\n%|%}", pkg);
 					else
 						pkg_printf("%r%{%rn-%rv\n%|%}", pkg);
@@ -874,7 +886,8 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 };
 
 int
-print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
+print_jobs_summary(struct pkg_jobs *jobs, size_t *bytes_change, size_t *bytes_download,
+		const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
@@ -934,6 +947,14 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		humanize_number(size, sizeof(size), dlsize, "B",
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
+	}
+
+	if (bytes_download) {
+		*bytes_download = dlsize;
+	}
+
+	if (bytes_change) {
+		*bytes_change = labs(newsize - oldsize);
 	}
 
 	return (displayed);

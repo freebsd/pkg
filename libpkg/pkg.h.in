@@ -486,7 +486,11 @@ typedef enum {
 	/**
 	 * Need to repeat operation
 	 */
-	EPKG_AGAIN
+	EPKG_AGAIN,
+	/**
+	 * Not installed
+	 */
+	EPKG_NOTINSTALLED
 } pkg_error_t;
 
 /**

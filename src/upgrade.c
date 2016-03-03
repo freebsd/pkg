@@ -2,8 +2,9 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -57,6 +58,9 @@ exec_upgrade(int argc, char **argv)
 	int		 done = 0;
 	bool	rc = true;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
+	size_t dlbytes, diffbytes, limbytes;
+
+	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -147,7 +151,7 @@ exec_upgrade(int argc, char **argv)
 		return (EX_IOERR);
 	else
 		retcode = EX_SOFTWARE;
-	
+
 	/* first update the remote repositories if needed */
 	if (auto_update &&
 	    (updcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
@@ -181,15 +185,22 @@ exec_upgrade(int argc, char **argv)
 		/* print a summary before applying the jobs */
 		rc = yes;
 		if (!quiet || dry_run) {
-			print_jobs_summary(jobs,
+			print_jobs_summary(jobs, &diffbytes, &dlbytes,
 				"The following %d package(s) will be affected (of %d checked):\n\n",
 				nbactions, pkg_jobs_total(jobs));
 
-			if (!dry_run)
-				rc = query_yesno(false, "\nProceed with this "
-				    "action? ");
-			else
+			if (!dry_run) {
+				if (limbytes && (diffbytes > limbytes || dlbytes > limbytes)) {
+					rc = query_yesno(false, "\nProceed with this "
+							"action? ");
+				}
+				else {
+					rc = true;
+				}
+			}
+			else {
 				rc = false;
+			}
 		}
 
 		if (rc) {

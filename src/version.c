@@ -933,6 +933,9 @@ exec_version(int argc, char **argv)
 		}
 	}
 
+	if (opt & VERSION_QUIET)
+		quiet = true;
+
 	if (argc > 1) {
 		usage_version();
 		return (EX_USAGE);

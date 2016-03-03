@@ -3,9 +3,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -698,6 +698,7 @@ new_pkg_version(struct pkg_jobs *j)
 	const char *uid = "pkg";
 	pkg_flags old_flags;
 	bool ret = false;
+	struct pkg_job_universe_item *nit, *cit;
 
 	/* Disable -f for pkg self-check, and restore at end. */
 	old_flags = j->flags;
@@ -719,8 +720,20 @@ new_pkg_version(struct pkg_jobs *j)
 
 	/* Use maximum priority for pkg */
 	if (pkg_jobs_find_upgrade(j, uid, MATCH_EXACT) == EPKG_OK) {
-		ret = true;
-		goto end;
+		/*
+		 * Now we can have *potential* upgrades, but we can have a situation,
+		 * when our upgrade candidate comes from another repo
+		 */
+		nit = pkg_jobs_universe_find(j->universe, uid);
+
+		if (nit) {
+			DL_FOREACH(nit, cit) {
+				if (pkg_version_change_between (p, cit->pkg) == PKG_UPGRADE) {
+					/* We really have newer version which is not installed */
+					ret = true;
+				}
+			}
+		}
 	}
 
 end:
@@ -942,8 +955,10 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 
 		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
-		pkg_jobs_universe_add_pkg(j->universe, p, false, &unit);
-		rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
+		rc = pkg_jobs_universe_add_pkg(j->universe, p, false, &unit);
+		if (rc == EPKG_OK) {
+			rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
+		}
 	}
 
 	return (rc);
@@ -990,7 +1005,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 			if (pkg_jobs_check_local_pkg(j, jp) != EPKG_OK) {
 				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
 						jp->pattern);
-				return (EPKG_FATAL);
+				return (EPKG_NOTINSTALLED);
 			}
 		}
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
@@ -1007,7 +1022,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 					pkg_emit_error("%s is not installed, therefore upgrade is impossible",
 							jfp.pattern);
 					pkg_manifest_keys_free(keys);
-					return (EPKG_FATAL);
+					return (EPKG_NOTINSTALLED);
 				}
 			}
 			pkg->type = PKG_FILE;
@@ -1263,8 +1278,9 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				unit->pkg->automatic = automatic;
 			}
 			else {
-				if (j->type == PKG_JOBS_INSTALL)
+				if (j->type == PKG_JOBS_INSTALL) {
 					unit->pkg->automatic = false;
+				}
 			}
 		}
 		else {
@@ -1281,10 +1297,33 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 					break;
 				}
 			}
-			if (local != NULL)
-				LL_FOREACH(unit, cur)
-					if (cur->pkg->type != PKG_INSTALLED)
+			if (local != NULL) {
+				LL_FOREACH(unit, cur) {
+					/*
+					 * Propagate automatic from local package
+					 */
+					if (cur->pkg->type != PKG_INSTALLED) {
 						cur->pkg->automatic = automatic;
+					}
+				}
+			}
+			else {
+				/*
+				 * For packages that are not unique, we might still have
+				 * a situation when we need to set automatic for all
+				 * non-local packages
+				 *
+				 * See #1374
+				 */
+				HASH_FIND_STR(j->request_add, unit->pkg->uid, req);
+				if ((req == NULL || req->automatic)) {
+					automatic = true;
+					pkg_debug(2, "set automatic flag for %s", unit->pkg->uid);
+					LL_FOREACH(unit, cur) {
+						cur->pkg->automatic = automatic;
+					}
+				}
+			}
 		}
 	}
 }
@@ -1493,11 +1532,13 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_jobs_install_candidate *candidates, *c;
+	int retcode = 0;
 
 	/* Check for new pkg. Skip for 'upgrade -F'. */
 	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
 	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
+			j->flags &= ~PKG_FLAG_PKG_VERSION_TEST;
 			pkg_emit_newpkgversion();
 			goto order;
 		}
@@ -1545,13 +1586,17 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
-				if (pkg_jobs_find_remote_pattern(j, jp) == EPKG_FATAL) {
+				retcode = pkg_jobs_find_remote_pattern(j, jp);
+				if (retcode == EPKG_FATAL) {
 					pkg_emit_error("No packages available to %s matching '%s' "
 							"have been found in the "
 							"repositories",
 							(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
 							jp->pattern);
-					return (EPKG_FATAL);
+					return (retcode);
+				}
+				if (retcode != EPKG_OK) {
+					return (retcode);
 				}
 			}
 			/*
@@ -2102,7 +2147,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	char cachedpath[MAXPATHLEN];
 	bool mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
 
-	
+
 	if (j->destdir == NULL || !mirror)
 		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	else

@@ -27,6 +27,7 @@
 #include "ucl_chartable.h"
 #include "kvec.h"
 #include <stdarg.h>
+#include <stdio.h> /* for asprintf */
 
 #ifndef _WIN32
 #include <glob.h>
@@ -236,7 +237,7 @@ ucl_object_free_internal (ucl_object_t *obj, bool allow_rec, ucl_object_dtor dto
 		}
 		else if (obj->type == UCL_OBJECT) {
 			if (obj->value.ov != NULL) {
-				ucl_hash_destroy (obj->value.ov, (ucl_hash_free_func *)dtor);
+				ucl_hash_destroy (obj->value.ov, (ucl_hash_free_func)dtor);
 			}
 			obj->value.ov = NULL;
 		}
@@ -306,6 +307,9 @@ ucl_unescape_json_string (char *str, size_t len)
 			case 'u':
 				/* Unicode escape */
 				uval = 0;
+				h ++; /* u character */
+				len --;
+
 				if (len > 3) {
 					for (i = 0; i < 4; i++) {
 						uval <<= 4;
@@ -322,8 +326,7 @@ ucl_unescape_json_string (char *str, size_t len)
 							break;
 						}
 					}
-					h += 3;
-					len -= 3;
+
 					/* Encode */
 					if(uval < 0x80) {
 						t[0] = (char)uval;
@@ -340,6 +343,8 @@ ucl_unescape_json_string (char *str, size_t len)
 						t[2] = 0x80 + ((uval & 0x003F));
 						t += 3;
 					}
+#if 0
+					/* It's not actually supported now */
 					else if(uval <= 0x10FFFF) {
 						t[0] = 0xF0 + ((uval & 0x1C0000) >> 18);
 						t[1] = 0x80 + ((uval & 0x03F000) >> 12);
@@ -347,9 +352,19 @@ ucl_unescape_json_string (char *str, size_t len)
 						t[3] = 0x80 + ((uval & 0x00003F));
 						t += 4;
 					}
+#endif
 					else {
 						*t++ = '?';
 					}
+
+					/* Consume 4 characters of source */
+					h += 4;
+					len -= 4;
+
+					if (len > 0) {
+						len --; /* for '\' character */
+					}
+					continue;
 				}
 				else {
 					*t++ = 'u';
@@ -437,7 +452,7 @@ ucl_copy_value_trash (const ucl_object_t *obj)
 		}
 		deconst->flags |= UCL_OBJECT_ALLOCATED_VALUE;
 	}
-	
+
 	return obj->trash_stack[UCL_TRASH_VALUE];
 }
 
@@ -502,6 +517,10 @@ ucl_parser_free (struct ucl_parser *parser)
 
 	if (parser->cur_file) {
 		free (parser->cur_file);
+	}
+
+	if (parser->comments) {
+		ucl_object_unref (parser->comments);
 	}
 
 	UCL_FREE (sizeof (struct ucl_parser), parser);
@@ -628,7 +647,7 @@ ucl_curl_write_callback (void* contents, size_t size, size_t nmemb, void* ud)
  * @param buflen target length
  * @return
  */
-static bool
+bool
 ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen,
 		UT_string **err, bool must_exist)
 {
@@ -690,8 +709,8 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen,
 		return false;
 	}
 	curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, ucl_curl_write_callback);
-	cbdata.buf = *buf;
-	cbdata.buflen = *buflen;
+	cbdata.buf = NULL;
+	cbdata.buflen = 0;
 	curl_easy_setopt (curl, CURLOPT_WRITEDATA, &cbdata);
 
 	if ((r = curl_easy_perform (curl)) != CURLE_OK) {
@@ -723,7 +742,7 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen,
  * @param buflen target length
  * @return
  */
-static bool
+bool
 ucl_fetch_file (const unsigned char *filename, unsigned char **buf, size_t *buflen,
 		UT_string **err, bool must_exist)
 {
@@ -739,7 +758,7 @@ ucl_fetch_file (const unsigned char *filename, unsigned char **buf, size_t *bufl
 	}
 	if (st.st_size == 0) {
 		/* Do not map empty files */
-		*buf = "";
+		*buf = NULL;
 		*buflen = 0;
 	}
 	else {
@@ -848,7 +867,7 @@ ucl_include_url (const unsigned char *data, size_t len,
 	snprintf (urlbuf, sizeof (urlbuf), "%.*s", (int)len, data);
 
 	if (!ucl_fetch_url (urlbuf, &buf, &buflen, &parser->err, params->must_exist)) {
-		return (!params->must_exist || false);
+		return !params->must_exist;
 	}
 
 	if (params->check_signature) {
@@ -1037,6 +1056,16 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 		else if (old_obj == NULL) {
 			/* Create an object with key: prefix */
 			nest_obj = ucl_object_new_full (UCL_OBJECT, params->priority);
+
+			if (nest_obj == NULL) {
+				ucl_create_err (&parser->err, "cannot allocate memory for an object");
+				if (buflen > 0) {
+					ucl_munmap (buf, buflen);
+				}
+
+				return false;
+			}
+
 			nest_obj->key = params->prefix;
 			nest_obj->keylen = strlen (params->prefix);
 			ucl_copy_key_trash(nest_obj);
@@ -1052,6 +1081,14 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 			if (ucl_object_type(old_obj) == UCL_ARRAY) {
 				/* Append to the existing array */
 				nest_obj = ucl_object_new_full (UCL_OBJECT, params->priority);
+				if (nest_obj == NULL) {
+					ucl_create_err (&parser->err, "cannot allocate memory for an object");
+					if (buflen > 0) {
+						ucl_munmap (buf, buflen);
+					}
+
+					return false;
+				}
 				nest_obj->prev = nest_obj;
 				nest_obj->next = NULL;
 
@@ -1060,6 +1097,14 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 			else {
 				/* Convert the object to an array */
 				new_obj = ucl_object_typed_new (UCL_ARRAY);
+				if (new_obj == NULL) {
+					ucl_create_err (&parser->err, "cannot allocate memory for an object");
+					if (buflen > 0) {
+						ucl_munmap (buf, buflen);
+					}
+
+					return false;
+				}
 				new_obj->key = old_obj->key;
 				new_obj->keylen = old_obj->keylen;
 				new_obj->flags |= UCL_OBJECT_MULTIVALUE;
@@ -1067,6 +1112,14 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 				new_obj->next = NULL;
 
 				nest_obj = ucl_object_new_full (UCL_OBJECT, params->priority);
+				if (nest_obj == NULL) {
+					ucl_create_err (&parser->err, "cannot allocate memory for an object");
+					if (buflen > 0) {
+						ucl_munmap (buf, buflen);
+					}
+
+					return false;
+				}
 				nest_obj->prev = nest_obj;
 				nest_obj->next = NULL;
 
@@ -1085,6 +1138,10 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 				ucl_create_err (&parser->err,
 						"Conflicting type for key: %s",
 						params->prefix);
+				if (buflen > 0) {
+					ucl_munmap (buf, buflen);
+				}
+
 				return false;
 			}
 		}
@@ -1097,7 +1154,11 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 			if (st == NULL) {
 				ucl_create_err (&parser->err, "cannot allocate memory for an object");
 				ucl_object_unref (nest_obj);
-				return NULL;
+				if (buflen > 0) {
+					ucl_munmap (buf, buflen);
+				}
+
+				return false;
 			}
 			st->obj = nest_obj;
 			st->level = parser->stack->level;
@@ -1232,7 +1293,7 @@ ucl_include_file (const unsigned char *data, size_t len,
 	   treat allow_glob/need_glob as a NOOP and just return */
 	return ucl_include_file_single (data, len, parser, params);
 #endif
-	
+
 	return true;
 }
 
@@ -1252,7 +1313,7 @@ ucl_include_common (const unsigned char *data, size_t len,
 		bool default_try,
 		bool default_sign)
 {
-	bool allow_url, search;
+	bool allow_url = false, search = false;
 	const char *duplicate;
 	const ucl_object_t *param;
 	ucl_object_iter_t it = NULL, ip = NULL;
@@ -1270,8 +1331,6 @@ ucl_include_common (const unsigned char *data, size_t len,
 	params.parse_type = UCL_PARSE_UCL;
 	params.strat = UCL_DUPLICATE_APPEND;
 	params.must_exist = !default_try;
-
-	search = false;
 
 	/* Process arguments */
 	if (args != NULL && args->type == UCL_OBJECT) {
@@ -1506,7 +1565,7 @@ ucl_load_handler (const unsigned char *data, size_t len,
 	size_t buflen;
 	unsigned priority;
 	int64_t iv;
-	ucl_hash_t *container = NULL;
+	ucl_object_t *container = NULL;
 	enum ucl_string_flags flags;
 
 	/* Default values */
@@ -1566,21 +1625,38 @@ ucl_load_handler (const unsigned char *data, size_t len,
 		}
 	}
 
-	if (prefix == NULL || strlen(prefix) == 0) {
+	if (prefix == NULL || strlen (prefix) == 0) {
 		ucl_create_err (&parser->err, "No Key specified in load macro");
 		return false;
 	}
 
 	if (len > 0) {
 		asprintf (&load_file, "%.*s", (int)len, data);
-		if (!ucl_fetch_file (load_file, &buf, &buflen, &parser->err, !try_load)) {
+
+		if (!load_file) {
+			ucl_create_err (&parser->err, "cannot allocate memory for suffix");
+
+			return false;
+		}
+
+		if (!ucl_fetch_file (load_file, &buf, &buflen, &parser->err,
+				!try_load)) {
+			free (load_file);
+
 			return (try_load || false);
 		}
 
-		container = parser->stack->obj->value.ov;
-		old_obj = __DECONST (ucl_object_t *, ucl_hash_search (container, prefix, strlen (prefix)));
+		free (load_file);
+		container = parser->stack->obj;
+		old_obj = __DECONST (ucl_object_t *, ucl_object_find_key (container,
+				prefix));
+
 		if (old_obj != NULL) {
 			ucl_create_err (&parser->err, "Key %s already exists", prefix);
+			if (buflen > 0) {
+				ucl_munmap (buf, buflen);
+			}
+
 			return false;
 		}
 
@@ -1594,7 +1670,7 @@ ucl_load_handler (const unsigned char *data, size_t len,
 		else if (strcasecmp (target, "int") == 0) {
 			asprintf(&tmp, "%.*s", (int)buflen, buf);
 			iv = strtoll(tmp, NULL, 10);
-			obj = ucl_object_fromint(iv);
+			obj = ucl_object_fromint (iv);
 		}
 
 		if (buflen > 0) {
@@ -1604,14 +1680,13 @@ ucl_load_handler (const unsigned char *data, size_t len,
 		if (obj != NULL) {
 			obj->key = prefix;
 			obj->keylen = strlen (prefix);
-			ucl_copy_key_trash(obj);
+			ucl_copy_key_trash (obj);
 			obj->prev = obj;
 			obj->next = NULL;
 			ucl_object_set_priority (obj, priority);
-			container = ucl_hash_insert_object (container, obj,
-					parser->flags & UCL_PARSER_KEY_LOWERCASE);
-			parser->stack->obj->value.ov = container;
+			ucl_object_insert_key (container, obj, obj->key, obj->keylen, false);
 		}
+
 		return true;
 	}
 
@@ -2527,7 +2602,7 @@ ucl_object_new_full (ucl_type_t type, unsigned priority)
 		}
 	}
 	else {
-		new = ucl_object_new_userdata (NULL, NULL);
+		new = ucl_object_new_userdata (NULL, NULL, NULL);
 		ucl_object_set_priority (new, priority);
 	}
 
@@ -2535,7 +2610,9 @@ ucl_object_new_full (ucl_type_t type, unsigned priority)
 }
 
 ucl_object_t*
-ucl_object_new_userdata (ucl_userdata_dtor dtor, ucl_userdata_emitter emitter)
+ucl_object_new_userdata (ucl_userdata_dtor dtor,
+		ucl_userdata_emitter emitter,
+		void *ptr)
 {
 	struct ucl_object_userdata *new;
 	size_t nsize = sizeof (*new);
@@ -2549,6 +2626,7 @@ ucl_object_new_userdata (ucl_userdata_dtor dtor, ucl_userdata_emitter emitter)
 		new->obj.prev = (ucl_object_t *)new;
 		new->dtor = dtor;
 		new->emitter = emitter;
+		new->obj.value.ud = ptr;
 	}
 
 	return (ucl_object_t *)new;
@@ -3217,6 +3295,13 @@ ucl_object_compare (const ucl_object_t *o1, const ucl_object_t *o2)
 	return ret;
 }
 
+int
+ucl_object_compare_qsort (const ucl_object_t **o1,
+		const ucl_object_t **o2)
+{
+	return ucl_object_compare (*o1, *o2);
+}
+
 void
 ucl_object_array_sort (ucl_object_t *ar,
 		int (*cmp)(const ucl_object_t **o1, const ucl_object_t **o2))
@@ -3254,4 +3339,96 @@ ucl_object_set_priority (ucl_object_t *obj,
 				PRIOBITS)) - 1);
 		obj->flags = priority;
 	}
+}
+
+bool
+ucl_object_string_to_type (const char *input, ucl_type_t *res)
+{
+	if (strcasecmp (input, "object") == 0) {
+		*res = UCL_OBJECT;
+	}
+	else if (strcasecmp (input, "array") == 0) {
+		*res = UCL_ARRAY;
+	}
+	else if (strcasecmp (input, "integer") == 0) {
+		*res = UCL_INT;
+	}
+	else if (strcasecmp (input, "number") == 0) {
+		*res = UCL_FLOAT;
+	}
+	else if (strcasecmp (input, "string") == 0) {
+		*res = UCL_STRING;
+	}
+	else if (strcasecmp (input, "boolean") == 0) {
+		*res = UCL_BOOLEAN;
+	}
+	else if (strcasecmp (input, "null") == 0) {
+		*res = UCL_NULL;
+	}
+	else if (strcasecmp (input, "userdata") == 0) {
+		*res = UCL_USERDATA;
+	}
+	else {
+		return false;
+	}
+
+	return true;
+}
+
+const char *
+ucl_object_type_to_string (ucl_type_t type)
+{
+	const char *res = "unknown";
+
+	switch (type) {
+	case UCL_OBJECT:
+		res = "object";
+		break;
+	case UCL_ARRAY:
+		res = "array";
+		break;
+	case UCL_INT:
+		res = "integer";
+		break;
+	case UCL_FLOAT:
+	case UCL_TIME:
+		res = "number";
+		break;
+	case UCL_STRING:
+		res = "string";
+		break;
+	case UCL_BOOLEAN:
+		res = "boolean";
+		break;
+	case UCL_USERDATA:
+		res = "userdata";
+		break;
+	case UCL_NULL:
+		res = "null";
+		break;
+	}
+
+	return res;
+}
+
+const ucl_object_t *
+ucl_parser_get_comments (struct ucl_parser *parser)
+{
+	if (parser && parser->comments) {
+		return parser->comments;
+	}
+
+	return NULL;
+}
+
+const ucl_object_t *
+ucl_comments_find (const ucl_object_t *comments,
+		const ucl_object_t *srch)
+{
+	if (comments && srch) {
+		return ucl_object_find_keyl (comments, (const char *)&srch,
+				sizeof (void *));
+	}
+
+	return NULL;
 }

@@ -2,9 +2,9 @@
  * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -388,7 +388,19 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"VALID_URL_SCHEME",
-		"pkg+http,pkg+https,https,http,ftp,file,ssh",
+		"pkg+http,pkg+https,https,http,file,ssh,ftp,ftps,pkg+ssh,pkg+ftp,pkg+ftps",
+	},
+	{
+		PKG_BOOL,
+		"ALLOW_BASE_SHLIBS",
+		"NO",
+		"Enable base libraries analysis",
+	},
+	{
+		PKG_INT,
+		"WARN_SIZE_LIMIT",
+		"1048576", /* 1 meg */
+		"Ask user when performing changes for more than this limit"
 	},
 };
 
@@ -1107,7 +1119,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	/* Set user-agent */
 	useragent = pkg_object_string(pkg_config_get("HTTP_USER_AGENT"));
-	setenv("HTTP_USER_AGENT", useragent, 1);
+	if (useragent != NULL)
+		setenv("HTTP_USER_AGENT", useragent, 1);
+	else
+		setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
 	/* load the repositories */
 	load_repositories(reposdir, flags);
@@ -1121,7 +1136,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	while (pkg_repos(&repo) == EPKG_OK) {
 		object = ucl_object_find_key(config, "VALID_URL_SCHEME");
 		url = pkg_repo_url(repo);
-		buf = strstr(url, "://");
+		buf = strstr(url, ":/");
 		if (buf == NULL) {
 			pkg_emit_error("invalid url: %s", url);
 			return (EPKG_FATAL);

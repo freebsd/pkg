@@ -63,8 +63,8 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 
 	packagesite = pkg_repo_url(repo);
 
-	if (strncmp(packagesite, "file://", 7) == 0) {
-		snprintf(dest, destlen, "%s/%s", packagesite + 7,
+	if (strncmp(packagesite, "file:/", 6) == 0) {
+		snprintf(dest, destlen, "%s/%s", packagesite + 6,
 		    pkg->repopath);
 		return (EPKG_OK);
 	}
