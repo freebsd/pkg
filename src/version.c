@@ -356,6 +356,9 @@ free_categories(void)
 	char *v;
 	struct category *cat;
 
+	if (categories == NULL)
+		return;
+
 	kh_foreach_value(categories, cat, {
 		free(cat->name);
 		kh_foreach_value(cat->ports, v, free(v));
