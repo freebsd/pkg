@@ -656,18 +656,21 @@ bad_option:
 					sbuf_putc(sqlcond, str[0]);
 				}
 			} else if (str[0] == '!') {
-				if (str[1] != '=') {
-					fprintf(stderr, "expecting = after !\n");
+				if (str[1] == '=') {
+					sbuf_putc(sqlcond, str[0]);
+					sbuf_putc(sqlcond, str[1]);
+				} else if (str[1] == '~') {
+					sbuf_cat(sqlcond, " NOT GLOB ");
+				} else {
+					fprintf(stderr, "expecting = or ~ after !\n");
 					return (EPKG_FATAL);
 				}
+				str++;
 				if (state == OPERATOR_STRING) {
 					state = NEXT_IS_STRING;
 				} else {
 					state = NEXT_IS_INT;
 				}
-				sbuf_putc(sqlcond, str[0]);
-				str++;
-				sbuf_putc(sqlcond, str[0]);
 			} else {
 				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
 				return (EPKG_FATAL);
