@@ -480,7 +480,7 @@ start_process_worker(char *const *save_argv)
 				/* Process got some terminating signal, hence stop the loop */
 				fprintf(stderr, "Child process pid=%d terminated abnormally: %s\n",
 						(int)child_pid, strsignal (WTERMSIG(status)));
-				ret = -(WTERMSIG(status));
+				ret = 128 + WTERMSIG(status);
 				break;
 			}
 		}
