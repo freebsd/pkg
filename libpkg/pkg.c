@@ -279,8 +279,8 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 		case PKG_DEP_FORMULA:
 			*va_arg(ap, const char **) = pkg->dep_formula;
 			break;
-		case PKG_PRECIOUS:
-			*va_arg(ap, bool *) = pkg->precious;
+		case PKG_VITAL:
+			*va_arg(ap, bool *) = pkg->vital;
 			break;
 		}
 	}
@@ -433,8 +433,8 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			free(pkg->dep_formula);
 			pkg->dep_formula = strdup(va_arg(ap, const char *));
 			break;
-		case PKG_PRECIOUS:
-			pkg->precious = (bool)va_arg(ap, int);
+		case PKG_VITAL:
+			pkg->vital = (bool)va_arg(ap, int);
 			break;
 		}
 	}

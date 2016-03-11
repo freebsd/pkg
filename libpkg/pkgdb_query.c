@@ -155,7 +155,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 				"version, comment, desc, "
 				"message, arch, maintainer, www, "
 				"prefix, flatsize, licenselogic, automatic, "
-				"locked, time, manifestdigest, precious "
+				"locked, time, manifestdigest, vital "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 

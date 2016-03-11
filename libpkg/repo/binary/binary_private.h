@@ -371,9 +371,9 @@ static const struct repo_changes repo_upgrades[] = {
 	},
 	{2012,
 	 2013,
-	 "Add precious field",
+	 "Add vital field",
 
-	 "ALTER TABLE packages ADD COLUMN precious INTEGER NOT NULL DEFAULT 0;"
+	 "ALTER TABLE packages ADD COLUMN vital INTEGER NOT NULL DEFAULT 0;"
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
@@ -385,7 +385,7 @@ static const struct repo_changes repo_upgrades[] = {
 static const struct repo_changes repo_downgrades[] = {
 	{2013,
 	 2012,
-	 "Drop precious column",
+	 "Drop vital column",
 
 	 "ALTER TABLE packages RENAME TO packages_old;"
 	 "CREATE TABLE packages ("

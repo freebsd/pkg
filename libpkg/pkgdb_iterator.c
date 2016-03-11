@@ -92,7 +92,6 @@ static struct column_mapping {
 	{ "oldversion",	PKG_OLD_VERSION, PKG_SQLITE_STRING },
 	{ "origin",	PKG_ORIGIN, PKG_SQLITE_STRING },
 	{ "pkgsize",	PKG_PKGSIZE, PKG_SQLITE_INT64 },
-	{ "precious",	PKG_PRECIOUS, PKG_SQLITE_BOOL },
 	{ "prefix",	PKG_PREFIX, PKG_SQLITE_STRING },
 	{ "repopath",	PKG_REPOPATH, PKG_SQLITE_STRING },
 	{ "repourl",	PKG_REPOURL, PKG_SQLITE_STRING },
@@ -100,6 +99,7 @@ static struct column_mapping {
 	{ "time",	PKG_TIME, PKG_SQLITE_INT64 },
 	{ "uniqueid",	PKG_UNIQUEID, PKG_SQLITE_STRING },
 	{ "version",	PKG_VERSION, PKG_SQLITE_STRING },
+	{ "vital",	PKG_VITAL, PKG_SQLITE_BOOL },
 	{ "weight",	-1, PKG_SQLITE_INT64 },
 	{ "www",	PKG_WWW, PKG_SQLITE_STRING },
 	{ NULL,		-1, PKG_SQLITE_STRING }
@@ -897,8 +897,8 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			case PKG_PKGSIZE:
 				pkg->pkgsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_PRECIOUS:
-				pkg->precious = (bool)sqlite3_column_int64(stmt, icol);
+			case PKG_VITAL:
+				pkg->vital = (bool)sqlite3_column_int64(stmt, icol);
 				break;
 			case PKG_TIME:
 				pkg->timestamp = sqlite3_column_int64(stmt, icol);

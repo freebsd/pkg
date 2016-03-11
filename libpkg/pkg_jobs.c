@@ -2003,8 +2003,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_DELETE:
 		case PKG_SOLVED_UPGRADE_REMOVE:
 			p = ps->items[0]->pkg;
-			if (ps->type == PKG_SOLVED_DELETE && p->precious == 1) {
-				pkg_emit_error("Cannot delete precious pkgs!");
+			if (ps->type == PKG_SOLVED_DELETE && p->vital == 1) {
+				pkg_emit_error("Cannot delete vital pkgs!");
 				continue;
 			}
 			if (ps->type == PKG_SOLVED_DELETE &&

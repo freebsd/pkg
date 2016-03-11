@@ -165,9 +165,6 @@ static struct pkg_manifest_key {
 	{ "path",                offsetof(struct pkg, repopath),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "precious",            offsetof(struct pkg, precious),
-			TYPE_SHIFT(UCL_INT),    pkg_int},
-
 	{ "repopath",            offsetof(struct pkg, repopath),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
@@ -203,6 +200,9 @@ static struct pkg_manifest_key {
 
 	{ "version",             offsetof(struct pkg, version),
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
+
+	{ "vital",            offsetof(struct pkg, vital),
+			TYPE_SHIFT(UCL_INT),    pkg_int},
 
 	{ "www",                 offsetof(struct pkg, www),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
