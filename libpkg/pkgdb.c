@@ -397,7 +397,7 @@ pkgdb_init(sqlite3 *sdb)
 		"manifestdigest TEXT NULL, "
 		"pkg_format_version INTEGER,"
 		"dep_formula TEXT NULL"
-		",precious INTEGER NOT NULL DEFAULT 0"
+		",vital INTEGER NOT NULL DEFAULT 0"
 	");"
 	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
 	"CREATE TABLE mtree ("
@@ -1361,7 +1361,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, "
 			"licenselogic, mtree_id, time, manifestdigest, dep_formula, "
-			"precious) "
+			"vital) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
 		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?15, ?16, ?17)",
 		"TTTTTTTTTTIIITTTI",

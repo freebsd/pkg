@@ -213,7 +213,7 @@ struct pkg {
 	bool		 direct;
 	bool		 locked;
 	bool		 automatic;
-	bool		 precious;
+	bool		 vital;
 	int64_t		 id;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
 	char			*name;
