@@ -199,7 +199,7 @@ exec_fetch(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if (pkg_jobs_count(jobs) == 0)
+	if (pkg_jobs_count(jobs) == EPKG_OK)
 		goto cleanup;
 
 	if (!quiet) {
