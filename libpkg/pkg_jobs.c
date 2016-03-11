@@ -2003,6 +2003,10 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_DELETE:
 		case PKG_SOLVED_UPGRADE_REMOVE:
 			p = ps->items[0]->pkg;
+			if (ps->type == PKG_SOLVED_DELETE && p->precious == 1) {
+				pkg_emit_error("Cannot delete precious pkgs!");
+				continue;
+			}
 			if (ps->type == PKG_SOLVED_DELETE &&
 			    (strcmp(p->name, "pkg") == 0 ||
 			    strcmp(p->name, "pkg-devel") == 0) &&

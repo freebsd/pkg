@@ -281,6 +281,7 @@ typedef enum {
 	PKG_UNIQUEID,
 	PKG_OLD_DIGEST,
 	PKG_DEP_FORMULA,
+	PKG_PRECIOUS,
 	PKG_NUM_FIELDS,		/* end of fields */
 } pkg_attr;
 
@@ -490,7 +491,11 @@ typedef enum {
 	/**
 	 * Not installed
 	 */
-	EPKG_NOTINSTALLED
+	EPKG_NOTINSTALLED,
+	/**
+	 * Can not delete the package because it is precious
+	 */
+	EPKG_PRECIOUS
 } pkg_error_t;
 
 /**
