@@ -165,6 +165,9 @@ static struct pkg_manifest_key {
 	{ "path",                offsetof(struct pkg, repopath),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
+	{ "precious",            offsetof(struct pkg, precious),
+			TYPE_SHIFT(UCL_INT),    pkg_int},
+
 	{ "repopath",            offsetof(struct pkg, repopath),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
