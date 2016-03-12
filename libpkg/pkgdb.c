@@ -1360,11 +1360,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR REPLACE INTO packages( "
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, "
-			"licenselogic, mtree_id, time, manifestdigest, dep_formula, "
-			"vital) "
+			"licenselogic, mtree_id, time, manifestdigest, dep_formula)"
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
-		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?15, ?16, ?17)",
-		"TTTTTTTTTTIIITTTI",
+		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?15, ?16 )",
+		"TTTTTTTTTTIIITTT",
 	},
 	[DEPS_UPDATE] = {
 		NULL,
@@ -2537,7 +2536,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 	int		 attr;
 	sqlite3_stmt	*stmt;
 	int64_t		 flatsize;
-	bool automatic, locked;
+	bool automatic, locked, vital;
 	char		*oldval;
 	char		*newval;
 
@@ -2562,6 +2561,8 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		    "WHERE package_id = ?2 AND name = ?3",
 		[PKG_SET_NAME]    =
 		    "UPDATE packages SET name=?1 WHERE id=?2",
+		[PKG_SET_VITAL] =
+		    "UPDATE packages SET vital = ?1 WHERE id = ?2",
 	};
 
 	while ((attr = va_arg(ap, int)) > 0) {
@@ -2606,6 +2607,15 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		case PKG_SET_NAME:
 			newval = va_arg(ap, char *);
 			sqlite3_bind_text(stmt, 1, newval, -1, SQLITE_STATIC);
+			sqlite3_bind_int64(stmt, 2, id);
+			break;
+		case PKG_SET_VITAL:
+			vital = (bool)va_arg(ap, int);
+			if (vital != 0 && vital != 1) {
+				sqlite3_finalize(stmt);
+				continue;
+			}
+			sqlite3_bind_int64(stmt, 1, vital);
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
 		}

@@ -74,6 +74,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
 	{ 'R', "",              0, PKG_LOAD_ANNOTATIONS },
+	{ 'V', "",		0, PKG_LOAD_BASIC },
 };
 
 static void
@@ -81,6 +82,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *dat
 {
 	bool automatic;
 	bool locked;
+	bool vital;
 
 	sbuf_clear(dest);
 
@@ -288,6 +290,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *dat
 			case 'M':
 				if (pkg_has_message(pkg))
 					pkg_sbuf_printf(dest, "%M", pkg);
+				break;
+			case 'V':
+				pkg_get(pkg, PKG_VITAL, &vital);
+				sbuf_printf(dest, "%d", vital);
 				break;
 			case '%':
 				sbuf_putc(dest, '%');
@@ -511,6 +517,12 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 				case 'e':
 					sbuf_cat(sqlcond, "desc");
 					state = OPERATOR_STRING;
+					break;
+				case 'V':
+					if (for_remote)
+						goto bad_option;
+					sbuf_cat(sqlcond, "vital");
+					state = OPERATOR_INT;
 					break;
 				case '#': /* FALLTHROUGH */
 				case '?':
