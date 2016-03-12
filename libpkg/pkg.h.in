@@ -293,6 +293,7 @@ typedef enum {
 	PKG_SET_ORIGIN,
 	PKG_SET_DEPNAME,
 	PKG_SET_NAME,
+	PKG_SET_VITAL,
 	PKG_SET_MAX
 } pkg_set_attr;
 
