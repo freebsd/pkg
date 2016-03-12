@@ -202,7 +202,7 @@ static struct pkg_manifest_key {
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 
 	{ "vital",            offsetof(struct pkg, vital),
-			TYPE_SHIFT(UCL_INT),    pkg_int},
+			TYPE_SHIFT(UCL_BOOLEAN),    pkg_int},
 
 	{ "www",                 offsetof(struct pkg, www),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
