@@ -67,6 +67,7 @@ static int pkg_string(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_obj(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_array(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_int(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_boolean(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_message(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_set_deps_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_files_from_object(struct pkg *, const ucl_object_t *);
@@ -202,7 +203,7 @@ static struct pkg_manifest_key {
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 
 	{ "vital",            offsetof(struct pkg, vital),
-			TYPE_SHIFT(UCL_BOOLEAN),    pkg_int},
+			TYPE_SHIFT(UCL_BOOLEAN),    pkg_boolean},
 
 	{ "www",                 offsetof(struct pkg, www),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
@@ -385,6 +386,17 @@ pkg_int(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 
 	dest = (int64_t *)((unsigned char *)pkg + offset);
 	*dest = ucl_object_toint(obj);
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_boolean(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
+{
+	bool *dest;
+
+	dest = (bool *)((unsigned char *)pkg + offset);
+	*dest = ucl_object_toboolean(obj);
 
 	return (EPKG_OK);
 }
