@@ -44,6 +44,7 @@
 #include <uthash.h>
 
 #include "pkg.h"
+#include "private/pkg.h"
 #include "private/ldconfig.h"
 
 #define MAXDIRS		1024		/* Maximum directories in path */
@@ -326,6 +327,27 @@ shlib_list_from_elf_hints(const char *hintsfile)
 #endif
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));
+}
+
+static const char *stage_dirs[] = {
+	"/lib",
+	"/usr/lib",
+};
+
+void
+shlib_list_from_stage(const char *stage)
+{
+	int i;
+	char *dir;
+
+	if (stage == NULL)
+		return;
+
+	for (i = 0; i < NELEM(stage_dirs); i++) {
+		asprintf(&dir, "%s%s", stage, stage_dirs[i]);
+		scan_dirs_for_shlibs(&shlibs, 1, (const char **)&dir, true);
+		free(dir);
+	}
 }
 
 void

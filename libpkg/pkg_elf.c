@@ -93,9 +93,8 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 	}
 
 	if (pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
-		if (strncmp(shlib_path, "/usr/lib32", 10) == 0) {
+		if (strstr(shlib_path, "/lib32/") != NULL)
 			return (EPKG_END);
-		}
 	} else {
 		/* match /lib, /lib32, /usr/lib and /usr/lib32 */
 		if (strncmp(shlib_path, "/lib", 4) == 0 ||
@@ -107,7 +106,7 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 		strncpy(path, shlib_path, pathlen);
 
 	return (EPKG_OK);
-} 
+}
 
 /* ARGSUSED */
 static int
@@ -462,6 +461,11 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		return (EPKG_FATAL);
 
 	shlib_list_init();
+
+	if (stage != NULL && pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
+		/* Do not check the return */
+		shlib_list_from_stage(stage);
+	}
 
 	ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
 	if (ret != EPKG_OK)
