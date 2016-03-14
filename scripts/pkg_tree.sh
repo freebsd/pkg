@@ -49,7 +49,7 @@ show_tree() {
 usage() {
 	echo "Usage: $0 [-nprR] [pkgname|origin] [...]"
 	echo "-n: Non-tree view, uses tabs instead"
-	echo "-o: Pring package origin"
+	echo "-o: Print package origin"
 	echo "-r: Recursively show required packages"
 	echo "-R: Use remote repository"
 	echo "-U: Show reverse depends"
