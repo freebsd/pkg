@@ -216,6 +216,25 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 	return (true);
 }
 
+static bool
+is_old_freebsd_armheader(const GElf_Ehdr *e)
+{
+	GElf_Word eabi;
+
+	/*
+	 * Old FreeBSD arm EABI binaries were created with zeroes in [EI_OSABI].
+	 * Attempt to identify them by the little bit of valid info that is
+	 * present:  32-bit ARM with EABI version 4 or 5 in the flags.  OABI
+	 * binaries (prior to freebsd 10) have the correct [EI_OSABI] value.
+	 */
+	if (e->e_machine == EM_ARM && e->e_ident[EI_CLASS] == ELFCLASS32) {
+		eabi = e->e_flags & 0xff000000;
+		if (eabi == 0x04000000 || eabi == 0x05000000)
+			return (true);
+	}
+	return (false);
+}
+
 static int
 analyse_elf(struct pkg *pkg, const char *fpath)
 {
@@ -343,7 +362,8 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			goto cleanup;
 		}
 	} else {
-		if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD) {
+		if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
+		    !is_old_freebsd_armheader(&elfhdr)) {
 			ret = EPKG_END;
 			goto cleanup;
 		}
