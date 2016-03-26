@@ -811,8 +811,11 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
-		/* FreeBSD doesn't support the hard-float ABI yet */
-		fpu = "softfp";
+		if (elfhdr.e_flags & EF_ARM_VFP_FLOAT)
+			fpu = "hardfp";
+		else
+			fpu = "softfp";
+
 		if ((elfhdr.e_flags & 0xFF000000) != 0) {
 			const char *sh_name = NULL;
 			size_t shstrndx;
