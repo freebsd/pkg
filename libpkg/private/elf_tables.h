@@ -65,6 +65,9 @@ static const struct _elf_corres os_corres[] = {
 #ifndef EF_MIPS_ABI
 #define EF_MIPS_ABI	0x0000F000
 #endif
+#ifndef EF_ARM_VFP_FLOAT
+#define EF_ARM_VFP_FLOAT	0x00000400
+#endif
 #define E_MIPS_ABI_O32	0x00001000
 #define E_MIPS_ABI_N32	0x00000020
 
