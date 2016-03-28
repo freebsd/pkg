@@ -90,6 +90,7 @@ tests_scripts=	\
 		frontend/lock.sh \
 		frontend/messages.sh \
 		frontend/packagesplit.sh \
+		frontend/packagemerge.sh \
 		frontend/php-pr.sh \
 		frontend/pubkey.sh \
 		frontend/query.sh \

@@ -16,6 +16,7 @@ atf_test_program{name='jpeg'}
 atf_test_program{name='lock'}
 atf_test_program{name='messages'}
 atf_test_program{name='packagesplit'}
+atf_test_program{name='packagemerge'}
 atf_test_program{name='php-pr'}
 atf_test_program{name='pkg'}
 atf_test_program{name='pubkey'}
