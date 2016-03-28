@@ -89,6 +89,7 @@ tests_scripts=	\
 		frontend/jpeg.sh \
 		frontend/lock.sh \
 		frontend/messages.sh \
+		frontend/multipleprovider.sh \
 		frontend/packagesplit.sh \
 		frontend/packagemerge.sh \
 		frontend/php-pr.sh \
