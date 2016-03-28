@@ -1052,6 +1052,9 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int res, iter = 0;
 	size_t i;
 	bool need_reiterate = false;
+	const int *known_failures = NULL;
+	int failure_pos = 0;
+	struct pkg_solve_variable *last_changed_var = NULL;
 
 	for (i = 0; i < kv_size(problem->rules); i++) {
 		rule = kv_A(problem->rules, i);
@@ -1074,43 +1077,64 @@ reiterate:
 	res = pkg_solve_picosat_iter(problem, iter);
 
 	if (res != PICOSAT_SATISFIABLE) {
-		const int *failed = picosat_failed_assumptions(problem->sat);
-		struct sbuf *sb = sbuf_new_auto();
+		if (known_failures == NULL)
+			known_failures = picosat_failed_assumptions(problem->sat);
 
-		pkg_emit_error("Cannot solve problem using SAT solver:");
 
-		while (*failed) {
-			struct pkg_solve_variable *var = &problem->variables[abs(*failed) - 1];
+		if (known_failures[failure_pos] != 0) {
+			pkg_emit_notice("Cannot solve problem using SAT solver, trying another plan");
+		} else {
+			pkg_emit_error("Cannot solve problem using SAT solver");
+		}
 
-			for (i = 0; i < kv_size(problem->rules); i++) {
-				rule = kv_A(problem->rules, i);
+		if (last_changed_var != NULL)
+			last_changed_var->flags |= PKG_VAR_INSTALL;
 
-				if (rule->reason != PKG_RULE_DEPEND) {
-					LL_FOREACH(rule->items, item) {
-						if (item->var == var) {
-							pkg_print_rule_sbuf(rule, sb);
-							sbuf_putc(sb, '\n');
-							break;
+		if (known_failures[failure_pos] == 0) {
+			/* Basic attempt to fix failed */
+			const int *failed = picosat_failed_assumptions(problem->sat);
+			struct sbuf *sb = sbuf_new_auto();
+
+			while (*failed) {
+				struct pkg_solve_variable *var = &problem->variables[abs(*failed) - 1];
+				for (i = 0; i < kv_size(problem->rules); i++) {
+					rule = kv_A(problem->rules, i);
+
+					if (rule->reason != PKG_RULE_DEPEND) {
+						LL_FOREACH(rule->items, item) {
+							if (item->var == var) {
+								pkg_print_rule_sbuf(rule, sb);
+								sbuf_putc(sb, '\n');
+								break;
+							}
 						}
 					}
 				}
+
+				sbuf_printf(sb, "cannot %s package %s, remove it from request? ",
+						var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
+				sbuf_finish(sb);
+
+				if (pkg_emit_query_yesno(true, sbuf_data(sb))) {
+					var->flags |= PKG_VAR_FAILED;
+				}
+
+				failed++;
+				need_reiterate = true;
 			}
-
-			sbuf_printf(sb, "cannot %s package %s, remove it from request? ",
-				var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
-			sbuf_finish(sb);
-
-			if (pkg_emit_query_yesno(true, sbuf_data(sb))) {
-				var->flags |= PKG_VAR_FAILED;
-			}
-
 			sbuf_reset(sb);
+		} else {
+			struct pkg_solve_variable *var = &problem->variables[abs(known_failures[failure_pos]) - 1];
 
-			failed ++;
+
+
+			var->flags |= PKG_VAR_FAILED;
+			last_changed_var = var;
+
+			failure_pos++;
 			need_reiterate = true;
 		}
 
-		sbuf_free(sb);
 #if 0
 		failed = picosat_next_maximal_satisfiable_subset_of_assumptions(problem->sat);
 
