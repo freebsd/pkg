@@ -922,8 +922,14 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		rc = EPKG_FATAL;
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		rc = pkg_jobs_process_remote_pkg(j, p, NULL,
-		    strcmp(p->name, pattern));
+		if (pattern != NULL)
+			rc = pkg_jobs_process_remote_pkg(j, p, NULL,
+			    strcmp(p->name, pattern));
+		else if (m == MATCH_ALL)
+			rc = pkg_jobs_process_remote_pkg(j, p, NULL, 0);
+		else
+			break;
+
 		if (rc == EPKG_FATAL)
 			break;
 		else if (rc == EPKG_OK)
