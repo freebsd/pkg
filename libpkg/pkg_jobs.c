@@ -911,6 +911,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	struct pkgdb_it *it;
 	bool found = false;
 	int rc = EPKG_FATAL;
+	int with_version;
 	struct pkg_dep *rdep = NULL;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
@@ -922,8 +923,12 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		rc = EPKG_FATAL;
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		rc = pkg_jobs_process_remote_pkg(j, p, NULL,
-		    strcmp(p->name, pattern));
+		if (pattern != NULL) {
+			with_version = strcmp(p->name, pattern);
+		} else {
+			with_version = 0;
+		}
+		rc = pkg_jobs_process_remote_pkg(j, p, NULL, with_version);
 		if (rc == EPKG_FATAL)
 			break;
 		else if (rc == EPKG_OK)
