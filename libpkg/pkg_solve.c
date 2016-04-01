@@ -1052,9 +1052,9 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int res, iter = 0;
 	size_t i;
 	bool need_reiterate = false;
-	const int *known_failures = NULL;
-	int failure_pos = 0;
-	struct pkg_solve_variable *last_changed_var = NULL;
+	const int *failed = NULL;
+	int attempt = 0;
+	struct pkg_solve_variable *var;
 
 	for (i = 0; i < kv_size(problem->rules); i++) {
 		rule = kv_A(problem->rules, i);
@@ -1077,26 +1077,29 @@ reiterate:
 	res = pkg_solve_picosat_iter(problem, iter);
 
 	if (res != PICOSAT_SATISFIABLE) {
-		if (known_failures == NULL)
-			known_failures = picosat_failed_assumptions(problem->sat);
+		/*
+		 * in case we cannot satisfy the problem it appears by
+		 * experience that the culprit seems to always be the latest of
+		 * listed in the failed assumptions.
+		 * So try to remove them for the given problem.
+		 * To avoid endless loop allow a maximum of 10 iterations no
+		 * more
+		 */
+		failed = picosat_failed_assumptions(problem->sat);
+		attempt++;
 
-
-		if (known_failures[failure_pos] != 0) {
-			pkg_emit_notice("Cannot solve problem using SAT solver, trying another plan");
-		} else {
-			pkg_emit_error("Cannot solve problem using SAT solver");
+		/* get the last failure */
+		while (*failed) {
+			failed++;
 		}
+		failed--;
 
-		if (last_changed_var != NULL)
-			last_changed_var->flags |= PKG_VAR_INSTALL;
-
-		if (known_failures[failure_pos] == 0) {
-			/* Basic attempt to fix failed */
-			const int *failed = picosat_failed_assumptions(problem->sat);
+		if (attempt >= 10) {
+			pkg_emit_error("Cannot solve problem using SAT solver");
 			struct sbuf *sb = sbuf_new_auto();
 
 			while (*failed) {
-				struct pkg_solve_variable *var = &problem->variables[abs(*failed) - 1];
+				var = &problem->variables[abs(*failed) - 1];
 				for (i = 0; i < kv_size(problem->rules); i++) {
 					rule = kv_A(problem->rules, i);
 
@@ -1124,14 +1127,11 @@ reiterate:
 			}
 			sbuf_reset(sb);
 		} else {
-			struct pkg_solve_variable *var = &problem->variables[abs(known_failures[failure_pos]) - 1];
-
-
+			pkg_emit_notice("Cannot solve problem using SAT solver, trying another plan");
+			var = &problem->variables[abs(*failed) - 1];
 
 			var->flags |= PKG_VAR_FAILED;
-			last_changed_var = var;
 
-			failure_pos++;
 			need_reiterate = true;
 		}
 
