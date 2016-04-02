@@ -81,6 +81,7 @@ tests_scripts=	\
 		frontend/alias.sh \
 		frontend/annotate.sh \
 		frontend/autoremove.sh \
+		frontend/autoupgrade.sh \
 		frontend/config.sh \
 		frontend/conflicts.sh \
 		frontend/conflicts-multirepo.sh \
