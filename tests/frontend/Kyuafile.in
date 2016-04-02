@@ -7,6 +7,7 @@ atf_test_program{name='add'}
 atf_test_program{name='alias'}
 atf_test_program{name='annotate'}
 atf_test_program{name='autoremove'}
+atf_test_program{name='autoupgrade'}
 atf_test_program{name='config'}
 atf_test_program{name='conflicts'}
 atf_test_program{name='conflicts-multirepo'}
