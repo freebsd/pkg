@@ -205,7 +205,7 @@ exec_delete(int argc, char **argv)
 
 	if (!quiet || dry_run) {
 		if (!quiet) {
-			print_jobs_summary(jobs, NULL, NULL,
+			print_jobs_summary(jobs,
 				"Deinstallation has been requested for the following %d packages "
 				"(of %d packages in the universe):\n\n", nbactions,
 				pkg_jobs_total(jobs));

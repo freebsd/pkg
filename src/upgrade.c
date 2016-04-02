@@ -58,9 +58,6 @@ exec_upgrade(int argc, char **argv)
 	int		 done = 0;
 	bool	rc = true;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
-	size_t dlbytes, diffbytes, limbytes;
-
-	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -185,20 +182,14 @@ exec_upgrade(int argc, char **argv)
 		/* print a summary before applying the jobs */
 		rc = yes;
 		if (!quiet || dry_run) {
-			print_jobs_summary(jobs, &diffbytes, &dlbytes,
+			print_jobs_summary(jobs,
 				"The following %d package(s) will be affected (of %d checked):\n\n",
 				nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run) {
-				if (limbytes && (diffbytes > limbytes || dlbytes > limbytes)) {
-					rc = query_yesno(false, "\nProceed with this "
-							"action? ");
-				}
-				else {
-					rc = true;
-				}
-			}
-			else {
+				rc = query_yesno(false, "\nProceed with this "
+						"action? ");
+			} else {
 				rc = false;
 			}
 		}

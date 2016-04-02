@@ -886,8 +886,7 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 };
 
 int
-print_jobs_summary(struct pkg_jobs *jobs, size_t *bytes_change, size_t *bytes_download,
-		const char *msg, ...)
+print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *new_pkg, *old_pkg;
 	void *iter = NULL;
@@ -897,6 +896,7 @@ print_jobs_summary(struct pkg_jobs *jobs, size_t *bytes_change, size_t *bytes_do
 	int64_t dlsize, oldsize, newsize;
 	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
 	bool first = true;
+	size_t bytes_change, limbytes;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
@@ -929,32 +929,29 @@ print_jobs_summary(struct pkg_jobs *jobs, size_t *bytes_change, size_t *bytes_do
 		}
 	}
 
+	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
+	bytes_change = labs(newsize - oldsize);
+
 	/* Add an extra line before the size output. */
-	if (oldsize != newsize || dlsize)
+	if (bytes_change > limbytes || dlsize)
 		puts("");
 
-	if (oldsize > newsize) {
-		humanize_number(size, sizeof(size), oldsize - newsize, "B",
-		    HN_AUTOSCALE, HN_IEC_PREFIXES);
-		printf("The operation will free %s.\n", size);
-	} else if (newsize > oldsize) {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B",
-		    HN_AUTOSCALE, HN_IEC_PREFIXES);
-		printf("The process will require %s more space.\n", size);
+	if (bytes_change > limbytes) {
+		if (oldsize > newsize) {
+			humanize_number(size, sizeof(size), oldsize - newsize, "B",
+			    HN_AUTOSCALE, HN_IEC_PREFIXES);
+			printf("The operation will free %s.\n", size);
+		} else if (newsize > oldsize) {
+			humanize_number(size, sizeof(size), newsize - oldsize, "B",
+			    HN_AUTOSCALE, HN_IEC_PREFIXES);
+			printf("The process will require %s more space.\n", size);
+		}
 	}
 
 	if (dlsize > 0) {
 		humanize_number(size, sizeof(size), dlsize, "B",
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
-	}
-
-	if (bytes_download) {
-		*bytes_download = dlsize;
-	}
-
-	if (bytes_change) {
-		*bytes_change = labs(newsize - oldsize);
 	}
 
 	return (displayed);

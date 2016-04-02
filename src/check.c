@@ -199,7 +199,7 @@ fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs)
 	}
 
 	/* print a summary before applying the jobs */
-	print_jobs_summary(jobs, NULL, NULL,
+	print_jobs_summary(jobs,
 			"The following packages will be installed:\n\n");
 
 	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies? ");

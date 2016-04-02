@@ -68,9 +68,6 @@ exec_install(int argc, char **argv)
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
-	size_t dlbytes, diffbytes, limbytes;
-
-	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 
 	struct option longopts[] = {
 		{ "automatic",		no_argument,		NULL,	'A' },
@@ -230,20 +227,14 @@ exec_install(int argc, char **argv)
 		rc = yes;
 		/* print a summary before applying the jobs */
 		if (!quiet || dry_run) {
-			print_jobs_summary(jobs, &diffbytes, &dlbytes,
+			print_jobs_summary(jobs,
 			    "The following %d package(s) will be affected (of %d checked):\n\n",
 			    nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run) {
-				if (limbytes && (diffbytes > limbytes || dlbytes > limbytes)) {
-					rc = query_yesno(false,
-				      "\nProceed with this action? ");
-				}
-				else {
-					rc = true;
-				}
-			}
-			else {
+				rc = query_yesno(false,
+				    "\nProceed with this action? ");
+			} else {
 				rc = false;
 			}
 		}
