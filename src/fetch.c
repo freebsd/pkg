@@ -65,9 +65,6 @@ exec_fetch(int argc, char **argv)
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
-	size_t dlbytes, diffbytes, limbytes;
-
-	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -204,19 +201,13 @@ exec_fetch(int argc, char **argv)
 
 	if (!quiet) {
 
-		rc = print_jobs_summary(jobs, &diffbytes, &dlbytes,
-				"The following packages will be fetched:\n\n");
+		rc = print_jobs_summary(jobs,
+		    "The following packages will be fetched:\n\n");
 
 		if (rc != 0) {
-			if (limbytes && (diffbytes > limbytes || dlbytes > limbytes)) {
-				rc = query_yesno(false, "\nProceed with fetching "
-						"packages? ");
-			}
-			else {
-				rc = true;
-			}
-		}
-		else {
+			rc = query_yesno(false, "\nProceed with fetching "
+					"packages? ");
+		} else {
 			printf("No packages are required to be fetched.\n");
 			rc = query_yesno(false, "Check the integrity of packages "
 							"downloaded? ");
