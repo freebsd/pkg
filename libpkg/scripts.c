@@ -67,6 +67,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	long argmax;
 #ifdef PROC_REAP_KILL
 	bool do_reap;
+	pid_t mypid;
 	struct procctl_reaper_status info;
 	struct procctl_reaper_kill killemall;
 #endif
@@ -96,7 +97,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	assert(i < sizeof(map) / sizeof(map[0]));
 
 #ifdef PROC_REAP_KILL
-	do_reap = procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, NULL) == 0;
+	mypid = getpid();
+	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
 #endif
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
@@ -216,14 +218,14 @@ cleanup:
 	if (!do_reap)
 		return (ret);
 
-	procctl(P_PID, getpid(), PROC_REAP_STATUS, &info);
+	procctl(P_PID, mypid, PROC_REAP_STATUS, &info);
 	if (info.rs_children != 0) {
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
-		if (procctl(P_PID, getpid(), PROC_REAP_KILL, &killemall) != 0)
+		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0)
 			pkg_emit_errno("procctl", "PROC_REAP_KILL");
 	}
-	procctl(P_PID, getpid(), PROC_REAP_RELEASE, NULL);
+	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
 #endif
 
 	return (ret);
