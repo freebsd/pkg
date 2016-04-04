@@ -346,7 +346,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 			if (rename(rpath, pathname) == -1) {
 #ifdef HAVE_CHFLAGS
 				/* restore flags */
-				if (old)
+				if (old && st.st_flags != 0)
 					lchflags(pathname, st.st_flags);
 #endif
 				pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
@@ -363,7 +363,8 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		}
 #ifdef HAVE_CHFLAGS
 		/* Restore flags */
-		lchflags(pathname, set);
+		if (set != 0)
+			lchflags(pathname, set);
 #endif
 
 		if (string_end_with(pathname, ".pkgnew"))
