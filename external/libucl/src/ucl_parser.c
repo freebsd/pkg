@@ -259,7 +259,7 @@ ucl_lex_time_multiplier (const unsigned char c) {
 			{'h', 60 * 60},
 			{'d', 60 * 60 * 24},
 			{'w', 60 * 60 * 24 * 7},
-			{'y', 60 * 60 * 24 * 7 * 365}
+			{'y', 60 * 60 * 24 * 365}
 	};
 	int i;
 
@@ -1068,6 +1068,7 @@ ucl_parser_process_object_element (struct ucl_parser *parser, ucl_object_t *nobj
 {
 	ucl_hash_t *container;
 	ucl_object_t *tobj;
+	char errmsg[256];
 
 	container = parser->stack->obj->value.ov;
 
@@ -1126,24 +1127,35 @@ ucl_parser_process_object_element (struct ucl_parser *parser, ucl_object_t *nobj
 			break;
 
 		case UCL_DUPLICATE_ERROR:
-			ucl_create_err (&parser->err, "error while parsing %s: "
-					"line: %d, column: %d: duplicate element for key '%s' "
-					"has been found",
-					parser->cur_file ? parser->cur_file : "<unknown>",
-					parser->chunks->line, parser->chunks->column, nobj->key);
+			snprintf(errmsg, sizeof(errmsg),
+					"duplicate element for key '%s' found",
+					nobj->key);
+			ucl_set_err (parser, UCL_EMERGE, errmsg, &parser->err);
 			return false;
 
 		case UCL_DUPLICATE_MERGE:
 			/*
 			 * Here we do have some old object so we just push it on top of objects stack
+			 * Check priority and then perform the merge on the remaining objects
 			 */
 			if (tobj->type == UCL_OBJECT || tobj->type == UCL_ARRAY) {
 				ucl_object_unref (nobj);
 				nobj = tobj;
 			}
-			else {
-				/* For other types we create implicit array as usual */
+			else if (priold == prinew) {
 				ucl_parser_append_elt (parser, container, tobj, nobj);
+			}
+			else if (priold > prinew) {
+				/*
+				 * We add this new object to a list of trash objects just to ensure
+				 * that it won't come to any real object
+				 * XXX: rather inefficient approach
+				 */
+				DL_APPEND (parser->trash_objs, nobj);
+			}
+			else {
+				ucl_hash_replace (container, tobj, nobj);
+				ucl_object_unref (tobj);
 			}
 			break;
 		}
@@ -1575,6 +1587,10 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk)
 			}
 
 			obj = ucl_parser_get_container (parser);
+			if (!obj) {
+				return false;
+			}
+
 			str_len = chunk->pos - c - 2;
 			obj->type = UCL_STRING;
 			if ((str_len = ucl_copy_or_store_ptr (parser, c + 1,
@@ -2294,7 +2310,7 @@ ucl_state_machine (struct ucl_parser *parser)
 					ucl_chunk_skipc (chunk, p);
 				}
 				else {
-					if (p - c > 0) {
+					if (c != NULL && p - c > 0) {
 						/* We got macro name */
 						macro_len = (size_t) (p - c);
 						HASH_FIND (hh, parser->macroes, c, macro_len, macro);
@@ -2347,7 +2363,7 @@ ucl_state_machine (struct ucl_parser *parser)
 					macro_start, macro_len);
 			parser->state = parser->prev_state;
 
-			if (macro_escaped == NULL) {
+			if (macro_escaped == NULL && macro != NULL) {
 				if (macro->is_context) {
 					ret = macro->h.context_handler (macro_start, macro_len,
 							macro_args,
@@ -2359,7 +2375,7 @@ ucl_state_machine (struct ucl_parser *parser)
 							macro->ud);
 				}
 			}
-			else {
+			else if (macro != NULL) {
 				if (macro->is_context) {
 					ret = macro->h.context_handler (macro_escaped, macro_len,
 							macro_args,
@@ -2373,15 +2389,22 @@ ucl_state_machine (struct ucl_parser *parser)
 
 				UCL_FREE (macro_len + 1, macro_escaped);
 			}
+			else {
+				ret = false;
+				ucl_set_err (parser, UCL_EINTERNAL,
+						"internal error: parser has macro undefined", &parser->err);
+			}
 
 			/*
 			 * Chunk can be modified within macro handler
 			 */
 			chunk = parser->chunks;
 			p = chunk->pos;
+
 			if (macro_args) {
 				ucl_object_unref (macro_args);
 			}
+
 			if (!ret) {
 				return false;
 			}
@@ -2574,14 +2597,16 @@ ucl_parser_add_chunk_full (struct ucl_parser *parser, const unsigned char *data,
 		return false;
 	}
 
-	if (data == NULL) {
-		ucl_create_err (&parser->err, "invalid chunk added");
-		return false;
-	}
 	if (len == 0) {
 		parser->top_obj = ucl_object_new_full (UCL_OBJECT, priority);
 		return true;
 	}
+
+	if (data == NULL) {
+		ucl_create_err (&parser->err, "invalid chunk added");
+		return false;
+	}
+
 	if (parser->state != UCL_STATE_ERROR) {
 		chunk = UCL_ALLOC (sizeof (struct ucl_chunk));
 		if (chunk == NULL) {

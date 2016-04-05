@@ -41,9 +41,10 @@ ud_emit (void *ptr)
 int
 main (int argc, char **argv)
 {
-	ucl_object_t *obj, *cur, *ar, *ar1, *ref, *test_obj;
+	ucl_object_t *obj, *cur, *ar, *ar1, *ref, *test_obj, *comments;
 	ucl_object_iter_t it;
 	const ucl_object_t *found, *it_obj, *test;
+	struct ucl_emitter_functions *fn;
 	FILE *out;
 	unsigned char *emitted;
 	const char *fname_out = NULL;
@@ -167,15 +168,15 @@ main (int argc, char **argv)
 	/* More tests for keys */
 	cur = ucl_object_fromlstring ("test", 3);
 	ucl_object_insert_key (obj, cur, "key16", 0, false);
-	test = ucl_object_find_any_key (obj, "key100", "key200", "key300", "key16", NULL);
+	test = ucl_object_lookup_any (obj, "key100", "key200", "key300", "key16", NULL);
 	assert (test == cur);
-	test = ucl_object_find_keyl (obj, "key160", 5);
+	test = ucl_object_lookup_len (obj, "key160", 5);
 	assert (test == cur);
 	cur = ucl_object_pop_key (obj, "key16");
 	assert (test == cur);
 	test = ucl_object_pop_key (obj, "key16");
 	assert (test == NULL);
-	test = ucl_object_find_keyl (obj, "key160", 5);
+	test = ucl_object_lookup_len (obj, "key160", 5);
 	assert (test == NULL);
 	/* Objects merging tests */
 	test_obj = ucl_object_new_full (UCL_OBJECT, 2);
@@ -192,6 +193,24 @@ main (int argc, char **argv)
 	ucl_object_insert_key (obj, cur, "key18", 0, true);
 	assert (ucl_object_delete_key (obj, "key18"));
 	assert (!ucl_object_delete_key (obj, "key18"));
+	cur = ucl_object_fromlstring ("test", 4);
+	ucl_object_insert_key (obj, cur, "key18\0\0", 7, true);
+	assert (ucl_object_lookup_len (obj, "key18\0\0", 7) == cur);
+	assert (ucl_object_lookup (obj, "key18") == NULL);
+	assert (ucl_object_lookup_len (obj, "key18\0\1", 7) == NULL);
+	assert (ucl_object_delete_keyl (obj, "key18\0\0", 7));
+
+	/* Comments */
+
+	comments = ucl_object_typed_new (UCL_OBJECT);
+	found = ucl_object_lookup (obj, "key17");
+	test = ucl_object_lookup (obj, "key16");
+	ucl_comments_add (comments, found, "# test comment");
+	assert (ucl_comments_find (comments, found) != NULL);
+	assert (ucl_comments_find (comments, test) == NULL);
+	ucl_comments_move (comments, found, test);
+	assert (ucl_comments_find (comments, found) == NULL);
+	assert (ucl_comments_find (comments, test) != NULL);
 
 	/* Array replace */
 	ar1 = ucl_object_typed_new (UCL_ARRAY);
@@ -203,19 +222,19 @@ main (int argc, char **argv)
 
 	/* Try to find using path */
 	/* Should exist */
-	found = ucl_lookup_path (obj, "key4.1");
+	found = ucl_object_lookup_path (obj, "key4.1");
 	assert (found != NULL && ucl_object_toint (found) == 10);
 	/* . should be ignored */
-	found = ucl_lookup_path (obj, ".key4.1");
+	found = ucl_object_lookup_path (obj, ".key4.1");
 	assert (found != NULL && ucl_object_toint (found) == 10);
 	/* moar dots... */
-	found = ucl_lookup_path (obj, ".key4........1...");
+	found = ucl_object_lookup_path (obj, ".key4........1...");
 	assert (found != NULL && ucl_object_toint (found) == 10);
 	/* No such index */
-	found = ucl_lookup_path (obj, ".key4.3");
+	found = ucl_object_lookup_path (obj, ".key4.3");
 	assert (found == NULL);
 	/* No such key */
-	found = ucl_lookup_path (obj, "key9..key1");
+	found = ucl_object_lookup_path (obj, "key9..key1");
 	assert (found == NULL);
 
 	/* Test iteration */
@@ -245,10 +264,12 @@ main (int argc, char **argv)
 	assert (ucl_object_type (it_obj) == UCL_BOOLEAN);
 	ucl_object_iterate_free (it);
 
-	emitted = ucl_object_emit (obj, UCL_EMIT_CONFIG);
-
+	fn = ucl_object_emit_memory_funcs (&emitted);
+	assert (ucl_object_emit_full (obj, UCL_EMIT_CONFIG, fn, comments));
 	fprintf (out, "%s\n", emitted);
+	ucl_object_emit_funcs_free (fn);
 	ucl_object_unref (obj);
+	ucl_object_unref (comments);
 
 	parser = ucl_parser_new (UCL_PARSER_NO_IMPLICIT_ARRAYS);
 
