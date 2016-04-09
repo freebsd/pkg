@@ -1002,9 +1002,6 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 	struct pkg_job_universe_item *unit, *tmp, *cur, *local;
 	struct pkg_job_request *req;
 	struct pkg_job_request_item *rit, *rtmp;
-	bool conservative = false;
-
-	conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
 
 	HASH_ITER(hh, j->universe->items, unit, tmp) {
 		unsigned vercnt = 0;
@@ -1044,7 +1041,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			struct pkg_job_universe_item *selected;
 
 			selected = pkg_jobs_universe_select_candidate(unit, local,
-				conservative);
+				j->conservative);
 			/*
 			 * Now remove all requests but selected from the requested
 			 * candidates

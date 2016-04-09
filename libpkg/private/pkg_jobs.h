@@ -117,6 +117,7 @@ struct pkg_jobs {
 	const char *destdir;
 	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
 	struct job_pattern *patterns;
+	bool conservative;
 };
 
 struct job_pattern {

@@ -93,6 +93,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	(*j)->type = t;
 	(*j)->solved = 0;
 	(*j)->flags = PKG_FLAG_NONE;
+	(*j)->conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
 
 	return (EPKG_OK);
 }
@@ -1544,6 +1545,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			j->flags &= ~PKG_FLAG_PKG_VERSION_TEST;
+			j->conservative = false;
 			pkg_emit_newpkgversion();
 			goto order;
 		}
@@ -1761,6 +1763,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		}
 		else {
 again:
+
 			pkg_jobs_universe_process_upgrade_chains(j);
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
