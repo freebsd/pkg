@@ -128,11 +128,11 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 		} else if (ret == EPKG_WARN) {
 			if (!quiet) {
 				pkg_warnx("%n-%v: Cannot delete annotation "
-				     "tagged: %S -- because there is none",
+				     "tagged: %S -- because there is none\n",
 				     pkg, pkg, tag);
 			}
 		} else {
-			pkg_warnx("%n-%v: Failed to delete annotation tagged: %S",
+			pkg_warnx("%n-%v: Failed to delete annotation tagged: %S\n",
 			     pkg, pkg, tag);
 		}
 	}
