@@ -211,7 +211,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		sbuf_clear(newconf);
 		rf = NULL;
 		rcf = NULL;
-		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path));
+		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
 		snprintf(pathname, sizeof(pathname), "%s%s%s",
 		    location ? location : "", *path == '/' ? "" : "/",
 		    path
@@ -250,7 +250,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		 */
 		lp = archive_entry_hardlink(ae);
 		if (lp != NULL) {
-			pkg_absolutepath(lp, linkpath, sizeof(linkpath));
+			pkg_absolutepath(lp, linkpath, sizeof(linkpath), true);
 			snprintf(tmppath, sizeof(tmppath), "%s%s%s",
 			    location ? location : "", *linkpath == '/' ? "" : "/",
 			    linkpath);

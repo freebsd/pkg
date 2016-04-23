@@ -175,7 +175,7 @@ exec_which(int argc, char **argv)
 						free(savedpath);
 						goto cleanup;
 					} else {
-						pkg_absolutepath(match, pathabs, sizeof(pathabs));
+						pkg_absolutepath(match, pathabs, sizeof(pathabs), false);
 						/* ensure not not append twice an entry if PATH is messy */
 						if (already_in_list(&patterns, pathabs))
 							continue;
@@ -188,7 +188,7 @@ exec_which(int argc, char **argv)
 		}
 
 		if (!glob && !search) {
-			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs));
+			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs), false);
 			kv_push(char *, patterns, strdup(pathabs));
 		} else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {

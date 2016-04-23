@@ -751,15 +751,17 @@ pkg_utils_count_spaces(const char *args)
 
 /* unlike realpath(3), this routine does not expand symbolic links */
 char *
-pkg_absolutepath(const char *src, char *dest, size_t dest_size) {
+pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 	size_t dest_len, src_len, cur_len;
 	const char *cur, *next;
 
 	src_len = strlen(src);
 	bzero(dest, dest_size);
 	if (src_len != 0 && src[0] != '/') {
+		if (fromroot)
+			*dest = '/';
 		/* relative path, we use cwd */
-		if (getcwd(dest, dest_size) == NULL)
+		else if (getcwd(dest, dest_size) == NULL)
 			return (NULL);
 	}
 	dest_len = strlen(dest);

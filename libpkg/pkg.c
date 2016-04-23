@@ -713,7 +713,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
-	path = pkg_absolutepath(path, abspath, sizeof(abspath));
+	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates && kh_contains(pkg_files, pkg->filehash, path)) {
@@ -756,7 +756,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	struct pkg_config_file *f = NULL;
 	char abspath[MAXPATHLEN];
 
-	path = pkg_absolutepath(path, abspath, sizeof(abspath));
+	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	pkg_debug(3, "Pkg: add new config file '%s'", path);
 
 	if (kh_contains(pkg_config_files, pkg->config_files, path)) {
@@ -820,7 +820,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
-	path = pkg_absolutepath(path, abspath, sizeof(abspath));
+	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirhash, path)) {
 		if (developer_mode) {
