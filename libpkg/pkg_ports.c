@@ -1138,6 +1138,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 			if (ret != EPKG_OK)
 				return (ret);
 		}
+		free_file_attr(attr);
 		return (ret);
 	}
 

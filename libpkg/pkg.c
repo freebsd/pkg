@@ -607,7 +607,7 @@ pkg_adduser(struct pkg *pkg, const char *name)
 	}
 
 	storename = strdup(name);
-	kh_add(strings, pkg->users, storename, storename);
+	kh_add(strings, pkg->users, storename, storename, free);
 
 	return (EPKG_OK);
 }
@@ -631,7 +631,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	}
 
 	storename = strdup(name);
-	kh_add(strings, pkg->groups, storename, storename);
+	kh_add(strings, pkg->groups, storename, storename, free);
 
 	return (EPKG_OK);
 }
@@ -667,7 +667,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	kh_add(pkg_deps, pkg->deps, d, d->name);
+	kh_add(pkg_deps, pkg->deps, d, d->name, pkg_dep_free);
 
 	return (EPKG_OK);
 }
@@ -691,7 +691,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	kh_add(pkg_deps, pkg->rdeps, d, d->name);
+	kh_add(pkg_deps, pkg->rdeps, d, d->name, pkg_dep_free);
 
 	return (EPKG_OK);
 }
@@ -744,7 +744,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	if (fflags != 0)
 		f->fflags = fflags;
 
-	kh_add(pkg_files, pkg->filehash, f, f->path);
+	kh_add(pkg_files, pkg->filehash, f, f->path, pkg_file_free);
 	DL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
@@ -773,7 +773,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	if (content != NULL)
 		f->content = strdup(content);
 
-	kh_add(pkg_config_files, pkg->config_files, f, f->path);
+	kh_add(pkg_config_files, pkg->config_files, f, f->path, pkg_config_file_free);
 
 	return (EPKG_OK);
 }
@@ -799,7 +799,7 @@ pkg_addstring(kh_strings_t **list, const char *val, const char *title)
 	}
 
 	store = strdup(val);
-	kh_add(strings, *list, store, store);
+	kh_add(strings, *list, store, store, free);
 
 	return (EPKG_OK);
 }
@@ -847,7 +847,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	if (fflags != 0)
 		d->fflags = fflags;
 
-	kh_add(pkg_dirs, pkg->dirhash, d, d->path);
+	kh_add(pkg_dirs, pkg->dirhash, d, d->path, pkg_dir_free);
 	DL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
@@ -1120,7 +1120,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	storename = strdup(name);
-	kh_add(strings, pkg->shlibs_required, storename, storename);
+	kh_add(strings, pkg->shlibs_required, storename, storename, free);
 
 	pkg_debug(3, "added shlib deps for %s on %s", pkg->name, name);
 
@@ -1144,7 +1144,7 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	storename = strdup(name);
-	kh_add(strings, pkg->shlibs_provided, storename, storename);
+	kh_add(strings, pkg->shlibs_provided, storename, storename, free);
 
 	pkg_debug(3, "added shlib provide %s for %s", name, pkg->name);
 
@@ -1187,7 +1187,7 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 
 	storename = strdup(name);
 
-	kh_add(strings, pkg->requires, storename, storename);
+	kh_add(strings, pkg->requires, storename, storename, free);
 
 	return (EPKG_OK);
 }
@@ -1206,7 +1206,7 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 
 	storename = strdup(name);
 
-	kh_add(strings, pkg->provides, storename, storename);
+	kh_add(strings, pkg->provides, storename, storename, free);
 
 	return (EPKG_OK);
 }

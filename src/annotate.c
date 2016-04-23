@@ -318,6 +318,8 @@ exec_annotate(int argc, char **argv)
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK) {
+		if (input != NULL)
+			sbuf_delete(input);
 		return (EX_IOERR);
 	}
 

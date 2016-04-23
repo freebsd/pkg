@@ -170,10 +170,12 @@ exec_register(int argc, char **argv)
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to register packages");
+		pkg_free(pkg);
 		return (EX_NOPERM);
-	} else if (retcode != EPKG_OK)
+	} else if (retcode != EPKG_OK) {
+		pkg_free(pkg);
 		return (EX_IOERR);
-	else
+	} else
 		retcode = EX_OK;
 
 	/*

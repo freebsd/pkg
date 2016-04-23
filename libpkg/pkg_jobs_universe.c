@@ -230,7 +230,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	DL_APPEND(tmp, item);
 
 	if (seen == NULL)
-		kh_add(pkg_jobs_seen, universe->seen, item, item->pkg->digest);
+		kh_safe_add(pkg_jobs_seen, universe->seen, item, item->pkg->digest);
 
 	universe->nitems++;
 

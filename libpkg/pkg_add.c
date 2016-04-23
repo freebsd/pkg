@@ -383,6 +383,7 @@ cleanup:
 
 	pkg_emit_progress_tick(nfiles, nfiles);
 	pkg_emit_extract_finished(pkg);
+	sbuf_delete(newconf);
 
 	if (renamed && retcode == EPKG_FATAL) {
 #ifdef HAVE_CHFLAGS

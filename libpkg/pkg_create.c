@@ -98,8 +98,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		file->sum = pkg_checksum_generate_file(fpath,
 		    PKG_HASH_TYPE_SHA256_HEX);
-		if (file->sum == NULL)
+		if (file->sum == NULL) {
+			kh_destroy_hardlinks(hardlinks);
 			return (EPKG_FATAL);
+		}
 
 		counter_count();
 	}

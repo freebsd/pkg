@@ -1244,6 +1244,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			"messages", sizeof("messages") - 1, false);
 	}
 
+	if (tmpsbuf != NULL)
+		sbuf_delete(tmpsbuf);
+
 	return (top);
 }
 

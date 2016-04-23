@@ -519,8 +519,11 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		/* B1 | B2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
-			if (pkg_solve_handle_provide(problem, pr, rule, pkg, &cnt) != EPKG_OK)
+			if (pkg_solve_handle_provide(problem, pr, rule, pkg, &cnt) != EPKG_OK) {
+				free(it);
+				free(rule);
 				return (EPKG_FATAL);
+			}
 		}
 
 		if (cnt > 1) {

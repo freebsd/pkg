@@ -184,13 +184,24 @@
 
 #define kh_count(h) ((h)?((h)->size):0)
 
-#define kh_add(name, h, val, k) do {		\
-	int __ret;				\
-	khint_t __i;				\
-	if (!h) h = kh_init_##name();		\
-	__i = kh_put_##name(h, k, &__ret);	\
-	if (__ret != 0)				\
-		kh_val(h, __i) = val;		\
+#define kh_safe_add(name, h, val, k) do {		\
+	int __ret;					\
+	khint_t __i;					\
+	if (!h) h = kh_init_##name();			\
+	__i = kh_put_##name(h, k, &__ret);		\
+	if (__ret != 0)					\
+		kh_val(h, __i) = val;			\
+} while (0)
+
+#define kh_add(name, h, val, k, free_func) do {		\
+	int __ret;					\
+	khint_t __i;					\
+	if (!h) h = kh_init_##name();			\
+	__i = kh_put_##name(h, k, &__ret);		\
+	if (__ret != 0)					\
+		kh_val(h, __i) = val;			\
+	else						\
+		free_func(val);				\
 } while (0)
 
 
