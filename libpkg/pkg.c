@@ -1399,7 +1399,7 @@ int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
     const char *path, struct pkg_manifest_key *keys, int flags, int fd)
 {
-	struct pkg	*pkg;
+	struct pkg	*pkg = NULL;
 	pkg_error_t	 retcode = EPKG_OK;
 	int		 ret;
 	const char	*fpath;
@@ -1514,6 +1514,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 			archive_read_close(*a);
 			archive_read_free(*a);
 		}
+		free(pkg);
+		*pkg_p = NULL;
 		*a = NULL;
 		*ae = NULL;
 	}
