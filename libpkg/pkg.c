@@ -744,7 +744,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	if (fflags != 0)
 		f->fflags = fflags;
 
-	kh_add(pkg_files, pkg->filehash, f, f->path, pkg_file_free);
+	kh_safe_add(pkg_files, pkg->filehash, f, f->path);
 	DL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
@@ -847,7 +847,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	if (fflags != 0)
 		d->fflags = fflags;
 
-	kh_add(pkg_dirs, pkg->dirhash, d, d->path, pkg_dir_free);
+	kh_safe_add(pkg_dirs, pkg->dirhash, d, d->path);
 	DL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
