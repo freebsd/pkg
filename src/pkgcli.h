@@ -299,7 +299,7 @@ int analyse_query_string(char *qstr, struct query_flags *q_flags,
 extern int default_yes;
 extern int yes;
 extern int dry_run;
-extern int auto_update;
+extern bool auto_update;
 extern int case_sensitive;
 extern int force;
 extern bool quiet;

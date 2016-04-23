@@ -120,7 +120,6 @@ exec_rquery(int argc, char **argv)
 	struct sbuf		*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
 	const char		*reponame = NULL;
-	bool			 auto_update;
 	bool			 onematched = false;
 	bool			 old_quiet;
 	bool			 index_output = false;
