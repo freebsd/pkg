@@ -982,6 +982,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
 		free(rootedpath);
+		if (ukey != NULL)
+			sbuf_delete(ukey);
 		return (EPKG_FATAL);
 	}
 
