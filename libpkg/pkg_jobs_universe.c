@@ -305,8 +305,11 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 				rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
 
 				/* Special case if we cannot find any package */
-				if (npkg == NULL && rc != EPKG_OK)
+				if (npkg == NULL && rc != EPKG_OK) {
+					kv_destroy(*rpkgs);
+					free(rpkgs);
 					return (rc);
+				}
 			}
 
 			kv_destroy(*rpkgs);
