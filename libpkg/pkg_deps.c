@@ -264,7 +264,7 @@ pkg_deps_parse_formula(const char *in)
 
 		case st_parse_option_start:
 			cur_opt = calloc(1, sizeof(*cur_opt));
-			if (cur_ver == NULL) {
+			if (cur_opt == NULL) {
 				pkg_emit_errno("malloc", "struct pkg_dep_option");
 
 				return (NULL);
