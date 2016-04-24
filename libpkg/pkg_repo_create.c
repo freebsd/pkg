@@ -928,6 +928,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	unsigned int siglen = 0;
 	char fname[MAXPATHLEN];
 	struct sbuf *sig, *pub;
+	int ret = EPKG_OK;
 
 	sig = NULL;
 	pub = NULL;
@@ -937,47 +938,39 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 
 	if (rsa != NULL) {
 		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto out;
 		}
 
 		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
 			free(sigret);
-			free(pack);
-			unlink(path);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto out;
 		}
 
 		free(sigret);
 	} else if (argc >= 1) {
 		if (pkg_repo_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto out;
 		}
 
 		snprintf(fname, sizeof(fname), "%s.sig", name);
 		if (packing_append_buffer(pack, sbuf_data(sig), fname, sbuf_len(sig)) != EPKG_OK) {
-			packing_finish(pack);
-			sbuf_delete(sig);
-			sbuf_delete(pub);
-			unlink(path);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto out;
 		}
 
 		snprintf(fname, sizeof(fname), "%s.pub", name);
 		if (packing_append_buffer(pack, sbuf_data(pub), fname, sbuf_len(pub)) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			sbuf_delete(sig);
-			sbuf_delete(pub);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto out;
 		}
 
 	}
 	packing_append_file_attr(pack, path, name, "root", "wheel", 0644, 0);
 
+out:
 	packing_finish(pack);
 	unlink(path);
 	if (sig != NULL)
@@ -985,7 +978,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	if (pub != NULL)
 		sbuf_delete(pub);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 int
