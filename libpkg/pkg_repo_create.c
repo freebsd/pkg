@@ -317,6 +317,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		sbuf_delete(b);
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -326,6 +327,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		break;
 	default:
 		/* Parent */
+		sbuf_delete(b);
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -444,6 +446,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 cleanup:
 	pkg_manifest_keys_free(keys);
 
+	sbuf_delete(b);
 	write(pip, ".\n", 2);
 	close(pip);
 	close(mfd);

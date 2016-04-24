@@ -216,13 +216,16 @@ exec_audit(int argc, char **argv)
 		 */
 
 		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
-		if (ret == EPKG_ENODB)
+		if (ret == EPKG_ENODB) {
+			pkg_audit_free(audit);
 			return (EX_OK);
-		else if (ret == EPKG_ENOACCESS) {
+		} else if (ret == EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to read the package database");
+			pkg_audit_free(audit);
 			return (EX_NOPERM);
 		} else if (ret != EPKG_OK) {
 			warnx("Error accessing the package database");
+			pkg_audit_free(audit);
 			return (EX_IOERR);
 		}
 

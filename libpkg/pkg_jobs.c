@@ -411,6 +411,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
 			pkg_emit_errno("malloc", "struct pkg_job_request");
+			free(nit);
 			return (NULL);
 		}
 		HASH_ADD_KEYPTR(hh, *head, pkg->uid, strlen(pkg->uid), req);
