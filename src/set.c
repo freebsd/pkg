@@ -209,16 +209,19 @@ exec_set(int argc, char **argv)
 	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
+		free(newvalue);
 		if (match == MATCH_ALL)
 			return (EX_OK);
 		if (!quiet)
 			warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode == EPKG_ENOACCESS) {
+		free(newvalue);
 		warnx("Insufficient privileges to modify the package database");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing package database");
+		free(newvalue);
 		return (EX_SOFTWARE);
 	}
 

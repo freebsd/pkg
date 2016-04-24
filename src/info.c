@@ -268,6 +268,7 @@ exec_info(int argc, char **argv)
 		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 			warn("cap_rights_limit() failed");
+			close(fd);
 			return (EX_SOFTWARE);
 		}
 
