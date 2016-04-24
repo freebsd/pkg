@@ -336,6 +336,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	const char *ssh_args;
 	int sshin[2];
 	int sshout[2];
+	int ret = EPKG_FATAL;
 	const char *argv[4];
 
 	ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
@@ -349,7 +350,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		repo->sshio.pid = fork();
 		if (repo->sshio.pid == -1) {
 			pkg_emit_errno("Cannot fork", "start_ssh");
-			return (EPKG_FATAL);
+			goto ssh_cleanup;
 		}
 
 		if (repo->sshio.pid == 0) {
@@ -358,7 +359,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			    close(sshout[0]) < 0 ||
 			    dup2(sshout[1], STDOUT_FILENO) < 0) {
 				pkg_emit_errno("Cannot prepare pipes", "start_ssh");
-				return (EPKG_FATAL);
+				goto ssh_cleanup;
 			}
 
 			cmd = sbuf_new_auto();
@@ -392,7 +393,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 		if (close(sshout[1]) < 0 || close(sshin[0]) < 0) {
 			pkg_emit_errno("Failed to close pipes", "start_ssh");
-			return (EPKG_FATAL);
+			goto ssh_cleanup;
 		}
 
 		pkg_debug(1, "SSH> connected");
@@ -404,21 +405,18 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 		if (repo->ssh == NULL) {
 			pkg_emit_errno("Failed to open stream", "start_ssh");
-			return (EPKG_FATAL);
+			goto ssh_cleanup;
 		}
 
 		if (getline(&line, &linecap, repo->ssh) > 0) {
 			if (strncmp(line, "ok:", 3) != 0) {
 				pkg_debug(1, "SSH> server rejected, got: %s", line);
-				fclose(repo->ssh);
-				free(line);
-				return (EPKG_FATAL);
+				goto ssh_cleanup;
 			}
 			pkg_debug(1, "SSH> server is: %s", line +4);
 		} else {
 			pkg_debug(1, "SSH> nothing to read, got: %s", line);
-			fclose(repo->ssh);
-			return (EPKG_FATAL);
+			goto ssh_cleanup;
 		}
 	}
 	pkg_debug(1, "SSH> get %s %" PRIdMAX "", u->doc, (intmax_t)u->ims_time);
@@ -431,23 +429,26 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		if (strncmp(line, "ok:", 3) == 0) {
 			*sz = strtonum(line + 4, 0, LONG_MAX, &errstr);
 			if (errstr) {
-				free(line);
-				return (EPKG_FATAL);
+				goto ssh_cleanup;
 			}
 
 			if (*sz == 0) {
-				free(line);
-				return (EPKG_UPTODATE);
+				ret = EPKG_UPTODATE;
+				goto ssh_cleanup;
 			}
 
-			free(line);
-			return (EPKG_OK);
+			ret = EPKG_OK;
+			goto ssh_cleanup;
 		}
-
 	}
 
+ssh_cleanup:
+	if (repo->ssh != NULL)
+		fclose(repo->ssh);
+	if (cmd != NULL)
+		sbuf_delete(cmd);
 	free(line);
-	return (EPKG_FATAL);
+	return (ret);
 }
 
 #define URL_SCHEME_PREFIX	"pkg+"
