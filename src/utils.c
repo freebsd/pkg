@@ -184,12 +184,13 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 		else {
 			if (errno == EINTR) {
 				continue;
-			}
-			else {
-				if (default_yes)
+			} else {
+				if (default_yes) {
 					r = true;
 				/* Else, assume EOF as false */
-				r = false;
+				} else {
+					r = false;
+				}
 				break;
 			}
 		}
