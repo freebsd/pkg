@@ -2581,17 +2581,11 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			break;
 		case PKG_SET_AUTOMATIC:
 			automatic = (bool)va_arg(ap, int);
-			if (automatic != 0 && automatic != 1) {
-				sqlite3_finalize(stmt);
-				continue;
-			}
 			sqlite3_bind_int64(stmt, 1, automatic);
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
 		case PKG_SET_LOCKED:
 			locked = (bool)va_arg(ap, int);
-			if (locked != 0 && locked != 1)
-				continue;
 			sqlite3_bind_int64(stmt, 1, locked);
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
@@ -2611,10 +2605,6 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			break;
 		case PKG_SET_VITAL:
 			vital = (bool)va_arg(ap, int);
-			if (vital != 0 && vital != 1) {
-				sqlite3_finalize(stmt);
-				continue;
-			}
 			sqlite3_bind_int64(stmt, 1, vital);
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
