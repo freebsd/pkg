@@ -444,17 +444,15 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char	*arch;
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
-	char	bd[MAXPATHLEN], *basedir;
+	char	bd[MAXPATHLEN], *basedir = NULL;
 	char	dpath[MAXPATHLEN], *ppath;
-	const char	*ext;
+	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
-	if (!is_valid_abi(arch, true)) {
-		if ((flags & PKG_ADD_FORCE) == 0) {
-			return (EPKG_FATAL);
-		}
+	if (!is_valid_abi(arch, true) && (flags & PKG_ADD_FORCE) == 0) {
+		return (EPKG_FATAL);
 	}
 
 	/* XX check */
@@ -466,18 +464,16 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			pkg_inst = NULL;
 			return (EPKG_INSTALLED);
 		}
-		else if (pkg_inst->locked) {
+		if (pkg_inst->locked) {
 			pkg_emit_locked(pkg_inst);
 			pkg_free(pkg_inst);
 			pkg_inst = NULL;
 			return (EPKG_LOCKED);
 		}
-		else {
-			pkg_emit_notice("package %s is already installed, forced install",
-				pkg->name);
-			pkg_free(pkg_inst);
-			pkg_inst = NULL;
-		}
+		pkg_emit_notice("package %s is already installed, forced install",
+		    pkg->name);
+		pkg_free(pkg_inst);
+		pkg_inst = NULL;
 	} else if (ret != EPKG_END) {
 		return (ret);
 	}
@@ -495,9 +491,6 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			pkg_emit_error("%s has no extension", path);
 			return (EPKG_FATAL);
 		}
-	} else {
-		ext = NULL;
-		basedir = NULL;
 	}
 
 	retcode = EPKG_FATAL;
