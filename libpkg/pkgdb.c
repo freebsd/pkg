@@ -1177,14 +1177,16 @@ pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint)
 					 &stmt, NULL);
 	}
 
-	if (ret == SQLITE_OK)
+	if (ret == SQLITE_OK) {
 		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 			ret = sqlite3_step(stmt);
+	}
 
 	sqlite3_finalize(stmt);
 
-	if (ret != SQLITE_OK && ret != SQLITE_DONE)
+	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite, psql);
+	}
 
 	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
 }
@@ -1217,14 +1219,16 @@ pkgdb_transaction_commit_sqlite(sqlite3 *sqlite, const char *savepoint)
 					 &stmt, NULL);
 	}
 
-	if (ret == SQLITE_OK)
+	if (ret == SQLITE_OK) {
 		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 			ret = sqlite3_step(stmt);
+	}
 
 	sqlite3_finalize(stmt);
 
-	if (ret != SQLITE_OK && ret != SQLITE_DONE)
+	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite, psql);
+	}
 
 	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
 }
@@ -1256,14 +1260,16 @@ pkgdb_transaction_rollback_sqlite(sqlite3 *sqlite, const char *savepoint)
 					 &stmt, NULL);
 	}
 
-	if (ret == SQLITE_OK)
+	if (ret == SQLITE_OK) {
 		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 			ret = sqlite3_step(stmt);
+	}
 
 	sqlite3_finalize(stmt);
 
-	if (ret != SQLITE_OK && ret != SQLITE_DONE)
+	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite, psql);
+	}
 
 	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
 }
