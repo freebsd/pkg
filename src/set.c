@@ -193,6 +193,7 @@ exec_set(int argc, char **argv)
 	if ((argc < 1 && match != MATCH_ALL) ||
 		(newautomatic == -1 && newvital == -1 && newvalue == NULL) ||
 		(sets & (NAME|ORIGIN)) == (NAME|ORIGIN)) {
+		free(newvalue);
 		usage_set();
 		return (EX_USAGE);
 	}

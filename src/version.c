@@ -336,8 +336,13 @@ hash_indexfile(const char *indexfilename)
 		if (index == NULL)
 			index = kh_init_index();
 		k = kh_put_index(index, entry->origin, &ret);
-		if (ret != 0)
+		if (ret != 0) {
 			kh_value(index, k) = entry;
+		} else {
+			free(entry->origin);
+			free(entry->version);
+			free(entry);
+		}
 	}
 
 	free(line);

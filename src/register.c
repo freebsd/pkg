@@ -160,6 +160,7 @@ exec_register(int argc, char **argv)
 		default:
 			warnx("Unrecognised option -%c\n", ch);
 			usage_register();
+			pkg_free(pkg);
 			return (EX_USAGE);
 		}
 	}

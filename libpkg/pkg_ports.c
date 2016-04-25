@@ -890,7 +890,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	char *buf, *tofree = NULL;
 	struct file_attr *freeattr = NULL;
 	int spaces, argc = 0;
-	int ret = EPKG_OK;
+	int ret = EPKG_FATAL;
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
@@ -915,7 +915,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "post-install"))) {
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
-			return (EPKG_FATAL);
+			goto keywords_cleanup;
 		sbuf_printf(p->post_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
@@ -923,7 +923,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "pre-deinstall"))) {
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
-			return (EPKG_FATAL);
+			goto keywords_cleanup;
 		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
@@ -931,7 +931,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "post-deinstall"))) {
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
-			return (EPKG_FATAL);
+			goto keywords_cleanup;
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
@@ -939,7 +939,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "pre-upgrade"))) {
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
-			return (EPKG_FATAL);
+			goto keywords_cleanup;
 		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
@@ -947,7 +947,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "post-upgrade"))) {
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
-			return (EPKG_FATAL);
+			goto keywords_cleanup;
 		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
@@ -959,7 +959,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 
 			if (msg == NULL) {
 				pkg_emit_errno("malloc", "struct pkg_message");
-				return (EPKG_FATAL);
+				goto keywords_cleanup;
 			}
 
 			msg->str = strdup(ucl_object_tostring(elt));
@@ -977,9 +977,11 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		}
 	}
 
+	ret = EPKG_OK;
 	if ((o = ucl_object_find_key(obj,  "actions")))
 		ret = parse_actions(o, p, line, attr, argc, args);
 
+keywords_cleanup:
 	free(args);
 	free(tofree);
 	free_file_attr(freeattr);
@@ -1285,6 +1287,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	if ((plist_f = fopen(plist, "r")) == NULL) {
 		pkg_emit_error("Unable to open plist file: %s", plist);
+		plist_free(pplist);
 		return (EPKG_FATAL);
 	}
 

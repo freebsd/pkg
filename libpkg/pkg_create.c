@@ -86,6 +86,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
+			kh_destroy_hardlinks(hardlinks);
 			return (EPKG_FATAL);
 		}
 

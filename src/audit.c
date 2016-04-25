@@ -218,25 +218,30 @@ exec_audit(int argc, char **argv)
 		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 		if (ret == EPKG_ENODB) {
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_OK);
 		} else if (ret == EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to read the package database");
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_NOPERM);
 		} else if (ret != EPKG_OK) {
 			warnx("Error accessing the package database");
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_IOERR);
 		}
 
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_IOERR);
 		}
 
 		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 			pkgdb_close(db);
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			warnx("Cannot get a read lock on a database, it is locked by another process");
 			return (EX_TEMPFAIL);
 		}
@@ -260,6 +265,7 @@ exec_audit(int argc, char **argv)
 		}
 		if (ret != EX_OK) {
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (ret);
 		}
 	}

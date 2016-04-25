@@ -702,8 +702,10 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 			RULE_ITEM_APPEND(rule, it);
 			/* !Ay */
 			it = pkg_solve_item_new(confvar);
-			if (it == NULL)
+			if (it == NULL) {
+				pkg_solve_rule_free(rule);
 				return (EPKG_FATAL);
+			}
 
 			it->inverse = -1;
 			RULE_ITEM_APPEND(rule, it);

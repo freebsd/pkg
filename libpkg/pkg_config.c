@@ -945,8 +945,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	ncfg = NULL;
+	ukey = sbuf_new_auto();
 	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
-		sbuf_init(&ukey);
+		sbuf_reset(ukey);
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
 			sbuf_putc(ukey, toupper(key[i]));
@@ -977,13 +978,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
 	}
+	sbuf_delete(ukey);
 
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
 		free(rootedpath);
-		if (ukey != NULL)
-			sbuf_delete(ukey);
 		return (EPKG_FATAL);
 	}
 

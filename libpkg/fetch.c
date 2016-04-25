@@ -579,8 +579,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				sbuf_cat(fetchOpts, "6");
 		}
 
-        if (debug_level >= 4)
-            sbuf_cat(fetchOpts, "v");
+		if (debug_level >= 4)
+			sbuf_cat(fetchOpts, "v");
 
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
@@ -595,6 +595,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		if (offset > 0)
 			u->offset = offset;
 		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
+		sbuf_delete(fetchOpts);
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;
@@ -682,9 +683,6 @@ cleanup:
 
 	/* restore original doc */
 	u->doc = doc;
-	if (fetchOpts != NULL)
-		sbuf_delete(fetchOpts);
-
 	fetchFreeURL(u);
 
 	return (retcode);

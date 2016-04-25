@@ -301,6 +301,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
 		pkg_emit_errno("pkg_create_repo_worker", "open");
+		sbuf_delete(b);
 		return (EPKG_FATAL);
 	}
 
@@ -308,6 +309,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
 			close(mfd);
+			sbuf_delete(b);
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
 		}
@@ -946,12 +948,9 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		}
 
 		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
-			free(sigret);
 			ret = EPKG_FATAL;
 			goto out;
 		}
-
-		free(sigret);
 	} else if (argc >= 1) {
 		if (pkg_repo_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
 			ret = EPKG_FATAL;
@@ -976,6 +975,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 out:
 	packing_finish(pack);
 	unlink(path);
+	free(sigret);
 	if (sig != NULL)
 		sbuf_delete(sig);
 	if (pub != NULL)

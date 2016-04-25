@@ -86,8 +86,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
 	};
 
-	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS")))
+	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
+		sbuf_delete(script_cmd);
 		return (EPKG_OK);
+	}
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
