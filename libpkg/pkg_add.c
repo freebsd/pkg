@@ -192,6 +192,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	struct pkg_config_file *rcf;
 	struct sbuf *newconf;
 	bool automerge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
+	bool install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 	unsigned long set, clear;
 
 #ifndef HAVE_ARC4RANDOM
@@ -276,7 +277,6 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 
 		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
 			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));
-			int install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 			int extract_flags = EXTRACT_ARCHIVE_FLAGS;
 			if (install_as_user) {
 				/* when installing as user don't try to set file ownership */
@@ -357,7 +357,7 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		}
 		/* enforce modes and creds */
 		lchmod(pathname, archive_entry_perm(ae));
-		if (getenv("INSTALL_AS_USER") == NULL) {
+		if (install_as_user) {
 			lchown(pathname, get_uid_from_archive(ae),
 			    get_gid_from_archive(ae));
 		}
