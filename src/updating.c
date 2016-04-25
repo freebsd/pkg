@@ -203,9 +203,10 @@ exec_updating(int argc, char **argv)
 					}
 				}
 				if (tmp != NULL) {
-					if ((date != NULL) && strncmp(dateline, date, 8) < 0)
+					if ((date != NULL) && strncmp(dateline, date, 8) < 0) {
 						free(dateline);
 						continue;
+					}
 					printf("%s%s",dateline, line);
 					found = 1;
 				}
