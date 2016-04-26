@@ -66,6 +66,7 @@ int eventpipe = -1;
 int64_t debug_level = 0;
 bool developer_mode = false;
 const char *pkg_rootdir = NULL;
+int rootfd = -1;
 
 struct config_entry {
 	uint8_t type;
@@ -830,6 +831,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	k = NULL;
 	o = NULL;
+	if ((rootfd = open("/", O_DIRECTORY|O_RDONLY)) <= 0) {
+		pkg_emit_error("Impossible to open /");
+		return (EPKG_FATAL);
+	}
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
@@ -1364,10 +1369,19 @@ pkg_set_debug_level(int64_t new_debug_level) {
 	return old_debug_level;
 }
 
-void
+int
 pkg_set_rootdir(const char *rootdir) {
 	if (pkg_initialized())
-		return;
+		return (EPKG_FATAL);
 
+	if (rootfd != -1)
+		close(rootfd);
+
+	if ((rootfd = open(rootdir, O_DIRECTORY|O_RDONLY)) <= 0) {
+		pkg_emit_error("Impossible to open /");
+		return (EPKG_FATAL);
+	}
 	pkg_rootdir = rootdir;
+
+	return (EPKG_OK);
 }
