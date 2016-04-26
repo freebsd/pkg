@@ -108,5 +108,6 @@ void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);
 int merge_3way(char *pivot, char *v1, char *v2, struct sbuf *out);
 bool string_end_with(const char *path, const char *str);
+bool mkdirat_p(int fd, const char *path);
 
 #endif

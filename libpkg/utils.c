@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -801,4 +801,33 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 	}
 
 	return (dest);
+}
+
+bool
+mkdirat_p(int fd, const char *path)
+{
+	const char *next;
+	char *walk, pathdone[MAXPATHLEN];
+
+	walk = strdup(path);
+	pathdone[0] = '\0';
+
+	while ((next = strsep(&walk, "/")) != NULL) {
+		if (*next == '\0')
+			continue;
+		strlcat(pathdone, next, sizeof(pathdone));
+		if (mkdirat(fd, pathdone, 0755) == -1) {
+			if (errno == EEXIST) {
+				strlcat(pathdone, "/", sizeof(pathdone));
+				continue;
+			}
+			pkg_emit_error("Fail to create /%s: %s",
+			    pathdone, strerror(errno));
+			free(walk);
+			return (false);
+		}
+		strlcat(pathdone, "/", sizeof(pathdone));
+	}
+	free(walk);
+	return (true);
 }
