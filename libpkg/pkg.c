@@ -1759,24 +1759,26 @@ int
 pkg_open_root_fd(struct pkg *pkg)
 {
 	const char *path;
-	const ucl_object_t 	*obj;
 
-	obj = NULL;
 	if (pkg->rootfd != -1)
 		return (EPKG_OK);
 
 	path = pkg_kv_get(&pkg->annotations, "relocated");
-	if (pkg_rootdir != NULL)
-		path = pkg_rootdir;
-	if (path == NULL)
-		path = "/";
+	if (path == NULL) {
+		if ((pkg->rootfd = dup(rootfd)) == -1) {
+			pkg_emit_errno("dup2", "rootfd");
+			return (EPKG_FATAL);
+		}
+		return (EPKG_OK);
+	}
 
-	strlcpy(pkg->rootpath, path, sizeof(pkg->rootpath));
+	pkg_absolutepath(path, pkg->rootpath, sizeof(pkg->rootpath), false);
 
-	if ((pkg->rootfd = open(path , O_DIRECTORY|O_CLOEXEC)) >= 0 )
+	if ((pkg->rootfd = openat(rootfd, pkg->rootpath + 1, O_DIRECTORY|O_CLOEXEC)) >= 0 )
 		return (EPKG_OK);
 
-	pkg_emit_errno("open", obj ? pkg_object_string(obj) : "/");
+	pkg->rootpath[0] = '\0';
+	pkg_emit_errno("open", path);
 
 	return (EPKG_FATAL);
 }
