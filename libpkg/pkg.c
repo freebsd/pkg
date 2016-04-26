@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -1741,6 +1741,34 @@ pkg_is_config_file(struct pkg *p, const char *path,
 	*cfile = kh_value(p->config_files, k2);
 
 	return (true);
+}
+
+struct pkg_dir *
+pkg_get_dir(struct pkg *p, const char *path)
+{
+	struct pkg_dir *d = NULL;
+	khint_t k;
+
+	k = kh_get_pkg_dirs(p->dirhash, path);
+	if (k != kh_end(p->dirhash)) {
+		d = kh_value(p->dirhash, k);
+	}
+
+	return (d);
+}
+
+struct pkg_file *
+pkg_get_file(struct pkg *p, const char *path)
+{
+	struct pkg_file *f = NULL;
+	khint_t k;
+
+	k = kh_get_pkg_files(p->filehash, path);
+	if (k != kh_end(p->filehash)) {
+		f = kh_value(p->filehash, k);
+	}
+
+	return (f);
 }
 
 bool

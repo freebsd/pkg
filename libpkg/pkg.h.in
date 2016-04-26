@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -775,6 +775,9 @@ bool pkg_dep_is_locked(struct pkg_dep const * const);
 
 bool pkg_has_dir(struct pkg *, const char *);
 bool pkg_has_file(struct pkg *, const char *);
+
+struct pkg_file *pkg_get_file(struct pkg *p, const char *path);
+struct pkg_dir *pkg_get_dir(struct pkg *p, const char *path);
 
 /* pkg_license */
 const char *pkg_license_name(struct pkg_license const * const);
