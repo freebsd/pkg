@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #define _WITH_GETLINE
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <fetch.h>
@@ -47,6 +48,14 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/utils.h"
+
+static int	sigalrm = 0;	/* SIGALRM received */
+
+static void
+sigalrm_handler(int sig) {
+	if (sig == SIGALRM)
+		sigalrm = 1;
+}
 
 static void
 gethttpmirrors(struct pkg_repo *repo, const char *url) {
@@ -476,6 +485,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
 	struct sbuf	*fetchOpts = NULL;
+	struct sigaction sa;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
@@ -592,16 +602,34 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 
 		sbuf_finish(fetchOpts);
 
+		/* signal handling */
+		sa.sa_handler = sigalrm_handler;
+		sa.sa_flags = 0;
+		sigfillset(&sa.sa_mask);
+		sigaction(SIGALRM, &sa, NULL);
+
 		if (offset > 0)
 			u->offset = offset;
+		if (fetchTimeout > 0)
+			alarm(fetchTimeout);
 		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
 		sbuf_delete(fetchOpts);
+		if (fetchTimeout > 0)
+			alarm(0);
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;
 				goto cleanup;
 			}
 			--retry;
+			if (sigalrm) {
+				if (retry <= 0) {
+					retcode = ETIMEDOUT;
+					goto cleanup;
+				} else {
+					sigalrm = 0;
+				}
+			}
 			if (retry <= 0 || fetchLastErrCode == FETCH_UNAVAIL) {
 				pkg_emit_error("%s: %s", url,
 				    fetchLastErrString);
