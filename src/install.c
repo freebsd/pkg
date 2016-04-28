@@ -193,7 +193,7 @@ exec_install(int argc, char **argv)
 		retcode = EX_SOFTWARE;
 
 	/* first update the remote repositories if needed */
-	if (auto_update &&
+	if (auto_update && pkg_repos_total_count() > 0 &&
 	    (updcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
 		return (updcode);
 
