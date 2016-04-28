@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2016, Vsevolod Stakhov
  * All rights reserved.
@@ -36,6 +36,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <glob.h>
 #include <pwd.h>
 #include <grp.h>
@@ -51,7 +52,6 @@
 #else
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
-
 
 static const unsigned char litchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -85,20 +85,16 @@ pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
 }
 
 static void
-attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
-  struct pkg *local, char *pathname, const char *path, struct sbuf *newconf)
+attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
+    bool merge)
 {
 	const struct pkg_file *lf = NULL;
+	struct sbuf *newconf;
 	struct pkg_config_file *lcf = NULL;
 
 	char *localconf = NULL;
 	off_t sz;
 	char *localsum;
-
-	if (!renamed) {
-		pkg_debug(3, "Not renamed");
-		return;
-	}
 
 	if (rcf == NULL) {
 		pkg_debug(3, "No remote config file");
@@ -110,7 +106,7 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 		return;
 	}
 
-	if (!pkg_is_config_file(local, path, &lf, &lcf)) {
+	if (!pkg_is_config_file(local, rcf->path, &lf, &lcf)) {
 		pkg_debug(3, "No local package");
 		return;
 	}
@@ -120,8 +116,8 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 		return;
 	}
 
-	pkg_debug(1, "Config file found %s", pathname);
-	file_to_buffer(pathname, &localconf, &sz);
+	pkg_debug(1, "Config file found %s", rcf->path);
+	file_to_bufferat(rootfd, RELATIVE_PATH(rcf->path), &localconf, &sz);
 
 	pkg_debug(2, "size: %d vs %d", sz, strlen(lcf->content));
 
@@ -138,13 +134,20 @@ attempt_to_merge(bool renamed, struct pkg_config_file *rcf,
 		free(localsum);
 		pkg_debug(2, "Checksum are different %d", strlen(localconf));
 	}
+	rcf->status = MERGE_FAILED;
+	if (!merge)
+		return;
 
-	pkg_debug(1, "Attempting to merge %s", pathname);
+	pkg_debug(1, "Attempting to merge %s", rcf->path);
+	newconf = sbuf_new_auto();
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		pkg_emit_error("Impossible to merge configuration file");
-		sbuf_clear(newconf);
-		strlcat(pathname, ".pkgnew", MAXPATHLEN);
+	} else {
+		sbuf_finish(newconf);
+		rcf->newcontent = strdup(sbuf_data(newconf));
+		rcf->status = MERGE_SUCCESS;
 	}
+	sbuf_delete(newconf);
 	free(localconf);
 }
 
@@ -176,24 +179,210 @@ get_gid_from_archive(struct archive_entry *ae)
 	return (grent.gr_gid);
 }
 
+/* In case of directories create the dir and extract the creds */
 static int
-do_extract(struct archive *a, struct archive_entry *ae, const char *location,
+do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry *ae,
+    const char *path, struct pkg *local __unused)
+{
+	struct pkg_dir *d;
+	const struct stat *aest;
+	unsigned long clear;
+
+	d = pkg_get_dir(pkg, path);
+	if (d == NULL) {
+		pkg_emit_error("Directory %s not specified in the manifest");
+		return (EPKG_FATAL);
+	}
+	aest = archive_entry_stat(ae);
+	d->perm = aest->st_mode;
+	d->uid = get_uid_from_archive(ae);
+	d->gid = get_gid_from_archive(ae);
+	archive_entry_fflags(ae, &d->fflags, &clear);
+
+	if (!mkdirat_p(pkg->rootfd, path))
+		return (EPKG_FATAL);
+
+	if (fchmodat(pkg->rootfd, RELATIVE_PATH(path), d->perm,
+	    AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_error("Fail to chmod %s: %s",
+		    path, strerror(errno));
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+/* In case of a symlink create it directly with a random name */
+static int
+do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_entry *ae,
+    const char *path, struct pkg *local __unused)
+{
+	struct pkg_file *f;
+	const struct stat *aest;
+	unsigned long clear;
+
+	f = pkg_get_file(pkg, path);
+	if (f == NULL) {
+		pkg_emit_error("Symlink %s not specified in the manifest");
+		return (EPKG_FATAL);
+	}
+
+	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
+		return (EPKG_FATAL);
+
+	aest = archive_entry_stat(ae);
+	f->perm = aest->st_mode;
+	f->uid = get_uid_from_archive(ae);
+	f->gid = get_gid_from_archive(ae);
+	archive_entry_fflags(ae, &f->fflags, &clear);
+
+	strlcpy(f->temppath, path, sizeof(f->temppath));
+	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+	if (symlinkat(archive_entry_symlink(ae), pkg->rootfd,
+	    RELATIVE_PATH(f->temppath)) == -1) {
+		pkg_emit_error("Fail to create symlink: %s: %s\n", f->temppath,
+		    strerror(errno));
+		return (EPKG_FATAL);
+	}
+	if (fchmodat(pkg->rootfd, RELATIVE_PATH(f->temppath), f->perm,
+	    AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_error("Fail to chmod %s: %s",
+		    f->temppath, strerror(errno));
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+static int
+do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_entry *ae,
+    const char *path, struct pkg *local __unused)
+{
+	struct pkg_file *f, *fh;
+	const struct stat *aest;
+	unsigned long clear;
+	const char *lp;
+
+	f = pkg_get_file(pkg, path);
+	if (f == NULL) {
+		pkg_emit_error("Hardlink %s not specified in the manifest");
+		return (EPKG_FATAL);
+	}
+	lp = archive_entry_hardlink(ae);
+	fh = pkg_get_file(pkg, lp);
+	if (fh == NULL) {
+		pkg_emit_error("Can't find the file %s is supposed to be"
+		    " hardlinked to in the archive: %s", path, lp);
+		return (EPKG_FATAL);
+	}
+
+	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
+		return (EPKG_FATAL);
+
+	aest = archive_entry_stat(ae);
+	f->perm = aest->st_mode;
+	f->uid = get_uid_from_archive(ae);
+	f->gid = get_gid_from_archive(ae);
+	archive_entry_fflags(ae, &f->fflags, &clear);
+
+	strlcpy(f->temppath, path, sizeof(f->temppath));
+	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
+	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
+		pkg_emit_error("Fail to create hardlink: %s: %s\n", f->temppath,
+		    strerror(errno));
+		return (EPKG_FATAL);
+	}
+	if (fchmodat(pkg->rootfd, RELATIVE_PATH(f->temppath), f->perm,
+	    AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_error("Fail to chmod %s: %s",
+		    f->temppath, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
+    const char *path, struct pkg *local)
+{
+	struct pkg_file *f;
+	const struct stat *aest;
+	unsigned long clear;
+	int fd = -1;
+	khint_t k;
+	size_t len;
+
+	f = pkg_get_file(pkg, path);
+	if (f == NULL) {
+		pkg_emit_error("File %s not specified in the manifest");
+	}
+
+	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
+		return (EPKG_FATAL);
+
+	aest = archive_entry_stat(ae);
+	f->perm = aest->st_mode;
+	f->uid = get_uid_from_archive(ae);
+	f->gid = get_gid_from_archive(ae);
+	archive_entry_fflags(ae, &f->fflags, &clear);
+
+	strlcpy(f->temppath, path, sizeof(f->temppath));
+	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+
+	/* Create the new temp file */
+	fd = openat(pkg->rootfd, RELATIVE_PATH(f->temppath),
+	    O_CREAT|O_WRONLY|O_EXCL, f->perm);
+	if (fd == -1) {
+		pkg_emit_error("Fail to create temporary file: %s: %s",
+		    f->temppath, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->config_files != NULL) {
+		k = kh_get_pkg_config_files(pkg->config_files, f->path);
+		if (k == kh_end(pkg->config_files))
+			f->config = kh_value(pkg->config_files, k);
+	}
+
+	if (f->config) {
+		const char *cfdata;
+		bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
+
+		pkg_debug(1, "Populating config_file %s", f->path);
+		len = archive_entry_size(ae);
+		f->config->content = malloc(len + 1);
+		archive_read_data(a, f->config->content, len);
+		f->config->content[len] = '\0';
+		cfdata = f->config->content;
+
+		attempt_to_merge(pkg->rootfd, f->config, local, merge);
+		if (f->config->status == MERGE_SUCCESS)
+			cfdata = f->config->newcontent;
+		dprintf(fd, "%s", cfdata);
+		if (f->config->newcontent != NULL)
+			free(f->config->newcontent);
+		free(f->config->content);
+		f->config->content = NULL;
+	}
+
+	if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
+		pkg_emit_error("Fail to extract %s from package: %s",
+		    path, archive_error_string(a));
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+do_extract(struct archive *a, struct archive_entry *ae,
     int nfiles, struct pkg *pkg, struct pkg *local)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
-	char	path[MAXPATHLEN], pathname[MAXPATHLEN], rpath[MAXPATHLEN];
-	char	linkpath[MAXPATHLEN], tmppath[MAXPATHLEN], bd[MAXPATHLEN], *cp;
-	const char *lp;
-	struct stat st;
-	const struct stat *aest;
-	bool renamed = false;
-	const struct pkg_file *rf;
-	struct pkg_config_file *rcf;
-	struct sbuf *newconf;
-	bool automerge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
-	bool install_as_user = (getenv("INSTALL_AS_USER") != NULL);
-	unsigned long set, clear;
+	char	path[MAXPATHLEN];
+	int (*extract_cb)(struct pkg *pkg, struct archive *a,
+	    struct archive_entry *ae, const char *path, struct pkg *local);
 
 #ifndef HAVE_ARC4RANDOM
 	srand(time(NULL));
@@ -203,175 +392,67 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 		return (EPKG_OK);
 
 	pkg_emit_extract_begin(pkg);
+	pkg_open_root_fd(pkg);
 	pkg_emit_progress_start(NULL);
-
-	newconf = sbuf_new_auto();
 
 	do {
 		ret = ARCHIVE_OK;
-		sbuf_clear(newconf);
-		rf = NULL;
-		rcf = NULL;
 		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
-		snprintf(pathname, sizeof(pathname), "%s%s%s",
-		    location ? location : "", *path == '/' ? "" : "/",
-		    path
-		);
-		strlcpy(rpath, pathname, sizeof(rpath));
-
-		aest = archive_entry_stat(ae);
-		archive_entry_fflags(ae, &set, &clear);
-		if (lstat(rpath, &st) != -1) {
-			/*
-			 * We have an existing file on the path, so handle it
-			 */
-			if (!S_ISDIR(aest->st_mode)) {
-				pkg_debug(2, "Old version found, renaming");
-				pkg_add_file_random_suffix(rpath, sizeof(rpath), 12);
-				renamed = true;
-			}
-
-			if (!S_ISDIR(st.st_mode) && S_ISDIR(aest->st_mode)) {
-				if (S_ISLNK(st.st_mode)) {
-					if (stat(rpath, &st) == -1) {
-						pkg_emit_error("Dead symlink %s", rpath);
-					} else {
-						pkg_debug(2, "Directory is a symlink, use it");
-						pkg_emit_progress_tick(cur_file++, nfiles);
-						continue;
-					}
-				}
-			}
+		switch (archive_entry_filetype(ae)) {
+		case AE_IFDIR:
+			extract_cb = do_extract_dir;
+			break;
+		case AE_IFLNK:
+			extract_cb = do_extract_symlink;
+			break;
+		case 0: /* HARDLINKS */
+			extract_cb = do_extract_hardlink;
+			break;
+		case AE_IFREG:
+			extract_cb = do_extract_regfile;
+			break;
+		case AE_IFMT:
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFMT): %s", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+			break;
+		case AE_IFSOCK:
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFSOCK): %s", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+			break;
+		case AE_IFCHR:
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFCHR): %s", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+			break;
+		case AE_IFIFO:
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFFIFO): %s", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+			break;
+		case AE_IFBLK:
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFFIFO): %s", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+			break;
+		default:
+			pkg_emit_error("Archive contains an unsupported filetype (%d): %s", archive_entry_filetype(ae), path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+			break;
 		}
 
-		archive_entry_set_pathname(ae, rpath);
-		/*
-		 * Deal with hardlinks to rooted path.  Use tmppath as
-		 * temporary work space
-		 */
-		lp = archive_entry_hardlink(ae);
-		if (lp != NULL) {
-			pkg_absolutepath(lp, linkpath, sizeof(linkpath), true);
-			snprintf(tmppath, sizeof(tmppath), "%s%s%s",
-			    location ? location : "", *linkpath == '/' ? "" : "/",
-			    linkpath);
-			archive_entry_set_hardlink(ae, tmppath);
+		if (extract_cb(pkg, a, ae, path, local) != EPKG_OK) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
 		}
-
-		/* load in memory the content of config files */
-		if (pkg_is_config_file(pkg, path, &rf, &rcf)) {
-			pkg_debug(1, "Populating config_file %s", pathname);
-			size_t len = archive_entry_size(ae);
-			rcf->content = malloc(len + 1);
-			archive_read_data(a, rcf->content, len);
-			rcf->content[len] = '\0';
-			if (renamed && (!automerge || local == NULL))
-				strlcat(pathname, ".pkgnew", sizeof(pathname));
+		if (archive_entry_filetype(ae) != AE_IFDIR) {
+			pkg_emit_progress_tick(cur_file++, nfiles);
 		}
-
-		/*
-		 * check if the file is already provided by previous package
-		 */
-		if (automerge)
-			attempt_to_merge(renamed, rcf, local, pathname, path, newconf);
-
-		if (sbuf_len(newconf) == 0 && (rcf == NULL || rcf->content == NULL)) {
-			pkg_debug(1, "Extracting: %s", archive_entry_pathname(ae));
-			int extract_flags = EXTRACT_ARCHIVE_FLAGS;
-			if (install_as_user) {
-				/* when installing as user don't try to set file ownership */
-				extract_flags &= ~ARCHIVE_EXTRACT_OWNER;
-			}
-			ret = archive_read_extract(a, ae, extract_flags);
-		} else {
-			if (sbuf_len(newconf) == 0) {
-				sbuf_cat(newconf, rcf->content);
-				sbuf_finish(newconf);
-			}
-			pkg_debug(2, "Writing conf in %s", pathname);
-			unlink(rpath);
-			strlcpy(bd, rpath, sizeof(bd));
-			if ((cp = strrchr(bd, '/')) != NULL)
-				*cp = '\0';
-			if (mkdirs(bd) != EPKG_OK) {
-				pkg_emit_error("mkdirs(%s)", bd);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			FILE *f = fopen(rpath, "w+");
-			if (!f) {
-				pkg_emit_error("fopen() for write: %s", rpath);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			fprintf(f, "%s", sbuf_data(newconf));
-			fclose(f);
-		}
-
-		if (ret != ARCHIVE_OK) {
-			/*
-			 * show error except when the failure is during
-			 * extracting a directory and that the directory already
-			 * exists.
-			 * this allow to install packages linux_base from
-			 * package for example
-			 */
-			if (archive_entry_filetype(ae) != AE_IFDIR ||
-			    !is_dir(pathname)) {
-				pkg_emit_error("archive_read_extract() errno %d: %s",
-				    archive_errno(a), archive_error_string(a));
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-		}
-
-		pkg_emit_progress_tick(cur_file++, nfiles);
-
-		/* Rename old file */
-		if (renamed) {
-
-			pkg_debug(1, "Renaming %s -> %s", rpath, pathname);
-#ifdef HAVE_CHFLAGS
-			bool old = false;
-			if (set & NOCHANGESFLAGS)
-				lchflags(rpath, 0);
-
-			if (lstat(pathname, &st) != -1) {
-				old = true;
-				if (st.st_flags & NOCHANGESFLAGS)
-					lchflags(pathname, 0);
-			}
-#endif
-
-			if (rename(rpath, pathname) == -1) {
-#ifdef HAVE_CHFLAGS
-				/* restore flags */
-				if (old && st.st_flags != 0)
-					lchflags(pathname, st.st_flags);
-#endif
-				pkg_emit_error("cannot rename %s to %s: %s", rpath, pathname,
-					strerror(errno));
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-		}
-		/* enforce modes and creds */
-		lchmod(pathname, archive_entry_perm(ae));
-		if (install_as_user) {
-			lchown(pathname, get_uid_from_archive(ae),
-			    get_gid_from_archive(ae));
-		}
-#ifdef HAVE_CHFLAGS
-		/* Restore flags */
-		if (set != 0)
-			lchflags(pathname, set);
-#endif
-
-		if (string_end_with(pathname, ".pkgnew"))
-			pkg_emit_notice("New configuration file: %s", pathname);
-
-		renamed = false;
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
+
+	pkg_emit_progress_tick(cur_file++, nfiles);
 
 	if (ret != ARCHIVE_EOF) {
 		pkg_emit_error("archive_read_next_header(): %s",
@@ -380,20 +461,76 @@ do_extract(struct archive *a, struct archive_entry *ae, const char *location,
 	}
 
 cleanup:
-
 	pkg_emit_progress_tick(nfiles, nfiles);
 	pkg_emit_extract_finished(pkg);
-	sbuf_delete(newconf);
-
-	if (renamed && retcode == EPKG_FATAL) {
-#ifdef HAVE_CHFLAGS
-		if (set & NOCHANGESFLAGS)
-			chflags(rpath, set & ~NOCHANGESFLAGS);
-#endif
-		unlink(rpath);
-	}
 
 	return (retcode);
+}
+
+static int
+pkg_extract_finalize(struct pkg *pkg)
+{
+	struct stat st;
+	struct pkg_file *f = NULL;
+	struct pkg_dir *d = NULL;
+	char path[MAXPATHLEN];
+	const char *fto;
+
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (*f->temppath == '\0')
+			continue;
+		fto = f->path;
+		if (f->config && f->config->status == MERGE_FAILED) {
+			snprintf(path, sizeof(path), "%s.pkgnew", f->path);
+			fto = path;
+		}
+		/*
+		 * enforce an unlink of the file to workaround a bug that
+		 * results in renameat returning 0 of the from file is hardlink
+		 * on the to file, but the to file is not removed
+		 */
+		if (fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
+		    AT_SYMLINK_NOFOLLOW) != -1) {
+			if (st.st_flags & NOCHANGESFLAGS) {
+				chflagsat(pkg->rootfd, RELATIVE_PATH(fto), 0,
+				    AT_SYMLINK_NOFOLLOW);
+			}
+			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
+		}
+		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
+		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
+			pkg_emit_error("Fail to rename %s -> %s: %s",
+			    f->temppath, fto, strerror(errno));
+			return (EPKG_FATAL);
+		}
+
+		if (fchownat(pkg->rootfd, RELATIVE_PATH(fto), f->uid, f->gid,
+		    AT_SYMLINK_NOFOLLOW) == -1) {
+			pkg_emit_error("Fail to chown %s: %s",
+			    fto, strerror(errno));
+			return (EPKG_FATAL);
+		}
+
+		if (f->fflags != 0) {
+			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
+			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
+				pkg_emit_error("Fail to chflags %s: %s",
+				    fto, strerror(errno));
+				return (EPKG_FATAL);
+			}
+		}
+	}
+
+	while (pkg_dirs(pkg, &d) == EPKG_OK) {
+		if (fchownat(pkg->rootfd, RELATIVE_PATH(d->path), d->uid,
+		    d->gid, AT_SYMLINK_NOFOLLOW) == -1) {
+			pkg_emit_error("Fail to chown %s: %s",
+			    d->path, strerror(errno));
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
 }
 
 static char *
@@ -470,8 +607,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			pkg_inst = NULL;
 			return (EPKG_LOCKED);
 		}
-		pkg_emit_notice("package %s is already installed, forced install",
-		    pkg->name);
+		pkg_emit_notice("package %s is already installed, forced "
+		    "install", pkg->name);
 		pkg_free(pkg_inst);
 		pkg_inst = NULL;
 	} else if (ret != EPKG_END) {
@@ -607,7 +744,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct pkg		*pkg = NULL;
 	struct sbuf		*message;
 	struct pkg_message	*msg;
-	const char		*location, *msgstr;
+	const char		*msgstr;
 	bool			 extract = true;
 	bool			 handle_rc = false;
 	int			 retcode = EPKG_OK;
@@ -618,10 +755,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (local != NULL)
 		flags |= PKG_ADD_UPGRADE;
-
-	location = reloc;
-	if (pkg_rootdir != NULL)
-		location = pkg_rootdir;
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -659,7 +792,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 */
 	if (remote == NULL) {
 		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys,
-		    location);
+		    reloc);
 		if (ret != EPKG_OK) {
 			/* Do not return error on installed package */
 			retcode = (ret == EPKG_INSTALLED ? EPKG_OK : ret);
@@ -680,8 +813,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg->automatic = remote->automatic;
 	}
 
-	if (pkg_rootdir == NULL && location != NULL)
-		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
+	if (reloc != NULL)
+		pkg_kv_add(&pkg->annotations, "relocated", reloc, "annotation");
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
@@ -708,17 +841,19 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = kh_count(pkg->filehash);
+	nfiles = kh_count(pkg->filehash) + kh_count(pkg->dirhash);
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract &&
-	    (retcode = do_extract(a, ae, location, nfiles, pkg, local))
-	    != EPKG_OK) {
-		/* If the add failed, clean up (silently) */
-		pkg_delete_files(pkg, 2);
-		pkg_delete_dirs(db, pkg, NULL);
-		goto cleanup_reg;
+	if (extract) {
+		retcode = do_extract(a, ae, nfiles, pkg, local);
+		if (retcode != EPKG_OK) {
+			/* If the add failed, clean up (silently) */
+
+			pkg_delete_files(pkg, 2);
+			pkg_delete_dirs(db, pkg, NULL);
+			goto cleanup_reg;
+		}
 	}
 
 	/* Update configuration file content with db with newer versions */
@@ -743,7 +878,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
-	cleanup_reg:
+	retcode = pkg_extract_finalize(pkg);
+cleanup_reg:
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkgdb_register_finale(db, retcode);
 

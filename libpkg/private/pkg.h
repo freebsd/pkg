@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -320,6 +320,19 @@ struct pkg_conflict {
 	UT_hash_handle	hh;
 };
 
+typedef enum {
+	MERGE_NOTNEEDED = 0,
+	MERGE_FAILED,
+	MERGE_SUCCESS,
+} merge_status;
+
+struct pkg_config_file {
+	char path[MAXPATHLEN];
+	char *content;
+	char *newcontent;
+	merge_status status;
+};
+
 struct pkg_file {
 	char		 path[MAXPATHLEN];
 	int64_t		 size;
@@ -327,7 +340,11 @@ struct pkg_file {
 	char		 uname[MAXLOGNAME];
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
+	uid_t		 uid;
+	gid_t		 gid;
+	char		 temppath[MAXPATHLEN];
 	u_long		 fflags;
+	struct pkg_config_file *config;
 	struct pkg_file	*prev;
 	struct pkg_file	*next;
 };
@@ -338,6 +355,8 @@ struct pkg_dir {
 	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	u_long		 fflags;
+	uid_t		 uid;
+	gid_t		 gid;
 	struct pkg_dir	*prev;
 	struct pkg_dir	*next;
 };
@@ -540,11 +559,6 @@ struct file_attr {
 struct action {
 	int (*perform)(struct plist *, char *, struct file_attr *);
 	struct action *next;
-};
-
-struct pkg_config_file {
-	char path[MAXPATHLEN];
-	char *content;
 };
 
 /* sql helpers */
