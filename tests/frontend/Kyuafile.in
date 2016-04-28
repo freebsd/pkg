@@ -13,6 +13,7 @@ atf_test_program{name='conflicts'}
 atf_test_program{name='conflicts-multirepo'}
 atf_test_program{name='create'}
 atf_test_program{name='delete'}
+atf_test_program{name='extract'}
 atf_test_program{name='install'}
 atf_test_program{name='jpeg'}
 atf_test_program{name='lock'}
