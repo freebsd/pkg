@@ -826,12 +826,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
 	bool fatal_errors = false;
-	char *rootedpath = NULL;
+	int conffd = -1;
 	char *tmp = NULL;
 
 	k = NULL;
 	o = NULL;
-	if ((rootfd = open("/", O_DIRECTORY|O_RDONLY)) <= 0) {
+	if (rootfd == -1 && (rootfd = open("/", O_DIRECTORY|O_RDONLY)) <= 0) {
 		pkg_emit_error("Impossible to open /");
 		return (EPKG_FATAL);
 	}
@@ -928,11 +928,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 	}
 
-	if (path == NULL) {
-		path = PREFIX"/etc/pkg.conf";
+	if (path == NULL)
+		path = PREFIX"/etc/pkg.conf" + 1;
 
-		if (pkg_rootdir != NULL)
-			asprintf(&rootedpath, "%s/%s", pkg_rootdir, path);
+	conffd = openat(rootfd, path, O_RDONLY);
+	if (conffd == -1 && errno != ENOENT) {
+		pkg_emit_error("Cannot open %s/%s: %s",
+		    pkg_rootdir != NULL ? pkg_rootdir : "",
+		    path, strerror(errno));
 	}
 
 	p = ucl_parser_new(0);
@@ -941,13 +944,16 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	errno = 0;
 	obj = NULL;
-	if (!ucl_parser_add_file(p, rootedpath != NULL ? rootedpath : path)) {
-		if (errno != ENOENT)
+	if (conffd != -1) {
+		if (!ucl_parser_add_fd(p, conffd)) {
 			pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
-	} else {
-		obj = ucl_parser_get_object(p);
-
+		} else {
+			obj = ucl_parser_get_object(p);
+		}
 	}
+
+	if (conffd != -1)
+		close(conffd);
 
 	ncfg = NULL;
 	ukey = sbuf_new_auto();
@@ -988,7 +994,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
-		free(rootedpath);
 		return (EPKG_FATAL);
 	}
 
@@ -1098,7 +1103,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	parsed = true;
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
-	free(rootedpath);
 
 	if (strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
 		pkg_emit_error("Unable to determine ABI");
@@ -1378,7 +1382,7 @@ pkg_set_rootdir(const char *rootdir) {
 		close(rootfd);
 
 	if ((rootfd = open(rootdir, O_DIRECTORY|O_RDONLY)) <= 0) {
-		pkg_emit_error("Impossible to open /");
+		pkg_emit_error("Impossible to open %s", rootdir);
 		return (EPKG_FATAL);
 	}
 	pkg_rootdir = rootdir;
