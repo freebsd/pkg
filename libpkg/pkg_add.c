@@ -135,8 +135,10 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 		pkg_debug(2, "Checksum are different %d", strlen(localconf));
 	}
 	rcf->status = MERGE_FAILED;
-	if (!merge)
+	if (!merge) {
+		free(localconf);
 		return;
+	}
 
 	pkg_debug(1, "Attempting to merge %s", rcf->path);
 	newconf = sbuf_new_auto();
