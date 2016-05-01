@@ -45,6 +45,8 @@ global:
 	pkg_free;
 	pkg_from_old;
 	pkg_get2;
+	pkg_get_dir;
+	pkg_get_file;
 	pkg_get_myarch;
 	pkg_get_myarch_legacy;
 	pkg_groups;
@@ -120,11 +122,11 @@ global:
 	pkg_repo_enabled;
 	pkg_repo_find;
 	pkg_repo_fingerprints;
+	pkg_repo_ip_version;
 	pkg_repo_key;
 	pkg_repo_mirror_type;
 	pkg_repo_name;
 	pkg_repo_priority;
-	pkg_repo_ip_version;
 	pkg_repo_signature_type;
 	pkg_repo_url;
 	pkg_repos;
