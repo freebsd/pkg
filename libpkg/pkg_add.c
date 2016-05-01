@@ -117,7 +117,8 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	}
 
 	pkg_debug(1, "Config file found %s", rcf->path);
-	file_to_bufferat(rootfd, RELATIVE_PATH(rcf->path), &localconf, &sz);
+	if (file_to_bufferat(rootfd, RELATIVE_PATH(rcf->path), &localconf, &sz) != EPKG_OK)
+		return;
 
 	pkg_debug(2, "size: %d vs %d", sz, strlen(lcf->content));
 
