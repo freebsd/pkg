@@ -114,33 +114,33 @@ format_size_IEC(char *buf, int size, off_t bytes)
 static void
 format_rate_SI(char *buf, int size, off_t bytes)
 {
-        int i;
+	int i;
 
-        bytes *= 100;
-        for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
-                bytes = (bytes + 500) / 1000;
-        if (i == 0) {
-                i++;
-                bytes = (bytes + 500) / 1000;
-        }
-        snprintf(buf, size, "%3lld.%1lld%s%s",
-            (long long) (bytes + 5) / 100,
-            (long long) (bytes + 5) / 10 % 10,
-            unit_SI[i],
-            i ? "B" : " ");
+	bytes *= 100;
+	for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
+		bytes = (bytes + 500) / 1000;
+	if (i == 0) {
+		i++;
+		bytes = (bytes + 500) / 1000;
+	}
+	snprintf(buf, size, "%3lld.%1lld%s%s",
+	    (long long) (bytes + 5) / 100,
+	    (long long) (bytes + 5) / 10 % 10,
+	    unit_SI[i],
+	    i ? "B" : " ");
 }
 
 static void
 format_size_SI(char *buf, int size, off_t bytes)
 {
-        int i;
+	int i;
 
-        for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
-                bytes = (bytes + 500) / 1000;
-        snprintf(buf, size, "%4lld%s%s",
-            (long long) bytes,
-            unit_SI[i],
-            i ? "B" : " ");
+	for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
+		bytes = (bytes + 500) / 1000;
+	snprintf(buf, size, "%4lld%s%s",
+	    (long long) bytes,
+	    unit_SI[i],
+	    i ? "B" : " ");
 }
 
 void
