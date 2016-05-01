@@ -854,7 +854,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Execute pre-install scripts
 	 */
 	if ((flags & (PKG_ADD_NOSCRIPT | PKG_ADD_USE_UPGRADE_SCRIPTS)) == 0)
-		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
+		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL)) != EPKG_OK)
+			goto cleanup;
+
 
 	/* add the user and group if necessary */
 
