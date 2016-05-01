@@ -734,6 +734,24 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	return (ret);
 }
 
+static void
+pkg_rollback_pkg(struct pkg *p)
+{
+	struct pkg_file *f = NULL;
+
+	while (pkg_files(p, &f) == EPKG_OK) {
+		if (*f->temppath != '\0') {
+			unlinkat(p->rootfd, f->temppath, 0);
+		}
+	}
+}
+
+static void
+pkg_rollback_cb(void *data)
+{
+	pkg_rollback_pkg((struct pkg *)data);
+}
+
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
@@ -846,11 +864,13 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Extract the files on disk.
 	 */
 	if (extract) {
+		pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
 		retcode = do_extract(a, ae, nfiles, pkg, local);
+		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
 			/* If the add failed, clean up (silently) */
 
-			pkg_delete_files(pkg, 2);
+			pkg_rollback_pkg(pkg);
 			pkg_delete_dirs(db, pkg, NULL);
 			goto cleanup_reg;
 		}
