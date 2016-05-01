@@ -681,7 +681,7 @@ int sql_exec(sqlite3 *, const char *, ...);
 int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 int get_sql_string(sqlite3 *, const char *sql, char **res);
 
-int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
+int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);

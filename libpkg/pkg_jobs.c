@@ -1946,25 +1946,12 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 	if (new->automatic || (j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
 		flags |= PKG_ADD_AUTOMATIC;
 
-#if 0
-	if (old != NULL && !ps->already_deleted) {
-		if ((retcode = pkg_delete(old, j->db, PKG_DELETE_UPGRADE)) != EPKG_OK) {
-			pkgdb_transaction_rollback_sqlite(j->db->sqlite, "upgrade");
-			goto cleanup;
-		}
-	}
-#endif
 	if (old != NULL)
 		retcode = pkg_add_upgrade(j->db, target, flags, keys, NULL, new, old);
 	else
 		retcode = pkg_add_from_remote(j->db, target, flags, keys, NULL, new);
 
-	if (retcode != EPKG_OK) {
-		pkgdb_transaction_rollback_sqlite(j->db->sqlite, "upgrade");
-		return (retcode);
-	}
-
-	return (EPKG_OK);
+	return (retcode);
 }
 
 static int
@@ -1992,10 +1979,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	p = NULL;
 	pkg_manifest_keys_new(&keys);
-	/* Install */
-	if ((retcode = pkgdb_transaction_begin_sqlite(j->db->sqlite, "upgrade")) !=
-	    EPKG_OK)
-		return (retcode);
 
 	pkg_jobs_set_priorities(j);
 
@@ -2047,7 +2030,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	}
 
 cleanup:
-	pkgdb_transaction_commit_sqlite(j->db->sqlite, "upgrade");
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
 	pkg_manifest_keys_free(keys);
 

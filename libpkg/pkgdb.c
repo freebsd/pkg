@@ -1665,7 +1665,7 @@ prstmt_finalize(struct pkgdb *db)
 }
 
 int
-pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
+pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 {
 	struct pkg		*pkg2 = NULL;
 	struct pkg_dep		*dep = NULL;
@@ -1694,7 +1694,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 
 	s = db->sqlite;
 
-	if (!complete && pkgdb_transaction_begin_sqlite(s, NULL) != EPKG_OK)
+	if (pkgdb_transaction_begin_sqlite(s, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	/* Prefer new ABI over old one */
@@ -2308,7 +2308,7 @@ pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
 
 	pkg_emit_install_begin(pkg);
 
-	ret = pkgdb_register_pkg(db, pkg, 0, 0);
+	ret = pkgdb_register_pkg(db, pkg, 0);
 	if (ret == EPKG_OK)
 		pkg_emit_install_finished(pkg, NULL);
 

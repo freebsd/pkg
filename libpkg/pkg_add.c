@@ -837,7 +837,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
 	retcode = pkgdb_register_pkg(db, pkg,
-			flags & PKG_ADD_UPGRADE,
 			flags & PKG_ADD_FORCE);
 
 	if (retcode != EPKG_OK)
@@ -899,9 +898,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
 	retcode = pkg_extract_finalize(pkg);
+
 cleanup_reg:
-	if ((flags & PKG_ADD_UPGRADE) == 0)
-		pkgdb_register_finale(db, retcode);
+	pkgdb_register_finale(db, retcode);
 
 	if (retcode == EPKG_OK) {
 		if ((flags & PKG_ADD_UPGRADE) == 0)
