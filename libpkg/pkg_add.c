@@ -318,6 +318,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
 		pkg_emit_error("File %s not specified in the manifest");
+		return (EPKG_FATAL);
 	}
 
 	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
