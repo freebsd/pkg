@@ -50,6 +50,7 @@
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
+#include <kvec.h>
 
 #include <bsd_compat.h>
 
@@ -59,6 +60,11 @@
 #define STALL_TIME 5
 
 struct sbuf *messages = NULL;
+
+struct cleanup {
+	void *data;
+	void (*cb)(void *);
+};
 
 static char *progress_message = NULL;
 static struct sbuf *msg_buf = NULL;
@@ -72,12 +78,30 @@ static int64_t bytes_per_second;
 static time_t last_update;
 static time_t begin = 0;
 static int add_deps_depth;
+static kvec_t(struct cleanup *) cleanup_list;
+static bool signal_handler_installed = false;
 
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
 static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
 
 static void draw_progressbar(int64_t current, int64_t total);
+
+static void
+cleanup_handler(int dummy __unused)
+{
+	struct cleanup *ev;
+	int i;
+
+	if (kv_size(cleanup_list) == 0)
+		return;
+	warnx("\nsignal received, cleaning up");
+	for (i = 0; i < kv_size(cleanup_list); i++) {
+		ev = kv_A(cleanup_list, i);
+		ev->cb(ev->data);
+	}
+	exit(1);
+}
 
 static void
 format_rate_IEC(char *buf, int size, off_t bytes)
@@ -544,7 +568,8 @@ int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
-	int *debug = data;
+	struct cleanup *evtmp;
+	int *debug = data, i;
 	struct pkg_event_conflict *cur_conflict;
 	const char *filename;
 
@@ -849,6 +874,29 @@ event_callback(void *data, struct pkg_event *ev)
 		if (messages == NULL)
 			messages = sbuf_new_auto();
 		sbuf_cat(messages, ev->e_pkg_message.msg);
+		break;
+	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
+		if (!signal_handler_installed) {
+			kv_init(cleanup_list);
+			signal(SIGINT, cleanup_handler);
+			signal_handler_installed = true;
+		}
+		evtmp = malloc(sizeof(struct cleanup));
+		evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
+		evtmp->data = ev->e_cleanup_callback.data;
+		kv_push(struct cleanup *, cleanup_list, evtmp);
+		break;
+	case PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER:
+		if (!signal_handler_installed)
+			break;
+		for (i = 0; i < kv_size(cleanup_list); i++) {
+			evtmp = kv_A(cleanup_list, i);
+			if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
+			    evtmp->data == ev->e_cleanup_callback.data) {
+				kv_del(struct cleanup *, cleanup_list, i);
+				break;
+			}
+		}
 		break;
 	default:
 		break;

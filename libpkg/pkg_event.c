@@ -1037,3 +1037,25 @@ pkg_emit_message(const char *message)
 	ev.e_pkg_message.msg = message;
 	pkg_emit_event(&ev);
 }
+
+void
+pkg_register_cleanup_callback(void (*cleanup_cb)(void *data), void *data)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_CLEANUP_CALLBACK_REGISTER;
+	ev.e_cleanup_callback.cleanup_cb = cleanup_cb;
+	ev.e_cleanup_callback.data = data;
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER;
+	ev.e_cleanup_callback.cleanup_cb = cleanup_cb;
+	ev.e_cleanup_callback.data = data;
+	pkg_emit_event(&ev);
+}

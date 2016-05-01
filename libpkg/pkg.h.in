@@ -1299,6 +1299,8 @@ typedef enum {
 	PKG_EVENT_NEW_ACTION,
 	PKG_EVENT_MESSAGE,
 	PKG_EVENT_FILE_MISSING,
+	PKG_EVENT_CLEANUP_CALLBACK_REGISTER,
+	PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1334,7 +1336,7 @@ struct pkg_event {
 		} e_install_begin;
 		struct {
 			struct pkg *pkg;
-      struct pkg *old;
+			struct pkg *old;
 		} e_install_finished;
 		struct {
 			struct pkg *pkg;
@@ -1455,6 +1457,10 @@ struct pkg_event {
 			struct pkg *pkg;
 			struct pkg_file *file;
 		} e_file_missing;
+		struct {
+			void *data;
+			void (*cleanup_cb)(void *data);
+		} e_cleanup_callback;
 	};
 };
 

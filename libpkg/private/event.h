@@ -79,5 +79,7 @@ void pkg_emit_delete_files_finished(struct pkg *p);
 void pkg_emit_new_action(void);
 void pkg_emit_message(const char *msg);
 void pkg_emit_file_missing(struct pkg *p, struct pkg_file *f);
+void pkg_register_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
+void pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
 
 #endif
