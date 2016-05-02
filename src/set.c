@@ -181,7 +181,7 @@ exec_set(int argc, char **argv)
 			break;
 		default:
 			free(oldvalue);
-			
+			free(newvalue);
 			usage_set();
 			return (EX_USAGE);
 		}
