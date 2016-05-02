@@ -726,7 +726,8 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 		else if (repopath != NULL) {
 			snprintf(path, sizeof(path), "%s/%s", destdir, repopath);
 			ret = EPKG_OK;
-		}
+		} else
+			break;
 
 		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size))
 			/* file looks corrupted (wrong size),
