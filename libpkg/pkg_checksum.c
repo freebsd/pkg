@@ -737,7 +737,8 @@ pkg_checksum_validate_file(const char *path, const char *sum)
 		type = PKG_HASH_TYPE_SHA256_HEX;
 	} else {
 		sum = strchr(sum, PKG_CKSUM_SEPARATOR);
-		sum++;
+		if (sum != NULL)
+			sum++;
 	}
 
 	if (lstat(path, &st) == -1) {
@@ -800,7 +801,8 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 		type = PKG_HASH_TYPE_SHA256_HEX;
 	} else {
 		sum = strchr(sum, PKG_CKSUM_SEPARATOR);
-		sum++;
+		if (sum != NULL)
+			sum++;
 	}
 
 	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
