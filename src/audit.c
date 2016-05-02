@@ -97,7 +97,7 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
 		if (k == kh_end(seen)) {
 			h = kh_get_pkgs(head, name);
 			if (h != kh_end(head)) {
-				k = kh_put_pkgs(seen, name, &ret);
+				kh_put_pkgs(seen, name, &ret);
 				if (!top)
 					sbuf_cat(sb, ", ");
 
