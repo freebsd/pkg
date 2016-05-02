@@ -895,6 +895,9 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
 		args = malloc((spaces + 1)* sizeof(char *));
+		if (args != NULL) {
+			return (EPKG_FATAL);
+		}
 		tofree = buf = strdup(line);
 		while (buf != NULL) {
 			args[argc++] = pkg_utils_tokenize(&buf);
@@ -907,7 +910,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "pre-install"))) {
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
-			return (EPKG_FATAL);
+			goto keywords_cleanup;
 		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
