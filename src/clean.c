@@ -283,7 +283,7 @@ exec_clean(int argc, char **argv)
 			if ((link_len = readlink(ent->fts_name, link_buf,
 			    sizeof(link_buf))) == -1)
 				continue;
-			link_buf[link_len] = '\0';
+			link_buf[link_len - 1] = '\0';
 			name = link_buf;
 		} else
 			name = ent->fts_name;
