@@ -4,7 +4,8 @@
 tests_init \
 	basic \
 	basic_dirs \
-	setuid
+	setuid \
+	setuid_hardlinks
 
 basic_body()
 {
@@ -119,4 +120,49 @@ EOF
 		-e empty \
 		-s exit:0 \
 		ls -l ${TMPDIR}/target${TMPDIR}/a
+}
+
+setuid_hardlinks_body()
+{
+	touch ${TMPDIR}/a
+	ln ${TMPDIR}/a ${TMPDIR}/b
+	chmod 04554 ${TMPDIR}/a || atf_fail "Fail to chmod"
+	chmod 04554 ${TMPDIR}/b || atf_fail "Fail to chmod"
+	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	cat << EOF >> test.ucl
+files = {
+	${TMPDIR}/a = ""
+	${TMPDIR}/b = ""
+}
+EOF
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	atf_check \
+		-o match:"^-r-sr-xr--.*a$" \
+		-o match:"^hr-sr-xr--.*a$" \
+		-e empty \
+		tar tvf ${TMPDIR}/test-1.txz
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check \
+		-o match:"^-r-sr-xr-- " \
+		-e empty \
+		-s exit:0 \
+		ls -l ${TMPDIR}/target${TMPDIR}/a
+
+	atf_check \
+		-o match:"^-r-sr-xr-- " \
+		-e empty \
+		-s exit:0 \
+		ls -l ${TMPDIR}/target${TMPDIR}/b
 }
