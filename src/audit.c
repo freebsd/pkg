@@ -313,6 +313,7 @@ exec_audit(int argc, char **argv)
 	else {
 		warnx("cannot process vulnxml");
 		ret = EX_SOFTWARE;
+		kh_destroy_pkgs(check);
 	}
 
 	pkg_audit_free(audit);
