@@ -5,7 +5,8 @@ tests_init \
 	basic \
 	basic_dirs \
 	setuid \
-	setuid_hardlinks
+	setuid_hardlinks \
+	chflags
 
 basic_body()
 {
@@ -165,4 +166,33 @@ EOF
 		-e empty \
 		-s exit:0 \
 		ls -l ${TMPDIR}/target${TMPDIR}/b
+}
+
+chflags_body()
+{
+	# use nodump as it is the only one supported as user, by zfs and by
+	# libarchive
+	touch ${TMPDIR}/a
+	chflags schg ${TMPDIR}/a
+	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	echo "@(,,,nodump) ${TMPDIR}/a" > test.plist
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl -p test.plist
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check \
+		-o match:"nodump" \
+		-e empty \
+		-s exit:0 \
+		ls -ol ${TMPDIR}/target${TMPDIR}/a
+
 }
