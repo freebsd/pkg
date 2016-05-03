@@ -213,8 +213,8 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	}
 #endif
 
-	if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
-	    AT_SYMLINK_NOFOLLOW) == -1) {
+	if (getenv("INSTALL_AS_USER") == NULL &&
+	    fchownat(fd, RELATIVE_PATH(path), uid, gid, AT_SYMLINK_NOFOLLOW) == -1) {
 		pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
 		return (EPKG_FATAL);
 	}
