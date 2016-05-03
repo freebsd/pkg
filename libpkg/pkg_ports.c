@@ -895,7 +895,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
 		args = malloc((spaces + 1)* sizeof(char *));
-		if (args != NULL) {
+		if (args == NULL) {
 			return (EPKG_FATAL);
 		}
 		tofree = buf = strdup(line);
