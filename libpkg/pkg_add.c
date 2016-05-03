@@ -182,6 +182,52 @@ get_gid_from_archive(struct archive_entry *ae)
 	return (grent.gr_gid);
 }
 
+static int
+set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
+    const struct timespec *ats, const struct timespec *mts)
+{
+
+	if (fchmodat(fd, RELATIVE_PATH(path), perm,
+	    AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+#ifdef HAVE_UTIMENSAT
+	struct timespec times[2];
+
+	times[0] = *ats;
+	times[1] = *mts;
+	if (utimensat(fd, RELATIVE_PATH(path), times,
+	    AT_SYMLINK_NOFOLLOW) == -1){
+		pkg_emit_error("Fail to set time on %s: %s", path,
+		    strerror(errno));
+		return (EPKG_FATAL);
+	}
+#else
+	struct timeval tv[2];
+
+	tv[0].tv_sec = ats->tv_sec;
+	tv[0].tv_usec = ats->tv_nsec / 1000;
+	tv[1].tv_sec = mts->tv_sec;
+	tv[1].tv_usec = mts->tv_nsec / 1000;
+
+	if (futimesat(fd, RELATIVE_PATH(path), &tv) == -1) {
+		pkg_emit_error("Fail to set time on %s: %s", path,
+		    strerror(errno));
+		return (EPKG_FATAL);
+	}
+#endif
+
+	if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
+	    AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
 /* In case of directories create the dir and extract the creds */
 static int
 do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry *ae,
@@ -200,17 +246,15 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	d->perm = aest->st_mode;
 	d->uid = get_uid_from_archive(ae);
 	d->gid = get_gid_from_archive(ae);
+	d->time[0].tv_sec = aest->st_atim.tv_sec;
+	d->time[0].tv_nsec = aest->st_atim.tv_nsec;
+	d->time[1].tv_sec = aest->st_mtim.tv_sec;
+	d->time[1].tv_nsec = aest->st_mtim.tv_nsec;
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
 	if (!mkdirat_p(pkg->rootfd, path))
 		return (EPKG_FATAL);
 
-	if (fchmodat(pkg->rootfd, RELATIVE_PATH(path), d->perm,
-	    AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_error("Fail to chmod %s: %s",
-		    path, strerror(errno));
-		return (EPKG_FATAL);
-	}
 	return (EPKG_OK);
 }
 
@@ -233,9 +277,6 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 		return (EPKG_FATAL);
 
 	aest = archive_entry_stat(ae);
-	f->perm = aest->st_mode;
-	f->uid = get_uid_from_archive(ae);
-	f->gid = get_gid_from_archive(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	strlcpy(f->temppath, path, sizeof(f->temppath));
@@ -246,10 +287,10 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 		    strerror(errno));
 		return (EPKG_FATAL);
 	}
-	if (fchmodat(pkg->rootfd, RELATIVE_PATH(f->temppath), f->perm,
-	    AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_error("Fail to chmod %s: %s",
-		    f->temppath, strerror(errno));
+
+	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
+	    get_uid_from_archive(ae), get_gid_from_archive(ae),
+	    &aest->st_atim, &aest->st_mtim) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
@@ -281,9 +322,6 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 		return (EPKG_FATAL);
 
 	aest = archive_entry_stat(ae);
-	f->perm = aest->st_mode;
-	f->uid = get_uid_from_archive(ae);
-	f->gid = get_gid_from_archive(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	strlcpy(f->temppath, path, sizeof(f->temppath));
@@ -294,13 +332,12 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 		    strerror(errno));
 		return (EPKG_FATAL);
 	}
-	if (fchmodat(pkg->rootfd, RELATIVE_PATH(f->temppath), f->perm,
-	    AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_error("Fail to chmod %s: %s",
-		    f->temppath, strerror(errno));
+
+	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
+	    get_uid_from_archive(ae), get_gid_from_archive(ae),
+	    &aest->st_atim, &aest->st_mtim) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
-
 	return (EPKG_OK);
 }
 
@@ -325,9 +362,6 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		return (EPKG_FATAL);
 
 	aest = archive_entry_stat(ae);
-	f->perm = aest->st_mode;
-	f->uid = get_uid_from_archive(ae);
-	f->gid = get_gid_from_archive(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	strlcpy(f->temppath, path, sizeof(f->temppath));
@@ -375,6 +409,10 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		return (EPKG_FATAL);
 	}
 
+	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
+	    get_uid_from_archive(ae), get_gid_from_archive(ae),
+	    &aest->st_atim, &aest->st_mtim) != EPKG_OK)
+		return (EPKG_FATAL);
 	return (EPKG_OK);
 }
 
@@ -508,13 +546,6 @@ pkg_extract_finalize(struct pkg *pkg)
 			return (EPKG_FATAL);
 		}
 
-		if (fchownat(pkg->rootfd, RELATIVE_PATH(fto), f->uid, f->gid,
-		    AT_SYMLINK_NOFOLLOW) == -1) {
-			pkg_emit_error("Fail to chown %s: %s",
-			    fto, strerror(errno));
-			return (EPKG_FATAL);
-		}
-
 		if (f->fflags != 0) {
 			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
 			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
@@ -526,12 +557,9 @@ pkg_extract_finalize(struct pkg *pkg)
 	}
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
-		if (fchownat(pkg->rootfd, RELATIVE_PATH(d->path), d->uid,
-		    d->gid, AT_SYMLINK_NOFOLLOW) == -1) {
-			pkg_emit_error("Fail to chown %s: %s",
-			    d->path, strerror(errno));
+		if (set_attrs(pkg->rootfd, d->path, d->perm, d->uid, d->gid,
+		    &d->time[0], &d->time[1]) != EPKG_OK)
 			return (EPKG_FATAL);
-		}
 	}
 
 	return (EPKG_OK);

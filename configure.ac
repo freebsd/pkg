@@ -398,6 +398,7 @@ if test "$ac_cv_func_statfs" = yes ; then
 fi
 
 AC_CHECK_FUNCS(chflags chflagsat)
+AC_CHECK_FUNCS(utimensat futimesat)
 
 AC_CHECK_FUNCS(basename_r)
 AC_CACHE_CHECK(for BSD basename(const char *),
