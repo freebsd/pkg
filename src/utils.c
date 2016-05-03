@@ -707,6 +707,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	it->new = new_pkg;
 	it->old = old_pkg;
 	it->solved_type = type;
+	it->display_type = PKG_DISPLAY_MAX;
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
 		it->display_type = PKG_DISPLAY_LOCKED;
