@@ -187,12 +187,6 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
     const struct timespec *ats, const struct timespec *mts)
 {
 
-	if (fchmodat(fd, RELATIVE_PATH(path), perm,
-	    AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
-		return (EPKG_FATAL);
-	}
-
 #ifdef HAVE_UTIMENSAT
 	struct timespec times[2];
 
@@ -222,6 +216,12 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
 	    AT_SYMLINK_NOFOLLOW) == -1) {
 		pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	/* zfs drops the setuid on fchownat */
+	if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
+		pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
 		return (EPKG_FATAL);
 	}
 
@@ -369,7 +369,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	/* Create the new temp file */
 	fd = openat(pkg->rootfd, RELATIVE_PATH(f->temppath),
-	    O_CREAT|O_WRONLY|O_EXCL, f->perm);
+	    O_CREAT|O_WRONLY|O_EXCL, aest->st_mode & ~S_IFMT);
 	if (fd == -1) {
 		pkg_emit_error("Fail to create temporary file: %s: %s",
 		    f->temppath, strerror(errno));
