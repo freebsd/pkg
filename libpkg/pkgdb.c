@@ -1150,32 +1150,23 @@ pkgdb_close(struct pkgdb *db)
 	    ++_sqlite_busy_retries, ret == SQLITE_BUSY && 		\
 	    sqlite3_sleep(BUSY_SLEEP))
 
-int
-pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint)
+static int
+run_transaction(sqlite3 *sqlite, const char *query, const char *savepoint)
 {
 	int		 ret;
 	sqlite3_stmt	*stmt;
-	const char *psql;
+	char *sql = NULL;
 
 	assert(sqlite != NULL);
 
-	if (savepoint == NULL || savepoint[0] == '\0') {
-		const char sql[] = "BEGIN IMMEDIATE TRANSACTION";
-		
-		psql = sql;
-		pkg_debug(4, "Pkgdb: running '%s'", sql);
-		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
-					 &stmt, NULL);
-	} else {
-		char sql[128] = "SAVEPOINT ";
-
-		strlcat(sql, savepoint, sizeof(sql));
-
-		psql = sql;
-		pkg_debug(4, "Pkgdb: running '%s'", sql);
-		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
-					 &stmt, NULL);
+	asprintf(&sql, "%s %s", query, savepoint != NULL ? savepoint : "");
+	if (sql == NULL) {
+		pkg_emit_error("out of memory");
+		return (EPKG_FATAL);
 	}
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1, &stmt, NULL);
 
 	if (ret == SQLITE_OK) {
 		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
@@ -1185,93 +1176,41 @@ pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, psql);
+		ERROR_SQLITE(sqlite, sql);
 	}
-
+	free(sql);
 	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+}
+
+int
+pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint)
+{
+
+	if (savepoint == NULL || savepoint[0] == '\0') {
+		return (run_transaction(sqlite, "BEGIN IMMEDIATE TRANSACTION",
+		    NULL));
+	}
+	return (run_transaction(sqlite, "SAVEPOINT", savepoint));
 }
 
 int
 pkgdb_transaction_commit_sqlite(sqlite3 *sqlite, const char *savepoint)
 {
-	int		 ret;
-	sqlite3_stmt	*stmt;
-	const char *psql;
-
-	assert(sqlite != NULL);
 
 	if (savepoint == NULL || savepoint[0] == '\0') {
-		const char sql[] = "COMMIT TRANSACTION";
-		psql = sql;
-
-		pkg_debug(4, "Pkgdb: running '%s'", sql);
-		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
-					 &stmt, NULL);
-	} else {
-		char sql[128] = "RELEASE SAVEPOINT ";
-
-		strlcat(sql, savepoint, sizeof(sql));
-
-		psql = sql;
-
-		pkg_debug(4, "Pkgdb: running '%s'", sql);
-		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
-					 &stmt, NULL);
+		return (run_transaction(sqlite, "COMMIT TRANSACTION", NULL));
 	}
-
-	if (ret == SQLITE_OK) {
-		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
-			ret = sqlite3_step(stmt);
-	}
-
-	sqlite3_finalize(stmt);
-
-	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, psql);
-	}
-
-	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+	return (run_transaction(sqlite, "RELEASE SAVEPOINT", savepoint));
 }
 
 int
 pkgdb_transaction_rollback_sqlite(sqlite3 *sqlite, const char *savepoint)
 {
-	int		 ret;
-	sqlite3_stmt	*stmt;
-	const char *psql;
-
-	assert(sqlite != NULL);
 
 	if (savepoint == NULL || savepoint[0] == '\0') {
-		const char sql[] = "ROLLBACK TRANSACTION";
-
-		psql = sql;
-		pkg_debug(4, "Pkgdb: running '%s'", sql);
-		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
-					 &stmt, NULL);
-	} else {
-		char sql[128] = "ROLLBACK TO SAVEPOINT ";
-
-		strlcat(sql, savepoint, sizeof(sql));
-
-		psql = sql;
-		pkg_debug(4, "Pkgdb: running '%s'", sql);
-		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
-					 &stmt, NULL);
+		return (run_transaction(sqlite, "ROLLBACK TRANSACTION", NULL));
 	}
-
-	if (ret == SQLITE_OK) {
-		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
-			ret = sqlite3_step(stmt);
-	}
-
-	sqlite3_finalize(stmt);
-
-	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, psql);
-	}
-
-	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+	return (run_transaction(sqlite, "ROLLBACK TO SAVEPOINT", savepoint));
 }
 
 /*
