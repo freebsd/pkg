@@ -16,7 +16,10 @@ tests_init()
 	TESTS="$@"
 	export TESTS
 	for t; do
-		atf_test_case $t
+		case " ${CLEANUP:-ENOCLEANUP} " in
+		*\ $t\ *) atf_test_case $t cleanup ;;
+		*) atf_test_case $t ;;
+		esac
 	done
 }
 

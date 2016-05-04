@@ -1,12 +1,15 @@
 #!/usr/bin/env atf-sh
 
 . $(atf_get_srcdir)/test_environment.sh
+CLEANUP=chflags_schg
 tests_init \
 	basic \
 	basic_dirs \
 	setuid \
 	setuid_hardlinks \
-	chflags
+	chflags \
+	chflags_schg
+
 
 basic_body()
 {
@@ -170,11 +173,10 @@ EOF
 
 chflags_body()
 {
-	test -x /sbin/chflags || atf_skip "Requires chflags"
+	test -x /bin/chflags || atf_skip "Requires chflags"
 	# use nodump as it is the only one supported as user, by zfs and by
 	# libarchive
 	touch ${TMPDIR}/a
-	chflags schg ${TMPDIR}/a
 	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
 	echo "@(,,,nodump) ${TMPDIR}/a" > test.plist
 	atf_check \
@@ -196,4 +198,44 @@ chflags_body()
 		-s exit:0 \
 		ls -ol ${TMPDIR}/target${TMPDIR}/a
 
+}
+
+chflags_schg_body()
+{
+	test -x /bin/chflags || atf_skip "Requires chflags"
+	test $(id -u) = 0 || atf_skip "Can only be run as root"
+
+	touch ${TMPDIR}/a
+	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	echo "@(root,wheel,,schg) ${TMPDIR}/a" > test.plist
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl -p test.plist
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check \
+		-o match:"schg" \
+		-e empty \
+		-s exit:0 \
+		ls -ol ${TMPDIR}/target${TMPDIR}/a
+
+	# reinstall to for removal
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+}
+
+chflags_schg_cleanup()
+{
+	chflags -R noschg ${TMPDIR}
 }
