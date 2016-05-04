@@ -170,6 +170,7 @@ EOF
 
 chflags_body()
 {
+	test -x /sbin/chflags || atf_skip "Requires chflags"
 	# use nodump as it is the only one supported as user, by zfs and by
 	# libarchive
 	touch ${TMPDIR}/a
