@@ -860,11 +860,13 @@ pkg_audit_load(struct pkg_audit *audit, const char *fname)
 	void *mem;
 	struct stat st;
 
-	if (stat(fname, &st) == -1)
-		return (EPKG_FATAL);
-
 	if ((fd = open(fname, O_RDONLY)) == -1)
 		return (EPKG_FATAL);
+
+	if (fstat(fd, &st) == -1) {
+		close(fd);
+		return (EPKG_FATAL);
+	}
 
 	if ((mem = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED) {
 		close(fd);
