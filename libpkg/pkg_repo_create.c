@@ -544,6 +544,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				assert(dig->origin != NULL);
 				assert(dig->digest != NULL);
 				DL_APPEND(*dlist, dig);
+				state = s_set_origin;
 				start = i + 1;
 				break;
 			}
