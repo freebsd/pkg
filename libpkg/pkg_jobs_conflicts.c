@@ -121,6 +121,7 @@ pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_jo
 	elt = calloc(1, sizeof(struct pkg_conflict_chain));
 	if (elt == NULL) {
 		pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
+		return;
 	}
 	elt->req = req;
 	LL_PREPEND(*chain, elt);
