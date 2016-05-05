@@ -572,7 +572,7 @@ cleanup:
 			rc = EPKG_FATAL;
 	}
 	/* restore the previous db in case of failures */
-	if (rc != EPKG_OK) {
+	if (rc != EPKG_OK && rc != EPKG_UPTODATE) {
 		unlink(name);
 		rename(path, name);
 	}
