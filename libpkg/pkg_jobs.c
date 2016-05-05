@@ -1985,14 +1985,13 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	DL_FOREACH(j->jobs, ps) {
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
+		case PKG_SOLVED_UPGRADE_REMOVE:
 			p = ps->items[0]->pkg;
 			if (ps->type == PKG_SOLVED_DELETE && p->vital && ((flags & PKG_DELETE_FORCE) == 0)) {
 				pkg_emit_error("Cannot delete vital pkg: %s!", p->name);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			/* FALLTHROUGH*/
-		case PKG_SOLVED_UPGRADE_REMOVE:
 			if (ps->type == PKG_SOLVED_DELETE &&
 			    (strcmp(p->name, "pkg") == 0 ||
 			    strcmp(p->name, "pkg-devel") == 0) &&
