@@ -275,6 +275,7 @@ exec_audit(int argc, char **argv)
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);
+		kh_destroy_pkgs(check);
 		return (EPKG_FATAL);
 	}
 #endif

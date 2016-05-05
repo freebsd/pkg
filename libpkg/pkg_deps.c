@@ -379,6 +379,8 @@ pkg_deps_parse_formula(const char *in)
 	if (state != st_skip_spaces && state != st_parse_comma) {
 		pkg_emit_error("cannot parse pkg formula: %s", in);
 		pkg_deps_formula_free(res);
+		free(cur_item->name);
+		free(cur_item);
 
 		return (NULL);
 	}
