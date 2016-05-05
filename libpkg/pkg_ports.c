@@ -289,7 +289,6 @@ dir(struct plist *p, char *line, struct file_attr *a)
 			    p->perm, 0, true);
 	}
 
-	free_file_attr(a);
 	return (ret);
 }
 
