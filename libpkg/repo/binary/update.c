@@ -119,10 +119,9 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 		}
 	}
 	else {
+		ret = EPKG_OK;
 		if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) != SQLITE_DONE)
 			ret = EPKG_FATAL;
-
-		ret = EPKG_OK;
 	}
 
 cleanup:
