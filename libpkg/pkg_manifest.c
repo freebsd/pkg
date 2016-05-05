@@ -1013,6 +1013,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->pkgsize > 0)
 		ucl_object_insert_key(top, ucl_object_fromint(pkg->pkgsize), "pkgsize", 7, false);
 
+	if (pkg->vital)
+		ucl_object_insert_key(top, ucl_object_frombool(pkg->vital), "vital", 5, false);
+
 	if (pkg->desc != NULL) {
 		urlencode(pkg->desc, &tmpsbuf);
 		ucl_object_insert_key(top,
