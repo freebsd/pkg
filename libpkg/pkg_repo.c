@@ -929,13 +929,14 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 	/* Map meta file for extracting pubkeys from it */
-	if (stat(filepath, &st) == -1) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
+	if ((fd = open(filepath, O_RDONLY)) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
-	if ((fd = open(filepath, O_RDONLY)) == -1) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
+
+	if (fstat(fd, &st) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
