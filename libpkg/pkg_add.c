@@ -533,10 +533,12 @@ pkg_extract_finalize(struct pkg *pkg)
 		 */
 		if (fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
 		    AT_SYMLINK_NOFOLLOW) != -1) {
+#ifdef HAVE_CHFLAGSAT
 			if (st.st_flags & NOCHANGESFLAGS) {
 				chflagsat(pkg->rootfd, RELATIVE_PATH(fto), 0,
 				    AT_SYMLINK_NOFOLLOW);
 			}
+#endif
 			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
 		}
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
@@ -546,6 +548,7 @@ pkg_extract_finalize(struct pkg *pkg)
 			return (EPKG_FATAL);
 		}
 
+#ifdef HAVE_CHFLAGSAT
 		if (f->fflags != 0) {
 			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
 			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
@@ -554,6 +557,7 @@ pkg_extract_finalize(struct pkg *pkg)
 				return (EPKG_FATAL);
 			}
 		}
+#endif
 	}
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
