@@ -2055,7 +2055,7 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 #define MAXSCALE	7
 
 	const char	 *bin_pfx[MAXSCALE] =
-		{ "", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei" }; 
+		{ "", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei" };
 	const char	 *si_pfx[MAXSCALE] =
 		{ "", "k", "M", "G", "T", "P", "E" };
 	char		 format[16];
@@ -2082,6 +2082,9 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 			break;
 		num /= divisor;
 	}
+
+	if (scale == MAXSCALE)
+		scale--;
 
 	if (scale == 0)
 		scale_width = 0;
