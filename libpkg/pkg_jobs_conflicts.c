@@ -169,9 +169,9 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	struct pkg_conflict *c1, *c2, *test;
 
 	pkg_conflict_new(&c1);
-	pkg_conflict_new(&c2);
 	if (c1 == NULL)
 		return;
+	pkg_conflict_new(&c2);
 	if (c2 == NULL) {
 		pkg_conflict_free(c1);
 		return;
