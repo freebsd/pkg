@@ -1867,7 +1867,7 @@ again:
 				j->jobs = NULL;
 				j->count = 0;
 				has_conflicts = true;
-				rc = pkg_jobs_solve(j);
+				pkg_jobs_solve(j);
 			}
 			else if (rc == EPKG_OK && !has_conflicts) {
 				break;
