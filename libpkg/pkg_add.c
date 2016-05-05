@@ -220,7 +220,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	}
 
 	/* zfs drops the setuid on fchownat */
-	if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
+	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
 		pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
 		return (EPKG_FATAL);
 	}

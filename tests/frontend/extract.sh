@@ -8,8 +8,8 @@ tests_init \
 	setuid \
 	setuid_hardlinks \
 	chflags \
-	chflags_schg
-
+	chflags_schg \
+	symlinks
 
 basic_body()
 {
@@ -238,4 +238,29 @@ chflags_schg_body()
 chflags_schg_cleanup()
 {
 	chflags -R noschg ${TMPDIR}
+}
+
+symlinks_body()
+{
+	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	cat << EOF >> test.ucl
+files: {
+${TMPDIR}/a = "";
+}
+EOF
+
+	ln -sf nothing a
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 }
