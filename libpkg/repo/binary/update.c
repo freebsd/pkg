@@ -58,7 +58,6 @@ pkg_repo_binary_init_update(struct pkg_repo *repo, const char *name)
 					"CREATE TABLE IF NOT EXISTS repo_update (n INT);";
 
 	/* [Re]create repo */
-	unlink(name);
 	if (repo->ops->create(repo) != EPKG_OK) {
 		pkg_emit_notice("Unable to create repository %s", repo->name);
 		return (EPKG_FATAL);
@@ -450,6 +449,18 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 	free(linebuf);
 }
 
+static void
+rollback_repo(void *data)
+{
+	const char *name = (const char *)data;
+	char path[MAXPATHLEN];
+
+	snprintf(path, sizeof(path), "%s-pkgtemp", name);
+	unlink(name);
+	rename(path, name);
+	snprintf(path, sizeof(path), "%s-journal", name);
+	unlink(path);
+}
 static int
 pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
@@ -464,6 +475,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	unsigned char *map = MAP_FAILED;
 	size_t len = 0;
 	bool in_trans = false;
+	char path[MAXPATHLEN];
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -490,6 +502,9 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			&rc, repo_conflicts_file);*/
 
 	/* Load local repository data */
+	snprintf(path, sizeof(path), "%s-pkgtemp", name);
+	rename(name, path);
+	pkg_register_cleanup_callback(rollback_repo, (void *)name);
 	rc = pkg_repo_binary_init_update(repo, name);
 	if (rc != EPKG_OK) {
 		rc = EPKG_FATAL;
@@ -556,6 +571,13 @@ cleanup:
 		if (pkgdb_transaction_commit_sqlite(sqlite, "REPO") != EPKG_OK)
 			rc = EPKG_FATAL;
 	}
+	/* restore the previous db in case of failures */
+	if (rc != EPKG_OK) {
+		unlink(name);
+		rename(path, name);
+	}
+	unlink(path);
+	pkg_register_cleanup_callback(rollback_repo, (void *)name);
 	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
 	if (map != NULL && map != MAP_FAILED)
