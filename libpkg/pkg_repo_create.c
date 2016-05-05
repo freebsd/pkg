@@ -476,6 +476,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 	} state = 0;
 
 	for (;;) {
+		dig = NULL;
 		r = read(fd, buf, sizeof(buf));
 
 		if (r == -1) {
@@ -547,6 +548,9 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				break;
 			}
 			else if (buf[i] == '.' && buf[i + 1] == '\n') {
+				if (dig != NULL)
+					free(dig->origin);
+				free(dig);
 				return (EPKG_END);
 			}
 		}
