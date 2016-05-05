@@ -170,25 +170,34 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 
 	pkg_conflict_new(&c1);
 	pkg_conflict_new(&c2);
-	if (c1 != NULL && c2 != NULL) {
-		c1->type = c2->type = type;
-		HASH_FIND_STR(p1->conflicts, p2->uid, test);
-		if (test == NULL) {
-			c1->uid = strdup(p2->uid);
-			HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
-			pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
-					p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
-					p2->uid, p2->type == PKG_INSTALLED ? "l" : "r");
-		}
+	if (c1 == NULL)
+		return;
+	if (c2 == NULL) {
+		pkg_conflict_free(c1);
+		return;
+	}
 
-		HASH_FIND_STR(p2->conflicts, p1->uid, test);
-		if (test == NULL) {
-			c1->uid = strdup(p1->uid);
-			HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
-			pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
-					p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
-					p1->uid, p1->type == PKG_INSTALLED ? "l" : "r");
-		}
+	c1->type = c2->type = type;
+	HASH_FIND_STR(p1->conflicts, p2->uid, test);
+	if (test == NULL) {
+		c1->uid = strdup(p2->uid);
+		HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
+		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
+				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
+				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r");
+	} else {
+		pkg_conflict_free(c1);
+	}
+
+	HASH_FIND_STR(p2->conflicts, p1->uid, test);
+	if (test == NULL) {
+		c2->uid = strdup(p1->uid);
+		HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
+		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
+				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
+				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r");
+	} else {
+		pkg_conflict_free(c2);
 	}
 }
 
