@@ -907,29 +907,30 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* Update configuration file content with db with newer versions */
 	pkgdb_update_config_file_content(pkg, db->sqlite);
 
+	retcode = pkg_extract_finalize(pkg);
+cleanup_reg:
+	pkgdb_register_finale(db, retcode);
 	/*
 	 * Execute post install scripts
 	 */
-	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
-			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
-		else
-			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+
+	if (retcode == EPKG_OK) {
+		if ((flags & PKG_ADD_NOSCRIPT) == 0) {
+			if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
+				pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
+			else
+				pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+		}
+
+		/*
+		 * start the different related services if the users do want that
+		 * and that the service is running
+		 */
+
+		handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
+		if (handle_rc)
+			pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 	}
-
-	/*
-	 * start the different related services if the users do want that
-	 * and that the service is running
-	 */
-
-	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-	if (handle_rc)
-		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
-
-	retcode = pkg_extract_finalize(pkg);
-
-cleanup_reg:
-	pkgdb_register_finale(db, retcode);
 
 	if (retcode == EPKG_OK) {
 		if ((flags & PKG_ADD_UPGRADE) == 0)
