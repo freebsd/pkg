@@ -218,7 +218,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
 	tmpfd = dup(fd);
 	d = fdopendir(tmpfd);
 	if (d == NULL) {
-		close(fmpfd);
+		close(tmpfd);
 		warnx("Impossible to open the directory %s", dir);
 		return (0);
 	}
