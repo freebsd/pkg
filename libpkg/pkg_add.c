@@ -399,6 +399,9 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		    path, archive_error_string(a));
 		return (EPKG_FATAL);
 	}
+	if (fd != -1) {
+		close(fd);
+	}
 
 	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 	    get_uid_from_archive(ae), get_gid_from_archive(ae),
@@ -930,9 +933,7 @@ cleanup_reg:
 		handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 		if (handle_rc)
 			pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
-	}
 
-	if (retcode == EPKG_OK) {
 		if ((flags & PKG_ADD_UPGRADE) == 0)
 			pkg_emit_install_finished(pkg, local);
 		else {
