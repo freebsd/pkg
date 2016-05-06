@@ -301,8 +301,6 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
     const char *path, struct pkg *local __unused)
 {
 	struct pkg_file *f, *fh;
-	const struct stat *aest;
-	unsigned long clear;
 	const char *lp;
 
 	f = pkg_get_file(pkg, path);
@@ -321,9 +319,6 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
 		return (EPKG_FATAL);
 
-	aest = archive_entry_stat(ae);
-	archive_entry_fflags(ae, &f->fflags, &clear);
-
 	strlcpy(f->temppath, path, sizeof(f->temppath));
 	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
@@ -333,11 +328,6 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 		return (EPKG_FATAL);
 	}
 
-	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
-	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &aest->st_atim, &aest->st_mtim) != EPKG_OK) {
-		return (EPKG_FATAL);
-	}
 	return (EPKG_OK);
 }
 
