@@ -868,8 +868,8 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 		pkg_printf("\t%n-%v ", it->new, it->new);
-		printf("(%.2f%% of %s: %s)\n", ((double)100 * pkgsize) / (double)dlsize,
-				tlsize, size);
+		printf("(%s: %.2f%% of the %s to download)\n", size,
+		    ((double)100 * pkgsize) / (double)dlsize, tlsize);
 		break;
 	default:
 		break;
