@@ -929,9 +929,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	if (path == NULL)
-		path = PREFIX"/etc/pkg.conf" + 1;
-
-	conffd = openat(rootfd, path, O_RDONLY);
+		conffd = openat(rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
+	else
+		conffd = open(path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {
 		pkg_emit_error("Cannot open %s/%s: %s",
 		    pkg_rootdir != NULL ? pkg_rootdir : "",

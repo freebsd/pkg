@@ -32,7 +32,8 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy \
+			${TMPDIR}/test-1.txz
 
 OUTPUT="${TMPDIR}/target/local.sqlite
 ${TMPDIR}/target${TMPDIR}/a
@@ -55,7 +56,8 @@ ${TMPDIR}/target${TMPDIR}/a
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 
 	atf_check \
 		-o inline:"${OUTPUT}" \
@@ -86,7 +88,8 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 
 	test -d ${TMPDIR}/target${TMPDIR}/plop || atf_fail "directory not extracted"
 }
@@ -117,7 +120,8 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
@@ -156,7 +160,8 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null  -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
@@ -190,7 +195,8 @@ chflags_body()
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+		    ${TMPDIR}/test-1.txz
 
 	atf_check \
 		-o match:"nodump" \
@@ -219,7 +225,8 @@ chflags_schg_body()
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 
 	atf_check \
 		-o match:"schg" \
@@ -232,7 +239,8 @@ chflags_schg_body()
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 }
 
 chflags_schg_cleanup()
@@ -262,5 +270,6 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 }

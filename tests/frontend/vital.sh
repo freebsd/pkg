@@ -29,13 +29,14 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+			${TMPDIR}/test-1.txz
 
 	atf_check \
 		-o inline:"1\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -r ${TMPDIR}/target query "%V" test
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target query "%V" test
 
 	atf_check \
 		-o empty \
