@@ -828,7 +828,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
-	const char *default_path = PREFIX"/etc/pkg.conf" + 1;
 
 	k = NULL;
 	o = NULL;
@@ -915,24 +914,13 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			if (c[i].def != NULL) {
 				walk = buf = c[i].def;
 				while ((buf = strchr(buf, ',')) != NULL) {
-					tmp = NULL;
-					if (*walk == '/' && pkg_rootdir != NULL) {
-						asprintf(&tmp, "%s%.*s", pkg_rootdir, (int)(buf - walk), walk);
-					}
 					ucl_array_append(obj,
-					    ucl_object_fromstring_common(tmp != NULL ? tmp : walk,
-						    tmp != NULL ? 0 : buf - walk, UCL_STRING_TRIM));
+					    ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
 					buf++;
 					walk = buf;
-					free(tmp);
-				}
-				tmp = NULL;
-				if (*walk == '/' && pkg_rootdir != NULL) {
-					asprintf(&tmp, "%s%s", pkg_rootdir, walk);
 				}
 				ucl_array_append(obj,
-				    ucl_object_fromstring_common(tmp, 0, UCL_STRING_TRIM));
-				free(tmp);
+				    ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
 			}
 			ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
@@ -940,8 +928,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 	}
 
-	conffd = openat(path == NULL ? rootfd : AT_FDCWD,
-	    path == NULL ? default_path : path, O_RDONLY);
+	if (path == NULL)
+		path = PREFIX"/etc/pkg.conf" + 1;
+
+	conffd = openat(rootfd, path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {
 		pkg_emit_error("Cannot open %s/%s: %s",
 		    pkg_rootdir != NULL ? pkg_rootdir : "",
