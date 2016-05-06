@@ -70,11 +70,12 @@ typedef kvec_t(char *) dl_list;
 #define ALL		(1U<<4)
 
 static size_t
-add_to_dellist(int fd, dl_list *dl,  const char *path)
+add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
 {
 	static bool first_entry = true;
 	struct stat st;
 	char *store_path;
+	const char *relpath;
 	size_t sz = 0;
 
 	assert(path != NULL);
@@ -90,7 +91,8 @@ add_to_dellist(int fd, dl_list *dl,  const char *path)
 		printf("\t%s\n", store_path);
 	}
 
-	if (fstatat(fd, path, &st, AT_SYMLINK_NOFOLLOW) != -1 && S_ISREG(st.st_mode))
+	relpath = path + strlen(cachedir) + 1;
+	if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) != -1 && S_ISREG(st.st_mode))
 		sz = st.st_size;
 	kv_push(char *, *dl, store_path);
 
@@ -203,8 +205,9 @@ extract_filename_sum(const char *fname, char sum[])
 }
 
 static int
-recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
-    kh_sum_t **sumlist, bool all, size_t *total)
+recursive_analysis(int fd, struct pkgdb *db, const char *dir,
+    const char *cachedir, dl_list *dl, kh_sum_t **sumlist, bool all,
+    size_t *total)
 {
 	DIR *d;
 	struct dirent *ent;
@@ -237,9 +240,9 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
 				    path);
 				continue;
 			}
-			if (recursive_analysis(newfd, db, path, dl, sumlist,
-			    all, total) == 0 || all) {
-				add_to_dellist(fd, dl, path);
+			if (recursive_analysis(newfd, db, path, cachedir, dl,
+			    sumlist, all, total) == 0 || all) {
+				add_to_dellist(fd, dl, cachedir, path);
 				added++;
 			}
 			close(newfd);
@@ -249,7 +252,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
 			continue;
 		nbfiles++;
 		if (all) {
-			*total += add_to_dellist(fd, dl, path);
+			*total += add_to_dellist(fd, dl, cachedir, path);
 			continue;
 		}
 		if (*sumlist == NULL) {
@@ -272,7 +275,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
 			k = kh_get_sum(*sumlist, csum);
 		if (k == kh_end(*sumlist)) {
 			added++;
-			*total += add_to_dellist(fd, dl, path);
+			*total += add_to_dellist(fd, dl, cachedir, path);
 		}
 	}
 	closedir(d);
@@ -394,7 +397,8 @@ exec_clean(int argc, char **argv)
 	/* Build the list of out-of-date or obsolete packages */
 
 	pkg_manifest_keys_new(&keys);
-	recursive_analysis(cachefd, db, cachedir, &dl, &sumlist, all, &total);
+	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
+	    &total);
 	if (sumlist != NULL) {
 		kh_foreach_value(sumlist, cksum, free(cksum));
 		kh_destroy_sum(sumlist);
