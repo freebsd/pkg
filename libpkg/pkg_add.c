@@ -206,7 +206,8 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	tv[1].tv_sec = mts->tv_sec;
 	tv[1].tv_usec = mts->tv_nsec / 1000;
 
-	if (futimesat(fd, RELATIVE_PATH(path), &tv) == -1) {
+	fchdir(fd);
+	if (lutimes(RELATIVE_PATH(path), &tv) == -1) {
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
