@@ -207,7 +207,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
 {
 	DIR *d;
 	struct dirent *ent;
-	int newfd;
+	int newfd, tmpfd;
 	char path[MAXPATHLEN], csum[PKG_FILE_CKSUM_CHARS + 1],
 		link_buf[MAXPATHLEN];
 	const char *name;
@@ -215,8 +215,10 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir, dl_list *dl,
 	size_t nbfiles = 0, added = 0;
 	khint_t k;
 
-	d = fdopendir(dup(fd));
+	tmpfd = dup(fd);
+	d = fdopendir(tmpfd);
 	if (d == NULL) {
+		close(fmpfd);
 		warnx("Impossible to open the directory %s", dir);
 		return (0);
 	}
@@ -343,22 +345,28 @@ exec_clean(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to clean old packages");
+		close(cachefd);
 		return (EX_NOPERM);
 	} else if (retcode == EPKG_ENODB) {
 		warnx("No package database installed.  Nothing to do!");
+		close(cachefd);
 		return (EX_OK);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
+		close(cachefd);
 		return (EX_SOFTWARE);
 	}
 
 	retcode = EX_SOFTWARE;
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+		close(cachefd);
 		return (EX_IOERR);
+	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
+		close(cachefd);
 		warnx("Cannot get a read lock on a database, it is locked by "
 		    "another process");
 		return (EX_TEMPFAIL);
