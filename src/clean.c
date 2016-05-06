@@ -135,6 +135,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 			retcode = EX_SOFTWARE;
 		}
 		free(file);
+		kv_A(*dl, i) = NULL;
 		++processed;
 		progressbar_tick(processed, total);
 	}
