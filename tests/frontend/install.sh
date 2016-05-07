@@ -7,20 +7,7 @@ tests_init \
 
 reinstall_body()
 {
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
-
+	new_pkg test test test /usr/local
 
 	atf_check \
 		-o ignore \
