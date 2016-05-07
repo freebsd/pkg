@@ -337,7 +337,7 @@ _pkg() {
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
 				'(-f --force)'{-f,--force}'[force reinstallation if needed]' \
-				'(-R --from-root)'{-R,--from-root}'[reinstall every package depending on matching expressions]' \
+				'(-R --recursive)'{-R,--recursive}'[reinstall every package depending on matching expressions]' \
 				'*:available package:_pkg_available' \
 				- '(all)' \
 				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \

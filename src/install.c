@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
@@ -82,7 +82,7 @@ exec_install(int argc, char **argv)
 		{ "dry-run",		no_argument,		NULL,	'n' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
-		{ "from-root",		no_argument,		NULL,   'R' },
+		{ "recursive",		no_argument,		NULL,   'R' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
