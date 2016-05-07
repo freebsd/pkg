@@ -7,7 +7,7 @@ tests_init \
 
 reinstall_body()
 {
-	new_pkg test test test /usr/local
+	new_pkg test test 1 /usr/local
 
 	atf_check \
 		-o ignore \
