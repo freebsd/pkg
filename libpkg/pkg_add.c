@@ -659,7 +659,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	fromstdin = (strcmp(path, "-") == 0);
 	strlcpy(bd, path, sizeof(bd));
 	if (!fromstdin) {
-		basedir = dirname(bd);
+		basedir = bsd_dirname(bd);
+		strlcpy(bd, basedir, sizeof(bd));
 		if ((ext = strrchr(path, '.')) == NULL) {
 			pkg_emit_error("%s has no extension", path);
 			return (EPKG_FATAL);
@@ -681,7 +682,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		}
 
 		if (dep->version != NULL && dep->version[0] != '\0') {
-			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
+			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", bd,
 				dep->name, dep->version, ext);
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 &&
@@ -697,7 +698,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 					goto cleanup;
 			}
 		} else {
-			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", basedir,
+			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", bd,
 			    dep->name, ext);
 			ppath = pkg_globmatch(dpath, dep->name);
 			if (ppath == NULL) {
