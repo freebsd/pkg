@@ -872,14 +872,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
-	if (local != NULL) {
-		pkg_debug(1, "Cleaning up old version");
-		if (pkg_add_cleanup_old(db, local, pkg, flags) != EPKG_OK) {
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
 	/*
 	 * Execute pre-install scripts
 	 */
@@ -906,6 +898,15 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			goto cleanup_reg;
 		}
 	}
+
+	if (local != NULL) {
+		pkg_debug(1, "Cleaning up old version");
+		if (pkg_add_cleanup_old(db, local, pkg, flags) != EPKG_OK) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+
 
 	/* Update configuration file content with db with newer versions */
 	pkgdb_update_config_file_content(pkg, db->sqlite);
