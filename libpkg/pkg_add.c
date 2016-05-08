@@ -615,6 +615,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
+	bool	fromstdin;
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
@@ -651,8 +652,9 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	 * reading from a file descriptor or a unix domain socket or
 	 * whatever, there's no valid directory to search.
 	 */
+	fromstdin = (strcmp(path, "-") == 0);
 	strlcpy(bd, path, sizeof(bd));
-	if (strncmp(path, "-", 2) != 0) {
+	if (!fromstdin) {
 		basedir = dirname(bd);
 		if ((ext = strrchr(path, '.')) == NULL) {
 			pkg_emit_error("%s has no extension", path);
@@ -667,7 +669,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
 
-		if (basedir == NULL) {
+		if (fromstdin) {
 			pkg_emit_missing_dep(pkg, dep);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
