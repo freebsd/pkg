@@ -193,7 +193,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	times[0] = *ats;
 	times[1] = *mts;
 	if (utimensat(fd, RELATIVE_PATH(path), times,
-	    AT_SYMLINK_NOFOLLOW) == -1){
+	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EPERM){
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
@@ -210,7 +210,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	if (getcwd(saved_cwd, sizeof(saved_cwd)) == NULL)
 		saved_cwd[0] = '\0';
 	fchdir(fd);
-	if (lutimes(RELATIVE_PATH(path), &tv) == -1) {
+	if (lutimes(RELATIVE_PATH(path), &tv) == -1 && errno != EPERM) {
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
