@@ -184,7 +184,7 @@ get_gid_from_archive(struct archive_entry *ae)
 
 static int
 set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
-    const struct timespec *ats, const struct timespec *mts)
+    const struct timespec *ats, const struct timespec *mts, bool timefail)
 {
 
 #ifdef HAVE_UTIMENSAT
@@ -193,7 +193,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	times[0] = *ats;
 	times[1] = *mts;
 	if (utimensat(fd, RELATIVE_PATH(path), times,
-	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EPERM){
+	    AT_SYMLINK_NOFOLLOW) == -1 && !timefail){
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
@@ -210,7 +210,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	if (getcwd(saved_cwd, sizeof(saved_cwd)) == NULL)
 		saved_cwd[0] = '\0';
 	fchdir(fd);
-	if (lutimes(RELATIVE_PATH(path), &tv) == -1 && errno != EPERM) {
+	if (lutimes(RELATIVE_PATH(path), &tv) == -1 && !timefail) {
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
@@ -295,7 +295,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 
 	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &aest->st_atim, &aest->st_mtim) != EPKG_OK) {
+	    &aest->st_atim, &aest->st_mtim, true) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
@@ -409,7 +409,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &aest->st_atim, &aest->st_mtim) != EPKG_OK)
+	    &aest->st_atim, &aest->st_mtim, true) != EPKG_OK)
 		return (EPKG_FATAL);
 	return (EPKG_OK);
 }
@@ -560,7 +560,7 @@ pkg_extract_finalize(struct pkg *pkg)
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (set_attrs(pkg->rootfd, d->path, d->perm, d->uid, d->gid,
-		    &d->time[0], &d->time[1]) != EPKG_OK)
+		    &d->time[0], &d->time[1], false) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
