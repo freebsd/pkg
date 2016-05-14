@@ -252,7 +252,6 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	size_t numdyn = 0;
 	size_t sh_link = 0;
 	size_t dynidx;
-	const char *osname;
 	const char *myarch;
 	const char *shlib;
 
@@ -262,7 +261,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	int fd;
 
-	pkg_debug(1, "analysing elf");
+	pkg_debug(1, "analysing elf %s", fpath);
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */
@@ -283,6 +282,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	if (elf_kind(e) != ELF_K_ELF) {
 		/* Not an elf file: no results */
 		ret = EPKG_END;
+		pkg_debug(1, "not an elf");
 		goto cleanup;
 	}
 
@@ -297,6 +297,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	if (elfhdr.e_type != ET_DYN && elfhdr.e_type != ET_EXEC &&
 	    elfhdr.e_type != ET_REL) {
+		pkg_debug(1, "not an elf");
 		ret = EPKG_END;
 		goto cleanup;
 	}
@@ -346,27 +347,10 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* Invalid ABI */
 	}
 
-	if (note != NULL) {
-		if ((data = elf_getdata(note, NULL)) == NULL) {
-			ret = EPKG_END; /* Some error occurred, ignore this file */
-			goto cleanup;
-		}
-		if (data->d_buf == NULL) {
-			ret = EPKG_END; /* No osname available */
-			goto cleanup;
-		}
-		osname = (const char *) data->d_buf + sizeof(Elf_Note);
-		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0 &&
-		    strncasecmp(osname, "dragonfly", sizeof("dragonfly")) != 0) {
-			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-			goto cleanup;
-		}
-	} else {
-		if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
-		    !is_old_freebsd_armheader(&elfhdr)) {
-			ret = EPKG_END;
-			goto cleanup;
-		}
+	if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
+	    !is_old_freebsd_armheader(&elfhdr)) {
+		ret = EPKG_END;
+		goto cleanup;
 	}
 
 	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
@@ -530,7 +514,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			if ((lib = strstr(file->path, sh)) != NULL &&
 			    strlen(lib) == strlen(sh) && lib[-1] == '/') {
 				pkg_debug(2, "remove %s from required shlibs as "
-				    "the package %s provides this library itself",
+				    "the package %s provides this file itself",
 				    sh, pkg->name);
 				k = kh_get_strings(pkg->shlibs_required, sh);
 				kh_del_strings(pkg->shlibs_required, k);
