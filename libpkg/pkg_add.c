@@ -925,74 +925,74 @@ cleanup_reg:
 	 * Execute post install scripts
 	 */
 
-	if (retcode == EPKG_OK) {
-		if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-			if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
-				pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
-			else
-				pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
-		}
+	if (retcode != EPKG_OK)
+		goto cleanup;
+	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
+		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
+			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
+		else
+			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+	}
 
-		/*
-		 * start the different related services if the users do want that
-		 * and that the service is running
-		 */
+	/*
+	 * start the different related services if the users do want that
+	 * and that the service is running
+	 */
 
-		handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-		if (handle_rc)
-			pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
+	if (handle_rc)
+		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
-		if ((flags & PKG_ADD_UPGRADE) == 0)
+	if ((flags & PKG_ADD_UPGRADE) == 0)
+		pkg_emit_install_finished(pkg, local);
+	else {
+		if (local != NULL)
+			pkg_emit_upgrade_finished(pkg, local);
+		else
 			pkg_emit_install_finished(pkg, local);
-		else {
-			if (local != NULL)
-				pkg_emit_upgrade_finished(pkg, local);
-			else
-				pkg_emit_install_finished(pkg, local);
-		}
+	}
 
-		if (pkg->message != NULL)
-			message = sbuf_new_auto();
-		LL_FOREACH(pkg->message, msg) {
-			msgstr = NULL;
-			if (msg->type == PKG_MESSAGE_ALWAYS) {
+	if (pkg->message != NULL)
+		message = sbuf_new_auto();
+	LL_FOREACH(pkg->message, msg) {
+		msgstr = NULL;
+		if (msg->type == PKG_MESSAGE_ALWAYS) {
+			msgstr = msg->str;
+		} else if (local != NULL &&
+		     msg->type == PKG_MESSAGE_UPGRADE) {
+			if (msg->maximum_version == NULL &&
+			    msg->minimum_version == NULL) {
 				msgstr = msg->str;
-			} else if (local != NULL &&
-			     msg->type == PKG_MESSAGE_UPGRADE) {
-				if (msg->maximum_version == NULL &&
-				    msg->minimum_version == NULL) {
-					msgstr = msg->str;
-				} else if (msg->maximum_version == NULL) {
-					if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
-						msgstr = msg->str;
-					}
-				} else if (msg->minimum_version == NULL) {
-					if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
-						msgstr = msg->str;
-					}
-				} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
-					    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+			} else if (msg->maximum_version == NULL) {
+				if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
 					msgstr = msg->str;
 				}
-			} else if (local == NULL &&
-			    msg->type == PKG_MESSAGE_INSTALL) {
+			} else if (msg->minimum_version == NULL) {
+				if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
+					msgstr = msg->str;
+				}
+			} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
+				    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
 				msgstr = msg->str;
 			}
-			if (msgstr != NULL) {
-				if (sbuf_len(message) == 0) {
-					pkg_sbuf_printf(message, "Message from "
-					    "%n-%v:\n", pkg, pkg);
-				}
-				sbuf_printf(message, "%s\n", msgstr);
-			}
+		} else if (local == NULL &&
+		    msg->type == PKG_MESSAGE_INSTALL) {
+			msgstr = msg->str;
 		}
-		if (pkg->message != NULL) {
-			if (sbuf_len(message) > 0) {
-				sbuf_finish(message);
-				pkg_emit_message(sbuf_data(message));
+		if (msgstr != NULL) {
+			if (sbuf_len(message) == 0) {
+				pkg_sbuf_printf(message, "Message from "
+				    "%n-%v:\n", pkg, pkg);
 			}
-			sbuf_delete(message);
+			sbuf_printf(message, "%s\n", msgstr);
 		}
+	}
+	if (pkg->message != NULL) {
+		if (sbuf_len(message) > 0) {
+			sbuf_finish(message);
+			pkg_emit_message(sbuf_data(message));
+		}
+		sbuf_delete(message);
 	}
 
 	cleanup:
