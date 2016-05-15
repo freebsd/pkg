@@ -3,7 +3,8 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	reinstall
+	reinstall \
+	script_fail
 
 reinstall_body()
 {
@@ -39,4 +40,25 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" install -y test
+}
+
+script_fail_body()
+{
+	new_pkg test test 1
+	cat << EOF >> test.ucl
+scripts: {
+   pre-install: "exit 1"
+}
+EOF
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	atf_check -o ignore \
+		-e inline:"pkg: PRE-INSTALL script failed\n" \
+		-s exit:3 \
+		pkg -o REPOS_DIR="/dev/null" install -y ${TMPDIR}/test-1.txz
 }

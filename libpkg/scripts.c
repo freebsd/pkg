@@ -199,6 +199,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 			if (WEXITSTATUS(pstat) != 0) {
 				pkg_emit_error("%s script failed", map[i].arg);
+				ret = EPKG_FATAL;
 				goto cleanup;
 			}
 		}
