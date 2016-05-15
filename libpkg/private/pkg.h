@@ -357,6 +357,7 @@ struct pkg_dir {
 	u_long		 fflags;
 	uid_t		 uid;
 	gid_t		 gid;
+	bool		 noattrs;
 	struct timespec	 time[2];
 	struct pkg_dir	*prev;
 	struct pkg_dir	*next;
