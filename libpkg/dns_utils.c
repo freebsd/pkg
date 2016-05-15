@@ -271,7 +271,7 @@ dns_getsrvinfo(const char *zone)
 
 int
 set_nameserver(const char *nsname) {
-#ifndef HAVE_RES_SETSERVERS
+#ifndef HAVE___RES_SETSERVERS
 	return (-1);
 #else
 	struct __res_state res;
@@ -283,6 +283,7 @@ set_nameserver(const char *nsname) {
 
 	memset(u, 0, sizeof(u));
 	memset(&hint, 0, sizeof(hint));
+	memset(&res, 0, sizeof(res));
 	hint.ai_socktype = SOCK_DGRAM;
 
 	if (res_ninit(&res) == -1)

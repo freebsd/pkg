@@ -4,6 +4,7 @@
 tests_init \
 	inline_repo \
 	empty_conf \
+	nameserver
 
 inline_repo_body() {
 	cat > pkgconfiguration << EOF
@@ -45,4 +46,20 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -C pkg.conf info test
+}
+
+nameserver_body()
+{
+	atf_check \
+		-o inline:"\n" \
+		pkg -C /dev/null config nameserver
+
+	atf_check \
+		-o inline:"192.168.1.1\n" \
+		pkg -o NAMESERVER="192.168.1.1" -C /dev/null config nameserver
+
+	atf_check \
+		-o inline:"plop\n" \
+		-e inline:"pkg: Unable to set nameserver, ignoring\n" \
+		pkg -o NAMESERVER="plop" -C /dev/null config nameserver
 }
