@@ -35,7 +35,6 @@
 
 #include <sys/queue.h>
 
-#define _WITH_GETLINE
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>

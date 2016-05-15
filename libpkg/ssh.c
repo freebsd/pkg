@@ -37,7 +37,6 @@
 
 #include <ctype.h>
 #include <inttypes.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>

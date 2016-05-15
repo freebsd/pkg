@@ -33,8 +33,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#define _WITH_GETLINE
-
 #include <archive.h>
 #include <err.h>
 #include <errno.h>

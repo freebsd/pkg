@@ -34,7 +34,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <errno.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <fetch.h>

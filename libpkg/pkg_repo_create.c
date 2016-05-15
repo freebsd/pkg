@@ -44,7 +44,6 @@
 #include <libgen.h>
 #include <sqlite3.h>
 #include <string.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
 #include <sysexits.h>

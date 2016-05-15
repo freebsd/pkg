@@ -45,7 +45,6 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <paths.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <errno.h>
 #include <pkg.h>
