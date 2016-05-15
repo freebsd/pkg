@@ -385,8 +385,9 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			/* The file being scanned is a shared library
 			   *provided* by the package. Record this if
 			   appropriate */
-
-			pkg_addshlib_provided(pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
+			shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
+			if (shlib != NULL && *shlib != '\0')
+				pkg_addshlib_provided(pkg, shlib);
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
