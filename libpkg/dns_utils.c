@@ -285,6 +285,7 @@ set_nameserver(const char *nsname) {
 	memset(&hint, 0, sizeof(hint));
 	memset(&res, 0, sizeof(res));
 	hint.ai_socktype = SOCK_DGRAM;
+	hint.ai_flags = AI_NUMERICHOST;
 
 	if (res_ninit(&res) == -1)
 		return (-1);
