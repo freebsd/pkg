@@ -34,7 +34,6 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdarg.h>
-#define _WITH_DPRINTF
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

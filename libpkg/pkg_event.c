@@ -30,7 +30,6 @@
 #include <string.h>
 #include <syslog.h>
 
-#define _WITH_DPRINTF
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
