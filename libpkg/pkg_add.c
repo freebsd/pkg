@@ -241,6 +241,30 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	return (EPKG_OK);
 }
 
+static void
+fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
+{
+#ifdef __APPLE__
+# ifdef _DARWIN_C_SOURCE
+	tspec[0].tv_sec = aest->st_atimespec.tv_sec;
+	tspec[0].tv_nsec = aest->st_atimespec.tv_nsec;
+	tspec[1].tv_sec = aest->st_mtimespec.tv_sec;
+	tspec[1].tv_nsec = aest->st_mtimespec.tv_nsec;
+# else
+	/* Portable unix version */
+	tspec[0].tv_sec = aest->st_atime;
+	tspec[0].tv_nsec = 0;
+	tspec[1].tv_sec = aest->st_mtime;
+	tspec[1].tv_nsec = 0;
+# endif
+#else
+	tspec[0].tv_sec = aest->st_atim.tv_sec;
+	tspec[0].tv_nsec = aest->st_atim.tv_nsec;
+	tspec[1].tv_sec = aest->st_mtim.tv_sec;
+	tspec[1].tv_nsec = aest->st_mtim.tv_nsec;
+#endif
+}
+
 /* In case of directories create the dir and extract the creds */
 static int
 do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry *ae,
@@ -260,10 +284,7 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	d->perm = aest->st_mode;
 	d->uid = get_uid_from_archive(ae);
 	d->gid = get_gid_from_archive(ae);
-	d->time[0].tv_sec = aest->st_atim.tv_sec;
-	d->time[0].tv_nsec = aest->st_atim.tv_nsec;
-	d->time[1].tv_sec = aest->st_mtim.tv_sec;
-	d->time[1].tv_nsec = aest->st_mtim.tv_nsec;
+	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
 	if (!mkdirat_p(pkg->rootfd, path))
@@ -286,6 +307,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 	struct pkg_file *f;
 	const struct stat *aest;
 	unsigned long clear;
+	struct timespec tspec[2];
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -308,9 +330,11 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 		return (EPKG_FATAL);
 	}
 
+	fill_timespec_buf(aest, tspec);
+
 	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &aest->st_atim, &aest->st_mtim) != EPKG_OK) {
+	    &tspec[0], &tspec[1]) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
@@ -361,6 +385,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	int fd = -1;
 	khint_t k;
 	size_t len;
+	struct timespec tspec[2];
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -422,9 +447,11 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		close(fd);
 	}
 
+	fill_timespec_buf(aest, tspec);
+
 	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &aest->st_atim, &aest->st_mtim) != EPKG_OK)
+	    &tspec[0], &tspec[1]) != EPKG_OK)
 		return (EPKG_FATAL);
 	return (EPKG_OK);
 }
