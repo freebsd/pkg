@@ -258,6 +258,9 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 	pkg_chain_t *rpkgs = NULL;
 	bool found = false;
 
+	rpkg = NULL;
+	rc = EPKG_OK;
+
 	if (flags & DEPS_FLAG_REVERSE) {
 		deps_func = pkg_rdeps;
 	}
