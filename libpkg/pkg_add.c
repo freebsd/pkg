@@ -40,6 +40,8 @@
 #include <glob.h>
 #include <pwd.h>
 #include <grp.h>
+#include <sys/time.h>
+#include <time.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -207,10 +209,16 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	tv[1].tv_sec = mts->tv_sec;
 	tv[1].tv_usec = mts->tv_nsec / 1000;
 
-	if (getcwd(saved_cwd, sizeof(saved_cwd)) == NULL)
-		saved_cwd[0] = '\0';
+	memset(saved_cwd, 0, sizeof (saved_cwd));
+
+	if (getcwd(saved_cwd, sizeof(saved_cwd) - 1) == NULL) {
+		pkg_emit_error("Fail to call getcwd: %s", strerror(errno));
+		return (EPKG_FATAL);
+	}
+
 	fchdir(fd);
-	if (lutimes(RELATIVE_PATH(path), &tv) == -1) {
+
+	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
