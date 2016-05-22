@@ -83,6 +83,7 @@ tests_scripts=	\
 		frontend/autoremove.sh \
 		frontend/autoupgrade.sh \
 		frontend/config.sh \
+		frontend/configmerge.sh \
 		frontend/conflicts.sh \
 		frontend/conflicts-multirepo.sh \
 		frontend/create.sh \

@@ -9,6 +9,7 @@ atf_test_program{name='annotate'}
 atf_test_program{name='autoremove'}
 atf_test_program{name='autoupgrade'}
 atf_test_program{name='config'}
+atf_test_program{name='configmerge'}
 atf_test_program{name='conflicts'}
 atf_test_program{name='conflicts-multirepo'}
 atf_test_program{name='create'}
