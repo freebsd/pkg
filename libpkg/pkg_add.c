@@ -436,11 +436,9 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		return (EPKG_FATAL);
 	}
 
-	if (pkg->config_files != NULL) {
-		kh_find(pkg_config_files, pkg->config_files, f->path,
-		    f->config);
-	}
-
+	/* check if this is a config file */
+	kh_find(pkg_config_files, pkg->config_files, f->path,
+	    f->config);
 	if (f->config) {
 		const char *cfdata;
 		bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
