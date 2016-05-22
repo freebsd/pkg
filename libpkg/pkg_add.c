@@ -409,7 +409,6 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	const struct stat *aest;
 	unsigned long clear;
 	int fd = -1;
-	khint_t k;
 	size_t len;
 	struct timespec tspec[2];
 
@@ -438,9 +437,8 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	}
 
 	if (pkg->config_files != NULL) {
-		k = kh_get_pkg_config_files(pkg->config_files, f->path);
-		if (k != kh_end(pkg->config_files))
-			f->config = kh_value(pkg->config_files, k);
+		kh_find(pkg_config_files, pkg->config_files, f->path,
+		    f->config);
 	}
 
 	if (f->config) {

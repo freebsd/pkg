@@ -49,19 +49,6 @@
 
 typedef kvec_t(struct pkg *) pkg_chain_t;
 
-static struct pkg_job_universe_item *
-pkg_jobs_seen_find(struct pkg_jobs_universe *universe, const char *digest)
-{
-	khint_t k;
-
-	if (universe->seen == NULL)
-		return (NULL);
-	k = kh_get_pkg_jobs_seen(universe->seen, digest);
-	if (k == kh_end(universe->seen))
-		return (NULL);
-	return (kh_value(universe->seen, k));
-}
-
 struct pkg *
 pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
@@ -182,7 +169,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 
-	seen = pkg_jobs_seen_find(universe, pkg->digest);
+	kh_find(pkg_jobs_seen, universe->seen, pkg->digest, seen);
 	if (seen != NULL && !force) {
 		/*
 		 * For remote packages we could have the same digest but different repos
