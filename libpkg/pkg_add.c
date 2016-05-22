@@ -439,7 +439,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	if (pkg->config_files != NULL) {
 		k = kh_get_pkg_config_files(pkg->config_files, f->path);
-		if (k == kh_end(pkg->config_files))
+		if (k != kh_end(pkg->config_files))
 			f->config = kh_value(pkg->config_files, k);
 	}
 
@@ -453,15 +453,12 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		archive_read_data(a, f->config->content, len);
 		f->config->content[len] = '\0';
 		cfdata = f->config->content;
-
 		attempt_to_merge(pkg->rootfd, f->config, local, merge);
 		if (f->config->status == MERGE_SUCCESS)
 			cfdata = f->config->newcontent;
 		dprintf(fd, "%s", cfdata);
 		if (f->config->newcontent != NULL)
 			free(f->config->newcontent);
-		free(f->config->content);
-		f->config->content = NULL;
 	}
 
 	if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
