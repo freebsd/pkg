@@ -772,21 +772,22 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 					maxpri, type);
 			return;
 		}
-		if (it->pkg->type != PKG_INSTALLED) {
-			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
-				HASH_FIND_STR(universe->items, c->uid, found);
-				if (found != NULL) {
-					LL_FOREACH(found, cur) {
-						if (cur->pkg->type == PKG_INSTALLED) {
-							/*
-							 * Move delete requests to be done before installing
-							 */
-							if (cur->priority <= it->priority)
-								pkg_jobs_update_universe_item_priority(universe, cur,
-									it->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
-						}
-					}
-				}
+		if (it->pkg->type == PKG_INSTALLED)
+			continue;
+
+		while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
+			HASH_FIND_STR(universe->items, c->uid, found);
+			if (found == NULL)
+				continue;
+			LL_FOREACH(found, cur) {
+				if (cur->pkg->type != PKG_INSTALLED)
+					continue;
+				/*
+				 * Move delete requests to be done before installing
+				 */
+				if (cur->priority <= it->priority)
+					pkg_jobs_update_universe_item_priority(universe, cur,
+					    it->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
 			}
 		}
 	}
