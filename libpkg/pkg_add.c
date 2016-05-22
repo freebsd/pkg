@@ -219,23 +219,49 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	fchdir(fd);
 
 	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
-		pkg_emit_error("Fail to set time on %s: %s", path,
-		    strerror(errno));
-		return (EPKG_FATAL);
+
+		if (errno != ENOSYS) {
+			pkg_emit_error("Fail to set time on %s: %s", path,
+					strerror(errno));
+			return (EPKG_FATAL);
+		}
+		else {
+			/* Fallback to utimes */
+			if (utimes(RELATIVE_PATH(path), tv) == -1) {
+				pkg_emit_error("Fail to set time(fallback) on %s: %s", path,
+						strerror(errno));
+				return (EPKG_FATAL);
+			}
+		}
 	}
 	chdir(saved_cwd);
 #endif
 
-	if (getenv("INSTALL_AS_USER") == NULL &&
-	    fchownat(fd, RELATIVE_PATH(path), uid, gid, AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
-		return (EPKG_FATAL);
+	if (getenv("INSTALL_AS_USER") == NULL) {
+		if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
+				AT_SYMLINK_NOFOLLOW) == -1) {
+			if (errno == ENOTSUP &&
+					fchownat(fd, RELATIVE_PATH(path), uid, gid, 0) == -1) {
+				pkg_emit_error("Fail to chown(fallback) %s: %s", path, strerror(errno));
+				return (EPKG_FATAL);
+			}
+			else {
+				pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
+				return (EPKG_FATAL);
+			}
+		}
 	}
 
 	/* zfs drops the setuid on fchownat */
 	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
-		return (EPKG_FATAL);
+		if (errno == ENOTSUP && fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
+			pkg_emit_error("Fail to chmod(fallback) %s: %s", path, strerror(errno));
+			return (EPKG_FATAL);
+		}
+		else {
+			pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
+			return (EPKG_FATAL);
+		}
 	}
 
 	return (EPKG_OK);
