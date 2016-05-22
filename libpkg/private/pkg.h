@@ -204,6 +204,16 @@
 		free_func(val);				\
 } while (0)
 
+#define kh_find(name, h, k, ret) do {			\
+	khint_t __k;					\
+	__k = kh_get(name, h, k);			\
+	ret = NULL;					\
+	if (__k != kh_end(h)) {				\
+		ret = kh_value(h, __k);			\
+	}						\
+} while (0)
+
+
 
 extern int eventpipe;
 extern int64_t debug_level;

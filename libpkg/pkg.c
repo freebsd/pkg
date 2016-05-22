@@ -1721,7 +1721,6 @@ pkg_is_config_file(struct pkg *p, const char *path,
     const struct pkg_file **file,
     struct pkg_config_file **cfile)
 {
-	khint_t k, k2;
 
 	*file = NULL;
 	*cfile = NULL;
@@ -1729,16 +1728,15 @@ pkg_is_config_file(struct pkg *p, const char *path,
 	if (kh_count(p->config_files) == 0)
 		return (false);
 
-	k = kh_get_pkg_files(p->filehash, path);
-	if (k == kh_end(p->filehash))
+	kh_find(pkg_files, p->filehash, path, *file);
+	if (*file == NULL)
 		return (false);
 
-	k2 = kh_get_pkg_config_files(p->config_files, path);
-	if (k2 == kh_end(p->config_files))
+	kh_find(pkg_config_files, p->config_files, path, *cfile);
+	if (cfile == NULL) {
+		*file = NULL;
 		return (false);
-
-	*file = kh_value(p->filehash, k);
-	*cfile = kh_value(p->config_files, k2);
+	}
 
 	return (true);
 }
@@ -1746,13 +1744,9 @@ pkg_is_config_file(struct pkg *p, const char *path,
 struct pkg_dir *
 pkg_get_dir(struct pkg *p, const char *path)
 {
-	struct pkg_dir *d = NULL;
-	khint_t k;
+	struct pkg_dir *d;
 
-	k = kh_get_pkg_dirs(p->dirhash, path);
-	if (k != kh_end(p->dirhash)) {
-		d = kh_value(p->dirhash, k);
-	}
+	kh_find(pkg_dirs, p->dirhash, path, d);
 
 	return (d);
 }
@@ -1760,13 +1754,9 @@ pkg_get_dir(struct pkg *p, const char *path)
 struct pkg_file *
 pkg_get_file(struct pkg *p, const char *path)
 {
-	struct pkg_file *f = NULL;
-	khint_t k;
+	struct pkg_file *f;
 
-	k = kh_get_pkg_files(p->filehash, path);
-	if (k != kh_end(p->filehash)) {
-		f = kh_value(p->filehash, k);
-	}
+	kh_find(pkg_files, p->filehash, path, f);
 
 	return (f);
 }
