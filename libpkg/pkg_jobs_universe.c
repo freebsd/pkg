@@ -746,12 +746,12 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 
 		while (deps_func(it->pkg, &d) == EPKG_OK) {
 			HASH_FIND_STR(universe->items, d->uid, found);
-			if (found != NULL) {
-				LL_FOREACH(found, cur) {
-					if (cur->priority < priority + 1)
-						pkg_jobs_update_universe_item_priority(universe, cur,
-								priority + 1, type);
-				}
+			if (found == NULL)
+				continue;
+			LL_FOREACH(found, cur) {
+				if (cur->priority < priority + 1)
+					pkg_jobs_update_universe_item_priority(universe, cur,
+					    priority + 1, type);
 			}
 		}
 
@@ -759,11 +759,11 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		maxpri = priority;
 		while (rdeps_func(it->pkg, &d) == EPKG_OK) {
 			HASH_FIND_STR(universe->items, d->uid, found);
-			if (found != NULL) {
-				LL_FOREACH(found, cur) {
-					if (cur->priority >= maxpri) {
-						maxpri = cur->priority + 1;
-					}
+			if (found == NULL)
+				continue;
+			LL_FOREACH(found, cur) {
+				if (cur->priority >= maxpri) {
+					maxpri = cur->priority + 1;
 				}
 			}
 		}
