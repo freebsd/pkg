@@ -191,19 +191,16 @@ exec_updating(int argc, char **argv)
 				SLIST_FOREACH(port, &origins, next) {
 					if (caseinsensitive) {
 						if ((tmp = strcasestr(line, port->origin)) != NULL) {
-							free(dateline);
 							break;
 						}
 					} else {
 						if ((tmp = strstr(line, port->origin)) != NULL) {
-							free(dateline);
 							break;
 						}
 					}
 				}
 				if (tmp != NULL) {
 					if ((date != NULL) && strncmp(dateline, date, 8) < 0) {
-						free(dateline);
 						continue;
 					}
 					printf("%s%s",dateline, line);
@@ -213,8 +210,8 @@ exec_updating(int argc, char **argv)
 		} else {
 			printf("%s",line);
 		}
-		free(dateline);
 	}
+	free(dateline);
 	fclose(fd);
 
 cleanup:
