@@ -165,6 +165,8 @@ AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_FUNCS_ONCE([fopencookie])
 AC_CHECK_FUNCS_ONCE([sysctlbyname])
 AC_CHECK_FUNCS_ONCE([__res_setservers])
+AC_CHECK_MEMBERS([struct stat.st_mtim])
+
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [

@@ -270,7 +270,12 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 static void
 fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 {
-#ifdef __APPLE__
+#ifdef HAVE_STRUCT_STAT_ST_MTIM
+	tspec[0].tv_sec = aest->st_atim.tv_sec;
+	tspec[0].tv_nsec = aest->st_atim.tv_nsec;
+	tspec[1].tv_sec = aest->st_mtim.tv_sec;
+	tspec[1].tv_nsec = aest->st_mtim.tv_nsec;
+#else
 # ifdef _DARWIN_C_SOURCE
 	tspec[0].tv_sec = aest->st_atimespec.tv_sec;
 	tspec[0].tv_nsec = aest->st_atimespec.tv_nsec;
@@ -283,11 +288,6 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 	tspec[1].tv_sec = aest->st_mtime;
 	tspec[1].tv_nsec = 0;
 # endif
-#else
-	tspec[0].tv_sec = aest->st_atim.tv_sec;
-	tspec[0].tv_nsec = aest->st_atim.tv_nsec;
-	tspec[1].tv_sec = aest->st_mtim.tv_sec;
-	tspec[1].tv_nsec = aest->st_mtim.tv_nsec;
 #endif
 }
 
