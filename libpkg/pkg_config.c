@@ -831,7 +831,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	k = NULL;
 	o = NULL;
-	if (rootfd == -1 && (rootfd = open("/", O_DIRECTORY|O_RDONLY)) <= 0) {
+	if (rootfd == -1 && (rootfd = open("/", O_DIRECTORY|O_RDONLY)) < 0) {
 		pkg_emit_error("Impossible to open /");
 		return (EPKG_FATAL);
 	}
@@ -1377,7 +1377,7 @@ pkg_set_rootdir(const char *rootdir) {
 	if (rootfd != -1)
 		close(rootfd);
 
-	if ((rootfd = open(rootdir, O_DIRECTORY|O_RDONLY)) <= 0) {
+	if ((rootfd = open(rootdir, O_DIRECTORY|O_RDONLY)) < 0) {
 		pkg_emit_error("Impossible to open %s", rootdir);
 		return (EPKG_FATAL);
 	}
