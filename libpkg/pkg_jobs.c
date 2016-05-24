@@ -1608,10 +1608,18 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				}
 			}
 			/*
+			 * Here we have not selected the proper candidate among all
+			 * possible choices.
+			 * Hence, we want to perform this procedure now to ensure that
+			 * we are processing the correct packages.
+			 */
+			pkg_jobs_universe_process_upgrade_chains(j);
+			/*
 			 * Need to iterate request one more time to recurse depends
 			 */
-			HASH_ITER(hh, j->request_add, req, rtmp)
+			HASH_ITER(hh, j->request_add, req, rtmp) {
 				pkg_jobs_universe_process(j->universe, req->item->pkg);
+			}
 		}
 	}
 	else {
