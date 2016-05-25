@@ -323,6 +323,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			 * XXX: this is the proper place to expand flexible dependencies
 			 */
 
+			found = false;
 			/* Iteration one */
 			for (int i = 0; i < kv_size(*rpkgs); i++) {
 				rpkg = kv_A(*rpkgs, i);
@@ -350,7 +351,9 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 					/* Special case if we cannot find any package */
 					if (npkg == NULL && rc != EPKG_OK) {
-						break;
+						kv_destroy(*rpkgs);
+						free(rpkgs);
+						return (rc);
 					}
 				}
 			}
@@ -365,6 +368,11 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 				}
 
 				rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
+				if (npkg == NULL && rc != EPKG_OK) {
+					kv_destroy(*rpkgs);
+					free(rpkgs);
+					return (rc);
+				}
 			}
 
 			kv_destroy(*rpkgs);
