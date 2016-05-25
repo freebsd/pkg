@@ -380,16 +380,16 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		}
 	}
 
-	return (rc);
+	return (EPKG_OK);
 }
 
 static int
 pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
-		struct pkgdb_it *it, const char *name, bool is_shlib)
+		struct pkgdb_it *it, const char *name, bool is_shlib, struct pkg *parent)
 {
 	struct pkg_job_universe_item *unit;
 	struct pkg_job_provide *pr, *prhead;
-	struct pkg *npkg, *rpkg;
+	struct pkg *npkg, *rpkg, *selected = NULL;
 	int rc;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
@@ -400,14 +400,41 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 	HASH_FIND_STR(universe->provides, name, prhead);
 
+	/*
+	 * Here we follow the same logic as for direct deps:
+	 * - iterate over all provides;
+	 * - select provides that are from the same repo as the requested package
+	 * - if there is no such a package, then go through all possible provides
+	 */
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
+		if (parent->reponame && rpkg->reponame && strcmp(parent->reponame,
+				rpkg->reponame) == 0) {
+			selected = rpkg;
+			break;
+		}
+	}
+
+	if (!selected) {
+		pkgdb_it_reset(it);
+	}
+
+	while (selected || pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
+		if (selected) {
+			rpkg = selected;
+		}
 		/* Check for local packages */
 		HASH_FIND_STR(universe->items, rpkg->uid, unit);
 		if (unit != NULL) {
 			/* Remote provide is newer, so we can add it */
 			if (pkg_jobs_universe_process_item(universe, rpkg,
-					&unit) != EPKG_OK)
+					&unit) != EPKG_OK) {
+
+				if (selected) {
+					return (EPKG_FATAL);
+				}
+
 				continue;
+			}
 
 			rpkg = NULL;
 		}
@@ -420,8 +447,11 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 					return (EPKG_FATAL);
 				}
 				if (pkg_jobs_universe_process_item(universe, rpkg,
-						&unit) != EPKG_OK)
-					continue;
+						&unit) != EPKG_OK) {
+					if (selected) {
+						return (EPKG_FATAL);
+					}
+				}
 			}
 		}
 
@@ -436,8 +466,9 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			rc = pkg_jobs_universe_process_item(universe, rpkg,
 					&unit);
 
-			if (rc != EPKG_OK)
+			if (rc != EPKG_OK) {
 				return (rc);
+			}
 
 			/* Reset package to avoid freeing */
 			rpkg = NULL;
@@ -470,6 +501,10 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
 		}
+
+		if (selected) {
+			break;
+		}
 	}
 
 	return (EPKG_OK);
@@ -493,7 +528,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 		it = pkgdb_query_shlib_provide(universe->j->db, buf);
 		if (it != NULL) {
 			rc = pkg_jobs_universe_handle_provide(universe, it,
-			    buf, true);
+			    buf, true, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
@@ -507,7 +542,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			buf, universe->j->reponame);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, buf, true);
+			rc = pkg_jobs_universe_handle_provide(universe, it, buf, true, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
@@ -538,7 +573,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 		/* Check for local provides */
 		it = pkgdb_query_provide(universe->j->db, buf);
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, buf, false);
+			rc = pkg_jobs_universe_handle_provide(universe, it, buf, false, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
@@ -553,7 +588,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 			buf, universe->j->reponame);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, buf, false);
+			rc = pkg_jobs_universe_handle_provide(universe, it, buf, false, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
