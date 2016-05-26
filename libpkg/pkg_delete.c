@@ -298,7 +298,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
-	while (prefix_rel[len - 1] == '/')
+	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
 
 	/* Regular files and links */
