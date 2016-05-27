@@ -211,7 +211,6 @@ exec_updating(int argc, char **argv)
 			printf("%s",line);
 		}
 	}
-	free(dateline);
 	fclose(fd);
 
 cleanup:
