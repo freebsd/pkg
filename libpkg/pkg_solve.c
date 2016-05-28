@@ -622,35 +622,35 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		LL_FOREACH(req->item, item) {
 			curvar = pkg_solve_find_var_in_chain(var, item->unit);
 			assert(curvar != NULL);
-			if (item->next) {
-				LL_FOREACH(item->next, confitem) {
-					confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
-					assert(confvar != NULL && confvar != curvar && confvar != var);
-					/* Conflict rule: (!A | !Bx) */
-					rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
-					if (rule == NULL)
-						return (EPKG_FATAL);
-					/* !A */
-					it = pkg_solve_item_new(curvar);
-					if (it == NULL) {
-						pkg_solve_rule_free(rule);
-						return (EPKG_FATAL);
-					}
-
-					it->inverse = -1;
-					RULE_ITEM_APPEND(rule, it);
-					/* !Bx */
-					it = pkg_solve_item_new(confvar);
-					if (it == NULL) {
-						pkg_solve_rule_free(rule);
-						return (EPKG_FATAL);
-					}
-
-					it->inverse = -1;
-					RULE_ITEM_APPEND(rule, it);
-
-					kv_prepend(typeof(rule), problem->rules, rule);
+			if (item->next == NULL)
+				continue;
+			LL_FOREACH(item->next, confitem) {
+				confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
+				assert(confvar != NULL && confvar != curvar && confvar != var);
+				/* Conflict rule: (!A | !Bx) */
+				rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
+				if (rule == NULL)
+					return (EPKG_FATAL);
+				/* !A */
+				it = pkg_solve_item_new(curvar);
+				if (it == NULL) {
+					pkg_solve_rule_free(rule);
+					return (EPKG_FATAL);
 				}
+
+				it->inverse = -1;
+				RULE_ITEM_APPEND(rule, it);
+				/* !Bx */
+				it = pkg_solve_item_new(confvar);
+				if (it == NULL) {
+					pkg_solve_rule_free(rule);
+					return (EPKG_FATAL);
+				}
+
+				it->inverse = -1;
+				RULE_ITEM_APPEND(rule, it);
+
+				kv_prepend(typeof(rule), problem->rules, rule);
 			}
 		}
 	}
