@@ -115,23 +115,22 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	if (pkg->type == PKG_OLD_FILE) {
 		pkg_emit_error("Cannot create an old format package");
 		return (EPKG_FATAL);
-	} else {
-		/*
-		 * Register shared libraries used by the package if
-		 * SHLIBS enabled in conf.  Deletes shlib info if not.
-		 */
-		struct sbuf *b = sbuf_new_auto();
-
-		pkg_analyse_files(NULL, pkg, root);
-
-		pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
-		packing_append_buffer(pkg_archive, sbuf_data(b), "+COMPACT_MANIFEST", sbuf_len(b));
-		sbuf_clear(b);
-		pkg_emit_manifest_sbuf(pkg, b, 0, NULL);
-		sbuf_finish(b);
-		packing_append_buffer(pkg_archive, sbuf_data(b), "+MANIFEST", sbuf_len(b));
-		sbuf_delete(b);
 	}
+	/*
+	 * Register shared libraries used by the package if
+	 * SHLIBS enabled in conf.  Deletes shlib info if not.
+	 */
+	struct sbuf *b = sbuf_new_auto();
+
+	pkg_analyse_files(NULL, pkg, root);
+
+	pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+	packing_append_buffer(pkg_archive, sbuf_data(b), "+COMPACT_MANIFEST", sbuf_len(b));
+	sbuf_clear(b);
+	pkg_emit_manifest_sbuf(pkg, b, 0, NULL);
+	sbuf_finish(b);
+	packing_append_buffer(pkg_archive, sbuf_data(b), "+MANIFEST", sbuf_len(b));
+	sbuf_delete(b);
 
 	counter_init("packing files", nfiles);
 
