@@ -297,29 +297,27 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 	assert(pkg != NULL);
 	assert(path != NULL);
 
-	if (faccessat(fd, path, F_OK, 0) == 0) {
-		pkg_debug(1, "Reading message: '%s'", path);
-
-		if ((ret = file_to_bufferat(fd, path, &buf, &size)) != EPKG_OK) {
-			return (ret);
-		}
-
-		if (*buf == '[') {
-			ret = pkg_message_from_str(pkg, buf, size);
-			free(buf);
-			return (ret);
-		} else {
-			obj = ucl_object_fromstring_common(buf, size,
-					UCL_STRING_RAW|UCL_STRING_TRIM);
-			ret = pkg_message_from_ucl(pkg, obj);
-			ucl_object_unref(obj);
-			free(buf);
-
-			return (ret);
-		}
+	if (faccessat(fd, path, F_OK, 0) == -1) {
+		return (EPKG_FATAL);
 	}
 
-	return (EPKG_FATAL);
+	pkg_debug(1, "Reading message: '%s'", path);
+	if ((ret = file_to_bufferat(fd, path, &buf, &size)) != EPKG_OK) {
+		return (ret);
+	}
+
+	if (*buf == '[') {
+		ret = pkg_message_from_str(pkg, buf, size);
+		free(buf);
+		return (ret);
+	}
+	obj = ucl_object_fromstring_common(buf, size,
+	    UCL_STRING_RAW|UCL_STRING_TRIM);
+	ret = pkg_message_from_ucl(pkg, obj);
+	ucl_object_unref(obj);
+	free(buf);
+
+	return (ret);
 }
 
 int
