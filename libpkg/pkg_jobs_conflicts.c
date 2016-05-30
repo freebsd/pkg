@@ -29,7 +29,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/rand.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -53,7 +52,7 @@ pkg_conflicts_sipkey_init(void)
 
 	if (kinit == NULL) {
 		kinit = malloc(sizeof(*kinit));
-		RAND_bytes((unsigned char*)kinit, sizeof(*kinit));
+		arc4random_buf((unsigned char*)kinit, sizeof(*kinit));
 	}
 
 	return (kinit);
