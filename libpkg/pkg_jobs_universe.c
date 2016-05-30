@@ -193,6 +193,9 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 				}
 			}
 		}
+		else {
+			other_candidate = false;
+		}
 
 		if (!other_candidate) {
 			if (found != NULL) {
