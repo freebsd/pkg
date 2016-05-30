@@ -170,23 +170,32 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	kh_find(pkg_jobs_seen, universe->seen, pkg->digest, seen);
-	if (seen != NULL && !force) {
+	if (seen != NULL && !force && pkg->type != PKG_INSTALLED) {
 		/*
 		 * For remote packages we could have the same digest but different repos
 		 * therefore we should also compare reponames
 		 */
-		bool other_candidate = false;
+		bool other_candidate = true;
 
-		if (seen->pkg->type != PKG_INSTALLED && pkg->type != PKG_INSTALLED) {
-			if (pkg->reponame && seen->pkg->reponame) {
-				other_candidate =
-						(strcmp(pkg->reponame, seen->pkg->reponame) != 0);
+		/* Rewind to the first element */
+		while (seen->prev->next != NULL) {
+			seen = seen->prev;
+		}
+
+		LL_FOREACH (seen, tmp) {
+			if (tmp->pkg->type != PKG_INSTALLED && tmp->pkg->reponame) {
+				if (strcmp (pkg->reponame, tmp->pkg->reponame) == 0) {
+					/* Same repo package in the chain, do not add */
+					other_candidate = false;
+					break;
+				}
 			}
 		}
 
 		if (!other_candidate) {
-			if (found != NULL)
+			if (found != NULL) {
 				*found = seen;
+			}
 
 			return (EPKG_END);
 		}
