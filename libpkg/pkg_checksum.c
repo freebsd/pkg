@@ -123,6 +123,14 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_hash_blake2_file,
 		NULL
 	},
+	[PKG_HASH_TYPE_BLAKE2_HEX] = {
+		"blake2_hex",
+		PKG_CHECKSUM_BLAKE2_LEN,
+		pkg_checksum_hash_blake2,
+		pkg_checksum_hash_blake2_bulk,
+		pkg_checksum_hash_blake2_file,
+		pkg_checksum_encode_hex
+	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
 		NULL,
 		-1,
