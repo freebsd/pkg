@@ -184,7 +184,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 			}
 
 			LL_FOREACH (seen, tmp) {
-				if (tmp->pkg->type != PKG_INSTALLED && tmp->pkg->reponame) {
+				if (tmp->pkg->reponame) {
 					if (strcmp (pkg->reponame, tmp->pkg->reponame) == 0) {
 						/* Same repo package in the chain, do not add */
 						other_candidate = false;
@@ -201,6 +201,9 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 			return (EPKG_END);
 		}
+	}
+	else if (seen && !force) {
+		return (EPKG_END);
 	}
 
 	if (pkg_is_locked(pkg)) {
