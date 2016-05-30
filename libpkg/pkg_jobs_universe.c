@@ -177,17 +177,19 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		 */
 		bool other_candidate = true;
 
-		/* Rewind to the first element */
-		while (seen->prev->next != NULL) {
-			seen = seen->prev;
-		}
+		if (pkg->reponame) {
+			/* Rewind to the first element */
+			while (seen->prev->next != NULL) {
+				seen = seen->prev;
+			}
 
-		LL_FOREACH (seen, tmp) {
-			if (tmp->pkg->type != PKG_INSTALLED && tmp->pkg->reponame) {
-				if (strcmp (pkg->reponame, tmp->pkg->reponame) == 0) {
-					/* Same repo package in the chain, do not add */
-					other_candidate = false;
-					break;
+			LL_FOREACH (seen, tmp) {
+				if (tmp->pkg->type != PKG_INSTALLED && tmp->pkg->reponame) {
+					if (strcmp (pkg->reponame, tmp->pkg->reponame) == 0) {
+						/* Same repo package in the chain, do not add */
+						other_candidate = false;
+						break;
+					}
 				}
 			}
 		}
@@ -1246,7 +1248,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
 		for (int i = 0; i < kv_size(candidates); i++) {
-			pkg_jobs_universe_add_pkg(universe, kv_A(candidates, i), true, NULL);
+			pkg_jobs_universe_add_pkg(universe, kv_A(candidates, i), false, NULL);
 		}
 	}
 	else {
