@@ -311,62 +311,43 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			}
 		}
 
-		if (rpkgs != NULL) {
-			/*
-			 * When processing deps, we should first try to select a dependency
-			 * from the same repo.
-			 * Otherwise, we would have ping-pong of dependencies instead of
-			 * the situation when this behaviour is handled by
-			 * CONSERVATIVE_UPGRADES.
-			 *
-			 * Important notes here:
-			 * 1. We are looking for packages that are dependencies of a package
-			 * `pkg`
-			 * 2. Now if `pkg` belongs to repo `r` and `rpkg` belongs to repo
-			 * `r` then we just select it.
-			 * 3. If `rpkg` is not found in `r` we just scan all packages
-			 */
+		if (rpkgs == NULL)
+			continue;
+		/*
+		 * When processing deps, we should first try to select a dependency
+		 * from the same repo.
+		 * Otherwise, we would have ping-pong of dependencies instead of
+		 * the situation when this behaviour is handled by
+		 * CONSERVATIVE_UPGRADES.
+		 *
+		 * Important notes here:
+		 * 1. We are looking for packages that are dependencies of a package
+		 * `pkg`
+		 * 2. Now if `pkg` belongs to repo `r` and `rpkg` belongs to repo
+		 * `r` then we just select it.
+		 * 3. If `rpkg` is not found in `r` we just scan all packages
+		 */
 
-			/*
-			 * XXX: this is the proper place to expand flexible dependencies
-			 */
+		/*
+		 * XXX: this is the proper place to expand flexible dependencies
+		 */
 
-			found = false;
-			/* Iteration one */
+		found = false;
+		/* Iteration one */
+		for (int i = 0; i < kv_size(*rpkgs); i++) {
+			rpkg = kv_A(*rpkgs, i);
+
+			if (pkg->reponame && rpkg->reponame &&
+					strcmp (pkg->reponame, rpkg->reponame) == 0) {
+				found = true;
+				break;
+			}
+		}
+
+		/* Fallback if a dependency is not found in the same repo */
+		if (!found) {
 			for (int i = 0; i < kv_size(*rpkgs); i++) {
 				rpkg = kv_A(*rpkgs, i);
-
-				if (pkg->reponame && rpkg->reponame &&
-						strcmp (pkg->reponame, rpkg->reponame) == 0) {
-					found = true;
-					break;
-				}
-			}
-
-			/* Fallback if a dependency is not found in the same repo */
-			if (!found) {
-				for (int i = 0; i < kv_size(*rpkgs); i++) {
-					rpkg = kv_A(*rpkgs, i);
-
-					if (npkg != NULL) {
-						/* Set reason for upgrades */
-						pkg_jobs_need_upgrade(rpkg, npkg);
-						/* Save automatic flag */
-						rpkg->automatic = npkg->automatic;
-					}
-
-					rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
-
-					/* Special case if we cannot find any package */
-					if (npkg == NULL && rc != EPKG_OK) {
-						kv_destroy(*rpkgs);
-						free(rpkgs);
-						return (rc);
-					}
-				}
-			}
-			else {
-				assert (rpkg != NULL);
 
 				if (npkg != NULL) {
 					/* Set reason for upgrades */
@@ -376,16 +357,35 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 				}
 
 				rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
+
+				/* Special case if we cannot find any package */
 				if (npkg == NULL && rc != EPKG_OK) {
 					kv_destroy(*rpkgs);
 					free(rpkgs);
 					return (rc);
 				}
 			}
-
-			kv_destroy(*rpkgs);
-			free(rpkgs);
 		}
+		else {
+			assert (rpkg != NULL);
+
+			if (npkg != NULL) {
+				/* Set reason for upgrades */
+				pkg_jobs_need_upgrade(rpkg, npkg);
+				/* Save automatic flag */
+				rpkg->automatic = npkg->automatic;
+			}
+
+			rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
+			if (npkg == NULL && rc != EPKG_OK) {
+				kv_destroy(*rpkgs);
+				free(rpkgs);
+				return (rc);
+			}
+		}
+
+		kv_destroy(*rpkgs);
+		free(rpkgs);
 	}
 
 	return (EPKG_OK);
