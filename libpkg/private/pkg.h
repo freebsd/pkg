@@ -401,7 +401,6 @@ typedef enum pkg_checksum_type_e {
 	PKG_HASH_TYPE_BLAKE2_BASE32,
 	PKG_HASH_TYPE_SHA256_RAW,
 	PKG_HASH_TYPE_BLAKE2_RAW,
-	PKG_HASH_TYPE_BLAKE2_HEX,
 	PKG_HASH_TYPE_UNKNOWN
 } pkg_checksum_type_t;
 
