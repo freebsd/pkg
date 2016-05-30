@@ -547,8 +547,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				srv_current = repo->srv;
 			} else if (repo != NULL && repo->mirror_type == HTTP &&
 			           strncmp(u->scheme, "http", 4) == 0) {
+				if (u->port == 0)
+					u->port = 80;
 				snprintf(zone, sizeof(zone),
-				    "%s://%s", u->scheme, u->host);
+				    "%s://%s:%d", u->scheme, u->host, u->port);
 				if (repo->http == NULL)
 					gethttpmirrors(repo, zone);
 				http_current = repo->http;
