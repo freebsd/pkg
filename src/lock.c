@@ -28,6 +28,7 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 

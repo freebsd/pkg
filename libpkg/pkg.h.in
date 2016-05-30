@@ -42,8 +42,8 @@ extern "C" {
 #include <sys/cdefs.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/sbuf.h>
-#include <openssl/pem.h>
 #include <sysexits.h>
 
 /* The expected name of the pkg(8) binary executable. */

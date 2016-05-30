@@ -39,6 +39,12 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
+struct rsa_key {
+	pkg_password_cb *pw_cb;
+	char *path;
+	RSA *key;
+};
+
 static int
 _load_rsa_private_key(struct rsa_key *rsa)
 {

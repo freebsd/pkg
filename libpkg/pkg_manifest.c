@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ucl.h>
+#include <openssl/sha.h>
 
 #include "pkg.h"
 #include "private/event.h"

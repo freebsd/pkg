@@ -37,8 +37,6 @@
 #include <khash.h>
 #include <pkg.h>
 
-#include <openssl/rsa.h>
-
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
 
@@ -62,11 +60,7 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
-struct rsa_key {
-	pkg_password_cb *pw_cb;
-	char *path;
-	RSA *key;
-};
+struct rsa_key;
 
 int32_t string_hash_func(const char *);
 void sbuf_init(struct sbuf **);

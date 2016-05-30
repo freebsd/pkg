@@ -31,6 +31,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include <openssl/sha.h>
 #include "blake2.h"
 
 struct pkg_checksum_entry {

@@ -43,6 +43,7 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <pkg.h>
 #include <string.h>
 #include <unistd.h>

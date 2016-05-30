@@ -46,6 +46,7 @@
 #include <stdarg.h>
 #include <paths.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <pkg.h>
 

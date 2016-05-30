@@ -988,7 +988,7 @@ out:
 }
 
 int
-pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
+pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
     char **argv, int argc, bool filelist)
 {
 	char repo_path[MAXPATHLEN];
