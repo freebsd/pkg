@@ -717,11 +717,6 @@ bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 pkg_object* pkg_emit_object(struct pkg *pkg, short flags);
 
-/* Hash is in format <version>:<typeid>:<hexhash> */
-#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 1)
-#define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
-#define PKG_CHECKSUM_CUR_VERSION 2
-
 int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	pkg_checksum_type_t type);
 

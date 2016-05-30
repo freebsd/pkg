@@ -43,6 +43,11 @@ struct pkg_checksum_entry {
 /* Separate checksum parts */
 #define PKG_CKSUM_SEPARATOR '$'
 
+/* Hash is in format <version>:<typeid>:<hexhash> */
+#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 1)
+#define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
+#define PKG_CHECKSUM_CUR_VERSION 2
+
 typedef void (*pkg_checksum_hash_func)(struct pkg_checksum_entry *entries,
 				unsigned char **out, size_t *outlen);
 typedef void (*pkg_checksum_hash_bulk_func)(const unsigned char *in, size_t inlen,
