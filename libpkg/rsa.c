@@ -299,7 +299,7 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 }
 
 int
-rsa_new(struct rsa_key **rsa, pem_password_cb *cb, char *path)
+rsa_new(struct rsa_key **rsa, pkg_password_cb *cb, char *path)
 {
 	assert(*rsa == NULL);
 

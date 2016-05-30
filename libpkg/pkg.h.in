@@ -818,10 +818,12 @@ int pkg_is_installed(struct pkgdb *db, const char *name);
  * @param metafile Open meta from the specified file
  * @param legacy Create legacy (1.2 compatible) repo
  */
+typedef int(pkg_password_cb)(char *, int, int, void*);
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	const char *metafile, bool legacy);
-int pkg_finish_repo(const char *output_dir, pem_password_cb *cb, char **argv,
+int pkg_finish_repo(const char *output_dir, pkg_password_cb *cb, char **argv,
     int argc, bool filelist);
+
 
 /**
  * Test if the EUID has sufficient privilege to carry out some

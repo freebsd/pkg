@@ -35,8 +35,8 @@
 #include <uthash.h>
 #include <ucl.h>
 #include <khash.h>
+#include <pkg.h>
 
-#include <openssl/pem.h>
 #include <openssl/rsa.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
@@ -63,7 +63,7 @@ struct dns_srvinfo {
 };
 
 struct rsa_key {
-	pem_password_cb *pw_cb;
+	pkg_password_cb *pw_cb;
 	char *path;
 	RSA *key;
 };
@@ -81,7 +81,7 @@ int format_exec_cmd(char **, const char *, const char *, const char *, char *,
     int argc, char **argv);
 int is_dir(const char *);
 
-int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
+int rsa_new(struct rsa_key **, pkg_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
 int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
 int rsa_verify(const char *path, const char *key,
