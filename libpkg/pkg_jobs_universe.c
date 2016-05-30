@@ -203,6 +203,10 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 	else if (seen && !force) {
+		if (found != NULL) {
+			*found = seen;
+		}
+
 		return (EPKG_END);
 	}
 
