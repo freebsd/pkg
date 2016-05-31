@@ -240,10 +240,11 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	if (getenv("INSTALL_AS_USER") == NULL) {
 		if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
 				AT_SYMLINK_NOFOLLOW) == -1) {
-			if (errno == ENOTSUP &&
-					fchownat(fd, RELATIVE_PATH(path), uid, gid, 0) == -1) {
-				pkg_emit_error("Fail to chown(fallback) %s: %s", path, strerror(errno));
-				return (EPKG_FATAL);
+			if (errno == ENOTSUP) {
+				if (fchownat(fd, RELATIVE_PATH(path), uid, gid, 0) == -1) {
+					pkg_emit_error("Fail to chown(fallback) %s: %s", path, strerror(errno));
+					return (EPKG_FATAL);
+				}
 			}
 			else {
 				pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
@@ -254,9 +255,11 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 
 	/* zfs drops the setuid on fchownat */
 	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
-		if (errno == ENOTSUP && fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
-			pkg_emit_error("Fail to chmod(fallback) %s: %s", path, strerror(errno));
-			return (EPKG_FATAL);
+		if (errno == ENOTSUP) {
+			if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
+				pkg_emit_error("Fail to chmod(fallback) %s: %s", path, strerror(errno));
+				return (EPKG_FATAL);
+			}
 		}
 		else {
 			pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
