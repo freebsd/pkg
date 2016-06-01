@@ -80,9 +80,9 @@ struct pkgdb_it {
  * otherwise use SAVEPOINT, ROLLBACK TO, RELEASE.
  * @return an error code.
  */
-int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
-int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
-int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_begin_sqlite(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_commit_sqlite(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_rollback_sqlite(sqlite3 *sqlite, const char *savepoint);
 
 struct pkgdb_it *pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s,
 	int type, short flags);
@@ -135,6 +135,12 @@ struct pkgdb_it *pkgdb_repo_shlib_require(struct pkgdb *db,
 struct pkgdb_it *pkgdb_repo_shlib_provide(struct pkgdb *db,
 		const char *require, const char *repo);
 
+struct pkgdb_it *pkgdb_repo_provide(struct pkgdb *db, const char *require,
+    const char *repo);
+
+struct pkgdb_it *pkgdb_repo_require(struct pkgdb *db, const char *provide,
+    const char *repo);
+
 /**
  * Unregister a package from the database
  * @return An error code.
@@ -178,5 +184,6 @@ void pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 void pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv);
 void pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 int pkgdb_sqlcmd_init(sqlite3 *db, const char **err, const void *noused);
+int pkgdb_update_config_file_content(struct pkg *pkg, sqlite3 *s);
 
 #endif

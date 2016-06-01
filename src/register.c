@@ -68,9 +68,9 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "Usage: pkg register [-Oldt] [-i <input-path>]"
+	fprintf(stderr, "Usage: pkg register [-ldt] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
-	fprintf(stderr, "       pkg register [-Oldt] [-i <input_path>]"
+	fprintf(stderr, "       pkg register [-ldt] [-i <input_path>]"
 		        " -M <manifest>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
@@ -102,7 +102,6 @@ exec_register(int argc, char **argv)
 
 	bool		 developer;
 	bool		 legacy        = false;
-	bool		 old           = false;
 	bool		 __unused metadata_only = false;
 	bool		 testing_mode  = false;
 
@@ -118,7 +117,6 @@ exec_register(int argc, char **argv)
 		{ "legacy",	no_argument,		NULL,	'l' },
 		{ "manifest",	required_argument,	NULL,	'M' },
 		{ "metadata",	required_argument,	NULL,	'm' },
-		{ "old",	no_argument,		NULL,	'O' },
 		{ "plist",	required_argument,	NULL,	'f' },
 		{ "relocate",	required_argument,	NULL, 	1 },
 		{ "root",	required_argument,	NULL,	'i' },
@@ -131,7 +129,7 @@ exec_register(int argc, char **argv)
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
 
-	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:Ot", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:t", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 		case 'd':
@@ -153,9 +151,6 @@ exec_register(int argc, char **argv)
 		case 'm':
 			mdir = optarg;
 			break;
-		case 'O':
-			old = true;
-			break;
 		case 't':
 			testing_mode = true;
 			break;
@@ -165,23 +160,24 @@ exec_register(int argc, char **argv)
 		default:
 			warnx("Unrecognised option -%c\n", ch);
 			usage_register();
+			pkg_free(pkg);
 			return (EX_USAGE);
 		}
 	}
 
-	if (!old) {
-		retcode = pkgdb_access(PKGDB_MODE_READ  |
-				       PKGDB_MODE_WRITE |
-				       PKGDB_MODE_CREATE,
-				       PKGDB_DB_LOCAL);
-		if (retcode == EPKG_ENOACCESS) {
-			warnx("Insufficient privileges to register packages");
-			return (EX_NOPERM);
-		} else if (retcode != EPKG_OK)
-			return (EX_IOERR);
-		else
-			retcode = EX_OK;
-	}
+	retcode = pkgdb_access(PKGDB_MODE_READ  |
+			       PKGDB_MODE_WRITE |
+			       PKGDB_MODE_CREATE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privileges to register packages");
+		pkg_free(pkg);
+		return (EX_NOPERM);
+	} else if (retcode != EPKG_OK) {
+		pkg_free(pkg);
+		return (EX_IOERR);
+	} else
+		retcode = EX_OK;
 
 	/*
 	 * Ideally, the +MANIFEST should be all that is necessary,
@@ -203,6 +199,7 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL && mdir != NULL) {
 		warnx("Cannot use both -m and -M together");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
@@ -210,18 +207,21 @@ exec_register(int argc, char **argv)
 	if (mfile == NULL && mdir == NULL) {
 		warnx("One of either -m or -M flags is required");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
 	if (mfile != NULL && plist != NULL) {
 		warnx("-M incompatible with -f option");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
 	if (testing_mode && input_path != NULL) {
 		warnx("-i incompatible with -t option");
 		usage_register();
+		pkg_free(pkg);
 		return (EX_USAGE);
 	}
 
@@ -230,27 +230,27 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL) {
 		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) 
+		if (ret != EPKG_OK) {
+			pkg_free(pkg);
 			return (EX_IOERR);
+		}
 
 	} else {
 		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
 		ret = pkg_parse_manifest_file(pkg, fpath, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK)
+		if (ret != EPKG_OK) {
+			pkg_free(pkg);
 			return (EX_IOERR);
-
+		}
 
 		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-		pkg_set_from_file(pkg, PKG_DESC, fpath, false);
+		if (access(fpath, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_DESC, fpath, false);
 
 		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 		if (access(fpath, F_OK) == 0)
 			pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
-
-		snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
 		for (i = 0; scripts[i] != NULL; i++) {
 			snprintf(fpath, sizeof(fpath), "%s/%s", mdir,
@@ -291,19 +291,21 @@ exec_register(int argc, char **argv)
 	}
 
 	if (ret != EPKG_OK) {
+		pkg_free(pkg);
 		return (EX_IOERR);
 	}
 
 
-	if (!old) {
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-			return (EX_IOERR);
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		pkg_free(pkg);
+		return (EX_IOERR);
+	}
 
-		if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
-			pkgdb_close(db);
-			warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-			return (EX_TEMPFAIL);
-		}
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+		pkgdb_close(db);
+		pkg_free(pkg);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
 	}
 
 	/*
@@ -316,7 +318,7 @@ exec_register(int argc, char **argv)
 	if (!testing_mode)
 		pkg_analyse_files(db, pkg, input_path);
 
-	pkg_get(pkg, PKG_ARCH, &arch);
+	pkg_get(pkg, PKG_ABI, &arch);
 	if (arch == NULL) {
 		/*
 		 * do not take the one from configuration on purpose
@@ -325,35 +327,20 @@ exec_register(int argc, char **argv)
 		pkg_get_myarch(myarch, BUFSIZ);
 		if (developer)
 			pkg_suggest_arch(pkg, myarch, true);
-		pkg_set(pkg, PKG_ARCH, myarch);
+		pkg_set(pkg, PKG_ABI, myarch);
 	} else {
 		if (developer)
 			pkg_suggest_arch(pkg, arch, false);
 	}
 
-	if (!testing_mode && input_path != NULL)
-		pkg_copy_tree(pkg, input_path, location ? location : "/");
-	
-	if (location != NULL)
-		pkg_addannotation(pkg, "relocated", location);
+	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (old) {
-		if (pkg_register_old(pkg) != EPKG_OK)
-			retcode = EX_SOFTWARE;
-	} else {
-		if (pkgdb_register_ports(db, pkg) != EPKG_OK)
-			retcode = EX_SOFTWARE;
-	}
-
-	if (!legacy && pkg_has_message(pkg))
-		pkg_printf("%M\n", pkg);
-
-	if (!old) {
-		pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
-		pkgdb_close(db);
+	if (!legacy && retcode == EPKG_OK && messages != NULL) {
+		sbuf_finish(messages);
+		printf("%s\n", sbuf_data(messages));
 	}
 
 	pkg_free(pkg);
 
-	return (retcode);
+	return (retcode != EPKG_OK ? EX_SOFTWARE : EX_OK);
 }

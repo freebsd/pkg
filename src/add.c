@@ -26,11 +26,13 @@
  */
 
 #include <sys/param.h>
+#include <sys/sbuf.h>
 
 #include <err.h>
 #include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -145,7 +147,7 @@ exec_add(int argc, char **argv)
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "%s/%s.XXXXX",
 			    getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp", basename(argv[i]));
-			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0)) != EPKG_OK)
+			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0, 0, 0)) != EPKG_OK)
 				break;
 
 			file = path;

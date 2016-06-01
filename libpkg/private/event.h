@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -38,7 +39,7 @@ void pkg_emit_fetch_finished(const char *url);
 void pkg_emit_update_add(int total, int done);
 void pkg_emit_update_remove(int total, int done);
 void pkg_emit_install_begin(struct pkg *p);
-void pkg_emit_install_finished(struct pkg *p);
+void pkg_emit_install_finished(struct pkg *p, struct pkg *old);
 void pkg_emit_deinstall_begin(struct pkg *p);
 void pkg_emit_deinstall_finished(struct pkg *p);
 void pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old);
@@ -56,8 +57,7 @@ void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *new
 void pkg_emit_newpkgversion(void);
 void pkg_emit_developer_mode(const char *fmt, ...);
 void pkg_emit_package_not_found(const char *);
-void pkg_emit_incremental_update(const char *reponame, int updated, int removed,
-    int added, int processed);
+void pkg_emit_incremental_update(const char *reponame, int processed);
 void pkg_emit_backup(void);
 void pkg_emit_restore(void);
 void pkg_debug(int level, const char *fmt, ...);
@@ -69,5 +69,17 @@ int pkg_emit_query_select(const char *msg, const char **items, int ncnt, int def
 
 void pkg_emit_progress_start(const char *fmt, ...);
 void pkg_emit_progress_tick(int64_t current, int64_t total);
+
+void pkg_emit_add_deps_begin(struct pkg *p);
+void pkg_emit_add_deps_finished(struct pkg *p);
+void pkg_emit_extract_begin(struct pkg *p);
+void pkg_emit_extract_finished(struct pkg *p);
+void pkg_emit_delete_files_begin(struct pkg *p);
+void pkg_emit_delete_files_finished(struct pkg *p);
+void pkg_emit_new_action(void);
+void pkg_emit_message(const char *msg);
+void pkg_emit_file_missing(struct pkg *p, struct pkg_file *f);
+void pkg_register_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
+void pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
 
 #endif

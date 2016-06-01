@@ -1,6 +1,11 @@
 noinst_HEADERS=	pkgcli.h
 
+if HAVE_ELF_ABI
+LDFLAGS+=	-Wl,--enable-new-dtags
+endif
+
 pkg_SOURCES=		add.c \
+			alias.c \
 			annotate.c \
 			audit.c \
 			autoremove.c \
@@ -36,24 +41,31 @@ pkg_SOURCES=		add.c \
 			version.c \
 			which.c
 			
-pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
-		$(top_builddir)/external/libsbuf.la \
+pkg_LDADD=	@OS_LDFLAGS@ \
+			$(top_builddir)/libpkg/libpkg.la \
+			$(top_builddir)/external/libsbuf.la \
+			$(top_builddir)/compat/libbsd_compat.la \
 			@LIBJAIL_LIB@ \
 			-lutil \
 			-lcrypto
-pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
+pkg_CFLAGS=	 @OS_CFLAGS@ \
+			-I$(top_srcdir)/libpkg \
+			-I$(top_builddir)/libpkg \
+			-I$(top_srcdir)/compat \
+			-I$(top_srcdir)/external/libsbuf \
+			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
-			-DGITHASH=\"$(GIT_HEAD)\"
+			-DGITHASH=\"$(GIT_HEAD)\" 
 pkg_static_SOURCES=
-pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
+pkg_static_LDADD= @OS_LDFLAGS@ \
+			$(top_builddir)/libpkg/libpkg_static.la \
+			$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf_static.la \
 			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
-			@LIBEXECINFO_LIB@ \
-			@LIBELF_LIB@ \
 			@LDNS_LIBS@ \
-			-lfetch \
+			@OS_LIBS@ \
 			-larchive \
 			-lz \
 			-lutil \
@@ -61,9 +73,36 @@ pkg_static_LDADD= $(top_builddir)/libpkg/libpkg_static.la \
 			-llzma \
 			-lssl \
 			-lcrypto \
-			-lmd \
 			-lm
+
+if HAVE_ELF_ABI
+if LIBELF_BUNDLED
+pkg_static_LDADD+=	$(top_builddir)/external/libelf_static.la
+else
+pkg_static_LDADD+=	-lelf
+endif
+endif
+
+if HAVE_MACHO_ABI
+pkg_static_LDADD+=	$(top_builddir)/external/libmachista_static.la \
+			-lresolv
+pkg_LDADD+=		-lresolv
+endif
+
+DYNPROG=		pkg
+
+if BUILD_STATIC
+
 pkg_static_LDFLAGS=	-all-static
-sbin_PROGRAMS=		pkg pkg-static
+sbin_PROGRAMS=		pkg-static
+
+if DYNAMIC
+sbin_PROGRAMS+=		$(DYNPROG)
+endif
+
+else
+
+sbin_PROGRAMS=	$(DYNPROG)
+endif
 
 dist_sysconf_DATA=	pkg.conf.sample

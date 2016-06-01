@@ -35,21 +35,30 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "pkg.h"
+#include "tree.h"
 
 struct pkg_jobs;
 struct job_pattern;
 
 struct pkg_job_universe_item {
 	struct pkg *pkg;
-	struct job_pattern *jp;
 	int priority;
+	bool processed;
 	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };
 
+struct pkg_job_request_item {
+	struct pkg *pkg;
+	struct pkg_job_universe_item *unit;
+	struct job_pattern *jp;
+	struct pkg_job_request_item *prev, *next;
+};
+
 struct pkg_job_request {
-	struct pkg_job_universe_item *item;
+	struct pkg_job_request_item *item;
 	bool skip;
+	bool automatic;
 	UT_hash_handle hh;
 };
 
@@ -60,15 +69,12 @@ struct pkg_solved {
 	struct pkg_solved *prev, *next;
 };
 
-struct pkg_job_seen {
-	struct pkg_job_universe_item *un;
-	const char *digest;
-	UT_hash_handle hh;
-};
+KHASH_MAP_INIT_STR(pkg_jobs_seen, struct pkg_job_universe_item *);
 
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
 	const char *provide;
+	bool is_shlib;
 	struct pkg_job_provide *next, *prev;
 	UT_hash_handle hh;
 };
@@ -79,14 +85,19 @@ struct pkg_job_replace {
 	struct pkg_job_replace *next;
 };
 
-
 struct pkg_jobs_universe {
 	struct pkg_job_universe_item *items;
-	struct pkg_job_seen *seen;
+	kh_pkg_jobs_seen_t *seen;
 	struct pkg_job_provide *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
 	size_t nitems;
+};
+
+struct pkg_jobs_conflict_item {
+	uint64_t hash;
+	struct pkg_job_universe_item *item;
+	TREE_ENTRY(pkg_jobs_conflict_item) entry;
 };
 
 struct pkg_jobs {
@@ -104,7 +115,9 @@ struct pkg_jobs {
 	bool need_fetch;
 	const char *reponame;
 	const char *destdir;
+	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
 	struct job_pattern *patterns;
+	bool conservative;
 };
 
 struct job_pattern {
@@ -156,18 +169,6 @@ int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, struct pkg_job_universe_item **result);
 
 /*
- * Add a universe item with package to the request
- */
-void pkg_jobs_add_req(struct pkg_jobs *j, const char *uid,
-	struct pkg_job_universe_item *item);
-
-/*
- * Check if the specified digest was seen in the universe
- */
-struct pkg_job_seen* pkg_jobs_universe_seen(struct pkg_jobs_universe *universe,
-	const char *digest);
-
-/*
  * Search for an entry corresponding to the uid in the universe
  */
 struct pkg_job_universe_item* pkg_jobs_universe_find(struct pkg_jobs_universe
@@ -186,11 +187,7 @@ void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
 	const char *new_uid, size_t uidlen, bool update_rdeps);
 
-/*
- * Find remote package in db or universe
- */
-struct pkg* pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
-	const char *uid, unsigned flag);
+
 
 /*
  * Find local package in db or universe
@@ -206,7 +203,8 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 /*
  * Append conflicts to a package
  */
-int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
+int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
+	struct pkg_jobs *j);
 /*
  * Perform integrity check for the jobs specified
  */
@@ -226,5 +224,33 @@ bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
  * Pre-process universe to fix complex upgrade chains
  */
 void pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j);
+
+/*
+ * Find upgrade candidates for a specified local package `lp`
+ * This function updates universe as following:
+ * - if `lp` is not null it is always added to the universe
+ * - if `uid` is in the universe, then the existing upgrade chain is returned
+ * - if `force` is true then all candidates are added to the universe
+ * - if `force` is false then *all* candidates are added to the universe, but
+ * merely if *any* of remote packages is an upgrade for local one
+ * - if `version` is not null then ensure we are only adding to the universe
+ * packages that match the given version
+ */
+struct pkg_job_universe_item*
+pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
+	const char *uid, struct pkg *lp, bool force, const char *version);
+
+/*
+ * Among a set of job candidates, select the most matching one, depending on job
+ * type, repos priorities and other stuff
+ */
+struct pkg_job_universe_item *
+pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
+	struct pkg_job_universe_item *local, bool conservative);
+
+/*
+ * Free job request (with all candidates)
+ */
+void pkg_jobs_request_free(struct pkg_job_request *req);
 
 #endif /* PKG_JOBS_H_ */

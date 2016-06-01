@@ -35,12 +35,12 @@
 
 #include <sys/queue.h>
 
-#define _WITH_GETLINE
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
 #include <pkg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -55,7 +55,7 @@ struct installed_ports {
 void
 usage_updating(void)
 {
-	fprintf(stderr, "Usage: pkg updating [-d YYYYMMDD] [-f file] [portname ...]\n");
+	fprintf(stderr, "Usage: pkg updating [-i] [-d YYYYMMDD] [-f file] [portname ...]\n");
 	fprintf(stderr, "For more information see 'pkg help updating'.\n");
 
 }
@@ -66,6 +66,7 @@ exec_updating(int argc, char **argv)
 	char			*date = NULL;
 	char			*dateline = NULL;
 	char			*updatingfile = NULL;
+	bool			caseinsensitive = false;
 	struct installed_ports	*port;
 	SLIST_HEAD(,installed_ports) origins;
 	int			 ch;
@@ -78,7 +79,6 @@ exec_updating(int argc, char **argv)
 	struct pkgdb		*db = NULL;
 	struct pkg		*pkg = NULL;
 	struct pkgdb_it		*it = NULL;
-	const char		*origin;
 	FILE			*fd;
 	int			 retcode = EXIT_SUCCESS;
 #ifdef HAVE_CAPSICUM
@@ -88,16 +88,20 @@ exec_updating(int argc, char **argv)
 	struct option longopts[] = {
 		{ "date",	required_argument,	NULL,	'd' },
 		{ "file",	required_argument,	NULL,	'f' },
+		{ "case-insensitive",	no_argument,	NULL,	'i' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+d:f:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:f:i", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			date = optarg;
 			break;
 		case 'f':
 			updatingfile = optarg;
+			break;
+		case 'i':
+			caseinsensitive = true;
 			break;
 		default:
 			usage_updating();
@@ -140,11 +144,13 @@ exec_updating(int argc, char **argv)
 	cap_rights_init(&rights, CAP_READ);
 	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
 		warn("cap_rights_limit() failed");
+		fclose(fd);
 		return (EX_SOFTWARE);
 	}
 
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
+		fclose(fd);
 		return (EX_SOFTWARE);
 	}
 #endif
@@ -153,13 +159,13 @@ exec_updating(int argc, char **argv)
 	if (argc == 0) {
 		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
 			retcode = EX_UNAVAILABLE;
+			fclose(fd);
 			goto cleanup;
 		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			port = malloc(sizeof(struct installed_ports));
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			port->origin = strdup(origin);
+			pkg_asprintf(&port->origin, "%o", pkg);
 			SLIST_INSERT_HEAD(&origins, port, next);
 		}
 	} else {
@@ -184,13 +190,20 @@ exec_updating(int argc, char **argv)
 		if (found == 0) {
 			if (strstr(line, "AFFECTS") != NULL) {
 				SLIST_FOREACH(port, &origins, next) {
-					if ((tmp = strstr(line, port->origin)) != NULL) {
-						break;
+					if (caseinsensitive) {
+						if ((tmp = strcasestr(line, port->origin)) != NULL) {
+							break;
+						}
+					} else {
+						if ((tmp = strstr(line, port->origin)) != NULL) {
+							break;
+						}
 					}
 				}
 				if (tmp != NULL) {
-					if ((date != NULL) && strncmp(dateline, date, 8) < 0)
+					if ((date != NULL) && strncmp(dateline, date, 8) < 0) {
 						continue;
+					}
 					printf("%s%s",dateline, line);
 					found = 1;
 				}
@@ -206,6 +219,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
+	free(dateline);
 
 	return (retcode);
 }

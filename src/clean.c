@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,34 +27,41 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/stat.h>
-#include <sys/queue.h>
 /* For MIN */
 #include <sys/param.h>
 
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
+
 #include <assert.h>
 #include <err.h>
-#include <fts.h>
 #include <getopt.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <pkg.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <uthash.h>
+#include <khash.h>
+#include <kvec.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <errno.h>
+
+#include <bsd_compat.h>
 
 #include "pkgcli.h"
 
-struct deletion_list {
-	STAILQ_ENTRY(deletion_list) next;
-	char	*path;
-};
-
-struct sumlist {
-	char sum[PKG_FILE_CKSUM_CHARS + 1];
-	UT_hash_handle hh;
-};
+KHASH_MAP_INIT_STR(sum, char *);
+typedef kvec_t(char *) dl_list;
 
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
@@ -61,23 +69,18 @@ struct sumlist {
 #define SIZE_MISMATCH	(1U<<3)
 #define ALL		(1U<<4)
 
-STAILQ_HEAD(dl_head, deletion_list);
-
-static int
-add_to_dellist(struct dl_head *dl,  const char *path)
+static size_t
+add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
 {
-	struct deletion_list	*dl_entry;
 	static bool first_entry = true;
+	struct stat st;
+	char *store_path;
+	const char *relpath;
+	size_t sz = 0;
 
 	assert(path != NULL);
 
-	dl_entry = calloc(1, sizeof(struct deletion_list));
-	if (dl_entry == NULL) {
-		warn("adding deletion list entry");
-		return (EPKG_FATAL);
-	}
-
-	dl_entry->path = strdup(path);
+	store_path = strdup(path);
 
 	if (!quiet) {
 		if (first_entry) {
@@ -85,40 +88,56 @@ add_to_dellist(struct dl_head *dl,  const char *path)
 			printf("The following package files will be deleted:"
 			    "\n");
 		}
-		printf("\t%s\n", dl_entry->path);
+		printf("\t%s\n", store_path);
 	}
 
-	STAILQ_INSERT_TAIL(dl, dl_entry, next);
+	relpath = path + strlen(cachedir) + 1;
+	if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) != -1 && S_ISREG(st.st_mode))
+		sz = st.st_size;
+	kv_push(char *, *dl, store_path);
 
-	return (EPKG_OK);
+	return (sz);
 }
 
 static void
-free_dellist(struct dl_head *dl)
+free_dellist(dl_list *dl)
 {
-	struct deletion_list	*dl_entry;
+	unsigned int i;
 
-	while (!STAILQ_EMPTY(dl)) {
-		dl_entry = STAILQ_FIRST(dl);
-		STAILQ_REMOVE_HEAD(dl, next);
-		free(dl_entry->path);
-	}
+	for (i = 0; i < kv_size(*dl); i++)
+		free(kv_A(*dl, i));
+	kv_destroy(*dl);
 }
 
 static int
-delete_dellist(struct dl_head *dl, int total)
+delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 {
-	struct deletion_list	*dl_entry;
-	int			retcode = EX_OK;
-	int			count = 0, processed = 0;
+	struct stat st;
+	int retcode = EX_OK;
+	int flag = 0;
+	unsigned int count = 0, processed = 0;
+	char *file, *relpath;
 
+	count = kv_size(*dl);
 	progressbar_start("Deleting files");
-	STAILQ_FOREACH(dl_entry, dl, next) {
-		if (unlink(dl_entry->path) != 0) {
-			warn("unlink(%s)", dl_entry->path);
-			count++;
+	for (int i = 0; i < kv_size(*dl); i++) {
+		flag = 0;
+		relpath = file = kv_A(*dl, i);
+		relpath += strlen(cachedir) + 1;
+		if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+			++processed;
+			progressbar_tick(processed, total);
+			warn("can't stat %s", file);
+			continue;
+		}
+		if (S_ISDIR(st.st_mode))
+			flag = AT_REMOVEDIR;
+		if (unlinkat(fd, relpath, flag) == -1) {
+			warn("unlink(%s)", file);
 			retcode = EX_SOFTWARE;
 		}
+		free(file);
+		kv_A(*dl, i) = NULL;
 		++processed;
 		progressbar_tick(processed, total);
 	}
@@ -129,9 +148,35 @@ delete_dellist(struct dl_head *dl, int total)
 			printf("All done\n");
 		else
 			printf("%d package%s could not be deleted\n",
-			       count, count > 1 ? "s" : "");
+			      count, count > 1 ? "s" : "");
 	}
 	return (retcode);
+}
+
+static kh_sum_t *
+populate_sums(struct pkgdb *db)
+{
+	struct pkg *p = NULL;
+	struct pkgdb_it *it = NULL;
+	const char *sum;
+	char *cksum;
+	size_t slen;
+	kh_sum_t *suml = NULL;
+	khint_t k;
+	int ret;
+
+	suml = kh_init_sum();
+	it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
+	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(p, PKG_CKSUM, &sum);
+		slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
+		cksum = strndup(sum, slen);
+		k = kh_put_sum(suml, cksum, &ret);
+		if (ret != 0)
+			kh_value(suml, k) = cksum;
+	}
+
+	return (suml);
 }
 
 /*
@@ -159,6 +204,84 @@ extract_filename_sum(const char *fname, char sum[])
 	return (true);
 }
 
+static int
+recursive_analysis(int fd, struct pkgdb *db, const char *dir,
+    const char *cachedir, dl_list *dl, kh_sum_t **sumlist, bool all,
+    size_t *total)
+{
+	DIR *d;
+	struct dirent *ent;
+	int newfd, tmpfd;
+	char path[MAXPATHLEN], csum[PKG_FILE_CKSUM_CHARS + 1],
+		link_buf[MAXPATHLEN];
+	const char *name;
+	ssize_t link_len;
+	size_t nbfiles = 0, added = 0;
+	khint_t k;
+
+	tmpfd = dup(fd);
+	d = fdopendir(tmpfd);
+	if (d == NULL) {
+		close(tmpfd);
+		warnx("Impossible to open the directory %s", dir);
+		return (0);
+	}
+
+	while ((ent = readdir(d)) != NULL) {
+		if (strcmp(ent->d_name, ".") == 0 ||
+		    strcmp(ent->d_name, "..") == 0)
+			continue;
+		snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
+		if (ent->d_type == DT_DIR) {
+			nbfiles++;
+			newfd = openat(fd, ent->d_name, O_DIRECTORY, 0);
+			if (newfd == -1) {
+				warnx("Impossible to open the directory %s",
+				    path);
+				continue;
+			}
+			if (recursive_analysis(newfd, db, path, cachedir, dl,
+			    sumlist, all, total) == 0 || all) {
+				add_to_dellist(fd, dl, cachedir, path);
+				added++;
+			}
+			close(newfd);
+			continue;
+		}
+		if (ent->d_type != DT_LNK && ent->d_type != DT_REG)
+			continue;
+		nbfiles++;
+		if (all) {
+			*total += add_to_dellist(fd, dl, cachedir, path);
+			continue;
+		}
+		if (*sumlist == NULL) {
+			*sumlist = populate_sums(db);
+		}
+		name = ent->d_name;
+		if (ent->d_type == DT_LNK) {
+			/* Dereference the symlink and check it for being
+			 * recognized checksum file, or delete the symlink
+			 * later. */
+			if ((link_len = readlinkat(fd, ent->d_name, link_buf,
+			    sizeof(link_buf))) == -1)
+				continue;
+			link_buf[link_len - 1] = '\0';
+			name = link_buf;
+		}
+
+		k = kh_end(*sumlist);
+		if (extract_filename_sum(name, csum))
+			k = kh_get_sum(*sumlist, csum);
+		if (k == kh_end(*sumlist)) {
+			added++;
+			*total += add_to_dellist(fd, dl, cachedir, path);
+		}
+	}
+	closedir(d);
+	return (nbfiles - added);
+}
+
 void
 usage_clean(void)
 {
@@ -170,23 +293,20 @@ int
 exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
-	struct pkgdb_it	*it = NULL;
-	struct pkg	*p = NULL;
-	struct sumlist	*sumlist = NULL, *s, *t;
-	FTS		*fts = NULL;
-	FTSENT		*ent = NULL;
-	struct dl_head	dl = STAILQ_HEAD_INITIALIZER(dl);
-	const char	*cachedir, *sum, *name;
-	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1],
-			link_buf[MAXPATHLEN];
+	kh_sum_t	*sumlist = NULL;
+	dl_list		 dl;
+	const char	*cachedir;
 	bool		 all = false;
-	bool		 sumloaded = false;
 	int		 retcode;
-	int		 ch, cnt = 0;
-	size_t		 total = 0, slen;
-	ssize_t		 link_len;
-	char		 size[7];
+	int		 ch;
+	int		 cachefd = -1;
+	size_t		 total = 0;
+	char		 size[8];
+	char		*cksum;
 	struct pkg_manifest_key *keys = NULL;
+#ifdef HAVE_CAPSICUM
+	cap_rights_t rights;
+#endif
 
 	struct option longopts[] = {
 		{ "all",	no_argument,	NULL,	'a' },
@@ -219,110 +339,87 @@ exec_clean(int argc, char **argv)
 	argv += optind;
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
-
-	paths[0] = __DECONST(char*, cachedir);
-	paths[1] = NULL;
+	cachefd = open(cachedir, O_DIRECTORY);
+	if (cachefd == -1) {
+		warn("Impossible to open %s", cachedir);
+		return (EX_IOERR);
+	}
 
 	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to clean old packages");
+		close(cachefd);
 		return (EX_NOPERM);
 	} else if (retcode == EPKG_ENODB) {
 		warnx("No package database installed.  Nothing to do!");
+		close(cachefd);
 		return (EX_OK);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
+		close(cachefd);
 		return (EX_SOFTWARE);
 	}
 
 	retcode = EX_SOFTWARE;
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+		close(cachefd);
 		return (EX_IOERR);
+	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
-		warnx("Cannot get a read lock on a database, it is locked by another process");
+		close(cachefd);
+		warnx("Cannot get a read lock on a database, it is locked by "
+		    "another process");
 		return (EX_TEMPFAIL);
 	}
 
-	if ((fts = fts_open(paths, FTS_PHYSICAL, NULL)) == NULL) {
-		warn("fts_open(%s)", cachedir);
-		goto cleanup;
-	}
+#ifdef HAVE_CAPSICUM
+		cap_rights_init(&rights, CAP_READ, CAP_LOOKUP, CAP_FSTATFS,
+		    CAP_FSTAT, CAP_UNLINKAT);
+		if (cap_rights_limit(cachefd, &rights) < 0 && errno != ENOSYS ) {
+			warn("cap_rights_limit() failed");
+			close(cachefd);
+			return (EX_SOFTWARE);
+		}
+
+		if (cap_enter() < 0 && errno != ENOSYS) {
+			warn("cap_enter() failed");
+			close(cachefd);
+			return (EX_SOFTWARE);
+		}
+#endif
+
+	kv_init(dl);
 
 	/* Build the list of out-of-date or obsolete packages */
 
 	pkg_manifest_keys_new(&keys);
-	while ((ent = fts_read(fts)) != NULL) {
-		if (ent->fts_info != FTS_F && ent->fts_info != FTS_SL)
-			continue;
-
-		if (all) {
-			retcode = add_to_dellist(&dl, ent->fts_path);
-			if (retcode == EPKG_OK) {
-				total += ent->fts_statp->st_size;
-				++cnt;
-			}
-			continue;
-		}
-
-		if (sumlist == NULL && !sumloaded) {
-			it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
-			while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-				pkg_get(p, PKG_CKSUM, &sum);
-				slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
-				s = calloc(1, sizeof(struct sumlist));
-				memcpy(s->sum, sum, slen);
-				s->sum[slen] = '\0';
-				HASH_ADD_STR(sumlist, sum, s);
-			}
-		}
-
-		if (ent->fts_info == FTS_SL) {
-			/* Dereference the symlink and check it for being
-			 * recognized checksum file, or delete the symlink
-			 * later. */
-			if ((link_len = readlink(ent->fts_name, link_buf,
-			    sizeof(link_buf))) == -1)
-				continue;
-			link_buf[link_len] = '\0';
-			name = link_buf;
-		} else
-			name = ent->fts_name;
-
-		s = NULL;
-		if (extract_filename_sum(name, csum))
-			HASH_FIND_STR(sumlist, csum, s);
-		if (s == NULL) {
-			retcode = add_to_dellist(&dl, ent->fts_path);
-			if (retcode == EPKG_OK) {
-				total += ent->fts_statp->st_size;
-				++cnt;
-			}
-			continue;
-		}
-	}
-	HASH_ITER(hh, sumlist, s, t) {
-		HASH_DEL(sumlist, s);
-		free(s);
+	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
+	    &total);
+	if (sumlist != NULL) {
+		kh_foreach_value(sumlist, cksum, free(cksum));
+		kh_destroy_sum(sumlist);
 	}
 
-	if (STAILQ_EMPTY(&dl)) {
+	if (kv_size(dl) == 0) {
 		if (!quiet)
 			printf("Nothing to do.\n");
 		retcode = EX_OK;
 		goto cleanup;
 	}
 
-	humanize_number(size, sizeof(size), total, "B", HN_AUTOSCALE, 0);
+	humanize_number(size, sizeof(size), total, "B",
+	    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
-	printf("The cleanup will free %s\n", size);
+	if (!quiet)
+		printf("The cleanup will free %s\n", size);
 	if (!dry_run) {
 			if (query_yesno(false,
-			  "\nProceed with cleaning the cache? [y/N]: ")) {
-				retcode = delete_dellist(&dl, cnt);
+			  "\nProceed with cleaning the cache? ")) {
+				retcode = delete_dellist(cachefd, cachedir, &dl, kv_size(dl));
 			}
 	} else {
 		retcode = EX_OK;
@@ -334,8 +431,8 @@ cleanup:
 	pkg_manifest_keys_free(keys);
 	free_dellist(&dl);
 
-	if (fts != NULL)
-		fts_close(fts);
+	if (cachefd != -1)
+		close(cachefd);
 
 	return (retcode);
 }

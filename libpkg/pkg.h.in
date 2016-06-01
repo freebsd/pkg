@@ -1,12 +1,12 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -32,13 +32,18 @@
 #ifndef _PKG_H
 #define _PKG_H
 
+#ifdef __cplusplus
+extern "C" {
+#define restrict
+#endif
+
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/cdefs.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/sbuf.h>
-#include <openssl/pem.h>
 #include <sysexits.h>
 
 /* The expected name of the pkg(8) binary executable. */
@@ -68,8 +73,16 @@
 #undef OSMAJOR
 #endif
 
+#ifdef __NetBSD_Version__
+#define OSMAJOR __NetBSD_Version__
+#endif
+
 #ifndef __DECONST
 #define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#endif
+
+#ifndef NELEM
+#define NELEM(array)    (sizeof(array) / sizeof((array)[0]))
 #endif
 
 /* Special exit status for worker processes indicating that a restart
@@ -83,13 +96,9 @@ struct pkg_dep;
 struct pkg_conflict;
 struct pkg_file;
 struct pkg_dir;
-struct pkg_category;
 struct pkg_option;
 struct pkg_license;
-struct pkg_user;
-struct pkg_group;
-struct pkg_shlib;
-struct pkg_provide;
+struct pkg_config_file;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -106,6 +115,12 @@ struct pkg_manifest_parser;
 
 typedef struct ucl_object_s pkg_object;
 typedef void * pkg_iter;
+
+struct pkg_kv {
+	char *key;
+	char *value;
+	struct pkg_kv *next;
+};
 
 /**
  * The system-wide pkg(8) status: ie. is it a) installed or otherwise
@@ -143,6 +158,11 @@ typedef enum {
 	PKGDB_REMOTE,
 	PKGDB_MAYBE_REMOTE
 } pkgdb_t;
+
+typedef enum {
+	PKG_INIT_FLAG_USE_IPV4 = (1U << 0),
+	PKG_INIT_FLAG_USE_IPV6 = (1U << 1)
+} pkg_init_flags;
 
 /**
  * Specify how an argument should be used by query functions.
@@ -206,8 +226,8 @@ typedef enum {
 	 */
 	PKG_FILE = (1U << 0),
 	/**
-         * The pkg refers to data read from a non-regular file
-         * (device, pipeline, unix dmain socket etc.)
+	 * The pkg refers to data read from a non-regular file
+	 * (device, pipeline, unix dmain socket etc.)
 	 */
 	PKG_STREAM = (1U << 1),
 	/**
@@ -238,6 +258,7 @@ typedef enum {
 	PKG_MTREE,
 	PKG_MESSAGE,
 	PKG_ARCH,
+	PKG_ABI,
 	PKG_MAINTAINER,
 	PKG_WWW,
 	PKG_PREFIX,
@@ -257,11 +278,11 @@ typedef enum {
 	PKG_ROWID,
 	PKG_TIME,
 	PKG_ANNOTATIONS,
-	PKG_LICENSES,
-	PKG_CATEGORIES,
 	PKG_UNIQUEID,
 	PKG_OLD_DIGEST,
-	PKG_NUM_FIELDS, 	/* end of fields */
+	PKG_DEP_FORMULA,
+	PKG_VITAL,
+	PKG_NUM_FIELDS,		/* end of fields */
 } pkg_attr;
 
 typedef enum {
@@ -269,7 +290,11 @@ typedef enum {
 	PKG_SET_AUTOMATIC,
 	PKG_SET_LOCKED,
 	PKG_SET_DEPORIGIN,
-	PKG_SET_ORIGIN
+	PKG_SET_ORIGIN,
+	PKG_SET_DEPNAME,
+	PKG_SET_NAME,
+	PKG_SET_VITAL,
+	PKG_SET_MAX
 } pkg_set_attr;
 
 /**
@@ -283,19 +308,6 @@ typedef enum {
 } pkg_dep_attr;
 
 typedef enum {
-	PKG_FILE_PATH = 0,
-	PKG_FILE_SUM,
-	PKG_FILE_UNAME,
-	PKG_FILE_GNAME
-} pkg_file_attr;
-
-typedef enum {
-	PKG_DIR_PATH = 0,
-	PKG_DIR_UNAME,
-	PKG_DIR_GNAME
-} pkg_dir_attr;
-
-typedef enum {
 	PKG_DEPS = 0,
 	PKG_RDEPS,
 	PKG_OPTIONS,
@@ -306,7 +318,11 @@ typedef enum {
 	PKG_SHLIBS_REQUIRED,
 	PKG_SHLIBS_PROVIDED,
 	PKG_CONFLICTS,
-	PKG_PROVIDES
+	PKG_PROVIDES,
+	PKG_CONFIG_FILES,
+	PKG_REQUIRES,
+	PKG_CATEGORIES,
+	PKG_LICENSES
 } pkg_list;
 
 typedef enum {
@@ -357,7 +373,9 @@ typedef enum _pkg_flags {
 	PKG_FLAG_UPGRADES_FOR_INSTALLED = (1U << 7),
 	PKG_FLAG_SKIP_INSTALL = (1U << 8),
 	PKG_FLAG_FORCE_MISSING = (1U << 9),
-	PKG_FLAG_FETCH_MIRROR = (1U << 10)
+	PKG_FLAG_FETCH_MIRROR = (1U << 10),
+	PKG_FLAG_USE_IPV4 = (1U << 11),
+	PKG_FLAG_USE_IPV6 = (1U << 12)
 } pkg_flags;
 
 typedef enum _pkg_stats_t {
@@ -435,7 +453,7 @@ typedef enum {
 	 */
 	EPKG_DEPENDENCY,
 	/**
-         * Can not operate on package because it is locked
+	 * Can not operate on package because it is locked
 	 */
 	EPKG_LOCKED,
 	/**
@@ -455,8 +473,8 @@ typedef enum {
 	 */
 	EPKG_REPOSCHEMA,
 	/**
-         * Insufficient privilege for action
-         */
+	 * Insufficient privilege for action
+	 */
 	EPKG_ENOACCESS,
 	/**
 	 * Insecure permissions on any component of
@@ -470,7 +488,15 @@ typedef enum {
 	/**
 	 * Need to repeat operation
 	 */
-	EPKG_AGAIN
+	EPKG_AGAIN,
+	/**
+	 * Not installed
+	 */
+	EPKG_NOTINSTALLED,
+	/**
+	 * Can not delete the package because it is vital, i.e. a kernel
+	 */
+	EPKG_VITAL
 } pkg_error_t;
 
 /**
@@ -500,7 +526,8 @@ typedef enum {
 	PKG_SOLVED_DELETE,
 	PKG_SOLVED_UPGRADE,
 	PKG_SOLVED_UPGRADE_REMOVE,
-	PKG_SOLVED_FETCH
+	PKG_SOLVED_FETCH,
+	PKG_SOLVED_UPGRADE_INSTALL
 } pkg_solved_t;
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
@@ -509,7 +536,7 @@ typedef enum {
 
 /**
  * test if pkg is installed and activated.
- * @param count  If all the tests pass, and count is non-NULL,
+ * @param count	If all the tests pass, and count is non-NULL,
  * write the number of installed packages into *count
  */
 pkg_status_t pkg_status(int *count);
@@ -519,12 +546,6 @@ pkg_status_t pkg_status(int *count);
  * Allocated pkg must be deallocated by pkg_free().
  */
 int pkg_new(struct pkg **, pkg_t type);
-
-/**
- * Reset a pkg to its initial state.
- * Useful to avoid sequences of pkg_new() and pkg_free().
- */
-void pkg_reset(struct pkg *, pkg_t type);
 
 /**
  * Deallocate a pkg
@@ -570,8 +591,6 @@ int pkg_list_count(const struct pkg *, pkg_list);
  */
 int pkg_deps(const struct pkg *, struct pkg_dep **dep);
 
-struct pkg_dep *pkg_dep_lookup(const struct pkg *, const char *origin);
-
 /**
  * Iterates over the reverse dependencies of the package.
  * That is, the packages which require this package.
@@ -599,14 +618,14 @@ int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_users(const struct pkg *pkg, struct pkg_user **user);
+int pkg_users(const struct pkg *pkg, char **user);
 
 /**
  * Iterates over the groups of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_groups(const struct pkg *pkg, struct pkg_group **group);
+int pkg_groups(const struct pkg *pkg, char **group);
 
 /**
  * Iterates over the options of the package.
@@ -620,14 +639,14 @@ int pkg_options(const struct pkg *, struct pkg_option **option);
  * @param shlib must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_shlibs_required(const struct pkg *pkg, struct pkg_shlib **shlib);
+int pkg_shlibs_required(const struct pkg *pkg, char **shlib);
 
 /**
  * Iterates over the shared libraries provided by the package.
  * @param shlib must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **shlib);
+int pkg_shlibs_provided(const struct pkg *pkg, char **shlib);
 
 /**
  * Iterates over the conflicts registered in the package.
@@ -641,7 +660,18 @@ int pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **conflict);
  * @param provide must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
+int pkg_provides(const struct pkg *pkg, char **provide);
+int pkg_requires(const struct pkg *pkg, char **require);
+
+int pkg_categories(const struct pkg *pkg, char **category);
+int pkg_licenses(const struct pkg *pkg, char **licenses);
+
+/**
+ * Iterates over the config files registered in the package.
+ * @param provide must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_config_files(const struct pkg *pkg, struct pkg_config_file **cf);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the
@@ -675,21 +705,18 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
 /**
- * update the checksum of a file in the database (and the object)
- * XXX I don't think this function should be part of a public API.
- * @param db A pointer to a struct pkgdb object
- * @param file A pointer to a struct pkg_file object
- * @param sha256 The new checksum
- * @return An error code
- */
-int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
-			 const char *sha256);
-
-/**
  * Read the content of a file into a buffer, then call pkg_set().
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
+
+/**
+ * Set a new debug level used inside of pkg.
+ * @param debug_level Debug level between 0 (no debugging) and 4 (max debugging).
+ * @return Previous debug level.
+ */
+int64_t pkg_set_debug_level(int64_t debug_level);
+int pkg_set_rootdir(const char *rootdir);
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.
@@ -700,91 +727,6 @@ int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
 int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
 			   char *version, bool locked);
 
-//int pkg_addfile(struct pkg *, const char *fmt);
-/**
- * Allocate a new struct pkg_file and add it to the files of pkg.
- * @param sha256 The ascii representation of the sha256 or a NULL pointer.
- * @param check_duplicates ensure no duplicate files are added to the pkg?
- * @return An error code.
- */
-int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
-		bool check_duplicates);
-
-/**
- * Allocate a new struct pkg_file and add it to the files of pkg;
- * @param path path of the file
- * @param sha256 The ascii representation of the sha256 or a NULL pointer.
- * @param uname the user name of the file
- * @param gname the group name of the file
- * @param perm the permission
- * @param check_duplicates ensure no duplicate files are added to the pkg?
- * @return An error code.
- */
-int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
-		     const char *uname, const char *gname, mode_t perm,
-		     bool check_duplicates);
-
-/**
- * Add a path
- * @return An error code.
- */
-int pkg_adddir(struct pkg *pkg, const char *path, bool try,
-		    bool check_duplicates);
-
-/**
- * Allocate a new struct pkg_file and add it to the files of pkg;
- * @param path path of the file
- * @param uname the user name of the file
- * @param gname the group name of the file
- * @param perm the permission
- * @return An error code.
- */
-int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
-		    const char *gname, mode_t perm, bool try,
-		    bool check_duplicates);
-
-/**
- * Add a category
- * @return An error code.
- */
-int pkg_addcategory(struct pkg *pkg, const char *name);
-
-/**
- * Add a license
- * @return An error code.
- */
-int pkg_addlicense(struct pkg *pkg, const char *name);
-
-/**
- * Add a user
- * @return An error code.
- */
-int pkg_adduser(struct pkg *pkg, const char *name);
-
-/**
- * Add a group
- * @return An error code.
- */
-int pkg_addgroup(struct pkg *pkg, const char *group);
-
-/**
- * Add a user
- * @return An error code.
- */
-int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
-
-/**
- * Add a gid
- * @return an error code
- */
-int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
-
-/**
- * Allocate a new struct pkg_script and add it to the scripts of pkg.
- * @param path The path to the script on disk.
- @ @return An error code.
- */
-int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
 
 /**
  * Helper which call pkg_addscript() with the content of the file and
@@ -792,63 +734,6 @@ int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
  */
 int pkg_addscript_file(struct pkg *pkg, const char *path);
 int pkg_addscript_fileat(int fd, struct pkg *pkg, const char *path);
-int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
-
-/**
- * Allocate a new struct pkg_option and add it to the options of pkg.
- * @return An error code.
- */
-int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
-
-/**
- * Add a default value to an already existing struct pkg_option
- * @return An error code
- */
-int pkg_addoption_default(struct pkg *pkg, const char *key,
-                          const char *default_value);
-
-/**
- * Add a description to an already exsting struct pkg_option
- * @return An error code.
- */
-int pkg_addoption_description(struct pkg *pkg, const char *key,
-                              const char *description);
-
-/**
- * Add a shared library used by this package
- * @return An error code.
- */
-int pkg_addshlib_required(struct pkg *pkg, const char *name);
-
-/**
- * Add a shared library provided by this package
- * @return An error code.
- */
-int pkg_addshlib_provided(struct pkg *pkg, const char *name);
-
-/**
- * Add a conflict registered with this package
- * @return An error code.
- */
-int pkg_addconflict(struct pkg *pkg, const char *name);
-
-/**
- * Add a provide registered with this package
- * @return An error code.
- */
-int pkg_addprovide(struct pkg *pkg, const char *name);
-
-/**
- * Add annotation key+value pair
- * @return An error code
- */
-int pkg_addannotation(struct pkg *pkg, const char *tag, const char *value);
-
-/**
- * Delete annotation identified by the key
- * @return An error code
- */
-int pkg_delannotation(struct pkg *pkg, const char *tag);
 
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
@@ -867,6 +752,7 @@ void pkg_manifest_parser_free(struct pkg_manifest_parser *p);
 #define PKG_MANIFEST_EMIT_NOFILES (0x1 << 1)
 #define PKG_MANIFEST_EMIT_PRETTY (0x1 << 2)
 #define PKG_MANIFEST_EMIT_JSON (0x1 << 3)
+#define PKG_MANIFEST_EMIT_UCL (0x1 << 4)
 
 /**
  * Emit a manifest according to the attributes of pkg.
@@ -887,57 +773,17 @@ const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
 #define pkg_dep_version(d) pkg_dep_get(d, PKG_DEP_VERSION)
 bool pkg_dep_is_locked(struct pkg_dep const * const);
 
-/* pkg_file */
-const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
-#define pkg_file_path(f) pkg_file_get(f, PKG_FILE_PATH)
-#define pkg_file_cksum(f) pkg_file_get(f, PKG_FILE_SUM)
-#define pkg_file_uname(f) pkg_file_get(f, PKG_FILE_UNAME)
-#define pkg_file_gname(f) pkg_file_get(f, PKG_FILE_GNAME)
-mode_t pkg_file_mode(struct pkg_file const * const);
-bool pkg_file_keep(struct pkg_file const * const);
-
 bool pkg_has_dir(struct pkg *, const char *);
 bool pkg_has_file(struct pkg *, const char *);
-/* pkg_dir */
-const char *pkg_dir_get(struct pkg_dir const * const, const pkg_dir_attr);
-#define pkg_dir_path(d) pkg_dir_get(d, PKG_DIR_PATH)
-#define pkg_dir_uname(d) pkg_dir_get(d, PKG_DIR_UNAME)
-#define pkg_dir_gname(d) pkg_dir_get(d, PKG_DIR_GNAME)
-mode_t pkg_dir_mode(struct pkg_dir const * const);
-bool pkg_dir_keep(struct pkg_dir const * const);
-bool pkg_dir_try(struct pkg_dir const * const);
 
-/* pkg_category */
-const char *pkg_category_name(struct pkg_category const * const);
+struct pkg_file *pkg_get_file(struct pkg *p, const char *path);
+struct pkg_dir *pkg_get_dir(struct pkg *p, const char *path);
 
 /* pkg_license */
 const char *pkg_license_name(struct pkg_license const * const);
 
-/* pkg_user */
-const char *pkg_user_name(struct pkg_user const * const);
-const char *pkg_user_uidstr(struct pkg_user const * const);
-
-/* pkg_group */
-const char *pkg_group_name(struct pkg_group const * const);
-const char *pkg_group_gidstr(struct pkg_group const * const);
-
 /* pkg_script */
 const char *pkg_script_get(struct pkg const * const, pkg_script);
-
-/* pkg_option */
-const char *pkg_option_opt(struct pkg_option const * const);
-const char *pkg_option_value(struct pkg_option const * const);
-const char *pkg_option_default_value(struct pkg_option const * const);
-const char *pkg_option_description(struct pkg_option const * const);
-
-/* pkg_shlib */
-const char *pkg_shlib_name(struct pkg_shlib const * const);
-
-/* pkg_conflict */
-const char *pkg_conflict_uniqueid(const struct pkg_conflict *);
-
-/* pkg_provide */
-const char *pkg_provide_name(const struct pkg_provide *);
 
 /**
  * @param db A pointer to a struct pkgdb object
@@ -961,7 +807,7 @@ int pkg_try_installed(struct pkgdb *db, const char *origin,
  * Match will be case sensitive or insensitive depending on
  * pkgdb_case_sensitive()
  */
-int pkg_is_installed(struct pkgdb *db, const char *origin);
+int pkg_is_installed(struct pkgdb *db, const char *name);
 
 /**
  * Create a repository database.
@@ -972,10 +818,12 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
  * @param metafile Open meta from the specified file
  * @param legacy Create legacy (1.2 compatible) repo
  */
+typedef int(pkg_password_cb)(char *, int, int, void*);
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	const char *metafile, bool legacy);
-int pkg_finish_repo(const char *output_dir, pem_password_cb *cb, char **argv,
+int pkg_finish_repo(const char *output_dir, pkg_password_cb *cb, char **argv,
     int argc, bool filelist);
+
 
 /**
  * Test if the EUID has sufficient privilege to carry out some
@@ -1015,6 +863,16 @@ int pkgdb_downgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type,
 int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
 
 /**
+ * Transaction/savepoint handling.
+ * @param savepoint -- if NULL or an empty string, use BEGIN, ROLLBACK, COMMIT
+ * otherwise use SAVEPOINT, ROLLBACK TO, RELEASE.
+ * @return an error code.
+ */
+int pkgdb_transaction_begin(struct pkgdb *db, const char *savepoint);
+int pkgdb_transaction_commit(struct pkgdb *db, const char *savepoint);
+int pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint);
+
+/**
  * Close and free the struct pkgdb.
  */
 void pkgdb_close(struct pkgdb *db);
@@ -1040,7 +898,7 @@ int pkgdb_load(struct pkgdb *db, const char *src);
 int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
 
 /**
- * Set the case sensitivity flag on or off.  Defaults to 
+ * Set the case sensitivity flag on or off.  Defaults to
  * true (case_sensitive)
  */
 void pkgdb_set_case_sensitivity(bool);
@@ -1069,8 +927,10 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glo
 
 struct pkgdb_it * pkgdb_query_shlib_require(struct pkgdb *db, const char *shlib);
 struct pkgdb_it * pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_require(struct pkgdb *db, const char *req);
+struct pkgdb_it * pkgdb_query_provide(struct pkgdb *db, const char *req);
 
-struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db, 
+struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db,
     const char *provide, const char *repo);
 
 /**
@@ -1084,7 +944,7 @@ int pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg,
 int pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg,
 	const char *tag, const char *value);
 int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
-        const char *tag);
+	const char *tag);
 
 #define PKG_LOAD_BASIC			0
 #define PKG_LOAD_DEPS			(1U << 0)
@@ -1092,17 +952,17 @@ int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
 #define PKG_LOAD_FILES			(1U << 2)
 #define PKG_LOAD_SCRIPTS		(1U << 3)
 #define PKG_LOAD_OPTIONS		(1U << 4)
-#define PKG_LOAD_MTREE			(1U << 5)
-#define PKG_LOAD_DIRS			(1U << 6)
-#define PKG_LOAD_CATEGORIES		(1U << 7)
-#define PKG_LOAD_LICENSES		(1U << 8)
-#define PKG_LOAD_USERS			(1U << 9)
-#define PKG_LOAD_GROUPS			(1U << 10)
-#define PKG_LOAD_SHLIBS_REQUIRED	(1U << 11)
-#define PKG_LOAD_SHLIBS_PROVIDED	(1U << 12)
-#define PKG_LOAD_ANNOTATIONS		(1U << 13)
-#define PKG_LOAD_CONFLICTS		(1U << 14)
-#define PKG_LOAD_PROVIDES		(1U << 15)
+#define PKG_LOAD_DIRS			(1U << 5)
+#define PKG_LOAD_CATEGORIES		(1U << 6)
+#define PKG_LOAD_LICENSES		(1U << 7)
+#define PKG_LOAD_USERS			(1U << 8)
+#define PKG_LOAD_GROUPS			(1U << 9)
+#define PKG_LOAD_SHLIBS_REQUIRED	(1U << 10)
+#define PKG_LOAD_SHLIBS_PROVIDED	(1U << 11)
+#define PKG_LOAD_ANNOTATIONS		(1U << 12)
+#define PKG_LOAD_CONFLICTS		(1U << 13)
+#define PKG_LOAD_PROVIDES		(1U << 14)
+#define PKG_LOAD_REQUIRES		(1U << 15)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
@@ -1156,6 +1016,7 @@ int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
 #define PKG_ADD_FORCE			(1U << 3)
 #define PKG_ADD_NOSCRIPT		(1U << 4)
 #define PKG_ADD_FORCE_MISSING		(1U << 5)
+#define PKG_ADD_SPLITTED_UPGRADE	(1U << 6)
 
 /**
  * Allocate a new pkg_jobs.
@@ -1196,7 +1057,7 @@ int pkg_jobs_total(struct pkg_jobs *jobs);
  * @param iter Must be set to NULL for the first call.
  * @return A next pkg or NULL.
  */
-bool pkg_jobs_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, 
+bool pkg_jobs_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n,
 	struct pkg **o, int *type);
 
 /**
@@ -1224,6 +1085,11 @@ int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
 int pkg_solve_sat_problem(struct pkg_solve_problem *problem);
 
 /**
+ * Export SAT problem to a dot graph description
+ */
+void pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file);
+
+/**
  * Convert package jobs to a SAT problem
  * @return SAT problem or NULL if failed
  */
@@ -1245,7 +1111,7 @@ int pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem);
  * Parse SAT solver output and convert it to jobs
  * @return error code
  */
-int pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pkg_jobs *j);
+int pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem);
 
 /**
  * Free a SAT problem structure
@@ -1267,13 +1133,12 @@ int pkg_create_installed(const char *, pkg_formats, struct pkg *);
  * no old pkg_tools compatibility stuff
  */
 int pkg_create_from_manifest(const char *, pkg_formats, const char *,
-			     const char *, bool);
+    const char *, const char *);
 
 /**
  * Create package from stage install with a metadata directory
  */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *,
-		      char *, bool);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
 
 /**
  * Download the latest repo db file and checks its signature if any
@@ -1344,7 +1209,8 @@ pkg_change_t pkg_version_change_between(const struct pkg * pkg1, const struct pk
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t);
+int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
+    ssize_t offset, int64_t size);
 /**
  * Fetch a file to temporary destination
  */
@@ -1388,6 +1254,12 @@ typedef enum {
 	PKG_EVENT_DEINSTALL_FINISHED,
 	PKG_EVENT_UPGRADE_BEGIN,
 	PKG_EVENT_UPGRADE_FINISHED,
+	PKG_EVENT_EXTRACT_BEGIN,
+	PKG_EVENT_EXTRACT_FINISHED,
+	PKG_EVENT_DELETE_FILES_BEGIN,
+	PKG_EVENT_DELETE_FILES_FINISHED,
+	PKG_EVENT_ADD_DEPS_BEGIN,
+	PKG_EVENT_ADD_DEPS_FINISHED,
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_FETCH_BEGIN,
 	PKG_EVENT_FETCH_FINISHED,
@@ -1426,6 +1298,11 @@ typedef enum {
 	PKG_EVENT_PLUGIN_ERROR,
 	PKG_EVENT_PLUGIN_INFO,
 	PKG_EVENT_NOT_FOUND,
+	PKG_EVENT_NEW_ACTION,
+	PKG_EVENT_MESSAGE,
+	PKG_EVENT_FILE_MISSING,
+	PKG_EVENT_CLEANUP_CALLBACK_REGISTER,
+	PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1461,6 +1338,7 @@ struct pkg_event {
 		} e_install_begin;
 		struct {
 			struct pkg *pkg;
+			struct pkg *old;
 		} e_install_finished;
 		struct {
 			struct pkg *pkg;
@@ -1469,13 +1347,31 @@ struct pkg_event {
 			struct pkg *pkg;
 		} e_deinstall_finished;
 		struct {
-			struct pkg *new;
-			struct pkg *old;
+			struct pkg *n;
+			struct pkg *o;
 		} e_upgrade_begin;
 		struct {
-			struct pkg *new;
-			struct pkg *old;
+			struct pkg *n;
+			struct pkg *o;
 		} e_upgrade_finished;
+		struct {
+			struct pkg *pkg;
+		} e_extract_begin;
+		struct {
+			struct pkg *pkg;
+		} e_extract_finished;
+		struct {
+			struct pkg *pkg;
+		} e_delete_files_begin;
+		struct {
+			struct pkg *pkg;
+		} e_delete_files_finished;
+		struct {
+			struct pkg *pkg;
+		} e_add_deps_begin;
+		struct {
+			struct pkg *pkg;
+		} e_add_deps_finished;
 		struct {
 			struct pkg *pkg;
 			struct pkg_dep *dep;
@@ -1522,9 +1418,6 @@ struct pkg_event {
 		} e_integrity_finished;
 		struct {
 			const char *reponame;
-			int updated;
-			int removed;
-			int added;
 			int processed;
 		} e_incremental_update;
 		struct {
@@ -1559,6 +1452,17 @@ struct pkg_event {
 			int64_t current;
 			int64_t total;
 		} e_progress_tick;
+		struct {
+			const char *msg;
+		} e_pkg_message;
+		struct {
+			struct pkg *pkg;
+			struct pkg_file *file;
+		} e_file_missing;
+		struct {
+			void *data;
+			void (*cleanup_cb)(void *data);
+		} e_cleanup_callback;
 	};
 };
 
@@ -1571,6 +1475,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 void pkg_event_register(pkg_event_cb cb, void *data);
 
 bool pkg_compiled_for_same_os_major(void);
+int pkg_ini(const char *, const char *, pkg_init_flags);
 int pkg_init(const char *, const char *);
 int pkg_initialized(void);
 void pkg_shutdown(void);
@@ -1579,14 +1484,16 @@ int pkg_test_filesum(struct pkg *);
 int pkg_recompute(struct pkgdb *, struct pkg *);
 int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 
+#ifdef __DragonFly__
+#define pkg_get_myarch(d, z) pkg_get_myarch_legacy(d, z)
+#else
 int pkg_get_myarch(char *pkgarch, size_t sz);
+#endif
+int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
 int pkg_old_load_from_path(struct pkg *pkg, const char *path);
-int pkg_old_emit_content(struct pkg *pkg, char **dest);
 int pkg_from_old(struct pkg *pkg);
-int pkg_to_old(struct pkg *pkg);
-int pkg_register_old(struct pkg *pkg);
 int pkg_sshserve(int fd);
 
 int pkg_repos_total_count(void);
@@ -1599,6 +1506,8 @@ const char *pkg_repo_fingerprints(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
+unsigned pkg_repo_priority(struct pkg_repo *r);
+unsigned pkg_repo_ip_version(struct pkg_repo *r);
 struct pkg_repo *pkg_repo_find(const char *name);
 
 /**
@@ -1689,7 +1598,7 @@ int pkg_vsnprintf(char * restrict str, size_t size,
  * Allocate a string buffer ret sufficiently big to contain formatted
  * data data from pkg as indicated by the format code format
  * @param ret location of pointer to be set to point to buffer containing
- * result 
+ * result
  * @param ... Varargs list of struct pkg etc. supplying the data
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
@@ -1700,7 +1609,7 @@ int pkg_asprintf(char **ret, const char * restrict format, ...);
  * Allocate a string buffer ret sufficiently big to contain formatted
  * data data from pkg as indicated by the format code format
  * @param ret location of pointer to be set to point to buffer containing
- * result 
+ * result
  * @param ap Varargs list of struct pkg etc. supplying the data
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
@@ -1729,6 +1638,7 @@ struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
 	const char * restrict format, va_list ap);
 
 bool pkg_has_message(struct pkg *p);
+bool pkg_need_message(struct pkg *p, struct pkg *old);
 bool pkg_is_locked(const struct pkg * restrict p);
 
 
@@ -1740,13 +1650,13 @@ bool pkg_is_locked(const struct pkg * restrict p);
  *  def bp(m, n):
  *      power = -(n * n) / (2. * m)
  *      return 1. - exp(power)
- * 
+ *
  * For our choice of 2^40 (or 10 hex characters) it is:
  *  >>> bp(float(2 ** 40), 24500.)
  *  0.00027292484660568217
- * 
+ *
  * And it is negligible probability
- */ 
+ */
 #define PKG_FILE_CKSUM_CHARS 10
 
 struct pkg_audit;
@@ -1786,7 +1696,17 @@ int pkg_audit_process(struct pkg_audit *audit);
  */
 bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 		bool quiet, struct sbuf **result);
-		
-void pkg_audit_free (struct pkg_audit *audit);
 
+void pkg_audit_free (struct pkg_audit *audit);
+char *pkg_utils_tokenize(char **);
+int pkg_utils_count_spaces(const char *);
+int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \
+    const char *locationn, bool testing);
+char *pkg_absolutepath(const char *src, char *dest, size_t dest_len, bool fromroot);
+
+void pkg_cache_full_clean(void);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

@@ -33,6 +33,7 @@
 
 #include "pkg.h"
 #include "private/event.h"
+#include "private/pkg.h"
 
 /*
  * split_version(pkgname, endname, epoch, revision) returns a pointer to
@@ -338,15 +339,11 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 pkg_change_t
 pkg_version_change(const struct pkg * restrict pkg)
 {
-	const char *version, *oldversion;
 
-	pkg_get(pkg, PKG_VERSION, &version,
-	    PKG_OLD_VERSION, &oldversion);
-
-	if (oldversion == NULL)
+	if (pkg->old_version == NULL)
 		return (PKG_REINSTALL);
 
-	switch (pkg_version_cmp(oldversion, version)) {
+	switch (pkg_version_cmp(pkg->old_version, pkg->version)) {
 	case -1:
 		return (PKG_UPGRADE);
 	default:		/* placate the compiler */
@@ -360,15 +357,10 @@ pkg_version_change(const struct pkg * restrict pkg)
 pkg_change_t
 pkg_version_change_between(const struct pkg * pkg1, const struct pkg *pkg2)
 {
-	const char *version, *oldversion;
-
 	if (pkg2 == NULL)
 		return PKG_REINSTALL;
 
-	pkg_get(pkg1, PKG_VERSION, &version);
-	pkg_get(pkg2, PKG_VERSION, &oldversion);
-
-	switch (pkg_version_cmp(oldversion, version)) {
+	switch (pkg_version_cmp(pkg2->version, pkg1->version)) {
 	case -1:
 		return (PKG_UPGRADE);
 	default:		/* placate the compiler */

@@ -1,8 +1,9 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -29,7 +30,6 @@
 #include <string.h>
 #include <syslog.h>
 
-#define _WITH_DPRINTF
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -58,7 +58,6 @@ pipeevent(struct pkg_event *ev)
 	int i;
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
-	const char *message;
 	struct pkg_event_conflict *cur_conflict;
 	if (eventpipe < 0)
 		return;
@@ -135,10 +134,21 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_install_begin.pkg, ev->e_install_begin.pkg);
 		break;
+	case PKG_EVENT_EXTRACT_BEGIN:
+		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%n\", "
+		    "\"pkgversion\": \"%v\""
+		    "}}", ev->e_extract_begin.pkg, ev->e_extract_begin.pkg);
+		break;
+	case PKG_EVENT_EXTRACT_FINISHED:
+		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%n\", "
+		    "\"pkgversion\": \"%v\""
+		    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
+		break;
 	case PKG_EVENT_INSTALL_FINISHED:
-		pkg_get(ev->e_install_finished.pkg,
-		    PKG_MESSAGE, &message);
-
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
@@ -147,7 +157,9 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
-		    sbuf_json_escape(buf, message));
+			ev->e_install_finished.pkg->message ?
+				sbuf_json_escape(buf, ev->e_install_finished.pkg->message->str) :
+				"");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
@@ -206,9 +218,9 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.new);
+		    ev->e_upgrade_begin.o,
+		    ev->e_upgrade_begin.o,
+		    ev->e_upgrade_begin.n);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
@@ -217,9 +229,9 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.old,
-		    ev->e_upgrade_begin.new);
+		    ev->e_upgrade_finished.o,
+		    ev->e_upgrade_finished.o,
+		    ev->e_upgrade_finished.n);
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
@@ -243,8 +255,7 @@ pipeevent(struct pkg_event *ev)
 		while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
 			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
 			    "\"pkgversion\": \"%s\" }, ",
-			    pkg_dep_name(dep),
-			    pkg_dep_version(dep));
+			    dep->name, dep->version);
 		sbuf_setpos(msg, sbuf_len(msg) - 2);
 		sbuf_cat(msg, "]}}");
 		break;
@@ -263,8 +274,8 @@ pipeevent(struct pkg_event *ev)
 		    "\"depname\": \"%s\", "
 		    "\"depversion\": \"%s\""
 		    "}}" ,
-		    pkg_dep_name(ev->e_missing_dep.dep),
-		    pkg_dep_version(ev->e_missing_dep.dep));
+		    ev->e_missing_dep.dep->name,
+		    ev->e_missing_dep.dep->version);
 		break;
 	case PKG_EVENT_NOREMOTEDB:
 		sbuf_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
@@ -290,7 +301,7 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_file_mismatch.pkg,
 		    ev->e_file_mismatch.pkg,
-		    sbuf_json_escape(buf, pkg_file_path(ev->e_file_mismatch.file)));
+		    sbuf_json_escape(buf, ev->e_file_mismatch.file->path));
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
@@ -327,14 +338,8 @@ pipeevent(struct pkg_event *ev)
 		sbuf_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
 		    "\"data\": {"
 		        "\"name\": \"%s\", "
-			"\"updated\": %d, "
-			"\"removed\": %d, "
-			"\"added\": %d, "
 			"\"processed\": %d"
 			"}}", ev->e_incremental_update.reponame,
-			ev->e_incremental_update.updated,
-			ev->e_incremental_update.removed,
-			ev->e_incremental_update.added,
 			ev->e_incremental_update.processed);
 		break;
 	case PKG_EVENT_QUERY_YESNO:
@@ -416,7 +421,6 @@ pkg_emit_error(const char *fmt, ...)
 
 	pkg_emit_event(&ev);
 	free(ev.e_pkg_error.msg);
-	print_trace();
 }
 
 void
@@ -462,7 +466,6 @@ pkg_emit_errno(const char *func, const char *arg)
 	ev.e_errno.no = errno;
 
 	pkg_emit_event(&ev);
-	print_trace();
 }
 
 void
@@ -535,20 +538,86 @@ pkg_emit_install_begin(struct pkg *p)
 }
 
 void
-pkg_emit_install_finished(struct pkg *p)
+pkg_emit_install_finished(struct pkg *p, struct pkg *old)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *version;
 
 	ev.type = PKG_EVENT_INSTALL_FINISHED;
 	ev.e_install_finished.pkg = p;
+	ev.e_install_finished.old = old;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
-		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
-		syslog(LOG_NOTICE, "%s-%s installed", name, version);
+		syslog(LOG_NOTICE, "%s-%s installed",
+		    p->name, p->version);
 	}
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_add_deps_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ADD_DEPS_BEGIN;
+	ev.e_add_deps_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_add_deps_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ADD_DEPS_FINISHED;
+	ev.e_add_deps_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_extract_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_EXTRACT_BEGIN;
+	ev.e_extract_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_extract_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_EXTRACT_FINISHED;
+	ev.e_extract_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_delete_files_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DELETE_FILES_BEGIN;
+	ev.e_delete_files_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_delete_files_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DELETE_FILES_FINISHED;
+	ev.e_delete_files_finished.pkg = p;
 
 	pkg_emit_event(&ev);
 }
@@ -601,15 +670,14 @@ pkg_emit_deinstall_finished(struct pkg *p)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *version;
 
 	ev.type = PKG_EVENT_DEINSTALL_FINISHED;
 	ev.e_deinstall_finished.pkg = p;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
-		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
-		syslog(LOG_NOTICE, "%s-%s deinstalled", name, version);
+		syslog(LOG_NOTICE, "%s-%s deinstalled",
+		    p->name, p->version);
 	}
 
 	pkg_emit_event(&ev);
@@ -621,8 +689,8 @@ pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old)
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_UPGRADE_BEGIN;
-	ev.e_upgrade_begin.new = new;
-	ev.e_upgrade_begin.old = old;
+	ev.e_upgrade_begin.n = new;
+	ev.e_upgrade_begin.o = old;
 
 	pkg_emit_event(&ev);
 }
@@ -632,11 +700,10 @@ pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *oldversion, *version;
 
 	ev.type = PKG_EVENT_UPGRADE_FINISHED;
-	ev.e_upgrade_finished.new = new;
-	ev.e_upgrade_finished.old = old;
+	ev.e_upgrade_finished.n = new;
+	ev.e_upgrade_finished.o = old;
 
 	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
@@ -647,14 +714,12 @@ pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 		};
 		pkg_change_t action;
 
-		pkg_get(new, PKG_NAME, &name, PKG_VERSION, &version);
-		pkg_get(old, PKG_VERSION, &oldversion);
 		action = pkg_version_change_between(new, old);
 		syslog(LOG_NOTICE, "%s %s: %s %s %s ",
-		    name, actions[action],
-		    oldversion != NULL ? oldversion : version,
-		    oldversion != NULL ? "->" : "",
-		    oldversion != NULL ? version : "");
+		    new->name, actions[action],
+		    old->version != NULL ? old->version : new->version,
+		    old->version != NULL ? "->" : "",
+		    old->version != NULL ? new->version : "");
 	}
 
 	pkg_emit_event(&ev);
@@ -725,13 +790,26 @@ pkg_emit_newpkgversion(void)
 }
 
 void
-pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum) {
+pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum)
+{
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_FILE_MISMATCH;
 
 	ev.e_file_mismatch.pkg = pkg;
 	ev.e_file_mismatch.file = f;
 	ev.e_file_mismatch.newsum = newsum;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_file_missing(struct pkg *pkg, struct pkg_file *f)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_FILE_MISSING;
+
+	ev.e_file_missing.pkg = pkg;
+	ev.e_file_missing.file = f;
 
 	pkg_emit_event(&ev);
 }
@@ -796,16 +874,12 @@ pkg_emit_package_not_found(const char *p)
 }
 
 void
-pkg_emit_incremental_update(const char *reponame, int updated, int removed,
-    int added, int processed)
+pkg_emit_incremental_update(const char *reponame, int processed)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_INCREMENTAL_UPDATE;
 	ev.e_incremental_update.reponame = reponame;
-	ev.e_incremental_update.updated = updated;
-	ev.e_incremental_update.removed = removed;
-	ev.e_incremental_update.added = added;
 	ev.e_incremental_update.processed = processed;
 
 	pkg_emit_event(&ev);
@@ -877,11 +951,8 @@ pkg_debug(int level, const char *fmt, ...)
 {
 	struct pkg_event ev;
 	va_list ap;
-	int64_t expectlevel;
 
-	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
-
-	if (expectlevel < level)
+	if (debug_level < level)
 		return;
 
 	ev.type = PKG_EVENT_DEBUG;
@@ -944,4 +1015,46 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 
 	pkg_emit_event(&ev);
 
+}
+
+void
+pkg_emit_new_action(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_NEW_ACTION;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_message(const char *message)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_MESSAGE;
+	ev.e_pkg_message.msg = message;
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_register_cleanup_callback(void (*cleanup_cb)(void *data), void *data)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_CLEANUP_CALLBACK_REGISTER;
+	ev.e_cleanup_callback.cleanup_cb = cleanup_cb;
+	ev.e_cleanup_callback.data = data;
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER;
+	ev.e_cleanup_callback.cleanup_cb = cleanup_cb;
+	ev.e_cleanup_callback.data = data;
+	pkg_emit_event(&ev);
 }

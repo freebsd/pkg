@@ -15,12 +15,12 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd August 17, 2014
+.Dd June 22, 2015
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
 .Nm "pkg.conf"
-.Nd System-wide configuration file for
+.Nd system-wide configuration file for
 .Xr pkg 1
 .Sh DESCRIPTION
 .Nm
@@ -51,7 +51,7 @@ The following options can be defined in
 .Nm :
 .Bl -tag -width ".Cm ABI: string"
 .It Cm ABI: string
-the abi of the package you want to install.
+The ABI of the package you want to install.
 Default: derived from the ABI of the /bin/sh binary.
 .It Cm ALIAS: key/value list
 Define local aliases for various
@@ -72,6 +72,19 @@ a syntactically correct
 command line when substituted in and followed by any remaining tokens from
 the original command line.
 Default: not set.
+.It Cm AUTOCLEAN: boolean
+Automatically cleanout the content of
+.Em PKG_CACHEDIR
+after each non dry-run call to
+.Xr pkg-install 8
+or
+.Xr pkg-upgrade 8
+.It Cm DEFAULT_ALWAYS_YES: boolean
+When this option is enabled
+.Xr pkg 1
+will default to "yes" for all questions
+which require user confirmation before doing anything.
+Default: NO.
 .It Cm ASSUME_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1
@@ -80,14 +93,18 @@ which require user confirmation before doing anything, as if it
 the
 .Fl y
 flag was specified.
-Default: no.
+Default: NO.
+.It Cm CONSERVATIVE_UPGRADE: boolean
+Ensure in multi repository mode that the priority is given as much as possible
+to the repository where a package was first installed from.
+Default: YES.
 .It Cm CUDF_SOLVER: string
 Experimental: tells pkg to use an external CUDF solver.
 Default: not set.
 .It Cm CASE_SENSITIVE_MATCH: boolean
 Match package names or regular expressions given on the command line
 against values in the database in a case sensitive way.
-Default: no.
+Default: NO.
 .It Cm DEBUG_LEVEL: integer
 Incremental values from 1 to 4 produce successively more verbose
 debugging output.
@@ -98,7 +115,7 @@ command line option.
 Default: 0.
 .It Cm DEBUG_SCRIPTS: boolean
 Activate debug mode for scripts (aka set -x)
-Default: no.
+Default: NO.
 .It Cm DEVELOPER_MODE: boolean
 Makes certain errors immediately fatal.
 Adds various warnings and
@@ -106,28 +123,9 @@ suggestions to the output of
 .Xr pkg 1
 as an aide to port maintainers, including indicating when the port
 might be marked as architecture independent.
-Default: no.
-.It Cm DISABLE_MTREE: boolean
-For experimental purposes only.
-Not for use on production systems.
-All this option does is prevent processing of
-.Cm +MTREE
-data when installing a package.
-.Cm +MTREE
-files are a legacy feature of the ports tree, which provide functionality
-necessary for
-.Xr pkg-install 8
-as it cannot handle creating arbitrary directory hierarchies otherwise.
-.Xr pkg 8
-can create such directory structures natively, but currently still uses the
-.Cm +MTREE
-data.
-This option exists to facilitate developing
-.Cm +MTREE
-free package sets.
-Default: no.
+Default: NO.
 .It Cm EVENT_PIPE: string
-Send all event messages to the specified fifo or Unix socket.
+Send all event messages to the specified FIFO or Unix socket.
 Events messages should be formatted as JSON.
 Default: not set.
 .It Cm FETCH_RETRY: integer
@@ -136,7 +134,7 @@ Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
 network, either by SSH or any of the protocols supported by
-.Xr fetch 3 
+.Xr fetch 3
 functions.
 Default: 30.
 .It Cm HANDLE_RC_SCRIPTS: boolean
@@ -144,7 +142,10 @@ When enabled, this option will automatically perform start/stop of
 services during package installation and deinstallation.
 Services are only started on installation if they are enabled in
 .Pa /etc/rc.conf .
-Default: no.
+Default: NO.
+.It Cm HTTP_USER_AGENT: string
+Define User-agent to be sent to HTTP server when getting reposity
+data
 .It Cm INDEXDIR: string
 If set, the directory to search for
 .Cm INDEXFILE
@@ -161,8 +162,14 @@ or
 Default: INDEX-N where
 .Cm N
 is the OS major version number.
+.It Cm IP_VERSION: integer
+Restrict network access to specified IP version.
+4 will only allow IPv4 and 6 will only allow IPv6.
+Any other value will use the system default.
+Repositories or command line options can override this setting.
+Default: 0.
 .It Cm LOCK_RETRIES: integer
-Retries performed to obtain a lock.
+Number of attempts to obtain a lock before giving up and exiting.
 Default: 5.
 .It Cm LOCK_WAIT: integer
 Wait time in seconds to regain a lock if it is not available.
@@ -172,16 +179,26 @@ Hostname or IPv4 or IPv6 address of name server to use for DNS
 resolution, overriding the system defaults in
 .Pa /etc/resolv.conf .
 When given as a hostname, will be converted to a list of IPv4 or IPv6
-addresses by the default mechanisms configured on the system. See
+addresses by the default mechanisms configured on the system.
+See
 .Xr getaddrinfo 3 .
 .It Cm PERMISSIVE: boolean
-Ignore conflicts while registering a package. Note that the
-conflicting files will not be recorded as owned by the new package.
-Default: no.
+Ignore conflicts while registering a package.
+Note that the conflicting files will not be recorded as owned by the new
+package.
+Default: NO.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
-Default: 
+Default:
 .Pa /var/cache/pkg
+.It Cm PKG_CREATE_VERBOSE: boolean
+When set to a
+.Sy true
+value, make
+.Xr pkg-create 8
+use verbose mode as standard.
+Default:
+.Sy false
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
@@ -189,9 +206,9 @@ Default:
 .Pa /var/db/pkg
 .It Cm PKG_ENABLE_PLUGINS: boolean
 When set to
-.Dq yes ,
+.Dq YES ,
 activate plugin support.
-Default: yes.
+Default: YES.
 .It Cm PKG_ENV: Key/Value list
 This tells
 .Xr pkg 8
@@ -215,9 +232,12 @@ Extra arguments to pass to
 Default: not set.
 .It Cm PLIST_KEYWORDS_DIR: string
 Directory containing definitions of plist keywords.
-Default: not set.
+Default: PORTSDIR/keyword
+.It Cm PLIST_ACCEPT_DIRECTORIES: boolean
+Accept directories listed like plain files in plist.
+Default: NO.
 .It Cm PLUGINS: array
-List of plugins that 
+List of plugins that
 .Xr pkg 8
 should load.
 Default: not set.
@@ -231,7 +251,7 @@ Default:
 .Pa /usr/ports
 .It Cm READ_LOCK: boolean
 Use read locking for query database.
-Default: no.
+Default: NO.
 .It Cm REPOS_DIR: array
 List of directories to search for repository configuration files.
 Default:
@@ -248,38 +268,52 @@ when running one of:
 .Nm pkg upgrade ,
 or
 .Nm pkg version -R .
-Default: yes.
+Default: YES.
 .It Cm RUN_SCRIPTS: boolean
 Run pre-/post-installation action scripts.
-Default: yes.
+Default: YES.
 .It Cm SAT_SOLVER: string
-Experimental: tells pkg to use and external SAT solver.
+Experimental: tells pkg to use an external SAT solver.
 Default: not set.
 .It Cm SQLITE_PROFILE: boolean
-Profile sqlite queries.
-Default: no.
+Profile SQLite queries.
+Default: NO.
 .It Cm SSH_RESTRICT_DIR: string
 Directory which the ssh subsystem will be restricted to.
 Default: not set.
 .It Cm SYSLOG: boolean
-Log all the installation/deinstallation/upgrade operation via
+Log all of the installation/deinstallation/upgrade operations via
 .Xr syslog 3 .
-Default: yes.
+Default: YES.
 .It Cm UNSET_TIMESTAMP: boolean
-Do not include timestamps in the package 
+Do not include timestamps in the package
 .Xr tar 1
 archive.
 Normally, timestamps are copied from the staging directory the
 package is created from.
-Default: no.
+Default: NO.
+.It Cm VERSION_SOURCE: string
+Default database for comparing version numbers in
+.Xr pkg-version 8 .
+Valid values are
+.Sy I
+for index,
+.Sy P ,
+for ports,
+.Sy R
+for remote.
+Default: If unset, the algorithm described in
+.Xr pkg-version 8
+is used to determine the version source automatically.
 .It Cm VULNXML_SITE: string
 Specifies the URL to fetch the
 .Pa vuln.xml
 vulnerability database from.
 Default:
-.Pa http://www.vuxml.org/freebsd/vuln.xml.bz2 .
+.Pa http://vuxml.freebsd.org/freebsd/vuln.xml.bz2 .
 .It Cm WORKERS_COUNT: integer
-How many workers are used for pkg-repo. If set to 0,
+How many workers are used for pkg-repo.
+If set to 0,
 .Va hw.ncpu
 is used.
 Default: 0.
@@ -309,9 +343,11 @@ A repository file is in UCL format and has the following form:
 .It Cm URL: string
 URL for this repository only.
 .It Cm ENABLED: boolean
-The repository will be used only if this option is enabled. (default: YES)
+The repository will be used only if this option is enabled.
+Default: YES.
 .It Cm MIRROR_TYPE: string
-MIRROR_TYPE for this repository only. (default: NONE).
+MIRROR_TYPE for this repository only.
+Default: NONE.
 Any of
 .Dv HTTP
 or
@@ -330,6 +366,17 @@ This should be set to a path containing public key for this repository
 only. (default: NONE)
 .It Cm FINGERPRINTS: string
 This should be set to a path containing known signatures for the repository.
+.It Cm IP_VERSION: integer
+Restrict network access to specified IP version.
+4 will only allow IPv4 and 6 will only allow IPv6.
+Any other value will use the system default.
+This option overrides the global setting with the same name and can be
+overwritten by a command line option.
+Default: 0.
+.It Cm PRIORITY: integer
+Set the priority of the repository.
+Higher values are preferred.
+Default: 0
 .El
 .El
 .Pp
@@ -357,9 +404,9 @@ you should use a
 or
 .Dv pkg+https://
 (etc.) URL scheme.
-Using
+Using an
 .Dv http://
-URLS implies that the hostname part is a simple hostname according to
+URL implies that the hostname part is a simple hostname according to
 RFC 2616, and is no longer accepted.
 .Pp
 When
@@ -374,7 +421,7 @@ is
 then the
 .Sy PUBKEY
 option will be used for signature verification.
-This option is for use with the builtin signing support.
+This option is for use with the built-in signing support.
 When
 .Sy SIGNATURE_TYPE
 is
@@ -418,22 +465,29 @@ Rather than editing that file directly, create
 .Pa /usr/local/etc/pkg/repos/FreeBSD.conf
 with this content:
 .Bd -literal -offset indent
-FreeBSD: { enabled: no }
+FreeBSD: { enabled: NO }
 .Ed
 .Pp
-Repositories are prioritized in the order they are found on the
+Repositories are processed in the order they are found on the
 .Sy REPOS_DIR
 search path, with individual repository configuration files in the
 same directory processed in alphabetical order.
-Earlier files take precedence, meaning that packages will be downloaded
-from them preferentially where the same package is available from several
-repositories.
-This behaviour may be overridden per-package by adding a 
+Settings from files later in the search path will override those from
+earlier ones.
+Packages are selected preferentially out of all the repositories that contain
+them from the repository with the highest priority, so long as they are
+suitable to solve the necessary dependency requirements.
+However, this preference may be overruled when
+.Sy CONSERVATIVE_UPGRADE
+is set to
+.Dv true ,
+in which case a package will as far as possible always be upgraded from the
+same repository the older installed version came from, as given in the
 .Sy repository
-annotation to the installed package.
+annotation of the installed package.
 See
 .Xr pkg-repository 8
-for details. 
+for details.
 .Pp
 It is possible to specify more than one repository per file.
 .Sh ENVIRONMENT
@@ -451,7 +505,8 @@ FreeBSD: {
     mirror_type: "srv"
 }
 .Ed
-Example for pkg.conf
+.Pp
+Example for pkg.conf:
 .Bd -literal -offset indent
 pkg_dbdir: "/var/db/pkg"
 pkg_cachedir: "/var/cache/pkg"
@@ -473,13 +528,14 @@ alias: {
     nonauto: "query -e '%a == 0' '%n-%v'"
 }
 .Ed
+.Pp
 To bootstrap
 .Xr pkg 8
 using a private repository (Assuming a
 .Xr pkg 7
 new enough to support the
 .Cm bootstrap
-command.)
+command.):
 .Bd -literal -offset indent
 # cat > /usr/local/etc/pkg/repos/example.conf <<EOF
 example: {
@@ -488,12 +544,13 @@ example: {
 EOF
 # cat > /usr/local/etc/pkg/repos/FreeBSD.conf <<EOF
 FreeBSD: {
-    enabled: no
+    enabled: NO
 }
 EOF
 # env PACKAGESITE='http://pkgrepo.example.com/${ABI}' \
     /usr/sbin/pkg bootstrap
 .Ed
+.Pp
 Note that
 .Xr pkg 7
 uses

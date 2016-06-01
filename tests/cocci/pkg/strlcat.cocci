@@ -9,4 +9,5 @@ expression E, E1, S;
 @@
 
 - strlcat(E, E1, S);
-+ assert(strlcat(E, E1, S) < S)/* FIXME: strlcat.cocci */;
++ if (strlcat(E, E1, S) >= S)
++ 	pkg_emit_errno("strlcat", TEXT(S));

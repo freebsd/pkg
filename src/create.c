@@ -1,7 +1,8 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,30 +43,32 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <pkg.h>
 #include <string.h>
 #include <unistd.h>
+#include <utlist.h>
 #include <sysexits.h>
 
 #include "pkgcli.h"
 
 struct pkg_entry {
 	struct pkg *pkg;
-	STAILQ_ENTRY(pkg_entry) next;
+	struct pkg_entry *next;
+	struct pkg_entry *prev;
 };
-
-STAILQ_HEAD(pkg_head, pkg_entry);
+struct pkg_entry *pkg_head = NULL;
 
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Onqv] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Onqv] [-f format] [-o outdir] "
 		"[-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ognx] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Ognqvx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Onqv] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -80,11 +83,11 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	struct pkgdb_it *it = NULL;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
+	    PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
+	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS;
-	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
-	struct pkg_entry *e = NULL;
+	struct pkg_entry *e = NULL, *etmp;
 	char pkgpath[MAXPATHLEN];
 	const char *format = NULL;
 	bool foundone;
@@ -131,7 +134,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 				err(1, "malloc(pkg_entry)");
 			e->pkg = pkg;
 			pkg = NULL;
-			STAILQ_INSERT_TAIL(&head, e, next);
+			DL_APPEND(pkg_head, e);
 			foundone = true;
 		}
 		if (!foundone) {
@@ -145,9 +148,8 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 			retcode++;
 	}
 
-	while (!STAILQ_EMPTY(&head)) {
-		e = STAILQ_FIRST(&head);
-		STAILQ_REMOVE_HEAD(&head, next);
+	DL_FOREACH_SAFE(pkg_head, e, etmp) {
+		DL_DELETE(pkg_head, e);
 
 		if (!overwrite) {
 			pkg_snprintf(pkgpath, sizeof(pkgpath), "%S/%n-%v.%S",
@@ -181,6 +183,7 @@ cleanup:
  * -g: globbing
  * -r: rootdir for the package
  * -m: path to dir where to find the metadata
+ * -q: quiet mode
  * -M: manifest file
  * -f <format>: format could be txz, tgz, tbz or tar
  * -o: output directory where to create packages by default ./ is used
@@ -199,7 +202,13 @@ exec_create(int argc, char **argv)
 	pkg_formats	 fmt;
 	int		 ch;
 	bool		 overwrite = true;
-	bool		 old = false;
+
+
+	/* POLA: pkg create is quiet by default, unless
+	 * PKG_CREATE_VERBOSE is set in pkg.conf.  This is for
+	 * historical reasons. */
+
+	quiet = !pkg_object_bool(pkg_config_get("PKG_CREATE_VERBOSE"));
 
 	struct option longopts[] = {
 		{ "all",	no_argument,		NULL,	'a' },
@@ -212,11 +221,12 @@ exec_create(int argc, char **argv)
 		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "no-clobber", no_argument,		NULL,	'n' },
 		{ "plist",	required_argument,	NULL,	'p' },
-		{ "old",	no_argument,		NULL,	'O' },
+		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "verbose",	no_argument,		NULL,	'v' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:O", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:qv", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -248,8 +258,11 @@ exec_create(int argc, char **argv)
 		case 'p':
 			plist = optarg;
 			break;
-		case 'O':
-			old = true;
+		case 'q':
+			quiet = true;
+			break;
+		case 'v':
+			quiet = false;
 			break;
 		default:
 			usage_create();
@@ -266,7 +279,8 @@ exec_create(int argc, char **argv)
 	}
 
 	if (metadatadir == NULL && manifest == NULL && rootdir != NULL) {
-		warnx("Do not specify a rootdir when creating a package from an installed package");
+		warnx("Do not specify a rootdir without also specifying "
+		    "either a metadatadir or manifest");
 		usage_create();
 		return (EX_USAGE);
 	}
@@ -275,7 +289,7 @@ exec_create(int argc, char **argv)
 		outdir = "./";
 
 	if (format == NULL) {
-		fmt = old ? TBZ : TXZ;
+		fmt = TXZ;
 	} else {
 		if (format[0] == '.')
 			++format;
@@ -289,24 +303,19 @@ exec_create(int argc, char **argv)
 			fmt = TAR;
 		else {
 			warnx("unknown format %s, using txz", format);
-			fmt = old ? TBZ : TXZ;
+			fmt = TXZ;
 		}
 	}
 
 	if (metadatadir == NULL && manifest == NULL) {
-		if (old) {
-			warnx("Can only create an old package format"
-			    " out of a staged directory");
-			return (EX_SOFTWARE);
-		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,
 		    overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else if (metadatadir != NULL) {
 		return (pkg_create_staged(outdir, fmt, rootdir, metadatadir,
-		    plist, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else  { /* (manifest != NULL) */
 		return (pkg_create_from_manifest(outdir, fmt, rootdir,
-		    manifest, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    manifest, plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	}
 }
 

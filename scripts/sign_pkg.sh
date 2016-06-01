@@ -11,4 +11,4 @@ fi
 pkg="$1"
 sign_cmd="${2:-./sign.sh}"
 rm -f "${pkg}.sig"
-sha256 -q "${pkg}" | "${sign_cmd}" > "${pkg}.sig"
+openssl dgst -sha256 -binary "${pkg}" | hexdump -v -e '/1 "%x"' | "${sign_cmd}" > "${pkg}.sig"

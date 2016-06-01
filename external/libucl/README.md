@@ -1,6 +1,6 @@
 # LIBUCL
 
-[![Build Status](https://travis-ci.org/vstakhov/libucl.svg?branch=master)](https://travis-ci.org/vstakhov/libucl)
+[![Build Status](https://travis-ci.org/vstakhov/libucl.svg?branch=master)](https://travis-ci.org/vstakhov/libucl)[![Coverity](https://scan.coverity.com/projects/4138/badge.svg)](https://scan.coverity.com/projects/4138)[![Coverage Status](https://coveralls.io/repos/github/vstakhov/libucl/badge.svg?branch=master)](https://coveralls.io/github/vstakhov/libucl?branch=master)
 
 **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
@@ -21,7 +21,7 @@
 - [Performance](#performance)
 - [Conclusion](#conclusion)
 
-## Introduction
+## Introduction 
 
 This document describes the main features and principles of the configuration
 language called `UCL` - universal configuration language.
@@ -156,10 +156,10 @@ is converted to the following object:
 ```nginx
 section {
 	blah {
-			key = value;
+		key = value;
 	}
 	foo {
-			key = value;
+		key = value;
 	}
 }
 ```
@@ -177,9 +177,9 @@ is presented as:
 ```nginx    
 section {
 	blah {
-			foo {
-					key = value;
-			}
+		foo {
+			key = value;
+		}
 	}
 }
 ```
@@ -219,19 +219,74 @@ UCL supports external macros both multiline and single line ones:
 ```nginx
 .macro "sometext";
 .macro {
-     Some long text
-     ....
+    Some long text
+    ....
 };
 ```
-There are two internal macros provided by UCL:
 
-* `include` - read a file `/path/to/file` or an url `http://example.com/file` and include it to the current place of
-UCL configuration;
-* `try\_include` - try to read a file or url and include it but do not create a fatal error if a file or url is not accessible;
-* `includes` - read a file or an url like the previous macro, but fetch and check the signature file (which is obtained
-by `.sig` suffix appending).
+Moreover, each macro can accept an optional list of arguments in braces. These
+arguments themselves are the UCL object that is parsed and passed to a macro as
+options:
 
-Public keys which are used for the last command are specified by the concrete UCL user.
+```nginx
+.macro(param=value) "something";
+.macro(param={key=value}) "something";
+.macro(.include "params.conf") "something";
+.macro(#this is multiline macro
+param = [value1, value2]) "something";
+.macro(key="()") "something";
+```
+
+UCL also provide a convenient `include` macro to load content from another files
+to the current UCL object. This macro accepts either path to file:
+
+```nginx
+.include "/full/path.conf"
+.include "./relative/path.conf"
+.include "${CURDIR}/path.conf"
+```
+
+or URL (if ucl is built with url support provided by either `libcurl` or `libfetch`):
+
+	.include "http://example.com/file.conf"
+
+`.include` macro supports a set of options:
+
+* `try` (default: **false**) - if this option is `true` than UCL treats errors on loading of
+this file as non-fatal. For example, such a file can be absent but it won't stop the parsing
+of the top-level document.
+* `sign` (default: **false**) - if this option is `true` UCL loads and checks the signature for
+a file from path named `<FILEPATH>.sig`. Trusted public keys should be provided for UCL API after
+parser is created but before any configurations are parsed.
+* `glob` (default: **false**) - if this option is `true` UCL treats the filename as GLOB pattern and load
+all files that matches the specified pattern (normally the format of patterns is defined in `glob` manual page
+for your operating system). This option is meaningless for URL includes.
+* `url` (default: **true**) - allow URL includes.
+* `path` (default: empty) - A UCL_ARRAY of directories to search for the include file.
+Search ends after the first patch, unless `glob` is true, then all matches are included.
+* `prefix` (default false) - Put included contents inside an object, instead
+of loading them into the root. If no `key` is provided, one is automatically generated based on each files basename()
+* `key` (default: <empty string>) - Key to load contents of include into. If
+the key already exists, it must be the correct type
+* `target` (default: object) - Specify if the `prefix` `key` should be an
+object or an array.
+* `priority` (default: 0) - specify priority for the include (see below).
+* `duplicate` (default: 'append') - specify policy of duplicates resolving:
+	- `append` - default strategy, if we have new object of higher priority then it replaces old one, if we have new object with less priority it is ignored completely, and if we have two duplicate objects with the same priority then we have a multi-value key (implicit array)
+	- `merge` - if we have object or array, then new keys are merged inside, if we have a plain object then an implicit array is formed (regardeless of priorities)
+	- `error` - create error on duplicate keys and stop parsing
+	- `rewrite` - always rewrite an old value with new one (ignoring priorities)
+
+Priorities are used by UCL parser to manage the policy of objects rewriting during including other files
+as following:
+
+* If we have two objects with the same priority then we form an implicit array
+* If a new object has bigger priority then we overwrite an old one
+* If a new object has lower priority then we ignore it
+
+By default, the priority of top-level object is set to zero (lowest priority). Currently,
+you can define up to 16 priorities (from 0 to 15). Includes with bigger priorities will
+rewrite keys from the objects with lower priorities as specified by the policy.
 
 ### Variables support
 
@@ -317,7 +372,7 @@ ucl: emitted compact json in 0.0991 seconds
 ucl: emitted yaml in 0.1354 seconds
 ```
 
-You can do your own benchmarks by running `make test` in libucl top directory.
+You can do your own benchmarks by running `make check` in libucl top directory.
 
 ## Conclusion
 

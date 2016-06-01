@@ -31,7 +31,7 @@
 static const char binary_repo_initsql[] = ""
 	"CREATE TABLE packages ("
 	    "id INTEGER PRIMARY KEY,"
-	    "origin TEXT UNIQUE,"
+	    "origin TEXT,"
 	    "name TEXT NOT NULL,"
 	    "version TEXT NOT NULL,"
 	    "comment TEXT NOT NULL,"
@@ -49,7 +49,9 @@ static const char binary_repo_initsql[] = ""
 	    "path TEXT NOT NULL,"
 	    "pkg_format_version INTEGER,"
 	    "manifestdigest TEXT NULL,"
-	    "olddigest TEXT NULL"
+	    "olddigest TEXT NULL,"
+	    "dep_formula TEXT NULL,"
+	    "vital INTEGER NOT NULL DEFAULT 0"
 	");"
 	"CREATE TABLE deps ("
 	    "origin TEXT,"
@@ -57,7 +59,7 @@ static const char binary_repo_initsql[] = ""
 	    "version TEXT,"
 	    "package_id INTEGER REFERENCES packages(id)"
 	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
-	    "UNIQUE(package_id, origin)"
+	    "UNIQUE(package_id, name)"
 	");"
 	"CREATE TABLE categories ("
 	    "id INTEGER PRIMARY KEY, "
@@ -163,13 +165,24 @@ static const char binary_repo_initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, provide_id)"
 	");"
-	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE TABLE requires("
+	"    id INTEGER PRIMARY KEY,"
+	"    require TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_requires ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		"  ON DELETE CASCADE ON UPDATE CASCADE,"
+		"require_id INTEGER NOT NULL REFERENCES requires(id)"
+		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE(package_id, require_id)"
+	");"
+/*	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
 	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
 	"CREATE INDEX packages_uid ON packages(name, origin);"
 	"CREATE INDEX packages_version ON packages(name, version);"
-	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
+	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"*/
 	/* FTS search table */
 	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 
@@ -350,6 +363,19 @@ static const struct repo_changes repo_upgrades[] = {
 	 "ALTER TABLE packages ADD COLUMN olddigest TEXT NULL;"
 	 "UPDATE packages SET olddigest=manifestdigest WHERE olddigest=NULL;"
 	},
+	/* XXX: no 2011 migration! */
+	{2011,
+	 2012,
+	 "Add depends formula field",
+
+	 "ALTER TABLE packages ADD COLUMN dep_formula TEXT NULL;"
+	},
+	{2012,
+	 2013,
+	 "Add vital field",
+
+	 "ALTER TABLE packages ADD COLUMN vital INTEGER NOT NULL DEFAULT 0;"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -358,6 +384,92 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2013,
+	 2012,
+	 "Drop vital column",
+
+	 "ALTER TABLE packages RENAME TO packages_old;"
+	 "CREATE TABLE packages ("
+		"id INTEGER PRIMARY KEY,"
+		"origin TEXT UNIQUE,"
+		"name TEXT NOT NULL,"
+		"version TEXT NOT NULL,"
+		"comment TEXT NOT NULL,"
+		"desc TEXT NOT NULL,"
+		"osversion TEXT,"
+		"arch TEXT NOT NULL,"
+		"maintainer TEXT NOT NULL,"
+		"www TEXT,"
+		"prefix TEXT NOT NULL,"
+		"pkgsize INTEGER NOT NULL,"
+		"flatsize INTEGER NOT NULL,"
+		"licenselogic INTEGER NOT NULL,"
+		"cksum TEXT NOT NULL,"
+		"path TEXT NOT NULL,"
+		"pkg_format_version INTEGER,"
+		"manifestdigest TEXT NULL,"
+		"olddigest TEXT NULL,"
+		"dep_formula TEXT NULL,"
+	");"
+	"INSERT INTO packages (id, origin, name, version, comment, desc,"
+	"osversion, arch, maintainer, www, prefix, pkgsize, flatsize,"
+	"licenselogic, cksum, path, pkg_format_version, manifestdigest, olddigest) "
+	"SELECT id, origin, name, version, comment, desc,"
+	"osversion, arch, maintainer, www, prefix, pkgsize, flatsize,"
+	"licenselogic, cksum, path, pkg_format_version, manifestdigest, olddigest FROM "
+	"packages_old;"
+	"DROP TABLE packages_old;"
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX packages_uid ON packages(name, origin);"
+	"CREATE INDEX packages_version ON packages(name, version);"
+	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
+	},
+	{2012,
+	 2011,
+	 "Drop dep_formula field",
+
+	 "ALTER TABLE packages RENAME TO packages_old;"
+	 "CREATE TABLE packages ("
+		"id INTEGER PRIMARY KEY,"
+		"origin TEXT UNIQUE,"
+		"name TEXT NOT NULL,"
+		"version TEXT NOT NULL,"
+		"comment TEXT NOT NULL,"
+		"desc TEXT NOT NULL,"
+		"osversion TEXT,"
+		"arch TEXT NOT NULL,"
+		"maintainer TEXT NOT NULL,"
+		"www TEXT,"
+		"prefix TEXT NOT NULL,"
+		"pkgsize INTEGER NOT NULL,"
+		"flatsize INTEGER NOT NULL,"
+		"licenselogic INTEGER NOT NULL,"
+		"cksum TEXT NOT NULL,"
+		"path TEXT NOT NULL,"
+		"pkg_format_version INTEGER,"
+		"manifestdigest TEXT NULL,"
+		"olddigest TEXT NULL,"
+	");"
+	"INSERT INTO packages (id, origin, name, version, comment, desc,"
+	"osversion, arch, maintainer, www, prefix, pkgsize, flatsize,"
+	"licenselogic, cksum, path, pkg_format_version, manifestdigest, olddigest) "
+	"SELECT id, origin, name, version, comment, desc,"
+	"osversion, arch, maintainer, www, prefix, pkgsize, flatsize,"
+	"licenselogic, cksum, path, pkg_format_version, manifestdigest, olddigest FROM "
+	"packages_old;"
+	"DROP TABLE packages_old;"
+	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
+	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
+	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
+	"CREATE INDEX packages_uid ON packages(name, origin);"
+	"CREATE INDEX packages_version ON packages(name, version);"
+	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
+	},
+	/* XXX: no 2011 migration! */
 	{2010,
 	 2009,
 	 "Drop olddigest field",
@@ -517,9 +629,8 @@ static const struct repo_changes repo_downgrades[] = {
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 10
+#define REPO_SCHEMA_MINOR 13
 
-/* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
 #define REPO_NAME_PREFIX "repo-"
@@ -539,9 +650,13 @@ typedef enum _sql_prstmt_index {
 	ANNOTATE1,
 	ANNOTATE2,
 	EXISTS,
-	VERSION,
+	REPO_VERSION,
 	DELETE,
 	FTS_APPEND,
+	PROVIDE,
+	PROVIDES,
+	REQUIRE,
+	REQUIRES,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 

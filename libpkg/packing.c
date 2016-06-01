@@ -25,8 +25,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#include <sys/stat.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -35,7 +33,6 @@
 #include <fts.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <limits.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -151,15 +148,18 @@ cleanup:
 
 int
 packing_append_file_attr(struct packing *pack, const char *filepath,
-    const char *newpath, const char *uname, const char *gname, mode_t perm)
+    const char *newpath, const char *uname, const char *gname, mode_t perm,
+    u_long fflags)
 {
 	int fd;
 	char *map;
 	int retcode = EPKG_OK;
 	int ret;
+	time_t source_time;
 	struct stat st;
 	struct archive_entry *entry, *sparse_entry;
 	bool unset_timestamp;
+	const char *source_date_epoch;
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
@@ -214,6 +214,9 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 		archive_entry_set_gname(entry, gname);
 	}
 
+	if (fflags > 0)
+		archive_entry_set_fflags(entry, fflags, 0);
+
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
@@ -224,6 +227,20 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 		archive_entry_unset_ctime(entry);
 		archive_entry_unset_mtime(entry);
 		archive_entry_unset_birthtime(entry);
+	}
+
+	if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
+		if (source_date_epoch[strspn(source_date_epoch, "0123456789")] != '\0') {
+			pkg_emit_error("Bad environment variable "
+			    "SOURCE_DATE_EPOCH: %s", source_date_epoch);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+		source_time = strtoll(source_date_epoch, NULL, 10);
+		archive_entry_set_atime(entry, source_time, 0);
+		archive_entry_set_ctime(entry, source_time, 0);
+		archive_entry_set_mtime(entry, source_time, 0);
+		archive_entry_set_birthtime(entry, source_time, 0);
 	}
 
 	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);
@@ -314,7 +331,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
 			 sbuf_finish(sb);
 			 packing_append_file_attr(pack, fts_e->fts_name,
-			    sbuf_get(sb), NULL, NULL, 0);
+			    sbuf_data(sb), NULL, NULL, 0, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:
@@ -333,10 +350,11 @@ cleanup:
 	return EPKG_OK;
 }
 
-int
+void
 packing_finish(struct packing *pack)
 {
-	assert(pack != NULL);
+	if (pack == NULL)
+		return;
 
 	archive_read_close(pack->aread);
 	archive_read_free(pack->aread);
@@ -345,8 +363,6 @@ packing_finish(struct packing *pack)
 	archive_write_free(pack->awrite);
 
 	free(pack);
-
-	return (EPKG_OK);
 }
 
 static const char *

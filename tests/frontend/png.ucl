@@ -1,0 +1,55 @@
+name: "png"
+origin: "graphics/png"
+version: "1.5.18"
+arch: "freebsd:11:x86:64"
+maintainer: "dinoex@FreeBSD.org"
+prefix: "/usr/local"
+www: "http://www.libpng.org/pub/png/libpng.html"
+flatsize: 964462
+comment: "Library for manipulating PNG images"
+licenselogic: "single"
+desc: "Libpng was written as a companion to the PNG specification, as a\nway to reduce the amount of time and effort it takes to support\nthe PNG file format in application programs.  Most users will not\nhave to modify the library significantly; advanced users may want\nto modify it more.  The library was coded for both users.  All\nattempts were made to make it as complete as possible, while\nkeeping the code easy to understand.  Currently, this library\nonly supports C.  Support for other languages is being considered.\n\nLICENSE: libpng license\n\nWWW: http://www.libpng.org/pub/png/libpng.html\n     http://libpng.sourceforge.net/"
+categories: [
+    "graphics"
+]
+shlibs_provided: [
+    "libpng15.so.15"
+]
+options: {
+    APNG: "on",
+    PNGTEST: "on"
+}
+files: {
+    /usr/local/bin/libpng-config: "-",
+    /usr/local/bin/libpng15-config: "1a27340cd0ef9fbaf340d81b72419a071e38cda2ae2bc75ec4d7ae04362d0f43",
+    /usr/local/include/libpng15/png.h: "86cd8938a5c9b5c43e2221fe07e5bf9b884e7ea733da5d811a042fed6c4ffe30",
+    /usr/local/include/libpng15/pngconf.h: "2e13aa5530d674b3157523bd6040b2f91b1311a4bb4f52c0ac85152197b2eb20",
+    /usr/local/include/libpng15/pngdebug.h: "7f629ebfee85b24cee140b36a7f2ff3912ac751f7bd8632f622456e24aeca94a",
+    /usr/local/include/libpng15/pnginfo.h: "2e85da648d41c22b9797ba334f0d8ec589bf94e59e845c2c83e68ace1a1d8add",
+    /usr/local/include/libpng15/pnglibconf.h: "089d9087e5f10211ee5817bcecad418dc8846ae522f27ce8363646703c5b4009",
+    /usr/local/include/libpng15/pngpriv.h: "cdc2877e9b716809b87608c2ac6900a8fcad92e98dc5621bdb3cee877220e7c4",
+    /usr/local/include/libpng15/pngstruct.h: "b82469096bc8f0901032c6e5b9ac20b13fcddeafba18738f596d179a8079777d",
+    /usr/local/include/png.h: "86cd8938a5c9b5c43e2221fe07e5bf9b884e7ea733da5d811a042fed6c4ffe30",
+    /usr/local/include/pngconf.h: "2e13aa5530d674b3157523bd6040b2f91b1311a4bb4f52c0ac85152197b2eb20",
+    /usr/local/include/pnglibconf.h: "089d9087e5f10211ee5817bcecad418dc8846ae522f27ce8363646703c5b4009",
+    /usr/local/lib/libpng.a: "-",
+    /usr/local/lib/libpng.so: "-",
+    /usr/local/lib/libpng/libpng15-release.cmake: "f8de16e86b32f73ffb61bbb3d82d87c2045412fb5f2ba1f7f5370e556df48ec2",
+    /usr/local/lib/libpng/libpng15.cmake: "68f02d70f8c2795c38b0f83e29fe1b65e96fbd14392c53ad1ad6f7f1978eba29",
+    /usr/local/lib/libpng15.a: "e34ac3064d291b0596ad9f6a8e3999bf980ca3b85b344d0e71affd99edb250f7",
+    /usr/local/lib/libpng15.so: "-",
+    /usr/local/lib/libpng15.so.15: "f61f0138df54a5e478da040735ad57a8fbc1894843df1120947fc26815ef42b7",
+    /usr/local/libdata/pkgconfig/libpng.pc: "-",
+    /usr/local/libdata/pkgconfig/libpng15.pc: "23f232a47acd72d5adc51223fd4861bb988d196fcc4b7f539a6bec67f92efb43",
+    /usr/local/man/man3/libpng.3.gz: "bf49558c0bc35b2a8b40baf5128fc4c4130692a54f2fb39178df68274d0b8675",
+    /usr/local/man/man3/libpngpf.3.gz: "dfb644d429366de1912da4cd7779470db8fc0df302965e48d1ba40540bfba094",
+    /usr/local/man/man5/png.5.gz: "3dc9903b841d5051ad90905a4b4d953daad6ea618be19533556ca09d3af1fa0b"
+}
+directories: {
+    /usr/local/lib/libpng/: "n",
+    /usr/local/include/libpng15/: "n"
+}
+scripts: {
+    post-install: "/sbin/ldconfig -m /usr/local/lib",
+    post-deinstall: "/sbin/ldconfig -R"
+}

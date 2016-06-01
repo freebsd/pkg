@@ -1,81 +1,87 @@
 #! /usr/bin/env atf-sh
 
-atf_test_case pkg_no_database
-pkg_no_database_head() {
-	atf_set "descr" "testing pkg -- no database"
-}
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	pkg_no_database \
+	pkg_config_defaults \
+	pkg_create_manifest_bad_syntax \
+	pkg_repo_load_order
 
 pkg_no_database_body() {
-    atf_check \
-	-o empty \
-	-e inline:"pkg: package database non-existent\n" \
-	-s exit:69 \
-	-x PKG_DBDIR=/dev/null pkg -N
-}
-
-atf_test_case pkg_version
-pkg_version_head()
-{
-	atf_set "descr" "testing pkg -- latest compiled version"
-}
-
-pkg_version_body()
-{
-        NEWVERS_SH="$( atf_get_srcdir )/../../newvers.sh"
-	eval $($NEWVERS_SH)
-	
-	[ ${PKGVERSION} ] || atf_fail 'eval $(newvers.sh) failed'
-
-	atf_check -o match:"^${PKGVERSION}" -e empty -s exit:0 pkg -v
-}
-
-
-atf_test_case pkg_config_defaults
-pkg_config_defaults_head()
-{
-	atf_set "descr" "testing pkg -- compiled-in defaults"
+	atf_check \
+	    -o empty \
+	    -e inline:"pkg: package database non-existent\n" \
+	    -s exit:69 \
+	    -x PKG_DBDIR=/dev/null pkg -N
 }
 
 pkg_config_defaults_body()
 {
-    atf_check                 \
-	-o match:'^ *PKG_DBDIR: /var/db/pkg$' \
-	-o match:'^ *PKG_CACHEDIR: /var/cache/pkg$' \
-	-o match:'^ *PORTSDIR: /usr/ports$' \
-	-o match:'^ *HANDLE_RC_SCRIPTS: no$' \
-	-o match:'^ *ASSUME_ALWAYS_YES: no$' \
-	-o match:'^ *PLIST_KEYWORDS_DIR: $' \
-	-o match:'^ *SYSLOG: yes$' \
-	-o match:'^ *ABI: [a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$' \
-	-o match:'^ *DEVELOPER_MODE: no$' \
-	-o match:'^ *PORTAUDIT_SITE: http://portaudit.FreeBSD.org/auditfile.tbz$' \
-	-o match:'^ *VULNXML_SITE: http://www.vuxml.org/freebsd/vuln.xml.bz2$' \
-	-o match:'^ *FETCH_RETRY: 3$' \
-	-o match:'^ *PKG_PLUGINS_DIR: /usr/local/lib/pkg/$' \
-	-o match:'^ *PKG_ENABLE_PLUGINS: yes$' \
-	-o match:'^ *PLUGINS:$' \
-	-o match:'^ *DEBUG_SCRIPTS: no$' \
-	-o match:'^ *PLUGINS_CONF_DIR: /usr/local/etc/pkg/$' \
-	-o match:'^ *PERMISSIVE: no$' \
-	-o match:'^ *REPO_AUTOUPDATE: yes$' \
-	-o match:'^ *NAMESERVER: $' \
-	-o match:'^ *EVENT_PIPE: $' \
-	-o match:'^ *FETCH_TIMEOUT: 30$' \
-	-o match:'^ *UNSET_TIMESTAMP: no$' \
-	-o match:'^ *SSH_RESTRICT_DIR: $' \
-	-o match:'^ *REPOS_DIR: /usr/local/etc/pkg/repos/$' \
-	-o match:'^ *PKG_ENV:$' \
-	-o match:'^ *DISABLE_MTREE: no$' \
-	-e empty              \
-	-s exit:0             \
-	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -R "" -vv
+	atf_check \
+	    -o match:'^ *PKG_DBDIR = "/var/db/pkg";$' \
+	    -o match:'^ *PKG_CACHEDIR = "/var/cache/pkg";$' \
+	    -o match:'^ *PORTSDIR = "/usr/d?ports";$' \
+	    -o match:'^ *HANDLE_RC_SCRIPTS = false;$' \
+	    -o match:'^ *DEFAULT_ALWAYS_YES = false;$' \
+	    -o match:'^ *ASSUME_ALWAYS_YES = false;$' \
+	    -o match:'^ *PLIST_KEYWORDS_DIR = "";$' \
+	    -o match:'^ *SYSLOG = true;$' \
+	    -o match:'^ *ALTABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9:]+";$' \
+	    -o match:'^ *DEVELOPER_MODE = false;$' \
+	    -o match:'^ *VULNXML_SITE = "http://vuxml.freebsd.org/freebsd/vuln.xml.bz2";$' \
+	    -o match:'^ *FETCH_RETRY = 3;$' \
+	    -o match:'^ *PKG_PLUGINS_DIR = ".*lib/pkg/";$' \
+	    -o match:'^ *PKG_ENABLE_PLUGINS = true;$' \
+	    -o match:'^ *DEBUG_SCRIPTS = false;$' \
+	    -o match:'^ *PLUGINS_CONF_DIR = ".*/etc/pkg/";$' \
+	    -o match:'^ *PERMISSIVE = false;$' \
+	    -o match:'^ *REPO_AUTOUPDATE = true;$' \
+	    -o match:'^ *NAMESERVER = "";$' \
+	    -o match:'^ *EVENT_PIPE = "";$' \
+	    -o match:'^ *FETCH_TIMEOUT = 30;$' \
+	    -o match:'^ *UNSET_TIMESTAMP = false;$' \
+	    -o match:'^ *SSH_RESTRICT_DIR = "";$' \
+	    -e empty              \
+	    -s exit:0             \
+	    env -i PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
 }
 
+pkg_create_manifest_bad_syntax_body()
+{
+	mkdir -p testpkg/.metadir
+	cat <<EOF >> testpkg/.metadir/+MANIFEST
+name: test
+version: 1
+origin: test
+prefix: /usr/local
+categories: [test]
+comment: this is a test
+maintainer: test
+www: http://test
+desc: <<EOD
+A description
+EOD
+files:
+  /usr/local/include/someFile.hp: 'sha256sum' p
+EOF
+	atf_check \
+	    -o empty \
+	    -e inline:"pkg: Bad format in manifest for key: files\n" \
+	    -s exit:70 \
+	    pkg create -q -m testpkg/.metadir -r testpkg
+}
 
-atf_init_test_cases() {
-        . $(atf_get_srcdir)/test_environment
+pkg_repo_load_order_body()
+{
+	echo "03_repo: { url: file:///03_repo }" > plop.conf
+	echo "02_repo: { url: file:///02_repo }" > 02.conf
+	echo "01_repo: { url: file:///01_repo }" > 01.conf
 
-	atf_add_test_case pkg_no_database
-	atf_add_test_case pkg_version
-	atf_add_test_case pkg_config_defaults
+	out=$(pkg -o REPOS_DIR=. -vv | tail -16)
+	atf_check \
+	    -o match:'.*01_repo\:.*02_repo\:.*03_repo\:.*' \
+	    -e empty \
+	    -s exit:0 \
+	    echo $out
 }

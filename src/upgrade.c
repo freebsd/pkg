@@ -2,8 +2,9 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -147,7 +148,7 @@ exec_upgrade(int argc, char **argv)
 		return (EX_IOERR);
 	else
 		retcode = EX_SOFTWARE;
-	
+
 	/* first update the remote repositories if needed */
 	if (auto_update &&
 	    (updcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
@@ -182,14 +183,15 @@ exec_upgrade(int argc, char **argv)
 		rc = yes;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-				"The following %d packages will be affected (of %d checked):\n\n",
+				"The following %d package(s) will be affected (of %d checked):\n\n",
 				nbactions, pkg_jobs_total(jobs));
 
-			if (!dry_run)
+			if (!dry_run) {
 				rc = query_yesno(false, "\nProceed with this "
-				    "action? [y/N]: ");
-			else
+						"action? ");
+			} else {
 				rc = false;
+			}
 		}
 
 		if (rc) {
@@ -212,7 +214,7 @@ exec_upgrade(int argc, char **argv)
 		break;
 	}
 
-	if (done == 0 && rc)
+	if (done == 0 && rc && !quiet)
 		printf("Your packages are up to date.\n");
 
 	retcode = EX_OK;
@@ -221,6 +223,9 @@ cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
+
+	if (!dry_run)
+		pkg_cache_full_clean();
 
 	if (!rc && newpkgversion)
 		newpkgversion = false;

@@ -40,10 +40,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR REPLACE INTO packages ("
 		"origin, name, version, comment, desc, arch, maintainer, www, "
-		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest, olddigest"
-		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-		"TTTTTTTTTIIITTTT",
+		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest, olddigest, "
+		"vital)"
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+		"TTTTTTTTTIIITTTTI",
 	},
 	[DEPS] = {
 		NULL,
@@ -121,7 +121,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
 		"ITT",
 	},
-	[VERSION] = {
+	[REPO_VERSION] = {
 		NULL,
 		"SELECT version FROM packages WHERE origin=?1",
 		"T",
@@ -137,7 +137,29 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR IGNORE INTO pkg_search(id, name, origin) "
 		"VALUES (?1, ?2 || '-' || ?3, ?4);",
 		"ITTT"
-	}
+	},
+	[PROVIDE] = {
+		NULL,
+		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",
+		"T",
+	},
+	[PROVIDES] = {
+		NULL,
+		"INSERT OR IGNORE INTO pkg_provides(package_id, provide_id) "
+		"VALUES (?1, (SELECT id FROM provides WHERE provide = ?2))",
+		"IT",
+	},
+	[REQUIRE] = {
+		NULL,
+		"INSERT OR IGNORE INTO requires(require) VALUES(?1)",
+		"T",
+	},
+	[REQUIRES] = {
+		NULL,
+		"INSERT OR IGNORE INTO pkg_requires(package_id, require_id) "
+		"VALUES (?1, (SELECT id FROM requires WHERE require = ?2))",
+		"IT",
+	},
 	/* PRSTMT_LAST */
 };
 

@@ -13,14 +13,13 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd August 19, 2014
+.Dd May 9, 2016
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
 .Nm "pkg repo"
-.Nd creates a package repository catalogue
+.Nd create a package repository catalogue
 .Sh SYNOPSIS
 .Nm
 .Op Fl lqL
@@ -35,40 +34,102 @@
 .Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
 .Nm
-is used for creating a catalogue of the available
+is used to create a catalogue of the available
 packages in a repository.
 .Nm
-catalogues are necessary for sharing your package repository with
-other people.
+catalogues are necessary for sharing your package repository,
+and are intrinsic to the operation of
+.Nm "pkg install"
+or
+.Nm "pkg upgrade" .
 .Pp
-When
+The repository files created by
 .Nm
-is invoked it creates a package repository catalogue (repo.sqlite),
-with an optional cryptographic signature, as a compressed tarball
-(repo.txz).
-Repository users download and cache this on their local machines,
-for fast lookup of available packages by programs such as
+consist of a number of compressed tar archives stored typically at the
+top level of the repository filesystem.
+Of these,
+.Pa meta.txz
+must exist at the apex of the repository filesystem.
+This is a well-known name that is hard-wired into 
+.Xr pkg 8 .
+.Pp
+.Pa meta.txz
+contains at least one file:
+.Pa meta
+which contains a key to the location and format of the other files
+comprising the catalogue information.
+Other files may have arbitrary names as defined in
+.Pa meta ,
+but conventionally the following names are used.
+.Pp
+.Pa digests.txz
+contains
+.Pa digests
+which lists the cryptographic checksums for each of the packages in
+the repository.
+This is downloaded when
+.Cm SIGNATURE_TYPE
+is set to
+.Ar FINGERPRINTS
+in the repository configuration.
+.Pp
+.Pa filesite.txz
+contains
+.Pa filesite.yaml
+which is a database of all of the files present in all of the packages in
+the repository, containing filenames, file sizes and checksums.
+Generating
+.Pa filesite.txz
+involves significant additional system resources and is not usually done.
+.Pp
+.Pa packagesite.txz
+similarly contains at least one file
+.Pa packagesite.yaml ,
+which is a YAML document listing selected metadata for each of the
+packages in the repository.
+This is the key file containing the working data used by
+.Xr pkg 8
+and includes the run-time dependencies for each package,
+plus shared library dependencies and similar data that are used by
+.Xr pkg 8
+to solve package dependency problems.
+.Pp
+In addition to the files already mentioned, the
+.Pa .txz
+archives may also contain cryptographic signatures.
+These will be produced when the internal signature mechanism of
+.Nm
+is enabled.
+.Pp
+Repository users download these files to their local machines, where
+they are processed into per-repository sqlite databases for fast
+lookup of available packages by programs such as
 .Xr pkg-install 8 .
 .Pp
-To create a package repository catalogue you must specify the
-top-level directory where all the packages are stored as
+To create a package repository catalogue, specify the top-level
+directory beneath which all the packages are stored as
 .Ar repo-path .
 .Nm
 will search the filesystem beneath
 .Ar repo-path
 to find all the packages it contains.
-Symbolic links are ignored.
+Directories starting with
+.Sq \&. 
+or
+named
+.Pa Latest
+are not traversed.
 .Pp
-The repository will be created in the package directory unless the
+The repository files will be created in the top-level repository directory
+unless relocated by specifying
 .Fl o Ar output-dir
 or
-.Cm --output-dir Ar output-dir
-is specified, in which case it will be created there.
+.Cm --output-dir Ar output-dir .
 .Pp
-Optionally you may sign the repository catalogue by specifying the
-path to an RSA private key as the
+Optionally, the repository catalogue may be cryptographically signed.
+This is enabled either by specifying the path to an RSA private key as the
 .Ar rsa-key
-argument or an external command.
+argument or by using an external command.
 .Pp
 If
 .Ar rsa-key
@@ -123,9 +184,12 @@ The following options are supported by
 .Nm :
 .Bl -tag -width quiet
 .It Fl q , Cm --quiet
-Force quiet output
+Force quiet output.
 .It Fl L , Cm --legacy
-Create repostory compatible with pkg 1.2
+Create a repository compatible with pkg 1.2. Note that this is only required if
+the repository clients will not be upgrading to pkg 1.3+. Older versions of pkg
+can upgrade themselves even from non-legacy. repositories, provided pkg itself
+is included in those repositories.
 .It Fl m Ar meta-file , Cm --meta-file Ar meta-file
 Use the specified file as repository meta file instead of the default settings.
 .It Fl l , Cm --list-files

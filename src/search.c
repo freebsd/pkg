@@ -31,6 +31,7 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
@@ -342,14 +343,16 @@ exec_search(int argc, char **argv)
 			break;
 		case 1:
 			if (strcasecmp(optarg, "json") == 0)
-			       opt |= INFO_RAW_JSON;
+				opt |= INFO_RAW_JSON;
 			else if (strcasecmp(optarg, "json-compact") == 0)
 				opt |= INFO_RAW_JSON_COMPACT;
 			else if (strcasecmp(optarg, "yaml") == 0)
 				opt |= INFO_RAW_YAML;
+			else if (strcasecmp(optarg, "ucl") == 0)
+				opt |= INFO_RAW_UCL;
 			else
 				errx(EX_USAGE, "Invalid format '%s' for the "
-				    "raw output, expecting json, json-compat "
+				    "raw output, expecting json, json-compact "
 				    "or yaml", optarg);
 			break;
 		default:
@@ -384,13 +387,13 @@ exec_search(int argc, char **argv)
 	case FIELD_NONE:
 		break;		/* should never happen */
 	case FIELD_ORIGIN:
-		opt |= INFO_TAG_ORIGIN;
+		opt |= INFO_TAG_ORIGIN|INFO_COMMENT;
 		break;
 	case FIELD_NAME:
-		opt |= INFO_TAG_NAME;
+		opt |= INFO_TAG_NAME|INFO_COMMENT;
 		break;
 	case FIELD_NAMEVER:
-		opt |= INFO_TAG_NAMEVER;
+		opt |= INFO_TAG_NAMEVER|INFO_COMMENT;
 		break;
 	case FIELD_COMMENT:
 		opt |= INFO_TAG_NAMEVER|INFO_COMMENT;
@@ -398,6 +401,11 @@ exec_search(int argc, char **argv)
 	case FIELD_DESC:
 		opt |= INFO_TAG_NAMEVER|INFO_DESCR;
 		break;
+	}
+
+	if (quiet) {
+		opt = INFO_TAG_NAMEVER;
+		quiet = false;
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
@@ -434,7 +442,7 @@ exec_search(int argc, char **argv)
 	}
 
 	if (opt & INFO_RAW) {
-		if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+		if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
 			opt |= INFO_RAW_YAML;
 	}
 

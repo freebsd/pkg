@@ -49,7 +49,7 @@ show_tree() {
 usage() {
 	echo "Usage: $0 [-nprR] [pkgname|origin] [...]"
 	echo "-n: Non-tree view, uses tabs instead"
-	echo "-p: Print package names"
+	echo "-o: Print package origin"
 	echo "-r: Recursively show required packages"
 	echo "-R: Use remote repository"
 	echo "-U: Show reverse depends"
@@ -57,13 +57,13 @@ usage() {
 	exit 0
 }
 
-while getopts "hnprRU" opt; do
+while getopts "hnorRU" opt; do
 	case "${opt}" in
 		n)
 			TREE_VIEW=0
 			;;
-		p)
-			DISPLAY_PKG=1
+		o)
+			DISPLAY_ORIGIN=1
 			;;
 		r)
 			RECURSIVE=1
@@ -86,7 +86,7 @@ shift $(($OPTIND - 1))
 : ${REVERSE_DEPENDS:=0}
 : ${TREE_VIEW:=1}
 : ${USE_RQUERY:=0}
-: ${DISPLAY_PKG:=0}
+: ${DISPLAY_ORIGIN:=0}
 
 if [ $REVERSE_DEPENDS -eq 0 ]; then
 	PKG_QUERY_DEPENDS="d"
@@ -94,7 +94,7 @@ else
 	PKG_QUERY_DEPENDS="r"
 fi
 
-if [ $DISPLAY_PKG -eq 1 ]; then
+if [ $DISPLAY_ORIGIN -eq 0 ]; then
 	PKG_QUERY_DISPLAY="%n-%v"
 	PKG_QUERY_DISPLAY_DEPENDS="%${PKG_QUERY_DEPENDS}n-%${PKG_QUERY_DEPENDS}v"
 else

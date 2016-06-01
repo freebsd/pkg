@@ -25,15 +25,23 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <err.h>
 #include <getopt.h>
 #include <inttypes.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
+
+#include <bsd_compat.h>
 
 #include "pkgcli.h"
 
@@ -50,7 +58,7 @@ exec_stats(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	int64_t		 flatsize = 0;
 	unsigned int	 opt = 0;
-	char		 size[7];
+	char		 size[8];
 	int		 ch;
 	bool		 show_bytes = false;
 
@@ -107,7 +115,8 @@ exec_stats(int argc, char **argv)
 		if (show_bytes)
 			printf("\tDisk space occupied: %" PRId64 "\n\n", flatsize);
 		else {
-			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), flatsize, "B",
+			    HN_AUTOSCALE, HN_IEC_PREFIXES);
 			printf("\tDisk space occupied: %s\n\n", size);
 		}
 	}
@@ -123,7 +132,8 @@ exec_stats(int argc, char **argv)
 		if (show_bytes)
 			printf("\tTotal size of packages: %" PRId64 "\n", flatsize);
 		else {
-			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), flatsize, "B",
+			    HN_AUTOSCALE, HN_IEC_PREFIXES);
 			printf("\tTotal size of packages: %s\n", size);
 		}
 	}

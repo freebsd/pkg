@@ -26,7 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <sys/wait.h>
+#ifdef HAVE_SYS_PROCCTL_H
+#include <sys/procctl.h>
+#endif
 
 #include <assert.h>
 #include <errno.h>
@@ -49,7 +54,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	size_t i, j;
 	int error, pstat;
 	pid_t pid;
-	const char *prefix, *script_cmd_p;
+	const char *script_cmd_p;
 	const char *argv[4];
 	char **ep;
 	int ret = EPKG_OK;
@@ -60,6 +65,12 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	ssize_t bytes_written;
 	size_t script_cmd_len;
 	long argmax;
+#ifdef PROC_REAP_KILL
+	bool do_reap;
+	pid_t mypid;
+	struct procctl_reaper_status info;
+	struct procctl_reaper_kill killemall;
+#endif
 
 	struct {
 		const char * const arg;
@@ -75,10 +86,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
 	};
 
-	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS")))
+	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
+		sbuf_delete(script_cmd);
 		return (EPKG_OK);
-
-	pkg_get(pkg, PKG_PREFIX, &prefix);
+	}
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
@@ -87,12 +98,19 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 	assert(i < sizeof(map) / sizeof(map[0]));
 
+#ifdef PROC_REAP_KILL
+	mypid = getpid();
+	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
+#endif
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
 			continue;
 		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
-			setenv("PKG_PREFIX", prefix, 1);
+			setenv("PKG_PREFIX", pkg->prefix, 1);
+			if (pkg_rootdir == NULL)
+				pkg_rootdir = "/";
+			setenv("PKG_ROOTDIR", pkg_rootdir, 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
 				sbuf_printf(script_cmd, "set -x\n");
@@ -119,7 +137,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
-			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", sbuf_get(script_cmd));
+			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", sbuf_data(script_cmd));
 			if (sbuf_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
@@ -139,7 +157,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			} else {
 				argv[0] = _PATH_BSHELL;
 				argv[1] = "-c";
-				argv[2] = sbuf_get(script_cmd);
+				argv[2] = sbuf_data(script_cmd);
 				argv[3] = NULL;
 
 				use_pipe = 0;
@@ -156,7 +174,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			}
 
 			if (use_pipe) {
-				script_cmd_p = sbuf_get(script_cmd);
+				script_cmd_p = sbuf_data(script_cmd);
 				script_cmd_len = sbuf_len(script_cmd);
 				while (script_cmd_len > 0) {
 					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
@@ -181,6 +199,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 			if (WEXITSTATUS(pstat) != 0) {
 				pkg_emit_error("%s script failed", map[i].arg);
+				ret = EPKG_FATAL;
 				goto cleanup;
 			}
 		}
@@ -193,6 +212,24 @@ cleanup:
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)
 		close(stdin_pipe[1]);
+
+#ifdef PROC_REAP_KILL
+	/*
+	 * If the prior PROCCTL_REAP_ACQUIRE call failed, the kernel
+	 * probably doesn't support this, so don't try.
+	 */
+	if (!do_reap)
+		return (ret);
+
+	procctl(P_PID, mypid, PROC_REAP_STATUS, &info);
+	if (info.rs_children != 0) {
+		killemall.rk_sig = SIGKILL;
+		killemall.rk_flags = 0;
+		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0)
+			pkg_emit_errno("procctl", "PROC_REAP_KILL");
+	}
+	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
+#endif
 
 	return (ret);
 }

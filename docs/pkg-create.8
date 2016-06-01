@@ -13,9 +13,8 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd May 26, 2014
+.Dd September 26, 2015
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -25,26 +24,26 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl n
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
 .Fl m Ar metadatadir
 .Nm
-.Op Fl n
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Fl M Ar manifest
 .Nm
-.Op Fl gnx
+.Op Fl gnqvx
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Ar pkg-name ...
 .Nm
-.Op Fl n
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -53,6 +52,8 @@
 .Pp
 .Nm
 .Op Cm --no-clobber
+.Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --plist Ar plist
@@ -60,18 +61,24 @@
 .Cm --metadata Ar metadatadir
 .Nm
 .Op Cm --no-clobber
+.Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Cm --manifest Ar manifest
 .Nm
 .Op Cm --{glob,no-clobber,regex}
+.Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Ar pkg-name ...
 .Nm
 .Op Cm --no-clobber
+.Op Cm --quiet
+.Op Cm --verbose
 .Op Cm --format Ar format
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
@@ -81,7 +88,7 @@
 .Nm
 is used to create packages from binaries or other files installed on
 your computer.
-Package tarballs can created from the files of a previously installed
+Package tarballs can be created from the files of a previously installed
 package using metadata from the local package database.
 Any number of packages may be created in one invocation of this style.
 .Pp
@@ -144,7 +151,7 @@ It can be one of
 .Ar txz , tbz , tgz
 or
 .Ar tar
-which are currently the only supported format.
+which are currently the only supported formats.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
@@ -154,19 +161,11 @@ Specify the directory containing the package manifest,
 and optionally three other files; one containing a message to be
 displayed on package installation,
 .Pa +DISPLAY .
-Another containing the description for the packages,
+Another containing the description for the package,
 .Pa +DESC .
-The last containing an mtree specification,
-.Pa +MTREE_DIRS ,
-for the directory tree the package will use.
-See
-.Xr mtree 5
-for the format of the mtree file.
 If specified, only a single package will be created.
 .Pa +DISPLAY
-,
-.Pa +MTREE_DIRS
-, and
+and
 .Pa +DESC
 are not required; the
 .Pa +MANIFEST
@@ -184,7 +183,7 @@ file.
 This is exactly the same format as
 .Pa +MANIFEST
 mentioned above, but any file name can be used, and no
-other file will be used to read package metada from.
+other file will be used to read package metadata from.
 If specified, only a single package will be created.
 This option is incompatible with the
 .Fl m, a, g
@@ -192,7 +191,7 @@ or
 .Fl x
 options.
 .It Fl n , Cm --no-clobber
-Do not overwrite already existing packages
+Do not overwrite already existing packages.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
@@ -214,7 +213,18 @@ Only has any effect when used with
 .Ar metadatadir .
 See
 .Sx "PLIST FORMAT"
-for details
+for details.
+.It Fl q , Cm --quiet
+Force quiet output.
+This is the default, unless
+.Cm PKG_CREATE_VERBOSE
+is set to
+.Ar yes
+in
+.Pa pkg.conf .
+.It Fl v , Cm --verbose
+Force verbose output, the opposite of
+.Cm --quiet .
 .It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
@@ -244,7 +254,7 @@ This entry sets the package's origin to
 .Ar pkg-origin .
 This is a string of the form
 .Pa category/port-dir
-which designate the port this package was built from.
+which designates the port this package was built from.
 .It Cm comment Ar comment-string
 .Ar comment-string
 is a one-line description of this package.
@@ -253,6 +263,22 @@ It is the equivalent of the
 variable for a port, not a way to put comments in a
 .Pa +MANIFEST
 file.
+.It Cm desc Ar description
+.Ar description
+is a longer description of the package.
+It is the equivalent of the
+.Pa pkg-descr
+file for a port.
+It may be one to a few paragraphs.
+For example:
+.Bd -literal -offset indent
+desc = <<EOD
+   This is a longer description of the package.
+   It can span multiple lines.
+
+   It can also span multiple paragraphs.
+EOD
+.Ed
 .It Cm arch Ar cpu-type
 The architecture of the machine the package was built on.
 .Ar cpu-type
@@ -269,12 +295,26 @@ The size that the files contained in this package will occupy on your system
 once uncompressed.
 This value does not take into account files stored in the
 package database.
-.It Cm dep Ar dep-name dep-origin dep-version
-Declare a dependency on the package which name, origin and version match
-.Ar dep-name , dep-origin
+.It Cm deps Ar dep-name dep-origin dep-version
+Associative array of package dependencies, keyed on
+.Ar dep-name
+and with values
+.Cm version Ar dep-version
 and
-.Ar dep-version
-respectively.
+.Cm origin Ar dep-origin .
+For example:
+.Bd -literal -offset indent
+"deps" : {
+   "pstree" : {
+      "version" : "2.36",
+      "origin" : "sysutils/pstree"
+   },
+   "cdiff" : {
+      "version" : "0.9.6.20140711,1",
+      "origin" : "textproc/cdiff"
+   },
+},
+.Ed
 .It Cm conflict Ar pkg-glob
 Flag this package as incompatible with the one designated by
 .Ar pkg-glob .
@@ -326,6 +366,22 @@ Available keywords are the following:
 Set the internal directory pointer to point to
 .Ar directory .
 All subsequent filenames will be assumed relative to this directory.
+.It Cm @preexec Ar Command
+Execute
+.Ar command
+as part of the pre-install scripts.
+.It Cm @preunexec Ar command
+Execute
+.Ar command
+as part of the pre-deinstall scripts.
+.It Cm @postexec Ar command
+Execute
+.Ar command
+as part of the post-install scripts.
+.It Cm @postunexec Ar command
+Execute
+.Ar command
+as part of the post-deinstall scripts.
 .It Cm @exec Ar command Pq deprecated
 Execute
 .Ar command
@@ -397,23 +453,19 @@ Set default group ownership for all subsequent files to
 Use without an arg to set back to default (wheel)
 group ownership.
 .It Cm @comment Ar string
-The line will be ignored when packing
-.It Cm @dirrm Ar name
+The line will be ignored when packing.
+.It Cm @dir Ar name
 Declare directory
 .Pa name
 to be deleted at deinstall time.
-By default, directories created by a package installation are not
-deleted when the package is deinstalled.
-This provides an explicit directory cleanup method.
+By default, most directories created by a package installation are
+deleted automatically when the package is deinstalled, so this directive is
+only needed for empty directories or directories outside of
+.Ev PREFIX .
 These directives should appear at the end of the package list.
 If the directory is not empty a warning will be printed, and the
 directory will not be removed.
-.It Cm @dirrmtry Ar name
-Declare directory
-.Pa name
-to be removed, as for
-.Cm @dirrm ,
-but does not issue a warning if the directory cannot be removed.
+(Subdirectories should be listed before parent directories.)
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT

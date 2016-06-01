@@ -1,4 +1,5 @@
 dist_man_MANS=	pkg-add.8 \
+		pkg-alias.8 \
 		pkg-annotate.8 \
 		pkg-audit.8 \
 		pkg-autoremove.8 \

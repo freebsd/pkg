@@ -1,5 +1,17 @@
 pkg - a binary package manager for FreeBSD
-============================================
+==========================================
+
+Known to fully work on (official package manager):
+
+- FreeBSD
+- DragonflyBSD
+
+Known to work on (has been ported to):
+
+- Linux
+- NetBSD/EdgeBSD
+- OpenBSD/Bitrig
+- OSX
 
 Table of Contents:
 ------------------
@@ -29,6 +41,11 @@ Table of Contents:
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
+Linux/OSX:
+[<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
+
+FreeBSD:
+[![Build Status](http://jenkins.mouf.net/view/auto/job/pkg/badge/icon)](http://jenkins.mouf.net/view/auto/job/pkg/)
 <a name="libpkg"></a>
 ### libpkg
 
@@ -54,7 +71,6 @@ pkg uses several files for metadata:
 
 * +COMPACT\_MANIFEST
 * +MANIFEST
-* +MTREE\_DIRS (optional)
 
 ##### COMPACT\_MANIFEST
 
@@ -64,7 +80,7 @@ It contains the information used to build the repository catalogue.
 
 ##### MANIFEST
 
-The manifest is in [YAML](http://yaml.org) format, it contains all the
+The manifest is in [UCL](https://github.com/vstakhov/libucl) format, it contains all the
 information about the package:
 
 	name: foo
@@ -81,28 +97,35 @@ information about the package:
 	users: [USER1, USER2]
 	groups: [GROUP1, GROUP2]
 	options: { OPT1: off, OPT2: on }
-	desc: |-
-	  This is the descrpition
+	desc: <<EOD
+	  This is the description
 	  Of foo
 	  
 	  A component of bar
+	EOD
 	categories: [bar, plop]
-	deps:
-	  libiconv: {origin: converters/libiconv, version: 1.13.1_2}
-	  perl: {origin: lang/perl5.12, version: 5.12.4 }
-	files:
-	  /usr/local/bin/foo: 'sha256sum'
-	  /usr/local/bin/i_am_a_link: '-'
-	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum'
-	dirs:
-	- /usr/local/share/foo-1.0
-	scripts:
-	  post-install: |-
+	deps: {
+	  libiconv: {origin: converters/libiconv, version: 1.13.1_2};
+	  perl: {origin: lang/perl5.12, version: 5.12.4 };
+	}
+	files: {
+	  /usr/local/bin/foo: 'sha256sum',
+	  /usr/local/bin/i_am_a_link: 'sha256sum';
+	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum;
+	}
+	directories: {
+	  /usr/local/share/foo-1.0 : 'y';
+	}
+	scripts: {
+	  post-install: <<EOD
 	    #!/bin/sh
 	    echo post-install
-	  pre-install: |-
+	EOD
+	  pre-install: <<EOD
 	    #!/bin/sh
 	    echo pre-install
+	EOD
+	}
 
 Valid scripts are:
 
@@ -123,29 +146,20 @@ The shebang is not required.
 When the manifest is read by pkg\_create files and dirs can use an
 alternate format:
 
-	files:
-	  /usr/local/bin/foo, 'sha256sum'
+	files: {
+	  /usr/local/bin/foo: 'sha256sum',
 	  /usr/local/bin/bar: {sum: 'sha256sum', uname: baruser, gname: foogroup, perm: 0644 }
-	dirs:
-	- /usr/local/share/foo-1.0
-	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+	}
+	directories: {
+	  /usr/local/share/foo-1.0: 'y',
+	  /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+	}
 
 
 This allows overriding the users, groups and mode of files and
 directories during package creation.
 So, for example, this allows to creation of a package containing
 root-owned files without being packaged by the root user.
-
-##### MTREE\_DIRS
-
-This is optional.  It is used by the package the same way as done by
-the legacy tools. The MTREE is extracted in prefix before each
-installation.
-
-In the future we hope that mtree will be deprecated in favour of a
-hier package or a single MTREE that won't be customisable in per
-package basis. Since pkg supports packing of empty directories, per
-package MTREE is superfluous.
 
 <a name="localdb"></a>
 ### Local database
@@ -170,7 +184,7 @@ show pkg-message, ...
 remote FTP/HTTP server.
 
 If only a package name is given, it will search the repository catalogues
-and download and install the package if it exists. Anydependencies will be
+and download and install the package if it exists. Any dependencies will be
 downloaded and installed first.
 
 This is possible because we have the dependency information in the
@@ -190,7 +204,7 @@ the repository. It will compute the proper update order and apply them.
 <a name="pkgdel"></a>
 ### Deleting packages
 
-`pkg delete` will remove a package, and (delending on the command line
+`pkg delete` will remove a package, and (depending on the command line
 arguments) any other packages that depend on what you're trying to
 delete.
 
@@ -232,7 +246,7 @@ latest release version:
 
 
 <a name="pkggit"></a>
-### Building pkg using sources from Git
+### Building pkg using sources from Git [FreeBSD]
 
 In order to build pkg from source, you will need to have Gnu
 autotools and some other tools installed.
@@ -240,7 +254,7 @@ autotools and some other tools installed.
 	# pkg install autoconf automake libtool pkgconf
 
 The next thing to do is to get the pkg sources installed on your machine.
-You can grab a development snapshot of pkg from the [pkg Github repository][1]
+You can grab a development snapshot of pkg from the [pkg GitHub repository][1]
 
 To get the latest version of pkg from the Git repo, just clone it:
 
@@ -270,16 +284,47 @@ installed.
 
 Note: if you're running anything other than FreeBSD or DragonFly, you
 will need to do some porting work.  The pkg(8) codebase should be
-reasoably portable onto anything with a c99 compiler, posix compliant
+reasonably portable onto anything with a c99 compiler, POSIX compliant
 system and capable of running Gnu autotools.  However, various places
 in the pkg(8) code make assumptions about OS specific behaviour.  If
 you do try anything like this, we'd be very interested to hear how you
 get on.
 
+<a name="pkggit-openbsd"></a>
+### Building pkg using sources from Git [OpenBSD and Bitrig]
+
+	# Install packages
+	pkg_add autoconf automake libtool bitrig-binutils bzip2 git libarchive
+	
+	# set environment variables
+	export AUTOMAKE_VERSION=1.15
+	export AUTOCONF_VERSION=2.69
+	
+	# create a download directory
+	mkdir ~/git
+	
+	# install pkgconf
+	cd ~/git
+	git clone https://github.com/pkgconf/pkgconf
+	cd pkgconf
+	./autogen.sh
+	./configure
+	make
+	sudo make install
+	
+	# install pkg
+	cd ~/git
+	git clone https://github.com/freebsd/pkg
+	cd pkg
+	./autogen.sh
+	./configure
+	make
+	sudo make install
+
 <a name="pkg2ng"></a>
 ### Converting an old-style pkg database
 
-If you're on a 9.x system or earler and did not have a release version
+If you're on a 9.x system or earlier and did not have a release version
 of pkg(8) installed previously, you will need to run the pkg2ng
 script.  This is only necessary when converting your system from the
 old pkg_tools style packages.
@@ -384,8 +429,11 @@ from the official package repositories.
 
 To add additional repositories, create a per-repository configuration
 file in `/usr/local/etc/pkg/repos` -- it doesn't matter what the
-filename is other than it must match '*.conf' and you should make your
-preferred repositories sort earlier in the list.
+filename is other than it must match '*.conf' and you should add a
+'priority' setting indicating the preference order.  This is just an
+integer, where higher values indicate the more preferred repositories.
+Priority defaults to 0 unless explicitly stated.  This is the value
+for the default `/etc/pkg/FreeBSD.conf`
 
 To disable the default FreeBSD.conf, create a file
 `/usr/local/etc/pkg/repos/FreeBSD.conf` with the contents:
@@ -394,22 +442,28 @@ To disable the default FreeBSD.conf, create a file
 FreeBSD: { enabled: no }
 ```
 
-To check quickly what repositories you have onfigured, run `pkg -vv`.
+To check quickly what repositories you have configured, run `pkg -vv`.
 
 See *pkg.conf(5)* for details of the format of `pkg.conf` and the
 per-repository `repo.conf` files.  See *pkg-repository(5)* for more
-details about package repositories and how to work ith them.
+details about package repositories and how to work with them.
 
 Note that the old style of setting _PACKAGESITE_ in pkg.conf is
 no-longer supported.  Setting _PACKAGESITE_ in the environment has
 meaning for the pkg(7) shim, but is ignored by pkg(8).
 
+<a name="pkgupdate"></a>
+### Updating from remote repositories
+
 Then fetch the repository catalogues using the command:
 
 	# pkg update
 
-This would fetch the remote package database to your local system. Now
-in order to install packages from the remote repository, you would use
+For more information on updating from remote repositories, please
+refer to *pkg-update(1)*.
+
+This will fetch the remote package database to your local system. Now
+in order to install packages from the remote repository, you can use
 the `pkg install` command:
 
 	# pkg install zsh cfengine3
@@ -425,61 +479,47 @@ You can install a package from a specific repository:
 
     	# pkg install -r myrepo zsh
 
-where `myrepo` is one of the tags shown in the `pkg -vv` output.  You
-can then tell pkg to always use the named repository for upgrades to
-that package by:
+where `myrepo` is one of the tags shown in the `pkg -vv` output.
+pkg(8) will automatically create an annotation showing which
+repository a package came from, similarly to the effect of running:
 
-        # pkg annotate -A zsh repository myrepo
+        # pkg annotate -A pkgname repository myrepo
 
-<a name="pkgupdate"></a>
-### Updating remote repositories
-
-The first thing to do when working with remote repositories is to
-update from them.
-
-Updating remote repositories is done by the `pkg update` command.  By
-default his will first update the local copies of the repository
-catalogues, unless you specifically configure pkg(8) otherwise.
-
-So, to update your remote repositories, you would execute this command:
-
-	# pkg update
-
-For more information on the remote repositories, please refer to *pkg-update(1)*.
+pkg(8) will attempt to use the same repository for any updates to this
+package, even if there are more recent versions available from other
+repositories.  This is usually the desired behaviour.  Otherwise see
+the documentation for `CONSERVATIVE_UPGRADE` in pkg.conf(5).
 
 <a name="pkgsearch"></a>
 ### Searching in remote package repositories
 
-You can search in the remote package repositories using the `pkg search` command.
+You can search in the remote package repositories using the `pkg
+search` command.
 
-In order to search in multiple package repositories the environment variable
-_PACKAGESITE_ should NOT be defined, in which case `pkg search` will query
-the remote package databases found in the /etc/pkg/repositories file.
+If you have multiple repositories configured, `pkg search` will return
+results from searching each of them.  Use the `-r reponame` option to
+confine your search to a specific repository.
 
 An example search for a package could be done like this:
 
 	# pkg search -x apache
 
-For more information on the repositories search, please refer to *pkg-search(1)*
+For more information on the repositories search, please refer to
+*pkg-search(1)*
 
 <a name="pkginstall"></a>
 ### Installing from remote repositories
 
-In order to install a package from a remote repository you need to set the
-_PACKAGESITE_ environment variable to point to the remote server.
+pkg(8) will install a package from the highest priority repository
+that contains the package and that allows the solver to satisfy the
+package dependencies.  This may entail reinstalling existing packages
+from a different repository.
 
-If _PACKAGESITE_ is not defined then the installation process will use
-multiple repositories as defined in the /etc/pkg/repositories file.
+The process continues until the package is fetched and installed, or
+all remote repositories fail to fetch the package.
 
-During installation from multiple repositories the first repository
-that is found to has the package is the first one that pkg will use
-during the installation. If that repository is not accessible for some reason,
-then the next repository which contains the package is the one that is tried.
-
-The process continues until the package is fetched and installed, or all
-remote repositories fail to fetch the package.
-
-Remote installations of packages using pkg are done by the `pkg install` command.
+Remote installations of packages using pkg are done by the `pkg
+install` command.
 
 Here's an example installation of few packages:
 
@@ -491,7 +531,8 @@ Or you could also install the packages using only one command, like this:
 
 	# pkg install www/apache22 zsh perl5-5.18.2_4
 
-For more information on the remote package installs, please refer to *pkg-install(1)*
+For more information on the remote package installs, please refer to
+*pkg-install(1)*
 
 <a name="pkgbackup"></a>
 ### Backing up your package database
@@ -531,14 +572,14 @@ your repository :)
 <a name="resources"></a>
 ### Additional resources
 
-* The Git repository of [pkg is hosted on Github][1]
+* The Git repository of [pkg is hosted on GitHub][1]
 
 * The [pkg Wiki page][2]
 
 * [Jenkins instance for pkg][3]
 
 In order to get in contact with us, you can find us in the
-#pkg@FreeNode IRC channel.
+#pkgng@FreeNode IRC channel.
 
 If you hit a bug when using pkg, you can always submit an issue in the
 [pkg issue tracker][4].

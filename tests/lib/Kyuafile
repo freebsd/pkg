@@ -1,3 +1,0 @@
-syntax('kyuafile', 1)
-
-test_suite('prop: test-suite = lib')

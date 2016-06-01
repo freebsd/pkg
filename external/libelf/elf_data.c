@@ -31,7 +31,7 @@
 
 #include "_libelf.h"
 
-ELFTC_VCSID("$Id: elf_data.c 2272 2011-12-03 17:07:31Z jkoshy $");
+ELFTC_VCSID("$Id$");
 
 Elf_Data *
 elf_getdata(Elf_Scn *s, Elf_Data *ed)
@@ -39,10 +39,11 @@ elf_getdata(Elf_Scn *s, Elf_Data *ed)
 	Elf *e;
 	unsigned int sh_type;
 	int elfclass, elftype;
-	size_t fsz, msz, count;
+	size_t count, fsz, msz;
 	struct _Libelf_Data *d;
 	uint64_t sh_align, sh_offset, sh_size;
-	int (*xlate)(char *_d, size_t _dsz, char *_s, size_t _c, int _swap);
+	int (*xlate)(unsigned char *_d, size_t _dsz, unsigned char *_s,
+	    size_t _c, int _swap);
 
 	d = (struct _Libelf_Data *) ed;
 
@@ -108,11 +109,23 @@ elf_getdata(Elf_Scn *s, Elf_Data *ed)
 		return (NULL);
 	}
 
-	count = sh_size / fsz;
+	if (sh_size / fsz > SIZE_MAX) {
+		LIBELF_SET_ERROR(RANGE, 0);
+		return (NULL);
+	}
+
+	count = (size_t) (sh_size / fsz);
 
 	msz = _libelf_msize(elftype, elfclass, e->e_version);
 
+	if (count > 0 && msz > SIZE_MAX / count) {
+		LIBELF_SET_ERROR(RANGE, 0);
+		return (NULL);
+	}
+
 	assert(msz > 0);
+	assert(count <= SIZE_MAX);
+	assert(msz * count <= SIZE_MAX);
 
 	if ((d = _libelf_allocate_data(s)) == NULL)
 		return (NULL);
@@ -129,7 +142,7 @@ elf_getdata(Elf_Scn *s, Elf_Data *ed)
 		return (&d->d_data);
         }
 
-	if ((d->d_data.d_buf = malloc(msz*count)) == NULL) {
+	if ((d->d_data.d_buf = malloc(msz * count)) == NULL) {
 		(void) _libelf_release_data(d);
 		LIBELF_SET_ERROR(RESOURCE, 0);
 		return (NULL);
@@ -138,7 +151,7 @@ elf_getdata(Elf_Scn *s, Elf_Data *ed)
 	d->d_flags  |= LIBELF_F_DATA_MALLOCED;
 
 	xlate = _libelf_get_translator(elftype, ELF_TOMEMORY, elfclass);
-	if (!(*xlate)(d->d_data.d_buf, d->d_data.d_size,
+	if (!(*xlate)(d->d_data.d_buf, (size_t) d->d_data.d_size,
 	    e->e_rawfile + sh_offset, count,
 	    e->e_byteorder != LIBELF_PRIVATE(byteorder))) {
 		_libelf_release_data(d);
@@ -234,8 +247,10 @@ elf_rawdata(Elf_Scn *s, Elf_Data *ed)
 		sh_align  = s->s_shdr.s_shdr64.sh_addralign;
 	}
 
-	if (sh_type == SHT_NULL)
+	if (sh_type == SHT_NULL) {
+		LIBELF_SET_ERROR(SECTION, 0);
 		return (NULL);
+	}
 
 	if ((d = _libelf_allocate_data(s)) == NULL)
 		return (NULL);

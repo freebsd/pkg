@@ -97,8 +97,8 @@ pkg_repo_meta_open_schema_v1()
 			"version = {type = integer};\n"
 			"maintainer = {type = string};\n"
 			"source = {type = string};\n"
-			"packing_format = {enum = [txz, tbz, tgz]};\n"
-			"digest_format = {enum = [sha256_base32, sha256_hex]};\n"
+			"packing_format = {enum = [txz, tbz, tgz, tar]};\n"
+			"digest_format = {enum = [sha256_base32, sha256_hex, blake2_base32]};\n"
 			"digests = {type = string};\n"
 			"manifests = {type = string};\n"
 			"conflicts = {type = string};\n"
@@ -168,8 +168,7 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 #define META_EXTRACT_STRING(field) do { 						\
 	obj = ucl_object_find_key(top, (#field)); 					\
 	if (obj != NULL && obj->type == UCL_STRING) { 				\
-	    if (meta->field != NULL) 								\
-	    	free(meta->field);									\
+	    free(meta->field);									\
 	    meta->field = strdup(ucl_object_tostring(obj));			\
 	}															\
 } while (0)

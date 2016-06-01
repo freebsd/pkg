@@ -33,6 +33,9 @@ struct _elf_corres {
 static const struct _elf_corres mach_corres[] = {
 	{ EM_386, "x86" },
 	{ EM_X86_64, "x86" },
+#ifdef EM_AARCH64
+	{ EM_AARCH64, "aarch64" },
+#endif
 	{ EM_ARM, "arm" },
 	{ EM_MIPS, "mips" },
 	{ EM_PPC, "powerpc" },
@@ -62,10 +65,45 @@ static const struct _elf_corres os_corres[] = {
 #ifndef EF_MIPS_ABI
 #define EF_MIPS_ABI	0x0000F000
 #endif
+#ifndef EF_ARM_VFP_FLOAT
+#define EF_ARM_VFP_FLOAT	0x00000400
+#endif
 #define E_MIPS_ABI_O32	0x00001000
 #define E_MIPS_ABI_N32	0x00000020
 
 #define NT_VERSION	1
 #define NT_ARCH	2
+
+/* All possibilities on FreeBSD as of 5/26/2014 */
+struct arch_trans {
+	const char *elftype;
+	const char *archid;
+};
+
+static struct arch_trans machine_arch_translation[] = {
+	{ "x86:32", "i386" },
+	{ "x86:64", "amd64" },
+	{ "powerpc:32", "powerpc" },
+	{ "powerpc:64", "powerpc64" },
+	{ "sparc64:64", "sparc64" },
+	{ "ia64:64", "ia64" },
+	/* All the ARM stuff */
+	{ "arm:32:el:eabi:softfp", "arm" },
+	{ "arm:32:el:oabi:softfp", "arm" },
+	{ "arm:32:eb:eabi:softfp", "armeb" },
+	{ "arm:32:eb:oabi:softfp", "armeb" },
+	{ "armv6:32:el:eabi:softfp", "armv6" },
+	{ "armv6:32:el:eabi:hardfp", "armv6" },
+	{ "aarch64:64", "aarch64" },
+	/* And now MIPS */
+	{ "mips:32:el:o32", "mipsel" },
+	{ "mips:32:el:n32", "mipsn32el" },
+	{ "mips:32:eb:o32", "mips" },
+	{ "mips:32:eb:n32", "mipsn32" },
+	{ "mips:64:el:n64", "mips64el" },
+	{ "mips:64:eb:n64", "mips64" },
+
+	{ NULL, NULL }
+};
 
 #endif /* ELF_TABLES_H_ */

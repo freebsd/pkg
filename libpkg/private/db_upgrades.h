@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -634,6 +634,45 @@ static struct db_upgrades {
 	"CREATE INDEX IF NOT EXISTS packages_version_nocase ON packages(name COLLATE NOCASE, version);"
 	"CREATE INDEX IF NOT EXISTS packages_uid ON packages(name, origin COLLATE NOCASE);"
 	"CREATE INDEX IF NOT EXISTS packages_version ON packages(name, version);"
+	},
+	{28,
+	"CREATE TABLE config_files ("
+		"path TEXT NOT NULL UNIQUE, "
+		"content TEXT, "
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE"
+	");"
+	},
+	{29,
+	"DROP INDEX packages_unique;"
+	"UPDATE packages SET name= name || \"~pkg-renamed~\" || hex(randomblob(2)) "
+		"WHERE name IN ("
+			"SELECT name FROM packages GROUP BY name HAVING count(name) > 1 "
+		");"
+	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
+	},
+	{30,
+	"DROP INDEX deps_unique;"
+	"CREATE UNIQUE INDEX deps_unique ON deps(name, version, package_id);"
+	},
+	{31,
+	"CREATE TABLE requires("
+	"    id INTEGER PRIMARY KEY,"
+	"    require TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_requires ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		"  ON DELETE CASCADE ON UPDATE CASCADE,"
+		"require_id INTEGER NOT NULL REFERENCES requires(id)"
+		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE(package_id, require_id)"
+	");"
+	},
+	{32,
+	"ALTER TABLE packages ADD COLUMN dep_formula TEXT NULL;"
+	},
+	{33,
+	"ALTER TABLE packages ADD COLUMN vital INTEGER NOT NULL DEFAULT 0;"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

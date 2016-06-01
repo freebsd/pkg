@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -34,14 +34,10 @@
 
 #include <assert.h>
 #include <errno.h>
-#ifdef HAVE_EXECINFO_H
-#include <execinfo.h>
-#endif
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <yaml.h>
 #include <ucl.h>
 #include <uthash.h>
 #include <utlist.h>
@@ -50,10 +46,38 @@
 #include <paths.h>
 #include <float.h>
 #include <math.h>
+#include <xxhash.h>
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+
+int64_t
+pkg_hash_seed(void)
+{
+	static int64_t seed = 0;
+
+	if (seed == 0)
+		seed = time(NULL);
+	return (seed);
+}
+
+#if (defined(WORD_BIT) && WORD_BIT == 64) || \
+	(defined(__WORDSIZE) && __WORDSIZE == 64) || \
+	defined(__x86_64__) || \
+	defined(__amd64__)
+#define XXHASHIMPL XXH64
+#else
+#define XXHASHIMPL XXH32
+#endif
+
+int32_t
+string_hash_func(const char *key)
+{
+	return (XXHASHIMPL(key, strlen(key), pkg_hash_seed()));
+}
 
 void
 sbuf_init(struct sbuf **buf)
@@ -78,18 +102,6 @@ sbuf_set(struct sbuf **buf, const char *str)
 	return (0);
 }
 
-char *
-sbuf_get(struct sbuf *buf)
-{
-	if (buf == NULL)
-		return (__DECONST(char *, ""));
-
-	if (sbuf_done(buf) == 0)
-		sbuf_finish(buf);
-
-	return (sbuf_data(buf));
-}
-
 void
 sbuf_reset(struct sbuf *buf)
 {
@@ -104,15 +116,6 @@ sbuf_free(struct sbuf *buf)
 {
 	if (buf != NULL)
 		sbuf_delete(buf);
-}
-
-ssize_t
-sbuf_size(struct sbuf *buf)
-{
-	if (buf != NULL)
-		return sbuf_len(buf);
-
-	return 0;
 }
 
 int
@@ -246,11 +249,12 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 int
 format_exec_cmd(char **dest, const char *in, const char *prefix,
-    const char *plist_file, char *line)
+    const char *plist_file, char *line, int argc, char **argv)
 {
 	struct sbuf *buf = sbuf_new_auto();
 	char path[MAXPATHLEN];
 	char *cp;
+	size_t sz;
 
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
@@ -323,7 +327,24 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 * given (default exec) %@ does not
 			 * exists
 			 */
+		case '#':
+			sbuf_putc(buf, argc);
+			break;
 		default:
+			if ((sz = strspn(in, "0123456789")) > 0) {
+				int pos = strtol(in, NULL, 10);
+				if (pos > argc) {
+					pkg_emit_error("Requesting argument "
+					    "%%%d while only %d arguments are"
+					    " available", pos, argc);
+					sbuf_finish(buf);
+					sbuf_free(buf);
+					return (EPKG_FATAL);
+				}
+				sbuf_cat(buf, argv[pos -1]);
+				in += sz -1;
+				break;
+			}
 			sbuf_putc(buf, '%');
 			sbuf_putc(buf, in[0]);
 			break;
@@ -347,213 +368,48 @@ is_dir(const char *path)
 	return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
-static void
-md5_hash(unsigned char hash[MD5_DIGEST_LENGTH],
-    char out[MD5_DIGEST_LENGTH * 2 + 1])
+bool
+string_end_with(const char *path, const char *str)
 {
-	int i;
-	for (i = 0; i < MD5_DIGEST_LENGTH; i++)
-		sprintf(out + (i *2), "%02x", hash[i]);
-
-	out[MD5_DIGEST_LENGTH * 2] = '\0';
-}
-
-int
-md5_file(const char *path, char out[MD5_DIGEST_LENGTH * 2 + 1])
-{
-	FILE *fp;
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	MD5_CTX md5;
-
-	if ((fp = fopen(path, "rb")) == NULL) {
-		pkg_emit_errno("fopen", path);
-		return EPKG_FATAL;
-	}
-
-	MD5_Init(&md5);
-
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
-		MD5_Update(&md5, buffer, r);
-
-	if (ferror(fp) != 0) {
-		fclose(fp);
-		out[0] = '\0';
-		pkg_emit_errno("fread", path);
-		return EPKG_FATAL;
-	}
-
-	fclose(fp);
-
-	MD5_Final(hash, &md5);
-	md5_hash(hash, out);
-
-	return (EPKG_OK);
-}
-
-static void
-sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
-    char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int i;
-	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
-		sprintf(out + (i * 2), "%02x", hash[i]);
-
-	out[SHA256_DIGEST_LENGTH * 2] = '\0';
-}
-
-int
-sha256_fileat(int rootfd, const char *path,
-    char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int fd, ret;
-
-	if ((fd = openat(rootfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("openat", path);
-		return (EPKG_FATAL);
-	}
-
-	ret = sha256_fd(fd, out);
-
-	close(fd);
-
-	return (ret);
-}
-
-int
-sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int fd;
-	int ret;
-
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
-		return (EPKG_FATAL);
-	}
-
-	ret = sha256_fd(fd, out);
-
-	close(fd);
-
-	return (ret);
-}
-
-void
-sha256_buf(const char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	sha256_buf_bin(buf, len, hash);
-	out[0] = '\0';
-	sha256_hash(hash, out);
-}
-
-void
-sha256_buf_bin(const char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
-{
-	SHA256_CTX sha256;
-
-	SHA256_Init(&sha256);
-	SHA256_Update(&sha256, buf, len);
-	SHA256_Final(hash, &sha256);
-}
-
-int
-sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	int my_fd = -1;
-	FILE *fp = NULL;
-	char buffer[BUFSIZ];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	size_t r = 0;
-	int ret = EPKG_OK;
-	SHA256_CTX sha256;
-
-	out[0] = '\0';
-
-	/* Duplicate the fd so that fclose(3) does not close it. */
-	if ((my_fd = dup(fd)) == -1) {
-		pkg_emit_errno("dup", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((fp = fdopen(my_fd, "rb")) == NULL) {
-		pkg_emit_errno("fdopen", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	SHA256_Init(&sha256);
-
-	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
-		SHA256_Update(&sha256, buffer, r);
-
-	if (ferror(fp) != 0) {
-		pkg_emit_errno("fread", "");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	SHA256_Final(hash, &sha256);
-	sha256_hash(hash, out);
-cleanup:
-
-	if (fp != NULL)
-		fclose(fp);
-	else if (my_fd != -1)
-		close(my_fd);
-	(void)lseek(fd, 0, SEEK_SET);
-
-	return (ret);
-}
-
-int
-is_conf_file(const char *path, char *newpath, size_t len)
-{
-	size_t n;
+	size_t n, s;
 	const char *p = NULL;
 
+	s = strlen(str);
 	n = strlen(path);
 
-	if (n < 8)
-		return (0);
+	if (n < s)
+		return (false);
 
-	p = &path[n - 8];
+	p = &path[n - s];
 
-	if (strcmp(p, ".pkgconf") == 0) {
-		strlcpy(newpath, path, len);
-		newpath[n - 8] = '\0';
-		return (1);
-	}
+	if (strcmp(p, str) == 0)
+		return (true);
 
-	return (0);
+	return (false);
 }
 
 bool
-check_for_hardlink(struct hardlinks **hl, struct stat *st)
+check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	struct hardlinks *h;
+	int absent;
 
-	HASH_FIND_INO(*hl, &st->st_ino, h);
-	if (h != NULL)
+	kh_put_hardlinks(hl, st->st_ino, &absent);
+	if (absent == 0)
 		return (true);
-
-	h = malloc(sizeof(struct hardlinks));
-	h->inode = st->st_ino;
-	HASH_ADD_INO(*hl, inode, h);
 
 	return (false);
 }
 
 bool
 is_valid_abi(const char *arch, bool emit_error) {
-	const char *myarch;
+	const char *myarch, *myarch_legacy;
 
 	myarch = pkg_object_string(pkg_config_get("ABI"));
+	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 
 	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    strncmp(arch, myarch, strlen(myarch)) != 0) {
+	    strncasecmp(arch, myarch, strlen(myarch)) != 0 &&
+	    strncasecmp(arch, myarch_legacy, strlen(myarch_legacy)) != 0) {
 		if (emit_error)
 			pkg_emit_error("wrong architecture: %s instead of %s",
 			    arch, myarch);
@@ -561,131 +417,6 @@ is_valid_abi(const char *arch, bool emit_error) {
 	}
 
 	return (true);
-}
-
-static ucl_object_t *yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node);
-
-static ucl_object_t *
-yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
-{
-	yaml_node_item_t *item;
-	yaml_node_t *val;
-	ucl_object_t *sub = NULL;
-
-	item = node->data.sequence.items.start;
-	while (item < node->data.sequence.items.top) {
-		val = yaml_document_get_node(doc, *item);
-		switch (val->type) {
-		case YAML_MAPPING_NODE:
-			sub = yaml_mapping_to_object(NULL, doc, val);
-			break;
-		case YAML_SEQUENCE_NODE:
-			sub = yaml_sequence_to_object(NULL, doc, val);
-			break;
-		case YAML_SCALAR_NODE:
-			sub = ucl_object_fromstring_common (val->data.scalar.value,
-			    val->data.scalar.length, UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
-			break;
-		case YAML_NO_NODE:
-			/* Should not happen */
-			break;
-		}
-		if (obj == NULL)
-			obj = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(obj, sub);
-		++item;
-	}
-
-	return (obj);
-}
-
-static ucl_object_t *
-yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
-{
-	yaml_node_pair_t *pair;
-	yaml_node_t *key, *val;
-
-	ucl_object_t *sub = NULL;
-
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-
-		switch (val->type) {
-		case YAML_MAPPING_NODE:
-			sub = yaml_mapping_to_object(NULL, doc, val);
-			break;
-		case YAML_SEQUENCE_NODE:
-			sub = yaml_sequence_to_object(NULL, doc, val);
-			break;
-		case YAML_SCALAR_NODE:
-			sub = ucl_object_fromstring_common (val->data.scalar.value,
-			    val->data.scalar.length,
-			    UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
-			break;
-		case YAML_NO_NODE:
-			/* Should not happen */
-			break;
-		}
-		if (sub != NULL) {
-			if (obj == NULL)
-				obj = ucl_object_typed_new(UCL_OBJECT);
-			ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
-		}
-		++pair;
-	}
-
-	return (obj);
-}
-
-ucl_object_t *
-yaml_to_ucl(const char *file, const char *buffer, size_t len) {
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	ucl_object_t *obj = NULL;
-	FILE *fp = NULL;
-
-	memset(&parser, 0, sizeof(parser));
-
-	yaml_parser_initialize(&parser);
-
-	if (file != NULL) {
-		fp = fopen(file, "r");
-		if (fp == NULL) {
-			pkg_emit_errno("fopen", file);
-			return (NULL);
-		}
-		yaml_parser_set_input_file(&parser, fp);
-	} else {
-		yaml_parser_set_input_string(&parser, buffer, len);
-	}
-
-	yaml_parser_load(&parser, &doc);
-
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		switch (node->type) {
-		case YAML_MAPPING_NODE:
-			obj = yaml_mapping_to_object(NULL, &doc, node);
-			break;
-		case YAML_SEQUENCE_NODE:
-			obj = yaml_sequence_to_object(NULL, &doc, node);
-			break;
-		case YAML_SCALAR_NODE:
-		case YAML_NO_NODE:
-			break;
-		}
-	}
-
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
-
-	if (file != NULL)
-		fclose(fp);
-
-	return (obj);
 }
 
 void
@@ -891,7 +622,7 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = out;
 
-	return (ucl_object_emit_full(obj, emit_type, &func));
+	return (ucl_object_emit_full(obj, emit_type, &func, NULL));
 
 
 }
@@ -915,82 +646,188 @@ ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = *buf;
 
-	ret = ucl_object_emit_full(obj, emit_type, &func);
+	ret = ucl_object_emit_full(obj, emit_type, &func, NULL);
 	sbuf_finish(*buf);
 
 	return (ret);
 }
 
-void
-print_trace(void)
+/* A bit like strsep(), except it accounts for "double" and 'single'
+   quotes.  Unlike strsep(), returns the next arg string, trimmed of
+   whitespace or enclosing quotes, and updates **args to point at the
+   character after that.  Sets *args to NULL when it has been
+   completely consumed.  Quoted strings run from the first encountered
+   quotemark to the next one of the same type or the terminating NULL.
+   Quoted strings can contain the /other/ type of quote mark, which
+   loses any special significance.  There isn't an escape
+   character. */
+
+enum parse_states {
+	START,
+	ORDINARY_TEXT,
+	OPEN_SINGLE_QUOTES,
+	IN_SINGLE_QUOTES,
+	OPEN_DOUBLE_QUOTES,
+	IN_DOUBLE_QUOTES,
+};
+
+char *
+pkg_utils_tokenize(char **args)
 {
-	return;
+	char			*p, *p_start;
+	enum parse_states	 parse_state = START;
 
-#ifdef HAVE_EXECINFO_H
-	void *array[10];
-	size_t size;
-	char **strings;
-	size_t i;
+	assert(*args != NULL);
 
-	size = backtrace(array, 10);
-	strings = backtrace_symbols(array, size);
+	for (p = p_start = *args; *p != '\0'; p++) {
+		switch (parse_state) {
+		case START:
+			if (!isspace(*p)) {
+				if (*p == '"')
+					parse_state = OPEN_DOUBLE_QUOTES;
+				else if (*p == '\'')
+					parse_state = OPEN_SINGLE_QUOTES;
+				else {
+					parse_state = ORDINARY_TEXT;
+					p_start = p;
+				}				
+			} else
+				p_start = p;
+			break;
+		case ORDINARY_TEXT:
+			if (isspace(*p))
+				goto finish;
+			break;
+		case OPEN_SINGLE_QUOTES:
+			p_start = p;
+			if (*p == '\'')
+				goto finish;
 
-	for (i = 0; i < size; i++)
-		fprintf(stderr, "%s\n", strings[i]);
-
-	free(strings);
-#endif
-}
-
-static int
-pkg_symlink_cksum_readlink(const char *linkbuf, int linklen, const char *root,
-    char *cksum)
-{
-	const char *lnk;
-
-	lnk = linkbuf;
-	if (root != NULL) {
-		/* Skip root from checksum, as it is meaningless */
-		if (strncmp(root, linkbuf, strlen(root)) == 0) {
-			lnk += strlen(root);
+			parse_state = IN_SINGLE_QUOTES;
+			break;
+		case IN_SINGLE_QUOTES:
+			if (*p == '\'')
+				goto finish;
+			break;
+		case OPEN_DOUBLE_QUOTES:
+			p_start = p;
+			if (*p == '"')
+				goto finish;
+			parse_state = IN_DOUBLE_QUOTES;
+			break;
+		case IN_DOUBLE_QUOTES:
+			if (*p == '"')
+				goto finish;
+			break;
 		}
 	}
-	/* Skip heading slashes */
-	while(*lnk == '/')
-		lnk ++;
 
-	sha256_buf(lnk, linklen, cksum);
-
-	return (EPKG_OK);
+finish:
+	if (*p == '\0')
+		*args = NULL;	/* All done */
+	else {
+		*p = '\0';
+		p++;
+		if (*p == '\0' || parse_state == START)
+			*args = NULL; /* whitespace or nothing left */
+		else
+			*args = p;
+	}
+	return (p_start);
 }
 
 int
-pkg_symlink_cksum(const char *path, const char *root, char *cksum)
+pkg_utils_count_spaces(const char *args)
 {
-	char linkbuf[MAXPATHLEN];
-	int linklen;
+	int		spaces;
+	const char	*p;
 
-	if ((linklen = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
-	}
-	linkbuf[linklen] = '\0';
+	for (spaces = 0, p = args; *p != '\0'; p++)
+		if (isspace(*p))
+			spaces++;
 
-	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
+	return (spaces);
 }
 
-int
-pkg_symlink_cksumat(int fd, const char *path, const char *root, char *cksum)
-{
-	char linkbuf[MAXPATHLEN];
-	int linklen;
+/* unlike realpath(3), this routine does not expand symbolic links */
+char *
+pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
+	size_t dest_len, src_len, cur_len;
+	const char *cur, *next;
 
-	if ((linklen = readlinkat(fd, path, linkbuf, sizeof(linkbuf) - 1)) ==
-	    -1) {
-		pkg_emit_errno("pkg_symlink_cksum", "readlink failed");
-		return (EPKG_FATAL);
+	src_len = strlen(src);
+	bzero(dest, dest_size);
+	if (src_len != 0 && src[0] != '/') {
+		if (fromroot)
+			*dest = '/';
+		/* relative path, we use cwd */
+		else if (getcwd(dest, dest_size) == NULL)
+			return (NULL);
 	}
-	linkbuf[linklen] = '\0';
+	dest_len = strlen(dest);
 
-	return (pkg_symlink_cksum_readlink(linkbuf, linklen, root, cksum));
+	for (cur = next = src; next != NULL; cur = next + 1) {
+		next = strchr(cur, '/');
+		if (next != NULL)
+			cur_len = next - cur;
+		else
+			cur_len = strlen(cur);
+
+		/* check for special cases "", "." and ".." */
+		if (cur_len == 0)
+			continue;
+		else if (cur_len == 1 && cur[0] == '.')
+			continue;
+		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
+			const char *slash = strrchr(dest, '/');
+			if (slash != NULL) {
+				dest_len = slash - dest;
+				dest[dest_len] = '\0';
+			}
+			continue;
+		}
+
+		if (dest_len + 1 + cur_len >= dest_size)
+			return (NULL);
+		dest[dest_len++] = '/';
+		(void)memcpy(dest + dest_len, cur, cur_len);
+		dest_len += cur_len;
+		dest[dest_len] = '\0';
+	}
+
+	if (dest_len == 0) {
+		if (strlcpy(dest, "/", dest_size) >= dest_size)
+			return (NULL);
+	}
+
+	return (dest);
+}
+
+bool
+mkdirat_p(int fd, const char *path)
+{
+	const char *next;
+	char *walk, pathdone[MAXPATHLEN];
+
+	walk = strdup(path);
+	pathdone[0] = '\0';
+
+	while ((next = strsep(&walk, "/")) != NULL) {
+		if (*next == '\0')
+			continue;
+		strlcat(pathdone, next, sizeof(pathdone));
+		if (mkdirat(fd, pathdone, 0755) == -1) {
+			if (errno == EEXIST) {
+				strlcat(pathdone, "/", sizeof(pathdone));
+				continue;
+			}
+			pkg_emit_error("Fail to create /%s: %s",
+			    pathdone, strerror(errno));
+			free(walk);
+			return (false);
+		}
+		strlcat(pathdone, "/", sizeof(pathdone));
+	}
+	free(walk);
+	return (true);
 }

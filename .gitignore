@@ -44,8 +44,10 @@ scripts/sbin/pkg2ng
 /config.guess
 /config.status
 /config.sub
+/compat/Makefile
 /docs/Makefile
 /external/Makefile
+external/blake2/Makefile
 /external/libelf/libelf_convert.c
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c

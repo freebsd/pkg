@@ -92,12 +92,12 @@ The documented (README) way to create a new repository creates all packages in o
 
 This is different from earlier repository format, which creates it in separate directories.
 
-Pkgng doesn not depend on a hierarchy, it recursively finds the packages from the provided directory entry.
+Pkgng does not depend on a hierarchy, it recursively finds the packages from the provided directory entry.
 
 <a name="9"></a>
 ### Q: Does `pkg repo` include symlinked packages?
 
-The default hierarchy has lots of symlinks which should just be ignored and thus pkgng doesn not read symlinks.
+The default hierarchy has lots of symlinks which should just be ignored and thus pkgng does not read symlinks.
 
 <a name="10"></a>
 ### Q: How do I know if I have packages with the same origin?

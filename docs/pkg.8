@@ -13,16 +13,15 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd August 14, 2014
+.Dd October 31, 2015
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
 .Sh NAME
 .Nm pkg ,
 .Nm pkg-static
-.Nd a utility for manipulating packages
+.Nd manipulate packages
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
@@ -30,9 +29,10 @@
 .Op Fl d
 .Op Fl l
 .Op Fl N
-.Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
+.Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac | Fl r Ao root directory Ac
 .Op Fl C Ao configuration file Ac
 .Op Fl R Ao repository configuration directory Ac
+.Op Fl 4 | Fl 6
 .Ao command Ac Ao Ar flags Ac
 .Pp
 .Nm
@@ -40,14 +40,16 @@
 .Op Cm --debug
 .Op Cm --list
 .Op Fl N
-.Op Cm --jail Ao jail name or id Ac | Cm --chroot Ao chroot path Ac
+.Op Cm --jail Ao jail name or id Ac | Cm --chroot Ao chroot path Ac | Cm --rootdir Ao root directory Ac
 .Op Cm --config Ao configuration file Ac
 .Op Cm --repo-conf-dir Ao repository configuration directory Ac
+.Op Fl 4 | Fl 6
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
-provides an interface for manipulating packages - registering,
-adding, removing and upgrading of packages.
+.Nm pkg
+provides an interface for manipulating packages: registering,
+adding, removing and upgrading packages.
 .Nm pkg-static
 is a statically linked variant of
 .Nm
@@ -63,10 +65,10 @@ The following options are supported by
 .Nm :
 .Bl -tag -width indent
 .It Fl v , Cm --version
-Displays the current version of
-.Nm
+Display the current version of
+.Nm .
 .It Fl d , Cm --debug
-Show debug information
+Show debug information.
 .It Fl l , Cm --list
 List all the available command names, and exit without performing any
 other action.
@@ -80,13 +82,14 @@ will override any other command line arguments.
 .It Fl o Ao option=value Ac , Cm --option Ao option=value Ac
 Set configuration option for
 .Nm
-from the command line. Options that are set from the environment are
-redefined. It is permitted to specify this option multiple times. 
+from the command line.
+Options that are set from the environment are redefined.
+It is permitted to specify this option multiple times.
 .It Fl N
 Activation status check mode.
 Prevent
 .Nm
-from automatically creating or initializing the sqlite database in
+from automatically creating or initializing the SQLite database in
 .Pa /var/db/pkg/local.sqlite
 if it does not already exist.
 .Pp
@@ -161,16 +164,26 @@ and
 .Nm
 will chroot in the
 .Ao chroot path Ac
-Environment
+environment.
+.It Fl r Ao root directory Ac , Cm --rootdir Ao root directory Ac
+.Nm
+will install all packages within the specified
+.Ao root directory Ac .
 .It Fl C Ao configuration file Ac , Cm --config Ao configuration file Ac
 .Nm
-will use the specified file as a configuration file
+will use the specified file as a configuration file.
 .It Fl R Ao repo conf dir Ac , Cm --repo-conf-dir Ao repo conf dir Ac
 .Nm
 will search the directory for per-repository configuration files.
 This overrides any value of
 .Ev REPOS_DIR
 specified in the main configuration file.
+.It Fl 4
+.Nm
+will use IPv4 for fetching repository and packages.
+.It Fl 6
+.Nm
+will use IPv6 for fetching repository and packages.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS
@@ -189,7 +202,7 @@ Currently supported protocols are FTP, HTTP and HTTPS.
 .It Ic annotate
 Add, modify or delete tag-value style annotations on packages.
 .It Ic audit
-Audits installed packages against known vulnerabilities.
+Audit installed packages against known vulnerabilities.
 .It Ic autoremove
 Delete packages which were automatically installed as dependencies and are not required any more.
 .It Ic backup
@@ -207,22 +220,20 @@ If invoked with the
 flag an attempt will be made to reinstall
 .Nm
 from remote repository.
-This is not supported on FreeBSD 8.3 as it did not have
-.Xr pkg 7 .
 .It Ic check
 Sanity checks installed packages.
 .It Ic clean
-Cleans the local cache of fetched remote packages.
+Clean the local cache of fetched remote packages.
 .It Ic convert
 Convert to and from the old
 .Xr pkg_add 1
 format.
 .It Ic create
-Create a package
+Create a package.
 .It Ic delete
 Delete a package from the database and the system.
 .It Ic fetch
-Fetches packages from a remote repository.
+Fetch packages from a remote repository.
 .It Ic info
 Display information about installed packages.
 .It Ic install
@@ -249,19 +260,19 @@ repositories.
 .It Ic set
 Modify information in the installed database.
 .It Ic shell
-Fires up a sqlite shell to the local or remote database.
+Open a SQLite shell to the local or remote database.
 Extreme care should be taken when using this command.
 .It Ic shlib
 Displays which packages link to a specific shared library.
 .It Ic stats
 Display package database statistics.
 .It Ic unlock
-Unlocks packages, allowing them to be modified or deleted
+Unlocks packages, allowing them to be modified or deleted.
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
 .It Ic updating
-Displays UPDATING entries of installed packages.
+Display UPDATING entries of installed packages.
 .It Ic upgrade
 Upgrade a package to a newer version.
 .It Ic version
@@ -272,10 +283,23 @@ file.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
-The list of environment variables that affect the execution of
+All configuration options from
+.Xr pkg.conf.5
+can be passed as environment variables.
+.Pp
+Extra environment variables are:
+.Bl -tag -width "INSTALL_AS_USER"
+.It INSTALL_AS_USER
+Allow to do all manipulation as a regular user instead of checking for root
+credentials when appropriate.
+.br
+It is expected that the user will ensure that every file and directory
+manipulated by
 .Nm
-is in
-.Xr pkg.conf 5 .
+are readable
+.Pq or writable where appropriate
+by the user.
+.El
 .\" ---------------------------------------------------------------------------
 .Sh FILES
 See
@@ -387,20 +411,20 @@ command first appeared in
 .Fx 9.1 .
 .\" ---------------------------------------------------------------------------
 .Sh AUTHORS AND CONTRIBUTORS
-.An Baptiste Daroussin Aq bapt@FreeBSD.org
-.An Julien Laffaye Aq jlaffaye@FreeBSD.org
-.An Philippe Pepiot <phil@philpep.org>
-.An Will Andrews <will@FreeBSD.org>
-.An Marin Atanasov Nikolov <dnaeon@gmail.com>
-.An Yuri Pankov <yuri.pankov@gmail.com>
-.An Alberto Villa <avilla@FreeBSD.org>
-.An Brad Davis <brd@FreeBSD.org>
-.An Matthew Seaman <matthew@FreeBSD.org>
-.An Bryan Drewery <bryan@shatow.net>
-.An Eitan Adler <eadler@FreeBSD.org>
-.An Romain Tarti\`ere <romain@FreeBSD.org>
-.An Vsevolod Stakhov <vsevolod@FreeBSD.org>
-.An Alexandre Perrin <alex@kaworu.ch>
+.An Baptiste Daroussin Aq bapt@FreeBSD.org ,
+.An Julien Laffaye Aq jlaffaye@FreeBSD.org ,
+.An Philippe Pepiot Aq phil@philpep.org ,
+.An Will Andrews Aq will@FreeBSD.org ,
+.An Marin Atanasov Nikolov Aq dnaeon@gmail.com ,
+.An Yuri Pankov Aq yuri.pankov@gmail.com ,
+.An Alberto Villa Aq avilla@FreeBSD.org ,
+.An Brad Davis Aq brd@FreeBSD.org ,
+.An Matthew Seaman Aq matthew@FreeBSD.org ,
+.An Bryan Drewery Aq bryan@shatow.net ,
+.An Eitan Adler Aq eadler@FreeBSD.org ,
+.An Romain Tarti\`ere Aq romain@FreeBSD.org ,
+.An Vsevolod Stakhov Aq vsevolod@FreeBSD.org ,
+.An Alexandre Perrin Aq alex@kaworu.ch
 .\" ---------------------------------------------------------------------------
 .Sh BUGS
 See the issue tracker at

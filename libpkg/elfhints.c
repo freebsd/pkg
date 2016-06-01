@@ -27,7 +27,7 @@
  * $FreeBSD: stable/8/sbin/ldconfig/elfhints.c 76224 2001-05-02 23:56:21Z obrien $
  */
 
-#include <sys/param.h>
+#include <bsd_compat.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
@@ -44,20 +44,22 @@
 #include <uthash.h>
 
 #include "pkg.h"
+#include "private/pkg.h"
 #include "private/ldconfig.h"
 
 #define MAXDIRS		1024		/* Maximum directories in path */
 #define MAXFILESIZE	(16*1024)	/* Maximum hints file size */
 
-struct shlib_list {
-	UT_hash_handle	 hh;
+struct shlib {
 	const char	*name;
 	char		 path[];
 };
 
-static int	shlib_list_add(struct shlib_list **shlib_list,
+KHASH_MAP_INIT_STR(shlib, struct shlib *);
+
+static int	shlib_list_add(kh_shlib_t **shlib_list,
 				const char *dir, const char *shlib_file);
-static int	scan_dirs_for_shlibs(struct shlib_list **shlib_list,
+static int	scan_dirs_for_shlibs(kh_shlib_t **shlib_list,
 				     int numdirs, const char **dirlist,
 	                             bool strictnames);
 static void	add_dir(const char *, const char *, int);
@@ -71,40 +73,40 @@ int			 insecure;
 
 /* Known shlibs on the standard system search path.  Persistent,
    common to all applications */
-static struct shlib_list *shlibs = NULL;
+static kh_shlib_t *shlibs = NULL;
 
 /* Known shlibs on the specific RPATH or RUNPATH of one binary.
    Evanescent. */
-static struct shlib_list *rpath = NULL;
+static kh_shlib_t *rpath = NULL;
 
 void
 shlib_list_init(void)
 {
-	assert(HASH_COUNT(shlibs) == 0);
+	assert(kh_count(shlibs) == 0);
 }
 
 void
 rpath_list_init(void)
 {
-	assert(HASH_COUNT(rpath) == 0);
+	assert(kh_count(rpath) == 0);
 }
 
 static int
-shlib_list_add(struct shlib_list **shlib_list, const char *dir,
+shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
     const char *shlib_file)
 {
-	struct shlib_list	*sl;
-	size_t	path_len, dir_len;
+	struct shlib	*sl;
+	size_t path_len, dir_len;
 
 	/* If shlib_file is already in the shlib_list table, don't try
 	 * and add it again */
-	HASH_FIND_STR(*shlib_list, shlib_file, sl);
+	kh_find(shlib, *shlib_list, shlib_file, sl);
 	if (sl != NULL)
 		return (EPKG_OK);
 
 	path_len = strlen(dir) + strlen(shlib_file) + 2;
 
-	sl = calloc(1, sizeof(struct shlib_list) + path_len);
+	sl = calloc(1, sizeof(struct shlib) + path_len);
 	if (sl == NULL) {
 		warnx("Out of memory");
 		return (EPKG_FATAL);
@@ -116,8 +118,7 @@ shlib_list_add(struct shlib_list **shlib_list, const char *dir,
 	
 	sl->name = sl->path + dir_len;
 
-	HASH_ADD_KEYPTR(hh, *shlib_list, sl->name,
-			strlen(sl->name), sl);
+	kh_add(shlib, *shlib_list, sl, sl->name, free);
 
 	return (EPKG_OK);
 }
@@ -125,15 +126,13 @@ shlib_list_add(struct shlib_list **shlib_list, const char *dir,
 const char *
 shlib_list_find_by_name(const char *shlib_file)
 {
-	struct shlib_list *sl;
+	struct shlib *sl;
 
-	assert(HASH_COUNT(shlibs) != 0);
-
-	HASH_FIND_STR(rpath, shlib_file, sl);
+	kh_find(shlib, rpath, shlib_file, sl);
 	if (sl != NULL)
 		return (sl->path);
 
-	HASH_FIND_STR(shlibs, shlib_file, sl);
+	kh_find(shlib, shlibs, shlib_file, sl);
 	if (sl != NULL)
 		return (sl->path);
 		
@@ -143,24 +142,16 @@ shlib_list_find_by_name(const char *shlib_file)
 void
 shlib_list_free(void)
 {
-	struct shlib_list	*sl1, *sl2;
 
-	HASH_ITER(hh, shlibs, sl1, sl2) {
-		HASH_DEL(shlibs, sl1);
-		free(sl1);
-	}
+	kh_free(shlib, shlibs, struct shlib, free);
 	shlibs = NULL;
 }
 
 void
 rpath_list_free(void)
 {
-	struct shlib_list	*sl1, *sl2;
 
-	HASH_ITER(hh, rpath, sl1, sl2) {
-		HASH_DEL(rpath, sl1);
-		free(sl1);
-	}
+	kh_free(shlib, rpath, struct shlib, free);
 	rpath = NULL;
 }
 
@@ -199,7 +190,7 @@ add_dir(const char *hintsfile, const char *name, int trusted)
 }
 
 static int
-scan_dirs_for_shlibs(struct shlib_list **shlib_list, int numdirs,
+scan_dirs_for_shlibs(kh_shlib_t **shlib_list, int numdirs,
 		     const char **dirlist, bool strictnames)
 {
 	int	i;
@@ -320,9 +311,32 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 int 
 shlib_list_from_elf_hints(const char *hintsfile)
 {
+#ifndef __linux__
 	read_elf_hints(hintsfile, 1);
+#endif
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));
+}
+
+static const char *stage_dirs[] = {
+	"/lib",
+	"/usr/lib",
+};
+
+void
+shlib_list_from_stage(const char *stage)
+{
+	int i;
+	char *dir;
+
+	if (stage == NULL)
+		return;
+
+	for (i = 0; i < NELEM(stage_dirs); i++) {
+		asprintf(&dir, "%s%s", stage, stage_dirs[i]);
+		scan_dirs_for_shlibs(&shlibs, 1, (const char **)&dir, true);
+		free(dir);
+	}
 }
 
 void

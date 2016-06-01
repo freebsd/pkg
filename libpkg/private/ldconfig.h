@@ -68,6 +68,7 @@ void		shlib_list_free(void);
 void		rpath_list_free(void);
 int		shlib_list_from_elf_hints(const char *);
 int		shlib_list_from_rpath(const char *, const char *);
+void		shlib_list_from_stage(const char *);
 
 void		list_elf_hints(const char *);
 void		update_elf_hints(const char *, int, char **, int);

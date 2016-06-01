@@ -1,6 +1,0 @@
-syntax('kyuafile', 1)
-
-test_suite('prop: test-suite = pkgng')
-
-include('frontend/Kyuafile')
-include('lib/Kyuafile')

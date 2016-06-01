@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +47,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
+#endif
+#include <kvec.h>
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
@@ -54,6 +60,11 @@
 #define STALL_TIME 5
 
 struct sbuf *messages = NULL;
+
+struct cleanup {
+	void *data;
+	void (*cb)(void *);
+};
 
 static char *progress_message = NULL;
 static struct sbuf *msg_buf = NULL;
@@ -66,12 +77,31 @@ static int64_t stalled;
 static int64_t bytes_per_second;
 static time_t last_update;
 static time_t begin = 0;
+static int add_deps_depth;
+static kvec_t(struct cleanup *) cleanup_list;
+static bool signal_handler_installed = false;
 
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
 static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
 
 static void draw_progressbar(int64_t current, int64_t total);
+
+static void
+cleanup_handler(int dummy __unused)
+{
+	struct cleanup *ev;
+	int i;
+
+	if (kv_size(cleanup_list) == 0)
+		return;
+	warnx("\nsignal received, cleaning up");
+	for (i = 0; i < kv_size(cleanup_list); i++) {
+		ev = kv_A(cleanup_list, i);
+		ev->cb(ev->data);
+	}
+	exit(1);
+}
 
 static void
 format_rate_IEC(char *buf, int size, off_t bytes)
@@ -108,33 +138,33 @@ format_size_IEC(char *buf, int size, off_t bytes)
 static void
 format_rate_SI(char *buf, int size, off_t bytes)
 {
-        int i;
+	int i;
 
-        bytes *= 100;
-        for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
-                bytes = (bytes + 500) / 1000;
-        if (i == 0) {
-                i++;
-                bytes = (bytes + 500) / 1000;
-        }
-        snprintf(buf, size, "%3lld.%1lld%s%s",
-            (long long) (bytes + 5) / 100,
-            (long long) (bytes + 5) / 10 % 10,
-            unit_SI[i],
-            i ? "B" : " ");
+	bytes *= 100;
+	for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
+		bytes = (bytes + 500) / 1000;
+	if (i == 0) {
+		i++;
+		bytes = (bytes + 500) / 1000;
+	}
+	snprintf(buf, size, "%3lld.%1lld%s%s",
+	    (long long) (bytes + 5) / 100,
+	    (long long) (bytes + 5) / 10 % 10,
+	    unit_SI[i],
+	    i ? "B" : " ");
 }
 
 static void
 format_size_SI(char *buf, int size, off_t bytes)
 {
-        int i;
+	int i;
 
-        for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
-                bytes = (bytes + 500) / 1000;
-        snprintf(buf, size, "%4lld%s%s",
-            (long long) bytes,
-            unit_SI[i],
-            i ? "B" : " ");
+	for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
+		bytes = (bytes + 500) / 1000;
+	snprintf(buf, size, "%4lld%s%s",
+	    (long long) bytes,
+	    unit_SI[i],
+	    i ? "B" : " ");
 }
 
 void
@@ -149,6 +179,8 @@ job_status_end(struct sbuf *msg)
 void
 job_status_begin(struct sbuf *msg)
 {
+	int n;
+
 	sbuf_clear(msg);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
@@ -170,6 +202,19 @@ job_status_begin(struct sbuf *msg)
 	}
 #endif
 
+	/* Only used for pkg-add right now. */
+	if (add_deps_depth) {
+		if (add_deps_depth > 1) {
+			for (n = 0; n < (2 * add_deps_depth); ++n) {
+				if (n % 4 == 0 && n < (2 * add_deps_depth))
+					sbuf_cat(msg, "|");
+				else
+					sbuf_cat(msg, " ");
+			}
+		}
+		sbuf_cat(msg, "`-- ");
+	}
+
 	if (nbactions > 0 && nbdone > 0)
 		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 }
@@ -178,8 +223,9 @@ static int
 event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
 	pid_t pid;
-	int	status, ret;
+	int status, ret;
 
+	ret = -1;
 	pid = fork();
 
 	switch(pid) {
@@ -337,10 +383,9 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 void
 progressbar_start(const char *pmsg)
 {
-	if (progress_message != NULL) {
-		free(progress_message);
-		progress_message = NULL;
-	}
+	free(progress_message);
+	progress_message = NULL;
+
 	if (quiet)
 		return;
 	if (pmsg != NULL)
@@ -358,7 +403,7 @@ progressbar_start(const char *pmsg)
 	progress_started = true;
 	progress_interrupted = false;
 	if (!isatty(STDOUT_FILENO))
-		printf("%s...", progress_message);
+		printf("%s: ", progress_message);
 	else
 		printf("%s:   0%%", progress_message);
 }
@@ -366,12 +411,22 @@ progressbar_start(const char *pmsg)
 void
 progressbar_tick(int64_t current, int64_t total)
 {
+	int percent;
+
 	if (!quiet && progress_started) {
 		if (isatty(STDOUT_FILENO))
 			draw_progressbar(current, total);
 		else {
-			if (progress_interrupted)
+			if (progress_interrupted) {
 				printf("%s...", progress_message);
+			} else if (!getenv("NO_TICK")){
+				percent = (total != 0) ? (current * 100. / total) : 100;
+				if (last_progress_percent / 10 < percent / 10) {
+					last_progress_percent = percent;
+					printf(".");
+					fflush(stdout);
+				}
+			}
 			if (current >= total)
 				progressbar_stop();
 		}
@@ -397,12 +452,11 @@ draw_progressbar(int64_t current, int64_t total)
 {
 	int percent;
 	int64_t transferred;
-	time_t elapsed, now;
-	char buf[7];
+	time_t elapsed = 0, now = 0;
+	char buf[8];
 	int64_t bytes_left;
 	int cur_speed;
 	int hours, minutes, seconds;
-	int r = 0;
 	float age_factor;
 
 	if (!progress_started) {
@@ -427,7 +481,7 @@ draw_progressbar(int64_t current, int64_t total)
 	    (percent != last_progress_percent || progress_interrupted))) {
 		last_progress_percent = percent;
 
-		r = printf("\r%s: %3d%%", progress_message, percent);
+		printf("\r%s: %3d%%", progress_message, percent);
 		if (progress_debit) {
 			transferred = current - last_tick;
 			last_tick = current;
@@ -461,7 +515,7 @@ draw_progressbar(int64_t current, int64_t total)
 				bytes_per_second = cur_speed;
 
 			humanize_number(buf, sizeof(buf),
-			    current,"B", HN_AUTOSCALE, 0);
+			    current,"B", HN_AUTOSCALE, HN_IEC_PREFIXES);
 			printf(" %*s", (int)sizeof(buf), buf);
 
 			if (bytes_left > 0)
@@ -514,7 +568,8 @@ int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
-	int *debug = data;
+	struct cleanup *evtmp;
+	int *debug = data, i;
 	struct pkg_event_conflict *cur_conflict;
 	const char *filename;
 
@@ -542,7 +597,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NOTICE:
 		if (!quiet)
-			warnx("%s", ev->e_pkg_notice.msg);
+			printf("%s\n", ev->e_pkg_notice.msg);
 		break;
 	case PKG_EVENT_DEVELOPER_MODE:
 		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
@@ -585,25 +640,35 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
-		else {
-			nbdone++;
-			job_status_begin(msg_buf);
+		job_status_begin(msg_buf);
 
-			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Installing %n-%v", pkg, pkg);
-		}
+		pkg = ev->e_install_begin.pkg;
+		pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
+		    pkg);
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
-		if (pkg_has_message(ev->e_install_finished.pkg)) {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg);
+		pkg = ev->e_install_finished.pkg;
+		break;
+	case PKG_EVENT_EXTRACT_BEGIN:
+		if (quiet)
+			break;
+		else {
+			job_status_begin(msg_buf);
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg_buf, "Extracting %n-%v", pkg, pkg);
 		}
+		break;
+	case PKG_EVENT_EXTRACT_FINISHED:
+		break;
+	case PKG_EVENT_ADD_DEPS_BEGIN:
+		++add_deps_depth;
+		break;
+	case PKG_EVENT_ADD_DEPS_FINISHED:
+		--add_deps_depth;
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		if (quiet)
@@ -635,51 +700,59 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		nbdone++;
 
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
-		pkg_sbuf_printf(msg_buf, "Deleting %n-%v", pkg, pkg);
+		pkg_sbuf_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
 			break;
 		break;
+	case PKG_EVENT_DELETE_FILES_BEGIN:
+		if (quiet)
+			break;
+		else {
+			job_status_begin(msg_buf);
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg_buf, "Deleting files for %n-%v",
+			    pkg, pkg);
+		}
+		break;
+	case PKG_EVENT_DELETE_FILES_FINISHED:
+		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_begin.new;
-		pkg_old = ev->e_upgrade_begin.old;
-		nbdone++;
+		pkg_new = ev->e_upgrade_begin.n;
+		pkg_old = ev->e_upgrade_begin.o;
 
 		job_status_begin(msg_buf);
 
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
-			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v",
-			    pkg_new, pkg_new, pkg_old);
+			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v...\n",
+			    pkg_new, pkg_old, pkg_new);
 			break;
 		case PKG_REINSTALL:
-			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v",
+			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v...\n",
 		    pkg_old, pkg_old);
 			break;
 		case PKG_UPGRADE:
-			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v",
+			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v...\n",
 			    pkg_new, pkg_old, pkg_new);
 			break;
 		}
+		sbuf_finish(msg_buf);
+		printf("%s", sbuf_data(msg_buf));
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_begin.new;
-		if (pkg_has_message(pkg_new)) {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-				pkg_new, pkg_new, pkg_new);
-		}
+		pkg_new = ev->e_upgrade_finished.n;
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
@@ -705,9 +778,8 @@ event_callback(void *data, struct pkg_event *ev)
 		    "the repositories\n", ev->e_not_found.pkg_name);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		fprintf(stderr, "missing dependency %s-%s\n",
-		    pkg_dep_name(ev->e_missing_dep.dep),
-		    pkg_dep_version(ev->e_missing_dep.dep));
+		warnx("Missing dependency '%s'",
+		    pkg_dep_name(ev->e_missing_dep.dep));
 		break;
 	case PKG_EVENT_NOREMOTEDB:
 		fprintf(stderr, "Unable to open remote database \"%s\". "
@@ -724,8 +796,13 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg = ev->e_file_mismatch.pkg;
-		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %S\n", pkg,
-		    pkg, pkg_file_path(ev->e_file_mismatch.file));
+		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
+		    pkg, ev->e_file_mismatch.file);
+		break;
+	case PKG_EVENT_FILE_MISSING:
+		pkg = ev->e_file_missing.pkg;
+		pkg_fprintf(stderr, "%n-%v: missing file %Fn\n", pkg, pkg,
+		    ev->e_file_missing.file);
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		warnx("%s: %s(%s): %s",
@@ -747,13 +824,9 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("%s repository update completed. %d packages processed:\n"
-			    "  %d updated, %d removed and %d added.\n",
+			printf("%s repository update completed. %d packages processed.\n",
 			    ev->e_incremental_update.reponame,
-			    ev->e_incremental_update.processed,
-			    ev->e_incremental_update.updated,
-			    ev->e_incremental_update.removed,
-			    ev->e_incremental_update.added);
+			    ev->e_incremental_update.processed);
 		break;
 	case PKG_EVENT_DEBUG:
 		fprintf(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,
@@ -793,6 +866,37 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_RESTORE:
 		sbuf_cat(msg_buf, "Restoring");
 		sbuf_finish(msg_buf);
+		break;
+	case PKG_EVENT_NEW_ACTION:
+		nbdone++;
+		break;
+	case PKG_EVENT_MESSAGE:
+		if (messages == NULL)
+			messages = sbuf_new_auto();
+		sbuf_cat(messages, ev->e_pkg_message.msg);
+		break;
+	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
+		if (!signal_handler_installed) {
+			kv_init(cleanup_list);
+			signal(SIGINT, cleanup_handler);
+			signal_handler_installed = true;
+		}
+		evtmp = malloc(sizeof(struct cleanup));
+		evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
+		evtmp->data = ev->e_cleanup_callback.data;
+		kv_push(struct cleanup *, cleanup_list, evtmp);
+		break;
+	case PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER:
+		if (!signal_handler_installed)
+			break;
+		for (i = 0; i < kv_size(cleanup_list); i++) {
+			evtmp = kv_A(cleanup_list, i);
+			if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
+			    evtmp->data == ev->e_cleanup_callback.data) {
+				kv_del(struct cleanup *, cleanup_list, i);
+				break;
+			}
+		}
 		break;
 	default:
 		break;

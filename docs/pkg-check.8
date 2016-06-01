@@ -13,23 +13,22 @@
 .\"
 .\"
 .\"     @(#)pkg.8
-.\" $FreeBSD$
 .\"
-.Dd May 25, 2014
+.Dd July 21, 2015
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
 .Nm "pkg check"
-.Nd sanity checks installed packages
+.Nd sanity check installed packages
 .Sh SYNOPSIS
 .Nm
 .Op Fl Bdsr
-.Op Fl nvy
+.Op Fl nqvy
 .Op Fl a | Cgix Ar pattern
 .Pp
 .Nm
 .Op Cm --{shlibs,dependencies,checksums,recompute}
-.Op Cm --{dry-run,verbose,yes}
+.Op Cm --{dry-run,quiet,verbose,yes}
 .Op Cm --all | Cm --{case-sensitive,glob,case-insensitive,regex} Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -37,73 +36,81 @@
 or
 .Nm
 .Cm --shlibs
-is used to reanalyse shared libraries of installed packages.
+regenerates the library dependency metadata for a package by extracting
+library requirement information from the binary ELF files in the package.
 .Pp
 .Nm
 .Fl d
 or
 .Nm
 .Cm --dependencies
-is used to check for and install missing dependencies.
+checks for and installs missing dependencies.
 .Pp
 .Nm
 .Fl r
 or
 .Nm
 .Cm --recompute
-is used to recompute sizes and checksums of installed packages.
+recalculates and sets the checksums of installed packages.
+This command should only be used when the administrator has
+made modifications that invalidate a package checksum.
+Spontaneous checksum problems can indicate data or security problems.
 .Pp
 .Nm
 .Fl s
 or
 .Nm
 .Cm --checksums
-is used to find invalid checksums for installed packages.
+detects installed packages with invalid checksums.
+An invalid checksum can be caused by data corruption or tampering.
 .Sh OPTIONS
-The following options are supported by
+These options are supported by
 .Nm :
 .Bl -tag -width dependencies
 .It Fl a , Cm --all
 Process all packages.
 .It Fl C , Cm --case-sensitive
-Make the standard or regular expression
+Use case sensitive standard or regular expression
 .Fl ( x )
-matching against
-.Ar pattern
-case sensitive.
+matching with
+.Ar pattern .
 .It Fl g , Cm --glob
 Treat
 .Ar pattern
 as a shell glob pattern.
 .It Fl i , Cm --case-insensitive
-Make the standard or regular expression
+Use case insensitive standard or regular expression
 .Fl ( x )
-matching against
-.Ar pattern
-case insensitive.
-This is the default, unless modified by setting
-.Ev CASE_SENSITIVE_MATCH 
-to true in
+matching with
+.Ar pattern .
+This is the default unless
+.Ev CASE_SENSITIVE_MATCH
+has been set to true in
 .Pa pkg.conf .
 .It Fl n , Cm --dry-run
-Merely check for missing dependencies and do not install them.
+Only check for missing dependencies, do not install them.
 .It Fl v , Cm --verbose
 Be verbose.
+.It Fl q , Cm --quiet
+Suppress most output, except for error messages and data that the
+command explicitly requests.
+This is primarily intended for scripting use.
 .It Fl x , Cm --regex
 Treat
 .Ar pattern
-as a regular expression.
-This uses the "modern" or "extended" syntax described in
-.Xr re_format 7
+as a regular expression, using the "modern" or "extended" syntax
+described in
+.Xr re_format 7 .
 .It Fl y , Cm --yes
-Assume yes when asked for confirmation before installing missing dependencies.
+Assume "yes" when asked for confirmation before installing missing
+dependencies.
 .El
 .Sh ENVIRONMENT
-The following environment variables affect the execution of
+These environment variables affect the execution of
 .Nm .
 See
 .Xr pkg.conf 5
-for further description.
+for additional information.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
 .It Ev CASE_SENSITIVE_MATCH
@@ -111,6 +118,24 @@ for further description.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXAMPLES
+Regenerate the library dependency metadata of all installed packages
+from the library information in each package's binary ELF files:
+.Bd -literal -offset indent
+pkg check -Ba
+.Ed
+.Pp
+Test for missing dependencies needed by nano, installing any that are
+missing:
+.Bd -literal -offset indent
+pkg check -d nano
+.Ed
+.Pp
+Test the checksums of all installed packages to make sure none are
+corrupted:
+.Bd -literal -offset indent
+pkg check -sa
+.Ed
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,

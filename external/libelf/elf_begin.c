@@ -28,7 +28,7 @@
 
 #include "_libelf.h"
 
-ELFTC_VCSID("$Id: elf_begin.c 2364 2011-12-28 17:55:25Z jkoshy $");
+ELFTC_VCSID("$Id$");
 
 Elf *
 elf_begin(int fd, Elf_Cmd c, Elf *a)

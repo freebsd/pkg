@@ -1,308 +1,608 @@
 #compdef pkg
 
 _pkg_installed() {
+	local expl
+	_wanted packages expl package \
 	compadd "$@" - $(@prefix@/sbin/pkg query "%n-%v")
 }
 
 _pkg_available_name() {
+	local expl
+	_wanted packages expl package \
 	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n")
 }
 
+_pkg_aliases() {
+	local expl
+	_wanted aliases expl alias \
+	compadd "$@" - $(@prefix@/sbin/pkg alias -ql)
+}
+
 _pkg_available() {
-	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n-%v")
+	local ret=1
+	_tags files packages
+	while _tags; do
+		if _requested files; then
+			_files "$@" -g "*.t?z" && ret=0
+		fi
+		if _requested packages; then
+			compadd "$@" - $(@prefix@/sbin/pkg rquery "%n-%v") && ret=0
+		fi
+		(( ret )) || break
+	done
+	return ret
+}
+
+_pkg_config_opts() {
+	_values 'configuration option' \
+		'ABI[ABI of package you want to install]:string' \
+		'ALIAS[define local aliases for various pkg(8) standard command lines]:key/value list' \
+		'AUTOCLEAN[cleanout content of cache directory after upgrades or installations]:boolean:(yes no)' \
+		'DEFAULT_ALWAYS_YES[default to "yes" for all questions requiring user confirmation]:boolean:(yes no)' \
+		'ASSUME_ALWAYS_YES[assume "yes" to all questions requiring user confirmation]:boolean:(yes no)' \
+		'CONSERVATIVE_UPGRADE[give priority to repo where a package was first installed from]:boolean:(yes no)' \
+		'CUDF_SOLVER[experimental\: use an external CUDF solver]:CUDF solver:_files' \
+		'CASE_SENSITIVE_MATCH[case-sensitive package matching]:boolean:(yes no)' \
+		'DEBUG_LEVEL[debugging level]:debug level:( {0..4} )' \
+		'DEBUG_SCRIPTS[activate debug mode (set -x) for scripts]:boolean:(yes no)' \
+		'DEVELOPER_MODE[make certain errors immediately fatal, adds warnings and suggestions]:boolean:(yes no)' \
+		'EVENT_PIPE[send all event messages to specified FIFO or UNIX socket]:event pipe:_files' \
+		'FETCH_RETRY[number of times to retry a failed fetch of a file]:number of retries' \
+		'FETCH_TIMEOUT[time to wait for a file to download]:timeout (seconds)' \
+		'HANDLE_RC_SCRIPTS[automatically perform start/stop of service on install/removal]:boolean:(yes no)' \
+		'HTTP_USER_AGENT[define User-agent HTTP header to send]:user agent' \
+		'INDEXDIR[directory to search for ports index file in]:directory:_files -/' \
+		'INDEXFILE[ports index file]:index file:_files' \
+		'IP_VERSION[restrict network access to specified IP version]:IP version:((0\:"system default" 4\:IPv4 6\:IPv6 ))' \
+		'LOCK_RETRIES[number of retries to obtain a lock]:retries' \
+		'LOCK_WAIT[wait time to regain a lock]:wait time (seconds):' \
+		'NAMESERVER[hostname or IPv\[46\] address of a nameserver for DNS resolution]:name server:_hosts' \
+		'PERMISSIVE[ignore conflicts while registering a package]:boolean:(yes no)' \
+		'PKG_CACHEDIR[specify cache directory for packages]:directory:_files -/' \
+		'PKG_CREATE_VERBOSE[make pkg_create(8) use verbose mode]:boolean:(yes no)' \
+		'PKG_DBDIR[specify directory to use for storing package database files]:directory:_files -/' \
+		'PKG_ENABLE_PLUGINS[activate plugin support]:boolean:(yes no)' \
+		'PKG_ENV[key/value pair of environment variables]:key/value list' \
+		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
+		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
+		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
+		'PLIST_ACCEPT_DIRECTORIES[accept directories listed like plain files in plist]:boolean:(yes no)' \
+		'PLUGINS[list of plugins pkg(8) should load]:plugins' \
+		'PLUGINS_CONF_DIR[directory containing per-plugin configurations files]:directory:_files -/' \
+		'PORTSDIR[specify location of ports directory]:directory:_files -/' \
+		'READ_LOCK[use read locking for query database]:boolean:(yes no)' \
+		'REPOS_DIR[list of directories to search for repository configuration files]: : _sequence _directories' \
+		'REPO_AUTOUPDATE[automatically check for repo.sqlsite updates]:boolean:(yes no)' \
+		'RUN_SCRIPTS[run pre-/post-installation action scripts]:boolean:(yes no)' \
+		'SAT_SOLVER[experimental\: use an external SAT solver]:SAT solver:_files' \
+		'SQLITE_PROFILE[profile SQLite queries]:boolean:(yes no)' \
+		'SSH_RESTRICT_DIR[directory which ssh subsystem will be restricted to]:chroot:_files -/' \
+		'SYSLOG[log install/deinstall/upgrade operations to syslog(3)]:boolean:(yes no)' \
+		"UNSET_TIMESTAMP[don't include timestamps in package tar(1) archive]:boolean:(yes no)" \
+		'VERSION_SOURCE[default database for comparing version numbers in pkg-version(8)]:database:(( I\:index P\:ports R\:remote ))' \
+		'VULNXML_SITE[specify URL to fetch vuln.xml vulnerability database from]: : _urls -F "( gopher:* file:* ftp:* )"' \
+		'WORKERS_COUNT[how many workers are used for pkg-repo]:workers:( {0..$(sysctl -n hw.ncpu)} )'
 }
 
 _pkg() {
-	local earlyargs subcmd
-	local subcmd_list cmd
-	earlyargs=(
-	'-d[Increment debug level]'
-	'-j[Execute pkg(8) inside a jail(8)]:jail:'
-	'-c[Execute pkg(8) inside a chroot(8)]:chroot:_files -/'
-	'-C[Use the specified configuration file]'
-	'-l[List available command and exit]'
-	'-v[Display pkg(8) version]'
-	'-N[Test if pkg(8) is activated and avoid auto-activation]'
-	)
+	local curcontext="$curcontext" state state_descr line expl ret=1
+	local subcmd
 
 	subcmd=(
-		'add[Registers a package and installs it on the system]'
-		'audit[Reports vulnerable packages]'
-		'autoremove[Removes orphan packages]'
-		'backup[Backs-up and restores the local package database]'
-		'check[Checks for missing dependencies and database consistency]'
-		'clean[Cleans old packages from the cache]'
-		'convert[Convert database from/to pkgng]'
-		'create[Creates software package distributions]'
-		'delete[Deletes packages from the database and the system]'
-		'fetch[Fetches packages from a remote repository]'
-		'help[Displays help information]'
-		'info[Displays information about installed packages]'
-		'install[Installs packages from remote package repositories]'
-		'query[Queries information about installed packages]'
-		'register[Registers a package into the local database]'
-		'remove[Deletes packages from the database and the system]'
-		'repo[Creates a package repository catalogue]'
-		'rquery[Queries information in repository catalogues]'
-		'search[Performs a search of package repository catalogues]'
-		'set[Modifies information about packages in the local database]'
-		'shell[Opens a debug shell]'
-		'shlib[Displays which packages link against a specific shared library]'
-		'stats[Displays package database statistics]'
-		'update[Updates package repository catalogues]'
-		'updating[Displays UPDATING information for a package]'
-		'upgrade[Performs upgrades of packaged software distributions]'
-		'version[Displays the versions of installed packages]'
-		'which[Displays which package installed a specific file]'
+		'add[compatibility interface to install a package]'
+		'alias[list the command line aliases]'
+		'annotate[add, modify or delete tag-value style annotations on packages]'
+		'audit[report vulnerable packages]'
+		'autoremove[remove orphaned packages]'
+		'backup[back-up and restore the local package database]'
+		'check[check for missing dependencies and database consistency]'
+		'clean[clean old packages from the cache]'
+		'config[display value of a configuration option]'
+		'convert[convert database from/to pkgng]'
+		'create[create software package distributions]'
+		'delete[delete packages from the database and the system]'
+		'fetch[fetch packages from a remote repository]'
+		'help[display help information]'
+		'info[display information about installed packages]'
+		'install[install packages from remote package repositories]'
+		'lock[lock package against modifications or deletion]'
+		'query[query information about installed packages]'
+		'plugins[list available plugins]'
+		'register[register a package with the local database]'
+		'remove[delete packages from the database and the system]'
+		'repo[create a package repository catalogue]'
+		'rquery[query information in repository catalogues]'
+		'search[perform a search of package repository catalogues]'
+		'set[modify information about packages in the local database]'
+		'shell[open a debug shell]'
+		'shlib[list packages that link against a specific shared library]'
+		'stats[display package database statistics]'
+		'unlock[unlock a package, allowing modification or deletion]'
+		'update[update package repository catalogues]'
+		'updating[display UPDATING information for a package]'
+		'upgrade[perform upgrades of packaged software distributions]'
+		'version[display versions of installed packages]'
+		'which[display which package installed a specific file]'
 	)
 
-	if [[ $service = "pkg" ]]; then
+	_arguments -A -* -C \
+		'(-d --debug)'{-d,--debug}'[increment debug level]' \
+		'(-j --jail)'{-j,--jail}'[execute pkg(8) inside a jail(8)]:jail:_jails' \
+		'(-c --chroot)'{-c,--chroot}'[execute pkg(8) inside a chroot(8)]:chroot:_files -/' \
+		\*{-o,--option}'[set configuration option]:option:_pkg_config_opts' \
+		'(-C --config)'{-C,--config}'[use the specified configuration file]:configuration file:_files' \
+		'(-l --list)'{-l,--list}'[list available command and exit]' \
+		'(-v --version)'{-v,--version}'[display pkg(8) version]' \
+		'-N[test if pkg(8) is activated and avoid auto-activation]' \
+		'(-R --repo-conf-dir)'{-R,--repo-conf-dir}'[specify directory for per-repository configuration files]: : _files' \
+		'-4[use IPv4 for fetching repository and packages]' \
+		'-6[use IPv6 for fetching repository and packages]' \
+		'1:sub command:_values "pkg subcommand" $subcmd' \
+		'*::command:->subcmd' && return
 
-		_arguments -C -A "-*" \
-			$earlyargs \
-			'*::command:->subcmd' && return 0
-
-		if (( CURRENT == 1 )); then
-			_values 'pkg subcommands' \
-				$subcmd && return 0
-			return 0
-		fi
-		service="$words[1]"
-		curcontext="${curcontext%:*}=$service:"
-	fi
+	state=()
+	service="$words[1]"
+	curcontext="${curcontext%:*}-$service:"
 
 	case $service in
-		(add) _arguments -A 'package' \
-			'*:package:_files -g "*.t?z"' && return 0
+		(add)
+			_arguments -C -A '-*' -s \
+				'(-A --automatic)'{-A,--automatic}'[mark the installed packages as automatic]' \
+				'(-f --force)'{-f,--force}'[force the reinstallation of package]' \
+				'(-I --no-scripts)'{-I,--no-scripts}'[ignore pre-/post-install scripts]' \
+				'(-M --accept-missing)'{-M,--accept-missing}'[ignore missing dependencies when installing]' \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'*:package:->packages' && ret=0
+
+			if [[ $state[1] == packages ]]; then
+				_alternative \
+					'packages:file:_files -f "*.t?z(-.)"' \
+					'urls: : _urls -F "( gopher:* file:* )"' && ret=0
+			fi
+			return ret
+			;;
+		(alias)
+			_arguments -A '-*' -s \
+				'(-l --list)'{-l,--list}'[list aliases]' \
+				'(-q --quiet)'{-q,--quiet}'[quiet]' \
+				'*:aliases:_pkg_aliases'
+			return
 			;;
 		(audit)
-			_arguments -s \
-				'-F[Fetch the database before checking.]' \
-				'-q[Quiet]' \
-				'*:package:_pkg_installed' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-F --fetch)'{-F,--fetch}'[fetch database before checking]' \
+				'(-q --quiet)'{-q,--quiet}'[quiet]' \
+				'(-r --recursive)'{-r,--recursive}'[print packages that depend on vulnerable packages]' \
+				'(-f --file)'{-f,--file}'[local copy of the vulnerability database]:audit file:_files' \
+				'*:package:_pkg_installed'
+			return
 			;;
 		(autoremove)
 			_arguments -s \
-				'(-n)-y[Assume yes when asked for confirmation]' \
-				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
-				&& return 0
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				- '(yes)' \
+				{-y,--yes}'[assume yes when asked for confirmation]' \
+				- '(dryrun)' \
+				{-n,--dry-run}'[assume no (dry run) when asked for confirmation]'
+			return
 			;;
 		(backup)
 			_arguments -s \
-				'(-r)-d[Dumps the local package database]:destination:_files' \
-				'(-d)-r[Restore the local package database]:destination:_files' \
-				&& return 0
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				- '(dump)' \
+				{-d,--dump}'[dump the local package database]:destination:_files' \
+				- '(restore)' \
+				{-r,--restore}'[restore the local package database]:destination:_files'
+			return
 			;;
 		(check)
-			_arguments -s \
-				'-B[reanalyze the shared libraries]' \
-				'-d[check for and install missing dependencies]' \
-				'-r[recompute sizes and checksums of installed]' \
-				'-s[find invalid checksums]' \
-				'-v[Be verbose]' \
-				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-B --shlibs)'{-B,--shlibs}'[reanalyze the shared libraries]' \
+				'(-d --dependencies)'{-d,--dependencies}'[check for and install missing dependencies]' \
+				'(-r --recompute)'{-r,--recompute}'[recompute sizes and checksums of installed packages]' \
+				'(-s --checksums)'{-s,--checksums}'[find invalid checksums]' \
+				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
+				'(-n --dry-run)'{-n,--dry-run}"[check for missing dependencies but don't install them]" \
+				'(-y --yes)'{-y,--yes}'[assume yes for confirmations]' \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'*:available package:_pkg_installed' \
+				- '(all)' \
+				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				- '(patterns)' \
+				{-x,--regex}'[process packages that match the regex pattern]' \
+				{-g,--glob}'[process packages that match the glob pattern]'
+			return
 			;;
 		(clean)
-			return 0
+			_arguments -s \
+				'(-a --all)'{-a,--all}'[delete all packages]' \
+				'(-n --dry-run)'{-n,--dry-run}'[show what packages would be removed]' \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-y --yes)'{-y,--yes}'[assume yes for confirmations]'
+			return
 			;;
 		(convert)
 			_arguments -s \
-				'-r[Revert conversion]' \
-				&& return 0
+				'(-d --pkg-dbdir)'{-d,--pkg-dbdir}'[specify the location of the pkg_add(1) dbdir]: : _files -/' \
+				'(-n --dry-run)'{-n,--dry-run}'[dry run mode]'
+			return
 			;;
 		(create)
-			_arguments -s \
-				'-r[Root directory]:rootdir:_files -/' \
-				'-m[Manifest directory]:manifestdir:_files -/' \
-				'-f[format]:format:((tar tgz tbz txz))' \
-				'-o[Ouput directory]:outdir:_files -/' \
-				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'*:Package:_pkg_installed' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
+				'(-n --no-clobber)'{-n,--no-clobber}'[no not overwrite existing packages]' \
+				'(-f --format)'{-f,--format}'[format]:format:((tar tgz tbz txz))' \
+				'(-o --out-dir)'{-o,--out-dir}'[output directory]:outdir:_files -/' \
+				'(-r --root-dir)'{-r,--root-dir}'[specify root directory]:rootdir:_files -/' \
+				- '(manifest)' \
+				{-M,--manifest}'[specify manifest file]:manifest file:_files' \
+				- metadata \
+				'(-m --metadata)'{-m,--metadata}'[specify manifest directory]:manifestdir:_files -/' \
+				'(-p --plist)'{-p,--plist}'[specify package metadata using the legacy plist format]:plist' \
+				- '(all)' \
+				{-a,--all}'[process all packages]' \
+				- patterns \
+				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
+				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:package:_pkg_installed'
+			return
 			;;
 		(delete|remove)
-			_arguments -s \
-				'(-n)-y[Assume yes when asked for confirmation]' \
-				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
-				'-f[Force the package(s) to be removed]' \
-				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'*:Package:_pkg_installed' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
+				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
+				'(-f --force)'{-f,--force}'[force the package(s) to be removed]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-D --no-deinstall-script)'{-D,--no-deinstall-script}"[don't execute deinstallation scripts]" \
+				'(-R --recursive)'{-R,--recursive}'[delete all packages that require the list packages as well]' \
+				- '(all)' \
+				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				- patterns \
+				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
+				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:package:_pkg_installed'
+			return
 			;;
 		(fetch)
-			_arguments -s \
-				'-y[Assume yes when asked for confirmation]' \
-				'-L[Do not try to update the repository metadata]' \
-				'-q[Be quiet]' \
-				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'*:Available packages:_pkg_available' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
+				'(-r --repository)'{-r,--repository}'[specify the repository to fetch from]:reponame' \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-o --output)'{-o,--output}'[place files in a subdirectory named `All'\'' of the specified directory]: : _files -/' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-d --dependencies)'{-d,--dependencies}'[fetch dependencies as well]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
+				- '(all)' \
+				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				- patterns \
+				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
+				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:available package:_pkg_available' \
+				- '(updates)' \
+				{-u,--available-update}'[fetch all available updates for currently installed packages]'
+			return
 			;;
 		(help)
 			_arguments -s \
-				':command:_values -S " " -w "pkg subcommands" ${subcmd/\[*/}'
-			return 0
+				':command:_values -S " " -w "pkg subcommand" ${subcmd/\[*/}'
+			return
 			;;
 		(info)
-			_arguments -s \
-				'(-e -d -r -l -o -p -D)-f[Displays full information]' \
-				'(-f -d -r -l -o -p -D)-e[Returns 0 if <pkg-name> is installed]' \
-				'(-e -f -r -l -o -p -D)-d[Displays the dependencies]' \
-				'(-e -d -f -l -o -p -D)-r[Displays the reverse dependencies]' \
-				'(-e -d -r -f -o -p -D)-l[Displays all files]' \
-				'(-e -d -r -l -f -p -D)-o[Displays origin]' \
-				'(-e -d -r -l -o -f -D)-p[Displays prefix]' \
-				'(-e -d -r -l -o -p -f)-D[Displays message]' \
-				'-q[Be quiet]' \
-				'(-g -x -X -F)-a[Process all packages]' \
-				'(-x -X -a -F)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a -F)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a -F)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'(-g -x -X -a)-F[Process the specified package]:package:_files -g "*.t?z"' \
-				'*:Package:_pkg_installed' \
-				&& return 0
+			local mutexopts='(-e --exists -d --dependencies -r --required-by -l --list-files -I --comment'
+			mutexopts+=' -R --raw -o --origin -O --by-origin -p --prefix -D --pkg-message -f --full)'
+			_arguments -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'--raw-format[output format for raw output]:format:(json json-compact yaml)' \
+				'(-f --full)'{-f,--full}'[display full information]' \
+				${mutexopts}{-e,--exists}'[return 0 if specified package is installed]' \
+				${mutexopts}{-R,--raw}'[display the full manifest]' \
+				'(-d --dependencies)'{-d,--dependencies}'[display the dependencies]' \
+				'(-r --required-by)'{-r,--required-by}'[display the reverse dependencies]' \
+				'(-l --list-files)'{-l,--list-files}'[display all files]' \
+				'(-o --origin -O --by-origin)'{-o,--origin,-O,--by-origin}'[display origin]' \
+				'(-p --prefix)'{-p,--prefix}'[display prefix]' \
+				'(-D --pkg-message)'{-D,--pkg-message}'[display message]' \
+				'(-k --locked)'{-k,--locked}'[show the locking status]' \
+				'(-I --comment)'{-I,--comment}'[display comments]' \
+				'(-b --provided-shlibs)'{-b,--provided-shlibs}'[display shared libraries provided by the package]' \
+				'(-B --required-shlibs)'{-B,--required-shlibs}'[display all shared libraries used by the package]' \
+				'(-s --size)'{-s,--size}'[display the total size of the files installed by the package]' \
+				- '(all)' \
+				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				- '(pkg-file)' \
+				{-F,--file}'[display information from an package archive]:package:_files' \
+				- patterns \
+				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
+				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:available package:_pkg_installed'
+			return
 			;;
 		(install)
-			_arguments -s \
-				'(-n)-y[Assume yes when asked for confirmation]' \
-				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
-				'-f[Force reinstallation if needed]' \
-				'-R[Reinstall every package depending on matching expressions]' \
-				'-L[Do not try to update the repository metadata]' \
-				'(-x -X)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'*:Available packages:_pkg_available' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-A --automatic)'{-A,--automatic}'[Mark the installed packages as automatic]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-r --repository)'{-r,--repository}'[specify the repository to install packages from]:reponame' \
+				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
+				'(-I --no-install-scripts)'{-I,--no-install-scripts}"[don't execute any pre/post-install scripts]" \
+				'(-M --ignore-missing)'{-M,--ignore-missing}'[ignore missing dependencies]' \
+				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
+				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
+				'(-f --force)'{-f,--force}'[force reinstallation if needed]' \
+				'(-R --recursive)'{-R,--recursive}'[reinstall every package depending on matching expressions]' \
+				'*:available package:_pkg_available' \
+				- '(all)' \
+				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				- patterns \
+				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
+				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]'
+			return
 			;;
 		(query)
-			_arguments -s \
-				'(-g -x -X -F -e)-a[Process all packages]' \
-				'(-x -X -a -F -e)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a -F -e)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a -F -e)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'(-g -x -X -a -F)-e[Process packages that match the evaluation]:evaluation:' \
-				'(-g -x -X -a -e)-F[Process the specified package]:package:_files -g "*.t?z"' \
-				':Ouput format:' \
-				&& return 0
+			_arguments -C -s \
+				'(-)1:output format:->query' \
+				- '(all)' \
+				{-a,--all}'[process all packages]' \
+				- '(patterns)' \
+				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				{-g,--glob}'[process packages that match a glob pattern]' \
+				{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:package:_pkg_installed' \
+				- '(eval)' \
+				{-e,--evaluate}'[process packages that match an evaluation]:evaluation:->evaluation' \
+				- '(files)' \
+				{-F,--file}'[process the specified package]:package:_files -g "*.t?z(-.)"' \
+				&& ret=0
 			;;
 		(register)
-			_arguments -s \
-				'-l[register as a legacy format]' \
-				'-d[mark the package as an automatic dependency]' \
-				'-f[packing list file]:packing list file:_files' \
-				'-m[metadata directory]:metadatadir:_files -/' \
-				'-a[ABI]:abi:' \
-				'-i[input path (aka root directory)]:input path:_files -/' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-l --legacy)'{-l,--legacy}'[register as a legacy format]' \
+				'(-d --debug)'{-d,--debug}'[mark the package as an automatic dependency]' \
+				'(-t --test)'{-t,--test}'[enable testing mode]' \
+				- metadatadir \
+				'(-f --plist)'{-f,--plist}'[packing list file]:packing list file:_files' \
+				'(-m --metadata)'{-m,--metadata}'[metadata directory]:metadatadir:_files -/' \
+				'(-i --root)'{-i,--root}'[input path (aka root directory)]:input path:_files -/' \
+				- '(metadatafile)' \
+				{-M,--manifest}'[specify package manifest file]:manifest file:_files'
+			return
 			;;
 		(repo)
-			_arguments -s \
-				':Repository path:_files -/' \
-				':RSA key:_files' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-l --list-files)'{-l,--list-files}'[generate list of all files in repo as filesite.txz archive]' \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-L --legacy)'{-L,--legacy}'[create a pkg 1.2 compatible repository]' \
+				'(-o --output-dir)'{-o,--output-dir}'[specify the location of the new repo]:repo location:_files -/' \
+				'(-m --meta-file)'{-m,--meta-file}'[use specified file as repository meta file instead of the defaults]:meta file:_files' \
+				':repository path:_files -/' \
+				':RSA key: _alternative "files\:RSA key\:_files" "commands\:commands\:_cmdstring"'
+			return
 			;;
 		(rquery)
-			_arguments -s \
-				'(-g -x -X -e)-a[Process all packages]' \
-				'(-x -X -a -e)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a -e)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a -e)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'(-g -x -X -a)-e[Process packages that match the evaluation]:evaluation:' \
-				':Ouput format:' \
-				&& return 0
+			_arguments -A '-*' -C -s \
+				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-r --repository)'{-r,--repository}'[specify the repository to search]:reponame' \
+				'(-I --index-line)'{-I,--index-line}'[print corresponding line from ports index file]' \
+				${words[(r)(-I|--index-line)]+!}':output format:->query' \
+				- '(all)' \
+				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				- '(patterns)' \
+				{-g,--glob}'[process packages that match the glob pattern]' \
+				{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:available package:_pkg_available_name' \
+				- '(eval)' \
+				{-e,--evaluate}'[process packages that match an evaluation]:evaluation:->evaluation' \
+				&& ret=0
 			;;
 		(search)
-			_arguments -s \
-				'(-x -X)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'*:Available packages:_pkg_available_name' \
-				&& return 0
+			local -a label_opts modifier_opts
+			label_opts=(comment description name origin pkg-name)
+			modifier_opts=(
+			annotations arch categories comment depends-on description full
+			licenses maintainer name options pkg-size prefix repository
+			required-by shared-libs-{required,provided} size url version www
+			)
+			_arguments -A '-*' -s \
+				'(-x --regex -g --glob -e --exact)'{-g,--glob}'[process packages that match the glob pattern]' \
+				'(-x --regex -g --glob -e --exact)'{-x,--regex}'[process packages that match the regex pattern]' \
+				'(-x --regex -g --glob -e --exact)'{-e,--exact}'[process packages that match the string exactly]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
+				'(-r --repository)'{-r,--repository}'[specify the repository to search]:reponame' \
+				'1:available package:_pkg_available_name' \
+				- set1 \
+				'(-S --search)'{-S,--search}'[specify the field to search the repository catalogue on]:field:( $label_opts )' \
+				\*{-Q,--query-modifier}'[add an additional field to the result]:modifier:( $modifier_opts )' \
+				- set2 \
+				'(-D --description -c --comment)'{-c,--comment}'[use pattern matching on comments text]' \
+				'(-D --description -c --comment)'{-D,--description}'[use pattern matching on description text]' \
+				'(-d --depends-on)'{-d,--depends-on}'[list dependencies of the matched packages]' \
+				'(-f --full)'{-f,--full}"[show \`\`full'' information about the package]" \
+				'(-o --origin)'{-o,--origins}'[list packages by origins]' \
+				'(-p --prefix)'{-p,--prefix}'[display package installation prefix]' \
+				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
+				'(-R --raw)'{-R,--raw}'[display full manifest]' \
+				'(-s --size)'{-s,--size}'[display the installed size]' \
+				'--raw-format[output format for raw output]:format:(json json-compact yaml)'
+			return
 			;;
 		(set)
-			_arguments -s \
-				'(-o)-A[Mark as automatic or not]:flag:((1\:automatic 0\:not\ automatic))' \
-				'(-A)-o[Change the origin]:oldorigin\:neworigin:' \
-				'-y[Assume yes when asked for confirmation]' \
-				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
-				'*:Package:_pkg_installed'
-			return 0
+			local mutexopts='(-o --change-origin -A --automatic -n --change-name)'
+			_arguments -A '-*' -s \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				${mutexopts}{-A,--automatic}'[mark as automatic or not]:flag:((1\:automatic 0\:not\ automatic))' \
+				${mutexopts}{-o,--change-origin}'[change the origin]:oldorigin\:neworigin' \
+				${mutexopts}{-n,--change-name}'[change the name]:oldname\:newname' \
+				'(-y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
+				'*:package:_pkg_installed' \
+				- '(all)' \
+				{-a,--all}'[process all packages]' \
+				- '(patterns)' \
+				{-g,--glob}'[process packages that match the glob pattern]' \
+				{-x,--regex}'[process packages that match the regex pattern]'
+			return
 			;;
 		(shell)
 			_arguments -s \
-				':database:_files' \
-				&& return 0
+				':database:_files'
+			return
 			;;
 		(shlib)
-			_arguments -s \
-				':Library:' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'(-P --provides)'{-P,--provides}'[show the package which provides the library]' \
+				'(-R --requires)'{-R,--requires}'[show installed packages which requires the library]' \
+				':library:'
+			return
 			;;
 		(stats)
-			_arguments -s \
-				'-q[Be quiet]' \
-				'(-l)-r[Display stats only for the local package database]' \
-				'(-r)-l[Display stats only for the remote package database(s)]' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
+				- '(remote)' \
+				{-r,--remote}'[display stats only for the remote package database]' \
+				- '(local)' \
+				{-l,--local}'[display stats only for the local package database(s)]' \
+				- '(size)' \
+				{-b,--bytes}'[display space usage, in bytes]'
+			return
 			;;
 		(update)
-			_arguments -s \
-				'-f[Force update]' \
-				'-q[Be quiet]' \
-				&& return 0
+			_arguments -A '-*' -s \
+				'(-f --force)'{-f,--force}'[force update]' \
+				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
+				'(-r --repository)'{-r,--repository}'[specify the repository to update from]:reponame'
+			return
 			;;
 		(updating)
-			_arguments -s \
-				'-d[Only entries newer than date are shown]:date:' \
-				'-f[Defines a alternative location of the UPDATING file]:UPDATING file:_files' \
-				'*:Package:_pkg_installed' \
-				&& return 0
+			# recall dates starting the from the beginning of this month.
+			# zstyle ':completion:*:*:pkg-updating:option-(d|-date)-1:*' fake ${(%):-%D{%Y%m}}{01..${(%):-%D{%d}}}
+			_arguments -A '-*' -s \
+				'(-d --date)'{-d,--date}'[only entries newer than date are shown]:date' \
+				'(-f --file)'{-f,--file}'[specify alternative location of the UPDATING file]:UPDATING file:_files' \
+				'(-i --case-insensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'*:package:_pkg_installed'
+			return
 			;;
 		(upgrade)
-			_arguments -s \
-				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
-				'(-n)-y[Assume yes when asked for confirmation]' \
-				'-f[Upgrade/Reinstall everything]' \
-				'-L[Do not try to update the repository metadata]' \
-				&& return 1
+			_arguments -A '-*' -s \
+				"(-F --fetch-only)"{-F,--fetch-only}"[don't install packages, merely fetch them]" \
+				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
+				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
+				'(-f --force)'{-f,--force}'[upgrade/reinstall everything]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
+				'(-I --no-install-scripts)'{-I,--no-install-scripts}"[don't execute any pre/post-install scripts]" \
+				'(-r --repository)'{-r,--repository}'[specify the repository to upgrade from]:reponame' \
+				'*:available package:_pkg_installed' \
+				- '(glob)' \
+				{-g,--glob}'[process packages that match a glob pattern]' \
+				- '(regex)' \
+				{-x,--regex}'[process packages that match a regex pattern]'
+			return
 			;;
 		(version)
-			#TODO: complete
-			_arguments -s \
-				'(-P -R)-I[Use INDEX file]' \
-				'(-R -I)-P[Force checking against the ports tree]' \
-				'(-I -P)-R[Use remote repository]' \
-				'-o[Display package origin, instead of package name]' \
-				'-q[Be quiet]' \
-				'-v[Be verbose]' \
-				'(-L)-l[Display only the packages with a given status flag]:flag:((\< = \>))' \
-				'(-l)-L[Display only the packages without a given status flag]:flag:((\< = \>))' \
-				&& return 0
+			_arguments -A '-*' -s \
+				- '(testversion)' \
+				{-t,--test-version}'[test a pair of version number strings]: : _message -e values "version string": : _message -e values "version string"' \
+				- '(testpattern)' \
+				{-T,--test-pattern}'[compare pkgname against a shell glob pattern]:package:_pkg_installed: : _message -e values glob' \
+				- other \
+				'(-r --repository -P --ports -R --remote -I --index)'{-I,--index}'[use INDEX file]' \
+				'(-r --repository -P --ports -R --remote -I --index)'{-P,--ports}'[force checking against the ports tree]' \
+				'(-P --ports -R --remote -I --index)'{-R,--remote}'[use remote repository]' \
+				'(-o --origin)'{-o,--origin}'[display package origin, instead of package name]' \
+				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
+				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
+				${words[(r)(-*[PI]*|--(index|ports))]+!}'(-r --repository)'{-r,--repository}'[specify the repository to ]:reponame' \
+				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
+				'(-L --not-like -l --like)'{-l,--like}'[display only the packages with a given status flag]:flag:((\< = \>))' \
+				'(-l --like -L --not-like)'{-L,--not-like}'[display only the packages without a given status flag]:flag:((\< = \>))' \
+				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
+				'(-x --regex -g --glob -e --exact)'{-g,--glob}'[display packages that match the glob pattern]:glob pattern' \
+				'(-x --regex -g --glob -e --exact)'{-x,--regex}'[display packages that match the regex pattern]:regex pattern' \
+				'(-x --regex -g --glob -e --exact)'{-e,--exact}'[display the packages that exactly match the string]:string'
+			return
 			;;
 		(which)
-			_arguments -s \
+			_arguments -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
+				'(-o --origin)'{-o,--origin}'[display origin]' \
 				':file:_files' \
-			&& return 0
+				- '(glob)' \
+				{-g,--glob}'[treat <file> as a glob pattern]' \
+				- '(PATH)' \
+				{-p,--path-search}'[search PATH for <file>]'
+			return
 			;;
 	esac
+
+	[[ -z $state ]] && return ret
+	local -a specs elements
+	elements=(
+		'd:dependencies' 'r:reverse dependencies' 'C:categories'
+		'O:options' 'L:licenses' 'A:annotations'
+		'B:required share libraries' 'b:provided shared libraries'
+	)
+	specs=(
+		'n:package name' 'o:origin' 'p:prefix' 'm:maintainer'
+		'c:comment' 'e:description' 'w:home page' 's:size'
+		'q:architecture' 'M:message'
+		'?:if info exists' '#:no of elements'
+	)
+	if [[ $service = query ]]; then
+		specs+=( 'a:automatic' 'k:locked' 't:timestamp' )
+		elements+=( 'F:files' 'D:directories'  'U:users' 'G:groups' )
+	fi
+	if [[ $state = query ]]; then
+		specs+=( 'v:version' 'l:license' 'R:repository' )
+		compset -P '(%[^sOFdrA?#]|%?[^%]|[^%])#'
+	else
+		compset -P '(%[^OFdrA?#]|%?[^%]|[^%])#'
+	fi
+	if compset -P '%s'; then
+		_describe -t units unit '( b:bytes h:human\ readable )' -S '' && ret=0
+	elif compset -P '%F'; then
+		_describe -t properties property '( p:path s:sum )' -S '' && ret=0
+	elif compset -P '%O'; then
+		_describe -t properties property '( k:key v:value d:default D:description )' -S '' && ret=0
+	elif compset -P '%[dr]'; then
+		_describe -t properties 'dependency property' '( n:name o:origin v:version )' -S '' && ret=0
+	elif compset -P '%A'; then
+		_describe -t properties property '( t:tag s:value )' -S '' && ret=0
+	elif compset -P '%(|\\)[?#]'; then
+		_describe -t lists list elements -S '' && ret=0
+	else
+		[[ $IPREFIX = *%(#b)([${(j..)elements%%:*}])* ]] &&
+			elements=( ${(M)elements:#$match[1]:*} )
+		if [[ $state = evaluation ]]; then
+			_tags variables operators
+		else
+			_tags patterns elements
+		fi
+		while _tags; do
+			_requested elements && _describe -t elements 'list element' elements -p % -S '' && ret=0
+			_requested variables && _describe -t variables 'variable' specs -p % -S '' && ret=0
+			_requested patterns && _describe -t patterns 'query specifier' specs -p % -S '' && ret=0
+			_requested operators expl operator compadd -S '' \~ {,\!,\>,\<}= \> \< \&\& \|\| && ret=0
+			(( ret )) || break
+		done
+	fi
+	return ret
 }
 
 _pkg "$@"

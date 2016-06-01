@@ -31,7 +31,6 @@
 #include <fcntl.h>
 
 #include <openssl/err.h>
-#include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
 
@@ -39,6 +38,12 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+
+struct rsa_key {
+	pkg_password_cb *pw_cb;
+	char *path;
+	RSA *key;
+};
 
 static int
 _load_rsa_private_key(struct rsa_key *rsa)
@@ -115,22 +120,29 @@ static int
 rsa_verify_cert_cb(int fd, void *ud)
 {
 	struct rsa_verify_cbdata *cbdata = ud;
-	char sha256[SHA256_DIGEST_LENGTH *2 +1];
-	char hash[SHA256_DIGEST_LENGTH];
+	char *sha256;
+	char *hash;
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
 
-	if (sha256_fd(fd, sha256) != EPKG_OK)
+	sha256 = pkg_checksum_fd(fd, PKG_HASH_TYPE_SHA256_HEX);
+	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-	sha256_buf_bin(sha256, strlen(sha256), hash);
+	hash = pkg_checksum_data(sha256, strlen(sha256),
+	    PKG_HASH_TYPE_SHA256_RAW);
+	free(sha256);
 
 	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
-	if (rsa == NULL)
+	if (rsa == NULL) {
+		free(hash);
 		return (EPKG_FATAL);
-	ret = RSA_verify(NID_sha256, hash, sizeof(hash), cbdata->sig,
-			cbdata->siglen, rsa);
+	}
+	ret = RSA_verify(NID_sha256, hash,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_RAW), cbdata->sig,
+	    cbdata->siglen, rsa);
+	free(hash);
 	if (ret == 0) {
 		pkg_emit_error("rsa verify failed: %s",
 				ERR_error_string(ERR_get_error(), errbuf));
@@ -180,23 +192,28 @@ static int
 rsa_verify_cb(int fd, void *ud)
 {
 	struct rsa_verify_cbdata *cbdata = ud;
-	char sha256[SHA256_DIGEST_LENGTH *2 +1];
+	char *sha256;
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
 
-	if (sha256_fd(fd, sha256) != EPKG_OK)
+	sha256 = pkg_checksum_fd(fd, PKG_HASH_TYPE_SHA256_HEX);
+	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
 	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
-	if (rsa == NULL)
+	if (rsa == NULL) {
+		free(sha256);
 		return(EPKG_FATAL);
+	}
 
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), cbdata->sig,
-			cbdata->siglen, rsa);
+	ret = RSA_verify(NID_sha1, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX), cbdata->sig,
+	    cbdata->siglen, rsa);
+	free(sha256);
 	if (ret == 0) {
 		pkg_emit_error("%s: %s", cbdata->key,
-				ERR_error_string(ERR_get_error(), errbuf));
+		    ERR_error_string(ERR_get_error(), errbuf));
 		RSA_free(rsa);
 		return (EPKG_FATAL);
 	}
@@ -213,7 +230,7 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	int ret;
 	bool need_close = false;
 	struct rsa_verify_cbdata cbdata;
-	unsigned char *key_buf;
+	char *key_buf;
 	off_t key_len;
 
 	if (file_to_buffer(key, (char**)&key_buf, &key_len) != EPKG_OK) {
@@ -254,7 +271,7 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 {
 	char errbuf[1024];
 	int max_len = 0, ret;
-	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
+	char *sha256;
 
 	if (access(rsa->path, R_OK) == -1) {
 		pkg_emit_errno("access", rsa->path);
@@ -269,9 +286,14 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 	max_len = RSA_size(rsa->key);
 	*sigret = calloc(1, max_len + 1);
 
-	sha256_file(path, sha256);
+	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+	if (sha256 == NULL)
+		return (EPKG_FATAL);
 
-	ret = RSA_sign(NID_sha1, sha256, sizeof(sha256), *sigret, siglen, rsa->key);
+	ret = RSA_sign(NID_sha1, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
+	    *sigret, siglen, rsa->key);
+	free(sha256);
 	if (ret == 0) {
 		/* XXX pass back RSA errors correctly */
 		pkg_emit_error("%s: %s", rsa->path,
@@ -283,7 +305,7 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 }
 
 int
-rsa_new(struct rsa_key **rsa, pem_password_cb *cb, char *path)
+rsa_new(struct rsa_key **rsa, pkg_password_cb *cb, char *path)
 {
 	assert(*rsa == NULL);
 

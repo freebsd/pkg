@@ -74,6 +74,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
 	{ 'R', "",              0, PKG_LOAD_ANNOTATIONS },
+	{ 'V', "",		0, PKG_LOAD_BASIC },
 };
 
 static void
@@ -81,6 +82,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *dat
 {
 	bool automatic;
 	bool locked;
+	bool vital;
 
 	sbuf_clear(dest);
 
@@ -126,7 +128,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *dat
 			case 's':
 				qstr++;
 				if (qstr[0] == 'h') 
-					pkg_sbuf_printf(dest, "%?sB", pkg);
+					pkg_sbuf_printf(dest, "%#sB", pkg);
 			        else if (qstr[0] == 'b')
 					pkg_sbuf_printf(dest, "%s", pkg);
 				break;
@@ -289,6 +291,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *dat
 				if (pkg_has_message(pkg))
 					pkg_sbuf_printf(dest, "%M", pkg);
 				break;
+			case 'V':
+				pkg_get(pkg, PKG_VITAL, &vital);
+				sbuf_printf(dest, "%d", vital);
+				break;
 			case '%':
 				sbuf_putc(dest, '%');
 				break;
@@ -334,11 +340,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
-	struct pkg_user		*user   = NULL;
-	struct pkg_group	*group  = NULL;
-	struct pkg_shlib	*shlib  = NULL;
-	const pkg_object	*o, *list;
-	pkg_iter		 it;
+	char			*buf;
+	struct pkg_kv		*kv;
 
 	switch (multiline) {
 	case 'd':
@@ -354,10 +357,9 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		it = NULL;
-		pkg_get(pkg, PKG_CATEGORIES, &list);
-		while ((o = pkg_object_iterate(list, &it))) {
-			format_str(pkg, output, qstr, o);
+		buf = NULL;
+		while (pkg_categories(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
@@ -380,43 +382,46 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'L':
-		it = NULL;
-		pkg_get(pkg, PKG_LICENSES, &list);
-		while ((o = pkg_object_iterate(list, &it))) {
-			format_str(pkg, output, qstr, o);
+		buf = NULL;
+		while (pkg_licenses(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'U':
-		while (pkg_users(pkg, &user) == EPKG_OK) {
-			format_str(pkg, output, qstr, user);
+		buf = NULL;
+		while (pkg_users(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'G':
-		while (pkg_groups(pkg, &group) == EPKG_OK) {
-			format_str(pkg, output, qstr, group);
+		buf = NULL;
+		while (pkg_groups(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'B':
-		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
-			format_str(pkg, output, qstr, shlib);
+		buf = NULL;
+		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'b':
-		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
-			format_str(pkg, output, qstr, shlib);
+		buf = NULL;
+		while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
+			format_str(pkg, output, qstr, buf);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
 	case 'A':
-		it = NULL;
-		pkg_get(pkg, PKG_ANNOTATIONS, &list);
-		while ((o = pkg_object_iterate(list, &it))) {
-			format_str(pkg, output, qstr, o);
+		pkg_get(pkg, PKG_ANNOTATIONS, &kv);
+		while (kv != NULL) {
+			format_str(pkg, output, qstr, kv);
 			printf("%s\n", sbuf_data(output));
+			kv = kv->next;
 		}
 		break;
 	default:
@@ -445,6 +450,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 {
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
+	const char *sqlop;
 
 	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
@@ -512,10 +518,16 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					sbuf_cat(sqlcond, "desc");
 					state = OPERATOR_STRING;
 					break;
+				case 'V':
+					if (for_remote)
+						goto bad_option;
+					sbuf_cat(sqlcond, "vital");
+					state = OPERATOR_INT;
+					break;
 				case '#': /* FALLTHROUGH */
 				case '?':
+					sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					str++;
-					const char *sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					switch (str[0]) {
 						case 'd':
 							sbuf_printf(sqlcond, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
@@ -532,7 +544,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT %s FROM files AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'O':
-							sbuf_printf(sqlcond, "(SELECT %s FROM option JOIN pkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop);
+							sbuf_printf(sqlcond, "(SELECT %s FROM pkg_option AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'D':
 							if (for_remote)
@@ -656,18 +668,21 @@ bad_option:
 					sbuf_putc(sqlcond, str[0]);
 				}
 			} else if (str[0] == '!') {
-				if (str[1] != '=') {
-					fprintf(stderr, "expecting = after !\n");
+				if (str[1] == '=') {
+					sbuf_putc(sqlcond, str[0]);
+					sbuf_putc(sqlcond, str[1]);
+				} else if (str[1] == '~') {
+					sbuf_cat(sqlcond, " NOT GLOB ");
+				} else {
+					fprintf(stderr, "expecting = or ~ after !\n");
 					return (EPKG_FATAL);
 				}
+				str++;
 				if (state == OPERATOR_STRING) {
 					state = NEXT_IS_STRING;
 				} else {
 					state = NEXT_IS_INT;
 				}
-				sbuf_putc(sqlcond, str[0]);
-				str++;
-				sbuf_putc(sqlcond, str[0]);
 			} else {
 				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
 				return (EPKG_FATAL);
@@ -848,7 +863,7 @@ exec_query(int argc, char **argv)
 	char			 multiline = 0;
 	char			*condition = NULL;
 	struct sbuf		*sqlcond = NULL;
-	const unsigned int	 q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
+	const unsigned int	 q_flags_len = NELEM(accepted_query_flags);
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -998,8 +1013,7 @@ exec_query(int argc, char **argv)
 	}
 
 cleanup:
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

@@ -268,7 +268,10 @@ struct name {							\
  * GLIBC based systems have a global 'char *' pointer referencing
  * the executable's name.
  */
+
+/* XXX: defined in errno.h
 extern const char *program_invocation_short_name;
+*/
 
 #define	ELFTC_GETPROGNAME()	program_invocation_short_name
 

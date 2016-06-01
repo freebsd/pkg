@@ -1,0 +1,179 @@
+#! /usr/bin/env atf-sh
+. $(atf_get_srcdir)/test_environment.sh
+
+tests_init \
+	conflicts_multirepo
+
+conflicts_multirepo_head() {
+	atf_set "timeout" "20"
+}
+
+conflicts_multirepo_body() {
+	touch a b c
+	cat << EOF >> manifest
+name: test
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+files: {
+	${TMPDIR}/a: "",
+}
+EOF
+
+	cat << EOF >> manifest2
+name: test2
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+files: {
+	${TMPDIR}/b: "",
+	${TMPDIR}/c: "",
+}
+EOF
+
+	cat << EOF >> manifest3
+name: test
+origin: test
+version: "1.1"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+files: {
+	${TMPDIR}/a: "",
+	${TMPDIR}/b: "",
+}
+EOF
+
+	cat << EOF >> manifest4
+name: test2
+origin: test
+version: "1.1"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+files: {
+	${TMPDIR}/c: "",
+}
+EOF
+	atf_check \
+		-o match:".*Installing.*\.\.\.$" \
+		-e empty \
+		-s exit:0 \
+		pkg register -M manifest
+
+	atf_check \
+		-o match:".*Installing.*\.\.\.$" \
+		-e empty \
+		-s exit:0 \
+		pkg register -M manifest2
+
+	mkdir repo1
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M manifest -o repo1/
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M manifest2 -o repo1/
+
+	mkdir repo2
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M manifest3 -o repo2/
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M manifest4 -o repo2/
+
+	atf_check \
+		-o inline:"Creating repository in repo1:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg repo repo1
+
+	atf_check \
+		-o inline:"Creating repository in repo2:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg repo repo2
+
+	cat << EOF >> repo.conf
+local1: {
+	url: file:///${TMPDIR}/repo1,
+	enabled: true
+}
+local2: {
+	url: file:///${TMPDIR}/repo2,
+	enabled:true
+}
+EOF
+
+OUTPUT="Updating local1 repository catalogue...
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
+Processing entries:  done
+local1 repository update completed. 2 packages processed.
+Updating local2 repository catalogue...
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
+Processing entries:  done
+local2 repository update completed. 2 packages processed.
+Updating database digests format:  done
+Checking for upgrades (2 candidates):  done
+Processing candidates (2 candidates):  done
+Checking integrity... done (2 conflicting)
+Checking integrity... done (0 conflicting)
+The following 2 package(s) will be affected (of 0 checked):
+
+Installed packages to be UPGRADED:
+	test2: 1 -> 1.1 [local2]
+	test: 1 -> 1.1 [local2]
+${JAILED}[1/2] Deinstalling test2-1...
+${JAILED}[1/2] Deleting files for test2-1:  done
+${JAILED}[1/2] Installing test2-1.1...
+${JAILED}[1/2] Extracting test2-1.1:  done
+${JAILED}[2/2] Upgrading test from 1 to 1.1...
+${JAILED}[2/2] Extracting test-1.1:  done
+"
+	atf_check \
+		-o inline:"${OUTPUT}" \
+		-e empty \
+		-s exit:0 \
+		pkg -o CONSERVATIVE_UPGRADE=no -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
+}

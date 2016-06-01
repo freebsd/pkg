@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
@@ -51,6 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+#include <utlist.h>
 #include <unistd.h>
 #ifdef HAVE_LIBJAIL
 #include <jail.h>
@@ -81,6 +82,7 @@ static struct commands {
 	void (* const usage)(void);
 } cmd[] = {
 	{ "add", "Compatibility interface to install a package", exec_add, usage_add},
+	{ "alias", "List the command line aliases", exec_alias, usage_alias},
 	{ "annotate", "Add, modify or delete tag-value style annotations on packages", exec_annotate, usage_annotate},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
@@ -116,15 +118,16 @@ static struct commands {
 	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
 };
 
-static const unsigned int cmd_len = sizeof(cmd) / sizeof(cmd[0]);
+static const unsigned int cmd_len = NELEM(cmd);
 
-static STAILQ_HEAD(, plugcmd) plugins = STAILQ_HEAD_INITIALIZER(plugins);
 struct plugcmd {
 	const char *name;
 	const char *desc;
 	int (*exec)(int argc, char **argv);
-	STAILQ_ENTRY(plugcmd) next;
+	struct plugcmd *next;
+	struct plugcmd *prev;
 };
+static struct plugcmd *plugins = NULL;
 
 typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
 typedef int (nb_cmd)(void);
@@ -164,29 +167,33 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 	}
 
 #ifdef HAVE_LIBJAIL
- 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
+#define JAIL_ARG	"-j <jail name or id>|"
 #else
-	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
+#define JAIL_ARG
 #endif
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] ["JAIL_ARG"-c <chroot path>|-r <rootdir>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] [-4|-6] <command> [<args>]\n");
 	if (reason == PKG_USAGE_HELP) {
 		fprintf(out, "Global options supported:\n");
 		fprintf(out, "\t%-15s%s\n", "-d", "Increment debug level");
 #ifdef HAVE_LIBJAIL
 		fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
 #endif
+		fprintf(out, "\t%-15s%s\n", "-r", "Execute pkg(8) using relocating installation to <rootdir>");
 		fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
 		fprintf(out, "\t%-15s%s\n", "-C", "Use the specified configuration file");
 		fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
 		fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
 		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
-		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
-		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
-		fprintf(out, "Commands supported:\n");
+		fprintf(out, "\t%-15s%s\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+		fprintf(out, "\t%-15s%s\n", "-o", "Override configuration option from the command line");
+		fprintf(out, "\t%-15s%s\n", "-4", "Only use IPv4");
+		fprintf(out, "\t%-15s%s\n", "-6", "Only use IPv6");
+		fprintf(out, "\nCommands supported:\n");
 
 		for (i = 0; i < cmd_len; i++)
 			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
-		if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
+		if (!pkg_initialized() && pkg_ini(conffile, reposdir, 0) != EPKG_OK)
 			errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 		plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
@@ -197,8 +204,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
-			STAILQ_FOREACH(c, &plugins, next)
-			fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			DL_FOREACH(plugins, c) {
+				fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			}
 		}
 		fprintf(out, "\nFor more information on the different commands"
 					" see 'pkg help <command>'.\n");
@@ -247,7 +255,7 @@ exec_help(int argc, char **argv)
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 	if (plugins_enabled) {
-		STAILQ_FOREACH(c, &plugins, next) {
+		DL_FOREACH(plugins, c) {
 			if (strcmp(c->name, argv[1]) == 0) {
 				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
 					errx(EX_SOFTWARE, "cannot allocate memory");
@@ -337,10 +345,13 @@ show_repository_info(void)
 			break;
 		}
 
-		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s",
+		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s,\n"
+		       "    %-16s: %u",
 		    pkg_repo_name(repo),
                     "url", pkg_repo_url(repo),
-		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no");
+		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
+		    "priority", pkg_repo_priority(repo));
+
 		if (pkg_repo_mirror_type(repo) != NOMIRROR)
 			printf(",\n    %-16s: \"%s\"",
 			    "mirror_type", mirror);
@@ -353,6 +364,9 @@ show_repository_info(void)
 		if (pkg_repo_key(repo) != NULL)
 			printf(",\n    %-16s: \"%s\"",
 			    "pubkey", pkg_repo_key(repo));
+		if (pkg_repo_ip_version(repo) != 0)
+			printf(",\n    %-16s: %u",
+				"ip_version", pkg_repo_ip_version(repo));
 		printf("\n  }\n");
 	}
 }
@@ -371,7 +385,7 @@ show_version_info(int version)
 	printf("%s\n", pkg_config_dump());
 	show_plugin_info();
 	show_repository_info();
-	
+
 	exit(EX_OK);
 	/* NOTREACHED */
 }
@@ -469,7 +483,7 @@ start_process_worker(char *const *save_argv)
 				/* Process got some terminating signal, hence stop the loop */
 				fprintf(stderr, "Child process pid=%d terminated abnormally: %s\n",
 						(int)child_pid, strsignal (WTERMSIG(status)));
-				ret = -(WTERMSIG(status));
+				ret = 128 + WTERMSIG(status);
 				break;
 			}
 		}
@@ -478,104 +492,6 @@ start_process_worker(char *const *save_argv)
 	exit(ret);
 	/* NOTREACHED */
 }
-
-/* A bit like strsep(), except it accounts for "double" and 'single'
-   quotes.  Unlike strsep(), returns the next arg string, trimmed of
-   whitespace or enclosing quotes, and updates **args to point at the
-   character after that.  Sets *args to NULL when it has been
-   completely consumed.  Quoted strings run from the first encountered
-   quotemark to the next one of the same type or the terminating NULL.
-   Quoted strings can contain the /other/ type of quote mark, which
-   loses any special significance.  There isn't an escape
-   character. */
-
-enum parse_states {
-	START,
-	ORDINARY_TEXT,
-	OPEN_SINGLE_QUOTES,
-	IN_SINGLE_QUOTES,
-	OPEN_DOUBLE_QUOTES,
-	IN_DOUBLE_QUOTES,
-};
-
-static char *
-tokenize(char **args)
-{
-	char			*p, *p_start;
-	enum parse_states	 parse_state = START;
-
-	assert(*args != NULL);
-
-	for (p = p_start = *args; *p != '\0'; p++) {
-		switch (parse_state) {
-		case START:
-			if (!isspace(*p)) {
-				if (*p == '"')
-					parse_state = OPEN_DOUBLE_QUOTES;
-				else if (*p == '\'')
-					parse_state = OPEN_SINGLE_QUOTES;
-				else {
-					parse_state = ORDINARY_TEXT;
-					p_start = p;
-				}				
-			} else 
-				p_start = p;
-			break;
-		case ORDINARY_TEXT:
-			if (isspace(*p))
-				goto finish;
-			break;
-		case OPEN_SINGLE_QUOTES:
-			p_start = p;
-			if (*p == '\'')
-				goto finish;
-
-			parse_state = IN_SINGLE_QUOTES;
-			break;
-		case IN_SINGLE_QUOTES:
-			if (*p == '\'')
-				goto finish;
-			break;
-		case OPEN_DOUBLE_QUOTES:
-			p_start = p;
-			if (*p == '"')
-				goto finish;
-			parse_state = IN_DOUBLE_QUOTES;
-			break;
-		case IN_DOUBLE_QUOTES:
-			if (*p == '"')
-				goto finish;
-			break;
-		}
-	}
-
-finish:
-	if (*p == '\0')
-		*args = NULL;	/* All done */
-	else {
-		*p = '\0';
-		p++;
-		if (*p == '\0' || parse_state == START)
-			*args = NULL; /* whitespace or nothing left */
-		else
-			*args = p;
-	}
-	return (p_start);
-}
-
-static int
-count_spaces(const char *args)
-{
-	int		spaces;
-	const char	*p;
-
-	for (spaces = 0, p = args; *p != '\0'; p++) 
-		if (isspace(*p))
-			spaces++;
-
-	return (spaces);
-}
-
 
 static int
 expand_aliases(int argc, char ***argv)
@@ -588,7 +504,7 @@ expand_aliases(int argc, char ***argv)
 	char			**oldargv = *argv;
 	char			**newargv;
 	char			 *args;
-	int			  newargc; 
+	int			  newargc;
 	int			  spaces;
 	int			  i;
 	size_t			  veclen;
@@ -611,9 +527,9 @@ expand_aliases(int argc, char ***argv)
 	 * counting the number of whitespace characters in it. This
 	 * will be at minimum one less than the final argc. We'll be
 	 * consuming one of the orginal argv, so that balances
-	 * out. */ 
+	 * out. */
 
-	spaces = count_spaces(alias_value);
+	spaces = pkg_utils_count_spaces(alias_value);
 	arglen = strlen(alias_value) + 1;
 	veclen = sizeof(char *) * (spaces + argc + 1);
 	buf = malloc(veclen + arglen);
@@ -626,7 +542,7 @@ expand_aliases(int argc, char ***argv)
 
 	newargc = 0;
 	while(args != NULL) {
-		newargv[newargc++] = tokenize(&args);
+		newargv[newargc++] = pkg_utils_tokenize(&args);
 	}
 	for (i = 1; i < argc; i++) {
 		newargv[newargc++] = oldargv[i];
@@ -644,19 +560,21 @@ main(int argc, char **argv)
 	struct commands	 *command = NULL;
 	unsigned int	  ambiguous = 0;
 	const char	 *chroot_path = NULL;
+	const char	 *rootdir = NULL;
 #ifdef HAVE_LIBJAIL
 	int		  jid;
 #endif
 	const char	 *jail_str = NULL;
 	size_t		  len;
 	signed char	  ch;
-	int		  debug = 0;
+	int64_t		  debug = 0;
 	int		  version = 0;
 	int		  ret = EX_OK;
 	bool		  plugins_enabled = false;
 	bool		  plugin_found = false;
 	bool		  show_commands = false;
 	bool		  activation_test = false;
+	pkg_init_flags	  init_flags = 0;
 	struct plugcmd	 *c;
 	const char	 *conffile = NULL;
 	const char	 *reposdir = NULL;
@@ -671,9 +589,12 @@ main(int argc, char **argv)
 		{ "chroot",		required_argument,	NULL,	'c' },
 		{ "config",		required_argument,	NULL,	'C' },
 		{ "repo-conf-dir",	required_argument,	NULL,	'R' },
+		{ "rootdir",		required_argument,	NULL,	'r' },
 		{ "list",		no_argument,		NULL,	'l' },
 		{ "version",		no_argument,		NULL,	'v' },
 		{ "option",		required_argument,	NULL,	'o' },
+		{ "only-ipv4",		no_argument,		NULL,	'4' },
+		{ "only-ipv6",		no_argument,		NULL,	'6' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
@@ -698,10 +619,11 @@ main(int argc, char **argv)
 	save_argv = argv;
 
 #ifdef HAVE_LIBJAIL
-	while ((ch = getopt_long(argc, argv, "+dj:c:C:R:lNvo:", longopts, NULL)) != -1) {
+#define JAIL_OPT	"j:"
 #else
-	while ((ch = getopt_long(argc, argv, "+dc:C:R:lNvo:", longopts, NULL)) != -1) {
+#define JAIL_OPT
 #endif
+	while ((ch = getopt_long(argc, argv, "+d"JAIL_OPT"c:C:R:r:lNvo:46", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'd':
 			debug++;
@@ -714,6 +636,9 @@ main(int argc, char **argv)
 			break;
 		case 'R':
 			reposdir = optarg;
+			break;
+		case 'r':
+			rootdir = optarg;
 			break;
 #ifdef HAVE_LIBJAIL
 		case 'j':
@@ -732,12 +657,20 @@ main(int argc, char **argv)
 		case 'o':
 			export_arg_option (optarg);
 			break;
+		case '4':
+			init_flags = PKG_INIT_FLAG_USE_IPV4;
+			break;
+		case '6':
+			init_flags = PKG_INIT_FLAG_USE_IPV6;
+			break;
 		default:
 			break;
 		}
 	}
 	argc -= optind;
 	argv += optind;
+
+	pkg_set_debug_level(debug);
 
 	if (version == 1)
 		show_version_info(version);
@@ -760,19 +693,23 @@ main(int argc, char **argv)
 	if (debug == 0 && version == 0)
 		start_process_worker(save_argv);
 
-#ifdef HAVE_ARC4RANDOM
+#ifdef HAVE_ARC4RANDOM_STIR
 	/* Ensure that random is stirred after a possible fork */
 	arc4random_stir();
 #endif
 
-	if (jail_str != NULL && chroot_path != NULL) {
+	if ((jail_str != NULL && (chroot_path != NULL || rootdir != NULL)) ||
+	    (chroot_path != NULL && (jail_str != NULL || rootdir != NULL)) ||
+	    (rootdir != NULL && (jail_str != NULL || chroot_path != NULL)))  {
 		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS,
-				"-j and -c cannot be used at the same time!\n");
+		    "-j, -c and/or -r cannot be used at the same time!\n");
 	}
 
-	if (chroot_path != NULL)
-		if (chroot(chroot_path) == -1)
-			errx(EX_SOFTWARE, "chroot failed!");
+	if (chroot_path != NULL) {
+		if (chroot(chroot_path) == -1) {
+			err(EX_SOFTWARE, "chroot failed");
+		}
+	}
 
 #ifdef HAVE_LIBJAIL
 	if (jail_str != NULL) {
@@ -789,15 +726,25 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
-	if (!pkg_compiled_for_same_os_major())
-		warnx("Warning: Major version upgrade detected.  Running \"pkg-static "
-		      "install -f pkg\" recommended");
+	if (rootdir != NULL) {
+		if (chdir(rootdir) == -1)
+			errx(EX_SOFTWARE, "chdir() failed");
+		pkg_set_rootdir(rootdir);
+	}
 
-	if (pkg_init(conffile, reposdir) != EPKG_OK)
+	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
+
+	if (debug > 0)
+		pkg_set_debug_level(debug);
 
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
+
+	if (!pkg_compiled_for_same_os_major())
+		warnx("Warning: Major OS version upgrade detected.  Running "
+		    "\"pkg-static install -f pkg\" recommended");
+
 
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
@@ -822,7 +769,7 @@ main(int argc, char **argv)
 				for (j = 0; j < n ; j++) {
 					c = malloc(sizeof(struct plugcmd));
 					reg(j, &c->name, &c->desc, &c->exec);
-					STAILQ_INSERT_TAIL(&plugins, c, next);
+					DL_APPEND(plugins, c);
 				}
 			}
 		}
@@ -888,7 +835,7 @@ main(int argc, char **argv)
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
-			STAILQ_FOREACH(c, &plugins, next) {
+			DL_FOREACH(plugins, c) {
 				if (strcmp(c->name, argv[0]) == 0) {
 					plugin_found = true;
 					ret = c->exec(argc, argv);

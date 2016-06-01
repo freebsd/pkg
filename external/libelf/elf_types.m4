@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: elf_types.m4 321 2009-03-07 16:59:14Z jkoshy $
+ * $Id$
  */
 
 /*

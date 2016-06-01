@@ -43,7 +43,11 @@ struct pkg_repo_it *pkg_repo_binary_query(struct pkg_repo *repo,
 	const char *pattern, match_t match);
 struct pkg_repo_it *pkg_repo_binary_shlib_provide(struct pkg_repo *repo,
 	const char *require);
+struct pkg_repo_it *pkg_repo_binary_provide(struct pkg_repo *repo,
+	const char *require);
 struct pkg_repo_it *pkg_repo_binary_shlib_require(struct pkg_repo *repo,
+	const char *provide);
+struct pkg_repo_it *pkg_repo_binary_require(struct pkg_repo *repo,
 	const char *provide);
 struct pkg_repo_it *pkg_repo_binary_search(struct pkg_repo *repo,
 	const char *pattern, match_t match,

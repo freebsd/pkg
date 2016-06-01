@@ -207,14 +207,16 @@ exec_info(int argc, char **argv)
 			break;
 		case 1:
 			if (strcasecmp(optarg, "json") == 0)
-			       opt |= INFO_RAW_JSON;
+				opt |= INFO_RAW_JSON;
 			else if (strcasecmp(optarg, "json-compact") == 0)
 				opt |= INFO_RAW_JSON_COMPACT;
 			else if (strcasecmp(optarg, "yaml") == 0)
 				opt |= INFO_RAW_YAML;
+			else if (strcasecmp(optarg, "ucl") == 0)
+				opt |= INFO_RAW_UCL;
 			else
 				errx(EX_USAGE, "Invalid format '%s' for the "
-				    "raw output, expecting json, json-compat "
+				    "raw output, expecting json, json-compact "
 				    "or yaml", optarg);
 			break;
 		default:
@@ -266,11 +268,13 @@ exec_info(int argc, char **argv)
 		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 			warn("cap_rights_limit() failed");
+			close(fd);
 			return (EX_SOFTWARE);
 		}
 
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
+			close(fd);
 			return (EX_SOFTWARE);
 		}
 #endif
@@ -278,7 +282,7 @@ exec_info(int argc, char **argv)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
 		if (opt & INFO_RAW) {
-			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
 				opt |= INFO_RAW_YAML;
 		}
 
@@ -514,8 +518,7 @@ exec_info(int argc, char **argv)
 	} while (i < argc);
 
 cleanup:
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

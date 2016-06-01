@@ -37,6 +37,14 @@
 
 #include <sqlite3.h>
 
+#include <bsd_compat.h>
+
+#ifdef HAVE_SYS_STATFS_H
+#include <sys/statfs.h>
+#elif defined(HAVE_SYS_STATVFS_H)
+#include <sys/statvfs.h>
+#endif
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -50,8 +58,8 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	char	 fpath[MAXPATHLEN];
 	sqlite3	*db = sqlite3_context_db_handle(ctx);
-	char	*path = dirname(sqlite3_db_filename(db, "main"));
-	char	 cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	char	*path = bsd_dirname(sqlite3_db_filename(db, "main"));
+	char	*cksum;
 
 	if (argc != 2) {
 		sqlite3_result_error(ctx, "file_exists needs two argument", -1);
@@ -61,11 +69,12 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	snprintf(fpath, sizeof(fpath), "%s/%s", path, sqlite3_value_text(argv[0]));
 
 	if (access(fpath, R_OK) == 0) {
-		sha256_file(fpath, cksum);
-		if (strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
+		cksum = pkg_checksum_file(fpath, PKG_HASH_TYPE_SHA256_HEX);
+		if (cksum && strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
 			sqlite3_result_int(ctx, 1);
 		else
 			sqlite3_result_int(ctx, 0);
+		free(cksum);
 	} else {
 		sqlite3_result_int(ctx, 0);
 	}
@@ -84,7 +93,7 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	}
 
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
-		*reposcver = sqlite3_column_int(stmt, 0);
+		*reposcver = sqlite3_column_int64(stmt, 0);
 		retcode = EPKG_OK;
 	} else {
 		*reposcver = -1;
@@ -124,16 +133,16 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 		}
 	}
 	if (!found) {
-		pkg_emit_error("Failed to %s \"%s\" repo schema "
-			" version %d (target version %d) "
+		pkg_emit_error("Unable to %s \"%s\" repo schema "
+			"version %d (target version %d) "
 			"-- change not found", updown, repo->name, version,
 			REPO_SCHEMA_VERSION);
 		return (EPKG_FATAL);
 	}
 
 	/* begin transaction */
-	in_trans = true;
-	ret = pkgdb_transaction_begin(sqlite, "SCHEMA");
+	if ((ret = pkgdb_transaction_begin_sqlite(sqlite, "SCHEMA")) == EPKG_OK)
+		in_trans = true;
 
 	/* apply change */
 	if (ret == EPKG_OK) {
@@ -155,9 +164,9 @@ pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
 	/* commit or rollback */
 	if (in_trans) {
 		if (ret != EPKG_OK)
-			pkgdb_transaction_rollback(sqlite, "SCHEMA");
+			pkgdb_transaction_rollback_sqlite(sqlite, "SCHEMA");
 
-		if (pkgdb_transaction_commit(sqlite, "SCHEMA") != EPKG_OK)
+		if (pkgdb_transaction_commit_sqlite(sqlite, "SCHEMA") != EPKG_OK)
 			ret = EPKG_FATAL;
 	}
 
@@ -294,14 +303,12 @@ int
 pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 {
 	char filepath[MAXPATHLEN];
-	struct statfs stfs;
 	const char *dbdir = NULL;
 	sqlite3 *sqlite = NULL;
 	int flags;
 	int64_t res;
 	struct pkg_repo_it *it;
 	struct pkg *pkg = NULL;
-	const char *digest;
 
 	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
@@ -309,10 +316,21 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
+#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	struct statvfs stfs;
+
+	if (statvfs(dbdir, &stfs) == 0) {
+		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
+			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+	}
+#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
+	struct statfs stfs;
+
 	if (statfs(dbdir, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 	}
+#endif
 
 	snprintf(filepath, sizeof(filepath), "%s/%s.meta",
 		dbdir, pkg_repo_name(repo));
@@ -383,8 +401,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 		return (EPKG_OK);
 	}
 	it->ops->free(it);
-	pkg_get(pkg, PKG_DIGEST, &digest);
-	if (digest == NULL || !pkg_checksum_is_valid(digest, strlen(digest))) {
+	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest))) {
 		pkg_emit_notice("Repository %s has incompatible checksum format, need to "
 			"re-create database", repo->name);
 		pkg_free(pkg);
@@ -401,7 +418,6 @@ int
 pkg_repo_binary_create(struct pkg_repo *repo)
 {
 	char filepath[MAXPATHLEN];
-	struct statfs stfs;
 	const char *dbdir = NULL;
 	sqlite3 *sqlite = NULL;
 	int retcode;
@@ -418,10 +434,21 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
+#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	struct statvfs stfs;
+
+	if (statvfs(dbdir, &stfs) == 0) {
+		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
+			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+	}
+#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
+	struct statfs stfs;
+
 	if (statfs(dbdir, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 	}
+#endif
 
 	/* Open for read/write/create */
 	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK)
@@ -432,8 +459,8 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	if (retcode == EPKG_OK) {
 		sqlite3_stmt *stmt;
 		const char sql[] = ""
-						"INSERT OR REPLACE INTO repodata (key, value) "
-						"VALUES (\"packagesite\", ?1);";
+			"INSERT OR REPLACE INTO repodata (key, value) "
+			"VALUES (\"packagesite\", ?1);";
 
 		/* register the packagesite */
 		if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
@@ -507,7 +534,7 @@ pkg_repo_binary_close(struct pkg_repo *repo, bool commit)
 		return (retcode);
 
 	if (commit) {
-		if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
+		if (pkgdb_transaction_commit_sqlite(sqlite, NULL) != SQLITE_OK)
 			retcode = EPKG_FATAL;
 	}
 

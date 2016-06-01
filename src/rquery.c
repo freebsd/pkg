@@ -118,9 +118,8 @@ exec_rquery(int argc, char **argv)
 	char			*condition = NULL;
 	const char		*portsdir;
 	struct sbuf		*sqlcond = NULL;
-	const unsigned int	 q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
+	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
 	const char		*reponame = NULL;
-	bool			 auto_update;
 	bool			 onematched = false;
 	bool			 old_quiet;
 	bool			 index_output = false;
@@ -202,28 +201,41 @@ exec_rquery(int argc, char **argv)
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
-		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK)
+		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK) {
+			sbuf_delete(sqlcond);
 			return (EX_USAGE);
+		}
 		sbuf_finish(sqlcond);
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
+		if (sqlcond != NULL)
+			sbuf_delete(sqlcond);
 		return (EX_NOPERM);
-	} else if (ret != EPKG_OK)
+	} else if (ret != EPKG_OK) {
+		if (sqlcond != NULL)
+			sbuf_delete(sqlcond);
 		return (EX_IOERR);
+	}
 
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;
 	quiet = true;
-	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK)
+	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK) {
+		if (sqlcond != NULL)
+			sbuf_delete(sqlcond);
 		return (ret);
+	}
 	quiet = old_quiet;
 
 	ret = pkgdb_open_all(&db, PKGDB_REMOTE, reponame);
-	if (ret != EPKG_OK)
+	if (ret != EPKG_OK) {
+		if (sqlcond != NULL)
+			sbuf_delete(sqlcond);
 		return (EX_IOERR);
+	}
 
 	if (index_output)
 		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
@@ -232,8 +244,11 @@ exec_rquery(int argc, char **argv)
 		const char *condition_sql = NULL;
 		if (match == MATCH_CONDITION && sqlcond)
 			condition_sql = sbuf_data(sqlcond);
-		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL)
+		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL) {
+			if (sqlcond != NULL)
+				sbuf_delete(sqlcond);
 			return (EX_IOERR);
+		}
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			if (index_output)
@@ -250,8 +265,11 @@ exec_rquery(int argc, char **argv)
 		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL)
+			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL) {
+				if (sqlcond != NULL)
+					sbuf_delete(sqlcond);
 				return (EX_IOERR);
+			}
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 				onematched = true;
@@ -272,6 +290,8 @@ exec_rquery(int argc, char **argv)
 			retcode = EX_UNAVAILABLE;
 	}
 
+	if (sqlcond != NULL)
+		sbuf_delete(sqlcond);
 	pkg_free(pkg);
 	pkgdb_close(db);
 

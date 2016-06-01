@@ -50,16 +50,13 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 	const char *rc;
 	size_t len = 0;
 	int ret = 0;
-	const char *prefix;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix);
-
-	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", prefix);
+	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", pkg->prefix);
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, pkg_file_path(file), len) == 0) {
-			rcfile = pkg_file_path(file);
+		if (strncmp(rc_d_path, file->path, len) == 0) {
+			rcfile = file->path;
 			rcfile += len;
 			rc = strrchr(rcfile, '/');
 			rc++;

@@ -2,9 +2,9 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
- * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -129,7 +129,7 @@ exec_fetch(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-	
+
 	if (argc < 1 && match != MATCH_ALL && !upgrades_for_installed) {
 		usage_fetch();
 		return (EX_USAGE);
@@ -200,23 +200,25 @@ exec_fetch(int argc, char **argv)
 		goto cleanup;
 
 	if (!quiet) {
-		rc = print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
 
-		if (rc != 0)
+		rc = print_jobs_summary(jobs,
+		    "The following packages will be fetched:\n\n");
+
+		if (rc != 0) {
 			rc = query_yesno(false, "\nProceed with fetching "
-			    "packages? [y/N]: ");
-		else {
+					"packages? ");
+		} else {
 			printf("No packages are required to be fetched.\n");
 			rc = query_yesno(false, "Check the integrity of packages "
-							"downloaded? [y/N]: ");
+							"downloaded? ");
 			csum_only = true;
 		}
 	}
 	else {
 		rc = true;
 	}
-	
-	if (!rc || pkg_jobs_apply(jobs) != EPKG_OK)
+
+	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
 	if (csum_only && !quiet)

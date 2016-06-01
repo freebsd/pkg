@@ -2,8 +2,9 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -87,7 +88,7 @@ exec_autoremove(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (dry_run) 
+	if (dry_run)
 		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	else
 		retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
@@ -136,9 +137,9 @@ exec_autoremove(int argc, char **argv)
 				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
 		if (!dry_run)
 			rc = query_yesno(false,
-		            "\nProceed with deinstalling packages? [y/N]: ");
+		            "\nProceed with deinstalling packages? ");
 	}
-	if (!rc || dry_run || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
+	if ((yes || rc ) && !dry_run && ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)) {
 		goto cleanup;
 	}
 

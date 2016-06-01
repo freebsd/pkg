@@ -36,12 +36,14 @@
 #include <sys/stat.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <inttypes.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+#include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -136,7 +138,11 @@ pkg_sshserve(int fd)
 #else
 		if (restricted != NULL) {
 #endif
-			chdir(restricted);
+			if (chdir(restricted)) {
+				printf("ko: chdir failed (%s)\n", restricted);
+				continue;
+			}
+
 			if (realpath(file, fpath) == NULL ||
 			    realpath(restricted, rpath) == NULL ||
 			    strncmp(fpath, rpath, strlen(rpath)) != 0) {

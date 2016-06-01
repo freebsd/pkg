@@ -1,0 +1,4 @@
+syntax(2)
+test_suite("pkg")
+
+include("tests/Kyuafile")

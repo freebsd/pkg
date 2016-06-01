@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -28,6 +28,7 @@
 
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <stddef.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -36,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ucl.h>
+#include <openssl/sha.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -57,11 +59,17 @@
 #define PKG_SHLIBS_PROVIDED	-15
 #define PKG_CONFLICTS		-17
 #define PKG_PROVIDES		-18
+#define PKG_REQUIRES		-19
 
-static int pkg_string(struct pkg *, const ucl_object_t *, int);
-static int pkg_obj(struct pkg *, const ucl_object_t *, int);
-static int pkg_array(struct pkg *, const ucl_object_t *, int);
-static int pkg_int(struct pkg *, const ucl_object_t *, int);
+#define PKG_MESSAGE_LEGACY	1
+#define PKG_MESSAGE_NEW 2
+
+static int pkg_string(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_obj(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_array(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_int(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_boolean(struct pkg *, const ucl_object_t *, uint32_t);
+static int pkg_message(struct pkg *, const ucl_object_t *, uint32_t);
 static int pkg_set_deps_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_files_from_object(struct pkg *, const ucl_object_t *);
 static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
@@ -69,64 +77,139 @@ static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
 /*
  * Keep sorted
  */
-static struct manifest_key {
+#define TYPE_SHIFT(x) (1 << (x))
+#define STRING_FLAG_LICENSE (1U << 31)
+#define STRING_FLAG_URLDECODE (1U << 30)
+#define STRING_FLAG_MASK ~(STRING_FLAG_LICENSE|STRING_FLAG_URLDECODE)
+
+static struct pkg_manifest_key {
 	const char *key;
-	int type;
+	uint32_t type;
 	uint16_t valid_type;
-	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
+	int (*parse_data)(struct pkg *, const ucl_object_t *, uint32_t);
+	UT_hash_handle hh;
 } manifest_keys[] = {
-	{ "annotations",         PKG_ANNOTATIONS,         UCL_OBJECT, pkg_obj},
-	{ "arch",                PKG_ARCH,                UCL_STRING, pkg_string},
-	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
-	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
-	{ "conflicts",           PKG_CONFLICTS,           UCL_ARRAY,  pkg_array},
-	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_obj},
-	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
-	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_obj},
-	{ "dirs",                PKG_DIRS,                UCL_ARRAY,  pkg_array},
-	{ "files",               PKG_FILES,               UCL_OBJECT, pkg_obj},
-	{ "flatsize",            PKG_FLATSIZE,            UCL_INT,    pkg_int},
-	{ "groups",              PKG_GROUPS,              UCL_OBJECT, pkg_obj},
-	{ "groups",              PKG_GROUPS,              UCL_ARRAY,  pkg_array},
-	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
-	{ "licenses",            PKG_LICENSES,            UCL_ARRAY,  pkg_array},
-	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
-	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
-	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
-	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
-	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_obj},
-	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_OBJECT, pkg_obj},
-	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_OBJECT, pkg_obj},
-	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
-	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
-	{ "repopath",            PKG_REPOPATH,            UCL_STRING, pkg_string},
-	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
-	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
-	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
-	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_obj},
-	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
-	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
-	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array},
-	{ "sum",                 PKG_CKSUM,               UCL_STRING, pkg_string},
-	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_obj},
-	{ "users",               PKG_USERS,               UCL_ARRAY,  pkg_array},
-	{ "version",             PKG_VERSION,             UCL_STRING, pkg_string},
-	{ "version",             PKG_VERSION,             UCL_INT,    pkg_string},
-	{ "www",                 PKG_WWW,                 UCL_STRING, pkg_string},
+	{ "annotations",         PKG_ANNOTATIONS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "abi",                 offsetof(struct pkg, abi),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "arch",                offsetof(struct pkg, arch),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "categories",          PKG_CATEGORIES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "comment",             offsetof(struct pkg, comment),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "conflicts",           PKG_CONFLICTS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "config",              PKG_CONFIG_FILES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "dep_formula",         offsetof(struct pkg, dep_formula),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "deps",                PKG_DEPS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "desc",                offsetof(struct pkg, desc) | STRING_FLAG_URLDECODE,
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "directories",         PKG_DIRECTORIES,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "dirs",                PKG_DIRS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "files",               PKG_FILES,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "flatsize",            offsetof(struct pkg, flatsize),
+			TYPE_SHIFT(UCL_INT),    pkg_int},
+
+	{ "groups",              PKG_GROUPS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "licenselogic",        offsetof(struct pkg, licenselogic) | STRING_FLAG_LICENSE,
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "licenses",            PKG_LICENSES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "maintainer",          offsetof(struct pkg, maintainer),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "messages",            PKG_MESSAGE_NEW,
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_ARRAY), pkg_message},
+
+	{ "message",             PKG_MESSAGE_LEGACY,
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_ARRAY), pkg_message},
+
+	{ "name",                offsetof(struct pkg, name),
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
+
+	{ "options",             PKG_OPTIONS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "option_defaults",     PKG_OPTION_DEFAULTS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "origin",              offsetof(struct pkg, origin),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "path",                offsetof(struct pkg, repopath),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "repopath",            offsetof(struct pkg, repopath),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "pkgsize",             offsetof(struct pkg, pkgsize),
+			TYPE_SHIFT(UCL_INT),    pkg_int},
+
+	{ "prefix",              offsetof(struct pkg, prefix),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "provides",            PKG_PROVIDES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "requires",            PKG_REQUIRES,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "scripts",             PKG_SCRIPTS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
+
+	{ "shlibs",              PKG_SHLIBS_REQUIRED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array}, /* Backwards compat with 1.0.x packages */
+
+	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "sum",                 offsetof(struct pkg, sum),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
+	{ "users",               PKG_USERS,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "version",             offsetof(struct pkg, version),
+			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
+
+	{ "vital",            offsetof(struct pkg, vital),
+			TYPE_SHIFT(UCL_BOOLEAN),    pkg_boolean},
+
+	{ "www",                 offsetof(struct pkg, www),
+			TYPE_SHIFT(UCL_STRING), pkg_string},
+
 	{ NULL, -99, -99, NULL}
-};
-
-struct dataparser {
-	uint16_t type;
-	int (*parse_data)(struct pkg *, const ucl_object_t *, int);
-	UT_hash_handle hh;
-};
-
-struct pkg_manifest_key {
-	const char *key;
-	int type;
-	struct dataparser *parser;
-	UT_hash_handle hh;
 };
 
 int
@@ -134,7 +217,6 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 {
 	int i;
 	struct pkg_manifest_key *k;
-	struct dataparser *dp;
 
 	if (*key != NULL)
 		return (EPKG_OK);
@@ -145,24 +227,18 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 			k = calloc(1, sizeof(struct pkg_manifest_key));
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
+			k->valid_type = manifest_keys[i].valid_type;
+			k->parse_data = manifest_keys[i].parse_data;
 			HASH_ADD_KEYPTR(hh, *key, k->key, strlen(k->key), k);
 		}
-		HASH_FIND_UCLT(k->parser, &manifest_keys[i].valid_type, dp);
-		if (dp != NULL)
-			continue;
-		dp = calloc(1, sizeof(struct dataparser));
-		dp->type = manifest_keys[i].valid_type;
-		dp->parse_data = manifest_keys[i].parse_data;
-		HASH_ADD_UCLT(k->parser, type, dp);
 	}
 
 	return (EPKG_OK);
 }
 
 static void
-pmk_free(struct pkg_manifest_key *key) {
-	HASH_FREE(key->parser, free);
-
+pmk_free(struct pkg_manifest_key *key)
+{
 	free(key);
 }
 
@@ -261,53 +337,73 @@ script_type_str(const char *str)
 }
 
 static int
-pkg_string(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 {
-	int ret = EPKG_OK;
 	const char *str;
+	char **dest;
 	struct sbuf *buf = NULL;
 
 	str = ucl_object_tostring_forced(obj);
 
-	switch (attr)
-	{
-	case PKG_LICENSE_LOGIC:
+	if (offset & STRING_FLAG_LICENSE) {
 		if (!strcmp(str, "single"))
-			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
+			pkg->licenselogic = LICENSE_SINGLE;
 		else if (!strcmp(str, "or") ||
-		         !strcmp(str, "dual"))
-			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_OR);
+				!strcmp(str, "dual"))
+			pkg->licenselogic = LICENSE_OR;
 		else if (!strcmp(str, "and") ||
-		         !strcmp(str, "multi"))
-			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_AND);
+				!strcmp(str, "multi"))
+			pkg->licenselogic = LICENSE_AND;
 		else {
 			pkg_emit_error("Unknown license logic: %s", str);
-			ret = EPKG_FATAL;
+			return (EPKG_FATAL);
 		}
-		break;
-	default:
-		if (attr == PKG_DESC) {
+	}
+	else {
+
+		if (offset & STRING_FLAG_URLDECODE) {
 			urldecode(str, &buf);
 			sbuf_finish(buf);
 			str = sbuf_data(buf);
 		}
-		ret = pkg_set(pkg, attr, str);
-		if (buf != NULL)
+
+		/* Remove flags from the offset */
+		offset &= STRING_FLAG_MASK;
+		dest = (char **) ((unsigned char *)pkg + offset);
+		*dest = strdup(str);
+
+		if (buf) {
 			sbuf_delete(buf);
-		break;
+		}
 	}
 
-	return (ret);
+	return (EPKG_OK);
 }
 
 static int
-pkg_int(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_int(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 {
-	return (pkg_set(pkg, attr, ucl_object_toint(obj)));
+	int64_t *dest;
+
+	dest = (int64_t *)((unsigned char *)pkg + offset);
+	*dest = ucl_object_toint(obj);
+
+	return (EPKG_OK);
 }
 
 static int
-pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_boolean(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
+{
+	bool *dest;
+
+	dest = (bool *)((unsigned char *)pkg + offset);
+	*dest = ucl_object_toboolean(obj);
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
@@ -319,13 +415,15 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed category");
 			else
-				pkg_addcategory(pkg, ucl_object_tostring(cur));
+				pkg_addstring(&pkg->categories,
+				    ucl_object_tostring(cur), "category");
 			break;
 		case PKG_LICENSES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed license");
 			else
-				pkg_addlicense(pkg, ucl_object_tostring(cur));
+				pkg_addstring(&pkg->licenses,
+				    ucl_object_tostring(cur), "license");
 			break;
 		case PKG_USERS:
 			if (cur->type == UCL_STRING)
@@ -345,7 +443,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			break;
 		case PKG_DIRS:
 			if (cur->type == UCL_STRING)
-				pkg_adddir(pkg, ucl_object_tostring(cur), 1, false);
+				pkg_adddir(pkg, ucl_object_tostring(cur), false);
 			else if (cur->type == UCL_OBJECT)
 				pkg_obj(pkg, cur, attr);
 			else
@@ -375,6 +473,18 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			else
 				pkg_addprovide(pkg, ucl_object_tostring(cur));
 			break;
+		case PKG_CONFIG_FILES:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed config file name");
+			else
+				pkg_addconfig_file(pkg, ucl_object_tostring(cur), NULL);
+			break;
+		case PKG_REQUIRES:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed require name");
+			else
+				pkg_addrequire(pkg, ucl_object_tostring(cur));
+			break;
 		}
 	}
 
@@ -382,7 +492,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, int attr)
 }
 
 static int
-pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
+pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
 	struct sbuf *tmp = NULL;
 	const ucl_object_t *cur;
@@ -411,32 +521,15 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			else
 				pkg_set_dirs_from_object(pkg, cur);
 			break;
-		case PKG_USERS:
-			if (cur->type == UCL_STRING)
-				pkg_adduid(pkg, key, ucl_object_tostring(cur));
-			else
-				pkg_emit_error("Skipping malformed users %s",
-				    key);
-			break;
-		case PKG_GROUPS:
-			if (cur->type == UCL_STRING)
-				pkg_addgid(pkg, key, ucl_object_tostring(cur));
-			else
-				pkg_emit_error("Skipping malformed groups %s",
-				    key);
-			break;
 		case PKG_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {
 				urldecode(key, &tmp);
-				pkg_adddir(pkg, sbuf_data(tmp), ucl_object_toboolean(cur), false);
+				pkg_adddir(pkg, sbuf_data(tmp), false);
 			} else if (cur->type == UCL_OBJECT) {
 				pkg_set_dirs_from_object(pkg, cur);
 			} else if (cur->type == UCL_STRING) {
 				urldecode(key, &tmp);
-				if (ucl_object_tostring(cur)[0] == 'y')
-					pkg_adddir(pkg, sbuf_data(tmp), 1, false);
-				else
-					pkg_adddir(pkg, sbuf_data(tmp), 0, false);
+				pkg_adddir(pkg, sbuf_data(tmp), false);
 			} else {
 				pkg_emit_error("Skipping malformed directories %s",
 				    key);
@@ -446,7 +539,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 			if (cur->type == UCL_STRING) {
 				buf = ucl_object_tolstring(cur, &len);
 				urldecode(key, &tmp);
-				pkg_addfile(pkg, sbuf_get(tmp), len == 64 ? buf : NULL, false);
+				pkg_addfile(pkg, sbuf_data(tmp), len >= 2 ? buf : NULL, false);
 			} else if (cur->type == UCL_OBJECT)
 				pkg_set_files_from_object(pkg, cur);
 			else
@@ -500,7 +593,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 				pkg_emit_error("Skipping malformed annotation %s",
 				    key);
 			else
-				pkg_addannotation(pkg, key, ucl_object_tostring(cur));
+				pkg_kv_add(&pkg->annotations, key, ucl_object_tostring(cur), "annotation");
 			break;
 		}
 	}
@@ -508,6 +601,12 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, int attr)
 	sbuf_free(tmp);
 
 	return (EPKG_OK);
+}
+
+static int
+pkg_message(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
+{
+	return pkg_message_from_ucl(pkg, obj);
 }
 
 static int
@@ -546,12 +645,13 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 		} else {
-			pkg_emit_error("Skipping unknown key for file(%s): %s",
-			    sbuf_data(fname), ucl_object_tostring(cur));
+			pkg_debug(1, "Skipping unknown key for file(%s): %s",
+			    sbuf_data(fname), key);
 		}
 	}
 
-	pkg_addfile_attr(pkg, sbuf_data(fname), sum, uname, gname, perm, false);
+	pkg_addfile_attr(pkg, sbuf_data(fname), sum, uname, gname, perm, 0,
+	    false);
 	sbuf_delete(fname);
 
 	return (EPKG_OK);
@@ -566,7 +666,6 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
-	bool try = false;
 	struct sbuf *dirname = NULL;
 	const char *key, *okey;
 
@@ -590,14 +689,14 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 		} else if (!strcasecmp(key, "try") && cur->type == UCL_BOOLEAN) {
-				try = ucl_object_toint(cur);
+			/* ignore on purpose : compatibility*/
 		} else {
-			pkg_emit_error("Skipping unknown key for dir(%s): %s",
+			pkg_debug(1, "Skipping unknown key for dir(%s): %s",
 			    sbuf_data(dirname), key);
 		}
 	}
 
-	pkg_adddir_attr(pkg, sbuf_data(dirname), uname, gname, perm, try, false);
+	pkg_adddir_attr(pkg, sbuf_data(dirname), uname, gname, perm, 0, false);
 	sbuf_delete(dirname);
 
 	return (EPKG_OK);
@@ -638,7 +737,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			if (strcasecmp(key, "version") == 0)
 				version = ucl_object_tostring(cur);
 		}
-		if (origin != NULL && version != NULL)
+		if (origin != NULL)
 			pkg_adddep(pkg, okey, origin, version, false);
 		else
 			pkg_emit_error("Skipping malformed dependency %s", okey);
@@ -653,7 +752,6 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	struct pkg_manifest_key *selected_key;
-	struct dataparser *dp;
 	const char *key;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
@@ -663,29 +761,52 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		pkg_debug(3, "Manifest: found key: '%s'", key);
 		HASH_FIND_STR(keys, key, selected_key);
 		if (selected_key != NULL) {
-			HASH_FIND_UCLT(selected_key->parser, &cur->type, dp);
-			if (dp != NULL) {
-				pkg_debug(3, "Manifest: key is valid");
-				dp->parse_data(pkg, cur, selected_key->type);
+			if (TYPE_SHIFT(ucl_object_type(cur)) & selected_key->valid_type) {
+				selected_key->parse_data(pkg, cur, selected_key->type);
+			} else {
+				pkg_emit_error("Skipping malformed key '%s'", key);
 			}
+		} else {
+			pkg_debug(1, "Skipping unknown key '%s'", key);
 		}
 	}
 
 	return (EPKG_OK);
 }
 
+static int
+pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_key *keys)
+{
+	const ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
+	struct pkg_manifest_key *sk;
+	const char *key;
+
+	/* do a minimal validation */
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+		HASH_FIND_STR(keys, key, sk);
+		if (sk != NULL) {
+			if (!(sk->valid_type & TYPE_SHIFT(ucl_object_type(cur)))) {
+				pkg_emit_error("Bad format in manifest for key:"
+						" %s", key);
+				ucl_object_unref(obj);
+				return (EPKG_FATAL);
+			}
+		}
+	}
+
+	return (parse_manifest(pkg, keys, obj));
+}
+
 int
 pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_key *keys)
 {
 	struct ucl_parser *p = NULL;
-	const ucl_object_t *cur;
 	ucl_object_t *obj = NULL;
-	ucl_object_iter_t it = NULL;
 	int rc;
-	struct pkg_manifest_key *sk;
-	struct dataparser *dp;
-	bool fallback = false;
-	const char *key;
 
 	assert(pkg != NULL);
 	assert(buf != NULL);
@@ -693,46 +814,22 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
 
 	p = ucl_parser_new(0);
-	if (!ucl_parser_add_chunk(p, buf, len))
-		fallback = true;
-
-	if (!fallback) {
-		obj = ucl_parser_get_object(p);
-		if (obj != NULL) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				key = ucl_object_key(cur);
-				if (key == NULL)
-					continue;
-				HASH_FIND_STR(keys, key, sk);
-				if (sk != NULL) {
-					HASH_FIND_UCLT(sk->parser, &cur->type, dp);
-					if (dp == NULL) {
-						fallback = true;
-						break;
-					}
-				}
-			}
-		} else {
-			fallback = true;
-		}
-	}
-
-	if (fallback) {
-		pkg_debug(2, "Falling back on yaml");
+	if (!ucl_parser_add_chunk(p, buf, len)) {
+		pkg_emit_error("Error parsing manifest: %s",
+		    ucl_parser_get_error(p));
 		ucl_parser_free(p);
-		p = NULL;
-		if (obj != NULL)
-			ucl_object_unref(obj);
-		obj = yaml_to_ucl(NULL, buf, len);
-		if (obj == NULL)
-			return (EPKG_FATAL);
+
+		return (EPKG_FATAL);
 	}
 
-	rc = parse_manifest(pkg, keys, obj);
+	if ((obj = ucl_parser_get_object(p)) == NULL) {
+		ucl_parser_free(p);
+		return (EPKG_FATAL);
+	}
 
+	ucl_parser_free(p);
+	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
 	ucl_object_unref(obj);
-	if (p != NULL)
-		ucl_parser_free(p);
 
 	return (rc);
 }
@@ -765,10 +862,8 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	}
 
 	obj = ucl_parser_get_object(p);
-	rc = parse_manifest(pkg, keys, obj);
-
+	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
 	ucl_parser_free(p);
-	ucl_object_unref(obj);
 	free(data);
 
 	return (rc);
@@ -778,14 +873,8 @@ int
 pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_key *keys)
 {
 	struct ucl_parser *p = NULL;
-	const ucl_object_t *cur;
 	ucl_object_t *obj = NULL;
-	ucl_object_iter_t it = NULL;
 	int rc;
-	bool fallback = false;
-	struct pkg_manifest_key *sk;
-	struct dataparser *dp;
-	const char *key;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
@@ -795,50 +884,19 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	errno = 0;
 	p = ucl_parser_new(0);
 	if (!ucl_parser_add_file(p, file)) {
-		if (errno == ENOENT) {
-			ucl_parser_free(p);
-			return (EPKG_FATAL);
-		}
-		fallback = true;
-	}
-
-	if (!fallback) {
-		obj = ucl_parser_get_object(p);
-		if (obj != NULL) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				key = ucl_object_key(cur);
-				if (key == NULL)
-					continue;
-				HASH_FIND_STR(keys, key, sk);
-				if (sk != NULL) {
-					HASH_FIND_UCLT(sk->parser, &cur->type, dp);
-					if (dp == NULL) {
-						fallback = true;
-						break;
-					}
-				}
-			}
-
-		} else {
-			fallback = true;
-		}
-	}
-
-	if (fallback) {
-		pkg_debug(2, "Falling back on yaml");
+		pkg_emit_error("Error parsing manifest: %s",
+		    ucl_parser_get_error(p));
 		ucl_parser_free(p);
-		p = NULL;
-		if (obj != NULL)
-			ucl_object_unref(obj);
-		obj = yaml_to_ucl(file, NULL, 0);
-		if (obj == NULL)
-			return (EPKG_FATAL);
+		return (EPKG_FATAL);
 	}
 
-	rc = parse_manifest(pkg, keys, obj);
-
-	if (p != NULL)
+	if ((obj = ucl_parser_get_object(p)) == NULL) {
 		ucl_parser_free(p);
+		return (EPKG_FATAL);
+	}
+
+	ucl_parser_free(p);
+	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
 	ucl_object_unref(obj);
 
 	return (rc);
@@ -849,18 +907,16 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 {
 	ucl_object_t *obj = NULL, *seq;
 	struct pkg_file *file = NULL;
-	const char *name, *origin, *version;
 	struct sbuf *b = NULL;
 
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin, PKG_VERSION, &version);
 	obj = ucl_object_typed_new(UCL_OBJECT);
-	ucl_object_insert_key(obj, ucl_object_fromstring(origin), "origin", 6, false);
-	ucl_object_insert_key(obj, ucl_object_fromstring(name), "name", 4, false);
-	ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->origin), "origin", 6, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->name), "name", 4, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->version), "version", 7, false);
 
 	seq = NULL;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		urlencode(pkg_file_path(file), &b);
+		urlencode(file->path, &b);
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
 		ucl_array_append(seq, ucl_object_fromlstring(sbuf_data(b), sbuf_len(b)));
@@ -881,68 +937,58 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 pkg_object*
 pkg_emit_object(struct pkg *pkg, short flags)
 {
+	struct pkg_kv		*kv;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
 	struct pkg_dir		*dir      = NULL;
-	struct pkg_user		*user     = NULL;
-	struct pkg_group	*group    = NULL;
-	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_conflict	*conflict = NULL;
-	struct pkg_provide	*provide  = NULL;
+	struct pkg_config_file	*cf       = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
+	char			*buf;
 	int i;
-	const char *comment, *desc, *message, *repopath;
 	const char *script_types = NULL;
-	lic_t licenselogic;
-	int64_t pkgsize;
-	ucl_object_iter_t it = NULL;
-	ucl_object_t *annotations, *categories, *licenses;
+	char legacyarch[BUFSIZ];
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
-	const ucl_object_t *o;
-	const char *key;
-	int recopies[] = {
-		PKG_NAME,
-		PKG_ORIGIN,
-		PKG_VERSION,
-		PKG_ARCH,
-		PKG_MAINTAINER,
-		PKG_PREFIX,
-		PKG_WWW,
-		PKG_CKSUM,
-		PKG_FLATSIZE,
-		-1
-	};
-	size_t key_len;
 
-	pkg_get(pkg, PKG_COMMENT, &comment, PKG_LICENSE_LOGIC, &licenselogic,
-	    PKG_DESC, &desc, PKG_MESSAGE, &message, PKG_PKGSIZE, &pkgsize,
-	    PKG_ANNOTATIONS, &annotations, PKG_LICENSES, &licenses,
-	    PKG_CATEGORIES, &categories, PKG_REPOPATH, &repopath);
-
+	if (pkg->abi == NULL && pkg->arch != NULL)
+		pkg->abi = strdup(pkg->arch);
+	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
+	pkg->arch = strdup(legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
-	for (i = 0; recopies[i] != -1; i++) {
-		key = pkg_keys[recopies[i]].name;
-		if ((o = ucl_object_find_key(pkg->fields, key)))
-			ucl_object_insert_key(top, ucl_object_ref(o),
-			    key, strlen(key), false);
-	}
-	if (comment)
-		ucl_object_insert_key(top, ucl_object_fromstring_common(comment, 0,
-			UCL_STRING_TRIM), "comment", 7, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
+	    UCL_STRING_TRIM), "name", 4, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->origin, 0,
+	    UCL_STRING_TRIM), "origin", 6, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->version, 0,
+	    UCL_STRING_TRIM), "version", 7, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->comment, 0,
+	    UCL_STRING_TRIM), "comment", 7, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->maintainer, 0,
+	    UCL_STRING_TRIM), "maintainer", 10, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->www, 0,
+	    UCL_STRING_TRIM), "www", 3, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->abi, 0,
+	    UCL_STRING_TRIM), "abi", 3, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->arch, 0,
+	    UCL_STRING_TRIM), "arch", 4, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->prefix, 0,
+	    UCL_STRING_TRIM), "prefix", 6, false);
+	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->sum, 0,
+	    UCL_STRING_TRIM), "sum", 3, false);
+	ucl_object_insert_key(top, ucl_object_fromint(pkg->flatsize), "flatsize", 8, false);
 	/*
 	 * XXX: dirty hack to be compatible with pkg 1.2
 	 */
-	if (repopath) {
+	if (pkg->repopath) {
 		ucl_object_insert_key(top,
-			ucl_object_fromstring(repopath), "path", sizeof("path") - 1, false);
+			ucl_object_fromstring(pkg->repopath), "path", 4, false);
 		ucl_object_insert_key(top,
-			ucl_object_fromstring(repopath), "repopath", sizeof("repopath") - 1,
-			false);
+			ucl_object_fromstring(pkg->repopath), "repopath", 8, false);
 	}
 
-	switch (licenselogic) {
+	switch (pkg->licenselogic) {
 	case LICENSE_SINGLE:
 		ucl_object_insert_key(top, ucl_object_fromlstring("single", 6), "licenselogic", 12, false);
 		break;
@@ -955,15 +1001,23 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 
 	pkg_debug(4, "Emitting licenses");
-	if (licenses != NULL)
-		ucl_object_insert_key(top,
-		    ucl_object_ref(licenses), "licenses", 8, false);
+	seq = NULL;
+	kh_each_value(pkg->licenses, buf, {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(buf));
+	});
+	if (seq)
+		ucl_object_insert_key(top, seq, "licenses", 8, false);
 
-	if (pkgsize > 0)
-		ucl_object_insert_key(top, ucl_object_fromint(pkgsize), "pkgsize", 7, false);
+	if (pkg->pkgsize > 0)
+		ucl_object_insert_key(top, ucl_object_fromint(pkg->pkgsize), "pkgsize", 7, false);
 
-	if (desc != NULL) {
-		urlencode(desc, &tmpsbuf);
+	if (pkg->vital)
+		ucl_object_insert_key(top, ucl_object_frombool(pkg->vital), "vital", 5, false);
+
+	if (pkg->desc != NULL) {
+		urlencode(pkg->desc, &tmpsbuf);
 		ucl_object_insert_key(top,
 			ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
 			"desc", 4, false);
@@ -973,145 +1027,166 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	map = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		submap = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_origin(dep)), "origin", 6, false);
-		ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_version(dep)), "version", 7, false);
+		ucl_object_insert_key(submap, ucl_object_fromstring(dep->origin), "origin", 6, false);
+		ucl_object_insert_key(submap, ucl_object_fromstring(dep->version), "version", 7, false);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(map, submap, pkg_dep_name(dep), 0, false);
+		ucl_object_insert_key(map, submap, dep->name, 0, false);
 	}
 	if (map)
 		ucl_object_insert_key(top, map, "deps", 4, false);
 
 	pkg_debug(4, "Emitting categories");
-	if (categories != NULL)
-		ucl_object_insert_key(top,
-		    ucl_object_ref(categories), "categories", 10, false);
+	seq = NULL;
+	kh_each_value(pkg->categories, buf, {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(buf));
+	});
+	if (seq)
+		ucl_object_insert_key(top, seq, "categories", 10, false);
 
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
-	while (pkg_users(pkg, &user) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_users(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_user_name(user)));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "users", 5, false);
 
 	pkg_debug(4, "Emitting groups");
 	seq = NULL;
-	while (pkg_groups(pkg, &group) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_groups(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_group_name(group)));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "groups", 6, false);
 
 	pkg_debug(4, "Emitting required");
 	seq = NULL;
-	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
 
 	pkg_debug(4, "Emitting shlibs_provided");
 	seq = NULL;
-	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+	buf = NULL;
+	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
 
 	pkg_debug(4, "Emitting conflicts");
-	map = NULL;
+	seq = NULL;
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		if (map == NULL)
-			map = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_option_value(option)),
-		    pkg_conflict_uniqueid(conflict), 0, false);
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(conflict->uid));
 	}
-	if (map)
-		ucl_object_insert_key(top, map, "conflicts", 9, false);
+	if (seq)
+		ucl_object_insert_key(top, seq, "conflicts", 9, false);
 
 	pkg_debug(4, "Emitting provides");
-	map = NULL;
-	while (pkg_provides(pkg, &provide) == EPKG_OK) {
-		if (map == NULL)
-			map = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_option_value(option)),
-		    pkg_provide_name(provide), 0, false);
+	seq = NULL;
+	buf = NULL;
+	while (pkg_provides(pkg, &buf) == EPKG_OK) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(buf));
 	}
-	if (map)
-		ucl_object_insert_key(top, map, "provides", 8, false);
+	if (seq)
+		ucl_object_insert_key(top, seq, "provides", 8, false);
+
+	pkg_debug(4, "Emitting requires");
+	seq = NULL;
+	buf = NULL;
+	while (pkg_requires(pkg, &buf) == EPKG_OK) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(buf));
+	}
+	if (seq)
+		ucl_object_insert_key(top, seq, "requires", 8, false);
 
 	pkg_debug(4, "Emitting options");
 	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		pkg_debug(2, "Emiting option: %s", pkg_option_value(option));
+		pkg_debug(2, "Emiting option: %s", option->value);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_option_value(option)),
-		    pkg_option_opt(option), 0, false);
+		    ucl_object_fromstring(option->value),
+		    option->key, 0, false);
 	}
 	if (map)
 		ucl_object_insert_key(top, map, "options", 7, false);
 
-	if (annotations != NULL) {
-		it = NULL;
-		map = ucl_object_typed_new(UCL_OBJECT);
+	map = NULL;
+	kv = NULL;
+	LL_FOREACH(pkg->annotations, kv) {
+		if (map == NULL)
+			map = ucl_object_typed_new(UCL_OBJECT);
 		/* Add annotations except for internal ones. */
-		while ((o = ucl_iterate_object(annotations, &it, true))) {
-			if ((key = ucl_object_keyl(o, &key_len)) == NULL)
-				continue;
-			/* Internal annotations. */
-			if (strcmp(key, "repository") == 0 ||
-			    strcmp(key, "relocated") == 0)
-				continue;
-			ucl_object_insert_key(map, ucl_object_ref(o), key,
-			    key_len, true);
-		}
-		ucl_object_insert_key(top, map, "annotations", 11, false);
+		if (strcmp(kv->key, "repository") == 0 ||
+		    strcmp(kv->key, "relocated") == 0)
+			continue;
+		ucl_object_insert_key(map, ucl_object_fromstring(kv->value),
+		    kv->key, strlen(kv->key), true);
 	}
+	if (map)
+		ucl_object_insert_key(top, map, "annotations", 11, false);
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
 			pkg_debug(4, "Emitting files");
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
-				const char *pkg_sum = pkg_file_cksum(file);
+				if (file->sum == NULL)
+					file->sum = strdup("-");
 
-				if (pkg_sum == NULL || pkg_sum[0] == '\0')
-					pkg_sum = "-";
-
-				urlencode(pkg_file_path(file), &tmpsbuf);
+				urlencode(file->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
-				    ucl_object_fromstring(pkg_sum),
+				    ucl_object_fromstring(file->sum),
 				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "files", 5, false);
 
+			pkg_debug(3, "Emitting config files");
+			seq = NULL;
+			while (pkg_config_files(pkg, &cf) == EPKG_OK) {
+				urlencode(cf->path, &tmpsbuf);
+				if (seq == NULL)
+					seq = ucl_object_typed_new(UCL_ARRAY);
+				ucl_array_append(seq, ucl_object_fromstring(sbuf_data(tmpsbuf)));
+			}
+			if (seq)
+				ucl_object_insert_key(top, seq, "config", 6, false);
+
 			pkg_debug(4, "Emitting directories");
 			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-				urlencode(pkg_dir_path(dir), &tmpsbuf);
-				/* For now append y/n to stay compatible with libyaml version 
-				 * obj_append_boolean(map, sbuf_get(tmpsbuf), pkg_dir_try(dir));
-				 */
+				urlencode(dir->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
-				    ucl_object_fromstring(pkg_dir_try(dir) ? "y" : "n"),
+				    ucl_object_fromstring("y"),
 				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
 			}
 			if (map)
@@ -1166,12 +1241,14 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 
 	pkg_debug(4, "Emitting message");
-	if (message != NULL && *message != '\0') {
-		urlencode(message, &tmpsbuf);
+	if (pkg->message != NULL) {
 		ucl_object_insert_key(top,
-		    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
-		    "message", 7, false);
+			pkg_message_to_ucl(pkg),
+			"messages", sizeof("messages") - 1, false);
 	}
+
+	if (tmpsbuf != NULL)
+		sbuf_delete(tmpsbuf);
 
 	return (top);
 }
@@ -1186,6 +1263,8 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
 		ucl_object_emit_sbuf(top, UCL_EMIT_YAML, out);
+	else if ((flags & PKG_MANIFEST_EMIT_UCL) == PKG_MANIFEST_EMIT_UCL)
+		ucl_object_emit_sbuf(top, UCL_EMIT_CONFIG, out);
 	else if ((flags & PKG_MANIFEST_EMIT_JSON) == PKG_MANIFEST_EMIT_JSON)
 		ucl_object_emit_sbuf(top, UCL_EMIT_JSON, out);
 	else
@@ -1278,7 +1357,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 	}
 
 	sbuf_finish(b);
-	*dest = strdup(sbuf_get(b));
+	*dest = strdup(sbuf_data(b));
 	sbuf_delete(b);
 
 	return (rc);
