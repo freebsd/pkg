@@ -335,7 +335,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	const char *ssh_args;
 	int sshin[2];
 	int sshout[2];
-	int ret = EPKG_FATAL;
+	int retcode = EPKG_FATAL;
 	const char *argv[4];
 
 	ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
@@ -432,22 +432,24 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			}
 
 			if (*sz == 0) {
-				ret = EPKG_UPTODATE;
+				retcode = EPKG_UPTODATE;
 				goto ssh_cleanup;
 			}
 
-			ret = EPKG_OK;
+			retcode = EPKG_OK;
 			goto ssh_cleanup;
 		}
 	}
 
 ssh_cleanup:
-	if (repo->ssh != NULL)
+	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
 		fclose(repo->ssh);
+		repo->ssh = NULL;
+	}
 	if (cmd != NULL)
 		sbuf_delete(cmd);
 	free(line);
-	return (ret);
+	return (retcode);
 }
 
 #define URL_SCHEME_PREFIX	"pkg+"
