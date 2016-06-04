@@ -46,38 +46,12 @@
 #include <paths.h>
 #include <float.h>
 #include <math.h>
-#include <xxhash.h>
 
 #include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
-
-int64_t
-pkg_hash_seed(void)
-{
-	static int64_t seed = 0;
-
-	if (seed == 0)
-		seed = time(NULL);
-	return (seed);
-}
-
-#if (defined(WORD_BIT) && WORD_BIT == 64) || \
-	(defined(__WORDSIZE) && __WORDSIZE == 64) || \
-	defined(__x86_64__) || \
-	defined(__amd64__)
-#define XXHASHIMPL XXH64
-#else
-#define XXHASHIMPL XXH32
-#endif
-
-int32_t
-string_hash_func(const char *key)
-{
-	return (XXHASHIMPL(key, strlen(key), pkg_hash_seed()));
-}
 
 void
 sbuf_init(struct sbuf **buf)
