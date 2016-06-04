@@ -51,7 +51,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/klib/kvec.h \
 		libucl/klib/khash.h \
 		libucl/include/ucl.h \
-		libucl/src/xxhash.h \
+		libucl/src/mum.h \
 		libucl/src/ucl_internal.h \
 		libucl/src/ucl_hash.h \
 		libucl/src/ucl_chartable.h \
@@ -194,8 +194,7 @@ libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_schema.c \
 			libucl/src/ucl_util.c \
 			libucl/src/ucl_msgpack.c \
-			libucl/src/ucl_sexp.c \
-			libucl/src/xxhash.c
+			libucl/src/ucl_sexp.c
 libucl_la_CFLAGS=	$(ucl_common_cflags) -shared
 libucl_static_la_SOURCES=	$(libucl_la_SOURCES)
 libucl_static_la_CFLAGS=	$(ucl_common_cflags) -static
