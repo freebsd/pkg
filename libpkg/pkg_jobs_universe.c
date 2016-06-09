@@ -191,6 +191,12 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 						break;
 					}
 				}
+				else if (tmp->pkg->type == PKG_INSTALLED &&
+						strcmp (tmp->pkg->digest, pkg->digest) == 0) {
+					/* Same as local, skip */
+					other_candidate = false;
+					break;
+				}
 			}
 		}
 		else {
