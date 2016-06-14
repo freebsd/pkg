@@ -414,6 +414,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	int fd = -1;
 	size_t len;
 	struct timespec tspec[2];
+	bool tried_mkdir = false;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -421,19 +422,24 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 		return (EPKG_FATAL);
 	}
 
-	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
-		return (EPKG_FATAL);
-
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	strlcpy(f->temppath, path, sizeof(f->temppath));
 	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
 
+retry:
 	/* Create the new temp file */
 	fd = openat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 	    O_CREAT|O_WRONLY|O_EXCL, aest->st_mode & ~S_IFMT);
 	if (fd == -1) {
+		if (!tried_mkdir) {
+			if (!mkdirat_p(pkg->rootfd, bsd_dirname(path))) {
+				return (EPKG_FATAL);
+			}
+			tried_mkdir = true;
+			goto retry;
+		}
 		pkg_emit_error("Fail to create temporary file: %s: %s",
 		    f->temppath, strerror(errno));
 		return (EPKG_FATAL);
