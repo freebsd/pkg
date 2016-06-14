@@ -316,8 +316,9 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
-	if (!mkdirat_p(pkg->rootfd, path))
-		return (EPKG_FATAL);
+	if (mkdirat(pkg->rootfd, path, 0755) == -1)
+		if (!mkdirat_p(pkg->rootfd, path))
+			return (EPKG_FATAL);
 	if (fstatat(pkg->rootfd, path, &st, 0) == -1)
 		return (EPKG_FATAL);
 	if (st.st_uid == d->uid && st.st_gid == d->gid &&
@@ -337,6 +338,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 	const struct stat *aest;
 	unsigned long clear;
 	struct timespec tspec[2];
+	bool tried_mkdir = false;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -344,16 +346,21 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 		return (EPKG_FATAL);
 	}
 
-	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
-		return (EPKG_FATAL);
-
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	strlcpy(f->temppath, path, sizeof(f->temppath));
 	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+retry:
 	if (symlinkat(archive_entry_symlink(ae), pkg->rootfd,
 	    RELATIVE_PATH(f->temppath)) == -1) {
+		if (!tried_mkdir) {
+			if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
+				return (EPKG_FATAL);
+			tried_mkdir = true;
+			goto retry;
+		}
+
 		pkg_emit_error("Fail to create symlink: %s: %s\n", f->temppath,
 		    strerror(errno));
 		return (EPKG_FATAL);
@@ -375,6 +382,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 {
 	struct pkg_file *f, *fh;
 	const char *lp;
+	bool tried_mkdir = false;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -389,13 +397,18 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 		return (EPKG_FATAL);
 	}
 
-	if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
-		return (EPKG_FATAL);
-
 	strlcpy(f->temppath, path, sizeof(f->temppath));
+retry:
 	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
+		if (!tried_mkdir) {
+			if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
+				return (EPKG_FATAL);
+			tried_mkdir = true;
+			goto retry;
+		}
+
 		pkg_emit_error("Fail to create hardlink: %s: %s\n", f->temppath,
 		    strerror(errno));
 		return (EPKG_FATAL);
