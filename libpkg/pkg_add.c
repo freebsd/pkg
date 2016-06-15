@@ -87,6 +87,23 @@ pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
 }
 
 static void
+pkg_hidden_tempfile(char *buf, int buflen, const char *path)
+{
+	const char *fname;
+
+	fname = strrchr(path, '/');
+	if (fname != NULL)
+		fname++;
+
+	if (fname != NULL)
+		snprintf(buf, buflen, "%.*s.%s", (int)(fname - path), path, fname);
+	else
+		snprintf(buf, buflen, ".%s", path);
+
+	pkg_add_file_random_suffix(buf, buflen, 12);
+}
+
+static void
 attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
     bool merge)
 {
@@ -349,8 +366,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	strlcpy(f->temppath, path, sizeof(f->temppath));
-	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
 retry:
 	if (symlinkat(archive_entry_symlink(ae), pkg->rootfd,
 	    RELATIVE_PATH(f->temppath)) == -1) {
@@ -397,8 +413,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 		return (EPKG_FATAL);
 	}
 
-	strlcpy(f->temppath, path, sizeof(f->temppath));
-	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
 retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
@@ -438,8 +453,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	strlcpy(f->temppath, path, sizeof(f->temppath));
-	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
 
 retry:
 	/* Create the new temp file */
