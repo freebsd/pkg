@@ -398,8 +398,8 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 	}
 
 	strlcpy(f->temppath, path, sizeof(f->temppath));
-retry:
 	pkg_add_file_random_suffix(f->temppath, sizeof(f->temppath), 12);
+retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
 		if (!tried_mkdir) {
