@@ -158,6 +158,7 @@ Updating database digests format:  done
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
 Checking integrity... done (1 conflicting)
+  - test-1.1 conflicts with test2-1 on ${TMPDIR}/b
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 

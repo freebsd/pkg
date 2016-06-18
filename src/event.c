@@ -60,6 +60,7 @@
 #define STALL_TIME 5
 
 struct sbuf *messages = NULL;
+struct sbuf *conflicts = NULL;
 
 struct cleanup {
 	void *data;
@@ -679,6 +680,12 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
+		if (conflicts != NULL) {
+			sbuf_finish(conflicts);
+			printf("%s", sbuf_data(conflicts));
+			sbuf_delete(conflicts);
+			conflicts = NULL;
+		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		if (*debug == 0)
@@ -897,6 +904,16 @@ event_callback(void *data, struct pkg_event *ev)
 				break;
 			}
 		}
+		break;
+	case PKG_EVENT_CONFLICTS:
+		if (conflicts == NULL) {
+			conflicts = sbuf_new_auto();
+		}
+		pkg_sbuf_printf(conflicts,
+		    "  - %n-%v conflicts with %n-%v on %S\n",
+		    ev->e_conflicts.p1, ev->e_conflicts.p1,
+		    ev->e_conflicts.p2, ev->e_conflicts.p2,
+		    ev->e_conflicts.path);
 		break;
 	default:
 		break;

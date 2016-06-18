@@ -328,6 +328,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 			else if (p1->type == PKG_INSTALLED || p2->type == PKG_INSTALLED) {
 				/* local <-> remote conflict */
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
+					pkg_emit_conflicts(p1, p2, path);
 					pkg_conflicts_register_unsafe(p1, p2, path,
 						PKG_CONFLICT_REMOTE_LOCAL, true);
 					j->conflicts_registered ++;
@@ -337,6 +338,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 			else {
 				/* two remote packages */
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
+					pkg_emit_conflicts(p1, p2, path);
 					pkg_conflicts_register_unsafe(p1, p2, path,
 						PKG_CONFLICT_REMOTE_REMOTE, true);
 					j->conflicts_registered ++;
