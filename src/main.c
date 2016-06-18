@@ -578,7 +578,7 @@ bool ptraced(void)
 
 	return ((info.ki_flag & P_TRACED) != 0 );
 #else
-	return (true);
+	return (false);
 #endif
 }
 
