@@ -1058,3 +1058,15 @@ pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data)
 	ev.e_cleanup_callback.data = data;
 	pkg_emit_event(&ev);
 }
+
+void
+pkg_emit_conflicts(struct pkg *p1, struct pkg *p2, const char *path)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_CONFLICTS;
+	ev.e_conflicts.p1 = p1;
+	ev.e_conflicts.p2 = p2;
+	ev.e_conflicts.path = path;
+	pkg_emit_event(&ev);
+}

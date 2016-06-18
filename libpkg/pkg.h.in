@@ -1303,6 +1303,7 @@ typedef enum {
 	PKG_EVENT_FILE_MISSING,
 	PKG_EVENT_CLEANUP_CALLBACK_REGISTER,
 	PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER,
+	PKG_EVENT_CONFLICTS,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1463,6 +1464,11 @@ struct pkg_event {
 			void *data;
 			void (*cleanup_cb)(void *data);
 		} e_cleanup_callback;
+		struct {
+			struct pkg *p1;
+			struct pkg *p2;
+			const char *path;
+		} e_conflicts;
 	};
 };
 
