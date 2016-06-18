@@ -74,7 +74,7 @@ Processing entries:  done
 local repository update completed. 1 packages processed.
 Updating database digests format:  done
 Checking integrity... done (1 conflicting)
-  - test2-1 conflicts with test-1 on /tmp/kyua.atf-tester.ojBPJo/a
+  - test2-1 conflicts with test-1 on ${TMPDIR}/a
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 

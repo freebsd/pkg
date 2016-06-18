@@ -332,6 +332,7 @@ local repository update completed. 5 packages processed.
 Checking for upgrades (4 candidates):  done
 Processing candidates (4 candidates):  done
 Checking integrity... done (1 conflicting)
+  - ruby21-gems-1.0 conflicts with ruby20-gems-1.0 on ${TMPDIR}/rubygems.file
 Checking integrity... done (0 conflicting)
 The following 6 package(s) will be affected (of 0 checked):
 
