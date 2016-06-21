@@ -732,7 +732,11 @@ new_pkg_version(struct pkg_jobs *j)
 			DL_FOREACH(nit, cit) {
 				if (pkg_version_change_between (cit->pkg, p) == PKG_UPGRADE) {
 					/* We really have newer version which is not installed */
-					ret = true;
+					/* Preserve repo pinning logic */
+					if ((j->reponame && strcmp (cit->pkg->reponame, j->reponame) == 0) ||
+							(!j->reponame && strcmp (cit->pkg->reponame, p->reponame) == 0)) {
+						ret = true;
+					}
 				}
 			}
 		}
