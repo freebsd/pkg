@@ -734,7 +734,8 @@ new_pkg_version(struct pkg_jobs *j)
 					/* We really have newer version which is not installed */
 					/* Preserve repo pinning logic */
 					if ((j->reponame && strcmp (cit->pkg->reponame, j->reponame) == 0) ||
-							(!j->reponame && strcmp (cit->pkg->reponame, p->reponame) == 0)) {
+							(!j->reponame && p->reponame &&
+									strcmp (cit->pkg->reponame, p->reponame) == 0)) {
 						ret = true;
 					}
 				}
