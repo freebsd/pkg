@@ -700,6 +700,7 @@ new_pkg_version(struct pkg_jobs *j)
 	const char *uid = "pkg";
 	pkg_flags old_flags;
 	bool ret = false;
+	const char *lrepo;
 	struct pkg_job_universe_item *nit, *cit;
 
 	/* Disable -f for pkg self-check, and restore at end. */
@@ -720,6 +721,8 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
+	lrepo = pkg_kv_get(&p->annotations, "repository");
+
 	/* Use maximum priority for pkg */
 	if (pkg_jobs_find_upgrade(j, uid, MATCH_EXACT) == EPKG_OK) {
 		/*
@@ -734,8 +737,8 @@ new_pkg_version(struct pkg_jobs *j)
 					/* We really have newer version which is not installed */
 					/* Preserve repo pinning logic */
 					if ((j->reponame && strcmp (cit->pkg->reponame, j->reponame) == 0) ||
-							(!j->reponame && (!p->reponame ||
-									strcmp (cit->pkg->reponame, p->reponame) == 0))) {
+							(!j->reponame && (!lrepo ||
+									strcmp (cit->pkg->reponame, lrepo) == 0))) {
 						ret = true;
 					}
 				}
