@@ -983,13 +983,7 @@ pkg_jobs_universe_select_same_repo(struct pkg_job_universe_item *chain,
 	}
 
 	if (local_repo == NULL) {
-		/* Return any package */
-		LL_FOREACH(chain, cur) {
-			if (cur->pkg->type == PKG_INSTALLED)
-				continue;
-			else
-				return (cur);
-		}
+		return (NULL);
 	}
 	else {
 		LL_FOREACH(chain, cur) {
