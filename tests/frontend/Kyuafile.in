@@ -37,3 +37,4 @@ atf_test_program{name='version'}
 atf_test_program{name='vital'}
 atf_test_program{name='issue1374'}
 atf_test_program{name='issue1425'}
+atf_test_program{name='issue1440'}
