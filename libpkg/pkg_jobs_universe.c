@@ -947,18 +947,26 @@ pkg_jobs_universe_select_max_prio(struct pkg_job_universe_item *chain)
 
 static struct pkg_job_universe_item *
 pkg_jobs_universe_select_same_repo(struct pkg_job_universe_item *chain,
-	struct pkg_job_universe_item *local)
+	struct pkg_job_universe_item *local, const char *assumed_reponame)
 {
 	struct pkg_repo *local_repo = NULL, *repo;
 	struct pkg_job_universe_item *cur, *res = NULL;
 
-	if (local->pkg->reponame) {
-		local_repo = pkg_repo_find(local->pkg->reponame);
+	if (!local) {
+
+		if (assumed_reponame) {
+			local_repo = pkg_repo_find(assumed_reponame);
+		}
 	}
 	else {
-		const char *lrepo = pkg_kv_get(&local->pkg->annotations, "repository");
-		if (lrepo) {
-			local_repo = pkg_repo_find(lrepo);
+		if (local->pkg->reponame) {
+			local_repo = pkg_repo_find(local->pkg->reponame);
+		}
+		else {
+			const char *lrepo = pkg_kv_get(&local->pkg->annotations, "repository");
+			if (lrepo) {
+				local_repo = pkg_repo_find(lrepo);
+			}
 		}
 	}
 
@@ -991,31 +999,44 @@ pkg_jobs_universe_select_same_repo(struct pkg_job_universe_item *chain,
 
 struct pkg_job_universe_item *
 pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
-	struct pkg_job_universe_item *local, bool conservative)
+	struct pkg_job_universe_item *local, bool conservative, const char *reponame)
 {
-	struct pkg_job_universe_item *res;
+	struct pkg_job_universe_item *res = NULL;
 
 	if (local == NULL) {
 		/* New package selection */
 		if (conservative) {
-			/* Priority -> version */
-			res = pkg_jobs_universe_select_max_prio(chain);
+			/* Check same repo */
+			if (reponame) {
+				res =  pkg_jobs_universe_select_same_repo(chain, NULL, reponame);
+			}
+
 			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_ver(chain);
+				/* Priority -> version */
+				res = pkg_jobs_universe_select_max_prio(chain);
+				if (res == NULL) {
+					res = pkg_jobs_universe_select_max_ver(chain);
+				}
 			}
 		}
 		else {
-			/* Version -> priority */
-			res = pkg_jobs_universe_select_max_ver(chain);
+			if (reponame) {
+				res =  pkg_jobs_universe_select_same_repo(chain, NULL, reponame);
+			}
+
 			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_prio(chain);
+				/* Version -> priority */
+				res = pkg_jobs_universe_select_max_ver(chain);
+				if (res == NULL) {
+					res = pkg_jobs_universe_select_max_prio(chain);
+				}
 			}
 		}
 	}
 	else {
 		if (conservative) {
 			/* same -> prio -> version */
-			res = pkg_jobs_universe_select_same_repo(chain, local);
+			res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
 			if (res == NULL) {
 				res = pkg_jobs_universe_select_max_prio(chain);
 			}
@@ -1025,7 +1046,7 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 		}
 		else {
 			/* same -> version -> prio */
-			res = pkg_jobs_universe_select_same_repo(chain, local);
+			res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
 			if (res == NULL) {
 				res = pkg_jobs_universe_select_max_ver(chain);
 			}
@@ -1084,7 +1105,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			struct pkg_job_universe_item *selected;
 
 			selected = pkg_jobs_universe_select_candidate(unit, local,
-				j->conservative);
+				j->conservative, NULL);
 			/*
 			 * Now remove all requests but selected from the requested
 			 * candidates
