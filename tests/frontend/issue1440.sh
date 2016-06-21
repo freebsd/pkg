@@ -186,13 +186,13 @@ EOF
 
 
 OUTPUT_CASE1="Updating repoA repository catalogue...
-Fetching meta.txz:  done
-Fetching packagesite.txz:  done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 repoA repository update completed. 4 packages processed.
 Updating repoB repository catalogue...
-Fetching meta.txz:  done
-Fetching packagesite.txz:  done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
 Checking integrity... done (0 conflicting)
@@ -203,14 +203,14 @@ New packages to be INSTALLED:
 	pkgB: 1.0 [repoB]
 	pkgC: 1.0 [repoB]
 	pkgD: 1.0 [repoB]
-[1/4] Installing pkgD-1.0...
-[1/4] Extracting pkgD-1.0:  done
-[2/4] Installing pkgC-1.0...
-[2/4] Extracting pkgC-1.0:  done
-[3/4] Installing pkgB-1.0...
-[3/4] Extracting pkgB-1.0:  done
-[4/4] Installing pkgA-1.0...
-[4/4] Extracting pkgA-1.0:  done
+${JAILED}[1/4] Installing pkgD-1.0...
+${JAILED}[1/4] Extracting pkgD-1.0:  done
+${JAILED}[2/4] Installing pkgC-1.0...
+${JAILED}[2/4] Extracting pkgC-1.0:  done
+${JAILED}[3/4] Installing pkgB-1.0...
+${JAILED}[3/4] Extracting pkgB-1.0:  done
+${JAILED}[4/4] Installing pkgA-1.0...
+${JAILED}[4/4] Extracting pkgA-1.0:  done
 "
 
         atf_check \
