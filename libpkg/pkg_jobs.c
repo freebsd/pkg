@@ -1586,11 +1586,14 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			pkg_emit_progress_start("Processing candidates (%zd candidates)",
 				jcount);
 			elt_num = 0;
+
 			HASH_ITER(hh, j->request_add, req, rtmp) {
 				pkg_emit_progress_tick(++elt_num, jcount);
 				pkg_jobs_universe_process(j->universe, req->item->pkg);
 			}
 			pkg_emit_progress_tick(jcount, jcount);
+
+			pkg_jobs_universe_process_upgrade_chains(j);
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
