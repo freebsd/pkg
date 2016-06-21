@@ -732,7 +732,12 @@ new_pkg_version(struct pkg_jobs *j)
 			DL_FOREACH(nit, cit) {
 				if (pkg_version_change_between (cit->pkg, p) == PKG_UPGRADE) {
 					/* We really have newer version which is not installed */
-					ret = true;
+					/* Preserve repo pinning logic */
+					if ((j->reponame && strcmp (cit->pkg->reponame, j->reponame) == 0) ||
+							(!j->reponame && (!p->reponame ||
+									strcmp (cit->pkg->reponame, p->reponame) == 0))) {
+						ret = true;
+					}
 				}
 			}
 		}
@@ -1586,11 +1591,14 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			pkg_emit_progress_start("Processing candidates (%zd candidates)",
 				jcount);
 			elt_num = 0;
+
 			HASH_ITER(hh, j->request_add, req, rtmp) {
 				pkg_emit_progress_tick(++elt_num, jcount);
 				pkg_jobs_universe_process(j->universe, req->item->pkg);
 			}
 			pkg_emit_progress_tick(jcount, jcount);
+
+			pkg_jobs_universe_process_upgrade_chains(j);
 		}
 		else {
 			HASH_ITER(hh, j->patterns, jp, jtmp) {
