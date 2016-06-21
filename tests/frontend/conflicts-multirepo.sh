@@ -157,8 +157,9 @@ local2 repository update completed. 2 packages processed.
 Updating database digests format:  done
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
-Checking integrity... done (1 conflicting)
-  - test-1.1 conflicts with test2-1 on ${TMPDIR}/b
+Checking integrity... done (2 conflicting)
+  - test-1.1 [local2] conflicts with test2-1 [local1] on ${TMPDIR}/b
+  - test-1.1 [local2] conflicts with test2-1 [installed] on ${TMPDIR}/b
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 

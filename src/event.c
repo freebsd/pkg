@@ -572,7 +572,7 @@ event_callback(void *data, struct pkg_event *ev)
 	struct cleanup *evtmp;
 	int *debug = data, i;
 	struct pkg_event_conflict *cur_conflict;
-	const char *filename;
+	const char *filename, *reponame;
 
 	if (msg_buf == NULL) {
 		msg_buf = sbuf_new_auto();
@@ -909,10 +909,21 @@ event_callback(void *data, struct pkg_event *ev)
 		if (conflicts == NULL) {
 			conflicts = sbuf_new_auto();
 		}
-		pkg_sbuf_printf(conflicts,
-		    "  - %n-%v conflicts with %n-%v on %S\n",
-		    ev->e_conflicts.p1, ev->e_conflicts.p1,
-		    ev->e_conflicts.p2, ev->e_conflicts.p2,
+		pkg_sbuf_printf(conflicts, "  - %n-%v",
+		    ev->e_conflicts.p1, ev->e_conflicts.p1);
+		if (pkg_repos_total_count() > 1) {
+			pkg_get(ev->e_conflicts.p1, PKG_REPONAME, &reponame);
+			sbuf_printf(conflicts, " [%s]",
+			    reponame == NULL ? "installed" : reponame);
+		}
+		pkg_sbuf_printf(conflicts, " conflicts with %n-%v",
+		    ev->e_conflicts.p2, ev->e_conflicts.p2);
+		if (pkg_repos_total_count() > 1) {
+			pkg_get(ev->e_conflicts.p2, PKG_REPONAME, &reponame);
+			sbuf_printf(conflicts, " [%s]",
+			    reponame == NULL ? "installed" : reponame);
+		}
+		sbuf_printf(conflicts, " on %s\n",
 		    ev->e_conflicts.path);
 		break;
 	default:
