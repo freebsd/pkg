@@ -79,6 +79,7 @@ struct pkg_solve_variable {
 	int order;
 	const char *digest;
 	const char *uid;
+	const char *assumed_reponame;
 	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
 };
@@ -296,7 +297,7 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 static int
 pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		struct pkg_job_provide *pr, struct pkg_solve_rule *rule,
-		struct pkg *orig, int *cnt)
+		struct pkg *orig, const char *reponame, int *cnt)
 {
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *curvar;
@@ -341,6 +342,11 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 							'l' : 'r');
 			continue;
 		}
+
+		if (curvar->assumed_reponame == NULL) {
+			curvar->assumed_reponame = reponame;
+		}
+
 		pkg_debug(4, "solver: %s provide is satisfied by %s-%s(%c)", pr->provide,
 				pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 				'l' : 'r');
@@ -360,7 +366,8 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 static int
 pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var,
-		struct pkg_dep *dep)
+		struct pkg_dep *dep,
+		const char *reponame)
 {
 	const char *uid;
 	struct pkg_solve_variable *depvar, *curvar;
@@ -390,6 +397,11 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	/* B1 | B2 | ... */
 	cnt = 1;
 	LL_FOREACH(depvar, curvar) {
+		/* Propagate reponame */
+		if (curvar->assumed_reponame == NULL) {
+			curvar->assumed_reponame = reponame;
+		}
+
 		it = pkg_solve_item_new(curvar);
 		if (it == NULL) {
 			pkg_solve_rule_free(rule);
@@ -487,7 +499,8 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 static int
 pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var,
-		const char *requirement)
+		const char *requirement,
+		const char *reponame)
 {
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
@@ -518,7 +531,8 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		/* B1 | B2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
-			if (pkg_solve_handle_provide(problem, pr, rule, pkg, &cnt) != EPKG_OK) {
+			if (pkg_solve_handle_provide(problem, pr, rule, pkg, reponame, &cnt)
+					!= EPKG_OK) {
 				free(it);
 				free(rule);
 				return (EPKG_FATAL);
@@ -732,10 +746,26 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	LL_FOREACH(var, cur_var) {
 		pkg = cur_var->unit->pkg;
 
+		/* Request */
+		if (!(cur_var->flags & PKG_VAR_TOP)) {
+			HASH_FIND_STR(j->request_add, cur_var->uid, jreq);
+			if (jreq != NULL)
+				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
+			HASH_FIND_STR(j->request_delete, cur_var->uid, jreq);
+			if (jreq != NULL)
+				pkg_solve_add_request_rule(problem, cur_var, jreq, -1);
+		}
+
+		if (jreq) {
+			cur_var->assumed_reponame = pkg->reponame;
+		}
+
 		/* Depends */
 		kh_each_value(pkg->deps, dep, {
-			if (pkg_solve_add_depend_rule(problem, cur_var, dep) != EPKG_OK)
+			if (pkg_solve_add_depend_rule(problem, cur_var, dep,
+					cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
+			}
 		});
 
 		/* Conflicts */
@@ -749,25 +779,18 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		buf = NULL;
 		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-					buf) != EPKG_OK)
+					buf, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
+			}
 		}
 		buf = NULL;
 		while (pkg_requires(pkg, &buf) == EPKG_OK) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-					buf) != EPKG_OK)
+					buf, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
+			}
 		}
 
-		/* Request */
-		if (!(cur_var->flags & PKG_VAR_TOP)) {
-			HASH_FIND_STR(j->request_add, cur_var->uid, jreq);
-			if (jreq != NULL)
-				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
-			HASH_FIND_STR(j->request_delete, cur_var->uid, jreq);
-			if (jreq != NULL)
-				pkg_solve_add_request_rule(problem, cur_var, jreq, -1);
-		}
 
 		/*
 		 * If this var chain contains mutually conflicting vars
@@ -943,6 +966,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 	struct pkg_solve_item *item;
 	struct pkg_solve_variable *var, *cvar;
 	bool conservative = false, prefer_local = false;
+	const char *assumed_reponame = NULL;
 
 	if (problem->j->type == PKG_JOBS_INSTALL) {
 		/* Avoid upgrades on INSTALL job */
@@ -963,6 +987,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		assert (rule->items != NULL);
 		item = rule->items;
 		var = item->var;
+		assumed_reponame = var->assumed_reponame;
 
 		/* Check what we are depending on */
 		if (!(var->flags & (PKG_VAR_TOP|PKG_VAR_ASSUMED_TRUE))) {
@@ -992,6 +1017,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		while (var->prev->next != NULL) {
 			var = var->prev;
 		}
+
 		LL_FOREACH(var, cvar) {
 			if (cvar->flags & PKG_VAR_ASSUMED) {
 				/* Do not reassume packages */
@@ -1013,7 +1039,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		}
 		else {
 			selected = pkg_jobs_universe_select_candidate(first, local,
-					conservative);
+					conservative, assumed_reponame);
 		}
 
 		/* Now we can find the according var */

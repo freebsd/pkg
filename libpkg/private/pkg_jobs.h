@@ -246,7 +246,8 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
  */
 struct pkg_job_universe_item *
 pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
-	struct pkg_job_universe_item *local, bool conservative);
+	struct pkg_job_universe_item *local, bool conservative,
+	const char *reponame);
 
 /*
  * Free job request (with all candidates)
