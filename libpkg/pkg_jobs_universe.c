@@ -170,12 +170,23 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	kh_find(pkg_jobs_seen, universe->seen, pkg->digest, seen);
-	if (seen && !force && pkg->type == PKG_INSTALLED) {
-		if (found != NULL) {
-			*found = seen;
+	if (seen) {
+		bool same_package = false;
+
+		DL_FOREACH(seen, tmp) {
+			if (tmp->pkg == pkg) {
+				same_package = true;
+				break;
+			}
 		}
 
-		return (EPKG_END);
+		if (same_package) {
+			if (found != NULL) {
+				*found = seen;
+			}
+
+			return (EPKG_END);
+		}
 	}
 
 	if (pkg_is_locked(pkg)) {
