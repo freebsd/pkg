@@ -170,48 +170,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	kh_find(pkg_jobs_seen, universe->seen, pkg->digest, seen);
-	if (seen != NULL && !force && pkg->type != PKG_INSTALLED) {
-		/*
-		 * For remote packages we could have the same digest but different repos
-		 * therefore we should also compare reponames
-		 */
-		bool other_candidate = true;
-
-		if (pkg->reponame) {
-			/* Rewind to the first element */
-			while (seen->prev->next != NULL) {
-				seen = seen->prev;
-			}
-
-			LL_FOREACH (seen, tmp) {
-				if (tmp->pkg->reponame) {
-					if (strcmp (pkg->reponame, tmp->pkg->reponame) == 0) {
-						/* Same repo package in the chain, do not add */
-						other_candidate = false;
-						break;
-					}
-				}
-				else if (tmp->pkg->type == PKG_INSTALLED &&
-						strcmp (tmp->pkg->digest, pkg->digest) == 0) {
-					/* Same as local, skip */
-					other_candidate = false;
-					break;
-				}
-			}
-		}
-		else {
-			other_candidate = false;
-		}
-
-		if (!other_candidate) {
-			if (found != NULL) {
-				*found = seen;
-			}
-
-			return (EPKG_END);
-		}
-	}
-	else if (seen && !force) {
+	if (seen && !force && pkg->type == PKG_INSTALLED) {
 		if (found != NULL) {
 			*found = seen;
 		}
@@ -403,7 +362,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 {
 	struct pkg_job_universe_item *unit;
 	struct pkg_job_provide *pr, *prhead;
-	struct pkg *npkg, *rpkg, *selected = NULL;
+	struct pkg *npkg, *rpkg;
 	int rc;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
@@ -414,39 +373,13 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 	HASH_FIND_STR(universe->provides, name, prhead);
 
-	/*
-	 * Here we follow the same logic as for direct deps:
-	 * - iterate over all provides;
-	 * - select provides that are from the same repo as the requested package
-	 * - if there is no such a package, then go through all possible provides
-	 */
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
-		if (parent->reponame && rpkg->reponame && strcmp(parent->reponame,
-				rpkg->reponame) == 0) {
-			selected = rpkg;
-			break;
-		}
-	}
-
-	if (!selected) {
-		pkgdb_it_reset(it);
-	}
-
-	while (selected || pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
-		if (selected) {
-			rpkg = selected;
-		}
 		/* Check for local packages */
 		HASH_FIND_STR(universe->items, rpkg->uid, unit);
 		if (unit != NULL) {
 			/* Remote provide is newer, so we can add it */
 			if (pkg_jobs_universe_process_item(universe, rpkg,
 					&unit) != EPKG_OK) {
-
-				if (selected) {
-					return (EPKG_FATAL);
-				}
-
 				continue;
 			}
 
@@ -462,9 +395,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				}
 				if (pkg_jobs_universe_process_item(universe, rpkg,
 						&unit) != EPKG_OK) {
-					if (selected) {
-						return (EPKG_FATAL);
-					}
+					continue;
 				}
 			}
 		}
@@ -514,10 +445,6 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 					pr->un->pkg->name, pr->un->pkg->version,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
-		}
-
-		if (selected) {
-			break;
 		}
 	}
 
@@ -1097,13 +1024,13 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 			}
 		}
 		else {
-			/* version -> prio -> same */
-			res = pkg_jobs_universe_select_max_ver(chain);
+			/* same -> version -> prio */
+			res = pkg_jobs_universe_select_same_repo(chain, local);
 			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_prio(chain);
+				res = pkg_jobs_universe_select_max_ver(chain);
 			}
 			if (res == NULL) {
-				res = pkg_jobs_universe_select_same_repo(chain, local);
+				res = pkg_jobs_universe_select_max_prio(chain);
 			}
 		}
 	}
