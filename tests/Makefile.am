@@ -111,7 +111,8 @@ tests_scripts=	\
 		frontend/test_environment.sh \
 		frontend/issue1374.sh \
 		frontend/issue1425.sh \
-		frontend/issue1440.sh
+		frontend/issue1440.sh \
+		frontend/issue1445.sh
 
 check_SCRIPTS=	$(tests_scripts:.sh=)
 CLEANFILES+=	$(check_SCRIPTS)
