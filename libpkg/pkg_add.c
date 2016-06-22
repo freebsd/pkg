@@ -333,11 +333,26 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
-	if (mkdirat(pkg->rootfd, path, 0755) == -1)
-		if (!mkdirat_p(pkg->rootfd, path))
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(path), &st, 0) == -1) {
+	}
+	if (mkdirat(pkg->rootfd, RELATIVE_PATH(path), 0755) == -1)
+		if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(path)))
 			return (EPKG_FATAL);
-	if (fstatat(pkg->rootfd, path, &st, 0) == -1)
-		return (EPKG_FATAL);
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(path), &st, 0) == -1) {
+		if (errno != ENOENT) {
+			pkg_emit_error("Fail to stat directory %s: %s", path,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
+		if (fstatat(pkg->rootfd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
+			unlinkat(pkg->rootfd, RELATIVE_PATH(path), 0);
+		}
+		if (mkdirat(pkg->rootfd, RELATIVE_PATH(path), 0755) == -1) {
+			pkg_emit_error("Fail to create directory %s: %s", path,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
+	}
 	if (st.st_uid == d->uid && st.st_gid == d->gid &&
 	    (st.st_mode & S_IFMT) == (d->perm & S_IFMT)) {
 		d->noattrs = true;
