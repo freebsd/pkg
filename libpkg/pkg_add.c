@@ -333,8 +333,6 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(path), &st, 0) == -1) {
-	}
 	if (mkdirat(pkg->rootfd, RELATIVE_PATH(path), 0755) == -1)
 		if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(path)))
 			return (EPKG_FATAL);
