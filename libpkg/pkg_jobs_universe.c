@@ -1043,9 +1043,8 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 	else {
 		if (conservative) {
 			/* same -> prio -> version */
-			if (reponame && pinning) {
+			if (pinning)
 				res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
-			}
 			if (res == NULL) {
 				res = pkg_jobs_universe_select_max_prio(chain);
 			}
@@ -1055,7 +1054,7 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 		}
 		else {
 			/* same -> version -> prio */
-			if (reponame && pinning)
+			if (pinning)
 				res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
 			if (res == NULL) {
 				res = pkg_jobs_universe_select_max_ver(chain);
