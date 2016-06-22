@@ -92,6 +92,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	(*j)->db = db;
 	(*j)->type = t;
 	(*j)->solved = 0;
+	(*j)->pinning = true;
 	(*j)->flags = PKG_FLAG_NONE;
 	(*j)->conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
 
@@ -700,7 +701,6 @@ new_pkg_version(struct pkg_jobs *j)
 	const char *uid = "pkg";
 	pkg_flags old_flags;
 	bool ret = false;
-	const char *lrepo;
 	struct pkg_job_universe_item *nit, *cit;
 
 	/* Disable -f for pkg self-check, and restore at end. */
@@ -721,8 +721,6 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
-	lrepo = pkg_kv_get(&p->annotations, "repository");
-
 	/* Use maximum priority for pkg */
 	if (pkg_jobs_find_upgrade(j, uid, MATCH_EXACT) == EPKG_OK) {
 		/*
@@ -735,12 +733,8 @@ new_pkg_version(struct pkg_jobs *j)
 			DL_FOREACH(nit, cit) {
 				if (pkg_version_change_between (cit->pkg, p) == PKG_UPGRADE) {
 					/* We really have newer version which is not installed */
-					/* Preserve repo pinning logic */
-					if ((j->reponame && strcmp (cit->pkg->reponame, j->reponame) == 0) ||
-							(!j->reponame && (!lrepo ||
-									strcmp (cit->pkg->reponame, lrepo) == 0))) {
-						ret = true;
-					}
+					ret = true;
+					break;
 				}
 			}
 		}
@@ -1555,6 +1549,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		if (new_pkg_version(j)) {
 			j->flags &= ~PKG_FLAG_PKG_VERSION_TEST;
 			j->conservative = false;
+			j->pinning = false;
 			pkg_emit_newpkgversion();
 			goto order;
 		}

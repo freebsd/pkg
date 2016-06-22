@@ -1005,7 +1005,8 @@ pkg_jobs_universe_select_same_repo(struct pkg_job_universe_item *chain,
 
 struct pkg_job_universe_item *
 pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
-	struct pkg_job_universe_item *local, bool conservative, const char *reponame)
+    struct pkg_job_universe_item *local, bool conservative,
+    const char *reponame, bool pinning)
 {
 	struct pkg_job_universe_item *res = NULL;
 
@@ -1013,7 +1014,7 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 		/* New package selection */
 		if (conservative) {
 			/* Check same repo */
-			if (reponame) {
+			if (reponame && pinning) {
 				res =  pkg_jobs_universe_select_same_repo(chain, NULL, reponame);
 			}
 
@@ -1026,7 +1027,7 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 			}
 		}
 		else {
-			if (reponame) {
+			if (reponame && pinning) {
 				res =  pkg_jobs_universe_select_same_repo(chain, NULL, reponame);
 			}
 
@@ -1042,7 +1043,8 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 	else {
 		if (conservative) {
 			/* same -> prio -> version */
-			res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
+			if (pinning)
+				res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
 			if (res == NULL) {
 				res = pkg_jobs_universe_select_max_prio(chain);
 			}
@@ -1052,7 +1054,8 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 		}
 		else {
 			/* same -> version -> prio */
-			res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
+			if (pinning)
+				res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
 			if (res == NULL) {
 				res = pkg_jobs_universe_select_max_ver(chain);
 			}
@@ -1111,7 +1114,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			struct pkg_job_universe_item *selected;
 
 			selected = pkg_jobs_universe_select_candidate(unit, local,
-				j->conservative, NULL);
+				j->conservative, NULL, j->pinning);
 			/*
 			 * Now remove all requests but selected from the requested
 			 * candidates
