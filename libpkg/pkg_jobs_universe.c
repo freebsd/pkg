@@ -175,9 +175,15 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 		DL_FOREACH(seen, tmp) {
 			if (tmp->pkg == pkg || (tmp->pkg->type == pkg->type &&
-					strcmp (tmp->pkg->digest, pkg->digest) == 0)) {
-				same_package = true;
-				break;
+			    strcmp(tmp->pkg->digest, pkg->digest) == 0)) {
+				if (tmp->pkg->reponame != NULL) {
+					if (strcmp(tmp->pkg->reponame, pkg->reponame) == 0) {
+						same_package = true;
+					}
+				} else {
+					same_package = true;
+					break;
+				}
 			}
 		}
 
