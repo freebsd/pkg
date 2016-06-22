@@ -739,7 +739,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg *pkg;
 	struct pkg_solve_variable *cur_var;
 	struct pkg_jobs *j = problem->j;
-	struct pkg_job_request *jreq;
+	struct pkg_job_request *jreq = NULL;
 	char *buf;
 	bool chain_added = false;
 
