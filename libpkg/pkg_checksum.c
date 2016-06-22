@@ -684,13 +684,17 @@ pkg_checksum_symlink_readlink(const char *linkbuf, int linklen, const char *root
 	lnk = linkbuf;
 	if (root != NULL) {
 		/* Skip root from checksum, as it is meaningless */
-		if (strncmp(root, linkbuf, strlen(root)) == 0)
+		if (strncmp(root, linkbuf, strlen(root)) == 0) {
 			lnk += strlen(root);
+			linklen -= strlen(root);
+		}
 	}
 
 	/* Skip heading slashes */
-	while(*lnk == '/')
+	while(*lnk == '/') {
 		lnk++;
+		linklen--;
+	}
 
 	return (pkg_checksum_data(lnk, linklen, type));
 }
