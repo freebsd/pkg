@@ -735,10 +735,10 @@ unsigned char *pkg_checksum_fd(int fd, pkg_checksum_type_t type);
 unsigned char *pkg_checksum_file(const char *path, pkg_checksum_type_t type);
 unsigned char *pkg_checksum_fileat(int fd, const char *path,
     pkg_checksum_type_t type);
-unsigned char *pkg_checksum_symlink(const char *path, const char *root,
+unsigned char *pkg_checksum_symlink(const char *path,
     pkg_checksum_type_t type);
 unsigned char *pkg_checksum_symlinkat(int fd, const char *path,
-    const char *root, pkg_checksum_type_t type);
+    pkg_checksum_type_t type);
 int pkg_checksum_validate_file(const char *path, const  char *sum);
 int pkg_checksum_validate_fileat(int fd, const char *path, const  char *sum);
 
