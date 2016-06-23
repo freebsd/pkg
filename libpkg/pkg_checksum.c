@@ -683,21 +683,15 @@ pkg_checksum_fd(int fd, pkg_checksum_type_t type)
 }
 
 static unsigned char *
-pkg_checksum_symlink_readlink(const char *linkbuf, int linklen, const char *root, pkg_checksum_type_t type)
+pkg_checksum_symlink_readlink(const char *linkbuf, int linklen,
+    pkg_checksum_type_t type)
 {
 	const char *lnk;
 
 	lnk = linkbuf;
-	if (root != NULL) {
-		/* Skip root from checksum, as it is meaningless */
-		if (strncmp(root, linkbuf, strlen(root)) == 0) {
-			lnk += strlen(root);
-			linklen -= strlen(root);
-		}
-	}
 
 	/* Skip heading slashes */
-	while(*lnk == '/') {
+	while (*lnk == '/') {
 		lnk++;
 		linklen--;
 	}
@@ -706,7 +700,7 @@ pkg_checksum_symlink_readlink(const char *linkbuf, int linklen, const char *root
 }
 
 unsigned char *
-pkg_checksum_symlink(const char *path, const char *root, pkg_checksum_type_t type)
+pkg_checksum_symlink(const char *path, pkg_checksum_type_t type)
 {
 	char linkbuf[MAXPATHLEN];
 	int linklen;
@@ -717,11 +711,11 @@ pkg_checksum_symlink(const char *path, const char *root, pkg_checksum_type_t typ
 	}
 	linkbuf[linklen] = '\0';
 
-	return (pkg_checksum_symlink_readlink(linkbuf, linklen, root, type));
+	return (pkg_checksum_symlink_readlink(linkbuf, linklen, type));
 }
 
 unsigned char *
-pkg_checksum_symlinkat(int fd, const char *path, const char *root, pkg_checksum_type_t type)
+pkg_checksum_symlinkat(int fd, const char *path, pkg_checksum_type_t type)
 {
 	char linkbuf[MAXPATHLEN];
 	int linklen;
@@ -732,7 +726,7 @@ pkg_checksum_symlinkat(int fd, const char *path, const char *root, pkg_checksum_
 	}
 	linkbuf[linklen] = '\0';
 
-	return (pkg_checksum_symlink_readlink(linkbuf, linklen, root, type));
+	return (pkg_checksum_symlink_readlink(linkbuf, linklen, type));
 }
 
 int
@@ -756,7 +750,7 @@ pkg_checksum_validate_file(const char *path, const char *sum)
 	}
 
 	if (S_ISLNK(st.st_mode))
-		newsum = pkg_checksum_symlink(path, NULL, type);
+		newsum = pkg_checksum_symlink(path, type);
 	else
 		newsum = pkg_checksum_file(path, type);
 
@@ -786,7 +780,7 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 	}
 
 	if (S_ISLNK(st.st_mode))
-		sum = pkg_checksum_symlink(path, NULL, type);
+		sum = pkg_checksum_symlink(path, type);
 	else
 		sum = pkg_checksum_file(path, type);
 
@@ -820,7 +814,7 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 	}
 
 	if (S_ISLNK(st.st_mode))
-		newsum = pkg_checksum_symlinkat(rootfd, path, NULL, type);
+		newsum = pkg_checksum_symlinkat(rootfd, path, type);
 	else
 		newsum = pkg_checksum_fileat(rootfd, path, type);
 
@@ -851,7 +845,7 @@ pkg_checksum_generate_fileat(int rootfd, const char *path,
 	}
 
 	if (S_ISLNK(st.st_mode))
-		sum = pkg_checksum_symlinkat(rootfd, path, NULL, type);
+		sum = pkg_checksum_symlinkat(rootfd, path, type);
 	else
 		sum = pkg_checksum_fileat(rootfd, path, type);
 

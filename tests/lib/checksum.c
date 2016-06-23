@@ -43,7 +43,7 @@ ATF_TC_BODY(check_symlinks, tc)
 
 	ATF_REQUIRE_EQ(symlink("foo", "bar"), 0);
 
-	sum = pkg_checksum_symlink("bar", NULL, PKG_HASH_TYPE_SHA256_HEX);
+	sum = pkg_checksum_symlink("bar", PKG_HASH_TYPE_SHA256_HEX);
 	ATF_REQUIRE_STREQ(sum, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae");
 
 	ATF_CHECK(pkg_checksum_validate_file("bar", "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae") == 0);
