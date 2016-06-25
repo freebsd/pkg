@@ -416,7 +416,8 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 						&unit) != EPKG_OK) {
 					continue;
 				}
-				rpkg = NULL;
+				if (unit != NULL)
+					rpkg = NULL;
 			}
 		}
 
