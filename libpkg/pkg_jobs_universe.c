@@ -179,6 +179,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 				if (tmp->pkg->reponame != NULL) {
 					if (strcmp(tmp->pkg->reponame, pkg->reponame) == 0) {
 						same_package = true;
+						break;
 					}
 				} else {
 					same_package = true;
