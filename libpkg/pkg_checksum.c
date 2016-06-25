@@ -684,13 +684,11 @@ pkg_checksum_symlink_readlink(const char *linkbuf, int linklen,
 
 	lnk = linkbuf;
 
-	/* Skip heading slashes */
-	while (*lnk == '/') {
-		lnk++;
-		linklen--;
-	}
-
-	return (pkg_checksum_data(lnk, linklen, type));
+	/*
+	 * It is known that \0 is added to the checksum in case the symlink
+	 * targets an absolute path but the behaviour is kept for compat
+	 */
+	return (pkg_checksum_data(RELATIVE_PATH(lnk), linklen, type));
 }
 
 unsigned char *
