@@ -1783,7 +1783,11 @@ pkg_open_root_fd(struct pkg *pkg)
 
 	path = pkg_kv_get(&pkg->annotations, "relocated");
 	if (path == NULL) {
+#ifdef F_DUPFD_CLOEXEC
 		if ((pkg->rootfd = fcntl(rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
+#else
+		if ((pkg->rootfd = dup(rootfd)) == -1) {
+#endif
 			pkg_emit_errno("dup2", "rootfd");
 			return (EPKG_FATAL);
 		}
