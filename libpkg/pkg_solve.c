@@ -119,8 +119,6 @@ struct pkg_solve_impl_graph {
 #define PKG_SOLVE_CHECK_ITEM(item)				\
 	((item)->var->to_install ^ (item)->inverse)
 
-#define PKG_SOLVE_VAR_NEXT(a, e) ((e) == NULL ? &a[0] : (e + 1))
-
 /*
  * Utilities to convert jobs to SAT rule
  */
@@ -1332,45 +1330,23 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 	fprintf(file, "}\n");
 }
 
-struct pkg_solve_ordered_variable {
-	struct pkg_solve_variable *var;
-	int order;
-	UT_hash_handle hh;
-};
-
 int
 pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 {
-	struct pkg_solve_ordered_variable *ordered_variables = NULL, *nord;
-	struct pkg_solve_variable *var;
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it;
-	int cur_ord = 1;
-
-	/* Order variables */
-	var = NULL;
-	while ((var = PKG_SOLVE_VAR_NEXT(problem->variables, var))) {
-		nord = calloc(1, sizeof(struct pkg_solve_ordered_variable));
-		nord->order = cur_ord ++;
-		nord->var = var;
-		HASH_ADD_PTR(ordered_variables, var, nord);
-	}
 
 	fprintf(f, "p cnf %d %zu\n", (int)problem->nvars, kv_size(problem->rules));
 
 	for (unsigned int i = 0; i < kv_size(problem->rules); i++) {
 		rule = kv_A(problem->rules, i);
 		LL_FOREACH(rule->items, it) {
-			HASH_FIND_PTR(ordered_variables, &it->var, nord);
-			if (nord != NULL) {
-				fprintf(f, "%s%d ", (it->inverse ? "-" : ""), nord->order);
-			}
+			size_t order = it->var - problem->variables;
+			if (order < problem->nvars)
+				fprintf(f, "%ld ", (long)((order + 1) * it->inverse));
 		}
 		fprintf(f, "0\n");
 	}
-
-	HASH_FREE(ordered_variables, free);
-
 	return (EPKG_OK);
 }
 
@@ -1473,25 +1449,41 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 	return (EPKG_OK);
 }
 
+static bool
+pkg_solve_parse_sat_output_store(struct pkg_solve_problem *problem, const char *var_str)
+{
+	struct pkg_solve_variable *var;
+	ssize_t order;
+
+	order = strtol(var_str, NULL, 10);
+	if (order == 0)
+		return (true);
+	if (order < 0) {
+		/* negative value means false */
+		order = - order - 1;
+		if ((size_t)order < problem->nvars) {
+			var = problem->variables + order;
+			var->flags &= ~PKG_VAR_INSTALL;
+		}
+	} else {
+		/* positive value means true */
+		order = order - 1;
+		if ((size_t)order < problem->nvars) {
+			var = problem->variables + order;
+			var->flags |= PKG_VAR_INSTALL;
+		}
+	}
+	return (false);
+}
+
 int
 pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_ordered_variable *ordered_variables = NULL, *nord;
-	struct pkg_solve_variable *var;
-	int cur_ord = 1, ret = EPKG_OK;
+	int ret = EPKG_OK;
 	char *line = NULL, *var_str, *begin;
 	size_t linecap = 0;
 	ssize_t linelen;
 	bool got_sat = false, done = false;
-
-	/* Order variables */
-	var = NULL;
-	while ((var = PKG_SOLVE_VAR_NEXT(problem->variables, var))) {
-		nord = calloc(1, sizeof(struct pkg_solve_ordered_variable));
-		nord->order = cur_ord ++;
-		nord->var = var;
-		HASH_ADD_INT(ordered_variables, order, nord);
-	}
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		if (strncmp(line, "SAT", 3) == 0) {
@@ -1504,22 +1496,8 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 				/* Skip unexpected lines */
 				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
 					continue;
-				cur_ord = 0;
-				cur_ord = abs((int)strtol(var_str, NULL, 10));
-				if (cur_ord == 0) {
+				if (pkg_solve_parse_sat_output_store(problem, var_str))
 					done = true;
-					break;
-				}
-
-				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-				if (nord != NULL) {
-					if (*var_str == '-') {
-						nord->var->flags &= ~PKG_VAR_INSTALL;
-					}
-					else {
-						nord->var->flags |= PKG_VAR_INSTALL;
-					}
-				}
 			} while (begin != NULL);
 		}
 		else if (strncmp(line, "v ", 2) == 0) {
@@ -1529,23 +1507,8 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 				/* Skip unexpected lines */
 				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
 					continue;
-				cur_ord = 0;
-				cur_ord = abs((int)strtol(var_str, NULL, 10));
-				if (cur_ord == 0) {
+				if (pkg_solve_parse_sat_output_store(problem, var_str))
 					done = true;
-					break;
-				}
-
-				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
-
-				if (nord != NULL) {
-					if (*var_str == '-') {
-						nord->var->flags &= ~PKG_VAR_INSTALL;
-					}
-					else {
-						nord->var->flags |= PKG_VAR_INSTALL;
-					}
-				}
 			} while (begin != NULL);
 		}
 		else {
@@ -1561,7 +1524,6 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 		ret = EPKG_FATAL;
 	}
 
-	HASH_FREE(ordered_variables, free);
 	free(line);
 
 	return (ret);
