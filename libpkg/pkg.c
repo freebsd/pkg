@@ -1786,7 +1786,7 @@ pkg_open_root_fd(struct pkg *pkg)
 #ifdef F_DUPFD_CLOEXEC
 		if ((pkg->rootfd = fcntl(rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
 #else
-		if ((pkg->rootfd = dup(rootfd)) == -1) {
+		if ((pkg->rootfd = dup(rootfd)) == -1 || fcntl(pkg->rootfd, F_SETFD, FD_CLOEXEC) == -1) {
 #endif
 			pkg_emit_errno("dup2", "rootfd");
 			return (EPKG_FATAL);
