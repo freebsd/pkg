@@ -608,6 +608,7 @@ main(int argc, char **argv)
 	const char	 *conffile = NULL;
 	const char	 *reposdir = NULL;
 	char		**save_argv;
+	char		  realrootdir[MAXPATHLEN];
 	int		  j;
 
 	struct option longopts[] = {
@@ -756,9 +757,11 @@ main(int argc, char **argv)
 #endif
 
 	if (rootdir != NULL) {
+		if (realpath(rootdir, realrootdir) == NULL)
+			err(EX_SOFTWARE, "Invalid rootdir");
 		if (chdir(rootdir) == -1)
 			errx(EX_SOFTWARE, "chdir() failed");
-		if (pkg_set_rootdir(rootdir) != EPKG_OK)
+		if (pkg_set_rootdir(realrootdir) != EPKG_OK)
 			exit(EX_SOFTWARE);
 	}
 
