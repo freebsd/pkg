@@ -204,6 +204,7 @@ again:
 				    "iteration is needed to resolve them.\n");
 				pkg_jobs_free(jobs);
 				jobs = NULL;
+				done = 0;
 				goto again;
 			}
 			else if (retcode != EPKG_OK)
