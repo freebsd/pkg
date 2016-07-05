@@ -203,6 +203,8 @@ New packages to be INSTALLED:
 	pkgB: 1.0 [repoB]
 	pkgC: 1.0 [repoB]
 	pkgD: 1.0 [repoB]
+
+Number of packages to be installed: 4
 ${JAILED}[1/4] Installing pkgD-1.0...
 ${JAILED}[1/4] Extracting pkgD-1.0:  done
 ${JAILED}[2/4] Installing pkgC-1.0...

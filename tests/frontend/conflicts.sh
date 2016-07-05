@@ -83,6 +83,9 @@ Installed packages to be REMOVED:
 
 New packages to be INSTALLED:
 	test2: 1
+
+Number of packages to be removed: 1
+Number of packages to be installed: 1
 ${JAILED}[1/2] Deinstalling test-1...
 ${JAILED}[1/2] Deleting files for test-1:  done
 ${JAILED}[2/2] Installing test2-1...

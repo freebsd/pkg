@@ -255,6 +255,10 @@ Installed packages to be UPGRADED:
 
 Installed packages to be REINSTALLED:
 	php53-extensions-1.6 (requires changed)
+
+Number of packages to be installed: 1
+Number of packages to be upgraded: 2
+Number of packages to be reinstalled: 1
 "
 
 	atf_check \
@@ -278,6 +282,9 @@ Installed packages to be UPGRADED:
 
 Installed packages to be REINSTALLED:
 	php53-extensions-1.6 (requires changed)
+
+Number of packages to be upgraded: 2
+Number of packages to be reinstalled: 1
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \

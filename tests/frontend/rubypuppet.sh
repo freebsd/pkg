@@ -349,6 +349,11 @@ Installed packages to be REINSTALLED:
 	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby21-gems)
 	rubygem-hiera-1.0 (direct dependency changed: ruby21-gems)
 	puppet-1.0 (direct dependency changed: ruby)
+
+Number of packages to be removed: 1
+Number of packages to be installed: 1
+Number of packages to be upgraded: 1
+Number of packages to be reinstalled: 3
 "
 
 	atf_check \
