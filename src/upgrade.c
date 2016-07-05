@@ -163,7 +163,6 @@ exec_upgrade(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
-again:
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
 		goto cleanup;
 
@@ -202,10 +201,7 @@ again:
 				printf("Conflicts with the existing packages "
 				    "have been found.\nOne more solver "
 				    "iteration is needed to resolve them.\n");
-				pkg_jobs_free(jobs);
-				jobs = NULL;
-				done = 0;
-				goto again;
+				continue;
 			}
 			else if (retcode != EPKG_OK)
 				goto cleanup;
