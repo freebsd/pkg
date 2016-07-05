@@ -933,7 +933,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 
 	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
-	bytes_change = labs(newsize - oldsize);
+	bytes_change = (size_t)llabs(newsize - oldsize);
 
 	/* Add an extra line before the size output. */
 	if (bytes_change > limbytes || dlsize)
