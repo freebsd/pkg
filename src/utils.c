@@ -54,6 +54,15 @@
 #include "utlist.h"
 #include "pkgcli.h"
 
+struct jobs_sum_number {
+	int install;
+	int reinstall;
+	int downgrade;
+	int upgrade;
+	int delete;
+	int fetch;
+};
+
 void
 append_yesno(bool r, char *yesnomsg, size_t len)
 {
@@ -676,11 +685,10 @@ struct pkg_solved_display_item {
 };
 
 static void
-set_jobs_summary_pkg(struct pkg_jobs *jobs,
-		struct pkg *new_pkg, struct pkg *old_pkg,
-		pkg_solved_t type, int64_t *oldsize,
-		int64_t *newsize, int64_t *dlsize,
-		struct pkg_solved_display_item **disp)
+set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
+    struct pkg *old_pkg, pkg_solved_t type, int64_t *oldsize,
+    int64_t *newsize, int64_t *dlsize, struct pkg_solved_display_item **disp,
+    struct jobs_sum_number *sum)
 {
 	const char *oldversion, *repopath, *destdir;
 	char path[MAXPATHLEN];
@@ -740,27 +748,29 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 			switch (pkg_version_change_between(new_pkg, old_pkg)) {
 			case PKG_DOWNGRADE:
 				it->display_type = PKG_DISPLAY_DOWNGRADE;
+				sum->downgrade++;
 				break;
 			case PKG_REINSTALL:
 				it->display_type = PKG_DISPLAY_REINSTALL;
-
+				sum->reinstall++;
 				break;
 			case PKG_UPGRADE:
 				it->display_type = PKG_DISPLAY_UPGRADE;
-
+				sum->upgrade++;
 				break;
 			}
 			*oldsize += oldflatsize;
 			*newsize += flatsize;
 		} else {
 			it->display_type = PKG_DISPLAY_INSTALL;
+			sum->install++;
 			*newsize += flatsize;
 		}
 		break;
 	case PKG_SOLVED_DELETE:
 		*oldsize += flatsize;
 		it->display_type = PKG_DISPLAY_DELETE;
-
+		sum->delete++;
 		break;
 	case PKG_SOLVED_UPGRADE_INSTALL:
 	case PKG_SOLVED_UPGRADE_REMOVE:
@@ -772,7 +782,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	case PKG_SOLVED_FETCH:
 		*newsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
-
+		sum->fetch++;
 		if (destdir == NULL)
 			pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		else
@@ -899,14 +909,17 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
 	bool first = true;
 	size_t bytes_change, limbytes;
+	struct jobs_sum_number sum;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
-	memset(disp, 0, sizeof (disp));
+	memset(disp, 0, sizeof(disp));
+	memset(&sum, 0, sizeof(sum));
 
-	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type))
+	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
 		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
-			&newsize, &dlsize, disp);
+		&newsize, &dlsize, disp, &sum);
+	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
 		if (disp[type] != NULL) {
@@ -934,6 +947,27 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 	bytes_change = (size_t)llabs(newsize - oldsize);
 
+	puts("");
+	if (sum.delete > 0) {
+		printf("Number of packages to be removed: %d\n", sum.delete);
+	}
+	if (sum.install > 0) {
+		printf("Number of packages to be installed: %d\n", sum.install);
+	}
+	if (sum.upgrade > 0) {
+		printf("Number of packages to be upgraded: %d\n", sum.upgrade);
+	}
+	if (sum.reinstall > 0) {
+		printf("Number of packages to be reinstalled: %d\n",
+		    sum.reinstall);
+	}
+	if (sum.downgrade > 0) {
+		printf("Number of packages to be downgraded: %d\n",
+		    sum.downgrade);
+	}
+	if (sum.fetch > 0) {
+		printf("Number of packages to be fetched: %d\n", sum.fetch);
+	}
 	/* Add an extra line before the size output. */
 	if (bytes_change > limbytes || dlsize)
 		puts("");

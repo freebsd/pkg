@@ -168,6 +168,8 @@ New packages to be INSTALLED:
 	pkgB: 1.0 [repoB]
 	pkgC: 1.0 [repoB]
 	pkgD: 1.0 [repoB]
+
+Number of packages to be installed: 4
 ${JAILED}[1/4] Installing pkgD-1.0...
 ${JAILED}[1/4] Extracting pkgD-1.0:  done
 ${JAILED}[2/4] Installing pkgC-1.0...
@@ -210,6 +212,8 @@ The following 2 package(s) will be affected (of 0 checked):
 Installed packages to be REINSTALLED:
 	pkgA-1.0 [repoB]
 	pkgD-1.0 [repoB]
+
+Number of packages to be reinstalled: 2
 ${JAILED}[1/2] Reinstalling pkgD-1.0...
 ${JAILED}[1/2] Extracting pkgD-1.0:  done
 ${JAILED}[2/2] Reinstalling pkgA-1.0...
@@ -239,6 +243,8 @@ New packages to be INSTALLED:
 	pkgB: 1.0 [repoA]
 	pkgC: 1.0 [repoA]
 	pkgD: 1.0 [repoA]
+
+Number of packages to be installed: 4
 ${JAILED}[1/4] Installing pkgD-1.0...
 ${JAILED}[1/4] Extracting pkgD-1.0:  done
 ${JAILED}[2/4] Installing pkgC-1.0...

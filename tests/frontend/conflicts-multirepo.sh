@@ -166,6 +166,8 @@ The following 2 package(s) will be affected (of 0 checked):
 Installed packages to be UPGRADED:
 	test2: 1 -> 1.1 [local2]
 	test: 1 -> 1.1 [local2]
+
+Number of packages to be upgraded: 2
 ${JAILED}[1/2] Deinstalling test2-1...
 ${JAILED}[1/2] Deleting files for test2-1:  done
 ${JAILED}[1/2] Installing test2-1.1...
