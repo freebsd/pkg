@@ -758,7 +758,8 @@ main(int argc, char **argv)
 	if (rootdir != NULL) {
 		if (chdir(rootdir) == -1)
 			errx(EX_SOFTWARE, "chdir() failed");
-		pkg_set_rootdir(rootdir);
+		if (pkg_set_rootdir(rootdir) != EPKG_OK)
+			exit(EX_SOFTWARE);
 	}
 
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
