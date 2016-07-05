@@ -323,8 +323,8 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 
 	d = pkg_get_dir(pkg, path);
 	if (d == NULL) {
-		pkg_emit_error("Directory %s not specified in the manifest");
-		return (EPKG_FATAL);
+		pkg_emit_error("Directory %s not specified in the manifest, skipping");
+		return (EPKG_OK);
 	}
 	aest = archive_entry_stat(ae);
 	d->perm = aest->st_mode;

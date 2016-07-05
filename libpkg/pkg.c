@@ -820,6 +820,10 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
+	if (strcmp(path, "/") == 0) {
+		pkg_emit_error("skipping useless directory: '%s'\n", path);
+		return (EPKG_OK);
+	}
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirhash, path)) {
