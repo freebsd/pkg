@@ -208,6 +208,7 @@ exec_install(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
+again:
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		goto cleanup;
 
@@ -246,7 +247,9 @@ exec_install(int argc, char **argv)
 				printf("Conflicts with the existing packages "
 				    "have been found.\nOne more solver "
 				    "iteration is needed to resolve them.\n");
-				continue;
+				pkg_jobs_free(jobs);
+				jobs = NULL;
+				goto again;
 			}
 			else if (retcode != EPKG_OK)
 				goto cleanup;
