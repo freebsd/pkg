@@ -335,7 +335,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 				if (npkg != NULL) {
 					/* Set reason for upgrades */
-					pkg_jobs_need_upgrade(rpkg, npkg);
+					if (!pkg_jobs_need_upgrade(rpkg, npkg))
+						continue;
 					/* Save automatic flag */
 					rpkg->automatic = npkg->automatic;
 				}
@@ -355,7 +356,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 			if (npkg != NULL) {
 				/* Set reason for upgrades */
-				pkg_jobs_need_upgrade(rpkg, npkg);
+				if (!pkg_jobs_need_upgrade(rpkg, npkg))
+					continue;
 				/* Save automatic flag */
 				rpkg->automatic = npkg->automatic;
 			}
