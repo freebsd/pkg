@@ -27,6 +27,7 @@
  */
 
 #include <sys/mman.h>
+#include <sys/types.h>
 
 #include <archive.h>
 #include <err.h>
@@ -35,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <utlist.h>
+#include <unistd.h>
 
 #include <expat.h>
 
@@ -542,8 +544,21 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 {
 	XML_Parser parser;
 	struct vulnxml_userdata ud;
+	uid_t uid, euid;
 	int ret = EPKG_OK;
 
+	uid = getuid();
+	euid = geteuid();
+
+	if (uid <= 0 || euid != uid) {
+		/*
+		 * User is running pkg audit with root or is using sudo.
+		 * Changing user temporarily to user nobody for safety.
+		 */
+		if (seteuid(65534) != 0) {
+			warnx("%s\n", "Could not change euid to nobody.");
+		}
+	}
 	parser = XML_ParserCreate(NULL);
 	XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
 	XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
@@ -561,6 +576,11 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	}
 
 	XML_ParserFree(parser);
+
+	/* Changing back user to what it was */
+	if (seteuid(uid) != 0) {
+		warnx("%s\n", "Could not change euid back to root.");
+	}
 
 	return (ret);
 }
