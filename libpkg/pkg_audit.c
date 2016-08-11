@@ -551,7 +551,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	pid_t pid;
 	struct passwd pwd, *res;
 	char pwd_buf[512];
-	int ret = EPKG_OK;
+	int ret;
 
 	uid = getuid();
 	euid = geteuid();
@@ -574,7 +574,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 				warnx("%s\n", "Error occurred while finding pw entry "
 				    "for user nobody.");
 				errno = ret;
-				_exit (-1);
+				_exit(-1);
 			}
 
 			if (setgid(res->pw_gid) != 0)
@@ -602,9 +602,10 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		}
 
 		XML_ParserFree(parser);
-		_exit (ret);
+		_exit(ret);
 		break;
 	default:
+		ret = EPKG_OK;
 		while (waitpid(pid, &ret, 0) == -1 && errno == EINTR)
 			;
 
