@@ -565,7 +565,8 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 
 			ret = getpwnam_r("nobody", &pwd, pwd_buf, 512, &res);
 			if (res == NULL) {
-				warnx("%s\n", "Error occurred while finding pw entry for user nobody.");
+				warnx("%s\n", "Error occurred while finding pw entry "
+				    "for user nobody.");
 				errno = ret;
 				exit (-1);
 			}
@@ -577,7 +578,8 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 				warnx("%s\n", "Could not change euid to nobody.");
 		}
 		parser = XML_ParserCreate(NULL);
-		XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
+		XML_SetElementHandler(parser, vulnxml_start_element,
+		    vulnxml_end_element);
 		XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
 		XML_SetUserData(parser, &ud);
 
@@ -586,7 +588,8 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		ud.range_num = 0;
 		ud.state = VULNXML_PARSE_INIT;
 
-		if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) == XML_STATUS_ERROR) {
+		if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) ==
+		    XML_STATUS_ERROR) {
 			pkg_emit_error("vulnxml parsing error: %s",
 					XML_ErrorString(XML_GetErrorCode(parser)));
 			ret = EPKG_FATAL;
