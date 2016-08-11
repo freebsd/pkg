@@ -33,12 +33,14 @@
 #include <err.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <utlist.h>
 #include <unistd.h>
 
 #include <expat.h>
+#include <errno.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
@@ -545,19 +547,33 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	XML_Parser parser;
 	struct vulnxml_userdata ud;
 	uid_t uid, euid;
+	gid_t gid;
+	struct passwd pwd, *res;
+	char pwd_buf[512];
 	int ret = EPKG_OK;
 
 	uid = getuid();
 	euid = geteuid();
+	gid = getgid();
 
-	if (uid <= 0 || euid != uid) {
+	if (uid == 0 || euid != uid) {
 		/*
 		 * User is running pkg audit with root or is using sudo.
 		 * Changing user temporarily to user nobody for safety.
 		 */
-		if (seteuid(65534) != 0) {
-			warnx("%s\n", "Could not change euid to nobody.");
+
+		ret = getpwnam_r("nobody", &pwd, pwd_buf, 512, &res);
+		if (res == NULL) {
+			warnx("%s\n", "Error occurred while finding pw entry for user nobody.");
+			errno = ret;
+			return (-1);
 		}
+
+		if (setegid(res->pw_gid) != 0)
+			warnx("%s\n", "Could not change egid to nobody.");
+
+		if (seteuid(res->pw_uid) != 0)
+			warnx("%s\n", "Could not change euid to nobody.");
 	}
 	parser = XML_ParserCreate(NULL);
 	XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
@@ -578,9 +594,11 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	XML_ParserFree(parser);
 
 	/* Changing back user to what it was */
-	if (seteuid(uid) != 0) {
+	if (seteuid(uid) != 0)
 		warnx("%s\n", "Could not change euid back to root.");
-	}
+
+	if (setegid(gid) != 0)
+		warnx("%s\n", "Could not change egid back to root.");
 
 	return (ret);
 }
