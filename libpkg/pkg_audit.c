@@ -28,6 +28,7 @@
 
 #include <sys/mman.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <archive.h>
 #include <err.h>
@@ -547,58 +548,66 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	XML_Parser parser;
 	struct vulnxml_userdata ud;
 	uid_t uid, euid;
-	gid_t gid;
+	pid_t pid;
 	struct passwd pwd, *res;
 	char pwd_buf[512];
 	int ret = EPKG_OK;
 
 	uid = getuid();
 	euid = geteuid();
-	gid = getgid();
 
-	if (uid == 0 || euid != uid) {
-		/*
-		 * User is running pkg audit with root or is using sudo.
-		 * Changing user temporarily to user nobody for safety.
-		 */
+	if ((pid = fork()) == 0) {
+		if (uid == 0 || euid != uid) {
+			/*
+			 * User is running pkg audit with root or is using sudo.
+			 * Changing user temporarily to user nobody for safety.
+			 */
 
-		ret = getpwnam_r("nobody", &pwd, pwd_buf, 512, &res);
-		if (res == NULL) {
-			warnx("%s\n", "Error occurred while finding pw entry for user nobody.");
-			errno = ret;
-			return (-1);
+			ret = getpwnam_r("nobody", &pwd, pwd_buf, 512, &res);
+			if (res == NULL) {
+				warnx("%s\n", "Error occurred while finding pw entry for user nobody.");
+				errno = ret;
+				exit (-1);
+			}
+
+			if (setgid(res->pw_gid) != 0)
+				warnx("%s\n", "Could not change egid to nobody.");
+
+			if (setuid(res->pw_uid) != 0)
+				warnx("%s\n", "Could not change euid to nobody.");
+		}
+		parser = XML_ParserCreate(NULL);
+		XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
+		XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
+		XML_SetUserData(parser, &ud);
+
+		ud.cur_entry = NULL;
+		ud.audit = audit;
+		ud.range_num = 0;
+		ud.state = VULNXML_PARSE_INIT;
+
+		if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) == XML_STATUS_ERROR) {
+			pkg_emit_error("vulnxml parsing error: %s",
+					XML_ErrorString(XML_GetErrorCode(parser)));
+			ret = EPKG_FATAL;
 		}
 
-		if (setegid(res->pw_gid) != 0)
-			warnx("%s\n", "Could not change egid to nobody.");
+		XML_ParserFree(parser);
+		exit(ret);
+	} else if (pid > 0) {
+		if (waitpid(pid, &ret, 0) == -1)
+			warnx("%s\n", "waitpid() encountered a problem.");
 
-		if (seteuid(res->pw_uid) != 0)
-			warnx("%s\n", "Could not change euid to nobody.");
+		if (WIFEXITED(ret)) {
+			/* cast is because of how WEXITSTATUS() works */
+			ret = (int) ((char) WEXITSTATUS(ret));
+		} else if (WIFSIGNALED(ret)) {
+			ret = WTERMSIG(ret);
+			warnx("Child was killed by signal %d\n", ret);
+		}
+	} else {
+		ret = -1;
 	}
-	parser = XML_ParserCreate(NULL);
-	XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
-	XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
-	XML_SetUserData(parser, &ud);
-
-	ud.cur_entry = NULL;
-	ud.audit = audit;
-	ud.range_num = 0;
-	ud.state = VULNXML_PARSE_INIT;
-
-	if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) == XML_STATUS_ERROR) {
-		pkg_emit_error("vulnxml parsing error: %s",
-				XML_ErrorString(XML_GetErrorCode(parser)));
-		ret = EPKG_FATAL;
-	}
-
-	XML_ParserFree(parser);
-
-	/* Changing back user to what it was */
-	if (seteuid(uid) != 0)
-		warnx("%s\n", "Could not change euid back to root.");
-
-	if (setegid(gid) != 0)
-		warnx("%s\n", "Could not change egid back to root.");
 
 	return (ret);
 }
