@@ -555,8 +555,14 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 
 	uid = getuid();
 	euid = geteuid();
+	pid = fork();
 
-	if ((pid = fork()) == 0) {
+	switch (pid) {
+	case -1:
+		ret = -1;
+		break;
+	case 0:
+		ret = EPKG_OK;
 		if (uid == 0 || euid != uid) {
 			/*
 			 * User is running pkg audit with root or is using sudo.
@@ -568,7 +574,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 				warnx("%s\n", "Error occurred while finding pw entry "
 				    "for user nobody.");
 				errno = ret;
-				exit (-1);
+				_exit (-1);
 			}
 
 			if (setgid(res->pw_gid) != 0)
@@ -596,10 +602,11 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		}
 
 		XML_ParserFree(parser);
-		exit(ret);
-	} else if (pid > 0) {
-		if (waitpid(pid, &ret, 0) == -1)
-			warnx("%s\n", "waitpid() encountered a problem.");
+		_exit (ret);
+		break;
+	default:
+		while (waitpid(pid, &ret, 0) == -1 && errno == EINTR)
+			;
 
 		if (WIFEXITED(ret)) {
 			/* cast is because of how WEXITSTATUS() works */
@@ -608,8 +615,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 			ret = WTERMSIG(ret);
 			warnx("Child was killed by signal %d\n", ret);
 		}
-	} else {
-		ret = -1;
+		break;
 	}
 
 	return (ret);
