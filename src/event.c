@@ -48,7 +48,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <pwd.h>
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
@@ -227,7 +226,6 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
 	pid_t pid;
 	int status, ret;
-	struct passwd *nobody;
 	struct rlimit rl_zero;
 
 	ret = -1;
@@ -262,19 +260,7 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 		return (ret);
 	}
 
-	if (geteuid() == 0) {
-		nobody = getpwnam("nobody");
-		if (nobody == NULL)
-			err(EXIT_FAILURE, "Enable to drop priviledges");
-		if (chroot("/var/empty") == -1)
-			err(EXIT_FAILURE, "Enable to chroot in /var/empty");
-		chdir("/");
-		setgroups(1, &nobody->pw_gid);
-		setegid(nobody->pw_gid);
-		setgid(nobody->pw_gid);
-		seteuid(nobody->pw_uid);
-		setuid(nobody->pw_uid);
-	}
+	drop_privileges();
 
 	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
 	if (setrlimit(RLIMIT_FSIZE, &rl_zero) == -1)
@@ -300,7 +286,6 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 		void *ud)
 {
 	pid_t pid;
-	struct passwd *nobody;
 	struct rlimit rl_zero;
 	int	status, ret = EPKG_OK;
 	int pair[2], r, allocated_len = 0, off = 0;
@@ -385,19 +370,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	/* Here comes child process */
 	close(pair[1]);
 
-	if (geteuid() == 0) {
-		nobody = getpwnam("nobody");
-		if (nobody == NULL)
-			err(EXIT_FAILURE, "Enable to drop priviledges");
-		if (chroot("/var/empty") == -1)
-			err(EXIT_FAILURE, "Enable to chroot in /var/empty");
-		chdir("/");
-		setgroups(1, &nobody->pw_gid);
-		setegid(nobody->pw_gid);
-		setgid(nobody->pw_gid);
-		seteuid(nobody->pw_uid);
-		setuid(nobody->pw_uid);
-	}
+	drop_privileges();
 
 	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
 	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)

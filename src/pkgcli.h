@@ -277,6 +277,7 @@ void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
 void sbuf_flush(struct sbuf *buf);
+void drop_privileges(void);
 
 extern struct sbuf *messages;
 

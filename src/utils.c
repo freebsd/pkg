@@ -48,6 +48,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <pwd.h>
 #include <pkg.h>
 
 #include <bsd_compat.h>
@@ -1000,4 +1001,24 @@ sbuf_flush(struct sbuf *buf)
 	sbuf_finish(buf);
 	printf("%s", sbuf_data(buf));
 	sbuf_clear(buf);
+}
+
+void
+drop_privileges(void)
+{
+	struct passwd *nobody;
+
+	if (geteuid() == 0) {
+		nobody = getpwnam("nobody");
+		if (nobody == NULL)
+			err(EXIT_FAILURE, "Enable to drop priviledges");
+		if (chroot("/var/empty") == -1)
+			err(EXIT_FAILURE, "Enable to chroot in /var/empty");
+		chdir("/");
+		setgroups(1, &nobody->pw_gid);
+		setegid(nobody->pw_gid);
+		setgid(nobody->pw_gid);
+		seteuid(nobody->pw_uid);
+		setuid(nobody->pw_uid);
+	}
 }
