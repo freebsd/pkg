@@ -301,7 +301,6 @@ exec_info(int argc, char **argv)
 		pkg_free(pkg);
 		return (EX_OK);
 	}
-	drop_privileges();
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
@@ -317,11 +316,11 @@ exec_info(int argc, char **argv)
 		return (EX_UNAVAILABLE);
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
-		
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
