@@ -33,6 +33,7 @@
 #include "pkg_config.h"
 #endif
 
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/wait.h>
@@ -227,6 +228,7 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 	pid_t pid;
 	int status, ret;
 	struct passwd *nobody;
+	struct rlimit rl_zero;
 
 	ret = -1;
 	pid = fork();
@@ -273,6 +275,13 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 		seteuid(nobody->pw_uid);
 		setuid(nobody->pw_uid);
 	}
+
+	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
+	if (setrlimit(RLIMIT_FSIZE, &rl_zero) == -1)
+		err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_FSIZE)");
+	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
+		err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_NPROC)");
+
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
