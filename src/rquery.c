@@ -236,6 +236,7 @@ exec_rquery(int argc, char **argv)
 			sbuf_delete(sqlcond);
 		return (EX_IOERR);
 	}
+	drop_privileges();
 
 	if (index_output)
 		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
