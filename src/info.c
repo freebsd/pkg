@@ -264,6 +264,7 @@ exec_info(int argc, char **argv)
 			return (EX_IOERR);
 		}
 
+		drop_privileges();
 #ifdef HAVE_CAPSICUM
 		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
@@ -300,6 +301,7 @@ exec_info(int argc, char **argv)
 		pkg_free(pkg);
 		return (EX_OK);
 	}
+	drop_privileges();
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
