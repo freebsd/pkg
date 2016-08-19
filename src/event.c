@@ -47,6 +47,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#include <pwd.h>
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
@@ -225,6 +226,7 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
 	pid_t pid;
 	int status, ret;
+	struct passwd *nobody;
 
 	ret = -1;
 	pid = fork();
@@ -258,6 +260,19 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 		return (ret);
 	}
 
+	if (geteuid() == 0) {
+		nobody = getpwnam("nobody");
+		if (nobody == NULL)
+			err(EXIT_FAILURE, "Enable to drop priviledges");
+		if (chroot("/var/empty") == -1)
+			err(EXIT_FAILURE, "Enable to chroot in /var/empty");
+		chdir("/");
+		setgroups(1, &nobody->pw_gid);
+		setegid(nobody->pw_gid);
+		setgid(nobody->pw_gid);
+		seteuid(nobody->pw_uid);
+		setuid(nobody->pw_uid);
+	}
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
