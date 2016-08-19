@@ -290,10 +290,6 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 	}
 #endif
 
-	/*
-	 * XXX: if capsicum is not enabled we basically have no idea of how to
-	 * make a sandbox
-	 */
 	ret = func(fd, ud);
 
 	_exit(ret);
@@ -304,6 +300,8 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 		void *ud)
 {
 	pid_t pid;
+	struct passwd *nobody;
+	struct rlimit rl_zero;
 	int	status, ret = EPKG_OK;
 	int pair[2], r, allocated_len = 0, off = 0;
 	char *buf = NULL;
@@ -387,6 +385,24 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	/* Here comes child process */
 	close(pair[1]);
 
+	if (geteuid() == 0) {
+		nobody = getpwnam("nobody");
+		if (nobody == NULL)
+			err(EXIT_FAILURE, "Enable to drop priviledges");
+		if (chroot("/var/empty") == -1)
+			err(EXIT_FAILURE, "Enable to chroot in /var/empty");
+		chdir("/");
+		setgroups(1, &nobody->pw_gid);
+		setegid(nobody->pw_gid);
+		setgid(nobody->pw_gid);
+		seteuid(nobody->pw_uid);
+		setuid(nobody->pw_uid);
+	}
+
+	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
+	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
+		err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_NPROC)");
+
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
@@ -394,10 +410,6 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	}
 #endif
 
-	/*
-	 * XXX: if capsicum is not enabled we basically have no idea of how to
-	 * make a sandbox
-	 */
 	ret = func(pair[0], ud);
 
 	close(pair[0]);
