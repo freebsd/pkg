@@ -30,6 +30,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -39,6 +40,8 @@
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>
+#include <pwd.h>
+#include <err.h>
 
 #include <bsd_compat.h>
 
@@ -469,6 +472,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	char		*doc = NULL;
 	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
+	int		 pstat;
 	char		 zone[MAXHOSTNAMELEN + 13];
 	struct dns_srvinfo	*srv_current = NULL;
 	struct http_mirror	*http_current = NULL;
@@ -476,7 +480,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 buflen = 0;
 	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
+	pid_t		 pid;
 	struct sbuf	*fetchOpts = NULL;
+	struct passwd	*nobody;
+	struct rlimit	rl_zero;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
@@ -528,6 +535,38 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		if ((retcode = start_ssh(repo, u, &sz)) != EPKG_OK)
 			goto cleanup;
 		remote = repo->ssh;
+	} else {
+		pid = fork();
+		switch (pid) {
+		case -1:
+			pkg_emit_error("Unable to fork");
+			return (EPKG_FATAL);
+		case 0:
+			if (geteuid() == 0) {
+				nobody = getpwnam("nobody");
+				if (nobody == NULL)
+					err(EXIT_FAILURE, "Enable to drop priviledges");
+				if (chroot("/var/empty") == -1)
+					err(EXIT_FAILURE, "Enable to chroot in /var/empty");
+				chdir("/");
+				setgroups(1, &nobody->pw_gid);
+				setegid(nobody->pw_gid);
+				setgid(nobody->pw_gid);
+				seteuid(nobody->pw_uid);
+				setuid(nobody->pw_uid);
+			}
+			rl_zero.rlim_cur = rl_zero.rlim_max = 0;
+			if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
+				err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_NPROC)");
+			break;
+		default:
+			while (waitpid(pid, &pstat, 0) == -1 && errno == EINTR)
+				;
+			if (WEXITSTATUS(pstat) != 0) {
+				return (EPKG_FATAL);
+			}
+			return (EPKG_OK);
+		}
 	}
 
 	doc = u->doc;
@@ -686,6 +725,12 @@ cleanup:
 	if (u != NULL) {
 		if (remote != NULL &&  repo != NULL && remote != repo->ssh)
 			fclose(remote);
+	}
+
+	if (strcmp(u->scheme, "ssh") != 0) {
+		if (retcode == EPKG_OK)
+			exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	/* restore original doc */
