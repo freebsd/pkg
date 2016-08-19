@@ -546,9 +546,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				nobody = getpwnam("nobody");
 				if (nobody == NULL)
 					err(EXIT_FAILURE, "Enable to drop priviledges");
-				if (chroot("/var/empty") == -1)
-					err(EXIT_FAILURE, "Enable to chroot in /var/empty");
-				chdir("/");
 				setgroups(1, &nobody->pw_gid);
 				setegid(nobody->pw_gid);
 				setgid(nobody->pw_gid);
@@ -562,10 +559,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		default:
 			while (waitpid(pid, &pstat, 0) == -1 && errno == EINTR)
 				;
-			if (WEXITSTATUS(pstat) != 0) {
+			switch (WEXITSTATUS(pstat)) {
+			case 0:
+				return (EPKG_OK);
+			case 1:
+				return (EPKG_UPTODATE);
+			default:
 				return (EPKG_FATAL);
 			}
-			return (EPKG_OK);
 		}
 	}
 
@@ -730,7 +731,9 @@ cleanup:
 	if (strcmp(u->scheme, "ssh") != 0) {
 		if (retcode == EPKG_OK)
 			exit(0);
-		exit(EXIT_FAILURE);
+		if (retcode == EPKG_UPTODATE)
+			exit(1);
+		exit(2);
 	}
 
 	/* restore original doc */
