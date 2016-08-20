@@ -1,0 +1,5 @@
+Changes from pkg 1.8
+
+- drop privileges in many commands
+- drop privileges wen fetching a file
+- add resource limitation to sandboxes
