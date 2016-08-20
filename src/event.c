@@ -264,9 +264,9 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 
 	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
 	if (setrlimit(RLIMIT_FSIZE, &rl_zero) == -1)
-		err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_FSIZE)");
+		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_FSIZE)");
 	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
-		err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_NPROC)");
+		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
 
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
@@ -374,7 +374,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 
 	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
 	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
-		err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_NPROC)");
+		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
 
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {

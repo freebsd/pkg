@@ -1011,9 +1011,9 @@ drop_privileges(void)
 	if (geteuid() == 0) {
 		nobody = getpwnam("nobody");
 		if (nobody == NULL)
-			err(EXIT_FAILURE, "Enable to drop priviledges");
+			err(EXIT_FAILURE, "Unable to drop priviledges");
 		if (chroot("/var/empty") == -1)
-			err(EXIT_FAILURE, "Enable to chroot in /var/empty");
+			err(EXIT_FAILURE, "Unable to chroot in /var/empty");
 		chdir("/");
 		setgroups(1, &nobody->pw_gid);
 		setegid(nobody->pw_gid);
