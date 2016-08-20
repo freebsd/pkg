@@ -554,7 +554,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			}
 			rl_zero.rlim_cur = rl_zero.rlim_max = 0;
 			if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
-				err(EXIT_FAILURE, "Enable to setrlimit(RLIMIT_NPROC)");
+				err(2, "Enable to setrlimit(RLIMIT_NPROC)");
 			break;
 		default:
 			while (waitpid(pid, &pstat, 0) == -1 && errno == EINTR)
