@@ -545,7 +545,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			if (geteuid() == 0) {
 				nobody = getpwnam("nobody");
 				if (nobody == NULL)
-					err(EXIT_FAILURE, "Unable to drop priviledges");
+					err(2, "Unable to drop priviledges");
 				setgroups(1, &nobody->pw_gid);
 				setegid(nobody->pw_gid);
 				setgid(nobody->pw_gid);
