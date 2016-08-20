@@ -486,7 +486,7 @@ counter_init(const char *count_what, int64_t max)
 }
 
 static void
-counter_count()
+counter_count(void)
 {
 	count++;
 
@@ -497,7 +497,7 @@ counter_count()
 }
 
 static void
-counter_end()
+counter_end(void)
 {
 	pkg_emit_progress_tick(count, maxcount);
 	return;
