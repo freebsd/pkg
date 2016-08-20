@@ -43,8 +43,8 @@
 
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
 static void counter_init(const char *what, int64_t max);
-static void counter_count();
-static void counter_end();
+static void counter_count(void);
+static void counter_end(void);
 
 static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
