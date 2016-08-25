@@ -263,8 +263,6 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 	drop_privileges();
 
 	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
-	if (setrlimit(RLIMIT_FSIZE, &rl_zero) == -1)
-		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_FSIZE)");
 	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
 		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
 
