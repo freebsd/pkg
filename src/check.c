@@ -336,6 +336,7 @@ exec_check(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			yes = true;
 			break;
 		case 'r':
 			recompute = true;

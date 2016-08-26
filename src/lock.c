@@ -223,6 +223,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			break;
 		case 'q':
 			quiet = true;
+			yes = true;
 			break;
 		case 'x':
 			match = MATCH_REGEX;

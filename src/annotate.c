@@ -254,6 +254,7 @@ exec_annotate(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			yes = true;
 			break;
 		case 'S':
 			action = SHOW;
