@@ -479,6 +479,11 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	}
 	seen = pkg_jobs_universe_seen(j->universe, digest);
 	if (seen != NULL) {
+		if (force && pkg_is_locked(seen->un->pkg)) {
+			pkg_emit_locked(seen->un->pkg);
+			force = false;
+		}
+
 		if (!force) {
 			/* Remote package is the same as local */
 			pkg_debug(3, "already seen package %s-%s(%c) in the universe, do not add it again",
@@ -559,6 +564,10 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		if (jit != NULL) {
 			LL_FOREACH(jit, rjit) {
 				lp = rjit->pkg;
+				if (pkg_is_locked(lp)) {
+					pkg_emit_locked(lp);
+					return (EPKG_INSTALLED);
+				}
 
 				if (!pkg_jobs_need_upgrade(rp, lp)) {
 					/*
