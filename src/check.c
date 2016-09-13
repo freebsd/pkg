@@ -412,6 +412,12 @@ exec_check(int argc, char **argv)
 			rc = EX_IOERR;
 			goto cleanup;
 		}
+		nbactions = pkgdb_it_count(it);
+		if (nbactions == 0 && match != MATCH_ALL) {
+			warnx("No packages matching: %s", argv[i]);
+			rc = EXIT_FAILURE;
+			goto cleanup;
+		}
 
 		if (msg == NULL)
 			msg = sbuf_new_auto();
@@ -427,11 +433,6 @@ exec_check(int argc, char **argv)
 			}
 			processed = 0;
 			total = pkgdb_it_count(it);
-		} else {
-			if (match == MATCH_ALL)
-				nbactions = pkgdb_it_count(it);
-			else
-				nbactions = argc;
 		}
 
 		struct sbuf *out = sbuf_new_auto();
