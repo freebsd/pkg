@@ -700,9 +700,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		done += r;
 		if (sz > 0) {
 			left -= r;
-			pkg_debug(1, "Read status: %d over %d", done, sz);
+			pkg_debug(4, "Read status: %d over %d", done, sz);
 		} else
-			pkg_debug(1, "Read status: %d", done);
+			pkg_debug(4, "Read status: %d", done);
 		if (sz > 0)
 			pkg_emit_progress_tick(done, sz);
 	}
