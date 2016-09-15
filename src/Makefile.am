@@ -59,10 +59,10 @@ pkg_CFLAGS=	 @OS_CFLAGS@ \
 			-DGITHASH=\"$(GIT_HEAD)\" 
 pkg_static_SOURCES=
 pkg_static_LDADD= @OS_LDFLAGS@ \
+			$(pkg_OBJECTS) \
 			$(top_builddir)/libpkg/libpkg_static.la \
 			$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libsbuf_static.la \
-			$(pkg_OBJECTS) \
 			@LIBJAIL_LIB@ \
 			@LDNS_LIBS@ \
 			@OS_LIBS@ \
