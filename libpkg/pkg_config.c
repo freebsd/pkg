@@ -403,6 +403,12 @@ static struct config_entry c[] = {
 		"1048576", /* 1 meg */
 		"Ask user when performing changes for more than this limit"
 	},
+	{
+		PKG_STRING,
+		"METALOG",
+		NULL,
+		"Write out the METALOG to the specified file",
+	},
 };
 
 static bool parsed = false;
@@ -817,6 +823,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const char *buf, *walk, *value, *key, *k;
 	const char *evkey = NULL;
 	const char *nsname = NULL;
+	const char *metalog = NULL;
 	const char *useragent = NULL;
 	const char *evpipe = NULL;
 	const char *url;
@@ -1172,6 +1179,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
 	if (nsname != NULL && set_nameserver(nsname) != 0)
 			pkg_emit_error("Unable to set nameserver, ignoring");
+
+	/* Open metalog */
+	metalog = pkg_object_string(pkg_config_get("METALOG"));
+	if (metalog != NULL) {
+		if(metalog_open(metalog) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
+	}
 
 	return (EPKG_OK);
 }

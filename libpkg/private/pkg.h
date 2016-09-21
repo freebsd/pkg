@@ -794,4 +794,8 @@ int pkg_message_from_str(struct pkg *pkg, const char *str, size_t len);
 ucl_object_t* pkg_message_to_ucl(const struct pkg *pkg);
 char* pkg_message_to_str(struct pkg *pkg);
 
+int metalog_open(const char *metalog);
+int metalog_add();
+void metalog_close();
+
 #endif
