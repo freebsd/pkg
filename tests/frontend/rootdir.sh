@@ -12,5 +12,5 @@ rootdir_body() {
 		-o inline:"${TMPDIR}/var/db/pkg\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -r "${TMPDIR}" config pkg_dbdir
+		pkg -r "`realpath ${TMPDIR}`" config pkg_dbdir
 }
