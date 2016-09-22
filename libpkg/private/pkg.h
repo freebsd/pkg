@@ -795,7 +795,7 @@ ucl_object_t* pkg_message_to_ucl(const struct pkg *pkg);
 char* pkg_message_to_str(struct pkg *pkg);
 
 int metalog_open(const char *metalog);
-int metalog_add(int type, const char *path, const char *uname,
+void metalog_add(int type, const char *path, const char *uname,
     const char *gname, int mode, const char *link);
 void metalog_close();
 enum pkg_metalog_type {

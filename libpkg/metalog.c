@@ -26,6 +26,7 @@
 
 
 
+#include <errno.h>
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -37,42 +38,49 @@ metalog_open(const char *metalog)
 {
 	metalogfp = fopen(metalog, "a");
 	if (metalogfp == NULL) {
-		pkg_emit_errno("Unable to open metalog: %s", metalog);
+		pkg_emit_error("Unable to open metalog '%s': %s", metalog,
+		    strerror(errno));
 		return EPKG_FATAL;
 	} 
 
 	return EPKG_OK;
 }
 
-int
+void
 metalog_add(int type, const char *path, const char *uname, const char *gname,
     int mode, const char *link)
 {
 	if (metalogfp == NULL) {
-		return EPKG_FATAL;
+		return;
 	}
 
 	// directory
 	switch (type) {
 	case PKG_METALOG_DIR:
-		fprintf(metalogfp,
+		if (fprintf(metalogfp,
 		    "./%s type=dir uname=%s gname=%s mode=%3o\n",
-		    path, uname, gname, mode);
+		    path, uname, gname, mode) < 0) {
+			pkg_emit_error("Unable to write to the metalog: %s",
+			    strerror(errno));
+		}
 		break;
 	case PKG_METALOG_FILE:
-		fprintf(metalogfp,
+		if (fprintf(metalogfp,
 		    "./%s type=file uname=%s gname=%s mode=%3o\n",
-		    path, uname, gname, mode);
+		    path, uname, gname, mode) < 0) {
+			pkg_emit_error("Unable to write to the metalog: %s",
+			    strerror(errno));
+		}
 		break;
 	case PKG_METALOG_LINK:
-		fprintf(metalogfp,
+		if (fprintf(metalogfp,
 		    "./%s type=link uname=%s gname=%s mode=%3o link=%s\n",
-		    path, uname, gname, mode, link);
+		    path, uname, gname, mode, link) < 0) {
+			pkg_emit_error("Unable to write to the metalog: %s",
+			    strerror(errno));
+		}
 		break;
 	}
-
-
-	return EPKG_OK;
 }
 
 void
