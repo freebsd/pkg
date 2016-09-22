@@ -320,7 +320,6 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	const struct stat *aest;
 	struct stat st;
 	unsigned long clear;
-	char *metalogentry = NULL;
 
 	d = pkg_get_dir(pkg, path);
 	if (d == NULL) {
@@ -353,11 +352,8 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 		}
 	}
 
-	asprintf(&metalogentry,
-	   "./%s type=dir uname=%s gname=%s mode=%3o",
-	   RELATIVE_PATH(path), archive_entry_uname(ae),
-	   archive_entry_gname(ae), aest->st_mode & ~S_IFDIR);
-	if (metalog_add(metalogentry) != EPKG_OK) {
+	if (metalog_add(0, RELATIVE_PATH(path), archive_entry_uname(ae),
+	    archive_entry_gname(ae), aest->st_mode & ~S_IFDIR, NULL) != EPKG_OK) {
 		if (st.st_uid == d->uid && st.st_gid == d->gid &&
 		    (st.st_mode & S_IFMT) == (d->perm & S_IFMT)) {
 			d->noattrs = true;
@@ -377,7 +373,6 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 	unsigned long clear;
 	struct timespec tspec[2];
 	bool tried_mkdir = false;
-	char *metalogentry = NULL;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -406,11 +401,9 @@ retry:
 
 	fill_timespec_buf(aest, tspec);
 
-	asprintf(&metalogentry,
-	   "./%s type=link uname=%s gname=%s mode=%3o link=%s",
-	   RELATIVE_PATH(path), archive_entry_uname(ae),
-	   archive_entry_gname(ae), aest->st_mode & ~S_IFLNK, archive_entry_symlink(ae));
-	if (metalog_add(metalogentry) != EPKG_OK) {
+	if (metalog_add(2, RELATIVE_PATH(path), archive_entry_uname(ae),
+	    archive_entry_gname(ae), aest->st_mode & ~S_IFLNK,
+	    archive_entry_symlink(ae)) != EPKG_OK) {
 		if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 		    get_uid_from_archive(ae), get_gid_from_archive(ae),
 		    &tspec[0], &tspec[1]) != EPKG_OK) {
@@ -429,7 +422,6 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 	const struct stat *aest;
 	const char *lp;
 	bool tried_mkdir = false;
-	char *metalogentry = NULL;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -446,11 +438,9 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 
 	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
 	aest = archive_entry_stat(ae);
-	asprintf(&metalogentry, "./%s type=file uname=%s gname=%s mode=%3o",
-	   RELATIVE_PATH(path), archive_entry_uname(ae),
-	   archive_entry_gname(ae), aest->st_mode & ~S_IFREG);
-	if (metalog_add(metalogentry) != EPKG_OK) {
-	}
+	metalog_add(1, RELATIVE_PATH(path), archive_entry_uname(ae),
+	    archive_entry_gname(ae), aest->st_mode & ~S_IFREG, NULL);
+
 retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
@@ -480,7 +470,6 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	size_t len;
 	struct timespec tspec[2];
 	bool tried_mkdir = false;
-	char *metalogentry = NULL;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -542,10 +531,8 @@ retry:
 
 	fill_timespec_buf(aest, tspec);
 
-	asprintf(&metalogentry, "./%s type=file uname=%s gname=%s mode=%3o",
-	   RELATIVE_PATH(path), archive_entry_uname(ae),
-	   archive_entry_gname(ae), aest->st_mode & ~S_IFREG);
-	if (metalog_add(metalogentry) != EPKG_OK) {
+	if (metalog_add(1, RELATIVE_PATH(path), archive_entry_uname(ae),
+	    archive_entry_gname(ae), aest->st_mode & ~S_IFREG, NULL) != EPKG_OK) {
 		if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 		    get_uid_from_archive(ae), get_gid_from_archive(ae),
 		    &tspec[0], &tspec[1]) != EPKG_OK)

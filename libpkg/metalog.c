@@ -45,13 +45,31 @@ metalog_open(const char *metalog)
 }
 
 int
-metalog_add(const char *metalogentry)
+metalog_add(int type, const char *path, const char *uname, const char *gname,
+    int mode, const char *link)
 {
 	if (metalogfp == NULL) {
 		return EPKG_FATAL;
 	}
 
-	fprintf(metalogfp, "%s\n", metalogentry);
+	// directory
+	if (type == 0) {
+		fprintf(metalogfp,
+		    "./%s type=dir uname=%s gname=%s mode=%3o\n",
+		    path, uname, gname, mode);
+	}
+	// file
+	else if (type == 1) {
+		fprintf(metalogfp,
+		    "./%s type=file uname=%s gname=%s mode=%3o\n",
+		    path, uname, gname, mode);
+	}
+	// link
+	else if (type == 2) {
+		fprintf(metalogfp,
+		    "./%s type=link uname=%s gname=%s mode=%3o link=%s\n",
+		    path, uname, gname, mode, link);
+	}
 
 	return EPKG_OK;
 }
