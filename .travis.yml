@@ -4,6 +4,8 @@ os:
   - linux
   - osx
 
+osx_image: xcode8
+
 addons:
   apt:
     packages:
