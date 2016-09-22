@@ -352,8 +352,9 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 		}
 	}
 
-	if (metalog_add(0, RELATIVE_PATH(path), archive_entry_uname(ae),
-	    archive_entry_gname(ae), aest->st_mode & ~S_IFDIR, NULL) != EPKG_OK) {
+	if (metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFDIR, NULL) != EPKG_OK) {
 		if (st.st_uid == d->uid && st.st_gid == d->gid &&
 		    (st.st_mode & S_IFMT) == (d->perm & S_IFMT)) {
 			d->noattrs = true;
@@ -401,9 +402,9 @@ retry:
 
 	fill_timespec_buf(aest, tspec);
 
-	if (metalog_add(2, RELATIVE_PATH(path), archive_entry_uname(ae),
-	    archive_entry_gname(ae), aest->st_mode & ~S_IFLNK,
-	    archive_entry_symlink(ae)) != EPKG_OK) {
+	if (metalog_add(PKG_METALOG_LINK, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFLNK, archive_entry_symlink(ae)) != EPKG_OK) {
 		if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 		    get_uid_from_archive(ae), get_gid_from_archive(ae),
 		    &tspec[0], &tspec[1]) != EPKG_OK) {
@@ -438,8 +439,9 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 
 	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
 	aest = archive_entry_stat(ae);
-	metalog_add(1, RELATIVE_PATH(path), archive_entry_uname(ae),
-	    archive_entry_gname(ae), aest->st_mode & ~S_IFREG, NULL);
+	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFREG, NULL);
 
 retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
@@ -531,8 +533,9 @@ retry:
 
 	fill_timespec_buf(aest, tspec);
 
-	if (metalog_add(1, RELATIVE_PATH(path), archive_entry_uname(ae),
-	    archive_entry_gname(ae), aest->st_mode & ~S_IFREG, NULL) != EPKG_OK) {
+	if (metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFREG, NULL) != EPKG_OK) {
 		if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
 		    get_uid_from_archive(ae), get_gid_from_archive(ae),
 		    &tspec[0], &tspec[1]) != EPKG_OK)

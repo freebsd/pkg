@@ -53,23 +53,24 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 	}
 
 	// directory
-	if (type == 0) {
+	switch (type) {
+	case PKG_METALOG_DIR:
 		fprintf(metalogfp,
 		    "./%s type=dir uname=%s gname=%s mode=%3o\n",
 		    path, uname, gname, mode);
-	}
-	// file
-	else if (type == 1) {
+		break;
+	case PKG_METALOG_FILE:
 		fprintf(metalogfp,
 		    "./%s type=file uname=%s gname=%s mode=%3o\n",
 		    path, uname, gname, mode);
-	}
-	// link
-	else if (type == 2) {
+		break;
+	case PKG_METALOG_LINK:
 		fprintf(metalogfp,
 		    "./%s type=link uname=%s gname=%s mode=%3o link=%s\n",
 		    path, uname, gname, mode, link);
+		break;
 	}
+
 
 	return EPKG_OK;
 }

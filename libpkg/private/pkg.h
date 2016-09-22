@@ -798,5 +798,10 @@ int metalog_open(const char *metalog);
 int metalog_add(int type, const char *path, const char *uname,
     const char *gname, int mode, const char *link);
 void metalog_close();
+enum pkg_metalog_type {
+	PKG_METALOG_FILE = 0,
+	PKG_METALOG_DIR,
+	PKG_METALOG_LINK,
+};
 
 #endif
