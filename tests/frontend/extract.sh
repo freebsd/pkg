@@ -245,6 +245,7 @@ chflags_schg_body()
 
 chflags_schg_cleanup()
 {
+	test -x /bin/chflags || atf_skip "Requires chflags"
 	chflags -R noschg ${TMPDIR}
 }
 
