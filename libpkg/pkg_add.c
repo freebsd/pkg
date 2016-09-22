@@ -352,7 +352,7 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 		}
 	}
 
-	if (metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	if (metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
 	    aest->st_mode & ~S_IFDIR, NULL) != EPKG_OK) {
 		if (st.st_uid == d->uid && st.st_gid == d->gid &&
