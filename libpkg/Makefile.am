@@ -27,6 +27,7 @@ libpkg_la_SOURCES=	pkg.c \
 			dns_utils.c \
 			fetch.c \
 			packing.c \
+			metalog.c \
 			pkg_add.c \
 			pkg_arch.c \
 			pkg_attributes.c \

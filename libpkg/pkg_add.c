@@ -351,9 +351,14 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 			return (EPKG_FATAL);
 		}
 	}
-	if (st.st_uid == d->uid && st.st_gid == d->gid &&
-	    (st.st_mode & S_IFMT) == (d->perm & S_IFMT)) {
-		d->noattrs = true;
+
+	if (metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFDIR, NULL) != EPKG_OK) {
+		if (st.st_uid == d->uid && st.st_gid == d->gid &&
+		    (st.st_mode & S_IFMT) == (d->perm & S_IFMT)) {
+			d->noattrs = true;
+		}
 	}
 
 	return (EPKG_OK);
@@ -397,11 +402,16 @@ retry:
 
 	fill_timespec_buf(aest, tspec);
 
-	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
-	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &tspec[0], &tspec[1]) != EPKG_OK) {
-		return (EPKG_FATAL);
+	if (metalog_add(PKG_METALOG_LINK, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFLNK, archive_entry_symlink(ae)) != EPKG_OK) {
+		if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
+		    get_uid_from_archive(ae), get_gid_from_archive(ae),
+		    &tspec[0], &tspec[1]) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
 	}
+
 	return (EPKG_OK);
 }
 
@@ -410,6 +420,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
     const char *path, struct pkg *local __unused)
 {
 	struct pkg_file *f, *fh;
+	const struct stat *aest;
 	const char *lp;
 	bool tried_mkdir = false;
 
@@ -427,6 +438,11 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 	}
 
 	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
+	aest = archive_entry_stat(ae);
+	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFREG, NULL);
+
 retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
@@ -517,11 +533,15 @@ retry:
 
 	fill_timespec_buf(aest, tspec);
 
-	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
-	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &tspec[0], &tspec[1]) != EPKG_OK)
-		return (EPKG_FATAL);
-	return (EPKG_OK);
+	if (metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
+	    archive_entry_uname(ae), archive_entry_gname(ae),
+	    aest->st_mode & ~S_IFREG, NULL) != EPKG_OK) {
+		if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
+		    get_uid_from_archive(ae), get_gid_from_archive(ae),
+		    &tspec[0], &tspec[1]) != EPKG_OK)
+			return (EPKG_FATAL);
+		return (EPKG_OK);
+	}
 }
 
 static int
