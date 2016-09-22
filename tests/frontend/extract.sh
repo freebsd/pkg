@@ -42,7 +42,7 @@ ${TMPDIR}/target${TMPDIR}/a
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		-s exit:0 \
-		find -s ${TMPDIR}/target -type f -print
+		find ${TMPDIR}/target -type f -print | sort
 
 	echo "test2" > a
 	atf_check \
@@ -63,7 +63,7 @@ ${TMPDIR}/target${TMPDIR}/a
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		-s exit:0 \
-		find -s ${TMPDIR}/target -type f -print
+		find ${TMPDIR}/target -type f -print | sort
 
 }
 
