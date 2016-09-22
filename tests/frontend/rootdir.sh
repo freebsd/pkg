@@ -9,8 +9,8 @@ rootdir_body() {
 	unset PKG_DBDIR
 
 	atf_check \
-		-o inline:"${TMPDIR}/var/db/pkg\n" \
+		-o inline:"`realpath ${TMPDIR}`/var/db/pkg\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -r "`realpath ${TMPDIR}`" config pkg_dbdir
+		pkg -r "${TMPDIR}" config pkg_dbdir
 }
