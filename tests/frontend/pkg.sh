@@ -13,7 +13,7 @@ pkg_no_database_body() {
 	    -o empty \
 	    -e inline:"pkg: package database non-existent\n" \
 	    -s exit:69 \
-	    -x PKG_DBDIR=/dev/null pkg -N
+	    env -i PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -o PKG_DBDIR=/dev/null -N
 }
 
 pkg_config_defaults_body()
