@@ -1399,6 +1399,10 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
+		if (pkgdb_it_count(it) == 0) {
+			pkg_emit_notice("No packages matched for pattern '%s'\n", jp->pattern);
+		}
+
 		while (pkgdb_it_next(it, &pkg,
 				PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS) == EPKG_OK) {
 			if(pkg->locked) {
