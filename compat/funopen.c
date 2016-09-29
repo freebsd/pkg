@@ -20,7 +20,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#define _GNU_SOURCE
 #include <stdio.h>
 
 #include "bsd_compat.h"
@@ -38,7 +37,7 @@ funopen(const void *cookie, int (*readfn)(void *, char *, int),
 	c.seek = seekfn;
 	c.close = closefn;
 
-	return (fopencookie(__DECONST(void *, cookie), "a+", c));
+	return (fopencookie(cookie, "a+", c));
 }
 
 #endif

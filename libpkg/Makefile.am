@@ -92,7 +92,8 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			-lutil \
 			-lssl \
 			-lcrypto \
-			-lm
+			-lm \
+			-ldl
 
 if HAVE_ELF_ABI
 if LIBELF_BUNDLED

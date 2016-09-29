@@ -74,8 +74,8 @@ AC_CANONICAL_HOST
 case $host_os in
   linux*)
         OS_CFLAGS="-D_XOPEN_SOURCE -D_GNU_SOURCE -pthread"
-        OS_LDFLAGS="-pthread"
-        OS_LIBS="-ldl -lrt"
+        OS_LDFLAGS="-pthread -Wl,--no-as-needed"
+        OS_LIBS="-ldl -lrt -Wl,--no-as-needed"
         OS_STATIC="false"
         ;;
   openbsd*|bitrig*)
