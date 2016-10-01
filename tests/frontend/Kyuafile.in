@@ -2,7 +2,6 @@ syntax(2)
 
 test_suite('prop: test-suite = frontend')
 
-atf_test_program{name='001sanity'}
 atf_test_program{name='add'}
 atf_test_program{name='alias'}
 atf_test_program{name='annotate'}

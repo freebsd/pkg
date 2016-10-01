@@ -77,7 +77,6 @@ EXTRA_DIST=	frontend/png.ucl \
 tests_scripts=	\
 		frontend/pkg.sh \
 		frontend/add.sh \
-		frontend/001sanity.sh \
 		frontend/alias.sh \
 		frontend/annotate.sh \
 		frontend/autoremove.sh \
