@@ -112,7 +112,7 @@ EOF
 
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
-		-e empty \
+		-e ignore \
 		tar tvf ${TMPDIR}/test-1.txz
 
 	mkdir ${TMPDIR}/target
@@ -152,7 +152,7 @@ EOF
 	atf_check \
 		-o match:"^-r-sr-xr--.*a$" \
 		-o match:"^hr-sr-xr--.*a$" \
-		-e empty \
+		-e ignore \
 		tar tvf ${TMPDIR}/test-1.txz
 
 	mkdir ${TMPDIR}/target
