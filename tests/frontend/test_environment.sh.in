@@ -10,6 +10,11 @@ jailed=$(sysctl -n security.jail.jailed 2>/dev/null || :)
 if [ "$jailed" = "1" ]; then
 	export JAILED="[`hostname`] "
 fi
+if [ "${OS}" = "Linux" ]; then
+	export PROGNAME="lt-pkg"
+else
+	export PROGNAME="pkg"
+fi
 
 tests_init()
 {

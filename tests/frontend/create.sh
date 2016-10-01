@@ -180,7 +180,7 @@ create_from_plist_dirrm_body() {
 
 		atf_check \
 			-o empty \
-			-e inline:"pkg: Warning: @dirrm[try] is deprecated, please use @dir\n" \
+			-e inline:"${PROGNAME}: Warning: @dirrm[try] is deprecated, please use @dir\n" \
 			pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 	done
 }
@@ -204,7 +204,7 @@ aline"
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Warning: @ignore is deprecated\n" \
+		-e inline:"${PROGNAME}: Warning: @ignore is deprecated\n" \
 		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
@@ -225,7 +225,7 @@ create_from_plist_bad_fflags_body() {
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Malformed keyword '', wrong fflags\n" \
+		-e inline:"${PROGNAME}: Malformed keyword '', wrong fflags\n" \
 		-s exit:70 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
@@ -235,7 +235,7 @@ create_from_plist_with_keyword_arguments_body() {
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: cannot parse keyword: cannot open file ./testkeyword.ucl: No such file or directory\npkg: unknown keyword testkeyword: @testkeyword\n" \
+		-e inline:"${PROGNAME}: cannot parse keyword: cannot open file ./testkeyword.ucl: No such file or directory\n${PROGNAME}: unknown keyword testkeyword: @testkeyword\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -248,7 +248,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Requesting argument %2 while only 1 arguments are available\n" \
+		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -263,7 +263,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Invalid argument: expecting a number got (%1)\n" \
+		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 

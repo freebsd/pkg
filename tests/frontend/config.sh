@@ -62,6 +62,6 @@ nameserver_body()
 
 	atf_check \
 		-o inline:"plop\n" \
-		-e inline:"pkg: Unable to set nameserver, ignoring\n" \
+		-e inline:"${PROGNAME}: Unable to set nameserver, ignoring\n" \
 		pkg -o NAMESERVER="plop" -C /dev/null config nameserver
 }
