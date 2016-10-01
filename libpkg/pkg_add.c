@@ -219,39 +219,20 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	}
 #else
 	struct timeval tv[2];
-	char *saved_cwd[MAXPATHLEN];
+	int ffd;
 
 	tv[0].tv_sec = ats->tv_sec;
 	tv[0].tv_usec = ats->tv_nsec / 1000;
 	tv[1].tv_sec = mts->tv_sec;
 	tv[1].tv_usec = mts->tv_nsec / 1000;
 
-	memset(saved_cwd, 0, sizeof (saved_cwd));
-
-	if (getcwd(saved_cwd, sizeof(saved_cwd) - 1) == NULL) {
-		pkg_emit_error("Fail to call getcwd: %s", strerror(errno));
+	ffd = openat(fd, RELATIVE_PATH(path), O_RDWR|O_NOFOLLOW);
+	if (ffd == -1 || futimes(ffd, tv) == -1) {
+		pkg_emit_error("Fail to set time on %s: %s", path,
+		    strerror(errno));
 		return (EPKG_FATAL);
 	}
-
-	fchdir(fd);
-
-	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
-
-		if (errno != ENOSYS) {
-			pkg_emit_error("Fail to set time on %s: %s", path,
-					strerror(errno));
-			return (EPKG_FATAL);
-		}
-		else {
-			/* Fallback to utimes */
-			if (utimes(RELATIVE_PATH(path), tv) == -1) {
-				pkg_emit_error("Fail to set time(fallback) on %s: %s", path,
-						strerror(errno));
-				return (EPKG_FATAL);
-			}
-		}
-	}
-	chdir(saved_cwd);
+	close(ffd);
 #endif
 
 	if (getenv("INSTALL_AS_USER") == NULL) {
