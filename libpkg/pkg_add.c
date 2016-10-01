@@ -219,20 +219,14 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	}
 #else
 	struct timeval tv[2];
-	char *saved_cwd[MAXPATHLEN];
+	int fdcwd;
 
 	tv[0].tv_sec = ats->tv_sec;
 	tv[0].tv_usec = ats->tv_nsec / 1000;
 	tv[1].tv_sec = mts->tv_sec;
 	tv[1].tv_usec = mts->tv_nsec / 1000;
 
-	memset(saved_cwd, 0, sizeof (saved_cwd));
-
-	if (getcwd(saved_cwd, sizeof(saved_cwd) - 1) == NULL) {
-		pkg_emit_error("Fail to call getcwd: %s", strerror(errno));
-		return (EPKG_FATAL);
-	}
-
+	fdcwd = open(".", O_DIRECTORY);
 	fchdir(fd);
 
 	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
@@ -251,7 +245,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 			}
 		}
 	}
-	chdir(saved_cwd);
+	fchdir(fdcwd);
 #endif
 
 	if (getenv("INSTALL_AS_USER") == NULL) {
