@@ -8,7 +8,7 @@ tests_init \
 rootdir_body() {
 	unset PKG_DBDIR
 	if [ `uname -s` = "Linux" ]; then
-		RP='readlink -f'
+		RP='readlink -e'
 	else
 		RP='realpath'
 	fi
