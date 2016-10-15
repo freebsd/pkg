@@ -4,3 +4,4 @@ Changes from pkg 1.8
 - Drop privileges when fetching a file
 - Add resource limitation to sandboxes
 - Add support for metalog
+- pkg-delete now print a warning if no packages were matched
