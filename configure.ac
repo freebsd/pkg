@@ -1,5 +1,5 @@
 m4_define([maj_ver], [1])
-m4_define([med_ver], [8])
+m4_define([med_ver], [9])
 m4_define([min_ver], [99])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
 m4_define([dev_ver], m4_expand([m4_normalize(m4_sinclude([dev_version.m4]))]))
