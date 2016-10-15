@@ -64,7 +64,8 @@ libpkg_la_SOURCES=	pkg.c \
 			plugins.c \
 			pkg_old.c \
 			merge3.c \
-			diff.c
+			diff.c \
+			sha256.c
 
 if HAVE_ELF_ABI
 libpkg_la_SOURCES+=	elfhints.c \

@@ -37,8 +37,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ucl.h>
-#include <openssl/sha.h>
 
+#include "sha256.h"
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -1296,14 +1296,14 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	    char **pdigest, bool out_is_a_sbuf)
 {
 	struct sbuf *output = NULL;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
+	unsigned char digest[SHA256_BLOCK_SIZE];
 	SHA256_CTX *sign_ctx = NULL;
 	int rc;
 
 	if (pdigest != NULL) {
 		*pdigest = malloc(sizeof(digest) * 2 + 1);
 		sign_ctx = malloc(sizeof(SHA256_CTX));
-		SHA256_Init(sign_ctx);
+		sha256_init(sign_ctx);
 	}
 
 	if (out_is_a_sbuf)
@@ -1312,13 +1312,13 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	rc = emit_manifest(pkg, &output, flags);
 
 	if (sign_ctx != NULL)
-		SHA256_Update(sign_ctx, sbuf_data(output), sbuf_len(output));
+		sha256_update(sign_ctx, sbuf_data(output), sbuf_len(output));
 
 	if (!out_is_a_sbuf)
 		fprintf(out, "%s\n", sbuf_data(output));
 
 	if (pdigest != NULL) {
-		SHA256_Final(digest, sign_ctx);
+		sha256_final(sign_ctx, digest);
 		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
 		free(sign_ctx);
 	}

@@ -31,7 +31,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
-#include <openssl/sha.h>
+#include "sha256.h"
 #include "blake2.h"
 
 struct pkg_checksum_entry {
@@ -44,7 +44,7 @@ struct pkg_checksum_entry {
 #define PKG_CKSUM_SEPARATOR '$'
 
 /* Hash is in format <version>:<typeid>:<hexhash> */
-#define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_LENGTH * 2 + 1)
+#define PKG_CHECKSUM_SHA256_LEN (SHA256_BLOCK_SIZE * 2 + 1)
 #define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
 #define PKG_CHECKSUM_CUR_VERSION 2
 
@@ -109,7 +109,7 @@ static const struct _pkg_cksum_type {
 	},
 	[PKG_HASH_TYPE_SHA256_RAW] = {
 		"sha256_raw",
-		SHA256_DIGEST_LENGTH,
+		SHA256_BLOCK_SIZE,
 		pkg_checksum_hash_sha256,
 		pkg_checksum_hash_sha256_bulk,
 		pkg_checksum_hash_sha256_file,
@@ -349,17 +349,17 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 {
 	SHA256_CTX sign_ctx;
 
-	SHA256_Init(&sign_ctx);
+	sha256_init(&sign_ctx);
 
 	while(entries) {
-		SHA256_Update(&sign_ctx, entries->field, strlen(entries->field));
-		SHA256_Update(&sign_ctx, entries->value, strlen(entries->value));
+		sha256_update(&sign_ctx, entries->field, strlen(entries->field));
+		sha256_update(&sign_ctx, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
-	*out = malloc(SHA256_DIGEST_LENGTH);
+	*out = malloc(SHA256_BLOCK_SIZE);
 	if (*out != NULL) {
-		SHA256_Final(*out, &sign_ctx);
-		*outlen = SHA256_DIGEST_LENGTH;
+		sha256_final(&sign_ctx, *out);
+		*outlen = SHA256_BLOCK_SIZE;
 	}
 	else {
 		pkg_emit_errno("malloc", "pkg_checksum_hash_sha256");
@@ -373,11 +373,11 @@ pkg_checksum_hash_sha256_bulk(const unsigned char *in, size_t inlen,
 {
 	SHA256_CTX sign_ctx;
 
-	*out = malloc(SHA256_DIGEST_LENGTH);
-	SHA256_Init(&sign_ctx);
-	SHA256_Update(&sign_ctx, in, inlen);
-	SHA256_Final(*out, &sign_ctx);
-	*outlen = SHA256_DIGEST_LENGTH;
+	*out = malloc(SHA256_BLOCK_SIZE);
+	sha256_init(&sign_ctx);
+	sha256_update(&sign_ctx, in, inlen);
+	sha256_final(&sign_ctx, *out);
+	*outlen = SHA256_BLOCK_SIZE;
 }
 
 static void
@@ -387,12 +387,12 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 	size_t r;
 
 	SHA256_CTX sign_ctx;
-	*out = malloc(SHA256_DIGEST_LENGTH);
-	SHA256_Init(&sign_ctx);
+	*out = malloc(SHA256_BLOCK_SIZE);
+	sha256_init(&sign_ctx);
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
-		SHA256_Update(&sign_ctx, buffer, r);
-	SHA256_Final(*out, &sign_ctx);
-	*outlen = SHA256_DIGEST_LENGTH;
+		sha256_update(&sign_ctx, buffer, r);
+	sha256_final(&sign_ctx, *out);
+	*outlen = SHA256_BLOCK_SIZE;
 }
 
 static void
