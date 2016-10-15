@@ -464,6 +464,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	FILE		*remote = NULL;
 	struct url	*u = NULL;
 	struct url_stat	 st;
+	struct stat	 sb;
 	off_t		 done = 0;
 	off_t		 r;
 	int64_t		 max_retry, retry;
@@ -559,8 +560,13 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		default:
 			while (waitpid(pid, &pstat, 0) == -1 && errno == EINTR)
 				;
+			/* restore original doc */
+			u->doc = doc;
+			fetchFreeURL(u);
 			switch (WEXITSTATUS(pstat)) {
 			case 0:
+				fstat(dest, &sb);
+				*t = st.mtime;
 				return (EPKG_OK);
 			case 1:
 				return (EPKG_UPTODATE);
@@ -728,6 +734,19 @@ cleanup:
 			fclose(remote);
 	}
 
+	if (retcode == EPKG_OK) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = *t,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = *t,
+			.tv_usec = 0
+			}
+		};
+		futimes(dest, ftimes);
+	}
 	if (strcmp(u->scheme, "ssh") != 0) {
 		if (retcode == EPKG_OK)
 			exit(0);
