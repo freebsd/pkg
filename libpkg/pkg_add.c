@@ -246,6 +246,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 		}
 	}
 	fchdir(fdcwd);
+	close(fdcwd);
 #endif
 
 	if (getenv("INSTALL_AS_USER") == NULL) {
