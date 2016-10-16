@@ -1,3 +1,6 @@
+Changes from pkg 1.9.0
+- fix file descriptor leak on system without utimensat()
+
 Changes from pkg 1.8
 
 - Drop privileges in many commands
