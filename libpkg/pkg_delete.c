@@ -252,6 +252,8 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 
 	/* remove the trailing '/' */
 	tmp = strrchr(dir, '/');
+	if (tmp == NULL)
+		return;
 	if (tmp == dir)
 		return;
 
