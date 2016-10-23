@@ -488,7 +488,7 @@ struct ftpio {
 
 static int	 ftp_readfn(void *, char *, int);
 static int	 ftp_writefn(void *, const char *, int);
-static off_t	 ftp_seekfn(void *, off_t, int);
+static fpos_t	 ftp_seekfn(void *, fpos_t, int);
 static int	 ftp_closefn(void *);
 
 static int
@@ -551,18 +551,18 @@ ftp_writefn(void *v, const char *buf, int len)
 	return (-1);
 }
 
-static off_t
-ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
+static fpos_t
+ftp_seekfn(void *v, fpos_t pos __unused, int whence __unused)
 {
 	struct ftpio *io;
 
 	io = (struct ftpio *)v;
 	if (io == NULL) {
 		errno = EBADF;
-		return ((off_t)-1);
+		return (-1);
 	}
 	errno = ESPIPE;
-	return ((off_t)-1);
+	return (-1);
 }
 
 static int
@@ -772,7 +772,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    fetch_bind(sd, sa.ss_family, bindaddr) != 0)
 			goto sysouch;
-		if (connect(sd, (struct sockaddr *)&sa, l) == -1)
+		if (connect(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
 			goto sysouch;
 
 		/* make the server initiate the transfer */
@@ -786,14 +786,12 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		u_int32_t a;
 		u_short p;
 		int arg, d;
-		socklen_t sslen;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 
 		switch (sa.ss_family) {
 		case AF_INET6:
 			((struct sockaddr_in6 *)&sa)->sin6_port = 0;
-			sslen = sizeof(struct sockaddr_in6);
 #ifdef IPV6_PORTRANGE
 			arg = low ? IPV6_PORTRANGE_DEFAULT : IPV6_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IPV6, IPV6_PORTRANGE,
@@ -803,7 +801,6 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			break;
 		case AF_INET:
 			((struct sockaddr_in *)&sa)->sin_port = 0;
-			sslen = sizeof(struct sockaddr_in);
 #ifdef IP_PORTRANGE
 			arg = low ? IP_PORTRANGE_DEFAULT : IP_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IP, IP_PORTRANGE,
@@ -814,7 +811,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		}
 		if (verbose)
 			fetch_info("binding data socket");
-		if (bind(sd, (struct sockaddr *)&sa, sslen) == -1)
+		if (bind(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
 			goto sysouch;
 		if (listen(sd, 1) == -1)
 			goto sysouch;
@@ -837,7 +834,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			e = -1;
 			sin6 = (struct sockaddr_in6 *)&sa;
 			sin6->sin6_scope_id = 0;
-			if (getnameinfo((struct sockaddr *)&sa, sizeof(struct sockaddr_in6),
+			if (getnameinfo((struct sockaddr *)&sa, sa.ss_len,
 				hname, sizeof(hname),
 				NULL, 0, NI_NUMERICHOST) == 0) {
 				e = ftp_cmd(conn, "EPRT |%d|%s|%d|", 2, hname,
@@ -936,7 +933,7 @@ ftp_authenticate(conn_t *conn, struct url *url, struct url *purl)
 		if (*pwd == '\0')
 			pwd = getenv("FTP_PASSWORD");
 		if (pwd == NULL || *pwd == '\0') {
-			if ((logname = getlogin()) == 0)
+			if ((logname = getlogin()) == NULL)
 				logname = FTP_ANONYMOUS_USER;
 			if ((len = snprintf(pbuf, MAXLOGNAME + 1, "%s@", logname)) < 0)
 				len = 0;
