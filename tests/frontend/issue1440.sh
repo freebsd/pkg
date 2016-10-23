@@ -186,13 +186,13 @@ EOF
 
 
 OUTPUT_CASE1="Updating repoA repository catalogue...
-${JAILED}Fetching meta.txz:  done
-${JAILED}Fetching packagesite.txz:  done
+${JAILED}meta.txz                                 :  done
+${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 repoA repository update completed. 4 packages processed.
 Updating repoB repository catalogue...
-${JAILED}Fetching meta.txz:  done
-${JAILED}Fetching packagesite.txz:  done
+${JAILED}meta.txz                                 :  done
+${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
 Checking integrity... done (0 conflicting)

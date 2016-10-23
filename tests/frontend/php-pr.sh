@@ -239,8 +239,8 @@ php53-gd-5.3.27
 "
 
 OUTPUT="Updating local repository catalogue...
-${JAILED}Fetching meta.txz:  done
-${JAILED}Fetching packagesite.txz:  done
+${JAILED}meta.txz                                 :  done
+${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
 Checking integrity... done (0 conflicting)
