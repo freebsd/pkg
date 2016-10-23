@@ -1,6 +1,7 @@
 Changes from pkg 1.9
 - Fix fd leak on systems without utimensat (merged in release branch)
 - Do not use openssl for sha256
+- Improve the default output when fetching data
 
 Changes from pkg 1.8
 
