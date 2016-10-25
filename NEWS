@@ -4,6 +4,7 @@ Changes from pkg 1.9
 - Improve the default output when fetching data
 - Update libfetch to the version of FreeBSD 11
 - Update libsbuf to the version of FreeBSD 11
+- Fix NetBSD ABI
 
 Changes from pkg 1.8
 
