@@ -787,6 +787,8 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 #if defined(__DragonFly__)
 	snprintf(dest, sz, "%s:%d.%d",
 	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
+#elif defined(__NetBSD__)
+	snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
 #else
 	snprintf(dest, sz, "%s:%d", osname, version / 100000);
 #endif
