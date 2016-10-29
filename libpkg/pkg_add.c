@@ -206,20 +206,21 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
     const struct timespec *ats, const struct timespec *mts)
 {
 
+	struct timeval tv[2];
+	int fdcwd;
 #ifdef HAVE_UTIMENSAT
 	struct timespec times[2];
 
 	times[0] = *ats;
 	times[1] = *mts;
 	if (utimensat(fd, RELATIVE_PATH(path), times,
-	    AT_SYMLINK_NOFOLLOW) == -1){
+	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EOPNOTSUPP){
 		pkg_emit_error("Fail to set time on %s: %s", path,
 		    strerror(errno));
 		return (EPKG_FATAL);
 	}
-#else
-	struct timeval tv[2];
-	int fdcwd;
+	if (errno == EOPNOTSUPP) {
+#endif
 
 	tv[0].tv_sec = ats->tv_sec;
 	tv[0].tv_usec = ats->tv_nsec / 1000;
@@ -247,6 +248,8 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	}
 	fchdir(fdcwd);
 	close(fdcwd);
+#ifdef HAVE_UTIMENSAT
+	}
 #endif
 
 	if (getenv("INSTALL_AS_USER") == NULL) {
