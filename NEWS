@@ -5,6 +5,7 @@ Changes from pkg 1.9
 - Update libfetch to the version of FreeBSD 11
 - Update libsbuf to the version of FreeBSD 11
 - Fix NetBSD ABI
+- Add a fallback for utimensat when reporting EOPNOTSUPP
 
 Changes from pkg 1.8
 
