@@ -674,6 +674,9 @@ static struct db_upgrades {
 	{33,
 	"ALTER TABLE packages ADD COLUMN vital INTEGER NOT NULL DEFAULT 0;"
 	},
+	{34,
+	"DROP TABLE pkg_search;"
+	},
 	/* Mark the end of the array */
 	{ -1, NULL }
 

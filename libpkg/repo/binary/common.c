@@ -132,12 +132,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"DELETE FROM pkg_search WHERE origin=?1;",
 		"TT",
 	},
-	[FTS_APPEND] = {
-		NULL,
-		"INSERT OR IGNORE INTO pkg_search(id, name, origin) "
-		"VALUES (?1, ?2 || '-' || ?3, ?4);",
-		"ITTT"
-	},
 	[PROVIDE] = {
 		NULL,
 		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",

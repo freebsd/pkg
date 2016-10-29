@@ -89,7 +89,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	33
+#define DB_SCHEMA_MINOR	34
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -583,10 +583,6 @@ pkgdb_init(sqlite3 *sdb)
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
 	");"
-
-	/* FTS search table */
-
-	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 
 	/* Mark the end of the array */
 
@@ -1285,7 +1281,6 @@ typedef enum _sql_prstmt_index {
 	CONFLICT,
 	PKG_PROVIDE,
 	PROVIDE,
-	FTS_APPEND,
 	UPDATE_DIGEST,
 	CONFIG_FILES,
 	UPDATE_CONFIG_FILE,
@@ -1488,12 +1483,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",
 		"T",
 	},
-	[FTS_APPEND] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_search(id, name, origin) "
-		"VALUES (?1, ?2 || '-' || ?3, ?4);",
-		"ITTT"
-	},
 	[UPDATE_DIGEST] = {
 		NULL,
 		"UPDATE packages SET manifestdigest=?1 WHERE id=?2;",
@@ -1653,12 +1642,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 	}
 
 	package_id = sqlite3_last_insert_rowid(s);
-
-	if (run_prstmt(FTS_APPEND, package_id, pkg->name, pkg->version,
-	    pkg->origin) != SQLITE_DONE) {
-		ERROR_SQLITE(s, SQL(FTS_APPEND));
-		goto cleanup;
-	}
 
 	/*
 	 * update dep informations on packages that depends on the insert

@@ -183,8 +183,6 @@ static const char binary_repo_initsql[] = ""
 	"CREATE INDEX packages_uid ON packages(name, origin);"
 	"CREATE INDEX packages_version ON packages(name, version);"
 	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"*/
-	/* FTS search table */
-	"CREATE VIRTUAL TABLE pkg_search USING fts4(id, name, origin);"
 
 	"PRAGMA user_version=%d;"
 	;
@@ -375,6 +373,10 @@ static const struct repo_changes repo_upgrades[] = {
 	 "Add vital field",
 
 	 "ALTER TABLE packages ADD COLUMN vital INTEGER NOT NULL DEFAULT 0;"
+	},
+	{2013,
+	 2014,
+	 "DROP TABLE pkg_search;"
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
@@ -629,7 +631,7 @@ static const struct repo_changes repo_downgrades[] = {
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 13
+#define REPO_SCHEMA_MINOR 14
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
@@ -652,7 +654,6 @@ typedef enum _sql_prstmt_index {
 	EXISTS,
 	REPO_VERSION,
 	DELETE,
-	FTS_APPEND,
 	PROVIDE,
 	PROVIDES,
 	REQUIRE,

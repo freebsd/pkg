@@ -545,7 +545,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		pkg_emit_incremental_update(repo->name, cnt);
 
 	sql_exec(sqlite, ""
-	 "INSERT INTO pkg_search SELECT id, name || '-' || version, origin FROM packages;"
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
