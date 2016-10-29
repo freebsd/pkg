@@ -321,9 +321,6 @@ pkg_repo_binary_search_how(match_t match)
 		/* Should not be called by pkgdb_get_match_how(). */
 		assert(0);
 		break;
-	case MATCH_FTS:
-		how = "id IN (SELECT id FROM pkg_search WHERE %s MATCH ?1)";
-		break;
 	}
 
 	return (how);

@@ -170,12 +170,6 @@ try_again:
 	}
 	package_id = sqlite3_last_insert_rowid(sqlite);
 
-/*	if (pkg_repo_binary_run_prstatement (FTS_APPEND, package_id,
-			name, version, origin) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(FTS_APPEND));
-		return (EPKG_FATAL);
-	}*/
-
 	dep = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (pkg_repo_binary_run_prstatement(DEPS, dep->origin,
