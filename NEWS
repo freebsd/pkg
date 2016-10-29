@@ -1,5 +1,7 @@
 Changes from pkg 1.9.0
-- fix file descriptor leak on system without utimensat()
+- Fix file descriptor leak on system without utimensat()
+- Fix support for NetBSD ABI
+- Add a fallback when utimensat() reports EOPNOTSUPP
 
 Changes from pkg 1.8
 
