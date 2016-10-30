@@ -28,36 +28,56 @@
 
 #include <assert.h>
 #include <dirent.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 
 static void
-rm_rf(const char *path)
+rm_rf(int rootfd, const char *path)
 {
+	int dirfd;
 	DIR *d;
 	struct dirent *e;
 	struct stat st;
-	char filepath[MAXPATHLEN];
 
-	if ((d = opendir(path)) == NULL) {
-		pkg_emit_errno("opendir", path);
-		return;
+	if (rootfd != -1) {
+		while (*path == '/')
+			path++;
+
+		dirfd = openat(rootfd, path, O_DIRECTORY);
+		if (dirfd == -1) {
+			pkg_emit_errno("openat", path);
+			return;
+		}
+	} else {
+		dirfd = open(path, O_DIRECTORY);
+		if (dirfd == -1) {
+			pkg_emit_errno("open", path);
+			return;
+		}
 	}
 
+	d = fdopendir(dirfd);
 	while ((e = readdir(d)) != NULL) {
 		if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
 			continue;
-		snprintf(filepath, sizeof(filepath), "%s/%s", path, e->d_name);
-		if (lstat(filepath, &st) != 0) {
-			pkg_emit_errno("lstat", filepath);
+		if (fstatat(dirfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+			pkg_emit_errno("fstatat", path);
 			continue;
 		}
 		if (S_ISDIR(st.st_mode))
-			rm_rf(filepath);
-		remove(filepath);
+			rm_rf(dirfd, e->d_name);
+		else
+			unlinkat(dirfd, e->d_name, 0);
 	}
 	closedir(d);
+	if (rootfd == -1)
+		return;
+	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != 0)
+		return;
+	unlinkat(rootfd, path, S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0);
 }
 
 void
@@ -72,5 +92,5 @@ pkg_cache_full_clean(void)
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
-	return (rm_rf(cachedir));
+	return (rm_rf(-1, cachedir));
 }
