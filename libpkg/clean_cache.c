@@ -35,18 +35,18 @@
 #include "private/event.h"
 
 static void
-rm_rf(int rootfd, const char *path)
+rm_rf(int basefd, const char *path)
 {
 	int dirfd;
 	DIR *d;
 	struct dirent *e;
 	struct stat st;
 
-	if (rootfd != -1) {
+	if (basefd != -1) {
 		while (*path == '/')
 			path++;
 
-		dirfd = openat(rootfd, path, O_DIRECTORY);
+		dirfd = openat(basefd, path, O_DIRECTORY);
 		if (dirfd == -1) {
 			pkg_emit_errno("openat", path);
 			return;
@@ -73,11 +73,11 @@ rm_rf(int rootfd, const char *path)
 			unlinkat(dirfd, e->d_name, 0);
 	}
 	closedir(d);
-	if (rootfd == -1)
+	if (basefd == -1)
 		return;
-	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != 0)
+	if (fstatat(basefd, path, &st, AT_SYMLINK_NOFOLLOW) != 0)
 		return;
-	unlinkat(rootfd, path, S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0);
+	unlinkat(basefd, path, S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0);
 }
 
 void
