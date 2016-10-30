@@ -123,7 +123,6 @@ exec_audit(int argc, char **argv)
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EX_OK;
-	const char		*portaudit_site = NULL;
 	struct sbuf		*sb;
 	kh_pkgs_t		*check = NULL;
 
@@ -160,8 +159,7 @@ exec_audit(int argc, char **argv)
 	audit = pkg_audit_new();
 
 	if (fetch == true) {
-		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
-		if (pkg_audit_fetch(portaudit_site, audit_file) != EPKG_OK) {
+		if (pkg_audit_fetch(NULL, audit_file) != EPKG_OK) {
 			pkg_audit_free(audit);
 			return (EX_IOERR);
 		}

@@ -252,6 +252,10 @@ pkg_audit_fetch(const char *src, const char *dest)
 	struct pkg_audit_extract_cbdata cbdata;
 	int dfd = -1;
 
+	if (src == NULL) {
+		src = pkg_object_string(pkg_config_get("VULNXML_SITE"));
+	}
+
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
