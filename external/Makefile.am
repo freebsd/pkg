@@ -248,6 +248,7 @@ sqlite_common_cflags=	-I$(top_srcdir)/external/linenoise \
 			-DUSE_PREAD \
 			-DSQLITE_THREADSAFE=0 \
 			-DSQLITE_TEMP_STORE=3 \
+			-DSQLITE_ENABLE_FTS4 \
 			-DSQLITE_SHELL_DBNAME_PROC=pkgshell_open \
 			-DNDEBUG
 libsqlite_la_SOURCES=	sqlite/sqlite3.c \
