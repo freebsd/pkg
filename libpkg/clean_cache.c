@@ -52,9 +52,9 @@ rm_rf(int basefd, const char *path)
 			return;
 		}
 	} else {
-		dirfd = open(path, O_DIRECTORY);
+		dirfd = dup(pkg_get_cachedirfd());
 		if (dirfd == -1) {
-			pkg_emit_errno("open", path);
+			pkg_emit_error("Cannot open the cache directory");
 			return;
 		}
 	}
@@ -83,14 +83,11 @@ rm_rf(int basefd, const char *path)
 void
 pkg_cache_full_clean(void)
 {
-	const char *cachedir;
 
 	if (!pkg_object_bool(pkg_config_get("AUTOCLEAN")))
 		return;
 
 	pkg_debug(1, "Cleaning up cachedir");
 
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
-
-	return (rm_rf(-1, cachedir));
+	return (rm_rf(-1, NULL));
 }
