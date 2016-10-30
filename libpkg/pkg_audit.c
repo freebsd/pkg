@@ -250,6 +250,7 @@ pkg_audit_fetch(const char *src, const char *dest)
 	time_t t = 0;
 	struct stat st;
 	struct pkg_audit_extract_cbdata cbdata;
+	int dfd = -1;
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
@@ -258,8 +259,14 @@ pkg_audit_fetch(const char *src, const char *dest)
 	strlcpy(tmp, tmpdir, sizeof(tmp));
 	strlcat(tmp, "/vuln.xml.bz2.XXXXXXXX", sizeof(tmp));
 
-	if (stat(dest, &st) != -1)
-		t = st.st_mtime;
+	if (dest != NULL) {
+		if (stat(dest, &st) != -1)
+			t = st.st_mtime;
+	} else {
+		dfd = pkg_get_dbdirfd();
+		if (fstatat(dfd, "vuln.xml", &st, 0) != -1)
+			t = st.st_mtime;
+	}
 
 	switch (pkg_fetch_file_tmp(NULL, src, tmp, t)) {
 	case EPKG_OK:
@@ -280,8 +287,13 @@ pkg_audit_fetch(const char *src, const char *dest)
 		goto cleanup;
 	}
 	/* Open out fd */
-	outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
-			S_IRUSR|S_IRGRP|S_IROTH);
+	if (dest != NULL) {
+		outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
+		    S_IRUSR|S_IRGRP|S_IROTH);
+	} else {
+		outfd = openat(dfd, "vuln.xml", O_RDWR|O_CREAT|O_TRUNC,
+		    S_IRUSR|S_IRGRP|S_IROTH);
+	}
 	if (outfd == -1) {
 		pkg_emit_errno("pkg_audit_fetch", "open out fd");
 		goto cleanup;
@@ -850,12 +862,18 @@ pkg_audit_new(void)
 int
 pkg_audit_load(struct pkg_audit *audit, const char *fname)
 {
-	int fd;
+	int dfd, fd;
 	void *mem;
 	struct stat st;
 
-	if ((fd = open(fname, O_RDONLY)) == -1)
-		return (EPKG_FATAL);
+	if (fname != NULL) {
+		if ((fd = open(fname, O_RDONLY)) == -1)
+			return (EPKG_FATAL);
+	} else {
+		dfd = pkg_get_dbdirfd();
+		if ((fd = openat(dfd, "vuln.xml", O_RDONLY)) == -1)
+			return (EPKG_FATAL);
+	}
 
 	if (fstat(fd, &st) == -1) {
 		close(fd);

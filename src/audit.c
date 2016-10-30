@@ -116,11 +116,9 @@ exec_audit(int argc, char **argv)
 	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
-	const char		*db_dir;
 	char			*name;
 	char			*version;
-	char			 audit_file_buf[MAXPATHLEN];
-	char			*audit_file = audit_file_buf;
+	char			*audit_file = NULL;
 	unsigned int		 vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
@@ -128,9 +126,6 @@ exec_audit(int argc, char **argv)
 	const char		*portaudit_site = NULL;
 	struct sbuf		*sb;
 	kh_pkgs_t		*check = NULL;
-
-	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
 
 	struct option longopts[] = {
 		{ "fetch",	no_argument,		NULL,	'F' },
