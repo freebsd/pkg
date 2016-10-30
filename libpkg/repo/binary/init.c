@@ -332,6 +332,8 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	}
 #endif
 
+	pkgdb_syscall_overload();
+
 	snprintf(filepath, sizeof(filepath), "%s/%s.meta",
 		dbdir, pkg_repo_name(repo));
 

@@ -54,6 +54,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 
 #include <sqlite3.h>
 
@@ -960,6 +961,59 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 	return (EPKG_OK);
 }
 
+static int
+_dbdir_open(const char *path, int flags, int mode)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (openat(dfd, strrchr(path, '/') + 1, flags, mode));
+}
+
+static int
+_dbdir_access(const char *path, int mode)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (faccessat(dfd, strrchr(path, '/') + 1, mode, 0));
+}
+
+static int
+_dbdir_stat(const char * path, struct stat * sb)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (fstatat(dfd, strrchr(path, '/') + 1, sb, 0));
+}
+
+static int
+_dbdir_unlink(const char *path)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (unlinkat(dfd, strrchr(path, '/') + 1, 0));
+}
+
+static int
+_dbdir_mkdir(const char *path, mode_t mode)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (mkdirat(dfd, strrchr(path, '/') + 1, mode));
+}
+
+void
+pkgdb_syscall_overload(void)
+{
+	sqlite3_vfs	*vfs;
+
+	vfs = sqlite3_vfs_find(NULL);
+	vfs->xSetSystemCall(vfs, "open", (sqlite3_syscall_ptr)_dbdir_open);
+	vfs->xSetSystemCall(vfs, "access", (sqlite3_syscall_ptr)_dbdir_access);
+	vfs->xSetSystemCall(vfs, "stat", (sqlite3_syscall_ptr)_dbdir_stat);
+	vfs->xSetSystemCall(vfs, "unlink", (sqlite3_syscall_ptr)_dbdir_unlink);
+	vfs->xSetSystemCall(vfs, "mkdir", (sqlite3_syscall_ptr)_dbdir_mkdir);
+}
+
 int
 pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 {
@@ -1037,6 +1091,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 				sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 		}
 #endif
+		pkgdb_syscall_overload();
 
 		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
