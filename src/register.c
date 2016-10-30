@@ -39,6 +39,7 @@
 #include <stdbool.h>
 #include <regex.h>
 #include <getopt.h>
+#include <fcntl.h>
 
 #include "pkgcli.h"
 
@@ -89,7 +90,6 @@ exec_register(int argc, char **argv)
 	char		*arch = NULL;
 	char		 myarch[BUFSIZ];
 	char		*www  = NULL;
-	char		 fpath[MAXPATHLEN];
 
 	const char	*plist      = NULL;
 	const char	*mdir       = NULL;
@@ -109,6 +109,7 @@ exec_register(int argc, char **argv)
 	int		 i;
 	int		 ret     = EPKG_OK;
 	int		 retcode = EX_OK;
+	int		 mdirfd;
 
 	/* options descriptor */
 	struct option longopts[] = {
@@ -236,27 +237,33 @@ exec_register(int argc, char **argv)
 		}
 
 	} else {
-		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
-		ret = pkg_parse_manifest_file(pkg, fpath, keys);
-		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) {
+		mdirfd = open(mdir, O_DIRECTORY);
+		if (mdirfd == -1) {
+			warn("Unable to open the manifest directory '%s'\n",
+			    mdir);
+			usage_register();
 			pkg_free(pkg);
 			return (EX_IOERR);
 		}
+		ret = pkg_parse_manifest_fileat(mdirfd, pkg, "+MANIFEST", keys);
+		pkg_manifest_keys_free(keys);
+		if (ret != EPKG_OK) {
+			pkg_free(pkg);
+			close(mdirfd);
+			return (EX_IOERR);
+		}
 
-		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_DESC, fpath, false);
+		if (faccessat(mdirfd, "+DESC", F_OK, 0) == 0)
+			pkg_set_from_fileat(mdirfd, pkg, PKG_DESC, "+DESC",
+			    false);
 
-		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
+		if (faccessat(mdirfd, "+DISPLAY", F_OK, 0) == 0)
+			pkg_set_from_fileat(mdirfd, pkg, PKG_MESSAGE,
+			    "+DISPLAY", false);
 
 		for (i = 0; scripts[i] != NULL; i++) {
-			snprintf(fpath, sizeof(fpath), "%s/%s", mdir,
-			    scripts[i]);
-			if (access(fpath, F_OK) == 0)
-				pkg_addscript_file(pkg, fpath);
+			if (faccessat(mdirfd, scripts[i], F_OK, 0) == 0)
+				pkg_addscript_fileat(mdirfd, pkg, scripts[i]);
 		}
 
 		if (www != NULL) {
@@ -288,6 +295,7 @@ exec_register(int argc, char **argv)
 
 		if (plist != NULL)
 			ret += ports_parse_plist(pkg, plist, input_path);
+		close(mdirfd);
 	}
 
 	if (ret != EPKG_OK) {
