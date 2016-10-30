@@ -704,12 +704,14 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 }
 
 static void
-load_repo_file(const char *repofile, pkg_init_flags flags)
+load_repo_file(int dfd, const char *repodir, const char *repofile,
+    pkg_init_flags flags)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	const char *myarch = NULL;
 	const char *myarch_legacy = NULL;
+	int fd;
 
 	p = ucl_parser_new(0);
 
@@ -719,13 +721,21 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
 
-	pkg_debug(1, "PKgConfig: loading %s", repofile);
-	if (!ucl_parser_add_file(p, repofile)) {
-		pkg_emit_error("Error parsing: %s: %s", repofile,
-		    ucl_parser_get_error(p));
-		ucl_parser_free(p);
+	pkg_debug(1, "PKgConfig: loading %s/%s", repodir, repofile);
+	fd = openat(dfd, repofile, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("Unable to open '%s/%s': %s\n", repodir,
+		    repofile, strerror(errno));
 		return;
 	}
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("Error parsing: '%s/%s': %s", repodir,
+		    repofile, ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		close(fd);
+		return;
+	}
+	close(fd);
 
 	obj = ucl_parser_get_object(p);
 	if (obj == NULL)
@@ -749,10 +759,11 @@ load_repo_files(const char *repodir, pkg_init_flags flags)
 	struct dirent **ent;
 	char *p;
 	size_t n;
-	int nents, i;
-	char path[MAXPATHLEN];
+	int nents, i, fd;
 
 	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
+	if ((fd = open(repodir, O_DIRECTORY)) == -1)
+		return;
 
 	nents = scandir(repodir, &ent, nodots, alphasort);
 	for (i = 0; i < nents; i++) {
@@ -760,16 +771,13 @@ load_repo_files(const char *repodir, pkg_init_flags flags)
 			continue;
 		p = &ent[i]->d_name[n - 5];
 		if (strcmp(p, ".conf") == 0) {
-			snprintf(path, sizeof(path), "%s%s%s",
-			    repodir,
-			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
-			    ent[i]->d_name);
-			load_repo_file(path, flags);
+			load_repo_file(fd, repodir, ent[i]->d_name, flags);
 		}
 		free(ent[i]);
 	}
 	if (nents >= 0)
 		free(ent);
+	close(fd);
 }
 
 static void
