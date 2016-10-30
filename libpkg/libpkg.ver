@@ -45,6 +45,8 @@ global:
 	pkg_free;
 	pkg_from_old;
 	pkg_get2;
+	pkg_get_cachedirfd;
+	pkg_get_dbdirfd;
 	pkg_get_dir;
 	pkg_get_file;
 	pkg_get_myarch;

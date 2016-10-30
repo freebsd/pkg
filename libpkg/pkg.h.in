@@ -1708,6 +1708,9 @@ char *pkg_absolutepath(const char *src, char *dest, size_t dest_len, bool fromro
 
 void pkg_cache_full_clean(void);
 
+int pkg_get_cachedirfd(void);
+int pkg_get_dbdirfd(void);
+
 #ifdef __cplusplus
 }
 #endif

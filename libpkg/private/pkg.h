@@ -222,6 +222,8 @@ extern int64_t debug_level;
 extern bool developer_mode;
 extern const char *pkg_rootdir;
 extern int rootfd;
+extern int cachedirfd;
+extern int pkg_dbdirfd;
 
 struct pkg_repo_it;
 struct pkg_repo;

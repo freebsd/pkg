@@ -67,6 +67,8 @@ int64_t debug_level = 0;
 bool developer_mode = false;
 const char *pkg_rootdir = NULL;
 int rootfd = -1;
+int cachedirfd = -1;
+int pkg_dbdirfd = -1;
 
 struct config_entry {
 	uint8_t type;
@@ -1282,6 +1284,13 @@ pkg_shutdown(void)
 	ucl_object_unref(config);
 	HASH_FREE(repos, pkg_repo_free);
 
+	if (rootfd != -1)
+		close(rootfd);
+	if (cachedirfd != -1)
+		close(rootfd);
+	if (pkg_dbdirfd != -1)
+		close(pkg_dbdirfd);
+
 	parsed = false;
 
 	return;
@@ -1407,4 +1416,38 @@ pkg_set_rootdir(const char *rootdir) {
 	pkg_rootdir = rootdir;
 
 	return (EPKG_OK);
+}
+
+int
+pkg_get_cachedirfd(void)
+{
+	const char *cachedir;
+
+	if (cachedirfd == -1) {
+		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+		/*
+		 * do not check the value as if we cannot open it means
+		 * it has not been created yet
+		 */
+		cachedirfd = open(cachedir, O_DIRECTORY);
+	}
+
+	return (cachedirfd);
+}
+
+int
+pkg_get_dbdirfd(void)
+{
+	const char *dbdir;
+
+	if (pkg_dbdirfd == -1) {
+		dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+		/*
+		 * do not check the value as if we cannot open it means
+		 * it has not been created yet
+		 */
+		pkg_dbdirfd = open(dbdir, O_DIRECTORY);
+	}
+
+	return (pkg_dbdirfd);
 }
