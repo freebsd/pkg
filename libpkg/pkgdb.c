@@ -1046,18 +1046,16 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	struct pkgdb	*db = NULL;
 	bool		 reopen = false;
 	bool		 profile = false;
-	char		 localpath[MAXPATHLEN];
 	const char	*dbdir;
 	bool		 create = false;
-	bool		 createdir = false;
 	int		 ret;
+	int		 dbdirfd;
 
 	if (*db_p != NULL) {
 		reopen = true;
 		db = *db_p;
 	}
 
-	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
 		return (EPKG_FATAL);
@@ -1066,35 +1064,34 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	db->prstmt_initialized = false;
 
 	if (!reopen) {
-		snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
-
-		if (eaccess(localpath, R_OK) != 0) {
+retry:
+		dbdirfd = pkg_get_dbdirfd();
+		if (dbdirfd == -1) {
+			if (errno == ENOENT) {
+				dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+				if (mkdirs(dbdir) != EPKG_OK) {
+					pkgdb_close(db);
+					return (EPKG_FATAL);
+				}
+				goto retry;
+			}
+		}
+		if (faccessat(dbdirfd, "local.sqlite", R_OK, AT_EACCESS) != 0) {
 			if (errno != ENOENT) {
 				pkg_emit_nolocaldb();
 				pkgdb_close(db);
 				return (EPKG_ENODB);
-			} else if ((eaccess(dbdir, W_OK) != 0)) {
+			} else if ((faccessat(dbdirfd, ".", W_OK, AT_EACCESS) != 0)) {
 				/*
 				 * If we need to create the db but cannot
 				 * write to it, fail early
 				 */
-				if (errno == ENOENT) {
-					createdir = true;
-					create = true;
-				} else {
-					pkg_emit_nolocaldb();
-					pkgdb_close(db);
-					return (EPKG_ENODB);
-				}
+				pkg_emit_nolocaldb();
+				pkgdb_close(db);
+				return (EPKG_ENODB);
 			} else {
 				create = true;
 			}
-		}
-
-		/* Create the directory if it doesn't exist */
-		if (createdir && mkdirs(dbdir) != EPKG_OK) {
-			pkgdb_close(db);
-			return (EPKG_FATAL);
 		}
 
 		sqlite3_initialize();
@@ -1102,7 +1099,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 		pkgdb_setup_lock();
 		pkgdb_syscall_overload();
 
-		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
+		if (sqlite3_open("local.sqlite", &db->sqlite) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
 			pkgdb_close(db);
 			return (EPKG_FATAL);
