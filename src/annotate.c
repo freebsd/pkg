@@ -207,6 +207,8 @@ exec_annotate(int argc, char **argv)
 	int		 retcode;
 	int		 exitcode = EX_OK;
 	int		 flags = 0;
+	int		 lock_type = PKGDB_LOCK_EXCLUSIVE;
+	int		 mode = PKGDB_MODE_READ;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -257,6 +259,7 @@ exec_annotate(int argc, char **argv)
 			break;
 		case 'S':
 			action = SHOW;
+			lock_type = PKGDB_LOCK_READONLY;
 			flags |= PKG_LOAD_ANNOTATIONS;
 			break;
 		case 'x':
@@ -273,7 +276,7 @@ exec_annotate(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (action == NONE || 
+	if (action == NONE ||
 	    (match == MATCH_ALL && argc < 1) ||
 	    (match != MATCH_ALL && argc < 2)) {
 		usage_annotate();
@@ -296,8 +299,9 @@ exec_annotate(int argc, char **argv)
 		value = sbuf_data(input);
 	}
 
-	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-			       PKGDB_DB_LOCAL);
+	if (lock_type == PKGDB_LOCK_EXCLUSIVE)
+		mode |= PKGDB_MODE_WRITE;
+	retcode = pkgdb_access(mode, PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
 		if (match == MATCH_ALL) {
 			exitcode = EX_OK;
@@ -324,7 +328,7 @@ exec_annotate(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
