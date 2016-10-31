@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -1014,6 +1014,32 @@ pkgdb_syscall_overload(void)
 	vfs->xSetSystemCall(vfs, "mkdir", (sqlite3_syscall_ptr)_dbdir_mkdir);
 }
 
+void
+pkgdb_setup_lock(void)
+{
+	const char *dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+
+	/*
+	 * Fall back on unix-dotfile locking strategy if on a network filesystem
+	 */
+#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	struct statvfs stfs;
+
+	if (statvfs(dbdir, &stfs) == 0) {
+		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
+			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+	}
+#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
+	struct statfs stfs;
+
+	if (statfs(dbdir, &stfs) == 0) {
+		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
+			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+	}
+#endif
+
+}
+
 int
 pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 {
@@ -1073,24 +1099,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 
 		sqlite3_initialize();
 
-		/*
-		 * Fall back on unix-dotfile locking strategy if on a network filesystem
-		 */
-#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
-		struct statvfs stfs;
-
-		if (statvfs(dbdir, &stfs) == 0) {
-			if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
-				sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
-		}
-#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
-		struct statfs stfs;
-
-		if (statfs(dbdir, &stfs) == 0) {
-			if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
-				sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
-		}
-#endif
+		pkgdb_setup_lock();
 		pkgdb_syscall_overload();
 
 		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
