@@ -124,7 +124,7 @@ audit_pkgs_all() {
 		echo
 		echo "chroot: $c"
 		for t in audit expiration deprecation; do
-			audit_pkgs "-c $c" $c
+			${t}_pkgs "-c $c" $c
 			last_rc=$?
 			[ $last_rc -gt 1 ] && rc=$last_rc
 		done
@@ -151,7 +151,7 @@ audit_pkgs_all() {
 		echo
 		echo "jail: ${j%|*}"
 		for t in audit expiration deprecation; do
-			audit_pkgs "-j ${j%|*}" ${j##*|}
+			${t}_pkgs "-j ${j%|*}" ${j##*|}
 			last_rc=$?
 			[ $last_rc -gt 1 ] && rc=$last_rc
 		done
