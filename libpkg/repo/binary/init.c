@@ -304,6 +304,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	struct pkg_repo_it *it;
 	struct pkg *pkg = NULL;
 
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	sqlite3_initialize();
 
 	pkgdb_setup_lock();
