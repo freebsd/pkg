@@ -69,6 +69,28 @@ audit_pkgs() {
 	return $rc
 }
 
+expiration_pkgs() {
+	local pkgargs="$1"
+
+	output=$(${pkgcmd} ${pkgargs} annotate -a -S expiration_date)
+
+	if [ -n "${output}" ]; then
+		echo $output
+		return 3
+	fi
+}
+
+deprecation_pkgs() {
+	local pkgargs="$1"
+
+	output=$(${pkgcmd} ${pkgargs} annotate -a -S expiration_date)
+
+	if [ -n "${output}" ]; then
+		echo $output
+		return 3
+	fi
+}
+
 # Use $pkg_chroots to provide a default list of chroots, and
 # $pkg_jails to provide a default list of jails (or '*' for all jails)
 # for all pkg periodic scripts, or set
@@ -92,16 +114,20 @@ audit_pkgs_all() {
 		echo "Host system:"
 	fi
 
-	audit_pkgs '' ''
-	last_rc=$?
-	[ $last_rc -gt 1 ] && rc=$last_rc
+	for t in audit expiration deprecation; do
+		${t}_pkgs '' ''
+		last_rc=$?
+		[ $last_rc -gt 1 ] && rc=$last_rc
+	done
 
 	for c in $daily_status_security_pkgaudit_chroots ; do
 		echo
 		echo "chroot: $c"
-		audit_pkgs "-c $c" $c
-		last_rc=$?
-		[ $last_rc -gt 1 ] && rc=$last_rc
+		for t in audit expiration deprecation; do
+			audit_pkgs "-c $c" $c
+			last_rc=$?
+			[ $last_rc -gt 1 ] && rc=$last_rc
+		done
 	done
 
 	case $daily_status_security_pkgaudit_jails in
@@ -124,9 +150,11 @@ audit_pkgs_all() {
 	for j in $jails ; do
 		echo
 		echo "jail: ${j%|*}"
-		audit_pkgs "-j ${j%|*}" ${j##*|}
-		last_rc=$?
-		[ $last_rc -gt 1 ] && rc=$last_rc
+		for t in audit expiration deprecation; do
+			audit_pkgs "-j ${j%|*}" ${j##*|}
+			last_rc=$?
+			[ $last_rc -gt 1 ] && rc=$last_rc
+		done
 	done
 
 	return $rc
