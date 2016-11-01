@@ -750,31 +750,35 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 }
 
 static int
-nodots(const struct dirent *dp)
+configfile(const struct dirent *dp)
 {
-	return (dp->d_name[0] != '.');
+	const char *p;
+
+	if (dp->d_name[0] == '.')
+		return (0);
+
+	if (dp->d_namlen <= 5)
+		return (0);
+
+	p = &dp->d_name[dp->d_namlen - 5];
+	if (strcmp(p, ".conf") != 0)
+		return (0);
+	return (1);
 }
 
 static void
 load_repo_files(const char *repodir, pkg_init_flags flags)
 {
 	struct dirent **ent;
-	char *p;
-	size_t n;
 	int nents, i, fd;
 
 	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
 	if ((fd = open(repodir, O_DIRECTORY)) == -1)
 		return;
 
-	nents = scandir(repodir, &ent, nodots, alphasort);
+	nents = scandir(repodir, &ent, configfile, alphasort);
 	for (i = 0; i < nents; i++) {
-		if ((n = strlen(ent[i]->d_name)) <= 5)
-			continue;
-		p = &ent[i]->d_name[n - 5];
-		if (strcmp(p, ".conf") == 0) {
-			load_repo_file(fd, repodir, ent[i]->d_name, flags);
-		}
+		load_repo_file(fd, repodir, ent[i]->d_name, flags);
 		free(ent[i]);
 	}
 	if (nents >= 0)
