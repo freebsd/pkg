@@ -773,7 +773,7 @@ load_repo_files(const char *repodir, pkg_init_flags flags)
 	int nents, i, fd;
 
 	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
-	if ((fd = open(repodir, O_DIRECTORY)) == -1)
+	if ((fd = open(repodir, O_DIRECTORY|O_CLOEXEC)) == -1)
 		return;
 
 	nents = scandir(repodir, &ent, configfile, alphasort);
@@ -1433,7 +1433,7 @@ pkg_get_cachedirfd(void)
 		 * do not check the value as if we cannot open it means
 		 * it has not been created yet
 		 */
-		cachedirfd = open(cachedir, O_DIRECTORY);
+		cachedirfd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
 	}
 
 	return (cachedirfd);
@@ -1450,7 +1450,7 @@ pkg_get_dbdirfd(void)
 		 * do not check the value as if we cannot open it means
 		 * it has not been created yet
 		 */
-		pkg_dbdirfd = open(dbdir, O_DIRECTORY);
+		pkg_dbdirfd = open(dbdir, O_DIRECTORY|O_CLOEXEC);
 	}
 
 	return (pkg_dbdirfd);
