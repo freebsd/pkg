@@ -46,7 +46,7 @@ rm_rf(int basefd, const char *path)
 		while (*path == '/')
 			path++;
 
-		dirfd = openat(basefd, path, O_DIRECTORY);
+		dirfd = openat(basefd, path, O_DIRECTORY|O_CLOEXEC);
 		if (dirfd == -1) {
 			pkg_emit_errno("openat", path);
 			return;

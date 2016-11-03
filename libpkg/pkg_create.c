@@ -338,7 +338,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 
 	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
 
-	if ((mfd = open(md_dir, O_DIRECTORY)) == -1) {
+	if ((mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
 		pkg_emit_errno("open", md_dir);
 		goto cleanup;
 	}

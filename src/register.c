@@ -237,7 +237,7 @@ exec_register(int argc, char **argv)
 		}
 
 	} else {
-		mdirfd = open(mdir, O_DIRECTORY);
+		mdirfd = open(mdir, O_DIRECTORY|O_CLOEXEC);
 		if (mdirfd == -1) {
 			warn("Unable to open the manifest directory '%s'\n",
 			    mdir);
