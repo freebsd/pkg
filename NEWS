@@ -4,6 +4,9 @@ Changes from pkg 1.9.0
 - Add a fallback when utimensat() reports EOPNOTSUPP
 - Allow pkg annodate -S to run as a non priviledge user
 - Extend the audit periodic script to report about expiration/deprecation
+- Fix file descriptor leak during rc script execution
+- Fix setting attributes on directories
+- Fix locking on NFS
 
 Changes from pkg 1.8
 
