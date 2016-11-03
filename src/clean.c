@@ -234,7 +234,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 		snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
 		if (ent->d_type == DT_DIR) {
 			nbfiles++;
-			newfd = openat(fd, ent->d_name, O_DIRECTORY, 0);
+			newfd = openat(fd, ent->d_name, O_DIRECTORY|O_CLOEXEC, 0);
 			if (newfd == -1) {
 				warnx("Impossible to open the directory %s",
 				    path);
@@ -339,7 +339,7 @@ exec_clean(int argc, char **argv)
 	argv += optind;
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
-	cachefd = open(cachedir, O_DIRECTORY);
+	cachefd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
 	if (cachefd == -1) {
 		warn("Impossible to open %s", cachedir);
 		return (EX_IOERR);

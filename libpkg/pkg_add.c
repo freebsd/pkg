@@ -227,7 +227,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	tv[1].tv_sec = mts->tv_sec;
 	tv[1].tv_usec = mts->tv_nsec / 1000;
 
-	fdcwd = open(".", O_DIRECTORY);
+	fdcwd = open(".", O_DIRECTORY|O_CLOEXEC);
 	fchdir(fd);
 
 	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
