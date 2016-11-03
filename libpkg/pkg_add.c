@@ -351,7 +351,7 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	}
 
 	if (st.st_uid == d->uid && st.st_gid == d->gid &&
-	    (st.st_mode & S_IFMT) == (d->perm & S_IFMT)) {
+	    (st.st_mode & ~S_IFMT) == (d->perm & ~S_IFMT)) {
 		d->noattrs = true;
 	}
 
