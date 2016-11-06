@@ -31,7 +31,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-#include <uthash.h>
 #include <ucl.h>
 #include <khash.h>
 #include <pkg.h>
