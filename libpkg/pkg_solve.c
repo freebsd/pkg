@@ -757,12 +757,12 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Depends */
-		kh_each_value(pkg->deps, dep, {
+		LL_FOREACH(pkg->depends, dep) {
 			if (pkg_solve_add_depend_rule(problem, cur_var, dep,
 					cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
-		});
+		}
 
 		/* Conflicts */
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {

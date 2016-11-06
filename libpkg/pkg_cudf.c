@@ -125,12 +125,12 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
 		return (EPKG_FATAL);
 
-	if (kh_count(pkg->deps) > 0) {
+	if (kh_count(pkg->depshash) > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
-		kh_each_value(pkg->deps, dep, {
+		kh_each_value(pkg->depshash, dep, {
 			if (cudf_print_element(f, dep->name,
-			    column + 1 == kh_count(pkg->deps), &column) < 0) {
+			    column + 1 == kh_count(pkg->depshash), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		});

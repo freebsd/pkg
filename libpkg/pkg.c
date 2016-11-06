@@ -533,35 +533,23 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 	HASH_NEXT(pkg->conflicts, (*c));
 }
 
-int
-pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
-{
-	assert(pkg != NULL);
-
-	if ((*d) == NULL)
-		(*d) = pkg->dirs;
-	else
-		(*d) = (*d)->next;
-	if ((*d) == NULL)
-		return (EPKG_END);
-
-	return (EPKG_OK);
+#define pkg_each(name, type, field)		\
+int						\
+pkg_##name(const struct pkg *p, type **t) {	\
+	assert(p != NULL);			\
+	if ((*t) == NULL)			\
+		(*t) = p->field;		\
+	else					\
+		(*t) = (*t)->next;		\
+	if ((*t) == NULL)			\
+		return (EPKG_END);		\
+	return (EPKG_OK);			\
 }
 
-int
-pkg_files(const struct pkg *pkg, struct pkg_file **f)
-{
-	assert(pkg != NULL);
-
-	if ((*f) == NULL)
-		(*f) = pkg->files;
-	else
-		(*f) = (*f)->next;
-	if ((*f) == NULL)
-		return (EPKG_END);
-
-	return (EPKG_OK);
-}
+pkg_each(dirs, struct pkg_dir, dirs);
+pkg_each(files, struct pkg_file, files);
+pkg_each(deps, struct pkg_dep, depends);
+pkg_each(rdeps, struct pkg_dep, rdepends);
 
 #define pkg_each_hash(name, htype, type, attrib)	\
 int							\
@@ -569,8 +557,6 @@ pkg_##name(const struct pkg *pkg, type **c) {		\
 	assert(pkg != NULL);				\
 	kh_next(htype, pkg->name, (*c), attrib);	\
 }
-pkg_each_hash(deps, pkg_deps, struct pkg_dep, name);
-pkg_each_hash(rdeps, pkg_deps, struct pkg_dep, name);
 pkg_each_hash(config_files, pkg_config_files, struct pkg_config_file, path);
 
 #define pkg_each_strings(name)			\
@@ -647,7 +633,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin, name);
-	if (kh_contains(pkg_deps, pkg->deps, name)) {
+	if (kh_contains(pkg_deps, pkg->depshash, name)) {
 		if (developer_mode) {
 			pkg_emit_error("%s: duplicate dependency listing: %s, fatal (developer mode)",
 			    pkg->name, name);
@@ -668,7 +654,8 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	kh_add(pkg_deps, pkg->deps, d, d->name, pkg_dep_free);
+	kh_add(pkg_deps, pkg->depshash, d, d->name, pkg_dep_free);
+	LL_APPEND(pkg->depends, d);
 
 	return (EPKG_OK);
 }
@@ -692,7 +679,8 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	d->uid = strdup(name);
 	d->locked = locked;
 
-	kh_add(pkg_deps, pkg->rdeps, d, d->name, pkg_dep_free);
+	kh_add(pkg_deps, pkg->rdepshash, d, d->name, pkg_dep_free);
+	LL_APPEND(pkg->rdepends, d);
 
 	return (EPKG_OK);
 }
@@ -1260,9 +1248,9 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 {
 	switch (list) {
 	case PKG_DEPS:
-		return (kh_count(pkg->deps));
+		return (kh_count(pkg->depshash));
 	case PKG_RDEPS:
-		return (kh_count(pkg->rdeps));
+		return (kh_count(pkg->rdepshash));
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
 	case PKG_FILES:
@@ -1298,11 +1286,13 @@ void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	switch (list) {
 	case PKG_DEPS:
-		kh_free(pkg_deps, pkg->deps, struct pkg_dep, pkg_dep_free);
+		LL_FREE(pkg->depends, pkg_dep_free);
+		kh_destroy_pkg_deps(pkg->depshash);
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
 	case PKG_RDEPS:
-		kh_free(pkg_deps, pkg->rdeps, struct pkg_dep, pkg_dep_free);
+		LL_FREE(pkg->rdepends, pkg_dep_free);
+		kh_destroy_pkg_deps(pkg->rdepshash);
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
@@ -1311,14 +1301,14 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		break;
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
-		kh_free(pkg_files, pkg->filehash, struct pkg_file, pkg_file_free);
-		pkg->files = NULL;
+		LL_FREE(pkg->files, pkg_file_free);
+		kh_destroy_pkg_files(pkg->filehash);
 		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		kh_free(pkg_dirs, pkg->dirhash, struct pkg_dir, pkg_dir_free);
-		pkg->files = NULL;
+		LL_FREE(pkg->dirs, pkg_dir_free);
+		kh_destroy_pkg_dirs(pkg->dirhash);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:

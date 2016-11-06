@@ -268,8 +268,10 @@ struct pkg {
 	int64_t			 flatsize;
 	int64_t			 old_flatsize;
 	int64_t			 timestamp;
-	kh_pkg_deps_t		*deps;
-	kh_pkg_deps_t		*rdeps;
+	kh_pkg_deps_t		*depshash;
+	struct pkg_dep		*depends;
+	kh_pkg_deps_t		*rdepshash;
+	struct pkg_dep		*rdepends;
 	kh_strings_t		*categories;
 	kh_strings_t		*licenses;
 	kh_pkg_files_t		*filehash;
@@ -302,6 +304,7 @@ struct pkg_dep {
 	char		*version;
 	char		*uid;
 	bool		 locked;
+	struct pkg_dep	*next;
 };
 
 typedef enum {
