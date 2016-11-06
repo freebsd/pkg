@@ -164,7 +164,7 @@ exec_add(int argc, char **argv)
 				warn("%s", file);
 				if (errno == ENOENT)
 					warnx("Was 'pkg install %s' meant?", file);
-				utstring_printf(failedpkgs, argv[i]);
+				utstring_printf(failedpkgs, "%s", argv[i]);
 				if (i != argc - 1)
 					utstring_printf(failedpkgs, ", ");
 				failedpkgcount++;
@@ -174,7 +174,7 @@ exec_add(int argc, char **argv)
 		}
 
 		if ((retcode = pkg_add(db, file, f, keys, location)) != EPKG_OK) {
-			utstring_printf(failedpkgs, argv[i]);
+			utstring_printf(failedpkgs, "%s", argv[i]);
 			if (i != argc - 1)
 				utstring_printf(failedpkgs, ", ");
 			failedpkgcount++;

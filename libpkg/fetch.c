@@ -376,7 +376,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 				utstring_printf(cmd, "-p %d ", u->port);
 			if (u->user[0] != '\0')
 				utstring_printf(cmd, "%s@", u->user);
-			utstring_printf(cmd, u->host);
+			utstring_printf(cmd, "%s", u->host);
 			utstring_printf(cmd, " pkg ssh");
 			pkg_debug(1, "Fetch: running '%s'", utstring_body(cmd));
 			argv[0] = _PATH_BSHELL;

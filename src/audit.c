@@ -100,7 +100,7 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, UT_string *sb,
 				if (!top)
 					utstring_printf(sb, ", ");
 
-				utstring_printf(sb, name);
+				utstring_printf(sb, "%s", name);
 
 				print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
 

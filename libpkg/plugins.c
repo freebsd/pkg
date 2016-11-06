@@ -155,7 +155,7 @@ pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str)
 	assert(p != NULL);
 
 	utstring_renew(p->fields[key]);
-	utstring_printf(p->fields[key], str);
+	utstring_printf(p->fields[key], "%s", str);
 	return (EPKG_OK);
 }
 

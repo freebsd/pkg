@@ -2875,7 +2875,7 @@ pkg_vprintf(const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) >= 0) {
+	if (buf && utstring_len(buf) > 0) {
 		count = printf("%s", utstring_body(buf));
 	} else
 		count = -1;
@@ -2919,7 +2919,7 @@ pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) >= 0) {
+	if (buf && utstring_len(buf) > 0) {
 		count = fprintf(stream, "%s", utstring_body(buf));
 	} else
 		count = -1;
@@ -2967,7 +2967,7 @@ pkg_vdprintf(int fd, const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) >= 0) {
+	if (buf && utstring_len(buf) > 0) {
 		count = dprintf(fd, "%s", utstring_body(buf));
 	} else 
 		count = -1;
@@ -3020,7 +3020,7 @@ pkg_vsnprintf(char * restrict str, size_t size, const char * restrict format,
 
 	if (buf)
 		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) >= 0) {
+	if (buf && utstring_len(buf) > 0) {
 		count = snprintf(str, size, "%s", utstring_body(buf));
 	} else
 		count = -1;
@@ -3071,7 +3071,7 @@ pkg_vasprintf(char **ret, const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) >= 0) {
+	if (buf && utstring_len(buf) > 0) {
 		count = asprintf(ret, "%s", utstring_body(buf));
 	} else {
 		count = -1;

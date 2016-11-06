@@ -211,7 +211,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				utstring_free(buf);
 				return (EPKG_FATAL);
 			}
-			utstring_printf(buf, plist_file);
+			utstring_printf(buf, "%s", plist_file);
 			break;
 		case 'f':
 			if (plist_file == NULL || plist_file[0] == '\0') {
@@ -228,7 +228,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    prefix, plist_file);
 			cp = strrchr(path, '/');
 			cp ++;
-			utstring_printf(buf, cp);
+			utstring_printf(buf, "%s", cp);
 			break;
 		case 'B':
 			if (plist_file == NULL || plist_file[0] == '\0') {
@@ -245,14 +245,14 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    plist_file);
 			cp = strrchr(path, '/');
 			cp[0] = '\0';
-			utstring_printf(buf, path);
+			utstring_printf(buf, "%s", path);
 			break;
 		case '%':
 			utstring_printf(buf, "%c", '%');
 			break;
 		case '@':
 			if (line != NULL) {
-				utstring_printf(buf, line);
+				utstring_printf(buf, "%s", line);
 				break;
 			}
 
@@ -274,7 +274,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					utstring_free(buf);
 					return (EPKG_FATAL);
 				}
-				utstring_printf(buf, argv[pos -1]);
+				utstring_printf(buf, "%s", argv[pos -1]);
 				in += sz -1;
 				break;
 			}

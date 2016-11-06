@@ -884,7 +884,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_MESSAGE:
 		if (messages == NULL)
 			utstring_new(messages);
-		utstring_printf(messages, ev->e_pkg_message.msg);
+		utstring_printf(messages, "%s", ev->e_pkg_message.msg);
 		break;
 	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
 		if (!signal_handler_installed) {
