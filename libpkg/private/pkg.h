@@ -319,7 +319,6 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
-	struct pkg_message	*prev;
 	struct pkg_message	*next;
 };
 
@@ -362,7 +361,6 @@ struct pkg_file {
 	char		 temppath[MAXPATHLEN];
 	u_long		 fflags;
 	struct pkg_config_file *config;
-	struct pkg_file	*prev;
 	struct pkg_file	*next;
 };
 
@@ -376,7 +374,6 @@ struct pkg_dir {
 	gid_t		 gid;
 	bool		 noattrs;
 	struct timespec	 time[2];
-	struct pkg_dir	*prev;
 	struct pkg_dir	*next;
 };
 
