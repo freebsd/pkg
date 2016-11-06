@@ -43,7 +43,6 @@ pkg_SOURCES=		add.c \
 			
 pkg_LDADD=	@OS_LDFLAGS@ \
 			$(top_builddir)/libpkg/libpkg.la \
-			$(top_builddir)/external/libsbuf.la \
 			$(top_builddir)/compat/libbsd_compat.la \
 			@LIBJAIL_LIB@ \
 			-lutil \
@@ -52,7 +51,6 @@ pkg_CFLAGS=	 @OS_CFLAGS@ \
 			-I$(top_srcdir)/libpkg \
 			-I$(top_builddir)/libpkg \
 			-I$(top_srcdir)/compat \
-			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
@@ -62,7 +60,6 @@ pkg_static_LDADD= @OS_LDFLAGS@ \
 			$(pkg_OBJECTS) \
 			$(top_builddir)/libpkg/libpkg_static.la \
 			$(top_builddir)/compat/libbsd_compat.la \
-			$(top_builddir)/external/libsbuf_static.la \
 			@LIBJAIL_LIB@ \
 			@LDNS_LIBS@ \
 			@OS_LIBS@ \
