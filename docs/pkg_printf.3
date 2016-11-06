@@ -35,9 +35,9 @@
 .Os
 .Sh NAME
 .Nm pkg_printf , pkg_fprintf , pkg_dprintf , pkg_snprintf , pkg_asprintf ,
-.Nm pkg_sbuf_printf ,
+.Nm pkg_utstring_printf ,
 .Nm pkg_vprintf , pkg_vfprintf , pkg_vdprintf , pkg_vsnprintf , pkg_vasprintf ,
-.Nm pkg_sbuf_vprintf
+.Nm pkg_utstring_vprintf
 .Nd formatted output of package data
 .Sh LIBRARY
 .Lb libpkg
@@ -53,8 +53,8 @@
 .Fn pkg_snprintf "char * restrict str" "size_t size" "const char * restrict format" ...
 .Ft int
 .Fn pkg_asprintf "char **ret" "const char * restrict format" ...
-.Ft struct sbuf *
-.Fn pkg_sbuf_printf "struct sbuf * restrict sbuf" "const char * restrict format" ...
+.Ft struct utstring *
+.Fn pkg_utstring_printf "struct utstring * restrict utstring" "const char * restrict format" ...
 .In stdarg.h
 .Ft int
 .Fn pkg_vprintf "const char * restrict format" "va_list ap"
@@ -66,8 +66,8 @@
 .Fn pkg_vsnprintf "char * restrict str" "size_t size" "const char * restrict format" "va_list ap"
 .Ft int
 .Fn pkg_vasprintf "char **ret" "const char * restrict format" "va_list ap"
-.Ft struct sbuf *
-.Fn pkg_sbuf_vprintf "struct sbuf * restrict sbuf" "const char * restrict format" "va_list ap"
+.Ft struct utstring *
+.Fn pkg_utstring_vprintf "struct utstring * restrict utstring" "const char * restrict format" "va_list ap"
 .Sh DESCRIPTION
 The
 .Fn pkg_printf
@@ -104,10 +104,10 @@ and
 dynamically allocate a new string with
 .Xr malloc 3
 to write to;
-.Fn pkg_sbuf_printf
+.Fn pkg_utstring_printf
 and
-.Fn pkg_sbuf_vprintf
-write to the given sbuf structure.
+.Fn pkg_utstring_vprintf
+write to the given utstring structure.
 .Pp
 These functions write the output under the control of a
 .Fa format
@@ -130,10 +130,10 @@ were unlimited
 (again, not including the final
 .Ql \e0 )
 and the two functions
-.Fn pkg_sbuf_printf
+.Fn pkg_utstring_printf
 and
-.Fn pkg_sbuf_vprintf
-which return the given sbuf pointer, or
+.Fn pkg_utstring_vprintf
+which return the given utstring pointer, or
 .Dv NULL
 in the case of errors.
 .Pp
