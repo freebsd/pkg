@@ -25,14 +25,14 @@
  */
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
 
 #include <string.h>
 
 #include <atf-c.h>
+#include <utstring.h>
 #include <pkg.h>
 
-struct sbuf *msg;
+UT_string *msg;
 
 ATF_TC(valid_installed);
 
@@ -47,9 +47,8 @@ event_callback(void *data, struct pkg_event *ev)
 {
 	switch (ev->type) {
 	case PKG_EVENT_ERROR:
-		sbuf_clear(msg);
-		sbuf_printf(msg, "%s", ev->e_pkg_error.msg);
-		sbuf_finish(msg);
+		utstring_clear(msg);
+		utstring_printf(msg, "%s", ev->e_pkg_error.msg);
 		break;
 	default:
 		/* IGNORE */
@@ -62,43 +61,43 @@ event_callback(void *data, struct pkg_event *ev)
 void
 check_valid(struct pkg *p)
 {
-	msg = sbuf_new_auto();
+	utstring_new(msg);
 
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property origin");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property origin");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ORIGIN, "test/bla"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property name");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property name");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_NAME, "test"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property comment");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property comment");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_COMMENT, "test comment"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property version");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property version");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_VERSION, "1.1.0"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property desc");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property desc");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_DESC, "test description"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property maintainer");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property maintainer");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_MAINTAINER, "tester"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property www");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property www");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_WWW, "test website"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	ATF_REQUIRE_STREQ(sbuf_data(msg), "Invalid package: object has missing property prefix");
+	ATF_REQUIRE_STREQ(utstring_body(msg), "Invalid package: object has missing property prefix");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_PREFIX, "/usr/local"));
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_is_valid(p));
 
-	sbuf_delete(msg);
+	utstring_free(msg);
 }
 
 ATF_TC_BODY(valid_installed, tc)

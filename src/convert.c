@@ -28,7 +28,6 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/sbuf.h>
 
 #include <err.h>
 #include <errno.h>

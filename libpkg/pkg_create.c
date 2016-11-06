@@ -120,17 +120,17 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Register shared libraries used by the package if
 	 * SHLIBS enabled in conf.  Deletes shlib info if not.
 	 */
-	struct sbuf *b = sbuf_new_auto();
+	UT_string *b;
+	utstring_new(b);
 
 	pkg_analyse_files(NULL, pkg, root);
 
-	pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
-	packing_append_buffer(pkg_archive, sbuf_data(b), "+COMPACT_MANIFEST", sbuf_len(b));
-	sbuf_clear(b);
-	pkg_emit_manifest_sbuf(pkg, b, 0, NULL);
-	sbuf_finish(b);
-	packing_append_buffer(pkg_archive, sbuf_data(b), "+MANIFEST", sbuf_len(b));
-	sbuf_delete(b);
+	pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+	packing_append_buffer(pkg_archive, utstring_body(b), "+COMPACT_MANIFEST", utstring_len(b));
+	utstring_clear(b);
+	pkg_emit_manifest_buf(pkg, b, 0, NULL);
+	packing_append_buffer(pkg_archive, utstring_body(b), "+MANIFEST", utstring_len(b));
+	utstring_free(b);
 
 	counter_init("packing files", nfiles);
 

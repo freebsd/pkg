@@ -996,11 +996,10 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 }
 
 void
-sbuf_flush(struct sbuf *buf)
+utstring_flush(UT_string *buf)
 {
-	sbuf_finish(buf);
-	printf("%s", sbuf_data(buf));
-	sbuf_clear(buf);
+	printf("%s", utstring_body(buf));
+	utstring_clear(buf);
 }
 
 void

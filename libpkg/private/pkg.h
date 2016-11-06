@@ -34,7 +34,6 @@
 
 #include <sys/param.h>
 #include <sys/cdefs.h>
-#include <sys/sbuf.h>
 #include <sys/types.h>
 
 #include <archive.h>
@@ -42,6 +41,7 @@
 #include <stdbool.h>
 #include <uthash.h>
 #include <utlist.h>
+#include <utstring.h>
 #include <ucl.h>
 
 #include "private/utils.h"
@@ -223,7 +223,7 @@ extern bool developer_mode;
 extern const char *pkg_rootdir;
 extern int rootfd;
 extern int cachedirfd;
-extern int pkg_dbdirfd;
+extern int dbdirfd;
 
 struct pkg_repo_it;
 struct pkg_repo;
@@ -241,7 +241,7 @@ struct pkg {
 	bool		 automatic;
 	bool		 vital;
 	int64_t		 id;
-	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
+	UT_string	*scripts[PKG_NUM_SCRIPTS];
 	char			*name;
 	char			*origin;
 	char			*version;
@@ -541,12 +541,12 @@ struct plist {
 	char last_file[MAXPATHLEN];
 	const char *stage;
 	char prefix[MAXPATHLEN];
-	struct sbuf *pre_install_buf;
-	struct sbuf *post_install_buf;
-	struct sbuf *pre_deinstall_buf;
-	struct sbuf *post_deinstall_buf;
-	struct sbuf *pre_upgrade_buf;
-	struct sbuf *post_upgrade_buf;
+	UT_string *pre_install_buf;
+	UT_string *post_install_buf;
+	UT_string *pre_deinstall_buf;
+	UT_string *post_deinstall_buf;
+	UT_string *pre_upgrade_buf;
+	UT_string *post_upgrade_buf;
 	struct pkg *pkg;
 	char *uname;
 	char *gname;
@@ -709,11 +709,11 @@ int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t 
 int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
 
 
-int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
+int pkg_emit_manifest_buf(struct pkg*, UT_string *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
 
-bool ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
-    struct sbuf **buf);
+bool ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
+    UT_string **buf);
 bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
     FILE *);
 

@@ -53,7 +53,7 @@ struct plugin_hook {
 };
 
 struct pkg_plugin {
-	struct sbuf *fields[PLUGIN_NUMFIELDS];
+	UT_string *fields[PLUGIN_NUMFIELDS];
 	void *lh;						/* library handle */
 	bool parsed;
 	struct plugin_hook *hooks;
@@ -89,7 +89,7 @@ plug_free(struct pkg_plugin *p)
 	unsigned int i;
 
 	for (i = 0; i < PLUGIN_NUMFIELDS; i++)
-		sbuf_delete(p->fields[i]);
+		utstring_free(p->fields[i]);
 
 	pkg_plugin_hook_free(p);
 	free(p);
@@ -154,7 +154,9 @@ pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str)
 {
 	assert(p != NULL);
 
-	return (sbuf_set(&p->fields[key], str));
+	utstring_renew(p->fields[key]);
+	utstring_printf(p->fields[key], str);
+	return (EPKG_OK);
 }
 
 const char *
@@ -165,10 +167,7 @@ pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 	if (p->fields[key] == NULL)
 		return (NULL);
 
-	if (sbuf_done(p->fields[key]) == 0)
-		sbuf_finish(p->fields[key]);
-
-	return (sbuf_data(p->fields[key]));
+	return (utstring_body(p->fields[key]));
 }
 
 int

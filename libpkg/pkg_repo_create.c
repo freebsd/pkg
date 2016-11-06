@@ -294,13 +294,14 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	char digestbuf[1024];
 	struct iovec iov[2];
 	struct msghdr msg;
-
-	struct sbuf *b = sbuf_new_auto();
+	UT_string *b;
+	
+	utstring_new(b);
 
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
 		pkg_emit_errno("pkg_create_repo_worker", "open");
-		sbuf_delete(b);
+		utstring_free(b);
 		return (EPKG_FATAL);
 	}
 
@@ -308,7 +309,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
 			close(mfd);
-			sbuf_delete(b);
+			utstring_free(b);
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
 		}
@@ -318,7 +319,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
-		sbuf_delete(b);
+		utstring_free(b);
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -328,7 +329,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		break;
 	default:
 		/* Parent */
-		sbuf_delete(b);
+		utstring_free(b);
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -367,13 +368,13 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			/*
 			 * TODO: use pkg_checksum for new manifests
 			 */
-			sbuf_clear(b);
+			utstring_clear(b);
 			if (legacy)
-				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
+				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
 			else {
 				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
 
-				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 				if (pkg_checksum_generate(pkg, mdigest,
 				     pkg_checksum_type_size(meta->digest_format),
 				     meta->digest_format) != EPKG_OK) {
@@ -383,8 +384,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 					goto cleanup;
 				}
 			}
-			mlen = sbuf_len(b);
-			sbuf_finish(b);
+			mlen = utstring_len(b);
 
 			if (flock(mfd, LOCK_EX) == -1) {
 				pkg_emit_errno("pkg_create_repo_worker", "flock");
@@ -394,8 +394,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 			mpos = lseek(mfd, 0, SEEK_END);
 
-			iov[0].iov_base = sbuf_data(b);
-			iov[0].iov_len = sbuf_len(b);
+			iov[0].iov_base = utstring_body(b);
+			iov[0].iov_len = utstring_len(b);
 			iov[1].iov_base = (void *)"\n";
 			iov[1].iov_len = 1;
 
@@ -447,7 +447,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 cleanup:
 	pkg_manifest_keys_free(keys);
 
-	sbuf_delete(b);
+	utstring_free(b);
 	write(pip, ".\n", 2);
 	close(pip);
 	close(mfd);
@@ -857,12 +857,12 @@ cleanup:
 
 
 static int
-pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
+pkg_repo_sign(char *path, char **argv, int argc, UT_string **sig, UT_string **cert)
 {
 	FILE *fp;
 	char *sha256;
-	struct sbuf *cmd = NULL;
-	struct sbuf *buf = NULL;
+	UT_string *cmd = NULL;
+	UT_string *buf = NULL;
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -872,17 +872,16 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	if (!sha256)
 		return (EPKG_FATAL);
 
-	cmd = sbuf_new_auto();
+	utstring_new(cmd);
 
 	for (i = 0; i < argc; i++) {
 		if (strspn(argv[i], " \t\n") > 0)
-			sbuf_printf(cmd, " \"%s\" ", argv[i]);
+			utstring_printf(cmd, " \"%s\" ", argv[i]);
 		else
-			sbuf_printf(cmd, " %s ", argv[i]);
+			utstring_printf(cmd, " %s ", argv[i]);
 	}
-	sbuf_finish(cmd);
 
-	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
+	if ((fp = popen(utstring_body(cmd), "r+")) == NULL) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
@@ -890,9 +889,9 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	fprintf(fp, "%s\n", sha256);
 
 	if (*sig == NULL)
-		*sig = sbuf_new_auto();
+		utstring_new(*sig);
 	if (*cert == NULL)
-		*cert = sbuf_new_auto();
+		utstring_new(*cert);
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
 		if (strcmp(line, "SIGNATURE\n") == 0) {
@@ -905,7 +904,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 			break;
 		}
 		if (buf != NULL)
-			sbuf_bcat(buf, line, linelen);
+			utstring_printf(buf, "%s", line);
 	}
 
 	if (pclose(fp) != 0) {
@@ -913,15 +912,15 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 		goto done;
 	}
 
-	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
-		sbuf_setpos(*sig, sbuf_len(*sig) -1);
+	if (utstring_body(*sig)[utstring_len(*sig) -1 ] == '\n') {
+		(*sig)->i--;
+		(*sig)->d[(*sig)->i] = '\0';
+	}
 
-	sbuf_finish(*sig);
-	sbuf_finish(*cert);
 done:
 	free(sha256);
 	if (cmd)
-		sbuf_delete(cmd);
+		utstring_free(cmd);
 
 	return (ret);
 }
@@ -935,7 +934,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	unsigned char *sigret = NULL;
 	unsigned int siglen = 0;
 	char fname[MAXPATHLEN];
-	struct sbuf *sig, *pub;
+	UT_string *sig, *pub;
 	int ret = EPKG_OK;
 
 	sig = NULL;
@@ -961,13 +960,13 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		}
 
 		snprintf(fname, sizeof(fname), "%s.sig", name);
-		if (packing_append_buffer(pack, sbuf_data(sig), fname, sbuf_len(sig)) != EPKG_OK) {
+		if (packing_append_buffer(pack, utstring_body(sig), fname, utstring_len(sig)) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
 
 		snprintf(fname, sizeof(fname), "%s.pub", name);
-		if (packing_append_buffer(pack, sbuf_data(pub), fname, sbuf_len(pub)) != EPKG_OK) {
+		if (packing_append_buffer(pack, utstring_body(pub), fname, utstring_len(pub)) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
@@ -980,9 +979,9 @@ out:
 	unlink(path);
 	free(sigret);
 	if (sig != NULL)
-		sbuf_delete(sig);
+		utstring_free(sig);
 	if (pub != NULL)
-		sbuf_delete(pub);
+		utstring_free(pub);
 
 	return (ret);
 }

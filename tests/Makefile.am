@@ -1,7 +1,6 @@
 AUTOMAKE_OPTIONS=	subdir-objects
 
 GENERIC_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
-		$(top_builddir)/external/libsbuf_static.la \
 		$(top_builddir)/compat/libbsd_compat.la \
 		$(top_builddir)/external/libfetch_static.la \
 		@LDNS_LIBS@ \
@@ -32,8 +31,7 @@ PUBLIC_INCS=	-DTESTING \
 		-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/libpkg \
 		-I/usr/local/include
-PRIVATE_INCS=	-I$(top_srcdir)/external/libsbuf \
-		-I$(top_srcdir)/external/sqlite \
+PRIVATE_INCS=	-I$(top_srcdir)/external/sqlite \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libucl/klib \
@@ -47,8 +45,7 @@ pkg_printf_CFLAGS=	$(PRIVATE_INCS)
 pkg_printf_LDADD=	$(GENERIC_LDADD)
 
 pkg_validation_SOURCES=	lib/pkg_validation.c
-pkg_validation_CFLAGS=	$(PUBLIC_INCS) \
-			-I$(top_srcdir)/external/libsbuf
+pkg_validation_CFLAGS=	$(PRIVATE_INCS)
 pkg_validation_LDADD=	$(GENERIC_LDADD)
 
 plist_SOURCES=		lib/plist.c

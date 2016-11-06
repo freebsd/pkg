@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <sysexits.h>
 #include <khash.h>
+#include <utstring.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
@@ -81,7 +82,7 @@ add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 }
 
 static void
-print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
+print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, UT_string *sb,
     kh_pkgs_t *seen, bool top)
 {
 	struct pkg_dep *dep = NULL;
@@ -97,9 +98,9 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
 			if (h != kh_end(head)) {
 				kh_put_pkgs(seen, name, &ret);
 				if (!top)
-					sbuf_cat(sb, ", ");
+					utstring_printf(sb, ", ");
 
-				sbuf_cat(sb, name);
+				utstring_printf(sb, name);
 
 				print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
 
@@ -123,7 +124,7 @@ exec_audit(int argc, char **argv)
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EX_OK;
-	struct sbuf		*sb;
+	UT_string		*sb;
 	kh_pkgs_t		*check = NULL;
 
 	struct option longopts[] = {
@@ -276,22 +277,21 @@ exec_audit(int argc, char **argv)
 		kh_foreach_value(check, pkg, {
 			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb)) {
 				vuln ++;
-				printf("%s", sbuf_data(sb));
+				printf("%s", utstring_body(sb));
 
 				if (recursive) {
 					const char *name;
 					kh_pkgs_t *seen = kh_init_pkgs();
 
 					pkg_get(pkg, PKG_NAME, &name);
-					sbuf_clear(sb);
-					sbuf_printf(sb, "Packages that depend on %s: ", name);
+					utstring_clear(sb);
+					utstring_printf(sb, "Packages that depend on %s: ", name);
 					print_recursive_rdeps(check, pkg , sb, seen, true);
-					sbuf_finish(sb);
-					printf("%s\n\n", sbuf_data(sb));
+					printf("%s\n\n", utstring_body(sb));
 
 					kh_destroy_pkgs(seen);
 				}
-				sbuf_delete(sb);
+				utstring_free(sb);
 			}
 			pkg_free(pkg);
 		});

@@ -845,7 +845,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const ucl_object_t *cur, *object;
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
-	struct sbuf *ukey = NULL;
+	UT_string *ukey = NULL;
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
@@ -977,22 +977,21 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		close(conffd);
 
 	ncfg = NULL;
-	ukey = sbuf_new_auto();
+	utstring_new(ukey);
 	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
-		sbuf_reset(ukey);
+		utstring_clear(ukey);
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
-			sbuf_putc(ukey, toupper(key[i]));
-		sbuf_finish(ukey);
-		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
+			utstring_printf(ukey, "%c", toupper(key[i]));
+		object = ucl_object_find_keyl(config, utstring_body(ukey), utstring_len(ukey));
 
-		if (strncasecmp(sbuf_data(ukey), "PACKAGESITE", sbuf_len(ukey))
-		    == 0 || strncasecmp(sbuf_data(ukey), "PUBKEY",
-		    sbuf_len(ukey)) == 0 || strncasecmp(sbuf_data(ukey),
-		    "MIRROR_TYPE", sbuf_len(ukey)) == 0) {
+		if (strncasecmp(utstring_body(ukey), "PACKAGESITE", utstring_len(ukey))
+		    == 0 || strncasecmp(utstring_body(ukey), "PUBKEY",
+		    utstring_len(ukey)) == 0 || strncasecmp(utstring_body(ukey),
+		    "MIRROR_TYPE", utstring_len(ukey)) == 0) {
 			pkg_emit_error("%s in pkg.conf is no longer "
 			    "supported.  Convert to the new repository style."
-			    "  See pkg.conf(5)", sbuf_data(ukey));
+			    "  See pkg.conf(5)", utstring_body(ukey));
 			fatal_errors = true;
 			continue;
 		}
@@ -1008,9 +1007,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
+		ucl_object_insert_key(ncfg, ucl_object_copy(cur), utstring_body(ukey), utstring_len(ukey), true);
 	}
-	sbuf_delete(ukey);
+	utstring_free(ukey);
 
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);

@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <utstring.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -50,7 +51,7 @@ extern char **environ;
 int
 pkg_script_run(struct pkg * const pkg, pkg_script type)
 {
-	struct sbuf * const script_cmd = sbuf_new_auto();
+	UT_string *script_cmd;
 	size_t i, j;
 	int error, pstat;
 	pid_t pid;
@@ -86,8 +87,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
 	};
 
+	utstring_new(script_cmd);
+
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
-		sbuf_delete(script_cmd);
+		utstring_free(script_cmd);
 		return (EPKG_OK);
 	}
 
@@ -106,25 +109,23 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		if (pkg_script_get(pkg, j) == NULL)
 			continue;
 		if (j == map[i].a || j == map[i].b) {
-			sbuf_reset(script_cmd);
+			utstring_clear(script_cmd);
 			setenv("PKG_PREFIX", pkg->prefix, 1);
 			if (pkg_rootdir == NULL)
 				pkg_rootdir = "/";
 			setenv("PKG_ROOTDIR", pkg_rootdir, 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
-				sbuf_printf(script_cmd, "set -x\n");
-			pkg_sbuf_printf(script_cmd, "set -- %n-%v", pkg, pkg);
+				utstring_printf(script_cmd, "set -x\n");
+			pkg_utstring_printf(script_cmd, "set -- %n-%v", pkg, pkg);
 
 			if (j == map[i].b) {
 				/* add arg **/
-				sbuf_cat(script_cmd, " ");
-				sbuf_cat(script_cmd, map[i].arg);
+				utstring_printf(script_cmd, " %s", map[i].arg);
 			}
 
-			sbuf_cat(script_cmd, "\n");
-			sbuf_cat(script_cmd, pkg_script_get(pkg, j));
-			sbuf_finish(script_cmd);
+			utstring_printf(script_cmd, "\n%s",
+			    utstring_body(pkg->scripts[j]));
 
 			/* Determine the maximum argument length for the given
 			   script to determine if /bin/sh -c can be used, or
@@ -137,8 +138,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
-			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", sbuf_data(script_cmd));
-			if (sbuf_len(script_cmd) > argmax) {
+			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", utstring_body(script_cmd));
+			if (utstring_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					goto cleanup;
@@ -157,7 +158,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			} else {
 				argv[0] = _PATH_BSHELL;
 				argv[1] = "-c";
-				argv[2] = sbuf_data(script_cmd);
+				argv[2] = utstring_body(script_cmd);
 				argv[3] = NULL;
 
 				use_pipe = 0;
@@ -174,8 +175,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			}
 
 			if (use_pipe) {
-				script_cmd_p = sbuf_data(script_cmd);
-				script_cmd_len = sbuf_len(script_cmd);
+				script_cmd_p = utstring_body(script_cmd);
+				script_cmd_len = utstring_len(script_cmd);
 				while (script_cmd_len > 0) {
 					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
 					    script_cmd_len)) == -1) {
@@ -207,7 +208,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 cleanup:
 
-	sbuf_delete(script_cmd);
+	utstring_free(script_cmd);
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)

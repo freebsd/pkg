@@ -253,8 +253,7 @@ exec_install(int argc, char **argv)
 		}
 
 		if (messages != NULL) {
-			sbuf_finish(messages);
-			printf("%s", sbuf_data(messages));
+			printf("%s", utstring_body(messages));
 		}
 		break;
 	}

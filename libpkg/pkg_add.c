@@ -42,6 +42,7 @@
 #include <grp.h>
 #include <sys/time.h>
 #include <time.h>
+#include <utstring.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -108,7 +109,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
     bool merge)
 {
 	const struct pkg_file *lf = NULL;
-	struct sbuf *newconf;
+	UT_string *newconf;
 	struct pkg_config_file *lcf = NULL;
 
 	char *localconf = NULL;
@@ -161,15 +162,14 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	}
 
 	pkg_debug(1, "Attempting to merge %s", rcf->path);
-	newconf = sbuf_new_auto();
+	utstring_new(newconf);
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		pkg_emit_error("Impossible to merge configuration file");
 	} else {
-		sbuf_finish(newconf);
-		rcf->newcontent = strdup(sbuf_data(newconf));
+		rcf->newcontent = strdup(utstring_body(newconf));
 		rcf->status = MERGE_SUCCESS;
 	}
-	sbuf_delete(newconf);
+	utstring_free(newconf);
 	free(localconf);
 }
 
@@ -931,7 +931,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct archive		*a;
 	struct archive_entry	*ae;
 	struct pkg		*pkg = NULL;
-	struct sbuf		*message;
+	UT_string		*message;
 	struct pkg_message	*msg;
 	const char		*msgstr;
 	bool			 extract = true;
@@ -1087,7 +1087,7 @@ cleanup_reg:
 	}
 
 	if (pkg->message != NULL)
-		message = sbuf_new_auto();
+		utstring_new(message);
 	LL_FOREACH(pkg->message, msg) {
 		msgstr = NULL;
 		if (msg->type == PKG_MESSAGE_ALWAYS) {
@@ -1114,19 +1114,18 @@ cleanup_reg:
 			msgstr = msg->str;
 		}
 		if (msgstr != NULL) {
-			if (sbuf_len(message) == 0) {
-				pkg_sbuf_printf(message, "Message from "
+			if (utstring_len(message) == 0) {
+				pkg_utstring_printf(message, "Message from "
 				    "%n-%v:\n", pkg, pkg);
 			}
-			sbuf_printf(message, "%s\n", msgstr);
+			utstring_printf(message, "%s\n", msgstr);
 		}
 	}
 	if (pkg->message != NULL) {
-		if (sbuf_len(message) > 0) {
-			sbuf_finish(message);
-			pkg_emit_message(sbuf_data(message));
+		if (utstring_len(message) > 0) {
+			pkg_emit_message(utstring_body(message));
 		}
-		sbuf_delete(message);
+		utstring_free(message);
 	}
 
 	cleanup:

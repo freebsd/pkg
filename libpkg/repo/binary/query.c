@@ -105,7 +105,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	const char	*comp = NULL;
 	int		 ret;
 	char		 basesql[BUFSIZ] = ""
@@ -118,27 +118,26 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
-	sql = sbuf_new_auto();
+	utstring_new(sql);
 	comp = pkgdb_get_pattern_query(pattern, match);
 	if (comp && comp[0])
 		strlcat(basesql, comp, sizeof(basesql));
 
-	sbuf_printf(sql, basesql, repo->name);
+	utstring_printf(sql, basesql, repo->name);
 
-	sbuf_cat(sql, " ORDER BY name;");
-	sbuf_finish(sql);
+	utstring_printf(sql, "%s", " ORDER BY name;");
 
-	pkg_debug(4, "Pkgdb: running '%s' query for %s", sbuf_data(sql),
+	pkg_debug(4, "Pkgdb: running '%s' query for %s", utstring_body(sql),
 	     pattern == NULL ? "all": pattern);
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), sbuf_len(sql), &stmt,
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), utstring_len(sql), &stmt,
 	    NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
-		sbuf_delete(sql);
+		ERROR_SQLITE(sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (NULL);
 	}
 
-	sbuf_delete(sql);
+	utstring_free(sql);
 
 	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
@@ -151,7 +150,7 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
@@ -164,20 +163,18 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 			"WHERE ps.shlib_id IN (SELECT id FROM shlibs WHERE "
 			"name BETWEEN ?1 AND ?1 || '.9');";
 
-	sql = sbuf_new_auto();
-	sbuf_printf(sql, basesql, repo->name);
+	utstring_new(sql);
+	utstring_printf(sql, basesql, repo->name);
 
-	sbuf_finish(sql);
-
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
-		sbuf_delete(sql);
+		ERROR_SQLITE(sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (NULL);
 	}
 
-	sbuf_delete(sql);
+	utstring_free(sql);
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
 
@@ -189,7 +186,7 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
@@ -202,20 +199,18 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 			"WHERE ps.provide_id IN (SELECT id from provides WHERE "
 			"provide = ?1 );";
 
-	sql = sbuf_new_auto();
-	sbuf_printf(sql, basesql, repo->name);
+	utstring_new(sql);
+	utstring_printf(sql, basesql, repo->name);
 
-	sbuf_finish(sql);
-
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
-		sbuf_delete(sql);
+		ERROR_SQLITE(sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (NULL);
 	}
 
-	sbuf_delete(sql);
+	utstring_free(sql);
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
 
@@ -227,7 +222,7 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
@@ -239,20 +234,18 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 			"p.id = ps.package_id "
 			"WHERE ps.shlib_id = (SELECT id FROM shlibs WHERE name=?1);";
 
-	sql = sbuf_new_auto();
-	sbuf_printf(sql, basesql, repo->name);
+	utstring_new(sql);
+	utstring_printf(sql, basesql, repo->name);
 
-	sbuf_finish(sql);
-
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
-		sbuf_delete(sql);
+		ERROR_SQLITE(sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (NULL);
 	}
 
-	sbuf_delete(sql);
+	utstring_free(sql);
 
 	pkg_debug(1, "> loading provides");
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
@@ -265,7 +258,7 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
@@ -277,20 +270,18 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 			"p.id = ps.package_id "
 			"WHERE ps.require_id = (SELECT id FROM requires WHERE require=?1);";
 
-	sql = sbuf_new_auto();
-	sbuf_printf(sql, basesql, repo->name);
+	utstring_new(sql);
+	utstring_printf(sql, basesql, repo->name);
 
-	sbuf_finish(sql);
-
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
-		sbuf_delete(sql);
+		ERROR_SQLITE(sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (NULL);
 	}
 
-	sbuf_delete(sql);
+	utstring_free(sql);
 
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
 
@@ -327,7 +318,7 @@ pkg_repo_binary_search_how(match_t match)
 }
 
 static int
-pkg_repo_binary_build_search_query(struct sbuf *sql, match_t match,
+pkg_repo_binary_build_search_query(UT_string *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
 {
 	const char	*how = NULL;
@@ -358,7 +349,7 @@ pkg_repo_binary_build_search_query(struct sbuf *sql, match_t match,
 	}
 
 	if (what != NULL && how != NULL)
-		sbuf_printf(sql, how, what);
+		utstring_printf(sql, how, what);
 
 	switch (sort) {
 	case FIELD_NONE:
@@ -382,7 +373,7 @@ pkg_repo_binary_build_search_query(struct sbuf *sql, match_t match,
 	}
 
 	if (orderby != NULL)
-		sbuf_cat(sql, orderby);
+		utstring_printf(sql, "%s", orderby);
 
 	return (EPKG_OK);
 }
@@ -393,7 +384,7 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 	const char	*multireposql = ""
 		"SELECT id, origin, name, version, comment, "
@@ -405,25 +396,24 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	if (pattern == NULL || pattern[0] == '\0')
 		return (NULL);
 
-	sql = sbuf_new_auto();
-	sbuf_printf(sql, multireposql, repo->name, repo->url);
+	utstring_new(sql);
+	utstring_printf(sql, multireposql, repo->name, repo->url);
 
 	/* close the UNIONs and build the search query */
-	sbuf_cat(sql, "WHERE ");
+	utstring_printf(sql, "%s", "WHERE ");
 
 	pkg_repo_binary_build_search_query(sql, match, field, sort);
-	sbuf_cat(sql, ";");
-	sbuf_finish(sql);
+	utstring_printf(sql, "%s", ";");
 
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
-		sbuf_delete(sql);
+		ERROR_SQLITE(sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (NULL);
 	}
 
-	sbuf_delete(sql);
+	utstring_free(sql);
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
@@ -482,10 +472,10 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 
-	sql = sbuf_new_auto();
+	utstring_new(sql);
 
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
@@ -495,24 +485,23 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 		goto out;
 		break;
 	case PKG_STATS_REMOTE_UNIQUE:
-		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		utstring_printf(sql, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_COUNT:
-		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		utstring_printf(sql, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_SIZE:
-		sbuf_printf(sql, "SELECT SUM(pkgsize) FROM main.packages;");
+		utstring_printf(sql, "SELECT SUM(pkgsize) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_REPOS:
 		goto out;
 		break;
 	}
 
-	sbuf_finish(sql);
-	pkg_debug(4, "binary_repo: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "binary_repo: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sbuf_data(sql));
+		ERROR_SQLITE(sqlite, utstring_body(sql));
 		goto out;
 	}
 
@@ -521,7 +510,7 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 	}
 
 out:
-	sbuf_free(sql);
+	utstring_free(sql);
 	if (stmt != NULL)
 		sqlite3_finalize(stmt);
 

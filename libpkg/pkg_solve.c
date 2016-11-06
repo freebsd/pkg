@@ -206,11 +206,11 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 } while (0)
 
 static void
-pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
+pkg_print_rule_buf(struct pkg_solve_rule *rule, UT_string *sb)
 {
 	struct pkg_solve_item *it = rule->items, *key_elt = NULL;
 
-	sbuf_printf(sb, "%s rule: ", rule_reasons[rule->reason]);
+	utstring_printf(sb, "%s rule: ", rule_reasons[rule->reason]);
 	switch(rule->reason) {
 	case PKG_RULE_DEPEND:
 		LL_FOREACH(rule->items, it) {
@@ -220,25 +220,25 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 			}
 		}
 		if (key_elt) {
-			sbuf_printf(sb, "package %s%s depends on: ", key_elt->var->uid,
+			utstring_printf(sb, "package %s%s depends on: ", key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
 		LL_FOREACH(rule->items, it) {
 			if (it != key_elt) {
-				sbuf_printf(sb, "%s%s", it->var->uid,
+				utstring_printf(sb, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 			}
 		}
 		break;
 	case PKG_RULE_UPGRADE_CONFLICT:
-		sbuf_printf(sb, "upgrade local %s-%s to remote %s-%s",
+		utstring_printf(sb, "upgrade local %s-%s to remote %s-%s",
 			it->var->uid, it->var->unit->pkg->version,
 			it->next->var->uid, it->next->var->unit->pkg->version);
 		break;
 	case PKG_RULE_EXPLICIT_CONFLICT:
-		sbuf_printf(sb, "The following packages conflict with each other: ");
+		utstring_printf(sb, "The following packages conflict with each other: ");
 		LL_FOREACH(rule->items, it) {
-			sbuf_printf(sb, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
+			utstring_printf(sb, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
 				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
 				it->next ? ", " : "");
 		}
@@ -251,45 +251,43 @@ pkg_print_rule_sbuf(struct pkg_solve_rule *rule, struct sbuf *sb)
 			}
 		}
 		if (key_elt) {
-			sbuf_printf(sb, "package %s%s depends on a requirement provided by: ",
+			utstring_printf(sb, "package %s%s depends on a requirement provided by: ",
 				key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
 		LL_FOREACH(rule->items, it) {
 			if (it != key_elt) {
-				sbuf_printf(sb, "%s%s", it->var->uid,
+				utstring_printf(sb, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 			}
 		}
 		break;
 	case PKG_RULE_REQUEST_CONFLICT:
-		sbuf_printf(sb, "The following packages in request are candidates for installation: ");
+		utstring_printf(sb, "The following packages in request are candidates for installation: ");
 		LL_FOREACH(rule->items, it) {
-			sbuf_printf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
+			utstring_printf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					it->next ? ", " : "");
 		}
 		break;
 	default:
 		break;
 	}
-
-	sbuf_finish(sb);
 }
 
 static void
 pkg_debug_print_rule(struct pkg_solve_rule *rule)
 {
-	struct sbuf *sb;
+	UT_string *sb;
 
 	if (debug_level < 3)
 		return;
 
-	sb = sbuf_new_auto();
+	utstring_new(sb);
 
-	pkg_print_rule_sbuf(rule, sb);
+	pkg_print_rule_buf(rule, sb);
 
-	pkg_debug(2, "%s", sbuf_data(sb));
-	sbuf_delete(sb);
+	pkg_debug(2, "%s", utstring_body(sb));
+	utstring_free(sb);
 }
 
 static int
@@ -1128,7 +1126,8 @@ reiterate:
 
 		if (attempt >= 10) {
 			pkg_emit_error("Cannot solve problem using SAT solver");
-			struct sbuf *sb = sbuf_new_auto();
+			UT_string *sb;
+			utstring_new(sb);
 
 			while (*failed) {
 				var = &problem->variables[abs(*failed) - 1];
@@ -1138,26 +1137,25 @@ reiterate:
 					if (rule->reason != PKG_RULE_DEPEND) {
 						LL_FOREACH(rule->items, item) {
 							if (item->var == var) {
-								pkg_print_rule_sbuf(rule, sb);
-								sbuf_putc(sb, '\n');
+								pkg_print_rule_buf(rule, sb);
+								utstring_printf(sb, "%c", '\n');
 								break;
 							}
 						}
 					}
 				}
 
-				sbuf_printf(sb, "cannot %s package %s, remove it from request? ",
+				utstring_printf(sb, "cannot %s package %s, remove it from request? ",
 						var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
-				sbuf_finish(sb);
 
-				if (pkg_emit_query_yesno(true, sbuf_data(sb))) {
+				if (pkg_emit_query_yesno(true, utstring_body(sb))) {
 					var->flags |= PKG_VAR_FAILED;
 				}
 
 				failed++;
 				need_reiterate = true;
 			}
-			sbuf_reset(sb);
+			utstring_clear(sb);
 		} else {
 			pkg_emit_notice("Cannot solve problem using SAT solver, trying another plan");
 			var = &problem->variables[abs(*failed) - 1];

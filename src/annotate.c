@@ -29,7 +29,6 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
 
 #include <err.h>
 #include <getopt.h>
@@ -38,6 +37,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <utstring.h>
 
 #include <pkg.h>
 
@@ -163,13 +163,13 @@ do_show(struct pkg *pkg, const char *tag)
 }
 
 
-static struct sbuf *
+static UT_string *
 read_input(void)
 {
-	struct sbuf	*input;
+	UT_string	*input;
 	int		 ch;
 
-	input = sbuf_new_auto();
+	utstring_new(input);
 
 	for (;;) {
 		ch = getc(stdin);
@@ -179,14 +179,8 @@ read_input(void)
 			if (ferror(stdin))
 				err(EX_NOINPUT, "Failed to read stdin");
 		}
-		sbuf_putc(input, ch);
+		utstring_printf(input, "%c", ch);
 	}
-#ifdef __DragonFly__
-	sbuf_finish(input);
-#else
-	if (sbuf_finish(input) != 0)
-		err(EX_DATAERR, "Could not read value data");
-#endif
 
 	return (input);
 }
@@ -201,7 +195,7 @@ exec_annotate(int argc, char **argv)
 	const char	*tag;
 	const char	*value;
 	const char	*pkgname;
-	struct sbuf	*input    = NULL;
+	UT_string	*input    = NULL;
 	int		 ch;
 	int		 match    = MATCH_EXACT;
 	int		 retcode;
@@ -296,7 +290,7 @@ exec_annotate(int argc, char **argv)
 	if ((action == ADD || action == MODIFY) && value == NULL) {
 		/* try and read data for the value from stdin. */
 		input = read_input();
-		value = sbuf_data(input);
+		value = utstring_body(input);
 	}
 
 	if (lock_type == PKGDB_LOCK_EXCLUSIVE)
@@ -324,7 +318,7 @@ exec_annotate(int argc, char **argv)
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK) {
 		if (input != NULL)
-			sbuf_delete(input);
+			utstring_free(input);
 		return (EX_IOERR);
 	}
 
@@ -376,7 +370,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 	if (input != NULL)
-		sbuf_delete(input);
+		utstring_free(input);
 
 	return (exitcode);
 }

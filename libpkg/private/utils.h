@@ -29,13 +29,13 @@
 #define _PKG_UTIL_H
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <uthash.h>
 #include <ucl.h>
 #include <khash.h>
 #include <pkg.h>
+#include <utstring.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
@@ -63,10 +63,6 @@ struct dns_srvinfo {
 struct rsa_key;
 
 int32_t string_hash_func(const char *);
-void sbuf_init(struct sbuf **);
-int sbuf_set(struct sbuf **, const char *);
-void sbuf_reset(struct sbuf *);
-void sbuf_free(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
@@ -101,7 +97,7 @@ pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);
-int merge_3way(char *pivot, char *v1, char *v2, struct sbuf *out);
+int merge_3way(char *pivot, char *v1, char *v2, UT_string *out);
 bool string_end_with(const char *path, const char *str);
 bool mkdirat_p(int fd, const char *path);
 

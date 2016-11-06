@@ -333,7 +333,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	char *line = NULL;
 	size_t linecap = 0;
 	size_t linelen;
-	struct sbuf *cmd = NULL;
+	UT_string *cmd = NULL;
 	const char *errstr;
 	const char *ssh_args;
 	int sshin[2];
@@ -364,25 +364,24 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 				goto ssh_cleanup;
 			}
 
-			cmd = sbuf_new_auto();
-			sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
+			utstring_new(cmd);
+			utstring_printf(cmd, "/usr/bin/ssh -e none -T ");
 			if (ssh_args != NULL)
-				sbuf_printf(cmd, "%s ", ssh_args);
+				utstring_printf(cmd, "%s ", ssh_args);
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
-				sbuf_cat(cmd, "-4 ");
+				utstring_printf(cmd, "-4 ");
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
-				sbuf_cat(cmd, "-6 ");
+				utstring_printf(cmd, "-6 ");
 			if (u->port > 0)
-				sbuf_printf(cmd, "-p %d ", u->port);
+				utstring_printf(cmd, "-p %d ", u->port);
 			if (u->user[0] != '\0')
-				sbuf_printf(cmd, "%s@", u->user);
-			sbuf_cat(cmd, u->host);
-			sbuf_printf(cmd, " pkg ssh");
-			sbuf_finish(cmd);
-			pkg_debug(1, "Fetch: running '%s'", sbuf_data(cmd));
+				utstring_printf(cmd, "%s@", u->user);
+			utstring_printf(cmd, u->host);
+			utstring_printf(cmd, " pkg ssh");
+			pkg_debug(1, "Fetch: running '%s'", utstring_body(cmd));
 			argv[0] = _PATH_BSHELL;
 			argv[1] = "-c";
-			argv[2] = sbuf_data(cmd);
+			argv[2] = utstring_body(cmd);
 			argv[3] = NULL;
 
 			if (sshin[0] != STDIN_FILENO)
@@ -450,7 +449,7 @@ ssh_cleanup:
 		repo->ssh = NULL;
 	}
 	if (cmd != NULL)
-		sbuf_delete(cmd);
+		utstring_free(cmd);
 	free(line);
 	return (retcode);
 }
@@ -482,7 +481,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
 	pid_t		 pid;
-	struct sbuf	*fetchOpts = NULL;
+	UT_string	*fetchOpts = NULL;
 	struct passwd	*nobody;
 	struct rlimit	rl_zero;
 
@@ -621,19 +620,19 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			u->port = http_current->url->port;
 		}
 
-		fetchOpts = sbuf_new_auto();
-		sbuf_cat(fetchOpts, "i");
+		utstring_new(fetchOpts);
+		utstring_printf(fetchOpts, "i");
 		if (repo != NULL) {
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
 			    REPO_FLAGS_USE_IPV4)
-				sbuf_cat(fetchOpts, "4");
+				utstring_printf(fetchOpts, "4");
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
 			    REPO_FLAGS_USE_IPV6)
-				sbuf_cat(fetchOpts, "6");
+				utstring_printf(fetchOpts, "6");
 		}
 
 		if (debug_level >= 4)
-			sbuf_cat(fetchOpts, "v");
+			utstring_printf(fetchOpts, "v");
 
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
@@ -641,14 +640,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		    u->user[0] != '\0' ? "@" : "",
 		    u->host,
 		    u->doc,
-		    sbuf_data(fetchOpts));
-
-		sbuf_finish(fetchOpts);
+		    utstring_body(fetchOpts));
 
 		if (offset > 0)
 			u->offset = offset;
-		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
-		sbuf_delete(fetchOpts);
+		remote = fetchXGet(u, &st, utstring_body(fetchOpts));
+		utstring_free(fetchOpts);
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;

@@ -37,7 +37,6 @@
 
 #include <sys/stat.h>
 #include <sys/queue.h>
-#include <sys/sbuf.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #ifdef __FreeBSD__

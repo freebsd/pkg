@@ -47,7 +47,6 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libelf/libelf.h \
 		libmachista/hashmap.h \
 		libmachista/libmachista.h \
-		libsbuf/sys/sbuf.h \
 		libucl/klib/kvec.h \
 		libucl/klib/khash.h \
 		libucl/include/ucl.h \
@@ -63,6 +62,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		sqlite/sqlite3.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
+		uthash/utstring.h \
 		include/tree.h \
 		include/siphash.h \
 		config.h \
@@ -75,14 +75,12 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 DYNLIBS=		libucl.la \
 			libsqlite.la \
 			libexpat.la \
-			libsbuf.la \
 			libpicosat.la \
 			libfetch.la \
 			liblinenoise.la
 noinst_LTLIBRARIES=	libucl_static.la \
 			libsqlite_static.la \
 			libexpat_static.la \
-			libsbuf_static.la \
 			libpicosat_static.la \
 			libfetch_static.la \
 			liblinenoise_static.la
@@ -167,13 +165,6 @@ libmachista_static_la_SOURCES=	libmachista/libmachista.c \
 				libmachista/hashmap.c
 libmachista_static_la_CFLAGS=	-I$(tip_srcdir)/external/libmachista -static
 libmachista_static_la_LDFLAGS=	-all-static
-
-libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
-sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
-libsbuf_la_CFLAGS=	$(sbuf_common_CFLAGS) -shared
-libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
-libsbuf_static_la_CFLAGS=	$(sbuf_common_CFLAGS) -static
-libsbuf_static_la_LDFLAGS=	-all-static
 
 liblinenoise_la_SOURCES=	linenoise/linenoise.c
 liblinenoise_la_CFLAGS=	-shared

@@ -43,7 +43,6 @@ extern "C" {
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/sbuf.h>
 #include <sysexits.h>
 
 /* The expected name of the pkg(8) binary executable. */
@@ -1618,6 +1617,7 @@ int pkg_asprintf(char **ret, const char * restrict format, ...);
  */
 int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
 
+#if defined(UTSTRING_H)
 /**
  * store data from pkg into sbuf as indicated by the format code format.
  * @param sbuf contains the result
@@ -1625,7 +1625,7 @@ int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *pkg_sbuf_printf(struct sbuf * restrict sbuf,
+UT_string *pkg_utstring_printf(UT_string * restrict sbuf,
 	const char * restrict format, ...);
 
 /**
@@ -1636,8 +1636,9 @@ struct sbuf *pkg_sbuf_printf(struct sbuf * restrict sbuf,
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
+UT_string *pkg_utstring_vprintf(UT_string * restrict sbuf,
 	const char * restrict format, va_list ap);
+#endif
 
 bool pkg_has_message(struct pkg *p);
 bool pkg_need_message(struct pkg *p, struct pkg *old);
@@ -1688,6 +1689,7 @@ int pkg_audit_load(struct pkg_audit *audit, const char *fname);
  */
 int pkg_audit_process(struct pkg_audit *audit);
 
+#if defined(UTSTRING_H)
 /**
  * Check whether `pkg` is vulnerable against processed `audit` structure.
  * If a package is vulnerable, then `result` is set to sbuf describing the
@@ -1697,7 +1699,8 @@ int pkg_audit_process(struct pkg_audit *audit);
  * @return true and `*result` is set if a package is vulnerable
  */
 bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, struct sbuf **result);
+		bool quiet, UT_string **result);
+#endif
 
 void pkg_audit_free (struct pkg_audit *audit);
 char *pkg_utils_tokenize(char **);

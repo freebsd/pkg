@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <utstring.h>
 
 #include <bsd_compat.h>
 
@@ -57,7 +58,7 @@ int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
 	struct pkg_message	*msg;
-	struct sbuf	*message;
+	UT_string	*message = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
@@ -113,23 +114,21 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
-		if (pkg->message != NULL)
-			message = sbuf_new_auto();
+		utstring_renew(message);
 		LL_FOREACH(pkg->message, msg) {
 			if (msg->type == PKG_MESSAGE_REMOVE) {
-				if (sbuf_len(message) == 0) {
-					pkg_sbuf_printf(message, "Message from "
+				if (utstring_len(message) == 0) {
+					pkg_utstring_printf(message, "Message from "
 					    "%n-%v:\n", pkg, pkg);
 				}
-				sbuf_printf(message, "%s\n", msg->str);
+				utstring_printf(message, "%s\n", msg->str);
 			}
 		}
 		if (pkg->message != NULL) {
-			if (sbuf_len(message) > 0) {
-				sbuf_finish(message);
-				pkg_emit_message(sbuf_data(message));
+			if (utstring_len(message) > 0) {
+				pkg_emit_message(utstring_body(message));
 			}
-			sbuf_delete(message);
+			utstring_free(message);
 		}
 
 	}

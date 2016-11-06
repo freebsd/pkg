@@ -89,7 +89,8 @@ pkg_free(struct pkg *pkg)
 	free(pkg->dep_formula);
 
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
-		sbuf_free(pkg->scripts[i]);
+		if (pkg->scripts[i])
+			utstring_free(pkg->scripts[i]);
 
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
@@ -860,11 +861,10 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 int
 pkg_addscript(struct pkg *pkg, const char *data, pkg_script type)
 {
-	struct sbuf **sbuf;
 
 	assert(pkg != NULL);
-	sbuf = &pkg->scripts[type];
-	sbuf_set(sbuf, data);
+	utstring_renew(pkg->scripts[type]);
+	utstring_printf(pkg->scripts[type], "%s", data);
 
 	return (EPKG_OK);
 }
@@ -987,17 +987,14 @@ cleanup:
 int
 pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 {
-	struct sbuf **s;
 
 	assert(pkg != NULL);
 	assert(cmd != NULL && cmd[0] != '\0');
 
-	if (pkg_script_get(pkg, type) == NULL)
-		return (pkg_addscript(pkg, cmd, type));
+	if (pkg->scripts[type] == NULL)
+		utstring_new(pkg->scripts[type]);
 
-	s = &pkg->scripts[type];
-	sbuf_cat(*s, cmd);
-	sbuf_finish(*s);
+	utstring_printf(pkg->scripts[type], "%s", cmd);
 
 	return (EPKG_OK);
 }

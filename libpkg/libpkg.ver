@@ -135,8 +135,8 @@ global:
 	pkg_repos_activated_count;
 	pkg_repos_total_count;
 	pkg_requires;
-	pkg_sbuf_printf;
-	pkg_sbuf_vprintf;
+	pkg_utstring_printf;
+	pkg_utstring_vprintf;
 	pkg_script_get;
 	pkg_set2;
 	pkg_set_debug_level;

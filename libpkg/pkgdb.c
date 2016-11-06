@@ -3013,20 +3013,20 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
-	struct sbuf	*sql = NULL;
+	UT_string	*sql = NULL;
 	int		 ret;
 	struct _pkg_repo_list_item *rit;
 
 	assert(db != NULL);
 
-	sql = sbuf_new_auto();
+	utstring_new(sql);
 
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
-		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		utstring_printf(sql, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_LOCAL_SIZE:
-		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
+		utstring_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_UNIQUE:
 	case PKG_STATS_REMOTE_COUNT:
@@ -3047,12 +3047,11 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		break;
 	}
 
-	sbuf_finish(sql);
-	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
-	ret = sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL);
+	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
+	ret = sqlite3_prepare_v2(db->sqlite, utstring_body(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sbuf_data(sql));
-		sbuf_free(sql);
+		ERROR_SQLITE(db->sqlite, utstring_body(sql));
+		utstring_free(sql);
 		return (-1);
 	}
 
@@ -3063,7 +3062,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	sqlite3_finalize(stmt);
 
 remote:
-	sbuf_free(sql);
+	utstring_free(sql);
 
 	return (stats);
 }

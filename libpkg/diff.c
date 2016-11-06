@@ -19,10 +19,10 @@
 ** text files.
 */
 #include <sys/types.h>
-#include <sys/sbuf.h>
 
 #include <string.h>
 #include <stdlib.h>
+#include <utstring.h>
 
 #include "private/utils.h"
 
