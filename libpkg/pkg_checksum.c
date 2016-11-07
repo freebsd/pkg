@@ -630,7 +630,12 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 	char *new_digest;
 	struct pkg_repo *repo;
 	int rc = EPKG_OK;
-	pkg_checksum_type_t type = 0;
+	pkg_checksum_type_t type;
+
+	if (sizeof(void *) == 8)
+		type = PKG_HASH_TYPE_BLAKE2_BASE32;
+	else
+		type = PKG_HASH_TYPE_BLAKE2S_BASE32;
 
 	if (pkg->reponame != NULL) {
 		repo = pkg_repo_find(pkg->reponame);
