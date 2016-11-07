@@ -100,8 +100,7 @@ shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
 
 	/* If shlib_file is already in the shlib_list table, don't try
 	 * and add it again */
-	kh_find(shlib, *shlib_list, shlib_file, sl);
-	if (sl != NULL)
+	if (kh_contains(shlib, *shlib_list, shlib_file))
 		return (EPKG_OK);
 
 	path_len = strlen(dir) + strlen(shlib_file) + 2;
