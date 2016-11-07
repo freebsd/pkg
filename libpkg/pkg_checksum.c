@@ -46,6 +46,7 @@ struct pkg_checksum_entry {
 /* Hash is in format <version>:<typeid>:<hexhash> */
 #define PKG_CHECKSUM_SHA256_LEN (SHA256_BLOCK_SIZE * 2 + 1)
 #define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
+#define PKG_CHECKSUM_BLAKE2S_LEN (BLAKE2S_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
 #define PKG_CHECKSUM_CUR_VERSION 2
 
 typedef void (*pkg_checksum_hash_func)(struct pkg_checksum_entry *entries,
@@ -69,6 +70,12 @@ static void pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
 static void pkg_checksum_hash_blake2_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen);
 static void pkg_checksum_hash_blake2_file(int fd, unsigned char **out,
+    size_t *outlen);
+static void pkg_checksum_hash_blake2s(struct pkg_checksum_entry *entries,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_blake2s_bulk(const unsigned char *in, size_t inlen,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_blake2s_file(int fd, unsigned char **out,
     size_t *outlen);
 static void pkg_checksum_encode_base32(unsigned char *in, size_t inlen,
 				char *out, size_t outlen);
@@ -121,6 +128,22 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_hash_blake2,
 		pkg_checksum_hash_blake2_bulk,
 		pkg_checksum_hash_blake2_file,
+		NULL
+	},
+	[PKG_HASH_TYPE_BLAKE2S_BASE32] = {
+		"blake2s_base32",
+		PKG_CHECKSUM_BLAKE2S_LEN,
+		pkg_checksum_hash_blake2s,
+		pkg_checksum_hash_blake2s_bulk,
+		pkg_checksum_hash_blake2s_file,
+		pkg_checksum_encode_base32
+	},
+	[PKG_HASH_TYPE_BLAKE2S_RAW] = {
+		"blake2_raw",
+		BLAKE2S_OUTBYTES,
+		pkg_checksum_hash_blake2s,
+		pkg_checksum_hash_blake2s_bulk,
+		pkg_checksum_hash_blake2s_file,
 		NULL
 	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
@@ -443,6 +466,56 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 	*out = malloc(BLAKE2B_OUTBYTES);
 	blake2b_final(&st, *out, BLAKE2B_OUTBYTES);
 	*outlen = BLAKE2B_OUTBYTES;
+}
+
+static void
+pkg_checksum_hash_blake2s(struct pkg_checksum_entry *entries,
+		unsigned char **out, size_t *outlen)
+{
+	blake2s_state st;
+
+	blake2s_init (&st, BLAKE2S_OUTBYTES);
+
+	while(entries) {
+		blake2s_update (&st, entries->field, strlen(entries->field));
+		blake2s_update (&st, entries->value, strlen(entries->value));
+		entries = entries->next;
+	}
+	*out = malloc(BLAKE2S_OUTBYTES);
+	if (*out != NULL) {
+		blake2s_final (&st, *out, BLAKE2S_OUTBYTES);
+		*outlen = BLAKE2S_OUTBYTES;
+	}
+	else {
+		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2s");
+		*outlen = 0;
+	}
+}
+
+static void
+pkg_checksum_hash_blake2s_bulk(const unsigned char *in, size_t inlen,
+				unsigned char **out, size_t *outlen)
+{
+	*out = malloc(BLAKE2S_OUTBYTES);
+	blake2s(*out, BLAKE2S_OUTBYTES,  in, inlen, NULL, 0);
+	*outlen = BLAKE2S_OUTBYTES;
+}
+
+static void
+pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
+{
+	char buffer[8192];
+	size_t r;
+
+	blake2s_state st;
+	blake2s_init(&st, BLAKE2S_OUTBYTES);
+
+	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
+		blake2s_update(&st, buffer, r);
+
+	*out = malloc(BLAKE2S_OUTBYTES);
+	blake2s_final(&st, *out, BLAKE2S_OUTBYTES);
+	*outlen = BLAKE2S_OUTBYTES;
 }
 
 /*
