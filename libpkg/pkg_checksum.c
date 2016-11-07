@@ -424,7 +424,7 @@ pkg_checksum_hash_blake2_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen)
 {
 	*out = malloc(BLAKE2B_OUTBYTES);
-	blake2b(*out, in, NULL, BLAKE2B_OUTBYTES, inlen, 0);
+	blake2b(*out, BLAKE2B_OUTBYTES,  in, inlen, NULL, 0);
 	*outlen = BLAKE2B_OUTBYTES;
 }
 
