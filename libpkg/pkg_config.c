@@ -753,14 +753,16 @@ static int
 configfile(const struct dirent *dp)
 {
 	const char *p;
+	size_t n;
 
 	if (dp->d_name[0] == '.')
 		return (0);
 
-	if (dp->d_namlen <= 5)
+	n = strlen(dp->d_name);
+	if (n <= 5)
 		return (0);
 
-	p = &dp->d_name[dp->d_namlen - 5];
+	p = &dp->d_name[n - 5];
 	if (strcmp(p, ".conf") != 0)
 		return (0);
 	return (1);
