@@ -30,7 +30,6 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#include <sys/resource.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -40,8 +39,6 @@
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>
-#include <pwd.h>
-#include <err.h>
 
 #include <bsd_compat.h>
 
@@ -463,7 +460,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	FILE		*remote = NULL;
 	struct url	*u = NULL;
 	struct url_stat	 st;
-	struct stat	 sb;
 	off_t		 done = 0;
 	off_t		 r;
 	int64_t		 max_retry, retry;
@@ -472,7 +468,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	char		*doc = NULL;
 	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
-	int		 pstat;
 	char		 zone[MAXHOSTNAMELEN + 13];
 	struct dns_srvinfo	*srv_current = NULL;
 	struct http_mirror	*http_current = NULL;
@@ -480,10 +475,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 buflen = 0;
 	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
-	pid_t		 pid;
 	UT_string	*fetchOpts = NULL;
-	struct passwd	*nobody;
-	struct rlimit	rl_zero;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
@@ -535,44 +527,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		if ((retcode = start_ssh(repo, u, &sz)) != EPKG_OK)
 			goto cleanup;
 		remote = repo->ssh;
-	} else {
-		pid = fork();
-		switch (pid) {
-		case -1:
-			pkg_emit_error("Unable to fork");
-			return (EPKG_FATAL);
-		case 0:
-			if (geteuid() == 0) {
-				nobody = getpwnam("nobody");
-				if (nobody == NULL)
-					err(2, "Unable to drop priviledges");
-				setgroups(1, &nobody->pw_gid);
-				setegid(nobody->pw_gid);
-				setgid(nobody->pw_gid);
-				seteuid(nobody->pw_uid);
-				setuid(nobody->pw_uid);
-			}
-			rl_zero.rlim_cur = rl_zero.rlim_max = 0;
-			if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
-				err(2, "Unable to setrlimit(RLIMIT_NPROC)");
-			break;
-		default:
-			while (waitpid(pid, &pstat, 0) == -1 && errno == EINTR)
-				;
-			/* restore original doc */
-			u->doc = doc;
-			fetchFreeURL(u);
-			switch (WEXITSTATUS(pstat)) {
-			case 0:
-				fstat(dest, &sb);
-				*t = st.mtime;
-				return (EPKG_OK);
-			case 1:
-				return (EPKG_UPTODATE);
-			default:
-				return (EPKG_FATAL);
-			}
-		}
 	}
 
 	doc = u->doc;
@@ -743,13 +697,6 @@ cleanup:
 			}
 		};
 		futimes(dest, ftimes);
-	}
-	if (strcmp(u->scheme, "ssh") != 0) {
-		if (retcode == EPKG_OK)
-			exit(0);
-		if (retcode == EPKG_UPTODATE)
-			exit(1);
-		exit(2);
 	}
 
 	/* restore original doc */
