@@ -772,7 +772,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    fetch_bind(sd, sa.ss_family, bindaddr) != 0)
 			goto sysouch;
-		if (connect(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
+		if (connect(sd, (struct sockaddr *)&sa, l) == -1)
 			goto sysouch;
 
 		/* make the server initiate the transfer */
@@ -786,12 +786,14 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		u_int32_t a;
 		u_short p;
 		int arg, d;
+		socklen_t sslen;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 
 		switch (sa.ss_family) {
 		case AF_INET6:
 			((struct sockaddr_in6 *)&sa)->sin6_port = 0;
+			sslen = sizeof(struct sockaddr_in6);
 #ifdef IPV6_PORTRANGE
 			arg = low ? IPV6_PORTRANGE_DEFAULT : IPV6_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IPV6, IPV6_PORTRANGE,
@@ -801,6 +803,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			break;
 		case AF_INET:
 			((struct sockaddr_in *)&sa)->sin_port = 0;
+			sslen = sizeof(struct sockaddr_in);
 #ifdef IP_PORTRANGE
 			arg = low ? IP_PORTRANGE_DEFAULT : IP_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IP, IP_PORTRANGE,
@@ -811,7 +814,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		}
 		if (verbose)
 			fetch_info("binding data socket");
-		if (bind(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
+		if (bind(sd, (struct sockaddr *)&sa, sslen) == -1)
 			goto sysouch;
 		if (listen(sd, 1) == -1)
 			goto sysouch;
@@ -834,7 +837,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			e = -1;
 			sin6 = (struct sockaddr_in6 *)&sa;
 			sin6->sin6_scope_id = 0;
-			if (getnameinfo((struct sockaddr *)&sa, sa.ss_len,
+			if (getnameinfo((struct sockaddr *)&sa, sslen,
 				hname, sizeof(hname),
 				NULL, 0, NI_NUMERICHOST) == 0) {
 				e = ftp_cmd(conn, "EPRT |%d|%s|%d|", 2, hname,
