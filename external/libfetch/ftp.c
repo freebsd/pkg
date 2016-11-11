@@ -488,7 +488,7 @@ struct ftpio {
 
 static int	 ftp_readfn(void *, char *, int);
 static int	 ftp_writefn(void *, const char *, int);
-static fpos_t	 ftp_seekfn(void *, fpos_t, int);
+static off_t	 ftp_seekfn(void *, off_t, int);
 static int	 ftp_closefn(void *);
 
 static int
@@ -551,8 +551,8 @@ ftp_writefn(void *v, const char *buf, int len)
 	return (-1);
 }
 
-static fpos_t
-ftp_seekfn(void *v, fpos_t pos __unused, int whence __unused)
+static off_t
+ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
 {
 	struct ftpio *io;
 
