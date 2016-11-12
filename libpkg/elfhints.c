@@ -311,7 +311,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 int 
 shlib_list_from_elf_hints(const char *hintsfile)
 {
-#ifndef __linux__
+#if !(defined __linux__ || defined __NetBSD__)
 	read_elf_hints(hintsfile, 1);
 #endif
 
