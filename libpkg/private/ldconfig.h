@@ -55,7 +55,11 @@ struct elfhints_hdr
 
 #define ELFHINTS_MAGIC  0x746e6845
 
+# ifdef __NetBSD__
+#define _PATH_ELF_HINTS "/var/run/ld.so.hints"
+# else
 #define _PATH_ELF_HINTS "/var/run/ld-elf.so.hints"
+# endif
 #endif
 
 extern int	insecure;	/* -i flag, needed here for elfhints.c */
