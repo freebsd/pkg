@@ -72,6 +72,11 @@ pkg_static_LDADD= @OS_LDFLAGS@ \
 			-lcrypto \
 			-lm
 
+if ENABLE_PIE
+pkg_CFLAGS+=	-fPIE -pie
+pkg_LDFLAGS=	-pie
+endif
+
 if HAVE_ELF_ABI
 if LIBELF_BUNDLED
 pkg_static_LDADD+=	$(top_builddir)/external/libelf_static.la

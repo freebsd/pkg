@@ -40,6 +40,11 @@ AC_CHECK_HEADERS_ONCE([fcntl.h unistd.h elf-hints.h])
 AC_TYPE_OFF_T
 AC_FUNC_MMAP
 
+AC_ARG_ENABLE([pie],
+    AS_HELP_STRING([--enable-pie], [Enable Position-Independent Executable support]))
+
+AM_CONDITIONAL([ENABLE_PIE], [test "x$enable_pie" = "xyes"])
+
 if test "$ac_cv_func_mmap_fixed_mapped" = "yes"; then
     FILEMAP=unixfilemap
 else
