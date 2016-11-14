@@ -60,6 +60,9 @@
  * SUCH DAMAGE.
  */
 #define _XOPEN_SOURCE
+#ifdef __NetBSD__
+#define _NETBSD_SOURCE
+#endif
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
