@@ -55,6 +55,10 @@
  *
  */
 
+#ifdef __NetBSD__
+#define _NETBSD_SOURCE
+#endif
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
