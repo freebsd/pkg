@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd February 4, 2015
+.Dd November 18, 2016
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -26,6 +26,7 @@
 .Op Fl A Op Ar 01
 .Op Fl n Ar oldname:newname
 .Op Fl o Ar oldorigin:neworigin
+.Op Fl v Op Ar 01
 .Op Fl y
 .Op Fl Cgix
 .Ar pkg-name
@@ -36,6 +37,7 @@
 .Op Cm --change-name Ar oldname:newname
 .Op Cm --change-origin Ar oldorigin:neworigin
 .Op Cm --yes
+.Op Fl v Op Ar 01
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name
 .Sh DESCRIPTION
@@ -97,6 +99,17 @@ Match
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax of
 .Xr re_format 7 .
+.It Fl v Ar 01
+Set or unset the
+.Qq vital
+flag on the target package(s).
+Set to
+.Ar 0
+to disable the
+.Qq vital
+flag, and
+.Ar 1
+to enable it.
 .It Fl y , Cm --yes
 Assume yes rather than asking for confirmation before package autoremoval.
 .El
