@@ -143,6 +143,9 @@ exec_autoremove(int argc, char **argv)
 		goto cleanup;
 	}
 
+	if (!yes && !rc)
+		retcode = EXIT_FAILURE;
+
 	pkgdb_compact(db);
 
 cleanup:

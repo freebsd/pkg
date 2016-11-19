@@ -216,7 +216,10 @@ exec_upgrade(int argc, char **argv)
 	if (done == 0 && rc && !quiet)
 		printf("Your packages are up to date.\n");
 
-	retcode = EX_OK;
+	if (rc)
+		retcode = EX_OK;
+	else
+		retcode = EXIT_FAILURE;
 
 cleanup:
 	pkg_jobs_free(jobs);
