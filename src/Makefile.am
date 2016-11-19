@@ -1,4 +1,5 @@
-noinst_HEADERS=	pkgcli.h
+noinst_HEADERS=	pkgcli.h \
+		readpassphrase_compat.h
 
 if HAVE_ELF_ABI
 LDFLAGS+=	-Wl,--enable-new-dtags
