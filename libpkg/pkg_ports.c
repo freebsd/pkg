@@ -185,8 +185,6 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 	utstring_printf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
 	utstring_printf(p->post_deinstall_buf, "cd %s\n", p->prefix);
 
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -196,8 +194,6 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	char *tmp;
 
 	if (p->pkg->name != NULL) {
-		free_file_attr(a);
-
 		return (EPKG_OK);
 	}
 	tmp = strrchr(line, '-');
@@ -205,8 +201,6 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	tmp++;
 	p->pkg->name = strdup(line);
 	p->pkg->version = strdup(tmp);
-
-	free_file_attr(a);
 
 	return (EPKG_OK);
 }
@@ -218,8 +212,6 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 		free(p->pkgdep);
 		p->pkgdep = strdup(line);
 	}
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -335,7 +327,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			    line);
 			ret = EPKG_FATAL;
 		}
-		free_file_attr(a);
 		return (ret);
 	}
 	buf = NULL;
@@ -351,7 +342,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 
 	buf = pkg_checksum_generate_file(testpath, PKG_HASH_TYPE_SHA256_HEX);
 	if (buf == NULL) {
-		free_file_attr(a);
 		return (EPKG_FATAL);
 	}
 
@@ -368,7 +358,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		if (is_config) {
 			pkg_emit_error("Plist error, @config %s: not a regular "
 			    "file", line);
-			free_file_attr(a);
 			free(buf);
 			return (EPKG_FATAL);
 		}
@@ -378,7 +367,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
 		pkg_emit_error("Plist error, directory listed as a file: %s",
 		    line);
-		free_file_attr(a);
 		free(buf);
 		return (EPKG_FATAL);
 	}
@@ -406,7 +394,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	}
 
 	free(buf);
-	free_file_attr(a);
 
 	return (ret);
 }
@@ -438,9 +425,6 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 		return (EPKG_FATAL);
 	}
 	p->perm = getmode(set, 0);
-
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -452,9 +436,6 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 		p->uname = strdup("root");
 	else
 		p->uname = strdup(line);
-
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -466,9 +447,6 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 		p->gname = strdup("wheel");
 	else
 		p->gname = strdup(line);
-
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -508,9 +486,6 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	/* ignore md5 will be recomputed anyway */
-
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -518,8 +493,6 @@ static int
 ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 {
 	p->ignore_next = true;
-	free_file_attr(a);
-
 	if (developer_mode)
 		pkg_emit_error("Warning: @ignore is deprecated");
 
@@ -680,9 +653,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 		break;
 	}
 
-	free_file_attr(a);
 	free(cmd);
-
 	return (EPKG_OK);
 }
 
@@ -968,8 +939,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 keywords_cleanup:
 	free(args);
 	free(tofree);
-	free_file_attr(freeattr);
-
 	return (ret);
 }
 
@@ -998,7 +967,6 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		pkg_emit_error("cannot parse keyword: %s",
 				ucl_parser_get_error(parser));
 		ucl_parser_free(parser);
-		free_file_attr(attr);
 		return (EPKG_UNKNOWN);
 	}
 
@@ -1011,7 +979,6 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		if (!ucl_object_validate(schema, o, &err)) {
 			pkg_emit_error("Keyword definition %s cannot be validated: %s", keyfile_path, err.msg);
 			ucl_object_unref(o);
-			free_file_attr(attr);
 			return (EPKG_FATAL);
 		}
 	}
@@ -1122,10 +1089,9 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 		LL_FOREACH(k->actions, a) {
 			ret = a->perform(plist, line, attr);
 			if (ret != EPKG_OK)
-				return (ret);
+				goto end;
 		}
-		free_file_attr(attr);
-		return (ret);
+		goto end;
 	}
 
 	/*
@@ -1133,7 +1099,10 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	 * maybe it is defined externally
 	 * let's try to find it
 	 */
-	return (external_keyword(plist, keyword, line, attr));
+	ret = external_keyword(plist, keyword, line, attr);
+end:
+	free_file_attr(attr);
+	return (ret);
 }
 
 static void
