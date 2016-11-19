@@ -816,6 +816,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 	const char *why;
 	int64_t pkgsize;
 	char size[8], tlsize[8];
+	const char *type;
 
 	pkg_get(it->new, PKG_PKGSIZE, &pkgsize);
 
@@ -828,7 +829,22 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		case PKG_SOLVED_UPGRADE_INSTALL:
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
-			pkg_printf("and may not be upgraded to version %v\n", it->new);
+			switch (pkg_version_change_between(it->old, it->new)) {
+			case PKG_DOWNGRADE:
+				type = "downgraded";
+				break;
+			case PKG_REINSTALL:
+				type = "reinstalled";
+				break;
+			case PKG_UPGRADE:
+				type = "upgraded";
+				break;
+			default: /* appease compiler warnings */
+				type = "upgraded";
+				break;
+			}
+			pkg_printf("and may not be %S to version %v\n", type,
+			    it->new);
 			break;
 		case PKG_SOLVED_DELETE:
 		case PKG_SOLVED_UPGRADE_REMOVE:
