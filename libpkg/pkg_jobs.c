@@ -2005,7 +2005,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_UPGRADE_REMOVE:
 			p = ps->items[0]->pkg;
 			if (ps->type == PKG_SOLVED_DELETE && p->vital && ((flags & PKG_DELETE_FORCE) == 0)) {
-				pkg_emit_error("Cannot delete vital pkg: %s!", p->name);
+				pkg_emit_error("Cannot delete vital package: %s!", p->name);
 				pkg_emit_error("If you are sure you want to remove %s, ", p->name);
 				pkg_emit_error("unset the 'vital' flag with: pkg set -v 0 %s", p->name);
 				retcode = EPKG_FATAL;
