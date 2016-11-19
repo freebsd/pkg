@@ -40,7 +40,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: Cannot delete vital ${PROGNAME}: test!\n" \
+		-e inline:"${PROGNAME}: Cannot delete vital package: test!\n${PROGNAME}: If you are sure you want to remove test, \n${PROGNAME}: unset the 'vital' flag with: pkg set -v 0 test\n" \
 		-s exit:3 \
 		pkg -r ${TMPDIR}/target delete -qy test
 	atf_check \
