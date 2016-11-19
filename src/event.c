@@ -217,8 +217,10 @@ job_status_begin(UT_string *msg)
 		utstring_printf(msg, "`-- ");
 	}
 
-	if (nbactions > 0 && nbdone > 0)
+	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0)
 		utstring_printf(msg, "[%d/%d] ", nbdone, nbactions);
+	if (nbtodl > 0 && nbtodl == nbdone)
+		nbdone = 0;
 }
 
 static int
@@ -626,6 +628,7 @@ event_callback(void *data, struct pkg_event *ev)
 			printf("\n");
 		break;
 	case PKG_EVENT_FETCH_BEGIN:
+		nbdone++;
 		if (quiet)
 			break;
 		filename = strrchr(ev->e_fetching.url, '/');

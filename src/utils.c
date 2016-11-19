@@ -739,12 +739,14 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 		} else
 			break;
 
-		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size))
+		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size)) {
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be
 					   fetched from remote again */
 			*dlsize += pkgsize;
+			nbtodl += 1;
+		}
 
 		if (old_pkg != NULL) {
 			switch (pkg_version_change_between(new_pkg, old_pkg)) {
@@ -918,6 +920,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	memset(disp, 0, sizeof(disp));
 	memset(&sum, 0, sizeof(sum));
 
+	nbtodl = 0;
 	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
 		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
 		&newsize, &dlsize, disp, &sum);
