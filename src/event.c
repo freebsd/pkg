@@ -628,7 +628,8 @@ event_callback(void *data, struct pkg_event *ev)
 			printf("\n");
 		break;
 	case PKG_EVENT_FETCH_BEGIN:
-		nbdone++;
+		if (nbtodl > 0)
+			nbdone++;
 		if (quiet)
 			break;
 		filename = strrchr(ev->e_fetching.url, '/');
