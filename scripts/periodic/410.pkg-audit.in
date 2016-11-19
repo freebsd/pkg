@@ -83,7 +83,7 @@ expiration_pkgs() {
 deprecation_pkgs() {
 	local pkgargs="$1"
 
-	output=$(${pkgcmd} ${pkgargs} annotate -a -S expiration_date)
+	output=$(${pkgcmd} ${pkgargs} annotate -a -S deprecated)
 
 	if [ -n "${output}" ]; then
 		echo $output
