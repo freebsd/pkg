@@ -7,6 +7,21 @@ Changes from pkg 1.9
 - Fix NetBSD ABI
 - Add a fallback for utimensat when reporting EOPNOTSUPP
 - replace libsbuf with utstring for portability
+- Overwrite some sqlite vfs functions to allow capsicumisation of pkg
+- move more pkg audit details into the library
+- allow to run pkg query without any privileges
+- extend the audit periodic script to report deprecated packages
+- Fix fd leak to rcscripts
+- stop dropping privieges during fetching it causes more issues than it solves
+- speed walking though [reverse]dependencies
+- Update blake2b to latest version
+- Add blake2s to the list of supported checksums
+- Internal digest now default on blake2b on 64 bits and blake2s on 32 bits.
+- Fix segfault when ABI is defined but empty
+- Do not use the shared library provides/requires on non FreeBSD/Linux
+- Define _NETBSD_SOURCES on NetBSD to allow libfetch to use funopen
+- Document vital flags
+- Fix potential double free when dealing with @config keyword
 
 Changes from pkg 1.8
 
