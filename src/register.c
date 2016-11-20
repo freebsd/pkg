@@ -42,29 +42,6 @@
 
 #include "pkgcli.h"
 
-static const char * const scripts[] = {
-	"+INSTALL",
-	"+PRE_INSTALL",
-	"+POST_INSTALL",
-	"+POST_INSTALL",
-	"+DEINSTALL",
-	"+PRE_DEINSTALL",
-	"+POST_DEINSTALL",
-	"+UPGRADE",
-	"+PRE_UPGRADE",
-	"+POST_UPGRADE",
-	"pkg-install",
-	"pkg-pre-install",
-	"pkg-post-install",
-	"pkg-deinstall",
-	"pkg-pre-deinstall",
-	"pkg-post-deinstall",
-	"pkg-upgrade",
-	"pkg-pre-upgrade",
-	"pkg-post-upgrade",
-	NULL
-};
-
 void
 usage_register(void)
 {
