@@ -56,18 +56,12 @@ exec_register(int argc, char **argv)
 	struct pkg	*pkg = NULL;
 	struct pkgdb	*db  = NULL;
 
-	struct pkg_manifest_key *keys = NULL;
-
-	char		*arch = NULL;
-	char		 myarch[BUFSIZ];
-
 	const char	*plist      = NULL;
 	const char	*mdir       = NULL;
 	const char	*mfile      = NULL;
 	const char	*input_path = NULL;
 	const char	*location   = NULL;
 
-	bool		 developer;
 	bool		 legacy        = false;
 	bool		 testing_mode  = false;
 
@@ -88,8 +82,6 @@ exec_register(int argc, char **argv)
 		{ "test",	no_argument,		NULL,	't' },
 		{ NULL,		0,			NULL,	0},
 	};
-
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
@@ -175,13 +167,6 @@ exec_register(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (mfile != NULL && plist != NULL) {
-		warnx("-M incompatible with -f option");
-		usage_register();
-		pkg_free(pkg);
-		return (EX_USAGE);
-	}
-
 	if (testing_mode && input_path != NULL) {
 		warnx("-i incompatible with -t option");
 		usage_register();
@@ -189,14 +174,7 @@ exec_register(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (mfile != NULL) {
-		pkg_manifest_keys_new(&keys);
-		ret = pkg_parse_manifest_file(pkg, mfile, keys);
-		pkg_manifest_keys_free(keys);
-	} else {
-		ret = pkg_load_metadata(pkg, mdir, plist, input_path);
-	}
-
+	ret = pkg_load_metadata(pkg, mfile, mdir, plist, input_path, testing_mode);
 	if (ret != EPKG_OK) {
 		pkg_free(pkg);
 		return (EX_IOERR);
@@ -213,31 +191,6 @@ exec_register(int argc, char **argv)
 		pkg_free(pkg);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
-	}
-
-	/*
-	 * testing_mode allows updating the local package database
-	 * without any check that the files etc. listed in the meta
-	 * data actually exist on the system.  Inappropriate use of
-	 * testing_mode can really screw things up.
-	 */
-
-	if (!testing_mode)
-		pkg_analyse_files(db, pkg, input_path);
-
-	pkg_get(pkg, PKG_ABI, &arch);
-	if (arch == NULL) {
-		/*
-		 * do not take the one from configuration on purpose
-		 * but the real abi of the package.
-		 */
-		pkg_get_myarch(myarch, BUFSIZ);
-		if (developer)
-			pkg_suggest_arch(pkg, myarch, true);
-		pkg_set(pkg, PKG_ABI, myarch);
-	} else {
-		if (developer)
-			pkg_suggest_arch(pkg, arch, false);
 	}
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);

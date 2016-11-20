@@ -122,8 +122,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 */
 	struct sbuf *b = sbuf_new_auto();
 
-	pkg_analyse_files(NULL, pkg, root);
-
 	pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 	packing_append_buffer(pkg_archive, sbuf_data(b), "+COMPACT_MANIFEST", sbuf_len(b));
 	sbuf_clear(b);
@@ -228,9 +226,7 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 {
 	struct pkg	*pkg = NULL;
 	struct packing	*pkg_archive = NULL;
-	char		 arch[BUFSIZ];
 	int		 ret = ENOMEM;
-	struct pkg_manifest_key *keys = NULL;
 
 	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
 
@@ -239,20 +235,8 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 		goto cleanup;
 	}
 
-	pkg_manifest_keys_new(&keys);
-	if ((ret = pkg_parse_manifest_file(pkg, manifest, keys)) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* if no arch autodetermine it */
-	if (pkg->abi == NULL) {
-		pkg_get_myarch(arch, BUFSIZ);
-		pkg->abi = strdup(arch);
-	}
-
-	if (plist != NULL &&
-	    ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+	if ((ret = pkg_load_metadata(pkg, manifest, NULL, plist, rootdir, false))
+	    != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -269,9 +253,7 @@ pkg_create_from_manifest(const char *outdir, pkg_formats format,
 
 cleanup:
 	free(pkg);
-	pkg_manifest_keys_free(keys);
 	packing_finish(pkg_archive);
-
 	return (ret);
 }
 
@@ -320,37 +302,44 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 }
 
 int
-pkg_load_metadata(struct pkg *pkg, const char *md_dir, const char *plist,
-    const char *rootdir)
+pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
+    const char *plist, const char *rootdir, bool testing)
 {
 	struct pkg_manifest_key *keys = NULL;
 	char			 arch[BUFSIZ];
 	regex_t			 preg;
 	regmatch_t		 pmatch[2];
-	int			 i, mfd, ret = EPKG_OK;
+	int			 i, ret = EPKG_OK;
+	int			 mfd = -1;
 	size_t			 size;
 	bool			 defaultarch = false;
 
-	if ((mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
+	if (md_dir != NULL &&
+	    (mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
 		pkg_emit_errno("open", md_dir);
 		goto cleanup;
 	}
 
 	pkg_manifest_keys_new(&keys);
 
+	if (mfile != NULL) {
+		ret = pkg_parse_manifest_file(pkg, mfile, keys);
+	}
+
 	/* Load the manifest from the metadata directory */
-	if ((ret = pkg_parse_manifest_fileat(mfd, pkg, "+MANIFEST", keys))
+	if (mfile == NULL && mfd != -1 &&
+	    (ret = pkg_parse_manifest_fileat(mfd, pkg, "+MANIFEST", keys))
 	    != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	/* if no descriptions provided then try to get it from a file */
-	if (pkg->desc == NULL)
+	if (mfd != -1 && pkg->desc == NULL)
 		pkg_load_from_file(mfd, pkg, PKG_DESC, "+DESC");
 
 	/* if no message try to get it from a file */
-	if (pkg->message == NULL) {
+	if (mfd != -1 && pkg->message == NULL) {
 		/* Try ucl version first */
 		pkg_load_message_from_file(mfd, pkg, "+DISPLAY");
 	}
@@ -390,6 +379,9 @@ pkg_load_metadata(struct pkg *pkg, const char *md_dir, const char *plist,
 		regfree(&preg);
 	}
 
+	if (!testing)
+		pkg_analyse_files(NULL, pkg, rootdir);
+
 	if (developer_mode)
 		pkg_suggest_arch(pkg, pkg->abi, defaultarch);
 
@@ -415,7 +407,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	if ((ret = pkg_new(&pkg, PKG_FILE)) != EPKG_OK)
 		goto cleanup;
 
-	if ((ret = pkg_load_metadata(pkg, md_dir, plist, rootdir)) != EPKG_OK)
+	if ((ret = pkg_load_metadata(pkg, NULL, md_dir, plist, rootdir, false))
+	    != EPKG_OK)
 		goto cleanup;
 
 	/* Create the archive */
