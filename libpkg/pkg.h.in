@@ -700,12 +700,6 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
 /**
- * Read the content of a file into a buffer, then call pkg_set().
- */
-int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
-int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
-
-/**
  * Set a new debug level used inside of pkg.
  * @param debug_level Debug level between 0 (no debugging) and 4 (max debugging).
  * @return Previous debug level.
