@@ -320,35 +320,24 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 }
 
 int
-pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
-    const char *md_dir, char *plist)
+pkg_load_metadata(struct pkg *pkg, const char *md_dir, const char *plist,
+    const char *rootdir)
 {
-	struct pkg	*pkg = NULL;
-	struct pkg_file	*file = NULL;
-	struct pkg_dir	*dir = NULL;
-	struct packing	*pkg_archive = NULL;
-	char		*manifest = NULL;
-	char		 arch[BUFSIZ];
-	int		 ret = ENOMEM;
-	int		 i, mfd;
-	regex_t		 preg;
-	regmatch_t	 pmatch[2];
-	size_t		 size;
 	struct pkg_manifest_key *keys = NULL;
-
-	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
+	char			 arch[BUFSIZ];
+	regex_t			 preg;
+	regmatch_t		 pmatch[2];
+	int			 i, mfd, ret = EPKG_OK;
+	size_t			 size;
+	bool			 defaultarch = false;
 
 	if ((mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
 		pkg_emit_errno("open", md_dir);
 		goto cleanup;
 	}
 
-	if(pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
 	pkg_manifest_keys_new(&keys);
+
 	/* Load the manifest from the metadata directory */
 	if ((ret = pkg_parse_manifest_fileat(mfd, pkg, "+MANIFEST", keys))
 	    != EPKG_OK) {
@@ -370,6 +359,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
 		pkg->abi = strdup(arch);
+		defaultarch = true;
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {
@@ -400,6 +390,34 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		regfree(&preg);
 	}
 
+	if (developer_mode)
+		pkg_suggest_arch(pkg, pkg->abi, defaultarch);
+
+cleanup:
+	if (mfd != -1)
+		close(mfd);
+	pkg_manifest_keys_free(keys);
+	return (ret);
+}
+
+int
+pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
+    const char *md_dir, char *plist)
+{
+	struct pkg	*pkg = NULL;
+	struct pkg_file	*file = NULL;
+	struct pkg_dir	*dir = NULL;
+	struct packing	*pkg_archive = NULL;
+	int		 ret = EPKG_FATAL;
+
+	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
+
+	if ((ret = pkg_new(&pkg, PKG_FILE)) != EPKG_OK)
+		goto cleanup;
+
+	if ((ret = pkg_load_metadata(pkg, md_dir, plist, rootdir)) != EPKG_OK)
+		goto cleanup;
+
 	/* Create the archive */
 	pkg_archive = pkg_create_archive(outdir, pkg, format, 0);
 	if (pkg_archive == NULL) {
@@ -418,15 +436,9 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = pkg_create_from_dir(pkg, rootdir, pkg_archive);
 	}
 
-
 cleanup:
-	if (mfd != -1)
-		close(mfd);
 	free(pkg);
-	free(manifest);
-	pkg_manifest_keys_free(keys);
 	packing_finish(pkg_archive);
-
 	return (ret);
 }
 
