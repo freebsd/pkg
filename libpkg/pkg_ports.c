@@ -700,6 +700,13 @@ postexec(struct plist *p, char *line, struct file_attr *a)
 static int
 exec(struct plist *p, char *line, struct file_attr *a)
 {
+	static bool warned_deprecated_exec = false;
+
+	if (!warned_deprecated_exec) {
+		warned_deprecated_exec = true;
+		pkg_emit_error("Warning: @exec is deprecated, please"
+		    " use @[pre|post][un]exec");
+	}
 	return (meta_exec(p, line, a, EXEC));
 }
 
