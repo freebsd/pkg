@@ -109,6 +109,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
     bool merge)
 {
 	const struct pkg_file *lf = NULL;
+	struct stat st;
 	UT_string *newconf;
 	struct pkg_config_file *lcf = NULL;
 
@@ -123,11 +124,15 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 
 	if (local == NULL) {
 		pkg_debug(3, "No local package");
+		if (fstatat(rootfd, RELATIVE_PATH(rcf->path), &st, 0) == 0) {
+			rcf->status = MERGE_FAILED;
+		}
 		return;
 	}
 
 	if (!pkg_is_config_file(local, rcf->path, &lf, &lcf)) {
 		pkg_debug(3, "No local package");
+		rcf->status = MERGE_FAILED;
 		return;
 	}
 
