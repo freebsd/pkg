@@ -37,7 +37,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <regex.h>
 #include <getopt.h>
 #include <fcntl.h>
 
@@ -84,21 +83,14 @@ exec_register(int argc, char **argv)
 
 	struct pkg_manifest_key *keys = NULL;
 
-	regex_t		 preg;
-	regmatch_t	 pmatch[2];
-
 	char		*arch = NULL;
 	char		 myarch[BUFSIZ];
-	char		*www  = NULL;
 
 	const char	*plist      = NULL;
 	const char	*mdir       = NULL;
 	const char	*mfile      = NULL;
 	const char	*input_path = NULL;
-	const char	*desc       = NULL;
 	const char	*location   = NULL;
-
-	size_t		 size;
 
 	bool		 developer;
 	bool		 legacy        = false;
@@ -106,10 +98,8 @@ exec_register(int argc, char **argv)
 	bool		 testing_mode  = false;
 
 	int		 ch;
-	int		 i;
 	int		 ret     = EPKG_OK;
 	int		 retcode = EX_OK;
-	int		 mdirfd;
 
 	/* options descriptor */
 	struct option longopts[] = {
@@ -231,71 +221,8 @@ exec_register(int argc, char **argv)
 	if (mfile != NULL) {
 		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) {
-			pkg_free(pkg);
-			return (EX_IOERR);
-		}
-
 	} else {
-		mdirfd = open(mdir, O_DIRECTORY|O_CLOEXEC);
-		if (mdirfd == -1) {
-			warn("Unable to open the manifest directory '%s'\n",
-			    mdir);
-			usage_register();
-			pkg_free(pkg);
-			return (EX_IOERR);
-		}
-		ret = pkg_parse_manifest_fileat(mdirfd, pkg, "+MANIFEST", keys);
-		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) {
-			pkg_free(pkg);
-			close(mdirfd);
-			return (EX_IOERR);
-		}
-
-		if (faccessat(mdirfd, "+DESC", F_OK, 0) == 0)
-			pkg_set_from_fileat(mdirfd, pkg, PKG_DESC, "+DESC",
-			    false);
-
-		if (faccessat(mdirfd, "+DISPLAY", F_OK, 0) == 0)
-			pkg_set_from_fileat(mdirfd, pkg, PKG_MESSAGE,
-			    "+DISPLAY", false);
-
-		for (i = 0; scripts[i] != NULL; i++) {
-			if (faccessat(mdirfd, scripts[i], F_OK, 0) == 0)
-				pkg_addscript_fileat(mdirfd, pkg, scripts[i]);
-		}
-
-		if (www != NULL) {
-			pkg_set(pkg, PKG_WWW, www);
-			free(www);
-		}
-
-		pkg_get(pkg, PKG_WWW, &www);
-
-		/* 
-		 * if www is not given then try to determine it from
-		 * description
-		 */
-
-		if (www == NULL) {
-			pkg_get(pkg, PKG_DESC, &desc);
-			regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
-			    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-			if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
-				size = pmatch[1].rm_eo - pmatch[1].rm_so;
-				www = strndup(&desc[pmatch[1].rm_so], size);
-				pkg_set(pkg, PKG_WWW, www);
-				free(www);
-			} else {
-				pkg_set(pkg, PKG_WWW, "UNKNOWN");
-			}
-			regfree(&preg);
-		}
-
-		if (plist != NULL)
-			ret += ports_parse_plist(pkg, plist, input_path);
-		close(mdirfd);
+		ret = pkg_load_metadata(pkg, mdir, plist, input_path);
 	}
 
 	if (ret != EPKG_OK) {
