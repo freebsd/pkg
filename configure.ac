@@ -19,7 +19,7 @@ dnl we use 3 integers: current, revision and age:
 dnl - if you change ABI (meaning add/remove/modify), then always update `current`
 dnl - if you modify lib (that means ALL modifies), then increase `revision`
 dnl - if you want backward compatibility, then use `age`
-LIBPKG_CURRENT=3
+LIBPKG_CURRENT=4
 LIBPKG_REVISION=0
 LIBPKG_AGE=0
 LIBPKG_SO_VERSION="$LIBPKG_CURRENT:$LIBPKG_REVISION:$LIBPKG_AGE"
