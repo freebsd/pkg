@@ -216,9 +216,8 @@ exec_register(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	pkg_manifest_keys_new(&keys);
-
 	if (mfile != NULL) {
+		pkg_manifest_keys_new(&keys);
 		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
 	} else {
