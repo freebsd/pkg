@@ -173,15 +173,11 @@ create_from_plist_dirrm_body() {
 
 		atf_check \
 			-o empty \
-			-e empty \
+			-e inline:"${PROGNAME}: Warning: @dirrm[try] is deprecated, please use @dir\n" \
 			pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
 		basic_validation
 
-		atf_check \
-			-o empty \
-			-e inline:"${PROGNAME}: Warning: @dirrm[try] is deprecated, please use @dir\n" \
-			pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 	done
 }
 
