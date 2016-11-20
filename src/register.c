@@ -32,13 +32,11 @@
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <getopt.h>
-#include <fcntl.h>
 
 #include "pkgcli.h"
 
@@ -71,7 +69,6 @@ exec_register(int argc, char **argv)
 
 	bool		 developer;
 	bool		 legacy        = false;
-	bool		 __unused metadata_only = false;
 	bool		 testing_mode  = false;
 
 	int		 ch;
@@ -113,7 +110,6 @@ exec_register(int argc, char **argv)
 			legacy = true;
 			break;
 		case 'M':
-			metadata_only = true;
 			mfile = optarg;
 			break;
 		case 'm':
