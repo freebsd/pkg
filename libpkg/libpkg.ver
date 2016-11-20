@@ -77,6 +77,7 @@ global:
 	pkg_license_name;
 	pkg_licenses;
 	pkg_list_count;
+	pkg_load_metadata;
 	pkg_manifest_keys_free;
 	pkg_manifest_keys_new;
 	pkg_manifest_parser_free;
