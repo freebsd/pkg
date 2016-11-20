@@ -275,9 +275,8 @@ warn_deprecated_dir(void)
 		return;
 	warned_deprecated_dir = true;
 
-	if (developer_mode)
-		pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
-		    " use @dir");
+	pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
+	    " use @dir");
 }
 
 static int
