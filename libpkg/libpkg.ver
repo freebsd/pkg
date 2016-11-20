@@ -1,4 +1,4 @@
-LIBPKG_1.3 {
+LIBPKG_1.4 {
 global:
 	pkg_absolutepath;
 	pkg_add;
