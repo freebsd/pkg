@@ -73,6 +73,6 @@ Number of packages to be installed: 2
 	atf_check \
 	    -o inline:"${OUTPUT}" \
 	    -e empty \
-	    -s exit:0 \
+	    -s exit:1 \
 	    pkg -o REPOS_DIR="${TMPDIR}" install -n b
 }

@@ -264,7 +264,7 @@ Number of packages to be reinstalled: 1
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		-s exit:0 \
+		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -n php53-fileinfo
 
 
@@ -289,6 +289,6 @@ Number of packages to be reinstalled: 1
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		-s exit:0 \
+		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -n
 }

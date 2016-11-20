@@ -64,7 +64,7 @@ EOF
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
 		-e empty \
-		-s exit:0 \
+		-s exit:1 \
 		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -n
 }
 
