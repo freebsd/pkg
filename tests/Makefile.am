@@ -104,6 +104,7 @@ tests_scripts=	\
 		frontend/set.sh \
 		frontend/version.sh \
 		frontend/vital.sh \
+		frontend/update.sh \
 		frontend/test_environment.sh \
 		frontend/issue1374.sh \
 		frontend/issue1425.sh \
