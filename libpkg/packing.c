@@ -104,8 +104,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, bool p
 		(*pack)->pass = true;
 		(*pack)->awrite = archive_write_disk_new();
 		archive_write_disk_set_options((*pack)->awrite,
-		    EXTRACT_ARCHIVE_FLAGS|ARCHIVE_EXTRACT_CLEAR_NOCHANGE_FFLAGS|
-		    ARCHIVE_EXTRACT_UNLINK|ARCHIVE_EXTRACT_FFLAGS);
+		    EXTRACT_ARCHIVE_FLAGS| ARCHIVE_EXTRACT_UNLINK);
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();
