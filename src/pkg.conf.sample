@@ -66,6 +66,7 @@ ALIAS              : {
   iinfo: info -ix,
   isearch: search -ix,
   prime-list: "query -e '%a = 0' '%n'",
+  prime-origins: "query -e '%a = 0' '%o'",
   leaf: "query -e '%#r == 0' '%n-%v'",
   list: info -ql,
   noauto = "query -e '%a == 0' '%n-%v'",
