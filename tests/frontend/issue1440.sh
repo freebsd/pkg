@@ -195,6 +195,7 @@ ${JAILED}meta.txz                                 :  done
 ${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
+All repositories are up to date.
 Checking integrity... done (0 conflicting)
 The following 4 package(s) will be affected (of 0 checked):
 
@@ -224,10 +225,10 @@ ${JAILED}[4/4] Extracting pkgA-1.0:  done
 
 
 OUTPUT_CASE2="Updating repoA repository catalogue...
-repoA repository is up-to-date.
+repoA repository is up to date.
 Updating repoB repository catalogue...
-repoB repository is up-to-date.
-All repositories are up-to-date.
+repoB repository is up to date.
+All repositories are up to date.
 Checking for upgrades (1 candidates):  done
 Processing candidates (1 candidates):  done
 Checking integrity... done (0 conflicting)

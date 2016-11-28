@@ -154,6 +154,7 @@ ${JAILED}meta.txz                                 :  done
 ${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local2 repository update completed. 2 packages processed.
+All repositories are up to date.
 Updating database digests format:  done
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done

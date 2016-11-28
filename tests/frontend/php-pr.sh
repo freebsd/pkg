@@ -243,6 +243,7 @@ ${JAILED}meta.txz                                 :  done
 ${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
+All repositories are up to date.
 Checking integrity... done (0 conflicting)
 The following 4 package(s) will be affected (of 0 checked):
 
@@ -269,8 +270,8 @@ Number of packages to be reinstalled: 1
 
 
 OUTPUT="Updating local repository catalogue...
-local repository is up-to-date.
-All repositories are up-to-date.
+local repository is up to date.
+All repositories are up to date.
 Checking for upgrades (3 candidates):  done
 Processing candidates (3 candidates):  done
 Checking integrity... done (0 conflicting)

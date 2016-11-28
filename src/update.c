@@ -77,7 +77,6 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 		retcode = pkg_update(r, force);
 
 		if (retcode == EPKG_UPTODATE) {
-			update_count++;
 			retcode = EPKG_OK;
 			if (!quiet) {
 				printf("%s repository is up to date.\n",
@@ -86,6 +85,10 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 		}
 		else if (retcode != EPKG_OK && strict)
 			retcode = EPKG_FATAL;
+
+		if (retcode == EPKG_OK) {
+			update_count++;
+		}
 
 		total_count ++;
 	}

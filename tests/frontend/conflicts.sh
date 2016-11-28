@@ -72,6 +72,7 @@ ${JAILED}meta.txz                                 :  done
 ${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local repository update completed. 1 packages processed.
+All repositories are up to date.
 Updating database digests format:  done
 Checking integrity... done (1 conflicting)
   - test2-1 conflicts with test-1 on ${TMPDIR}/a

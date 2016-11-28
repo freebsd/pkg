@@ -61,6 +61,7 @@ ${JAILED}meta.txz                                 :  done
 ${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
+All repositories are up to date.
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 

@@ -329,6 +329,7 @@ ${JAILED}meta.txz                                 :  done
 ${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local repository update completed. 5 packages processed.
+All repositories are up to date.
 Checking for upgrades (4 candidates):  done
 Processing candidates (4 candidates):  done
 Checking integrity... done (1 conflicting)
