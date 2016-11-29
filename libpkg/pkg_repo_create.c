@@ -621,13 +621,9 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	num_workers = pkg_object_int(pkg_config_get("WORKERS_COUNT"));
 	if (num_workers <= 0) {
-		len = sizeof(num_workers);
-#ifdef HAVE_SYSCTLBYNAME
-		if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
+		num_workers = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		if (num_workers == -1)
 			num_workers = 6;
-#else
-		num_workers = 6;
-#endif
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
