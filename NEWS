@@ -7,6 +7,11 @@ Changes from pkg 1.9.0
 - Fix file descriptor leak during rc script execution
 - Fix setting attributes on directories
 - Fix locking on NFS
+- Fix pkg register issues with some version of libarchive:
+  * hardlinks not being made hardlinks sometime
+  * issues when PREFIX is a symlink to another directory
+- Use portable mechanism to find the number of CPUs which allows pkg repo to be
+  faster on linux
 
 Changes from pkg 1.8
 
