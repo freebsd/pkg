@@ -1312,6 +1312,9 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			f->perm = st.st_mode & ~S_IFMT;
 		if (f->uid == 0)
 			f->uid = st.st_uid;
+		f->time[0] = st.st_atim;
+		f->time[1] = st.st_mtim;
+
 
 		if (S_ISLNK(st.st_mode)) {
 			readlinkat(pkg->rootfd, RELATIVE_PATH(f->path), target, sizeof(target));
