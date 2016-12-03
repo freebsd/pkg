@@ -1308,9 +1308,15 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		/* Execute pre-install scripts */
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
-		if (input_path != NULL)
-			pkg_copy_tree(pkg, input_path, \
-			    location ? location : "/");
+		if (input_path != NULL) {
+			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
+			rc = pkg_add_fromdir(pkg, input_path);
+			pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
+			if (rc != EPKG_OK) {
+				pkg_rollback_pkg(pkg);
+				pkg_delete_dirs(db, pkg, NULL);
+			}
+		}
 
 		/* Execute post-install scripts */
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);

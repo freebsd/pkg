@@ -50,6 +50,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+KHASH_MAP_INIT_INT(hls, char *);
+
 #if defined(UF_NOUNLINK)
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
 #else
@@ -314,6 +316,38 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 #endif
 }
 
+static int
+create_dir(struct pkg *pkg, struct pkg_dir *d)
+{
+	struct stat st;
+
+	if (mkdirat(pkg->rootfd, RELATIVE_PATH(d->path), 0755) == -1)
+		if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(d->path)))
+			return (EPKG_FATAL);
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(d->path), &st, 0) == -1) {
+		if (errno != ENOENT) {
+			pkg_emit_error("Fail to stat directory %s: %s", d->path,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
+		if (fstatat(pkg->rootfd, RELATIVE_PATH(d->path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
+			unlinkat(pkg->rootfd, RELATIVE_PATH(d->path), 0);
+		}
+		if (mkdirat(pkg->rootfd, RELATIVE_PATH(d->path), 0755) == -1) {
+			pkg_emit_error("Fail to create directory %s: %s", d->path,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (st.st_uid == d->uid && st.st_gid == d->gid &&
+	    (st.st_mode & ~S_IFMT) == (d->perm & ~S_IFMT)) {
+		d->noattrs = true;
+	}
+
+	return (EPKG_OK);
+}
+
 /* In case of directories create the dir and extract the creds */
 static int
 do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry *ae,
@@ -321,7 +355,6 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 {
 	struct pkg_dir *d;
 	const struct stat *aest;
-	struct stat st;
 	unsigned long clear;
 
 	d = pkg_get_dir(pkg, path);
@@ -336,34 +369,41 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
-	if (mkdirat(pkg->rootfd, RELATIVE_PATH(path), 0755) == -1)
-		if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(path)))
-			return (EPKG_FATAL);
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(path), &st, 0) == -1) {
-		if (errno != ENOENT) {
-			pkg_emit_error("Fail to stat directory %s: %s", path,
-			    strerror(errno));
-			return (EPKG_FATAL);
-		}
-		if (fstatat(pkg->rootfd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
-			unlinkat(pkg->rootfd, RELATIVE_PATH(path), 0);
-		}
-		if (mkdirat(pkg->rootfd, RELATIVE_PATH(path), 0755) == -1) {
-			pkg_emit_error("Fail to create directory %s: %s", path,
-			    strerror(errno));
-			return (EPKG_FATAL);
-		}
-	}
-
-	if (st.st_uid == d->uid && st.st_gid == d->gid &&
-	    (st.st_mode & ~S_IFMT) == (d->perm & ~S_IFMT)) {
-		d->noattrs = true;
+	if (create_dir(pkg, d) == EPKG_FATAL) {
+		return (EPKG_FATAL);
 	}
 
 	metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
 	    aest->st_mode & ~S_IFDIR, NULL);
 
+	return (EPKG_OK);
+}
+
+static int
+create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target)
+{
+	bool tried_mkdir = false;
+
+	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+retry:
+	if (symlinkat(target, pkg->rootfd, RELATIVE_PATH(f->temppath)) == -1) {
+		if (!tried_mkdir) {
+			if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(bsd_dirname(f->path))))
+				return (EPKG_FATAL);
+			tried_mkdir = true;
+			goto retry;
+		}
+
+		pkg_emit_error("Fail to create symlink: %s: %s\n", f->temppath,
+		    strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	if (set_attrs(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
+	    &f->time[0], &f->time[1]) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
 	return (EPKG_OK);
 }
 
@@ -375,8 +415,6 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 	struct pkg_file *f;
 	const struct stat *aest;
 	unsigned long clear;
-	struct timespec tspec[2];
-	bool tried_mkdir = false;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -386,30 +424,14 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
+	f->uid = get_uid_from_archive(ae);
+	f->gid = get_gid_from_archive(ae);
+	f->perm = aest->st_mode;
+	fill_timespec_buf(aest, f->time);
+	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
-retry:
-	if (symlinkat(archive_entry_symlink(ae), pkg->rootfd,
-	    RELATIVE_PATH(f->temppath)) == -1) {
-		if (!tried_mkdir) {
-			if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
-				return (EPKG_FATAL);
-			tried_mkdir = true;
-			goto retry;
-		}
-
-		pkg_emit_error("Fail to create symlink: %s: %s\n", f->temppath,
-		    strerror(errno));
+	if (create_symlinks(pkg, f, archive_entry_symlink(ae)) == EPKG_FATAL)
 		return (EPKG_FATAL);
-	}
-
-	fill_timespec_buf(aest, tspec);
-
-	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
-	    get_uid_from_archive(ae), get_gid_from_archive(ae),
-	    &tspec[0], &tspec[1]) != EPKG_OK) {
-		return (EPKG_FATAL);
-	}
 
 	metalog_add(PKG_METALOG_LINK, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
@@ -419,29 +441,19 @@ retry:
 }
 
 static int
-do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_entry *ae,
-    const char *path, struct pkg *local __unused)
+create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path)
 {
-	struct pkg_file *f, *fh;
-	const struct stat *aest;
-	const char *lp;
 	bool tried_mkdir = false;
+	struct pkg_file *fh;
 
-	f = pkg_get_file(pkg, path);
-	if (f == NULL) {
-		pkg_emit_error("Hardlink %s not specified in the manifest");
-		return (EPKG_FATAL);
-	}
-	lp = archive_entry_hardlink(ae);
-	fh = pkg_get_file(pkg, lp);
+	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+	fh = pkg_get_file(pkg, path);
 	if (fh == NULL) {
 		pkg_emit_error("Can't find the file %s is supposed to be"
-		    " hardlinked to in the archive: %s", path, lp);
+		    " hardlinked to %s", f->path, path);
 		return (EPKG_FATAL);
 	}
 
-	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
-	aest = archive_entry_stat(ae);
 
 retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
@@ -458,9 +470,104 @@ retry:
 		return (EPKG_FATAL);
 	}
 
+	return (EPKG_OK);
+}
+
+static int
+do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_entry *ae,
+    const char *path, struct pkg *local __unused)
+{
+	struct pkg_file *f;
+	const struct stat *aest;
+	const char *lp;
+
+	f = pkg_get_file(pkg, path);
+	if (f == NULL) {
+		pkg_emit_error("Hardlink %s not specified in the manifest");
+		return (EPKG_FATAL);
+	}
+	lp = archive_entry_hardlink(ae);
+	aest = archive_entry_stat(ae);
+
+	if (create_hardlink(pkg, f, lp) == EPKG_FATAL)
+		return (EPKG_FATAL);
+
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
 	    aest->st_mode & ~S_IFREG, NULL);
+
+	return (EPKG_OK);
+}
+
+static int
+create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
+    struct archive_entry *ae, int fromfd, struct pkg *local)
+{
+	int fd = -1;
+	bool tried_mkdir = false;
+	size_t len;
+	char buf[BUFSIZ];
+
+	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+
+retry:
+	/* Create the new temp file */
+	fd = openat(pkg->rootfd, RELATIVE_PATH(f->temppath),
+	    O_CREAT|O_WRONLY|O_EXCL, f->perm);
+	if (fd == -1) {
+		if (!tried_mkdir) {
+			if (!mkdirat_p(pkg->rootfd,
+			    RELATIVE_PATH(bsd_dirname(f->path)))) {
+				return (EPKG_FATAL);
+			}
+			tried_mkdir = true;
+			goto retry;
+		}
+		pkg_emit_error("Fail to create temporary file: %s: %s",
+		    f->temppath, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	if (fromfd == -1) {
+		/* check if this is a config file */
+		kh_find(pkg_config_files, pkg->config_files, f->path,
+		    f->config);
+		if (f->config) {
+			const char *cfdata;
+			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
+
+			pkg_debug(1, "Populating config_file %s", f->path);
+			len = archive_entry_size(ae);
+			f->config->content = malloc(len + 1);
+			archive_read_data(a, f->config->content, len);
+			f->config->content[len] = '\0';
+			cfdata = f->config->content;
+			attempt_to_merge(pkg->rootfd, f->config, local, merge);
+			if (f->config->status == MERGE_SUCCESS)
+				cfdata = f->config->newcontent;
+			dprintf(fd, "%s", cfdata);
+			if (f->config->newcontent != NULL)
+				free(f->config->newcontent);
+		}
+
+		if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
+			pkg_emit_error("Fail to extract %s from package: %s",
+			    f->path, archive_error_string(a));
+			return (EPKG_FATAL);
+		}
+	} else {
+		while ((len = read(fromfd, buf, sizeof(buf))) > 0)
+			if (write(fd, buf, len) == -1) {
+				pkg_emit_error("Fail to write file: %s", strerror(errno));
+			}
+	}
+	if (fd != -1) {
+		close(fd);
+	}
+
+	if (set_attrs(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
+	    &f->time[0], &f->time[1]) != EPKG_OK)
+			return (EPKG_FATAL);
 
 	return (EPKG_OK);
 }
@@ -472,10 +579,6 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	struct pkg_file *f;
 	const struct stat *aest;
 	unsigned long clear;
-	int fd = -1;
-	size_t len;
-	struct timespec tspec[2];
-	bool tried_mkdir = false;
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
@@ -485,62 +588,14 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
+	f->perm = aest->st_mode;
+	f->uid = get_uid_from_archive(ae);
+	f->gid = get_gid_from_archive(ae);
+	fill_timespec_buf(aest, f->time);
+	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), path);
-
-retry:
-	/* Create the new temp file */
-	fd = openat(pkg->rootfd, RELATIVE_PATH(f->temppath),
-	    O_CREAT|O_WRONLY|O_EXCL, aest->st_mode & ~S_IFMT);
-	if (fd == -1) {
-		if (!tried_mkdir) {
-			if (!mkdirat_p(pkg->rootfd, bsd_dirname(path))) {
-				return (EPKG_FATAL);
-			}
-			tried_mkdir = true;
-			goto retry;
-		}
-		pkg_emit_error("Fail to create temporary file: %s: %s",
-		    f->temppath, strerror(errno));
+	if (create_regfile(pkg, f, a, ae, -1, local) == EPKG_FATAL)
 		return (EPKG_FATAL);
-	}
-
-	/* check if this is a config file */
-	kh_find(pkg_config_files, pkg->config_files, f->path,
-	    f->config);
-	if (f->config) {
-		const char *cfdata;
-		bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
-
-		pkg_debug(1, "Populating config_file %s", f->path);
-		len = archive_entry_size(ae);
-		f->config->content = malloc(len + 1);
-		archive_read_data(a, f->config->content, len);
-		f->config->content[len] = '\0';
-		cfdata = f->config->content;
-		attempt_to_merge(pkg->rootfd, f->config, local, merge);
-		if (f->config->status == MERGE_SUCCESS)
-			cfdata = f->config->newcontent;
-		dprintf(fd, "%s", cfdata);
-		if (f->config->newcontent != NULL)
-			free(f->config->newcontent);
-	}
-
-	if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
-		pkg_emit_error("Fail to extract %s from package: %s",
-		    path, archive_error_string(a));
-		return (EPKG_FATAL);
-	}
-	if (fd != -1) {
-		close(fd);
-	}
-
-	fill_timespec_buf(aest, tspec);
-
-	if (set_attrs(pkg->rootfd, f->temppath, aest->st_mode,
-		    get_uid_from_archive(ae), get_gid_from_archive(ae),
-		    &tspec[0], &tspec[1]) != EPKG_OK)
-			return (EPKG_FATAL);
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
@@ -626,7 +681,6 @@ do_extract(struct archive *a, struct archive_entry *ae,
 			pkg_emit_progress_tick(cur_file++, nfiles);
 		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
-
 	pkg_emit_progress_tick(cur_file++, nfiles);
 
 	if (ret != ARCHIVE_EOF) {
@@ -910,7 +964,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	return (ret);
 }
 
-static void
+void
 pkg_rollback_pkg(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
@@ -922,7 +976,7 @@ pkg_rollback_pkg(struct pkg *p)
 	}
 }
 
-static void
+void
 pkg_rollback_cb(void *data)
 {
 	pkg_rollback_pkg((struct pkg *)data);
@@ -1169,3 +1223,130 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 
 	return pkg_add_common(db, path, flags, keys, location, rp, lp);
 }
+
+int
+pkg_add_fromdir(struct pkg *pkg, const char *src)
+{
+	struct stat st;
+	struct pkg_dir *d = NULL;
+	struct pkg_file *f = NULL;
+	char target[MAXPATHLEN];
+	struct passwd *pw;
+	struct group *gr;
+	int fd, fromfd;
+	int retcode;
+	kh_hls_t *hardlinks = NULL;;
+	const char *path;
+
+	fromfd = open(src, O_DIRECTORY);
+	if (fromfd == -1) {
+		pkg_emit_error("Unable to open source directory '%s': %s'",
+		    src, strerror(errno));
+		return (EPKG_FATAL);
+	}
+	pkg_open_root_fd(pkg);
+
+	while (pkg_dirs(pkg, &d) == EPKG_OK) {
+		if (fstatat(fromfd, RELATIVE_PATH(d->path), &st, 0) == -1) {
+			pkg_emit_error("%s%s: %s", src, d->path,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
+		if (d->perm == 0)
+			d->perm = st.st_mode & ~S_IFMT;
+		if (d->uname[0] != '\0') {
+			pw = getpwnam(d->uname);
+			if (pw == NULL) {
+				pkg_emit_error("Unknown user: '%s'", d->uname);
+				return (EPKG_FATAL);
+			}
+			d->uid = pw->pw_uid;
+		} else {
+			d->uid = st.st_uid;
+		}
+		if (d->gname[0] != '\0') {
+			gr = (getgrnam(d->gname));
+			if (gr == NULL) {
+				pkg_emit_error("Unknown group: '%s'", d->gname);
+				return (EPKG_FATAL);
+			}
+			d->gid = gr->gr_gid;
+		} else {
+			d->gid = st.st_gid;
+		}
+		d->time[0] = st.st_atim;
+		d->time[1] = st.st_mtim;
+
+		if (create_dir(pkg, d) == EPKG_FATAL)
+			return (EPKG_FATAL);
+	}
+
+	hardlinks = kh_init_hls();
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
+		    AT_SYMLINK_NOFOLLOW) == -1) {
+			pkg_emit_error("%s%s: %s", src, f->path,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
+		if (f->uname[0] != '\0') {
+			pw = getpwnam(f->uname);
+			if (pw == NULL) {
+				pkg_emit_error("Unknown user: '%s'", f->uname);
+				return (EPKG_FATAL);
+			}
+			f->uid = pw->pw_uid;
+		} else {
+			f->uid = st.st_uid;
+		}
+
+		if (f->gname[0] != '\0') {
+			gr = (getgrnam(f->gname));
+			if (gr == NULL) {
+				pkg_emit_error("Unknown group: '%s'", f->gname);
+				return (EPKG_FATAL);
+			}
+			f->gid = gr->gr_gid;
+		} else {
+			f->uid = st.st_uid;
+		}
+
+		if (f->perm == 0)
+			f->perm = st.st_mode & ~S_IFMT;
+		if (f->uid == 0)
+			f->uid = st.st_uid;
+
+		if (S_ISLNK(st.st_mode)) {
+			readlinkat(pkg->rootfd, RELATIVE_PATH(f->path), target, sizeof(target));
+			if (create_symlinks(pkg, f, target) == EPKG_FATAL) {
+				return (EPKG_FATAL);
+			}
+		} else if (S_ISREG(st.st_mode)) {
+			if ((fd = openat(fromfd, RELATIVE_PATH(f->path), O_RDONLY)) == -1) {
+				pkg_emit_error("Impossible to open source file '%s': %s",
+				    RELATIVE_PATH(f->path), strerror(errno));
+				return (EPKG_FATAL);
+			}
+			kh_find(hls, hardlinks, st.st_ino, path);
+			if (path != NULL) {
+				if (create_hardlink(pkg, f, path) == EPKG_FATAL)
+					return (EPKG_FATAL);
+			} else {
+				if (create_regfile(pkg, f, NULL, NULL, fd, NULL) == EPKG_FATAL) {
+					close(fd);
+					return (EPKG_FATAL);
+				}
+				kh_safe_add(hls, hardlinks, f->path, st.st_ino);
+			}
+		} else {
+			pkg_emit_error("Invalid file type");
+			return (EPKG_FATAL);
+		}
+	}
+	kh_destroy_hls(hardlinks);
+
+	retcode = pkg_extract_finalize(pkg);
+	close(fromfd);
+	return (retcode);
+}
+
