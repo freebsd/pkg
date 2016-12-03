@@ -24,7 +24,6 @@ global:
 	pkg_config_files;
 	pkg_config_get;
 	pkg_conflicts;
-	pkg_copy_tree;
 	pkg_create_from_manifest;
 	pkg_create_installed;
 	pkg_create_repo;

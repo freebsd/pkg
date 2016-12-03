@@ -357,6 +357,7 @@ struct pkg_file {
 	char		 temppath[MAXPATHLEN];
 	u_long		 fflags;
 	struct pkg_config_file *config;
+	struct timespec	 time[2];
 	struct pkg_file	*prev;
 	struct pkg_file	*next;
 };
@@ -674,8 +675,7 @@ void pkg_config_file_free(struct pkg_config_file *);
 
 struct packing;
 
-int packing_init(struct packing **pack, const char *path, pkg_formats format,
-    bool passmode);
+int packing_init(struct packing **pack, const char *path, pkg_formats format);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
      const char *newpath, const char *uname, const char *gname, mode_t perm,
      u_long fflags);
@@ -803,5 +803,9 @@ enum pkg_metalog_type {
 	PKG_METALOG_DIR,
 	PKG_METALOG_LINK,
 };
+
+void pkg_rollback_cb(void *);
+void pkg_rollback_pkg(struct pkg *);
+int pkg_add_fromdir(struct pkg *, const char *);
 
 #endif

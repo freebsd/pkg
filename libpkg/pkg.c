@@ -1558,39 +1558,6 @@ pkg_validate(struct pkg *pkg, struct pkgdb *db)
 }
 
 int
-pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
-{
-	struct packing *pack;
-	struct pkg_file *file = NULL;
-	struct pkg_dir *dir = NULL;
-	char spath[MAXPATHLEN];
-	char dpath[MAXPATHLEN];
-
-	if (packing_init(&pack, dest, 0, true) != EPKG_OK) {
-		/* TODO */
-		return EPKG_FATAL;
-	}
-
-	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		snprintf(spath, sizeof(spath), "%s%s", src, dir->path);
-		snprintf(dpath, sizeof(dpath), "%s%s", dest, dir->path);
-		packing_append_file_attr(pack, spath, dpath,
-		    dir->uname, dir->gname, dir->perm, dir->fflags);
-	}
-
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		snprintf(spath, sizeof(spath), "%s%s", src, file->path);
-		snprintf(dpath, sizeof(dpath), "%s%s", dest, file->path);
-		packing_append_file_attr(pack, spath, dpath,
-		    file->uname, file->gname, file->perm, file->fflags);
-	}
-
-	packing_finish(pack);
-
-	return (EPKG_OK);
-}
-
-int
 pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
