@@ -454,7 +454,8 @@ retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
 		if (!tried_mkdir) {
-			if (!mkdirat_p(pkg->rootfd, bsd_dirname(path)))
+			if (!mkdirat_p(pkg->rootfd,
+			    RELATIVE_PATH(bsd_dirname(f->path))))
 				return (EPKG_FATAL);
 			tried_mkdir = true;
 			goto retry;
