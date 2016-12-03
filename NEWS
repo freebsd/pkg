@@ -29,6 +29,11 @@ Changes from pkg 1.9
 - Warn everyone about deprecation of @dirrm and @exec
 - Deduplicate metadata loading code
 - pkg register now understands context aware messages
+- Fix pkg register issues with some version of libarchive:
+  * hardlinks not being made hardlinks sometime
+  * issues when PREFIX is a symlink to another directory
+- Use portable mechanism to find the number of CPUs which allows pkg repo to be
+  faster on linux
 
 Changes from pkg 1.8
 
