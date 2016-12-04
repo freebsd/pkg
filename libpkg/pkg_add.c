@@ -1262,7 +1262,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			d->uid = st.st_uid;
 		}
 		if (d->gname[0] != '\0') {
-			gr = (getgrnam(d->gname));
+			gr = getgrnam(d->gname);
 			if (gr == NULL) {
 				pkg_emit_error("Unknown group: '%s'", d->gname);
 				return (EPKG_FATAL);
@@ -1298,14 +1298,14 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		}
 
 		if (f->gname[0] != '\0') {
-			gr = (getgrnam(f->gname));
+			gr = getgrnam(f->gname);
 			if (gr == NULL) {
 				pkg_emit_error("Unknown group: '%s'", f->gname);
 				return (EPKG_FATAL);
 			}
 			f->gid = gr->gr_gid;
 		} else {
-			f->uid = st.st_uid;
+			f->gid = st.st_gid;
 		}
 
 		if (f->perm == 0)
