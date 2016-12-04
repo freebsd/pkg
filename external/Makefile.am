@@ -237,6 +237,7 @@ sqlite_common_cflags=	-I$(top_srcdir)/external/linenoise \
 			-DSQLITE_OMIT_SHARED_CACHE \
 			-DSQLITE_ENABLE_UNLOCK_NOTIFY=1 \
 			-DUSE_PREAD \
+			-DUSE_PWRITE \
 			-DSQLITE_THREADSAFE=0 \
 			-DSQLITE_TEMP_STORE=3 \
 			-DSQLITE_ENABLE_FTS4 \
