@@ -1228,12 +1228,13 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	struct pkg_dir *d = NULL;
 	struct pkg_file *f = NULL;
 	char target[MAXPATHLEN];
-	struct passwd *pw;
-	struct group *gr;
+	struct passwd *pw, pwent;
+	struct group *gr, grent;
 	int fd, fromfd;
 	int retcode;
 	kh_hls_t *hardlinks = NULL;;
 	const char *path;
+	char buffer[128];
 
 	fromfd = open(src, O_DIRECTORY);
 	if (fromfd == -1) {
@@ -1252,22 +1253,22 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		if (d->perm == 0)
 			d->perm = st.st_mode & ~S_IFMT;
 		if (d->uname[0] != '\0') {
-			pw = getpwnam(d->uname);
-			if (pw == NULL) {
+			if (getpwnam_r(d->uname, &pwent, buffer, sizeof(buffer),
+			    &pw) < 0) {
 				pkg_emit_error("Unknown user: '%s'", d->uname);
 				return (EPKG_FATAL);
 			}
-			d->uid = pw->pw_uid;
+			d->uid = pwent.pw_uid;
 		} else {
 			d->uid = st.st_uid;
 		}
 		if (d->gname[0] != '\0') {
-			gr = getgrnam(d->gname);
-			if (gr == NULL) {
+			if (getgrnam_r(d->gname, &grent, buffer, sizeof(buffer),
+			    &gr) < 0) {
 				pkg_emit_error("Unknown group: '%s'", d->gname);
 				return (EPKG_FATAL);
 			}
-			d->gid = gr->gr_gid;
+			d->gid = grent.gr_gid;
 		} else {
 			d->gid = st.st_gid;
 		}
@@ -1287,23 +1288,23 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			return (EPKG_FATAL);
 		}
 		if (f->uname[0] != '\0') {
-			pw = getpwnam(f->uname);
-			if (pw == NULL) {
+			if (getpwnam_r(f->uname, &pwent, buffer, sizeof(buffer),
+			    &pw) < 0) {
 				pkg_emit_error("Unknown user: '%s'", f->uname);
 				return (EPKG_FATAL);
 			}
-			f->uid = pw->pw_uid;
+			f->uid = pwent.pw_uid;
 		} else {
 			f->uid = st.st_uid;
 		}
 
 		if (f->gname[0] != '\0') {
-			gr = getgrnam(f->gname);
-			if (gr == NULL) {
+			if (getgrnam_r(f->gname, &grent, buffer, sizeof(buffer),
+			    &gr) < 0) {
 				pkg_emit_error("Unknown group: '%s'", f->gname);
 				return (EPKG_FATAL);
 			}
-			f->gid = gr->gr_gid;
+			f->gid = grent.gr_gid;
 		} else {
 			f->gid = st.st_gid;
 		}
