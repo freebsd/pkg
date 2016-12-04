@@ -917,14 +917,18 @@ pkgdb_access(unsigned mode, unsigned database)
 	return (retval);
 }
 
-static void
-pkgdb_profile_callback(void *ud __unused, const char *req, sqlite3_uint64 nsec)
+static int
+pkgdb_profile_callback(unsigned type __unused, void *ud __unused,
+    void *stmt, void *X)
 {
+	sqlite3_uint64 nsec = *((sqlite3_uint64*)X);
+	const char *req = sqlite3_sql((sqlite3_stmt *)stmt);
 	/* According to sqlite3 documentation, nsec has milliseconds accuracy */
 	nsec /= 1000000LLU;
 	if (nsec > 0)
 		pkg_debug(1, "Sqlite request %s was executed in %lu milliseconds",
 			req, (unsigned long)nsec);
+	return (0);
 }
 
 int
@@ -1157,7 +1161,8 @@ retry:
 	profile = pkg_object_bool(pkg_config_get("SQLITE_PROFILE"));
 	if (profile) {
 		pkg_debug(1, "pkgdb profiling is enabled");
-		sqlite3_profile(db->sqlite, pkgdb_profile_callback, NULL);
+		sqlite3_trace_v2(db->sqlite, SQLITE_TRACE_PROFILE,
+		    pkgdb_profile_callback, NULL);
 	}
 
 	*db_p = db;
