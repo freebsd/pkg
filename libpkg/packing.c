@@ -43,7 +43,6 @@
 static const char *packing_set_format(struct archive *a, pkg_formats format);
 
 struct packing {
-	bool pass;
 	struct archive *aread;
 	struct archive *awrite;
 	struct archive_entry_linkresolver *resolver;
@@ -66,7 +65,6 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	archive_read_disk_set_standard_lookup((*pack)->aread);
 	archive_read_disk_set_symlink_physical((*pack)->aread);
 
-	(*pack)->pass = false;
 	(*pack)->awrite = archive_write_new();
 	archive_write_set_format_pax_restricted((*pack)->awrite);
 	ext = packing_set_format((*pack)->awrite, format);
@@ -176,28 +174,10 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	}
 
 	if (uname != NULL && uname[0] != '\0') {
-		if (pack->pass) {
-			struct passwd* pw = getpwnam(uname);
-			if (pw == NULL) {
-				pkg_emit_error("Unknown user: '%s'", uname);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			archive_entry_set_uid(entry, pw->pw_uid);
-		}
 		archive_entry_set_uname(entry, uname);
 	}
 
 	if (gname != NULL && gname[0] != '\0') {
-		if (pack->pass) {
-			struct group *gr = (getgrnam(gname));
-			if (gr == NULL) {
-				pkg_emit_error("Unknown group: '%s'", gname);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			archive_entry_set_gid(entry, gr->gr_gid);
-		}
 		archive_entry_set_gname(entry, gname);
 	}
 
