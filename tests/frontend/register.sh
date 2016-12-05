@@ -111,8 +111,12 @@ prefix_is_a_symlink_body()
 	echo "something" > ${TMPDIR}/${TMPDIR}/plop/bla/a
 	ln ${TMPDIR}/${TMPDIR}/plop/bla/a ${TMPDIR}/${TMPDIR}/plop/bla/b
 	ln -sf a ${TMPDIR}/${TMPDIR}/plop/bla/c
+	ln -sf a ${TMPDIR}/${TMPDIR}/plop/bla/1
+	ln -sf d ${TMPDIR}/${TMPDIR}/plop/bla/2
 	sed -e "s,^prefix.*,prefix = ${TMPDIR},g" test.ucl > test2.ucl
-	echo "plop/bla/a" > plist
+	echo "plop/bla/1" > plist
+	echo "plop/bla/2" >> plist
+	echo "plop/bla/a" >> plist
 	echo "plop/bla/b" >> plist
 	echo "plop/bla/c" >> plist
 
@@ -129,4 +133,6 @@ prefix_is_a_symlink_body()
 	inode2=$(ls -i ${TMPDIR}/target/${TMPDIR}/plop/bla/b | awk '{ print $1 }')
 	atf_check_equal $inode1 $inode2
 	test -L ${TMPDIR}/target/${TMPDIR}/plop/bla/c || atf_fail "symlinks failed"
+	test -L ${TMPDIR}/target/${TMPDIR}/plop/bla/1 || atf_fail "symlinks failed 1"
+	test -L ${TMPDIR}/target/${TMPDIR}/plop/bla/2 || atf_fail "symlinks failed 2"
 }
