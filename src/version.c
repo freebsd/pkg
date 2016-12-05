@@ -488,6 +488,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	const char	*name;
 	const char	*origin;
 	const char	*version_remote;
+	bool		is_origin;
 
 	int		 retcode = EPKG_OK;
 
@@ -526,15 +527,19 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
-		    strcmp(origin, matchorigin) != 0)
+		    strcmp(origin, matchorigin) != 0) {
+		    	is_origin = true;
 			continue;
+		}
 
 		/* If -n was specified, check if this name matches */
 		if ((opt & VERSION_WITHNAME) &&
-		    strcmp(name, matchname) != 0)
+		    strcmp(name, matchname) != 0) {
+		    	is_origin = false;
 			continue;
+		}
 
-		it_remote = pkgdb_repo_query(db, origin, MATCH_EXACT, reponame);
+		it_remote = pkgdb_repo_query(db, is_origin ? origin : name, MATCH_EXACT, reponame);
 		if (it_remote == NULL) {
 			retcode = EX_IOERR;
 			goto cleanup;
