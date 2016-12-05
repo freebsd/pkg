@@ -1239,6 +1239,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	kh_hls_t *hardlinks = NULL;;
 	const char *path;
 	char buffer[128];
+	size_t link_len;
 
 	fromfd = open(src, O_DIRECTORY);
 	if (fromfd == -1) {
@@ -1320,9 +1321,15 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		f->time[0] = st.st_atim;
 		f->time[1] = st.st_mtim;
 
-
 		if (S_ISLNK(st.st_mode)) {
-			readlinkat(pkg->rootfd, RELATIVE_PATH(f->path), target, sizeof(target));
+			if ((link_len = readlinkat(fromfd,
+			    RELATIVE_PATH(f->path), target,
+			    sizeof(target))) == -1) {
+				pkg_emit_error("Impossible to read symlinks "
+				    "'%s': %s", f->path, strerror(errno));
+				return (EPKG_FATAL);
+			}
+			target[link_len] = '\0';
 			if (create_symlinks(pkg, f, target) == EPKG_FATAL) {
 				return (EPKG_FATAL);
 			}
