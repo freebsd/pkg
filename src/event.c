@@ -86,7 +86,6 @@ static bool signal_handler_installed = false;
 
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
-static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
 
 static void draw_progressbar(int64_t current, int64_t total);
 
@@ -107,38 +106,6 @@ cleanup_handler(int dummy __unused)
 }
 
 static void
-format_rate_IEC(char *buf, int size, off_t bytes)
-{
-	int i;
-
-	bytes *= 100;
-	for (i = 0; bytes >= 100*1000 && unit_IEC[i][0] != 'T'; i++)
-		bytes = (bytes + 512) / 1024;
-	if (i == 0) {
-		i++;
-		bytes = (bytes + 512) / 1024;
-	}
-	snprintf(buf, size, "%3lld.%1lld%s%s",
-	    (long long) (bytes + 5) / 100,
-	    (long long) (bytes + 5) / 10 % 10,
-	    unit_IEC[i],
-	    i ? "B" : " ");
-}
-
-static void
-format_size_IEC(char *buf, int size, off_t bytes)
-{
-	int i;
-
-	for (i = 0; bytes >= 10000 && unit_IEC[i][0] != 'T'; i++)
-		bytes = (bytes + 512) / 1024;
-	snprintf(buf, size, "%4lld%s%s",
-	    (long long) bytes,
-	    unit_IEC[i],
-	    i ? "B" : " ");
-}
-
-static void
 format_rate_SI(char *buf, int size, off_t bytes)
 {
 	int i;
@@ -153,19 +120,6 @@ format_rate_SI(char *buf, int size, off_t bytes)
 	snprintf(buf, size, "%3lld.%1lld%s%s",
 	    (long long) (bytes + 5) / 100,
 	    (long long) (bytes + 5) / 10 % 10,
-	    unit_SI[i],
-	    i ? "B" : " ");
-}
-
-static void
-format_size_SI(char *buf, int size, off_t bytes)
-{
-	int i;
-
-	for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
-		bytes = (bytes + 500) / 1000;
-	snprintf(buf, size, "%4lld%s%s",
-	    (long long) bytes,
 	    unit_SI[i],
 	    i ? "B" : " ");
 }
