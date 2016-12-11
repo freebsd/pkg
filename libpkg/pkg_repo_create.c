@@ -95,66 +95,6 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
 }
 
-static void
-pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
-{
-	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
-	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
-
-	/*
-	 * Here we reorder bulk hash from hash by file
-	 * to hash indexed by a package, so we iterate over the
-	 * original hash and create a new hash indexed by package name
-	 */
-
-	HASH_ITER (hh, bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, c1->uid, s);
-			if (s == NULL) {
-				/* New entry required */
-				s = malloc(sizeof(struct pkg_conflict_bulk));
-				if (s == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
-					goto out;
-				}
-				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = c1->uid;
-				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
-			}
-			/* Now add all new entries from this file to this conflict structure */
-			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				if (strcmp(c1->uid, c2->uid) == 0)
-					continue;
-
-				HASH_FIND_STR(s->conflicts, c2->uid, ctmp);
-				if (ctmp == NULL)
-					pkg_repo_new_conflict(c2->uid, s);
-			}
-		}
-	}
-
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		fprintf(out, "%s:", cur->file);
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", c1->uid);
-			else
-				fprintf(out, "%s\n", c1->uid);
-		}
-	}
-out:
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_DEL(cur->conflicts, c1);
-			free(c1->uid);
-			free(c1);
-		}
-		HASH_DEL(pkg_bulk, cur);
-		free(cur);
-	}
-	return;
-}
-
 struct pkg_fts_item {
 	char *fts_accpath;
 	char *pkg_path;
@@ -786,13 +726,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	/* Now sort all digests */
 	DL_SORT(dlist, pkg_digest_sort_compare_func);
-
-	/*
-	 * XXX: it is not used actually
-	 */
-#if 0
-	pkg_repo_write_conflicts(conflicts, fconflicts);
-#endif
 
 	/* Write metafile */
 	if (!legacy) {

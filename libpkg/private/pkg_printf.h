@@ -185,7 +185,6 @@ _static UT_string *format_file_perms(UT_string *, const void *, struct percent_e
 _static UT_string *format_file_sha256(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_file_user(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_groups(UT_string *, const void *, struct percent_esc *);
-_static UT_string *format_group_gidstr(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_group_name(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_row_counter(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_licenses(UT_string *, const void *, struct percent_esc *);
@@ -201,7 +200,6 @@ _static UT_string *format_repo_path(UT_string *, const void *, struct percent_es
 _static UT_string *format_char_string(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_users(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_user_name(UT_string *, const void *, struct percent_esc *);
-_static UT_string *format_user_uidstr(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_old_version(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_autoremove(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_shlibs_provided(UT_string *, const void *, struct percent_esc *);
