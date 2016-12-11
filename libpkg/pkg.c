@@ -1449,6 +1449,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 			size_t len = archive_entry_size(*ae);
 			buffer = malloc(len);
+			if (buffer == NULL) {
+				pkg_emit_errno("malloc", "pkg_open2");
+				retcode = EPKG_FATAL;
+				/* Allow for archive handle to close. */
+				goto cleanup;
+			}
 			archive_read_data(*a, buffer, archive_entry_size(*ae));
 			ret = pkg_parse_manifest(pkg, buffer, len, keys);
 			free(buffer);
@@ -1465,6 +1471,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 			size_t len = archive_entry_size(*ae);
 			buffer = malloc(len);
+			if (buffer == NULL) {
+				pkg_emit_errno("malloc", "pkg_open2");
+				retcode = EPKG_FATAL;
+				/* Allow for archive handle to close. */
+				goto cleanup;
+			}
 			archive_read_data(*a, buffer, archive_entry_size(*ae));
 			ret = pkg_parse_manifest(pkg, buffer, len, keys);
 			free(buffer);

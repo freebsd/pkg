@@ -432,6 +432,11 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 			pdep ++;
 		}
 		deps = malloc(sizeof(char *) * ndep);
+		if (deps == NULL) {
+			pkg_emit_errno("malloc",
+			    "pkg_repo_binary_parse_conflicts");
+			return;
+		}
 		for (i = 0; i < ndep; i ++) {
 			deps[i] = strsep(&p, ",\n");
 		}

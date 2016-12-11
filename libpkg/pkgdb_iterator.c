@@ -825,6 +825,11 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 					}
 					else {
 						pkg->message = calloc(1, sizeof(*pkg->message));
+						if (pkg->message == NULL) {
+							pkg_emit_errno("calloc",
+							    "populate_pkg");
+							return;
+						}
 						pkg->message->str = strdup(msg);
 					}
 				}

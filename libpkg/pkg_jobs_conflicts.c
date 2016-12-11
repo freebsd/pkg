@@ -52,6 +52,10 @@ pkg_conflicts_sipkey_init(void)
 
 	if (kinit == NULL) {
 		kinit = malloc(sizeof(*kinit));
+		if (kinit == NULL) {
+			pkg_emit_errno("malloc", "pkg_conflicts_sipkey_init");
+			return (NULL);
+		}
 		arc4random_buf((unsigned char*)kinit, sizeof(*kinit));
 	}
 
@@ -427,12 +431,11 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		cit = calloc(1, sizeof(*cit));
 		if (cit == NULL) {
 			pkg_emit_errno("malloc failed", "pkg_conflicts_check_all_paths");
+			return (NULL);
 		}
-		else {
-			cit->hash = hv;
-			cit->item = it;
-			TREE_INSERT(j->conflict_items, pkg_jobs_conflict_item, entry, cit);
-		}
+		cit->hash = hv;
+		cit->item = it;
+		TREE_INSERT(j->conflict_items, pkg_jobs_conflict_item, entry, cit);
 	}
 	else {
 		/* Check the same package */
@@ -532,6 +535,10 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	/* Ensure that we have a tree initialized */
 	if (j->conflict_items == NULL) {
 		j->conflict_items = malloc(sizeof(*j->conflict_items));
+		if (j->conflict_items == NULL) {
+			pkg_emit_errno("malloc", "pkg_conflicts_append_chain");
+			return (EPKG_FATAL);
+		}
 		TREE_INIT(j->conflict_items, pkg_conflicts_item_cmp);
 	}
 

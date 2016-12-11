@@ -540,6 +540,10 @@ retry:
 			pkg_debug(1, "Populating config_file %s", f->path);
 			len = archive_entry_size(ae);
 			f->config->content = malloc(len + 1);
+			if (f->config->content == NULL) {
+				pkg_emit_errno("malloc", "create_regfile");
+				return (EPKG_FATAL);
+			}
 			archive_read_data(a, f->config->content, len);
 			f->config->content[len] = '\0';
 			cfdata = f->config->content;

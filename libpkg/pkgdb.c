@@ -127,7 +127,11 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 		else
 			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
 
-		re = malloc(sizeof(regex_t));
+		re = malloc(sizeof *re);
+		if (re == NULL) {
+			pkg_emit_errno("malloc", "pkgdb_regex");
+			return;
+		}
 		if (regcomp(re, regex, cflags) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);

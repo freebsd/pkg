@@ -737,8 +737,17 @@ populate_keywords(struct plist *p)
 	int i;
 
 	for (i = 0; keyacts[i].key != NULL; i++) {
-		k = calloc(1, sizeof(struct keyword));
-		a = malloc(sizeof(struct action));
+		k = calloc(1, sizeof(*k));
+		if (k == NULL) {
+			pkg_emit_errno("malloc", "populate_keywords");
+			return;
+		}
+
+		a = malloc(sizeof(*a));
+		if (a == NULL) {
+			pkg_emit_errno("malloc", "populate_keywords");
+			return;
+		}
 		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
 		a->perform = keyacts[i].action;
 		LL_APPEND(k->actions, a);
@@ -804,8 +813,13 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 	ucl_object_iter_t it = NULL;
 	const char *key;
 
-	if (*a == NULL)
+	if (*a == NULL) {
 		*a = calloc(1, sizeof(struct file_attr));
+		if (*a == NULL) {
+			pkg_emit_errno("malloc", "parse_attributes");
+			return;
+		}
+	}
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		key = ucl_object_key(cur);
@@ -854,6 +868,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		spaces = pkg_utils_count_spaces(line);
 		args = malloc((spaces + 1)* sizeof(char *));
 		if (args == NULL) {
+			pkg_emit_errno("malloc", "apply_keyword_file");
 			return (EPKG_FATAL);
 		}
 		tofree = buf = strdup(line);
@@ -917,7 +932,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		while ((cur = ucl_iterate_object(o, &it, true))) {
 			elt = ucl_object_find_key(cur, "message");
 			msg = calloc(1, sizeof(*msg));
-
 			if (msg == NULL) {
 				pkg_emit_errno("malloc", "struct pkg_message");
 				goto keywords_cleanup;
@@ -1050,7 +1064,11 @@ parse_keyword_args(char *args, char *keyword)
 		}
 	}
 
-	attr = calloc(1, sizeof(struct file_attr));
+	attr = calloc(1, sizeof(*attr));
+	if (attr == NULL) {
+		pkg_emit_errno("calloc", "parse_keyword_args");
+		return (NULL);
+	}
 	if (owner != NULL && *owner != '\0')
 		attr->owner = strdup(owner);
 	if (group != NULL && *group != '\0')
@@ -1178,8 +1196,10 @@ plist_new(struct pkg *pkg, const char *stage)
 	struct plist *p;
 
 	p = calloc(1, sizeof(struct plist));
-	if (p == NULL)
+	if (p == NULL) {
+		pkg_emit_errno("calloc", "plist_new");
 		return (NULL);
+	}
 
 	p->pkg = pkg;
 	if (pkg->prefix != NULL)

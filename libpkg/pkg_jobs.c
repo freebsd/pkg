@@ -207,6 +207,11 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 				jp->is_file = true;
 				jp->path = pkg_path;
 				jp->pattern = malloc(len);
+				if (jp->pattern == NULL) {
+					pkg_emit_errno("malloc",
+					    "pkg_jobs_maybe_match_file");
+					return (false);
+				}
 				strlcpy(jp->pattern, pattern, len);
 
 				return (true);
@@ -239,6 +244,10 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	for (i = 0; i < argc; i++) {
 		jp = calloc(1, sizeof(struct job_pattern));
+		if (jp == NULL) {
+			pkg_emit_errno("malloc", "pkg_jobs_add");
+			return (EPKG_FATAL);
+		}
 		if (j->type == PKG_JOBS_DEINSTALL ||
 		    !pkg_jobs_maybe_match_file(jp, argv[i])) {
 			jp->pattern = strdup(argv[i]);
@@ -249,6 +258,10 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	if (argc == 0 && match == MATCH_ALL) {
 		jp = calloc(1, sizeof(struct job_pattern));
+		if (jp == NULL) {
+			pkg_emit_errno("malloc", "pkg_jobs_add");
+			return (EPKG_FATAL);
+		}
 		jp->pattern = NULL;
 		jp->match = match;
 		HASH_ADD_KEYPTR(hh, j->patterns, "all", 3, jp);
@@ -402,6 +415,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 	nit = calloc(1, sizeof(*nit));
 	if (nit == NULL) {
 		pkg_emit_errno("malloc", "struct pkg_job_request_item");
+		free(nit);
 		return (NULL);
 	}
 	nit->pkg = pkg;
@@ -887,6 +901,11 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 	if (olen != len) {
 		/* Try exact pattern without numbers */
 		cpy = malloc(len + 1);
+		if (cpy == NULL) {
+			pkg_emit_errno("malloc",
+			    "pkg_jobs_guess_upgrade_candidate");
+			return (EPKG_FATAL);
+		}
 		strlcpy(cpy, pos, len + 1);
 		if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_EXACT) != EPKG_OK) {
 			free(cpy);
