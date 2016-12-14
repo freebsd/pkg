@@ -75,8 +75,7 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 			if ((u = fetchParseURL(line)) != NULL) {
 				m = malloc(sizeof(struct http_mirror));
 				if (m == NULL) {
-					pkg_emit_errno("malloc",
-					    "gethttpmirrors");
+					pkg_emit_errno("malloc", __func__);
 				}
 				m->url = u;
 				LL_APPEND(repo->http, m);
@@ -97,7 +96,7 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 	fd = mkstemp(dest);
 
 	if (fd == -1) {
-		pkg_emit_errno("mkstemp", dest);
+		pkg_emit_errno("mkstemp", __func__);
 		return(EPKG_FATAL);
 	}
 
@@ -135,7 +134,7 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 
 	fd = open(dest, O_CREAT|O_APPEND|O_WRONLY, 00644);
 	if (fd == -1) {
-		pkg_emit_errno("open", dest);
+		pkg_emit_errno("open", __func__);
 		return(EPKG_FATAL);
 	}
 
@@ -352,7 +351,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 		repo->sshio.pid = fork();
 		if (repo->sshio.pid == -1) {
-			pkg_emit_errno("Cannot fork", "start_ssh");
+			pkg_emit_errno("Cannot fork", __func__);
 			goto ssh_cleanup;
 		}
 
@@ -361,7 +360,8 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			    close(sshin[1]) < 0 ||
 			    close(sshout[0]) < 0 ||
 			    dup2(sshout[1], STDOUT_FILENO) < 0) {
-				pkg_emit_errno("Cannot prepare pipes", "start_ssh");
+				pkg_emit_errno("Cannot prepare pipes",
+					       __func__);
 				goto ssh_cleanup;
 			}
 
@@ -394,7 +394,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		}
 
 		if (close(sshout[1]) < 0 || close(sshin[0]) < 0) {
-			pkg_emit_errno("Failed to close pipes", "start_ssh");
+			pkg_emit_errno("Failed to close pipes", __func__);
 			goto ssh_cleanup;
 		}
 
@@ -406,7 +406,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 		if (repo->ssh == NULL) {
-			pkg_emit_errno("Failed to open stream", "start_ssh");
+			pkg_emit_errno("Failed to open stream", __func__);
 			goto ssh_cleanup;
 		}
 
@@ -654,7 +654,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		left = sz - done;
 	while ((r = fread(buf, 1, left < buflen ? left : buflen, remote)) > 0) {
 		if (write(dest, buf, r) != r) {
-			pkg_emit_errno("write", "");
+			pkg_emit_errno("write", __func__);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}

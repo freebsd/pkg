@@ -131,7 +131,7 @@ pkg_solve_item_new(struct pkg_solve_variable *var)
 	result = calloc(1, sizeof(struct pkg_solve_item));
 
 	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_item");
+		pkg_emit_errno("calloc", __func__);
 		return (NULL);
 	}
 
@@ -149,7 +149,7 @@ pkg_solve_rule_new(enum pkg_solve_rule_type reason)
 	result = calloc(1, sizeof(struct pkg_solve_rule));
 
 	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_rule");
+		pkg_emit_errno("calloc", __func__);
 		return (NULL);
 	}
 
@@ -1379,7 +1379,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		if (seen_add > 0) {
 			res = calloc(1, sizeof(struct pkg_solved));
 			if (res == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
+				pkg_emit_errno("calloc", __func__);
 				return;
 			}
 			/* Pure install */
@@ -1416,7 +1416,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 
 				res = calloc(1, sizeof(struct pkg_solved));
 				if (res == NULL) {
-					pkg_emit_errno("calloc", "pkg_solved");
+					pkg_emit_errno("calloc", __func__);
 					return;
 				}
 				res->items[0] = cur_var->unit;

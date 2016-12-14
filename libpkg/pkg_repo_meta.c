@@ -151,7 +151,7 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 
 	key = calloc(1, sizeof(*key));
 	if (key == NULL) {
-		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta_key");
+		pkg_emit_errno("pkg_repo_meta_parse", __func__);
 		return (NULL);
 	}
 
@@ -183,7 +183,7 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 
 	meta = calloc(1, sizeof(*meta));
 	if (meta == NULL) {
-		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta");
+		pkg_emit_errno("pkg_repo_meta_parse", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -309,7 +309,7 @@ pkg_repo_meta_default(void)
 
 	meta = calloc(1, sizeof(*meta));
 	if (meta == NULL) {
-		pkg_emit_errno("pkg_repo_meta_default", "malloc failed for pkg_repo_meta");
+		pkg_emit_errno("pkg_repo_meta_default", __func__);
 		return (NULL);
 	}
 

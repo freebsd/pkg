@@ -112,7 +112,7 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 
 	item = malloc(sizeof(*item));
 	if (item == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_fts_item");
+		pkg_emit_errno("malloc", __func__);
 		return (NULL);
 	}
 
@@ -209,7 +209,7 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	}
 
 	if (errno != 0) {
-		pkg_emit_errno("fts_read", "pkg_create_repo_read_fts");
+		pkg_emit_errno("fts_read", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -240,7 +240,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
-		pkg_emit_errno("pkg_create_repo_worker", "open");
+		pkg_emit_errno("pkg_create_repo_worker", __func__);
 		utstring_free(b);
 		return (EPKG_FATAL);
 	}
@@ -250,7 +250,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		if (ffd == -1) {
 			close(mfd);
 			utstring_free(b);
-			pkg_emit_errno("pkg_create_repo_worker", "open");
+			pkg_emit_errno("pkg_create_repo_worker", __func__);
 			return (EPKG_FATAL);
 		}
 	}
@@ -258,7 +258,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	pid = fork();
 	switch(pid) {
 	case -1:
-		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		pkg_emit_errno("pkg_create_repo_worker", __func__);
 		utstring_free(b);
 		close(mfd);
 		if (read_files)
@@ -287,7 +287,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
 
 	if (read(pip, digestbuf, 1) == -1) {
-		pkg_emit_errno("pkg_create_repo_worker", "read");
+		pkg_emit_errno("pkg_create_repo_worker", __func__);
 		goto cleanup;
 	}
 
@@ -314,7 +314,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			else {
 				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
 				if (mdigest == NULL) {
-					pkg_emit_errno("malloc", "pkg_create_repo_worker");
+					pkg_emit_errno("malloc", __func__);
 					ret = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -332,7 +332,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			mlen = utstring_len(b);
 
 			if (flock(mfd, LOCK_EX) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "flock");
+				pkg_emit_errno("pkg_create_repo_worker",
+					       __func__);
 				ret = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -345,7 +346,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			iov[1].iov_len = 1;
 
 			if (writev(mfd, iov, 2) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "write");
+				pkg_emit_errno("pkg_create_repo_worker",
+					       __func__);
 				ret = EPKG_FATAL;
 				flock(mfd, LOCK_UN);
 				goto cleanup;
@@ -357,7 +359,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				FILE *fl;
 
 				if (flock(ffd, LOCK_EX) == -1) {
-					pkg_emit_errno("pkg_create_repo_worker", "flock");
+					pkg_emit_errno("pkg_create_repo_worker",
+						       __func__);
 					ret = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -433,7 +436,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 			else if (errno == EAGAIN || errno == EWOULDBLOCK)
 				return (EPKG_OK);
 
-			pkg_emit_errno("pkg_create_repo_read_pipe", "read");
+			pkg_emit_errno("pkg_create_repo_read_pipe", __func__);
 			return (EPKG_FATAL);
 		}
 		else if (r == 0)
@@ -450,13 +453,13 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					dig = calloc(1, sizeof(*dig));
 					if (dig == NULL) {
 						pkg_emit_errno("calloc",
-						    "pkg_create_repo_read_pipe");
+							       __func__);
 						return (EPKG_FATAL);
 					}
 					dig->origin = malloc(i - start + 1);
 					if (dig == NULL) {
 						pkg_emit_errno("malloc",
-						    "pkg_create_repo_read_pipe");
+							       __func__);
 						return (EPKG_FATAL);
 					}
 					strlcpy(dig->origin, &buf[start], i - start + 1);
@@ -466,7 +469,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					dig->digest = malloc(i - start + 1);
 					if (dig == NULL) {
 						pkg_emit_errno("malloc",
-						    "pkg_create_repo_read_pipe");
+							       __func__);
 						return (EPKG_FATAL);
 					}
 					strlcpy(dig->digest, &buf[start], i - start + 1);
@@ -488,7 +491,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					dig->checksum =  malloc(i - start + 1);
 					if (dig == NULL) {
 						pkg_emit_errno("malloc",
-						    "pkg_create_repo_read_pipe");
+							       __func__);
 						return (EPKG_FATAL);
 					}
 					strlcpy(dig->digest, &buf[start], i - start + 1);
@@ -505,7 +508,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					dig->checksum =  malloc(i - start + 1);
 					if (dig == NULL) {
 						pkg_emit_errno("malloc",
-						    "pkg_create_repo_read_pipe");
+							       __func__);
 						return (EPKG_FATAL);
 					}
 					strlcpy(dig->checksum, &buf[start], i - start + 1);

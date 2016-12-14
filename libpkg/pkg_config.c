@@ -441,13 +441,13 @@ connect_evpipe(const char *evpipe) {
 	if (S_ISFIFO(st.st_mode)) {
 		flag |= O_NONBLOCK;
 		if ((eventpipe = open(evpipe, flag)) == -1)
-			pkg_emit_errno("open event pipe", evpipe);
+			pkg_emit_errno("open event pipe", __func__);
 		return;
 	}
 
 	if (S_ISSOCK(st.st_mode)) {
 		if ((eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-			pkg_emit_errno("Open event pipe", evpipe);
+			pkg_emit_errno("Open event pipe", __func__);
 			return;
 		}
 		memset(&sock, 0, sizeof(struct sockaddr_un));
@@ -461,7 +461,7 @@ connect_evpipe(const char *evpipe) {
 		}
 
 		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
-			pkg_emit_errno("Connect event pipe", evpipe);
+			pkg_emit_errno("Connect event pipe", __func__);
 			close(eventpipe);
 			eventpipe = -1;
 			return;

@@ -129,7 +129,7 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 		re = malloc(sizeof *re);
 		if (re == NULL) {
-			pkg_emit_errno("malloc", "pkgdb_regex");
+			pkg_emit_errno("malloc", __func__);
 			return;
 		}
 		if (regcomp(re, regex, cflags) != 0) {
@@ -953,7 +953,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
 				item = malloc(sizeof(*item));
 				if (item == NULL) {
-					pkg_emit_errno("malloc", "_pkg_repo_list_item");
+					pkg_emit_errno("malloc", __func__);
 					return (EPKG_FATAL);
 				}
 
@@ -1065,7 +1065,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	}
 
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb");
+		pkg_emit_errno("malloc", __func__);
 		return (EPKG_FATAL);
 	}
 

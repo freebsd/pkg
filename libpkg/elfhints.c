@@ -108,7 +108,7 @@ shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
 
 	sl = calloc(1, sizeof(struct shlib) + path_len);
 	if (sl == NULL) {
-		pkg_emit_errno("calloc", "shlib_list_add");
+		pkg_emit_errno("calloc", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -279,7 +279,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 
 	dirlist = calloc(1, buflen);
 	if (dirlist == NULL) {
-		pkg_emit_errno("calloc", "shlib_free_from_rpath");
+		pkg_emit_errno("calloc", __func__);
 		return (EPKG_FATAL);
 	}
 	buf = (char *)dirlist + numdirs * sizeof(char *);

@@ -541,7 +541,7 @@ retry:
 			len = archive_entry_size(ae);
 			f->config->content = malloc(len + 1);
 			if (f->config->content == NULL) {
-				pkg_emit_errno("malloc", "create_regfile");
+				pkg_emit_errno("malloc", __func__);
 				return (EPKG_FATAL);
 			}
 			archive_read_data(a, f->config->content, len);

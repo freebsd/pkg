@@ -78,7 +78,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	assert(db != NULL);
 
 	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_jobs");
+		pkg_emit_errno("calloc", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -208,8 +208,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 				jp->path = pkg_path;
 				jp->pattern = malloc(len);
 				if (jp->pattern == NULL) {
-					pkg_emit_errno("malloc",
-					    "pkg_jobs_maybe_match_file");
+					pkg_emit_errno("malloc", __func__);
 					return (false);
 				}
 				strlcpy(jp->pattern, pattern, len);
@@ -245,7 +244,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	for (i = 0; i < argc; i++) {
 		jp = calloc(1, sizeof(struct job_pattern));
 		if (jp == NULL) {
-			pkg_emit_errno("malloc", "pkg_jobs_add");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		if (j->type == PKG_JOBS_DEINSTALL ||
@@ -259,7 +258,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	if (argc == 0 && match == MATCH_ALL) {
 		jp = calloc(1, sizeof(struct job_pattern));
 		if (jp == NULL) {
-			pkg_emit_errno("malloc", "pkg_jobs_add");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		jp->pattern = NULL;
@@ -311,7 +310,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 	if (req == NULL) {
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request");
+			pkg_emit_errno("malloc", __func__);
 			return (NULL);
 		}
 		new_req = true;
@@ -330,7 +329,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 				(uit->pkg->type != PKG_INSTALLED && !local)) {
 			nit = calloc(1, sizeof(*nit));
 			if (nit == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_job_request_item");
+				pkg_emit_errno("malloc", __func__);
 				free(req);
 				return (NULL);
 			}
@@ -414,7 +413,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	nit = calloc(1, sizeof(*nit));
 	if (nit == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_job_request_item");
+		pkg_emit_errno("malloc", __func__);
 		free(nit);
 		return (NULL);
 	}
@@ -425,7 +424,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		/* Allocate new unique request item */
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request");
+			pkg_emit_errno("malloc", __func__);
 			free(nit);
 			return (NULL);
 		}
@@ -598,7 +597,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			 */
 			ts = calloc(1, sizeof(struct pkg_solved));
 			if (ts == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
+				pkg_emit_errno("calloc", __func__);
 				return (EPKG_FATAL);
 			}
 
@@ -902,8 +901,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 		/* Try exact pattern without numbers */
 		cpy = malloc(len + 1);
 		if (cpy == NULL) {
-			pkg_emit_errno("malloc",
-			    "pkg_jobs_guess_upgrade_candidate");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		strlcpy(cpy, pos, len + 1);
@@ -1480,7 +1478,7 @@ pkg_jobs_new_candidate(struct pkg *pkg)
 
 	n = malloc(sizeof(*n));
 	if (n == NULL) {
-		pkg_emit_errno("malloc", "pkg_jobs_install_candidate");
+		pkg_emit_errno("malloc", __func__);
 		return (NULL);
 	}
 	n->id = pkg->id;
@@ -1825,7 +1823,8 @@ again:
 						dot = fopen(dotfile, "w");
 
 						if (dot == NULL) {
-							pkg_emit_errno("fopen", dotfile);
+							pkg_emit_errno("fopen",
+								       __func__);
 						}
 					}
 
@@ -2219,7 +2218,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			if (mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
-			pkg_emit_errno("statfs", cachedir);
+			pkg_emit_errno("statfs", __func__);
 			return (EPKG_FATAL);
 		}
 	}
@@ -2231,7 +2230,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			if (mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
-			pkg_emit_errno("statvfs", cachedir);
+			pkg_emit_errno("statvfs", __func__);
 			return (EPKG_FATAL);
 		}
 	}

@@ -244,7 +244,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", testpath);
+		pkg_emit_errno("lstat", __func__);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (developer_mode) {
@@ -739,13 +739,13 @@ populate_keywords(struct plist *p)
 	for (i = 0; keyacts[i].key != NULL; i++) {
 		k = calloc(1, sizeof(*k));
 		if (k == NULL) {
-			pkg_emit_errno("malloc", "populate_keywords");
+			pkg_emit_errno("malloc", __func__);
 			return;
 		}
 
 		a = malloc(sizeof(*a));
 		if (a == NULL) {
-			pkg_emit_errno("malloc", "populate_keywords");
+			pkg_emit_errno("malloc", __func__);
 			return;
 		}
 		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
@@ -816,7 +816,7 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 	if (*a == NULL) {
 		*a = calloc(1, sizeof(struct file_attr));
 		if (*a == NULL) {
-			pkg_emit_errno("malloc", "parse_attributes");
+			pkg_emit_errno("malloc", __func__);
 			return;
 		}
 	}
@@ -868,7 +868,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		spaces = pkg_utils_count_spaces(line);
 		args = malloc((spaces + 1)* sizeof(char *));
 		if (args == NULL) {
-			pkg_emit_errno("malloc", "apply_keyword_file");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		tofree = buf = strdup(line);
@@ -933,7 +933,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			elt = ucl_object_find_key(cur, "message");
 			msg = calloc(1, sizeof(*msg));
 			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
+				pkg_emit_errno("malloc", __func__);
 				goto keywords_cleanup;
 			}
 
@@ -1066,7 +1066,7 @@ parse_keyword_args(char *args, char *keyword)
 
 	attr = calloc(1, sizeof(*attr));
 	if (attr == NULL) {
-		pkg_emit_errno("calloc", "parse_keyword_args");
+		pkg_emit_errno("calloc", __func__);
 		return (NULL);
 	}
 	if (owner != NULL && *owner != '\0')
@@ -1197,7 +1197,7 @@ plist_new(struct pkg *pkg, const char *stage)
 
 	p = calloc(1, sizeof(struct plist));
 	if (p == NULL) {
-		pkg_emit_errno("calloc", "plist_new");
+		pkg_emit_errno("calloc", __func__);
 		return (NULL);
 	}
 

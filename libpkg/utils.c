@@ -69,7 +69,7 @@ mkdirs(const char *_path)
 
 		if (mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
 			if (errno != EEXIST && errno != EISDIR) {
-				pkg_emit_errno("mkdir", path);
+				pkg_emit_errno("mkdir", __func__);
 				return (EPKG_FATAL);
 			}
 
@@ -95,25 +95,25 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 	assert(sz != NULL);
 
 	if ((fd = openat(dfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("openat", path);
+		pkg_emit_errno("openat", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (fstatat(dfd, path, &st, 0) == -1) {
-		pkg_emit_errno("fstatat", path);
+		pkg_emit_errno("fstatat", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
+		pkg_emit_errno("malloc", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
-		pkg_emit_errno("read", path);
+		pkg_emit_errno("read", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -144,25 +144,25 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	assert(sz != NULL);
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
+		pkg_emit_errno("open", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (fstat(fd, &st) == -1) {
-		pkg_emit_errno("fstat", path);
+		pkg_emit_errno("fstat", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
+		pkg_emit_errno("malloc", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
-		pkg_emit_errno("read", path);
+		pkg_emit_errno("read", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}

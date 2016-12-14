@@ -182,7 +182,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 		return NULL;
 
 	if (pkg_asprintf(&pkg_path, "%S/%n-%v", outdir, pkg, pkg) == -1) {
-		pkg_emit_errno("pkg_asprintf", "");
+		pkg_emit_errno("pkg_asprintf", __func__);
 		return (NULL);
 	}
 
@@ -316,7 +316,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 
 	if (md_dir != NULL &&
 	    (mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
-		pkg_emit_errno("open", md_dir);
+		pkg_emit_errno("open", __func__);
 		goto cleanup;
 	}
 

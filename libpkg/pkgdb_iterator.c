@@ -827,7 +827,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						pkg->message = calloc(1, sizeof(*pkg->message));
 						if (pkg->message == NULL) {
 							pkg_emit_errno("calloc",
-							    "populate_pkg");
+								       __func__);
 							return;
 						}
 						pkg->message->str = strdup(msg);
@@ -1170,7 +1170,7 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 	assert(!(flags & (PKGDB_IT_FLAG_AUTO & (PKGDB_IT_FLAG_CYCLED | PKGDB_IT_FLAG_ONCE))));
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_it");
+		pkg_emit_errno("malloc", __func__);
 		sqlite3_finalize(s);
 		return (NULL);
 	}
@@ -1194,7 +1194,7 @@ pkgdb_it_new_repo(struct pkgdb *db)
 	struct pkgdb_it	*it;
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_it");
+		pkg_emit_errno("malloc", __func__);
 		return (NULL);
 	}
 
@@ -1213,7 +1213,7 @@ pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 	struct _pkg_repo_it_set *item;
 
 	if ((item = malloc(sizeof(struct _pkg_repo_it_set))) == NULL) {
-		pkg_emit_errno("malloc", "_pkg_repo_it_set");
+		pkg_emit_errno("malloc", __func__);
 	}
 	else {
 		item->it = rit;

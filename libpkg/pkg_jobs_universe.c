@@ -208,7 +208,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
-		pkg_emit_errno("pkg_jobs_pkg_insert_universe", "calloc: struct pkg_job_universe_item");
+		pkg_emit_errno("pkg_jobs_pkg_insert_universe", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -444,8 +444,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 		pr = calloc (1, sizeof (*pr));
 		if (pr == NULL) {
-			pkg_emit_errno("pkg_jobs_add_universe", "calloc: "
-					"struct pkg_job_provide");
+			pkg_emit_errno("pkg_jobs_add_universe", __func__);
 			return (EPKG_FATAL);
 		}
 
@@ -841,7 +840,7 @@ pkg_jobs_universe_new(struct pkg_jobs *j)
 
 	universe = calloc(1, sizeof(struct pkg_jobs_universe));
 	if (universe == NULL) {
-		pkg_emit_errno("pkg_jobs_universe_new", "calloc");
+		pkg_emit_errno("pkg_jobs_universe_new", __func__);
 		return (NULL);
 	}
 

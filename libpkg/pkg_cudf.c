@@ -336,7 +336,7 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 
 	res = calloc(1, sizeof(struct pkg_solved));
 	if (res == NULL) {
-		pkg_emit_errno("calloc", "pkg_solved");
+		pkg_emit_errno("calloc", __func__);
 		return;
 	}
 

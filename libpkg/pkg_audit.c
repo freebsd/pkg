@@ -299,7 +299,7 @@ pkg_audit_fetch(const char *src, const char *dest)
 		    S_IRUSR|S_IRGRP|S_IROTH);
 	}
 	if (outfd == -1) {
-		pkg_emit_errno("pkg_audit_fetch", "open out fd");
+		pkg_emit_errno("pkg_audit_fetch", __func__);
 		goto cleanup;
 	}
 
@@ -341,8 +341,10 @@ pkg_audit_expand_entry(struct pkg_audit_entry *entry, struct pkg_audit_entry **h
 		LL_FOREACH(pcur->names, ncur) {
 			n = calloc(1, sizeof(struct pkg_audit_entry));
 			if (n == NULL) {
-				pkg_emit_errno("calloc", "pkg_audit_expand_entry");
-				return;
+				pkg_emit_errno("calloc", __func__);
+
+				/* Quit; previous logic was to use err() */
+				exit(1);
 			}
 			n->pkgname = ncur->pkgname;
 			/* Set new entry as reference entry */
@@ -392,7 +394,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(element, "vuln") == 0) {
 		ud->cur_entry = calloc(1, sizeof(struct pkg_audit_entry));
 		if (ud->cur_entry == NULL) {
-			pkg_emit_errno("calloc", "vulnxml_start_element");
+			pkg_emit_errno("calloc", __func__);
 			return;
 		}
 		for (i = 0; attributes[i]; i += 2) {
@@ -410,7 +412,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "package") == 0) {
 		pkg_entry = calloc(1, sizeof(struct pkg_audit_package));
 		if (pkg_entry == NULL) {
-			pkg_emit_errno("calloc", "vulnxml_start_element");
+			pkg_emit_errno("calloc", __func__);
 			return;
 		}
 		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
@@ -423,7 +425,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
 		name_entry = calloc(1, sizeof(struct pkg_audit_pkgname));
 		if (name_entry == NULL) {
-			pkg_emit_errno("calloc", "vulnxml_start_element");
+			pkg_emit_errno("calloc", __func__);
 			return;
 		}
 		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
@@ -432,7 +434,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		ud->state = VULNXML_PARSE_RANGE;
 		vers = calloc(1, sizeof(struct pkg_audit_versions_range));
 		if (vers == NULL) {
-			pkg_emit_errno("calloc", "vulnxml_start_element");
+			pkg_emit_errno("calloc", __func__);
 			return;
 		}
 		LL_PREPEND(ud->cur_entry->packages->versions, vers);
@@ -542,7 +544,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		entry = ud->cur_entry;
 		cve = malloc(sizeof(struct pkg_audit_cve));
 		if (cve == NULL) {
-			pkg_emit_errno("malloc", "vulnxml_handle_data");
+			pkg_emit_errno("malloc", __func__);
 			return;
 		}
 		cve->cvename = strndup(content, length);
@@ -653,7 +655,7 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 
 	ret = calloc(n + 1, sizeof(ret[0]));
 	if (ret == NULL) {
-		pkg_emit_errno("malloc", "pkg_audit_preprocess");
+		pkg_emit_errno("malloc", __func__);
 		return (NULL);
 	}
 	bzero((void *)ret, (n + 1) * sizeof(ret[0]));
@@ -873,7 +875,7 @@ pkg_audit_new(void)
 
 	audit = calloc(1, sizeof(struct pkg_audit));
 	if (audit == NULL) {
-		pkg_emit_errno("calloc", "pkg_audit_new");
+		pkg_emit_errno("calloc", __func__);
 		return (NULL);
 	}
 	return (audit);

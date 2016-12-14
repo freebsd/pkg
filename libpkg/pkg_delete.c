@@ -239,7 +239,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1) {
 		if (errno != ENOTEMPTY && errno != EBUSY)
-			pkg_emit_errno("unlinkat", dir);
+			pkg_emit_errno("unlinkat", __func__);
 		/* If the directory was already removed by a bogus script, continue removing parents */
 		if (errno != ENOENT)
 			return;
@@ -342,7 +342,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			if (errno == ENOENT)
 				pkg_emit_file_missing(pkg, file);
 			else
-				pkg_emit_errno("unlinkat", path);
+				pkg_emit_errno("unlinkat", __func__);
 		}
 		return;
 	}

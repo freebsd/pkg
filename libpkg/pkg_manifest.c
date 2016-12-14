@@ -225,8 +225,7 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 		if (k == NULL) {
 			k = calloc(1, sizeof(struct pkg_manifest_key));
 			if (k == NULL) {
-				pkg_emit_errno("calloc",
-				    "pkg_manifest_keys_new");
+				pkg_emit_errno("calloc", __func__);
 				return (EPKG_FATAL);
 			}
 			k->key = manifest_keys[i].key;
@@ -1305,12 +1304,12 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	if (pdigest != NULL) {
 		*pdigest = malloc(sizeof(digest) * 2 + 1);
 		if (*pdigest == NULL) {
-			pkg_emit_errno("malloc", "pkg_emit_manifest_generic");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		sign_ctx = malloc(sizeof(SHA256_CTX));
 		if (sign_ctx == NULL) {
-			pkg_emit_errno("malloc", "pkg_emit_manifest_generic");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		sha256_init(sign_ctx);

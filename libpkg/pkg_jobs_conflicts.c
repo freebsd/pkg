@@ -53,7 +53,7 @@ pkg_conflicts_sipkey_init(void)
 	if (kinit == NULL) {
 		kinit = malloc(sizeof(*kinit));
 		if (kinit == NULL) {
-			pkg_emit_errno("malloc", "pkg_conflicts_sipkey_init");
+			pkg_emit_errno("malloc", __func__);
 			return (NULL);
 		}
 		arc4random_buf((unsigned char*)kinit, sizeof(*kinit));
@@ -123,7 +123,7 @@ pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_jo
 
 	elt = calloc(1, sizeof(struct pkg_conflict_chain));
 	if (elt == NULL) {
-		pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
+		pkg_emit_errno("resolve_request_conflicts", __func__);
 		return;
 	}
 	elt->req = req;
@@ -430,7 +430,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		/* New entry */
 		cit = calloc(1, sizeof(*cit));
 		if (cit == NULL) {
-			pkg_emit_errno("malloc failed", "pkg_conflicts_check_all_paths");
+			pkg_emit_errno("malloc failed", __func__);
 			return (NULL);
 		}
 		cit->hash = hv;
@@ -536,7 +536,7 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	if (j->conflict_items == NULL) {
 		j->conflict_items = malloc(sizeof(*j->conflict_items));
 		if (j->conflict_items == NULL) {
-			pkg_emit_errno("malloc", "pkg_conflicts_append_chain");
+			pkg_emit_errno("malloc", __func__);
 			return (EPKG_FATAL);
 		}
 		TREE_INIT(j->conflict_items, pkg_conflicts_item_cmp);
