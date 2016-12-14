@@ -185,6 +185,8 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	HASH_FIND_STR(p1->conflicts, p2->uid, test);
 	if (test == NULL) {
 		c1->uid = strdup(p2->uid);
+		if (c1->uid == NULL)
+			pkg_emit_errno("strdup", __func__);
 		HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
@@ -196,6 +198,8 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	HASH_FIND_STR(p2->conflicts, p1->uid, test);
 	if (test == NULL) {
 		c2->uid = strdup(p1->uid);
+		if (c2->uid == NULL)
+			pkg_emit_errno("strdup", __func__);
 		HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
@@ -277,9 +281,13 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		pkg_conflict_new(&c1);
 		c1->type = type;
 		c1->uid = strdup(p2->uid);
+		if (c1->uid == NULL)
+			pkg_emit_errno("strdup", __func__);
 
 		if (use_digest) {
 			c1->digest = strdup(p2->digest);
+			if (c1->digest == NULL)
+				pkg_emit_errno("strdup", __func__);
 		}
 
 		HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
@@ -290,11 +298,15 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		c2->type = type;
 
 		c2->uid = strdup(p1->uid);
+		if (c2->uid == NULL)
+			pkg_emit_errno("strdup", __func__);
 
 		if (use_digest) {
 			/* We also add digest information into account */
 
 			c2->digest = strdup(p1->digest);
+			if (c2->digest == NULL)
+				pkg_emit_errno("strdup", __func__);
 		}
 
 		HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);

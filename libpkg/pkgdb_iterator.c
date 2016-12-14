@@ -797,24 +797,52 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			switch (column->type) {
 			case PKG_ABI:
 				pkg->abi = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->abi == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_CKSUM:
 				pkg->sum = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->sum == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_COMMENT:
 				pkg->comment = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->comment == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_REPONAME:
 				pkg->reponame = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->reponame == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_DESC:
 				pkg->desc = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->desc == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_MAINTAINER:
 				pkg->maintainer = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->maintainer == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_DIGEST:
 				pkg->digest = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->digest == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_MESSAGE:
 				msg = sqlite3_column_text(stmt, icol);
@@ -831,6 +859,11 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 							return;
 						}
 						pkg->message->str = strdup(msg);
+						if (pkg->message->str == NULL) {
+							pkg_emit_errno("strdup",
+								       __func__);
+							return;
+						}
 					}
 				}
 				else {
@@ -839,33 +872,73 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				break;
 			case PKG_NAME:
 				pkg->name = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->name == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_OLD_VERSION:
 				pkg->old_version = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->old_version == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_ORIGIN:
 				pkg->origin = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->origin == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_PREFIX:
 				pkg->prefix = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->prefix == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_REPOPATH:
 				pkg->repopath = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->repopath == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_REPOURL:
 				pkg->repourl = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->repourl == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_UNIQUEID:
 				pkg->uid = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->uid == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_VERSION:
 				pkg->version = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->version == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_WWW:
 				pkg->www = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->www == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			case PKG_DEP_FORMULA:
 				pkg->dep_formula = strdup(sqlite3_column_text(stmt, icol));
+				if (pkg->dep_formula == NULL) {
+					pkg_emit_errno("strdup", __func__);
+					return;
+				}
 				break;
 			default:
 				pkg_emit_error("Unexpected text value for %s", colname);
@@ -926,6 +999,8 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
 	pkg->arch = strdup(legacyarch);
+	if (pkg->arch == NULL)
+		pkg_emit_errno("strdup", __func__);
 }
 
 static struct load_on_flag {

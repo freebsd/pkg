@@ -400,6 +400,8 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		for (i = 0; attributes[i]; i += 2) {
 			if (strcasecmp(attributes[i], "vid") == 0) {
 				ud->cur_entry->id = strdup(attributes[i + 1]);
+				if (ud->cur_entry->id == NULL)
+					pkg_emit_errno("strdup", __func__);
 				break;
 			}
 		}

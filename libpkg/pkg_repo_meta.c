@@ -42,11 +42,23 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->conflicts = NULL;
 	meta->conflicts_archive = NULL;
 	meta->manifests = strdup("packagesite.yaml");
+	if (meta->manifests == NULL)
+		pkg_emit_errno("strdup", __func__);
 	meta->manifests_archive = strdup("packagesite");
+	if (meta->manifests_archive == NULL)
+		pkg_emit_errno("strdup", __func__);
 	meta->digests = strdup("digests");
+	if (meta->digests == NULL)
+		pkg_emit_errno("strdup", __func__);
 	meta->digests_archive = strdup("digests");
+	if (meta->digests_archive == NULL)
+		pkg_emit_errno("strdup", __func__);
 	meta->filesite = strdup("filesite.yaml");
+	if (meta->filesite == NULL)
+		pkg_emit_errno("strdup", __func__);
 	meta->filesite_archive = strdup("filesite");
+	if (meta->filesite_archive == NULL)
+		pkg_emit_errno("strdup", __func__);
 	/* Not using fulldb */
 	meta->fulldb = NULL;
 	meta->fulldb_archive = NULL;
@@ -159,8 +171,14 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 	 * It is already validated so just use it as is
 	 */
 	key->name = strdup(ucl_object_tostring(ucl_object_find_key(obj, "name")));
+	if (key->name == NULL)
+		pkg_emit_errno("strdup", __func__);
 	key->pubkey = strdup(ucl_object_tostring(ucl_object_find_key(obj, "data")));
+	if (key->pubkey == NULL)
+		pkg_emit_errno("strdup", __func__);
 	key->pubkey_type = strdup(ucl_object_tostring(ucl_object_find_key(obj, "type")));
+	if (key->pubkey_type == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	return (key);
 }

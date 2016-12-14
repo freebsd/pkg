@@ -178,6 +178,8 @@ parse_major_release(const char *src, long long *release)
 	char *eos;
 
 	parsed = strdup(src);
+	if (parsed == NULL)
+		pkg_emit_errno("strdup", __func__);
 	eos = strchr(parsed, '.');
 	if (eos == NULL) {
 		pkg_emit_error("failed to parse major release version from %s", src);

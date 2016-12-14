@@ -176,8 +176,11 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 	else
 		strlcpy(p->prefix, line, sizeof(p->prefix));
 
-	if (p->pkg->prefix == NULL)
+	if (p->pkg->prefix == NULL) {
 		p->pkg->prefix = strdup(line);
+		if (p->pkg->prefix == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
@@ -200,7 +203,11 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	tmp[0] = '\0';
 	tmp++;
 	p->pkg->name = strdup(line);
+	if (p->pkg->name == NULL)
+		pkg_emit_errno("strdup", __func__);
 	p->pkg->version = strdup(tmp);
+	if (p->pkg->version == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	return (EPKG_OK);
 }
@@ -211,6 +218,8 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 	if (*line != '\0') {
 		free(p->pkgdep);
 		p->pkgdep = strdup(line);
+		if (p->pkgdep == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 	return (EPKG_OK);
 }
@@ -431,10 +440,16 @@ static int
 setowner(struct plist *p, char *line, struct file_attr *a)
 {
 	free(p->uname);
-	if (line[0] == '\0')
+	if (line[0] == '\0') {
 		p->uname = strdup("root");
-	else
+		if (p->uname == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
+	else {
 		p->uname = strdup(line);
+		if (p->uname == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 	return (EPKG_OK);
 }
 
@@ -442,10 +457,16 @@ static int
 setgroup(struct plist *p, char *line, struct file_attr *a)
 {
 	free(p->gname);
-	if (line[0] == '\0')
+	if (line[0] == '\0') {
 		p->gname = strdup("wheel");
-	else
+		if (p->gname == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
+	else {
 		p->gname = strdup(line);
+		if (p->gname == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 	return (EPKG_OK);
 }
 
@@ -469,6 +490,8 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 		line += 7;
 		free(p->pkg->origin);
 		p->pkg->origin = strdup(line);
+		if (p->pkg->origin == NULL)
+			pkg_emit_errno("strdup", __func__);
 	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
 		line += 8;
 		/* OPTIONS:+OPTION -OPTION */
@@ -508,12 +531,18 @@ parse_post(struct plist *p)
 		return;
 
 	p->post_patterns.buf = strdup(env);
+	if (p->post_patterns.buf == NULL)
+		pkg_emit_errno("strdup", __func__);
 	while ((token = strsep(&p->post_patterns.buf, " \t")) != NULL) {
 		if (token[0] == '\0')
 			continue;
 		if (p->post_patterns.len >= p->post_patterns.cap) {
 			p->post_patterns.cap += 10;
 			p->post_patterns.patterns = realloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
+			if (p->post_patterns.patterns == NULL) {
+				pkg_emit_errno("realloc", __func__);
+				return;
+			}
 		}
 		p->post_patterns.patterns[p->post_patterns.len++] = token;
 	}
@@ -828,11 +857,19 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 		if (!strcasecmp(key, "owner") && cur->type == UCL_STRING) {
 			free((*a)->owner);
 			(*a)->owner = strdup(ucl_object_tostring(cur));
+			if ((*a)->owner == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return;
+			}
 			continue;
 		}
 		if (!strcasecmp(key, "group") && cur->type == UCL_STRING) {
 			free((*a)->group);
 			(*a)->group = strdup(ucl_object_tostring(cur));
+			if ((*a)->group == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return;
+			}
 			continue;
 		}
 		if (!strcasecmp(key, "mode")) {
@@ -938,6 +975,10 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			}
 
 			msg->str = strdup(ucl_object_tostring(elt));
+			if (msg->str == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			msg->type = PKG_MESSAGE_ALWAYS;
 			elt = ucl_object_find_key(cur, "type");
 			if (elt != NULL) {
@@ -1069,10 +1110,16 @@ parse_keyword_args(char *args, char *keyword)
 		pkg_emit_errno("calloc", __func__);
 		return (NULL);
 	}
-	if (owner != NULL && *owner != '\0')
+	if (owner != NULL && *owner != '\0') {
 		attr->owner = strdup(owner);
-	if (group != NULL && *group != '\0')
+		if (attr->owner == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
+	if (group != NULL && *group != '\0') {
 		attr->group = strdup(group);
+		if (attr->group == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 	if (set != NULL) {
 		attr->mode = getmode(set, 0);
 		free(set);
@@ -1207,7 +1254,11 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
 	p->uname = strdup("root");
+	if (p->uname == NULL)
+		pkg_emit_errno("strdup", __func__);
 	p->gname = strdup("wheel");
+	if (p->gname == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	utstring_new(p->pre_install_buf);
 	utstring_new(p->post_install_buf);

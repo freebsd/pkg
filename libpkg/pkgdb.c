@@ -2659,6 +2659,8 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 	}
 	sqlite3_finalize(stmt);
 	file->sum = strdup(sum);
+	if (file->sum == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	return (EPKG_OK);
 }
@@ -2706,6 +2708,8 @@ pkgshell_open(const char **reponame)
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	*reponame = strdup(localpath);
+	if (*reponame == NULL)
+		pkg_emit_errno("strdup", __func__);
 }
 
 static int

@@ -169,6 +169,8 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 			    pkg->dir_to_del[i], path);
 			free(pkg->dir_to_del[i]);
 			pkg->dir_to_del[i] = strdup(path);
+			if (pkg->dir_to_del[i] == NULL)
+				pkg_emit_errno("strdup", __func__);
 			return;
 		}
 	}
@@ -179,9 +181,13 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 		pkg->dir_to_del_cap += 64;
 		pkg->dir_to_del = realloc(pkg->dir_to_del,
 		    pkg->dir_to_del_cap * sizeof(char *));
+		if (pkg->dir_to_del == NULL)
+			pkg_emit_errno("realloc", __func__);
 	}
 
 	pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+	if (pkg->dir_to_del[pkg->dir_to_del_len++] == NULL)
+		pkg_emit_errno("strdup", __func__);
 }
 
 static void
@@ -408,8 +414,12 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 			pkg->dir_to_del_cap += 64;
 			pkg->dir_to_del = realloc(pkg->dir_to_del,
 			    pkg->dir_to_del_cap * sizeof(char *));
+			if (pkg->dir_to_del == NULL)
+				pkg_emit_errno("realloc", __func__);
 		}
 		pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+		if (pkg->dir_to_del[pkg->dir_to_del_len++] == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 }
 

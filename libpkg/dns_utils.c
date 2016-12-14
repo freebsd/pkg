@@ -75,6 +75,7 @@
 
 #include <bsd_compat.h>
 #include "private/utils.h"
+#include "private/event.h"
 #include "pkg.h"
 
 #ifndef HAVE_LDNS
@@ -134,6 +135,10 @@ compute_weight(struct dns_srvinfo **d, int first, int last)
 		return;
 
 	chosen = malloc(sizeof(int) * (last - first + 1));
+	if (chosen == NULL) {
+		pkg_emit_errno("malloc", __func__);
+		return;
+	}
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {
@@ -335,6 +340,10 @@ compute_weight(struct dns_srvinfo *d, int first, int last)
 		return;
 
 	chosen = malloc(sizeof(int) * (last - first + 1));
+	if (chosen == NULL) {
+		pkg_emit_errno("malloc", __func__);
+		return;
+	}
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {

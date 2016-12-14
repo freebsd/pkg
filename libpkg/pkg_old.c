@@ -30,6 +30,8 @@
 #include <pkg.h>
 #include <private/pkg.h>
 
+#include "private/event.h"
+
 static const char * const scripts[] = {
 	"+INSTALL",
 	"+PRE_INSTALL",
@@ -94,13 +96,19 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 
 	pkg_get_myarch(myarch, BUFSIZ);
 	pkg->arch = strdup(myarch);
+	if (pkg->arch == NULL)
+		pkg_emit_errno("strdup", __func__);
 	pkg->maintainer = strdup("unknown");
+	if (pkg->maintainer == NULL)
+		pkg_emit_errno("strdup", __func__);
 	regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 	if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
 		size = pmatch[1].rm_eo - pmatch[1].rm_so;
 		pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
 	} else {
 		pkg->www = strdup("UNKNOWN");
+		if (pkg->www == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 	regfree(&preg);
 

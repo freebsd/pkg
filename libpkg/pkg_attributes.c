@@ -229,7 +229,11 @@ pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
 		return (EPKG_FATAL);
 
 	(*c)->key = strdup(key);
+	if ((*c)->key == NULL)
+		pkg_emit_errno("strdup", __func__);
 	(*c)->value = strdup(val);
+	if ((*c)->value == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	return (EPKG_OK);
 }

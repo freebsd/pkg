@@ -636,11 +636,15 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	if (fingerprints != NULL) {
 		free(r->fingerprints);
 		r->fingerprints = strdup(fingerprints);
+		if (r->fingerprints == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 
 	if (pubkey != NULL) {
 		free(r->pubkey);
 		r->pubkey = strdup(pubkey);
+		if (r->pubkey == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 
 	r->enable = enable;
@@ -1236,13 +1240,19 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	struct pkg_repo *r;
 
 	r = calloc(1, sizeof(struct pkg_repo));
+	if (r == NULL)
+		pkg_emit_errno("calloc", __func__);
 	r->ops = pkg_repo_find_type(type);
 	r->url = strdup(url);
+	if (r->url == NULL)
+		pkg_emit_errno("strdup", __func__);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
 	r->name = strdup(name);
+	if (r->name == NULL)
+		pkg_emit_errno("strdup", __func__);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
 	return (r);
@@ -1255,9 +1265,13 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 
 	free(r->name);
 	r->name = strdup(name);
+	if (r->name == NULL)
+		pkg_emit_errno("strdup", __func__);
 	if (url != NULL) {
 		free(r->url);
 		r->url = strdup(url);
+		if (r->url == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 	r->ops = pkg_repo_find_type(type);
 	HASH_DEL(repos, r);

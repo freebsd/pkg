@@ -397,6 +397,8 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 
 	free(pkg->reponame);
 	pkg->reponame = strdup(repo->name);
+	if (pkg->reponame == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
 

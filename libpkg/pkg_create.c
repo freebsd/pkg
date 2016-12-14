@@ -348,6 +348,8 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
 		pkg->abi = strdup(arch);
+		if (pkg->abi == NULL)
+			pkg_emit_errno("strdup", __func__);
 		defaultarch = true;
 	}
 
@@ -375,6 +377,8 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 			pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
 		} else {
 			pkg->www = strdup("UNKNOWN");
+			if (pkg->www == NULL)
+				pkg_emit_errno("strdup", __func__);
 		}
 		regfree(&preg);
 	}

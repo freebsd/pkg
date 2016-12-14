@@ -181,6 +181,8 @@ pkg_checksum_add_entry(const char *key,
 
 	e->field = key;
 	e->value = strdup(value);
+	if (e->value == NULL)
+		pkg_emit_errno("strdup", __func__);
 	DL_APPEND(*entries, e);
 }
 

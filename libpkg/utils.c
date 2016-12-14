@@ -285,6 +285,8 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 	}
 
 	*dest = strdup(utstring_body(buf));
+	if (*dest == NULL)
+		pkg_emit_errno("strdup", __func__);
 	utstring_free(buf);
 	
 	return (EPKG_OK);
@@ -737,6 +739,8 @@ mkdirat_p(int fd, const char *path)
 	char *walk, pathdone[MAXPATHLEN];
 
 	walk = strdup(path);
+	if (walk == NULL)
+		pkg_emit_errno("strdup", __func__);
 	pathdone[0] = '\0';
 
 	while ((next = strsep(&walk, "/")) != NULL) {

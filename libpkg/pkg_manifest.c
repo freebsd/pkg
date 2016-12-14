@@ -371,6 +371,8 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 		offset &= STRING_FLAG_MASK;
 		dest = (char **) ((unsigned char *)pkg + offset);
 		*dest = strdup(str);
+		if (*dest == NULL)
+			pkg_emit_errno("strdup", __func__);
 
 		if (buf) {
 			utstring_free(buf);
@@ -953,10 +955,15 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
-	if (pkg->abi == NULL && pkg->arch != NULL)
+	if (pkg->abi == NULL && pkg->arch != NULL) {
 		pkg->abi = strdup(pkg->arch);
+		if (pkg->abi == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
 	pkg->arch = strdup(legacyarch);
+	if (pkg->arch == NULL)
+		pkg_emit_errno("strdup", __func__);
 	pkg_debug(4, "Emitting basic metadata");
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
 	    UCL_STRING_TRIM), "name", 4, false);
@@ -1367,6 +1374,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 	}
 
 	*dest = strdup(utstring_body(b));
+	if (*dest == NULL)
+		pkg_emit_errno("strdup", __func__);
 	utstring_free(b);
 
 	return (rc);

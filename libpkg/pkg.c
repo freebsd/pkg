@@ -322,24 +322,48 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		case PKG_NAME:
 			free(pkg->name);
 			pkg->name = strdup(va_arg(ap, const char *));
+			if (pkg->name == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			free(pkg->uid);
 			pkg->uid = strdup(pkg->name);
+			if (pkg->uid == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_ORIGIN:
 			free(pkg->origin);
 			pkg->origin = strdup(va_arg(ap, const char *));
+			if (pkg->origin == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_VERSION:
 			free(pkg->version);
 			pkg->version = strdup(va_arg(ap, const char *));
+			if (pkg->version == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_COMMENT:
 			free(pkg->comment);
 			pkg->comment = strdup(va_arg(ap, const char *));
+			if (pkg->comment == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_DESC:
 			free(pkg->desc);
 			pkg->desc = strdup(va_arg(ap, const char *));
+			if (pkg->desc == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_MTREE:
 			(void)va_arg(ap, const char *);
@@ -361,50 +385,98 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		case PKG_ARCH:
 			free(pkg->arch);
 			pkg->arch = strdup(va_arg(ap, const char *));
+			if (pkg->arch == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_ABI:
 			free(pkg->abi);
 			pkg->abi = strdup(va_arg(ap, const char *));
+			if (pkg->abi == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_MAINTAINER:
 			free(pkg->maintainer);
 			pkg->maintainer = strdup(va_arg(ap, const char *));
+			if (pkg->maintainer == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_WWW:
 			free(pkg->www);
 			pkg->www = strdup(va_arg(ap, const char *));
+			if (pkg->www == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_PREFIX:
 			free(pkg->prefix);
 			pkg->prefix = strdup(va_arg(ap, const char *));
+			if (pkg->prefix == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_REPOPATH:
 			free(pkg->repopath);
 			pkg->repopath = strdup(va_arg(ap, const char *));
+			if (pkg->repopath == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_CKSUM:
 			free(pkg->sum);
 			pkg->sum = strdup(va_arg(ap, const char *));
+			if (pkg->sum == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_OLD_VERSION:
 			free(pkg->old_version);
 			pkg->old_version = strdup(va_arg(ap, const char *));
+			if (pkg->old_version == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_REPONAME:
 			free(pkg->reponame);
 			pkg->reponame = strdup(va_arg(ap, const char *));
+			if (pkg->reponame == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_REPOURL:
 			free(pkg->repourl);
 			pkg->repourl = strdup(va_arg(ap, const char *));
+			if (pkg->repourl == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_DIGEST:
 			free(pkg->digest);
 			pkg->digest = strdup(va_arg(ap, const char *));
+			if (pkg->digest == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_REASON:
 			free(pkg->reason);
 			pkg->reason = strdup(va_arg(ap, const char *));
+			if (pkg->reason == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_FLATSIZE:
 			pkg->flatsize = va_arg(ap, int64_t);
@@ -433,6 +505,10 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		case PKG_DEP_FORMULA:
 			free(pkg->dep_formula);
 			pkg->dep_formula = strdup(va_arg(ap, const char *));
+			if (pkg->dep_formula == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			break;
 		case PKG_VITAL:
 			pkg->vital = (bool)va_arg(ap, int);
@@ -594,6 +670,10 @@ pkg_adduser(struct pkg *pkg, const char *name)
 	}
 
 	storename = strdup(name);
+	if (storename == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	kh_add(strings, pkg->users, storename, storename, free);
 
 	return (EPKG_OK);
@@ -618,6 +698,10 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	}
 
 	storename = strdup(name);
+	if (storename == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	kh_add(strings, pkg->groups, storename, storename, free);
 
 	return (EPKG_OK);
@@ -648,10 +732,27 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	pkg_dep_new(&d);
 
 	d->origin = strdup(origin);
+	if (d->origin == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	d->name = strdup(name);
-	if (version != NULL && version[0] != '\0')
+	if (d->name == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
+	if (version != NULL && version[0] != '\0') {
 		d->version = strdup(version);
+		if (d->version == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
+	}
 	d->uid = strdup(name);
+	if (d->uid == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	d->locked = locked;
 
 	kh_add(pkg_deps, pkg->depshash, d, d->name, pkg_dep_free);
@@ -673,10 +774,27 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	pkg_dep_new(&d);
 
 	d->origin = strdup(origin);
+	if (d->origin == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	d->name = strdup(name);
-	if (version != NULL && version[0] != '\0')
+	if (d->name == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
+	if (version != NULL && version[0] != '\0') {
 		d->version = strdup(version);
+		if (d->version == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
+	}
 	d->uid = strdup(name);
+	if (d->uid == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	d->locked = locked;
 
 	kh_add(pkg_deps, pkg->rdepshash, d, d->name, pkg_dep_free);
@@ -718,8 +836,13 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	pkg_file_new(&f);
 	strlcpy(f->path, path, sizeof(f->path));
 
-	if (sum != NULL)
+	if (sum != NULL) {
 		f->sum = strdup(sum);
+		if (f->sum == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
+	}
 
 	if (uname != NULL)
 		strlcpy(f->uname, uname, sizeof(f->uname));
@@ -759,8 +882,13 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	pkg_config_file_new(&f);
 	strlcpy(f->path, path, sizeof(f->path));
 
-	if (content != NULL)
+	if (content != NULL) {
 		f->content = strdup(content);
+		if (f->content == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
+	}
 
 	kh_add(pkg_config_files, pkg->config_files, f, f->path, pkg_config_file_free);
 
@@ -788,6 +916,10 @@ pkg_addstring(kh_strings_t **list, const char *val, const char *title)
 	}
 
 	store = strdup(val);
+	if (store == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	kh_add(strings, *list, store, store, free);
 
 	return (EPKG_OK);
@@ -1007,6 +1139,10 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	if (o == NULL) {
 		pkg_option_new(&o);
 		o->key = strdup(key);
+		if (o->key == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
 	} else if ( o->value != NULL) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
@@ -1018,6 +1154,10 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	}
 
 	o->value = strdup(value);
+	if (o->value == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	HASH_ADD_KEYPTR(hh, pkg->options, o->key, strlen(o->key), o);
 
 	return (EPKG_OK);
@@ -1043,6 +1183,10 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	if (o == NULL) {
 		pkg_option_new(&o);
 		o->key = strdup(key);
+		if (o->key == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
 	} else if ( o->default_value != NULL) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate default value for option: %s, fatal (developer mode)", key);
@@ -1054,6 +1198,10 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	}
 
 	o->default_value = strdup(default_value);
+	if (o->default_value == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	HASH_ADD_KEYPTR(hh, pkg->options, o->default_value,
 	    strlen(o->default_value), o);
 
@@ -1079,6 +1227,10 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	if (o == NULL) {
 		pkg_option_new(&o);
 		o->key = strdup(key);
+		if (o->key == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
 	} else if ( o->description != NULL) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate description for option: %s, fatal (developer mode)", key);
@@ -1090,6 +1242,10 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	}
 
 	o->description = strdup(description);
+	if (o->description == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	HASH_ADD_KEYPTR(hh, pkg->options, o->description,
 	    strlen(o->description), o);
 
@@ -1109,6 +1265,10 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	storename = strdup(name);
+	if (storename == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	kh_add(strings, pkg->shlibs_required, storename, storename, free);
 
 	pkg_debug(3, "added shlib deps for %s on %s", pkg->name, name);
@@ -1133,6 +1293,10 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	storename = strdup(name);
+	if (storename == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	kh_add(strings, pkg->shlibs_provided, storename, storename, free);
 
 	pkg_debug(3, "added shlib provide %s for %s", name, pkg->name);
@@ -1155,6 +1319,10 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 
 	pkg_conflict_new(&c);
 	c->uid = strdup(uniqueid);
+	if (c->uid == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
 	HASH_ADD_KEYPTR(hh, pkg->conflicts, c->uid, strlen(c->uid), c);
@@ -1175,6 +1343,10 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	storename = strdup(name);
+	if (storename == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 
 	kh_add(strings, pkg->requires, storename, storename, free);
 
@@ -1194,6 +1366,10 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	storename = strdup(name);
+	if (storename == NULL) {
+		pkg_emit_errno("strdup", __func__);
+		return (EPKG_FATAL);
+	}
 
 	kh_add(strings, pkg->provides, storename, storename, free);
 
@@ -1542,6 +1718,10 @@ pkg_validate(struct pkg *pkg, struct pkgdb *db)
 			return (EPKG_FATAL);
 
 		pkg->uid = strdup(pkg->name);
+		if (pkg->uid == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
 	}
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest,
@@ -1790,6 +1970,10 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 			return (EPKG_FATAL);
 		}
 		msg->str = strdup(ucl_object_tostring(obj));
+		if (msg->str == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
 		msg->type = PKG_MESSAGE_ALWAYS;
 		LL_APPEND(pkg->message, msg);
 		return (EPKG_OK);
@@ -1818,6 +2002,10 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		}
 
 		msg->str = strdup(ucl_object_tostring(elt));
+		if (msg->str == NULL) {
+			pkg_emit_errno("strdup", __func__);
+			return (EPKG_FATAL);
+		}
 		msg->type = PKG_MESSAGE_ALWAYS;
 		elt = ucl_object_find_key(cur, "type");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
@@ -1839,11 +2027,19 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		elt = ucl_object_find_key(cur, "minimum_version");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
 			msg->minimum_version = strdup(ucl_object_tostring(elt));
+			if (msg->minimum_version == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 		}
 
 		elt = ucl_object_find_key(cur, "maximum_version");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
 			msg->maximum_version = strdup(ucl_object_tostring(elt));
+			if (msg->maximum_version == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 		}
 
 		LL_APPEND(pkg->message, msg);
