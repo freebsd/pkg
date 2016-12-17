@@ -296,6 +296,10 @@ pkg_plugins_init(void)
 		snprintf(pluginfile, sizeof(pluginfile), "%s/%s.so", plugdir,
 		    pkg_object_string(cur));
 		p = calloc(1, sizeof(struct pkg_plugin));
+		if (p == NULL) {
+			pkg_emit_errno("calloc", __func__);
+			return (EPKG_FATAL);
+		}
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
 			    pkg_object_string(cur), dlerror());

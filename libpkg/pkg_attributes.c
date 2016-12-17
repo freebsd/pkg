@@ -152,7 +152,7 @@ int
 pkg_option_new(struct pkg_option **option)
 {
 	if ((*option = calloc(1, sizeof(struct pkg_option))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_option");
+		pkg_emit_errno("calloc", __func__);
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
@@ -229,7 +229,11 @@ pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
 		return (EPKG_FATAL);
 
 	(*c)->key = strdup(key);
+	if ((*c)->key == NULL)
+		pkg_emit_errno("strdup", __func__);
 	(*c)->value = strdup(val);
+	if ((*c)->value == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	return (EPKG_OK);
 }

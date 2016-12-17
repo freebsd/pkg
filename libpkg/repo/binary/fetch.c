@@ -110,12 +110,12 @@ pkg_repo_binary_create_symlink(struct pkg *pkg, const char *fname,
 	if ((dest_fname = strrchr(fname, '/')) != NULL)
 		++dest_fname;
 	if (symlink(dest_fname, link_dest_tmp) == -1) {
-		pkg_emit_errno("symlink", link_dest);
+		pkg_emit_errno("symlink", __func__);
 		return (EPKG_FATAL);
 	}
 
 	if (rename(link_dest_tmp, link_dest) == -1) {
-		pkg_emit_errno("rename", link_dest);
+		pkg_emit_errno("rename", __func__);
 		unlink(link_dest_tmp);
 		return (EPKG_FATAL);
 	}
@@ -168,7 +168,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	/* Create the dirs in cachedir */
 	dir = strdup(dest);
 	if (dir == NULL || (path = dirname(dir)) == NULL) {
-		pkg_emit_errno("dirname", dest);
+		pkg_emit_errno("dirname", __func__);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}

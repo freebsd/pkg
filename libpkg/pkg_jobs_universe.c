@@ -208,7 +208,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
-		pkg_emit_errno("pkg_jobs_pkg_insert_universe", "calloc: struct pkg_job_universe_item");
+		pkg_emit_errno("pkg_jobs_pkg_insert_universe", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -444,8 +444,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 		pr = calloc (1, sizeof (*pr));
 		if (pr == NULL) {
-			pkg_emit_errno("pkg_jobs_add_universe", "calloc: "
-					"struct pkg_job_provide");
+			pkg_emit_errno("pkg_jobs_add_universe", __func__);
 			return (EPKG_FATAL);
 		}
 
@@ -841,7 +840,7 @@ pkg_jobs_universe_new(struct pkg_jobs *j)
 
 	universe = calloc(1, sizeof(struct pkg_jobs_universe));
 	if (universe == NULL) {
-		pkg_emit_errno("pkg_jobs_universe_new", "calloc");
+		pkg_emit_errno("pkg_jobs_universe_new", __func__);
 		return (NULL);
 	}
 
@@ -887,6 +886,11 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 					if (strcmp(d->uid, unit->pkg->uid) == 0) {
 						free(d->uid);
 						d->uid = strdup(new_uid);
+						if (d->uid == NULL) {
+							pkg_emit_errno("strdup",
+								       __func__);
+							return;
+						}
 					}
 				}
 			}
@@ -896,13 +900,19 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	replacement = calloc(1, sizeof(*replacement));
 	if (replacement != NULL) {
 		replacement->old_uid = strdup(unit->pkg->uid);
+		if (replacement->old_uid == NULL)
+			pkg_emit_errno("strdup", __func__);
 		replacement->new_uid = strdup(new_uid);
+		if (replacement->new_uid == NULL)
+			pkg_emit_errno("strdup", __func__);
 		LL_PREPEND(universe->uid_replaces, replacement);
 	}
 
 	HASH_DELETE(hh, universe->items, unit);
 	free(unit->pkg->uid);
 	unit->pkg->uid = strdup(new_uid);
+	if (unit->pkg->uid == NULL)
+		pkg_emit_errno("strdup", __func__);
 
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)

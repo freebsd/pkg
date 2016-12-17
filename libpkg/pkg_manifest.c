@@ -224,6 +224,10 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 		HASH_FIND_STR(*key, manifest_keys[i].key, k);
 		if (k == NULL) {
 			k = calloc(1, sizeof(struct pkg_manifest_key));
+			if (k == NULL) {
+				pkg_emit_errno("calloc", __func__);
+				return (EPKG_FATAL);
+			}
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
 			k->valid_type = manifest_keys[i].valid_type;
@@ -367,6 +371,8 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 		offset &= STRING_FLAG_MASK;
 		dest = (char **) ((unsigned char *)pkg + offset);
 		*dest = strdup(str);
+		if (*dest == NULL)
+			pkg_emit_errno("strdup", __func__);
 
 		if (buf) {
 			utstring_free(buf);
@@ -949,10 +955,15 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
-	if (pkg->abi == NULL && pkg->arch != NULL)
+	if (pkg->abi == NULL && pkg->arch != NULL) {
 		pkg->abi = strdup(pkg->arch);
+		if (pkg->abi == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
 	pkg->arch = strdup(legacyarch);
+	if (pkg->arch == NULL)
+		pkg_emit_errno("strdup", __func__);
 	pkg_debug(4, "Emitting basic metadata");
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
 	    UCL_STRING_TRIM), "name", 4, false);
@@ -1299,7 +1310,15 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 
 	if (pdigest != NULL) {
 		*pdigest = malloc(sizeof(digest) * 2 + 1);
+		if (*pdigest == NULL) {
+			pkg_emit_errno("malloc", __func__);
+			return (EPKG_FATAL);
+		}
 		sign_ctx = malloc(sizeof(SHA256_CTX));
+		if (sign_ctx == NULL) {
+			pkg_emit_errno("malloc", __func__);
+			return (EPKG_FATAL);
+		}
 		sha256_init(sign_ctx);
 	}
 
@@ -1355,6 +1374,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 	}
 
 	*dest = strdup(utstring_body(b));
+	if (*dest == NULL)
+		pkg_emit_errno("strdup", __func__);
 	utstring_free(b);
 
 	return (rc);

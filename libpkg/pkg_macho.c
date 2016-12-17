@@ -69,7 +69,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 	cpu_type = cpu_type & ~CPU_ARCH_MASK;
 
 	if (lstat(fpath, &sb) != 0)
-		pkg_emit_errno("fstat() failed for", fpath);
+		pkg_emit_errno("fstat() failed for", __func__);
 
 	/* ignore empty files and non regular files */
 	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
@@ -178,6 +178,8 @@ parse_major_release(const char *src, long long *release)
 	char *eos;
 
 	parsed = strdup(src);
+	if (parsed == NULL)
+		pkg_emit_errno("strdup", __func__);
 	eos = strchr(parsed, '.');
 	if (eos == NULL) {
 		pkg_emit_error("failed to parse major release version from %s", src);
@@ -212,7 +214,7 @@ host_cpu_type(cpu_type_t *result)
 	/* Fetch CPU type */
 	len = sizeof(resint);
 	if (sysctlbyname("hw.cputype", &resint, &len, NULL, 0) != 0) {
-		pkg_emit_errno("sysctlbyname", "hw.cputype");
+		pkg_emit_errno("sysctlbyname", __func__);
 		return EPKG_FATAL;
 	}
 
@@ -234,7 +236,7 @@ host_os_info(char *osname, size_t sz, long long *major_version)
 
 	/* Fetch OS info from uname() */
 	if (uname(&ut) != 0) {
-		pkg_emit_errno("uname", "&ut");
+		pkg_emit_errno("uname", __func__);
 		return EPKG_FATAL;
 	}
 

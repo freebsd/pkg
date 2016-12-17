@@ -78,7 +78,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	assert(db != NULL);
 
 	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_jobs");
+		pkg_emit_errno("calloc", __func__);
 		return (EPKG_FATAL);
 	}
 
@@ -207,6 +207,10 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 				jp->is_file = true;
 				jp->path = pkg_path;
 				jp->pattern = malloc(len);
+				if (jp->pattern == NULL) {
+					pkg_emit_errno("malloc", __func__);
+					return (false);
+				}
 				strlcpy(jp->pattern, pattern, len);
 
 				return (true);
@@ -219,7 +223,11 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 		 */
 		jp->is_file = true;
 		jp->path = strdup(pattern);
+		if (jp->path == NULL)
+			pkg_emit_errno("strdup", __func__);
 		jp->pattern = strdup(pattern);
+		if (jp->pattern == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 
 	return (false);
@@ -239,9 +247,17 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	for (i = 0; i < argc; i++) {
 		jp = calloc(1, sizeof(struct job_pattern));
+		if (jp == NULL) {
+			pkg_emit_errno("malloc", __func__);
+			return (EPKG_FATAL);
+		}
 		if (j->type == PKG_JOBS_DEINSTALL ||
 		    !pkg_jobs_maybe_match_file(jp, argv[i])) {
 			jp->pattern = strdup(argv[i]);
+			if (jp->pattern == NULL) {
+				pkg_emit_errno("strdup", __func__);
+				return (EPKG_FATAL);
+			}
 			jp->match = match;
 		}
 		HASH_ADD_KEYPTR(hh, j->patterns, jp->pattern, strlen(jp->pattern), jp);
@@ -249,6 +265,10 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	if (argc == 0 && match == MATCH_ALL) {
 		jp = calloc(1, sizeof(struct job_pattern));
+		if (jp == NULL) {
+			pkg_emit_errno("malloc", __func__);
+			return (EPKG_FATAL);
+		}
 		jp->pattern = NULL;
 		jp->match = match;
 		HASH_ADD_KEYPTR(hh, j->patterns, "all", 3, jp);
@@ -298,7 +318,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 	if (req == NULL) {
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request");
+			pkg_emit_errno("malloc", __func__);
 			return (NULL);
 		}
 		new_req = true;
@@ -317,7 +337,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 				(uit->pkg->type != PKG_INSTALLED && !local)) {
 			nit = calloc(1, sizeof(*nit));
 			if (nit == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_job_request_item");
+				pkg_emit_errno("malloc", __func__);
 				free(req);
 				return (NULL);
 			}
@@ -401,7 +421,8 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	nit = calloc(1, sizeof(*nit));
 	if (nit == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_job_request_item");
+		pkg_emit_errno("malloc", __func__);
+		free(nit);
 		return (NULL);
 	}
 	nit->pkg = pkg;
@@ -411,7 +432,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		/* Allocate new unique request item */
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request");
+			pkg_emit_errno("malloc", __func__);
 			free(nit);
 			return (NULL);
 		}
@@ -584,7 +605,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			 */
 			ts = calloc(1, sizeof(struct pkg_solved));
 			if (ts == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
+				pkg_emit_errno("calloc", __func__);
 				return (EPKG_FATAL);
 			}
 
@@ -887,6 +908,10 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 	if (olen != len) {
 		/* Try exact pattern without numbers */
 		cpy = malloc(len + 1);
+		if (cpy == NULL) {
+			pkg_emit_errno("malloc", __func__);
+			return (EPKG_FATAL);
+		}
 		strlcpy(cpy, pos, len + 1);
 		if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_EXACT) != EPKG_OK) {
 			free(cpy);
@@ -1163,12 +1188,16 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = strdup("direct conflict changed");
+			if (rp->reason == NULL)
+				pkg_emit_errno("strdup", __func__);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(rc->uid, lc->uid) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("direct conflict changed");
+				if (rp->reason == NULL)
+					pkg_emit_errno("strdup", __func__);
 				return (true);
 			}
 		}
@@ -1184,12 +1213,16 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = strdup("provides changed");
+			if (rp->reason == NULL)
+				pkg_emit_errno("strdup", __func__);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(rb, lb) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("provides changed");
+				if (rp->reason == NULL)
+					pkg_emit_errno("strdup", __func__);
 				return (true);
 			}
 		}
@@ -1204,12 +1237,16 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = strdup("requires changed");
+			if (rp->reason == NULL)
+				pkg_emit_errno("strdup", __func__);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(rb, lb) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("requires changed");
+				if (rp->reason == NULL)
+					pkg_emit_errno("strdup", __func__);
 				return (true);
 			}
 		}
@@ -1225,12 +1262,16 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = strdup("provided shared library changed");
+			if (rp->reason == NULL)
+				pkg_emit_errno("strdup", __func__);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(rb, lb) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("provided shared library changed");
+				if (rp->reason == NULL)
+					pkg_emit_errno("strdup", __func__);
 				pkg_debug(1, "provided shlib changed %s -> %s",
 				    lb, rb);
 				return (true);
@@ -1247,12 +1288,16 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = strdup("needed shared library changed");
+			if (rp->reason == NULL)
+				pkg_emit_errno("strdup", __func__);
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(rb, lb) != 0) {
 				free(rp->reason);
 				rp->reason = strdup("needed shared library changed");
+				if (rp->reason == NULL)
+					pkg_emit_errno("strdup", __func__);
 				pkg_debug(1, "Required shlib changed %s -> %s",
 				    lb, rb);
 				return (true);
@@ -1461,7 +1506,7 @@ pkg_jobs_new_candidate(struct pkg *pkg)
 
 	n = malloc(sizeof(*n));
 	if (n == NULL) {
-		pkg_emit_errno("malloc", "pkg_jobs_install_candidate");
+		pkg_emit_errno("malloc", __func__);
 		return (NULL);
 	}
 	n->id = pkg->id;
@@ -1806,7 +1851,8 @@ again:
 						dot = fopen(dotfile, "w");
 
 						if (dot == NULL) {
-							pkg_emit_errno("fopen", dotfile);
+							pkg_emit_errno("fopen",
+								       __func__);
 						}
 					}
 
@@ -1940,6 +1986,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 		target = req->item->jp->path;
 		free(new->reponame);
 		new->reponame = strdup("local file");
+		if (new->reponame == NULL)
+			pkg_emit_errno("strdup", __func__);
 	}
 	else {
 		pkg_snprintf(path, sizeof(path), "%R", new);
@@ -1948,8 +1996,11 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 		target = path;
 	}
 
-	if (old != NULL)
+	if (old != NULL) {
 		new->old_version = strdup(old->version);
+		if (new->old_version == NULL)
+			pkg_emit_errno("strdup", __func__);
+	}
 
 	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		flags |= PKG_ADD_FORCE;
@@ -2200,7 +2251,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			if (mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
-			pkg_emit_errno("statfs", cachedir);
+			pkg_emit_errno("statfs", __func__);
 			return (EPKG_FATAL);
 		}
 	}
@@ -2212,7 +2263,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			if (mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
-			pkg_emit_errno("statvfs", cachedir);
+			pkg_emit_errno("statvfs", __func__);
 			return (EPKG_FATAL);
 		}
 	}
