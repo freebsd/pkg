@@ -41,7 +41,6 @@ RPM is doing that
 
 to allow multiple packages having the same name as long as they don't conflicts
 
-
 * pkg.conf:
 
   duplicatenumber: 2
@@ -61,4 +60,23 @@ to allow multiple packages having the same name as long as they don't conflicts
 
     * check for saveme annotation, remove upgrade flag
 
+# Add support for zstd format
 
+zstd is very interesting compression format that it would be nice to add support to
+
+# Add the notion of triggers
+
+Trigger would allow to only run once from scripts at the end of the upgrade
+process.
+
+There should be 2 kind of triggers: pre and post the entire process
+Triggers should deduplicate themselves and fexible so packages can provide some themselves
+
+for example:
+gtk-update-icon-cache should provide a trigger for everything that provides an icon
+
+if gtk-update-icon-cache is installed on the system and packages are flagged for
+"icons" then the gtk icon cache would be upgraded.
+
+That would remove the gtk-update-icon-cache dependence from every application
+that provides icons and make it run only once.
