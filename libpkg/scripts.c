@@ -169,8 +169,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			    NULL, __DECONST(char **, argv),
 			    environ)) != 0) {
 				errno = error;
-				pkg_emit_errno("Cannot run script",
-				    map[i].arg);
+				pkg_errno("Cannot runscript %s", map[i].arg);
 				goto cleanup;
 			}
 
@@ -226,8 +225,9 @@ cleanup:
 	if (info.rs_children != 0) {
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
-		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0)
-			pkg_emit_errno("procctl", "PROC_REAP_KILL");
+		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0) {
+			pkg_errno("%s", "Fail to kill all processes");
+		}
 	}
 	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
 #endif
