@@ -726,8 +726,7 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 	pkg_debug(1, "PKgConfig: loading %s/%s", repodir, repofile);
 	fd = openat(dfd, repofile, O_RDONLY);
 	if (fd == -1) {
-		pkg_emit_error("Unable to open '%s/%s': %s\n", repodir,
-		    repofile, strerror(errno));
+		pkg_errno("Unable to open '%s/%s'", repodir, repofile);
 		return;
 	}
 	if (!ucl_parser_add_fd(p, fd)) {
@@ -956,9 +955,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	else
 		conffd = open(path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {
-		pkg_emit_error("Cannot open %s/%s: %s",
+		pkg_errno("Cannot open %s/%s",
 		    pkg_rootdir != NULL ? pkg_rootdir : "",
-		    path, strerror(errno));
+		    path);
 	}
 
 	p = ucl_parser_new(0);

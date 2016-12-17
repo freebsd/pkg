@@ -125,16 +125,13 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 
 	if (eaccess(dest, W_OK)) {
 		if (errno != ENOENT) {
-			pkg_emit_error("eaccess(%s) -- %s", dest,
-			    strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Unable to access '%s'", dest);
 		}
 
 		/* Could we create the Sqlite DB file? */
 		if (eaccess(bsd_dirname(dest), W_OK)) {
-			pkg_emit_error("eaccess(%s) -- %s", bsd_dirname(dest),
-			    strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Unable to access '%s'",
+			    bsd_dirname(dest));
 		}
 	}
 
@@ -161,8 +158,7 @@ pkgdb_load(struct pkgdb *db, const char *src)
 	int	 ret;
 
 	if (eaccess(src, R_OK)) {
-		pkg_emit_error("eaccess(%s) -- %s", src, strerror(errno));
-		return (EPKG_FATAL);
+		pkg_fatal_errno("Unable to access '%s'", src);
 	}
 
 	ret = sqlite3_open(src, &restore);

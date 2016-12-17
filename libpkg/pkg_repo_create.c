@@ -535,9 +535,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		/* Try to create dir */
 		if (errno == ENOENT) {
 			if (mkdir(output_dir, 00755) == -1) {
-				pkg_emit_error("cannot create output directory %s: %s",
-					output_dir, strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("cannot create output directory %s",
+					output_dir);
 			}
 		}
 		else {

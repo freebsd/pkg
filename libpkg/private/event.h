@@ -33,6 +33,15 @@
 void pkg_emit_error(const char *fmt, ...);
 void pkg_emit_notice(const char *fmt, ...);
 void pkg_emit_errno(const char *func, const char *arg);
+
+#define pkg_errno(fmt, ...) \
+	pkg_emit_error(fmt":%s", __VA_ARGS__, strerror(errno))
+
+#define pkg_fatal_errno(fmt, ...) do { \
+	pkg_errno(fmt, __VA_ARGS__);   \
+	return (EPKG_FATAL);           \
+} while (0);
+
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetch_begin(const char *url);
 void pkg_emit_fetch_finished(const char *url);

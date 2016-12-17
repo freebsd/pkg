@@ -222,9 +222,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	times[1] = *mts;
 	if (utimensat(fd, RELATIVE_PATH(path), times,
 	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EOPNOTSUPP){
-		pkg_emit_error("Fail to set time on %s: %s", path,
-		    strerror(errno));
-		return (EPKG_FATAL);
+		pkg_fatal_errno("Fail to set time on %s", path);
 	}
 	if (errno == EOPNOTSUPP) {
 #endif
@@ -240,16 +238,13 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
 
 		if (errno != ENOSYS) {
-			pkg_emit_error("Fail to set time on %s: %s", path,
-					strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Fail to set time on %s", path);
 		}
 		else {
 			/* Fallback to utimes */
 			if (utimes(RELATIVE_PATH(path), tv) == -1) {
-				pkg_emit_error("Fail to set time(fallback) on %s: %s", path,
-						strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("Fail to set time(fallback) on "
+				    "%s", path);
 			}
 		}
 	}
@@ -264,13 +259,11 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 				AT_SYMLINK_NOFOLLOW) == -1) {
 			if (errno == ENOTSUP) {
 				if (fchownat(fd, RELATIVE_PATH(path), uid, gid, 0) == -1) {
-					pkg_emit_error("Fail to chown(fallback) %s: %s", path, strerror(errno));
-					return (EPKG_FATAL);
+					pkg_fatal_errno("Fail to chown(fallback) %s", path);
 				}
 			}
 			else {
-				pkg_emit_error("Fail to chown %s: %s", path, strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("Fail to chown %s", path);
 			}
 		}
 	}
@@ -279,13 +272,12 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOTSUP) {
 			if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
-				pkg_emit_error("Fail to chmod(fallback) %s: %s", path, strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("Fail to chmod(fallback) %s",
+				    path);
 			}
 		}
 		else {
-			pkg_emit_error("Fail to chmod %s: %s", path, strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Fail to chmod %s", path);
 		}
 	}
 
@@ -326,17 +318,13 @@ create_dir(struct pkg *pkg, struct pkg_dir *d)
 			return (EPKG_FATAL);
 	if (fstatat(pkg->rootfd, RELATIVE_PATH(d->path), &st, 0) == -1) {
 		if (errno != ENOENT) {
-			pkg_emit_error("Fail to stat directory %s: %s", d->path,
-			    strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Fail to stat directory %s", d->path);
 		}
 		if (fstatat(pkg->rootfd, RELATIVE_PATH(d->path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
 			unlinkat(pkg->rootfd, RELATIVE_PATH(d->path), 0);
 		}
 		if (mkdirat(pkg->rootfd, RELATIVE_PATH(d->path), 0755) == -1) {
-			pkg_emit_error("Fail to create directory %s: %s", d->path,
-			    strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Fail to create directory %s", d->path);
 		}
 	}
 
@@ -395,9 +383,7 @@ retry:
 			goto retry;
 		}
 
-		pkg_emit_error("Fail to create symlink: %s: %s\n", f->temppath,
-		    strerror(errno));
-		return (EPKG_FATAL);
+		pkg_fatal_errno("Fail to create symlink: %s", f->temppath);
 	}
 
 	if (set_attrs(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
@@ -466,9 +452,7 @@ retry:
 			goto retry;
 		}
 
-		pkg_emit_error("Fail to create hardlink: %s: %s\n", f->temppath,
-		    strerror(errno));
-		return (EPKG_FATAL);
+		pkg_fatal_errno("Fail to create hardlink: %s", f->temppath);
 	}
 
 	return (EPKG_OK);
@@ -524,9 +508,8 @@ retry:
 			tried_mkdir = true;
 			goto retry;
 		}
-		pkg_emit_error("Fail to create temporary file: %s: %s",
-		    f->temppath, strerror(errno));
-		return (EPKG_FATAL);
+		pkg_fatal_errno("Fail to create temporary file: %s",
+		    f->temppath);
 	}
 
 	if (fromfd == -1) {
@@ -559,7 +542,7 @@ retry:
 	} else {
 		while ((len = read(fromfd, buf, sizeof(buf))) > 0)
 			if (write(fd, buf, len) == -1) {
-				pkg_emit_error("Fail to write file: %s", strerror(errno));
+				pkg_errno("%s", "Fail to write file: %s");
 			}
 	}
 	if (fd != -1) {
@@ -731,18 +714,15 @@ pkg_extract_finalize(struct pkg *pkg)
 		}
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
-			pkg_emit_error("Fail to rename %s -> %s: %s",
-			    f->temppath, fto, strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("Fail to rename %s -> %s",
+			    f->temppath, fto);
 		}
 
 #ifdef HAVE_CHFLAGSAT
 		if (f->fflags != 0) {
 			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
 			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
-				pkg_emit_error("Fail to chflags %s: %s",
-				    fto, strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("Fail to chflags %s", fto);
 			}
 		}
 #endif
@@ -1243,17 +1223,13 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 
 	fromfd = open(src, O_DIRECTORY);
 	if (fromfd == -1) {
-		pkg_emit_error("Unable to open source directory '%s': %s'",
-		    src, strerror(errno));
-		return (EPKG_FATAL);
+		pkg_fatal_errno("Unable to open source directory '%s'", src);
 	}
 	pkg_open_root_fd(pkg);
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (fstatat(fromfd, RELATIVE_PATH(d->path), &st, 0) == -1) {
-			pkg_emit_error("%s%s: %s", src, d->path,
-			    strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s%s", src, d->path);
 		}
 		if (d->perm == 0)
 			d->perm = st.st_mode & ~S_IFMT;
@@ -1288,9 +1264,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
 		    AT_SYMLINK_NOFOLLOW) == -1) {
-			pkg_emit_error("%s%s: %s", src, f->path,
-			    strerror(errno));
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s%s", src, f->path);
 		}
 		if (f->uname[0] != '\0') {
 			if (getpwnam_r(f->uname, &pwent, buffer, sizeof(buffer),
@@ -1325,19 +1299,18 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			if ((link_len = readlinkat(fromfd,
 			    RELATIVE_PATH(f->path), target,
 			    sizeof(target))) == -1) {
-				pkg_emit_error("Impossible to read symlinks "
-				    "'%s': %s", f->path, strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("Impossible to read symlinks "
+				    "'%s'", f->path);
 			}
 			target[link_len] = '\0';
 			if (create_symlinks(pkg, f, target) == EPKG_FATAL) {
 				return (EPKG_FATAL);
 			}
 		} else if (S_ISREG(st.st_mode)) {
-			if ((fd = openat(fromfd, RELATIVE_PATH(f->path), O_RDONLY)) == -1) {
-				pkg_emit_error("Impossible to open source file '%s': %s",
-				    RELATIVE_PATH(f->path), strerror(errno));
-				return (EPKG_FATAL);
+			if ((fd = openat(fromfd, RELATIVE_PATH(f->path),
+			    O_RDONLY)) == -1) {
+				pkg_fatal_errno("Impossible to open source file"
+				    " '%s'", RELATIVE_PATH(f->path));
 			}
 			kh_find(hls, hardlinks, st.st_ino, path);
 			if (path != NULL) {

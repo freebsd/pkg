@@ -38,9 +38,7 @@ metalog_open(const char *metalog)
 {
 	metalogfp = fopen(metalog, "a");
 	if (metalogfp == NULL) {
-		pkg_emit_error("Unable to open metalog '%s': %s", metalog,
-		    strerror(errno));
-		return EPKG_FATAL;
+		pkg_fatal_errno("Unable to open metalog '%s'", metalog);
 	} 
 
 	return EPKG_OK;
@@ -60,24 +58,21 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 		if (fprintf(metalogfp,
 		    "./%s type=dir uname=%s gname=%s mode=%3o\n",
 		    path, uname, gname, mode) < 0) {
-			pkg_emit_error("Unable to write to the metalog: %s",
-			    strerror(errno));
+			pkg_errno("%s", "Unable to write to the metalog");
 		}
 		break;
 	case PKG_METALOG_FILE:
 		if (fprintf(metalogfp,
 		    "./%s type=file uname=%s gname=%s mode=%3o\n",
 		    path, uname, gname, mode) < 0) {
-			pkg_emit_error("Unable to write to the metalog: %s",
-			    strerror(errno));
+			pkg_errno("%s", "Unable to write to the metalog");
 		}
 		break;
 	case PKG_METALOG_LINK:
 		if (fprintf(metalogfp,
 		    "./%s type=link uname=%s gname=%s mode=%3o link=%s\n",
 		    path, uname, gname, mode, link) < 0) {
-			pkg_emit_error("Unable to write to the metalog: %s",
-			    strerror(errno));
+			pkg_errno("%s", "Unable to write to the metalog");
 		}
 		break;
 	}

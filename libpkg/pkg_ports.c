@@ -317,8 +317,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_error("Unable to access file %s: %s", testpath,
-		    strerror(errno));
+		pkg_errno("Unable to access file %s", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (developer_mode) {
