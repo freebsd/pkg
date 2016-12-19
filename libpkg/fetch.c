@@ -74,6 +74,10 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 
 			if ((u = fetchParseURL(line)) != NULL) {
 				m = malloc(sizeof(struct http_mirror));
+				if (m == NULL) {
+					pkg_errno("%s: %s", __func__, "malloc");
+					return;
+				}
 				m->url = u;
 				LL_APPEND(repo->http, m);
 			}

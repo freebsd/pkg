@@ -1052,6 +1052,10 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 	}
 
 	f = calloc(1, sizeof(struct fingerprint));
+	if (f == NULL) {
+		pkg_errno("%s: %s", __func__, "calloc");
+		return (NULL);
+	}
 	f->type = fct;
 	strlcpy(f->hash, fp, sizeof(f->hash));
 

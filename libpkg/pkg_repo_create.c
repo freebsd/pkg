@@ -91,6 +91,10 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 
 	pkg_conflict_new(&new);
 	new->uid = strdup(uniqueid);
+	if (new->uid == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 
 	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
 }
@@ -113,7 +117,15 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 	item = malloc(sizeof(*item));
 	if (item != NULL) {
 		item->fts_accpath = strdup(fts->fts_accpath);
+		if (item->fts_accpath == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return (NULL);
+		}
 		item->fts_name = strdup(fts->fts_name);
+		if (item->fts_name == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return (NULL);
+		}
 		item->fts_size = fts->fts_statp->st_size;
 		item->fts_info = fts->fts_info;
 
@@ -123,6 +135,10 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 			pkg_path++;
 
 		item->pkg_path = strdup(pkg_path);
+		if (item->pkg_path == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return (NULL);
+		}
 	}
 	else {
 		pkg_emit_errno("malloc", "struct pkg_fts_item");
@@ -304,6 +320,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
 			pkg->repopath = strdup(cur->pkg_path);
+			if (pkg->repopath == NULL) {
+				pkg_fatal_errno("%s: %s", __func__, "strdup");
+			}
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -313,6 +332,10 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
 			else {
 				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
+				if (mdigest == NULL) {
+					pkg_fatal_errno("%s: %s", __func__,
+							"malloc");
+				}
 
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 				if (pkg_checksum_generate(pkg, mdigest,
@@ -466,6 +489,11 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					break;
 				case s_set_checksum:
 					dig->checksum =  malloc(i - start + 1);
+					if (dig->checksum == NULL) {
+						pkg_fatal_errno("%s: %s",
+								__func__,
+								"malloc");
+					}
 					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_origin;
 					break;
@@ -478,6 +506,11 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				}
 				else if (state == s_set_checksum) {
 					dig->checksum =  malloc(i - start + 1);
+					if (dig->checksum == NULL) {
+						pkg_fatal_errno("%s: %s",
+								__func__,
+								"malloc");
+					}
 					strlcpy(dig->checksum, &buf[start], i - start + 1);
 				}
 				assert(dig->origin != NULL);

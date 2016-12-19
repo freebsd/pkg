@@ -23,8 +23,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <utstring.h>
+#include <errno.h>
 
 #include "private/utils.h"
+#include "private/event.h"
 
 /*
 ** Maximum length of a line in a text file, in bytes.  (2**13 = 8192 bytes)
@@ -124,6 +126,10 @@ static DLine *break_into_lines(char *z, int *pnLine){
     return 0;
   }
   a = calloc(nLine, sizeof(a[0]) );
+  if (a == NULL) {
+    pkg_errno("%s: %s", __func__, "calloc");
+    return (0);
+  }
   if( n==0 ){
     *pnLine = 0;
     return a;
@@ -319,6 +325,10 @@ static void longestCommonSequence(
 */
 static void expandEdit(DContext *p, int nEdit){
   p->aEdit = realloc(p->aEdit, nEdit*sizeof(int));
+  if (p->aEdit == NULL) {
+    pkg_errno("%s: %s", __func__, "realloc");
+    return;
+  }
   p->nEditAlloc = nEdit;
 }
 

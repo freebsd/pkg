@@ -27,6 +27,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -229,7 +230,13 @@ pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
 		return (EPKG_FATAL);
 
 	(*c)->key = strdup(key);
+	if ((*c)->key == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 	(*c)->value = strdup(val);
+	if ((*c)->value == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 
 	return (EPKG_OK);
 }

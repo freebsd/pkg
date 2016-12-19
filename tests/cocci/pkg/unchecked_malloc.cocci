@@ -1,52 +1,58 @@
 // Unchecked malloc(3) family functions calls.
 //
-// XXX: there is still a lot of work to be done here as it does not yet catch
-// all.
+// XXX: The generated code is a guide for identifying missing checks.  Check
+// the caller to ensure if pkg_fatal_errno() is correct, or whether that needs
+// to use pkg_errno() instead with the appropriate return value for that
+// function.
 //
-// Confidence: Low
+// Confidence: Moderate
 // Copyright: (C) The pkgng project, see COPYING.
 // URL: https://github.com/freebsd/pkg/tree/master/tests/cocci/pkg/unchecked_malloc.cocci
 
 @@
-local idexpression n;
-expression E;
+expression T;
 @@
 
-n = malloc(E);
-+ if (n == NULL)
-+ 	pkg_emit_errno("malloc", TEXT(E));
-... when != (n == NULL)
-    when != (n != NULL)
+T = malloc(...);
++ if (T == NULL) {
++ 	pkg_fatal_errno("%s: %s", __func__, "malloc");
++ }
+... when != (T == NULL)
+    when != (T != NULL)
+? T = malloc(...);
 
 @@
-local idexpression n;
-expression E, E1;
+expression T;
 @@
 
-n = calloc(E, E1);
-+ if (n == NULL)
-+ 	pkg_emit_errno("calloc", TEXT2(E, E1));
-... when != (n == NULL)
-    when != (n != NULL)
+T = calloc(...);
++ if (T == NULL) {
++ 	pkg_fatal_errno("%s: %s", __func__, "calloc");
++ }
+... when != (T == NULL)
+    when != (T != NULL)
+? T = calloc(...);
 
 @@
-local idexpression n;
-expression E, E1;
+expression T;
 @@
 
-n = realloc(E, E1);
-+ if (n == NULL)
-+ 	pkg_emit_errno("realloc", TEXT2(E, E1));
-... when != (n == NULL)
-    when != (n != NULL)
+T = realloc(...);
++ if (T == NULL) {
++ 	pkg_fatal_errno("%s: %s", __func__, "realloc");
++ }
+... when != (T == NULL)
+    when != (T != NULL)
+? T = realloc(...);
 
 @@
-local idexpression n;
-expression E;
+expression T;
 @@
 
- n = strdup(E);
-+ if (n == NULL)
-+ 	pkg_emit_errno("strdup", TEXT(E));
-... when != (n == NULL)
-    when != (n != NULL)
+T = strdup(...);
++ if (T == NULL) {
++ 	pkg_fatal_errno("%s: %s", __func__, "strdup");
++ }
+... when != (T == NULL)
+    when != (T != NULL)
+? T = strdup(...);

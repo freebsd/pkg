@@ -128,6 +128,10 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
 
 		re = malloc(sizeof(regex_t));
+		if (re == NULL) {
+			pkg_errno("%s: %s", __func__, "malloc");
+			return;
+		}
 		if (regcomp(re, regex, cflags) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
@@ -2655,6 +2659,9 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 	}
 	sqlite3_finalize(stmt);
 	file->sum = strdup(sum);
+	if (file->sum == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 
 	return (EPKG_OK);
 }
@@ -2702,6 +2709,10 @@ pkgshell_open(const char **reponame)
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	*reponame = strdup(localpath);
+	if (*reponame == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 }
 
 static int

@@ -30,6 +30,7 @@
 
 #include <archive.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <stdio.h>
@@ -394,6 +395,11 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		for (i = 0; attributes[i]; i += 2) {
 			if (strcasecmp(attributes[i], "vid") == 0) {
 				ud->cur_entry->id = strdup(attributes[i + 1]);
+				if (ud->cur_entry->id == NULL) {
+					pkg_errno("%s: %s", __func__,
+							"strdup");
+					return;
+				}
 				break;
 			}
 		}
@@ -531,6 +537,10 @@ vulnxml_handle_data(void *data, const char *content, int length)
 	case VULNXML_PARSE_CVE:
 		entry = ud->cur_entry;
 		cve = malloc(sizeof(struct pkg_audit_cve));
+		if (cve == NULL) {
+			pkg_errno("%s: %s", __func__, "malloc");
+			return;
+		}
 		cve->cvename = strndup(content, length);
 		LL_PREPEND(entry->cve, cve);
 		break;
@@ -856,6 +866,10 @@ pkg_audit_new(void)
 	struct pkg_audit *audit;
 
 	audit = calloc(1, sizeof(struct pkg_audit));
+	if (audit == NULL) {
+		pkg_errno("%s: %s", __func__, "calloc");
+		return (NULL);
+	}
 
 	return (audit);
 }

@@ -28,7 +28,10 @@
 #include <regex.h>
 
 #include <pkg.h>
+#include <errno.h>
+
 #include <private/pkg.h>
+#include <private/event.h>
 
 static const char * const scripts[] = {
 	"+INSTALL",
@@ -94,13 +97,22 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 
 	pkg_get_myarch(myarch, BUFSIZ);
 	pkg->arch = strdup(myarch);
+	if (pkg->arch == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 	pkg->maintainer = strdup("unknown");
+	if (pkg->maintainer == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 	regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 	if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
 		size = pmatch[1].rm_eo - pmatch[1].rm_so;
 		pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
 	} else {
 		pkg->www = strdup("UNKNOWN");
+		if (pkg->www == NULL) {
+			pkg_fatal_errno("%s: %s", __func__, "strdup");
+		}
 	}
 	regfree(&preg);
 

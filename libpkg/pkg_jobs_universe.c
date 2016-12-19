@@ -887,6 +887,11 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 					if (strcmp(d->uid, unit->pkg->uid) == 0) {
 						free(d->uid);
 						d->uid = strdup(new_uid);
+						if (d->uid == NULL) {
+							pkg_errno("%s: %s",
+							    __func__, "strdup");
+							return;
+						}
 					}
 				}
 			}
@@ -896,13 +901,25 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	replacement = calloc(1, sizeof(*replacement));
 	if (replacement != NULL) {
 		replacement->old_uid = strdup(unit->pkg->uid);
+		if (replacement->old_uid == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return;
+		}
 		replacement->new_uid = strdup(new_uid);
+		if (replacement->new_uid == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return;
+		}
 		LL_PREPEND(universe->uid_replaces, replacement);
 	}
 
 	HASH_DELETE(hh, universe->items, unit);
 	free(unit->pkg->uid);
 	unit->pkg->uid = strdup(new_uid);
+	if (unit->pkg->uid == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)

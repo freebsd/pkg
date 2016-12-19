@@ -181,6 +181,10 @@ pkg_checksum_add_entry(const char *key,
 
 	e->field = key;
 	e->value = strdup(value);
+	if (e->value == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	DL_APPEND(*entries, e);
 }
 
@@ -397,6 +401,10 @@ pkg_checksum_hash_sha256_bulk(const unsigned char *in, size_t inlen,
 	SHA256_CTX sign_ctx;
 
 	*out = malloc(SHA256_BLOCK_SIZE);
+	if (*out == NULL) {
+		pkg_errno("%s: %s", __func__, "malloc");
+		return;
+	}
 	sha256_init(&sign_ctx);
 	sha256_update(&sign_ctx, in, inlen);
 	sha256_final(&sign_ctx, *out);
@@ -411,6 +419,10 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 
 	SHA256_CTX sign_ctx;
 	*out = malloc(SHA256_BLOCK_SIZE);
+	if (*out == NULL) {
+		pkg_errno("%s: %s", __func__, "malloc");
+		return;
+	}
 	sha256_init(&sign_ctx);
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		sha256_update(&sign_ctx, buffer, r);
@@ -447,6 +459,10 @@ pkg_checksum_hash_blake2_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen)
 {
 	*out = malloc(BLAKE2B_OUTBYTES);
+	if (*out == NULL) {
+		pkg_errno("%s: %s", __func__, "malloc");
+		return;
+	}
 	blake2b(*out, BLAKE2B_OUTBYTES,  in, inlen, NULL, 0);
 	*outlen = BLAKE2B_OUTBYTES;
 }
@@ -464,6 +480,10 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 		blake2b_update(&st, buffer, r);
 
 	*out = malloc(BLAKE2B_OUTBYTES);
+	if (*out == NULL) {
+		pkg_errno("%s: %s", __func__, "malloc");
+		return;
+	}
 	blake2b_final(&st, *out, BLAKE2B_OUTBYTES);
 	*outlen = BLAKE2B_OUTBYTES;
 }
@@ -497,6 +517,10 @@ pkg_checksum_hash_blake2s_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen)
 {
 	*out = malloc(BLAKE2S_OUTBYTES);
+	if (*out == NULL) {
+		pkg_errno("%s: %s", __func__, "malloc");
+		return;
+	}
 	blake2s(*out, BLAKE2S_OUTBYTES,  in, inlen, NULL, 0);
 	*outlen = BLAKE2S_OUTBYTES;
 }
@@ -514,6 +538,10 @@ pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
 		blake2s_update(&st, buffer, r);
 
 	*out = malloc(BLAKE2S_OUTBYTES);
+	if (*out == NULL) {
+		pkg_errno("%s: %s", __func__, "malloc");
+		return;
+	}
 	blake2s_final(&st, *out, BLAKE2S_OUTBYTES);
 	*outlen = BLAKE2S_OUTBYTES;
 }
@@ -688,6 +716,10 @@ pkg_checksum_data(const unsigned char *in, size_t inlen,
 	if (out != NULL) {
 		if (cksum->encfunc != NULL) {
 			res = malloc(cksum->hlen);
+			if (res == NULL) {
+				pkg_errno("%s: %s", __func__, "malloc");
+				return (NULL);
+			}
 			cksum->encfunc(out, outlen, res, cksum->hlen);
 			free(out);
 		}
@@ -750,6 +782,10 @@ pkg_checksum_fd(int fd, pkg_checksum_type_t type)
 	if (out != NULL) {
 		if (cksum->encfunc != NULL) {
 			res = malloc(cksum->hlen);
+			if (res == NULL) {
+				pkg_errno("%s: %s", __func__, "malloc");
+				return (NULL);
+			}
 			cksum->encfunc(out, outlen, res, cksum->hlen);
 			free(out);
 		} else {
