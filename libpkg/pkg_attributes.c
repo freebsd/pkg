@@ -153,8 +153,7 @@ int
 pkg_option_new(struct pkg_option **option)
 {
 	if ((*option = calloc(1, sizeof(struct pkg_option))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_option");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "calloc: pkg_option");
 	}
 	return (EPKG_OK);
 }

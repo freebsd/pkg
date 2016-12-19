@@ -44,8 +44,7 @@ int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
-		pkg_emit_errno("calloc", "pkg");
-		return EPKG_FATAL;
+		pkg_fatal_errno("%s: %s", __func__, "calloc: pkg");
 	}
 
 	(*pkg)->type = type;
@@ -1892,8 +1891,7 @@ pkg_open_root_fd(struct pkg *pkg)
 #else
 		if ((pkg->rootfd = dup(rootfd)) == -1 || fcntl(pkg->rootfd, F_SETFD, FD_CLOEXEC) == -1) {
 #endif
-			pkg_emit_errno("dup2", "rootfd");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "dup2: rootfd");
 		}
 		return (EPKG_OK);
 	}
@@ -1904,9 +1902,7 @@ pkg_open_root_fd(struct pkg *pkg)
 		return (EPKG_OK);
 
 	pkg->rootpath[0] = '\0';
-	pkg_emit_errno("open", path);
-
-	return (EPKG_FATAL);
+	pkg_fatal_errno("%s: %s", __func__, "open: %s", path);
 }
 
 int
@@ -1950,8 +1946,8 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		msg = calloc(1, sizeof(*msg));
 
 		if (msg == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_message");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__,
+					"malloc: struct pkg_message");
 		}
 
 		msg->str = strdup(ucl_object_tostring(elt));

@@ -141,7 +141,8 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 		}
 	}
 	else {
-		pkg_emit_errno("malloc", "struct pkg_fts_item");
+		pkg_errno("%s: %s", __func__,
+			  "malloc: struct pkg_fts_item");
 	}
 
 	return (item);
@@ -225,8 +226,7 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	}
 
 	if (errno != 0) {
-		pkg_emit_errno("fts_read", "pkg_create_repo_read_fts");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "fts_read");
 	}
 
 	return (EPKG_OK);
@@ -256,7 +256,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
-		pkg_emit_errno("pkg_create_repo_worker", "open");
+		pkg_errno("%s: %s", __func__, "open");
 		utstring_free(b);
 		return (EPKG_FATAL);
 	}
@@ -266,15 +266,14 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		if (ffd == -1) {
 			close(mfd);
 			utstring_free(b);
-			pkg_emit_errno("pkg_create_repo_worker", "open");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "open");
 		}
 	}
 
 	pid = fork();
 	switch(pid) {
 	case -1:
-		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		pkg_errno("%s: %s", __func__, "fork");
 		utstring_free(b);
 		close(mfd);
 		if (read_files)
@@ -303,7 +302,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
 
 	if (read(pip, digestbuf, 1) == -1) {
-		pkg_emit_errno("pkg_create_repo_worker", "read");
+		pkg_errno("%s: %s", __func__, "read");
 		goto cleanup;
 	}
 
@@ -350,7 +349,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			mlen = utstring_len(b);
 
 			if (flock(mfd, LOCK_EX) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "flock");
+				pkg_errno("%s: %s", __func__, "flock");
 				ret = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -363,7 +362,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			iov[1].iov_len = 1;
 
 			if (writev(mfd, iov, 2) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "write");
+				pkg_errno("%s: %s", __func__, "write");
 				ret = EPKG_FATAL;
 				flock(mfd, LOCK_UN);
 				goto cleanup;
@@ -375,7 +374,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				FILE *fl;
 
 				if (flock(ffd, LOCK_EX) == -1) {
-					pkg_emit_errno("pkg_create_repo_worker", "flock");
+					pkg_errno("%s: %s", __func__, "flock");
 					ret = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -451,8 +450,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 			else if (errno == EAGAIN || errno == EWOULDBLOCK)
 				return (EPKG_OK);
 
-			pkg_emit_errno("pkg_create_repo_read_pipe", "read");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "read");
 		}
 		else if (r == 0)
 			return (EPKG_END);
@@ -599,7 +597,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
-		pkg_emit_errno("fts_open", path);
+		pkg_errno("%s: %s", __func__, "fts_open %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -665,7 +663,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			st = SOCK_SEQPACKET;
 #endif
 			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
-				pkg_emit_errno("pkg_create_repo", "pipe");
+				pkg_errno("%s: %s", __func__, "pipe");
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -701,7 +699,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	/* Send start marker to all workers */
 	for (i = 0; i < num_workers; i ++) {
 		if (write(pfd[i].fd, ".", 1) == -1)
-			pkg_emit_errno("pkg_create_repo", "write");
+			pkg_errno("%s: %s", __func__, "write");
 	}
 
 	ntask = 0;
@@ -733,7 +731,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 							if (errno == EINTR)
 								continue;
 
-							pkg_emit_errno("pkg_create_repo", "wait");
+							pkg_errno("%s: %s", __func__, "wait");
 							break;
 						}
 

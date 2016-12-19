@@ -131,7 +131,7 @@ pkg_solve_item_new(struct pkg_solve_variable *var)
 	result = calloc(1, sizeof(struct pkg_solve_item));
 
 	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_item");
+		pkg_errno("%s: %s", __func__, "calloc: pkg_solve_item");
 		return (NULL);
 	}
 
@@ -149,7 +149,7 @@ pkg_solve_rule_new(enum pkg_solve_rule_type reason)
 	result = calloc(1, sizeof(struct pkg_solve_rule));
 
 	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_rule");
+		pkg_errno("%s: %s", __func__, "calloc: pkg_solve_rule");
 		return (NULL);
 	}
 
@@ -845,7 +845,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	problem = calloc(1, sizeof(struct pkg_solve_problem));
 
 	if (problem == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_problem");
+		pkg_errno("%s: %s", __func__, "calloc: pkg_solve_problem");
 		return (NULL);
 	}
 
@@ -856,12 +856,13 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	kv_init(problem->rules);
 
 	if (problem->sat == NULL) {
-		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
+		pkg_errno("%s: %s", __func__,
+		    "picosat_init: pkg_solve_sat_problem");
 		return (NULL);
 	}
 
 	if (problem->variables == NULL) {
-		pkg_emit_errno("calloc", "variables");
+		pkg_errno("%s: %s", __func__, "calloc: variables");
 		return (NULL);
 	}
 
@@ -1379,7 +1380,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		if (seen_add > 0) {
 			res = calloc(1, sizeof(struct pkg_solved));
 			if (res == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
+				pkg_errno("%s: %s", __func__,
+					  "calloc: pkg_solved");
 				return;
 			}
 			/* Pure install */
@@ -1416,7 +1418,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 
 				res = calloc(1, sizeof(struct pkg_solved));
 				if (res == NULL) {
-					pkg_emit_errno("calloc", "pkg_solved");
+					pkg_errno("%s: %s", __func__,
+						  "calloc: pkg_solved");
 					return;
 				}
 				res->items[0] = cur_var->unit;

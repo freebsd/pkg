@@ -441,13 +441,15 @@ connect_evpipe(const char *evpipe) {
 	if (S_ISFIFO(st.st_mode)) {
 		flag |= O_NONBLOCK;
 		if ((eventpipe = open(evpipe, flag)) == -1)
-			pkg_emit_errno("open event pipe", evpipe);
+			pkg_errno("%s: %s", __func__,
+				  "open event pipe: %s", evpipe);
 		return;
 	}
 
 	if (S_ISSOCK(st.st_mode)) {
 		if ((eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-			pkg_emit_errno("Open event pipe", evpipe);
+			pkg_errno("%s: %s", __func__,
+				  "Open event pipe: %s", evpipe);
 			return;
 		}
 		memset(&sock, 0, sizeof(struct sockaddr_un));
@@ -461,7 +463,8 @@ connect_evpipe(const char *evpipe) {
 		}
 
 		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
-			pkg_emit_errno("Connect event pipe", evpipe);
+			pkg_errno("%s: %s", __func__,
+				  "Connect event pipe: %s", evpipe);
 			close(eventpipe);
 			eventpipe = -1;
 			return;
@@ -959,7 +962,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	if (path == NULL)
-		conffd = openat(rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
+		conffd = openat(rootfd, PREFIX"/etc/pkg.conf: %s", 1, 0);
 	else
 		conffd = open(path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {

@@ -78,8 +78,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	assert(db != NULL);
 
 	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_jobs");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "calloc: pkg_jobs");
 	}
 
 	(*j)->universe = pkg_jobs_universe_new(*j);
@@ -317,7 +316,8 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 	if (req == NULL) {
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request");
+			pkg_errno("%s: %s", __func__,
+				  "malloc: struct pkg_job_request");
 			return (NULL);
 		}
 		new_req = true;
@@ -336,7 +336,8 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 				(uit->pkg->type != PKG_INSTALLED && !local)) {
 			nit = calloc(1, sizeof(*nit));
 			if (nit == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_job_request_item");
+				pkg_errno("%s: %s", __func__,
+					  "malloc: struct pkg_job_request_item");
 				free(req);
 				return (NULL);
 			}
@@ -420,7 +421,8 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	nit = calloc(1, sizeof(*nit));
 	if (nit == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_job_request_item");
+		pkg_errno("%s: %s", __func__,
+			  "malloc: struct pkg_job_request_item");
 		return (NULL);
 	}
 	nit->pkg = pkg;
@@ -430,7 +432,8 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		/* Allocate new unique request item */
 		req = calloc(1, sizeof(*req));
 		if (req == NULL) {
-			pkg_emit_errno("malloc", "struct pkg_job_request");
+			pkg_errno("%s: %s", __func__,
+				  "malloc: struct pkg_job_request");
 			free(nit);
 			return (NULL);
 		}
@@ -603,8 +606,8 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			 */
 			ts = calloc(1, sizeof(struct pkg_solved));
 			if (ts == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
-				return (EPKG_FATAL);
+				pkg_fatal_errno("%s: %s", __func__,
+						"calloc: pkg_solved");
 			}
 
 			ts->type = PKG_SOLVED_UPGRADE_REMOVE;
@@ -1539,7 +1542,8 @@ pkg_jobs_new_candidate(struct pkg *pkg)
 
 	n = malloc(sizeof(*n));
 	if (n == NULL) {
-		pkg_emit_errno("malloc", "pkg_jobs_install_candidate");
+		pkg_errno("%s: %s", __func__,
+			  "malloc: pkg_jobs_install_candidate");
 		return (NULL);
 	}
 	n->id = pkg->id;
@@ -1885,7 +1889,9 @@ again:
 						dot = fopen(dotfile, "w");
 
 						if (dot == NULL) {
-							pkg_emit_errno("fopen", dotfile);
+							pkg_errno("%s: %s",
+								  __func__,
+								  "fopen: %s", dotfile);
 						}
 					}
 
@@ -2287,8 +2293,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			if (mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
-			pkg_emit_errno("statfs", cachedir);
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "statfs: %s",
+					cachedir);
 		}
 	}
 	fs_avail = fs.f_bsize * (int64_t)fs.f_bavail;
@@ -2299,8 +2305,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			if (mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
-			pkg_emit_errno("statvfs", cachedir);
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "statvfs: %s",
+					cachedir);
 		}
 	}
 	fs_avail = fs.f_bsize * (int64_t)fs.f_bavail;

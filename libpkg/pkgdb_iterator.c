@@ -1275,7 +1275,7 @@ pkgdb_it_new_repo(struct pkgdb *db)
 	struct pkgdb_it	*it;
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_it");
+		pkg_errno("%s: %s", __func__, "malloc: pkgdb_it");
 		return (NULL);
 	}
 
@@ -1294,7 +1294,7 @@ pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 	struct _pkg_repo_it_set *item;
 
 	if ((item = malloc(sizeof(struct _pkg_repo_it_set))) == NULL) {
-		pkg_emit_errno("malloc", "_pkg_repo_it_set");
+		pkg_errno("%s: %s", __func__, "malloc: _pkg_repo_it_set");
 	}
 	else {
 		item->it = rit;

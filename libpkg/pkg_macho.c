@@ -69,7 +69,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 	cpu_type = cpu_type & ~CPU_ARCH_MASK;
 
 	if (lstat(fpath, &sb) != 0)
-		pkg_emit_errno("fstat() failed for", fpath);
+		pkg_errno("%s: %s", __func__, "fstat() failed for: %s", fpath);
 
 	/* ignore empty files and non regular files */
 	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
@@ -215,8 +215,8 @@ host_cpu_type(cpu_type_t *result)
 	/* Fetch CPU type */
 	len = sizeof(resint);
 	if (sysctlbyname("hw.cputype", &resint, &len, NULL, 0) != 0) {
-		pkg_emit_errno("sysctlbyname", "hw.cputype");
-		return EPKG_FATAL;
+		pkg_fatal_errno("%s: %s", __func__,
+				"sysctlbyname: hw.cputype");
 	}
 
 	*result = resint;
@@ -237,8 +237,7 @@ host_os_info(char *osname, size_t sz, long long *major_version)
 
 	/* Fetch OS info from uname() */
 	if (uname(&ut) != 0) {
-		pkg_emit_errno("uname", "&ut");
-		return EPKG_FATAL;
+		pkg_fatal_errno("%s: %s", __func__, "uname: &ut");
 	}
 
 	/* Provide the OS name to the caller. */

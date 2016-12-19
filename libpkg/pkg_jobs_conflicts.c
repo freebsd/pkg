@@ -124,7 +124,7 @@ pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_jo
 
 	elt = calloc(1, sizeof(struct pkg_conflict_chain));
 	if (elt == NULL) {
-		pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
+		pkg_errno("%s: %s", __func__, "calloc: struct pkg_conflict_chain");
 		return;
 	}
 	elt->req = req;
@@ -455,7 +455,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		/* New entry */
 		cit = calloc(1, sizeof(*cit));
 		if (cit == NULL) {
-			pkg_emit_errno("malloc failed", "pkg_conflicts_check_all_paths");
+			pkg_errno("%s: %s", __func__, "malloc failed");
 		}
 		else {
 			cit->hash = hv;

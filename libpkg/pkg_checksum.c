@@ -175,7 +175,7 @@ pkg_checksum_add_entry(const char *key,
 
 	e = malloc(sizeof(*e));
 	if (e == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_entry");
+		pkg_errno("%s: %s", __func__, "malloc");
 		return;
 	}
 
@@ -389,7 +389,7 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 		*outlen = SHA256_BLOCK_SIZE;
 	}
 	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_sha256");
+		pkg_errno("%s: %s", __func__, "malloc");
 		*outlen = 0;
 	}
 }
@@ -449,7 +449,7 @@ pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
 		*outlen = BLAKE2B_OUTBYTES;
 	}
 	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2");
+		pkg_errno("%s: %s", __func__, "malloc");
 		*outlen = 0;
 	}
 }
@@ -507,7 +507,7 @@ pkg_checksum_hash_blake2s(struct pkg_checksum_entry *entries,
 		*outlen = BLAKE2S_OUTBYTES;
 	}
 	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2s");
+		pkg_errno("%s: %s", __func__, "malloc");
 		*outlen = 0;
 	}
 }
@@ -674,8 +674,8 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 
 	new_digest = malloc(pkg_checksum_type_size(type));
 	if (new_digest == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_type_t");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__,
+				"malloc: pkg_checksum_type_t");
 	}
 
 	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
@@ -738,7 +738,7 @@ pkg_checksum_fileat(int rootfd, const char *path, pkg_checksum_type_t type)
 	unsigned char *ret;
 
 	if ((fd = openat(rootfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
+		pkg_errno("%s: %s", __func__, "open: %s", path);
 		return (NULL);
 	}
 
@@ -756,7 +756,7 @@ pkg_checksum_file(const char *path, pkg_checksum_type_t type)
 	unsigned char *ret;
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
+		pkg_errno("%s: %s", __func__, "open: %s", path);
 		return (NULL);
 	}
 
@@ -818,7 +818,7 @@ pkg_checksum_symlink(const char *path, pkg_checksum_type_t type)
 	int linklen;
 
 	if ((linklen = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_checksum_symlink", "readlink failed");
+		pkg_errno("%s: %s", __func__, "readlink failed");
 		return (NULL);
 	}
 	linkbuf[linklen] = '\0';
@@ -833,7 +833,7 @@ pkg_checksum_symlinkat(int fd, const char *path, pkg_checksum_type_t type)
 	int linklen;
 
 	if ((linklen = readlinkat(fd, path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_checksum_symlinkat", "readlink failed");
+		pkg_errno("%s: %s", __func__, "readlink failed");
 		return (NULL);
 	}
 	linkbuf[linklen] = '\0';
@@ -887,7 +887,7 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 	char *cksum;
 
 	if (lstat(path, &st) == -1) {
-		pkg_emit_errno("pkg_checksum_generate_file", "lstat");
+		pkg_errno("%s: %s", __func__, "lstat");
 		return (NULL);
 	}
 
@@ -952,7 +952,7 @@ pkg_checksum_generate_fileat(int rootfd, const char *path,
 	char *cksum;
 
 	if (fstatat(rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_emit_errno("pkg_checksum_generate_file", "lstat");
+		pkg_errno("%s: %s", __func__, "lstat");
 		return (NULL);
 	}
 

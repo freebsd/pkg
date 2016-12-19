@@ -30,6 +30,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -48,7 +49,7 @@ rm_rf(int basefd, const char *path)
 
 		dirfd = openat(basefd, path, O_DIRECTORY|O_CLOEXEC);
 		if (dirfd == -1) {
-			pkg_emit_errno("openat", path);
+			pkg_errno("%s: %s", __func__, "openat: %s", path);
 			return;
 		}
 	} else {
@@ -64,7 +65,7 @@ rm_rf(int basefd, const char *path)
 		if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
 			continue;
 		if (fstatat(dirfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
-			pkg_emit_errno("fstatat", path);
+			pkg_errno("%s: %s", __func__, "fstatat: %s", path);
 			continue;
 		}
 		if (S_ISDIR(st.st_mode))

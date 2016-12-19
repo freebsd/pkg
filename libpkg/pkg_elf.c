@@ -45,6 +45,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dlfcn.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
@@ -263,7 +264,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	pkg_debug(1, "analysing elf %s", fpath);
 	if (lstat(fpath, &sb) != 0)
-		pkg_emit_errno("fstat() failed for", fpath);
+		pkg_errno("%s: %s", __func__, "fstat() failed for: %s", fpath);
 	/* ignore empty files and non regular files */
 	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
 		return (EPKG_END); /* Empty file or sym-link: no results */
@@ -724,7 +725,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 	}
 
 	if ((fd = open(path, O_RDONLY)) < 0) {
-		pkg_emit_errno("open", _PATH_BSHELL);
+		pkg_errno("%s: %s", __func__, "open: %s", _PATH_BSHELL);
 		snprintf(dest, sz, "%s", "unknown");
 		return (EPKG_FATAL);
 	}

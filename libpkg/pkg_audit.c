@@ -300,7 +300,8 @@ pkg_audit_fetch(const char *src, const char *dest)
 		    S_IRUSR|S_IRGRP|S_IROTH);
 	}
 	if (outfd == -1) {
-		pkg_emit_errno("pkg_audit_fetch", "open out fd");
+		pkg_errno("%s: %s", __func__,
+			  "pkg_audit_fetch: open out fd");
 		goto cleanup;
 	}
 

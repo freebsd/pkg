@@ -29,6 +29,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>
@@ -57,8 +58,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	assert(pack != NULL);
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		pkg_emit_errno("calloc", "packing");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "calloc: packing");
 	}
 
 	(*pack)->aread = archive_read_disk_new();
@@ -82,8 +82,8 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	pkg_debug(1, "Packing to file '%s'", archive_path);
 	if (archive_write_open_filename(
 	    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
-		pkg_emit_errno("archive_write_open_filename",
-		    archive_path);
+		pkg_errno("%s: %s", __func__,
+			  "archive_write_open_filename: %s", archive_path);
 		archive_read_close((*pack)->aread);
 		archive_read_free((*pack)->aread);
 		archive_write_close((*pack)->awrite);
@@ -115,13 +115,13 @@ packing_append_buffer(struct packing *pack, const char *buffer,
 	archive_entry_set_pathname(entry, path);
 	archive_entry_set_size(entry, size);
 	if (archive_write_header(pack->awrite, entry) == -1) {
-		pkg_emit_errno("archive_write_header", path);
+		pkg_errno("%s: %s", __func__, "archive_write_header: %s", path);
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (archive_write_data(pack->awrite, buffer, size) == -1) {
-		pkg_emit_errno("archive_write_data", path);
+		pkg_errno("%s: %s", __func__, "archive_write_data: %s", path);
 		ret = EPKG_FATAL;
 	}
 
@@ -152,7 +152,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	pkg_debug(2, "Packing file '%s'", filepath);
 
 	if (lstat(filepath, &st) != 0) {
-		pkg_emit_errno("lstat", filepath);
+		pkg_errno("%s: %s", __func__, "lstat: %s", filepath);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -219,7 +219,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 
 	if (archive_entry_size(entry) > 0) {
 		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			pkg_emit_errno("open", filepath);
+			pkg_errno("%s: %s", __func__, "open: %s", filepath);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -229,13 +229,15 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 
 			while ((len = read(fd, buf, sizeof(buf))) > 0)
 				if (archive_write_data(pack->awrite, buf, len) == -1) {
-					pkg_emit_errno("archive_write_data", "archive write error");
+					pkg_errno("%s: %s", __func__,
+						  "archive_write_data: archive write error");
 					retcode = EPKG_FATAL;
 					break;
 				}
 
 			if (len == -1) {
-				pkg_emit_errno("read", "file read error");
+				pkg_errno("%s: %s", __func__,
+					  "read: file read error");
 				retcode = EPKG_FATAL;
 			}
 			close(fd);
@@ -245,14 +247,16 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 					MAP_SHARED, fd, 0)) != MAP_FAILED) {
 				close(fd);
 				if (archive_write_data(pack->awrite, map, st.st_size) == -1) {
-					pkg_emit_errno("archive_write_data", "archive write error");
+					pkg_errno("%s: %s", __func__,
+						  "archive_write_data: archive write error");
 					retcode = EPKG_FATAL;
 				}
 				munmap(map, st.st_size);
 			}
 			else {
 				close(fd);
-				pkg_emit_errno("open", filepath);
+				pkg_errno("%s: %s", __func__,
+					  "open: %s", filepath);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}

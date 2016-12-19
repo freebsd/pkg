@@ -97,8 +97,7 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 	fd = mkstemp(dest);
 
 	if (fd == -1) {
-		pkg_emit_errno("mkstemp", dest);
-		return(EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "mkstemp: %s", dest);
 	}
 
 	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, 0, -1);
@@ -135,8 +134,7 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 
 	fd = open(dest, O_CREAT|O_APPEND|O_WRONLY, 00644);
 	if (fd == -1) {
-		pkg_emit_errno("open", dest);
-		return(EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "open: %s", dest);
 	}
 
 	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, offset, size);
@@ -352,7 +350,8 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 		repo->sshio.pid = fork();
 		if (repo->sshio.pid == -1) {
-			pkg_emit_errno("Cannot fork", "start_ssh");
+			pkg_errno("%s: %s", __func__,
+				  "Cannot fork: start_ssh");
 			goto ssh_cleanup;
 		}
 
@@ -361,7 +360,8 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			    close(sshin[1]) < 0 ||
 			    close(sshout[0]) < 0 ||
 			    dup2(sshout[1], STDOUT_FILENO) < 0) {
-				pkg_emit_errno("Cannot prepare pipes", "start_ssh");
+				pkg_errno("%s: %s", __func__,
+					  "Cannot prepare pipes: start_ssh");
 				goto ssh_cleanup;
 			}
 
@@ -394,7 +394,8 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		}
 
 		if (close(sshout[1]) < 0 || close(sshin[0]) < 0) {
-			pkg_emit_errno("Failed to close pipes", "start_ssh");
+			pkg_errno("%s: %s", __func__,
+				  "Failed to close pipes: start_ssh");
 			goto ssh_cleanup;
 		}
 
@@ -406,7 +407,8 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 		if (repo->ssh == NULL) {
-			pkg_emit_errno("Failed to open stream", "start_ssh");
+			pkg_errno("%s: %s", __func__,
+				  "Failed to open stream: start_ssh");
 			goto ssh_cleanup;
 		}
 
@@ -654,7 +656,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		left = sz - done;
 	while ((r = fread(buf, 1, left < buflen ? left : buflen, remote)) > 0) {
 		if (write(dest, buf, r) != r) {
-			pkg_emit_errno("write", "");
+			pkg_errno("%s: %s", __func__, "write");
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}

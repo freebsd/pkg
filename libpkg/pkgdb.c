@@ -953,8 +953,8 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
 				item = malloc(sizeof(*item));
 				if (item == NULL) {
-					pkg_emit_errno("malloc", "_pkg_repo_list_item");
-					return (EPKG_FATAL);
+					pkg_fatal_errno("%s: %s", __func__,
+							"malloc: _pkg_repo_list_item");
 				}
 
 				r->ops->init(r);
@@ -1065,8 +1065,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	}
 
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "malloc: pkgdb");
 	}
 
 	db->prstmt_initialized = false;

@@ -257,7 +257,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", testpath);
+		pkg_errno("%s: %s", __func__, "lstat: %s", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (developer_mode) {
@@ -979,7 +979,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			msg = calloc(1, sizeof(*msg));
 
 			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
+				pkg_errno("%s: %s", __func__,
+					  "malloc: struct pkg_message");
 				goto keywords_cleanup;
 			}
 

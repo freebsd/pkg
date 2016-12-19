@@ -61,7 +61,7 @@ pkg_repo_binary_it_new(struct pkg_repo *repo, sqlite3_stmt *s, short flags)
 
 	it = malloc(sizeof(*it));
 	if (it == NULL) {
-		pkg_emit_errno("malloc", "pkg_repo_it");
+		pkg_errno("%s: %s", __func__, "malloc: pkg_repo_it");
 		sqlite3_finalize(s);
 		return (NULL);
 	}
