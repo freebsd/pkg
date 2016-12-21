@@ -753,6 +753,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	struct pkg_job_universe_item *nit;
 	struct pkg_job_request_item *nrit = NULL;
 	struct pkg *lp = NULL;
+	struct pkg_dep *rdep = NULL;
 
 	if (rp->digest == NULL) {
 		if (pkg_checksum_calculate(rp, j->db) != EPKG_OK) {
@@ -766,12 +767,25 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	}
 
 	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
-		j->flags & PKG_FLAG_FORCE, with_version != 0 ? rp->version : NULL);
+		j->flags & (PKG_FLAG_FORCE|PKG_FLAG_UPGRADE_VULNERABLE),
+		with_version != 0 ? rp->version : NULL);
 
 	if (nit != NULL) {
 		nrit = pkg_jobs_add_req_from_universe(&j->request_add, nit, false, false);
+
 		if (req != NULL)
 			*req = nrit;
+
+		if (j->flags & PKG_FLAG_UPGRADE_VULNERABLE) {
+			/* Also process all rdeps recursively */
+			while (pkg_rdeps(nrit->pkg, &rdep) == EPKG_OK) {
+				lp = pkg_jobs_universe_get_local(j->universe, rdep->uid, 0);
+
+				if (lp) {
+					(void)pkg_jobs_process_remote_pkg(j, lp, NULL, 0);
+				}
+			}
+		}
 	}
 
 	if (nrit == NULL && lp)
