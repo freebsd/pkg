@@ -293,7 +293,7 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 	tspec[1].tv_sec = aest->st_mtim.tv_sec;
 	tspec[1].tv_nsec = aest->st_mtim.tv_nsec;
 #else
-# ifdef _DARWIN_C_SOURCE
+# if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
 	tspec[0].tv_sec = aest->st_atimespec.tv_sec;
 	tspec[0].tv_nsec = aest->st_atimespec.tv_nsec;
 	tspec[1].tv_sec = aest->st_mtimespec.tv_sec;
@@ -1253,8 +1253,13 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		} else {
 			d->gid = st.st_gid;
 		}
+#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
+		d->time[0] = st.st_atimespec;
+		d->time[1] = st.st_mtimespec;
+#else
 		d->time[0] = st.st_atim;
 		d->time[1] = st.st_mtim;
+#endif
 
 		if (create_dir(pkg, d) == EPKG_FATAL)
 			return (EPKG_FATAL);
@@ -1292,8 +1297,13 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			f->perm = st.st_mode & ~S_IFMT;
 		if (f->uid == 0)
 			f->uid = st.st_uid;
+#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
+		f->time[0] = st.st_atimespec;
+		f->time[1] = st.st_mtimespec;
+#else
 		f->time[0] = st.st_atim;
 		f->time[1] = st.st_mtim;
+#endif
 
 		if (S_ISLNK(st.st_mode)) {
 			if ((link_len = readlinkat(fromfd,
