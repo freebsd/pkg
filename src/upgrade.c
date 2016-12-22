@@ -27,6 +27,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -113,7 +115,6 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		ret = EX_OK;
 	}
 
-	pkg_audit_free(audit);
 	if (db != NULL) {
 		pkgdb_it_free(it);
 		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
@@ -154,8 +155,8 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		kh_destroy_pkgs(check);
 	}
 
-	fclose(out);
 	pkg_audit_free(audit);
+	fclose(out);
 }
 
 static int
@@ -225,7 +226,6 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 
 	fclose(in);
 	close(sp[1]);
-	pkg_audit_free(audit);
 
 	while (waitpid(cld, &retcode, 0) == -1) {
 		if (errno == EINTR) {
