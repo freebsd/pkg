@@ -204,7 +204,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 				int len = dot_pos - pattern;
 
 				pkg_debug(1, "Jobs> Adding file: %s", pattern);
-				jp->is_file = true;
+				jp->flags |= PKG_PATTERN_FLAG_FILE;
 				jp->path = pkg_path;
 				jp->pattern = malloc(len);
 				strlcpy(jp->pattern, pattern, len);
@@ -217,7 +217,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 		/*
 		 * Read package from stdin
 		 */
-		jp->is_file = true;
+		jp->flags = PKG_PATTERN_FLAG_FILE;
 		jp->path = strdup(pattern);
 		jp->pattern = strdup(pattern);
 	}
@@ -1018,7 +1018,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 	struct pkg_job_request *req;
 	struct job_pattern jfp;
 
-	if (!jp->is_file) {
+	if (!(jp->flags & PKG_PATTERN_FLAG_FILE)) {
 		if (j->type == PKG_JOBS_UPGRADE) {
 			/*
 			 * For upgrade patterns we must ensure that a local package is
@@ -1947,7 +1947,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 	new = ps->items[0]->pkg;
 
 	HASH_FIND_STR(j->request_add, new->uid, req);
-	if (req != NULL && req->item->jp != NULL && req->item->jp->is_file) {
+	if (req != NULL && req->item->jp != NULL &&
+			(req->item->jp->flags & PKG_PATTERN_FLAG_FILE)) {
 		/*
 		 * We have package as a file, set special repository name
 		 */
