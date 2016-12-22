@@ -488,7 +488,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	const char	*name;
 	const char	*origin;
 	const char	*version_remote;
-	bool		is_origin;
+	bool		is_origin = false;
 
 	int		 retcode = EPKG_OK;
 
