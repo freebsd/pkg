@@ -293,7 +293,7 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 	tspec[1].tv_sec = aest->st_mtim.tv_sec;
 	tspec[1].tv_nsec = aest->st_mtim.tv_nsec;
 #else
-# if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
+# if defined(_DARWIN_C_SOURCE) || defined(time__APPLE__)
 	tspec[0].tv_sec = aest->st_atimespec.tv_sec;
 	tspec[0].tv_nsec = aest->st_atimespec.tv_nsec;
 	tspec[1].tv_sec = aest->st_mtimespec.tv_sec;
@@ -1253,12 +1253,19 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		} else {
 			d->gid = st.st_gid;
 		}
+#ifdef HAVE_STRUCT_STAT_ST_MTIM
+		d->time[0] = st.st_atim;
+		d->time[1] = st.st_mtim;
+#else
 #if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
 		d->time[0] = st.st_atimespec;
 		d->time[1] = st.st_mtimespec;
 #else
-		d->time[0] = st.st_atim;
-		d->time[1] = st.st_mtim;
+		d->time[0].tv_sec = st.st_atime;
+		d->time[0].tv_nsec = 0;
+		d->time[1].tv_sec = st.st_mtime;
+		d->time[1].tv_nsec = 0;
+#endif
 #endif
 
 		if (create_dir(pkg, d) == EPKG_FATAL)
