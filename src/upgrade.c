@@ -38,6 +38,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 #include <khash.h>
 #include <utstring.h>
 #include <pkg.h>
@@ -50,6 +51,8 @@
 #include <sys/capability.h>
 #endif
 #include "pkgcli.h"
+
+static const char vuln_end_lit[] = "**END**";
 
 void
 usage_upgrade(void)
@@ -85,18 +88,9 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	int				ret;
 	FILE			*out;
 
-	out = fdopen (sock, "w");
+	out = fdopen(sock, "w");
 	if (out == NULL) {
 		warn("unable to open stream");
-		return;
-	}
-
-	drop_privileges();
-
-	if (pkg_audit_load(audit, NULL) != EPKG_OK) {
-		warn("unable to open vulnxml file");
-		fclose(out);
-		pkg_audit_free(audit);
 		return;
 	}
 
@@ -107,25 +101,35 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		return;
 	}
 	else {
+		check = kh_init_pkgs();
+
 		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
 				== EPKG_OK) {
 			add_to_check(check, pkg);
 			pkg = NULL;
 		}
+
 		ret = EX_OK;
 	}
 
 	if (db != NULL) {
 		pkgdb_it_free(it);
-		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 		pkgdb_close(db);
-		fclose(out);
 	}
 
 	if (ret != EX_OK) {
 		pkg_audit_free(audit);
 		kh_destroy_pkgs(check);
 		fclose(out);
+		return;
+	}
+
+	drop_privileges();
+
+	if (pkg_audit_load(audit, NULL) != EPKG_OK) {
+		warn("unable to open vulnxml file");
+		fclose(out);
+		pkg_audit_free(audit);
 		return;
 	}
 
@@ -144,11 +148,15 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 				if (pkg_audit_is_vulnerable(audit, pkg, true, &sb)) {
 					pkg_get(pkg, PKG_UNIQUEID, &uid);
 					fprintf(out, "%s\n", uid);
+					fflush(out);
 					utstring_free(sb);
 				}
 				pkg_free(pkg);
 		});
+
 		kh_destroy_pkgs(check);
+		fprintf(out, "%s\n", vuln_end_lit);
+		fflush(out);
 	}
 	else {
 		warnx("cannot process vulnxml");
@@ -162,7 +170,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 static int
 add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 {
-	int 				sp[2], retcode;
+	int 				sp[2], retcode, ret = EPKG_FATAL;
 	pid_t 				cld;
 	FILE				*in;
 	struct pkg_audit	*audit;
@@ -218,6 +226,11 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 			line[linelen - 1] = '\0';
 		}
 
+		if (strcmp(line, vuln_end_lit) == 0) {
+			ret = EPKG_OK;
+			break;
+		}
+
 		if (pkg_jobs_add(jobs, MATCH_EXACT, &line, 1) == EPKG_FATAL) {
 			warnx("Cannot update %s which is vulnerable", line);
 			/* TODO: assume it non-fatal for now */
@@ -225,7 +238,6 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 	}
 
 	fclose(in);
-	close(sp[1]);
 
 	while (waitpid(cld, &retcode, 0) == -1) {
 		if (errno == EINTR) {
@@ -238,7 +250,11 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 		}
 	}
 
-	return (EPKG_OK);
+	if (ret != EPKG_OK) {
+		warn("Cannot get the complete list of vulnerable packages");
+	}
+
+	return (ret);
 }
 
 int
