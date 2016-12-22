@@ -767,7 +767,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	}
 
 	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
-		j->flags & (PKG_FLAG_FORCE|PKG_FLAG_UPGRADE_VULNERABLE),
+		j->flags & PKG_FLAG_FORCE,
 		with_version != 0 ? rp->version : NULL);
 
 	if (nit != NULL) {
