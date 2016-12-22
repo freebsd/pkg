@@ -1631,7 +1631,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 							"repositories",
 							(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
 							jp->pattern);
-					return (retcode);
+					if ((j->flags & PKG_FLAG_UPGRADE_VULNERABLE) == 0)
+						return (retcode);
 				}
 				if (retcode == EPKG_LOCKED) {
 					return (retcode);
