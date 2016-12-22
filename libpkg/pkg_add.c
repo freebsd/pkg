@@ -1304,12 +1304,19 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			f->perm = st.st_mode & ~S_IFMT;
 		if (f->uid == 0)
 			f->uid = st.st_uid;
+#ifdef HAVE_STRUCT_STAT_ST_MTIM
+		d->time[0] = st.st_atim;
+		d->time[1] = st.st_mtim;
+#else
 #if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
 		f->time[0] = st.st_atimespec;
 		f->time[1] = st.st_mtimespec;
 #else
-		f->time[0] = st.st_atim;
-		f->time[1] = st.st_mtim;
+		d->time[0].tv_sec = st.st_atime;
+		d->time[0].tv_nsec = 0;
+		d->time[1].tv_sec = st.st_mtime;
+		d->time[1].tv_nsec = 0;
+#endif
 #endif
 
 		if (S_ISLNK(st.st_mode)) {
