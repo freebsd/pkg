@@ -750,7 +750,7 @@ static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	struct pkg_job_request_item **req, int with_version)
 {
-	struct pkg_job_universe_item *nit;
+	struct pkg_job_universe_item *nit, *cur;
 	struct pkg_job_request_item *nrit = NULL;
 	struct pkg *lp = NULL;
 	struct pkg_dep *rdep = NULL;
@@ -777,6 +777,13 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 			*req = nrit;
 
 		if (j->flags & PKG_FLAG_UPGRADE_VULNERABLE) {
+			/* Set the proper reason */
+			DL_FOREACH(nit, cur) {
+				if (cur->pkg->type != PKG_INSTALLED) {
+					free(cur->pkg->reason);
+					asprintf(&cur->pkg->reason, "vulnerability found");
+				}
+			}
 			/* Also process all rdeps recursively */
 			while (pkg_rdeps(nrit->pkg, &rdep) == EPKG_OK) {
 				lp = pkg_jobs_universe_get_local(j->universe, rdep->uid, 0);
