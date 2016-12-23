@@ -30,6 +30,11 @@ AC_SUBST(LIBPKG_SO_VERSION)
 
 AC_GNU_SOURCE
 AC_PROG_CC_C99
+if test "x$ac_cv_prog_cc_c99" = "xno"; then
+	AC_MSG_ERROR([Compiler is not compliant with C99 standard.])
+fi
+CFLAGS="$CFLAGS $ac_cv_prog_cc_c99"
+
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
 AX_CFLAGS_WARN_ALL
