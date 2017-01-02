@@ -339,7 +339,7 @@ AC_CHECK_FUNCS(cap_sandboxed, [
 AC_CACHE_CHECK(for arc4random_uniform,
                ac_cv_func_arc4random_uniform,
                [ac_save_CFLAGS="$CFLAGS"
-                CFLAGS="-Werror $CFLAGS"
+                CFLAGS="$CFLAGS -Werror"
                 AC_TRY_COMPILE([#include <stdlib.h>],
                                [arc4random_uniform(255);],
                                [ac_cv_func_arc4random_uniform=yes],
@@ -352,7 +352,7 @@ fi
 AC_CACHE_CHECK(for arc4random_stir,
                ac_cv_func_arc4random_stir,
                [ac_save_CFLAGS="$CFLAGS"
-                CFLAGS="-Werror $CFLAGS"
+                CFLAGS="$CFLAGS -Werror"
                 AC_TRY_COMPILE([#include <stdlib.h>],
                                [arc4random_stir();],
                                [ac_cv_func_arc4random_stir=yes],
@@ -365,7 +365,7 @@ fi
 AC_CACHE_CHECK(for humanize_number,
                ac_cv_func_humanize_number,
                [ac_save_CFLAGS="$CFLAGS"
-                CFLAGS="-Werror $CFLAGS"
+                CFLAGS="$CFLAGS -Werror"
                 AC_TRY_COMPILE([#include <libutil.h>],
                                [humanize_number(NULL, 0, 0, NULL, 0, 0);],
                                [ac_cv_func_humanize_number=yes],
@@ -376,22 +376,22 @@ if test "$ac_cv_func_humanize_number" = yes ; then
 fi
 
 AC_CACHE_CHECK(for BSD dirname(const char *),
-               ac_cv_func_dirname,
+               ac_cv_func_bsd_dirname,
                [ac_save_CFLAGS="$CFLAGS"
-		CFLAGS="-Werror $CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <libgen.h>],
                                [static char *(*ac_test_dirname)(const char *) = dirname; ac_test_dirname("");],
-                               [ac_cv_func_dirname=yes],
-                               [ac_cv_func_dirname=no])
+                               [ac_cv_func_bsd_dirname=yes],
+                               [ac_cv_func_bsd_dirname=no])
 		CFLAGS="$ac_save_CFLAGS"])
-if test "$ac_cv_func_dirname" = yes ; then
+if test "$ac_cv_func_bsd_dirname" = yes ; then
 	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
 fi
 
 AC_CACHE_CHECK(for BSD statfs(const char *path, struct statfs *buf),
                ac_cv_func_statfs,
                [ac_save_CFLAGS="$CFLAGS"
-		CFLAGS="-Werror $CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <sys/param.h>
      					#include <sys/mount.h>],
                                [struct statfs stfs; static int (*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("", &stfs);],
@@ -407,15 +407,15 @@ AC_CHECK_FUNCS(utimensat futimesat)
 
 AC_CHECK_FUNCS(basename_r)
 AC_CACHE_CHECK(for BSD basename(const char *),
-               ac_cv_func_basename,
+               ac_cv_func_bsd_basename,
                [ac_save_CFLAGS="$CFLAGS"
-		CFLAGS="-Werror $CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <libgen.h>],
                                [static char *(*ac_test_basename)(const char *) = basename; ac_test_basename("");],
-                               [ac_cv_func_basename=yes],
-                               [ac_cv_func_basename=no])
+                               [ac_cv_func_bsd_basename=yes],
+                               [ac_cv_func_bsd_basename=no])
 		CFLAGS="$ac_save_CFLAGS"])
-if test "$ac_cv_func_basename" = yes ; then
+if test "$ac_cv_func_bsd_basename" = yes ; then
 	AC_DEFINE(HAVE_BSD_BASENAME, 1, [Define 1 if you have 'basename(const char *)' function.])
 fi
 
