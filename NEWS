@@ -34,6 +34,7 @@ Changes from pkg 1.9
   * issues when PREFIX is a symlink to another directory
 - Use portable mechanism to find the number of CPUs which allows pkg repo to be
   faster on linux
+- New pkg upgrade --vulnerable
 
 Changes from pkg 1.8
 
