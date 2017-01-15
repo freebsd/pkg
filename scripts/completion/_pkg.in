@@ -1,21 +1,27 @@
 #compdef pkg
 
+_pkg_cmd() {
+	local jflags=()
+	[[ -n "${_pkg_jail:-}" ]] && jflags=(-j "$_pkg_jail")
+	@prefix@/sbin/pkg "${jflags[@]}" "$@"
+}
+
 _pkg_installed() {
 	local expl
 	_wanted packages expl package \
-	compadd "$@" - $(@prefix@/sbin/pkg query "%n-%v")
+	compadd "$@" - $(_pkg_cmd query "%n-%v")
 }
 
 _pkg_available_name() {
 	local expl
 	_wanted packages expl package \
-	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n")
+	compadd "$@" - $(_pkg_cmd rquery "%n")
 }
 
 _pkg_aliases() {
 	local expl
 	_wanted aliases expl alias \
-	compadd "$@" - $(@prefix@/sbin/pkg alias -ql)
+	compadd "$@" - $(_pkg_cmd alias -ql)
 }
 
 _pkg_available() {
@@ -26,7 +32,7 @@ _pkg_available() {
 			_files "$@" -g "*.t?z" && ret=0
 		fi
 		if _requested packages; then
-			compadd "$@" - $(@prefix@/sbin/pkg rquery "%n-%v") && ret=0
+			compadd "$@" - $(_pkg_cmd rquery "%n-%v") && ret=0
 		fi
 		(( ret )) || break
 	done
@@ -86,7 +92,7 @@ _pkg_config_opts() {
 
 _pkg() {
 	local curcontext="$curcontext" state state_descr line expl ret=1
-	local subcmd
+	local subcmd _pkg_jail
 
 	subcmd=(
 		'add[compatibility interface to install a package]'
@@ -124,6 +130,9 @@ _pkg() {
 		'version[display versions of installed packages]'
 		'which[display which package installed a specific file]'
 	)
+
+	(( ${words[(I)-j]} )) && _pkg_jail="${words[1+${words[(I)-j]}]}"
+	(( ${words[(I)--jail]} )) && _pkg_jail="${words[1+${words[(I)--jail]}]}"
 
 	_arguments -A -* -C \
 		'(-d --debug)'{-d,--debug}'[increment debug level]' \
