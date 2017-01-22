@@ -1236,6 +1236,9 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	const char *path;
 	char buffer[128];
 	size_t link_len;
+	bool install_as_user;
+
+	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	fromfd = open(src, O_DIRECTORY);
 	if (fromfd == -1) {
@@ -1261,7 +1264,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			}
 			d->uid = pwent.pw_uid;
 		} else {
-			d->uid = st.st_uid;
+			d->uid = install_as_user ? st.st_uid : 0;
 		}
 		if (d->gname[0] != '\0') {
 			if (getgrnam_r(d->gname, &grent, buffer, sizeof(buffer),
@@ -1296,7 +1299,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			}
 			f->uid = pwent.pw_uid;
 		} else {
-			f->uid = st.st_uid;
+			f->uid = install_as_user ? st.st_uid : 0;
 		}
 
 		if (f->gname[0] != '\0') {
@@ -1312,7 +1315,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 
 		if (f->perm == 0)
 			f->perm = st.st_mode & ~S_IFMT;
-		if (f->uid == 0)
+		if (f->uid == 0 && install_as_user)
 			f->uid = st.st_uid;
 		f->time[0] = st.st_atim;
 		f->time[1] = st.st_mtim;
