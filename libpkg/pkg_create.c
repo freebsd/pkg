@@ -182,7 +182,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 		return NULL;
 
 	if (pkg_asprintf(&pkg_path, "%S/%n-%v", outdir, pkg, pkg) == -1) {
-		pkg_emit_errno("pkg_asprintf", "");
+		pkg_errno("%s: %s", __func__, "pkg_asprintf");
 		return (NULL);
 	}
 
@@ -316,7 +316,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 
 	if (md_dir != NULL &&
 	    (mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
-		pkg_emit_errno("open", md_dir);
+		pkg_errno("%s: %s", __func__, "open: %s", md_dir);
 		goto cleanup;
 	}
 
@@ -348,6 +348,9 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
 		pkg->abi = strdup(arch);
+		if (pkg->abi == NULL) {
+			pkg_fatal_errno("%s: %s", __func__, "strdup");
+		}
 		defaultarch = true;
 	}
 
@@ -375,6 +378,9 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 			pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
 		} else {
 			pkg->www = strdup("UNKNOWN");
+			if (pkg->www == NULL) {
+				pkg_fatal_errno("%s: %s", __func__, "strdup");
+			}
 		}
 		regfree(&preg);
 	}

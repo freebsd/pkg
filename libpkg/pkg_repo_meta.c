@@ -25,6 +25,7 @@
  */
 
 #include <ucl.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -42,11 +43,35 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->conflicts = NULL;
 	meta->conflicts_archive = NULL;
 	meta->manifests = strdup("packagesite.yaml");
+	if (meta->manifests == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	meta->manifests_archive = strdup("packagesite");
+	if (meta->manifests_archive == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	meta->digests = strdup("digests");
+	if (meta->digests == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	meta->digests_archive = strdup("digests");
+	if (meta->digests_archive == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	meta->filesite = strdup("filesite.yaml");
+	if (meta->filesite == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	meta->filesite_archive = strdup("filesite");
+	if (meta->filesite_archive == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 	/* Not using fulldb */
 	meta->fulldb = NULL;
 	meta->fulldb_archive = NULL;
@@ -151,7 +176,8 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 
 	key = calloc(1, sizeof(*key));
 	if (key == NULL) {
-		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta_key");
+		pkg_errno("%s: %s", __func__,
+			  "pkg_repo_meta_parse: malloc failed for pkg_repo_meta_key");
 		return (NULL);
 	}
 
@@ -159,8 +185,20 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 	 * It is already validated so just use it as is
 	 */
 	key->name = strdup(ucl_object_tostring(ucl_object_find_key(obj, "name")));
+	if (key->name == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return (NULL);
+	}
 	key->pubkey = strdup(ucl_object_tostring(ucl_object_find_key(obj, "data")));
+	if (key->pubkey == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return (NULL);
+	}
 	key->pubkey_type = strdup(ucl_object_tostring(ucl_object_find_key(obj, "type")));
+	if (key->pubkey_type == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return (NULL);
+	}
 
 	return (key);
 }
@@ -183,8 +221,8 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 
 	meta = calloc(1, sizeof(*meta));
 	if (meta == NULL) {
-		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__,
+				"pkg_repo_meta_parse: malloc failed for pkg_repo_meta");
 	}
 
 	pkg_repo_meta_set_default(meta);
@@ -309,7 +347,8 @@ pkg_repo_meta_default(void)
 
 	meta = calloc(1, sizeof(*meta));
 	if (meta == NULL) {
-		pkg_emit_errno("pkg_repo_meta_default", "malloc failed for pkg_repo_meta");
+		pkg_errno("%s: %s", __func__,
+			  "pkg_repo_meta_default: malloc failed for pkg_repo_meta");
 		return (NULL);
 	}
 

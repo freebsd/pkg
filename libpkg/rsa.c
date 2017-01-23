@@ -142,8 +142,7 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 
 	if (fd == -1) {
 		if ((fd = open(path, O_RDONLY)) == -1) {
-			pkg_emit_errno("fopen", path);
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "fopen: %s", path);
 		}
 		need_close = true;
 	}
@@ -211,13 +210,13 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	off_t key_len;
 
 	if (file_to_buffer(key, (char**)&key_buf, &key_len) != EPKG_OK) {
-		pkg_emit_errno("rsa_verify", "cannot read key");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__,
+				"rsa_verify: cannot read key");
 	}
 
 	if (fd == -1) {
 		if ((fd = open(path, O_RDONLY)) == -1) {
-			pkg_emit_errno("fopen", path);
+			pkg_errno("%s: %s", __func__, "fopen: %s", path);
 			free(key_buf);
 			return (EPKG_FATAL);
 		}
@@ -251,8 +250,7 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 	char *sha256;
 
 	if (access(rsa->path, R_OK) == -1) {
-		pkg_emit_errno("access", rsa->path);
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "access: %s", rsa->path);
 	}
 
 	if (rsa->key == NULL && _load_rsa_private_key(rsa) != EPKG_OK) {
@@ -262,6 +260,9 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 
 	max_len = RSA_size(rsa->key);
 	*sigret = calloc(1, max_len + 1);
+	if (*sigret == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "calloc");
+	}
 
 	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
 	if (sha256 == NULL)
@@ -287,6 +288,9 @@ rsa_new(struct rsa_key **rsa, pkg_password_cb *cb, char *path)
 	assert(*rsa == NULL);
 
 	*rsa = calloc(1, sizeof(struct rsa_key));
+	if (*rsa == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "calloc");
+	}
 	(*rsa)->path = path;
 	(*rsa)->pw_cb = cb;
 

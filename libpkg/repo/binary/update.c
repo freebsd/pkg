@@ -397,6 +397,9 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 
 	free(pkg->reponame);
 	pkg->reponame = strdup(repo->name);
+	if (pkg->reponame == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 
 	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
 
@@ -432,6 +435,10 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 			pdep ++;
 		}
 		deps = malloc(sizeof(char *) * ndep);
+		if (deps == NULL) {
+			pkg_errno("%s: %s", __func__, "malloc");
+			return;
+		}
 		for (i = 0; i < ndep; i ++) {
 			deps[i] = strsep(&p, ",\n");
 		}

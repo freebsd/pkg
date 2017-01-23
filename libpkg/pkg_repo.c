@@ -250,19 +250,17 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 			siglen = archive_entry_size(ae);
 			sig = malloc(siglen);
 			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
+				pkg_fatal_errno("%s: %s", __func__, "malloc failed");
 			}
 			if (archive_read_data(a, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"archive_read_data failed");
+				pkg_errno("%s: %s", __func__,
+					  "archive_read_data failed");
 				free(sig);
 				return (EPKG_FATAL);
 			}
 			if (write(fd, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"write failed");
+				pkg_errno("%s: %s", __func__,
+					  "write failed");
 				free(sig);
 				return (EPKG_FATAL);
 			}
@@ -271,7 +269,8 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 		}
 		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-				pkg_emit_errno("archive_read_extract", "extract error");
+				pkg_errno("%s: %s", __func__,
+					  "archive_read_extract: extract error");
 				rc = EPKG_FATAL;
 				break;
 			}
@@ -319,13 +318,12 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			siglen = archive_entry_size(ae);
 			sig = malloc(siglen);
 			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
+				pkg_fatal_errno("%s: %s", __func__,
+						"pkg_repo_meta_extract_signature: malloc failed");
 			}
 			if (archive_read_data(a, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"archive_read_data failed");
+				pkg_errno("%s: %s", __func__,
+					  "pkg_repo_meta_extract_signature: archive_read_data failed");
 				free(sig);
 				return (EPKG_FATAL);
 			}
@@ -343,8 +341,8 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[4].iov_base = sig;
 			iov[4].iov_len = siglen;
 			if (writev(fd, iov, NELEM(iov)) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"writev failed");
+				pkg_errno("%s: %s", __func__,
+					  "pkg_repo_meta_extract_signature: writev failed");
 				free(sig);
 				return (EPKG_FATAL);
 			}
@@ -358,13 +356,12 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			siglen = archive_entry_size(ae);
 			sig = malloc(siglen);
 			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
+				pkg_fatal_errno("%s: %s", __func__,
+						"pkg_repo_meta_extract_signature: malloc failed");
 			}
 			if (archive_read_data(a, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"archive_read_data failed");
+				pkg_errno("%s: %s", __func__,
+					  "pkg_repo_meta_extract_signature: archive_read_data failed");
 				free(sig);
 				return (EPKG_FATAL);
 			}
@@ -382,8 +379,8 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[4].iov_base = sig;
 			iov[4].iov_len = siglen;
 			if (writev(fd, iov, NELEM(iov)) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"writev failed");
+				pkg_errno("%s: %s", __func__,
+					  "pkg_repo_meta_extract_signature: writev failed");
 				free(sig);
 				return (EPKG_FATAL);
 			}
@@ -393,7 +390,8 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 		else {
 			if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-					pkg_emit_errno("archive_read_extract", "extract error");
+					pkg_errno("%s: %s", __func__,
+						  "archive_read_extract: extract error");
 					rc = EPKG_FATAL;
 					break;
 				}
@@ -466,8 +464,8 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			if (s == NULL) {
 				s = calloc(1, sizeof(struct sig_cert));
 				if (s == NULL) {
-					pkg_emit_errno("pkg_repo_parse_sigkeys", "calloc failed");
-					return (EPKG_FATAL);
+					pkg_fatal_errno("%s: %s", __func__,
+							"pkg_repo_parse_sigkeys: calloc failed");
 				}
 				tlen = MIN(len, sizeof(s->name) - 1);
 				memcpy(s->name, p, tlen);
@@ -508,7 +506,8 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			}
 			sig = malloc(len);
 			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
+				pkg_errno("%s: %s", __func__,
+					  "pkg_repo_parse_sigkeys: malloc failed");
 				free(s);
 				return (EPKG_FATAL);
 			}
@@ -562,7 +561,8 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		cbdata.tfd = open (dest, O_WRONLY | O_CREAT | O_TRUNC,
 				0644);
 		if (cbdata.tfd == -1) {
-			pkg_emit_errno("archive_read_extract", "open error");
+			pkg_errno("%s: %s", __func__,
+				  "archive_read_extract: open error");
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -579,8 +579,8 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
 			s = calloc(1, sizeof(struct sig_cert));
 			if (s == NULL) {
-				pkg_emit_errno("pkg_repo_archive_extract_archive",
-						"malloc failed");
+				pkg_errno("%s: %s", __func__,
+					  "pkg_repo_archive_extract_archive: malloc failed");
 				rc = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -775,7 +775,8 @@ pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo, const char *filename,
 	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 	close(fd);
 	if (map == MAP_FAILED) {
-		pkg_emit_errno("pkg_repo_fetch_remote_mmap", "cannot mmap fetched");
+		pkg_errno("%s: %s", __func__,
+			  "pkg_repo_fetch_remote_mmap: cannot mmap fetched");
 		*rc = EPKG_FATAL;
 		return (MAP_FAILED);
 	}
@@ -798,7 +799,7 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 
 	res = fdopen(dest_fd, "r");
 	if (res == NULL) {
-		pkg_emit_errno("fdopen", "digest open failed");
+		pkg_errno("%s: %s", __func__, "fdopen: digest open failed");
 		*rc = EPKG_FATAL;
 		close(dest_fd);
 		return (NULL);
@@ -859,8 +860,8 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 					iov[0].iov_base = (void *)ucl_object_tostring(elt);
 					iov[0].iov_len = res_len;
 					if (writev(fd, iov, 1) == -1) {
-						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
-								"writev error");
+						pkg_errno("%s: %s", __func__,
+							  "pkg_repo_meta_extract_pubkey: writev error");
 						rc = EPKG_FATAL;
 						break;
 					}
@@ -930,13 +931,13 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 
 	/* Map meta file for extracting pubkeys from it */
 	if ((fd = open(filepath, O_RDONLY)) == -1) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
+		pkg_errno("%s: %s", __func__, "cannot open meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (fstat(fd, &st) == -1) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
+		pkg_errno("%s: %s", __func__, "cannot stat meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -944,7 +945,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 	close(fd);
 	if (map == MAP_FAILED) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot mmap meta fetched");
+		pkg_errno("%s: %s", __func__, "cannot mmap meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1052,6 +1053,10 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 	}
 
 	f = calloc(1, sizeof(struct fingerprint));
+	if (f == NULL) {
+		pkg_errno("%s: %s", __func__, "calloc");
+		return (NULL);
+	}
 	f->type = fct;
 	strlcpy(f->hash, fp, sizeof(f->hash));
 

@@ -69,8 +69,8 @@ mkdirs(const char *_path)
 
 		if (mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
 			if (errno != EEXIST && errno != EISDIR) {
-				pkg_emit_errno("mkdir", path);
-				return (EPKG_FATAL);
+				pkg_fatal_errno("%s: %s", __func__,
+						"mkdir: %s", path);
 			}
 
 		/* that was the last element of the path */
@@ -95,25 +95,25 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 	assert(sz != NULL);
 
 	if ((fd = openat(dfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("openat", path);
+		pkg_errno("%s: %s", __func__, "openat: %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (fstatat(dfd, path, &st, 0) == -1) {
-		pkg_emit_errno("fstatat", path);
+		pkg_errno("%s: %s", __func__, "fstatat: %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
+		pkg_errno("%s: %s", __func__, "malloc");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
-		pkg_emit_errno("read", path);
+		pkg_errno("%s: %s", __func__, "read: %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -144,25 +144,25 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	assert(sz != NULL);
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
+		pkg_errno("%s: %s", __func__, "open: %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (fstat(fd, &st) == -1) {
-		pkg_emit_errno("fstat", path);
+		pkg_errno("%s: %s", __func__, "fstat: %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
+		pkg_errno("%s: %s", __func__, "malloc: ");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
-		pkg_emit_errno("read", path);
+		pkg_errno("%s: %s", __func__, "read: %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -285,6 +285,9 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 	}
 
 	*dest = strdup(utstring_body(buf));
+	if (*dest == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 	utstring_free(buf);
 	
 	return (EPKG_OK);
@@ -737,6 +740,9 @@ mkdirat_p(int fd, const char *path)
 	char *walk, pathdone[MAXPATHLEN];
 
 	walk = strdup(path);
+	if (walk == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 	pathdone[0] = '\0';
 
 	while ((next = strsep(&walk, "/")) != NULL) {

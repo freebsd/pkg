@@ -91,6 +91,10 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 
 	pkg_conflict_new(&new);
 	new->uid = strdup(uniqueid);
+	if (new->uid == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 
 	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
 }
@@ -113,7 +117,15 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 	item = malloc(sizeof(*item));
 	if (item != NULL) {
 		item->fts_accpath = strdup(fts->fts_accpath);
+		if (item->fts_accpath == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return (NULL);
+		}
 		item->fts_name = strdup(fts->fts_name);
+		if (item->fts_name == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return (NULL);
+		}
 		item->fts_size = fts->fts_statp->st_size;
 		item->fts_info = fts->fts_info;
 
@@ -123,9 +135,14 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 			pkg_path++;
 
 		item->pkg_path = strdup(pkg_path);
+		if (item->pkg_path == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return (NULL);
+		}
 	}
 	else {
-		pkg_emit_errno("malloc", "struct pkg_fts_item");
+		pkg_errno("%s: %s", __func__,
+			  "malloc: struct pkg_fts_item");
 	}
 
 	return (item);
@@ -209,8 +226,7 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	}
 
 	if (errno != 0) {
-		pkg_emit_errno("fts_read", "pkg_create_repo_read_fts");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "fts_read");
 	}
 
 	return (EPKG_OK);
@@ -240,7 +256,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
-		pkg_emit_errno("pkg_create_repo_worker", "open");
+		pkg_errno("%s: %s", __func__, "open");
 		utstring_free(b);
 		return (EPKG_FATAL);
 	}
@@ -250,15 +266,14 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		if (ffd == -1) {
 			close(mfd);
 			utstring_free(b);
-			pkg_emit_errno("pkg_create_repo_worker", "open");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "open");
 		}
 	}
 
 	pid = fork();
 	switch(pid) {
 	case -1:
-		pkg_emit_errno("pkg_create_repo_worker", "fork");
+		pkg_errno("%s: %s", __func__, "fork");
 		utstring_free(b);
 		close(mfd);
 		if (read_files)
@@ -287,7 +302,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
 
 	if (read(pip, digestbuf, 1) == -1) {
-		pkg_emit_errno("pkg_create_repo_worker", "read");
+		pkg_errno("%s: %s", __func__, "read");
 		goto cleanup;
 	}
 
@@ -304,6 +319,9 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
 			pkg->repopath = strdup(cur->pkg_path);
+			if (pkg->repopath == NULL) {
+				pkg_fatal_errno("%s: %s", __func__, "strdup");
+			}
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -313,6 +331,10 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
 			else {
 				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
+				if (mdigest == NULL) {
+					pkg_fatal_errno("%s: %s", __func__,
+							"malloc");
+				}
 
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 				if (pkg_checksum_generate(pkg, mdigest,
@@ -327,7 +349,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			mlen = utstring_len(b);
 
 			if (flock(mfd, LOCK_EX) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "flock");
+				pkg_errno("%s: %s", __func__, "flock");
 				ret = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -340,7 +362,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			iov[1].iov_len = 1;
 
 			if (writev(mfd, iov, 2) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "write");
+				pkg_errno("%s: %s", __func__, "write");
 				ret = EPKG_FATAL;
 				flock(mfd, LOCK_UN);
 				goto cleanup;
@@ -352,7 +374,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				FILE *fl;
 
 				if (flock(ffd, LOCK_EX) == -1) {
-					pkg_emit_errno("pkg_create_repo_worker", "flock");
+					pkg_errno("%s: %s", __func__, "flock");
 					ret = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -428,8 +450,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 			else if (errno == EAGAIN || errno == EWOULDBLOCK)
 				return (EPKG_OK);
 
-			pkg_emit_errno("pkg_create_repo_read_pipe", "read");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__, "read");
 		}
 		else if (r == 0)
 			return (EPKG_END);
@@ -466,6 +487,11 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					break;
 				case s_set_checksum:
 					dig->checksum =  malloc(i - start + 1);
+					if (dig->checksum == NULL) {
+						pkg_fatal_errno("%s: %s",
+								__func__,
+								"malloc");
+					}
 					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_origin;
 					break;
@@ -478,6 +504,11 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 				}
 				else if (state == s_set_checksum) {
 					dig->checksum =  malloc(i - start + 1);
+					if (dig->checksum == NULL) {
+						pkg_fatal_errno("%s: %s",
+								__func__,
+								"malloc");
+					}
 					strlcpy(dig->checksum, &buf[start], i - start + 1);
 				}
 				assert(dig->origin != NULL);
@@ -566,7 +597,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
-		pkg_emit_errno("fts_open", path);
+		pkg_errno("%s: %s", __func__, "fts_open %s", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -632,7 +663,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			st = SOCK_SEQPACKET;
 #endif
 			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
-				pkg_emit_errno("pkg_create_repo", "pipe");
+				pkg_errno("%s: %s", __func__, "pipe");
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -668,7 +699,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	/* Send start marker to all workers */
 	for (i = 0; i < num_workers; i ++) {
 		if (write(pfd[i].fd, ".", 1) == -1)
-			pkg_emit_errno("pkg_create_repo", "write");
+			pkg_errno("%s: %s", __func__, "write");
 	}
 
 	ntask = 0;
@@ -700,7 +731,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 							if (errno == EINTR)
 								continue;
 
-							pkg_emit_errno("pkg_create_repo", "wait");
+							pkg_errno("%s: %s", __func__, "wait");
 							break;
 						}
 

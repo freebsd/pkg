@@ -128,6 +128,10 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
 
 		re = malloc(sizeof(regex_t));
+		if (re == NULL) {
+			pkg_errno("%s: %s", __func__, "malloc");
+			return;
+		}
 		if (regcomp(re, regex, cflags) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
@@ -949,8 +953,8 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
 				item = malloc(sizeof(*item));
 				if (item == NULL) {
-					pkg_emit_errno("malloc", "_pkg_repo_list_item");
-					return (EPKG_FATAL);
+					pkg_fatal_errno("%s: %s", __func__,
+							"malloc: _pkg_repo_list_item");
 				}
 
 				r->ops->init(r);
@@ -1061,8 +1065,7 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	}
 
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__, "malloc: pkgdb");
 	}
 
 	db->prstmt_initialized = false;
@@ -2655,6 +2658,9 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 	}
 	sqlite3_finalize(stmt);
 	file->sum = strdup(sum);
+	if (file->sum == NULL) {
+		pkg_fatal_errno("%s: %s", __func__, "strdup");
+	}
 
 	return (EPKG_OK);
 }
@@ -2702,6 +2708,10 @@ pkgshell_open(const char **reponame)
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	*reponame = strdup(localpath);
+	if (*reponame == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 }
 
 static int

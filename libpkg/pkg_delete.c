@@ -169,6 +169,10 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 			    pkg->dir_to_del[i], path);
 			free(pkg->dir_to_del[i]);
 			pkg->dir_to_del[i] = strdup(path);
+			if (pkg->dir_to_del[i] == NULL) {
+				pkg_errno("%s: %s", __func__, "strdup");
+				return;
+			}
 			return;
 		}
 	}
@@ -179,9 +183,17 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 		pkg->dir_to_del_cap += 64;
 		pkg->dir_to_del = realloc(pkg->dir_to_del,
 		    pkg->dir_to_del_cap * sizeof(char *));
+		if (pkg->dir_to_del == NULL) {
+			pkg_errno("%s: %s", __func__, "realloc");
+			return;
+		}
 	}
 
 	pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+	if (pkg->dir_to_del[pkg->dir_to_del_len] == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 }
 
 static void
@@ -239,7 +251,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1) {
 		if (errno != ENOTEMPTY && errno != EBUSY)
-			pkg_emit_errno("unlinkat", dir);
+			pkg_errno("%s: %s", __func__, "unlinkat: %s", dir);
 		/* If the directory was already removed by a bogus script, continue removing parents */
 		if (errno != ENOENT)
 			return;
@@ -342,7 +354,8 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 			if (errno == ENOENT)
 				pkg_emit_file_missing(pkg, file);
 			else
-				pkg_emit_errno("unlinkat", path);
+				pkg_errno("%s: %s", __func__,
+				          "unlinkat: %s", path);
 		}
 		return;
 	}
@@ -408,8 +421,16 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 			pkg->dir_to_del_cap += 64;
 			pkg->dir_to_del = realloc(pkg->dir_to_del,
 			    pkg->dir_to_del_cap * sizeof(char *));
+			if (pkg->dir_to_del == NULL) {
+				pkg_errno("%s: %s", __func__, "realloc");
+				return;
+			}
 		}
 		pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+		if (pkg->dir_to_del[pkg->dir_to_del_len] == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return;
+		}
 	}
 }
 

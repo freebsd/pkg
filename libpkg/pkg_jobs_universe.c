@@ -208,8 +208,8 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
-		pkg_emit_errno("pkg_jobs_pkg_insert_universe", "calloc: struct pkg_job_universe_item");
-		return (EPKG_FATAL);
+		pkg_fatal_errno("%s: %s", __func__,
+				"calloc: struct pkg_job_universe_item");
 	}
 
 	item->pkg = pkg;
@@ -444,9 +444,9 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 		pr = calloc (1, sizeof (*pr));
 		if (pr == NULL) {
-			pkg_emit_errno("pkg_jobs_add_universe", "calloc: "
-					"struct pkg_job_provide");
-			return (EPKG_FATAL);
+			pkg_fatal_errno("%s: %s", __func__,
+				  "pkg_jobs_add_universe: calloc: %s",
+				  "struct pkg_job_provide");
 		}
 
 		pr->un = unit;
@@ -841,7 +841,8 @@ pkg_jobs_universe_new(struct pkg_jobs *j)
 
 	universe = calloc(1, sizeof(struct pkg_jobs_universe));
 	if (universe == NULL) {
-		pkg_emit_errno("pkg_jobs_universe_new", "calloc");
+		pkg_errno("%s: %s", __func__,
+			  "pkg_jobs_universe_new: calloc");
 		return (NULL);
 	}
 
@@ -887,6 +888,11 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 					if (strcmp(d->uid, unit->pkg->uid) == 0) {
 						free(d->uid);
 						d->uid = strdup(new_uid);
+						if (d->uid == NULL) {
+							pkg_errno("%s: %s",
+							    __func__, "strdup");
+							return;
+						}
 					}
 				}
 			}
@@ -896,13 +902,25 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	replacement = calloc(1, sizeof(*replacement));
 	if (replacement != NULL) {
 		replacement->old_uid = strdup(unit->pkg->uid);
+		if (replacement->old_uid == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return;
+		}
 		replacement->new_uid = strdup(new_uid);
+		if (replacement->new_uid == NULL) {
+			pkg_errno("%s: %s", __func__, "strdup");
+			return;
+		}
 		LL_PREPEND(universe->uid_replaces, replacement);
 	}
 
 	HASH_DELETE(hh, universe->items, unit);
 	free(unit->pkg->uid);
 	unit->pkg->uid = strdup(new_uid);
+	if (unit->pkg->uid == NULL) {
+		pkg_errno("%s: %s", __func__, "strdup");
+		return;
+	}
 
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)
