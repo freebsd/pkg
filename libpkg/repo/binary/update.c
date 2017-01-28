@@ -569,7 +569,7 @@ cleanup:
 		rename(path, name);
 	}
 	unlink(path);
-	pkg_register_cleanup_callback(rollback_repo, (void *)name);
+	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
 	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
 	if (map != NULL && map != MAP_FAILED)
