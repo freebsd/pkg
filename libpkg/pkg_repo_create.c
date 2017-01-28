@@ -89,7 +89,7 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 {
 	struct pkg_conflict *new;
 
-	pkg_conflict_new(&new);
+	new = xcalloc(1, sizeof(*new));
 	new->uid = xstrdup(uniqueid);
 
 	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);

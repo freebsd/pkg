@@ -509,7 +509,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 {
 	const ucl_object_t *cur, *enabled, *env;
 	ucl_object_iter_t it = NULL;
-	struct keyval *kv;
+	struct pkg_kv *kv;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
@@ -681,9 +681,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	if (env != NULL) {
 		it = NULL;
 		while ((cur = ucl_iterate_object(env, &it, true))) {
-			kv = xcalloc(1, sizeof(*kv));
-			kv->key = xstrdup(ucl_object_key(cur));
-			kv->val = xstrdup(ucl_object_tostring_forced(cur));
+			kv = pkg_kv_new(ucl_object_key(cur),
+			    ucl_object_tostring_forced(cur));
 			LL_APPEND(r->env, kv);
 		}
 	}
@@ -1286,7 +1285,7 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 static void
 pkg_repo_free(struct pkg_repo *r)
 {
-	struct keyval *kv, *tmp;
+	struct pkg_kv *kv, *tmp;
 
 	free(r->url);
 	free(r->name);
@@ -1298,9 +1297,7 @@ pkg_repo_free(struct pkg_repo *r)
 	}
 	LL_FOREACH_SAFE(r->env, kv, tmp) {
 		LL_DELETE(r->env, kv);
-		free(kv->val);
-		free(kv->key);
-		free(kv);
+		pkg_kv_free(kv);
 	}
 	free(r);
 }

@@ -497,12 +497,6 @@ typedef enum _pkg_repo_flags {
 	REPO_FLAGS_USE_IPV6 = (1U << 1)
 } pkg_repo_flags;
 
-struct keyval {
-	char *key;
-	char *val;
-	struct keyval *next;
-};
-
 struct pkg_repo {
 	struct pkg_repo_ops *ops;
 
@@ -535,7 +529,7 @@ struct pkg_repo {
 	unsigned int priority;
 
 	pkg_repo_flags flags;
-	struct keyval *env;
+	struct pkg_kv *env;
 
 	/* Opaque repository data */
 	void *priv;
@@ -662,28 +656,16 @@ int pkg_validate(struct pkg *pkg, struct pkgdb *db);
 
 void pkg_list_free(struct pkg *, pkg_list);
 
-int pkg_kv_new(struct pkg_kv **, const char *key, const char *val);
+struct pkg_kv *pkg_kv_new(const char *key, const char *val);
 void pkg_kv_free(struct pkg_kv *);
 
-int pkg_dep_new(struct pkg_dep **);
 void pkg_dep_free(struct pkg_dep *);
-
-int pkg_file_new(struct pkg_file **);
 void pkg_file_free(struct pkg_file *);
-
-int pkg_dir_new(struct pkg_dir **);
-void pkg_dir_free(struct pkg_dir *);
-
-int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
+void pkg_conflict_free(struct pkg_conflict *);
+void pkg_config_file_free(struct pkg_config_file *);
 
 int pkg_jobs_resolv(struct pkg_jobs *jobs);
-
-int pkg_conflict_new(struct pkg_conflict **);
-void pkg_conflict_free(struct pkg_conflict *);
-
-int pkg_config_file_new(struct pkg_config_file **);
-void pkg_config_file_free(struct pkg_config_file *);
 
 struct packing;
 

@@ -641,8 +641,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 		}
 	}
 
-	pkg_dep_new(&d);
-
+	d = xcalloc(1, sizeof(*d));
 	d->origin = xstrdup(origin);
 	d->name = xstrdup(name);
 	if (version != NULL && version[0] != '\0')
@@ -666,8 +665,8 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	assert(origin != NULL && origin[0] != '\0');
 
 	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s", origin, name);
-	pkg_dep_new(&d);
 
+	d = xcalloc(1, sizeof(*d));
 	d->origin = xstrdup(origin);
 	d->name = xstrdup(name);
 	if (version != NULL && version[0] != '\0')
@@ -711,7 +710,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 		}
 	}
 
-	pkg_file_new(&f);
+	f = xcalloc(1, sizeof(*f));
 	strlcpy(f->path, path, sizeof(f->path));
 
 	if (sum != NULL)
@@ -752,7 +751,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 			pkg_emit_error("duplicate file listing: %s, ignoring", path);
 		}
 	}
-	pkg_config_file_new(&f);
+	f = xcalloc(1, sizeof(*f));
 	strlcpy(f->path, path, sizeof(f->path));
 
 	if (content != NULL)
@@ -821,7 +820,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		}
 	}
 
-	pkg_dir_new(&d);
+	d = xcalloc(1, sizeof(*d));
 	strlcpy(d->path, path, sizeof(d->path));
 
 	if (uname != NULL)
@@ -1001,7 +1000,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
-		pkg_option_new(&o);
+		o = xcalloc(1, sizeof(*o));
 		o->key = xstrdup(key);
 	} else if ( o->value != NULL) {
 		if (developer_mode) {
@@ -1037,7 +1036,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
-		pkg_option_new(&o);
+		o = xcalloc(1, sizeof(*o));
 		o->key = xstrdup(key);
 	} else if ( o->default_value != NULL) {
 		if (developer_mode) {
@@ -1073,7 +1072,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
-		pkg_option_new(&o);
+		o = xcalloc(1, sizeof(*o));
 		o->key = xstrdup(key);
 	} else if ( o->description != NULL) {
 		if (developer_mode) {
@@ -1149,7 +1148,7 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 	if (c != NULL)
 		return (EPKG_OK);
 
-	pkg_conflict_new(&c);
+	c = xcalloc(1, sizeof(*c));
 	c->uid = xstrdup(uniqueid);
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
@@ -1233,7 +1232,7 @@ pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *t
 		}
 	}
 
-	pkg_kv_new(&kv, key, val);
+	kv = pkg_kv_new(key, val);
 	LL_APPEND(*list, kv);
 
 	return (EPKG_OK);
@@ -1303,7 +1302,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		LL_FREE(pkg->dirs, pkg_dir_free);
+		LL_FREE(pkg->dirs, free);
 		kh_destroy_pkg_dirs(pkg->dirhash);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;

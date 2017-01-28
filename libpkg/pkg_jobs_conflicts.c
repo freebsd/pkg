@@ -164,14 +164,8 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 {
 	struct pkg_conflict *c1, *c2, *test;
 
-	pkg_conflict_new(&c1);
-	if (c1 == NULL)
-		return;
-	pkg_conflict_new(&c2);
-	if (c2 == NULL) {
-		pkg_conflict_free(c1);
-		return;
-	}
+	c1 = xcalloc(1, sizeof(*c1));
+	c2 = xcalloc(1, sizeof(*c2));
 
 	c1->type = c2->type = type;
 	HASH_FIND_STR(p1->conflicts, p2->uid, test);
@@ -266,7 +260,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	HASH_FIND_STR(p2->conflicts, p1->uid, c2);
 
 	if (c1 == NULL) {
-		pkg_conflict_new(&c1);
+		c1 = xcalloc(1, sizeof(*c1));
 		c1->type = type;
 		c1->uid = xstrdup(p2->uid);
 
@@ -278,7 +272,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	}
 
 	if (c2 == NULL) {
-		pkg_conflict_new(&c2);
+		c2 = xcalloc(1, sizeof(*c2));
 		c2->type = type;
 
 		c2->uid = xstrdup(p1->uid);

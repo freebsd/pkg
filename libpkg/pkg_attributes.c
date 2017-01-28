@@ -35,14 +35,6 @@
 /*
  * Dep
  */
-int
-pkg_dep_new(struct pkg_dep **d)
-{
-	*d = xcalloc(1, sizeof(struct pkg_dep));
-
-	return (EPKG_OK);
-}
-
 void
 pkg_dep_free(struct pkg_dep *d)
 {
@@ -88,44 +80,11 @@ pkg_dep_is_locked(struct pkg_dep const * const d)
 /*
  * File
  */
-
-int
-pkg_file_new(struct pkg_file **file)
-{
-	*file = xcalloc(1, sizeof(struct pkg_file));
-
-	(*file)->perm = 0;
-	(*file)->fflags = 0;
-
-	return (EPKG_OK);
-}
-
 void
 pkg_file_free(struct pkg_file *file)
 {
 	free(file->sum);
 	free(file);
-}
-
-/*
- * Dir
- */
-
-int
-pkg_dir_new(struct pkg_dir **d)
-{
-	*d = xcalloc(1, sizeof(struct pkg_dir));
-
-	(*d)->perm = 0;
-	(*d)->fflags = 0;
-
-	return (EPKG_OK);
-}
-
-void
-pkg_dir_free(struct pkg_dir *d)
-{
-	free(d);
 }
 
 /*
@@ -144,15 +103,6 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 /*
  * Option
  */
-
-int
-pkg_option_new(struct pkg_option **option)
-{
-	*option = xcalloc(1, sizeof(struct pkg_option));
-
-	return (EPKG_OK);
-}
-
 void
 pkg_option_free(struct pkg_option *option)
 {
@@ -169,15 +119,6 @@ pkg_option_free(struct pkg_option *option)
 /*
  * Conflicts
  */
-
-int
-pkg_conflict_new(struct pkg_conflict **c)
-{
-	*c = xcalloc(1, sizeof(struct pkg_conflict));
-
-	return (EPKG_OK);
-}
-
 void
 pkg_conflict_free(struct pkg_conflict *c)
 {
@@ -192,14 +133,6 @@ pkg_conflict_free(struct pkg_conflict *c)
 /*
  * Config files
  */
-int
-pkg_config_file_new(struct pkg_config_file **c)
-{
-	*c = xcalloc(1, sizeof(struct pkg_config_file));
-
-	return (EPKG_OK);
-}
-
 void
 pkg_config_file_free(struct pkg_config_file *c)
 {
@@ -215,15 +148,16 @@ pkg_config_file_free(struct pkg_config_file *c)
  * kv
  */
 
-int
-pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
+struct pkg_kv *
+pkg_kv_new(const char *key, const char *val)
 {
-	*c = xcalloc(1, sizeof(struct pkg_kv));
+	struct pkg_kv *c;
 
-	(*c)->key = xstrdup(key);
-	(*c)->value = xstrdup(val);
+	c = xcalloc(1, sizeof(struct pkg_kv));
+	c->key = xstrdup(key);
+	c->value = xstrdup(val);
 
-	return (EPKG_OK);
+	return (c);
 }
 
 void
