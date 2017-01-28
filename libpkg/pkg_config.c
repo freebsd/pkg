@@ -507,8 +507,9 @@ disable_plugins_if_static(void)
 static void
 add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_init_flags flags)
 {
-	const ucl_object_t *cur, *enabled;
+	const ucl_object_t *cur, *enabled, *env;
 	ucl_object_iter_t it = NULL;
+	struct keyval *kv;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
@@ -519,6 +520,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
+	env = NULL;
 	enabled = ucl_object_find_key(obj, "enabled");
 	if (enabled == NULL)
 		enabled = ucl_object_find_key(obj, "ENABLED");
@@ -611,6 +613,13 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			priority = ucl_object_toint(cur);
+		} else if (strcasecmp(key, "env") == 0) {
+			if (cur->type != UCL_OBJECT) {
+				pkg_emit_error("Expecting an object for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+			}
+			env = cur;
 		}
 	}
 
@@ -668,6 +677,16 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		r->flags = REPO_FLAGS_USE_IPV4;
 	else if (use_ipvx == 6)
 		r->flags = REPO_FLAGS_USE_IPV6;
+
+	if (env != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(env, &it, true))) {
+			kv = calloc(1, sizeof(*kv));
+			kv->key = strdup(ucl_object_key(cur));
+			kv->val = strdup(ucl_object_tostring_forced(cur));
+			LL_APPEND(r->env, kv);
+		}
+	}
 }
 
 static void
@@ -1267,6 +1286,8 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 static void
 pkg_repo_free(struct pkg_repo *r)
 {
+	struct keyval *kv, *tmp;
+
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
@@ -1274,6 +1295,12 @@ pkg_repo_free(struct pkg_repo *r)
 	if (r->ssh != NULL) {
 		fprintf(r->ssh, "quit\n");
 		pclose(r->ssh);
+	}
+	LL_FOREACH_SAFE(r->env, kv, tmp) {
+		LL_DELETE(r->env, kv);
+		free(kv->val);
+		free(kv->key);
+		free(kv);
 	}
 	free(r);
 }

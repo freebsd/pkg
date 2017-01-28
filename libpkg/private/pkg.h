@@ -496,6 +496,12 @@ typedef enum _pkg_repo_flags {
 	REPO_FLAGS_USE_IPV6 = (1U << 1)
 } pkg_repo_flags;
 
+struct keyval {
+	char *key;
+	char *val;
+	struct keyval *next;
+};
+
 struct pkg_repo {
 	struct pkg_repo_ops *ops;
 
@@ -528,6 +534,7 @@ struct pkg_repo {
 	unsigned int priority;
 
 	pkg_repo_flags flags;
+	struct keyval *env;
 
 	/* Opaque repository data */
 	void *priv;
