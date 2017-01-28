@@ -223,7 +223,7 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 	for (i = 0; manifest_keys[i].key != NULL; i++) {
 		HASH_FIND_STR(*key, manifest_keys[i].key, k);
 		if (k == NULL) {
-			k = calloc(1, sizeof(struct pkg_manifest_key));
+			k = xcalloc(1, sizeof(struct pkg_manifest_key));
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
 			k->valid_type = manifest_keys[i].valid_type;
@@ -366,7 +366,7 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 		/* Remove flags from the offset */
 		offset &= STRING_FLAG_MASK;
 		dest = (char **) ((unsigned char *)pkg + offset);
-		*dest = strdup(str);
+		*dest = xstrdup(str);
 
 		if (buf) {
 			utstring_free(buf);
@@ -950,9 +950,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
 	if (pkg->abi == NULL && pkg->arch != NULL)
-		pkg->abi = strdup(pkg->arch);
+		pkg->abi = xstrdup(pkg->arch);
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
-	pkg->arch = strdup(legacyarch);
+	pkg->arch = xstrdup(legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
 	    UCL_STRING_TRIM), "name", 4, false);
@@ -1153,7 +1153,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
 				if (file->sum == NULL)
-					file->sum = strdup("-");
+					file->sum = xstrdup("-");
 
 				urlencode(file->path, &tmpsbuf);
 				if (map == NULL)
@@ -1298,8 +1298,8 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	int rc;
 
 	if (pdigest != NULL) {
-		*pdigest = malloc(sizeof(digest) * 2 + 1);
-		sign_ctx = malloc(sizeof(SHA256_CTX));
+		*pdigest = xmalloc(sizeof(digest) * 2 + 1);
+		sign_ctx = xmalloc(sizeof(SHA256_CTX));
 		sha256_init(sign_ctx);
 	}
 
@@ -1354,7 +1354,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 		return (rc);
 	}
 
-	*dest = strdup(utstring_body(b));
+	*dest = xstrdup(utstring_body(b));
 	utstring_free(b);
 
 	return (rc);

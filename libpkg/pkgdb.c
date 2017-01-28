@@ -127,7 +127,7 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 		else
 			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
 
-		re = malloc(sizeof(regex_t));
+		re = xmalloc(sizeof(regex_t));
 		if (regcomp(re, regex, cflags) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
@@ -947,12 +947,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 		if (reponame == NULL || strcasecmp(r->name, reponame) == 0) {
 			/* We need read only access here */
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
-				item = malloc(sizeof(*item));
-				if (item == NULL) {
-					pkg_emit_errno("malloc", "_pkg_repo_list_item");
-					return (EPKG_FATAL);
-				}
-
+				item = xmalloc(sizeof(*item));
 				r->ops->init(r);
 				item->repo = r;
 				LL_PREPEND(db->repos, item);
@@ -1060,11 +1055,8 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 		db = *db_p;
 	}
 
-	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb");
-		return (EPKG_FATAL);
-	}
-
+	if (!reopen)
+		db = xcalloc(1, sizeof(struct pkgdb));
 	db->prstmt_initialized = false;
 
 	if (!reopen) {
@@ -2451,7 +2443,7 @@ get_sql_string(sqlite3 *s, const char *sql, char **res)
 	if (ret == SQLITE_ROW) {
 		const unsigned char *tmp;
 		tmp = sqlite3_column_text(stmt, 0);
-		*res = (tmp == NULL ? NULL : strdup(tmp));
+		*res = (tmp == NULL ? NULL : xstrdup(tmp));
 	}
 
 	if (ret == SQLITE_DONE)
@@ -2654,7 +2646,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 		return (EPKG_FATAL);
 	}
 	sqlite3_finalize(stmt);
-	file->sum = strdup(sum);
+	file->sum = xstrdup(sum);
 
 	return (EPKG_OK);
 }
@@ -2701,7 +2693,7 @@ pkgshell_open(const char **reponame)
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
-	*reponame = strdup(localpath);
+	*reponame = xstrdup(localpath);
 }
 
 static int

@@ -177,7 +177,7 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 		strlcpy(p->prefix, line, sizeof(p->prefix));
 
 	if (p->pkg->prefix == NULL)
-		p->pkg->prefix = strdup(line);
+		p->pkg->prefix = xstrdup(line);
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
@@ -199,8 +199,8 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	tmp = strrchr(line, '-');
 	tmp[0] = '\0';
 	tmp++;
-	p->pkg->name = strdup(line);
-	p->pkg->version = strdup(tmp);
+	p->pkg->name = xstrdup(line);
+	p->pkg->version = xstrdup(tmp);
 
 	return (EPKG_OK);
 }
@@ -210,7 +210,7 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 {
 	if (*line != '\0') {
 		free(p->pkgdep);
-		p->pkgdep = strdup(line);
+		p->pkgdep = xstrdup(line);
 	}
 	return (EPKG_OK);
 }
@@ -431,9 +431,9 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 {
 	free(p->uname);
 	if (line[0] == '\0')
-		p->uname = strdup("root");
+		p->uname = xstrdup("root");
 	else
-		p->uname = strdup(line);
+		p->uname = xstrdup(line);
 	return (EPKG_OK);
 }
 
@@ -442,9 +442,9 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 {
 	free(p->gname);
 	if (line[0] == '\0')
-		p->gname = strdup("wheel");
+		p->gname = xstrdup("wheel");
 	else
-		p->gname = strdup(line);
+		p->gname = xstrdup(line);
 	return (EPKG_OK);
 }
 
@@ -467,12 +467,12 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
 		free(p->pkg->origin);
-		p->pkg->origin = strdup(line);
+		p->pkg->origin = xstrdup(line);
 	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
 		line += 8;
 		/* OPTIONS:+OPTION -OPTION */
 		if (line[0] != '\0') {
-			line_options2 = line_options = strdup(line);
+			line_options2 = line_options = xstrdup(line);
 			while ((option = strsep(&line_options, " ")) != NULL) {
 				if ((option[0] == '+' || option[0] == '-') &&
 				    option[1] != '\0' && isupper(option[1]))
@@ -506,13 +506,13 @@ parse_post(struct plist *p)
 	if ((env = getenv("FORCE_POST")) == NULL)
 		return;
 
-	p->post_patterns.buf = strdup(env);
+	p->post_patterns.buf = xstrdup(env);
 	while ((token = strsep(&p->post_patterns.buf, " \t")) != NULL) {
 		if (token[0] == '\0')
 			continue;
 		if (p->post_patterns.len >= p->post_patterns.cap) {
 			p->post_patterns.cap += 10;
-			p->post_patterns.patterns = realloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
+			p->post_patterns.patterns = xrealloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
 		}
 		p->post_patterns.patterns[p->post_patterns.len++] = token;
 	}
@@ -736,8 +736,8 @@ populate_keywords(struct plist *p)
 	int i;
 
 	for (i = 0; keyacts[i].key != NULL; i++) {
-		k = calloc(1, sizeof(struct keyword));
-		a = malloc(sizeof(struct action));
+		k = xcalloc(1, sizeof(struct keyword));
+		a = xmalloc(sizeof(struct action));
 		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
 		a->perform = keyacts[i].action;
 		LL_APPEND(k->actions, a);
@@ -804,7 +804,7 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 	const char *key;
 
 	if (*a == NULL)
-		*a = calloc(1, sizeof(struct file_attr));
+		*a = xcalloc(1, sizeof(struct file_attr));
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		key = ucl_object_key(cur);
@@ -812,12 +812,12 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 			continue;
 		if (!strcasecmp(key, "owner") && cur->type == UCL_STRING) {
 			free((*a)->owner);
-			(*a)->owner = strdup(ucl_object_tostring(cur));
+			(*a)->owner = xstrdup(ucl_object_tostring(cur));
 			continue;
 		}
 		if (!strcasecmp(key, "group") && cur->type == UCL_STRING) {
 			free((*a)->group);
-			(*a)->group = strdup(ucl_object_tostring(cur));
+			(*a)->group = xstrdup(ucl_object_tostring(cur));
 			continue;
 		}
 		if (!strcasecmp(key, "mode")) {
@@ -851,11 +851,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
-		args = malloc((spaces + 1)* sizeof(char *));
-		if (args == NULL) {
-			return (EPKG_FATAL);
-		}
-		tofree = buf = strdup(line);
+		args = xmalloc((spaces + 1)* sizeof(char *));
+		tofree = buf = xstrdup(line);
 		while (buf != NULL) {
 			args[argc++] = pkg_utils_tokenize(&buf);
 		}
@@ -915,14 +912,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj, "messages"))) {
 		while ((cur = ucl_iterate_object(o, &it, true))) {
 			elt = ucl_object_find_key(cur, "message");
-			msg = calloc(1, sizeof(*msg));
-
-			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
-				goto keywords_cleanup;
-			}
-
-			msg->str = strdup(ucl_object_tostring(elt));
+			msg = xcalloc(1, sizeof(*msg));
+			msg->str = xstrdup(ucl_object_tostring(elt));
 			msg->type = PKG_MESSAGE_ALWAYS;
 			elt = ucl_object_find_key(cur, "type");
 			if (elt != NULL) {
@@ -1049,11 +1040,11 @@ parse_keyword_args(char *args, char *keyword)
 		}
 	}
 
-	attr = calloc(1, sizeof(struct file_attr));
+	attr = xcalloc(1, sizeof(struct file_attr));
 	if (owner != NULL && *owner != '\0')
-		attr->owner = strdup(owner);
+		attr->owner = xstrdup(owner);
 	if (group != NULL && *group != '\0')
-		attr->group = strdup(group);
+		attr->group = xstrdup(group);
 	if (set != NULL) {
 		attr->mode = getmode(set, 0);
 		free(set);
@@ -1176,7 +1167,7 @@ plist_new(struct pkg *pkg, const char *stage)
 {
 	struct plist *p;
 
-	p = calloc(1, sizeof(struct plist));
+	p = xcalloc(1, sizeof(struct plist));
 	if (p == NULL)
 		return (NULL);
 
@@ -1185,8 +1176,8 @@ plist_new(struct pkg *pkg, const char *stage)
 		strlcpy(p->prefix, pkg->prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
-	p->uname = strdup("root");
-	p->gname = strdup("wheel");
+	p->uname = xstrdup("root");
+	p->gname = xstrdup("wheel");
 
 	utstring_new(p->pre_install_buf);
 	utstring_new(p->post_install_buf);

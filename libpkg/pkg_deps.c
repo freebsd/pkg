@@ -37,6 +37,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg_deps.h"
+#include "private/xmalloc.h"
 #include "utlist.h"
 
 struct pkg_dep_formula *
@@ -81,21 +82,8 @@ pkg_deps_parse_formula(const char *in)
 				}
 				else {
 					/* Spaces after the name */
-					cur_item = calloc(1, sizeof(*cur_item));
-
-					if (cur_item == NULL) {
-						pkg_emit_errno("malloc", "struct pkg_dep_formula_item");
-
-						return (NULL);
-					}
-					cur_item->name = malloc(p - c + 1);
-
-					if (cur_item->name == NULL) {
-						pkg_emit_errno("malloc", "cur->name");
-
-						return (NULL);
-					}
-
+					cur_item = xcalloc(1, sizeof(*cur_item));
+					cur_item->name = xmalloc(p - c + 1);
 					strlcpy(cur_item->name, c, p - c + 1);
 					next_state = st_parse_after_name;
 				}
@@ -105,21 +93,8 @@ pkg_deps_parse_formula(const char *in)
 					state = st_error;
 				}
 				else {
-					cur_item = calloc(1, sizeof(*cur_item));
-
-					if (cur_item == NULL) {
-						pkg_emit_errno("malloc", "struct pkg_dep_formula_item");
-
-						return (NULL);
-					}
-					cur_item->name = malloc(p - c + 1);
-
-					if (cur_item->name == NULL) {
-						pkg_emit_errno("malloc", "cur->name");
-
-						return (NULL);
-					}
-
+					cur_item = xcalloc(1, sizeof(*cur_item));
+					cur_item->name = xmalloc(p - c + 1);
 					strlcpy(cur_item->name, c, p - c + 1);
 					state = st_parse_after_name;
 				}
@@ -235,21 +210,8 @@ pkg_deps_parse_formula(const char *in)
 			}
 			else {
 				if (p - c > 0) {
-					cur_ver = calloc(1, sizeof(*cur_ver));
-
-					if (cur_ver == NULL) {
-						pkg_emit_errno("malloc", "struct pkg_dep_version");
-
-						return (NULL);
-					}
-					cur_ver->ver = malloc(p - c + 1);
-
-					if (cur_ver->ver == NULL) {
-						pkg_emit_errno("malloc", "cur_ver->ver");
-
-						return (NULL);
-					}
-
+					cur_ver = xcalloc(1, sizeof(*cur_ver));
+					cur_ver->ver = xmalloc(p - c + 1);
 					strlcpy(cur_ver->ver, c, p - c + 1);
 					cur_ver->op = cur_op;
 					assert(cur_item != NULL);
@@ -264,13 +226,7 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_option_start:
-			cur_opt = calloc(1, sizeof(*cur_opt));
-			if (cur_opt == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_dep_option");
-
-				return (NULL);
-			}
-
+			cur_opt = xcalloc(1, sizeof(*cur_opt));
 			if (*p == '+') {
 				cur_opt->on = true;
 			}
@@ -289,14 +245,7 @@ pkg_deps_parse_formula(const char *in)
 			}
 			else {
 				if (p - c > 0) {
-					cur_opt->opt = malloc(p - c + 1);
-
-					if (cur_opt->opt == NULL) {
-						pkg_emit_errno("malloc", "cur_opt->opt");
-
-						return (NULL);
-					}
-
+					cur_opt->opt = xmalloc(p - c + 1);
 					strlcpy(cur_opt->opt, c, p - c + 1);
 					assert(cur_item != NULL);
 					DL_APPEND(cur_item->options, cur_opt);
@@ -313,13 +262,7 @@ pkg_deps_parse_formula(const char *in)
 			assert(cur_item != NULL);
 
 			if (cur == NULL) {
-				cur = calloc(1, sizeof(*cur));
-
-				if (cur == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_dep_formula");
-
-					return (NULL);
-				}
+				cur = xcalloc(1, sizeof(*cur));
 			}
 
 			DL_APPEND(cur->items, cur_item);
@@ -335,13 +278,7 @@ pkg_deps_parse_formula(const char *in)
 			assert(cur_item != NULL);
 
 			if (cur == NULL) {
-				cur = calloc(1, sizeof(*cur));
-
-				if (cur == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_dep_formula");
-
-					return (NULL);
-				}
+				cur = xcalloc(1, sizeof(*cur));
 			}
 
 			DL_APPEND(cur->items, cur_item);
@@ -486,13 +423,7 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 		return (NULL);
 	}
 
-	res = malloc(rlen + 1);
-
-	if (res == NULL) {
-		pkg_emit_errno("malloc", "string");
-
-		return (NULL);
-	}
+	res = xmalloc(rlen + 1);
 
 	p = res;
 
@@ -553,13 +484,7 @@ pkg_deps_formula_tosql(struct pkg_dep_formula_item *f)
 		return (NULL);
 	}
 
-	res = malloc(rlen + 1);
-
-	if (res == NULL) {
-		pkg_emit_errno("malloc", "string");
-
-		return (NULL);
-	}
+	res = xmalloc(rlen + 1);
 
 	p = res;
 

@@ -347,7 +347,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	/* if no arch autodetermine it */
 	if (pkg->abi == NULL) {
 		pkg_get_myarch(arch, BUFSIZ);
-		pkg->abi = strdup(arch);
+		pkg->abi = xstrdup(arch);
 		defaultarch = true;
 	}
 
@@ -372,9 +372,9 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 		if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
 			size = pmatch[1].rm_eo - pmatch[1].rm_so;
-			pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
+			pkg->www = xstrndup(&pkg->desc[pmatch[1].rm_so], size);
 		} else {
-			pkg->www = strdup("UNKNOWN");
+			pkg->www = xstrdup("UNKNOWN");
 		}
 		regfree(&preg);
 	}

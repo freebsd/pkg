@@ -261,7 +261,7 @@ rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *
 	}
 
 	max_len = RSA_size(rsa->key);
-	*sigret = calloc(1, max_len + 1);
+	*sigret = xcalloc(1, max_len + 1);
 
 	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
 	if (sha256 == NULL)
@@ -286,7 +286,7 @@ rsa_new(struct rsa_key **rsa, pkg_password_cb *cb, char *path)
 {
 	assert(*rsa == NULL);
 
-	*rsa = calloc(1, sizeof(struct rsa_key));
+	*rsa = xcalloc(1, sizeof(struct rsa_key));
 	(*rsa)->path = path;
 	(*rsa)->pw_cb = cb;
 

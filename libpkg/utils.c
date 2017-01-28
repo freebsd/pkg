@@ -51,6 +51,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/xmalloc.h"
 
 int
 mkdirs(const char *_path)
@@ -106,11 +107,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
+	*buffer = xmalloc(st.st_size + 1);
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		pkg_emit_errno("read", path);
@@ -155,11 +152,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
+	*buffer = xmalloc(st.st_size + 1);
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		pkg_emit_errno("read", path);
@@ -284,7 +277,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 		in++;
 	}
 
-	*dest = strdup(utstring_body(buf));
+	*dest = xstrdup(utstring_body(buf));
 	utstring_free(buf);
 	
 	return (EPKG_OK);
@@ -736,7 +729,7 @@ mkdirat_p(int fd, const char *path)
 	const char *next;
 	char *walk, pathdone[MAXPATHLEN];
 
-	walk = strdup(path);
+	walk = xstrdup(path);
 	pathdone[0] = '\0';
 
 	while ((next = strsep(&walk, "/")) != NULL) {

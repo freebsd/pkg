@@ -59,12 +59,7 @@ pkg_repo_binary_it_new(struct pkg_repo *repo, sqlite3_stmt *s, short flags)
 	struct pkg_repo_it *it;
 	struct pkgdb fakedb;
 
-	it = malloc(sizeof(*it));
-	if (it == NULL) {
-		pkg_emit_errno("malloc", "pkg_repo_it");
-		sqlite3_finalize(s);
-		return (NULL);
-	}
+	it = xmalloc(sizeof(*it));
 
 	it->ops = &pkg_repo_binary_it_ops;
 	it->flags = flags;

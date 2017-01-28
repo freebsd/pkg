@@ -105,11 +105,7 @@ shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
 
 	path_len = strlen(dir) + strlen(shlib_file) + 2;
 
-	sl = calloc(1, sizeof(struct shlib) + path_len);
-	if (sl == NULL) {
-		warnx("Out of memory");
-		return (EPKG_FATAL);
-	}
+	sl = xcalloc(1, sizeof(struct shlib) + path_len);
 
 	strlcpy(sl->path, dir, path_len);
 	dir_len = strlcat(sl->path, "/", path_len);
@@ -276,11 +272,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	if (i > 0)
 		buflen += i * numdirs;
 
-	dirlist = calloc(1, buflen);
-	if (dirlist == NULL) {
-		warnx("Out of memory");
-		return (EPKG_FATAL);
-	}
+	dirlist = xcalloc(1, buflen);
 	buf = (char *)dirlist + numdirs * sizeof(char *);
 
 	buf[0] = '\0';
@@ -424,8 +416,7 @@ read_dirs_from_file(const char *hintsfile, const char *listfile)
 			warnx("%s:%d: trailing characters ignored",
 			    listfile, linenum);
 
-		if ((sp = strdup(sp)) == NULL)
-			errx(1, "Out of memory");
+		sp = xstrdup(sp);
 		add_dir(hintsfile, sp, 0);
 	}
 

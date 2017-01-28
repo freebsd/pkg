@@ -1926,16 +1926,9 @@ new_percent_esc(void)
 {
 	struct percent_esc	*p;
 
-	p = calloc(1, sizeof(struct percent_esc));
-	if (p != NULL) {
-		utstring_new(p->item_fmt);
-		utstring_new(p->sep_fmt);
-	}
-	if (p == NULL || p->item_fmt == NULL || p->sep_fmt == NULL) {
-		/* out of memory */
-		free_percent_esc(p);
-		return NULL;
-	}
+	p = xcalloc(1, sizeof(struct percent_esc));
+	utstring_new(p->item_fmt);
+	utstring_new(p->sep_fmt);
 	return (p);
 }
 

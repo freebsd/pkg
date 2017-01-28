@@ -166,8 +166,8 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	}
 
 	/* Create the dirs in cachedir */
-	dir = strdup(dest);
-	if (dir == NULL || (path = dirname(dir)) == NULL) {
+	dir = xstrdup(dest);
+	if ((path = dirname(dir)) == NULL) {
 		pkg_emit_errno("dirname", dest);
 		retcode = EPKG_FATAL;
 		goto cleanup;

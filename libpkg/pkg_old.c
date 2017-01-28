@@ -93,14 +93,14 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 	}
 
 	pkg_get_myarch(myarch, BUFSIZ);
-	pkg->arch = strdup(myarch);
-	pkg->maintainer = strdup("unknown");
+	pkg->arch = xstrdup(myarch);
+	pkg->maintainer = xstrdup("unknown");
 	regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 	if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
 		size = pmatch[1].rm_eo - pmatch[1].rm_so;
-		pkg->www = strndup(&pkg->desc[pmatch[1].rm_so], size);
+		pkg->www = xstrndup(&pkg->desc[pmatch[1].rm_so], size);
 	} else {
-		pkg->www = strdup("UNKNOWN");
+		pkg->www = xstrdup("UNKNOWN");
 	}
 	regfree(&preg);
 

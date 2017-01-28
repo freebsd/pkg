@@ -128,13 +128,7 @@ pkg_solve_item_new(struct pkg_solve_variable *var)
 {
 	struct pkg_solve_item *result;
 
-	result = calloc(1, sizeof(struct pkg_solve_item));
-
-	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_item");
-		return (NULL);
-	}
-
+	result = xcalloc(1, sizeof(struct pkg_solve_item));
 	result->var = var;
 	result->inverse = 1;
 
@@ -146,13 +140,7 @@ pkg_solve_rule_new(enum pkg_solve_rule_type reason)
 {
 	struct pkg_solve_rule *result;
 
-	result = calloc(1, sizeof(struct pkg_solve_rule));
-
-	if(result == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_rule");
-		return (NULL);
-	}
-
+	result = xcalloc(1, sizeof(struct pkg_solve_rule));
 	result->reason = reason;
 
 	return (result);
@@ -842,26 +830,16 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	struct pkg_job_universe_item *un, *utmp;
 	size_t i = 0;
 
-	problem = calloc(1, sizeof(struct pkg_solve_problem));
-
-	if (problem == NULL) {
-		pkg_emit_errno("calloc", "pkg_solve_problem");
-		return (NULL);
-	}
+	problem = xcalloc(1, sizeof(struct pkg_solve_problem));
 
 	problem->j = j;
 	problem->nvars = j->universe->nitems;
-	problem->variables = calloc(problem->nvars, sizeof(struct pkg_solve_variable));
+	problem->variables = xcalloc(problem->nvars, sizeof(struct pkg_solve_variable));
 	problem->sat = picosat_init();
 	kv_init(problem->rules);
 
 	if (problem->sat == NULL) {
 		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
-		return (NULL);
-	}
-
-	if (problem->variables == NULL) {
-		pkg_emit_errno("calloc", "variables");
 		return (NULL);
 	}
 
@@ -1377,11 +1355,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 	}
 	else if (seen_add != 0 || seen_del != 0) {
 		if (seen_add > 0) {
-			res = calloc(1, sizeof(struct pkg_solved));
-			if (res == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
-				return;
-			}
+			res = xcalloc(1, sizeof(struct pkg_solved));
 			/* Pure install */
 			if (seen_del == 0) {
 				res->items[0] = add_var->unit;
@@ -1414,11 +1388,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				if (seen_add > 0 && cur_var == del_var)
 					continue;
 
-				res = calloc(1, sizeof(struct pkg_solved));
-				if (res == NULL) {
-					pkg_emit_errno("calloc", "pkg_solved");
-					return;
-				}
+				res = xcalloc(1, sizeof(struct pkg_solved));
 				res->items[0] = cur_var->unit;
 				res->type = PKG_SOLVED_DELETE;
 				DL_APPEND(j->jobs, res);

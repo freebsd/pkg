@@ -73,7 +73,7 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 				continue;
 
 			if ((u = fetchParseURL(line)) != NULL) {
-				m = malloc(sizeof(struct http_mirror));
+				m = xmalloc(sizeof(struct http_mirror));
 				m->url = u;
 				LL_APPEND(repo->http, m);
 			}
@@ -517,10 +517,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		pkg_url_scheme = true;
 
 		LL_FOREACH(repo->env, kv) {
-			kvtmp = calloc(1, sizeof(*kvtmp));
-			kvtmp->key = strdup(kv->key);
+			kvtmp = xcalloc(1, sizeof(*kvtmp));
+			kvtmp->key = xstrdup(kv->key);
 			if ((tmp = getenv(kv->key)) != NULL) {
-				kvtmp->val = strdup(tmp);
+				kvtmp->val = xstrdup(tmp);
 				LL_APPEND(envtorestore, kvtmp);
 			} else {
 				LL_APPEND(envtounset, kvtmp);

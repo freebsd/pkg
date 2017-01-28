@@ -173,7 +173,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		pkg_emit_error("Impossible to merge configuration file");
 	} else {
-		rcf->newcontent = strdup(utstring_body(newconf));
+		rcf->newcontent = xstrdup(utstring_body(newconf));
 		rcf->status = MERGE_SUCCESS;
 	}
 	utstring_free(newconf);
@@ -522,7 +522,7 @@ retry:
 
 			pkg_debug(1, "Populating config_file %s", f->path);
 			len = archive_entry_size(ae);
-			f->config->content = malloc(len + 1);
+			f->config->content = xmalloc(len + 1);
 			archive_read_data(a, f->config->content, len);
 			f->config->content[len] = '\0';
 			cfdata = f->config->content;
@@ -773,7 +773,7 @@ pkg_globmatch(char *pattern, const char *name)
 		if (pkg_version_cmp(path, g.gl_pathv[i]) == 1)
 			path = g.gl_pathv[i];
 	}
-	path = strdup(path);
+	path = xstrdup(path);
 	globfree(&g);
 
 	return (path);
@@ -1036,7 +1036,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 
 		free(pkg->digest);
-		pkg->digest = strdup(remote->digest);
+		pkg->digest = xstrdup(remote->digest);
 		/* only preserve flags is -A has not been passed */
 		if ((flags & PKG_ADD_AUTOMATIC) == 0)
 			pkg->automatic = remote->automatic;

@@ -173,14 +173,9 @@ pkg_checksum_add_entry(const char *key,
 {
 	struct pkg_checksum_entry *e;
 
-	e = malloc(sizeof(*e));
-	if (e == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_entry");
-		return;
-	}
-
+	e = xmalloc(sizeof(*e));
 	e->field = key;
-	e->value = strdup(value);
+	e->value = xstrdup(value);
 	DL_APPEND(*entries, e);
 }
 
@@ -379,15 +374,9 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 		sha256_update(&sign_ctx, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
-	*out = malloc(SHA256_BLOCK_SIZE);
-	if (*out != NULL) {
-		sha256_final(&sign_ctx, *out);
-		*outlen = SHA256_BLOCK_SIZE;
-	}
-	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_sha256");
-		*outlen = 0;
-	}
+	*out = xmalloc(SHA256_BLOCK_SIZE);
+	sha256_final(&sign_ctx, *out);
+	*outlen = SHA256_BLOCK_SIZE;
 }
 
 static void
@@ -396,7 +385,7 @@ pkg_checksum_hash_sha256_bulk(const unsigned char *in, size_t inlen,
 {
 	SHA256_CTX sign_ctx;
 
-	*out = malloc(SHA256_BLOCK_SIZE);
+	*out = xmalloc(SHA256_BLOCK_SIZE);
 	sha256_init(&sign_ctx);
 	sha256_update(&sign_ctx, in, inlen);
 	sha256_final(&sign_ctx, *out);
@@ -410,7 +399,7 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 	size_t r;
 
 	SHA256_CTX sign_ctx;
-	*out = malloc(SHA256_BLOCK_SIZE);
+	*out = xmalloc(SHA256_BLOCK_SIZE);
 	sha256_init(&sign_ctx);
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		sha256_update(&sign_ctx, buffer, r);
@@ -431,22 +420,16 @@ pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
 		blake2b_update (&st, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
-	*out = malloc(BLAKE2B_OUTBYTES);
-	if (*out != NULL) {
-		blake2b_final (&st, *out, BLAKE2B_OUTBYTES);
-		*outlen = BLAKE2B_OUTBYTES;
-	}
-	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2");
-		*outlen = 0;
-	}
+	*out = xmalloc(BLAKE2B_OUTBYTES);
+	blake2b_final (&st, *out, BLAKE2B_OUTBYTES);
+	*outlen = BLAKE2B_OUTBYTES;
 }
 
 static void
 pkg_checksum_hash_blake2_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen)
 {
-	*out = malloc(BLAKE2B_OUTBYTES);
+	*out = xmalloc(BLAKE2B_OUTBYTES);
 	blake2b(*out, BLAKE2B_OUTBYTES,  in, inlen, NULL, 0);
 	*outlen = BLAKE2B_OUTBYTES;
 }
@@ -463,7 +446,7 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2b_update(&st, buffer, r);
 
-	*out = malloc(BLAKE2B_OUTBYTES);
+	*out = xmalloc(BLAKE2B_OUTBYTES);
 	blake2b_final(&st, *out, BLAKE2B_OUTBYTES);
 	*outlen = BLAKE2B_OUTBYTES;
 }
@@ -481,22 +464,16 @@ pkg_checksum_hash_blake2s(struct pkg_checksum_entry *entries,
 		blake2s_update (&st, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
-	*out = malloc(BLAKE2S_OUTBYTES);
-	if (*out != NULL) {
-		blake2s_final (&st, *out, BLAKE2S_OUTBYTES);
-		*outlen = BLAKE2S_OUTBYTES;
-	}
-	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2s");
-		*outlen = 0;
-	}
+	*out = xmalloc(BLAKE2S_OUTBYTES);
+	blake2s_final (&st, *out, BLAKE2S_OUTBYTES);
+	*outlen = BLAKE2S_OUTBYTES;
 }
 
 static void
 pkg_checksum_hash_blake2s_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen)
 {
-	*out = malloc(BLAKE2S_OUTBYTES);
+	*out = xmalloc(BLAKE2S_OUTBYTES);
 	blake2s(*out, BLAKE2S_OUTBYTES,  in, inlen, NULL, 0);
 	*outlen = BLAKE2S_OUTBYTES;
 }
@@ -513,7 +490,7 @@ pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2s_update(&st, buffer, r);
 
-	*out = malloc(BLAKE2S_OUTBYTES);
+	*out = xmalloc(BLAKE2S_OUTBYTES);
 	blake2s_final(&st, *out, BLAKE2S_OUTBYTES);
 	*outlen = BLAKE2S_OUTBYTES;
 }
@@ -644,12 +621,7 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 			type = repo->meta->digest_format;
 	}
 
-	new_digest = malloc(pkg_checksum_type_size(type));
-	if (new_digest == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_type_t");
-		return (EPKG_FATAL);
-	}
-
+	new_digest = xmalloc(pkg_checksum_type_size(type));
 	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
 			!= EPKG_OK) {
 		free(new_digest);
@@ -687,7 +659,7 @@ pkg_checksum_data(const unsigned char *in, size_t inlen,
 	cksum->hbulkfunc(in, inlen, &out, &outlen);
 	if (out != NULL) {
 		if (cksum->encfunc != NULL) {
-			res = malloc(cksum->hlen);
+			res = xmalloc(cksum->hlen);
 			cksum->encfunc(out, outlen, res, cksum->hlen);
 			free(out);
 		}
@@ -749,7 +721,7 @@ pkg_checksum_fd(int fd, pkg_checksum_type_t type)
 	cksum->hfilefunc(fd, &out, &outlen);
 	if (out != NULL) {
 		if (cksum->encfunc != NULL) {
-			res = malloc(cksum->hlen);
+			res = xmalloc(cksum->hlen);
 			cksum->encfunc(out, outlen, res, cksum->hlen);
 			free(out);
 		} else {

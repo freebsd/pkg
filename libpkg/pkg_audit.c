@@ -339,9 +339,7 @@ pkg_audit_expand_entry(struct pkg_audit_entry *entry, struct pkg_audit_entry **h
 
 	LL_FOREACH(entry->packages, pcur) {
 		LL_FOREACH(pcur->names, ncur) {
-			n = calloc(1, sizeof(struct pkg_audit_entry));
-			if (n == NULL)
-				err(1, "calloc(audit_entry)");
+			n = xcalloc(1, sizeof(struct pkg_audit_entry));
 			n->pkgname = ncur->pkgname;
 			/* Set new entry as reference entry */
 			n->ref = true;
@@ -388,12 +386,10 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 	int i;
 
 	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(element, "vuln") == 0) {
-		ud->cur_entry = calloc(1, sizeof(struct pkg_audit_entry));
-		if (ud->cur_entry == NULL)
-			err(1, "calloc(audit_entry)");
+		ud->cur_entry = xcalloc(1, sizeof(struct pkg_audit_entry));
 		for (i = 0; attributes[i]; i += 2) {
 			if (strcasecmp(attributes[i], "vid") == 0) {
-				ud->cur_entry->id = strdup(attributes[i + 1]);
+				ud->cur_entry->id = xstrdup(attributes[i + 1]);
 				break;
 			}
 		}
@@ -404,9 +400,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		ud->state = VULNXML_PARSE_TOPIC;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "package") == 0) {
-		pkg_entry = calloc(1, sizeof(struct pkg_audit_package));
-		if (pkg_entry == NULL)
-			err(1, "calloc(audit_package_entry)");
+		pkg_entry = xcalloc(1, sizeof(struct pkg_audit_package));
 		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
@@ -415,16 +409,12 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "name") == 0) {
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
-		name_entry = calloc(1, sizeof(struct pkg_audit_pkgname));
-		if (name_entry == NULL)
-			err(1, "calloc(audit_pkgname_entry)");
+		name_entry = xcalloc(1, sizeof(struct pkg_audit_pkgname));
 		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "range") == 0) {
 		ud->state = VULNXML_PARSE_RANGE;
-		vers = calloc(1, sizeof(struct pkg_audit_versions_range));
-		if (vers == NULL)
-			err(1, "calloc(audit_versions)");
+		vers = xcalloc(1, sizeof(struct pkg_audit_versions_range));
 		LL_PREPEND(ud->cur_entry->packages->versions, vers);
 		ud->range_num = 0;
 	}
@@ -508,10 +498,10 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		/* On these states we do not need any data */
 		break;
 	case VULNXML_PARSE_TOPIC:
-		ud->cur_entry->desc = strndup(content, length);
+		ud->cur_entry->desc = xstrndup(content, length);
 		break;
 	case VULNXML_PARSE_PACKAGE_NAME:
-		ud->cur_entry->packages->names->pkgname = strndup(content, length);
+		ud->cur_entry->packages->names->pkgname = xstrndup(content, length);
 		break;
 	case VULNXML_PARSE_RANGE_GT:
 		range_type = GT;
@@ -530,8 +520,8 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		break;
 	case VULNXML_PARSE_CVE:
 		entry = ud->cur_entry;
-		cve = malloc(sizeof(struct pkg_audit_cve));
-		cve->cvename = strndup(content, length);
+		cve = xmalloc(sizeof(struct pkg_audit_cve));
+		cve->cvename = xstrndup(content, length);
 		LL_PREPEND(entry->cve, cve);
 		break;
 	}
@@ -539,11 +529,11 @@ vulnxml_handle_data(void *data, const char *content, int length)
 	if (range_type > 0) {
 		vers = ud->cur_entry->packages->versions;
 		if (ud->range_num == 1) {
-			vers->v1.version = strndup(content, length);
+			vers->v1.version = xstrndup(content, length);
 			vers->v1.type = range_type;
 		}
 		else if (ud->range_num == 2) {
-			vers->v2.version = strndup(content, length);
+			vers->v2.version = xstrndup(content, length);
 			vers->v2.type = range_type;
 		}
 	}
@@ -637,9 +627,7 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 	LL_FOREACH(h, e)
 		n++;
 
-	ret = (struct pkg_audit_item *)calloc(n + 1, sizeof(ret[0]));
-	if (ret == NULL)
-		err(1, "calloc(audit_entry_sorted*)");
+	ret = xcalloc(n + 1, sizeof(ret[0]));
 	bzero((void *)ret, (n + 1) * sizeof(ret[0]));
 
 	n = 0;
@@ -855,7 +843,7 @@ pkg_audit_new(void)
 {
 	struct pkg_audit *audit;
 
-	audit = calloc(1, sizeof(struct pkg_audit));
+	audit = xcalloc(1, sizeof(struct pkg_audit));
 
 	return (audit);
 }

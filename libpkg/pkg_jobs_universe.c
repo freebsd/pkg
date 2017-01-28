@@ -138,7 +138,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
 		if (result == NULL)
-			result = calloc(1, sizeof(pkg_chain_t));
+			result = xcalloc(1, sizeof(pkg_chain_t));
 		kv_prepend(typeof(pkg), *result, pkg);
 		pkg = NULL;
 	}
@@ -206,12 +206,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	    (pkg->type == PKG_INSTALLED ? "local" : "remote"), pkg->uid,
 	    pkg->name, pkg->version, pkg->digest);
 
-	item = calloc(1, sizeof (struct pkg_job_universe_item));
-	if (item == NULL) {
-		pkg_emit_errno("pkg_jobs_pkg_insert_universe", "calloc: struct pkg_job_universe_item");
-		return (EPKG_FATAL);
-	}
-
+	item = xcalloc(1, sizeof (struct pkg_job_universe_item));
 	item->pkg = pkg;
 
 
@@ -442,13 +437,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			rpkg = NULL;
 		}
 
-		pr = calloc (1, sizeof (*pr));
-		if (pr == NULL) {
-			pkg_emit_errno("pkg_jobs_add_universe", "calloc: "
-					"struct pkg_job_provide");
-			return (EPKG_FATAL);
-		}
-
+		pr = xcalloc (1, sizeof (*pr));
 		pr->un = unit;
 		pr->provide = name;
 		pr->is_shlib = is_shlib;
@@ -839,12 +828,7 @@ pkg_jobs_universe_new(struct pkg_jobs *j)
 {
 	struct pkg_jobs_universe *universe;
 
-	universe = calloc(1, sizeof(struct pkg_jobs_universe));
-	if (universe == NULL) {
-		pkg_emit_errno("pkg_jobs_universe_new", "calloc");
-		return (NULL);
-	}
-
+	universe = xcalloc(1, sizeof(struct pkg_jobs_universe));
 	universe->j = j;
 
 	return (universe);
@@ -886,23 +870,21 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
 					if (strcmp(d->uid, unit->pkg->uid) == 0) {
 						free(d->uid);
-						d->uid = strdup(new_uid);
+						d->uid = xstrdup(new_uid);
 					}
 				}
 			}
 		}
 	}
 
-	replacement = calloc(1, sizeof(*replacement));
-	if (replacement != NULL) {
-		replacement->old_uid = strdup(unit->pkg->uid);
-		replacement->new_uid = strdup(new_uid);
-		LL_PREPEND(universe->uid_replaces, replacement);
-	}
+	replacement = xcalloc(1, sizeof(*replacement));
+	replacement->old_uid = xstrdup(unit->pkg->uid);
+	replacement->new_uid = xstrdup(new_uid);
+	LL_PREPEND(universe->uid_replaces, replacement);
 
 	HASH_DELETE(hh, universe->items, unit);
 	free(unit->pkg->uid);
-	unit->pkg->uid = strdup(new_uid);
+	unit->pkg->uid = xstrdup(new_uid);
 
 	HASH_FIND(hh, universe->items, new_uid, uidlen, found);
 	if (found != NULL)

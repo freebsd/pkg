@@ -75,6 +75,7 @@
 
 #include <bsd_compat.h>
 #include "private/utils.h"
+#include "private/xmalloc.h"
 #include "pkg.h"
 
 #ifndef HAVE_LDNS
@@ -133,7 +134,7 @@ compute_weight(struct dns_srvinfo **d, int first, int last)
 	if (totalweight == 0)
 		return;
 
-	chosen = malloc(sizeof(int) * (last - first + 1));
+	chosen = xmalloc(sizeof(int) * (last - first + 1));
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {
@@ -180,10 +181,7 @@ dns_getsrvinfo(const char *zone)
 		p += len + NS_QFIXEDSZ;
 	}
 
-	res = calloc(ancount, sizeof(struct dns_srvinfo *));
-	if (res == NULL)
-		return (NULL);
-
+	res = xcalloc(ancount, sizeof(struct dns_srvinfo *));
 	n = 0;
 	while (ancount > 0 && p < end) {
 		ancount--;
@@ -219,7 +217,7 @@ dns_getsrvinfo(const char *zone)
 			return NULL;
 		}
 
-		res[n] = malloc(sizeof(struct dns_srvinfo));
+		res[n] = xmalloc(sizeof(struct dns_srvinfo));
 		if (res[n] == NULL) {
 			for (i = 0; i < n; i++)
 				free(res[i]);
@@ -334,7 +332,7 @@ compute_weight(struct dns_srvinfo *d, int first, int last)
 	if (totalweight == 0)
 		return;
 
-	chosen = malloc(sizeof(int) * (last - first + 1));
+	chosen = xmalloc(sizeof(int) * (last - first + 1));
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {
@@ -388,9 +386,7 @@ dns_getsrvinfo(const char *zone)
 		return (NULL);
 
 	ancount = ldns_rr_list_rr_count(srv);
-	res = calloc(ancount, sizeof(struct dns_srvinfo));
-	if (res == NULL)
-		return (NULL);
+	res = xcalloc(ancount, sizeof(struct dns_srvinfo));
 
 	for (i = 0; i < ancount; i ++) {
 		ldns_rr *rr;

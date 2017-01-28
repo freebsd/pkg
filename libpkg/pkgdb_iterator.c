@@ -796,25 +796,25 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 
 			switch (column->type) {
 			case PKG_ABI:
-				pkg->abi = strdup(sqlite3_column_text(stmt, icol));
+				pkg->abi = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_CKSUM:
-				pkg->sum = strdup(sqlite3_column_text(stmt, icol));
+				pkg->sum = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_COMMENT:
-				pkg->comment = strdup(sqlite3_column_text(stmt, icol));
+				pkg->comment = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_REPONAME:
-				pkg->reponame = strdup(sqlite3_column_text(stmt, icol));
+				pkg->reponame = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_DESC:
-				pkg->desc = strdup(sqlite3_column_text(stmt, icol));
+				pkg->desc = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_MAINTAINER:
-				pkg->maintainer = strdup(sqlite3_column_text(stmt, icol));
+				pkg->maintainer = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_DIGEST:
-				pkg->digest = strdup(sqlite3_column_text(stmt, icol));
+				pkg->digest = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_MESSAGE:
 				msg = sqlite3_column_text(stmt, icol);
@@ -824,8 +824,8 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						pkg_message_from_str(pkg, msg, 0);
 					}
 					else {
-						pkg->message = calloc(1, sizeof(*pkg->message));
-						pkg->message->str = strdup(msg);
+						pkg->message = xcalloc(1, sizeof(*pkg->message));
+						pkg->message->str = xstrdup(msg);
 					}
 				}
 				else {
@@ -833,34 +833,34 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				}
 				break;
 			case PKG_NAME:
-				pkg->name = strdup(sqlite3_column_text(stmt, icol));
+				pkg->name = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_OLD_VERSION:
-				pkg->old_version = strdup(sqlite3_column_text(stmt, icol));
+				pkg->old_version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ORIGIN:
-				pkg->origin = strdup(sqlite3_column_text(stmt, icol));
+				pkg->origin = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_PREFIX:
-				pkg->prefix = strdup(sqlite3_column_text(stmt, icol));
+				pkg->prefix = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_REPOPATH:
-				pkg->repopath = strdup(sqlite3_column_text(stmt, icol));
+				pkg->repopath = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_REPOURL:
-				pkg->repourl = strdup(sqlite3_column_text(stmt, icol));
+				pkg->repourl = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_UNIQUEID:
-				pkg->uid = strdup(sqlite3_column_text(stmt, icol));
+				pkg->uid = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_VERSION:
-				pkg->version = strdup(sqlite3_column_text(stmt, icol));
+				pkg->version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_WWW:
-				pkg->www = strdup(sqlite3_column_text(stmt, icol));
+				pkg->www = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_DEP_FORMULA:
-				pkg->dep_formula = strdup(sqlite3_column_text(stmt, icol));
+				pkg->dep_formula = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			default:
 				pkg_emit_error("Unexpected text value for %s", colname);
@@ -920,7 +920,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	}
 
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
-	pkg->arch = strdup(legacyarch);
+	pkg->arch = xstrdup(legacyarch);
 }
 
 static struct load_on_flag {
@@ -1164,11 +1164,7 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 	assert(!(flags & (PKGDB_IT_FLAG_CYCLED & PKGDB_IT_FLAG_ONCE)));
 	assert(!(flags & (PKGDB_IT_FLAG_AUTO & (PKGDB_IT_FLAG_CYCLED | PKGDB_IT_FLAG_ONCE))));
 
-	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_it");
-		sqlite3_finalize(s);
-		return (NULL);
-	}
+	it = xmalloc(sizeof(struct pkgdb_it));
 
 	it->type = PKGDB_IT_LOCAL;
 
@@ -1188,10 +1184,7 @@ pkgdb_it_new_repo(struct pkgdb *db)
 {
 	struct pkgdb_it	*it;
 
-	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_it");
-		return (NULL);
-	}
+	it = xmalloc(sizeof(struct pkgdb_it));
 
 	it->type = PKGDB_IT_REPO;
 
@@ -1207,13 +1200,9 @@ pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 {
 	struct _pkg_repo_it_set *item;
 
-	if ((item = malloc(sizeof(struct _pkg_repo_it_set))) == NULL) {
-		pkg_emit_errno("malloc", "_pkg_repo_it_set");
-	}
-	else {
-		item->it = rit;
-		LL_PREPEND(it->un.remote, item);
-	}
+	item = xmalloc(sizeof(struct _pkg_repo_it_set));
+	item->it = rit;
+	LL_PREPEND(it->un.remote, item);
 }
 
 int

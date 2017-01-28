@@ -177,7 +177,7 @@ parse_major_release(const char *src, long long *release)
 	const char *errstr;
 	char *eos;
 
-	parsed = strdup(src);
+	parsed = xstrdup(src);
 	eos = strchr(parsed, '.');
 	if (eos == NULL) {
 		pkg_emit_error("failed to parse major release version from %s", src);

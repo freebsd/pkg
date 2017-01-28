@@ -308,9 +308,7 @@ cudf_strdup(const char *in)
 	char *out, *d;
 	const char *s;
 
-	out = malloc(len + 1);
-	if (out == NULL)
-		return (NULL);
+	out = xmalloc(len + 1);
 
 	s = in;
 	d = out;
@@ -334,11 +332,7 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 {
 	struct pkg_solved *res;
 
-	res = calloc(1, sizeof(struct pkg_solved));
-	if (res == NULL) {
-		pkg_emit_errno("calloc", "pkg_solved");
-		return;
-	}
+	res = xcalloc(1, sizeof(struct pkg_solved));
 
 	res->items[0] = it_new;
 	res->type = type;

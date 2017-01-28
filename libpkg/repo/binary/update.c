@@ -396,7 +396,7 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 	}
 
 	free(pkg->reponame);
-	pkg->reponame = strdup(repo->name);
+	pkg->reponame = xstrdup(repo->name);
 
 	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
 
@@ -431,7 +431,7 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 				ndep ++;
 			pdep ++;
 		}
-		deps = malloc(sizeof(char *) * ndep);
+		deps = xmalloc(sizeof(char *) * ndep);
 		for (i = 0; i < ndep; i ++) {
 			deps[i] = strsep(&p, ",\n");
 		}

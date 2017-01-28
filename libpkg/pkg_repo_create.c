@@ -90,7 +90,7 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 	struct pkg_conflict *new;
 
 	pkg_conflict_new(&new);
-	new->uid = strdup(uniqueid);
+	new->uid = xstrdup(uniqueid);
 
 	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
 }
@@ -110,23 +110,18 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 	struct pkg_fts_item *item;
 	char *pkg_path;
 
-	item = malloc(sizeof(*item));
-	if (item != NULL) {
-		item->fts_accpath = strdup(fts->fts_accpath);
-		item->fts_name = strdup(fts->fts_name);
-		item->fts_size = fts->fts_statp->st_size;
-		item->fts_info = fts->fts_info;
+	item = xmalloc(sizeof(*item));
+	item->fts_accpath = xstrdup(fts->fts_accpath);
+	item->fts_name = xstrdup(fts->fts_name);
+	item->fts_size = fts->fts_statp->st_size;
+	item->fts_info = fts->fts_info;
 
-		pkg_path = fts->fts_path;
-		pkg_path += strlen(root_path);
-		while (pkg_path[0] == '/')
-			pkg_path++;
+	pkg_path = fts->fts_path;
+	pkg_path += strlen(root_path);
+	while (pkg_path[0] == '/')
+		pkg_path++;
 
-		item->pkg_path = strdup(pkg_path);
-	}
-	else {
-		pkg_emit_errno("malloc", "struct pkg_fts_item");
-	}
+	item->pkg_path = xstrdup(pkg_path);
 
 	return (item);
 }
@@ -303,7 +298,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			pkg->sum = pkg_checksum_file(cur->fts_accpath,
 			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
-			pkg->repopath = strdup(cur->pkg_path);
+			pkg->repopath = xstrdup(cur->pkg_path);
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -312,7 +307,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			if (legacy)
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
 			else {
-				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
+				mdigest = xmalloc(pkg_checksum_type_size(meta->digest_format));
 
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 				if (pkg_checksum_generate(pkg, mdigest,
@@ -442,13 +437,13 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 			if (buf[i] == ':') {
 				switch(state) {
 				case s_set_origin:
-					dig = calloc(1, sizeof(*dig));
-					dig->origin = malloc(i - start + 1);
+					dig = xcalloc(1, sizeof(*dig));
+					dig->origin = xmalloc(i - start + 1);
 					strlcpy(dig->origin, &buf[start], i - start + 1);
 					state = s_set_digest;
 					break;
 				case s_set_digest:
-					dig->digest = malloc(i - start + 1);
+					dig->digest = xmalloc(i - start + 1);
 					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_mpos;
 					break;
@@ -465,7 +460,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					state = s_set_checksum;
 					break;
 				case s_set_checksum:
-					dig->checksum =  malloc(i - start + 1);
+					dig->checksum =  xmalloc(i - start + 1);
 					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_origin;
 					break;
@@ -477,7 +472,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					dig->manifest_length = strtol(&buf[start], NULL, 10);
 				}
 				else if (state == s_set_checksum) {
-					dig->checksum =  malloc(i - start + 1);
+					dig->checksum =  xmalloc(i - start + 1);
 					strlcpy(dig->checksum, &buf[start], i - start + 1);
 				}
 				assert(dig->origin != NULL);
@@ -615,7 +610,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	/* Launch workers */
 	pkg_emit_progress_start("Creating repository in %s", output_dir);
 
-	pfd = calloc(num_workers, sizeof(struct pollfd));
+	pfd = xcalloc(num_workers, sizeof(struct pollfd));
 	ntask = 0;
 	cur_jobs = (remain > 0) ? tasks_per_worker + 1 : tasks_per_worker;
 	remain_jobs = cur_jobs;

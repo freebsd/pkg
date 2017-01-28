@@ -56,10 +56,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 
 	assert(pack != NULL);
 
-	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		pkg_emit_errno("calloc", "packing");
-		return (EPKG_FATAL);
-	}
+	*pack = xcalloc(1, sizeof(struct packing));
 
 	(*pack)->aread = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup((*pack)->aread);

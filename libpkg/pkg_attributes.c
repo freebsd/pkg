@@ -38,8 +38,7 @@
 int
 pkg_dep_new(struct pkg_dep **d)
 {
-	if ((*d = calloc(1, sizeof(struct pkg_dep))) == NULL)
-		return (EPKG_FATAL);
+	*d = xcalloc(1, sizeof(struct pkg_dep));
 
 	return (EPKG_OK);
 }
@@ -93,8 +92,7 @@ pkg_dep_is_locked(struct pkg_dep const * const d)
 int
 pkg_file_new(struct pkg_file **file)
 {
-	if ((*file = calloc(1, sizeof(struct pkg_file))) == NULL)
-		return (EPKG_FATAL);
+	*file = xcalloc(1, sizeof(struct pkg_file));
 
 	(*file)->perm = 0;
 	(*file)->fflags = 0;
@@ -116,8 +114,7 @@ pkg_file_free(struct pkg_file *file)
 int
 pkg_dir_new(struct pkg_dir **d)
 {
-	if ((*d = calloc(1, sizeof(struct pkg_dir))) == NULL)
-		return (EPKG_FATAL);
+	*d = xcalloc(1, sizeof(struct pkg_dir));
 
 	(*d)->perm = 0;
 	(*d)->fflags = 0;
@@ -151,10 +148,8 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 int
 pkg_option_new(struct pkg_option **option)
 {
-	if ((*option = calloc(1, sizeof(struct pkg_option))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_option");
-		return (EPKG_FATAL);
-	}
+	*option = xcalloc(1, sizeof(struct pkg_option));
+
 	return (EPKG_OK);
 }
 
@@ -178,8 +173,7 @@ pkg_option_free(struct pkg_option *option)
 int
 pkg_conflict_new(struct pkg_conflict **c)
 {
-	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL)
-		return (EPKG_FATAL);
+	*c = xcalloc(1, sizeof(struct pkg_conflict));
 
 	return (EPKG_OK);
 }
@@ -201,8 +195,7 @@ pkg_conflict_free(struct pkg_conflict *c)
 int
 pkg_config_file_new(struct pkg_config_file **c)
 {
-	if ((*c = calloc(1, sizeof(struct pkg_config_file))) == NULL)
-		return (EPKG_FATAL);
+	*c = xcalloc(1, sizeof(struct pkg_config_file));
 
 	return (EPKG_OK);
 }
@@ -225,11 +218,10 @@ pkg_config_file_free(struct pkg_config_file *c)
 int
 pkg_kv_new(struct pkg_kv **c, const char *key, const char *val)
 {
-	if ((*c = calloc(1, sizeof(struct pkg_kv))) == NULL)
-		return (EPKG_FATAL);
+	*c = xcalloc(1, sizeof(struct pkg_kv));
 
-	(*c)->key = strdup(key);
-	(*c)->value = strdup(val);
+	(*c)->key = xstrdup(key);
+	(*c)->value = xstrdup(val);
 
 	return (EPKG_OK);
 }

@@ -111,11 +111,7 @@ pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugi
 	assert(p != NULL);
 	assert(callback != NULL);
 
-	if ((new = calloc(1, sizeof(struct plugin_hook))) == NULL) {
-		pkg_emit_error("Cannot allocate memory");
-		return (EPKG_FATAL);
-	}
-
+	new = xcalloc(1, sizeof(struct plugin_hook));
 	new->hook = hook;
 	new->callback = callback;
 
@@ -295,7 +291,7 @@ pkg_plugins_init(void)
 
 		snprintf(pluginfile, sizeof(pluginfile), "%s/%s.so", plugdir,
 		    pkg_object_string(cur));
-		p = calloc(1, sizeof(struct pkg_plugin));
+		p = xcalloc(1, sizeof(struct pkg_plugin));
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
 			    pkg_object_string(cur), dlerror());

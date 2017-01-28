@@ -248,12 +248,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (cb->need_sig && strcmp(archive_entry_pathname(ae), "signature") == 0) {
 			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(siglen);
 			if (archive_read_data(a, sig, siglen) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
@@ -317,12 +312,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
 			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(siglen);
 			if (archive_read_data(a, sig, siglen) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
@@ -356,12 +346,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
 			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(siglen);
 			if (archive_read_data(a, sig, siglen) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
@@ -464,11 +449,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			}
 			HASH_FIND(hh, *sc, p, len, s);
 			if (s == NULL) {
-				s = calloc(1, sizeof(struct sig_cert));
-				if (s == NULL) {
-					pkg_emit_errno("pkg_repo_parse_sigkeys", "calloc failed");
-					return (EPKG_FATAL);
-				}
+				s = xcalloc(1, sizeof(struct sig_cert));
 				tlen = MIN(len, sizeof(s->name) - 1);
 				memcpy(s->name, p, tlen);
 				s->name[tlen] = '\0';
@@ -506,12 +487,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 				free(s);
 				return (EPKG_FATAL);
 			}
-			sig = malloc(len);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
-				free(s);
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(len);
 			memcpy(sig, p, len);
 			if (type == 0) {
 				s->sig = sig;
@@ -577,13 +553,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		cbdata.need_sig = true;
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
 				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
-			s = calloc(1, sizeof(struct sig_cert));
-			if (s == NULL) {
-				pkg_emit_errno("pkg_repo_archive_extract_archive",
-						"malloc failed");
-				rc = EPKG_FATAL;
-				goto cleanup;
-			}
+			s = xcalloc(1, sizeof(struct sig_cert));
 			s->sig = sig;
 			s->siglen = siglen;
 			strlcpy(s->name, "signature", sizeof(s->name));
@@ -1051,7 +1021,7 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 		return (NULL);
 	}
 
-	f = calloc(1, sizeof(struct fingerprint));
+	f = xcalloc(1, sizeof(struct fingerprint));
 	f->type = fct;
 	strlcpy(f->hash, fp, sizeof(f->hash));
 

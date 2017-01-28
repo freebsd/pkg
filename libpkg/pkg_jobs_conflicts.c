@@ -51,7 +51,7 @@ pkg_conflicts_sipkey_init(void)
 	static struct sipkey *kinit;
 
 	if (kinit == NULL) {
-		kinit = malloc(sizeof(*kinit));
+		kinit = xmalloc(sizeof(*kinit));
 		arc4random_buf((unsigned char*)kinit, sizeof(*kinit));
 	}
 
@@ -117,11 +117,7 @@ pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_jo
 {
 	struct pkg_conflict_chain *elt;
 
-	elt = calloc(1, sizeof(struct pkg_conflict_chain));
-	if (elt == NULL) {
-		pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
-		return;
-	}
+	elt = xcalloc(1, sizeof(struct pkg_conflict_chain));
 	elt->req = req;
 	LL_PREPEND(*chain, elt);
 }
@@ -180,7 +176,7 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	c1->type = c2->type = type;
 	HASH_FIND_STR(p1->conflicts, p2->uid, test);
 	if (test == NULL) {
-		c1->uid = strdup(p2->uid);
+		c1->uid = xstrdup(p2->uid);
 		HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
@@ -191,7 +187,7 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 
 	HASH_FIND_STR(p2->conflicts, p1->uid, test);
 	if (test == NULL) {
-		c2->uid = strdup(p1->uid);
+		c2->uid = xstrdup(p1->uid);
 		HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
@@ -272,10 +268,10 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	if (c1 == NULL) {
 		pkg_conflict_new(&c1);
 		c1->type = type;
-		c1->uid = strdup(p2->uid);
+		c1->uid = xstrdup(p2->uid);
 
 		if (use_digest) {
-			c1->digest = strdup(p2->digest);
+			c1->digest = xstrdup(p2->digest);
 		}
 
 		HASH_ADD_KEYPTR(hh, p1->conflicts, c1->uid, strlen(c1->uid), c1);
@@ -285,12 +281,12 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		pkg_conflict_new(&c2);
 		c2->type = type;
 
-		c2->uid = strdup(p1->uid);
+		c2->uid = xstrdup(p1->uid);
 
 		if (use_digest) {
 			/* We also add digest information into account */
 
-			c2->digest = strdup(p1->digest);
+			c2->digest = xstrdup(p1->digest);
 		}
 
 		HASH_ADD_KEYPTR(hh, p2->conflicts, c2->uid, strlen(c2->uid), c2);
@@ -424,15 +420,10 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 
 	if (cit == NULL) {
 		/* New entry */
-		cit = calloc(1, sizeof(*cit));
-		if (cit == NULL) {
-			pkg_emit_errno("malloc failed", "pkg_conflicts_check_all_paths");
-		}
-		else {
-			cit->hash = hv;
-			cit->item = it;
-			TREE_INSERT(j->conflict_items, pkg_jobs_conflict_item, entry, cit);
-		}
+		cit = xcalloc(1, sizeof(*cit));
+		cit->hash = hv;
+		cit->item = it;
+		TREE_INSERT(j->conflict_items, pkg_jobs_conflict_item, entry, cit);
 	}
 	else {
 		/* Check the same package */
@@ -531,7 +522,7 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 
 	/* Ensure that we have a tree initialized */
 	if (j->conflict_items == NULL) {
-		j->conflict_items = malloc(sizeof(*j->conflict_items));
+		j->conflict_items = xmalloc(sizeof(*j->conflict_items));
 		TREE_INIT(j->conflict_items, pkg_conflicts_item_cmp);
 	}
 
