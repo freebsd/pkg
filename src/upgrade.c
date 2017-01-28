@@ -124,6 +124,8 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		return;
 	}
 
+	drop_privileges();
+
 	if (pkg_audit_load(audit, NULL) != EPKG_OK) {
 		warn("unable to open vulnxml file");
 		fclose(out);
