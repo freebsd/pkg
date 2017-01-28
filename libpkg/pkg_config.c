@@ -41,6 +41,7 @@
 #include <osreldate.h>
 #endif
 #include <ucl.h>
+#include <sysexits.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
