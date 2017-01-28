@@ -104,7 +104,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			// XXX MACTODO: To get things working, we're shoving library metadata into the library name;
 			// these should instead be added as supported attributes of package shared library declarations.
 			char *libname;
-			asprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
+			xasprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
 			pkg_addshlib_provided(pkg, libname);
 			is_shlib = true;
 		}
@@ -136,7 +136,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			// these should instead be added as supported attributes of package shared library declarations.
 			// XXX: This duplicates (and must be kept identical to) the libname construction above.
 			char *libname;
-			asprintf(&libname, "%s.%s", cmd->mlt_install_name, ai->name);
+			xasprintf(&libname, "%s.%s", cmd->mlt_install_name, ai->name);
 
 			action(actdata, pkg, fpath, libname, is_shlib);
 		}
@@ -278,7 +278,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			free(fpath);
 
 		if (stage != NULL)
-			asprintf(&fpath, "%s/%s", stage, file->path);
+			xasprintf(&fpath, "%s/%s", stage, file->path);
 		else
 			fpath = file->path;
 
@@ -394,13 +394,7 @@ pkg_get_myarch(char *dest, size_t sz)
 	cpu_name = macho_get_arch_name(cpu_type);
 
 	/* Produce the result */
-	asprintf(&spec, "%s:%lld:%s", os_name, major_version, cpu_name);
-	if (spec == NULL) {
-		pkg_emit_error("asprintf() failed to allocate output string");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
+	xasprintf(&spec, "%s:%lld:%s", os_name, major_version, cpu_name);
 	strlcpy(dest, spec, sz);
 
 cleanup:

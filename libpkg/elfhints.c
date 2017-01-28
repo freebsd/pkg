@@ -324,7 +324,7 @@ shlib_list_from_stage(const char *stage)
 		return;
 
 	for (i = 0; i < NELEM(stage_dirs); i++) {
-		asprintf(&dir, "%s%s", stage, stage_dirs[i]);
+		xasprintf(&dir, "%s%s", stage, stage_dirs[i]);
 		scan_dirs_for_shlibs(&shlibs, 1, (const char **)&dir, true);
 		free(dir);
 	}
@@ -497,8 +497,7 @@ write_elf_hints(const char *hintsfile)
 	FILE			*fp;
 	int			 i;
 
-	if (asprintf(&tempname, "%s.XXXXXX", hintsfile) == -1)
-		errx(1, "Out of memory");
+	xasprintf(&tempname, "%s.XXXXXX", hintsfile);
 	if ((fd = mkstemp(tempname)) ==  -1)
 		err(1, "mkstemp(%s)", tempname);
 	if (fchmod(fd, 0444) == -1)

@@ -755,7 +755,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 			DL_FOREACH(nit, cur) {
 				if (cur->pkg->type != PKG_INSTALLED) {
 					free(cur->pkg->reason);
-					asprintf(&cur->pkg->reason, "vulnerability found");
+					xasprintf(&cur->pkg->reason, "vulnerability found");
 				}
 			}
 			/* Also process all rdeps recursively */
@@ -1083,7 +1083,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	/* Compare archs */
 	if (strcmp (lp->arch, rp->arch) != 0) {
 		free(rp->reason);
-		asprintf(&rp->reason, "ABI changed: '%s' -> '%s'",
+		xasprintf(&rp->reason, "ABI changed: '%s' -> '%s'",
 		    lp->arch, rp->arch);
 		assert(rp->reason != NULL);
 		return (true);
@@ -1096,13 +1096,13 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			if (ro == NULL)
-				asprintf(&rp->reason, "option removed: %s",
+				xasprintf(&rp->reason, "option removed: %s",
 				    lo->key);
 			else if (lo == NULL)
-				asprintf(&rp->reason, "option added: %s",
+				xasprintf(&rp->reason, "option added: %s",
 				    ro->key);
 			else
-				asprintf(&rp->reason, "option changed: %s",
+				xasprintf(&rp->reason, "option changed: %s",
 				    ro->key);
 			assert(rp->reason != NULL);
 			return (true);
@@ -1111,7 +1111,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			if (strcmp(lo->key, ro->key) != 0 ||
 			    strcmp(lo->value, ro->value) != 0) {
 				free(rp->reason);
-				asprintf(&rp->reason, "options changed");
+				xasprintf(&rp->reason, "options changed");
 				return (true);
 			}
 		}
@@ -1126,13 +1126,13 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			free(rp->reason);
 			if (rd == NULL)
-				asprintf(&rp->reason, "direct dependency removed: %s",
+				xasprintf(&rp->reason, "direct dependency removed: %s",
 				    ld->name);
 			else if (ld == NULL)
-				asprintf(&rp->reason, "direct dependency added: %s",
+				xasprintf(&rp->reason, "direct dependency added: %s",
 				    rd->name);
 			else
-				asprintf(&rp->reason, "direct dependency changed: %s",
+				xasprintf(&rp->reason, "direct dependency changed: %s",
 				    rd->name);
 			assert (rp->reason != NULL);
 			return (true);
@@ -1141,7 +1141,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			if ((strcmp(rd->name, ld->name) != 0) ||
 			    (strcmp(rd->origin, ld->origin) != 0)) {
 				free(rp->reason);
-				asprintf(&rp->reason, "direct dependency changed: %s",
+				xasprintf(&rp->reason, "direct dependency changed: %s",
 				    rd->name);
 				assert (rp->reason != NULL);
 				return (true);

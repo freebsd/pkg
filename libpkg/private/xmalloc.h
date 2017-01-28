@@ -40,4 +40,19 @@ static inline char *xstrndup(const char *str, size_t n)
 		abort();
 	return (s);
 }
+
+static inline int xasprintf(char **ret, const char *fmt, ...)
+{
+	va_list ap;
+	int i;
+
+	va_start(ap, fmt);
+	i = vasprintf(ret, fmt, ap);
+	va_end(ap);
+
+	if (i < 0 || *ret == NULL)
+		abort();
+
+	return (i);
+}
 #endif

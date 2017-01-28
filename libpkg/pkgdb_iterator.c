@@ -275,7 +275,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 				clause = pkg_deps_formula_tosql(fit);
 
 				if (clause) {
-					asprintf(&formula_sql, "%s%s", formula_preamble, clause);
+					xasprintf(&formula_sql, "%s%s", formula_preamble, clause);
 					pkg_debug(4, "Pkgdb: running '%s'", sql);
 					ret = sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL);
 

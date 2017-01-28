@@ -898,7 +898,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			tmp = NULL;
 			if (c[i].def != NULL && c[i].def[0] == '/' &&
 			    pkg_rootdir != NULL) {
-				asprintf(&tmp, "%s%s", pkg_rootdir, c[i].def);
+				xasprintf(&tmp, "%s%s", pkg_rootdir, c[i].def);
 			}
 			obj = ucl_object_fromstring_common(
 			    c[i].def != NULL ? tmp != NULL ? tmp : c[i].def : "", 0, UCL_STRING_TRIM);

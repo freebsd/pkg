@@ -255,7 +255,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		asprintf(&olduid, "%s~%s", dep->name, dep->origin);
+		xasprintf(&olduid, "%s~%s", dep->name, dep->origin);
 		pkg_checksum_add_entry("depend", olduid, &entries);
 		free(olduid);
 	}
@@ -835,7 +835,7 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 	if (sum == NULL)
 		return (NULL);
 
-	asprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
+	xasprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
 	free(sum);
 
 	return (cksum);
@@ -900,7 +900,7 @@ pkg_checksum_generate_fileat(int rootfd, const char *path,
 	if (sum == NULL)
 		return (NULL);
 
-	asprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
+	xasprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
 	free(sum);
 
 	return (cksum);

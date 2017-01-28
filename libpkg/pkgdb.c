@@ -1213,12 +1213,7 @@ run_transaction(sqlite3 *sqlite, const char *query, const char *savepoint)
 
 	assert(sqlite != NULL);
 
-	asprintf(&sql, "%s %s", query, savepoint != NULL ? savepoint : "");
-	if (sql == NULL) {
-		pkg_emit_error("out of memory");
-		return (EPKG_FATAL);
-	}
-
+	xasprintf(&sql, "%s %s", query, savepoint != NULL ? savepoint : "");
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1, &stmt, NULL);
 
