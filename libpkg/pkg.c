@@ -1577,29 +1577,29 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 
 	hl = kh_init_hardlinks();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		if (lstat(f->path, &st) == 0) {
-			regular = true;
-			sum = pkg_checksum_generate_file(f->path,
-			    PKG_HASH_TYPE_SHA256_HEX);
+		if (lstat(f->path, &st) != 0)
+			continue;
+		regular = true;
+		sum = pkg_checksum_generate_file(f->path,
+		    PKG_HASH_TYPE_SHA256_HEX);
 
-			if (S_ISLNK(st.st_mode))
-				regular = false;
+		if (S_ISLNK(st.st_mode))
+			regular = false;
 
-			if (sum == NULL) {
-				rc = EPKG_FATAL;
-				break;
-			}
-
-			if (st.st_nlink > 1)
-				regular = !check_for_hardlink(hl, &st);
-
-			if (regular)
-				flatsize += st.st_size;
-		
-			if (strcmp(sum, f->sum) != 0)
-				pkgdb_file_set_cksum(db, f, sum);
-			free(sum);
+		if (sum == NULL) {
+			rc = EPKG_FATAL;
+			break;
 		}
+
+		if (st.st_nlink > 1)
+			regular = !check_for_hardlink(hl, &st);
+
+		if (regular)
+			flatsize += st.st_size;
+		
+		if (strcmp(sum, f->sum) != 0)
+			pkgdb_file_set_cksum(db, f, sum);
+		free(sum);
 	}
 	kh_destroy_hardlinks(hl);
 
