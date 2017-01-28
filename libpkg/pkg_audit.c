@@ -628,8 +628,6 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 		n++;
 
 	ret = xcalloc(n + 1, sizeof(ret[0]));
-	bzero((void *)ret, (n + 1) * sizeof(ret[0]));
-
 	n = 0;
 	LL_FOREACH(h, e) {
 		if (e->pkgname != NULL) {
