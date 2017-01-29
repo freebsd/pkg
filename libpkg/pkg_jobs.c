@@ -1195,7 +1195,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	lb = rb = NULL;
 	for (;;) {
 		ret1 = pkg_requires(rp, &rb);
-		ret1 = pkg_requires(lp, &lb);
+		ret2 = pkg_requires(lp, &lb);
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = xstrdup("requires changed");
