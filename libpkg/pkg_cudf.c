@@ -111,7 +111,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		struct pkg_job_universe_item *conflicts_chain)
 {
 	struct pkg_dep *dep;
-	struct pkg_conflict *conflict, *ctmp;
+	struct pkg_conflict *conflict;
 	struct pkg_job_universe_item *u;
 	char *buf;
 	int column = 0, ver;
@@ -149,14 +149,14 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	}
 
 	column = 0;
-	if (HASH_COUNT(pkg->conflicts) > 0 ||
+	if (kh_count(pkg->conflictshash) > 0 ||
 			(conflicts_chain->next != NULL &&
 			conflicts_chain->next->priority != INT_MIN)) {
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
-		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
+		LL_FOREACH(pkg->conflicts, conflict) {
 			if (cudf_print_element(f, conflict->uid,
-					(conflict->hh.next != NULL), &column) < 0) {
+					(conflict->next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}

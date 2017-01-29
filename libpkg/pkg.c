@@ -513,22 +513,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 	return (ret);
 }
 
-int
-pkg_options(const struct pkg *pkg, struct pkg_option **o)
-{
-	assert(pkg != NULL);
-
-	HASH_NEXT(pkg->options, (*o));
-}
-
-int
-pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
-{
-	assert(pkg != NULL);
-
-	HASH_NEXT(pkg->conflicts, (*c));
-}
-
 #define pkg_each(name, type, field)		\
 int						\
 pkg_##name(const struct pkg *p, type **t) {	\
@@ -546,6 +530,8 @@ pkg_each(dirs, struct pkg_dir, dirs);
 pkg_each(files, struct pkg_file, files);
 pkg_each(deps, struct pkg_dep, depends);
 pkg_each(rdeps, struct pkg_dep, rdepends);
+pkg_each(options, struct pkg_option, options);
+pkg_each(conflicts, struct pkg_conflict, conflicts);
 
 #define pkg_each_hash(name, htype, type, attrib)	\
 int							\
@@ -998,11 +984,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	   value. */
 
 	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
-	HASH_FIND_STR(pkg->options, key, o);
-	if (o == NULL) {
-		o = xcalloc(1, sizeof(*o));
-		o->key = xstrdup(key);
-	} else if ( o->value != NULL) {
+	if (kh_contains(pkg_options, pkg->optionshash, key)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
@@ -1011,9 +993,11 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 			return (EPKG_OK);
 		}
 	}
-
+	o = xcalloc(1, sizeof(*o));
+	o->key = xstrdup(key);
 	o->value = xstrdup(value);
-	HASH_ADD_KEYPTR(hh, pkg->options, o->key, strlen(o->key), o);
+	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
+	LL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1034,11 +1018,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	   could be a default value or description for an option but
 	   no actual value. */
 
-	HASH_FIND_STR(pkg->options, key, o);
-	if (o == NULL) {
-		o = xcalloc(1, sizeof(*o));
-		o->key = xstrdup(key);
-	} else if ( o->default_value != NULL) {
+	if (kh_contains(pkg_options, pkg->optionshash, key)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate default value for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
@@ -1047,10 +1027,11 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 			return (EPKG_OK);
 		}
 	}
-
+	o = xcalloc(1, sizeof(*o));
+	o->key = xstrdup(key);
 	o->default_value = xstrdup(default_value);
-	HASH_ADD_KEYPTR(hh, pkg->options, o->default_value,
-	    strlen(o->default_value), o);
+	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
+	LL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1070,11 +1051,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	   is already set. Which implies there could be a default
 	   value or description for an option but no actual value. */
 
-	HASH_FIND_STR(pkg->options, key, o);
-	if (o == NULL) {
-		o = xcalloc(1, sizeof(*o));
-		o->key = xstrdup(key);
-	} else if ( o->description != NULL) {
+	if (kh_contains(pkg_options, pkg->optionshash, key)) {
 		if (developer_mode) {
 			pkg_emit_error("duplicate description for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
@@ -1084,9 +1061,11 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 		}
 	}
 
+	o = xcalloc(1, sizeof(*o));
+	o->key = xstrdup(key);
 	o->description = xstrdup(description);
-	HASH_ADD_KEYPTR(hh, pkg->options, o->description,
-	    strlen(o->description), o);
+	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
+	LL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1143,16 +1122,17 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 	assert(pkg != NULL);
 	assert(uniqueid != NULL && uniqueid[0] != '\0');
 
-	HASH_FIND_STR(pkg->conflicts, __DECONST(char *, uniqueid), c);
-	/* silently ignore duplicates in case of conflicts */
-	if (c != NULL)
+	if (kh_contains(pkg_conflicts, pkg->conflictshash, uniqueid)) {
+		/* silently ignore duplicates in case of conflicts */
 		return (EPKG_OK);
+	}
 
 	c = xcalloc(1, sizeof(*c));
 	c->uid = xstrdup(uniqueid);
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
-	HASH_ADD_KEYPTR(hh, pkg->conflicts, c->uid, strlen(c->uid), c);
+	kh_safe_add(pkg_conflicts, pkg->conflictshash, c, c->uid);
+	LL_APPEND(pkg->conflicts, c);
 
 	return (EPKG_OK);
 }
@@ -1247,7 +1227,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_RDEPS:
 		return (kh_count(pkg->rdepshash));
 	case PKG_OPTIONS:
-		return (HASH_COUNT(pkg->options));
+		return (kh_count(pkg->optionshash));
 	case PKG_FILES:
 		return (kh_count(pkg->filehash));
 	case PKG_DIRS:
@@ -1261,7 +1241,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_SHLIBS_PROVIDED:
 		return (kh_count(pkg->shlibs_provided));
 	case PKG_CONFLICTS:
-		return (HASH_COUNT(pkg->conflicts));
+		return (kh_count(pkg->conflictshash));
 	case PKG_PROVIDES:
 		return (kh_count(pkg->provides));
 	case PKG_REQUIRES:
@@ -1291,7 +1271,8 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
-		HASH_FREE(pkg->options, pkg_option_free);
+		LL_FREE(pkg->options, pkg_option_free);
+		kh_destroy_pkg_options(pkg->optionshash);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
@@ -1323,7 +1304,8 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_CONFLICTS:
-		HASH_FREE(pkg->conflicts, pkg_conflict_free);
+		LL_FREE(pkg->conflicts, pkg_conflict_free);
+		kh_destroy_pkg_conflicts(pkg->conflictshash);
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
 		break;
 	case PKG_PROVIDES:

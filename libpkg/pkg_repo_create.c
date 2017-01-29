@@ -73,6 +73,7 @@ struct digest_list_entry {
 
 struct pkg_conflict_bulk {
 	struct pkg_conflict *conflicts;
+	kh_pkg_conflicts_t *conflictshash;
 	char *file;
 	UT_hash_handle hh;
 };
@@ -92,7 +93,7 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 	new = xcalloc(1, sizeof(*new));
 	new->uid = xstrdup(uniqueid);
 
-	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
+	kh_safe_add(pkg_conflicts, bulk->conflictshash, new, new->uid);
 }
 
 struct pkg_fts_item {
@@ -502,8 +503,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
-
-	struct pkg_conflict *c, *ctmp;
 	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
 	int num_workers, i, remaining_workers, remain, cur_jobs, remain_jobs, nworker;
 	size_t len, tasks_per_worker, ntask;
@@ -739,11 +738,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			free(c->uid);
-			HASH_DEL(curcb->conflicts, c);
-			free(c);
-		}
+		LL_FREE(curcb->conflicts, pkg_conflict_free);
+		kh_destroy_pkg_conflicts(curcb->conflictshash);
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
 	}

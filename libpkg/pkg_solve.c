@@ -719,7 +719,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var)
 {
 	struct pkg_dep *dep;
-	struct pkg_conflict *conflict, *ctmp;
+	struct pkg_conflict *conflict;
 	struct pkg *pkg;
 	struct pkg_solve_variable *cur_var;
 	struct pkg_jobs *j = problem->j;
@@ -753,7 +753,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Conflicts */
-		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
+		LL_FOREACH(pkg->conflicts, conflict) {
 			if (pkg_solve_add_conflict_rule(problem, pkg, cur_var, conflict) !=
 							EPKG_OK)
 				continue;
