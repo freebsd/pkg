@@ -173,7 +173,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 
 	pkg_jobs_universe_free(j->universe);
 	LL_FREE(j->jobs, free);
-	HASH_FREE(j->patterns, pkg_jobs_pattern_free);
+	LL_FREE(j->patterns, pkg_jobs_pattern_free);
 	free(j);
 }
 
@@ -241,14 +241,14 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 			jp->pattern = xstrdup(argv[i]);
 			jp->match = match;
 		}
-		HASH_ADD_KEYPTR(hh, j->patterns, jp->pattern, strlen(jp->pattern), jp);
+		LL_APPEND(j->patterns, jp);
 	}
 
 	if (argc == 0 && match == MATCH_ALL) {
 		jp = xcalloc(1, sizeof(struct job_pattern));
 		jp->pattern = NULL;
 		jp->match = match;
-		HASH_ADD_KEYPTR(hh, j->patterns, "all", 3, jp);
+		LL_APPEND(j->patterns, jp);
 	}
 
 	return (EPKG_OK);
@@ -1384,10 +1384,10 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
-	struct job_pattern *jp, *jtmp;
+	struct job_pattern *jp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	HASH_ITER(hh, j->patterns, jp, jtmp) {
+	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
@@ -1528,7 +1528,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char sqlbuf[256];
 	size_t jcount = 0;
-	struct job_pattern *jp, *jtmp;
+	struct job_pattern *jp;
 	struct pkg_job_request *req, *rtmp;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
@@ -1591,7 +1591,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			pkg_jobs_universe_process_upgrade_chains(j);
 		}
 		else {
-			HASH_ITER(hh, j->patterns, jp, jtmp) {
+			LL_FOREACH(j->patterns, jp) {
 				retcode = pkg_jobs_find_remote_pattern(j, jp);
 				if (retcode == EPKG_FATAL) {
 					pkg_emit_error("No packages available to %s matching '%s' "
@@ -1652,7 +1652,7 @@ order:
 static int
 jobs_solve_fetch(struct pkg_jobs *j)
 {
-	struct job_pattern *jp, *jtmp;
+	struct job_pattern *jp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_request *req, *rtmp;
@@ -1673,7 +1673,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		}
 		pkgdb_it_free(it);
 	} else {
-		HASH_ITER(hh, j->patterns, jp, jtmp) {
+		LL_FOREACH(j->patterns, jp) {
 			/* TODO: use repository priority here */
 			if (pkg_jobs_find_upgrade(j, jp->pattern, jp->match) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' have been found in the "

@@ -126,9 +126,9 @@ struct pkg_jobs {
 struct job_pattern {
 	char		*pattern;
 	char		*path;
-	match_t		match;
-	int			flags;
-	UT_hash_handle hh;
+	match_t		 match;
+	int		 flags;
+	struct job_pattern *next;
 };
 
 enum pkg_priority_update_type {
