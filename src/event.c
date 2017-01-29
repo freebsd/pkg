@@ -620,7 +620,6 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
-		pkg = ev->e_install_finished.pkg;
 		break;
 	case PKG_EVENT_EXTRACT_BEGIN:
 		if (quiet)
@@ -723,7 +722,6 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_finished.n;
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;

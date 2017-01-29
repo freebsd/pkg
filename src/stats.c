@@ -87,10 +87,9 @@ exec_stats(int argc, char **argv)
 		default:
 			usage_stats();
 			return (EX_USAGE);
-                }
-        }
-        argc -= optind;
-        argv += optind;
+		}
+	}
+	argv += optind;
 
 	/* default is to show everything we have */
 	if (opt == 0)

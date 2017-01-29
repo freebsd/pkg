@@ -863,9 +863,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 			return (EPKG_OK);
 
 		pos ++;
-		pattern = pos;
-	}
-	else {
+	} else {
 		pos = pattern;
 	}
 
@@ -1658,10 +1656,6 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_request *req, *rtmp;
-	unsigned flag = PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS;
-
-	if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
-		flag |= PKG_LOAD_DEPS;
 
 	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED) {
 		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)

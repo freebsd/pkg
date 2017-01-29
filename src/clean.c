@@ -335,8 +335,6 @@ exec_clean(int argc, char **argv)
 			return (EX_USAGE);
 		}
 	}
-	argc -= optind;
-	argv += optind;
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	cachefd = open(cachedir, O_DIRECTORY|O_CLOEXEC);

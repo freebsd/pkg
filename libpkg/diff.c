@@ -248,7 +248,6 @@ static void longestCommonSequence(
 
   span = (iE1 - iS1) + (iE2 - iS2);
   bestScore = -10000;
-  score = 0;
   iSXb = iSXp = iS1;
   iEXb = iEXp = iS1;
   iSYb = iSYp = iS2;

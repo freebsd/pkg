@@ -729,8 +729,6 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	switch (type) {
 	case PKG_SOLVED_INSTALL:
 	case PKG_SOLVED_UPGRADE:
-		ret = EPKG_FATAL;
-
 		if (destdir == NULL)
 			ret = pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		else if (repopath != NULL) {

@@ -610,7 +610,6 @@ do_extract(struct archive *a, struct archive_entry *ae,
 	pkg_emit_progress_start(NULL);
 
 	do {
-		ret = ARCHIVE_OK;
 		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
 		switch (archive_entry_filetype(ae)) {
 		case AE_IFDIR:

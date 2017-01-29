@@ -83,8 +83,6 @@ copy_database(sqlite3 *src, sqlite3 *dst)
 
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
-	total = 0;
-
 	pkg_emit_progress_start(NULL);
 	do {
 		ret = sqlite3_backup_step(b, NPAGES);

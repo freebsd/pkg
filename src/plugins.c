@@ -59,13 +59,11 @@ exec_plugins(int argc, char **argv)
 		case 'l':
 			list_only = true;
 			break;
-                default:
-                        usage_plugins();
-                        return (EX_USAGE);
-                }
-        }
-        argc -= optind;
-        argv += optind;
+		default:
+			usage_plugins();
+			return (EX_USAGE);
+		}
+	}
 
 	/**
 	 * For now only display the available plugins

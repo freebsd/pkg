@@ -132,8 +132,7 @@ exec_register(int argc, char **argv)
 	} else if (retcode != EPKG_OK) {
 		pkg_free(pkg);
 		return (EX_IOERR);
-	} else
-		retcode = EX_OK;
+	}
 
 	/*
 	 * Ideally, the +MANIFEST should be all that is necessary,

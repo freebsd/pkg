@@ -106,7 +106,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0)
-		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
 
 	ret = pkg_delete_dirs(db, pkg, NULL);
 	if (ret != EPKG_OK)
