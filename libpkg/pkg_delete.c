@@ -128,8 +128,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 			if (utstring_len(message) > 0) {
 				pkg_emit_message(utstring_body(message));
 			}
-			utstring_free(message);
 		}
+		utstring_free(message);
 
 	}
 
