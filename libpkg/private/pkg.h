@@ -623,8 +623,6 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
-FILE* pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo,
-		const char *filename, time_t *t, int *rc);
 unsigned char *pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo,
     const char *filename, time_t *t, int *rc, size_t *sz);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);

@@ -753,31 +753,6 @@ pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo, const char *filename,
 	return (map);
 }
 
-FILE *
-pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
-		time_t *t, int *rc)
-{
-	int dest_fd;
-	FILE *res;
-
-	dest_fd = pkg_repo_fetch_remote_extract_fd(repo, filename, t, rc);
-	if (dest_fd == -1) {
-		*rc = EPKG_FATAL;
-		return (NULL);
-	}
-
-	res = fdopen(dest_fd, "r");
-	if (res == NULL) {
-		pkg_emit_errno("fdopen", "digest open failed");
-		*rc = EPKG_FATAL;
-		close(dest_fd);
-		return (NULL);
-	}
-
-	*rc = EPKG_OK;
-	return (res);
-}
-
 struct pkg_repo_check_cbdata {
 	unsigned char *map;
 	size_t len;
