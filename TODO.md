@@ -80,3 +80,27 @@ if gtk-update-icon-cache is installed on the system and packages are flagged for
 
 That would remove the gtk-update-icon-cache dependence from every application
 that provides icons and make it run only once.
+
+# Allow to feed a list of non available packages
+
+When a build fail the repository could have a list of failed packages during the build and probide a UCL file
+so if no result when looking for a package we could give a reason.
+
+# Add a mechanism to allow a user to know when a package is missing from remote repos
+
+pkg upgrade could grow a way to complain about it
+
+# Add a periodic script for reporting pkg check -d output
+
+# add a pkg wrongabi alias if possible in pkg.conf
+
+This would allow after a major upgrade to check what packages are still on the old ABI
+
+# Add a FreeBSD only check on FreeBSD version (which should also be added to packages)
+
+This would allow to only install packages for the right ABI and only if the binary was built on an
+OS version which is lower or equal that the one we are running on.
+
+# new groupinstall concept
+
+Add some new ucl files in the ports tree do define groups of files instead of meta ports
