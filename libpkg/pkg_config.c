@@ -1204,7 +1204,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 
 		if (fatal_errors) {
-			pkg_emit_error("invalid scheme %.*s", buf - url, url);
+			pkg_emit_error("invalid scheme %.*s", (int)(buf - url), url);
 			return (EPKG_FATAL);
 		}
 	}

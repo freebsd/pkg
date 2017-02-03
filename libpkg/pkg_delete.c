@@ -5,7 +5,7 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -207,7 +207,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 		return;
 
 	pkg_debug(1, "Number of packages owning the directory '%s': %d",
-	    fullpath, cnt);
+	    fullpath, (int)cnt);
 	/*
 	 * At this moment the package we are removing have already been removed
 	 * from the local database so if anything else is owning the directory
@@ -354,7 +354,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 
 int
 pkg_delete_files(struct pkg *pkg, unsigned force)
-	/* force: 0 ... be careful and vocal about it. 
+	/* force: 0 ... be careful and vocal about it.
 	 *        1 ... remove files without bothering about checksums.
 	 *        2 ... like 1, but remain silent if removal fails.
 	 */

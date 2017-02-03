@@ -2810,7 +2810,8 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 	struct timespec ts;
 	int ret = EPKG_END;
 	const pkg_object *timeout, *max_tries;
-	int64_t num_timeout = 1, num_maxtries = 1;
+	double num_timeout = 1.0;
+	int64_t num_maxtries = 1;
 	const char reset_lock_sql[] = ""
 			"DELETE FROM pkg_lock; INSERT INTO pkg_lock VALUES (0,0,0);";
 

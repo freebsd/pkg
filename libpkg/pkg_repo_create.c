@@ -231,7 +231,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct iovec iov[2];
 	struct msghdr msg;
 	UT_string *b;
-	
+
 	utstring_new(b);
 
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
@@ -275,7 +275,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	}
 
 	pkg_manifest_keys_new(&keys);
-	pkg_debug(1, "start worker to parse %d packages", nelts);
+	pkg_debug(1, "start worker to parse %jd packages", (intmax_t)nelts);
 
 	if (read_files)
 		flags = PKG_OPEN_MANIFEST_ONLY;

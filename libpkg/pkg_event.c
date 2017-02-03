@@ -375,8 +375,9 @@ pipeevent(struct pkg_event *ev)
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
 		utstring_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
-		  "\"data\": { \"current\": %ld, \"total\" : %ld}}",
-		  ev->e_progress_tick.current, ev->e_progress_tick.total);
+		  "\"data\": { \"current\": %jd, \"total\" : %jd}}",
+		  (intmax_t)ev->e_progress_tick.current,
+		  (intmax_t)ev->e_progress_tick.total);
 		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:

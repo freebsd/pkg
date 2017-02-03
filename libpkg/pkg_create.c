@@ -4,7 +4,7 @@
  * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -484,8 +484,8 @@ counter_init(const char *count_what, int64_t max)
 	count = 0;
 	what = count_what;
 	maxcount = max;
-	pkg_emit_progress_start("%-20s%*s[%ld]", what,
-	    6 - magnitude(maxcount), " ", maxcount);
+	pkg_emit_progress_start("%-20s%*s[%jd]", what,
+	    6 - magnitude(maxcount), " ", (intmax_t)maxcount);
 
 	return;
 }

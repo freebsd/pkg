@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -169,7 +169,7 @@ ssh_read(void *data, char *buf, int len)
 	ssize_t rlen;
 	int deltams;
 
-	pkg_debug(2, "ssh: start reading %d");
+	pkg_debug(2, "ssh: start reading");
 
 	if (fetchTimeout > 0) {
 		gettimeofday(&timeout, NULL);
@@ -183,7 +183,7 @@ ssh_read(void *data, char *buf, int len)
 
 	for (;;) {
 		rlen = read(pfd.fd, buf, len);
-		pkg_debug(2, "read %d", rlen);
+		pkg_debug(2, "read %jd", (intmax_t)rlen);
 		if (rlen >= 0) {
 			break;
 		} else if (rlen == -1) {
@@ -220,7 +220,7 @@ ssh_read(void *data, char *buf, int len)
 
 	}
 
-	pkg_debug(2, "ssh: have read %d bytes", rlen);
+	pkg_debug(2, "ssh: have read %jd bytes", (intmax_t)rlen);
 
 	return (rlen);
 }
@@ -673,9 +673,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		done += r;
 		if (sz > 0) {
 			left -= r;
-			pkg_debug(4, "Read status: %d over %d", done, sz);
+			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
 		} else
-			pkg_debug(4, "Read status: %d", done);
+			pkg_debug(4, "Read status: %jd", (intmax_t)done);
 		if (sz > 0)
 			pkg_emit_progress_tick(done, sz);
 	}

@@ -147,20 +147,20 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	if (file_to_bufferat(rootfd, RELATIVE_PATH(rcf->path), &localconf, &sz) != EPKG_OK)
 		return;
 
-	pkg_debug(2, "size: %d vs %d", sz, strlen(lcf->content));
+	pkg_debug(2, "size: %jd vs %jd", (intmax_t)sz, (intmax_t)strlen(lcf->content));
 
 	if (sz == strlen(lcf->content)) {
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
 		localsum = pkg_checksum_data(localconf, sz,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (localsum && strcmp(localsum, lf->sum) == 0) {
-			pkg_debug(2, "Checksum are the same %d", strlen(localconf));
+			pkg_debug(2, "Checksum are the same %jd", (intmax_t)strlen(localconf));
 			free(localconf);
 			free(localsum);
 			return;
 		}
 		free(localsum);
-		pkg_debug(2, "Checksum are different %d", strlen(localconf));
+		pkg_debug(2, "Checksum are different %jd", (intmax_t)strlen(localconf));
 	}
 	rcf->status = MERGE_FAILED;
 	if (!merge) {
@@ -347,7 +347,8 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 
 	d = pkg_get_dir(pkg, path);
 	if (d == NULL) {
-		pkg_emit_error("Directory %s not specified in the manifest, skipping");
+		pkg_emit_error("Directory %s not specified in the manifest, skipping",
+				path);
 		return (EPKG_OK);
 	}
 	aest = archive_entry_stat(ae);
@@ -404,7 +405,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
-		pkg_emit_error("Symlink %s not specified in the manifest");
+		pkg_emit_error("Symlink %s not specified in the manifest", path);
 		return (EPKG_FATAL);
 	}
 
@@ -468,7 +469,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
-		pkg_emit_error("Hardlink %s not specified in the manifest");
+		pkg_emit_error("Hardlink %s not specified in the manifest", path);
 		return (EPKG_FATAL);
 	}
 	lp = archive_entry_hardlink(ae);
@@ -566,7 +567,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	f = pkg_get_file(pkg, path);
 	if (f == NULL) {
-		pkg_emit_error("File %s not specified in the manifest");
+		pkg_emit_error("File %s not specified in the manifest", path);
 		return (EPKG_FATAL);
 	}
 
