@@ -55,6 +55,7 @@
 /*%
  * Inline versions of get/put short/long.  Pointer is advanced.
  */
+#ifndef NS_GET16
 #define NS_GET16(s, cp) do { \
         register const u_char *t_cp = (const u_char *)(cp); \
         (s) = ((u_int16_t)t_cp[0] << 8) \
@@ -62,7 +63,9 @@
             ; \
         (cp) += NS_INT16SZ; \
 } while (0)
+#endif
 
+#ifndef NS_GET32
 #define NS_GET32(l, cp) do { \
         register const u_char *t_cp = (const u_char *)(cp); \
         (l) = ((u_int32_t)t_cp[0] << 24) \
@@ -72,6 +75,7 @@
             ; \
         (cp) += NS_INT32SZ; \
 } while (0)
+#endif
 
 #include <bsd_compat.h>
 #include "private/utils.h"
