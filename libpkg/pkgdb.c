@@ -741,7 +741,7 @@ pkgdb_is_insecure_mode(const char *path, bool install_as_user)
 			return (EPKG_ENOACCESS);
 		else if (errno == ENOENT)
 			return (EPKG_ENODB);
-		else 
+		else
 			return (EPKG_FATAL);
 	}
 
@@ -835,7 +835,7 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 		else
 			return (EPKG_FATAL);
 	}
- 
+
 	return (EPKG_OK);
 }
 
@@ -852,7 +852,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	 *
 	 * EPKG_ENODB:  a database doesn't exist and we don't want to create
 	 *             it, or dbdir doesn't exist
-	 * 
+	 *
 	 * EPKG_INSECURE: the dbfile or one of the directories in the
 	 *	       path to it are writable by other than root or
 	 *             (if $INSTALL_AS_USER is set) the current euid
@@ -944,6 +944,10 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 	struct _pkg_repo_list_item *item;
 
 	while (pkg_repos(&r) == EPKG_OK) {
+		if (!r->enable) {
+			continue;
+		}
+
 		if (reponame == NULL || strcasecmp(r->name, reponame) == 0) {
 			/* We need read only access here */
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
@@ -1189,7 +1193,7 @@ pkgdb_close(struct pkgdb *db)
 	free(db);
 }
 
-/* How many times to try COMMIT or ROLLBACK if the DB is busy */ 
+/* How many times to try COMMIT or ROLLBACK if the DB is busy */
 #define BUSY_RETRIES	6
 #define BUSY_SLEEP	200
 
@@ -2095,7 +2099,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 
 		"DELETE FROM shlibs "
 		"WHERE id NOT IN "
-		"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required)" 
+		"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required)"
 		"AND id NOT IN "
 		"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
 	};
@@ -2268,7 +2272,7 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 
 	assert(db != NULL);
 
-	if (retcode == EPKG_OK) 
+	if (retcode == EPKG_OK)
 		ret = pkgdb_transaction_commit_sqlite(db->sqlite, NULL);
 	else
 		ret = pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
