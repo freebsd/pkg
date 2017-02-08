@@ -533,6 +533,10 @@ retry:
 			dprintf(fd, "%s", cfdata);
 			if (f->config->newcontent != NULL)
 				free(f->config->newcontent);
+		} else {
+			if (ftruncate(fd, archive_entry_size(ae)) == -1) {
+				pkg_errno("Fail to truncate file: %s", f->temppath);
+			}
 		}
 
 		if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
