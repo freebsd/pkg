@@ -83,12 +83,15 @@ that provides icons and make it run only once.
 
 # Allow to feed a list of non available packages
 
-When a build fail the repository could have a list of failed packages during the build and probide a UCL file
-so if no result when looking for a package we could give a reason.
+When a build fail the package is not added to the repository. As such, a user who attempts to install the package is told that it does not exist, rather than it is just temporarily unavailable.
 
-# Add a mechanism to allow a user to know when a package is missing from remote repos
+The repo building process could create a list of failed packages during the build, and provide that as part of the repo in the form of a UCL file. If there are no result when looking for a package, we could check the failed packages list, and provide the user with a reason why the package is not available (build failed, RESTRICTED, BROKEN, EXPIRED, etc)
 
-pkg upgrade could grow a way to complain about it
+A similar process may also make sense for the MOVED file.
+
+# Add a mechanism to allow a user to know when a package no longer exists in the remote repos
+
+pkg upgrade could grow a way to complain about packages it cannot upgrade because they no longer exist in the repo. When combined with the 'failed packages' list, and possibly the MOVED list, this could provide a reliable mechanism for the user to know that the package they have no longer exists in the ports tree.
 
 # Add a periodic script for reporting pkg check -d output
 
