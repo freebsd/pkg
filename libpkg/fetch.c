@@ -468,7 +468,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	off_t		 r;
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
-	char		 buf[10240];
+	char		 buf[8192];
 	char		*doc = NULL;
 	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
