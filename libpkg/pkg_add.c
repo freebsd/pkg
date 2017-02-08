@@ -547,7 +547,7 @@ retry:
 	} else {
 		while ((len = read(fromfd, buf, sizeof(buf))) > 0)
 			if (write(fd, buf, len) == -1) {
-				pkg_errno("%s", "Fail to write file: %s");
+				pkg_errno("Fail to write file: %s", f->temppath);
 			}
 	}
 	if (fd != -1) {
