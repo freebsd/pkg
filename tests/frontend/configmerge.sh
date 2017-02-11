@@ -39,6 +39,7 @@ config_body()
 	pkg repo .
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
+		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
 
 	atf_check \
@@ -76,6 +77,7 @@ config_fileexist_body()
 	pkg repo .
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
+		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
@@ -97,6 +99,7 @@ config_fileexist_notinpkg_body()
 	pkg repo .
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
+		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"

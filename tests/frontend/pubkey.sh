@@ -42,6 +42,7 @@ local: {
 EOF
 	atf_check \
 		-o ignore \
+		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR="${TMPDIR}" \
 		-o ${PKG_CACHEDIR}="${TMPDIR}" update
 }
