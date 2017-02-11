@@ -94,7 +94,7 @@ ${JAILED}[2/2] Extracting test2-1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
 }

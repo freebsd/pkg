@@ -104,7 +104,7 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y php53-extensions
 
@@ -264,7 +264,7 @@ Number of packages to be reinstalled: 1
 
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -n php53-fileinfo
 

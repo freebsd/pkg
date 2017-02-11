@@ -111,6 +111,7 @@ repositories: {
 EOF
 
 	atf_check -o ignore \
+		-e match:".*load error: access repo file.*" \
 		pkg -C ./pkg.conf update
 
 	# Ensure we can pickup the old version
