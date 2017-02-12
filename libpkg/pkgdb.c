@@ -1022,9 +1022,13 @@ pkgdb_setup_lock(void)
 {
 	const char *dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
+	if (pkg_object_bool(pkg_config_get("NFS_WITH_PROPER_LOCKING")))
+		return;
+
 	/*
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
+
 #if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
 	struct statvfs stfs;
 
