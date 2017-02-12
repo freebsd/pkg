@@ -346,6 +346,11 @@ A repository file is in UCL format and has the following form:
 .Bl -tag -width ".Cm myrepo:"
 .It Cm myrepo:
 .Bl -tag -width ".Cm MIRROR_TYPE: string"
+.It Cm ENV: object
+A list of key value entries that will be passed as environement variable
+for the bundled
+.Xr fetch 3 ,
+per repository.
 .It Cm URL: string
 URL for this repository only.
 .It Cm ENABLED: boolean
