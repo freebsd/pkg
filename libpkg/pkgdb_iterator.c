@@ -7,7 +7,7 @@
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
- * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -213,6 +213,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL, *opt_stmt = NULL;
 	int		 ret = EPKG_OK;
+	struct pkg_dep *chain = NULL;
 	struct pkg_dep_formula *f;
 	struct pkg_dep_formula_item *fit;
 	struct pkg_dep_option_item *optit;
@@ -288,6 +289,8 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 					}
 
 					/* Fetch matching packages */
+					chain = NULL;
+
 					while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 						/*
 						 * Load options for a package and check
@@ -333,7 +336,8 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 						}
 
 						if (options_match) {
-							pkg_adddep(pkg, sqlite3_column_text(stmt, 1),
+							chain = pkg_adddep_chain(chain, pkg,
+									sqlite3_column_text(stmt, 1),
 									sqlite3_column_text(stmt, 2),
 									sqlite3_column_text(stmt, 3),
 									sqlite3_column_int64(stmt, 4));
