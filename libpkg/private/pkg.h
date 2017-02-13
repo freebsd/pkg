@@ -104,14 +104,25 @@
 	data = NULL;                               \
 } while (0)
 
-#define LL_FREE(head, free_func) do {   \
+#define LL_FREE2(head, free_func, next) do {   \
 	__typeof(head) l1, l2;                 \
-	LL_FOREACH_SAFE(head, l1, l2) {       \
-		LL_DELETE(head, l1);          \
+	LL_FOREACH_SAFE2(head, l1, l2, next) {       \
+		LL_DELETE2(head, l1, next);          \
 		free_func(l1);                \
 	}                                     \
 	head = NULL;                          \
 } while (0)
+#define LL_FREE(head, free_func) LL_FREE2(head, free_func, next)
+
+#define DL_FREE2(head, free_func, prev, next) do {   \
+	__typeof(head) l1, l2;                 \
+	DL_FOREACH_SAFE2(head, l1, l2, next) {       \
+		DL_DELETE2(head, l1, prev, next);          \
+		free_func(l1);                \
+	}                                     \
+	head = NULL;                          \
+} while (0)
+#define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
 #define HASH_NEXT(hash, data) do {            \
 		if (data == NULL)             \
