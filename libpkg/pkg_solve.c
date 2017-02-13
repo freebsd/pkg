@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -357,15 +357,10 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *depvar, *curvar;
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg_solve_item *it = NULL;
-	int cnt;
+	int cnt = 0;
+	struct pkg_dep *cur;
 
-	uid = dep->uid;
-	HASH_FIND_STR(problem->variables_by_uid, uid, depvar);
-	if (depvar == NULL) {
-		pkg_debug(2, "cannot find variable dependency %s", uid);
-		return (EPKG_END);
-	}
-	/* Dependency rule: (!A | B) */
+	/* Dependency rule: (!A | B1 | B2 | B3...) */
 	rule = pkg_solve_rule_new(PKG_RULE_DEPEND);
 	if (rule == NULL)
 		return (EPKG_FATAL);
@@ -378,23 +373,40 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 
 	it->inverse = -1;
 	RULE_ITEM_APPEND(rule, it);
-	/* B1 | B2 | ... */
-	cnt = 1;
-	LL_FOREACH(depvar, curvar) {
-		/* Propagate reponame */
-		if (curvar->assumed_reponame == NULL) {
-			curvar->assumed_reponame = reponame;
+
+	LL_FOREACH2(dep, cur, alt_next) {
+		uid = cur->uid;
+		HASH_FIND_STR(problem->variables_by_uid, uid, depvar);
+		if (depvar == NULL) {
+			pkg_debug(2, "cannot find variable dependency %s", uid);
+			continue;
 		}
 
-		it = pkg_solve_item_new(curvar);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
+		/* B1 | B2 | ... */
+		cnt = 1;
+		LL_FOREACH(depvar, curvar) {
+			/* Propagate reponame */
+			if (curvar->assumed_reponame == NULL) {
+				curvar->assumed_reponame = reponame;
+			}
 
-		it->inverse = 1;
-		RULE_ITEM_APPEND(rule, it);
-		cnt ++;
+			it = pkg_solve_item_new(curvar);
+			if (it == NULL) {
+				pkg_solve_rule_free(rule);
+				return (EPKG_FATAL);
+			}
+
+			it->inverse = 1;
+			RULE_ITEM_APPEND(rule, it);
+			cnt ++;
+		}
+	}
+
+	if (cnt == 0) {
+		pkg_debug(2, "cannot find any suitable dependency for %s", var->uid);
+		pkg_solve_rule_free(rule);
+
+		return (EPKG_FATAL);
 	}
 
 	kv_prepend(typeof(rule), problem->rules, rule);
