@@ -2,9 +2,9 @@
  * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -104,14 +104,25 @@
 	data = NULL;                               \
 } while (0)
 
-#define LL_FREE(head, free_func) do {   \
+#define LL_FREE2(head, free_func, next) do {   \
 	__typeof(head) l1, l2;                 \
-	LL_FOREACH_SAFE(head, l1, l2) {       \
-		LL_DELETE(head, l1);          \
+	LL_FOREACH_SAFE2(head, l1, l2, next) {       \
+		LL_DELETE2(head, l1, next);          \
 		free_func(l1);                \
 	}                                     \
 	head = NULL;                          \
 } while (0)
+#define LL_FREE(head, free_func) LL_FREE2(head, free_func, next)
+
+#define DL_FREE2(head, free_func, prev, next) do {   \
+	__typeof(head) l1, l2;                 \
+	DL_FOREACH_SAFE2(head, l1, l2, next) {       \
+		DL_DELETE2(head, l1, prev, next);          \
+		free_func(l1);                \
+	}                                     \
+	head = NULL;                          \
+} while (0)
+#define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
 #define HASH_NEXT(hash, data) do {            \
 		if (data == NULL)             \
@@ -309,7 +320,8 @@ struct pkg_dep {
 	char		*version;
 	char		*uid;
 	bool		 locked;
-	struct pkg_dep	*next;
+	struct pkg_dep		*alt_next, *alt_prev; /* Chain of alternatives */
+	struct pkg_dep	*next, *prev;
 };
 
 typedef enum {
@@ -805,5 +817,8 @@ int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file
 void pkg_rollback_cb(void *);
 void pkg_rollback_pkg(struct pkg *);
 int pkg_add_fromdir(struct pkg *, const char *);
+struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
+		struct pkg *pkg, const char *name, const char *origin, const
+		char *version, bool locked);
 
 #endif

@@ -3,8 +3,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -608,6 +609,20 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 int
 pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version, bool locked)
 {
+	if (pkg_adddep_chain(NULL, pkg, name, origin, version, locked) == NULL) {
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+struct pkg_dep *
+pkg_adddep_chain(struct pkg_dep *chain,
+		struct pkg *pkg,
+		const char *name,
+		const char *origin,
+		const char *version, bool locked)
+{
 	struct pkg_dep *d = NULL;
 
 	assert(pkg != NULL);
@@ -619,11 +634,11 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 		if (developer_mode) {
 			pkg_emit_error("%s: duplicate dependency listing: %s, fatal (developer mode)",
 			    pkg->name, name);
-			return (EPKG_FATAL);
+			return (NULL);
 		} else {
 			pkg_emit_error("%s-%s: duplicate dependency listing: %s, ignoring",
 			    pkg->name, pkg->version, name);
-			return (EPKG_OK);
+			return (NULL);
 		}
 	}
 
@@ -636,9 +651,16 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	d->locked = locked;
 
 	kh_add(pkg_deps, pkg->depshash, d, d->name, pkg_dep_free);
-	LL_APPEND(pkg->depends, d);
 
-	return (EPKG_OK);
+	if (chain == NULL) {
+		DL_APPEND(pkg->depends, d);
+		chain = pkg->depends;
+	}
+	else {
+		DL_APPEND2(chain, d, alt_prev, alt_next);
+	}
+
+	return (chain);
 }
 
 int
@@ -661,7 +683,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	d->locked = locked;
 
 	kh_add(pkg_deps, pkg->rdepshash, d, d->name, pkg_dep_free);
-	LL_APPEND(pkg->rdepends, d);
+	LL_PREPEND(pkg->rdepends, d);
 
 	return (EPKG_OK);
 }
@@ -1253,15 +1275,22 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_LICENSES:
 		return (kh_count(pkg->licenses));
 	}
-	
+
 	return (0);
 }
 
 void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
+	struct pkg_dep *cur;
+
 	switch (list) {
 	case PKG_DEPS:
-		LL_FREE(pkg->depends, pkg_dep_free);
+		DL_FOREACH (pkg->depends, cur) {
+			if (cur->alt_next) {
+				DL_FREE2(cur->alt_next, pkg_dep_free, alt_prev, alt_next);
+			}
+		}
+		DL_FREE(pkg->depends, pkg_dep_free);
 		kh_destroy_pkg_deps(pkg->depshash);
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
@@ -1578,7 +1607,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 
 		if (regular)
 			flatsize += st.st_size;
-		
+
 		if (strcmp(sum, f->sum) != 0)
 			pkgdb_file_set_cksum(db, f, sum);
 		free(sum);
