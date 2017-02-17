@@ -71,7 +71,7 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 		}
 
 		if (!quiet)
-			printf("Updating %s repository catalogue...\n",
+			fprintf(stderr, "Updating %s repository catalogue...\n",
 			    pkg_repo_name(r));
 
 		retcode = pkg_update(r, force);
@@ -79,7 +79,7 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 		if (retcode == EPKG_UPTODATE) {
 			retcode = EPKG_OK;
 			if (!quiet) {
-				printf("%s repository is up to date.\n",
+				fprintf(stderr, "%s repository is up to date.\n",
 				    pkg_repo_name(r));
 			}
 		}
@@ -96,22 +96,22 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 	if (total_count == 0) {
 		retcode = EPKG_FATAL;
 		if (!quiet) {
-			printf("No repositories are enabled.\n");
+			fprintf(stderr, "No repositories are enabled.\n");
 		}
 	}
 	else if (update_count == total_count) {
 		if (!quiet) {
-			printf("All repositories are up to date.\n");
+			fprintf(stderr, "All repositories are up to date.\n");
 		}
 	}
 	else if (total_count == 1) {
 		if (!quiet) {
-			printf("Error updating repositories!\n");
+			fprintf(stderr, "Error updating repositories!\n");
 		}
 	}
 	else {
 		if (!quiet) {
-			printf("Error updating repositories!\n");
+			fprintf(stderr, "Error updating repositories!\n");
 		}
 		if (strict) {
 			retcode = EPKG_FATAL;
