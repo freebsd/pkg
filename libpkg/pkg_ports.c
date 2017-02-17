@@ -962,6 +962,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	if (fd == -1) {
 		pkg_emit_error("cannot load keyword from %s: %s",
 				keyfile_path, strerror(errno));
+		return (EPKG_UNKNOWN);
 	}
 
 	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
