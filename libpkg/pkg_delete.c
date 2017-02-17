@@ -289,8 +289,6 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	int fd;
 #endif
 #endif
-	int ret;
-
 	pkg_open_root_fd(pkg);
 
 	path = file->path;
