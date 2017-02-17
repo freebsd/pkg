@@ -741,7 +741,7 @@ populate_keywords(struct plist *p)
 		a = xmalloc(sizeof(struct action));
 		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
 		a->perform = keyacts[i].action;
-		LL_APPEND(k->actions, a);
+		DL_APPEND(k->actions, a);
 		HASH_ADD_STR(p->keywords, keyword, k);
 	}
 }
@@ -749,8 +749,7 @@ populate_keywords(struct plist *p)
 static void
 keyword_free(struct keyword *k)
 {
-	LL_FREE(k->actions, free);
-
+	DL_FREE(k->actions, free);
 	free(k);
 }
 
@@ -925,7 +924,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 					msg->type = PKG_MESSAGE_UPGRADE;
 			}
-			LL_APPEND(p->pkg->message, msg);
+			DL_APPEND(p->pkg->message, msg);
 		}
 	}
 

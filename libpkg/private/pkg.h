@@ -335,7 +335,7 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
-	struct pkg_message	*next;
+	struct pkg_message	*next, *prev;
 };
 
 enum pkg_conflict_type {
@@ -349,7 +349,7 @@ struct pkg_conflict {
 	char *uid;
 	char *digest;
 	enum pkg_conflict_type type;
-	struct pkg_conflict *next;
+	struct pkg_conflict *next, *prev;
 };
 
 typedef enum {
@@ -378,7 +378,7 @@ struct pkg_file {
 	u_long		 fflags;
 	struct pkg_config_file *config;
 	struct timespec	 time[2];
-	struct pkg_file	*next;
+	struct pkg_file	*next, *prev;
 };
 
 struct pkg_dir {
@@ -391,7 +391,7 @@ struct pkg_dir {
 	gid_t		 gid;
 	bool		 noattrs;
 	struct timespec	 time[2];
-	struct pkg_dir	*next;
+	struct pkg_dir	*next, *prev;
 };
 
 struct pkg_option {
@@ -399,7 +399,7 @@ struct pkg_option {
 	char	*value;
 	char	*default_value;
 	char	*description;
-	struct pkg_option *next;
+	struct pkg_option *next, *prev;
 };
 
 struct http_mirror {
@@ -594,7 +594,7 @@ struct file_attr {
 
 struct action {
 	int (*perform)(struct plist *, char *, struct file_attr *);
-	struct action *next;
+	struct action *next, *prev;
 };
 
 /* sql helpers */

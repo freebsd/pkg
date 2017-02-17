@@ -171,7 +171,7 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	if (!kh_contains(pkg_conflicts, p1->conflictshash, p2->uid)) {
 		c1->uid = xstrdup(p2->uid);
 		kh_safe_add(pkg_conflicts, p1->conflictshash, c1, c1->uid);
-		LL_APPEND(p1->conflicts, c1);
+		DL_APPEND(p1->conflicts, c1);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
 				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r");
@@ -182,7 +182,7 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	if (!kh_contains(pkg_conflicts, p2->conflictshash, p1->uid)) {
 		c2->uid = xstrdup(p1->uid);
 		kh_safe_add(pkg_conflicts, p2->conflictshash, c2, c2->uid);
-		LL_APPEND(p2->conflicts, c2);
+		DL_APPEND(p2->conflicts, c2);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
 				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r");
@@ -266,7 +266,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		}
 
 		kh_safe_add(pkg_conflicts, p1->conflictshash, c1, c1->uid);
-		LL_APPEND(p1->conflicts, c1);
+		DL_APPEND(p1->conflicts, c1);
 	}
 
 	if (c2 == NULL) {
@@ -282,7 +282,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		}
 
 		kh_safe_add(pkg_conflicts, p2->conflictshash, c2, c2->uid);
-		LL_APPEND(p2->conflicts, c2);
+		DL_APPEND(p2->conflicts, c2);
 	}
 
 	pkg_debug(2, "registering conflict between %s(%s) and %s(%s) on path %s",
