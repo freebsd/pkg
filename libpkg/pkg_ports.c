@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <uthash.h>
 
@@ -944,7 +945,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	struct ucl_parser *parser;
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
-	int ret = EPKG_UNKNOWN;
+	int ret = EPKG_UNKNOWN, fd;
 	ucl_object_t *o, *schema;
 	struct ucl_schema_error err;
 
@@ -958,14 +959,22 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		    "%s/%s.ucl", keyword_dir, keyword);
 	}
 
+	fd = open(keyfile_path, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("cannot load keyword from %s: %s",
+				keyfile_path, strerror(errno));
+	}
+
 	parser = ucl_parser_new(0);
-	if (!ucl_parser_add_file(parser, keyfile_path)) {
+	if (!ucl_parser_add_fd(parser, fd)) {
 		pkg_emit_error("cannot parse keyword: %s",
 				ucl_parser_get_error(parser));
 		ucl_parser_free(parser);
+		close(fd);
 		return (EPKG_UNKNOWN);
 	}
 
+	close(fd);
 	o = ucl_parser_get_object(parser);
 	ucl_parser_free(parser);
 

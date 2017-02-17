@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <ucl.h>
 
 #include "sha256.h"
@@ -871,21 +872,30 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;
-	int rc;
+	int rc, fd;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
 
 	pkg_debug(1, "Parsing manifest from '%s'", file);
+	fd = open(file, O_RDONLY);
+
+	if (fd == -1) {
+		pkg_emit_error("Error loading manifest from %s: %s",
+				    file, strerror(errno));
+	}
 
 	errno = 0;
 	p = ucl_parser_new(0);
-	if (!ucl_parser_add_file(p, file)) {
+	if (!ucl_parser_add_fd(p, fd)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
 		ucl_parser_free(p);
+		close(fd);
 		return (EPKG_FATAL);
 	}
+
+	close(fd);
 
 	if ((obj = ucl_parser_get_object(p)) == NULL) {
 		ucl_parser_free(p);
