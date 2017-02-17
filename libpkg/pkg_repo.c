@@ -1010,18 +1010,27 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 	struct ucl_parser *p = NULL;
 	char path[MAXPATHLEN];
 	struct fingerprint *f = NULL;
+	int fd;
 
 	snprintf(path, sizeof(path), "%s/%s", dir, filename);
+	fd = open(path, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("cannot load fingerprints from %s: %s",
+				path, strerror(errno));
+		return (NULL);
+	}
 
 	p = ucl_parser_new(0);
 
-	if (!ucl_parser_add_file(p, path)) {
-		pkg_emit_error("%s", ucl_parser_get_error(p));
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("cannot parse fingerprints: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
+		close(fd);
 		return (NULL);
 	}
 
 	obj = ucl_parser_get_object(p);
+	close(fd);
 
 	if (obj->type == UCL_OBJECT)
 		f = pkg_repo_parse_fingerprint(obj);
