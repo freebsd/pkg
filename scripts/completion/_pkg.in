@@ -104,7 +104,6 @@ _pkg() {
 		'check[check for missing dependencies and database consistency]'
 		'clean[clean old packages from the cache]'
 		'config[display value of a configuration option]'
-		'convert[convert database from/to pkgng]'
 		'create[create software package distributions]'
 		'delete[delete packages from the database and the system]'
 		'fetch[fetch packages from a remote repository]'
@@ -230,12 +229,6 @@ _pkg() {
 				'(-n --dry-run)'{-n,--dry-run}'[show what packages would be removed]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-y --yes)'{-y,--yes}'[assume yes for confirmations]'
-			return
-			;;
-		(convert)
-			_arguments -s \
-				'(-d --pkg-dbdir)'{-d,--pkg-dbdir}'[specify the location of the pkg_add(1) dbdir]: : _files -/' \
-				'(-n --dry-run)'{-n,--dry-run}'[dry run mode]'
 			return
 			;;
 		(create)

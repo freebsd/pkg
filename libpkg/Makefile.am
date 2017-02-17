@@ -61,7 +61,6 @@ libpkg_la_SOURCES=	pkg.c \
 			scripts.c \
 			utils.c \
 			plugins.c \
-			pkg_old.c \
 			merge3.c \
 			diff.c \
 			sha256.c

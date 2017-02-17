@@ -1484,8 +1484,6 @@ int pkg_get_myarch(char *pkgarch, size_t sz);
 int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
-int pkg_old_load_from_path(struct pkg *pkg, const char *path);
-int pkg_from_old(struct pkg *pkg);
 int pkg_sshserve(int fd);
 
 int pkg_repos_total_count(void);

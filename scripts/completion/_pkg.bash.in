@@ -125,16 +125,6 @@ _pkgng_clean () {
     large_info=""
 }
 
-_pkgng_convert () {
-    local cur prev opts lopts
-    COMPREPLY=()
-
-    opts=()
-    lopts=()
-    small_info="Convert database from/to pkgng"
-    large_info=""
-}
-
 _pkgng_create () {
     local cur prev opts lopts
     COMPREPLY=()

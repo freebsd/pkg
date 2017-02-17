@@ -517,7 +517,6 @@ AC_CONFIG_FILES(Makefile \
 		scripts/periodic/411.pkg-backup
 		scripts/periodic/460.pkg-checksum
 		scripts/periodic/490.status-pkg-changes
-		scripts/sbin/pkg2ng
 		scripts/completion/_pkg.bash
 		scripts/completion/_pkg)
 AC_CONFIG_FILES(m4_expand([repos_makefiles]))
