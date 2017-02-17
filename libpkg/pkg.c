@@ -631,15 +631,9 @@ pkg_adddep_chain(struct pkg_dep *chain,
 
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin, name);
 	if (kh_contains(pkg_deps, pkg->depshash, name)) {
-		if (developer_mode) {
-			pkg_emit_error("%s: duplicate dependency listing: %s, fatal (developer mode)",
-			    pkg->name, name);
-			return (NULL);
-		} else {
-			pkg_emit_error("%s-%s: duplicate dependency listing: %s, ignoring",
-			    pkg->name, pkg->version, name);
-			return (NULL);
-		}
+		pkg_emit_error("%s: duplicate dependency listing: %s",
+		    pkg->name, name);
+		return (NULL);
 	}
 
 	d = xcalloc(1, sizeof(*d));
