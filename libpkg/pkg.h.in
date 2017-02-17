@@ -118,7 +118,7 @@ typedef void * pkg_iter;
 struct pkg_kv {
 	char *key;
 	char *value;
-	struct pkg_kv *next;
+	struct pkg_kv *next, *prev;
 };
 
 /**

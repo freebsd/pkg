@@ -103,8 +103,8 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_LICENSES);
 
-	LL_FREE(pkg->message, pkg_message_free);
-	LL_FREE(pkg->annotations, pkg_kv_free);
+	DL_FREE(pkg->message, pkg_message_free);
+	DL_FREE(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
@@ -731,7 +731,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 		f->fflags = fflags;
 
 	kh_safe_add(pkg_files, pkg->filehash, f, f->path);
-	LL_APPEND(pkg->files, f);
+	DL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
 }
@@ -838,7 +838,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		d->fflags = fflags;
 
 	kh_safe_add(pkg_dirs, pkg->dirhash, d, d->path);
-	LL_APPEND(pkg->dirs, d);
+	DL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
 }
@@ -1013,7 +1013,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	o->key = xstrdup(key);
 	o->value = xstrdup(value);
 	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
-	LL_APPEND(pkg->options, o);
+	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1047,7 +1047,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	o->key = xstrdup(key);
 	o->default_value = xstrdup(default_value);
 	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
-	LL_APPEND(pkg->options, o);
+	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1081,7 +1081,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	o->key = xstrdup(key);
 	o->description = xstrdup(description);
 	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
-	LL_APPEND(pkg->options, o);
+	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1148,7 +1148,7 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
 	kh_safe_add(pkg_conflicts, pkg->conflictshash, c, c->uid);
-	LL_APPEND(pkg->conflicts, c);
+	DL_APPEND(pkg->conflicts, c);
 
 	return (EPKG_OK);
 }
@@ -1229,7 +1229,7 @@ pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *t
 	}
 
 	kv = pkg_kv_new(key, val);
-	LL_APPEND(*list, kv);
+	DL_APPEND(*list, kv);
 
 	return (EPKG_OK);
 }
@@ -1294,19 +1294,19 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
-		LL_FREE(pkg->options, pkg_option_free);
+		DL_FREE(pkg->options, pkg_option_free);
 		kh_destroy_pkg_options(pkg->optionshash);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
-		LL_FREE(pkg->files, pkg_file_free);
+		DL_FREE(pkg->files, pkg_file_free);
 		kh_destroy_pkg_files(pkg->filehash);
 		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		LL_FREE(pkg->dirs, free);
+		DL_FREE(pkg->dirs, free);
 		kh_destroy_pkg_dirs(pkg->dirhash);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
@@ -1327,7 +1327,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_CONFLICTS:
-		LL_FREE(pkg->conflicts, pkg_conflict_free);
+		DL_FREE(pkg->conflicts, pkg_conflict_free);
 		kh_destroy_pkg_conflicts(pkg->conflictshash);
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
 		break;
@@ -1774,7 +1774,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		msg = xcalloc(1, sizeof(*msg));
 		msg->str = xstrdup(ucl_object_tostring(obj));
 		msg->type = PKG_MESSAGE_ALWAYS;
-		LL_APPEND(pkg->message, msg);
+		DL_APPEND(pkg->message, msg);
 		return (EPKG_OK);
 	}
 
@@ -1810,7 +1810,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				    " message will always be printed");
 		}
 		if (msg->type != PKG_MESSAGE_UPGRADE) {
-			LL_APPEND(pkg->message, msg);
+			DL_APPEND(pkg->message, msg);
 			continue;
 		}
 
@@ -1824,7 +1824,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 			msg->maximum_version = xstrdup(ucl_object_tostring(elt));
 		}
 
-		LL_APPEND(pkg->message, msg);
+		DL_APPEND(pkg->message, msg);
 	}
 
 	return (EPKG_OK);

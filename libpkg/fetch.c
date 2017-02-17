@@ -521,9 +521,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			kvtmp->key = xstrdup(kv->key);
 			if ((tmp = getenv(kv->key)) != NULL) {
 				kvtmp->value = xstrdup(tmp);
-				LL_APPEND(envtorestore, kvtmp);
+				DL_APPEND(envtorestore, kvtmp);
 			} else {
-				LL_APPEND(envtounset, kvtmp);
+				DL_APPEND(envtounset, kvtmp);
 			}
 			setenv(kv->key, kv->value, 1);
 		}

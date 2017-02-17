@@ -689,7 +689,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		while ((cur = ucl_iterate_object(env, &it, true))) {
 			kv = pkg_kv_new(ucl_object_key(cur),
 			    ucl_object_tostring_forced(cur));
-			LL_APPEND(r->env, kv);
+			DL_APPEND(r->env, kv);
 		}
 	}
 }

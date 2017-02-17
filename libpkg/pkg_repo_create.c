@@ -738,7 +738,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		LL_FREE(curcb->conflicts, pkg_conflict_free);
+		DL_FREE(curcb->conflicts, pkg_conflict_free);
 		kh_destroy_pkg_conflicts(curcb->conflictshash);
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
