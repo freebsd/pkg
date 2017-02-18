@@ -214,26 +214,28 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 
 	archive_write_header(pack->awrite, entry);
 
-	if (archive_entry_size(entry) > 0) {
-		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			pkg_emit_errno("open", filepath);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
+	if (archive_entry_size(entry) <= 0)
+		goto cleanup;
 
-		while ((len = read(fd, buf, sizeof(buf))) > 0)
-			if (archive_write_data(pack->awrite, buf, len) == -1) {
-				pkg_emit_errno("archive_write_data", "archive write error");
-				retcode = EPKG_FATAL;
-				break;
-			}
-
-		if (len == -1) {
-			pkg_emit_errno("read", "file read error");
-			retcode = EPKG_FATAL;
-		}
-		close(fd);
+	if ((fd = open(filepath, O_RDONLY)) < 0) {
+		pkg_emit_errno("open", filepath);
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
+
+	while ((len = read(fd, buf, sizeof(buf))) > 0) {
+		if (archive_write_data(pack->awrite, buf, len) == -1) {
+			pkg_emit_errno("archive_write_data", "archive write error");
+			retcode = EPKG_FATAL;
+			break;
+		}
+	}
+
+	if (len == -1) {
+		pkg_emit_errno("read", "file read error");
+		retcode = EPKG_FATAL;
+	}
+	close(fd);
 
 cleanup:
 	archive_entry_free(entry);
