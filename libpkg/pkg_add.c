@@ -492,7 +492,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	int fd = -1;
 	bool tried_mkdir = false;
 	size_t len;
-	char buf[BUFSIZ];
+	char buf[32768];
 
 	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 
