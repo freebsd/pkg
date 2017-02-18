@@ -985,6 +985,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->sum, 0,
 	    UCL_STRING_TRIM), "sum", 3, false);
 	ucl_object_insert_key(top, ucl_object_fromint(pkg->flatsize), "flatsize", 8, false);
+	if (pkg->dep_formula != NULL) {
+		ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->dep_formula, 0,
+		    UCL_STRING_TRIM), "dep_formula", 11, false);
+	}
 	/*
 	 * XXX: dirty hack to be compatible with pkg 1.2
 	 */
