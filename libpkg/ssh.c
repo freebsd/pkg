@@ -59,7 +59,7 @@ pkg_sshserve(int fd)
 	time_t mtime = 0;
 	const char *errstr;
 	int ffd;
-	char buf[BUFSIZ];
+	char buf[32768];
 	char fpath[MAXPATHLEN];
 	char rpath[MAXPATHLEN];
 	const char *restricted = NULL;
