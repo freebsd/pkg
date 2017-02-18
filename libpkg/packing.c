@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -134,7 +133,6 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
     u_long fflags)
 {
 	int fd;
-	char *map;
 	int retcode = EPKG_OK;
 	int ret;
 	time_t source_time;
@@ -142,6 +140,8 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	struct archive_entry *entry, *sparse_entry;
 	bool unset_timestamp;
 	const char *source_date_epoch;
+	char buf[32768];
+	int len;
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
@@ -220,43 +220,22 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
-		if (st.st_size > SSIZE_MAX) {
-			char buf[BUFSIZ];
-			int len;
 
-			while ((len = read(fd, buf, sizeof(buf))) > 0)
-				if (archive_write_data(pack->awrite, buf, len) == -1) {
-					pkg_emit_errno("archive_write_data", "archive write error");
-					retcode = EPKG_FATAL;
-					break;
-				}
+		while ((len = read(fd, buf, sizeof(buf))) > 0)
+			if (archive_write_data(pack->awrite, buf, len) == -1) {
+				pkg_emit_errno("archive_write_data", "archive write error");
+				retcode = EPKG_FATAL;
+				break;
+			}
 
-			if (len == -1) {
-				pkg_emit_errno("read", "file read error");
-				retcode = EPKG_FATAL;
-			}
-			close(fd);
+		if (len == -1) {
+			pkg_emit_errno("read", "file read error");
+			retcode = EPKG_FATAL;
 		}
-		else {
-			if ((map = mmap(NULL, st.st_size, PROT_READ,
-					MAP_SHARED, fd, 0)) != MAP_FAILED) {
-				close(fd);
-				if (archive_write_data(pack->awrite, map, st.st_size) == -1) {
-					pkg_emit_errno("archive_write_data", "archive write error");
-					retcode = EPKG_FATAL;
-				}
-				munmap(map, st.st_size);
-			}
-			else {
-				close(fd);
-				pkg_emit_errno("open", filepath);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-		}
+		close(fd);
 	}
 
-	cleanup:
+cleanup:
 	archive_entry_free(entry);
 	return (retcode);
 }
