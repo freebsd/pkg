@@ -127,7 +127,7 @@ keyword_open_schema(void)
 	if (keyword_schema != NULL)
 		return (keyword_schema);
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, keyword_schema_str,
 	    sizeof(keyword_schema_str) -1)) {
 		pkg_emit_error("Cannot parse schema for keywords: %s",
@@ -964,7 +964,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 				keyfile_path, strerror(errno));
 	}
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_fd(parser, fd)) {
 		pkg_emit_error("cannot parse keyword: %s",
 				ucl_parser_get_error(parser));

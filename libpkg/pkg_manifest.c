@@ -811,7 +811,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(p, buf, len)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
