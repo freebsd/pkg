@@ -675,13 +675,14 @@ cleanup:
 	return rc;
 }
 
-static int
+int
 pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
-    time_t *t, int *rc)
+    time_t *t, int *rc, size_t *sz)
 {
 	int fd, dest_fd;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
+	struct stat st;
 
 	fd = pkg_repo_fetch_remote_tmp(repo, filename,
 			packing_format_to_string(repo->meta->packing_format), t, rc);
@@ -713,44 +714,14 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 
 	/* Thus removing archived file as well */
 	close(fd);
-
-	return (dest_fd);
-}
-
-unsigned char *
-pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo, const char *filename,
-    time_t *t, int *rc, size_t *sz)
-{
-	int fd;
-	struct stat st;
-	unsigned char *map;
-
-	fd = pkg_repo_fetch_remote_extract_fd(repo, filename, t, rc);
-	if (fd == -1) {
-		return (NULL);
-	}
-
-	if (fstat(fd, &st) == -1) {
-		close(fd);
-		return (MAP_FAILED);
+	if (fstat(dest_fd, &st) == -1) {
+		close(dest_fd);
+		return (-1);
 	}
 
 	*sz = st.st_size;
-	if (st.st_size > SSIZE_MAX) {
-		pkg_emit_error("%s too large", filename);
-		close(fd);
-		return (MAP_FAILED);
-	}
 
-	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	close(fd);
-	if (map == MAP_FAILED) {
-		pkg_emit_errno("pkg_repo_fetch_remote_mmap", "cannot mmap fetched");
-		*rc = EPKG_FATAL;
-		return (MAP_FAILED);
-	}
-
-	return (map);
+	return (dest_fd);
 }
 
 struct pkg_repo_check_cbdata {
