@@ -772,7 +772,7 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 	int64_t res_len = 0;
 	bool found = false;
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, cbdata->map, cbdata->len)) {
 		pkg_emit_error("cannot parse repository meta from %s",
 				ucl_parser_get_error(parser));
@@ -1020,7 +1020,7 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 		return (NULL);
 	}
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 
 	if (!ucl_parser_add_fd(p, fd)) {
 		pkg_emit_error("cannot parse fingerprints: %s", ucl_parser_get_error(p));

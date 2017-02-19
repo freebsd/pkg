@@ -1843,7 +1843,7 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 		len = strlen(str);
 	}
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 
 	if (ucl_parser_add_chunk(parser, (const unsigned char*)str, len)) {
 		obj = ucl_parser_get_object(parser);

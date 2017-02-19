@@ -129,7 +129,7 @@ pkg_repo_meta_open_schema_v1()
 	if (repo_meta_schema_v1 != NULL)
 		return (repo_meta_schema_v1);
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, meta_schema_str_v1,
 			sizeof(meta_schema_str_v1) - 1)) {
 		pkg_emit_error("cannot parse schema for repo meta: %s",
