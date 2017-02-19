@@ -852,7 +852,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	if ((rc = file_to_bufferat(dfd, file, &data, &sz)) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_string(p, data, sz)) {
 		pkg_emit_error("manifest parsing error: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
@@ -886,7 +886,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	}
 
 	errno = 0;
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_fd(p, fd)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
