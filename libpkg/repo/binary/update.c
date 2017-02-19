@@ -468,7 +468,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	unsigned char *map = MAP_FAILED;
 	size_t len = 0;
 	bool in_trans = false;
-	char path[MAXPATHLEN];
+	char *path = NULL;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -495,7 +495,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			&rc, repo_conflicts_file);*/
 
 	/* Load local repository data */
-	snprintf(path, sizeof(path), "%s-pkgtemp", name);
+	xasprintf(&path, "%s-pkgtemp", name);
 	rename(name, path);
 	pkg_register_cleanup_callback(rollback_repo, (void *)name);
 	rc = pkg_repo_binary_init_update(repo, name);
@@ -568,7 +568,10 @@ cleanup:
 		unlink(name);
 		rename(path, name);
 	}
-	unlink(path);
+	if (path != NULL) {
+		unlink(path);
+		free(path);
+	}
 	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
 	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
