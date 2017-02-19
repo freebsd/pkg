@@ -741,7 +741,6 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 	struct iovec iov[2];
 	int rc = EPKG_OK;
 	int64_t res_len = 0;
-	bool found = false;
 
 	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, cbdata->map, cbdata->len)) {
@@ -759,30 +758,28 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 	if (obj == NULL) {
 		pkg_emit_error("cannot find key for signature %s in meta",
 				cbdata->name);
-		rc = EPKG_FATAL;
+		ucl_object_unref(top);
+		return (EPKG_FATAL);
 	}
-	else {
-		while(!found && (cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
-			elt = ucl_object_find_key(cur, "name");
-			if (elt != NULL && elt->type == UCL_STRING) {
-				if (strcmp(ucl_object_tostring(elt), cbdata->name) == 0) {
-					elt = ucl_object_find_key(cur, "data");
-					if (elt == NULL || elt->type != UCL_STRING)
-						continue;
+	while((cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
+		elt = ucl_object_find_key(cur, "name");
+		if (elt == NULL || elt->type != UCL_STRING)
+			continue;
+		if (strcmp(ucl_object_tostring(elt), cbdata->name) != 0)
+			continue;
+		elt = ucl_object_find_key(cur, "data");
+		if (elt == NULL || elt->type != UCL_STRING)
+			continue;
 
-					/* +1 to include \0 at the end */
-					res_len = elt->len + 1;
-					iov[0].iov_base = (void *)ucl_object_tostring(elt);
-					iov[0].iov_len = res_len;
-					if (writev(fd, iov, 1) == -1) {
-						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
-								"writev error");
-						rc = EPKG_FATAL;
-						break;
-					}
-					found = true;
-				}
-			}
+		/* +1 to include \0 at the end */
+		res_len = elt->len + 1;
+		iov[0].iov_base = (void *)ucl_object_tostring(elt);
+		iov[0].iov_len = res_len;
+		if (writev(fd, iov, 1) == -1) {
+			pkg_emit_errno("pkg_repo_meta_extract_pubkey",
+					"writev error");
+			rc = EPKG_FATAL;
+			break;
 		}
 	}
 
