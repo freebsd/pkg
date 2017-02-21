@@ -195,6 +195,7 @@ exec_which(int argc, char **argv)
 				retcode = EX_USAGE;
 				goto cleanup;
                         }
+			kv_push(char *, patterns, strdup(pathabs));
 		}
 
 
