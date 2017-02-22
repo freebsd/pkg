@@ -54,6 +54,8 @@ pkg_CFLAGS=	 @OS_CFLAGS@ \
 			-I$(top_srcdir)/external/libucl/klib \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/expat/lib \
+			-I$(top_srcdir)/external/sqlite \
+			-I$(top_srcdir)/external/libucl/include \
 			-DGITHASH=\"$(GIT_HEAD)\" 
 pkg_static_SOURCES=
 pkg_static_LDADD= @OS_LDFLAGS@ \

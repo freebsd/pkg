@@ -34,7 +34,7 @@ COCCI_ARGS=	-I ${top_srcdir} \
 		-I ${top_srcdir}/external/libyaml/include \
 		-I ${top_srcdir}/external/libucl/include \
 		-I ${top_srcdir}/external/uthash \
-		-I ${top_srcdir}/external/sqlite  \
+		-I ${top_srcdir}/external/sqlite \
 		-I ${top_srcdir}/external/libelf
 
 1cocci:
