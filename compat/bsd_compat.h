@@ -29,6 +29,12 @@
 
 #include "pkg_config.h"
 
+#ifdef __linux__
+ #include <stdint.h>
+ #include <grp.h>
+ #define __uintptr_t uintptr_t
+#endif
+
 #ifdef __OpenBSD__
  #include "../external/libelf/_elftc.h"
 
