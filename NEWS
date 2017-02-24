@@ -1,3 +1,7 @@
+Changes from pkg 1.10
+- Use dep_formula in the solver
+- Cache pw result to avoid over reloading nssswitch.conf
+
 Changes from pkg 1.9
 - fix pkg which -g
 - Do not use openssl for sha256
