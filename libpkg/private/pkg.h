@@ -44,7 +44,7 @@
 #include <utstring.h>
 #include <ucl.h>
 
-#include "private/xmalloc.h"
+#include "xmalloc.h"
 #include "private/utils.h"
 
 #define UCL_COUNT(obj) ((obj)?((obj)->len):0)

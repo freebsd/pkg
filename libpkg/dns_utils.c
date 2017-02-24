@@ -79,7 +79,7 @@
 
 #include <bsd_compat.h>
 #include "private/utils.h"
-#include "private/xmalloc.h"
+#include "xmalloc.h"
 #include "pkg.h"
 
 #ifndef HAVE_LDNS

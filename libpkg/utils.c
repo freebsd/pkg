@@ -51,7 +51,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
-#include "private/xmalloc.h"
+#include "xmalloc.h"
 
 int
 mkdirs(const char *_path)
