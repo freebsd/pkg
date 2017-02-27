@@ -22,11 +22,11 @@
 .Nd display which package installed a specific file
 .Sh SYNOPSIS
 .Nm
-.Op Fl gopq
+.Op Fl gopqm
 .Ar file
 .Pp
 .Nm
-.Op Cm --{glob,origin,path-search,quiet}
+.Op Cm --{glob,origin,path-search,quiet,show-match}
 .Ar file
 .Sh DESCRIPTION
 .Nm
@@ -40,6 +40,8 @@ The following options are supported by
 Treat
 .Ao file Ac
 as a glob pattern.
+.It Fl m , Cm --show-match
+Show files that matched the glob pattern (requires --glob)
 .It Fl o , Cm --origin
 Show the origin of the package instead of name-version.
 .It Fl p , Cm --path-search
