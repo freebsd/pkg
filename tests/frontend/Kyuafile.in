@@ -39,3 +39,4 @@ atf_test_program{name='issue1374'}
 atf_test_program{name='issue1425'}
 atf_test_program{name='issue1440'}
 atf_test_program{name='issue1445'}
+atf_test_program{name='fingerprint'}
