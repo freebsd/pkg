@@ -822,7 +822,7 @@ pkg_repo_sign(char *path, char **argv, int argc, UT_string **sig, UT_string **ce
 			break;
 		}
 		if (buf != NULL)
-			utstring_printf(buf, "%s", line);
+			utstring_bincpy(buf, line, linelen);
 	}
 
 	if (pclose(fp) != 0) {
