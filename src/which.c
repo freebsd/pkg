@@ -74,7 +74,7 @@ exec_which(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-        struct pkg_file *file = NULL;
+	struct pkg_file *file = NULL;
 	char		 pathabs[MAXPATHLEN];
 	char		*p, *path, *match, *savedpath;
 	int		 ret = EPKG_OK, retcode = EX_SOFTWARE;
@@ -84,9 +84,9 @@ exec_which(int argc, char **argv)
 	bool		 glob = false;
 	bool		 search = false;
 	bool		 search_s = false;
-        bool             show_match = false;
+	bool		 show_match = false;
 	charlist	 patterns;
-        UT_string       *filename;
+	UT_string	*filename;
 
 	struct option longopts[] = {
 		{ "glob",		no_argument,	NULL,	'g' },
