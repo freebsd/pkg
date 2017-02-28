@@ -223,8 +223,9 @@ exec_which(int argc, char **argv)
 					pkg_printf("%S was installed by package %o\n", kv_A(patterns, i), pkg);
 				else if (!quiet && !orig && !show_match)
 					pkg_printf("%S was installed by package %n-%v\n", kv_A(patterns, i), pkg, pkg);
-				else if (!quiet && glob && show_match) {
-					pkg_printf("%S was glob searched and found in package %n-%v\n", kv_A(patterns, i), pkg, pkg, pkg);
+				else if (glob && show_match) {
+					if (!quiet)
+						pkg_printf("%S was glob searched and found in package %n-%v\n", kv_A(patterns, i), pkg, pkg, pkg);
 					while(pkg_files(pkg, &file) == EPKG_OK) {
 						pkg_asprintf(&match, "%Fn", file);
 						if (match == NULL)
