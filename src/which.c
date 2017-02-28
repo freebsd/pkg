@@ -39,8 +39,6 @@
 #include <kvec.h>
 #include <fnmatch.h>
 
-#include <utstring.h>
-
 #include <pkg.h>
 #include "pkgcli.h"
 
@@ -86,7 +84,6 @@ exec_which(int argc, char **argv)
 	bool		 search_s = false;
 	bool		 show_match = false;
 	charlist	 patterns;
-	UT_string	*filename;
 
 	struct option longopts[] = {
 		{ "glob",		no_argument,	NULL,	'g' },
@@ -228,13 +225,13 @@ exec_which(int argc, char **argv)
 					pkg_printf("%S was installed by package %n-%v\n", kv_A(patterns, i), pkg, pkg);
 				else if (!quiet && glob && show_match) {
 					pkg_printf("%S was glob searched and found in package %n-%v\n", kv_A(patterns, i), pkg, pkg, pkg);
-
 					while(pkg_files(pkg, &file) == EPKG_OK) {
-						utstring_new(filename);
-						pkg_utstring_printf(filename, "%Fn", file);
-						if(!fnmatch(kv_A(patterns, i), utstring_body(filename), 0))
-							printf("%s\n", utstring_body(filename));
-						utstring_free(filename);
+						pkg_asprintf(&match, "%Fn", file);
+						if (match == NULL)
+							err(EX_DATAERR, "pkg_asprintf");
+						if(!fnmatch(kv_A(patterns, i), match, 0))
+							printf("%s\n", match);
+						free(match);
 					}
 				}
 			}
