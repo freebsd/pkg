@@ -964,12 +964,21 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 	return (EPKG_OK);
 }
 
+static const char*
+_dbdir_trim_path(const char*path) {
+	const char *p = strrchr(path, '/');
+	if(p == 0)
+		return path;
+	else
+		return p + 1;
+}
+
 static int
 _dbdir_open(const char *path, int flags, int mode)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (openat(dfd, strrchr(path, '/') + 1, flags, mode));
+	return (openat(dfd, _dbdir_trim_path(path), flags, mode));
 }
 
 static int
@@ -977,7 +986,7 @@ _dbdir_access(const char *path, int mode)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (faccessat(dfd, strrchr(path, '/') + 1, mode, 0));
+	return (faccessat(dfd, _dbdir_trim_path(path), mode, 0));
 }
 
 static int
@@ -985,7 +994,15 @@ _dbdir_stat(const char * path, struct stat * sb)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (fstatat(dfd, strrchr(path, '/') + 1, sb, 0));
+	return (fstatat(dfd, _dbdir_trim_path(path), sb, 0));
+}
+
+static int
+_dbdir_lstat(const char * path, struct stat * sb)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (fstatat(dfd, _dbdir_trim_path(path), sb, AT_SYMLINK_NOFOLLOW));
 }
 
 static int
@@ -993,7 +1010,7 @@ _dbdir_unlink(const char *path)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (unlinkat(dfd, strrchr(path, '/') + 1, 0));
+	return (unlinkat(dfd, _dbdir_trim_path(path), 0));
 }
 
 static int
@@ -1001,7 +1018,7 @@ _dbdir_mkdir(const char *path, mode_t mode)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (mkdirat(dfd, strrchr(path, '/') + 1, mode));
+	return (mkdirat(dfd, _dbdir_trim_path(path), mode));
 }
 
 void
@@ -1013,6 +1030,7 @@ pkgdb_syscall_overload(void)
 	vfs->xSetSystemCall(vfs, "open", (sqlite3_syscall_ptr)_dbdir_open);
 	vfs->xSetSystemCall(vfs, "access", (sqlite3_syscall_ptr)_dbdir_access);
 	vfs->xSetSystemCall(vfs, "stat", (sqlite3_syscall_ptr)_dbdir_stat);
+	vfs->xSetSystemCall(vfs, "lstat", (sqlite3_syscall_ptr)_dbdir_lstat);
 	vfs->xSetSystemCall(vfs, "unlink", (sqlite3_syscall_ptr)_dbdir_unlink);
 	vfs->xSetSystemCall(vfs, "mkdir", (sqlite3_syscall_ptr)_dbdir_mkdir);
 }
