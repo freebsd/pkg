@@ -443,7 +443,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			}
 			else if (len >= MAXPATHLEN) {
 				pkg_emit_error("filename is incorrect for signature_fingerprints"
-						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
+						"output: %d, wanted 5..%d bytes", type, len);
 				free(s);
 				return (EPKG_FATAL);
 			}
