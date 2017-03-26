@@ -57,8 +57,8 @@ EOF
 	    pkg repo .
 
 	OUTPUT="Updating local1 repository catalogue...
-${JAILED}meta.txz                                 :  done
-${JAILED}packagesite.txz                          :  done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
 All repositories are up to date.
