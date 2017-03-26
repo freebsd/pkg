@@ -1722,7 +1722,7 @@ format_architecture(UT_string *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->arch, p));
+	return (string_val(buf, pkg->abi, p));
 }
 
 /*
