@@ -2,9 +2,47 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
+	duplicate_pkgs \
 	empty_conf \
 	inline_repo \
 	nameserver
+
+# This test is half finished to show problems with `pkg register'
+duplicate_pkgs_body() {
+	cat << EOF > pkg.conf
+duplicatedefault: 2
+EOF
+
+	for n in 1 2; do
+		cat << EOF > test${n}.ucl
+name: test
+origin: test
+version: ${n}
+allowduplicate: true
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+desc: <<EOD
+Yet another test
+EOD
+EOF
+
+	atf_check \
+		-e empty \
+		-o match:"Installing test-${n}..." \
+		-s exit:0 \
+		pkg register -M test${n}.ucl
+done
+
+	atf_check \
+		-e empty \
+		-o match:"test-1                         a test" \
+		-o match:"test-2                         a test" \
+		-s exit:0 \
+		pkg info
+}
 
 empty_conf_body() {
 	touch pkg.conf
