@@ -29,14 +29,15 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
 
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <utstring.h>
 
 #include <pkg.h>
 
@@ -128,11 +129,11 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 		} else if (ret == EPKG_WARN) {
 			if (!quiet) {
 				pkg_warnx("%n-%v: Cannot delete annotation "
-				     "tagged: %S -- because there is none",
+				     "tagged: %S -- because there is none\n",
 				     pkg, pkg, tag);
 			}
 		} else {
-			pkg_warnx("%n-%v: Failed to delete annotation tagged: %S",
+			pkg_warnx("%n-%v: Failed to delete annotation tagged: %S\n",
 			     pkg, pkg, tag);
 		}
 	}
@@ -162,13 +163,13 @@ do_show(struct pkg *pkg, const char *tag)
 }
 
 
-static struct sbuf *
+static UT_string *
 read_input(void)
 {
-	struct sbuf	*input;
+	UT_string	*input;
 	int		 ch;
 
-	input = sbuf_new_auto();
+	utstring_new(input);
 
 	for (;;) {
 		ch = getc(stdin);
@@ -178,14 +179,8 @@ read_input(void)
 			if (ferror(stdin))
 				err(EX_NOINPUT, "Failed to read stdin");
 		}
-		sbuf_putc(input, ch);
+		utstring_printf(input, "%c", ch);
 	}
-#ifdef __DragonFly__
-	sbuf_finish(input);
-#else
-	if (sbuf_finish(input) != 0)
-		err(EX_DATAERR, "Could not read value data");
-#endif
 
 	return (input);
 }
@@ -200,12 +195,14 @@ exec_annotate(int argc, char **argv)
 	const char	*tag;
 	const char	*value;
 	const char	*pkgname;
-	struct sbuf	*input    = NULL;
+	UT_string	*input    = NULL;
 	int		 ch;
 	int		 match    = MATCH_EXACT;
 	int		 retcode;
 	int		 exitcode = EX_OK;
 	int		 flags = 0;
+	int		 lock_type = PKGDB_LOCK_EXCLUSIVE;
+	int		 mode = PKGDB_MODE_READ;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -256,6 +253,7 @@ exec_annotate(int argc, char **argv)
 			break;
 		case 'S':
 			action = SHOW;
+			lock_type = PKGDB_LOCK_READONLY;
 			flags |= PKG_LOAD_ANNOTATIONS;
 			break;
 		case 'x':
@@ -272,7 +270,7 @@ exec_annotate(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (action == NONE || 
+	if (action == NONE ||
 	    (match == MATCH_ALL && argc < 1) ||
 	    (match != MATCH_ALL && argc < 2)) {
 		usage_annotate();
@@ -292,11 +290,12 @@ exec_annotate(int argc, char **argv)
 	if ((action == ADD || action == MODIFY) && value == NULL) {
 		/* try and read data for the value from stdin. */
 		input = read_input();
-		value = sbuf_data(input);
+		value = utstring_body(input);
 	}
 
-	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-			       PKGDB_DB_LOCAL);
+	if (lock_type == PKGDB_LOCK_EXCLUSIVE)
+		mode |= PKGDB_MODE_WRITE;
+	retcode = pkgdb_access(mode, PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
 		if (match == MATCH_ALL) {
 			exitcode = EX_OK;
@@ -318,10 +317,12 @@ exec_annotate(int argc, char **argv)
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK) {
+		if (input != NULL)
+			utstring_free(input);
 		return (EX_IOERR);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -369,7 +370,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 	if (input != NULL)
-		sbuf_delete(input);
+		utstring_free(input);
 
 	return (exitcode);
 }

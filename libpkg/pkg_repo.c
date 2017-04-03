@@ -6,7 +6,7 @@
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -248,12 +248,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (cb->need_sig && strcmp(archive_entry_pathname(ae), "signature") == 0) {
 			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(siglen);
 			if (archive_read_data(a, sig, siglen) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
@@ -317,12 +312,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
 			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(siglen);
 			if (archive_read_data(a, sig, siglen) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
@@ -356,12 +346,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
 			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"malloc failed");
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(siglen);
 			if (archive_read_data(a, sig, siglen) == -1) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
@@ -442,7 +427,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		case fp_parse_flen:
 			if (end - p < sizeof (int)) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output", type);
+						"output");
 				return (EPKG_FATAL);
 			}
 			memcpy(&len, p, sizeof(int));
@@ -453,22 +438,18 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		case fp_parse_file:
 			if (end - p < len || len <= 0) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output, wanted %d bytes", type, len);
+						"output, wanted %d bytes", len);
 				return (EPKG_FATAL);
 			}
 			else if (len >= MAXPATHLEN) {
 				pkg_emit_error("filename is incorrect for signature_fingerprints"
-						"output: %d, wanted 5..%d bytes", type, len, MAXPATHLEN);
+						"output: %d, wanted 5..%d bytes", type, len);
 				free(s);
 				return (EPKG_FATAL);
 			}
 			HASH_FIND(hh, *sc, p, len, s);
 			if (s == NULL) {
-				s = calloc(1, sizeof(struct sig_cert));
-				if (s == NULL) {
-					pkg_emit_errno("pkg_repo_parse_sigkeys", "calloc failed");
-					return (EPKG_FATAL);
-				}
+				s = xcalloc(1, sizeof(struct sig_cert));
 				tlen = MIN(len, sizeof(s->name) - 1);
 				memcpy(s->name, p, tlen);
 				s->name[tlen] = '\0';
@@ -487,7 +468,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			}
 			if (end - p < sizeof (int)) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output", type);
+						"output");
 				free(s);
 				return (EPKG_FATAL);
 			}
@@ -502,16 +483,11 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			}
 			if (end - p < len || len <= 0) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output, wanted %d bytes", type, len);
+						"output, wanted %d bytes", len);
 				free(s);
 				return (EPKG_FATAL);
 			}
-			sig = malloc(len);
-			if (sig == NULL) {
-				pkg_emit_errno("pkg_repo_parse_sigkeys", "malloc failed");
-				free(s);
-				return (EPKG_FATAL);
-			}
+			sig = xmalloc(len);
 			memcpy(sig, p, len);
 			if (type == 0) {
 				s->sig = sig;
@@ -577,13 +553,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 		cbdata.need_sig = true;
 		if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_signature_pubkey,
 				&cbdata, (char **)&sig, &siglen) == EPKG_OK && sig != NULL) {
-			s = calloc(1, sizeof(struct sig_cert));
-			if (s == NULL) {
-				pkg_emit_errno("pkg_repo_archive_extract_archive",
-						"malloc failed");
-				rc = EPKG_FATAL;
-				goto cleanup;
-			}
+			s = xcalloc(1, sizeof(struct sig_cert));
 			s->sig = sig;
 			s->siglen = siglen;
 			strlcpy(s->name, "signature", sizeof(s->name));
@@ -705,13 +675,14 @@ cleanup:
 	return rc;
 }
 
-static int
+int
 pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
-    time_t *t, int *rc)
+    time_t *t, int *rc, size_t *sz)
 {
 	int fd, dest_fd;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
+	struct stat st;
 
 	fd = pkg_repo_fetch_remote_tmp(repo, filename,
 			packing_format_to_string(repo->meta->packing_format), t, rc);
@@ -743,69 +714,14 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 
 	/* Thus removing archived file as well */
 	close(fd);
-
-	return (dest_fd);
-}
-
-unsigned char *
-pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo, const char *filename,
-    time_t *t, int *rc, size_t *sz)
-{
-	int fd;
-	struct stat st;
-	unsigned char *map;
-
-	fd = pkg_repo_fetch_remote_extract_fd(repo, filename, t, rc);
-	if (fd == -1) {
-		return (NULL);
-	}
-
-	if (fstat(fd, &st) == -1) {
-		close(fd);
-		return (MAP_FAILED);
+	if (fstat(dest_fd, &st) == -1) {
+		close(dest_fd);
+		return (-1);
 	}
 
 	*sz = st.st_size;
-	if (st.st_size > SSIZE_MAX) {
-		pkg_emit_error("%s too large", filename);
-		close(fd);
-		return (MAP_FAILED);
-	}
 
-	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	close(fd);
-	if (map == MAP_FAILED) {
-		pkg_emit_errno("pkg_repo_fetch_remote_mmap", "cannot mmap fetched");
-		*rc = EPKG_FATAL;
-		return (MAP_FAILED);
-	}
-
-	return (map);
-}
-
-FILE *
-pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
-		time_t *t, int *rc)
-{
-	int dest_fd;
-	FILE *res;
-
-	dest_fd = pkg_repo_fetch_remote_extract_fd(repo, filename, t, rc);
-	if (dest_fd == -1) {
-		*rc = EPKG_FATAL;
-		return (NULL);
-	}
-
-	res = fdopen(dest_fd, "r");
-	if (res == NULL) {
-		pkg_emit_errno("fdopen", "digest open failed");
-		*rc = EPKG_FATAL;
-		close(dest_fd);
-		return (NULL);
-	}
-
-	*rc = EPKG_OK;
-	return (res);
+	return (dest_fd);
 }
 
 struct pkg_repo_check_cbdata {
@@ -825,9 +741,8 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 	struct iovec iov[2];
 	int rc = EPKG_OK;
 	int64_t res_len = 0;
-	bool found = false;
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, cbdata->map, cbdata->len)) {
 		pkg_emit_error("cannot parse repository meta from %s",
 				ucl_parser_get_error(parser));
@@ -843,30 +758,28 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 	if (obj == NULL) {
 		pkg_emit_error("cannot find key for signature %s in meta",
 				cbdata->name);
-		rc = EPKG_FATAL;
+		ucl_object_unref(top);
+		return (EPKG_FATAL);
 	}
-	else {
-		while(!found && (cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
-			elt = ucl_object_find_key(cur, "name");
-			if (elt != NULL && elt->type == UCL_STRING) {
-				if (strcmp(ucl_object_tostring(elt), cbdata->name) == 0) {
-					elt = ucl_object_find_key(cur, "data");
-					if (elt == NULL || elt->type != UCL_STRING)
-						continue;
+	while((cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
+		elt = ucl_object_find_key(cur, "name");
+		if (elt == NULL || elt->type != UCL_STRING)
+			continue;
+		if (strcmp(ucl_object_tostring(elt), cbdata->name) != 0)
+			continue;
+		elt = ucl_object_find_key(cur, "data");
+		if (elt == NULL || elt->type != UCL_STRING)
+			continue;
 
-					/* +1 to include \0 at the end */
-					res_len = elt->len + 1;
-					iov[0].iov_base = (void *)ucl_object_tostring(elt);
-					iov[0].iov_len = res_len;
-					if (writev(fd, iov, 1) == -1) {
-						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
-								"writev error");
-						rc = EPKG_FATAL;
-						break;
-					}
-					found = true;
-				}
-			}
+		/* +1 to include \0 at the end */
+		res_len = elt->len + 1;
+		iov[0].iov_base = (void *)ucl_object_tostring(elt);
+		iov[0].iov_len = res_len;
+		if (writev(fd, iov, 1) == -1) {
+			pkg_emit_errno("pkg_repo_meta_extract_pubkey",
+					"writev error");
+			rc = EPKG_FATAL;
+			break;
 		}
 	}
 
@@ -929,13 +842,14 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 	/* Map meta file for extracting pubkeys from it */
-	if (stat(filepath, &st) == -1) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
+	if ((fd = open(filepath, O_RDONLY)) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
-	if ((fd = open(filepath, O_RDONLY)) == -1) {
-		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
+
+	if (fstat(fd, &st) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1050,7 +964,7 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 		return (NULL);
 	}
 
-	f = calloc(1, sizeof(struct fingerprint));
+	f = xcalloc(1, sizeof(struct fingerprint));
 	f->type = fct;
 	strlcpy(f->hash, fp, sizeof(f->hash));
 
@@ -1064,18 +978,27 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 	struct ucl_parser *p = NULL;
 	char path[MAXPATHLEN];
 	struct fingerprint *f = NULL;
+	int fd;
 
 	snprintf(path, sizeof(path), "%s/%s", dir, filename);
+	fd = open(path, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("cannot load fingerprints from %s: %s",
+				path, strerror(errno));
+		return (NULL);
+	}
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 
-	if (!ucl_parser_add_file(p, path)) {
-		pkg_emit_error("%s", ucl_parser_get_error(p));
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("cannot parse fingerprints: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
+		close(fd);
 		return (NULL);
 	}
 
 	obj = ucl_parser_get_object(p);
+	close(fd);
 
 	if (obj->type == UCL_OBJECT)
 		f = pkg_repo_parse_fingerprint(obj);

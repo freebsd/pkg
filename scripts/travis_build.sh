@@ -37,7 +37,9 @@ set -x
 set -e
 
 if [ $(uname -s) = "Darwin" ]; then
-  ./configure
+  CFLAGS="-I/usr/local/opt/libarchive/include" \
+    LDFLAGS="-L/usr/local/opt/libarchive/lib" \
+    ./configure
 elif [ $(uname -s) = "Linux" ]; then
   CFLAGS="-Wno-strict-aliasing -Wno-unused-result -Wno-unused-value" ./configure
 fi
@@ -47,8 +49,4 @@ fi
 # easier to interpret.
 make -j4 || make V=1
 
-if [ $(uname -s) = "Darwin" ]; then
-  # TODO(sbc100): Figure out how to get kyua and atf installed on the
-  # linux travis instances so we can run the tests.
-  make check
-fi
+make check

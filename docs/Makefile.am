@@ -7,7 +7,6 @@ dist_man_MANS=	pkg-add.8 \
 		pkg-check.8 \
 		pkg-clean.8 \
 		pkg-config.8 \
-		pkg-convert.8 \
 		pkg-create.8 \
 		pkg-delete.8 \
 		pkg-fetch.8 \

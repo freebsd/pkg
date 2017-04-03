@@ -30,11 +30,9 @@
  */
 
 #include <sys/param.h>
-#include <sys/sbuf.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
 
-#define _WITH_GETLINE
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
@@ -51,6 +49,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <khash.h>
+#include <utstring.h>
 
 #include "pkgcli.h"
 
@@ -336,8 +335,13 @@ hash_indexfile(const char *indexfilename)
 		if (index == NULL)
 			index = kh_init_index();
 		k = kh_put_index(index, entry->origin, &ret);
-		if (ret != 0)
+		if (ret != 0) {
 			kh_value(index, k) = entry;
+		} else {
+			free(entry->origin);
+			free(entry->version);
+			free(entry);
+		}
 	}
 
 	free(line);
@@ -355,6 +359,9 @@ free_categories(void)
 {
 	char *v;
 	struct category *cat;
+
+	if (categories == NULL)
+		return;
 
 	kh_foreach_value(categories, cat, {
 		free(cat->name);
@@ -481,6 +488,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	const char	*name;
 	const char	*origin;
 	const char	*version_remote;
+	bool		is_origin = false;
 
 	int		 retcode = EPKG_OK;
 
@@ -519,15 +527,19 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
-		    strcmp(origin, matchorigin) != 0)
+		    strcmp(origin, matchorigin) != 0) {
+		    	is_origin = true;
 			continue;
+		}
 
 		/* If -n was specified, check if this name matches */
 		if ((opt & VERSION_WITHNAME) &&
-		    strcmp(name, matchname) != 0)
+		    strcmp(name, matchname) != 0) {
+		    	is_origin = false;
 			continue;
+		}
 
-		it_remote = pkgdb_repo_query(db, origin, MATCH_EXACT, reponame);
+		it_remote = pkgdb_repo_query(db, is_origin ? origin : name, MATCH_EXACT, reponame);
 		if (it_remote == NULL) {
 			retcode = EX_IOERR;
 			goto cleanup;
@@ -556,7 +568,7 @@ cleanup:
 }
 
 static int
-exec_buf(struct sbuf *res, char **argv) {
+exec_buf(UT_string *res, char **argv) {
 	char buf[BUFSIZ];
 	int spawn_err;
 	pid_t pid;
@@ -590,9 +602,9 @@ exec_buf(struct sbuf *res, char **argv) {
 
 	close(pfd[1]);
 
-	sbuf_clear(res);
+	utstring_clear(res);
 	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
-		sbuf_bcat(res, buf, r);
+		utstring_bincpy(res, buf, r);
 
 	close(pfd[0]);
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -600,22 +612,20 @@ exec_buf(struct sbuf *res, char **argv) {
 			return (-1);
 	}
 
-	sbuf_finish(res);
-
-	return (sbuf_len(res));
+	return (utstring_len(res));
 }
 
 static struct category *
 category_new(char *categorypath, const char *category)
 {
 	struct category	*cat = NULL;
-	struct sbuf	*makecmd;
+	UT_string	*makecmd;
 	char		*results, *d, *key;
 	char		*argv[5];
 	int		 ret;
 	khint_t		 k;
 
-	makecmd = sbuf_new_auto();
+	utstring_new(makecmd);
 
 	argv[0] = "make";
 	argv[1] = "-C";
@@ -626,7 +636,7 @@ category_new(char *categorypath, const char *category)
 	if (exec_buf(makecmd, argv) <= 0)
 		goto cleanup;
 
-	results = sbuf_data(makecmd);
+	results = utstring_body(makecmd);
 
 	if (categories == NULL)
 		categories = kh_init_categories();
@@ -650,7 +660,7 @@ category_new(char *categorypath, const char *category)
 	}
 
 cleanup:
-	sbuf_delete(makecmd);
+	utstring_free(makecmd);
 
 	return (cat);
 }
@@ -690,7 +700,7 @@ validate_origin(const char *portsdir, const char *origin)
 }
 
 static const char *
-port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
+port_version(UT_string *cmd, const char *portsdir, const char *origin)
 {
 	char	*output;
 	char	*version = NULL;
@@ -701,17 +711,16 @@ port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 	   version from the port itself. */
 
 	if (validate_origin(portsdir, origin)) {
-		sbuf_printf(cmd, "%s/%s", portsdir, origin);
-		sbuf_finish(cmd);
+		utstring_printf(cmd, "%s/%s", portsdir, origin);
 
 		argv[0] = "make";
 		argv[1] = "-C";
-		argv[2] = sbuf_data(cmd);
+		argv[2] = utstring_body(cmd);
 		argv[3] = "-VPKGVERSION";
 		argv[4] = NULL;
 
 		if (exec_buf(cmd, argv) != 0) {
-			output = sbuf_data(cmd);
+			output = utstring_body(cmd);
 			version = strsep(&output, "\n");
 		}
 	}
@@ -726,7 +735,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-	struct sbuf	*cmd;
+	UT_string	*cmd;
 	const char	*name;
 	const char	*origin;
 	const char	*version;
@@ -753,7 +762,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
-	cmd = sbuf_new_auto();
+	utstring_new(cmd);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
@@ -770,10 +779,10 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		version = port_version(cmd, portsdir, origin);
 		print_version(pkg, "port", version, limchar, opt);
-		sbuf_clear(cmd);
+		utstring_clear(cmd);
 	}
 
-	sbuf_delete(cmd);
+	utstring_free(cmd);
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
@@ -932,6 +941,9 @@ exec_version(int argc, char **argv)
 			return (EX_USAGE);
 		}
 	}
+
+	if (opt & VERSION_QUIET)
+		quiet = true;
 
 	if (argc > 1) {
 		usage_version();

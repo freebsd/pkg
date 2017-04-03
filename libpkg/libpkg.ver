@@ -1,4 +1,4 @@
-LIBPKG_1.3 {
+LIBPKG_1.4 {
 global:
 	pkg_absolutepath;
 	pkg_add;
@@ -24,7 +24,6 @@ global:
 	pkg_config_files;
 	pkg_config_get;
 	pkg_conflicts;
-	pkg_copy_tree;
 	pkg_create_from_manifest;
 	pkg_create_installed;
 	pkg_create_repo;
@@ -45,13 +44,16 @@ global:
 	pkg_free;
 	pkg_from_old;
 	pkg_get2;
+	pkg_get_cachedirfd;
+	pkg_get_dbdirfd;
+	pkg_get_dir;
+	pkg_get_file;
 	pkg_get_myarch;
 	pkg_get_myarch_legacy;
 	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;
-	pkg_need_message;
 	pkg_ini;
 	pkg_init;
 	pkg_initialized;
@@ -76,10 +78,12 @@ global:
 	pkg_license_name;
 	pkg_licenses;
 	pkg_list_count;
+	pkg_load_metadata;
 	pkg_manifest_keys_free;
 	pkg_manifest_keys_new;
 	pkg_manifest_parser_free;
 	pkg_manifest_parser_new;
+	pkg_need_message;
 	pkg_new;
 	pkg_object_bool;
 	pkg_object_count;
@@ -120,6 +124,7 @@ global:
 	pkg_repo_enabled;
 	pkg_repo_find;
 	pkg_repo_fingerprints;
+	pkg_repo_ip_version;
 	pkg_repo_key;
 	pkg_repo_mirror_type;
 	pkg_repo_name;
@@ -130,19 +135,16 @@ global:
 	pkg_repos_activated_count;
 	pkg_repos_total_count;
 	pkg_requires;
-	pkg_sbuf_printf;
-	pkg_sbuf_vprintf;
 	pkg_script_get;
 	pkg_set2;
 	pkg_set_debug_level;
-	pkg_set_from_file;
-	pkg_set_from_fileat;
 	pkg_set_rootdir;
 	pkg_shlibs_provided;
 	pkg_shlibs_required;
 	pkg_shutdown;
 	pkg_snprintf;
 	pkg_solve_dimacs_export;
+	pkg_solve_dot_export;
 	pkg_solve_jobs_to_sat;
 	pkg_solve_parse_sat_output;
 	pkg_solve_problem_free;
@@ -158,6 +160,8 @@ global:
 	pkg_users;
 	pkg_utils_count_spaces;
 	pkg_utils_tokenize;
+	pkg_utstring_printf;
+	pkg_utstring_vprintf;
 	pkg_vasprintf;
 	pkg_vdprintf;
 	pkg_version_change;

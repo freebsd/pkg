@@ -31,6 +31,7 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
@@ -342,7 +343,7 @@ exec_search(int argc, char **argv)
 			break;
 		case 1:
 			if (strcasecmp(optarg, "json") == 0)
-			       opt |= INFO_RAW_JSON;
+				opt |= INFO_RAW_JSON;
 			else if (strcasecmp(optarg, "json-compact") == 0)
 				opt |= INFO_RAW_JSON_COMPACT;
 			else if (strcasecmp(optarg, "yaml") == 0)
@@ -441,7 +442,7 @@ exec_search(int argc, char **argv)
 	}
 
 	if (opt & INFO_RAW) {
-		if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+		if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
 			opt |= INFO_RAW_YAML;
 	}
 

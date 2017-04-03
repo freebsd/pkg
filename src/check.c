@@ -2,8 +2,9 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -28,7 +29,6 @@
 
 #include <sys/param.h>
 #include <sys/queue.h>
-#include <sys/sbuf.h>
 
 #include <err.h>
 #include <assert.h>
@@ -36,8 +36,11 @@
 #include <sysexits.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <utlist.h>
+#include <utstring.h>
 
 #include <pkg.h>
 
@@ -45,22 +48,19 @@
 
 struct deps_entry {
 	char *name;
-	char *version;
-	char *origin;
-	STAILQ_ENTRY(deps_entry) next;
+	struct deps_entry *next;
+	struct deps_entry *prev;
 };
 
-STAILQ_HEAD(deps_head, deps_entry);
-
-static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh,
-    bool noinstall, struct sbuf *out);
-static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs);
-static void deps_free(struct deps_head *dh);
-static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs);
-static void check_summary(struct pkgdb *db, struct deps_head *dh);
+static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_entry **dh,
+    bool noinstall, UT_string *out);
+static void add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs);
+static void deps_free(struct deps_entry *dh);
+static int fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs);
+static void check_summary(struct pkgdb *db, struct deps_entry *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall, struct sbuf *out)
+check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinstall, UT_string *out)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
@@ -74,9 +74,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_name(dep)) != EPKG_OK) {
 			if (quiet)
-				pkg_sbuf_printf(out, "%n\t%sn\n", p, dep);
+				pkg_utstring_printf(out, "%n\t%sn\n", p, dep);
 			else
-				pkg_sbuf_printf(out, "%n has a missing dependency: %dn\n",
+				pkg_utstring_printf(out, "%n has a missing dependency: %dn\n",
 				    p, dep);
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
@@ -93,9 +93,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_sbuf_printf(out, "%n\t%S\n", p, buf);
+			pkg_utstring_printf(out, "%n\t%S\n", p, buf);
 		else
-			pkg_sbuf_printf(out, "%n has require a missing libraries: %S\n",
+			pkg_utstring_printf(out, "%n is missing a required shared library: %S\n",
 			    p, buf);
 	}
 
@@ -109,9 +109,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_sbuf_printf(out, "%n\tS\n", p, buf);
+			pkg_utstring_printf(out, "%n\tS\n", p, buf);
 		else
-			pkg_sbuf_printf(out, "%n has a missing requirement: %S\n",
+			pkg_utstring_printf(out, "%n has a missing requirement: %S\n",
 			    p, buf);
 	}
 
@@ -119,7 +119,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall
 }
 
 static void
-add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
+add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs)
 {
 	struct deps_entry *e = NULL;
 	const char *name = NULL;
@@ -129,39 +129,35 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 	/* do not add duplicate entries in the queue */
 	name = pkg_dep_name(d);
 
-	STAILQ_FOREACH(e, dh, next)
+	DL_FOREACH(*dh, e) {
 		if (strcmp(e->name, name) == 0)
 			return;
+	}
 
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
 		err(1, "calloc(deps_entry)");
 
-	e->name = strdup(pkg_dep_name(d));
-	e->version = strdup(pkg_dep_version(d));
-	e->origin = strdup(pkg_dep_origin(d));
+	e->name = strdup(name);
 
 	(*nbpkgs)++;
 
-	STAILQ_INSERT_TAIL(dh, e, next);
+	DL_APPEND(*dh, e);
 }
 
 static void
-deps_free(struct deps_head *dh)
+deps_free(struct deps_entry *dh)
 {
-	struct deps_entry *e = NULL;
+	struct deps_entry *e, *etmp;
 
-	while (!STAILQ_EMPTY(dh)) {
-		e = STAILQ_FIRST(dh);
-		STAILQ_REMOVE_HEAD(dh, next);
+	DL_FOREACH_SAFE(dh, e, etmp) {
+		DL_DELETE(dh, e);
 		free(e->name);
-		free(e->version);
-		free(e->origin);
 		free(e);
 	}
 }
 
 static int
-fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs)
+fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs)
 {
 	struct pkg_jobs *jobs = NULL;
 	struct deps_entry *e = NULL;
@@ -176,7 +172,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs)
 	if ((pkgs = calloc(nbpkgs, sizeof (char *))) == NULL)
 		err(1, "calloc()");
 
-	STAILQ_FOREACH(e, dh, next)
+	DL_FOREACH(dh, e)
 		pkgs[i++] = e->name;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
@@ -204,8 +200,9 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs)
 	}
 
 	/* print a summary before applying the jobs */
-	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
-	
+	print_jobs_summary(jobs,
+			"The following packages will be installed:\n\n");
+
 	rc = query_yesno(false, "\n>>> Try to fix the missing dependencies? ");
 
 	if (rc) {
@@ -229,7 +226,7 @@ cleanup:
 }
 
 static void
-check_summary(struct pkgdb *db, struct deps_head *dh)
+check_summary(struct pkgdb *db, struct deps_entry *dh)
 {
 	struct deps_entry *e = NULL;
 	struct pkg *pkg = NULL;
@@ -239,11 +236,11 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 	assert(db != NULL);
 
 	printf(">>> Summary of actions performed:\n\n");
-		
-	STAILQ_FOREACH(e, dh, next) {
+
+	DL_FOREACH(dh, e) {
 		if ((it = pkgdb_query(db, e->name, MATCH_EXACT)) == NULL)
 			return;
-		
+
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
 			fixed = false;
 			printf("%s dependency failed to be fixed\n", e->name);
@@ -252,12 +249,12 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 
 		pkgdb_it_free(it);
 	}
-	
+
 	if (fixed) {
 		printf("\n>>> Missing dependencies were fixed successfully.\n");
 	} else {
 		printf("\n>>> There are still missing dependencies.\n");
-		printf(">>> You are advised to try fixing them manually.\n");
+		printf(">>> Try fixing them manually.\n");
 		printf("\n>>> Also make sure to check 'pkg updating' for known issues.\n");
 	}
 
@@ -277,7 +274,7 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
-	struct sbuf *msg = NULL;
+	UT_string *msg = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EX_OK;
@@ -308,7 +305,7 @@ exec_check(int argc, char **argv)
 		{ NULL,			0,		NULL,	0   },
 	};
 
-	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
+	struct deps_entry *dh = NULL;
 
 	processed = 0;
 
@@ -415,29 +412,30 @@ exec_check(int argc, char **argv)
 			rc = EX_IOERR;
 			goto cleanup;
 		}
+		nbactions = pkgdb_it_count(it);
+		if (nbactions == 0 && match != MATCH_ALL) {
+			warnx("No packages matching: %s", argv[i]);
+			rc = EXIT_FAILURE;
+			goto cleanup;
+		}
 
 		if (msg == NULL)
-			msg = sbuf_new_auto();
+			utstring_new(msg);
 		if (!verbose) {
 			if (!quiet) {
 				if (match == MATCH_ALL)
 					progressbar_start("Checking all packages");
 				else {
-					sbuf_printf(msg, "Checking %s", argv[i]);
-					sbuf_finish(msg);
-					progressbar_start(sbuf_data(msg));
+					utstring_printf(msg, "Checking %s", argv[i]);
+					progressbar_start(utstring_body(msg));
 				}
 			}
 			processed = 0;
 			total = pkgdb_it_count(it);
-		} else {
-			if (match == MATCH_ALL)
-				nbactions = pkgdb_it_count(it);
-			else
-				nbactions = argc;
 		}
 
-		struct sbuf *out = sbuf_new_auto();
+		UT_string *out;
+		utstring_new(out);
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			if (!quiet) {
 				if (!verbose)
@@ -445,9 +443,9 @@ exec_check(int argc, char **argv)
 				else {
 					++nbdone;
 					job_status_begin(msg);
-					pkg_sbuf_printf(msg, "Checking %n-%v:",
+					pkg_utstring_printf(msg, "Checking %n-%v:",
 					    pkg, pkg);
-					sbuf_flush(msg);
+					utstring_flush(msg);
 				}
 			}
 
@@ -512,13 +510,12 @@ exec_check(int argc, char **argv)
 		}
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
-		if (sbuf_len(out) > 0) {
-			sbuf_finish(out);
-			printf("%s", sbuf_data(out));
+		if (utstring_len(out) > 0) {
+			printf("%s", utstring_body(out));
 		}
-		sbuf_delete(out);
+		utstring_free(out);
 		if (msg != NULL) {
-			sbuf_delete(msg);
+			utstring_free(msg);
 			msg = NULL;
 		}
 
@@ -527,9 +524,9 @@ exec_check(int argc, char **argv)
 			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
 			if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 					PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-				ret = fix_deps(db, &dh, nbpkgs);
+				ret = fix_deps(db, dh, nbpkgs);
 				if (ret == EPKG_OK)
-					check_summary(db, &dh);
+					check_summary(db, dh);
 				else if (ret == EPKG_ENODB) {
 					db = NULL;
 					rc = EX_IOERR;
@@ -552,8 +549,8 @@ cleanup:
 	if (!verbose)
 		progressbar_stop();
 	if (msg != NULL)
-		sbuf_delete(msg);
-	deps_free(&dh);
+		utstring_free(msg);
+	deps_free(dh);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkgdb_close(db);

@@ -61,16 +61,19 @@ ${JAILED}Fetching meta.txz:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
+All repositories are up to date.
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
 	b: 1.0
 	a: 1.0
+
+Number of packages to be installed: 2
 "
 	atf_check \
 	    -o inline:"${OUTPUT}" \
-	    -e empty \
-	    -s exit:0 \
+	    -e match:".*load error: access repo file.*" \
+	    -s exit:1 \
 	    pkg -o REPOS_DIR="${TMPDIR}" install -n b
 }

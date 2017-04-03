@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -104,7 +104,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			// XXX MACTODO: To get things working, we're shoving library metadata into the library name;
 			// these should instead be added as supported attributes of package shared library declarations.
 			char *libname;
-			asprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
+			xasprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
 			pkg_addshlib_provided(pkg, libname);
 			is_shlib = true;
 		}
@@ -136,7 +136,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			// these should instead be added as supported attributes of package shared library declarations.
 			// XXX: This duplicates (and must be kept identical to) the libname construction above.
 			char *libname;
-			asprintf(&libname, "%s.%s", cmd->mlt_install_name, ai->name);
+			xasprintf(&libname, "%s.%s", cmd->mlt_install_name, ai->name);
 
 			action(actdata, pkg, fpath, libname, is_shlib);
 		}
@@ -177,7 +177,7 @@ parse_major_release(const char *src, long long *release)
 	const char *errstr;
 	char *eos;
 
-	parsed = strdup(src);
+	parsed = xstrdup(src);
 	eos = strchr(parsed, '.');
 	if (eos == NULL) {
 		pkg_emit_error("failed to parse major release version from %s", src);
@@ -240,7 +240,8 @@ host_os_info(char *osname, size_t sz, long long *major_version)
 
 	/* Provide the OS name to the caller. */
 	if (sz < strlen(ut.sysname) + 1) {
-		pkg_emit_error("provided buffer is too small for os name: %s", strlen(ut.sysname));
+		pkg_emit_error("provided buffer is too small for os name: %d",
+				(int)strlen(ut.sysname));
 		return EPKG_FATAL;
 	}
 
@@ -278,7 +279,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			free(fpath);
 
 		if (stage != NULL)
-			asprintf(&fpath, "%s/%s", stage, file->path);
+			xasprintf(&fpath, "%s/%s", stage, file->path);
 		else
 			fpath = file->path;
 
@@ -394,13 +395,7 @@ pkg_get_myarch(char *dest, size_t sz)
 	cpu_name = macho_get_arch_name(cpu_type);
 
 	/* Produce the result */
-	asprintf(&spec, "%s:%lld:%s", os_name, major_version, cpu_name);
-	if (spec == NULL) {
-		pkg_emit_error("asprintf() failed to allocate output string");
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
+	xasprintf(&spec, "%s:%lld:%s", os_name, major_version, cpu_name);
 	strlcpy(dest, spec, sz);
 
 cleanup:

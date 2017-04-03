@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2014
+.Dd November 18, 2016
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -109,6 +109,11 @@ Comment of the matched package
 Description of the matched package
 .It Cm \&%w
 Home page of the matched package
+.It Cm \&%V
+Returns 0 if the package is not marked as
+.Qq vital ,
+and 1 is the package is marked
+.Qq vital .
 .It Cm \&%l
 License logic of the matched package - nothing for single, & for AND, and | for OR
 .It Cm \&%s Ns Op bh
@@ -304,16 +309,34 @@ above for what information is used.
 .El
 .Ss Operators
 .Bl -tag -width F1
-.It Cm ~
-String glob pattern matching
-.It Cm > Ns Op =
-Integer comparison
-.It Cm < Ns Op =
-Integer comparison
-.It Cm = Ns Op =
-Integer or string equality comparison
-.It Cm !=
-Integer or string inequality comparison
+.It Va var Cm ~ Ar glob
+The string value of
+.Va var
+matches the given glob pattern.
+.It Va var Cm !~ Ar glob
+The string value of
+.Va var
+does not match the given glob pattern.
+.It Va var Cm > Ns Oo = Oc Ar num
+The numerical value of
+.Va var
+is greater than
+.Op or equal to
+the given number.
+.It Va var Cm < Ns Oo = Oc Ar num
+The numerical value of
+.Va var
+is less than
+.Op or equal to
+the given number.
+.It Va var Cm = Ns Oo = Oc Ar num
+The numerical value of
+.Va var
+is equal to the given number.
+.It Va var Cm != Ar num
+The numerical value of
+.Va var
+is not equal to the given number.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -367,6 +390,7 @@ List unmaintained packages:
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -374,7 +398,6 @@ List unmaintained packages:
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

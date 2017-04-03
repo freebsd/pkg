@@ -41,12 +41,12 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	/* Not use conflicts for now */
 	meta->conflicts = NULL;
 	meta->conflicts_archive = NULL;
-	meta->manifests = strdup("packagesite.yaml");
-	meta->manifests_archive = strdup("packagesite");
-	meta->digests = strdup("digests");
-	meta->digests_archive = strdup("digests");
-	meta->filesite = strdup("filesite.yaml");
-	meta->filesite_archive = strdup("filesite");
+	meta->manifests = xstrdup("packagesite.yaml");
+	meta->manifests_archive = xstrdup("packagesite");
+	meta->digests = xstrdup("digests");
+	meta->digests_archive = xstrdup("digests");
+	meta->filesite = xstrdup("filesite.yaml");
+	meta->filesite_archive = xstrdup("filesite");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
 	meta->fulldb_archive = NULL;
@@ -98,7 +98,7 @@ pkg_repo_meta_open_schema_v1()
 			"maintainer = {type = string};\n"
 			"source = {type = string};\n"
 			"packing_format = {enum = [txz, tbz, tgz, tar]};\n"
-			"digest_format = {enum = [sha256_base32, sha256_hex, blake2_base32]};\n"
+			"digest_format = {enum = [sha256_base32, sha256_hex, blake2_base32, blake2s_base32]};\n"
 			"digests = {type = string};\n"
 			"manifests = {type = string};\n"
 			"conflicts = {type = string};\n"
@@ -129,7 +129,7 @@ pkg_repo_meta_open_schema_v1()
 	if (repo_meta_schema_v1 != NULL)
 		return (repo_meta_schema_v1);
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, meta_schema_str_v1,
 			sizeof(meta_schema_str_v1) - 1)) {
 		pkg_emit_error("cannot parse schema for repo meta: %s",
@@ -149,18 +149,14 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 {
 	struct pkg_repo_meta_key *key;
 
-	key = calloc(1, sizeof(*key));
-	if (key == NULL) {
-		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta_key");
-		return (NULL);
-	}
+	key = xcalloc(1, sizeof(*key));
 
 	/*
 	 * It is already validated so just use it as is
 	 */
-	key->name = strdup(ucl_object_tostring(ucl_object_find_key(obj, "name")));
-	key->pubkey = strdup(ucl_object_tostring(ucl_object_find_key(obj, "data")));
-	key->pubkey_type = strdup(ucl_object_tostring(ucl_object_find_key(obj, "type")));
+	key->name = xstrdup(ucl_object_tostring(ucl_object_find_key(obj, "name")));
+	key->pubkey = xstrdup(ucl_object_tostring(ucl_object_find_key(obj, "data")));
+	key->pubkey_type = xstrdup(ucl_object_tostring(ucl_object_find_key(obj, "type")));
 
 	return (key);
 }
@@ -169,7 +165,7 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 	obj = ucl_object_find_key(top, (#field)); 					\
 	if (obj != NULL && obj->type == UCL_STRING) { 				\
 	    free(meta->field);									\
-	    meta->field = strdup(ucl_object_tostring(obj));			\
+	    meta->field = xstrdup(ucl_object_tostring(obj));			\
 	}															\
 } while (0)
 
@@ -181,11 +177,7 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	struct pkg_repo_meta *meta;
 	struct pkg_repo_meta_key *cert;
 
-	meta = calloc(1, sizeof(*meta));
-	if (meta == NULL) {
-		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta");
-		return (EPKG_FATAL);
-	}
+	meta = xcalloc(1, sizeof(*meta));
 
 	pkg_repo_meta_set_default(meta);
 	meta->version = version;
@@ -307,12 +299,7 @@ pkg_repo_meta_default(void)
 {
 	struct pkg_repo_meta *meta;
 
-	meta = calloc(1, sizeof(*meta));
-	if (meta == NULL) {
-		pkg_emit_errno("pkg_repo_meta_default", "malloc failed for pkg_repo_meta");
-		return (NULL);
-	}
-
+	meta = xcalloc(1, sizeof(*meta));
 	pkg_repo_meta_set_default(meta);
 
 	return (meta);

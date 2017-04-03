@@ -1,6 +1,6 @@
 # LIBUCL
 
-[![Build Status](https://travis-ci.org/vstakhov/libucl.svg?branch=master)](https://travis-ci.org/vstakhov/libucl)[![Coverity](https://scan.coverity.com/projects/4138/badge.svg)](https://scan.coverity.com/projects/4138)
+[![Build Status](https://travis-ci.org/vstakhov/libucl.svg?branch=master)](https://travis-ci.org/vstakhov/libucl)[![Coverity](https://scan.coverity.com/projects/4138/badge.svg)](https://scan.coverity.com/projects/4138)[![Coverage Status](https://coveralls.io/repos/github/vstakhov/libucl/badge.svg?branch=master)](https://coveralls.io/github/vstakhov/libucl?branch=master)
 
 **Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
 
@@ -21,7 +21,7 @@
 - [Performance](#performance)
 - [Conclusion](#conclusion)
 
-## Introduction
+## Introduction 
 
 This document describes the main features and principles of the configuration
 language called `UCL` - universal configuration language.
@@ -271,6 +271,11 @@ the key already exists, it must be the correct type
 * `target` (default: object) - Specify if the `prefix` `key` should be an
 object or an array.
 * `priority` (default: 0) - specify priority for the include (see below).
+* `duplicate` (default: 'append') - specify policy of duplicates resolving:
+	- `append` - default strategy, if we have new object of higher priority then it replaces old one, if we have new object with less priority it is ignored completely, and if we have two duplicate objects with the same priority then we have a multi-value key (implicit array)
+	- `merge` - if we have object or array, then new keys are merged inside, if we have a plain object then an implicit array is formed (regardeless of priorities)
+	- `error` - create error on duplicate keys and stop parsing
+	- `rewrite` - always rewrite an old value with new one (ignoring priorities)
 
 Priorities are used by UCL parser to manage the policy of objects rewriting during including other files
 as following:

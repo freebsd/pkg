@@ -72,8 +72,10 @@ ${JAILED}Fetching meta.txz:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local repository update completed. 1 packages processed.
+All repositories are up to date.
 Updating database digests format:  done
 Checking integrity... done (1 conflicting)
+  - test2-1 conflicts with test-1 on ${TMPDIR}/a
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
@@ -82,6 +84,9 @@ Installed packages to be REMOVED:
 
 New packages to be INSTALLED:
 	test2: 1
+
+Number of packages to be removed: 1
+Number of packages to be installed: 1
 ${JAILED}[1/2] Deinstalling test-1...
 ${JAILED}[1/2] Deleting files for test-1:  done
 ${JAILED}[2/2] Installing test2-1...
@@ -89,7 +94,7 @@ ${JAILED}[2/2] Extracting test2-1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
 }

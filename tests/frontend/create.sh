@@ -2,10 +2,6 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 
-if [ `uname -s` != "Linux" ] ; then
-	nonlinux="create_from_plist_fflags create_from_plist_bad_fflags"
-fi
-
 tests_init \
 	create_from_plist \
 	create_from_plist_set_owner \
@@ -15,7 +11,7 @@ tests_init \
 	create_from_plist_mini \
 	create_from_plist_dirrm \
 	create_from_plist_ignore \
-	${nonlinux} \
+	create_from_plist_fflags create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
 	create_from_manifest_and_plist \
 	create_from_plist_pkg_descr \
@@ -177,15 +173,11 @@ create_from_plist_dirrm_body() {
 
 		atf_check \
 			-o empty \
-			-e empty \
+			-e inline:"${PROGNAME}: Warning: @dirrm[try] is deprecated, please use @dir\n" \
 			pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
 		basic_validation
 
-		atf_check \
-			-o empty \
-			-e inline:"pkg: Warning: @dirrm[try] is deprecated, please use @dir\n" \
-			pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 	done
 }
 
@@ -208,11 +200,12 @@ aline"
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Warning: @ignore is deprecated\n" \
+		-e inline:"${PROGNAME}: Warning: @ignore is deprecated\n" \
 		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_fflags_body() {
+	atf_skip_on Linux does not support fflags
 	preparetestcredentials "(,,,schg)"
 
 	atf_check \
@@ -223,11 +216,12 @@ create_from_plist_fflags_body() {
 }
 
 create_from_plist_bad_fflags_body() {
+	atf_skip_on Linux does not support fflags
 	preparetestcredentials "(,,,schg,bad)"
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Malformed keyword '', wrong fflags\n" \
+		-e inline:"${PROGNAME}: Malformed keyword '', wrong fflags\n" \
 		-s exit:70 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
@@ -237,7 +231,7 @@ create_from_plist_with_keyword_arguments_body() {
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: cannot parse keyword: cannot open file ./testkeyword.ucl: No such file or directory\npkg: unknown keyword testkeyword: @testkeyword\n" \
+		-e inline:"${PROGNAME}: cannot load keyword from ./testkeyword.ucl: No such file or directory\n${PROGNAME}: unknown keyword testkeyword: @testkeyword\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -250,7 +244,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Requesting argument %2 while only 1 arguments are available\n" \
+		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -265,7 +259,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Invalid argument: expecting a number got (%1)\n" \
+		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 

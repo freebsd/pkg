@@ -264,10 +264,12 @@ exec_info(int argc, char **argv)
 			return (EX_IOERR);
 		}
 
+		drop_privileges();
 #ifdef HAVE_CAPSICUM
 		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 			warn("cap_rights_limit() failed");
+			close(fd);
 			return (EX_SOFTWARE);
 		}
 
@@ -281,7 +283,7 @@ exec_info(int argc, char **argv)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
 		if (opt & INFO_RAW) {
-			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT)) == 0)
+			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
 				opt |= INFO_RAW_YAML;
 		}
 
@@ -314,11 +316,11 @@ exec_info(int argc, char **argv)
 		return (EX_UNAVAILABLE);
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
-		
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");

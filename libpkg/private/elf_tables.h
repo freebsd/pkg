@@ -65,6 +65,9 @@ static const struct _elf_corres os_corres[] = {
 #ifndef EF_MIPS_ABI
 #define EF_MIPS_ABI	0x0000F000
 #endif
+#ifndef EF_ARM_VFP_FLOAT
+#define EF_ARM_VFP_FLOAT	0x00000400
+#endif
 #define E_MIPS_ABI_O32	0x00001000
 #define E_MIPS_ABI_N32	0x00000020
 
@@ -90,6 +93,7 @@ static struct arch_trans machine_arch_translation[] = {
 	{ "arm:32:eb:eabi:softfp", "armeb" },
 	{ "arm:32:eb:oabi:softfp", "armeb" },
 	{ "armv6:32:el:eabi:softfp", "armv6" },
+	{ "armv6:32:el:eabi:hardfp", "armv6" },
 	{ "aarch64:64", "aarch64" },
 	/* And now MIPS */
 	{ "mips:32:el:o32", "mipsel" },

@@ -43,19 +43,21 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <pkg.h>
 #include <string.h>
 #include <unistd.h>
+#include <utlist.h>
 #include <sysexits.h>
 
 #include "pkgcli.h"
 
 struct pkg_entry {
 	struct pkg *pkg;
-	STAILQ_ENTRY(pkg_entry) next;
+	struct pkg_entry *next;
+	struct pkg_entry *prev;
 };
-
-STAILQ_HEAD(pkg_head, pkg_entry);
+struct pkg_entry *pkg_head = NULL;
 
 void
 usage_create(void)
@@ -85,8 +87,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS;
-	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
-	struct pkg_entry *e = NULL;
+	struct pkg_entry *e = NULL, *etmp;
 	char pkgpath[MAXPATHLEN];
 	const char *format = NULL;
 	bool foundone;
@@ -133,7 +134,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 				err(1, "malloc(pkg_entry)");
 			e->pkg = pkg;
 			pkg = NULL;
-			STAILQ_INSERT_TAIL(&head, e, next);
+			DL_APPEND(pkg_head, e);
 			foundone = true;
 		}
 		if (!foundone) {
@@ -147,9 +148,8 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 			retcode++;
 	}
 
-	while (!STAILQ_EMPTY(&head)) {
-		e = STAILQ_FIRST(&head);
-		STAILQ_REMOVE_HEAD(&head, next);
+	DL_FOREACH_SAFE(pkg_head, e, etmp) {
+		DL_DELETE(pkg_head, e);
 
 		if (!overwrite) {
 			pkg_snprintf(pkgpath, sizeof(pkgpath), "%S/%n-%v.%S",

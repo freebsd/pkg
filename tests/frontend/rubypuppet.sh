@@ -166,7 +166,7 @@ EOF
 
 	atf_check \
 	    -o ignore \
-	    -e empty \
+	    -e match:".*load error: access repo file.*" \
 	    -s exit:0 \
 	    pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y puppet
 
@@ -329,9 +329,11 @@ ${JAILED}Fetching meta.txz:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local repository update completed. 5 packages processed.
+All repositories are up to date.
 Checking for upgrades (4 candidates):  done
 Processing candidates (4 candidates):  done
 Checking integrity... done (1 conflicting)
+  - ruby21-gems-1.0 conflicts with ruby20-gems-1.0 on ${TMPDIR}/rubygems.file
 Checking integrity... done (0 conflicting)
 The following 6 package(s) will be affected (of 0 checked):
 
@@ -345,14 +347,19 @@ Installed packages to be UPGRADED:
 	ruby: 2.0 -> 2.1
 
 Installed packages to be REINSTALLED:
-	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby21-gems)
-	rubygem-hiera-1.0 (direct dependency changed: ruby21-gems)
+	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby)
+	rubygem-hiera-1.0 (direct dependency changed: ruby)
 	puppet-1.0 (direct dependency changed: ruby)
+
+Number of packages to be removed: 1
+Number of packages to be installed: 1
+Number of packages to be upgraded: 1
+Number of packages to be reinstalled: 3
 "
 
 	atf_check \
 	    -o inline:"${OUTPUT}" \
-	    -e empty \
-	    -s exit:0 \
+	    -e match:".*load error: access repo file.*" \
+	    -s exit:1 \
 	    pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -yn
 }

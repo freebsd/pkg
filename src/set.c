@@ -30,6 +30,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -43,11 +44,12 @@
 #define AUTOMATIC 1U<<0
 #define ORIGIN 1U<<1
 #define NAME 1U<<2
+#define VITAL 1U<<3
 
 void
 usage_set(void)
 {
-	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-n <oldname>:<newname>] [-y] [-Cgix] <pkg-name>\n\n");
+	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-n <oldname>:<newname>] [-y] [-Cgix] [-v 0|1] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -94,8 +96,10 @@ exec_set(int argc, char **argv)
 	int		 i;
 	match_t		 match = MATCH_EXACT;
 	int64_t		 newautomatic = -1;
+	int64_t		 newvital = -1;
 	bool		 automatic = false;
 	bool		 rc = false;
+	bool		 vital = false;
 	const char	*changed = NULL;
 	char		*newvalue = NULL;
 	char		*oldvalue = NULL;
@@ -113,11 +117,12 @@ exec_set(int argc, char **argv)
 		{ "change-origin",	required_argument,	NULL,	'o' },
 		{ "change-name",	required_argument,	NULL,	'n' },
 		{ "regex",		no_argument,		NULL,	'x' },
+		{ "vital",		required_argument,	NULL,	'v' },
 		{ "yes",		no_argument,		NULL,	'y' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+A:aCgio:xyn:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+A:aCgio:xyn:v:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
@@ -164,12 +169,20 @@ exec_set(int argc, char **argv)
 		case 'x':
 			match = MATCH_REGEX;
 			break;
+		case 'v':
+			sets |= VITAL;
+			newvital = optarg[0] - '0';
+			if (newvital != 0 && newvital != 1)
+				errx(EX_USAGE, "Wrong value for -v. "
+				    "Expecting 0 or 1, got: %s",
+				    optarg);
+			break;
 		case 'y':
 			yes = true;
 			break;
 		default:
 			free(oldvalue);
-			
+			free(newvalue);
 			usage_set();
 			return (EX_USAGE);
 		}
@@ -179,8 +192,9 @@ exec_set(int argc, char **argv)
 	argv += optind;
 
 	if ((argc < 1 && match != MATCH_ALL) ||
-		(newautomatic == -1 && newvalue == NULL) ||
+		(newautomatic == -1 && newvital == -1 && newvalue == NULL) ||
 		(sets & (NAME|ORIGIN)) == (NAME|ORIGIN)) {
+		free(newvalue);
 		usage_set();
 		return (EX_USAGE);
 	}
@@ -197,16 +211,19 @@ exec_set(int argc, char **argv)
 	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
+		free(newvalue);
 		if (match == MATCH_ALL)
 			return (EX_OK);
 		if (!quiet)
 			warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode == EPKG_ENOACCESS) {
+		free(newvalue);
 		warnx("Insufficient privileges to modify the package database");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing package database");
+		free(newvalue);
 		return (EX_SOFTWARE);
 	}
 
@@ -289,6 +306,24 @@ exec_set(int argc, char **argv)
 				}
 				if (rc)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, (int)newautomatic);
+				rc = saved_rc;
+			}
+			if ((sets & VITAL) == VITAL) {
+				pkg_get(pkg, PKG_VITAL, &vital);
+				if (vital == newvital)
+					continue;
+				if (!rc) {
+					if (newvital)
+						rc = query_yesno(false,
+								"Mark %n-%v as vital? ",
+								pkg, pkg);
+					else
+						rc = query_yesno(false,
+								"Mark %n-%v as not vital? ",
+								pkg, pkg);
+				}
+				if (rc)
+					pkgdb_set(db, pkg, PKG_SET_VITAL, (int)newvital);
 				rc = saved_rc;
 			}
 			if (sets & (ORIGIN|NAME)) {

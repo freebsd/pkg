@@ -1,0 +1,51 @@
+Changes from pkg 1.10
+- Use dep_formula in the solver
+- Cache pw result to avoid over reloading nssswitch.conf
+- Remove pkg2ng and support for pkg_ databases
+
+Changes from pkg 1.9
+- fix pkg which -g
+- Do not use openssl for sha256
+- Improve the default output when fetching data
+- Update libfetch to the version of FreeBSD 11
+- Update libsbuf to the version of FreeBSD 11
+- Fix NetBSD ABI
+- Add a fallback for utimensat when reporting EOPNOTSUPP
+- replace libsbuf with utstring for portability
+- Overwrite some sqlite vfs functions to allow more capsicumisation of pkg
+- move more pkg audit details into the library
+- allow to run pkg query without any privileges
+- extend the audit periodic script to report deprecated packages
+- Fix fd leak to rcscripts
+- stop dropping privieges during fetching it causes more issues than it solves
+- speed walking though [reverse]dependencies
+- Update blake2b to latest version
+- Add blake2s to the list of supported checksums
+- Internal digest now default on blake2b on 64 bits and blake2s on 32 bits.
+- Fix segfault when ABI is defined but empty
+- Do not use the shared library provides/requires on non FreeBSD/Linux
+- Define _NETBSD_SOURCES on NetBSD to allow libfetch to use funopen
+- Document vital flags
+- Fix potential double free when dealing with @config keyword
+- Add progress when fetching (number of files to fetch)
+- Improved messages about locked packages
+- Return 1 when a user rejects the proposed plan
+- When dealing with configuration files '@config' never overwrites non tracked
+  files
+- Warn everyone about deprecation of @dirrm and @exec
+- Deduplicate metadata loading code
+- pkg register now understands context aware messages
+- Fix pkg register issues with some version of libarchive:
+  * hardlinks not being made hardlinks sometime
+  * issues when PREFIX is a symlink to another directory
+- Use portable mechanism to find the number of CPUs which allows pkg repo to be
+  faster on linux
+- New pkg upgrade --vulnerable
+
+Changes from pkg 1.8
+
+- Drop privileges in many commands
+- Drop privileges when fetching a file
+- Add resource limitation to sandboxes
+- Add support for metalog
+- pkg-delete now print a warning if no packages were matched

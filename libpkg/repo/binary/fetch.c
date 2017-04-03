@@ -33,7 +33,6 @@
 #include <sys/param.h>
 #include <sys/mman.h>
 
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,8 +62,8 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 
 	packagesite = pkg_repo_url(repo);
 
-	if (strncmp(packagesite, "file://", 7) == 0) {
-		snprintf(dest, destlen, "%s/%s", packagesite + 7,
+	if (strncmp(packagesite, "file:/", 6) == 0) {
+		snprintf(dest, destlen, "%s/%s", packagesite + 6,
 		    pkg->repopath);
 		return (EPKG_OK);
 	}
@@ -167,8 +166,8 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	}
 
 	/* Create the dirs in cachedir */
-	dir = strdup(dest);
-	if (dir == NULL || (path = dirname(dir)) == NULL) {
+	dir = xstrdup(dest);
+	if ((path = dirname(dir)) == NULL) {
 		pkg_emit_errno("dirname", dest);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -225,7 +224,7 @@ checksum:
 		    pkg->name, pkg->version);
 		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
-	if (!pkg_checksum_validate_file(dest, pkg->sum)) {
+	if (pkg_checksum_validate_file(dest, pkg->sum) != 0) {
 		if (already_tried || fetched) {
 			pkg_emit_error("%s-%s failed checksum "
 			    "from repository", pkg->name, pkg->version);

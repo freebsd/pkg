@@ -29,6 +29,14 @@
 
 #include "pkg_config.h"
 
+#ifdef __OpenBSD__
+ #include "../external/libelf/_elftc.h"
+
+ #ifndef EPROTO
+  #define EPROTO EINTR
+ #endif
+#endif
+
 #ifdef HAVE_BSD_SYS_CDEFS_H
 #include <bsd/sys/cdefs.h>
 #endif
@@ -91,7 +99,7 @@ void closefrom(int lowfd);
 int faccessat(int fd, const char *path, int mode, int flag);
 #endif
 
-#if !HAVE_FSTATAT
+#if !HAVE_DECL_FSTATAT
 int fstatat(int fd, const char *path, struct stat *buf, int flag);
 #endif
 

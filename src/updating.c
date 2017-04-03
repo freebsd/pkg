@@ -35,12 +35,12 @@
 
 #include <sys/queue.h>
 
-#define _WITH_GETLINE
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
 #include <pkg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -201,8 +201,9 @@ exec_updating(int argc, char **argv)
 					}
 				}
 				if (tmp != NULL) {
-					if ((date != NULL) && strncmp(dateline, date, 8) < 0)
+					if ((date != NULL) && strncmp(dateline, date, 8) < 0) {
 						continue;
+					}
 					printf("%s%s",dateline, line);
 					found = 1;
 				}

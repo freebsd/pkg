@@ -33,8 +33,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#define _WITH_GETLINE
-
 #include <archive.h>
 #include <err.h>
 #include <errno.h>
@@ -47,6 +45,7 @@
 #include <unistd.h>
 #include <sysexits.h>
 #include <khash.h>
+#include <utstring.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
@@ -83,7 +82,7 @@ add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 }
 
 static void
-print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
+print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, UT_string *sb,
     kh_pkgs_t *seen, bool top)
 {
 	struct pkg_dep *dep = NULL;
@@ -97,11 +96,11 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
 		if (k == kh_end(seen)) {
 			h = kh_get_pkgs(head, name);
 			if (h != kh_end(head)) {
-				k = kh_put_pkgs(seen, name, &ret);
+				kh_put_pkgs(seen, name, &ret);
 				if (!top)
-					sbuf_cat(sb, ", ");
+					utstring_printf(sb, ", ");
 
-				sbuf_cat(sb, name);
+				utstring_printf(sb, "%s", name);
 
 				print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
 
@@ -118,21 +117,15 @@ exec_audit(int argc, char **argv)
 	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
-	const char		*db_dir;
 	char			*name;
 	char			*version;
-	char			 audit_file_buf[MAXPATHLEN];
-	char			*audit_file = audit_file_buf;
+	char			*audit_file = NULL;
 	unsigned int		 vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EX_OK;
-	const char		*portaudit_site = NULL;
-	struct sbuf		*sb;
+	UT_string		*sb;
 	kh_pkgs_t		*check = NULL;
-
-	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
 
 	struct option longopts[] = {
 		{ "fetch",	no_argument,		NULL,	'F' },
@@ -167,13 +160,13 @@ exec_audit(int argc, char **argv)
 	audit = pkg_audit_new();
 
 	if (fetch == true) {
-		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
-		if (pkg_audit_fetch(portaudit_site, audit_file) != EPKG_OK) {
+		if (pkg_audit_fetch(NULL, audit_file) != EPKG_OK) {
 			pkg_audit_free(audit);
 			return (EX_IOERR);
 		}
 	}
 
+	drop_privileges();
 	if (pkg_audit_load(audit, audit_file) != EPKG_OK) {
 		if (errno == ENOENT)
 			warnx("vulnxml file %s does not exist. "
@@ -216,24 +209,32 @@ exec_audit(int argc, char **argv)
 		 */
 
 		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
-		if (ret == EPKG_ENODB)
+		if (ret == EPKG_ENODB) {
+			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_OK);
-		else if (ret == EPKG_ENOACCESS) {
+		} else if (ret == EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to read the package database");
+			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_NOPERM);
 		} else if (ret != EPKG_OK) {
 			warnx("Error accessing the package database");
+			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_IOERR);
 		}
 
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (EX_IOERR);
 		}
 
 		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 			pkgdb_close(db);
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			warnx("Cannot get a read lock on a database, it is locked by another process");
 			return (EX_TEMPFAIL);
 		}
@@ -251,13 +252,13 @@ exec_audit(int argc, char **argv)
 			ret = EX_OK;
 		}
 		if (db != NULL) {
-			if (it != NULL)
-				pkgdb_it_free(it);
+			pkgdb_it_free(it);
 			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 			pkgdb_close(db);
 		}
 		if (ret != EX_OK) {
 			pkg_audit_free(audit);
+			kh_destroy_pkgs(check);
 			return (ret);
 		}
 	}
@@ -267,6 +268,7 @@ exec_audit(int argc, char **argv)
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);
+		kh_destroy_pkgs(check);
 		return (EPKG_FATAL);
 	}
 #endif
@@ -275,22 +277,21 @@ exec_audit(int argc, char **argv)
 		kh_foreach_value(check, pkg, {
 			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb)) {
 				vuln ++;
-				printf("%s", sbuf_data(sb));
+				printf("%s", utstring_body(sb));
 
 				if (recursive) {
 					const char *name;
 					kh_pkgs_t *seen = kh_init_pkgs();
 
 					pkg_get(pkg, PKG_NAME, &name);
-					sbuf_clear(sb);
-					sbuf_printf(sb, "Packages that depend on %s: ", name);
+					utstring_clear(sb);
+					utstring_printf(sb, "Packages that depend on %s: ", name);
 					print_recursive_rdeps(check, pkg , sb, seen, true);
-					sbuf_finish(sb);
-					printf("%s\n\n", sbuf_data(sb));
+					printf("%s\n\n", utstring_body(sb));
 
 					kh_destroy_pkgs(seen);
 				}
-				sbuf_delete(sb);
+				utstring_free(sb);
 			}
 			pkg_free(pkg);
 		});
@@ -305,6 +306,7 @@ exec_audit(int argc, char **argv)
 	else {
 		warnx("cannot process vulnxml");
 		ret = EX_SOFTWARE;
+		kh_destroy_pkgs(check);
 	}
 
 	pkg_audit_free(audit);

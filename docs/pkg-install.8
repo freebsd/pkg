@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 30, 2014
+.Dd May 7, 2016
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -29,7 +29,7 @@
 .Pp
 .Nm
 .Op Cm --{automatic,force,no-install-scripts,ignore-missing}
-.Op Cm --{dry-run,fetch-only,quiet,from-root,no-repo-update,yes}
+.Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
@@ -133,7 +133,7 @@ If any installation scripts (pre-install or post-install) exist for a given
 package, do not execute them.
 When a package is updated, deinstallation
 scripts (pre-deinstall or post-deinstall) are not run either.
-.It Fl i , Cm --case-sensitive
+.It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -158,7 +158,7 @@ Force quiet output, except when
 is used, where
 .Nm
 will always show packages to be installed, upgraded or deleted.
-.It Fl R , Cm --from-root
+.It Fl R , Cm --recursive
 When used with
 .Fl f ,
 reinstalls any packages that require the given package.
@@ -206,6 +206,7 @@ See
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -213,7 +214,6 @@ See
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

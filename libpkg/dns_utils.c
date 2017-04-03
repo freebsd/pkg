@@ -40,8 +40,46 @@
 #endif
 #include <netdb.h>
 
+#ifndef NS_QFIXEDSZ
+#define NS_QFIXEDSZ     4       /*%< #/bytes of fixed data in query */
+#endif
+
+#ifndef NS_INT16SZ
+#define NS_INT16SZ      2       /*%< #/bytes of data in a u_int16_t */
+#endif
+
+#ifndef NS_INT32SZ
+#define NS_INT32SZ      4       /*%< #/bytes of data in a u_int32_t */
+#endif
+
+/*%
+ * Inline versions of get/put short/long.  Pointer is advanced.
+ */
+#ifndef NS_GET16
+#define NS_GET16(s, cp) do { \
+        register const u_char *t_cp = (const u_char *)(cp); \
+        (s) = ((u_int16_t)t_cp[0] << 8) \
+            | ((u_int16_t)t_cp[1]) \
+            ; \
+        (cp) += NS_INT16SZ; \
+} while (0)
+#endif
+
+#ifndef NS_GET32
+#define NS_GET32(l, cp) do { \
+        register const u_char *t_cp = (const u_char *)(cp); \
+        (l) = ((u_int32_t)t_cp[0] << 24) \
+            | ((u_int32_t)t_cp[1] << 16) \
+            | ((u_int32_t)t_cp[2] << 8) \
+            | ((u_int32_t)t_cp[3]) \
+            ; \
+        (cp) += NS_INT32SZ; \
+} while (0)
+#endif
+
 #include <bsd_compat.h>
 #include "private/utils.h"
+#include "xmalloc.h"
 #include "pkg.h"
 
 #ifndef HAVE_LDNS
@@ -100,7 +138,7 @@ compute_weight(struct dns_srvinfo **d, int first, int last)
 	if (totalweight == 0)
 		return;
 
-	chosen = malloc(sizeof(int) * (last - first + 1));
+	chosen = xmalloc(sizeof(int) * (last - first + 1));
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {
@@ -147,10 +185,7 @@ dns_getsrvinfo(const char *zone)
 		p += len + NS_QFIXEDSZ;
 	}
 
-	res = calloc(ancount, sizeof(struct dns_srvinfo *));
-	if (res == NULL)
-		return (NULL);
-
+	res = xcalloc(ancount, sizeof(struct dns_srvinfo *));
 	n = 0;
 	while (ancount > 0 && p < end) {
 		ancount--;
@@ -186,7 +221,7 @@ dns_getsrvinfo(const char *zone)
 			return NULL;
 		}
 
-		res[n] = malloc(sizeof(struct dns_srvinfo));
+		res[n] = xmalloc(sizeof(struct dns_srvinfo));
 		if (res[n] == NULL) {
 			for (i = 0; i < n; i++)
 				free(res[i]);
@@ -238,7 +273,7 @@ dns_getsrvinfo(const char *zone)
 
 int
 set_nameserver(const char *nsname) {
-#ifndef HAVE_RES_SETSERVERS
+#ifndef HAVE___RES_SETSERVERS
 	return (-1);
 #else
 	struct __res_state res;
@@ -250,7 +285,9 @@ set_nameserver(const char *nsname) {
 
 	memset(u, 0, sizeof(u));
 	memset(&hint, 0, sizeof(hint));
+	memset(&res, 0, sizeof(res));
 	hint.ai_socktype = SOCK_DGRAM;
+	hint.ai_flags = AI_NUMERICHOST;
 
 	if (res_ninit(&res) == -1)
 		return (-1);
@@ -299,7 +336,7 @@ compute_weight(struct dns_srvinfo *d, int first, int last)
 	if (totalweight == 0)
 		return;
 
-	chosen = malloc(sizeof(int) * (last - first + 1));
+	chosen = xmalloc(sizeof(int) * (last - first + 1));
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {
@@ -353,9 +390,7 @@ dns_getsrvinfo(const char *zone)
 		return (NULL);
 
 	ancount = ldns_rr_list_rr_count(srv);
-	res = calloc(ancount, sizeof(struct dns_srvinfo));
-	if (res == NULL)
-		return (NULL);
+	res = xcalloc(ancount, sizeof(struct dns_srvinfo));
 
 	for (i = 0; i < ancount; i ++) {
 		ldns_rr *rr;

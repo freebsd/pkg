@@ -1,11 +1,12 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+ * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -81,7 +82,7 @@ exec_install(int argc, char **argv)
 		{ "dry-run",		no_argument,		NULL,	'n' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
-		{ "from-root",		no_argument,		NULL,   'R' },
+		{ "recursive",		no_argument,		NULL,   'R' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
@@ -192,7 +193,7 @@ exec_install(int argc, char **argv)
 		retcode = EX_SOFTWARE;
 
 	/* first update the remote repositories if needed */
-	if (auto_update &&
+	if (auto_update && pkg_repos_total_count() > 0 &&
 	    (updcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
 		return (updcode);
 
@@ -233,8 +234,7 @@ exec_install(int argc, char **argv)
 			if (!dry_run) {
 				rc = query_yesno(false,
 				    "\nProceed with this action? ");
-			}
-			else {
+			} else {
 				rc = false;
 			}
 		}
@@ -250,11 +250,11 @@ exec_install(int argc, char **argv)
 			}
 			else if (retcode != EPKG_OK)
 				goto cleanup;
+		} else {
 		}
 
 		if (messages != NULL) {
-			sbuf_finish(messages);
-			printf("%s", sbuf_data(messages));
+			printf("%s", utstring_body(messages));
 		}
 		break;
 	}
@@ -262,7 +262,10 @@ exec_install(int argc, char **argv)
 	if (done == 0 && rc)
 		printf("The most recent version of packages are already installed\n");
 
-	retcode = EX_OK;
+	if (rc)
+		retcode = EX_OK;
+	else
+		retcode = EXIT_FAILURE;
 
 cleanup:
 	pkgdb_release_lock(db, lock_type);

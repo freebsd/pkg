@@ -1,5 +1,17 @@
 pkg - a binary package manager for FreeBSD
-============================================
+==========================================
+
+Known to fully work on (official package manager):
+
+- FreeBSD
+- DragonflyBSD
+
+Known to work on (has been ported to):
+
+- Linux
+- NetBSD/EdgeBSD
+- OpenBSD/Bitrig
+- OSX
 
 Table of Contents:
 ------------------
@@ -14,7 +26,6 @@ Table of Contents:
 * [pkg bootstrap](#pkgbootstrap)
 * [pkg in Ports](#pkgports)
 * [Building pkg using sources from Git](#pkggit)
-* [Converting an old-style pkg database](#pkg2ng)
 * [A quick usage introduction to pkg](#usageintro)
 * [Getting help on the commands usage](#pkghelp)
 * [Querying the local package database](#pkginfo)
@@ -234,7 +245,7 @@ latest release version:
 
 
 <a name="pkggit"></a>
-### Building pkg using sources from Git
+### Building pkg using sources from Git [FreeBSD]
 
 In order to build pkg from source, you will need to have Gnu
 autotools and some other tools installed.
@@ -278,26 +289,36 @@ in the pkg(8) code make assumptions about OS specific behaviour.  If
 you do try anything like this, we'd be very interested to hear how you
 get on.
 
-<a name="pkg2ng"></a>
-### Converting an old-style pkg database
+<a name="pkggit-openbsd"></a>
+### Building pkg using sources from Git [OpenBSD and Bitrig]
 
-If you're on a 9.x system or earlier and did not have a release version
-of pkg(8) installed previously, you will need to run the pkg2ng
-script.  This is only necessary when converting your system from the
-old pkg_tools style packages.
-
-In order to register your installed packages to pkg, execute the
-commands below:
-
-	# cd pkg/ports
-	# sh pkg2ng
-
-Otherwise, running any pkg(8) command that will attempt to write to
-the local package database will automatically apply any schema
-updates.  Be aware that these may not be backwards compatible --
-although usually you should see no more than a warning message if you
-try and run an older version of pkg(8) against a newer database
-schema.
+	# Install packages
+	pkg_add autoconf automake libtool bitrig-binutils bzip2 git libarchive
+	
+	# set environment variables
+	export AUTOMAKE_VERSION=1.15
+	export AUTOCONF_VERSION=2.69
+	
+	# create a download directory
+	mkdir ~/git
+	
+	# install pkgconf
+	cd ~/git
+	git clone https://github.com/pkgconf/pkgconf
+	cd pkgconf
+	./autogen.sh
+	./configure
+	make
+	sudo make install
+	
+	# install pkg
+	cd ~/git
+	git clone https://github.com/freebsd/pkg
+	cd pkg
+	./autogen.sh
+	./configure
+	make
+	sudo make install
 
 <a name="usageintro"></a>
 ## A quick usage introduction to pkg

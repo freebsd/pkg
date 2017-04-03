@@ -32,38 +32,13 @@
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <regex.h>
 #include <getopt.h>
 
 #include "pkgcli.h"
-
-static const char * const scripts[] = {
-	"+INSTALL",
-	"+PRE_INSTALL",
-	"+POST_INSTALL",
-	"+POST_INSTALL",
-	"+DEINSTALL",
-	"+PRE_DEINSTALL",
-	"+POST_DEINSTALL",
-	"+UPGRADE",
-	"+PRE_UPGRADE",
-	"+POST_UPGRADE",
-	"pkg-install",
-	"pkg-pre-install",
-	"pkg-post-install",
-	"pkg-deinstall",
-	"pkg-pre-deinstall",
-	"pkg-post-deinstall",
-	"pkg-upgrade",
-	"pkg-pre-upgrade",
-	"pkg-post-upgrade",
-	NULL
-};
 
 void
 usage_register(void)
@@ -81,32 +56,16 @@ exec_register(int argc, char **argv)
 	struct pkg	*pkg = NULL;
 	struct pkgdb	*db  = NULL;
 
-	struct pkg_manifest_key *keys = NULL;
-
-	regex_t		 preg;
-	regmatch_t	 pmatch[2];
-
-	char		*arch = NULL;
-	char		 myarch[BUFSIZ];
-	char		*www  = NULL;
-	char		 fpath[MAXPATHLEN];
-
 	const char	*plist      = NULL;
 	const char	*mdir       = NULL;
 	const char	*mfile      = NULL;
 	const char	*input_path = NULL;
-	const char	*desc       = NULL;
 	const char	*location   = NULL;
 
-	size_t		 size;
-
-	bool		 developer;
 	bool		 legacy        = false;
-	bool		 __unused metadata_only = false;
 	bool		 testing_mode  = false;
 
 	int		 ch;
-	int		 i;
 	int		 ret     = EPKG_OK;
 	int		 retcode = EX_OK;
 
@@ -123,8 +82,6 @@ exec_register(int argc, char **argv)
 		{ "test",	no_argument,		NULL,	't' },
 		{ NULL,		0,			NULL,	0},
 	};
-
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
@@ -145,7 +102,6 @@ exec_register(int argc, char **argv)
 			legacy = true;
 			break;
 		case 'M':
-			metadata_only = true;
 			mfile = optarg;
 			break;
 		case 'm':
@@ -160,6 +116,7 @@ exec_register(int argc, char **argv)
 		default:
 			warnx("Unrecognised option -%c\n", ch);
 			usage_register();
+			pkg_free(pkg);
 			return (EX_USAGE);
 		}
 	}
@@ -170,11 +127,12 @@ exec_register(int argc, char **argv)
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to register packages");
+		pkg_free(pkg);
 		return (EX_NOPERM);
-	} else if (retcode != EPKG_OK)
+	} else if (retcode != EPKG_OK) {
+		pkg_free(pkg);
 		return (EX_IOERR);
-	else
-		retcode = EX_OK;
+	}
 
 	/*
 	 * Ideally, the +MANIFEST should be all that is necessary,
@@ -208,13 +166,6 @@ exec_register(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (mfile != NULL && plist != NULL) {
-		warnx("-M incompatible with -f option");
-		usage_register();
-		pkg_free(pkg);
-		return (EX_USAGE);
-	}
-
 	if (testing_mode && input_path != NULL) {
 		warnx("-i incompatible with -t option");
 		usage_register();
@@ -222,71 +173,7 @@ exec_register(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	pkg_manifest_keys_new(&keys);
-
-	if (mfile != NULL) {
-		ret = pkg_parse_manifest_file(pkg, mfile, keys);
-		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) {
-			pkg_free(pkg);
-			return (EX_IOERR);
-		}
-
-	} else {
-		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
-		ret = pkg_parse_manifest_file(pkg, fpath, keys);
-		pkg_manifest_keys_free(keys);
-		if (ret != EPKG_OK) {
-			pkg_free(pkg);
-			return (EX_IOERR);
-		}
-
-		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_DESC, fpath, false);
-
-		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
-		if (access(fpath, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
-
-		for (i = 0; scripts[i] != NULL; i++) {
-			snprintf(fpath, sizeof(fpath), "%s/%s", mdir,
-			    scripts[i]);
-			if (access(fpath, F_OK) == 0)
-				pkg_addscript_file(pkg, fpath);
-		}
-
-		if (www != NULL) {
-			pkg_set(pkg, PKG_WWW, www);
-			free(www);
-		}
-
-		pkg_get(pkg, PKG_WWW, &www);
-
-		/* 
-		 * if www is not given then try to determine it from
-		 * description
-		 */
-
-		if (www == NULL) {
-			pkg_get(pkg, PKG_DESC, &desc);
-			regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
-			    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-			if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
-				size = pmatch[1].rm_eo - pmatch[1].rm_so;
-				www = strndup(&desc[pmatch[1].rm_so], size);
-				pkg_set(pkg, PKG_WWW, www);
-				free(www);
-			} else {
-				pkg_set(pkg, PKG_WWW, "UNKNOWN");
-			}
-			regfree(&preg);
-		}
-
-		if (plist != NULL)
-			ret += ports_parse_plist(pkg, plist, input_path);
-	}
-
+	ret = pkg_load_metadata(pkg, mfile, mdir, plist, input_path, testing_mode);
 	if (ret != EPKG_OK) {
 		pkg_free(pkg);
 		return (EX_IOERR);
@@ -305,36 +192,10 @@ exec_register(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
-	/*
-	 * testing_mode allows updating the local package database
-	 * without any check that the files etc. listed in the meta
-	 * data actually exist on the system.  Inappropriate use of
-	 * testing_mode can really screw things up.
-	 */
-
-	if (!testing_mode)
-		pkg_analyse_files(db, pkg, input_path);
-
-	pkg_get(pkg, PKG_ABI, &arch);
-	if (arch == NULL) {
-		/*
-		 * do not take the one from configuration on purpose
-		 * but the real abi of the package.
-		 */
-		pkg_get_myarch(myarch, BUFSIZ);
-		if (developer)
-			pkg_suggest_arch(pkg, myarch, true);
-		pkg_set(pkg, PKG_ABI, myarch);
-	} else {
-		if (developer)
-			pkg_suggest_arch(pkg, arch, false);
-	}
-
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
 	if (!legacy && retcode == EPKG_OK && messages != NULL) {
-		sbuf_finish(messages);
-		printf("%s\n", sbuf_data(messages));
+		printf("%s\n", utstring_body(messages));
 	}
 
 	pkg_free(pkg);

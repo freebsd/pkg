@@ -87,13 +87,15 @@
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
+#endif
 
 #include "utlist.h"
 #include "utstring.h"
 #include "uthash.h"
 #include "ucl.h"
 #include "ucl_hash.h"
-#include "xxhash.h"
 
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
@@ -128,19 +130,19 @@ enum ucl_parser_state {
 };
 
 enum ucl_character_type {
-	UCL_CHARACTER_DENIED = 0,
-	UCL_CHARACTER_KEY = 1,
-	UCL_CHARACTER_KEY_START = 1 << 1,
-	UCL_CHARACTER_WHITESPACE = 1 << 2,
-	UCL_CHARACTER_WHITESPACE_UNSAFE = 1 << 3,
-	UCL_CHARACTER_VALUE_END = 1 << 4,
-	UCL_CHARACTER_VALUE_STR = 1 << 5,
-	UCL_CHARACTER_VALUE_DIGIT = 1 << 6,
-	UCL_CHARACTER_VALUE_DIGIT_START = 1 << 7,
-	UCL_CHARACTER_ESCAPE = 1 << 8,
-	UCL_CHARACTER_KEY_SEP = 1 << 9,
-	UCL_CHARACTER_JSON_UNSAFE = 1 << 10,
-	UCL_CHARACTER_UCL_UNSAFE = 1 << 11
+	UCL_CHARACTER_DENIED = (1 << 0),
+	UCL_CHARACTER_KEY = (1 << 1),
+	UCL_CHARACTER_KEY_START = (1 << 2),
+	UCL_CHARACTER_WHITESPACE = (1 << 3),
+	UCL_CHARACTER_WHITESPACE_UNSAFE = (1 << 4),
+	UCL_CHARACTER_VALUE_END = (1 << 5),
+	UCL_CHARACTER_VALUE_STR = (1 << 6),
+	UCL_CHARACTER_VALUE_DIGIT = (1 << 7),
+	UCL_CHARACTER_VALUE_DIGIT_START = (1 << 8),
+	UCL_CHARACTER_ESCAPE = (1 << 9),
+	UCL_CHARACTER_KEY_SEP = (1 << 10),
+	UCL_CHARACTER_JSON_UNSAFE = (1 << 11),
+	UCL_CHARACTER_UCL_UNSAFE = (1 << 12)
 };
 
 struct ucl_macro {
@@ -157,7 +159,7 @@ struct ucl_macro {
 struct ucl_stack {
 	ucl_object_t *obj;
 	struct ucl_stack *next;
-	int level;
+	uint64_t level;
 };
 
 struct ucl_chunk {
@@ -168,6 +170,8 @@ struct ucl_chunk {
 	unsigned int line;
 	unsigned int column;
 	unsigned priority;
+	enum ucl_duplicate_strategy strategy;
+	enum ucl_parse_type parse_type;
 	struct ucl_chunk *next;
 };
 
@@ -209,6 +213,8 @@ struct ucl_parser {
 	struct ucl_variable *variables;
 	ucl_variable_handler var_handler;
 	void *var_data;
+	ucl_object_t *comments;
+	ucl_object_t *last_comment;
 	UT_string *err;
 };
 
@@ -303,9 +309,10 @@ ucl_create_err (UT_string **err, const char *fmt, ...)
 __attribute__ (( format( printf, 2, 3) ));
 #endif
 
+#undef UCL_FATAL_ERRORS
+
 static inline void
 ucl_create_err (UT_string **err, const char *fmt, ...)
-
 {
 	if (*err == NULL) {
 		utstring_new (*err);
@@ -314,6 +321,10 @@ ucl_create_err (UT_string **err, const char *fmt, ...)
 		utstring_printf_va (*err, fmt, ap);
 		va_end (ap);
 	}
+
+#ifdef UCL_FATAL_ERRORS
+	assert (0);
+#endif
 }
 
 /**
@@ -478,6 +489,15 @@ void ucl_emitter_print_string_msgpack (struct ucl_emitter_context *ctx,
 		const char *s, size_t len);
 
 /**
+ * Print binary string to the msgpack output
+ * @param ctx
+ * @param s
+ * @param len
+ */
+void ucl_emitter_print_binary_string_msgpack (struct ucl_emitter_context *ctx,
+		const char *s, size_t len);
+
+/**
  * Print array preamble for msgpack
  * @param ctx
  * @param len
@@ -498,7 +518,7 @@ void ucl_emitter_print_object_msgpack (struct ucl_emitter_context *ctx,
  */
 void ucl_emitter_print_null_msgpack (struct ucl_emitter_context *ctx);
 /**
- * Print object's key if needed to the msgpakc output
+ * Print object's key if needed to the msgpack output
  * @param print_key
  * @param ctx
  * @param obj
@@ -506,5 +526,51 @@ void ucl_emitter_print_null_msgpack (struct ucl_emitter_context *ctx);
 void ucl_emitter_print_key_msgpack (bool print_key,
 		struct ucl_emitter_context *ctx,
 		const ucl_object_t *obj);
+
+/**
+ * Fetch URL into a buffer
+ * @param url url to fetch
+ * @param buf pointer to buffer (must be freed by callee)
+ * @param buflen pointer to buffer length
+ * @param err pointer to error argument
+ * @param must_exist fail if cannot find a url
+ */
+bool ucl_fetch_url (const unsigned char *url,
+		unsigned char **buf,
+		size_t *buflen,
+		UT_string **err,
+		bool must_exist);
+
+/**
+ * Fetch a file and save results to the memory buffer
+ * @param filename filename to fetch
+ * @param len length of filename
+ * @param buf target buffer
+ * @param buflen target length
+ * @return
+ */
+bool ucl_fetch_file (const unsigned char *filename,
+		unsigned char **buf,
+		size_t *buflen,
+		UT_string **err,
+		bool must_exist);
+
+/**
+ * Add new element to an object using the current merge strategy and priority
+ * @param parser
+ * @param nobj
+ * @return
+ */
+bool ucl_parser_process_object_element (struct ucl_parser *parser,
+		ucl_object_t *nobj);
+
+/**
+ * Parse msgpack chunk
+ * @param parser
+ * @return
+ */
+bool ucl_parse_msgpack (struct ucl_parser *parser);
+
+bool ucl_parse_csexp (struct ucl_parser *parser);
 
 #endif /* UCL_INTERNAL_H_ */

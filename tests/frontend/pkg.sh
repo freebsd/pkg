@@ -11,9 +11,9 @@ tests_init \
 pkg_no_database_body() {
 	atf_check \
 	    -o empty \
-	    -e inline:"pkg: package database non-existent\n" \
+	    -e inline:"${PROGNAME}: package database non-existent\n" \
 	    -s exit:69 \
-	    -x PKG_DBDIR=/dev/null pkg -N
+	    env -i PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -o PKG_DBDIR=/dev/null -N
 }
 
 pkg_config_defaults_body()
@@ -67,7 +67,7 @@ files:
 EOF
 	atf_check \
 	    -o empty \
-	    -e inline:"pkg: Bad format in manifest for key: files\n" \
+	    -e inline:"${PROGNAME}: Bad format in manifest for key: files\n" \
 	    -s exit:70 \
 	    pkg create -q -m testpkg/.metadir -r testpkg
 }

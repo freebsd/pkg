@@ -26,16 +26,17 @@
  */
 
 #include <sys/param.h>
-#include <sys/sbuf.h>
 
 #include <err.h>
 #include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <utstring.h>
 
 #include <pkg.h>
 
@@ -65,7 +66,7 @@ int
 exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	struct sbuf *failedpkgs = NULL;
+	UT_string *failedpkgs = NULL;
 	char path[MAXPATHLEN];
 	char *file;
 	int retcode;
@@ -140,7 +141,7 @@ exec_add(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
-	failedpkgs = sbuf_new_auto();
+	utstring_new(failedpkgs);
 	pkg_manifest_keys_new(&keys);
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
@@ -163,9 +164,9 @@ exec_add(int argc, char **argv)
 				warn("%s", file);
 				if (errno == ENOENT)
 					warnx("Was 'pkg install %s' meant?", file);
-				sbuf_cat(failedpkgs, argv[i]);
+				utstring_printf(failedpkgs, "%s", argv[i]);
 				if (i != argc - 1)
-					sbuf_printf(failedpkgs, ", ");
+					utstring_printf(failedpkgs, ", ");
 				failedpkgcount++;
 				continue;
 			}
@@ -173,9 +174,9 @@ exec_add(int argc, char **argv)
 		}
 
 		if ((retcode = pkg_add(db, file, f, keys, location)) != EPKG_OK) {
-			sbuf_cat(failedpkgs, argv[i]);
+			utstring_printf(failedpkgs, "%s", argv[i]);
 			if (i != argc - 1)
-				sbuf_printf(failedpkgs, ", ");
+				utstring_printf(failedpkgs, ", ");
 			failedpkgcount++;
 		}
 
@@ -188,15 +189,13 @@ exec_add(int argc, char **argv)
 	pkgdb_close(db);
 	
 	if(failedpkgcount > 0) {
-		sbuf_finish(failedpkgs);
-		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, sbuf_data(failedpkgs));
+		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, utstring_body(failedpkgs));
 		retcode = EPKG_FATAL;
 	}
-	sbuf_delete(failedpkgs);
+	utstring_free(failedpkgs);
 
 	if (messages != NULL) {
-		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
+		printf("%s", utstring_body(messages));
 	}
 
 	return (retcode == EPKG_OK ? EX_OK : EX_SOFTWARE);

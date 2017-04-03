@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -29,6 +29,7 @@
 #define _PKGCLI_H
 
 #include <stdint.h>
+#include <utstring.h>
 #include <bsd_compat.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
@@ -37,8 +38,10 @@ extern bool quiet;
 extern int nbactions;
 int nbactions;
 extern int nbdone;
-extern bool newpkgversion;
 int nbdone;
+extern bool newpkgversion;
+extern int nbtodl;
+int nbtodl;
 
 /* pkg add */
 int exec_add(int, char **);
@@ -181,10 +184,6 @@ void usage_version(void);
 int exec_which(int, char **);
 void usage_which(void);
 
-/* pkg convert */
-int exec_convert(int, char **);
-void usage_convert(void);
-
 /* pkg ssh */
 int exec_ssh(int, char **);
 void usage_ssh(void);
@@ -235,16 +234,16 @@ void usage_config(void);
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
 
 /* Identifying tags */
-#define INFO_TAG_NAME		(1LL<<60)
-#define INFO_TAG_ORIGIN		(1LL<<61)
-#define INFO_TAG_NAMEVER	(1LL<<62)
+#define INFO_TAG_NAME		(1LL<<32)
+#define INFO_TAG_ORIGIN		(1LL<<33)
+#define INFO_TAG_NAMEVER	(1LL<<34)
 
 /* Output YAML format */
-#define INFO_RAW		(-1LL<<63)
-#define INFO_RAW_YAML		(-1LL<<62)
-#define INFO_RAW_JSON		(-1LL<<61)
-#define INFO_RAW_JSON_COMPACT	(-1LL<<60)
-#define INFO_RAW_UCL		(-1LL<<59)
+#define INFO_RAW		(1LL<<35)
+#define INFO_RAW_YAML		(1LL<<36)
+#define INFO_RAW_JSON		(1LL<<37)
+#define INFO_RAW_JSON_COMPACT	(1LL<<38)
+#define INFO_RAW_UCL		(1LL<<39)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \
@@ -268,17 +267,18 @@ int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 
-void job_status_begin(struct sbuf *);
-void job_status_end(struct sbuf *);
+void job_status_begin(UT_string *);
+void job_status_end(UT_string *);
 
 int event_callback(void *data, struct pkg_event *ev);
 void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
-void sbuf_flush(struct sbuf *buf);
+void utstring_flush(UT_string *buf);
+void drop_privileges(void);
 
-extern struct sbuf *messages;
+extern UT_string *messages;
 
 
 /* pkg-query / pkg-rquery */
@@ -290,7 +290,7 @@ struct query_flags {
 };
 
 void print_query(struct pkg *pkg, char *qstr, char multiline);
-int format_sql_condition(const char *str, struct sbuf *sqlcond,
+int format_sql_condition(const char *str, UT_string *sqlcond,
 			 bool for_remote);
 int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,
@@ -299,7 +299,7 @@ int analyse_query_string(char *qstr, struct query_flags *q_flags,
 extern int default_yes;
 extern int yes;
 extern int dry_run;
-extern int auto_update;
+extern bool auto_update;
 extern int case_sensitive;
 extern int force;
 extern bool quiet;

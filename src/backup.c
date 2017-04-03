@@ -75,8 +75,6 @@ exec_backup(int argc, char **argv)
 			return (EX_USAGE);
 		}
 	}
-	argc -= optind;
-	argv += optind;
 
 	if ( dump == restore ) {
 		usage_backup();

@@ -43,6 +43,7 @@ COCCI_ARGS=	-I ${top_srcdir} \
 
 cocci:
 	for c in ${top_srcdir}/tests/cocci/*.cocci ; do \
+		echo "Passing $$c" ; \
 		spatch ${COCCI_ARGS} -in_place -sp_file $$c -dir ${top_srcdir}/libpkg ; \
 		spatch ${COCCI_ARGS} -in_place -sp_file $$c -dir ${top_srcdir}/src ; \
 	done

@@ -40,10 +40,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR REPLACE INTO packages ("
 		"origin, name, version, comment, desc, arch, maintainer, www, "
-		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest, olddigest"
-		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-		"TTTTTTTTTIIITTTT",
+		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest, olddigest, "
+		"vital)"
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+		"TTTTTTTTTIIITTTTI",
 	},
 	[DEPS] = {
 		NULL,
@@ -131,12 +131,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"DELETE FROM packages WHERE origin=?1;"
 		"DELETE FROM pkg_search WHERE origin=?1;",
 		"TT",
-	},
-	[FTS_APPEND] = {
-		NULL,
-		"INSERT OR IGNORE INTO pkg_search(id, name, origin) "
-		"VALUES (?1, ?2 || '-' || ?3, ?4);",
-		"ITTT"
 	},
 	[PROVIDE] = {
 		NULL,

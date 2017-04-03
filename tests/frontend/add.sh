@@ -147,7 +147,7 @@ EOF
 
 	atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): test-1.txz\n" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:70 \
 		pkg add test-1.txz
 
@@ -158,7 +158,7 @@ post-install
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
 		pkg add -M test-1.txz
 }
@@ -228,7 +228,7 @@ EOF
 
 	cat test-1.txz | atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): -\n" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:70 \
 		pkg add -
 
@@ -239,7 +239,7 @@ post-install
 "
 	cat test-1.txz | atf_check \
 		-o inline:"${OUTPUT}" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
 		pkg add -M -
 }

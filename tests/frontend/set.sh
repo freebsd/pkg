@@ -5,7 +5,8 @@
 tests_init \
 	set_automatic \
 	set_change_name \
-	set_change_origin
+	set_change_origin \
+	set_vital
 
 initialize_pkg() {
 	cat << EOF > test.ucl
@@ -94,4 +95,38 @@ set_change_origin_body() {
 		-e empty \
 		-s exit:0 \
 		pkg info -qo
+}
+
+set_vital_body() {
+	initialize_pkg
+
+	atf_check \
+		-o inline:"0\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%V" test
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg set -y -v 1 test
+
+	atf_check \
+		-o inline:"1\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%V" test
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg set -y -v 0 test
+
+	atf_check \
+		-o inline:"0\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%V" test
 }

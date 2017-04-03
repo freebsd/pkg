@@ -6,9 +6,8 @@ tests_init \
 	jpeg
 
 jpeg_body() {
-	if [ "${OS}" = "Darwin" ]; then
-		return
-	fi
+	atf_skip_on Darwin Irrelevant on OSX
+
 	cc -shared -Wl,-soname=libjpeg.so.3 -o libjpeg.so.3
 	ln -sf libjpeg.so.3 libjpeg.so
 	cc -shared -Wl,-rpath=${TMPDIR} -L. -ljpeg -o deponjpeg.so
@@ -137,5 +136,9 @@ local: {
 	enabled: true
 }
 EOF
-	atf_check -o ignore -e empty -s exit:0 pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
+	atf_check \
+		-o ignore \
+		-e match:".*load error: access repo file.*" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
 }

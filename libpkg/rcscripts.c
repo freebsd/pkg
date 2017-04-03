@@ -98,7 +98,7 @@ rc_stop(const char *rc_file)
 	    (error = posix_spawn(&pid, "/usr/sbin/service", &actions, NULL,
 	    __DECONST(char **, argv), environ)) != 0) {
 		errno = error;
-		pkg_emit_errno("Cannot query service", rc_file);
+		pkg_errno("Cannot query service '%s'", rc_file);
 		return (-1);
 	}
 
@@ -117,7 +117,7 @@ rc_stop(const char *rc_file)
 	if ((error = posix_spawn(&pid, "/usr/sbin/service", NULL, NULL,
 	    __DECONST(char **, argv), environ)) != 0) {
 		errno = error;
-		pkg_emit_errno("Cannot stop service", rc_file);
+		pkg_errno("Cannot stop service '%s'", rc_file);
 		return (-1);
 	}
 
@@ -147,7 +147,7 @@ rc_start(const char *rc_file)
 	if ((error = posix_spawn(&pid, "/usr/sbin/service", NULL, NULL,
 	    __DECONST(char **, argv), environ)) != 0) {
 		errno = error;
-		pkg_emit_errno("Cannot start service", rc_file);
+		pkg_errno("Cannot start service '%s'", rc_file);
 		return (-1);
 	}
 

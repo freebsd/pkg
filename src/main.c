@@ -37,9 +37,13 @@
 
 #include <sys/stat.h>
 #include <sys/queue.h>
-#include <sys/sbuf.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#include <sys/user.h>
+#include <sys/proc.h>
+#endif
 
 #include <assert.h>
 #include <ctype.h>
@@ -51,6 +55,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+#include <utlist.h>
 #include <unistd.h>
 #ifdef HAVE_LIBJAIL
 #include <jail.h>
@@ -89,7 +94,6 @@ static struct commands {
 	{ "check", "Checks for missing dependencies and database consistency", exec_check, usage_check},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "config", "Display the value of the configuration options", exec_config, usage_config},
-	{ "convert", "Convert database from/to pkgng", exec_convert, usage_convert},
 	{ "create", "Creates software package distributions", exec_create, usage_create},
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
@@ -119,13 +123,14 @@ static struct commands {
 
 static const unsigned int cmd_len = NELEM(cmd);
 
-static STAILQ_HEAD(, plugcmd) plugins = STAILQ_HEAD_INITIALIZER(plugins);
 struct plugcmd {
 	const char *name;
 	const char *desc;
 	int (*exec)(int argc, char **argv);
-	STAILQ_ENTRY(plugcmd) next;
+	struct plugcmd *next;
+	struct plugcmd *prev;
 };
+static struct plugcmd *plugins = NULL;
 
 typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
 typedef int (nb_cmd)(void);
@@ -176,7 +181,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 #ifdef HAVE_LIBJAIL
 		fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
 #endif
-		fprintf(out, "\t%-15s%s\n", "-R", "Execute pkg(8) using relocating installation to <rootdir>");
+		fprintf(out, "\t%-15s%s\n", "-r", "Execute pkg(8) using relocating installation to <rootdir>");
 		fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
 		fprintf(out, "\t%-15s%s\n", "-C", "Use the specified configuration file");
 		fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
@@ -202,8 +207,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
-			STAILQ_FOREACH(c, &plugins, next)
-			fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			DL_FOREACH(plugins, c) {
+				fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			}
 		}
 		fprintf(out, "\nFor more information on the different commands"
 					" see 'pkg help <command>'.\n");
@@ -252,7 +258,7 @@ exec_help(int argc, char **argv)
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 	if (plugins_enabled) {
-		STAILQ_FOREACH(c, &plugins, next) {
+		DL_FOREACH(plugins, c) {
 			if (strcmp(c->name, argv[1]) == 0) {
 				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
 					errx(EX_SOFTWARE, "cannot allocate memory");
@@ -361,6 +367,9 @@ show_repository_info(void)
 		if (pkg_repo_key(repo) != NULL)
 			printf(",\n    %-16s: \"%s\"",
 			    "pubkey", pkg_repo_key(repo));
+		if (pkg_repo_ip_version(repo) != 0)
+			printf(",\n    %-16s: %u",
+				"ip_version", pkg_repo_ip_version(repo));
 		printf("\n  }\n");
 	}
 }
@@ -477,7 +486,7 @@ start_process_worker(char *const *save_argv)
 				/* Process got some terminating signal, hence stop the loop */
 				fprintf(stderr, "Child process pid=%d terminated abnormally: %s\n",
 						(int)child_pid, strsignal (WTERMSIG(status)));
-				ret = -(WTERMSIG(status));
+				ret = 128 + WTERMSIG(status);
 				break;
 			}
 		}
@@ -547,6 +556,30 @@ expand_aliases(int argc, char ***argv)
 	return (newargc);
 }
 
+static
+bool ptraced(void)
+{
+#if defined(__FreeBSD__)
+	int                 mib[4];
+	struct kinfo_proc   info;
+	size_t              size;
+
+	info.ki_flag = 0;
+
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC;
+	mib[2] = KERN_PROC_PID;
+	mib[3] = getpid();
+
+	size = sizeof(info);
+	sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
+
+	return ((info.ki_flag & P_TRACED) != 0 );
+#else
+	return (false);
+#endif
+}
+
 int
 main(int argc, char **argv)
 {
@@ -573,6 +606,7 @@ main(int argc, char **argv)
 	const char	 *conffile = NULL;
 	const char	 *reposdir = NULL;
 	char		**save_argv;
+	char		  realrootdir[MAXPATHLEN];
 	int		  j;
 
 	struct option longopts[] = {
@@ -684,10 +718,10 @@ main(int argc, char **argv)
 	optreset = 1;
 	optind = 1;
 
-	if (debug == 0 && version == 0)
+	if (debug == 0 && version == 0 && !ptraced())
 		start_process_worker(save_argv);
 
-#ifdef HAVE_ARC4RANDOM
+#ifdef HAVE_ARC4RANDOM_STIR
 	/* Ensure that random is stirred after a possible fork */
 	arc4random_stir();
 #endif
@@ -721,9 +755,12 @@ main(int argc, char **argv)
 #endif
 
 	if (rootdir != NULL) {
+		if (realpath(rootdir, realrootdir) == NULL)
+			err(EX_SOFTWARE, "Invalid rootdir");
 		if (chdir(rootdir) == -1)
 			errx(EX_SOFTWARE, "chdir() failed");
-		pkg_set_rootdir(rootdir);
+		if (pkg_set_rootdir(realrootdir) != EPKG_OK)
+			exit(EX_SOFTWARE);
 	}
 
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
@@ -763,7 +800,7 @@ main(int argc, char **argv)
 				for (j = 0; j < n ; j++) {
 					c = malloc(sizeof(struct plugcmd));
 					reg(j, &c->name, &c->desc, &c->exec);
-					STAILQ_INSERT_TAIL(&plugins, c, next);
+					DL_APPEND(plugins, c);
 				}
 			}
 		}
@@ -829,7 +866,7 @@ main(int argc, char **argv)
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
-			STAILQ_FOREACH(c, &plugins, next) {
+			DL_FOREACH(plugins, c) {
 				if (strcmp(c->name, argv[0]) == 0) {
 					plugin_found = true;
 					ret = c->exec(argc, argv);

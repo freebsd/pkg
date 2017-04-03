@@ -1,21 +1,27 @@
 #compdef pkg
 
+_pkg_cmd() {
+	local jflags=()
+	[[ -n "${_pkg_jail:-}" ]] && jflags=(-j "$_pkg_jail")
+	@prefix@/sbin/pkg "${jflags[@]}" "$@"
+}
+
 _pkg_installed() {
 	local expl
 	_wanted packages expl package \
-	compadd "$@" - $(@prefix@/sbin/pkg query "%n-%v")
+	compadd "$@" - $(_pkg_cmd query "%n-%v")
 }
 
 _pkg_available_name() {
 	local expl
 	_wanted packages expl package \
-	compadd "$@" - $(@prefix@/sbin/pkg rquery "%n")
+	compadd "$@" - $(_pkg_cmd rquery "%n")
 }
 
 _pkg_aliases() {
 	local expl
 	_wanted aliases expl alias \
-	compadd "$@" - $(@prefix@/sbin/pkg alias -ql)
+	compadd "$@" - $(_pkg_cmd alias -ql)
 }
 
 _pkg_available() {
@@ -26,7 +32,7 @@ _pkg_available() {
 			_files "$@" -g "*.t?z" && ret=0
 		fi
 		if _requested packages; then
-			compadd "$@" - $(@prefix@/sbin/pkg rquery "%n-%v") && ret=0
+			compadd "$@" - $(_pkg_cmd rquery "%n-%v") && ret=0
 		fi
 		(( ret )) || break
 	done
@@ -34,72 +40,59 @@ _pkg_available() {
 }
 
 _pkg_config_opts() {
-	local -a _pkg_opts
-	_pkg_opts=(
-	'ABI[ABI of the package you want to install]:string:'
-	'ALIAS[Define local aliases for various pkg(8) standard command lines]:key/value list:'
-	'DEFAULT_ALWAYS_YES[Default to "yes" for all questions requiring user confirmation]:boolean:(yes no)'
-	'ASSUME_ALWAYS_YES[Assumes "yes" to all questions requiring user confirmation]:boolean:(yes no)'
-	'CONSERVATIVE_UPGRADE[Give priority to the repo where a package was first installed from]:boolean:(yes no)'
-	'CUDF_SOLVER[Experimental\: use an external CUDF solver]:CUDF solver:_files'
-	'CASE_SENSITIVE_MATCH[Case sensitive package matching]:boolean:(yes no)'
-	'DEBUG_LEVEL[Debugging level]:debug level:( {0..4} )'
-	'DEVELOPER_MODE[Makes certain errors immediately fatal, adds warnings and suggestions]:boolean:(yes no)'
-	'EVENT_PIPE[Send all event messages to specified FIFO or UNIX socket]:event pipe:_files'
-	'FETCH_RETRY[Number of times to retry a failed fetch of a file]:number of retries:'
-	'FETCH_TIMEOUT[Number of seconds to wait for a file to download]:timeout (seconds):'
-	'HANDLE_RC_SCRIPTS[Automatically perform start/stop of service on install/removal]:boolean:(yes no)'
-	'INDEXDIR[The directory to search for INDEXFILE in]: : _files -/'
-	'INDEXFILE[The ports index file]: : _files'
-	'IP_VERSION[Restrict network access to specified IP version]:IP version:((0\:"system default" 4\:IPv4 6\:IPv6 ))'
-	'LOCK_RETRIES[Number of retries to obtain a lock]:retries:'
-	'LOCK_WAIT[Wait time in seconds to regain a lock]:wait time (seconds):'
-	'NAMESERVER[Hostname or IPv\[46\] address of a nameserver for DNS resolution]: : _hosts'
-	'PERMISSIVE[Ignore conflicts while registering a package]:boolean:(yes no)'
-	'PKG_CACHEDIR[Specifies the cache directory for packages]: : _files -/'
-	'PKG_CREATE_VERBOSE[Make pkg_create(8) use verbose mode]:boolean:(yes no)'
-	'PKG_DBDIR[Specifies the directory to use for storing the package database files]: : _files -/'
-	'PKG_ENABLE_PLUGINS[Activate plugin support]:boolean:(yes no)'
-	'PKG_ENV[key/value pair of environment variables]:key/value list:'
-	'PKG_PLUGINS_DIR[Specific directory for plugins]: : _files -/'
-	'PKG_SSH_ARGS[Extra arguments for ssh(1)]:ssh(1) arguments:'
-	'PLIST_KEYWORDS_DIR[Directory containing definitions of plist keywords]: : _files -/'
-	'PLIST_ACCEPT_DIRECTORIES[Accept directories listed like plain files in plist]:boolean:(yes no)'
-	'PLUGINS[List of plugins pkg(8) should load]:plugins:'
-	'PLUGINS_CONF_DIR[Directory containing per-plugin configurations files]: : _files -/'
-	'PORTSDIR[Specifies the location to the Ports directory]: : _files -/'
-	'REPOS_DIR[List of directories to search for repository configuration files]: : _files -/' # completing one directory is better than nothing.
-	'REPO_AUTOUPDATE[Automatically check for repo.sqlsite updates]:boolean:(yes no)'
-	'RUN_SCRIPTS[Run pre-/post-installation action scripts]:boolean:(yes no)'
-	'SAT_SOLVER[Experimental\: use an external SAT solver]:SAT solver:_files'
-	'SQLITE_PROFILE[Profile SQLite queries]:boolean:(yes no)'
-	'SSH_RESTRICT_DIR[Directory which the ssh subsystem will be restricted to]:chroot:_files -/'
-	'SYSLOG[Log install/deinstall/upgrade operations to syslog(3)]:boolean:(yes no)'
-	'UNSET_TIMESTAMP[Do not include timestamps in the package tar(1) archive]:boolean:(yes no)'
-	'VERSION_SOURCE[Default database for comparing version numbers in pkg-version(8)]:database:(( I\:index P\:ports R\:remote ))'
-	'VULNXML_SITE[Specifies the URL to fetch the vuln.xml vulnerability database from]: : _urls -F "( gopher:* file:* ftp:* )"'
-	'WORKERS_COUNT[How many workers are used for pkg-repo]:workers:( {0..$(sysctl -n hw.ncpu)} )'
-	)
-	_values 'configuration option' "$_pkg_opts[@]"
+	_values 'configuration option' \
+		'ABI[ABI of package you want to install]:string' \
+		'ALIAS[define local aliases for various pkg(8) standard command lines]:key/value list' \
+		'AUTOCLEAN[cleanout content of cache directory after upgrades or installations]:boolean:(yes no)' \
+		'DEFAULT_ALWAYS_YES[default to "yes" for all questions requiring user confirmation]:boolean:(yes no)' \
+		'ASSUME_ALWAYS_YES[assume "yes" to all questions requiring user confirmation]:boolean:(yes no)' \
+		'CONSERVATIVE_UPGRADE[give priority to repo where a package was first installed from]:boolean:(yes no)' \
+		'CUDF_SOLVER[experimental\: use an external CUDF solver]:CUDF solver:_files' \
+		'CASE_SENSITIVE_MATCH[case-sensitive package matching]:boolean:(yes no)' \
+		'DEBUG_LEVEL[debugging level]:debug level:( {0..4} )' \
+		'DEBUG_SCRIPTS[activate debug mode (set -x) for scripts]:boolean:(yes no)' \
+		'DEVELOPER_MODE[make certain errors immediately fatal, adds warnings and suggestions]:boolean:(yes no)' \
+		'EVENT_PIPE[send all event messages to specified FIFO or UNIX socket]:event pipe:_files' \
+		'FETCH_RETRY[number of times to retry a failed fetch of a file]:number of retries' \
+		'FETCH_TIMEOUT[time to wait for a file to download]:timeout (seconds)' \
+		'HANDLE_RC_SCRIPTS[automatically perform start/stop of service on install/removal]:boolean:(yes no)' \
+		'HTTP_USER_AGENT[define User-agent HTTP header to send]:user agent' \
+		'INDEXDIR[directory to search for ports index file in]:directory:_files -/' \
+		'INDEXFILE[ports index file]:index file:_files' \
+		'IP_VERSION[restrict network access to specified IP version]:IP version:((0\:"system default" 4\:IPv4 6\:IPv6 ))' \
+		'LOCK_RETRIES[number of retries to obtain a lock]:retries' \
+		'LOCK_WAIT[wait time to regain a lock]:wait time (seconds):' \
+		'NAMESERVER[hostname or IPv\[46\] address of a nameserver for DNS resolution]:name server:_hosts' \
+		'PERMISSIVE[ignore conflicts while registering a package]:boolean:(yes no)' \
+		'PKG_CACHEDIR[specify cache directory for packages]:directory:_files -/' \
+		'PKG_CREATE_VERBOSE[make pkg_create(8) use verbose mode]:boolean:(yes no)' \
+		'PKG_DBDIR[specify directory to use for storing package database files]:directory:_files -/' \
+		'PKG_ENABLE_PLUGINS[activate plugin support]:boolean:(yes no)' \
+		'PKG_ENV[key/value pair of environment variables]:key/value list' \
+		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
+		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
+		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
+		'PLIST_ACCEPT_DIRECTORIES[accept directories listed like plain files in plist]:boolean:(yes no)' \
+		'PLUGINS[list of plugins pkg(8) should load]:plugins' \
+		'PLUGINS_CONF_DIR[directory containing per-plugin configurations files]:directory:_files -/' \
+		'PORTSDIR[specify location of ports directory]:directory:_files -/' \
+		'READ_LOCK[use read locking for query database]:boolean:(yes no)' \
+		'REPOS_DIR[list of directories to search for repository configuration files]: : _sequence _directories' \
+		'REPO_AUTOUPDATE[automatically check for repo.sqlsite updates]:boolean:(yes no)' \
+		'RUN_SCRIPTS[run pre-/post-installation action scripts]:boolean:(yes no)' \
+		'SAT_SOLVER[experimental\: use an external SAT solver]:SAT solver:_files' \
+		'SQLITE_PROFILE[profile SQLite queries]:boolean:(yes no)' \
+		'SSH_RESTRICT_DIR[directory which ssh subsystem will be restricted to]:chroot:_files -/' \
+		'SYSLOG[log install/deinstall/upgrade operations to syslog(3)]:boolean:(yes no)' \
+		"UNSET_TIMESTAMP[don't include timestamps in package tar(1) archive]:boolean:(yes no)" \
+		'VERSION_SOURCE[default database for comparing version numbers in pkg-version(8)]:database:(( I\:index P\:ports R\:remote ))' \
+		'VULNXML_SITE[specify URL to fetch vuln.xml vulnerability database from]: : _urls -F "( gopher:* file:* ftp:* )"' \
+		'WORKERS_COUNT[how many workers are used for pkg-repo]:workers:( {0..$(sysctl -n hw.ncpu)} )'
 }
 
 _pkg() {
-	local curcontext="$curcontext" state state_descr line ret=1
-	local earlyargs subcmd
-	local subcmd_list cmd
-	earlyargs=(
-	'(-d --debug)'{-d,--debug}'[increment debug level]'
-	'(-j --jail)'{-j,--jail}'[execute pkg(8) inside a jail(8)]:jail:_jails'
-	'(-c --chroot)'{-c,--chroot}'[execute pkg(8) inside a chroot(8)]:chroot:_files -/'
-	\*{-o,--option}'[set configuration option]:option:_pkg_config_opts'
-	'(-C --config)'{-C,--config}'[use the specified configuration file]:configuration file:_files'
-	'(-l --list)'{-l,--list}'[list available command and exit]'
-	'(-v --version)'{-v,--version}'[display pkg(8) version]'
-	'-N[test if pkg(8) is activated and avoid auto-activation]'
-	'(-R --repo-conf-dir)'{-R,--repo-conf-dir}'[specify directory for per-repository configuration files]: : _files'
-	'-4[use IPv4 for fetching repository and packages]'
-	'-6[use IPv6 for fetching repository and packages]'
-	)
+	local curcontext="$curcontext" state state_descr line expl ret=1
+	local subcmd _pkg_jail
 
 	subcmd=(
 		'add[compatibility interface to install a package]'
@@ -111,7 +104,6 @@ _pkg() {
 		'check[check for missing dependencies and database consistency]'
 		'clean[clean old packages from the cache]'
 		'config[display value of a configuration option]'
-		'convert[convert database from/to pkgng]'
 		'create[create software package distributions]'
 		'delete[delete packages from the database and the system]'
 		'fetch[fetch packages from a remote repository]'
@@ -120,6 +112,7 @@ _pkg() {
 		'install[install packages from remote package repositories]'
 		'lock[lock package against modifications or deletion]'
 		'query[query information about installed packages]'
+		'plugins[list available plugins]'
 		'register[register a package with the local database]'
 		'remove[delete packages from the database and the system]'
 		'repo[create a package repository catalogue]'
@@ -137,46 +130,44 @@ _pkg() {
 		'which[display which package installed a specific file]'
 	)
 
-	if [[ $service = "pkg" ]]; then
+	(( ${words[(I)-j]} )) && _pkg_jail="${words[1+${words[(I)-j]}]}"
+	(( ${words[(I)--jail]} )) && _pkg_jail="${words[1+${words[(I)--jail]}]}"
 
-		_arguments -C -A "-*" \
-			$earlyargs \
-			'*::command:->subcmd' && return
+	_arguments -A -* -C \
+		'(-d --debug)'{-d,--debug}'[increment debug level]' \
+		'(-j --jail)'{-j,--jail}'[execute pkg(8) inside a jail(8)]:jail:_jails' \
+		'(-c --chroot)'{-c,--chroot}'[execute pkg(8) inside a chroot(8)]:chroot:_files -/' \
+		\*{-o,--option}'[set configuration option]:option:_pkg_config_opts' \
+		'(-C --config)'{-C,--config}'[use the specified configuration file]:configuration file:_files' \
+		'(-l --list)'{-l,--list}'[list available command and exit]' \
+		'(-v --version)'{-v,--version}'[display pkg(8) version]' \
+		'-N[test if pkg(8) is activated and avoid auto-activation]' \
+		'(-R --repo-conf-dir)'{-R,--repo-conf-dir}'[specify directory for per-repository configuration files]: : _files' \
+		'-4[use IPv4 for fetching repository and packages]' \
+		'-6[use IPv6 for fetching repository and packages]' \
+		'1:sub command:_values "pkg subcommand" $subcmd' \
+		'*::command:->subcmd' && return
 
-		if (( CURRENT == 1 )); then
-			_values 'pkg subcommands' \
-				$subcmd
-			return
-		fi
-		service="$words[1]"
-		curcontext="${curcontext%:*}-$service:"
-	fi
+	state=()
+	service="$words[1]"
+	curcontext="${curcontext%:*}-$service:"
 
 	case $service in
 		(add)
-			_arguments -C -A 'package' \
-				'(-A --automatic)'{-A,--automatic}'[Mark the installed packages as automatic]' \
-				'(-f --force)'{-f,--force}'[Force the reinstallation of package]' \
-				'(-I --no-scripts)'{-I,--no-scripts}'[Ignore pre-/post-install scripts]' \
-				'(-M --accept-missing)'{-M,--accept-missing}'[Ignore missing dependencies when installing]' \
-				'(-q --quiet)'{-q,--quiet}'[Force quiet output]' \
-				'*:package:->packages'
+			_arguments -C -A '-*' -s \
+				'(-A --automatic)'{-A,--automatic}'[mark the installed packages as automatic]' \
+				'(-f --force)'{-f,--force}'[force the reinstallation of package]' \
+				'(-I --no-scripts)'{-I,--no-scripts}'[ignore pre-/post-install scripts]' \
+				'(-M --accept-missing)'{-M,--accept-missing}'[ignore missing dependencies when installing]' \
+				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				'*:package:->packages' && ret=0
 
 			if [[ $state[1] == packages ]]; then
-				local ret=1
-				_tags packages urls
-				while _tags; do
-					if _requested packages; then
-						_files -g "*.t?z" && ret=0
-					fi
-					if _requested urls; then
-						_urls -F "( gopher:* file:* )" && ret=0
-					fi
-					(( ret )) || break
-				done
-				return
+				_alternative \
+					'packages:file:_files -f "*.t?z(-.)"' \
+					'urls: : _urls -F "( gopher:* file:* )"' && ret=0
 			fi
-			return
+			return ret
 			;;
 		(alias)
 			_arguments -A '-*' -s \
@@ -207,7 +198,7 @@ _pkg() {
 			_arguments -s \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				- '(dump)' \
-				{-d,--dump}'[dumps the local package database]:destination:_files' \
+				{-d,--dump}'[dump the local package database]:destination:_files' \
 				- '(restore)' \
 				{-r,--restore}'[restore the local package database]:destination:_files'
 			return
@@ -216,17 +207,17 @@ _pkg() {
 			_arguments -A '-*' -s \
 				'(-B --shlibs)'{-B,--shlibs}'[reanalyze the shared libraries]' \
 				'(-d --dependencies)'{-d,--dependencies}'[check for and install missing dependencies]' \
-				'(-r --recompute)'{-r,--recompute}'[recompute sizes and checksums of installed]' \
+				'(-r --recompute)'{-r,--recompute}'[recompute sizes and checksums of installed packages]' \
 				'(-s --checksums)'{-s,--checksums}'[find invalid checksums]' \
 				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
-				'(-n --dry-run)'{-n,--dry-run}'[check for missing dependencies but do not install them]' \
+				'(-n --dry-run)'{-n,--dry-run}"[check for missing dependencies but don't install them]" \
 				'(-y --yes)'{-y,--yes}'[assume yes for confirmations]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
-				${words[(r)(-*a*|--all)]+!}'*:available package:_pkg_installed' \
+				'*:available package:_pkg_installed' \
 				- '(all)' \
-				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
 				- '(patterns)' \
 				{-x,--regex}'[process packages that match the regex pattern]' \
 				{-g,--glob}'[process packages that match the glob pattern]'
@@ -238,12 +229,6 @@ _pkg() {
 				'(-n --dry-run)'{-n,--dry-run}'[show what packages would be removed]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-y --yes)'{-y,--yes}'[assume yes for confirmations]'
-			return
-			;;
-		(convert)
-			_arguments -s \
-				'(-d --pkg-dbdir)'{-d,--pkg-dbdir}'[specify the location of the pkg_add(1) dbdir]: : _files -/' \
-				'(-n --dry-run)'{-n,--dry-run}'[dry run mode]'
 			return
 			;;
 		(create)
@@ -275,7 +260,7 @@ _pkg() {
 				'(-f --force)'{-f,--force}'[force the package(s) to be removed]' \
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
-				'(-D --no-deinstall-script)'{-D,--no-deinstall-script}'[do not execute deinstallation scripts]' \
+				'(-D --no-deinstall-script)'{-D,--no-deinstall-script}"[don't execute deinstallation scripts]" \
 				'(-R --recursive)'{-R,--recursive}'[delete all packages that require the list packages as well]' \
 				- '(all)' \
 				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
@@ -292,7 +277,7 @@ _pkg() {
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-o --output)'{-o,--output}'[place files in a subdirectory named `All'\'' of the specified directory]: : _files -/' \
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
-				'(-d --dependencies)'{-d,--dependencies}'[Fetch dependencies as well]' \
+				'(-d --dependencies)'{-d,--dependencies}'[fetch dependencies as well]' \
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
 				- '(all)' \
@@ -308,7 +293,7 @@ _pkg() {
 		(help)
 			_arguments -s \
 				':command:_values -S " " -w "pkg subcommand" ${subcmd/\[*/}'
-			return 0
+			return
 			;;
 		(info)
 			local mutexopts='(-e --exists -d --dependencies -r --required-by -l --list-files -I --comment'
@@ -349,15 +334,15 @@ _pkg() {
 				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
 				'(-r --repository)'{-r,--repository}'[specify the repository to install packages from]:reponame' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
-				'(-I --no-install-scripts)'{-I,--no-install-scripts}'[do not execute any pre/post-install scripts]' \
+				'(-I --no-install-scripts)'{-I,--no-install-scripts}"[don't execute any pre/post-install scripts]" \
 				'(-M --ignore-missing)'{-M,--ignore-missing}'[ignore missing dependencies]' \
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
 				'(-f --force)'{-f,--force}'[force reinstallation if needed]' \
-				'(-R --from-root)'{-R,--from-root}'[reinstall every package depending on matching expressions]' \
-				${words[(r)(-*a*|--all)]+!}'*:available package:_pkg_available' \
+				'(-R --recursive)'{-R,--recursive}'[reinstall every package depending on matching expressions]' \
+				'*:available package:_pkg_available' \
 				- '(all)' \
-				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
 				- patterns \
 				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
 				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]'
@@ -365,18 +350,19 @@ _pkg() {
 			;;
 		(query)
 			_arguments -C -s \
-				'(-a --all -i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
-				'(-a --all -i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
-				':output format:->query' \
+				'(-)1:output format:->query' \
 				- '(all)' \
 				{-a,--all}'[process all packages]' \
 				- '(patterns)' \
+				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
+				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				{-g,--glob}'[process packages that match a glob pattern]' \
 				{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:package:_pkg_installed' \
 				- '(eval)' \
 				{-e,--evaluate}'[process packages that match an evaluation]:evaluation:->evaluation' \
 				- '(files)' \
-				{-F,--file}'[process the specified package]:package:_files -g "*.t?z"' \
+				{-F,--file}'[process the specified package]:package:_files -g "*.t?z(-.)"' \
 				&& ret=0
 			;;
 		(register)
@@ -396,7 +382,7 @@ _pkg() {
 			_arguments -A '-*' -s \
 				'(-l --list-files)'{-l,--list-files}'[generate list of all files in repo as filesite.txz archive]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
-				'(-L --legacy)'{-L,--legacy}'[create an pkg 1.2 compatiable repository]' \
+				'(-L --legacy)'{-L,--legacy}'[create a pkg 1.2 compatible repository]' \
 				'(-o --output-dir)'{-o,--output-dir}'[specify the location of the new repo]:repo location:_files -/' \
 				'(-m --meta-file)'{-m,--meta-file}'[use specified file as repository meta file instead of the defaults]:meta file:_files' \
 				':repository path:_files -/' \
@@ -411,14 +397,14 @@ _pkg() {
 				'(-r --repository)'{-r,--repository}'[specify the repository to search]:reponame' \
 				'(-I --index-line)'{-I,--index-line}'[print corresponding line from ports index file]' \
 				${words[(r)(-I|--index-line)]+!}':output format:->query' \
-				'*:available package:_pkg_available_name' \
 				- '(all)' \
-				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
+				'(* -i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
 				- '(patterns)' \
 				{-g,--glob}'[process packages that match the glob pattern]' \
 				{-x,--regex}'[process packages that match a regex pattern]' \
+				'*:available package:_pkg_available_name' \
 				- '(eval)' \
-				{-e,--evalute}'[process packages that match an evaluation]:evaluation:->evaluation' \
+				{-e,--evaluate}'[process packages that match an evaluation]:evaluation:->evaluation' \
 				&& ret=0
 			;;
 		(search)
@@ -521,7 +507,7 @@ _pkg() {
 				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
 				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
-				'(-I --no-install-scripts)'{-I,--no-install-scripts}'[do not execute any pre/post-install scripts]' \
+				'(-I --no-install-scripts)'{-I,--no-install-scripts}"[don't execute any pre/post-install scripts]" \
 				'(-r --repository)'{-r,--repository}'[specify the repository to upgrade from]:reponame' \
 				'*:available package:_pkg_installed' \
 				- '(glob)' \
@@ -535,7 +521,7 @@ _pkg() {
 				- '(testversion)' \
 				{-t,--test-version}'[test a pair of version number strings]: : _message -e values "version string": : _message -e values "version string"' \
 				- '(testpattern)' \
-				{-T,--test-pattern}'[compare pkgname againist a shell glob pattern]:package:_pkg_installed: : _message -e values glob' \
+				{-T,--test-pattern}'[compare pkgname against a shell glob pattern]:package:_pkg_installed: : _message -e values glob' \
 				- other \
 				'(-r --repository -P --ports -R --remote -I --index)'{-I,--index}'[use INDEX file]' \
 				'(-r --repository -P --ports -R --remote -I --index)'{-P,--ports}'[force checking against the ports tree]' \
@@ -583,13 +569,13 @@ _pkg() {
 	if [[ $service = query ]]; then
 		specs+=( 'a:automatic' 'k:locked' 't:timestamp' )
 		elements+=( 'F:files' 'D:directories'  'U:users' 'G:groups' )
-  fi
+	fi
 	if [[ $state = query ]]; then
-    specs+=( 'v:version' 'l:license' 'R:repository' )
+		specs+=( 'v:version' 'l:license' 'R:repository' )
 		compset -P '(%[^sOFdrA?#]|%?[^%]|[^%])#'
-  else
+	else
 		compset -P '(%[^OFdrA?#]|%?[^%]|[^%])#'
-  fi
+	fi
 	if compset -P '%s'; then
 		_describe -t units unit '( b:bytes h:human\ readable )' -S '' && ret=0
 	elif compset -P '%F'; then
@@ -606,16 +592,16 @@ _pkg() {
 		[[ $IPREFIX = *%(#b)([${(j..)elements%%:*}])* ]] &&
 			elements=( ${(M)elements:#$match[1]:*} )
 		if [[ $state = evaluation ]]; then
-		  _tags variables operators
+			_tags variables operators
 		else
-		  _tags patterns elements
+			_tags patterns elements
 		fi
 		while _tags; do
 			_requested elements && _describe -t elements 'list element' elements -p % -S '' && ret=0
 			_requested variables && _describe -t variables 'variable' specs -p % -S '' && ret=0
 			_requested patterns && _describe -t patterns 'query specifier' specs -p % -S '' && ret=0
 			_requested operators expl operator compadd -S '' \~ {,\!,\>,\<}= \> \< \&\& \|\| && ret=0
-		  (( ret )) || break
+			(( ret )) || break
 		done
 	fi
 	return ret

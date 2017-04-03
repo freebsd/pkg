@@ -39,12 +39,6 @@
 
 #include <bsd_compat.h>
 
-#ifdef HAVE_SYS_STATFS_H
-#include <sys/statfs.h>
-#elif defined(HAVE_SYS_STATVFS_H)
-#include <sys/statvfs.h>
-#endif
-
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -310,58 +304,57 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	struct pkg_repo_it *it;
 	struct pkg *pkg = NULL;
 
-	sqlite3_initialize();
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+	sqlite3_initialize();
 
-	/*
-	 * Fall back on unix-dotfile locking strategy if on a network filesystem
-	 */
-#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
-	struct statvfs stfs;
-
-	if (statvfs(dbdir, &stfs) == 0) {
-		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
-	}
-#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
-	struct statfs stfs;
-
-	if (statfs(dbdir, &stfs) == 0) {
-		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
-	}
-#endif
+	pkgdb_setup_lock();
+	pkgdb_syscall_overload();
 
 	snprintf(filepath, sizeof(filepath), "%s/%s.meta",
 		dbdir, pkg_repo_name(repo));
 
 	/* Open metafile */
 	if (access(filepath, R_OK) != -1) {
-		if (pkg_repo_meta_load(filepath, &repo->meta) != EPKG_OK)
+		if (pkg_repo_meta_load(filepath, &repo->meta) != EPKG_OK) {
+			pkg_emit_error("Repository %s load error: "
+					"meta cannot be loaded %s", pkg_repo_name(repo),
+					strerror(errno));
 			return (EPKG_FATAL);
+		}
 	}
 
 	snprintf(filepath, sizeof(filepath), "%s/%s",
 		dbdir, pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 
 	/* Always want read mode here */
-	if (access(filepath, R_OK | mode) != 0)
+	if (access(filepath, R_OK | mode) != 0) {
+		pkg_emit_error("Repository %s load error: "
+				"access repo file(%s) failed: %s", pkg_repo_name(repo),
+				filepath,
+				strerror(errno));
 		return (EPKG_ENOACCESS);
+	}
 
 	flags = (mode & W_OK) != 0 ? SQLITE_OPEN_READWRITE : SQLITE_OPEN_READONLY;
-	if (sqlite3_open_v2(filepath, &sqlite, flags, NULL) != SQLITE_OK)
+	if (sqlite3_open_v2(filepath, &sqlite, flags, NULL) != SQLITE_OK) {
+		pkg_emit_error("Repository %s load error: "
+				"cannot open sqlite3 db: %s", pkg_repo_name(repo),
+				strerror(errno));
 		return (EPKG_FATAL);
+	}
 
 	/* Sanitise sqlite database */
 	if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
 		"WHERE type='table' AND name='repodata';", &res, false) != EPKG_OK) {
-		pkg_emit_error("Unable to query repository");
+		pkg_emit_error("Repository %s load error: "
+				"unable to query db: %s", pkg_repo_name(repo),
+				strerror(errno));
 		sqlite3_close(sqlite);
 		return (EPKG_FATAL);
 	}
 
 	if (res != 1) {
-		pkg_emit_notice("Repository %s contains no repodata table, "
+		pkg_emit_error("Repository %s contains no repodata table, "
 			"need to re-create database", repo->name);
 		sqlite3_close(sqlite);
 		return (EPKG_FATAL);
@@ -375,7 +368,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	get_pragma(sqlite, req, &res, true);
 	sqlite3_free(req);
 	if (res != 1) {
-		pkg_emit_notice("Repository %s has a wrong packagesite, need to "
+		pkg_emit_error("Repository %s has a wrong packagesite, need to "
 			"re-create database", repo->name);
 		sqlite3_close(sqlite);
 		return (EPKG_FATAL);
@@ -402,7 +395,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	}
 	it->ops->free(it);
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest))) {
-		pkg_emit_notice("Repository %s has incompatible checksum format, need to "
+		pkg_emit_error("Repository %s has incompatible checksum format, need to "
 			"re-create database", repo->name);
 		pkg_free(pkg);
 		sqlite3_close(sqlite);

@@ -50,7 +50,7 @@
 */
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
+#include <utstring.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -113,7 +113,7 @@ static int sameEdit(
 */
 
 static int
-sbuf_copy_lines(struct sbuf *to, const char *from, int N)
+buf_copy_lines(UT_string *to, const char *from, int N)
 {
 	int cnt = 0;
 	int i;
@@ -132,7 +132,7 @@ sbuf_copy_lines(struct sbuf *to, const char *from, int N)
 		i++;
 	}
 	if (to)
-		sbuf_bcat(to, from, i);
+		utstring_bincpy(to, from, i);
 	return (i);
 }
 
@@ -149,14 +149,14 @@ sbuf_copy_lines(struct sbuf *to, const char *from, int N)
 ** of conflicts is returns
 */
 static int
-sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
+buf_merge(char *pPivot, char *pV1, char *pV2, UT_string *pOut){
   int *aC1;              /* Changes from pPivot to pV1 */
   int *aC2;              /* Changes from pPivot to pV2 */
   int i1, i2;            /* Index into aC1[] and aC2[] */
   int nCpy, nDel, nIns;  /* Number of lines to copy, delete, or insert */
   int limit1, limit2;    /* Sizes of aC1[] and aC2[] */
 
-  sbuf_clear(pOut);         /* Merge results stored in pOut */
+  utstring_clear(pOut);         /* Merge results stored in pOut */
 
   /* Compute the edits that occur from pPivot => pV1 (into aC1)
   ** and pPivot => pV2 (into aC2).  Each of the aC1 and aC2 arrays is
@@ -191,9 +191,9 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
     if( aC1[i1]>0 && aC2[i2]>0 ){
       /* Output text that is unchanged in both V1 and V2 */
       nCpy = min(aC1[i1], aC2[i2]);
-      pPivot += sbuf_copy_lines(pOut, pPivot, nCpy);
-      pV1 += sbuf_copy_lines(NULL, pV1, nCpy);
-      pV2 += sbuf_copy_lines(NULL, pV2, nCpy);
+      pPivot += buf_copy_lines(pOut, pPivot, nCpy);
+      pV1 += buf_copy_lines(NULL, pV1, nCpy);
+      pV2 += buf_copy_lines(NULL, pV2, nCpy);
       aC1[i1] -= nCpy;
       aC2[i2] -= nCpy;
     }else
@@ -201,9 +201,9 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
       /* Output edits to V2 that occurs within unchanged regions of V1 */
       nDel = aC2[i2+1];
       nIns = aC2[i2+2];
-      pPivot += sbuf_copy_lines(NULL, pPivot, nDel);
-      pV1 += sbuf_copy_lines(NULL, pV1, nDel);
-      pV2 += sbuf_copy_lines(pOut, pV2, nIns);
+      pPivot += buf_copy_lines(NULL, pPivot, nDel);
+      pV1 += buf_copy_lines(NULL, pV1, nDel);
+      pV2 += buf_copy_lines(pOut, pV2, nIns);
       aC1[i1] -= nDel;
       i2 += 3;
     }else
@@ -211,9 +211,9 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
       /* Output edits to V1 that occur within unchanged regions of V2 */
       nDel = aC1[i1+1];
       nIns = aC1[i1+2];
-      pPivot += sbuf_copy_lines(NULL, pPivot, nDel);
-      pV2 += sbuf_copy_lines(NULL, pV2, nDel);
-      pV1 += sbuf_copy_lines(pOut, pV1, nIns);
+      pPivot += buf_copy_lines(NULL, pPivot, nDel);
+      pV2 += buf_copy_lines(NULL, pV2, nDel);
+      pV1 += buf_copy_lines(pOut, pV1, nIns);
       aC2[i2] -= nDel;
       i1 += 3;
     }else
@@ -221,9 +221,9 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
       /* Output edits that are identical in both V1 and V2. */
       nDel = aC1[i1+1];
       nIns = aC1[i1+2];
-      pPivot += sbuf_copy_lines(NULL, pPivot, nDel);
-      pV1 += sbuf_copy_lines(pOut, pV1, nIns);
-      pV2 += sbuf_copy_lines(NULL, pV2, nIns);
+      pPivot += buf_copy_lines(NULL, pPivot, nDel);
+      pV1 += buf_copy_lines(pOut, pV1, nIns);
+      pV2 += buf_copy_lines(NULL, pV2, nIns);
       i1 += 3;
       i2 += 3;
     }else
@@ -243,9 +243,9 @@ sbuf_merge(char *pPivot, char *pV1, char *pV2, struct sbuf *pOut){
   ** insert.
   */
   if( i1<limit1 && aC1[i1+2]>0 ){
-    sbuf_copy_lines(pOut, pV1, aC1[i1+2]);
+    buf_copy_lines(pOut, pV1, aC1[i1+2]);
   }else if( i2<limit2 && aC2[i2+2]>0 ){
-    sbuf_copy_lines(pOut, pV2, aC2[i2+2]);
+    buf_copy_lines(pOut, pV2, aC2[i2+2]);
   }
 
   free(aC1);
@@ -274,11 +274,10 @@ int merge_3way(
   char *pPivot,       /* Common ancestor (older) */
   char *pV1,    /* Name of file for version merging into (mine) */
   char *pV2,          /* Version merging from (yours) */
-  struct sbuf *pOut         /* Output written here */
+  UT_string *pOut         /* Output written here */
 ){
   int rc;             /* Return code of subroutines and this routine */
 
-  rc = sbuf_merge(pPivot, pV1, pV2, pOut);
-  sbuf_finish(pOut);
+  rc = buf_merge(pPivot, pV1, pV2, pOut);
   return rc;
 }

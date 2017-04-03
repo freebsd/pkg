@@ -26,7 +26,7 @@
 int default_yes; /* Default always yes */
 int yes; /* Assume always yes */
 int dry_run; /* Do not perform any actions */
-int auto_update; /* Do not update repo */
+bool auto_update; /* Do not update repo */
 int case_sensitive; /* Case sensitive queries */
 int force; /* Forced operation */
 int quiet; /* Silent output */

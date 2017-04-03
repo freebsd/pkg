@@ -1,4 +1,4 @@
-syntax("kyuafile", 1)
+syntax(2)
 
 test_suite("pkg")
 

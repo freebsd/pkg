@@ -4,6 +4,8 @@ os:
   - linux
   - osx
 
+osx_image: xcode8
+
 addons:
   apt:
     packages:
@@ -11,8 +13,9 @@ addons:
       - libarchive-dev
       - libssl-dev
       - liblzma-dev
+      - liblua5.2-dev
 
-sudo: false
+sudo: required
 
 compiler:
   - clang

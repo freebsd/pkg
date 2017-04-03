@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -39,84 +39,19 @@
 #include <unistd.h>
 #include <string.h>
 #include <ucl.h>
-#include <uthash.h>
 #include <utlist.h>
 #include <ctype.h>
 #include <fnmatch.h>
 #include <paths.h>
 #include <float.h>
 #include <math.h>
-#include <xxhash.h>
 
 #include <bsd_compat.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
-
-int64_t
-pkg_hash_seed(void)
-{
-	static int64_t seed = 0;
-
-	if (seed == 0)
-		seed = time(NULL);
-	return (seed);
-}
-
-#if (defined(WORD_BIT) && WORD_BIT == 64) || \
-	(defined(__WORDSIZE) && __WORDSIZE == 64) || \
-	defined(__x86_64__) || \
-	defined(__amd64__)
-#define XXHASHIMPL XXH64
-#else
-#define XXHASHIMPL XXH32
-#endif
-
-int32_t
-string_hash_func(const char *key)
-{
-	return (XXHASHIMPL(key, strlen(key), pkg_hash_seed()));
-}
-
-void
-sbuf_init(struct sbuf **buf)
-{
-	if (*buf == NULL)
-		*buf = sbuf_new_auto();
-	else
-		sbuf_clear(*buf);
-}
-
-int
-sbuf_set(struct sbuf **buf, const char *str)
-{
-	if (*buf == NULL)
-		*buf = sbuf_new_auto();
-
-	if (str == NULL)
-		return (-1);
-
-	sbuf_cpy(*buf, str);
-	sbuf_finish(*buf);
-	return (0);
-}
-
-void
-sbuf_reset(struct sbuf *buf)
-{
-	if (buf != NULL) {
-		sbuf_clear(buf);
-		sbuf_finish(buf);
-	}
-}
-
-void
-sbuf_free(struct sbuf *buf)
-{
-	if (buf != NULL)
-		sbuf_delete(buf);
-}
+#include "xmalloc.h"
 
 int
 mkdirs(const char *_path)
@@ -172,11 +107,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
+	*buffer = xmalloc(st.st_size + 1);
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		pkg_emit_errno("read", path);
@@ -221,11 +152,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		pkg_emit_errno("malloc", "");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
+	*buffer = xmalloc(st.st_size + 1);
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		pkg_emit_errno("read", path);
@@ -251,38 +178,38 @@ int
 format_exec_cmd(char **dest, const char *in, const char *prefix,
     const char *plist_file, char *line, int argc, char **argv)
 {
-	struct sbuf *buf = sbuf_new_auto();
+	UT_string *buf;
 	char path[MAXPATHLEN];
 	char *cp;
 	size_t sz;
 
+	utstring_new(buf);
+
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
-			sbuf_putc(buf, in[0]);
+			utstring_printf(buf, "%c", in[0]);
 			in++;
 			continue;
 		}
 		in++;
 		switch(in[0]) {
 		case 'D':
-			sbuf_cat(buf, prefix);
+			utstring_printf(buf, "%s", prefix);
 			break;
 		case 'F':
 			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%F couldn't "
 				    "be expanded, ignoring %s", in);
-				sbuf_finish(buf);
-				sbuf_free(buf);
+				utstring_free(buf);
 				return (EPKG_FATAL);
 			}
-			sbuf_cat(buf, plist_file);
+			utstring_printf(buf, "%s", plist_file);
 			break;
 		case 'f':
 			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%f couldn't "
 				    "be expanded, ignoring %s", in);
-				sbuf_finish(buf);
-				sbuf_free(buf);
+				utstring_free(buf);
 				return (EPKG_FATAL);
 			}
 			if (prefix[strlen(prefix) - 1] == '/')
@@ -293,14 +220,13 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    prefix, plist_file);
 			cp = strrchr(path, '/');
 			cp ++;
-			sbuf_cat(buf, cp);
+			utstring_printf(buf, "%s", cp);
 			break;
 		case 'B':
 			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%B couldn't "
 				    "be expanded, ignoring %s", in);
-				sbuf_finish(buf);
-				sbuf_free(buf);
+				utstring_free(buf);
 				return (EPKG_FATAL);
 			}
 			if (prefix[strlen(prefix) - 1] == '/')
@@ -311,14 +237,14 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    plist_file);
 			cp = strrchr(path, '/');
 			cp[0] = '\0';
-			sbuf_cat(buf, path);
+			utstring_printf(buf, "%s", path);
 			break;
 		case '%':
-			sbuf_putc(buf, '%');
+			utstring_printf(buf, "%c", '%');
 			break;
 		case '@':
 			if (line != NULL) {
-				sbuf_cat(buf, line);
+				utstring_printf(buf, "%s", line);
 				break;
 			}
 
@@ -328,7 +254,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 * exists
 			 */
 		case '#':
-			sbuf_putc(buf, argc);
+			utstring_printf(buf, "%c", argc);
 			break;
 		default:
 			if ((sz = strspn(in, "0123456789")) > 0) {
@@ -337,25 +263,22 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					pkg_emit_error("Requesting argument "
 					    "%%%d while only %d arguments are"
 					    " available", pos, argc);
-					sbuf_finish(buf);
-					sbuf_free(buf);
+					utstring_free(buf);
 					return (EPKG_FATAL);
 				}
-				sbuf_cat(buf, argv[pos -1]);
+				utstring_printf(buf, "%s", argv[pos -1]);
 				in += sz -1;
 				break;
 			}
-			sbuf_putc(buf, '%');
-			sbuf_putc(buf, in[0]);
+			utstring_printf(buf, "%c%c", '%', in[0]);
 			break;
 		}
 
 		in++;
 	}
 
-	sbuf_finish(buf);
-	*dest = strdup(sbuf_data(buf));
-	sbuf_free(buf);
+	*dest = xstrdup(utstring_body(buf));
+	utstring_free(buf);
 	
 	return (EPKG_OK);
 }
@@ -558,49 +481,49 @@ ucl_file_append_double(double val, void *data)
 }
 
 static int
-ucl_sbuf_append_character(unsigned char c, size_t len, void *data)
+ucl_buf_append_character(unsigned char c, size_t len, void *data)
 {
-	struct sbuf *buf = data;
+	UT_string *buf = data;
 	size_t i;
 
 	for (i = 0; i < len; i++)
-		sbuf_putc(buf, c);
+		utstring_printf(buf, "%c", c);
 
 	return (0);
 }
 
 static int
-ucl_sbuf_append_len(const unsigned char *str, size_t len, void *data)
+ucl_buf_append_len(const unsigned char *str, size_t len, void *data)
 {
-	struct sbuf *buf = data;
+	UT_string *buf = data;
 
-	sbuf_bcat(buf, str, len);
+	utstring_bincpy(buf, str, len);
 
 	return (0);
 }
 
 static int
-ucl_sbuf_append_int(int64_t val, void *data)
+ucl_buf_append_int(int64_t val, void *data)
 {
-	struct sbuf *buf = data;
+	UT_string *buf = data;
 
-	sbuf_printf(buf, "%"PRId64, val);
+	utstring_printf(buf, "%"PRId64, val);
 
 	return (0);
 }
 
 static int
-ucl_sbuf_append_double(double val, void *data)
+ucl_buf_append_double(double val, void *data)
 {
-	struct sbuf *buf = data;
+	UT_string *buf = data;
 	const double delta = 0.0000001;
 
 	if (val == (double)(int)val) {
-		sbuf_printf(buf, "%.1lf", val);
+		utstring_printf(buf, "%.1lf", val);
 	} else if (fabs(val - (double)(int)val) < delta) {
-		sbuf_printf(buf, "%.*lg", DBL_DIG, val);
+		utstring_printf(buf, "%.*lg", DBL_DIG, val);
 	} else {
-		sbuf_printf(buf, "%lf", val);
+		utstring_printf(buf, "%lf", val);
 	}
 
 	return (0);
@@ -622,32 +545,29 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 	func.ud = out;
 
-	return (ucl_object_emit_full(obj, emit_type, &func));
-
-
+	return (ucl_object_emit_full(obj, emit_type, &func, NULL));
 }
 
 bool
-ucl_object_emit_sbuf(const ucl_object_t *obj, enum ucl_emitter emit_type,
-                     struct sbuf **buf)
+ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
+                     UT_string **buf)
 {
 	bool ret = false;
 	struct ucl_emitter_functions func = {
-		.ucl_emitter_append_character = ucl_sbuf_append_character,
-		.ucl_emitter_append_len = ucl_sbuf_append_len,
-		.ucl_emitter_append_int = ucl_sbuf_append_int,
-		.ucl_emitter_append_double = ucl_sbuf_append_double
+		.ucl_emitter_append_character = ucl_buf_append_character,
+		.ucl_emitter_append_len = ucl_buf_append_len,
+		.ucl_emitter_append_int = ucl_buf_append_int,
+		.ucl_emitter_append_double = ucl_buf_append_double
 	};
 
 	if (*buf == NULL)
-		*buf = sbuf_new_auto();
+		utstring_new(*buf);
 	else
-		sbuf_clear(*buf);
+		utstring_clear(*buf);
 
 	func.ud = *buf;
 
-	ret = ucl_object_emit_full(obj, emit_type, &func);
-	sbuf_finish(*buf);
+	ret = ucl_object_emit_full(obj, emit_type, &func, NULL);
 
 	return (ret);
 }
@@ -691,7 +611,7 @@ pkg_utils_tokenize(char **args)
 					parse_state = ORDINARY_TEXT;
 					p_start = p;
 				}				
-			} else 
+			} else
 				p_start = p;
 			break;
 		case ORDINARY_TEXT:
@@ -742,7 +662,7 @@ pkg_utils_count_spaces(const char *args)
 	int		spaces;
 	const char	*p;
 
-	for (spaces = 0, p = args; *p != '\0'; p++) 
+	for (spaces = 0, p = args; *p != '\0'; p++)
 		if (isspace(*p))
 			spaces++;
 
@@ -751,15 +671,17 @@ pkg_utils_count_spaces(const char *args)
 
 /* unlike realpath(3), this routine does not expand symbolic links */
 char *
-pkg_absolutepath(const char *src, char *dest, size_t dest_size) {
+pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 	size_t dest_len, src_len, cur_len;
 	const char *cur, *next;
 
 	src_len = strlen(src);
 	bzero(dest, dest_size);
 	if (src_len != 0 && src[0] != '/') {
+		if (fromroot)
+			*dest = '/';
 		/* relative path, we use cwd */
-		if (getcwd(dest, dest_size) == NULL)
+		else if (getcwd(dest, dest_size) == NULL)
 			return (NULL);
 	}
 	dest_len = strlen(dest);
@@ -799,4 +721,32 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size) {
 	}
 
 	return (dest);
+}
+
+bool
+mkdirat_p(int fd, const char *path)
+{
+	const char *next;
+	char *walk, pathdone[MAXPATHLEN];
+
+	walk = xstrdup(path);
+	pathdone[0] = '\0';
+
+	while ((next = strsep(&walk, "/")) != NULL) {
+		if (*next == '\0')
+			continue;
+		strlcat(pathdone, next, sizeof(pathdone));
+		if (mkdirat(fd, pathdone, 0755) == -1) {
+			if (errno == EEXIST) {
+				strlcat(pathdone, "/", sizeof(pathdone));
+				continue;
+			}
+			pkg_errno("Fail to create /%s", pathdone);
+			free(walk);
+			return (false);
+		}
+		strlcat(pathdone, "/", sizeof(pathdone));
+	}
+	free(walk);
+	return (true);
 }

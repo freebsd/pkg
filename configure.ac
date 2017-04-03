@@ -1,5 +1,5 @@
 m4_define([maj_ver], [1])
-m4_define([med_ver], [6])
+m4_define([med_ver], [10])
 m4_define([min_ver], [99])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
 m4_define([dev_ver], m4_expand([m4_normalize(m4_sinclude([dev_version.m4]))]))
@@ -12,6 +12,9 @@ AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
 AM_SILENT_RULES([yes])
 
+# Silence warning: ar: 'u' modifier ignored since 'D' is the default
+AC_SUBST(AR_FLAGS, [cr])
+
 AM_MAINTAINER_MODE([enable])
 
 dnl Here are rules for setting version-info for libpkg
@@ -19,7 +22,7 @@ dnl we use 3 integers: current, revision and age:
 dnl - if you change ABI (meaning add/remove/modify), then always update `current`
 dnl - if you modify lib (that means ALL modifies), then increase `revision`
 dnl - if you want backward compatibility, then use `age`
-LIBPKG_CURRENT=3
+LIBPKG_CURRENT=4
 LIBPKG_REVISION=0
 LIBPKG_AGE=0
 LIBPKG_SO_VERSION="$LIBPKG_CURRENT:$LIBPKG_REVISION:$LIBPKG_AGE"
@@ -78,6 +81,12 @@ case $host_os in
         OS_LIBS="-ldl -lrt"
         OS_STATIC="false"
         ;;
+  openbsd*|bitrig*)
+        OS_CFLAGS="-D_BSD_SOURCE -I/usr/local/include"
+        OS_LDFLAGS="-L/usr/local/lib"
+        OS_LIBS=
+        OS_STATIC="true"
+        ;;
   *)
         OS_CFLAGS="-D_BSD_SOURCE"
         OS_LDFLAGS=
@@ -93,6 +102,7 @@ AC_SUBST(OS_STATIC)
 AM_CONDITIONAL([BUILD_STATIC], [test x$OS_STATIC = xtrue])
 
 CFLAGS="$CFLAGS $OS_CFLAGS"
+LDFLAGS="$LDFLAGS $OS_LDFLAGS"
 
 AC_CHECK_HEADERS_ONCE([machine/endian.h])
 AC_CHECK_HEADERS_ONCE([endian.h])
@@ -157,7 +167,9 @@ AC_CHECK_FUNCS_ONCE([strnstr])
 AC_CHECK_FUNCS_ONCE([funopen])
 AC_CHECK_FUNCS_ONCE([fopencookie])
 AC_CHECK_FUNCS_ONCE([sysctlbyname])
-AC_CHECK_FUNCS_ONCE([res_setservers])
+AC_CHECK_FUNCS_ONCE([__res_setservers])
+AC_CHECK_MEMBERS([struct stat.st_mtim])
+
 AC_CHECK_DECLS(
 	[[fstatat], [openat], [unlinkat], [readlinkat], [faccessat]],
 	[], [], [
@@ -171,7 +183,6 @@ AC_CHECK_DECLS(
 	 [be16enc], [be32enc], [be64enc], [le16enc], [le32enc], [le64enc]],
 	[], [], [#include <sys/endian.h>]
 )
-AC_CHECK_FUNCS_ONCE([flopen])
 AC_CHECK_FUNCS_ONCE([eaccess])
 AC_CHECK_FUNCS_ONCE([closefrom])
 AC_CHECK_FUNCS_ONCE([dirfd])
@@ -198,20 +209,11 @@ AC_CHECK_MEMBERS([struct in6_addr.s6_addr32,
 
 AC_MSG_CHECKING(for IPv6 support)
 AC_CACHE_VAL(ac_cv_ipv6,
-      AC_TRY_RUN([
+	AC_TRY_COMPILE([
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-	/* Make sure the definitions for AF_INET6 and struct sockaddr_in6
-	 * are defined, and that we can actually create an IPv6 TCP socket.
-	 */
-	main()
-	{
-		int fd;
-		struct sockaddr_in6 foo;
-		fd = socket(AF_INET6, SOCK_STREAM, 0);
-		exit(fd >= 0 ? 0 : 1);
-	}],
+#include <netinet/in.h>],
+	[ int domain = AF_INET6; ],
 	ac_cv_ipv6=yes,
 	ac_cv_ipv6=no,
 	ac_cv_ipv6=no))
@@ -244,17 +246,19 @@ AC_SUBST([GIT_HEAD])
 AC_DEFINE_UNQUOTED([GIT_HEAD], $GIT_HEAD)
 AC_DEFINE([PKG_API], [api_ver])
 
-AC_RUN_IFELSE(
-  [AC_LANG_SOURCE(
-    [[
-    #include <sys/types.h>
-    #include <sys/socket.h>
-    int main() { return socket(AF_LOCAL, SOCK_SEQPACKET, 0) == -1 ? -1 : 0; }
-    ]]
-  )],
-  [AC_DEFINE([HAVE_SEQPACKET], 1, [Define to 1 if you have SOCK_SEQPACKET working])]
-)
-
+AC_CACHE_VAL(ac_cv_seqpacket,
+      AC_TRY_RUN([
+#include <sys/types.h>
+#include <sys/socket.h>
+int main() { return socket(AF_LOCAL, SOCK_SEQPACKET, 0) == -1 ? -1 : 0; }
+	],
+	ac_cv_seqpacket=yes,
+	ac_cv_seqpacket=no,
+	ac_cv_seqpacket=no))
+AC_MSG_RESULT($ac_cv_seqpacket)
+if test $ac_cv_seqpacket = yes ; then
+	AC_DEFINE([HAVE_SEQPACKET], 1,Define [Define to 1 if you have SOCK_SEQPACKET working])
+fi
 AC_SUBST([HAVE_SEQPACKET])
 
 AC_SEARCH_LIBS([lzma_version_string], [lzma], [], [
@@ -351,38 +355,67 @@ AS_IF([test "x$with_ldns" = "xyes"], [
 	[AC_MSG_ERROR([Unable to find the libdns])])
 ])
 
-AC_CHECK_LIB(c, cap_sandboxed, [
+AC_CHECK_FUNCS(cap_sandboxed, [
    AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
 ])
 
 
 AC_CACHE_CHECK(for arc4random_uniform,
                ac_cv_func_arc4random_uniform,
-               [AC_TRY_COMPILE([#include <stdlib.h>],
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="$CFLAGS -Werror"
+                AC_TRY_COMPILE([#include <stdlib.h>],
                                [arc4random_uniform(255);],
                                [ac_cv_func_arc4random_uniform=yes],
-                               [ac_cv_func_arc4random_uniform=no])])
+                               [ac_cv_func_arc4random_uniform=no])
+		CFLAGS="$ac_save_CFLAGS"])
 if test "$ac_cv_func_arc4random_uniform" = yes ; then
 	AC_DEFINE(HAVE_ARC4RANDOM, 1, [Define 1 if you have 'arc4random_uniform' function.])
 fi
 
-AC_CACHE_CHECK(for BSD dirname(const char *),
-               ac_cv_func_dirname,
+AC_CACHE_CHECK(for arc4random_stir,
+               ac_cv_func_arc4random_stir,
                [ac_save_CFLAGS="$CFLAGS"
-		CFLAGS="-Werror $CFLAGS"
+                CFLAGS="$CFLAGS -Werror"
+                AC_TRY_COMPILE([#include <stdlib.h>],
+                               [arc4random_stir();],
+                               [ac_cv_func_arc4random_stir=yes],
+                               [ac_cv_func_arc4random_stir=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_arc4random_stir" = yes ; then
+   AC_DEFINE(HAVE_ARC4RANDOM_STIR, 1, [Define 1 if you have 'arc4random_stir' function.])
+fi
+
+AC_CACHE_CHECK(for humanize_number,
+               ac_cv_func_humanize_number,
+               [ac_save_CFLAGS="$CFLAGS"
+                CFLAGS="$CFLAGS -Werror"
+                AC_TRY_COMPILE([#include <libutil.h>],
+                               [humanize_number(NULL, 0, 0, NULL, 0, 0);],
+                               [ac_cv_func_humanize_number=yes],
+                               [ac_cv_func_humanize_number=no])
+		CFLAGS="$ac_save_CFLAGS"])
+if test "$ac_cv_func_humanize_number" = yes ; then
+   AC_DEFINE(HAVE_HUMANIZE_NUMBER, 1, [Define 1 if you have 'humanize_number' function.])
+fi
+
+AC_CACHE_CHECK(for BSD dirname(const char *),
+               ac_cv_func_bsd_dirname,
+               [ac_save_CFLAGS="$CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <libgen.h>],
                                [static char *(*ac_test_dirname)(const char *) = dirname; ac_test_dirname("");],
-                               [ac_cv_func_dirname=yes],
-                               [ac_cv_func_dirname=no])
+                               [ac_cv_func_bsd_dirname=yes],
+                               [ac_cv_func_bsd_dirname=no])
 		CFLAGS="$ac_save_CFLAGS"])
-if test "$ac_cv_func_dirname" = yes ; then
+if test "$ac_cv_func_bsd_dirname" = yes ; then
 	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
 fi
 
 AC_CACHE_CHECK(for BSD statfs(const char *path, struct statfs *buf),
                ac_cv_func_statfs,
                [ac_save_CFLAGS="$CFLAGS"
-		CFLAGS="-Werror $CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <sys/param.h>
      					#include <sys/mount.h>],
                                [struct statfs stfs; static int (*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("", &stfs);],
@@ -394,18 +427,19 @@ if test "$ac_cv_func_statfs" = yes ; then
 fi
 
 AC_CHECK_FUNCS(chflags chflagsat)
+AC_CHECK_FUNCS(utimensat futimesat)
 
 AC_CHECK_FUNCS(basename_r)
 AC_CACHE_CHECK(for BSD basename(const char *),
-               ac_cv_func_basename,
+               ac_cv_func_bsd_basename,
                [ac_save_CFLAGS="$CFLAGS"
-		CFLAGS="-Werror $CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <libgen.h>],
                                [static char *(*ac_test_basename)(const char *) = basename; ac_test_basename("");],
-                               [ac_cv_func_basename=yes],
-                               [ac_cv_func_basename=no])
+                               [ac_cv_func_bsd_basename=yes],
+                               [ac_cv_func_bsd_basename=no])
 		CFLAGS="$ac_save_CFLAGS"])
-if test "$ac_cv_func_basename" = yes ; then
+if test "$ac_cv_func_bsd_basename" = yes ; then
 	AC_DEFINE(HAVE_BSD_BASENAME, 1, [Define 1 if you have 'basename(const char *)' function.])
 fi
 
@@ -509,7 +543,6 @@ AC_CONFIG_FILES(Makefile \
 		scripts/periodic/411.pkg-backup
 		scripts/periodic/460.pkg-checksum
 		scripts/periodic/490.status-pkg-changes
-		scripts/sbin/pkg2ng
 		scripts/completion/_pkg.bash
 		scripts/completion/_pkg)
 AC_CONFIG_FILES(m4_expand([repos_makefiles]))

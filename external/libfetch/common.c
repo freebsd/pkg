@@ -263,8 +263,11 @@ fetch_bind(int sd, int af, const char *addr)
 	if ((err = getaddrinfo(addr, NULL, &hints, &res0)) != 0)
 		return (-1);
 	for (res = res0; res; res = res->ai_next)
-		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0)
+		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0) {
+			freeaddrinfo(res0);
 			return (0);
+		}
+	freeaddrinfo(res0);
 	return (-1);
 }
 
@@ -478,7 +481,7 @@ fetch_ssl_hname_match(const char *h, size_t hlen, const char *m,
 	if (!fetch_ssl_hname_equal(hdot - delta, delta,
 	    mdot1 - delta, delta))
 		return (0);
-	/* all tests succeded, it's a match */
+	/* all tests succeeded, it's a match */
 	return (1);
 }
 
@@ -502,7 +505,8 @@ fetch_ssl_get_numeric_addrinfo(const char *hostname, size_t len)
 	hints.ai_protocol = 0;
 	hints.ai_flags = AI_NUMERICHOST;
 	/* port is not relevant for this purpose */
-	getaddrinfo(host, "443", &hints, &res);
+	if (getaddrinfo(host, "443", &hints, &res) != 0)
+		res = NULL;
 	free(host);
 	return res;
 }
@@ -715,7 +719,8 @@ fetch_ssl_setup_peer_verification(SSL_CTX *ctx, int verbose)
 		if (ca_cert_file == NULL &&
 		    access(LOCAL_CERT_FILE, R_OK) == 0)
 			ca_cert_file = LOCAL_CERT_FILE;
-		if (ca_cert_file == NULL)
+		if (ca_cert_file == NULL &&
+		    access(BASE_CERT_FILE, R_OK) == 0)
 			ca_cert_file = BASE_CERT_FILE;
 		ca_cert_path = getenv("SSL_CA_CERT_PATH");
 		if (verbose) {
@@ -726,11 +731,17 @@ fetch_ssl_setup_peer_verification(SSL_CTX *ctx, int verbose)
 			if (ca_cert_path != NULL)
 				fetch_info("Using CA cert path: %s",
 				    ca_cert_path);
+			if (ca_cert_file == NULL && ca_cert_path == NULL)
+				fetch_info("Using OpenSSL default "
+				    "CA cert file and path");
 		}
 		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER,
 		    fetch_ssl_cb_verify_crt);
-		SSL_CTX_load_verify_locations(ctx, ca_cert_file,
-		    ca_cert_path);
+		if (ca_cert_file != NULL || ca_cert_path != NULL)
+			SSL_CTX_load_verify_locations(ctx, ca_cert_file,
+			    ca_cert_path);
+		else
+			SSL_CTX_set_default_verify_paths(ctx);
 		if ((crl_file = getenv("SSL_CRL_FILE")) != NULL) {
 			if (verbose)
 				fetch_info("Using CRL file: %s", crl_file);

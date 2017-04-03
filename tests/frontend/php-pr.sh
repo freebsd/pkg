@@ -104,7 +104,7 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y php53-extensions
 
@@ -243,6 +243,7 @@ ${JAILED}Fetching meta.txz:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
+All repositories are up to date.
 Checking integrity... done (0 conflicting)
 The following 4 package(s) will be affected (of 0 checked):
 
@@ -255,18 +256,22 @@ Installed packages to be UPGRADED:
 
 Installed packages to be REINSTALLED:
 	php53-extensions-1.6 (requires changed)
+
+Number of packages to be installed: 1
+Number of packages to be upgraded: 2
+Number of packages to be reinstalled: 1
 "
 
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e empty \
-		-s exit:0 \
+		-e match:".*load error: access repo file.*" \
+		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -n php53-fileinfo
 
 
 OUTPUT="Updating local repository catalogue...
-local repository is up-to-date.
-All repositories are up-to-date.
+local repository is up to date.
+All repositories are up to date.
 Checking for upgrades (3 candidates):  done
 Processing candidates (3 candidates):  done
 Checking integrity... done (0 conflicting)
@@ -278,10 +283,13 @@ Installed packages to be UPGRADED:
 
 Installed packages to be REINSTALLED:
 	php53-extensions-1.6 (requires changed)
+
+Number of packages to be upgraded: 2
+Number of packages to be reinstalled: 1
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		-s exit:0 \
+		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -n
 }

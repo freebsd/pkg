@@ -28,13 +28,38 @@
 # This script is primarily intended for travis CI to be able to setup the
 # build environment.
 
+install_from_github() {
+	local name="${1}"
+	local ver="${2}"
+	local distname="${name}-${ver}"
+
+	# https://github.com/jmmv/kyua/releases/download/kyua-0.12/kyua-0.12.tar.gz
+	local url="https://github.com/jmmv/${name}"
+	wget "${url}/releases/download/${distname}/${distname}.tar.gz"
+	tar -xzvf "${distname}.tar.gz"
+
+	cd "${distname}"
+	./configure \
+		--disable-developer \
+		--without-atf \
+		--without-doxygen \
+		CPPFLAGS="-I/usr/local/include" \
+		LDFLAGS="-L/usr/local/lib -Wl,-R/usr/local/lib" \
+		PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+	make
+	sudo make install
+	cd -
+
+	rm -rf "${distname}" "${distname}.tar.gz"
+}
+
 if [ $(uname -s) = "Darwin" ]; then
 	brew update
 	brew install libarchive --with-xz
 	brew install openssl
 	brew install kyua
+elif [ $(uname -s) = "Linux" ]; then
+	install_from_github atf 0.21
+	install_from_github lutok 0.4
+	install_from_github kyua 0.12
 fi
-#elif [ $(uname -s) = "Linux" ]; then
-	#sudo apt-get update -qq
-	#sudo apt-get install -y libarchive-dev libssl-dev liblzma-dev libldns-dev
-#fi

@@ -3,9 +3,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -45,15 +45,42 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <paths.h>
-#define _WITH_GETLINE
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
+#include <pwd.h>
 #include <pkg.h>
 
 #include <bsd_compat.h>
 
 #include "utlist.h"
 #include "pkgcli.h"
+
+struct jobs_sum_number {
+	int install;
+	int reinstall;
+	int downgrade;
+	int upgrade;
+	int delete;
+	int fetch;
+};
+
+void
+append_yesno(bool r, char *yesnomsg, size_t len)
+{
+	static const char	trunc[] = "\n[truncated] ";
+	/* These two strings must be the same length. */
+	static const char	yes[] = "[Y/n]: ";
+	static const char	no[] = "[y/N]: ";
+
+	size_t	msglen = strlen(yesnomsg);
+
+	if (msglen > len - sizeof yes) {
+		yesnomsg[len - sizeof trunc - sizeof yes] = '\0';
+		strlcat(yesnomsg, trunc, len);
+	}
+	strlcat(yesnomsg, r ? yes : no, len);
+}
 
 bool
 query_tty_yesno(bool r, const char *msg, ...)
@@ -63,7 +90,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	int	 tty_fd;
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
-	char	yesnomsg[1024];
+	char	yesnomsg[65536];
 
 #ifdef O_TTY_INIT
 	tty_flags |= O_TTY_INIT;
@@ -79,10 +106,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	tty = fdopen(tty_fd, "r+");
 
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
-	if (default_yes || r)
-		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
-	else
-		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
 	va_start(ap, msg);
 	pkg_vfprintf(tty, yesnomsg, ap);
@@ -117,7 +141,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	size_t linecap = 0;
 	int linelen;
 	bool	 r = deft;
-	char	yesnomsg[1024];
+	char	yesnomsg[65536];
 
 	/* We use default value of yes or default in case of quiet mode */
 	if (quiet)
@@ -131,10 +155,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 		return (true);
 
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
-	if (default_yes || r)
-		strlcat(yesnomsg, "[Y/n]: ", sizeof(yesnomsg));
-	else
-		strlcat(yesnomsg, "[y/N]: ", sizeof(yesnomsg));
+	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
 	pkg_vasprintf(&out, yesnomsg, ap);
 	printf("%s", out);
@@ -167,18 +188,19 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 					break;
 				}
 			}
-			printf("Please type 'Y[es]' or 'N[o]' to make selection\n");
+			printf("Please type 'Y[es]' or 'N[o]' to make a selection\n");
 			printf("%s", out);
 		}
 		else {
 			if (errno == EINTR) {
 				continue;
-			}
-			else {
-				if (default_yes)
+			} else {
+				if (default_yes) {
 					r = true;
 				/* Else, assume EOF as false */
-				r = false;
+				} else {
+					r = false;
+				}
 				break;
 			}
 		}
@@ -328,8 +350,11 @@ print_info(struct pkg * const pkg, uint64_t options)
 			break;
 		case INFO_RAW_JSON:
 			outflags |= PKG_MANIFEST_EMIT_JSON;
+			break;
 		case INFO_RAW_JSON_COMPACT:
 			break;
+		default:
+			outflags |= PKG_MANIFEST_EMIT_UCL;
 		}
 		if (pkg_type(pkg) == PKG_REMOTE)
 			outflags |= PKG_MANIFEST_EMIT_COMPACT;
@@ -366,7 +391,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	   style to show on a new line.  */
 
 	info_num = 0;
-	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1) 
+	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1)
 		if ((opt & options) != 0)
 			info_num++;
 
@@ -407,10 +432,10 @@ print_info(struct pkg * const pkg, uint64_t options)
 			pkg_printf("%n\n", pkg);
 			break;
 		case INFO_INSTALLED:
-			if (pkg_type(pkg) != PKG_REMOTE) {
+			if (pkg_type(pkg) == PKG_INSTALLED) {
 				if (print_tag) {
 					printf("%-15s: ", "Installed on");
-					pkg_printf("%t%{%+%}\n", pkg);
+					pkg_printf("%t%{%c %Z%}\n", pkg);
 				}
 			} else if (!print_tag)
 				printf("\n");
@@ -454,7 +479,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("%-15s: ", "Maintainer");
 			pkg_printf("%m\n", pkg);
 			break;
-		case INFO_WWW:	
+		case INFO_WWW:
 			if (print_tag)
 				printf("%-15s: ", "WWW");
 			pkg_printf("%w\n", pkg);
@@ -468,7 +493,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Options");
-				if (quiet) 
+				if (quiet)
 					pkg_printf("%O%{%-15On: %Ov\n%|%}", pkg);
 				else
 					pkg_printf("%O%{\t%-15On: %Ov\n%|%}", pkg);
@@ -551,7 +576,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
 				if (quiet) {
-					if (show_locks) 
+					if (show_locks)
 						pkg_printf("%d%{%dn-%dv%#dk\n%|%}", pkg);
 					else
 						pkg_printf("%d%{%dn-%dv\n%|%}", pkg);
@@ -568,7 +593,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
 				if (quiet) {
-					if (show_locks) 
+					if (show_locks)
 						pkg_printf("%r%{%rn-%rv%#rk\n%|%}", pkg);
 					else
 						pkg_printf("%r%{%rn-%rv\n%|%}", pkg);
@@ -662,11 +687,10 @@ struct pkg_solved_display_item {
 };
 
 static void
-set_jobs_summary_pkg(struct pkg_jobs *jobs,
-		struct pkg *new_pkg, struct pkg *old_pkg,
-		pkg_solved_t type, int64_t *oldsize,
-		int64_t *newsize, int64_t *dlsize,
-		struct pkg_solved_display_item **disp)
+set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
+    struct pkg *old_pkg, pkg_solved_t type, int64_t *oldsize,
+    int64_t *newsize, int64_t *dlsize, struct pkg_solved_display_item **disp,
+    struct jobs_sum_number *sum)
 {
 	const char *oldversion, *repopath, *destdir;
 	char path[MAXPATHLEN];
@@ -692,6 +716,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	it->new = new_pkg;
 	it->old = old_pkg;
 	it->solved_type = type;
+	it->display_type = PKG_DISPLAY_MAX;
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
 		it->display_type = PKG_DISPLAY_LOCKED;
@@ -704,47 +729,50 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	switch (type) {
 	case PKG_SOLVED_INSTALL:
 	case PKG_SOLVED_UPGRADE:
-		ret = EPKG_FATAL;
-
 		if (destdir == NULL)
 			ret = pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		else if (repopath != NULL) {
 			snprintf(path, sizeof(path), "%s/%s", destdir, repopath);
 			ret = EPKG_OK;
-		}
+		} else
+			break;
 
-		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size))
+		if ((ret == EPKG_OK || ret == EPKG_FATAL) && (stat(path, &st) == -1 || pkgsize != st.st_size)) {
 			/* file looks corrupted (wrong size),
 					   assume a checksum mismatch will
 					   occur later and the file will be
 					   fetched from remote again */
 			*dlsize += pkgsize;
+			nbtodl += 1;
+		}
 
 		if (old_pkg != NULL) {
 			switch (pkg_version_change_between(new_pkg, old_pkg)) {
 			case PKG_DOWNGRADE:
 				it->display_type = PKG_DISPLAY_DOWNGRADE;
+				sum->downgrade++;
 				break;
 			case PKG_REINSTALL:
 				it->display_type = PKG_DISPLAY_REINSTALL;
-
+				sum->reinstall++;
 				break;
 			case PKG_UPGRADE:
 				it->display_type = PKG_DISPLAY_UPGRADE;
-
+				sum->upgrade++;
 				break;
 			}
 			*oldsize += oldflatsize;
 			*newsize += flatsize;
 		} else {
 			it->display_type = PKG_DISPLAY_INSTALL;
+			sum->install++;
 			*newsize += flatsize;
 		}
 		break;
 	case PKG_SOLVED_DELETE:
 		*oldsize += flatsize;
 		it->display_type = PKG_DISPLAY_DELETE;
-
+		sum->delete++;
 		break;
 	case PKG_SOLVED_UPGRADE_INSTALL:
 	case PKG_SOLVED_UPGRADE_REMOVE:
@@ -756,7 +784,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs,
 	case PKG_SOLVED_FETCH:
 		*newsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
-
+		sum->fetch++;
 		if (destdir == NULL)
 			pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		else
@@ -786,6 +814,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 	const char *why;
 	int64_t pkgsize;
 	char size[8], tlsize[8];
+	const char *type;
 
 	pkg_get(it->new, PKG_PKGSIZE, &pkgsize);
 
@@ -798,7 +827,22 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		case PKG_SOLVED_UPGRADE_INSTALL:
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
-			pkg_printf("and may not be upgraded to version %v\n", it->new);
+			switch (pkg_version_change_between(it->old, it->new)) {
+			case PKG_DOWNGRADE:
+				type = "downgraded";
+				break;
+			case PKG_REINSTALL:
+				type = "reinstalled";
+				break;
+			case PKG_UPGRADE:
+				type = "upgraded";
+				break;
+			default: /* appease compiler warnings */
+				type = "upgraded";
+				break;
+			}
+			pkg_printf("and may not be %S to version %v\n", type,
+			    it->new);
 			break;
 		case PKG_SOLVED_DELETE:
 		case PKG_SOLVED_UPGRADE_REMOVE:
@@ -851,8 +895,8 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 		pkg_printf("\t%n-%v ", it->new, it->new);
-		printf("(%.2f%% of %s: %s)\n", ((double)100 * pkgsize) / (double)dlsize,
-				tlsize, size);
+		printf("(%s: %.2f%% of the %s to download)\n", size,
+		    ((double)100 * pkgsize) / (double)dlsize, tlsize);
 		break;
 	default:
 		break;
@@ -882,14 +926,19 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	int64_t dlsize, oldsize, newsize;
 	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
 	bool first = true;
+	size_t bytes_change, limbytes;
+	struct jobs_sum_number sum;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
-	memset(disp, 0, sizeof (disp));
+	memset(disp, 0, sizeof(disp));
+	memset(&sum, 0, sizeof(sum));
 
-	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type))
+	nbtodl = 0;
+	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
 		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
-			&newsize, &dlsize, disp);
+		&newsize, &dlsize, disp, &sum);
+	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
 		if (disp[type] != NULL) {
@@ -914,18 +963,44 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		}
 	}
 
+	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
+	bytes_change = (size_t)llabs(newsize - oldsize);
+
+	puts("");
+	if (sum.delete > 0) {
+		printf("Number of packages to be removed: %d\n", sum.delete);
+	}
+	if (sum.install > 0) {
+		printf("Number of packages to be installed: %d\n", sum.install);
+	}
+	if (sum.upgrade > 0) {
+		printf("Number of packages to be upgraded: %d\n", sum.upgrade);
+	}
+	if (sum.reinstall > 0) {
+		printf("Number of packages to be reinstalled: %d\n",
+		    sum.reinstall);
+	}
+	if (sum.downgrade > 0) {
+		printf("Number of packages to be downgraded: %d\n",
+		    sum.downgrade);
+	}
+	if (sum.fetch > 0) {
+		printf("Number of packages to be fetched: %d\n", sum.fetch);
+	}
 	/* Add an extra line before the size output. */
-	if (oldsize != newsize || dlsize)
+	if (bytes_change > limbytes || dlsize)
 		puts("");
 
-	if (oldsize > newsize) {
-		humanize_number(size, sizeof(size), oldsize - newsize, "B",
-		    HN_AUTOSCALE, HN_IEC_PREFIXES);
-		printf("The operation will free %s.\n", size);
-	} else if (newsize > oldsize) {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B",
-		    HN_AUTOSCALE, HN_IEC_PREFIXES);
-		printf("The process will require %s more space.\n", size);
+	if (bytes_change > limbytes) {
+		if (oldsize > newsize) {
+			humanize_number(size, sizeof(size), oldsize - newsize, "B",
+			    HN_AUTOSCALE, HN_IEC_PREFIXES);
+			printf("The operation will free %s.\n", size);
+		} else if (newsize > oldsize) {
+			humanize_number(size, sizeof(size), newsize - oldsize, "B",
+			    HN_AUTOSCALE, HN_IEC_PREFIXES);
+			printf("The process will require %s more space.\n", size);
+		}
 	}
 
 	if (dlsize > 0) {
@@ -938,9 +1013,29 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 }
 
 void
-sbuf_flush(struct sbuf *buf)
+utstring_flush(UT_string *buf)
 {
-	sbuf_finish(buf);
-	printf("%s", sbuf_data(buf));
-	sbuf_clear(buf);
+	printf("%s", utstring_body(buf));
+	utstring_clear(buf);
+}
+
+void
+drop_privileges(void)
+{
+	struct passwd *nobody;
+
+	if (geteuid() == 0) {
+		nobody = getpwnam("nobody");
+		if (nobody == NULL)
+			err(EXIT_FAILURE, "Unable to drop priviledges");
+		setgroups(1, &nobody->pw_gid);
+		if (setegid(nobody->pw_gid) == -1)
+			err(EXIT_FAILURE, "Unable to setegid");
+		if (setgid(nobody->pw_gid) == -1)
+			err(EXIT_FAILURE, "Unable to setgid");
+		if (seteuid(nobody->pw_uid) == -1)
+			err(EXIT_FAILURE, "Unable to seteuid");
+		if (setuid(nobody->pw_uid) == -1)
+			err(EXIT_FAILURE, "Unable to setuid");
+	}
 }

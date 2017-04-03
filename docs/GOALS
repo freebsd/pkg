@@ -82,8 +82,7 @@ Table of Contents:
 
 	- Will delete a package. To be able to remove the empty directories
 	  cleanly it will delete every directory (found in the path of the 
-	  files), which are not in the package +MTREE (mtree contains the 
-	  official hier(7)).
+	  files), which are not in the package's manifest.
 
 - upgrade:
 

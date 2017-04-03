@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2014
+.Dd March 3, 2016
 .Dt PKG-DELETE 8
 .Os
 .Sh NAME
@@ -54,16 +54,29 @@ If the set of packages to be deleted would leave installed packages
 with unfulfilled dependencies,
 .Nm
 will add the packages with unfulfilled dependencies to the list of
-packages to be deleted, unless force to proceed without deleting any
+packages to be deleted, unless forced to proceed without deleting any
 other packages by the
 .Fl f
 option.
+.Pp
+.Nm
+avoids deleting itself unless named specifically on the command line.
+So, for instance,
+.Nm Fl a
+will delete all packages except for the
+.Xr pkg 8
+package.
+To force all packages to be removed without exception, use
+.Nm Fl fa .
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width recursive
 .It Fl a , Cm --all
-Deletes all installed packages from the system and empties the database.
+Deletes all installed packages except for
+.Xr pkg 8
+from the system and cleans the database of information related to removed
+packages.
 .It Fl C , Cm --case-sensitive
 Make the standard or regular expression
 .Fl ( x )
@@ -74,6 +87,13 @@ case sensitive.
 If a deinstallation script exists for a given package, do not execute it.
 .It Fl f , Cm --force
 Forces packages to be removed despite leaving unresolved dependencies.
+In combination with the
+.Fl a
+or
+.Fl -all
+flag, causes
+.Xr pkg 8
+to be removed as well as all other packages.
 .It Fl g , Cm --glob
 Treat the package names as shell glob patterns.
 .It Fl i , Cm --case-insensitive
@@ -128,6 +148,7 @@ See
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -135,7 +156,6 @@ See
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-fetch 8 ,
 .Xr pkg-info 8 ,

@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 30, 2014
+.Dd March 7, 2016
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -294,14 +294,34 @@ above for what information is used.
 .El
 .Ss Operators
 .Bl -tag -width F1
-.It Cm ~
-String glob pattern matching
-.It Cm > Ns Op =
-Integer comparison
-.It Cm > Ns Op =
-Integer comparison
-.It Cm = Ns Op =
-Integer or string comparison
+.It Va var Cm ~ Ar glob
+The string value of
+.Va var
+matches the given glob pattern.
+.It Va var Cm !~ Ar glob
+The string value of
+.Va var
+does not match the given glob pattern.
+.It Va var Cm > Ns Oo = Oc Ar num
+The numerical value of
+.Va var
+is greater than
+.Op or equal to
+the given number.
+.It Va var Cm < Ns Oo = Oc Ar num
+The numerical value of
+.Va var
+is less than
+.Op or equal to
+the given number.
+.It Va var Cm = Ns Oo = Oc Ar num
+The numerical value of
+.Va var
+is equal to the given number.
+.It Va var Cm != Ar num
+The numerical value of
+.Va var
+is not equal to the given number.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -329,6 +349,7 @@ for example usage.
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -336,7 +357,6 @@ for example usage.
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

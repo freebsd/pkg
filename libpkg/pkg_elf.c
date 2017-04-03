@@ -92,16 +92,21 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 		return (EPKG_FATAL);
 	}
 
-	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
-	if (strncmp(shlib_path, "/lib", 4) == 0 ||
-	    strncmp(shlib_path, "/usr/lib", 8) == 0)
-		return (EPKG_END); /* ignore libs from base */
+	if (pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
+		if (strstr(shlib_path, "/lib32/") != NULL)
+			return (EPKG_END);
+	} else {
+		/* match /lib, /lib32, /usr/lib and /usr/lib32 */
+		if (strncmp(shlib_path, "/lib", 4) == 0 ||
+		    strncmp(shlib_path, "/usr/lib", 8) == 0)
+			return (EPKG_END); /* ignore libs from base */
+	}
 
 	if (path != NULL)
 		strncpy(path, shlib_path, pathlen);
 
 	return (EPKG_OK);
-} 
+}
 
 /* ARGSUSED */
 static int
@@ -211,6 +216,25 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 	return (true);
 }
 
+static bool
+is_old_freebsd_armheader(const GElf_Ehdr *e)
+{
+	GElf_Word eabi;
+
+	/*
+	 * Old FreeBSD arm EABI binaries were created with zeroes in [EI_OSABI].
+	 * Attempt to identify them by the little bit of valid info that is
+	 * present:  32-bit ARM with EABI version 4 or 5 in the flags.  OABI
+	 * binaries (prior to freebsd 10) have the correct [EI_OSABI] value.
+	 */
+	if (e->e_machine == EM_ARM && e->e_ident[EI_CLASS] == ELFCLASS32) {
+		eabi = e->e_flags & 0xff000000;
+		if (eabi == 0x04000000 || eabi == 0x05000000)
+			return (true);
+	}
+	return (false);
+}
+
 static int
 analyse_elf(struct pkg *pkg, const char *fpath)
 {
@@ -228,7 +252,6 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	size_t numdyn = 0;
 	size_t sh_link = 0;
 	size_t dynidx;
-	const char *osname;
 	const char *myarch;
 	const char *shlib;
 
@@ -238,7 +261,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	int fd;
 
-	pkg_debug(1, "analysing elf");
+	pkg_debug(1, "analysing elf %s", fpath);
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */
@@ -259,6 +282,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	if (elf_kind(e) != ELF_K_ELF) {
 		/* Not an elf file: no results */
 		ret = EPKG_END;
+		pkg_debug(1, "not an elf");
 		goto cleanup;
 	}
 
@@ -273,6 +297,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	if (elfhdr.e_type != ET_DYN && elfhdr.e_type != ET_EXEC &&
 	    elfhdr.e_type != ET_REL) {
+		pkg_debug(1, "not an elf");
 		ret = EPKG_END;
 		goto cleanup;
 	}
@@ -322,26 +347,10 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* Invalid ABI */
 	}
 
-	if (note != NULL) {
-		if ((data = elf_getdata(note, NULL)) == NULL) {
-			ret = EPKG_END; /* Some error occurred, ignore this file */
-			goto cleanup;
-		}
-		if (data->d_buf == NULL) {
-			ret = EPKG_END; /* No osname available */
-			goto cleanup;
-		}
-		osname = (const char *) data->d_buf + sizeof(Elf_Note);
-		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0 &&
-		    strncasecmp(osname, "dragonfly", sizeof("dragonfly")) != 0) {
-			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-			goto cleanup;
-		}
-	} else {
-		if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD) {
-			ret = EPKG_END;
-			goto cleanup;
-		}
+	if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
+	    !is_old_freebsd_armheader(&elfhdr)) {
+		ret = EPKG_END;
+		goto cleanup;
 	}
 
 	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
@@ -376,8 +385,9 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			/* The file being scanned is a shared library
 			   *provided* by the package. Record this if
 			   appropriate */
-
-			pkg_addshlib_provided(pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
+			shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
+			if (shlib != NULL && *shlib != '\0')
+				pkg_addshlib_provided(pkg, shlib);
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
@@ -457,6 +467,11 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 
 	shlib_list_init();
 
+	if (stage != NULL && pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
+		/* Do not check the return */
+		shlib_list_from_stage(stage);
+	}
+
 	ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
 	if (ret != EPKG_OK)
 		goto cleanup;
@@ -500,7 +515,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			if ((lib = strstr(file->path, sh)) != NULL &&
 			    strlen(lib) == strlen(sh) && lib[-1] == '/') {
 				pkg_debug(2, "remove %s from required shlibs as "
-				    "the package %s provides this library itself",
+				    "the package %s provides this file itself",
 				    sh, pkg->name);
 				k = kh_get_strings(pkg->shlibs_required, sh);
 				kh_del_strings(pkg->shlibs_required, k);
@@ -772,6 +787,8 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 #if defined(__DragonFly__)
 	snprintf(dest, sz, "%s:%d.%d",
 	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
+#elif defined(__NetBSD__)
+	snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
 #else
 	snprintf(dest, sz, "%s:%d", osname, version / 100000);
 #endif
@@ -781,8 +798,11 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
-		/* FreeBSD doesn't support the hard-float ABI yet */
-		fpu = "softfp";
+		if (elfhdr.e_flags & EF_ARM_VFP_FLOAT)
+			fpu = "hardfp";
+		else
+			fpu = "softfp";
+
 		if ((elfhdr.e_flags & 0xFF000000) != 0) {
 			const char *sh_name = NULL;
 			size_t shstrndx;
