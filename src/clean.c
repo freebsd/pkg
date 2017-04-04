@@ -340,7 +340,7 @@ exec_clean(int argc, char **argv)
 	cachefd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
 	if (cachefd == -1) {
 		warn("Impossible to open %s", cachedir);
-		return (EX_IOERR);
+		return (errno == ENOENT ? EX_OK : EX_IOERR);
 	}
 
 	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
