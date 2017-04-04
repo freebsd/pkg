@@ -280,7 +280,7 @@ AC_CHECK_HEADER([archive.h],
 AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
 	[AC_MSG_ERROR([Unable to find the libarchive headers])])
 
-AC_SEARCH_LIBS([SHA256_Init], [privatecrypto], [
+AC_SEARCH_LIBS([SHA256_Update], [privatecrypto], [
 	AC_DEFINE(HAVE_LIBCRYPTO, 1, [Define to 1 if you have the 'crypto' library (-lcrypto).])
 	LIBCRYPTO_LIB="-lprivatecrypto"
 	], [
@@ -292,7 +292,7 @@ AC_SEARCH_LIBS([SHA256_Init], [privatecrypto], [
 	])
 ])
 
-AC_SEARCH_LIBS([SSL_accept], [privatessl], [
+AC_SEARCH_LIBS([SSL_shutdown], [privatessl], [
 	AC_DEFINE(HAVE_LIBSSL, 1, [Define to 1 if you have the 'ssl' library (-lssl).])
 	LIBSSL_LIB="-lprivatessl"
 	], [
