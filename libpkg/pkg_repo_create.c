@@ -948,9 +948,6 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 			rsa_free(rsa);
 			return (EPKG_FATAL);
 		}
-		else {
-			meta = pkg_repo_meta_default();
-		}
 		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,
 			argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
