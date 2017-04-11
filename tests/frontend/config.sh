@@ -2,10 +2,10 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
-	duplicate_pkgs \
 	empty_conf \
 	inline_repo \
 	nameserver
+	#duplicate_pkgs
 
 # This test is half finished to show problems with `pkg register'
 duplicate_pkgs_body() {
