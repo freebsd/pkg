@@ -499,7 +499,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile, bool legacy)
+	const char *metafile)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
@@ -511,6 +511,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int cur_pipe[2], fd;
 	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_OK;
+	ucl_object_t *meta_dump;
+	FILE *mfile;
 
 	char *repopath[2];
 	char packagesite[MAXPATHLEN],
@@ -638,7 +640,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 			if (pkg_create_repo_worker(fts_start, cur_jobs,
 					packagesite, (filelist ? filesite : NULL), cur_pipe[1],
-					(legacy ? NULL : meta)) == EPKG_FATAL) {
+					meta) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
 				retcode = EPKG_FATAL;
@@ -726,21 +728,16 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	DL_SORT(dlist, pkg_digest_sort_compare_func);
 
 	/* Write metafile */
-	if (!legacy) {
-		ucl_object_t *meta_dump;
-		FILE *mfile;
-
-		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-			"meta");
-		if ((mfile = fopen(repodb, "w")) != NULL) {
-			meta_dump = pkg_repo_meta_to_ucl(meta);
-			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
-			ucl_object_unref(meta_dump);
-			fclose(mfile);
-		}
-		else {
-			pkg_emit_notice("cannot create metafile at %s", repodb);
-		}
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+		"meta");
+	if ((mfile = fopen(repodb, "w")) != NULL) {
+		meta_dump = pkg_repo_meta_to_ucl(meta);
+		ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
+		ucl_object_unref(meta_dump);
+		fclose(mfile);
+	}
+	else {
+		pkg_emit_notice("cannot create metafile at %s", repodb);
 	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
