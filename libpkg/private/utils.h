@@ -74,7 +74,7 @@ int rsa_new(struct rsa_key **, pkg_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
 int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
 int rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd);
-int rsa_verify_cert(const char *path, unsigned char *cert,
+int rsa_verify_cert(unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
 bool check_for_hardlink(hardlinks_t *hl, struct stat *st);

@@ -633,7 +633,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(NULL, s->cert, s->certlen, s->sig, s->siglen,
+			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
 				dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
 				break;
@@ -863,7 +863,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		}
 
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(NULL, s->cert, s->certlen, s->sig, s->siglen,
+			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
 				metafd);
 			if (ret == EPKG_OK && s->trusted)
 				break;
