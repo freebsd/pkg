@@ -643,7 +643,7 @@ int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo,
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);
-int pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target);
+int pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target);
 void pkg_repo_meta_free(struct pkg_repo_meta *meta);
 ucl_object_t * pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta);
 bool pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta);

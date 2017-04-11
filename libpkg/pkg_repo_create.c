@@ -539,12 +539,18 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	if (metafile != NULL) {
-		if (pkg_repo_meta_load(metafile, &meta) != EPKG_OK) {
+		fd = open(metafile, O_RDONLY);
+		if (fd == -1) {
 			pkg_emit_error("meta loading error while trying %s", metafile);
 			return (EPKG_FATAL);
 		}
-	}
-	else {
+		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", metafile);
+			close(fd);
+			return (EPKG_FATAL);
+		}
+		close(fd);
+	} else {
 		meta = pkg_repo_meta_default();
 	}
 
@@ -913,7 +919,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	struct rsa_key *rsa = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
-	int ret = EPKG_OK, nfile = 0;
+	int ret = EPKG_OK, nfile = 0, fd;
 	const int files_to_pack = 4;
 	bool legacy = false;
 
@@ -942,13 +948,13 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	/*
 	 * If no meta is defined, then it is a legacy repo
 	 */
-	if (access(repo_path, R_OK) != -1) {
-		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
+	if ((fd = open(repo_path, O_RDONLY)) != -1) {
+		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
 			rsa_free(rsa);
+			close(fd);
 			return (EPKG_FATAL);
-		}
-		else {
+		} else {
 			meta = pkg_repo_meta_default();
 		}
 		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,

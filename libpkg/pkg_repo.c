@@ -513,7 +513,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 
 static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
-    const char *dest, struct pkg_repo *repo, int dest_fd,
+    struct pkg_repo *repo, int dest_fd,
     struct sig_cert **signatures)
 {
 	struct sig_cert *sc = NULL, *s;
@@ -531,23 +531,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 
 	cbdata.afd = fd;
 	cbdata.fname = file;
-	if (dest_fd != -1) {
-		cbdata.tfd = dest_fd;
-	}
-	else if (dest != NULL) {
-		cbdata.tfd = open (dest, O_WRONLY | O_CREAT | O_TRUNC,
-				0644);
-		if (cbdata.tfd == -1) {
-			pkg_emit_errno("archive_read_extract", "open error");
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-		fchown (fd, 0, 0);
-	}
-	else {
-		pkg_emit_error("internal error: both fd and name are invalid");
-		return (EPKG_FATAL);
-	}
+	cbdata.tfd = dest_fd;
 
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
 		cbdata.need_sig = true;
@@ -592,7 +576,6 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	if (dest_fd != -1)
 		(void)lseek(dest_fd, 0, SEEK_SET);
 
-cleanup:
 	if (rc == EPKG_OK) {
 		if (signatures != NULL)
 			*signatures = sc;
@@ -603,22 +586,19 @@ cleanup:
 		pkg_repo_signatures_free(sc);
 	}
 
-	if (rc != EPKG_OK)
-		unlink(dest);
-
 	return rc;
 }
 
 static int
 pkg_repo_archive_extract_check_archive(int fd, const char *file,
-    const char *dest, struct pkg_repo *repo, int dest_fd)
+    struct pkg_repo *repo, int dest_fd)
 {
 	struct sig_cert *sc = NULL, *s, *stmp;
 	int ret, rc;
 
 	ret = rc = EPKG_OK;
 
-	if (pkg_repo_archive_extract_archive(fd, file, dest, repo, dest_fd, &sc)
+	if (pkg_repo_archive_extract_archive(fd, file, repo, dest_fd, &sc)
 			!= EPKG_OK)
 		return (EPKG_FATAL);
 
@@ -627,13 +607,13 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			pkg_emit_error("No PUBKEY defined. Removing "
 			    "repository.");
 			rc = EPKG_FATAL;
-			goto cleanup;
+			goto out;
 		}
 		if (sc == NULL) {
 			pkg_emit_error("No signature found in the repository.  "
 					"Can not validate against %s key.", pkg_repo_key(repo));
 			rc = EPKG_FATAL;
-			goto cleanup;
+			goto out;
 		}
 		/*
 		 * Here are dragons:
@@ -642,18 +622,18 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		 *
 		 * by @bdrewery
 		 */
-		ret = rsa_verify(dest, pkg_repo_key(repo), sc->sig, sc->siglen - 1,
-				dest_fd);
+		ret = rsa_verify(pkg_repo_key(repo), sc->sig, sc->siglen - 1,
+		    dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
 					"removing repository.");
 			rc = EPKG_FATAL;
-			goto cleanup;
+			goto out;
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen,
+			ret = rsa_verify_cert(NULL, s->cert, s->certlen, s->sig, s->siglen,
 				dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
 				break;
@@ -664,14 +644,11 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			pkg_emit_error("No trusted certificate has been used "
 			    "to sign the repository");
 			rc = EPKG_FATAL;
-			goto cleanup;
+			goto out;
 		}
 	}
 
-cleanup:
-	if (rc != EPKG_OK && dest != NULL)
-		unlink(dest);
-
+out:
 	return rc;
 }
 
@@ -704,7 +681,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 	}
 
 	(void)unlink(tmp);
-	if (pkg_repo_archive_extract_check_archive(fd, filename, NULL, repo, dest_fd)
+	if (pkg_repo_archive_extract_check_archive(fd, filename, repo, dest_fd)
 			!= EPKG_OK) {
 		*rc = EPKG_FATAL;
 		close(dest_fd);
@@ -794,29 +771,27 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	char filepath[MAXPATHLEN];
 	struct pkg_repo_meta *nmeta;
 	struct stat st;
-	const char *dbdir = NULL;
 	unsigned char *map = NULL;
-	int fd;
+	int fd, dbdirfd, metafd;
 	int rc = EPKG_OK, ret;
 	struct sig_cert *sc = NULL, *s, *stmp;
 	struct pkg_repo_check_cbdata cbdata;
 
-	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-
+	dbdirfd = pkg_get_dbdirfd();
 	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "txz", t, &rc);
 	if (fd == -1)
 		return (rc);
 
-	snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
 
-	/* Remove old metafile */
-	if (unlink (filepath) == -1 && errno != ENOENT) {
+	metafd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	if (metafd == -1) {
 		close(fd);
-		return (EPKG_FATAL);
+		return (rc);
 	}
 
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
-		if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+		if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", repo, metafd)) != EPKG_OK) {
 			close (fd);
 			return (rc);
 		}
@@ -829,11 +804,14 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	 * a corresponding key from meta file.
 	 */
 
-	if ((rc = pkg_repo_archive_extract_archive(fd, "meta", filepath, repo, -1, &sc)) != EPKG_OK) {
+	if ((rc = pkg_repo_archive_extract_archive(fd, "meta", repo,
+	    metafd, &sc)) != EPKG_OK) {
+		close(metafd);
+		unlinkat(dbdirfd, filepath, 0);
 		close (fd);
 		return (rc);
 	}
-
+	close(metafd);
 	close(fd);
 
 	if (repo->signature_type == SIG_FINGERPRINT && repo->trusted_fp == NULL) {
@@ -842,20 +820,19 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 	/* Map meta file for extracting pubkeys from it */
-	if ((fd = open(filepath, O_RDONLY)) == -1) {
+	if ((metafd = openat(dbdirfd, filepath, O_RDONLY)) == -1) {
 		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	if (fstat(fd, &st) == -1) {
+	if (fstat(metafd, &st) == -1) {
 		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	close(fd);
 	if (map == MAP_FAILED) {
 		pkg_emit_errno("pkg_repo_fetch_meta", "cannot mmap meta fetched");
 		rc = EPKG_FATAL;
@@ -886,8 +863,8 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		}
 
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
-				-1);
+			ret = rsa_verify_cert(NULL, s->cert, s->certlen, s->sig, s->siglen,
+				metafd);
 			if (ret == EPKG_OK && s->trusted)
 				break;
 
@@ -902,7 +879,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 load_meta:
-	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK) {
+	if ((rc = pkg_repo_meta_load(metafd, &nmeta)) != EPKG_OK) {
 		if (map != NULL)
 			munmap(map, st.st_size);
 
@@ -922,7 +899,7 @@ cleanup:
 		pkg_repo_signatures_free(sc);
 
 	if (rc != EPKG_OK)
-		unlink(filepath);
+		unlinkat(dbdirfd, filepath, 0);
 
 	return (rc);
 }
