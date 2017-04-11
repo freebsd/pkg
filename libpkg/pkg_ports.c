@@ -248,7 +248,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
 			ret = EPKG_FATAL;
 		}
@@ -321,7 +321,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		pkg_errno("Unable to access file %s", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_developer_mode("Plist error, missing file: %s",
 			    line);
 			ret = EPKG_FATAL;
@@ -492,7 +492,7 @@ static int
 ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 {
 	p->ignore_next = true;
-	if (developer_mode)
+	if (ctx.developer_mode)
 		pkg_emit_error("Warning: @ignore is deprecated");
 
 	return (EPKG_OK);
@@ -1290,10 +1290,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	struct pkg_message *msg;
 
 	location = reloc;
-	if (pkg_rootdir != NULL)
-		location = pkg_rootdir;
+	if (ctx.pkg_rootdir != NULL)
+		location = ctx.pkg_rootdir;
 
-	if (pkg_rootdir == NULL && location != NULL)
+	if (ctx.pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	pkg_emit_install_begin(pkg);

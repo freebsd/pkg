@@ -63,13 +63,15 @@
 #define INDEXFILE	"INDEX"
 #endif
 
-int eventpipe = -1;
-int64_t debug_level = 0;
-bool developer_mode = false;
-const char *pkg_rootdir = NULL;
-int rootfd = -1;
-int cachedirfd = -1;
-int pkg_dbdirfd = -1;
+struct pkg_ctx ctx = {
+	.eventpipe = -1,
+	.debug_level = 0,
+	.developer_mode = false,
+	.pkg_rootdir = NULL,
+	.rootfd = -1,
+	.cachedirfd = -1,
+	.pkg_dbdirfd = -1,
+};
 
 struct config_entry {
 	uint8_t type;
@@ -447,13 +449,13 @@ connect_evpipe(const char *evpipe) {
 
 	if (S_ISFIFO(st.st_mode)) {
 		flag |= O_NONBLOCK;
-		if ((eventpipe = open(evpipe, flag)) == -1)
+		if ((ctx.eventpipe = open(evpipe, flag)) == -1)
 			pkg_emit_errno("open event pipe", evpipe);
 		return;
 	}
 
 	if (S_ISSOCK(st.st_mode)) {
-		if ((eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		if ((ctx.eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 			pkg_emit_errno("Open event pipe", evpipe);
 			return;
 		}
@@ -462,15 +464,15 @@ connect_evpipe(const char *evpipe) {
 		if (strlcpy(sock.sun_path, evpipe, sizeof(sock.sun_path)) >=
 		    sizeof(sock.sun_path)) {
 			pkg_emit_error("Socket path too long: %s", evpipe);
-			close(eventpipe);
-			eventpipe = -1;
+			close(ctx.eventpipe);
+			ctx.eventpipe = -1;
 			return;
 		}
 
-		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
+		if (connect(ctx.eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
 			pkg_emit_errno("Connect event pipe", evpipe);
-			close(eventpipe);
-			eventpipe = -1;
+			close(ctx.eventpipe);
+			ctx.eventpipe = -1;
 			return;
 		}
 	}
@@ -878,7 +880,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	k = NULL;
 	o = NULL;
-	if (rootfd == -1 && (rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
+	if (ctx.rootfd == -1 && (ctx.rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open /");
 		return (EPKG_FATAL);
 	}
@@ -903,8 +905,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		case PKG_STRING:
 			tmp = NULL;
 			if (c[i].def != NULL && c[i].def[0] == '/' &&
-			    pkg_rootdir != NULL) {
-				xasprintf(&tmp, "%s%s", pkg_rootdir, c[i].def);
+			    ctx.pkg_rootdir != NULL) {
+				xasprintf(&tmp, "%s%s", ctx.pkg_rootdir, c[i].def);
 			}
 			obj = ucl_object_fromstring_common(
 			    c[i].def != NULL ? tmp != NULL ? tmp : c[i].def : "", 0, UCL_STRING_TRIM);
@@ -976,12 +978,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	if (path == NULL)
-		conffd = openat(rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
+		conffd = openat(ctx.rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
 	else
 		conffd = open(path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {
 		pkg_errno("Cannot open %s/%s",
-		    pkg_rootdir != NULL ? pkg_rootdir : "",
+		    ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "",
 		    path);
 	}
 
@@ -1163,8 +1165,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
-	developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	ctx.debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
@@ -1320,12 +1322,12 @@ pkg_shutdown(void)
 	ucl_object_unref(config);
 	HASH_FREE(repos, pkg_repo_free);
 
-	if (rootfd != -1)
-		close(rootfd);
-	if (cachedirfd != -1)
-		close(rootfd);
-	if (pkg_dbdirfd != -1)
-		close(pkg_dbdirfd);
+	if (ctx.rootfd != -1)
+		close(ctx.rootfd);
+	if (ctx.cachedirfd != -1)
+		close(ctx.rootfd);
+	if (ctx.pkg_dbdirfd != -1)
+		close(ctx.pkg_dbdirfd);
 
 	parsed = false;
 
@@ -1431,9 +1433,9 @@ pkg_repo_find(const char *reponame)
 
 int64_t
 pkg_set_debug_level(int64_t new_debug_level) {
-	int64_t old_debug_level = debug_level;
+	int64_t old_debug_level = ctx.debug_level;
 
-	debug_level = new_debug_level;
+	ctx.debug_level = new_debug_level;
 	return old_debug_level;
 }
 
@@ -1442,14 +1444,14 @@ pkg_set_rootdir(const char *rootdir) {
 	if (pkg_initialized())
 		return (EPKG_FATAL);
 
-	if (rootfd != -1)
-		close(rootfd);
+	if (ctx.rootfd != -1)
+		close(ctx.rootfd);
 
-	if ((rootfd = open(rootdir, O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
+	if ((ctx.rootfd = open(rootdir, O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open %s", rootdir);
 		return (EPKG_FATAL);
 	}
-	pkg_rootdir = rootdir;
+	ctx.pkg_rootdir = rootdir;
 
 	return (EPKG_OK);
 }
@@ -1459,16 +1461,16 @@ pkg_get_cachedirfd(void)
 {
 	const char *cachedir;
 
-	if (cachedirfd == -1) {
+	if (ctx.cachedirfd == -1) {
 		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 		/*
 		 * do not check the value as if we cannot open it means
 		 * it has not been created yet
 		 */
-		cachedirfd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
+		ctx.cachedirfd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
 	}
 
-	return (cachedirfd);
+	return (ctx.cachedirfd);
 }
 
 int
@@ -1476,14 +1478,14 @@ pkg_get_dbdirfd(void)
 {
 	const char *dbdir;
 
-	if (pkg_dbdirfd == -1) {
+	if (ctx.pkg_dbdirfd == -1) {
 		dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 		/*
 		 * do not check the value as if we cannot open it means
 		 * it has not been created yet
 		 */
-		pkg_dbdirfd = open(dbdir, O_DIRECTORY|O_CLOEXEC);
+		ctx.pkg_dbdirfd = open(dbdir, O_DIRECTORY|O_CLOEXEC);
 	}
 
-	return (pkg_dbdirfd);
+	return (ctx.pkg_dbdirfd);
 }

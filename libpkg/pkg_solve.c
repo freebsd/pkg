@@ -267,7 +267,7 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 {
 	UT_string *sb;
 
-	if (debug_level < 3)
+	if (ctx.debug_level < 3)
 		return;
 
 	utstring_new(sb);

@@ -227,15 +227,18 @@
 	}						\
 } while (0)
 
+struct pkg_ctx {
+	int eventpipe;
+	int64_t debug_level;
+	bool developer_mode;
+	const char *pkg_rootdir;
+	int rootfd;
+	int cachedirfd;
+	int dbdirfd;
+	int pkg_dbdirfd;
+};
 
-
-extern int eventpipe;
-extern int64_t debug_level;
-extern bool developer_mode;
-extern const char *pkg_rootdir;
-extern int rootfd;
-extern int cachedirfd;
-extern int dbdirfd;
+extern struct pkg_ctx ctx;
 
 struct pkg_repo_it;
 struct pkg_repo;

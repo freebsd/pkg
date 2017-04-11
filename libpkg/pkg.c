@@ -567,7 +567,7 @@ pkg_adduser(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	if (kh_contains(strings, pkg->users, name)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
 		} else {
@@ -591,7 +591,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	if (kh_contains(strings, pkg->groups, name)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
 		} else {
@@ -703,7 +703,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates && kh_contains(pkg_files, pkg->filehash, path)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
@@ -746,7 +746,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	pkg_debug(3, "Pkg: add new config file '%s'", path);
 
 	if (kh_contains(pkg_config_files, pkg->config_files, path)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
@@ -773,7 +773,7 @@ pkg_addstring(kh_strings_t **list, const char *val, const char *title)
 	assert(title != NULL);
 
 	if (kh_contains(strings, *list, val)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s listing: %s, fatal"
 			    " (developer mode)", title, val);
 			return (EPKG_FATAL);
@@ -813,7 +813,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirhash, path)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
@@ -1001,7 +1001,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 
 	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
 	if (kh_contains(pkg_options, pkg->optionshash, key)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1035,7 +1035,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	   no actual value. */
 
 	if (kh_contains(pkg_options, pkg->optionshash, key)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate default value for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1068,7 +1068,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	   value or description for an option but no actual value. */
 
 	if (kh_contains(pkg_options, pkg->optionshash, key)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate description for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1216,7 +1216,7 @@ pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *t
 
 	LL_FOREACH(*list, kv) {
 		if (strcmp(kv->key, key) == 0) {
-			if (developer_mode) {
+			if (ctx.developer_mode) {
 				pkg_emit_error("duplicate %s: %s, fatal"
 				    " (developer mode)", title, key);
 				return (EPKG_FATAL);
@@ -1742,9 +1742,9 @@ pkg_open_root_fd(struct pkg *pkg)
 	path = pkg_kv_get(&pkg->annotations, "relocated");
 	if (path == NULL) {
 #ifdef F_DUPFD_CLOEXEC
-		if ((pkg->rootfd = fcntl(rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
+		if ((pkg->rootfd = fcntl(ctx.rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
 #else
-		if ((pkg->rootfd = dup(rootfd)) == -1 || fcntl(pkg->rootfd, F_SETFD, FD_CLOEXEC) == -1) {
+		if ((pkg->rootfd = dup(ctx.rootfd)) == -1 || fcntl(pkg->rootfd, F_SETFD, FD_CLOEXEC) == -1) {
 #endif
 			pkg_emit_errno("dup2", "rootfd");
 			return (EPKG_FATAL);
@@ -1754,7 +1754,7 @@ pkg_open_root_fd(struct pkg *pkg)
 
 	pkg_absolutepath(path, pkg->rootpath, sizeof(pkg->rootpath), false);
 
-	if ((pkg->rootfd = openat(rootfd, pkg->rootpath + 1, O_DIRECTORY|O_CLOEXEC)) >= 0 )
+	if ((pkg->rootfd = openat(ctx.rootfd, pkg->rootpath + 1, O_DIRECTORY|O_CLOEXEC)) >= 0 )
 		return (EPKG_OK);
 
 	pkg->rootpath[0] = '\0';
