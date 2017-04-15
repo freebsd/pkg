@@ -68,8 +68,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	relocation = pkg_kv_get(&pkg->annotations, "relocated");
 	if (relocation == NULL)
 		relocation = "";
-	if (pkg_rootdir != NULL)
-		relocation = pkg_rootdir;
+	if (ctx.pkg_rootdir != NULL)
+		relocation = ctx.pkg_rootdir;
 
 	/*
 	 * Get / compute size / checksum if not provided in the manifest
@@ -139,7 +139,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, file->path,
 		    file->uname, file->gname, file->perm, file->fflags);
-		if (developer_mode && ret != EPKG_OK)
+		if (ctx.developer_mode && ret != EPKG_OK)
 			return (ret);
 		counter_count();
 	}
@@ -155,7 +155,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dir->path,
 		    dir->uname, dir->gname, dir->perm, dir->fflags);
-		if (developer_mode && ret != EPKG_OK)
+		if (ctx.developer_mode && ret != EPKG_OK)
 			return (ret);
 		counter_count();
 	}
@@ -382,7 +382,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	if (!testing)
 		pkg_analyse_files(NULL, pkg, rootdir);
 
-	if (developer_mode)
+	if (ctx.developer_mode)
 		pkg_suggest_arch(pkg, pkg->abi, defaultarch);
 
 cleanup:

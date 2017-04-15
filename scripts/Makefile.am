@@ -4,7 +4,6 @@ pweeklydir=		${sysconfdir}/periodic/weekly
 bashcompdir=		${sysconfdir}/bash_completion.d
 zshcompdir=		${prefix}/share/zsh/site-functions
 
-dist_sbin_SCRIPTS=	sbin/pkg2ng
 dist_pdaily_SCRIPTS=	periodic/411.pkg-backup \
 			periodic/490.status-pkg-changes
 dist_psecurity_SCRIPTS=	periodic/410.pkg-audit \

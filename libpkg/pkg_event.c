@@ -59,7 +59,7 @@ pipeevent(struct pkg_event *ev)
 	struct pkg_dep *dep = NULL;
 	UT_string *msg, *buf;
 	struct pkg_event_conflict *cur_conflict;
-	if (eventpipe < 0)
+	if (ctx.eventpipe < 0)
 		return;
 
 	utstring_new(msg);
@@ -385,7 +385,7 @@ pipeevent(struct pkg_event *ev)
 	default:
 		break;
 	}
-	dprintf(eventpipe, "%s\n", utstring_body(msg));
+	dprintf(ctx.eventpipe, "%s\n", utstring_body(msg));
 	utstring_free(msg);
 	utstring_free(buf);
 }
@@ -953,7 +953,7 @@ pkg_debug(int level, const char *fmt, ...)
 	struct pkg_event ev;
 	va_list ap;
 
-	if (debug_level < level)
+	if (ctx.debug_level < level)
 		return;
 
 	ev.type = PKG_EVENT_DEBUG;

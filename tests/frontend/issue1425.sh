@@ -151,13 +151,13 @@ EOF
                 pkg repo -o ${TMPDIR}/repoB ${TMPDIR}/repoB
 
 OUTPUT_CASE1="Updating repoA repository catalogue...
-${JAILED}meta.txz                                 :  done
-${JAILED}packagesite.txz                          :  done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 repoA repository update completed. 4 packages processed.
 Updating repoB repository catalogue...
-${JAILED}meta.txz                                 :  done
-${JAILED}packagesite.txz                          :  done
+${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
 All repositories are up to date.

@@ -499,7 +499,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile, bool legacy)
+	const char *metafile)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
@@ -511,6 +511,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int cur_pipe[2], fd;
 	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_OK;
+	ucl_object_t *meta_dump;
+	FILE *mfile;
 
 	char *repopath[2];
 	char packagesite[MAXPATHLEN],
@@ -539,12 +541,18 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	if (metafile != NULL) {
-		if (pkg_repo_meta_load(metafile, &meta) != EPKG_OK) {
+		fd = open(metafile, O_RDONLY);
+		if (fd == -1) {
 			pkg_emit_error("meta loading error while trying %s", metafile);
 			return (EPKG_FATAL);
 		}
-	}
-	else {
+		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", metafile);
+			close(fd);
+			return (EPKG_FATAL);
+		}
+		close(fd);
+	} else {
 		meta = pkg_repo_meta_default();
 	}
 
@@ -632,7 +640,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 			if (pkg_create_repo_worker(fts_start, cur_jobs,
 					packagesite, (filelist ? filesite : NULL), cur_pipe[1],
-					(legacy ? NULL : meta)) == EPKG_FATAL) {
+					meta) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
 				retcode = EPKG_FATAL;
@@ -720,25 +728,20 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	DL_SORT(dlist, pkg_digest_sort_compare_func);
 
 	/* Write metafile */
-	if (!legacy) {
-		ucl_object_t *meta_dump;
-		FILE *mfile;
-
-		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-			"meta");
-		if ((mfile = fopen(repodb, "w")) != NULL) {
-			meta_dump = pkg_repo_meta_to_ucl(meta);
-			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
-			ucl_object_unref(meta_dump);
-			fclose(mfile);
-		}
-		else {
-			pkg_emit_notice("cannot create metafile at %s", repodb);
-		}
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+		"meta");
+	if ((mfile = fopen(repodb, "w")) != NULL) {
+		meta_dump = pkg_repo_meta_to_ucl(meta);
+		ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
+		ucl_object_unref(meta_dump);
+		fclose(mfile);
+	}
+	else {
+		pkg_emit_notice("cannot create metafile at %s", repodb);
 	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		LL_FREE(curcb->conflicts, pkg_conflict_free);
+		DL_FREE(curcb->conflicts, pkg_conflict_free);
 		kh_destroy_pkg_conflicts(curcb->conflictshash);
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
@@ -822,7 +825,7 @@ pkg_repo_sign(char *path, char **argv, int argc, UT_string **sig, UT_string **ce
 			break;
 		}
 		if (buf != NULL)
-			utstring_printf(buf, "%s", line);
+			utstring_bincpy(buf, line, linelen);
 	}
 
 	if (pclose(fp) != 0) {
@@ -913,7 +916,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	struct rsa_key *rsa = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
-	int ret = EPKG_OK, nfile = 0;
+	int ret = EPKG_OK, nfile = 0, fd;
 	const int files_to_pack = 4;
 	bool legacy = false;
 
@@ -942,13 +945,13 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	/*
 	 * If no meta is defined, then it is a legacy repo
 	 */
-	if (access(repo_path, R_OK) != -1) {
-		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
+	if ((fd = open(repo_path, O_RDONLY)) != -1) {
+		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
 			rsa_free(rsa);
+			close(fd);
 			return (EPKG_FATAL);
-		}
-		else {
+		} else {
 			meta = pkg_repo_meta_default();
 		}
 		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,

@@ -286,7 +286,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	if (developer_mode)
+	if (ctx.developer_mode)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
@@ -477,7 +477,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		goto cleanup;
 
 	/* Assume no architecture dependence, for contradiction */
-	if (developer_mode)
+	if (ctx.developer_mode)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 				PKG_CONTAINS_STATIC_LIBS |
 				PKG_CONTAINS_H_OR_LA);
@@ -489,7 +489,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 			strlcpy(fpath, file->path, sizeof(fpath));
 
 		ret = analyse_elf(pkg, fpath);
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			if (ret != EPKG_OK && ret != EPKG_END) {
 				failures = true;
 				continue;

@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <uthash.h>
 
@@ -126,7 +127,7 @@ keyword_open_schema(void)
 	if (keyword_schema != NULL)
 		return (keyword_schema);
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, keyword_schema_str,
 	    sizeof(keyword_schema_str) -1)) {
 		pkg_emit_error("Cannot parse schema for keywords: %s",
@@ -247,7 +248,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
 			ret = EPKG_FATAL;
 		}
@@ -320,7 +321,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		pkg_errno("Unable to access file %s", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_developer_mode("Plist error, missing file: %s",
 			    line);
 			ret = EPKG_FATAL;
@@ -491,7 +492,7 @@ static int
 ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 {
 	p->ignore_next = true;
-	if (developer_mode)
+	if (ctx.developer_mode)
 		pkg_emit_error("Warning: @ignore is deprecated");
 
 	return (EPKG_OK);
@@ -740,7 +741,7 @@ populate_keywords(struct plist *p)
 		a = xmalloc(sizeof(struct action));
 		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
 		a->perform = keyacts[i].action;
-		LL_APPEND(k->actions, a);
+		DL_APPEND(k->actions, a);
 		HASH_ADD_STR(p->keywords, keyword, k);
 	}
 }
@@ -748,8 +749,7 @@ populate_keywords(struct plist *p)
 static void
 keyword_free(struct keyword *k)
 {
-	LL_FREE(k->actions, free);
-
+	DL_FREE(k->actions, free);
 	free(k);
 }
 
@@ -924,7 +924,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 					msg->type = PKG_MESSAGE_UPGRADE;
 			}
-			LL_APPEND(p->pkg->message, msg);
+			DL_APPEND(p->pkg->message, msg);
 		}
 	}
 
@@ -944,7 +944,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	struct ucl_parser *parser;
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
-	int ret = EPKG_UNKNOWN;
+	int ret = EPKG_UNKNOWN, fd;
 	ucl_object_t *o, *schema;
 	struct ucl_schema_error err;
 
@@ -958,14 +958,23 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		    "%s/%s.ucl", keyword_dir, keyword);
 	}
 
-	parser = ucl_parser_new(0);
-	if (!ucl_parser_add_file(parser, keyfile_path)) {
-		pkg_emit_error("cannot parse keyword: %s",
-				ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
+	fd = open(keyfile_path, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("cannot load keyword from %s: %s",
+				keyfile_path, strerror(errno));
 		return (EPKG_UNKNOWN);
 	}
 
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_fd(parser, fd)) {
+		pkg_emit_error("cannot parse keyword: %s",
+				ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		close(fd);
+		return (EPKG_UNKNOWN);
+	}
+
+	close(fd);
 	o = ucl_parser_get_object(parser);
 	ucl_parser_free(parser);
 
@@ -1281,10 +1290,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	struct pkg_message *msg;
 
 	location = reloc;
-	if (pkg_rootdir != NULL)
-		location = pkg_rootdir;
+	if (ctx.pkg_rootdir != NULL)
+		location = ctx.pkg_rootdir;
 
-	if (pkg_rootdir == NULL && location != NULL)
+	if (ctx.pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	pkg_emit_install_begin(pkg);

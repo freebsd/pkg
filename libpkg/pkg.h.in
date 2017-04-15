@@ -118,7 +118,7 @@ typedef void * pkg_iter;
 struct pkg_kv {
 	char *key;
 	char *value;
-	struct pkg_kv *next;
+	struct pkg_kv *next, *prev;
 };
 
 /**
@@ -810,7 +810,7 @@ int pkg_is_installed(struct pkgdb *db, const char *name);
  */
 typedef int(pkg_password_cb)(char *, int, int, void*);
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile, bool legacy);
+	const char *metafile);
 int pkg_finish_repo(const char *output_dir, pkg_password_cb *cb, char **argv,
     int argc, bool filelist);
 
@@ -1484,8 +1484,6 @@ int pkg_get_myarch(char *pkgarch, size_t sz);
 int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
-int pkg_old_load_from_path(struct pkg *pkg, const char *path);
-int pkg_from_old(struct pkg *pkg);
 int pkg_sshserve(int fd);
 
 int pkg_repos_total_count(void);

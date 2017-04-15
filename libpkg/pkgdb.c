@@ -58,9 +58,7 @@
 
 #include <sqlite3.h>
 
-#ifdef HAVE_SYS_STATFS_H
-#include <sys/statfs.h>
-#elif defined(HAVE_SYS_STATVFS_H)
+#if defined(HAVE_SYS_STATVFS_H)
 #include <sys/statvfs.h>
 #endif
 
@@ -964,12 +962,22 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 	return (EPKG_OK);
 }
 
+static const char*
+_dbdir_trim_path(const char*path)
+{
+	const char *p = strrchr(path, '/');
+
+	if(p == NULL)
+		return (path);
+	return (p + 1);
+}
+
 static int
 _dbdir_open(const char *path, int flags, int mode)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (openat(dfd, strrchr(path, '/') + 1, flags, mode));
+	return (openat(dfd, _dbdir_trim_path(path), flags, mode));
 }
 
 static int
@@ -977,7 +985,7 @@ _dbdir_access(const char *path, int mode)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (faccessat(dfd, strrchr(path, '/') + 1, mode, 0));
+	return (faccessat(dfd, _dbdir_trim_path(path), mode, 0));
 }
 
 static int
@@ -985,7 +993,15 @@ _dbdir_stat(const char * path, struct stat * sb)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (fstatat(dfd, strrchr(path, '/') + 1, sb, 0));
+	return (fstatat(dfd, _dbdir_trim_path(path), sb, 0));
+}
+
+static int
+_dbdir_lstat(const char * path, struct stat * sb)
+{
+	int dfd = pkg_get_dbdirfd();
+
+	return (fstatat(dfd, _dbdir_trim_path(path), sb, AT_SYMLINK_NOFOLLOW));
 }
 
 static int
@@ -993,7 +1009,7 @@ _dbdir_unlink(const char *path)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (unlinkat(dfd, strrchr(path, '/') + 1, 0));
+	return (unlinkat(dfd, _dbdir_trim_path(path), 0));
 }
 
 static int
@@ -1001,7 +1017,7 @@ _dbdir_mkdir(const char *path, mode_t mode)
 {
 	int dfd = pkg_get_dbdirfd();
 
-	return (mkdirat(dfd, strrchr(path, '/') + 1, mode));
+	return (mkdirat(dfd, _dbdir_trim_path(path), mode));
 }
 
 void
@@ -1013,6 +1029,7 @@ pkgdb_syscall_overload(void)
 	vfs->xSetSystemCall(vfs, "open", (sqlite3_syscall_ptr)_dbdir_open);
 	vfs->xSetSystemCall(vfs, "access", (sqlite3_syscall_ptr)_dbdir_access);
 	vfs->xSetSystemCall(vfs, "stat", (sqlite3_syscall_ptr)_dbdir_stat);
+	vfs->xSetSystemCall(vfs, "lstat", (sqlite3_syscall_ptr)_dbdir_lstat);
 	vfs->xSetSystemCall(vfs, "unlink", (sqlite3_syscall_ptr)_dbdir_unlink);
 	vfs->xSetSystemCall(vfs, "mkdir", (sqlite3_syscall_ptr)_dbdir_mkdir);
 }
@@ -1020,7 +1037,7 @@ pkgdb_syscall_overload(void)
 void
 pkgdb_setup_lock(void)
 {
-	const char *dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+	int dbdirfd = pkg_get_dbdirfd();
 
 	if (pkg_object_bool(pkg_config_get("NFS_WITH_PROPER_LOCKING")))
 		return;
@@ -1032,14 +1049,14 @@ pkgdb_setup_lock(void)
 #if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
 	struct statvfs stfs;
 
-	if (statvfs(dbdir, &stfs) == 0) {
+	if (fstatvfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 	}
-#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
+#elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
 	struct statfs stfs;
 
-	if (statfs(dbdir, &stfs) == 0) {
+	if (fstatfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
 			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
 	}

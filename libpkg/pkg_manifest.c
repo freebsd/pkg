@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <ucl.h>
 
 #include "sha256.h"
@@ -810,7 +811,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(p, buf, len)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
@@ -851,7 +852,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	if ((rc = file_to_bufferat(dfd, file, &data, &sz)) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_string(p, data, sz)) {
 		pkg_emit_error("manifest parsing error: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
@@ -871,21 +872,30 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;
-	int rc;
+	int rc, fd;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
 
 	pkg_debug(1, "Parsing manifest from '%s'", file);
+	fd = open(file, O_RDONLY);
+
+	if (fd == -1) {
+		pkg_emit_error("Error loading manifest from %s: %s",
+				    file, strerror(errno));
+	}
 
 	errno = 0;
-	p = ucl_parser_new(0);
-	if (!ucl_parser_add_file(p, file)) {
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_fd(p, fd)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
 		ucl_parser_free(p);
+		close(fd);
 		return (EPKG_FATAL);
 	}
+
+	close(fd);
 
 	if ((obj = ucl_parser_get_object(p)) == NULL) {
 		ucl_parser_free(p);
@@ -975,6 +985,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->sum, 0,
 	    UCL_STRING_TRIM), "sum", 3, false);
 	ucl_object_insert_key(top, ucl_object_fromint(pkg->flatsize), "flatsize", 8, false);
+	if (pkg->dep_formula != NULL) {
+		ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->dep_formula, 0,
+		    UCL_STRING_TRIM), "dep_formula", 11, false);
+	}
 	/*
 	 * XXX: dirty hack to be compatible with pkg 1.2
 	 */

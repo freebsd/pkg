@@ -133,20 +133,13 @@ rsa_verify_cert_cb(int fd, void *ud)
 }
 
 int
-rsa_verify_cert(const char *path, unsigned char *key, int keylen,
+rsa_verify_cert(unsigned char *key, int keylen,
     unsigned char *sig, int siglen, int fd)
 {
 	int ret;
 	bool need_close = false;
 	struct rsa_verify_cbdata cbdata;
 
-	if (fd == -1) {
-		if ((fd = open(path, O_RDONLY)) == -1) {
-			pkg_emit_errno("fopen", path);
-			return (EPKG_FATAL);
-		}
-		need_close = true;
-	}
 	(void)lseek(fd, 0, SEEK_SET);
 
 	cbdata.key = key;
@@ -201,8 +194,7 @@ rsa_verify_cb(int fd, void *ud)
 }
 
 int
-rsa_verify(const char *path, const char *key, unsigned char *sig,
-    unsigned int sig_len, int fd)
+rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 {
 	int ret;
 	bool need_close = false;
@@ -215,14 +207,6 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 		return (EPKG_FATAL);
 	}
 
-	if (fd == -1) {
-		if ((fd = open(path, O_RDONLY)) == -1) {
-			pkg_emit_errno("fopen", path);
-			free(key_buf);
-			return (EPKG_FATAL);
-		}
-		need_close = true;
-	}
 	(void)lseek(fd, 0, SEEK_SET);
 
 	cbdata.key = key_buf;

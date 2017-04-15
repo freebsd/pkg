@@ -388,18 +388,18 @@ if test "$ac_cv_func_bsd_dirname" = yes ; then
 	AC_DEFINE(HAVE_BSD_DIRNAME, 1, [Define 1 if you have 'dirname(const char *)' function.])
 fi
 
-AC_CACHE_CHECK(for BSD statfs(const char *path, struct statfs *buf),
-               ac_cv_func_statfs,
+AC_CACHE_CHECK(for BSD fstatfs(int, struct statfs *buf),
+               ac_cv_func_fstatfs,
                [ac_save_CFLAGS="$CFLAGS"
 		CFLAGS="$CFLAGS -Werror"
 		AC_TRY_COMPILE([#include <sys/param.h>
      					#include <sys/mount.h>],
-                               [struct statfs stfs; static int (*ac_test_statfs)(const char *path, struct statfs *buf) = statfs; ac_test_statfs("", &stfs);],
-                               [ac_cv_func_statfs=yes],
-                               [ac_cv_func_statfs=no])
+                               [struct statfs stfs; static int (*ac_test_fstatfs)(int fd, struct statfs *buf) = fstatfs; ac_test_fstatfs(0, &stfs);],
+                               [ac_cv_func_fstatfs=yes],
+                               [ac_cv_func_fstatfs=no])
 		CFLAGS="$ac_save_CFLAGS"])
-if test "$ac_cv_func_statfs" = yes ; then
-	AC_DEFINE(HAVE_STATFS, 1, [Define 1 if you have 'statfs(const char *path, struct statfs *buf)' function.])
+if test "$ac_cv_func_fstatfs" = yes ; then
+	AC_DEFINE(HAVE_FSTATFS, 1, [Define 1 if you have 'fstatfs(int fd, struct statfs *buf)' function.])
 fi
 
 AC_CHECK_FUNCS(chflags chflagsat)
@@ -517,7 +517,6 @@ AC_CONFIG_FILES(Makefile \
 		scripts/periodic/411.pkg-backup
 		scripts/periodic/460.pkg-checksum
 		scripts/periodic/490.status-pkg-changes
-		scripts/sbin/pkg2ng
 		scripts/completion/_pkg.bash
 		scripts/completion/_pkg)
 AC_CONFIG_FILES(m4_expand([repos_makefiles]))

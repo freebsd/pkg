@@ -828,8 +828,10 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						pkg_message_from_str(pkg, msg, 0);
 					}
 					else {
-						pkg->message = xcalloc(1, sizeof(*pkg->message));
-						pkg->message->str = xstrdup(msg);
+						struct pkg_message *message;
+						message = xcalloc(1, sizeof(*pkg->message));
+						message->str = xstrdup(msg);
+						DL_APPEND(pkg->message, message);
 					}
 				}
 				else {

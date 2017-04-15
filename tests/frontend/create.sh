@@ -231,7 +231,7 @@ create_from_plist_with_keyword_arguments_body() {
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: cannot parse keyword: cannot open file ./testkeyword.ucl: No such file or directory\n${PROGNAME}: unknown keyword testkeyword: @testkeyword\n" \
+		-e inline:"${PROGNAME}: cannot load keyword from ./testkeyword.ucl: No such file or directory\n${PROGNAME}: unknown keyword testkeyword: @testkeyword\n" \
 		-s exit:70 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 

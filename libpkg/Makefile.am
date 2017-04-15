@@ -61,7 +61,6 @@ libpkg_la_SOURCES=	pkg.c \
 			scripts.c \
 			utils.c \
 			plugins.c \
-			pkg_old.c \
 			merge3.c \
 			diff.c \
 			sha256.c
@@ -145,7 +144,7 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/utils.h \
 			private/pkg_jobs.h \
 			private/pkg_deps.h \
-			private/xmalloc.h \
+			xmalloc.h \
 			sha256.h
 
 SUBDIRS = repo .

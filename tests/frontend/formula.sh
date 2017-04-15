@@ -3,9 +3,9 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	requires
+	formula
 
-requires_body() {
+formula_body() {
 	cat << EOF >> repo.conf
 local1: {
 	url: file://${TMPDIR},
@@ -25,7 +25,6 @@ prefix: /usr/local
 desc: <<EOD
 Yet another test
 EOD
-provides: [a-1]
 EOF
 
 	cat << EOF > b.ucl
@@ -40,7 +39,7 @@ prefix: /usr/local
 desc: <<EOD
 Yet another test
 EOD
-requires: [a-1]
+dep_formula: 'a >= 1',
 EOF
 	for p in a b; do
 		atf_check \
@@ -57,8 +56,8 @@ EOF
 	    pkg repo .
 
 	OUTPUT="Updating local1 repository catalogue...
-${JAILED}Fetching meta.txz:  done
-${JAILED}Fetching packagesite.txz:  done
+${JAILED}meta.txz                                 :  done
+${JAILED}packagesite.txz                          :  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
 All repositories are up to date.

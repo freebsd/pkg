@@ -184,10 +184,6 @@ void usage_version(void);
 int exec_which(int, char **);
 void usage_which(void);
 
-/* pkg convert */
-int exec_convert(int, char **);
-void usage_convert(void);
-
 /* pkg ssh */
 int exec_ssh(int, char **);
 void usage_ssh(void);

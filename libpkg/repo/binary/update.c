@@ -26,7 +26,6 @@
 
 #include <sys/stat.h>
 #include <sys/param.h>
-#include <sys/mman.h>
 #include <sys/time.h>
 
 #include <stdio.h>
@@ -459,16 +458,19 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
 {
 	struct pkg *pkg = NULL;
-	unsigned char *walk;
 	int rc = EPKG_FATAL;
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
 	struct pkg_manifest_key *keys = NULL;
-	unsigned char *map = MAP_FAILED;
 	size_t len = 0;
 	bool in_trans = false;
-	char path[MAXPATHLEN];
+	char *path = NULL;
+	FILE *f = NULL;
+	int fd;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen, totallen = 0;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -484,10 +486,12 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	/* Fetch packagesite */
 	local_t = *mtime;
-	map = pkg_repo_fetch_remote_extract_mmap(repo,
+	fd = pkg_repo_fetch_remote_extract_fd(repo,
 		repo->meta->manifests, &local_t, &rc, &len);
-	if (map == NULL || map == MAP_FAILED)
+	if (fd == -1)
 		goto cleanup;
+	f = fdopen(fd, "r");
+	rewind(f);
 
 	*mtime = local_t;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
@@ -495,7 +499,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			&rc, repo_conflicts_file);*/
 
 	/* Load local repository data */
-	snprintf(path, sizeof(path), "%s-pkgtemp", name);
+	xasprintf(&path, "%s-pkgtemp", name);
 	rename(name, path);
 	pkg_register_cleanup_callback(rollback_repo, (void *)name);
 	rc = pkg_repo_binary_init_update(repo, name);
@@ -522,22 +526,17 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	in_trans = true;
-
-	walk = map;
-	unsigned char *next;
-
-	while (walk -map < len) {
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		cnt++;
-		next = strchr(walk, '\n');
+		totallen += linelen;
 		if ((cnt % 10 ) == 0)
-			pkg_emit_progress_tick(next - map, len);
-		rc = pkg_repo_binary_add_from_manifest(walk, sqlite, next - walk,
+			pkg_emit_progress_tick(totallen, len);
+		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
 		    &keys, &pkg, repo);
 		if (rc != EPKG_OK) {
 			pkg_emit_progress_tick(len, len);
 			break;
 		}
-		walk = next + 1;
 	}
 	pkg_emit_progress_tick(len, len);
 
@@ -568,12 +567,16 @@ cleanup:
 		unlink(name);
 		rename(path, name);
 	}
-	unlink(path);
+	if (path != NULL) {
+		unlink(path);
+		free(path);
+	}
 	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
 	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
-	if (map != NULL && map != MAP_FAILED)
-		munmap(map, len);
+	free(line);
+	if (f != NULL)
+		fclose(f);
 
 	return (rc);
 }

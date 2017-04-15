@@ -129,7 +129,7 @@ pkg_repo_meta_open_schema_v1()
 	if (repo_meta_schema_v1 != NULL)
 		return (repo_meta_schema_v1);
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, meta_schema_str_v1,
 			sizeof(meta_schema_str_v1) - 1)) {
 		pkg_emit_error("cannot parse schema for repo meta: %s",
@@ -247,7 +247,7 @@ pkg_repo_meta_version(ucl_object_t *top)
 }
 
 int
-pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target)
+pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target)
 {
 	struct ucl_parser *parser;
 	ucl_object_t *top, *schema;
@@ -256,8 +256,8 @@ pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target)
 
 	parser = ucl_parser_new(UCL_PARSER_KEY_LOWERCASE);
 
-	if (!ucl_parser_add_file(parser, file)) {
-		pkg_emit_error("cannot parse repository meta from %s: %s", file,
+	if (!ucl_parser_add_fd(parser, fd)) {
+		pkg_emit_error("cannot parse repository meta: %s",
 				ucl_parser_get_error(parser));
 		ucl_parser_free(parser);
 		return (EPKG_FATAL);
@@ -268,7 +268,7 @@ pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target)
 
 	version = pkg_repo_meta_version(top);
 	if (version == -1) {
-		pkg_emit_error("repository meta %s has wrong version or wrong format", file);
+		pkg_emit_error("repository meta has wrong version or wrong format");
 		ucl_object_unref(top);
 		return (EPKG_FATAL);
 	}
@@ -279,14 +279,14 @@ pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target)
 
 		if (schema != NULL) {
 			if (!ucl_object_validate(schema, top, &err)) {
-				pkg_emit_error("repository meta %s cannot be validated: %s", file, err.msg);
+				pkg_emit_error("repository meta cannot be validated: %s", err.msg);
 				ucl_object_unref(top);
 				return (EPKG_FATAL);
 			}
 		}
 	}
 	else {
-		pkg_emit_error("repository meta %s has wrong version %d", file, version);
+		pkg_emit_error("repository meta has wrong version %d", version);
 		ucl_object_unref(top);
 		return (EPKG_FATAL);
 	}

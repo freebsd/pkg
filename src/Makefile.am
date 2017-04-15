@@ -14,7 +14,6 @@ pkg_SOURCES=		add.c \
 			check.c \
 			clean.c \
 			config.c \
-			convert.c \
 			create.c \
 			delete.c \
 			event.c \

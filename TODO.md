@@ -30,16 +30,16 @@ pkg autoremove could then remove it if nothing is depending on it anymore
 
 Difficulty: medium
 
-# (explore a ) rework of the library dependencies
+# Explore a rework of the library dependencies
 
 Would be nice to have a better mechanism that could track the symbols of the
 libraries (including versions)
 
-RPM is doing that
+RPM already does this
 
 # Allow duplicate package handling
 
-to allow multiple packages having the same name as long as they don't conflicts
+Allow multiple packages having the same name as long as they don't conflict
 
 * pkg.conf:
 
@@ -62,7 +62,7 @@ to allow multiple packages having the same name as long as they don't conflicts
 
 # Add support for zstd format
 
-zstd is very interesting compression format that it would be nice to add support to
+zstd is very interesting compression format that it would be nice to add support for
 
 # Add the notion of triggers
 
@@ -76,12 +76,12 @@ for example:
 gtk-update-icon-cache should provide a trigger for everything that provides an icon
 
 if gtk-update-icon-cache is installed on the system and packages are flagged for
-"icons" then the gtk icon cache would be upgraded.
+"icons" then the gtk icon cache would be updated.
 
-That would remove the gtk-update-icon-cache dependence from every application
+That would remove the gtk-update-icon-cache dependency from every application
 that provides icons and make it run only once.
 
-# Allow to feed a list of non available packages
+# Teach pkg repo to keep a list of unavailable packages
 
 When a build fail the package is not added to the repository. As such, a user who attempts to install the package is told that it does not exist, rather than it is just temporarily unavailable.
 

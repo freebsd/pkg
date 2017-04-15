@@ -26,7 +26,6 @@ Table of Contents:
 * [pkg bootstrap](#pkgbootstrap)
 * [pkg in Ports](#pkgports)
 * [Building pkg using sources from Git](#pkggit)
-* [Converting an old-style pkg database](#pkg2ng)
 * [A quick usage introduction to pkg](#usageintro)
 * [Getting help on the commands usage](#pkghelp)
 * [Querying the local package database](#pkginfo)
@@ -320,27 +319,6 @@ get on.
 	./configure
 	make
 	sudo make install
-
-<a name="pkg2ng"></a>
-### Converting an old-style pkg database
-
-If you're on a 9.x system or earlier and did not have a release version
-of pkg(8) installed previously, you will need to run the pkg2ng
-script.  This is only necessary when converting your system from the
-old pkg_tools style packages.
-
-In order to register your installed packages to pkg, execute the
-commands below:
-
-	# cd pkg/ports
-	# sh pkg2ng
-
-Otherwise, running any pkg(8) command that will attempt to write to
-the local package database will automatically apply any schema
-updates.  Be aware that these may not be backwards compatible --
-although usually you should see no more than a warning message if you
-try and run an older version of pkg(8) against a newer database
-schema.
 
 <a name="usageintro"></a>
 ## A quick usage introduction to pkg

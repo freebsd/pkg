@@ -44,7 +44,7 @@
 #include <utstring.h>
 #include <ucl.h>
 
-#include "private/xmalloc.h"
+#include "xmalloc.h"
 #include "private/utils.h"
 
 #define UCL_COUNT(obj) ((obj)?((obj)->len):0)
@@ -227,15 +227,18 @@
 	}						\
 } while (0)
 
+struct pkg_ctx {
+	int eventpipe;
+	int64_t debug_level;
+	bool developer_mode;
+	const char *pkg_rootdir;
+	int rootfd;
+	int cachedirfd;
+	int dbdirfd;
+	int pkg_dbdirfd;
+};
 
-
-extern int eventpipe;
-extern int64_t debug_level;
-extern bool developer_mode;
-extern const char *pkg_rootdir;
-extern int rootfd;
-extern int cachedirfd;
-extern int dbdirfd;
+extern struct pkg_ctx ctx;
 
 struct pkg_repo_it;
 struct pkg_repo;
@@ -336,7 +339,7 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
-	struct pkg_message	*next;
+	struct pkg_message	*next, *prev;
 };
 
 enum pkg_conflict_type {
@@ -350,7 +353,7 @@ struct pkg_conflict {
 	char *uid;
 	char *digest;
 	enum pkg_conflict_type type;
-	struct pkg_conflict *next;
+	struct pkg_conflict *next, *prev;
 };
 
 typedef enum {
@@ -379,7 +382,7 @@ struct pkg_file {
 	u_long		 fflags;
 	struct pkg_config_file *config;
 	struct timespec	 time[2];
-	struct pkg_file	*next;
+	struct pkg_file	*next, *prev;
 };
 
 struct pkg_dir {
@@ -392,7 +395,7 @@ struct pkg_dir {
 	gid_t		 gid;
 	bool		 noattrs;
 	struct timespec	 time[2];
-	struct pkg_dir	*next;
+	struct pkg_dir	*next, *prev;
 };
 
 struct pkg_option {
@@ -400,7 +403,7 @@ struct pkg_option {
 	char	*value;
 	char	*default_value;
 	char	*description;
-	struct pkg_option *next;
+	struct pkg_option *next, *prev;
 };
 
 struct http_mirror {
@@ -595,7 +598,7 @@ struct file_attr {
 
 struct action {
 	int (*perform)(struct plist *, char *, struct file_attr *);
-	struct action *next;
+	struct action *next, *prev;
 };
 
 /* sql helpers */
@@ -635,12 +638,12 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
-unsigned char *pkg_repo_fetch_remote_extract_mmap(struct pkg_repo *repo,
+int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo,
     const char *filename, time_t *t, int *rc, size_t *sz);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);
-int pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target);
+int pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target);
 void pkg_repo_meta_free(struct pkg_repo_meta *meta);
 ucl_object_t * pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta);
 bool pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta);

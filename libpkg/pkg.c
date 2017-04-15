@@ -103,8 +103,8 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_LICENSES);
 
-	LL_FREE(pkg->message, pkg_message_free);
-	LL_FREE(pkg->annotations, pkg_kv_free);
+	DL_FREE(pkg->message, pkg_message_free);
+	DL_FREE(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
@@ -567,7 +567,7 @@ pkg_adduser(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	if (kh_contains(strings, pkg->users, name)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
 		} else {
@@ -591,7 +591,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	if (kh_contains(strings, pkg->groups, name)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
 		} else {
@@ -631,15 +631,9 @@ pkg_adddep_chain(struct pkg_dep *chain,
 
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin, name);
 	if (kh_contains(pkg_deps, pkg->depshash, name)) {
-		if (developer_mode) {
-			pkg_emit_error("%s: duplicate dependency listing: %s, fatal (developer mode)",
-			    pkg->name, name);
-			return (NULL);
-		} else {
-			pkg_emit_error("%s-%s: duplicate dependency listing: %s, ignoring",
-			    pkg->name, pkg->version, name);
-			return (NULL);
-		}
+		pkg_emit_error("%s: duplicate dependency listing: %s",
+		    pkg->name, name);
+		return (NULL);
 	}
 
 	d = xcalloc(1, sizeof(*d));
@@ -709,7 +703,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates && kh_contains(pkg_files, pkg->filehash, path)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
@@ -737,7 +731,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 		f->fflags = fflags;
 
 	kh_safe_add(pkg_files, pkg->filehash, f, f->path);
-	LL_APPEND(pkg->files, f);
+	DL_APPEND(pkg->files, f);
 
 	return (EPKG_OK);
 }
@@ -752,7 +746,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	pkg_debug(3, "Pkg: add new config file '%s'", path);
 
 	if (kh_contains(pkg_config_files, pkg->config_files, path)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
@@ -779,7 +773,7 @@ pkg_addstring(kh_strings_t **list, const char *val, const char *title)
 	assert(title != NULL);
 
 	if (kh_contains(strings, *list, val)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s listing: %s, fatal"
 			    " (developer mode)", title, val);
 			return (EPKG_FATAL);
@@ -819,7 +813,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates && kh_contains(pkg_dirs, pkg->dirhash, path)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
 			return (EPKG_FATAL);
 		} else {
@@ -844,7 +838,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		d->fflags = fflags;
 
 	kh_safe_add(pkg_dirs, pkg->dirhash, d, d->path);
-	LL_APPEND(pkg->dirs, d);
+	DL_APPEND(pkg->dirs, d);
 
 	return (EPKG_OK);
 }
@@ -1007,7 +1001,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 
 	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
 	if (kh_contains(pkg_options, pkg->optionshash, key)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1019,7 +1013,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	o->key = xstrdup(key);
 	o->value = xstrdup(value);
 	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
-	LL_APPEND(pkg->options, o);
+	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1041,7 +1035,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	   no actual value. */
 
 	if (kh_contains(pkg_options, pkg->optionshash, key)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate default value for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1053,7 +1047,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	o->key = xstrdup(key);
 	o->default_value = xstrdup(default_value);
 	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
-	LL_APPEND(pkg->options, o);
+	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1074,7 +1068,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	   value or description for an option but no actual value. */
 
 	if (kh_contains(pkg_options, pkg->optionshash, key)) {
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate description for option: %s, fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
@@ -1087,7 +1081,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	o->key = xstrdup(key);
 	o->description = xstrdup(description);
 	kh_safe_add(pkg_options, pkg->optionshash, o, o->key);
-	LL_APPEND(pkg->options, o);
+	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1154,7 +1148,7 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
 	kh_safe_add(pkg_conflicts, pkg->conflictshash, c, c->uid);
-	LL_APPEND(pkg->conflicts, c);
+	DL_APPEND(pkg->conflicts, c);
 
 	return (EPKG_OK);
 }
@@ -1222,7 +1216,7 @@ pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *t
 
 	LL_FOREACH(*list, kv) {
 		if (strcmp(kv->key, key) == 0) {
-			if (developer_mode) {
+			if (ctx.developer_mode) {
 				pkg_emit_error("duplicate %s: %s, fatal"
 				    " (developer mode)", title, key);
 				return (EPKG_FATAL);
@@ -1235,7 +1229,7 @@ pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *t
 	}
 
 	kv = pkg_kv_new(key, val);
-	LL_APPEND(*list, kv);
+	DL_APPEND(*list, kv);
 
 	return (EPKG_OK);
 }
@@ -1300,19 +1294,19 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
-		LL_FREE(pkg->options, pkg_option_free);
+		DL_FREE(pkg->options, pkg_option_free);
 		kh_destroy_pkg_options(pkg->optionshash);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
 	case PKG_CONFIG_FILES:
-		LL_FREE(pkg->files, pkg_file_free);
+		DL_FREE(pkg->files, pkg_file_free);
 		kh_destroy_pkg_files(pkg->filehash);
 		kh_free(pkg_config_files, pkg->config_files, struct pkg_config_file, pkg_config_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		LL_FREE(pkg->dirs, free);
+		DL_FREE(pkg->dirs, free);
 		kh_destroy_pkg_dirs(pkg->dirhash);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
@@ -1333,7 +1327,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_CONFLICTS:
-		LL_FREE(pkg->conflicts, pkg_conflict_free);
+		DL_FREE(pkg->conflicts, pkg_conflict_free);
 		kh_destroy_pkg_conflicts(pkg->conflictshash);
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
 		break;
@@ -1748,9 +1742,9 @@ pkg_open_root_fd(struct pkg *pkg)
 	path = pkg_kv_get(&pkg->annotations, "relocated");
 	if (path == NULL) {
 #ifdef F_DUPFD_CLOEXEC
-		if ((pkg->rootfd = fcntl(rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
+		if ((pkg->rootfd = fcntl(ctx.rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
 #else
-		if ((pkg->rootfd = dup(rootfd)) == -1 || fcntl(pkg->rootfd, F_SETFD, FD_CLOEXEC) == -1) {
+		if ((pkg->rootfd = dup(ctx.rootfd)) == -1 || fcntl(pkg->rootfd, F_SETFD, FD_CLOEXEC) == -1) {
 #endif
 			pkg_emit_errno("dup2", "rootfd");
 			return (EPKG_FATAL);
@@ -1760,7 +1754,7 @@ pkg_open_root_fd(struct pkg *pkg)
 
 	pkg_absolutepath(path, pkg->rootpath, sizeof(pkg->rootpath), false);
 
-	if ((pkg->rootfd = openat(rootfd, pkg->rootpath + 1, O_DIRECTORY|O_CLOEXEC)) >= 0 )
+	if ((pkg->rootfd = openat(ctx.rootfd, pkg->rootpath + 1, O_DIRECTORY|O_CLOEXEC)) >= 0 )
 		return (EPKG_OK);
 
 	pkg->rootpath[0] = '\0';
@@ -1780,7 +1774,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		msg = xcalloc(1, sizeof(*msg));
 		msg->str = xstrdup(ucl_object_tostring(obj));
 		msg->type = PKG_MESSAGE_ALWAYS;
-		LL_APPEND(pkg->message, msg);
+		DL_APPEND(pkg->message, msg);
 		return (EPKG_OK);
 	}
 
@@ -1816,7 +1810,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				    " message will always be printed");
 		}
 		if (msg->type != PKG_MESSAGE_UPGRADE) {
-			LL_APPEND(pkg->message, msg);
+			DL_APPEND(pkg->message, msg);
 			continue;
 		}
 
@@ -1830,7 +1824,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 			msg->maximum_version = xstrdup(ucl_object_tostring(elt));
 		}
 
-		LL_APPEND(pkg->message, msg);
+		DL_APPEND(pkg->message, msg);
 	}
 
 	return (EPKG_OK);
@@ -1849,7 +1843,7 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 		len = strlen(str);
 	}
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 
 	if (ucl_parser_add_chunk(parser, (const unsigned char*)str, len)) {
 		obj = ucl_parser_get_object(parser);

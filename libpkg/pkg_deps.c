@@ -37,7 +37,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg_deps.h"
-#include "private/xmalloc.h"
+#include "xmalloc.h"
 #include "utlist.h"
 
 struct pkg_dep_formula *

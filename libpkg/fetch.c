@@ -515,15 +515,17 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 
 		url += strlen(URL_SCHEME_PREFIX);
 		pkg_url_scheme = true;
+	}
 
+	if (repo != NULL) {
 		LL_FOREACH(repo->env, kv) {
 			kvtmp = xcalloc(1, sizeof(*kvtmp));
 			kvtmp->key = xstrdup(kv->key);
 			if ((tmp = getenv(kv->key)) != NULL) {
 				kvtmp->value = xstrdup(tmp);
-				LL_APPEND(envtorestore, kvtmp);
+				DL_APPEND(envtorestore, kvtmp);
 			} else {
-				LL_APPEND(envtounset, kvtmp);
+				DL_APPEND(envtounset, kvtmp);
 			}
 			setenv(kv->key, kv->value, 1);
 		}
@@ -601,7 +603,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				utstring_printf(fetchOpts, "6");
 		}
 
-		if (debug_level >= 4)
+		if (ctx.debug_level >= 4)
 			utstring_printf(fetchOpts, "v");
 
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",

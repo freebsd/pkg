@@ -183,28 +183,42 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 static uid_t
 get_uid_from_archive(struct archive_entry *ae)
 {
-	char buffer[128];
-	struct passwd pwent, *result;
+	static char user_buffer[128];
+	const char *user;
+	static struct passwd pwent;
+	struct passwd *result;
 
-	if ((getpwnam_r(archive_entry_uname(ae), &pwent, buffer, sizeof(buffer),
+	user = archive_entry_uname(ae);
+	if (pwent.pw_name != NULL && strcmp(user, pwent.pw_name) == 0)
+		goto out;
+	pwent.pw_name = NULL;
+	if ((getpwnam_r(user, &pwent, user_buffer, sizeof(user_buffer),
 	    &result)) < 0)
 		return (0);
 	if (result == NULL)
 		return (0);
+out:
 	return (pwent.pw_uid);
 }
 
 static gid_t
 get_gid_from_archive(struct archive_entry *ae)
 {
-	char buffer[128];
-	struct group grent, *result;
+	static char group_buffer[128];
+	static struct group grent;
+	struct group *result;
+	const char *group;
 
-	if ((getgrnam_r(archive_entry_gname(ae), &grent, buffer, sizeof(buffer),
+	group = archive_entry_gname(ae);
+	if (grent.gr_name != NULL && strcmp(group, grent.gr_name) == 0)
+		goto out;
+	grent.gr_name = NULL;
+	if ((getgrnam_r(group, &grent, group_buffer, sizeof(group_buffer),
 	    &result)) < 0)
 		return (0);
 	if (result == NULL)
 		return (0);
+out:
 	return (grent.gr_gid);
 }
 
@@ -492,7 +506,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	int fd = -1;
 	bool tried_mkdir = false;
 	size_t len;
-	char buf[BUFSIZ];
+	char buf[32768];
 
 	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 

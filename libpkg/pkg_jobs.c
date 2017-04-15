@@ -2180,7 +2180,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	if (dlsize == 0)
 		return (EPKG_OK);
 
-#ifdef HAVE_STATFS
+#ifdef HAVE_FSTATFS
 	struct statfs fs;
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {

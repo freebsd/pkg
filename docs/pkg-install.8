@@ -133,7 +133,7 @@ If any installation scripts (pre-install or post-install) exist for a given
 package, do not execute them.
 When a package is updated, deinstallation
 scripts (pre-deinstall or post-deinstall) are not run either.
-.It Fl i , Cm --case-sensitive
+.It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
@@ -206,6 +206,7 @@ See
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -213,7 +214,6 @@ See
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

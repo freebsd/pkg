@@ -111,9 +111,9 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		if (j == map[i].a || j == map[i].b) {
 			utstring_clear(script_cmd);
 			setenv("PKG_PREFIX", pkg->prefix, 1);
-			if (pkg_rootdir == NULL)
-				pkg_rootdir = "/";
-			setenv("PKG_ROOTDIR", pkg_rootdir, 1);
+			if (ctx.pkg_rootdir == NULL)
+				ctx.pkg_rootdir = "/";
+			setenv("PKG_ROOTDIR", ctx.pkg_rootdir, 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
 				utstring_printf(script_cmd, "set -x\n");

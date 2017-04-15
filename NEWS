@@ -1,5 +1,10 @@
+Changes from pkg 1.10
+- Use dep_formula in the solver
+- Cache pw result to avoid over reloading nssswitch.conf
+- Remove pkg2ng and support for pkg_ databases
+
 Changes from pkg 1.9
-- Fix fd leak on systems without utimensat (merged in release branch)
+- fix pkg which -g
 - Do not use openssl for sha256
 - Improve the default output when fetching data
 - Update libfetch to the version of FreeBSD 11
@@ -7,7 +12,7 @@ Changes from pkg 1.9
 - Fix NetBSD ABI
 - Add a fallback for utimensat when reporting EOPNOTSUPP
 - replace libsbuf with utstring for portability
-- Overwrite some sqlite vfs functions to allow capsicumisation of pkg
+- Overwrite some sqlite vfs functions to allow more capsicumisation of pkg
 - move more pkg audit details into the library
 - allow to run pkg query without any privileges
 - extend the audit periodic script to report deprecated packages
@@ -25,7 +30,8 @@ Changes from pkg 1.9
 - Add progress when fetching (number of files to fetch)
 - Improved messages about locked packages
 - Return 1 when a user rejects the proposed plan
-- When dealing with configuration files '@config' never overwrites non tracked files
+- When dealing with configuration files '@config' never overwrites non tracked
+  files
 - Warn everyone about deprecation of @dirrm and @exec
 - Deduplicate metadata loading code
 - pkg register now understands context aware messages

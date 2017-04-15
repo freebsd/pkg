@@ -25,7 +25,7 @@
 #include <utstring.h>
 
 #include "private/utils.h"
-#include "private/xmalloc.h"
+#include "xmalloc.h"
 
 /*
 ** Maximum length of a line in a text file, in bytes.  (2**13 = 8192 bytes)
