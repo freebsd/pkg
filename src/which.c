@@ -261,7 +261,13 @@ exec_which(int argc, char **argv)
 static bool
 is_there(char *candidate)
 {
-	return (access(candidate, F_OK) == 0);
+	struct stat st;
+ 
+	if (lstat(candidate, &st) == 0) {
+		if (S_ISREG(st.st_mode) != 0)
+			return true;
+	}
+	return false;
 }
 
 int
