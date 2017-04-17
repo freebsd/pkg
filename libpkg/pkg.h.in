@@ -327,6 +327,12 @@ typedef enum {
 } mirror_t;
 
 typedef enum {
+	REPO_BINARY = 0,
+	REPO_DEBIAN,
+
+} type_t;
+
+typedef enum {
 	SIG_NONE = 0,
 	SIG_PUBKEY,
 	SIG_FINGERPRINT
@@ -1496,6 +1502,7 @@ const char *pkg_repo_fingerprints(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
+type_t pkg_repo_type(struct pkg_repo *r);
 unsigned pkg_repo_priority(struct pkg_repo *r);
 unsigned pkg_repo_ip_version(struct pkg_repo *r);
 struct pkg_repo *pkg_repo_find(const char *name);

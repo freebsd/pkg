@@ -523,6 +523,8 @@ struct pkg_repo {
 	char *url;
 	char *pubkey;
 	mirror_t mirror_type;
+	type_t type;
+
 	union {
 		struct dns_srvinfo *srv;
 		struct http_mirror *http;
