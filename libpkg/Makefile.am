@@ -85,6 +85,7 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libfetch.la \
 			$(top_builddir)/external/liblinenoise.la \
 			$(top_builddir)/external/blake2/libblake2.la \
+			$(top_builddir)/external/libzstd.la \
 			@REPOS_LDADD@ \
 			@LDNS_LIBS@ \
 			-larchive \
@@ -129,6 +130,7 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libfetch_static.la \
 			$(top_builddir)/external/liblinenoise_static.la \
 			$(top_builddir)/external/blake2/libblake2_static.la \
+			$(top_builddir)/external/libzstd_static.la \
 			@REPOS_LDADD_STATIC@
 
 EXTRA_libpkg_static_la_DEPENDENCIES=	@REPOS_LDADD_STATIC@ libpkg.ver
