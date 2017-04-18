@@ -70,20 +70,35 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libfetch/fetch.h \
 		libfetch/httperr.h \
 		libfetch/ftperr.h \
-		linenoise/linenoise.h
+		linenoise/linenoise.h \
+		zstd/mem.h \
+		zstd/huf.h \
+		zstd/error_private.h \
+		zstd/threading.h \
+		zstd/zstd_internal.h \
+		zstd/zstdmt_compress.h \
+		zstd/zstd.h \
+		zstd/zstd_errors.h \
+		zstd/xxhash.h \
+		zstd/pool.h \
+		zstd/zstd_opt.h \
+		zstd/bitstream.h \
+		zstd/fse.h
 
 DYNLIBS=		libucl.la \
 			libsqlite.la \
 			libexpat.la \
 			libpicosat.la \
 			libfetch.la \
-			liblinenoise.la
+			liblinenoise.la \
+			libzstd.la
 noinst_LTLIBRARIES=	libucl_static.la \
 			libsqlite_static.la \
 			libexpat_static.la \
 			libpicosat_static.la \
 			libfetch_static.la \
-			liblinenoise_static.la
+			liblinenoise_static.la \
+			libzstd_static.la
 if LIBELF_BUNDLED
 DYNLIBS+=		libelf.la
 noinst_LTLIBRARIES+=	libelf_static.la
@@ -285,5 +300,25 @@ libelf/native-elf-format.h:
 	$(srcdir)/libelf/native-elf-format > libelf/native-elf-format.h
 
 endif
+
+zstd_common_cflags=	-I$(top_srcdir)/external/zstd
+libzstd_la_SOURCES=	zstd/zstd_common.c \
+					zstd/fse_decompress.c \
+					zstd/fse_compress.c \
+					zstd/pool.c \
+					zstd/threading.c \
+					zstd/error_private.c \
+					zstd/xxhash.c \
+					zstd/zstd_decompress.c \
+					zstd/huf_compress.c \
+					zstd/zstdmt_compress.c \
+					zstd/zstd_compress.c \
+					zstd/huf_decompress.c \
+					zstd/entropy_common.c
+
+libzstd_la_CFLAGS=	$(zstd_common_cflags) -shared
+libzstd_static_la_SOURCES=	$(libzstd_la_SOURCES)
+libzstd_static_la_CFLAGS=	$(zstd_common_cflags) -static
+libzstdt_static_la_LDFLAGS=	-all-static
 
 SUBDIRS=	blake2
