@@ -38,6 +38,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_delete.c \
 			pkg_deps.c \
 			pkg_event.c \
+			pkg_format.c \
 			pkg_jobs.c \
 			pkg_jobs_conflicts.c \
 			pkg_jobs_universe.c \
