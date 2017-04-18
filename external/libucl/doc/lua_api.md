@@ -38,7 +38,7 @@ func = "huh";
 --]]
 ~~~
 
-###Brief content:
+### Brief content:
 
 **Functions**:
 
