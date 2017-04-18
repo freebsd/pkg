@@ -666,8 +666,8 @@ int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
 int pkg_script_run(struct pkg *, pkg_script type);
 
-int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
-	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
+int pkg_open_format(struct pkg **p, struct archive **a, struct archive_entry **ae,
+		const char *path, struct pkg_manifest_key *keys, int flags, int fd);
 
 int pkg_validate(struct pkg *pkg, struct pkgdb *db);
 
