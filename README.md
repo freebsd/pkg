@@ -557,7 +557,7 @@ your repository :)
 * [Jenkins instance for pkg][3]
 
 In order to get in contact with us, you can find us in the
-#pkgng@FreeNode IRC channel.
+# pkgng@FreeNode IRC channel.
 
 If you hit a bug when using pkg, you can always submit an issue in the
 [pkg issue tracker][4].
