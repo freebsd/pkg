@@ -25,18 +25,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "pkg_config.h"
-#endif
-
-#ifdef HAVE_SYS_ENDIAN_H
-#include <sys/endian.h>
-#elif HAVE_ENDIAN_H
-#include <endian.h>
-#elif HAVE_MACHINE_ENDIAN_H
-#include <machine/endian.h>
-#endif
 #include <sys/types.h>
+#include "private/pkg_endian.h"
 #if defined(HAVE_SYS_ELF_COMMON_H) && !defined(__DragonFly__)
 #include <sys/elf_common.h>
 #endif
