@@ -170,7 +170,7 @@ pkg_seek_to_offset(FILE *fs, off_t offset, int whence)
 }
 
 static int
-pkg_section_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompressed,
+pkg_section_maybe_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompressed,
 		size_t *sz)
 {
 	ZSTD_DStream *zstream;
@@ -196,8 +196,8 @@ pkg_section_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompresse
 			return (EPKG_FATAL);
 		}
 
-		zstream = ZSTD_createDStream ();
-		ZSTD_initDStream (zstream);
+		zstream = ZSTD_createDStream();
+		ZSTD_initDStream(zstream);
 
 		zin.pos = 0;
 		zin.src = in;
@@ -205,7 +205,7 @@ pkg_section_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompresse
 
 		if (outlen == 0 &&
 				(outlen = ZSTD_getDecompressedSize(zin.src, zin.size)) == 0) {
-			outlen = ZSTD_DStreamOutSize ();
+			outlen = ZSTD_DStreamOutSize();
 		}
 
 		out = xmalloc(outlen);
@@ -220,7 +220,7 @@ pkg_section_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompresse
 			if (ZSTD_isError(r)) {
 				pkg_emit_error("cannot decompress data: %s",
 						ZSTD_getErrorName(r));
-				ZSTD_freeDStream (zstream);
+				ZSTD_freeDStream(zstream);
 				free(out);
 				free(in);
 
@@ -240,12 +240,21 @@ pkg_section_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompresse
 
 		*uncompressed = out;
 		*sz = zout.pos;
+	}
+	else {
+		*sz = hdr->size;
+		out = xmalloc(hdr->size);
 
-		return (EPKG_OK);
+		if (fread(out, 1, hdr->size, fs) != hdr->size) {
+			free(out);
+
+			return (EPKG_FATAL);
+		}
+
+		*uncompressed = out;
 	}
 
-	/* Not compressed, huh ? */
-	return (EPKG_FATAL);
+	return (EPKG_OK);
 }
 
 static int
@@ -270,8 +279,12 @@ pkg_skip_to_section(FILE *fs, enum pkg_section_type type, struct pkg_section_hdr
 	READ_64LE_AT(rdbuf, 4, wire_size);
 
 	if (wire_type != type) {
-		/* Not something that we were waiting */
+		if (wire_type >= PKG_FORMAT_SECTION_PAYLOAD) {
+			/* Do not go after payload, that is meaningless */
+			return (EPKG_FATAL);
+		}
 
+		/* Not something that we were waiting, skip it */
 		if (wire_size > 0) {
 			/* Skip to the next section */
 			if (pkg_seek_to_offset(fs, wire_size, SEEK_CUR) == EPKG_FATAL) {
@@ -364,20 +377,8 @@ pkg_read_manifest_v2(FILE *fs, struct pkg **pkg_p, struct pkg_manifest_key *keys
 		return (EPKG_FATAL);
 	}
 
-	if (sec.flags & PKG_FORMAT_FLAGS_ZSTD) {
-		if (pkg_section_uncompress(fs, &sec, &payload, &paylen) != EPKG_OK) {
-			return (EPKG_FATAL);
-		}
-	}
-	else {
-		paylen = sec.size;
-		payload = xmalloc(paylen);
-
-		if (fread(payload, 1, paylen, fs) != paylen) {
-			free(payload);
-
-			return (EPKG_FATAL);
-		}
+	if (pkg_section_maybe_uncompress(fs, &sec, &payload, &paylen) != EPKG_OK) {
+		return (EPKG_FATAL);
 	}
 
 	retcode = pkg_new(pkg_p, PKG_FILE);
@@ -393,6 +394,29 @@ cleanup:
 
 	return (retcode);
 }
+
+static int
+pkg_read_files_v2(FILE *fs, struct pkg *pkg, struct pkg_manifest_key *keys)
+{
+	struct pkg_section_hdr sec;
+	void *payload;
+	size_t paylen;
+	int retcode = EPKG_OK;
+
+	if (pkg_skip_to_section(fs, PKG_FORMAT_SECTION_FILELIST, &sec) != EPKG_OK) {
+		return (EPKG_END);
+	}
+
+	if (pkg_section_maybe_uncompress(fs, &sec, &payload, &paylen) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
+
+	retcode = pkg_parse_manifest(pkg, payload, paylen, keys);
+	free(payload);
+
+	return (retcode);
+}
+
 
 static int
 pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, int flags)
@@ -452,6 +476,17 @@ pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys,
 		}
 
 		return (ret);
+	}
+
+	if (flags & PKG_OPEN_MANIFEST_COMPACT) {
+		return (EPKG_OK);
+	}
+
+	/* Read files as well */
+	if ((ret = pkg_read_files_v2(fs, *pkg_p, keys)) != EPKG_OK) {
+		if (ret != EPKG_END) {
+			/* We have some fatal error */
+		}
 	}
 }
 
