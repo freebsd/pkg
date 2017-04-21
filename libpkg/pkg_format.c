@@ -417,9 +417,186 @@ pkg_read_files_v2(FILE *fs, struct pkg *pkg, struct pkg_manifest_key *keys)
 	return (retcode);
 }
 
+struct pkg_archive_stdio_cookie {
+	FILE *fs;
+	size_t remain;
+	ZSTD_DStream *zstream;
+	char *rdbuf;
+	off_t rd_offset;
+	size_t rd_len;
+};
 
 static int
-pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, int flags)
+pkg_archive_cookie_read(void *p, char *buf, int size)
+{
+	struct pkg_archive_stdio_cookie *cookie = p;
+	ZSTD_inBuffer zin;
+	ZSTD_outBuffer zout;
+	ssize_t r, ret;
+
+	r = MIN(size, cookie->remain);
+
+	if (cookie->zstream == NULL) {
+		/* Not a compressed payload */
+		r = fread(buf, 1, r, cookie->fs);
+
+		if (r > 0) {
+			cookie->remain -= r;
+		}
+
+		return (r);
+	}
+	else {
+		if (cookie->rd_offset > 0 && cookie->rd_offset < cookie->rd_len / 2) {
+			/* Move rd_offset bytes and read more */
+			r = fread(cookie->rdbuf + cookie->rd_offset, 1,
+					MIN(cookie->rd_len - cookie->rd_offset, cookie->remain),
+					cookie->fs);
+
+			if (r > 0) {
+				cookie->remain -= r;
+				r += cookie->rd_offset;
+				cookie->rd_offset = r;
+			}
+			else {
+				r = cookie->rd_offset;
+			}
+		}
+		else if (cookie->rd_offset > 0) {
+			/* Just process the remaining buffer */
+			r = cookie->rd_len - cookie->rd_offset;
+		}
+		else {
+			/* Buffer is empty, read chunk */
+			r = fread(cookie->rdbuf, 1,
+					MIN(cookie->rd_len, cookie->remain), cookie->fs);
+
+			if (r > 0) {
+				cookie->remain -= r;
+				cookie->rd_offset = r;
+			}
+			else {
+				return (r);
+			}
+		}
+
+		zin.size = r;
+		zin.src = cookie->rdbuf;
+		zin.pos = 0;
+		zout.size = size;
+		zout.dst = buf;
+		zout.pos = 0;
+
+		while (zin.pos < zin.size) {
+			ret = ZSTD_decompressStream(cookie->zstream, &zout, &zin);
+
+			if (ZSTD_isError(ret)) {
+				pkg_emit_error("cannot decompress data: %s",
+						ZSTD_getErrorName(ret));
+
+				return (-1);
+			}
+
+			if (zout.pos == zout.size) {
+				/* We are done */
+				cookie->rd_offset = zin.size - zin.pos;
+				/* Move leftover */
+				memmove (cookie->rdbuf, cookie->rdbuf + cookie->rd_offset,
+						cookie->rd_len - cookie->rd_offset);
+				break;
+			}
+		}
+
+		return (zout.pos);
+	}
+
+	/* Not reached */
+	return (-1);
+}
+
+static int
+pkg_archive_cookie_close(void *p)
+{
+	struct pkg_archive_stdio_cookie *cookie = p;
+
+	if (cookie->zstream) {
+		ZSTD_freeDStream(cookie->zstream);
+		free(cookie->rdbuf);
+	}
+
+	fclose(cookie->fs);
+	free(cookie);
+
+	return (0);
+}
+
+static int
+pkg_read_archive_v2(FILE *fs, struct pkg *pkg,
+		struct archive **a, struct archive_entry **ae)
+{
+	struct pkg_section_hdr sec;
+	int retcode = EPKG_OK;
+	struct pkg_archive_stdio_cookie *cookie;
+	FILE *cookied_fs;
+	static const int rd_chunk = 8192;
+
+	if (pkg_skip_to_section(fs, PKG_FORMAT_SECTION_PAYLOAD, &sec) != EPKG_OK) {
+		return (EPKG_END);
+	}
+
+	*a = archive_read_new();
+	/* We don't support anything but (zstd) + tar here */
+	archive_read_support_filter_none(*a);
+	archive_read_support_format_tar(*a);
+	cookie = xmalloc(sizeof(*cookie));
+	cookie->fs = fs;
+	cookie->remain = sec.size;
+
+	if (sec.flags & PKG_FORMAT_FLAGS_ZSTD) {
+		cookie->zstream =  ZSTD_createDStream();
+		cookie->rdbuf = xmalloc(rd_chunk);
+		cookie->rd_len = rd_chunk;
+		cookie->rd_offset = 0;
+	}
+	else {
+		cookie->zstream = NULL;
+	}
+
+	cookied_fs = funopen(cookie, pkg_archive_cookie_read, NULL, NULL,
+			pkg_archive_cookie_close);
+
+	if (archive_read_open_FILE(*a, cookied_fs) != ARCHIVE_OK) {
+		pkg_emit_error("archive_read_open_fd: %s",
+				archive_error_string(*a));
+		retcode = EPKG_FATAL;
+
+		goto cleanup;
+	}
+
+	if (archive_read_next_header(*a, ae) != ARCHIVE_OK) {
+		pkg_emit_error("archive_read_next_header: %s",
+				archive_error_string(*a));
+		retcode = EPKG_FATAL;
+
+		goto cleanup;
+	}
+
+cleanup:
+
+	if (retcode != EPKG_OK) {
+		if (*a != NULL) {
+			archive_read_close(*a);
+			archive_read_free(*a);
+		}
+	}
+
+	return (retcode);
+}
+
+static int
+pkg_open_v2(struct pkg **pkg_p, const char *path,
+		struct archive **a, struct archive_entry **ae,
+		struct pkg_manifest_key *keys, int flags)
 {
 	struct pkg_v2_header hdr;
 	FILE *fs;
@@ -486,6 +663,21 @@ pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys,
 	if ((ret = pkg_read_files_v2(fs, *pkg_p, keys)) != EPKG_OK) {
 		if (ret != EPKG_END) {
 			/* We have some fatal error */
+
+			return (EPKG_FATAL);
+		}
+	}
+
+	/* If we need files, then go to payload and open archive */
+	if (flags & PKG_OPEN_MANIFEST_ONLY) {
+		return (EPKG_OK);
+	}
+
+	if ((ret = pkg_read_archive_v2(fs, *pkg_p, a, ae)) != EPKG_OK) {
+		if (ret != EPKG_END) {
+			/* We have some fatal error */
+
+			return (EPKG_FATAL);
 		}
 	}
 }
