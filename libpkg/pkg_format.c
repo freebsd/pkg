@@ -32,6 +32,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "external/zstd/zstd.h"
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -50,8 +52,13 @@ enum pkg_section_type {
 
 enum pkg_section_flags {
 	PKG_FORMAT_FLAGS_DEFAULT = 0x0,
-	PKG_FORMAT_FLAGS_ZSTD = 0x1
+	PKG_FORMAT_FLAGS_ZSTD = 0x1,
+	PKG_FORMAT_FLAGS_ZSTD_PARALLEL = 0x2
 };
+/*
+ * We have 16 bits for flags and 16 bits for threads number allowing from 2^1 to 2^16 threads
+ */
+#define ZSTD_PARALLEL_MASK (((uint32_t)(-1)) << 16)
 
 struct pkg_section_hdr {
 	enum pkg_section_type type;
@@ -67,7 +74,7 @@ enum pkg_section_header_elt {
 	PKG_FORMAT_HEADER_PAYLOAD = 0x4
 };
 
-struct pkg_section_header {
+struct pkg_v2_header {
 	off_t manifest_offset;
 	off_t files_offset;
 	off_t signature_offset;
@@ -163,6 +170,85 @@ pkg_seek_to_offset(FILE *fs, off_t offset, int whence)
 }
 
 static int
+pkg_section_uncompress(FILE *fs, struct pkg_section_hdr *hdr, void **uncompressed,
+		size_t *sz)
+{
+	ZSTD_DStream *zstream;
+	ZSTD_inBuffer zin;
+	ZSTD_outBuffer zout;
+	unsigned char *out, *in;
+	size_t outlen, r;
+
+	if (hdr->flags & PKG_FORMAT_FLAGS_ZSTD) {
+		outlen = hdr->additional;
+
+		if (outlen > UINT32_MAX) {
+			/* Some garbadge instead of size */
+			pkg_emit_error("invalid uncompressed size: %zu", outlen);
+
+			return (EPKG_FATAL);
+		}
+
+		/* Read input */
+		in = xmalloc(hdr->size);
+
+		if (fread(in, 1, hdr->size, fs) != hdr->size) {
+			return (EPKG_FATAL);
+		}
+
+		zstream = ZSTD_createDStream ();
+		ZSTD_initDStream (zstream);
+
+		zin.pos = 0;
+		zin.src = in;
+		zin.size = hdr->size;
+
+		if (outlen == 0 &&
+				(outlen = ZSTD_getDecompressedSize(zin.src, zin.size)) == 0) {
+			outlen = ZSTD_DStreamOutSize ();
+		}
+
+		out = xmalloc(outlen);
+
+		zout.dst = out;
+		zout.pos = 0;
+		zout.size = outlen;
+
+		while (zin.pos < zin.size) {
+			r = ZSTD_decompressStream(zstream, &zout, &zin);
+
+			if (ZSTD_isError(r)) {
+				pkg_emit_error("cannot decompress data: %s",
+						ZSTD_getErrorName(r));
+				ZSTD_freeDStream (zstream);
+				free(out);
+				free(in);
+
+				return (EPKG_FATAL);
+			}
+
+			if (zout.pos == zout.size) {
+				/* We need to extend output buffer */
+				zout.size = zout.size * 1.5 + 1.0;
+				out = xrealloc(zout.dst, zout.size);
+				zout.dst = out;
+			}
+		}
+
+		ZSTD_freeDStream(zstream);
+		free(in);
+
+		*uncompressed = out;
+		*sz = zout.pos;
+
+		return (EPKG_OK);
+	}
+
+	/* Not compressed, huh ? */
+	return (EPKG_FATAL);
+}
+
+static int
 pkg_skip_to_section(FILE *fs, enum pkg_section_type type, struct pkg_section_hdr *hdr)
 {
 	unsigned char rdbuf[24];
@@ -213,7 +299,7 @@ pkg_skip_to_section(FILE *fs, enum pkg_section_type type, struct pkg_section_hdr
 }
 
 static int
-pkg_open_header_v2(FILE *fs, struct pkg_section_header *hdr)
+pkg_open_header_v2(FILE *fs, struct pkg_v2_header *hdr)
 {
 	struct pkg_section_hdr raw_hdr;
 	unsigned char rdbuf[9], t;
@@ -266,9 +352,52 @@ pkg_open_header_v2(FILE *fs, struct pkg_section_header *hdr)
 }
 
 static int
+pkg_read_manifest_v2(FILE *fs, struct pkg **pkg_p, struct pkg_manifest_key *keys)
+{
+	struct pkg_section_hdr sec;
+	struct pkg *pkg;
+	void *payload;
+	size_t paylen;
+	int retcode = EPKG_OK;
+
+	if (pkg_skip_to_section(fs, PKG_FORMAT_SECTION_MANIFEST, &sec) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
+
+	if (sec.flags & PKG_FORMAT_FLAGS_ZSTD) {
+		if (pkg_section_uncompress(fs, &sec, &payload, &paylen) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
+	}
+	else {
+		paylen = sec.size;
+		payload = xmalloc(paylen);
+
+		if (fread(payload, 1, paylen, fs) != paylen) {
+			free(payload);
+
+			return (EPKG_FATAL);
+		}
+	}
+
+	retcode = pkg_new(pkg_p, PKG_FILE);
+	if (retcode != EPKG_OK) {
+		goto cleanup;
+	}
+
+	pkg = *pkg_p;
+	retcode = pkg_parse_manifest(pkg, payload, paylen, keys);
+
+cleanup:
+	free(payload);
+
+	return (retcode);
+}
+
+static int
 pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, int flags)
 {
-	struct pkg_section_header hdr;
+	struct pkg_v2_header hdr;
 	FILE *fs;
 	int fd, ret;
 
@@ -316,7 +445,14 @@ pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys,
 		/* TODO: write signatures check */
 	}
 
+	/* Load manifest */
+	if ((ret = pkg_read_manifest_v2(fs, pkg_p, keys)) != EPKG_OK) {
+		if ((flags & PKG_OPEN_TRY) == 0) {
+			pkg_emit_error("bad v2 manifest in %s: %s", path, strerror(errno));
+		}
 
+		return (ret);
+	}
 }
 
 int
