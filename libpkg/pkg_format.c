@@ -35,6 +35,289 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkg_endian.h"
+
+static const char pkg_v2_magic[6] = {'p', 'k', 'g', '!', 'v', '2'};
+static const uint16_t pkg_v2_version = 0x1;
+
+enum pkg_section_type {
+	PKG_FORMAT_SECTION_HEADER = 0x1,
+	PKG_FORMAT_SECTION_MANIFEST = 0x2,
+	PKG_FORMAT_SECTION_FILELIST = 0x3,
+	PKG_FORMAT_SECTION_SIGNATURE = 0x4,
+	PKG_FORMAT_SECTION_PAYLOAD = 0x5
+};
+
+enum pkg_section_flags {
+	PKG_FORMAT_FLAGS_DEFAULT = 0x0,
+	PKG_FORMAT_FLAGS_ZSTD = 0x1
+};
+
+struct pkg_section_hdr {
+	enum pkg_section_type type;
+	uint32_t flags;
+	uint64_t size;
+	uint64_t additional;
+};
+
+enum pkg_section_header_elt {
+	PKG_FORMAT_HEADER_MANIFEST = 0x1,
+	PKG_FORMAT_HEADER_FILES = 0x2,
+	PKG_FORMAT_HEADER_SIGNATURE = 0x3,
+	PKG_FORMAT_HEADER_PAYLOAD = 0x4
+};
+
+struct pkg_section_header {
+	off_t manifest_offset;
+	off_t files_offset;
+	off_t signature_offset;
+	off_t payload_offset;
+};
+
+#define READ_32LE_AT(buf, pos, var) do { \
+	memcpy(&(var), (buf) + (pos), sizeof(var)); \
+	(var) = pkg_le32(var); \
+} while(0)
+
+#define READ_64LE_AT(buf, pos, var) do { \
+	memcpy(&(var), buf + pos, sizeof(var)); \
+	(var) = pkg_le64(var); \
+} while(0)
+
+
+static bool
+pkg_is_v2(int fd)
+{
+	unsigned char buf[8]; /* Buffer for version and magic */
+	ssize_t r;
+	uint16_t ver;
+
+	r = read(fd, buf, sizeof(buf));
+
+	if (r != sizeof(buf)) {
+		return false;
+	}
+
+	/* Check magic */
+	if (memcmp(buf, pkg_v2_magic, sizeof(pkg_v2_magic)) != 0) {
+		return false;
+	}
+
+	/* Load version */
+	memcpy(&ver, buf + sizeof(pkg_v2_magic), sizeof(uint16_t));
+	ver = pkg_le16(ver);
+
+	if (ver == pkg_v2_version) {
+		return true;
+	}
+
+	return false;
+}
+
+static int
+pkg_seek_to_offset(FILE *fs, off_t offset, int whence)
+{
+	unsigned char *skip_buf;
+	size_t skip_len, total_read = 0;
+	ssize_t r;
+
+	if (fseek(fs, offset, whence) == -1) {
+		/* If we cannot seek then it can be just unseekable stream */
+		if (errno == EBADF) {
+			/* Fallback to reading */
+			if (whence != SEEK_CUR || offset < 0) {
+				/* Bad type */
+				errno = EINVAL;
+
+				return (EPKG_FATAL);
+			}
+
+			skip_len = MIN(BUFSIZ, (size_t)offset);
+			skip_buf = xmalloc(skip_len);
+
+			for (;;) {
+				r = fread(skip_buf, 1, skip_len, fs);
+
+				if (feof(fs) || r <= 0) {
+					free(skip_buf);
+
+					return (EPKG_FATAL);
+				}
+
+				total_read += r;
+
+				if (total_read == offset) {
+					break;
+				}
+			}
+
+			free(skip_buf);
+		}
+		else {
+			/* Seek error */
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_skip_to_section(FILE *fs, enum pkg_section_type type, struct pkg_section_hdr *hdr)
+{
+	unsigned char rdbuf[24];
+	uint32_t wire_type, wire_flags;
+	uint64_t wire_size, wire_additional;
+
+	if (fread(rdbuf, 1, sizeof(rdbuf), fs) != sizeof(rdbuf)) {
+		return (EPKG_FATAL);
+	}
+
+	/*
+	 * Format of section:
+	 * type - 32 bit le
+	 * size - 64 bit le
+	 * flags - 32 bit le
+	 * additional 64 bit le
+	 */
+	READ_32LE_AT(rdbuf, 0, wire_type);
+	READ_64LE_AT(rdbuf, 4, wire_size);
+
+	if (wire_type != type) {
+		/* Not something that we were waiting */
+
+		if (wire_size > 0) {
+			/* Skip to the next section */
+			if (pkg_seek_to_offset(fs, wire_size, SEEK_CUR) == EPKG_FATAL) {
+				return (EPKG_FATAL);
+			}
+			/* Tail call */
+			pkg_skip_to_section(fs, type, hdr);
+		}
+		else {
+			errno = EINVAL;
+
+			return (EPKG_FATAL);
+		}
+	}
+
+	/* Our section */
+	READ_32LE_AT(rdbuf, 12, wire_flags);
+	READ_64LE_AT(rdbuf, 16, wire_additional);
+	hdr->type = type;
+	hdr->size = wire_size;
+	hdr->flags = wire_flags;
+	hdr->additional = wire_additional;
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_open_header_v2(FILE *fs, struct pkg_section_header *hdr)
+{
+	struct pkg_section_hdr raw_hdr;
+	unsigned char rdbuf[9], t;
+	ssize_t r, total_read = 0;
+	uint64_t wire_number;
+
+	if (pkg_skip_to_section(fs, PKG_FORMAT_SECTION_HEADER, &raw_hdr) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
+
+	if (raw_hdr.size < sizeof(uint64_t) * 4 + 4 || raw_hdr.size > sizeof(uint64_t) * 100) {
+		errno = EINVAL;
+
+		return (EPKG_FATAL);
+	}
+
+	while ((r = fread(rdbuf, 1, sizeof(rdbuf), fs)) > 0) {
+		total_read += r;
+
+		if (total_read == raw_hdr.size) {
+			break;
+		}
+
+		t = rdbuf[0];
+
+		switch(t) {
+		case PKG_FORMAT_HEADER_MANIFEST:
+			READ_64LE_AT(rdbuf, 1, wire_number);
+			hdr->manifest_offset = wire_number;
+			break;
+		case PKG_FORMAT_HEADER_FILES:
+			READ_64LE_AT(rdbuf, 1, wire_number);
+			hdr->files_offset = wire_number;
+			break;
+		case PKG_FORMAT_HEADER_SIGNATURE:
+			READ_64LE_AT(rdbuf, 1, wire_number);
+			hdr->signature_offset = wire_number;
+			break;
+		case PKG_FORMAT_HEADER_PAYLOAD:
+			READ_64LE_AT(rdbuf, 1, wire_number);
+			hdr->payload_offset = wire_number;
+			break;
+		default:
+			/* By default we ignore unknown elements */
+			break;
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_open_v2(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, int flags)
+{
+	struct pkg_section_header hdr;
+	FILE *fs;
+	int fd, ret;
+
+	if (strncmp(path, "-", 2) == 0) {
+		fd = STDIN_FILENO;
+	}
+	else {
+		fd = open(path, O_RDONLY);
+	}
+
+	memset(&hdr, 0, sizeof(hdr));
+
+	if (fd == -1) {
+		if ((flags & PKG_OPEN_TRY) == 0) {
+			pkg_emit_error("open(%s): %s", path, strerror(errno));
+		}
+
+		return (EPKG_FATAL);
+	}
+
+	if (!pkg_is_v2(fd)) {
+		return (EPKG_END);
+	}
+
+	fs = fdopen(fd, "r");
+
+	if (fs == NULL) {
+		if ((flags & PKG_OPEN_TRY) == 0) {
+			pkg_emit_error("fdopen(%s): %s", path, strerror(errno));
+		}
+
+		return (EPKG_FATAL);
+	}
+
+	if ((ret = pkg_open_header_v2(fs, &hdr)) != EPKG_OK) {
+		if ((flags & PKG_OPEN_TRY) == 0) {
+			pkg_emit_error("bad v2 header in %s: %s", path, strerror(errno));
+		}
+
+		return (ret);
+	}
+
+	/* If we have signature, we need to check it */
+	if (hdr.signature_offset > 0) {
+		/* TODO: write signatures check */
+	}
+
+
+}
 
 int
 pkg_open_format(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
