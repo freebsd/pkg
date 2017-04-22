@@ -680,10 +680,12 @@ pkg_open_v2(struct pkg **pkg_p, const char *path,
 			return (EPKG_FATAL);
 		}
 	}
+
+	return (ret);
 }
 
-int
-pkg_open_format(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
+static int
+pkg_open_legacy(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		const char *path, struct pkg_manifest_key *keys, int flags, int fd)
 {
 	struct pkg	*pkg = NULL;
@@ -808,4 +810,20 @@ pkg_open_format(struct pkg **pkg_p, struct archive **a, struct archive_entry **a
 	}
 
 	return (retcode);
+}
+
+int
+pkg_open_format(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
+		const char *path, struct pkg_manifest_key *keys, int flags, int fd)
+{
+	int ret;
+
+	if ((ret = pkg_open_v2(pkg_p, path, a, ae, keys, flags)) != EPKG_OK) {
+		if (ret == EPKG_END) {
+			/* Legacy format */
+			return (pkg_open_legacy(pkg_p, a, ae, path, keys, flags, fd));
+		}
+	}
+
+	return (ret);
 }
