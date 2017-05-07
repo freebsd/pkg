@@ -92,15 +92,24 @@ Package tarballs can be created from the files of a previously installed
 package using metadata from the local package database.
 Any number of packages may be created in one invocation of this style.
 .Pp
-Alternatively, a single package can be created from an arbitrary
-selection of files on your system, but this requires a
-.Ar metadatadir
-and optionally
-.Ar plist
-to be supplied.
-The package name will be derived from the
+A single package can be created from a selection of files on your system.
+Each file which is added to the package must be specified in the
 .Pa +MANIFEST
-file which must be contained within the
+using
+.Cm file .
+Alternatively, instead of specifying the files in the
+.Pa +MANIFEST ,
+each file which is added to the package can
+be specified in an optional
+.Ar plist .
+The package name must be specified with
+.Cm name
+in the
+.Pa +MANIFEST
+file.
+The
+.Pa +MANIFEST
+file  must be contained within the
 .Ar metadatadir ,
 or passed as the argument to
 .Fl M .
