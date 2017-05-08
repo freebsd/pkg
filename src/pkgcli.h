@@ -234,16 +234,16 @@ void usage_config(void);
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
 
 /* Identifying tags */
-#define INFO_TAG_NAME		(1LL<<32)
-#define INFO_TAG_ORIGIN		(1LL<<33)
-#define INFO_TAG_NAMEVER	(1LL<<34)
+#define INFO_TAG_NAME		(1LL<<60)
+#define INFO_TAG_ORIGIN		(1LL<<61)
+#define INFO_TAG_NAMEVER	(1LL<<62)
 
 /* Output YAML format */
-#define INFO_RAW		(1LL<<35)
-#define INFO_RAW_YAML		(1LL<<36)
-#define INFO_RAW_JSON		(1LL<<37)
-#define INFO_RAW_JSON_COMPACT	(1LL<<38)
-#define INFO_RAW_UCL		(1LL<<39)
+#define INFO_RAW		(-1LL<<63)
+#define INFO_RAW_YAML		(-1LL<<62)
+#define INFO_RAW_JSON		(-1LL<<61)
+#define INFO_RAW_JSON_COMPACT	(-1LL<<60)
+#define INFO_RAW_UCL		(-1LL<<59)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \
