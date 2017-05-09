@@ -3,31 +3,19 @@
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
 	empty_conf \
+	duplicate_pkgs_notallowed \
 	inline_repo \
 	nameserver
-	#duplicate_pkgs
+#	duplicate_pkgs_allowed \
 
-# This test is half finished to show problems with `pkg register'
-duplicate_pkgs_body() {
+duplicate_pkgs_allowed_body() {
 	cat << EOF > pkg.conf
 duplicatedefault: 2
 EOF
 
 	for n in 1 2; do
-		cat << EOF > test${n}.ucl
-name: test
-origin: test
-version: ${n}
-allowduplicate: true
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-desc: <<EOD
-Yet another test
-EOD
-EOF
+		new_pkg test${n} test ${n}
+		echo 'allowduplicate: true' >> test${n}.ucl
 
 	atf_check \
 		-e empty \
@@ -40,6 +28,29 @@ done
 		-e empty \
 		-o match:"test-1                         a test" \
 		-o match:"test-2                         a test" \
+		-s exit:0 \
+		pkg info
+}
+
+duplicate_pkgs_notallowed_body() {
+	for n in 1 2; do
+		new_pkg test${n} test ${n}
+	done
+
+	atf_check \
+		-e empty \
+		-o match:"Installing test-1..." \
+		-s exit:0 \
+		pkg register -M test1.ucl
+
+	atf_check \
+		-e empty \
+		-s exit:70 \
+		pkg register -M test1.ucl
+
+	atf_check \
+		-e empty \
+		-o match:"test-1                         a test" \
 		-s exit:0 \
 		pkg info
 }

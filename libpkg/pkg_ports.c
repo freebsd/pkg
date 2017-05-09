@@ -1289,6 +1289,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	UT_string *message;
 	struct pkg_message *msg;
 
+	if (pkg_is_installed(db, pkg->name) != EPKG_END) {
+		return(EPKG_INSTALLED);
+	}
+
 	location = reloc;
 	if (pkg_rootdir != NULL)
 		location = pkg_rootdir;
