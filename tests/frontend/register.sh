@@ -58,29 +58,20 @@ EOF
 }
 
 register_message_body() {
-	cat << EOF > +MANIFEST
-name: "test2"
-origin: "osef"
-version: "1"
-arch: "freebsd:*"
-maintainer: "non"
-prefix: "${TMPDIR}"
-www: "unknown"
-comment: "need one"
-desc: "here as well"
-EOF
+	new_manifest test1 1 "${TMPDIR}"
 	cat << EOF > +DISPLAY
 message
 EOF
 
-OUTPUT='test2-1:
+OUTPUT='test1-1:
 Always:
 message
 
 '
 	atf_check -o match:"message" pkg register -m .
-	atf_check -o inline:"${OUTPUT}" pkg info -D test2
+	atf_check -o inline:"${OUTPUT}" pkg info -D test1
 
+	new_manifest test2 1 "${TMPDIR}"
 	cat << EOF > +DISPLAY
 [
 	{ message: "hey"},
