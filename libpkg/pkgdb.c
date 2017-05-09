@@ -1724,7 +1724,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 	package_id = sqlite3_last_insert_rowid(s);
 
 	/*
-	 * update dep informations on packages that depends on the insert
+	 * Update dep information on packages that depend on the inserted
 	 * package
 	 */
 
