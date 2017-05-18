@@ -228,6 +228,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 {
 
 	struct timeval tv[2];
+	struct stat st;
 	int fdcwd;
 #ifdef HAVE_UTIMENSAT
 	struct timespec times[2];
@@ -285,9 +286,24 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	/* zfs drops the setuid on fchownat */
 	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOTSUP) {
-			if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
-				pkg_fatal_errno("Fail to chmod(fallback) %s",
-				    path);
+			/* 
+			 * Executing fchmodat on a symbolic link results in
+			 * ENOENT (file not found) on platforms that do not
+			 * support AT_SYMLINK_NOFOLLOW. The file mode of
+			 * symlinks cannot be modified via file descriptor
+			 * reference on these systems. The lchmod function is
+			 * also not an option because it is not a posix
+			 * standard, nor is implemented everywhere. Since
+			 * symlink permissions have never been evaluated and
+			 * thus cosmetic, just skip them on these systems.
+			 */
+			if (fstatat(fd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == -1) {
+				pkg_fatal_errno("Fail to get file status %s", path);
+			}
+			if (!S_ISLNK(st.st_mode)) {
+				if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
+					pkg_fatal_errno("Fail to chmod(fallback) %s", path);
+				}
 			}
 		}
 		else {
