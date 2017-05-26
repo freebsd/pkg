@@ -73,6 +73,7 @@ static const struct _elf_corres os_corres[] = {
 
 #define NT_VERSION	1
 #define NT_ARCH	2
+#define NT_GNU_ABI_TAG	1
 
 /* All possibilities on FreeBSD as of 5/26/2014 */
 struct arch_trans {
