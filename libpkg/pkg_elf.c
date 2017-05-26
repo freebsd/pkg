@@ -216,6 +216,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 	return (true);
 }
 
+#ifdef __FreeBSD__
 static bool
 is_old_freebsd_armheader(const GElf_Ehdr *e)
 {
@@ -234,6 +235,7 @@ is_old_freebsd_armheader(const GElf_Ehdr *e)
 	}
 	return (false);
 }
+#endif
 
 static int
 analyse_elf(struct pkg *pkg, const char *fpath)
@@ -347,11 +349,13 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* Invalid ABI */
 	}
 
+#ifdef __FreeBSD__
 	if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
 	    !is_old_freebsd_armheader(&elfhdr)) {
 		ret = EPKG_END;
 		goto cleanup;
 	}
+#endif
 
 	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
 		ret = EPKG_END; /* Some error occurred, ignore this file */
