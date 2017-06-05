@@ -69,7 +69,7 @@ EOF
 }
 
 autoupgrade_multirepo_head() {
-	atf_set "timeout" 20
+	atf_set "timeout" 40
 }
 
 autoupgrade_multirepo_body() {
