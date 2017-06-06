@@ -27,16 +27,21 @@
  */
 
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <archive.h>
 #include <err.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <utlist.h>
+#include <unistd.h>
 
 #include <expat.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -544,25 +549,77 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 {
 	XML_Parser parser;
 	struct vulnxml_userdata ud;
-	int ret = EPKG_OK;
+	uid_t uid, euid;
+	pid_t pid;
+	struct passwd pwd, *res;
+	char pwd_buf[512];
+	int ret;
 
-	parser = XML_ParserCreate(NULL);
-	XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
-	XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
-	XML_SetUserData(parser, &ud);
+	uid = getuid();
+	euid = geteuid();
+	pid = fork();
 
-	ud.cur_entry = NULL;
-	ud.audit = audit;
-	ud.range_num = 0;
-	ud.state = VULNXML_PARSE_INIT;
+	switch (pid) {
+	case -1:
+		ret = -1;
+		break;
+	case 0:
+		ret = EPKG_OK;
+		if (uid == 0 || euid != uid) {
+			/*
+			 * User is running pkg audit with root or is using sudo.
+			 * Changing user temporarily to user nobody for safety.
+			 */
 
-	if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) == XML_STATUS_ERROR) {
-		pkg_emit_error("vulnxml parsing error: %s",
-				XML_ErrorString(XML_GetErrorCode(parser)));
-		ret = EPKG_FATAL;
+			ret = getpwnam_r("nobody", &pwd, pwd_buf, 512, &res);
+			if (res == NULL) {
+				warnx("%s\n", "Error occurred while finding pw entry "
+				    "for user nobody.");
+				errno = ret;
+				_exit(-1);
+			}
+
+			if (setgid(res->pw_gid) != 0)
+				warnx("%s\n", "Could not change egid to nobody.");
+
+			if (setuid(res->pw_uid) != 0)
+				warnx("%s\n", "Could not change euid to nobody.");
+		}
+		parser = XML_ParserCreate(NULL);
+		XML_SetElementHandler(parser, vulnxml_start_element,
+		    vulnxml_end_element);
+		XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
+		XML_SetUserData(parser, &ud);
+
+		ud.cur_entry = NULL;
+		ud.audit = audit;
+		ud.range_num = 0;
+		ud.state = VULNXML_PARSE_INIT;
+
+		if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) ==
+		    XML_STATUS_ERROR) {
+			pkg_emit_error("vulnxml parsing error: %s",
+					XML_ErrorString(XML_GetErrorCode(parser)));
+			ret = EPKG_FATAL;
+		}
+
+		XML_ParserFree(parser);
+		_exit(ret);
+		break;
+	default:
+		ret = EPKG_OK;
+		while (waitpid(pid, &ret, 0) == -1 && errno == EINTR)
+			;
+
+		if (WIFEXITED(ret)) {
+			/* cast is because of how WEXITSTATUS() works */
+			ret = (int) ((char) WEXITSTATUS(ret));
+		} else if (WIFSIGNALED(ret)) {
+			ret = WTERMSIG(ret);
+			warnx("Child was killed by signal %d\n", ret);
+		}
+		break;
 	}
-
-	XML_ParserFree(parser);
 
 	return (ret);
 }
