@@ -199,6 +199,7 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_free(pkg);
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 
 	return (retcode != EPKG_OK ? EX_SOFTWARE : EX_OK);
 }
