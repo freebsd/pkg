@@ -532,11 +532,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		enabled = ucl_object_find_key(obj, "ENABLED");
 	if (enabled != NULL) {
 		enable = ucl_object_toboolean(enabled);
-		if (!enable && r == NULL) {
-			pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
-			return;
-		}
-		else if (!enable && r != NULL) {
+		if (!enable && r != NULL) {
 			/*
 			 * We basically want to remove the existing repo r and
 			 * forget all stuff parsed
