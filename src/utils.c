@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 
 #include <err.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #ifdef HAVE_LIBUTIL_H
@@ -64,6 +65,30 @@ struct jobs_sum_number {
 	int delete;
 	int fetch;
 };
+
+/* clean line after getline function. */
+void strip(char *str, int *length)
+{
+	if (*length == 1) {
+		*str = '\0';
+		*length = 0;
+		return;
+	}
+
+	/* Move content from right to left. */
+	char *ptr = str;
+	while (isspace(*ptr))
+		ptr++;
+
+	memmove(str, ptr, *length - (ptr - str));
+
+	/* Get rid of trailing spaces. */
+	for (ptr = str; !isspace(*ptr) && *ptr != '\n'; ++ptr)
+		;
+
+	*ptr = '\0';
+	*length = ptr - str;
+}
 
 void
 append_yesno(bool r, char *yesnomsg, size_t len)
@@ -162,13 +187,14 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 
 	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
+			strip(line, &linelen);
 
-			if (linelen == 1 && line[0] == '\n') {
+			if (linelen == 0) {
 				if (default_yes)
 					r = true;
 				break;
 			}
-			else if (linelen == 2) {
+			else if (linelen == 1) {
 				if (line[0] == 'y' || line[0] == 'Y') {
 					r = true;
 					break;
@@ -179,11 +205,11 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				}
 			}
 			else {
-				if (strcasecmp(line, "yes\n") == 0) {
+				if (strcasecmp(line, "yes") == 0) {
 					r = true;
 					break;
 				}
-				else if (strcasecmp(line, "no\n") == 0) {
+				else if (strcasecmp(line, "no") == 0) {
 					r = false;
 					break;
 				}
