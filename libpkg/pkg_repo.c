@@ -1032,6 +1032,10 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 	obj = ucl_parser_get_object(p);
 	close(fd);
 
+	/* Silently return if obj is NULL */
+	if (!obj)
+		return(NULL);
+
 	if (obj->type == UCL_OBJECT)
 		f = pkg_repo_parse_fingerprint(obj);
 
