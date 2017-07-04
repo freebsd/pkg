@@ -27,6 +27,7 @@
  */
 
 #include <sys/cdefs.h>
+__FBSDID("$FreeBSD: releng/11.0/lib/libfetch/http.c 301027 2016-05-31 08:27:39Z des $");
 
 /*
  * The following copyright applies to the base64 code:
@@ -59,10 +60,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#define _XOPEN_SOURCE
-#ifdef __NetBSD__
-#define _NETBSD_SOURCE
-#endif
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -91,7 +89,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-#include "bsd_compat.h"
 #include "fetch.h"
 #include "common.h"
 #include "httperr.h"
@@ -1373,12 +1370,46 @@ http_authorize(conn_t *conn, const char *hdr, http_auth_challenges_t *cs,
 /*****************************************************************************
  * Helper functions for connecting to a server or proxy
  */
+static int
+http_connect_tunnel(conn_t *conn, struct url *URL, struct url *purl, int isproxyauth)
+{
+    const char *p;
+    http_auth_challenges_t proxy_challenges;
+    init_http_auth_challenges(&proxy_challenges);
+    http_cmd(conn, "CONNECT %s:%d HTTP/1.1",
+	  URL->host, URL->port);
+    http_cmd(conn, "Host: %s:%d",
+	  URL->host, URL->port);
+    if (isproxyauth > 0)
+    {
+      http_auth_params_t aparams;
+      init_http_auth_params(&aparams);
+      if (*purl->user || *purl->pwd) {
+	      aparams.user = strdup(purl->user);
+	      aparams.password = strdup(purl->pwd);
+      } else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL &&
+		  *p != '\0') {
+	      if (http_authfromenv(p, &aparams) < 0) {
+		      http_seterr(HTTP_NEED_PROXY_AUTH);
+		      return 999;
+	      }
+      } else if (fetch_netrc_auth(purl) == 0) {
+	      aparams.user = strdup(purl->user);
+	      aparams.password = strdup(purl->pwd);
+      }
+      http_authorize(conn, "Proxy-Authorization",
+		      &proxy_challenges, &aparams, purl);
+      clean_http_auth_params(&aparams);
+    }
+    http_cmd(conn, "");
+    return 0;
+}
 
 /*
  * Connect to the correct HTTP server or proxy.
  */
 static conn_t *
-http_connect(struct url *URL, struct url *purl, const char *flags)
+http_connect(struct url *URL, struct url *purl, const char *flags, int isproxyauth)
 {
 	struct url *curl;
 	conn_t *conn;
@@ -1410,13 +1441,17 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 		return (NULL);
 	init_http_headerbuf(&headerbuf);
 	if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0 && purl) {
-		http_cmd(conn, "CONNECT %s:%d HTTP/1.1",
-		    URL->host, URL->port);
-		http_cmd(conn, "Host: %s:%d",
-		    URL->host, URL->port);
-		http_cmd(conn, "");
-		if (http_get_reply(conn) != HTTP_OK) {
-			http_seterr(conn->err);
+		if (http_connect_tunnel(conn, URL, purl, isproxyauth) > 0) {
+			fetch_syserr();
+			goto ouch;
+		}
+		/* Get replay from CONNECT Tunnel attempt */
+		int httpreply = http_get_reply(conn);
+		if (httpreply != HTTP_OK) {
+			http_seterr(httpreply);
+			/* If the error is a 407/HTTP_NEED_PROXY_AUTH */
+			if (httpreply == HTTP_NEED_PROXY_AUTH)
+				goto proxyauth;
 			goto ouch;
 		}
 		/* Read and discard the rest of the proxy response */
@@ -1444,10 +1479,9 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 		fetch_syserr();
 		goto ouch;
 	}
-#ifdef TCP_NOPUSH
+
 	val = 1;
 	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
-#endif
 
 	clean_http_headerbuf(&headerbuf);
 	return (conn);
@@ -1457,6 +1491,15 @@ ouch:
 	fetch_close(conn);
 	errno = serrno;
 	return (NULL);
+proxyauth:
+	/* returning a "dummy" object with error 
+	 * set to 407/HTTP_NEED_PROXY_AUTH */
+	serrno = errno;
+	clean_http_headerbuf(&headerbuf);
+	fetch_close(conn);
+	errno = serrno;
+	conn->err = HTTP_NEED_PROXY_AUTH;
+	return (conn);
 }
 
 static struct url *
@@ -1605,9 +1648,16 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		}
 
 		/* connect to server or proxy */
-		if ((conn = http_connect(url, purl, flags)) == NULL)
+		/* Getting connection without proxy connection */
+		if ((conn = http_connect(url, purl, flags, 0)) == NULL)
 			goto ouch;
-
+		
+		/* If returning object request proxy auth, rerun the connect with proxy auth */
+		if (conn->err == HTTP_NEED_PROXY_AUTH) {
+			if ((conn = http_connect(url, purl, flags, 1)) == NULL)
+				goto ouch;
+		}
+		
 		host = url->host;
 #ifdef INET6
 		if (strchr(url->host, ':')) {
@@ -1756,11 +1806,9 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		 * be compatible with such configurations, fiddle with socket
 		 * options to force the pending data to be written.
 		 */
-#ifdef TCP_NOPUSH
 		val = 0;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 			   sizeof(val));
-#endif
 		val = 1;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
 			   sizeof(val));
