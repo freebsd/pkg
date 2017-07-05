@@ -1373,36 +1373,41 @@ http_authorize(conn_t *conn, const char *hdr, http_auth_challenges_t *cs,
 static int
 http_connect_tunnel(conn_t *conn, struct url *URL, struct url *purl, int isproxyauth)
 {
-    const char *p;
-    http_auth_challenges_t proxy_challenges;
-    init_http_auth_challenges(&proxy_challenges);
-    http_cmd(conn, "CONNECT %s:%d HTTP/1.1",
-	  URL->host, URL->port);
-    http_cmd(conn, "Host: %s:%d",
-	  URL->host, URL->port);
-    if (isproxyauth > 0)
-    {
-      http_auth_params_t aparams;
-      init_http_auth_params(&aparams);
-      if (*purl->user || *purl->pwd) {
-	      aparams.user = strdup(purl->user);
-	      aparams.password = strdup(purl->pwd);
-      } else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL &&
-		  *p != '\0') {
-	      if (http_authfromenv(p, &aparams) < 0) {
-		      http_seterr(HTTP_NEED_PROXY_AUTH);
-		      return 999;
-	      }
-      } else if (fetch_netrc_auth(purl) == 0) {
-	      aparams.user = strdup(purl->user);
-	      aparams.password = strdup(purl->pwd);
-      }
-      http_authorize(conn, "Proxy-Authorization",
-		      &proxy_challenges, &aparams, purl);
-      clean_http_auth_params(&aparams);
-    }
-    http_cmd(conn, "");
-    return 0;
+	const char *p;
+	http_auth_challenges_t proxy_challenges;
+	init_http_auth_challenges(&proxy_challenges);
+	http_cmd(conn, "CONNECT %s:%d HTTP/1.1",
+	      URL->host, URL->port);
+	http_cmd(conn, "Host: %s:%d",
+	      URL->host, URL->port);
+	if (isproxyauth > 0)
+	{
+		http_auth_params_t aparams;
+		init_http_auth_params(&aparams);
+		if (*purl->user || *purl->pwd) {
+			aparams.user = strdup(purl->user);
+			aparams.password = strdup(purl->pwd);
+		} else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL &&
+			    *p != '\0') {
+			if (http_authfromenv(p, &aparams) < 0) {
+				http_seterr(HTTP_NEED_PROXY_AUTH);
+				return HTTP_PROTOCOL_ERROR;
+			}
+		} else if (fetch_netrc_auth(purl) == 0) {
+			aparams.user = strdup(purl->user);
+			aparams.password = strdup(purl->pwd);
+		}
+		else {
+			// No auth information found in system - exiting with warning.
+			warnx("Missing username and/or password set");
+			return HTTP_PROTOCOL_ERROR;
+		}
+		http_authorize(conn, "Proxy-Authorization",
+				&proxy_challenges, &aparams, purl);
+		clean_http_auth_params(&aparams);
+	}
+	http_cmd(conn, "");
+	return 0;
 }
 
 /*
@@ -1654,8 +1659,11 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		
 		/* If returning object request proxy auth, rerun the connect with proxy auth */
 		if (conn->err == HTTP_NEED_PROXY_AUTH) {
-			if ((conn = http_connect(url, purl, flags, 1)) == NULL)
+			/* Retry connection with proxy auth */
+			if ((conn = http_connect(url, purl, flags, 1)) == NULL) {
+				http_seterr(HTTP_NEED_PROXY_AUTH);
 				goto ouch;
+			}
 		}
 		
 		host = url->host;
