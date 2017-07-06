@@ -1733,7 +1733,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
-		ret =jobs_solve_autoremove(j);
+		ret = jobs_solve_autoremove(j);
 		break;
 	case PKG_JOBS_DEINSTALL:
 		ret = jobs_solve_deinstall(j);
