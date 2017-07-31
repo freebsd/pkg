@@ -6,7 +6,8 @@ Changes from 1.10.1 to 1.10.2
 - fix support for platforms without AT_SYMLINK_NOFOLLOW
 - fix dropping privileges on Linux
 - fix build with recent libbsd
-- Fix duplicate pkg registration overwriting the existing pkg
+- fix duplicate pkg registration overwriting the existing pkg
+- better ABI name on linux
 
 Changes from pkg 1.9
 - fix pkg which -g
