@@ -1122,7 +1122,7 @@ retry:
 		pkgdb_setup_lock();
 		pkgdb_syscall_overload();
 
-		if (sqlite3_open("local.sqlite", &db->sqlite) != SQLITE_OK) {
+		if (sqlite3_open("/local.sqlite", &db->sqlite) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
 			pkgdb_close(db);
 			return (EPKG_FATAL);
