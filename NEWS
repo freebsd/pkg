@@ -1,3 +1,13 @@
+Changes from 1.10.1 to 1.10.2
+- pkg clean is now happy if the cache dir non existing
+- 410.pkg-audit now uses anticongestion on freebsd 12
+- fix pkg install -r foo if foo is a disabled repository
+- fix elf handling on non FreeBSD
+- fix support for platforms without AT_SYMLINK_NOFOLLOW
+- fix dropping privileges on Linux
+- fix build with recent libbsd
+- Fix duplicate pkg registration overwriting the existing pkg
+
 Changes from pkg 1.9
 - fix pkg which -g
 - Do not use openssl for sha256
