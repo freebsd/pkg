@@ -694,6 +694,9 @@ validate_origin(const char *portsdir, const char *origin)
 	buf = strrchr(origin, '/');
 	buf++;
 
+	if (strcmp(origin, "base") == 0)
+		return (false);
+
 	k = kh_get_ports(cat->ports, buf);
 
 	return (k != kh_end(cat->ports));
