@@ -1,0 +1,44 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\"
+.Dd August 9, 2017
+.Dt PKG-REPOS 8
+.Os
+.Sh NAME
+.Nm "pkg repos"
+.Nd list repositories
+.Sh SYNOPSIS
+.Nm
+.Fl a
+.Nm
+.Ar repo-name
+.Sh DESCRIPTION
+.Nm
+is used to display configured repositories.
+.Pp
+If
+.Ar repo-name
+is given as argument, show details about a specific repository, otherwise list
+all repositories.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width origin
+.It Fl a , Cm --all
+Display all repositories including disabled ones.
+.El
+.Sh SEE ALSO
+.Xr pkg 8
