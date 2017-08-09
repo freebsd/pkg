@@ -27,6 +27,7 @@ pkg_SOURCES=		add.c \
 			query.c \
 			register.c \
 			repo.c \
+			repos.c \
 			rquery.c \
 			search.c \
 			set.c \

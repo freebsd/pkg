@@ -113,6 +113,10 @@ int exec_register(int argc, char **argv);
 int exec_repo(int, char **);
 void usage_repo(void);
 
+/* pkg repos */
+int exec_repos(int, char **);
+void usage_repos(void);
+
 /* pkg rquery */
 int exec_rquery(int, char **);
 void usage_rquery(void);

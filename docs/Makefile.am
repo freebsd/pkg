@@ -16,6 +16,7 @@ dist_man_MANS=	pkg-add.8 \
 		pkg-query.8 \
 		pkg-register.8 \
 		pkg-repo.8 \
+		pkg-repos.8 \
 		pkg-repository.5 \
 		pkg-rquery.8 \
 		pkg-search.8 \
