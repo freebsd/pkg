@@ -59,7 +59,7 @@ backup_pkg_all() {
 	if [ ! -d $bak ]; then
 		install -d -o root -g wheel -m 750 $bak || {
 			echo 'pkg-backup is enabled but' \
-			"$daily_backup_pkgng_dbdir doesn't exist" ;
+			"$daily_backup_pkg_dbdir doesn't exist" ;
 		exit 2 ; }
 	fi
 
