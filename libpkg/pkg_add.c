@@ -394,7 +394,7 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 
 	metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFDIR, NULL);
+	    aest->st_mode & ~S_IFDIR, d->fflags, NULL);
 
 	return (EPKG_OK);
 }
@@ -452,7 +452,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 
 	metalog_add(PKG_METALOG_LINK, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFLNK, archive_entry_symlink(ae));
+	    aest->st_mode & ~S_IFLNK, f->fflags, archive_entry_symlink(ae));
 
 	return (EPKG_OK);
 }
@@ -510,7 +510,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFREG, NULL);
+	    aest->st_mode & ~S_IFREG, 0, NULL);
 
 	return (EPKG_OK);
 }
@@ -618,7 +618,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFREG, NULL);
+	    aest->st_mode & ~S_IFREG, f->fflags, NULL);
 
 	return (EPKG_OK);
 }
@@ -722,6 +722,9 @@ pkg_extract_finalize(struct pkg *pkg)
 	struct pkg_dir *d = NULL;
 	char path[MAXPATHLEN];
 	const char *fto;
+	bool install_as_user;
+
+	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (*f->temppath == '\0')
@@ -739,7 +742,7 @@ pkg_extract_finalize(struct pkg *pkg)
 		if (fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
 		    AT_SYMLINK_NOFOLLOW) != -1) {
 #ifdef HAVE_CHFLAGSAT
-			if (st.st_flags & NOCHANGESFLAGS) {
+			if (!install_as_user && st.st_flags & NOCHANGESFLAGS) {
 				chflagsat(pkg->rootfd, RELATIVE_PATH(fto), 0,
 				    AT_SYMLINK_NOFOLLOW);
 			}
@@ -753,7 +756,7 @@ pkg_extract_finalize(struct pkg *pkg)
 		}
 
 #ifdef HAVE_CHFLAGSAT
-		if (f->fflags != 0) {
+		if (!install_as_user && f->fflags != 0) {
 			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
 			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
 				pkg_fatal_errno("Fail to chflags %s", fto);
