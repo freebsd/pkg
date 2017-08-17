@@ -28,6 +28,7 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+#include <search.h>
 #include <stdint.h>
 #include <utstring.h>
 #include <bsd_compat.h>
@@ -275,6 +276,7 @@ void job_status_begin(UT_string *);
 void job_status_end(UT_string *);
 
 int event_callback(void *data, struct pkg_event *ev);
+int print_pkg(struct pkg *p, void *ctx);
 void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);

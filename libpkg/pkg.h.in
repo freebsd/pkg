@@ -1069,6 +1069,19 @@ int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *);
 int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
 
 /**
+ * Check if there are locked packages
+ * @return true if locked packages exist, false if not
+ */
+bool pkg_jobs_has_lockedpkgs(struct pkg_jobs *j);
+
+/**
+ * Iterate through the locked packages, calling the passed in function pointer
+ * on each.
+ */
+typedef int(*locked_pkgs_cb)(struct pkg *, void *);
+void pkg_jobs_iter_lockedpkgs(struct pkg_jobs *j, locked_pkgs_cb, void *);
+
+/**
  * Solve a SAT problem
  * @return true if a problem is solvable
  */
