@@ -1036,3 +1036,16 @@ drop_privileges(void)
 			err(EXIT_FAILURE, "Unable to setuid");
 	}
 }
+
+int
+print_pkg(struct pkg *p, void *ctx)
+{
+	const char *name;
+	int *counter = ctx;
+
+	pkg_get(p, PKG_NAME, &name);
+	printf("\t%s\n", name);
+	(*counter)++;
+
+	return 0;
+}

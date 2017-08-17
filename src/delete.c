@@ -59,6 +59,7 @@ exec_delete(int argc, char **argv)
 	int		 ch;
 	int		 i;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
+	int		 locked_pkgs = 0;
 
 	struct option longopts[] = {
 		{ "all",			no_argument,	NULL,	'a' },
@@ -190,14 +191,30 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 	}
 
+	if (pkg_jobs_has_lockedpkgs(jobs)) {
+		printf("The following package(s) are locked and may not ");
+		printf("be removed:\n\n");
+		pkg_jobs_iter_lockedpkgs(jobs, print_pkg, &locked_pkgs);
+		printf("\n");
+	}
+
 	/* check if we have something to deinstall */
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		if (argc == 0) {
 			if (!quiet)
 				printf("Nothing to do.\n");
+
 			retcode = EX_OK;
+			goto cleanup;
+		}
+		if (!quiet) {
+			printf("%d packages requested for removal: "
+			    "%d locked, %d missing\n",
+			    argc, locked_pkgs, argc - locked_pkgs);
+		}
+		if (locked_pkgs > 0) {
+			retcode = EPKG_LOCKED;
 		} else {
-			fprintf(stderr, "Package(s) not found!\n");
 			retcode = EX_DATAERR;
 		}
 		goto cleanup;
