@@ -315,11 +315,6 @@ packing_set_format(struct archive *a, pkg_formats format)
 	const char *notsupp_fmt = "%s is not supported, trying %s";
 
 	switch (format) {
-	case ZST:
-		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK)
-			return ("zst");
-		else
-			pkg_emit_error(notsupp_fmt, "zstd", "xz");
 	case TXZ:
 		if (archive_write_add_filter_xz(a) == ARCHIVE_OK)
 			return ("txz");
@@ -355,8 +350,6 @@ packing_format_from_string(const char *str)
 		return TGZ;
 	if (strcmp(str, "tar") == 0)
 		return TAR;
-	if (strcmp(str, "zst") == 0)
-		return ZST;
 	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
 }
@@ -378,9 +371,6 @@ packing_format_to_string(pkg_formats format)
 		break;
 	case TAR:
 		res = "tar";
-		break;
-	case ZST:
-		res = "zst";
 		break;
 	}
 

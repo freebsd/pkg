@@ -236,7 +236,7 @@ _pkg() {
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
 				'(-n --no-clobber)'{-n,--no-clobber}'[no not overwrite existing packages]' \
-				'(-f --format)'{-f,--format}'[format]:format:((tar tgz tbz txz zst))' \
+				'(-f --format)'{-f,--format}'[format]:format:((tar tgz tbz txz))' \
 				'(-o --out-dir)'{-o,--out-dir}'[output directory]:outdir:_files -/' \
 				'(-r --root-dir)'{-r,--root-dir}'[specify root directory]:rootdir:_files -/' \
 				- '(manifest)' \

@@ -97,7 +97,7 @@ pkg_repo_meta_open_schema_v1()
 			"version = {type = integer};\n"
 			"maintainer = {type = string};\n"
 			"source = {type = string};\n"
-			"packing_format = {enum = [zst, txz, tbz, tgz, tar]};\n"
+			"packing_format = {enum = [txz, tbz, tgz, tar]};\n"
 			"digest_format = {enum = [sha256_base32, sha256_hex, blake2_base32, blake2s_base32]};\n"
 			"digests = {type = string};\n"
 			"manifests = {type = string};\n"
