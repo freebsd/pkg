@@ -7,7 +7,7 @@ tests_init \
 
 vital_body()
 {
-	new_pkg "test" "test" "1" || atf_fail "plop"
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 vital = true;
 EOF
