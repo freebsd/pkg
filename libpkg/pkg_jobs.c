@@ -192,7 +192,8 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 		 * Compare suffix with .txz or .tbz
 		 */
 		dot_pos ++;
-		if (strcmp(dot_pos, "txz") == 0 ||
+		if (strcmp(dot_pos, "zst") == 0 ||
+			strcmp(dot_pos, "txz") == 0 ||
 			strcmp(dot_pos, "tbz") == 0 ||
 			strcmp(dot_pos, "tgz") == 0 ||
 			strcmp(dot_pos, "tar") == 0) {

@@ -116,6 +116,9 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	case TAR:
 		format = "tar";
 		break;
+	case ZST:
+		format = "zst";
+		break;
 	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
@@ -185,7 +188,7 @@ cleanup:
  * -m: path to dir where to find the metadata
  * -q: quiet mode
  * -M: manifest file
- * -f <format>: format could be txz, tgz, tbz or tar
+ * -f <format>: format could be zst, txz, tgz, tbz or tar
  * -o: output directory where to create packages by default ./ is used
  */
 
@@ -301,6 +304,8 @@ exec_create(int argc, char **argv)
 			fmt = TGZ;
 		else if (strcmp(format, "tar") == 0)
 			fmt = TAR;
+		else if (strcmp(format, "zst") == 0)
+			fmt = ZST;
 		else {
 			warnx("unknown format %s, using txz", format);
 			fmt = TXZ;
