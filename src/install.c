@@ -260,7 +260,7 @@ exec_install(int argc, char **argv)
 	}
 
 	if (done == 0 && rc)
-		printf("The most recent version of packages are already installed\n");
+		printf("The most recent versions of packages are already installed\n");
 
 	if (rc)
 		retcode = EX_OK;
