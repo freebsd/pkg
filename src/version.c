@@ -673,6 +673,12 @@ validate_origin(const char *portsdir, const char *origin)
 	char		 categorypath[MAXPATHLEN];
 	khint_t		 k;
 
+	/* If the origin does not contain a / ignore it like for
+	 * "base"
+	 */
+	if (strchr(origin, '/') == NULL)
+		return (false);
+
 	snprintf(categorypath, MAXPATHLEN, "%s/%s", portsdir, origin);
 
 	buf = strrchr(categorypath, '/');
