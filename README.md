@@ -310,7 +310,7 @@ get on.
 	./autogen.sh
 	./configure
 	make
-	sudo make install
+	doas make install
 	
 	# install pkg
 	cd ~/git
@@ -319,7 +319,7 @@ get on.
 	./autogen.sh
 	./configure
 	make
-	sudo make install
+	doas make install
 
 <a name="usageintro"></a>
 ## A quick usage introduction to pkg
