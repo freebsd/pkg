@@ -178,6 +178,8 @@ EOF
 
 chflags_body()
 {
+	test $(id -u) = 0 || atf_skip "Can only be run as root"
+
 	test -x /bin/chflags || atf_skip "Requires chflags"
 	# use nodump as it is the only one supported as user, by zfs and by
 	# libarchive
