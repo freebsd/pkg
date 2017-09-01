@@ -375,6 +375,7 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
+	const char *abi;
 
 	rc = pkg_new(&pkg, PKG_REMOTE);
 	if (rc != EPKG_OK)
@@ -388,10 +389,11 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
 		pkg_checksum_calculate(pkg, NULL);
-	if (pkg->arch == NULL || !is_valid_abi(pkg->arch, true)) {
+	abi = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	if (abi == NULL || !is_valid_abi(abi, true)) {
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages with wrong ABI: %s",
-			repo->name, pkg->arch);
+			repo->name, abi);
 		goto cleanup;
 	}
 
