@@ -96,19 +96,8 @@ add_force_body() {
 
 add_accept_missing_body() {
 	touch a
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
 deps: {
 	b: {
 		origin: "wedontcare",
@@ -177,19 +166,8 @@ post-install
 
 add_stdin_missing_body() {
 	touch a
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
 deps: {
 	b: {
 		origin: "wedontcare",
