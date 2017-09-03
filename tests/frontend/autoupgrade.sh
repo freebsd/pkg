@@ -8,33 +8,8 @@ tests_init \
 
 autoupgrade_body() {
 
-	cat << EOF > pkg1.ucl
-name: pkg
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
-
-	cat << EOF > pkg2.ucl
-name: pkg
-origin: test
-version: 1_1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg1 pkg 1
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg2 pkg 1_1
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \
@@ -74,33 +49,8 @@ autoupgrade_multirepo_head() {
 
 autoupgrade_multirepo_body() {
 
-	cat << EOF > pkg1.ucl
-name: pkg
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
-
-	cat << EOF > pkg2.ucl
-name: pkg
-origin: test
-version: "1.1"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg1 pkg 1
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg2 pkg 1.1
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \
