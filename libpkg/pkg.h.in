@@ -1141,7 +1141,7 @@ int pkg_create_from_manifest(const char *, pkg_formats, const char *,
 /**
  * Create package from stage install with a metadata directory
  */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool);
 int pkg_load_metadata(struct pkg *, const char *, const char *, const char *, const char *, bool);
 
 /**

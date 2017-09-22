@@ -694,6 +694,7 @@ int packing_append_buffer(struct packing *pack, const char *buffer,
 			  const char *path, int size);
 int packing_append_tree(struct packing *pack, const char *treepath,
 			const char *newroot);
+void packing_get_filename(struct packing *pack, const char *filename);
 void packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);

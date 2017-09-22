@@ -62,13 +62,13 @@ struct pkg_entry *pkg_head = NULL;
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-Onqv] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Ohnqv] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-Onqv] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-Ohnqv] [-f format] [-o outdir] "
 		"[-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ognqvx] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Ohgnqvx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-Onqv] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Ohnqv] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -179,14 +179,15 @@ cleanup:
 
 /*
  * options:
- * -x: regex
- * -g: globbing
- * -r: rootdir for the package
- * -m: path to dir where to find the metadata
- * -q: quiet mode
  * -M: manifest file
  * -f <format>: format could be txz, tgz, tbz or tar
+ * -g: globbing
+ * -h: pkg name with hash and symlink
+ * -m: path to dir where to find the metadata
  * -o: output directory where to create packages by default ./ is used
+ * -q: quiet mode
+ * -r: rootdir for the package
+ * -x: regex
  */
 
 int
@@ -202,6 +203,7 @@ exec_create(int argc, char **argv)
 	pkg_formats	 fmt;
 	int		 ch;
 	bool		 overwrite = true;
+	bool		 hash = false;
 
 
 	/* POLA: pkg create is quiet by default, unless
@@ -212,39 +214,34 @@ exec_create(int argc, char **argv)
 
 	struct option longopts[] = {
 		{ "all",	no_argument,		NULL,	'a' },
-		{ "glob",	no_argument,		NULL,	'g' },
-		{ "regex",	no_argument,		NULL,	'x' },
 		{ "format",	required_argument,	NULL,	'f' },
+		{ "glob",	no_argument,		NULL,	'g' },
+		{ "hash",	no_argument,		NULL,	'h' },
+		{ "regex",	no_argument,		NULL,	'x' },
 		{ "root-dir",	required_argument,	NULL,	'r' },
 		{ "metadata",	required_argument,	NULL,	'm' },
 		{ "manifest",	required_argument,	NULL,	'M' },
-		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "no-clobber", no_argument,		NULL,	'n' },
+		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "plist",	required_argument,	NULL,	'p' },
 		{ "quiet",	no_argument,		NULL,	'q' },
 		{ "verbose",	no_argument,		NULL,	'v' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+agxf:r:m:M:o:np:qv", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aghxf:r:m:M:o:np:qv", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
-		case 'g':
-			match = MATCH_GLOB;
-			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
 		case 'f':
 			format = optarg;
 			break;
-		case 'o':
-			outdir = optarg;
+		case 'g':
+			match = MATCH_GLOB;
 			break;
-		case 'r':
-			rootdir = optarg;
+		case 'h':
+			hash = true;
 			break;
 		case 'm':
 			metadatadir = optarg;
@@ -255,14 +252,23 @@ exec_create(int argc, char **argv)
 		case 'n':
 			overwrite = false;
 			break;
+		case 'o':
+			outdir = optarg;
+			break;
 		case 'p':
 			plist = optarg;
 			break;
 		case 'q':
 			quiet = true;
 			break;
+		case 'r':
+			rootdir = optarg;
+			break;
 		case 'v':
 			quiet = false;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
 			break;
 		default:
 			usage_create();
@@ -312,7 +318,7 @@ exec_create(int argc, char **argv)
 		    overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else if (metadatadir != NULL) {
 		return (pkg_create_staged(outdir, fmt, rootdir, metadatadir,
-		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    plist, hash) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else  { /* (manifest != NULL) */
 		return (pkg_create_from_manifest(outdir, fmt, rootdir,
 		    manifest, plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);

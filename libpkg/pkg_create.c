@@ -394,8 +394,10 @@ cleanup:
 
 int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
-    const char *md_dir, char *plist)
+    const char *md_dir, char *plist, bool hash)
 {
+	char		 hash_dest[MAXPATHLEN];
+	char		 filename[MAXPATHLEN];
 	struct pkg	*pkg = NULL;
 	struct pkg_file	*file = NULL;
 	struct pkg_dir	*dir = NULL;
@@ -430,8 +432,30 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 cleanup:
-	free(pkg);
 	packing_finish(pkg_archive);
+	if (hash && ret == EPKG_OK) {
+		/* Find the hash and rename the file and create a symlink */
+		pkg_snprintf(filename, sizeof(filename), "%n-%v.%S",
+			pkg, pkg, packing_format_to_string(format));
+		pkg->sum = pkg_checksum_file(filename,
+			PKG_HASH_TYPE_SHA256_HEX);
+		pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.%S",
+			pkg, pkg, pkg, packing_format_to_string(format));
+
+		pkg_debug(1, "Rename the pkg file from: %s to: %s",
+			filename, hash_dest);
+
+		if (rename(filename, hash_dest) == -1) {
+			pkg_emit_errno("rename", hash_dest);
+			unlink(hash_dest);
+			return (EPKG_FATAL);
+		}
+		if (symlink(hash_dest, filename) == -1) {
+			pkg_emit_errno("symlink", hash_dest);
+			return (EPKG_FATAL);
+		}
+	}
+	free(pkg);
 	return (ret);
 }
 
