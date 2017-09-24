@@ -403,6 +403,11 @@ create_from_plist_hash_body() {
 		-s exit:0 \
 		pkg create -h -o ${TMPDIR} -m . -p test.plist -r .
 
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		ls test-1-*.txz
 }
 
 create_from_plist_with_keyword_and_message_body() {
