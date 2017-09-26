@@ -74,6 +74,7 @@ _pkg_subcommands() {
 		'version:display versions of installed packages'
 		'which:display which package installed a specific file'
 	)
+	pkg_config=( -N ${(kv)opt_args[(I)-([cjoR]|config|jail|option|repo-conf-dir)]} )
 	aliases_f=(
 		"remove:synonym for 'delete'"
 		${${(f)"$(_call_program aliases _pkg_cmd alias -q)"}/ ##/:alias for }
@@ -220,6 +221,7 @@ _pkg_args() {
 				'1:package:_pkg_installed' \
 				'2:tag' \
 				'3:value'
+			return
 			;;
 		(audit)
 			_arguments -A '-*' -s \
@@ -406,9 +408,11 @@ _pkg_args() {
 				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
 				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
 				'*:available package:_pkg_installed'
+			return
 			;;
 		(plugins)
 			_arguments -A '-*' '-l' '*:plugin'
+			return
 			;;
 		(query)
 			_arguments -C -s \
@@ -625,6 +629,7 @@ _pkg_args() {
 				# fallback to default completion for an unknown command
 				_default
 			fi
+			return
 			;;
 	esac
 
