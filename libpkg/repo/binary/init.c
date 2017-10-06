@@ -307,7 +307,6 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	sqlite3_initialize();
 
-	pkgdb_setup_lock();
 	pkgdb_syscall_overload();
 
 	snprintf(filepath, sizeof(filepath), "%s/%s.meta",
@@ -337,6 +336,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	flags = (mode & W_OK) != 0 ? SQLITE_OPEN_READWRITE : SQLITE_OPEN_READONLY;
 	if (sqlite3_open_v2(filepath, &sqlite, flags, NULL) != SQLITE_OK) {
+		pkgdb_nfs_corruption(sqlite);
 		pkg_emit_error("Repository %s load error: "
 				"cannot open sqlite3 db: %s", pkg_repo_name(repo),
 				strerror(errno));
@@ -424,28 +424,13 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	if (access(filepath, R_OK) == 0)
 		return (EPKG_CONFLICT);
 
-	/*
-	 * Fall back on unix-dotfile locking strategy if on a network filesystem
-	 */
-#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
-	struct statvfs stfs;
-
-	if (statvfs(dbdir, &stfs) == 0) {
-		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
-	}
-#elif defined(HAVE_STATFS) && defined(MNT_LOCAL)
-	struct statfs stfs;
-
-	if (statfs(dbdir, &stfs) == 0) {
-		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
-	}
-#endif
+	pkgdb_syscall_overload();
 
 	/* Open for read/write/create */
-	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK)
+	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK) {
+		pkgdb_nfs_corruption(sqlite);
 		return (EPKG_FATAL);
+	}
 
 	retcode = sql_exec(sqlite, binary_repo_initsql, REPO_SCHEMA_VERSION);
 
