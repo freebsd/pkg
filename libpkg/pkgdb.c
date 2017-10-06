@@ -1035,11 +1035,11 @@ pkgdb_syscall_overload(void)
 }
 
 void
-pkgdb_setup_lock(void)
+pkgdb_nfs_corruption(sqlite3 *db)
 {
 	int dbdirfd = pkg_get_dbdirfd();
 
-	if (pkg_object_bool(pkg_config_get("NFS_WITH_PROPER_LOCKING")))
+	if (sqlite3_errcode(db) != SQLITE_CORRUPT)
 		return;
 
 	/*
@@ -1051,14 +1051,18 @@ pkgdb_setup_lock(void)
 
 	if (fstatvfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+			pkg_emit_error("You are running on a remote filesystem,"
+			    " please make sure, the locking mechanism is "
+			    " properly setup\n");
 	}
 #elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
 	struct statfs stfs;
 
 	if (fstatfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+			pkg_emit_error("You are running on a remote filesystem,"
+			    " please make sure, the locking mechanism is "
+			    " properly setup\n");
 	}
 #endif
 
@@ -1117,11 +1121,11 @@ retry:
 
 		sqlite3_initialize();
 
-		pkgdb_setup_lock();
 		pkgdb_syscall_overload();
 
 		if (sqlite3_open("/local.sqlite", &db->sqlite) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
+			pkgdb_nfs_corruption(db->sqlite);
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}

@@ -414,12 +414,6 @@ static struct config_entry c[] = {
 		NULL,
 		"Write out the METALOG to the specified file",
 	},
-	{
-		PKG_BOOL,
-		"NFS_WITH_PROPER_LOCKING",
-		"NO",
-		"Set if running on NFS with properly setup locking system",
-	},
 };
 
 static bool parsed = false;

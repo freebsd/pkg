@@ -128,7 +128,6 @@ _pkg_config_opts() {
 		'LOCK_WAIT[wait time to regain a lock]:wait time (seconds):' \
 		'METALOG[if set, write a METALOG of the extracted files]:string' \
 		'NAMESERVER[hostname or IPv\[46\] address of a nameserver for DNS resolution]:name server:_hosts' \
-		'NFS_WITH_PROPER_LOCKING[use regular locking system instead of a directory lock]:boolean:(yes no)' \
 		'PERMISSIVE[ignore conflicts while registering a package]:boolean:(yes no)' \
 		'PKG_CACHEDIR[specify cache directory for packages]:directory:_files -/' \
 		'PKG_CREATE_VERBOSE[make pkg_create(8) use verbose mode]:boolean:(yes no)' \

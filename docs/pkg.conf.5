@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd February 02, 2017
+.Dd October 06, 2017
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -186,8 +186,6 @@ When given as a hostname, will be converted to a list of IPv4 or IPv6
 addresses by the default mechanisms configured on the system.
 See
 .Xr getaddrinfo 3 .
-.It Cm NFS_WITH_PROPER_LOCKING: boolean
-If set pkg will use its regular locking system instead of a directory lock.
 .It Cm PERMISSIVE: boolean
 Ignore conflicts while registering a package.
 Note that the conflicting files will not be recorded as owned by the new

@@ -306,7 +306,6 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	sqlite3_initialize();
 
-	pkgdb_setup_lock();
 	pkgdb_syscall_overload();
 
 	dbdirfd = pkg_get_dbdirfd();
@@ -338,6 +337,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	flags = (mode & W_OK) != 0 ? SQLITE_OPEN_READWRITE : SQLITE_OPEN_READONLY;
 	if (sqlite3_open_v2(filepath, &sqlite, flags, NULL) != SQLITE_OK) {
+		pkgdb_nfs_corruption(sqlite);
 		pkg_emit_error("Repository %s load error: "
 				"cannot open sqlite3 db: %s", pkg_repo_name(repo),
 				strerror(errno));
@@ -424,12 +424,13 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	if (faccessat(dbdirfd, filepath, R_OK, 0) == 0)
 		return (EPKG_CONFLICT);
 
-	pkgdb_setup_lock();
 	pkgdb_syscall_overload();
 
 	/* Open for read/write/create */
-	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK)
+	if (sqlite3_open(filepath, &sqlite) != SQLITE_OK) {
+		pkgdb_nfs_corruption(sqlite);
 		return (EPKG_FATAL);
+	}
 
 	retcode = sql_exec(sqlite, binary_repo_initsql, REPO_SCHEMA_VERSION);
 
