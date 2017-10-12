@@ -37,6 +37,9 @@ if [ -r /etc/defaults/periodic.conf ]; then
 	source_periodic_confs
 fi
 
+: ${security_status_pkgaudit_enable:=YES}
+: ${security_status_pkgaudit_period:=daily}
+
 # Compute PKG_DBDIR from the config file.
 pkgcmd=@prefix@/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
@@ -164,11 +167,12 @@ audit_pkgs_all() {
 	return $rc
 }
 
+security_daily_compat_var security_status_pkgaudit_enable
+
 rc=0
 
-case "${daily_status_security_pkgaudit_enable:-YES}" in
-[Nn][Oo]) ;;
-*)
+if check_yesno_period security_status_pkgaudit_enable
+then
 	echo
 	echo 'Checking for packages with security vulnerabilities:'
 
@@ -187,7 +191,6 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 
 		audit_pkgs_all ; rc=$?
 	fi
-	;;
-esac
+fi
 
 exit "$rc"
