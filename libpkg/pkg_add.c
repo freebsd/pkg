@@ -1190,7 +1190,7 @@ cleanup_reg:
 		if (msgstr != NULL) {
 			if (utstring_len(message) == 0) {
 				pkg_utstring_printf(message, "Message from "
-				    "%n-%v:\n", pkg, pkg);
+				    "%n-%v:\n\n", pkg, pkg);
 			}
 			utstring_printf(message, "%s\n", msgstr);
 		}
