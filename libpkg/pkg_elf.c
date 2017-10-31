@@ -669,8 +669,10 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 				/* We have an ARMv4 or ARMv5 */
 				if (val <= 5)
 					return ("arm");
-				else /* We have an ARMv6+ */
+				else if (val == 6) /* We have an ARMv6 */
 					return ("armv6");
+				else /* We have an ARMv7+ */
+					return ("armv7");
 			} else if (tag == 4 || tag == 5 || tag == 32 ||
 			    tag == 65 || tag == 67) {
 				while (*section != '\0' && length != 0)
