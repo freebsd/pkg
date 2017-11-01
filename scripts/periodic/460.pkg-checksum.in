@@ -70,8 +70,15 @@ checksum_pkg_all() {
     return $rc
 }
 
-case "${daily_status_security_pkg_checksum_enable}" in
-	[Yy][Ee][Ss])
+: ${security_status_pkgchecksum_enable:=YES}
+: ${security_status_pkgchecksum_period:=daily}
+
+security_daily_compat_var security_status_pkgchecksum_enable
+
+rc=0
+
+if check_yesno_period security_status_pkgchecksum_enable
+then
 	pkgcmd=@prefix@/sbin/pkg
 
 	echo
@@ -84,10 +91,6 @@ case "${daily_status_security_pkg_checksum_enable}" in
 	    checksum_pkg_all
 	    rc=$?
 	fi
-	;;
-	*)
-	rc=0
-	;;
-esac
+fi
 
 exit $rc
