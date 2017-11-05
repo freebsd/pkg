@@ -44,8 +44,7 @@ Linux/OSX:
 [<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
 
 FreeBSD:
-AMD64: [![Build Status](http://jenkins.mouf.net/view/pkg/job/pkg-103-amd64/badge/icon)](http://jenkins.mouf.net/view/pkg/job/pkg-103-amd64/)
-armv6: [![Build Status](http://jenkins.mouf.net/view/pkg/job/pkg-12-armv6/badge/icon)](http://jenkins.mouf.net/view/pkg/job/pkg-12-armv6/)
+[![Build Status](https://jenkins.mouf.net/view/pkg/job/pkg/badge/icon)](https://jenkins.mouf.net/view/pkg/job/pkg/)
 <a name="libpkg"></a>
 ### libpkg
 
