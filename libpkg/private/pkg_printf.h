@@ -108,6 +108,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_OPTION_DEFAULT,
 	PP_PKG_OPTION_DESCRIPTION,
 	PP_PKG_OPTIONS,
+	PP_PKG_ALTABI,
 	PP_PKG_REPO_PATH,
 	PP_PKG_CHAR_STRING,
 	PP_PKG_USER_NAME,
@@ -217,6 +218,7 @@ _static UT_string *format_name(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_origin(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_prefix(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_architecture(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_altabi(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_requirements(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_flatsize(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_install_tstamp(UT_string *, const void *, struct percent_esc *);
