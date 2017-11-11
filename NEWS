@@ -7,6 +7,14 @@ Changes from 1.10.1 to 1.10.2
 - fix dropping privileges on Linux
 - fix build with recent libbsd
 - fix duplicate pkg registration overwriting the existing pkg
+- fix again using pattern as package arch
+- recognize armv7
+- add %q to pkg_printf(3) and pkg-query(8) to print altabi
+- add support for new periodic variables in multiple scripts
+- add an extra line when printing pkg-messages to improve readability
+- stop considering nfs as dangerous and if a corruption happens on nfs drive
+  by a message the user to the highly possible reason of the corruption so
+  that he can fix
 - better ABI name on linux
 
 Changes from pkg 1.9
