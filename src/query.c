@@ -59,6 +59,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ '?', "drCFODLUGBbA",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ '#', "drCFODLUGBbA",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
+	{ 'Q', "",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
 	{ 'o', "",		0, PKG_LOAD_BASIC },
@@ -216,6 +217,9 @@ format_str(struct pkg *pkg, UT_string *dest, const char *qstr, const void *data)
 					pkg_utstring_printf(dest, "%#A", pkg);
 					break;
 				}
+				break;
+			case 'Q':
+				pkg_utstring_printf(dest, "%Q", pkg);
 				break;
 			case 'q':
 				pkg_utstring_printf(dest, "%q", pkg);
