@@ -9,7 +9,7 @@ tests_init \
 repo_body() {
 	touch plop
 	touch bla
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test test 1 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
 	cat >> test.ucl << EOF
 files: {
 	"${TMPDIR}/plop": ""
@@ -59,8 +59,8 @@ EOF
 }
 
 repo_multiversion_body() {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test1 test 1.1 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test1 test 1.1 "${TMPDIR}"
 	for i in test test1; do
 		atf_check pkg create -M $i.ucl
 	done

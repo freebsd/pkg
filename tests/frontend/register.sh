@@ -58,7 +58,7 @@ EOF
 }
 
 register_message_body() {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_manifest test1 1 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_manifest test1 1 "${TMPDIR}"
 	cat << EOF > +DISPLAY
 message
 EOF
@@ -71,7 +71,7 @@ message
 	atf_check -o match:"message" pkg register -m .
 	atf_check -o inline:"${OUTPUT}" pkg info -D test1
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_manifest test2 1 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_manifest test2 1 "${TMPDIR}"
 	cat << EOF > +DISPLAY
 [
 	{ message: "hey"},
@@ -97,7 +97,7 @@ remove
 
 prefix_is_a_symlink_body()
 {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	mkdir -p ${TMPDIR}/${TMPDIR}/plop/bla
 	echo "something" > ${TMPDIR}/${TMPDIR}/plop/bla/a
 	ln ${TMPDIR}/${TMPDIR}/plop/bla/a ${TMPDIR}/${TMPDIR}/plop/bla/b

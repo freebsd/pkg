@@ -69,6 +69,7 @@ merge_LDADD=	$(GENERIC_LDADD)
 
 EXTRA_DIST=	frontend/png.ucl \
 		frontend/sqlite3.ucl \
+		frontend/test_subr.sh \
 		$(tests_scripts)
 
 tests_scripts=	\

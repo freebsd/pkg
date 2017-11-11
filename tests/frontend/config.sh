@@ -14,7 +14,7 @@ duplicatedefault: 2
 EOF
 
 	for n in 1 2; do
-		atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test${n} test ${n}
+		atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test${n} test ${n}
 		echo 'allowduplicate: true' >> test${n}.ucl
 
 	atf_check \
@@ -34,7 +34,7 @@ done
 
 duplicate_pkgs_notallowed_body() {
 	for n in 1 2; do
-		atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg test${n} test ${n}
+		atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test${n} test ${n}
 	done
 
 	atf_check \

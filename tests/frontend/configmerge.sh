@@ -8,7 +8,7 @@ tests_init \
 
 config_body()
 {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "@config ${TMPDIR}/a" > plist
 
 	echo "entry" > a
@@ -30,7 +30,7 @@ config_body()
 		-o inline:"entry\naddition\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/a
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry 2" > a
 
 	atf_check \
@@ -49,7 +49,7 @@ config_body()
 
 config_fileexist_body()
 {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "${TMPDIR}/a" > plist
 
 	echo "entry" > a
@@ -67,7 +67,7 @@ config_fileexist_body()
 		-o inline:"entry\naddition\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/a
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry 2" > a
 	echo "@config ${TMPDIR}/a" > plist
 
@@ -89,7 +89,7 @@ config_fileexist_notinpkg_body()
 	echo "entry" > ${TMPDIR}/target/${TMPDIR}/a
 	unset PKG_DBDIR
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry 2" > a
 	echo "@config ${TMPDIR}/a" > plist
 

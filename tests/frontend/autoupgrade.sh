@@ -8,8 +8,8 @@ tests_init \
 
 autoupgrade_body() {
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg1 pkg 1
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg2 pkg 1_1
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg 1
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 pkg 1_1
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \
@@ -49,8 +49,8 @@ autoupgrade_multirepo_head() {
 
 autoupgrade_multirepo_body() {
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg1 pkg 1
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg pkg2 pkg 1.1
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg 1
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 pkg 1.1
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \

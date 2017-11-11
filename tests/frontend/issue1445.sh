@@ -8,7 +8,7 @@ tests_init \
 
 
 dead_symlink_body() {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 directories {
 	${TMPDIR}/plop = "y";
@@ -27,7 +27,7 @@ EOF
 }
 
 good_symlink_body() {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 directories {
 	${TMPDIR}/plop = "y";
