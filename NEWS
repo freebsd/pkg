@@ -1,3 +1,18 @@
+Changes from pkg 1.10.99.5 to 1.10.99.6
+- Lots of fixes/improvements on periodic scripts
+- Fix typo in the .pc file
+- Only check for origin if the strings contains / in pkg version
+- Support flags when exporting the metalog
+- Ignore flags when installing as a user
+- fix again using pattern as package arch
+- recognize armv7
+- add %q to pkg_printf(3) and pkg-query(8) to print altabi
+- add an extra line when printing pkg-messages to improve readability
+- stop considering nfs as dangerous and if a corruption happens on nfs drive
+  by a message the user to the highly possible reason of the corruption so
+  he can fix
+- zsh completion imrpovements
+
 Changes from pkg 1.10.99.4 to 1.10.99.5
 - pkg clean is now happy if the cache dir non existing
 - 410.pkg-audit now uses anticongestion on freebsd 12
