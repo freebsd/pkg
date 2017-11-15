@@ -16,6 +16,7 @@ Changes from 1.10.1 to 1.10.2
   by a message the user to the highly possible reason of the corruption so
   that he can fix
 - better ABI name on linux
+- fix pollution of "locked" message
 
 Changes from pkg 1.9
 - fix pkg which -g
