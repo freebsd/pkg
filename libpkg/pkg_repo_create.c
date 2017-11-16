@@ -497,6 +497,17 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 	return (EPKG_OK);
 }
 
+static int
+fts_compare(const FTSENT *const *a, const FTSENT *const *b)
+{
+	/* Sort files before directories, then alpha order */
+	if ((*a)->fts_info != FTS_D && (*b)->fts_info == FTS_D)
+		return -1;
+	if ((*a)->fts_info == FTS_D && (*b)->fts_info != FTS_D)
+		return 1;
+	return (strcmp((*a)->fts_name, (*b)->fts_name));
+}
+
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	const char *metafile, bool legacy)
@@ -558,7 +569,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			num_workers = 6;
 	}
 
-	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
+	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, fts_compare)) == NULL) {
 		pkg_emit_errno("fts_open", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
