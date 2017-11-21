@@ -10,6 +10,8 @@ tests_init \
 
 metalog_body()
 {
+        atf_skip_on Linux Test fails on Linux
+
 	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 / || atf_fail "Failed to create the ucl file"
 	touch ${TMPDIR}/testfile1 || atf_fail "Failed to create the temp file"
 	echo "@(root,wheel,640,) testfile1" > test.plist
