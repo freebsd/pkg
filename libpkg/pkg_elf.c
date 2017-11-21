@@ -327,6 +327,10 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		case SHT_DYNAMIC:
 			dynamic = scn;
 			sh_link = shdr.sh_link;
+			if (shdr.sh_entsize == 0) {
+				ret = EPKG_END;
+				goto cleanup;
+			}
 			numdyn = shdr.sh_size / shdr.sh_entsize;
 			break;
 		}
