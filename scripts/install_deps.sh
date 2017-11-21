@@ -62,4 +62,5 @@ elif [ $(uname -s) = "Linux" ]; then
 	install_from_github atf 0.21
 	install_from_github lutok 0.4
 	install_from_github kyua 0.12
+        sudo ldconfig
 fi
