@@ -4,7 +4,8 @@
 tests_init \
 	config \
 	config_fileexist \
-	config_fileexist_notinpkg
+	config_fileexist_notinpkg \
+	config_morecomplicated
 
 config_body()
 {
@@ -103,4 +104,55 @@ config_fileexist_notinpkg_body()
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
+}
+
+config_morecomplicated_body()
+{
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	echo "entry1" > test.conf
+	echo "entry3" >> test.conf
+	echo "@config ${TMPDIR}/test.conf" > plist
+
+	atf_check \
+		pkg create -M test.ucl -p plist
+
+	atf_check \
+		-o match:"^config" \
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.txz
+
+	mkdir ${TMPDIR}/target
+	unset PKG_DBDIR
+	atf_check \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
+	test -f ${TMPDIR}/target/${TMPDIR}/test.conf || atf_fail "file absent"
+
+	atf_check \
+		-o inline:"entry1\nentry3\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/test.conf
+
+	echo "entry4" >> ${TMPDIR}/target/${TMPDIR}/test.conf
+	atf_check \
+		-o inline:"entry1\nentry3\nentry4\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/test.conf
+
+	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "2"
+	echo "entry1" > test.conf
+	echo "entry2" >> test.conf
+	echo "entry3" >> test.conf
+
+	atf_check \
+		pkg create -M test.ucl -p plist
+
+	atf_check \
+		-o ignore \
+		pkg repo .
+
+	echo "local: { url: file://${TMPDIR} }" > local.conf
+	atf_check \
+		-e match:".*load error: access repo file.*" \
+		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
+
+	atf_check \
+		-o inline:"entry1\nentry2\nentry3\nentry4\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/test.conf
 }

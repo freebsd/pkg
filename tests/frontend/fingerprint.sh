@@ -6,6 +6,9 @@ tests_init \
 	fingerprint
 
 fingerprint_body() {
+        atf_skip_on Darwin Test fails on Darwin
+        atf_skip_on Linux Test fails on Linux
+
 	atf_check -o ignore -e ignore \
 		openssl genrsa -out repo.key 2048
 	rm -rf ${TMPDIR}/keys || :

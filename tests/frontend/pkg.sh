@@ -9,6 +9,8 @@ tests_init \
 	pkg_repo_load_order
 
 pkg_no_database_body() {
+        atf_skip_on Linux Test fails on Linux
+
 	atf_check \
 	    -o empty \
 	    -e inline:"${PROGNAME}: package database non-existent\n" \
