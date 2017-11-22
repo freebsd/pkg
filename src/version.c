@@ -886,6 +886,7 @@ exec_version(int argc, char **argv)
 			opt |= VERSION_SOURCE_REMOTE;
 			break;
 		case 'r':
+			opt |= VERSION_SOURCE_REMOTE;
 			reponame = optarg;
 			break;
 		case 'T':
