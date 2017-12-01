@@ -690,9 +690,10 @@ validate_origin(const char *portsdir, const char *origin)
 }
 
 static const char *
-port_version(UT_string *cmd, const char *portsdir, const char *origin)
+port_version(UT_string *cmd, const char *portsdir, const char *origin,
+    const char *pkgname)
 {
-	char	*output;
+	char	*output, *walk, *name;
 	char	*version = NULL;
 	char	*argv[5];
 
@@ -706,12 +707,21 @@ port_version(UT_string *cmd, const char *portsdir, const char *origin)
 		argv[0] = "make";
 		argv[1] = "-C";
 		argv[2] = utstring_body(cmd);
-		argv[3] = "-VPKGVERSION";
+		argv[3] = "flavors-package-names";
 		argv[4] = NULL;
 
 		if (exec_buf(cmd, argv) != 0) {
 			output = utstring_body(cmd);
-			version = strsep(&output, "\n");
+			while ((walk = strsep(&output, "\n")) != NULL) {
+				name = walk;
+				walk = strrchr(walk, '-');
+				walk[0] = '\0';
+				walk++;
+				if (strcmp(name, pkgname) == 0) {
+					version = walk;
+					break;
+				}
+			}
 		}
 	}
 
@@ -766,7 +776,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		version = port_version(cmd, portsdir, origin);
+		version = port_version(cmd, portsdir, origin, name);
 		print_version(pkg, "port", version, limchar, opt);
 		utstring_clear(cmd);
 	}
