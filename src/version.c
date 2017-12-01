@@ -56,7 +56,7 @@
 extern char **environ;
 
 struct index_entry {
-	char *origin;
+	char *name;
 	char *version;
 };
 
@@ -286,10 +286,10 @@ hash_indexfile(const char *indexfilename)
 	FILE			*indexfile;
 	kh_index_t		*index = NULL;
 	struct index_entry	*entry;
-	char			*version, *origin;
-	char			*line = NULL, *l, *p;
+	char			*version, *name;
+	char			*line = NULL, *l;
 	size_t			 linecap = 0;
-	int			 dirs, ret;
+	int			 ret;
 	khint_t			 k;
 
 
@@ -306,40 +306,30 @@ hash_indexfile(const char *indexfilename)
 		l = line;
 
 		version = strsep(&l, "|");
+		name = version;
 		version = strrchr(version, '-');
 		version[0] = '\0';
 		version++;
 
-		origin = strsep(&l, "|");
-		for (dirs = 0, p = l; p > origin; p--) {
-			if ( p[-1] == '/' ) {
-				dirs++;
-				if (dirs == 2) {
-					origin = p;
-					break;
-				}
-			}
-		}
-
 		entry = malloc(sizeof(struct index_entry));
 		if (entry != NULL) {
+			entry->name = strdup(name);
 			entry->version = strdup(version);
-			entry->origin = strdup(origin);
 		}
 
 		if (entry == NULL || entry->version == NULL ||
-		    entry->origin == NULL)
+		    entry->name == NULL)
 			err(EX_SOFTWARE, "Out of memory while reading %s",
 			    indexfilename);
 
 		if (index == NULL)
 			index = kh_init_index();
-		k = kh_put_index(index, entry->origin, &ret);
+		k = kh_put_index(index, entry->name, &ret);
 		if (ret != 0) {
 			kh_value(index, k) = entry;
 		} else {
-			free(entry->origin);
 			free(entry->version);
+			free(entry->name);
 			free(entry);
 		}
 	}
@@ -381,8 +371,8 @@ free_index(kh_index_t *index)
 		return;
 
 	kh_foreach_value(index, entry, {
-		free(entry->origin);
 		free(entry->version);
+		free(entry->name);
 		free(entry);
 	});
 	kh_destroy_index(index);
@@ -460,7 +450,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		k = kh_get_index(index, origin);
+		k = kh_get_index(index, name);
 		print_version(pkg, "index",
 		    k != kh_end(index) ? (kh_value(index, k))->version : NULL, limchar, opt);
 	}
@@ -750,7 +740,6 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		usage_version();
 		return (EX_USAGE);
 	}
-
 
 	if (chdir(portsdir) != 0)
 		err(EX_SOFTWARE, "Cannot chdir to %s\n", portsdir); 
