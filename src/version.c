@@ -601,6 +601,8 @@ exec_buf(UT_string *res, char **argv) {
 		if (errno != EINTR)
 			return (-1);
 	}
+	if (WEXITSTATUS(pstat) != 0)
+		return (-1);
 
 	return (utstring_len(res));
 }
