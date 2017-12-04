@@ -1,3 +1,10 @@
+Changes from 1.10.2 to 1.10.3
+- Accept DT_SONAME anywhere in .dynamic when parsing elf binaries
+- Fix pkg version when it deals with the ports tree and INDEX after flavors
+- Sort fts traversal in repo creation (for reproducible builds)
+- Documentation improvements
+- make pkg version -r imply -R
+
 Changes from 1.10.1 to 1.10.2
 - pkg clean is now happy if the cache dir non existing
 - 410.pkg-audit now uses anticongestion on freebsd 12
