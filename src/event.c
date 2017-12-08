@@ -172,9 +172,11 @@ job_status_begin(UT_string *msg)
 	}
 
 	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0)
-		utstring_printf(msg, "[%d/%d] ", nbdone, nbactions);
-	if (nbtodl > 0 && nbtodl == nbdone)
+		utstring_printf(msg, "[%d/%d] ", nbdone, (nbtodl) ? nbtodl : nbactions);
+	if (nbtodl > 0 && nbtodl == nbdone) {
+		nbtodl = 0;
 		nbdone = 0;
+	}
 }
 
 static int
