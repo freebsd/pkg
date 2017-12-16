@@ -10,6 +10,15 @@ fi
 
 . /etc/periodic/security/security.functions
 
+: ${security_status_pkg_checksum_enable:=YES}
+: ${security_status_pkg_checksum_period:=daily}
+: ${security_status_pkg_checksum_chroots=$pkg_chroots}
+: ${security_status_pkg_checksum_jails=$pkg_jails}
+
+security_daily_compat_var security_status_pkg_checksum_enable
+security_daily_compat_var security_status_pkg_checksum_chroots
+security_daily_compat_var security_status_pkg_checksum_jails
+
 checksum_pkg() {
     local pkgargs="$1"
     local rc
@@ -26,29 +35,26 @@ checksum_pkg() {
 checksum_pkg_all() {
     local rc
 
-    : ${daily_status_security_pkg_checksum_chroots=$pkg_chroots}
-    : ${daily_status_security_pkg_checksum_jails=$pkg_jails}
-
     # We always check the checksums for the host system, but only
     # print a banner line if we're also checking on any chroots or
     # jails.
 
-    if [ -n "${daily_status_security_pkg_checksum_chroots}" -o \
-	 -n "${daily_status_security_pkg_checksum_jails}" ];
+    if [ -n "${security_status_pkg_checksum_chroots}" -o \
+	 -n "${security_status_pkg_checksum_jails}" ];
     then
 	echo "Host system:"
     fi
 
     checksum_pkg ''
 
-    for c in $daily_status_security_pkg_checksum_chroots ; do
+    for c in $security_status_pkg_checksum_chroots ; do
 	echo
 	echo "chroot: $c"
 	checksum_pkg "-c $c"
 	[ $? -eq 1 ] && rc=1
     done
 
-    case $daily_status_security_pkg_checksum_jails in
+    case $security_status_pkg_checksum_jails in
 	\*)
 	    jails=$(jls -q -h name | sed -e 1d)
 	    ;;
@@ -56,7 +62,7 @@ checksum_pkg_all() {
 	    jails=
 	    ;;
 	*)
-	    jails=$daily_status_security_pkg_checksum_jails
+	    jails=$security_status_pkg_checksum_jails
 	    ;;
     esac
 
@@ -70,14 +76,9 @@ checksum_pkg_all() {
     return $rc
 }
 
-: ${security_status_pkgchecksum_enable:=YES}
-: ${security_status_pkgchecksum_period:=daily}
-
-security_daily_compat_var security_status_pkgchecksum_enable
-
 rc=0
 
-if check_yesno_period security_status_pkgchecksum_enable
+if check_yesno_period security_status_pkg_checksum_enable
 then
 	pkgcmd=@prefix@/sbin/pkg
 

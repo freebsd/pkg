@@ -39,6 +39,16 @@ fi
 
 : ${security_status_pkgaudit_enable:=YES}
 : ${security_status_pkgaudit_period:=daily}
+: ${security_status_pkgaudit_quiet:-YES}
+: ${security_status_pkgaudit_chroots=$pkg_chroots}
+: ${security_status_pkgaudit_jails=$pkg_jails}
+: ${security_status_pkgaudit_expiry:=2}
+
+security_daily_compat_var security_status_pkgaudit_enable
+security_daily_compat_var security_status_pkgaudit_quiet
+security_daily_compat_var security_status_pkgaudit_chroots
+security_daily_compat_var security_status_pkgaudit_jails
+security_daily_compat_var security_status_pkgaudit_expiry
 
 # Compute PKG_DBDIR from the config file.
 pkgcmd=@prefix@/sbin/pkg
@@ -56,7 +66,7 @@ audit_pkgs() {
 	now=`date +%s` || rc=3
 	# Add 10 minutes of padding since the check is in seconds.
 	if [ $rc -ne 0 -o \
-		$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
+		$(( 86400 \* "${security_status_pkgaudit_expiry}" )) \
 		-le $(( ${now} - ${then} + 600 )) ]; then
 		# When non-interactive, sleep to reduce congestion on mirrors
 		if [ -n "$anticongestion_sleeptime" ]; then
@@ -101,23 +111,20 @@ deprecation_pkgs() {
 # Use $pkg_chroots to provide a default list of chroots, and
 # $pkg_jails to provide a default list of jails (or '*' for all jails)
 # for all pkg periodic scripts, or set
-# $daily_status_security_pkgaudit_chroots and
-# $daily_status_security_pkgaudit_jails for this script only.
+# $security_status_pkgaudit_chroots and
+# $security_status_pkgaudit_jails for this script only.
 
 audit_pkgs_all() {
 	local rc
 	local last_rc
 	local jails
 
-	: ${daily_status_security_pkgaudit_chroots=$pkg_chroots}
-	: ${daily_status_security_pkgaudit_jails=$pkg_jails}
-
 	# We always show audit results for the base system, but only print
 	# a banner line if we're also showing audit results for any
 	# chroots or jails.
 
-	if [ -n "${daily_status_security_pkgaudit_chroots}" -o \
-		-n "${daily_status_security_pkgaudit_jails}" ]; then
+	if [ -n "${security_status_pkgaudit_chroots}" -o \
+		-n "${security_status_pkgaudit_jails}" ]; then
 		echo "Host system:"
 	fi
 
@@ -127,7 +134,7 @@ audit_pkgs_all() {
 		[ $last_rc -gt 1 ] && rc=$last_rc
 	done
 
-	for c in $daily_status_security_pkgaudit_chroots ; do
+	for c in $security_status_pkgaudit_chroots ; do
 		echo
 		echo "chroot: $c"
 		for t in audit expiration deprecation; do
@@ -137,7 +144,7 @@ audit_pkgs_all() {
 		done
 	done
 
-	case $daily_status_security_pkgaudit_jails in
+	case $security_status_pkgaudit_jails in
 	\*)
 		jails=$(jls -q -h name path | sed -e 1d -e 's/ /|/')
 		;;
@@ -147,7 +154,7 @@ audit_pkgs_all() {
 	*)
 		# Given the jail name or jid, find the jail path
 		jails=
-		for j in $daily_status_security_pkgaudit_jails ; do
+		for j in $security_status_pkgaudit_jails ; do
 			p=$(jls -j $j -h name path | sed -e 1d -e 's/ /|/')
 			jails="${jails} ${p}"
 		done
@@ -167,8 +174,6 @@ audit_pkgs_all() {
 	return $rc
 }
 
-security_daily_compat_var security_status_pkgaudit_enable
-
 rc=0
 
 if check_yesno_period security_status_pkgaudit_enable
@@ -180,7 +185,7 @@ then
 		echo 'pkg-audit is enabled but pkg is not used'
 		rc=2
 	else
-		case "${daily_status_security_pkgaudit_quiet:-YES}" in
+		case "${security_status_pkgaudit_quiet}" in
 		[Yy][Ee][Ss])
 			q='-q'
 			;;
