@@ -354,7 +354,7 @@ is_valid_os_version(struct pkg *pkg)
 	const char *errstr = NULL;
 	int fbsdver;
 
-	if ((fbsd_version = pkg_kv_get(&pkg->annotations, "freebsd_version")) != NULL) {
+	if ((fbsd_version = pkg_kv_get(&pkg->annotations, "FreeBSD_version")) != NULL) {
 		fbsdver = strtonum(fbsd_version, 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			pkg_emit_error("Invalid FreeBSD version %s for package %s",
