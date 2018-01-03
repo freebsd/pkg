@@ -839,19 +839,19 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 	    (int)elfhdr.e_ident[EI_CLASS]);
 
 	arch = elf_corres_to_string(mach_corres, (int) elfhdr.e_machine);
-if (version_style == 2) {
-	snprintf(dest, sz, "%s:%d.%d.%d", osname, gnu_abi_tag[1],
-		 gnu_abi_tag[2], gnu_abi_tag[3]);
-} else {
+	if (version_style == 2) {
+		snprintf(dest, sz, "%s:%d.%d.%d", osname, gnu_abi_tag[1],
+		    gnu_abi_tag[2], gnu_abi_tag[3]);
+	} else {
 #if defined(__DragonFly__)
-	snprintf(dest, sz, "%s:%d.%d",
-	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
+		snprintf(dest, sz, "%s:%d.%d",
+		    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #elif defined(__NetBSD__)
-	snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
+		snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
 #else
-	snprintf(dest, sz, "%s:%d", osname, version / 100000);
+		snprintf(dest, sz, "%s:%d", osname, version / 100000);
 #endif
-}
+	}
 
 	switch (elfhdr.e_machine) {
 	case EM_ARM:
