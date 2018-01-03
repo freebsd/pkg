@@ -70,6 +70,7 @@ const char *pkg_rootdir = NULL;
 int rootfd = -1;
 int cachedirfd = -1;
 int pkg_dbdirfd = -1;
+int osversion = 0;
 
 struct config_entry {
 	uint8_t type;
@@ -873,7 +874,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get_myarch(myabi, BUFSIZ);
+	pkg_get_myarch(myabi, BUFSIZ, &osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");

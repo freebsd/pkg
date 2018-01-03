@@ -227,8 +227,6 @@
 	}						\
 } while (0)
 
-
-
 extern int eventpipe;
 extern int64_t debug_level;
 extern bool developer_mode;
@@ -615,6 +613,13 @@ typedef enum {
 	PKG_RC_START = 0,
 	PKG_RC_STOP
 } pkg_rc_attr;
+
+#ifdef __DragonFly__
+#define pkg_get_myarch(d, z, v) pkg_get_myarch_legacy(d, z)
+#else
+int pkg_get_myarch(char *pkgarch, size_t sz, int *osversion);
+#endif
+int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 
 /**
  * Remove and unregister the package.

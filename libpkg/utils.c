@@ -54,6 +54,8 @@
 #include "private/pkg.h"
 #include "xmalloc.h"
 
+extern int osversion;
+
 int
 mkdirs(const char *_path)
 {
@@ -359,10 +361,10 @@ is_valid_os_version(struct pkg *pkg)
 			    fbsd_version, pkg->name);
 			return (false);
 		}
-		if (fbsdver > getosreldate()) {
+		if (fbsdver > osversion) {
 			pkg_emit_error("Newer FreeBSD version for package %s:\n"
 			    "- package: %d\n- running kernel: %d", pkg->name,
-			    fbsdver, getosreldate());
+			    fbsdver, osversion);
 			return (false);
 		}
 	}
