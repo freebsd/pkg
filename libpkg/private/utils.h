@@ -80,6 +80,7 @@ int rsa_verify_cert(const char *path, unsigned char *cert,
 
 bool check_for_hardlink(hardlinks_t *hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
+bool is_valid_os_version(struct pkg *pkg);
 
 struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);

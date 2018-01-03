@@ -833,6 +833,10 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		return (EPKG_FATAL);
 	}
 
+	if (!is_valid_os_version(pkg) && (flags & PKG_ADD_FORCE) == 0) {
+		return (EPKG_FATAL);
+	}
+
 	/* XX check */
 	ret = pkg_try_installed(db, pkg->name, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
