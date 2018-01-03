@@ -51,6 +51,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/pkg.h"
 #include "xmalloc.h"
 
 int
@@ -341,6 +342,35 @@ is_valid_abi(const char *arch, bool emit_error) {
 	}
 
 	return (true);
+}
+
+bool
+is_valid_os_version(struct pkg *pkg)
+{
+#ifdef __FreeBSD__
+	const char *fbsd_version;
+	const char *errstr = NULL;
+	int fbsdver;
+
+	if ((fbsd_version = pkg_kv_get(&pkg->annotations, "freebsd_version")) != NULL) {
+		fbsdver = strtonum(fbsd_version, 1, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Invalid FreeBSD version %s for package %s",
+			    fbsd_version, pkg->name);
+			return (false);
+		}
+		if (fbsdver > getosreldate()) {
+			pkg_emit_error("Newer FreeBSD version for package %s:\n"
+			    "- package: %d\n- running kernel: %d", pkg->name,
+			    fbsdver, getosreldate());
+			return (false);
+		}
+	}
+	return (true);
+#else
+	return (true);
+#endif
+
 }
 
 void

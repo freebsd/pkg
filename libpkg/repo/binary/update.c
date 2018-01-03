@@ -395,6 +395,12 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 			repo->name, abi);
 		goto cleanup;
 	}
+	if (!is_valid_os_version(pkg)) {
+		rc = EPKG_FATAL;
+		pkg_emit_error("repository %s contains packages for wrong OS "
+		    "version: %s", repo->name, abi);
+		goto cleanup;
+	}
 
 	free(pkg->reponame);
 	pkg->reponame = xstrdup(repo->name);
