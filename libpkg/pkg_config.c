@@ -71,6 +71,7 @@ struct pkg_ctx ctx = {
 	.rootfd = -1,
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
+	.osversion = 0,
 };
 
 struct config_entry {
@@ -875,7 +876,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get_myarch(myabi, BUFSIZ);
+	pkg_get_myarch(myabi, BUFSIZ, &ctx.osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");

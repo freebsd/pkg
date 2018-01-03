@@ -707,7 +707,7 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 }
 
 static int
-pkg_get_myarch_elfparse(char *dest, size_t sz)
+pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -847,6 +847,8 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		snprintf(dest, sz, "%s:%d.%d.%d", osname, gnu_abi_tag[1],
 		    gnu_abi_tag[2], gnu_abi_tag[3]);
 	} else {
+		if (osversion != NULL)
+			*osversion = version;
 #if defined(__DragonFly__)
 		snprintf(dest, sz, "%s:%d.%d",
 		    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
@@ -1027,7 +1029,7 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 {
 	int i, err;
 
-	err = pkg_get_myarch_elfparse(dest, sz);
+	err = pkg_get_myarch_elfparse(dest, sz, NULL);
 	if (err)
 		return (err);
 
@@ -1039,13 +1041,13 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 
 #ifndef __DragonFly__
 int
-pkg_get_myarch(char *dest, size_t sz)
+pkg_get_myarch(char *dest, size_t sz, int *osversion)
 {
 	struct arch_trans *arch_trans;
 	char *arch_tweak;
 
 	int err;
-	err = pkg_get_myarch_elfparse(dest, sz);
+	err = pkg_get_myarch_elfparse(dest, sz, osversion);
 	if (err)
 		return (err);
 

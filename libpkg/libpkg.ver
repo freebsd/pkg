@@ -48,8 +48,6 @@ global:
 	pkg_get_dbdirfd;
 	pkg_get_dir;
 	pkg_get_file;
-	pkg_get_myarch;
-	pkg_get_myarch_legacy;
 	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
