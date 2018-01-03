@@ -207,7 +207,6 @@ void
 pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	const unsigned char	*arch = NULL;
-	char			 myarch[BUFSIZ];
 
 	if (argc > 1) {
 		sqlite3_result_error(ctx, "Invalid usage of myarch\n", -1);
@@ -215,8 +214,8 @@ pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	}
 
 	if (argc == 0 || (arch = sqlite3_value_text(argv[0])) == NULL) {
-		pkg_get_myarch(myarch, BUFSIZ);
-		sqlite3_result_text(ctx, myarch, strlen(myarch), NULL);
+		arch = pkg_object_string(pkg_config_get("ABI"));
+		sqlite3_result_text(ctx, arch, strlen(arch), NULL);
 		return;
 	}
 	sqlite3_result_text(ctx, arch, strlen(arch), NULL);
