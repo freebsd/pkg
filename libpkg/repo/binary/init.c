@@ -517,7 +517,7 @@ pkg_repo_binary_close(struct pkg_repo *repo, bool commit)
 	}
 
 	pkg_repo_binary_finalize_prstatements();
-	sqlite3_free(sqlite);
+	sqlite3_close(sqlite);
 
 	repo->priv = NULL;
 
