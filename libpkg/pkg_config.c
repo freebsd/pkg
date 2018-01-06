@@ -888,7 +888,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	pkg_get_myarch(myabi, BUFSIZ, &osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 #ifdef __FreeBSD__
-	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
+	snprintf(myosversion, sizeof(myosversion), "%d", osversion);
 #endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
@@ -1164,7 +1164,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	pkg_debug(1, "%s", "pkg initialized");
 
 #ifdef __FreeBSD__
-	ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
+	osversion = pkg_object_int(pkg_config_get("OSVERSION"));
 #endif
 	/* Start the event pipe */
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));

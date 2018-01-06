@@ -46,7 +46,7 @@ static void counter_init(const char *what, int64_t max);
 static void counter_count(void);
 static void counter_end(void);
 
-extern struct pkg_ctx ctx;
+extern int osversion;
 
 static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
@@ -350,7 +350,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	if (pkg->abi == NULL) {
 #ifdef __FreeBSD__
 		char *osversion;
-		xasprintf(&osversion, "%d", ctx.osversion);
+		xasprintf(&osversion, "%d", osversion);
 		pkg_kv_add(&pkg->annotations, "FreeBSD_version", osversion, "annotation");
 #endif
 		arch = pkg_object_string(pkg_config_get("ABI"));

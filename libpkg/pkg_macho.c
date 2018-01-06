@@ -367,7 +367,7 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 	char current[sz];
 	int ret;
 
-	if ((ret = pkg_get_myarch(current, sizeof(current)), NULL) != EPKG_OK)
+	if ((ret = pkg_get_myarch(current, sizeof(current), NULL)) != EPKG_OK)
 		return ret;
 
 	return pkg_arch_to_legacy(current, dest, sz);

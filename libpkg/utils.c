@@ -52,7 +52,7 @@
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkg.h"
-#include "xmalloc.h"
+#include "private/xmalloc.h"
 
 extern int osversion;
 
