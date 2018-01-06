@@ -889,7 +889,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	pkg_get_myarch(myabi, BUFSIZ, &ctx.osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+#ifdef __FreeBSD__
 	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
+#endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
