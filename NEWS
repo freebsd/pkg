@@ -1,3 +1,16 @@
+Changes from pkg 1.10.99.6 to 1.10.99.7
+- Sort fts traversal in repo creation
+- Fix floating pint exception when packaging packages with weird elf files
+- More test cases for config merge
+- Fix running the testsuite on linux and osx
+- Fix pkg version regarding flavors
+- Add support for creating packages with a hash in their names
+- Accept DT_SONAME anywhere in .dynamic
+- make pkg version -r imply -R
+- Some fixes for the progression display
+- Rename some variables in security periodic scripts.
+- Parse FreeBSD OS version and forbid to install too new packages
+
 Changes from pkg 1.10.99.5 to 1.10.99.6
 - Lots of fixes/improvements on periodic scripts
 - Fix typo in the .pc file
