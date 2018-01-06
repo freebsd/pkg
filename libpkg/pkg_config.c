@@ -82,6 +82,9 @@ struct config_entry {
 };
 
 static char myabi[BUFSIZ], myabi_legacy[BUFSIZ];
+#ifdef __FreeBSD__
+static char myosversion[BUFSIZ];
+#endif
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -415,6 +418,14 @@ static struct config_entry c[] = {
 		NULL,
 		"Write out the METALOG to the specified file",
 	},
+#ifdef __FreeBSD__
+	{
+		PKG_INT,
+		"OSVERSION",
+		myosversion,
+		"FreeBSD OS version",
+	},
+#endif
 };
 
 static bool parsed = false;
@@ -878,6 +889,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	pkg_get_myarch(myabi, BUFSIZ, &ctx.osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
@@ -1151,6 +1163,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	pkg_debug(1, "%s", "pkg initialized");
 
+#ifdef __FreeBSD__
+	ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
+#endif
 	/* Start the event pipe */
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)
