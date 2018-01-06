@@ -61,7 +61,7 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 	regmatch_t pmatch[2];
 	int i;
 	size_t size;
-	char myarch[BUFSIZ];
+	const char *myarch;
 
 	if (!is_dir(path))
 		return (EPKG_FATAL);
@@ -92,7 +92,7 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 			pkg_addscript_file(pkg, fpath);
 	}
 
-	pkg_get_myarch(myarch, BUFSIZ);
+	myarch = pkg_object_string(pkg_config_get("ABI"));
 	pkg->arch = xstrdup(myarch);
 	pkg->maintainer = xstrdup("unknown");
 	regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
