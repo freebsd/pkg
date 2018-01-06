@@ -1,3 +1,7 @@
+Changes from 1.10.3 to 1.10.4
+- Fix progression display
+- Parse FreeBSD OS version and forbid to install too new packages
+
 Changes from 1.10.2 to 1.10.3
 - Accept DT_SONAME anywhere in .dynamic when parsing elf binaries
 - Fix pkg version when it deals with the ports tree and INDEX after flavors
