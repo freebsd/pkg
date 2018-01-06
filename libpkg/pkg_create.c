@@ -349,9 +349,9 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	/* if no arch autodetermine it */
 	if (pkg->abi == NULL) {
 #ifdef __FreeBSD__
-		char *osversion;
-		xasprintf(&osversion, "%d", osversion);
-		pkg_kv_add(&pkg->annotations, "FreeBSD_version", osversion, "annotation");
+		char *str_osversion;
+		xasprintf(&str_osversion, "%d", osversion);
+		pkg_kv_add(&pkg->annotations, "FreeBSD_version", str_osversion, "annotation");
 #endif
 		arch = pkg_object_string(pkg_config_get("ABI"));
 		pkg->abi = xstrdup(arch);
