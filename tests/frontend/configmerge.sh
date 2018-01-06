@@ -108,7 +108,7 @@ config_fileexist_notinpkg_body()
 
 config_morecomplicated_body()
 {
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "entry1" > test.conf
 	echo "entry3" >> test.conf
 	echo "@config ${TMPDIR}/test.conf" > plist
@@ -135,7 +135,7 @@ config_morecomplicated_body()
 		-o inline:"entry1\nentry3\nentry4\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/test.conf
 
-	atf_check -s exit:0 $(atf_get_srcdir)/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry1" > test.conf
 	echo "entry2" >> test.conf
 	echo "entry3" >> test.conf
