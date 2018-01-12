@@ -760,9 +760,9 @@ bool
 mkdirat_p(int fd, const char *path)
 {
 	const char *next;
-	char *walk, pathdone[MAXPATHLEN];
+	char *walk, *walkorig, pathdone[MAXPATHLEN];
 
-	walk = xstrdup(path);
+	walk = walkorig = xstrdup(path);
 	pathdone[0] = '\0';
 
 	while ((next = strsep(&walk, "/")) != NULL) {
@@ -775,11 +775,11 @@ mkdirat_p(int fd, const char *path)
 				continue;
 			}
 			pkg_errno("Fail to create /%s", pathdone);
-			free(walk);
+			free(walkorig);
 			return (false);
 		}
 		strlcat(pathdone, "/", sizeof(pathdone));
 	}
-	free(walk);
+	free(walkorig);
 	return (true);
 }
