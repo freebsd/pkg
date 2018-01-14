@@ -130,7 +130,8 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			filepath = file->path;
-			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
+			if (strlen(filepath) >= strlen(name) &&
+			    strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
 				pkg_addshlib_required(pkg, name);
 				return (EPKG_OK);
 			}
