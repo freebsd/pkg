@@ -423,6 +423,12 @@ static struct config_entry c[] = {
 		myosversion,
 		"FreeBSD OS version",
 	},
+	{
+		PKG_BOOL,
+		"IGNORE_OSVERSION",
+		"NO",
+		"Ignore FreeBSD OS version check",
+	},
 #endif
 };
 
