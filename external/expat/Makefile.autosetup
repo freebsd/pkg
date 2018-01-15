@@ -1,0 +1,12 @@
+include @builddir@/mk/defs.mk
+
+LIB=	expat
+SRCS=	lib/xmlparse.c \
+	lib/xmlrole.c \
+	lib/xmltok.c
+LOCAL_CFLAGS=	-I$(top_srcdir)/external/expat \
+		-I$(top_srcdir)/external/expat/lib \
+		-DHAVE_MEMMOVE=1 \
+		-Wno-unused-parameter
+
+include $(MK)/static-lib.mk

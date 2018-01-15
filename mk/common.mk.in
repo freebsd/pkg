@@ -1,0 +1,3 @@
+RANLIB=	@RANLIB@
+AR=	@AR@
+OBJS=	${SRCS:.c=.o}

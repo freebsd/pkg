@@ -1,0 +1,17 @@
+include @builddir@/mk/defs.mk
+LIB=	repo-binary
+SRCS=	binary.c \
+	common.c \
+	fetch.c \
+	init.c \
+	query.c \
+	update.c
+LOCAL_CFLAGS=	-I$(top_srcdir)/libpkg \
+		-I$(top_srcdir)/external/uthash \
+		-I$(top_srcdir)/external/sqlite \
+		-I$(top_srcdir)/external/libucl/include \
+		-I$(top_srcdir)/external/libucl/klib \
+		-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/ \
+
+include $(MK)/static-lib.mk

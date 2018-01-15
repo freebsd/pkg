@@ -1,0 +1,6 @@
+include @builddir@/mk/defs.mk
+LIB=	machista
+SRCS=	libmachista.c \
+	hashmap.c
+
+include $(MK)/static-lib.mk

@@ -1,6 +1,7 @@
 *.o
 *.so*
 *.a
+*.pico
 *.po
 *.Po
 *.So
@@ -41,13 +42,16 @@ scripts/sbin/pkg2ng
 # Generated files:
 
 /Makefile
-/config.guess
-/config.status
-/config.sub
 /compat/Makefile
 /docs/Makefile
 /external/Makefile
-external/blake2/Makefile
+/external/blake2/Makefile
+/external/picosat/Makefile
+/external/expat/Makefile
+/external/linenoise/Makefile
+/external/libucl/Makefile
+/external/sqlite/Makefile
+/external/sqlite/config.h
 /external/libelf/libelf_convert.c
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c
@@ -55,27 +59,10 @@ external/blake2/Makefile
 /libpkg/Makefile
 /libpkg/repo/Makefile
 /libpkg/repo/binary/Makefile
-/libtool
-/ltmain.sh
 /pkg_config.h
 /pkg_config.h.in
-/pkg_repos.h
 /scripts/Makefile
 /src/Makefile
-/test-driver
 /tests/Makefile
-
-# http://www.gnu.org/software/automake
-
-Makefile.in
-
-# http://www.gnu.org/software/autoconf
-
-/autom4te.cache
-/aclocal.m4
-/compile
-/configure
-/depcomp
-/install-sh
-/missing
-/stamp-h1
+/tests/frontend/test_environment.sh
+/mk/defs.mk

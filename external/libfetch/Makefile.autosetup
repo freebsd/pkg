@@ -1,0 +1,15 @@
+include @builddir@/mk/defs.mk
+LIB=	fetch
+SRCS=	common.c \
+	fetch.c \
+	file.c \
+	ftp.c \
+	http.c
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
+		-I$(top_srcdir) \
+		-Wno-unused-parameter \
+		-Wno-pointer-sign \
+		-DWITH_SSL
+
+include $(MK)/static-lib.mk
