@@ -1,0 +1,5 @@
+include @builddir@/mk/defs.mk
+LIB=	linenoise
+SRCS=	linenoise.c
+
+include $(MK)/static-lib.mk

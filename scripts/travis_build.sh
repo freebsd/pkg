@@ -39,9 +39,9 @@ set -e
 if [ $(uname -s) = "Darwin" ]; then
   CFLAGS="-I/usr/local/opt/libarchive/include" \
     LDFLAGS="-L/usr/local/opt/libarchive/lib" \
-    ./configure
+    ./configure --with-libarchive.pc
 elif [ $(uname -s) = "Linux" ]; then
-  CFLAGS="-Wno-strict-aliasing -Wno-unused-result -Wno-unused-value" ./configure
+  CFLAGS="-Wno-strict-aliasing -Wno-unused-result -Wno-unused-value" ./configure --with-libarchive.pc
 fi
 
 # Build quietly and in parallel first.  If the build fails re-run

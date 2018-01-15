@@ -1,0 +1,3 @@
+include @builddir@/mk/defs.mk
+DIRS=	expat blake2 picosat linenoise libfetch sqlite libucl @libabidir@
+include $(MK)/dir.mk

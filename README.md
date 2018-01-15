@@ -270,7 +270,6 @@ Just open your browser and download the release you want.
 Once you have the pkg sources, installing it is fairly easy:
 
 	% cd pkg
-	% ./autogen.sh
 	% ./configure
 	% make
 	# make install

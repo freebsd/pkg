@@ -1,0 +1,68 @@
+include @builddir@/mk/defs.mk
+
+MAN3=	pkg_printf.3 \
+	pkg_repos.3
+MAN5=	pkg-repository.5 \
+	pkg.conf.5
+MAN8=	pkg-add.8 \
+	pkg-alias.8 \
+	pkg-annotate.8 \
+	pkg-audit.8 \
+	pkg-autoremove.8 \
+	pkg-backup.8 \
+	pkg-check.8 \
+	pkg-clean.8 \
+	pkg-config.8 \
+	pkg-create.8 \
+	pkg-delete.8 \
+	pkg-fetch.8 \
+	pkg-info.8 \
+	pkg-install.8 \
+	pkg-lock.8 \
+	pkg-query.8 \
+	pkg-register.8 \
+	pkg-repo.8 \
+	pkg-rquery.8 \
+	pkg-search.8 \
+	pkg-set.8 \
+	pkg-shell.8 \
+	pkg-shlib.8 \
+	pkg-ssh.8 \
+	pkg-stats.8 \
+	pkg-update.8 \
+	pkg-updating.8 \
+	pkg-upgrade.8 \
+	pkg-version.8 \
+	pkg-which.8 \
+	pkg.8
+
+MAN3GZ=	$(MAN3:.3=.3.gz)
+MAN5GZ=	$(MAN5:.5=.5.gz)
+MAN8GZ=	$(MAN8:.8=.8.gz)
+
+.SUFFIXES: .3.gz .5.gz .8.gz .3 .5 .8
+
+all: $(MAN3GZ) $(MAN5GZ) $(MAN8GZ)
+
+.3.3.gz:
+	gzip -kfn $< > $@
+
+.5.5.gz:
+	gzip -kfn $< > $@
+
+.8.8.gz:
+	gzip -kfn $< > $@
+
+clean:
+	rm -f *.gz
+
+run-fix-xrefs:
+	./fix-xrefs $(MAN3) $(MAN5) $(MAN8)
+
+install:
+	install -d $(DESTDIR)$(mandir)/man3
+	install -d $(DESTDIR)$(mandir)/man5
+	install -d $(DESTDIR)$(mandir)/man8
+	install -m 644 *.3.gz $(DESTDIR)$(mandir)/man3
+	install -m 644 *.5.gz $(DESTDIR)$(mandir)/man5
+	install -m 644 *.8.gz $(DESTDIR)$(mandir)/man8

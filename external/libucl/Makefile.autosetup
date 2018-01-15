@@ -1,0 +1,19 @@
+include @builddir@/mk/defs.mk
+LIB=	ucl
+SRCS=	src/ucl_emitter_streamline.c \
+	src/ucl_emitter_utils.c \
+	src/ucl_emitter.c \
+	src/ucl_hash.c \
+	src/ucl_msgpack.c \
+	src/ucl_parser.c \
+	src/ucl_schema.c \
+	src/ucl_sexp.c \
+	src/ucl_util.c
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/external/libucl/include \
+		-I$(top_srcdir)/external/libucl/uthash \
+		-I$(top_srcdir)/external/libucl/klib \
+		-I$(top_srcdir)/external/libucl/src/ \
+		-Wno-unused-parameter
+
+include $(MK)/static-lib.mk

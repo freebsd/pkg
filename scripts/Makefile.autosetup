@@ -1,0 +1,39 @@
+include @builddir@/mk/defs.mk
+include $(MK)/common.mk
+
+pdailydir=		$(sysconfdir)/periodic/daily
+psecuritydir=		$(sysconfdir)/periodic/security
+pweeklydir=		$(sysconfdir)/periodic/weekly
+bashcompdir=		$(sysconfdir)/bash_completion.d
+zshcompdir=		$(prefix)/share/zsh/site-functions
+
+PDAILY=	periodic/411.pkg-backup \
+	periodic/490.status-pkg-changes
+PSECURITY=	periodic/410.pkg-audit \
+		periodic/460.pkg-checksum
+PWEEKLY=	periodic/400.status-pkg
+COMPLETION=	completion/_pkg \
+		completion/_pkg.bash
+
+all: $(PDAILY) $(PSECURITY) $(PWEEKLY) $(COMPLETION)
+
+clean:
+	rm -f $(PDAILY) $(PSECURITY) $(PWEEKLY)
+
+install: $(PDAILY) $(PSECURITY) $(PWEEKLY) $(COMPLETION)
+	install -d -m 755 $(DESTDIR)$(pdailydir)
+	install -d -m 755 $(DESTDIR)$(pweeklydir)
+	install -d -m 755 $(DESTDIR)$(psecuritydir)
+	install -d -m 755 $(DESTDIR)$(bashcompdir)
+	install -d -m 755 $(DESTDIR)$(zshcompdir)
+	for script in $(PDAILY); do \
+		install -m 755 $$script $(DESTDIR)$(pdailydir) ; \
+	done
+	for script in $(PSECURITY); do \
+		install -m 755 $$script $(DESTDIR)$(psecuritydir) ; \
+	done
+	for script in $(PWEEKLY); do \
+		install -m 755 $$script $(DESTDIR)$(pweeklydir) ; \
+	done
+	install -m 644 completion/_pkg.bash $(DESTDIR)$(bashcompdir)/
+	install -m 644 completion/_pkg  $(DESTDIR)$(zshcompdir)/

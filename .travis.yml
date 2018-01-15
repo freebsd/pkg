@@ -24,9 +24,6 @@ compiler:
 before_install:
   - scripts/install_deps.sh
 
-before_script:
-  - autoreconf -i
-
 script:
   - scripts/travis_build.sh
 
