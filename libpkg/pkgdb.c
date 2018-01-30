@@ -829,7 +829,7 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 	if (retval != 0) {
 		if (errno == ENOENT)
 			return (EPKG_ENODB);
-		else if (errno == EACCES)
+		else if (errno == EACCES || errno == EROFS)
 			return (EPKG_ENOACCESS);
 		else
 			return (EPKG_FATAL);
