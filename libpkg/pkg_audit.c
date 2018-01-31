@@ -884,6 +884,9 @@ pkg_audit_load(struct pkg_audit *audit, const char *fname)
 int
 pkg_audit_process(struct pkg_audit *audit)
 {
+	if (geteuid() == 0)
+		return (EPKG_FATAL);
+
 	if (!audit->loaded)
 		return (EPKG_FATAL);
 
