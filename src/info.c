@@ -258,6 +258,11 @@ exec_info(int argc, char **argv)
 	if (match == MATCH_ALL && opt == INFO_TAG_NAMEVER)
 		quiet = false;
 
+	if (opt & INFO_RAW) {
+		if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
+			opt |= INFO_RAW_YAML;
+	}
+
 	if (file != NULL) {
 		if ((fd = open(file, O_RDONLY)) == -1) {
 			warn("Unable to open %s", file);
@@ -282,10 +287,6 @@ exec_info(int argc, char **argv)
 		if (opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
-		if (opt & INFO_RAW) {
-			if ((opt & (INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) == 0)
-				opt |= INFO_RAW_YAML;
-		}
 
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
