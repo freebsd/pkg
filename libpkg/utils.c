@@ -373,8 +373,10 @@ is_valid_os_version(struct pkg *pkg)
 				if (osver_missmatch_allowed == -1) {
 					snprintf(query_buf, sizeof(query_buf),
 							"Newer FreeBSD version for package %s:\n"
-							"- package: %d\n- running kernel: %d\n"
-							"Allow missmatch?", pkg->name,
+							"To ignore this error set IGNORE_OSVERSION=yes\n"
+							"- package: %d\n"
+							"- running kernel: %d\n"
+							"Allow missmatch now?", pkg->name,
 							fbsdver, osversion);
 					ret = pkg_emit_query_yesno(true, query_buf);
 					osver_missmatch_allowed = ret;
@@ -384,7 +386,10 @@ is_valid_os_version(struct pkg *pkg)
 			}
 			else {
 				pkg_emit_error("Newer FreeBSD version for package %s:\n"
-					"- package: %d\n- running kernel: %d", pkg->name,
+					"To ignore this error set IGNORE_OSVERSION=yes\n"
+					"- package: %d\n"
+					"- running kernel: %d\n",
+					pkg->name,
 					fbsdver, osversion);
 				return (false);
 			}
