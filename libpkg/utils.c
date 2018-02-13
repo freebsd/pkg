@@ -353,6 +353,10 @@ is_valid_os_version(struct pkg *pkg)
 	const char *fbsd_version;
 	const char *errstr = NULL;
 	int fbsdver;
+	char query_buf[512];
+	/* -1: not checked, 0: not allowed, 1: allowed */
+	static int osver_missmatch_allowed = -1;
+	bool ret;
 
 	if (pkg_object_bool(pkg_config_get("IGNORE_OSVERSION")))
 		return (true);
@@ -364,10 +368,26 @@ is_valid_os_version(struct pkg *pkg)
 			return (false);
 		}
 		if (fbsdver > osversion) {
-			pkg_emit_error("Newer FreeBSD version for package %s:\n"
-			    "- package: %d\n- running kernel: %d", pkg->name,
-			    fbsdver, osversion);
-			return (false);
+			if (fbsdver - osversion < 100000) {
+				/* Negligible difference, ask user to enforce */
+				if (osver_missmatch_allowed == -1) {
+					snprintf(query_buf, sizeof(query_buf),
+							"Newer FreeBSD version for package %s:\n"
+							"- package: %d\n- running kernel: %d\n"
+							"Allow missmatch?", pkg->name,
+							fbsdver, osversion);
+					ret = pkg_emit_query_yesno(true, query_buf);
+					osver_missmatch_allowed = ret;
+				}
+
+				return (osver_missmatch_allowed);
+			}
+			else {
+				pkg_emit_error("Newer FreeBSD version for package %s:\n"
+					"- package: %d\n- running kernel: %d", pkg->name,
+					fbsdver, osversion);
+				return (false);
+			}
 		}
 	}
 	return (true);
