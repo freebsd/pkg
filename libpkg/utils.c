@@ -51,7 +51,10 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/pkg.h"
 #include "xmalloc.h"
+
+extern struct pkg_ctx ctx;
 
 int
 mkdirs(const char *_path)
@@ -331,6 +334,7 @@ is_valid_abi(const char *arch, bool emit_error) {
 	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 
 	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	    fnmatch(arch, myarch_legacy, FNM_CASEFOLD) == FNM_NOMATCH &&
 	    strncasecmp(arch, myarch, strlen(myarch)) != 0 &&
 	    strncasecmp(arch, myarch_legacy, strlen(myarch_legacy)) != 0) {
 		if (emit_error)
@@ -340,6 +344,37 @@ is_valid_abi(const char *arch, bool emit_error) {
 	}
 
 	return (true);
+}
+
+bool
+is_valid_os_version(struct pkg *pkg)
+{
+#ifdef __FreeBSD__
+	const char *fbsd_version;
+	const char *errstr = NULL;
+	int fbsdver;
+
+	if (pkg_object_bool(pkg_config_get("IGNORE_OSVERSION")))
+		return (true);
+	if ((fbsd_version = pkg_kv_get(&pkg->annotations, "FreeBSD_version")) != NULL) {
+		fbsdver = strtonum(fbsd_version, 1, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Invalid FreeBSD version %s for package %s",
+			    fbsd_version, pkg->name);
+			return (false);
+		}
+		if (fbsdver > ctx.osversion) {
+			pkg_emit_error("Newer FreeBSD version for package %s:\n"
+			    "- package: %d\n- running kernel: %d", pkg->name,
+			    fbsdver, ctx.osversion);
+			return (false);
+		}
+	}
+	return (true);
+#else
+	return (true);
+#endif
+
 }
 
 void
@@ -727,9 +762,9 @@ bool
 mkdirat_p(int fd, const char *path)
 {
 	const char *next;
-	char *walk, pathdone[MAXPATHLEN];
+	char *walk, *walkorig, pathdone[MAXPATHLEN];
 
-	walk = xstrdup(path);
+	walk = walkorig = xstrdup(path);
 	pathdone[0] = '\0';
 
 	while ((next = strsep(&walk, "/")) != NULL) {
@@ -742,11 +777,11 @@ mkdirat_p(int fd, const char *path)
 				continue;
 			}
 			pkg_errno("Fail to create /%s", pathdone);
-			free(walk);
+			free(walkorig);
 			return (false);
 		}
 		strlcat(pathdone, "/", sizeof(pathdone));
 	}
-	free(walk);
+	free(walkorig);
 	return (true);
 }

@@ -48,8 +48,6 @@ global:
 	pkg_get_dbdirfd;
 	pkg_get_dir;
 	pkg_get_file;
-	pkg_get_myarch;
-	pkg_get_myarch_legacy;
 	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
@@ -67,7 +65,9 @@ global:
 	pkg_jobs_cudf_parse_output;
 	pkg_jobs_destdir;
 	pkg_jobs_free;
+	pkg_jobs_has_lockedpkgs;
 	pkg_jobs_iter;
+	pkg_jobs_iter_lockedpkgs;
 	pkg_jobs_new;
 	pkg_jobs_set_destdir;
 	pkg_jobs_set_flags;

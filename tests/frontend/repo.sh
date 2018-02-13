@@ -9,20 +9,8 @@ tests_init \
 repo_body() {
 	touch plop
 	touch bla
-	cat > test.ucl << EOF
-name: "test"
-origin: "osef"
-version: "1"
-arch: "freebsd:*"
-maintainer: "test"
-www: "unknown"
-prefix: "${TMPDIR}"
-comment: "need none"
-desc: "here as well"
-options: {
-	"OPT1": "on"
-	"OPT2": "off"
-}
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
+	cat >> test.ucl << EOF
 files: {
 	"${TMPDIR}/plop": ""
 	"${TMPDIR}/bla": ""
@@ -71,29 +59,8 @@ EOF
 }
 
 repo_multiversion_body() {
-	cat > test.ucl << EOF
-name: "test"
-origin: "osef"
-version: "1.0"
-arch: "freebsd:*"
-maintainer: "test"
-www: "unknown"
-prefix: "${TMPDIR}"
-comment: "need one"
-desc: "here as well"
-EOF
-
-	cat > test1.ucl << EOF
-name: "test"
-origin: "osef"
-version: "1.1"
-arch: "freebsd:*"
-maintainer: "test"
-www: "unknown"
-prefix: "${TMPDIR}"
-comment: "need one"
-desc: "here as well"
-EOF
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test1 test 1.1 "${TMPDIR}"
 	for i in test test1; do
 		atf_check pkg create -M $i.ucl
 	done

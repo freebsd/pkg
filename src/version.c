@@ -56,7 +56,7 @@
 extern char **environ;
 
 struct index_entry {
-	char *origin;
+	char *name;
 	char *version;
 };
 
@@ -286,10 +286,10 @@ hash_indexfile(const char *indexfilename)
 	FILE			*indexfile;
 	kh_index_t		*index = NULL;
 	struct index_entry	*entry;
-	char			*version, *origin;
-	char			*line = NULL, *l, *p;
+	char			*version, *name;
+	char			*line = NULL, *l;
 	size_t			 linecap = 0;
-	int			 dirs, ret;
+	int			 ret;
 	khint_t			 k;
 
 
@@ -306,40 +306,30 @@ hash_indexfile(const char *indexfilename)
 		l = line;
 
 		version = strsep(&l, "|");
+		name = version;
 		version = strrchr(version, '-');
 		version[0] = '\0';
 		version++;
 
-		origin = strsep(&l, "|");
-		for (dirs = 0, p = l; p > origin; p--) {
-			if ( p[-1] == '/' ) {
-				dirs++;
-				if (dirs == 2) {
-					origin = p;
-					break;
-				}
-			}
-		}
-
 		entry = malloc(sizeof(struct index_entry));
 		if (entry != NULL) {
+			entry->name = strdup(name);
 			entry->version = strdup(version);
-			entry->origin = strdup(origin);
 		}
 
 		if (entry == NULL || entry->version == NULL ||
-		    entry->origin == NULL)
+		    entry->name == NULL)
 			err(EX_SOFTWARE, "Out of memory while reading %s",
 			    indexfilename);
 
 		if (index == NULL)
 			index = kh_init_index();
-		k = kh_put_index(index, entry->origin, &ret);
+		k = kh_put_index(index, entry->name, &ret);
 		if (ret != 0) {
 			kh_value(index, k) = entry;
 		} else {
-			free(entry->origin);
 			free(entry->version);
+			free(entry->name);
 			free(entry);
 		}
 	}
@@ -381,8 +371,8 @@ free_index(kh_index_t *index)
 		return;
 
 	kh_foreach_value(index, entry, {
-		free(entry->origin);
 		free(entry->version);
+		free(entry->name);
 		free(entry);
 	});
 	kh_destroy_index(index);
@@ -460,7 +450,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		k = kh_get_index(index, origin);
+		k = kh_get_index(index, name);
 		print_version(pkg, "index",
 		    k != kh_end(index) ? (kh_value(index, k))->version : NULL, limchar, opt);
 	}
@@ -611,6 +601,8 @@ exec_buf(UT_string *res, char **argv) {
 		if (errno != EINTR)
 			return (-1);
 	}
+	if (WEXITSTATUS(pstat) != 0)
+		return (-1);
 
 	return (utstring_len(res));
 }
@@ -673,6 +665,12 @@ validate_origin(const char *portsdir, const char *origin)
 	char		 categorypath[MAXPATHLEN];
 	khint_t		 k;
 
+	/* If the origin does not contain a / ignore it like for
+	 * "base"
+	 */
+	if (strchr(origin, '/') == NULL)
+		return (false);
+
 	snprintf(categorypath, MAXPATHLEN, "%s/%s", portsdir, origin);
 
 	buf = strrchr(categorypath, '/');
@@ -700,9 +698,10 @@ validate_origin(const char *portsdir, const char *origin)
 }
 
 static const char *
-port_version(UT_string *cmd, const char *portsdir, const char *origin)
+port_version(UT_string *cmd, const char *portsdir, const char *origin,
+    const char *pkgname)
 {
-	char	*output;
+	char	*output, *walk, *name;
 	char	*version = NULL;
 	char	*argv[5];
 
@@ -716,12 +715,23 @@ port_version(UT_string *cmd, const char *portsdir, const char *origin)
 		argv[0] = "make";
 		argv[1] = "-C";
 		argv[2] = utstring_body(cmd);
-		argv[3] = "-VPKGVERSION";
+		argv[3] = "flavors-package-names";
 		argv[4] = NULL;
 
-		if (exec_buf(cmd, argv) != 0) {
+		if (exec_buf(cmd, argv) > 0) {
 			output = utstring_body(cmd);
-			version = strsep(&output, "\n");
+			while ((walk = strsep(&output, "\n")) != NULL) {
+				name = walk;
+				walk = strrchr(walk, '-');
+				if (walk == NULL)
+					continue;
+				walk[0] = '\0';
+				walk++;
+				if (strcmp(name, pkgname) == 0) {
+					version = walk;
+					break;
+				}
+			}
 		}
 	}
 
@@ -744,7 +754,6 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		usage_version();
 		return (EX_USAGE);
 	}
-
 
 	if (chdir(portsdir) != 0)
 		err(EX_SOFTWARE, "Cannot chdir to %s\n", portsdir); 
@@ -777,7 +786,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		version = port_version(cmd, portsdir, origin);
+		version = port_version(cmd, portsdir, origin, name);
 		print_version(pkg, "port", version, limchar, opt);
 		utstring_clear(cmd);
 	}
@@ -887,6 +896,7 @@ exec_version(int argc, char **argv)
 			opt |= VERSION_SOURCE_REMOTE;
 			break;
 		case 'r':
+			opt |= VERSION_SOURCE_REMOTE;
 			reponame = optarg;
 			break;
 		case 'T':

@@ -228,6 +228,7 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 {
 
 	struct timeval tv[2];
+	struct stat st;
 	int fdcwd;
 #ifdef HAVE_UTIMENSAT
 	struct timespec times[2];
@@ -285,9 +286,24 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	/* zfs drops the setuid on fchownat */
 	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOTSUP) {
-			if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
-				pkg_fatal_errno("Fail to chmod(fallback) %s",
-				    path);
+			/* 
+			 * Executing fchmodat on a symbolic link results in
+			 * ENOENT (file not found) on platforms that do not
+			 * support AT_SYMLINK_NOFOLLOW. The file mode of
+			 * symlinks cannot be modified via file descriptor
+			 * reference on these systems. The lchmod function is
+			 * also not an option because it is not a posix
+			 * standard, nor is implemented everywhere. Since
+			 * symlink permissions have never been evaluated and
+			 * thus cosmetic, just skip them on these systems.
+			 */
+			if (fstatat(fd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == -1) {
+				pkg_fatal_errno("Fail to get file status %s", path);
+			}
+			if (!S_ISLNK(st.st_mode)) {
+				if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
+					pkg_fatal_errno("Fail to chmod(fallback) %s", path);
+				}
 			}
 		}
 		else {
@@ -378,7 +394,7 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 
 	metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFDIR, NULL);
+	    aest->st_mode & ~S_IFDIR, d->fflags, NULL);
 
 	return (EPKG_OK);
 }
@@ -436,7 +452,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 
 	metalog_add(PKG_METALOG_LINK, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFLNK, archive_entry_symlink(ae));
+	    aest->st_mode & ~S_IFLNK, f->fflags, archive_entry_symlink(ae));
 
 	return (EPKG_OK);
 }
@@ -494,7 +510,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFREG, NULL);
+	    aest->st_mode & ~S_IFREG, 0, NULL);
 
 	return (EPKG_OK);
 }
@@ -602,7 +618,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
 	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFREG, NULL);
+	    aest->st_mode & ~S_IFREG, f->fflags, NULL);
 
 	return (EPKG_OK);
 }
@@ -706,6 +722,9 @@ pkg_extract_finalize(struct pkg *pkg)
 	struct pkg_dir *d = NULL;
 	char path[MAXPATHLEN];
 	const char *fto;
+	bool install_as_user;
+
+	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (*f->temppath == '\0')
@@ -723,7 +742,7 @@ pkg_extract_finalize(struct pkg *pkg)
 		if (fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
 		    AT_SYMLINK_NOFOLLOW) != -1) {
 #ifdef HAVE_CHFLAGSAT
-			if (st.st_flags & NOCHANGESFLAGS) {
+			if (!install_as_user && st.st_flags & NOCHANGESFLAGS) {
 				chflagsat(pkg->rootfd, RELATIVE_PATH(fto), 0,
 				    AT_SYMLINK_NOFOLLOW);
 			}
@@ -737,7 +756,7 @@ pkg_extract_finalize(struct pkg *pkg)
 		}
 
 #ifdef HAVE_CHFLAGSAT
-		if (f->fflags != 0) {
+		if (!install_as_user && f->fflags != 0) {
 			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
 			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
 				pkg_fatal_errno("Fail to chflags %s", fto);
@@ -814,6 +833,10 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
 	if (!is_valid_abi(arch, true) && (flags & PKG_ADD_FORCE) == 0) {
+		return (EPKG_FATAL);
+	}
+
+	if (!is_valid_os_version(pkg) && (flags & PKG_ADD_FORCE) == 0) {
 		return (EPKG_FATAL);
 	}
 
@@ -1174,7 +1197,7 @@ cleanup_reg:
 		if (msgstr != NULL) {
 			if (utstring_len(message) == 0) {
 				pkg_utstring_printf(message, "Message from "
-				    "%n-%v:\n", pkg, pkg);
+				    "%n-%v:\n\n", pkg, pkg);
 			}
 			utstring_printf(message, "%s\n", msgstr);
 		}

@@ -205,7 +205,6 @@ void
 pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	const unsigned char	*arch = NULL;
-	char			 myarch[BUFSIZ];
 
 	if (argc > 1) {
 		sqlite3_result_error(ctx, "Invalid usage of myarch\n", -1);
@@ -213,8 +212,8 @@ pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	}
 
 	if (argc == 0 || (arch = sqlite3_value_text(argv[0])) == NULL) {
-		pkg_get_myarch(myarch, BUFSIZ);
-		sqlite3_result_text(ctx, myarch, strlen(myarch), NULL);
+		arch = pkg_object_string(pkg_config_get("ABI"));
+		sqlite3_result_text(ctx, arch, strlen(arch), NULL);
 		return;
 	}
 	sqlite3_result_text(ctx, arch, strlen(arch), NULL);
@@ -828,7 +827,7 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 	if (retval != 0) {
 		if (errno == ENOENT)
 			return (EPKG_ENODB);
-		else if (errno == EACCES)
+		else if (errno == EACCES || errno == EROFS)
 			return (EPKG_ENOACCESS);
 		else
 			return (EPKG_FATAL);
@@ -1035,11 +1034,11 @@ pkgdb_syscall_overload(void)
 }
 
 void
-pkgdb_setup_lock(void)
+pkgdb_nfs_corruption(sqlite3 *db)
 {
 	int dbdirfd = pkg_get_dbdirfd();
 
-	if (pkg_object_bool(pkg_config_get("NFS_WITH_PROPER_LOCKING")))
+	if (sqlite3_errcode(db) != SQLITE_CORRUPT)
 		return;
 
 	/*
@@ -1051,14 +1050,18 @@ pkgdb_setup_lock(void)
 
 	if (fstatvfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+			pkg_emit_error("You are running on a remote filesystem,"
+			    " please make sure, the locking mechanism is "
+			    " properly setup\n");
 	}
 #elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
 	struct statfs stfs;
 
 	if (fstatfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
-			sqlite3_vfs_register(sqlite3_vfs_find("unix-dotfile"), 1);
+			pkg_emit_error("You are running on a remote filesystem,"
+			    " please make sure, the locking mechanism is "
+			    " properly setup\n");
 	}
 #endif
 
@@ -1117,11 +1120,11 @@ retry:
 
 		sqlite3_initialize();
 
-		pkgdb_setup_lock();
 		pkgdb_syscall_overload();
 
-		if (sqlite3_open("local.sqlite", &db->sqlite) != SQLITE_OK) {
+		if (sqlite3_open("/local.sqlite", &db->sqlite) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
+			pkgdb_nfs_corruption(db->sqlite);
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
@@ -1722,7 +1725,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 	package_id = sqlite3_last_insert_rowid(s);
 
 	/*
-	 * update dep informations on packages that depends on the insert
+	 * Update dep information on packages that depend on the inserted
 	 * package
 	 */
 

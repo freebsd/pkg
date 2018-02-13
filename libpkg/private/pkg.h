@@ -236,6 +236,7 @@ struct pkg_ctx {
 	int cachedirfd;
 	int dbdirfd;
 	int pkg_dbdirfd;
+	int osversion;
 };
 
 extern struct pkg_ctx ctx;
@@ -620,6 +621,13 @@ typedef enum {
 	PKG_RC_STOP
 } pkg_rc_attr;
 
+#ifdef __DragonFly__
+#define pkg_get_myarch(d, z, v) pkg_get_myarch_legacy(d, z)
+#else
+int pkg_get_myarch(char *pkgarch, size_t sz, int *osversion);
+#endif
+int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
+
 /**
  * Remove and unregister the package.
  * @param pkg An installed package to delete
@@ -694,6 +702,7 @@ int packing_append_buffer(struct packing *pack, const char *buffer,
 			  const char *path, int size);
 int packing_append_tree(struct packing *pack, const char *treepath,
 			const char *newroot);
+void packing_get_filename(struct packing *pack, const char *filename);
 void packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);
@@ -807,7 +816,7 @@ char* pkg_message_to_str(struct pkg *pkg);
 
 int metalog_open(const char *metalog);
 void metalog_add(int type, const char *path, const char *uname,
-    const char *gname, int mode, const char *link);
+    const char *gname, int mode, unsigned long fflags, const char *link);
 void metalog_close();
 enum pkg_metalog_type {
 	PKG_METALOG_FILE = 0,

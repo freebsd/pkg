@@ -124,7 +124,6 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		return;
 	}
 
-	drop_privileges();
 
 	if (pkg_audit_load(audit, NULL) != EPKG_OK) {
 		warn("unable to open vulnxml file");
@@ -132,6 +131,8 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		pkg_audit_free(audit);
 		return;
 	}
+
+	drop_privileges();
 
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {

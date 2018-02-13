@@ -44,7 +44,7 @@ Linux/OSX:
 [<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
 
 FreeBSD:
-[![Build Status](http://jenkins.mouf.net/view/auto/job/pkg/badge/icon)](http://jenkins.mouf.net/view/auto/job/pkg/)
+[![Build Status](https://jenkins.mouf.net/view/pkg/job/pkg/badge/icon)](https://jenkins.mouf.net/view/pkg/job/pkg/)
 <a name="libpkg"></a>
 ### libpkg
 

@@ -198,7 +198,6 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	}
 
 	if (pkg_is_locked(pkg)) {
-		pkg_emit_locked(pkg);
 		return (EPKG_LOCKED);
 	}
 

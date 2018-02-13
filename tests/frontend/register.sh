@@ -58,29 +58,20 @@ EOF
 }
 
 register_message_body() {
-	cat << EOF > +MANIFEST
-name: "test2"
-origin: "osef"
-version: "1"
-arch: "freebsd:*"
-maintainer: "non"
-prefix: "${TMPDIR}"
-www: "unknown"
-comment: "need one"
-desc: "here as well"
-EOF
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_manifest test1 1 "${TMPDIR}"
 	cat << EOF > +DISPLAY
 message
 EOF
 
-OUTPUT='test2-1:
+OUTPUT='test1-1:
 Always:
 message
 
 '
 	atf_check -o match:"message" pkg register -m .
-	atf_check -o inline:"${OUTPUT}" pkg info -D test2
+	atf_check -o inline:"${OUTPUT}" pkg info -D test1
 
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_manifest test2 1 "${TMPDIR}"
 	cat << EOF > +DISPLAY
 [
 	{ message: "hey"},
@@ -106,7 +97,7 @@ remove
 
 prefix_is_a_symlink_body()
 {
-	new_pkg "test" "test" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	mkdir -p ${TMPDIR}/${TMPDIR}/plop/bla
 	echo "something" > ${TMPDIR}/${TMPDIR}/plop/bla/a
 	ln ${TMPDIR}/${TMPDIR}/plop/bla/a ${TMPDIR}/${TMPDIR}/plop/bla/b

@@ -40,3 +40,6 @@ notifications:
       - "irc.freenode.org#pkgng"
     on_success: change
     on_failure: always
+  slack:
+    secure: JV9MS85W0G0bEqq1L9bcgINnOdin7mJWYjAqEqQ/kw2KSRMkonTPtK/BsV6Aeh/jJYlgtXZU4hMzT0qA7p3TaWz5ZSHwCY9+awhvjYxWzRSnkpC6t/necMKOTTvJ8GSvxZ37D92qjSOXKnk+WKqOivWZKoQWzLr7LAfUFOOGQPw=
+

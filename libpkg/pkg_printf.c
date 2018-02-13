@@ -447,6 +447,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG,
 		&format_options,
 	},
+	[PP_PKG_ALTABI] =
+	{
+		'Q',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_altabi,
+	},
 	[PP_PKG_REPO_PATH] =
 	{
 		'R',
@@ -1375,6 +1384,17 @@ format_option_description(UT_string *buf, const void *data, struct percent_esc *
 	const struct pkg_option	*option = data;
 
 	return (string_val(buf, option->description, p));
+}
+
+/*
+ * %Q -- pkg architecture a.k.a ABI string.  Accepts field-width, left-align
+ */
+UT_string *
+format_altabi(UT_string *buf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	return (string_val(buf, pkg->arch, p));
 }
 
 /*

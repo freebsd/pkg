@@ -1027,15 +1027,25 @@ drop_privileges(void)
 	if (geteuid() == 0) {
 		nobody = getpwnam("nobody");
 		if (nobody == NULL)
-			err(EXIT_FAILURE, "Unable to drop priviledges");
+			err(EXIT_FAILURE, "Unable to drop privileges");
 		setgroups(1, &nobody->pw_gid);
-		if (setegid(nobody->pw_gid) == -1)
-			err(EXIT_FAILURE, "Unable to setegid");
+		/* setgid also sets egid and setuid also sets euid */
 		if (setgid(nobody->pw_gid) == -1)
 			err(EXIT_FAILURE, "Unable to setgid");
-		if (seteuid(nobody->pw_uid) == -1)
-			err(EXIT_FAILURE, "Unable to seteuid");
 		if (setuid(nobody->pw_uid) == -1)
 			err(EXIT_FAILURE, "Unable to setuid");
 	}
+}
+
+int
+print_pkg(struct pkg *p, void *ctx)
+{
+	const char *name;
+	int *counter = ctx;
+
+	pkg_get(p, PKG_NAME, &name);
+	printf("\t%s\n", name);
+	(*counter)++;
+
+	return 0;
 }

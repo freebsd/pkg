@@ -5,7 +5,7 @@ tests_init \
 	conflicts_multirepo
 
 conflicts_multirepo_head() {
-	atf_set "timeout" "20"
+	atf_set "timeout" "40"
 }
 
 conflicts_multirepo_body() {

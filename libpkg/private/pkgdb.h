@@ -186,6 +186,6 @@ void pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 int pkgdb_sqlcmd_init(sqlite3 *db, const char **err, const void *noused);
 int pkgdb_update_config_file_content(struct pkg *pkg, sqlite3 *s);
 void pkgdb_syscall_overload(void);
-void pkgdb_setup_lock(void);
+void pkgdb_nfs_corruption(sqlite3 *s);
 
 #endif

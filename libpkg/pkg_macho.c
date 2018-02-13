@@ -367,14 +367,14 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 	char current[sz];
 	int ret;
 
-	if ((ret = pkg_get_myarch(current, sizeof(current))) != EPKG_OK)
+	if ((ret = pkg_get_myarch(current, sizeof(current), NULL)) != EPKG_OK)
 		return ret;
 
 	return pkg_arch_to_legacy(current, dest, sz);
 }
 
 int
-pkg_get_myarch(char *dest, size_t sz)
+pkg_get_myarch(char *dest, size_t sz, int *osversion __unused)
 {
 	cpu_type_t cpu_type;
 	const char *cpu_name = NULL;

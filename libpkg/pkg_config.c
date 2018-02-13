@@ -71,6 +71,7 @@ struct pkg_ctx ctx = {
 	.rootfd = -1,
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
+	.osversion = 0,
 };
 
 struct config_entry {
@@ -81,6 +82,9 @@ struct config_entry {
 };
 
 static char myabi[BUFSIZ], myabi_legacy[BUFSIZ];
+#ifdef __FreeBSD__
+static char myosversion[BUFSIZ];
+#endif
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -414,12 +418,20 @@ static struct config_entry c[] = {
 		NULL,
 		"Write out the METALOG to the specified file",
 	},
+#ifdef __FreeBSD__
+	{
+		PKG_INT,
+		"OSVERSION",
+		myosversion,
+		"FreeBSD OS version",
+	},
 	{
 		PKG_BOOL,
-		"NFS_WITH_PROPER_LOCKING",
+		"IGNORE_OSVERSION",
 		"NO",
-		"Set if running on NFS with properly setup locking system",
+		"Ignore FreeBSD OS version check",
 	},
+#endif
 };
 
 static bool parsed = false;
@@ -534,11 +546,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		enabled = ucl_object_find_key(obj, "ENABLED");
 	if (enabled != NULL) {
 		enable = ucl_object_toboolean(enabled);
-		if (!enable && r == NULL) {
-			pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
-			return;
-		}
-		else if (!enable && r != NULL) {
+		if (!enable && r != NULL) {
 			/*
 			 * We basically want to remove the existing repo r and
 			 * forget all stuff parsed
@@ -825,7 +833,7 @@ load_repositories(const char *repodir, pkg_init_flags flags)
 		return;
 	}
 
-	reposlist = pkg_config_get( "REPOS_DIR");
+	reposlist = pkg_config_get("REPOS_DIR");
 	while ((cur = pkg_object_iterate(reposlist, &it)))
 		load_repo_files(pkg_object_string(cur), flags);
 }
@@ -885,8 +893,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get_myarch(myabi, BUFSIZ);
+	pkg_get_myarch(myabi, BUFSIZ, &ctx.osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+#ifdef __FreeBSD__
+	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
+#endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
@@ -1160,6 +1171,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	pkg_debug(1, "%s", "pkg initialized");
 
+#ifdef __FreeBSD__
+	ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
+#endif
 	/* Start the event pipe */
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)

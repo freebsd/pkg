@@ -206,6 +206,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 	return (true);
 }
 
+#ifdef __FreeBSD__
 static bool
 is_old_freebsd_armheader(const GElf_Ehdr *e)
 {
@@ -224,6 +225,7 @@ is_old_freebsd_armheader(const GElf_Ehdr *e)
 	}
 	return (false);
 }
+#endif
 
 static int
 analyse_elf(struct pkg *pkg, const char *fpath)
@@ -244,6 +246,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	size_t dynidx;
 	const char *myarch;
 	const char *shlib;
+	char *rpath = NULL;
 
 	bool is_shlib = false;
 
@@ -315,6 +318,10 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		case SHT_DYNAMIC:
 			dynamic = scn;
 			sh_link = shdr.sh_link;
+			if (shdr.sh_entsize == 0) {
+				ret = EPKG_END;
+				goto cleanup;
+			}
 			numdyn = shdr.sh_size / shdr.sh_entsize;
 			break;
 		}
@@ -337,11 +344,13 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* Invalid ABI */
 	}
 
+#ifdef __FreeBSD__
 	if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
 	    !is_old_freebsd_armheader(&elfhdr)) {
 		ret = EPKG_END;
 		goto cleanup;
 	}
+#endif
 
 	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
 		ret = EPKG_END; /* Some error occurred, ignore this file */
@@ -380,13 +389,12 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 				pkg_addshlib_provided(pkg, shlib);
 		}
 
-		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
-			continue;
-		
-		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val),
-				      bsd_dirname(fpath));
-		break;
+		if ((dyn->d_tag == DT_RPATH || dyn->d_tag == DT_RUNPATH) &&
+		    rpath == NULL)
+			rpath = elf_strptr(e, sh_link, dyn->d_un.d_val);
 	}
+	if (rpath != NULL)
+		shlib_list_from_rpath(rpath, bsd_dirname(fpath));
 
 	/* Now find all of the NEEDED shared libraries. */
 
@@ -655,8 +663,10 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 				/* We have an ARMv4 or ARMv5 */
 				if (val <= 5)
 					return ("arm");
-				else /* We have an ARMv6+ */
+				else if (val == 6) /* We have an ARMv6 */
 					return ("armv6");
+				else /* We have an ARMv7+ */
+					return ("armv7");
 			} else if (tag == 4 || tag == 5 || tag == 32 ||
 			    tag == 65 || tag == 67) {
 				while (*section != '\0' && length != 0)
@@ -687,7 +697,7 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 }
 
 static int
-pkg_get_myarch_elfparse(char *dest, size_t sz)
+pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -696,12 +706,17 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 	Elf_Note note;
 	Elf_Scn *scn = NULL;
 	int fd;
+	int version_style = 1;
 	char *src = NULL;
 	char *osname;
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	const char *path;
+	char invalid_osname[] = "Unknown";
+	char *note_os[6] = {"Linux", "GNU", "Solaris", "FreeBSD", "NetBSD", "Syllable"};
+	char *(*pnote_os)[6] = &note_os;
+	uint32_t gnu_abi_tag[4];
 
 	path = getenv("ABI_FILE");
 	if (path == NULL)
@@ -754,8 +769,21 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 	while ((uintptr_t)src < ((uintptr_t)data->d_buf + data->d_size)) {
 		memcpy(&note, src, sizeof(Elf_Note));
 		src += sizeof(Elf_Note);
-		if (note.n_type == NT_VERSION)
-			break;
+		if ((strncmp ((const char *) src, "FreeBSD", note.n_namesz) == 0) ||
+		    (strncmp ((const char *) src, "DragonFly", note.n_namesz) == 0) ||
+ 		    (strncmp ((const char *) src, "NetBSD", note.n_namesz) == 0) ||
+		    (note.n_namesz == 0)) {
+			if (note.n_type == NT_VERSION) {
+				version_style = 1;
+				break;
+			}
+		}
+		if (strncmp ((const char *) src, "GNU", note.n_namesz) == 0) {
+			if (note.n_type == NT_GNU_ABI_TAG) {
+				version_style = 2;
+				break;
+			}
+		}
 		src += roundup2(note.n_namesz + note.n_descsz, 4);
 	}
 	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
@@ -763,25 +791,63 @@ pkg_get_myarch_elfparse(char *dest, size_t sz)
 		pkg_emit_error("failed to find the version elf note");
 		goto cleanup;
 	}
-	osname = src;
-	src += roundup2(note.n_namesz, 4);
-	if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB)
-		version = be32dec(src);
-	else
-		version = le32dec(src);
+	if (version_style == 2) {
+		/*
+		 * NT_GNU_ABI_TAG
+		 * Operating system (OS) ABI information.  The
+		 * desc field contains 4 words:
+		 * word 0: OS descriptor (ELF_NOTE_OS_LINUX, ELF_NOTE_OS_GNU, etc)
+		 * word 1: major version of the ABI
+		 * word 2: minor version of the ABI
+		 * word 3: subminor version of the ABI
+		 */
+		src += roundup2(note.n_namesz, 4);
+		if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB) {
+			for (int wdndx = 0; wdndx < 4; wdndx++) {
+				gnu_abi_tag[wdndx] = be32dec(src);
+				src += 4;
+			}
+		} else {
+			for (int wdndx = 0; wdndx < 4; wdndx++) {
+				gnu_abi_tag[wdndx] = le32dec(src);
+				src += 4;
+			}
+		}
+		if (gnu_abi_tag[0] < 6)
+			osname = (*pnote_os)[gnu_abi_tag[0]];
+		else
+			osname = invalid_osname;
+	} else {
+		if (note.n_namesz == 0)
+			osname = invalid_osname;
+		else
+			osname = src;
+		src += roundup2(note.n_namesz, 4);
+		if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB)
+			version = be32dec(src);
+		else
+			version = le32dec(src);
+	}
 
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
 
 	arch = elf_corres_to_string(mach_corres, (int) elfhdr.e_machine);
+	if (version_style == 2) {
+		snprintf(dest, sz, "%s:%d.%d.%d", osname, gnu_abi_tag[1],
+		    gnu_abi_tag[2], gnu_abi_tag[3]);
+	} else {
+		if (osversion != NULL)
+			*osversion = version;
 #if defined(__DragonFly__)
-	snprintf(dest, sz, "%s:%d.%d",
-	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
+		snprintf(dest, sz, "%s:%d.%d",
+		    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #elif defined(__NetBSD__)
-	snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
+		snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
 #else
-	snprintf(dest, sz, "%s:%d", osname, version / 100000);
+		snprintf(dest, sz, "%s:%d", osname, version / 100000);
 #endif
+	}
 
 	switch (elfhdr.e_machine) {
 	case EM_ARM:
@@ -953,7 +1019,7 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 {
 	int i, err;
 
-	err = pkg_get_myarch_elfparse(dest, sz);
+	err = pkg_get_myarch_elfparse(dest, sz, NULL);
 	if (err)
 		return (err);
 
@@ -965,13 +1031,13 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 
 #ifndef __DragonFly__
 int
-pkg_get_myarch(char *dest, size_t sz)
+pkg_get_myarch(char *dest, size_t sz, int *osversion)
 {
 	struct arch_trans *arch_trans;
 	char *arch_tweak;
 
 	int err;
-	err = pkg_get_myarch_elfparse(dest, sz);
+	err = pkg_get_myarch_elfparse(dest, sz, osversion);
 	if (err)
 		return (err);
 

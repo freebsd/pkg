@@ -1027,7 +1027,8 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			selected = pkg_jobs_universe_select_candidate(first, local,
 			    conservative, assumed_reponame, true);
 
-			if (local && strcmp (selected->pkg->digest, local->pkg->digest) == 0) {
+			if (local && (strcmp(selected->pkg->digest, local->pkg->digest) == 0 ||
+			    !pkg_jobs_need_upgrade(selected->pkg, local->pkg))) {
 				selected = local;
 			}
 		}

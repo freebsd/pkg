@@ -118,6 +118,7 @@ struct pkg_jobs {
 	struct job_pattern *patterns;
 	bool conservative;
 	bool pinning;
+	void		*lockedpkgs;
 };
 
 #define PKG_PATTERN_FLAG_FILE (1 << 0)

@@ -46,6 +46,8 @@ static void counter_init(const char *what, int64_t max);
 static void counter_count(void);
 static void counter_end(void);
 
+extern struct pkg_ctx ctx;
+
 static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
     struct packing *pkg_archive)
@@ -306,7 +308,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
     const char *plist, const char *rootdir, bool testing)
 {
 	struct pkg_manifest_key *keys = NULL;
-	char			 arch[BUFSIZ];
+	const char		*arch;
 	regex_t			 preg;
 	regmatch_t		 pmatch[2];
 	int			 i, ret = EPKG_OK;
@@ -346,7 +348,12 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 
 	/* if no arch autodetermine it */
 	if (pkg->abi == NULL) {
-		pkg_get_myarch(arch, BUFSIZ);
+#ifdef __FreeBSD__
+		char *osversion;
+		xasprintf(&osversion, "%d", ctx.osversion);
+		pkg_kv_add(&pkg->annotations, "FreeBSD_version", osversion, "annotation");
+#endif
+		arch = pkg_object_string(pkg_config_get("ABI"));
 		pkg->abi = xstrdup(arch);
 		defaultarch = true;
 	}
@@ -394,8 +401,10 @@ cleanup:
 
 int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
-    const char *md_dir, char *plist)
+    const char *md_dir, char *plist, bool hash)
 {
+	char		 hash_dest[MAXPATHLEN];
+	char		 filename[MAXPATHLEN];
 	struct pkg	*pkg = NULL;
 	struct pkg_file	*file = NULL;
 	struct pkg_dir	*dir = NULL;
@@ -430,8 +439,30 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 cleanup:
-	free(pkg);
 	packing_finish(pkg_archive);
+	if (hash && ret == EPKG_OK) {
+		/* Find the hash and rename the file and create a symlink */
+		pkg_snprintf(filename, sizeof(filename), "%n-%v.%S",
+			pkg, pkg, packing_format_to_string(format));
+		pkg->sum = pkg_checksum_file(filename,
+			PKG_HASH_TYPE_SHA256_HEX);
+		pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.%S",
+			pkg, pkg, pkg, packing_format_to_string(format));
+
+		pkg_debug(1, "Rename the pkg file from: %s to: %s",
+			filename, hash_dest);
+
+		if (rename(filename, hash_dest) == -1) {
+			pkg_emit_errno("rename", hash_dest);
+			unlink(hash_dest);
+			return (EPKG_FATAL);
+		}
+		if (symlink(hash_dest, filename) == -1) {
+			pkg_emit_errno("symlink", hash_dest);
+			return (EPKG_FATAL);
+		}
+	}
+	free(pkg);
 	return (ret);
 }
 

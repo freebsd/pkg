@@ -1069,6 +1069,19 @@ int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *);
 int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
 
 /**
+ * Check if there are locked packages
+ * @return true if locked packages exist, false if not
+ */
+bool pkg_jobs_has_lockedpkgs(struct pkg_jobs *j);
+
+/**
+ * Iterate through the locked packages, calling the passed in function pointer
+ * on each.
+ */
+typedef int(*locked_pkgs_cb)(struct pkg *, void *);
+void pkg_jobs_iter_lockedpkgs(struct pkg_jobs *j, locked_pkgs_cb, void *);
+
+/**
  * Solve a SAT problem
  * @return true if a problem is solvable
  */
@@ -1128,7 +1141,7 @@ int pkg_create_from_manifest(const char *, pkg_formats, const char *,
 /**
  * Create package from stage install with a metadata directory
  */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool);
 int pkg_load_metadata(struct pkg *, const char *, const char *, const char *, const char *, bool);
 
 /**
@@ -1475,13 +1488,6 @@ void pkg_shutdown(void);
 int pkg_test_filesum(struct pkg *);
 int pkg_recompute(struct pkgdb *, struct pkg *);
 int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
-
-#ifdef __DragonFly__
-#define pkg_get_myarch(d, z) pkg_get_myarch_legacy(d, z)
-#else
-int pkg_get_myarch(char *pkgarch, size_t sz);
-#endif
-int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
 int pkg_sshserve(int fd);

@@ -166,7 +166,6 @@ exec_audit(int argc, char **argv)
 		}
 	}
 
-	drop_privileges();
 	if (pkg_audit_load(audit, audit_file) != EPKG_OK) {
 		if (errno == ENOENT)
 			warnx("vulnxml file %s does not exist. "
@@ -262,6 +261,8 @@ exec_audit(int argc, char **argv)
 			return (ret);
 		}
 	}
+
+	drop_privileges();
 
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM

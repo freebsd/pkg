@@ -15,6 +15,7 @@ tests_init \
 	create_from_plist_with_keyword_arguments \
 	create_from_manifest_and_plist \
 	create_from_plist_pkg_descr \
+	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message
 
 genmanifest() {
@@ -389,6 +390,24 @@ message upgrade
 	atf_check pkg create -m . -r ${TMPDIR}
 	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
 
+}
+
+create_from_plist_hash_body() {
+	touch file1
+	genmanifest
+	genplist "file1"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -h -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		ls test-1-*.txz
 }
 
 create_from_plist_with_keyword_and_message_body() {
