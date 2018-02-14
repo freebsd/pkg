@@ -1,3 +1,8 @@
+Changes from 1.10.4 to 1.10.5
+- Allow OSVERSION mismatch in a more user friendly manner
+- Complain more clearly about read-only FS errors
+- audit: Drop privs after opening files/db but before parsing
+
 Changes from 1.10.3 to 1.10.4
 - Fix progression display
 - Parse FreeBSD OS version and forbid to install too new packages
