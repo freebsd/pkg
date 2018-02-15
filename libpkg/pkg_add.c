@@ -675,12 +675,12 @@ do_extract(struct archive *a, struct archive_entry *ae,
 			goto cleanup;
 			break;
 		case AE_IFIFO:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFFIFO): %s", path);
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFIFO): %s", path);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 			break;
 		case AE_IFBLK:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFFIFO): %s", path);
+			pkg_emit_error("Archive contains an unsupported filetype (AE_IFBLK): %s", path);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 			break;
