@@ -1315,8 +1315,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 #endif
 #endif
 
-		if (create_dir(pkg, d) == EPKG_FATAL)
-			return (EPKG_FATAL);
+		if (create_dir(pkg, d) == EPKG_FATAL) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	hardlinks = kh_init_hls();
@@ -1374,6 +1376,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			if ((link_len = readlinkat(fromfd,
 			    RELATIVE_PATH(f->path), target,
 			    sizeof(target))) == -1) {
+				kh_destroy_hls(hardlinks);
+				close(fromfd);
 				pkg_fatal_errno("Impossible to read symlinks "
 				    "'%s'", f->path);
 			}
@@ -1408,7 +1412,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			close(fd);
 		} else {
 			pkg_emit_error("Invalid file type");
-			return (EPKG_FATAL);
+			retcode = EPKG_FATAL;
+			goto cleanup;
 		}
 	}
 
