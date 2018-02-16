@@ -129,6 +129,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		warn("unable to open vulnxml file");
 		fclose(out);
 		pkg_audit_free(audit);
+		kh_destroy_pkgs(check);
 		return;
 	}
 
