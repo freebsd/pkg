@@ -247,17 +247,21 @@ set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
 	tv[1].tv_sec = mts->tv_sec;
 	tv[1].tv_usec = mts->tv_nsec / 1000;
 
-	fdcwd = open(".", O_DIRECTORY|O_CLOEXEC);
+	if ((fdcwd = open(".", O_DIRECTORY|O_CLOEXEC)) == -1) {
+		pkg_fatal_errno("Failed to open .%s", "");
+	}
 	fchdir(fd);
 
 	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
 
 		if (errno != ENOSYS) {
+			close(fdcwd);
 			pkg_fatal_errno("Fail to set time on %s", path);
 		}
 		else {
 			/* Fallback to utimes */
 			if (utimes(RELATIVE_PATH(path), tv) == -1) {
+				close(fdcwd);
 				pkg_fatal_errno("Fail to set time(fallback) on "
 				    "%s", path);
 			}
