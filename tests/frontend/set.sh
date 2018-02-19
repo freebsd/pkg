@@ -9,20 +9,9 @@ tests_init \
 	set_vital
 
 initialize_pkg() {
-	cat << EOF > test.ucl
-name: test
-origin: origin/test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
-EOF
+
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	sed -i'' -e 's#origin.*#origin: origin/test#' test.ucl
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \
