@@ -15,18 +15,8 @@ pkg_puppet_body() {
 	touch rubygemhiera.file
 	touch rubygems.file
 
-	cat << EOF > rubygemrubyaugeas.ucl
-name: rubygem-ruby-augeas
-origin: textproc/rubygem-augeas
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas rubygem-ruby-augeas 1.0
+	cat << EOF >> rubygemrubyaugeas.ucl
 deps: {
 	ruby: {
 		origin: "lang/ruby20",
@@ -42,18 +32,8 @@ files: {
 }
 EOF
 
-	cat << EOF > puppet.ucl
-name: puppet
-origin: sysutils/puppet
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg puppet puppet 1.0
+	cat << EOF >> puppet.ucl
 deps: {
 	ruby: {
 		origin: "lang/ruby20",
@@ -73,18 +53,8 @@ files: {
 }
 EOF
 
-	cat << EOF > ruby.ucl
-name: ruby
-origin: lang/ruby20
-version: "2.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby ruby 2.0
+	cat << EOF >> ruby.ucl
 shlibs_provided [
 	"libruby20.so.20",
 ]
@@ -93,18 +63,8 @@ files: {
 }
 EOF
 
-	cat << EOF > rubygem-hiera.ucl
-name: rubygem-hiera
-origin: lang/rubygem-hiera
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera rubygem-hiera 1.0
+	cat << EOF >> rubygem-hiera.ucl
 deps: {
 	ruby: {
 		origin: "lang/ruby20",
@@ -120,18 +80,8 @@ files: {
 }
 EOF
 
-	cat << EOF > ruby-gems20.ucl
-name: ruby20-gems
-origin: lang/ruby-gems
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems20 ruby20-gems 1.0
+	cat << EOF >> ruby-gems20.ucl
 deps: {
 	ruby {
 		origin: lang/ruby20,
@@ -175,18 +125,8 @@ EOF
 	rm -f *.ucl
 	rm *.txz
 
-	cat << EOF > rubygemrubyaugeas.new.ucl
-name: rubygem-ruby-augeas
-origin: textproc/rubygem-augeas
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas.new rubygem-ruby-augeas 1.0
+	cat << EOF >> rubygemrubyaugeas.new.ucl
 deps: {
 	ruby: {
 		origin: "lang/ruby21",
@@ -202,18 +142,8 @@ files: {
 }
 EOF
 
-	cat << EOF > puppet.new.ucl
-name: puppet
-origin: sysutils/puppet
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg puppet.new puppet 1.0
+	cat << EOF >> puppet.new.ucl
 deps: {
 	ruby: {
 		origin: "lang/ruby21",
@@ -233,18 +163,8 @@ files: {
 }
 EOF
 
-cat << EOF > ruby.new.ucl
-name: ruby
-origin: lang/ruby21
-version: "2.1"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby.new ruby 2.1
+	cat << EOF >> ruby.new.ucl
 shlibs_provided [
 	"libruby21.so.21",
 ]
@@ -253,18 +173,8 @@ files: {
 }
 EOF
 
-cat << EOF > rubygem-hiera.new.ucl
-name: rubygem-hiera
-origin: lang/rubygem-hiera
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera.new rubygem-hiera 1.0
+	cat << EOF >> rubygem-hiera.new.ucl
 deps: {
 	ruby: {
 		origin: "lang/ruby21",
@@ -280,18 +190,8 @@ files: {
 	}
 EOF
 
-cat << EOF > ruby-gems21.new.ucl
-name: ruby21-gems
-origin: lang/ruby-gems
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems21.new ruby21-gems 1.0
+	cat << EOF >> ruby-gems21.new.ucl
 deps: {
 	ruby {
 		origin: lang/ruby21,
