@@ -8,18 +8,8 @@ tests_init \
 multiple_providers_body() {
 	touch file
 
-	cat << EOF > pkg1.ucl
-name: test1
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 test1 1
+	cat << EOF >> pkg1.ucl
 shlibs_provided [
 	"lib1.so.6"
 ]
@@ -28,18 +18,8 @@ files: {
 }
 EOF
 
-	cat << EOF > pkg2.ucl
-name: dep
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 dep 1
+	cat << EOF >> pkg2.ucl
 shlibs_required [
 	"lib1.so.6"
 ]
@@ -59,18 +39,8 @@ EOF
 			pkg register -M ${p}.ucl
 	done
 
-	cat << EOF > pkg3.ucl
-name: test1
-origin: test
-version: "1_1"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg3 test1 1_0
+	cat << EOF >> pkg3.ucl
 shlibs_provided [
 	"lib1.so.6"
 ]
@@ -79,18 +49,8 @@ files: {
 }
 EOF
 
-	cat << EOF > pkg4.ucl
-name: test2
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg4 test2 1
+	cat << EOF >> pkg4.ucl
 shlibs_provided [
 	"lib1.so.6"
 ]
@@ -99,18 +59,8 @@ files: {
 }
 EOF
 
-	cat << EOF > pkg5.ucl
-name: dep
-origin: test
-version: 1_1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg5 dep 1_1
+	cat << EOF >> pkg5.ucl
 shlibs_required [
 	"lib1.so.6"
 ]
