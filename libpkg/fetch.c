@@ -732,9 +732,6 @@ cleanup:
 	/* restore original doc */
 	u->doc = doc;
 	fetchFreeURL(u);
-	if (remote != NULL) {
-		fclose(remote);
-	}
 
 	return (retcode);
 }
