@@ -13,35 +13,16 @@ local1: {
 }
 EOF
 
-	cat << EOF > a.ucl
-name: a
-origin: a
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg a a 1.0
+	cat << EOF >> a.ucl
 provides: [a-1]
 EOF
 
-	cat << EOF > b.ucl
-name: b
-origin: b
-version: "1.0"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg b b 1.0
+	cat << EOF >> b.ucl
 requires: [a-1]
 EOF
+
 	for p in a b; do
 		atf_check \
 		    -o ignore \
