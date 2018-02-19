@@ -9,36 +9,16 @@ package_split_body() {
 	touch file1
 	touch file2
 
-	cat << EOF > pkg1.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 test 1
+	cat << EOF >> pkg1.ucl
 files: {
 	${TMPDIR}/file1: "",
 	${TMPDIR}/file2: "",
 }
 EOF
 
-	cat << EOF > dep1.ucl
-name: master
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-www: http://test
-comment: a test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg dep1 master 1
+	cat << EOF >> dep1.ucl
 deps: {
 	test {
 		origin: test,
@@ -47,52 +27,22 @@ deps: {
 }
 EOF
 
-cat << EOF > pkg2.ucl
-name: sub-test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-www: http://test
-comment: a test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 sub-test 1
+	cat << EOF >> pkg2.ucl
 files: {
 	${TMPDIR}/file1: "",
 }
 EOF
 
-cat << EOF > pkg3.ucl
-name: sub-test2
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-www: http://test
-comment: a test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg3 sub-test2 1
+	cat << EOF >> pkg3.ucl
 files: {
 	${TMPDIR}/file2: "",
 }
 EOF
 
-	cat << EOF > pkg4.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg4 test 1
+	cat << EOF >> pkg4.ucl
 deps: {
 	sub-test: {
 		origin: test,
