@@ -11,16 +11,8 @@ register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
 	echo a > teststage/${TMPDIR}/plop
 	sum=$(openssl dgst -sha256 -binary teststage/${TMPDIR}/plop | hexdump -v -e '/1 "%x"')
-	cat > test.ucl << EOF
-name: "test"
-origin: "osef"
-version: "1"
-arch: "freebsd:*"
-maintainer: "non"
-prefix: "${TMPDIR}"
-www: "unknown"
-comment: "need one"
-desc: "here as well"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat >> test.ucl << EOF
 files: {
 	"${TMPDIR}/plop" : "$sum"
 }
@@ -34,16 +26,8 @@ EOF
 	atf_check_equal ${sum} ${nsum}
 	rm -f test.ucl
 	echo b > teststage/${TMPDIR}/plop
-	cat > test.ucl << EOF
-name: "test2"
-origin: "osef"
-version: "1"
-arch: "freebsd:*"
-maintainer: "non"
-prefix: "${TMPDIR}"
-www: "unknown"
-comment: "need one"
-desc: "here as well"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test2 1
+	cat >> test.ucl << EOF
 files: {
 	"${TMPDIR}/plop" : "$sum2"
 }
