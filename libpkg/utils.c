@@ -355,7 +355,7 @@ is_valid_os_version(struct pkg *pkg)
 	int fbsdver;
 	char query_buf[512];
 	/* -1: not checked, 0: not allowed, 1: allowed */
-	static int osver_missmatch_allowed = -1;
+	static int osver_mismatch_allowed = -1;
 	bool ret;
 
 	if (pkg_object_bool(pkg_config_get("IGNORE_OSVERSION")))
@@ -370,19 +370,19 @@ is_valid_os_version(struct pkg *pkg)
 		if (fbsdver > ctx.osversion) {
 			if (fbsdver - ctx.osversion < 100000) {
 				/* Negligible difference, ask user to enforce */
-				if (osver_missmatch_allowed == -1) {
+				if (osver_mismatch_allowed == -1) {
 					snprintf(query_buf, sizeof(query_buf),
 							"Newer FreeBSD version for package %s:\n"
 							"To ignore this error set IGNORE_OSVERSION=yes\n"
 							"- package: %d\n"
 							"- running kernel: %d\n"
-							"Allow missmatch now?", pkg->name,
+							"Allow mismatch now? ", pkg->name,
 							fbsdver, ctx.osversion);
 					ret = pkg_emit_query_yesno(true, query_buf);
-					osver_missmatch_allowed = ret;
+					osver_mismatch_allowed = ret;
 				}
 
-				return (osver_missmatch_allowed);
+				return (osver_mismatch_allowed);
 			}
 			else {
 				pkg_emit_error("Newer FreeBSD version for package %s:\n"
