@@ -23,14 +23,14 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl lq
-.Op Fl o Ar output-dir
 .Op Fl m Ar meta-file
+.Op Fl o Ar output-dir
 .Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Pp
 .Nm
 .Op Cm --{list-files,quiet}
-.Op Cm --output-dir Ar output-dir
 .Op Cm --meta-file Ar meta-file
+.Op Cm --output-dir Ar output-dir
 .Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
 .Nm
@@ -183,14 +183,14 @@ Signing the catalogue is strongly recommended.
 The following options are supported by
 .Nm :
 .Bl -tag -width quiet
-.It Fl q , Cm --quiet
-Force quiet output.
-.It Fl m Ar meta-file , Cm --meta-file Ar meta-file
-Use the specified file as repository meta file instead of the default settings.
 .It Fl l , Cm --list-files
 Generate list of all files in repo as filesite.txz archive.
+.It Fl m Ar meta-file , Cm --meta-file Ar meta-file
+Use the specified file as repository meta file instead of the default settings.
 .It Fl o Ar output-dir , Cm --output-dir Ar output-dir
 Create the repository in the specified directory instead of the package directory.
+.It Fl q , Cm --quiet
+Force quiet output.
 .El
 .Sh FILES
 See
