@@ -40,7 +40,7 @@
 #include <sys/socket.h>
 
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 
 #include <err.h>
