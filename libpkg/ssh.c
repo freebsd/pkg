@@ -29,7 +29,7 @@
 #include "pkg_config.h"
 #endif
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 #include <sys/types.h>
 #include <sys/param.h>
