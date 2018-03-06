@@ -376,7 +376,7 @@ is_valid_os_version(struct pkg *pkg)
 							"To ignore this error set IGNORE_OSVERSION=yes\n"
 							"- package: %d\n"
 							"- running kernel: %d\n"
-							"Allow missmatch now?", pkg->name,
+							"Allow mismatch now? ", pkg->name,
 							fbsdver, osversion);
 					ret = pkg_emit_query_yesno(true, query_buf);
 					osver_missmatch_allowed = ret;
