@@ -107,7 +107,10 @@ _pkg_config_opts() {
 	_values 'configuration option' \
 		'ABI[ABI of package you want to install]:string' \
 		'ALIAS[define local aliases for various pkg(8) standard command lines]:key/value list' \
+		'ALLOW_BASE_SHLIBS[enable base libraries analysis]:boolean:(yes no)' \
+		'ALTABI[override the automatically detected old-form ABI]:string' \
 		'AUTOCLEAN[cleanout content of cache directory after upgrades or installations]:boolean:(yes no)' \
+		'AUTOMERGE[automatically merge configuration files]:boolean:(yes no)' \
 		'DEFAULT_ALWAYS_YES[default to "yes" for all questions requiring user confirmation]:boolean:(yes no)' \
 		'ASSUME_ALWAYS_YES[assume "yes" to all questions requiring user confirmation]:boolean:(yes no)' \
 		'CONSERVATIVE_UPGRADE[give priority to repo where a package was first installed from]:boolean:(yes no)' \
@@ -116,11 +119,13 @@ _pkg_config_opts() {
 		'DEBUG_LEVEL[debugging level]:debug level:( {0..4} )' \
 		'DEBUG_SCRIPTS[activate debug mode (set -x) for scripts]:boolean:(yes no)' \
 		'DEVELOPER_MODE[make certain errors immediately fatal, adds warnings and suggestions]:boolean:(yes no)' \
+		'DOT_FILE[save SAT problem to the specified dot file]:file:_files' \
 		'EVENT_PIPE[send all event messages to specified FIFO or UNIX socket]:event pipe:_files' \
 		'FETCH_RETRY[number of times to retry a failed fetch of a file]:number of retries' \
 		'FETCH_TIMEOUT[time to wait for a file to download]:timeout (seconds)' \
 		'HANDLE_RC_SCRIPTS[automatically perform start/stop of service on install/removal]:boolean:(yes no)' \
 		'HTTP_USER_AGENT[define User-agent HTTP header to send]:user agent' \
+		'IGNORE_OSVERSION[ignore FreeBSD OS version check]:boolean:(yes no)' \
 		'INDEXDIR[directory to search for ports index file in]:directory:_files -/' \
 		'INDEXFILE[ports index file]:index file:_files' \
 		'IP_VERSION[restrict network access to specified IP version]:IP version:((0\:"system default" 4\:IPv4 6\:IPv6 ))' \
@@ -128,6 +133,7 @@ _pkg_config_opts() {
 		'LOCK_WAIT[wait time to regain a lock]:wait time (seconds):' \
 		'METALOG[if set, write a METALOG of the extracted files]:string' \
 		'NAMESERVER[hostname or IPv\[46\] address of a nameserver for DNS resolution]:name server:_hosts' \
+		'OSVERSION[FreeBSD OS version]:version' \
 		'PERMISSIVE[ignore conflicts while registering a package]:boolean:(yes no)' \
 		'PKG_CACHEDIR[specify cache directory for packages]:directory:_files -/' \
 		'PKG_CREATE_VERBOSE[make pkg_create(8) use verbose mode]:boolean:(yes no)' \
@@ -143,6 +149,7 @@ _pkg_config_opts() {
 		'PORTSDIR[specify location of ports directory]:directory:_files -/' \
 		'READ_LOCK[use read locking for query database]:boolean:(yes no)' \
 		'REPOS_DIR[list of directories to search for repository configuration files]: : _sequence _directories' \
+		'REPOSITORIES[repository config in pkg.conf]:value' \
 		'REPO_AUTOUPDATE[automatically check for repo.sqlsite updates]:boolean:(yes no)' \
 		'RUN_SCRIPTS[run pre-/post-installation action scripts]:boolean:(yes no)' \
 		'SAT_SOLVER[experimental\: use an external SAT solver]:SAT solver:_files' \
@@ -150,8 +157,10 @@ _pkg_config_opts() {
 		'SSH_RESTRICT_DIR[directory which ssh subsystem will be restricted to]:chroot:_files -/' \
 		'SYSLOG[log install/deinstall/upgrade operations to syslog(3)]:boolean:(yes no)' \
 		"UNSET_TIMESTAMP[don't include timestamps in package tar(1) archive]:boolean:(yes no)" \
+		'VALID_URL_SCHEME[valid URL schemes]:list' \
 		'VERSION_SOURCE[default database for comparing version numbers in pkg-version(8)]:database:(( I\:index P\:ports R\:remote ))' \
 		'VULNXML_SITE[specify URL to fetch vuln.xml vulnerability database from]: : _urls -F "( gopher:* file:* ftp:* )"' \
+		'WARN_SIZE_LIMIT[ask user when performing changes for more than this limit]:limit [1048576]' \
 		'WORKERS_COUNT[how many workers are used for pkg-repo]:workers:( {0..$(sysctl -n hw.ncpu)} )'
 }
 
@@ -648,7 +657,7 @@ _pkg_args() {
 	specs=(
 		'n:package name' 'o:origin' 'p:prefix' 'm:maintainer'
 		'c:comment' 'e:description' 'w:home page' 's:size'
-		'q:architecture' 'M:message'
+		'Q:alternative architecture' 'q:architecture' 'M:message'
 		'?:if info exists' '#:no of elements'
 	)
 	if [[ $service = query ]]; then
