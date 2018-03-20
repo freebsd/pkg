@@ -7,37 +7,8 @@ tests_init \
 
 find_conflicts_body() {
 	touch a
-	cat << EOF >> manifest
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
-files: {
-	${TMPDIR}/a: "",
-}
-EOF
-
-	cat << EOF >> manifest2
-name: test2
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_manifest test 1 /
+	cat << EOF >> +MANIFEST
 files: {
 	${TMPDIR}/a: "",
 }
@@ -46,13 +17,20 @@ EOF
 		-o match:".*Installing.*\.\.\.$" \
 		-e empty \
 		-s exit:0 \
-		pkg register -M manifest
+		pkg register -M +MANIFEST
+
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_manifest test2 1 /
+	cat << EOF >> +MANIFEST
+files: {
+	${TMPDIR}/a: "",
+}
+EOF
 
 	atf_check \
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg create -M manifest2 -o .
+		pkg create -M +MANIFEST -o .
 
 	atf_check \
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
