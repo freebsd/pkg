@@ -50,6 +50,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libucl/klib \
+		-I$(top_srcdir)/external/libfetch
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
 		-I$(top_srcdir) \
