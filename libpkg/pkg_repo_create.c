@@ -85,17 +85,6 @@ pkg_digest_sort_compare_func(struct digest_list_entry *d1,
 	return strcmp(d1->origin, d2->origin);
 }
 
-static void
-pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
-{
-	struct pkg_conflict *new;
-
-	new = xcalloc(1, sizeof(*new));
-	new->uid = xstrdup(uniqueid);
-
-	kh_safe_add(pkg_conflicts, bulk->conflictshash, new, new->uid);
-}
-
 struct pkg_fts_item {
 	char *fts_accpath;
 	char *pkg_path;
