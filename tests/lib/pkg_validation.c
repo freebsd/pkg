@@ -43,7 +43,7 @@ ATF_TC_HEAD(valid_installed, tc)
 }
 
 int
-event_callback(void *data, struct pkg_event *ev)
+event_callback(void *data __unused, struct pkg_event *ev)
 {
 	switch (ev->type) {
 	case PKG_EVENT_ERROR:

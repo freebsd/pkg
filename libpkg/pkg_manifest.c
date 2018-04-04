@@ -602,7 +602,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 }
 
 static int
-pkg_message(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
+pkg_message(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr __unused)
 {
 	return pkg_message_from_ucl(pkg, obj);
 }

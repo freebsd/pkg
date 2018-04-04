@@ -330,7 +330,7 @@ pkg_checksum_is_valid(const char *cksum, size_t clen)
 
 /* <hashtype>$<hash> */
 pkg_checksum_type_t
-pkg_checksum_file_get_type(const char *cksum, size_t clen)
+pkg_checksum_file_get_type(const char *cksum, size_t clen __unused)
 {
 	unsigned int value;
 
@@ -346,7 +346,7 @@ pkg_checksum_file_get_type(const char *cksum, size_t clen)
 
 /* <version>$<hashtype>$<hash> */
 pkg_checksum_type_t
-pkg_checksum_get_type(const char *cksum, size_t clen)
+pkg_checksum_get_type(const char *cksum, size_t clen __unused)
 {
 	const char *sep;
 	unsigned int value;
