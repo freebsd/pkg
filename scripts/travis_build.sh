@@ -39,7 +39,7 @@ set -e
 if [ $(uname -s) = "Darwin" ]; then
   CFLAGS="-I/usr/local/opt/libarchive/include" \
     LDFLAGS="-L/usr/local/opt/libarchive/lib" \
-    ./configure --with-libarchive.pc
+    ./configure
 elif [ $(uname -s) = "Linux" ]; then
   CFLAGS="-Wno-strict-aliasing -Wno-unused-result -Wno-unused-value" ./configure --with-libarchive.pc
 fi
