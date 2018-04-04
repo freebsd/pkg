@@ -13,8 +13,9 @@ pkg_repos.h: $(DIRS)
 	@for b in $(DIRS); do \
 		echo "&pkg_repo_$${b}_ops," ; \
 	done >> $@
-	@echo -e "NULL\n};\n#endif /* PKG_REPOS_H */" >> $@
-
+	@echo "NULL" >> $@
+	@echo "};" >> $@
+	@echo "#endif /* PKG_REPOS_H */" >> $@
 
 include $(MK)/dir.mk
 
