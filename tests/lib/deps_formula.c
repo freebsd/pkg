@@ -52,7 +52,7 @@ ATF_TC_BODY(check_parsing, tc)
 		"name1 = 1.0 | name2 != 1.0, name3 > 1.0 < 2.0 != 1.5, name4 +opt1 -opt2"
 	};
 	char *r;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i ++) {
 		f = pkg_deps_parse_formula(cases[i]);
@@ -80,7 +80,7 @@ ATF_TC_BODY(check_sql, tc)
 		"name1 = 1.0 | name2 != 1.0", "(name='name1' AND vercmp('=',version,'1.0')) OR (name='name2' AND vercmp('!=',version,'1.0'))"
 	};
 	char *r;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < sizeof(cases) / sizeof(cases[0]) / 2; i ++) {
 		f = pkg_deps_parse_formula(cases[i * 2]);
@@ -115,8 +115,8 @@ ATF_TC_BODY(check_op_parsing, tc)
 		{ "=>", VERSION_ANY },
 	};
 
-	for (int i = 0; i < sizeof(cases) / sizeof(cases[0]); i ++) {
-		ATF_REQUIRE_EQ(pkg_deps_string_toop(cases[i].val), cases[i].expect);
+	for (unsigned int i = 0; i < sizeof(cases) / sizeof(cases[0]); i ++) {
+		ATF_REQUIRE_EQ((int)pkg_deps_string_toop(cases[i].val), cases[i].expect);
 	}
 }
 
