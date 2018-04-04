@@ -194,6 +194,9 @@ if {[string match *-darwin* [get-define host]]} {
 				define libabidir "libelf"
 			}
 		}
+	} else {
+		define-feature libelf 0
+		define libabidir "libelf"
 	}
 }
 
