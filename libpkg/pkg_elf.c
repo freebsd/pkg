@@ -456,7 +456,7 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 }
 
 int
-pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
+pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	char *sh;

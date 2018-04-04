@@ -168,7 +168,7 @@ free_file_attr(struct file_attr *a)
 }
 
 static int
-setprefix(struct plist *p, char *line, struct file_attr *a)
+setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	/* if no arguments then set default prefix */
 	if (line[0] == '\0') {
@@ -190,7 +190,7 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-name_key(struct plist *p, char *line, struct file_attr *a)
+name_key(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	char *tmp;
 
@@ -207,7 +207,7 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-pkgdep(struct plist *p, char *line, struct file_attr *a)
+pkgdep(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	if (*line != '\0') {
 		free(p->pkgdep);
@@ -410,7 +410,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-setmod(struct plist *p, char *line, struct file_attr *a)
+setmod(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	void *set;
 
@@ -428,7 +428,7 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-setowner(struct plist *p, char *line, struct file_attr *a)
+setowner(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	free(p->uname);
 	if (line[0] == '\0')
@@ -439,7 +439,7 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-setgroup(struct plist *p, char *line, struct file_attr *a)
+setgroup(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	free(p->gname);
 	if (line[0] == '\0')
@@ -450,7 +450,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-comment_key(struct plist *p, char *line, struct file_attr *a)
+comment_key(struct plist *p, char *line, struct file_attr *a __unused)
 {
 	char *name, *version, *line_options, *line_options2, *option;
 
@@ -489,7 +489,7 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
+ignore_next(struct plist *p, __unused char *line, struct file_attr *a __unused)
 {
 	p->ignore_next = true;
 	if (ctx.developer_mode)

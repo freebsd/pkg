@@ -154,7 +154,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
  */
 int
 pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
-		bool force, struct pkg_job_universe_item **found)
+		bool force __unused, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *seen, *tmp = NULL;
 
@@ -372,7 +372,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 static int
 pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
-		struct pkgdb_it *it, const char *name, bool is_shlib, struct pkg *parent)
+    struct pkgdb_it *it, const char *name, bool is_shlib, struct pkg *parent __unused)
 {
 	struct pkg_job_universe_item *unit;
 	struct pkg_job_provide *pr, *prhead;
