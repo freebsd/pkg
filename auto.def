@@ -112,17 +112,11 @@ foreach fct $fatal_functions {
 }
 
 cc-with { -includes fcntl.h } {
-	if {[cc-check-decls F_CLOSEM]} {
-		define-feature f_closem 1
-	} else {
-		define-feature f_closem 0
-	}
+	cc-check-decls F_CLOSEM
 }
 
 cc-with { -includes sys/socket.h } {
-	if {[cc-check-decls SOCK_SEQPACKET]} {
-		define-feature seqpacket
-	}
+	cc-check-decls SOCK_SEQPACKET
 }
 
 cc-with { -includes netinet/in.h } {
