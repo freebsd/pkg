@@ -104,8 +104,7 @@ if {[file exists /proc/self/fd]} {
 	define-feature proc-pid 0
 }
 
-set fatal_functions [list memmove usleep pread pwrite ]
-foreach fct $fatal_functions {
+lmap fct [list memmove usleep pread pwrite] {
 	if {![cc-check-functions $fct]} {
 		user-error "Cannot find $fct"
 	}
@@ -150,8 +149,7 @@ cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
 cc-check-includes dirent.h
 
 #endian stuff
-set headers [list endian.h sys/endian.h]
-foreach header $headers {
+lmap header [list endian.h sys/endian.h] {
 	if {[cc-check-includes $header]} {
 		cc-with [list -includes $header] {
 			cc-check-decls be16dec be16enc be32dec be32enc be64dec be64enc \
@@ -228,9 +226,7 @@ if {[pkg-config-init 0]} {
 	}
 }
 
-set repos [list binary]
-
-foreach repo $repos {
+lmap repo [list binary] {
 	define-append REPOS $repo
 	define-append REPOS_LDFLAGS -L\$(top_builddir)/libpkg/repo/${repo} -lrepo-${repo}_pic
 	define-append REPOS_STATIC_LIBS \$(top_builddir)/libpkg/repo/${repo}/librepo-${repo}.a
@@ -244,11 +240,9 @@ make-template libpkg/pkg.pc.in
 make-template tests/frontend/test_environment.sh.in
 make-template Makefile.autosetup Makefile
 
-set dirs [list external/expat external/blake2 external/picosat \
+lmap dir [list external/expat external/blake2 external/picosat \
 	external/linenoise external/libfetch external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
-	external/libucl external/libelf external/libmachista tests docs scripts]
-
-foreach dir $dirs {
+	external/libucl external/libelf external/libmachista tests docs scripts] {
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
