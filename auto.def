@@ -8,12 +8,7 @@ set med_ver 10
 set min_ver 99
 set dev_ver 8
 define PKG_API [expr $maj_ver * 1000000 + $med_ver * 1000 + $min_ver]
-
-if { $dev_ver ne 0 } {
-	define VERSION [format "%d.%d.%d.%d" $maj_ver $med_ver $min_ver $dev_ver]
-} else {
-	define VERSION [format "%d.%d.%d" $maj_ver $med_ver $min_ver]
-}
+define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]
 
 # Add any user options here
 options {
