@@ -111,7 +111,7 @@ lib/pkg_printf.c:
 	install -m 755 $< $@
 
 clean:
-	rm lib/pkg_printf.c $(OBJS) $(TESTS) $(TESTS_SHELL) Kyuafile frontend/Kyuafile
+	rm -f lib/pkg_printf.c $(OBJS) $(TESTS) $(TESTS_SHELL) Kyuafile frontend/Kyuafile
 
 Kyuafile: $(TESTS)
 	@echo "Generating $@"
