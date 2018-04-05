@@ -629,7 +629,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			int ofl;
 			int st = SOCK_DGRAM;
 
-#ifdef HAVE_SEQPACKET
+#ifdef HAVE_DECL_SOCK_SEQPACKET
 			st = SOCK_SEQPACKET;
 #endif
 			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
