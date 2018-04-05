@@ -232,6 +232,11 @@ lmap repo [list binary] {
 	define-append REPOS_STATIC_LIBS \$(top_builddir)/libpkg/repo/${repo}/librepo-${repo}.a
 }
 
+# ccache
+if {[get-define CCACHE] ne {none}} {
+  define CC "[get-define CCACHE] [get-define CC]"
+}
+
 make-config-header pkg_config.h
 make-config-header external/sqlite/config.h
 make-template mk/defs.mk.in
@@ -246,3 +251,4 @@ lmap dir [list external/expat external/blake2 external/picosat \
 	external/libucl external/libelf external/libmachista tests docs scripts] {
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
+
