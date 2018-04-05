@@ -21,9 +21,9 @@ if {[opt-str pkgconfigdir dir]} {
 	define pkgconfigdir $dir
 } else {
 	if {[string match *-freebsd* [get-define host]]} {
-		define pkgconfigdir [format "%s/libdata/pkgconfig" [get-define prefix]]
+		define pkgconfigdir [get-define prefix]/libdata/pkgconfig
 	} else {
-		define pkgconfigdir [format "%s/lib/pkgconfig" [get-define prefix]]
+		define pkgconfigdir [get-define prefix]/lib/pkgconfig
 	}
 }
 
