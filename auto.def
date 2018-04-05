@@ -37,11 +37,7 @@ define GITHASH ""
 if {[cc-check-progs git] && [file exists .git]} {
 	catch {exec git rev-parse --short HEAD} gitrev
 	catch {exec git diff-index -m --name-only HEAD} gitdirty
-	if {$gitdirty eq "" } {
-		define GITHASH [format "-%s" $gitrev $gitdirty]
-	} else {
-		define GITHASH [format "-%s-dirty" $gitrev]
-	}
+	define GITHASH -$gitrev[expr {$gitdirty eq {} ? {} : {-dirty}}]
 }
 
 if {[string match *-linux* [get-define host]]} {
