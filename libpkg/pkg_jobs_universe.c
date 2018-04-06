@@ -570,6 +570,9 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	 * flag that means that we have already tried to check our universe
 	 */
 	rc = pkg_jobs_universe_add_pkg(universe, pkg, false, &found);
+	if (rc == EPKG_CONFLICT)
+		return (rc);
+
 	if (result)
 		*result = found;
 
