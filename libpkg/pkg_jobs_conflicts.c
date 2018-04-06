@@ -477,7 +477,8 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 			it->pkg->uid);
 
 		if (p != NULL) {
-			pkg_jobs_universe_process_item(j->universe, p, &cun);
+			if (pkg_jobs_universe_process_item(j->universe, p, &cun))
+				continue;
 			assert(cun != NULL);
 			pkg_conflicts_register_chain(j, it, cun, fcur->path);
 		}
