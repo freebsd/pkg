@@ -97,7 +97,7 @@ EOF
 		-s exit:0 \
 		pkg create -M ./bar1.ucl -o ./repo/
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1.1 "${TMPDIR}"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1.0_1 "${TMPDIR}"
 	cat << EOF >> foo.ucl
 deps: {
 	bar1: {
@@ -130,6 +130,14 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -C ./pkg.conf upgrade -y
+
+	atf_check \
+		-o match:"foo-1.0_1" \
+		-o match:"bar1-1.1" \
+		-o not-match:"bar-2.0" \
+		-e empty \
+		-s exit:0 \
+		pkg info
 }
 
 find_conflicts_body() {
