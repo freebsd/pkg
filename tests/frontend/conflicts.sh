@@ -95,7 +95,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg create -M ./bar.ucl -o ./repo/
+		pkg create -M ./bar1.ucl -o ./repo/
 
 	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1.1 "${TMPDIR}"
 	cat << EOF >> foo.ucl
