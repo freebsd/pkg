@@ -4,7 +4,6 @@ pkg_common_cflags=	-I$(top_srcdir)/libpkg -I$(top_builddir)/libpkg \
 			@LDNS_CFLAGS@ \
 			-I$(top_srcdir)/external/libfetch \
 			-I$(top_srcdir)/compat \
-			-I$(top_srcdir)/external/libsbuf \
 			-I$(top_srcdir)/external/expat/lib \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/libucl/klib \
@@ -27,6 +26,7 @@ libpkg_la_SOURCES=	pkg.c \
 			dns_utils.c \
 			fetch.c \
 			packing.c \
+			metalog.c \
 			pkg_add.c \
 			pkg_arch.c \
 			pkg_attributes.c \
@@ -61,9 +61,9 @@ libpkg_la_SOURCES=	pkg.c \
 			scripts.c \
 			utils.c \
 			plugins.c \
-			pkg_old.c \
 			merge3.c \
-			diff.c
+			diff.c \
+			sha256.c
 
 if HAVE_ELF_ABI
 libpkg_la_SOURCES+=	elfhints.c \
@@ -80,7 +80,6 @@ libpkg_la_LIBADD=	$(top_builddir)/compat/libbsd_compat.la \
 			$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libexpat.la \
-			$(top_builddir)/external/libsbuf.la \
 			$(top_builddir)/external/libpicosat.la \
 			$(top_builddir)/external/libfetch.la \
 			$(top_builddir)/external/liblinenoise.la \
@@ -126,7 +125,6 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libexpat_static.la \
 			$(top_builddir)/external/libpicosat_static.la \
-			$(top_builddir)/external/libsbuf_static.la \
 			$(top_builddir)/external/libfetch_static.la \
 			$(top_builddir)/external/liblinenoise_static.la \
 			$(top_builddir)/external/blake2/libblake2_static.la \
@@ -145,6 +143,8 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/pkgdb.h \
 			private/utils.h \
 			private/pkg_jobs.h \
-			private/pkg_deps.h
+			private/pkg_deps.h \
+			xmalloc.h \
+			sha256.h
 
 SUBDIRS = repo .

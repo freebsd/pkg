@@ -55,6 +55,10 @@
  *
  */
 
+#ifdef __NetBSD__
+#define _NETBSD_SOURCE
+#endif
+
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -559,10 +563,10 @@ ftp_seekfn(void *v, off_t pos __unused, int whence __unused)
 	io = (struct ftpio *)v;
 	if (io == NULL) {
 		errno = EBADF;
-		return ((off_t)-1);
+		return (-1);
 	}
 	errno = ESPIPE;
-	return ((off_t)-1);
+	return (-1);
 }
 
 static int
@@ -837,7 +841,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			e = -1;
 			sin6 = (struct sockaddr_in6 *)&sa;
 			sin6->sin6_scope_id = 0;
-			if (getnameinfo((struct sockaddr *)&sa, sizeof(struct sockaddr_in6),
+			if (getnameinfo((struct sockaddr *)&sa, sslen,
 				hname, sizeof(hname),
 				NULL, 0, NI_NUMERICHOST) == 0) {
 				e = ftp_cmd(conn, "EPRT |%d|%s|%d|", 2, hname,
@@ -936,7 +940,7 @@ ftp_authenticate(conn_t *conn, struct url *url, struct url *purl)
 		if (*pwd == '\0')
 			pwd = getenv("FTP_PASSWORD");
 		if (pwd == NULL || *pwd == '\0') {
-			if ((logname = getlogin()) == 0)
+			if ((logname = getlogin()) == NULL)
 				logname = FTP_ANONYMOUS_USER;
 			if ((len = snprintf(pbuf, MAXLOGNAME + 1, "%s@", logname)) < 0)
 				len = 0;

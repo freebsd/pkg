@@ -29,15 +29,12 @@
 #define _PKG_UTIL_H
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
 #include <sys/stat.h>
 #include <sys/param.h>
-#include <uthash.h>
 #include <ucl.h>
 #include <khash.h>
-
-#include <openssl/pem.h>
-#include <openssl/rsa.h>
+#include <pkg.h>
+#include <utstring.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
@@ -62,17 +59,9 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
-struct rsa_key {
-	pem_password_cb *pw_cb;
-	char *path;
-	RSA *key;
-};
+struct rsa_key;
 
 int32_t string_hash_func(const char *);
-void sbuf_init(struct sbuf **);
-int sbuf_set(struct sbuf **, const char *);
-void sbuf_reset(struct sbuf *);
-void sbuf_free(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
@@ -81,16 +70,16 @@ int format_exec_cmd(char **, const char *, const char *, const char *, char *,
     int argc, char **argv);
 int is_dir(const char *);
 
-int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
+int rsa_new(struct rsa_key **, pkg_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
 int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
-int rsa_verify(const char *path, const char *key,
-		unsigned char *sig, unsigned int sig_len, int fd);
-int rsa_verify_cert(const char *path, unsigned char *cert,
+int rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd);
+int rsa_verify_cert(unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
 bool check_for_hardlink(hardlinks_t *hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
+bool is_valid_os_version(struct pkg *pkg);
 
 struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
@@ -107,7 +96,7 @@ pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);
-int merge_3way(char *pivot, char *v1, char *v2, struct sbuf *out);
+int merge_3way(char *pivot, char *v1, char *v2, UT_string *out);
 bool string_end_with(const char *path, const char *str);
 bool mkdirat_p(int fd, const char *path);
 

@@ -24,7 +24,7 @@ alias_body() {
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: No such alias: 'nonexistent'\n" \
+		-e inline:"${PROGNAME}: No such alias: 'nonexistent'\n" \
 		-s exit:69 \
 		pkg -C "" alias nonexistent
 }
@@ -56,7 +56,7 @@ list                 'info -q'
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: No such alias: 'nonexistent'\n" \
+		-e inline:"${PROGNAME}: No such alias: 'nonexistent'\n" \
 		-s exit:69 \
 		pkg -C "" alias nonexistent
 }
@@ -95,7 +95,7 @@ list                 'info -q'
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: No such alias: 'nonexistent'\n" \
+		-e inline:"${PROGNAME}: No such alias: 'nonexistent'\n" \
 		-s exit:69 \
 		pkg -C config alias nonexistent
 }

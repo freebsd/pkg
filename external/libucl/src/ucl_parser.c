@@ -342,6 +342,7 @@ ucl_check_variable_safe (struct ucl_parser *parser, const char *ptr, size_t rema
 		/* Call generic handler */
 		if (parser->var_handler (ptr, remain, &dst, &dstlen, &need_free,
 				parser->var_data)) {
+			*out_len += dstlen;
 			*found = true;
 			if (need_free) {
 				free (dst);
@@ -458,11 +459,18 @@ ucl_expand_single_variable (struct ucl_parser *parser, const char *ptr,
 	}
 	if (!found) {
 		if (strict && parser->var_handler != NULL) {
-			if (parser->var_handler (ptr, remain, &dst, &dstlen, &need_free,
+			size_t var_len = 0;
+			while (var_len < remain && p[var_len] != '}')
+				var_len ++;
+
+			if (parser->var_handler (p, var_len, &dst, &dstlen, &need_free,
 							parser->var_data)) {
 				memcpy (d, dst, dstlen);
-				ret += dstlen;
-				d += remain;
+				ret += var_len;
+				d += dstlen;
+				if (need_free) {
+					free (dst);
+				}
 				found = true;
 			}
 		}
@@ -2461,8 +2469,10 @@ ucl_parser_new (int flags)
 		parser->comments = ucl_object_typed_new (UCL_OBJECT);
 	}
 
-	/* Initial assumption about filevars */
-	ucl_parser_set_filevars (parser, NULL, false);
+	if (!(flags & UCL_PARSER_NO_FILEVARS)) {
+		/* Initial assumption about filevars */
+		ucl_parser_set_filevars (parser, NULL, false);
+	}
 
 	return parser;
 }
@@ -2597,12 +2607,7 @@ ucl_parser_add_chunk_full (struct ucl_parser *parser, const unsigned char *data,
 		return false;
 	}
 
-	if (len == 0) {
-		parser->top_obj = ucl_object_new_full (UCL_OBJECT, priority);
-		return true;
-	}
-
-	if (data == NULL) {
+	if (data == NULL && len != 0) {
 		ucl_create_err (&parser->err, "invalid chunk added");
 		return false;
 	}
@@ -2613,6 +2618,20 @@ ucl_parser_add_chunk_full (struct ucl_parser *parser, const unsigned char *data,
 			ucl_create_err (&parser->err, "cannot allocate chunk structure");
 			return false;
 		}
+
+		if (parse_type == UCL_PARSE_AUTO && len > 0) {
+			/* We need to detect parse type by the first symbol */
+			if ((*data & 0x80) == 0x80 && (*data >= 0xdc && *data <= 0xdf)) {
+				parse_type = UCL_PARSE_MSGPACK;
+			}
+			else if (*data == '(') {
+				parse_type = UCL_PARSE_CSEXP;
+			}
+			else {
+				parse_type = UCL_PARSE_UCL;
+			}
+		}
+
 		chunk->begin = data;
 		chunk->remain = len;
 		chunk->pos = chunk->begin;
@@ -2631,12 +2650,29 @@ ucl_parser_add_chunk_full (struct ucl_parser *parser, const unsigned char *data,
 			return false;
 		}
 
-		switch (parse_type) {
-		default:
-		case UCL_PARSE_UCL:
-			return ucl_state_machine (parser);
-		case UCL_PARSE_MSGPACK:
-			return ucl_parse_msgpack (parser);
+		if (len > 0) {
+			/* Need to parse something */
+			switch (parse_type) {
+			default:
+			case UCL_PARSE_UCL:
+				return ucl_state_machine (parser);
+			case UCL_PARSE_MSGPACK:
+				return ucl_parse_msgpack (parser);
+			case UCL_PARSE_CSEXP:
+				return ucl_parse_csexp (parser);
+			}
+		}
+		else {
+			/* Just add empty chunk and go forward */
+			if (parser->top_obj == NULL) {
+				/*
+				 * In case of empty object, create one to indicate that we've
+				 * read something
+				 */
+				parser->top_obj = ucl_object_new_full (UCL_OBJECT, priority);
+			}
+
+			return true;
 		}
 	}
 

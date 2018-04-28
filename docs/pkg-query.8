@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd March 7, 2016
+.Dd November 18, 2016
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -109,6 +109,11 @@ Comment of the matched package
 Description of the matched package
 .It Cm \&%w
 Home page of the matched package
+.It Cm \&%V
+Returns 0 if the package is not marked as
+.Qq vital ,
+and 1 is the package is marked
+.Qq vital .
 .It Cm \&%l
 License logic of the matched package - nothing for single, & for AND, and | for OR
 .It Cm \&%s Ns Op bh
@@ -123,6 +128,8 @@ as a dependency of another package, 0 otherwise.
 The package can be automatically removed via
 .Sq pkg autoremove
 when this flag is set and no other package depends on it.
+.It Cm \&%Q
+Alternative architecture of the matches package
 .It Cm \&%q
 Architecture of the matched package
 .It Cm \&%k
@@ -385,6 +392,7 @@ List unmaintained packages:
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -392,7 +400,6 @@ List unmaintained packages:
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

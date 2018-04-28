@@ -8,33 +8,8 @@ tests_init \
 
 autoupgrade_body() {
 
-	cat << EOF > pkg1.ucl
-name: pkg
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
-
-	cat << EOF > pkg2.ucl
-name: pkg
-origin: test
-version: 1_1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg 1
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 pkg 1_1
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \
@@ -63,44 +38,19 @@ EOF
 
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
-		-e empty \
-		-s exit:0 \
+		-e match:".*load error: access repo file.*" \
+		-s exit:1 \
 		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -n
 }
 
 autoupgrade_multirepo_head() {
-	atf_set "timeout" 10
+	atf_set "timeout" 40
 }
 
 autoupgrade_multirepo_body() {
 
-	cat << EOF > pkg1.ucl
-name: pkg
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
-
-	cat << EOF > pkg2.ucl
-name: pkg
-origin: test
-version: "1.1"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /usr/local
-desc: <<EOD
-Yet another test
-EOD
-EOF
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg 1
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 pkg 1.1
 
 	atf_check \
 		-o match:".*Installing.*\.\.\.$" \
@@ -148,13 +98,13 @@ EOF
 	export REPOS_DIR="${TMPDIR}"
 	atf_check \
 		-o ignore \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg install -r repo1 -fy pkg-1
 
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg upgrade -y
 

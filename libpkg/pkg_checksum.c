@@ -31,6 +31,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "sha256.h"
 #include "blake2.h"
 
 struct pkg_checksum_entry {
@@ -41,6 +42,12 @@ struct pkg_checksum_entry {
 
 /* Separate checksum parts */
 #define PKG_CKSUM_SEPARATOR '$'
+
+/* Hash is in format <version>:<typeid>:<hexhash> */
+#define PKG_CHECKSUM_SHA256_LEN (SHA256_BLOCK_SIZE * 2 + 1)
+#define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
+#define PKG_CHECKSUM_BLAKE2S_LEN (BLAKE2S_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
+#define PKG_CHECKSUM_CUR_VERSION 2
 
 typedef void (*pkg_checksum_hash_func)(struct pkg_checksum_entry *entries,
 				unsigned char **out, size_t *outlen);
@@ -63,6 +70,12 @@ static void pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
 static void pkg_checksum_hash_blake2_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen);
 static void pkg_checksum_hash_blake2_file(int fd, unsigned char **out,
+    size_t *outlen);
+static void pkg_checksum_hash_blake2s(struct pkg_checksum_entry *entries,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_blake2s_bulk(const unsigned char *in, size_t inlen,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_blake2s_file(int fd, unsigned char **out,
     size_t *outlen);
 static void pkg_checksum_encode_base32(unsigned char *in, size_t inlen,
 				char *out, size_t outlen);
@@ -103,7 +116,7 @@ static const struct _pkg_cksum_type {
 	},
 	[PKG_HASH_TYPE_SHA256_RAW] = {
 		"sha256_raw",
-		SHA256_DIGEST_LENGTH,
+		SHA256_BLOCK_SIZE,
 		pkg_checksum_hash_sha256,
 		pkg_checksum_hash_sha256_bulk,
 		pkg_checksum_hash_sha256_file,
@@ -115,6 +128,22 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_hash_blake2,
 		pkg_checksum_hash_blake2_bulk,
 		pkg_checksum_hash_blake2_file,
+		NULL
+	},
+	[PKG_HASH_TYPE_BLAKE2S_BASE32] = {
+		"blake2s_base32",
+		PKG_CHECKSUM_BLAKE2S_LEN,
+		pkg_checksum_hash_blake2s,
+		pkg_checksum_hash_blake2s_bulk,
+		pkg_checksum_hash_blake2s_file,
+		pkg_checksum_encode_base32
+	},
+	[PKG_HASH_TYPE_BLAKE2S_RAW] = {
+		"blake2_raw",
+		BLAKE2S_OUTBYTES,
+		pkg_checksum_hash_blake2s,
+		pkg_checksum_hash_blake2s_bulk,
+		pkg_checksum_hash_blake2s_file,
 		NULL
 	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
@@ -144,14 +173,9 @@ pkg_checksum_add_entry(const char *key,
 {
 	struct pkg_checksum_entry *e;
 
-	e = malloc(sizeof(*e));
-	if (e == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_entry");
-		return;
-	}
-
+	e = xmalloc(sizeof(*e));
 	e->field = key;
-	e->value = strdup(value);
+	e->value = xstrdup(value);
 	DL_APPEND(*entries, e);
 }
 
@@ -231,7 +255,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		asprintf(&olduid, "%s~%s", dep->name, dep->origin);
+		xasprintf(&olduid, "%s~%s", dep->name, dep->origin);
 		pkg_checksum_add_entry("depend", olduid, &entries);
 		free(olduid);
 	}
@@ -343,22 +367,16 @@ pkg_checksum_hash_sha256(struct pkg_checksum_entry *entries,
 {
 	SHA256_CTX sign_ctx;
 
-	SHA256_Init(&sign_ctx);
+	sha256_init(&sign_ctx);
 
 	while(entries) {
-		SHA256_Update(&sign_ctx, entries->field, strlen(entries->field));
-		SHA256_Update(&sign_ctx, entries->value, strlen(entries->value));
+		sha256_update(&sign_ctx, entries->field, strlen(entries->field));
+		sha256_update(&sign_ctx, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
-	*out = malloc(SHA256_DIGEST_LENGTH);
-	if (*out != NULL) {
-		SHA256_Final(*out, &sign_ctx);
-		*outlen = SHA256_DIGEST_LENGTH;
-	}
-	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_sha256");
-		*outlen = 0;
-	}
+	*out = xmalloc(SHA256_BLOCK_SIZE);
+	sha256_final(&sign_ctx, *out);
+	*outlen = SHA256_BLOCK_SIZE;
 }
 
 static void
@@ -367,11 +385,11 @@ pkg_checksum_hash_sha256_bulk(const unsigned char *in, size_t inlen,
 {
 	SHA256_CTX sign_ctx;
 
-	*out = malloc(SHA256_DIGEST_LENGTH);
-	SHA256_Init(&sign_ctx);
-	SHA256_Update(&sign_ctx, in, inlen);
-	SHA256_Final(*out, &sign_ctx);
-	*outlen = SHA256_DIGEST_LENGTH;
+	*out = xmalloc(SHA256_BLOCK_SIZE);
+	sha256_init(&sign_ctx);
+	sha256_update(&sign_ctx, in, inlen);
+	sha256_final(&sign_ctx, *out);
+	*outlen = SHA256_BLOCK_SIZE;
 }
 
 static void
@@ -381,12 +399,12 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 	size_t r;
 
 	SHA256_CTX sign_ctx;
-	*out = malloc(SHA256_DIGEST_LENGTH);
-	SHA256_Init(&sign_ctx);
+	*out = xmalloc(SHA256_BLOCK_SIZE);
+	sha256_init(&sign_ctx);
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
-		SHA256_Update(&sign_ctx, buffer, r);
-	SHA256_Final(*out, &sign_ctx);
-	*outlen = SHA256_DIGEST_LENGTH;
+		sha256_update(&sign_ctx, buffer, r);
+	sha256_final(&sign_ctx, *out);
+	*outlen = SHA256_BLOCK_SIZE;
 }
 
 static void
@@ -402,23 +420,17 @@ pkg_checksum_hash_blake2(struct pkg_checksum_entry *entries,
 		blake2b_update (&st, entries->value, strlen(entries->value));
 		entries = entries->next;
 	}
-	*out = malloc(BLAKE2B_OUTBYTES);
-	if (*out != NULL) {
-		blake2b_final (&st, *out, BLAKE2B_OUTBYTES);
-		*outlen = BLAKE2B_OUTBYTES;
-	}
-	else {
-		pkg_emit_errno("malloc", "pkg_checksum_hash_blake2");
-		*outlen = 0;
-	}
+	*out = xmalloc(BLAKE2B_OUTBYTES);
+	blake2b_final (&st, *out, BLAKE2B_OUTBYTES);
+	*outlen = BLAKE2B_OUTBYTES;
 }
 
 static void
 pkg_checksum_hash_blake2_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen)
 {
-	*out = malloc(BLAKE2B_OUTBYTES);
-	blake2b(*out, in, NULL, BLAKE2B_OUTBYTES, inlen, 0);
+	*out = xmalloc(BLAKE2B_OUTBYTES);
+	blake2b(*out, BLAKE2B_OUTBYTES,  in, inlen, NULL, 0);
 	*outlen = BLAKE2B_OUTBYTES;
 }
 
@@ -434,9 +446,53 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2b_update(&st, buffer, r);
 
-	*out = malloc(BLAKE2B_OUTBYTES);
+	*out = xmalloc(BLAKE2B_OUTBYTES);
 	blake2b_final(&st, *out, BLAKE2B_OUTBYTES);
 	*outlen = BLAKE2B_OUTBYTES;
+}
+
+static void
+pkg_checksum_hash_blake2s(struct pkg_checksum_entry *entries,
+		unsigned char **out, size_t *outlen)
+{
+	blake2s_state st;
+
+	blake2s_init (&st, BLAKE2S_OUTBYTES);
+
+	while(entries) {
+		blake2s_update (&st, entries->field, strlen(entries->field));
+		blake2s_update (&st, entries->value, strlen(entries->value));
+		entries = entries->next;
+	}
+	*out = xmalloc(BLAKE2S_OUTBYTES);
+	blake2s_final (&st, *out, BLAKE2S_OUTBYTES);
+	*outlen = BLAKE2S_OUTBYTES;
+}
+
+static void
+pkg_checksum_hash_blake2s_bulk(const unsigned char *in, size_t inlen,
+				unsigned char **out, size_t *outlen)
+{
+	*out = xmalloc(BLAKE2S_OUTBYTES);
+	blake2s(*out, BLAKE2S_OUTBYTES,  in, inlen, NULL, 0);
+	*outlen = BLAKE2S_OUTBYTES;
+}
+
+static void
+pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
+{
+	char buffer[8192];
+	size_t r;
+
+	blake2s_state st;
+	blake2s_init(&st, BLAKE2S_OUTBYTES);
+
+	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
+		blake2s_update(&st, buffer, r);
+
+	*out = xmalloc(BLAKE2S_OUTBYTES);
+	blake2s_final(&st, *out, BLAKE2S_OUTBYTES);
+	*outlen = BLAKE2S_OUTBYTES;
 }
 
 /*
@@ -551,7 +607,12 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 	char *new_digest;
 	struct pkg_repo *repo;
 	int rc = EPKG_OK;
-	pkg_checksum_type_t type = 0;
+	pkg_checksum_type_t type;
+
+	if (sizeof(void *) == 8)
+		type = PKG_HASH_TYPE_BLAKE2_BASE32;
+	else
+		type = PKG_HASH_TYPE_BLAKE2S_BASE32;
 
 	if (pkg->reponame != NULL) {
 		repo = pkg_repo_find(pkg->reponame);
@@ -560,12 +621,7 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 			type = repo->meta->digest_format;
 	}
 
-	new_digest = malloc(pkg_checksum_type_size(type));
-	if (new_digest == NULL) {
-		pkg_emit_errno("malloc", "pkg_checksum_type_t");
-		return (EPKG_FATAL);
-	}
-
+	new_digest = xmalloc(pkg_checksum_type_size(type));
 	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
 			!= EPKG_OK) {
 		free(new_digest);
@@ -603,7 +659,7 @@ pkg_checksum_data(const unsigned char *in, size_t inlen,
 	cksum->hbulkfunc(in, inlen, &out, &outlen);
 	if (out != NULL) {
 		if (cksum->encfunc != NULL) {
-			res = malloc(cksum->hlen);
+			res = xmalloc(cksum->hlen);
 			cksum->encfunc(out, outlen, res, cksum->hlen);
 			free(out);
 		}
@@ -665,7 +721,7 @@ pkg_checksum_fd(int fd, pkg_checksum_type_t type)
 	cksum->hfilefunc(fd, &out, &outlen);
 	if (out != NULL) {
 		if (cksum->encfunc != NULL) {
-			res = malloc(cksum->hlen);
+			res = xmalloc(cksum->hlen);
 			cksum->encfunc(out, outlen, res, cksum->hlen);
 			free(out);
 		} else {
@@ -677,26 +733,22 @@ pkg_checksum_fd(int fd, pkg_checksum_type_t type)
 }
 
 static unsigned char *
-pkg_checksum_symlink_readlink(const char *linkbuf, int linklen, const char *root, pkg_checksum_type_t type)
+pkg_checksum_symlink_readlink(const char *linkbuf, int linklen,
+    pkg_checksum_type_t type)
 {
 	const char *lnk;
 
 	lnk = linkbuf;
-	if (root != NULL) {
-		/* Skip root from checksum, as it is meaningless */
-		if (strncmp(root, linkbuf, strlen(root)) == 0)
-			lnk += strlen(root);
-	}
 
-	/* Skip heading slashes */
-	while(*lnk == '/')
-		lnk++;
-
-	return (pkg_checksum_data(lnk, linklen, type));
+	/*
+	 * It is known that \0 is added to the checksum in case the symlink
+	 * targets an absolute path but the behaviour is kept for compat
+	 */
+	return (pkg_checksum_data(RELATIVE_PATH(lnk), linklen, type));
 }
 
 unsigned char *
-pkg_checksum_symlink(const char *path, const char *root, pkg_checksum_type_t type)
+pkg_checksum_symlink(const char *path, pkg_checksum_type_t type)
 {
 	char linkbuf[MAXPATHLEN];
 	int linklen;
@@ -707,11 +759,11 @@ pkg_checksum_symlink(const char *path, const char *root, pkg_checksum_type_t typ
 	}
 	linkbuf[linklen] = '\0';
 
-	return (pkg_checksum_symlink_readlink(linkbuf, linklen, root, type));
+	return (pkg_checksum_symlink_readlink(linkbuf, linklen, type));
 }
 
 unsigned char *
-pkg_checksum_symlinkat(int fd, const char *path, const char *root, pkg_checksum_type_t type)
+pkg_checksum_symlinkat(int fd, const char *path, pkg_checksum_type_t type)
 {
 	char linkbuf[MAXPATHLEN];
 	int linklen;
@@ -722,7 +774,7 @@ pkg_checksum_symlinkat(int fd, const char *path, const char *root, pkg_checksum_
 	}
 	linkbuf[linklen] = '\0';
 
-	return (pkg_checksum_symlink_readlink(linkbuf, linklen, root, type));
+	return (pkg_checksum_symlink_readlink(linkbuf, linklen, type));
 }
 
 int
@@ -746,7 +798,7 @@ pkg_checksum_validate_file(const char *path, const char *sum)
 	}
 
 	if (S_ISLNK(st.st_mode))
-		newsum = pkg_checksum_symlink(path, NULL, type);
+		newsum = pkg_checksum_symlink(path, type);
 	else
 		newsum = pkg_checksum_file(path, type);
 
@@ -776,14 +828,14 @@ pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
 	}
 
 	if (S_ISLNK(st.st_mode))
-		sum = pkg_checksum_symlink(path, NULL, type);
+		sum = pkg_checksum_symlink(path, type);
 	else
 		sum = pkg_checksum_file(path, type);
 
 	if (sum == NULL)
 		return (NULL);
 
-	asprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
+	xasprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
 	free(sum);
 
 	return (cksum);
@@ -810,7 +862,7 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 	}
 
 	if (S_ISLNK(st.st_mode))
-		newsum = pkg_checksum_symlinkat(rootfd, path, NULL, type);
+		newsum = pkg_checksum_symlinkat(rootfd, path, type);
 	else
 		newsum = pkg_checksum_fileat(rootfd, path, type);
 
@@ -841,14 +893,14 @@ pkg_checksum_generate_fileat(int rootfd, const char *path,
 	}
 
 	if (S_ISLNK(st.st_mode))
-		sum = pkg_checksum_symlinkat(rootfd, path, NULL, type);
+		sum = pkg_checksum_symlinkat(rootfd, path, type);
 	else
 		sum = pkg_checksum_fileat(rootfd, path, type);
 
 	if (sum == NULL)
 		return (NULL);
 
-	asprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
+	xasprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
 	free(sum);
 
 	return (cksum);

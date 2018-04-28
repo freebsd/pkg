@@ -162,9 +162,7 @@ Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
 .It Fl r Ar reponame , Cm --repository Ar reponame
-When using
-.Fl R
-compare installed package versions to packages available from the
+Compare installed package versions to packages available from the
 named repository only, irrespective of the configured
 .Dq active
 status from
@@ -172,7 +170,8 @@ status from
 By default all repository catalogues marked
 .Dq active
 are used for version comparisons.
-.Fl R
+Implies
+.Fl R .
 .It Fl o , Cm --origin
 Display package origin, instead of package name.
 .It Fl q , Cm --quiet
@@ -299,6 +298,7 @@ The following command compares two package version strings:
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -306,7 +306,6 @@ The following command compares two package version strings:
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -27,7 +27,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/sbuf.h>
 #include <stddef.h>
 
 #include <assert.h>
@@ -36,8 +35,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <ucl.h>
 
+#include "sha256.h"
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -223,7 +224,7 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 	for (i = 0; manifest_keys[i].key != NULL; i++) {
 		HASH_FIND_STR(*key, manifest_keys[i].key, k);
 		if (k == NULL) {
-			k = calloc(1, sizeof(struct pkg_manifest_key));
+			k = xcalloc(1, sizeof(struct pkg_manifest_key));
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
 			k->valid_type = manifest_keys[i].valid_type;
@@ -251,40 +252,39 @@ pkg_manifest_keys_free(struct pkg_manifest_key *key)
 }
 
 static int
-urlencode(const char *src, struct sbuf **dest)
+urlencode(const char *src, UT_string **dest)
 {
 	size_t len;
 	size_t i;
 
-	sbuf_init(dest);
+	utstring_renew(*dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (!isascii(src[i]) || src[i] == '%')
-			sbuf_printf(*dest, "%%%.2x", (unsigned char)src[i]);
+			utstring_printf(*dest, "%%%.2x", (unsigned char)src[i]);
 		else
-			sbuf_putc(*dest, src[i]);
+			utstring_printf(*dest, "%c", src[i]);
 	}
-	sbuf_finish(*dest);
 
 	return (EPKG_OK);
 }
 
 
 static int
-urldecode(const char *src, struct sbuf **dest)
+urldecode(const char *src, UT_string **dest)
 {
 	size_t len;
 	size_t i;
 	char c;
 	char hex[] = {'\0', '\0', '\0'};
 
-	sbuf_init(dest);
+	utstring_renew(*dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (src[i] != '%') {
-			sbuf_putc(*dest, src[i]);
+			utstring_printf(*dest, "%c", src[i]);
 		} else {
 			if (i + 2 > len) {
 				pkg_emit_error("unexpected end of string");
@@ -300,13 +300,12 @@ urldecode(const char *src, struct sbuf **dest)
 				 * if it fails consider this is not a urlencoded
 				 * information
 				 */
-				sbuf_printf(*dest, "%%%s", hex);
+				utstring_printf(*dest, "%%%s", hex);
 			} else {
-				sbuf_putc(*dest, c);
+				utstring_printf(*dest, "%c", c);
 			}
 		}
 	}
-	sbuf_finish(*dest);
 
 	return (EPKG_OK);
 }
@@ -340,7 +339,7 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 {
 	const char *str;
 	char **dest;
-	struct sbuf *buf = NULL;
+	UT_string *buf = NULL;
 
 	str = ucl_object_tostring_forced(obj);
 
@@ -362,17 +361,16 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 
 		if (offset & STRING_FLAG_URLDECODE) {
 			urldecode(str, &buf);
-			sbuf_finish(buf);
-			str = sbuf_data(buf);
+			str = utstring_body(buf);
 		}
 
 		/* Remove flags from the offset */
 		offset &= STRING_FLAG_MASK;
 		dest = (char **) ((unsigned char *)pkg + offset);
-		*dest = strdup(str);
+		*dest = xstrdup(str);
 
 		if (buf) {
-			sbuf_delete(buf);
+			utstring_free(buf);
 		}
 	}
 
@@ -493,7 +491,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 static int
 pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
-	struct sbuf *tmp = NULL;
+	UT_string *tmp = NULL;
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	pkg_script script_type;
@@ -523,12 +521,12 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		case PKG_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {
 				urldecode(key, &tmp);
-				pkg_adddir(pkg, sbuf_data(tmp), false);
+				pkg_adddir(pkg, utstring_body(tmp), false);
 			} else if (cur->type == UCL_OBJECT) {
 				pkg_set_dirs_from_object(pkg, cur);
 			} else if (cur->type == UCL_STRING) {
 				urldecode(key, &tmp);
-				pkg_adddir(pkg, sbuf_data(tmp), false);
+				pkg_adddir(pkg, utstring_body(tmp), false);
 			} else {
 				pkg_emit_error("Skipping malformed directories %s",
 				    key);
@@ -538,7 +536,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			if (cur->type == UCL_STRING) {
 				buf = ucl_object_tolstring(cur, &len);
 				urldecode(key, &tmp);
-				pkg_addfile(pkg, sbuf_data(tmp), len >= 2 ? buf : NULL, false);
+				pkg_addfile(pkg, utstring_body(tmp), len >= 2 ? buf : NULL, false);
 			} else if (cur->type == UCL_OBJECT)
 				pkg_set_files_from_object(pkg, cur);
 			else
@@ -584,7 +582,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				}
 
 				urldecode(ucl_object_tostring(cur), &tmp);
-				pkg_addscript(pkg, sbuf_data(tmp), script_type);
+				pkg_addscript(pkg, utstring_body(tmp), script_type);
 			}
 			break;
 		case PKG_ANNOTATIONS:
@@ -597,7 +595,8 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		}
 	}
 
-	sbuf_free(tmp);
+	if (tmp)
+		utstring_free(tmp);
 
 	return (EPKG_OK);
 }
@@ -618,7 +617,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set = NULL;
 	mode_t perm = 0;
-	struct sbuf *fname = NULL;
+	UT_string *fname = NULL;
 	const char *key, *okey;
 
 	okey = ucl_object_key(obj);
@@ -645,13 +644,13 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 				perm = getmode(set, 0);
 		} else {
 			pkg_debug(1, "Skipping unknown key for file(%s): %s",
-			    sbuf_data(fname), key);
+			    utstring_body(fname), key);
 		}
 	}
 
-	pkg_addfile_attr(pkg, sbuf_data(fname), sum, uname, gname, perm, 0,
+	pkg_addfile_attr(pkg, utstring_body(fname), sum, uname, gname, perm, 0,
 	    false);
-	sbuf_delete(fname);
+	utstring_free(fname);
 
 	return (EPKG_OK);
 }
@@ -665,7 +664,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
-	struct sbuf *dirname = NULL;
+	UT_string *dirname = NULL;
 	const char *key, *okey;
 
 	okey = ucl_object_key(obj);
@@ -691,12 +690,12 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			/* ignore on purpose : compatibility*/
 		} else {
 			pkg_debug(1, "Skipping unknown key for dir(%s): %s",
-			    sbuf_data(dirname), key);
+			    utstring_body(dirname), key);
 		}
 	}
 
-	pkg_adddir_attr(pkg, sbuf_data(dirname), uname, gname, perm, 0, false);
-	sbuf_delete(dirname);
+	pkg_adddir_attr(pkg, utstring_body(dirname), uname, gname, perm, 0, false);
+	utstring_free(dirname);
 
 	return (EPKG_OK);
 }
@@ -812,7 +811,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(p, buf, len)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
@@ -853,7 +852,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	if ((rc = file_to_bufferat(dfd, file, &data, &sz)) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	p = ucl_parser_new(0);
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_string(p, data, sz)) {
 		pkg_emit_error("manifest parsing error: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
@@ -863,7 +862,6 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	obj = ucl_parser_get_object(p);
 	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
 	ucl_parser_free(p);
-	ucl_object_unref(obj);
 	free(data);
 
 	return (rc);
@@ -874,21 +872,30 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;
-	int rc;
+	int rc, fd;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
 
 	pkg_debug(1, "Parsing manifest from '%s'", file);
+	fd = open(file, O_RDONLY);
+
+	if (fd == -1) {
+		pkg_emit_error("Error loading manifest from %s: %s",
+				    file, strerror(errno));
+	}
 
 	errno = 0;
-	p = ucl_parser_new(0);
-	if (!ucl_parser_add_file(p, file)) {
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_fd(p, fd)) {
 		pkg_emit_error("Error parsing manifest: %s",
 		    ucl_parser_get_error(p));
 		ucl_parser_free(p);
+		close(fd);
 		return (EPKG_FATAL);
 	}
+
+	close(fd);
 
 	if ((obj = ucl_parser_get_object(p)) == NULL) {
 		ucl_parser_free(p);
@@ -907,7 +914,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 {
 	ucl_object_t *obj = NULL, *seq;
 	struct pkg_file *file = NULL;
-	struct sbuf *b = NULL;
+	UT_string *b = NULL;
 
 	obj = ucl_object_typed_new(UCL_OBJECT);
 	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->origin), "origin", 6, false);
@@ -919,7 +926,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 		urlencode(file->path, &b);
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromlstring(sbuf_data(b), sbuf_len(b)));
+		ucl_array_append(seq, ucl_object_fromlstring(utstring_body(b), utstring_len(b)));
 	}
 	if (seq != NULL)
 		ucl_object_insert_key(obj, seq, "files", 5, false);
@@ -927,7 +934,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	ucl_object_emit_file(obj, UCL_EMIT_JSON_COMPACT, f);
 
 	if (b != NULL)
-		sbuf_delete(b);
+		utstring_free(b);
 
 	ucl_object_unref(obj);
 
@@ -944,7 +951,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_dir		*dir      = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf       = NULL;
-	struct sbuf		*tmpsbuf  = NULL;
+	UT_string		*tmpsbuf  = NULL;
 	char			*buf;
 	int i;
 	const char *script_types = NULL;
@@ -953,9 +960,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
 	if (pkg->abi == NULL && pkg->arch != NULL)
-		pkg->abi = strdup(pkg->arch);
+		pkg->abi = xstrdup(pkg->arch);
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
-	pkg->arch = strdup(legacyarch);
+	pkg->arch = xstrdup(legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
 	    UCL_STRING_TRIM), "name", 4, false);
@@ -978,6 +985,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->sum, 0,
 	    UCL_STRING_TRIM), "sum", 3, false);
 	ucl_object_insert_key(top, ucl_object_fromint(pkg->flatsize), "flatsize", 8, false);
+	if (pkg->dep_formula != NULL) {
+		ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->dep_formula, 0,
+		    UCL_STRING_TRIM), "dep_formula", 11, false);
+	}
 	/*
 	 * XXX: dirty hack to be compatible with pkg 1.2
 	 */
@@ -1019,7 +1030,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->desc != NULL) {
 		urlencode(pkg->desc, &tmpsbuf);
 		ucl_object_insert_key(top,
-			ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+			ucl_object_fromstring_common(utstring_body(tmpsbuf), utstring_len(tmpsbuf), UCL_STRING_TRIM),
 			"desc", 4, false);
 	}
 
@@ -1156,14 +1167,14 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
 				if (file->sum == NULL)
-					file->sum = strdup("-");
+					file->sum = xstrdup("-");
 
 				urlencode(file->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
 				    ucl_object_fromstring(file->sum),
-				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
+				    utstring_body(tmpsbuf), utstring_len(tmpsbuf), true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "files", 5, false);
@@ -1174,7 +1185,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				urlencode(cf->path, &tmpsbuf);
 				if (seq == NULL)
 					seq = ucl_object_typed_new(UCL_ARRAY);
-				ucl_array_append(seq, ucl_object_fromstring(sbuf_data(tmpsbuf)));
+				ucl_array_append(seq, ucl_object_fromstring(utstring_body(tmpsbuf)));
 			}
 			if (seq)
 				ucl_object_insert_key(top, seq, "config", 6, false);
@@ -1187,7 +1198,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
 				    ucl_object_fromstring("y"),
-				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
+				    utstring_body(tmpsbuf), utstring_len(tmpsbuf), true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "directories", 11, false);
@@ -1232,8 +1243,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			if (map == NULL)
 				map = ucl_object_typed_new(UCL_OBJECT);
 			ucl_object_insert_key(map,
-			    ucl_object_fromstring_common(sbuf_data(tmpsbuf),
-			        sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+			    ucl_object_fromstring_common(utstring_body(tmpsbuf),
+			        utstring_len(tmpsbuf), UCL_STRING_TRIM),
 			    script_types, 0, true);
 		}
 		if (map)
@@ -1248,27 +1259,27 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 
 	if (tmpsbuf != NULL)
-		sbuf_delete(tmpsbuf);
+		utstring_free(tmpsbuf);
 
 	return (top);
 }
 
 
 static int
-emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
+emit_manifest(struct pkg *pkg, UT_string **out, short flags)
 {
 	ucl_object_t *top;
 
 	top = pkg_emit_object(pkg, flags);
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
-		ucl_object_emit_sbuf(top, UCL_EMIT_YAML, out);
+		ucl_object_emit_buf(top, UCL_EMIT_YAML, out);
 	else if ((flags & PKG_MANIFEST_EMIT_UCL) == PKG_MANIFEST_EMIT_UCL)
-		ucl_object_emit_sbuf(top, UCL_EMIT_CONFIG, out);
+		ucl_object_emit_buf(top, UCL_EMIT_CONFIG, out);
 	else if ((flags & PKG_MANIFEST_EMIT_JSON) == PKG_MANIFEST_EMIT_JSON)
-		ucl_object_emit_sbuf(top, UCL_EMIT_JSON, out);
+		ucl_object_emit_buf(top, UCL_EMIT_JSON, out);
 	else
-		ucl_object_emit_sbuf(top, UCL_EMIT_JSON_COMPACT, out);
+		ucl_object_emit_buf(top, UCL_EMIT_JSON_COMPACT, out);
 
 	ucl_object_unref(top);
 
@@ -1289,42 +1300,42 @@ pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdiges
 /*
  * This routine is able to output to either a (FILE *) or a (struct sbuf *). It
  * exist only to avoid code duplication and should not be called except from
- * pkg_emit_manifest_file() and pkg_emit_manifest_sbuf().
+ * pkg_emit_manifest_file() and pkg_emit_manifest_buf().
  */
 static int
 pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
-	    char **pdigest, bool out_is_a_sbuf)
+	    char **pdigest, bool out_is_a_buf)
 {
-	struct sbuf *output = NULL;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
+	UT_string *output = NULL;
+	unsigned char digest[SHA256_BLOCK_SIZE];
 	SHA256_CTX *sign_ctx = NULL;
 	int rc;
 
 	if (pdigest != NULL) {
-		*pdigest = malloc(sizeof(digest) * 2 + 1);
-		sign_ctx = malloc(sizeof(SHA256_CTX));
-		SHA256_Init(sign_ctx);
+		*pdigest = xmalloc(sizeof(digest) * 2 + 1);
+		sign_ctx = xmalloc(sizeof(SHA256_CTX));
+		sha256_init(sign_ctx);
 	}
 
-	if (out_is_a_sbuf)
+	if (out_is_a_buf)
 		output = out;
 
 	rc = emit_manifest(pkg, &output, flags);
 
 	if (sign_ctx != NULL)
-		SHA256_Update(sign_ctx, sbuf_data(output), sbuf_len(output));
+		sha256_update(sign_ctx, utstring_body(output), utstring_len(output));
 
-	if (!out_is_a_sbuf)
-		fprintf(out, "%s\n", sbuf_data(output));
+	if (!out_is_a_buf)
+		fprintf(out, "%s\n", utstring_body(output));
 
 	if (pdigest != NULL) {
-		SHA256_Final(digest, sign_ctx);
+		sha256_final(sign_ctx, digest);
 		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
 		free(sign_ctx);
 	}
 
-	if (!out_is_a_sbuf)
-		sbuf_free(output);
+	if (!out_is_a_buf)
+		utstring_free(output);
 
 	return (rc);
 }
@@ -1337,7 +1348,7 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
 }
 
 int
-pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, short flags, char **pdigest)
+pkg_emit_manifest_buf(struct pkg *pkg, UT_string *b, short flags, char **pdigest)
 {
 
 	return (pkg_emit_manifest_generic(pkg, b, flags, pdigest, true));
@@ -1346,19 +1357,19 @@ pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, short flags, char **pdig
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 {
-	struct sbuf *b = sbuf_new_auto();
+	UT_string *b;
 	int rc;
 
-	rc = pkg_emit_manifest_sbuf(pkg, b, flags, pdigest);
+	utstring_new(b);
+	rc = pkg_emit_manifest_buf(pkg, b, flags, pdigest);
 
 	if (rc != EPKG_OK) {
-		sbuf_delete(b);
+		utstring_free(b);
 		return (rc);
 	}
 
-	sbuf_finish(b);
-	*dest = strdup(sbuf_data(b));
-	sbuf_delete(b);
+	*dest = xstrdup(utstring_body(b));
+	utstring_free(b);
 
 	return (rc);
 }

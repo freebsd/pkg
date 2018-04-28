@@ -29,7 +29,7 @@
 #endif
 
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 
 #include <sysexits.h>
@@ -69,7 +69,7 @@ exec_ssh(int argc, char **argv __unused)
 	if (restricted == NULL)
 		restricted = "/";
 
-	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY)) < 0) {
+	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		warn("Impossible to open the restricted directory");
 		return (EX_SOFTWARE);
 	}

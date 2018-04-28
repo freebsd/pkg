@@ -33,8 +33,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#define _WITH_GETLINE
-
 #include <archive.h>
 #include <err.h>
 #include <errno.h>
@@ -47,13 +45,14 @@
 #include <unistd.h>
 #include <sysexits.h>
 #include <khash.h>
+#include <utstring.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
 #endif
 
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 
 #include <pkg.h>
@@ -83,7 +82,7 @@ add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 }
 
 static void
-print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
+print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, UT_string *sb,
     kh_pkgs_t *seen, bool top)
 {
 	struct pkg_dep *dep = NULL;
@@ -99,9 +98,9 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, struct sbuf *sb,
 			if (h != kh_end(head)) {
 				kh_put_pkgs(seen, name, &ret);
 				if (!top)
-					sbuf_cat(sb, ", ");
+					utstring_printf(sb, ", ");
 
-				sbuf_cat(sb, name);
+				utstring_printf(sb, "%s", name);
 
 				print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
 
@@ -118,21 +117,15 @@ exec_audit(int argc, char **argv)
 	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
-	const char		*db_dir;
 	char			*name;
 	char			*version;
-	char			 audit_file_buf[MAXPATHLEN];
-	char			*audit_file = audit_file_buf;
+	char			*audit_file = NULL;
 	unsigned int		 vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EX_OK;
-	const char		*portaudit_site = NULL;
-	struct sbuf		*sb;
+	UT_string		*sb;
 	kh_pkgs_t		*check = NULL;
-
-	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
 
 	struct option longopts[] = {
 		{ "fetch",	no_argument,		NULL,	'F' },
@@ -167,8 +160,7 @@ exec_audit(int argc, char **argv)
 	audit = pkg_audit_new();
 
 	if (fetch == true) {
-		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
-		if (pkg_audit_fetch(portaudit_site, audit_file) != EPKG_OK) {
+		if (pkg_audit_fetch(NULL, audit_file) != EPKG_OK) {
 			pkg_audit_free(audit);
 			return (EX_IOERR);
 		}
@@ -270,6 +262,8 @@ exec_audit(int argc, char **argv)
 		}
 	}
 
+	drop_privileges();
+
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
@@ -284,22 +278,21 @@ exec_audit(int argc, char **argv)
 		kh_foreach_value(check, pkg, {
 			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb)) {
 				vuln ++;
-				printf("%s", sbuf_data(sb));
+				printf("%s", utstring_body(sb));
 
 				if (recursive) {
 					const char *name;
 					kh_pkgs_t *seen = kh_init_pkgs();
 
 					pkg_get(pkg, PKG_NAME, &name);
-					sbuf_clear(sb);
-					sbuf_printf(sb, "Packages that depend on %s: ", name);
+					utstring_clear(sb);
+					utstring_printf(sb, "Packages that depend on %s: ", name);
 					print_recursive_rdeps(check, pkg , sb, seen, true);
-					sbuf_finish(sb);
-					printf("%s\n\n", sbuf_data(sb));
+					printf("%s\n\n", utstring_body(sb));
 
 					kh_destroy_pkgs(seen);
 				}
-				sbuf_delete(sb);
+				utstring_free(sb);
 			}
 			pkg_free(pkg);
 		});

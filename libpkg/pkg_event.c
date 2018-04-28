@@ -29,8 +29,8 @@
 #include <errno.h>
 #include <string.h>
 #include <syslog.h>
+#include <utstring.h>
 
-#define _WITH_DPRINTF
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -39,18 +39,17 @@ static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
 
 static char *
-sbuf_json_escape(struct sbuf *buf, const char *str)
+buf_json_escape(UT_string *buf, const char *str)
 {
-	sbuf_clear(buf);
+	utstring_clear(buf);
 	while (str != NULL && *str != '\0') {
 		if (*str == '"' || *str == '\\')
-			sbuf_putc(buf, '\\');
-		sbuf_putc(buf, *str);
+			utstring_printf(buf, "%c", '\\');
+		utstring_printf(buf, "%c", *str);
 		str++;
 	}
-	sbuf_finish(buf);
 
-	return (sbuf_data(buf));
+	return (utstring_body(buf));
 }
 
 static void
@@ -58,42 +57,42 @@ pipeevent(struct pkg_event *ev)
 {
 	int i;
 	struct pkg_dep *dep = NULL;
-	struct sbuf *msg, *buf;
+	UT_string *msg, *buf;
 	struct pkg_event_conflict *cur_conflict;
-	if (eventpipe < 0)
+	if (ctx.eventpipe < 0)
 		return;
 
-	msg = sbuf_new_auto();
-	buf = sbuf_new_auto();
+	utstring_new(msg);
+	utstring_new(buf);
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
-		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR\", "
 		    "\"data\": {"
 		    "\"msg\": \"%s(%s): %s\","
 		    "\"errno\": %d}}",
-		    sbuf_json_escape(buf, ev->e_errno.func),
-		    sbuf_json_escape(buf, ev->e_errno.arg),
-		    sbuf_json_escape(buf, strerror(ev->e_errno.no)),
+		    buf_json_escape(buf, ev->e_errno.func),
+		    buf_json_escape(buf, ev->e_errno.arg),
+		    buf_json_escape(buf, strerror(ev->e_errno.no)),
 		    ev->e_errno.no);
 		break;
 	case PKG_EVENT_ERROR:
-		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR\", "
 		    "\"data\": {\"msg\": \"%s\"}}",
-		    sbuf_json_escape(buf, ev->e_pkg_error.msg));
+		    buf_json_escape(buf, ev->e_pkg_error.msg));
 		break;
 	case PKG_EVENT_NOTICE:
-		sbuf_printf(msg, "{ \"type\": \"NOTICE\", "
+		utstring_printf(msg, "{ \"type\": \"NOTICE\", "
 		    "\"data\": {\"msg\": \"%s\"}}",
-		    sbuf_json_escape(buf, ev->e_pkg_notice.msg));
+		    buf_json_escape(buf, ev->e_pkg_notice.msg));
 		break;
 	case PKG_EVENT_DEVELOPER_MODE:
-		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR\", "
 		    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
-		    sbuf_json_escape(buf, ev->e_pkg_error.msg));
+		    buf_json_escape(buf, ev->e_pkg_error.msg));
 		break;
 	case PKG_EVENT_UPDATE_ADD:
-		sbuf_printf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
 		    "\"data\": { "
 		    "\"fetched\": %d, "
 		    "\"total\": %d"
@@ -103,7 +102,7 @@ pipeevent(struct pkg_event *ev)
 		    );
 		break;
 	case PKG_EVENT_UPDATE_REMOVE:
-		sbuf_printf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
 		    "\"data\": { "
 		    "\"fetched\": %d, "
 		    "\"total\": %d"
@@ -113,44 +112,44 @@ pipeevent(struct pkg_event *ev)
 		    );
 		break;
 	case PKG_EVENT_FETCH_BEGIN:
-		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
 		    "\"data\": { "
 		    "\"url\": \"%s\" "
 		    "}}",
-		    sbuf_json_escape(buf, ev->e_fetching.url)
+		    buf_json_escape(buf, ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_FETCH_FINISHED:
-		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
 		    "\"data\": { "
 		    "\"url\": \"%s\" "
 		    "}}",
-		    sbuf_json_escape(buf, ev->e_fetching.url)
+		    buf_json_escape(buf, ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_INSTALL_BEGIN\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_INSTALL_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_install_begin.pkg, ev->e_install_begin.pkg);
 		break;
 	case PKG_EVENT_EXTRACT_BEGIN:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_extract_begin.pkg, ev->e_extract_begin.pkg);
 		break;
 	case PKG_EVENT_EXTRACT_FINISHED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\", "
@@ -159,15 +158,15 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
 			ev->e_install_finished.pkg->message ?
-				sbuf_json_escape(buf, ev->e_install_finished.pkg->message->str) :
+				buf_json_escape(buf, ev->e_install_finished.pkg->message->str) :
 				"");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
-		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
 		    "\"data\": {}}");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
-		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
+		utstring_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
 			"\"data\": { "
 			"\"pkguid\": \"%s\", "
 			"\"pkgpath\": \"%s\", "
@@ -177,25 +176,25 @@ pipeevent(struct pkg_event *ev)
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict != NULL) {
 			if (cur_conflict->next != NULL) {
-				sbuf_printf(msg, "{\"uid\":\"%s\"},",
+				utstring_printf(msg, "{\"uid\":\"%s\"},",
 						cur_conflict->uid);
 			}
 			else {
-				sbuf_printf(msg, "{\"uid\":\"%s\"}",
+				utstring_printf(msg, "{\"uid\":\"%s\"}",
 						cur_conflict->uid);
 				break;
 			}
 			cur_conflict = cur_conflict->next;
 		}
-		sbuf_cat(msg, "]}}");
+		utstring_printf(msg, "%s", "]}}");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
-		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
 		    "\"data\": {\"conflicting\": %d}}",
 		    ev->e_integrity_finished.conflicting);
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
@@ -204,7 +203,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_deinstall_begin.pkg);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_DEINSTALL_FINISHED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_DEINSTALL_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
@@ -213,7 +212,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_deinstall_finished.pkg);
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\" ,"
@@ -224,7 +223,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_upgrade_begin.n);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\" ,"
@@ -235,7 +234,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_upgrade_finished.n);
 		break;
 	case PKG_EVENT_LOCKED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%n\""
@@ -244,7 +243,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_locked.pkg);
 		break;
 	case PKG_EVENT_REQUIRED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_REQUIRED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"ERROR_REQUIRED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\", "
@@ -254,14 +253,15 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_required.pkg,
 		    ev->e_required.force == 1 ? "true": "false");
 		while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
-			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
+			utstring_printf(msg, "{ \"pkgname\": \"%s\", "
 			    "\"pkgversion\": \"%s\" }, ",
 			    dep->name, dep->version);
-		sbuf_setpos(msg, sbuf_len(msg) - 2);
-		sbuf_cat(msg, "]}}");
+		msg->i -= 2;
+		msg->d[msg->i] = '\0';
+		utstring_printf(msg, "%s", "]}}");
 		break;
 	case PKG_EVENT_ALREADY_INSTALLED:
-		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_ALREADY_INSTALLED\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"ERROR_ALREADY_INSTALLED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\""
@@ -270,7 +270,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_already_installed.pkg);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_MISSING_DEP\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR_MISSING_DEP\", "
 		    "\"data\": { "
 		    "\"depname\": \"%s\", "
 		    "\"depversion\": \"%s\""
@@ -279,22 +279,22 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_missing_dep.dep->version);
 		break;
 	case PKG_EVENT_NOREMOTEDB:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
 		    "\"data\": { "
 		    "\"url\": \"%s\" "
 		    "}}" ,
 		    ev->e_remotedb.repo);
 		break;
 	case PKG_EVENT_NOLOCALDB:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_NOLOCALDB\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR_NOLOCALDB\", "
 		    "\"data\": {} ");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
-		sbuf_printf(msg, "{ \"type\": \"INFO_NEWPKGVERSION\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_NEWPKGVERSION\", "
 		    "\"data\": {} ");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
-		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
+		pkg_utstring_printf(msg, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\", "
@@ -302,41 +302,41 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_file_mismatch.pkg,
 		    ev->e_file_mismatch.pkg,
-		    sbuf_json_escape(buf, ev->e_file_mismatch.file->path));
+		    buf_json_escape(buf, ev->e_file_mismatch.file->path));
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 		    "\"data\": {"
 		    "\"plugin\": \"%s\", "
 		    "\"msg\": \"%s(%s): %s\","
 		    "\"errno\": %d"
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
-		    sbuf_json_escape(buf, ev->e_plugin_errno.func),
-		    sbuf_json_escape(buf, ev->e_plugin_errno.arg),
-		    sbuf_json_escape(buf, strerror(ev->e_plugin_errno.no)),
+		    buf_json_escape(buf, ev->e_plugin_errno.func),
+		    buf_json_escape(buf, ev->e_plugin_errno.arg),
+		    buf_json_escape(buf, strerror(ev->e_plugin_errno.no)),
 		    ev->e_plugin_errno.no);
 		break;
 	case PKG_EVENT_PLUGIN_ERROR:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
+		utstring_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 		    "\"data\": {"
 		    "\"plugin\": \"%s\", "
 		    "\"msg\": \"%s\""
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
-		    sbuf_json_escape(buf, ev->e_plugin_error.msg));
+		    buf_json_escape(buf, ev->e_plugin_error.msg));
 		break;
 	case PKG_EVENT_PLUGIN_INFO:
-		sbuf_printf(msg, "{ \"type\": \"INFO_PLUGIN\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_PLUGIN\", "
 		    "\"data\": {"
 		    "\"plugin\": \"%s\", "
 		    "\"msg\": \"%s\""
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
-		    sbuf_json_escape(buf, ev->e_plugin_info.msg));
+		    buf_json_escape(buf, ev->e_plugin_info.msg));
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
-		sbuf_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
 		    "\"data\": {"
 		        "\"name\": \"%s\", "
 			"\"processed\": %d"
@@ -344,7 +344,7 @@ pipeevent(struct pkg_event *ev)
 			ev->e_incremental_update.processed);
 		break;
 	case PKG_EVENT_QUERY_YESNO:
-		sbuf_printf(msg, "{ \"type\": \"QUERY_YESNO\", "
+		utstring_printf(msg, "{ \"type\": \"QUERY_YESNO\", "
 		    "\"data\": {"
 			"\"msg\": \"%s\","
 			"\"default\": \"%d\""
@@ -352,7 +352,7 @@ pipeevent(struct pkg_event *ev)
 			ev->e_query_yesno.deft);
 		break;
 	case PKG_EVENT_QUERY_SELECT:
-		sbuf_printf(msg, "{ \"type\": \"QUERY_SELECT\", "
+		utstring_printf(msg, "{ \"type\": \"QUERY_SELECT\", "
 		    "\"data\": {"
 			"\"msg\": \"%s\","
 			"\"ncnt\": \"%d\","
@@ -363,20 +363,21 @@ pipeevent(struct pkg_event *ev)
 			ev->e_query_select.deft);
 		for (i = 0; i < ev->e_query_select.ncnt - 1; i++)
 		{
-			sbuf_printf(msg, "{ \"text\": \"%s\" },",
+			utstring_printf(msg, "{ \"text\": \"%s\" },",
 				ev->e_query_select.items[i]);
 		}
-		sbuf_printf(msg, "{ \"text\": \"%s\" } ] }}",
+		utstring_printf(msg, "{ \"text\": \"%s\" } ] }}",
 			ev->e_query_select.items[i]);
 		break;
 	case PKG_EVENT_PROGRESS_START:
-		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_START\", "
+		utstring_printf(msg, "{ \"type\": \"INFO_PROGRESS_START\", "
 		  "\"data\": {}}");
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
-		sbuf_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
-		  "\"data\": { \"current\": %ld, \"total\" : %ld}}",
-		  ev->e_progress_tick.current, ev->e_progress_tick.total);
+		utstring_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
+		  "\"data\": { \"current\": %jd, \"total\" : %jd}}",
+		  (intmax_t)ev->e_progress_tick.current,
+		  (intmax_t)ev->e_progress_tick.total);
 		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
@@ -384,10 +385,9 @@ pipeevent(struct pkg_event *ev)
 	default:
 		break;
 	}
-	sbuf_finish(msg);
-	dprintf(eventpipe, "%s\n", sbuf_data(msg));
-	sbuf_delete(msg);
-	sbuf_delete(buf);
+	dprintf(ctx.eventpipe, "%s\n", utstring_body(msg));
+	utstring_free(msg);
+	utstring_free(buf);
 }
 
 void
@@ -953,7 +953,7 @@ pkg_debug(int level, const char *fmt, ...)
 	struct pkg_event ev;
 	va_list ap;
 
-	if (debug_level < level)
+	if (ctx.debug_level < level)
 		return;
 
 	ev.type = PKG_EVENT_DEBUG;
@@ -1057,5 +1057,17 @@ pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data)
 	ev.type = PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER;
 	ev.e_cleanup_callback.cleanup_cb = cleanup_cb;
 	ev.e_cleanup_callback.data = data;
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_conflicts(struct pkg *p1, struct pkg *p2, const char *path)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_CONFLICTS;
+	ev.e_conflicts.p1 = p1;
+	ev.e_conflicts.p2 = p2;
+	ev.e_conflicts.path = path;
 	pkg_emit_event(&ev);
 }

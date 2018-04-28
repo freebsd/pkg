@@ -108,6 +108,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_OPTION_DEFAULT,
 	PP_PKG_OPTION_DESCRIPTION,
 	PP_PKG_OPTIONS,
+	PP_PKG_ALTABI,
 	PP_PKG_REPO_PATH,
 	PP_PKG_CHAR_STRING,
 	PP_PKG_USER_NAME,
@@ -159,79 +160,78 @@ struct percent_esc {
 	unsigned	 flags;
 	int		 width;
 	unsigned	 trailer_status;
-	struct sbuf	*item_fmt;
-	struct sbuf	*sep_fmt;
+	UT_string	*item_fmt;
+	UT_string	*sep_fmt;
 	fmt_code_t	 fmt_code;
 };
 
 /* Format handler function prototypes */
 
-_static struct sbuf *format_annotation_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_annotation_value(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_annotations(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_shlibs_required(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_shlib_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_categories(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_category_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directories(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directory_group(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directory_path(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directory_perms(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_directory_user(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_files(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_file_group(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_file_path(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_file_perms(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_file_sha256(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_file_user(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_groups(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_group_gidstr(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_group_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_row_counter(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_licenses(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_license_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_message(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_repo_ident(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_option_default(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_option_description(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_repo_path(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_char_string(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_users(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_user_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_user_uidstr(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_old_version(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_autoremove(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_shlibs_provided(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_comment(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_dependencies(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_dependency_lock(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_dependency_origin(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_dependency_version(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_description(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_lock_status(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_license_logic(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_maintainer(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_name(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_origin(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_prefix(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_architecture(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_requirements(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_flatsize(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_install_tstamp(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_checksum(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_version(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_home_url(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_pkgsize(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_short_checksum(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
-_static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
-_static struct sbuf *format_provided(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_required(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_provide_name(struct sbuf *, const void *, struct percent_esc *);
+_static UT_string *format_annotation_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_annotation_value(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_annotations(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_shlibs_required(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_shlib_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_categories(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_category_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_directories(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_directory_group(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_directory_path(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_directory_perms(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_directory_user(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_files(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_file_group(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_file_path(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_file_perms(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_file_sha256(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_file_user(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_groups(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_group_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_row_counter(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_licenses(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_license_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_message(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_repo_ident(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_options(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_option_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_option_value(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_option_default(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_option_description(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_repo_path(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_char_string(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_users(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_user_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_old_version(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_autoremove(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_shlibs_provided(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_comment(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_dependencies(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_dependency_lock(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_dependency_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_dependency_origin(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_dependency_version(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_description(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_lock_status(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_license_logic(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_maintainer(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_origin(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_prefix(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_architecture(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_altabi(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_requirements(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_flatsize(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_install_tstamp(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_checksum(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_version(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_home_url(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_pkgsize(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_short_checksum(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_literal_percent(UT_string *, __unused const void *, __unused struct percent_esc *);
+_static UT_string *format_unknown(UT_string *, __unused const void *, __unused struct percent_esc *);
+_static UT_string *format_provided(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_required(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_provide_name(UT_string *, const void *, struct percent_esc *);
 
 /* Other static function prototypes */
 
@@ -241,19 +241,19 @@ _static void free_percent_esc(struct percent_esc *);
 
 _static char *gen_format(char *, size_t, unsigned, const char *);
 
-_static struct sbuf *human_number(struct sbuf *, int64_t, struct percent_esc *);
-_static struct sbuf *string_val(struct sbuf *, const char *,
+_static UT_string *human_number(UT_string *, int64_t, struct percent_esc *);
+_static UT_string *string_val(UT_string *, const char *,
 			       struct percent_esc *);
-_static struct sbuf *int_val(struct sbuf *, int64_t, struct percent_esc *);
-_static struct sbuf *bool_val(struct sbuf *, bool, struct percent_esc *);
-_static struct sbuf *mode_val(struct sbuf *, mode_t, struct percent_esc *);
-_static struct sbuf *liclog_val(struct sbuf *, lic_t, struct percent_esc *);
-_static struct sbuf *list_count(struct sbuf *, int64_t, struct percent_esc *);
+_static UT_string *int_val(UT_string *, int64_t, struct percent_esc *);
+_static UT_string *bool_val(UT_string *, bool, struct percent_esc *);
+_static UT_string *mode_val(UT_string *, mode_t, struct percent_esc *);
+_static UT_string *liclog_val(UT_string *, lic_t, struct percent_esc *);
+_static UT_string *list_count(UT_string *, int64_t, struct percent_esc *);
 
 _static struct percent_esc *set_list_defaults(struct percent_esc *,
 					      const char *, const char *);
 
-_static struct sbuf *iterate_item(struct sbuf *, const struct pkg *,
+_static UT_string *iterate_item(UT_string *, const struct pkg *,
 				  const char *, const void *, int, unsigned);
 
 _static const char *field_modifier(const char *, struct percent_esc *);
@@ -262,14 +262,14 @@ _static const char *format_code(const char *, unsigned , struct percent_esc *);
 _static const char *format_trailer(const char *, struct percent_esc *);
 _static const char *parse_format(const char *, unsigned, struct percent_esc *);
 
-_static const char *maybe_read_hex_byte(struct sbuf *, const char *);
-_static const char *read_oct_byte(struct sbuf *, const char *);
-_static const char *process_escape(struct sbuf *, const char *);
+_static const char *maybe_read_hex_byte(UT_string *, const char *);
+_static const char *read_oct_byte(UT_string *, const char *);
+_static const char *process_escape(UT_string *, const char *);
 
-_static const char *process_format_trailer(struct sbuf *, struct percent_esc *,
+_static const char *process_format_trailer(UT_string *, struct percent_esc *,
 					   const char *, const struct pkg *,
 					   const void *, int, unsigned);
-_static const char *process_format_main(struct sbuf *, struct percent_esc *,
+_static const char *process_format_main(UT_string *, struct percent_esc *,
 					const char *, const char *, void *);
 
 #endif

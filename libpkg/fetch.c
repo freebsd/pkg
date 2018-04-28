@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -34,7 +34,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <errno.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <fetch.h>
@@ -74,7 +73,7 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 				continue;
 
 			if ((u = fetchParseURL(line)) != NULL) {
-				m = malloc(sizeof(struct http_mirror));
+				m = xmalloc(sizeof(struct http_mirror));
 				m->url = u;
 				LL_APPEND(repo->http, m);
 			}
@@ -170,7 +169,7 @@ ssh_read(void *data, char *buf, int len)
 	ssize_t rlen;
 	int deltams;
 
-	pkg_debug(2, "ssh: start reading %d");
+	pkg_debug(2, "ssh: start reading");
 
 	if (fetchTimeout > 0) {
 		gettimeofday(&timeout, NULL);
@@ -184,7 +183,7 @@ ssh_read(void *data, char *buf, int len)
 
 	for (;;) {
 		rlen = read(pfd.fd, buf, len);
-		pkg_debug(2, "read %d", rlen);
+		pkg_debug(2, "read %jd", (intmax_t)rlen);
 		if (rlen >= 0) {
 			break;
 		} else if (rlen == -1) {
@@ -221,7 +220,7 @@ ssh_read(void *data, char *buf, int len)
 
 	}
 
-	pkg_debug(2, "ssh: have read %d bytes", rlen);
+	pkg_debug(2, "ssh: have read %jd bytes", (intmax_t)rlen);
 
 	return (rlen);
 }
@@ -331,12 +330,12 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	char *line = NULL;
 	size_t linecap = 0;
 	size_t linelen;
-	struct sbuf *cmd = NULL;
+	UT_string *cmd = NULL;
 	const char *errstr;
 	const char *ssh_args;
 	int sshin[2];
 	int sshout[2];
-	int ret = EPKG_FATAL;
+	int retcode = EPKG_FATAL;
 	const char *argv[4];
 
 	ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
@@ -362,25 +361,24 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 				goto ssh_cleanup;
 			}
 
-			cmd = sbuf_new_auto();
-			sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
+			utstring_new(cmd);
+			utstring_printf(cmd, "/usr/bin/ssh -e none -T ");
 			if (ssh_args != NULL)
-				sbuf_printf(cmd, "%s ", ssh_args);
+				utstring_printf(cmd, "%s ", ssh_args);
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
-				sbuf_cat(cmd, "-4 ");
+				utstring_printf(cmd, "-4 ");
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
-				sbuf_cat(cmd, "-6 ");
+				utstring_printf(cmd, "-6 ");
 			if (u->port > 0)
-				sbuf_printf(cmd, "-p %d ", u->port);
+				utstring_printf(cmd, "-p %d ", u->port);
 			if (u->user[0] != '\0')
-				sbuf_printf(cmd, "%s@", u->user);
-			sbuf_cat(cmd, u->host);
-			sbuf_printf(cmd, " pkg ssh");
-			sbuf_finish(cmd);
-			pkg_debug(1, "Fetch: running '%s'", sbuf_data(cmd));
+				utstring_printf(cmd, "%s@", u->user);
+			utstring_printf(cmd, "%s", u->host);
+			utstring_printf(cmd, " pkg ssh");
+			pkg_debug(1, "Fetch: running '%s'", utstring_body(cmd));
 			argv[0] = _PATH_BSHELL;
 			argv[1] = "-c";
-			argv[2] = sbuf_data(cmd);
+			argv[2] = utstring_body(cmd);
 			argv[3] = NULL;
 
 			if (sshin[0] != STDIN_FILENO)
@@ -433,22 +431,24 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			}
 
 			if (*sz == 0) {
-				ret = EPKG_UPTODATE;
+				retcode = EPKG_UPTODATE;
 				goto ssh_cleanup;
 			}
 
-			ret = EPKG_OK;
+			retcode = EPKG_OK;
 			goto ssh_cleanup;
 		}
 	}
 
 ssh_cleanup:
-	if (repo->ssh != NULL)
+	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
 		fclose(repo->ssh);
+		repo->ssh = NULL;
+	}
 	if (cmd != NULL)
-		sbuf_delete(cmd);
+		utstring_free(cmd);
 	free(line);
-	return (ret);
+	return (retcode);
 }
 
 #define URL_SCHEME_PREFIX	"pkg+"
@@ -460,11 +460,15 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	FILE		*remote = NULL;
 	struct url	*u = NULL;
 	struct url_stat	 st;
+	struct pkg_kv	*kv, *kvtmp;
+	struct pkg_kv	*envtorestore = NULL;
+	struct pkg_kv	*envtounset = NULL;
+	char		*tmp;
 	off_t		 done = 0;
 	off_t		 r;
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
-	char		 buf[10240];
+	char		 buf[8192];
 	char		*doc = NULL;
 	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
@@ -475,7 +479,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 buflen = 0;
 	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
-	struct sbuf	*fetchOpts = NULL;
+	UT_string	*fetchOpts = NULL;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
@@ -513,6 +517,20 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		pkg_url_scheme = true;
 	}
 
+	if (repo != NULL) {
+		LL_FOREACH(repo->env, kv) {
+			kvtmp = xcalloc(1, sizeof(*kvtmp));
+			kvtmp->key = xstrdup(kv->key);
+			if ((tmp = getenv(kv->key)) != NULL) {
+				kvtmp->value = xstrdup(tmp);
+				DL_APPEND(envtorestore, kvtmp);
+			} else {
+				DL_APPEND(envtounset, kvtmp);
+			}
+			setenv(kv->key, kv->value, 1);
+		}
+	}
+
 	u = fetchParseURL(url);
 	if (u == NULL) {
 		pkg_emit_error("%s: parse error", url);
@@ -548,8 +566,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				srv_current = repo->srv;
 			} else if (repo != NULL && repo->mirror_type == HTTP &&
 			           strncmp(u->scheme, "http", 4) == 0) {
+				if (u->port == 0) {
+					if (strcmp(u->scheme, "https") == 0)
+						u->port = 443;
+					else
+						u->port = 80;
+				}
 				snprintf(zone, sizeof(zone),
-				    "%s://%s", u->scheme, u->host);
+				    "%s://%s:%d", u->scheme, u->host, u->port);
 				if (repo->http == NULL)
 					gethttpmirrors(repo, zone);
 				http_current = repo->http;
@@ -568,19 +592,19 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			u->port = http_current->url->port;
 		}
 
-		fetchOpts = sbuf_new_auto();
-		sbuf_cat(fetchOpts, "i");
+		utstring_new(fetchOpts);
+		utstring_printf(fetchOpts, "i");
 		if (repo != NULL) {
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
 			    REPO_FLAGS_USE_IPV4)
-				sbuf_cat(fetchOpts, "4");
+				utstring_printf(fetchOpts, "4");
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
 			    REPO_FLAGS_USE_IPV6)
-				sbuf_cat(fetchOpts, "6");
+				utstring_printf(fetchOpts, "6");
 		}
 
-		if (debug_level >= 4)
-			sbuf_cat(fetchOpts, "v");
+		if (ctx.debug_level >= 4)
+			utstring_printf(fetchOpts, "v");
 
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
@@ -588,14 +612,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		    u->user[0] != '\0' ? "@" : "",
 		    u->host,
 		    u->doc,
-		    sbuf_data(fetchOpts));
-
-		sbuf_finish(fetchOpts);
+		    utstring_body(fetchOpts));
 
 		if (offset > 0)
 			u->offset = offset;
-		remote = fetchXGet(u, &st, sbuf_data(fetchOpts));
-		sbuf_delete(fetchOpts);
+		remote = fetchXGet(u, &st, utstring_body(fetchOpts));
+		utstring_free(fetchOpts);
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;
@@ -653,9 +675,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		done += r;
 		if (sz > 0) {
 			left -= r;
-			pkg_debug(1, "Read status: %d over %d", done, sz);
+			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
 		} else
-			pkg_debug(1, "Read status: %d", done);
+			pkg_debug(4, "Read status: %jd", (intmax_t)done);
 		if (sz > 0)
 			pkg_emit_progress_tick(done, sz);
 	}
@@ -676,9 +698,35 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 
 cleanup:
+	if (repo != NULL) {
+		LL_FOREACH_SAFE(envtorestore, kv, kvtmp) {
+			setenv(kv->key, kv->value, 1);
+			LL_DELETE(envtorestore, kv);
+			pkg_kv_free(kv);
+		}
+		LL_FOREACH_SAFE(envtounset, kv, kvtmp) {
+			unsetenv(kv->key);
+			pkg_kv_free(kv);
+		}
+	}
+
 	if (u != NULL) {
 		if (remote != NULL &&  repo != NULL && remote != repo->ssh)
 			fclose(remote);
+	}
+
+	if (retcode == EPKG_OK) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = *t,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = *t,
+			.tv_usec = 0
+			}
+		};
+		futimes(dest, ftimes);
 	}
 
 	/* restore original doc */

@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -32,11 +32,11 @@
 #include <ctype.h>
 #include <errno.h>
 #include <regex.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <uthash.h>
 
@@ -127,7 +127,7 @@ keyword_open_schema(void)
 	if (keyword_schema != NULL)
 		return (keyword_schema);
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
 	if (!ucl_parser_add_chunk(parser, keyword_schema_str,
 	    sizeof(keyword_schema_str) -1)) {
 		pkg_emit_error("Cannot parse schema for keywords: %s",
@@ -167,23 +167,6 @@ free_file_attr(struct file_attr *a)
 	free(a);
 }
 
-static void
-sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...)
-{
-	va_list ap;
-
-	va_start(ap, str);
-	sbuf_vprintf(buf, str, ap);
-	va_end(ap);
-}
-
-#define post_unexec_append(buf, str, ...) \
-	sbuf_append(buf, "unexec", str, __VA_ARGS__)
-#define pre_unexec_append(buf, str, ...) \
-	sbuf_append(buf, "unexec", str, __VA_ARGS__)
-#define exec_append(buf, str, ...) \
-	sbuf_append(buf, "exec", str, __VA_ARGS__)
-
 static int
 setprefix(struct plist *p, char *line, struct file_attr *a)
 {
@@ -195,15 +178,13 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 		strlcpy(p->prefix, line, sizeof(p->prefix));
 
 	if (p->pkg->prefix == NULL)
-		p->pkg->prefix = strdup(line);
+		p->pkg->prefix = xstrdup(line);
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
-	exec_append(p->post_install_buf, "cd %s\n", p->prefix);
-	pre_unexec_append(p->pre_deinstall_buf, "cd %s\n", p->prefix);
-	post_unexec_append(p->post_deinstall_buf, "cd %s\n", p->prefix);
-
-	free_file_attr(a);
+	utstring_printf(p->post_install_buf, "cd %s\n", p->prefix);
+	utstring_printf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
+	utstring_printf(p->post_deinstall_buf, "cd %s\n", p->prefix);
 
 	return (EPKG_OK);
 }
@@ -214,17 +195,13 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	char *tmp;
 
 	if (p->pkg->name != NULL) {
-		free_file_attr(a);
-
 		return (EPKG_OK);
 	}
 	tmp = strrchr(line, '-');
 	tmp[0] = '\0';
 	tmp++;
-	p->pkg->name = strdup(line);
-	p->pkg->version = strdup(tmp);
-
-	free_file_attr(a);
+	p->pkg->name = xstrdup(line);
+	p->pkg->version = xstrdup(tmp);
 
 	return (EPKG_OK);
 }
@@ -234,10 +211,8 @@ pkgdep(struct plist *p, char *line, struct file_attr *a)
 {
 	if (*line != '\0') {
 		free(p->pkgdep);
-		p->pkgdep = strdup(line);
+		p->pkgdep = xstrdup(line);
 	}
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -273,7 +248,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
 			ret = EPKG_FATAL;
 		}
@@ -301,9 +276,8 @@ warn_deprecated_dir(void)
 		return;
 	warned_deprecated_dir = true;
 
-	if (developer_mode)
-		pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
-		    " use @dir");
+	pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
+	    " use @dir");
 }
 
 static int
@@ -344,16 +318,14 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_error("Unable to access file %s: %s", testpath,
-		    strerror(errno));
+		pkg_errno("Unable to access file %s", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		if (developer_mode) {
+		if (ctx.developer_mode) {
 			pkg_emit_developer_mode("Plist error, missing file: %s",
 			    line);
 			ret = EPKG_FATAL;
 		}
-		free_file_attr(a);
 		return (ret);
 	}
 	buf = NULL;
@@ -369,7 +341,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 
 	buf = pkg_checksum_generate_file(testpath, PKG_HASH_TYPE_SHA256_HEX);
 	if (buf == NULL) {
-		free_file_attr(a);
 		return (EPKG_FATAL);
 	}
 
@@ -386,7 +357,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		if (is_config) {
 			pkg_emit_error("Plist error, @config %s: not a regular "
 			    "file", line);
-			free_file_attr(a);
 			free(buf);
 			return (EPKG_FATAL);
 		}
@@ -396,7 +366,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
 		pkg_emit_error("Plist error, directory listed as a file: %s",
 		    line);
-		free_file_attr(a);
 		free(buf);
 		return (EPKG_FATAL);
 	}
@@ -424,7 +393,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	}
 
 	free(buf);
-	free_file_attr(a);
 
 	return (ret);
 }
@@ -456,9 +424,6 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 		return (EPKG_FATAL);
 	}
 	p->perm = getmode(set, 0);
-
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -467,12 +432,9 @@ setowner(struct plist *p, char *line, struct file_attr *a)
 {
 	free(p->uname);
 	if (line[0] == '\0')
-		p->uname = strdup("root");
+		p->uname = xstrdup("root");
 	else
-		p->uname = strdup(line);
-
-	free_file_attr(a);
-
+		p->uname = xstrdup(line);
 	return (EPKG_OK);
 }
 
@@ -481,12 +443,9 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 {
 	free(p->gname);
 	if (line[0] == '\0')
-		p->gname = strdup("wheel");
+		p->gname = xstrdup("wheel");
 	else
-		p->gname = strdup(line);
-
-	free_file_attr(a);
-
+		p->gname = xstrdup(line);
 	return (EPKG_OK);
 }
 
@@ -509,12 +468,12 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
 		free(p->pkg->origin);
-		p->pkg->origin = strdup(line);
+		p->pkg->origin = xstrdup(line);
 	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
 		line += 8;
 		/* OPTIONS:+OPTION -OPTION */
 		if (line[0] != '\0') {
-			line_options2 = line_options = strdup(line);
+			line_options2 = line_options = xstrdup(line);
 			while ((option = strsep(&line_options, " ")) != NULL) {
 				if ((option[0] == '+' || option[0] == '-') &&
 				    option[1] != '\0' && isupper(option[1]))
@@ -526,9 +485,6 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	/* ignore md5 will be recomputed anyway */
-
-	free_file_attr(a);
-
 	return (EPKG_OK);
 }
 
@@ -536,9 +492,7 @@ static int
 ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 {
 	p->ignore_next = true;
-	free_file_attr(a);
-
-	if (developer_mode)
+	if (ctx.developer_mode)
 		pkg_emit_error("Warning: @ignore is deprecated");
 
 	return (EPKG_OK);
@@ -553,13 +507,13 @@ parse_post(struct plist *p)
 	if ((env = getenv("FORCE_POST")) == NULL)
 		return;
 
-	p->post_patterns.buf = strdup(env);
+	p->post_patterns.buf = xstrdup(env);
 	while ((token = strsep(&p->post_patterns.buf, " \t")) != NULL) {
 		if (token[0] == '\0')
 			continue;
 		if (p->post_patterns.len >= p->post_patterns.cap) {
 			p->post_patterns.cap += 10;
-			p->post_patterns.patterns = realloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
+			p->post_patterns.patterns = xrealloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
 		}
 		p->post_patterns.patterns[p->post_patterns.len++] = token;
 	}
@@ -608,16 +562,16 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 
 	switch (type) {
 	case PREEXEC:
-		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
+		utstring_printf(p->pre_install_buf, "%s\n", cmd);
 		break;
 	case POSTEXEC:
-		sbuf_printf(p->post_install_buf, "%s\n", cmd);
+		utstring_printf(p->post_install_buf, "%s\n", cmd);
 		break;
 	case PREUNEXEC:
-		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		break;
 	case POSTUNEXEC:
-		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
+		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
 		break;
 	case UNEXEC:
 		comment[0] = '\0';
@@ -647,10 +601,10 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 
 		if (should_be_post(cmd, p)) {
 			if (comment[0] != '#')
-				post_unexec_append(p->post_deinstall_buf,
+				utstring_printf(p->post_deinstall_buf,
 				    "%s%s\n", comment, cmd);
 		} else {
-			pre_unexec_append(p->pre_deinstall_buf, "%s%s\n", comment, cmd);
+			utstring_printf(p->pre_deinstall_buf, "%s%s\n", comment, cmd);
 		}
 		if (comment[0] == '#') {
 			buf = cmd;
@@ -694,13 +648,11 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 		}
 		break;
 	case EXEC:
-		exec_append(p->post_install_buf, "%s\n", cmd);
+		utstring_printf(p->post_install_buf, "%s\n", cmd);
 		break;
 	}
 
-	free_file_attr(a);
 	free(cmd);
-
 	return (EPKG_OK);
 }
 
@@ -731,6 +683,13 @@ postexec(struct plist *p, char *line, struct file_attr *a)
 static int
 exec(struct plist *p, char *line, struct file_attr *a)
 {
+	static bool warned_deprecated_exec = false;
+
+	if (!warned_deprecated_exec) {
+		warned_deprecated_exec = true;
+		pkg_emit_error("Warning: @exec is deprecated, please"
+		    " use @[pre|post][un]exec");
+	}
 	return (meta_exec(p, line, a, EXEC));
 }
 
@@ -778,11 +737,11 @@ populate_keywords(struct plist *p)
 	int i;
 
 	for (i = 0; keyacts[i].key != NULL; i++) {
-		k = calloc(1, sizeof(struct keyword));
-		a = malloc(sizeof(struct action));
+		k = xcalloc(1, sizeof(struct keyword));
+		a = xmalloc(sizeof(struct action));
 		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
 		a->perform = keyacts[i].action;
-		LL_APPEND(k->actions, a);
+		DL_APPEND(k->actions, a);
 		HASH_ADD_STR(p->keywords, keyword, k);
 	}
 }
@@ -790,8 +749,7 @@ populate_keywords(struct plist *p)
 static void
 keyword_free(struct keyword *k)
 {
-	LL_FREE(k->actions, free);
-
+	DL_FREE(k->actions, free);
 	free(k);
 }
 
@@ -846,7 +804,7 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 	const char *key;
 
 	if (*a == NULL)
-		*a = calloc(1, sizeof(struct file_attr));
+		*a = xcalloc(1, sizeof(struct file_attr));
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		key = ucl_object_key(cur);
@@ -854,12 +812,12 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 			continue;
 		if (!strcasecmp(key, "owner") && cur->type == UCL_STRING) {
 			free((*a)->owner);
-			(*a)->owner = strdup(ucl_object_tostring(cur));
+			(*a)->owner = xstrdup(ucl_object_tostring(cur));
 			continue;
 		}
 		if (!strcasecmp(key, "group") && cur->type == UCL_STRING) {
 			free((*a)->group);
-			(*a)->group = strdup(ucl_object_tostring(cur));
+			(*a)->group = xstrdup(ucl_object_tostring(cur));
 			continue;
 		}
 		if (!strcasecmp(key, "mode")) {
@@ -893,11 +851,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
-		args = malloc((spaces + 1)* sizeof(char *));
-		if (args == NULL) {
-			return (EPKG_FATAL);
-		}
-		tofree = buf = strdup(line);
+		args = xmalloc((spaces + 1)* sizeof(char *));
+		tofree = buf = xstrdup(line);
 		while (buf != NULL) {
 			args[argc++] = pkg_utils_tokenize(&buf);
 		}
@@ -910,7 +865,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
 			goto keywords_cleanup;
-		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
+		utstring_printf(p->pre_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
@@ -918,7 +873,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
 			goto keywords_cleanup;
-		sbuf_printf(p->post_install_buf, "%s\n", cmd);
+		utstring_printf(p->post_install_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
@@ -926,7 +881,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
 			goto keywords_cleanup;
-		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
@@ -934,7 +889,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
 			goto keywords_cleanup;
-		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
+		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
@@ -942,7 +897,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
 			goto keywords_cleanup;
-		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
@@ -950,21 +905,15 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 		    p->last_file, line, argc, args) != EPKG_OK)
 			goto keywords_cleanup;
-		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
+		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
 	}
 
 	if ((o = ucl_object_find_key(obj, "messages"))) {
 		while ((cur = ucl_iterate_object(o, &it, true))) {
 			elt = ucl_object_find_key(cur, "message");
-			msg = calloc(1, sizeof(*msg));
-
-			if (msg == NULL) {
-				pkg_emit_errno("malloc", "struct pkg_message");
-				goto keywords_cleanup;
-			}
-
-			msg->str = strdup(ucl_object_tostring(elt));
+			msg = xcalloc(1, sizeof(*msg));
+			msg->str = xstrdup(ucl_object_tostring(elt));
 			msg->type = PKG_MESSAGE_ALWAYS;
 			elt = ucl_object_find_key(cur, "type");
 			if (elt != NULL) {
@@ -975,7 +924,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 					msg->type = PKG_MESSAGE_UPGRADE;
 			}
-			LL_APPEND(p->pkg->message, msg);
+			DL_APPEND(p->pkg->message, msg);
 		}
 	}
 
@@ -986,8 +935,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 keywords_cleanup:
 	free(args);
 	free(tofree);
-	free_file_attr(freeattr);
-
 	return (ret);
 }
 
@@ -997,7 +944,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	struct ucl_parser *parser;
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
-	int ret = EPKG_UNKNOWN;
+	int ret = EPKG_UNKNOWN, fd;
 	ucl_object_t *o, *schema;
 	struct ucl_schema_error err;
 
@@ -1011,15 +958,23 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		    "%s/%s.ucl", keyword_dir, keyword);
 	}
 
-	parser = ucl_parser_new(0);
-	if (!ucl_parser_add_file(parser, keyfile_path)) {
-		pkg_emit_error("cannot parse keyword: %s",
-				ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
-		free_file_attr(attr);
+	fd = open(keyfile_path, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("cannot load keyword from %s: %s",
+				keyfile_path, strerror(errno));
 		return (EPKG_UNKNOWN);
 	}
 
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_fd(parser, fd)) {
+		pkg_emit_error("cannot parse keyword: %s",
+				ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		close(fd);
+		return (EPKG_UNKNOWN);
+	}
+
+	close(fd);
 	o = ucl_parser_get_object(parser);
 	ucl_parser_free(parser);
 
@@ -1029,7 +984,6 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		if (!ucl_object_validate(schema, o, &err)) {
 			pkg_emit_error("Keyword definition %s cannot be validated: %s", keyfile_path, err.msg);
 			ucl_object_unref(o);
-			free_file_attr(attr);
 			return (EPKG_FATAL);
 		}
 	}
@@ -1095,11 +1049,11 @@ parse_keyword_args(char *args, char *keyword)
 		}
 	}
 
-	attr = calloc(1, sizeof(struct file_attr));
+	attr = xcalloc(1, sizeof(struct file_attr));
 	if (owner != NULL && *owner != '\0')
-		attr->owner = strdup(owner);
+		attr->owner = xstrdup(owner);
 	if (group != NULL && *group != '\0')
-		attr->group = strdup(group);
+		attr->group = xstrdup(group);
 	if (set != NULL) {
 		attr->mode = getmode(set, 0);
 		free(set);
@@ -1140,10 +1094,9 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 		LL_FOREACH(k->actions, a) {
 			ret = a->perform(plist, line, attr);
 			if (ret != EPKG_OK)
-				return (ret);
+				goto end;
 		}
-		free_file_attr(attr);
-		return (ret);
+		goto end;
 	}
 
 	/*
@@ -1151,15 +1104,17 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	 * maybe it is defined externally
 	 * let's try to find it
 	 */
-	return (external_keyword(plist, keyword, line, attr));
+	ret = external_keyword(plist, keyword, line, attr);
+end:
+	free_file_attr(attr);
+	return (ret);
 }
 
 static void
-flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
+flush_script_buffer(UT_string *buf, struct pkg *p, int type)
 {
-	if (sbuf_len(buf) > 0) {
-		sbuf_finish(buf);
-		pkg_appendscript(p, sbuf_data(buf), type);
+	if (utstring_len(buf) > 0) {
+		pkg_appendscript(p, utstring_body(buf), type);
 	}
 }
 
@@ -1221,7 +1176,7 @@ plist_new(struct pkg *pkg, const char *stage)
 {
 	struct plist *p;
 
-	p = calloc(1, sizeof(struct plist));
+	p = xcalloc(1, sizeof(struct plist));
 	if (p == NULL)
 		return (NULL);
 
@@ -1230,15 +1185,15 @@ plist_new(struct pkg *pkg, const char *stage)
 		strlcpy(p->prefix, pkg->prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
-	p->uname = strdup("root");
-	p->gname = strdup("wheel");
+	p->uname = xstrdup("root");
+	p->gname = xstrdup("wheel");
 
-	p->pre_install_buf = sbuf_new_auto();
-	p->post_install_buf = sbuf_new_auto();
-	p->pre_deinstall_buf = sbuf_new_auto();
-	p->post_deinstall_buf = sbuf_new_auto();
-	p->pre_upgrade_buf = sbuf_new_auto();
-	p->post_upgrade_buf = sbuf_new_auto();
+	utstring_new(p->pre_install_buf);
+	utstring_new(p->post_install_buf);
+	utstring_new(p->pre_deinstall_buf);
+	utstring_new(p->post_deinstall_buf);
+	utstring_new(p->pre_upgrade_buf);
+	utstring_new(p->post_upgrade_buf);
 	p->hardlinks = kh_init_hardlinks();
 
 	populate_keywords(p);
@@ -1261,12 +1216,12 @@ plist_free(struct plist *p)
 	free(p->post_patterns.patterns);
 	kh_destroy_hardlinks(p->hardlinks);
 
-	sbuf_delete(p->post_deinstall_buf);
-	sbuf_delete(p->post_install_buf);
-	sbuf_delete(p->post_upgrade_buf);
-	sbuf_delete(p->pre_deinstall_buf);
-	sbuf_delete(p->pre_install_buf);
-	sbuf_delete(p->pre_upgrade_buf);
+	utstring_free(p->post_deinstall_buf);
+	utstring_free(p->post_install_buf);
+	utstring_free(p->post_upgrade_buf);
+	utstring_free(p->pre_deinstall_buf);
+	utstring_free(p->pre_install_buf);
+	utstring_free(p->pre_upgrade_buf);
 
 	free(p);
 }
@@ -1331,14 +1286,18 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 {
 	const char *location;
 	int rc = EPKG_OK;
-	struct sbuf *message;
+	UT_string *message;
 	struct pkg_message *msg;
 
-	location = reloc;
-	if (pkg_rootdir != NULL)
-		location = pkg_rootdir;
+	if (pkg_is_installed(db, pkg->name) != EPKG_END) {
+		return(EPKG_INSTALLED);
+	}
 
-	if (pkg_rootdir == NULL && location != NULL)
+	location = reloc;
+	if (ctx.pkg_rootdir != NULL)
+		location = ctx.pkg_rootdir;
+
+	if (ctx.pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
 	pkg_emit_install_begin(pkg);
@@ -1352,9 +1311,15 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		/* Execute pre-install scripts */
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
-		if (input_path != NULL)
-			pkg_copy_tree(pkg, input_path, \
-			    location ? location : "/");
+		if (input_path != NULL) {
+			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
+			rc = pkg_add_fromdir(pkg, input_path);
+			pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
+			if (rc != EPKG_OK) {
+				pkg_rollback_pkg(pkg);
+				pkg_delete_dirs(db, pkg, NULL);
+			}
+		}
 
 		/* Execute post-install scripts */
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
@@ -1363,19 +1328,18 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	if (rc == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
 		if (pkg->message != NULL)
-			message = sbuf_new_auto();
+			utstring_new(message);
 		LL_FOREACH(pkg->message, msg) {
 			if (msg->type == PKG_MESSAGE_ALWAYS ||
 			    msg->type == PKG_MESSAGE_INSTALL) {
-				sbuf_printf(message, "%s\n", msg->str);
+				utstring_printf(message, "%s\n", msg->str);
 			}
 		}
 		if (pkg->message != NULL) {
-			if (sbuf_len(message) > 0) {
-				sbuf_finish(message);
-				pkg_emit_message(sbuf_data(message));
+			if (utstring_len(message) > 0) {
+				pkg_emit_message(utstring_body(message));
 			}
-			sbuf_delete(message);
+			utstring_free(message);
 		}
 	}
 

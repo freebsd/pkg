@@ -250,19 +250,22 @@ exec_install(int argc, char **argv)
 			}
 			else if (retcode != EPKG_OK)
 				goto cleanup;
+		} else {
 		}
 
 		if (messages != NULL) {
-			sbuf_finish(messages);
-			printf("%s", sbuf_data(messages));
+			printf("%s", utstring_body(messages));
 		}
 		break;
 	}
 
 	if (done == 0 && rc)
-		printf("The most recent version of packages are already installed\n");
+		printf("The most recent versions of packages are already installed\n");
 
-	retcode = EX_OK;
+	if (rc)
+		retcode = EX_OK;
+	else
+		retcode = EXIT_FAILURE;
 
 cleanup:
 	pkgdb_release_lock(db, lock_type);

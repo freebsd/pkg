@@ -7,7 +7,7 @@ tests_init \
 
 vital_body()
 {
-	new_pkg "test" "test" "1" || atf_fail "plop"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 vital = true;
 EOF
@@ -40,7 +40,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"pkg: Cannot delete vital pkg: test!\n" \
+		-e inline:"${PROGNAME}: Cannot delete vital package: test!\n${PROGNAME}: If you are sure you want to remove test, \n${PROGNAME}: unset the 'vital' flag with: pkg set -v 0 test\n" \
 		-s exit:3 \
 		pkg -r ${TMPDIR}/target delete -qy test
 	atf_check \

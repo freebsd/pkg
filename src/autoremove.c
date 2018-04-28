@@ -81,7 +81,6 @@ exec_autoremove(int argc, char **argv)
 		}
 	}
 	argc -= optind;
-	argv += optind;
 
 	if (argc != 0) {
 		usage_autoremove();
@@ -142,6 +141,9 @@ exec_autoremove(int argc, char **argv)
 	if ((yes || rc ) && !dry_run && ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)) {
 		goto cleanup;
 	}
+
+	if (!yes && !rc)
+		retcode = EXIT_FAILURE;
 
 	pkgdb_compact(db);
 

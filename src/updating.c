@@ -30,17 +30,17 @@
 #endif
 
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 
 #include <sys/queue.h>
 
-#define _WITH_GETLINE
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
 #include <pkg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -192,19 +192,16 @@ exec_updating(int argc, char **argv)
 				SLIST_FOREACH(port, &origins, next) {
 					if (caseinsensitive) {
 						if ((tmp = strcasestr(line, port->origin)) != NULL) {
-							free(dateline);
 							break;
 						}
 					} else {
 						if ((tmp = strstr(line, port->origin)) != NULL) {
-							free(dateline);
 							break;
 						}
 					}
 				}
 				if (tmp != NULL) {
 					if ((date != NULL) && strncmp(dateline, date, 8) < 0) {
-						free(dateline);
 						continue;
 					}
 					printf("%s%s",dateline, line);
@@ -214,7 +211,6 @@ exec_updating(int argc, char **argv)
 		} else {
 			printf("%s",line);
 		}
-		free(dateline);
 	}
 	fclose(fd);
 

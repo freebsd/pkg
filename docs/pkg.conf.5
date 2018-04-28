@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 22, 2015
+.Dd October 06, 2017
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -146,6 +146,9 @@ Default: NO.
 .It Cm HTTP_USER_AGENT: string
 Define User-agent to be sent to HTTP server when getting reposity
 data
+.It Cm IGNORE_OSVERSION: boolean [FreeBSD specific]
+Ignore FreeBSD OS version check, useful on -STABLE and -CURRENT branches.
+Default: NO.
 .It Cm INDEXDIR: string
 If set, the directory to search for
 .Cm INDEXFILE
@@ -174,6 +177,10 @@ Default: 5.
 .It Cm LOCK_WAIT: integer
 Wait time in seconds to regain a lock if it is not available.
 Default: 1.
+.It Cm METALOG: string
+If set,
+.Xr pkg 8
+will write a METALOG of the extracted files.
 .It Cm NAMESERVER: string
 Hostname or IPv4 or IPv6 address of name server to use for DNS
 resolution, overriding the system defaults in
@@ -340,6 +347,11 @@ A repository file is in UCL format and has the following form:
 .Bl -tag -width ".Cm myrepo:"
 .It Cm myrepo:
 .Bl -tag -width ".Cm MIRROR_TYPE: string"
+.It Cm ENV: object
+A list of key value entries that will be passed as environement variable
+for the bundled
+.Xr fetch 3 ,
+per repository.
 .It Cm URL: string
 URL for this repository only.
 .It Cm ENABLED: boolean
@@ -562,12 +574,12 @@ from, and subsequently passes it in the environment to
 which ignores it (possibly with a deprecation warning that should be
 ignored), and reads the configuration files instead.
 .Sh SEE ALSO
-.Xr fetch 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
 .Xr pkg-repository 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -575,7 +587,6 @@ ignored), and reads the configuration files instead.
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

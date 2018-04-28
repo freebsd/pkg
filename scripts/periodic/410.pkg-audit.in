@@ -37,6 +37,19 @@ if [ -r /etc/defaults/periodic.conf ]; then
 	source_periodic_confs
 fi
 
+: ${security_status_pkgaudit_enable:=YES}
+: ${security_status_pkgaudit_period:=daily}
+: ${security_status_pkgaudit_quiet:-YES}
+: ${security_status_pkgaudit_chroots=$pkg_chroots}
+: ${security_status_pkgaudit_jails=$pkg_jails}
+: ${security_status_pkgaudit_expiry:=2}
+
+security_daily_compat_var security_status_pkgaudit_enable
+security_daily_compat_var security_status_pkgaudit_quiet
+security_daily_compat_var security_status_pkgaudit_chroots
+security_daily_compat_var security_status_pkgaudit_jails
+security_daily_compat_var security_status_pkgaudit_expiry
+
 # Compute PKG_DBDIR from the config file.
 pkgcmd=@prefix@/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
@@ -53,10 +66,14 @@ audit_pkgs() {
 	now=`date +%s` || rc=3
 	# Add 10 minutes of padding since the check is in seconds.
 	if [ $rc -ne 0 -o \
-		$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
+		$(( 86400 \* "${security_status_pkgaudit_expiry}" )) \
 		-le $(( ${now} - ${then} + 600 )) ]; then
-		# Random delay so the mirrors do not get slammed when run by periodic(8)
-		if [ ! -t 0 ]; then
+		# When non-interactive, sleep to reduce congestion on mirrors
+		if [ -n "$anticongestion_sleeptime" ]; then
+			# In FreeBSD 12.0 the anticongestion function should be
+			# used instead of a hard-coded sleep
+			anticongestion
+		else
 			sleep `jot -r 1 0 3600`
 		fi
 		${pkgcmd} ${pkgargs} audit -F $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
@@ -69,42 +86,65 @@ audit_pkgs() {
 	return $rc
 }
 
+expiration_pkgs() {
+	local pkgargs="$1"
+
+	output=$(${pkgcmd} ${pkgargs} annotate -a -S expiration_date)
+
+	if [ -n "${output}" ]; then
+		echo "${output}"
+		return 3
+	fi
+}
+
+deprecation_pkgs() {
+	local pkgargs="$1"
+
+	output=$(${pkgcmd} ${pkgargs} annotate -a -S deprecated)
+
+	if [ -n "${output}" ]; then
+		echo "${output}"
+		return 3
+	fi
+}
+
 # Use $pkg_chroots to provide a default list of chroots, and
 # $pkg_jails to provide a default list of jails (or '*' for all jails)
 # for all pkg periodic scripts, or set
-# $daily_status_security_pkgaudit_chroots and
-# $daily_status_security_pkgaudit_jails for this script only.
+# $security_status_pkgaudit_chroots and
+# $security_status_pkgaudit_jails for this script only.
 
 audit_pkgs_all() {
 	local rc
 	local last_rc
 	local jails
 
-	: ${daily_status_security_pkgaudit_chroots=$pkg_chroots}
-	: ${daily_status_security_pkgaudit_jails=$pkg_jails}
-
 	# We always show audit results for the base system, but only print
 	# a banner line if we're also showing audit results for any
 	# chroots or jails.
 
-	if [ -n "${daily_status_security_pkgaudit_chroots}" -o \
-		-n "${daily_status_security_pkgaudit_jails}" ]; then
+	if [ -n "${security_status_pkgaudit_chroots}" -o \
+		-n "${security_status_pkgaudit_jails}" ]; then
 		echo "Host system:"
 	fi
 
-	audit_pkgs '' ''
-	last_rc=$?
-	[ $last_rc -gt 1 ] && rc=$last_rc
-
-	for c in $daily_status_security_pkgaudit_chroots ; do
-		echo
-		echo "chroot: $c"
-		audit_pkgs "-c $c" $c
+	for t in audit expiration deprecation; do
+		${t}_pkgs '' ''
 		last_rc=$?
 		[ $last_rc -gt 1 ] && rc=$last_rc
 	done
 
-	case $daily_status_security_pkgaudit_jails in
+	for c in $security_status_pkgaudit_chroots ; do
+		echo
+		echo "chroot: $c"
+		for t in audit expiration deprecation; do
+			${t}_pkgs "-c $c" $c
+			last_rc=$?
+			[ $last_rc -gt 1 ] && rc=$last_rc
+		done
+	done
+
+	case $security_status_pkgaudit_jails in
 	\*)
 		jails=$(jls -q -h name path | sed -e 1d -e 's/ /|/')
 		;;
@@ -114,7 +154,7 @@ audit_pkgs_all() {
 	*)
 		# Given the jail name or jid, find the jail path
 		jails=
-		for j in $daily_status_security_pkgaudit_jails ; do
+		for j in $security_status_pkgaudit_jails ; do
 			p=$(jls -j $j -h name path | sed -e 1d -e 's/ /|/')
 			jails="${jails} ${p}"
 		done
@@ -124,9 +164,11 @@ audit_pkgs_all() {
 	for j in $jails ; do
 		echo
 		echo "jail: ${j%|*}"
-		audit_pkgs "-j ${j%|*}" ${j##*|}
-		last_rc=$?
-		[ $last_rc -gt 1 ] && rc=$last_rc
+		for t in audit expiration deprecation; do
+			${t}_pkgs "-j ${j%|*}" ${j##*|}
+			last_rc=$?
+			[ $last_rc -gt 1 ] && rc=$last_rc
+		done
 	done
 
 	return $rc
@@ -134,9 +176,8 @@ audit_pkgs_all() {
 
 rc=0
 
-case "${daily_status_security_pkgaudit_enable:-YES}" in
-[Nn][Oo]) ;;
-*)
+if check_yesno_period security_status_pkgaudit_enable
+then
 	echo
 	echo 'Checking for packages with security vulnerabilities:'
 
@@ -144,7 +185,7 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 		echo 'pkg-audit is enabled but pkg is not used'
 		rc=2
 	else
-		case "${daily_status_security_pkgaudit_quiet:-YES}" in
+		case "${security_status_pkgaudit_quiet}" in
 		[Yy][Ee][Ss])
 			q='-q'
 			;;
@@ -155,7 +196,6 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 
 		audit_pkgs_all ; rc=$?
 	fi
-	;;
-esac
+fi
 
 exit "$rc"

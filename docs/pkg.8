@@ -187,7 +187,7 @@ will use IPv6 for fetching repository and packages.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS
-The following commands are supported by
+The following commands (or their unambiguous abbreviations) are supported by
 .Nm :
 .Bl -tag -width indent
 .It Ic help Ar command
@@ -201,6 +201,8 @@ protocol to use when fetching the package.
 Currently supported protocols are FTP, HTTP and HTTPS.
 .It Ic annotate
 Add, modify or delete tag-value style annotations on packages.
+.It Ic alias
+List the command line aliases.
 .It Ic audit
 Audit installed packages against known vulnerabilities.
 .It Ic autoremove
@@ -284,7 +286,7 @@ file.
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
 All configuration options from
-.Xr pkg.conf.5
+.Xr pkg.conf 5
 can be passed as environment variables.
 .Pp
 Extra environment variables are:
@@ -362,15 +364,12 @@ Check for missing dependencies:
 .Dl # pkg check -d -a
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
-.Xr SBUF 9 ,
-.Xr elf 3 ,
-.Xr fetch 3 ,
-.Xr libarchive 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
 .Xr pkg-repository 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -378,7 +377,6 @@ Check for missing dependencies:
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
-.Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

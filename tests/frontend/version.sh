@@ -14,17 +14,8 @@ version_body() {
 }
 
 compare_body() {
-	cat > test.ucl << EOF
-name: "test"
-origin: "test"
-version: "5.20_3"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
-EOF
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 5.20_3
+
 	atf_check \
 		-o match:".*Installing.*" \
 		pkg register -M test.ucl

@@ -27,21 +27,236 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
-
+#include <errno.h>
+#include <signal.h>
+#include <khash.h>
+#include <utstring.h>
 #include <pkg.h>
 
+#ifdef HAVE_SYS_CAPSICUM_H
+#include <sys/capsicum.h>
+#endif
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
 #include "pkgcli.h"
+
+static const char vuln_end_lit[] = "**END**";
 
 void
 usage_upgrade(void)
 {
 	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
+}
+
+KHASH_MAP_INIT_STR(pkgs, struct pkg *);
+
+static void
+add_to_check(kh_pkgs_t *check, struct pkg *pkg)
+{
+	const char *uid;
+	int ret;
+	khint_t k;
+
+	pkg_get(pkg, PKG_UNIQUEID, &uid);
+
+	k = kh_put_pkgs(check, uid, &ret);
+	if (ret != 0)
+		kh_value(check, k) = pkg;
+}
+
+static void
+check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
+{
+	struct pkgdb_it	*it = NULL;
+	struct pkg		*pkg = NULL;
+	kh_pkgs_t		*check = NULL;
+	const char		*uid;
+	UT_string		*sb;
+	int				ret;
+	FILE			*out;
+
+	out = fdopen(sock, "w");
+	if (out == NULL) {
+		warn("unable to open stream");
+		return;
+	}
+
+	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
+		warnx("Error accessing the package database");
+		pkg_audit_free(audit);
+		fclose(out);
+		return;
+	}
+	else {
+		check = kh_init_pkgs();
+
+		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
+				== EPKG_OK) {
+			add_to_check(check, pkg);
+			pkg = NULL;
+		}
+
+		ret = EX_OK;
+	}
+
+	if (db != NULL) {
+		pkgdb_it_free(it);
+		pkgdb_close(db);
+	}
+
+	if (ret != EX_OK) {
+		pkg_audit_free(audit);
+		kh_destroy_pkgs(check);
+		fclose(out);
+		return;
+	}
+
+
+	if (pkg_audit_load(audit, NULL) != EPKG_OK) {
+		warn("unable to open vulnxml file");
+		fclose(out);
+		pkg_audit_free(audit);
+		kh_destroy_pkgs(check);
+		return;
+	}
+
+	drop_privileges();
+
+#ifdef HAVE_CAPSICUM
+	if (cap_enter() < 0 && errno != ENOSYS) {
+		warn("cap_enter() failed");
+		pkg_audit_free(audit);
+		kh_destroy_pkgs(check);
+		fclose(out);
+		return;
+	}
+#endif
+
+	if (pkg_audit_process(audit) == EPKG_OK) {
+		kh_foreach_value(check, pkg, {
+				if (pkg_audit_is_vulnerable(audit, pkg, true, &sb)) {
+					pkg_get(pkg, PKG_UNIQUEID, &uid);
+					fprintf(out, "%s\n", uid);
+					fflush(out);
+					utstring_free(sb);
+				}
+				pkg_free(pkg);
+		});
+
+		kh_destroy_pkgs(check);
+		fprintf(out, "%s\n", vuln_end_lit);
+		fflush(out);
+	}
+	else {
+		warnx("cannot process vulnxml");
+		kh_destroy_pkgs(check);
+	}
+
+	pkg_audit_free(audit);
+	fclose(out);
+}
+
+static int
+add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
+{
+	int 				sp[2], retcode, ret = EPKG_FATAL;
+	pid_t 				cld;
+	FILE				*in;
+	struct pkg_audit	*audit;
+	char				*line = NULL;
+	size_t				linecap = 0;
+	ssize_t				linelen;
+
+	/* Fetch audit file */
+	/* TODO: maybe, we can skip it somethimes? */
+	audit = pkg_audit_new();
+
+	if (pkg_audit_fetch(NULL, NULL) != EPKG_OK) {
+		pkg_audit_free(audit);
+		return (EX_IOERR);
+	}
+
+	/* Create socketpair to execute audit check in a detached mode */
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sp) == -1)  {
+		warnx("Cannot create socketpair");
+
+		return (EPKG_FATAL);
+	}
+
+	cld = fork();
+
+	switch (cld) {
+	case 0:
+		close(sp[1]);
+		check_vulnerable(audit, db, sp[0]);
+		close(sp[0]);
+		exit(EXIT_SUCCESS);
+		break;
+	case -1:
+		warnx("Cannot fork");
+		return (EPKG_FATAL);
+	default:
+		/* Parent code */
+		close(sp[0]);
+		pkg_audit_free(audit);
+		in = fdopen(sp[1], "r");
+
+		if (in == NULL) {
+			warnx("Cannot create stream");
+			close(sp[1]);
+
+			return (EPKG_FATAL);
+		}
+		break;
+	}
+
+	while ((linelen = getline(&line, &linecap, in)) > 0) {
+		if (line[linelen - 1] == '\n') {
+			line[linelen - 1] = '\0';
+		}
+
+		if (strcmp(line, vuln_end_lit) == 0) {
+			ret = EPKG_OK;
+			break;
+		}
+
+		if (pkg_jobs_add(jobs, MATCH_EXACT, &line, 1) == EPKG_FATAL) {
+			warnx("Cannot update %s which is vulnerable", line);
+			/* TODO: assume it non-fatal for now */
+		}
+	}
+
+	fclose(in);
+
+	while (waitpid(cld, &retcode, 0) == -1) {
+		if (errno == EINTR) {
+			continue;
+		}
+		else {
+			warnx("Cannot wait");
+
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (ret != EPKG_OK) {
+		warn("Cannot get the complete list of vulnerable packages");
+	}
+
+	return (ret);
 }
 
 int
@@ -72,12 +287,13 @@ exec_upgrade(int argc, char **argv)
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
+		{ "vulnerable",		no_argument,		NULL,		'v' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
 	nbactions = nbdone = 0;
 
-	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
@@ -117,6 +333,9 @@ exec_upgrade(int argc, char **argv)
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case 'v':
+			f |= PKG_FLAG_UPGRADE_VULNERABLE;
 			break;
 		default:
 			usage_upgrade();
@@ -175,6 +394,13 @@ exec_upgrade(int argc, char **argv)
 		if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
 				goto cleanup;
 
+	if (f & PKG_FLAG_UPGRADE_VULNERABLE) {
+		/* We need to load audit info and add packages that are vulnerable */
+		if (add_vulnerable_upgrades(jobs, db) != EPKG_OK) {
+			goto cleanup;
+		}
+	}
+
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
@@ -208,8 +434,7 @@ exec_upgrade(int argc, char **argv)
 		}
 
 		if (messages != NULL) {
-			sbuf_finish(messages);
-			printf("%s", sbuf_data(messages));
+			printf("%s", utstring_body(messages));
 		}
 		break;
 	}
@@ -217,7 +442,10 @@ exec_upgrade(int argc, char **argv)
 	if (done == 0 && rc && !quiet)
 		printf("Your packages are up to date.\n");
 
-	retcode = EX_OK;
+	if (rc)
+		retcode = EX_OK;
+	else
+		retcode = EXIT_FAILURE;
 
 cleanup:
 	pkg_jobs_free(jobs);

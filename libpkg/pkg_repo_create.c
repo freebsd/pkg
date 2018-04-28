@@ -44,7 +44,6 @@
 #include <libgen.h>
 #include <sqlite3.h>
 #include <string.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
 #include <sysexits.h>
@@ -74,6 +73,7 @@ struct digest_list_entry {
 
 struct pkg_conflict_bulk {
 	struct pkg_conflict *conflicts;
+	kh_pkg_conflicts_t *conflictshash;
 	char *file;
 	UT_hash_handle hh;
 };
@@ -90,70 +90,10 @@ pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
 {
 	struct pkg_conflict *new;
 
-	pkg_conflict_new(&new);
-	new->uid = strdup(uniqueid);
+	new = xcalloc(1, sizeof(*new));
+	new->uid = xstrdup(uniqueid);
 
-	HASH_ADD_KEYPTR(hh, bulk->conflicts, new->uid, strlen(new->uid), new);
-}
-
-static void
-pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
-{
-	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
-	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
-
-	/*
-	 * Here we reorder bulk hash from hash by file
-	 * to hash indexed by a package, so we iterate over the
-	 * original hash and create a new hash indexed by package name
-	 */
-
-	HASH_ITER (hh, bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, c1->uid, s);
-			if (s == NULL) {
-				/* New entry required */
-				s = malloc(sizeof(struct pkg_conflict_bulk));
-				if (s == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
-					goto out;
-				}
-				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = c1->uid;
-				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
-			}
-			/* Now add all new entries from this file to this conflict structure */
-			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				if (strcmp(c1->uid, c2->uid) == 0)
-					continue;
-
-				HASH_FIND_STR(s->conflicts, c2->uid, ctmp);
-				if (ctmp == NULL)
-					pkg_repo_new_conflict(c2->uid, s);
-			}
-		}
-	}
-
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		fprintf(out, "%s:", cur->file);
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", c1->uid);
-			else
-				fprintf(out, "%s\n", c1->uid);
-		}
-	}
-out:
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_DEL(cur->conflicts, c1);
-			free(c1->uid);
-			free(c1);
-		}
-		HASH_DEL(pkg_bulk, cur);
-		free(cur);
-	}
-	return;
+	kh_safe_add(pkg_conflicts, bulk->conflictshash, new, new->uid);
 }
 
 struct pkg_fts_item {
@@ -171,23 +111,18 @@ pkg_create_repo_fts_new(FTSENT *fts, const char *root_path)
 	struct pkg_fts_item *item;
 	char *pkg_path;
 
-	item = malloc(sizeof(*item));
-	if (item != NULL) {
-		item->fts_accpath = strdup(fts->fts_accpath);
-		item->fts_name = strdup(fts->fts_name);
-		item->fts_size = fts->fts_statp->st_size;
-		item->fts_info = fts->fts_info;
+	item = xmalloc(sizeof(*item));
+	item->fts_accpath = xstrdup(fts->fts_accpath);
+	item->fts_name = xstrdup(fts->fts_name);
+	item->fts_size = fts->fts_statp->st_size;
+	item->fts_info = fts->fts_info;
 
-		pkg_path = fts->fts_path;
-		pkg_path += strlen(root_path);
-		while (pkg_path[0] == '/')
-			pkg_path++;
+	pkg_path = fts->fts_path;
+	pkg_path += strlen(root_path);
+	while (pkg_path[0] == '/')
+		pkg_path++;
 
-		item->pkg_path = strdup(pkg_path);
-	}
-	else {
-		pkg_emit_errno("malloc", "struct pkg_fts_item");
-	}
+	item->pkg_path = xstrdup(pkg_path);
 
 	return (item);
 }
@@ -295,13 +230,14 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	char digestbuf[1024];
 	struct iovec iov[2];
 	struct msghdr msg;
+	UT_string *b;
 
-	struct sbuf *b = sbuf_new_auto();
+	utstring_new(b);
 
 	mfd = open(mlfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 	if (mfd == -1) {
 		pkg_emit_errno("pkg_create_repo_worker", "open");
-		sbuf_delete(b);
+		utstring_free(b);
 		return (EPKG_FATAL);
 	}
 
@@ -309,7 +245,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		ffd = open(flfile, O_APPEND|O_CREAT|O_WRONLY, 00644);
 		if (ffd == -1) {
 			close(mfd);
-			sbuf_delete(b);
+			utstring_free(b);
 			pkg_emit_errno("pkg_create_repo_worker", "open");
 			return (EPKG_FATAL);
 		}
@@ -319,7 +255,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
-		sbuf_delete(b);
+		utstring_free(b);
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -329,7 +265,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 		break;
 	default:
 		/* Parent */
-		sbuf_delete(b);
+		utstring_free(b);
 		close(mfd);
 		if (read_files)
 			close(ffd);
@@ -339,7 +275,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	}
 
 	pkg_manifest_keys_new(&keys);
-	pkg_debug(1, "start worker to parse %d packages", nelts);
+	pkg_debug(1, "start worker to parse %jd packages", (intmax_t)nelts);
 
 	if (read_files)
 		flags = PKG_OPEN_MANIFEST_ONLY;
@@ -363,18 +299,18 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			pkg->sum = pkg_checksum_file(cur->fts_accpath,
 			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
-			pkg->repopath = strdup(cur->pkg_path);
+			pkg->repopath = xstrdup(cur->pkg_path);
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
 			 */
-			sbuf_clear(b);
+			utstring_clear(b);
 			if (legacy)
-				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
+				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
 			else {
-				mdigest = malloc(pkg_checksum_type_size(meta->digest_format));
+				mdigest = xmalloc(pkg_checksum_type_size(meta->digest_format));
 
-				pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
 				if (pkg_checksum_generate(pkg, mdigest,
 				     pkg_checksum_type_size(meta->digest_format),
 				     meta->digest_format) != EPKG_OK) {
@@ -384,8 +320,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 					goto cleanup;
 				}
 			}
-			mlen = sbuf_len(b);
-			sbuf_finish(b);
+			mlen = utstring_len(b);
 
 			if (flock(mfd, LOCK_EX) == -1) {
 				pkg_emit_errno("pkg_create_repo_worker", "flock");
@@ -395,8 +330,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 			mpos = lseek(mfd, 0, SEEK_END);
 
-			iov[0].iov_base = sbuf_data(b);
-			iov[0].iov_len = sbuf_len(b);
+			iov[0].iov_base = utstring_body(b);
+			iov[0].iov_len = utstring_len(b);
 			iov[1].iov_base = (void *)"\n";
 			iov[1].iov_len = 1;
 
@@ -448,7 +383,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 cleanup:
 	pkg_manifest_keys_free(keys);
 
-	sbuf_delete(b);
+	utstring_free(b);
 	write(pip, ".\n", 2);
 	close(pip);
 	close(mfd);
@@ -503,13 +438,13 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 			if (buf[i] == ':') {
 				switch(state) {
 				case s_set_origin:
-					dig = calloc(1, sizeof(*dig));
-					dig->origin = malloc(i - start + 1);
+					dig = xcalloc(1, sizeof(*dig));
+					dig->origin = xmalloc(i - start + 1);
 					strlcpy(dig->origin, &buf[start], i - start + 1);
 					state = s_set_digest;
 					break;
 				case s_set_digest:
-					dig->digest = malloc(i - start + 1);
+					dig->digest = xmalloc(i - start + 1);
 					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_mpos;
 					break;
@@ -526,7 +461,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					state = s_set_checksum;
 					break;
 				case s_set_checksum:
-					dig->checksum =  malloc(i - start + 1);
+					dig->checksum =  xmalloc(i - start + 1);
 					strlcpy(dig->digest, &buf[start], i - start + 1);
 					state = s_set_origin;
 					break;
@@ -538,14 +473,13 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 					dig->manifest_length = strtol(&buf[start], NULL, 10);
 				}
 				else if (state == s_set_checksum) {
-					dig->checksum =  malloc(i - start + 1);
+					dig->checksum =  xmalloc(i - start + 1);
 					strlcpy(dig->checksum, &buf[start], i - start + 1);
 				}
 				assert(dig->origin != NULL);
 				assert(dig->digest != NULL);
 				DL_APPEND(*dlist, dig);
 				state = s_set_origin;
-				start = i + 1;
 				break;
 			}
 			else if (buf[i] == '.' && buf[i + 1] == '\n') {
@@ -563,14 +497,23 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 	return (EPKG_OK);
 }
 
+static int
+fts_compare(const FTSENT *const *a, const FTSENT *const *b)
+{
+	/* Sort files before directories, then alpha order */
+	if ((*a)->fts_info != FTS_D && (*b)->fts_info == FTS_D)
+		return -1;
+	if ((*a)->fts_info == FTS_D && (*b)->fts_info != FTS_D)
+		return 1;
+	return (strcmp((*a)->fts_name, (*b)->fts_name));
+}
+
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile, bool legacy)
+	const char *metafile)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
-
-	struct pkg_conflict *c, *ctmp;
 	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
 	int num_workers, i, remaining_workers, remain, cur_jobs, remain_jobs, nworker;
 	size_t len, tasks_per_worker, ntask;
@@ -579,6 +522,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int cur_pipe[2], fd;
 	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_OK;
+	ucl_object_t *meta_dump;
+	FILE *mfile;
 
 	char *repopath[2];
 	char packagesite[MAXPATHLEN],
@@ -596,9 +541,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		/* Try to create dir */
 		if (errno == ENOENT) {
 			if (mkdir(output_dir, 00755) == -1) {
-				pkg_emit_error("cannot create output directory %s: %s",
-					output_dir, strerror(errno));
-				return (EPKG_FATAL);
+				pkg_fatal_errno("cannot create output directory %s",
+					output_dir);
 			}
 		}
 		else {
@@ -608,12 +552,18 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	if (metafile != NULL) {
-		if (pkg_repo_meta_load(metafile, &meta) != EPKG_OK) {
+		fd = open(metafile, O_RDONLY);
+		if (fd == -1) {
 			pkg_emit_error("meta loading error while trying %s", metafile);
 			return (EPKG_FATAL);
 		}
-	}
-	else {
+		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", metafile);
+			close(fd);
+			return (EPKG_FATAL);
+		}
+		close(fd);
+	} else {
 		meta = pkg_repo_meta_default();
 	}
 
@@ -622,16 +572,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	num_workers = pkg_object_int(pkg_config_get("WORKERS_COUNT"));
 	if (num_workers <= 0) {
-		len = sizeof(num_workers);
-#ifdef HAVE_SYSCTLBYNAME
-		if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
+		num_workers = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		if (num_workers == -1)
 			num_workers = 6;
-#else
-		num_workers = 6;
-#endif
 	}
 
-	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
+	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, fts_compare)) == NULL) {
 		pkg_emit_errno("fts_open", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -681,7 +627,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	/* Launch workers */
 	pkg_emit_progress_start("Creating repository in %s", output_dir);
 
-	pfd = calloc(num_workers, sizeof(struct pollfd));
+	pfd = xcalloc(num_workers, sizeof(struct pollfd));
 	ntask = 0;
 	cur_jobs = (remain > 0) ? tasks_per_worker + 1 : tasks_per_worker;
 	remain_jobs = cur_jobs;
@@ -705,7 +651,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 			if (pkg_create_repo_worker(fts_start, cur_jobs,
 					packagesite, (filelist ? filesite : NULL), cur_pipe[1],
-					(legacy ? NULL : meta)) == EPKG_FATAL) {
+					meta) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
 				retcode = EPKG_FATAL;
@@ -792,37 +738,22 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	/* Now sort all digests */
 	DL_SORT(dlist, pkg_digest_sort_compare_func);
 
-	/*
-	 * XXX: it is not used actually
-	 */
-#if 0
-	pkg_repo_write_conflicts(conflicts, fconflicts);
-#endif
-
 	/* Write metafile */
-	if (!legacy) {
-		ucl_object_t *meta_dump;
-		FILE *mfile;
-
-		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-			"meta");
-		if ((mfile = fopen(repodb, "w")) != NULL) {
-			meta_dump = pkg_repo_meta_to_ucl(meta);
-			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
-			ucl_object_unref(meta_dump);
-			fclose(mfile);
-		}
-		else {
-			pkg_emit_notice("cannot create metafile at %s", repodb);
-		}
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+		"meta");
+	if ((mfile = fopen(repodb, "w")) != NULL) {
+		meta_dump = pkg_repo_meta_to_ucl(meta);
+		ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
+		ucl_object_unref(meta_dump);
+		fclose(mfile);
+	}
+	else {
+		pkg_emit_notice("cannot create metafile at %s", repodb);
 	}
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			free(c->uid);
-			HASH_DEL(curcb->conflicts, c);
-			free(c);
-		}
+		DL_FREE(curcb->conflicts, pkg_conflict_free);
+		kh_destroy_pkg_conflicts(curcb->conflictshash);
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
 	}
@@ -858,12 +789,12 @@ cleanup:
 
 
 static int
-pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
+pkg_repo_sign(char *path, char **argv, int argc, UT_string **sig, UT_string **cert)
 {
 	FILE *fp;
 	char *sha256;
-	struct sbuf *cmd = NULL;
-	struct sbuf *buf = NULL;
+	UT_string *cmd = NULL;
+	UT_string *buf = NULL;
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -873,17 +804,16 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	if (!sha256)
 		return (EPKG_FATAL);
 
-	cmd = sbuf_new_auto();
+	utstring_new(cmd);
 
 	for (i = 0; i < argc; i++) {
 		if (strspn(argv[i], " \t\n") > 0)
-			sbuf_printf(cmd, " \"%s\" ", argv[i]);
+			utstring_printf(cmd, " \"%s\" ", argv[i]);
 		else
-			sbuf_printf(cmd, " %s ", argv[i]);
+			utstring_printf(cmd, " %s ", argv[i]);
 	}
-	sbuf_finish(cmd);
 
-	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
+	if ((fp = popen(utstring_body(cmd), "r+")) == NULL) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
@@ -891,9 +821,9 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 	fprintf(fp, "%s\n", sha256);
 
 	if (*sig == NULL)
-		*sig = sbuf_new_auto();
+		utstring_new(*sig);
 	if (*cert == NULL)
-		*cert = sbuf_new_auto();
+		utstring_new(*cert);
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
 		if (strcmp(line, "SIGNATURE\n") == 0) {
@@ -906,7 +836,7 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 			break;
 		}
 		if (buf != NULL)
-			sbuf_bcat(buf, line, linelen);
+			utstring_bincpy(buf, line, linelen);
 	}
 
 	if (pclose(fp) != 0) {
@@ -914,15 +844,15 @@ pkg_repo_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf 
 		goto done;
 	}
 
-	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
-		sbuf_setpos(*sig, sbuf_len(*sig) -1);
+	if (utstring_body(*sig)[utstring_len(*sig) -1 ] == '\n') {
+		(*sig)->i--;
+		(*sig)->d[(*sig)->i] = '\0';
+	}
 
-	sbuf_finish(*sig);
-	sbuf_finish(*cert);
 done:
 	free(sha256);
 	if (cmd)
-		sbuf_delete(cmd);
+		utstring_free(cmd);
 
 	return (ret);
 }
@@ -936,13 +866,13 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	unsigned char *sigret = NULL;
 	unsigned int siglen = 0;
 	char fname[MAXPATHLEN];
-	struct sbuf *sig, *pub;
+	UT_string *sig, *pub;
 	int ret = EPKG_OK;
 
 	sig = NULL;
 	pub = NULL;
 
-	if (packing_init(&pack, archive, meta->packing_format, false) != EPKG_OK)
+	if (packing_init(&pack, archive, meta->packing_format) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (rsa != NULL) {
@@ -962,13 +892,13 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		}
 
 		snprintf(fname, sizeof(fname), "%s.sig", name);
-		if (packing_append_buffer(pack, sbuf_data(sig), fname, sbuf_len(sig)) != EPKG_OK) {
+		if (packing_append_buffer(pack, utstring_body(sig), fname, utstring_len(sig)) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
 
 		snprintf(fname, sizeof(fname), "%s.pub", name);
-		if (packing_append_buffer(pack, sbuf_data(pub), fname, sbuf_len(pub)) != EPKG_OK) {
+		if (packing_append_buffer(pack, utstring_body(pub), fname, utstring_len(pub)) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
@@ -981,15 +911,15 @@ out:
 	unlink(path);
 	free(sigret);
 	if (sig != NULL)
-		sbuf_delete(sig);
+		utstring_free(sig);
 	if (pub != NULL)
-		sbuf_delete(pub);
+		utstring_free(pub);
 
 	return (ret);
 }
 
 int
-pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
+pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
     char **argv, int argc, bool filelist)
 {
 	char repo_path[MAXPATHLEN];
@@ -997,7 +927,7 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	struct rsa_key *rsa = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
-	int ret = EPKG_OK, nfile = 0;
+	int ret = EPKG_OK, nfile = 0, fd;
 	const int files_to_pack = 4;
 	bool legacy = false;
 
@@ -1026,13 +956,13 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	/*
 	 * If no meta is defined, then it is a legacy repo
 	 */
-	if (access(repo_path, R_OK) != -1) {
-		if (pkg_repo_meta_load(repo_path, &meta) != EPKG_OK) {
+	if ((fd = open(repo_path, O_RDONLY)) != -1) {
+		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
 			rsa_free(rsa);
+			close(fd);
 			return (EPKG_FATAL);
-		}
-		else {
+		} else {
 			meta = pkg_repo_meta_default();
 		}
 		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,

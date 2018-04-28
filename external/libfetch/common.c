@@ -263,8 +263,11 @@ fetch_bind(int sd, int af, const char *addr)
 	if ((err = getaddrinfo(addr, NULL, &hints, &res0)) != 0)
 		return (-1);
 	for (res = res0; res; res = res->ai_next)
-		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0)
+		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0) {
+			freeaddrinfo(res0);
 			return (0);
+		}
+	freeaddrinfo(res0);
 	return (-1);
 }
 
@@ -478,7 +481,7 @@ fetch_ssl_hname_match(const char *h, size_t hlen, const char *m,
 	if (!fetch_ssl_hname_equal(hdot - delta, delta,
 	    mdot1 - delta, delta))
 		return (0);
-	/* all tests succeded, it's a match */
+	/* all tests succeeded, it's a match */
 	return (1);
 }
 

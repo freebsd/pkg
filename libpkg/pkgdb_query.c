@@ -125,12 +125,6 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	case MATCH_CONDITION:
 		comp = pattern;
 		break;
-	case MATCH_FTS:
-		if (checkorigin == NULL)
-			comp = " WHERE id IN (SELECT id FROM pkg_search WHERE name MATCH ?1)";
-		else
-			comp = " WHERE id IN (SELECT id FROM pkg_search WHERE origin MATCH ?1)";
-		break;
 	}
 
 	return (comp);

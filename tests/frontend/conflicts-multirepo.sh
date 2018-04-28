@@ -5,7 +5,7 @@ tests_init \
 	conflicts_multirepo
 
 conflicts_multirepo_head() {
-	atf_set "timeout" "20"
+	atf_set "timeout" "40"
 }
 
 conflicts_multirepo_body() {
@@ -154,16 +154,21 @@ ${JAILED}Fetching meta.txz:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local2 repository update completed. 2 packages processed.
+All repositories are up to date.
 Updating database digests format:  done
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
 Checking integrity... done (2 conflicting)
+  - test-1.1 [local2] conflicts with test2-1 [local1] on ${TMPDIR}/b
+  - test-1.1 [local2] conflicts with test2-1 [installed] on ${TMPDIR}/b
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 Installed packages to be UPGRADED:
 	test2: 1 -> 1.1 [local2]
 	test: 1 -> 1.1 [local2]
+
+Number of packages to be upgraded: 2
 ${JAILED}[1/2] Deinstalling test2-1...
 ${JAILED}[1/2] Deleting files for test2-1:  done
 ${JAILED}[1/2] Installing test2-1.1...
@@ -173,7 +178,7 @@ ${JAILED}[2/2] Extracting test-1.1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e empty \
+		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o CONSERVATIVE_UPGRADE=no -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
 }

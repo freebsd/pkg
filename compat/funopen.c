@@ -20,7 +20,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+#include <sys/types.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "bsd_compat.h"

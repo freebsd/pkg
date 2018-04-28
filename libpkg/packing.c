@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -43,73 +42,55 @@
 static const char *packing_set_format(struct archive *a, pkg_formats format);
 
 struct packing {
-	bool pass;
 	struct archive *aread;
 	struct archive *awrite;
 	struct archive_entry_linkresolver *resolver;
 };
 
 int
-packing_init(struct packing **pack, const char *path, pkg_formats format, bool passmode)
+packing_init(struct packing **pack, const char *path, pkg_formats format)
 {
 	char archive_path[MAXPATHLEN];
 	const char *ext;
 
 	assert(pack != NULL);
 
-	if (passmode && !is_dir(path)) {
-		pkg_emit_error("When using passmode, a directory should be provided");
-		return (EPKG_FATAL);
-	}
-
-	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		pkg_emit_errno("calloc", "packing");
-		return (EPKG_FATAL);
-	}
+	*pack = xcalloc(1, sizeof(struct packing));
 
 	(*pack)->aread = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup((*pack)->aread);
 	archive_read_disk_set_symlink_physical((*pack)->aread);
 
-	if (!passmode) {
-		(*pack)->pass = false;
-		(*pack)->awrite = archive_write_new();
-		archive_write_set_format_pax_restricted((*pack)->awrite);
-		ext = packing_set_format((*pack)->awrite, format);
-		if (ext == NULL) {
-			archive_read_close((*pack)->aread);
-			archive_read_free((*pack)->aread);
-			archive_write_close((*pack)->awrite);
-			archive_write_free((*pack)->awrite);
-			*pack = NULL;
-			return EPKG_FATAL; /* error set by _set_format() */
-		}
-		snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
-		    ext);
+	(*pack)->awrite = archive_write_new();
+	archive_write_set_format_pax_restricted((*pack)->awrite);
+	ext = packing_set_format((*pack)->awrite, format);
+	if (ext == NULL) {
+		archive_read_close((*pack)->aread);
+		archive_read_free((*pack)->aread);
+		archive_write_close((*pack)->awrite);
+		archive_write_free((*pack)->awrite);
+		*pack = NULL;
+		return EPKG_FATAL; /* error set by _set_format() */
+	}
+	snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
+	    ext);
 
-		pkg_debug(1, "Packing to file '%s'", archive_path);
-		if (archive_write_open_filename(
-		    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
-			pkg_emit_errno("archive_write_open_filename",
-			    archive_path);
-			archive_read_close((*pack)->aread);
-			archive_read_free((*pack)->aread);
-			archive_write_close((*pack)->awrite);
-			archive_write_free((*pack)->awrite);
-			*pack = NULL;
-			return EPKG_FATAL;
-		}
-	} else { /* pass mode directly write to the disk */
-		pkg_debug(1, "Packing to directory '%s' (pass mode)", path);
-		(*pack)->pass = true;
-		(*pack)->awrite = archive_write_disk_new();
-		archive_write_disk_set_options((*pack)->awrite,
-		    EXTRACT_ARCHIVE_FLAGS);
+	pkg_debug(1, "Packing to file '%s'", archive_path);
+	if (archive_write_open_filename(
+	    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
+		pkg_emit_errno("archive_write_open_filename",
+		    archive_path);
+		archive_read_close((*pack)->aread);
+		archive_read_free((*pack)->aread);
+		archive_write_close((*pack)->awrite);
+		archive_write_free((*pack)->awrite);
+		*pack = NULL;
+		return EPKG_FATAL;
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();
 	archive_entry_linkresolver_set_strategy((*pack)->resolver,
-	    ARCHIVE_FORMAT_TAR_PAX_RESTRICTED);
+	    archive_format((*pack)->awrite));
 
 	return (EPKG_OK);
 }
@@ -152,7 +133,6 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
     u_long fflags)
 {
 	int fd;
-	char *map;
 	int retcode = EPKG_OK;
 	int ret;
 	time_t source_time;
@@ -160,6 +140,8 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	struct archive_entry *entry, *sparse_entry;
 	bool unset_timestamp;
 	const char *source_date_epoch;
+	char buf[32768];
+	int len;
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
@@ -189,28 +171,10 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	}
 
 	if (uname != NULL && uname[0] != '\0') {
-		if (pack->pass) {
-			struct passwd* pw = getpwnam(uname);
-			if (pw == NULL) {
-				pkg_emit_error("Unknown user: '%s'", uname);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			archive_entry_set_uid(entry, pw->pw_uid);
-		}
 		archive_entry_set_uname(entry, uname);
 	}
 
 	if (gname != NULL && gname[0] != '\0') {
-		if (pack->pass) {
-			struct group *gr = (getgrnam(gname));
-			if (gr == NULL) {
-				pkg_emit_error("Unknown group: '%s'", gname);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			archive_entry_set_gid(entry, gr->gr_gid);
-		}
 		archive_entry_set_gname(entry, gname);
 	}
 
@@ -250,49 +214,30 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 
 	archive_write_header(pack->awrite, entry);
 
-	if (archive_entry_size(entry) > 0) {
-		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			pkg_emit_errno("open", filepath);
+	if (archive_entry_size(entry) <= 0)
+		goto cleanup;
+
+	if ((fd = open(filepath, O_RDONLY)) < 0) {
+		pkg_emit_errno("open", filepath);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	while ((len = read(fd, buf, sizeof(buf))) > 0) {
+		if (archive_write_data(pack->awrite, buf, len) == -1) {
+			pkg_emit_errno("archive_write_data", "archive write error");
 			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		if (st.st_size > SSIZE_MAX) {
-			char buf[BUFSIZ];
-			int len;
-
-			while ((len = read(fd, buf, sizeof(buf))) > 0)
-				if (archive_write_data(pack->awrite, buf, len) == -1) {
-					pkg_emit_errno("archive_write_data", "archive write error");
-					retcode = EPKG_FATAL;
-					break;
-				}
-
-			if (len == -1) {
-				pkg_emit_errno("read", "file read error");
-				retcode = EPKG_FATAL;
-			}
-			close(fd);
-		}
-		else {
-			if ((map = mmap(NULL, st.st_size, PROT_READ,
-					MAP_SHARED, fd, 0)) != MAP_FAILED) {
-				close(fd);
-				if (archive_write_data(pack->awrite, map, st.st_size) == -1) {
-					pkg_emit_errno("archive_write_data", "archive write error");
-					retcode = EPKG_FATAL;
-				}
-				munmap(map, st.st_size);
-			}
-			else {
-				close(fd);
-				pkg_emit_errno("open", filepath);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
+			break;
 		}
 	}
 
-	cleanup:
+	if (len == -1) {
+		pkg_emit_errno("read", "file read error");
+		retcode = EPKG_FATAL;
+	}
+	close(fd);
+
+cleanup:
 	archive_entry_free(entry);
 	return (retcode);
 }
@@ -304,7 +249,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 	FTS *fts = NULL;
 	FTSENT *fts_e = NULL;
 	size_t treelen;
-	struct sbuf *sb;
+	UT_string *sb;
 	char *paths[2] = { __DECONST(char *, treepath), NULL };
 
 	treelen = strlen(treepath);
@@ -312,7 +257,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 	if (fts == NULL)
 		goto cleanup;
 
-	sb = sbuf_new_auto();
+	utstring_new(sb);
 	while ((fts_e = fts_read(fts)) != NULL) {
 		switch(fts_e->fts_info) {
 		case FTS_D:
@@ -323,15 +268,14 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 /* Entries not within this tree are irrelevant. */
 			 if (fts_e->fts_pathlen <= treelen)
 				  break;
-			 sbuf_clear(sb);
+			 utstring_clear(sb);
 			 /* Strip the prefix to obtain the target path */
 			 if (newroot) /* Prepend a root if one is specified */
-				  sbuf_cat(sb, newroot);
+				  utstring_printf(sb, "%s", newroot);
 			 /* +1 = skip trailing slash */
-			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
-			 sbuf_finish(sb);
+			 utstring_printf(sb, "%s", fts_e->fts_path + treelen + 1);
 			 packing_append_file_attr(pack, fts_e->fts_name,
-			    sbuf_data(sb), NULL, NULL, 0, 0);
+			    utstring_body(sb), NULL, NULL, 0, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:
@@ -344,7 +288,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 break;
 		}
 	}
-	sbuf_free(sb);
+	utstring_free(sb);
 cleanup:
 	fts_close(fts);
 	return EPKG_OK;

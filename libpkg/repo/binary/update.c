@@ -26,10 +26,8 @@
 
 #include <sys/stat.h>
 #include <sys/param.h>
-#include <sys/mman.h>
 #include <sys/time.h>
 
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -170,12 +168,6 @@ try_again:
 		}
 	}
 	package_id = sqlite3_last_insert_rowid(sqlite);
-
-/*	if (pkg_repo_binary_run_prstatement (FTS_APPEND, package_id,
-			name, version, origin) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(FTS_APPEND));
-		return (EPKG_FATAL);
-	}*/
 
 	dep = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
@@ -382,6 +374,7 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
+	const char *abi;
 
 	rc = pkg_new(&pkg, PKG_REMOTE);
 	if (rc != EPKG_OK)
@@ -395,15 +388,22 @@ pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
 		pkg_checksum_calculate(pkg, NULL);
-	if (pkg->arch == NULL || !is_valid_abi(pkg->arch, true)) {
+	abi = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	if (abi == NULL || !is_valid_abi(abi, true)) {
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages with wrong ABI: %s",
-			repo->name, pkg->arch);
+			repo->name, abi);
+		goto cleanup;
+	}
+	if (!is_valid_os_version(pkg)) {
+		rc = EPKG_FATAL;
+		pkg_emit_error("repository %s contains packages for wrong OS "
+		    "version: %s", repo->name, abi);
 		goto cleanup;
 	}
 
 	free(pkg->reponame);
-	pkg->reponame = strdup(repo->name);
+	pkg->reponame = xstrdup(repo->name);
 
 	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
 
@@ -438,7 +438,7 @@ pkg_repo_binary_parse_conflicts(FILE *f, sqlite3 *sqlite)
 				ndep ++;
 			pdep ++;
 		}
-		deps = malloc(sizeof(char *) * ndep);
+		deps = xmalloc(sizeof(char *) * ndep);
 		for (i = 0; i < ndep; i ++) {
 			deps[i] = strsep(&p, ",\n");
 		}
@@ -466,16 +466,19 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
 {
 	struct pkg *pkg = NULL;
-	unsigned char *walk;
 	int rc = EPKG_FATAL;
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
 	struct pkg_manifest_key *keys = NULL;
-	unsigned char *map = MAP_FAILED;
 	size_t len = 0;
 	bool in_trans = false;
-	char path[MAXPATHLEN];
+	char *path = NULL;
+	FILE *f = NULL;
+	int fd;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen, totallen = 0;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -491,10 +494,12 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	/* Fetch packagesite */
 	local_t = *mtime;
-	map = pkg_repo_fetch_remote_extract_mmap(repo,
+	fd = pkg_repo_fetch_remote_extract_fd(repo,
 		repo->meta->manifests, &local_t, &rc, &len);
-	if (map == NULL || map == MAP_FAILED)
+	if (fd == -1)
 		goto cleanup;
+	f = fdopen(fd, "r");
+	rewind(f);
 
 	*mtime = local_t;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
@@ -502,7 +507,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			&rc, repo_conflicts_file);*/
 
 	/* Load local repository data */
-	snprintf(path, sizeof(path), "%s-pkgtemp", name);
+	xasprintf(&path, "%s-pkgtemp", name);
 	rename(name, path);
 	pkg_register_cleanup_callback(rollback_repo, (void *)name);
 	rc = pkg_repo_binary_init_update(repo, name);
@@ -529,22 +534,17 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	in_trans = true;
-
-	walk = map;
-	unsigned char *next;
-
-	while (walk -map < len) {
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		cnt++;
-		next = strchr(walk, '\n');
+		totallen += linelen;
 		if ((cnt % 10 ) == 0)
-			pkg_emit_progress_tick(next - map, len);
-		rc = pkg_repo_binary_add_from_manifest(walk, sqlite, next - walk,
+			pkg_emit_progress_tick(totallen, len);
+		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
 		    &keys, &pkg, repo);
 		if (rc != EPKG_OK) {
 			pkg_emit_progress_tick(len, len);
 			break;
 		}
-		walk = next + 1;
 	}
 	pkg_emit_progress_tick(len, len);
 
@@ -552,7 +552,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		pkg_emit_incremental_update(repo->name, cnt);
 
 	sql_exec(sqlite, ""
-	 "INSERT INTO pkg_search SELECT id, name || '-' || version, origin FROM packages;"
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
@@ -576,12 +575,16 @@ cleanup:
 		unlink(name);
 		rename(path, name);
 	}
-	unlink(path);
-	pkg_register_cleanup_callback(rollback_repo, (void *)name);
+	if (path != NULL) {
+		unlink(path);
+		free(path);
+	}
+	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
 	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
-	if (map != NULL && map != MAP_FAILED)
-		munmap(map, len);
+	free(line);
+	if (f != NULL)
+		fclose(f);
 
 	return (rc);
 }

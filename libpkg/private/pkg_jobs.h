@@ -24,7 +24,6 @@
 #define PKG_JOBS_H_
 
 #include <sys/cdefs.h>
-#include <sys/sbuf.h>
 #include <sys/types.h>
 
 #include <stdbool.h>
@@ -118,14 +117,19 @@ struct pkg_jobs {
 	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
 	struct job_pattern *patterns;
 	bool conservative;
+	bool pinning;
+	void		*lockedpkgs;
 };
+
+#define PKG_PATTERN_FLAG_FILE (1 << 0)
+#define PKG_PATTERN_FLAG_VULN (1 << 1)
 
 struct job_pattern {
 	char		*pattern;
 	char		*path;
-	match_t		match;
-	bool		is_file;
-	UT_hash_handle hh;
+	match_t		 match;
+	int		 flags;
+	struct job_pattern *next;
 };
 
 enum pkg_priority_update_type {
@@ -246,7 +250,8 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
  */
 struct pkg_job_universe_item *
 pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
-	struct pkg_job_universe_item *local, bool conservative);
+	struct pkg_job_universe_item *local, bool conservative,
+	const char *reponame, bool pinning);
 
 /*
  * Free job request (with all candidates)

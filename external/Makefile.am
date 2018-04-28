@@ -47,11 +47,10 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libelf/libelf.h \
 		libmachista/hashmap.h \
 		libmachista/libmachista.h \
-		libsbuf/sys/sbuf.h \
 		libucl/klib/kvec.h \
 		libucl/klib/khash.h \
 		libucl/include/ucl.h \
-		libucl/src/xxhash.h \
+		libucl/src/mum.h \
 		libucl/src/ucl_internal.h \
 		libucl/src/ucl_hash.h \
 		libucl/src/ucl_chartable.h \
@@ -63,6 +62,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		sqlite/sqlite3.h \
 		uthash/uthash.h \
 		uthash/utlist.h \
+		uthash/utstring.h \
 		include/tree.h \
 		include/siphash.h \
 		config.h \
@@ -75,14 +75,12 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 DYNLIBS=		libucl.la \
 			libsqlite.la \
 			libexpat.la \
-			libsbuf.la \
 			libpicosat.la \
 			libfetch.la \
 			liblinenoise.la
 noinst_LTLIBRARIES=	libucl_static.la \
 			libsqlite_static.la \
 			libexpat_static.la \
-			libsbuf_static.la \
 			libpicosat_static.la \
 			libfetch_static.la \
 			liblinenoise_static.la
@@ -168,13 +166,6 @@ libmachista_static_la_SOURCES=	libmachista/libmachista.c \
 libmachista_static_la_CFLAGS=	-I$(tip_srcdir)/external/libmachista -static
 libmachista_static_la_LDFLAGS=	-all-static
 
-libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
-sbuf_common_CFLAGS=	-I$(top_srcdir)/external/libsbuf
-libsbuf_la_CFLAGS=	$(sbuf_common_CFLAGS) -shared
-libsbuf_static_la_SOURCES=	${libsbuf_la_SOURCES}
-libsbuf_static_la_CFLAGS=	$(sbuf_common_CFLAGS) -static
-libsbuf_static_la_LDFLAGS=	-all-static
-
 liblinenoise_la_SOURCES=	linenoise/linenoise.c
 liblinenoise_la_CFLAGS=	-shared
 liblinenoise_static_la_SOURCES=	$(liblinenoise_la_SOURCES)
@@ -194,8 +185,7 @@ libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_schema.c \
 			libucl/src/ucl_util.c \
 			libucl/src/ucl_msgpack.c \
-			libucl/src/ucl_sexp.c \
-			libucl/src/xxhash.c
+			libucl/src/ucl_sexp.c
 libucl_la_CFLAGS=	$(ucl_common_cflags) -shared
 libucl_static_la_SOURCES=	$(libucl_la_SOURCES)
 libucl_static_la_CFLAGS=	$(ucl_common_cflags) -static
@@ -247,6 +237,7 @@ sqlite_common_cflags=	-I$(top_srcdir)/external/linenoise \
 			-DSQLITE_OMIT_SHARED_CACHE \
 			-DSQLITE_ENABLE_UNLOCK_NOTIFY=1 \
 			-DUSE_PREAD \
+			-DUSE_PWRITE \
 			-DSQLITE_THREADSAFE=0 \
 			-DSQLITE_TEMP_STORE=3 \
 			-DSQLITE_ENABLE_FTS4 \

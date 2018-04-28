@@ -38,6 +38,13 @@
 #endif
 
 #ifdef HAVE_BSD_SYS_CDEFS_H
+
+/* Deal with broken __DECONST */
+#ifndef __uintptr_t
+# include <stdint.h>
+# define __uintptr_t uintptr_t
+#endif
+
 #include <bsd/sys/cdefs.h>
 #endif
 

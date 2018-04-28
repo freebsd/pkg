@@ -5,6 +5,7 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,9 +43,7 @@ extern "C" {
 #include <sys/cdefs.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <sys/sbuf.h>
-#include <openssl/pem.h>
-#include <sysexits.h>
+#include <stdio.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -74,7 +73,7 @@ extern "C" {
 #endif
 
 #ifdef __NetBSD_Version__
-#define OSMAJOR __NetBSD_Version__
+#define OSMAJOR ((__NetBSD_Version__ + 1000000) / 100000000)
 #endif
 
 #ifndef __DECONST
@@ -119,7 +118,7 @@ typedef void * pkg_iter;
 struct pkg_kv {
 	char *key;
 	char *value;
-	struct pkg_kv *next;
+	struct pkg_kv *next, *prev;
 };
 
 /**
@@ -193,10 +192,6 @@ typedef enum {
 	 * The argument is a WHERE clause to use as condition
 	 */
 	MATCH_CONDITION,
-	/**
-	 * Match using FTS search
-	 */
-	MATCH_FTS
 } match_t;
 
 /**
@@ -375,7 +370,8 @@ typedef enum _pkg_flags {
 	PKG_FLAG_FORCE_MISSING = (1U << 9),
 	PKG_FLAG_FETCH_MIRROR = (1U << 10),
 	PKG_FLAG_USE_IPV4 = (1U << 11),
-	PKG_FLAG_USE_IPV6 = (1U << 12)
+	PKG_FLAG_USE_IPV6 = (1U << 12),
+	PKG_FLAG_UPGRADE_VULNERABLE = (1U << 13)
 } pkg_flags;
 
 typedef enum _pkg_stats_t {
@@ -705,12 +701,6 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
 /**
- * Read the content of a file into a buffer, then call pkg_set().
- */
-int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
-int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
-
-/**
  * Set a new debug level used inside of pkg.
  * @param debug_level Debug level between 0 (no debugging) and 4 (max debugging).
  * @return Previous debug level.
@@ -818,10 +808,12 @@ int pkg_is_installed(struct pkgdb *db, const char *name);
  * @param metafile Open meta from the specified file
  * @param legacy Create legacy (1.2 compatible) repo
  */
+typedef int(pkg_password_cb)(char *, int, int, void*);
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile, bool legacy);
-int pkg_finish_repo(const char *output_dir, pem_password_cb *cb, char **argv,
+	const char *metafile);
+int pkg_finish_repo(const char *output_dir, pkg_password_cb *cb, char **argv,
     int argc, bool filelist);
+
 
 /**
  * Test if the EUID has sufficient privilege to carry out some
@@ -1077,6 +1069,19 @@ int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *);
 int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
 
 /**
+ * Check if there are locked packages
+ * @return true if locked packages exist, false if not
+ */
+bool pkg_jobs_has_lockedpkgs(struct pkg_jobs *j);
+
+/**
+ * Iterate through the locked packages, calling the passed in function pointer
+ * on each.
+ */
+typedef int(*locked_pkgs_cb)(struct pkg *, void *);
+void pkg_jobs_iter_lockedpkgs(struct pkg_jobs *j, locked_pkgs_cb, void *);
+
+/**
  * Solve a SAT problem
  * @return true if a problem is solvable
  */
@@ -1136,7 +1141,8 @@ int pkg_create_from_manifest(const char *, pkg_formats, const char *,
 /**
  * Create package from stage install with a metadata directory
  */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool);
+int pkg_load_metadata(struct pkg *, const char *, const char *, const char *, const char *, bool);
 
 /**
  * Download the latest repo db file and checks its signature if any
@@ -1224,11 +1230,6 @@ int pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen);
 int ports_parse_plist(struct pkg *, const char *, const char *);
 
 /**
- * @todo Document
- */
-int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
-
-/**
  * Special structure to report about conflicts
  */
 struct pkg_event_conflict {
@@ -1301,6 +1302,7 @@ typedef enum {
 	PKG_EVENT_FILE_MISSING,
 	PKG_EVENT_CLEANUP_CALLBACK_REGISTER,
 	PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER,
+	PKG_EVENT_CONFLICTS,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1461,6 +1463,11 @@ struct pkg_event {
 			void *data;
 			void (*cleanup_cb)(void *data);
 		} e_cleanup_callback;
+		struct {
+			struct pkg *p1;
+			struct pkg *p2;
+			const char *path;
+		} e_conflicts;
 	};
 };
 
@@ -1482,16 +1489,7 @@ int pkg_test_filesum(struct pkg *);
 int pkg_recompute(struct pkgdb *, struct pkg *);
 int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 
-#ifdef __DragonFly__
-#define pkg_get_myarch(d, z) pkg_get_myarch_legacy(d, z)
-#else
-int pkg_get_myarch(char *pkgarch, size_t sz);
-#endif
-int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
-
 void pkgdb_cmd(int argc, char **argv);
-int pkg_old_load_from_path(struct pkg *pkg, const char *path);
-int pkg_from_old(struct pkg *pkg);
 int pkg_sshserve(int fd);
 
 int pkg_repos_total_count(void);
@@ -1614,6 +1612,7 @@ int pkg_asprintf(char **ret, const char * restrict format, ...);
  */
 int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
 
+#if defined(UTSTRING_H)
 /**
  * store data from pkg into sbuf as indicated by the format code format.
  * @param sbuf contains the result
@@ -1621,7 +1620,7 @@ int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *pkg_sbuf_printf(struct sbuf * restrict sbuf,
+UT_string *pkg_utstring_printf(UT_string * restrict sbuf,
 	const char * restrict format, ...);
 
 /**
@@ -1632,8 +1631,9 @@ struct sbuf *pkg_sbuf_printf(struct sbuf * restrict sbuf,
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
+UT_string *pkg_utstring_vprintf(UT_string * restrict sbuf,
 	const char * restrict format, va_list ap);
+#endif
 
 bool pkg_has_message(struct pkg *p);
 bool pkg_need_message(struct pkg *p, struct pkg *old);
@@ -1684,6 +1684,7 @@ int pkg_audit_load(struct pkg_audit *audit, const char *fname);
  */
 int pkg_audit_process(struct pkg_audit *audit);
 
+#if defined(UTSTRING_H)
 /**
  * Check whether `pkg` is vulnerable against processed `audit` structure.
  * If a package is vulnerable, then `result` is set to sbuf describing the
@@ -1693,7 +1694,8 @@ int pkg_audit_process(struct pkg_audit *audit);
  * @return true and `*result` is set if a package is vulnerable
  */
 bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, struct sbuf **result);
+		bool quiet, UT_string **result);
+#endif
 
 void pkg_audit_free (struct pkg_audit *audit);
 char *pkg_utils_tokenize(char **);
@@ -1703,6 +1705,9 @@ int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \
 char *pkg_absolutepath(const char *src, char *dest, size_t dest_len, bool fromroot);
 
 void pkg_cache_full_clean(void);
+
+int pkg_get_cachedirfd(void);
+int pkg_get_dbdirfd(void);
 
 #ifdef __cplusplus
 }

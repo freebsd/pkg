@@ -14,7 +14,7 @@ tests_init \
 basic_body()
 {
 	echo "test" > a
-	new_pkg "test" "test" "1" || atf_fail "plop"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 cat << EOF >> test.ucl
 files = {
 	${TMPDIR}/a: ""
@@ -42,7 +42,7 @@ ${TMPDIR}/target${TMPDIR}/a
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		-s exit:0 \
-		find -s ${TMPDIR}/target -type f -print
+		find ${TMPDIR}/target -type f -print | sort
 
 	echo "test2" > a
 	atf_check \
@@ -63,14 +63,14 @@ ${TMPDIR}/target${TMPDIR}/a
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		-s exit:0 \
-		find -s ${TMPDIR}/target -type f -print
+		find ${TMPDIR}/target -type f -print | sort
 
 }
 
 basic_dirs_body()
 {
 	mkdir ${TMPDIR}/plop
-	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 cat << EOF >> test.ucl
 directories = {
 	${TMPDIR}/plop: y
@@ -98,7 +98,7 @@ setuid_body()
 {
 	touch ${TMPDIR}/a
 	chmod 04554 ${TMPDIR}/a || atf_fail "Fail to chmod"
-	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 files = {
 	${TMPDIR}/a = ""
@@ -112,7 +112,7 @@ EOF
 
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
-		-e empty \
+		-e ignore \
 		tar tvf ${TMPDIR}/test-1.txz
 
 	mkdir ${TMPDIR}/target
@@ -136,7 +136,7 @@ setuid_hardlinks_body()
 	ln ${TMPDIR}/a ${TMPDIR}/b
 	chmod 04554 ${TMPDIR}/a || atf_fail "Fail to chmod"
 	chmod 04554 ${TMPDIR}/b || atf_fail "Fail to chmod"
-	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 files = {
 	${TMPDIR}/a = ""
@@ -152,7 +152,7 @@ EOF
 	atf_check \
 		-o match:"^-r-sr-xr--.*a$" \
 		-o match:"^hr-sr-xr--.*a$" \
-		-e empty \
+		-e ignore \
 		tar tvf ${TMPDIR}/test-1.txz
 
 	mkdir ${TMPDIR}/target
@@ -178,11 +178,13 @@ EOF
 
 chflags_body()
 {
+	test $(id -u) = 0 || atf_skip "Can only be run as root"
+
 	test -x /bin/chflags || atf_skip "Requires chflags"
 	# use nodump as it is the only one supported as user, by zfs and by
 	# libarchive
 	touch ${TMPDIR}/a
-	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "@(,,,nodump) ${TMPDIR}/a" > test.plist
 	atf_check \
 		-o empty \
@@ -212,7 +214,7 @@ chflags_schg_body()
 	test $(id -u) = 0 || atf_skip "Can only be run as root"
 
 	touch ${TMPDIR}/a
-	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "@(root,wheel,,schg) ${TMPDIR}/a" > test.plist
 	atf_check \
 		-o empty \
@@ -245,12 +247,13 @@ chflags_schg_body()
 
 chflags_schg_cleanup()
 {
+	test -x /bin/chflags || atf_skip "Requires chflags"
 	chflags -R noschg ${TMPDIR}
 }
 
 symlinks_body()
 {
-	new_pkg "test" "test" "1" || atf_fail "fail to create the ucl file"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 files: {
 ${TMPDIR}/a = "";

@@ -29,15 +29,15 @@
 #include "pkg_config.h"
 #endif
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <inttypes.h>
-#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -59,7 +59,7 @@ pkg_sshserve(int fd)
 	time_t mtime = 0;
 	const char *errstr;
 	int ffd;
-	char buf[BUFSIZ];
+	char buf[32768];
 	char fpath[MAXPATHLEN];
 	char rpath[MAXPATHLEN];
 	const char *restricted = NULL;

@@ -19,12 +19,13 @@
 ** text files.
 */
 #include <sys/types.h>
-#include <sys/sbuf.h>
 
 #include <string.h>
 #include <stdlib.h>
+#include <utstring.h>
 
 #include "private/utils.h"
+#include "xmalloc.h"
 
 /*
 ** Maximum length of a line in a text file, in bytes.  (2**13 = 8192 bytes)
@@ -123,7 +124,7 @@ static DLine *break_into_lines(char *z, int *pnLine){
   if( j>LENGTH_MASK ){
     return 0;
   }
-  a = calloc(nLine, sizeof(a[0]) );
+  a = xcalloc(nLine, sizeof(a[0]) );
   if( n==0 ){
     *pnLine = 0;
     return a;
@@ -247,7 +248,6 @@ static void longestCommonSequence(
 
   span = (iE1 - iS1) + (iE2 - iS2);
   bestScore = -10000;
-  score = 0;
   iSXb = iSXp = iS1;
   iEXb = iEXp = iS1;
   iSYb = iSYp = iS2;
@@ -318,7 +318,7 @@ static void longestCommonSequence(
 ** Expand the size of aEdit[] array to hold at least nEdit elements.
 */
 static void expandEdit(DContext *p, int nEdit){
-  p->aEdit = realloc(p->aEdit, nEdit*sizeof(int));
+  p->aEdit = xrealloc(p->aEdit, nEdit*sizeof(int));
   p->nEditAlloc = nEdit;
 }
 

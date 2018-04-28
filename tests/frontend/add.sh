@@ -15,19 +15,8 @@ tests_init	\
 
 initialize_pkg() {
 	touch a
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a: ""
 }
@@ -107,19 +96,8 @@ add_force_body() {
 
 add_accept_missing_body() {
 	touch a
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
 deps: {
 	b: {
 		origin: "wedontcare",
@@ -147,7 +125,7 @@ EOF
 
 	atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): test-1.txz\n" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:70 \
 		pkg add test-1.txz
 
@@ -158,7 +136,7 @@ post-install
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
 		pkg add -M test-1.txz
 }
@@ -188,19 +166,8 @@ post-install
 
 add_stdin_missing_body() {
 	touch a
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
 deps: {
 	b: {
 		origin: "wedontcare",
@@ -228,7 +195,7 @@ EOF
 
 	cat test-1.txz | atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): -\n" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:70 \
 		pkg add -
 
@@ -239,62 +206,24 @@ post-install
 "
 	cat test-1.txz | atf_check \
 		-o inline:"${OUTPUT}" \
-		-e inline:"pkg: Missing dependency 'b'\n" \
+		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
 		pkg add -M -
 }
 
 add_no_version_body() {
-	cat << EOF > test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
-EOF
 
-	cat << EOF > test-lib.ucl
-name: test-lib
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
-EOF
-
-	cat << EOF > final.ucl
-name: final
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
+	for p in test test-lib final ; do
+		atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ${p} ${p} 1
+		if [ ${p} = "final" ]; then
+			cat << EOF >> final.ucl
 deps {
 	test {
 		origin = "test";
 	}
 }
 EOF
-	for p in test test-lib final ; do
+		fi
 		atf_check -o ignore -s exit:0 \
 			pkg create -M ${p}.ucl
 	done

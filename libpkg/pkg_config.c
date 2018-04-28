@@ -41,6 +41,7 @@
 #include <osreldate.h>
 #endif
 #include <ucl.h>
+#include <sysexits.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -62,11 +63,16 @@
 #define INDEXFILE	"INDEX"
 #endif
 
-int eventpipe = -1;
-int64_t debug_level = 0;
-bool developer_mode = false;
-const char *pkg_rootdir = NULL;
-int rootfd = -1;
+struct pkg_ctx ctx = {
+	.eventpipe = -1,
+	.debug_level = 0,
+	.developer_mode = false,
+	.pkg_rootdir = NULL,
+	.rootfd = -1,
+	.cachedirfd = -1,
+	.pkg_dbdirfd = -1,
+	.osversion = 0,
+};
 
 struct config_entry {
 	uint8_t type;
@@ -76,6 +82,9 @@ struct config_entry {
 };
 
 static char myabi[BUFSIZ], myabi_legacy[BUFSIZ];
+#ifdef __FreeBSD__
+static char myosversion[BUFSIZ];
+#endif
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -403,6 +412,26 @@ static struct config_entry c[] = {
 		"1048576", /* 1 meg */
 		"Ask user when performing changes for more than this limit"
 	},
+	{
+		PKG_STRING,
+		"METALOG",
+		NULL,
+		"Write out the METALOG to the specified file",
+	},
+#ifdef __FreeBSD__
+	{
+		PKG_INT,
+		"OSVERSION",
+		myosversion,
+		"FreeBSD OS version",
+	},
+	{
+		PKG_BOOL,
+		"IGNORE_OSVERSION",
+		"NO",
+		"Ignore FreeBSD OS version check",
+	},
+#endif
 };
 
 static bool parsed = false;
@@ -432,13 +461,13 @@ connect_evpipe(const char *evpipe) {
 
 	if (S_ISFIFO(st.st_mode)) {
 		flag |= O_NONBLOCK;
-		if ((eventpipe = open(evpipe, flag)) == -1)
+		if ((ctx.eventpipe = open(evpipe, flag)) == -1)
 			pkg_emit_errno("open event pipe", evpipe);
 		return;
 	}
 
 	if (S_ISSOCK(st.st_mode)) {
-		if ((eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		if ((ctx.eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 			pkg_emit_errno("Open event pipe", evpipe);
 			return;
 		}
@@ -447,15 +476,15 @@ connect_evpipe(const char *evpipe) {
 		if (strlcpy(sock.sun_path, evpipe, sizeof(sock.sun_path)) >=
 		    sizeof(sock.sun_path)) {
 			pkg_emit_error("Socket path too long: %s", evpipe);
-			close(eventpipe);
-			eventpipe = -1;
+			close(ctx.eventpipe);
+			ctx.eventpipe = -1;
 			return;
 		}
 
-		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
+		if (connect(ctx.eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
 			pkg_emit_errno("Connect event pipe", evpipe);
-			close(eventpipe);
-			eventpipe = -1;
+			close(ctx.eventpipe);
+			ctx.eventpipe = -1;
 			return;
 		}
 	}
@@ -498,8 +527,9 @@ disable_plugins_if_static(void)
 static void
 add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_init_flags flags)
 {
-	const ucl_object_t *cur, *enabled;
+	const ucl_object_t *cur, *enabled, *env;
 	ucl_object_iter_t it = NULL;
+	struct pkg_kv *kv;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
@@ -510,16 +540,13 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 
 	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 
+	env = NULL;
 	enabled = ucl_object_find_key(obj, "enabled");
 	if (enabled == NULL)
 		enabled = ucl_object_find_key(obj, "ENABLED");
 	if (enabled != NULL) {
 		enable = ucl_object_toboolean(enabled);
-		if (!enable && r == NULL) {
-			pkg_debug(1, "PkgConfig: skipping disabled repo %s", rname);
-			return;
-		}
-		else if (!enable && r != NULL) {
+		if (!enable && r != NULL) {
 			/*
 			 * We basically want to remove the existing repo r and
 			 * forget all stuff parsed
@@ -602,6 +629,13 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			priority = ucl_object_toint(cur);
+		} else if (strcasecmp(key, "env") == 0) {
+			if (cur->type != UCL_OBJECT) {
+				pkg_emit_error("Expecting an object for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+			}
+			env = cur;
 		}
 	}
 
@@ -627,12 +661,12 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 
 	if (fingerprints != NULL) {
 		free(r->fingerprints);
-		r->fingerprints = strdup(fingerprints);
+		r->fingerprints = xstrdup(fingerprints);
 	}
 
 	if (pubkey != NULL) {
 		free(r->pubkey);
-		r->pubkey = strdup(pubkey);
+		r->pubkey = xstrdup(pubkey);
 	}
 
 	r->enable = enable;
@@ -659,6 +693,15 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		r->flags = REPO_FLAGS_USE_IPV4;
 	else if (use_ipvx == 6)
 		r->flags = REPO_FLAGS_USE_IPV6;
+
+	if (env != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(env, &it, true))) {
+			kv = pkg_kv_new(ucl_object_key(cur),
+			    ucl_object_tostring_forced(cur));
+			DL_APPEND(r->env, kv);
+		}
+	}
 }
 
 static void
@@ -698,12 +741,14 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 }
 
 static void
-load_repo_file(const char *repofile, pkg_init_flags flags)
+load_repo_file(int dfd, const char *repodir, const char *repofile,
+    pkg_init_flags flags)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	const char *myarch = NULL;
 	const char *myarch_legacy = NULL;
+	int fd;
 
 	p = ucl_parser_new(0);
 
@@ -713,13 +758,20 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
 
-	pkg_debug(1, "PKgConfig: loading %s", repofile);
-	if (!ucl_parser_add_file(p, repofile)) {
-		pkg_emit_error("Error parsing: %s: %s", repofile,
-		    ucl_parser_get_error(p));
-		ucl_parser_free(p);
+	pkg_debug(1, "PKgConfig: loading %s/%s", repodir, repofile);
+	fd = openat(dfd, repofile, O_RDONLY);
+	if (fd == -1) {
+		pkg_errno("Unable to open '%s/%s'", repodir, repofile);
 		return;
 	}
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("Error parsing: '%s/%s': %s", repodir,
+		    repofile, ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		close(fd);
+		return;
+	}
+	close(fd);
 
 	obj = ucl_parser_get_object(p);
 	if (obj == NULL)
@@ -732,38 +784,42 @@ load_repo_file(const char *repofile, pkg_init_flags flags)
 }
 
 static int
-nodots(const struct dirent *dp)
+configfile(const struct dirent *dp)
 {
-	return (dp->d_name[0] != '.');
+	const char *p;
+	size_t n;
+
+	if (dp->d_name[0] == '.')
+		return (0);
+
+	n = strlen(dp->d_name);
+	if (n <= 5)
+		return (0);
+
+	p = &dp->d_name[n - 5];
+	if (strcmp(p, ".conf") != 0)
+		return (0);
+	return (1);
 }
 
 static void
 load_repo_files(const char *repodir, pkg_init_flags flags)
 {
 	struct dirent **ent;
-	char *p;
-	size_t n;
-	int nents, i;
-	char path[MAXPATHLEN];
+	int nents, i, fd;
 
 	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
+	if ((fd = open(repodir, O_DIRECTORY|O_CLOEXEC)) == -1)
+		return;
 
-	nents = scandir(repodir, &ent, nodots, alphasort);
+	nents = scandir(repodir, &ent, configfile, alphasort);
 	for (i = 0; i < nents; i++) {
-		if ((n = strlen(ent[i]->d_name)) <= 5)
-			continue;
-		p = &ent[i]->d_name[n - 5];
-		if (strcmp(p, ".conf") == 0) {
-			snprintf(path, sizeof(path), "%s%s%s",
-			    repodir,
-			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
-			    ent[i]->d_name);
-			load_repo_file(path, flags);
-		}
+		load_repo_file(fd, repodir, ent[i]->d_name, flags);
 		free(ent[i]);
 	}
 	if (nents >= 0)
 		free(ent);
+	close(fd);
 }
 
 static void
@@ -777,7 +833,7 @@ load_repositories(const char *repodir, pkg_init_flags flags)
 		return;
 	}
 
-	reposlist = pkg_config_get( "REPOS_DIR");
+	reposlist = pkg_config_get("REPOS_DIR");
 	while ((cur = pkg_object_iterate(reposlist, &it)))
 		load_repo_files(pkg_object_string(cur), flags);
 }
@@ -817,6 +873,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const char *buf, *walk, *value, *key, *k;
 	const char *evkey = NULL;
 	const char *nsname = NULL;
+	const char *metalog = NULL;
 	const char *useragent = NULL;
 	const char *evpipe = NULL;
 	const char *url;
@@ -824,20 +881,23 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const ucl_object_t *cur, *object;
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
-	struct sbuf *ukey = NULL;
+	UT_string *ukey = NULL;
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
 
 	k = NULL;
 	o = NULL;
-	if (rootfd == -1 && (rootfd = open("/", O_DIRECTORY|O_RDONLY)) <= 0) {
+	if (ctx.rootfd == -1 && (ctx.rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open /");
 		return (EPKG_FATAL);
 	}
 
-	pkg_get_myarch(myabi, BUFSIZ);
+	pkg_get_myarch(myabi, BUFSIZ, &ctx.osversion);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+#ifdef __FreeBSD__
+	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
+#endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
@@ -856,8 +916,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		case PKG_STRING:
 			tmp = NULL;
 			if (c[i].def != NULL && c[i].def[0] == '/' &&
-			    pkg_rootdir != NULL) {
-				asprintf(&tmp, "%s%s", pkg_rootdir, c[i].def);
+			    ctx.pkg_rootdir != NULL) {
+				xasprintf(&tmp, "%s%s", ctx.pkg_rootdir, c[i].def);
 			}
 			obj = ucl_object_fromstring_common(
 			    c[i].def != NULL ? tmp != NULL ? tmp : c[i].def : "", 0, UCL_STRING_TRIM);
@@ -929,13 +989,13 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	if (path == NULL)
-		conffd = openat(rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
+		conffd = openat(ctx.rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
 	else
 		conffd = open(path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {
-		pkg_emit_error("Cannot open %s/%s: %s",
-		    pkg_rootdir != NULL ? pkg_rootdir : "",
-		    path, strerror(errno));
+		pkg_errno("Cannot open %s/%s",
+		    ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "",
+		    path);
 	}
 
 	p = ucl_parser_new(0);
@@ -956,22 +1016,21 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		close(conffd);
 
 	ncfg = NULL;
-	ukey = sbuf_new_auto();
+	utstring_new(ukey);
 	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
-		sbuf_reset(ukey);
+		utstring_clear(ukey);
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
-			sbuf_putc(ukey, toupper(key[i]));
-		sbuf_finish(ukey);
-		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
+			utstring_printf(ukey, "%c", toupper(key[i]));
+		object = ucl_object_find_keyl(config, utstring_body(ukey), utstring_len(ukey));
 
-		if (strncasecmp(sbuf_data(ukey), "PACKAGESITE", sbuf_len(ukey))
-		    == 0 || strncasecmp(sbuf_data(ukey), "PUBKEY",
-		    sbuf_len(ukey)) == 0 || strncasecmp(sbuf_data(ukey),
-		    "MIRROR_TYPE", sbuf_len(ukey)) == 0) {
+		if (strncasecmp(utstring_body(ukey), "PACKAGESITE", utstring_len(ukey))
+		    == 0 || strncasecmp(utstring_body(ukey), "PUBKEY",
+		    utstring_len(ukey)) == 0 || strncasecmp(utstring_body(ukey),
+		    "MIRROR_TYPE", utstring_len(ukey)) == 0) {
 			pkg_emit_error("%s in pkg.conf is no longer "
 			    "supported.  Convert to the new repository style."
-			    "  See pkg.conf(5)", sbuf_data(ukey));
+			    "  See pkg.conf(5)", utstring_body(ukey));
 			fatal_errors = true;
 			continue;
 		}
@@ -987,9 +1046,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sbuf_data(ukey), sbuf_len(ukey), true);
+		ucl_object_insert_key(ncfg, ucl_object_copy(cur), utstring_body(ukey), utstring_len(ukey), true);
 	}
-	sbuf_delete(ukey);
+	utstring_free(ukey);
 
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
@@ -1104,20 +1163,24 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
-	if (strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
+	if (pkg_object_string(pkg_config_get("ABI")) == NULL ||
+	    strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
 		pkg_emit_error("Unable to determine ABI");
 		return (EPKG_FATAL);
 	}
 
 	pkg_debug(1, "%s", "pkg initialized");
 
+#ifdef __FreeBSD__
+	ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
+#endif
 	/* Start the event pipe */
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
-	developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	ctx.debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
@@ -1163,16 +1226,20 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 
 		if (fatal_errors) {
-			pkg_emit_error("invalid scheme %.*s", buf - url, url);
+			pkg_emit_error("invalid scheme %.*s", (int)(buf - url), url);
 			return (EPKG_FATAL);
 		}
 	}
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
-	if (nsname != NULL) {
-		if (set_nameserver(ucl_object_tostring_forced(o)) != 0) {
-			pkg_emit_error("Unable to set nameserver");
+	if (nsname != NULL && set_nameserver(nsname) != 0)
+			pkg_emit_error("Unable to set nameserver, ignoring");
+
+	/* Open metalog */
+	metalog = pkg_object_string(pkg_config_get("METALOG"));
+	if (metalog != NULL) {
+		if(metalog_open(metalog) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 	}
@@ -1208,14 +1275,14 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 {
 	struct pkg_repo *r;
 
-	r = calloc(1, sizeof(struct pkg_repo));
+	r = xcalloc(1, sizeof(struct pkg_repo));
 	r->ops = pkg_repo_find_type(type);
-	r->url = strdup(url);
+	r->url = xstrdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
-	r->name = strdup(name);
+	r->name = xstrdup(name);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
 	return (r);
@@ -1227,10 +1294,10 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 {
 
 	free(r->name);
-	r->name = strdup(name);
+	r->name = xstrdup(name);
 	if (url != NULL) {
 		free(r->url);
-		r->url = strdup(url);
+		r->url = xstrdup(url);
 	}
 	r->ops = pkg_repo_find_type(type);
 	HASH_DEL(repos, r);
@@ -1240,6 +1307,8 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 static void
 pkg_repo_free(struct pkg_repo *r)
 {
+	struct pkg_kv *kv, *tmp;
+
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
@@ -1247,6 +1316,10 @@ pkg_repo_free(struct pkg_repo *r)
 	if (r->ssh != NULL) {
 		fprintf(r->ssh, "quit\n");
 		pclose(r->ssh);
+	}
+	LL_FOREACH_SAFE(r->env, kv, tmp) {
+		LL_DELETE(r->env, kv);
+		pkg_kv_free(kv);
 	}
 	free(r);
 }
@@ -1262,6 +1335,13 @@ pkg_shutdown(void)
 
 	ucl_object_unref(config);
 	HASH_FREE(repos, pkg_repo_free);
+
+	if (ctx.rootfd != -1)
+		close(ctx.rootfd);
+	if (ctx.cachedirfd != -1)
+		close(ctx.rootfd);
+	if (ctx.pkg_dbdirfd != -1)
+		close(ctx.pkg_dbdirfd);
 
 	parsed = false;
 
@@ -1367,9 +1447,9 @@ pkg_repo_find(const char *reponame)
 
 int64_t
 pkg_set_debug_level(int64_t new_debug_level) {
-	int64_t old_debug_level = debug_level;
+	int64_t old_debug_level = ctx.debug_level;
 
-	debug_level = new_debug_level;
+	ctx.debug_level = new_debug_level;
 	return old_debug_level;
 }
 
@@ -1378,14 +1458,48 @@ pkg_set_rootdir(const char *rootdir) {
 	if (pkg_initialized())
 		return (EPKG_FATAL);
 
-	if (rootfd != -1)
-		close(rootfd);
+	if (ctx.rootfd != -1)
+		close(ctx.rootfd);
 
-	if ((rootfd = open(rootdir, O_DIRECTORY|O_RDONLY)) <= 0) {
+	if ((ctx.rootfd = open(rootdir, O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open %s", rootdir);
 		return (EPKG_FATAL);
 	}
-	pkg_rootdir = rootdir;
+	ctx.pkg_rootdir = rootdir;
 
 	return (EPKG_OK);
+}
+
+int
+pkg_get_cachedirfd(void)
+{
+	const char *cachedir;
+
+	if (ctx.cachedirfd == -1) {
+		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+		/*
+		 * do not check the value as if we cannot open it means
+		 * it has not been created yet
+		 */
+		ctx.cachedirfd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
+	}
+
+	return (ctx.cachedirfd);
+}
+
+int
+pkg_get_dbdirfd(void)
+{
+	const char *dbdir;
+
+	if (ctx.pkg_dbdirfd == -1) {
+		dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+		/*
+		 * do not check the value as if we cannot open it means
+		 * it has not been created yet
+		 */
+		ctx.pkg_dbdirfd = open(dbdir, O_DIRECTORY|O_CLOEXEC);
+	}
+
+	return (ctx.pkg_dbdirfd);
 }

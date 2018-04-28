@@ -33,7 +33,7 @@
 #endif
 
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 
 #include <err.h>
@@ -264,6 +264,7 @@ exec_info(int argc, char **argv)
 			return (EX_IOERR);
 		}
 
+		drop_privileges();
 #ifdef HAVE_CAPSICUM
 		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
@@ -315,11 +316,11 @@ exec_info(int argc, char **argv)
 		return (EX_UNAVAILABLE);
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
-		
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");

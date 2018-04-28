@@ -50,15 +50,16 @@
 #define MAXDIRS		1024		/* Maximum directories in path */
 #define MAXFILESIZE	(16*1024)	/* Maximum hints file size */
 
-struct shlib_list {
-	UT_hash_handle	 hh;
+struct shlib {
 	const char	*name;
 	char		 path[];
 };
 
-static int	shlib_list_add(struct shlib_list **shlib_list,
+KHASH_MAP_INIT_STR(shlib, struct shlib *);
+
+static int	shlib_list_add(kh_shlib_t **shlib_list,
 				const char *dir, const char *shlib_file);
-static int	scan_dirs_for_shlibs(struct shlib_list **shlib_list,
+static int	scan_dirs_for_shlibs(kh_shlib_t **shlib_list,
 				     int numdirs, const char **dirlist,
 	                             bool strictnames);
 static void	add_dir(const char *, const char *, int);
@@ -72,44 +73,39 @@ int			 insecure;
 
 /* Known shlibs on the standard system search path.  Persistent,
    common to all applications */
-static struct shlib_list *shlibs = NULL;
+static kh_shlib_t *shlibs = NULL;
 
 /* Known shlibs on the specific RPATH or RUNPATH of one binary.
    Evanescent. */
-static struct shlib_list *rpath = NULL;
+static kh_shlib_t *rpath = NULL;
 
 void
 shlib_list_init(void)
 {
-	assert(HASH_COUNT(shlibs) == 0);
+	assert(kh_count(shlibs) == 0);
 }
 
 void
 rpath_list_init(void)
 {
-	assert(HASH_COUNT(rpath) == 0);
+	assert(kh_count(rpath) == 0);
 }
 
 static int
-shlib_list_add(struct shlib_list **shlib_list, const char *dir,
+shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
     const char *shlib_file)
 {
-	struct shlib_list	*sl;
-	size_t	path_len, dir_len;
+	struct shlib	*sl;
+	size_t path_len, dir_len;
 
 	/* If shlib_file is already in the shlib_list table, don't try
 	 * and add it again */
-	HASH_FIND_STR(*shlib_list, shlib_file, sl);
-	if (sl != NULL)
+	if (kh_contains(shlib, *shlib_list, shlib_file))
 		return (EPKG_OK);
 
 	path_len = strlen(dir) + strlen(shlib_file) + 2;
 
-	sl = calloc(1, sizeof(struct shlib_list) + path_len);
-	if (sl == NULL) {
-		warnx("Out of memory");
-		return (EPKG_FATAL);
-	}
+	sl = xcalloc(1, sizeof(struct shlib) + path_len);
 
 	strlcpy(sl->path, dir, path_len);
 	dir_len = strlcat(sl->path, "/", path_len);
@@ -117,8 +113,7 @@ shlib_list_add(struct shlib_list **shlib_list, const char *dir,
 	
 	sl->name = sl->path + dir_len;
 
-	HASH_ADD_KEYPTR(hh, *shlib_list, sl->name,
-			strlen(sl->name), sl);
+	kh_add(shlib, *shlib_list, sl, sl->name, free);
 
 	return (EPKG_OK);
 }
@@ -126,16 +121,13 @@ shlib_list_add(struct shlib_list **shlib_list, const char *dir,
 const char *
 shlib_list_find_by_name(const char *shlib_file)
 {
-	struct shlib_list *sl;
+	struct shlib *sl;
 
-	if (HASH_COUNT(shlibs) == 0)
-		return (NULL);
-
-	HASH_FIND_STR(rpath, shlib_file, sl);
+	kh_find(shlib, rpath, shlib_file, sl);
 	if (sl != NULL)
 		return (sl->path);
 
-	HASH_FIND_STR(shlibs, shlib_file, sl);
+	kh_find(shlib, shlibs, shlib_file, sl);
 	if (sl != NULL)
 		return (sl->path);
 		
@@ -145,24 +137,16 @@ shlib_list_find_by_name(const char *shlib_file)
 void
 shlib_list_free(void)
 {
-	struct shlib_list	*sl1, *sl2;
 
-	HASH_ITER(hh, shlibs, sl1, sl2) {
-		HASH_DEL(shlibs, sl1);
-		free(sl1);
-	}
+	kh_free(shlib, shlibs, struct shlib, free);
 	shlibs = NULL;
 }
 
 void
 rpath_list_free(void)
 {
-	struct shlib_list	*sl1, *sl2;
 
-	HASH_ITER(hh, rpath, sl1, sl2) {
-		HASH_DEL(rpath, sl1);
-		free(sl1);
-	}
+	kh_free(shlib, rpath, struct shlib, free);
 	rpath = NULL;
 }
 
@@ -201,7 +185,7 @@ add_dir(const char *hintsfile, const char *name, int trusted)
 }
 
 static int
-scan_dirs_for_shlibs(struct shlib_list **shlib_list, int numdirs,
+scan_dirs_for_shlibs(kh_shlib_t **shlib_list, int numdirs,
 		     const char **dirlist, bool strictnames)
 {
 	int	i;
@@ -288,11 +272,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	if (i > 0)
 		buflen += i * numdirs;
 
-	dirlist = calloc(1, buflen);
-	if (dirlist == NULL) {
-		warnx("Out of memory");
-		return (EPKG_FATAL);
-	}
+	dirlist = xcalloc(1, buflen);
 	buf = (char *)dirlist + numdirs * sizeof(char *);
 
 	buf[0] = '\0';
@@ -322,7 +302,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 int 
 shlib_list_from_elf_hints(const char *hintsfile)
 {
-#ifndef __linux__
+#if defined __FreeBSD__ || defined __DragonFly__
 	read_elf_hints(hintsfile, 1);
 #endif
 
@@ -344,7 +324,7 @@ shlib_list_from_stage(const char *stage)
 		return;
 
 	for (i = 0; i < NELEM(stage_dirs); i++) {
-		asprintf(&dir, "%s%s", stage, stage_dirs[i]);
+		xasprintf(&dir, "%s%s", stage, stage_dirs[i]);
 		scan_dirs_for_shlibs(&shlibs, 1, (const char **)&dir, true);
 		free(dir);
 	}
@@ -436,8 +416,7 @@ read_dirs_from_file(const char *hintsfile, const char *listfile)
 			warnx("%s:%d: trailing characters ignored",
 			    listfile, linenum);
 
-		if ((sp = strdup(sp)) == NULL)
-			errx(1, "Out of memory");
+		sp = xstrdup(sp);
 		add_dir(hintsfile, sp, 0);
 	}
 
@@ -518,8 +497,7 @@ write_elf_hints(const char *hintsfile)
 	FILE			*fp;
 	int			 i;
 
-	if (asprintf(&tempname, "%s.XXXXXX", hintsfile) == -1)
-		errx(1, "Out of memory");
+	xasprintf(&tempname, "%s.XXXXXX", hintsfile);
 	if ((fd = mkstemp(tempname)) ==  -1)
 		err(1, "mkstemp(%s)", tempname);
 	if (fchmod(fd, 0444) == -1)

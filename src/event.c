@@ -33,13 +33,14 @@
 #include "pkg_config.h"
 #endif
 
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 
 #ifdef HAVE_CAPSICUM
-#include <sys/capability.h>
+#include <sys/capsicum.h>
 #endif
 
 #include <err.h>
@@ -53,13 +54,15 @@
 #include <kvec.h>
 
 #include <bsd_compat.h>
+#include <utstring.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
 
 #define STALL_TIME 5
 
-struct sbuf *messages = NULL;
+UT_string *messages = NULL;
+UT_string *conflicts = NULL;
 
 struct cleanup {
 	void *data;
@@ -67,7 +70,7 @@ struct cleanup {
 };
 
 static char *progress_message = NULL;
-static struct sbuf *msg_buf = NULL;
+static UT_string *msg_buf = NULL;
 static int last_progress_percent = -1;
 static bool progress_started = false;
 static bool progress_interrupted = false;
@@ -83,7 +86,6 @@ static bool signal_handler_installed = false;
 
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
-static const char *unit_IEC[] = { "  ", "Ki", "Mi", "Gi", "Ti", };
 
 static void draw_progressbar(int64_t current, int64_t total);
 
@@ -101,38 +103,6 @@ cleanup_handler(int dummy __unused)
 		ev->cb(ev->data);
 	}
 	exit(1);
-}
-
-static void
-format_rate_IEC(char *buf, int size, off_t bytes)
-{
-	int i;
-
-	bytes *= 100;
-	for (i = 0; bytes >= 100*1000 && unit_IEC[i][0] != 'T'; i++)
-		bytes = (bytes + 512) / 1024;
-	if (i == 0) {
-		i++;
-		bytes = (bytes + 512) / 1024;
-	}
-	snprintf(buf, size, "%3lld.%1lld%s%s",
-	    (long long) (bytes + 5) / 100,
-	    (long long) (bytes + 5) / 10 % 10,
-	    unit_IEC[i],
-	    i ? "B" : " ");
-}
-
-static void
-format_size_IEC(char *buf, int size, off_t bytes)
-{
-	int i;
-
-	for (i = 0; bytes >= 10000 && unit_IEC[i][0] != 'T'; i++)
-		bytes = (bytes + 512) / 1024;
-	snprintf(buf, size, "%4lld%s%s",
-	    (long long) bytes,
-	    unit_IEC[i],
-	    i ? "B" : " ");
 }
 
 static void
@@ -154,34 +124,20 @@ format_rate_SI(char *buf, int size, off_t bytes)
 	    i ? "B" : " ");
 }
 
-static void
-format_size_SI(char *buf, int size, off_t bytes)
+void
+job_status_end(UT_string *msg)
 {
-	int i;
-
-	for (i = 0; bytes >= 10000 && unit_SI[i][0] != 'T'; i++)
-		bytes = (bytes + 500) / 1000;
-	snprintf(buf, size, "%4lld%s%s",
-	    (long long) bytes,
-	    unit_SI[i],
-	    i ? "B" : " ");
+	printf("%s\n", utstring_body(msg));
+	/*printf("\033]0; %s\007", utstring_body(msg));*/
+	utstring_clear(msg);
 }
 
 void
-job_status_end(struct sbuf *msg)
-{
-	sbuf_finish(msg);
-	printf("%s\n", sbuf_data(msg));
-	/*printf("\033]0; %s\007", sbuf_data(msg));*/
-	sbuf_clear(msg);
-}
-
-void
-job_status_begin(struct sbuf *msg)
+job_status_begin(UT_string *msg)
 {
 	int n;
 
-	sbuf_clear(msg);
+	utstring_clear(msg);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
 	static int jailed = -1;
@@ -198,7 +154,7 @@ job_status_begin(struct sbuf *msg)
 		if (hostname[0] == '\0')
 			gethostname(hostname, sizeof(hostname));
 
-		sbuf_printf(msg, "[%s] ", hostname);
+		utstring_printf(msg, "[%s] ", hostname);
 	}
 #endif
 
@@ -207,16 +163,20 @@ job_status_begin(struct sbuf *msg)
 		if (add_deps_depth > 1) {
 			for (n = 0; n < (2 * add_deps_depth); ++n) {
 				if (n % 4 == 0 && n < (2 * add_deps_depth))
-					sbuf_cat(msg, "|");
+					utstring_printf(msg, "|");
 				else
-					sbuf_cat(msg, " ");
+					utstring_printf(msg, " ");
 			}
 		}
-		sbuf_cat(msg, "`-- ");
+		utstring_printf(msg, "`-- ");
 	}
 
-	if (nbactions > 0 && nbdone > 0)
-		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0)
+		utstring_printf(msg, "[%d/%d] ", nbdone, (nbtodl) ? nbtodl : nbactions);
+	if (nbtodl > 0 && nbtodl == nbdone) {
+		nbtodl = 0;
+		nbdone = 0;
+	}
 }
 
 static int
@@ -224,6 +184,7 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
 	pid_t pid;
 	int status, ret;
+	struct rlimit rl_zero;
 
 	ret = -1;
 	pid = fork();
@@ -257,6 +218,10 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 		return (ret);
 	}
 
+	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
+	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
+		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
+
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
@@ -265,10 +230,6 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 	}
 #endif
 
-	/*
-	 * XXX: if capsicum is not enabled we basically have no idea of how to
-	 * make a sandbox
-	 */
 	ret = func(fd, ud);
 
 	_exit(ret);
@@ -279,6 +240,7 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 		void *ud)
 {
 	pid_t pid;
+	struct rlimit rl_zero;
 	int	status, ret = EPKG_OK;
 	int pair[2], r, allocated_len = 0, off = 0;
 	char *buf = NULL;
@@ -362,6 +324,12 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	/* Here comes child process */
 	close(pair[1]);
 
+	drop_privileges();
+
+	rl_zero.rlim_cur = rl_zero.rlim_max = 0;
+	if (setrlimit(RLIMIT_NPROC, &rl_zero) == -1)
+		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
+
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
@@ -369,10 +337,6 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 	}
 #endif
 
-	/*
-	 * XXX: if capsicum is not enabled we basically have no idea of how to
-	 * make a sandbox
-	 */
 	ret = func(pair[0], ud);
 
 	close(pair[0]);
@@ -391,8 +355,7 @@ progressbar_start(const char *pmsg)
 	if (pmsg != NULL)
 		progress_message = strdup(pmsg);
 	else {
-		sbuf_finish(msg_buf);
-		progress_message = strdup(sbuf_data(msg_buf));
+		progress_message = strdup(utstring_body(msg_buf));
 	}
 	last_progress_percent = -1;
 	last_tick = 0;
@@ -571,10 +534,10 @@ event_callback(void *data, struct pkg_event *ev)
 	struct cleanup *evtmp;
 	int *debug = data, i;
 	struct pkg_event_conflict *cur_conflict;
-	const char *filename;
+	const char *filename, *reponame;
 
 	if (msg_buf == NULL) {
-		msg_buf = sbuf_new_auto();
+		utstring_new(msg_buf);
 	}
 
 	/*
@@ -617,6 +580,8 @@ event_callback(void *data, struct pkg_event *ev)
 			printf("\n");
 		break;
 	case PKG_EVENT_FETCH_BEGIN:
+		if (nbtodl > 0)
+			nbdone++;
 		if (quiet)
 			break;
 		filename = strrchr(ev->e_fetching.url, '/');
@@ -631,8 +596,7 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		job_status_begin(msg_buf);
 		progress_debit = true;
-		sbuf_printf(msg_buf, "Fetching %s", filename);
-
+		utstring_printf(msg_buf, "Fetching %s", filename);
 		break;
 	case PKG_EVENT_FETCH_FINISHED:
 		progress_debit = false;
@@ -643,15 +607,13 @@ event_callback(void *data, struct pkg_event *ev)
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
-		pkg_sbuf_printf(msg_buf, "Installing %n-%v...\n", pkg,
+		pkg_utstring_printf(msg_buf, "Installing %n-%v...\n", pkg,
 		    pkg);
-		sbuf_finish(msg_buf);
-		printf("%s", sbuf_data(msg_buf));
+		printf("%s", utstring_body(msg_buf));
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
-		pkg = ev->e_install_finished.pkg;
 		break;
 	case PKG_EVENT_EXTRACT_BEGIN:
 		if (quiet)
@@ -659,7 +621,7 @@ event_callback(void *data, struct pkg_event *ev)
 		else {
 			job_status_begin(msg_buf);
 			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Extracting %n-%v", pkg, pkg);
+			pkg_utstring_printf(msg_buf, "Extracting %n-%v", pkg, pkg);
 		}
 		break;
 	case PKG_EVENT_EXTRACT_FINISHED:
@@ -679,6 +641,10 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
+		if (conflicts != NULL) {
+			printf("%s", utstring_body(conflicts));
+			conflicts = NULL;
+		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		if (*debug == 0)
@@ -704,9 +670,8 @@ event_callback(void *data, struct pkg_event *ev)
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
-		pkg_sbuf_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
-		sbuf_finish(msg_buf);
-		printf("%s", sbuf_data(msg_buf));
+		pkg_utstring_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
+		printf("%s", utstring_body(msg_buf));
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -718,7 +683,7 @@ event_callback(void *data, struct pkg_event *ev)
 		else {
 			job_status_begin(msg_buf);
 			pkg = ev->e_install_begin.pkg;
-			pkg_sbuf_printf(msg_buf, "Deleting files for %n-%v",
+			pkg_utstring_printf(msg_buf, "Deleting files for %n-%v",
 			    pkg, pkg);
 		}
 		break;
@@ -734,25 +699,23 @@ event_callback(void *data, struct pkg_event *ev)
 
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
-			pkg_sbuf_printf(msg_buf, "Downgrading %n from %v to %v...\n",
+			pkg_utstring_printf(msg_buf, "Downgrading %n from %v to %v...\n",
 			    pkg_new, pkg_old, pkg_new);
 			break;
 		case PKG_REINSTALL:
-			pkg_sbuf_printf(msg_buf, "Reinstalling %n-%v...\n",
+			pkg_utstring_printf(msg_buf, "Reinstalling %n-%v...\n",
 		    pkg_old, pkg_old);
 			break;
 		case PKG_UPGRADE:
-			pkg_sbuf_printf(msg_buf, "Upgrading %n from %v to %v...\n",
+			pkg_utstring_printf(msg_buf, "Upgrading %n from %v to %v...\n",
 			    pkg_new, pkg_old, pkg_new);
 			break;
 		}
-		sbuf_finish(msg_buf);
-		printf("%s", sbuf_data(msg_buf));
+		printf("%s", utstring_body(msg_buf));
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
-		pkg_new = ev->e_upgrade_finished.n;
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
@@ -860,20 +823,18 @@ event_callback(void *data, struct pkg_event *ev)
 		    ev->e_progress_tick.total);
 		break;
 	case PKG_EVENT_BACKUP:
-		sbuf_cat(msg_buf, "Backing up");
-		sbuf_finish(msg_buf);
+		utstring_printf(msg_buf, "Backing up");
 		break;
 	case PKG_EVENT_RESTORE:
-		sbuf_cat(msg_buf, "Restoring");
-		sbuf_finish(msg_buf);
+		utstring_printf(msg_buf, "Restoring");
 		break;
 	case PKG_EVENT_NEW_ACTION:
 		nbdone++;
 		break;
 	case PKG_EVENT_MESSAGE:
 		if (messages == NULL)
-			messages = sbuf_new_auto();
-		sbuf_cat(messages, ev->e_pkg_message.msg);
+			utstring_new(messages);
+		utstring_printf(messages, "%s", ev->e_pkg_message.msg);
 		break;
 	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
 		if (!signal_handler_installed) {
@@ -897,6 +858,27 @@ event_callback(void *data, struct pkg_event *ev)
 				break;
 			}
 		}
+		break;
+	case PKG_EVENT_CONFLICTS:
+		if (conflicts == NULL) {
+			utstring_new(conflicts);
+		}
+		pkg_utstring_printf(conflicts, "  - %n-%v",
+		    ev->e_conflicts.p1, ev->e_conflicts.p1);
+		if (pkg_repos_total_count() > 1) {
+			pkg_get(ev->e_conflicts.p1, PKG_REPONAME, &reponame);
+			utstring_printf(conflicts, " [%s]",
+			    reponame == NULL ? "installed" : reponame);
+		}
+		pkg_utstring_printf(conflicts, " conflicts with %n-%v",
+		    ev->e_conflicts.p2, ev->e_conflicts.p2);
+		if (pkg_repos_total_count() > 1) {
+			pkg_get(ev->e_conflicts.p2, PKG_REPONAME, &reponame);
+			utstring_printf(conflicts, " [%s]",
+			    reponame == NULL ? "installed" : reponame);
+		}
+		utstring_printf(conflicts, " on %s\n",
+		    ev->e_conflicts.path);
 		break;
 	default:
 		break;

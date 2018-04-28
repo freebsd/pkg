@@ -5,7 +5,7 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <utstring.h>
 
 #include <bsd_compat.h>
 
@@ -57,7 +58,7 @@ int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
 	struct pkg_message	*msg;
-	struct sbuf	*message;
+	UT_string	*message = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
@@ -95,7 +96,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 				return (ret);
 		} else {
 			ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
-			if (ret != EPKG_OK)
+			if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
 				return (ret);
 		}
 	}
@@ -104,11 +105,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
             != EPKG_OK)
 		return (ret);
 
-	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
-		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
-		if (ret != EPKG_OK)
-			return (ret);
-	}
+	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0)
+		pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
 
 	ret = pkg_delete_dirs(db, pkg, NULL);
 	if (ret != EPKG_OK)
@@ -116,24 +114,22 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
-		if (pkg->message != NULL)
-			message = sbuf_new_auto();
+		utstring_renew(message);
 		LL_FOREACH(pkg->message, msg) {
 			if (msg->type == PKG_MESSAGE_REMOVE) {
-				if (sbuf_len(message) == 0) {
-					pkg_sbuf_printf(message, "Message from "
+				if (utstring_len(message) == 0) {
+					pkg_utstring_printf(message, "Message from "
 					    "%n-%v:\n", pkg, pkg);
 				}
-				sbuf_printf(message, "%s\n", msg->str);
+				utstring_printf(message, "%s\n", msg->str);
 			}
 		}
 		if (pkg->message != NULL) {
-			if (sbuf_len(message) > 0) {
-				sbuf_finish(message);
-				pkg_emit_message(sbuf_data(message));
+			if (utstring_len(message) > 0) {
+				pkg_emit_message(utstring_body(message));
 			}
-			sbuf_delete(message);
 		}
+		utstring_free(message);
 
 	}
 
@@ -172,7 +168,7 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 			pkg_debug(1, "Replacing in deletion %s with %s",
 			    pkg->dir_to_del[i], path);
 			free(pkg->dir_to_del[i]);
-			pkg->dir_to_del[i] = strdup(path);
+			pkg->dir_to_del[i] = xstrdup(path);
 			return;
 		}
 	}
@@ -181,11 +177,11 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 
 	if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
 		pkg->dir_to_del_cap += 64;
-		pkg->dir_to_del = realloc(pkg->dir_to_del,
+		pkg->dir_to_del = xrealloc(pkg->dir_to_del,
 		    pkg->dir_to_del_cap * sizeof(char *));
 	}
 
-	pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+	pkg->dir_to_del[pkg->dir_to_del_len++] = xstrdup(path);
 }
 
 static void
@@ -211,7 +207,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 		return;
 
 	pkg_debug(1, "Number of packages owning the directory '%s': %d",
-	    fullpath, cnt);
+	    fullpath, (int)cnt);
 	/*
 	 * At this moment the package we are removing have already been removed
 	 * from the local database so if anything else is owning the directory
@@ -255,6 +251,8 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 
 	/* remove the trailing '/' */
 	tmp = strrchr(dir, '/');
+	if (tmp == NULL)
+		return;
 	if (tmp == dir)
 		return;
 
@@ -291,8 +289,6 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	int fd;
 #endif
 #endif
-	int ret;
-
 	pkg_open_root_fd(pkg);
 
 	path = file->path;
@@ -301,25 +297,8 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
-	while (prefix_rel[len - 1] == '/')
+	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
-
-	/* Regular files and links */
-	/* check checksum */
-	if (!force && file->sum != NULL) {
-		ret = pkg_checksum_validate_fileat(pkg->rootfd, path, file->sum);
-		if (ret == ENOENT) {
-			pkg_emit_file_missing(pkg, file);
-			return;
-		}
-		if (ret != 0) {
-			pkg_emit_error("%s%s%s different from original "
-			    "checksum, not removing", pkg->rootpath,
-			    pkg->rootpath[strlen(pkg->rootpath) - 1] == '/' ? "" : "/",
-			    path);
-			return;
-		}
-	}
 
 #ifdef HAVE_CHFLAGS
 	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1) {
@@ -356,7 +335,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 
 int
 pkg_delete_files(struct pkg *pkg, unsigned force)
-	/* force: 0 ... be careful and vocal about it. 
+	/* force: 0 ... be careful and vocal about it.
 	 *        1 ... remove files without bothering about checksums.
 	 *        2 ... like 1, but remain silent if removal fails.
 	 */
@@ -408,10 +387,10 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	} else {
 		if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
 			pkg->dir_to_del_cap += 64;
-			pkg->dir_to_del = realloc(pkg->dir_to_del,
+			pkg->dir_to_del = xrealloc(pkg->dir_to_del,
 			    pkg->dir_to_del_cap * sizeof(char *));
 		}
-		pkg->dir_to_del[pkg->dir_to_del_len++] = strdup(path);
+		pkg->dir_to_del[pkg->dir_to_del_len++] = xstrdup(path);
 	}
 }
 
