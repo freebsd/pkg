@@ -62,11 +62,13 @@ matching against
 case sensitive.
 .It Fl e , Cm --evaluate
 Match packages using the given
-.Ar evaluation-condition.
-See EVALUATION FORMAT for details.
+.Ar evaluation-condition .
+See
+.Sx EVALUATION FORMAT
+for details.
 .It Fl F Ar pkg-file , Cm --file Ar pkg-file
 Display information only for the package file
-.Ar pkg-name
+.Ar pkg-name .
 .It Fl i , Cm --case-insensitive
 Make the standard or regular expression
 .Fl ( x )
@@ -89,9 +91,10 @@ of
 .Xr re_format 7 .
 .El
 .Sh QUERY FORMAT
-There are two types of keywords for the query format: the multiline and the normal
-one. Only one type of multiline pattern is accepted for a given query.
-.Ss Normal patterns:
+There are two types of keywords for the query format: the multiline and the
+normal one.
+Only one type of multiline pattern is accepted for a given query.
+.Ss Normal patterns
 .Bl -tag -width F1
 .It Cm \&%n
 Name of the matched package
@@ -143,8 +146,8 @@ The name of the repository from which the package was installed if
 available, or
 .Dq unknown-repository
 otherwise.
-.It Cm \&%? Ns Op drCFODLUGBbA
-Returns 0 if the list is empty and 1 if the list has information to display
+.It Cm \&%\&? Ns Op drCFODLUGBbA
+Returns 0 if the list is empty and 1 if the list has information to display.
 .Bl -tag -width indent
 .It Cm d
 for dependencies
@@ -202,7 +205,7 @@ for provided shared libraries
 for annotations
 .El
 .El
-.Ss Multiline patterns:
+.Ss Multiline patterns
 .Bl -tag -width F1
 .It Cm \&%d Ns Op nov
 Expands to the list of dependencies for the matched package, where
@@ -263,8 +266,8 @@ stands for the annotation value.
 .Sh EVALUATION FORMAT
 Packages can be selected by using expressions comparing
 .Ar Variables
-(see below) to string or integer values. The mode of comparison is specified
-by the
+(see below) to string or integer values.
+The mode of comparison is specified by the
 .Ar Operator
 (also listed below).
 Expressions can be combined using && (for and) and || (for or).
