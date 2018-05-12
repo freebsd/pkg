@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd September 09, 2015
+.Dd May 8, 2018
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -36,18 +36,18 @@
 .Fl T Ar pkgname Ar pattern
 .Pp
 .Nm
-.Op Cm --{index,ports,remote}
-.Op Cm --{help,origin,quiet,verbose,no-repo-update}
-.Op Cm --like Ar limchar
-.Op Cm --not-like Ar limchar
-.Op Cm --{case-sensitive,exact,glob,case-insensitive,regex} Ar pattern
-.Op Cm --repository Ar reponame
-.Op Cm --match-origin Ar origin
+.Op Fl -{index,ports,remote}
+.Op Fl -{help,origin,quiet,verbose,no-repo-update}
+.Op Fl -like Ar limchar
+.Op Fl -not-like Ar limchar
+.Op Fl -{case-sensitive,exact,glob,case-insensitive,regex} Ar pattern
+.Op Fl -repository Ar reponame
+.Op Fl -match-origin Ar origin
 .Op Ar index
 .Nm
-.Cm --test-version Ar version1 Ar version2
+.Fl -test-version Ar version1 Ar version2
 .Nm
-.Cm --test-pattern Ar pkgname Ar pattern
+.Fl -test-pattern Ar pkgname Ar pattern
 .Sh DESCRIPTION
 .Nm
 is used for generating a report of packages installed by
@@ -124,16 +124,15 @@ with the corresponding entry in the index.
 The following options are supported by
 .Nm :
 .Bl -tag -width repository
-.It Fl C , Cm --case-sensitive
+.It Fl C , Fl -case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl h , Cm --help
+.It Fl h , Fl -help
 Displays usage information
-.It Fl I Op Ar index
-.It Cm --index Op Ar index
+.It Fl I Op Ar index , Fl -index Op Ar index
 Use
 .Pa index
 file for determining if a package is out of date.
@@ -141,18 +140,18 @@ If no
 .Pa index
 file name is specified, uses the default index file.
 This is the default, if the index file exists.
-.It Fl P , Cm --ports
+.It Fl P , Fl -ports
 Use ports for determining if a package is out of date.
 This is the default if the index file is not present and a ports tree
 exists.
 The tree used can be overridden by PORTSDIR, see
 .Xr pkg 5
 for more information.
-.It Fl R , Cm --remote
+.It Fl R , Fl -remote
 Use repository catalogue for determining if a package is out of date.
 This is the default if neither the ports index nor the ports tree
 exists.
-.It Fl U , Cm --no-repo-update
+.It Fl U , Fl -no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
 from remote.
 This only has any effect in combination with the
@@ -161,7 +160,7 @@ option.
 Automatic repository catalogue updates are only attempted when the
 effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
-.It Fl r Ar reponame , Cm --repository Ar reponame
+.It Fl r Ar reponame , Fl -repository Ar reponame
 Compare installed package versions to packages available from the
 named repository only, irrespective of the configured
 .Dq active
@@ -172,24 +171,24 @@ By default all repository catalogues marked
 are used for version comparisons.
 Implies
 .Fl R .
-.It Fl o , Cm --origin
+.It Fl o , Fl -origin
 Display package origin, instead of package name.
-.It Fl q , Cm --quiet
+.It Fl q , Fl -quiet
 Be quiet.
 Less output will be produced.
-.It Fl v , Cm --verbose
+.It Fl v , Fl -verbose
 Be verbose.
-.It Fl l Ar limchar , Cm --like Ar limchar
+.It Fl l Ar limchar , Fl -like Ar limchar
 Display only the packages which status flag matches the one specified by
 .Ar limchar.
-.It Fl L Ar limchar , Cm --not-like Ar limchar
+.It Fl L Ar limchar , Fl -not-like Ar limchar
 Does the opposite of
 .Fl l
 flag.
 Displays the packages which status flag does not match the one
 specified by
 .Ar limchar
-.It Fl i , Cm --case-insensitive
+.It Fl i , Fl -case-insensitive
 Make the exact
 .Fl ( e )
 or regular expression
@@ -201,21 +200,21 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl x Ar pattern , Cm --regex Ar pattern
+.It Fl x Ar pattern , Fl -regex Ar pattern
 Only display the packages that match the regular expression.
 Uses the "modern" or "extended" syntax of
 .Xr re_format 7 .
-.It Fl g Ar pattern , Cm --glob Ar pattern
+.It Fl g Ar pattern , Fl -glob Ar pattern
 Only display the packages that match the glob expression.
-.It Fl e Ar string , Cm --exact Ar string
+.It Fl e Ar string , Fl -exact Ar string
 Only display the packages that exactly match the string.
-.It Fl O Ar origin , Cm --match-origin Ar origin
+.It Fl O Ar origin , Fl -match-origin Ar origin
 Display only the packages which origin matches
 .Ar origin.
-.It Fl n Ar pkgname , Cm --match-name Ar pkgname
+.It Fl n Ar pkgname , Fl -match-name Ar pkgname
 Display only the packages which name matches
 .Ar pkgname.
-.It Fl t Ar version1 Ar version2 , Cm --test-version Ar version1 Ar version2
+.It Fl t Ar version1 Ar version2 , Fl -test-version Ar version1 Ar version2
 Test a pair of version number strings and exit.
 The output consists of one of the single characters
 .Li =
@@ -225,7 +224,7 @@ The output consists of one of the single characters
 .Li \&>
 (left-hand number greater) on standard output.
 This flag is mostly useful for scripts or for testing.
-.It Fl T Ar pkgname Ar pattern , Cm --test-pattern Ar pkgname Ar pattern
+.It Fl T Ar pkgname Ar pattern , Fl -test-pattern Ar pkgname Ar pattern
 Compare
 .Ar pkgname
 against shell glob
