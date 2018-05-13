@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 14, 2015
+.Dd May 13, 2018
 .Dt PKG-ALIAS 8
 .Os
 .Sh NAME
@@ -26,8 +26,8 @@
 .Op Fl l
 .Pp
 .Nm "pkg alias"
-.Op Cm --quiet
-.Op Cm --list
+.Op Fl -quiet
+.Op Fl -list
 .Ar [alias]
 .Sh DESCRIPTION
 .Nm
@@ -35,23 +35,29 @@ displays configured aliases
 If given the name of an existing alias only shows the aliased arguments to
 .Xr pkg 8 .
 Without arguments all aliases and their respective
-.Xr pkg 8 .
+.Xr pkg 8
 arguments are printed.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width quiet
-.It Fl l, Cm --list
-.It Fl q, Cm --quiet
-Force quiet output. (aka suppress the header)
+.It Fl l , Fl -list
+Print all aliases, one alias per line, without their
+.Xr pkg 8
+arguments.
+.It Fl q , Fl -quiet
+Force quiet output (suppress column headers).
+.El
 .Sh FILES
 .Xr pkg.conf 5
 .Sh EXAMPLES
-Display all aliases
+Display all aliases:
 .Dl % pkg alias
-Display 
-.Xr pkg 8 .
-for alias 'size'
+.Pp
+Display
+.Xr pkg 8
+for alias
+.Dq Li size :
 .Dl % pkg alias size
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
