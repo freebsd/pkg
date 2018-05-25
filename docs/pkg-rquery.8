@@ -91,9 +91,9 @@ is run by a user ID with write access to the package database,
 unless disabled by the
 .Fl U
 flag or setting
-.Cm REPO_AUTOUPDATE
+.Va REPO_AUTOUPDATE
 to
-.Sy NO
+.Dq Li NO
 in
 .Xr pkg.conf 5 .
 .Sh OPTIONS
@@ -104,20 +104,22 @@ The following options are supported by
 Match all packages from the database.
 .It Fl C , Fl -case-sensitive
 Make the standard or the regular expression
-.Fl ( x )
+.Pq Fl x
 matching against
 .Ar pkg-name
 case sensitive.
 .It Fl e , Fl -evaluate
 Match packages using the given
 .Ar evaluation-condition.
-See EVALUATION FORMAT for details.
+See
+.Sx EVALUATION FORMAT
+for details.
 .It Fl I , Fl -index-line
 Print out the corresponding line from the ports
 .Pa INDEX
 file for each matched package.
 This option is a shorthand
-.Ao query-format Ac
+.Ao Ar query-format Ac
 argument.
 Only the first query format (including the
 .Fl I
@@ -133,17 +135,19 @@ By default all repository catalogues marked
 are queried.
 .It Fl g , Fl -glob
 Treat
-.Ao pattern Ac
+.Ao Ar pattern Ac
 as a glob pattern.
 .It Fl i , Fl -case-insensitive
 Make the standard or regular expression
-.Fl ( x )
+.Pq Fl x
 matching against
 .Ar pkg-name
 case insensitive.
 This is the default, unless modified by setting
-.Ev CASE_SENSITIVE_MATCH
-to true in
+.Va CASE_SENSITIVE_MATCH
+to
+.Eq Li true
+in
 .Pa pkg.conf .
 .It Fl U , Fl -no-repo-update
 Suppress the automatic update of the local copy of the repository catalogue
@@ -153,9 +157,12 @@ effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
 .It Fl x , Fl -regex
 Treat
-.Ao pattern Ac
-as a regular expression according to the "modern" or "extended" syntax
-of
+.Ao Ar pattern Ac
+as a regular expression according to the
+.Dq modern
+or
+.Dq extended
+syntax of
 .Xr re_format 7 .
 .El
 .Sh QUERY FORMAT
@@ -164,7 +171,7 @@ one. Only one type of multiline pattern is accepted for a given query.
 .Ss Normal patterns:
 .Bl -tag -width F1
 .It Cm \&%R
-Name of the repository package is in
+Name of the repository the package is in
 .It Cm \&%n
 Name of the matched package
 .It Cm \&%v
@@ -184,16 +191,26 @@ Home page of the matched package
 .It Cm \&%q
 Architecture of the matched package
 .It Cm \&%l
-license logic of the matched package - nothing for single, & for AND, and | for OR
-.It Cm \&%s Ns Op bh
+License logic of the matched package
+.Pp
+One of the following will be printed:
+.Bl -tag -width " single " -compact
+.It Dq single
+if the package is distributed under one license
+.It Dq and
+if the package is multi-licensed
+.It Dq or
+if the package is dual-licensed
+.El
+.It Cm \&%s Ns Op Cm bh
 The flat size of the matched package, where
 .Cm b
 is in bytes, and
 .Cm h
-is in human readable format.
+is in human readable format
 .It Cm \&%M
-message contained in the matched package
-.It Cm \&%? Ns Op drCOLBbA
+Message contained in the matched package
+.It Cm \&%? Ns Op Cm drCOLBbA
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -212,7 +229,7 @@ for required shared libraries
 for provided shared libraries
 .It Cm A
 for annotations
-.It Cm \&%# Ns Op drCOLBbA
+.It Cm \&%# Ns Op Cm drCOLBbA
 Returns the number of elements in the list
 .Bl -tag -width indent
 .It Cm d
@@ -236,7 +253,7 @@ for annotations
 .El
 .Ss Multiline patterns:
 .Bl -tag -width F1
-.It Cm \&%d Ns Op nov
+.It Cm \&%d Ns Op Cm nov
 Expands to the list of dependencies for the matched package, where
 .Cm n
 stands for the package name,
@@ -244,7 +261,7 @@ stands for the package name,
 for the package origin, and
 .Cm v
 for the package version.
-.It Cm \&%r Ns Op nov
+.It Cm \&%r Ns Op Cm nov
 Expands to the list of reverse dependencies for the matched package, where
 .Cm n
 stands for the package name,
@@ -254,7 +271,7 @@ for the package origin, and
 for the package version.
 .It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm \&%O Ns Op kvdD
+.It Cm \&%O Ns Op Cm kvdD
 Expands to the list of options of the matched package, where
 .Cm k
 stands for option key
@@ -272,7 +289,7 @@ Expands to the list of license(s) for the matched package.
 Expands to the list of shared libraries used by programs from the matched package.
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
-.It Cm \&%A Ns Op tv
+.It Cm \&%A Ns Op Cm tv
 Expands to the list of annotations associated with the matched
 package, where
 .Cm t
