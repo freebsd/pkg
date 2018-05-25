@@ -22,14 +22,28 @@
 .Nd sanity check installed packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl Bdsr
+.Sm off
+.Fl B | Fl d | Fl s | Fl r
+.Sm on
 .Op Fl nqvy
-.Op Fl a | Cgix Ar pattern
+.Fl a
+.Nm
+.Sm off
+.Fl B | Fl d | Fl s | Fl r
+.Sm on
+.Op Fl nqvy
+.Op Fl Cgix
+.Ar pattern
 .Pp
 .Nm
-.Op Fl -{shlibs,dependencies,checksums,recompute}
+.Fl -{shlibs,dependencies,checksums,recompute}
 .Op Fl -{dry-run,quiet,verbose,yes}
-.Op Fl -all | Fl -{case-sensitive,glob,case-insensitive,regex} Ar pattern
+.Fl -all
+.Nm
+.Fl -{shlibs,dependencies,checksums,recompute}
+.Op Fl -{dry-run,quiet,verbose,yes}
+.Op Fl -{case-sensitive,glob,case-insensitive,regex}
+.Ar pattern
 .Sh DESCRIPTION
 .Nm
 .Fl B
