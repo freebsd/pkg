@@ -22,46 +22,65 @@
 .Nd query information from remote repositories
 .Sh SYNOPSIS
 .Nm
-.Sm Fl I |
-.Ao query-format Ac Sm Ao pkg-name Ac
+.Sm off
+.Fl I | Ao Ar query-format Ac
+.Sm on
+.Ao Ar pkg-name Ac
 .Nm
 .Op Fl aU
 .Op Fl r Ar reponame
-.Sm Fl I |
-.Ao query-format Ac Sm
+.Sm off
+.Fl I |
+.Ao Ar query-format Ac
+.Sm on
 .Nm
 .Op Fl U
-.Fl e Ao evaluation-condition Ac
+.Fl e Ao Ar evaluation-condition Ac
 .Op Fl r Ar reponame
-.Sm Fl I |
-.Ao query-format Ac Sm
+.Sm off
+.Fl I |
+.Ao Ar query-format Ac
+.Sm on
 .Nm
 .Op Fl U
 .Op Fl Cgix
 .Op Fl r Ar reponame
-.Sm Fl I |
-.Ao query-format Ac Sm Ao pattern Ac Ao ... Ac
+.Sm off
+.Fl I |
+.Ao Ar query-format Ac
+.Sm on
+.Ao Ar pattern Ac Ao Ar ... Ac
 .Pp
 .Nm
-.Sm Fl -index-line |
-.Ao query-format Ac Sm Ao pkg-name Ac
+.Sm off
+.Fl -index-line |
+.Ao Ar query-format Ac
+.Sm on
+.Ao Ar pkg-name Ac
 .Nm
 .Op Fl -{all,no-repo-update}
 .Op Fl -repository Ar reponame
-.Sm Fl -index-line |
-.Ao query-format Ac Sm
+.Sm off
+.Fl -index-line |
+.Ao Ar query-format Ac
+.Sm on
 .Nm
 .Op Fl -no-repo-update
-.Fl -evaluate Ao evaluation-condition Ac
+.Fl -evaluate Ao Ar evaluation-condition Ac
 .Op Fl -repository Ar reponame
-.Sm Fl -index-line |
-.Ao query-format Ac Sm
+.Sm off
+.Fl -index-line |
+.Ao Ar query-format Ac
+.Sm on
 .Nm
 .Op Fl -no-repo-update
 .Op Fl -{case-sensitive,glob,case-insensitive,regex}
 .Op Fl -repository Ar reponame
-.Sm Fl -index-line |
-.Ao query-format Ac Sm Ao pattern Ac Ao ... Ac
+.Sm off
+.Fl -index-line |
+.Ao Ar query-format Ac
+.Sm on
+.Ao Ar pattern Ac Ao Ar ... Ac
 .Sh DESCRIPTION
 .Nm
 is used for displaying information about remote packages.
