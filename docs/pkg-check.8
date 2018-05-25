@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd July 21, 2015
+.Dd May 25, 2018
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -27,15 +27,15 @@
 .Op Fl a | Cgix Ar pattern
 .Pp
 .Nm
-.Op Cm --{shlibs,dependencies,checksums,recompute}
-.Op Cm --{dry-run,quiet,verbose,yes}
-.Op Cm --all | Cm --{case-sensitive,glob,case-insensitive,regex} Ar pattern
+.Op Fl -{shlibs,dependencies,checksums,recompute}
+.Op Fl -{dry-run,quiet,verbose,yes}
+.Op Fl -all | Fl -{case-sensitive,glob,case-insensitive,regex} Ar pattern
 .Sh DESCRIPTION
 .Nm
 .Fl B
 or
 .Nm
-.Cm --shlibs
+.Fl -shlibs
 regenerates the library dependency metadata for a package by extracting
 library requirement information from the binary ELF files in the package.
 .Pp
@@ -43,14 +43,14 @@ library requirement information from the binary ELF files in the package.
 .Fl d
 or
 .Nm
-.Cm --dependencies
+.Fl -dependencies
 checks for and installs missing dependencies.
 .Pp
 .Nm
 .Fl r
 or
 .Nm
-.Cm --recompute
+.Fl -recompute
 recalculates and sets the checksums of installed packages.
 This command should only be used when the administrator has
 made modifications that invalidate a package checksum.
@@ -60,25 +60,25 @@ Spontaneous checksum problems can indicate data or security problems.
 .Fl s
 or
 .Nm
-.Cm --checksums
+.Fl -checksums
 detects installed packages with invalid checksums.
 An invalid checksum can be caused by data corruption or tampering.
 .Sh OPTIONS
 These options are supported by
 .Nm :
 .Bl -tag -width dependencies
-.It Fl a , Cm --all
+.It Fl a , Fl -all
 Process all packages.
-.It Fl C , Cm --case-sensitive
+.It Fl C , Fl -case-sensitive
 Use case sensitive standard or regular expression
 .Fl ( x )
 matching with
 .Ar pattern .
-.It Fl g , Cm --glob
+.It Fl g , Fl -glob
 Treat
 .Ar pattern
 as a shell glob pattern.
-.It Fl i , Cm --case-insensitive
+.It Fl i , Fl -case-insensitive
 Use case insensitive standard or regular expression
 .Fl ( x )
 matching with
@@ -87,21 +87,21 @@ This is the default unless
 .Ev CASE_SENSITIVE_MATCH
 has been set to true in
 .Pa pkg.conf .
-.It Fl n , Cm --dry-run
+.It Fl n , Fl -dry-run
 Only check for missing dependencies, do not install them.
-.It Fl v , Cm --verbose
+.It Fl v , Fl -verbose
 Be verbose.
-.It Fl q , Cm --quiet
+.It Fl q , Fl -quiet
 Suppress most output, except for error messages and data that the
 command explicitly requests.
 This is primarily intended for scripting use.
-.It Fl x , Cm --regex
+.It Fl x , Fl -regex
 Treat
 .Ar pattern
 as a regular expression, using the "modern" or "extended" syntax
 described in
 .Xr re_format 7 .
-.It Fl y , Cm --yes
+.It Fl y , Fl -yes
 Assume "yes" when asked for confirmation before installing missing
 dependencies.
 .El
