@@ -25,7 +25,7 @@
 .Op Fl anqy
 .Pp
 .Nm
-.Op Cm --{all,dry-run,quiet,yes}
+.Op Fl -{all,dry-run,quiet,yes}
 .Sh DESCRIPTION
 .Nm
 is used to cleanup the local cache of packages downloaded from remote
@@ -36,9 +36,9 @@ any packages that are no longer provided.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl a , Cm --all
+.It Fl a , Fl -all
 Delete all cached packages.
-.It Fl n , Cm --dry-run
+.It Fl n , Fl -dry-run
 Do not delete any package files from the cache, but show what
 would be done instead.
 Forces the preview of the packages that would be deleted to be shown,
@@ -46,13 +46,13 @@ even when used with
 .Fl y .
 Note: the package cache file permissions only permit root access.
 Results will be disappointing for any other user.
-.It Fl q , Cm --quiet
+.It Fl q , Fl -quiet
 Be quiet.
 Suppress most output.
 All output is suppressed if
 .Fl y
 is also used.
-.It Fl y , Cm --yes
+.It Fl y , Fl -yes
 Assume a yes answer instead of asking for confirmation before deleting
 any out of date or redundant packages from the cache.
 .El
