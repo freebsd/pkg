@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 30, 2014
+.Dd May 27, 2018
 .Dt PKG-CLEAN 8
 .Os
 .Sh NAME
@@ -37,7 +37,8 @@ The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .It Fl a , Fl -all
-Delete all cached packages.
+Delete all cached packages including those, which have not been superseded by
+newer versions yet and are still in use.
 .It Fl n , Fl -dry-run
 Do not delete any package files from the cache, but show what
 would be done instead.
