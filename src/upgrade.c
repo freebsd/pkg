@@ -105,8 +105,10 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 
 		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
 				== EPKG_OK) {
-			add_to_check(check, pkg);
-			pkg = NULL;
+			if (pkg_type(pkg) == PKG_INSTALLED) {
+				add_to_check(check, pkg);
+				pkg = NULL;
+			}
 		}
 
 		ret = EX_OK;
