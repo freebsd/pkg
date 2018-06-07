@@ -10,7 +10,6 @@ SRCS=	backup.c \
 	clean_cache.c \
 	metalog.c \
 	pkg_checksum.c \
-	pkg_elf.c \
 	pkg_manifest.c \
 	pkg_repo_update.c \
 	pkgdb_iterator.c \
@@ -100,6 +99,9 @@ LOCAL_LDFLAS+= -lresolv
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
 STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
 LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic -Lresolv
+SRC+=		pkg_macho.c
+@else
+SRC+=		pkg_elf.c
 @endif
 
 @if libabidir == libelf
