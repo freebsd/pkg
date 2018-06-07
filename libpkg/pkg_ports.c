@@ -1153,6 +1153,7 @@ plist_parse_line(struct plist *plist, char *line)
 		case EPKG_UNKNOWN:
 			pkg_emit_error("unknown keyword %s: %s",
 			    keyword, line);
+			/* FALLTHRU */
 		case EPKG_FATAL:
 			return (EPKG_FATAL);
 		}

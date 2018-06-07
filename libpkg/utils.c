@@ -256,6 +256,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 * given (default exec) %@ does not
 			 * exists
 			 */
+			/* FALLTHRU */
 		case '#':
 			utstring_printf(buf, "%c", argc);
 			break;

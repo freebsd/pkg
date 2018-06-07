@@ -318,18 +318,18 @@ packing_set_format(struct archive *a, pkg_formats format)
 	case TXZ:
 		if (archive_write_add_filter_xz(a) == ARCHIVE_OK)
 			return ("txz");
-		else
-			pkg_emit_error(notsupp_fmt, "xz", "bzip2");
+		pkg_emit_error(notsupp_fmt, "xz", "bzip2");
+		/* FALLTHRU */
 	case TBZ:
 		if (archive_write_add_filter_bzip2(a) == ARCHIVE_OK)
 			return ("tbz");
-		else
-			pkg_emit_error(notsupp_fmt, "bzip2", "gzip");
+		pkg_emit_error(notsupp_fmt, "bzip2", "gzip");
+		/* FALLTHRU */
 	case TGZ:
 		if (archive_write_add_filter_gzip(a) == ARCHIVE_OK)
 			return ("tgz");
-		else
-			pkg_emit_error(notsupp_fmt, "gzip", "plain tar");
+		pkg_emit_error(notsupp_fmt, "gzip", "plain tar");
+		/* FALLTHRU */
 	case TAR:
 		archive_write_add_filter_none(a);
 		return ("tar");
