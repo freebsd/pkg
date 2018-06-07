@@ -136,9 +136,15 @@ cc-check-functions arc4random arc4random_stir basename_r chflagsat \
 	strtofflags strtonum sysconf utimensat __res_setservers unlinkat \
 	faccessat fstatat openat readlinkat fflagstostr
 
-cc-with { -libs { -lutil }} {
-	if {[cc-check-functions humanize_number]} {
-		define-feature LIBUTIL
+cc-with { -includes { libutil.h }} {
+	if {[cc-check-decls humanize_number]} {
+	}
+}
+if {[get-define HAVE_DECL_HUMANIZE_NUMBER] eq 1} {
+	cc-with { -libs { -lutil }} {
+		if {[cc-check-functions humanize_number]} {
+			define-feature LIBUTIL
+		}
 	}
 }
 
