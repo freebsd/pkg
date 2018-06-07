@@ -89,6 +89,10 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 LOCAL_LDFLAGS+=	-lutil
 @endif
 
+@if HAVE_LIBDL
+LOCAL_LDFLAS+= -ldl
+@endif
+
 @if libabidir == libmachista
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
 STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
