@@ -1,6 +1,7 @@
 CFLAGS?=	-O2 -pipe
 OBJS=	${SRCS:.c=.o}
 SHOBJS?=	${SRCS:.c=.pico}
+CFLAGS+=	$(CPPFLAGS)
 
 .SUFFIXES: .pico .in
 
