@@ -57,6 +57,9 @@ OTHER_LIBS=	-lssl -lcrypto -pthread
 @if HAVE_LIBUTIL
 OTHER_LIBS+=	-lutil
 @endif
+@if HAVE_LIBDL
+OTHER_LIBS+= -ldl
+@endif
 
 LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS)
 STATIC_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
