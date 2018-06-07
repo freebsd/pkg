@@ -150,9 +150,9 @@ if {![cc-check-functions dlclose]} {
 	}
 }
 
-if {![cc-check-functions res_query]} {
+if {![cc-check-functions __res_query]} {
 	cc-with { -libs { -lresolv }} {
-		if {[cc-check-functions res_query]} {
+		if {[cc-check-functions __res_query]} {
 			define-feature LIBRESOLV
 		}
 	}
