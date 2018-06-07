@@ -91,7 +91,6 @@ LOCAL_LDFLAGS+=	-lutil
 
 @if HAVE_LIBDL
 LOCAL_LDFLAS+= -ldl
-STATIC_LIBS+=/usr/lib/libdl.a
 @endif
 
 @if libabidir == libmachista
