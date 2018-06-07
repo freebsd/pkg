@@ -104,7 +104,7 @@ if {[file exists /proc/self/fd]} {
 	define-feature proc-pid 0
 }
 
-lmap fct [list memmove usleep pread pwrite] {
+foreach fct [list memmove usleep pread pwrite] {
 	if {![cc-check-functions $fct]} {
 		user-error "Cannot find $fct"
 	}
