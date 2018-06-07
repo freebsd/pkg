@@ -1,0 +1,26 @@
+RANLIB=	@RANLIB@
+AR=	@AR@
+CC=	@CC@
+SHOBJ_CFLAGS=	@SHOBJ_CFLAGS@
+LIBSOEXT=	@LIBSOEXT@
+SH_SOEXT=	@SH_SOEXT@
+SH_PREFIX=	@SH_SOPREFIX@
+SH_LDFLAGS=	@SH_LDFLAGS@
+PREFIX=		@prefix@
+top_srcdir=	@abs_top_srcdir@
+top_builddir=	@abs_top_builddir@
+libdir=		$(PREFIX)/lib
+sbindir=	$(PREFIX)/sbin
+includedir=	$(PREFIX)/include
+mandir=		@mandir@
+sysconfdir=	@sysconfdir@
+pkgconfigdir=	@pkgconfigdir@
+MK=	$(top_srcdir)/mk
+
+all:
+
+clean:
+
+install:
+
+check:

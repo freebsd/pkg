@@ -1,0 +1,77 @@
+include @builddir@/mk/defs.mk
+PROG=	pkg
+SRCS=	add.c \
+	alias.c \
+	annotate.c \
+	audit.c \
+	autoremove.c \
+	backup.c \
+	check.c \
+	clean.c \
+	config.c \
+	create.c \
+	delete.c \
+	event.c \
+	fetch.c \
+	globals.c \
+	info.c \
+	install.c \
+	lock.c \
+	main.c \
+	plugins.c \
+	query.c \
+	register.c \
+	repo.c \
+	rquery.c \
+	search.c \
+	set.c \
+	shell.c \
+	shlib.c \
+	ssh.c \
+	stats.c \
+	update.c \
+	updating.c \
+	upgrade.c \
+	utils.c \
+	version.c \
+	which.c
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/external/uthash \
+		-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/external/libucl/klib \
+		-I$(top_builddir)/ \
+		-I$(top_builddir)/libpkg \
+		-DGITHASH=\"@GITHASH@\" \
+		-DHAVE_CONFIG_H
+LIBS=	\
+	-L$(top_builddir)/libpkg -lpkg_flat \
+	-lm \
+	@EXTRA_LIBS@
+
+@if HAVE_PKG_LIBARCHIVE
+LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
+@else
+LIBS+=	-larchive -lbz2 -lz -llzma
+@endif
+OTHER_LIBS=	-lssl -lcrypto -pthread
+@if HAVE_LIBUTIL
+OTHER_LIBS+=	-lutil
+@endif
+
+LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS)
+STATIC_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
+
+include $(MK)/prog.mk
+
+all: pkg-static
+
+pkg-static: $(OBJS)
+	$(CC) -o $@ $(OBJS) -static $(LDFLAGS) $(STATIC_LDFLAGS)
+
+install: $(PROG) pkg-static
+	install -d -m 755 $(DESTDIR)$(sbindir)
+	install -s -m 755 pkg $(DESTDIR)$(sbindir)/pkg
+
+clean: clean-pkg-static
+clean-pkg-static:
+	rm -f pkg-static

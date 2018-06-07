@@ -2303,7 +2303,7 @@ pkg_jobs_has_lockedpkgs(struct pkg_jobs *j)
 }
 
 static void
-pkg_jobs_visit_lockedpkgs(const void * node, VISIT v, int __unused0)
+pkg_jobs_visit_lockedpkgs(const void * node, VISIT v, int i __unused)
 {
 
 	if (v == postorder || v == leaf) {

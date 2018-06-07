@@ -85,17 +85,6 @@ pkg_digest_sort_compare_func(struct digest_list_entry *d1,
 	return strcmp(d1->origin, d2->origin);
 }
 
-static void
-pkg_repo_new_conflict(const char *uniqueid, struct pkg_conflict_bulk *bulk)
-{
-	struct pkg_conflict *new;
-
-	new = xcalloc(1, sizeof(*new));
-	new->uid = xstrdup(uniqueid);
-
-	kh_safe_add(pkg_conflicts, bulk->conflictshash, new, new->uid);
-}
-
 struct pkg_fts_item {
 	char *fts_accpath;
 	char *pkg_path;
@@ -640,7 +629,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			int ofl;
 			int st = SOCK_DGRAM;
 
-#ifdef HAVE_SEQPACKET
+#ifdef HAVE_DECL_SOCK_SEQPACKET
 			st = SOCK_SEQPACKET;
 #endif
 			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {

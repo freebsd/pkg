@@ -32,6 +32,14 @@
 #include <utstring.h>
 #include <pkg.h>
 
+#ifndef __unused
+# ifdef __GNUC__
+# define __unused __attribute__ ((__unused__))
+# else
+# define __unused
+# endif
+#endif
+
 UT_string *msg;
 
 ATF_TC(valid_installed);
@@ -43,7 +51,7 @@ ATF_TC_HEAD(valid_installed, tc)
 }
 
 int
-event_callback(void *data, struct pkg_event *ev)
+event_callback(void *data __unused, struct pkg_event *ev)
 {
 	switch (ev->type) {
 	case PKG_EVENT_ERROR:

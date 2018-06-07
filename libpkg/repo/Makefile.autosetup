@@ -1,0 +1,21 @@
+include @builddir@/mk/defs.mk
+DIRS=	@REPOS@
+
+all: pkg_repos.h
+
+pkg_repos.h: $(DIRS)
+	@echo "#ifndef PKG_REPOS_H" > $@
+	@echo "#define PKG_REPOS_H" >> $@
+	@for b in $(DIRS); do \
+		echo "extern struct pkg_repo_ops pkg_repo_$${b}_ops;" ; \
+	done >> $@
+	@echo "struct pkg_repo_ops *repos_ops[] = {" >> $@
+	@for b in $(DIRS); do \
+		echo "&pkg_repo_$${b}_ops," ; \
+	done >> $@
+	@echo "NULL" >> $@
+	@echo "};" >> $@
+	@echo "#endif /* PKG_REPOS_H */" >> $@
+
+include $(MK)/dir.mk
+

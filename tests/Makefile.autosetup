@@ -1,0 +1,131 @@
+include @builddir@/mk/defs.mk
+
+TESTS=	\
+	checksum \
+	deps_formula \
+	merge \
+	pkg_add_dir_to_del \
+	pkg_printf \
+	pkg_validation \
+	plist \
+
+TESTS_SH= \
+	frontend/pkg.sh \
+	frontend/add.sh \
+	frontend/alias.sh \
+	frontend/annotate.sh \
+	frontend/autoremove.sh \
+	frontend/autoupgrade.sh \
+	frontend/config.sh \
+	frontend/configmerge.sh \
+	frontend/conflicts.sh \
+	frontend/conflicts-multirepo.sh \
+	frontend/create.sh \
+	frontend/delete.sh \
+	frontend/extract.sh \
+	frontend/install.sh \
+	frontend/jpeg.sh \
+	frontend/lock.sh \
+	frontend/messages.sh \
+	frontend/multipleprovider.sh \
+	frontend/packagesplit.sh \
+	frontend/packagemerge.sh \
+	frontend/php-pr.sh \
+	frontend/pubkey.sh \
+	frontend/query.sh \
+	frontend/register.sh \
+	frontend/repo.sh \
+	frontend/requires.sh \
+	frontend/rootdir.sh \
+	frontend/rubypuppet.sh \
+	frontend/search.sh \
+	frontend/set.sh \
+	frontend/version.sh \
+	frontend/vital.sh \
+	frontend/update.sh \
+	frontend/issue1374.sh \
+	frontend/issue1425.sh \
+	frontend/issue1440.sh \
+	frontend/issue1445.sh \
+	frontend/fingerprint.sh
+
+merge_OBJS=	lib/merge.o
+plist_OBJS=	lib/plist.o
+checksum_OBJS=	lib/checksum.o
+pkg_printf_OBJS=	lib/pkg_printf_test.o \
+			lib/pkg_printf.o
+deps_formula_OBJS=	lib/deps_formula.o
+pkg_add_dir_to_del_OBJS=	lib/pkg_add_dir_to_del.o
+pkg_validation_OBJS=	lib/pkg_validation.o
+
+SRCS=	\
+	$(merge_OBJS:.o=.c) \
+	$(plist_OBJS:.o=.c) \
+	$(checksum_OBJS:.o=.c) \
+	$(pkg_printf_OBJS:.o=.c) \
+	$(deps_formula_OBJS:.o=.c) \
+	$(pkg_add_dir_to_del_OBJS:.o=.c) \
+	$(pkg_validation_OBJS:.o=.c)
+
+include $(MK)/common.mk
+
+TESTS_SHELL=	$(TESTS_SH:.sh=)
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/external/uthash \
+		-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/external/libucl/include \
+		-I$(top_srcdir)/external/libucl/klib \
+		-I$(top_srcdir)/external/uthash \
+		-I$(top_builddir)/ \
+		-I$(top_builddir)/libpkg \
+		@PKG_ATF_C_CFLAGS@ \
+		-DTESTING
+
+LIBS=	\
+	-L$(top_builddir)/libpkg -lpkg_flat \
+	-lm \
+	@EXTRA_LIBS@
+
+@if HAVE_PKG_LIBARCHIVE
+LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
+@else
+LIBS+=	-L/usr/lib -larchive -lbz2 -lz -llzma
+@endif
+OTHER_LIBS=	-lssl -lcrypto -pthread
+@if HAVE_LIBUTIL
+OTHER_LIBS+=	-lutil
+@endif
+
+LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS) \
+	@PKG_ATF_C_LDFLAGS@ @PKG_ATF_C_LIBS@
+
+all: $(TESTS) Kyuafile ${TESTS_SHELL} frontend/Kyuafile
+
+$(TESTS): $(OBJS)
+	$(CC) -o $@ $($@_OBJS) $(LOCAL_LDFLAGS)
+
+lib/pkg_printf.c:
+	cp $(top_srcdir)/libpkg/pkg_printf.c $@
+
+.sh:
+	install -m 755 $< $@
+
+clean:
+	rm -f lib/pkg_printf.c $(OBJS) $(TESTS) $(TESTS_SHELL) Kyuafile frontend/Kyuafile
+
+Kyuafile: $(TESTS)
+	@echo "Generating $@"
+	@echo 'syntax(2)' > $@
+	@echo 'test_suite("pkg")' >> $@
+	@for p in $(TESTS); do \
+		echo "atf_test_program{name='$$p'}" >> $@ ; \
+	done
+	@echo 'include("frontend/Kyuafile")' >> $@
+
+frontend/Kyuafile: $(TESTS_SHELL)
+	@echo "Generating $@"
+	@echo 'syntax(2)' > $@
+	@echo 'test_suite("pkg")' >> $@
+	@for p in $(TESTS_SHELL); do \
+		echo "atf_test_program{name='$${p##*/}'}" >> $@ ; \
+	done

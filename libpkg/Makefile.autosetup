@@ -1,0 +1,142 @@
+include @builddir@/mk/defs.mk
+LIB=	pkg
+SRCS=	backup.c \
+	merge3.c \
+	pkg_audit.c \
+	pkg_deps.c \
+	pkg_repo_meta.c \
+	pkg.c \
+	rsa.c \
+	clean_cache.c \
+	metalog.c \
+	pkg_checksum.c \
+	pkg_elf.c \
+	pkg_manifest.c \
+	pkg_repo_update.c \
+	pkgdb_iterator.c \
+	scripts.c diff.c \
+	packing.c \
+	pkg_config.c \
+	pkg_event.c \
+	pkg_object.c \
+	pkg_repo.c \
+	pkgdb_query.c \
+	sha256.c dns_utils.c \
+	pkg_add.c \
+	pkg_create.c \
+	pkg_jobs_conflicts.c pkg_ports.c \
+	pkg_solve.c \
+	pkgdb.c \
+	ssh.c elfhints.c \
+	pkg_arch.c \
+	pkg_cudf.c \
+	pkg_jobs_universe.c  pkg_printf.c \
+	pkg_status.c \
+	plugins.c \
+	utils.c fetch.c \
+	pkg_attributes.c \
+	pkg_delete.c \
+	pkg_jobs.c \
+	pkg_repo_create.c \
+	pkg_version.c \
+	rcscripts.c
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/external/blake2 \
+		-I$(top_srcdir)/external/sqlite \
+		-I$(top_srcdir)/external/uthash \
+		-I$(top_srcdir)/external/picosat \
+		-I$(top_srcdir)/external/expat/lib \
+		-I$(top_srcdir)/external/include \
+		-I$(top_srcdir)/external/libucl/include \
+		-I$(top_srcdir)/external/libucl/klib \
+		-I$(top_srcdir)/external/libfetch \
+		-I$(top_srcdir)/libpkg/repo \
+		-I$(top_srcdir)/libpkg \
+		-I$(top_srcdir) \
+		-Wno-pointer-sign \
+		-Wno-missing-field-initializers \
+		-Wno-sign-compare \
+		-DPREFIX=\"$(PREFIX)\" \
+		-DHAVE_CONFIG_H
+
+LOCAL_LDFLAGS=	@REPOS_LDFLAGS@ \
+		-L$(top_builddir)/external/sqlite -lsqlite_pic \
+		-L$(top_builddir)/external/libucl -lucl_pic \
+		-L$(top_builddir)/external/picosat -lpicosat_pic \
+		-L$(top_builddir)/external/linenoise -llinenoise_pic \
+		-L$(top_builddir)/external/expat -lexpat_pic \
+		-L$(top_builddir)/external/blake2 -lblake2_pic \
+		-L$(top_builddir)/compat -lbsd_compat_pic \
+		-L$(top_builddir)/external/libfetch -lfetch_pic \
+		-lssl \
+		-lcrypto \
+		-lm \
+		-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver
+
+STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
+		$(top_builddir)/external/sqlite/libsqlite.a \
+		$(top_builddir)/external/libucl/libucl.a \
+		$(top_builddir)/external/picosat/libpicosat.a \
+		$(top_builddir)/external/linenoise/liblinenoise.a \
+		$(top_builddir)/external/expat/libexpat.a \
+		$(top_builddir)/external/blake2/libblake2.a \
+		$(top_builddir)/compat/libbsd_compat.a \
+		$(top_builddir)/external/libfetch/libfetch.a \
+		lib$(LIB).a
+
+@if HAVE_LIBUTIL
+LOCAL_LDFLAGS+=	-lutil
+@endif
+
+@if libabidir == libmachista
+LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
+STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic -Lresolv
+@endif
+
+@if libabidir == libelf
+LOCAL_CFLAGS+= -I$(top_srcdir)/external/libelf
+STATIC_LIBS+=	$(top_builddir)/external/libelf/libelf.a
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libelf -lelf
+@endif
+
+@if libabidir
+@else
+LOCAL_LDFLAGS+=	-lelf
+@endif
+
+@if PKG_LIBARCHIVE_LIBS
+LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
+LOCAL_LDFLAGS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS@
+@endif
+
+@if PKG_LIBLDNS_LIBS
+LOCAL_CFLAGS+=	@PKG_LIBLDNS_CFLAGS@
+LOCAL_LDFLAGS+=	@PKG_LIBLDNS_LDFLAGS@ @PKG_LIBLDNS_LIBS@
+@endif
+
+include $(MK)/lib.mk
+
+all: lib$(LIB)_flat.a
+
+lib$(LIB)_flat.a: mergelib_script
+	ar -M < mergelib_script
+
+mergelib_script: $(STATIC_LIBS)
+	@echo "CREATE lib$(LIB)_flat.a" > $@
+	@for l in $(STATIC_LIBS); do \
+		echo "ADDLIB $$l"; \
+	done >> $@
+	@echo "SAVE" >> $@
+	@echo "END" >> $@
+
+install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB).a
+	install -d -m 755 $(DESTDIR)$(libdir)
+	install -d -m 755 $(DESTDIR)$(includedir)
+	install -d -m 755 $(DESTDIR)$(pkgconfigdir)
+	install -s -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
+	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
+	install -s -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
+	install -m 644 pkg.h $(DESTDIR)$(includedir)/
+	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)

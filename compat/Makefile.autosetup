@@ -1,0 +1,16 @@
+include @builddir@/mk/defs.mk
+LIB=	bsd_compat
+SRCS=	basename.c \
+	closefrom.c \
+	dirname.c \
+	file_at.c \
+	humanize_number.c \
+	strtonum.c \
+	strnstr.c \
+	funopen.c
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
+		-I$(top_srcdir)
+
+include $(MK)/static-lib.mk
+

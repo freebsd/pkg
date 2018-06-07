@@ -1,4 +1,4 @@
-export RESOURCEDIR=@abs_srcdir@
+export RESOURCEDIR=@abs_top_srcdir@/tests/frontend
 export OS=`uname -s`
 export PATH=$(atf_get_srcdir)/../../src/:${PATH}
 #export LD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg/.libs/

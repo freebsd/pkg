@@ -1,0 +1,254 @@
+# vim:se syn=tcl:
+#
+
+use cc cc-lib cc-shared pkg-config
+
+set maj_ver 1
+set med_ver 10
+set min_ver 99
+set dev_ver 8
+define PKG_API [expr $maj_ver * 1000000 + $med_ver * 1000 + $min_ver]
+define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]
+
+# Add any user options here
+options {
+	pkgconfigdir:WHERE => "path to the directory where to install pc files"
+	with-ldns => "add support for libldns"
+	with-libarchive.pc => "build with libarchive getting flags via pc files"
+}
+
+if {[opt-str pkgconfigdir dir]} {
+	define pkgconfigdir $dir
+} else {
+	if {[string match *-freebsd* [get-define host]]} {
+		define pkgconfigdir [get-define prefix]/libdata/pkgconfig
+	} else {
+		define pkgconfigdir [get-define prefix]/lib/pkgconfig
+	}
+}
+
+cc-check-tools ar ranlib strip
+
+define EXTRA_LIBS ""
+define LIBVERSION 4
+define LIBSOEXT [format [get-define SH_SOEXTVER] [get-define LIBVERSION]]
+
+define GITHASH ""
+if {[cc-check-progs git] && [file exists .git]} {
+	catch {exec git rev-parse --short HEAD} gitrev
+	catch {exec git diff-index -m --name-only HEAD} gitdirty
+	define GITHASH -$gitrev[expr {$gitdirty eq {} ? {} : {-dirty}}]
+}
+
+if {[string match *-linux* [get-define host]]} {
+	cc-with { -libs { -lbsd }} {
+		if {[cc-check-functions getprogname]} {
+			define-append EXTRA_LIBS -lbsd
+			define-feature libbsd
+		} else {
+			user-error "Unable to find libbsd"
+		}
+	}
+}
+
+if {![opt-bool with-libarchive.pc]} {
+	cc-with { -libs { -larchive }} {
+		if {![cc-check-functions archive_read_open]} {
+			user-error "Unable to find libarchive"
+		}
+	}
+}
+
+cc-with { -libs { -lz }} {
+	if {![cc-check-functions zlibVersion]} {
+		user-error "Unable to find zlib"
+	}
+}
+
+cc-with { -libs { -lbz2 }} {
+	if {![cc-check-functions BZ2_bzReadOpen]} {
+		user-error "Unable to find bzip2"
+	}
+}
+
+cc-with { -libs { -llzma }} {
+	if {![cc-check-functions lzma_version_string]} {
+		user-error "Unable to find liblzma"
+	}
+}
+
+# Atomics
+msg-checking "Checking for atomic builtins... "
+if {[cctest -code {
+	volatile unsigned long val = 1;
+	__sync_synchronize();
+	__sync_val_compare_and_swap(&val, 1, 0);
+	__sync_add_and_fetch(&val, 1);
+	__sync_sub_and_fetch(&val, 1);
+	return 0;
+	}
+]} {
+	msg-result ok
+	define-feature atomic_builtins
+} else {
+	msg-result no
+	define-feature atomic_builtins 0
+}
+
+msg-checking "Checking for /proc/self/fd support... "
+if {[file exists /proc/self/fd]} {
+	msg-result ok
+	define-feature proc-pid
+} else {
+	msg-result no
+	define-feature proc-pid 0
+}
+
+lmap fct [list memmove usleep pread pwrite] {
+	if {![cc-check-functions $fct]} {
+		user-error "Cannot find $fct"
+	}
+}
+
+cc-with { -includes fcntl.h } {
+	cc-check-decls F_CLOSEM
+}
+
+cc-with { -includes sys/socket.h } {
+	cc-check-decls SOCK_SEQPACKET
+}
+
+cc-with { -includes netinet/in.h } {
+	cc-check-members "struct sockaddr_in.sin_len"
+}
+
+cc-with { -includes sys/stat.h } {
+	cc-check-members "struct stat.st_mtim" "struct stat.st_flags"
+}
+
+# check for sqlite
+cc-check-functions gmtime_r isnan localtime_r strchrnul strerror_r
+cc-check-includes stdint.h inttypes.h
+
+# check for pkg itself
+cc-check-functions arc4random arc4random_stir basename_r chflagsat \
+	closefrom dirfd eaccess fopencookie fstatfs funopen strnstr \
+	strtofflags strtonum sysconf utimensat __res_setservers unlinkat \
+	faccessat fstatat openat readlinkat fflagstostr
+
+cc-with { -libs { -lutil }} {
+	if {[cc-check-functions humanize_number]} {
+		define-feature LIBUTIL
+	}
+}
+
+cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
+	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
+
+# for compat
+cc-check-includes dirent.h
+
+#endian stuff
+lmap header [list endian.h sys/endian.h] {
+	if {[cc-check-includes $header]} {
+		cc-with [list -includes $header] {
+			cc-check-decls be16dec be16enc be32dec be32enc be64dec be64enc \
+				le16dec le16enc le32dec le32enc le64dec le64enc
+		}
+	}
+}
+
+if {[string match *-darwin* [get-define host]]} {
+	define libabidir libmachista
+} else {
+# libelf
+	cc-with { -includes { sys/types.h }} {
+		cc-check-includes elf-hints.h sys/elf_common.h
+	}
+
+	if {[cc-check-includes gelf.h libelf.h]} {
+		cc-with { -libs { -lelf } } {
+			if {[cc-check-functions gelf_getehdr]} {
+				define-feature libelf
+				define-append EXTRA_LIBS -lelf
+				define libabidir ""
+			} else {
+				define-feature libelf 0
+				define libabidir "libelf"
+			}
+		}
+	} else {
+		define-feature libelf 0
+		define libabidir "libelf"
+	}
+}
+
+cc-with { -libs { -ljail} } {
+	if {[cc-check-functions jail_getid]} {
+		define-feature libjail
+		define-append EXTRA_LIBS -ljail
+	}
+}
+
+# libbsd
+cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
+	bsd/stdio.h bsd/strlib.h bsd/string.h bsd/sys/cdefs.h \
+	bsd/unistd.h
+ 
+# capsicum
+if {[cc-check-functions cap_sandboxed]} {
+	define-feature capsicum
+	cc-check-includes sys/capsicum.h sys/capability.h
+}
+
+define testsdir ""
+if {[pkg-config-init 0]} {
+# atf
+	if {[pkg-config atf-c] && [cc-check-progs kyua]} {
+		define testsdir tests
+		puts "test suite will be built"
+	} else {
+		puts "Skipping test suite"
+	}
+	if {[opt-bool with-ldns]} {
+		if {![pkg-config libldns]} {
+			user-error "Unable to find libldns"
+		} else {
+			define PKG_LIBDNS_LIBS_STATIC [exec pkg-config --static --libs-only-l libldns]
+		}
+	}
+	if {[opt-bool with-libarchive.pc]} {
+		if {![pkg-config libarchive]} {
+			user-error "Unable to find libarchive"
+		} else {
+			define PKG_LIBARCHIVE_LIBS_STATIC [exec pkg-config --static --libs-only-l libarchive]
+		}
+	}
+}
+
+lmap repo [list binary] {
+	define-append REPOS $repo
+	define-append REPOS_LDFLAGS -L\$(top_builddir)/libpkg/repo/${repo} -lrepo-${repo}_pic
+	define-append REPOS_STATIC_LIBS \$(top_builddir)/libpkg/repo/${repo}/librepo-${repo}.a
+}
+
+# ccache
+if {[get-define CCACHE] ne {none}} {
+  define CC "[get-define CCACHE] [get-define CC]"
+}
+
+make-config-header pkg_config.h
+make-config-header external/sqlite/config.h
+make-template mk/defs.mk.in
+make-template libpkg/pkg.h.in
+make-template libpkg/pkg.pc.in
+make-template tests/frontend/test_environment.sh.in
+make-template Makefile.autosetup Makefile
+
+lmap dir [list external/expat external/blake2 external/picosat \
+	external/linenoise external/libfetch external/sqlite \
+	external compat libpkg libpkg/repo libpkg/repo/binary src \
+	external/libucl external/libelf external/libmachista tests docs scripts] {
+	make-template $dir/Makefile.autosetup $dir/Makefile
+}
+

@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 2014 Landon Fuller <landon@landonf.org>
  * All rights reserved.
  * 
@@ -33,7 +33,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 
-#if !HAVE_DECL_UNLINKAT || !HAVE_DECL_FSTATAT
+#if !HAVE_UNLINKAT || !HAVE_FSTATAT
 
 static pthread_mutex_t file_at_lock = PTHREAD_MUTEX_INITIALIZER;
 static int file_at_dfd = -1;
@@ -92,7 +92,7 @@ file_chdir_unlock(int dfd)
 }
 #endif
 
-#if !HAVE_DECL_FACCESSAT
+#if !HAVE_FACCESSAT
 int
 faccessat(int fd, const char *path, int mode, int flag)
 {
@@ -117,7 +117,7 @@ faccessat(int fd, const char *path, int mode, int flag)
 }
 #endif
 
-#if !HAVE_DECL_READLINKAT
+#if !HAVE_READLINKAT
 ssize_t
 readlinkat(int fd, const char *restrict path, char *restrict buf,
 	   size_t bufsize)
@@ -134,7 +134,7 @@ readlinkat(int fd, const char *restrict path, char *restrict buf,
 }
 #endif
 
-#if !HAVE_DECL_FSTATAT
+#if !HAVE_FSTATAT
 int
 fstatat(int fd, const char *path, struct stat *buf, int flag)
 {
@@ -154,7 +154,7 @@ fstatat(int fd, const char *path, struct stat *buf, int flag)
 }
 #endif
 
-#if !HAVE_DECL_OPENAT
+#if !HAVE_OPENAT
 int
 openat(int fd, const char *path, int flags, ...)
 {
@@ -177,7 +177,7 @@ openat(int fd, const char *path, int flags, ...)
 }
 #endif
 
-#if !HAVE_DECL_UNLINKAT
+#if !HAVE_UNLINKAT
 int
 unlinkat(int fd, const char *path, int flag)
 {
