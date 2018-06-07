@@ -64,7 +64,12 @@ OTHER_LIBS+=	-ldl
 OTHER_LIBS+=	-lresolv
 @endif
 
+@if libabidir == libmachista
 LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS)
+@else
+LOCAL_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
+@endif
+
 STATIC_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
 
 include $(MK)/prog.mk

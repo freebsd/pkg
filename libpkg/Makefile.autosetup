@@ -70,8 +70,7 @@ LOCAL_LDFLAGS=	@REPOS_LDFLAGS@ \
 		-L$(top_builddir)/external/libfetch -lfetch_pic \
 		-lssl \
 		-lcrypto \
-		-lm \
-		-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver
+		-lm
 
 STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/sqlite/libsqlite.a \
@@ -102,6 +101,7 @@ LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic
 SRC+=		pkg_macho.c
 @else
 SRC+=		pkg_elf.c
+LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver \
 @endif
 
 @if libabidir == libelf
