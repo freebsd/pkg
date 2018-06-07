@@ -98,7 +98,7 @@ LOCAL_LDFLAS+= -lresolv
 @if libabidir == libmachista
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
 STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
-LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic -Lresolv
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic
 SRC+=		pkg_macho.c
 @else
 SRC+=		pkg_elf.c
