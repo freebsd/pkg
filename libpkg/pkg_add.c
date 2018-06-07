@@ -724,7 +724,7 @@ pkg_extract_finalize(struct pkg *pkg)
 	struct stat st;
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 8];
 	const char *fto;
 	bool install_as_user;
 

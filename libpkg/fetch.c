@@ -472,7 +472,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	char		*doc = NULL;
 	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
-	char		 zone[MAXHOSTNAMELEN + 13];
+	char		 zone[MAXHOSTNAMELEN + 24];
 	struct dns_srvinfo	*srv_current = NULL;
 	struct http_mirror	*http_current = NULL;
 	off_t		 sz = 0;

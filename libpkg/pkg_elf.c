@@ -462,7 +462,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	char *sh;
 	khint_t k;
 	int ret = EPKG_OK;
-	char fpath[MAXPATHLEN];
+	char fpath[MAXPATHLEN +1];
 	const char *lib;
 	bool failures = false;
 

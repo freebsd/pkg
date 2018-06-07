@@ -219,7 +219,7 @@ pkgdep(struct plist *p, char *line, struct file_attr *a __unused)
 static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN+1];
 	char stagedpath[MAXPATHLEN];
 	char *testpath, *cp;
 	struct stat st;
