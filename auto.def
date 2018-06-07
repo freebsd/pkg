@@ -123,7 +123,7 @@ cc-with { -includes netinet/in.h } {
 }
 
 cc-with { -includes sys/stat.h } {
-	cc-check-members "struct stat.st_mtim"
+	cc-check-members "struct stat.st_mtim" "struct stat.st_flags"
 }
 
 # check for sqlite
@@ -131,7 +131,7 @@ cc-check-functions gmtime_r isnan localtime_r strchrnul strerror_r
 cc-check-includes stdint.h inttypes.h
 
 # check for pkg itself
-cc-check-functions arc4random arc4random_stir basename_r chflags chflagsat \
+cc-check-functions arc4random arc4random_stir basename_r chflagsat \
 	closefrom dirfd eaccess fopencookie fstatfs funopen strnstr \
 	strtofflags strtonum sysconf utimensat __res_setservers unlinkat \
 	faccessat fstatat openat readlinkat fflagstostr
