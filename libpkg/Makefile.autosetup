@@ -98,9 +98,9 @@ LOCAL_LDFLAS+= -lresolv
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
 STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
 LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic
-SRC+=		pkg_macho.c
+SRCS+=		pkg_macho.c
 @else
-SRC+=		pkg_elf.c
+SRCS+=		pkg_elf.c
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver \
 @endif
 
