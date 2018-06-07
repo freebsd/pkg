@@ -45,7 +45,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/external/uthash \
 		-DHAVE_CONFIG_H
 LIBS=	\
 	-L$(top_builddir)/libpkg -lpkg_flat \
-	-lelf \
 	-lm \
 	@EXTRA_LIBS@
 
