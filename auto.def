@@ -150,6 +150,14 @@ if {![cc-check-functions dlclose]} {
 	}
 }
 
+if {![cc-check-functions res_query]} {
+	cc-with { -libs { -lresolv }} {
+		if {[cc-check-functions res_query]} {
+			define-feature LIBRESOLV
+		}
+	}
+}
+
 cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
 	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
 

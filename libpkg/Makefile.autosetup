@@ -92,6 +92,9 @@ LOCAL_LDFLAGS+=	-lutil
 @if HAVE_LIBDL
 LOCAL_LDFLAS+= -ldl
 @endif
+@if HAVE_LIBRESOLV
+LOCAL_LDFLAS+= -lresolv
+@endif
 
 @if libabidir == libmachista
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista

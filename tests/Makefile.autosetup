@@ -98,6 +98,9 @@ OTHER_LIBS+=	-lutil
 @if HAVE_LIBDL
 OTHER_LIBS+=	-ldl
 @endif
+@if HAVE_LIBRESOLV
+OTHER_LIBS+=	-lresolv
+@endif
 
 LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS) \
 	@PKG_ATF_C_LDFLAGS@ @PKG_ATF_C_LIBS@
