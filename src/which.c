@@ -57,7 +57,7 @@ int get_match(char **, char **, char *);
 static bool
 already_in_list(charlist *list, const char *pattern)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < kv_size(*list); i++)
 		if (strcmp(kv_A(*list, i), pattern) == 0)
@@ -76,8 +76,8 @@ exec_which(int argc, char **argv)
 	char		 pathabs[MAXPATHLEN];
 	char		*p, *path, *match, *savedpath;
 	int		 ret = EPKG_OK, retcode = EX_SOFTWARE;
-	int		 ch, i;
-	int		 res, pathlen = 0;
+	int		 ch, res, pathlen = 0;
+	size_t		 i;
 	bool		 orig = false;
 	bool		 glob = false;
 	bool		 search = false;

@@ -115,12 +115,13 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	struct stat st;
 	int retcode = EX_OK;
 	int flag = 0;
+	size_t i;
 	unsigned int count = 0, processed = 0;
 	char *file, *relpath;
 
 	count = kv_size(*dl);
 	progressbar_start("Deleting files");
-	for (int i = 0; i < kv_size(*dl); i++) {
+	for (i = 0; i < kv_size(*dl); i++) {
 		flag = 0;
 		relpath = file = kv_A(*dl, i);
 		relpath += strlen(cachedir) + 1;

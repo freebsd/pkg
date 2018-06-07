@@ -93,7 +93,7 @@ static void
 cleanup_handler(int dummy __unused)
 {
 	struct cleanup *ev;
-	int i;
+	size_t i;
 
 	if (kv_size(cleanup_list) == 0)
 		return;
@@ -532,7 +532,8 @@ event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
 	struct cleanup *evtmp;
-	int *debug = data, i;
+	int *debug = data;
+	size_t i;
 	struct pkg_event_conflict *cur_conflict;
 	const char *filename, *reponame;
 
