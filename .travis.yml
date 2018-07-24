@@ -18,7 +18,8 @@ addons:
       - liblzo2-dev
       - libattr1-dev
       - libacl1-dev
-
+      - libbz2-dev
+      
 sudo: required
 
 compiler:
