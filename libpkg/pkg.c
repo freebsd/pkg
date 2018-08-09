@@ -1691,7 +1691,7 @@ pkg_is_config_file(struct pkg *p, const char *path,
 		return (false);
 
 	kh_find(pkg_config_files, p->config_files, path, *cfile);
-	if (cfile == NULL) {
+	if (*cfile == NULL) {
 		*file = NULL;
 		return (false);
 	}
