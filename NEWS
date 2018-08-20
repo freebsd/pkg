@@ -1,3 +1,18 @@
+Changes from pkg 1.10.99.7 to 1.10.99.8
+- Add options to ignore OSVERSION check and document it
+- Complain about RO filesystem for pkgdb access if needed
+- Fix privileges drop done too early
+- Improve OSVERSION check
+- Fix some resource leaks
+- Lots of documentation improvements
+- Improve conflicts handling
+- Do not check remote packages when doing `pkg upgrade -v`
+- Convert from autotools to autosetup
+- Fix warnings spotted by gcc 7+
+- Fix pkg info -R to match the documented behaviour
+- Update zsh completion
+- Fix crash with config file handling
+
 Changes from pkg 1.10.99.6 to 1.10.99.7
 - Sort fts traversal in repo creation
 - Fix floating pint exception when packaging packages with weird elf files
