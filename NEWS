@@ -12,6 +12,7 @@ Changes from pkg 1.10.99.7 to 1.10.99.8
 - Fix pkg info -R to match the documented behaviour
 - Update zsh completion
 - Fix crash with config file handling
+- pkg is now a semi static binary
 
 Changes from pkg 1.10.99.6 to 1.10.99.7
 - Sort fts traversal in repo creation
