@@ -82,7 +82,7 @@ pkg-static: $(OBJS)
 install: $(PROG) pkg-static
 	install -d -m 755 $(DESTDIR)$(sbindir)
 	install -s -m 755 pkg $(DESTDIR)$(sbindir)/pkg
-	install -s -m 755 pkg-static $(DESTDIR)$(sbindir)/$(sbindir)/pkg-static
+	install -s -m 755 pkg-static $(DESTDIR)$(sbindir)/pkg-static
 	install -m 644 pkg.conf.sample $(DESTDIR)$(etcdir)
 
 clean: clean-pkg-static
