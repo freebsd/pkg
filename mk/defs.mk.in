@@ -9,6 +9,7 @@ SH_LDFLAGS=	@SH_LDFLAGS@
 PREFIX=		@prefix@
 top_srcdir=	@abs_top_srcdir@
 top_builddir=	@abs_top_builddir@
+etcdir=		$(PREFIX)/etc
 libdir=		$(PREFIX)/lib
 sbindir=	$(PREFIX)/sbin
 includedir=	$(PREFIX)/include
