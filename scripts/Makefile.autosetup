@@ -5,7 +5,7 @@ pdailydir=		$(sysconfdir)/periodic/daily
 psecuritydir=		$(sysconfdir)/periodic/security
 pweeklydir=		$(sysconfdir)/periodic/weekly
 bashcompdir=		$(sysconfdir)/bash_completion.d
-zshcompdir=		$(prefix)/share/zsh/site-functions
+zshcompdir=		$(PREFIX)/share/zsh/site-functions
 
 PDAILY=	periodic/411.pkg-backup \
 	periodic/490.status-pkg-changes
