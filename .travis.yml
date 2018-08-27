@@ -1,11 +1,13 @@
 language: c
 
+dist: xenial
+sudo: required
+osx_image: xcode8
+
 os:
   - linux
   - osx
-
-osx_image: xcode8
-
+  
 addons:
   apt:
     packages:
@@ -18,9 +20,6 @@ addons:
       - liblzo2-dev
       - libattr1-dev
       - libacl1-dev
-      - libbz2-dev
-      
-sudo: required
 
 compiler:
   - clang
@@ -44,4 +43,5 @@ notifications:
     on_failure: always
   slack:
     secure: JV9MS85W0G0bEqq1L9bcgINnOdin7mJWYjAqEqQ/kw2KSRMkonTPtK/BsV6Aeh/jJYlgtXZU4hMzT0qA7p3TaWz5ZSHwCY9+awhvjYxWzRSnkpC6t/necMKOTTvJ8GSvxZ37D92qjSOXKnk+WKqOivWZKoQWzLr7LAfUFOOGQPw=
+
 
