@@ -5,6 +5,7 @@ tests_init \
 	config \
 	config_fileexist \
 	config_fileexist_notinpkg \
+	config_hardlink \
 	config_morecomplicated
 
 config_body()
@@ -82,6 +83,57 @@ config_fileexist_body()
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
+}
+
+config_hardlink_body()
+{
+	# Create a pkg
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0"
+	echo "line 1" > a
+	echo "line 2" >> a
+	ln a b
+	echo "@config /a" > plist
+	echo "/b" >> plist
+	atf_check \
+		-o empty \
+		-e empty \
+		pkg create -M test.ucl -p plist -r .
+	atf_check -o ignore pkg repo .
+	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir ${TMPDIR}/target
+
+	# Install the pkg
+	atf_check \
+		-e match:".*load error: access repo file.*" \
+		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
+	rm *.txz
+
+	# Modify the local config
+	echo "line 1a" > target/a
+	echo "line 2" >> target/a
+
+	# Create an updated pkg
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.1"
+	echo "line 1" > a
+	echo "line 2" >> a
+	echo "@config /a" > plist
+	echo "/b" >> plist
+	atf_check \
+		-o empty \
+		-e empty \
+		pkg create -M test.ucl -p plist -r .
+	atf_check -o ignore pkg repo .
+	atf_check -e ignore -o ignore pkg -o REPOS_DIR=${TMPDIR} update -f
+
+	# Upgrade
+	atf_check \
+		-o ignore \
+		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -y
+
+	atf_check \
+		-o match:"test-1.1*" \
+		pkg -r ${TMPDIR}/target info
+
 }
 
 config_fileexist_notinpkg_body()
