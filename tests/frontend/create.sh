@@ -16,7 +16,8 @@ tests_init \
 	create_from_manifest_and_plist \
 	create_from_plist_pkg_descr \
 	create_from_plist_hash \
-	create_from_plist_with_keyword_and_message
+	create_from_plist_with_keyword_and_message \
+	create_with_hardlink
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -51,6 +52,19 @@ preparetestcredentials() {
 basic_validation() {
 	test -f test-1.txz || atf_fail "Package not created"
 	xz -t test-1.txz || atf_fail "XZ integrity check failed"
+}
+
+create_with_hardlink_body() {
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0"
+	echo "blah" >> foo
+	ln foo bar
+	echo "@(root,wheel,0555,) /foo" >> test.plist
+	echo "@config(root,wheel,0644,) /bar" >> test.plist
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		pkg create -M test.ucl -p test.plist -r .
 }
 
 create_from_plist_body() {
