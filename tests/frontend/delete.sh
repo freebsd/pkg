@@ -3,9 +3,9 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
+	delete_with_directory_owned \
 	simple_delete \
-	simple_delete_prefix_ending_with_slash \
-	delete_with_directory_owned
+	simple_delete_prefix_ending_with_slash
 
 simple_delete_body() {
 	touch file1
