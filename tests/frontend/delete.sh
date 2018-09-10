@@ -82,18 +82,8 @@ files: {
 }
 EOF
 
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test2" "test2" "1" "${TMPDIR}/"
 	cat << EOF >> test2.ucl
-name: test2
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: ${TMPDIR}/
-desc: <<EOD
-Yet another test
-EOD
 directories: {
     ${TMPDIR}/dir: 'y',
 }
