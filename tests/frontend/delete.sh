@@ -74,18 +74,8 @@ delete_with_directory_owned_body() {
 	mkdir dir
 	touch dir/file2
 
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/"
 	cat << EOF >> test.ucl
-name: test
-origin: test
-version: 1
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: ${TMPDIR}/
-desc: <<EOD
-Yet another test
-EOD
 files: {
     ${TMPDIR}/file1: "",
     ${TMPDIR}/dir/file2: "",
