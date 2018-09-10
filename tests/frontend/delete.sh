@@ -3,9 +3,22 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
+	delete_all \
 	delete_with_directory_owned \
 	simple_delete \
 	simple_delete_prefix_ending_with_slash
+
+delete_all_body() {
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+
+	atf_check -o ignore pkg register -M foo.ucl
+	atf_check -o ignore pkg register -M pkg.ucl
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check -o ignore pkg delete -ay
+}
 
 simple_delete_body() {
 	touch file1
