@@ -4,6 +4,7 @@
 
 tests_init \
 	delete_all \
+	delete_pkg \
 	delete_with_directory_owned \
 	simple_delete \
 	simple_delete_prefix_ending_with_slash
@@ -18,6 +19,13 @@ delete_all_body() {
 	atf_check -o ignore pkg register -M test.ucl
 
 	atf_check -o ignore pkg delete -ay
+}
+
+delete_pkg_body() {
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	atf_check -o ignore pkg register -M pkg.ucl
+	atf_check -o ignore -e ignore -s exit:3 pkg delete -y pkg
+	atf_check -o ignore -e ignore pkg delete -yf pkg
 }
 
 simple_delete_body() {
