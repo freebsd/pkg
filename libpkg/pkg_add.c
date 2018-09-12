@@ -1082,7 +1082,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 		free(pkg->digest);
 		pkg->digest = xstrdup(remote->digest);
-		/* only preserve flags is -A has not been passed */
+		/* only preserve flags if -A has not been passed */
 		if ((flags & PKG_ADD_AUTOMATIC) == 0)
 			pkg->automatic = remote->automatic;
 	}
