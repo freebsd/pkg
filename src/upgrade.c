@@ -149,7 +149,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
 		kh_foreach_value(check, pkg, {
-				if (pkg_audit_is_vulnerable(audit, pkg, true, &sb)) {
+				if (pkg_audit_is_vulnerable(audit, pkg, true, &sb, NULL)) {
 					pkg_get(pkg, PKG_UNIQUEID, &uid);
 					fprintf(out, "%s\n", uid);
 					fflush(out);

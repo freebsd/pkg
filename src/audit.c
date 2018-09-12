@@ -120,7 +120,7 @@ exec_audit(int argc, char **argv)
 	char			*name;
 	char			*version;
 	char			*audit_file = NULL;
-	unsigned int		 vuln = 0;
+	unsigned int		 affected = 0, vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EX_OK;
@@ -276,7 +276,7 @@ exec_audit(int argc, char **argv)
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
 		kh_foreach_value(check, pkg, {
-			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb)) {
+			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb, &affected)) {
 				vuln ++;
 				printf("%s", utstring_body(sb));
 
@@ -302,7 +302,8 @@ exec_audit(int argc, char **argv)
 			ret = EX_OK;
 
 		if (!quiet)
-			printf("%u problem(s) in the installed packages found.\n", vuln);
+			printf("%u problem(s) in %u installed package(s) found.\n",
+			   affected, vuln);
 	}
 	else {
 		warnx("cannot process vulnxml");

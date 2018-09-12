@@ -766,7 +766,7 @@ pkg_audit_print_entry(struct pkg_audit_entry *e, UT_string *sb,
 
 bool
 pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, UT_string **result)
+		bool quiet, UT_string **result, int *affected)
 {
 	struct pkg_audit_entry *e;
 	struct pkg_audit_versions_range *vers;
@@ -807,6 +807,9 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 				 */
 				res = true;
 				pkg_audit_print_entry(e, sb, pkg->name, NULL, quiet);
+				if (affected != NULL) {
+					++*affected;
+				}
 			}
 			else {
 				LL_FOREACH(e->versions, vers) {
@@ -816,6 +819,9 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 					if (res1 && res2) {
 						res = true;
 						pkg_audit_print_entry(e, sb, pkg->name, pkg->version, quiet);
+						if (affected != NULL) {
+							++*affected;
+						}
 						break;
 					}
 				}
