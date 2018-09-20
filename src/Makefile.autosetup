@@ -76,7 +76,11 @@ include $(MK)/prog.mk
 
 all: pkg-static
 
-pkg-static: $(OBJS)
+${OBJS}: $(top_builddir)/pkg_config.h
+
+$(PROG): $(top_builddir)/libpkg/libpkg_flat.a
+
+pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
 	$(CC) -o $@ $(OBJS) -static $(LDFLAGS) $(STATIC_LDFLAGS)
 
 install: $(PROG) pkg-static

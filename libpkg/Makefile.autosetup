@@ -128,6 +128,8 @@ LOCAL_LDFLAGS+=	@PKG_LIBLDNS_LDFLAGS@ @PKG_LIBLDNS_LIBS@
 
 include $(MK)/lib.mk
 
+$(OBJS) $(SHOBJS): $(top_builddir)/pkg_config.h
+
 all: lib$(LIB)_flat.a
 
 lib$(LIB)_flat.a: mergelib_script
