@@ -67,7 +67,11 @@ OTHER_LIBS+=	-lresolv
 @if libabidir == libmachista
 LOCAL_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
 @else
-LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS)
+LOCAL_LDFLAGS=	-Wl,-Bstatic \
+		-Wl,--whole-archive $(LIBS) -Wl,--no-whole-archive \
+		-Wl,-Bdynamic $(OTHER_LIBS) \
+		-Wl,--export-dynamic \
+		-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver
 @endif
 
 STATIC_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
