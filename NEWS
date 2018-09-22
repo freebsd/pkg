@@ -1,3 +1,14 @@
+Changes from pkg 1.10.99.9 to 1.10.99.10
+- Fix incremental build
+- Fix loading plugins in the flat binary
+- Stop issueing wrong error message before creating the local repository for
+  the first time
+
+Changes from pkg 1.10.99.8 to 1.10.99.9
+- Remove a check for config files that have hardlinks
+- Add .gitlab-ci.yml to support the Gitlab CI service
+- Add a few more tests with hardlinks
+
 Changes from pkg 1.10.99.7 to 1.10.99.8
 - Add options to ignore OSVERSION check and document it
 - Complain about RO filesystem for pkgdb access if needed
