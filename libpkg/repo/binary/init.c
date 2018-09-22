@@ -328,10 +328,6 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	/* Always want read mode here */
 	if (faccessat(dbdirfd, filepath, R_OK | mode, 0) != 0) {
-		pkg_emit_error("Repository %s load error: "
-				"access repo file(%s) failed: %s", pkg_repo_name(repo),
-				filepath,
-				strerror(errno));
 		return (EPKG_ENOACCESS);
 	}
 
