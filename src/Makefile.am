@@ -69,6 +69,7 @@ pkg_static_LDADD= @OS_LDFLAGS@ \
 			-lbz2 \
 			-llzma \
 			-lssl \
+			-lpthread \
 			-lcrypto \
 			-lm
 
