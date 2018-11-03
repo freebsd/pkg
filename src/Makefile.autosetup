@@ -47,11 +47,11 @@ LIBPKGFLAT=	-L$(top_builddir)/libpkg -lpkg_flat
 LIBS=	@EXTRA_LIBS@
 
 @if HAVE_PKG_LIBARCHIVE
-LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
+OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
 @else
-LIBS+=	-larchive -lbz2 -lz -llzma
+OTHER_LIBS+=	-larchive -lbz2 -lz -llzma
 @endif
-OTHER_LIBS=	-lm -lssl -lcrypto -pthread
+OTHER_LIBS+=	-lm -lssl -lcrypto -pthread
 @if HAVE_LIBUTIL
 OTHER_LIBS+=	-lutil
 @endif
