@@ -1,3 +1,7 @@
+Changes from pkg 1.10.99.10 to 1.10.99.11
+- Fix typos in man pages
+- Attempt to fix build in head where libarchive now uses blake2b
+
 Changes from pkg 1.10.99.9 to 1.10.99.10
 - Fix incremental build
 - Fix loading plugins in the flat binary
