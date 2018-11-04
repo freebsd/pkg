@@ -80,7 +80,7 @@ pkg_repo_load_order_body()
 	echo "02_repo: { url: file:///02_repo }" > 02.conf
 	echo "01_repo: { url: file:///01_repo }" > 01.conf
 
-	out=$(pkg -o REPOS_DIR=. -vv | tail -16)
+	out=$(pkg -o REPOS_DIR=. -vv)
 	atf_check \
 	    -o match:'.*01_repo\:.*02_repo\:.*03_repo\:.*' \
 	    -e empty \
