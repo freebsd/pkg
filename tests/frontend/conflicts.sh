@@ -57,7 +57,6 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -C ./pkg.conf update -f
 
@@ -238,7 +237,6 @@ ${JAILED}[2/2] Extracting test2-1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
 }

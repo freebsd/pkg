@@ -56,7 +56,6 @@ EOF
 	atf_check -o ignore pkg create -M test.ucl
 	atf_check -o ignore pkg repo .
 	atf_check -o match:"^Upgrading from lower than 1.0.*" \
-	    -e match:".*load error: access repo file.*" \
 	    pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
 	atf_check -o ignore pkg delete -y test
 

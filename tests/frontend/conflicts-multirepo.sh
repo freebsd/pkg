@@ -178,7 +178,6 @@ ${JAILED}[2/2] Extracting test-1.1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o CONSERVATIVE_UPGRADE=no -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
 }

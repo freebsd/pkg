@@ -108,7 +108,6 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 

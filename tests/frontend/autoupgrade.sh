@@ -38,7 +38,6 @@ EOF
 
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
-		-e match:".*load error: access repo file.*" \
 		-s exit:1 \
 		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -n
 }
@@ -98,13 +97,11 @@ EOF
 	export REPOS_DIR="${TMPDIR}"
 	atf_check \
 		-o ignore \
-		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg install -r repo1 -fy pkg-1
 
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
-		-e match:".*load error: access repo file.*" \
 		-s exit:0 \
 		pkg upgrade -y
 

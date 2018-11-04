@@ -65,7 +65,7 @@ local: {
 EOF
 	atf_check \
 		-o ignore \
-		-e match:".*load error: access repo file.*" \
+		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" update
 }

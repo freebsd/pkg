@@ -54,7 +54,6 @@ Number of packages to be installed: 2
 "
 	atf_check \
 	    -o inline:"${OUTPUT}" \
-	    -e match:".*load error: access repo file.*" \
 	    -s exit:1 \
 	    pkg -o REPOS_DIR="${TMPDIR}" install -n b
 }

@@ -41,7 +41,6 @@ config_body()
 	pkg repo .
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
-		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
 
 	atf_check \
@@ -79,7 +78,6 @@ config_fileexist_body()
 	pkg repo .
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
-		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
@@ -104,7 +102,6 @@ config_hardlink_body()
 
 	# Install the pkg
 	atf_check \
-		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
 	rm *.txz
 
@@ -152,7 +149,6 @@ config_fileexist_notinpkg_body()
 	pkg repo .
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
-		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
@@ -161,9 +157,9 @@ config_fileexist_notinpkg_body()
 config_morecomplicated_body()
 {
 	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
-	echo "entry1" > test.conf
-	echo "entry3" >> test.conf
-	echo "@config ${TMPDIR}/test.conf" > plist
+	echo "entry1" > test.config
+	echo "entry3" >> test.config
+	echo "@config ${TMPDIR}/test.config" > plist
 
 	atf_check \
 		pkg create -M test.ucl -p plist
@@ -176,21 +172,21 @@ config_morecomplicated_body()
 	unset PKG_DBDIR
 	atf_check \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
-	test -f ${TMPDIR}/target/${TMPDIR}/test.conf || atf_fail "file absent"
+	test -f ${TMPDIR}/target/${TMPDIR}/test.config || atf_fail "file absent"
 
 	atf_check \
 		-o inline:"entry1\nentry3\n" \
-		cat ${TMPDIR}/target/${TMPDIR}/test.conf
+		cat ${TMPDIR}/target/${TMPDIR}/test.config
 
-	echo "entry4" >> ${TMPDIR}/target/${TMPDIR}/test.conf
+	echo "entry4" >> ${TMPDIR}/target/${TMPDIR}/test.config
 	atf_check \
 		-o inline:"entry1\nentry3\nentry4\n" \
-		cat ${TMPDIR}/target/${TMPDIR}/test.conf
+		cat ${TMPDIR}/target/${TMPDIR}/test.config
 
 	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
-	echo "entry1" > test.conf
-	echo "entry2" >> test.conf
-	echo "entry3" >> test.conf
+	echo "entry1" > test.config
+	echo "entry2" >> test.config
+	echo "entry3" >> test.config
 
 	atf_check \
 		pkg create -M test.ucl -p plist
@@ -201,10 +197,9 @@ config_morecomplicated_body()
 
 	echo "local: { url: file://${TMPDIR} }" > local.conf
 	atf_check \
-		-e match:".*load error: access repo file.*" \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
 
 	atf_check \
 		-o inline:"entry1\nentry2\nentry3\nentry4\n" \
-		cat ${TMPDIR}/target/${TMPDIR}/test.conf
+		cat ${TMPDIR}/target/${TMPDIR}/test.config
 }
