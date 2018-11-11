@@ -71,6 +71,8 @@
 #define NT_ABI_TAG 1
 #endif
 
+#define _PATH_UNAME "/usr/bin/uname"
+
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
@@ -716,22 +718,23 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 	Elf_Data *data;
 	Elf_Note note;
 	Elf_Scn *scn = NULL;
-	int fd;
+	int fd, i;
 	int version_style = 1;
 	char *src = NULL;
 	char *osname;
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
-	const char *path;
 	char invalid_osname[] = "Unknown";
 	char *note_os[6] = {"Linux", "GNU", "Solaris", "FreeBSD", "NetBSD", "Syllable"};
 	char *(*pnote_os)[6] = &note_os;
 	uint32_t gnu_abi_tag[4];
 
-	path = getenv("ABI_FILE");
-	if (path == NULL)
-		path = _PATH_BSHELL;
+	const char *abi_files[] = {
+		getenv("ABI_FILE"),
+		_PATH_UNAME,
+		_PATH_BSHELL,
+	};
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -739,9 +742,17 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 		return (EPKG_FATAL);
 	}
 
-	if ((fd = open(path, O_RDONLY)) < 0) {
-		pkg_emit_errno("open", _PATH_BSHELL);
-		snprintf(dest, sz, "%s", "unknown");
+	for (fd = -1, i = 0; i < nitems(abi_files); i++) {
+		if (abi_files[i] == NULL)
+			continue;
+		if ((fd = open(abi_files[i], O_RDONLY)) >= 0)
+			break;
+		/* if the ABI_FILE was provided we only care about it */
+		if (i == 0)
+			break;
+	}
+	if (fd == -1) {
+		pkg_emit_error("Unable to determine the ABI\n");
 		return (EPKG_FATAL);
 	}
 
