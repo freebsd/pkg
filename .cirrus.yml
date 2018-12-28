@@ -44,8 +44,8 @@ osx_task:
 alpine_task:
         container:
                 image: alpine:latest
-        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev bmake
+        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev
         script:
                 - ./configure --with-libarchive.pc
-                - bmake -j4 || bmake V=1
-        check_script: bmake check || { kyua report --verbose ; exit 1 ; }
+                - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ; }
