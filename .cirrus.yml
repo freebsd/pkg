@@ -24,7 +24,7 @@ debian_task:
                 - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev
         install_script: scripts/install_deps.sh
         script:
-                - ./configure --with-libarchive-pc
+                - ./configure --with-libarchive.pc
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ; }
 
@@ -46,6 +46,6 @@ alpine_task:
                 image: alpine:latest
         install-script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev
         script:
-                - ./configure --with-libarchive-pc
+                - ./configure --with-libarchive.pc
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ; }
