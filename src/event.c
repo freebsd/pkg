@@ -35,7 +35,9 @@
 
 #include <sys/resource.h>
 #include <sys/types.h>
+#ifdef HAVE_LIBJAIL
 #include <sys/sysctl.h>
+#endif
 #include <sys/wait.h>
 #include <sys/socket.h>
 
