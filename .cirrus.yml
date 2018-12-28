@@ -28,5 +28,5 @@ osx_task:
 alpine_task:
         container:
                 image: alpine:latest
-        install-script: apk add gcc kyua libarchive
+        install-script: apk add gcc kyua libarchive tcl
         script: scripts/travis_build.sh
