@@ -8,7 +8,10 @@ freebsd12_task:
         freebsd_instance:
                 image: freebsd-12-0-release-amd64
         install_script: pkg install -y kyua
-        script: scripts/travis_build.sh
+        script:
+                - ./configure
+                - make -j4 || make V=1
+        check-script: make check || { kyua report --verbose ; exit 1 }
 
 debian_task:
         container:
