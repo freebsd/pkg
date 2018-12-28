@@ -16,5 +16,5 @@ debian_task:
         setup_script:
                 - apt-get update
                 - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev
-        install_script: script/install_deps.sh
+        install_script: scripts/install_deps.sh
         script: scripts/travis_build.sh
