@@ -18,3 +18,9 @@ debian_task:
                 - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential
         install_script: scripts/install_deps.sh
         script: scripts/travis_build.sh
+
+osx_task:
+        osx_instance:
+                image: mojave-xcode-10.1
+        install_script: scripts/install_deps.sh
+        script: scripts/travis_build.sh
