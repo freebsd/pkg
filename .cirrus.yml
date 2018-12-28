@@ -10,7 +10,7 @@ freebsd12_task:
         install_script: pkg install -y kyua
         script: scripts/travis_build.sh
 
-debian_tsak:
+debian_task:
         container:
                 image: debian:stable
         setup_script: apt-get install libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev
