@@ -21,7 +21,7 @@ debian_task:
                 image: debian:stable
         setup_script:
                 - apt-get update
-                - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4
+                - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
         install_script: scripts/install_deps.sh
         script:
                 - ./configure --with-libarchive.pc
@@ -33,9 +33,9 @@ osx_task:
                 image: mojave-xcode-10.1
         install_script: scripts/install_deps.sh
         env:
-                LDFLAGS: -L/usr/local/opt/libarchive/lib
-                CPPFLAGS: -I/usr/local/opt/libarchive/include
-                CFLAGS: -I/usr/local/opt/libarchive/include
+                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
+                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
         script:
                 - ./configure
                 - make -j4 || make V=1
@@ -44,7 +44,7 @@ osx_task:
 alpine_task:
         container:
                 image: alpine:latest
-        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev m4 lz4-dev
+        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev m4 lz4-dev expat-dev
         script:
                 - ./configure --with-libarchive.pc
                 - make -j4 || make V=1
