@@ -176,6 +176,7 @@ enum Elf_Error {
 #define	ELF_F_ARCHIVE	   0x100U /* archive creation */
 #define	ELF_F_ARCHIVE_SYSV 0x200U /* SYSV style archive */
 
+#include <sys/cdefs.h>
 __BEGIN_DECLS
 Elf		*elf_begin(int _fd, Elf_Cmd _cmd, Elf *_elf);
 int		elf_cntl(Elf *_elf, Elf_Cmd _cmd);
