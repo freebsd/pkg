@@ -24,3 +24,9 @@ osx_task:
                 image: mojave-xcode-10.1
         install_script: scripts/install_deps.sh
         script: scripts/travis_build.sh
+
+alpine_task:
+        container:
+                image: alpine:latest
+        install-script: apk add gcc kyua libarchive
+        script: scripts/travis_build.sh
