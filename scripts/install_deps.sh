@@ -47,7 +47,11 @@ install_from_github() {
 		LDFLAGS="-L/usr/local/lib -Wl,-R/usr/local/lib" \
 		PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
 	make
-	sudo make install
+	if [ `id -u` -eq 0 ]; then
+		make install
+	else
+		sudo make install
+	fi
 	cd -
 
 	rm -rf "${distname}" "${distname}.tar.gz"
@@ -62,5 +66,9 @@ elif [ $(uname -s) = "Linux" ]; then
 	install_from_github atf 0.21
 	install_from_github lutok 0.4
 	install_from_github kyua 0.12
-        sudo ldconfig
+	if [ `id -u` -eq 0 ]; then
+		ldconfig
+	else
+		sudo ldconfig
+	fi
 fi
