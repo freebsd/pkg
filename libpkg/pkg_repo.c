@@ -31,7 +31,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/sysctl.h>
 #include <sys/uio.h>
 
 #include <archive_entry.h>
