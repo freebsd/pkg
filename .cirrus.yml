@@ -44,7 +44,7 @@ osx_task:
 alpine_task:
         container:
                 image: alpine:latest
-        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev
+        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev m4
         script:
                 - ./configure --with-libarchive.pc
                 - make -j4 || make V=1
