@@ -29,6 +29,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+/* musl libc apparently does not have ALLPERMS */
+#ifndef ALLPERMS
+#define     ALLPERMS        (S_ISUID|S_ISGID|S_ISTXT|S_IRWXU|S_IRWXG|S_IRWXO)
+#endif
+
 #include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
