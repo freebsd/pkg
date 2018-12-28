@@ -21,7 +21,7 @@ debian_task:
                 image: debian:stable
         setup_script:
                 - apt-get update
-                - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev
+                - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4
         install_script: scripts/install_deps.sh
         script:
                 - ./configure --with-libarchive.pc
