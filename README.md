@@ -43,6 +43,9 @@ Table of Contents:
 Linux/OSX:
 [<img src="https://travis-ci.org/freebsd/pkg.svg" />](https://travis-ci.org/freebsd/pkg)
 
+Cirrus CI: (Linux, OSX, FreeBSD):
+[![Build Status](https://api.cirrus-ci.com/github/freebsd/pkg.svg)](https://cirrus-ci.com/github/freebsd/pkg)
+
 FreeBSD:
 [![Build Status](https://jenkins.mouf.net/view/pkg/job/pkg/badge/icon)](https://jenkins.mouf.net/view/pkg/job/pkg/)
 <a name="libpkg"></a>
