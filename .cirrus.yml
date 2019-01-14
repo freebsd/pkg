@@ -16,9 +16,9 @@ freebsd12_task:
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ;}
 
-debian_task:
+ubuntu_task:
         container:
-                image: debian:stable
+                image: ubuntu:latest
         setup_script:
                 - apt-get update
                 - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
