@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -509,7 +509,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd;
 	struct pkg_repo_meta *meta = NULL;
-	int retcode = EPKG_OK;
+	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	FILE *mfile;
 
@@ -567,14 +567,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, fts_compare)) == NULL) {
 		pkg_emit_errno("fts_open", path);
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	snprintf(packagesite, sizeof(packagesite), "%s/%s", output_dir,
 	    meta->manifests);
 	if ((fd = open(packagesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	close(fd);
@@ -582,7 +580,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		snprintf(filesite, sizeof(filesite), "%s/%s", output_dir,
 		    meta->filesite);
 		if ((fd = open(filesite, O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
-			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 		close(fd);
@@ -590,7 +587,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
 	    meta->digests);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -601,7 +597,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	if (len == 0) {
 		/* Nothing to do */
 		pkg_emit_error("No package files have been found");
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -633,7 +628,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 #endif
 			if (socketpair(AF_UNIX, st, 0, cur_pipe) == -1) {
 				pkg_emit_errno("pkg_create_repo", "pipe");
-				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
@@ -642,7 +636,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 					meta) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
-				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
@@ -683,7 +676,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 				continue;
 			}
 			else {
-				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 		}
@@ -738,6 +730,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	else {
 		pkg_emit_notice("cannot create metafile at %s", repodb);
 	}
+	retcode = EPKG_OK;
 cleanup:
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		DL_FREE(curcb->conflicts, pkg_conflict_free);
