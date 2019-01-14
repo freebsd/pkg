@@ -31,7 +31,6 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <fts.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <stdbool.h>
