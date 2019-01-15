@@ -8,7 +8,7 @@ tests_init \
 query_body() {
 	touch plop
 	touch bla
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat >> test.ucl << EOF
 options: {
 	"OPT1": "on"

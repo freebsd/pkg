@@ -12,7 +12,7 @@ metalog_body()
 {
         atf_skip_on Linux Test fails on Linux
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 / || atf_fail "Failed to create the ucl file"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 / || atf_fail "Failed to create the ucl file"
 	touch ${TMPDIR}/testfile1 || atf_fail "Failed to create the temp file"
 	echo "@(root,wheel,640,) testfile1" > test.plist
 	echo "test123" > ${TMPDIR}/testfile2 || atf_fail "Failed to create the temp file"
@@ -71,7 +71,7 @@ EOF
 
 reinstall_body()
 {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /usr/local
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /usr/local
 
 	atf_check \
 		-o ignore \
@@ -106,7 +106,7 @@ EOF
 
 pre_script_fail_body()
 {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 scripts: {
    pre-install: "exit 1"
@@ -127,7 +127,7 @@ EOF
 
 post_script_ignored_body()
 {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 scripts: {
    post-install: "exit 1"

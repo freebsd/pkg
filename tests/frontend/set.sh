@@ -10,7 +10,7 @@ tests_init \
 
 initialize_pkg() {
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	sed -i'' -e 's#origin.*#origin: origin/test#' test.ucl
 
 	atf_check \

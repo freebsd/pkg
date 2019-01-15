@@ -15,7 +15,7 @@ pkg_puppet_body() {
 	touch rubygemhiera.file
 	touch rubygems.file
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas rubygem-ruby-augeas 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas rubygem-ruby-augeas 1.0
 	cat << EOF >> rubygemrubyaugeas.ucl
 deps: {
 	ruby: {
@@ -32,7 +32,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg puppet puppet 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg puppet puppet 1.0
 	cat << EOF >> puppet.ucl
 deps: {
 	ruby: {
@@ -53,7 +53,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby ruby 2.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ruby ruby 2.0
 	cat << EOF >> ruby.ucl
 shlibs_provided [
 	"libruby20.so.20",
@@ -63,7 +63,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera rubygem-hiera 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera rubygem-hiera 1.0
 	cat << EOF >> rubygem-hiera.ucl
 deps: {
 	ruby: {
@@ -80,7 +80,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems20 ruby20-gems 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems20 ruby20-gems 1.0
 	cat << EOF >> ruby-gems20.ucl
 deps: {
 	ruby {
@@ -124,7 +124,7 @@ EOF
 	rm -f *.ucl
 	rm *.txz
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas.new rubygem-ruby-augeas 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas.new rubygem-ruby-augeas 1.0
 	cat << EOF >> rubygemrubyaugeas.new.ucl
 deps: {
 	ruby: {
@@ -141,7 +141,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg puppet.new puppet 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg puppet.new puppet 1.0
 	cat << EOF >> puppet.new.ucl
 deps: {
 	ruby: {
@@ -162,7 +162,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby.new ruby 2.1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ruby.new ruby 2.1
 	cat << EOF >> ruby.new.ucl
 shlibs_provided [
 	"libruby21.so.21",
@@ -172,7 +172,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera.new rubygem-hiera 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera.new rubygem-hiera 1.0
 	cat << EOF >> rubygem-hiera.new.ucl
 deps: {
 	ruby: {
@@ -189,7 +189,7 @@ files: {
 	}
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems21.new ruby21-gems 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems21.new ruby21-gems 1.0
 	cat << EOF >> ruby-gems21.new.ucl
 deps: {
 	ruby {

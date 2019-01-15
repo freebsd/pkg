@@ -10,7 +10,7 @@ tests_init \
 
 config_body()
 {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "@config ${TMPDIR}/a" > plist
 
 	echo "entry" > a
@@ -32,7 +32,7 @@ config_body()
 		-o inline:"entry\naddition\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/a
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry 2" > a
 
 	atf_check \
@@ -50,7 +50,7 @@ config_body()
 
 config_fileexist_body()
 {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "${TMPDIR}/a" > plist
 
 	echo "entry" > a
@@ -68,7 +68,7 @@ config_fileexist_body()
 		-o inline:"entry\naddition\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/a
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry 2" > a
 	echo "@config ${TMPDIR}/a" > plist
 
@@ -86,7 +86,7 @@ config_fileexist_body()
 config_hardlink_body()
 {
 	# Create a pkg
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0"
 	echo "line 1" > a
 	echo "line 2" >> a
 	ln a b
@@ -110,7 +110,7 @@ config_hardlink_body()
 	echo "line 2" >> target/a
 
 	# Create an updated pkg
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.1"
 	echo "line 1" > a
 	echo "line 2" >> a
 	echo "@config /a" > plist
@@ -139,7 +139,7 @@ config_fileexist_notinpkg_body()
 	echo "entry" > ${TMPDIR}/target/${TMPDIR}/a
 	unset PKG_DBDIR
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry 2" > a
 	echo "@config ${TMPDIR}/a" > plist
 
@@ -156,7 +156,7 @@ config_fileexist_notinpkg_body()
 
 config_morecomplicated_body()
 {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "entry1" > test.config
 	echo "entry3" >> test.config
 	echo "@config ${TMPDIR}/test.config" > plist
@@ -183,7 +183,7 @@ config_morecomplicated_body()
 		-o inline:"entry1\nentry3\nentry4\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/test.config
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	echo "entry1" > test.config
 	echo "entry2" >> test.config
 	echo "entry3" >> test.config

@@ -15,7 +15,7 @@ tests_init	\
 
 initialize_pkg() {
 	touch a
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a: ""
@@ -96,7 +96,7 @@ add_force_body() {
 
 add_accept_missing_body() {
 	touch a
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 deps: {
 	b: {
@@ -166,7 +166,7 @@ post-install
 
 add_stdin_missing_body() {
 	touch a
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 deps: {
 	b: {
@@ -214,7 +214,7 @@ post-install
 add_no_version_body() {
 
 	for p in test test-lib final ; do
-		atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg ${p} ${p} 1
+		atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ${p} ${p} 1
 		if [ ${p} = "final" ]; then
 			cat << EOF >> final.ucl
 deps {

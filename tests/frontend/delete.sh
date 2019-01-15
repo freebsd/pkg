@@ -10,9 +10,9 @@ tests_init \
 	simple_delete_prefix_ending_with_slash
 
 delete_all_body() {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 
 	atf_check -o ignore pkg register -M foo.ucl
 	atf_check -o ignore pkg register -M pkg.ucl
@@ -22,7 +22,7 @@ delete_all_body() {
 }
 
 delete_pkg_body() {
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
 	atf_check -o ignore pkg register -M pkg.ucl
 	atf_check -o ignore -e ignore -s exit:3 pkg delete -y pkg
 	atf_check -o ignore -e ignore pkg delete -yf pkg
@@ -33,7 +33,7 @@ simple_delete_body() {
 	mkdir dir
 	touch dir/file2
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
 	cat << EOF >> test.ucl
 files: {
     ${TMPDIR}/file1: "",
@@ -64,7 +64,7 @@ simple_delete_prefix_ending_with_slash_body() {
 	mkdir dir
 	touch dir/file2
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/"
 	cat << EOF >> test.ucl
 files: {
     ${TMPDIR}/file1: "",
@@ -95,7 +95,7 @@ delete_with_directory_owned_body() {
 	mkdir dir
 	touch dir/file2
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/"
 	cat << EOF >> test.ucl
 files: {
     ${TMPDIR}/file1: "",
@@ -103,7 +103,7 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test2" "test2" "1" "${TMPDIR}/"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test2" "test2" "1" "${TMPDIR}/"
 	cat << EOF >> test2.ucl
 directories: {
     ${TMPDIR}/dir: 'y',
