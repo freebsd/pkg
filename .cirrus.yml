@@ -54,8 +54,9 @@ fedora_task:
         container:
                 image: fedora:latest
         install_script:
-                - dnf upgrade
-                - dnf install kyua atf-devel libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel
+                - dnf -y upgrade
+                - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel
         script:
                 - ./configure --with-libarchive.pc
                 - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ; }

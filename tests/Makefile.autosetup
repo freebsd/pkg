@@ -106,11 +106,7 @@ OTHER_LIBS+=	-ldl
 OTHER_LIBS+=	-lresolv
 @endif
 
-@if libabidir == libmachista
 LOCAL_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
-@else
-LOCAL_LDFLAGS=	-Wl,-Bstatic $(LIBS) -Wl,-Bdynamic $(OTHER_LIBS)
-@endif
 LOCAL_LDFLAGS+=	@PKG_ATF_C_LDFLAGS@ @PKG_ATF_C_LIBS@
 
 all: $(TESTS) Kyuafile ${TESTS_SHELL} frontend/Kyuafile
