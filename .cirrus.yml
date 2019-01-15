@@ -21,7 +21,7 @@ ubuntu_task:
                 image: ubuntu:latest
         setup_script:
                 - apt-get update
-                - apt-get install -y libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
+                - apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
         install_script: scripts/install_deps.sh
         script:
                 - ./configure --with-libarchive.pc
