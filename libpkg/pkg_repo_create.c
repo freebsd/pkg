@@ -555,7 +555,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			goto cleanup;
 		}
 	}
-	if ((fd = openat(outputdir_fd, meta->digests, O_CREAT|O_TRUNC|O_RDWR)) == -1) {
+	if ((fd = openat(outputdir_fd, meta->digests, O_CREAT|O_TRUNC|O_RDWR, 00644)) == -1) {
 		goto cleanup;
 	}
 	if ((mandigests = fdopen(fd, "w")) == NULL) {
