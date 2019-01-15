@@ -86,7 +86,9 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 @if HAVE_LIBUTIL
 LOCAL_LDFLAGS+=	-lutil
 @endif
-
+@if HAVE_LIBFTS
+LOCAL_LDFLAGS+=	-lfts
+@endif
 @if HAVE_LIBDL
 LOCAL_LDFLAS+= -ldl
 @endif

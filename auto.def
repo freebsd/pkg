@@ -140,6 +140,14 @@ cc-with { -includes { libutil.h }} {
 	if {[cc-check-decls humanize_number]} {
 	}
 }
+
+if {![cc-check-functions fts_open]} {
+	cc-with { -libs { -lfts }} {
+		if {[cc-check-functions fts_open]} {
+		}
+	}
+}
+
 if {[get-define HAVE_DECL_HUMANIZE_NUMBER] eq 1} {
 	cc-with { -libs { -lutil }} {
 		if {[cc-check-functions humanize_number]} {
