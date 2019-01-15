@@ -3,7 +3,7 @@ include $(MK)/common.mk
 all: lib$(LIB)$(LIBSOEXT) lib$(LIB)$(SH_SOEXT) lib$(LIB).a
 
 lib$(LIB)$(SH_SOEXT): lib$(LIB)$(LIBSOEXT)
-	ln -sf $> $@
+	ln -sf lib$(LIB)$(LIBSOEXT) $@
 
 lib$(LIB)$(LIBSOEXT): $(SHOBJS)
 	$(CC) $(SH_LDFLAGS) $(LDFLAGS) $(LOCAL_LDFLAGS) $(SH_PREFIX)$@ -o $@ $(SHOBJS)
