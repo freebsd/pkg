@@ -144,6 +144,7 @@ cc-with { -includes { libutil.h }} {
 if {![cc-check-functions fts_open]} {
 	cc-with { -libs { -lfts }} {
 		if {[cc-check-functions fts_open]} {
+			define-feature LIBFTS
 		}
 	}
 }
