@@ -80,19 +80,25 @@ STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
 
 include $(MK)/prog.mk
 
-all: pkg-static
+@if HAVE_STATIC
+all: ${STATIC_FILE}
+install: install-static
+
+pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
+	$(CC) -o $@ $(OBJS) -static $(LDFLAGS) $(STATIC_LDFLAGS)
+
+install-static: pkg-static
+	install -d -m 755 $(DESTDIR)$(sbindir)
+	install -s -m 755 pkg-static $(DESTDIR)$(sbindir)/pkg-static
+@endif
 
 ${OBJS}: $(top_builddir)/pkg_config.h
 
 $(PROG): $(top_builddir)/libpkg/libpkg_flat.a
 
-pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
-	$(CC) -o $@ $(OBJS) -static $(LDFLAGS) $(STATIC_LDFLAGS)
-
-install: $(PROG) pkg-static
+install: $(PROG)
 	install -d -m 755 $(DESTDIR)$(sbindir)
 	install -s -m 755 pkg $(DESTDIR)$(sbindir)/pkg
-	install -s -m 755 pkg-static $(DESTDIR)$(sbindir)/pkg-static
 	install -m 644 pkg.conf.sample $(DESTDIR)$(etcdir)
 
 clean: clean-pkg-static

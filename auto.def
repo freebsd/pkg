@@ -49,6 +49,8 @@ if {[string match *-linux* [get-define host]]} {
 			user-error "Unable to find libbsd"
 		}
 	}
+} else {
+	define-feature static
 }
 
 if {![opt-bool with-libarchive.pc]} {
