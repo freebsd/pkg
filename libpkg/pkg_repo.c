@@ -180,7 +180,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 		if (f != NULL) {
 			if (fatal)
 				pkg_emit_error("At least one of the "
-					" certificates has been revoked");
+					"certificates has been revoked");
 
 			free(hash);
 			return (false);
