@@ -125,8 +125,10 @@ The
 flag was first released in the
 .Pa /usr/sbin/pkg
 bootstrapper
-in FreeBSD 8.4,
-but was missing from FreeBSD 9.1.
+in
+.Fx 8.4 ,
+but was missing from
+.Fx 9.1 .
 It may not be enough to just call
 .Nm Fl N ,
 as the bootstrapper may be invoked, or an error returned
@@ -292,8 +294,8 @@ can be passed as environment variables.
 Extra environment variables are:
 .Bl -tag -width "INSTALL_AS_USER"
 .It INSTALL_AS_USER
-Allow to do all manipulation as a regular user instead of checking for root
-credentials when appropriate.
+Allow all manipulation to be done as a regular user instead of checking for
+root credentials when appropriate.
 .br
 It is expected that the user will ensure that every file and directory
 manipulated by
