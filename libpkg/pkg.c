@@ -1652,7 +1652,7 @@ pkg_need_message(struct pkg *p, struct pkg *old)
 					<= 0);
 		}
 		if (ret && p->message->minimum_version) {
-			ret = (pkg_version_cmp(old->version, p->message->maximum_version)
+			ret = (pkg_version_cmp(old->version, p->message->minimum_version)
 								>= 0);
 		}
 	}
