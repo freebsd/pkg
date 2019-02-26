@@ -73,7 +73,7 @@ libelf_msize.c: libelf_msize.m4 elf_types.m4
 	@m4 -D SRCDIR=$(top_srcdir)/external/libelf $(top_srcdir)/external/libelf/elf_types.m4 $(top_srcdir)/external/libelf/libelf_msize.m4 > $@
 
 native-elf-format.h:
-	$(top_srcdir)/external/libelf/native-elf-format > $@
+	LANG=C $(top_srcdir)/external/libelf/native-elf-format > $@
 
 
 include $(MK)/static-lib.mk
