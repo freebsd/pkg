@@ -146,7 +146,7 @@ audit_pkgs_all() {
 
 	case $security_status_pkgaudit_jails in
 	\*)
-		jails=$(jls -q -h name path | sed -e 1d -e 's/ /|/')
+		jails=$(jls -q -h name path | grep -v /usr/local/poudriere/data/.m | sed -e 1d -e 's/ /|/')
 		;;
 	'')
 		jails=
