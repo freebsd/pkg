@@ -78,18 +78,6 @@ status_pkg_all() {
     return $rc
 }
 
-# On 9.x or lower, 400.status-pkg exists in the base system, but using
-# the old pkg_tools commands.  Unfortunately it uses the same
-# configuration variables, so allow the setting of
-# $weekly_status_pkgng_enable to turn on this script without enabling
-# the pkg_tools equivalent
-
-case "$weekly_status_pkgng_enable" in
-        [Yy][Ee][Ss])
-	: ${weekly_status_pkg_enable="$weekly_status_pkgng_enable"}
-	;;
-esac
-
 case "$weekly_status_pkg_enable" in
 	[Yy][Ee][Ss])
 

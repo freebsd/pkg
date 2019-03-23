@@ -111,16 +111,6 @@ backup_pkg_all() {
 	return $rc
 }
 
-# $daily_backup_pkgng_{enable,dir} are deprecated -- use
-# daily_backup_pkg_{enable,dir} instead.
-
-case "$daily_backup_pkgng_enable" in
-[Yy][Ee][Ss])
-	: ${daily_backup_pkg_enable:="$daily_backup_pkgng_enable"}
-	: ${daily_backup_pkg_dir:="$daily_backup_pkgng_dir"}
-	;;
-esac
-
 case "${daily_backup_pkg_enable:-YES}" in
 [Nn][Oo])
 	;;
