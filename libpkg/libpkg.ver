@@ -42,7 +42,6 @@ global:
 	pkg_finish_repo;
 	pkg_fprintf;
 	pkg_free;
-	pkg_from_old;
 	pkg_get2;
 	pkg_get_cachedirfd;
 	pkg_get_dbdirfd;
@@ -95,7 +94,6 @@ global:
 	pkg_object_key;
 	pkg_object_string;
 	pkg_object_type;
-	pkg_old_load_from_path;
 	pkg_open;
 	pkg_open_fd;
 	pkg_options;
@@ -209,6 +207,9 @@ global:
 	pkgdb_transaction_rollback;
 	pkgdb_upgrade_lock;
 	ports_parse_plist;
+# Symbols from libcsu
+	__progname;
+	environ;
 local:
 	*;
 };
