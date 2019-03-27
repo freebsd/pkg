@@ -1,3 +1,19 @@
+Changes from pkg 1.10.99.11 to 1.10.99.12
+- use /usr/bin/uname to determine of the ABI
+- Add 3 new aliases:
+  * rall-depends: showing depenencies of a non installed package
+  * rcomment: showing only the comment of a non installed package
+  * rdesc: showing only the description of a non installed package
+- switch to cirrus-ci
+- improve portability on linux
+- simplify code to create the repository
+- close stdin when running scripts
+- update bundled libucl to latest version
+- remove backward compat (pkg_*) in periodic scripts
+- always use anticongersion on periodic scripts
+- Prevent SIGSEGV with 'pkg version' with packaged base
+- Fix issue with recent lld
+
 Changes from pkg 1.10.99.10 to 1.10.99.11
 - Fix typos in man pages
 - Attempt to fix build in head where libarchive now uses blake2b
