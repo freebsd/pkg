@@ -83,6 +83,12 @@
 static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
 static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
 
+struct elf_info {
+	char *osname;
+	char *strversion;
+	int *osversion;
+};
+
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
 {
@@ -709,6 +715,101 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 #undef MOVE
 }
 
+static bool
+elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
+{
+	Elf_Note note;
+	char *src;
+	uint32_t gnu_abi_tag[4];
+	char *note_os[6] = {"Linux", "GNU", "Solaris", "FreeBSD", "NetBSD", "Syllable"};
+	char *(*pnote_os)[6] = &note_os;
+	char invalid_osname[] = "Unknown";
+	uint32_t version = 0;
+	int version_style = 1;
+
+	src = data->d_buf;
+
+	while ((uintptr_t)src < ((uintptr_t)data->d_buf + data->d_size)) {
+		memcpy(&note, src, sizeof(Elf_Note));
+		src += sizeof(Elf_Note);
+		if ((strncmp ((const char *) src, "FreeBSD", note.n_namesz) == 0) ||
+		    (strncmp ((const char *) src, "DragonFly", note.n_namesz) == 0) ||
+		    (strncmp ((const char *) src, "NetBSD", note.n_namesz) == 0) ||
+		    (note.n_namesz == 0)) {
+			if (note.n_type == NT_VERSION) {
+				version_style = 1;
+				break;
+			}
+		}
+		if (strncmp ((const char *) src, "GNU", note.n_namesz) == 0) {
+			if (note.n_type == NT_GNU_ABI_TAG) {
+				version_style = 2;
+				break;
+			}
+		}
+		src += roundup2(note.n_namesz + note.n_descsz, 4);
+	}
+	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
+		return (false);
+	}
+	free(ei->osname);
+	if (version_style == 2) {
+		/*
+		 * NT_GNU_ABI_TAG
+		 * Operating system (OS) ABI information.  The
+		 * desc field contains 4 words:
+		 * word 0: OS descriptor (ELF_NOTE_OS_LINUX, ELF_NOTE_OS_GNU, etc)
+		 * word 1: major version of the ABI
+		 * word 2: minor version of the ABI
+		 * word 3: subminor version of the ABI
+		 */
+		src += roundup2(note.n_namesz, 4);
+		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB) {
+			for (int wdndx = 0; wdndx < 4; wdndx++) {
+				gnu_abi_tag[wdndx] = be32dec(src);
+				src += 4;
+			}
+		} else {
+			for (int wdndx = 0; wdndx < 4; wdndx++) {
+				gnu_abi_tag[wdndx] = le32dec(src);
+				src += 4;
+			}
+		}
+		if (gnu_abi_tag[0] < 6)
+			ei->osname = xstrdup((*pnote_os)[gnu_abi_tag[0]]);
+		else
+			ei->osname = xstrdup(invalid_osname);
+	} else {
+		if (note.n_namesz == 0)
+			ei->osname = xstrdup(invalid_osname);
+		else
+			ei->osname = xstrdup(src);
+		src += roundup2(note.n_namesz, 4);
+		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB)
+			version = be32dec(src);
+		else
+			version = le32dec(src);
+	}
+
+	free(ei->strversion);
+	if (version_style == 2) {
+		xasprintf(&ei->strversion, "%d.%d.%d", gnu_abi_tag[1],
+		    gnu_abi_tag[2], gnu_abi_tag[3]);
+	} else {
+		if (ei->osversion != NULL)
+			*ei->osversion = version;
+#if defined(__DragonFly__)
+		xasprintf(&ei->strversion, "%d.%d", (((version / 100 % 1000)+1)/2)*2);
+#elif defined(__NetBSD__)
+		xasprintf(&ei->strversion, "%d", (version + 1000000) / 100000000);
+#else
+		xasprintf(&ei->strversion, "%d", version / 100000);
+#endif
+	}
+
+	return (true);
+}
+
 static int
 pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 {
@@ -716,25 +817,21 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 	GElf_Ehdr elfhdr;
 	GElf_Shdr shdr;
 	Elf_Data *data;
-	Elf_Note note;
 	Elf_Scn *scn = NULL;
 	int fd, i;
-	int version_style = 1;
-	char *src = NULL;
-	char *osname;
-	uint32_t version = 0;
 	int ret = EPKG_OK;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
-	char invalid_osname[] = "Unknown";
-	char *note_os[6] = {"Linux", "GNU", "Solaris", "FreeBSD", "NetBSD", "Syllable"};
-	char *(*pnote_os)[6] = &note_os;
-	uint32_t gnu_abi_tag[4];
 
 	const char *abi_files[] = {
 		getenv("ABI_FILE"),
 		_PATH_UNAME,
 		_PATH_BSHELL,
 	};
+	struct elf_info ei;
+
+	arch = NULL;
+	memset(&ei, 0, sizeof(ei));
+	ei.osversion = osversion;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -776,100 +873,28 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 			goto cleanup;
 		}
 
-		if (shdr.sh_type == SHT_NOTE)
-			break;
+		if (shdr.sh_type == SHT_NOTE) {
+			data = elf_getdata(scn, NULL);
+			/*
+			 * loop over all the note section and override what
+			 * should be overridden if any
+			 */
+			elf_note_analyse(data, &elfhdr, &ei);
+		}
 	}
 
-	if (scn == NULL) {
+	if (ei.osname == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("failed to get the note section");
 		goto cleanup;
 	}
 
-	data = elf_getdata(scn, NULL);
-	src = data->d_buf;
-	while ((uintptr_t)src < ((uintptr_t)data->d_buf + data->d_size)) {
-		memcpy(&note, src, sizeof(Elf_Note));
-		src += sizeof(Elf_Note);
-		if ((strncmp ((const char *) src, "FreeBSD", note.n_namesz) == 0) ||
-		    (strncmp ((const char *) src, "DragonFly", note.n_namesz) == 0) ||
- 		    (strncmp ((const char *) src, "NetBSD", note.n_namesz) == 0) ||
-		    (note.n_namesz == 0)) {
-			if (note.n_type == NT_VERSION) {
-				version_style = 1;
-				break;
-			}
-		}
-		if (strncmp ((const char *) src, "GNU", note.n_namesz) == 0) {
-			if (note.n_type == NT_GNU_ABI_TAG) {
-				version_style = 2;
-				break;
-			}
-		}
-		src += roundup2(note.n_namesz + note.n_descsz, 4);
-	}
-	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
-		ret = EPKG_FATAL;
-		pkg_emit_error("failed to find the version elf note");
-		goto cleanup;
-	}
-	if (version_style == 2) {
-		/*
-		 * NT_GNU_ABI_TAG
-		 * Operating system (OS) ABI information.  The
-		 * desc field contains 4 words:
-		 * word 0: OS descriptor (ELF_NOTE_OS_LINUX, ELF_NOTE_OS_GNU, etc)
-		 * word 1: major version of the ABI
-		 * word 2: minor version of the ABI
-		 * word 3: subminor version of the ABI
-		 */
-		src += roundup2(note.n_namesz, 4);
-		if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB) {
-			for (int wdndx = 0; wdndx < 4; wdndx++) {
-				gnu_abi_tag[wdndx] = be32dec(src);
-				src += 4;
-			}
-		} else {
-			for (int wdndx = 0; wdndx < 4; wdndx++) {
-				gnu_abi_tag[wdndx] = le32dec(src);
-				src += 4;
-			}
-		}
-		if (gnu_abi_tag[0] < 6)
-			osname = (*pnote_os)[gnu_abi_tag[0]];
-		else
-			osname = invalid_osname;
-	} else {
-		if (note.n_namesz == 0)
-			osname = invalid_osname;
-		else
-			osname = src;
-		src += roundup2(note.n_namesz, 4);
-		if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB)
-			version = be32dec(src);
-		else
-			version = le32dec(src);
-	}
+	snprintf(dest, sz, "%s:%s", ei.osname, ei.strversion);
 
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
 
 	arch = elf_corres_to_string(mach_corres, (int) elfhdr.e_machine);
-	if (version_style == 2) {
-		snprintf(dest, sz, "%s:%d.%d.%d", osname, gnu_abi_tag[1],
-		    gnu_abi_tag[2], gnu_abi_tag[3]);
-	} else {
-		if (osversion != NULL)
-			*osversion = version;
-#if defined(__DragonFly__)
-		snprintf(dest, sz, "%s:%d.%d",
-		    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
-#elif defined(__NetBSD__)
-		snprintf(dest, sz, "%s:%d", osname, (version + 1000000) / 100000000);
-#else
-		snprintf(dest, sz, "%s:%d", osname, version / 100000);
-#endif
-	}
 
 	switch (elfhdr.e_machine) {
 	case EM_ARM:
