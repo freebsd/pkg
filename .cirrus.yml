@@ -41,14 +41,14 @@ osx_task:
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ;}
 
-alpine_task:
-        container:
-                image: alpine:latest
-        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev m4 lz4-dev expat-dev acl-dev atf-dev
-        script:
-                - ./configure --with-libarchive.pc
-                - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ; }
+#alpine_task:
+#        container:
+#                image: alpine:latest
+#        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev m4 lz4-dev expat-dev acl-dev atf-dev
+#        script:
+#                - ./configure --with-libarchive.pc
+#                - make -j4 || make V=1
+#        check_script: make check || { kyua report --verbose ; exit 1 ; }
 
 fedora_task:
         container:
