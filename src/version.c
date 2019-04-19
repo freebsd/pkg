@@ -308,6 +308,9 @@ hash_indexfile(const char *indexfilename)
 		version = strsep(&l, "|");
 		name = version;
 		version = strrchr(version, '-');
+		if (version == NULL)
+			errx(EX_IOERR, "Invalid INDEX file format: %s",
+			    indexfilename);
 		version[0] = '\0';
 		version++;
 
