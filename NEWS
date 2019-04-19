@@ -1,3 +1,10 @@
+Changes from pkg 1.10.99.12 to 1.10.99.13
+- fix segfault when running pkg version <an_invalid_index_file>
+- fix segfault that can occurs sometime when forcing the installation of a
+  localpackage: pkg install -f ./mypkg-X.txz
+- fix abi detection when multiple elf notes are used in the binary like on
+  fedora
+
 Changes from pkg 1.10.99.11 to 1.10.99.12
 - use /usr/bin/uname to determine of the ABI
 - Add 3 new aliases:
