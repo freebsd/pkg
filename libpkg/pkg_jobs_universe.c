@@ -1140,6 +1140,12 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 					}
 				}
 			}
+			if (req->item == NULL) {
+				rit = xcalloc(1, sizeof(*rit));
+				rit->pkg = selected->pkg;
+				rit->unit = selected;
+				DL_APPEND(req->item, rit);
+			}
 			HASH_ADD_KEYPTR(hh, j->request_add, selected->pkg->uid,
 				strlen (selected->pkg->uid), req);
 		}
