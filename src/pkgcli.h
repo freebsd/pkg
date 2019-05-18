@@ -302,6 +302,7 @@ extern int default_yes;
 extern int yes;
 extern int dry_run;
 extern bool auto_update;
+extern bool bypass_kernel;
 extern int case_sensitive;
 extern int force;
 extern bool quiet;

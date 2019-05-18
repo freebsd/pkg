@@ -94,6 +94,11 @@ the
 .Fl y
 flag was specified.
 Default: NO.
+.It Cm BYPASS_KERNEL: boolean
+When this option is enabled
+.Xr pkg-upgrade 8
+will skip safety check that forces kernel updates be performed first
+Default: NO.
 .It Cm CONSERVATIVE_UPGRADE: boolean
 Ensure in multi repository mode that the priority is given as much as possible
 to the repository where a package was first installed from.

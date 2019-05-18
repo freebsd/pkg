@@ -95,6 +95,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	(*j)->db = db;
 	(*j)->type = t;
 	(*j)->solved = 0;
+	(*j)->kernel_update = false;
 	(*j)->pinning = true;
 	(*j)->flags = PKG_FLAG_NONE;
 	(*j)->conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
@@ -1589,6 +1590,10 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 					/* Do not test we ignore what doesn't exists remotely */
 					pkg_jobs_find_upgrade(j, pkg->uid, MATCH_EXACT);
 				}
+				if (strcmp(pkg->origin, "os/kernel") == 0) {
+					/* Kernel needs updating */
+					j->kernel_update = true;
+				}
 				pkg_free(pkg);
 				pkgdb_it_free(it);
 			}
@@ -2326,4 +2331,10 @@ pkg_jobs_iter_lockedpkgs(struct pkg_jobs *j, locked_pkgs_cb cb, void * ctx)
 	pkgs_job_lockedpkg = &foo;
 
 	twalk(j->lockedpkgs, pkg_jobs_visit_lockedpkgs);
+}
+
+bool
+pkg_jobs_has_kernel_update(struct pkg_jobs *j)
+{
+	return j->kernel_update;
 }

@@ -27,6 +27,7 @@ int default_yes; /* Default always yes */
 int yes; /* Assume always yes */
 int dry_run; /* Do not perform any actions */
 bool auto_update; /* Do not update repo */
+bool bypass_kernel; /* Do not force updating kernel first */
 int case_sensitive; /* Case sensitive queries */
 int force; /* Forced operation */
 int quiet; /* Silent output */
@@ -39,6 +40,7 @@ set_globals(void)
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 	dry_run = 0;
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
+	bypass_kernel = pkg_object_bool(pkg_config_get("BYPASS_KERNEL"));
 	case_sensitive = pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"));
 	force = 0;
 	quiet = 0;

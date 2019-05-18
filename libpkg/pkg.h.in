@@ -1075,6 +1075,11 @@ int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
 bool pkg_jobs_has_lockedpkgs(struct pkg_jobs *j);
 
 /**
+ * Returns if the pending job has kernel updates
+ */
+bool pkg_jobs_has_kernel_update(struct pkg_jobs *jobs);
+
+/**
  * Iterate through the locked packages, calling the passed in function pointer
  * on each.
  */

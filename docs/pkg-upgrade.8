@@ -22,13 +22,14 @@
 .Nd perform upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
-.Op Fl fInFqUy
+.Op Fl bfInFqUy
 .Op Fl r Ar reponame
 .Op Fl Cgix
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{force,no-install-scripts,dry-run,fetch-only}
+.Op Cm --{bypass-kernel,force}
+.Op Cm --{no-install-scripts,dry-run,fetch-only}
 .Op Cm --{quiet,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -124,6 +125,12 @@ work list.
 The following options are supported by
 .Nm :
 .Bl -tag -width repository
+.It Fl b , Cm --bypass-kernel
+Skip the safety checks that force updating kernel first. Enforced by default
+unless
+.Ev BYBASS_KERNEL
+is set to true in
+.Pa pkg.conf .
 .It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )

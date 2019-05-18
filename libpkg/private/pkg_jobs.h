@@ -112,6 +112,7 @@ struct pkg_jobs {
 	int total;
 	int conflicts_registered;
 	bool need_fetch;
+	bool kernel_update;
 	const char *reponame;
 	const char *destdir;
 	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;

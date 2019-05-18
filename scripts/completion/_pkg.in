@@ -113,6 +113,7 @@ _pkg_config_opts() {
 		'AUTOMERGE[automatically merge configuration files]:boolean:(yes no)' \
 		'DEFAULT_ALWAYS_YES[default to "yes" for all questions requiring user confirmation]:boolean:(yes no)' \
 		'ASSUME_ALWAYS_YES[assume "yes" to all questions requiring user confirmation]:boolean:(yes no)' \
+		'BYPASS_KERNEL[skup safety checks that require kernel updates first]:boolean:(yes no)' \
 		'CONSERVATIVE_UPGRADE[give priority to repo where a package was first installed from]:boolean:(yes no)' \
 		'CUDF_SOLVER[experimental\: use an external CUDF solver]:CUDF solver:_files' \
 		'CASE_SENSITIVE_MATCH[case-sensitive package matching]:boolean:(yes no)' \

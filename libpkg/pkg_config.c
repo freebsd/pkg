@@ -228,6 +228,12 @@ static struct config_entry c[] = {
 		"Automatically update repository catalogues prior to package updates",
 	},
 	{
+		PKG_BOOL,
+		"BYPASS_KERNEL",
+		"NO",
+		"Skip the safety checks which normally force kernel updates first",
+	},
+	{
 		PKG_STRING,
 		"NAMESERVER",
 		NULL,

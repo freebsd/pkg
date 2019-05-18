@@ -65,6 +65,7 @@ global:
 	pkg_jobs_destdir;
 	pkg_jobs_free;
 	pkg_jobs_has_lockedpkgs;
+	pkg_jobs_has_kernel_update;
 	pkg_jobs_iter;
 	pkg_jobs_iter_lockedpkgs;
 	pkg_jobs_new;

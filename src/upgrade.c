@@ -277,6 +277,7 @@ exec_upgrade(int argc, char **argv)
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	struct option longopts[] = {
+		{ "bypass-kernel",	no_argument,		NULL,	'b' },
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
 		{ "force",		no_argument,		NULL,	'f' },
 		{ "fetch-only",		no_argument,		NULL,	'F' },
@@ -295,8 +296,11 @@ exec_upgrade(int argc, char **argv)
 
 	nbactions = nbdone = 0;
 
-	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+bCfFgiInqr:Uxyv", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'b':
+			bypass_kernel = true;
+			break;
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
 			break;
@@ -409,6 +413,11 @@ exec_upgrade(int argc, char **argv)
 	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
 		/* print a summary before applying the jobs */
 		rc = yes;
+		if ( pkg_jobs_has_kernel_update(jobs) && !bypass_kernel ) {
+			warnx("Kernel update must be performed first or set '-b' to bypass.");
+			retcode = EXIT_FAILURE;
+			goto cleanup;
+		}
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
 				"The following %d package(s) will be affected (of %d checked):\n\n",
@@ -448,6 +457,10 @@ exec_upgrade(int argc, char **argv)
 		retcode = EX_OK;
 	else
 		retcode = EXIT_FAILURE;
+
+	if ( rc && pkg_jobs_has_kernel_update(jobs) ) {
+		printf("Kernel has been updated. Please reboot before attempting further upgrades.\n");
+	}
 
 cleanup:
 	pkg_jobs_free(jobs);

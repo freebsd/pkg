@@ -39,6 +39,7 @@ pkg_config_defaults_body()
 	    -o match:'^ *PLUGINS_CONF_DIR = ".*/etc/pkg/";$' \
 	    -o match:'^ *PERMISSIVE = false;$' \
 	    -o match:'^ *REPO_AUTOUPDATE = true;$' \
+	    -o match:'^ *BYPASS_KERNEL = false;$' \
 	    -o match:'^ *NAMESERVER = "";$' \
 	    -o match:'^ *EVENT_PIPE = "";$' \
 	    -o match:'^ *FETCH_TIMEOUT = 30;$' \
