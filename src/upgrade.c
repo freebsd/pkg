@@ -413,7 +413,15 @@ exec_upgrade(int argc, char **argv)
 	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
 		/* print a summary before applying the jobs */
 		rc = yes;
-		if ( pkg_jobs_has_kernel_update(jobs) && !bypass_kernel ) {
+		static int jailed = 0;
+#ifdef HAVE_LIBJAIL
+		size_t intlen;
+		intlen = sizeof(jailed);
+		if (sysctlbyname("security.jail.jailed", &jailed, &intlen,
+			NULL, 0) != -1)
+			jailed = -1;
+#endif
+		if ( pkg_jobs_has_kernel_update(jobs) && !bypass_kernel && jailed == -1 ) {
 			warnx("Kernel update must be performed first or set '-b' to bypass.");
 			retcode = EXIT_FAILURE;
 			goto cleanup;
