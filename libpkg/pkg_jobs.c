@@ -1590,9 +1590,11 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 					/* Do not test we ignore what doesn't exists remotely */
 					pkg_jobs_find_upgrade(j, pkg->uid, MATCH_EXACT);
 				}
-				if (strcmp(pkg->origin, "os/kernel") == 0) {
-					/* Kernel needs updating */
-					j->kernel_update = true;
+				if ((j->flags & PKG_FLAG_FORCE) != PKG_FLAG_FORCE) {
+					if (strcmp(pkg->origin, "os/kernel") == 0) {
+						/* Kernel needs updating */
+						j->kernel_update = true;
+					}
 				}
 				pkg_free(pkg);
 				pkgdb_it_free(it);
