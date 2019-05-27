@@ -1,3 +1,9 @@
+Changes from pkg 1.10.99.13 to 1.10.99.14
+- fix libpkg.so when linked with binutils
+- instead of closing stdin for script just use /dev/null
+- force installation of symlinks to avoid make install to fail is some
+  symlinks are already there
+
 Changes from pkg 1.10.99.12 to 1.10.99.13
 - fix segfault when running pkg version <an_invalid_index_file>
 - fix segfault that can occurs sometime when forcing the installation of a
