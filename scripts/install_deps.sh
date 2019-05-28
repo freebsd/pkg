@@ -60,7 +60,7 @@ install_from_github() {
 if [ $(uname -s) = "Darwin" ]; then
 	brew update
 	brew upgrade openssl
-	brew install libarchive --with-xz
+	brew install libarchive
 	brew install kyua
 elif [ $(uname -s) = "Linux" ]; then
 	install_from_github atf 0.21
