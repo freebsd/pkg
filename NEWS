@@ -1,3 +1,5 @@
+Release 1.11
+
 Changes from pkg 1.10.99.13 to 1.10.99.14
 - fix libpkg.so when linked with binutils
 - instead of closing stdin for script just use /dev/null
