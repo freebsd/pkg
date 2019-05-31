@@ -10,6 +10,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir) \
 		-Wno-unused-parameter \
 		-Wno-pointer-sign \
-		-DWITH_SSL
+		-DWITH_SSL \
+		-DINET6
 
 include $(MK)/static-lib.mk
