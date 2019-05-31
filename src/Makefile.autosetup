@@ -69,7 +69,7 @@ OTHER_LIBS+=	-lresolv
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
 @else
 LOCAL_LDFLAGS=	-Wl,-Bstatic \
-		-Wl,--whole-archive $(LIBPKGFLAT) -Wl,--no-whole-archive \
+		@waflags@ $(LIBPKGFLAT) @nowaflags@ \
 		$(LIBS) \
 		-Wl,-Bdynamic $(OTHER_LIBS) \
 		-Wl,--export-dynamic \

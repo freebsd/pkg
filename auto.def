@@ -193,8 +193,12 @@ foreach header [list endian.h sys/endian.h] {
 
 if {[string match *-darwin* [get-define host]]} {
 	define libabidir libmachista
+	define waflags ""
+	define nowaflags ""
 } else {
 # libelf
+	define waflags "-Wl,-whole-archive"
+	define nowaflags "-Wl,-no-whole-archive"
 	cc-with { -includes { sys/types.h }} {
 		cc-check-includes elf-hints.h sys/elf_common.h
 	}

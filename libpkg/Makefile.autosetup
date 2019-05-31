@@ -59,7 +59,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-DPREFIX=\"$(PREFIX)\" \
 		-DHAVE_CONFIG_H
 
-LOCAL_LDFLAGS=	-Wl,--whole-archive \
+LOCAL_LDFLAGS=	@waflags@ \
 		@REPOS_LDFLAGS@ \
 		-L$(top_builddir)/external/sqlite -lsqlite_pic \
 		-L$(top_builddir)/external/libucl -lucl_pic \
@@ -69,7 +69,7 @@ LOCAL_LDFLAGS=	-Wl,--whole-archive \
 		-L$(top_builddir)/external/blake2 -lblake2_pic \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/libfetch -lfetch_pic \
-		-Wl,--no-whole-archive \
+		@nowaflags@ \
 		-lssl \
 		-lcrypto \
 		-lm
@@ -101,8 +101,7 @@ LOCAL_LDFLAS+= -lresolv
 @if libabidir == libmachista
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
 STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
-LOCAL_LDFLAGS+=	-Wl,--whole-archive -L$(top_builddir)/external/libmachista \
-		-lmachista_pic -Wl,--no-whole-archive \
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic \
 		-larchive -lresolv
 SRCS+=		pkg_macho.c
 @else
