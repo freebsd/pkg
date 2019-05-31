@@ -1,3 +1,7 @@
+Changes from pkg 1.11.0 to 1.11.1
+- Fix ABI on dragonfly
+- Fix ipv6 only environement
+
 Release 1.11
 
 Changes from pkg 1.10.99.13 to 1.10.99.14
