@@ -39,7 +39,7 @@ fi
 
 : ${security_status_pkgaudit_enable:=YES}
 : ${security_status_pkgaudit_period:=daily}
-: ${security_status_pkgaudit_quiet:-YES}
+: ${security_status_pkgaudit_quiet:=YES}
 : ${security_status_pkgaudit_chroots=$pkg_chroots}
 : ${security_status_pkgaudit_jails=$pkg_jails}
 : ${security_status_pkgaudit_expiry:=2}
