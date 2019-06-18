@@ -235,7 +235,7 @@ cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 # capsicum
 if {[cc-check-functions cap_sandboxed]} {
 	define-feature capsicum
-	cc-check-includes sys/capsicum.h sys/capability.h
+	cc-check-includes sys/capsicum.h
 }
 
 define testsdir ""
