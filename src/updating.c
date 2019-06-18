@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -44,6 +44,8 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <regex.h>
 
 #include "pkgcli.h"
 
@@ -52,12 +54,121 @@ struct installed_ports {
 	SLIST_ENTRY(installed_ports) next;
 };
 
+struct regex_cache {
+	char *pattern;
+	regex_t reg;
+	SLIST_ENTRY(regex_cache) next;
+};
+
 void
 usage_updating(void)
 {
 	fprintf(stderr, "Usage: pkg updating [-i] [-d YYYYMMDD] [-f file] [portname ...]\n");
 	fprintf(stderr, "For more information see 'pkg help updating'.\n");
 
+}
+
+int
+matcher(const char *affects, const char *origin, bool ignorecase)
+{
+	int i, n, count, found, ret, rc;
+	bool was_spc;
+	size_t len;
+	char *buf, *p, **words;
+	struct regex_cache *ent;
+	static SLIST_HEAD(,regex_cache) cache = SLIST_HEAD_INITIALIZER(regex_cache);
+
+	if (strpbrk(affects,"^.$*|+?") == NULL &&
+		(strchr(affects,'[') == NULL || strchr(affects,']') == NULL) &&
+		(strchr(affects,'{') == NULL || strchr(affects,'}') == NULL) &&
+		(strchr(affects,'(') == NULL || strchr(affects,')') == NULL))
+		return 0;
+
+	len = strlen(affects);
+	buf = strdup(affects);
+	if (buf == NULL)
+		return 0;
+
+	for (count = 0, was_spc = true, p = buf; p < buf + len ; p++) {
+		if (isspace(*p)) {
+			if (!was_spc)
+				was_spc = true;
+			*p = '\0';
+		} else {
+			if (was_spc) {
+				count++;
+				was_spc = false;
+			}
+		}
+	}
+
+	words = malloc(sizeof(char*)*count);
+	if (words == NULL) {
+		free(buf);
+		return 0;
+	}
+
+	for (i = 0, was_spc = true, p = buf; p < buf + len ; p++) {
+		if (*p == '\0') {
+			if (!was_spc)
+				was_spc = true;
+		} else {
+			if (was_spc) {
+				words[i++] = p;
+				was_spc = false;
+			}
+		}
+	}
+
+	for(ret = 0, i = 0; i < count; i++) {
+		if (strpbrk(words[i],"^$*|?") == NULL &&
+			(strchr(words[i],'[') == NULL || strchr(words[i],']') == NULL) &&
+			(strchr(words[i],'{') == NULL || strchr(words[i],'}') == NULL) &&
+			(strchr(words[i],'(') == NULL || strchr(words[i],')') == NULL))
+			continue;
+		n = strlen(words[i]);
+		if (words[i][n-1] == ',') {
+			words[i][n-1] = '\0';
+		}
+		found = 0;
+		SLIST_FOREACH(ent, &cache, next) {
+			if (ignorecase)
+				rc = strcasecmp(words[i], ent->pattern);
+			else
+				rc = strcmp(words[i], ent->pattern);
+			if (rc == 0) {
+				found++;
+				if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
+					ret = 1;
+					break;
+				}
+			}
+		}
+		if (found == 0) {
+			ent = malloc(sizeof(struct regex_cache));
+			if (ent == NULL)
+				goto err;
+			if ((ent->pattern = strdup(words[i])) == NULL) {
+				free(ent);
+				goto err;
+			}
+
+			regcomp(&ent->reg, words[i], (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
+			SLIST_INSERT_HEAD(&cache, ent, next);
+			if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
+				ret = 1;
+				break;
+			}
+		}
+	}
+
+	free(words);
+	free(buf);
+	return ret;
+ err:
+	free(words);
+	free(buf);
+	return 0;
 }
 
 int
@@ -199,7 +310,15 @@ exec_updating(int argc, char **argv)
 							break;
 						}
 					}
+					if (matcher(line, port->origin, caseinsensitive) != 0) {
+						tmp = "";
+						break;
+					}
 				}
+				if (tmp == NULL)
+					tmp = strcasestr(line, "all users\n");
+				if (tmp == NULL)
+					tmp = strcasestr(line, "all ports users\n");
 				if (tmp != NULL) {
 					if ((date != NULL) && strncmp(dateline, date, 8) < 0) {
 						continue;
