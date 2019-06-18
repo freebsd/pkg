@@ -1844,6 +1844,12 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 	}
 
 	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (pkg->prefix != NULL) {
+		ucl_parser_register_variable(parser, "PREFIX", pkg->prefix);
+	}
+	if (pkg->name != NULL) {
+		ucl_parser_register_variable(parser, "PKGNAME", pkg->name);
+	}
 
 	if (ucl_parser_add_chunk(parser, (const unsigned char*)str, len)) {
 		obj = ucl_parser_get_object(parser);
