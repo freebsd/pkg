@@ -3,10 +3,11 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	repo \
+	repo_v1 \
+	repo_v2 \
 	repo_multiversion
 
-repo_body() {
+repo_v1_body() {
 	touch plop
 	touch bla
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
@@ -17,6 +18,9 @@ files: {
 }
 EOF
 
+	cat > meta.ucl << EOF
+version = 1
+EOF
 	atf_check \
 		-o empty \
 		-e empty \
@@ -27,7 +31,7 @@ EOF
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
-		pkg repo .
+		pkg repo --meta-file meta.ucl .
 
 	ln -s test-1.txz test.txz
 
@@ -35,7 +39,7 @@ EOF
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
 		-e empty \
 		-s exit:0 \
-		pkg repo .
+		pkg repo --meta-file meta.ucl .
 
 	if [ `uname -s` = "Darwin" ]; then
 		atf_pass
@@ -55,6 +59,56 @@ EOF
 
 	nb=$(tar -xf digests.txz -O digests | wc -l)
 	atf_check_equal $nb 2
+
+}
+repo_v2_body() {
+	touch plop
+	touch bla
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
+	cat >> test.ucl << EOF
+files: {
+	"${TMPDIR}/plop": ""
+	"${TMPDIR}/bla": ""
+}
+EOF
+
+	cat > meta.ucl << EOF
+version = 2
+EOF
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	atf_check \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg repo --meta-file meta.ucl .
+
+	ln -s test-1.txz test.txz
+
+	atf_check \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg repo --meta-file meta.ucl .
+
+	if [ `uname -s` = "Darwin" ]; then
+		atf_pass
+	fi
+
+	atf_check -s exit:127 -o ignore -e ignore "ls digest.txz"
+
+	mkdir Latest
+	ln -s test-1.txz Latest/test.txz
+
+	atf_check \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg repo .
 
 }
 

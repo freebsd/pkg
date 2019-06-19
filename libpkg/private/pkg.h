@@ -663,6 +663,7 @@ int pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target);
 void pkg_repo_meta_free(struct pkg_repo_meta *meta);
 ucl_object_t * pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta);
 bool pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta);
+bool pkg_repo_meta_is_old_file(const char *file, struct pkg_repo_meta *meta);
 
 typedef enum {
 	HASH_UNKNOWN,
