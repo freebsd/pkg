@@ -30,7 +30,11 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
+/* Default to repo v1 for now */
+#define	DEFAULT_META_VERSION	1
+
 static ucl_object_t *repo_meta_schema_v1 = NULL;
+static ucl_object_t *repo_meta_schema_v2 = NULL;
 
 static void
 pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
@@ -43,14 +47,22 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->conflicts_archive = NULL;
 	meta->manifests = xstrdup("packagesite.yaml");
 	meta->manifests_archive = xstrdup("packagesite");
-	meta->digests = xstrdup("digests");
-	meta->digests_archive = xstrdup("digests");
 	meta->filesite = xstrdup("filesite.yaml");
 	meta->filesite_archive = xstrdup("filesite");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
 	meta->fulldb_archive = NULL;
-	meta->version = 1;
+
+	/*
+	 * digest is only used on legacy v1 repository
+	 * but pkg_repo_meta_is_special_file depend on the 
+	 * information in the pkg_repo_meta.
+	 * Leave digests here so pkg will not complain that
+	 * repodir/digest.txz isn't a valid package when switching
+	 * from version 1 to version 2
+	 */
+	meta->digests = xstrdup("digests");
+	meta->digests_archive = xstrdup("digests");
 }
 
 void
@@ -142,6 +154,61 @@ pkg_repo_meta_open_schema_v1()
 	ucl_parser_free(parser);
 
 	return (repo_meta_schema_v1);
+}
+
+static ucl_object_t*
+pkg_repo_meta_open_schema_v2()
+{
+	struct ucl_parser *parser;
+	static const char meta_schema_str_v2[] = ""
+			"{"
+			"type = object;"
+			"properties {"
+			"version = {type = integer};\n"
+			"maintainer = {type = string};\n"
+			"source = {type = string};\n"
+			"packing_format = {enum = [txz, tbz, tgz, tar]};\n"
+			"manifests = {type = string};\n"
+			"conflicts = {type = string};\n"
+			"fulldb = {type = string};\n"
+			"filesite = {type = string};\n"
+			"manifests_archive = {type = string};\n"
+			"conflicts_archive = {type = string};\n"
+			"fulldb_archive = {type = string};\n"
+			"filesite_archive = {type = string};\n"
+			"source_identifier = {type = string};\n"
+			"revision = {type = integer};\n"
+			"eol = {type = integer};\n"
+			"cert = {"
+			"  type = object;\n"
+			"  properties {"
+			"    type = {enum = [rsa]};\n"
+			"    data = {type = string};\n"
+			"    name = {type = string};\n"
+			"  }"
+			"  required = [type, data, name];\n"
+			"};\n"
+
+			"}\n"
+			"required = [version]\n"
+			"}";
+
+	if (repo_meta_schema_v2 != NULL)
+		return (repo_meta_schema_v2);
+
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_chunk(parser, meta_schema_str_v2,
+			sizeof(meta_schema_str_v2) - 1)) {
+		pkg_emit_error("cannot parse schema for repo meta: %s",
+				ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		return (NULL);
+	}
+
+	repo_meta_schema_v2 = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+
+	return (repo_meta_schema_v2);
 }
 
 static struct pkg_repo_meta_key*
@@ -273,22 +340,22 @@ pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target)
 		return (EPKG_FATAL);
 	}
 
-	/* Now we support only v1 meta */
-	if (version == 1) {
+	/* Now we support only v1 and v2 meta */
+	if (version == 1)
 		schema = pkg_repo_meta_open_schema_v1();
-
-		if (schema != NULL) {
-			if (!ucl_object_validate(schema, top, &err)) {
-				pkg_emit_error("repository meta cannot be validated: %s", err.msg);
-				ucl_object_unref(top);
-				return (EPKG_FATAL);
-			}
-		}
-	}
+	else if (version == 2)
+		schema = pkg_repo_meta_open_schema_v2();
 	else {
 		pkg_emit_error("repository meta has wrong version %d", version);
 		ucl_object_unref(top);
 		return (EPKG_FATAL);
+	}
+	if (schema != NULL) {
+		if (!ucl_object_validate(schema, top, &err)) {
+			printf("repository meta cannot be validated: %s", err.msg);
+			ucl_object_unref(top);
+			return (EPKG_FATAL);
+		}
 	}
 
 	return (pkg_repo_meta_parse(top, target, version));
@@ -300,6 +367,7 @@ pkg_repo_meta_default(void)
 	struct pkg_repo_meta *meta;
 
 	meta = xcalloc(1, sizeof(*meta));
+	meta->version = DEFAULT_META_VERSION;
 	pkg_repo_meta_set_default(meta);
 
 	return (meta);
@@ -329,15 +397,17 @@ pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
 
 	META_EXPORT_FIELD_FUNC(result, meta, packing_format, string,
 		packing_format_to_string);
-	META_EXPORT_FIELD_FUNC(result, meta, digest_format, string,
-		pkg_checksum_type_to_string);
 
-	META_EXPORT_FIELD(result, meta, digests, string);
+	if (meta->version == 1) {
+		META_EXPORT_FIELD_FUNC(result, meta, digest_format, string,
+		    pkg_checksum_type_to_string);
+		META_EXPORT_FIELD(result, meta, digests, string);
+		META_EXPORT_FIELD(result, meta, digests_archive, string);
+	}
 	META_EXPORT_FIELD(result, meta, manifests, string);
 	META_EXPORT_FIELD(result, meta, conflicts, string);
 	META_EXPORT_FIELD(result, meta, fulldb, string);
 	META_EXPORT_FIELD(result, meta, filesite, string);
-	META_EXPORT_FIELD(result, meta, digests_archive, string);
 	META_EXPORT_FIELD(result, meta, manifests_archive, string);
 	META_EXPORT_FIELD(result, meta, conflicts_archive, string);
 	META_EXPORT_FIELD(result, meta, fulldb_archive, string);
@@ -368,6 +438,17 @@ pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta)
 	special = META_SPECIAL_FILE(file, meta, filesite_archive);
 	special = META_SPECIAL_FILE(file, meta, conflicts_archive);
 	special = META_SPECIAL_FILE(file, meta, fulldb_archive);
+
+	return (special);
+}
+
+bool
+pkg_repo_meta_is_old_file(const char *file, struct pkg_repo_meta *meta)
+{
+	bool special = false;
+
+	if (meta->version != 1)
+		special = META_SPECIAL_FILE(file, meta, digests_archive);
 
 	return (special);
 }

@@ -177,6 +177,10 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 
 		*ext = '\0';
 
+		if (pkg_repo_meta_is_old_file(fts_ent->fts_name, meta)) {
+			unlink(fts_ent->fts_path);
+			continue;
+		}
 		if (strcmp(fts_ent->fts_name, "meta") == 0 ||
 				pkg_repo_meta_is_special_file(fts_ent->fts_name, meta)) {
 			*ext = '.';
@@ -244,6 +248,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	else
 		flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
 
+	/* We are reading to digest buf but it's only to check the socketpair */
 	if (read(pip, digestbuf, 1) == -1) {
 		pkg_emit_errno("pkg_create_repo_worker", "read");
 		goto cleanup;
@@ -273,13 +278,16 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				mdigest = xmalloc(pkg_checksum_type_size(meta->digest_format));
 
 				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
-				if (pkg_checksum_generate(pkg, mdigest,
-				     pkg_checksum_type_size(meta->digest_format),
-				     meta->digest_format) != EPKG_OK) {
-					pkg_emit_error("Cannot generate digest for a package");
-					ret = EPKG_FATAL;
+				/* Only version 1 needs the digest */
+				if (meta->version == 1) {
+					if (pkg_checksum_generate(pkg, mdigest,
+					    pkg_checksum_type_size(meta->digest_format),
+					    meta->digest_format) != EPKG_OK) {
+						pkg_emit_error("Cannot generate digest for a package");
+						ret = EPKG_FATAL;
 
-					goto cleanup;
+						goto cleanup;
+					}
 				}
 			}
 			mlen = utstring_len(b);
@@ -322,22 +330,24 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 				flock(ffd, LOCK_UN);
 			}
 
-			r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld:%s\n",
-				pkg->origin,
-				mdigest,
-				(long)mpos,
-				(long)fpos,
-				(long)mlen,
-				pkg->sum);
+			if (meta->version == 1) {
+				r = snprintf(digestbuf, sizeof(digestbuf), "%s:%s:%ld:%ld:%ld:%s\n",
+				    pkg->origin,
+				    mdigest,
+				    (long)mpos,
+				    (long)fpos,
+				    (long)mlen,
+				    pkg->sum);
 
-			free(mdigest);
-			mdigest = NULL;
-			iov[0].iov_base = digestbuf;
-			iov[0].iov_len = r;
-			memset(&msg, 0, sizeof(msg));
-			msg.msg_iov = iov;
-			msg.msg_iovlen = 1;
-			sendmsg(pip, &msg, MSG_EOR);
+				free(mdigest);
+				mdigest = NULL;
+				iov[0].iov_base = digestbuf;
+				iov[0].iov_len = r;
+				memset(&msg, 0, sizeof(msg));
+				msg.msg_iov = iov;
+				msg.msg_iovlen = 1;
+				sendmsg(pip, &msg, MSG_EOR);
+			}
 		}
 		cur_job ++;
 	}
@@ -355,7 +365,7 @@ cleanup:
 }
 
 static int
-pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
+pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist, struct pkg_repo_meta *meta)
 {
 	struct digest_list_entry *dig = NULL;
 	char buf[1024];
@@ -388,6 +398,13 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 		}
 		else if (r == 0)
 			return (EPKG_END);
+
+		/* 
+		 * Don't bother adding to the digest list if we 
+		 * aren't creating a repo v1
+		 */
+		if (meta->version != 1)
+			continue;
 
 		/*
 		 * XXX: can parse merely full lines
@@ -555,11 +572,13 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			goto cleanup;
 		}
 	}
-	if ((fd = openat(outputdir_fd, meta->digests, O_CREAT|O_TRUNC|O_RDWR, 00644)) == -1) {
-		goto cleanup;
-	}
-	if ((mandigests = fdopen(fd, "w")) == NULL) {
-		goto cleanup;
+	if (meta->version == 1) {
+		if ((fd = openat(outputdir_fd, meta->digests, O_CREAT|O_TRUNC|O_RDWR, 00644)) == -1) {
+			goto cleanup;
+		}
+		if ((mandigests = fdopen(fd, "w")) == NULL) {
+			goto cleanup;
+		}
 	}
 
 	len = 0;
@@ -655,7 +674,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			for (i = 0; i < num_workers; i ++) {
 				if (pfd[i].fd != -1 &&
 								(pfd[i].revents & (POLLIN|POLLHUP|POLLERR))) {
-					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist) != EPKG_OK) {
+					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist, meta) != EPKG_OK) {
 						/*
 						 * Wait for the worker finished
 						 */
@@ -688,7 +707,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	retcode = EPKG_OK;
 
 	/* Now sort all digests */
-	DL_SORT(dlist, pkg_digest_sort_compare_func);
+	if (meta->version == 1)
+		DL_SORT(dlist, pkg_digest_sort_compare_func);
 
 	/* Write metafile */
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
@@ -723,25 +743,27 @@ cleanup:
 		fts_close(fts);
 
 	LL_FREE(fts_items, pkg_create_repo_fts_free);
-	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		if (cur_dig->checksum != NULL)
-			fprintf(mandigests, "%s:%s:%ld:%ld:%ld:%s\n", cur_dig->origin,
-				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-				cur_dig->manifest_length, cur_dig->checksum);
-		else
-			fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
-				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-				cur_dig->manifest_length);
 
-		free(cur_dig->digest);
-		free(cur_dig->origin);
-		free(cur_dig);
+	if (meta->version == 1) {
+		LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
+			if (cur_dig->checksum != NULL)
+				fprintf(mandigests, "%s:%s:%ld:%ld:%ld:%s\n", cur_dig->origin,
+				    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+				    cur_dig->manifest_length, cur_dig->checksum);
+			else
+				fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
+				    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+				    cur_dig->manifest_length);
+
+			free(cur_dig->digest);
+			free(cur_dig->origin);
+			free(cur_dig);
+		}
 	}
 
-	pkg_repo_meta_free(meta);
-
-	if (mandigests != NULL)
+	if (meta->version == 1 && mandigests != NULL)
 		fclose(mandigests);
+	pkg_repo_meta_free(meta);
 
 	return (retcode);
 }
@@ -921,8 +943,6 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 			rsa_free(rsa);
 			close(fd);
 			return (EPKG_FATAL);
-		} else {
-			meta = pkg_repo_meta_default();
 		}
 		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,
 			argv, argc) != EPKG_OK) {
@@ -961,14 +981,16 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 
 	pkg_emit_progress_tick(nfile++, files_to_pack);
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    meta->digests);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    meta->digests_archive);
-	if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, rsa, meta,
-		argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
+	if (meta->version == 1) {
+		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+		    meta->digests);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+		    meta->digests_archive);
+		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, rsa, meta,
+		    argv, argc) != EPKG_OK) {
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	pkg_emit_progress_tick(nfile++, files_to_pack);
@@ -1002,9 +1024,11 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
 		    output_dir, meta->manifests_archive);
 		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, meta->digests_archive);
-		utimes(repo_archive, ftimes);
+		if (meta->version == 1) {
+			snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+			    output_dir, meta->digests_archive);
+			utimes(repo_archive, ftimes);
+		}
 		if (filelist) {
 			snprintf(repo_archive, sizeof(repo_archive),
 			    "%s/%s.txz", output_dir, meta->filesite_archive);
