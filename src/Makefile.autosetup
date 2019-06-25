@@ -49,7 +49,7 @@ OTHER_LIBS=	@EXTRA_LIBS@
 @if HAVE_PKG_LIBARCHIVE
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
 @else
-OTHER_LIBS+=	-larchive -lbz2 -lz -llzma
+OTHER_LIBS+=	-larchive -lbz2 -lz -llzma @ZSTDLIB@
 @endif
 OTHER_LIBS+=	-lm -lssl -lcrypto -pthread
 @if HAVE_LIBUTIL

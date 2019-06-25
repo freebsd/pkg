@@ -259,6 +259,18 @@ if {[pkg-config-init 0]} {
 			user-error "Unable to find libarchive"
 		} else {
 			define PKG_LIBARCHIVE_LIBS_STATIC [exec pkg-config --static --libs-only-l libarchive]
+			cc-with { -libs { -larchive }} {
+				cc-check-functions archive_write_add_filter_zstd
+			}
+		}
+	} else {
+		# check if the privatelibzstd is there
+		cc-with { -libs { -larchive }} {
+			if {[cc-check-functions archive_write_add_filter_zstd]} {
+				define ZSTDLIB "-lprivatezstd"
+			} else {
+				define ZSTDLIB ""
+			}
 		}
 	}
 }
