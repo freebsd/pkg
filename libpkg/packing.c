@@ -315,6 +315,17 @@ packing_set_format(struct archive *a, pkg_formats format)
 	const char *notsupp_fmt = "%s is not supported, trying %s";
 
 	switch (format) {
+	case TZS:
+#ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
+		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
+			if (archive_write_set_filter_option(a, NULL, "compression-level", "19") != ARCHIVE_OK) {
+				pkg_emit_error("bad compression-level");
+			}
+			return ("tzst");
+		}
+#endif
+		pkg_emit_error(notsupp_fmt, "zstd", "xz");
+		/* FALLTHRU */
 	case TXZ:
 		if (archive_write_add_filter_xz(a) == ARCHIVE_OK)
 			return ("txz");
@@ -342,6 +353,8 @@ packing_format_from_string(const char *str)
 {
 	if (str == NULL)
 		return TXZ;
+	if (strcmp(str, "tzst") == 0)
+		return TZS;
 	if (strcmp(str, "txz") == 0)
 		return TXZ;
 	if (strcmp(str, "tbz") == 0)
@@ -360,6 +373,9 @@ packing_format_to_string(pkg_formats format)
 	const char *res = NULL;
 
 	switch (format) {
+	case TZS:
+		res = "tzst";
+		break;
 	case TXZ:
 		res = "txz";
 		break;

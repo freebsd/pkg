@@ -1124,7 +1124,7 @@ void pkg_solve_problem_free(struct pkg_solve_problem *problem);
 /**
  * Archive formats options.
  */
-typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
+typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ, TZS } pkg_formats;
 
 /**
  * Create package from an installed & registered package

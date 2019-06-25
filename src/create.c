@@ -104,6 +104,9 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 	switch (fmt) {
+	case TZS:
+		format = "tzst";
+		break;
 	case TXZ:
 		format = "txz";
 		break;
@@ -180,7 +183,7 @@ cleanup:
 /*
  * options:
  * -M: manifest file
- * -f <format>: format could be txz, tgz, tbz or tar
+ * -f <format>: format could be tzst, txz, tgz, tbz or tar
  * -g: globbing
  * -h: pkg name with hash and symlink
  * -m: path to dir where to find the metadata
@@ -299,7 +302,9 @@ exec_create(int argc, char **argv)
 	} else {
 		if (format[0] == '.')
 			++format;
-		if (strcmp(format, "txz") == 0)
+		if (strcmp(format, "tzst") == 0)
+			fmt = TZS;
+		else if (strcmp(format, "txz") == 0)
 			fmt = TXZ;
 		else if (strcmp(format, "tbz") == 0)
 			fmt = TBZ;

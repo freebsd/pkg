@@ -287,7 +287,7 @@ _pkg_args() {
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
 				'(-n --no-clobber)'{-n,--no-clobber}"[don't overwrite existing packages]" \
-				'(-f --format)'{-f+,--format=}'[specify package output format]:format:(tar tgz tbz txz)' \
+				'(-f --format)'{-f+,--format=}'[specify package output format]:format:(tar tgz tbz txz tzst)' \
 				'(-o --out-dir)'{-o+,--out-dir=}'[output directory]:outdir:_files -/' \
 				'(-r --root-dir)'{-r+,--root-dir=}'[specify root directory]:rootdir:_files -/' \
 				- '(manifest)' \
