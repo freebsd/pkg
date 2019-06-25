@@ -81,7 +81,7 @@ STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
 include $(MK)/prog.mk
 
 @if HAVE_STATIC
-all: ${STATIC_FILE}
+all: pkg-static
 install: install-static
 
 pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
