@@ -10,7 +10,8 @@ tests_init \
         updating_ilmbase \
         updating_mysql \
         updating_postgresql \
-        updating_cupsbase
+        updating_cupsbase \
+        updating_cups \
 
 updating_all_users_body() {
 	cat > UPDATING <<EOF
@@ -260,5 +261,38 @@ EOF
 
 	atf_check \
 		-o match:"^20190628:$" \
+		pkg updating -f UPDATING
+}
+
+updating_cups_body() {
+	cat > test.ucl << EOF
+name: "cups"
+origin: "print/cups"
+version: "2.2.1"
+arch: "*"
+maintainer: "none"
+prefix: "/usr/local"
+www: "unknown"
+comment: "need one"
+desc: "also need one"
+message: [
+	{ message: "Always print" }
+]
+EOF
+	atf_check \
+		-o match:".*Installing.*" \
+		pkg register -M test.ucl
+
+	cat > UPDATING <<EOF
+20190628:
+  AFFECTS: users of print/cups-{base,client,image}
+  AUTHOR: ports@FreeBSD.org
+
+  Messages...
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
 		pkg updating -f UPDATING
 }
