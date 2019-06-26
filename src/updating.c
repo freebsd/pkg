@@ -124,12 +124,6 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	struct regex_cache *ent;
 	static SLIST_HEAD(,regex_cache) cache = SLIST_HEAD_INITIALIZER(regex_cache);
 
-	if (strpbrk(affects,"^.$*|+?") == NULL &&
-		(strchr(affects,'[') == NULL || strchr(affects,']') == NULL) &&
-		(strchr(affects,'{') == NULL || strchr(affects,'}') == NULL) &&
-		(strchr(affects,'(') == NULL || strchr(affects,')') == NULL))
-		return 0;
-
 	len = strlen(affects);
 	buf = strdup(affects);
 	if (buf == NULL)
@@ -167,15 +161,28 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	}
 
 	for(ret = 0, i = 0; i < count; i++) {
-		if (strpbrk(words[i],"^$*|?") == NULL &&
-			(strchr(words[i],'[') == NULL || strchr(words[i],']') == NULL) &&
-			(strchr(words[i],'{') == NULL || strchr(words[i],'}') == NULL) &&
-			(strchr(words[i],'(') == NULL || strchr(words[i],')') == NULL))
-			continue;
 		n = strlen(words[i]);
 		if (words[i][n-1] == ',') {
 			words[i][n-1] = '\0';
 		}
+		if (strpbrk(words[i],"^$*|?") == NULL &&
+			(strchr(words[i],'[') == NULL || strchr(words[i],']') == NULL) &&
+			(strchr(words[i],'{') == NULL || strchr(words[i],'}') == NULL) &&
+			(strchr(words[i],'(') == NULL || strchr(words[i],')') == NULL)) {
+			if (ignorecase) {
+				if (strcasecmp(words[i], origin) == 0) {
+					ret = 1;
+					break;
+				}
+			} else {
+				if (strcmp(words[i], origin) == 0) {
+					ret = 1;
+					break;
+				}
+			}
+			continue;
+		}
+
 		found = 0;
 		SLIST_FOREACH(ent, &cache, next) {
 			if (ignorecase)
@@ -353,15 +360,6 @@ exec_updating(int argc, char **argv)
 		if (found == 0) {
 			if (strstr(line, "AFFECTS") != NULL) {
 				SLIST_FOREACH(port, &origins, next) {
-					if (caseinsensitive) {
-						if ((tmp = strcasestr(line, port->origin)) != NULL) {
-							break;
-						}
-					} else {
-						if ((tmp = strstr(line, port->origin)) != NULL) {
-							break;
-						}
-					}
 					if (matcher(line, port->origin, caseinsensitive) != 0) {
 						tmp = "";
 						break;
