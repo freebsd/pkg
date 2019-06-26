@@ -43,6 +43,7 @@ TESTS_SH= \
 	frontend/version.sh \
 	frontend/vital.sh \
 	frontend/update.sh \
+	frontend/updating.sh \
 	frontend/issue1374.sh \
 	frontend/issue1425.sh \
 	frontend/issue1440.sh \
