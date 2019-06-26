@@ -1200,10 +1200,10 @@ cleanup_reg:
 		}
 		if (msgstr != NULL) {
 			if (utstring_len(message) == 0) {
-				pkg_utstring_printf(message, "Message from "
+				pkg_utstring_printf(message, "=====\nMessage from "
 				    "%n-%v:\n\n", pkg, pkg);
 			}
-			utstring_printf(message, "%s\n", msgstr);
+			utstring_printf(message, "--\n%s\n", msgstr);
 		}
 	}
 	if (pkg->message != NULL) {
