@@ -68,13 +68,59 @@ usage_updating(void)
 
 }
 
+static char *
+convert_re(const char *src)
+{
+	const char *p;
+	char *q;
+	bool brace_flag = false;
+	size_t len = strlen(src);
+	char *buf = malloc(len*2+1);
+	if (buf == NULL)
+		return NULL;
+
+	for (p=src, q=buf; p < src+len; p++) {
+		switch (*p) {
+		case '*':
+			*q++ = '.';
+			*q++ = '*';
+			break;
+		case '?':
+			*q++ = '.';
+			break;
+		case '.':
+			*q++ = '\\';
+			*q++ = '.';
+			break;
+		case '{':
+			*q++='(';
+			brace_flag=true;
+			break;
+		case ',':
+			if (brace_flag)
+				*q++='|';
+			else
+				*q++=*p;
+			break;
+		case '}':
+			*q++=')';
+			brace_flag=false;
+			break;
+		default:
+			*q++ = *p;
+		}
+	}
+	*q ='\0';
+	return buf;
+}
+
 int
 matcher(const char *affects, const char *origin, bool ignorecase)
 {
 	int i, n, count, found, ret, rc;
 	bool was_spc;
 	size_t len;
-	char *buf, *p, **words;
+	char *re, *buf, *p, **words;
 	struct regex_cache *ent;
 	static SLIST_HEAD(,regex_cache) cache = SLIST_HEAD_INITIALIZER(regex_cache);
 
@@ -152,8 +198,14 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 				free(ent);
 				goto err;
 			}
-
-			regcomp(&ent->reg, words[i], (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
+			re = convert_re(words[i]);
+			if (re == NULL) {
+				free(ent->pattern);
+				free(ent);
+				goto err;
+			}
+			regcomp(&ent->reg, re, (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
+			free(re);
 			SLIST_INSERT_HEAD(&cache, ent, next);
 			if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
 				ret = 1;
