@@ -54,7 +54,7 @@ if {[string match *-linux* [get-define host]]} {
 	define-feature static
 }
 
-if {[opt-bool with-libarchive.pc]} {
+if {![opt-bool with-libarchive.pc]} {
 	cc-with { -libs { -larchive }} {
 		if {![cc-check-functions archive_read_open]} {
 			user-error "Unable to find libarchive"
