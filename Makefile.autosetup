@@ -3,8 +3,16 @@ DIRS=	external compat libpkg/repo libpkg src docs scripts @testsdir@
 
 include $(MK)/dir.mk
 
+@if coverage == "1"
+check: clean-profiles
+
+clean-profiles:
+	rm -f /tmp/pkg.*.profraw
+@endif
+
 check: all
 @if testsdir == "tests"
+	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw
 	if [ "$(HTML)" != "" ]; then \
 		args="-r $(top_builddir)/res.db" ; \
 	fi ; \
@@ -16,6 +24,14 @@ check: all
 		rm -f $(top_builddir)/res.db ; \
 	fi ; \
 	exit $${FAILED}
+@endif
+
+@if coverage == "1"
+check-coverage: check
+	llvm-profdata merge --output=pkg.profdata /tmp/pkg.*.profraw
+
+report-coverage:
+	llvm-cov report ./src/pkg -instr-profile=pkg.profdata --use-color -ignore-filename-regex=external -ignore-filename-regex=compat
 @endif
 
 COCCI_ARGS=	-I ${top_srcdir} \
