@@ -3,6 +3,7 @@ global:
 	pkg_absolutepath;
 	pkg_add;
 	pkg_add_from_remote;
+	pkg_add_port;
 	pkg_adddep;
 	pkg_addrdep;
 	pkg_addscript_fileat;
@@ -17,7 +18,6 @@ global:
 	pkg_cache_full_clean;
 	pkg_categories;
 	pkg_compiled_for_same_os_major;
-	pkg_conf;
 	pkg_config_dump;
 	pkg_config_files;
 	pkg_config_get;
