@@ -3,7 +3,6 @@ global:
 	pkg_absolutepath;
 	pkg_add;
 	pkg_add_from_remote;
-	pkg_add_port;
 	pkg_adddep;
 	pkg_addrdep;
 	pkg_addscript_fileat;
