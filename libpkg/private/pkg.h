@@ -833,7 +833,6 @@ enum pkg_metalog_type {
 	PKG_METALOG_LINK,
 };
 
-int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 void pkg_rollback_cb(void *);
 void pkg_rollback_pkg(struct pkg *);

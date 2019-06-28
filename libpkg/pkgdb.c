@@ -201,24 +201,6 @@ pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 	sqlite3_result_int64(ctx, (int64_t)time(NULL));
 }
 
-void
-pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	const unsigned char	*arch = NULL;
-
-	if (argc > 1) {
-		sqlite3_result_error(ctx, "Invalid usage of myarch\n", -1);
-		return;
-	}
-
-	if (argc == 0 || (arch = sqlite3_value_text(argv[0])) == NULL) {
-		arch = pkg_object_string(pkg_config_get("ABI"));
-		sqlite3_result_text(ctx, arch, strlen(arch), NULL);
-		return;
-	}
-	sqlite3_result_text(ctx, arch, strlen(arch), NULL);
-}
-
 static void
 pkgdb_vercmp(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
@@ -2656,10 +2638,6 @@ pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
 {
 	sqlite3_create_function(db, "now", 0, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_now, NULL, NULL);
-	sqlite3_create_function(db, "myarch", 0, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
-	    pkgdb_myarch, NULL, NULL);
-	sqlite3_create_function(db, "myarch", 1, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
-	    pkgdb_myarch, NULL, NULL);
 	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_regex, NULL, NULL);
 	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
@@ -3174,18 +3152,4 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 	}
 
 	return (EPKG_OK);
-}
-
-int
-pkgdb_repo_count(struct pkgdb *db)
-{
-	struct _pkg_repo_list_item *cur;
-	int result = 0;
-
-	if (db != NULL) {
-		LL_FOREACH(db->repos, cur)
-			result ++;
-	}
-
-	return (result);
 }

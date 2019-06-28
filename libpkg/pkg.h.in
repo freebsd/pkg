@@ -722,7 +722,6 @@ int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
  * Helper which call pkg_addscript() with the content of the file and
  * with the correct type.
  */
-int pkg_addscript_file(struct pkg *pkg, const char *path);
 int pkg_addscript_fileat(int fd, struct pkg *pkg, const char *path);
 
 /**
@@ -1636,7 +1635,6 @@ UT_string *pkg_utstring_vprintf(UT_string * restrict sbuf,
 #endif
 
 bool pkg_has_message(struct pkg *p);
-bool pkg_need_message(struct pkg *p, struct pkg *old);
 bool pkg_is_locked(const struct pkg * restrict p);
 
 

@@ -6,7 +6,6 @@ global:
 	pkg_add_port;
 	pkg_adddep;
 	pkg_addrdep;
-	pkg_addscript_file;
 	pkg_addscript_fileat;
 	pkg_analyse_files;
 	pkg_asprintf;
@@ -82,7 +81,6 @@ global:
 	pkg_manifest_keys_new;
 	pkg_manifest_parser_free;
 	pkg_manifest_parser_new;
-	pkg_need_message;
 	pkg_new;
 	pkg_object_bool;
 	pkg_object_count;

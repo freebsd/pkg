@@ -168,12 +168,6 @@ int pkgdb_end_solver(struct pkgdb *db);
  */
 int pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname);
 
-/**
- * Returns number of attached repositories
- * @param db
- * @return
- */
-int pkgdb_repo_count(struct pkgdb *db);
 /*
  * SQLite utility functions
  */
