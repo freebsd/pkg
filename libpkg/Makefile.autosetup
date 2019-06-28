@@ -50,6 +50,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libucl/klib \
 		-I$(top_srcdir)/external/libfetch \
+		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
 		-I$(top_srcdir) \
@@ -69,6 +70,7 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/blake2 -lblake2_pic \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/libfetch -lfetch_pic \
+		-L$(top_builddir)/external/liblua -llua_pic \
 		@nowaflags@ \
 		-lssl \
 		-lcrypto \
@@ -81,6 +83,7 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/linenoise/liblinenoise.a \
 		$(top_builddir)/external/expat/libexpat.a \
 		$(top_builddir)/external/blake2/libblake2.a \
+		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libfetch/libfetch.a \
 		lib$(LIB).a
