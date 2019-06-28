@@ -2511,34 +2511,6 @@ pkgdb_compact(struct pkgdb *db)
 	return (sql_exec(db->sqlite, "VACUUM;"));
 }
 
-struct pkgdb_it *
-pkgdb_integrity_conflict_local(struct pkgdb *db, const char *uniqueid)
-{
-	sqlite3_stmt	*stmt;
-	int		 ret;
-
-	assert(db != NULL && uniqueid != NULL);
-
-	const char	sql_conflicts [] = ""
-		"SELECT DISTINCT p.id AS rowid, p.origin, p.name, p.version, "
-		    "p.prefix "
-		"FROM packages AS p, files AS f, integritycheck AS i "
-		"WHERE p.id = f.package_id AND f.path = i.path "
-		"AND i.uid = ?1 AND "
-		"i.uid != p.name" ;
-
-	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
-	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql_conflicts);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, uniqueid, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
-}
-
 static int
 pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 {
