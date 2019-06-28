@@ -50,6 +50,7 @@
 #define UCL_COUNT(obj) ((obj)?((obj)->len):0)
 
 #define PKG_NUM_SCRIPTS 9
+#define PKG_NUM_LUA_SCRIPTS 5
 
 /*
  * Some compatibility checks
@@ -252,6 +253,7 @@ extern struct pkg_ctx ctx;
 struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
+struct pkg_lua_script;
 
 KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
 KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
@@ -268,6 +270,7 @@ struct pkg {
 	bool		 vital;
 	int64_t		 id;
 	UT_string	*scripts[PKG_NUM_SCRIPTS];
+	struct pkg_lua_script	*lua_scripts[PKG_NUM_LUA_SCRIPTS];
 	char			*name;
 	char			*origin;
 	char			*version;
@@ -349,6 +352,11 @@ struct pkg_message {
 	char			*maximum_version;
 	pkg_message_t		 type;
 	struct pkg_message	*next, *prev;
+};
+
+struct pkg_lua_script {
+	char			*script;
+	struct pkg_lua_script	*next, *prev;
 };
 
 enum pkg_conflict_type {
@@ -682,6 +690,8 @@ int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
 int pkg_script_run(struct pkg *, pkg_script type);
+int pkg_lua_script_run(struct pkg *, pkg_lua_script type);
+ucl_object_t *pkg_lua_script_to_ucl(struct pkg_lua_script *);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
 	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
@@ -789,6 +799,7 @@ int plist_parse_line(struct plist *p, char *line);
 void plist_free(struct plist *);
 int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 
+int pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type);
 int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
 int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
     bool check_duplicates);
@@ -821,6 +832,7 @@ bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file *
 int pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj);
 int pkg_message_from_str(struct pkg *pkg, const char *str, size_t len);
 ucl_object_t* pkg_message_to_ucl(const struct pkg *pkg);
+int pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_script);
 char* pkg_message_to_str(struct pkg *pkg);
 
 int metalog_open(const char *metalog);

@@ -86,7 +86,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	    PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
-	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS;
+	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS | PKG_LOAD_LUA_SCRIPTS;
 	struct pkg_entry *e = NULL, *etmp;
 	char pkgpath[MAXPATHLEN];
 	const char *format = NULL;

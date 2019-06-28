@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -676,6 +676,54 @@ static struct db_upgrades {
 	},
 	{34,
 	"DROP TABLE pkg_search;"
+	},
+	{35,
+	"CREATE TABLE lua_script("
+	"    lua_script_id INTEGER PRIMARY KEY,"
+	"    lua_script TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE pkg_lua_script ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		"  ON DELETE CASCADE ON UPDATE CASCADE,"
+		"lua_script_id INTEGER NOT NULL REFERENCES lua_script(lua_script_id)"
+		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"type INTEGER,"
+		"UNIQUE(package_id, lua_script_id)"
+	");"
+	"CREATE VIEW lua_scripts AS "
+		"SELECT package_id, lua_script, type "
+		"FROM pkg_lua_script JOIN lua_script USING(lua_script_id);"
+	"CREATE TRIGGER lua_script_update "
+		"INSTEAD OF UPDATE ON lua_scripts "
+	"FOR EACH ROW BEGIN "
+		"UPDATE pkg_lua_script "
+		"SET type = new.type "
+		"WHERE package_id = old.package_id AND "
+		"lua_script_id = (SELECT lua_script_id FROM lua_script "
+			"WHERE lua_script = old.lua_script );"
+	"END;"
+	"CREATE TRIGGER lua_script_insert "
+		"INSTEAD OF INSERT ON lua_scripts "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO lua_script(lua_script) "
+		"VALUES(new.lua_script);"
+		"INSERT INTO pkg_lua_script(package_id, lua_script_id, type) "
+		"VALUES (new.package_id, "
+			"(SELECT lua_script_id FROM lua_script "
+			"WHERE lua_script = new.lua_script), "
+			"new.type);"
+	"END;"
+	"CREATE TRIGGER lua_script_delete "
+		"INSTEAD OF DELETE ON lua_scripts "
+	"FOR EACH ROW BEGIN "
+		"DELETE FROM pkg_lua_script "
+		"WHERE package_id = old.package_id AND "
+			"lua_script_id = ( SELECT lua_script_id FROM lua_script "
+					   "WHERE lua_script = old.lua_script );"
+		"DELETE FROM lua_script "
+		"WHERE lua_script_id NOT IN "
+			"( SELECT DISTINCT lua_script_id from lua_script );"
+	"END;"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

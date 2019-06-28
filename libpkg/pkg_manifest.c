@@ -60,6 +60,7 @@
 #define PKG_CONFLICTS		-17
 #define PKG_PROVIDES		-18
 #define PKG_REQUIRES		-19
+#define PKG_LUA_SCRIPTS		-20
 
 #define PKG_MESSAGE_LEGACY	1
 #define PKG_MESSAGE_NEW 2
@@ -139,6 +140,9 @@ static struct pkg_manifest_key {
 
 	{ "licenses",            PKG_LICENSES,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "lua_scripts",         PKG_LUA_SCRIPTS,
+			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "maintainer",          offsetof(struct pkg, maintainer),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
@@ -308,6 +312,20 @@ urldecode(const char *src, UT_string **dest)
 	}
 
 	return (EPKG_OK);
+}
+
+static int
+lua_script_type_str(const char *str)
+{
+	if (strcmp(str, "pre-install") == 0)
+		return (PKG_LUA_PRE_INSTALL);
+	if (strcmp(str, "post-install") == 0)
+		return (PKG_LUA_POST_INSTALL);
+	if (strcmp(str, "pre-deinstall") == 0)
+		return (PKG_LUA_PRE_DEINSTALL);
+	if (strcmp(str, "post-deinstall") == 0)
+		return (PKG_LUA_POST_DEINSTALL);
+	return (PKG_LUA_UNKNOWN);
 }
 
 static int
@@ -495,6 +513,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	pkg_script script_type;
+	pkg_lua_script lua_script_type;
 	const char *key, *buf;
 	size_t len;
 
@@ -584,6 +603,20 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				urldecode(ucl_object_tostring(cur), &tmp);
 				pkg_addscript(pkg, utstring_body(tmp), script_type);
 			}
+			break;
+		case PKG_LUA_SCRIPTS:
+			if (cur->type != UCL_ARRAY) {
+				pkg_emit_error("Skipping malformed dependency %s",
+				    key);
+				break;
+			}
+			lua_script_type = lua_script_type_str(key);
+			if (script_type == PKG_LUA_UNKNOWN) {
+				pkg_emit_error("Skipping unknown script "
+				    "type: %s", key);
+				break;
+			}
+			pkg_lua_script_from_ucl(pkg, cur, lua_script_type);
 			break;
 		case PKG_ANNOTATIONS:
 			if (cur->type != UCL_STRING)
@@ -1249,6 +1282,34 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		}
 		if (map)
 			ucl_object_insert_key(top, map, "scripts", 7, false);
+
+		pkg_debug(4, "Emitting lua scripts");
+		map = NULL;
+		for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+			if (pkg->lua_scripts[i] == NULL)
+				continue;
+			switch(i) {
+			case PKG_LUA_PRE_INSTALL:
+				script_types = "pre-install";
+				break;
+			case PKG_LUA_POST_INSTALL:
+				script_types = "post-install";
+				break;
+			case PKG_LUA_PRE_DEINSTALL:
+				script_types = "pre-deinstall";
+				break;
+			case PKG_LUA_POST_DEINSTALL:
+				script_types = "post-deinstall";
+				break;
+			}
+			if (map == NULL)
+				map = ucl_object_typed_new(UCL_OBJECT);
+			ucl_object_insert_key(map,
+			    pkg_lua_script_to_ucl(pkg->lua_scripts[i]),
+				    script_types, 0, true);
+		}
+		if (map)
+			ucl_object_insert_key(top, map, "lua_scripts", 11, false);
 	}
 
 	pkg_debug(4, "Emitting message");

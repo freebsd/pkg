@@ -348,6 +348,17 @@ typedef enum {
 	PKG_SCRIPT_UNKNOWN
 } pkg_script;
 
+/**
+ * Determine the type of a pkg_lua_script.
+ */
+typedef enum {
+	PKG_LUA_PRE_INSTALL = 0,
+	PKG_LUA_POST_INSTALL,
+	PKG_LUA_PRE_DEINSTALL,
+	PKG_LUA_POST_DEINSTALL,
+	PKG_LUA_UNKNOWN
+} pkg_lua_script;
+
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
 	PKG_JOBS_DEINSTALL,
@@ -723,6 +734,7 @@ int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
  * with the correct type.
  */
 int pkg_addscript_fileat(int fd, struct pkg *pkg, const char *path);
+int pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *path);
 
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
@@ -952,6 +964,7 @@ int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
 #define PKG_LOAD_CONFLICTS		(1U << 13)
 #define PKG_LOAD_PROVIDES		(1U << 14)
 #define PKG_LOAD_REQUIRES		(1U << 15)
+#define PKG_LOAD_LUA_SCRIPTS		(1u << 16)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**

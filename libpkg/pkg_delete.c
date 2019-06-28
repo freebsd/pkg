@@ -62,7 +62,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	int		 ret;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
-					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS;
+					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_LUA_SCRIPTS;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -99,14 +99,19 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 			if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
 				return (ret);
 		}
+		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL);
+		if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+			return (ret);
 	}
 
 	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE ? 1 : 0))
             != EPKG_OK)
 		return (ret);
 
-	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0)
+	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
 		pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
+		pkg_lua_script_run(pkg, PKG_LUA_POST_DEINSTALL);
+	}
 
 	ret = pkg_delete_dirs(db, pkg, NULL);
 	if (ret != EPKG_OK)

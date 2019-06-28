@@ -628,6 +628,46 @@ pkgdb_load_annotations(sqlite3 *sqlite, struct pkg *pkg)
 }
 
 static int
+pkgdb_load_lua_scripts(sqlite3 *sqlite, struct pkg *pkg)
+{
+	sqlite3_stmt	*stmt = NULL;
+	int		ret;
+	const char	sql[] = ""
+		"SELECT lua_script, type"
+		"  FROM lua_script"
+		"    JOIN pkg_lua_script USING(lua_script_id)"
+		"  WHERE package_id = ?1";
+
+	assert(pkg != NULL);
+	assert(pkg->type == PKG_INSTALLED);
+
+	if (pkg->flags & PKG_LOAD_LUA_SCRIPTS)
+		return (EPKG_OK);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite, sql);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_int64(stmt, 1, pkg->id);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_add_lua_script(pkg, sqlite3_column_text(stmt, 0),
+		    sqlite3_column_int64(stmt, 1));
+	}
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_DONE) {
+		ERROR_SQLITE(sqlite, sql);
+		return (EPKG_FATAL);
+	}
+
+	pkg->flags |= PKG_LOAD_LUA_SCRIPTS;
+	return (EPKG_OK);
+}
+
+static int
 pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
@@ -949,6 +989,7 @@ static struct load_on_flag {
 	{ PKG_LOAD_CONFLICTS,		pkgdb_load_conflicts },
 	{ PKG_LOAD_PROVIDES,		pkgdb_load_provides },
 	{ PKG_LOAD_REQUIRES,		pkgdb_load_requires },
+	{ PKG_LOAD_LUA_SCRIPTS,		pkgdb_load_lua_scripts },
 	{ -1,			        NULL }
 };
 

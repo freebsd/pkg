@@ -219,6 +219,14 @@ static const char * const scripts[] = {
 	NULL
 };
 
+static const char * const lua_scripts[] = {
+	"pkg-pre-install.lua",
+	"pkg-post-install.lua",
+	"pkg-pre-deinstall.lua",
+	"pkg-post-deinstall.lua",
+	NULL
+};
+
 
 /* The "no concessions to old pkg_tools" variant: just get everything
  * from the manifest */
@@ -363,6 +371,11 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 			pkg_addscript_fileat(mfd, pkg, scripts[i]);
 	}
 
+	for (i = 0; lua_scripts[i] != NULL; i++) {
+		if (faccessat(mfd, lua_scripts[i], F_OK, 0) == 0)
+			pkg_addluascript_fileat(mfd, pkg, lua_scripts[i]);
+	}
+
 	if (plist != NULL &&
 	    ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
 		ret = EPKG_FATAL;
@@ -473,7 +486,7 @@ pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
 
 	unsigned	 required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-		PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES ;
+		PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES | PKG_LOAD_LUA_SCRIPTS;
 
 	assert(pkg->type == PKG_INSTALLED || pkg->type == PKG_OLD_FILE);
 

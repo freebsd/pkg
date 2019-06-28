@@ -968,10 +968,16 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 			ret = pkg_script_run(old, PKG_SCRIPT_PRE_UPGRADE);
 		else
 			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
-		if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+		if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			return (ret);
-		else
-			ret = EPKG_OK;
+		} else {
+			ret = pkg_lua_script_run(old, PKG_LUA_PRE_DEINSTALL);
+			if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+				return (ret);
+			} else {
+				ret = EPKG_OK;
+			}
+		}
 	}
 
 	/* Now remove files that no longer exist in the new package */
@@ -1101,9 +1107,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/*
 	 * Execute pre-install scripts
 	 */
-	if ((flags & (PKG_ADD_NOSCRIPT | PKG_ADD_USE_UPGRADE_SCRIPTS)) == 0)
+	if ((flags & (PKG_ADD_NOSCRIPT | PKG_ADD_USE_UPGRADE_SCRIPTS)) == 0) {
 		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL)) != EPKG_OK)
 			goto cleanup;
+		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL)) != EPKG_OK)
+			goto cleanup;
+	}
 
 
 	/* add the user and group if necessary */
@@ -1151,6 +1160,7 @@ cleanup_reg:
 			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 		else
 			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL);
 	}
 
 	/*
@@ -1244,7 +1254,7 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg *rp, struct pkg *lp)
 {
 	if (pkgdb_ensure_loaded(db, lp,
-	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) != EPKG_OK)
+	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	return pkg_add_common(db, path, flags, keys, location, rp, lp);

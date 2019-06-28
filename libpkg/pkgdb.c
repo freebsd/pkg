@@ -88,7 +88,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	34
+#define DB_SCHEMA_MINOR	35
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -97,6 +97,7 @@ static int prstmt_initialize(struct pkgdb *db);
 /* static int run_prstmt(sql_prstmt_index s, ...); */
 static void prstmt_finalize(struct pkgdb *db);
 static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+static int pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 
 
 extern int sqlite3_shell(int, char**);
@@ -690,6 +691,52 @@ pkgdb_init(sqlite3 *sdb)
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, require_id)"
 	");"
+	"CREATE TABLE lua_script("
+	"    lua_script_id INTEGER PRIMARY KEY,"
+	"    lua_script TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE pkg_lua_script ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		"  ON DELETE CASCADE ON UPDATE CASCADE,"
+		"lua_script_id INTEGER NOT NULL REFERENCES lua_script(lua_script_id)"
+		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"type INTEGER,"
+		"UNIQUE(package_id, lua_script_id)"
+	");"
+	"CREATE VIEW lua_scripts AS "
+		"SELECT package_id, lua_script, type "
+		"FROM pkg_lua_script JOIN lua_script USING(lua_script_id);"
+	"CREATE TRIGGER lua_script_update "
+		"INSTEAD OF UPDATE ON lua_scripts "
+	"FOR EACH ROW BEGIN "
+		"UPDATE pkg_lua_script "
+		"SET type = new.type "
+		"WHERE package_id = old.package_id AND "
+		"lua_script_id = (SELECT lua_script_id FROM lua_script "
+			"WHERE lua_script = old.lua_script );"
+	"END;"
+	"CREATE TRIGGER lua_script_insert "
+		"INSTEAD OF INSERT ON lua_scripts "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO lua_script(lua_script) "
+		"VALUES(new.lua_script);"
+		"INSERT INTO pkg_lua_script(package_id, lua_script_id, type) "
+		"VALUES (new.package_id, "
+			"(SELECT lua_script_id FROM lua_script "
+			"WHERE lua_script = new.lua_script), "
+			"new.type);"
+	"END;"
+	"CREATE TRIGGER lua_script_delete "
+		"INSTEAD OF DELETE ON lua_scripts "
+	"FOR EACH ROW BEGIN "
+		"DELETE FROM pkg_lua_script "
+		"WHERE package_id = old.package_id AND "
+			"lua_script_id = ( SELECT lua_script_id FROM lua_script "
+					   "WHERE lua_script = old.lua_script );"
+		"DELETE FROM lua_script "
+		"WHERE lua_script_id NOT IN "
+			"( SELECT DISTINCT lua_script_id from lua_script );"
+	"END;"
 
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
@@ -1349,6 +1396,8 @@ typedef enum _sql_prstmt_index {
 	UPDATE_CONFIG_FILE,
 	PKG_REQUIRE,
 	REQUIRE,
+	LUASCRIPT1,
+	LUASCRIPT2,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -1572,7 +1621,19 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR IGNORE INTO requires(require) VALUES(?1)",
 		"T"
-	}
+	},
+	[LUASCRIPT1] = {
+		NULL,
+		"INSERT OR IGNORE INTO lua_script(lua_script) VALUES (?1)",
+		"T",
+	},
+	[LUASCRIPT2] = {
+		NULL,
+		"INSERT INTO pkg_lua_script(lua_script_id, package_id, type) "
+		"VALUES ((SELECT lua_script_id FROM lua_script WHERE "
+		"lua_script = ?1), ?2, ?3)",
+		"TII",
+	},
 	/* PRSTMT_LAST */
 };
 
@@ -1900,6 +1961,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 		goto cleanup;
 
 	/*
+	 * Insert lua scripts
+	 */
+	if (pkgdb_insert_lua_scripts(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
+
+	/*
 	 * Insert options
 	 */
 
@@ -1974,6 +2041,28 @@ pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		}
 	}
 
+	return (EPKG_OK);
+}
+
+static int
+pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_lua_script	*scripts, *script;
+	int64_t			 i;
+
+	for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+		scripts = pkg->lua_scripts[i];
+		if (scripts == NULL)
+			continue;
+		LL_FOREACH(scripts, script) {
+			if (run_prstmt(LUASCRIPT1, script->script) != SQLITE_DONE
+			    ||
+			    run_prstmt(LUASCRIPT2, script->script, package_id, i) != SQLITE_DONE) {
+				ERROR_SQLITE(s, SQL(LUASCRIPT2));
+				return (EPKG_FATAL);
+			}
+		}
+	}
 	return (EPKG_OK);
 }
 
@@ -2331,6 +2420,8 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
 		"script WHERE script_id NOT IN "
 		        "(SELECT DISTINCT script_id FROM pkg_script)",
+		"lua_script WHERE id NOT IN "
+			"(SELECT DISTINCT lua_script_id FROM pkg_lua_script)",
 	};
 
 	assert(db != NULL);

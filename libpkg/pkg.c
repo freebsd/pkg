@@ -826,6 +826,58 @@ pkg_addscript(struct pkg *pkg, const char *data, pkg_script type)
 }
 
 int
+pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type)
+{
+	assert(pkg != NULL);
+	struct pkg_lua_script *lua;
+
+	if (type >= PKG_LUA_UNKNOWN)
+		return (EPKG_FATAL);
+
+	lua = xcalloc(1, sizeof(*lua));
+	lua->script = xstrdup(data);
+	DL_APPEND(pkg->lua_scripts[type], lua);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *filename)
+{
+	char *data;
+	pkg_lua_script type;
+	int ret = EPKG_OK;
+	off_t sz = 0;
+
+	assert(pkg != NULL);
+	assert(filename != NULL);
+
+	pkg_debug(1, "Adding script from: '%s'", filename);
+
+	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
+		return (ret);
+
+	if (strcmp(filename, "pkg-pre-install.lua") == 0) {
+		type = PKG_LUA_PRE_INSTALL;
+	} else if (strcmp(filename, "pkg-post-install.lua") == 0) {
+		type = PKG_LUA_POST_INSTALL;
+	} else if (strcmp(filename, "pkg-pre-deinstall") == 0) {
+		type = PKG_LUA_PRE_DEINSTALL;
+	} else if (strcmp(filename, "pkg-post-deinstall") == 0) {
+		type = PKG_LUA_POST_DEINSTALL;
+	} else {
+		pkg_emit_error("unknown lua script '%s'", filename);
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	ret = pkg_add_lua_script(pkg, data, type);
+cleanup:
+	free(data);
+	return (ret);
+}
+
+int
 pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 {
 	char *data;

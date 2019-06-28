@@ -315,7 +315,8 @@ info_flags(uint64_t opt, bool remote)
 				PKG_LOAD_DIRS    |
 				PKG_LOAD_USERS   |
 				PKG_LOAD_GROUPS  |
-				PKG_LOAD_SCRIPTS;
+				PKG_LOAD_SCRIPTS |
+				PKG_LOAD_LUA_SCRIPTS;
 		}
 	}
 
