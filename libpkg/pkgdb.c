@@ -2420,7 +2420,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
 		"script WHERE script_id NOT IN "
 		        "(SELECT DISTINCT script_id FROM pkg_script)",
-		"lua_script WHERE id NOT IN "
+		"lua_script WHERE lua_script_id NOT IN "
 			"(SELECT DISTINCT lua_script_id FROM pkg_lua_script)",
 	};
 
