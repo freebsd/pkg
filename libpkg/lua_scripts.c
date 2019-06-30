@@ -101,23 +101,26 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
 #endif
 
-
 	LL_FOREACH(pkg->lua_scripts[type], lscript) {
 		lua_State *L = luaL_newstate();
 		luaL_openlibs( L );
-		lua_atpanic(L, (lua_CFunction)stack_dump ),
+		lua_atpanic(L, (lua_CFunction)stack_dump );
+		lua_pushliteral(L, "PREFIX");
+		lua_pushstring(L, pkg->prefix);
+		lua_setglobal(L, "pkg_prefix");
+		if (ctx.pkg_rootdir == NULL)
+			ctx.pkg_rootdir = "/";
+		lua_pushstring(L, ctx.pkg_rootdir);
+		lua_setglobal(L, "pkg_rootdir");
 
-		luaL_dostring(L, lscript->script);
+		pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
+		if (luaL_dostring(L, lscript->script)) {
+			pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
+		}
 
 		lua_close(L);
 	}
 
-			/*setenv("PKG_PREFIX", pkg->prefix, 1);
-			if (ctx.pkg_rootdir == NULL)
-				ctx.pkg_rootdir = "/";
-			setenv("PKG_ROOTDIR", ctx.pkg_rootdir, 1); */
-
-/*			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", utstring_body(script_cmd)); */
 
 #ifdef PROC_REAP_KILL
 	/*
