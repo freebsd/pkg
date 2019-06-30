@@ -114,8 +114,6 @@ keyword_open_schema(void)
 		"    post-install-lua = { type = string }; "
 		"    pre-deinstall-lua = { type = string }; "
 		"    post-deinstall-lua = { type = string }; "
-		"    pre-upgrade-lua = { type = string }; "
-		"    post-upgrade-lua = { type = string }; "
 		"    messages: {"
 		"        type = array; "
 		"        items = {"
@@ -728,6 +726,16 @@ static struct keyact {
 	{ NULL, NULL },
 };
 
+static struct lua_map {
+	const char *key;
+	pkg_lua_script type;
+} lua_mapping[] = {
+	{ "pre-install-lua", PKG_LUA_PRE_INSTALL },
+	{ "post-install-lua", PKG_LUA_POST_INSTALL },
+	{ "pre-deinstall-lua", PKG_LUA_PRE_DEINSTALL },
+	{ "post-deinstall-lua", PKG_LUA_POST_DEINSTALL },
+};
+
 static void
 populate_keywords(struct plist *p)
 {
@@ -906,6 +914,16 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			goto keywords_cleanup;
 		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
 		free(cmd);
+	}
+
+	for (int i = 0; i < nitems(lua_mapping); i++) {
+		if ((o = ucl_object_find_key(obj, lua_mapping[i].key))) {
+			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+			    p->last_file, line, argc, args) != EPKG_OK)
+				goto keywords_cleanup;
+			pkg_add_lua_script(p->pkg, cmd, lua_mapping[i].type);
+			free(cmd);
+		}
 	}
 
 	if ((o = ucl_object_find_key(obj, "messages"))) {
