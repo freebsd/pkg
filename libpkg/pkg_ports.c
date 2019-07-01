@@ -736,6 +736,18 @@ static struct lua_map {
 	{ "post-deinstall-lua", PKG_LUA_POST_DEINSTALL },
 };
 
+static struct script_map {
+	const char *key;
+	pkg_script type;
+} script_mapping[] = {
+	{ "pre-install", PKG_SCRIPT_PRE_INSTALL },
+	{ "post-install", PKG_SCRIPT_POST_INSTALL },
+	{ "pre-deinstall", PKG_SCRIPT_PRE_DEINSTALL },
+	{ "post-deinstall", PKG_SCRIPT_POST_DEINSTALL },
+	{ "pre-upgrade", PKG_SCRIPT_PRE_UPGRADE },
+	{ "post-upgrade", PKG_SCRIPT_POST_UPGRADE },
+};
+
 static void
 populate_keywords(struct plist *p)
 {
@@ -843,6 +855,31 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 	}
 }
 
+static void
+append_script(struct plist *p, pkg_script t, const char *cmd)
+{
+	switch (t) {
+	case PKG_SCRIPT_PRE_INSTALL:
+		utstring_printf(p->pre_install_buf, "%s\n", cmd);
+		break;
+	case PKG_SCRIPT_POST_INSTALL:
+		utstring_printf(p->post_install_buf, "%s\n", cmd);
+		break;
+	case PKG_SCRIPT_PRE_DEINSTALL:
+		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		break;
+	case PKG_SCRIPT_POST_DEINSTALL:
+		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
+		break;
+	case PKG_SCRIPT_PRE_UPGRADE:
+		utstring_printf(p->pre_upgrade_buf, "%s\n", cmd);
+		break;
+	case PKG_SCRIPT_POST_UPGRADE:
+		utstring_printf(p->post_upgrade_buf, "%s\n", cmd);
+		break;
+	}
+}
+
 static int
 apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
@@ -868,54 +905,18 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "attributes")))
 		parse_attributes(o, attr != NULL ? &attr : &freeattr);
 
-	if ((o = ucl_object_find_key(obj, "pre-install"))) {
-		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args) != EPKG_OK)
-			goto keywords_cleanup;
-		utstring_printf(p->pre_install_buf, "%s\n", cmd);
-		free(cmd);
+	/* add all shell scripts */
+	for (int i = 0; i < nitems(script_mapping); i++) {
+		if ((o = ucl_object_find_key(obj, script_mapping[i].key))) {
+			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
+			    p->last_file, line, argc, args) != EPKG_OK)
+				goto keywords_cleanup;
+			append_script(p, script_mapping[i].type, cmd);
+			free(cmd);
+		}
 	}
 
-	if ((o = ucl_object_find_key(obj, "post-install"))) {
-		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args) != EPKG_OK)
-			goto keywords_cleanup;
-		utstring_printf(p->post_install_buf, "%s\n", cmd);
-		free(cmd);
-	}
-
-	if ((o = ucl_object_find_key(obj, "pre-deinstall"))) {
-		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args) != EPKG_OK)
-			goto keywords_cleanup;
-		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
-		free(cmd);
-	}
-
-	if ((o = ucl_object_find_key(obj, "post-deinstall"))) {
-		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args) != EPKG_OK)
-			goto keywords_cleanup;
-		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
-		free(cmd);
-	}
-
-	if ((o = ucl_object_find_key(obj, "pre-upgrade"))) {
-		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args) != EPKG_OK)
-			goto keywords_cleanup;
-		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
-		free(cmd);
-	}
-
-	if ((o = ucl_object_find_key(obj, "post-upgrade"))) {
-		if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-		    p->last_file, line, argc, args) != EPKG_OK)
-			goto keywords_cleanup;
-		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
-		free(cmd);
-	}
-
+	/* add all lua scripts */
 	for (int i = 0; i < nitems(lua_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, lua_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
