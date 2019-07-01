@@ -72,8 +72,7 @@ LOCAL_LDFLAGS=	-Wl,-Bstatic \
 		@waflags@ $(LIBPKGFLAT) @nowaflags@ \
 		$(LIBS) \
 		-Wl,-Bdynamic $(OTHER_LIBS) \
-		-Wl,--export-dynamic \
-		-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver
+		-Wl,--export-dynamic
 @endif
 
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
