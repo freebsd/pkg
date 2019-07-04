@@ -274,15 +274,15 @@ if {[pkg-config-init 0]} {
 				cc-check-functions archive_write_add_filter_zstd
 			}
 		}
+	}
+}
+
+# check if the privatelibzstd is there
+cc-with { -libs { -larchive }} {
+	if {[cc-check-functions archive_write_add_filter_zstd]} {
+		define ZSTDLIB "-lprivatezstd"
 	} else {
-		# check if the privatelibzstd is there
-		cc-with { -libs { -larchive }} {
-			if {[cc-check-functions archive_write_add_filter_zstd]} {
-				define ZSTDLIB "-lprivatezstd"
-			} else {
-				define ZSTDLIB ""
-			}
-		}
+		define ZSTDLIB ""
 	}
 }
 
