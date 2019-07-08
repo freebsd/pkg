@@ -77,6 +77,15 @@ stack_dump(lua_State *L)
 	return (0);
 }
 
+static int
+lua_print_msg(lua_State *L)
+{
+	const char* str = luaL_checkstring(L, 1);
+
+	pkg_emit_message(str);
+	return (0);
+}
+
 int
 pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 {
@@ -112,6 +121,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			ctx.pkg_rootdir = "/";
 		lua_pushstring(L, ctx.pkg_rootdir);
 		lua_setglobal(L, "pkg_rootdir");
+		lua_pushcfunction(L, lua_print_msg);
+		lua_setglobal(L, "print_msg");
 
 		pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
 		if (luaL_dostring(L, lscript->script)) {
