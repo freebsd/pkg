@@ -97,10 +97,10 @@ LOCAL_LDFLAGS+=	-lutil
 LOCAL_LDFLAGS+=	-lfts
 @endif
 @if HAVE_LIBDL
-LOCAL_LDFLAS+= -ldl
+LOCAL_LDFLAGS+= -ldl
 @endif
 @if HAVE_LIBRESOLV
-LOCAL_LDFLAS+= -lresolv
+LOCAL_LDFLAGS+= -lresolv
 @endif
 
 @if libabidir == libmachista
