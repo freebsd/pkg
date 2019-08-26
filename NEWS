@@ -1,3 +1,15 @@
+Changes from pkg 1.11.99.1 to 1.11.99.2
+- Fix cross installation with new build system
+- Add a function to lua_script allowing to send a message which will be
+  printed along with the other messages at the end of the message process.
+- Fix detection of libarchive with zstd support
+
+Changes from pkg 1.11.99.0 to 1.11.99.1
+- Import lua 5.3.5
+- Recommand using pkg boostrap -f in case we do need to reinstall pkg
+- Scripts can now be written in lua
+- Keywords scripting part can now be written in lua
+
 Changes from pkg 1.10.99.13 to 1.10.99.14
 - fix libpkg.so when linked with binutils
 - instead of closing stdin for script just use /dev/null
