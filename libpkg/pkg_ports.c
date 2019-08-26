@@ -253,7 +253,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (ctx.developer_mode) {
-			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
+			pkg_emit_developer_mode("Plist error: @dir %s", line);
 			ret = EPKG_FATAL;
 		}
 	} else {
