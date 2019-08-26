@@ -693,6 +693,13 @@ exec(struct plist *p, char *line, struct file_attr *a)
 static int
 unexec(struct plist *p, char *line, struct file_attr *a)
 {
+	static bool warned_deprecated_unexec = false;
+
+	if (!warned_deprecated_unexec) {
+		warned_deprecated_unexec = true;
+		pkg_emit_error("Warning: @unexec is deprecated, please"
+		    " use @[pre|post]unexec");
+	}
 	return (meta_exec(p, line, a, UNEXEC));
 }
 
