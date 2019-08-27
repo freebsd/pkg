@@ -158,8 +158,8 @@ install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB).a
 	install -d -m 755 $(DESTDIR)$(libdir)
 	install -d -m 755 $(DESTDIR)$(includedir)
 	install -d -m 755 $(DESTDIR)$(pkgconfigdir)
-	install -s --strip-program $(STRIP) -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
+	install -s -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
 	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
-	install -s --strip-program $(STRIP) -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
+	install -s -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
 	install -m 644 pkg.h $(DESTDIR)$(includedir)/
 	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)
