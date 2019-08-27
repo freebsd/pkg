@@ -83,6 +83,7 @@ lua_print_msg(lua_State *L)
 	const char* str = luaL_checkstring(L, 1);
 
 	pkg_emit_message(str);
+	pkg_emit_message("\n");
 	return (0);
 }
 
