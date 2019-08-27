@@ -91,6 +91,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 {
 	int ret = EPKG_OK;
 	struct pkg_lua_script *lscript;
+	int pstat;
 #ifdef PROC_REAP_KILL
 	bool do_reap;
 	pid_t mypid;
@@ -111,28 +112,48 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 #endif
 
 	LL_FOREACH(pkg->lua_scripts[type], lscript) {
-		lua_State *L = luaL_newstate();
-		luaL_openlibs( L );
-		lua_atpanic(L, (lua_CFunction)stack_dump );
-		lua_pushliteral(L, "PREFIX");
-		lua_pushstring(L, pkg->prefix);
-		lua_setglobal(L, "pkg_prefix");
-		if (ctx.pkg_rootdir == NULL)
-			ctx.pkg_rootdir = "/";
-		lua_pushstring(L, ctx.pkg_rootdir);
-		lua_setglobal(L, "pkg_rootdir");
-		lua_pushcfunction(L, lua_print_msg);
-		lua_setglobal(L, "print_msg");
+		pid_t pid = fork();
+		if (pid > 0) {
+			lua_State *L = luaL_newstate();
+			luaL_openlibs( L );
+			lua_atpanic(L, (lua_CFunction)stack_dump );
+			lua_pushliteral(L, "PREFIX");
+			lua_pushstring(L, pkg->prefix);
+			lua_setglobal(L, "pkg_prefix");
+			if (ctx.pkg_rootdir == NULL)
+				ctx.pkg_rootdir = "/";
+			lua_pushstring(L, ctx.pkg_rootdir);
+			lua_setglobal(L, "pkg_rootdir");
+			lua_pushcfunction(L, lua_print_msg);
+			lua_setglobal(L, "print_msg");
 
-		pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
-		if (luaL_dostring(L, lscript->script)) {
-			pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
+			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
+			if (luaL_dostring(L, lscript->script)) {
+				pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
+			}
+
+			lua_close(L);
+		} else if (pid < 0) {
+			pkg_emit_errno("Cannot fork", "lua_script");
+			ret = EPKG_FATAL;
+			goto cleanup;
 		}
 
-		lua_close(L);
+		while (waitpid(pid, &pstat, 0) == -1) {
+			if (errno != EINTR) {
+				ret = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+		if (WEXITSTATUS(pstat) != 0) {
+			pkg_emit_error("lua script failed");
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 
+cleanup:
 #ifdef PROC_REAP_KILL
 	/*
 	 * If the prior PROCCTL_REAP_ACQUIRE call failed, the kernel
