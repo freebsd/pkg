@@ -55,7 +55,7 @@ fedora_task:
                 image: fedora:latest
         install_script:
                 - dnf -y upgrade
-                - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel
+                - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel xz
         script:
                 - ./configure --with-libarchive.pc
                 - make -j4 || make V=1
