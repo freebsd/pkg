@@ -115,6 +115,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 	LL_FOREACH(pkg->lua_scripts[type], lscript) {
 		pid_t pid = fork();
 		if (pid > 0) {
+			static const luaL_Reg pkg_lib[] = {
+				{ "print_msg", lua_print_msg },
+				{ NULL, NULL },
+			};
 			lua_State *L = luaL_newstate();
 			luaL_openlibs( L );
 			lua_atpanic(L, (lua_CFunction)stack_dump );
@@ -126,7 +130,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			lua_pushstring(L, ctx.pkg_rootdir);
 			lua_setglobal(L, "pkg_rootdir");
 			lua_pushcfunction(L, lua_print_msg);
-			lua_setglobal(L, "print_msg");
+			luaL_newlib(L, pkg_lib);
+			lua_setglobal(L, "pkg");
 
 			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
 			if (luaL_dostring(L, lscript->script)) {
