@@ -2,6 +2,7 @@ include @builddir@/mk/defs.mk
 
 LIB=	lua
 .PATH:	$(top_srcdir)/external/lua/src/
+VPATH=	$(top_srcdir)/external/lua/src/
 
 SRCS=	lapi.c \
 	lcode.c \
