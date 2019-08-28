@@ -143,8 +143,13 @@ $(OBJS) $(SHOBJS): $(top_builddir)/pkg_config.h
 
 all: lib$(LIB)_flat.a
 
+@if libabidir == libmachista
+lib$(LIB)_flat.a:
+	libtool -static -o lib$(LIB)_flat.a $(STATIC_LIBS)
+@else
 lib$(LIB)_flat.a: mergelib_script
 	ar -M < mergelib_script
+@endif
 
 mergelib_script: $(STATIC_LIBS)
 	@echo "CREATE lib$(LIB)_flat.a" > $@
