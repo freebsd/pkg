@@ -87,6 +87,30 @@ lua_print_msg(lua_State *L)
 	return (0);
 }
 
+static int
+lua_prefix_path(lua_State *L)
+{
+	const char *str = luaL_checkstring(L, 1);
+	lua_getglobal(L, "package");
+	struct pkg *p = lua_touserdata(L, -1);
+
+	char path[MAXPATHLEN];
+	path[0] = '\0';
+
+	if (ctx.pkg_rootdir != NULL && strcmp(ctx.pkg_rootdir, "/") != 0)
+		strlcat(path, ctx.pkg_rootdir, MAXPATHLEN);
+	if (*str == '/') {
+		strlcat(path, str, MAXPATHLEN);
+	} else {
+		strlcat(path, p->prefix, MAXPATHLEN);
+		strlcat(path, "/", MAXPATHLEN);
+		strlcat(path, str, MAXPATHLEN);
+	}
+
+	lua_pushstring(L, path);
+	return (1);
+}
+
 int
 pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 {
@@ -117,11 +141,14 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 		if (pid > 0) {
 			static const luaL_Reg pkg_lib[] = {
 				{ "print_msg", lua_print_msg },
+				{ "prefixed_path", lua_prefix_path },
 				{ NULL, NULL },
 			};
 			lua_State *L = luaL_newstate();
 			luaL_openlibs( L );
 			lua_atpanic(L, (lua_CFunction)stack_dump );
+			lua_pushlightuserdata(L, pkg);
+			lua_setglobal(L, "package");
 			lua_pushliteral(L, "PREFIX");
 			lua_pushstring(L, pkg->prefix);
 			lua_setglobal(L, "pkg_prefix");
