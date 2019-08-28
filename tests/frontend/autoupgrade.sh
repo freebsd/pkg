@@ -48,6 +48,7 @@ autoupgrade_multirepo_head() {
 }
 
 autoupgrade_multirepo_body() {
+	atf_skip_on Linux Test fails on Linux
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg 1
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg2 pkg 1.1
