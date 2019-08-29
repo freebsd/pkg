@@ -217,6 +217,7 @@ if {[string match *-darwin* [get-define host]]} {
 				define-feature libelf
 				define-append EXTRA_LIBS -lelf
 				define libabidir ""
+				cc-check-types Elf_Note
 			} else {
 				define-feature libelf 0
 				define libabidir "libelf"
