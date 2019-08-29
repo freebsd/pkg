@@ -246,6 +246,10 @@ is_old_freebsd_armheader(const GElf_Ehdr *e)
 }
 #endif
 
+#ifndef HAVE_ELF_NOTE
+typedef Elf32_Nhdr Elf_Note;
+#endif
+
 static int
 analyse_elf(struct pkg *pkg, const char *fpath)
 {
