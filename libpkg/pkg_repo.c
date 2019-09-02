@@ -227,13 +227,30 @@ struct pkg_extract_cbdata {
 };
 
 static int
+pkg_repo_write_sig_from_archive(struct archive *a, int fd, size_t siglen)
+{
+	char sig[siglen];
+
+	if (archive_read_data(a, sig, siglen) == -1) {
+		pkg_emit_errno("pkg_repo_meta_extract_signature",
+		    "archive_read_data failed");
+		return (EPKG_FATAL);
+	}
+	if (write(fd, sig, siglen) == -1) {
+		pkg_emit_errno("pkg_repo_meta_extract_signature",
+		    "write failed");
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+static int
 pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 	struct pkg_extract_cbdata *cb = ud;
 	int siglen;
-	void *sig;
 	int rc = EPKG_FATAL;
 
 	pkg_debug(1, "PkgRepo: extracting signature of repo in a sandbox");
@@ -247,21 +264,9 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (cb->need_sig && strcmp(archive_entry_pathname(ae), "signature") == 0) {
 			siglen = archive_entry_size(ae);
-			sig = xmalloc(siglen);
-			if (archive_read_data(a, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"archive_read_data failed");
-				free(sig);
-				return (EPKG_FATAL);
-			}
-			if (write(fd, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"write failed");
-				free(sig);
-				return (EPKG_FATAL);
-			}
-			free(sig);
-			rc = EPKG_OK;
+			rc = pkg_repo_write_sig_from_archive(a, fd, siglen);
+			if (rc != EPKG_OK)
+				break;
 		}
 		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {

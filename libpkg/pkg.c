@@ -1349,6 +1349,16 @@ pkg_open_fd(struct pkg **pkg_p, int fd, struct pkg_manifest_key *keys, int flags
 	return (EPKG_OK);
 }
 
+static int
+pkg_parse_archive(struct pkg *pkg, struct pkg_manifest_key *keys,
+    struct archive *a, size_t len)
+{
+	char buffer[len];
+
+	archive_read_data(a, buffer, len);
+	return (pkg_parse_manifest(pkg, buffer, len, keys));
+}
+
 int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
     const char *path, struct pkg_manifest_key *keys, int flags, int fd)
@@ -1407,14 +1417,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		if (!manifest &&
 			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
 			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
-			char *buffer;
 			manifest = true;
 
-			size_t len = archive_entry_size(*ae);
-			buffer = xmalloc(len);
-			archive_read_data(*a, buffer, archive_entry_size(*ae));
-			ret = pkg_parse_manifest(pkg, buffer, len, keys);
-			free(buffer);
+			ret = pkg_parse_archive(pkg, keys, *a, archive_entry_size(*ae));
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -1424,13 +1429,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		}
 		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
 			manifest = true;
-			char *buffer;
 
-			size_t len = archive_entry_size(*ae);
-			buffer = xmalloc(len);
-			archive_read_data(*a, buffer, archive_entry_size(*ae));
-			ret = pkg_parse_manifest(pkg, buffer, len, keys);
-			free(buffer);
+			ret = pkg_parse_archive(pkg, keys, *a, archive_entry_size(*ae));
 			if (ret != EPKG_OK) {
 				if ((flags & PKG_OPEN_TRY) == 0)
 					pkg_emit_error("%s is not a valid package: "
