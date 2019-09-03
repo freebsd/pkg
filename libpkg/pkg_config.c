@@ -1336,12 +1336,18 @@ pkg_shutdown(void)
 	ucl_object_unref(config);
 	HASH_FREE(repos, pkg_repo_free);
 
-	if (ctx.rootfd != -1)
+	if (ctx.rootfd != -1) {
 		close(ctx.rootfd);
-	if (ctx.cachedirfd != -1)
-		close(ctx.rootfd);
-	if (ctx.pkg_dbdirfd != -1)
+		ctx.rootfd = -1;
+	}
+	if (ctx.cachedirfd != -1) {
+		close(ctx.cachedirfd);
+		ctx.cachedirfd = -1;
+	}
+	if (ctx.pkg_dbdirfd != -1) {
 		close(ctx.pkg_dbdirfd);
+		ctx.pkg_dbdirfd = -1;
+	}
 
 	parsed = false;
 
