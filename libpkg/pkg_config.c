@@ -847,6 +847,10 @@ pkg_compiled_for_same_os_major(void)
 
 	myabi = pkg_object_string(pkg_config_get("ABI"));
 	myabi = strchr(myabi,':');
+	if (myabi == NULL) {
+		pkg_emit_error("Invalid ABI");
+		return (false);
+	}
 	myabi++;
 
 	osmajor = (int) strtol(myabi, NULL, 10);
