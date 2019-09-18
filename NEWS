@@ -1,3 +1,6 @@
+Changes from pkg 1.11.99.3 to 1.12.99.0
+- Fix a crash when specifying an unsupported ABI
+
 Changes from pkg 1.11.99.2 to 1.11.99.3
 - Warn about the fact @unexec is deprecated in pkg-plist
 - Fix build with gmake
