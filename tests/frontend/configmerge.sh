@@ -151,7 +151,7 @@ config_fileexist_notinpkg_body()
 	atf_check \
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
 
-	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
+	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave || atf_fail "file overwritten when it should not have"
 }
 
 config_morecomplicated_body()

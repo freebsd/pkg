@@ -4,6 +4,7 @@
 
 tests_init \
 	complex_conflicts \
+	fileexists_notinpkg \
 	find_conflicts
 
 # install foo
@@ -168,6 +169,27 @@ Number of packages to be upgraded: 1
 		-e empty \
 		-s exit:0 \
 		pkg info
+}
+
+fileexists_notinpkg_body()
+{
+	mkdir -p ${TMPDIR}/target/${TMPDIR}
+	echo "entry" > ${TMPDIR}/target/${TMPDIR}/a
+	unset PKG_DBDIR
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	echo "entry 2" > a
+	echo "${TMPDIR}/a" > plist
+
+	atf_check \
+		pkg create -M test.ucl -p plist
+
+	pkg repo .
+	echo "local: { url: file://${TMPDIR} }" > local.conf
+	atf_check \
+		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
+
+	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave || atf_fail "file not saved when it should not have"
 }
 
 find_conflicts_body() {

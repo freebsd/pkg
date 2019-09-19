@@ -377,6 +377,7 @@ typedef enum {
 	MERGE_NOTNEEDED = 0,
 	MERGE_FAILED,
 	MERGE_SUCCESS,
+	MERGE_NOT_LOCAL,
 } merge_status;
 
 struct pkg_config_file {
