@@ -127,7 +127,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	if (local == NULL) {
 		pkg_debug(3, "No local package");
 		if (fstatat(rootfd, RELATIVE_PATH(rcf->path), &st, 0) == 0) {
-			rcf->status = MERGE_FAILED;
+			rcf->status = MERGE_NOT_LOCAL;
 		}
 		return;
 	}
@@ -738,6 +738,16 @@ pkg_extract_finalize(struct pkg *pkg)
 			snprintf(path, sizeof(path), "%s.pkgnew", f->path);
 			fto = path;
 		}
+
+		if (f->config && f->config->status == MERGE_NOT_LOCAL) {
+			snprintf(path, sizeof(path), "%s.pkgsave", f->path);
+			if (renameat(pkg->rootfd, RELATIVE_PATH(fto),
+			    pkg->rootfd, RELATIVE_PATH(path)) == -1) {
+				pkg_fatal_errno("Fail to rename %s -> %s",
+				  fto, path);
+			}
+		}
+
 		/*
 		 * enforce an unlink of the file to workaround a bug that
 		 * results in renameat returning 0 of the from file is hardlink
@@ -751,7 +761,9 @@ pkg_extract_finalize(struct pkg *pkg)
 				    AT_SYMLINK_NOFOLLOW);
 			}
 #endif
-			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
+			snprintf(path, sizeof(path), "%s.pkgsave", f->path);
+			renameat(pkg->rootfd, RELATIVE_PATH(fto),
+			    pkg->rootfd, RELATIVE_PATH(path));
 		}
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
