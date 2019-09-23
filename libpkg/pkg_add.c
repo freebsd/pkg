@@ -922,10 +922,9 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 					goto cleanup;
 				continue;
-			} else {
-				strlcpy(dpath, ppath, sizeof(dpath));
-				free(ppath);
 			}
+			strlcpy(dpath, ppath, sizeof(dpath));
+			free(ppath);
 		}
 
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
