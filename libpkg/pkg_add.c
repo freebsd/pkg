@@ -953,11 +953,8 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 {
 	struct pkg_file *f;
 	int ret = EPKG_OK;
-	bool handle_rc;
 
-	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-	if (handle_rc)
-		pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
+	pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
 
 	/*
 	 * Execute pre deinstall scripts
@@ -1025,7 +1022,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct pkg_message	*msg;
 	const char		*msgstr;
 	bool			 extract = true;
-	bool			 handle_rc = false;
 	int			 retcode = EPKG_OK;
 	int			 ret;
 	int			 nfiles;
@@ -1167,9 +1163,7 @@ cleanup_reg:
 	 * and that the service is running
 	 */
 
-	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-	if (handle_rc)
-		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
+	pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkg_emit_install_finished(pkg, local);
