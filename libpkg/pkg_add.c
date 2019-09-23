@@ -913,19 +913,6 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if (dep->version != NULL && dep->version[0] != '\0') {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", bd,
 				dep->name, dep->version, ext);
-
-			if ((flags & PKG_ADD_UPGRADE) == 0 &&
-			    access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC,
-				    keys, location);
-
-				if (ret != EPKG_OK)
-					goto cleanup;
-			} else {
-				pkg_emit_missing_dep(pkg, dep);
-				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-					goto cleanup;
-			}
 		} else {
 			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", bd,
 			    dep->name, ext);
@@ -935,22 +922,23 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 					goto cleanup;
 				continue;
-			}
-			if ((flags & PKG_ADD_UPGRADE) == 0 &&
-			    access(ppath, F_OK) == 0) {
-				ret = pkg_add(db, ppath, PKG_ADD_AUTOMATIC,
-				    keys, location);
-
-				free(ppath);
-				if (ret != EPKG_OK)
-					goto cleanup;
 			} else {
+				strlcpy(dpath, ppath, sizeof(dpath));
 				free(ppath);
-				pkg_emit_missing_dep(pkg, dep);
-				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-					goto cleanup;
-				continue;
 			}
+		}
+
+		if ((flags & PKG_ADD_UPGRADE) == 0 &&
+				access(dpath, F_OK) == 0) {
+			ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC,
+					keys, location);
+
+			if (ret != EPKG_OK)
+				goto cleanup;
+		} else {
+			pkg_emit_missing_dep(pkg, dep);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
 		}
 	}
 
