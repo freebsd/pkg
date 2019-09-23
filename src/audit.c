@@ -93,20 +93,21 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, UT_string *sb,
 		const char *name = pkg_dep_get(dep, PKG_DEP_NAME);
 
 		k = kh_get_pkgs(seen, name);
-		if (k == kh_end(seen)) {
-			h = kh_get_pkgs(head, name);
-			if (h != kh_end(head)) {
-				kh_put_pkgs(seen, name, &ret);
-				if (!top)
-					utstring_printf(sb, ", ");
+		if (k != kh_end(seen))
+			continue;
+		h = kh_get_pkgs(head, name);
+		if (h == kh_end(head))
+			continue;
 
-				utstring_printf(sb, "%s", name);
+		kh_put_pkgs(seen, name, &ret);
+		if (!top)
+			utstring_printf(sb, ", ");
 
-				print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
+		utstring_printf(sb, "%s", name);
 
-				top = false;
-			}
-		}
+		print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
+
+		top = false;
 	}
 }
 
