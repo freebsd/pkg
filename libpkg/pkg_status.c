@@ -36,7 +36,9 @@
 #include <bsd_compat.h>
 
 #include "pkg.h"
+#include "private/pkg.h"
 
+extern struct pkg_ctx ctx;
 
 #ifndef _LOCALBASE
 #define _LOCALBASE	"/usr/local"
@@ -47,7 +49,6 @@ static bool is_exec_at_localbase(const char *progname);
 pkg_status_t
 pkg_status(int *count)
 {
-	const pkg_object	*o;
 	const char		*progname;
 	char			 dbpath[MAXPATHLEN];
 	int			 numpkgs = 0;
@@ -73,8 +74,7 @@ pkg_status(int *count)
 	/* Does the local.sqlite pkg database exist, and can we open
 	   it for reading? */
 
-	o = pkg_config_get("PKG_DBDIR");
-	snprintf(dbpath, sizeof(dbpath), "%s/local.sqlite", pkg_object_string(o));
+	snprintf(dbpath, sizeof(dbpath), "%s/local.sqlite", ctx.dbdir);
 
 	if (eaccess(dbpath, R_OK) == -1)
 		return (PKG_STATUS_NODB);

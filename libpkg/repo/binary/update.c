@@ -597,7 +597,6 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		"DROP TABLE repo_update;";
 	sqlite3 *sqlite;
 
-	const char *dbdir = NULL;
 	struct stat st;
 	time_t t = 0;
 	int res = EPKG_FATAL;
@@ -609,7 +608,6 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	if (!pkg_repo_enabled(repo))
 		return (EPKG_OK);
 
-	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	pkg_debug(1, "PkgRepo: verifying update for %s", pkg_repo_name(repo));
 
 	/* First of all, try to open and init repo and check whether it is fine */
@@ -617,18 +615,18 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		pkg_debug(1, "PkgRepo: need forced update of %s", pkg_repo_name(repo));
 		t = 0;
 		force = true;
-		snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
+		snprintf(filepath, sizeof(filepath), "%s/%s", ctx.dbdir,
 		    pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 	}
 	else {
 		repo->ops->close(repo, false);
-		snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+		snprintf(filepath, sizeof(filepath), "%s/%s.meta", ctx.dbdir, pkg_repo_name(repo));
 		if (stat(filepath, &st) != -1) {
 			t = force ? 0 : st.st_mtime;
 			got_meta = true;
 		}
 
-		snprintf(filepath, sizeof(filepath), "%s/%s", dbdir,
+		snprintf(filepath, sizeof(filepath), "%s/%s", ctx.dbdir,
 			pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 		if (stat(filepath, &st) != -1) {
 			if (!got_meta && !force)
@@ -664,7 +662,7 @@ cleanup:
 
 		utimes(filepath, ftimes);
 		if (got_meta) {
-			snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+			snprintf(filepath, sizeof(filepath), "%s/%s.meta", ctx.dbdir, pkg_repo_name(repo));
 			utimes(filepath, ftimes);
 		}
 	}

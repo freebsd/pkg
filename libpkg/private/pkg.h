@@ -241,6 +241,8 @@ struct pkg_ctx {
 	int64_t debug_level;
 	bool developer_mode;
 	const char *pkg_rootdir;
+	const char *dbdir;
+	const char *cachedir;
 	int rootfd;
 	int cachedirfd;
 	int dbdirfd;

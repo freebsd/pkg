@@ -49,16 +49,15 @@
 #include "private/pkg.h"
 #include "binary.h"
 
+extern struct pkg_ctx ctx;
+
 int
 pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 	char *dest, size_t destlen)
 {
 	const char *ext = NULL;
-	const char *cachedir = NULL;
 	const char *packagesite;
 	struct stat st;
-
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	packagesite = pkg_repo_url(repo);
 
@@ -77,14 +76,14 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 		 * <cachedir>/<name>-<version>-<checksum>.txz
 		 */
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
-				cachedir, pkg, pkg, pkg, ext);
+				ctx.cachedir, pkg, pkg, pkg, ext);
 		if (stat (dest, &st) == -1 || pkg->pkgsize != st.st_size)
 			return (EPKG_FATAL);
 
 	}
 	else {
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
-				cachedir, pkg, pkg, pkg);
+				ctx.cachedir, pkg, pkg, pkg);
 	}
 
 	return (EPKG_OK);
@@ -146,9 +145,9 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 		if (destdir != NULL)
 			cachedir = destdir;
 		else
-			cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+			cachedir = ctx.cachedir;
 
-		snprintf(dest, sizeof(dest), "%s/%s", cachedir, pkg->repopath);
+		snprintf(dest, sizeof(dest), "%s/%s", ctx.cachedir, pkg->repopath);
 	}
 	else
 		pkg_repo_binary_get_cached_name(repo, pkg, dest, sizeof(dest));

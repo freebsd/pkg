@@ -337,8 +337,7 @@ exec_clean(int argc, char **argv)
 		}
 	}
 
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
-	cachefd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
+	cachefd = pkg_get_cachedirfd();
 	if (cachefd == -1) {
 		warn("Impossible to open %s", cachedir);
 		return (errno == ENOENT ? EX_OK : EX_IOERR);

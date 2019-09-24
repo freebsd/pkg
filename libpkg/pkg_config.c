@@ -68,6 +68,8 @@ struct pkg_ctx ctx = {
 	.debug_level = 0,
 	.developer_mode = false,
 	.pkg_rootdir = NULL,
+	.dbdir = NULL,
+	.cachedir = NULL,
 	.rootfd = -1,
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
@@ -1185,6 +1187,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	ctx.debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
 	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	ctx.dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+	ctx.cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
@@ -1483,15 +1487,13 @@ pkg_set_rootdir(const char *rootdir) {
 int
 pkg_get_cachedirfd(void)
 {
-	const char *cachedir;
 
 	if (ctx.cachedirfd == -1) {
-		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 		/*
 		 * do not check the value as if we cannot open it means
 		 * it has not been created yet
 		 */
-		ctx.cachedirfd = open(cachedir, O_DIRECTORY|O_CLOEXEC);
+		ctx.cachedirfd = open(ctx.cachedir, O_DIRECTORY|O_CLOEXEC);
 	}
 
 	return (ctx.cachedirfd);
@@ -1500,15 +1502,13 @@ pkg_get_cachedirfd(void)
 int
 pkg_get_dbdirfd(void)
 {
-	const char *dbdir;
 
 	if (ctx.pkg_dbdirfd == -1) {
-		dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 		/*
 		 * do not check the value as if we cannot open it means
 		 * it has not been created yet
 		 */
-		ctx.pkg_dbdirfd = open(dbdir, O_DIRECTORY|O_CLOEXEC);
+		ctx.pkg_dbdirfd = open(ctx.dbdir, O_DIRECTORY|O_CLOEXEC);
 	}
 
 	return (ctx.pkg_dbdirfd);

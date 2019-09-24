@@ -72,6 +72,8 @@
 
 #include "private/db_upgrades.h"
 
+extern struct pkg_ctx ctx;
+
 /* An application using a libpkg() DBVERSION is assumed to be compatible
    with:
 
@@ -869,8 +871,6 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 int
 pkgdb_access(unsigned mode, unsigned database)
 {
-	const pkg_object	*o;
-	const char		*dbdir;
 	int			 retval = EPKG_OK;
 
 	/*
@@ -893,8 +893,6 @@ pkgdb_access(unsigned mode, unsigned database)
 	 * EPKG_OK: We can go ahead
 	 */
 
-	o = pkg_config_get("PKG_DBDIR");
-	dbdir = pkg_object_string(o);
 	if ((mode & ~(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE))
 	    != 0)
 		return (EPKG_FATAL); /* EINVAL */
@@ -908,16 +906,16 @@ pkgdb_access(unsigned mode, unsigned database)
 
 	if ((mode & PKGDB_MODE_CREATE) != 0) {
 		retval = pkgdb_check_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-					 dbdir, NULL);
+					 ctx.dbdir, NULL);
 	} else
-		retval = pkgdb_check_access(PKGDB_MODE_READ, dbdir, NULL);
+		retval = pkgdb_check_access(PKGDB_MODE_READ, ctx.dbdir, NULL);
 	if (retval != EPKG_OK)
 		return (retval);
 
 	/* Test local.sqlite, if required */
 
 	if ((database & PKGDB_DB_LOCAL) != 0) {
-		retval = pkgdb_check_access(mode, dbdir, "local.sqlite");
+		retval = pkgdb_check_access(mode, ctx.dbdir, "local.sqlite");
 		if (retval != EPKG_OK)
 			return (retval);
 	}
@@ -1102,7 +1100,6 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	struct pkgdb	*db = NULL;
 	bool		 reopen = false;
 	bool		 profile = false;
-	const char	*dbdir;
 	bool		 create = false;
 	int		 ret;
 	int		 dbdirfd;
@@ -1121,8 +1118,7 @@ retry:
 		dbdirfd = pkg_get_dbdirfd();
 		if (dbdirfd == -1) {
 			if (errno == ENOENT) {
-				dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-				if (mkdirs(dbdir) != EPKG_OK) {
+				if (mkdirs(ctx.dbdir) != EPKG_OK) {
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 				}
@@ -2750,13 +2746,10 @@ void
 pkgshell_open(const char **reponame)
 {
 	char		 localpath[MAXPATHLEN];
-	const char	*dbdir;
 
 	sqlite3_auto_extension((void(*)(void))pkgdb_sqlcmd_init);
 
-	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
-
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", ctx.dbdir);
 	*reponame = xstrdup(localpath);
 }
 

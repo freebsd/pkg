@@ -66,6 +66,8 @@
 #include "private/pkg_jobs.h"
 #include "kvec.h"
 
+extern struct pkg_ctx ctx;
+
 static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool new_pkg_version(struct pkg_jobs *j);
@@ -2174,7 +2176,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 
 	if (j->destdir == NULL || !mirror)
-		cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+		cachedir = ctx.cachedir;
 	else
 		cachedir = j->destdir;
 
