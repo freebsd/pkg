@@ -224,8 +224,7 @@ static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
 	char path[MAXPATHLEN+1];
-	char stagedpath[MAXPATHLEN];
-	char *testpath, *cp;
+	char *cp;
 	struct stat st;
 	int ret = EPKG_OK;
 
@@ -241,15 +240,10 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash,
 		    line);
 
-	testpath = path;
-
-	if (p->stage != NULL) {
-		snprintf(stagedpath, sizeof(stagedpath), "%s%s", p->stage, path);
-		testpath = stagedpath;
-	}
-
-	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", testpath);
+	if (fstatat(p->stagefd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW)
+	    == -1) {
+		pkg_errno("Unable to access file %s%s",
+		    p->stage ? p->stage: "/", RELATIVE_PATH(path));
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (ctx.developer_mode) {
@@ -297,8 +291,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 {
 	size_t len;
 	char path[MAXPATHLEN];
-	char stagedpath[MAXPATHLEN];
-	char *testpath;
 	struct stat st;
 	char *buf = NULL;
 	bool regular = false;
@@ -314,15 +306,11 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	else
 		snprintf(path, sizeof(path), "%s%s%s", p->prefix,
 		    p->slash, line);
-	testpath = path;
 
-	if (p->stage != NULL) {
-		snprintf(stagedpath, sizeof(stagedpath), "%s%s", p->stage, path);
-		testpath = stagedpath;
-	}
-
-	if (lstat(testpath, &st) == -1) {
-		pkg_errno("Unable to access file %s", testpath);
+	if (fstatat(p->stagefd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW)
+	    == -1) {
+		pkg_errno("Unable to access file %s%s",
+		    p->stage ? p->stage : "/", RELATIVE_PATH(path));
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (ctx.developer_mode) {
@@ -343,7 +331,8 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	} else if (S_ISLNK(st.st_mode))
 		regular = false;
 
-	buf = pkg_checksum_generate_file(testpath, PKG_HASH_TYPE_SHA256_HEX);
+	buf = pkg_checksum_generate_fileat(p->stagefd, RELATIVE_PATH(path),
+	    PKG_HASH_TYPE_SHA256_HEX);
 	if (buf == NULL) {
 		return (EPKG_FATAL);
 	}
@@ -353,7 +342,8 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		if (is_config) {
 			off_t sz;
 			char *content;
-			file_to_buffer(testpath, &content, &sz);
+			file_to_bufferat(p->stagefd, RELATIVE_PATH(path),
+			    &content, &sz);
 			pkg_addconfig_file(p->pkg, path, content);
 			free(content);
 		}
@@ -1206,11 +1196,18 @@ plist_new(struct pkg *pkg, const char *stage)
 	if (p == NULL)
 		return (NULL);
 
+	p->stagefd = open(stage ? stage : "/", O_DIRECTORY | O_CLOEXEC);
+	if (p->stagefd == -1) {
+		free(p);
+		return (NULL);
+	}
+
 	p->pkg = pkg;
 	if (pkg->prefix != NULL)
 		strlcpy(p->prefix, pkg->prefix, sizeof(p->prefix));
 	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
+
 	p->uname = xstrdup("root");
 	p->gname = xstrdup("wheel");
 
@@ -1232,6 +1229,9 @@ plist_free(struct plist *p)
 {
 	if (p == NULL)
 		return;
+
+	if (p->stagefd != -1)
+		close(p->stagefd);
 
 	HASH_FREE(p->keywords, keyword_free);
 
