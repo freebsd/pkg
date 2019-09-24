@@ -73,8 +73,17 @@ ATF_TC_BODY(parse_plist, tc)
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
 
-	plist = plist_new(p, "/plop");
+	/* On a non existing directory this should not work */
+	plist = plist_new(p, "/nonexist");
+	ATF_REQUIRE(plist == NULL);
+
+	plist = plist_new(p, NULL);
 	ATF_REQUIRE(plist != NULL);
+	plist_free(plist);
+
+	plist = plist_new(p, "/tmp");
+	ATF_REQUIRE(plist != NULL);
+
 	ATF_REQUIRE(plist->pkg == p);
 	ATF_REQUIRE_EQ(plist->prefix[0], '\0');
 
