@@ -761,9 +761,7 @@ pkg_extract_finalize(struct pkg *pkg)
 				    AT_SYMLINK_NOFOLLOW);
 			}
 #endif
-			snprintf(path, sizeof(path), "%s.pkgsave", f->path);
-			renameat(pkg->rootfd, RELATIVE_PATH(fto),
-			    pkg->rootfd, RELATIVE_PATH(path));
+			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
 		}
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
