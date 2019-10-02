@@ -267,16 +267,6 @@ cleanup:
 	return (ret);
 }
 
-static void
-pkg_load_from_file(int fd, struct pkg *pkg, pkg_attr attr, const char *path)
-{
-
-	if (faccessat(fd, path, F_OK, 0) == 0) {
-		pkg_debug(1, "Reading: '%s'", path);
-		pkg_set_from_fileat(fd, pkg, attr, path, false);
-	}
-}
-
 static int
 pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 {
@@ -346,7 +336,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 
 	/* if no descriptions provided then try to get it from a file */
 	if (mfd != -1 && pkg->desc == NULL)
-		pkg_load_from_file(mfd, pkg, PKG_DESC, "+DESC");
+		pkg_set_from_fileat(mfd, pkg, PKG_DESC, "+DESC", false);
 
 	/* if no message try to get it from a file */
 	if (mfd != -1 && pkg->message == NULL) {
