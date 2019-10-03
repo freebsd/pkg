@@ -13,7 +13,7 @@ freebsd_task:
                      image: freebsd-12-0-release-amd64
                 - name: freebsd13-amd64
                   freebsd_instance:
-                     image: freebsd-13-0-snap
+                     image_family: freebsd-13-0-snap
 ubuntu_task:
         container:
                 image: ubuntu:latest
