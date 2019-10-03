@@ -1,21 +1,19 @@
-freebsd11_task:
-        freebsd_instance:
-                image: freebsd-11-2-release-amd64
+freebsd_task:
         install_script: pkg install -y kyua
         script:
                 - ./configure
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ; }
-
-freebsd12_task:
-        freebsd_instance:
-                image: freebsd-12-0-release-amd64
-        install_script: pkg install -y kyua
-        script:
-                - ./configure
-                - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ;}
-
+        matrix:
+                - name: freebsd11-amd64
+                  freebsd_instance:
+                    image: freebsd-11-2-release-amd64
+                - name: freebsd12-amd64
+                  freebsd_instance:
+                     image: freebsd-12-0-release-amd64
+                - name: freebsd13-amd64
+                  freebsd_instance:
+                     image: freebsd-13-0-snap
 ubuntu_task:
         container:
                 image: ubuntu:latest
@@ -40,15 +38,6 @@ osx_task:
                 - ./configure
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ;}
-
-#alpine_task:
-#        container:
-#                image: alpine:latest
-#        install_script: apk add gcc kyua libarchive tcl musl-dev libbsd-dev zlib zlib-dev bzip2-dev libarchive-dev openssl-dev xz-dev make fts-dev m4 lz4-dev expat-dev acl-dev atf-dev
-#        script:
-#                - ./configure --with-libarchive.pc
-#                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ; }
 
 fedora_task:
         container:
