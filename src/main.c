@@ -772,7 +772,7 @@ main(int argc, char **argv)
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
 
-	if (!pkg_compiled_for_same_os_major())
+	if (jail_str == NULL && !pkg_compiled_for_same_os_major())
 		warnx("Warning: Major OS version upgrade detected.  Running "
 		    "\"pkg bootstrap -f\" recommended");
 
