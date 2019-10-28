@@ -817,6 +817,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
 static int
 pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 {
+	char rooted_abi_file[PATH_MAX];
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
 	GElf_Shdr shdr;
@@ -825,6 +826,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 	int fd, i;
 	int ret = EPKG_OK;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	bool checkroot;
 
 	const char *abi_files[] = {
 		getenv("ABI_FILE"),
@@ -843,9 +845,25 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 		return (EPKG_FATAL);
 	}
 
+	/*
+	 * Perhaps not yet needed, but it may be in the future that there's no
+	 * need to check root under some conditions where there is a rootdir.
+	 * This also helps alleviate some excessive wrapping later.
+	 */
+	checkroot = ctx.pkg_rootdir != NULL;
 	for (fd = -1, i = 0; i < nitems(abi_files); i++) {
 		if (abi_files[i] == NULL)
 			continue;
+		/*
+		 * Try prepending rootdir and using that if it exists.  If
+		 * ABI_FILE is specified, assume that the consumer didn't want
+		 * it mangled by rootdir.
+		 */
+		if (i > 0 && checkroot && snprintf(rooted_abi_file, PATH_MAX,
+		    "%s/%s", ctx.pkg_rootdir, abi_files[i]) < PATH_MAX) {
+			if ((fd = open(rooted_abi_file, O_RDONLY)) >= 0)
+				break;
+		}
 		if ((fd = open(abi_files[i], O_RDONLY)) >= 0)
 			break;
 		/* if the ABI_FILE was provided we only care about it */
