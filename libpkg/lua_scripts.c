@@ -30,6 +30,9 @@
 #include <sys/procctl.h>
 #endif
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <errno.h>
 #include <utstring.h>
 #include <lauxlib.h>
