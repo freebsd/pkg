@@ -165,6 +165,35 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
+bool
+pkgdb_file_exists(struct pkgdb *db, const char *path)
+{
+	sqlite3_stmt	*stmt;
+	char	sql[BUFSIZ];
+	bool	ret = false;
+
+	assert(db != NULL);
+
+	if (path == NULL)
+		return (false);
+
+	sqlite3_snprintf(sizeof(sql), sql,
+	    "select path from files where path = ?1;");
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite, sql);
+	}
+
+	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
+
+	if (sqlite3_step(stmt) != SQLITE_DONE)
+		ret = true;
+
+	sqlite3_finalize(stmt);
+	return (ret);
+}
+
 struct pkgdb_it *
 pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 {
