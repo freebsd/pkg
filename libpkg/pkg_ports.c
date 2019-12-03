@@ -1340,7 +1340,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 		if (input_path != NULL) {
 			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
-			rc = pkg_add_fromdir(pkg, input_path);
+			rc = pkg_add_fromdir(db, pkg, input_path);
 			pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 			if (rc != EPKG_OK) {
 				pkg_rollback_pkg(pkg);

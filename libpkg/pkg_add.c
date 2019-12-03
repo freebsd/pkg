@@ -719,7 +719,7 @@ cleanup:
 }
 
 static int
-pkg_extract_finalize(struct pkg *pkg)
+pkg_extract_finalize(struct pkgdb *db, struct pkg *pkg)
 {
 	struct stat st;
 	struct pkg_file *f = NULL;
@@ -761,6 +761,12 @@ pkg_extract_finalize(struct pkg *pkg)
 				    AT_SYMLINK_NOFOLLOW);
 			}
 #endif
+			/* if the files does not belong to any package, we do save it */
+			if (pkgdb_file_exists(db, fto)) {
+				snprintf(path, sizeof(path), "%s.pkgsave", f->path);
+				renameat(pkg->rootfd, RELATIVE_PATH(fto),
+				    pkg->rootfd, RELATIVE_PATH(path));
+			}
 			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
 		}
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
@@ -1139,7 +1145,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* Update configuration file content with db with newer versions */
 	pkgdb_update_config_file_content(pkg, db->sqlite);
 
-	retcode = pkg_extract_finalize(pkg);
+	retcode = pkg_extract_finalize(db, pkg);
 cleanup_reg:
 	pkgdb_register_finale(db, retcode);
 	/*
@@ -1252,7 +1258,7 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 }
 
 int
-pkg_add_fromdir(struct pkg *pkg, const char *src)
+pkg_add_fromdir(struct pkgdb *db, struct pkg *pkg, const char *src)
 {
 	struct stat st;
 	struct pkg_dir *d = NULL;
@@ -1422,7 +1428,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		}
 	}
 
-	retcode = pkg_extract_finalize(pkg);
+	retcode = pkg_extract_finalize(db, pkg);
 
 cleanup:
 	kh_destroy_hls(hardlinks);
