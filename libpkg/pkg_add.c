@@ -645,7 +645,6 @@ do_extract(struct archive *a, struct archive_entry *ae,
 		return (EPKG_OK);
 
 	pkg_emit_extract_begin(pkg);
-	pkg_open_root_fd(pkg);
 	pkg_emit_progress_start(NULL);
 
 	do {
@@ -719,7 +718,7 @@ cleanup:
 }
 
 static int
-pkg_extract_finalize(struct pkgdb *db, struct pkg *pkg)
+pkg_extract_finalize(struct pkg *pkg)
 {
 	struct stat st;
 	struct pkg_file *f = NULL;
@@ -753,7 +752,8 @@ pkg_extract_finalize(struct pkgdb *db, struct pkg *pkg)
 		 * results in renameat returning 0 of the from file is hardlink
 		 * on the to file, but the to file is not removed
 		 */
-		if (fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
+		if (f->previous != PKG_FILE_NONE &&
+		    fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
 		    AT_SYMLINK_NOFOLLOW) != -1) {
 #ifdef HAVE_CHFLAGSAT
 			if (!install_as_user && st.st_flags & NOCHANGESFLAGS) {
@@ -762,7 +762,7 @@ pkg_extract_finalize(struct pkgdb *db, struct pkg *pkg)
 			}
 #endif
 			/* if the files does not belong to any package, we do save it */
-			if (pkgdb_file_exists(db, fto)) {
+			if (f->previous == PKG_FILE_SAVE) {
 				snprintf(path, sizeof(path), "%s.pkgsave", f->path);
 				renameat(pkg->rootfd, RELATIVE_PATH(fto),
 				    pkg->rootfd, RELATIVE_PATH(path));
@@ -1024,6 +1024,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct pkg		*pkg = NULL;
 	UT_string		*message;
 	struct pkg_message	*msg;
+	struct pkg_file		*f;
 	const char		*msgstr;
 	bool			 extract = true;
 	int			 retcode = EPKG_OK;
@@ -1095,6 +1096,18 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (reloc != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", reloc, "annotation");
 
+	pkg_open_root_fd(pkg);
+	/* analyse previous files */
+	f = NULL;
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (faccessat(pkg->rootfd, RELATIVE_PATH(f->path), F_OK, 0) == 0) {
+			f->previous = PKG_FILE_EXIST;
+			if (!pkgdb_file_exists(db, f->path)) {
+				f->previous = PKG_FILE_SAVE;
+			}
+		}
+	}
+
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
 	retcode = pkgdb_register_pkg(db, pkg,
@@ -1145,7 +1158,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* Update configuration file content with db with newer versions */
 	pkgdb_update_config_file_content(pkg, db->sqlite);
 
-	retcode = pkg_extract_finalize(db, pkg);
+	retcode = pkg_extract_finalize(pkg);
 cleanup_reg:
 	pkgdb_register_finale(db, retcode);
 	/*
@@ -1258,7 +1271,7 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 }
 
 int
-pkg_add_fromdir(struct pkgdb *db, struct pkg *pkg, const char *src)
+pkg_add_fromdir(struct pkg *pkg, const char *src)
 {
 	struct stat st;
 	struct pkg_dir *d = NULL;
@@ -1428,7 +1441,7 @@ pkg_add_fromdir(struct pkgdb *db, struct pkg *pkg, const char *src)
 		}
 	}
 
-	retcode = pkg_extract_finalize(db, pkg);
+	retcode = pkg_extract_finalize(pkg);
 
 cleanup:
 	kh_destroy_hls(hardlinks);

@@ -342,6 +342,12 @@ struct pkg_dep {
 };
 
 typedef enum {
+	PKG_FILE_NONE = 0,
+	PKG_FILE_EXIST,
+	PKG_FILE_SAVE,
+} file_previous_t;
+
+typedef enum {
 	PKG_MESSAGE_ALWAYS = 0,
 	PKG_MESSAGE_INSTALL,
 	PKG_MESSAGE_REMOVE,
@@ -403,6 +409,7 @@ struct pkg_file {
 	struct pkg_config_file *config;
 	struct timespec	 time[2];
 	struct pkg_file	*next, *prev;
+	file_previous_t	 previous;
 };
 
 struct pkg_dir {
@@ -852,7 +859,7 @@ enum pkg_metalog_type {
 int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 void pkg_rollback_cb(void *);
 void pkg_rollback_pkg(struct pkg *);
-int pkg_add_fromdir(struct pkgdb *, struct pkg *, const char *);
+int pkg_add_fromdir(struct pkg *, const char *);
 struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);

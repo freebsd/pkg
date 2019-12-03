@@ -190,6 +190,13 @@ fileexists_notinpkg_body()
 		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave || atf_fail "file not saved when it should have"
+
+	# Test the nominal situation just in case
+	rm -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave
+	atf_check \
+		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qyf test
+	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave && atf_fail "file saved when it should not have"
+	return 0
 }
 
 find_conflicts_body() {

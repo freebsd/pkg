@@ -187,8 +187,9 @@ pkgdb_file_exists(struct pkgdb *db, const char *path)
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
-	if (sqlite3_step(stmt) != SQLITE_DONE)
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ret = true;
+	}
 
 	sqlite3_finalize(stmt);
 	return (ret);
