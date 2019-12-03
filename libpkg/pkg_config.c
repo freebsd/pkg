@@ -995,7 +995,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	if (path == NULL)
-		conffd = openat(ctx.rootfd, PREFIX"/etc/pkg.conf" + 1, 0);
+		conffd = openat(ctx.rootfd, &PREFIX"/etc/pkg.conf"[1], 0);
 	else
 		conffd = open(path, O_RDONLY);
 	if (conffd == -1 && errno != ENOENT) {
