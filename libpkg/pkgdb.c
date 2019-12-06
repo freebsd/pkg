@@ -1794,7 +1794,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		bool		permissive = false;
-		bool		devmode = false;
 
 		ret = run_prstmt(FILES, file->path, file->sum, package_id);
 		if (ret == SQLITE_DONE)
@@ -1829,8 +1828,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 			goto cleanup;
 		}
 		if (!forced) {
-			devmode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
-			if (!devmode)
+			if (!ctx.developer_mode)
 				permissive = pkg_object_bool(pkg_config_get("PERMISSIVE"));
 			pkg_emit_error("%s-%s conflicts with %s-%s"
 			    " (installs files into the same place). "

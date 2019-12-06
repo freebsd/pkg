@@ -96,11 +96,11 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 				return (ret);
 		} else {
 			ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
-			if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+			if (ret != EPKG_OK && ctx.developer_mode)
 				return (ret);
 		}
 		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL);
-		if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE")))
+		if (ret != EPKG_OK && ctx.developer_mode)
 			return (ret);
 	}
 

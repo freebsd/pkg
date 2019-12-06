@@ -968,11 +968,11 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 			ret = pkg_script_run(old, PKG_SCRIPT_PRE_UPGRADE);
 		else
 			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
-		if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+		if (ret != EPKG_OK && ctx.developer_mode) {
 			return (ret);
 		} else {
 			ret = pkg_lua_script_run(old, PKG_LUA_PRE_DEINSTALL);
-			if (ret != EPKG_OK && pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+			if (ret != EPKG_OK && ctx.developer_mode) {
 				return (ret);
 			} else {
 				ret = EPKG_OK;
