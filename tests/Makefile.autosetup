@@ -107,6 +107,11 @@ OTHER_LIBS+=	-ldl
 OTHER_LIBS+=	-lresolv
 @endif
 
+# Hack to determine we are on osx
+@if libabidir == libmachista
+OTHER_LIBS+=	-lresolv
+@endif
+
 LOCAL_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
 LOCAL_LDFLAGS+=	@PKG_ATF_C_LDFLAGS@ @PKG_ATF_C_LIBS@
 
