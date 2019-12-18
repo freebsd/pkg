@@ -39,9 +39,10 @@ config_body()
 		pkg create -M test.ucl -p plist
 
 	pkg repo .
-	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target upgrade -qy test
 
 	atf_check \
 		-o inline:"entry 2\naddition\n" \
@@ -76,9 +77,10 @@ config_fileexist_body()
 		pkg create -M test.ucl -p plist
 
 	pkg repo .
-	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target upgrade -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgnew || atf_fail "file overwritten when it should not have"
 }
@@ -97,12 +99,13 @@ config_hardlink_body()
 		-e empty \
 		pkg create -M test.ucl -p plist -r .
 	atf_check -o ignore pkg repo .
-	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
 	mkdir ${TMPDIR}/target
 
 	# Install the pkg
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qy test
 	rm *.txz
 
 	# Modify the local config
@@ -120,12 +123,12 @@ config_hardlink_body()
 		-e empty \
 		pkg create -M test.ucl -p plist -r .
 	atf_check -o ignore pkg repo .
-	atf_check -e ignore -o ignore pkg -o REPOS_DIR=${TMPDIR} update -f
+	atf_check -e ignore -o ignore pkg -o REPOS_DIR=${TMPDIR}/reposconf update -f
 
 	# Upgrade
 	atf_check \
 		-o ignore \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -y
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target upgrade -y
 
 	atf_check \
 		-o match:"test-1.1*" \
@@ -147,9 +150,10 @@ config_fileexist_notinpkg_body()
 		pkg create -M test.ucl -p plist
 
 	pkg repo .
-	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave || atf_fail "file overwritten when it should not have"
 }
@@ -195,9 +199,10 @@ config_morecomplicated_body()
 		-o ignore \
 		pkg repo .
 
-	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target upgrade -qy test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target upgrade -qy test
 
 	atf_check \
 		-o inline:"entry1\nentry2\nentry3\nentry4\n" \

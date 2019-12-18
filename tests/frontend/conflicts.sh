@@ -185,16 +185,17 @@ fileexists_notinpkg_body()
 		pkg create -M test.ucl -p plist
 
 	pkg repo .
-	echo "local: { url: file://${TMPDIR} }" > local.conf
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qy test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qy test
 
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave || atf_fail "file not saved when it should have"
 
 	# Test the nominal situation just in case
 	rm -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR} -r ${TMPDIR}/target install -qyf test
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qyf test
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave && atf_fail "file saved when it should not have"
 	return 0
 }
@@ -232,7 +233,8 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF >> repo.conf
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
 local: {
 	url: file:///${TMPDIR},
 	enabled: true
@@ -240,7 +242,7 @@ local: {
 EOF
 
 OUTPUT="Updating local repository catalogue...
-${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching meta.conf:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local repository update completed. 1 packages processed.
@@ -267,5 +269,5 @@ ${JAILED}[2/2] Extracting test2-1:  done
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-s exit:0 \
-		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
 }

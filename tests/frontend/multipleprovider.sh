@@ -86,7 +86,8 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF > repo.conf
+	mkdir reposconf
+	cat << EOF > reposconf/repo.conf
 local: {
 	url: file:///$TMPDIR,
 	enabled: true
@@ -96,6 +97,6 @@ EOF
 	atf_check \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
+		pkg -o REPOS_DIR="$TMPDIR/reposconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 }
 

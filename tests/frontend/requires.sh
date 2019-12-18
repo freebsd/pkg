@@ -6,7 +6,8 @@ tests_init \
 	requires
 
 requires_body() {
-	cat << EOF >> repo.conf
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
 local1: {
 	url: file://${TMPDIR},
 	enabled: true
@@ -38,7 +39,7 @@ EOF
 	    pkg repo .
 
 	OUTPUT="Updating local1 repository catalogue...
-${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching meta.conf:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
@@ -55,5 +56,5 @@ Number of packages to be installed: 2
 	atf_check \
 	    -o inline:"${OUTPUT}" \
 	    -s exit:1 \
-	    pkg -o REPOS_DIR="${TMPDIR}" install -n b
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -n b
 }

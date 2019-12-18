@@ -109,7 +109,8 @@ files: {
 }
 EOF
 
-        cat << EOF > repos.conf
+	mkdir reposconf
+        cat << EOF > reposconf/repos.conf
 repoA: {
         url: file://${TMPDIR}/repoA,
         enabled: true
@@ -151,12 +152,12 @@ EOF
                 pkg repo -o ${TMPDIR}/repoB ${TMPDIR}/repoB
 
 OUTPUT_CASE1="Updating repoA repository catalogue...
-${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching meta.conf:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 repoA repository update completed. 4 packages processed.
 Updating repoB repository catalogue...
-${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching meta.conf:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
@@ -184,11 +185,11 @@ ${JAILED}[4/4] Extracting pkgA-1.0:  done
         atf_check \
                 -o inline:"${OUTPUT_CASE1}" \
                 -s exit:0 \
-                pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y pkgA
+                pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -y pkgA
 
 	#rm -f ${TMPDIR}/local.sqlite
 
-        cat << EOF > repos.conf
+        cat << EOF > reposconf/repos.conf
 repoA: {
         url: file://${TMPDIR}/repoA,
         enabled: true,
@@ -224,7 +225,7 @@ ${JAILED}[2/2] Extracting pkgA-1.0:  done
                 -o inline:"${OUTPUT_CASE2}" \
                 -e empty \
                 -s exit:0 \
-                pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -yf pkgA pkgD
+                pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" upgrade -yf pkgA pkgD
 
 
 	rm -f ${TMPDIR}/local.sqlite
@@ -259,5 +260,5 @@ ${JAILED}[4/4] Extracting pkgA-1.0:  done
                 -o inline:"${OUTPUT_CASE3}" \
                 -e empty \
                 -s exit:0 \
-                pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y pkgA
+                pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -y pkgA
 }

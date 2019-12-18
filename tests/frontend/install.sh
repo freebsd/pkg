@@ -39,7 +39,8 @@ metalog_body()
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF > repo.conf
+	mkdir reposconf
+	cat << EOF > reposconf/repo.conf
 local: {
 	url: file:///${TMPDIR},
 	enabled: true
@@ -55,7 +56,7 @@ EOF
 	atf_check \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR="${TMPDIR}" -o METALOG=${TMPDIR}/METALOG -r ${TMPDIR}/root install -y test
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o METALOG=${TMPDIR}/METALOG -r ${TMPDIR}/root install -y test
 
 	atf_check \
 		-o match:"./testfile1 type=file uname=root gname=wheel mode=640" \
@@ -91,7 +92,8 @@ reinstall_body()
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF > repo.conf
+	mkdir reposconf
+	cat << EOF > reposconf/repo.conf
 local: {
 	url: file:///$TMPDIR,
 	enabled: true
@@ -101,7 +103,7 @@ EOF
 	atf_check \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR="${TMPDIR}" install -y test
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -y test
 }
 
 pre_script_fail_body()

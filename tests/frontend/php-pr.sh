@@ -81,7 +81,8 @@ files: {
 }
 EOF
 
-	cat << EOF > repo1.conf
+	mkdir reposconf
+	cat << EOF > reposconf/repo1.conf
 local1: {
         url: file://${TMPDIR},
         enabled: true
@@ -105,11 +106,11 @@ EOF
 	atf_check \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -y php53-extensions
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -y php53-extensions
 
 #### NEW
 
-	rm repo1.conf
+	rm reposconf/repo1.conf
 	rm -f *.ucl
 	rm *.txz
 
@@ -224,7 +225,8 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF >> repo.conf
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
 local: {
         url: file://${TMPDIR}/,
         enabled: true
@@ -238,7 +240,7 @@ php53-gd-5.3.27
 "
 
 OUTPUT="Updating local repository catalogue...
-${JAILED}Fetching meta.txz:  done
+${JAILED}Fetching meta.conf:  done
 ${JAILED}Fetching packagesite.txz:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
@@ -264,7 +266,7 @@ Number of packages to be reinstalled: 1
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-s exit:1 \
-		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" install -n php53-fileinfo
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -n php53-fileinfo
 
 
 OUTPUT="Updating local repository catalogue...
@@ -289,5 +291,5 @@ Number of packages to be reinstalled: 1
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		-s exit:1 \
-		pkg -o REPOS_DIR="${TMPDIR}" -o PKG_CACHEDIR="${TMPDIR}" upgrade -n
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" upgrade -n
 }

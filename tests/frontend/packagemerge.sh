@@ -99,7 +99,8 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF > repo.conf
+	mkdir reposconf
+	cat << EOF > reposconf/repo.conf
 local: {
 	url: file:///$TMPDIR,
 	enabled: true
@@ -109,7 +110,7 @@ EOF
 	atf_check \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
+		pkg -o REPOS_DIR="$TMPDIR/reposconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 
 	test -f file1 || atf_fail "file1 is not present"
 	test -f file2 || atf_fail "file2 is not present"

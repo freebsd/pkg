@@ -30,7 +30,8 @@ autoupgrade_body() {
 		-s exit:0 \
 		pkg repo .
 
-	cat << EOF > repo.conf
+	mkdir repoconf
+	cat << EOF > repoconf/repo.conf
 local: {
 	url: file:///$TMPDIR,
 	enabled: true
@@ -40,7 +41,7 @@ EOF
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
 		-s exit:1 \
-		pkg -o REPOS_DIR="$TMPDIR" -o PKG_CACHEDIR="$TMPDIR" upgrade -n
+		pkg -o REPOS_DIR="$TMPDIR/repoconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -n
 }
 
 autoupgrade_multirepo_head() {
@@ -85,7 +86,8 @@ autoupgrade_multirepo_body() {
 		-s exit:0 \
 		pkg repo repo2
 
-	cat << EOF > repo.conf
+	mkdir repoconf
+	cat << EOF > repoconf/repo.conf
 repo1: {
 	url: file:///$TMPDIR/repo1,
 	enabled: true
@@ -96,7 +98,7 @@ repo2: {
 }
 EOF
 
-	export REPOS_DIR="${TMPDIR}"
+	export REPOS_DIR="${TMPDIR}/repoconf"
 	atf_check \
 		-o ignore \
 		-s exit:0 \
