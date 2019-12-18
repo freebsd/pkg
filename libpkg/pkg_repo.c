@@ -796,6 +796,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		goto load_meta;
 	}
 
+	/* TODO: remove this backward compatibility some day */
 	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "txz", t, &rc, false);
 	if (fd == -1)
 		return (rc);
