@@ -32,7 +32,7 @@
 #include "private/pkg.h"
 
 /* Default to repo v1 for now */
-#define	DEFAULT_META_VERSION	1
+#define	DEFAULT_META_VERSION	2
 
 static ucl_object_t *repo_meta_schema_v1 = NULL;
 static ucl_object_t *repo_meta_schema_v2 = NULL;
