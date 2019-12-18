@@ -716,8 +716,15 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	if ((mfile = fopen(repodb, "w")) != NULL) {
 		meta_dump = pkg_repo_meta_to_ucl(meta);
 		ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
-		ucl_object_unref(meta_dump);
 		fclose(mfile);
+		strlcat(repodb, ".conf", sizeof(repodb));
+		if ((mfile = fopen(repodb, "w")) != NULL) {
+			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
+			fclose(mfile);
+		} else {
+			pkg_emit_notice("cannot create metafile at %s", repodb);
+		}
+		ucl_object_unref(meta_dump);
 	}
 	else {
 		pkg_emit_notice("cannot create metafile at %s", repodb);
