@@ -56,10 +56,6 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg repo .
-
-	nb=$(tar -xf digests.txz -O digests | wc -l)
-	atf_check_equal $nb 2
-
 }
 repo_v2_body() {
 	touch plop
