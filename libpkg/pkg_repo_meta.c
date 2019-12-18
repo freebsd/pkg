@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2019 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
@@ -311,6 +312,21 @@ pkg_repo_meta_version(ucl_object_t *top)
 	}
 
 	return (-1);
+}
+
+int
+pkg_repo_meta_dump_fd(struct pkg_repo_meta *meta, const int fd)
+{
+	FILE *f;
+
+	f = fdopen(dup(fd), "w+");
+	if (f == NULL) {
+		pkg_emit_error("Cannot dump file");
+		return (EPKG_FATAL);
+	}
+	ucl_object_emit_file(pkg_repo_meta_to_ucl(meta), UCL_EMIT_JSON_COMPACT, f);
+	fclose(f);
+	return (EPKG_OK);
 }
 
 int

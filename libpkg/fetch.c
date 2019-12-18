@@ -97,7 +97,7 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, 0, -1);
+	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, 0, -1, false);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -135,7 +135,7 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, offset, size);
+	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, offset, size, false);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -455,7 +455,7 @@ ssh_cleanup:
 
 int
 pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
-    time_t *t, ssize_t offset, int64_t size)
+    time_t *t, ssize_t offset, int64_t size, bool silent)
 {
 	FILE		*remote = NULL;
 	struct url	*u = NULL;
@@ -625,8 +625,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			}
 			--retry;
 			if (retry <= 0 || fetchLastErrCode == FETCH_UNAVAIL) {
-				pkg_emit_error("%s: %s", url,
-				    fetchLastErrString);
+				if (!silent)
+					pkg_emit_error("%s: %s", url,
+					    fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}

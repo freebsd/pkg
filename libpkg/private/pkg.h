@@ -670,11 +670,12 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_CONFLICT (1<<3)
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
-    time_t *t, ssize_t offset, int64_t size);
+    time_t *t, ssize_t offset, int64_t size, bool silent);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo,
     const char *filename, time_t *t, int *rc, size_t *sz);
+int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);

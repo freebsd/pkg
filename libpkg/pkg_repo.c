@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
@@ -68,7 +68,7 @@ struct sig_cert {
 
 static int
 pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
-		const char *filename, const char *extension, time_t *t, int *rc)
+  const char *filename, const char *extension, time_t *t, int *rc, bool silent)
 {
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
@@ -104,7 +104,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	}
 	(void)unlink(tmp);
 
-	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t, -1, 0)) != EPKG_OK) {
+	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t, -1, 0, silent)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
@@ -666,7 +666,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 	struct stat st;
 
 	fd = pkg_repo_fetch_remote_tmp(repo, filename,
-			packing_format_to_string(repo->meta->packing_format), t, rc);
+	    packing_format_to_string(repo->meta->packing_format), t, rc, false);
 	if (fd == -1)
 		return (-1);
 
@@ -780,18 +780,29 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	int rc = EPKG_OK, ret;
 	struct sig_cert *sc = NULL, *s, *stmp;
 	struct pkg_repo_check_cbdata cbdata;
+	bool newscheme = false;
 
 	dbdirfd = pkg_get_dbdirfd();
-	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "txz", t, &rc);
+	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
+	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "conf", t, &rc, true);
+	if (fd != -1) {
+		newscheme = true;
+		metafd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
+		if (metafd == -1) {
+			close(fd);
+			return (EPKG_FATAL);
+		}
+		goto load_meta;
+	}
+
+	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "txz", t, &rc, false);
 	if (fd == -1)
 		return (rc);
-
-	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
 
 	metafd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
 	if (metafd == -1) {
 		close(fd);
-		return (rc);
+		return (EPKG_FATAL);
 	}
 
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
@@ -888,6 +899,8 @@ load_meta:
 			munmap(map, st.st_size);
 
 		return (rc);
+	} else if (newscheme) {
+		pkg_repo_meta_dump_fd(nmeta, fd);
 	}
 
 	if (repo->meta != NULL)
