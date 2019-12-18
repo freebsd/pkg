@@ -787,9 +787,10 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "conf", t, &rc, true);
 	if (fd != -1) {
 		newscheme = true;
-		metafd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
-		if (metafd == -1) {
-			close(fd);
+		metafd = fd;
+		fd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
+		if (fd == -1) {
+			close(metafd);
 			return (EPKG_FATAL);
 		}
 		goto load_meta;
