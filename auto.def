@@ -308,7 +308,7 @@ foreach dir [list external/expat external/blake2 external/picosat \
 	external/linenoise external/libfetch external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf external/libmachista tests docs \
-	external/liblua scripts] {
+	external/liblua external/msgpuck scripts] {
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
 

@@ -1,0 +1,9 @@
+include @builddir@/mk/defs.mk
+
+LIB=	msgpuck
+
+SRCS=	msgpuck.c \
+	hints.c
+
+include $(MK)/static-lib.mk
+
