@@ -99,9 +99,9 @@ pkg_hidden_tempfile(char *buf, int buflen, const char *path)
 		fname++;
 
 	if (fname != NULL)
-		snprintf(buf, buflen, "%.*s.%s", (int)(fname - path), path, fname);
+		snprintf(buf, buflen, "%.*s.pkgtemp.%s", (int)(fname - path), path, fname);
 	else
-		snprintf(buf, buflen, ".%s", path);
+		snprintf(buf, buflen, ".pkgtemp.%s", path);
 
 	pkg_add_file_random_suffix(buf, buflen, 12);
 }
