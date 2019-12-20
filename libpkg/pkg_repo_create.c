@@ -210,7 +210,6 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_repo_meta *meta)
 {
 	pid_t pid;
-	bool legacy = (meta == NULL);
 	int flags, ret = EPKG_OK;
 	size_t cur_job = 0;
 	struct pkg_fts_item *cur;
@@ -272,22 +271,18 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			 * TODO: use pkg_checksum for new manifests
 			 */
 			utstring_clear(b);
-			if (legacy)
-				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, &mdigest);
-			else {
-				mdigest = xmalloc(pkg_checksum_type_size(meta->digest_format));
+			mdigest = xmalloc(pkg_checksum_type_size(meta->digest_format));
 
-				pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
-				/* Only version 1 needs the digest */
-				if (meta->version == 1) {
-					if (pkg_checksum_generate(pkg, mdigest,
-					    pkg_checksum_type_size(meta->digest_format),
-					    meta->digest_format) != EPKG_OK) {
-						pkg_emit_error("Cannot generate digest for a package");
-						ret = EPKG_FATAL;
+			pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+			/* Only version 1 needs the digest */
+			if (meta->version == 1) {
+				if (pkg_checksum_generate(pkg, mdigest,
+				    pkg_checksum_type_size(meta->digest_format),
+				    meta->digest_format) != EPKG_OK) {
+					pkg_emit_error("Cannot generate digest for a package");
+					ret = EPKG_FATAL;
 
-						goto cleanup;
-					}
+					goto cleanup;
 				}
 			}
 			mlen = utstring_len(b);
@@ -917,7 +912,6 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	struct stat st;
 	int ret = EPKG_OK, nfile = 0, fd;
 	const int files_to_pack = 4;
-	bool legacy = false;
 
 	if (!is_dir(output_dir)) {
 		pkg_emit_error("%s is not a directory", output_dir);
@@ -941,9 +935,6 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
 		repo_meta_file);
-	/*
-	 * If no meta is defined, then it is a legacy repo
-	 */
 	if ((fd = open(repo_path, O_RDONLY)) != -1) {
 		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
@@ -958,7 +949,6 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		}
 	}
 	else {
-		legacy = true;
 		meta = pkg_repo_meta_default();
 	}
 
@@ -1041,11 +1031,9 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 			    "%s/%s.txz", output_dir, meta->filesite_archive);
 			utimes(repo_archive, ftimes);
 		}
-		if (!legacy) {
-			snprintf(repo_archive, sizeof(repo_archive),
-				"%s/%s.txz", output_dir, repo_meta_file);
-			utimes(repo_archive, ftimes);
-		}
+		snprintf(repo_archive, sizeof(repo_archive),
+			"%s/%s.txz", output_dir, repo_meta_file);
+		utimes(repo_archive, ftimes);
 	}
 
 cleanup:
