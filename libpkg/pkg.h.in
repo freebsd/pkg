@@ -1719,6 +1719,8 @@ void pkg_cache_full_clean(void);
 int pkg_get_cachedirfd(void);
 int pkg_get_dbdirfd(void);
 
+int pkg_namecmp(struct pkg *, struct pkg *);
+
 #ifdef __cplusplus
 }
 #endif

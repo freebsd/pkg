@@ -811,3 +811,10 @@ mkdirat_p(int fd, const char *path)
 	free(walkorig);
 	return (true);
 }
+
+int
+pkg_namecmp(struct pkg *a, struct pkg *b)
+{
+
+	return (strcmp(a->name, b->name));
+}

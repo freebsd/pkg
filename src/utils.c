@@ -916,6 +916,13 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 	[PKG_DISPLAY_MAX] = NULL
 };
 
+static int
+namecmp(struct pkg_solved_display_item *a, struct pkg_solved_display_item *b)
+{
+
+	return (pkg_namecmp(a->new, b->new));
+}
+
 int
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
@@ -956,6 +963,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				msg = NULL;
 			}
 			printf("%s:\n", pkg_display_messages[type]);
+			DL_SORT(disp[type], namecmp);
 			DL_FOREACH_SAFE(disp[type], cur, tmp) {
 				display_summary_item(cur, dlsize);
 				displayed ++;
