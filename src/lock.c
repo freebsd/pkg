@@ -183,9 +183,8 @@ static int
 exec_lock_unlock(int argc, char **argv, enum action action)
 {
 	struct pkgdb	*db = NULL;
-	const char	*pkgname;
 	int		 match = MATCH_EXACT;
-	int		 retcode;
+	int		 retcode, i;
 	int		 exitcode = EX_OK;
 	int		 ch;
 	bool		 show_locked = false;
@@ -255,11 +254,6 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		return (EX_USAGE);
 	}
 
-	if (match == MATCH_ALL)
-		pkgname = NULL;
-	else
-		pkgname = argv[0];
-
 	if (read_only)
 		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	else
@@ -283,8 +277,17 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	if (retcode != EPKG_OK)
 		return (EX_IOERR);
 
-	if (!read_only)
-		exitcode = do_lock_unlock(db, match, pkgname, action);
+	if (!read_only) {
+		if (match == MATCH_ALL) {
+			exitcode = do_lock_unlock(db, match, NULL, action);
+		} else {
+			for (i = 0; i < argc; i++) {
+				retcode = do_lock_unlock(db, match, argv[i], action);
+				if (retcode != EX_OK)
+					exitcode = retcode;
+			}
+		}
+	}
 
 	if (show_locked)
 		exitcode = list_locked(db, has_locked_packages);
