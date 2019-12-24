@@ -1,3 +1,18 @@
+Changes from 1.12.99.0 to 1.12.99.1
+- When installing a file over a file that is not tracked by any
+  package, save the previous one as .pkgsave
+- Fix a chicken/egg problem with the meta being compressed and defining
+  the compression format. Now pkg repo will create a meta.conf file
+  uncompressed (it is small enough) and fallback on the old meta.txz.
+  Note that meta.txz is still created for backward compatibility
+- pkg repo now creates meta files in version 2 by default meaning the digests.txz
+  is not created anymore, it was only used up to pkg 1.2. anyone upgrading
+  from pkg 1.2 should first run pkg bootstrap -f to be on a recent version.
+- pkg -r now first lookup under the rootdir for its ABI_FILE.
+- suppress version checking when -j is specified
+- Alphabetically sort packages printed in the output of pkg commands to ease readability
+- pkg lock/unlock now allows multiple packages in arguments
+
 Changes from pkg 1.11.99.3 to 1.12.99.0
 - Fix a crash when specifying an unsupported ABI
 
