@@ -817,7 +817,6 @@ int pkg_is_installed(struct pkgdb *db, const char *name);
  * @param force If true, rebuild the repository catalogue from scratch
  * @param filesite If true, create a list of all files in repo
  * @param metafile Open meta from the specified file
- * @param legacy Create legacy (1.2 compatible) repo
  */
 typedef int(pkg_password_cb)(char *, int, int, void*);
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
