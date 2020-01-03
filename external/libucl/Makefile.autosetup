@@ -14,6 +14,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libucl/uthash \
 		-I$(top_srcdir)/external/libucl/klib \
 		-I$(top_srcdir)/external/libucl/src/ \
-		-Wno-unused-parameter
+		-Wno-unused-parameter \
+		-Wno-pointer-sign
 
 include $(MK)/static-lib.mk

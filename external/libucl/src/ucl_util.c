@@ -520,17 +520,22 @@ void
 ucl_chunk_free (struct ucl_chunk *chunk)
 {
 	if (chunk) {
-		if (chunk->special_handler) {
-			if (chunk->special_handler->free_function) {
-				chunk->special_handler->free_function (
-						(unsigned char *) chunk->begin,
-						chunk->end - chunk->begin,
-						chunk->special_handler->user_data);
+		struct ucl_parser_special_handler_chain *chain, *tmp;
+
+		LL_FOREACH_SAFE (chunk->special_handlers, chain, tmp) {
+			if (chain->special_handler->free_function) {
+				chain->special_handler->free_function (
+						chain->begin,
+						chain->len,
+						chain->special_handler->user_data);
 			} else {
-				UCL_FREE (chunk->end - chunk->begin,
-						(unsigned char *) chunk->begin);
+				UCL_FREE (chain->len, chain->begin);
 			}
+
+			UCL_FREE (sizeof (*chain), chain);
 		}
+
+		chunk->special_handlers = NULL;
 
 		if (chunk->fname) {
 			free (chunk->fname);
@@ -1149,7 +1154,7 @@ ucl_include_file_single (const unsigned char *data, size_t len,
 	}
 
 	old_curfile = parser->cur_file;
-	parser->cur_file = strdup (realbuf);
+	parser->cur_file = NULL;
 
 	/* Store old file vars */
 	DL_FOREACH_SAFE (parser->variables, cur_var, tmp_var) {
@@ -1394,7 +1399,9 @@ ucl_include_file_single (const unsigned char *data, size_t len,
  */
 static bool
 ucl_include_file (const unsigned char *data, size_t len,
-		struct ucl_parser *parser, struct ucl_include_params *params)
+				  struct ucl_parser *parser,
+				  struct ucl_include_params *params,
+				  const ucl_object_t *args)
 {
 	const unsigned char *p = data, *end = data + len;
 	bool need_glob = false;
@@ -1424,6 +1431,20 @@ ucl_include_file (const unsigned char *data, size_t len,
 				return (!params->must_exist || false);
 			}
 			for (i = 0; i < globbuf.gl_pathc; i ++) {
+
+				if (parser->include_trace_func) {
+					const ucl_object_t *parent = NULL;
+
+					if (parser->stack) {
+						parent = parser->stack->obj;
+					}
+
+					parser->include_trace_func (parser, parent, NULL,
+							globbuf.gl_pathv[i],
+							strlen (globbuf.gl_pathv[i]),
+							parser->include_trace_ud);
+				}
+
 				if (!ucl_include_file_single ((unsigned char *)globbuf.gl_pathv[i],
 						strlen (globbuf.gl_pathv[i]), parser, params)) {
 					if (params->soft_fail) {
@@ -1490,6 +1511,17 @@ ucl_include_common (const unsigned char *data, size_t len,
 	params.strat = UCL_DUPLICATE_APPEND;
 	params.must_exist = !default_try;
 
+	if (parser->include_trace_func) {
+		const ucl_object_t *parent = NULL;
+
+		if (parser->stack) {
+			parent = parser->stack->obj;
+		}
+
+		parser->include_trace_func (parser, parent, args,
+				data, len, parser->include_trace_ud);
+	}
+
 	/* Process arguments */
 	if (args != NULL && args->type == UCL_OBJECT) {
 		while ((param = ucl_object_iterate (args, &it, true)) != NULL) {
@@ -1554,7 +1586,7 @@ ucl_include_common (const unsigned char *data, size_t len,
 		}
 		else if (data != NULL) {
 			/* Try to load a file */
-			return ucl_include_file (data, len, parser, &params);
+			return ucl_include_file (data, len, parser, &params, args);
 		}
 	}
 	else {
@@ -1569,7 +1601,7 @@ ucl_include_common (const unsigned char *data, size_t len,
 				snprintf (ipath, sizeof (ipath), "%s/%.*s", ucl_object_tostring(param),
 						(int)len, data);
 				if ((search = ucl_include_file (ipath, strlen (ipath),
-						parser, &params))) {
+						parser, &params, args))) {
 					if (!params.allow_glob) {
 						break;
 					}
@@ -1930,6 +1962,12 @@ ucl_parser_set_filevars (struct ucl_parser *parser, const char *filename, bool n
 			ucl_strlcpy (realbuf, filename, sizeof (realbuf));
 		}
 
+		if (parser->cur_file) {
+			free (parser->cur_file);
+		}
+
+		parser->cur_file = strdup (realbuf);
+
 		/* Define variables */
 		ucl_parser_register_variable (parser, "FILENAME", realbuf);
 		curdir = dirname (realbuf);
@@ -1966,10 +2004,6 @@ ucl_parser_add_file_full (struct ucl_parser *parser, const char *filename,
 		return false;
 	}
 
-	if (parser->cur_file) {
-		free (parser->cur_file);
-	}
-	parser->cur_file = strdup (realbuf);
 	ucl_parser_set_filevars (parser, realbuf, false);
 	ret = ucl_parser_add_chunk_full (parser, buf, len, priority, strat,
 			parse_type);
@@ -2654,7 +2688,8 @@ ucl_object_lookup_any (const ucl_object_t *obj,
 }
 
 const ucl_object_t*
-ucl_object_iterate (const ucl_object_t *obj, ucl_object_iter_t *iter, bool expand_values)
+ucl_object_iterate_with_error (const ucl_object_t *obj, ucl_object_iter_t *iter, bool expand_values,
+    int *ep)
 {
 	const ucl_object_t *elt = NULL;
 
@@ -2665,7 +2700,7 @@ ucl_object_iterate (const ucl_object_t *obj, ucl_object_iter_t *iter, bool expan
 	if (expand_values) {
 		switch (obj->type) {
 		case UCL_OBJECT:
-			return (const ucl_object_t*)ucl_hash_iterate (obj->value.ov, iter);
+			return (const ucl_object_t*)ucl_hash_iterate2 (obj->value.ov, iter, ep);
 			break;
 		case UCL_ARRAY: {
 			unsigned int idx;
@@ -2711,6 +2746,7 @@ enum ucl_safe_iter_flags {
 	UCL_ITERATE_FLAG_INSIDE_ARRAY,
 	UCL_ITERATE_FLAG_INSIDE_OBJECT,
 	UCL_ITERATE_FLAG_IMPLICIT,
+	UCL_ITERATE_FLAG_EXCEPTION
 };
 
 const char safe_iter_magic[4] = {'u', 'i', 't', 'e'};
@@ -2743,6 +2779,15 @@ ucl_object_iterate_new (const ucl_object_t *obj)
 	return (ucl_object_iter_t)it;
 }
 
+bool
+ucl_object_iter_chk_excpn(ucl_object_iter_t *it)
+{
+        struct ucl_object_safe_iter *rit = UCL_SAFE_ITER (it);
+
+        UCL_SAFE_ITER_CHECK (rit);
+
+	return (rit->flags == UCL_ITERATE_FLAG_EXCEPTION);
+}
 
 ucl_object_iter_t
 ucl_object_iterate_reset (ucl_object_iter_t it, const ucl_object_t *obj)
@@ -2776,6 +2821,7 @@ ucl_object_iterate_full (ucl_object_iter_t it, enum ucl_iterate_type type)
 {
 	struct ucl_object_safe_iter *rit = UCL_SAFE_ITER (it);
 	const ucl_object_t *ret = NULL;
+	int ern;
 
 	UCL_SAFE_ITER_CHECK (rit);
 
@@ -2785,7 +2831,12 @@ ucl_object_iterate_full (ucl_object_iter_t it, enum ucl_iterate_type type)
 
 	if (rit->impl_it->type == UCL_OBJECT) {
 		rit->flags = UCL_ITERATE_FLAG_INSIDE_OBJECT;
-		ret = ucl_object_iterate (rit->impl_it, &rit->expl_it, true);
+		ret = ucl_object_iterate_with_error (rit->impl_it, &rit->expl_it, true, &ern);
+
+		if (ret == NULL && ern != 0) {
+			rit->flags = UCL_ITERATE_FLAG_EXCEPTION;
+			return NULL;
+		}
 
 		if (ret == NULL && (type & UCL_ITERATE_IMPLICIT)) {
 			/* Need to switch to another implicit object in chain */
@@ -2933,7 +2984,7 @@ ucl_object_new_full (ucl_type_t type, unsigned priority)
 					UCL_ARRAY_GET (vec, new);
 
 					/* Preallocate some space for arrays */
-					kv_resize (ucl_object_t *, *vec, 8);
+					kv_resize_safe (ucl_object_t *, *vec, 8, enomem);
 				}
 			}
 		}
@@ -2942,23 +2993,26 @@ ucl_object_new_full (ucl_type_t type, unsigned priority)
 		new = ucl_object_new_userdata (NULL, NULL, NULL);
 		ucl_object_set_priority (new, priority);
 	}
-
+enomem:
 	return new;
 }
 
-void ucl_object_reserve (ucl_object_t *obj, size_t reserved)
+bool ucl_object_reserve (ucl_object_t *obj, size_t reserved)
 {
 	if (obj->type == UCL_ARRAY) {
 		UCL_ARRAY_GET (vec, obj);
 
 		if (vec->m < reserved) {
 			/* Preallocate some space for arrays */
-			kv_resize (ucl_object_t *, *vec, reserved);
+			kv_resize_safe (ucl_object_t *, *vec, reserved, e0);
 		}
 	}
 	else if (obj->type == UCL_OBJECT) {
 		ucl_hash_reserve (obj->value.ov, reserved);
 	}
+	return true;
+e0:
+	return false;
 }
 
 ucl_object_t*
@@ -3068,11 +3122,13 @@ ucl_array_append (ucl_object_t *top, ucl_object_t *elt)
 		top->value.av = (void *)vec;
 	}
 
-	kv_push (ucl_object_t *, *vec, elt);
+	kv_push_safe (ucl_object_t *, *vec, elt, e0);
 
 	top->len ++;
 
 	return true;
+e0:
+	return false;
 }
 
 bool
@@ -3088,16 +3144,18 @@ ucl_array_prepend (ucl_object_t *top, ucl_object_t *elt)
 		vec = UCL_ALLOC (sizeof (*vec));
 		kv_init (*vec);
 		top->value.av = (void *)vec;
-		kv_push (ucl_object_t *, *vec, elt);
+		kv_push_safe (ucl_object_t *, *vec, elt, e0);
 	}
 	else {
 		/* Slow O(n) algorithm */
-		kv_prepend (ucl_object_t *, *vec, elt);
+		kv_prepend_safe (ucl_object_t *, *vec, elt, e0);
 	}
 
 	top->len ++;
 
 	return true;
+e0:
+	return false;
 }
 
 bool
@@ -3122,7 +3180,7 @@ ucl_array_merge (ucl_object_t *top, ucl_object_t *elt, bool copy)
 	UCL_ARRAY_GET (v2, cp);
 
 	if (v1 && v2) {
-		kv_concat (ucl_object_t *, *v1, *v2);
+		kv_concat_safe (ucl_object_t *, *v1, *v2, e0);
 
 		for (i = v2->n; i < v1->n; i ++) {
 			obj = &kv_A (*v1, i);
@@ -3134,6 +3192,8 @@ ucl_array_merge (ucl_object_t *top, ucl_object_t *elt, bool copy)
 	}
 
 	return true;
+e0:
+	return false;
 }
 
 ucl_object_t *
@@ -3837,4 +3897,19 @@ ucl_comments_add (ucl_object_t *comments, const ucl_object_t *obj,
 		ucl_object_insert_key (comments, ucl_object_fromstring (comment),
 				(const char *)&obj, sizeof (void *), true);
 	}
+}
+
+void
+ucl_parser_set_include_tracer (struct ucl_parser *parser,
+							   ucl_include_trace_func_t func,
+							   void *user_data)
+{
+	parser->include_trace_func = func;
+	parser->include_trace_ud = user_data;
+}
+
+const char *
+ucl_parser_get_cur_file (struct ucl_parser *parser)
+{
+	return parser->cur_file;
 }

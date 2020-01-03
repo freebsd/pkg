@@ -205,6 +205,13 @@ struct ucl_stack {
 	struct ucl_chunk *chunk;
 };
 
+struct ucl_parser_special_handler_chain {
+	unsigned char *begin;
+	size_t len;
+	struct ucl_parser_special_handler *special_handler;
+	struct ucl_parser_special_handler_chain *next;
+};
+
 struct ucl_chunk {
 	const unsigned char *begin;
 	const unsigned char *end;
@@ -216,7 +223,7 @@ struct ucl_chunk {
 	unsigned priority;
 	enum ucl_duplicate_strategy strategy;
 	enum ucl_parse_type parse_type;
-	struct ucl_parser_special_handler *special_handler;
+	struct ucl_parser_special_handler_chain *special_handlers;
 	struct ucl_chunk *next;
 };
 
@@ -255,7 +262,9 @@ struct ucl_parser {
 	struct ucl_stack *stack;
 	struct ucl_chunk *chunks;
 	struct ucl_pubkey *keys;
-    struct ucl_parser_special_handler *special_handlers;
+	struct ucl_parser_special_handler *special_handlers;
+	ucl_include_trace_func_t *include_trace_func;
+	void *include_trace_ud;
 	struct ucl_variable *variables;
 	ucl_variable_handler var_handler;
 	void *var_data;
@@ -463,12 +472,24 @@ ucl_hash_insert_object (ucl_hash_t *hashlin,
 		const ucl_object_t *obj,
 		bool ignore_case)
 {
-	if (hashlin == NULL) {
-		hashlin = ucl_hash_create (ignore_case);
-	}
-	ucl_hash_insert (hashlin, obj, obj->key, obj->keylen);
+	ucl_hash_t *nhp;
 
-	return hashlin;
+	if (hashlin == NULL) {
+		nhp = ucl_hash_create (ignore_case);
+		if (nhp == NULL) {
+			return NULL;
+		}
+	} else {
+		nhp = hashlin;
+	}
+	if (!ucl_hash_insert (nhp, obj, obj->key, obj->keylen)) {
+		if (nhp != hashlin) {
+			ucl_hash_destroy(nhp, NULL);
+		}
+		return NULL;
+	}
+
+	return nhp;
 }
 
 /**
