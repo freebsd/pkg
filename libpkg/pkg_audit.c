@@ -592,6 +592,9 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		case YXML_ESYN:
 			pkg_emit_error("Syntax error while parsing vulnxml");
 			goto out;
+		case YXML_ECLOSE:
+			pkg_emit_error("Close tag does not match open tag line %d", x.line);
+			goto out;
 		case YXML_ELEMSTART:
 			vulnxml_start_element(&ud, &x);
 				break;
