@@ -1,3 +1,8 @@
+Changes from 1.12.99.1 to 1.12.99.2
+- expat has been replaced by yxml to parse vuxml
+- fix documentation of -y in pkg-set
+- update libucl to latest version
+
 Changes from 1.12.99.0 to 1.12.99.1
 - When installing a file over a file that is not tracked by any
   package, save the previous one as .pkgsave
