@@ -1,0 +1,11 @@
+include @builddir@/mk/defs.mk
+
+LIB=	yxml
+
+SRCS=	yxml.c
+
+LOCAL_CFLAGS=	-Wno-unused-parameter -I.
+
+include $(MK)/static-lib.mk
+
+
