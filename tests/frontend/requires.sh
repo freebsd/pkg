@@ -48,8 +48,8 @@ Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
-	b: 1.0
 	a: 1.0
+	b: 1.0
 
 Number of packages to be installed: 2
 "

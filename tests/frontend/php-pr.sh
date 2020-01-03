@@ -278,8 +278,8 @@ Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
 Installed packages to be UPGRADED:
-	php53-gd: 5.3.27 -> 5.3.40
 	php53: 5.3.27 -> 5.3.40
+	php53-gd: 5.3.27 -> 5.3.40
 
 Installed packages to be REINSTALLED:
 	php53-extensions-1.6 (requires changed)

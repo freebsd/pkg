@@ -165,8 +165,8 @@ Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 Installed packages to be UPGRADED:
-	test2: 1 -> 1.1 [local2]
 	test: 1 -> 1.1 [local2]
+	test2: 1 -> 1.1 [local2]
 
 Number of packages to be upgraded: 2
 ${JAILED}[1/2] Deinstalling test2-1...
