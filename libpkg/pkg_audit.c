@@ -618,7 +618,10 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		}
 	}
 
-	ret = EPKG_OK;
+	if (yxml_eof(&x) == YXML_OK)
+		ret = EPKG_OK;
+	else
+		pkg_emit_error("Invalid end of XML");
 out:
 	utstring_free(ud.content);
 
