@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,7 +37,7 @@
 #include <string.h>
 #include <utlist.h>
 
-#include <expat.h>
+#include <yxml.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -369,126 +370,176 @@ enum vulnxml_parse_state {
 	VULNXML_PARSE_CVE
 };
 
+enum vulnxml_parse_attribute_state {
+	VULNXML_ATTR_NONE = 0,
+	VULNXML_ATTR_VID,
+};
+
 struct vulnxml_userdata {
 	struct pkg_audit_entry *cur_entry;
 	struct pkg_audit *audit;
 	enum vulnxml_parse_state state;
+	UT_string *content;
 	int range_num;
+	enum vulnxml_parse_attribute_state attr;
 };
 
 static void
-vulnxml_start_element(void *data, const char *element, const char **attributes)
+vulnxml_start_element(struct vulnxml_userdata *ud, yxml_t *xml)
 {
-	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 	struct pkg_audit_versions_range *vers;
 	struct pkg_audit_pkgname *name_entry;
 	struct pkg_audit_package *pkg_entry;
 	int i;
 
-	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(element, "vuln") == 0) {
+	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(xml->elem, "vuln") == 0) {
 		ud->cur_entry = xcalloc(1, sizeof(struct pkg_audit_entry));
-		for (i = 0; attributes[i]; i += 2) {
-			if (strcasecmp(attributes[i], "vid") == 0) {
-				ud->cur_entry->id = xstrdup(attributes[i + 1]);
-				break;
-			}
-		}
 		ud->cur_entry->next = ud->audit->entries;
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "topic") == 0) {
+	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "topic") == 0) {
 		ud->state = VULNXML_PARSE_TOPIC;
 	}
-	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "package") == 0) {
+	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "package") == 0) {
 		pkg_entry = xcalloc(1, sizeof(struct pkg_audit_package));
 		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
-	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "cvename") == 0) {
+	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "cvename") == 0) {
 		ud->state = VULNXML_PARSE_CVE;
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "name") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(xml->elem, "name") == 0) {
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
 		name_entry = xcalloc(1, sizeof(struct pkg_audit_pkgname));
 		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(xml->elem, "range") == 0) {
 		ud->state = VULNXML_PARSE_RANGE;
 		vers = xcalloc(1, sizeof(struct pkg_audit_versions_range));
 		LL_PREPEND(ud->cur_entry->packages->versions, vers);
 		ud->range_num = 0;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "gt") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "gt") == 0) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_GT;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "ge") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "ge") == 0) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_GE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "lt") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "lt") == 0) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_LT;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "le") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "le") == 0) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_LE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "eq") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "eq") == 0) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_EQ;
 	}
 }
 
 static void
-vulnxml_end_element(void *data, const char *element)
+vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 {
-	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
+	struct pkg_audit_cve *cve;
+	struct pkg_audit_entry *entry;
+	struct pkg_audit_versions_range *vers;
+	int range_type = -1;
 
-	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "vuln") == 0) {
+	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "vuxml") == 0) {
 		pkg_audit_expand_entry(ud->cur_entry, &ud->audit->entries);
 		ud->state = VULNXML_PARSE_INIT;
 	}
-	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(element, "topic") == 0) {
+	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(xml->elem, "vuln") == 0) {
+		ud->cur_entry->desc = xstrdup(utstring_body(ud->content));
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_CVE && strcasecmp(element, "cvename") == 0) {
+	else if (ud->state == VULNXML_PARSE_CVE && strcasecmp(xml->elem, "references") == 0) {
+		entry = ud->cur_entry;
+		cve = xmalloc(sizeof(struct pkg_audit_cve));
+		cve->cvename = xstrdup(utstring_body(ud->content));
+		LL_PREPEND(entry->cve, cve);
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "package") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(xml->elem, "affects") == 0) {
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && strcasecmp(element, "name") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && strcasecmp(xml->elem, "package") == 0) {
+		ud->cur_entry->packages->names->pkgname = xstrdup(utstring_body(ud->content));
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(element, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "package") == 0) {
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_GT && strcasecmp(element, "gt") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_GT && strcasecmp(xml->elem, "range") == 0) {
+		range_type = GT;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_GE && strcasecmp(element, "ge") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_GE && strcasecmp(xml->elem, "range") == 0) {
+		range_type = GTE;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_LT && strcasecmp(element, "lt") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_LT && strcasecmp(xml->elem, "range") == 0) {
+		range_type = LT;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_LE && strcasecmp(element, "le") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_LE && strcasecmp(xml->elem, "range") == 0) {
+		range_type = LTE;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_EQ && strcasecmp(element, "eq") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_EQ && strcasecmp(xml->elem, "range") == 0) {
+		range_type = EQ;
 		ud->state = VULNXML_PARSE_RANGE;
+	}
+
+	if (range_type > 0) {
+		vers = ud->cur_entry->packages->versions;
+		if (ud->range_num == 1) {
+			vers->v1.version = xstrdup(utstring_body(ud->content));
+			vers->v1.type = range_type;
+		}
+		else if (ud->range_num == 2) {
+			vers->v2.version = xstrdup(utstring_body(ud->content));
+			vers->v2.type = range_type;
+		}
+	}
+	utstring_clear(ud->content);
+}
+
+static void
+vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
+{
+	if (ud->state != VULNXML_PARSE_VULN)
+		return;
+
+	if (strcasecmp(xml->attr, "vid") == 0)
+		ud->attr = VULNXML_ATTR_VID;
+}
+
+static void
+vulnxml_end_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
+{
+	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
+		ud->cur_entry->id = xstrdup(utstring_body(ud->content));
+		ud->attr = VULNXML_ATTR_NONE;
+	}
+	utstring_clear(ud->content);
+}
+
+static void
+vulnxml_val_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
+{
+	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
+		utstring_printf(ud->content, "%s", xml->data);
 	}
 }
 
 static void
-vulnxml_handle_data(void *data, const char *content, int length)
+vulnxml_handle_data(struct vulnxml_userdata *ud, yxml_t *xml)
 {
-	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
-	struct pkg_audit_versions_range *vers;
-	struct pkg_audit_cve *cve;
-	struct pkg_audit_entry *entry;
-	int range_type = -1;
 
 	switch(ud->state) {
 	case VULNXML_PARSE_INIT:
@@ -498,71 +549,75 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		/* On these states we do not need any data */
 		break;
 	case VULNXML_PARSE_TOPIC:
-		ud->cur_entry->desc = xstrndup(content, length);
-		break;
 	case VULNXML_PARSE_PACKAGE_NAME:
-		ud->cur_entry->packages->names->pkgname = xstrndup(content, length);
-		break;
-	case VULNXML_PARSE_RANGE_GT:
-		range_type = GT;
-		break;
-	case VULNXML_PARSE_RANGE_GE:
-		range_type = GTE;
-		break;
-	case VULNXML_PARSE_RANGE_LT:
-		range_type = LT;
-		break;
-	case VULNXML_PARSE_RANGE_LE:
-		range_type = LTE;
-		break;
-	case VULNXML_PARSE_RANGE_EQ:
-		range_type = EQ;
-		break;
 	case VULNXML_PARSE_CVE:
-		entry = ud->cur_entry;
-		cve = xmalloc(sizeof(struct pkg_audit_cve));
-		cve->cvename = xstrndup(content, length);
-		LL_PREPEND(entry->cve, cve);
+	case VULNXML_PARSE_RANGE_GT:
+	case VULNXML_PARSE_RANGE_GE:
+	case VULNXML_PARSE_RANGE_LT:
+	case VULNXML_PARSE_RANGE_LE:
+	case VULNXML_PARSE_RANGE_EQ:
+		utstring_printf(ud->content, "%s", xml->data);
 		break;
-	}
-
-	if (range_type > 0) {
-		vers = ud->cur_entry->packages->versions;
-		if (ud->range_num == 1) {
-			vers->v1.version = xstrndup(content, length);
-			vers->v1.type = range_type;
-		}
-		else if (ud->range_num == 2) {
-			vers->v2.version = xstrndup(content, length);
-			vers->v2.type = range_type;
-		}
 	}
 }
 
 static int
 pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 {
-	XML_Parser parser;
+	int ret = EPKG_FATAL;
+	yxml_t x;
+	yxml_ret_t r;
+	char buf[BUFSIZ];
+	char *walk, *end;
 	struct vulnxml_userdata ud;
-	int ret = EPKG_OK;
 
-	parser = XML_ParserCreate(NULL);
-	XML_SetElementHandler(parser, vulnxml_start_element, vulnxml_end_element);
-	XML_SetCharacterDataHandler(parser, vulnxml_handle_data);
-	XML_SetUserData(parser, &ud);
-
+	yxml_init(&x, buf, BUFSIZ);
 	ud.cur_entry = NULL;
 	ud.audit = audit;
 	ud.range_num = 0;
 	ud.state = VULNXML_PARSE_INIT;
+	utstring_new(ud.content);
 
-	if (XML_Parse(parser, audit->map, audit->len, XML_TRUE) == XML_STATUS_ERROR) {
-		pkg_emit_error("vulnxml parsing error: %s",
-				XML_ErrorString(XML_GetErrorCode(parser)));
-		ret = EPKG_FATAL;
+	walk = audit->map;
+	end = walk + audit->len;
+	while (walk < end) {
+		r = yxml_parse(&x, *walk++);
+		switch (r) {
+		case YXML_EREF:
+			pkg_emit_error("Unexpected EOF while parsing vulnxml");
+			goto out;
+		case YXML_ESTACK:
+			pkg_emit_error("Unexpected EOF while parsing vulnxml");
+			goto out;
+		case YXML_ESYN:
+			pkg_emit_error("Syntax error while parsing vulnxml");
+			goto out;
+		case YXML_ELEMSTART:
+			vulnxml_start_element(&ud, &x);
+				break;
+		case YXML_ELEMEND:
+			vulnxml_end_element(&ud, &x);
+			break;
+		case YXML_CONTENT:
+			vulnxml_handle_data(&ud, &x);
+			break;
+		case YXML_ATTRVAL:
+			vulnxml_val_attribute(&ud, &x);
+			break;
+		case YXML_ATTRSTART:
+			vulnxml_start_attribute(&ud, &x);
+			break;
+			/* ignore */
+		case YXML_ATTREND:
+			vulnxml_end_attribute(&ud, &x);
+			/* ignore */
+			break;
+		}
 	}
 
-	XML_ParserFree(parser);
+	ret = EPKG_OK;
+out:
+	utstring_free(ud.content);
 
 	return (ret);
 }
