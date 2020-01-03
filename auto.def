@@ -304,7 +304,7 @@ make-template libpkg/pkg.pc.in
 make-template tests/frontend/test_environment.sh.in
 make-template Makefile.autosetup Makefile
 
-foreach dir [list external/expat external/blake2 external/picosat \
+foreach dir [list external/blake2 external/picosat \
 	external/linenoise external/libfetch external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf external/libmachista tests docs \
