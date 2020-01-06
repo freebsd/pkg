@@ -318,7 +318,7 @@ packing_set_format(struct archive *a, pkg_formats format)
 	case TZS:
 #ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
-			if (archive_write_set_filter_option(a, NULL, "compression-level", "19") != ARCHIVE_OK) {
+			if (archive_write_set_filter_option(a, NULL, "compression-level", "20") != ARCHIVE_OK) {
 				pkg_emit_error("bad compression-level");
 			}
 			return ("tzst");
