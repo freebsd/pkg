@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1998-2004 Dag-Erling Smørgrav
  * All rights reserved.
  *
@@ -25,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/libfetch/fetch.h 267133 2014-06-05 22:16:26Z bapt $
+ * $FreeBSD: head/lib/libfetch/fetch.h 326219 2017-11-26 02:00:33Z pfg $
  */
 
 #ifndef _FETCH_H_INCLUDED
@@ -47,6 +49,7 @@ struct url {
 	off_t		 offset;
 	size_t		 length;
 	time_t		 ims_time;
+	int		 netrcfd;
 };
 
 struct url_stat {
@@ -86,8 +89,6 @@ struct url_ent {
 #define	FETCH_UNKNOWN	17
 #define	FETCH_URL	18
 #define	FETCH_VERBOSE	19
-
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 

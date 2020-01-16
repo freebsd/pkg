@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 1998-2004 Dag-Erling Smørgrav
  * All rights reserved.
  *
@@ -27,12 +29,13 @@
  */
 
 #include <sys/cdefs.h>
-#include "bsd_compat.h"
-__FBSDID("$FreeBSD: head/lib/libfetch/fetch.c 252375 2013-06-29 15:51:27Z kientzle $");
+__FBSDID("$FreeBSD: head/lib/libfetch/fetch.c 341013 2018-11-27 10:45:14Z des $");
 
 #include <sys/param.h>
-#include <sys/errno.h>
 
+#include <netinet/in.h>
+
+#include <errno.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,13 +83,13 @@ fetchXGet(struct url *URL, struct url_stat *us, const char *flags)
 		us->size = -1;
 		us->atime = us->mtime = 0;
 	}
-	if (strcasecmp(URL->scheme, SCHEME_FILE) == 0)
+	if (strcmp(URL->scheme, SCHEME_FILE) == 0)
 		return (fetchXGetFile(URL, us, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_FTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_FTP) == 0)
 		return (fetchXGetFTP(URL, us, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchXGetHTTP(URL, us, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchXGetHTTP(URL, us, flags));
 	url_seterr(URL_BAD_SCHEME);
 	return (NULL);
@@ -110,13 +113,13 @@ FILE *
 fetchPut(struct url *URL, const char *flags)
 {
 
-	if (strcasecmp(URL->scheme, SCHEME_FILE) == 0)
+	if (strcmp(URL->scheme, SCHEME_FILE) == 0)
 		return (fetchPutFile(URL, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_FTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_FTP) == 0)
 		return (fetchPutFTP(URL, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchPutHTTP(URL, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchPutHTTP(URL, flags));
 	url_seterr(URL_BAD_SCHEME);
 	return (NULL);
@@ -134,13 +137,13 @@ fetchStat(struct url *URL, struct url_stat *us, const char *flags)
 		us->size = -1;
 		us->atime = us->mtime = 0;
 	}
-	if (strcasecmp(URL->scheme, SCHEME_FILE) == 0)
+	if (strcmp(URL->scheme, SCHEME_FILE) == 0)
 		return (fetchStatFile(URL, us, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_FTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_FTP) == 0)
 		return (fetchStatFTP(URL, us, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchStatHTTP(URL, us, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchStatHTTP(URL, us, flags));
 	url_seterr(URL_BAD_SCHEME);
 	return (-1);
@@ -154,13 +157,13 @@ struct url_ent *
 fetchList(struct url *URL, const char *flags)
 {
 
-	if (strcasecmp(URL->scheme, SCHEME_FILE) == 0)
+	if (strcmp(URL->scheme, SCHEME_FILE) == 0)
 		return (fetchListFile(URL, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_FTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_FTP) == 0)
 		return (fetchListFTP(URL, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTP) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchListHTTP(URL, flags));
-	else if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0)
+	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchListHTTP(URL, flags));
 	url_seterr(URL_BAD_SCHEME);
 	return (NULL);
@@ -271,6 +274,7 @@ fetchMakeURL(const char *scheme, const char *host, int port, const char *doc,
 		fetch_syserr();
 		return (NULL);
 	}
+	u->netrcfd = -1;
 
 	if ((u->doc = strdup(doc ? doc : "/")) == NULL) {
 		fetch_syserr();
@@ -343,18 +347,21 @@ fetchParseURL(const char *URL)
 	char *doc;
 	const char *p, *q;
 	struct url *u;
-	int i;
+	int i, n;
 
 	/* allocate struct url */
 	if ((u = calloc(1, sizeof(*u))) == NULL) {
 		fetch_syserr();
 		return (NULL);
 	}
+	u->netrcfd = -1;
 
 	/* scheme name */
 	if ((p = strstr(URL, ":/"))) {
-		snprintf(u->scheme, URL_SCHEMELEN+1,
-		    "%.*s", (int)(p - URL), URL);
+                if (p - URL > URL_SCHEMELEN)
+                        goto ouch;
+                for (i = 0; URL + i < p; i++)
+                        u->scheme[i] = tolower((unsigned char)URL[i]);
 		URL = ++p;
 		/*
 		 * Only one slash: no host, leave slash as part of document
@@ -385,29 +392,37 @@ fetchParseURL(const char *URL)
 	}
 
 	/* hostname */
-#ifdef INET6
-	if (*p == '[' && (q = strchr(p + 1, ']')) != NULL &&
-	    (*++q == '\0' || *q == '/' || *q == ':')) {
-		if ((i = q - p - 2) > MAXHOSTNAMELEN)
-			i = MAXHOSTNAMELEN;
-		strncpy(u->host, ++p, i);
-		p = q;
-	} else
-#endif
-		for (i = 0; *p && (*p != '/') && (*p != ':'); p++)
-			if (i < MAXHOSTNAMELEN)
-				u->host[i++] = *p;
+	if (*p == '[') {
+		q = p + 1 + strspn(p + 1, ":0123456789ABCDEFabcdef");
+		if (*q++ != ']')
+			goto ouch;
+	} else {
+		/* valid characters in a DNS name */
+		q = p + strspn(p, "-." "0123456789"
+		    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "_"
+		    "abcdefghijklmnopqrstuvwxyz");
+	}
+	if ((*q != '\0' && *q != '/' && *q != ':') || q - p > MAXHOSTNAMELEN)
+		goto ouch;
+	for (i = 0; p + i < q; i++)
+		u->host[i] = tolower((unsigned char)p[i]);
+	u->host[i] = '\0';
+	p = q;
 
 	/* port */
 	if (*p == ':') {
-		for (q = ++p; *q && (*q != '/'); q++)
-			if (isdigit((unsigned char)*q))
-				u->port = u->port * 10 + (*q - '0');
-			else {
+		for (n = 0, q = ++p; *q && (*q != '/'); q++) {
+			if (*q >= '0' && *q <= '9' && n < INT_MAX / 10) {
+				n = n * 10 + (*q - '0');
+			} else {
 				/* invalid port */
 				url_seterr(URL_BAD_PORT);
 				goto ouch;
 			}
+		}
+		if (n < 1 || n > IPPORT_MAX)
+			goto ouch;
+		u->port = n;
 		p = q;
 	}
 
@@ -416,8 +431,8 @@ nohost:
 	if (!*p)
 		p = "/";
 
-	if (strcasecmp(u->scheme, SCHEME_HTTP) == 0 ||
-	    strcasecmp(u->scheme, SCHEME_HTTPS) == 0) {
+	if (strcmp(u->scheme, SCHEME_HTTP) == 0 ||
+	    strcmp(u->scheme, SCHEME_HTTPS) == 0) {
 		const char hexnums[] = "0123456789abcdef";
 
 		/* percent-escape whitespace. */
@@ -442,15 +457,14 @@ nohost:
 		goto ouch;
 	}
 
-	DEBUG(fprintf(stderr,
-		  "scheme:   [%s]\n"
-		  "user:     [%s]\n"
-		  "password: [%s]\n"
-		  "host:     [%s]\n"
-		  "port:     [%d]\n"
-		  "document: [%s]\n",
-		  u->scheme, u->user, u->pwd,
-		  u->host, u->port, u->doc));
+	DEBUGF("scheme:   \"%s\"\n"
+	    "user:     \"%s\"\n"
+	    "password: \"%s\"\n"
+	    "host:     \"%s\"\n"
+	    "port:     \"%d\"\n"
+	    "document: \"%s\"\n",
+	    u->scheme, u->user, u->pwd,
+	    u->host, u->port, u->doc);
 
 	return (u);
 
