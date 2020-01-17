@@ -28,6 +28,7 @@
 
 #include <pkg_config.h>
 
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <stdio.h>
@@ -817,4 +818,16 @@ pkg_namecmp(struct pkg *a, struct pkg *b)
 {
 
 	return (strcmp(a->name, b->name));
+}
+
+int
+get_socketpair(int *pipe)
+{
+	int st = SOCK_DGRAM;
+
+#ifdef HAVE_DECL_SOCK_SEQPACKET
+	st = SOCK_SEQPACKET;
+#endif
+
+	return (socketpair(AF_UNIX, st, 0, pipe));
 }
