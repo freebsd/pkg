@@ -34,6 +34,7 @@
 #include <sys/wait.h>
 
 #include <errno.h>
+#include <poll.h>
 #include <utstring.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -84,9 +85,11 @@ static int
 lua_print_msg(lua_State *L)
 {
 	const char* str = luaL_checkstring(L, 1);
+	lua_getglobal(L, "msgfd");
+	int fd = lua_tointeger(L, -1);
 
-	pkg_emit_message(str);
-	pkg_emit_message("\n");
+	dprintf(fd, "%s\n", str);
+
 	return (0);
 }
 
@@ -126,6 +129,11 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 	struct procctl_reaper_status info;
 	struct procctl_reaper_kill killemall;
 #endif
+	struct pollfd pfd;
+	int cur_pipe[2];
+	char *line = NULL;
+	FILE *f;
+	ssize_t linecap = 0;
 
 	if (pkg->lua_scripts[type] == NULL)
 		return (EPKG_OK);
@@ -140,6 +148,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 #endif
 
 	LL_FOREACH(pkg->lua_scripts[type], lscript) {
+		if (get_socketpair(cur_pipe) == -1) {
+			pkg_emit_errno("pkg_run_script", "socketpair");
+			goto cleanup;
+		}
 		pid_t pid = fork();
 		if (pid > 0) {
 			static const luaL_Reg pkg_lib[] = {
@@ -147,9 +159,12 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 				{ "prefixed_path", lua_prefix_path },
 				{ NULL, NULL },
 			};
+			close(cur_pipe[0]);
 			lua_State *L = luaL_newstate();
 			luaL_openlibs( L );
 			lua_atpanic(L, (lua_CFunction)stack_dump );
+			lua_pushinteger(L, cur_pipe[1]);
+			lua_setglobal(L, "msgfd");
 			lua_pushlightuserdata(L, pkg);
 			lua_setglobal(L, "package");
 			lua_pushliteral(L, "PREFIX");
@@ -174,6 +189,26 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
+
+		close(cur_pipe[1]);
+		memset(&pfd, 0, sizeof(pfd));
+		pfd.fd = cur_pipe[0];
+		pfd.events = POLLIN | POLLERR | POLLHUP;
+		f = fdopen(pfd.fd, "r");
+		for (;;) {
+			if (poll(&pfd, 1, -1) == -1) {
+				if (errno == EINTR)
+					continue;
+				else
+					goto cleanup;
+			}
+			if (pfd.revents & (POLLERR|POLLHUP))
+				break;
+			if (getline(&line, &linecap, f) > 0) {
+				pkg_emit_message(line);
+			}
+		}
+		fclose(f);
 
 		while (waitpid(pid, &pstat, 0) == -1) {
 			if (errno != EINTR) {
@@ -208,6 +243,7 @@ cleanup:
 	}
 	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
 #endif
+	free(line);
 
 	return (ret);
 }

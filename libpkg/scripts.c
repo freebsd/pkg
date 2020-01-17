@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
+#include <poll.h>
 #include <spawn.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -58,7 +59,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	pid_t pid;
 	const char *script_cmd_p;
 	const char *argv[4];
-	char **ep;
+	char **ep, *buf;
 	int ret = EPKG_OK;
 	int fd = -1;
 	int stdin_pipe[2] = {-1, -1};
@@ -68,12 +69,17 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	ssize_t bytes_written;
 	size_t script_cmd_len;
 	long argmax;
+	int cur_pipe[2];
 #ifdef PROC_REAP_KILL
 	bool do_reap;
 	pid_t mypid;
 	struct procctl_reaper_status info;
 	struct procctl_reaper_kill killemall;
 #endif
+	struct pollfd pfd;
+	ssize_t linecap = 0;
+	char *line = NULL;
+	FILE *f;
 
 	struct {
 		const char * const arg;
@@ -142,10 +148,21 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", utstring_body(script_cmd));
 			posix_spawn_file_actions_init(&action);
+			if (get_socketpair(cur_pipe) == -1) {
+				pkg_emit_errno("pkg_run_script", "socketpair");
+				goto cleanup;
+			}
+
+			asprintf(&buf, "%d", cur_pipe[1]);
+			setenv("PKG_MSGFD", buf, 1);
+			free(buf);
+
 			if (utstring_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);
+					close(cur_pipe[0]);
+					close(cur_pipe[1]);
 					goto cleanup;
 				}
 
@@ -164,6 +181,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 					pkg_errno("Cannot open %s", "/dev/null");
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);
+					close(cur_pipe[0]);
+					close(cur_pipe[1]);
 					goto cleanup;
 				}
 				posix_spawn_file_actions_adddup2(&action,
@@ -183,6 +202,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 				errno = error;
 				pkg_errno("Cannot runscript %s", map[i].arg);
 				posix_spawn_file_actions_destroy(&action);
+				close(cur_pipe[0]);
+				close(cur_pipe[1]);
 				goto cleanup;
 			}
 			posix_spawn_file_actions_destroy(&action);
@@ -208,6 +229,27 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 			unsetenv("PKG_PREFIX");
 
+			close(cur_pipe[1]);
+			memset(&pfd, 0, sizeof(pfd));
+			pfd.fd = cur_pipe[0];
+			pfd.events = POLLIN | POLLERR | POLLHUP;
+
+			f = fdopen(pfd.fd, "r");
+			for (;;) {
+				if (poll(&pfd, 1, -1) == -1) {
+					if (errno == EINTR)
+						continue;
+					else
+						goto cleanup;
+				}
+				if (pfd.revents & (POLLERR|POLLHUP))
+					break;
+				if (getline(&line, &linecap, f) > 0) {
+					pkg_emit_message(line);
+				}
+			}
+			fclose(f);
+
 			while (waitpid(pid, &pstat, 0) == -1) {
 				if (errno != EINTR)
 					goto cleanup;
@@ -226,6 +268,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 cleanup:
 
+	free(line);
 	utstring_free(script_cmd);
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
