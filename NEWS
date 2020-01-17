@@ -3,6 +3,8 @@ Changes from 1.12.99.1 to 1.12.99.2
 - fix documentation of -y in pkg-set
 - update libucl to latest version
 - improve error reporting when parsing vuxml files
+- shell script can now print messages along with pkg-messages
+  by writing to ${PKG_MSGFD} file descriptor
 
 Changes from 1.12.99.0 to 1.12.99.1
 - When installing a file over a file that is not tracked by any
