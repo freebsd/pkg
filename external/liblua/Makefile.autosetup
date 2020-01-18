@@ -36,6 +36,9 @@ SRCS=	lapi.c \
 	ltablib.c \
 	lutf8lib.c \
 	loadlib.c \
-	linit.c
+	linit.c \
+	lfs.c
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/external/lua/src
 
 include $(MK)/static-lib.mk

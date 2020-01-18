@@ -38,6 +38,7 @@
 #include <utstring.h>
 #include <lauxlib.h>
 #include <lualib.h>
+#include <lfs.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -175,6 +176,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			lua_pushstring(L, ctx.pkg_rootdir);
 			lua_setglobal(L, "pkg_rootdir");
 			lua_pushcfunction(L, lua_print_msg);
+			luaL_requiref(L, "lfs", luaopen_lfs, 1);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
 
