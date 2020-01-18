@@ -153,7 +153,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			goto cleanup;
 		}
 		pid_t pid = fork();
-		if (pid > 0) {
+		if (pid == 0) {
 			static const luaL_Reg pkg_lib[] = {
 				{ "print_msg", lua_print_msg },
 				{ "prefixed_path", lua_prefix_path },
@@ -181,9 +181,12 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
 			if (luaL_dostring(L, lscript->script)) {
 				pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
+				lua_close(L);
+				exit(1);
 			}
 
 			lua_close(L);
+			exit(0);
 		} else if (pid < 0) {
 			pkg_emit_errno("Cannot fork", "lua_script");
 			ret = EPKG_FATAL;
