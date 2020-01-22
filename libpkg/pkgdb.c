@@ -526,7 +526,7 @@ pkgdb_init(sqlite3 *sdb)
                 "annotation TEXT NOT NULL UNIQUE"
         ");"
         "CREATE TABLE pkg_annotation ("
-                "package_id INTERGER REFERENCES packages(id)"
+                "package_id INTEGER REFERENCES packages(id)"
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
                 "tag_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
