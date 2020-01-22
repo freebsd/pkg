@@ -30,6 +30,10 @@
 #include <sys/procctl.h>
 #endif
 
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
+
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -40,6 +44,7 @@
 #include <lualib.h>
 #include <lfs.h>
 #include <fcntl.h>
+#include <err.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
