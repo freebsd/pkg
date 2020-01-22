@@ -100,5 +100,6 @@ int merge_3way(char *pivot, char *v1, char *v2, UT_string *out);
 bool string_end_with(const char *path, const char *str);
 bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
+int checkflags(const char *mode, int *optr);
 
 #endif

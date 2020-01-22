@@ -39,6 +39,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 #include <lfs.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -104,8 +105,6 @@ lua_prefix_path(lua_State *L)
 	char path[MAXPATHLEN];
 	path[0] = '\0';
 
-	if (ctx.pkg_rootdir != NULL && strcmp(ctx.pkg_rootdir, "/") != 0)
-		strlcat(path, ctx.pkg_rootdir, MAXPATHLEN);
 	if (*str == '/') {
 		strlcat(path, str, MAXPATHLEN);
 	} else {
@@ -116,6 +115,54 @@ lua_prefix_path(lua_State *L)
 
 	lua_pushstring(L, path);
 	return (1);
+}
+
+/*
+ * this is a copy of lua code to be able to override open
+ * merge of newprefile and newfile
+ */
+
+static int
+my_iofclose(lua_State *L)
+{
+	luaL_Stream *p = ((luaL_Stream *)luaL_checkudata(L, 1, LUA_FILEHANDLE));
+	int res = fclose(p->f);
+	return (luaL_fileresult(L, (res == 0), NULL));
+}
+
+static luaL_Stream *
+newfile(lua_State *L) {
+	luaL_Stream *p = (luaL_Stream *)lua_newuserdata(L, sizeof(luaL_Stream));
+	p->f = NULL;
+	p->closef = &my_iofclose;
+	luaL_setmetatable(L, LUA_FILEHANDLE);
+	return (p);
+}
+
+static int
+lua_io_open(lua_State *L)
+{
+	const char *filename = luaL_checkstring(L, 1);
+	const char *mode = luaL_optstring(L, 2, "r");
+	lua_getglobal(L, "package");
+	struct pkg *pkg = lua_touserdata(L, -1);
+	int oflags;
+	luaL_Stream *p = newfile(L);
+	const char *md = mode;
+	luaL_argcheck(L, checkflags(md, &oflags), 2, "invalid mode");
+	int fd = openat(pkg->rootfd, RELATIVE_PATH(filename), oflags);
+	if (fd == -1)
+		return (1);
+	p->f = fdopen(fd, mode);
+	return ((p->f == NULL) ? luaL_fileresult(L, 0, filename) : 1);
+}
+
+static void
+lua_override_ios(lua_State *L)
+{
+	lua_getglobal(L, "io");
+	lua_pushcfunction(L, lua_io_open);
+	lua_setfield(L, -2, "open");
 }
 
 int
@@ -179,6 +226,12 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 			luaL_requiref(L, "lfs", luaopen_lfs, 1);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
+			lua_override_ios(L);
+#ifdef HAVE_CAPSICUM
+			if (cap_enter() < 0 && errno != ENOSYS) {
+				err(1, "cap_enter failed");
+			}
+#endif
 
 			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
 			if (luaL_dostring(L, lscript->script)) {
