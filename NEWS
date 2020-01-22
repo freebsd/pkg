@@ -1,4 +1,6 @@
 Changes from 1.12.99.1 to 1.12.99.2
+- lua script io.open function now always open relatively to the rootdir
+- lua script: all lua script are now run in a sandbox
 - expat has been replaced by yxml to parse vuxml
 - fix documentation of -y in pkg-set
 - update libucl to latest version
