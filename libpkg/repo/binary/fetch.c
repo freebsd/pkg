@@ -210,7 +210,8 @@ checksum:
 	if (stat(dest, &st) == -1 || pkg->pkgsize != st.st_size) {
 		if (already_tried) {
 			pkg_emit_error("cached package %s-%s: "
-			    "size mismatch, cannot continue",
+			    "size mismatch, cannot continue\n"
+			    "Consider running 'pkg update -f'",
 			    pkg->name, pkg->version);
 			retcode = EPKG_FATAL;
 			goto cleanup;
