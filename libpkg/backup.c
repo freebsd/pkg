@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
@@ -26,6 +26,7 @@
  */
 
 #include <assert.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
@@ -120,19 +121,17 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 {
 	sqlite3	*backup;
 	int	 ret;
+	int destdbfd;
+	int savedfd;
 
-	if (eaccess(dest, W_OK)) {
-		if (errno != ENOENT) {
-			pkg_fatal_errno("Unable to access '%s'", dest);
-		}
-
-		/* Could we create the Sqlite DB file? */
-		if (eaccess(bsd_dirname(dest), W_OK)) {
-			pkg_fatal_errno("Unable to access '%s'",
-			    bsd_dirname(dest));
-		}
+	destdbfd = open(bsd_dirname(dest), O_DIRECTORY|O_CLOEXEC);
+	if (destdbfd == -1) {
+		pkg_fatal_errno("Unable to access '%s'",
+		    bsd_dirname(dest));
 	}
 
+	savedfd = pkg_get_dbdirfd();
+	ctx.pkg_dbdirfd = destdbfd;
 	ret = sqlite3_open(dest, &backup);
 
 	if (ret != SQLITE_OK) {
@@ -145,6 +144,8 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 	ret = copy_database(db->sqlite, backup);
 
 	sqlite3_close(backup);
+	ctx.pkg_dbdirfd = savedfd;
+	close(savedfd);
 
 	return (ret == SQLITE_OK? EPKG_OK : EPKG_FATAL);
 }
