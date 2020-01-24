@@ -14,38 +14,38 @@ freebsd_task:
                 - name: freebsd13-amd64
                   freebsd_instance:
                      image_family: freebsd-13-0-snap
-ubuntu_task:
-        container:
-                image: ubuntu:latest
-        setup_script:
-                - apt-get update
-                - apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
-        install_script: scripts/install_deps.sh
-        script:
-                - ./configure --with-libarchive.pc
-                - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ; }
-
-osx_task:
-        osx_instance:
-                image: mojave-xcode-10.1
-        install_script: scripts/install_deps.sh
-        env:
-                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
-                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-        script:
-                - ./configure
-                - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ;}
-
-fedora_task:
-        container:
-                image: fedora:latest
-        install_script:
-                - dnf -y upgrade
-                - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel xz
-        script:
-                - ./configure --with-libarchive.pc
-                - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ; }
+#ubuntu_task:
+#        container:
+#                image: ubuntu:latest
+#        setup_script:
+#                - apt-get update
+#                - apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
+#        install_script: scripts/install_deps.sh
+#        script:
+#                - ./configure --with-libarchive.pc
+#                - make -j4 || make V=1
+#        check_script: make check || { kyua report --verbose ; exit 1 ; }
+#
+#osx_task:
+#        osx_instance:
+#                image: mojave-xcode-10.1
+#        install_script: scripts/install_deps.sh
+#        env:
+#                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
+#                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+#                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+#        script:
+#                - ./configure
+#                - make -j4 || make V=1
+#        check_script: make check || { kyua report --verbose ; exit 1 ;}
+#
+#fedora_task:
+#        container:
+#                image: fedora:latest
+#        install_script:
+#                - dnf -y upgrade
+#                - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel xz
+#        script:
+#                - ./configure --with-libarchive.pc
+#                - make -j4 || make V=1
+#        check_script: make check || { kyua report --verbose ; exit 1 ; }
