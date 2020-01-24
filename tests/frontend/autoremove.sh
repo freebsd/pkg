@@ -89,7 +89,7 @@ autoremove_dryrun_body() {
 
 	atf_check \
 	    -o match:"^Installed packages to be REMOVED:$" \
-	    -o match:"^	test-1$" \
+	    -o match:"^	test: 1$" \
 	    -e empty \
 	    -s exit:0 \
 	    pkg autoremove -yn

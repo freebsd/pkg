@@ -138,7 +138,7 @@ Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
 Installed packages to be REMOVED:
-	bar-1.0
+	bar: 1.0
 
 New packages to be INSTALLED:
 	bar1: 1.1
@@ -254,7 +254,7 @@ Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 Installed packages to be REMOVED:
-	test-1
+	test: 1
 
 New packages to be INSTALLED:
 	test2: 1

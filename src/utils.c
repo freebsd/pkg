@@ -857,7 +857,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		break;
 	case PKG_DISPLAY_DELETE:
 		pkg_get(it->new, PKG_REASON, &why);
-		pkg_printf("\t%n-%v", it->new, it->new);
+		pkg_printf("\t%n: %v", it->new, it->new);
 		if (why != NULL)
 			printf(" (%s)", why);
 		printf("\n");
@@ -895,7 +895,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		humanize_number(tlsize, sizeof(size), dlsize, "B",
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
-		pkg_printf("\t%n-%v ", it->new, it->new);
+		pkg_printf("\t%n: %v ", it->new, it->new);
 		printf("(%s: %.2f%% of the %s to download)\n", size,
 		    ((double)100 * pkgsize) / (double)dlsize, tlsize);
 		break;
