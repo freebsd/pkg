@@ -527,7 +527,7 @@ pkg_repo_binary_access(struct pkg_repo *repo, unsigned mode)
 {
 	int			 ret = EPKG_OK;
 
-	ret = pkgdb_check_access(mode, ctx.dbdir,
+	ret = pkgdb_check_access(mode,
 		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
 
 	return (ret);

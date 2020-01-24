@@ -811,7 +811,7 @@ pkgdb_is_insecure_mode(int dbdirfd, const char *path, bool install_as_user)
 }
 
 int
-pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
+pkgdb_check_access(unsigned mode, const char *dbname)
 {
 	const char *dbpath = ".";
 	int retval;
@@ -854,10 +854,6 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 				goto out;
 		}
 		retval = faccessat(dbdirfd, dbpath, W_OK, AT_EACCESS);
-		if (retval != 0 && errno == ENOENT) {
-			mkdirs(dbdir);
-			retval = faccessat(dbdirfd, dbpath, W_OK, AT_EACCESS);
-		}
 		break;
 	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
 		if (dbdirfd == -1) {
@@ -867,10 +863,6 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 				goto out;
 		}
 		retval = faccessat(dbdirfd, dbpath, R_OK|W_OK, AT_EACCESS);
-		if (retval != 0 && errno == ENOENT) {
-			mkdirs(dbdir);
-			retval = faccessat(dbdirfd, dbpath, R_OK|W_OK, AT_EACCESS);
-		}
 		break;
 	}
 
@@ -925,16 +917,16 @@ pkgdb_access(unsigned mode, unsigned database)
 
 	if ((mode & PKGDB_MODE_CREATE) != 0) {
 		retval = pkgdb_check_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-					 ctx.dbdir, NULL);
+		    NULL);
 	} else
-		retval = pkgdb_check_access(PKGDB_MODE_READ, ctx.dbdir, NULL);
+		retval = pkgdb_check_access(PKGDB_MODE_READ, NULL);
 	if (retval != EPKG_OK)
 		return (retval);
 
 	/* Test local.sqlite, if required */
 
 	if ((database & PKGDB_DB_LOCAL) != 0) {
-		retval = pkgdb_check_access(mode, ctx.dbdir, "local.sqlite");
+		retval = pkgdb_check_access(mode, "local.sqlite");
 		if (retval != EPKG_OK)
 			return (retval);
 	}

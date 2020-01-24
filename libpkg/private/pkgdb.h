@@ -166,7 +166,7 @@ int pkgdb_end_solver(struct pkgdb *db);
  * @param dbname
  * @return
  */
-int pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname);
+int pkgdb_check_access(unsigned mode, const char *dbname);
 
 /*
  * SQLite utility functions
