@@ -98,6 +98,7 @@ scripts/sbin/pkg2ng
 /tests/frontend/issue1445
 /tests/frontend/jpeg
 /tests/frontend/lock
+/tests/frontend/lua
 /tests/frontend/messages
 /tests/frontend/multipleprovider
 /tests/frontend/packagemerge

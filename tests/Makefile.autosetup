@@ -48,7 +48,8 @@ TESTS_SH= \
 	frontend/issue1425.sh \
 	frontend/issue1440.sh \
 	frontend/issue1445.sh \
-	frontend/fingerprint.sh
+	frontend/fingerprint.sh \
+	frontend/lua.sh
 
 merge_OBJS=	lib/merge.o
 plist_OBJS=	lib/plist.o
