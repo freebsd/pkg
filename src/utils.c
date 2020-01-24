@@ -112,6 +112,7 @@ query_tty_yesno(bool r, const char *msg, ...)
 	pkg_vfprintf(tty, yesnomsg, ap);
 	va_end(ap);
 
+	fflush(tty);
 	c = getc(tty);
 	if (c == 'y' || c == 'Y')
 		r = true;
