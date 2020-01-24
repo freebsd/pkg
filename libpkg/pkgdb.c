@@ -748,13 +748,16 @@ pkgdb_init(sqlite3 *sdb)
 }
 
 static int
-pkgdb_is_insecure_mode(const char *path, bool install_as_user)
+pkgdb_is_insecure_mode(int dbdirfd, const char *path, bool install_as_user)
 {
 	uid_t		fileowner;
 	gid_t		filegroup;
 	bool		bad_perms = false;
 	bool		wrong_owner = false;
 	struct stat	sb;
+
+	if (dbdirfd == -1)
+		return (EPKG_ENODB);
 
 	if (install_as_user) {
 		fileowner = geteuid();
@@ -764,7 +767,7 @@ pkgdb_is_insecure_mode(const char *path, bool install_as_user)
 		filegroup = 0;
 	}
 
-	if (stat(path, &sb) != 0) {
+	if (fstatat(dbdirfd, path, &sb, 0) != 0) {
 		if (errno == EACCES)
 			return (EPKG_ENOACCESS);
 		else if (errno == ENOENT)
@@ -810,19 +813,18 @@ pkgdb_is_insecure_mode(const char *path, bool install_as_user)
 int
 pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 {
-	char		 dbpath[MAXPATHLEN];
-	int		 retval;
-	bool		 database_exists;
-	bool		 install_as_user;
+	const char *dbpath = ".";
+	int retval;
+	bool database_exists;
+	bool install_as_user;
+	int dbdirfd = pkg_get_dbdirfd();
 
 	if (dbname != NULL)
-		snprintf(dbpath, sizeof(dbpath), "%s/%s", dbdir, dbname);
-	else
-		strlcpy(dbpath, dbdir, sizeof(dbpath));
+		dbpath = dbname;
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
-	retval = pkgdb_is_insecure_mode(dbpath, install_as_user);
+	retval = pkgdb_is_insecure_mode(dbdirfd, dbpath, install_as_user);
 
 	database_exists = (retval != EPKG_ENODB);
 
@@ -832,29 +834,47 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 	if (!database_exists && (mode & PKGDB_MODE_CREATE) != 0)
 		return (EPKG_OK);
 
+	retval = -1;
 	switch(mode & (PKGDB_MODE_READ|PKGDB_MODE_WRITE)) {
 	case 0:		/* Existence test */
-		retval = eaccess(dbpath, F_OK);
+		if (dbdirfd == -1)
+			goto out;
+		retval = faccessat(dbdirfd, dbpath, F_OK, AT_EACCESS);
 		break;
 	case PKGDB_MODE_READ:
-		retval = eaccess(dbpath, R_OK);
+		if (dbdirfd == -1)
+			goto out;
+		retval = faccessat(dbdirfd, dbpath, R_OK, AT_EACCESS);
 		break;
 	case PKGDB_MODE_WRITE:
-		retval = eaccess(dbpath, W_OK);
+		if (dbdirfd == -1) {
+			mkdirs(ctx.dbdir);
+			dbdirfd = pkg_get_dbdirfd();
+			if (dbdirfd == -1)
+				goto out;
+		}
+		retval = faccessat(dbdirfd, dbpath, W_OK, AT_EACCESS);
 		if (retval != 0 && errno == ENOENT) {
 			mkdirs(dbdir);
-			retval = eaccess(dbpath, W_OK);
+			retval = faccessat(dbdirfd, dbpath, W_OK, AT_EACCESS);
 		}
 		break;
 	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
-		retval = eaccess(dbpath, R_OK|W_OK);
+		if (dbdirfd == -1) {
+			mkdirs(ctx.dbdir);
+			dbdirfd = pkg_get_dbdirfd();
+			if (dbdirfd == -1)
+				goto out;
+		}
+		retval = faccessat(dbdirfd, dbpath, R_OK|W_OK, AT_EACCESS);
 		if (retval != 0 && errno == ENOENT) {
 			mkdirs(dbdir);
-			retval = eaccess(dbpath, W_OK);
+			retval = faccessat(dbdirfd, dbpath, R_OK|W_OK, AT_EACCESS);
 		}
 		break;
 	}
 
+out:
 	if (retval != 0) {
 		if (errno == ENOENT)
 			return (EPKG_ENODB);
@@ -866,7 +886,6 @@ pkgdb_check_access(unsigned mode, const char* dbdir, const char *dbname)
 
 	return (EPKG_OK);
 }
-
 
 int
 pkgdb_access(unsigned mode, unsigned database)
