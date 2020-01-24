@@ -2,6 +2,7 @@ Changes from 1.12.99.2 to 1.12.99.3
 - Add more regression test
 - Improve consistency of the default ouput
 - Give a hint about running pkg update -f in case of "size mismatch"
+- Fix pkg backup since the sqlite syscall are overridden
 
 Changes from 1.12.99.1 to 1.12.99.2
 - lua script io.open function now always open relatively to the rootdir
