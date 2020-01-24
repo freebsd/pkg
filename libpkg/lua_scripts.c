@@ -34,6 +34,7 @@
 #include <sys/capsicum.h>
 #endif
 
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -155,7 +156,7 @@ lua_io_open(lua_State *L)
 	luaL_Stream *p = newfile(L);
 	const char *md = mode;
 	luaL_argcheck(L, checkflags(md, &oflags), 2, "invalid mode");
-	int fd = openat(pkg->rootfd, RELATIVE_PATH(filename), oflags);
+	int fd = openat(pkg->rootfd, RELATIVE_PATH(filename), oflags, DEFFILEMODE);
 	if (fd == -1)
 		return (1);
 	p->f = fdopen(fd, mode);
