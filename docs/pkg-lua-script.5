@@ -1,0 +1,130 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.Dd January 28, 2020
+.Dt PKG-LUA-SCRIPT 5
+.Os
+.Sh NAME
+.Nm "lua scripts"
+.Nd lua scripts that are run by
+.Xr pkg 8
+.Sh DESCRIPTION
+.Xr pkg 8
+run scripts at given phases of the process it is running.
+Those scripts are always run withing a
+.Xr capsicum 4
+sandbox if available on the system.
+.Pp
+The phases are the following:
+.Bl -tag -width Ds
+.It Cm pre-install :
+run before installing the files on the system.
+.It Cm post-install :
+run after installing the files on the system.
+.It Cm pre-deinstall :
+run before removing the files on the system.
+.It Cm post-deinstall :
+run after removing the files on the system.
+.El
+.Pp
+A package can contain multiple scripts per phase, they will all be run inside
+their own lua VM.
+.Sh API
+All the regular lua API are available to the exception of the following changes:
+.Bl -tag -width Ds
+.It Fn io.open
+has been modified to only open files relatively to the rootdir if specified by
+the
+.Ar -r
+argument passed to
+.Xr pkg 8 .
+.It Fn os.remove
+has been modified to only remove files relatively to the rootdir if specified by
+the
+.Ar -r
+argument passed to
+.Xr pkg 8 .
+.It Fn os.rename
+has been modified to only rename files relatively to the rootdir if specified by
+the
+.Ar -r
+argument passed to
+.Xr pkg 8 .
+.It Fn os.execute
+has been disabled.
+.El
+.Pp
+The following variables are available defined to any lua scripts:
+.Bl -tag -width Ds
+.It Va pkg_prefix
+.Va PREFIX
+defined within the package at build time.
+.It Va pkg_rootdir
+represents the root directory where the package will be installed as specified
+by the
+.Fl r
+arguments passed to
+.Xr pkg 8 .
+.El
+.Pp
+The following function has been added:
+.Bl -tag -width Ds
+.It Ft out Fn pkg.prefixed_path "in"
+prepend
+.Va pkg_prefix
+to
+.Ar in
+if needed and returns it as
+.Ft out .
+.It Fn pkg.print_msg "msg"
+send messages to the user that will be shown at the end of the
+.Xr pkg 8
+process.
+.El
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
