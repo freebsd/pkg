@@ -36,8 +36,7 @@ SRCS=	lapi.c \
 	ltablib.c \
 	lutf8lib.c \
 	loadlib.c \
-	linit.c \
-	lfs.c
+	linit.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/external/lua/src
 
