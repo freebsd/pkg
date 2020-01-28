@@ -340,11 +340,11 @@ typedef enum {
 	PKG_SCRIPT_POST_INSTALL,
 	PKG_SCRIPT_PRE_DEINSTALL,
 	PKG_SCRIPT_POST_DEINSTALL,
-	PKG_SCRIPT_PRE_UPGRADE,
-	PKG_SCRIPT_POST_UPGRADE,
+	__DO_NOT_USE_ME1,
+	__DO_NOT_USE_ME2,
 	PKG_SCRIPT_INSTALL,
 	PKG_SCRIPT_DEINSTALL,
-	PKG_SCRIPT_UPGRADE,
+	__DO_NOT_USE_ME3,
 	PKG_SCRIPT_UNKNOWN
 } pkg_script;
 
@@ -1012,7 +1012,7 @@ int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location, struct pkg *rp);
 
 #define PKG_ADD_UPGRADE			(1U << 0)
-#define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 1)
+/* (1U << 1) removed intentionally */
 #define PKG_ADD_AUTOMATIC		(1U << 2)
 #define PKG_ADD_FORCE			(1U << 3)
 #define PKG_ADD_NOSCRIPT		(1U << 4)

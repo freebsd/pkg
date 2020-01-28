@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -204,18 +204,12 @@ static const char * const scripts[] = {
 	"+DEINSTALL",
 	"+PRE_DEINSTALL",
 	"+POST_DEINSTALL",
-	"+UPGRADE",
-	"+PRE_UPGRADE",
-	"+POST_UPGRADE",
 	"pkg-install",
 	"pkg-pre-install",
 	"pkg-post-install",
 	"pkg-deinstall",
 	"pkg-pre-deinstall",
 	"pkg-post-deinstall",
-	"pkg-upgrade",
-	"pkg-pre-upgrade",
-	"pkg-post-upgrade",
 	NULL
 };
 

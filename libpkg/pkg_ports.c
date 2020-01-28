@@ -108,8 +108,6 @@ keyword_open_schema(void)
 		"    post-install = { type = string }; "
 		"    pre-deinstall = { type = string }; "
 		"    post-deinstall = { type = string }; "
-		"    pre-upgrade = { type = string }; "
-		"    post-upgrade = { type = string }; "
 		"    pre-install-lua = { type = string }; "
 		"    post-install-lua = { type = string }; "
 		"    pre-deinstall-lua = { type = string }; "
@@ -741,8 +739,6 @@ static struct script_map {
 	{ "post-install", PKG_SCRIPT_POST_INSTALL },
 	{ "pre-deinstall", PKG_SCRIPT_PRE_DEINSTALL },
 	{ "post-deinstall", PKG_SCRIPT_POST_DEINSTALL },
-	{ "pre-upgrade", PKG_SCRIPT_PRE_UPGRADE },
-	{ "post-upgrade", PKG_SCRIPT_POST_UPGRADE },
 };
 
 static void
@@ -867,12 +863,6 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 		break;
 	case PKG_SCRIPT_POST_DEINSTALL:
 		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
-		break;
-	case PKG_SCRIPT_PRE_UPGRADE:
-		utstring_printf(p->pre_upgrade_buf, "%s\n", cmd);
-		break;
-	case PKG_SCRIPT_POST_UPGRADE:
-		utstring_printf(p->post_upgrade_buf, "%s\n", cmd);
 		break;
 	}
 }
@@ -1294,10 +1284,6 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	    PKG_SCRIPT_PRE_DEINSTALL);
 	flush_script_buffer(pplist->post_deinstall_buf, pkg,
 	    PKG_SCRIPT_POST_DEINSTALL);
-	flush_script_buffer(pplist->pre_upgrade_buf, pkg,
-	    PKG_SCRIPT_PRE_UPGRADE);
-	flush_script_buffer(pplist->post_upgrade_buf, pkg,
-	    PKG_SCRIPT_POST_UPGRADE);
 
 	fclose(plist_f);
 

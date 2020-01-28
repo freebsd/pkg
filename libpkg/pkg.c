@@ -911,15 +911,6 @@ pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
 			strcmp(filename, "+DEINSTALL") == 0) {
 		type = PKG_SCRIPT_DEINSTALL;
-	} else if (strcmp(filename, "pkg-pre-upgrade") == 0 ||
-			strcmp(filename, "+PRE_UPGRADE") == 0) {
-		type = PKG_SCRIPT_PRE_UPGRADE;
-	} else if (strcmp(filename, "pkg-post-upgrade") == 0 ||
-			strcmp(filename, "+POST_UPGRADE") == 0) {
-		type = PKG_SCRIPT_POST_UPGRADE;
-	} else if (strcmp(filename, "pkg-upgrade") == 0 ||
-			strcmp(filename, "+UPGRADE") == 0) {
-		type = PKG_SCRIPT_UPGRADE;
 	} else {
 		pkg_emit_error("unknown script '%s'", filename);
 		ret = EPKG_FATAL;

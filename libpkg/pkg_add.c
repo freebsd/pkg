@@ -964,10 +964,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	 * Execute pre deinstall scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
-			ret = pkg_script_run(old, PKG_SCRIPT_PRE_UPGRADE);
-		else
-			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
+		ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
 		if (ret != EPKG_OK && ctx.developer_mode) {
 			return (ret);
 		} else {
@@ -1119,7 +1116,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/*
 	 * Execute pre-install scripts
 	 */
-	if ((flags & (PKG_ADD_NOSCRIPT | PKG_ADD_USE_UPGRADE_SCRIPTS)) == 0) {
+	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
 		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL)) != EPKG_OK)
 			goto cleanup;
 		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL)) != EPKG_OK)
@@ -1168,10 +1165,7 @@ cleanup_reg:
 	if (retcode != EPKG_OK)
 		goto cleanup;
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
-			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
-		else
-			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL);
 	}
 

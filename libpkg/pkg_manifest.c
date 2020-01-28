@@ -337,12 +337,6 @@ script_type_str(const char *str)
 		return (PKG_SCRIPT_INSTALL);
 	if (strcmp(str, "post-install") == 0)
 		return (PKG_SCRIPT_POST_INSTALL);
-	if (strcmp(str, "pre-upgrade") == 0)
-		return (PKG_SCRIPT_PRE_UPGRADE);
-	if (strcmp(str, "upgrade") == 0)
-		return (PKG_SCRIPT_UPGRADE);
-	if (strcmp(str, "post-upgrade") == 0)
-		return (PKG_SCRIPT_POST_UPGRADE);
 	if (strcmp(str, "pre-deinstall") == 0)
 		return (PKG_SCRIPT_PRE_DEINSTALL);
 	if (strcmp(str, "deinstall") == 0)
@@ -1252,15 +1246,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				break;
 			case PKG_SCRIPT_POST_INSTALL:
 				script_types = "post-install";
-				break;
-			case PKG_SCRIPT_PRE_UPGRADE:
-				script_types = "pre-upgrade";
-				break;
-			case PKG_SCRIPT_UPGRADE:
-				script_types = "upgrade";
-				break;
-			case PKG_SCRIPT_POST_UPGRADE:
-				script_types = "post-upgrade";
 				break;
 			case PKG_SCRIPT_PRE_DEINSTALL:
 				script_types = "pre-deinstall";
