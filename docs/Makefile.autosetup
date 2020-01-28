@@ -3,6 +3,8 @@ include @builddir@/mk/defs.mk
 MAN3=	pkg_printf.3 \
 	pkg_repos.3
 MAN5=	pkg-repository.5 \
+	pkg-script.5 \
+	pkg-lua-script.5 \
 	pkg.conf.5
 MAN8=	pkg-add.8 \
 	pkg-alias.8 \
