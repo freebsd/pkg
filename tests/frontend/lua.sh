@@ -5,7 +5,10 @@
 tests_init \
 	script_basic \
 	script_message \
-	script_rooteddir
+	script_rooteddir \
+	script_remove \
+	script_execute \
+	script_rename
 
 script_basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
@@ -95,4 +98,94 @@ EOF
 		-s exit:0 \
 		cat ${TMPDIR}/target/file.txt
 
+}
+
+script_remove_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+os.remove("/file")
+EOS
+,
+  ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir -p ${TMPDIR}/target/file
+	atf_check \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+	test -d ${TMPDIR}/target/file && atf_fail "directory not removed"
+
+	touch ${TMPDIR}/target/file
+	atf_check \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+	test -f ${TMPDIR}/target/file && atf_fail "file not removed"
+	return 0
+}
+
+script_rename_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+os.rename("/file","/plop")
+EOS
+,
+  ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+	mkdir -p ${TMPDIR}/target
+	touch ${TMPDIR}/target/file
+	atf_check \
+		-e inline:"${ERR}" \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+	test -f ${TMPDIR}/target/file && atf_fail "File not renamed"
+	test -f ${TMPDIR}/target/plop || atf_fail "File not renamed"
+	return 0
+}
+
+script_execute_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+os.execute("echo yeah")
+EOS
+,
+  ]
+}
+EOF
+
+ERR="pkg: Failed to execute lua script: [string \"os.execute(\"echo yeah\")\"]:1: os.execute not available
+pkg: lua script failed\n"
+
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+	mkdir -p ${TMPDIR}/target
+	atf_check \
+		-e inline:"${ERR}" \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 }

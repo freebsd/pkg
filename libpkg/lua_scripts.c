@@ -46,6 +46,7 @@
 #include <lfs.h>
 #include <fcntl.h>
 #include <err.h>
+#include <stdio.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -158,9 +159,42 @@ lua_io_open(lua_State *L)
 	luaL_argcheck(L, checkflags(md, &oflags), 2, "invalid mode");
 	int fd = openat(pkg->rootfd, RELATIVE_PATH(filename), oflags, DEFFILEMODE);
 	if (fd == -1)
-		return (1);
+		return (luaL_fileresult(L, 0, filename));
 	p->f = fdopen(fd, mode);
 	return ((p->f == NULL) ? luaL_fileresult(L, 0, filename) : 1);
+}
+
+static int
+lua_os_remove(lua_State *L) {
+	const char *filename = RELATIVE_PATH(luaL_checkstring(L, 1));
+	lua_getglobal(L, "package");
+	struct pkg *pkg = lua_touserdata(L, -1);
+	int flag = 0;
+	struct stat st;
+
+	if (fstatat(pkg->rootfd, filename, &st, AT_SYMLINK_NOFOLLOW) == -1)
+		return (luaL_fileresult(L, 1, NULL));
+
+	if (S_ISDIR(st.st_mode))
+		flag = AT_REMOVEDIR;
+
+	return (luaL_fileresult(L, unlinkat(pkg->rootfd, filename, flag) == 0, NULL));
+}
+
+static int
+lua_os_rename(lua_State *L)
+{
+	const char *fromname = RELATIVE_PATH(luaL_checkstring(L, 1));
+	const char *toname = RELATIVE_PATH(luaL_checkstring(L, 2));
+	lua_getglobal(L, "package");
+	struct pkg *pkg = lua_touserdata(L, -1);
+	return luaL_fileresult(L, renameat(pkg->rootfd, fromname, pkg->rootfd, toname) == 0, NULL);
+}
+
+static int
+lua_os_execute(lua_State *L)
+{
+	return (luaL_error(L, "os.execute not available"));
 }
 
 static void
@@ -169,6 +203,14 @@ lua_override_ios(lua_State *L)
 	lua_getglobal(L, "io");
 	lua_pushcfunction(L, lua_io_open);
 	lua_setfield(L, -2, "open");
+
+	lua_getglobal(L, "os");
+	lua_pushcfunction(L, lua_os_remove);
+	lua_setfield(L, -2, "remove");
+	lua_pushcfunction(L, lua_os_rename);
+	lua_setfield(L, -2, "rename");
+	lua_pushcfunction(L, lua_os_execute);
+	lua_setfield(L, -2, "execute");
 }
 
 int
