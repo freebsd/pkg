@@ -1,3 +1,9 @@
+Changes from 1.12.99.3 to 1.12.99.4
+- Document lua scripts
+- Document shell scripts
+- Add a variable to both lua scripts and shell script to allow
+  the scripts to know they are actually being upgrading things
+
 Changes from 1.12.99.2 to 1.12.99.3
 - Add more regression test
 - Improve consistency of the default ouput
