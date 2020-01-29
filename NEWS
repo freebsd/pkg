@@ -1,6 +1,7 @@
 Changes from 1.12.99.3 to 1.12.99.4
 - Document lua scripts
 - Document shell scripts
+- Document keywords ucl files
 - Add a variable to both lua scripts and shell script to allow
   the scripts to know they are actually being upgrading things
 
