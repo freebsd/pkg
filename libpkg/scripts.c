@@ -59,7 +59,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 	pid_t pid;
 	const char *script_cmd_p;
 	const char *argv[4];
-	char **ep, *buf;
+	char **ep;
 	int ret = EPKG_OK;
 	int fd = -1;
 	int stdin_pipe[2] = {-1, -1};
@@ -154,10 +154,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				goto cleanup;
 			}
 
-			asprintf(&buf, "%d", cur_pipe[1]);
-			setenv("PKG_MSGFD", buf, 1);
-			free(buf);
+			setenv("PKG_MSGFD", "4", 1);
 
+			posix_spawn_file_actions_adddup2(&action, cur_pipe[1], 4);
+			posix_spawn_file_actions_addclose(&action, cur_pipe[0]);
 			if (utstring_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;

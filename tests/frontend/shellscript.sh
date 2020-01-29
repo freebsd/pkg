@@ -40,7 +40,7 @@ message_body() {
 scripts: {
   post-install: <<EOS
 	echo this is post install1
-	echo this is a message >\&\${PKG_MSGFD}
+	echo this is a message >&\${PKG_MSGFD}
 	echo this is post install2
 EOS
 }
@@ -67,7 +67,6 @@ upgrade_body() {
 scripts: {
   post-install: <<EOS
 if [ -n "\${PKG_UPGRADE+x}" ]; then
-	echo "upgrade:\${PKG_UPGRADE}"
 	echo "upgrade:\${PKG_UPGRADE}">&\${PKG_MSGFD}
 fi
 EOS
@@ -83,7 +82,7 @@ EOF
 	mkdir -p ${TMPDIR}/target
 	atf_check \
 		-e empty \
-		-o empty \
+		-o ignore \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 
@@ -92,8 +91,7 @@ EOF
 scripts: {
   post-install: <<EOS
 if [ -n "\${PKG_UPGRADE+x}" ]; then
-	echo "upgrade:\${PKG_UPGRADE}">\&\${PKG_MSGFD}
-	echo this is a message >\&\${PKG_MSGFD}
+	echo "upgrade:\${PKG_UPGRADE}">&\${PKG_MSGFD}
 fi
 EOS
 }
@@ -125,7 +123,7 @@ local: {
 EOF
 	atf_check \
 		-e empty \
-		-o match:"upgrade:1" \
+		-o match:"upgrade:true" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -r ${TMPDIR}/target upgrade -y
 }
