@@ -701,8 +701,8 @@ int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
-int pkg_script_run(struct pkg *, pkg_script type);
-int pkg_lua_script_run(struct pkg *, pkg_lua_script type);
+int pkg_script_run(struct pkg *, pkg_script type, bool upgrade);
+int pkg_lua_script_run(struct pkg *, pkg_lua_script type, bool upgrade);
 ucl_object_t *pkg_lua_script_to_ucl(struct pkg_lua_script *);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,

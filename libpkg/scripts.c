@@ -51,7 +51,7 @@
 extern char **environ;
 
 int
-pkg_script_run(struct pkg * const pkg, pkg_script type)
+pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 {
 	UT_string *script_cmd;
 	size_t i, j;
@@ -116,6 +116,9 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			continue;
 		if (j == map[i].a || j == map[i].b) {
 			utstring_clear(script_cmd);
+			if (upgrade) {
+				setenv("PKG_UPGRADE", "true", 1);
+			}
 			setenv("PKG_PREFIX", pkg->prefix, 1);
 			if (ctx.pkg_rootdir == NULL)
 				ctx.pkg_rootdir = "/";

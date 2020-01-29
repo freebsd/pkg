@@ -8,7 +8,8 @@ tests_init \
 	script_rooteddir \
 	script_remove \
 	script_execute \
-	script_rename
+	script_rename \
+	script_upgrade
 
 script_basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
@@ -188,4 +189,70 @@ pkg: lua script failed\n"
 		-e inline:"${ERR}" \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+}
+
+script_upgrade_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+if pkg_upgrade then
+ pkg.print_msg("upgrade : ".. tostring(pkg_upgrade))
+end
+EOS
+,
+  ]
+}
+EOF
+
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+	mkdir -p ${TMPDIR}/target
+	atf_check \
+		-e empty \
+		-o empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+if pkg_upgrade then
+ pkg.print_msg("upgrade:".. tostring(pkg_upgrade))
+end
+EOS
+,
+  ]
+}
+EOF
+
+	rm ${TMPDIR}/test-1.txz
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+	mkdir -p ${TMPDIR}/target
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg repo .
+	mkdir reposconf
+	cat <<EOF >> reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR},
+	enabled: true
+}
+EOF
+	atf_check \
+		-e empty \
+		-o match:"upgrade:true" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -r ${TMPDIR}/target upgrade -y
 }

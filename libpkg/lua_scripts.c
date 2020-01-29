@@ -213,7 +213,7 @@ lua_override_ios(lua_State *L)
 }
 
 int
-pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
+pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 {
 	int ret = EPKG_OK;
 	struct pkg_lua_script *lscript;
@@ -269,6 +269,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 				ctx.pkg_rootdir = "/";
 			lua_pushstring(L, ctx.pkg_rootdir);
 			lua_setglobal(L, "pkg_rootdir");
+			lua_pushboolean(L, (upgrade));
+			lua_setglobal(L, "pkg_upgrade");
 			lua_pushcfunction(L, lua_print_msg);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
@@ -298,6 +300,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type)
 		memset(&pfd, 0, sizeof(pfd));
 		pfd.fd = cur_pipe[0];
 		pfd.events = POLLIN | POLLERR | POLLHUP;
+
 		f = fdopen(pfd.fd, "r");
 		for (;;) {
 			if (poll(&pfd, 1, -1) == -1) {

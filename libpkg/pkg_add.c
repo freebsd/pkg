@@ -964,11 +964,11 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	 * Execute pre deinstall scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL);
+		ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL, (old != NULL));
 		if (ret != EPKG_OK && ctx.developer_mode) {
 			return (ret);
 		} else {
-			ret = pkg_lua_script_run(old, PKG_LUA_PRE_DEINSTALL);
+			ret = pkg_lua_script_run(old, PKG_LUA_PRE_DEINSTALL, (old != NULL));
 			if (ret != EPKG_OK && ctx.developer_mode) {
 				return (ret);
 			} else {
@@ -1117,9 +1117,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Execute pre-install scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL)) != EPKG_OK)
+		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, (local != NULL))) != EPKG_OK)
 			goto cleanup;
-		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL)) != EPKG_OK)
+		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, (local != NULL))) != EPKG_OK)
 			goto cleanup;
 	}
 
@@ -1165,8 +1165,8 @@ cleanup_reg:
 	if (retcode != EPKG_OK)
 		goto cleanup;
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
-		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL));
+		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
 	}
 
 	/*
