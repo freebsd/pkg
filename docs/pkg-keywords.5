@@ -1,0 +1,140 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.Dd January 29, 2020
+.Dt PKG-KEYWORDS 5
+.Os
+.Sh NAME
+.Nm Keywords
+.Nd files to extend the number of keywords avaiable for plist
+.Sh DESCRIPTION
+.Xr pkg-create 8
+and
+.Xr pkg-register 8
+can parse a plist file, which describes the content of a package to be created/registered.
+The plist format is documented in the
+.Xr pkg-create 8
+manpage .
+.Pp
+.Nm
+are files that extends the number of keywords available to a plist.
+Those files are in UCL format.
+.Pp
+The format is the following:
+.Bl -tag -width Ds
+.It Cm actions
+Array of actions which defines what do to the argument(s) of the keywords.
+Valid actions are:
+.Bl -tag -width Ds
+.It Va dir
+Consider the argument of the keyword as a directory and register it as such in the package
+.It Va file
+Consider the argument of the keyword as a regular file and register it as such in the package
+.El
+.It Cm arguments
+Boolean which tells
+.Xr pkg 8
+if it should parse the argument of the keyword or not.
+If
+.Va true
+then pkg will make split it using spaces as token and make the argument available to:
+.Bl -tag -width Ds
+.It Cm actions
+Any action will now accept a number that will represent the argument passed to the action via parenthesis.
+.It Cm shell and lua scripts
+New variables will be available to scripts: \%%<number>.
+.El
+.It Cm attributes
+attributes that can be set to a file or a directory depending if actions has been set.
+It will take the precedence over the attributes that may have been set when calling the keyword.
+Attributes can be:
+.Bl -tag -width Ds
+.It Cm owner Ar string
+Name of the owner of the file or directory.
+.It Cm group Ar string
+Name of the group of the file or directory.
+.It Cm mode Ar string
+mode of the file or directory, this mode can be in numeric or string form.
+.El
+.It Cm pre-install
+shell script to be run during the pre-install phase.
+It will be merged with any existing pre-install scripts.
+.It Cm post-install
+shell script to be run during the post-install phase.
+It will be merged with any existing post-install scripts.
+.It Cm pre-deinstall
+shell script to be run during the pre-deinstall phase.
+It will be merged with any existing pre-deinstall scripts.
+.It Cm post-deinstall
+shell script to be run during the post-deinstall phase.
+It will be merged with any existing post-deinstall scripts.
+.It Cm pre-install-lua
+Lua script to be run during the pre-install phase.
+It will be appended with any existing array of lua pre-install scripts
+.It Cm post-install-lua
+Lua script to be run during the post-install phase.
+It will be appended with any existing array of lua post-install scripts
+.It Cm pre-deinstall-lua
+Lua script to be run during the pre-deinstall phase.
+It will be appended with any existing array of lua pre-deinstall scripts
+.It Cm post-deinstall-lua
+Lua script to be run during the post-deinstall phase.
+It will be appended with any existing array of lua post-deinstall scripts
+.It Cm messages
+Array of test messages that can be passed to the users.
+Valid information by entry in the array are:
+.Bl -tag
+.It Cm message Ar string
+actual message to be shown to the users.
+.It Cm type Op Ar upgrade | Ar remove | Ar install
+defines in which contect the message should be shown to the users.
+If not set, the message will always be printed
+.El
+.El
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
