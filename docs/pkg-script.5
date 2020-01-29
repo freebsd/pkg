@@ -33,6 +33,18 @@ run before removing the files on the system.
 .It Cm post-deinstall :
 run after removing the files on the system.
 .El
+.Pp
+In the particular case of an upgrade the scripts are run in the following order:
+.Bl -enum -compact
+.It
+new pre-install
+.It
+old pre-deinstall
+.It
+replace binaries
+.It
+new post-install
+.El
 .Sh Environment
 The following environment variable are exported to be used by the script
 .Bl -tag -width Ds

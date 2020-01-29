@@ -39,6 +39,20 @@ run after removing the files on the system.
 .Pp
 A package can contain multiple scripts per phase, they will all be run inside
 their own lua VM.
+.Pp
+In the particular case of an upgrade the scripts are run in the following order:
+.Bl -enum -compact
+.It
+new pre-install
+.It
+old pre-deinstall
+.It
+replace binaries
+.It
+new post-install
+.El
+.Pp
+Lua scripts are always run after shell scripts (of the same phase).
 .Sh API
 All the regular lua API are available to the exception of the following changes:
 .Bl -tag -width Ds
