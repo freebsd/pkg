@@ -158,6 +158,13 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 
 			posix_spawn_file_actions_adddup2(&action, cur_pipe[1], 4);
 			posix_spawn_file_actions_addclose(&action, cur_pipe[0]);
+			/*
+			 * consider cur_pipe[1] to probably be the lastest opened fd
+			 * close all unuseful fd up to there
+			 */
+			for (int i = 5; i <= cur_pipe[1]; i++) {
+				posix_spawn_file_actions_addclose(&action, i);
+			}
 			if (utstring_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
