@@ -1484,6 +1484,13 @@ pkg_set_rootdir(const char *rootdir) {
 	return (EPKG_OK);
 }
 
+const char *
+pkg_get_cachedir(void)
+{
+
+	return (ctx.cachedir);
+}
+
 int
 pkg_get_cachedirfd(void)
 {
