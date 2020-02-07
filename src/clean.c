@@ -337,6 +337,7 @@ exec_clean(int argc, char **argv)
 		}
 	}
 
+	cachedir = pkg_get_cachedir();
 	cachefd = pkg_get_cachedirfd();
 	if (cachefd == -1) {
 		warn("Impossible to open %s", cachedir);
