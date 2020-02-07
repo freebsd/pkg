@@ -42,6 +42,7 @@ global:
 	pkg_fprintf;
 	pkg_free;
 	pkg_get2;
+	pkg_get_cachedir;
 	pkg_get_cachedirfd;
 	pkg_get_dbdirfd;
 	pkg_get_dir;
@@ -81,6 +82,7 @@ global:
 	pkg_manifest_keys_new;
 	pkg_manifest_parser_free;
 	pkg_manifest_parser_new;
+	pkg_namecmp;
 	pkg_new;
 	pkg_object_bool;
 	pkg_object_count;
