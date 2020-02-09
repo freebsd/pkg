@@ -19,6 +19,16 @@ files: {
 	"${TMPDIR}/bla": ""
 }
 EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg plop plop 1
+	cat >> plop.ucl << EOF
+deps: {
+    test: {
+        origin: "test",
+        version: "1"
+    },
+
+}
+EOF
 
 	atf_check \
 		-o match:".*Installing.*" \
@@ -27,7 +37,13 @@ EOF
 		pkg register -M test.ucl
 
 	atf_check \
-		-o inline:"test\n" \
+		-o match:".*Installing.*" \
+		-e empty \
+		-s exit:0 \
+		pkg register -M plop.ucl
+
+	atf_check \
+		-o inline:"plop\ntest\n" \
 		-e empty \
 		-s exit:0 \
 		pkg query "%n"
@@ -37,6 +53,36 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg query -e "%#O > 0" "%n"
+
+	atf_check \
+		-o inline:"test\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#r>0" "%n"
+
+	atf_check \
+		-o inline:"plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#d>0" "%n"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#d>0 && %#r>0" "%n"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#O > 0 && %#D > 0" "%n"
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg delete -y plop
 
 	atf_check \
 		-o inline:"test 2\n" \
