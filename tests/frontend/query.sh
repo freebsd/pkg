@@ -55,16 +55,16 @@ EOF
 		pkg query -e "%#O > 0" "%n"
 
 	atf_check \
-		-o inline:"test\n" \
+		-o inline:"test: plop 1 plop\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -e "%#r>0" "%n"
+		pkg query -e "%#r>0" "%n: %rn %rv %ro"
 
 	atf_check \
-		-o inline:"plop\n" \
+		-o inline:"plop: test 1 test\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -e "%#d>0" "%n"
+		pkg query -e "%#d>0" "%n: %dn %dv %do"
 
 	atf_check \
 		-o empty \
