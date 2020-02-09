@@ -733,7 +733,8 @@ pkg_extract_finalize(struct pkg *pkg)
 		if (*f->temppath == '\0')
 			continue;
 		fto = f->path;
-		if (f->config && f->config->status == MERGE_FAILED) {
+		if (f->config && f->config->status == MERGE_FAILED &&
+		    f->previous != PKG_FILE_NONE) {
 			snprintf(path, sizeof(path), "%s.pkgnew", f->path);
 			fto = path;
 		}
