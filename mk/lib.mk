@@ -13,6 +13,6 @@ lib$(LIB).a: $(OBJS)
 	$(RANLIB) $@
 
 clean:
-	rm -f lib$(LIB).a lib$(LIB)$(SH_SOEXT) lib$(LIB)$(LIBSOEXT) $(OBJS) $(SHOBJS)
+	rm -f lib$(LIB).a lib$(LIB)$(SH_SOEXT) lib$(LIB)$(LIBSOEXT) $(OBJS) $(SHOBJS) $(DEPFILES)
 
 install:

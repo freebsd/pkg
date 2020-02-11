@@ -1,5 +1,4 @@
 include @builddir@/mk/defs.mk
-include $(MK)/common.mk
 
 pdailydir=		$(sysconfdir)/periodic/daily
 psecuritydir=		$(sysconfdir)/periodic/security

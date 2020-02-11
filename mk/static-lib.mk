@@ -11,6 +11,6 @@ lib$(LIB)_pic.a: $(SHOBJS)
 	$(RANLIB) $@
 
 clean:
-	rm -f lib$(LIB).a lib$(LIB)_pic.a $(OBJS) $(SHOBJS)
+	rm -f lib$(LIB).a lib$(LIB)_pic.a $(OBJS) $(SHOBJS) $(DEPFILES)
 
 install:
