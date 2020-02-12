@@ -1,3 +1,7 @@
+Changes from 1.13.0 to 1.13.1
+- Fix inverted logic leading to pkg always restarting rc script
+  on installation
+
 Changes from 1.12.99.3 to 1.13.0
 - Fix crash in pkg clean
 - Add more regession tests
