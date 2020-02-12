@@ -53,7 +53,7 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 	bool handle_rc;
 
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-	if (handle_rc)
+	if (!handle_rc)
 		return (ret);
 
 	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", pkg->prefix);
