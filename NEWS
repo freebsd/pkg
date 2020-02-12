@@ -1,3 +1,6 @@
+Changes from 1.12.99.4 to 1.13.99.0
+- Fix inverted logic leading to rc scripts always being restarted
+
 Changes from 1.12.99.3 to 1.12.99.4
 - Document lua scripts
 - Document shell scripts
