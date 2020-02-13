@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright (c) 2006 - 2014, Armin Biere, Johannes Kepler University.
+Copyright (c) 2006 - 2015, Armin Biere, Johannes Kepler University.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to
@@ -27,6 +27,7 @@ IN THE SOFTWARE.
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 
 /*------------------------------------------------------------------------*/
 /* The following macros allows for users to distiguish between different
@@ -190,7 +191,7 @@ void picosat_set_seed (PicoSAT *, unsigned random_number_generator_seed);
  * is not necessary if you only use 'picosat_set_incremental_rup_file'.
  *
  * NOTE, trace generation code is not necessarily included, e.g. if you
- * configure PicoSAT with full optimzation as './configure -O' or with
+ * configure PicoSAT with full optimzation as './configure.sh -O' or with
  
  * you do not get any results by trying to generate traces.
  *
@@ -211,6 +212,14 @@ void picosat_set_incremental_rup_file (PicoSAT *, FILE * file, int m, int n);
  * function further down.
  */
 void picosat_save_original_clauses (PicoSAT *);
+
+/* Add a call back which is checked regularly to notify the SAT solver
+ * to terminate earlier.  This is useful for setting external time limits
+ * or terminate early in say a portfolio style parallel SAT solver.
+ */
+void picosat_set_interrupt (PicoSAT *,
+                            void * external_state,
+			    int (*interrupted)(void * external_state));
 
 /*------------------------------------------------------------------------*/
 /* This function returns the next available unused variable index and

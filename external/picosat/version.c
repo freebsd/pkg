@@ -1,4 +1,4 @@
-#define PICOSAT_VERSION "959"
+#define PICOSAT_VERSION "965"
 
 const char *
 picosat_version (void)

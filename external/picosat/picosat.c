@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright (c) 2006 - 2014, Armin Biere, Johannes Kepler University.
+Copyright (c) 2006 - 2015, Armin Biere, Johannes Kepler University.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to
@@ -27,6 +27,7 @@ IN THE SOFTWARE.
 #include <limits.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #include "picosat.h"
 
@@ -64,6 +65,10 @@ IN THE SOFTWARE.
 #endif
 #endif
 
+#ifdef RCODE
+#include <R.h>
+#endif
+
 #define MINRESTART	100	/* minimum restart interval */
 #define MAXRESTART	1000000 /* maximum restart interval */
 #define RDECIDE		1000	/* interval of random decisions */
@@ -73,13 +78,14 @@ IN THE SOFTWARE.
 #define MAXCILS		10	/* maximal number of unrecycled internals */
 #define FFLIPPED	10000	/* flipped reduce factor */
 #define FFLIPPEDPREC	10000000/* flipped reduce factor precision */
+#define INTERRUPTLIM	1024	/* check interrupt after that many decisions */
 
 #ifndef TRACE
 #define NO_BINARY_CLAUSES	/* store binary clauses more compactly */
 #endif
 
 /* For debugging purposes you may want to define 'LOGGING', which actually
- * can be enforced by using the '--log' option for the configure script.
+ * can be enforced by using './configure.sh --log'.
  */
 #ifdef LOGGING
 #define LOG(code) do { code; } while (0)
@@ -112,7 +118,7 @@ IN THE SOFTWARE.
 
 #define ENLARGE(start,head,end) \
   do { \
-    unsigned old_num = (unsigned)((end) - (start)); \
+    unsigned old_num = (ptrdiff_t)((end) - (start)); \
     size_t new_num = old_num ? (2 * old_num) : 1; \
     unsigned count = (head) - (start); \
     assert ((start) <= (end)); \
@@ -123,27 +129,27 @@ IN THE SOFTWARE.
 
 #define NOTLIT(l) (ps->lits + (1 ^ ((l) - ps->lits)))
 
-#define LIT2IDX(l) ((unsigned)((l) - ps->lits) / 2)
-#define LIT2IMPLS(l) (ps->impls + (unsigned)((l) - ps->lits))
+#define LIT2IDX(l) ((ptrdiff_t)((l) - ps->lits) / 2)
+#define LIT2IMPLS(l) (ps->impls + (ptrdiff_t)((l) - ps->lits))
 #define LIT2INT(l) ((int)(LIT2SGN(l) * LIT2IDX(l)))
-#define LIT2SGN(l) (((unsigned)((l) - ps->lits) & 1) ? -1 : 1)
+#define LIT2SGN(l) (((ptrdiff_t)((l) - ps->lits) & 1) ? -1 : 1)
 #define LIT2VAR(l) (ps->vars + LIT2IDX(l))
-#define LIT2HTPS(l) (ps->htps + (unsigned)((l) - ps->lits))
+#define LIT2HTPS(l) (ps->htps + (ptrdiff_t)((l) - ps->lits))
 #define LIT2JWH(l) (ps->jwh + ((l) - ps->lits))
 
 #ifndef NDSC
-#define LIT2DHTPS(l) (ps->dhtps + (unsigned)((l) - ps->lits))
+#define LIT2DHTPS(l) (ps->dhtps + (ptrdiff_t)((l) - ps->lits))
 #endif
 
 #ifdef NO_BINARY_CLAUSES
-typedef unsigned long Wrd;
+typedef uintptr_t Wrd;
 #define ISLITREASON(C) (1&(Wrd)C)
 #define LIT2REASON(L) \
   (assert (L->val==TRUE), ((Cls*)(1 + (2*(L - ps->lits)))))
 #define REASON2LIT(C) ((Lit*)(ps->lits + ((Wrd)C)/2))
 #endif
 
-#define ENDOFCLS(c) ((void*)((c)->lits + (c)->size))
+#define ENDOFCLS(c) ((void*)((Lit**)(c)->lits + (c)->size))
 
 #define SOC ((ps->oclauses == ps->ohead) ? ps->lclauses : ps->oclauses)
 #define EOC (ps->lhead)
@@ -186,11 +192,18 @@ typedef unsigned long Wrd;
 #define AVERAGE(a,b) ((b) ? (((double)a) / (double)(b)) : 0.0)
 #define PERCENT(a,b) (100.0 * AVERAGE(a,b))
 
+#ifndef RCODE
 #define ABORT(msg) \
   do { \
     fputs ("*** picosat: " msg "\n", stderr); \
     abort (); \
   } while (0)
+#else
+#define ABORT(msg) \
+  do { \
+    Rf_error (msg); \
+  } while (0)
+#endif
 
 #define ABORTIF(cond,msg) \
   do { \
@@ -358,6 +371,13 @@ do { \
 } while (0)
 
 #define WRDSZ (sizeof (long) * 8)
+
+#ifdef RCODE
+#define fprintf(...) do { } while (0)
+#define vfprintf(...) do { } while (0)
+#define fputs(...) do { } while (0)
+#define fputc(...) do { } while (0)
+#endif
 
 typedef unsigned Flt;		/* 32 bit deterministic soft float */
 typedef Flt Act;		/* clause and variable activity */
@@ -697,6 +717,11 @@ struct PicoSAT
   picosat_realloc eresize;
   picosat_free edelete;
 
+  struct {
+    void * state;
+    int (*function) (void *);
+  } interrupt;
+
 #ifdef VISCORES
   FILE * fviscores;
 #endif
@@ -711,7 +736,7 @@ packflt (unsigned m, int e)
   assert (m < FLTMSB);
   assert (FLTMINEXPONENT <= e);
   assert (e <= FLTMAXEXPONENT);
-  res = m | ((e + 128) << 24);
+  res = m | ((unsigned)(e + 128) << 24);
   return res;
 }
 
@@ -765,7 +790,7 @@ addflt (Flt a, Flt b)
 
   assert (ea >= eb);
   delta = ea - eb;
-  mb >>= delta;
+  if (delta < 32) mb >>= delta; else mb = 0;
   if (!mb)
     return a;
 
@@ -839,7 +864,7 @@ ascii2flt (const char *str)
   Flt onetenth = base2flt (26843546, -28);
   Flt res = ZEROFLT, tmp, base;
   const char *p = str;
-  char ch;
+  int ch;
 
   ch = *p++;
 
@@ -1047,7 +1072,7 @@ int2lit (PS * ps, int l)
 static Lit **
 end_of_lits (Cls * c)
 {
-  return c->lits + c->size;
+  return (Lit**)c->lits + c->size;
 }
 
 #if !defined(NDEBUG) || defined(LOGGING)
@@ -1213,7 +1238,11 @@ init (void * pmgr,
   ps->lreduceadjustcnt = ps->lreduceadjustinc = 100;
   ps->lpropagations = ~0ull;
 
+#ifndef RCODE
   ps->out = stdout;
+#else
+  ps->out = 0;
+#endif
   new_prefix (ps, "c ");
   ps->verbosity = 0;
   ps->plain = 0;
@@ -1322,7 +1351,10 @@ new_clause (PS * ps, unsigned size, unsigned learned)
 #endif
 
   if (learned && size > 2)
-    *CLS2ACT (res) = ps->cinc;
+    {
+      Act * p = CLS2ACT (res);
+      *p = ps->cinc;
+    }
 
   return res;
 }
@@ -1417,7 +1449,7 @@ static void
 resetadoconflict (PS * ps)
 {
   assert (ps->adoconflict);
-  delete_clause (ps->adoconflict);
+  delete_clause (ps, ps->adoconflict);
   ps->adoconflict = 0;
 }
 
@@ -1456,8 +1488,6 @@ reset (PS * ps)
   delete_zhains (ps);
 #endif
 #ifdef NO_BINARY_CLAUSES
-  ps->implvalid = 0;
-  ps->cimplvalid = 0;
   {
     unsigned i;
     for (i = 2; i <= 2 * ps->max_var + 1; i++)
@@ -1469,7 +1499,6 @@ reset (PS * ps)
 #endif
 #ifndef NFL
   DELETEN (ps->saved, ps->saved_size);
-  ps->saved_size = 0;
 #endif
   DELETEN (ps->htps, 2 * ps->size_vars);
 #ifndef NDSC
@@ -1480,204 +1509,33 @@ reset (PS * ps)
   DELETEN (ps->jwh, 2 * ps->size_vars);
   DELETEN (ps->vars, ps->size_vars);
   DELETEN (ps->rnks, ps->size_vars);
-
   DELETEN (ps->trail, ps->eot - ps->trail);
-  ps->trail = ps->ttail = ps->ttail2 = ps->thead = ps->eot = 0;
-#ifndef NADC
-  ps->ttailado = 0;
-#endif
-
   DELETEN (ps->heap, ps->eoh - ps->heap);
-  ps->heap = ps->hhead = ps->eoh = 0;
-
   DELETEN (ps->als, ps->eoals - ps->als);
-  ps->als = ps->eoals = ps->alshead = ps->alstail = 0;
-  ps->extracted_all_failed_assumptions = 0;
-  ps->failed_assumption = 0;
-  ps->adecidelevel = 0;
   DELETEN (ps->CLS, ps->eocls - ps->CLS);
-  ps->CLS = ps->eocls = ps->clshead = 0;
   DELETEN (ps->rils, ps->eorils - ps->rils);
-  ps->rils = ps->eorils = ps->rilshead = 0;
   DELETEN (ps->cils, ps->eocils - ps->cils);
-  ps->cils = ps->eocils = ps->cilshead = 0;
   DELETEN (ps->fals, ps->eofals - ps->fals);
-  ps->fals = ps->eofals = ps->falshead = 0;
   DELETEN (ps->mass, ps->szmass);
-  ps->szmass = 0;
-  ps->mass = 0;
   DELETEN (ps->mssass, ps->szmssass);
-  ps->szmssass = 0;
-  ps->mssass = 0;
   DELETEN (ps->mcsass, ps->szmcsass);
-  ps->nmcsass = ps->szmcsass = 0;
-  ps->mcsass = 0;
   DELETEN (ps->humus, ps->szhumus);
-  ps->szhumus = 0;
-  ps->humus = 0;
-
-  ps->size_vars = 0;
-  ps->max_var = 0;
-
-  ps->mtcls = 0;
-#ifdef TRACE
-  ps->ocore = -1;
-#endif
-  ps->conflict = 0;
-
   DELETEN (ps->added, ps->eoa - ps->added);
-  ps->eoa = ps->ahead = 0;
-
   DELETEN (ps->marked, ps->eom - ps->marked);
-  ps->eom = ps->mhead = 0;
-
   DELETEN (ps->dfs, ps->eod - ps->dfs);
-  ps->eod = ps->dhead = 0;
-
   DELETEN (ps->resolved, ps->eor - ps->resolved);
-  ps->eor = ps->rhead = 0;
-
   DELETEN (ps->levels, ps->eolevels - ps->levels);
-  ps->eolevels = ps->levelshead = 0;
-
   DELETEN (ps->dused, ps->eodused - ps->dused);
-  ps->eodused = ps->dusedhead = 0;
-
   DELETEN (ps->buffer, ps->eob - ps->buffer);
-  ps->eob = ps->bhead = 0;
-
   DELETEN (ps->indices, ps->eoi - ps->indices);
-  ps->eoi = ps->ihead = 0;
-
   DELETEN (ps->soclauses, ps->eoso - ps->soclauses);
-  ps->soclauses = ps->eoso = ps->sohead = 0;
-  ps->saveorig = ps->partial = 0;
-
   delete_prefix (ps);
-
   delete (ps, ps->rline[0], ps->szrline);
   delete (ps, ps->rline[1], ps->szrline);
-  ps->rline[0] = ps->rline[1] = 0;
-  ps->szrline = ps->RCOUNT = 0;
   assert (getenv ("LEAK") || !ps->current_bytes);	/* found leak if failing */
-  ps->max_bytes = 0;
-  ps->recycled = 0;
-  ps->current_bytes = 0;
-
-  ps->lrestart = 0;
-  ps->lreduce = 0;
-  ps->lastreduceconflicts = 0;
-  ps->llocked = 0;
-  ps->lsimplify = 0;
-  ps->fsimplify = 0;
-
-  ps->seconds = 0;
-  ps->flseconds = 0;
-  ps->entered = 0;
-  ps->nentered = 0;
-  ps->measurealltimeinlib = 0;
-
-  ps->levelsum = 0.0;
-  ps->calls = 0;
-  ps->decisions = 0;
-  ps->restarts = 0;
-  ps->simps = 0;
-  ps->iterations = 0;
-  ps->reports = 0;
-  ps->lastrheader = -2;
-  ps->fixed = 0;
-#ifndef NFL
-  ps->failedlits = 0;
-  ps->simplifying = 0;
-  ps->fllimit = 0;
-#ifdef STATS
-  ps->efailedlits = ps->ifailedlits = 0;
-  ps->fltried = ps->flskipped = ps->floopsed = 0;
-  ps->flcalls = ps->flrounds = 0;
-  ps->flprops = 0;
-#endif
-#endif
-  ps->propagations = 0;
-  ps->contexts = 0;
-  ps->internals = 0;
-  ps->conflicts = 0;
-  ps->noclauses = 0;
-  ps->oadded = 0;
-  ps->lladded = 0;
-  ps->loadded = 0;
-  ps->olits = 0;
-  ps->nlclauses = 0;
-  ps->ladded = 0;
-  ps->addedclauses = 0;
-  ps->llits = 0;
-  ps->out = 0;
-#ifdef TRACE
-  ps->trace = 0;
-#endif
-  ps->rup = 0;
-  ps->rupstarted = 0;
-  ps->rupclauses = 0;
-  ps->rupvariables = 0;
-  ps->LEVEL = 0;
-
-  ps->reductions = 0;
-
-  ps->vused = 0;
-  ps->llitsadded = 0;
-  ps->visits = 0;
-#ifdef STATS
-  ps->loused = 0;
-  ps->llused = 0;
-  ps->bvisits = 0;
-  ps->tvisits = 0;
-  ps->lvisits = 0;
-  ps->othertrue = 0;
-  ps->othertrue2 = 0;
-  ps->othertruel = 0;
-  ps->othertrue2u = 0;
-  ps->othertruelu = 0;
-  ps->ltraversals = 0;
-  ps->traversals = 0;
-#ifndef NO_BINARY_CLAUSES
-  ps->antecedents = 0;
-#endif
-  ps->znts = 0;
-  ps->uips = 0;
-  ps->assumptions = 0;
-  ps->rdecisions = 0;
-  ps->sdecisions = 0;
-  ps->srecycled = 0;
-  ps->rrecycled = 0;
-#endif
-  ps->minimizedllits = 0;
-  ps->nonminimizedllits = 0;
-  ps->state = RESET;
-  ps->srng = 0;
-
-  ps->saved_flips = 0;
-  ps->saved_max_var = 0;
-  ps->min_flipped = UINT_MAX;
-
-  ps->flips = 0;
-#ifdef STATS
-  ps->FORCED = 0;
-  ps->assignments = 0;
-#endif
-
-  ps->sdflips = 0;
-  ps->defaultphase = JWLPHASE;
-
-#ifdef STATS
-  ps->staticphasedecisions = 0;
-  ps->inclreduces = 0;
-  ps->skippedrestarts = 0;
-#endif
-
 #ifdef VISCORES
   pclose (ps->fviscores);
-  ps->fviscores = 0;
 #endif
-
   if (ps->edelete)
     ps->edelete (ps->emgr, ps, sizeof *ps);
   else
@@ -1954,10 +1812,8 @@ add_antecedent (PS * ps, Cls * c)
 
   if (c == &ps->impl)
     return;
-#else
-#ifdef STATS
+#elif defined(STATS) && defined(TRACE)
   ps->antecedents++;
-#endif
 #endif
   if (ps->rhead == ps->eor)
     ENLARGE (ps->resolved, ps->rhead, ps->eor);
@@ -2811,7 +2667,7 @@ add_ado (PS * ps)
     ENLARGE (ps->ados, ps->hados, ps->eados);
 
   NEWN (ado, len + 1);
-  *hados++ = ado;
+  *ps->hados++ = ado;
 
   p = ps->added;
   q = ado;
@@ -2960,7 +2816,7 @@ fix_impl_lits (PS * ps, long delta)
   Ltk * s;
   Lit ** p;
 
-  for (s = ps->impls + 2; s < ps->impls + 2 * ps->max_var; s++)
+  for (s = ps->impls + 2; s <= ps->impls + 2 * ps->max_var + 1; s++)
     for (p = s->start; p < s->start + s->count; p++)
       *p += delta;
 }
@@ -3061,21 +2917,26 @@ enlarge (PS * ps, unsigned new_size_vars)
   RESIZEN (ps->vars, ps->size_vars, new_size_vars);
   RESIZEN (ps->rnks, ps->size_vars, new_size_vars);
 
-  lits_delta = ps->lits - old_lits;
-  rnks_delta = ps->rnks - old_rnks;
-
-  fix_trail_lits (ps, lits_delta);
-  fix_clause_lits (ps, lits_delta);
-  fix_added_lits (ps, lits_delta);
-  fix_assumed_lits (ps, lits_delta);
-  fix_cls_lits (ps, lits_delta);
+  if ((lits_delta = ps->lits - old_lits))
+    {
+      fix_trail_lits (ps, lits_delta);
+      fix_clause_lits (ps, lits_delta);
+      fix_added_lits (ps, lits_delta);
+      fix_assumed_lits (ps, lits_delta);
+      fix_cls_lits (ps, lits_delta);
 #ifdef NO_BINARY_CLAUSES
-  fix_impl_lits (ps, lits_delta);
+      fix_impl_lits (ps, lits_delta);
 #endif
 #ifndef NADC
-  fix_ados (ps, lits_delta);
+      fix_ados (ps, lits_delta);
 #endif
-  fix_heap_rnks (ps, rnks_delta);
+    }
+
+  if ((rnks_delta = ps->rnks - old_rnks))
+    {
+      fix_heap_rnks (ps, rnks_delta);
+    }
+
   assert (ps->mhead == ps->marked);
 
   ps->size_vars = new_size_vars;
@@ -3487,6 +3348,10 @@ static void
 report (PS * ps, int replevel, char type)
 {
   int rounds;
+
+#ifdef RCODE
+  (void) type;
+#endif
 
   if (ps->verbosity < replevel)
     return;
@@ -3907,7 +3772,9 @@ fanalyze (PS * ps)
   Var * v, * u;
   int next;
 
+#ifndef RCODE
   double start = picosat_time_stamp ();
+#endif
 
   assert (ps->failed_assumption);
   assert (ps->failed_assumption->val == FALSE);
@@ -4229,7 +4096,7 @@ propl (PS * ps, Lit * this)
 	}
 
       l = c->lits + 1;
-      eol = c->lits + c->size;
+      eol = (Lit**) c->lits + c->size;
       prev = this;
 
       while (++l != eol)
@@ -4289,7 +4156,7 @@ static unsigned primes[] = { 996293, 330643, 753947, 500873 };
 #define PRIMES ((sizeof primes)/sizeof *primes)
 
 static unsigned
-hash_ado (Lit ** ado, unsigned salt)
+hash_ado (PS * ps, Lit ** ado, unsigned salt)
 {
   unsigned i, res, tmp;
   Lit ** p, * lit;
@@ -4340,12 +4207,12 @@ cmp_ado (Lit ** a, Lit ** b)
 }
 
 static Lit ***
-find_ado (Lit ** ado)
+find_ado (PS * ps, Lit ** ado)
 {
   Lit *** res, ** other;
   unsigned pos, delta;
 
-  pos = hash_ado (ado, 0);
+  pos = hash_ado (ps, ado, 0);
   assert (pos < ps->szadotab);
   res = ps->adotab + pos;
 
@@ -4353,7 +4220,7 @@ find_ado (Lit ** ado)
   if (!other || !cmp_ado (other, ado))
     return res;
 
-  delta = hash_ado (ado, 1);
+  delta = hash_ado (ps, ado, 1);
   if (!(delta & 1))
     delta++;
 
@@ -4388,12 +4255,12 @@ enlarge_adotab (PS * ps)
 }
 
 static int
-propado (Var * v)
+propado (PS * ps, Var * v)
 {
   Lit ** p, ** q, *** adotabpos, **ado, * lit;
   Var * u;
 
-  if (ps->level && ps->adodisabled)
+  if (ps->LEVEL && ps->adodisabled)
     return 1;
 
   assert (!ps->conflict);
@@ -4420,7 +4287,7 @@ propado (Var * v)
   if (4 * ps->nadotab >= 3 * ps->szadotab)	/* at least 75% filled */
     enlarge_adotab (ps);
 
-  adotabpos = find_ado (v->ado);
+  adotabpos = find_ado (ps, v->ado);
   ado = *adotabpos;
 
   if (!ado)
@@ -4433,7 +4300,7 @@ propado (Var * v)
 
   assert (ado != v->ado);
 
-  ps->adoconflict = new_clause (2 * llength (ado), 1);
+  ps->adoconflict = new_clause (ps, 2 * llength (ado), 1);
   q = ps->adoconflict->lits;
 
   for (p = ado; (lit = *p); p++)
@@ -4616,11 +4483,11 @@ inc_max_var (PS * ps)
 
   assert (ps->max_var < ps->size_vars);
 
-  ps->max_var++;			/* new index of variable */
-  assert (ps->max_var);		/* no unsigned overflow */
+  if (ps->max_var + 1 == ps->size_vars)
+    enlarge (ps, ps->size_vars + 2*(ps->size_vars + 3) / 4); /* +25% */
 
-  if (ps->max_var == ps->size_vars)
-    enlarge (ps, ps->size_vars + (ps->size_vars + 3) / 4); /* +25% */
+  ps->max_var++;			/* new index of variable */
+  assert (ps->max_var);			/* no unsigned overflow */
 
   assert (ps->max_var < ps->size_vars);
 
@@ -4846,7 +4713,8 @@ collect_clauses (PS * ps)
 		  {
 		    Lit * other = *s;
 		    Var *v = LIT2VAR (other);
-		    if (v->level || other->val != TRUE)
+		    if (v->level ||
+		        other->val != TRUE)
 		      *r++ = other;
 		  }
 	      lstk->count = r - lstk->start;
@@ -4968,17 +4836,17 @@ inc_ddrestart (PS * ps)
 
 #else
 
-static int
-luby (int i)
+static unsigned
+luby (unsigned i)
 {
-  int k;
+  unsigned k;
   for (k = 1; k < 32; k++)
-    if (i == (1 << k) - 1)
-      return 1 << (k - 1);
+    if (i == (1u << k) - 1)
+      return 1u << (k - 1);
 
   for (k = 1;; k++)
-    if ((1 << (k - 1)) <= i && i < (1 << k) - 1)
-      return luby (i - (1 << (k-1)) + 1);
+    if ((1u << (k - 1)) <= i && i < (1u << k) - 1)
+      return luby (i - (1u << (k-1)) + 1);
 }
 
 #endif
@@ -5611,8 +5479,7 @@ iteration (PS * ps)
 static int
 cmp_glue_activity_size (PS * ps, Cls * c, Cls * d)
 {
-  Act a;
-  Act b;
+  Act a, b, * p, * q;
 
   (void) ps;
 
@@ -5625,8 +5492,10 @@ cmp_glue_activity_size (PS * ps, Cls * c, Cls * d)
   if (c->glue > d->glue)
     return -1;
 
-  a = *CLS2ACT (c);
-  b = *CLS2ACT (d);
+  p = CLS2ACT (c);
+  q = CLS2ACT (d);
+  a = *p;
+  b = *q;
 
   if (a < b)				// then higher activity
     return -1;
@@ -6093,6 +5962,11 @@ SATISFIED:
 	}
 
       if (l >= 0 && count >= l)		/* decision limit reached ? */
+	return PICOSAT_UNKNOWN;
+
+      if (ps->interrupt.function &&		/* external interrupt */
+	  count > 0 && !(count % INTERRUPTLIM) &&
+	  ps->interrupt.function (ps->interrupt.state))
 	return PICOSAT_UNKNOWN;
 
       if (ps->propagations >= ps->lpropagations)/* propagation limit reached ? */
@@ -7050,8 +6924,8 @@ picosat_add_ado_lit (PS * ps, int external_lit)
   if (external_lit)
     {
       ps->addingtoado = 1;
-      internal_lit = import_lit (external_lit, 1);
-      add_lit (internal_lit);
+      internal_lit = import_lit (ps, external_lit, 1);
+      add_lit (ps, internal_lit);
     }
   else
     {
@@ -7091,12 +6965,37 @@ assume_contexts (PS * ps)
     assume (ps, *p);
 }
 
+#ifndef RCODE
 static const char * enumstr (int i) {
   int last = i % 10;
   if (last == 1) return "st";
   if (last == 2) return "nd";
   if (last == 3) return "rd";
   return "th";
+}
+#endif
+
+static int
+tderef (PS * ps, int int_lit)
+{
+  Lit * lit;
+  Var * v;
+
+  assert (abs (int_lit) <= (int) ps->max_var);
+
+  lit = int2lit (ps, int_lit);
+
+  v = LIT2VAR (lit);
+  if (v->level > 0)
+    return 0;
+
+  if (lit->val == TRUE)
+    return 1;
+
+  if (lit->val == FALSE)
+    return -1;
+
+  return 0;
 }
 
 static int
@@ -7127,6 +7026,9 @@ minautarky (PS * ps)
 {
   unsigned * occs, maxoccs, tmpoccs, npartial;
   int * p, * c, lit, best, val;
+#ifdef LOGGING
+  int tl;
+#endif
 
   assert (!ps->partial);
 
@@ -7141,10 +7043,25 @@ minautarky (PS * ps)
 
   for (c = ps->soclauses; c < ps->sohead; c = p + 1) 
     {
+#ifdef LOGGING
+      tl = 0;
+#endif
       best = 0; 
       maxoccs = 0;
       for (p = c; (lit = *p); p++)
 	{
+	  val = tderef (ps, lit);
+	  if (val < 0)
+	    continue;
+	  if (val > 0)
+	    {
+#ifdef LOGGING
+	      tl = 1;
+#endif
+	      best = lit;
+	      maxoccs = occs[lit];
+	    }
+
 	  val = pderef (ps, lit);
 	  if (val > 0)
 	    break;
@@ -7163,8 +7080,8 @@ minautarky (PS * ps)
       if (!lit)
 	{
 	  assert (best);
-	  LOG ( fprintf (ps->out, "%sautark %d with %d occs\n", 
-	       ps->prefix, best, maxoccs));
+	  LOG ( fprintf (ps->out, "%sautark %d with %d occs%s\n", 
+	       ps->prefix, best, maxoccs, tl ? " (top)" : ""));
 	  ps->vars[abs (best)].partial = 1;
 	  npartial++;
 	}
@@ -7302,9 +7219,6 @@ picosat_deref (PS * ps, int int_lit)
 int
 picosat_deref_toplevel (PS * ps, int int_lit)
 {
-  Lit *lit;
-  Var * v;
-
   check_ready (ps);
   ABORTIF (!int_lit, "API usage: can not deref zero literal");
 
@@ -7314,19 +7228,7 @@ picosat_deref_toplevel (PS * ps, int int_lit)
   if (abs (int_lit) > (int) ps->max_var)
     return 0;
 
-  lit = int2lit (ps, int_lit);
-
-  v = LIT2VAR (lit);
-  if (v->level > 0)
-    return 0;
-
-  if (lit->val == TRUE)
-    return 1;
-
-  if (lit->val == FALSE)
-    return -1;
-
-  return 0;
+  return tderef (ps, int_lit);
 }
 
 int
@@ -7475,13 +7377,16 @@ picosat_failed_assumptions (PS * ps)
 const int *
 picosat_mus_assumptions (PS * ps, void * s, void (*cb)(void*,const int*), int fix)
 {
-  int i, j, ilit, len, norig = ps->alshead - ps->als, nwork, * work, res;
+  int i, j, ilit, len, nwork, * work, res;
   signed char * redundant;
   Lit ** p, * lit;
   int failed;
   Var * v;
 #ifndef NDEBUG
   int oldlen;
+#endif
+#ifndef RCODE
+  int norig = ps->alshead - ps->als; 
 #endif
 
   check_ready (ps);
@@ -8089,7 +7994,9 @@ picosat_added_original_clauses (PS * ps)
 void
 picosat_stats (PS * ps)
 {
+#ifndef RCODE
   unsigned redlits;
+#endif
 #ifdef STATS
   check_ready (ps);
   assert (ps->sdecisions + ps->rdecisions + ps->assumptions == ps->decisions);
@@ -8154,22 +8061,20 @@ picosat_stats (PS * ps)
 #endif
    fprintf (ps->out, "%s%u fixed variables\n", ps->prefix, ps->fixed);
   assert (ps->nonminimizedllits >= ps->minimizedllits);
+#ifndef RCODE
   redlits = ps->nonminimizedllits - ps->minimizedllits;
+#endif
    fprintf (ps->out, "%s%u learned literals\n", ps->prefix, ps->llitsadded);
    fprintf (ps->out, "%s%.1f%% deleted literals\n",
      ps->prefix, PERCENT (redlits, ps->nonminimizedllits));
 
 #ifdef STATS
-#ifndef NO_BINARY_CLAUSES
+#ifdef TRACE
    fprintf (ps->out,
 	   "%s%llu antecedents (%.1f antecedents per clause",
 	   ps->prefix, ps->antecedents, AVERAGE (ps->antecedents, ps->conflicts));
-#endif
-#ifdef TRACE
   if (ps->trace)
      fprintf (ps->out, ", %.1f bytes/antecedent)", AVERAGE (ps->znts, ps->antecedents));
-#endif
-#if !defined(NO_BINARY_CLAUSES) || defined(TRACE)
   fputs (")\n", ps->out);
 #endif
 
@@ -8534,7 +8439,7 @@ picosat_enable_ado (PS * ps)
 }
 
 void
-picosat_set_ado_conflict_limit (unsigned newadoconflictlimit)
+picosat_set_ado_conflict_limit (PS * ps, unsigned newadoconflictlimit)
 {
   check_ready (ps);
   ps->adoconflictlimit = newadoconflictlimit;
@@ -8567,6 +8472,14 @@ picosat_save_original_clauses (PS * ps)
   if (ps->saveorig) return;
   ABORTIF (ps->oadded, "API usage: 'picosat_save_original_clauses' too late");
   ps->saveorig = 1;
+}
+
+void picosat_set_interrupt (PicoSAT * ps,
+                            void * external_state,
+			    int (*interrupted)(void * external_state)) 
+{
+  ps->interrupt.state = external_state;
+  ps->interrupt.function = interrupted;
 }
 
 int
