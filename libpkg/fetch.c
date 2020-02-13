@@ -559,10 +559,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
      "Warning: use of %s:// URL scheme with SRV records is deprecated: "
      "switch to pkg+%s://", u->scheme, u->scheme);
 
-				snprintf(zone, sizeof(zone),
-				    "_%s._tcp.%s", u->scheme, u->host);
-				if (repo->srv == NULL)
+				if (repo->srv == NULL) {
+					snprintf(zone, sizeof(zone),
+					    "_%s._tcp.%s", u->scheme, u->host);
 					repo->srv = dns_getsrvinfo(zone);
+				}
 				srv_current = repo->srv;
 			} else if (repo != NULL && repo->mirror_type == HTTP &&
 			           strncmp(u->scheme, "http", 4) == 0) {
