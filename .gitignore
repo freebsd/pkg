@@ -1,3 +1,5 @@
+*.Ppico
+*.Po
 *.o
 *.so*
 *.a
@@ -118,6 +120,8 @@ scripts/sbin/pkg2ng
 /tests/frontend/updating
 /tests/frontend/version
 /tests/frontend/vital
+/tests/frontend/clean
+/tests/frontend/shellscript
 /tests/merge
 /tests/pkg_add_dir_to_del
 /tests/pkg_printf
