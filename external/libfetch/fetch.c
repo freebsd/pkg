@@ -426,7 +426,9 @@ fetchParseURL(const char *URL)
 				goto ouch;
 			}
 		}
-		if (n < 1 || n > IPPORT_MAX)
+		/* pkg extension allow for ssh compat */
+		/*if (n < 1 || n > IPPORT_MAX) */
+		if (n < 0 || n > IPPORT_MAX)
 			goto ouch;
 		u->port = n;
 		p = q;
