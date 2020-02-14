@@ -484,6 +484,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 
+	fetchConnectionCacheInit(-1, -1);
 	fetchTimeout = (int) fetch_timeout;
 
 	retry = max_retry;
