@@ -131,9 +131,14 @@ struct url_ent	*fetchList(struct url *, const char *);
 struct url	*fetchMakeURL(const char *, const char *, int,
 		     const char *, const char *, const char *);
 struct url	*fetchParseURL(const char *);
+struct url	*fetchDupURL(struct url *);
 void		 fetchFreeURL(struct url *);
 
 __END_DECLS
+
+/* Connection caching */
+void fetchConnectionCacheInit(int, int);
+void fetchConnectionCacheClose(void);
 
 /* Authentication */
 typedef int (*auth_t)(struct url *);

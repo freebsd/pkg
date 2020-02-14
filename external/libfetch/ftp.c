@@ -976,10 +976,10 @@ ftp_connect(struct url *url, struct url *purl, const char *flags)
 	/* check for proxy */
 	if (purl) {
 		/* XXX proxy authentication! */
-		conn = fetch_connect(purl->host, purl->port, af, verbose);
+		conn = fetch_connect(purl, af, verbose);
 	} else {
 		/* no proxy, go straight to target */
-		conn = fetch_connect(url->host, url->port, af, verbose);
+		conn = fetch_connect(url, af, verbose);
 		purl = NULL;
 	}
 

@@ -348,19 +348,19 @@ fetch_bind(int sd, int af, const char *addr)
  * Establish a TCP connection to the specified port on the specified host.
  */
 conn_t *
-fetch_connect(const char *host, int port, int af, int verbose)
+fetch_connect(struct url *u, int af, int verbose)
 {
 	struct addrinfo *cais = NULL, *sais = NULL, *cai, *sai;
 	const char *bindaddr;
 	conn_t *conn = NULL;
 	int err = 0, sd = -1;
 
-	DEBUGF("---> %s:%d\n", host, port);
+	DEBUGF("---> %s:%d\n", u->host, u->port);
 
 	/* resolve server address */
 	if (verbose)
-		fetch_info("resolving server address: %s:%d", host, port);
-	if ((sais = fetch_resolve(host, port, af)) == NULL)
+		fetch_info("resolving server address: %s:%d", u->host, u->port);
+	if ((sais = fetch_resolve(u->host, u->port, af)) == NULL)
 		goto fail;
 
 	/* resolve client address */
@@ -398,12 +398,20 @@ fetch_connect(const char *host, int port, int af, int verbose)
 	}
 	if (err != 0) {
 		if (verbose)
-			fetch_info("failed to connect to %s:%d", host, port);
+			fetch_info("failed to connect to %s:%d", u->host, u->port);
 		goto syserr;
 	}
 
 	if ((conn = fetch_reopen(sd)) == NULL)
 		goto syserr;
+
+	strlcpy(conn->scheme, u->scheme, sizeof(conn->scheme));
+	strlcpy(conn->host, u->host, sizeof(conn->host));
+	strlcpy(conn->user, u->user, sizeof(conn->user));
+	strlcpy(conn->pwd, u->pwd, sizeof(conn->pwd));
+	conn->port = u->port;
+	conn->af = af;
+
 	if (cais != NULL)
 		freeaddrinfo(cais);
 	if (sais != NULL)
@@ -420,6 +428,103 @@ fail:
 	if (sais != NULL)
 		freeaddrinfo(sais);
 	return (NULL);
+}
+static conn_t *connection_cache;
+static int cache_global_limit = 0;
+static int cache_per_host_limit = 0;
+
+/*
+ * Initialise cache with the given limits.
+ */
+void
+fetchConnectionCacheInit(int global_limit, int per_host_limit)
+{
+
+	if (global_limit < 0)
+		cache_global_limit = INT_MAX;
+	else if (per_host_limit > global_limit)
+		cache_global_limit = per_host_limit;
+	else
+		cache_global_limit = global_limit;
+	if (per_host_limit < 0)
+		cache_per_host_limit = INT_MAX;
+	else
+		cache_per_host_limit = per_host_limit;
+}
+
+/*
+ * Flush cache and free all associated resources.
+ */
+void
+fetchConnectionCacheClose(void)
+{
+	conn_t *conn;
+
+	while ((conn = connection_cache) != NULL) {
+		connection_cache = conn->next;
+		(*conn->close)(conn);
+	}
+}
+
+/*
+ * Check connection cache for an existing entry matching
+ * protocol/host/port/user/password/family.
+ */
+conn_t *
+fetch_cache_get(const struct url *url, int af)
+{
+	conn_t *conn, *last_conn = NULL;
+
+	for (conn = connection_cache; conn; conn = conn->next) {
+		if (conn->port == url->port &&
+		    strcmp(conn->scheme, url->scheme) == 0 &&
+		    strcmp(conn->host, url->host) == 0 &&
+		    strcmp(conn->user, url->user) == 0 &&
+		    strcmp(conn->pwd, url->pwd) == 0 &&
+		    (conn->af == AF_UNSPEC || af == AF_UNSPEC ||
+		     conn->af == af)) {
+			if (last_conn != NULL)
+				last_conn->next = conn->next;
+			else
+				connection_cache = conn->next;
+
+			return conn;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Put the connection back into the cache for reuse.
+ */
+void
+fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *))
+{
+	conn_t *iter, *last;
+	int global_count, host_count;
+
+	global_count = host_count = 0;
+	last = NULL;
+	for (iter = connection_cache; iter;
+	    last = iter, iter = iter->next) {
+		++global_count;
+		if (strcmp(conn->host, iter->host) == 0)
+			++host_count;
+		if (global_count < cache_global_limit &&
+		    host_count < cache_per_host_limit)
+			continue;
+		--global_count;
+		if (last != NULL)
+			last->next = iter->next;
+		else
+			connection_cache = iter->next;
+		(*iter->close)(iter);
+	}
+
+	conn->close = closecb;
+	conn->next = connection_cache;
+	connection_cache = conn;
 }
 
 #ifdef WITH_SSL

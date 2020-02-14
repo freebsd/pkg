@@ -61,6 +61,14 @@ struct fetchconn {
 	const SSL_METHOD *ssl_meth;	/* SSL method */
 #endif
 	int		 ref;		/* reference count */
+	char		 scheme[URL_SCHEMELEN+1];
+	char		 user[URL_USERLEN+1];
+	char		 pwd[URL_PWDLEN+1];
+	char		 host[MAXHOSTNAMELEN+1];
+	int		 port;
+	int		 af;
+	int		(*close)(conn_t *);
+	conn_t		*next;
 };
 
 /* Structure used for error message lists */
@@ -80,7 +88,7 @@ int		 fetch_default_port(const char *);
 int		 fetch_default_proxy_port(const char *);
 struct addrinfo *fetch_resolve(const char *, int, int);
 int		 fetch_bind(int, int, const char *);
-conn_t		*fetch_connect(const char *, int, int, int);
+conn_t		*fetch_connect(struct url *, int, int);
 conn_t		*fetch_reopen(int);
 conn_t		*fetch_ref(conn_t *);
 #ifdef WITH_SSL
@@ -97,6 +105,8 @@ int		 fetch_add_entry(struct url_ent **, int *, int *,
 		     const char *, struct url_stat *);
 int		 fetch_netrc_auth(struct url *url);
 int		 fetch_no_proxy_match(const char *);
+conn_t		*fetch_cache_get(const struct url *, int);
+void		 fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *));
 
 #define ftp_seterr(n)	 fetch_seterr(ftp_errlist, n)
 #define http_seterr(n)	 fetch_seterr(http_errlist, n)

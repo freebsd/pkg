@@ -131,6 +131,7 @@ struct httpio
 {
 	conn_t		*conn;		/* connection */
 	int		 chunked;	/* chunked mode */
+	int		 keep_alive;	/* keep-alive mode */
 	char		*buf;		/* chunk buffer */
 	size_t		 bufsize;	/* size of chunk buffer */
 	size_t		 buflen;	/* amount of data currently in buffer */
@@ -316,11 +317,22 @@ static int
 http_closefn(void *v)
 {
 	struct httpio *io = (struct httpio *)v;
-	int r;
+	int r, val;
 
-	r = fetch_close(io->conn);
-	if (io->buf)
-		free(io->buf);
+	if (io->keep_alive) {
+		val = 0;
+		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
+		    sizeof(val));
+		fetch_cache_put(io->conn, fetch_close);
+		val = 1;
+		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+		    sizeof(val));
+		r = 0;
+	} else {
+		r = fetch_close(io->conn);
+	}
+
+	free(io->buf);
 	free(io);
 	return (r);
 }
@@ -329,7 +341,7 @@ http_closefn(void *v)
  * Wrap a file descriptor up
  */
 static FILE *
-http_funopen(conn_t *conn, int chunked)
+http_funopen(conn_t *conn, int chunked, int keep_alive)
 {
 	struct httpio *io;
 	FILE *f;
@@ -340,6 +352,7 @@ http_funopen(conn_t *conn, int chunked)
 	}
 	io->conn = conn;
 	io->chunked = chunked;
+	io->keep_alive = keep_alive;
 	f = funopen(io, http_readfn, http_writefn, NULL, http_closefn);
 	if (f == NULL) {
 		fetch_syserr();
@@ -360,6 +373,7 @@ typedef enum {
 	hdr_error = -1,
 	hdr_end = 0,
 	hdr_unknown = 1,
+	hdr_connection,
 	hdr_content_length,
 	hdr_content_range,
 	hdr_last_modified,
@@ -374,6 +388,7 @@ static struct {
 	hdr_t		 num;
 	const char	*name;
 } hdr_names[] = {
+	{ hdr_connection,		"Connection" },
 	{ hdr_content_length,		"Content-Length" },
 	{ hdr_content_range,		"Content-Range" },
 	{ hdr_last_modified,		"Last-Modified" },
@@ -1377,7 +1392,7 @@ http_authorize(conn_t *conn, const char *hdr, http_auth_challenges_t *cs,
  * Connect to the correct HTTP server or proxy.
  */
 static conn_t *
-http_connect(struct url *URL, struct url *purl, const char *flags)
+http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 {
 	struct url *curl;
 	conn_t *conn;
@@ -1404,7 +1419,12 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 
 	curl = (purl != NULL) ? purl : URL;
 
-	if ((conn = fetch_connect(curl->host, curl->port, af, verbose)) == NULL)
+	if ((conn = fetch_cache_get(curl, af)) != NULL) {
+		*cached = 1;
+		return (conn);
+	}
+
+	if ((conn = fetch_connect(curl, af, verbose)) == NULL)
 		/* fetch_connect() has already set an error code */
 		return (NULL);
 	init_http_headerbuf(&headerbuf);
@@ -1546,7 +1566,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	char hbuf[MAXHOSTNAMELEN + 7], *host;
 	conn_t *conn;
 	struct url *url, *new;
-	int chunked, direct, ims, noredirect, verbose;
+	int chunked, direct, ims, keep_alive, noredirect, verbose, cached;
 	int e, i, n, val;
 	off_t offset, clength, length, size;
 	time_t mtime;
@@ -1568,6 +1588,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	noredirect = CHECK_FLAG('A');
 	verbose = CHECK_FLAG('v');
 	ims = CHECK_FLAG('i');
+	keep_alive = 0;
 
 	if (direct && purl) {
 		fetchFreeURL(purl);
@@ -1589,6 +1610,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		length = -1;
 		size = -1;
 		mtime = 0;
+		cached = 0;
 
 		/* check port */
 		if (!url->port)
@@ -1603,7 +1625,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		}
 
 		/* connect to server or proxy */
-		if ((conn = http_connect(url, purl, flags)) == NULL)
+		if ((conn = http_connect(url, purl, flags, &cached)) == NULL)
 			goto ouch;
 
 		/* append port number only if necessary */
@@ -1724,7 +1746,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		}
 		if (url->offset > 0)
 			http_cmd(conn, "Range: bytes=%lld-", (long long)url->offset);
-		http_cmd(conn, "Connection: close");
+		http_cmd(conn, "Connection: keep-alive");
 
 		if (body) {
 			body_len = strlen(body);
@@ -1828,6 +1850,10 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 			case hdr_error:
 				http_seterr(HTTP_PROTOCOL_ERROR);
 				goto ouch;
+			case hdr_connection:
+				/* XXX too weak? */
+				keep_alive = (strcasecmp(p, "keep-alive") == 0);
+				break;
 			case hdr_content_length:
 				http_parse_length(p, &clength);
 				break;
@@ -2002,7 +2028,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	URL->length = clength;
 
 	/* wrap it up in a FILE */
-	if ((f = http_funopen(conn, chunked)) == NULL) {
+	if ((f = http_funopen(conn, chunked, keep_alive)) == NULL) {
 		fetch_syserr();
 		goto ouch;
 	}
