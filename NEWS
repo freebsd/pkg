@@ -1,3 +1,12 @@
+Changes from 1.13.99.0 to 1.13.99.1
+- Do not create a .pkgnew file in case installing a configure file over
+  a non existing file
+- Update linenoise to latest version
+- Update picosat to latest version
+- Implement HTTP keep-alive (imported from xbps)
+- fix a regression concerning valid url: ssh://user@host:/ was not valid
+  anymore
+
 Changes from 1.12.99.4 to 1.13.99.0
 - Fix inverted logic leading to rc scripts always being restarted
 
