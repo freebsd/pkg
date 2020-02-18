@@ -147,7 +147,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 		else
 			cachedir = ctx.cachedir;
 
-		snprintf(dest, sizeof(dest), "%s/%s", ctx.cachedir, pkg->repopath);
+		snprintf(dest, sizeof(dest), "%s/%s", cachedir, pkg->repopath);
 	}
 	else
 		pkg_repo_binary_get_cached_name(repo, pkg, dest, sizeof(dest));
