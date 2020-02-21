@@ -1,3 +1,7 @@
+Changes from 1.13.1 to 1.13.2
+- fix pkg fetch -o
+- accept again colon before path in ssh url scheme in repositories
+
 Changes from 1.13.0 to 1.13.1
 - Fix inverted logic leading to pkg always restarting rc script
   on installation
