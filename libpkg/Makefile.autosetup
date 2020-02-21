@@ -1,6 +1,7 @@
 include @builddir@/mk/defs.mk
 LIB=	pkg
 SRCS=	backup.c \
+	backup_lib.c \
 	merge3.c \
 	pkg_audit.c \
 	pkg_deps.c \

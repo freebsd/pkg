@@ -52,6 +52,7 @@ TESTS_SH= \
 	frontend/lua.sh \
 	frontend/shellscript.sh \
 	frontend/clean.sh \
+	frontend/backup_lib.sh
 
 merge_OBJS=	lib/merge.o
 plist_OBJS=	lib/plist.o

@@ -122,6 +122,7 @@ scripts/sbin/pkg2ng
 /tests/frontend/vital
 /tests/frontend/clean
 /tests/frontend/shellscript
+/tests/frontend/backup_lib
 /tests/merge
 /tests/pkg_add_dir_to_del
 /tests/pkg_printf

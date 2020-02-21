@@ -1,9 +1,8 @@
 /*-
- * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -248,6 +247,8 @@ struct pkg_ctx {
 	int dbdirfd;
 	int pkg_dbdirfd;
 	int osversion;
+	bool backup_libraries;
+	const char *backup_library_path;
 };
 
 extern struct pkg_ctx ctx;
@@ -864,5 +865,6 @@ int pkg_add_fromdir(struct pkg *, const char *);
 struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);
+void backup_library(struct pkg *pkg, const char *name);
 
 #endif

@@ -74,6 +74,7 @@ struct pkg_ctx ctx = {
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
 	.osversion = 0,
+	.backup_libraries = false,
 };
 
 struct config_entry {
@@ -434,6 +435,18 @@ static struct config_entry c[] = {
 		"Ignore FreeBSD OS version check",
 	},
 #endif
+	{
+		PKG_BOOL,
+		"BACKUP_LIBRARIES",
+		"NO",
+		"Backup old versions of libraries during an upgrade",
+	},
+	{
+		PKG_STRING,
+		"BACKUP_LIBRARY_PATH",
+		PREFIX "/lib/compat/pkg",
+		"Path where pkg will backup libraries",
+	},
 };
 
 static bool parsed = false;
@@ -1189,6 +1202,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 	ctx.dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	ctx.cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+	ctx.backup_libraries = pkg_object_bool(pkg_config_get("BACKUP_LIBRARIES"));
+	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");

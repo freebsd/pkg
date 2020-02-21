@@ -1,8 +1,7 @@
 /*-
- * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2016, Vsevolod Stakhov
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -984,6 +983,14 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 		while (pkg_files(old, &f) == EPKG_OK) {
 			if (!pkg_has_file(new, f->path)) {
 				pkg_debug(2, "File %s is not in the new package", f->path);
+				if (ctx.backup_libraries) {
+					const char *libname;
+					libname = strrchr(f->path, '/');
+					if (libname != NULL &&
+					    kh_contains(strings, old->shlibs_provided, libname+1)) {
+						backup_library(old, f->path);
+					}
+				}
 				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
 			}
 		}
