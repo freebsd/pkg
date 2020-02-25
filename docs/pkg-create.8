@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd September 26, 2015
+.Dd February 25, 2020
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -478,6 +478,9 @@ for further description.
 .It Ev PKG_DBDIR
 .It Ev PLIST_KEYWORDS_DIR
 .It Ev PORTSDIR
+.It Ev SOURCE_DATE_EPOCH
+Set the timestamp for every single file in the archive to the one
+specified in the environment variable
 .El
 .\" ---------------------------------------------------------------------------
 .Sh FILES
