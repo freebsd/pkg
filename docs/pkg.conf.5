@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 28, 2020
+.Dd February 25, 2020
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -52,7 +52,11 @@ The following options can be defined in
 .Bl -tag -width ".Cm ABI: string"
 .It Cm ABI: string
 The ABI of the package you want to install.
-Default: derived from the ABI of the /bin/sh binary.
+Default: derived from the ABI of the
+.Pa /usr/bin/uname
+binary, if not found then
+.Pa /bin/sh
+binary.
 .It Cm ALIAS: key/value list
 Define local aliases for various
 .Xr pkg 8
