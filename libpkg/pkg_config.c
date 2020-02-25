@@ -904,6 +904,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
+	struct os_info oi;
 
 	k = NULL;
 	o = NULL;
@@ -912,9 +913,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get_myarch(myabi, BUFSIZ, &ctx.osversion);
+	memset(&oi, 0, sizeof(oi));
+	pkg_get_myarch(myabi, BUFSIZ, &oi);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 #ifdef __FreeBSD__
+	ctx.osversion = oi.osversion;
 	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
 #endif
 	if (parsed != false) {
@@ -1020,6 +1023,29 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	p = ucl_parser_new(0);
 	ucl_parser_register_variable (p, "ABI", myabi);
 	ucl_parser_register_variable (p, "ALTABI", myabi_legacy);
+#ifdef __FreeBSD__
+	ucl_parser_register_variable(p, "OSVERSION", myosversion);
+#endif
+	if (oi.name != NULL) {
+		ucl_parser_register_variable(p, "OSNAME", oi.name);
+	}
+	if (oi.version != NULL) {
+		ucl_parser_register_variable(p, "RELEASE", oi.version);
+	}
+	if (oi.version_major != NULL) {
+		ucl_parser_register_variable(p, "VERSION_MAJOR", oi.version_major);
+	}
+	if (oi.version_minor != NULL) {
+		ucl_parser_register_variable(p, "VERSION_MINOR", oi.version_minor);
+	}
+	if (oi.arch != NULL) {
+		ucl_parser_register_variable(p, "ARCH", oi.arch);
+	}
+	free(oi.name);
+	free(oi.version);
+	free(oi.version_major);
+	free(oi.version_minor);
+	free(oi.arch);
 
 	errno = 0;
 	obj = NULL;

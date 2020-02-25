@@ -649,10 +649,19 @@ typedef enum {
 	PKG_RC_STOP
 } pkg_rc_attr;
 
+struct os_info {
+	int osversion;
+	char *name;
+	char *version;
+	char *version_major;
+	char *version_minor;
+	char *arch;
+};
+
 #ifdef __DragonFly__
-#define pkg_get_myarch(d, z, v) pkg_get_myarch_legacy(d, z)
+#define pkg_get_myarch(d, z, v, n) pkg_get_myarch_legacy(d, z)
 #else
-int pkg_get_myarch(char *pkgarch, size_t sz, int *osversion);
+int pkg_get_myarch(char *pkgarch, size_t sz, struct os_info *);
 #endif
 int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 

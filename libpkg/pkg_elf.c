@@ -83,12 +83,6 @@
 static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
 static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
 
-struct elf_info {
-	char *osname;
-	char *strversion;
-	int *osversion;
-};
-
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
 {
@@ -720,7 +714,7 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 }
 
 static bool
-elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
+elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 {
 	Elf_Note note;
 	char *src;
@@ -756,7 +750,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
 	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
 		return (false);
 	}
-	free(ei->osname);
+	free(oi->name);
 	if (version_style == 2) {
 		/*
 		 * NT_GNU_ABI_TAG
@@ -780,14 +774,14 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
 			}
 		}
 		if (gnu_abi_tag[0] < 6)
-			ei->osname = xstrdup((*pnote_os)[gnu_abi_tag[0]]);
+			oi->name = xstrdup((*pnote_os)[gnu_abi_tag[0]]);
 		else
-			ei->osname = xstrdup(invalid_osname);
+			oi->name = xstrdup(invalid_osname);
 	} else {
 		if (note.n_namesz == 0)
-			ei->osname = xstrdup(invalid_osname);
+			oi->name = xstrdup(invalid_osname);
 		else
-			ei->osname = xstrdup(src);
+			oi->name = xstrdup(src);
 		src += roundup2(note.n_namesz, 4);
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB)
 			version = be32dec(src);
@@ -795,19 +789,21 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
 			version = le32dec(src);
 	}
 
-	free(ei->strversion);
+	free(oi->version);
 	if (version_style == 2) {
-		xasprintf(&ei->strversion, "%d.%d.%d", gnu_abi_tag[1],
+		xasprintf(&oi->version, "%d.%d.%d", gnu_abi_tag[1],
 		    gnu_abi_tag[2], gnu_abi_tag[3]);
 	} else {
-		if (ei->osversion != NULL)
-			*ei->osversion = version;
+		if (oi->osversion == 0)
+			oi->osversion = version;
 #if defined(__DragonFly__)
-		xasprintf(&ei->strversion, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
+		xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #elif defined(__NetBSD__)
-		xasprintf(&ei->strversion, "%d", (version + 1000000) / 100000000);
+		xasprintf(&oi->version, "%d", (version + 1000000) / 100000000);
 #else
-		xasprintf(&ei->strversion, "%d", version / 100000);
+		xasprintf(&oi->version_major, "%d", version / 100000);
+		xasprintf(&oi->version_minor, "%d", (((version / 100 % 1000)+1)/2)*2);
+		xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #endif
 	}
 
@@ -815,7 +811,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct elf_info *ei)
 }
 
 static int
-pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
+pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 {
 	char rooted_abi_file[PATH_MAX];
 	Elf *elf = NULL;
@@ -827,17 +823,20 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 	int ret = EPKG_OK;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	bool checkroot;
+	struct os_info loi;
 
 	const char *abi_files[] = {
 		getenv("ABI_FILE"),
 		_PATH_UNAME,
 		_PATH_BSHELL,
 	};
-	struct elf_info ei;
 
 	arch = NULL;
-	memset(&ei, 0, sizeof(ei));
-	ei.osversion = osversion;
+
+	if (oi == NULL) {
+		memset(&loi, 0, sizeof(loi));
+		oi = &loi;
+	}
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -901,17 +900,17 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, int *osversion)
 			 * loop over all the note section and override what
 			 * should be overridden if any
 			 */
-			elf_note_analyse(data, &elfhdr, &ei);
+			elf_note_analyse(data, &elfhdr, oi);
 		}
 	}
 
-	if (ei.osname == NULL) {
+	if (oi->name == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("failed to get the note section");
 		goto cleanup;
 	}
 
-	snprintf(dest, sz, "%s:%s", ei.osname, ei.strversion);
+	snprintf(dest, sz, "%s:%s", oi->name, oi->version);
 
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
@@ -1100,13 +1099,13 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 
 #ifndef __DragonFly__
 int
-pkg_get_myarch(char *dest, size_t sz, int *osversion)
+pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 {
 	struct arch_trans *arch_trans;
 	char *arch_tweak;
 
 	int err;
-	err = pkg_get_myarch_elfparse(dest, sz, osversion);
+	err = pkg_get_myarch_elfparse(dest, sz, oi);
 	if (err)
 		return (err);
 
@@ -1124,6 +1123,7 @@ pkg_get_myarch(char *dest, size_t sz, int *osversion)
 		if (strcmp(arch_tweak, arch_trans->elftype) == 0) {
 			strlcpy(arch_tweak, arch_trans->archid,
 			    sz - (arch_tweak - dest));
+			oi->arch = xstrdup(arch_tweak);
 			break;
 		}
 	}

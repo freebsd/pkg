@@ -506,6 +506,28 @@ See
 for details.
 .Pp
 It is possible to specify more than one repository per file.
+.Sh VARIABLES
+The following variables will be expanded during the parsing of
+.Nm
+.Bl -tag -width Ds
+.It Va ABI
+.It Va OSNAME
+Expands to the full version of the name of the operating system.
+.It Va RELEASE
+Expands to the full version of the operaring system.
+.It Va VERSION_MAJOR
+If supported, expands to the major version of the operating system.
+(Only supported on
+.Fx
+)
+.It Va VERSION_MINOR
+If supported, expands to the minor version of the operating system.
+(Only supported on
+.Fx
+)
+.It Va ARCH
+Expands the architecture of the system.
+.El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the
 configuration file always overrides the value of an option set in the
