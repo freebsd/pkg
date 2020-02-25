@@ -1026,14 +1026,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (conffd != -1) {
 		if (!ucl_parser_add_fd(p, conffd)) {
 			pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
-		} else {
-			obj = ucl_parser_get_object(p);
 		}
+		close(conffd);
 	}
 
-	if (conffd != -1)
-		close(conffd);
-
+	obj = ucl_parser_get_object(p);
 	ncfg = NULL;
 	utstring_new(ukey);
 	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
