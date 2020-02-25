@@ -11,9 +11,10 @@ _pkg_installed() {
 }
 
 _pkg_available_name() {
-	local expl
+	local expl scache
+	zstyle -t ":completion:${curcontext}:packages" remote-access || scache=1
 	_wanted packages expl package \
-		compadd "$@" - $(_call_program packages _pkg_cmd rquery "%n")
+		compadd "$@" - $(_call_program packages _pkg_cmd rquery ${scache:+--no-repo-update} "%n")
 }
 
 _pkg_aliases() {
@@ -23,14 +24,15 @@ _pkg_aliases() {
 }
 
 _pkg_available() {
-	local ret=1
+	local ret=1 scache
 	_tags files packages
 	while _tags; do
 		if _requested files; then
 			_files "$@" -g "*.t?z" && ret=0
 		fi
 		if _requested packages; then
-			compadd "$@" - $(_call_program packages _pkg_cmd rquery "%n-%v") && ret=0
+			zstyle -t ":completion:${curcontext}:packages" remote-access || scache=1
+			compadd "$@" - $(_call_program packages _pkg_cmd rquery ${scache:+--no-repo-update} "%n-%v") && ret=0
 		fi
 		(( ret )) || break
 	done
