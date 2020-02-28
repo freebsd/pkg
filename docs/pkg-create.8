@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd February 25, 2020
+.Dd February 26, 2020
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -29,24 +29,28 @@
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
+.Op Fl t Ar timestamp
 .Fl m Ar metadatadir
 .Nm
 .Op Fl qv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
+.Op Fl t Ar timestamp
 .Fl M Ar manifest
 .Nm
 .Op Fl gnqvx
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
+.Op Fl t Ar timestamp
 .Ar pkg-name ...
 .Nm
 .Op Fl qv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
+.Op Fl t Ar timestamp
 .Fl a
 .\" ---------------------------------------------------------------------------
 .Pp
@@ -190,6 +194,8 @@ This option is incompatible with the
 or
 .Fl x
 options.
+.It Fl t Ar timestamp , Cm --timestamp
+Set the timestamp of the files within the archive.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
