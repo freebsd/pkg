@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
  * 
@@ -45,17 +45,36 @@ struct packing {
 	struct archive *aread;
 	struct archive *awrite;
 	struct archive_entry_linkresolver *resolver;
+	time_t timestamp;
 };
 
 int
-packing_init(struct packing **pack, const char *path, pkg_formats format)
+packing_init(struct packing **pack, const char *path, pkg_formats format,
+    time_t timestamp)
 {
 	char archive_path[MAXPATHLEN];
 	const char *ext;
+	const char *source_date_epoch;
+	char *endptr;
+	time_t ts;
 
 	assert(pack != NULL);
 
 	*pack = xcalloc(1, sizeof(struct packing));
+
+	if (timestamp == (time_t)-1) {
+		if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
+			ts = (time_t)strtoimax(source_date_epoch, &endptr, 10);
+			if (*endptr != '\0') {
+				pkg_emit_error("Ignoring bad environment variable "
+				    "SOURCE_DATE_EPOCH: %s", source_date_epoch);
+			} else {
+				(*pack)->timestamp = ts;
+			}
+	    }
+	} else {
+		(*pack)->timestamp = timestamp;
+	}
 
 	(*pack)->aread = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup((*pack)->aread);
@@ -135,11 +154,9 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	int fd;
 	int retcode = EPKG_OK;
 	int ret;
-	time_t source_time;
 	struct stat st;
 	struct archive_entry *entry, *sparse_entry;
 	bool unset_timestamp;
-	const char *source_date_epoch;
 	char buf[32768];
 	int len;
 
@@ -193,18 +210,11 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 		archive_entry_unset_birthtime(entry);
 	}
 
-	if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
-		if (source_date_epoch[strspn(source_date_epoch, "0123456789")] != '\0') {
-			pkg_emit_error("Bad environment variable "
-			    "SOURCE_DATE_EPOCH: %s", source_date_epoch);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		source_time = strtoll(source_date_epoch, NULL, 10);
-		archive_entry_set_atime(entry, source_time, 0);
-		archive_entry_set_ctime(entry, source_time, 0);
-		archive_entry_set_mtime(entry, source_time, 0);
-		archive_entry_set_birthtime(entry, source_time, 0);
+	if (pack->timestamp != (time_t) -1) {
+		archive_entry_set_atime(entry, pack->timestamp, 0);
+		archive_entry_set_ctime(entry, pack->timestamp, 0);
+		archive_entry_set_mtime(entry, pack->timestamp, 0);
+		archive_entry_set_birthtime(entry, pack->timestamp, 0);
 	}
 
 	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);

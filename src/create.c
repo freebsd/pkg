@@ -173,9 +173,11 @@ exec_create(int argc, char **argv)
 	const char	*metadatadir = NULL;
 	const char	*manifest = NULL;
 	char		*plist = NULL;
+	char	*endptr;
 	pkg_formats	 fmt;
 	int		 ch;
 	bool		 hash = false;
+	time_t		 ts = (time_t)-1;
 
 
 	/* POLA: pkg create is quiet by default, unless
@@ -197,11 +199,12 @@ exec_create(int argc, char **argv)
 		{ "out-dir",	required_argument,	NULL,	'o' },
 		{ "plist",	required_argument,	NULL,	'p' },
 		{ "quiet",	no_argument,		NULL,	'q' },
+		{ "timestamp",	required_argument,	NULL,	't' },
 		{ "verbose",	no_argument,		NULL,	'v' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aghxf:r:m:M:o:p:qv", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aghxf:r:m:M:o:p:qvt:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -232,6 +235,14 @@ exec_create(int argc, char **argv)
 			break;
 		case 'r':
 			rootdir = optarg;
+			break;
+		case 't':
+			endptr = NULL;
+			ts = (time_t)strtoimax(optarg, &endptr, 10);
+			if (*endptr != '\0') {
+				warnx("Invalid timestamp %s", optarg);
+				return (EX_USAGE);
+			}
 			break;
 		case 'v':
 			quiet = false;
@@ -273,6 +284,8 @@ exec_create(int argc, char **argv)
 
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
+	if (ts != (time_t)-1)
+		pkg_create_set_timestamp(pc, ts);
 
 	if (metadatadir == NULL && manifest == NULL)
 		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EX_OK : EX_SOFTWARE);

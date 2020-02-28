@@ -190,7 +190,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 		return (NULL);
 	}
 
-	if (packing_init(&pkg_archive, pkg_path, pc->format) != EPKG_OK)
+	if (packing_init(&pkg_archive, pkg_path, pc->format, pc->timestamp) != EPKG_OK)
 		pkg_archive = NULL;
 
 	free(pkg_path);
@@ -230,6 +230,7 @@ pkg_create_new(void)
 
 	pc = xcalloc(1, sizeof(pc));
 	pc->format = TXZ;
+	pc->timestamp = (time_t) -1;
 
 	return (pc);
 }
@@ -268,6 +269,12 @@ void
 pkg_create_set_output_dir(struct pkg_create *pc, const char *outdir)
 {
 	pc->outdir = outdir;
+}
+
+void
+pkg_create_set_timestamp(struct pkg_create *pc, time_t timestamp)
+{
+	pc->timestamp = timestamp;
 }
 
 static int
