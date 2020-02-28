@@ -24,14 +24,14 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl nqv
+.Op Fl qv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
 .Fl m Ar metadatadir
 .Nm
-.Op Fl nqv
+.Op Fl qv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -43,7 +43,7 @@
 .Op Fl r Ar rootdir
 .Ar pkg-name ...
 .Nm
-.Op Fl nqv
+.Op Fl qv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -190,8 +190,6 @@ This option is incompatible with the
 or
 .Fl x
 options.
-.It Fl n , Cm --no-clobber
-Do not overwrite already existing packages.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
