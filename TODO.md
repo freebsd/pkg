@@ -18,18 +18,6 @@ library
 
 Difficulty: hard
 
-# auto backup libraries
-
-When upgrading a package that contains a library which would be removed by the
-upgrade plan, pkg could create automatically a <name-of-the-pkg>-compat new
-package that would keep around the given library
-
-The new package should be flagged as automatic
-
-pkg autoremove could then remove it if nothing is depending on it anymore
-
-Difficulty: medium
-
 # Explore a rework of the library dependencies
 
 Would be nice to have a better mechanism that could track the symbols of the
