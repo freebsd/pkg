@@ -48,10 +48,6 @@ Allow multiple packages having the same name as long as they don't conflict
 
     * check for saveme annotation, remove upgrade flag
 
-# Add support for zstd format
-
-zstd is very interesting compression format that it would be nice to add support for
-
 # Add the notion of triggers
 
 Trigger would allow to only run once from scripts at the end of the upgrade
