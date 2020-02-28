@@ -23,9 +23,16 @@ global:
 	pkg_config_files;
 	pkg_config_get;
 	pkg_conflicts;
+	pkg_create;
+	pkg_create_free;
 	pkg_create_from_manifest;
+	pkg_create_i;
 	pkg_create_installed;
+	pkg_create_new;
 	pkg_create_repo;
+	pkg_create_set_format;
+	pkg_create_set_output_dir;
+	pkg_create_set_rootdir;
 	pkg_create_staged;
 	pkg_dep_get;
 	pkg_dep_is_locked;

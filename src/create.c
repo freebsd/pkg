@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
@@ -74,8 +74,7 @@ usage_create(void)
 }
 
 static int
-pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
-    const char * const outdir, bool overwrite)
+pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	struct pkg *pkg = NULL;
@@ -101,24 +100,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
-	}
-
-	switch (fmt) {
-	case TZS:
-		format = "tzst";
-		break;
-	case TXZ:
-		format = "txz";
-		break;
-	case TBZ:
-		format = "tbz";
-		break;
-	case TGZ:
-		format = "tgz";
-		break;
-	case TAR:
-		format = "tar";
-		break;
 	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
@@ -153,20 +134,8 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 
 	DL_FOREACH_SAFE(pkg_head, e, etmp) {
 		DL_DELETE(pkg_head, e);
-
-		if (!overwrite) {
-			pkg_snprintf(pkgpath, sizeof(pkgpath), "%S/%n-%v.%S",
-			    outdir, e->pkg, e->pkg, format);
-			if (access(pkgpath, F_OK) == 0) {
-				pkg_printf("%n-%v already packaged, skipping...\n",
-				    e->pkg, e->pkg);
-				pkg_free(e->pkg);
-				free(e);
-				continue;
-			}
-		}
 		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
-		if (pkg_create_installed(outdir, fmt, e->pkg) !=
+		if (pkg_create_i(pc, e->pkg, false) !=
 		    EPKG_OK)
 			retcode++;
 		pkg_free(e->pkg);
@@ -196,6 +165,7 @@ cleanup:
 int
 exec_create(int argc, char **argv)
 {
+	struct pkg_create *pc;
 	match_t		 match = MATCH_EXACT;
 	const char	*outdir = NULL;
 	const char	*format = NULL;
@@ -205,7 +175,6 @@ exec_create(int argc, char **argv)
 	char		*plist = NULL;
 	pkg_formats	 fmt;
 	int		 ch;
-	bool		 overwrite = true;
 	bool		 hash = false;
 
 
@@ -252,9 +221,6 @@ exec_create(int argc, char **argv)
 		case 'M':
 			manifest = optarg;
 			break;
-		case 'n':
-			overwrite = false;
-			break;
 		case 'o':
 			outdir = optarg;
 			break;
@@ -297,36 +263,20 @@ exec_create(int argc, char **argv)
 	if (outdir == NULL)
 		outdir = "./";
 
-	if (format == NULL) {
-		fmt = TXZ;
-	} else {
+	pc = pkg_create_new();
+	if (format != NULL) {
 		if (format[0] == '.')
 			++format;
-		if (strcmp(format, "tzst") == 0)
-			fmt = TZS;
-		else if (strcmp(format, "txz") == 0)
-			fmt = TXZ;
-		else if (strcmp(format, "tbz") == 0)
-			fmt = TBZ;
-		else if (strcmp(format, "tgz") == 0)
-			fmt = TGZ;
-		else if (strcmp(format, "tar") == 0)
-			fmt = TAR;
-		else {
-			warnx("unknown format %s, using txz", format);
-			fmt = TXZ;
-		}
+		if (!pkg_create_set_format(pc, format))
+			warnx("unknown format %s, using the default", format);
 	}
 
-	if (metadatadir == NULL && manifest == NULL) {
-		return (pkg_create_matches(argc, argv, match, fmt, outdir,
-		    overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	} else if (metadatadir != NULL) {
-		return (pkg_create_staged(outdir, fmt, rootdir, metadatadir,
-		    plist, hash) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	} else  { /* (manifest != NULL) */
-		return (pkg_create_from_manifest(outdir, fmt, rootdir,
-		    manifest, plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	}
+	pkg_create_set_rootdir(pc, rootdir);
+	pkg_create_set_output_dir(pc, outdir);
+
+	if (metadatadir == NULL && manifest == NULL)
+		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+	return (pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
+	    hash) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 }
 

@@ -98,6 +98,7 @@ struct pkg_dir;
 struct pkg_option;
 struct pkg_license;
 struct pkg_config_file;
+struct pkg_create;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -1131,22 +1132,7 @@ void pkg_solve_problem_free(struct pkg_solve_problem *problem);
  */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ, TZS } pkg_formats;
 
-/**
- * Create package from an installed & registered package
- */
-int pkg_create_installed(const char *, pkg_formats, struct pkg *);
 
-/**
- * Create package from stage install using just the manifest --
- * no old pkg_tools compatibility stuff
- */
-int pkg_create_from_manifest(const char *, pkg_formats, const char *,
-    const char *, const char *);
-
-/**
- * Create package from stage install with a metadata directory
- */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool);
 int pkg_load_metadata(struct pkg *, const char *, const char *, const char *, const char *, bool);
 
 /**
@@ -1714,6 +1700,19 @@ int pkg_get_cachedirfd(void);
 int pkg_get_dbdirfd(void);
 
 int pkg_namecmp(struct pkg *, struct pkg *);
+
+struct pkg_create *pkg_create_new(void);
+void pkg_create_free(struct pkg_create *);
+bool pkg_create_set_format(struct pkg_create *, const char *);
+void pkg_create_set_rootdir(struct pkg_create *, const char *);
+void pkg_create_set_output_dir(struct pkg_create *, const char *);
+int pkg_create(struct pkg_create *, const char *, const char *, bool);
+int pkg_create_i(struct pkg_create *, struct pkg *, bool);
+/* deprecated */
+int pkg_create_from_manifest(const char *, pkg_formats, const char *,
+    const char *, const char *) __attribute__((deprecated));
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool) __attribute__((deprecated));
+int pkg_create_installed(const char *, pkg_formats, struct pkg *) __attribute__((deprecated));
 
 #ifdef __cplusplus
 }

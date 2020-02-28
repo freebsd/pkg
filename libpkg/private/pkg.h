@@ -332,6 +332,14 @@ struct pkg {
 	struct pkg_repo		*repo;
 };
 
+struct pkg_create {
+	uint8_t	compression_level;
+	pkg_formats format;
+	time_t timestamp;
+	const char *rootdir;
+	const char *outdir;
+};
+
 struct pkg_dep {
 	char		*origin;
 	char		*name;

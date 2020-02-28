@@ -41,7 +41,10 @@
 
 #define TICK	100
 
+static int load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
+    const char *rootdir);
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
+static void fixup_abi(struct pkg *pkg, const char *rootdir, bool testing);
 static void counter_init(const char *what, int64_t max);
 static void counter_count(void);
 static void counter_end(void);
@@ -168,8 +171,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 }
 
 static struct packing *
-pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
-    unsigned required_flags)
+pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_flags)
 {
 	char		*pkg_path = NULL;
 	struct packing	*pkg_archive = NULL;
@@ -180,15 +182,15 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 	if (pkg->type != PKG_OLD_FILE)
 		assert((pkg->flags & required_flags) == required_flags);
 
-	if (mkdirs(outdir) != EPKG_OK)
+	if (mkdirs(pc->outdir) != EPKG_OK)
 		return NULL;
 
-	if (pkg_asprintf(&pkg_path, "%S/%n-%v", outdir, pkg, pkg) == -1) {
+	if (pkg_asprintf(&pkg_path, "%S/%n-%v", pc->outdir, pkg, pkg) == -1) {
 		pkg_emit_errno("pkg_asprintf", "");
 		return (NULL);
 	}
 
-	if (packing_init(&pkg_archive, pkg_path, format) != EPKG_OK)
+	if (packing_init(&pkg_archive, pkg_path, pc->format) != EPKG_OK)
 		pkg_archive = NULL;
 
 	free(pkg_path);
@@ -221,6 +223,145 @@ static const char * const lua_scripts[] = {
 	NULL
 };
 
+struct pkg_create *
+pkg_create_new(void)
+{
+	struct pkg_create *pc;
+
+	pc = xcalloc(1, sizeof(pc));
+	pc->format = TXZ;
+
+	return (pc);
+}
+
+void
+pkg_create_free(struct pkg_create *pc)
+{
+	free(pc);
+}
+
+bool
+pkg_create_set_format(struct pkg_create *pc, const char *format)
+{
+	if (strcmp(format, "tzst") == 0)
+		pc->format = TZS;
+	else if (strcmp(format, "txz") == 0)
+		pc->format = TXZ;
+	else if (strcmp(format, "tbz") == 0)
+		pc->format = TBZ;
+	else if (strcmp(format, "tgz") == 0)
+		pc->format = TGZ;
+	else if (strcmp(format, "tar") == 0)
+		pc->format = TAR;
+	else
+		return (false);
+	return (true);
+}
+
+void
+pkg_create_set_rootdir(struct pkg_create *pc, const char *rootdir)
+{
+	pc->rootdir = rootdir;
+}
+
+void
+pkg_create_set_output_dir(struct pkg_create *pc, const char *outdir)
+{
+	pc->outdir = outdir;
+}
+
+static int
+hash_file(struct pkg_create *pc, struct pkg *pkg)
+{
+	char hash_dest[MAXPATHLEN];
+	char filename[MAXPATHLEN];
+
+	/* Find the hash and rename the file and create a symlink */
+	pkg_snprintf(filename, sizeof(filename), "%n-%v.%S",
+			pkg, pkg, packing_format_to_string(pc->format));
+	pkg->sum = pkg_checksum_file(filename,
+			PKG_HASH_TYPE_SHA256_HEX);
+	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.%S",
+			pkg, pkg, pkg, packing_format_to_string(pc->format));
+
+	pkg_debug(1, "Rename the pkg file from: %s to: %s",
+			filename, hash_dest);
+	if (rename(filename, hash_dest) == -1) {
+		pkg_emit_errno("rename", hash_dest);
+		unlink(hash_dest);
+		return (EPKG_FATAL);
+	}
+	if (symlink(hash_dest, filename) == -1) {
+		pkg_emit_errno("symlink", hash_dest);
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+int
+pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
+{
+	struct packing *pkg_archive = NULL;
+	int ret;
+
+	unsigned required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
+		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
+		PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES | PKG_LOAD_LUA_SCRIPTS;
+
+	assert(pkg->type == PKG_INSTALLED || pkg->type == PKG_OLD_FILE);
+
+	pkg_archive = pkg_create_archive(pkg, pc, required_flags);
+	if (pkg_archive == NULL) {
+		pkg_emit_error("unable to create archive");
+		return (EPKG_FATAL);
+	}
+
+	if ((ret = pkg_create_from_dir(pkg, NULL, pkg_archive)) != EPKG_OK) {
+		packing_finish(pkg_archive);
+		pkg_emit_error("package creation failed");
+	}
+
+	if (hash && ret == EPKG_OK)
+		ret = hash_file(pc, pkg);
+
+	return (ret);
+}
+
+int
+pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
+    bool hash)
+{
+	struct pkg *pkg = NULL;
+	struct packing *pkg_archive = NULL;
+	int ret = ENOMEM;
+
+	pkg_debug(1, "Creating package");
+	if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
+
+	if ((ret = load_metadata(pkg, metadata, plist, pc->rootdir)) != EPKG_OK) {
+		pkg_free(pkg);
+		return (EPKG_FATAL);
+	}
+	fixup_abi(pkg, pc->rootdir, false);
+
+	pkg_archive = pkg_create_archive(pkg, pc, 0);
+	if (pkg_archive == NULL) {
+		pkg_free(pkg);
+		return (EPKG_FATAL);
+	}
+
+	if ((ret = pkg_create_from_dir(pkg, pc->rootdir, pkg_archive)) != EPKG_OK)
+		pkg_emit_error("package creation failed");
+
+	packing_finish(pkg_archive);
+	if (hash && ret == EPKG_OK)
+		ret = hash_file(pc, pkg);
+
+	pkg_free(pkg);
+	return (ret);
+}
 
 /* The "no concessions to old pkg_tools" variant: just get everything
  * from the manifest */
@@ -228,36 +369,16 @@ int
 pkg_create_from_manifest(const char *outdir, pkg_formats format,
     const char *rootdir, const char *manifest, const char *plist)
 {
-	struct pkg	*pkg = NULL;
-	struct packing	*pkg_archive = NULL;
-	int		 ret = ENOMEM;
+	struct pkg_create *pc;
+	int ret;
 
-	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
+	pc = pkg_create_new();
+	pc->format = format;
+	pkg_create_set_rootdir(pc, rootdir);
+	pkg_create_set_output_dir(pc, outdir);
 
-	if(pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((ret = pkg_load_metadata(pkg, manifest, NULL, plist, rootdir, false))
-	    != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* Create the archive */
-	pkg_archive = pkg_create_archive(outdir, pkg, format, 0);
-	if (pkg_archive == NULL) {
-		ret = EPKG_FATAL; /* XXX do better */
-		goto cleanup;
-	}
-
-	if ((ret = pkg_create_from_dir(pkg, rootdir, pkg_archive)) != EPKG_OK)
-		pkg_emit_error("package creation failed");
-
-cleanup:
-	free(pkg);
-	packing_finish(pkg_archive);
+	ret = pkg_create(pc, manifest, plist, false);
+	pkg_create_free(pc);
 	return (ret);
 }
 
@@ -422,91 +543,31 @@ int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
     const char *md_dir, char *plist, bool hash)
 {
-	char		 hash_dest[MAXPATHLEN];
-	char		 filename[MAXPATHLEN];
-	struct pkg	*pkg = NULL;
-	struct pkg_file	*file = NULL;
-	struct pkg_dir	*dir = NULL;
-	struct packing	*pkg_archive = NULL;
-	int		 ret = EPKG_FATAL;
+	struct pkg_create *pc;
+	int ret;
 
-	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
+	pc = pkg_create_new();
+	pc->format = format;
+	pkg_create_set_rootdir(pc, rootdir);
+	pkg_create_set_output_dir(pc, outdir);
 
-	if ((ret = pkg_new(&pkg, PKG_FILE)) != EPKG_OK)
-		goto cleanup;
-
-	if ((ret = pkg_load_metadata(pkg, NULL, md_dir, plist, rootdir, false))
-	    != EPKG_OK)
-		goto cleanup;
-
-	/* Create the archive */
-	pkg_archive = pkg_create_archive(outdir, pkg, format, 0);
-	if (pkg_archive == NULL) {
-		ret = EPKG_FATAL; /* XXX do better */
-		goto cleanup;
-	}
-
-	/* XXX: autoplist support doesn't work right with meta-ports */
-	if (0 && pkg_files(pkg, &file) != EPKG_OK &&
-	    pkg_dirs(pkg, &dir) != EPKG_OK) {
-		/* Now traverse the file directories, adding to the archive */
-		packing_append_tree(pkg_archive, md_dir, NULL);
-		packing_append_tree(pkg_archive, rootdir, "/");
-		ret = EPKG_OK;
-	} else {
-		ret = pkg_create_from_dir(pkg, rootdir, pkg_archive);
-	}
-
-cleanup:
-	packing_finish(pkg_archive);
-	if (hash && ret == EPKG_OK) {
-		/* Find the hash and rename the file and create a symlink */
-		pkg_snprintf(filename, sizeof(filename), "%n-%v.%S",
-			pkg, pkg, packing_format_to_string(format));
-		pkg->sum = pkg_checksum_file(filename,
-			PKG_HASH_TYPE_SHA256_HEX);
-		pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.%S",
-			pkg, pkg, pkg, packing_format_to_string(format));
-
-		pkg_debug(1, "Rename the pkg file from: %s to: %s",
-			filename, hash_dest);
-
-		if (rename(filename, hash_dest) == -1) {
-			pkg_emit_errno("rename", hash_dest);
-			unlink(hash_dest);
-			return (EPKG_FATAL);
-		}
-		if (symlink(hash_dest, filename) == -1) {
-			pkg_emit_errno("symlink", hash_dest);
-			return (EPKG_FATAL);
-		}
-	}
-	free(pkg);
+	ret = pkg_create(pc, md_dir, plist, hash);
 	return (ret);
 }
 
 int
 pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
 {
-	struct packing	*pkg_archive;
+	struct pkg_create *pc;
+	int ret;
 
-	unsigned	 required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
-		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-		PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES | PKG_LOAD_LUA_SCRIPTS;
+	pc = pkg_create_new();
+	pc->format = format;
+	pkg_create_set_output_dir(pc, outdir);
 
-	assert(pkg->type == PKG_INSTALLED || pkg->type == PKG_OLD_FILE);
-
-	pkg_archive = pkg_create_archive(outdir, pkg, format, required_flags);
-	if (pkg_archive == NULL) {
-		pkg_emit_error("unable to create archive");
-		return (EPKG_FATAL);
-	}
-
-	pkg_create_from_dir(pkg, NULL, pkg_archive);
-
-	packing_finish(pkg_archive);
-
-	return (EPKG_OK);
+	ret = pkg_create_i(pc, pkg, false);
+	pkg_create_free(pc);
+	return (ret);
 }
 
 static int64_t	count;
