@@ -295,6 +295,90 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 	return (ret);
 }
 
+/* TODO use file descriptor for rootdir */
+static int
+load_manifest(struct pkg *pkg, const char *metadata, const char *plist,
+    struct pkg_manifest_key *keys, const char *rootdir)
+{
+	int ret;
+
+	ret = pkg_parse_manifest_file(pkg, metadata, keys);
+
+	if (ret == EPKG_OK && plist != NULL)
+		ret = ports_parse_plist(pkg, plist, rootdir);
+	return (ret);
+}
+
+/* TODO use file descriptor for rootdir */
+static int
+load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
+    const char *rootdir)
+{
+	struct pkg_manifest_key *keys = NULL;
+	regex_t preg;
+	regmatch_t pmatch[2];
+	size_t size;
+	int fd, i;
+
+	pkg_manifest_keys_new(&keys);
+
+	/* Let's see if we have a directory or a manifest */
+	if ((fd = open(metadata, O_DIRECTORY|O_CLOEXEC)) == -1) {
+		if (errno == ENOTDIR)
+			return (load_manifest(pkg, metadata, plist, keys, rootdir));
+		pkg_emit_errno("open", metadata);
+		pkg_manifest_keys_free(keys);
+		return (EPKG_FATAL);
+	}
+
+	/* First load the message before what ever in the manifest for backward compat */
+	if (pkg->message == NULL)
+		pkg_load_message_from_file(fd, pkg, "+DISPLAY");
+
+	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST", keys)) != EPKG_OK) {
+		pkg_manifest_keys_free(keys);
+		close(fd);
+		return (EPKG_FATAL);
+	}
+	pkg_manifest_keys_free(keys);
+	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
+
+	if (pkg->desc == NULL)
+		pkg_set_from_fileat(fd, pkg, PKG_DESC, "+DESC", false);
+
+	for (i = 0; scripts[i] != NULL; i++) {
+		if (faccessat(fd, scripts[i], F_OK, 0) == 0)
+			pkg_addscript_fileat(fd, pkg, scripts[i]);
+	}
+
+	for (i = 0; lua_scripts[i] != NULL; i++) {
+		if (faccessat(fd, lua_scripts[i], F_OK, 0) == 0)
+			pkg_addluascript_fileat(fd, pkg, lua_scripts[i]);
+	}
+
+	close(fd);
+
+	if (pkg->www == NULL) {
+		if (pkg->desc == NULL) {
+			pkg_emit_error("No www or desc defined in manifest");
+			return (EPKG_FATAL);
+		}
+		regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
+		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
+		if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
+			size = pmatch[1].rm_eo - pmatch[1].rm_so;
+			pkg->www = xstrndup(&pkg->desc[pmatch[1].rm_so], size);
+		} else {
+			pkg->www = xstrdup("UNKNOWN");
+		}
+		regfree(&preg);
+	}
+
+	return (EPKG_OK);
+}
+
 static void
 fixup_abi(struct pkg *pkg, const char *rootdir, bool testing)
 {
@@ -324,82 +408,13 @@ int
 pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
     const char *plist, const char *rootdir, bool testing)
 {
-	struct pkg_manifest_key *keys = NULL;
-	regex_t			 preg;
-	regmatch_t		 pmatch[2];
-	int			 i, ret = EPKG_OK;
-	int			 mfd = -1;
-	size_t			 size;
+	int ret;
 
-	if (md_dir != NULL &&
-	    (mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
-		pkg_emit_errno("open", md_dir);
-		goto cleanup;
-	}
-
-	pkg_manifest_keys_new(&keys);
-
-	if (mfile != NULL) {
-		ret = pkg_parse_manifest_file(pkg, mfile, keys);
-	}
-
-	/* Load the manifest from the metadata directory */
-	if (mfile == NULL && mfd != -1 &&
-	    (ret = pkg_parse_manifest_fileat(mfd, pkg, "+MANIFEST", keys))
-	    != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* if no descriptions provided then try to get it from a file */
-	if (mfd != -1 && pkg->desc == NULL)
-		pkg_set_from_fileat(mfd, pkg, PKG_DESC, "+DESC", false);
-
-	/* if no message try to get it from a file */
-	if (mfd != -1 && pkg->message == NULL) {
-		/* Try ucl version first */
-		pkg_load_message_from_file(mfd, pkg, "+DISPLAY");
-	}
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		if (faccessat(mfd, scripts[i], F_OK, 0) == 0)
-			pkg_addscript_fileat(mfd, pkg, scripts[i]);
-	}
-
-	for (i = 0; lua_scripts[i] != NULL; i++) {
-		if (faccessat(mfd, lua_scripts[i], F_OK, 0) == 0)
-			pkg_addluascript_fileat(mfd, pkg, lua_scripts[i]);
-	}
-
-	if (plist != NULL &&
-	    ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (pkg->www == NULL) {
-		if (pkg->desc == NULL) {
-			pkg_emit_error("No www or desc defined in manifest");
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-		regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
-		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-		if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
-			size = pmatch[1].rm_eo - pmatch[1].rm_so;
-			pkg->www = xstrndup(&pkg->desc[pmatch[1].rm_so], size);
-		} else {
-			pkg->www = xstrdup("UNKNOWN");
-		}
-		regfree(&preg);
-	}
+	ret = load_metadata(pkg, md_dir != NULL ? md_dir: mfile, plist, rootdir);
+	if (ret != EPKG_OK)
+		return (ret);
 
 	fixup_abi(pkg, rootdir, testing);
-
-cleanup:
-	if (mfd != -1)
-		close(mfd);
-	pkg_manifest_keys_free(keys);
 	return (ret);
 }
 
