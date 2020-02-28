@@ -17,7 +17,8 @@ tests_init \
 	create_from_plist_pkg_descr \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
-	create_with_hardlink
+	create_with_hardlink \
+	time
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -456,4 +457,28 @@ on install
 	atf_check pkg -o PLIST_KEYWORDS_DIR=. create -m . -r ${TMPDIR} -p test.plist
 	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.txz
 
+}
+
+time_body() {
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	"${TMPDIR}/a" = "";
+}
+EOF
+	touch a
+	atf_check pkg create -M test.ucl
+	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -M test.ucl
+	atf_check \
+		-o match:"0 Jan +2 +1970.*/a" \
+		tar tvf test-1.txz
+	atf_check -e match:"Invalid" -s exit:64 pkg create -t meh -M test.ucl
+	atf_check pkg create -t 172800 -M test.ucl
+	atf_check \
+		-o match:"0 Jan +3 +1970.*/a" \
+		tar tvf test-1.txz
+	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -t 172800 -M test.ucl
+	atf_check \
+		-o match:"0 Jan +3 +1970.*/a" \
+		tar tvf test-1.txz
 }
