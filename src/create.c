@@ -87,8 +87,6 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS | PKG_LOAD_LUA_SCRIPTS;
 	struct pkg_entry *e = NULL, *etmp;
-	char pkgpath[MAXPATHLEN];
-	const char *format = NULL;
 	bool foundone;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -174,7 +172,6 @@ exec_create(int argc, char **argv)
 	const char	*manifest = NULL;
 	char		*plist = NULL;
 	char	*endptr;
-	pkg_formats	 fmt;
 	int		 ch;
 	bool		 hash = false;
 	time_t		 ts = (time_t)-1;
