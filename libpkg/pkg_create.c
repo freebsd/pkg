@@ -295,18 +295,41 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 	return (ret);
 }
 
+static void
+fixup_abi(struct pkg *pkg, const char *rootdir, bool testing)
+{
+	bool defaultarch = false;
+	const char *arch;
+
+	/* if no arch autodetermine it */
+	if (pkg->abi == NULL) {
+#ifdef __FreeBSD__
+		char *osversion;
+		xasprintf(&osversion, "%d", ctx.osversion);
+		pkg_kv_add(&pkg->annotations, "FreeBSD_version", osversion, "annotation");
+#endif
+		arch = pkg_object_string(pkg_config_get("ABI"));
+		pkg->abi = xstrdup(arch);
+		defaultarch = true;
+	}
+
+	if (!testing)
+		pkg_analyse_files(NULL, pkg, rootdir);
+
+	if (ctx.developer_mode)
+		suggest_arch(pkg, defaultarch);
+}
+
 int
 pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
     const char *plist, const char *rootdir, bool testing)
 {
 	struct pkg_manifest_key *keys = NULL;
-	const char		*arch;
 	regex_t			 preg;
 	regmatch_t		 pmatch[2];
 	int			 i, ret = EPKG_OK;
 	int			 mfd = -1;
 	size_t			 size;
-	bool			 defaultarch = false;
 
 	if (md_dir != NULL &&
 	    (mfd = open(md_dir, O_DIRECTORY|O_CLOEXEC)) == -1) {
@@ -336,18 +359,6 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	if (mfd != -1 && pkg->message == NULL) {
 		/* Try ucl version first */
 		pkg_load_message_from_file(mfd, pkg, "+DISPLAY");
-	}
-
-	/* if no arch autodetermine it */
-	if (pkg->abi == NULL) {
-#ifdef __FreeBSD__
-		char *osversion;
-		xasprintf(&osversion, "%d", ctx.osversion);
-		pkg_kv_add(&pkg->annotations, "FreeBSD_version", osversion, "annotation");
-#endif
-		arch = pkg_object_string(pkg_config_get("ABI"));
-		pkg->abi = xstrdup(arch);
-		defaultarch = true;
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {
@@ -383,11 +394,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 		regfree(&preg);
 	}
 
-	if (!testing)
-		pkg_analyse_files(NULL, pkg, rootdir);
-
-	if (ctx.developer_mode)
-		suggest_arch(pkg, defaultarch);
+	fixup_abi(pkg, rootdir, testing);
 
 cleanup:
 	if (mfd != -1)
