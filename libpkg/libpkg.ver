@@ -150,7 +150,6 @@ global:
 	pkg_solve_sat_to_jobs;
 	pkg_sshserve;
 	pkg_status;
-	pkg_suggest_arch;
 	pkg_test_filesum;
 	pkg_try_installed;
 	pkg_type;

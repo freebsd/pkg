@@ -387,7 +387,7 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 		pkg_analyse_files(NULL, pkg, rootdir);
 
 	if (ctx.developer_mode)
-		pkg_suggest_arch(pkg, pkg->abi, defaultarch);
+		suggest_arch(pkg, defaultarch);
 
 cleanup:
 	if (mfd != -1)

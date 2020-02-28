@@ -697,12 +697,6 @@ int pkg_config_files(const struct pkg *pkg, struct pkg_config_file **cf);
 int pkg_analyse_files(struct pkgdb *, struct pkg *, const char *);
 
 /**
- * Suggest if a package could be marked architecture independent or
- * not.
- */
-int pkg_suggest_arch(struct pkg *, const char *, bool);
-
-/**
  * Generic setter for simple attributes.
  */
 int pkg_set2(struct pkg *pkg, ...);

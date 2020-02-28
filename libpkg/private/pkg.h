@@ -875,5 +875,6 @@ struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);
 void backup_library(struct pkg *pkg, const char *name);
+int suggest_arch(struct pkg *, bool);
 
 #endif

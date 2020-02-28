@@ -36,21 +36,21 @@
 #include "private/event.h"
 
 int
-pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
+suggest_arch(struct pkg *pkg, bool isdefault)
 {
 	bool iswildcard;
 
-	iswildcard = (strchr(arch, '*') != NULL);
+	iswildcard = (strchr(pkg->abi, '*') != NULL);
 
 	if (iswildcard && isdefault)
 		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
-		    "cannot use wildcards as default", arch);
+		    "cannot use wildcards as default", pkg->abi);
 
 	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
 		if (iswildcard) {
 			/* Definitely has to be arch specific */
 			pkg_emit_developer_mode("Error: arch \"%s\" -- package "
-			    "installs architecture specific files", arch);
+			    "installs architecture specific files", pkg->abi);
 		}
 	} else {
 		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
@@ -59,7 +59,7 @@ pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 				pkg_emit_developer_mode("Warning: arch \"%s\" "
 				    "-- package installs C/C++ headers or "
 				    "libtool files,\n**** which are often "
-				    "architecture specific", arch);
+				    "architecture specific", pkg->abi);
 			}
 		} else {
 			/* Might be arch independent */
@@ -67,7 +67,7 @@ pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 				pkg_emit_developer_mode("Notice: arch \"%s\" -- "
 				    "no architecture specific files found:\n"
 				    "**** could this package use a wildcard "
-				    "architecture?", arch);
+				    "architecture?", pkg->abi);
 		}
 	}
 	return (EPKG_OK);
