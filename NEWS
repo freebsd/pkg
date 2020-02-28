@@ -1,3 +1,19 @@
+Changes from 1.13.99.1 to 1.13.99.2
+- Fix pkg fetch -o
+- Implement a mechanism to autobackup libraries during upgrades
+- zsh-completion: disable repo update durign package retrival
+- Improve documentation
+- More variable are now expanded when reading the confirations files:
+  * OSNAME: FreeBSD
+  * RELEASE: 12.1
+  * ARCH: amd64
+  * VERSION_MAJOR (FreeBSD only)
+  * VERSION_MINOR (FreeBSD only)
+- Remove the unused and inconsistent pkg create -n
+- Add -t timestamp to pkg create to be able to specify the expected file timestamp
+  via command line.
+- Refactor the pkg_create API and mark as deprecated the old functions
+
 Changes from 1.13.99.0 to 1.13.99.1
 - Do not create a .pkgnew file in case installing a configure file over
   a non existing file
