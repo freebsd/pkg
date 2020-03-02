@@ -803,7 +803,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 #else
 		xasprintf(&oi->version_major, "%d", version / 100000);
 		xasprintf(&oi->version_minor, "%d", (((version / 100 % 1000)+1)/2)*2);
-		xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
+		xasprintf(&oi->version, "%d", version / 100000);
 #endif
 	}
 
