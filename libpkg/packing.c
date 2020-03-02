@@ -62,8 +62,8 @@ packing_init(struct packing **pack, const char *path, pkg_formats format,
 
 	*pack = xcalloc(1, sizeof(struct packing));
 
-	if (timestamp == (time_t)-1) {
-		if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
+	if (timestamp == (time_t)-1 &&
+		(source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
 			ts = (time_t)strtoimax(source_date_epoch, &endptr, 10);
 			if (*endptr != '\0') {
 				pkg_emit_error("Ignoring bad environment variable "
@@ -71,7 +71,6 @@ packing_init(struct packing **pack, const char *path, pkg_formats format,
 			} else {
 				(*pack)->timestamp = ts;
 			}
-	    }
 	} else {
 		(*pack)->timestamp = timestamp;
 	}
