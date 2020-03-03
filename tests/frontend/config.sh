@@ -5,7 +5,8 @@ tests_init \
 	empty_conf \
 	duplicate_pkgs_notallowed \
 	inline_repo \
-	nameserver
+	nameserver \
+	expansion
 #	duplicate_pkgs_allowed \
 
 duplicate_pkgs_allowed_body() {
@@ -114,4 +115,28 @@ nameserver_body()
 		-o inline:"plop\n" \
 		-e inline:"${PROGNAME}: Unable to set nameserver, ignoring\n" \
 		pkg -o NAMESERVER="plop" -C /dev/null config nameserver
+}
+
+expansion_body() {
+	atf_skip_on Darwin "N/A"
+	atf_skip_on Linux "N/A"
+	OSNAME=$(uname)
+	MAJOR_VERSION=$(uname -r | cut -d . -f 1)
+	MINOR_VERSION=$(uname -r | cut -d . -f 2 | cut -d - -f 1)
+	ARCH=$(uname -p)
+
+	atf_check \
+		-o inline:"${OSNAME}:${MAJOR_VERSION}:${ARCH}\n" \
+		pkg config abi
+
+	echo "DOT_FILE=\${OSNAME}" > pkg.conf
+
+	atf_check -o inline:"${OSNAME}\n" pkg -C ${TMPDIR}/pkg.conf config dot_file
+	echo "DOT_FILE=\${VERSION_MAJOR}" > pkg.conf
+	atf_check -o inline:"${MAJOR_VERSION}\n" pkg -C ${TMPDIR}/pkg.conf config dot_file
+	echo "DOT_FILE=\${VERSION_MINOR}" > pkg.conf
+	atf_check -o inline:"${MINOR_VERSION}\n" pkg -C ${TMPDIR}/pkg.conf config dot_file
+	echo "DOT_FILE=\${ARCH}" > pkg.conf
+	atf_check -o inline:"${ARCH}\n" pkg -C ${TMPDIR}/pkg.conf config dot_file
+
 }
