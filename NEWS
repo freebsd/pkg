@@ -1,3 +1,8 @@
+Changes from 1.14.99.2 to 1.13.99.3
+- Fix regression in ABI detection (add regression tests about it)
+- Fix regression concerning the timestamp of the packaged/installed file
+  (add  regression tests about it)
+
 Changes from 1.13.99.1 to 1.13.99.2
 - Fix pkg fetch -o
 - Implement a mechanism to autobackup libraries during upgrades
