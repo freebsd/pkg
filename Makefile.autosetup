@@ -1,9 +1,12 @@
 include @builddir@/mk/defs.mk
-DIRS=	external compat libpkg/repo libpkg src docs scripts @testsdir@
+DIRS=	external compat libpkg/repo libpkg src docs scripts
+@if TESTS
+DIRS+=	tests
+@endif
 
 include $(MK)/dir.mk
 
-@if coverage == "1"
+@if coverage
 check: clean-profiles
 
 clean-profiles:
@@ -11,7 +14,7 @@ clean-profiles:
 @endif
 
 check: all
-@if testsdir == "tests"
+@if TESTS
 	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw
 	if [ "$(HTML)" != "" ]; then \
 		args="-r $(top_builddir)/res.db" ; \
@@ -26,7 +29,7 @@ check: all
 	exit $${FAILED}
 @endif
 
-@if coverage == "1"
+@if coverage
 check-coverage: check
 	llvm-profdata merge --output=pkg.profdata /tmp/pkg.*.profraw
 

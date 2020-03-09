@@ -1,7 +1,7 @@
 RANLIB=	@RANLIB@
 AR=	@AR@
 CC=	@CC@
-@if coverage == "1"
+@if coverage
 CFLAGS+=	@COVERAGE_CFLAGS@
 LDFLAGS+=	@COVERAGE_LDFLAGS@
 @endif

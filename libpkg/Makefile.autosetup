@@ -109,7 +109,7 @@ LOCAL_LDFLAGS+= -ldl
 LOCAL_LDFLAGS+= -lresolv
 @endif
 
-@if libabidir == libmachista
+@if libmachista
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
 STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
 LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic \
@@ -120,14 +120,13 @@ SRCS+=		pkg_elf.c
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver \
 @endif
 
-@if libabidir == libelf
+@if libelf-internal
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/libelf
 STATIC_LIBS+=	$(top_builddir)/external/libelf/libelf.a
 LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libelf -lelf
 @endif
 
-@if libabidir
-@else
+@if libelf-external
 LOCAL_LDFLAGS+=	-lelf
 @endif
 
@@ -149,7 +148,7 @@ $(OBJS) $(SHOBJS): $(top_builddir)/pkg_config.h
 
 all: lib$(LIB)_flat.a
 
-@if libabidir == libmachista
+@if libmachista
 lib$(LIB)_flat.a:
 	libtool -static -o lib$(LIB)_flat.a $(STATIC_LIBS)
 @else

@@ -204,7 +204,7 @@ foreach header [list endian.h sys/endian.h] {
 }
 
 if {[string match *-darwin* [get-define host]]} {
-	define libabidir libmachista
+	define libmachista
 	define waflags ""
 	define nowaflags ""
 } else {
@@ -219,17 +219,17 @@ if {[string match *-darwin* [get-define host]]} {
 		cc-with { -libs { -lelf } } {
 			if {[cc-check-functions gelf_getehdr]} {
 				define-feature libelf
+				define libelf-external
 				define-append EXTRA_LIBS -lelf
-				define libabidir ""
 				cc-check-types Elf_Note
 			} else {
+				define libelf-internal
 				define-feature libelf 0
-				define libabidir "libelf"
 			}
 		}
 	} else {
 		define-feature libelf 0
-		define libabidir "libelf"
+		define libelf-internal
 	}
 }
 
@@ -261,11 +261,10 @@ if {[opt-bool with-coverage]} {
 	}
 }
 
-define testsdir ""
 if {[pkg-config-init 0]} {
 # atf
 	if {[pkg-config atf-c] && [cc-check-progs kyua]} {
-		define testsdir tests
+		define TESTS
 		puts "test suite will be built"
 	} else {
 		puts "Skipping test suite"

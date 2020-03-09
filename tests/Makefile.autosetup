@@ -112,7 +112,7 @@ OTHER_LIBS+=	-lresolv
 @endif
 
 # Hack to determine we are on osx
-@if libabidir == libmachista
+@if libmachista
 OTHER_LIBS+=	-lresolv
 @endif
 

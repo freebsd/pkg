@@ -65,7 +65,7 @@ OTHER_LIBS+=	-ldl
 OTHER_LIBS+=	-lresolv
 @endif
 
-@if libabidir == libmachista
+@if libmachista
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 # OSX doesn't support static binaries, sigh

@@ -6,7 +6,7 @@ export PATH=$(atf_get_srcdir)/../../src/:${PATH}
 export INSTALL_AS_USER=yes
 export PKG_DBDIR=.
 export NO_TICK=yes
-@if coverage == 1
+@if coverage
 export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw
 @endif
 jailed=$(sysctl -n security.jail.jailed 2>/dev/null || :)

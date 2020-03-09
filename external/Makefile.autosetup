@@ -1,3 +1,9 @@
 include @builddir@/mk/defs.mk
-DIRS=	blake2 picosat linenoise libfetch sqlite libucl liblua msgpuck yxml @libabidir@
+DIRS=	blake2 picosat linenoise libfetch sqlite libucl liblua msgpuck yxml
+@if libmachista
+DIRS+=	libmachista
+@endif
+@if libelf-internal
+DIRS+=	libelf
+@endif
 include $(MK)/dir.mk
