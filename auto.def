@@ -80,6 +80,10 @@ cc-with { -libs { -llzma }} {
 	}
 }
 
+cc-with { -libs { -larchive }} {
+	cc-check-functions archive_write_add_filter_zstd
+}
+
 define ZSTDLIB ""
 cc-with { -libs { -lprivatezstd }} {
 	if {[cc-check-functions ZSTD_versionNumber]} {
