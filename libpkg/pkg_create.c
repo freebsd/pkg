@@ -324,9 +324,9 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 	}
 
 	if ((ret = pkg_create_from_dir(pkg, NULL, pkg_archive)) != EPKG_OK) {
-		packing_finish(pkg_archive);
 		pkg_emit_error("package creation failed");
 	}
+	packing_finish(pkg_archive);
 
 	if (hash && ret == EPKG_OK)
 		ret = hash_file(pc, pkg);
