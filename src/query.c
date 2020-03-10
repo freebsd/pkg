@@ -937,8 +937,26 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 
 	if (pkgname != NULL) {
+		/* Use a manifest or compact manifest if possible. */
+		int open_flags = 0;
+		if ((query_flags & ~(PKG_LOAD_DEPS|
+				     PKG_LOAD_OPTIONS|
+				     PKG_LOAD_CATEGORIES|
+				     PKG_LOAD_LICENSES|
+				     PKG_LOAD_USERS|
+				     PKG_LOAD_GROUPS|
+				     PKG_LOAD_SHLIBS_REQUIRED|
+				     PKG_LOAD_SHLIBS_PROVIDED|
+				     PKG_LOAD_ANNOTATIONS|
+				     PKG_LOAD_CONFLICTS|
+				     PKG_LOAD_PROVIDES|
+				     PKG_LOAD_REQUIRES)) == 0) {
+			open_flags = PKG_OPEN_MANIFEST_COMPACT;
+		} else if ((query_flags & PKG_LOAD_FILES) == 0) {
+			open_flags = PKG_OPEN_MANIFEST_ONLY;
+		}
 		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, pkgname, keys, 0) != EPKG_OK) {
+		if (pkg_open(&pkg, pkgname, keys, open_flags) != EPKG_OK) {
 			return (EX_IOERR);
 		}
 
