@@ -1986,6 +1986,24 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	struct pkg_manifest_key *keys = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
+	pkg_plugin_hook_t pre, post;
+
+	if (j->type == PKG_JOBS_INSTALL) {
+		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
+		post = PKG_PLUGIN_HOOK_POST_INSTALL;
+	}
+	else if (j->type == PKG_JOBS_UPGRADE) {
+		pre = PKG_PLUGIN_HOOK_PRE_UPGRADE;
+		post = PKG_PLUGIN_HOOK_POST_UPGRADE;
+	}
+	else if (j->type == PKG_JOBS_AUTOREMOVE){
+		pre = PKG_PLUGIN_HOOK_PRE_AUTOREMOVE;
+		post = PKG_PLUGIN_HOOK_POST_AUTOREMOVE;
+	}
+	else {
+		pre = PKG_PLUGIN_HOOK_PRE_DEINSTALL;
+		post = PKG_PLUGIN_HOOK_POST_DEINSTALL;
+	}
 
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
@@ -2000,6 +2018,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			PKGDB_LOCK_EXCLUSIVE);
 	if (retcode != EPKG_OK)
 		return (retcode);
+
+	pkg_plugins_hook_run(pre, j, j->db);
 
 	p = NULL;
 	pkg_manifest_keys_new(&keys);
@@ -2061,6 +2081,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	}
 
+	pkg_plugins_hook_run(post, j, j->db);
+
 cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
 	pkg_manifest_keys_free(keys);
@@ -2072,29 +2094,11 @@ int
 pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
-	pkg_plugin_hook_t pre, post;
 	bool has_conflicts = false;
 
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
 		return (EPKG_FATAL);
-	}
-
-	if (j->type == PKG_JOBS_INSTALL) {
-		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
-		post = PKG_PLUGIN_HOOK_POST_INSTALL;
-	}
-	else if (j->type == PKG_JOBS_UPGRADE) {
-		pre = PKG_PLUGIN_HOOK_PRE_UPGRADE;
-		post = PKG_PLUGIN_HOOK_POST_UPGRADE;
-	}
-	else if (j->type == PKG_JOBS_AUTOREMOVE){
-		pre = PKG_PLUGIN_HOOK_PRE_AUTOREMOVE;
-		post = PKG_PLUGIN_HOOK_POST_AUTOREMOVE;
-	}
-	else {
-		pre = PKG_PLUGIN_HOOK_PRE_DEINSTALL;
-		post = PKG_PLUGIN_HOOK_POST_DEINSTALL;
 	}
 
 	switch (j->type) {
@@ -2121,7 +2125,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 							rc = pkg_jobs_solve(j);
 						}
 						else if (rc == EPKG_OK && !has_conflicts) {
-							pkg_plugins_hook_run(pre, j, j->db);
 							rc = pkg_jobs_execute(j);
 							break;
 						}
@@ -2136,17 +2139,14 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				}
 				else {
 					/* Not the first run, conflicts are resolved already */
-					pkg_plugins_hook_run(pre, j, j->db);
 					rc = pkg_jobs_execute(j);
 				}
 			}
 		}
 		else {
-			pkg_plugins_hook_run(pre, j, j->db);
 			rc = pkg_jobs_execute(j);
 		}
 
-		pkg_plugins_hook_run(post, j, j->db);
 		break;
 	case PKG_JOBS_FETCH:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
