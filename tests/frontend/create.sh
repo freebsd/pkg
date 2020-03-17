@@ -467,7 +467,7 @@ files: {
 }
 EOF
 	touch a
-	pattern=$(ls -l a | awk '{print $6" +"$7" +"$8".*/a"}')
+	pattern=$(ls -l ${TMPDIR}/a | awk '{print $6" +"$7" +"$8".*/a"}')
 	atf_check pkg create -M test.ucl
 	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -M test.ucl
 	atf_check \
@@ -486,4 +486,11 @@ EOF
 	atf_check \
 		-o match:"${pattern}" \
 		tar tvf test-1.txz
+
+	mkdir target
+	atf_check -o empty \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+	atf_check \
+		-o match:"${pattern}" \
+		ls -l ${TMPDIR}/target/${TMPDIR}/a
 }
