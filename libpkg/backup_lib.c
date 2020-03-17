@@ -25,13 +25,73 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 
+static int
+register_backup(struct pkgdb *db, int fd, const char *path)
+{
+	struct pkgdb_it *it;
+	struct pkg *pkg = NULL;
+	int rc = EPKG_OK;
+	time_t t;
+	char buf[BUFSIZ];
+	char *sum;
+	khint_t k;
+	struct pkg_file *f;
+	char *lpath;
+	struct stat st;
+
+	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path), PKG_HASH_TYPE_SHA256_HEX);
+
+	it = pkgdb_query(db, "compat-libraries", MATCH_EXACT);
+	if (it != NULL) {
+		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES) != EPKG_OK)
+			rc = EPKG_FATAL;
+		pkgdb_it_free(it);
+	}
+	if (pkg == NULL) {
+		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
+		pkg->name = xstrdup("compat-libraries");
+		pkg->origin = xstrdup("compat/libraries");
+		pkg->comment = xstrdup("Compatibility libraries saved during local packages upgrade\n");
+		pkg->desc = xstrdup("Compatibility libraries saved during local packages upgrade\n");
+		pkg->maintainer = xstrdup("root@localhost");
+		pkg->www = xstrdup("N/A");
+		pkg->prefix = xstrdup("/");
+		pkg->abi = "*";
+	}
+	free(pkg->version);
+	t = time(NULL);
+	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtime(&t));
+	if (pkg->filehash != NULL && (k = kh_get_pkg_files(pkg->filehash, path)) != kh_end(pkg->filehash)) {
+		f = kh_val(pkg->filehash, k);
+		kh_del_pkg_files(pkg->filehash, k);
+		DL_DELETE(pkg->files, f);
+		pkg_file_free(f);
+	}
+	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, path);
+	pkg_addfile(pkg, lpath, sum, false);
+	free(lpath);
+	pkg->version = xstrdup(buf);
+	pkg_analyse_files(NULL, pkg, ctx.pkg_rootdir);
+	pkg_open_root_fd(pkg);
+	f = NULL;
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (fstatat(pkg->rootfd, RELATIVE_PATH(f->path), &st, AT_SYMLINK_NOFOLLOW) != -1)
+			pkg->flatsize += st.st_size;
+	}
+	pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg, 0, "backuplib"), "backuplib");
+	return (EPKG_OK);
+}
+
 void
-backup_library(struct pkg *p, const char *path)
+backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
 	const char *libname = strrchr(path, '/');
 	char buf[BUFSIZ];
@@ -40,7 +100,6 @@ backup_library(struct pkg *p, const char *path)
 	ssize_t nread, nwritten;
 
 	pkg_open_root_fd(p);
-
 	from = to = backupdir = -1;
 
 	if (libname == NULL)
@@ -82,9 +141,6 @@ backup_library(struct pkg *p, const char *path)
 		goto out;
 	}
 
-	close(backupdir);
-	backupdir = -1;
-
 	while (nread = read(from, buf, sizeof(buf)), nread > 0) {
 		outbuf = buf;
 		do {
@@ -104,8 +160,12 @@ backup_library(struct pkg *p, const char *path)
 			goto out;
 		}
 		close(from);
+		register_backup(db, backupdir, libname);
+		close(backupdir);
+		backupdir = -1;
 		return;
 	}
+
 
 out:
 	pkg_emit_errno("Fail to backup the library", libname);

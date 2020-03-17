@@ -882,7 +882,7 @@ int pkg_add_fromdir(struct pkg *, const char *);
 struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);
-void backup_library(struct pkg *pkg, const char *name);
+void backup_library(struct pkgdb *, struct pkg *, const char *);
 int suggest_arch(struct pkg *, bool);
 
 #endif

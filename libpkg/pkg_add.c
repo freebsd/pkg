@@ -988,7 +988,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 					libname = strrchr(f->path, '/');
 					if (libname != NULL &&
 					    kh_contains(strings, old->shlibs_provided, libname+1)) {
-						backup_library(old, f->path);
+						backup_library(db, old, f->path);
 					}
 				}
 				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
