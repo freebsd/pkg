@@ -1,3 +1,6 @@
+Changes from 1.13.99.4 to 1.13.99.5
+- Fix memory allocation bug during package creation
+
 Changes from 1.13.99.3 to 1.13.99.4
 - Fix detection of the zstd compression
 - Fix package creation on installed packages
