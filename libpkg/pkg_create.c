@@ -228,7 +228,7 @@ pkg_create_new(void)
 {
 	struct pkg_create *pc;
 
-	pc = xcalloc(1, sizeof(pc));
+	pc = xcalloc(1, sizeof(*pc));
 	pc->format = TXZ;
 	pc->timestamp = (time_t) -1;
 
