@@ -61,8 +61,9 @@ packing_init(struct packing **pack, const char *path, pkg_formats format,
 	assert(pack != NULL);
 
 	*pack = xcalloc(1, sizeof(struct packing));
+	(*pack)->timestamp = timestamp;
 
-	if (timestamp == (time_t)-1 &&
+	if ((*pack)->timestamp == (time_t)-1 &&
 		(source_date_epoch = getenv("SOURCE_DATE_EPOCH")) != NULL) {
 			ts = (time_t)strtoimax(source_date_epoch, &endptr, 10);
 			if (*endptr != '\0') {
@@ -71,8 +72,6 @@ packing_init(struct packing **pack, const char *path, pkg_formats format,
 			} else {
 				(*pack)->timestamp = ts;
 			}
-	} else {
-		(*pack)->timestamp = timestamp;
 	}
 
 	(*pack)->aread = archive_read_disk_new();
