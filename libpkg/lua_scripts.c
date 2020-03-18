@@ -226,6 +226,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 #endif
 	struct pollfd pfd;
 	int cur_pipe[2];
+	int r;
 	char *line = NULL;
 	FILE *f;
 	ssize_t linecap = 0;
@@ -311,9 +312,11 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			}
 			if (pfd.revents & (POLLERR|POLLHUP))
 				break;
-			if (getline(&line, &linecap, f) > 0) {
+			r = getline(&line, &linecap, f);
+			if (r == 0 && feof(f))
+				break;
+			if (r > 0)
 				pkg_emit_message(line);
-			}
 		}
 		fclose(f);
 
