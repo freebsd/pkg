@@ -1,3 +1,8 @@
+Changes from 1.13.99.5 to 1.13.99.6
+- When backing up libraries, create a package 'compat-libraries'
+  in which the new libraries will be appended to and the version
+  bumped each time a new library is backed up.
+
 Changes from 1.13.99.4 to 1.13.99.5
 - Fix memory allocation bug during package creation
 
