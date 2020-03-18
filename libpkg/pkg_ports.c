@@ -241,7 +241,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	if (fstatat(p->stagefd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW)
 	    == -1) {
 		pkg_errno("Unable to access file %s%s",
-		    p->stage ? p->stage: "/", RELATIVE_PATH(path));
+		    p->stage ? p->stage: "", path);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (ctx.developer_mode) {
@@ -308,7 +308,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	if (fstatat(p->stagefd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW)
 	    == -1) {
 		pkg_errno("Unable to access file %s%s",
-		    p->stage ? p->stage : "/", RELATIVE_PATH(path));
+		    p->stage ? p->stage : "", path);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		if (ctx.developer_mode) {

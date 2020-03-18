@@ -5,7 +5,8 @@
 tests_init \
 	register_conflicts \
 	register_message \
-	prefix_is_a_symlink
+	prefix_is_a_symlink \
+	file_not_found
 
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
@@ -110,4 +111,15 @@ prefix_is_a_symlink_body()
 	test -L ${TMPDIR}/target/${TMPDIR}/plop/bla/c || atf_fail "symlinks failed"
 	test -L ${TMPDIR}/target/${TMPDIR}/plop/bla/1 || atf_fail "symlinks failed 1"
 	test -L ${TMPDIR}/target/${TMPDIR}/plop/bla/2 || atf_fail "symlinks failed 2"
+}
+
+file_not_found_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/prefix"
+	echo "foo" > plist
+	mkdir -p ${TMPDIR}/target
+	atf_check \
+		-e match:"Unable to access file ${TMPDIR}/prefix/foo" \
+		-s exit:74 \
+		pkg -r ${TMPDIR}/target register -M ${TMPDIR}/test.ucl -f ${TMPDIR}/plist -i ${TMPDIR}
 }
