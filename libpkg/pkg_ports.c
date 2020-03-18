@@ -1314,7 +1314,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	pkg_emit_install_begin(pkg);
 
-	rc = pkgdb_register_pkg(db, pkg, 0);
+	rc = pkgdb_register_pkg(db, pkg, 0, NULL);
 
 	if (rc != EPKG_OK)
 		goto cleanup;
@@ -1358,7 +1358,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	}
 
 cleanup:
-	pkgdb_register_finale(db, rc);
+	pkgdb_register_finale(db, rc, NULL);
 
 	return (rc);
 }

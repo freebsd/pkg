@@ -1724,7 +1724,8 @@ prstmt_finalize(struct pkgdb *db)
 }
 
 int
-pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
+pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
+    const char *savepoint)
 {
 	struct pkg		*pkg2 = NULL;
 	struct pkg_dep		*dep = NULL;
@@ -1753,7 +1754,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced)
 
 	s = db->sqlite;
 
-	if (pkgdb_transaction_begin_sqlite(s, NULL) != EPKG_OK)
+	if (pkgdb_transaction_begin_sqlite(s, savepoint) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	/* Prefer new ABI over old one */
@@ -2366,16 +2367,16 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 
 
 int
-pkgdb_register_finale(struct pkgdb *db, int retcode)
+pkgdb_register_finale(struct pkgdb *db, int retcode, const char *savepoint)
 {
 	int	ret = EPKG_OK;
 
 	assert(db != NULL);
 
 	if (retcode == EPKG_OK)
-		ret = pkgdb_transaction_commit_sqlite(db->sqlite, NULL);
+		ret = pkgdb_transaction_commit_sqlite(db->sqlite, savepoint);
 	else
-		ret = pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
+		ret = pkgdb_transaction_rollback_sqlite(db->sqlite, savepoint);
 
 	return (ret);
 }
@@ -2387,11 +2388,11 @@ pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
 
 	pkg_emit_install_begin(pkg);
 
-	ret = pkgdb_register_pkg(db, pkg, 0);
+	ret = pkgdb_register_pkg(db, pkg, 0, NULL);
 	if (ret == EPKG_OK)
 		pkg_emit_install_finished(pkg, NULL);
 
-	pkgdb_register_finale(db, ret);
+	pkgdb_register_finale(db, ret, NULL);
 
 	return (ret);
 }
