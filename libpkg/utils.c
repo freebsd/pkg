@@ -823,7 +823,7 @@ pkg_namecmp(struct pkg *a, struct pkg *b)
 int
 get_socketpair(int *pipe)
 {
-	int st = SOCK_DGRAM;
+	int st = SOCK_STREAM;
 
 #ifdef HAVE_DECL_SOCK_SEQPACKET
 	st = SOCK_SEQPACKET;
