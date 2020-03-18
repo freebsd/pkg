@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd February 24, 2019
+.Dd March 18, 2020
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -364,6 +364,8 @@ Check installed packages for checksum mismatches:
 .Pp
 Check for missing dependencies:
 .Dl # pkg check -d -a
+Show the pkg-message of a package:
+.Dl # pkg info -D perl-5.14
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
