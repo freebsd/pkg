@@ -163,7 +163,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			 * close all unuseful fd up to there
 			 */
 			for (int i = 5; i <= cur_pipe[1]; i++) {
-				posix_spawn_file_actions_addclose(&action, i);
+				if (i != cur_pipe[0])
+					posix_spawn_file_actions_addclose(&action, i);
 			}
 			if (utstring_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
