@@ -63,7 +63,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 	int ret = EPKG_OK;
 	int fd = -1;
 	int stdin_pipe[2] = {-1, -1};
-	int r;
 	posix_spawn_file_actions_t action;
 	bool use_pipe = 0;
 	bool debug = false;
@@ -254,11 +253,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				}
 				if (pfd.revents & (POLLERR|POLLHUP))
 					break;
-				r = getline(&line, &linecap, f);
-				if (r == 0 && feof(f))
-					break;
-				if (r > 0)
+				if (getline(&line, &linecap, f) > 0)
 					pkg_emit_message(line);
+				if (feof(f))
+					break;
 			}
 			fclose(f);
 
