@@ -860,6 +860,9 @@ pkg_compiled_for_same_os_major(void)
 	const char	*myabi;
 	int		 osmajor;
 
+	if (getenv("IGNORE_OSMAJOR") != NULL)
+		return (true);
+
 	myabi = pkg_object_string(pkg_config_get("ABI"));
 	myabi = strchr(myabi,':');
 	if (myabi == NULL) {
