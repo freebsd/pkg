@@ -885,12 +885,6 @@ int pkgdb_remote_init(struct pkgdb *db, const char *reponame);
 int pkgdb_dump(struct pkgdb *db, const char *dest);
 int pkgdb_load(struct pkgdb *db, const char *src);
 
-/**
- * Register a ports to the database.
- * @return An error code.
- */
-
-int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Set the case sensitivity flag on or off.  Defaults to
@@ -1714,6 +1708,7 @@ int pkg_create_from_manifest(const char *, pkg_formats, const char *,
     const char *, const char *) __attribute__((deprecated));
 int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool) __attribute__((deprecated));
 int pkg_create_installed(const char *, pkg_formats, struct pkg *) __attribute__((deprecated));
+int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg) __attribute__((deprecated));;
 
 #ifdef __cplusplus
 }
