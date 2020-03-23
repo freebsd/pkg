@@ -823,11 +823,16 @@ pkg_namecmp(struct pkg *a, struct pkg *b)
 int
 get_socketpair(int *pipe)
 {
-	int st = SOCK_STREAM;
+	int r;
 
 #ifdef HAVE_DECL_SOCK_SEQPACKET
-	st = SOCK_SEQPACKET;
+	r = socketpair(AF_LOCAL, SOCK_SEQPACKET, 0, pipe);
+	if (r == -1) {
+		r = socketpair(AF_LOCAL, SOCK_DGRAM, 0, pipe);
+	}
+#else
+	r = socketpair(AF_LOCAL, SOCK_DGRAM, 0, pipe);
 #endif
 
-	return (socketpair(AF_UNIX, st, 0, pipe));
+	return (r);
 }
