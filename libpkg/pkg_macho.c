@@ -374,7 +374,7 @@ pkg_get_myarch_legacy(char *dest, size_t sz)
 }
 
 int
-pkg_get_myarch(char *dest, size_t sz, int *osversion __unused)
+pkg_get_myarch(char *dest, size_t sz, struct os_info *__unused u)
 {
 	cpu_type_t cpu_type;
 	const char *cpu_name = NULL;
