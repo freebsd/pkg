@@ -469,9 +469,6 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 	pkg_manifest_keys_free(keys);
-	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
-		return (EPKG_FATAL);
-	}
 
 	if (pkg->desc == NULL)
 		pkg_set_from_fileat(fd, pkg, PKG_DESC, "+DESC", false);
@@ -486,6 +483,9 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 			pkg_addluascript_fileat(fd, pkg, lua_scripts[i]);
 	}
 
+	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
 	close(fd);
 
 	if (pkg->www == NULL) {
