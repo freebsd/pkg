@@ -274,6 +274,8 @@ local repository is up to date.
 All repositories are up to date.
 Checking for upgrades (3 candidates):  done
 Processing candidates (3 candidates):  done
+solver: cannot find provide for requirement php-5.3.27 when processing package: php53-gd
+solver: cannot find provide for requirement php-5.3.27 when processing package: php53-extensions
 Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
