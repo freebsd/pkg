@@ -1,3 +1,10 @@
+Chanegs from 1.13.99.6 to 1.13.99.7
+- Fix a regression with sometimes makes some keywords being ignored
+  (aka scripts not appended to the list of scripts)
+- Fix ABI on DragonFly
+- Fix fd being closed twice
+- Improve a bit documentation
+
 Changes from 1.13.99.5 to 1.13.99.6
 - When backing up libraries, create a package 'compat-libraries'
   in which the new libraries will be appended to and the version
