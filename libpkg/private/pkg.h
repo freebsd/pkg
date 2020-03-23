@@ -606,8 +606,6 @@ struct plist {
 	UT_string *post_install_buf;
 	UT_string *pre_deinstall_buf;
 	UT_string *post_deinstall_buf;
-	UT_string *pre_upgrade_buf;
-	UT_string *post_upgrade_buf;
 	struct pkg *pkg;
 	char *uname;
 	char *gname;

@@ -1205,8 +1205,6 @@ plist_new(struct pkg *pkg, const char *stage)
 	utstring_new(p->post_install_buf);
 	utstring_new(p->pre_deinstall_buf);
 	utstring_new(p->post_deinstall_buf);
-	utstring_new(p->pre_upgrade_buf);
-	utstring_new(p->post_upgrade_buf);
 	p->hardlinks = kh_init_hardlinks();
 
 	populate_keywords(p);
@@ -1234,10 +1232,8 @@ plist_free(struct plist *p)
 
 	utstring_free(p->post_deinstall_buf);
 	utstring_free(p->post_install_buf);
-	utstring_free(p->post_upgrade_buf);
 	utstring_free(p->pre_deinstall_buf);
 	utstring_free(p->pre_install_buf);
-	utstring_free(p->pre_upgrade_buf);
 
 	free(p);
 }
