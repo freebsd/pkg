@@ -796,15 +796,15 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 	} else {
 		if (oi->osversion == 0)
 			oi->osversion = version;
-		if (strncasecmp(oi->name, "dragonfly", 9) == 0) {
-			xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
-		} else if (strncasecmp(oi->name, "netbsd", 6) == 0) {
+#ifdef __DragonFly__
+		xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
+#endif
+#ifdef __NetBSD__
 		xasprintf(&oi->version, "%d", (version + 1000000) / 100000000);
-		} else {
+#endif
 		xasprintf(&oi->version_major, "%d", version / 100000);
 		xasprintf(&oi->version_minor, "%d", (((version / 100 % 1000)+1)/2)*2);
 		xasprintf(&oi->version, "%d", version / 100000);
-		}
 	}
 
 	return (true);
@@ -1103,18 +1103,18 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 {
 	struct arch_trans *arch_trans;
 	char *arch_tweak;
-	int i;
-
 	int err;
 	err = pkg_get_myarch_elfparse(dest, sz, oi);
 	if (err)
 		return (err);
 
+#ifdef __DragonFly__
 	if (strncasecmp(dest, "DragonFly", 9) == 0) {
-		for (i = 0; i < strlen(dest); i++)
+		for (int i = 0; i < strlen(dest); i++)
 			dest[i] = tolower(dest[i]);
 		return (0);
 	}
+#endif
 
 	/* Translate architecture string back to regular OS one */
 	arch_tweak = strchr(dest, ':');
