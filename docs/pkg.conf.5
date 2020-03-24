@@ -506,6 +506,24 @@ See
 for details.
 .Pp
 It is possible to specify more than one repository per file.
+
+Quarterly is the name for Ports branches cut from HEAD at the beginning of
+every (yearly) quarter in January, April, July, and October, and the name for
+the binary package sets that are produced from these branches.
+
+The quarterly branch provides users with a more predictable and stable
+experience for port and package installation and upgrades. This is done
+essentially by only allowing non-feature updates. Quarterly branches aim to
+receive security fixes (that may be version updates, or backports of commits),
+bug fixes and ports compliance or framework changes.
+
+To switch from quarterly to latest (packages based off ports head) change the
+string
+.Pa quarterly
+to
+.Pa latest
+in the url: line
+
 .Sh VARIABLES
 The following variables will be expanded during the parsing of
 .Nm
