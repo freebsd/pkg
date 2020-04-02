@@ -1,4 +1,7 @@
-Chanegs from 1.13.99.6 to 1.13.99.7
+Changes from 1.13.99.7 to 1.14
+- increase log level for provides/requires mismatch
+
+Changes from 1.13.99.6 to 1.13.99.7
 - Fix a regression with sometimes makes some keywords being ignored
   (aka scripts not appended to the list of scripts)
 - Fix ABI on DragonFly
