@@ -37,6 +37,8 @@
 
 #include <pkg.h>
 
+#include <xmalloc.h>
+
 #include <bsd_compat.h>
 
 #include "pkgcli.h"
@@ -66,9 +68,9 @@ check_change_values(const char *opt, char **oldv, char **newv, char guard)
 	if (semicolon == NULL)
 		return (false);
 
-	*oldv = malloc(semicolon - opt + 1);
+	*oldv = xmalloc(semicolon - opt + 1);
 	strlcpy(*oldv, opt, semicolon - opt + 1);
-	*newv = strdup(semicolon + 1);
+	*newv = xstrdup(semicolon + 1);
 
 	if (guard != '\0') {
 		/* Check guard symbol in both new and old values */
