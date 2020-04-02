@@ -117,7 +117,7 @@ case "${daily_backup_pkg_enable:-YES}" in
 *)
 	bak="${daily_backup_pkg_dir:-/var/backups}"
 	bak_file="${bak}/pkg.sql.xz"
-	pkgcmd=@prefix@/sbin/pkg
+	pkgcmd=%prefix%/sbin/pkg
 
 	if ! ${pkgcmd} -N >/dev/null 2>&1 ; then
 		echo 'pkg-backup is enabled but pkg is not used'

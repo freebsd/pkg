@@ -7,7 +7,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
     . /etc/defaults/periodic.conf
     source_periodic_confs
 fi
-pkgcmd=@prefix@/sbin/pkg
+pkgcmd=%prefix%/sbin/pkg
 
 status_pkg() {
     local pkgargs

@@ -1,7 +1,7 @@
 #compdef pkg pkg-static
 
 _pkg_cmd() {
-	@prefix@/sbin/pkg "${pkg_config[@]}" "$@"
+	%prefix%/sbin/pkg "${pkg_config[@]}" "$@"
 }
 
 _pkg_installed() {

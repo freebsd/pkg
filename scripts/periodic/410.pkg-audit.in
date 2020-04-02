@@ -51,7 +51,7 @@ security_daily_compat_var security_status_pkgaudit_jails
 security_daily_compat_var security_status_pkgaudit_expiry
 
 # Compute PKG_DBDIR from the config file.
-pkgcmd=@prefix@/sbin/pkg
+pkgcmd=%prefix%/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
 auditfile="${PKG_DBDIR}/vuln.xml"
 
