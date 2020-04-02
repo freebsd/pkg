@@ -85,7 +85,7 @@ list_pkgs_all() {
 
 case "$daily_status_pkg_changes_enable" in
 	[Yy][Ee][Ss])
-	pkgcmd=@prefix@/sbin/pkg
+	pkgcmd=%prefix%/sbin/pkg
 
 	echo
 	echo 'Changes in installed packages:'

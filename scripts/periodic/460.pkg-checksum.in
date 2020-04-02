@@ -80,7 +80,7 @@ rc=0
 
 if check_yesno_period security_status_pkg_checksum_enable
 then
-	pkgcmd=@prefix@/sbin/pkg
+	pkgcmd=%prefix%/sbin/pkg
 
 	echo
 	echo 'Checking for packages with mismatched checksums:'

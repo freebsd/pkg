@@ -3,8 +3,7 @@ include @builddir@/mk/defs.mk
 .SUFFIXES: .in
 
 .in:
-	sed -e 's|@prefix@|$(PREFIX)|g; s|@abs_top_srcdir@|$(top_srcdir)|g' \
-		-e 's|@VERSION@|$(version)|g' $< > $@
+	sed -e 's|%prefix%|$(PREFIX)|g' $< > $@
 
 pdailydir=		$(sysconfdir)/periodic/daily
 psecuritydir=		$(sysconfdir)/periodic/security
