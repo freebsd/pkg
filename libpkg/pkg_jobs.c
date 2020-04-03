@@ -1550,6 +1550,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	size_t jcount = 0;
 	struct job_pattern *jp;
 	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_universe_item *unit, *tmp;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_jobs_install_candidate *candidates, *c;
@@ -1602,9 +1603,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 				jcount);
 			elt_num = 0;
 
-			HASH_ITER(hh, j->request_add, req, rtmp) {
-				pkg_emit_progress_tick(++elt_num, jcount);
-				pkg_jobs_universe_process(j->universe, req->item->pkg);
+			HASH_ITER(hh, j->universe->items, unit, tmp) {
+				pkg_jobs_universe_process(j->universe, unit->pkg);
 			}
 			pkg_emit_progress_tick(jcount, jcount);
 
@@ -1636,8 +1636,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			/*
 			 * Need to iterate request one more time to recurse depends
 			 */
-			HASH_ITER(hh, j->request_add, req, rtmp) {
-				pkg_jobs_universe_process(j->universe, req->item->pkg);
+			HASH_ITER(hh, j->universe->items, unit, tmp) {
+				pkg_jobs_universe_process(j->universe, unit->pkg);
 			}
 		}
 	}
