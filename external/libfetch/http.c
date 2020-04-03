@@ -1746,7 +1746,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		}
 		if (url->offset > 0)
 			http_cmd(conn, "Range: bytes=%lld-", (long long)url->offset);
-		http_cmd(conn, "Connection: keep-alive");
+		http_cmd(conn, "Connection: close");
 
 		if (body) {
 			body_len = strlen(body);
