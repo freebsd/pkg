@@ -82,4 +82,6 @@ ALIAS              : {
   shared-depends: info -qB,
   show: info -f -k,
   size: info -sq,
+  unmaintained = "query -e '%m = \"ports@FreeBSD.org\"' '%o (%w)'",
+  runmaintained = "rquery -e '%m = \"ports@FreeBSD.org\"' '%o (%w)'",
   }
