@@ -34,6 +34,8 @@ global:
 	pkg_create_set_output_dir;
 	pkg_create_set_rootdir;
 	pkg_create_set_timestamp;
+	pkg_create_set_hash;
+	pkg_create_set_hash_symlink;
 	pkg_create_staged;
 	pkg_dep_get;
 	pkg_dep_is_locked;

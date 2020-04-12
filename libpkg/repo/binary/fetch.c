@@ -75,15 +75,15 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 		 * The real naming scheme:
 		 * <cachedir>/<name>-<version>-<checksum>.txz
 		 */
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
-				ctx.cachedir, pkg, pkg, pkg, ext);
+		pkg_snprintf(dest, destlen, "%S/%n-%v%S%z%S",
+		    ctx.cachedir, pkg, pkg, PKG_HASH_SEPSTR, pkg, ext);
 		if (stat (dest, &st) == -1 || pkg->pkgsize != st.st_size)
 			return (EPKG_FATAL);
 
 	}
 	else {
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
-				ctx.cachedir, pkg, pkg, pkg);
+		pkg_snprintf(dest, destlen, "%S/%n-%v%S%z", ctx.cachedir, pkg,
+		    pkg, PKG_HASH_SEPSTR, pkg);
 	}
 
 	return (EPKG_OK);

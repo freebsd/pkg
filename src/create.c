@@ -174,6 +174,7 @@ exec_create(int argc, char **argv)
 	char	*endptr;
 	int		 ch;
 	bool		 hash = false;
+	bool		 hash_symlink = false;
 	time_t		 ts = (time_t)-1;
 
 
@@ -182,6 +183,8 @@ exec_create(int argc, char **argv)
 	 * historical reasons. */
 
 	quiet = !pkg_object_bool(pkg_config_get("PKG_CREATE_VERBOSE"));
+	hash = pkg_object_bool(pkg_config_get("PKG_CREATE_HASH"));
+	hash_symlink = pkg_object_bool(pkg_config_get("PKG_CREATE_SYMLINK"));
 
 	struct option longopts[] = {
 		{ "all",	no_argument,		NULL,	'a' },
@@ -214,6 +217,7 @@ exec_create(int argc, char **argv)
 			break;
 		case 'h':
 			hash = true;
+			hash_symlink = true;
 			break;
 		case 'm':
 			metadatadir = optarg;
@@ -281,12 +285,14 @@ exec_create(int argc, char **argv)
 
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
+	pkg_create_set_hash(pc, hash);
+	pkg_create_set_hash_symlink(pc, hash_symlink);
 	if (ts != (time_t)-1)
 		pkg_create_set_timestamp(pc, ts);
 
 	if (metadatadir == NULL && manifest == NULL)
 		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	return (pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
-	    hash) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+	return (pkg_create(pc, metadatadir != NULL ? metadatadir : manifest,
+	    plist, hash_symlink) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 }
 

@@ -202,6 +202,22 @@ Default: NO.
 Specifies the cache directory for packages.
 Default:
 .Pa /var/cache/pkg
+.It Cm PKG_CREATE_HASH: boolean
+When set to a
+.Sy true
+value, make
+.Xr pkg-create 8
+name created packages with the short hash of contents appended to the filename.
+Default:
+.Sy false
+.It Cm PKG_CREATE_SYMLINK: boolean
+When set to a
+.Sy true
+value, make
+.Xr pkg-create 8
+create a symlink between the short hash filename and the regular filename.
+Default:
+.Sy false
 .It Cm PKG_CREATE_VERBOSE: boolean
 When set to a
 .Sy true

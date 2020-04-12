@@ -1701,6 +1701,8 @@ bool pkg_create_set_format(struct pkg_create *, const char *);
 void pkg_create_set_rootdir(struct pkg_create *, const char *);
 void pkg_create_set_output_dir(struct pkg_create *, const char *);
 void pkg_create_set_timestamp(struct pkg_create *, time_t);
+void pkg_create_set_hash(struct pkg_create *, bool);
+void pkg_create_set_hash_symlink(struct pkg_create *, bool);
 int pkg_create(struct pkg_create *, const char *, const char *, bool);
 int pkg_create_i(struct pkg_create *, struct pkg *, bool);
 /* deprecated */

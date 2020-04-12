@@ -51,6 +51,9 @@
 #define PKG_NUM_SCRIPTS 9
 #define PKG_NUM_LUA_SCRIPTS 5
 
+#define PKG_HASH_SEP '~'
+#define PKG_HASH_SEPSTR "~"
+
 /*
  * Some compatibility checks
  */
@@ -338,6 +341,8 @@ struct pkg_create {
 	time_t timestamp;
 	const char *rootdir;
 	const char *outdir;
+	bool hash;
+	bool symlink;
 };
 
 struct pkg_dep {

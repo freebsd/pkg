@@ -24,7 +24,7 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl qv
+.Op Fl hqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
@@ -32,21 +32,21 @@
 .Op Fl t Ar timestamp
 .Fl m Ar metadatadir
 .Nm
-.Op Fl qv
+.Op Fl hqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
 .Fl M Ar manifest
 .Nm
-.Op Fl gnqvx
+.Op Fl hgnqvx
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
 .Ar pkg-name ...
 .Nm
-.Op Fl qv
+.Op Fl hqv
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -56,6 +56,7 @@
 .Pp
 .Nm
 .Op Cm --no-clobber
+.Op Cm --hash
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
@@ -65,6 +66,7 @@
 .Cm --metadata Ar metadatadir
 .Nm
 .Op Cm --no-clobber
+.Op Cm --hash
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
@@ -73,6 +75,7 @@
 .Cm --manifest Ar manifest
 .Nm
 .Op Cm --{glob,no-clobber,regex}
+.Op Cm --hash
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
@@ -81,6 +84,7 @@
 .Ar pkg-name ...
 .Nm
 .Op Cm --no-clobber
+.Op Cm --hash
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
@@ -218,6 +222,15 @@ Only has any effect when used with
 See
 .Sx "PLIST FORMAT"
 for details.
+.It Fl h , Cm --hash
+Create the package with a short hash of the contents in the filename,
+also creates a symlink to the regular filename.
+Can be enabled by setting
+.Cm PKG_CREATE_HASH
+to
+.Ar yes
+in
+.Pa pkg.conf .
 .It Fl q , Cm --quiet
 Force quiet output.
 This is the default, unless

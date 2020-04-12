@@ -138,6 +138,8 @@ _pkg_config_opts() {
 		'OSVERSION[FreeBSD OS version]:version' \
 		'PERMISSIVE[ignore conflicts while registering a package]:boolean:(yes no)' \
 		'PKG_CACHEDIR[specify cache directory for packages]:directory:_files -/' \
+		'PKG_CREATE_HASH[make pkg_create(8) name files using a short hash]:boolean:(yes no)' \
+		'PKG_CREATE_SYMLINK[make pkg_create(8) symlink the hashed filename to the regular package filename]:boolean:(yes no)' \
 		'PKG_CREATE_VERBOSE[make pkg_create(8) use verbose mode]:boolean:(yes no)' \
 		'PKG_DBDIR[specify directory to use for storing package database files]:directory:_files -/' \
 		'PKG_ENABLE_PLUGINS[activate plugin support]:boolean:(yes no)' \

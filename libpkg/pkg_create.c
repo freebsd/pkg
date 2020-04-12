@@ -185,7 +185,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	if (mkdirs(pc->outdir) != EPKG_OK)
 		return NULL;
 
-	if (pkg_asprintf(&pkg_path, "%S/%n-%v", pc->outdir, pkg, pkg) == -1) {
+	if (pkg_asprintf(&pkg_path, "%S/.%n-%v", pc->outdir, pkg, pkg) == -1) {
 		pkg_emit_errno("pkg_asprintf", "");
 		return (NULL);
 	}
@@ -277,31 +277,79 @@ pkg_create_set_timestamp(struct pkg_create *pc, time_t timestamp)
 	pc->timestamp = timestamp;
 }
 
-static int
-hash_file(struct pkg_create *pc, struct pkg *pkg)
+void
+pkg_create_set_hash(struct pkg_create *pc, bool hash)
 {
-	char hash_dest[MAXPATHLEN];
-	char filename[MAXPATHLEN];
+	pc->hash = hash;
+}
+
+void
+pkg_create_set_hash_symlink(struct pkg_create *pc, bool symlink)
+{
+	pc->symlink = symlink;
+}
+
+static int
+rename_file(struct pkg_create *pc, struct pkg *pkg)
+{
+	char src_name[MAXPATHLEN];
+	char dest_name[MAXPATHLEN];
+	char hash_name[MAXPATHLEN];
+	char dir_name[MAXPATHLEN];
+	char *hash_rel = NULL;
+	char *file_name;
 
 	/* Find the hash and rename the file and create a symlink */
-	pkg_snprintf(filename, sizeof(filename), "%n-%v.%S",
-			pkg, pkg, packing_format_to_string(pc->format));
-	pkg->sum = pkg_checksum_file(filename,
-			PKG_HASH_TYPE_SHA256_HEX);
-	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.%S",
-			pkg, pkg, pkg, packing_format_to_string(pc->format));
+	pkg_snprintf(src_name, sizeof(src_name), "%S/.%n-%v.%S",
+	    pc->outdir, pkg, pkg, packing_format_to_string(pc->format));
+	pkg_snprintf(dest_name, sizeof(dest_name), "%S/%n-%v.%S",
+	    pc->outdir, pkg, pkg, packing_format_to_string(pc->format));
 
-	pkg_debug(1, "Rename the pkg file from: %s to: %s",
-			filename, hash_dest);
-	if (rename(filename, hash_dest) == -1) {
-		pkg_emit_errno("rename", hash_dest);
-		unlink(hash_dest);
+	if (pc->hash) {
+		pkg->sum = pkg_checksum_file(src_name,
+		    PKG_HASH_TYPE_SHA256_HEX);
+		pkg_snprintf(hash_name, sizeof(hash_name),
+		    "%S/.hashed/%n-%v%S%z.%S", pc->outdir, pkg, pkg,
+		    PKG_HASH_SEPSTR, pkg, packing_format_to_string(pc->format));
+		snprintf(dir_name, sizeof(dir_name), "%s/.hashed", pc->outdir);
+		(void)mkdirs(dir_name);
+
+		file_name = (char *)&hash_name;
+		hash_rel = strstr(file_name, ".hashed/");
+	}
+	else
+	{
+		file_name = (char *)&dest_name;
+	}
+
+	pkg_debug(1, "Rename the pkg file from: %s to: %s", src_name,
+	    file_name);
+
+	if (rename(src_name, file_name) == -1) {
+		pkg_emit_errno("rename", file_name);
+		unlink(src_name);
 		return (EPKG_FATAL);
 	}
-	if (symlink(hash_dest, filename) == -1) {
-		pkg_emit_errno("symlink", hash_dest);
-		return (EPKG_FATAL);
+
+	if (pc->hash && pc->symlink) {
+		pkg_debug(1, "Symlinking pkg file from: %s to: %s", hash_rel,
+		    src_name);
+		/* Ignore errors here */
+		(void)unlink(src_name);
+		if (symlink(hash_rel, src_name) == -1) {
+			pkg_emit_errno("symlink", src_name);
+			unlink(src_name);
+			return (EPKG_FATAL);
+		}
+		pkg_debug(1, "Renaming symlink from: %s to: %s", src_name,
+		    dest_name);
+		if (rename(src_name, dest_name) == -1) {
+			pkg_emit_errno("rename", src_name);
+			unlink(src_name);
+			return (EPKG_FATAL);
+		}
 	}
+
 	return (EPKG_OK);
 }
 
@@ -328,8 +376,19 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 	}
 	packing_finish(pkg_archive);
 
-	if (hash && ret == EPKG_OK)
-		ret = hash_file(pc, pkg);
+	/*
+	 * The hash parameter to this function is preserved to avoid breaking
+	 * ABI in a minor version.
+	 * This check, and the hash parameter to this function should be
+	 * removed in the next major version.
+	 */
+	if (hash && ret == EPKG_OK) {
+		pkg_create_set_hash(pc, hash);
+		pkg_create_set_hash_symlink(pc, hash);
+	}
+
+	if (ret == EPKG_OK)
+		ret = rename_file(pc, pkg);
 
 	return (ret);
 }
@@ -363,8 +422,20 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 		pkg_emit_error("package creation failed");
 
 	packing_finish(pkg_archive);
-	if (hash && ret == EPKG_OK)
-		ret = hash_file(pc, pkg);
+
+	/*
+	 * The hash parameter to this function is preserved to avoid breaking
+	 * ABI in a minor version.
+	 * This check, and the hash parameter to this function should be
+	 * removed in the next major version.
+	 */
+	if (hash && ret == EPKG_OK) {
+		pkg_create_set_hash(pc, hash);
+		pkg_create_set_hash_symlink(pc, hash); /* Preserve previous behaviour */
+	}
+
+	if (ret == EPKG_OK)
+		ret = rename_file(pc, pkg);
 
 	pkg_free(pkg);
 	return (ret);

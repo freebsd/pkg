@@ -376,6 +376,18 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"PKG_CREATE_HASH",
+		"NO",
+		"Name created packages with the hash of contents",
+	},
+	{
+		PKG_BOOL,
+		"PKG_CREATE_SYMLINK",
+		"NO",
+		"Create symlinks from the hashed filename to the regular filename",
+	},
+	{
+		PKG_BOOL,
 		"PKG_CREATE_VERBOSE",
 		"NO",
 		"Enable verbose mode for 'pkg create'",
