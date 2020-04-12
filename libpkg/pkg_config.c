@@ -382,6 +382,18 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"PKG_REPO_HASH",
+		"NO",
+		"Rename packages with the short hash of their contents",
+	},
+	{
+		PKG_BOOL,
+		"PKG_REPO_SYMLINK",
+		"NO",
+		"Create symlinks from the hashed filename to the regular filename",
+	},
+	{
+		PKG_BOOL,
 		"AUTOCLEAN",
 		"NO",
 		"Always cleanup the cache directory after install/upgrade",

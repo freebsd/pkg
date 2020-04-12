@@ -143,6 +143,8 @@ _pkg_config_opts() {
 		'PKG_ENABLE_PLUGINS[activate plugin support]:boolean:(yes no)' \
 		'PKG_ENV[key/value pair of environment variables]:key/value list' \
 		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
+		'PKG_REPO_HASH[make pkg_repo(8) rename files using a short hash]:boolean:(yes no)' \
+		'PKG_REPO_SYMLINK[make pkg_repo(8) symlink the hashed filename to the regular filename]:boolean:(yes no)' \
 		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
 		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
 		'PLIST_ACCEPT_DIRECTORIES[accept directories listed like plain files in plist]:boolean:(yes no)' \
@@ -459,10 +461,12 @@ _pkg_args() {
 			;;
 		(repo)
 			_arguments -A '-*' -s \
+				'(-h --hash)'{-h,--hash}'[Rename repo files with a short hash appeneded]' \
 				'(-l --list-files)'{-l,--list-files}'[generate list of all files in repo as filesite.txz archive]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-o --output-dir)'{-o+,--output-dir=}'[specify the location of the new repo]:repo location:_files -/' \
 				'(-m --meta-file)'{-m+,--meta-file=}'[use specified file as repository meta file instead of the defaults]:meta file:_files' \
+				'(-s --symlink)'{-s,--symlink}'[Create a symlink between the hashed and regular filename]' \
 				':repository path:_files -/' \
 				':RSA key: _alternative "files\:RSA key\:_files" "commands\:commands\:_cmdstring"'
 			return

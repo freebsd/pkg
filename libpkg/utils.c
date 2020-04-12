@@ -296,6 +296,14 @@ is_dir(const char *path)
 	return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
+int
+is_link(const char *path)
+{
+	struct stat st;
+
+	return (lstat(path, &st) == 0 && S_ISLNK(st.st_mode));
+}
+
 bool
 string_end_with(const char *path, const char *str)
 {

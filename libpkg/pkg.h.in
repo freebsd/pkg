@@ -819,7 +819,7 @@ int pkg_is_installed(struct pkgdb *db, const char *name);
  */
 typedef int(pkg_password_cb)(char *, int, int, void*);
 int pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile);
+	const char *metafile, bool hash, bool hash_symlink);
 int pkg_finish_repo(const char *output_dir, pkg_password_cb *cb, char **argv,
     int argc, bool filelist);
 

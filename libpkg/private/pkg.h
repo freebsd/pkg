@@ -51,6 +51,11 @@
 #define PKG_NUM_SCRIPTS 9
 #define PKG_NUM_LUA_SCRIPTS 5
 
+#define PKG_HASH_SEP '~'
+#define PKG_HASH_SEPSTR "~"
+
+#define PKG_HASH_DIR "Hashed"
+
 /*
  * Some compatibility checks
  */
@@ -496,6 +501,9 @@ struct pkg_repo_meta {
 	time_t eol;
 
 	int version;
+	char *repopath;
+	bool hash;
+	bool hash_symlink;
 };
 
 struct pkg_repo_it_ops {

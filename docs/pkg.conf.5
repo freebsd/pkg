@@ -237,6 +237,22 @@ Directory which
 will load plugins from.
 Default:
 .Pa /usr/local/lib/pkg
+.It Cm PKG_REPO_HASH: boolean
+When set to a
+.Sy true
+value, make
+.Xr pkg-repo 8
+rename packages with the short hash of contents appended to the filename.
+Default:
+.Sy false
+.It Cm PKG_REPO_SYMLINK: boolean
+When set to a
+.Sy true
+value, make
+.Xr pkg-repo 8
+create a symlink between the short hash filename and the regular filename.
+Default:
+.Sy false
 .It Cm PKG_SSH_ARGS: string
 Extra arguments to pass to
 .Xr ssh 1 .

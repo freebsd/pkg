@@ -83,6 +83,87 @@ struct pkg_conflict_bulk {
 };
 
 static int
+hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
+{
+	char tmp_repo[MAXPATHLEN] = { 0 };
+	char tmp_name[MAXPATHLEN] = { 0 };
+	char repo_name[MAXPATHLEN] = { 0 };
+	char hash_name[MAXPATHLEN] = { 0 };
+	char link_name[MAXPATHLEN] = { 0 };
+	char *rel_repo = NULL;
+	char *rel_dir = NULL;
+	char *rel_link = NULL;
+	char *ext = NULL;
+
+	/* Don't rename symlinks */
+	if (is_link(path))
+		return (EPKG_OK);
+
+	ext = strrchr(path, '.');
+
+	strlcpy(tmp_name, path, sizeof(tmp_name));
+	rel_dir = dirname(tmp_name);
+	while (strstr(rel_dir, "/Hashed") != NULL) {
+		rel_dir = dirname(rel_dir);
+	}
+	strlcpy(tmp_name, rel_dir, sizeof(tmp_name));
+	rel_dir = (char *)&tmp_name;
+
+	rel_repo = path;
+	if (strncmp(rel_repo, meta->repopath, strlen(meta->repopath)) == 0) {
+		rel_repo += strlen(meta->repopath);
+		while (rel_repo[0] == '/')
+			rel_repo++;
+	}
+	strlcpy(tmp_repo, rel_repo, sizeof(tmp_repo));
+	rel_repo = dirname(tmp_repo);
+	while (strstr(rel_repo, "/Hashed") != NULL) {
+		rel_repo = dirname(rel_repo);
+	}
+	strlcpy(tmp_repo, rel_repo, sizeof(tmp_repo));
+	rel_repo = (char *)&tmp_repo;
+
+	pkg_snprintf(repo_name, sizeof(repo_name), "%S/%S/%n-%v%S%z%S",
+	    rel_repo, PKG_HASH_DIR, pkg, pkg, PKG_HASH_SEPSTR, pkg, ext);
+	pkg_snprintf(link_name, sizeof(repo_name), "%S/%n-%v%S",
+	    rel_dir, pkg, pkg, ext);
+	pkg_snprintf(hash_name, sizeof(hash_name), "%S/%S/%n-%v%S%z%S",
+	    rel_dir, PKG_HASH_DIR, pkg, pkg, PKG_HASH_SEPSTR, pkg, ext);
+	rel_link = (char *)&hash_name;
+	rel_link += strlen(rel_dir);
+	while (rel_link[0] == '/')
+		rel_link++;
+
+	snprintf(tmp_name, sizeof(tmp_name), "%s/%s", rel_dir, PKG_HASH_DIR);
+	rel_dir = (char *)&tmp_name;
+	if (!is_dir(rel_dir)) {
+		pkg_debug(1, "Making directory: %s", rel_dir);
+		(void)mkdirs(rel_dir);
+	}
+
+	if (strcmp(path, hash_name) != 0) {
+		pkg_debug(1, "Rename the pkg from: %s to: %s", path, hash_name);
+		if (rename(path, hash_name) == -1) {
+			pkg_emit_errno("rename", hash_name);
+			return (EPKG_FATAL);
+		}
+	}
+	if (meta->hash_symlink) {
+		pkg_debug(1, "Symlinking pkg file from: %s to: %s", rel_link,
+		    link_name);
+		(void)unlink(link_name);
+		if (symlink(rel_link, link_name) == -1) {
+			pkg_emit_errno("symlink", link_name);
+			return (EPKG_FATAL);
+		}
+	}
+	free(pkg->repopath);
+	pkg->repopath = xstrdup(repo_name);
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_digest_sort_compare_func(struct digest_list_entry *d1,
 		struct digest_list_entry *d2)
 {
@@ -136,6 +217,8 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	FTSENT *fts_ent;
 	struct pkg_fts_item *fts_cur;
 	char *ext;
+	int linklen = 0;
+	char tmp_name[MAXPATHLEN] = { 0 };
 
 	errno = 0;
 
@@ -164,6 +247,16 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		}
 		/* Follow symlinks. */
 		if (fts_ent->fts_info == FTS_SL) {
+			/* Skip symlinks to hashed packages */
+			if (meta->hash) {
+				linklen = readlink(fts_ent->fts_path,
+				    (char *)&tmp_name, MAXPATHLEN);
+				if (linklen < 0)
+					continue;
+				tmp_name[linklen] = '\0';
+				if (strstr(tmp_name, PKG_HASH_DIR) != NULL)
+					continue;
+			}
 			fts_set(fts, fts_ent, FTS_FOLLOW);
 			/* Restart. Next entry will be the resolved file. */
 			continue;
@@ -284,7 +377,13 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			pkg->sum = pkg_checksum_file(cur->fts_accpath,
 			    PKG_HASH_TYPE_SHA256_HEX);
 			pkg->pkgsize = cur->fts_size;
-			pkg->repopath = xstrdup(cur->pkg_path);
+			if (meta->hash) {
+				ret = hash_file(meta, pkg, cur->fts_accpath);
+				if (ret != EPKG_OK)
+					goto cleanup;
+			} else {
+				pkg->repopath = xstrdup(cur->pkg_path);
+			}
 
 			/*
 			 * TODO: use pkg_checksum for new manifests
@@ -452,7 +551,7 @@ fts_compare(const FTSENT *const *a, const FTSENT *const *b)
 
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile)
+	const char *metafile, bool hash, bool hash_symlink)
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
@@ -512,6 +611,9 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	} else {
 		meta = pkg_repo_meta_default();
 	}
+	meta->repopath = path;
+	meta->hash = hash;
+	meta->hash_symlink = hash_symlink;
 
 	repopath[0] = path;
 	repopath[1] = NULL;
@@ -584,9 +686,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 				goto cleanup;
 			}
 
-			if (pkg_create_repo_worker(fts_start, cur_jobs,
-					mfd, ffd, cur_pipe[1],
-					meta) == EPKG_FATAL) {
+			if (pkg_create_repo_worker(fts_start, cur_jobs, mfd,
+			    ffd, cur_pipe[1], meta) == EPKG_FATAL) {
 				close(cur_pipe[0]);
 				close(cur_pipe[1]);
 				goto cleanup;

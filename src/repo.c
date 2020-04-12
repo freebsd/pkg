@@ -96,17 +96,27 @@ exec_repo(int argc, char **argv)
 	bool	 filelist = false;
 	char	*output_dir = NULL;
 	char	*meta_file = NULL;
+	bool	 hash = false;
+	bool	 hash_symlink = false;
+
+	hash = pkg_object_bool(pkg_config_get("PKG_REPO_HASH"));
+	hash_symlink = pkg_object_bool(pkg_config_get("PKG_REPO_SYMLINK"));
 
 	struct option longopts[] = {
+		{ "hash",	no_argument,		NULL,	'h' },
 		{ "list-files", no_argument,		NULL,	'l' },
+		{ "meta-file",	required_argument,	NULL,	'm' },
 		{ "output-dir", required_argument,	NULL,	'o' },
 		{ "quiet",	no_argument,		NULL,	'q' },
-		{ "meta-file",	required_argument,	NULL,	'm' },
+		{ "symlink",	no_argument,		NULL,	's' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+lo:qm:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+hlo:qm:s", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'h':
+			hash = true;
+			break;
 		case 'l':
 			filelist = true;
 			break;
@@ -118,6 +128,9 @@ exec_repo(int argc, char **argv)
 			break;
 		case 'm':
 			meta_file = optarg;
+			break;
+		case 's':
+			hash_symlink = true;
 			break;
 		default:
 			usage_repo();
@@ -140,7 +153,8 @@ exec_repo(int argc, char **argv)
 	if (output_dir == NULL)
 		output_dir = argv[0];
 
-	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file);
+	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file, hash,
+	    hash_symlink);
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");

@@ -69,6 +69,7 @@ int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, char *,
     int argc, char **argv);
 int is_dir(const char *);
+int is_link(const char *);
 
 int rsa_new(struct rsa_key **, pkg_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
