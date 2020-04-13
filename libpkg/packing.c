@@ -39,7 +39,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
-static const char *packing_set_format(struct archive *a, pkg_formats format);
+static const char *packing_set_format(struct archive *a, pkg_formats format, int clevel);
 
 struct packing {
 	struct archive *aread;
@@ -49,7 +49,7 @@ struct packing {
 };
 
 int
-packing_init(struct packing **pack, const char *path, pkg_formats format,
+packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
     time_t timestamp)
 {
 	char archive_path[MAXPATHLEN];
@@ -80,7 +80,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format,
 
 	(*pack)->awrite = archive_write_new();
 	archive_write_set_format_pax_restricted((*pack)->awrite);
-	ext = packing_set_format((*pack)->awrite, format);
+	ext = packing_set_format((*pack)->awrite, format, clevel);
 	if (ext == NULL) {
 		archive_read_close((*pack)->aread);
 		archive_read_free((*pack)->aread);
@@ -318,42 +318,101 @@ packing_finish(struct packing *pack)
 }
 
 static const char *
-packing_set_format(struct archive *a, pkg_formats format)
+packing_set_format(struct archive *a, pkg_formats format, int clevel)
 {
 	const char *notsupp_fmt = "%s is not supported, trying %s";
+
+	pkg_formats elected_format;
 
 	switch (format) {
 	case TZS:
 #ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
-			if (archive_write_set_filter_option(a, NULL, "compression-level", "20") != ARCHIVE_OK) {
-				pkg_emit_error("bad compression-level");
-			}
-			return ("tzst");
+			elected_format = TZS;
+			goto out;
 		}
 #endif
 		pkg_emit_error(notsupp_fmt, "zstd", "xz");
 		/* FALLTHRU */
 	case TXZ:
-		if (archive_write_add_filter_xz(a) == ARCHIVE_OK)
-			return ("txz");
+		if (archive_write_add_filter_xz(a) == ARCHIVE_OK) {
+			elected_format = TXZ;
+			goto out;
+		}
 		pkg_emit_error(notsupp_fmt, "xz", "bzip2");
 		/* FALLTHRU */
 	case TBZ:
-		if (archive_write_add_filter_bzip2(a) == ARCHIVE_OK)
-			return ("tbz");
+		if (archive_write_add_filter_bzip2(a) == ARCHIVE_OK) {
+			elected_format = TBZ;
+			goto out;
+		}
 		pkg_emit_error(notsupp_fmt, "bzip2", "gzip");
 		/* FALLTHRU */
 	case TGZ:
-		if (archive_write_add_filter_gzip(a) == ARCHIVE_OK)
-			return ("tgz");
+		if (archive_write_add_filter_gzip(a) == ARCHIVE_OK) {
+			elected_format = TGZ;
+			goto out;
+		}
 		pkg_emit_error(notsupp_fmt, "gzip", "plain tar");
 		/* FALLTHRU */
 	case TAR:
 		archive_write_add_filter_none(a);
-		return ("tar");
+		elected_format = TAR;
+		break;
+	default:
+		return (NULL);
 	}
-	return (NULL);
+
+out:
+	/*
+	 * N.B., we only want to whine about this if the user actually selected
+	 * tar and specified a compress level.  If we had to fallback to tar,
+	 * that's not the user's fault.
+	 */
+	if (format == TAR && clevel != 0)
+		pkg_emit_error("Plain tar and a compression level does not make sense");
+
+	if (elected_format != TAR && clevel != 0) {
+		char buf[16];
+
+		/*
+		 * A bit of a kludge but avoids dragging in headers for all of
+		 * these libraries.
+		 */
+		if (clevel == INT_MIN) {
+			switch (elected_format) {
+			case TZS:
+				clevel = -5;
+				break;
+			case TXZ:
+			case TBZ:
+			case TGZ:
+				clevel = 1;
+				break;
+			default:
+				__unreachable();
+			}
+		} else if (clevel == INT_MAX) {
+			switch (elected_format) {
+			case TZS:
+				clevel = 20;
+				break;
+			case TXZ:
+			case TBZ:
+			case TGZ:
+				clevel = 9;
+				break;
+			default:
+				__unreachable();
+			}
+		}
+
+		snprintf(buf, sizeof(buf), "%d", clevel);
+		if (archive_write_set_filter_option(a, NULL, "compression-level", buf) != ARCHIVE_OK)
+			pkg_emit_error("bad compression-level %d", clevel);
+	}
+
+	return (packing_format_to_string(elected_format));
 }
 
 pkg_formats
