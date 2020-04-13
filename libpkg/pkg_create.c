@@ -190,7 +190,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 		return (NULL);
 	}
 
-	if (packing_init(&pkg_archive, pkg_path, pc->format, pc->timestamp) != EPKG_OK)
+	if (packing_init(&pkg_archive, pkg_path, pc->format, pc->compression_level, pc->timestamp) != EPKG_OK)
 		pkg_archive = NULL;
 
 	free(pkg_path);
@@ -257,6 +257,12 @@ pkg_create_set_format(struct pkg_create *pc, const char *format)
 	else
 		return (false);
 	return (true);
+}
+
+void
+pkg_create_set_compression_level(struct pkg_create *pc, int clevel)
+{
+	pc->compression_level = clevel;
 }
 
 void

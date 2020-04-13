@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd February 26, 2020
+.Dd April 13, 2020
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -26,6 +26,7 @@
 .Nm
 .Op Fl qv
 .Op Fl f Ar format
+.Op Fl l Ar level
 .Op Fl o Ar outdir
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
@@ -34,6 +35,7 @@
 .Nm
 .Op Fl qv
 .Op Fl f Ar format
+.Op Fl l Ar level
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
@@ -41,6 +43,7 @@
 .Nm
 .Op Fl gnqvx
 .Op Fl f Ar format
+.Op Fl l Ar level
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
@@ -48,6 +51,7 @@
 .Nm
 .Op Fl qv
 .Op Fl f Ar format
+.Op Fl l Ar level
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
@@ -59,6 +63,7 @@
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
+.Op Cm --level Ar level
 .Op Cm --out-dir Ar outdir
 .Op Cm --plist Ar plist
 .Op Cm --root-dir Ar rootdir
@@ -68,6 +73,7 @@
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
+.Op Cm --level Ar level
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Cm --manifest Ar manifest
@@ -76,6 +82,7 @@
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
+.Op Cm --level Ar level
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Ar pkg-name ...
@@ -84,6 +91,7 @@
 .Op Cm --quiet
 .Op Cm --verbose
 .Op Cm --format Ar format
+.Op Cm --level Ar level
 .Op Cm --out-dir Ar outdir
 .Op Cm --root-dir Ar rootdir
 .Cm --all
@@ -159,6 +167,23 @@ which are currently the only supported formats.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
+.It Fl l Ar level , Cm --level Ar level
+Set the compression
+.Ar level
+for created packages.
+It can be any valid numeric compression level you might specify to the
+underlying compression
+.Ar format .
+Additionally,
+.Ar level
+may be one of the special words
+.Dv Dq fast
+or
+.Dv Dq best .
+If
+.Ar level
+is one of these special words, the fastest or slowest compression level,
+respectively, for the specified compression format, is used.
 .It Fl m Ar metadatadir , Cm --metadata Ar metadatadir
 Specify the directory containing the package manifest,
 .Pa +MANIFEST

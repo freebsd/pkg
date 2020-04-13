@@ -31,6 +31,7 @@ global:
 	pkg_create_new;
 	pkg_create_repo;
 	pkg_create_set_format;
+	pkg_create_set_compression_level;
 	pkg_create_set_output_dir;
 	pkg_create_set_rootdir;
 	pkg_create_set_timestamp;

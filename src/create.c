@@ -46,6 +46,7 @@
 #include <stdlib.h>
 #include <pkg.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <utlist.h>
 #include <sysexits.h>
@@ -62,14 +63,14 @@ struct pkg_entry *pkg_head = NULL;
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-Ohqv] [-f format] [-o outdir] "
-		"[-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-Ohqv] [-f format] [-o outdir] "
-		"[-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ohgqvx] [-f format] [-o outdir] "
-		"[-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-Ohqv] [-f format] [-o outdir] "
-		"[-r rootdir] -a\n\n");
+	fprintf(stderr, "Usage: pkg create [-Ohqv] [-f format] [-l level] "
+		"[-o outdir] [-p plist] [-r rootdir] -m metadatadir\n");
+	fprintf(stderr, "Usage: pkg create [-Ohqv] [-f format] [-l level] "
+		"[-o outdir] [-r rootdir] -M manifest\n");
+	fprintf(stderr, "       pkg create [-Ohgqvx] [-f format] [-l level] "
+		"[-o outdir] [-r rootdir] pkg-name ...\n");
+	fprintf(stderr, "       pkg create [-Ohqv] [-f format] [-l level] "
+		"[-o outdir] [-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
 
@@ -173,9 +174,12 @@ exec_create(int argc, char **argv)
 	char		*plist = NULL;
 	char	*endptr;
 	int		 ch;
+	int		 level;
 	bool		 hash = false;
 	time_t		 ts = (time_t)-1;
 
+	/* Sentinel values: INT_MIN (fast), 0 (default), INT_MAX (best). */
+	level = 0;
 
 	/* POLA: pkg create is quiet by default, unless
 	 * PKG_CREATE_VERBOSE is set in pkg.conf.  This is for
@@ -188,6 +192,7 @@ exec_create(int argc, char **argv)
 		{ "format",	required_argument,	NULL,	'f' },
 		{ "glob",	no_argument,		NULL,	'g' },
 		{ "hash",	no_argument,		NULL,	'h' },
+		{ "level",	required_argument,	NULL,	'l' },
 		{ "regex",	no_argument,		NULL,	'x' },
 		{ "root-dir",	required_argument,	NULL,	'r' },
 		{ "metadata",	required_argument,	NULL,	'm' },
@@ -201,7 +206,7 @@ exec_create(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aghxf:r:m:M:o:p:qvt:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aghxf:l:r:m:M:o:p:qvt:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -215,6 +220,23 @@ exec_create(int argc, char **argv)
 		case 'h':
 			hash = true;
 			break;
+		case 'l':
+			{
+			const char *errstr;
+
+			level = strtonum(optarg, -200, 200, &errstr);
+			if (errstr == NULL)
+				break;
+			if (strcasecmp(optarg, "best") == 0) {
+				level = INT_MAX;
+				break;
+			} else if (strcasecmp(optarg, "fast") == 0) {
+				level = INT_MIN;
+				break;
+			}
+			warnx("Invalid compression level %s", optarg);
+			return (EX_USAGE);
+			}
 		case 'm':
 			metadatadir = optarg;
 			break;
@@ -278,6 +300,7 @@ exec_create(int argc, char **argv)
 		if (!pkg_create_set_format(pc, format))
 			warnx("unknown format %s, using the default", format);
 	}
+	pkg_create_set_compression_level(pc, level);
 
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
