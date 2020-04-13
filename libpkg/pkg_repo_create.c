@@ -825,7 +825,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	sig = NULL;
 	pub = NULL;
 
-	if (packing_init(&pack, archive, meta->packing_format, (time_t)-1) != EPKG_OK)
+	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (rsa != NULL) {

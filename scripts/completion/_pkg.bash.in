@@ -129,7 +129,7 @@ _pkgng_create () {
     local cur prev opts lopts
     COMPREPLY=()
 
-    opts=('-r' '-m' '-f' '-o' '-g' '-x' '-X' '-a')
+    opts=('-r' '-m' '-f' '-l' '-o' '-g' '-x' '-X' '-a')
     lopts=()
     small_info="Creates software package distributions"
     large_info=""
