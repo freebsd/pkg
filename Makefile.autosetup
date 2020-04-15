@@ -19,7 +19,10 @@ check: all
 	if [ "$(HTML)" != "" ]; then \
 		args="-r $(top_builddir)/res.db" ; \
 	fi ; \
-	kyua --config=none test $$args \
+	parallel=$$(getconf NPROCESSORS_ONLN 2>/dev/null || getconf _NPROCESSORS_ONLN ) ; \
+	kyua --config=none \
+		--variable parallelism=$${parallel} \
+		test $$args \
 		--kyuafile='$(top_builddir)/Kyuafile' \
 		--build-root='$(top_builddir)' || FAILED=1 ; \
 	if [ "$(HTML)" != "" ]; then \
