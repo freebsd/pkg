@@ -1,5 +1,5 @@
 freebsd_task:
-        install_script: ASSUME_ALWAYS_YES=yes pkg bootstrap -f ; pkg install -y kyua
+        install_script: ASSUME_ALWAYS_YES=yes pkg bootstrap -f ; pkg install -y kyua pkgconf
         script:
                 - ./configure
                 - make -j4 || make V=1
