@@ -180,6 +180,7 @@ chflags_body()
 {
 	test $(id -u) = 0 || atf_skip "Can only be run as root"
 
+	unset INSTALL_AS_USER
 	test -x /bin/chflags || atf_skip "Requires chflags"
 	# use nodump as it is the only one supported as user, by zfs and by
 	# libarchive
@@ -213,6 +214,7 @@ chflags_schg_body()
 	test -x /bin/chflags || atf_skip "Requires chflags"
 	test $(id -u) = 0 || atf_skip "Can only be run as root"
 
+	unset INSTALL_AS_USER
 	touch ${TMPDIR}/a
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	echo "@(root,wheel,,schg) ${TMPDIR}/a" > test.plist
