@@ -488,6 +488,8 @@ pkg_repo_binary_init(struct pkg_repo *repo)
 	retcode = sql_exec(sqlite, "PRAGMA foreign_keys=on");
 	if (retcode != EPKG_OK)
 		return (retcode);
+	sql_exec(sqlite, "PRAGMA mmap_size=268435456;");
+
 
 	pkgdb_sqlcmd_init(sqlite, NULL, NULL);
 

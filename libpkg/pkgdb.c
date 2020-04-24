@@ -1191,6 +1191,7 @@ retry:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
+		sql_exec(db->sqlite, "PRAGMA mmap_size=268435456;");
 	}
 
 	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
