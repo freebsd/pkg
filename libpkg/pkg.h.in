@@ -504,7 +504,11 @@ typedef enum {
 	/**
 	 * Can not delete the package because it is vital, i.e. a kernel
 	 */
-	EPKG_VITAL
+	EPKG_VITAL,
+	/**
+	 * the package already exist
+	 */
+	EPKG_EXIST
 } pkg_error_t;
 
 /**
@@ -1699,6 +1703,7 @@ struct pkg_create *pkg_create_new(void);
 void pkg_create_free(struct pkg_create *);
 bool pkg_create_set_format(struct pkg_create *, const char *);
 void pkg_create_set_compression_level(struct pkg_create *, int);
+void pkg_create_set_overwrite(struct pkg_create *, bool);
 void pkg_create_set_rootdir(struct pkg_create *, const char *);
 void pkg_create_set_output_dir(struct pkg_create *, const char *);
 void pkg_create_set_timestamp(struct pkg_create *, time_t);

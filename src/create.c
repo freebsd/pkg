@@ -77,7 +77,7 @@ usage_create(void)
 static int
 pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 {
-	int i, ret = EPKG_OK, retcode = EPKG_OK;
+	int i, ret = EPKG_OK, retcode = EXIT_SUCCESS;
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
@@ -123,20 +123,24 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 		if (!foundone) {
 			warnx("No installed package matching \"%s\" found\n",
 			    argv[i]);
-			retcode++;
+			retcode = EXIT_FAILURE;
 		}
 
 		pkgdb_it_free(it);
 		if (ret != EPKG_END)
-			retcode++;
+			retcode = EXIT_FAILURE;
 	}
 
 	DL_FOREACH_SAFE(pkg_head, e, etmp) {
 		DL_DELETE(pkg_head, e);
 		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
-		if (pkg_create_i(pc, e->pkg, false) !=
-		    EPKG_OK)
-			retcode++;
+		ret = pkg_create_i(pc, e->pkg, false);
+		if (ret == EPKG_EXIST) {
+			pkg_printf("%s-%v already packaged, skipping...\n",
+			  e->pkg, e->pkg);
+		}
+		if (ret != EPKG_OK && ret != EPKG_EXIST)
+			retcode = EXIT_FAILURE;
 		pkg_free(e->pkg);
 		free(e);
 	}
@@ -175,7 +179,9 @@ exec_create(int argc, char **argv)
 	char	*endptr;
 	int		 ch;
 	int		 level;
+	int		 ret;
 	bool		 hash = false;
+	bool		 overwrite = true;
 	time_t		 ts = (time_t)-1;
 
 	/* Sentinel values: INT_MIN (fast), 0 (default), INT_MAX (best). */
@@ -246,6 +252,9 @@ exec_create(int argc, char **argv)
 		case 'o':
 			outdir = optarg;
 			break;
+		case 'n':
+			overwrite = false;
+			break;
 		case 'p':
 			plist = optarg;
 			break;
@@ -301,7 +310,7 @@ exec_create(int argc, char **argv)
 			warnx("unknown format %s, using the default", format);
 	}
 	pkg_create_set_compression_level(pc, level);
-
+	pkg_create_set_overwrite(pc, overwrite);
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
 	if (ts != (time_t)-1)
@@ -309,7 +318,10 @@ exec_create(int argc, char **argv)
 
 	if (metadatadir == NULL && manifest == NULL)
 		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	return (pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
-	    hash) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+	ret = pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
+	    hash);
+	if (ret == EPKG_EXIST || ret == EPKG_OK)
+		return (EXIT_SUCCESS);
+	return (EXIT_FAILURE);
 }
 

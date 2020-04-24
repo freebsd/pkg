@@ -190,8 +190,10 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 		return (NULL);
 	}
 
-	if (packing_init(&pkg_archive, pkg_path, pc->format, pc->compression_level, pc->timestamp) != EPKG_OK)
+	if (packing_init(&pkg_archive, pkg_path, pc->format,
+	    pc->compression_level, pc->timestamp, pc->overwrite) != EPKG_OK) {
 		pkg_archive = NULL;
+	}
 
 	free(pkg_path);
 
@@ -231,6 +233,7 @@ pkg_create_new(void)
 	pc = xcalloc(1, sizeof(*pc));
 	pc->format = TXZ;
 	pc->timestamp = (time_t) -1;
+	pc->overwrite = true;
 
 	return (pc);
 }
@@ -283,6 +286,12 @@ pkg_create_set_timestamp(struct pkg_create *pc, time_t timestamp)
 	pc->timestamp = timestamp;
 }
 
+void
+pkg_create_set_overwrite(struct pkg_create *pc, bool overwrite)
+{
+	pc->overwrite = overwrite;
+}
+
 static int
 hash_file(struct pkg_create *pc, struct pkg *pkg)
 {
@@ -325,6 +334,8 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 
 	pkg_archive = pkg_create_archive(pkg, pc, required_flags);
 	if (pkg_archive == NULL) {
+		if (errno == EEXIST)
+			return (EPKG_EXIST);
 		pkg_emit_error("unable to create archive");
 		return (EPKG_FATAL);
 	}
@@ -361,6 +372,12 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 
 	pkg_archive = pkg_create_archive(pkg, pc, 0);
 	if (pkg_archive == NULL) {
+		if (errno == EEXIST) {
+			pkg_emit_notice("%s-%s already packaged, skipping...\n",
+			    pkg->name, pkg->version);
+			pkg_free(pkg);
+			return (EPKG_EXIST);
+		}
 		pkg_free(pkg);
 		return (EPKG_FATAL);
 	}

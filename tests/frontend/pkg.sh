@@ -70,7 +70,7 @@ EOF
 	atf_check \
 	    -o empty \
 	    -e inline:"${PROGNAME}: Bad format in manifest for key: files\n" \
-	    -s exit:70 \
+	    -s exit:1 \
 	    pkg create -q -m testpkg/.metadir -r testpkg
 }
 

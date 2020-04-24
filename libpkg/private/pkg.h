@@ -333,6 +333,7 @@ struct pkg {
 };
 
 struct pkg_create {
+	bool overwrite;
 	int compression_level;
 	pkg_formats format;
 	time_t timestamp;
@@ -737,7 +738,7 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 
 struct packing;
 
-int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp);
+int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp, bool overwrite);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
      const char *newpath, const char *uname, const char *gname, mode_t perm,
      u_long fflags);
