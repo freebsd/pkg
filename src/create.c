@@ -63,13 +63,13 @@ struct pkg_entry *pkg_head = NULL;
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-Ohqv] [-f format] [-l level] "
+	fprintf(stderr, "Usage: pkg create [-Ohnqv] [-f format] [-l level] "
 		"[-o outdir] [-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-Ohqv] [-f format] [-l level] "
+	fprintf(stderr, "Usage: pkg create [-Ohnqv] [-f format] [-l level] "
 		"[-o outdir] [-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ohgqvx] [-f format] [-l level] "
+	fprintf(stderr, "       pkg create [-Ohgnqvx] [-f format] [-l level] "
 		"[-o outdir] [-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-Ohqv] [-f format] [-l level] "
+	fprintf(stderr, "       pkg create [-Ohnqv] [-f format] [-l level] "
 		"[-o outdir] [-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -206,7 +206,7 @@ exec_create(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aghxf:l:r:m:M:o:p:qvt:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aghxf:l:r:m:M:no:p:qvt:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
