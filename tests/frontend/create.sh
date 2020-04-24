@@ -18,6 +18,7 @@ tests_init \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
 	create_with_hardlink \
+	create_no_clobber
 	time
 
 genmanifest() {
@@ -238,7 +239,7 @@ create_from_plist_bad_fflags_body() {
 	atf_check \
 		-o empty \
 		-e inline:"${PROGNAME}: Malformed keyword '', wrong fflags\n" \
-		-s exit:70 \
+		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
@@ -248,7 +249,7 @@ create_from_plist_with_keyword_arguments_body() {
 	atf_check \
 		-o empty \
 		-e inline:"${PROGNAME}: cannot load keyword from ./testkeyword.ucl: No such file or directory\n${PROGNAME}: unknown keyword testkeyword: @testkeyword\n" \
-		-s exit:70 \
+		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 cat << EOF >> testkeyword.ucl
@@ -261,7 +262,7 @@ EOF
 	atf_check \
 		-o empty \
 		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n" \
-		-s exit:70 \
+		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 cat << EOF > testkeyword.ucl
@@ -276,7 +277,7 @@ EOF
 	atf_check \
 		-o empty \
 		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n" \
-		-s exit:70 \
+		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 cat << EOF > testkeyword.ucl
@@ -493,4 +494,15 @@ EOF
 	atf_check \
 		-o match:"${pattern}" \
 		ls -l ${TMPDIR}/target/${TMPDIR}/a
+}
+
+create_no_clobber_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+
+	touch test-1.txz
+	before=$(ls -l test-1.txz)
+	atf_check pkg create -nM test.ucl
+	after=$(ls -l test-1.txz)
+	[ "$before" = "$after" ] || atf_fail "Package was recreated"
 }

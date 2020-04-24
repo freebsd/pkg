@@ -34,6 +34,7 @@
 #include <string.h>
 #include <pwd.h>
 #include <grp.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -50,7 +51,7 @@ struct packing {
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
-    time_t timestamp)
+	time_t timestamp, bool overwrite)
 {
 	char archive_path[MAXPATHLEN];
 	const char *ext;
@@ -86,12 +87,23 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		archive_read_free((*pack)->aread);
 		archive_write_close((*pack)->awrite);
 		archive_write_free((*pack)->awrite);
+		free(*pack);
 		*pack = NULL;
-		return EPKG_FATAL; /* error set by _set_format() */
+		return (EPKG_FATAL); /* error set by _set_format() */
 	}
 	snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
 	    ext);
 
+	if (!overwrite && access(archive_path, F_OK) == 0) {
+		archive_read_close((*pack)->aread);
+		archive_read_free((*pack)->aread);
+		archive_write_close((*pack)->awrite);
+		archive_write_free((*pack)->awrite);
+		free(*pack);
+		*pack = NULL;
+		errno = EEXIST;
+		return (EPKG_EXIST);
+	}
 	pkg_debug(1, "Packing to file '%s'", archive_path);
 	if (archive_write_open_filename(
 	    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
