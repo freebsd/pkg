@@ -2749,16 +2749,21 @@ pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
 void
 pkgdb_cmd(int argc, char **argv)
 {
-	sqlite3_initialize();
 	sqlite3_shell(argc, argv);
 }
 
 void
-pkgshell_open(const char **reponame)
+pkgdb_init_proc(void)
+{
+	sqlite3_initialize();
+	sqlite3_auto_extension((void(*)(void))pkgdb_sqlcmd_init);
+}
+
+
+void
+pkgshell_opendb(const char **reponame)
 {
 	char		 localpath[MAXPATHLEN];
-
-	sqlite3_auto_extension((void(*)(void))pkgdb_sqlcmd_init);
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", ctx.dbdir);
 	*reponame = xstrdup(localpath);
