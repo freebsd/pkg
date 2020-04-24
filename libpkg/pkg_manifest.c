@@ -735,7 +735,9 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *origin = NULL;
 	const char *version = NULL;
 	const char *key, *okey;
+	bool noversion = false;
 
+	noversion = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
 	okey = ucl_object_key(obj);
 	if (okey == NULL)
 		return (EPKG_FATAL);
@@ -749,7 +751,8 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			if (cur->type != UCL_STRING) {
 				/* accept version to be an integer */
 				if (cur->type == UCL_INT && strcasecmp(key, "version") == 0) {
-					version = ucl_object_tostring_forced(cur);
+					if (!noversion)
+						version = ucl_object_tostring_forced(cur);
 					continue;
 				}
 
@@ -759,7 +762,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			}
 			if (strcasecmp(key, "origin") == 0)
 				origin = ucl_object_tostring(cur);
-			if (strcasecmp(key, "version") == 0)
+			if (strcasecmp(key, "version") == 0 && !noversion)
 				version = ucl_object_tostring(cur);
 		}
 		if (origin != NULL)
