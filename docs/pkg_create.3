@@ -1,0 +1,150 @@
+.Dd April 24, 2020
+.Dt PKG_CREATE 3
+.Os
+.Sh NAME
+.Nm pkg_create , pkg_create_i ,
+.Nm pkg_create_new , pkg_create_free ,
+.Nm pkg_create_set_format , pkg_create_set_overwrite ,
+.Nm pkg_create_set_compression_level , pkg_set_rootdir , pkg_set_output_dir ,
+.Nm pkg_create_set_timestamp
+.Nd create packages
+.Sh LIBRARY
+.Lb libpkg
+.Sh SYNOPSIS
+.In pkg.h
+.Ft struct pkg_create *
+.Fn pkg_create_new
+.Ft void
+.Fn pkg_create_free "struct pkg_create *"
+.Ft bool
+.Fn pkg_create_set_format "struct pkg_create *" "const char *"
+.Ft void
+.Fn pkg_create_set_compression_level "struct pkg_create *" "int"
+.Ft void
+.Fn pkg_create_set_overwrite "struct pkg_create *" "bool"
+.Ft void
+.Fn pkg_create_set_rootdir "struct pkg_create *" "const char *"
+.Ft void
+.Fn pkg_create_set_output_dir "struct pkg_create *" "const char *"
+.Ft void
+.Fn pkg_create_set_timestamp "struct pkg_create *" "time_t"
+.Ft int
+.Fn pkg_create "struct pkg_create *" "const char *" const char *" "bool"
+.Ft int
+.Fn pkg_create_i "struct pkg_create *" "struct pkg *" "bool"
+.Sh DESCRIPTION
+.Fn pkg_create_new
+Allocates a new
+.Ft struct pkg_create *
+which should be freed by the caller using
+.Fn pkg_create_free .
+.Pp
+.Fn pkg_create_set_format
+will define the compresion format to use.
+By default
+.Qq txz
+except if specified otherwise in
+.Xr pkg.conf 5 .
+It returns
+.Va false
+if the compression format is unknown and fallback the the default format.
+.Pp
+.Fn pkg_create_set_compression_level
+take a
+.Ft int
+arguments which represents the expect compression level.
+3 special values are accepted:
+.Bl -tag -width indentation
+.It Va INT_MIN
+Set the fastest compression format value
+.It Va 0
+Set the default (as specified in libarchive)
+.It Va INT_MAX
+Set the best compression ratio
+.El
+.Pp
+.Fn pkg_create_set_overwrite
+Accept Va a boolean to define the default behaviour when creating a package and
+a local file already exists.
+The default behaviour is to overwrite.
+.Pp
+.Fn pkg_create_set_rootdir
+tells the program where to find the root used for packaging (also called
+sometime staging area).
+If none is provided pkg will consider
+.Sq Va / .
+.Pp
+.Fn pkg_create_set_output_dir
+Tells the program where to create the new packages.
+By default it will consider the current directory of the running program.
+.Pp
+.Fn pkg_create_set_timestamp
+Define the timestamp to use ad creation and modification time for the files to
+be packaged.
+By default it will use the timestamp of the files on the filesystem.
+.Pp
+.Fn pkg_create
+create a package from scratch using the
+.Va metadata
+and
+.Va plist
+as input.
+The
+.Va metadata
+can be either directly a UCL manifest, or a directory containing multiple files:
+.Bl -tag -width +MANIFEST
+.It +MANIFEST
+The UCL manifest
+.It +DESC
+A textual description (optional)
+.It shell scripts (optional):
+.Bl -tag -width pkg-post-deinstall
+.It +INSTALL
+Shell script that will be run during both in post and pre install (DEPRECATED)
+.It +PRE_INSTALL
+Shell script that will be run during pre install phase
+.It +POST_INSTALL
+Shell script that will be run during post install phase
+.It +DEINSTALL
+Shell script that will be run during both in post and pre deinstall (DEPRECATED)
+.It +PRE_DEINSTALL
+Shell script that will be run during pre deinstall phase
+.It +POST_DEINSTALL
+Shell script that will be run during post deinstall phase
+.It pkg-install
+Shell script that will be run during both in post and pre install (DEPRECATED)
+.It pkg-pre-install
+Shell script that will be run during pre install phase
+.It pkg-post-install
+Shell script that will be run during post install phase
+.It pkg-deinstall
+Shell script that will be run during both in post and pre deinstall (DEPRECATED)
+.It pkg-pre-deinstall
+Shell script that will be run during pre deinstall phase
+.It pkg-post-deinstall
+Shell script that will be run during post deinstall phase
+.El
+.It lua scripts (optional):
+.Bl -tag -width pkg-post-deinstall.lua
+.It pkg-pre-install.lua
+Lua script that will be run during pre install phase
+.It pkg-post-install.lua
+Lua script that will be run during post install phase
+.It pkg-pre-deinstall.lua
+Lua script that will be run during pre deinstall phase
+.It pkg-post-deinstall.lua
+Lua script that will be run during post deinstall phase
+.El
+.El
+.Pp
+.Fn pkg_create_i
+create a package for the provided installed
+.Ar pkg .
+If
+.Ar hash
+is set to
+.Va true
+then the file name will in the form:
+<pkgname>-<pkgversion>-<shorthash>.<extention>
+instead of
+<pkgname>-<pkgversion>.<extension>.
