@@ -220,7 +220,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	bool options_match;
 	char *formula_sql, *clause;
 	const char	 sql[] = ""
-		"SELECT d.name, d.origin, d.version, 0"
+		"SELECT d.name, d.origin, p.version, 0"
 		"  FROM deps AS d"
 		"    LEFT JOIN packages AS p ON"
 		"    (p.origin = d.origin AND p.name = d.name)"
