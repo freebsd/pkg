@@ -141,7 +141,8 @@ cc-with { -includes sys/stat.h } {
 }
 
 # check for sqlite
-cc-check-functions gmtime_r isnan localtime_r strchrnul strerror_r
+cc-check-functions gmtime_r isnan localtime_r strchrnul strerror_r fdatasync \
+	fchown lstat readlink
 cc-check-includes stdint.h inttypes.h
 
 # check for pkg itself

@@ -10,7 +10,8 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/external/linenoise \
 		-Wno-unused-function \
 		-Wno-strict-aliasing \
 		-Wno-unused-parameter \
-		-DHAVE_USLEEP=1 \
+		-DSQLITE_OS_UNIX=1 \
+		-DDHAVE_MALLOC_USABLE_SIZE=1 \
 		-DSQLITE_OMIT_AUTOVACUUM \
 		-DSQLITE_OMIT_BLOB_LITERAL \
 		-DSQLITE_OMIT_DECLTYPE \
