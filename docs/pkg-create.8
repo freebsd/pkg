@@ -24,7 +24,7 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl qv
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -33,7 +33,7 @@
 .Op Fl t Ar timestamp
 .Fl m Ar metadatadir
 .Nm
-.Op Fl qv
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -49,7 +49,7 @@
 .Op Fl t Ar timestamp
 .Ar pkg-name ...
 .Nm
-.Op Fl qv
+.Op Fl nqv
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -221,6 +221,8 @@ or
 options.
 .It Fl t Ar timestamp , Cm --timestamp
 Set the timestamp of the files within the archive.
+.It Fl n , Cm --no-clobber
+Do not overwrite already existing packages.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
 Set
 .Ar outdir
