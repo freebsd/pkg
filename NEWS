@@ -9,6 +9,7 @@ Changes from 1.13.99.7 to 1.14.99.1
 - Document pkg_create(3)
 - Prepare the land for futur proof remote dependency handling
 - Update usage of pkg set -A and pkg set -v
+- Add pkg create -l (compression level)
 
 Changes from 1.13.99.6 to 1.13.99.7
 - Fix a regression with sometimes makes some keywords being ignored
