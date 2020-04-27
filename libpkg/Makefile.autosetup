@@ -42,7 +42,8 @@ SRCS=	backup.c \
 	pkg_repo_create.c \
 	pkg_version.c \
 	rcscripts.c \
-	flags.c
+	flags.c \
+	fetch_ssh.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/blake2 \
