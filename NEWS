@@ -1,4 +1,16 @@
-Chanegs from 1.13.99.6 to 1.13.99.7
+Changes from 1.13.99.7 to 1.14.99.1
+- parallelize the run of the tests
+- Fix VERSION_MINOR expansion
+- Fix chflags tests
+- Bring back pkg create -n but in a consistent way
+- Improve build of sqlite
+- Use mmap in sqlite
+- Update sqlite to latest version
+- Document pkg_create(3)
+- Prepare the land for futur proof remote dependency handling
+- Update usage of pkg set -A and pkg set -v
+
+Changes from 1.13.99.6 to 1.13.99.7
 - Fix a regression with sometimes makes some keywords being ignored
   (aka scripts not appended to the list of scripts)
 - Fix ABI on DragonFly
