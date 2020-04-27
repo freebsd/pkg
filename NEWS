@@ -1,6 +1,6 @@
 Changes from 1.14.2 to 1.14.3
 - Add pkg create -l to set compression level
-- Parallelize the fun of kyua
+- Parallelize the run of kyua
 - Fix VERSION_MINOR UCL expansion
 - Bring back pkg create -n
 - Document pkg_create(3)
