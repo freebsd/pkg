@@ -48,6 +48,17 @@
 #include "private/utils.h"
 #include "private/fetch_ssh.h"
 
+static struct fetcher {
+	const char *scheme;
+	int (*open)(struct pkg_repo *, struct url *, off_t *);
+} fetchers [] = {
+	{
+		"ssh",
+		ssh_open,
+	},
+};
+
+
 static void
 gethttpmirrors(struct pkg_repo *repo, const char *url, bool withdoc) {
 	FILE *f;
@@ -194,6 +205,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 left = 0;
 	bool		 pkg_url_scheme = false;
 	UT_string	*fetchOpts = NULL;
+	struct fetcher	*fetcher = NULL;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
@@ -266,10 +278,16 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (t != NULL)
 		u->ims_time = *t;
 
-	if (repo != NULL && strcmp(u->scheme, "ssh") == 0) {
-		if ((retcode = ssh_open(repo, u, &sz)) != EPKG_OK)
-			goto cleanup;
-		remote = repo->ssh;
+	if (repo != NULL) {
+		for (int i = 0; i < nitems(fetchers); i++) {
+			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
+				fetcher = &fetchers[i];
+				if ((retcode = fetcher->open(repo, u, &sz)) != EPKG_OK)
+					goto cleanup;
+				remote = repo->ssh;
+				break;
+			}
+		}
 	}
 
 	while (remote == NULL) {
