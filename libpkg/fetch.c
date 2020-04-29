@@ -50,7 +50,7 @@
 static void
 gethttpmirrors(struct pkg_repo *repo, const char *url) {
 	FILE *f;
-	char *line = NULL;
+	char *line = NULL, *walk;
 	size_t linecap = 0;
 	ssize_t linelen;
 	struct http_mirror *m;
@@ -61,24 +61,27 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		if (strncmp(line, "URL:", 4) == 0) {
+			walk = line;
 			/* trim '\n' */
-			if (line[linelen - 1] == '\n')
-				line[linelen - 1 ] = '\0';
+			if (walk[linelen - 1] == '\n')
+				walk[linelen - 1 ] = '\0';
 
-			line += 4;
-			while (isspace(*line)) {
-				line++;
+			walk += 4;
+			while (isspace(*walk)) {
+				walk++;
 			}
-			if (*line == '\0')
+			if (*walk == '\0')
 				continue;
 
-			if ((u = fetchParseURL(line)) != NULL) {
+			if ((u = fetchParseURL(walk)) != NULL) {
 				m = xmalloc(sizeof(struct http_mirror));
 				m->url = u;
 				LL_APPEND(repo->http, m);
 			}
 		}
 	}
+
+	free(line);
 	fclose(f);
 	return;
 }
@@ -578,6 +581,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				    "%s://%s:%d", u->scheme, u->host, u->port);
 				if (repo->http == NULL)
 					gethttpmirrors(repo, zone);
+				if (repo->http == NULL)
+					gethttpmirrors(repo, repo->url);
+
 				http_current = repo->http;
 			}
 		}
