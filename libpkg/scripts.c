@@ -245,11 +245,18 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 
 			f = fdopen(pfd.fd, "r");
 			for (;;) {
-				if (poll(&pfd, 1, -1) == -1) {
+				int pres = poll(&pfd, 1, -1);
+				if (pres == -1) {
 					if (errno == EINTR)
 						continue;
 					else
 						goto cleanup;
+				}
+				if (pres == 0) {
+					if (waitpid(pid, NULL, WNOHANG | WNOWAIT) > 0) {
+						break;
+					}
+					continue;
 				}
 				if (pfd.revents & (POLLERR|POLLHUP))
 					break;
