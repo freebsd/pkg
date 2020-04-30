@@ -48,7 +48,7 @@
 #include "private/utils.h"
 
 static void
-gethttpmirrors(struct pkg_repo *repo, const char *url) {
+gethttpmirrors(struct pkg_repo *repo, const char *url, bool withdoc) {
 	FILE *f;
 	char *line = NULL, *walk;
 	size_t linecap = 0;
@@ -75,6 +75,7 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 
 			if ((u = fetchParseURL(walk)) != NULL) {
 				m = xmalloc(sizeof(struct http_mirror));
+				m->reldoc = withdoc;
 				m->url = u;
 				LL_APPEND(repo->http, m);
 			}
@@ -461,7 +462,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent)
 {
 	FILE		*remote = NULL;
-	struct url	*u = NULL;
+	struct url	*u = NULL, *repourl;
 	struct url_stat	 st;
 	struct pkg_kv	*kv, *kvtmp;
 	struct pkg_kv	*envtorestore = NULL;
@@ -472,7 +473,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
 	char		 buf[8192];
-	char		*doc = NULL;
+	char		*doc = NULL, *reldoc;
 	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
 	char		 zone[MAXHOSTNAMELEN + 24];
@@ -541,6 +542,18 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		/* Too early for there to be anything to cleanup */
 		return(EPKG_FATAL);
 	}
+	repourl = fetchParseURL(repo->url);
+	if (repourl == NULL) {
+		pkg_emit_error("%s: parse error", url);
+		fetchFreeURL(u);
+		return (EPKG_FATAL);
+	}
+
+	doc = u->doc;
+	printf("doc: %s", doc);
+	reldoc = doc + strlen(repourl->doc);
+	fetchFreeURL(repourl);
+	printf("reldoc: %s", reldoc);
 
 	if (t != NULL)
 		u->ims_time = *t;
@@ -551,7 +564,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		remote = repo->ssh;
 	}
 
-	doc = u->doc;
 	while (remote == NULL) {
 		if (retry == max_retry) {
 			if (repo != NULL && repo->mirror_type == SRV &&
@@ -580,9 +592,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				snprintf(zone, sizeof(zone),
 				    "%s://%s:%d", u->scheme, u->host, u->port);
 				if (repo->http == NULL)
-					gethttpmirrors(repo, zone);
+					gethttpmirrors(repo, zone, false);
 				if (repo->http == NULL)
-					gethttpmirrors(repo, repo->url);
+					gethttpmirrors(repo, repo->url, true);
 
 				http_current = repo->http;
 			}
@@ -595,7 +607,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		else if (repo != NULL && repo->mirror_type == HTTP && repo->http != NULL) {
 			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
 			strlcpy(u->host, http_current->url->host, sizeof(u->host));
-			snprintf(docpath, sizeof(docpath), "%s%s", http_current->url->doc, doc);
+			snprintf(docpath, sizeof(docpath), "%s%s",
+			    http_current->url->doc, http_current->reldoc ? reldoc : doc);
 			u->doc = docpath;
 			u->port = http_current->url->port;
 		}

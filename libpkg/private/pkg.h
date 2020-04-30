@@ -446,6 +446,7 @@ struct pkg_option {
 struct http_mirror {
 	struct url *url;
 	struct http_mirror *next;
+	bool reldoc;
 };
 
 struct pkg_repo_meta_key {
