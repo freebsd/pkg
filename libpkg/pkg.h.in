@@ -740,7 +740,7 @@ int pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *path);
  * @param buf An NULL-terminated buffer containing the manifest data.
  * @return An error code.
  */
-int pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_key *key);
+int pkg_parse_manifest(struct pkg *pkg, const char *buf, size_t len, struct pkg_manifest_key *key);
 int pkg_parse_manifest_file(struct pkg *pkg, const char *, struct pkg_manifest_key *key);
 int pkg_parse_manifest_fileat(int fd, struct pkg *pkg, const char *, struct pkg_manifest_key *key);
 int pkg_manifest_keys_new(struct pkg_manifest_key **k);
