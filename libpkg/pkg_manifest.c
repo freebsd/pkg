@@ -830,7 +830,7 @@ pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_
 }
 
 int
-pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_key *keys)
+pkg_parse_manifest(struct pkg *pkg, const char *buf, size_t len, struct pkg_manifest_key *keys)
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;

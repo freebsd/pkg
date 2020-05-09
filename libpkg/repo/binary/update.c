@@ -368,7 +368,7 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 }
 
 static int
-pkg_repo_binary_add_from_manifest(char *buf, sqlite3 *sqlite, size_t len,
+pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 		struct pkg_manifest_key **keys, struct pkg **p __unused,
 		struct pkg_repo *repo)
 {
