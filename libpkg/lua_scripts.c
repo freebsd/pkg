@@ -303,7 +303,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 
 		f = fdopen(pfd.fd, "r");
 		for (;;) {
-			int pres = poll(&pfd, 1, -1);
+			int pres = poll(&pfd, 1, 1000);
 			if (pres == -1) {
 				if (errno == EINTR)
 					continue;
