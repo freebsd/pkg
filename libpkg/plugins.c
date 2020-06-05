@@ -90,6 +90,7 @@ plug_free(struct pkg_plugin *p)
 	for (i = 0; i < PLUGIN_NUMFIELDS; i++)
 		utstring_free(p->fields[i]);
 
+	ucl_object_unref(p->conf);
 	pkg_plugin_hook_free(p);
 	free(p);
 }
@@ -306,10 +307,12 @@ pkg_plugins_init(void)
 			free(p);
 			return (EPKG_FATAL);
 		}
+		p->conf = ucl_object_typed_new(UCL_OBJECT);
 		pkg_plugin_set(p, PKG_PLUGIN_PLUGINFILE, pluginfile);
 		if (init_func(p) == EPKG_OK) {
 			LL_APPEND(plugins, p);
 		} else {
+			ucl_object_unref(p->conf);
 			dlclose(p->lh);
 			free(p);
 		}
