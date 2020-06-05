@@ -10,7 +10,6 @@ Known to work on (has been ported to):
 
 - Linux
 - NetBSD/EdgeBSD
-- OpenBSD/Bitrig
 - OSX
 
 Table of Contents:
@@ -285,37 +284,6 @@ system and capable of running Gnu autotools.  However, various places
 in the pkg(8) code make assumptions about OS specific behaviour.  If
 you do try anything like this, we'd be very interested to hear how you
 get on.
-
-<a name="pkggit-openbsd"></a>
-### Building pkg using sources from Git [OpenBSD and Bitrig]
-
-	# Install packages
-	pkg_add autoconf automake libtool bitrig-binutils bzip2 git libarchive
-	
-	# set environment variables
-	export AUTOMAKE_VERSION=1.15
-	export AUTOCONF_VERSION=2.69
-	
-	# create a download directory
-	mkdir ~/git
-	
-	# install pkgconf
-	cd ~/git
-	git clone https://github.com/pkgconf/pkgconf
-	cd pkgconf
-	./autogen.sh
-	./configure
-	make
-	sudo make install
-	
-	# install pkg
-	cd ~/git
-	git clone https://github.com/freebsd/pkg
-	cd pkg
-	./autogen.sh
-	./configure
-	make
-	sudo make install
 
 <a name="usageintro"></a>
 ## A quick usage introduction to pkg
