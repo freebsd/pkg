@@ -2876,29 +2876,34 @@ pkgdb_reset_lock(struct pkgdb *db)
 	return (EPKG_FATAL);
 }
 
+#define INFINITE_RETRIES -1
+
 static int
 pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 		bool upgrade)
 {
-	unsigned int tries = 0;
+	int64_t tries_remaining = 1;
 	struct timespec ts;
 	int ret = EPKG_END;
-	const pkg_object *timeout, *max_tries;
+	const pkg_object *timeout, *max_retries;
 	double num_timeout = 1.0;
-	int64_t num_maxtries = 1;
 	const char reset_lock_sql[] = ""
 			"DELETE FROM pkg_lock; INSERT INTO pkg_lock VALUES (0,0,0);";
 
 
 	timeout = pkg_config_get("LOCK_WAIT");
-	max_tries = pkg_config_get("LOCK_RETRIES");
+	max_retries = pkg_config_get("LOCK_RETRIES");
 
 	if (timeout)
 		num_timeout = pkg_object_int(timeout);
-	if (max_tries)
-		num_maxtries = pkg_object_int(max_tries);
+	if (max_retries)
+		tries_remaining = 1 + pkg_object_int(max_retries);
 
-	while (tries <= num_maxtries) {
+	/* LOCK_RETRIES = -1 */
+	if (tries_remaining == 0)
+		tries_remaining = INFINITE_RETRIES;
+
+	while (tries_remaining == INFINITE_RETRIES || tries_remaining-- > 0) {
 		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
 		if (ret != SQLITE_OK) {
 			if (ret == SQLITE_READONLY && type == PKGDB_LOCK_READONLY) {
@@ -2937,8 +2942,8 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 			else if (num_timeout > 0) {
 				ts.tv_sec = (int)num_timeout;
 				ts.tv_nsec = (num_timeout - (int)num_timeout) * 1000000000.;
-				pkg_debug(1, "waiting for database lock for %d times, "
-						"next try in %.2f seconds", tries, num_timeout);
+				pkg_debug(1, "waiting for database lock for %" PRId64 " more times, "
+						"next try in %.2f seconds", tries_remaining, num_timeout);
 				(void)nanosleep(&ts, NULL);
 			}
 			else {
@@ -2953,7 +2958,6 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 			ret = EPKG_OK;
 			break;
 		}
-		tries ++;
 	}
 
 	return (ret);

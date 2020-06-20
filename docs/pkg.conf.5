@@ -177,6 +177,9 @@ Repositories or command line options can override this setting.
 Default: 0.
 .It Cm LOCK_RETRIES: integer
 Number of attempts to obtain a lock before giving up and exiting.
+The value -1 causes
+.Nm pkg
+to retry indefinitely.
 Default: 5.
 .It Cm LOCK_WAIT: integer
 Wait time in seconds to regain a lock if it is not available.
