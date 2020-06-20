@@ -2993,6 +2993,10 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 
 	ret = pkgdb_try_lock(db, lock_sql, type, false);
 
+	if (ret != EPKG_OK)
+		pkg_debug(1, "failed to obtain the lock: %s",
+		    sqlite3_errmsg(db->sqlite));
+
 	return (ret);
 }
 
