@@ -550,10 +550,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 
 	doc = u->doc;
-	printf("doc: %s", doc);
 	reldoc = doc + strlen(repourl->doc);
 	fetchFreeURL(repourl);
-	printf("reldoc: %s", reldoc);
 
 	if (t != NULL)
 		u->ims_time = *t;
