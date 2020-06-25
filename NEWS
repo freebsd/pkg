@@ -1,3 +1,12 @@
+Changes from 1.14.99.1 to 1.14.99.2
+- Fix hanging if a script spawn a process and
+  it still run after the scripts finish
+- Prevent potential hang with lua scripts
+- For http mirror first try to get the list from the
+  full path and then fallback on the root one if we
+  didn't find anything.
+- Add a debug message if obtaining the lock fails
+
 Changes from 1.13.99.7 to 1.14.99.1
 - parallelize the run of the tests
 - Fix VERSION_MINOR expansion
