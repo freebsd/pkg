@@ -1,3 +1,7 @@
+Changes from 1.14.4 to 1.14.5
+- Prevent potential hang with lua scripts
+- Add a debug message if obtaining the lock fails
+
 Changes from 1.14.3 to 1.14.4
 - Fix a hang in pkg script
 
