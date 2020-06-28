@@ -79,6 +79,15 @@ cc-with { -libs { -llzma }} {
 		user-error "Unable to find liblzma"
 	}
 }
+if {[string match *-freebsd* [get-define host]]} {
+	cc-with { -libs { -lmd }} {
+		if {![cc-check-functions SHA256_Data]} {
+			user-error "Unable to find libmd"
+		} else {
+			define-feature libmd
+		}
+	}
+}
 
 cc-with { -libs { -larchive }} {
 	cc-check-functions archive_write_add_filter_zstd
