@@ -64,6 +64,9 @@ OTHER_LIBS+=	-ldl
 @if HAVE_LIBRESOLV
 OTHER_LIBS+=	-lresolv
 @endif
+@if HAVE_LIBMD
+OTHER_LIBS+=	-lmd
+@endif
 
 @if libmachista
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
