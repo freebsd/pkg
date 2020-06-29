@@ -18,7 +18,7 @@ tests_init \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
 	create_with_hardlink \
-	create_no_clobber
+	create_no_clobber \
 	time
 
 genmanifest() {
