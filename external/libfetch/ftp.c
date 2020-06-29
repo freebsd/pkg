@@ -774,7 +774,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		if (bindaddr != NULL && *bindaddr != '\0' &&
 		    (e = fetch_bind(sd, sa.ss_family, bindaddr)) != 0)
 			goto ouch;
-		if (connect(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
+		if (connect(sd, (struct sockaddr *)&sa, l) == -1)
 			goto sysouch;
 
 		/* make the server initiate the transfer */
@@ -813,7 +813,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 		}
 		if (verbose)
 			fetch_info("binding data socket");
-		if (bind(sd, (struct sockaddr *)&sa, sa.ss_len) == -1)
+		if (bind(sd, (struct sockaddr *)&sa, l) == -1)
 			goto sysouch;
 		if (listen(sd, 1) == -1)
 			goto sysouch;
@@ -836,7 +836,7 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			e = -1;
 			sin6 = (struct sockaddr_in6 *)&sa;
 			sin6->sin6_scope_id = 0;
-			if (getnameinfo((struct sockaddr *)&sa, sa.ss_len,
+			if (getnameinfo((struct sockaddr *)&sa, l,
 				hname, sizeof(hname),
 				NULL, 0, NI_NUMERICHOST) == 0) {
 				e = ftp_cmd(conn, "EPRT |%d|%s|%d|", 2, hname,
