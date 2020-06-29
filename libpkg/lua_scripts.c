@@ -226,6 +226,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 #endif
 	struct pollfd pfd;
 	int cur_pipe[2];
+	bool should_waitpid;
 	char *line = NULL;
 	FILE *f;
 	ssize_t linecap = 0;
@@ -302,16 +303,33 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 		pfd.events = POLLIN | POLLERR | POLLHUP;
 
 		f = fdopen(pfd.fd, "r");
+		should_waitpid = true;
 		for (;;) {
+			errno = 0;
 			int pres = poll(&pfd, 1, 1000);
 			if (pres == -1) {
-				if (errno == EINTR)
+				if (errno == EINTR) {
 					continue;
-				else
+				} else {
+					pkg_emit_error("poll() failed: %s",
+					    strerror(errno));
+					ret = EPKG_FATAL;
 					goto cleanup;
+				}
 			}
 			if (pres == 0) {
-				if (waitpid(pid, NULL, WNOHANG | WNOWAIT) > 0) {
+				pid_t p;
+				assert(should_waitpid);
+				while ((p = waitpid(pid, &pstat, WNOHANG)) == -1) {
+					if (errno != EINTR) {
+						pkg_emit_error("waitpid() "
+						    "failed: %s", strerror(errno));
+						ret = EPKG_FATAL;
+						goto cleanup;
+					}
+				}
+				if (p > 0) {
+					should_waitpid = false;
 					break;
 				}
 				continue;
@@ -325,8 +343,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 		}
 		fclose(f);
 
-		while (waitpid(pid, &pstat, 0) == -1) {
+		while (should_waitpid && waitpid(pid, &pstat, 0) == -1) {
 			if (errno != EINTR) {
+				pkg_emit_error("waitpid() failed: %s",
+				    strerror(errno));
 				ret = EPKG_FATAL;
 				goto cleanup;
 			}
