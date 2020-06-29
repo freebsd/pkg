@@ -341,6 +341,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			if (feof(f))
 				break;
 		}
+		/* Gather any remaining output */
+		while (!feof(f) && !ferror(f) && getline(&line, &linecap, f) > 0) {
+			pkg_emit_message(line);
+		}
 		fclose(f);
 
 		while (should_waitpid && waitpid(pid, &pstat, 0) == -1) {
