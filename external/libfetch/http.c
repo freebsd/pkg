@@ -325,9 +325,11 @@ http_closefn(void *v)
 		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
 		    sizeof(val));
 		fetch_cache_put(io->conn, fetch_close);
+#ifdef TCP_NOPUSH
 		val = 1;
 		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 		    sizeof(val));
+#endif
 		r = 0;
 	} else {
 		r = fetch_close(io->conn);
@@ -1465,8 +1467,10 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 		goto ouch;
 	}
 
+#ifdef TCP_NOPUSH
 	val = 1;
 	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
+#endif
 
 	clean_http_headerbuf(&headerbuf);
 	return (conn);
@@ -1768,9 +1772,11 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		 * be compatible with such configurations, fiddle with socket
 		 * options to force the pending data to be written.
 		 */
+#ifdef TCP_NOPUSH
 		val = 0;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 			   sizeof(val));
+#endif
 		val = 1;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
 			   sizeof(val));

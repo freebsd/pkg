@@ -803,10 +803,12 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 			break;
 		case AF_INET:
 			((struct sockaddr_in *)&sa)->sin_port = 0;
+#ifdef IP_PORTRANGE
 			arg = low ? IP_PORTRANGE_DEFAULT : IP_PORTRANGE_HIGH;
 			if (setsockopt(sd, IPPROTO_IP, IP_PORTRANGE,
 				(char *)&arg, sizeof(arg)) == -1)
 				goto sysouch;
+#endif
 			break;
 		}
 		if (verbose)
