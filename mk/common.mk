@@ -3,6 +3,8 @@ OBJS=	${SRCS:.c=.o}
 SHOBJS?=	${SRCS:.c=.pico}
 DEPFILES=	${OBJS:.o=.Po} ${SHOBJS:.pico=.Ppico}
 CFLAGS+=	$(CPPFLAGS)
+CFLAGS+=	-Werror=implicit-function-declaration
+CFLAGS+=	-Werror=return-type
 
 -include $(DEPFILES)
 

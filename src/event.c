@@ -49,6 +49,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
 #include <signal.h>
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
