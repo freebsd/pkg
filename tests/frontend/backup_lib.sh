@@ -6,6 +6,7 @@ tests_init \
 	basic
 
 basic_body() {
+	atf_skip_on Darwin The macOS linker uses different flags
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 files: {
