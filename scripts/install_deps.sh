@@ -62,6 +62,7 @@ if [ $(uname -s) = "Darwin" ]; then
 	brew upgrade openssl
 	brew install libarchive
 	brew install kyua
+	brew install coreutils
 elif [ $(uname -s) = "Linux" ]; then
 	install_from_github atf 0.21
 	install_from_github lutok 0.4
