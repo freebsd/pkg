@@ -163,10 +163,12 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #endif
 
 #ifndef __unreachable
-# if defined(__GNUC__) && ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
+# if defined(__GNUC__) && ((__GNUC__ >= 4) && (__GNUC_MINOR__ >= 6))
 #  define __unreachable() __builtin_unreachable()
-# elif defined(__clang__) && __has_builtin(__builtin_unreachable)
-#  define __unreachable() __builtin_unreachable()
+# elif defined(__clang__)
+#  if __has_builtin(__builtin_unreachable)
+#   define __unreachable() __builtin_unreachable()
+#  endif
 # else
 #  define __unreachable() ((void)0)
 # endif
