@@ -1,3 +1,6 @@
+Changes from 1.14.99.2 to 1.14.99.3
+- Fix linking on FreeBSD
+
 Changes from 1.14.99.1 to 1.14.99.2
 - Fix hanging if a script spawn a process and
   it still run after the scripts finish
