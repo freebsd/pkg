@@ -29,6 +29,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
+#include <bsd_compat.h>
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>

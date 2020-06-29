@@ -165,6 +165,16 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #endif
 #endif
 
+#ifndef __unreachable
+# if defined(__GNUC__) && ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
+#  define __unreachable() __builtin_unreachable()
+# elif defined(__clang__) && __has_builtin(__builtin_unreachable)
+#  define __unreachable() __builtin_unreachable()
+# else
+#  define __unreachable() ((void)0)
+# endif
+#endif
+
 #if !HAVE_FUNOPEN
 #if !HAVE_FOPENCOOKIE
 # error "Your system has neither funopen nor fopencookie, cannot continue"
