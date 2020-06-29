@@ -174,4 +174,13 @@ FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
          off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *));
 #endif
 
+#if !HAVE_GETPROGNAME
+#ifdef __GLIBC__
+extern char *program_invocation_short_name;
+# define getprogname() program_invocation_short_name
+#else
+# error "Don't know how to replace getprogname()"
+#endif
+#endif
+
 #endif
