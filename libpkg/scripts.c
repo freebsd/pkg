@@ -77,6 +77,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 	struct procctl_reaper_kill killemall;
 #endif
 	struct pollfd pfd;
+	bool should_waitpid;
 	ssize_t linecap = 0;
 	char *line = NULL;
 	FILE *f;
@@ -244,16 +245,33 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			pfd.events = POLLIN | POLLERR | POLLHUP;
 
 			f = fdopen(pfd.fd, "r");
+			should_waitpid = true;
 			for (;;) {
+				errno = 0;
 				int pres = poll(&pfd, 1, 1000);
 				if (pres == -1) {
-					if (errno == EINTR)
+					if (errno == EINTR) {
 						continue;
-					else
+					} else {
+						pkg_emit_error("poll() "
+						    "failed: %s", strerror(errno));
+						ret = EPKG_FATAL;
 						goto cleanup;
+					}
 				}
 				if (pres == 0) {
-					if (waitpid(pid, NULL, WNOHANG | WNOWAIT) > 0) {
+					pid_t p;
+					assert(should_waitpid);
+					while ((p = waitpid(pid, &pstat, WNOHANG)) == -1) {
+						if (errno != EINTR) {
+							pkg_emit_error("waitpid() "
+							    "failed: %s", strerror(errno));
+							ret = EPKG_FATAL;
+							goto cleanup;
+						}
+					}
+					if (p > 0) {
+						should_waitpid = false;
 						break;
 					}
 					continue;
@@ -267,9 +285,13 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			}
 			fclose(f);
 
-			while (waitpid(pid, &pstat, 0) == -1) {
-				if (errno != EINTR)
+			while (should_waitpid && waitpid(pid, &pstat, 0) == -1) {
+				if (errno != EINTR) {
+					pkg_emit_error("waitpid() failed: %s",
+					    strerror(errno));
+					ret = EPKG_FATAL;
 					goto cleanup;
+				}
 			}
 
 			if (WEXITSTATUS(pstat) != 0) {
