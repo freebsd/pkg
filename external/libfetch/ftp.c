@@ -29,6 +29,7 @@
  */
 
 #include <sys/cdefs.h>
+#include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libfetch/ftp.c 341013 2018-11-27 10:45:14Z des $");
 
 /*
