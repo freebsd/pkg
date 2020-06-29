@@ -30,6 +30,7 @@
  */
 
 #include <sys/cdefs.h>
+#include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libfetch/common.c 347050 2019-05-03 06:06:39Z adrian $");
 
 #include <sys/param.h>
@@ -55,7 +56,6 @@ __FBSDID("$FreeBSD: head/lib/libfetch/common.c 347050 2019-05-03 06:06:39Z adria
 #include <openssl/x509v3.h>
 #endif
 
-#include "bsd_compat.h"
 #include "fetch.h"
 #include "common.h"
 

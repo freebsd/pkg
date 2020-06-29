@@ -29,6 +29,7 @@
  */
 
 #include <sys/cdefs.h>
+#include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libfetch/fetch.c 357212 2020-01-28 18:37:18Z gordon $");
 
 #include <sys/param.h>
