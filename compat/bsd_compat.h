@@ -64,6 +64,10 @@
 #include <bsd/stdio.h>
 #endif
 
+#ifdef HAVE_BSD_STLIB_H
+#include <bsd/stdlib.h>
+#endif
+
 #ifdef HAVE_BSD_ERR_H
 #include <bsd/err.h>
 #endif
