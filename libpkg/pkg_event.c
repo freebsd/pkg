@@ -287,11 +287,11 @@ pipeevent(struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NOLOCALDB:
 		utstring_printf(msg, "{ \"type\": \"ERROR_NOLOCALDB\", "
-		    "\"data\": {} ");
+		    "\"data\": {}} ");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
 		utstring_printf(msg, "{ \"type\": \"INFO_NEWPKGVERSION\", "
-		    "\"data\": {} ");
+		    "\"data\": {}} ");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg_utstring_printf(msg, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
