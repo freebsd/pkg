@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -46,6 +46,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/utils.h"
+#include "private/fetch.h"
 #include "private/fetch_ssh.h"
 
 static struct fetcher {
@@ -56,48 +57,44 @@ static struct fetcher {
 		"ssh",
 		ssh_open,
 	},
+	{
+		"pkg+https",
+		fetch_open,
+	},
+	{
+		"pkg+http",
+		fetch_open,
+	},
+	{
+		"https",
+		fetch_open,
+	},
+	{
+		"http",
+		fetch_open,
+	},
+	{
+		"pkg+ftps",
+		fetch_open,
+	},
+	{
+		"pkg+ftp",
+		fetch_open,
+	},
+	{
+		"ftps",
+		fetch_open,
+	},
+	{
+		"ftp",
+		fetch_open,
+	},
+	{
+		"file",
+		fetch_open,
+	},
 };
 
-
-static void
-gethttpmirrors(struct pkg_repo *repo, const char *url, bool withdoc) {
-	FILE *f;
-	char *line = NULL, *walk;
-	size_t linecap = 0;
-	ssize_t linelen;
-	struct http_mirror *m;
-	struct url *u;
-
-	if ((f = fetchGetURL(url, "")) == NULL)
-		return;
-
-	while ((linelen = getline(&line, &linecap, f)) > 0) {
-		if (strncmp(line, "URL:", 4) == 0) {
-			walk = line;
-			/* trim '\n' */
-			if (walk[linelen - 1] == '\n')
-				walk[linelen - 1 ] = '\0';
-
-			walk += 4;
-			while (isspace(*walk)) {
-				walk++;
-			}
-			if (*walk == '\0')
-				continue;
-
-			if ((u = fetchParseURL(walk)) != NULL) {
-				m = xmalloc(sizeof(struct http_mirror));
-				m->reldoc = withdoc;
-				m->url = u;
-				LL_APPEND(repo->http, m);
-			}
-		}
-	}
-
-	free(line);
-	fclose(f);
-	return;
-}
 
 int
 pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
@@ -182,38 +179,21 @@ int
 pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent)
 {
-	FILE		*remote = NULL;
-	struct url	*u = NULL, *repourl;
-	struct url_stat	 st;
+	struct url	*u = NULL;
 	struct pkg_kv	*kv, *kvtmp;
 	struct pkg_kv	*envtorestore = NULL;
 	struct pkg_kv	*envtounset = NULL;
 	char		*tmp;
 	off_t		 done = 0;
 	off_t		 r;
-	int64_t		 max_retry, retry;
-	int64_t		 fetch_timeout;
 	char		 buf[8192];
-	char		*doc = NULL, *reldoc;
-	char		 docpath[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
-	char		 zone[MAXHOSTNAMELEN + 24];
-	struct dns_srvinfo	*srv_current = NULL;
-	struct http_mirror	*http_current = NULL;
 	off_t		 sz = 0;
 	size_t		 buflen = 0;
 	size_t		 left = 0;
-	bool		 pkg_url_scheme = false;
-	UT_string	*fetchOpts = NULL;
 	struct fetcher	*fetcher = NULL;
 
-	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
-	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
-
-	fetchConnectionCacheInit(-1, -1);
-	fetchTimeout = (int) fetch_timeout;
-
-	retry = max_retry;
+	FILE *remote = NULL;
 
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is
@@ -229,6 +209,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 * Error if using plain http://, https:// etc with SRV
 	 */
 
+	pkg_debug(1, "Request to fetch %s", url);
 	if (repo != NULL &&
 		strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
 		if (repo->mirror_type != SRV) {
@@ -241,10 +222,24 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		}
 
 		url += strlen(URL_SCHEME_PREFIX);
-		pkg_url_scheme = true;
+		u = fetchParseURL(url);
+	} else {
+		if (repo->mirror_type == SRV && (strncmp(u->scheme, "http", 4) == 0 ||
+		    strncmp(u->scheme, "ftp", 3) == 0)) {
+			pkg_emit_notice(
+     "Warning: use of %s:// URL scheme with SRV records is deprecated: "
+     "switch to pkg+%s://", u->scheme, u->scheme);
+		}
 	}
 
+	if (u == NULL)
+		u = fetchParseURL(url);
+
+	if (offset > 0)
+		u->offset = offset;
+
 	if (repo != NULL) {
+		repo->silent = silent;
 		LL_FOREACH(repo->env, kv) {
 			kvtmp = xcalloc(1, sizeof(*kvtmp));
 			kvtmp->key = xstrdup(kv->key);
@@ -258,22 +253,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		}
 	}
 
-	u = fetchParseURL(url);
 	if (u == NULL) {
 		pkg_emit_error("%s: parse error", url);
 		/* Too early for there to be anything to cleanup */
 		return(EPKG_FATAL);
 	}
-	repourl = fetchParseURL(repo->url);
-	if (repourl == NULL) {
-		pkg_emit_error("%s: parse error", url);
-		fetchFreeURL(u);
-		return (EPKG_FATAL);
-	}
-
-	doc = u->doc;
-	reldoc = doc + strlen(repourl->doc);
-	fetchFreeURL(repourl);
 
 	if (t != NULL)
 		u->ims_time = *t;
@@ -284,123 +268,25 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 				fetcher = &fetchers[i];
 				if ((retcode = fetcher->open(repo, u, &sz)) != EPKG_OK)
 					goto cleanup;
-				remote = repo->ssh;
+				remote = repo->ssh ? repo->ssh : repo->fh;
 				break;
 			}
 		}
-	}
-
-	while (remote == NULL) {
-		if (retry == max_retry) {
-			if (repo != NULL && repo->mirror_type == SRV &&
-			    (strncmp(u->scheme, "http", 4) == 0
-			     || strcmp(u->scheme, "ftp") == 0)) {
-
-				if (!pkg_url_scheme)
-					pkg_emit_notice(
-     "Warning: use of %s:// URL scheme with SRV records is deprecated: "
-     "switch to pkg+%s://", u->scheme, u->scheme);
-
-				if (repo->srv == NULL) {
-					snprintf(zone, sizeof(zone),
-					    "_%s._tcp.%s", u->scheme, u->host);
-					repo->srv = dns_getsrvinfo(zone);
-				}
-				srv_current = repo->srv;
-			} else if (repo != NULL && repo->mirror_type == HTTP &&
-			           strncmp(u->scheme, "http", 4) == 0) {
-				if (u->port == 0) {
-					if (strcmp(u->scheme, "https") == 0)
-						u->port = 443;
-					else
-						u->port = 80;
-				}
-				snprintf(zone, sizeof(zone),
-				    "%s://%s:%d", u->scheme, u->host, u->port);
-				if (repo->http == NULL)
-					gethttpmirrors(repo, zone, false);
-				if (repo->http == NULL)
-					gethttpmirrors(repo, repo->url, true);
-
-				http_current = repo->http;
-			}
+		if (fetcher == NULL) {
+			pkg_emit_error("Unknown scheme: %s", u->scheme);
+			return (EPKG_FATAL);
 		}
-
-		if (repo != NULL && repo->mirror_type == SRV && repo->srv != NULL) {
-			strlcpy(u->host, srv_current->host, sizeof(u->host));
-			u->port = srv_current->port;
-		}
-		else if (repo != NULL && repo->mirror_type == HTTP && repo->http != NULL) {
-			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
-			strlcpy(u->host, http_current->url->host, sizeof(u->host));
-			snprintf(docpath, sizeof(docpath), "%s%s",
-			    http_current->url->doc, http_current->reldoc ? reldoc : doc);
-			u->doc = docpath;
-			u->port = http_current->url->port;
-		}
-
-		utstring_new(fetchOpts);
-		utstring_printf(fetchOpts, "i");
-		if (repo != NULL) {
-			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
-			    REPO_FLAGS_USE_IPV4)
-				utstring_printf(fetchOpts, "4");
-			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
-			    REPO_FLAGS_USE_IPV6)
-				utstring_printf(fetchOpts, "6");
-		}
-
-		if (ctx.debug_level >= 4)
-			utstring_printf(fetchOpts, "v");
-
-		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
-		    u->scheme,
-		    u->user,
-		    u->user[0] != '\0' ? "@" : "",
-		    u->host,
-		    u->doc,
-		    utstring_body(fetchOpts));
-
-		if (offset > 0)
-			u->offset = offset;
-		remote = fetchXGet(u, &st, utstring_body(fetchOpts));
-		utstring_free(fetchOpts);
-		if (remote == NULL) {
-			if (fetchLastErrCode == FETCH_OK) {
-				retcode = EPKG_UPTODATE;
-				goto cleanup;
-			}
-			--retry;
-			if (retry <= 0 || fetchLastErrCode == FETCH_UNAVAIL) {
-				if (!silent)
-					pkg_emit_error("%s: %s", url,
-					    fetchLastErrString);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			if (repo != NULL && repo->mirror_type == SRV && repo->srv != NULL) {
-				srv_current = srv_current->next;
-				if (srv_current == NULL)
-					srv_current = repo->srv;
-			} else if (repo != NULL && repo->mirror_type == HTTP && repo->http != NULL) {
-				http_current = repo->http->next;
-				if (http_current == NULL)
-					http_current = repo->http;
-			} else {
-				sleep(1);
-			}
-		}
+		pkg_debug(1, "Fetch: fetcher chosen: %s", fetcher->scheme);
 	}
 
 	if (strcmp(u->scheme, "ssh") != 0) {
-		if (t != NULL && st.mtime != 0) {
-			if (st.mtime <= *t) {
+		if (t != NULL && u->ims_time != 0) {
+			if (u->ims_time <= *t) {
 				retcode = EPKG_UPTODATE;
 				goto cleanup;
 			} else
-				*t = st.mtime;
+				*t = u->ims_time;
 		}
-		sz = st.size;
 	}
 
 	if (sz <= 0 && size > 0)
@@ -459,8 +345,10 @@ cleanup:
 	}
 
 	if (u != NULL) {
-		if (remote != NULL &&  repo != NULL && remote != repo->ssh)
+		if (remote != NULL &&  repo != NULL && remote != repo->ssh) {
 			fclose(remote);
+			repo->fh = NULL;
+		}
 	}
 
 	if (retcode == EPKG_OK) {
@@ -478,7 +366,6 @@ cleanup:
 	}
 
 	/* restore original doc */
-	u->doc = doc;
 	fetchFreeURL(u);
 
 	return (retcode);

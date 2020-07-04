@@ -567,7 +567,9 @@ struct pkg_repo {
 	};
 	signature_t signature_type;
 	char *fingerprints;
+	FILE *fh;
 	FILE *ssh;
+	bool silent;
 
 	struct fingerprint *trusted_fp;
 	struct fingerprint *revoked_fp;
