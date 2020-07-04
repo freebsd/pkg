@@ -42,8 +42,12 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
-#include "private/fetch_ssh.h"
+#include "private/fetch.h"
 #include "private/utils.h"
+
+static int ssh_read(void *data, char *buf, int len);
+static int ssh_write(void *data, const char *buf, int l);
+static int ssh_close(void *data);
 
 int
 ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
@@ -172,7 +176,7 @@ ssh_cleanup:
 	return (retcode);
 }
 
-int
+static int
 ssh_close(void *data)
 {
 	struct pkg_repo *repo = (struct pkg_repo *)data;
@@ -257,7 +261,7 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 	return (total);
 }
 
-int
+static int
 ssh_write(void *data, const char *buf, int l)
 {
 	struct pkg_repo *repo = (struct pkg_repo *)data;
@@ -271,7 +275,7 @@ ssh_write(void *data, const char *buf, int l)
 	return (ssh_writev(repo->sshio.out, &iov, 1));
 }
 
-int
+static int
 ssh_read(void *data, char *buf, int len)
 {
 	struct pkg_repo *repo = (struct pkg_repo *) data;

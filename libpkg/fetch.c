@@ -47,7 +47,6 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 #include "private/fetch.h"
-#include "private/fetch_ssh.h"
 
 static struct fetcher {
 	const char *scheme;
