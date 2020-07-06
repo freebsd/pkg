@@ -90,7 +90,7 @@ static struct fetcher {
 	},
 	{
 		"file",
-		fetch_open,
+		file_open,
 	},
 };
 
