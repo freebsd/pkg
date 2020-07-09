@@ -49,99 +49,121 @@ static int ssh_read(void *data, char *buf, int len);
 static int ssh_write(void *data, const char *buf, int l);
 static int ssh_close(void *data);
 
+static int
+ssh_connect(struct pkg_repo *repo, struct url *u)
+{
+	char *line = NULL;
+	size_t linecap = 0;
+	int sshin[2];
+	int sshout[2];
+	UT_string *cmd = NULL;
+	int retcode = EPKG_FATAL;
+	const char *ssh_args;
+	const char *argv[4];
+
+	/* Use socket pair because pipe have blocking issues */
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sshin) <0 ||
+			socketpair(AF_UNIX, SOCK_STREAM, 0, sshout) < 0)
+		return(EPKG_FATAL);
+
+	repo->sshio.pid = fork();
+	if (repo->sshio.pid == -1) {
+		pkg_emit_errno("Cannot fork", "start_ssh");
+		goto ssh_cleanup;
+	}
+
+	if (repo->sshio.pid == 0) {
+
+		if (dup2(sshin[0], STDIN_FILENO) < 0 ||
+				close(sshin[1]) < 0 ||
+				close(sshout[0]) < 0 ||
+				dup2(sshout[1], STDOUT_FILENO) < 0) {
+			pkg_emit_errno("Cannot prepare pipes", "start_ssh");
+			goto ssh_cleanup;
+		}
+
+		utstring_new(cmd);
+		utstring_printf(cmd, "/usr/bin/ssh -e none -T ");
+
+		ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
+		if (ssh_args != NULL)
+			utstring_printf(cmd, "%s ", ssh_args);
+		if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+			utstring_printf(cmd, "-4 ");
+		else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+			utstring_printf(cmd, "-6 ");
+		if (u->port > 0)
+			utstring_printf(cmd, "-p %d ", u->port);
+		if (u->user[0] != '\0')
+			utstring_printf(cmd, "%s@", u->user);
+		utstring_printf(cmd, "%s", u->host);
+		utstring_printf(cmd, " pkg ssh");
+		pkg_debug(1, "Fetch: running '%s'", utstring_body(cmd));
+		argv[0] = _PATH_BSHELL;
+		argv[1] = "-c";
+		argv[2] = utstring_body(cmd);
+		argv[3] = NULL;
+
+		if (sshin[0] != STDIN_FILENO)
+			close(sshin[0]);
+		if (sshout[1] != STDOUT_FILENO)
+			close(sshout[1]);
+		execvp(argv[0], __DECONST(char **, argv));
+		/* NOT REACHED */
+	}
+
+	if (close(sshout[1]) < 0 || close(sshin[0]) < 0) {
+		pkg_emit_errno("Failed to close pipes", "start_ssh");
+		goto ssh_cleanup;
+	}
+
+	pkg_debug(1, "SSH> connected");
+
+	repo->sshio.in = sshout[0];
+	repo->sshio.out = sshin[1];
+	set_nonblocking(repo->sshio.in);
+
+	repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
+	if (repo->ssh == NULL) {
+		pkg_emit_errno("Failed to open stream", "start_ssh");
+		goto ssh_cleanup;
+	}
+
+	if (getline(&line, &linecap, repo->ssh) > 0) {
+		if (strncmp(line, "ok:", 3) != 0) {
+			pkg_debug(1, "SSH> server rejected, got: %s", line);
+			goto ssh_cleanup;
+		}
+		pkg_debug(1, "SSH> server is: %s", line +4);
+	} else {
+		pkg_debug(1, "SSH> nothing to read, got: %s", line);
+		goto ssh_cleanup;
+	}
+
+ssh_cleanup:
+	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
+		fclose(repo->ssh);
+		repo->ssh = NULL;
+	}
+	free(line);
+	return (retcode);
+}
+
 int
 ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 {
 	char *line = NULL;
 	size_t linecap = 0;
 	size_t linelen;
-	UT_string *cmd = NULL;
 	const char *errstr;
-	const char *ssh_args;
-	int sshin[2];
-	int sshout[2];
 	int retcode = EPKG_FATAL;
-	const char *argv[4];
 
-	ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
+	if (repo->ssh == NULL)
+		retcode = ssh_connect(repo, u);
 
-	if (repo->ssh == NULL) {
-		/* Use socket pair because pipe have blocking issues */
-		if (socketpair(AF_UNIX, SOCK_STREAM, 0, sshin) <0 ||
-		    socketpair(AF_UNIX, SOCK_STREAM, 0, sshout) < 0)
-			return(EPKG_FATAL);
+	if (retcode != EPKG_OK)
+		return (retcode);
 
-		repo->sshio.pid = fork();
-		if (repo->sshio.pid == -1) {
-			pkg_emit_errno("Cannot fork", "start_ssh");
-			goto ssh_cleanup;
-		}
-
-		if (repo->sshio.pid == 0) {
-			if (dup2(sshin[0], STDIN_FILENO) < 0 ||
-			    close(sshin[1]) < 0 ||
-			    close(sshout[0]) < 0 ||
-			    dup2(sshout[1], STDOUT_FILENO) < 0) {
-				pkg_emit_errno("Cannot prepare pipes", "start_ssh");
-				goto ssh_cleanup;
-			}
-
-			utstring_new(cmd);
-			utstring_printf(cmd, "/usr/bin/ssh -e none -T ");
-			if (ssh_args != NULL)
-				utstring_printf(cmd, "%s ", ssh_args);
-			if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
-				utstring_printf(cmd, "-4 ");
-			else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
-				utstring_printf(cmd, "-6 ");
-			if (u->port > 0)
-				utstring_printf(cmd, "-p %d ", u->port);
-			if (u->user[0] != '\0')
-				utstring_printf(cmd, "%s@", u->user);
-			utstring_printf(cmd, "%s", u->host);
-			utstring_printf(cmd, " pkg ssh");
-			pkg_debug(1, "Fetch: running '%s'", utstring_body(cmd));
-			argv[0] = _PATH_BSHELL;
-			argv[1] = "-c";
-			argv[2] = utstring_body(cmd);
-			argv[3] = NULL;
-
-			if (sshin[0] != STDIN_FILENO)
-				close(sshin[0]);
-			if (sshout[1] != STDOUT_FILENO)
-				close(sshout[1]);
-			execvp(argv[0], __DECONST(char **, argv));
-			/* NOT REACHED */
-		}
-
-		if (close(sshout[1]) < 0 || close(sshin[0]) < 0) {
-			pkg_emit_errno("Failed to close pipes", "start_ssh");
-			goto ssh_cleanup;
-		}
-
-		pkg_debug(1, "SSH> connected");
-
-		repo->sshio.in = sshout[0];
-		repo->sshio.out = sshin[1];
-		set_nonblocking(repo->sshio.in);
-
-		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
-		if (repo->ssh == NULL) {
-			pkg_emit_errno("Failed to open stream", "start_ssh");
-			goto ssh_cleanup;
-		}
-
-		if (getline(&line, &linecap, repo->ssh) > 0) {
-			if (strncmp(line, "ok:", 3) != 0) {
-				pkg_debug(1, "SSH> server rejected, got: %s", line);
-				goto ssh_cleanup;
-			}
-			pkg_debug(1, "SSH> server is: %s", line +4);
-		} else {
-			pkg_debug(1, "SSH> nothing to read, got: %s", line);
-			goto ssh_cleanup;
-		}
-	}
 	pkg_debug(1, "SSH> get %s %" PRIdMAX "", u->doc, (intmax_t)u->ims_time);
 	fprintf(repo->ssh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
 	if ((linelen = getline(&line, &linecap, repo->ssh)) > 0) {
@@ -152,26 +174,20 @@ ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 		if (strncmp(line, "ok:", 3) == 0) {
 			*sz = strtonum(line + 4, 0, LONG_MAX, &errstr);
 			if (errstr) {
-				goto ssh_cleanup;
+				goto out;
 			}
 
 			if (*sz == 0) {
 				retcode = EPKG_UPTODATE;
-				goto ssh_cleanup;
+				goto out;
 			}
 
 			retcode = EPKG_OK;
-			goto ssh_cleanup;
+			goto out;
 		}
 	}
 
-ssh_cleanup:
-	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
-		fclose(repo->ssh);
-		repo->ssh = NULL;
-	}
-	if (cmd != NULL)
-		utstring_free(cmd);
+out:
 	free(line);
 	return (retcode);
 }
