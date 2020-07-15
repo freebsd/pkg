@@ -53,7 +53,8 @@ TESTS_SH= \
 	frontend/shellscript.sh \
 	frontend/clean.sh \
 	frontend/backup_lib.sh \
-	frontend/abi.sh
+	frontend/abi.sh \
+	frontend/http.sh
 
 merge_OBJS=	lib/merge.o
 plist_OBJS=	lib/plist.o

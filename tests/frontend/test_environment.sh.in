@@ -39,3 +39,10 @@ atf_skip_on() {
 		atf_skip "$@"
 	fi
 }
+
+atf_require() {
+	if ! which -s $1; then
+		shift
+		atf_skip "$@"
+	fi
+}
