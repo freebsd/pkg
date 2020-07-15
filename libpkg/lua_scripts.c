@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 
 #include <errno.h>
 #include <poll.h>
@@ -99,6 +100,120 @@ lua_print_msg(lua_State *L)
 	dprintf(fd, "%s\n", str);
 
 	return (0);
+}
+
+static int
+lua_pkg_copy(lua_State *L)
+{
+	const char* src = luaL_checkstring(L, 1);
+	const char* dst = luaL_checkstring(L, 2);
+	char *buf1, *buf2;
+	struct stat s1;
+	int fd1, fd2;
+
+	lua_getglobal(L, "package");
+	struct pkg *pkg = lua_touserdata(L, -1);
+
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(src), &s1, AT_SYMLINK_NOFOLLOW) == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	fd1 = openat(pkg->rootfd, RELATIVE_PATH(src), O_RDONLY, DEFFILEMODE);
+	if (fd1 == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	fd2 = openat(pkg->rootfd, RELATIVE_PATH(dst), O_WRONLY | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
+	if (fd2 == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	if (ftruncate(fd2, s1.st_size) != 0) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+	buf1 = mmap(NULL, s1.st_size, PROT_READ, MAP_SHARED, fd1, 0);
+	if (buf1 == NULL) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+	buf2 = mmap(NULL, s1.st_size, PROT_WRITE, MAP_SHARED, fd2, 0);
+	if (buf2 == NULL) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+
+	memcpy(buf2, buf1, s1.st_size);
+
+	munmap(buf1, s1.st_size);
+	munmap(buf2, s1.st_size);
+	fsync(fd2);
+
+	close(fd1);
+	close(fd2);
+	return (0);
+}
+
+static int
+lua_pkg_filecmp(lua_State *L)
+{
+	const char* file1 = luaL_checkstring(L, 1);
+	const char* file2 = luaL_checkstring(L, 2);
+	char *buf1, *buf2;
+	struct stat s1, s2;
+	int fd1, fd2;
+	int ret = 0;
+
+	lua_getglobal(L, "package");
+	struct pkg *pkg = lua_touserdata(L, -1);
+
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(file1), &s1, AT_SYMLINK_NOFOLLOW) == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(file2), &s2, AT_SYMLINK_NOFOLLOW) == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	if (!S_ISREG(s1.st_mode) || !S_ISREG(s2.st_mode)) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+	if (s1.st_size != s2.st_size) {
+		lua_pushinteger(L, 1);
+		return (1);
+	}
+	fd1 = openat(pkg->rootfd, RELATIVE_PATH(file1), O_RDONLY, DEFFILEMODE);
+	if (fd1 == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	fd2 = openat(pkg->rootfd, RELATIVE_PATH(file2), O_RDONLY, DEFFILEMODE);
+	if (fd2 == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+
+	buf1 = mmap(NULL, s1.st_size, PROT_READ, MAP_SHARED, fd1, 0);
+	if (buf1 == NULL) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+	buf2 = mmap(NULL, s2.st_size, PROT_READ, MAP_SHARED, fd2, 0);
+	if (buf2 == NULL) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+	if (memcmp(buf1, buf2, s1.st_size) != 0)
+		ret = 1;
+
+	munmap(buf1, s1.st_size);
+	munmap(buf2, s2.st_size);
+	close(fd1);
+	close(fd2);
+
+	lua_pushinteger(L, ret);
+	return (1);
 }
 
 static int
@@ -272,6 +387,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_setglobal(L, "pkg_rootdir");
 			lua_pushboolean(L, (upgrade));
 			lua_setglobal(L, "pkg_upgrade");
+			lua_pushcfunction(L, lua_pkg_copy);
+			lua_setglobal(L, "pkg_copy");
+			lua_pushcfunction(L, lua_pkg_filecmp);
+			lua_setglobal(L, "pkg_filecmp");
 			lua_pushcfunction(L, lua_print_msg);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");

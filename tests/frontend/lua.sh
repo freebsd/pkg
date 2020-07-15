@@ -9,7 +9,9 @@ tests_init \
 	script_remove \
 	script_execute \
 	script_rename \
-	script_upgrade
+	script_upgrade \
+	script_sample_not_exists \
+	script_sample_exists
 
 script_basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
@@ -255,4 +257,82 @@ EOF
 		-o match:"upgrade:true" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -r ${TMPDIR}/target upgrade -y
+}
+
+script_sample_not_exists_body() {
+	echo "sample text" > a.sample
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a.sample: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+  if pkg_filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
+     pkg_copy("${TMPDIR}/a.sample", "${TMPDIR}/a", true)
+  end
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	cat ${TMPDIR}/target${TMPDIR}/a.sample
+	cat ${TMPDIR}/target${TMPDIR}/a
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		cmp -s ${TMPDIR}/target${TMPDIR}/a.sample ${TMPDIR}/target${TMPDIR}/a
+}
+
+script_sample_exists_body() {
+	echo "sample text" > a.sample
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a.sample: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+  if pkg_filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
+     pkg_copy("${TMPDIR}/a.sample", "${TMPDIR}/a", true)
+  end
+EOS
+, ]
+}
+EOF
+
+	mkdir -p ${TMPDIR}/target${TMPDIR}
+	echo "text modified" > ${TMPDIR}/target${TMPDIR}/a
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:1 \
+		cmp -s ${TMPDIR}/target${TMPDIR}/a.sample ${TMPDIR}/target${TMPDIR}/a
 }
