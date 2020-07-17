@@ -11,7 +11,8 @@ tests_init \
 	script_rename \
 	script_upgrade \
 	script_sample_not_exists \
-	script_sample_exists
+	script_sample_exists \
+	script_stat
 
 script_basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
@@ -335,4 +336,34 @@ EOF
 		-e empty \
 		-s exit:1 \
 		cmp -s ${TMPDIR}/target${TMPDIR}/a.sample ${TMPDIR}/target${TMPDIR}/a
+}
+
+script_stat_body() {
+	touch plop
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/plop: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+  local st = pkg.stat("${TMPDIR}/plop")
+  if st["size"] == 0 then
+     pkg.print_msg "zero"
+  end
+EOS
+, ]
+}
+EOF
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o inline:"zero\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 }

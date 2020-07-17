@@ -336,14 +336,16 @@ lua_stat(lua_State *L)
 		return lua_pushnil(L), 1;
 	}
 
-	lua_createtable(L, 0, 3);
+	lua_settop(L, 2);
+	if (!lua_istable(L, 2))
+		lua_newtable(L);
+
 	lua_pushinteger(L, s.st_size);
 	lua_setfield(L, -2, "size");
 	lua_pushinteger(L, s.st_uid);
 	lua_setfield(L, -2, "uid");
 	lua_pushinteger(L, s.st_gid);
 	lua_setfield(L, -2, "gid");
-	lua_pushinteger(L, s.st_nlink);
 
 	return (1);
 }
