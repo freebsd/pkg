@@ -1,3 +1,15 @@
+Changes from 1.14.99.3 to 1.14.99.4
+- Add function to lua scripts:
+  * Simple stat()
+  * filecopy to copy a file preserving its attributes
+  * filecmp to compare files
+  * update sqlite to latest version
+  * Add a new 'hash' mode to pkg repo to make repositories CDN friendly
+  * Isolate transport protocol to be able to easily change implementations
+    in the futur
+  * Fix invalid json in even_pipe
+  * lots of portability fixes
+
 Changes from 1.14.99.2 to 1.14.99.3
 - Fix linking on FreeBSD
 
