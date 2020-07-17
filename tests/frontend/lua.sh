@@ -268,8 +268,8 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  if pkg_filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
-     pkg_copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
+  if pkg.filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
+     pkg.copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
   end
 EOS
 , ]
@@ -307,8 +307,8 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  if pkg_filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
-     pkg_copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
+  if pkg.filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
+     pkg.copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
   end
 EOS
 , ]

@@ -106,7 +106,7 @@ if needed and returns it as
 send messages to the user that will be shown at the end of the
 .Xr pkg 8
 process.
-.It Fn pkg_filecmp "file1" "file2"
+.It Fn pkg.filecmp "file1" "file2"
 Compare 2 files, return
 .Va 0
 if the files are identical,
@@ -114,7 +114,7 @@ if the files are identical,
 if the files are different and
 .Va >1
 if an error occured
-.It Fn pkg_filecopy "source" "destination"
+.It Fn pkg.copy "source" "destination"
 Copy a file preserving its attributes. return
 .Va -1
 if an error occured

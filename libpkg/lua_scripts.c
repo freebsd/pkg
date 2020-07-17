@@ -387,6 +387,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			static const luaL_Reg pkg_lib[] = {
 				{ "print_msg", lua_print_msg },
 				{ "prefixed_path", lua_prefix_path },
+				{ "filecmp", lua_pkg_filecmp },
+				{ "copy", lua_pkg_copy },
 				{ NULL, NULL },
 			};
 			close(cur_pipe[0]);
@@ -406,10 +408,6 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_setglobal(L, "pkg_rootdir");
 			lua_pushboolean(L, (upgrade));
 			lua_setglobal(L, "pkg_upgrade");
-			lua_pushcfunction(L, lua_pkg_copy);
-			lua_setglobal(L, "pkg_copy");
-			lua_pushcfunction(L, lua_pkg_filecmp);
-			lua_setglobal(L, "pkg_filecmp");
 			lua_pushcfunction(L, lua_print_msg);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
