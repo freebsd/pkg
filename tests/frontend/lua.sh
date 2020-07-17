@@ -290,8 +290,8 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 
-	cat ${TMPDIR}/target${TMPDIR}/a.sample
-	cat ${TMPDIR}/target${TMPDIR}/a
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a.sample
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
 	atf_check \
 		-o empty \
 		-e empty \
