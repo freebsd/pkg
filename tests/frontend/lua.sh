@@ -348,9 +348,10 @@ files: {
 lua_scripts: {
   post-install: [ <<EOS
   local st = pkg.stat("${TMPDIR}/plop")
-  if st["size"] == 0 then
-     pkg.print_msg "zero"
+  if st.size == 0 then
+     pkg.print_msg("zero")
   end
+  pkg.print_msg(st.type)
 EOS
 , ]
 }
@@ -362,7 +363,7 @@ EOF
 		pkg create -M test.ucl
 	mkdir ${TMPDIR}/target
 	atf_check \
-		-o inline:"zero\n" \
+		-o inline:"zero\nreg\n" \
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz

@@ -346,6 +346,7 @@ lua_stat(lua_State *L)
 	lua_getglobal(L, "package");
 	struct pkg *pkg = lua_touserdata(L, -1);
 	struct stat s;
+	const char *type = "unknown";
 
 	if (fstatat(pkg->rootfd, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
 		return lua_pushnil(L), 1;
@@ -361,6 +362,22 @@ lua_stat(lua_State *L)
 	lua_setfield(L, -2, "uid");
 	lua_pushinteger(L, s.st_gid);
 	lua_setfield(L, -2, "gid");
+	if (S_ISREG(s.st_mode))
+		type = "reg";
+	else if (S_ISDIR(s.st_mode))
+		type = "dir";
+	else if (S_ISCHR(s.st_mode))
+		type = "chr";
+	else if (S_ISLNK(s.st_mode))
+		type = "lnk";
+	else if (S_ISSOCK(s.st_mode))
+		type = "sock";
+	else if (S_ISBLK(s.st_mode))
+		type = "blk";
+	else if (S_ISFIFO(s.st_mode))
+		type = "fifo";
+	lua_pushstring(L, type);
+	lua_setfield(L, -2, "type");
 
 	return (1);
 }
