@@ -118,6 +118,13 @@ if an error occured
 Copy a file preserving its attributes. return
 .Va -1
 if an error occured
+.It Ft st Fn pkg.stat "file"
+return an object table
+.Ft st
+with the following fields:
+.Va size ,
+.Va uid ,
+.Va gid
 .El
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,

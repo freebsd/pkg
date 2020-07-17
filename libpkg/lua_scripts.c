@@ -325,6 +325,30 @@ lua_os_rename(lua_State *L)
 }
 
 static int
+lua_stat(lua_State *L)
+{
+	const char *path = RELATIVE_PATH(luaL_checkstring(L, 1));
+	lua_getglobal(L, "package");
+	struct pkg *pkg = lua_touserdata(L, -1);
+	struct stat s;
+
+	if (fstatat(pkg->rootfd, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
+		return lua_pushnil(L), 1;
+	}
+
+	lua_createtable(L, 0, 3);
+	lua_pushinteger(L, s.st_size);
+	lua_setfield(L, -2, "size");
+	lua_pushinteger(L, s.st_uid);
+	lua_setfield(L, -2, "uid");
+	lua_pushinteger(L, s.st_gid);
+	lua_setfield(L, -2, "gid");
+	lua_pushinteger(L, s.st_nlink);
+
+	return (1);
+}
+
+static int
 lua_os_execute(lua_State *L)
 {
 	return (luaL_error(L, "os.execute not available"));
@@ -389,6 +413,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				{ "prefixed_path", lua_prefix_path },
 				{ "filecmp", lua_pkg_filecmp },
 				{ "copy", lua_pkg_copy },
+				{ "stat", lua_stat },
 				{ NULL, NULL },
 			};
 			close(cur_pipe[0]);
