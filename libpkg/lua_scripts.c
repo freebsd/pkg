@@ -93,6 +93,9 @@ stack_dump(lua_State *L)
 static int
 lua_print_msg(lua_State *L)
 {
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.print_msg takes exactly one argument");
 	const char* str = luaL_checkstring(L, 1);
 	lua_getglobal(L, "msgfd");
 	int fd = lua_tointeger(L, -1);
@@ -105,6 +108,9 @@ lua_print_msg(lua_State *L)
 static int
 lua_pkg_copy(lua_State *L)
 {
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 2, n > 2 ? 3 : n,
+	    "pkg.copy takes exactly two arguments");
 	const char* src = luaL_checkstring(L, 1);
 	const char* dst = luaL_checkstring(L, 2);
 	char *buf1, *buf2;
@@ -176,6 +182,9 @@ lua_pkg_copy(lua_State *L)
 static int
 lua_pkg_filecmp(lua_State *L)
 {
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 2, n > 2 ? 3 : n,
+	    "pkg.filecmp takes exactly two arguments");
 	const char* file1 = luaL_checkstring(L, 1);
 	const char* file2 = luaL_checkstring(L, 2);
 	char *buf1, *buf2;
@@ -238,6 +247,9 @@ lua_pkg_filecmp(lua_State *L)
 static int
 lua_prefix_path(lua_State *L)
 {
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.prefix_path takes exactly one argument");
 	const char *str = luaL_checkstring(L, 1);
 	lua_getglobal(L, "package");
 	struct pkg *p = lua_touserdata(L, -1);
@@ -327,6 +339,9 @@ lua_os_rename(lua_State *L)
 static int
 lua_stat(lua_State *L)
 {
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.stat takes exactly one argument");
 	const char *path = RELATIVE_PATH(luaL_checkstring(L, 1));
 	lua_getglobal(L, "package");
 	struct pkg *pkg = lua_touserdata(L, -1);
