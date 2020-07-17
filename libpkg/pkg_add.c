@@ -221,8 +221,8 @@ out:
 	return (grent.gr_gid);
 }
 
-static int
-set_attrs(int fd, char *path, mode_t perm, uid_t uid, gid_t gid,
+int
+set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
     const struct timespec *ats, const struct timespec *mts)
 {
 
@@ -420,7 +420,7 @@ retry:
 		pkg_fatal_errno("Fail to create symlink: %s", f->temppath);
 	}
 
-	if (set_attrs(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
+	if (set_attrsat(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
 	    &f->time[0], &f->time[1]) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
@@ -587,7 +587,7 @@ retry:
 		close(fd);
 	}
 
-	if (set_attrs(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
+	if (set_attrsat(pkg->rootfd, f->temppath, f->perm, f->uid, f->gid,
 	    &f->time[0], &f->time[1]) != EPKG_OK)
 			return (EPKG_FATAL);
 
@@ -788,7 +788,7 @@ pkg_extract_finalize(struct pkg *pkg)
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (d->noattrs)
 			continue;
-		if (set_attrs(pkg->rootfd, d->path, d->perm,
+		if (set_attrsat(pkg->rootfd, d->path, d->perm,
 		    d->uid, d->gid, &d->time[0], &d->time[1]) != EPKG_OK)
 			return (EPKG_FATAL);
 	}

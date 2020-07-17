@@ -111,6 +111,8 @@ lua_pkg_copy(lua_State *L)
 	struct stat s1;
 	int fd1, fd2;
 
+	bool install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+
 	lua_getglobal(L, "package");
 	struct pkg *pkg = lua_touserdata(L, -1);
 
@@ -151,6 +153,23 @@ lua_pkg_copy(lua_State *L)
 
 	close(fd1);
 	close(fd2);
+
+	if (set_attrsat(pkg->rootfd, RELATIVE_PATH(dst), s1.st_mode, s1.st_uid,
+	  s1.st_gid, &s1.st_atim, &s1.st_mtim) != EPKG_OK) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
+
+#ifdef HAVE_CHFLAGSAT
+	if (!install_as_user && s1.st_flags != 0) {
+		if (chflagsat(pkg->rootfd, RELATIVE_PATH(dst),
+		    s1.st_flags, AT_SYMLINK_NOFOLLOW) == -1) {
+			pkg_fatal_errno("Fail to chflags %s", dst);
+			lua_pushinteger(L, -1);
+			return (1);
+		}
+	}
+#endif
 	return (0);
 }
 

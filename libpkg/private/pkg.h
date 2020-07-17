@@ -890,5 +890,6 @@ struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		char *version, bool locked);
 void backup_library(struct pkgdb *, struct pkg *, const char *);
 int suggest_arch(struct pkg *, bool);
+int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, const struct timespec *ats, const struct timespec *mts);
 
 #endif
