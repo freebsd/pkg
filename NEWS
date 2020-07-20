@@ -1,3 +1,6 @@
+Changes from 1.14.99.4 to 1.14.99.5
+- Fix lua script during pkg_delete
+
 Changes from 1.14.99.3 to 1.14.99.4
 - Add function to lua scripts:
   * Simple stat()
