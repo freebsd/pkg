@@ -1,3 +1,7 @@
+Changes from 1.14.99.5 to 1.14.99.6
+- Run lua scripts before shell scripts
+- unbreak build with -fno-common
+
 Changes from 1.14.99.4 to 1.14.99.5
 - Fix lua script during pkg_delete
 - Return file type for lua_stat
