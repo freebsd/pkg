@@ -437,7 +437,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 
 	LL_FOREACH(pkg->lua_scripts[type], lscript) {
 		if (get_socketpair(cur_pipe) == -1) {
-			pkg_emit_errno("pkg_run_script", "socketpair");
+			pkg_emit_errno("pkg_lua_script_script", "socketpair");
 			goto cleanup;
 		}
 		pid_t pid = fork();

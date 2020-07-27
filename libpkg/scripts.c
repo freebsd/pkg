@@ -151,7 +151,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", utstring_body(script_cmd));
 			posix_spawn_file_actions_init(&action);
 			if (get_socketpair(cur_pipe) == -1) {
-				pkg_emit_errno("pkg_run_script", "socketpair");
+				pkg_emit_errno("pkg_script_run", "socketpair");
 				goto cleanup;
 			}
 
