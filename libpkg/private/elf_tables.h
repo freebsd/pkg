@@ -40,6 +40,9 @@ static const struct _elf_corres mach_corres[] = {
 	{ EM_MIPS, "mips" },
 	{ EM_PPC, "powerpc" },
 	{ EM_PPC64, "powerpc" },
+#ifdef EM_RISCV
+	{ EM_RISCV, "riscv" },
+#endif
 	{ EM_SPARCV9, "sparc64" },
 	{ EM_IA_64, "ia64" },
 	{ -1, NULL },
@@ -105,6 +108,11 @@ static struct arch_trans machine_arch_translation[] = {
 	{ "mips:32:eb:n32", "mipsn32" },
 	{ "mips:64:el:n64", "mips64el" },
 	{ "mips:64:eb:n64", "mips64" },
+	/* And RISC-V */
+	{ "riscv:32:hf", "riscv32" },
+	{ "riscv:32:sf", "riscv32sf" },
+	{ "riscv:64:hf", "riscv64" },
+	{ "riscv:64:sf", "riscv64sf" },
 
 	{ NULL, NULL }
 };

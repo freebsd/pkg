@@ -1029,6 +1029,23 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s:%s",
 		    arch, wordsize_corres_str, endian_corres_str, abi);
 		break;
+#if defined(EM_RISCV) && defined(EF_RISCV_FLOAT_ABI_MASK)
+	case EM_RISCV:
+		switch (elfhdr.e_flags & EF_RISCV_FLOAT_ABI_MASK) {
+			case EF_RISCV_FLOAT_ABI_SOFT:
+				abi = "sf";
+				break;
+			case EF_RISCV_FLOAT_ABI_DOUBLE:
+				abi = "hf";
+				break;
+			default:
+				abi = "unknown";
+				break;
+		}
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		    arch, wordsize_corres_str, abi);
+		break;
+#endif
 	default:
 		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
 		    arch, wordsize_corres_str);
