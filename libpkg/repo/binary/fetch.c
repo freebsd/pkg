@@ -199,7 +199,9 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	}
 
 	retcode = pkg_fetch_file(repo, url, dest, 0, offset, pkg->pkgsize);
-	fetched = true;
+
+	if (offset == -1)
+		fetched = true;
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
