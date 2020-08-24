@@ -388,7 +388,7 @@ is_valid_os_version(struct pkg *pkg)
 							"- running kernel: %d\n"
 							"Ignore the mismatch and continue? ", pkg->name,
 							fbsdver, ctx.osversion);
-					ret = pkg_emit_query_yesno(true, query_buf);
+					ret = pkg_emit_query_yesno(false, query_buf);
 					osver_mismatch_allowed = ret;
 				}
 
