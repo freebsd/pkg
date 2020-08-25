@@ -182,7 +182,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 static uid_t
 get_uid_from_archive(struct archive_entry *ae)
 {
-	static char user_buffer[128];
+	static char user_buffer[1024];
 	const char *user;
 	static struct passwd pwent;
 	struct passwd *result;
@@ -203,7 +203,7 @@ out:
 static gid_t
 get_gid_from_archive(struct archive_entry *ae)
 {
-	static char group_buffer[128];
+	static char group_buffer[1024];
 	static struct group grent;
 	struct group *result;
 	const char *group;
@@ -1284,7 +1284,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	int retcode;
 	kh_hls_t *hardlinks = NULL;;
 	const char *path;
-	char buffer[128];
+	char buffer[1024];
 	size_t link_len;
 	bool install_as_user;
 
