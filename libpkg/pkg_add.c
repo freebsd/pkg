@@ -32,6 +32,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
+#include <err.h>
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
@@ -186,14 +187,18 @@ get_uid_from_archive(struct archive_entry *ae)
 	const char *user;
 	static struct passwd pwent;
 	struct passwd *result;
+	int err;
 
 	user = archive_entry_uname(ae);
 	if (pwent.pw_name != NULL && strcmp(user, pwent.pw_name) == 0)
 		goto out;
 	pwent.pw_name = NULL;
-	if ((getpwnam_r(user, &pwent, user_buffer, sizeof(user_buffer),
-	    &result)) < 0)
+	err = getpwnam_r(user, &pwent, user_buffer, sizeof(user_buffer),
+	    &result);
+	if (err != 0) {
+		warnc(err, "getpwnam_r");
 		return (0);
+	}
 	if (result == NULL)
 		return (0);
 out:
@@ -207,14 +212,18 @@ get_gid_from_archive(struct archive_entry *ae)
 	static struct group grent;
 	struct group *result;
 	const char *group;
+	int err;
 
 	group = archive_entry_gname(ae);
 	if (grent.gr_name != NULL && strcmp(group, grent.gr_name) == 0)
 		goto out;
 	grent.gr_name = NULL;
-	if ((getgrnam_r(group, &grent, group_buffer, sizeof(group_buffer),
-	    &result)) < 0)
+	err = getgrnam_r(group, &grent, group_buffer, sizeof(group_buffer),
+	    &result);
+	if (err != 0) {
+		warnc(err, "getgrnam_r");
 		return (0);
+	}
 	if (result == NULL)
 		return (0);
 out:
@@ -1280,7 +1289,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	char target[MAXPATHLEN];
 	struct passwd *pw, pwent;
 	struct group *gr, grent;
-	int fd, fromfd;
+	int err, fd, fromfd;
 	int retcode;
 	kh_hls_t *hardlinks = NULL;;
 	const char *path;
@@ -1304,8 +1313,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		if (d->perm == 0)
 			d->perm = st.st_mode & ~S_IFMT;
 		if (d->uname[0] != '\0') {
-			if (getpwnam_r(d->uname, &pwent, buffer, sizeof(buffer),
-			    &pw) < 0) {
+			err = getpwnam_r(d->uname, &pwent, buffer,
+			    sizeof(buffer), &pw);
+			if (err != 0) {
+				warnc(err, "getpwnam_r");
 				pkg_emit_error("Unknown user: '%s'", d->uname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -1315,8 +1326,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			d->uid = install_as_user ? st.st_uid : 0;
 		}
 		if (d->gname[0] != '\0') {
-			if (getgrnam_r(d->gname, &grent, buffer, sizeof(buffer),
-			    &gr) < 0) {
+			err = getgrnam_r(d->gname, &grent, buffer,
+			    sizeof(buffer), &gr);
+			if (err != 0) {
+				warnc(err, "getgrnam_r");
 				pkg_emit_error("Unknown group: '%s'", d->gname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -1355,8 +1368,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			pkg_fatal_errno("%s%s", src, f->path);
 		}
 		if (f->uname[0] != '\0') {
-			if (getpwnam_r(f->uname, &pwent, buffer, sizeof(buffer),
-			    &pw) < 0) {
+			err = getpwnam_r(f->uname, &pwent, buffer,
+			    sizeof(buffer), &pw);
+			if (err != 0) {
+				warnc(err, "getpwnam_r");
 				pkg_emit_error("Unknown user: '%s'", f->uname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -1367,8 +1382,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		}
 
 		if (f->gname[0] != '\0') {
-			if (getgrnam_r(f->gname, &grent, buffer, sizeof(buffer),
-			    &gr) < 0) {
+			err = getgrnam_r(f->gname, &grent, buffer,
+			    sizeof(buffer), &gr);
+			if (err != 0) {
+				warnc(err, "getgrnam_r");
 				pkg_emit_error("Unknown group: '%s'", f->gname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
