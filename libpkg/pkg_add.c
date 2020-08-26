@@ -32,7 +32,6 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
-#include <err.h>
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
@@ -196,7 +195,7 @@ get_uid_from_archive(struct archive_entry *ae)
 	err = getpwnam_r(user, &pwent, user_buffer, sizeof(user_buffer),
 	    &result);
 	if (err != 0) {
-		warnc(err, "getpwnam_r");
+		pkg_emit_errno("getpwnam_r", user );
 		return (0);
 	}
 	if (result == NULL)
@@ -221,7 +220,7 @@ get_gid_from_archive(struct archive_entry *ae)
 	err = getgrnam_r(group, &grent, group_buffer, sizeof(group_buffer),
 	    &result);
 	if (err != 0) {
-		warnc(err, "getgrnam_r");
+		pkg_emit_errno("getgrnam_r", group );
 		return (0);
 	}
 	if (result == NULL)
@@ -1316,8 +1315,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			err = getpwnam_r(d->uname, &pwent, buffer,
 			    sizeof(buffer), &pw);
 			if (err != 0) {
-				warnc(err, "getpwnam_r");
-				pkg_emit_error("Unknown user: '%s'", d->uname);
+				pkg_emit_errno("getpwnam_r", d->uname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1329,8 +1327,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			err = getgrnam_r(d->gname, &grent, buffer,
 			    sizeof(buffer), &gr);
 			if (err != 0) {
-				warnc(err, "getgrnam_r");
-				pkg_emit_error("Unknown group: '%s'", d->gname);
+				pkg_emit_errno("getgrnam_r", d->gname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1371,8 +1368,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			err = getpwnam_r(f->uname, &pwent, buffer,
 			    sizeof(buffer), &pw);
 			if (err != 0) {
-				warnc(err, "getpwnam_r");
-				pkg_emit_error("Unknown user: '%s'", f->uname);
+				pkg_emit_errno("getpwnam_r", f->uname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1385,8 +1381,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			err = getgrnam_r(f->gname, &grent, buffer,
 			    sizeof(buffer), &gr);
 			if (err != 0) {
-				warnc(err, "getgrnam_r");
-				pkg_emit_error("Unknown group: '%s'", f->gname);
+				pkg_emit_errno("getgrnam_r", f->gname);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
