@@ -147,7 +147,8 @@ typedef enum _fmt_code_t {
 	PP_PKG_PROVIDED,
 	PP_PKG_PROVIDED_NAME,
 	PP_PKG_SHORT_CHECKSUM,
-	PP_LAST_FORMAT = PP_PKG_SHORT_CHECKSUM,
+	PP_PKG_INT_CHECKSUM,
+	PP_LAST_FORMAT = PP_PKG_INT_CHECKSUM,
 	PP_LITERAL_PERCENT,
 	PP_UNKNOWN,
 	PP_END_MARKER
@@ -232,6 +233,7 @@ _static UT_string *format_unknown(UT_string *, __unused const void *, __unused s
 _static UT_string *format_provided(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_required(UT_string *, const void *, struct percent_esc *);
 _static UT_string *format_provide_name(UT_string *, const void *, struct percent_esc *);
+_static UT_string *format_int_checksum(UT_string *, const void *, struct percent_esc *);
 
 /* Other static function prototypes */
 

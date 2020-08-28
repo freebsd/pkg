@@ -163,7 +163,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	if (pkg->digest == NULL) {
 		pkg_debug(3, "no digest found for package %s (%s-%s)",
 		    pkg->uid, pkg->name, pkg->version);
-		if (pkg_checksum_calculate(pkg, universe->j->db) != EPKG_OK) {
+		if (pkg_checksum_calculate(pkg, universe->j->db, false) != EPKG_OK) {
 			*found = NULL;
 			return (EPKG_FATAL);
 		}
@@ -420,7 +420,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 		if (unit == NULL) {
 			if (rpkg->digest == NULL) {
 				pkg_debug(3, "no digest found for package %s", rpkg->uid);
-				if (pkg_checksum_calculate(rpkg, universe->j->db) != EPKG_OK) {
+				if (pkg_checksum_calculate(rpkg, universe->j->db, false) != EPKG_OK) {
 					return (EPKG_FATAL);
 				}
 			}

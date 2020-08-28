@@ -739,7 +739,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	struct pkg_dep *rdep = NULL;
 
 	if (rp->digest == NULL) {
-		if (pkg_checksum_calculate(rp, j->db) != EPKG_OK) {
+		if (pkg_checksum_calculate(rp, j->db, false) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 	}

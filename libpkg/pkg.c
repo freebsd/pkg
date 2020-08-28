@@ -1490,7 +1490,7 @@ pkg_validate(struct pkg *pkg, struct pkgdb *db)
 			strlen(pkg->digest))) {
 		/* Calculate new digest */
 		if (pkgdb_ensure_loaded(db, pkg, flags)) {
-			return (pkg_checksum_calculate(pkg, db));
+			return (pkg_checksum_calculate(pkg, db, false));
 		}
 		return (EPKG_FATAL);
 	}
