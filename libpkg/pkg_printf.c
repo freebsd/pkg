@@ -114,7 +114,7 @@
  *
  * V  pkg          old version
  * W
- * X
+ * X  pkg          Internal Checksum
  * Y  pkg          List of requires
  * Yn pkg_provide  Name of the require
  * Z
@@ -798,6 +798,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_short_checksum,
 	},
+	[PP_PKG_INT_CHECKSUM] =
+	{
+		'X',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_int_checksum,
+	},
 	[PP_LITERAL_PERCENT] =
 	{
 		'%',
@@ -1477,6 +1486,18 @@ format_old_version(UT_string *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	return (string_val(buf, pkg->old_version, p));
+}
+
+/*
+ * %X -- Package checksum. string. Accepts field width, left align
+ */
+UT_string *
+format_int_checksum(UT_string *buf, const void *data, struct percent_esc *p)
+{
+	struct pkg	*pkg = (struct pkg *)data;
+
+	pkg_checksum_calculate(pkg, NULL, true);
+	return (string_val(buf, pkg->digest, p));
 }
 
 /*

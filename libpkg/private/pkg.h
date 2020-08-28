@@ -793,7 +793,7 @@ bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 pkg_object* pkg_emit_object(struct pkg *pkg, short flags);
 
 int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
-	pkg_checksum_type_t type);
+       pkg_checksum_type_t type, bool inc_scripts);
 
 /*
  * Calculates checksum for any data.
@@ -818,7 +818,7 @@ pkg_checksum_type_t pkg_checksum_file_get_type(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_type_from_string(const char *name);
 const char* pkg_checksum_type_to_string(pkg_checksum_type_t type);
 size_t pkg_checksum_type_size(pkg_checksum_type_t type);
-int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db);
+int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts);
 char *pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type);
 char *pkg_checksum_generate_fileat(int fd, const char *path,
     pkg_checksum_type_t type);

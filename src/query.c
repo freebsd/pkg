@@ -76,6 +76,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 't', "",		0, PKG_LOAD_BASIC },
 	{ 'R', "",              0, PKG_LOAD_ANNOTATIONS },
 	{ 'V', "",		0, PKG_LOAD_BASIC },
+	{ 'X', "",		0, PKG_LOAD_BASIC | PKG_LOAD_SCRIPTS | PKG_LOAD_LUA_SCRIPTS },
 };
 
 static void
@@ -298,6 +299,9 @@ format_str(struct pkg *pkg, UT_string *dest, const char *qstr, const void *data)
 			case 'V':
 				pkg_get(pkg, PKG_VITAL, &vital);
 				utstring_printf(dest, "%d", vital);
+				break;
+			case 'X':
+				pkg_utstring_printf(dest, "%X", pkg);
 				break;
 			case '%':
 				utstring_printf(dest, "%c", '%');

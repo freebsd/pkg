@@ -211,7 +211,7 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
 
 int
 pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
-	pkg_checksum_type_t type)
+       pkg_checksum_type_t type, bool inc_scripts)
 {
 	unsigned char *bdigest;
 	char *olduid, *buf;
@@ -268,6 +268,21 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	buf = NULL;
 	while (pkg_requires(pkg, &buf) == EPKG_OK) {
 		pkg_checksum_add_entry("require", buf, &entries);
+	}
+
+	if (inc_scripts) {
+		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
+			if (pkg->scripts[i] != NULL)
+				pkg_checksum_add_entry("script",
+				    utstring_body(pkg->scripts[i]),
+				    &entries);
+		}
+		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+			if (pkg->lua_scripts[i] != NULL)
+				pkg_checksum_add_entry("lua_script",
+				    pkg->lua_scripts[i]->script,
+				    &entries);
+		}
 	}
 
 	/* Sort before hashing */
@@ -602,7 +617,7 @@ pkg_checksum_type_size(pkg_checksum_type_t type)
 }
 
 int
-pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
+pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts)
 {
 	char *new_digest;
 	struct pkg_repo *repo;
@@ -622,7 +637,7 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db)
 	}
 
 	new_digest = xmalloc(pkg_checksum_type_size(type));
-	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type)
+	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type, inc_scripts)
 			!= EPKG_OK) {
 		free(new_digest);
 		return (EPKG_FATAL);
