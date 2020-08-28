@@ -1,3 +1,9 @@
+Changes from 1.14.99.6 to 1.14.99.7
+- Default the OSVERSION check to false
+- Fix some errors related to getpwname_r/getgrnam_r
+- Add RISC-V ABI aliases
+- Add '%X' to pkg-query, this print the internal package checksum
+
 Changes from 1.14.99.5 to 1.14.99.6
 - Run lua scripts before shell scripts
 - unbreak build with -fno-common
