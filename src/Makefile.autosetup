@@ -105,7 +105,7 @@ $(PROG): $(top_builddir)/libpkg/libpkg_flat.a
 install: $(PROG)
 	install -d -m 755 $(DESTDIR)$(sbindir)
 	install -m 755 pkg $(DESTDIR)$(sbindir)/pkg
-	install -m 644 pkg.conf.sample $(DESTDIR)$(etcdir)
+	install -m 644 pkg.conf.sample $(DESTDIR)$(etcdir)/
 
 clean: clean-pkg-static
 clean-pkg-static:

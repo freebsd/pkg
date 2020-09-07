@@ -67,9 +67,9 @@ install:
 	install -d $(DESTDIR)$(mandir)/man3
 	install -d $(DESTDIR)$(mandir)/man5
 	install -d $(DESTDIR)$(mandir)/man8
-	install -m 644 *.3.gz $(DESTDIR)$(mandir)/man3
-	install -m 644 *.5.gz $(DESTDIR)$(mandir)/man5
-	install -m 644 *.8.gz $(DESTDIR)$(mandir)/man8
+	install -m 644 *.3.gz $(DESTDIR)$(mandir)/man3/
+	install -m 644 *.5.gz $(DESTDIR)$(mandir)/man5/
+	install -m 644 *.8.gz $(DESTDIR)$(mandir)/man8/
 	ln -sf pkg-delete.8.gz $(DESTDIR)$(mandir)/man8/pkg-remove.8.gz
 	ln -sf pkg.8.gz $(DESTDIR)$(mandir)/man8/pkg-static.8.gz
 	ln -sf pkg-lock.8.gz $(DESTDIR)$(mandir)/man8/pkg-unlock.8.gz
