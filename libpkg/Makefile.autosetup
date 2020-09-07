@@ -175,4 +175,4 @@ install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB).a
 	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
 	install -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
 	install -m 644 pkg.h $(DESTDIR)$(includedir)/
-	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)
+	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)/
