@@ -368,7 +368,7 @@ pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target)
 	}
 	if (schema != NULL) {
 		if (!ucl_object_validate(schema, top, &err)) {
-			printf("repository meta cannot be validated: %s", err.msg);
+			printf("repository meta cannot be validated: %s\n", err.msg);
 			ucl_object_unref(top);
 			return (EPKG_FATAL);
 		}
