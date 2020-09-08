@@ -1,3 +1,6 @@
+Changes from 1.15.2 to 1.15.3
+- Fix fetching files which does not belong to a repo
+
 Changes from 1.15.1 to 1.15.2
 - Remove a useless warning with dirty code causing crash
 - minor improvements in the build system
