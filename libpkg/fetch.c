@@ -222,13 +222,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 
 		url += strlen(URL_SCHEME_PREFIX);
 		u = fetchParseURL(url);
-	} else {
-		if (repo != NULL && repo->mirror_type == SRV && (strncmp(u->scheme, "http", 4) == 0 ||
-		    strncmp(u->scheme, "ftp", 3) == 0)) {
-			pkg_emit_notice(
-     "Warning: use of %s:// URL scheme with SRV records is deprecated: "
-     "switch to pkg+%s://", u->scheme, u->scheme);
-		}
 	}
 
 	if (u == NULL)
