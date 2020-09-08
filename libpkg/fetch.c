@@ -191,6 +191,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 buflen = 0;
 	size_t		 left = 0;
 	struct fetcher	*fetcher = NULL;
+	struct pkg_repo	*fakerepo = NULL;
 
 	FILE *remote = NULL;
 
@@ -243,6 +244,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 			}
 			setenv(kv->key, kv->value, 1);
 		}
+	} else {
+		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
+		fakerepo->url = xstrdup(url);
+		repo = fakerepo;
 	}
 
 	if (u == NULL) {
@@ -254,22 +259,20 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (t != NULL)
 		u->ims_time = *t;
 
-	if (repo != NULL) {
-		for (int i = 0; i < nitems(fetchers); i++) {
-			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
-				fetcher = &fetchers[i];
-				if ((retcode = fetcher->open(repo, u, &sz)) != EPKG_OK)
-					goto cleanup;
-				remote = repo->ssh ? repo->ssh : repo->fh;
-				break;
-			}
+	for (int i = 0; i < nitems(fetchers); i++) {
+		if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
+			fetcher = &fetchers[i];
+			if ((retcode = fetcher->open(repo, u, &sz)) != EPKG_OK)
+				goto cleanup;
+			remote = repo->ssh ? repo->ssh : repo->fh;
+			break;
 		}
-		if (fetcher == NULL) {
-			pkg_emit_error("Unknown scheme: %s", u->scheme);
-			return (EPKG_FATAL);
-		}
-		pkg_debug(1, "Fetch: fetcher chosen: %s", fetcher->scheme);
 	}
+	if (fetcher == NULL) {
+		pkg_emit_error("Unknown scheme: %s", u->scheme);
+		return (EPKG_FATAL);
+	}
+	pkg_debug(1, "Fetch: fetcher chosen: %s", fetcher->scheme);
 
 	if (strcmp(u->scheme, "ssh") != 0) {
 		if (t != NULL && u->ims_time != 0) {
@@ -342,6 +345,7 @@ cleanup:
 			repo->fh = NULL;
 		}
 	}
+	free(fakerepo);
 
 	if (retcode == EPKG_OK) {
 		struct timeval ftimes[2] = {
