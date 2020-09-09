@@ -139,6 +139,7 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 		pkg_debug(1, "SSH> nothing to read, got: %s", line);
 		goto ssh_cleanup;
 	}
+	retcode = EPKG_OK;
 
 ssh_cleanup:
 	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
