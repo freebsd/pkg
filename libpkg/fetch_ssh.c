@@ -161,6 +161,8 @@ ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 	if (repo->ssh == NULL)
 		retcode = ssh_connect(repo, u);
+	else
+		retcode = EPKG_OK;
 
 	if (retcode != EPKG_OK)
 		return (retcode);
