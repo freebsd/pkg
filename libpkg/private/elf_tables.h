@@ -87,8 +87,9 @@ struct arch_trans {
 static struct arch_trans machine_arch_translation[] = {
 	{ "x86:32", "i386" },
 	{ "x86:64", "amd64" },
-	{ "powerpc:32", "powerpc" },
-	{ "powerpc:64", "powerpc64" },
+	{ "powerpc:32:eb", "powerpc" },
+	{ "powerpc:64:eb", "powerpc64" },
+	{ "powerpc:64:el", "powerpc64le" },
 	{ "sparc64:64", "sparc64" },
 	{ "ia64:64", "ia64" },
 	/* All the ARM stuff */

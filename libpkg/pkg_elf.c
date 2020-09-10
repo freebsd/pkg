@@ -1046,6 +1046,14 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 		    arch, wordsize_corres_str, abi);
 		break;
 #endif
+	case EM_PPC:
+	case EM_PPC64:
+		endian_corres_str = elf_corres_to_string(endian_corres,
+		    (int)elfhdr.e_ident[EI_DATA]);
+
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		    arch, wordsize_corres_str, endian_corres_str);
+		break;
 	default:
 		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
 		    arch, wordsize_corres_str);
