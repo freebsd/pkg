@@ -136,7 +136,7 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
 		ret = pkg_create_i(pc, e->pkg, false);
 		if (ret == EPKG_EXIST) {
-			pkg_printf("%s-%v already packaged, skipping...\n",
+			pkg_printf("%n-%v already packaged, skipping...\n",
 			  e->pkg, e->pkg);
 		}
 		if (ret != EPKG_OK && ret != EPKG_EXIST)
