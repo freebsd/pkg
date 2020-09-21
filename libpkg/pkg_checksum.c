@@ -211,7 +211,7 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
 
 int
 pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
-       pkg_checksum_type_t type, bool inc_scripts)
+       pkg_checksum_type_t type, bool inc_scripts, bool inc_version)
 {
 	unsigned char *bdigest;
 	char *olduid, *buf;
@@ -227,7 +227,8 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	pkg_checksum_add_entry("name", pkg->name, &entries);
 	pkg_checksum_add_entry("origin", pkg->origin, &entries);
-	pkg_checksum_add_entry("version", pkg->version, &entries);
+	if (inc_version)
+		pkg_checksum_add_entry("version", pkg->version, &entries);
 	pkg_checksum_add_entry("arch", pkg->arch, &entries);
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -617,7 +618,8 @@ pkg_checksum_type_size(pkg_checksum_type_t type)
 }
 
 int
-pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts)
+pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts,
+    bool inc_version)
 {
 	char *new_digest;
 	struct pkg_repo *repo;
@@ -637,7 +639,8 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts)
 	}
 
 	new_digest = xmalloc(pkg_checksum_type_size(type));
-	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type), type, inc_scripts)
+	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type),
+	    type, inc_scripts, inc_version)
 			!= EPKG_OK) {
 		free(new_digest);
 		return (EPKG_FATAL);

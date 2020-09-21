@@ -1496,7 +1496,7 @@ format_int_checksum(UT_string *buf, const void *data, struct percent_esc *p)
 {
 	struct pkg	*pkg = (struct pkg *)data;
 
-	pkg_checksum_calculate(pkg, NULL, true);
+	pkg_checksum_calculate(pkg, NULL, true, false);
 	return (string_val(buf, pkg->digest, p));
 }
 
