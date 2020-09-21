@@ -1,3 +1,7 @@
+Changes from 1.15.4 to 1.15.5
+- Add powerpc64le arch
+- Fix query '%X' to not use the version
+
 Changes from 1.15.3 to 1.15.4
 - Fix pkg ssh support
 
