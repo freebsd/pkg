@@ -125,15 +125,12 @@ EOF
 		-s exit:0 \
 		pkg create -M test2.ucl
 
-	atf_check \
-		-o inline:'2$2$iwohwqpqjwb1uq7mbg489458jatsea8ste78hm9kck6mdwq1z5u7r8n8anjdrea8dx6dt7mszoswxe3k6j13o1iepgwdxi4ecw9kupy\n' \
-		-e empty \
-		-s exit:0 \
-		pkg query -F ./test-1.txz '%X'
+	sum1=$(pkg query -F ./test-1.txz '%X')
+	sum2=$(pkg query -F ./test-2.txz '%X')
 
 	atf_check \
-		-o inline:'2$2$iwohwqpqjwb1uq7mbg489458jatsea8ste78hm9kck6mdwq1z5u7r8n8anjdrea8dx6dt7mszoswxe3k6j13o1iepgwdxi4ecw9kupy\n' \
+		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-2.txz '%X'
+		test "${sum1}" = "${sum2}"
 }
