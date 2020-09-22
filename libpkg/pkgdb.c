@@ -3167,7 +3167,7 @@ pkgdb_begin_solver(struct pkgdb *db)
 	if (it != NULL) {
 		kv_init(pkglist);
 		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC|PKG_LOAD_OPTIONS) == EPKG_OK) {
-			pkg_checksum_calculate(p, NULL, false, true);
+			pkg_checksum_calculate(p, NULL, false, true, false);
 			kv_prepend(typeof(p), pkglist, p);
 			p = NULL;
 			cnt ++;

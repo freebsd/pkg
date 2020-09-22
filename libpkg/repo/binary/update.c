@@ -387,7 +387,7 @@ pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 	}
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
-		pkg_checksum_calculate(pkg, NULL, false, true);
+		pkg_checksum_calculate(pkg, NULL, false, true, false);
 	abi = pkg->abi != NULL ? pkg->abi : pkg->arch;
 	if (abi == NULL || !is_valid_abi(abi, true)) {
 		rc = EPKG_FATAL;

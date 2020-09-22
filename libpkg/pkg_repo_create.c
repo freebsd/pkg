@@ -396,7 +396,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			if (meta->version == 1) {
 				if (pkg_checksum_generate(pkg, mdigest,
 				    pkg_checksum_type_size(meta->digest_format),
-				    meta->digest_format, false, true) != EPKG_OK) {
+				    meta->digest_format, false, true, false) != EPKG_OK) {
 					pkg_emit_error("Cannot generate digest for a package");
 					ret = EPKG_FATAL;
 
