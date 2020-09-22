@@ -35,9 +35,9 @@ define LIBVERSION 4
 define LIBSOEXT [format [get-define SH_SOEXTVER] [get-define LIBVERSION]]
 
 define GITHASH ""
-if {[cc-check-progs git] && [file exists .git]} {
-	catch {exec git rev-parse --short HEAD} gitrev
-	catch {exec git diff-index -m --name-only HEAD} gitdirty
+if {[cc-check-progs git] && [file exists .git] &&
+    ![catch {exec git rev-parse --short HEAD} gitrev] &&
+    ![catch {exec git diff-index -m --name-only HEAD} gitdirty]} {
 	define GITHASH -$gitrev[expr {$gitdirty eq {} ? {} : {-dirty}}]
 }
 
