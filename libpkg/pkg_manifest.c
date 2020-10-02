@@ -605,7 +605,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				break;
 			}
 			lua_script_type = lua_script_type_str(key);
-			if (script_type == PKG_LUA_UNKNOWN) {
+			if (lua_script_type == PKG_LUA_UNKNOWN) {
 				pkg_emit_error("Skipping unknown script "
 				    "type: %s", key);
 				break;
