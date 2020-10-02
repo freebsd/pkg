@@ -259,7 +259,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 */
 			/* FALLTHRU */
 		case '#':
-			utstring_printf(buf, "%c", argc);
+			utstring_printf(buf, "%d", argc);
 			break;
 		default:
 			if ((sz = strspn(in, "0123456789")) > 0) {
