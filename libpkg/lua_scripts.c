@@ -122,7 +122,7 @@ lua_pkg_copy(lua_State *L)
 	lua_getglobal(L, "package");
 	struct pkg *pkg = lua_touserdata(L, -1);
 
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(src), &s1, AT_SYMLINK_NOFOLLOW) == -1) {
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(src), &s1, 0) == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
