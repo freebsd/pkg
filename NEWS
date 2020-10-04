@@ -1,3 +1,6 @@
+Changes from 1.15.8 to 1.15.9
+- Fix lua_pkg_copy when copying a symlink
+
 Changes from 1.15.7 to 1.15.8
 - Fix a typo making the detection of lua scripts in manifest
   unreliable in certain circumpstances
