@@ -1,3 +1,6 @@
+Changes from 1.15.9 to 1.15.10
+- Add a workaround for https://bugs.freebsd.org/250271
+
 Changes from 1.15.8 to 1.15.9
 - Fix lua_pkg_copy when copying a symlink
 
