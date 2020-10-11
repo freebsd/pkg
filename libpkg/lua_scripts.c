@@ -131,7 +131,12 @@ lua_pkg_copy(lua_State *L)
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	fd2 = openat(pkg->rootfd, RELATIVE_PATH(dst), O_WRONLY | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
+	/* 
+	 * We should be using O_WRONLY but a weird aarch64 pmap
+	 * bug is preventing us doing that
+	 * See https://bugs.freebsd.org/250271
+	 */
+	fd2 = openat(pkg->rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
@@ -145,7 +150,12 @@ lua_pkg_copy(lua_State *L)
 		lua_pushinteger(L, -1);
 		return (1);
 	}
-	buf2 = mmap(NULL, s1.st_size, PROT_WRITE, MAP_SHARED, fd2, 0);
+	/* 
+	 * We should be using only PROT_WRITE but a weird aarch64 pmap
+	 * bug is preventing us doing that
+	 * https://bugs.freebsd.org/250271
+	 */
+	buf2 = mmap(NULL, s1.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0);
 	if (buf2 == NULL) {
 		lua_pushinteger(L, -1);
 		return (1);
