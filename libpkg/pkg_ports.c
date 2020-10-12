@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
@@ -1238,15 +1238,32 @@ plist_free(struct plist *p)
 	free(p);
 }
 
+static int
+plist_parse(struct plist *pplist, FILE *f)
+{
+	int ret, rc = EPKG_OK;
+	size_t linecap = 0;
+	ssize_t linelen;
+	char *line = NULL;
+
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
+		ret = plist_parse_line(pplist, line);
+		if (rc == EPKG_OK)
+			rc = ret;
+	}
+	free(line);
+
+	return (ret);
+}
+
 int
 ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 {
-	char *line = NULL;
 	int ret, rc = EPKG_OK;
 	struct plist *pplist;
 	FILE *plist_f;
-	size_t linecap = 0;
-	ssize_t linelen;
 
 	assert(pkg != NULL);
 	assert(plist != NULL);
@@ -1260,15 +1277,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 		return (EPKG_FATAL);
 	}
 
-	while ((linelen = getline(&line, &linecap, plist_f)) > 0) {
-		if (line[linelen - 1] == '\n')
-			line[linelen - 1] = '\0';
-		ret = plist_parse_line(pplist, line);
-		if (rc == EPKG_OK)
-			rc = ret;
-	}
-
-	free(line);
+	rc = plist_parse(pplist, plist_f);
 
 	pkg->flatsize = pplist->flatsize;
 
