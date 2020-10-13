@@ -1739,7 +1739,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 }
 
 static int
-solve_with_cudf_solver(struct pkg_jobs *j, const char *solver)
+solve_with_external_cudf_solver(struct pkg_jobs *j, const char *solver)
 {
 	int ret, pstatus;
 	FILE *spipe[2];
@@ -1819,7 +1819,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	if (ret == EPKG_OK) {
 		if (cudf_solver != NULL) {
-			ret = solve_with_cudf_solver(j, cudf_solver);
+			ret = solve_with_external_cudf_solver(j, cudf_solver);
 		} else {
 again:
 			pkg_jobs_universe_process_upgrade_chains(j);
