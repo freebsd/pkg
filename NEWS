@@ -1,6 +1,8 @@
 Changes from 1.15.99.2 to 1.15.99.3
 - Fix cases where lua scripts are not properly recognized
 - Fix %# in scripts
+- Implement @include mechanism for plist
+- Fix lua_copy on arm64
 
 Changes from 1.15.99.1 to 1.15.99.2
 - Fix '%X' to include the file name and sum
