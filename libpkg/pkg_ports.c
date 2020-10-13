@@ -60,6 +60,7 @@ static int config(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
 static int name_key(struct plist *, char *, struct file_attr *);
 static int pkgdep(struct plist *, char *, struct file_attr *);
+static int include_plist(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
 	const char *name;
@@ -702,6 +703,7 @@ static struct keyact {
 	{ "dir", dir },
 	{ "dirrm", dirrm },
 	{ "dirrmtry", dirrm },
+	{ "include", include_plist },
 	{ "mode", setmod },
 	{ "owner", setowner },
 	{ "group", setgroup },
@@ -1189,6 +1191,7 @@ plist_new(struct pkg *pkg, const char *stage)
 	if (p == NULL)
 		return (NULL);
 
+	p->plistdirfd = -1;
 	p->stagefd = open(stage ? stage : "/", O_DIRECTORY | O_CLOEXEC);
 	if (p->stagefd == -1) {
 		free(p);
@@ -1223,6 +1226,8 @@ plist_free(struct plist *p)
 
 	if (p->stagefd != -1)
 		close(p->stagefd);
+	if (p->plistdirfd != -1)
+		close(p->plistdirfd);
 
 	HASH_FREE(p->keywords, keyword_free);
 
@@ -1261,10 +1266,60 @@ plist_parse(struct plist *pplist, FILE *f)
 	return (rc);
 }
 
+static int
+open_directory_of(const char *file)
+{
+	char path[MAXPATHLEN];
+	char *walk;
+
+	if (strchr(file, '/') == NULL) {
+		if (getcwd(path, MAXPATHLEN) == NULL) {
+			pkg_emit_error("Unable to determine current location");
+			return (-1);
+		}
+		return (open(path, O_DIRECTORY));
+	}
+	strlcpy(path, file, sizeof(path));
+	walk = strrchr(path, '/');
+	*walk = '\0';
+	return (open(path, O_DIRECTORY));
+}
+
+int
+include_plist(struct plist *p, char *name, struct file_attr * __unused)
+{
+	FILE *f;
+	int fd;
+	int rc;
+
+	if (p->in_include) {
+		pkg_emit_error("Inside in @include it is not allowed to reuse @include");
+		return (EPKG_FATAL);
+	}
+	p->in_include = true;
+
+	fd = openat(p->plistdirfd, name, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_errno("Inpossible to include", name);
+		return (EPKG_FATAL);
+	}
+	f = fdopen(fd, "r");
+	if (f == NULL) {
+		pkg_emit_errno("Inpossible to include", name);
+		close(fd);
+		return (EPKG_FATAL);
+	}
+
+	rc = plist_parse(p, f);
+
+	fclose(f);
+	return (rc);
+}
+
 int
 ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 {
-	int ret, rc = EPKG_OK;
+	int rc = EPKG_OK;
 	struct plist *pplist;
 	FILE *plist_f;
 
@@ -1274,6 +1329,12 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	if ((pplist = plist_new(pkg, stage)) == NULL)
 		return (EPKG_FATAL);
 
+	pplist->plistdirfd = open_directory_of(plist);
+	if (pplist->plistdirfd == -1) {
+		pkg_emit_error("impossible to open the directory where the plist is", plist);
+		plist_free(pplist);
+		return (EPKG_FATAL);
+	}
 	if ((plist_f = fopen(plist, "r")) == NULL) {
 		pkg_emit_error("Unable to open plist file: %s", plist);
 		plist_free(pplist);

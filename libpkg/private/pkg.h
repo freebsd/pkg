@@ -613,6 +613,8 @@ struct plist {
 	char last_file[MAXPATHLEN];
 	const char *stage;
 	int stagefd;
+	bool in_include;
+	int plistdirfd;
 	char prefix[MAXPATHLEN];
 	UT_string *pre_install_buf;
 	UT_string *post_install_buf;

@@ -17,6 +17,7 @@ tests_init \
 	create_from_plist_pkg_descr \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
+	create_from_plist_include \
 	create_with_hardlink \
 	create_no_clobber \
 	time
@@ -505,4 +506,34 @@ create_no_clobber_body()
 	atf_check pkg create -nM test.ucl
 	after=$(ls -l test-1.txz)
 	[ "$before" = "$after" ] || atf_fail "Package was recreated"
+}
+
+create_from_plist_include_body()
+{
+	genmanifest
+	cat << EOF >> test.plist
+file1
+@include other-plist
+file2
+EOF
+	cat <<EOF >> other-plist
+file3
+EOF
+
+	touch file1
+	touch file2
+	touch file3
+
+	atf_check \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check -o inline:"/file1\n/file3\n/file2\n" pkg info -ql -F test*.txz
+	cat << EOF >> other-plist
+@include test.plist
+EOF
+	atf_check \
+		-e inline:"pkg: Inside in @include it is not allowed to reuse @include\n" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
