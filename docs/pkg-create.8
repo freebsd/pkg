@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 13, 2020
+.Dd October 13, 2020
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -497,6 +497,15 @@ These directives should appear at the end of the package list.
 If the directory is not empty a warning will be printed, and the
 directory will not be removed.
 (Subdirectories should be listed before parent directories.)
+.It Cm @include Ar name
+Include the
+.Pa name
+plist file to the plist currently being parsed. the
+.Pa name
+will be opened relatively to the main plist file being parsed.
+Note: only one level of
+.Cm @include
+is allowed
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
