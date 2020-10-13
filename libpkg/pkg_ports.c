@@ -773,6 +773,7 @@ parse_actions(const ucl_object_t *o, struct plist *p,
 	const char *actname;
 	ucl_object_iter_t it = NULL;
 	int i, j = 0;
+	int rc, r = EPKG_OK;
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		actname = ucl_object_tostring(cur);
@@ -799,13 +800,15 @@ parse_actions(const ucl_object_t *o, struct plist *p,
 						return (EPKG_FATAL);
 					}
 				}
-				list_actions[i].perform(p, j > 0 ? argv[j - 1] : line, a);
+				r = list_actions[i].perform(p, j > 0 ? argv[j - 1] : line, a);
+				if (r != EPKG_OK && rc == EPKG_OK)
+					rc = r;
 				break;
 			}
 		}
 	}
 
-	return (EPKG_OK);
+	return (rc);
 }
 
 static void
@@ -1250,12 +1253,12 @@ plist_parse(struct plist *pplist, FILE *f)
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
 		ret = plist_parse_line(pplist, line);
-		if (rc == EPKG_OK)
+		if (ret != EPKG_OK && rc == EPKG_OK)
 			rc = ret;
 	}
 	free(line);
 
-	return (ret);
+	return (rc);
 }
 
 int
