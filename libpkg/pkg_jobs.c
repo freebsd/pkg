@@ -1738,6 +1738,29 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 	sqlite3_finalize(stmt);
 }
 
+static int
+solve_with_cudf_solver(struct pkg_jobs *j, const char *solver)
+{
+	int ret, pstatus;
+	FILE *spipe[2];
+	pid_t pchild;
+
+	pchild = process_spawn_pipe(spipe, solver);
+	if (pchild == -1)
+		return (EPKG_FATAL);
+
+	ret = pkg_jobs_cudf_emit_file(j, j->type, spipe[1]);
+	fclose(spipe[1]);
+
+	if (ret == EPKG_OK)
+		ret = pkg_jobs_cudf_parse_output(j, spipe[0]);
+
+	fclose(spipe[0]);
+	waitpid(pchild, &pstatus, WNOHANG);
+
+	return (ret);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -1771,18 +1794,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	if (ret == EPKG_OK) {
 		if ((solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"))) != NULL) {
-			pchild = process_spawn_pipe(spipe, solver);
-			if (pchild == -1)
-				return (EPKG_FATAL);
-
-			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe[1]);
-			fclose(spipe[1]);
-
-			if (ret == EPKG_OK)
-				ret = pkg_jobs_cudf_parse_output(j, spipe[0]);
-
-			fclose(spipe[0]);
-			waitpid(pchild, &pstatus, WNOHANG);
+			ret = solve_with_cudf_solver(j, solver);
 		}
 		else {
 again:
