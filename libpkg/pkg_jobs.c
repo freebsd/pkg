@@ -1541,17 +1541,98 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j, size_t *count)
 }
 
 static int
-jobs_solve_install_upgrade(struct pkg_jobs *j)
+jobs_solve_full_upgrade(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
-	struct pkgdb_it *it;
-	char sqlbuf[256];
 	size_t jcount = 0;
-	struct job_pattern *jp;
+	size_t elt_num = 0;
+	char sqlbuf[256];
+	struct pkg_jobs_install_candidate *candidates, *c;
 	struct pkg_job_request *req, *rtmp;
+	struct pkgdb_it *it;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
-	struct pkg_jobs_install_candidate *candidates, *c;
+
+	candidates = pkg_jobs_find_install_candidates(j, &jcount);
+
+	pkg_emit_progress_start("Checking for upgrades (%zd candidates)",
+			jcount);
+
+	LL_FOREACH(candidates, c) {
+		pkg_emit_progress_tick(++elt_num, jcount);
+		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
+		    c->id);
+		if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
+			return (EPKG_FATAL);
+
+		pkg = NULL;
+		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+			/* Do not test we ignore what doesn't exists remotely */
+			pkg_jobs_find_upgrade(j, pkg->uid, MATCH_EXACT);
+		}
+		pkg_free(pkg);
+		pkgdb_it_free(it);
+	}
+	pkg_emit_progress_tick(jcount, jcount);
+	LL_FREE(candidates, free);
+
+	pkg_emit_progress_start("Processing candidates (%zd candidates)",
+			jcount);
+	elt_num = 0;
+
+	HASH_ITER(hh, j->request_add, req, rtmp) {
+		pkg_emit_progress_tick(++elt_num, jcount);
+		pkg_jobs_universe_process(j->universe, req->item->pkg);
+	}
+	pkg_emit_progress_tick(jcount, jcount);
+
+	pkg_jobs_universe_process_upgrade_chains(j);
+
+	return (EPKG_OK);
+}
+
+static int
+jobs_solve_partial_upgrade(struct pkg_jobs *j)
+{
+	struct job_pattern *jp;
+	struct pkg_job_request *req, *rtmp;
+	int retcode;
+
+	LL_FOREACH(j->patterns, jp) {
+		retcode = pkg_jobs_find_remote_pattern(j, jp);
+		if (retcode == EPKG_FATAL) {
+			pkg_emit_error("No packages available to %s matching '%s' "
+					"have been found in the "
+					"repositories",
+					(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
+					jp->pattern);
+			if ((j->flags & PKG_FLAG_UPGRADE_VULNERABLE) == 0)
+				return (retcode);
+		}
+		if (retcode == EPKG_LOCKED) {
+			return (retcode);
+		}
+	}
+	/*
+	 * Here we have not selected the proper candidate among all
+	 * possible choices.
+	 * Hence, we want to perform this procedure now to ensure that
+	 * we are processing the correct packages.
+	 */
+	pkg_jobs_universe_process_upgrade_chains(j);
+	/*
+	 * Need to iterate request one more time to recurse depends
+	 */
+	HASH_ITER(hh, j->request_add, req, rtmp) {
+		pkg_jobs_universe_process(j->universe, req->item->pkg);
+	}
+	return (EPKG_OK);
+}
+
+static int
+jobs_solve_install_upgrade(struct pkg_jobs *j)
+{
+	struct pkg_job_request *req, *rtmp;
 	int retcode = 0;
 
 	/* Check for new pkg. Skip for 'upgrade -F'. */
@@ -1572,72 +1653,13 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		if (j->patterns == NULL) {
-			size_t elt_num = 0;
-
-			candidates = pkg_jobs_find_install_candidates(j, &jcount);
-
-			pkg_emit_progress_start("Checking for upgrades (%zd candidates)",
-				jcount);
-
-			LL_FOREACH(candidates, c) {
-				pkg_emit_progress_tick(++elt_num, jcount);
-				sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
-						c->id);
-				if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
-					return (EPKG_FATAL);
-
-				pkg = NULL;
-				while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-					/* Do not test we ignore what doesn't exists remotely */
-					pkg_jobs_find_upgrade(j, pkg->uid, MATCH_EXACT);
-				}
-				pkg_free(pkg);
-				pkgdb_it_free(it);
-			}
-			pkg_emit_progress_tick(jcount, jcount);
-			LL_FREE(candidates, free);
-
-			pkg_emit_progress_start("Processing candidates (%zd candidates)",
-				jcount);
-			elt_num = 0;
-
-			HASH_ITER(hh, j->request_add, req, rtmp) {
-				pkg_emit_progress_tick(++elt_num, jcount);
-				pkg_jobs_universe_process(j->universe, req->item->pkg);
-			}
-			pkg_emit_progress_tick(jcount, jcount);
-
-			pkg_jobs_universe_process_upgrade_chains(j);
-		}
-		else {
-			LL_FOREACH(j->patterns, jp) {
-				retcode = pkg_jobs_find_remote_pattern(j, jp);
-				if (retcode == EPKG_FATAL) {
-					pkg_emit_error("No packages available to %s matching '%s' "
-							"have been found in the "
-							"repositories",
-							(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
-							jp->pattern);
-					if ((j->flags & PKG_FLAG_UPGRADE_VULNERABLE) == 0)
-						return (retcode);
-				}
-				if (retcode == EPKG_LOCKED) {
-					return (retcode);
-				}
-			}
-			/*
-			 * Here we have not selected the proper candidate among all
-			 * possible choices.
-			 * Hence, we want to perform this procedure now to ensure that
-			 * we are processing the correct packages.
-			 */
-			pkg_jobs_universe_process_upgrade_chains(j);
-			/*
-			 * Need to iterate request one more time to recurse depends
-			 */
-			HASH_ITER(hh, j->request_add, req, rtmp) {
-				pkg_jobs_universe_process(j->universe, req->item->pkg);
-			}
+			retcode = jobs_solve_full_upgrade(j);
+			if (retcode != EPKG_OK)
+				return (retcode);
+		} else {
+			retcode = jobs_solve_partial_upgrade(j);
+			if (retcode != EPKG_OK)
+				return (retcode);
 		}
 	}
 	else {
