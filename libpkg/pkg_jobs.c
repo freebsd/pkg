@@ -1784,14 +1784,71 @@ solve_with_external_sat_solver(struct pkg_solve_problem *pb, const char *solver)
 	return (ret);
 }
 
+static int
+solve_with_sat_solver(struct pkg_jobs *j)
+{
+	const char *sat_solver = pkg_object_string(pkg_config_get("SAT_SOLVER"));
+	struct pkg_solve_problem *problem;
+	const char *dotfile;
+	FILE *dot = NULL;
+	int ret;
+
+	pkg_jobs_universe_process_upgrade_chains(j);
+	problem = pkg_solve_jobs_to_sat(j);
+	if (problem == NULL) {
+		pkg_emit_error("cannot convert job to SAT problem");
+		j->solved = 0;
+		return (EPKG_FATAL);
+	}
+
+	if (sat_solver != NULL)
+		return (solve_with_external_sat_solver(problem, sat_solver));
+
+	if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
+		!= NULL) {
+		dot = fopen(dotfile, "w");
+
+		if (dot == NULL) {
+			pkg_emit_errno("fopen", dotfile);
+		}
+	}
+
+	ret = pkg_solve_sat_problem(problem);
+	if (ret == EPKG_AGAIN) {
+		pkg_solve_problem_free(problem);
+		return (solve_with_sat_solver(j));
+	}
+
+	if (ret == EPKG_FATAL) {
+		pkg_emit_error("cannot solve job using SAT solver");
+		pkg_solve_problem_free(problem);
+		j->solved = 0;
+	} else {
+		ret = pkg_solve_sat_to_jobs(problem);
+	}
+
+	if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
+		!= NULL) {
+		dot = fopen(dotfile, "w");
+
+		if (dot == NULL) {
+			pkg_emit_errno("fopen", dotfile);
+		} else {
+			pkg_solve_dot_export(problem, dot);
+			fclose(dot);
+		}
+	}
+	pkg_solve_problem_free(problem);
+
+	return (ret);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
 	int ret;
-	struct pkg_solve_problem *problem;
 	struct pkg_solved *job;
-	const char *cudf_solver, *sat_solver, *dotfile;
-	FILE *dot = NULL;
+	const char *cudf_solver;
 
 	pkgdb_begin_solver(j->db);
 
@@ -1815,62 +1872,12 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	cudf_solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"));
-	sat_solver = pkg_object_string(pkg_config_get("SAT_SOLVER"));
 
 	if (ret == EPKG_OK) {
 		if (cudf_solver != NULL) {
 			ret = solve_with_external_cudf_solver(j, cudf_solver);
 		} else {
-again:
-			pkg_jobs_universe_process_upgrade_chains(j);
-			problem = pkg_solve_jobs_to_sat(j);
-			if (problem != NULL) {
-				if (sat_solver != NULL) {
-					ret = solve_with_external_sat_solver(problem, sat_solver);
-				} else {
-					if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
-							!= NULL) {
-						dot = fopen(dotfile, "w");
-
-						if (dot == NULL) {
-							pkg_emit_errno("fopen", dotfile);
-						}
-					}
-
-					ret = pkg_solve_sat_problem(problem);
-					if (ret == EPKG_FATAL) {
-						pkg_emit_error("cannot solve job using SAT solver");
-						ret = EPKG_FATAL;
-
-						if (dot) {
-							pkg_solve_dot_export(problem, dot);
-							fclose(dot);
-						}
-
-						pkg_solve_problem_free(problem);
-						j->solved = 0;
-					}
-					else if (ret == EPKG_AGAIN) {
-						pkg_solve_problem_free(problem);
-						goto again;
-					}
-					else {
-						ret = pkg_solve_sat_to_jobs(problem);
-
-						if (dot) {
-							pkg_solve_dot_export(problem, dot);
-							fclose(dot);
-						}
-
-						pkg_solve_problem_free(problem);
-					}
-				}
-			}
-			else {
-				pkg_emit_error("cannot convert job to SAT problem");
-				ret = EPKG_FATAL;
-				j->solved = 0;
-			}
+			ret = solve_with_sat_solver(j);
 		}
 	}
 
