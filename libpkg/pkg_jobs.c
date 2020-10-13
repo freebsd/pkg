@@ -1761,15 +1761,37 @@ solve_with_cudf_solver(struct pkg_jobs *j, const char *solver)
 	return (ret);
 }
 
+static int
+solve_with_external_sat_solver(struct pkg_solve_problem *pb, const char *solver)
+{
+	int ret, pstatus;
+	FILE *spipe[2];
+	pid_t pchild;
+
+	pchild = process_spawn_pipe(spipe, solver);
+	if (pchild == -1)
+		return (EPKG_FATAL);
+
+	ret = pkg_solve_dimacs_export(pb, spipe[1]);
+	fclose(spipe[1]);
+
+	if (ret == EPKG_OK)
+		ret = pkg_solve_parse_sat_output(spipe[0], pb);
+
+	fclose(spipe[0]);
+	waitpid(pchild, &pstatus, WNOHANG);
+
+	return (ret);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
-	int ret, pstatus;
+	int ret;
 	struct pkg_solve_problem *problem;
 	struct pkg_solved *job;
 	const char *solver, *dotfile;
-	FILE *spipe[2], *dot = NULL;
-	pid_t pchild;
+	FILE *dot = NULL;
 
 	pkgdb_begin_solver(j->db);
 
@@ -1803,19 +1825,7 @@ again:
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
 				if ((solver = pkg_object_string(pkg_config_get("SAT_SOLVER"))) != NULL) {
-					pchild = process_spawn_pipe(spipe, solver);
-					if (pchild == -1)
-						return (EPKG_FATAL);
-
-					ret = pkg_solve_dimacs_export(problem, spipe[1]);
-					fclose(spipe[1]);
-
-					if (ret == EPKG_OK) {
-						ret = pkg_solve_parse_sat_output(spipe[0], problem);
-					}
-
-					fclose(spipe[0]);
-					waitpid(pchild, &pstatus, WNOHANG);
+					ret = solve_with_external_sat_solver(problem, solver);
 				}
 				else {
 					if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
