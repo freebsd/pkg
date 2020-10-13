@@ -1790,7 +1790,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	int ret;
 	struct pkg_solve_problem *problem;
 	struct pkg_solved *job;
-	const char *solver, *dotfile;
+	const char *cudf_solver, *sat_solver, *dotfile;
 	FILE *dot = NULL;
 
 	pkgdb_begin_solver(j->db);
@@ -1814,20 +1814,20 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 	}
 
-	if (ret == EPKG_OK) {
-		if ((solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"))) != NULL) {
-			ret = solve_with_cudf_solver(j, solver);
-		}
-		else {
-again:
+	cudf_solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"));
+	sat_solver = pkg_object_string(pkg_config_get("SAT_SOLVER"));
 
+	if (ret == EPKG_OK) {
+		if (cudf_solver != NULL) {
+			ret = solve_with_cudf_solver(j, cudf_solver);
+		} else {
+again:
 			pkg_jobs_universe_process_upgrade_chains(j);
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
-				if ((solver = pkg_object_string(pkg_config_get("SAT_SOLVER"))) != NULL) {
-					ret = solve_with_external_sat_solver(problem, solver);
-				}
-				else {
+				if (sat_solver != NULL) {
+					ret = solve_with_external_sat_solver(problem, sat_solver);
+				} else {
 					if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
 							!= NULL) {
 						dot = fopen(dotfile, "w");
