@@ -1,3 +1,6 @@
+Changes from 1.15.99.3 to 1.15.99.4
+- Fix build with non recent compiler
+
 Changes from 1.15.99.2 to 1.15.99.3
 - Fix cases where lua scripts are not properly recognized
 - Fix %# in scripts
