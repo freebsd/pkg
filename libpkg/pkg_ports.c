@@ -1286,7 +1286,7 @@ open_directory_of(const char *file)
 }
 
 int
-include_plist(struct plist *p, char *name, struct file_attr * __unused)
+include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 {
 	FILE *f;
 	int fd;
