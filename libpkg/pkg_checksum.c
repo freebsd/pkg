@@ -274,10 +274,12 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	if (inc_scripts) {
 		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
-			if (pkg->scripts[i] != NULL)
+			if (pkg->scripts[i] != NULL) {
+				fflush(pkg->scripts[i]->fp);
 				pkg_checksum_add_entry("script",
-				    utstring_body(pkg->scripts[i]),
+				    pkg->scripts[i]->buf,
 				    &entries);
+			}
 		}
 		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
 			if (pkg->lua_scripts[i] != NULL)

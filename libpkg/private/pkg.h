@@ -277,7 +277,7 @@ struct pkg {
 	bool		 automatic;
 	bool		 vital;
 	int64_t		 id;
-	UT_string	*scripts[PKG_NUM_SCRIPTS];
+	xstring		*scripts[PKG_NUM_SCRIPTS];
 	struct pkg_lua_script	*lua_scripts[PKG_NUM_LUA_SCRIPTS];
 	char			*name;
 	char			*origin;
@@ -616,10 +616,10 @@ struct plist {
 	bool in_include;
 	int plistdirfd;
 	char prefix[MAXPATHLEN];
-	UT_string *pre_install_buf;
-	UT_string *post_install_buf;
-	UT_string *pre_deinstall_buf;
-	UT_string *post_deinstall_buf;
+	xstring *pre_install_buf;
+	xstring *post_install_buf;
+	xstring *pre_deinstall_buf;
+	xstring *post_deinstall_buf;
 	struct pkg *pkg;
 	char *uname;
 	char *gname;
@@ -784,11 +784,11 @@ int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t 
 int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
 
 
-int pkg_emit_manifest_buf(struct pkg*, UT_string *, short, char **);
+int pkg_emit_manifest_buf(struct pkg*, xstring *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
 
 bool ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
-    UT_string **buf);
+    xstring **buf);
 bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
     FILE *);
 

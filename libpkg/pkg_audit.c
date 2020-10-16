@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <utlist.h>
+#include <xstring.h>
 
 #include <yxml.h>
 
@@ -379,7 +380,7 @@ struct vulnxml_userdata {
 	struct pkg_audit_entry *cur_entry;
 	struct pkg_audit *audit;
 	enum vulnxml_parse_state state;
-	UT_string *content;
+	xstring *content;
 	int range_num;
 	enum vulnxml_parse_attribute_state attr;
 };
@@ -448,18 +449,19 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	struct pkg_audit_versions_range *vers;
 	int range_type = -1;
 
+	fflush(ud->content->fp);
 	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "vuxml") == 0) {
 		pkg_audit_expand_entry(ud->cur_entry, &ud->audit->entries);
 		ud->state = VULNXML_PARSE_INIT;
 	}
 	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(xml->elem, "vuln") == 0) {
-		ud->cur_entry->desc = xstrdup(utstring_body(ud->content));
+		ud->cur_entry->desc = xstrdup(ud->content->buf);
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_CVE && strcasecmp(xml->elem, "references") == 0) {
 		entry = ud->cur_entry;
 		cve = xmalloc(sizeof(struct pkg_audit_cve));
-		cve->cvename = xstrdup(utstring_body(ud->content));
+		cve->cvename = xstrdup(ud->content->buf);
 		LL_PREPEND(entry->cve, cve);
 		ud->state = VULNXML_PARSE_VULN;
 	}
@@ -467,7 +469,7 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && strcasecmp(xml->elem, "package") == 0) {
-		ud->cur_entry->packages->names->pkgname = xstrdup(utstring_body(ud->content));
+		ud->cur_entry->packages->names->pkgname = xstrdup(ud->content->buf);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
 	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "package") == 0) {
@@ -497,15 +499,15 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	if (range_type > 0) {
 		vers = ud->cur_entry->packages->versions;
 		if (ud->range_num == 1) {
-			vers->v1.version = xstrdup(utstring_body(ud->content));
+			vers->v1.version = xstrdup(ud->content->buf);
 			vers->v1.type = range_type;
 		}
 		else if (ud->range_num == 2) {
-			vers->v2.version = xstrdup(utstring_body(ud->content));
+			vers->v2.version = xstrdup(ud->content->buf);
 			vers->v2.type = range_type;
 		}
 	}
-	utstring_clear(ud->content);
+	xstring_reset(ud->content);
 }
 
 static void
@@ -521,18 +523,19 @@ vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 static void
 vulnxml_end_attribute(struct vulnxml_userdata *ud, yxml_t *xml __unused)
 {
+	fflush(ud->content->fp);
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		ud->cur_entry->id = xstrdup(utstring_body(ud->content));
+		ud->cur_entry->id = xstrdup(ud->content->buf);
 		ud->attr = VULNXML_ATTR_NONE;
 	}
-	utstring_clear(ud->content);
+	xstring_reset(ud->content);
 }
 
 static void
 vulnxml_val_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 {
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		utstring_printf(ud->content, "%s", xml->data);
+		fprintf(ud->content->fp, "%s", xml->data);
 	}
 }
 
@@ -555,7 +558,7 @@ vulnxml_handle_data(struct vulnxml_userdata *ud, yxml_t *xml)
 	case VULNXML_PARSE_RANGE_LT:
 	case VULNXML_PARSE_RANGE_LE:
 	case VULNXML_PARSE_RANGE_EQ:
-		utstring_printf(ud->content, "%s", xml->data);
+		fprintf(ud->content->fp, "%s", xml->data);
 		break;
 	}
 }
@@ -575,7 +578,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	ud.audit = audit;
 	ud.range_num = 0;
 	ud.state = VULNXML_PARSE_INIT;
-	utstring_new(ud.content);
+	ud.content = xstring_new();
 
 	walk = audit->map;
 	end = walk + audit->len;
@@ -622,7 +625,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	else
 		pkg_emit_error("Invalid end of XML");
 out:
-	utstring_free(ud.content);
+	xstring_free(ud.content);
 
 	return (ret);
 }
@@ -768,57 +771,57 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 }
 
 static void
-pkg_audit_print_versions(struct pkg_audit_entry *e, UT_string *sb)
+pkg_audit_print_versions(struct pkg_audit_entry *e, xstring *sb)
 {
 	struct pkg_audit_versions_range *vers;
 
-	utstring_printf(sb, "%s", "Affected versions:\n");
+	fprintf(sb->fp, "%s", "Affected versions:\n");
 	LL_FOREACH(e->versions, vers) {
 		if (vers->v1.type > 0 && vers->v2.type > 0)
-			utstring_printf(sb, "%s %s : %s %s\n",
+			fprintf(sb->fp, "%s %s : %s %s\n",
 				vop_names[vers->v1.type], vers->v1.version,
 				vop_names[vers->v2.type], vers->v2.version);
 		else if (vers->v1.type > 0)
-			utstring_printf(sb, "%s %s\n",
+			fprintf(sb->fp, "%s %s\n",
 				vop_names[vers->v1.type], vers->v1.version);
 		else
-			utstring_printf(sb, "%s %s\n",
+			fprintf(sb->fp, "%s %s\n",
 				vop_names[vers->v2.type], vers->v2.version);
 	}
 }
 
 static void
-pkg_audit_print_entry(struct pkg_audit_entry *e, UT_string *sb,
+pkg_audit_print_entry(struct pkg_audit_entry *e, xstring *sb,
 	const char *pkgname, const char *pkgversion, bool quiet)
 {
 	struct pkg_audit_cve *cve;
 
 	if (quiet) {
 		if (pkgversion != NULL)
-			utstring_printf(sb, "%s-%s\n", pkgname, pkgversion);
+			fprintf(sb->fp, "%s-%s\n", pkgname, pkgversion);
 		else
-			utstring_printf(sb, "%s\n", pkgname);
+			fprintf(sb->fp, "%s\n", pkgname);
 	} else {
 		if (pkgversion != NULL)
-			utstring_printf(sb, "%s-%s is vulnerable:\n", pkgname, pkgversion);
+			fprintf(sb->fp, "%s-%s is vulnerable:\n", pkgname, pkgversion);
 		else {
-			utstring_printf(sb, "%s is vulnerable:\n", pkgname);
+			fprintf(sb->fp, "%s is vulnerable:\n", pkgname);
 			pkg_audit_print_versions(e, sb);
 		}
 
-		utstring_printf(sb, "%s\n", e->desc);
+		fprintf(sb->fp, "%s\n", e->desc);
 		/* XXX: for vulnxml we should use more clever approach indeed */
 		if (e->cve) {
 			cve = e->cve;
 			while (cve) {
-				utstring_printf(sb, "CVE: %s\n", cve->cvename);
+				fprintf(sb->fp, "CVE: %s\n", cve->cvename);
 				cve = cve->next;
 			}
 		}
 		if (e->url)
-			utstring_printf(sb, "WWW: %s\n\n", e->url);
+			fprintf(sb->fp, "WWW: %s\n\n", e->url);
 		else if (e->id)
-			utstring_printf(sb,
+			fprintf(sb->fp,
 				"WWW: https://vuxml.FreeBSD.org/freebsd/%s.html\n\n",
 				e->id);
 	}
@@ -826,11 +829,11 @@ pkg_audit_print_entry(struct pkg_audit_entry *e, UT_string *sb,
 
 bool
 pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, UT_string **result, int *affected)
+		bool quiet, xstring **result, int *affected)
 {
 	struct pkg_audit_entry *e;
 	struct pkg_audit_versions_range *vers;
-	UT_string *sb;
+	xstring *sb;
 	struct pkg_audit_item *a;
 	bool res = false, res1, res2;
 
@@ -839,7 +842,7 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 
 	a = audit->items;
 	a += audit_entry_first_byte_idx[(size_t)pkg->name[0]];
-	utstring_new(sb);
+	sb = xstring_new();
 
 	for (; (e = a->e) != NULL; a += a->next_pfx_incr) {
 		int cmp;
@@ -896,7 +899,7 @@ out:
 	if (res) {
 		*result = sb;
 	} else {
-		utstring_free(sb);
+		xstring_free(sb);
 	}
 
 	return (res);

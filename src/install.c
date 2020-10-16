@@ -254,7 +254,8 @@ exec_install(int argc, char **argv)
 		}
 
 		if (messages != NULL) {
-			printf("%s", utstring_body(messages));
+			fflush(messages->fp);
+			printf("%s", messages->buf);
 		}
 		break;
 	}

@@ -195,7 +195,8 @@ exec_register(int argc, char **argv)
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
 	if (!legacy && retcode == EPKG_OK && messages != NULL) {
-		printf("%s\n", utstring_body(messages));
+		fflush(messages->fp);
+		printf("%s\n", messages->buf);
 	}
 
 	pkg_free(pkg);

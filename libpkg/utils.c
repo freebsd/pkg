@@ -553,11 +553,11 @@ ucl_file_append_double(double val, void *data)
 static int
 ucl_buf_append_character(unsigned char c, size_t len, void *data)
 {
-	UT_string *buf = data;
+	xstring *buf = data;
 	size_t i;
 
 	for (i = 0; i < len; i++)
-		utstring_printf(buf, "%c", c);
+		fprintf(buf->fp, "%c", c);
 
 	return (0);
 }
@@ -565,9 +565,9 @@ ucl_buf_append_character(unsigned char c, size_t len, void *data)
 static int
 ucl_buf_append_len(const unsigned char *str, size_t len, void *data)
 {
-	UT_string *buf = data;
+	xstring *buf = data;
 
-	utstring_bincpy(buf, str, len);
+	fprintf(buf->fp, "%.*s", len, str);
 
 	return (0);
 }
@@ -575,9 +575,9 @@ ucl_buf_append_len(const unsigned char *str, size_t len, void *data)
 static int
 ucl_buf_append_int(int64_t val, void *data)
 {
-	UT_string *buf = data;
+	xstring *buf = data;
 
-	utstring_printf(buf, "%"PRId64, val);
+	fprintf(buf->fp, "%"PRId64, val);
 
 	return (0);
 }
@@ -585,15 +585,15 @@ ucl_buf_append_int(int64_t val, void *data)
 static int
 ucl_buf_append_double(double val, void *data)
 {
-	UT_string *buf = data;
+	xstring *buf = data;
 	const double delta = 0.0000001;
 
 	if (val == (double)(int)val) {
-		utstring_printf(buf, "%.1lf", val);
+		fprintf(buf->fp, "%.1lf", val);
 	} else if (fabs(val - (double)(int)val) < delta) {
-		utstring_printf(buf, "%.*lg", DBL_DIG, val);
+		fprintf(buf->fp, "%.*lg", DBL_DIG, val);
 	} else {
-		utstring_printf(buf, "%lf", val);
+		fprintf(buf->fp, "%lf", val);
 	}
 
 	return (0);
@@ -620,7 +620,7 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 
 bool
 ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
-                     UT_string **buf)
+                     xstring **buf)
 {
 	bool ret = false;
 	struct ucl_emitter_functions func = {
@@ -630,10 +630,7 @@ ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
 		.ucl_emitter_append_double = ucl_buf_append_double
 	};
 
-	if (*buf == NULL)
-		utstring_new(*buf);
-	else
-		utstring_clear(*buf);
+	xstring_renew(*buf);
 
 	func.ud = *buf;
 

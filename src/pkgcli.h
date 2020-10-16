@@ -30,7 +30,7 @@
 
 #include <search.h>
 #include <stdint.h>
-#include <utstring.h>
+#include <string.h>
 #include <bsd_compat.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
@@ -265,8 +265,8 @@ int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 
-void job_status_begin(UT_string *);
-void job_status_end(UT_string *);
+void job_status_begin(xstring *);
+void job_status_end(xstring *);
 
 int event_callback(void *data, struct pkg_event *ev);
 int print_pkg(struct pkg *p, void *ctx);
@@ -274,10 +274,9 @@ void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
-void utstring_flush(UT_string *buf);
 void drop_privileges(void);
 
-extern UT_string *messages;
+extern xstring *messages;
 
 
 /* pkg-query / pkg-rquery */
@@ -289,7 +288,7 @@ struct query_flags {
 };
 
 void print_query(struct pkg *pkg, char *qstr, char multiline);
-int format_sql_condition(const char *str, UT_string *sqlcond,
+int format_sql_condition(const char *str, xstring *sqlcond,
 			 bool for_remote);
 int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,

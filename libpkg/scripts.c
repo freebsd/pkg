@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
-#include <utstring.h>
+#include <xstring.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -53,8 +53,8 @@ extern char **environ;
 int
 pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 {
-	UT_string *script_cmd;
-	size_t i, j;
+	xstring *script_cmd = NULL;
+	size_t i, j, script_len;
 	int error, pstat;
 	pid_t pid;
 	const char *script_cmd_p;
@@ -67,7 +67,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 	bool use_pipe = 0;
 	bool debug = false;
 	ssize_t bytes_written;
-	size_t script_cmd_len;
 	long argmax;
 	int cur_pipe[2];
 #ifdef PROC_REAP_KILL
@@ -94,10 +93,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
 	};
 
-	utstring_new(script_cmd);
-
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
-		utstring_free(script_cmd);
 		return (EPKG_OK);
 	}
 
@@ -116,7 +112,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 		if (pkg_script_get(pkg, j) == NULL)
 			continue;
 		if (j == map[i].a || j == map[i].b) {
-			utstring_clear(script_cmd);
+			xstring_renew(script_cmd);
 			if (upgrade) {
 				setenv("PKG_UPGRADE", "true", 1);
 			}
@@ -126,16 +122,15 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			setenv("PKG_ROOTDIR", ctx.pkg_rootdir, 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
-				utstring_printf(script_cmd, "set -x\n");
-			pkg_utstring_printf(script_cmd, "set -- %n-%v", pkg, pkg);
+				fprintf(script_cmd->fp, "set -x\n");
+			pkg_fprintf(script_cmd->fp, "set -- %n-%v", pkg, pkg);
 
 			if (j == map[i].b) {
 				/* add arg **/
-				utstring_printf(script_cmd, " %s", map[i].arg);
+				fprintf(script_cmd->fp, " %s", map[i].arg);
 			}
 
-			utstring_printf(script_cmd, "\n%s",
-			    utstring_body(pkg->scripts[j]));
+			fprintf(script_cmd->fp, "\n%s", pkg->scripts[j]->buf);
 
 			/* Determine the maximum argument length for the given
 			   script to determine if /bin/sh -c can be used, or
@@ -148,7 +143,9 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
-			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", utstring_body(script_cmd));
+			fflush(script_cmd->fp);
+			script_len = strlen(script_cmd->buf);
+			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", script_cmd->buf);
 			posix_spawn_file_actions_init(&action);
 			if (get_socketpair(cur_pipe) == -1) {
 				pkg_emit_errno("pkg_script_run", "socketpair");
@@ -167,7 +164,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				if (i != cur_pipe[0])
 					posix_spawn_file_actions_addclose(&action, i);
 			}
-			if (utstring_len(script_cmd) > argmax) {
+			if (script_len > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);
@@ -200,7 +197,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 
 				argv[0] = _PATH_BSHELL;
 				argv[1] = "-c";
-				argv[2] = utstring_body(script_cmd);
+				argv[2] = script_cmd->buf;
 				argv[3] = NULL;
 
 				use_pipe = 0;
@@ -221,18 +218,17 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			if (fd != -1)
 				close(fd);
 			if (use_pipe) {
-				script_cmd_p = utstring_body(script_cmd);
-				script_cmd_len = utstring_len(script_cmd);
-				while (script_cmd_len > 0) {
+				script_cmd_p = script_cmd->buf;
+				while (script_len > 0) {
 					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
-					    script_cmd_len)) == -1) {
+					    script_len)) == -1) {
 						if (errno == EINTR)
 							continue;
 						ret = EPKG_FATAL;
 						goto cleanup;
 					}
 					script_cmd_p += bytes_written;
-					script_cmd_len -= bytes_written;
+					script_len -= bytes_written;
 				}
 				close(stdin_pipe[1]);
 			}
@@ -312,7 +308,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 cleanup:
 
 	free(line);
-	utstring_free(script_cmd);
+	xstring_free(script_cmd);
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)

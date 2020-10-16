@@ -809,23 +809,23 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	int rc = EPKG_FATAL;
-	UT_string *qmsg;
+	xstring *qmsg = NULL;
 	struct pkg_job_universe_item *unit;
 
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
 
-	utstring_new(qmsg);
-
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+		xstring_renew(qmsg);
 		if (pkg_jobs_has_replacement(j, p->uid)) {
 			pkg_debug(1, "replacement %s is already used", p->uid);
 			continue;
 		}
 
-		utstring_printf(qmsg, "%s has no direct installation candidates, change it to "
+		fprintf(qmsg->fp, "%s has no direct installation candidates, change it to "
 				"%s? ", uid, p->uid);
-		if (pkg_emit_query_yesno(true, utstring_body(qmsg))) {
+		fflush(qmsg->fp);
+		if (pkg_emit_query_yesno(true, qmsg->buf)) {
 			/* Change the origin of the local package */
 			pkg_validate(p, j->db);
 			unit = pkg_jobs_universe_find(j->universe, uid);
@@ -843,13 +843,12 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 			}
 			break;
 		}
-		utstring_clear(qmsg);
 	}
 
 
 	pkg_free(p);
 
-	utstring_free(qmsg);
+	xstring_free(qmsg);
 	pkgdb_it_free(it);
 
 	return (rc);

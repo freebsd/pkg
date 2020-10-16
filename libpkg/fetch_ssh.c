@@ -56,7 +56,7 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 	size_t linecap = 0;
 	int sshin[2];
 	int sshout[2];
-	UT_string *cmd = NULL;
+	xstring *cmd = NULL;
 	int retcode = EPKG_FATAL;
 	const char *ssh_args;
 	const char *argv[4];
@@ -82,26 +82,27 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 			goto ssh_cleanup;
 		}
 
-		utstring_new(cmd);
-		utstring_printf(cmd, "/usr/bin/ssh -e none -T ");
+		cmd = xstring_new();
+		fprintf(cmd->fp, "/usr/bin/ssh -e none -T ");
 
 		ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
 		if (ssh_args != NULL)
-			utstring_printf(cmd, "%s ", ssh_args);
+			fprintf(cmd->fp, "%s ", ssh_args);
 		if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
-			utstring_printf(cmd, "-4 ");
+			fprintf(cmd->fp, "-4 ");
 		else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
-			utstring_printf(cmd, "-6 ");
+			fprintf(cmd->fp, "-6 ");
 		if (u->port > 0)
-			utstring_printf(cmd, "-p %d ", u->port);
+			fprintf(cmd->fp, "-p %d ", u->port);
 		if (u->user[0] != '\0')
-			utstring_printf(cmd, "%s@", u->user);
-		utstring_printf(cmd, "%s", u->host);
-		utstring_printf(cmd, " pkg ssh");
-		pkg_debug(1, "Fetch: running '%s'", utstring_body(cmd));
+			fprintf(cmd->fp, "%s@", u->user);
+		fprintf(cmd->fp, "%s", u->host);
+		fprintf(cmd->fp, " pkg ssh");
+		fflush(cmd->fp);
+		pkg_debug(1, "Fetch: running '%s'", cmd->buf);
 		argv[0] = _PATH_BSHELL;
 		argv[1] = "-c";
-		argv[2] = utstring_body(cmd);
+		argv[2] = cmd->buf;
 		argv[3] = NULL;
 
 		if (sshin[0] != STDIN_FILENO)

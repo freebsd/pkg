@@ -40,7 +40,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <khash.h>
-#include <utstring.h>
+#include <xstring.h>
 #include <pkg.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
@@ -84,7 +84,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	struct pkg		*pkg = NULL;
 	kh_pkgs_t		*check = NULL;
 	const char		*uid;
-	UT_string		*sb;
+	xstring		*sb;
 	int				ret;
 	FILE			*out;
 
@@ -153,7 +153,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 					pkg_get(pkg, PKG_UNIQUEID, &uid);
 					fprintf(out, "%s\n", uid);
 					fflush(out);
-					utstring_free(sb);
+					xstring_free(sb);
 				}
 				pkg_free(pkg);
 		});
@@ -436,7 +436,8 @@ exec_upgrade(int argc, char **argv)
 		}
 
 		if (messages != NULL) {
-			printf("%s", utstring_body(messages));
+			fflush(messages->fp);
+			printf("%s", messages->buf);
 		}
 		break;
 	}

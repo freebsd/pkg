@@ -241,7 +241,8 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 
 	if (messages != NULL) {
-		printf("%s", utstring_body(messages));
+		fflush(messages->fp);
+		printf("%s", messages->buf);
 	}
 	pkgdb_compact(db);
 

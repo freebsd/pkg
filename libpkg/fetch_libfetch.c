@@ -37,6 +37,7 @@
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>
+#include <xstring.h>
 
 #include <bsd_compat.h>
 
@@ -90,7 +91,7 @@ static int
 fetch_connect(struct pkg_repo *repo, struct url *u)
 {
 	struct url *repourl;
-	UT_string *fetchOpts = NULL;
+	xstring *fetchOpts = NULL;
 	int64_t max_retry, retry;
 	int64_t fetch_timeout;
 	int retcode = EPKG_OK;
@@ -158,31 +159,32 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 			u->doc = docpath;
 			u->port = http_current->url->port;
 		}
-		utstring_new(fetchOpts);
-		utstring_printf(fetchOpts, "i");
+		fetchOpts = xstring_new();
+		fprintf(fetchOpts->fp, "i");
 		if (repo != NULL) {
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
 			    REPO_FLAGS_USE_IPV4)
-				utstring_printf(fetchOpts, "4");
+				fprintf(fetchOpts->fp, "4");
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
 			    REPO_FLAGS_USE_IPV6)
-				utstring_printf(fetchOpts, "6");
+				fprintf(fetchOpts->fp, "6");
 		}
 
 		if (ctx.debug_level >= 4)
-			utstring_printf(fetchOpts, "v");
+			fprintf(fetchOpts->fp, "v");
 
+		fflush(fetchOpts->fp);
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
 		    u->user,
 		    u->user[0] != '\0' ? "@" : "",
 		    u->host,
 		    u->doc,
-		    utstring_body(fetchOpts));
+		    fetchOpts->buf);
 
-		repo->fh = fetchXGet(u, &st, utstring_body(fetchOpts));
+		repo->fh = fetchXGet(u, &st, fetchOpts->buf);
 		u->ims_time = st.mtime;
-		utstring_free(fetchOpts);
+		xstring_free(fetchOpts);
 		if (repo->fh == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;

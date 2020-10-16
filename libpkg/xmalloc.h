@@ -1,7 +1,9 @@
 #ifndef XMALLOC_H
 #define XMALLOC_H
 
+#include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 static inline void *xmalloc(size_t size)
 {

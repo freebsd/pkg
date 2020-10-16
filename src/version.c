@@ -49,7 +49,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <khash.h>
-#include <utstring.h>
 
 #include "pkgcli.h"
 
@@ -561,7 +560,7 @@ cleanup:
 }
 
 static int
-exec_buf(UT_string *res, char **argv) {
+exec_buf(xstring *res, char **argv) {
 	char buf[BUFSIZ];
 	int spawn_err;
 	pid_t pid;
@@ -595,9 +594,9 @@ exec_buf(UT_string *res, char **argv) {
 
 	close(pfd[1]);
 
-	utstring_clear(res);
+	xstring_reset(res->fp);
 	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
-		utstring_bincpy(res, buf, r);
+		fwrite(buf, sizeof(char), r, res->fp);
 
 	close(pfd[0]);
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -607,20 +606,21 @@ exec_buf(UT_string *res, char **argv) {
 	if (WEXITSTATUS(pstat) != 0)
 		return (-1);
 
-	return (utstring_len(res));
+	fflush(res->fp);
+	return (strlen(res->buf));
 }
 
 static struct category *
 category_new(char *categorypath, const char *category)
 {
 	struct category	*cat = NULL;
-	UT_string	*makecmd;
+	xstring		*makecmd;
 	char		*results, *d, *key;
 	char		*argv[5];
 	int		 ret;
 	khint_t		 k;
 
-	utstring_new(makecmd);
+	makecmd = xstring_new();
 
 	argv[0] = "make";
 	argv[1] = "-C";
@@ -631,7 +631,8 @@ category_new(char *categorypath, const char *category)
 	if (exec_buf(makecmd, argv) <= 0)
 		goto cleanup;
 
-	results = utstring_body(makecmd);
+	fflush(makecmd->fp);
+	results = makecmd->buf;
 
 	if (categories == NULL)
 		categories = kh_init_categories();
@@ -655,7 +656,7 @@ category_new(char *categorypath, const char *category)
 	}
 
 cleanup:
-	utstring_free(makecmd);
+	xstring_free(makecmd);
 
 	return (cat);
 }
@@ -704,7 +705,7 @@ validate_origin(const char *portsdir, const char *origin)
 }
 
 static const char *
-port_version(UT_string *cmd, const char *portsdir, const char *origin,
+port_version(xstring *cmd, const char *portsdir, const char *origin,
     const char *pkgname)
 {
 	char	*output, *walk, *name;
@@ -716,16 +717,18 @@ port_version(UT_string *cmd, const char *portsdir, const char *origin,
 	   version from the port itself. */
 
 	if (validate_origin(portsdir, origin)) {
-		utstring_printf(cmd, "%s/%s", portsdir, origin);
+		fprintf(cmd->fp, "%s/%s", portsdir, origin);
 
+		fflush(cmd->fp);
 		argv[0] = "make";
 		argv[1] = "-C";
-		argv[2] = utstring_body(cmd);
+		argv[2] = cmd->buf;
 		argv[3] = "flavors-package-names";
 		argv[4] = NULL;
 
 		if (exec_buf(cmd, argv) > 0) {
-			output = utstring_body(cmd);
+			fflush(cmd->fp);
+			output = cmd->buf;
 			while ((walk = strsep(&output, "\n")) != NULL) {
 				name = walk;
 				walk = strrchr(walk, '-');
@@ -751,7 +754,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-	UT_string	*cmd;
+	xstring		*cmd;
 	const char	*name;
 	const char	*origin;
 	const char	*version;
@@ -777,7 +780,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
-	utstring_new(cmd);
+	cmd = xstring_new();
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
@@ -794,10 +797,10 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		version = port_version(cmd, portsdir, origin, name);
 		print_version(pkg, "port", version, limchar, opt);
-		utstring_clear(cmd);
+		xstring_reset(cmd);
 	}
 
-	utstring_free(cmd);
+	xstring_free(cmd);
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);

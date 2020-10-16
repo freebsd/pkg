@@ -185,9 +185,9 @@ setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
-	utstring_printf(p->post_install_buf, "cd %s\n", p->prefix);
-	utstring_printf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
-	utstring_printf(p->post_deinstall_buf, "cd %s\n", p->prefix);
+	fprintf(p->post_install_buf->fp, "cd %s\n", p->prefix);
+	fprintf(p->pre_deinstall_buf->fp, "cd %s\n", p->prefix);
+	fprintf(p->post_deinstall_buf->fp, "cd %s\n", p->prefix);
 
 	return (EPKG_OK);
 }
@@ -548,16 +548,16 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 
 	switch (type) {
 	case PREEXEC:
-		utstring_printf(p->pre_install_buf, "%s\n", cmd);
+		fprintf(p->pre_install_buf->fp, "%s\n", cmd);
 		break;
 	case POSTEXEC:
-		utstring_printf(p->post_install_buf, "%s\n", cmd);
+		fprintf(p->post_install_buf->fp, "%s\n", cmd);
 		break;
 	case PREUNEXEC:
-		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		fprintf(p->pre_deinstall_buf->fp, "%s\n", cmd);
 		break;
 	case POSTUNEXEC:
-		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
+		fprintf(p->post_deinstall_buf->fp, "%s\n", cmd);
 		break;
 	case UNEXEC:
 		comment[0] = '\0';
@@ -587,10 +587,10 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 
 		if (should_be_post(cmd, p)) {
 			if (comment[0] != '#')
-				utstring_printf(p->post_deinstall_buf,
+				fprintf(p->post_deinstall_buf->fp,
 				    "%s%s\n", comment, cmd);
 		} else {
-			utstring_printf(p->pre_deinstall_buf, "%s%s\n", comment, cmd);
+			fprintf(p->pre_deinstall_buf->fp, "%s%s\n", comment, cmd);
 		}
 		if (comment[0] == '#') {
 			buf = cmd;
@@ -634,7 +634,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 		}
 		break;
 	case EXEC:
-		utstring_printf(p->post_install_buf, "%s\n", cmd);
+		fprintf(p->post_install_buf->fp, "%s\n", cmd);
 		break;
 	}
 
@@ -858,16 +858,16 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 {
 	switch (t) {
 	case PKG_SCRIPT_PRE_INSTALL:
-		utstring_printf(p->pre_install_buf, "%s\n", cmd);
+		fprintf(p->pre_install_buf->fp, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_INSTALL:
-		utstring_printf(p->post_install_buf, "%s\n", cmd);
+		fprintf(p->post_install_buf->fp, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_PRE_DEINSTALL:
-		utstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		fprintf(p->pre_deinstall_buf->fp, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_DEINSTALL:
-		utstring_printf(p->post_deinstall_buf, "%s\n", cmd);
+		fprintf(p->post_deinstall_buf->fp, "%s\n", cmd);
 		break;
 	}
 }
@@ -1121,10 +1121,11 @@ end:
 }
 
 static void
-flush_script_buffer(UT_string *buf, struct pkg *p, int type)
+flush_script_buffer(xstring *buf, struct pkg *p, int type)
 {
-	if (utstring_len(buf) > 0) {
-		pkg_appendscript(p, utstring_body(buf), type);
+	fflush(buf->fp);
+	if (buf->buf[0] != '\0') {
+		pkg_appendscript(p, buf->buf, type);
 	}
 }
 
@@ -1207,10 +1208,10 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->uname = xstrdup("root");
 	p->gname = xstrdup("wheel");
 
-	utstring_new(p->pre_install_buf);
-	utstring_new(p->post_install_buf);
-	utstring_new(p->pre_deinstall_buf);
-	utstring_new(p->post_deinstall_buf);
+	p->pre_install_buf = xstring_new();
+	p->post_install_buf = xstring_new();
+	p->pre_deinstall_buf = xstring_new();
+	p->post_deinstall_buf = xstring_new();
 	p->hardlinks = kh_init_hardlinks();
 
 	populate_keywords(p);
@@ -1238,10 +1239,10 @@ plist_free(struct plist *p)
 	free(p->post_patterns.patterns);
 	kh_destroy_hardlinks(p->hardlinks);
 
-	utstring_free(p->post_deinstall_buf);
-	utstring_free(p->post_install_buf);
-	utstring_free(p->pre_deinstall_buf);
-	utstring_free(p->pre_install_buf);
+	xstring_free(p->post_deinstall_buf);
+	xstring_free(p->post_install_buf);
+	xstring_free(p->pre_deinstall_buf);
+	xstring_free(p->pre_install_buf);
 
 	free(p);
 }
@@ -1367,7 +1368,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 {
 	const char *location;
 	int rc = EPKG_OK;
-	UT_string *message;
+	xstring *message;
 	struct pkg_message *msg;
 
 	if (pkg_is_installed(db, pkg->name) != EPKG_END) {
@@ -1411,18 +1412,19 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	if (rc == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
 		if (pkg->message != NULL)
-			utstring_new(message);
+			message = xstring_new();
 		LL_FOREACH(pkg->message, msg) {
 			if (msg->type == PKG_MESSAGE_ALWAYS ||
 			    msg->type == PKG_MESSAGE_INSTALL) {
-				utstring_printf(message, "%s\n", msg->str);
+				fprintf(message->fp, "%s\n", msg->str);
 			}
 		}
 		if (pkg->message != NULL) {
-			if (utstring_len(message) > 0) {
-				pkg_emit_message(utstring_body(message));
+			fflush(message->fp);
+			if (message->buf[0] != '\0') {
+				pkg_emit_message(message->buf);
 			}
-			utstring_free(message);
+			xstring_free(message);
 		}
 	}
 

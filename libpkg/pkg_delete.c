@@ -38,7 +38,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <utstring.h>
 
 #include <bsd_compat.h>
 
@@ -58,11 +57,12 @@ int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
 	struct pkg_message	*msg;
-	UT_string	*message = NULL;
+	xstring		*message = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
 					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_LUA_SCRIPTS;
+	bool		head = true;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -116,22 +116,22 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
-		utstring_renew(message);
 		LL_FOREACH(pkg->message, msg) {
 			if (msg->type == PKG_MESSAGE_REMOVE) {
-				if (utstring_len(message) == 0) {
-					pkg_utstring_printf(message, "Message from "
+				if (message == NULL) {
+					message = xstring_new();
+					pkg_fprintf(message->fp, "Message from "
 					    "%n-%v:\n", pkg, pkg);
+					head = false;
 				}
-				utstring_printf(message, "%s\n", msg->str);
+				fprintf(message->fp, "%s\n", msg->str);
 			}
 		}
-		if (pkg->message != NULL) {
-			if (utstring_len(message) > 0) {
-				pkg_emit_message(utstring_body(message));
-			}
+		if (pkg->message != NULL && message != NULL) {
+			fflush(message->fp);
+			pkg_emit_message(message->buf);
+			xstring_free(message);
 		}
-		utstring_free(message);
 
 	}
 

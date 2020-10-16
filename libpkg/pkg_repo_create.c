@@ -329,25 +329,25 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 	struct pkg_manifest_key *keys = NULL;
 	char *mdigest = NULL;
 	char digestbuf[1024];
-	UT_string *b;
+	xstring *b;
 	struct iovec iov[2];
 	char buf[1024];
 	char *w;
 
-	utstring_new(b);
+	b = xstring_new();
 
 	pid = fork();
 	switch(pid) {
 	case -1:
 		pkg_emit_errno("pkg_create_repo_worker", "fork");
-		utstring_free(b);
+		xstring_free(b);
 		return (EPKG_FATAL);
 		break;
 	case 0:
 		break;
 	default:
 		/* Parent */
-		utstring_free(b);
+		xstring_free(b);
 		return (EPKG_OK);
 		break;
 	}
@@ -388,7 +388,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 			/*
 			 * TODO: use pkg_checksum for new manifests
 			 */
-			utstring_clear(b);
+			xstring_reset(b);
 			mdigest = xmalloc(pkg_checksum_type_size(meta->digest_format));
 
 			pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
@@ -403,7 +403,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 					goto cleanup;
 				}
 			}
-			mlen = utstring_len(b);
+			fflush(b->fp);
+			mlen = strlen(b->buf);
 
 			if (flock(mfd, LOCK_EX) == -1) {
 				pkg_emit_errno("pkg_create_repo_worker", "flock");
@@ -413,8 +414,8 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 			mpos = lseek(mfd, 0, SEEK_END);
 
-			iov[0].iov_base = utstring_body(b);
-			iov[0].iov_len = utstring_len(b);
+			iov[0].iov_base = b->buf;
+			iov[0].iov_len = mlen;
 			iov[1].iov_base = (void *)"\n";
 			iov[1].iov_len = 1;
 
@@ -466,7 +467,7 @@ pkg_create_repo_worker(struct pkg_fts_item *start, size_t nelts,
 
 cleanup:
 	pkg_manifest_keys_free(keys);
-	utstring_free(b);
+	xstring_free(b);
 	close(pip);
 	free(mdigest);
 

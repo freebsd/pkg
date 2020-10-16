@@ -1023,13 +1023,6 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 }
 
 void
-utstring_flush(UT_string *buf)
-{
-	printf("%s", utstring_body(buf));
-	utstring_clear(buf);
-}
-
-void
 drop_privileges(void)
 {
 	struct passwd *nobody;

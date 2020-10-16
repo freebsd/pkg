@@ -270,7 +270,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 	FTS *fts = NULL;
 	FTSENT *fts_e = NULL;
 	size_t treelen;
-	UT_string *sb;
+	xstring *sb;
 	char *paths[2] = { __DECONST(char *, treepath), NULL };
 
 	treelen = strlen(treepath);
@@ -278,7 +278,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 	if (fts == NULL)
 		goto cleanup;
 
-	utstring_new(sb);
+	sb = xstring_new();
 	while ((fts_e = fts_read(fts)) != NULL) {
 		switch(fts_e->fts_info) {
 		case FTS_D:
@@ -289,14 +289,15 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 /* Entries not within this tree are irrelevant. */
 			 if (fts_e->fts_pathlen <= treelen)
 				  break;
-			 utstring_clear(sb);
+			 xstring_reset(sb);
 			 /* Strip the prefix to obtain the target path */
 			 if (newroot) /* Prepend a root if one is specified */
-				  utstring_printf(sb, "%s", newroot);
+				  fprintf(sb->fp, "%s", newroot);
 			 /* +1 = skip trailing slash */
-			 utstring_printf(sb, "%s", fts_e->fts_path + treelen + 1);
+			 fprintf(sb->fp, "%s", fts_e->fts_path + treelen + 1);
+			 fflush(sb->fp);
 			 packing_append_file_attr(pack, fts_e->fts_name,
-			    utstring_body(sb), NULL, NULL, 0, 0);
+			    sb->buf, NULL, NULL, 0, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:
@@ -309,7 +310,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 break;
 		}
 	}
-	utstring_free(sb);
+	xstring_free(sb);
 cleanup:
 	fts_close(fts);
 	return EPKG_OK;

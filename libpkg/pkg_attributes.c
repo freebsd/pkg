@@ -97,7 +97,8 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 	if (p->scripts[i] == NULL)
 		return (NULL);
 
-	return (utstring_body(p->scripts[i]));
+	fflush(p->scripts[i]->fp);
+	return (p->scripts[i]->buf);
 }
 
 /*

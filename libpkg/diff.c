@@ -22,7 +22,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <utstring.h>
 
 #include "private/utils.h"
 #include "xmalloc.h"

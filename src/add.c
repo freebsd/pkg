@@ -36,7 +36,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <utstring.h>
+#include <xstring.h>
 
 #include <pkg.h>
 
@@ -66,7 +66,7 @@ int
 exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	UT_string *failedpkgs = NULL;
+	xstring *failedpkgs = NULL;
 	char path[MAXPATHLEN];
 	char *file;
 	int retcode;
@@ -141,7 +141,7 @@ exec_add(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
-	utstring_new(failedpkgs);
+	failedpkgs = xstring_new();
 	pkg_manifest_keys_new(&keys);
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
@@ -164,9 +164,9 @@ exec_add(int argc, char **argv)
 				warn("%s", file);
 				if (errno == ENOENT)
 					warnx("Was 'pkg install %s' meant?", file);
-				utstring_printf(failedpkgs, "%s", argv[i]);
+				fprintf(failedpkgs->fp, "%s", argv[i]);
 				if (i != argc - 1)
-					utstring_printf(failedpkgs, ", ");
+					fprintf(failedpkgs->fp, ", ");
 				failedpkgcount++;
 				continue;
 			}
@@ -174,9 +174,9 @@ exec_add(int argc, char **argv)
 		}
 
 		if ((retcode = pkg_add(db, file, f, keys, location)) != EPKG_OK) {
-			utstring_printf(failedpkgs, "%s", argv[i]);
+			fprintf(failedpkgs->fp, "%s", argv[i]);
 			if (i != argc - 1)
-				utstring_printf(failedpkgs, ", ");
+				fprintf(failedpkgs->fp, ", ");
 			failedpkgcount++;
 		}
 
@@ -189,13 +189,15 @@ exec_add(int argc, char **argv)
 	pkgdb_close(db);
 	
 	if(failedpkgcount > 0) {
-		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, utstring_body(failedpkgs));
+		fflush(failedpkgs->fp);
+		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, failedpkgs->buf);
 		retcode = EPKG_FATAL;
 	}
-	utstring_free(failedpkgs);
+	xstring_free(failedpkgs);
 
 	if (messages != NULL) {
-		printf("%s", utstring_body(messages));
+		fflush(messages->fp);
+		printf("%s", messages->buf);
 	}
 
 	return (retcode == EPKG_OK ? EX_OK : EX_SOFTWARE);

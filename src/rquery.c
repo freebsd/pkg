@@ -117,7 +117,7 @@ exec_rquery(int argc, char **argv)
 	char			 multiline = 0;
 	char			*condition = NULL;
 	const char		*portsdir;
-	UT_string		*sqlcond = NULL;
+	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
 	const char		*reponame = NULL;
 	bool			 onematched = false;
@@ -200,9 +200,9 @@ exec_rquery(int argc, char **argv)
 		return (EX_USAGE);
 
 	if (condition != NULL) {
-		utstring_new(sqlcond);
+		sqlcond = xstring_new();
 		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK) {
-			utstring_free(sqlcond);
+			xstring_free(sqlcond);
 			return (EX_USAGE);
 		}
 	}
@@ -210,12 +210,10 @@ exec_rquery(int argc, char **argv)
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
-		if (sqlcond != NULL)
-			utstring_free(sqlcond);
+		xstring_free(sqlcond);
 		return (EX_NOPERM);
 	} else if (ret != EPKG_OK) {
-		if (sqlcond != NULL)
-			utstring_free(sqlcond);
+		xstring_free(sqlcond);
 		return (EX_IOERR);
 	}
 
@@ -223,16 +221,14 @@ exec_rquery(int argc, char **argv)
 	old_quiet = quiet;
 	quiet = true;
 	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK) {
-		if (sqlcond != NULL)
-			utstring_free(sqlcond);
+		xstring_free(sqlcond);
 		return (ret);
 	}
 	quiet = old_quiet;
 
 	ret = pkgdb_open_all(&db, PKGDB_REMOTE, reponame);
 	if (ret != EPKG_OK) {
-		if (sqlcond != NULL)
-			utstring_free(sqlcond);
+		xstring_free(sqlcond);
 		return (EX_IOERR);
 	}
 	drop_privileges();
@@ -242,11 +238,12 @@ exec_rquery(int argc, char **argv)
 
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
-		if (match == MATCH_CONDITION && sqlcond)
-			condition_sql = utstring_body(sqlcond);
+		if (match == MATCH_CONDITION && sqlcond) {
+			fflush(sqlcond->fp);
+			condition_sql = sqlcond->buf;
+		}
 		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL) {
-			if (sqlcond != NULL)
-				utstring_free(sqlcond);
+			xstring_free(sqlcond);
 			return (EX_IOERR);
 		}
 
@@ -266,8 +263,7 @@ exec_rquery(int argc, char **argv)
 			pkgname = argv[i];
 
 			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL) {
-				if (sqlcond != NULL)
-					utstring_free(sqlcond);
+				xstring_free(sqlcond);
 				return (EX_IOERR);
 			}
 
@@ -290,8 +286,7 @@ exec_rquery(int argc, char **argv)
 			retcode = EX_UNAVAILABLE;
 	}
 
-	if (sqlcond != NULL)
-		utstring_free(sqlcond);
+	xstring_free(sqlcond);
 	pkg_free(pkg);
 	pkgdb_close(db);
 

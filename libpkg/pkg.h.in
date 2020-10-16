@@ -44,6 +44,7 @@ extern "C" {
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <xstring.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -1671,7 +1672,7 @@ int pkg_audit_load(struct pkg_audit *audit, const char *fname);
  */
 int pkg_audit_process(struct pkg_audit *audit);
 
-#if defined(UTSTRING_H)
+#if defined(__XSTRING_H_)
 /**
  * Check whether `pkg` is vulnerable against processed `audit` structure.
  * If a package is vulnerable, then `result` is set to sbuf describing the
@@ -1681,7 +1682,7 @@ int pkg_audit_process(struct pkg_audit *audit);
  * @return true and `*result` is set if a package is vulnerable
  */
 bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, UT_string **result, int *affected);
+		bool quiet, xstring **result, int *affected);
 #endif
 
 void pkg_audit_free (struct pkg_audit *audit);

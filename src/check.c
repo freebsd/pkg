@@ -53,14 +53,14 @@ struct deps_entry {
 };
 
 static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_entry **dh,
-    bool noinstall, UT_string *out);
+    bool noinstall, xstring *out);
 static void add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs);
 static void deps_free(struct deps_entry *dh);
 static int fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs);
 static void check_summary(struct pkgdb *db, struct deps_entry *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinstall, UT_string *out)
+check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinstall, xstring *out)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
@@ -74,9 +74,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinsta
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_name(dep)) != EPKG_OK) {
 			if (quiet)
-				pkg_utstring_printf(out, "%n\t%sn\n", p, dep);
+				pkg_fprintf(out->fp, "%n\t%sn\n", p, dep);
 			else
-				pkg_utstring_printf(out, "%n has a missing dependency: %dn\n",
+				pkg_fprintf(out->fp, "%n has a missing dependency: %dn\n",
 				    p, dep);
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
@@ -93,9 +93,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinsta
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_utstring_printf(out, "%n\t%S\n", p, buf);
+			pkg_fprintf(out->fp, "%n\t%S\n", p, buf);
 		else
-			pkg_utstring_printf(out, "%n is missing a required shared library: %S\n",
+			pkg_fprintf(out->fp, "%n is missing a required shared library: %S\n",
 			    p, buf);
 	}
 
@@ -109,9 +109,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinsta
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_utstring_printf(out, "%n\tS\n", p, buf);
+			pkg_fprintf(out->fp, "%n\tS\n", p, buf);
 		else
-			pkg_utstring_printf(out, "%n has a missing requirement: %S\n",
+			pkg_fprintf(out->fp, "%n has a missing requirement: %S\n",
 			    p, buf);
 	}
 
@@ -277,7 +277,7 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
-	UT_string *msg = NULL;
+	xstring *msg = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EX_OK;
@@ -423,22 +423,22 @@ exec_check(int argc, char **argv)
 		}
 
 		if (msg == NULL)
-			utstring_new(msg);
+			msg = xstring_new();
 		if (!verbose) {
 			if (!quiet) {
 				if (match == MATCH_ALL)
 					progressbar_start("Checking all packages");
 				else {
-					utstring_printf(msg, "Checking %s", argv[i]);
-					progressbar_start(utstring_body(msg));
+					fprintf(msg->fp, "Checking %s", argv[i]);
+					fflush(msg->fp);
+					progressbar_start(msg->buf);
 				}
 			}
 			processed = 0;
 			total = pkgdb_it_count(it);
 		}
 
-		UT_string *out;
-		utstring_new(out);
+		xstring *out = xstring_new();
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			if (!quiet) {
 				if (!verbose)
@@ -446,9 +446,11 @@ exec_check(int argc, char **argv)
 				else {
 					++nbdone;
 					job_status_begin(msg);
-					pkg_utstring_printf(msg, "Checking %n-%v:",
+					pkg_fprintf(msg->fp, "Checking %n-%v:",
 					    pkg, pkg);
-					utstring_flush(msg);
+					fflush(msg->fp);
+					printf("%s", msg->buf);
+					xstring_reset(msg);
 				}
 			}
 
@@ -513,14 +515,13 @@ exec_check(int argc, char **argv)
 		}
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
-		if (utstring_len(out) > 0) {
-			printf("%s", utstring_body(out));
+		fflush(out->fp);
+		if (out->buf[0] != '\0') {
+			printf("%s", out->buf);
 		}
-		utstring_free(out);
-		if (msg != NULL) {
-			utstring_free(msg);
-			msg = NULL;
-		}
+		xstring_free(out);
+		xstring_free(msg);
+		msg = NULL;
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
 			printf("\n>>> Missing package dependencies were detected.\n");
@@ -551,8 +552,7 @@ exec_check(int argc, char **argv)
 cleanup:
 	if (!verbose)
 		progressbar_stop();
-	if (msg != NULL)
-		utstring_free(msg);
+	xstring_free(msg);
 	deps_free(dh);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);

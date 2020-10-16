@@ -80,101 +80,101 @@ static struct query_flags accepted_query_flags[] = {
 };
 
 static void
-format_str(struct pkg *pkg, UT_string *dest, const char *qstr, const void *data)
+format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 {
 	bool automatic;
 	bool locked;
 	bool vital;
 
-	utstring_clear(dest);
+	xstring_reset(dest);
 
 	while (qstr[0] != '\0') {
 		if (qstr[0] == '%') {
 			qstr++;
 			switch (qstr[0]) {
 			case 'n':
-				pkg_utstring_printf(dest, "%n", pkg);
+				pkg_fprintf(dest->fp, "%n", pkg);
 				break;
 			case 'v':
-				pkg_utstring_printf(dest, "%v", pkg);
+				pkg_fprintf(dest->fp, "%v", pkg);
 				break;
 			case 'o':
-				pkg_utstring_printf(dest, "%o", pkg);
+				pkg_fprintf(dest->fp, "%o", pkg);
 				break;
 			case 'R':
-				pkg_utstring_printf(dest, "%N", pkg);
+				pkg_fprintf(dest->fp, "%N", pkg);
 				break;
 			case 'p':
-				pkg_utstring_printf(dest, "%p", pkg);
+				pkg_fprintf(dest->fp, "%p", pkg);
 				break;
 			case 'm':
-				pkg_utstring_printf(dest, "%m", pkg);
+				pkg_fprintf(dest->fp, "%m", pkg);
 				break;
 			case 'c':
-				pkg_utstring_printf(dest, "%c", pkg);
+				pkg_fprintf(dest->fp, "%c", pkg);
 				break;
 			case 'w':
-				pkg_utstring_printf(dest, "%w", pkg);
+				pkg_fprintf(dest->fp, "%w", pkg);
 				break;
 			case 'a':
 				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
-				utstring_printf(dest, "%d", automatic);
+				fprintf(dest->fp, "%d", automatic);
 				break;
 			case 'k':
 				pkg_get(pkg, PKG_LOCKED, &locked);
-				utstring_printf(dest, "%d", locked);
+				fprintf(dest->fp, "%d", locked);
 				break;
 			case 't':
-				pkg_utstring_printf(dest, "%t", pkg);
+				pkg_fprintf(dest->fp, "%t", pkg);
 				break;
 			case 's':
 				qstr++;
 				if (qstr[0] == 'h') 
-					pkg_utstring_printf(dest, "%#sB", pkg);
+					pkg_fprintf(dest->fp, "%#sB", pkg);
 			        else if (qstr[0] == 'b')
-					pkg_utstring_printf(dest, "%s", pkg);
+					pkg_fprintf(dest->fp, "%s", pkg);
 				break;
 			case 'e':
-				pkg_utstring_printf(dest, "%e", pkg);
+				pkg_fprintf(dest->fp, "%e", pkg);
 				break;
 			case '?':
 				qstr++;
 				switch (qstr[0]) {
 				case 'd':
-					pkg_utstring_printf(dest, "%?d", pkg);
+					pkg_fprintf(dest->fp, "%?d", pkg);
 					break;
 				case 'r':
-					pkg_utstring_printf(dest, "%?r", pkg);
+					pkg_fprintf(dest->fp, "%?r", pkg);
 					break;
 				case 'C':
-					pkg_utstring_printf(dest, "%?C", pkg);
+					pkg_fprintf(dest->fp, "%?C", pkg);
 					break;
 				case 'F':
-					pkg_utstring_printf(dest, "%?F", pkg);
+					pkg_fprintf(dest->fp, "%?F", pkg);
 					break;
 				case 'O':
-					pkg_utstring_printf(dest, "%?O", pkg);
+					pkg_fprintf(dest->fp, "%?O", pkg);
 					break;
 				case 'D':
-					pkg_utstring_printf(dest, "%?D", pkg);
+					pkg_fprintf(dest->fp, "%?D", pkg);
 					break;
 				case 'L':
-					pkg_utstring_printf(dest, "%?L", pkg);
+					pkg_fprintf(dest->fp, "%?L", pkg);
 					break;
 				case 'U':
-					pkg_utstring_printf(dest, "%?U", pkg);
+					pkg_fprintf(dest->fp, "%?U", pkg);
 					break;
 				case 'G':
-					pkg_utstring_printf(dest, "%?G", pkg);
+					pkg_fprintf(dest->fp, "%?G", pkg);
 					break;
 				case 'B':
-					pkg_utstring_printf(dest, "%?B", pkg);
+					pkg_fprintf(dest->fp, "%?B", pkg);
 					break;
 				case 'b':
-					pkg_utstring_printf(dest, "%?b", pkg);
+					pkg_fprintf(dest->fp, "%?b", pkg);
 					break;
 				case 'A':
-					pkg_utstring_printf(dest, "%?A", pkg);
+					pkg_fprintf(dest->fp, "%?A", pkg);
 					break;
 				}
 				break;
@@ -182,167 +182,168 @@ format_str(struct pkg *pkg, UT_string *dest, const char *qstr, const void *data)
 				qstr++;
 				switch (qstr[0]) {
 				case 'd':
-					pkg_utstring_printf(dest, "%#d", pkg);
+					pkg_fprintf(dest->fp, "%#d", pkg);
 					break;
 				case 'r':
-					pkg_utstring_printf(dest, "%#r", pkg);
+					pkg_fprintf(dest->fp, "%#r", pkg);
 					break;
 				case 'C':
-					pkg_utstring_printf(dest, "%#C", pkg);
+					pkg_fprintf(dest->fp, "%#C", pkg);
 					break;
 				case 'F':
-					pkg_utstring_printf(dest, "%#F", pkg);
+					pkg_fprintf(dest->fp, "%#F", pkg);
 					break;
 				case 'O':
-					pkg_utstring_printf(dest, "%#O", pkg);
+					pkg_fprintf(dest->fp, "%#O", pkg);
 					break;
 				case 'D':
-					pkg_utstring_printf(dest, "%#D", pkg);
+					pkg_fprintf(dest->fp, "%#D", pkg);
 					break;
 				case 'L':
-					pkg_utstring_printf(dest, "%#L", pkg);
+					pkg_fprintf(dest->fp, "%#L", pkg);
 					break;
 				case 'U':
-					pkg_utstring_printf(dest, "%#U", pkg);
+					pkg_fprintf(dest->fp, "%#U", pkg);
 					break;
 				case 'G':
-					pkg_utstring_printf(dest, "%#G", pkg);
+					pkg_fprintf(dest->fp, "%#G", pkg);
 					break;
 				case 'B':
-					pkg_utstring_printf(dest, "%#B", pkg);
+					pkg_fprintf(dest->fp, "%#B", pkg);
 					break;
 				case 'b':
-					pkg_utstring_printf(dest, "%#b", pkg);
+					pkg_fprintf(dest->fp, "%#b", pkg);
 					break;
 				case 'A':
-					pkg_utstring_printf(dest, "%#A", pkg);
+					pkg_fprintf(dest->fp, "%#A", pkg);
 					break;
 				}
 				break;
 			case 'Q':
-				pkg_utstring_printf(dest, "%Q", pkg);
+				pkg_fprintf(dest->fp, "%Q", pkg);
 				break;
 			case 'q':
-				pkg_utstring_printf(dest, "%q", pkg);
+				pkg_fprintf(dest->fp, "%q", pkg);
 				break;
 			case 'l':
-				pkg_utstring_printf(dest, "%l", pkg);
+				pkg_fprintf(dest->fp, "%l", pkg);
 				break;
 			case 'd':
 				qstr++;
 				if (qstr[0] == 'n')
-					pkg_utstring_printf(dest, "%dn", data);
+					pkg_fprintf(dest->fp, "%dn", data);
 				else if (qstr[0] == 'o')
-					pkg_utstring_printf(dest, "%do", data);
+					pkg_fprintf(dest->fp, "%do", data);
 				else if (qstr[0] == 'v')
-					pkg_utstring_printf(dest, "%dv", data);
+					pkg_fprintf(dest->fp, "%dv", data);
 				break;
 			case 'r':
 				qstr++;
 				if (qstr[0] == 'n')
-					pkg_utstring_printf(dest, "%rn", data);
+					pkg_fprintf(dest->fp, "%rn", data);
 				else if (qstr[0] == 'o')
-					pkg_utstring_printf(dest, "%ro", data);
+					pkg_fprintf(dest->fp, "%ro", data);
 				else if (qstr[0] == 'v')
-					pkg_utstring_printf(dest, "%rv", data);
+					pkg_fprintf(dest->fp, "%rv", data);
 				break;
 			case 'C':
-				pkg_utstring_printf(dest, "%Cn", data);
+				pkg_fprintf(dest->fp, "%Cn", data);
 				break;
 			case 'F':
 				qstr++;
 				if (qstr[0] == 'p')
-					pkg_utstring_printf(dest, "%Fn", data);
+					pkg_fprintf(dest->fp, "%Fn", data);
 				else if (qstr[0] == 's')
-					pkg_utstring_printf(dest, "%Fs", data);
+					pkg_fprintf(dest->fp, "%Fs", data);
 				break;
 			case 'O':
 				qstr++;
 				if (qstr[0] == 'k')
-					pkg_utstring_printf(dest, "%On", data);
+					pkg_fprintf(dest->fp, "%On", data);
 				else if (qstr[0] == 'v')
-					pkg_utstring_printf(dest, "%Ov", data);
+					pkg_fprintf(dest->fp, "%Ov", data);
 				else if (qstr[0] == 'd') /* default value */
-					pkg_utstring_printf(dest, "%Od", data);
+					pkg_fprintf(dest->fp, "%Od", data);
 				else if (qstr[0] == 'D') /* description */
-					pkg_utstring_printf(dest, "%OD", data);
+					pkg_fprintf(dest->fp, "%OD", data);
 				break;
 			case 'D':
-				pkg_utstring_printf(dest, "%Dn", data);
+				pkg_fprintf(dest->fp, "%Dn", data);
 				break;
 			case 'L':
-				pkg_utstring_printf(dest, "%Ln", data);
+				pkg_fprintf(dest->fp, "%Ln", data);
 				break;
 			case 'U':
-				pkg_utstring_printf(dest, "%Un", data);
+				pkg_fprintf(dest->fp, "%Un", data);
 				break;
 			case 'G':
-				pkg_utstring_printf(dest, "%Gn", data);
+				pkg_fprintf(dest->fp, "%Gn", data);
 				break;
 			case 'B':
-				pkg_utstring_printf(dest, "%Bn", data);
+				pkg_fprintf(dest->fp, "%Bn", data);
 				break;
 			case 'b':
-				pkg_utstring_printf(dest, "%bn", data);
+				pkg_fprintf(dest->fp, "%bn", data);
 				break;
 			case 'A':
 				qstr++;
 				if (qstr[0] == 't')
-					pkg_utstring_printf(dest, "%An", data);
+					pkg_fprintf(dest->fp, "%An", data);
 				else if (qstr[0] == 'v')
-					pkg_utstring_printf(dest, "%Av", data);
+					pkg_fprintf(dest->fp, "%Av", data);
 				break;
 			case 'M':
 				if (pkg_has_message(pkg))
-					pkg_utstring_printf(dest, "%M", pkg);
+					pkg_fprintf(dest->fp, "%M", pkg);
 				break;
 			case 'V':
 				pkg_get(pkg, PKG_VITAL, &vital);
-				utstring_printf(dest, "%d", vital);
+				fprintf(dest->fp, "%d", vital);
 				break;
 			case 'X':
-				pkg_utstring_printf(dest, "%X", pkg);
+				pkg_fprintf(dest->fp, "%X", pkg);
 				break;
 			case '%':
-				utstring_printf(dest, "%c", '%');
+				fprintf(dest->fp, "%c", '%');
 				break;
 			}
 		} else  if (qstr[0] == '\\') {
 			qstr++;
 			switch (qstr[0]) {
 			case 'n':
-				utstring_printf(dest, "%c", '\n');
+				fprintf(dest->fp, "%c", '\n');
 				break;
 			case 'a':
-				utstring_printf(dest, "%c", '\a');
+				fprintf(dest->fp, "%c", '\a');
 				break;
 			case 'b':
-				utstring_printf(dest, "%c", '\b');
+				fprintf(dest->fp, "%c", '\b');
 				break;
 			case 'f':
-				utstring_printf(dest, "%c", '\f');
+				fprintf(dest->fp, "%c", '\f');
 				break;
 			case 'r':
-				utstring_printf(dest, "%c", '\r');
+				fprintf(dest->fp, "%c", '\r');
 				break;
 			case '\\':
-				utstring_printf(dest, "%c", '\\');
+				fprintf(dest->fp, "%c", '\\');
 				break;
 			case 't':
-				utstring_printf(dest, "%c", '\t');
+				fprintf(dest->fp, "%c", '\t');
 				break;
 			}
 		} else {
-			utstring_printf(dest, "%c", qstr[0]);
+			fprintf(dest->fp, "%c", qstr[0]);
 		}
 		qstr++;
 	}
+	fflush(dest->fp);
 }
 
 void
 print_query(struct pkg *pkg, char *qstr, char multiline)
 {
-	UT_string		*output;
+	xstring			*output;
 	struct pkg_dep		*dep    = NULL;
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
@@ -350,95 +351,95 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	char			*buf;
 	struct pkg_kv		*kv;
 
-	utstring_new(output);
+	output = xstring_new();
 
 	switch (multiline) {
 	case 'd':
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'r':
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'C':
 		buf = NULL;
 		while (pkg_categories(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'O':
 		while (pkg_options(pkg, &option) == EPKG_OK) {
 			format_str(pkg, output, qstr, option);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'F':
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			format_str(pkg, output, qstr, file);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'D':
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			format_str(pkg, output, qstr, dir);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'L':
 		buf = NULL;
 		while (pkg_licenses(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'U':
 		buf = NULL;
 		while (pkg_users(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'G':
 		buf = NULL;
 		while (pkg_groups(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'B':
 		buf = NULL;
 		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'b':
 		buf = NULL;
 		while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
 			format_str(pkg, output, qstr, buf);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 		}
 		break;
 	case 'A':
 		pkg_get(pkg, PKG_ANNOTATIONS, &kv);
 		while (kv != NULL) {
 			format_str(pkg, output, qstr, kv);
-			printf("%s\n", utstring_body(output));
+			printf("%s\n", output->buf);
 			kv = kv->next;
 		}
 		break;
 	default:
 		format_str(pkg, output, qstr, dep);
-		printf("%s\n", utstring_body(output));
+		printf("%s\n", output->buf);
 		break;
 	}
-	utstring_free(output);
+	xstring_free(output);
 }
 
 typedef enum {
@@ -455,82 +456,82 @@ typedef enum {
 } state_t;
 
 int
-format_sql_condition(const char *str, UT_string *sqlcond, bool for_remote)
+format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 {
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
 	const char *sqlop;
 
-	utstring_printf(sqlcond, " WHERE ");
+	fprintf(sqlcond->fp, " WHERE ");
 	while (str[0] != '\0') {
 		if (state == NONE) {
 			if (str[0] == '%') {
 				str++;
 				switch (str[0]) {
 				case 'n':
-					utstring_printf(sqlcond, "name");
+					fprintf(sqlcond->fp, "name");
 					state = OPERATOR_STRING;
 					break;
 				case 'o':
-					utstring_printf(sqlcond, "origin");
+					fprintf(sqlcond->fp, "origin");
 					state = OPERATOR_STRING;
 					break;
 				case 'p':
-					utstring_printf(sqlcond, "prefix");
+					fprintf(sqlcond->fp, "prefix");
 					state = OPERATOR_STRING;
 					break;
 				case 'm':
-					utstring_printf(sqlcond, "maintainer");
+					fprintf(sqlcond->fp, "maintainer");
 					state = OPERATOR_STRING;
 					break;
 				case 'c':
-					utstring_printf(sqlcond, "comment");
+					fprintf(sqlcond->fp, "comment");
 					state = OPERATOR_STRING;
 					break;
 				case 'w':
-					utstring_printf(sqlcond, "www");
+					fprintf(sqlcond->fp, "www");
 					state = OPERATOR_STRING;
 					break;
 				case 's':
-					utstring_printf(sqlcond, "flatsize");
+					fprintf(sqlcond->fp, "flatsize");
 					state = OPERATOR_INT;
 					break;
 				case 'a':
 					if (for_remote)
 						goto bad_option;
-					utstring_printf(sqlcond, "automatic");
+					fprintf(sqlcond->fp, "automatic");
 					state = OPERATOR_INT;
 					break;
 				case 'q':
-					utstring_printf(sqlcond, "arch");
+					fprintf(sqlcond->fp, "arch");
 					state = OPERATOR_STRING;
 					break;
 				case 'k':
 					if (for_remote)
 						goto bad_option;
-					utstring_printf(sqlcond, "locked");
+					fprintf(sqlcond->fp, "locked");
 					state = OPERATOR_INT;
 					break;
 				case 'M':
 					if (for_remote)
 						goto bad_option;
-					utstring_printf(sqlcond, "message");
+					fprintf(sqlcond->fp, "message");
 					state = OPERATOR_STRING;
 					break;
 				case 't':
 					if (for_remote)
 						goto bad_option;
-					utstring_printf(sqlcond, "time");
+					fprintf(sqlcond->fp, "time");
 					state = OPERATOR_INT;
 					break;
 				case 'e':
-					utstring_printf(sqlcond, "desc");
+					fprintf(sqlcond->fp, "desc");
 					state = OPERATOR_STRING;
 					break;
 				case 'V':
 					if (for_remote)
 						goto bad_option;
-					utstring_printf(sqlcond, "vital");
+					fprintf(sqlcond->fp, "vital");
 					state = OPERATOR_INT;
 					break;
 				case '#': /* FALLTHROUGH */
@@ -539,48 +540,48 @@ format_sql_condition(const char *str, UT_string *sqlcond, bool for_remote)
 					str++;
 					switch (str[0]) {
 						case 'd':
-							utstring_printf(sqlcond, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'r':
-							utstring_printf(sqlcond, "(SELECT %s FROM deps AS d WHERE d.origin=p.origin)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.origin=p.origin)", sqlop);
 							break;
 						case 'C':
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_categories AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_categories AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'F':
 							if (for_remote)
 								goto bad_option;
-							utstring_printf(sqlcond, "(SELECT %s FROM files AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM files AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'O':
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_option AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_option AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'D':
 							if (for_remote)
 								goto bad_option;
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_directories AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_directories AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'L':
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_licenses AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_licenses AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'U':
 							if (for_remote)
 								goto bad_option;
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_users AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_users AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'G':
 							if (for_remote)
 								goto bad_option;
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_groups AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_groups AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'B':
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_shlibs_required AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_shlibs_required AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'b':
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_shlibs_provided AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_shlibs_provided AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'A':
-							utstring_printf(sqlcond, "(SELECT %s FROM pkg_annotation AS d WHERE d.package_id=p.id)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_annotation AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						default:
 							goto bad_option;
@@ -596,7 +597,7 @@ bad_option:
 				switch (str[0]) {
 				case '(':
 					bracket_level++;
-					utstring_printf(sqlcond, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[0]);
 					break;
 				case ' ':
 				case '\t':
@@ -614,7 +615,7 @@ bad_option:
 					return (EPKG_FATAL);
 				}
 				bracket_level--;
-				utstring_printf(sqlcond, "%c", str[0]);
+				fprintf(sqlcond->fp, "%c", str[0]);
 				break;
 			case ' ':
 			case '\t':
@@ -623,7 +624,7 @@ bad_option:
 				if (str[1] == '|') {
 					str++;
 					state = NONE;
-					utstring_printf(sqlcond, " OR ");
+					fprintf(sqlcond->fp, " OR ");
 					break;
 				} else {
 					fprintf(stderr, "unexpected character %c\n", str[1]);
@@ -633,7 +634,7 @@ bad_option:
 				if (str[1] == '&') {
 					str++;
 					state = NONE;
-					utstring_printf(sqlcond, " AND ");
+					fprintf(sqlcond->fp, " AND ");
 					break;
 				} else {
 					fprintf(stderr, "unexpected character %c\n", str[1]);
@@ -653,17 +654,17 @@ bad_option:
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_STRING;
-				utstring_printf(sqlcond, " GLOB ");
+				fprintf(sqlcond->fp, " GLOB ");
 			} else if (str[0] == '>' || str[0] == '<') {
 				if (state != OPERATOR_INT) {
 					fprintf(stderr, "> expected only for integers\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_INT;
-				utstring_printf(sqlcond, "%c", str[0]);
+				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[1] == '=') {
 					str++;
-					utstring_printf(sqlcond, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[0]);
 				}
 			} else if (str[0] == '=') {
 				if (state == OPERATOR_STRING) {
@@ -671,17 +672,17 @@ bad_option:
 				} else {
 					state = NEXT_IS_INT;
 				}
-				utstring_printf(sqlcond, "%c", str[0]);
+				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[1] == '=') {
 					str++;
-					utstring_printf(sqlcond, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[0]);
 				}
 			} else if (str[0] == '!') {
 				if (str[1] == '=') {
-					utstring_printf(sqlcond, "%c", str[0]);
-					utstring_printf(sqlcond, "%c", str[1]);
+					fprintf(sqlcond->fp, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[1]);
 				} else if (str[1] == '~') {
-					utstring_printf(sqlcond, " NOT GLOB ");
+					fprintf(sqlcond->fp, " NOT GLOB ");
 				} else {
 					fprintf(stderr, "expecting = or ~ after !\n");
 					return (EPKG_FATAL);
@@ -709,14 +710,14 @@ bad_option:
 						state = STRING;
 						str--;
 					}
-					utstring_printf(sqlcond, "%c", '\'');
+					fprintf(sqlcond->fp, "%c", '\'');
 				} else {
 					if (!isdigit(str[0])) {
 						fprintf(stderr, "a number is expected, got: %c\n", str[0]);
 						return (EPKG_FATAL);
 					}
 					state = INT;
-					utstring_printf(sqlcond, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[0]);
 				}
 			}
 		} else if (state == INT) {
@@ -724,26 +725,26 @@ bad_option:
 				state = POST_EXPR;
 				str--;
 			} else {
-				utstring_printf(sqlcond, "%c", str[0]);
+				fprintf(sqlcond->fp, "%c", str[0]);
 			}
 		} else if (state == STRING || state == QUOTEDSTRING || state == SQUOTEDSTRING) {
 			if ((state == STRING && isspace(str[0])) ||
 			    (state == QUOTEDSTRING && str[0] == '"') ||
 			    (state == SQUOTEDSTRING && str[0] == '\'')) {
-				utstring_printf(sqlcond, "%c", '\'');
+				fprintf(sqlcond->fp, "%c", '\'');
 				state = POST_EXPR;
 			} else {
-				utstring_printf(sqlcond, "%c", str[0]);
+				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[0] == '\'')
-					utstring_printf(sqlcond, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[0]);
 				else if (str[0] == '%' && for_remote)
-					utstring_printf(sqlcond, "%c", str[0]);
+					fprintf(sqlcond->fp, "%c", str[0]);
 			}
 		}
 		str++;
 	}
 	if (state == STRING) {
-		utstring_printf(sqlcond, "%c", '\'');
+		fprintf(sqlcond->fp, "%c", '\'');
 		state = POST_EXPR;
 	}
 
@@ -871,7 +872,7 @@ exec_query(int argc, char **argv)
 	int			 i;
 	char			 multiline = 0;
 	char			*condition = NULL;
-	UT_string		*sqlcond = NULL;
+	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_query_flags);
 
 	struct option longopts[] = {
@@ -949,9 +950,9 @@ exec_query(int argc, char **argv)
 	}
 
 	if (condition != NULL) {
-		utstring_new(sqlcond);
+		sqlcond = xstring_new();
 		if (format_sql_condition(condition, sqlcond, false) != EPKG_OK) {
-			utstring_free(sqlcond);
+			xstring_free(sqlcond);
 			return (EX_USAGE);
 		}
 	}
@@ -980,8 +981,10 @@ exec_query(int argc, char **argv)
 
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
-		if (match == MATCH_CONDITION && sqlcond)
-			condition_sql = utstring_body(sqlcond);
+		if (match == MATCH_CONDITION && sqlcond) {
+			fflush(sqlcond->fp);
+			condition_sql = sqlcond->buf;
+		}
 		if ((it = pkgdb_query(db, condition_sql, match)) == NULL)
 			return (EX_IOERR);
 

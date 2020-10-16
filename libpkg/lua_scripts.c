@@ -41,7 +41,7 @@
 
 #include <errno.h>
 #include <poll.h>
-#include <utstring.h>
+#include <xstring.h>
 #include <lauxlib.h>
 #include <lualib.h>
 #include <fcntl.h>
@@ -59,33 +59,34 @@ stack_dump(lua_State *L)
 {
 	int i;
 	int top = lua_gettop(L);
-	UT_string *stack;
+	xstring *stack;
 
-	utstring_new(stack);
+	stack = xstring_new();
 
-	utstring_printf(stack, "\nLua Stack\n---------\n");
-	utstring_printf(stack, "\tType   Data\n\t-----------\n" );
+	fprintf(stack->fp, "\nLua Stack\n---------\n");
+	fprintf(stack->fp, "\tType   Data\n\t-----------\n" );
 
 	for (i = 1; i <= top; i++) {  /* repeat for each level */
 		int t = lua_type(L, i);
-		utstring_printf(stack, "%i", i);
+		fprintf(stack->fp, "%i", i);
 		switch (t) {
 		case LUA_TSTRING:  /* strings */
-			utstring_printf(stack, "\tString: `%s'\n", lua_tostring(L, i));
+			fprintf(stack->fp, "\tString: `%s'\n", lua_tostring(L, i));
 			break;
 		case LUA_TBOOLEAN:  /* booleans */
-			utstring_printf(stack, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
+			fprintf(stack->fp, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
 			break;
 		case LUA_TNUMBER:  /* numbers */
-			utstring_printf(stack, "\tNumber: %g\n", lua_tonumber(L, i));
+			fprintf(stack->fp, "\tNumber: %g\n", lua_tonumber(L, i));
 			break;
 		default:  /* other values */
-			utstring_printf(stack, "\tOther: %s\n", lua_typename(L, t));
+			fprintf(stack->fp, "\tOther: %s\n", lua_typename(L, t));
 			break;
 		}
 	}
-	pkg_emit_error("%s\n", utstring_body(stack));
-	utstring_free(stack);
+	fflush(stack->fp);
+	pkg_emit_error("%s\n", stack->buf);
+	xstring_free(stack);
 
 	return (0);
 }

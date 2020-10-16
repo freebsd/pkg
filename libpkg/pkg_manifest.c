@@ -1315,7 +1315,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 
 static int
-emit_manifest(struct pkg *pkg, UT_string **out, short flags)
+emit_manifest(struct pkg *pkg, xstring **out, short flags)
 {
 	ucl_object_t *top;
 
@@ -1355,7 +1355,7 @@ static int
 pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	    char **pdigest, bool out_is_a_buf)
 {
-	UT_string *output = NULL;
+	xstring *output = NULL;
 	unsigned char digest[SHA256_BLOCK_SIZE];
 	SHA256_CTX *sign_ctx = NULL;
 	int rc;
@@ -1371,11 +1371,12 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 
 	rc = emit_manifest(pkg, &output, flags);
 
+	fflush(output->fp);
 	if (sign_ctx != NULL)
-		sha256_update(sign_ctx, utstring_body(output), utstring_len(output));
+		sha256_update(sign_ctx, output->buf, strlen(output->buf));
 
 	if (!out_is_a_buf)
-		fprintf(out, "%s\n", utstring_body(output));
+		fprintf(out, "%s\n", output->buf);
 
 	if (pdigest != NULL) {
 		sha256_final(sign_ctx, digest);
@@ -1384,7 +1385,7 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	}
 
 	if (!out_is_a_buf)
-		utstring_free(output);
+		xstring_free(output);
 
 	return (rc);
 }
@@ -1397,7 +1398,7 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
 }
 
 int
-pkg_emit_manifest_buf(struct pkg *pkg, UT_string *b, short flags, char **pdigest)
+pkg_emit_manifest_buf(struct pkg *pkg, xstring *b, short flags, char **pdigest)
 {
 
 	return (pkg_emit_manifest_generic(pkg, b, flags, pdigest, true));
@@ -1406,19 +1407,18 @@ pkg_emit_manifest_buf(struct pkg *pkg, UT_string *b, short flags, char **pdigest
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 {
-	UT_string *b;
+	xstring *b;
 	int rc;
 
-	utstring_new(b);
+	b = xstring_new();
 	rc = pkg_emit_manifest_buf(pkg, b, flags, pdigest);
 
 	if (rc != EPKG_OK) {
-		utstring_free(b);
+		xstring_free(b);
 		return (rc);
 	}
 
-	*dest = xstrdup(utstring_body(b));
-	utstring_free(b);
+	*dest = xstring_get(b);
 
 	return (rc);
 }

@@ -41,7 +41,7 @@
 #include <grp.h>
 #include <sys/time.h>
 #include <time.h>
-#include <utstring.h>
+#include <xstring.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -1035,7 +1035,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct archive		*a;
 	struct archive_entry	*ae;
 	struct pkg		*pkg = NULL;
-	UT_string		*message;
+	xstring			*message = NULL;
 	struct pkg_message	*msg;
 	struct pkg_file		*f;
 	const char		*msgstr;
@@ -1200,8 +1200,6 @@ cleanup_reg:
 			pkg_emit_install_finished(pkg, local);
 	}
 
-	if (pkg->message != NULL)
-		utstring_new(message);
 	LL_FOREACH(pkg->message, msg) {
 		msgstr = NULL;
 		if (msg->type == PKG_MESSAGE_ALWAYS) {
@@ -1228,18 +1226,18 @@ cleanup_reg:
 			msgstr = msg->str;
 		}
 		if (msgstr != NULL) {
-			if (utstring_len(message) == 0) {
-				pkg_utstring_printf(message, "=====\nMessage from "
+			if (message == NULL) {
+				message = xstring_new();
+				pkg_fprintf(message->fp, "=====\nMessage from "
 				    "%n-%v:\n\n", pkg, pkg);
 			}
-			utstring_printf(message, "--\n%s\n", msgstr);
+			fprintf(message->fp, "--\n%s\n", msgstr);
 		}
 	}
-	if (pkg->message != NULL) {
-		if (utstring_len(message) > 0) {
-			pkg_emit_message(utstring_body(message));
-		}
-		utstring_free(message);
+	if (pkg->message != NULL && message != NULL) {
+		fflush(message->fp);
+		pkg_emit_message(message->buf);
+		xstring_free(message);
 	}
 
 	cleanup:

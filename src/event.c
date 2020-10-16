@@ -57,15 +57,14 @@
 #include <kvec.h>
 
 #include <bsd_compat.h>
-#include <utstring.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
 
 #define STALL_TIME 5
 
-UT_string *messages = NULL;
-UT_string *conflicts = NULL;
+xstring *messages = NULL;
+xstring *conflicts = NULL;
 
 struct cleanup {
 	void *data;
@@ -73,7 +72,7 @@ struct cleanup {
 };
 
 static char *progress_message = NULL;
-static UT_string *msg_buf = NULL;
+static xstring *msg_buf = NULL;
 static int last_progress_percent = -1;
 static bool progress_started = false;
 static bool progress_interrupted = false;
@@ -128,19 +127,19 @@ format_rate_SI(char *buf, int size, off_t bytes)
 }
 
 void
-job_status_end(UT_string *msg)
+job_status_end(xstring *msg)
 {
-	printf("%s\n", utstring_body(msg));
-	/*printf("\033]0; %s\007", utstring_body(msg));*/
-	utstring_clear(msg);
+	fflush(msg->fp);
+	printf("%s\n", msg->buf);
+	xstring_reset(msg);
 }
 
 void
-job_status_begin(UT_string *msg)
+job_status_begin(xstring *msg)
 {
 	int n;
 
-	utstring_clear(msg);
+	xstring_reset(msg);
 #ifdef HAVE_LIBJAIL
 	static char hostname[MAXHOSTNAMELEN] = "";
 	static int jailed = -1;
@@ -157,7 +156,7 @@ job_status_begin(UT_string *msg)
 		if (hostname[0] == '\0')
 			gethostname(hostname, sizeof(hostname));
 
-		utstring_printf(msg, "[%s] ", hostname);
+		fprintf(msg->fp, "[%s] ", hostname);
 	}
 #endif
 
@@ -166,16 +165,16 @@ job_status_begin(UT_string *msg)
 		if (add_deps_depth > 1) {
 			for (n = 0; n < (2 * add_deps_depth); ++n) {
 				if (n % 4 == 0 && n < (2 * add_deps_depth))
-					utstring_printf(msg, "|");
+					fprintf(msg->fp, "|");
 				else
-					utstring_printf(msg, " ");
+					fprintf(msg->fp, " ");
 			}
 		}
-		utstring_printf(msg, "`-- ");
+		fprintf(msg->fp, "`-- ");
 	}
 
 	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0)
-		utstring_printf(msg, "[%d/%d] ", nbdone, (nbtodl) ? nbtodl : nbactions);
+		fprintf(msg->fp, "[%d/%d] ", nbdone, (nbtodl) ? nbtodl : nbactions);
 	if (nbtodl > 0 && nbtodl == nbdone) {
 		nbtodl = 0;
 		nbdone = 0;
@@ -358,7 +357,8 @@ progressbar_start(const char *pmsg)
 	if (pmsg != NULL)
 		progress_message = strdup(pmsg);
 	else {
-		progress_message = strdup(utstring_body(msg_buf));
+		fflush(msg_buf->fp);
+		progress_message = strdup(msg_buf->buf);
 	}
 	last_progress_percent = -1;
 	last_tick = 0;
@@ -541,7 +541,7 @@ event_callback(void *data, struct pkg_event *ev)
 	const char *filename, *reponame;
 
 	if (msg_buf == NULL) {
-		utstring_new(msg_buf);
+		msg_buf = xstring_new();
 	}
 
 	/*
@@ -600,7 +600,7 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		job_status_begin(msg_buf);
 		progress_debit = true;
-		utstring_printf(msg_buf, "Fetching %s", filename);
+		fprintf(msg_buf->fp, "Fetching %s", filename);
 		break;
 	case PKG_EVENT_FETCH_FINISHED:
 		progress_debit = false;
@@ -611,9 +611,10 @@ event_callback(void *data, struct pkg_event *ev)
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
-		pkg_utstring_printf(msg_buf, "Installing %n-%v...\n", pkg,
+		pkg_fprintf(msg_buf->fp, "Installing %n-%v...\n", pkg,
 		    pkg);
-		printf("%s", utstring_body(msg_buf));
+		fflush(msg_buf->fp);
+		printf("%s", msg_buf->buf);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
@@ -625,7 +626,8 @@ event_callback(void *data, struct pkg_event *ev)
 		else {
 			job_status_begin(msg_buf);
 			pkg = ev->e_install_begin.pkg;
-			pkg_utstring_printf(msg_buf, "Extracting %n-%v", pkg, pkg);
+			pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
+			fflush(msg_buf->fp);
 		}
 		break;
 	case PKG_EVENT_EXTRACT_FINISHED:
@@ -646,7 +648,9 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
 		if (conflicts != NULL) {
-			printf("%s", utstring_body(conflicts));
+			fflush(conflicts->fp);
+			printf("%s", conflicts->buf);
+			xstring_free(conflicts);
 			conflicts = NULL;
 		}
 		break;
@@ -674,8 +678,9 @@ event_callback(void *data, struct pkg_event *ev)
 		job_status_begin(msg_buf);
 
 		pkg = ev->e_install_begin.pkg;
-		pkg_utstring_printf(msg_buf, "Deinstalling %n-%v...\n", pkg, pkg);
-		printf("%s", utstring_body(msg_buf));
+		pkg_fprintf(msg_buf->fp, "Deinstalling %n-%v...\n", pkg, pkg);
+		fflush(msg_buf->fp);
+		printf("%s", msg_buf->buf);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -687,7 +692,7 @@ event_callback(void *data, struct pkg_event *ev)
 		else {
 			job_status_begin(msg_buf);
 			pkg = ev->e_install_begin.pkg;
-			pkg_utstring_printf(msg_buf, "Deleting files for %n-%v",
+			pkg_fprintf(msg_buf->fp, "Deleting files for %n-%v",
 			    pkg, pkg);
 		}
 		break;
@@ -703,19 +708,20 @@ event_callback(void *data, struct pkg_event *ev)
 
 		switch (pkg_version_change_between(pkg_new, pkg_old)) {
 		case PKG_DOWNGRADE:
-			pkg_utstring_printf(msg_buf, "Downgrading %n from %v to %v...\n",
+			pkg_fprintf(msg_buf->fp, "Downgrading %n from %v to %v...\n",
 			    pkg_new, pkg_old, pkg_new);
 			break;
 		case PKG_REINSTALL:
-			pkg_utstring_printf(msg_buf, "Reinstalling %n-%v...\n",
+			pkg_fprintf(msg_buf->fp, "Reinstalling %n-%v...\n",
 		    pkg_old, pkg_old);
 			break;
 		case PKG_UPGRADE:
-			pkg_utstring_printf(msg_buf, "Upgrading %n from %v to %v...\n",
+			pkg_fprintf(msg_buf->fp, "Upgrading %n from %v to %v...\n",
 			    pkg_new, pkg_old, pkg_new);
 			break;
 		}
-		printf("%s", utstring_body(msg_buf));
+		fflush(msg_buf->fp);
+		printf("%s", msg_buf->buf);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
@@ -827,18 +833,18 @@ event_callback(void *data, struct pkg_event *ev)
 		    ev->e_progress_tick.total);
 		break;
 	case PKG_EVENT_BACKUP:
-		utstring_printf(msg_buf, "Backing up");
+		fprintf(msg_buf->fp, "Backing up");
 		break;
 	case PKG_EVENT_RESTORE:
-		utstring_printf(msg_buf, "Restoring");
+		fprintf(msg_buf->fp, "Restoring");
 		break;
 	case PKG_EVENT_NEW_ACTION:
 		nbdone++;
 		break;
 	case PKG_EVENT_MESSAGE:
 		if (messages == NULL)
-			utstring_new(messages);
-		utstring_printf(messages, "%s", ev->e_pkg_message.msg);
+			messages = xstring_new();
+		fprintf(messages->fp, "%s", ev->e_pkg_message.msg);
 		break;
 	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
 		if (!signal_handler_installed) {
@@ -865,23 +871,23 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_CONFLICTS:
 		if (conflicts == NULL) {
-			utstring_new(conflicts);
+			conflicts = xstring_new();
 		}
-		pkg_utstring_printf(conflicts, "  - %n-%v",
+		pkg_fprintf(conflicts->fp, "  - %n-%v",
 		    ev->e_conflicts.p1, ev->e_conflicts.p1);
 		if (pkg_repos_total_count() > 1) {
 			pkg_get(ev->e_conflicts.p1, PKG_REPONAME, &reponame);
-			utstring_printf(conflicts, " [%s]",
+			fprintf(conflicts->fp, " [%s]",
 			    reponame == NULL ? "installed" : reponame);
 		}
-		pkg_utstring_printf(conflicts, " conflicts with %n-%v",
+		pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
 		    ev->e_conflicts.p2, ev->e_conflicts.p2);
 		if (pkg_repos_total_count() > 1) {
 			pkg_get(ev->e_conflicts.p2, PKG_REPONAME, &reponame);
-			utstring_printf(conflicts, " [%s]",
+			fprintf(conflicts->fp, " [%s]",
 			    reponame == NULL ? "installed" : reponame);
 		}
-		utstring_printf(conflicts, " on %s\n",
+		fprintf(conflicts->fp, " on %s\n",
 		    ev->e_conflicts.path);
 		break;
 	default:
