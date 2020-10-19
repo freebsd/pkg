@@ -594,7 +594,7 @@ exec_buf(xstring *res, char **argv) {
 
 	close(pfd[1]);
 
-	xstring_reset(res->fp);
+	xstring_reset(res);
 	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
 		fwrite(buf, sizeof(char), r, res->fp);
 

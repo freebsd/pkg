@@ -31,7 +31,6 @@
 #include "bsd_compat.h"
 
 #include <pkg.h>
-#include <utstring.h>
 
 #ifdef TESTING
 #define _static	
