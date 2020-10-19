@@ -182,38 +182,38 @@ int
 format_exec_cmd(char **dest, const char *in, const char *prefix,
     const char *plist_file, char *line, int argc, char **argv)
 {
-	UT_string *buf;
+	xstring *buf;
 	char path[MAXPATHLEN];
 	char *cp;
 	size_t sz;
 
-	utstring_new(buf);
+	buf = xstring_new();
 
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
-			utstring_printf(buf, "%c", in[0]);
+			fputc(in[0], buf->fp);
 			in++;
 			continue;
 		}
 		in++;
 		switch(in[0]) {
 		case 'D':
-			utstring_printf(buf, "%s", prefix);
+			fprintf(buf->fp, "%s", prefix);
 			break;
 		case 'F':
 			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%F couldn't "
 				    "be expanded, ignoring %s", in);
-				utstring_free(buf);
+				xstring_free(buf);
 				return (EPKG_FATAL);
 			}
-			utstring_printf(buf, "%s", plist_file);
+			fprintf(buf->fp, "%s", plist_file);
 			break;
 		case 'f':
 			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%f couldn't "
 				    "be expanded, ignoring %s", in);
-				utstring_free(buf);
+				xstring_free(buf);
 				return (EPKG_FATAL);
 			}
 			if (prefix[strlen(prefix) - 1] == '/')
@@ -224,13 +224,13 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    prefix, plist_file);
 			cp = strrchr(path, '/');
 			cp ++;
-			utstring_printf(buf, "%s", cp);
+			fprintf(buf->fp, "%s", cp);
 			break;
 		case 'B':
 			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%B couldn't "
 				    "be expanded, ignoring %s", in);
-				utstring_free(buf);
+				xstring_free(buf);
 				return (EPKG_FATAL);
 			}
 			if (prefix[strlen(prefix) - 1] == '/')
@@ -241,14 +241,14 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    plist_file);
 			cp = strrchr(path, '/');
 			cp[0] = '\0';
-			utstring_printf(buf, "%s", path);
+			fprintf(buf->fp, "%s", path);
 			break;
 		case '%':
-			utstring_printf(buf, "%c", '%');
+			fputc('%', buf->fp);
 			break;
 		case '@':
 			if (line != NULL) {
-				utstring_printf(buf, "%s", line);
+				fprintf(buf->fp, "%s", line);
 				break;
 			}
 
@@ -259,7 +259,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 */
 			/* FALLTHRU */
 		case '#':
-			utstring_printf(buf, "%d", argc);
+			fprintf(buf->fp, "%d", argc);
 			break;
 		default:
 			if ((sz = strspn(in, "0123456789")) > 0) {
@@ -268,22 +268,23 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					pkg_emit_error("Requesting argument "
 					    "%%%d while only %d arguments are"
 					    " available", pos, argc);
-					utstring_free(buf);
+					xstring_free(buf);
 					return (EPKG_FATAL);
 				}
-				utstring_printf(buf, "%s", argv[pos -1]);
+				fprintf(buf->fp, "%s", argv[pos -1]);
 				in += sz -1;
 				break;
 			}
-			utstring_printf(buf, "%c%c", '%', in[0]);
+			fprintf(buf->fp, "%c%c", '%', in[0]);
 			break;
 		}
 
 		in++;
 	}
 
-	*dest = xstrdup(utstring_body(buf));
-	utstring_free(buf);
+	fclose(buf->fp);
+	*dest = buf->buf;
+	free(buf);
 	
 	return (EPKG_OK);
 }
@@ -567,7 +568,7 @@ ucl_buf_append_len(const unsigned char *str, size_t len, void *data)
 {
 	xstring *buf = data;
 
-	fprintf(buf->fp, "%.*s", len, str);
+	fprintf(buf->fp, "%.*s", (int)len, str);
 
 	return (0);
 }
