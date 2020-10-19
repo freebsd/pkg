@@ -194,11 +194,11 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 } while (0)
 
 static void
-pkg_print_rule_buf(struct pkg_solve_rule *rule, UT_string *sb)
+pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 {
 	struct pkg_solve_item *it = rule->items, *key_elt = NULL;
 
-	utstring_printf(sb, "%s rule: ", rule_reasons[rule->reason]);
+	fprintf(sb->fp, "%s rule: ", rule_reasons[rule->reason]);
 	switch(rule->reason) {
 	case PKG_RULE_DEPEND:
 		LL_FOREACH(rule->items, it) {
@@ -208,25 +208,25 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, UT_string *sb)
 			}
 		}
 		if (key_elt) {
-			utstring_printf(sb, "package %s%s depends on: ", key_elt->var->uid,
+			fprintf(sb->fp, "package %s%s depends on: ", key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
 		LL_FOREACH(rule->items, it) {
 			if (it != key_elt) {
-				utstring_printf(sb, "%s%s", it->var->uid,
+				fprintf(sb->fp, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 			}
 		}
 		break;
 	case PKG_RULE_UPGRADE_CONFLICT:
-		utstring_printf(sb, "upgrade local %s-%s to remote %s-%s",
+		fprintf(sb->fp, "upgrade local %s-%s to remote %s-%s",
 			it->var->uid, it->var->unit->pkg->version,
 			it->next->var->uid, it->next->var->unit->pkg->version);
 		break;
 	case PKG_RULE_EXPLICIT_CONFLICT:
-		utstring_printf(sb, "The following packages conflict with each other: ");
+		fprintf(sb->fp, "The following packages conflict with each other: ");
 		LL_FOREACH(rule->items, it) {
-			utstring_printf(sb, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
+			fprintf(sb->fp, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
 				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
 				it->next ? ", " : "");
 		}
@@ -239,21 +239,21 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, UT_string *sb)
 			}
 		}
 		if (key_elt) {
-			utstring_printf(sb, "package %s%s depends on a requirement provided by: ",
+			fprintf(sb->fp, "package %s%s depends on a requirement provided by: ",
 				key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
 		LL_FOREACH(rule->items, it) {
 			if (it != key_elt) {
-				utstring_printf(sb, "%s%s", it->var->uid,
+				fprintf(sb->fp, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 			}
 		}
 		break;
 	case PKG_RULE_REQUEST_CONFLICT:
-		utstring_printf(sb, "The following packages in request are candidates for installation: ");
+		fprintf(sb->fp, "The following packages in request are candidates for installation: ");
 		LL_FOREACH(rule->items, it) {
-			utstring_printf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
+			fprintf(sb->fp, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					it->next ? ", " : "");
 		}
 		break;
@@ -265,17 +265,18 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, UT_string *sb)
 static void
 pkg_debug_print_rule(struct pkg_solve_rule *rule)
 {
-	UT_string *sb;
+	xstring *sb;
 
 	if (ctx.debug_level < 3)
 		return;
 
-	utstring_new(sb);
+	sb = xstring_new();
 
 	pkg_print_rule_buf(rule, sb);
 
-	pkg_debug(2, "%s", utstring_body(sb));
-	utstring_free(sb);
+	fflush(sb->fp);
+	pkg_debug(2, "%s", sb->buf);
+	xstring_free(sb);
 }
 
 static int
@@ -1117,8 +1118,7 @@ reiterate:
 
 		if (attempt >= 10) {
 			pkg_emit_error("Cannot solve problem using SAT solver");
-			UT_string *sb;
-			utstring_new(sb);
+			xstring *sb = xstring_new();
 
 			while (*failed) {
 				var = &problem->variables[abs(*failed) - 1];
@@ -1129,24 +1129,25 @@ reiterate:
 						LL_FOREACH(rule->items, item) {
 							if (item->var == var) {
 								pkg_print_rule_buf(rule, sb);
-								utstring_printf(sb, "%c", '\n');
+								fputc('\n', sb->fp);
 								break;
 							}
 						}
 					}
 				}
 
-				utstring_printf(sb, "cannot %s package %s, remove it from request? ",
+				fprintf(sb->fp, "cannot %s package %s, remove it from request? ",
 						var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
 
-				if (pkg_emit_query_yesno(true, utstring_body(sb))) {
+				fflush(sb->fp);
+				if (pkg_emit_query_yesno(true, sb->buf)) {
 					var->flags |= PKG_VAR_FAILED;
 				}
 
 				failed++;
 				need_reiterate = true;
 			}
-			utstring_clear(sb);
+			xstring_free(sb);
 		} else {
 			pkg_emit_notice("Cannot solve problem using SAT solver, trying another plan");
 			var = &problem->variables[abs(*failed) - 1];
