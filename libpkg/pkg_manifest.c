@@ -256,39 +256,40 @@ pkg_manifest_keys_free(struct pkg_manifest_key *key)
 }
 
 static int
-urlencode(const char *src, UT_string **dest)
+urlencode(const char *src, xstring **dest)
 {
 	size_t len;
 	size_t i;
 
-	utstring_renew(*dest);
+	xstring_renew(*dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (!isascii(src[i]) || src[i] == '%')
-			utstring_printf(*dest, "%%%.2x", (unsigned char)src[i]);
+			fprintf((*dest)->fp, "%%%.2x", (unsigned char)src[i]);
 		else
-			utstring_printf(*dest, "%c", src[i]);
+			fputc(src[i], (*dest)->fp);
 	}
 
+	fflush((*dest)->fp);
 	return (EPKG_OK);
 }
 
 
 static int
-urldecode(const char *src, UT_string **dest)
+urldecode(const char *src, xstring **dest)
 {
 	size_t len;
 	size_t i;
 	char c;
 	char hex[] = {'\0', '\0', '\0'};
 
-	utstring_renew(*dest);
+	xstring_renew(*dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (src[i] != '%') {
-			utstring_printf(*dest, "%c", src[i]);
+			fputc(src[i], (*dest)->fp);
 		} else {
 			if (i + 2 > len) {
 				pkg_emit_error("unexpected end of string");
@@ -304,13 +305,14 @@ urldecode(const char *src, UT_string **dest)
 				 * if it fails consider this is not a urlencoded
 				 * information
 				 */
-				utstring_printf(*dest, "%%%s", hex);
+				fprintf((*dest)->fp, "%%%s", hex);
 			} else {
-				utstring_printf(*dest, "%c", c);
+				fputc(c,(*dest)->fp);
 			}
 		}
 	}
 
+	fflush((*dest)->fp);
 	return (EPKG_OK);
 }
 
@@ -351,7 +353,7 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 {
 	const char *str;
 	char **dest;
-	UT_string *buf = NULL;
+	xstring *buf = NULL;
 
 	str = ucl_object_tostring_forced(obj);
 
@@ -373,7 +375,7 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 
 		if (offset & STRING_FLAG_URLDECODE) {
 			urldecode(str, &buf);
-			str = utstring_body(buf);
+			str = buf->buf;
 		}
 
 		/* Remove flags from the offset */
@@ -381,9 +383,7 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 		dest = (char **) ((unsigned char *)pkg + offset);
 		*dest = xstrdup(str);
 
-		if (buf) {
-			utstring_free(buf);
-		}
+		xstring_free(buf);
 	}
 
 	return (EPKG_OK);
@@ -503,7 +503,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 static int
 pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
-	UT_string *tmp = NULL;
+	xstring *tmp = NULL;
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	pkg_script script_type;
@@ -534,12 +534,12 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		case PKG_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {
 				urldecode(key, &tmp);
-				pkg_adddir(pkg, utstring_body(tmp), false);
+				pkg_adddir(pkg, tmp->buf, false);
 			} else if (cur->type == UCL_OBJECT) {
 				pkg_set_dirs_from_object(pkg, cur);
 			} else if (cur->type == UCL_STRING) {
 				urldecode(key, &tmp);
-				pkg_adddir(pkg, utstring_body(tmp), false);
+				pkg_adddir(pkg, tmp->buf, false);
 			} else {
 				pkg_emit_error("Skipping malformed directories %s",
 				    key);
@@ -549,7 +549,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			if (cur->type == UCL_STRING) {
 				buf = ucl_object_tolstring(cur, &len);
 				urldecode(key, &tmp);
-				pkg_addfile(pkg, utstring_body(tmp), len >= 2 ? buf : NULL, false);
+				pkg_addfile(pkg, tmp->buf, len >= 2 ? buf : NULL, false);
 			} else if (cur->type == UCL_OBJECT)
 				pkg_set_files_from_object(pkg, cur);
 			else
@@ -595,7 +595,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				}
 
 				urldecode(ucl_object_tostring(cur), &tmp);
-				pkg_addscript(pkg, utstring_body(tmp), script_type);
+				pkg_addscript(pkg, tmp->buf, script_type);
 			}
 			break;
 		case PKG_LUA_SCRIPTS:
@@ -622,8 +622,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		}
 	}
 
-	if (tmp)
-		utstring_free(tmp);
+	xstring_free(tmp);
 
 	return (EPKG_OK);
 }
@@ -644,7 +643,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set = NULL;
 	mode_t perm = 0;
-	UT_string *fname = NULL;
+	xstring *fname = NULL;
 	const char *key, *okey;
 
 	okey = ucl_object_key(obj);
@@ -671,13 +670,13 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 				perm = getmode(set, 0);
 		} else {
 			pkg_debug(1, "Skipping unknown key for file(%s): %s",
-			    utstring_body(fname), key);
+			    fname->buf, key);
 		}
 	}
 
-	pkg_addfile_attr(pkg, utstring_body(fname), sum, uname, gname, perm, 0,
+	pkg_addfile_attr(pkg, fname->buf, sum, uname, gname, perm, 0,
 	    false);
-	utstring_free(fname);
+	xstring_free(fname);
 
 	return (EPKG_OK);
 }
@@ -691,7 +690,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
-	UT_string *dirname = NULL;
+	xstring *dirname = NULL;
 	const char *key, *okey;
 
 	okey = ucl_object_key(obj);
@@ -717,12 +716,12 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			/* ignore on purpose : compatibility*/
 		} else {
 			pkg_debug(1, "Skipping unknown key for dir(%s): %s",
-			    utstring_body(dirname), key);
+			    dirname->buf, key);
 		}
 	}
 
-	pkg_adddir_attr(pkg, utstring_body(dirname), uname, gname, perm, 0, false);
-	utstring_free(dirname);
+	pkg_adddir_attr(pkg, dirname->buf, uname, gname, perm, 0, false);
+	xstring_free(dirname);
 
 	return (EPKG_OK);
 }
@@ -944,7 +943,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 {
 	ucl_object_t *obj = NULL, *seq;
 	struct pkg_file *file = NULL;
-	UT_string *b = NULL;
+	xstring *b = NULL;
 
 	obj = ucl_object_typed_new(UCL_OBJECT);
 	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->origin), "origin", 6, false);
@@ -956,16 +955,14 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 		urlencode(file->path, &b);
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromlstring(utstring_body(b), utstring_len(b)));
+		ucl_array_append(seq, ucl_object_fromlstring(b->buf, strlen(b->buf)));
 	}
 	if (seq != NULL)
 		ucl_object_insert_key(obj, seq, "files", 5, false);
 
 	ucl_object_emit_file(obj, UCL_EMIT_JSON_COMPACT, f);
 
-	if (b != NULL)
-		utstring_free(b);
-
+	xstring_free(b);
 	ucl_object_unref(obj);
 
 	return (EPKG_OK);
@@ -981,7 +978,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_dir		*dir      = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf       = NULL;
-	UT_string		*tmpsbuf  = NULL;
+	xstring		*tmpsbuf  = NULL;
 	char			*buf;
 	int i;
 	const char *script_types = NULL;
@@ -1060,7 +1057,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->desc != NULL) {
 		urlencode(pkg->desc, &tmpsbuf);
 		ucl_object_insert_key(top,
-			ucl_object_fromstring_common(utstring_body(tmpsbuf), utstring_len(tmpsbuf), UCL_STRING_TRIM),
+			ucl_object_fromstring_common(tmpsbuf->buf, strlen(tmpsbuf->buf), UCL_STRING_TRIM),
 			"desc", 4, false);
 	}
 
@@ -1204,7 +1201,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
 				    ucl_object_fromstring(file->sum),
-				    utstring_body(tmpsbuf), utstring_len(tmpsbuf), true);
+				    tmpsbuf->buf, strlen(tmpsbuf->buf), true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "files", 5, false);
@@ -1215,7 +1212,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				urlencode(cf->path, &tmpsbuf);
 				if (seq == NULL)
 					seq = ucl_object_typed_new(UCL_ARRAY);
-				ucl_array_append(seq, ucl_object_fromstring(utstring_body(tmpsbuf)));
+				ucl_array_append(seq, ucl_object_fromstring(tmpsbuf->buf));
 			}
 			if (seq)
 				ucl_object_insert_key(top, seq, "config", 6, false);
@@ -1228,7 +1225,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,
 				    ucl_object_fromstring("y"),
-				    utstring_body(tmpsbuf), utstring_len(tmpsbuf), true);
+				    tmpsbuf->buf, strlen(tmpsbuf->buf), true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "directories", 11, false);
@@ -1264,8 +1261,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			if (map == NULL)
 				map = ucl_object_typed_new(UCL_OBJECT);
 			ucl_object_insert_key(map,
-			    ucl_object_fromstring_common(utstring_body(tmpsbuf),
-			        utstring_len(tmpsbuf), UCL_STRING_TRIM),
+			    ucl_object_fromstring_common(tmpsbuf->buf,
+			        strlen(tmpsbuf->buf), UCL_STRING_TRIM),
 			    script_types, 0, true);
 		}
 		if (map)
@@ -1307,8 +1304,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			"messages", sizeof("messages") - 1, false);
 	}
 
-	if (tmpsbuf != NULL)
-		utstring_free(tmpsbuf);
+	xstring_free(tmpsbuf);
 
 	return (top);
 }
