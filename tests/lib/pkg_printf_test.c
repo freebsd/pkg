@@ -27,7 +27,7 @@
 #include <string.h>
 
 #include <atf-c.h>
-#include <utstring.h>
+#include <xstring.h>
 #include <pkg.h>
 #include <private/pkg_printf.h>
 
@@ -134,7 +134,7 @@ ATF_TC_HEAD(human_number, tc)
 }
 ATF_TC_BODY(human_number, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -308,22 +308,21 @@ ATF_TC_BODY(human_number, tc)
 		{ -1,                  NULL,     0, 0, },
 	};
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; hn_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = hn_test_vals[i].width;
 		p->flags = hn_test_vals[i].flags;
 		buf = human_number(buf, hn_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), hn_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, hn_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(string_val);
@@ -334,7 +333,7 @@ ATF_TC_HEAD(string_val, tc)
 }
 ATF_TC_BODY(string_val, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -392,22 +391,21 @@ ATF_TC_BODY(string_val, tc)
 		{ NULL, NULL, 0, 0, },
 	};
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; sv_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = sv_test_vals[i].width;
 		p->flags = sv_test_vals[i].flags;
 		buf = string_val(buf, sv_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), sv_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, sv_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(int_val);
@@ -418,7 +416,7 @@ ATF_TC_HEAD(int_val, tc)
 }
 ATF_TC_BODY(int_val, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -632,22 +630,21 @@ ATF_TC_BODY(int_val, tc)
 		{ -1, NULL, 0, 0, },
 	}; 
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; iv_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = iv_test_vals[i].width;
 		p->flags = iv_test_vals[i].flags;
 		buf = int_val(buf, iv_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), iv_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, iv_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(bool_val);
@@ -658,7 +655,7 @@ ATF_TC_HEAD(bool_val, tc)
 }
 ATF_TC_BODY(bool_val, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -685,22 +682,21 @@ ATF_TC_BODY(bool_val, tc)
 		{ false, NULL, 0, 0, },
 	};
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; bv_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = bv_test_vals[i].width;
 		p->flags = bv_test_vals[i].flags;
 		buf = bool_val(buf, bv_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), bv_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, bv_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(mode_val);
@@ -711,7 +707,7 @@ ATF_TC_HEAD(mode_val, tc)
 }
 ATF_TC_BODY(mode_val, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -804,24 +800,23 @@ ATF_TC_BODY(mode_val, tc)
 		{ 0, NULL, 0, 0, },
 	};
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; mv_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = mv_test_vals[i].width;
 		p->flags = mv_test_vals[i].flags;
 		buf = mode_val(buf, mv_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), mv_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, mv_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
-	
+
 ATF_TC(liclog_val);
 ATF_TC_HEAD(liclog_val, tc)
 {
@@ -830,7 +825,7 @@ ATF_TC_HEAD(liclog_val, tc)
 }
 ATF_TC_BODY(liclog_val, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -860,22 +855,21 @@ ATF_TC_BODY(liclog_val, tc)
 		{ 0, NULL, 0, 0, },
 	};
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; lv_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = lv_test_vals[i].width;
 		p->flags = lv_test_vals[i].flags;
 		buf = liclog_val(buf, lv_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), lv_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, lv_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(list_count);
@@ -886,7 +880,7 @@ ATF_TC_HEAD(list_count, tc)
 }
 ATF_TC_BODY(list_count, tc)
 {
-	UT_string		*buf;
+	xstring		*buf = NULL;
 	struct percent_esc	*p;
 	int			 i;
 
@@ -908,22 +902,21 @@ ATF_TC_BODY(list_count, tc)
 		{ 0, NULL, 0, 0, },
 	};
 
-	utstring_new(buf);
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(buf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; lc_test_vals[i].out != NULL; i++) {
+		xstring_renew(buf);
 		p->width = lc_test_vals[i].width;
 		p->flags = lc_test_vals[i].flags;
 		buf = list_count(buf, lc_test_vals[i].in, p);
-		ATF_CHECK_STREQ(utstring_body(buf), lc_test_vals[i].out);
-		utstring_clear(buf);
+		fflush(buf->fp);
+		ATF_CHECK_STREQ(buf->buf, lc_test_vals[i].out);
 	}
 
 	free_percent_esc(p);
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(maybe_read_hex_byte);
@@ -934,7 +927,7 @@ ATF_TC_HEAD(maybe_read_hex_byte, tc)
 }
 ATF_TC_BODY(maybe_read_hex_byte, tc)
 {
-	UT_string	*buf;
+	xstring	*buf = NULL;
 	const char	*f;
 	int		 i;
 
@@ -1003,25 +996,21 @@ ATF_TC_BODY(maybe_read_hex_byte, tc)
 		{ NULL,   NULL,    0, '\0', },
 	};
 
-	utstring_new(buf);
-
-	ATF_REQUIRE_EQ(buf != NULL, true);
-
 	for (i = 0; mrhb_test_vals[i].in != NULL; i++) {
+		xstring_renew(buf);
 		f = maybe_read_hex_byte(buf, mrhb_test_vals[i].in);
+		fflush(buf->fp);
 
-		ATF_CHECK_STREQ_MSG(utstring_body(buf), mrhb_test_vals[i].out,
+		ATF_CHECK_STREQ_MSG(buf->buf, mrhb_test_vals[i].out,
 				    "(test %d)", i);
 		ATF_CHECK_EQ_MSG(f - mrhb_test_vals[i].in,
 				 mrhb_test_vals[i].fend_offset,
 				 "(test %d)", i);
 		ATF_CHECK_EQ_MSG(*f, mrhb_test_vals[i].fend_val,
 				 "(test %d)", i);
-		
-		utstring_clear(buf);
 	}
 
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 
@@ -1033,7 +1022,7 @@ ATF_TC_HEAD(read_oct_byte, tc)
 }
 ATF_TC_BODY(read_oct_byte, tc)
 {
-	UT_string	*buf;
+	xstring	*buf = NULL;
 	const char	*f;
 	int		 i;
 
@@ -1109,25 +1098,21 @@ ATF_TC_BODY(read_oct_byte, tc)
 		{ NULL,   NULL,    0, '\0', },
 	};
 
-	utstring_new(buf);
-
-	ATF_REQUIRE_EQ(buf != NULL, true);
-
 	for (i = 0; rob_test_vals[i].in != NULL; i++) {
+		xstring_renew(buf);
 		f = read_oct_byte(buf, rob_test_vals[i].in);
+		fflush(buf->fp);
 
-		ATF_CHECK_STREQ_MSG(utstring_body(buf), rob_test_vals[i].out,
+		ATF_CHECK_STREQ_MSG(buf->buf, rob_test_vals[i].out,
 				    "(test %d)", i);
 		ATF_CHECK_EQ_MSG(f - rob_test_vals[i].in,
 				 rob_test_vals[i].fend_offset,
 				 "(test %d)", i);
 		ATF_CHECK_EQ_MSG(*f, rob_test_vals[i].fend_val,
 				 "(test %d)", i);
-		
-		utstring_clear(buf);
 	}
 
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(process_escape);
@@ -1138,7 +1123,7 @@ ATF_TC_HEAD(process_escape, tc)
 }
 ATF_TC_BODY(process_escape, tc)
 {
-	UT_string	*buf;
+	xstring	*buf = NULL;
 	const char	*f;
 	int		 i;
 
@@ -1175,25 +1160,21 @@ ATF_TC_BODY(process_escape, tc)
 		{ NULL,   NULL,    0, '\0', },
 	};
 
-	utstring_new(buf);
-
-	ATF_REQUIRE_EQ(buf != NULL, true);
-
 	for (i = 0; pe_test_vals[i].in != NULL; i++) {
+		xstring_renew(buf);
 		f = process_escape(buf, pe_test_vals[i].in);
+		fflush(buf->fp);
 
-		ATF_CHECK_STREQ_MSG(utstring_body(buf), pe_test_vals[i].out,
+		ATF_CHECK_STREQ_MSG(buf->buf, pe_test_vals[i].out,
 				    "(test %d)", i);
 		ATF_CHECK_EQ_MSG(f - pe_test_vals[i].in,
 				 pe_test_vals[i].fend_offset,
 				 "(test %d)", i);
 		ATF_CHECK_EQ_MSG(*f, pe_test_vals[i].fend_val,
 				 "(test %d)", i);
-		
-		utstring_clear(buf);
 	}
 
-	utstring_free(buf);
+	xstring_free(buf);
 }
 
 ATF_TC(field_modifier);
@@ -2211,15 +2192,16 @@ ATF_TC_BODY(format_trailer, tc)
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; ft_test_vals[i].in != NULL; i++) {
-		utstring_clear(p->item_fmt);
-		utstring_clear(p->sep_fmt);
+		clear_percent_esc(p);
 
 		f = format_trailer(ft_test_vals[i].in, p);
+		fflush(p->item_fmt->fp);
+		fflush(p->sep_fmt->fp);
 
-		ATF_CHECK_STREQ_MSG(utstring_body(p->item_fmt),
+		ATF_CHECK_STREQ_MSG(p->item_fmt->buf,
 				    ft_test_vals[i].item,
 				    "(test %d)", i);
-		ATF_CHECK_STREQ_MSG(utstring_body(p->sep_fmt),
+		ATF_CHECK_STREQ_MSG(p->sep_fmt->buf,
 				    ft_test_vals[i].sep,
 				    "(test %d)", i);
 		ATF_CHECK_EQ_MSG(f - ft_test_vals[i].in,
@@ -2290,10 +2272,12 @@ ATF_TC_BODY(parse_format, tc)
 		ATF_CHECK_EQ_MSG(p->fmt_code, pf_test_vals[i].fmt_code,
 				    "(test %d)", i);
 
-		ATF_CHECK_STREQ_MSG(utstring_body(p->item_fmt),
+		fflush(p->item_fmt->fp);
+		fflush(p->sep_fmt->fp);
+		ATF_CHECK_STREQ_MSG(p->item_fmt->buf,
 				    pf_test_vals[i].item,
 				    "(test %d)", i);
-		ATF_CHECK_STREQ_MSG(utstring_body(p->sep_fmt),
+		ATF_CHECK_STREQ_MSG(p->sep_fmt->buf,
 				    pf_test_vals[i].sep,
 				    "(test %d)", i);
 		ATF_CHECK_EQ_MSG(f - pf_test_vals[i].in,

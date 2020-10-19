@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2014-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,6 @@
 #include <string.h>
 #include <time.h>
 #include <utlist.h>
-#include <utstring.h>
 
 #include "pkg.h"
 #include <private/pkg_printf.h>
@@ -165,6 +164,7 @@
  *
  * z  pkg          short checksum
  */
+static xstring *pkg_xstring_vprintf(xstring * restrict buf, const char * restrict format, va_list ap);
 
 struct pkg_printf_fmt {
 	char	         fmt_main;
@@ -172,7 +172,7 @@ struct pkg_printf_fmt {
 	bool		 has_trailer;
 	bool		 struct_pkg; /* or else a sub-type? */
 	unsigned	 context;
-	UT_string	*(*fmt_handler)(UT_string *, const void *,
+	xstring	*(*fmt_handler)(xstring *, const void *,
 					struct percent_esc *);
 };
 
@@ -852,8 +852,8 @@ static const struct pkg_printf_fmt	fmt[] = {
  * packages.  Optionally accepts per-field format in %{ %| %} Default
  * %{%An: %Av\n%|%}
  */  
-UT_string *
-format_annotations(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	struct pkg_kv		*kv;
@@ -866,12 +866,14 @@ format_annotations(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		LL_FOREACH(pkg->annotations, kv) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     kv, count, PP_A);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     kv, count, PP_A);
 			count++;
 		}
@@ -882,8 +884,8 @@ format_annotations(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %An -- Annotation tag name.
  */
-UT_string *
-format_annotation_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_annotation_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_kv	*kv = data;
 
@@ -893,8 +895,8 @@ format_annotation_name(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Av -- Annotation value.
  */
-UT_string *
-format_annotation_value(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_annotation_value(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_kv	*kv = data;
 
@@ -906,8 +908,8 @@ format_annotation_value(UT_string *buf, const void *data, struct percent_esc *p)
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
  * %}.  Default %{%Bn\n%|%}
  */
-UT_string *
-format_shlibs_required(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -920,12 +922,14 @@ format_shlibs_required(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Bn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_shlibs_required(pkg, &buffer) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     buffer, count, PP_B);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     buffer, count, PP_B);
 			count++;
 		}
@@ -937,8 +941,8 @@ format_shlibs_required(UT_string *buf, const void *data, struct percent_esc *p)
  * %Bn -- Required Shared Library name or %bn -- Provided Shared
  * Library name
  */
-UT_string *
-format_shlib_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_shlib_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char	*shlib = data;
 
@@ -951,8 +955,8 @@ format_shlib_name(UT_string *buf, const void *data, struct percent_esc *p)
  * Optionally accepts per-field format in %{ %| %}, where %n is
  * replaced by the category name.  Default %{%Cn%|, %}
  */
-UT_string *
-format_categories(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_categories(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	int			 count = 0;
@@ -964,12 +968,14 @@ format_categories(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		kh_each_value(pkg->categories, cat, {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 				    cat, count, PP_C);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt), cat,
+			iterate_item(buf, pkg, p->item_fmt->buf, cat,
 			    count, PP_C);
 			count++;
 		});
@@ -980,8 +986,8 @@ format_categories(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Cn -- Category name.
  */
-UT_string *
-format_category_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_category_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char *cat = data;
 
@@ -994,8 +1000,8 @@ format_category_name(UT_string *buf, const void *data, struct percent_esc *p)
  * %{ %| %}, where %Dn is replaced by the directory name.  Default
  * %{%Dn\n%|%}
  */
-UT_string *
-format_directories(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_directories(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1008,12 +1014,14 @@ format_directories(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Dn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     dir, count, PP_D);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     dir, count, PP_D);
 			count++;
 		}
@@ -1024,8 +1032,8 @@ format_directories(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Dg -- Directory group. TODO: numeric gid
  */
-UT_string *
-format_directory_group(UT_string *buf, const void *data,
+xstring *
+format_directory_group(xstring *buf, const void *data,
 		       struct percent_esc *p)
 {
 	const struct pkg_dir	*dir = data;
@@ -1036,8 +1044,8 @@ format_directory_group(UT_string *buf, const void *data,
 /*
  * %Dn -- Directory path name.
  */
-UT_string *
-format_directory_path(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_directory_path(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_dir	*dir = data;
 
@@ -1047,8 +1055,8 @@ format_directory_path(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Dp -- Directory permissions.
  */
-UT_string *
-format_directory_perms(UT_string *buf, const void *data,
+xstring *
+format_directory_perms(xstring *buf, const void *data,
 		       struct percent_esc *p)
 {
 	const struct pkg_dir	*dir = data;
@@ -1059,8 +1067,8 @@ format_directory_perms(UT_string *buf, const void *data,
 /*
  * %Du -- Directory user. TODO: numeric UID
  */
-UT_string *
-format_directory_user(UT_string *buf, const void *data,
+xstring *
+format_directory_user(xstring *buf, const void *data,
 		      struct percent_esc *p)
 {
 	const struct pkg_dir	*dir = data;
@@ -1074,8 +1082,8 @@ format_directory_user(UT_string *buf, const void *data,
  * %}, where %n is replaced by the filename, %s by the checksum, etc.
  * Default %{%Fn\n%|%}
  */
-UT_string *
-format_files(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_files(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1088,12 +1096,14 @@ format_files(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Fn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		LL_FOREACH(pkg->files, file) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     file, count, PP_F);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     file, count, PP_F);
 			count++;
 		}
@@ -1104,8 +1114,8 @@ format_files(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Fg -- File group.
  */
-UT_string *
-format_file_group(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_file_group(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
@@ -1115,8 +1125,8 @@ format_file_group(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Fn -- File path name.
  */
-UT_string *
-format_file_path(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_file_path(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
@@ -1126,8 +1136,8 @@ format_file_path(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Fp -- File permissions.
  */
-UT_string *
-format_file_perms(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_file_perms(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
@@ -1137,8 +1147,8 @@ format_file_perms(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Fs -- File SHA256 Checksum.
  */
-UT_string *
-format_file_sha256(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_file_sha256(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
@@ -1148,8 +1158,8 @@ format_file_sha256(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Fu -- File user.
  */
-UT_string *
-format_file_user(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_file_user(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
@@ -1162,8 +1172,8 @@ format_file_user(UT_string *buf, const void *data, struct percent_esc *p)
  * groupname or %#Gn by the gid -- a line from
  * /etc/group. Default %{%Gn\n%|%}
  */
-UT_string *
-format_groups(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_groups(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1176,12 +1186,14 @@ format_groups(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Gn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while(pkg_groups(pkg, &group) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     group, count, PP_G);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg,p->item_fmt->buf,
 				     group, count, PP_G);
 			count++;
 		}
@@ -1192,8 +1204,8 @@ format_groups(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Gn -- Group name.
  */
-UT_string *
-format_group_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_group_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char	*group = data;
 
@@ -1203,8 +1215,8 @@ format_group_name(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %I -- Row counter (integer*). Usually used only in per-field format.
  */
-UT_string *
-format_row_counter(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_row_counter(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const int *counter = data;
 
@@ -1216,8 +1228,8 @@ format_row_counter(UT_string *buf, const void *data, struct percent_esc *p)
  * following per-field format in %{ %| %} where %Ln is replaced by the
  * license name and %l by the license logic.  Default %{%n%| %l %}
  */
-UT_string *
-format_licenses(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	char			*lic;
@@ -1229,12 +1241,14 @@ format_licenses(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		kh_each_value(pkg->licenses, lic, {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 				    lic, count, PP_L);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt), lic,
+			iterate_item(buf, pkg, p->item_fmt->buf, lic,
 			    count, PP_L);
 			count++;
 		});
@@ -1245,8 +1259,8 @@ format_licenses(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Ln -- License name.
  */
-UT_string *
-format_license_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_license_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char *lic = data;
 
@@ -1256,52 +1270,56 @@ format_license_name(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %M -- Pkg message. string.  Accepts field-width, left-align
  */
-UT_string *
-format_message(UT_string *buffer, const void *data, struct percent_esc *p)
+xstring *
+format_message(xstring *buffer, const void *data, struct percent_esc *p)
 {
-	UT_string		*buf, *bufmsg;
+	xstring		*buf, *bufmsg = NULL;
 	const struct pkg	*pkg = data;
 	struct pkg_message	*msg;
 	char			*message;
 
-	utstring_new(bufmsg);
 	LL_FOREACH(pkg->message, msg) {
-		if (utstring_len(bufmsg) > 0)
-			utstring_printf(bufmsg, "%c", '\n');
+		if (bufmsg == NULL) {
+			bufmsg = xstring_new();
+		} else {
+			fputc('\n', bufmsg->fp);
+		}
 		switch(msg->type) {
 		case PKG_MESSAGE_ALWAYS:
-			utstring_printf(bufmsg, "Always:\n");
+			fprintf(bufmsg->fp, "Always:\n");
 			break;
 		case PKG_MESSAGE_UPGRADE:
-			utstring_printf(bufmsg, "On upgrade");
+			fprintf(bufmsg->fp, "On upgrade");
 			if (msg->minimum_version != NULL ||
 			    msg->maximum_version != NULL) {
-				utstring_printf(bufmsg, " from %s", pkg->name);
+				fprintf(bufmsg->fp, " from %s", pkg->name);
 			}
 			if (msg->minimum_version != NULL) {
-				utstring_printf(bufmsg, ">%s", msg->minimum_version);
+				fprintf(bufmsg->fp, ">%s", msg->minimum_version);
 			}
 			if (msg->maximum_version != NULL) {
-				utstring_printf(bufmsg, "<%s", msg->maximum_version);
+				fprintf(bufmsg->fp, "<%s", msg->maximum_version);
 			}
-			utstring_printf(bufmsg, ":\n");
+			fprintf(bufmsg->fp, ":\n");
 			break;
 		case PKG_MESSAGE_INSTALL:
-			utstring_printf(bufmsg, "On install:\n");
+			fprintf(bufmsg->fp, "On install:\n");
 			break;
 		case PKG_MESSAGE_REMOVE:
-			utstring_printf(bufmsg, "On remove:\n");
+			fprintf(bufmsg->fp, "On remove:\n");
 			break;
 		}
-		utstring_printf(bufmsg, "%s\n", msg->str);
+		fprintf(bufmsg->fp, "%s\n", msg->str);
 	}
-	if (utstring_len(bufmsg) == 0)
+	if (bufmsg == NULL)
 		message = NULL;
-	else
-		message = utstring_body(bufmsg);
+	else {
+		fflush(bufmsg->fp);
+		message = bufmsg->buf;
+	}
 
 	buf = string_val(buffer, message, p);
-	utstring_free(bufmsg);
+	xstring_free(bufmsg);
 
 	return (buf);
 }
@@ -1309,8 +1327,8 @@ format_message(UT_string *buffer, const void *data, struct percent_esc *p)
 /*
  * %N -- Repository identity. string.  Accepts field-width, left-align
  */
-UT_string *
-format_repo_ident(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_repo_ident(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	const char		*reponame;
@@ -1329,8 +1347,8 @@ format_repo_ident(UT_string *buf, const void *data, struct percent_esc *p)
  * following per-field format in %{ %| %}, where %On is replaced by the
  * option name and %Ov by the value.  Default %{%On %Ov\n%|%}
  */ 
-UT_string *
-format_options(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_options(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1343,12 +1361,14 @@ format_options(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%On %Ov\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_options(pkg, &opt) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     opt, count, PP_O);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     opt, count, PP_O);
 			count++;
 		}
@@ -1359,8 +1379,8 @@ format_options(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %On -- Option name.
  */
-UT_string *
-format_option_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_option_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
@@ -1370,8 +1390,8 @@ format_option_name(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Ov -- Option value.
  */
-UT_string *
-format_option_value(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_option_value(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
@@ -1381,8 +1401,8 @@ format_option_value(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Od -- Option default value.
  */
-UT_string *
-format_option_default(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_option_default(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
@@ -1392,8 +1412,8 @@ format_option_default(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %OD -- Option description
  */
-UT_string *
-format_option_description(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_option_description(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
@@ -1403,8 +1423,8 @@ format_option_description(UT_string *buf, const void *data, struct percent_esc *
 /*
  * %Q -- pkg architecture a.k.a ABI string.  Accepts field-width, left-align
  */
-UT_string *
-format_altabi(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_altabi(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1414,8 +1434,8 @@ format_altabi(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %R -- Repo path. string.
  */
-UT_string *
-format_repo_path(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_repo_path(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1425,8 +1445,8 @@ format_repo_path(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %S -- Character string.
  */
-UT_string *
-format_char_string(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_char_string(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char	*charstring = data;
 
@@ -1439,8 +1459,8 @@ format_char_string(UT_string *buf, const void *data, struct percent_esc *p)
  * username or %#Un by the uid -- a line from
  * /etc/passwd. Default %{%Un\n%|%}
  */
-UT_string *
-format_users(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_users(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1453,12 +1473,14 @@ format_users(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Un\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_users(pkg, &user) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     user, count, PP_U);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     user, count, PP_U);
 			count++;
 		}
@@ -1469,8 +1491,8 @@ format_users(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Un -- User name.
  */
-UT_string *
-format_user_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_user_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char	*user = data;
 
@@ -1480,8 +1502,8 @@ format_user_name(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %V -- Old package version. string. Accepts field width, left align
  */
-UT_string *
-format_old_version(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_old_version(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1491,8 +1513,8 @@ format_old_version(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %X -- Package checksum. string. Accepts field width, left align
  */
-UT_string *
-format_int_checksum(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_int_checksum(xstring *buf, const void *data, struct percent_esc *p)
 {
 	struct pkg	*pkg = (struct pkg *)data;
 
@@ -1505,8 +1527,8 @@ format_int_checksum(UT_string *buf, const void *data, struct percent_esc *p)
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
  * %}.  Default %{%Yn\n%|%}
  */
-UT_string *
-format_required(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_required(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1519,12 +1541,14 @@ format_required(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Yn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_requires(pkg, &provide) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     provide, count, PP_Y);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     provide, count, PP_Y);
 			count++;
 		}
@@ -1535,8 +1559,8 @@ format_required(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %Yn -- Required name or %yn -- Provided name
  */
-UT_string *
-format_provide_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_provide_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const char	*provide = data;
 
@@ -1547,8 +1571,8 @@ format_provide_name(UT_string *buf, const void *data, struct percent_esc *p)
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
  * false, true
  */
-UT_string *
-format_autoremove(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_autoremove(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1561,8 +1585,8 @@ format_autoremove(UT_string *buf, const void *data, struct percent_esc *p)
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
  * %}, where %n is replaced by the shlib name.  Default %{%bn\n%|%}
  */
-UT_string *
-format_shlibs_provided(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1575,12 +1599,14 @@ format_shlibs_provided(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%bn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     shlib, count, PP_b);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     shlib, count, PP_b);
 			count++;
 		}
@@ -1591,8 +1617,8 @@ format_shlibs_provided(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %c -- Comment. string.  Accepts field-width, left-align
  */
-UT_string *
-format_comment(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_comment(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1604,8 +1630,8 @@ format_comment(UT_string *buf, const void *data, struct percent_esc *p)
  * per-field format string in %{ %| %} using any pkg_printf() *scalar*
  * formats. Defaults to printing "%dn-%dv\n" for each dependency.
  */
-UT_string *
-format_dependencies(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_dependencies(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1618,12 +1644,14 @@ format_dependencies(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%dn-%dv\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     dep, count, PP_d);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     dep, count, PP_d);
 			count++;
 		}
@@ -1634,8 +1662,8 @@ format_dependencies(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %dk -- Dependency lock status or %rk -- Requirement lock status.
  */
-UT_string *
-format_dependency_lock(UT_string *buf, const void *data,
+xstring *
+format_dependency_lock(xstring *buf, const void *data,
 		       struct percent_esc *p)
 {
 	const struct pkg_dep	*dep = data;
@@ -1646,8 +1674,8 @@ format_dependency_lock(UT_string *buf, const void *data,
 /*
  * %dn -- Dependency name or %rn -- Requirement name.
  */
-UT_string *
-format_dependency_name(UT_string *buf, const void *data,
+xstring *
+format_dependency_name(xstring *buf, const void *data,
 		       struct percent_esc *p)
 {
 	const struct pkg_dep	*dep = data;
@@ -1658,8 +1686,8 @@ format_dependency_name(UT_string *buf, const void *data,
 /*
  * %do -- Dependency origin or %ro -- Requirement origin.
  */
-UT_string *
-format_dependency_origin(UT_string *buf, const void *data,
+xstring *
+format_dependency_origin(xstring *buf, const void *data,
 			 struct percent_esc *p)
 {
 	const struct pkg_dep	*dep = data;
@@ -1670,8 +1698,8 @@ format_dependency_origin(UT_string *buf, const void *data,
 /*
  * %dv -- Dependency version or %rv -- Requirement version.
  */
-UT_string *
-format_dependency_version(UT_string *buf, const void *data,
+xstring *
+format_dependency_version(xstring *buf, const void *data,
 			  struct percent_esc *p)
 {
 	const struct pkg_dep	*dep = data;
@@ -1682,8 +1710,8 @@ format_dependency_version(UT_string *buf, const void *data,
 /*
  * %e -- Description. string. Accepts field-width, left-align
  */
-UT_string *
-format_description(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_description(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1695,8 +1723,8 @@ format_description(UT_string *buf, const void *data, struct percent_esc *p)
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
  * false, true
  */
-UT_string *
-format_lock_status(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_lock_status(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1708,8 +1736,8 @@ format_lock_status(UT_string *buf, const void *data, struct percent_esc *p)
  * Standard form: and, or, single. Alternate form 1: &, |, ''.
  * Alternate form 2: &&, ||, ==
  */
-UT_string *
-format_license_logic(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_license_logic(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1719,8 +1747,8 @@ format_license_logic(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %m -- Maintainer e-mail address. string.  Accepts field-width, left-align
  */
-UT_string *
-format_maintainer(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_maintainer(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1730,8 +1758,8 @@ format_maintainer(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %n -- Package name. string.  Accepts field-width, left-align
  */
-UT_string *
-format_name(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1741,8 +1769,8 @@ format_name(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %o -- Package origin. string.  Accepts field-width, left-align
  */
-UT_string *
-format_origin(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_origin(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1752,8 +1780,8 @@ format_origin(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %p -- Installation prefix. string. Accepts field-width, left-align
  */
-UT_string *
-format_prefix(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_prefix(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1763,8 +1791,8 @@ format_prefix(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %q -- pkg architecture a.k.a ABI string.  Accepts field-width, left-align
  */
-UT_string *
-format_architecture(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_architecture(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1776,8 +1804,8 @@ format_architecture(UT_string *buf, const void *data, struct percent_esc *p)
  * per-field format string in %{ %| %} using any pkg_printf() *scalar*
  * formats. Defaults to printing "%{%rn-%rv\n%|%}" for each dependency.
  */
-UT_string *
-format_requirements(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_requirements(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1790,12 +1818,14 @@ format_requirements(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%rn-%rv\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_rdeps(pkg, &req) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     req, count, PP_r);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     req, count, PP_r);
 			count++;
 		}
@@ -1810,8 +1840,8 @@ format_requirements(UT_string *buf, const void *data, struct percent_esc *p)
  * exponents (k, M, G).  Alternate form 2, ditto, but using binary
  * scale prefixes (ki, Mi, Gi etc.)
  */
-UT_string *
-format_flatsize(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_flatsize(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1824,21 +1854,22 @@ format_flatsize(UT_string *buf, const void *data, struct percent_esc *p)
  * format string in %{ %}.  Default is to print seconds-since-epoch as
  * an integer applying our integer format modifiers.
  */
-UT_string *
-format_install_tstamp(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_install_tstamp(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	if (utstring_len(p->item_fmt) == 0)
+	fflush(p->item_fmt->fp);
+	if (strlen(p->item_fmt->buf) == 0)
 		return (int_val(buf, pkg->timestamp, p));
 	else {
 		char	 buffer[1024];
 		time_t	 tsv;
 
 		tsv = (time_t)pkg->timestamp;
-		strftime(buffer, sizeof(buffer), utstring_body(p->item_fmt),
+		strftime(buffer, sizeof(buffer), p->item_fmt->buf,
 			 localtime(&tsv));
-		utstring_printf(buf, "%s", buffer);
+		fprintf(buf->fp, "%s", buffer);
 	}
 	return (buf);
 }
@@ -1846,8 +1877,8 @@ format_install_tstamp(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %v -- Package version. string. Accepts field width, left align
  */
-UT_string *
-format_version(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_version(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1857,8 +1888,8 @@ format_version(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %u -- Package checksum. string. Accepts field width, left align
  */
-UT_string *
-format_checksum(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_checksum(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1868,8 +1899,8 @@ format_checksum(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %w -- Home page URL.  string.  Accepts field width, left align
  */
-UT_string *
-format_home_url(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_home_url(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1883,8 +1914,8 @@ format_home_url(UT_string *buf, const void *data, struct percent_esc *p)
  * exponents (k, M, G).  Alternate form 2, ditto, but using binary
  * scale prefixes (ki, Mi, Gi etc.)
  */
-UT_string *
-format_pkgsize(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_pkgsize(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1896,8 +1927,8 @@ format_pkgsize(UT_string *buf, const void *data, struct percent_esc *p)
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
  * %}.  Default %{%yn\n%|%}
  */
-UT_string *
-format_provided(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_provided(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
@@ -1910,12 +1941,14 @@ format_provided(UT_string *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%yn\n", "");
 
 		count = 1;
+		fflush(p->sep_fmt->fp);
+		fflush(p->item_fmt->fp);
 		while (pkg_provides(pkg, &provide) == EPKG_OK) {
 			if (count > 1)
-				iterate_item(buf, pkg, utstring_body(p->sep_fmt),
+				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     provide, count, PP_y);
 
-			iterate_item(buf, pkg, utstring_body(p->item_fmt),
+			iterate_item(buf, pkg, p->item_fmt->buf,
 				     provide, count, PP_y);
 			count++;
 		}
@@ -1926,8 +1959,8 @@ format_provided(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %z -- Package short checksum. string. Accepts field width, left align
  */
-UT_string *
-format_short_checksum(UT_string *buf, const void *data, struct percent_esc *p)
+xstring *
+format_short_checksum(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	char	 csum[PKG_FILE_CKSUM_CHARS + 1];
@@ -1945,11 +1978,11 @@ format_short_checksum(UT_string *buf, const void *data, struct percent_esc *p)
 /*
  * %% -- Output a literal '%' character
  */
-UT_string *
-format_literal_percent(UT_string *buf, __unused const void *data,
+xstring *
+format_literal_percent(xstring *buf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
-	utstring_printf(buf, "%c", '%');
+	fputc('%', buf->fp);
 	return (buf);
 }
 
@@ -1957,11 +1990,11 @@ format_literal_percent(UT_string *buf, __unused const void *data,
  * Unknown format code -- return NULL to signal upper layers to pass
  * the text through unchanged.
  */
-UT_string *
-format_unknown(UT_string *buf, __unused const void *data,
+xstring *
+format_unknown(xstring *buf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
-	utstring_printf(buf, "%c", '%');
+	fputc('%', buf->fp);
 	return (NULL);
 }
 
@@ -1973,8 +2006,8 @@ new_percent_esc(void)
 	struct percent_esc	*p;
 
 	p = xcalloc(1, sizeof(struct percent_esc));
-	utstring_new(p->item_fmt);
-	utstring_new(p->sep_fmt);
+	p->item_fmt = xstring_new();
+	p->sep_fmt = xstring_new();
 	return (p);
 }
 
@@ -1984,8 +2017,8 @@ clear_percent_esc(struct percent_esc *p)
 	p->flags = 0;
 	p->width = 0;
 	p->trailer_status = 0;
-	utstring_clear(p->item_fmt);
-	utstring_clear(p->sep_fmt);
+	xstring_reset(p->item_fmt);
+	xstring_reset(p->sep_fmt);
 
 	p->fmt_code = '\0';
 
@@ -1997,9 +2030,9 @@ free_percent_esc(struct percent_esc *p)
 {
 	if (p) {
 		if (p->item_fmt)
-			utstring_free(p->item_fmt);
+			xstring_free(p->item_fmt);
 		if (p->sep_fmt)
-			utstring_free(p->sep_fmt);
+			xstring_free(p->sep_fmt);
 		free(p);
 	}
 	return;
@@ -2074,8 +2107,8 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 }
 
 
-UT_string *
-human_number(UT_string *buf, int64_t number, struct percent_esc *p)
+xstring *
+human_number(xstring *buf, int64_t number, struct percent_esc *p)
 {
 	double		 num;
 	int		 sign;
@@ -2150,17 +2183,17 @@ human_number(UT_string *buf, int64_t number, struct percent_esc *p)
 			precision = 0;
 	}
 
-	utstring_printf(buf, format, width, precision, num * sign);
+	fprintf(buf->fp, format, width, precision, num * sign);
 
 	if (scale > 0)
-		utstring_printf(buf, "%s",
+		fprintf(buf->fp, "%s",
 		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
 
 	return (buf);
 }
 
-UT_string *
-string_val(UT_string *buf, const char *str, struct percent_esc *p)
+xstring *
+string_val(xstring *buf, const char *str, struct percent_esc *p)
 {
 	char	format[16];
 
@@ -2177,12 +2210,12 @@ string_val(UT_string *buf, const char *str, struct percent_esc *p)
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)
 		return (NULL);
 
-	utstring_printf(buf, format, p->width, str);
+	fprintf(buf->fp, format, p->width, str);
 	return (buf);
 }
 
-UT_string *
-int_val(UT_string *buf, int64_t value, struct percent_esc *p)
+xstring *
+int_val(xstring *buf, int64_t value, struct percent_esc *p)
 {
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (human_number(buf, value, p));
@@ -2193,13 +2226,13 @@ int_val(UT_string *buf, int64_t value, struct percent_esc *p)
 		    == NULL)
 			return (NULL);
 
-		utstring_printf(buf, format, p->width, value);
+		fprintf(buf->fp, format, p->width, value);
 	}
 	return (buf);
 }
 
-UT_string *
-bool_val(UT_string *buf, bool value, struct percent_esc *p)
+xstring *
+bool_val(xstring *buf, bool value, struct percent_esc *p)
 {
 	static const char	*boolean_str[2][3] = {
 		[false]	= { "false", "no",  ""    },
@@ -2219,8 +2252,8 @@ bool_val(UT_string *buf, bool value, struct percent_esc *p)
 	return (string_val(buf, boolean_str[value][alternate], p));
 }
 
-UT_string *
-mode_val(UT_string *buf, mode_t mode, struct percent_esc *p)
+xstring *
+mode_val(xstring *buf, mode_t mode, struct percent_esc *p)
 {
 	/*
          * Print mode as an octal integer '%o' by default.
@@ -2256,13 +2289,13 @@ mode_val(UT_string *buf, mode_t mode, struct percent_esc *p)
 		    == NULL)
 			return (NULL);
 
-		utstring_printf(buf, format, p->width, mode);
+		fprintf(buf->fp, format, p->width, mode);
 	}
 	return (buf);
 }
 
-UT_string *
-liclog_val(UT_string *buf, lic_t licenselogic, struct percent_esc *p)
+xstring *
+liclog_val(xstring *buf, lic_t licenselogic, struct percent_esc *p)
 {
 	int			 alternate;
 	int			 llogic = PP_LIC_SINGLE;
@@ -2297,8 +2330,8 @@ liclog_val(UT_string *buf, lic_t licenselogic, struct percent_esc *p)
 	return (string_val(buf, liclog_str[llogic][alternate], p));
 }
 
-UT_string *
-list_count(UT_string *buf, int64_t count, struct percent_esc *p)
+xstring *
+list_count(xstring *buf, int64_t count, struct percent_esc *p)
 {
 	/* Convert to 0 or 1 for %?X */
 	if (p->flags & PP_ALTERNATE_FORM1)
@@ -2315,18 +2348,18 @@ set_list_defaults(struct percent_esc *p, const char *item_fmt,
 		  const char *sep_fmt)
 {
 	if ((p->trailer_status & ITEM_FMT_SET) != ITEM_FMT_SET) {
-		utstring_printf(p->item_fmt, "%s", item_fmt);
+		fprintf(p->item_fmt->fp, "%s", item_fmt);
 		p->trailer_status |= ITEM_FMT_SET;
 	}
 	if ((p->trailer_status & SEP_FMT_SET) != SEP_FMT_SET) {
-		utstring_printf(p->sep_fmt, "%s", sep_fmt);
+		fprintf(p->sep_fmt->fp, "%s", sep_fmt);
 		p->trailer_status |= SEP_FMT_SET;
 	}
 	return (p);
 }
 
-UT_string *
-iterate_item(UT_string *buf, const struct pkg *pkg, const char *format,
+xstring *
+iterate_item(xstring *buf, const struct pkg *pkg, const char *format,
 	     const void *data, int count, unsigned context)
 {
 	const char		*f;
@@ -2338,7 +2371,7 @@ iterate_item(UT_string *buf, const struct pkg *pkg, const char *format,
 	p = new_percent_esc();
 
 	if (p == NULL) {
-		utstring_clear(buf);
+		xstring_reset(buf);
 		return (buf);	/* Out of memory */
 	}
 
@@ -2351,12 +2384,12 @@ iterate_item(UT_string *buf, const struct pkg *pkg, const char *format,
 			f = process_escape(buf, f);
 			break;
 		default:
-			utstring_printf(buf, "%c", *f);
+			fprintf(buf->fp, "%c", *f);
 			f++;
 			break;
 		}
 		if (f == NULL) {
-			utstring_clear(buf);
+			xstring_reset(buf);
 			break;	/* Out of memory */
 		}
 	}
@@ -2491,7 +2524,8 @@ format_trailer(const char *f, struct percent_esc *p)
 				f1 = f2 + 2;
 				break;
 			}
-			utstring_printf(p->item_fmt, "%c", *f2);
+			fputc(*f2, p->item_fmt->fp);
+			fflush(p->item_fmt->fp);
 		}
 
 
@@ -2505,7 +2539,8 @@ format_trailer(const char *f, struct percent_esc *p)
 					f1 = f2 + 2;
 					break;
 				}
-				utstring_printf(p->sep_fmt, "%c", *f2);
+				fputc(*f2, p->sep_fmt->fp);
+				fflush(p->sep_fmt->fp);
 			}
 			
 		}
@@ -2513,8 +2548,8 @@ format_trailer(const char *f, struct percent_esc *p)
 		if (done) {
 			f = f1;
 		} else {
-			utstring_clear(p->item_fmt);
-			utstring_clear(p->sep_fmt);
+			xstring_reset(p->item_fmt);
+			xstring_reset(p->sep_fmt);
 		}
 	}
 
@@ -2579,7 +2614,7 @@ parse_format(const char *f, unsigned context, struct percent_esc *p)
 }
 
 const char*
-maybe_read_hex_byte(UT_string *buf, const char *f)
+maybe_read_hex_byte(xstring *buf, const char *f)
 {
 	/* Hex escapes are of the form \xNN -- always two hex digits */
 
@@ -2711,19 +2746,19 @@ maybe_read_hex_byte(UT_string *buf, const char *f)
 			break;
 		}
 
-		utstring_printf(buf, "%c", val);
+		fputc(val, buf->fp);
 		f++;
 	} else {
 		/* Pass through unchanged if it's not a recognizable
 		   hex byte. */
-		utstring_printf(buf, "%c", '\\');
-		utstring_printf(buf, "%c", 'x');
+		fputc('\\', buf->fp);
+		fputc('x', buf->fp);
 	}
 	return (f);
 }
 
 const char*
-read_oct_byte(UT_string *buf, const char *f)
+read_oct_byte(xstring *buf, const char *f)
 {
 	int	val = 0;
 	int	count = 0;
@@ -2765,51 +2800,51 @@ read_oct_byte(UT_string *buf, const char *f)
 		f++;
 	} 
 done:
-	utstring_printf(buf, "%c", val);
+	fputc(val, buf->fp);
 
 	return (f);
 }
 
 const char *
-process_escape(UT_string *buf, const char *f)
+process_escape(xstring *buf, const char *f)
 {
 	f++;			/* Eat the \ */
 
 	switch (*f) {
 	case 'a':
-		utstring_printf(buf, "%c", '\a');
+		fputc('\a', buf->fp);
 		f++;
 		break;
 	case 'b':
-		utstring_printf(buf, "%c", '\b');
+		fputc('\b', buf->fp);
 		f++;
 		break;
 	case 'f':
-		utstring_printf(buf, "%c", '\f');
+		fputc('\f', buf->fp);
 		f++;
 		break;
 	case 'n':
-		utstring_printf(buf, "%c", '\n');
+		fputc('\n', buf->fp);
 		f++;
 		break;
 	case 't':
-		utstring_printf(buf, "%c", '\t');
+		fputc('\t', buf->fp);
 		f++;
 		break;
 	case 'v':
-		utstring_printf(buf, "%c", '\v');
+		fputc('\v', buf->fp);
 		f++;
 		break;
 	case '\'':
-		utstring_printf(buf, "%c", '\'');
+		fputc('\'', buf->fp);
 		f++;
 		break;
 	case '"':
-		utstring_printf(buf, "%c", '"');
+		fputc('"', buf->fp);
 		f++;
 		break;
 	case '\\':
-		utstring_printf(buf, "%c", '\\');
+		fputc('\\', buf->fp);
 		f++;
 		break;
 	case 'x':		/* Hex escape: \xNN */
@@ -2828,7 +2863,7 @@ process_escape(UT_string *buf, const char *f)
 	default:		/* If it's not a recognised escape,
 				   leave f pointing at the escaped
 				   character */
-		utstring_printf(buf, "%c", '\\');
+		fputc('\\', buf->fp);
 		break;
 	}
 
@@ -2836,12 +2871,12 @@ process_escape(UT_string *buf, const char *f)
 }
 
 const char *
-process_format_trailer(UT_string *buf, struct percent_esc *p,
+process_format_trailer(xstring *buf, struct percent_esc *p,
 		       const char *f, const struct pkg *pkg, 
 		       const void *data, int count, unsigned context)
 {
 	const char		*fstart;
-	UT_string		*s;
+	xstring		*s;
 
 	fstart = f;
 	f = parse_format(f, context, p);
@@ -2866,10 +2901,10 @@ process_format_trailer(UT_string *buf, struct percent_esc *p,
 }
 
 const char *
-process_format_main(UT_string *buf, struct percent_esc *p,
+process_format_main(xstring *buf, struct percent_esc *p,
 		const char *fstart, const char *fend, void *data)
 {
-	UT_string		*s;
+	xstring		*s;
 
 	s = fmt[p->fmt_code].fmt_handler(buf, data, p);
 
@@ -2907,19 +2942,20 @@ pkg_printf(const char * restrict format, ...)
 int
 pkg_vprintf(const char * restrict format, va_list ap)
 {
-	UT_string	*buf;
+	xstring	*buf;
 	int		 count;
 
-	utstring_new(buf);
+	buf = xstring_new();
 
 	if (buf)
-		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) > 0) {
-		count = printf("%s", utstring_body(buf));
+		buf = pkg_xstring_vprintf(buf, format, ap);
+	fflush(buf->fp);
+	if (buf && strlen(buf->buf) > 0) {
+		count = printf("%s", buf->buf);
 	} else
 		count = -1;
 	if (buf)
-		utstring_free(buf);
+		xstring_free(buf);
 	return (count);
 }
 
@@ -2951,19 +2987,20 @@ pkg_fprintf(FILE * restrict stream, const char * restrict format, ...)
 int
 pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
 {
-	UT_string	*buf;
+	xstring	*buf;
 	int		 count;
 
-	utstring_new(buf);
+	buf = xstring_new();
 
 	if (buf)
-		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) > 0) {
-		count = fprintf(stream, "%s", utstring_body(buf));
+		buf = pkg_xstring_vprintf(buf, format, ap);
+	fflush(buf->fp);
+	if (buf && strlen(buf->buf) > 0) {
+		count = fprintf(stream, "%s", buf->buf);
 	} else
 		count = -1;
 	if (buf)
-		utstring_free(buf);
+		xstring_free(buf);
 	return (count);
 }
 
@@ -2999,19 +3036,20 @@ pkg_dprintf(int fd, const char * restrict format, ...)
 int
 pkg_vdprintf(int fd, const char * restrict format, va_list ap)
 {
-	UT_string	*buf;
+	xstring	*buf;
 	int		 count;
 
-	utstring_new(buf);
+	buf = xstring_new();
 
 	if (buf)
-		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) > 0) {
-		count = dprintf(fd, "%s", utstring_body(buf));
+		buf = pkg_xstring_vprintf(buf, format, ap);
+	fflush(buf->fp);
+	if (buf && strlen(buf->buf) > 0) {
+		count = dprintf(fd, "%s", buf->buf);
 	} else 
 		count = -1;
 	if (buf)
-		utstring_free(buf);
+		xstring_free(buf);
 	return (count);
 }
 
@@ -3052,19 +3090,20 @@ int
 pkg_vsnprintf(char * restrict str, size_t size, const char * restrict format,
 	     va_list ap)
 {
-	UT_string	*buf;
+	xstring	*buf;
 	int		 count;
 
-	utstring_new(buf);
+	buf = xstring_new();
 
 	if (buf)
-		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) > 0) {
-		count = snprintf(str, size, "%s", utstring_body(buf));
+		buf = pkg_xstring_vprintf(buf, format, ap);
+	fflush(buf->fp);
+	if (buf && strlen(buf->buf) > 0) {
+		count = snprintf(str, size, "%s", buf->buf);
 	} else
 		count = -1;
 	if (buf)
-		utstring_free(buf);
+		xstring_free(buf);
 
 	return (count);
 }
@@ -3103,41 +3142,23 @@ pkg_asprintf(char **ret, const char * restrict format, ...)
 int
 pkg_vasprintf(char **ret, const char * restrict format, va_list ap)
 {
-	UT_string	*buf;
+	xstring	*buf;
 	int		 count;
 
-	utstring_new(buf);
+	buf = xstring_new();
 
 	if (buf)
-		buf = pkg_utstring_vprintf(buf, format, ap);
-	if (buf && utstring_len(buf) > 0) {
-		count = xasprintf(ret, "%s", utstring_body(buf));
+		buf = pkg_xstring_vprintf(buf, format, ap);
+	fflush(buf->fp);
+	if (buf && strlen(buf->buf) > 0) {
+		count = xasprintf(ret, "%s", buf->buf);
 	} else {
 		count = -1;
 		*ret = NULL;
 	}
 	if (buf)
-		utstring_free(buf);
+		xstring_free(buf);
 	return (count);
-}
-
-/**
- * store data from pkg into buf as indicated by the format code format.
- * @param buf contains the result
- * @param ... Varargs list of struct pkg etc. supplying the data
- * @param format String with embedded %-escapes indicating what to output
- * @return count of the number of characters in the result
- */
-UT_string *
-pkg_utstring_printf(UT_string * restrict buf, const char *restrict format, ...)
-{
-	va_list		 ap;
-
-	va_start(ap, format);
-	buf = pkg_utstring_vprintf(buf, format, ap);
-	va_end(ap);
-
-	return (buf);
 }
 
 /**
@@ -3148,9 +3169,9 @@ pkg_utstring_printf(UT_string * restrict buf, const char *restrict format, ...)
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-UT_string *
-pkg_utstring_vprintf(UT_string * restrict buf, const char * restrict format,
-		 va_list ap)
+static xstring *
+pkg_xstring_vprintf(xstring * restrict buf, const char * restrict format,
+  va_list ap)
 {
 	const char		*f, *fend;
 	struct percent_esc	*p;
@@ -3163,7 +3184,7 @@ pkg_utstring_vprintf(UT_string * restrict buf, const char * restrict format,
 	p = new_percent_esc();
 
 	if (p == NULL) {
-		utstring_clear(buf);
+		xstring_reset(buf);
 		return (buf);	/* Out of memory */
 	}
 
@@ -3182,12 +3203,12 @@ pkg_utstring_vprintf(UT_string * restrict buf, const char * restrict format,
 			f = process_escape(buf, f);
 			break;
 		default:
-			utstring_printf(buf, "%c", *f);
+			fputc(*f, buf->fp);
 			f++;
 			break;
 		}
 		if (f == NULL) {
-			utstring_clear(buf);
+			xstring_reset(buf);
 			break;	/* Error: out of memory */
 		}
 	}

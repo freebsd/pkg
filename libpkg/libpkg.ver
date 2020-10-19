@@ -167,8 +167,6 @@ global:
 	pkg_users;
 	pkg_utils_count_spaces;
 	pkg_utils_tokenize;
-	pkg_utstring_printf;
-	pkg_utstring_vprintf;
 	pkg_vasprintf;
 	pkg_vdprintf;
 	pkg_version_change;

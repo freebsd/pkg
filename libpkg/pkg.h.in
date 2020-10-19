@@ -1601,29 +1601,6 @@ int pkg_asprintf(char **ret, const char * restrict format, ...);
  */
 int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
 
-#if defined(UTSTRING_H)
-/**
- * store data from pkg into sbuf as indicated by the format code format.
- * @param sbuf contains the result
- * @param ... Varargs list of struct pkg etc. supplying the data
- * @param format String with embedded %-escapes indicating what to output
- * @return count of the number of characters in the result
- */
-UT_string *pkg_utstring_printf(UT_string * restrict sbuf,
-	const char * restrict format, ...);
-
-/**
- * store data from pkg into sbuf as indicated by the format code format.
- * This is the core function called by all the other pkg_printf() family.
- * @param sbuf contains the result
- * @param ap Arglist with struct pkg etc. supplying the data
- * @param format String with embedded %-escapes indicating what to output
- * @return count of the number of characters in the result
- */
-UT_string *pkg_utstring_vprintf(UT_string * restrict sbuf,
-	const char * restrict format, va_list ap);
-#endif
-
 bool pkg_has_message(struct pkg *p);
 bool pkg_is_locked(const struct pkg * restrict p);
 
