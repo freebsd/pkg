@@ -126,7 +126,7 @@ all: $(TESTS) Kyuafile ${TESTS_SHELL} frontend/Kyuafile
 $(TESTS): $(OBJS)
 	$(CC) -o $@ $($@_OBJS) $(LDFLAGS) $(LOCAL_LDFLAGS)
 
-lib/pkg_printf.c:
+lib/pkg_printf.c: $(top_srcdir)/libpkg/pkg_printf.c
 	cp $(top_srcdir)/libpkg/pkg_printf.c $@
 
 .sh:
