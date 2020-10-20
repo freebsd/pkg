@@ -95,6 +95,21 @@ pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 	pkgdb_it_reset(it->data);
 }
 
+static struct sqlite3_stmt *
+prepare_sql(sqlite3 *s, const char *sql)
+{
+	int ret;
+	sqlite3_stmt *stmt;
+
+	ret = sqlite3_prepare_v2(s, sql, strlen(sql), &stmt,
+	    NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(s, sql);
+		return (NULL);
+	}
+	return (stmt);
+}
+
 struct pkg_repo_it *
 pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 {
@@ -102,7 +117,6 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 	sqlite3_stmt	*stmt = NULL;
 	UT_string	*sql = NULL;
 	const char	*comp = NULL;
-	int		 ret;
 	char		 basesql[BUFSIZ] = ""
 		"SELECT id, origin, name, name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
@@ -124,15 +138,10 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", utstring_body(sql),
 	     pattern == NULL ? "all": pattern);
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), utstring_len(sql), &stmt,
-	    NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		utstring_free(sql);
-		return (NULL);
-	}
-
+	stmt = prepare_sql(sqlite, utstring_body(sql));
 	utstring_free(sql);
+	if (stmt == NULL)
+		return (NULL);
 
 	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
@@ -146,7 +155,6 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
 	UT_string	*sql = NULL;
-	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -162,14 +170,10 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 	utstring_printf(sql, basesql, repo->name);
 
 	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		utstring_free(sql);
-		return (NULL);
-	}
-
+	stmt = prepare_sql(sqlite, utstring_body(sql));
 	utstring_free(sql);
+	if (stmt == NULL)
+		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
 
@@ -182,7 +186,6 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
 	UT_string	*sql = NULL;
-	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -198,14 +201,10 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 	utstring_printf(sql, basesql, repo->name);
 
 	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		utstring_free(sql);
-		return (NULL);
-	}
-
+	stmt = prepare_sql(sqlite, utstring_body(sql));
 	utstring_free(sql);
+	if (stmt == NULL)
+		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
 
@@ -218,7 +217,6 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
 	UT_string	*sql = NULL;
-	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -233,14 +231,10 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 	utstring_printf(sql, basesql, repo->name);
 
 	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		utstring_free(sql);
-		return (NULL);
-	}
-
+	stmt = prepare_sql(sqlite, utstring_body(sql));
 	utstring_free(sql);
+	if (stmt == NULL)
+		return (NULL);
 
 	pkg_debug(1, "> loading provides");
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
@@ -254,7 +248,6 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
 	UT_string	*sql = NULL;
-	int		 ret;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -269,14 +262,10 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 	utstring_printf(sql, basesql, repo->name);
 
 	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		utstring_free(sql);
-		return (NULL);
-	}
-
+	stmt = prepare_sql(sqlite, utstring_body(sql));
 	utstring_free(sql);
+	if (stmt == NULL)
+		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
 
@@ -380,7 +369,6 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
 	UT_string	*sql = NULL;
-	int		 ret;
 	const char	*multireposql = ""
 		"SELECT id, origin, name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
@@ -401,14 +389,10 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	utstring_printf(sql, "%s", ";");
 
 	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		utstring_free(sql);
-		return (NULL);
-	}
-
+	stmt = prepare_sql(sqlite, utstring_body(sql));
 	utstring_free(sql);
+	if (stmt == NULL)
+		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
@@ -468,7 +452,6 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
 	UT_string	*sql = NULL;
-	int		 ret;
 
 	utstring_new(sql);
 
@@ -494,20 +477,17 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 	}
 
 	pkg_debug(4, "binary_repo: running '%s'", utstring_body(sql));
-	ret = sqlite3_prepare_v2(sqlite, utstring_body(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, utstring_body(sql));
-		goto out;
-	}
+	stmt = prepare_sql(sqlite, utstring_body(sql));
+out:
+	utstring_free(sql);
+	if (stmt == NULL)
+		return (stats);
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
 	}
 
-out:
-	utstring_free(sql);
-	if (stmt != NULL)
-		sqlite3_finalize(stmt);
+	sqlite3_finalize(stmt);
 
 	return (stats);
 }
