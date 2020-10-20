@@ -95,21 +95,6 @@ pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 	pkgdb_it_reset(it->data);
 }
 
-static struct sqlite3_stmt *
-prepare_sql(sqlite3 *s, const char *sql)
-{
-	int ret;
-	sqlite3_stmt *stmt;
-
-	ret = sqlite3_prepare_v2(s, sql, strlen(sql), &stmt,
-	    NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(s, sql);
-		return (NULL);
-	}
-	return (stmt);
-}
-
 struct pkg_repo_it *
 pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 {

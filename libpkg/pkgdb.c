@@ -101,8 +101,22 @@ static void prstmt_finalize(struct pkgdb *db);
 static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 static int pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 
-
 extern int sqlite3_shell(int, char**);
+
+struct sqlite3_stmt *
+prepare_sql(sqlite3 *s, const char *sql)
+{
+	int ret;
+	sqlite3_stmt *stmt;
+
+	ret = sqlite3_prepare_v2(s, sql, strlen(sql), &stmt,
+	    NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(s, sql);
+		return (NULL);
+	}
+	return (stmt);
+}
 
 void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
@@ -1650,21 +1664,17 @@ prstmt_initialize(struct pkgdb *db)
 {
 	sql_prstmt_index	 i;
 	sqlite3			*sqlite;
-	int			 ret;
 
 	assert(db != NULL);
 
 	if (!db->prstmt_initialized) {
 		sqlite = db->sqlite;
 
-		for (i = 0; i < PRSTMT_LAST; i++)
-		{
+		for (i = 0; i < PRSTMT_LAST; i++) {
 			pkg_debug(4, "Pkgdb: preparing statement '%s'", SQL(i));
-			ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
-			if (ret != SQLITE_OK) {
-				ERROR_SQLITE(sqlite, SQL(i));
+			STMT(i) = prepare_sql(sqlite, SQL(i));
+			if (STMT(i) == NULL)
 				return (EPKG_FATAL);
-			}
 		}
 		db->prstmt_initialized = true;
 	}
@@ -2222,12 +2232,9 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 		for (i = 0; i < 2; i++) {
 			/* Clean out old shlibs first */
 			pkg_debug(4, "Pkgdb: running '%s'", sql[i]);
-			if (sqlite3_prepare_v2(db->sqlite, sql[i], -1,
-					       &stmt_del, NULL)
-			    != SQLITE_OK) {
-				ERROR_SQLITE(db->sqlite, sql[i]);
+			stmt_del = prepare_sql(db->sqlite, sql[i]);
+			if (stmt_del == NULL)
 				return (EPKG_FATAL);
-			}
 
 			sqlite3_bind_int64(stmt_del, 1, package_id);
 
@@ -2434,11 +2441,9 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 	assert(db != NULL);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt_del, NULL)
-	    != SQLITE_OK){
-		ERROR_SQLITE(db->sqlite, sql);
+	stmt_del = prepare_sql(db->sqlite, sql);
+	if (stmt_del == NULL)
 		return (EPKG_FATAL);
-	}
 
 	sqlite3_bind_int64(stmt_del, 1, id);
 
@@ -2628,11 +2633,9 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		pkg_debug(4, "Pkgdb: running '%s'", sql[attr]);
-		if (sqlite3_prepare_v2(db->sqlite, sql[attr], -1, &stmt, NULL)
-		    != SQLITE_OK) {
-			ERROR_SQLITE(db->sqlite, sql[attr]);
+		stmt = prepare_sql(db->sqlite, sql[attr]);
+		if (stmt == NULL)
 			return (EPKG_FATAL);
-		}
 
 		switch (attr) {
 		case PKG_SET_FLATSIZE:
@@ -2704,14 +2707,11 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 	sqlite3_stmt	*stmt = NULL;
 	const char	 sql_file_update[] = ""
 		"UPDATE files SET sha256 = ?1 WHERE path = ?2";
-	int		 ret;
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_file_update);
-	ret = sqlite3_prepare_v2(db->sqlite, sql_file_update, -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql_file_update);
+	stmt = prepare_sql(db->sqlite, sql_file_update);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 	sqlite3_bind_text(stmt, 1, sum, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 2, file->path, -1, SQLITE_STATIC);
 
@@ -2775,13 +2775,10 @@ pkgdb_write_lock_pid(struct pkgdb *db)
 	const char lock_pid_sql[] = ""
 			"INSERT INTO pkg_lock_pid VALUES (?1);";
 	sqlite3_stmt	*stmt = NULL;
-	int ret;
 
-	ret = sqlite3_prepare_v2(db->sqlite, lock_pid_sql, -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, lock_pid_sql);
+	stmt = prepare_sql(db->sqlite, lock_pid_sql);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 	sqlite3_bind_int64(stmt, 1, (int64_t)getpid());
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -2800,13 +2797,10 @@ pkgdb_remove_lock_pid(struct pkgdb *db, int64_t pid)
 	const char lock_pid_sql[] = ""
 			"DELETE FROM pkg_lock_pid WHERE pid = ?1;";
 	sqlite3_stmt	*stmt = NULL;
-	int ret;
 
-	ret = sqlite3_prepare_v2(db->sqlite, lock_pid_sql, -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, lock_pid_sql);
+	stmt = prepare_sql(db->sqlite, lock_pid_sql);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 	sqlite3_bind_int64(stmt, 1, pid);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -2823,16 +2817,13 @@ static int
 pkgdb_check_lock_pid(struct pkgdb *db)
 {
 	sqlite3_stmt	*stmt = NULL;
-	int ret, found = 0;
+	int found = 0;
 	int64_t pid, lpid;
 	const char query[] = "SELECT pid FROM pkg_lock_pid;";
 
-	ret = sqlite3_prepare_v2(db->sqlite, query, -1,
-			&stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, query);
+	stmt = prepare_sql(db->sqlite, query);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 
 	lpid = getpid();
 
@@ -3089,7 +3080,6 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
 	const char *sql = NULL;
-	int		 ret;
 	struct _pkg_repo_list_item *rit;
 
 	assert(db != NULL);
@@ -3121,11 +3111,9 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	}
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
-	ret = sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	stmt = prepare_sql(db->sqlite, sql);
+	if (stmt == NULL)
 		return (-1);
-	}
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
@@ -3229,10 +3217,9 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 		"WHERE directory_id = directories.id AND directories.path = ?1 "
 		"AND package_id != ?2;";
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	stmt = prepare_sql(db->sqlite, sql);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 
 	sqlite3_bind_text(stmt, 1, dir, -1, SQLITE_TRANSIENT);
 	sqlite3_bind_int64(stmt, 2, p->id);

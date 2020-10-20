@@ -295,10 +295,9 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 	int64_t origin_id, conflict_id;
 
 	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
-	if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, select_id_sql);
+	stmt = prepare_sql(sqlite, select_id_sql);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
 	ret = sqlite3_step(stmt);
@@ -313,10 +312,9 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 	sqlite3_finalize(stmt);
 
 	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", clean_conflicts_sql);
-	if (sqlite3_prepare_v2(sqlite, clean_conflicts_sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, clean_conflicts_sql);
+	stmt = prepare_sql(sqlite, clean_conflicts_sql);
+	if (stmt == NULL)
 		return (EPKG_FATAL);
-	}
 
 	sqlite3_bind_int64(stmt, 1, origin_id);
 	/* Ignore cleanup result */
@@ -327,10 +325,9 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 	for (i = 0; i < conflicts_num; i ++) {
 		/* Select a conflict */
 		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
-		if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
-			ERROR_SQLITE(sqlite, select_id_sql);
+		stmt = prepare_sql(sqlite, select_id_sql);
+		if (stmt == NULL)
 			return (EPKG_FATAL);
-		}
 
 		sqlite3_bind_text(stmt, 1, conflicts[i], -1, SQLITE_TRANSIENT);
 		ret = sqlite3_step(stmt);
@@ -347,10 +344,9 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 
 		/* Insert a pair */
 		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", insert_conflict_sql);
-		if (sqlite3_prepare_v2(sqlite, insert_conflict_sql, -1, &stmt, NULL) != SQLITE_OK) {
-			ERROR_SQLITE(sqlite, insert_conflict_sql);
+		stmt = prepare_sql(sqlite, insert_conflict_sql);
+		if (stmt == NULL)
 			return (EPKG_FATAL);
-		}
 
 		sqlite3_bind_int64(stmt, 1, origin_id);
 		sqlite3_bind_int64(stmt, 2, conflict_id);
