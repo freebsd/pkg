@@ -37,7 +37,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <utstring.h>
 
 #include <pkg.h>
 
@@ -163,13 +162,13 @@ do_show(struct pkg *pkg, const char *tag)
 }
 
 
-static UT_string *
+static char *
 read_input(void)
 {
-	UT_string	*input;
+	xstring	*input;
 	int		 ch;
 
-	utstring_new(input);
+	input = xstring_new();
 
 	for (;;) {
 		ch = getc(stdin);
@@ -179,10 +178,10 @@ read_input(void)
 			if (ferror(stdin))
 				err(EX_NOINPUT, "Failed to read stdin");
 		}
-		utstring_printf(input, "%c", ch);
+		fputc(ch, input->fp);
 	}
 
-	return (input);
+	return (xstring_get(input));
 }
 
 int
@@ -195,7 +194,7 @@ exec_annotate(int argc, char **argv)
 	const char	*tag;
 	const char	*value;
 	const char	*pkgname;
-	UT_string	*input    = NULL;
+	char		*input    = NULL;
 	int		 ch;
 	int		 match    = MATCH_EXACT;
 	int		 retcode;
@@ -289,8 +288,7 @@ exec_annotate(int argc, char **argv)
 
 	if ((action == ADD || action == MODIFY) && value == NULL) {
 		/* try and read data for the value from stdin. */
-		input = read_input();
-		value = utstring_body(input);
+		value = input = read_input();
 	}
 
 	if (lock_type == PKGDB_LOCK_EXCLUSIVE)
@@ -317,8 +315,7 @@ exec_annotate(int argc, char **argv)
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK) {
-		if (input != NULL)
-			utstring_free(input);
+		free(input);
 		return (EX_IOERR);
 	}
 
@@ -369,8 +366,7 @@ cleanup:
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
-	if (input != NULL)
-		utstring_free(input);
+	free(input);
 
 	return (exitcode);
 }
