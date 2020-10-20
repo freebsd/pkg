@@ -115,7 +115,8 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 	const char	*comp = NULL;
 	char		 basesql[BUFSIZ] = ""
 		"SELECT id, origin, name, name as uniqueid, version, comment, "
@@ -127,19 +128,19 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
-	utstring_new(sql);
+	sql = xstring_new();
 	comp = pkgdb_get_pattern_query(pattern, match);
 	if (comp && comp[0])
 		strlcat(basesql, comp, sizeof(basesql));
 
-	utstring_printf(sql, basesql, repo->name);
+	fprintf(sql->fp, basesql, repo->name);
+	fprintf(sql->fp, "%s", " ORDER BY name;");
+	sqlcmd = xstring_get(sql);
 
-	utstring_printf(sql, "%s", " ORDER BY name;");
-
-	pkg_debug(4, "Pkgdb: running '%s' query for %s", utstring_body(sql),
+	pkg_debug(4, "Pkgdb: running '%s' query for %s", sqlcmd,
 	     pattern == NULL ? "all": pattern);
-	stmt = prepare_sql(sqlite, utstring_body(sql));
-	utstring_free(sql);
+	stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -154,7 +155,8 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -166,12 +168,13 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 			"WHERE ps.shlib_id IN (SELECT id FROM shlibs WHERE "
 			"name BETWEEN ?1 AND ?1 || '.9');";
 
-	utstring_new(sql);
-	utstring_printf(sql, basesql, repo->name);
+	sql = xstring_new();
+	fprintf(sql->fp, basesql, repo->name);
+	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	stmt = prepare_sql(sqlite, utstring_body(sql));
-	utstring_free(sql);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
+	stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -185,7 +188,8 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -197,12 +201,13 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 			"WHERE ps.provide_id IN (SELECT id from provides WHERE "
 			"provide = ?1 );";
 
-	utstring_new(sql);
-	utstring_printf(sql, basesql, repo->name);
+	sql = xstring_new();
+	fprintf(sql->fp, basesql, repo->name);
+	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	stmt = prepare_sql(sqlite, utstring_body(sql));
-	utstring_free(sql);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
+	stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -216,7 +221,8 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -227,12 +233,13 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 			"p.id = ps.package_id "
 			"WHERE ps.shlib_id = (SELECT id FROM shlibs WHERE name=?1);";
 
-	utstring_new(sql);
-	utstring_printf(sql, basesql, repo->name);
+	sql = xstring_new();
+	fprintf(sql->fp, basesql, repo->name);
+	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	stmt = prepare_sql(sqlite, utstring_body(sql));
-	utstring_free(sql);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
+	stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -247,7 +254,8 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -258,12 +266,13 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 			"p.id = ps.package_id "
 			"WHERE ps.require_id = (SELECT id FROM requires WHERE require=?1);";
 
-	utstring_new(sql);
-	utstring_printf(sql, basesql, repo->name);
+	sql = xstring_new();
+	fprintf(sql->fp, basesql, repo->name);
+	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	stmt = prepare_sql(sqlite, utstring_body(sql));
-	utstring_free(sql);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
+	stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -302,7 +311,7 @@ pkg_repo_binary_search_how(match_t match)
 }
 
 static int
-pkg_repo_binary_build_search_query(UT_string *sql, match_t match,
+pkg_repo_binary_build_search_query(xstring *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
 {
 	const char	*how = NULL;
@@ -333,7 +342,7 @@ pkg_repo_binary_build_search_query(UT_string *sql, match_t match,
 	}
 
 	if (what != NULL && how != NULL)
-		utstring_printf(sql, how, what);
+		fprintf(sql->fp, how, what);
 
 	switch (sort) {
 	case FIELD_NONE:
@@ -357,7 +366,7 @@ pkg_repo_binary_build_search_query(UT_string *sql, match_t match,
 	}
 
 	if (orderby != NULL)
-		utstring_printf(sql, "%s", orderby);
+		fprintf(sql->fp, "%s", orderby);
 
 	return (EPKG_OK);
 }
@@ -368,7 +377,8 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 	const char	*multireposql = ""
 		"SELECT id, origin, name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
@@ -379,18 +389,19 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	if (pattern == NULL || pattern[0] == '\0')
 		return (NULL);
 
-	utstring_new(sql);
-	utstring_printf(sql, multireposql, repo->name, repo->url);
+	sql = xstring_new();
+	fprintf(sql->fp, multireposql, repo->name, repo->url);
 
 	/* close the UNIONs and build the search query */
-	utstring_printf(sql, "%s", "WHERE ");
+	fprintf(sql->fp, "%s", "WHERE ");
 
 	pkg_repo_binary_build_search_query(sql, match, field, sort);
-	utstring_printf(sql, "%s", ";");
+	fprintf(sql->fp, "%s", ";");
+	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", utstring_body(sql));
-	stmt = prepare_sql(sqlite, utstring_body(sql));
-	utstring_free(sql);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
+	stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -451,9 +462,10 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
-	UT_string	*sql = NULL;
+	xstring	*sql = NULL;
+	char *sqlcmd = NULL;
 
-	utstring_new(sql);
+	sql = xstring_new();
 
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
@@ -463,23 +475,27 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 		goto out;
 		break;
 	case PKG_STATS_REMOTE_UNIQUE:
-		utstring_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		fprintf(sql->fp, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_COUNT:
-		utstring_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		fprintf(sql->fp, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_SIZE:
-		utstring_printf(sql, "SELECT SUM(pkgsize) FROM main.packages;");
+		fprintf(sql->fp, "SELECT SUM(pkgsize) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_REPOS:
 		goto out;
 		break;
 	}
 
-	pkg_debug(4, "binary_repo: running '%s'", utstring_body(sql));
-	stmt = prepare_sql(sqlite, utstring_body(sql));
+	sqlcmd = xstring_get(sql);
+	sql = NULL; /* avoid double free in the out section */
+
+	pkg_debug(4, "binary_repo: running '%s'", sqlcmd);
+	stmt = prepare_sql(sqlite, sqlcmd);
 out:
-	utstring_free(sql);
+	xstring_free(sql);
+	free(sql);
 	if (stmt == NULL)
 		return (stats);
 
