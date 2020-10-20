@@ -26,18 +26,18 @@ freebsd_task:
 #                - make -j4 || make V=1
 #        check_script: make check || { kyua report --verbose ; exit 1 ; }
 #
-#osx_task:
-#        osx_instance:
-#                image: catalina-xcode
-#        install_script: scripts/install_deps.sh
-#        env:
-#                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
-#                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-#                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-#        script:
-#                - ./configure
-#                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ;}
+osx_task:
+        osx_instance:
+                image: catalina-xcode
+        install_script: scripts/install_deps.sh
+        env:
+                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
+                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+        script:
+                - ./configure
+                - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ;}
 
 #fedora_task:
 #        container:
