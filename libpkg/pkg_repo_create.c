@@ -53,6 +53,7 @@
 #include <poll.h>
 #include <sys/uio.h>
 #include <msgpuck.h>
+#include <utstring.h>
 
 #include "pkg.h"
 #include "private/event.h"

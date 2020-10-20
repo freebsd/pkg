@@ -40,7 +40,6 @@
 #include <stdbool.h>
 #include <uthash.h>
 #include <utlist.h>
-#include <utstring.h>
 #include <ucl.h>
 
 #include "xmalloc.h"

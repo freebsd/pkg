@@ -39,40 +39,44 @@ ATF_TC_HEAD(merge, tc)
 
 ATF_TC_BODY(merge, tc)
 {
-	UT_string *b;
-	utstring_new(b);
+	xstring *b;
+	b = xstring_new();
 	char *pivot = "test1\ntest2\n";
 	char *modified = "test1\n#test2\n";
 	char *new = "test1\ntest2\ntest3\n";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	ATF_REQUIRE_STREQ(utstring_body(b), "test1\n#test2\ntest3\n");
+	fflush(b->fp);
+	ATF_REQUIRE_STREQ(b->buf, "test1\n#test2\ntest3\n");
 
-	utstring_clear(b);
+	xstring_reset(b);
 	pivot = "test1\ntest2";
 	modified = "test1\n#test2";
 	new = "test1\ntest2\ntest3";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	ATF_REQUIRE_STREQ(utstring_body(b), "test1\n#test2test3");
+	fflush(b->fp);
+	ATF_REQUIRE_STREQ(b->buf, "test1\n#test2test3");
 
-	utstring_clear(b);
+	xstring_reset(b);
 	pivot = "test1\ntest2";
 	modified = "test1\n";
 	new = "test1\ntest2\ntest3";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	ATF_REQUIRE_STREQ(utstring_body(b), "test1\ntest3");
+	fflush(b->fp);
+	ATF_REQUIRE_STREQ(b->buf, "test1\ntest3");
 
-	utstring_clear(b);
+	xstring_reset(b);
 	pivot = "test1\ntest2\ntest3";
 	modified = "test1\na\ntest2\ntest3";
 	new = "test1\ntest2\ntest3";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	ATF_REQUIRE_STREQ(utstring_body(b), "test1\na\ntest2\ntest3");
+	fflush(b->fp);
+	ATF_REQUIRE_STREQ(b->buf, "test1\na\ntest2\ntest3");
 
-	utstring_free(b);
+	xstring_free(b);
 }
 
 ATF_TP_ADD_TCS(tp)

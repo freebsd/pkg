@@ -111,7 +111,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 {
 	const struct pkg_file *lf = NULL;
 	struct stat st;
-	UT_string *newconf;
+	xstring *newconf;
 	struct pkg_config_file *lcf = NULL;
 
 	char *localconf = NULL;
@@ -168,14 +168,15 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	}
 
 	pkg_debug(1, "Attempting to merge %s", rcf->path);
-	utstring_new(newconf);
+	newconf = xstring_new();
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
+		xstring_free(newconf);
 		pkg_emit_error("Impossible to merge configuration file");
 	} else {
-		rcf->newcontent = xstrdup(utstring_body(newconf));
+		char *conf = xstring_get(newconf);
+		rcf->newcontent = conf;
 		rcf->status = MERGE_SUCCESS;
 	}
-	utstring_free(newconf);
 	free(localconf);
 }
 
