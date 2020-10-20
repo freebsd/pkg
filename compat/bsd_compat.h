@@ -184,6 +184,10 @@ FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
          off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *));
 #endif
 
+#if !HAVE_OPEN_MEMSTREAM
+FILE	*open_memstream(char **, size_t *);
+#endif
+
 #if !HAVE_GETPROGNAME
 #ifdef __GLIBC__
 extern char *program_invocation_short_name;
