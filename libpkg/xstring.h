@@ -58,8 +58,8 @@ do {                          \
 static inline char *
 xstring_get(xstring *str)
 {
-	char *ret = str->buf;
 	fclose(str->fp);
+	char *ret = str->buf;
 	free(str);
 	return (ret);
 }
