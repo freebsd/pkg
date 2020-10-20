@@ -53,7 +53,6 @@
 #include <poll.h>
 #include <sys/uio.h>
 #include <msgpuck.h>
-#include <utstring.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -843,14 +842,16 @@ cleanup:
 	return (retcode);
 }
 
-
 static int
-pkg_repo_sign(char *path, char **argv, int argc, UT_string **sig, UT_string **cert)
+pkg_repo_sign(char *path, char **argv, int argc, char **sig, size_t *siglen,
+    char **cert)
 {
 	FILE *fp;
 	char *sha256;
-	UT_string *cmd = NULL;
-	UT_string *buf = NULL;
+	xstring *cmd = NULL;
+	xstring *buf = NULL;
+	xstring *sigstr = NULL;
+	xstring *certstr = NULL;
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -860,55 +861,58 @@ pkg_repo_sign(char *path, char **argv, int argc, UT_string **sig, UT_string **ce
 	if (!sha256)
 		return (EPKG_FATAL);
 
-	utstring_new(cmd);
+	cmd = xstring_new();
 
 	for (i = 0; i < argc; i++) {
 		if (strspn(argv[i], " \t\n") > 0)
-			utstring_printf(cmd, " \"%s\" ", argv[i]);
+			fprintf(cmd->fp, " \"%s\" ", argv[i]);
 		else
-			utstring_printf(cmd, " %s ", argv[i]);
+			fprintf(cmd->fp, " %s ", argv[i]);
 	}
 
-	if ((fp = popen(utstring_body(cmd), "r+")) == NULL) {
+	fflush(cmd->fp);
+	if ((fp = popen(cmd->buf, "r+")) == NULL) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
 
 	fprintf(fp, "%s\n", sha256);
 
-	if (*sig == NULL)
-		utstring_new(*sig);
-	if (*cert == NULL)
-		utstring_new(*cert);
+	sigstr = xstring_new();
+	certstr = xstring_new();
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
 		if (strcmp(line, "SIGNATURE\n") == 0) {
-			buf = *sig;
+			buf = sigstr;
 			continue;
 		} else if (strcmp(line, "CERT\n") == 0) {
-			buf = *cert;
+			buf = certstr;
 			continue;
 		} else if (strcmp(line, "END\n") == 0) {
 			break;
 		}
-		if (buf != NULL)
-			utstring_bincpy(buf, line, linelen);
+		if (buf != NULL) {
+			fwrite(line, linelen, 1, buf->fp);
+		}
 	}
+
+	*cert = xstring_get(certstr);
+	fclose(sigstr->fp);
+	sigstr->size--;
+	*siglen = sigstr->size;
+	*sig = sigstr->buf;
+	free(sigstr);
+
+	/* remove the latest \n */
 
 	if (pclose(fp) != 0) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
 
-	if (utstring_body(*sig)[utstring_len(*sig) -1 ] == '\n') {
-		(*sig)->i--;
-		(*sig)->d[(*sig)->i] = '\0';
-	}
-
 done:
 	free(sha256);
-	if (cmd)
-		utstring_free(cmd);
+	xstring_free(cmd);
 
 	return (ret);
 }
@@ -921,8 +925,9 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	struct packing *pack;
 	unsigned char *sigret = NULL;
 	unsigned int siglen = 0;
+	size_t signature_len = 0;
 	char fname[MAXPATHLEN];
-	UT_string *sig, *pub;
+	char *sig, *pub;
 	int ret = EPKG_OK;
 
 	sig = NULL;
@@ -942,19 +947,19 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 			goto out;
 		}
 	} else if (argc >= 1) {
-		if (pkg_repo_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
+		if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &pub) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
 
 		snprintf(fname, sizeof(fname), "%s.sig", name);
-		if (packing_append_buffer(pack, utstring_body(sig), fname, utstring_len(sig)) != EPKG_OK) {
+		if (packing_append_buffer(pack, sig, fname, signature_len) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
 
 		snprintf(fname, sizeof(fname), "%s.pub", name);
-		if (packing_append_buffer(pack, utstring_body(pub), fname, utstring_len(pub)) != EPKG_OK) {
+		if (packing_append_buffer(pack, pub, fname, strlen(pub)) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
@@ -966,10 +971,8 @@ out:
 	packing_finish(pack);
 	unlink(path);
 	free(sigret);
-	if (sig != NULL)
-		utstring_free(sig);
-	if (pub != NULL)
-		utstring_free(pub);
+	free(sig);
+	free(pub);
 
 	return (ret);
 }
