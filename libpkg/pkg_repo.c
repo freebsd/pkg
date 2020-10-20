@@ -421,7 +421,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			if (type != 0 && type != 1) {
 				/* Invalid type */
 				pkg_emit_error("%d is not a valid type for signature_fingerprints"
-						"output", type);
+						" output", type);
 				return (EPKG_FATAL);
 			}
 			state = fp_parse_flen;
@@ -431,7 +431,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		case fp_parse_flen:
 			if (end - p < sizeof (int)) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output");
+						" output");
 				return (EPKG_FATAL);
 			}
 			memcpy(&len, p, sizeof(int));
@@ -442,12 +442,12 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 		case fp_parse_file:
 			if (end - p < len || len <= 0) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output, wanted %d bytes", len);
+						" output, wanted %d bytes", len);
 				return (EPKG_FATAL);
 			}
 			else if (len >= MAXPATHLEN) {
 				pkg_emit_error("filename is incorrect for signature_fingerprints"
-						"output: %d, wanted 5..%d bytes", type, len);
+						" output: %d, wanted 5..%d bytes", type, len);
 				free(s);
 				return (EPKG_FATAL);
 			}
