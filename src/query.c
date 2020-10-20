@@ -39,7 +39,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <utstring.h>
 #include <pkg.h>
 #include "pkgcli.h"
 

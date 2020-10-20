@@ -40,7 +40,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <utlist.h>
-#include <utstring.h>
 
 #include <pkg.h>
 

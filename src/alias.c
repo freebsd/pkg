@@ -34,7 +34,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <utstring.h>
 
 #include <pkg.h>
 

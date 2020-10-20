@@ -27,7 +27,6 @@
 #include <atf-c.h>
 #include <sys/types.h>
 #include <private/utils.h>
-#include <utstring.h>
 
 ATF_TC(merge);
 
