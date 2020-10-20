@@ -282,10 +282,8 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 		in++;
 	}
 
-	fclose(buf->fp);
-	*dest = buf->buf;
-	free(buf);
-	
+	*dest = xstring_get(buf);
+
 	return (EPKG_OK);
 }
 
