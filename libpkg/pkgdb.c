@@ -2533,41 +2533,6 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 }
 
 int
-get_sql_string(sqlite3 *s, const char *sql, char **res)
-{
-	sqlite3_stmt	*stmt;
-	int		 ret;
-
-	assert(s != NULL && sql != NULL);
-
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
-	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s, sql);
-		return (EPKG_OK);
-	}
-
-	ret = sqlite3_step(stmt);
-
-	if (ret == SQLITE_ROW) {
-		const unsigned char *tmp;
-		tmp = sqlite3_column_text(stmt, 0);
-		*res = (tmp == NULL ? NULL : xstrdup(tmp));
-	}
-
-	if (ret == SQLITE_DONE)
-		*res = NULL;
-
-	sqlite3_finalize(stmt);
-
-	if (ret != SQLITE_ROW && ret != SQLITE_DONE) {
-		ERROR_SQLITE(s, sql);
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-int
 pkgdb_compact(struct pkgdb *db)
 {
 	int64_t	page_count = 0;
