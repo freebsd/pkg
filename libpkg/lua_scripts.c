@@ -60,11 +60,12 @@ stack_dump(lua_State *L)
 	int i;
 	int top = lua_gettop(L);
 	xstring *stack;
+	char *stackstr;
 
 	stack = xstring_new();
 
-	fprintf(stack->fp, "\nLua Stack\n---------\n");
-	fprintf(stack->fp, "\tType   Data\n\t-----------\n" );
+	fputs("\nLua Stack\n---------\n"
+	    "\tType   Data\n\t-----------\n", stack->fp);
 
 	for (i = 1; i <= top; i++) {  /* repeat for each level */
 		int t = lua_type(L, i);
@@ -84,9 +85,9 @@ stack_dump(lua_State *L)
 			break;
 		}
 	}
-	fflush(stack->fp);
-	pkg_emit_error("%s\n", stack->buf);
-	xstring_free(stack);
+	stackstr = xstring_get(stack);
+	pkg_emit_error("%s\n", stackstr);
+	free(stackstr);
 
 	return (0);
 }

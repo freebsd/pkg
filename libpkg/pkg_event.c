@@ -45,8 +45,8 @@ buf_json_escape(const char *str)
 
 	while (str != NULL && *str != '\0') {
 		if (*str == '"' || *str == '\\')
-			fprintf(buf->fp, "%c", '\\');
-		fprintf(buf->fp, "%c", *str);
+			fputc('\\', buf->fp);
+		fputc(*str, buf->fp);
 		str++;
 	}
 
@@ -162,8 +162,8 @@ pipeevent(struct pkg_event *ev)
 				"");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
-		fprintf(msg->fp, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
-		    "\"data\": {}}");
+		fputs("{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
+		    "\"data\": {}}", msg->fp);
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		fprintf(msg->fp, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
@@ -186,7 +186,7 @@ pipeevent(struct pkg_event *ev)
 			}
 			cur_conflict = cur_conflict->next;
 		}
-		fprintf(msg->fp, "%s", "]}}");
+		fputs("]}}", msg->fp);
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		fprintf(msg->fp, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
@@ -259,7 +259,7 @@ pipeevent(struct pkg_event *ev)
 		int c = 0;
 		ungetc(c, msg->fp);
 		ungetc(c, msg->fp);
-		fprintf(msg->fp, "%s", "]}}");
+		fputs("]}}", msg->fp);
 		break;
 	case PKG_EVENT_ALREADY_INSTALLED:
 		pkg_fprintf(msg->fp, "{ \"type\": \"ERROR_ALREADY_INSTALLED\", "
@@ -287,12 +287,12 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_remotedb.repo);
 		break;
 	case PKG_EVENT_NOLOCALDB:
-		fprintf(msg->fp, "{ \"type\": \"ERROR_NOLOCALDB\", "
-		    "\"data\": {}} ");
+		fputs("{ \"type\": \"ERROR_NOLOCALDB\", \"data\": {}} ",
+		    msg->fp);
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
-		fprintf(msg->fp, "{ \"type\": \"INFO_NEWPKGVERSION\", "
-		    "\"data\": {}} ");
+		fputs("{ \"type\": \"INFO_NEWPKGVERSION\", \"data\": {}} ",
+		    msg->fp);
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg_fprintf(msg->fp, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
@@ -371,8 +371,8 @@ pipeevent(struct pkg_event *ev)
 			ev->e_query_select.items[i]);
 		break;
 	case PKG_EVENT_PROGRESS_START:
-		fprintf(msg->fp, "{ \"type\": \"INFO_PROGRESS_START\", "
-		  "\"data\": {}}");
+		fputs("{ \"type\": \"INFO_PROGRESS_START\", \"data\": {}}",
+		    msg->fp);
 		break;
 	case PKG_EVENT_PROGRESS_TICK:
 		fprintf(msg->fp, "{ \"type\": \"INFO_PROGRESS_TICK\", "

@@ -97,7 +97,7 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 	int retcode = EPKG_OK;
 	char docpath[MAXPATHLEN];
 	char zone[MAXHOSTNAMELEN + 24];
-	char *doc, *reldoc;
+	char *doc, *reldoc, *opts;
 	struct dns_srvinfo *srv_current = NULL;
 	struct http_mirror *http_current = NULL;
 	struct url_stat st;
@@ -160,19 +160,20 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 			u->port = http_current->url->port;
 		}
 		fetchOpts = xstring_new();
-		fprintf(fetchOpts->fp, "i");
+		fputs("i", fetchOpts->fp);
 		if (repo != NULL) {
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
 			    REPO_FLAGS_USE_IPV4)
-				fprintf(fetchOpts->fp, "4");
+				fputs("4", fetchOpts->fp);
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
 			    REPO_FLAGS_USE_IPV6)
-				fprintf(fetchOpts->fp, "6");
+				fputs("6", fetchOpts->fp);
 		}
 
 		if (ctx.debug_level >= 4)
-			fprintf(fetchOpts->fp, "v");
+			fputs("v", fetchOpts->fp);
 
+		opts = xstring_get(fetchOpts);
 		fflush(fetchOpts->fp);
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
@@ -180,11 +181,10 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 		    u->user[0] != '\0' ? "@" : "",
 		    u->host,
 		    u->doc,
-		    fetchOpts->buf);
+		    opts);
 
-		repo->fh = fetchXGet(u, &st, fetchOpts->buf);
+		repo->fh = fetchXGet(u, &st, opts);
 		u->ims_time = st.mtime;
-		xstring_free(fetchOpts);
 		if (repo->fh == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;
