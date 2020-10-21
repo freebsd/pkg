@@ -325,6 +325,20 @@ lua_stat(lua_State *L)
 	return (1);
 }
 
+/* stolen from lua.c */
+void
+lua_args_table(lua_State *L, char **argv, int argc)
+{
+	lua_createtable(L, argc, 1);
+	for (int i = 0; i < argc; i++) {
+		lua_pushstring(L, argv[i]);
+		/* lua starts counting by 1 */
+		lua_rawseti(L, -2, i + 1);
+	}
+	lua_setglobal(L, "arg");
+}
+
+
 /*
  * this is a copy of lua code to be able to override open
  * merge of newprefile and newfile

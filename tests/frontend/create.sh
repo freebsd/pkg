@@ -20,7 +20,8 @@ tests_init \
 	create_from_plist_include \
 	create_with_hardlink \
 	create_no_clobber \
-	time
+	time \
+	create_from_plist_keyword_validation \
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -242,6 +243,98 @@ create_from_plist_bad_fflags_body() {
 		-e inline:"${PROGNAME}: Malformed keyword '', wrong fflags\n" \
 		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+create_from_plist_keyword_validation_body()
+{
+	preparetestcredentials "test"
+
+cat << EOF > test.ucl
+actions: []
+validation: <<EOS
+io.stderr:write("meh\n")
+os.exit(1)
+EOS
+EOF
+	atf_check \
+		-o empty \
+		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF > test.ucl
+actions: []
+validation: <<EOS
+print(line)
+io.stderr:write("meh\n")
+os.exit(1)
+EOS
+EOF
+	atf_check \
+		-o inline:"file1\n" \
+		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF > test.ucl
+actions: []
+validation: <<EOS
+print(#arg)
+io.stderr:write("meh\n")
+os.exit(1)
+EOS
+EOF
+	atf_check \
+		-o inline:"0\n" \
+		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF > test.ucl
+actions: []
+arguments: true
+validation: <<EOS
+print(#arg)
+io.stderr:write("meh\n")
+os.exit(1)
+EOS
+EOF
+	atf_check \
+		-o inline:"1\n" \
+		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+	genplist "@test A B"
+	genplist "@test A A"
+	genplist "@test A B C"
+cat << EOF > test.ucl
+actions: []
+arguments: true
+validation: <<EOS
+if #arg == 1 then
+   os.exit(0)
+end
+if #arg == 2 then
+  if arg[1] == arg[2] then
+    io.stderr:write("The first and the second argument are identical\n")
+    os.exit(1)
+  end
+  os.exit(0)
+end
+io.stderr:write("Invalid number of arguments '".. #arg .. "' expecting 1 or 2\n")
+os.exit(1)
+EOS
+EOF
+output="The first and the second argument are identical
+${PROGNAME}: lua validation script failed for 'A A'
+Invalid number of arguments '3' expecting 1 or 2
+${PROGNAME}: lua validation script failed for 'A B C'
+"
+	atf_check \
+		-e inline:"${output}" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_with_keyword_arguments_body() {

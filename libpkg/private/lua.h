@@ -34,3 +34,4 @@ int lua_pkg_filecmp(lua_State *L);
 int lua_prefix_path(lua_State *L);
 void lua_override_ios(lua_State *L);
 int lua_stat(lua_State *L);
+void lua_args_table(lua_State *L, char **argv, int argc);

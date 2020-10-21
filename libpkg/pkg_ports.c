@@ -26,7 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
+
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -39,11 +47,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <uthash.h>
+#include <err.h>
 
 #include "pkg.h"
 #include "private/utils.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/lua.h"
 
 static ucl_object_t *keyword_schema = NULL;
 
@@ -884,6 +894,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	struct file_attr *freeattr = NULL;
 	int spaces, argc = 0;
 	int ret = EPKG_FATAL;
+	int pstat;
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
@@ -891,6 +902,52 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		tofree = buf = xstrdup(line);
 		while (buf != NULL) {
 			args[argc++] = pkg_utils_tokenize(&buf);
+		}
+	}
+
+	if ((o = ucl_object_find_key(obj, "validation"))) {
+		pid_t pid = fork();
+		if (pid == 0) {
+			lua_State *L = luaL_newstate();
+			luaL_openlibs(L);
+			lua_pushlightuserdata(L, p->pkg);
+			lua_setglobal(L, "package");
+			lua_pushstring(L, line);
+			lua_setglobal(L, "line");
+			lua_args_table(L, args, argc);
+			lua_override_ios(L);
+#ifdef HAVE_CAPSICUM
+			if (cap_enter() < 0 && errno != ENOSYS) {
+				err(1, "cap_enter failed");
+			}
+#endif
+			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---"
+			    "\n%s\nScripts: --- END ---", ucl_object_tostring(o));
+			if (luaL_dostring(L, ucl_object_tostring(o))) {
+				pkg_emit_error("Failed to execute lua script: "
+				    "%s", lua_tostring(L, -1));
+				lua_close(L);
+				exit(1);
+			}
+
+			lua_close(L);
+			exit(0);
+		} else if (pid < 0) {
+			pkg_emit_errno("Cannot fork", "lua validation script");
+			ret = EPKG_FATAL;
+			goto keywords_cleanup;
+		}
+		while (waitpid(pid, &pstat, 0) == -1) {
+			if (errno != EINTR) {
+				pkg_emit_error("waitpid() failed: %s",
+				    strerror(errno));
+			}
+		}
+		if (WEXITSTATUS(pstat) != 0) {
+			pkg_emit_error("lua validation script failed for '%s'",
+			    line);
+			ret = EPKG_FATAL;
+			goto keywords_cleanup;
 		}
 	}
 
