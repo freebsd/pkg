@@ -23,7 +23,8 @@ tests_init \
 	time \
 	create_from_plist_keyword_validation \
 	create_from_plist_keyword_real_args \
-	create_from_plist_keyword_lua_actions
+	create_from_plist_keyword_lua_actions \
+	create_from_plist_keyword_deprecated
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -701,4 +702,34 @@ touch A B
 	atf_check \
 		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /A$" \
 		tar tvf test-1.txz
+}
+
+create_from_plist_keyword_deprecated_body()
+{
+	genmanifest
+	genplist "@test A B C D"
+
+cat << EOF > test.ucl
+arguments: true
+deprecated: true
+EOF
+
+	atf_check \
+		-e inline:"${PROGNAME}: Use of '@test' is deprecated\n" \
+		-s exit:0 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+cat << EOF > test.ucl
+arguments: true
+deprecated: true
+deprecation_message: <<EOM
+we don't like it anymore
+EOM
+EOF
+
+	atf_check \
+		-e inline:"${PROGNAME}: Use of '@test' is deprecated: we don't like it anymore\n" \
+		-s exit:0 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
 }

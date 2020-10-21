@@ -107,6 +107,10 @@ keyword_open_schema(void)
 		"      items = { type = string }; "
 		"      uniqueItems: true "
 		"    }; "
+		"    actions_script = { type = string }; "
+		"    validation = { type = string }; "
+		"    deprecated = { type = boolean }; "
+		"    deprecation_message = { type = string }; "
 		"    attributes = { "
 		"      type = object; "
 		"      properties { "
@@ -1082,6 +1086,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	char keyfile_path[MAXPATHLEN];
 	int ret = EPKG_UNKNOWN, fd;
 	ucl_object_t *o, *schema;
+	const ucl_object_t *obj;
 	struct ucl_schema_error err;
 
 	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
@@ -1124,6 +1129,17 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		}
 	}
 
+	if ((obj = ucl_object_find_key(o, "deprecated")) &&
+	    ucl_object_toboolean(obj)) {
+		obj = ucl_object_find_key(o, "deprecation_message");
+		pkg_emit_error("Use of '@%s' is deprecated%s%s", keyword,
+		   obj != NULL ? ": " : "",
+		   obj != NULL ? ucl_object_tostring(obj) : "");
+		if (ctx.developer_mode) {
+			ucl_object_unref(o);
+			return (EPKG_FATAL);
+		}
+	}
 	ret = apply_keyword_file(o, plist, line, attr);
 
 	return (ret);
