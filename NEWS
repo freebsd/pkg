@@ -1,3 +1,12 @@
+Changes from 1.15.99.5 to 1.15.99.6
+- lots of keywords improvements:
+  * validation: lua script to validate the keyword line
+  * deprecated: boolean to mark a keyword as deprecated
+  * deprecation_message: message if deprecated
+  * actions_script: script version of 'actions' in lua
+  * lua scripts: now can have real arguments instead of
+  pre-expended ones
+
 Changes from 1.15.99.4 to 1.15.99.5
 - Use open_memstream instead of utstring
 - add @include support for plist
