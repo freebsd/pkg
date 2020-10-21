@@ -14,6 +14,7 @@ SRCS=	backup.c \
 	pkg_manifest.c \
 	pkg_repo_update.c \
 	pkgdb_iterator.c \
+	lua.c \
 	lua_scripts.c \
 	scripts.c \
 	diff.c \
