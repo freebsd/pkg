@@ -189,7 +189,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 
 	buf = xstring_new();
 
-	if (line != NULL) {
+	if (line != NULL && argv != NULL) {
 		if (lua) {
 			fprintf(buf->fp, "-- args: %s\n", line);
 		} else {

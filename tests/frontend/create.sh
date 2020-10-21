@@ -22,6 +22,7 @@ tests_init \
 	create_no_clobber \
 	time \
 	create_from_plist_keyword_validation \
+	create_from_plist_keyword_real_args \
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -245,8 +246,35 @@ create_from_plist_bad_fflags_body() {
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
-create_from_plist_keyword_validation_body()
-{
+create_from_plist_keyword_real_args_body() {
+	preparetestcredentials "test"
+
+cat << EOF > test.ucl
+actions: []
+arguments: true
+post-install-lua: <<EOS
+if arg ~= nil then
+	print("yes")
+end
+for i = 1, #arg do
+	print(arg[i])
+end
+EOS
+EOF
+
+	genplist "@test A B C D"
+
+mkdir target
+
+	atf_check \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check \
+		-o inline:"yes\nfile1\nyes\nA\nB\nC\nD\n" \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+}
+
+create_from_plist_keyword_validation_body() {
 	preparetestcredentials "test"
 
 cat << EOF > test.ucl

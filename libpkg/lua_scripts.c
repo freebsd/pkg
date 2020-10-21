@@ -122,6 +122,23 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				err(1, "cap_enter failed");
 			}
 #endif
+			/* parse and set arguments of the line is in the comments */
+			if (STARTS_WITH(lscript->script, "-- args: ")) {
+				char *walk, *begin, *line = NULL;
+				int spaces, argc = 0;
+				char **args = NULL;
+
+				walk = strchr(lscript->script, '\n');
+				begin = lscript->script + strlen("-- args: ");
+				line = xstrndup(begin, walk - begin);
+				spaces = pkg_utils_count_spaces(line);
+				args = xmalloc((spaces + 1)* sizeof(char *));
+				walk = xstrdup(line);
+				while (walk != NULL) {
+					args[argc++] = pkg_utils_tokenize(&walk);
+				}
+				lua_args_table(L, args, argc);
+			}
 
 			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
 			if (luaL_dostring(L, lscript->script)) {
