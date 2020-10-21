@@ -230,6 +230,43 @@ pkgdep(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
+lua_meta(lua_State *L,
+    int (*perform)(struct plist *, char *, struct file_attr *))
+{
+	int n = lua_gettop(L);
+	int ret;
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "takes exactly one argument");
+	char *str = strdup(luaL_checkstring(L, 1));
+	lua_getglobal(L, "plist");
+	struct plist *p = lua_touserdata(L, -1);
+	lua_getglobal(L, "attrs");
+	struct file_attr *a = lua_touserdata(L, -1);
+
+	ret = perform(p, str, a);
+	free(str);
+	lua_pushboolean(L, ret == EPKG_OK);
+	return (1);
+}
+
+static int
+lua_dir(lua_State *L)
+{
+	return (lua_meta(L, dir));
+}
+
+static int
+lua_config(lua_State *L) {
+	return (lua_meta(L, config));
+}
+
+static int
+lua_file(lua_State *L) {
+	return (lua_meta(L, file));
+}
+
+
+static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
 	char path[MAXPATHLEN+1];
@@ -998,6 +1035,38 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	ret = EPKG_OK;
 	if ((o = ucl_object_find_key(obj,  "actions")))
 		ret = parse_actions(o, p, line, attr, argc, args);
+
+	if (ret == EPKG_OK && (o = ucl_object_find_key(obj, "actions_script"))) {
+		lua_State *L = luaL_newstate();
+		static const luaL_Reg plist_lib[] = {
+			{ "config", lua_config },
+			{ "dir", lua_dir },
+			{ "file", lua_file },
+			{ NULL, NULL },
+		};
+		luaL_openlibs(L);
+		lua_pushlightuserdata(L, p);
+		lua_setglobal(L, "plist");
+		lua_pushlightuserdata(L, attr);
+		lua_setglobal(L, "attrs");
+		lua_pushstring(L, line);
+		lua_setglobal(L, "line");
+		lua_args_table(L, args, argc);
+		luaL_newlib(L, plist_lib);
+		lua_setglobal(L, "pkg");
+		lua_override_ios(L);
+		pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---"
+		    "\n%s\nScripts: --- END ---", ucl_object_tostring(o));
+		if (luaL_dostring(L, ucl_object_tostring(o))) {
+			pkg_emit_error("Failed to execute lua script: "
+			    "%s", lua_tostring(L, -1));
+			ret = EPKG_FATAL;
+		}
+		if (lua_tonumber(L, -1) != 0) {
+			ret = EPKG_FATAL;
+		}
+		lua_close(L);
+	}
 
 keywords_cleanup:
 	free(args);

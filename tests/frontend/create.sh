@@ -23,6 +23,7 @@ tests_init \
 	time \
 	create_from_plist_keyword_validation \
 	create_from_plist_keyword_real_args \
+	create_from_plist_keyword_lua_actions
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -657,4 +658,47 @@ EOF
 		-e inline:"pkg: Inside in @include it is not allowed to reuse @include\n" \
 		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+create_from_plist_keyword_lua_actions_body()
+{
+	genmanifest
+	genplist "@test(plop,,) A B C D"
+
+cat << EOF > test.ucl
+arguments: true
+actions_script: <<EOS
+ok = true
+for i = 1, #arg do
+	if not pkg.file(arg[i]) then
+		ok = false
+	end
+end
+if not ok then
+	return 1
+end
+EOS
+arguments: true
+EOF
+
+touch C
+touch D
+
+output="${PROGNAME}: Unable to access file ./A:No such file or directory
+${PROGNAME}: Unable to access file ./B:No such file or directory
+"
+
+	atf_check \
+		-e inline:"${output}" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+touch A B
+	atf_check \
+		-s exit:0 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check \
+		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /A$" \
+		tar tvf test-1.txz
 }
