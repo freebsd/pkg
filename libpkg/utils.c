@@ -180,7 +180,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 int
 format_exec_cmd(char **dest, const char *in, const char *prefix,
-    const char *plist_file, char *line, int argc, char **argv)
+    const char *plist_file, char *line, int argc, char **argv, bool lua)
 {
 	xstring *buf;
 	char path[MAXPATHLEN];
@@ -188,6 +188,14 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 	size_t sz;
 
 	buf = xstring_new();
+
+	if (line != NULL) {
+		if (lua) {
+			fprintf(buf->fp, "-- args: %s\n", line);
+		} else {
+			fprintf(buf->fp, "# args: %s\n", line);
+		}
+	}
 
 	while (in[0] != '\0') {
 		if (in[0] != '%') {

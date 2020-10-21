@@ -552,7 +552,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
 	int ret;
 
 	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL, 0,
-	    NULL);
+	    NULL, false);
 	if (ret != EPKG_OK)
 		return (EPKG_OK);
 
@@ -958,7 +958,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	for (int i = 0; i < nitems(script_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, script_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-			    p->last_file, line, argc, args) != EPKG_OK)
+			    p->last_file, line, argc, args, false) != EPKG_OK)
 				goto keywords_cleanup;
 			append_script(p, script_mapping[i].type, cmd);
 			free(cmd);
@@ -969,7 +969,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	for (int i = 0; i < nitems(lua_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, lua_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-			    p->last_file, line, argc, args) != EPKG_OK)
+			    p->last_file, line, argc, args, true) != EPKG_OK)
 				goto keywords_cleanup;
 			pkg_add_lua_script(p->pkg, cmd, lua_mapping[i].type);
 			free(cmd);

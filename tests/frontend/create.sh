@@ -417,7 +417,7 @@ directories {
     /B = "y";
 }
 scripts {
-    post-install = "echo A B";
+    post-install = "# args: A B\necho A B";
 }
 
 EOF

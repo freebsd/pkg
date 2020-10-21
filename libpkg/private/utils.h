@@ -67,7 +67,7 @@ int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
 int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, char *,
-    int argc, char **argv);
+    int argc, char **argv, bool lua);
 int is_dir(const char *);
 int is_link(const char *);
 
