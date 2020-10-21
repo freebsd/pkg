@@ -100,32 +100,25 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
-	xstring	*sql = NULL;
-	char *sqlcmd = NULL;
+	char *sql = NULL;
 	const char	*comp = NULL;
-	char		 basesql[BUFSIZ] = ""
+	char basesql[] = ""
 		"SELECT id, origin, name, name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
-		"FROM packages AS p";
+		"FROM packages AS p %s ORDER BY NAME;";
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
-	sql = xstring_new();
 	comp = pkgdb_get_pattern_query(pattern, match);
-	if (comp && comp[0])
-		strlcat(basesql, comp, sizeof(basesql));
+	xasprintf(&sql, basesql, repo->name, comp ? comp : "");
 
-	fprintf(sql->fp, basesql, repo->name);
-	fprintf(sql->fp, "%s", " ORDER BY name;");
-	sqlcmd = xstring_get(sql);
-
-	pkg_debug(4, "Pkgdb: running '%s' query for %s", sqlcmd,
+	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
 	     pattern == NULL ? "all": pattern);
-	stmt = prepare_sql(sqlite, sqlcmd);
-	free(sqlcmd);
+	stmt = prepare_sql(sqlite, sql);
+	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -140,8 +133,7 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	xstring	*sql = NULL;
-	char *sqlcmd = NULL;
+	char *sql = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -153,13 +145,11 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 			"WHERE ps.shlib_id IN (SELECT id FROM shlibs WHERE "
 			"name BETWEEN ?1 AND ?1 || '.9');";
 
-	sql = xstring_new();
-	fprintf(sql->fp, basesql, repo->name);
-	sqlcmd = xstring_get(sql);
+	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
-	stmt = prepare_sql(sqlite, sqlcmd);
-	free(sqlcmd);
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	stmt = prepare_sql(sqlite, sql);
+	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -173,8 +163,7 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	xstring	*sql = NULL;
-	char *sqlcmd = NULL;
+	char *sql = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -186,13 +175,11 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 			"WHERE ps.provide_id IN (SELECT id from provides WHERE "
 			"provide = ?1 );";
 
-	sql = xstring_new();
-	fprintf(sql->fp, basesql, repo->name);
-	sqlcmd = xstring_get(sql);
+	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
-	stmt = prepare_sql(sqlite, sqlcmd);
-	free(sqlcmd);
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	stmt = prepare_sql(sqlite, sql);
+	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -206,8 +193,7 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	xstring	*sql = NULL;
-	char *sqlcmd = NULL;
+	char *sql = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -218,13 +204,11 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 			"p.id = ps.package_id "
 			"WHERE ps.shlib_id = (SELECT id FROM shlibs WHERE name=?1);";
 
-	sql = xstring_new();
-	fprintf(sql->fp, basesql, repo->name);
-	sqlcmd = xstring_get(sql);
+	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
-	stmt = prepare_sql(sqlite, sqlcmd);
-	free(sqlcmd);
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	stmt = prepare_sql(sqlite, sql);
+	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -239,8 +223,7 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 {
 	sqlite3_stmt	*stmt;
 	sqlite3 *sqlite = PRIV_GET(repo);
-	xstring	*sql = NULL;
-	char *sqlcmd = NULL;
+	char *sql = NULL;
 	const char	 basesql[] = ""
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
 			"p.name as uniqueid, "
@@ -251,13 +234,11 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 			"p.id = ps.package_id "
 			"WHERE ps.require_id = (SELECT id FROM requires WHERE require=?1);";
 
-	sql = xstring_new();
-	fprintf(sql->fp, basesql, repo->name);
-	sqlcmd = xstring_get(sql);
+	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
-	stmt = prepare_sql(sqlite, sqlcmd);
-	free(sqlcmd);
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
+	stmt = prepare_sql(sqlite, sql);
+	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
@@ -447,40 +428,27 @@ pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
-	xstring	*sql = NULL;
-	char *sqlcmd = NULL;
-
-	sql = xstring_new();
+	const char *sql = NULL;
 
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
-		goto out;
-		break;
+	case PKG_STATS_REMOTE_REPOS:
 	case PKG_STATS_LOCAL_SIZE:
-		goto out;
-		break;
+		return (stats);
 	case PKG_STATS_REMOTE_UNIQUE:
-		fprintf(sql->fp, "SELECT COUNT(id) FROM main.packages;");
+		sql = "SELECT COUNT(id) FROM main.packages;";
 		break;
 	case PKG_STATS_REMOTE_COUNT:
-		fprintf(sql->fp, "SELECT COUNT(id) FROM main.packages;");
+		sql = "SELECT COUNT(id) FROM main.packages;";
 		break;
 	case PKG_STATS_REMOTE_SIZE:
-		fprintf(sql->fp, "SELECT SUM(pkgsize) FROM main.packages;");
-		break;
-	case PKG_STATS_REMOTE_REPOS:
-		goto out;
+		sql = "SELECT SUM(pkgsize) FROM main.packages;";
 		break;
 	}
 
-	sqlcmd = xstring_get(sql);
-	sql = NULL; /* avoid double free in the out section */
+	pkg_debug(4, "binary_repo: running '%s'", sql);
+	stmt = prepare_sql(sqlite, sql);
 
-	pkg_debug(4, "binary_repo: running '%s'", sqlcmd);
-	stmt = prepare_sql(sqlite, sqlcmd);
-out:
-	xstring_free(sql);
-	free(sql);
 	if (stmt == NULL)
 		return (stats);
 
