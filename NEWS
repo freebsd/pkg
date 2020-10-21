@@ -1,3 +1,7 @@
+Changes from 1.15.99.4 to 1.15.99.5
+- Use open_memstream instead of utstring
+- add @include support for plist
+
 Changes from 1.15.99.3 to 1.15.99.4
 - Fix build with non recent compiler
 
