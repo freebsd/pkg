@@ -281,57 +281,57 @@ create_from_plist_keyword_validation_body() {
 
 cat << EOF > test.ucl
 actions: []
-validation: <<EOS
+prepackaging: <<EOS
 io.stderr:write("meh\n")
-os.exit(1)
+return 1
 EOS
 EOF
 	atf_check \
 		-o empty \
-		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 cat << EOF > test.ucl
 actions: []
-validation: <<EOS
+prepackaging: <<EOS
 print(line)
 io.stderr:write("meh\n")
-os.exit(1)
+return 1
 EOS
 EOF
 	atf_check \
 		-o inline:"file1\n" \
-		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 cat << EOF > test.ucl
 actions: []
-validation: <<EOS
+prepackaging: <<EOS
 print(#arg)
 io.stderr:write("meh\n")
-os.exit(1)
+return 1
 EOS
 EOF
 	atf_check \
 		-o inline:"0\n" \
-		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
 cat << EOF > test.ucl
 actions: []
 arguments: true
-validation: <<EOS
+prepackaging: <<EOS
 print(#arg)
 io.stderr:write("meh\n")
-os.exit(1)
+return 1
 EOS
 EOF
 	atf_check \
 		-o inline:"1\n" \
-		-e inline:"meh\n${PROGNAME}: lua validation script failed for 'file1'\n" \
+		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -341,25 +341,26 @@ EOF
 cat << EOF > test.ucl
 actions: []
 arguments: true
-validation: <<EOS
+prepackaging: <<EOS
 if #arg == 1 then
-   os.exit(0)
+  return 0
 end
 if #arg == 2 then
   if arg[1] == arg[2] then
     io.stderr:write("The first and the second argument are identical\n")
-    os.exit(1)
+    return 1
   end
-  os.exit(0)
+  return 1
 end
 io.stderr:write("Invalid number of arguments '".. #arg .. "' expecting 1 or 2\n")
-os.exit(1)
+return 1
 EOS
 EOF
-output="The first and the second argument are identical
-${PROGNAME}: lua validation script failed for 'A A'
+output="${PROGNAME}: Fail to apply keyword 'test'
+The first and the second argument are identical
+${PROGNAME}: Fail to apply keyword 'test'
 Invalid number of arguments '3' expecting 1 or 2
-${PROGNAME}: lua validation script failed for 'A B C'
+${PROGNAME}: Fail to apply keyword 'test'
 "
 	atf_check \
 		-e inline:"${output}" \
@@ -385,7 +386,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n" \
+		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n${PROGNAME}: Fail to apply keyword 'testkeyword'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -400,7 +401,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n" \
+		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n${PROGNAME}: Fail to apply keyword 'testkeyword'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -668,7 +669,7 @@ create_from_plist_keyword_lua_actions_body()
 
 cat << EOF > test.ucl
 arguments: true
-actions_script: <<EOS
+prepackaging: <<EOS
 ok = true
 for i = 1, #arg do
 	if not pkg.file(arg[i]) then
@@ -687,6 +688,7 @@ touch D
 
 output="${PROGNAME}: Unable to access file ./A:No such file or directory
 ${PROGNAME}: Unable to access file ./B:No such file or directory
+${PROGNAME}: Fail to apply keyword 'test'
 "
 
 	atf_check \

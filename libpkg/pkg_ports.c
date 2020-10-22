@@ -826,7 +826,7 @@ parse_actions(const ucl_object_t *o, struct plist *p,
 	const char *actname;
 	ucl_object_iter_t it = NULL;
 	int i, j = 0;
-	int rc, r = EPKG_OK;
+	int r, rc = EPKG_OK;
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		actname = ucl_object_tostring(cur);
@@ -935,7 +935,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	struct file_attr *freeattr = NULL;
 	int spaces, argc = 0;
 	int ret = EPKG_FATAL;
-	int pstat;
 
 	if ((o = ucl_object_find_key(obj,  "arguments")) && ucl_object_toboolean(o)) {
 		spaces = pkg_utils_count_spaces(line);
@@ -943,52 +942,6 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		tofree = buf = xstrdup(line);
 		while (buf != NULL) {
 			args[argc++] = pkg_utils_tokenize(&buf);
-		}
-	}
-
-	if ((o = ucl_object_find_key(obj, "validation"))) {
-		pid_t pid = fork();
-		if (pid == 0) {
-			lua_State *L = luaL_newstate();
-			luaL_openlibs(L);
-			lua_pushlightuserdata(L, p->pkg);
-			lua_setglobal(L, "package");
-			lua_pushstring(L, line);
-			lua_setglobal(L, "line");
-			lua_args_table(L, args, argc);
-			lua_override_ios(L);
-#ifdef HAVE_CAPSICUM
-			if (cap_enter() < 0 && errno != ENOSYS) {
-				err(1, "cap_enter failed");
-			}
-#endif
-			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---"
-			    "\n%s\nScripts: --- END ---", ucl_object_tostring(o));
-			if (luaL_dostring(L, ucl_object_tostring(o))) {
-				pkg_emit_error("Failed to execute lua script: "
-				    "%s", lua_tostring(L, -1));
-				lua_close(L);
-				exit(1);
-			}
-
-			lua_close(L);
-			exit(0);
-		} else if (pid < 0) {
-			pkg_emit_errno("Cannot fork", "lua validation script");
-			ret = EPKG_FATAL;
-			goto keywords_cleanup;
-		}
-		while (waitpid(pid, &pstat, 0) == -1) {
-			if (errno != EINTR) {
-				pkg_emit_error("waitpid() failed: %s",
-				    strerror(errno));
-			}
-		}
-		if (WEXITSTATUS(pstat) != 0) {
-			pkg_emit_error("lua validation script failed for '%s'",
-			    line);
-			ret = EPKG_FATAL;
-			goto keywords_cleanup;
 		}
 	}
 
@@ -1040,7 +993,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "actions")))
 		ret = parse_actions(o, p, line, attr, argc, args);
 
-	if (ret == EPKG_OK && (o = ucl_object_find_key(obj, "actions_script"))) {
+	if (ret == EPKG_OK && (o = ucl_object_find_key(obj, "prepackaging"))) {
 		lua_State *L = luaL_newstate();
 		static const luaL_Reg plist_lib[] = {
 			{ "config", lua_config },
@@ -1141,6 +1094,9 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		}
 	}
 	ret = apply_keyword_file(o, plist, line, attr);
+	if (ret != EPKG_OK) {
+		pkg_emit_error("Fail to apply keyword '%s'", keyword);
+	}
 
 	return (ret);
 }
