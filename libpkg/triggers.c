@@ -378,8 +378,10 @@ triggers_execute(struct trigger *cleanup_triggers)
 	/*
 	 * Generate a hash table to ease the lookup later
 	 */
-	LL_FOREACH(triggers, t) {
-		kh_add(strings, th, t->name, t->name, free);
+	if (cleanup_triggers != NULL) {
+		LL_FOREACH(triggers, t) {
+			kh_add(strings, th, t->name, t->name, free);
+		}
 	}
 
 	/*
