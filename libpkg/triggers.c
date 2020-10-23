@@ -37,7 +37,9 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <paths.h>
+#include <regex.h>
 #include <spawn.h>
 
 #include <private/pkg.h>
@@ -90,7 +92,7 @@ trigger_open_schema(void)
 		"     }; "
 		"     required = [ type, script ];"
 		"  };"
-		"  postexec = { "
+		"  trigger = { "
 		"     type = object; "
 		"     properties = {"
 		"       type = { "
@@ -101,7 +103,7 @@ trigger_open_schema(void)
 		"     }; "
 		"     required = [ type, script ];"
 		"  };"
-		"  required [ description ];"
+		"  required [ description, trigger ];"
 		"}";
 
 	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
@@ -149,8 +151,8 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	if (obj == NULL)
 		return (NULL);
 
-	if (!ucl_object_validate(schema, obj, &err)) {
-		pkg_emit_error("Keyword definition %s cannot be validated: %s", name, err.msg);
+	if (!ucl_object_validate(obj, schema, &err)) {
+		pkg_emit_error("trigger definition %s cannot be validated: %s", name, err.msg);
 		ucl_object_unref(obj);
 		return (NULL);
 	}
@@ -161,21 +163,28 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	}
 
 	t = xcalloc(1, sizeof(*t));
-	t->desc = xstrdup(ucl_object_tostring(ucl_object_find_key(obj, "description")));
-	t->name = xstrdup(name);
 	if (o != NULL) {
 		t->cleanup.type = get_script_type(ucl_object_tostring(ucl_object_find_key(o, "type")));
-		t->cleanup.script = xstrdup(ucl_object_tostring(ucl_object_find_key(o, "type")));
+		t->cleanup.script = xstrdup(ucl_object_tostring(ucl_object_find_key(o, "script")));
 	}
 	if (cleanup_only) {
 		ucl_object_unref(obj);
 		return (t);
 	}
-	o = ucl_object_find_key(obj, "script");
+	o = ucl_object_find_key(obj, "trigger");
 	if (o != NULL) {
 		t->script.type = get_script_type(ucl_object_tostring(ucl_object_find_key(o, "type")));
-		t->script.script = xstrdup(ucl_object_tostring(ucl_object_find_key(o, "type")));
+		t->script.script = xstrdup(ucl_object_tostring(ucl_object_find_key(o, "script")));
 	}
+	o = ucl_object_find_key(obj, "path");
+	if (o != NULL)
+		t->path = ucl_object_ref(o);
+	o = ucl_object_find_key(obj, "path_glob");
+	if (o != NULL)
+		t->path_glob = ucl_object_ref(o);
+	o = ucl_object_find_key(obj, "path_regex");
+	if (o != NULL)
+		t->path_regex = ucl_object_ref(o);
 
 	ucl_object_unref(obj);
 	return (t);
@@ -212,8 +221,9 @@ triggers_load(bool cleanup_only)
 		if (e->d_name[0] ==  '.')
 			continue;
 		/* only regular files are considered */
-		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_FOLLOW) != 0) {
+		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
+			return (NULL);
 		}
 		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
 		if (t != NULL)
@@ -231,16 +241,12 @@ trigger_free(struct trigger *t)
 	if (t == NULL)
 		return;
 	free(t->name);
-	free(t->desc);
-	for (int i = 0; t->path != NULL && t->path[i]; i++) {
-		free(t->path[i]);
-	}
-	for (int i = 0; t->path_glob != NULL && t->path_glob[i]; i++) {
-		free(t->path_glob[i]);
-	}
-	for (int i = 0; t->path_glob != NULL && t->path_regex[i]; i++) {
-		free(t->path_regex[i]);
-	}
+	if (t->path != NULL)
+		ucl_object_unref(t->path);
+	if (t->path != NULL)
+		ucl_object_unref(t->path_glob);
+	if (t->path != NULL)
+		ucl_object_unref(t->path_regex);
 	free(t->path);
 	free(t->path_glob);
 	free(t->path_regex);
@@ -249,7 +255,7 @@ trigger_free(struct trigger *t)
 }
 
 static int
-trigger_execute_shell(const char *script)
+trigger_execute_shell(const char *script, kh_strings_t *args __unused)
 {
 	posix_spawn_file_actions_t action;
 	int stdin_pipe[2] = {-1, -1};
@@ -317,7 +323,7 @@ cleanup:
 }
 
 static int
-trigger_execute_lua(const char *script)
+trigger_execute_lua(const char *script, kh_strings_t *args)
 {
 	lua_State *L;
 	int pstat;
@@ -327,6 +333,16 @@ trigger_execute_lua(const char *script)
 		L = luaL_newstate();
 		luaL_openlibs(L);
 		lua_override_ios(L);
+		char *dir;
+		char **arguments = NULL;
+		int i = 0;
+		if (args != NULL) {
+			arguments = xcalloc(kh_count(args), sizeof(char*));
+			kh_foreach_value(args, dir, {
+				arguments[i++] = dir;
+			});
+		}
+		lua_args_table(L, arguments, i);
 #ifdef HAVE_CAPSICUM
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			err(1, "cap_enter failed");
@@ -361,6 +377,48 @@ trigger_execute_lua(const char *script)
 	return (EPKG_OK);
 }
 
+static void
+trigger_check_match(struct trigger *t, char *dir)
+{
+	const ucl_object_t *cur;
+	ucl_object_iter_t it;
+
+	if (t->path != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(t->path, &it, true))) {
+			if (strcmp(dir, ucl_object_tostring(cur)) == 0) {
+				kh_safe_add(strings, t->matched, dir, dir);
+				return;
+			}
+		}
+	}
+
+	if (t->path_glob != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(t->path_glob, &it, true))) {
+			if (fnmatch(ucl_object_tostring(cur), dir, 0) == 0) {
+				kh_safe_add(strings, t->matched, dir, dir);
+				return;
+			}
+		}
+	}
+
+	if (t->path_regex != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(t->path_regex, &it, true))) {
+			regex_t re;
+			regcomp(&re, ucl_object_tostring(cur),
+			   REG_EXTENDED|REG_NOSUB);
+			if (regexec(&re, dir, 0, NULL, 0) == 0) {
+				kh_safe_add(strings, t->matched, dir, dir);
+				regfree(&re);
+				return;
+			}
+			regfree(&re);
+		}
+	}
+}
+
 /*
  * first execute all triggers then the cleanup scripts
  * from the triggers that are not there anymore
@@ -371,6 +429,7 @@ triggers_execute(struct trigger *cleanup_triggers)
 {
 	struct trigger *triggers, *t, *trigger;
 	kh_strings_t *th = NULL;
+	char *dir;
 	int ret = EPKG_OK;
 
 	triggers = triggers_load(false);
@@ -395,29 +454,38 @@ triggers_execute(struct trigger *cleanup_triggers)
 	}
 	kh_free(strings, th, char, free);
 
-	pkg_emit_trigger_begin();
+	pkg_emit_triggers_begin();
 	LL_FOREACH(cleanup_triggers, t) {
 		pkg_emit_trigger(t->name, true);
 		if (t->cleanup.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->cleanup.script);
+			ret = trigger_execute_lua(t->cleanup.script, NULL);
 		} else if (t->cleanup.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->cleanup.script);
+			ret = trigger_execute_shell(t->cleanup.script, NULL);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
 	}
 
+	kh_foreach_value(ctx.touched_dir_hash, dir, {
+		LL_FOREACH(triggers, t) {
+			trigger_check_match(t, dir);
+		}
+		/* We need to check if that matches a trigger */
+	});
+
 	LL_FOREACH(triggers, t) {
+		if (t->matched == NULL)
+			continue;
 		pkg_emit_trigger(t->name, false);
-		if (t->cleanup.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->script.script);
-		} else if (t->cleanup.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->script.script);
+		if (t->script.type == SCRIPT_LUA) {
+			ret = trigger_execute_lua(t->script.script, t->matched);
+		} else if (t->script.type == SCRIPT_SHELL) {
+			ret = trigger_execute_shell(t->script.script, t->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
 	}
-	pkg_emit_trigger_finished();
+	pkg_emit_triggers_finished();
 
 cleanup:
 	DL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
@@ -430,4 +498,18 @@ cleanup:
 		trigger_free(trigger);
 	}
 	return (EPKG_OK);
+}
+
+void
+append_touched_file(const char *path)
+{
+	char *newpath, *walk;
+
+	newpath = xstrdup(path);
+	walk = strrchr(newpath, '/');
+	if (walk == NULL)
+		return;
+	*walk = '\0';
+
+	kh_add(strings, ctx.touched_dir_hash, newpath, newpath, free);
 }

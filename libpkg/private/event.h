@@ -96,8 +96,8 @@ void pkg_emit_file_missing(struct pkg *p, struct pkg_file *f);
 void pkg_register_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
 void pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
 void pkg_emit_conflicts(struct pkg *p1, struct pkg *p2, const char *path);
-void pkg_emit_trigger_begin(void);
+void pkg_emit_triggers_begin(void);
 void pkg_emit_trigger(const char *name, bool cleanup);
-void pkg_emit_trigger_finished(void);
+void pkg_emit_triggers_finished(void);
 
 #endif

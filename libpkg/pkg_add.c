@@ -738,6 +738,7 @@ pkg_extract_finalize(struct pkg *pkg)
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+		append_touched_file(f->path);
 		if (*f->temppath == '\0')
 			continue;
 		fto = f->path;

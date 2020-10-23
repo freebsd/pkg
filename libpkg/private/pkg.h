@@ -239,6 +239,14 @@
 	}						\
 } while (0)
 
+KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
+KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
+KHASH_MAP_INIT_STR(pkg_dirs, struct pkg_dir *);
+KHASH_MAP_INIT_STR(pkg_config_files, struct pkg_config_file *);
+KHASH_MAP_INIT_STR(strings, char *);
+KHASH_MAP_INIT_STR(pkg_options, struct pkg_option *);
+KHASH_MAP_INIT_STR(pkg_conflicts, struct pkg_conflict *);
+
 struct pkg_ctx {
 	int eventpipe;
 	int64_t debug_level;
@@ -255,6 +263,7 @@ struct pkg_ctx {
 	const char *backup_library_path;
 	bool triggers;
 	const char *triggers_path;
+	kh_strings_t *touched_dir_hash;
 };
 
 extern struct pkg_ctx ctx;
@@ -263,14 +272,6 @@ struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
 struct pkg_lua_script;
-
-KHASH_MAP_INIT_STR(pkg_deps, struct pkg_dep *);
-KHASH_MAP_INIT_STR(pkg_files, struct pkg_file *);
-KHASH_MAP_INIT_STR(pkg_dirs, struct pkg_dir *);
-KHASH_MAP_INIT_STR(pkg_config_files, struct pkg_config_file *);
-KHASH_MAP_INIT_STR(strings, char *);
-KHASH_MAP_INIT_STR(pkg_options, struct pkg_option *);
-KHASH_MAP_INIT_STR(pkg_conflicts, struct pkg_conflict *);
 
 struct pkg {
 	bool		 direct;
@@ -346,10 +347,9 @@ typedef enum {
 
 struct trigger {
 	char *name;
-	char *desc;
-	char **path;
-	char **path_glob;
-	char **path_regex;
+	ucl_object_t *path;
+	ucl_object_t *path_glob;
+	ucl_object_t *path_regex;
 	struct {
 		char *script;
 		int type;
@@ -358,6 +358,7 @@ struct trigger {
 		char *script;
 		int type;
 	} cleanup;
+	kh_strings_t *matched;
 	struct trigger *prev, *next;
 };
 
@@ -920,5 +921,6 @@ int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, con
 
 struct trigger *triggers_load(bool cleanup_only);
 int triggers_execute(struct trigger *cleanup_triggers);
+void append_touched_file(const char *path);
 
 #endif

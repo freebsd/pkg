@@ -355,6 +355,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	pkg_emit_progress_start(NULL);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		append_touched_file(file->path);
 		pkg_emit_progress_tick(cur_file++, nfiles);
 		pkg_delete_file(pkg, file, force);
 	}
