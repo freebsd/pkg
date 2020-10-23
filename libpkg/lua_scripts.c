@@ -147,6 +147,11 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				exit(1);
 			}
 
+			if (lua_tonumber(L, -1) != 0) {
+				lua_close(L);
+				exit(1);
+			}
+
 			lua_close(L);
 			exit(0);
 		} else if (pid < 0) {
