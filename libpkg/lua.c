@@ -412,6 +412,12 @@ lua_os_execute(lua_State *L)
 	return (luaL_error(L, "os.execute not available"));
 }
 
+static int
+lua_os_exit(lua_State *L)
+{
+	return (luaL_error(L, "os.exit not available"));
+}
+
 void
 lua_override_ios(lua_State *L)
 {
@@ -426,4 +432,6 @@ lua_override_ios(lua_State *L)
 	lua_setfield(L, -2, "rename");
 	lua_pushcfunction(L, lua_os_execute);
 	lua_setfield(L, -2, "execute");
+	lua_pushcfunction(L, lua_os_exit);
+	lua_setfield(L, -2, "exit");
 }
