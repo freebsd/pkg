@@ -2037,7 +2037,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
+	struct trigger *cleanup_triggers;
 
+	cleanup_triggers = triggers_load(true);
 	if (j->type == PKG_JOBS_INSTALL) {
 		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
 		post = PKG_PLUGIN_HOOK_POST_INSTALL;
@@ -2132,6 +2134,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	}
 
 	pkg_plugins_hook_run(post, j, j->db);
+	triggers_execute(cleanup_triggers);
 
 cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
