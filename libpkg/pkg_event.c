@@ -380,6 +380,19 @@ pipeevent(struct pkg_event *ev)
 		  (intmax_t)ev->e_progress_tick.current,
 		  (intmax_t)ev->e_progress_tick.total);
 		break;
+	case PKG_EVENT_TRIGGERS_BEGIN:
+		fputs("{ \"type\": \"INFO_TRIGGERS_BEGIN\", \"data\": {}}",
+		    msg->fp);
+		break;
+	case PKG_EVENT_TRIGGERS_FINISHED:
+		fputs("{ \"type\": \"INFO_TRIGGERS_FINISHED\", \"data\": {}}",
+		    msg->fp);
+		break;
+	case PKG_EVENT_TRIGGER:
+		fprintf(msg->fp, "{ \"type\": \"INFO_TRIGGER\", \"data\": { "
+		    "\"cleanup\": %s, \"name\": \"%s\" }}",
+		    ev->e_trigger.cleanup ? "true" : "false",
+		    ev->e_trigger.name);
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
 		break;
@@ -1071,4 +1084,35 @@ pkg_emit_conflicts(struct pkg *p1, struct pkg *p2, const char *path)
 	ev.e_conflicts.p2 = p2;
 	ev.e_conflicts.path = path;
 	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_triggers_begin(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_TRIGGERS_BEGIN;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_triggers_finished(void)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_TRIGGERS_FINISHED;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_trigger(const char *name, bool cleanup)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_TRIGGER;
+	ev.e_trigger.name = name;
+	ev.e_trigger.cleanup = cleanup;
+
 }

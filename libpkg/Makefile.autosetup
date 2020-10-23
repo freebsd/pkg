@@ -46,7 +46,8 @@ SRCS=	backup.c \
 	flags.c \
 	fetch_ssh.c \
 	fetch_libfetch.c \
-	fetch_file.c
+	fetch_file.c \
+	triggers.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/blake2 \

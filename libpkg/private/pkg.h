@@ -253,6 +253,8 @@ struct pkg_ctx {
 	int osversion;
 	bool backup_libraries;
 	const char *backup_library_path;
+	bool triggers;
+	const char *triggers_path;
 };
 
 extern struct pkg_ctx ctx;
@@ -334,6 +336,29 @@ struct pkg {
 	size_t		dir_to_del_len;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
+};
+
+typedef enum {
+	SCRIPT_UNKNOWN = 0,
+	SCRIPT_SHELL,
+	SCRIPT_LUA,
+} script_type_t;
+
+struct trigger {
+	char *name;
+	char *desc;
+	char **path;
+	char **path_glob;
+	char **path_regex;
+	struct {
+		char *script;
+		int type;
+	} script;
+	struct {
+		char *script;
+		int type;
+	} cleanup;
+	struct trigger *prev, *next;
 };
 
 struct pkg_create {
@@ -892,5 +917,8 @@ struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 void backup_library(struct pkgdb *, struct pkg *, const char *);
 int suggest_arch(struct pkg *, bool);
 int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, const struct timespec *ats, const struct timespec *mts);
+
+struct trigger *triggers_load(bool cleanup_only);
+int triggers_execute(struct trigger *cleanup_triggers);
 
 #endif

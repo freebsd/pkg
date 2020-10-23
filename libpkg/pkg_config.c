@@ -75,6 +75,7 @@ struct pkg_ctx ctx = {
 	.pkg_dbdirfd = -1,
 	.osversion = 0,
 	.backup_libraries = false,
+	.triggers = true,
 };
 
 struct config_entry {
@@ -458,6 +459,18 @@ static struct config_entry c[] = {
 		"BACKUP_LIBRARY_PATH",
 		PREFIX "/lib/compat/pkg",
 		"Path where pkg will backup libraries",
+	},
+	{
+		PKG_STRING,
+		"PKG_TRIGGERS_DIR",
+		PREFIX "/share/pkg/triggers",
+		"Path where the triggers should be installed",
+	},
+	{
+		PKG_BOOL,
+		"PKG_TRIGGERS_ENABLE",
+		"YES",
+		"Disable triggers",
 	},
 };
 
@@ -1245,6 +1258,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	ctx.backup_libraries = pkg_object_bool(pkg_config_get("BACKUP_LIBRARIES"));
 	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
+	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
+	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
