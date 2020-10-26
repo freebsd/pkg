@@ -68,19 +68,13 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 	bool debug = false;
 	ssize_t bytes_written;
 	long argmax;
-	int cur_pipe[2];
+	int cur_pipe[2] = {-1, -1};
 #ifdef PROC_REAP_KILL
 	bool do_reap;
 	pid_t mypid;
 	struct procctl_reaper_status info;
 	struct procctl_reaper_kill killemall;
 #endif
-	struct pollfd pfd;
-	bool should_waitpid;
-	ssize_t linecap = 0;
-	char *line = NULL;
-	FILE *f;
-
 	struct {
 		const char * const arg;
 		const pkg_script b;
@@ -152,6 +146,11 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				goto cleanup;
 			}
 
+			if (fcntl(cur_pipe[0], F_SETFL, O_NONBLOCK) == -1) {
+				pkg_emit_errno("pkg_script_run", "fcntl");
+				goto cleanup;
+			}
+
 			setenv("PKG_MSGFD", "4", 1);
 
 			posix_spawn_file_actions_adddup2(&action, cur_pipe[1], 4);
@@ -168,8 +167,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);
-					close(cur_pipe[0]);
-					close(cur_pipe[1]);
 					goto cleanup;
 				}
 
@@ -188,8 +185,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 					pkg_errno("Cannot open %s", "/dev/null");
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);
-					close(cur_pipe[0]);
-					close(cur_pipe[1]);
 					goto cleanup;
 				}
 				posix_spawn_file_actions_adddup2(&action,
@@ -209,8 +204,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 				errno = error;
 				pkg_errno("Cannot runscript %s", map[i].arg);
 				posix_spawn_file_actions_destroy(&action);
-				close(cur_pipe[0]);
-				close(cur_pipe[1]);
 				goto cleanup;
 			}
 			posix_spawn_file_actions_destroy(&action);
@@ -236,83 +229,26 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			unsetenv("PKG_PREFIX");
 
 			close(cur_pipe[1]);
-			memset(&pfd, 0, sizeof(pfd));
-			pfd.fd = cur_pipe[0];
-			pfd.events = POLLIN | POLLERR | POLLHUP;
+			cur_pipe[1] = -1;
 
-			f = fdopen(pfd.fd, "r");
-			should_waitpid = true;
-			for (;;) {
-				errno = 0;
-				int pres = poll(&pfd, 1, 1000);
-				if (pres == -1) {
-					if (errno == EINTR) {
-						continue;
-					} else {
-						pkg_emit_error("poll() "
-						    "failed: %s", strerror(errno));
-						ret = EPKG_FATAL;
-						goto cleanup;
-					}
-				}
-				if (pres == 0) {
-					pid_t p;
-					assert(should_waitpid);
-					while ((p = waitpid(pid, &pstat, WNOHANG)) == -1) {
-						if (errno != EINTR) {
-							pkg_emit_error("waitpid() "
-							    "failed: %s", strerror(errno));
-							ret = EPKG_FATAL;
-							goto cleanup;
-						}
-					}
-					if (p > 0) {
-						should_waitpid = false;
-						break;
-					}
-					continue;
-				}
-				if (pfd.revents & (POLLERR|POLLHUP))
-					break;
-				if (getline(&line, &linecap, f) > 0)
-					pkg_emit_message(line);
-				if (feof(f))
-					break;
-			}
-			/* Gather any remaining output */
-			while (!feof(f) && !ferror(f) && getline(&line, &linecap, f) > 0) {
-				pkg_emit_message(line);
-			}
-			fclose(f);
+			ret = pkg_script_run_child(pid, &pstat, cur_pipe[0], map[i].arg);
 
-			while (should_waitpid && waitpid(pid, &pstat, 0) == -1) {
-				if (errno != EINTR) {
-					pkg_emit_error("waitpid() failed: %s",
-					    strerror(errno));
-					ret = EPKG_FATAL;
-					goto cleanup;
-				}
-			}
-
-			if (WEXITSTATUS(pstat) != 0) {
-				if (WEXITSTATUS(pstat) == 3)
-					exit(0);
-
-				pkg_emit_error("%s script failed", map[i].arg);
-				ret = EPKG_FATAL;
-				goto cleanup;
-			}
+			close(cur_pipe[0]);
+			cur_pipe[0] = -1;
 		}
 	}
 
 cleanup:
 
-	free(line);
 	xstring_free(script_cmd);
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)
 		close(stdin_pipe[1]);
+	if (cur_pipe[0] != -1)
+		close(cur_pipe[0]);
+	if (cur_pipe[1] != -1)
+		close(cur_pipe[1]);
 
 #ifdef PROC_REAP_KILL
 	/*
@@ -336,3 +272,70 @@ cleanup:
 	return (ret);
 }
 
+
+int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) {
+	struct pollfd pfd;
+	bool wait_for_child;
+	char msgbuf[16384+1];
+
+
+	memset(&pfd, 0, sizeof(pfd));
+	pfd.events = POLLIN | POLLERR | POLLHUP;
+	pfd.fd = inputfd;
+
+
+	// Wait for child to exit, and read input, including all queued input on child exit.
+	wait_for_child = true;
+	do {
+		pfd.revents = 0;
+		errno = 0;
+		// Check if child is running, get exitstatus if newly terminated.
+		pid_t p = 0;
+		while (wait_for_child && (p = waitpid(pid, pstat, WNOHANG)) == -1) {
+			if (errno != EINTR) {
+				pkg_emit_error("waitpid() "
+					       "failed: %s", strerror(errno));
+				return EPKG_FATAL;
+			}
+		}
+		if (p > 0) {
+			wait_for_child = false;
+		}
+		// Check for input from child, but only wait for more if child is still running.
+		// Read/print all available input.
+		ssize_t readsize;
+		do {
+			readsize = 0;
+			int pres;
+			while ((pres = poll(&pfd, 1, wait_for_child ? 1000 : 0)) == -1) {
+				if (errno != EINTR) {
+					pkg_emit_error("poll() "
+						       "failed: %s", strerror(errno));
+					return EPKG_FATAL;
+				}
+			}
+			if (pres > 0 && pfd.revents & POLLIN) {
+				while ((readsize = read(inputfd, msgbuf, sizeof msgbuf - 1)) < 0) {
+					if (errno != EINTR && errno != EAGAIN) {
+						pkg_emit_error("read() "
+							       "failed: %s", strerror(errno));
+						return EPKG_FATAL;
+					}
+				}
+				if (readsize > 0) {
+					msgbuf[readsize] = '\0';
+					pkg_emit_message(msgbuf);
+				}
+			}
+		} while (readsize > 0);
+	} while (wait_for_child);
+
+	if (WEXITSTATUS(*pstat) != 0) {
+		if (WEXITSTATUS(*pstat) == 3)
+			exit(0);
+
+		pkg_emit_error("%s script failed", script_name);
+		return EPKG_FATAL;
+	}
+	return EPKG_OK;
+}
