@@ -62,12 +62,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 	struct procctl_reaper_status info;
 	struct procctl_reaper_kill killemall;
 #endif
-	struct pollfd pfd;
 	int cur_pipe[2];
-	bool should_waitpid;
 	char *line = NULL;
-	FILE *f;
-	ssize_t linecap = 0;
 
 	if (pkg->lua_scripts[type] == NULL)
 		return (EPKG_OK);
@@ -161,68 +157,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 		}
 
 		close(cur_pipe[1]);
-		memset(&pfd, 0, sizeof(pfd));
-		pfd.fd = cur_pipe[0];
-		pfd.events = POLLIN | POLLERR | POLLHUP;
 
-		f = fdopen(pfd.fd, "r");
-		should_waitpid = true;
-		for (;;) {
-			errno = 0;
-			int pres = poll(&pfd, 1, 1000);
-			if (pres == -1) {
-				if (errno == EINTR) {
-					continue;
-				} else {
-					pkg_emit_error("poll() failed: %s",
-					    strerror(errno));
-					ret = EPKG_FATAL;
-					goto cleanup;
-				}
-			}
-			if (pres == 0) {
-				pid_t p;
-				assert(should_waitpid);
-				while ((p = waitpid(pid, &pstat, WNOHANG)) == -1) {
-					if (errno != EINTR) {
-						pkg_emit_error("waitpid() "
-						    "failed: %s", strerror(errno));
-						ret = EPKG_FATAL;
-						goto cleanup;
-					}
-				}
-				if (p > 0) {
-					should_waitpid = false;
-					break;
-				}
-				continue;
-			}
-			if (pfd.revents & (POLLERR|POLLHUP))
-				break;
-			if (getline(&line, &linecap, f) > 0)
-				pkg_emit_message(line);
-			if (feof(f))
-				break;
-		}
-		/* Gather any remaining output */
-		while (!feof(f) && !ferror(f) && getline(&line, &linecap, f) > 0) {
-			pkg_emit_message(line);
-		}
-		fclose(f);
-
-		while (should_waitpid && waitpid(pid, &pstat, 0) == -1) {
-			if (errno != EINTR) {
-				pkg_emit_error("waitpid() failed: %s",
-				    strerror(errno));
-				ret = EPKG_FATAL;
-				goto cleanup;
-			}
-		}
-		if (WEXITSTATUS(pstat) != 0) {
-			pkg_emit_error("lua script failed");
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
+		ret = pkg_script_run_child(pid, &pstat, cur_pipe[0], "lua");
 	}
 
 
