@@ -273,7 +273,8 @@ cleanup:
 }
 
 
-int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) {
+int
+pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) {
 	struct pollfd pfd;
 	bool wait_for_child;
 	char msgbuf[16384+1];
@@ -293,9 +294,9 @@ int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_na
 		pid_t p = 0;
 		while (wait_for_child && (p = waitpid(pid, pstat, WNOHANG)) == -1) {
 			if (errno != EINTR) {
-				pkg_emit_error("waitpid() "
-					       "failed: %s", strerror(errno));
-				return EPKG_FATAL;
+				pkg_emit_error("waitpid() failed: %s",
+				    strerror(errno));
+				return (EPKG_FATAL);
 			}
 		}
 		if (p > 0) {
@@ -309,17 +310,17 @@ int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_na
 			int pres;
 			while ((pres = poll(&pfd, 1, wait_for_child ? 1000 : 0)) == -1) {
 				if (errno != EINTR) {
-					pkg_emit_error("poll() "
-						       "failed: %s", strerror(errno));
-					return EPKG_FATAL;
+					pkg_emit_error("poll() failed: %s",
+					    strerror(errno));
+					return (EPKG_FATAL);
 				}
 			}
 			if (pres > 0 && pfd.revents & POLLIN) {
 				while ((readsize = read(inputfd, msgbuf, sizeof msgbuf - 1)) < 0) {
 					if (errno != EINTR && errno != EAGAIN) {
 						pkg_emit_error("read() "
-							       "failed: %s", strerror(errno));
-						return EPKG_FATAL;
+						    "failed: %s", strerror(errno));
+						return (EPKG_FATAL);
 					}
 				}
 				if (readsize > 0) {
@@ -335,7 +336,7 @@ int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_na
 			exit(0);
 
 		pkg_emit_error("%s script failed", script_name);
-		return EPKG_FATAL;
+		return (EPKG_FATAL);
 	}
-	return EPKG_OK;
+	return (EPKG_OK);
 }
