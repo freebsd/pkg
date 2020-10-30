@@ -174,7 +174,6 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 			fputs("v", fetchOpts->fp);
 
 		opts = xstring_get(fetchOpts);
-		fflush(fetchOpts->fp);
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
 		    u->user,
