@@ -204,7 +204,8 @@ triggers_load(bool cleanup_only)
 
 	dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
 	if (dfd == -1) {
-		pkg_emit_error("Unable to open the trigger directory");
+		if (errno != ENOENT)
+			pkg_emit_error("Unable to open the trigger directory");
 		return (NULL);
 	}
 	d = fdopendir(dfd);
