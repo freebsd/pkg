@@ -467,12 +467,14 @@ triggers_execute(struct trigger *cleanup_triggers)
 			goto cleanup;
 	}
 
-	kh_foreach_value(ctx.touched_dir_hash, dir, {
-		LL_FOREACH(triggers, t) {
-			trigger_check_match(t, dir);
-		}
-		/* We need to check if that matches a trigger */
-	});
+	if (ctx.touched_dir_hash) {
+		kh_foreach_value(ctx.touched_dir_hash, dir, {
+				LL_FOREACH(triggers, t) {
+				trigger_check_match(t, dir);
+				}
+				/* We need to check if that matches a trigger */
+				});
+	}
 
 	LL_FOREACH(triggers, t) {
 		if (t->matched == NULL)
