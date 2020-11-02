@@ -1412,6 +1412,7 @@ pkg_shutdown(void)
 		/* NOTREACHED */
 	}
 
+	metalog_close();
 	ucl_object_unref(config);
 	HASH_FREE(repos, pkg_repo_free);
 
