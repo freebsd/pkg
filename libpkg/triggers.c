@@ -125,7 +125,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
-	const ucl_object_t *o = NULL;
+	const ucl_object_t *o = NULL, *trigger = NULL, *cleanup = NULL;
 	int fd;
 	struct ucl_schema_error err;
 	struct trigger *t;
@@ -157,25 +157,57 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		return (NULL);
 	}
 
-	if (cleanup_only && ((o = ucl_object_find_key(obj, "cleanup")) == NULL)) {
-		ucl_object_unref(obj);
-		return (NULL);
-	}
-
 	t = xcalloc(1, sizeof(*t));
-	if (o != NULL) {
-		t->cleanup.type = get_script_type(ucl_object_tostring(ucl_object_find_key(o, "type")));
-		t->cleanup.script = xstrdup(ucl_object_tostring(ucl_object_find_key(o, "script")));
-	}
+
 	if (cleanup_only) {
+		cleanup = ucl_object_find_key(obj, "cleanup");
+		if (cleanup == NULL)
+			goto err;
+		o = ucl_object_find_key(cleanup, "type");
+		if (o == NULL) {
+			pkg_emit_error("cleanup %s doesn't have a script type", name);
+			goto err;
+		}
+		t->cleanup.type = get_script_type(ucl_object_tostring(o));
+		if (t->cleanup.type == SCRIPT_UNKNOWN) {
+			pkg_emit_error("Unknown script type for cleanup in %s", name);
+			goto err;
+		}
+		o = ucl_object_find_key(cleanup, "script");
+		if (o == NULL) {
+			pkg_emit_error("No script in cleanup %s", name);
+			goto err;
+		}
+
+		t->cleanup.script = xstrdup(ucl_object_tostring(o));
 		ucl_object_unref(obj);
 		return (t);
 	}
-	o = ucl_object_find_key(obj, "trigger");
-	if (o != NULL) {
-		t->script.type = get_script_type(ucl_object_tostring(ucl_object_find_key(o, "type")));
-		t->script.script = xstrdup(ucl_object_tostring(ucl_object_find_key(o, "script")));
+
+	trigger = ucl_object_find_key(obj, "trigger");
+	if (trigger == NULL) {
+		pkg_emit_error("trigger %s doesn't have any trigger block, ignoring", name);
+		goto err;
 	}
+
+	o = ucl_object_find_key(trigger, "type");
+	if (o == NULL) {
+		pkg_emit_error("trigger %s doesn't have a script type", name);
+		goto err;
+	}
+	t->script.type = get_script_type(ucl_object_tostring(o));
+	if (t->script.type == SCRIPT_UNKNOWN) {
+		pkg_emit_error("Unknown script type for trigger in %s", name);
+		goto err;
+	}
+	o = ucl_object_find_key(trigger, "script");
+	if (o == NULL) {
+		pkg_emit_error("No script in trigger %s", name);
+		goto err;
+	}
+
+	t->script.script = xstrdup(ucl_object_tostring(o));
+
 	o = ucl_object_find_key(obj, "path");
 	if (o != NULL)
 		t->path = ucl_object_ref(o);
@@ -185,9 +217,32 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	o = ucl_object_find_key(obj, "path_regex");
 	if (o != NULL)
 		t->path_regex = ucl_object_ref(o);
+	if (t->path == NULL &&
+	    t->path_glob == NULL &&
+	    t->path_regex == NULL) {
+		pkg_emit_error("No path* in trigger %s, skipping", name);
+		goto err;
+	}
 
 	ucl_object_unref(obj);
 	return (t);
+
+err:
+	if (t) {
+		if (t->path != NULL)
+			ucl_object_unref(t->path);
+		if (t->path_glob != NULL)
+			ucl_object_unref(t->path_glob);
+		if (t->path_regex != NULL)
+			ucl_object_unref(t->path_regex);
+		if (t->script.script != NULL)
+			free(t->script.script);
+		if (t->cleanup.script != NULL)
+			free(t->cleanup.script);
+		free(t);
+	}
+	ucl_object_unref(obj);
+	return (NULL);
 }
 
 struct trigger *
