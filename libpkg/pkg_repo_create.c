@@ -472,7 +472,7 @@ cleanup:
 	free(mdigest);
 
 	pkg_debug(1, "worker done");
-	exit(ret);
+	_exit(ret);
 }
 
 static int

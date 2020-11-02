@@ -228,7 +228,7 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 #ifdef HAVE_CAPSICUM
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
-		return (EPKG_FATAL);
+		_exit(EXIT_FAILURE);
 	}
 #endif
 

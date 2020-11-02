@@ -140,16 +140,16 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			if (luaL_dostring(L, lscript->script)) {
 				pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
 				lua_close(L);
-				exit(1);
+				_exit(1);
 			}
 
 			if (lua_tonumber(L, -1) != 0) {
 				lua_close(L);
-				exit(1);
+				_exit(1);
 			}
 
 			lua_close(L);
-			exit(0);
+			_exit(0);
 		} else if (pid < 0) {
 			pkg_emit_errno("Cannot fork", "lua_script");
 			ret = EPKG_FATAL;

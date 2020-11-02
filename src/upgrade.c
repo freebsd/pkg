@@ -205,7 +205,7 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 		close(sp[1]);
 		check_vulnerable(audit, db, sp[0]);
 		close(sp[0]);
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 		break;
 	case -1:
 		warnx("Cannot fork");
