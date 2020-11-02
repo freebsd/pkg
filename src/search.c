@@ -34,8 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sysexits.h>
-
 
 #include <pkg.h>
 
@@ -131,7 +129,7 @@ search_label_opt(const char *optionarg)
 		break;
 	default:
 		usage_search();
-		errx(EX_USAGE, "Unknown search/label option: %s", optionarg);
+		errx(EXIT_FAILURE, "Unknown search/label option: %s", optionarg);
 		/* NOTREACHED */
 	}
 	return field;
@@ -209,7 +207,7 @@ modifier_opt(const char *optionarg)
 		break;
 	default:
 		usage_search();
-		errx(EX_USAGE, "Unkown modifier option %s", optionarg);
+		errx(EXIT_FAILURE, "Unkown modifier option %s", optionarg);
 		/* NOTREACHED */
 	}
 	return opt;
@@ -351,13 +349,13 @@ exec_search(int argc, char **argv)
 			else if (strcasecmp(optarg, "ucl") == 0)
 				opt |= INFO_RAW_UCL;
 			else
-				errx(EX_USAGE, "Invalid format '%s' for the "
+				errx(EXIT_FAILURE, "Invalid format '%s' for the "
 				    "raw output, expecting json, json-compact "
 				    "or yaml", optarg);
 			break;
 		default:
 			usage_search();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -366,13 +364,13 @@ exec_search(int argc, char **argv)
 
 	if (argc != 1) {
 		usage_search();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	pattern = argv[0];
 	if (pattern[0] == '\0') {
 		fprintf(stderr, "Pattern must not be empty.\n");
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 	if (search == FIELD_NONE) {
 		if (strchr(pattern, '/') != NULL)
@@ -412,17 +410,17 @@ exec_search(int argc, char **argv)
 	switch(ret) {
 	case EPKG_ENOACCESS:
 		warnx("Insufficient privileges to query the package database");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	case EPKG_ENODB:
 		if (!auto_update) {
 			warnx("Unable to open remote repository catalogues. Try running '%s update' first.", getprogname());
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 		break;
 	case EPKG_OK:
 		break;
 	default:
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	/* first update the remote repositories if needed */
@@ -433,12 +431,12 @@ exec_search(int argc, char **argv)
 	quiet = old_quiet;
 
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if ((it = pkgdb_repo_search(db, pattern, match, search, search,
 	    reponame)) == NULL) {
 		pkgdb_close(db);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (opt & INFO_RAW) {
@@ -459,5 +457,5 @@ exec_search(int argc, char **argv)
 	if (!atleastone)
 		ret = EPKG_FATAL;
 
-	return ((ret == EPKG_OK || ret == EPKG_END) ? EX_OK : EX_SOFTWARE);
+	return ((ret == EPKG_OK || ret == EPKG_END) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

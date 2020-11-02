@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -867,7 +866,7 @@ exec_query(int argc, char **argv)
 	match_t			 match = MATCH_EXACT;
 	int			 ch;
 	int			 ret;
-	int			 retcode = EX_OK;
+	int			 retcode = EXIT_SUCCESS;
 	int			 i;
 	char			 multiline = 0;
 	char			*condition = NULL;
@@ -911,7 +910,7 @@ exec_query(int argc, char **argv)
 			break;
 		default:
 			usage_query();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -920,7 +919,7 @@ exec_query(int argc, char **argv)
 
 	if (argc == 0) {
 		usage_query();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	/* Default to all packages if no pkg provided */
@@ -929,12 +928,12 @@ exec_query(int argc, char **argv)
 	} else if (((argc == 1) ^ (match == MATCH_ALL)) && pkgname == NULL
 			&& condition == NULL) {
 		usage_query();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len,
 			&query_flags, &multiline) != EPKG_OK)
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 
 	if (pkgname != NULL) {
 		/* Use a manifest or compact manifest if possible. */
@@ -957,43 +956,43 @@ exec_query(int argc, char **argv)
 		}
 		pkg_manifest_keys_new(&keys);
 		if (pkg_open(&pkg, pkgname, keys, open_flags) != EPKG_OK) {
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 
 		pkg_manifest_keys_free(keys);
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	}
 
 	if (condition != NULL) {
 		sqlcond = xstring_new();
 		if (format_sql_condition(condition, sqlcond, false) != EPKG_OK) {
 			xstring_free(sqlcond);
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (ret == EPKG_ENODB) {
 		if (!quiet)
 			warnx("No packages installed");
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (ret != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
@@ -1003,13 +1002,13 @@ exec_query(int argc, char **argv)
 			condition_sql = sqlcond->buf;
 		}
 		if ((it = pkgdb_query(db, condition_sql, match)) == NULL)
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
 			print_query(pkg, argv[0],  multiline);
 
 		if (ret != EPKG_END)
-			retcode = EX_SOFTWARE;
+			retcode = EXIT_FAILURE;
 
 		pkgdb_it_free(it);
 	} else {
@@ -1018,7 +1017,7 @@ exec_query(int argc, char **argv)
 			pkgname = argv[i];
 
 			if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-				retcode = EX_IOERR;
+				retcode = EXIT_FAILURE;
 				goto cleanup;
 			}
 
@@ -1028,16 +1027,16 @@ exec_query(int argc, char **argv)
 			}
 
 			if (ret != EPKG_END) {
-				retcode = EX_SOFTWARE;
+				retcode = EXIT_FAILURE;
 				break;
 			}
 
 			pkgdb_it_free(it);
 		}
-		if (nprinted == 0 && retcode == EX_OK) {
+		if (nprinted == 0 && retcode == EXIT_SUCCESS) {
 			/* ensure to return a non-zero status when no package
 			 were found. */
-			retcode = EX_UNAVAILABLE;
+			retcode = EXIT_FAILURE;
 		}
 	}
 

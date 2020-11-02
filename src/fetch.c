@@ -35,7 +35,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -60,7 +59,7 @@ exec_fetch(int argc, char **argv)
 	const char	*reponame = NULL;
 	const char *destdir = NULL;
 	int		 ch;
-	int		 retcode = EX_SOFTWARE;
+	int		 retcode = EXIT_FAILURE;
 	bool		 upgrades_for_installed = false, rc, csum_only = false;
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
@@ -124,7 +123,7 @@ exec_fetch(int argc, char **argv)
 			break;
 		default:
 			usage_fetch();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -132,12 +131,12 @@ exec_fetch(int argc, char **argv)
 
 	if (argc < 1 && match != MATCH_ALL && !upgrades_for_installed) {
 		usage_fetch();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
         if (match == MATCH_ALL && upgrades_for_installed) {
 		usage_fetch();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (auto_update)
@@ -149,18 +148,18 @@ exec_fetch(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to access repo catalogue");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (upgrades_for_installed) {
 		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 
 		if (retcode == EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to access the package database");
-			return (EX_NOPERM);
+			return (EXIT_FAILURE);
 		} else if (retcode != EPKG_OK)
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 	}
 
 	/* first update the remote repositories if needed */
@@ -169,12 +168,12 @@ exec_fetch(int argc, char **argv)
 		return (retcode);
 
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 
@@ -224,7 +223,7 @@ exec_fetch(int argc, char **argv)
 	if (csum_only && !quiet)
 		printf("Integrity check was successful.\n");
 
-	retcode = EX_OK;
+	retcode = EXIT_SUCCESS;
 
 cleanup:
 	pkg_jobs_free(jobs);

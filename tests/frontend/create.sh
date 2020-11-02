@@ -599,7 +599,7 @@ EOF
 	atf_check \
 		-o match:"0 Jan +2 +1970.*/a" \
 		tar tvf test-1.txz
-	atf_check -e match:"Invalid" -s exit:64 pkg create -t meh -M test.ucl
+	atf_check -e match:"Invalid" -s exit:1 pkg create -t meh -M test.ucl
 	atf_check pkg create -t 172800 -M test.ucl
 	atf_check \
 		-o match:"0 Jan +3 +1970.*/a" \

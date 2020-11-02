@@ -14,7 +14,7 @@ pkg_no_database_body() {
 	atf_check \
 	    -o empty \
 	    -e inline:"${PROGNAME}: package database non-existent\n" \
-	    -s exit:69 \
+	    -s exit:1 \
 	    env -i PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -o PKG_DBDIR=/dev/null -N
 }
 

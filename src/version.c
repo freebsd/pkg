@@ -42,7 +42,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <fnmatch.h>
 #include <spawn.h>
@@ -156,7 +155,7 @@ do_testversion(unsigned int opt, int argc, char ** restrict argv)
 	/* -t must be unique and takes two arguments */
 	if ( opt != VERSION_TESTVERSION || argc < 2 ) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	switch (pkg_version_cmp(argv[0], argv[1])) {
@@ -171,7 +170,7 @@ do_testversion(unsigned int opt, int argc, char ** restrict argv)
 		break;
 	}
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }
 
 static int
@@ -187,7 +186,7 @@ do_testpattern(unsigned int opt, int argc, char ** restrict argv)
 	/* -T must be unique and takes two arguments */
 	if ( opt != VERSION_TESTPATTERN || argc < 2 ) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (strncmp(argv[0], "-", 1) == 0)
@@ -198,7 +197,7 @@ do_testpattern(unsigned int opt, int argc, char ** restrict argv)
 
 	if (pattern_from_stdin && pkgname_from_stdin) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (!pattern_from_stdin && !pkgname_from_stdin)
@@ -261,13 +260,13 @@ indexfilename(char *filebuf, size_t filebuflen)
 		indexdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
 		if (indexdir == NULL)
-			err(EX_SOFTWARE, "Cannot get either INDEXDIR or "
+			err(EXIT_FAILURE, "Cannot get either INDEXDIR or "
 			    "PORTSDIR config entry!");
 	}
 
 	indexfile = pkg_object_string(pkg_config_get("INDEXFILE"));
 	if (indexfile == NULL)
-		err(EX_SOFTWARE, "Cannot get INDEXFILE config entry!");
+		err(EXIT_FAILURE, "Cannot get INDEXFILE config entry!");
 
 	strlcpy(filebuf, indexdir, filebuflen);
 
@@ -297,7 +296,7 @@ hash_indexfile(const char *indexfilename)
 
 	indexfile = fopen(indexfilename, "re");
 	if (!indexfile)
-		err(EX_NOINPUT, "Unable to open %s", indexfilename);
+		err(EXIT_FAILURE, "Unable to open %s", indexfilename);
 
 	while (getline(&line, &linecap, indexfile) > 0) {
 		/* line is pkgname|portdir|... */
@@ -308,7 +307,7 @@ hash_indexfile(const char *indexfilename)
 		name = version;
 		version = strrchr(version, '-');
 		if (version == NULL)
-			errx(EX_IOERR, "Invalid INDEX file format: %s",
+			errx(EXIT_FAILURE, "Invalid INDEX file format: %s",
 			    indexfilename);
 		version[0] = '\0';
 		version++;
@@ -321,7 +320,7 @@ hash_indexfile(const char *indexfilename)
 
 		if (entry == NULL || entry->version == NULL ||
 		    entry->name == NULL)
-			err(EX_SOFTWARE, "Out of memory while reading %s",
+			err(EXIT_FAILURE, "Out of memory while reading %s",
 			    indexfilename);
 
 		if (index == NULL)
@@ -340,7 +339,7 @@ hash_indexfile(const char *indexfilename)
 	fclose(indexfile);
 
 	if (index == NULL)
-		errx(EX_DATAERR, "No valid entries found in '%s'",
+		errx(EXIT_FAILURE, "No valid entries found in '%s'",
 		    indexfilename);
 
 	return (index);
@@ -419,11 +418,11 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	index = hash_indexfile(indexfile);
 
@@ -432,7 +431,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		free_index(index);
 		warnx("Cannot get a read lock on the database. "
 		      "It is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	it = pkgdb_query(db, pattern, match);
@@ -486,7 +485,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_REMOTE ) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	/* Only force remote mode if looking up remote, otherwise
@@ -499,18 +498,18 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database. "
 		      "It is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	it = pkgdb_query(db, pattern, match);
 	if (it == NULL) {
-		retcode = EX_IOERR;
+		retcode = EXIT_FAILURE;
 		goto cleanup;
 	}
 
@@ -533,7 +532,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		it_remote = pkgdb_repo_query(db, is_origin ? origin : name, MATCH_EXACT, reponame);
 		if (it_remote == NULL) {
-			retcode = EX_IOERR;
+			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 
@@ -761,20 +760,20 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_PORTS ) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (chdir(portsdir) != 0)
-		err(EX_SOFTWARE, "Cannot chdir to %s\n", portsdir); 
+		err(EXIT_FAILURE, "Cannot chdir to %s\n", portsdir); 
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database. "
 		      "It is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if ((it = pkgdb_query(db, pattern, match)) == NULL)
@@ -869,7 +868,7 @@ exec_version(int argc, char **argv)
 			break;
 		case 'h':
 			usage_version();
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		case 'I':
 			opt |= VERSION_SOURCE_INDEX;
 			break;
@@ -926,7 +925,7 @@ exec_version(int argc, char **argv)
 			break;
 		default:
 			usage_version();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -941,7 +940,7 @@ exec_version(int argc, char **argv)
 
 	if (matchorigin != NULL && matchname != NULL) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if ( (opt & VERSION_TESTVERSION) == VERSION_TESTVERSION )
@@ -957,7 +956,7 @@ exec_version(int argc, char **argv)
 		    limchar != '?' &&
 		    limchar != '!') {
 			usage_version();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -966,7 +965,7 @@ exec_version(int argc, char **argv)
 
 	if (argc > 1) {
 		usage_version();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if ( !(opt & VERSION_SOURCES ) ) {
@@ -993,7 +992,7 @@ exec_version(int argc, char **argv)
 	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX ) {
 		if (!have_indexfile(&indexfile, filebuf, sizeof(filebuf),
 		     argc, argv, true))
-			return (EX_SOFTWARE);
+			return (EXIT_FAILURE);
 		else
 			return (do_source_index(opt, limchar, pattern, match,
 				    matchorigin, matchname, indexfile));
@@ -1005,7 +1004,7 @@ exec_version(int argc, char **argv)
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
 		if (!have_ports(&portsdir, true))
-			return (EX_SOFTWARE);
+			return (EXIT_FAILURE);
 		else
 			return (do_source_ports(opt, limchar, pattern,
 				    match, matchorigin, matchname, portsdir));
@@ -1031,7 +1030,7 @@ exec_version(int argc, char **argv)
 	}
 
 	/* NOTREACHED */
-	return (EX_SOFTWARE);
+	return (EXIT_FAILURE);
 }
 /*
  * That's All Folks!

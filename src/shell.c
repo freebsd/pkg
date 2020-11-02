@@ -25,7 +25,6 @@
  */
 
 #include <stdio.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -44,5 +43,5 @@ exec_shell(int argc, char **argv)
 {
 	/* XXX: need exclusive lock here */
 	pkgdb_cmd(argc, argv);
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

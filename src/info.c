@@ -44,7 +44,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include "pkgcli.h"
@@ -215,13 +214,13 @@ exec_info(int argc, char **argv)
 			else if (strcasecmp(optarg, "ucl") == 0)
 				opt |= INFO_RAW_UCL;
 			else
-				errx(EX_USAGE, "Invalid format '%s' for the "
+				errx(EXIT_FAILURE, "Invalid format '%s' for the "
 				    "raw output, expecting json, json-compact "
 				    "or yaml", optarg);
 			break;
 		default:
 			usage_info();
-			return(EX_USAGE);
+			return(EXIT_FAILURE);
 		}
 	}
 
@@ -234,9 +233,9 @@ exec_info(int argc, char **argv)
 	if (argc == 0 && file == NULL && match != MATCH_ALL) {
 		/* which -O bsd.*.mk always execpt clean output */
 		if (origin_search)
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		usage_info();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	/* When no other data is requested, default is to print
@@ -266,7 +265,7 @@ exec_info(int argc, char **argv)
 	if (file != NULL) {
 		if ((fd = open(file, O_RDONLY)) == -1) {
 			warn("Unable to open %s", file);
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 
 		drop_privileges();
@@ -275,13 +274,13 @@ exec_info(int argc, char **argv)
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 			warn("cap_rights_limit() failed");
 			close(fd);
-			return (EX_SOFTWARE);
+			return (EXIT_FAILURE);
 		}
 
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(fd);
-			return (EX_SOFTWARE);
+			return (EXIT_FAILURE);
 		}
 #endif
 		if (opt == INFO_TAG_NAMEVER)
@@ -300,32 +299,32 @@ exec_info(int argc, char **argv)
 		print_info(pkg, opt);
 		close(fd);
 		pkg_free(pkg);
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (ret == EPKG_ENODB) {
 		if (match == MATCH_ALL)
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		if (origin_search)
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		if (!quiet)
 			warnx("No packages installed");
-		return (EX_UNAVAILABLE);
+		return (EXIT_FAILURE);
 	} else if (ret != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	i = 0;
@@ -500,18 +499,18 @@ exec_info(int argc, char **argv)
 				}
 			}
 			if (pkg_exists)
-				retcode = EX_OK;
+				retcode = EXIT_SUCCESS;
 			else
 				print_info(pkg, opt);
 		}
 		if (ret != EPKG_END) {
-			retcode = EX_IOERR;
+			retcode = EXIT_FAILURE;
 		}
 
-		if (retcode == EX_OK && !gotone && match != MATCH_ALL) {
+		if (retcode == EXIT_SUCCESS && !gotone && match != MATCH_ALL) {
 			if (!quiet)
 				warnx("No package(s) matching %s", argv[i]);
-			retcode = EX_SOFTWARE;
+			retcode = EXIT_FAILURE;
 		}
 
 		pkgdb_it_free(it);

@@ -54,7 +54,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <utlist.h>
 #include <unistd.h>
 #ifdef HAVE_LIBJAIL
@@ -197,13 +196,13 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
 		if (!pkg_initialized() && pkg_ini(conffile, reposdir, 0) != EPKG_OK)
-			errx(EX_SOFTWARE, "Cannot parse configuration file!");
+			errx(EXIT_FAILURE, "Cannot parse configuration file!");
 
 		plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 		if (plugins_enabled) {
 			if (pkg_plugins_init() != EPKG_OK)
-				errx(EX_SOFTWARE, "Plugins cannot be loaded");
+				errx(EXIT_FAILURE, "Plugins cannot be loaded");
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
@@ -218,7 +217,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 out:
 	fprintf(out, "\nFor more information on available commands and options see 'pkg help'.\n");
-	exit(EX_USAGE);
+	exit(EXIT_FAILURE);
 }
 
 static void
@@ -240,13 +239,13 @@ exec_help(int argc, char **argv)
 
 	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
 		usage_help();
-		return(EX_USAGE);
+		return(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
 			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
-				errx(EX_SOFTWARE, "cannot allocate memory");
+				errx(EXIT_FAILURE, "cannot allocate memory");
 
 			system(manpage);
 			free(manpage);
@@ -261,7 +260,7 @@ exec_help(int argc, char **argv)
 		DL_FOREACH(plugins, c) {
 			if (strcmp(c->name, argv[1]) == 0) {
 				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
-					errx(EX_SOFTWARE, "cannot allocate memory");
+					errx(EXIT_FAILURE, "cannot allocate memory");
 
 				system(manpage);
 				free(manpage);
@@ -293,7 +292,7 @@ exec_help(int argc, char **argv)
 
 	fprintf(stderr, "See 'pkg help' for more information on the commands.\n");
 
-	return (EX_USAGE);
+	return (EXIT_FAILURE);
 }
 
 static void
@@ -383,13 +382,13 @@ show_version_info(int version)
 	printf(PKG_PORTVERSION""GITHASH"\n");
 
 	if (version == 1)
-		exit(EX_OK);
+		exit(EXIT_SUCCESS);
 
 	printf("%s\n", pkg_config_dump());
 	show_plugin_info();
 	show_repository_info();
 
-	exit(EX_OK);
+	exit(EXIT_SUCCESS);
 	/* NOTREACHED */
 }
 
@@ -406,19 +405,19 @@ do_activation_test(int argc)
 
 	switch (pkg_status(&count)) {
 	case PKG_STATUS_UNINSTALLED: /* This case shouldn't ever happen... */
-		errx(EX_UNAVAILABLE, "can't execute " PKG_EXEC_NAME
+		errx(EXIT_FAILURE, "can't execute " PKG_EXEC_NAME
 		    " or " PKG_STATIC_NAME "\n");
 		/* NOTREACHED */
 	case PKG_STATUS_NODB:
-		errx(EX_UNAVAILABLE, "package database non-existent");
+		errx(EXIT_FAILURE, "package database non-existent");
 		/* NOTREACHED */
 	case PKG_STATUS_NOPACKAGES:
-		errx(EX_UNAVAILABLE, "no packages registered");
+		errx(EXIT_FAILURE, "no packages registered");
 		/* NOTREACHED */
 	case PKG_STATUS_ACTIVE:
 		if (argc == 0) {
 			warnx("%d packages installed", count);
-			exit(EX_OK);
+			exit(EXIT_SUCCESS);
 		}
 		break;
 	}
@@ -450,7 +449,7 @@ export_arg_option (char *arg)
 static void
 start_process_worker(char *const *save_argv)
 {
-	int	ret = EX_OK;
+	int	ret = EXIT_SUCCESS;
 	int	status;
 	pid_t	child_pid;
 
@@ -471,11 +470,11 @@ start_process_worker(char *const *save_argv)
 			return;
 		} else {
 			if (child_pid == -1)
-				err(EX_OSERR, "Failed to fork worker process");
+				err(EXIT_FAILURE, "Failed to fork worker process");
 
 			while (waitpid(child_pid, &status, 0) == -1) {
 				if (errno != EINTR)
-					err(EX_OSERR, "Child process pid=%d", (int)child_pid);
+					err(EXIT_FAILURE, "Child process pid=%d", (int)child_pid);
 			}
 
 			ret = WEXITSTATUS(status);
@@ -537,7 +536,7 @@ expand_aliases(int argc, char ***argv)
 	veclen = sizeof(char *) * (spaces + argc + 1);
 	buf = malloc(veclen + arglen);
 	if (buf == NULL)
-		err(EX_OSERR, "expanding aliases");
+		err(EXIT_FAILURE, "expanding aliases");
 
 	newargv = (char **) buf;
 	args = (char *) (buf + veclen);
@@ -596,7 +595,7 @@ main(int argc, char **argv)
 	signed char	  ch;
 	int64_t		  debug = 0;
 	int		  version = 0;
-	int		  ret = EX_OK;
+	int		  ret = EXIT_SUCCESS;
 	bool		  plugins_enabled = false;
 	bool		  plugin_found = false;
 	bool		  show_commands = false;
@@ -642,7 +641,7 @@ main(int argc, char **argv)
 	 * line concept. */
 
 	if (setenv("POSIXLY_CORRECT", "1",  1) == -1)
-		err(EX_SOFTWARE, "setenv() failed");
+		err(EXIT_FAILURE, "setenv() failed");
 
 	save_argv = argv;
 
@@ -705,7 +704,7 @@ main(int argc, char **argv)
 
 	if (show_commands && version == 0) {
 		show_command_names();
-		exit(EX_OK);
+		exit(EXIT_SUCCESS);
 	}
 
 	if (argc == 0 && version == 0 && !activation_test)
@@ -735,7 +734,7 @@ main(int argc, char **argv)
 
 	if (chroot_path != NULL) {
 		if (chroot(chroot_path) == -1) {
-			err(EX_SOFTWARE, "chroot failed");
+			err(EXIT_FAILURE, "chroot failed");
 		}
 	}
 
@@ -751,26 +750,26 @@ main(int argc, char **argv)
 
 	if (jail_str != NULL || chroot_path != NULL)
 		if (chdir("/") == -1)
-			errx(EX_SOFTWARE, "chdir() failed");
+			errx(EXIT_FAILURE, "chdir() failed");
 #endif
 
 	if (rootdir != NULL) {
 		if (realpath(rootdir, realrootdir) == NULL)
-			err(EX_SOFTWARE, "Invalid rootdir");
+			err(EXIT_FAILURE, "Invalid rootdir");
 		if (chdir(rootdir) == -1)
-			errx(EX_SOFTWARE, "chdir() failed");
+			errx(EXIT_FAILURE, "chdir() failed");
 		if (pkg_set_rootdir(realrootdir) != EPKG_OK)
-			exit(EX_SOFTWARE);
+			exit(EXIT_FAILURE);
 	}
 
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
-		errx(EX_SOFTWARE, "Cannot parse configuration file!");
+		errx(EXIT_FAILURE, "Cannot parse configuration file!");
 
 	if (debug > 0)
 		pkg_set_debug_level(debug);
 
 	if (atexit(&pkg_shutdown) != 0)
-		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
+		errx(EXIT_FAILURE, "register pkg_shutdown() to run at exit");
 
 	if (jail_str == NULL && !pkg_compiled_for_same_os_major())
 		warnx("Warning: Major OS version upgrade detected.  Running "
@@ -783,10 +782,10 @@ main(int argc, char **argv)
 		struct pkg_plugin	*p = NULL;
 
 		if (pkg_plugins_init() != EPKG_OK)
-			errx(EX_SOFTWARE, "Plugins cannot be loaded");
+			errx(EXIT_FAILURE, "Plugins cannot be loaded");
 
 		if (atexit(&pkg_plugins_shutdown) != 0)
-			errx(EX_SOFTWARE,
+			errx(EXIT_FAILURE,
                             "register pkg_plugins_shutdown() to run at exit");
 
 		/* load commands plugins */
@@ -891,7 +890,7 @@ main(int argc, char **argv)
 	if (save_argv != argv)
 		free(argv);
 
-	if (ret == EX_OK && newpkgversion)
+	if (ret == EXIT_SUCCESS && newpkgversion)
 		return (EX_NEEDRESTART);
 
 	return (ret);

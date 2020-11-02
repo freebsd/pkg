@@ -25,7 +25,7 @@ compare_body() {
 	atf_check \
 		-o ignore \
 		-e ignore \
-		-s exit:70 \
+		-s exit:1 \
 		pkg info "test<5"
 	atf_check \
 		-o ignore \
@@ -33,11 +33,11 @@ compare_body() {
 	atf_check \
 		-o ignore \
 		-e ignore \
-		-s exit:70 \
+		-s exit:1 \
 		pkg info "test>5<5.20"
 	atf_check \
 		-o ignore \
 		-e ignore \
-		-s exit:70 \
+		-s exit:1 \
 		pkg info "test>5.20_3<6"
 }

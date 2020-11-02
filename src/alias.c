@@ -31,7 +31,6 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -53,7 +52,7 @@ exec_alias(int argc, char **argv)
 	const pkg_object *alias;
 	pkg_iter it = NULL;
 	int ch;
-	int ret = EX_OK;
+	int ret = EXIT_SUCCESS;
 	bool list = false;
 
 	struct option longopts[] = {
@@ -72,7 +71,7 @@ exec_alias(int argc, char **argv)
 			break;
 		default:
 			usage_alias();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -108,7 +107,7 @@ exec_alias(int argc, char **argv)
 				printf("%-20s '%s'\n", argv[i], pkg_object_string(alias));
 		} else {
 			warnx("No such alias: '%s'", argv[i]);
-			ret = EX_UNAVAILABLE;
+			ret = EXIT_FAILURE;
 		}
 	}
 

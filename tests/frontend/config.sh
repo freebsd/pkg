@@ -46,7 +46,7 @@ duplicate_pkgs_notallowed_body() {
 
 	atf_check \
 		-e empty \
-		-s exit:70 \
+		-s exit:1 \
 		pkg register -M test1.ucl
 
 	atf_check \

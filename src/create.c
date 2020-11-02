@@ -49,7 +49,6 @@
 #include <strings.h>
 #include <unistd.h>
 #include <utlist.h>
-#include <sysexits.h>
 
 #include "pkgcli.h"
 
@@ -92,13 +91,13 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 	/* XXX: get rid of hardcoded timeouts */
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
@@ -241,7 +240,7 @@ exec_create(int argc, char **argv)
 				break;
 			}
 			warnx("Invalid compression level %s", optarg);
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 			}
 		case 'm':
 			metadatadir = optarg;
@@ -269,7 +268,7 @@ exec_create(int argc, char **argv)
 			ts = (time_t)strtoimax(optarg, &endptr, 10);
 			if (*endptr != '\0') {
 				warnx("Invalid timestamp %s", optarg);
-				return (EX_USAGE);
+				return (EXIT_FAILURE);
 			}
 			break;
 		case 'v':
@@ -280,7 +279,7 @@ exec_create(int argc, char **argv)
 			break;
 		default:
 			usage_create();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -289,14 +288,14 @@ exec_create(int argc, char **argv)
 	if (match != MATCH_ALL && metadatadir == NULL && manifest == NULL &&
 	    argc == 0) {
 		usage_create();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (metadatadir == NULL && manifest == NULL && rootdir != NULL) {
 		warnx("Do not specify a rootdir without also specifying "
 		    "either a metadatadir or manifest");
 		usage_create();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (outdir == NULL)
@@ -317,7 +316,7 @@ exec_create(int argc, char **argv)
 		pkg_create_set_timestamp(pc, ts);
 
 	if (metadatadir == NULL && manifest == NULL)
-		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
 	ret = pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
 	    hash);
 	if (ret == EPKG_EXIST || ret == EPKG_OK)

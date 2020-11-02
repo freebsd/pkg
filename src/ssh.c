@@ -32,7 +32,6 @@
 #include <sys/capsicum.h>
 #endif
 
-#include <sysexits.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -62,7 +61,7 @@ exec_ssh(int argc, char **argv __unused)
 
 	if (argc > 1) {
 		usage_ssh();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
@@ -71,7 +70,7 @@ exec_ssh(int argc, char **argv __unused)
 
 	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		warn("Impossible to open the restricted directory");
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 #ifdef HAVE_CAPSICUM
@@ -79,21 +78,21 @@ exec_ssh(int argc, char **argv __unused)
 	if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 		warn("cap_rights_limit() failed");
 		close(fd);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		close(fd);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 #endif
 	if (pkg_sshserve(fd) != EPKG_OK) {
 		close(fd);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	close(fd);
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

@@ -41,7 +41,6 @@
 #include <osreldate.h>
 #endif
 #include <ucl.h>
-#include <sysexits.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -1408,7 +1407,7 @@ pkg_shutdown(void)
 {
 	if (!parsed) {
 		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
-		_exit(EX_SOFTWARE);
+		_exit(EXIT_FAILURE);
 		/* NOTREACHED */
 	}
 

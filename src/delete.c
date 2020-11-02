@@ -32,7 +32,6 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -55,7 +54,7 @@ exec_delete(int argc, char **argv)
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
 	bool		 recursive_flag = false, rc = false;
-	int		 retcode = EX_SOFTWARE;
+	int		 retcode = EXIT_FAILURE;
 	int		 ch;
 	int		 i;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
@@ -118,7 +117,7 @@ exec_delete(int argc, char **argv)
 			break;
 		default:
 			usage_delete();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -127,7 +126,7 @@ exec_delete(int argc, char **argv)
 
 	if (argc < 1 && match != MATCH_ALL) {
 		usage_delete();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (dry_run)
@@ -138,28 +137,28 @@ exec_delete(int argc, char **argv)
 
 	if (retcode == EPKG_ENODB) {
 		warnx("No packages installed.  Nothing to do!");
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to delete packages");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	/*
@@ -187,7 +186,7 @@ exec_delete(int argc, char **argv)
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK) {
 		fprintf(stderr, "Cannot perform request\n");
-		retcode = EX_NOPERM;
+		retcode = EXIT_FAILURE;
 		goto cleanup;
 	}
 
@@ -204,7 +203,7 @@ exec_delete(int argc, char **argv)
 			if (!quiet)
 				printf("Nothing to do.\n");
 
-			retcode = EX_OK;
+			retcode = EXIT_SUCCESS;
 			goto cleanup;
 		}
 		if (!quiet) {
@@ -215,7 +214,7 @@ exec_delete(int argc, char **argv)
 		if (locked_pkgs > 0) {
 			retcode = EPKG_LOCKED;
 		} else {
-			retcode = EX_DATAERR;
+			retcode = EXIT_FAILURE;
 		}
 		goto cleanup;
 	}
@@ -228,7 +227,7 @@ exec_delete(int argc, char **argv)
 				pkg_jobs_total(jobs));
 		}
 		if (dry_run) {
-			retcode = EX_OK;
+			retcode = EXIT_SUCCESS;
 			goto cleanup;
 		}
 		rc = query_yesno(false,
@@ -247,7 +246,7 @@ exec_delete(int argc, char **argv)
 	pkgdb_compact(db);
 
 	if (rc)
-		retcode = EX_OK;
+		retcode = EXIT_SUCCESS;
 	else
 		retcode = EXIT_FAILURE;
 

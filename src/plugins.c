@@ -28,7 +28,6 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -61,7 +60,7 @@ exec_plugins(int argc, char **argv)
 			break;
 		default:
 			usage_plugins();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -77,5 +76,5 @@ exec_plugins(int argc, char **argv)
 		       pkg_plugin_get(p, PKG_PLUGIN_DESC),
 		       pkg_plugin_get(p, PKG_PLUGIN_VERSION));
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

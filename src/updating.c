@@ -42,7 +42,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <regex.h>
@@ -275,7 +274,7 @@ exec_updating(int argc, char **argv)
 			break;
 		default:
 			usage_updating();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -284,21 +283,21 @@ exec_updating(int argc, char **argv)
 	/* checking date format */
 	if (date != NULL)
 		if (strlen(date) != 8 || strspn(date, "0123456789") != 8)
-			err(EX_DATAERR, "Invalid date format");
+			err(EXIT_FAILURE, "Invalid date format");
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (updatingfile == NULL) {
 		const char *portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 		if (portsdir == NULL) {
-			retcode = EX_CONFIG;
+			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 		asprintf(&updatingfile, "%s/UPDATING", portsdir);
@@ -315,20 +314,20 @@ exec_updating(int argc, char **argv)
 	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
 		warn("cap_rights_limit() failed");
 		fclose(fd);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		fclose(fd);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 #endif
 
 	SLIST_INIT(&origins);
 	if (argc == 0) {
 		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
-			retcode = EX_UNAVAILABLE;
+			retcode = EXIT_FAILURE;
 			fclose(fd);
 			goto cleanup;
 		}

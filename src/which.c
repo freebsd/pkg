@@ -34,7 +34,6 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <kvec.h>
 #include <fnmatch.h>
@@ -75,7 +74,7 @@ exec_which(int argc, char **argv)
 	struct pkg_file *file = NULL;
 	char		 pathabs[MAXPATHLEN];
 	char		*p, *path, *match, *savedpath;
-	int		 ret = EPKG_OK, retcode = EX_SOFTWARE;
+	int		 ret = EPKG_OK, retcode = EXIT_FAILURE;
 	int		 ch, res, pathlen = 0;
 	size_t		 i;
 	bool		 orig = false;
@@ -115,7 +114,7 @@ exec_which(int argc, char **argv)
 			break;
 		default:
 			usage_which();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -124,17 +123,17 @@ exec_which(int argc, char **argv)
 
 	if (argc < 1) {
 		usage_which();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (search_s) {
@@ -148,7 +147,7 @@ exec_which(int argc, char **argv)
 
 	while (argc >= 1) {
 		kv_init(patterns);
-		retcode = EX_SOFTWARE;
+		retcode = EXIT_FAILURE;
 		if (search_s) {
 			if ((argv[0][0] == '.') || (argv[0][0] == '/')) {
 				search = false;
@@ -156,13 +155,13 @@ exec_which(int argc, char **argv)
 				search = true;
 
 				if (strlen(argv[0]) >= FILENAME_MAX) {
-					retcode = EX_USAGE;
+					retcode = EXIT_FAILURE;
 					goto cleanup;
 				}
 
 				p = malloc(pathlen);
 				if (p == NULL) {
-					retcode = EX_OSERR;
+					retcode = EXIT_FAILURE;
 					goto cleanup;
 				}
 				strlcpy(p, path, pathlen);
@@ -174,11 +173,11 @@ exec_which(int argc, char **argv)
 					if (p == NULL)
 						break;
 
-					if (res == (EX_USAGE)) {
+					if (res == (EXIT_FAILURE)) {
 						printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
 						search = false;
-					} else if (res == (EX_OSERR)) {
-						retcode = EX_OSERR;
+					} else if (res == (EXIT_FAILURE)) {
+						retcode = EXIT_FAILURE;
 						free(savedpath);
 						goto cleanup;
 					} else {
@@ -199,7 +198,7 @@ exec_which(int argc, char **argv)
 			kv_push(char *, patterns, strdup(pathabs));
 		} else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
-				retcode = EX_USAGE;
+				retcode = EXIT_FAILURE;
 				goto cleanup;
                         }
 			kv_push(char *, patterns, strdup(pathabs));
@@ -208,13 +207,13 @@ exec_which(int argc, char **argv)
 
 		for (i = 0; i < kv_size(patterns); i++) {
 			if ((it = pkgdb_query_which(db, kv_A(patterns, i), glob)) == NULL) {
-				retcode = EX_IOERR;
+				retcode = EXIT_FAILURE;
 				goto cleanup;
 			}
 
 			pkg = NULL;
 			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_FILES)) == EPKG_OK) {
-				retcode = EX_OK;
+				retcode = EXIT_SUCCESS;
 				if (quiet && orig && !show_match)
 					pkg_printf("%o\n", pkg);
 				else if (quiet && !orig && !show_match)
@@ -229,14 +228,14 @@ exec_which(int argc, char **argv)
 					while(pkg_files(pkg, &file) == EPKG_OK) {
 						pkg_asprintf(&match, "%Fn", file);
 						if (match == NULL)
-							err(EX_DATAERR, "pkg_asprintf");
+							err(EXIT_FAILURE, "pkg_asprintf");
 						if(!fnmatch(kv_A(patterns, i), match, 0))
 							printf("%s\n", match);
 						free(match);
 					}
 				}
 			}
-			if (retcode != EX_OK && !quiet)
+			if (retcode != EXIT_SUCCESS && !quiet)
 				printf("%s was not found in the database\n", kv_A(patterns, i));
 
 			pkg_free(pkg);
@@ -279,10 +278,10 @@ get_match(char **pathabs, char **path, char *filename)
 			len = strlen(candidate) + 1;
 			*pathabs = malloc(len);
 			if (*pathabs == NULL)
-				return (EX_OSERR);
+				return (EXIT_FAILURE);
 			strlcpy(*pathabs, candidate, len);
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		}
 	}
-	return (EX_USAGE);
+	return (EXIT_FAILURE);
 }

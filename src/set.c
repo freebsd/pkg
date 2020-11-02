@@ -32,7 +32,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -130,7 +129,7 @@ exec_set(int argc, char **argv)
 			sets |= AUTOMATIC;
 			newautomatic = optarg[0] - '0';
 			if (newautomatic != 0 && newautomatic != 1)
-				errx(EX_USAGE, "Wrong value for -A. "
+				errx(EXIT_FAILURE, "Wrong value for -A. "
 				    "Expecting 0 or 1, got: %s",
 				    optarg);
 			break;
@@ -152,7 +151,7 @@ exec_set(int argc, char **argv)
 			match = MATCH_ALL;
 			changed = "origin";
 			if (!check_change_values(optarg, &oldvalue, &newvalue, '/')) {
-				 errx(EX_USAGE, "Wrong format for -o. "
+				 errx(EXIT_FAILURE, "Wrong format for -o. "
 					 "Expecting oldorigin:neworigin, got: %s",
 					 optarg);
 			}
@@ -163,7 +162,7 @@ exec_set(int argc, char **argv)
 			match = MATCH_ALL;
 			changed = "name";
 			if (!check_change_values(optarg, &oldvalue, &newvalue, '\0')) {
-				 errx(EX_USAGE, "Wrong format for -n. "
+				 errx(EXIT_FAILURE, "Wrong format for -n. "
 					 "Expecting oldname:newname, got: %s",
 					 optarg);
 			}
@@ -175,7 +174,7 @@ exec_set(int argc, char **argv)
 			sets |= VITAL;
 			newvital = optarg[0] - '0';
 			if (newvital != 0 && newvital != 1)
-				errx(EX_USAGE, "Wrong value for -v. "
+				errx(EXIT_FAILURE, "Wrong value for -v. "
 				    "Expecting 0 or 1, got: %s",
 				    optarg);
 			break;
@@ -186,7 +185,7 @@ exec_set(int argc, char **argv)
 			free(oldvalue);
 			free(newvalue);
 			usage_set();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -198,7 +197,7 @@ exec_set(int argc, char **argv)
 		(sets & (NAME|ORIGIN)) == (NAME|ORIGIN)) {
 		free(newvalue);
 		usage_set();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (sets & NAME) {
@@ -215,44 +214,44 @@ exec_set(int argc, char **argv)
 	if (retcode == EPKG_ENODB) {
 		free(newvalue);
 		if (match == MATCH_ALL)
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		if (!quiet)
 			warnx("No packages installed.  Nothing to do!");
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (retcode == EPKG_ENOACCESS) {
 		free(newvalue);
 		warnx("Insufficient privileges to modify the package database");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing package database");
 		free(newvalue);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		free(newvalue);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
 		free(newvalue);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_transaction_begin(db, NULL) != EPKG_OK) {
 		pkgdb_close(db);
 		free(newvalue);
 		warnx("Cannot start transaction for update");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 
 	if (oldvalue != NULL) {
 		match = MATCH_ALL;
 		if ((it = pkgdb_query(db, oldvalue, MATCH_EXACT)) == NULL) {
-			retcode = EX_IOERR;
+			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 
@@ -262,7 +261,7 @@ exec_set(int argc, char **argv)
 			free(oldorigin);
 			pkgdb_it_free(it);
 			pkgdb_close(db);
-			return (EX_SOFTWARE);*/
+			return (EXIT_FAILURE);*/
 		}
 
 		rc = yes;
@@ -276,7 +275,7 @@ exec_set(int argc, char **argv)
 		}
 		if (pkg != NULL && rc) {
 			if (pkgdb_set(db, pkg, field, newvalue) != EPKG_OK) {
-				retcode = EX_IOERR;
+				retcode = EXIT_FAILURE;
 				goto cleanup;
 			}
 		}
@@ -287,7 +286,7 @@ exec_set(int argc, char **argv)
 		bool saved_rc = rc;
 
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-			retcode = EX_IOERR;
+			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 
@@ -336,7 +335,7 @@ exec_set(int argc, char **argv)
 					 * been queried.
 					 */
 					if (pkgdb_set(db, pkg, depfield, oldvalue, newvalue) != EPKG_OK) {
-						retcode = EX_IOERR;
+						retcode = EXIT_FAILURE;
 						goto cleanup;
 					}
 				}

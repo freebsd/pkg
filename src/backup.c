@@ -28,7 +28,6 @@
 
 #include <pkg.h>
 #include <getopt.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include "pkgcli.h"
@@ -72,33 +71,33 @@ exec_backup(int argc, char **argv)
 			break;
 		default:
 			usage_backup();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
 	if ( dump == restore ) {
 		usage_backup();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (dump) {
 		if (!quiet)
 			printf("Dumping database:\n");
 		if (pkgdb_dump(db, backup_file) == EPKG_FATAL)
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 	}
 
 	if (restore) {
 		if (!quiet)
 			printf("Restoring database:\n");
 		if (pkgdb_load(db, backup_file) == EPKG_FATAL)
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 	}
 
 	pkgdb_close(db);
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

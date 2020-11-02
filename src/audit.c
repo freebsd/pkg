@@ -43,7 +43,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sysexits.h>
 #include <khash.h>
 #include <xstring.h>
 
@@ -124,7 +123,7 @@ exec_audit(int argc, char **argv)
 	unsigned int		 affected = 0, vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
-	int			 ret = EX_OK;
+	int			 ret = EXIT_SUCCESS;
 	xstring			*sb;
 	kh_pkgs_t		*check = NULL;
 
@@ -152,7 +151,7 @@ exec_audit(int argc, char **argv)
 			break;
 		default:
 			usage_audit();
-			return(EX_USAGE);
+			return(EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -163,7 +162,7 @@ exec_audit(int argc, char **argv)
 	if (fetch == true) {
 		if (pkg_audit_fetch(NULL, audit_file) != EPKG_OK) {
 			pkg_audit_free(audit);
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -177,7 +176,7 @@ exec_audit(int argc, char **argv)
 					audit_file);
 
 		pkg_audit_free(audit);
-		return (EX_DATAERR);
+		return (EXIT_FAILURE);
 	}
 
 	check = kh_init_pkgs();
@@ -190,7 +189,7 @@ exec_audit(int argc, char **argv)
 				version++;
 			}
 			if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
-				err(EX_OSERR, "malloc");
+				err(EXIT_FAILURE, "malloc");
 			if (version != NULL)
 				pkg_set(pkg, PKG_NAME, name, PKG_VERSION, version);
 			else
@@ -212,23 +211,23 @@ exec_audit(int argc, char **argv)
 		if (ret == EPKG_ENODB) {
 			pkg_audit_free(audit);
 			kh_destroy_pkgs(check);
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		} else if (ret == EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to read the package database");
 			pkg_audit_free(audit);
 			kh_destroy_pkgs(check);
-			return (EX_NOPERM);
+			return (EXIT_FAILURE);
 		} else if (ret != EPKG_OK) {
 			warnx("Error accessing the package database");
 			pkg_audit_free(audit);
 			kh_destroy_pkgs(check);
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 			pkg_audit_free(audit);
 			kh_destroy_pkgs(check);
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 
 		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
@@ -236,12 +235,12 @@ exec_audit(int argc, char **argv)
 			pkg_audit_free(audit);
 			kh_destroy_pkgs(check);
 			warnx("Cannot get a read lock on a database, it is locked by another process");
-			return (EX_TEMPFAIL);
+			return (EXIT_FAILURE);
 		}
 
 		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
 			warnx("Error accessing the package database");
-			ret = EX_IOERR;
+			ret = EXIT_FAILURE;
 		}
 		else {
 			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
@@ -249,14 +248,14 @@ exec_audit(int argc, char **argv)
 				add_to_check(check, pkg);
 				pkg = NULL;
 			}
-			ret = EX_OK;
+			ret = EXIT_SUCCESS;
 		}
 		if (db != NULL) {
 			pkgdb_it_free(it);
 			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 			pkgdb_close(db);
 		}
-		if (ret != EX_OK) {
+		if (ret != EXIT_SUCCESS) {
 			pkg_audit_free(audit);
 			kh_destroy_pkgs(check);
 			return (ret);
@@ -303,7 +302,7 @@ exec_audit(int argc, char **argv)
 		kh_destroy_pkgs(check);
 
 		if (ret == EPKG_END && vuln == 0)
-			ret = EX_OK;
+			ret = EXIT_SUCCESS;
 
 		if (!quiet)
 			printf("%u problem(s) in %u installed package(s) found.\n",
@@ -311,7 +310,7 @@ exec_audit(int argc, char **argv)
 	}
 	else {
 		warnx("cannot process vulnxml");
-		ret = EX_SOFTWARE;
+		ret = EXIT_FAILURE;
 		kh_destroy_pkgs(check);
 	}
 

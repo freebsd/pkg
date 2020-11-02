@@ -45,7 +45,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>

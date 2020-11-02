@@ -18,6 +18,6 @@ EOF
 	atf_check \
 		-o match:"Unable to update repository test" \
 		-e match:"pkg: file://empty//packagesite.txz: No such file or directory" \
-		-s exit:70 \
+		-s exit:1 \
 		pkg -R repos update
 }

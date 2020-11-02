@@ -28,7 +28,6 @@
 #include <err.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <sysexits.h>
 
 #include <pkg.h>
 
@@ -55,7 +54,7 @@ exec_config(int argc, char **argv)
 
 	if (argc != 2) {
 		usage_config();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	key = argv[1];
@@ -65,7 +64,7 @@ exec_config(int argc, char **argv)
 	conf = pkg_config_get(key);
 	if (conf == NULL) {
 		warnx("No such configuration options: %s", key);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	switch (pkg_object_type(conf)) {
@@ -95,5 +94,5 @@ exec_config(int argc, char **argv)
 		break;
 	}
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

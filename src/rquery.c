@@ -37,7 +37,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include "pkgcli.h"
@@ -111,7 +110,7 @@ exec_rquery(int argc, char **argv)
 	match_t			 match = MATCH_EXACT;
 	int			 ch;
 	int			 ret = EPKG_OK;
-	int			 retcode = EX_OK;
+	int			 retcode = EXIT_SUCCESS;
 	int			 i;
 	char			 multiline = 0;
 	char			*condition = NULL;
@@ -170,7 +169,7 @@ exec_rquery(int argc, char **argv)
 			break;
 		default:
 			usage_rquery();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -179,7 +178,7 @@ exec_rquery(int argc, char **argv)
 
 	if (argc == 0 && !index_output) {
 		usage_rquery();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	/* Default to all packages if no pkg provided */
@@ -188,7 +187,7 @@ exec_rquery(int argc, char **argv)
 			match = MATCH_ALL;
 		} else if (((argc == 1) ^ (match == MATCH_ALL )) && condition == NULL) {
 			usage_rquery();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	} else {
 		if (argc == 0)
@@ -196,13 +195,13 @@ exec_rquery(int argc, char **argv)
 	}
 
 	if (!index_output && analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 
 	if (condition != NULL) {
 		sqlcond = xstring_new();
 		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK) {
 			xstring_free(sqlcond);
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -210,10 +209,10 @@ exec_rquery(int argc, char **argv)
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
 		xstring_free(sqlcond);
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (ret != EPKG_OK) {
 		xstring_free(sqlcond);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	/* first update the remote repositories if needed */
@@ -228,7 +227,7 @@ exec_rquery(int argc, char **argv)
 	ret = pkgdb_open_all(&db, PKGDB_REMOTE, reponame);
 	if (ret != EPKG_OK) {
 		xstring_free(sqlcond);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 	drop_privileges();
 
@@ -243,7 +242,7 @@ exec_rquery(int argc, char **argv)
 		}
 		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL) {
 			xstring_free(sqlcond);
-			return (EX_IOERR);
+			return (EXIT_FAILURE);
 		}
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
@@ -254,7 +253,7 @@ exec_rquery(int argc, char **argv)
 		}
 
 		if (ret != EPKG_END)
-			retcode = EX_SOFTWARE;
+			retcode = EXIT_FAILURE;
 
 		pkgdb_it_free(it);
 	} else {
@@ -263,7 +262,7 @@ exec_rquery(int argc, char **argv)
 
 			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL) {
 				xstring_free(sqlcond);
-				return (EX_IOERR);
+				return (EXIT_FAILURE);
 			}
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
@@ -275,14 +274,14 @@ exec_rquery(int argc, char **argv)
 			}
 
 			if (ret != EPKG_END) {
-				retcode = EX_SOFTWARE;
+				retcode = EXIT_FAILURE;
 				break;
 			}
 
 			pkgdb_it_free(it);
 		}
-		if (!onematched && retcode == EX_OK)
-			retcode = EX_UNAVAILABLE;
+		if (!onematched && retcode == EXIT_SUCCESS)
+			retcode = EXIT_FAILURE;
 	}
 
 	xstring_free(sqlcond);

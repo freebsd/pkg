@@ -35,7 +35,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -176,7 +175,7 @@ read_input(void)
 			if (feof(stdin))
 				break;
 			if (ferror(stdin))
-				err(EX_NOINPUT, "Failed to read stdin");
+				err(EXIT_FAILURE, "Failed to read stdin");
 		}
 		fputc(ch, input->fp);
 	}
@@ -198,7 +197,7 @@ exec_annotate(int argc, char **argv)
 	int		 ch;
 	int		 match    = MATCH_EXACT;
 	int		 retcode;
-	int		 exitcode = EX_OK;
+	int		 exitcode = EXIT_SUCCESS;
 	int		 flags = 0;
 	int		 lock_type = PKGDB_LOCK_EXCLUSIVE;
 	int		 mode = PKGDB_MODE_READ;
@@ -263,7 +262,7 @@ exec_annotate(int argc, char **argv)
 			break;
 		default:
 			usage_annotate();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
         }
 	argc -= optind;
@@ -273,7 +272,7 @@ exec_annotate(int argc, char **argv)
 	    (match == MATCH_ALL && argc < 1) ||
 	    (match != MATCH_ALL && argc < 2)) {
 		usage_annotate();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (match == MATCH_ALL) {
@@ -296,37 +295,37 @@ exec_annotate(int argc, char **argv)
 	retcode = pkgdb_access(mode, PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
 		if (match == MATCH_ALL) {
-			exitcode = EX_OK;
+			exitcode = EXIT_SUCCESS;
 			goto cleanup;
 		}
 		if (!quiet)
 			warnx("No packages installed.  Nothing to do!");
-		exitcode = EX_OK;
+		exitcode = EXIT_SUCCESS;
 		goto cleanup;
 	} else if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to modify the package database");
-		exitcode = EX_NOPERM;
+		exitcode = EXIT_FAILURE;
 		goto cleanup;
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
-		exitcode = EX_SOFTWARE;
+		exitcode = EXIT_FAILURE;
 		goto cleanup;
 	}
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK) {
 		free(input);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-		exitcode = EX_IOERR;
+		exitcode = EXIT_FAILURE;
 		goto cleanup;
 	}
 
@@ -335,7 +334,7 @@ exec_annotate(int argc, char **argv)
 		switch(action) {
 		case NONE:	/* Should never happen */
 			usage_annotate();
-			exitcode = EX_USAGE;
+			exitcode = EXIT_FAILURE;
 			break;
 		case ADD:
 			retcode = do_add(db, pkg, tag, value);
@@ -352,10 +351,10 @@ exec_annotate(int argc, char **argv)
 		}
 
 		if (retcode == EPKG_WARN)
-			exitcode = EX_DATAERR;
+			exitcode = EXIT_FAILURE;
 
 		if (retcode != EPKG_OK && retcode != EPKG_WARN) {
-			exitcode = EX_IOERR;
+			exitcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 	}

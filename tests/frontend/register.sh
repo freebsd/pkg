@@ -36,7 +36,7 @@ EOF
 	atf_check \
 	    -o match:".*Installing.*" \
 	    -e match:".*conflicts.*" \
-	    -s exit:70 \
+	    -s exit:1 \
 	    pkg register -i teststage -M test.ucl
 	nsum=$(openssl dgst -sha256 -binary plop | hexdump -v -e '/1 "%x"')
 	atf_check_equal ${sum} ${nsum}
@@ -120,6 +120,6 @@ file_not_found_body()
 	mkdir -p ${TMPDIR}/target
 	atf_check \
 		-e match:"Unable to access file ${TMPDIR}/prefix/foo" \
-		-s exit:74 \
+		-s exit:1 \
 		pkg -r ${TMPDIR}/target register -M ${TMPDIR}/test.ucl -f ${TMPDIR}/plist -i ${TMPDIR}
 }

@@ -35,7 +35,6 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
@@ -111,7 +110,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 			}
 		}
 
-		ret = EX_OK;
+		ret = EXIT_SUCCESS;
 	}
 
 	if (db != NULL) {
@@ -119,7 +118,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		pkgdb_close(db);
 	}
 
-	if (ret != EX_OK) {
+	if (ret != EXIT_SUCCESS) {
 		pkg_audit_free(audit);
 		kh_destroy_pkgs(check);
 		fclose(out);
@@ -188,7 +187,7 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 
 	if (pkg_audit_fetch(NULL, NULL) != EPKG_OK) {
 		pkg_audit_free(audit);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	/* Create socketpair to execute audit check in a detached mode */
@@ -341,7 +340,7 @@ exec_upgrade(int argc, char **argv)
 			break;
 		default:
 			usage_upgrade();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 			/* NOTREACHED */
 		}
 	}
@@ -364,11 +363,11 @@ exec_upgrade(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to upgrade packages");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	else
-		retcode = EX_SOFTWARE;
+		retcode = EXIT_FAILURE;
 
 	/* first update the remote repositories if needed */
 	if (auto_update &&
@@ -376,12 +375,12 @@ exec_upgrade(int argc, char **argv)
 		return (updcode);
 
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
@@ -446,7 +445,7 @@ exec_upgrade(int argc, char **argv)
 		printf("Your packages are up to date.\n");
 
 	if (rc)
-		retcode = EX_OK;
+		retcode = EXIT_SUCCESS;
 	else
 		retcode = EXIT_FAILURE;
 

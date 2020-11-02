@@ -35,7 +35,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -156,14 +155,14 @@ exec_update(int argc, char **argv)
 			break;
 		default:
 			usage_update();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
 
 	if (argc != 0) {
 		usage_update();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
@@ -171,12 +170,12 @@ exec_update(int argc, char **argv)
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to update the repository "
 		      "catalogue.");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (ret != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	/* For pkg-update update op is strict */
 	ret = pkgcli_update(force, true, reponame);
 
-	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
+	return ((ret == EPKG_OK) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

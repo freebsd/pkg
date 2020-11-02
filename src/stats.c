@@ -36,7 +36,6 @@
 #include <libutil.h>
 #endif
 #include <stdio.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -86,7 +85,7 @@ exec_stats(int argc, char **argv)
 			break;
 		default:
 			usage_stats();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argv += optind;
@@ -96,13 +95,13 @@ exec_stats(int argc, char **argv)
 		opt |= (STATS_LOCAL | STATS_REMOTE);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (opt & STATS_LOCAL) {
@@ -140,5 +139,5 @@ exec_stats(int argc, char **argv)
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

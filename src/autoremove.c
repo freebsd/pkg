@@ -30,7 +30,6 @@
 #include <err.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -49,7 +48,7 @@ exec_autoremove(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode = EX_OK;
+	int retcode = EXIT_SUCCESS;
 	int ch;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
@@ -84,7 +83,7 @@ exec_autoremove(int argc, char **argv)
 
 	if (argc != 0) {
 		usage_autoremove();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (dry_run)
@@ -95,34 +94,34 @@ exec_autoremove(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to autoremove packages");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode == EPKG_ENODB) {
 		warnx("No packages installed.  Nothing to do!");
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 	/* Always force packages to be removed */
 	if (pkg_jobs_new(&jobs, PKG_JOBS_AUTOREMOVE, db) != EPKG_OK) {
 		pkgdb_close(db);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	pkg_jobs_set_flags(jobs, f);
 
 	if ((retcode = pkg_jobs_solve(jobs)) != EPKG_OK) {
-		retcode = EX_SOFTWARE;
+		retcode = EXIT_FAILURE;
 		goto cleanup;
 	}
 

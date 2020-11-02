@@ -48,7 +48,6 @@
 #include <pkg.h>
 #include <stdbool.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <khash.h>
 #include <kvec.h>
@@ -113,7 +112,7 @@ static int
 delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 {
 	struct stat st;
-	int retcode = EX_OK;
+	int retcode = EXIT_SUCCESS;
 	int flag = 0;
 	size_t i;
 	unsigned int count = 0, processed = 0;
@@ -135,7 +134,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 			flag = AT_REMOVEDIR;
 		if (unlinkat(fd, relpath, flag) == -1) {
 			warn("unlink(%s)", file);
-			retcode = EX_SOFTWARE;
+			retcode = EXIT_FAILURE;
 		}
 		free(file);
 		kv_A(*dl, i) = NULL;
@@ -145,7 +144,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	progressbar_tick(processed, total);
 
 	if (!quiet) {
-		if (retcode == EX_OK)
+		if (retcode == EXIT_SUCCESS)
 			printf("All done\n");
 		else
 			printf("%d package%s could not be deleted\n",
@@ -333,7 +332,7 @@ exec_clean(int argc, char **argv)
 			break;
 		default:
 			usage_clean();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -341,7 +340,7 @@ exec_clean(int argc, char **argv)
 	cachefd = pkg_get_cachedirfd();
 	if (cachefd == -1) {
 		warn("Impossible to open %s", cachedir);
-		return (errno == ENOENT ? EX_OK : EX_IOERR);
+		return (errno == ENOENT ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
 	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
@@ -349,22 +348,22 @@ exec_clean(int argc, char **argv)
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to clean old packages");
 		close(cachefd);
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode == EPKG_ENODB) {
 		warnx("No package database installed.  Nothing to do!");
 		close(cachefd);
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
 		close(cachefd);
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
-	retcode = EX_SOFTWARE;
+	retcode = EXIT_FAILURE;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		close(cachefd);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
@@ -372,7 +371,7 @@ exec_clean(int argc, char **argv)
 		close(cachefd);
 		warnx("Cannot get a read lock on a database, it is locked by "
 		    "another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 #ifdef HAVE_CAPSICUM
@@ -381,13 +380,13 @@ exec_clean(int argc, char **argv)
 		if (cap_rights_limit(cachefd, &rights) < 0 && errno != ENOSYS ) {
 			warn("cap_rights_limit() failed");
 			close(cachefd);
-			return (EX_SOFTWARE);
+			return (EXIT_FAILURE);
 		}
 
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(cachefd);
-			return (EX_SOFTWARE);
+			return (EXIT_FAILURE);
 		}
 #endif
 
@@ -406,7 +405,7 @@ exec_clean(int argc, char **argv)
 	if (kv_size(dl) == 0) {
 		if (!quiet)
 			printf("Nothing to do.\n");
-		retcode = EX_OK;
+		retcode = EXIT_SUCCESS;
 		goto cleanup;
 	}
 
@@ -421,7 +420,7 @@ exec_clean(int argc, char **argv)
 				retcode = delete_dellist(cachefd, cachedir, &dl, kv_size(dl));
 			}
 	} else {
-		retcode = EX_OK;
+		retcode = EXIT_SUCCESS;
 	}
 
 cleanup:

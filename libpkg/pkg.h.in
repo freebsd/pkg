@@ -86,10 +86,10 @@ extern "C" {
 #endif
 
 /* Special exit status for worker processes indicating that a restart
- * is desired -- eg. after a child has updated pkg(8) itself.  Don't
- * clash with any of the sysexits values */
+ * is desired -- eg. after a child has updated pkg(8) itself.
+ */
 
-#define EX_NEEDRESTART	(EX__MAX + 1)
+#define EX_NEEDRESTART	4
 
 struct pkg;
 struct pkg_dep;

@@ -29,7 +29,6 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -101,17 +100,17 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	int		 retcode;
-	int		 exitcode = EX_OK;
+	int		 exitcode = EXIT_SUCCESS;
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on database. "
 		      "It is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-		exitcode = EX_IOERR;
+		exitcode = EXIT_FAILURE;
 		goto cleanup;
 	}
 
@@ -122,7 +121,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 			retcode = do_unlock(db, pkg);
 
 		if (retcode != EPKG_OK) {
-			exitcode = EX_IOERR;
+			exitcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 	}
@@ -157,7 +156,7 @@ list_locked(struct pkgdb *db, bool has_locked)
 
 	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
 		pkgdb_close(db);
-		return (EX_UNAVAILABLE);
+		return (EXIT_FAILURE);
 	}
 
 	if (!quiet && !has_locked)
@@ -176,7 +175,7 @@ list_locked(struct pkgdb *db, bool has_locked)
 	if (has_locked)
 		return (gotone ? EXIT_SUCCESS : EXIT_FAILURE);
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }
 
 static int
@@ -185,7 +184,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	struct pkgdb	*db = NULL;
 	int		 match = MATCH_EXACT;
 	int		 retcode, i;
-	int		 exitcode = EX_OK;
+	int		 exitcode = EXIT_SUCCESS;
 	int		 ch;
 	bool		 show_locked = false;
 	bool		 read_only = false;
@@ -235,7 +234,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			break;
 		default:
 			usage_lock();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
         }
 	argc -= optind;
@@ -251,7 +250,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	if (!show_locked && match != MATCH_ALL && argc == 0) {
 		usage_lock();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (read_only)
@@ -261,21 +260,21 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
 		if (match == MATCH_ALL)
-			return (EX_OK);
+			return (EXIT_SUCCESS);
 		if (!quiet)
 			warnx("No packages installed.  Nothing to do!");
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to modify the package database");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing the package database");
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (!read_only) {
 		if (match == MATCH_ALL) {
@@ -283,7 +282,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		} else {
 			for (i = 0; i < argc; i++) {
 				retcode = do_lock_unlock(db, match, argv[i], action);
-				if (retcode != EX_OK)
+				if (retcode != EXIT_SUCCESS)
 					exitcode = retcode;
 			}
 		}
@@ -294,5 +293,5 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	pkgdb_close(db);
 
-	return (exitcode);
+	return (exitcode == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
 }

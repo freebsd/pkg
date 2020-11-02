@@ -31,7 +31,6 @@
 #include <bsd_compat.h>
 #include <getopt.h>
 #include <signal.h>
-#include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -134,7 +133,7 @@ exec_repo(int argc, char **argv)
 			break;
 		default:
 			usage_repo();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -142,12 +141,12 @@ exec_repo(int argc, char **argv)
 
 	if (argc < 1) {
 		usage_repo();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (argc > 2 && strcmp(argv[1], "signing_command:") != 0) {
 		usage_repo();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (output_dir == NULL)
@@ -158,12 +157,12 @@ exec_repo(int argc, char **argv)
 
 	if (ret != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkg_finish_repo(output_dir, password_cb, argv + 1, argc - 1,
 	    filelist) != EPKG_OK)
-		return (EX_DATAERR);
+		return (EXIT_FAILURE);
 
-	return (EX_OK);
+	return (EXIT_SUCCESS);
 }

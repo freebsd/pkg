@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <xstring.h>
@@ -111,7 +110,7 @@ exec_add(int argc, char **argv)
 			break;
 		default:
 			usage_add();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -119,7 +118,7 @@ exec_add(int argc, char **argv)
 
 	if (argc < 1) {
 		usage_add();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	retcode = pkgdb_access(PKGDB_MODE_READ  |
@@ -128,17 +127,17 @@ exec_add(int argc, char **argv)
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to add packages");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	failedpkgs = xstring_new();
@@ -200,6 +199,6 @@ exec_add(int argc, char **argv)
 		printf("%s", messages->buf);
 	}
 
-	return (retcode == EPKG_OK ? EX_OK : EX_SOFTWARE);
+	return (retcode == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 

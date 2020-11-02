@@ -33,7 +33,6 @@
 #include <err.h>
 #include <assert.h>
 #include <getopt.h>
-#include <sysexits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -279,7 +278,7 @@ exec_check(int argc, char **argv)
 	xstring *msg = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
-	int ret, rc = EX_OK;
+	int ret, rc = EXIT_SUCCESS;
 	int ch;
 	bool dcheck = false;
 	bool checksums = false;
@@ -358,7 +357,7 @@ exec_check(int argc, char **argv)
 			break;
 		default:
 			usage_check();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -369,7 +368,7 @@ exec_check(int argc, char **argv)
 		match = MATCH_ALL;
 	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute || reanalyse_shlibs)) {
 		usage_check();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (recompute || reanalyse_shlibs)
@@ -381,28 +380,28 @@ exec_check(int argc, char **argv)
 	if (ret == EPKG_ENODB) {
 		if (!quiet)
 			warnx("No packages installed.  Nothing to do!");
-		return (EX_OK);
+		return (EXIT_SUCCESS);
 	} else if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to access the package database");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (ret != EPKG_OK) {
 		warnx("Error accessing the package database");
-		return (EX_SOFTWARE);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	}
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	i = 0;
@@ -411,7 +410,7 @@ exec_check(int argc, char **argv)
 		/* XXX: This is really quirky, it would be cleaner to pass
 		 * in multiple matches and only run this top-loop once. */
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-			rc = EX_IOERR;
+			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
 		nbactions = pkgdb_it_count(it);
@@ -459,14 +458,14 @@ exec_check(int argc, char **argv)
 					printf(" dependencies...");
 				nbpkgs += check_deps(db, pkg, &dh, noinstall, out);
 				if (noinstall && nbpkgs > 0) {
-					rc = EX_UNAVAILABLE;
+					rc = EXIT_FAILURE;
 				}
 			}
 			if (checksums) {
 				if (!quiet && verbose)
 					printf(" checksums...");
 				if (pkg_test_filesum(pkg) != EPKG_OK) {
-					rc = EX_DATAERR;
+					rc = EXIT_FAILURE;
 				}
 			}
 			if (recompute) {
@@ -475,14 +474,14 @@ exec_check(int argc, char **argv)
 					if (!quiet && verbose)
 						printf(" recomputing...");
 					if (pkg_recompute(db, pkg) != EPKG_OK) {
-						rc = EX_DATAERR;
+						rc = EXIT_FAILURE;
 					}
 					pkgdb_downgrade_lock(db,
 					    PKGDB_LOCK_EXCLUSIVE,
 					    PKGDB_LOCK_ADVISORY);
 				}
 				else {
-					rc = EX_TEMPFAIL;
+					rc = EXIT_FAILURE;
 				}
 			}
 			if (reanalyse_shlibs) {
@@ -494,14 +493,14 @@ exec_check(int argc, char **argv)
 						pkg_fprintf(stderr, "Failed to "
 						    "reanalyse for shlibs: "
 						    "%n-%v\n", pkg, pkg);
-						rc = EX_UNAVAILABLE;
+						rc = EXIT_FAILURE;
 					}
 					pkgdb_downgrade_lock(db,
 					    PKGDB_LOCK_EXCLUSIVE,
 					    PKGDB_LOCK_ADVISORY);
 				}
 				else {
-					rc = EX_TEMPFAIL;
+					rc = EXIT_FAILURE;
 				}
 			}
 
@@ -532,15 +531,15 @@ exec_check(int argc, char **argv)
 					check_summary(db, dh);
 				else if (ret == EPKG_ENODB) {
 					db = NULL;
-					rc = EX_IOERR;
+					rc = EXIT_FAILURE;
 				}
-				if (rc == EX_IOERR)
+				if (rc == EXIT_FAILURE)
 					goto cleanup;
 				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
 				    PKGDB_LOCK_ADVISORY);
 			}
 			else {
-				rc = EX_TEMPFAIL;
+				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
 		}

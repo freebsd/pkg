@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sysexits.h>
 #include <ctype.h>
 
 #include "pkgcli.h"
@@ -164,7 +163,7 @@ exec_shlib(int argc, char **argv)
 			break;
 		default:
 			usage_shlib();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -172,27 +171,27 @@ exec_shlib(int argc, char **argv)
 
 	if (argc < 1 || (provides_only && requires_only)) {
 		usage_shlib();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (argc >= 2) {
 		warnx("multiple libraries per run not allowed");
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (sanitize(libname, argv[0], sizeof(libname)) == NULL) {
 		usage_shlib();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (retcode == EPKG_OK && !requires_only)
@@ -202,7 +201,7 @@ exec_shlib(int argc, char **argv)
 		retcode = pkgs_requiring_lib(db, libname);
 
 	if (retcode != EPKG_OK)
-		retcode = (EX_IOERR);
+		retcode = (EXIT_FAILURE);
 		
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

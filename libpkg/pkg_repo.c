@@ -43,7 +43,6 @@
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/mman.h>

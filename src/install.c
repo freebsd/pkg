@@ -37,7 +37,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
@@ -154,7 +153,7 @@ exec_install(int argc, char **argv)
 			break;
 		default:
 			usage_install();
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -162,7 +161,7 @@ exec_install(int argc, char **argv)
 
 	if (argc < 1) {
 		usage_install();
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (dry_run && !auto_update)
@@ -186,11 +185,11 @@ exec_install(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to install packages");
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	else
-		retcode = EX_SOFTWARE;
+		retcode = EXIT_FAILURE;
 
 	/* first update the remote repositories if needed */
 	if (auto_update && pkg_repos_total_count() > 0 &&
@@ -200,12 +199,12 @@ exec_install(int argc, char **argv)
 	if (pkgdb_open_all(&db,
 	    local_only ? PKGDB_DEFAULT : PKGDB_MAYBE_REMOTE,
 	    reponame) != EPKG_OK)
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
@@ -264,7 +263,7 @@ exec_install(int argc, char **argv)
 		printf("The most recent versions of packages are already installed\n");
 
 	if (rc)
-		retcode = EX_OK;
+		retcode = EXIT_SUCCESS;
 	else
 		retcode = EXIT_FAILURE;
 

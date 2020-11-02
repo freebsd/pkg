@@ -32,7 +32,6 @@
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <sysexits.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -67,7 +66,7 @@ exec_register(int argc, char **argv)
 
 	int		 ch;
 	int		 ret     = EPKG_OK;
-	int		 retcode = EX_OK;
+	int		 retcode = EXIT_SUCCESS;
 
 	/* options descriptor */
 	struct option longopts[] = {
@@ -84,7 +83,7 @@ exec_register(int argc, char **argv)
 	};
 
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
-		err(EX_OSERR, "malloc");
+		err(EXIT_FAILURE, "malloc");
 
 	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:t", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -117,7 +116,7 @@ exec_register(int argc, char **argv)
 			warnx("Unrecognised option -%c\n", ch);
 			usage_register();
 			pkg_free(pkg);
-			return (EX_USAGE);
+			return (EXIT_FAILURE);
 		}
 	}
 
@@ -128,10 +127,10 @@ exec_register(int argc, char **argv)
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to register packages");
 		pkg_free(pkg);
-		return (EX_NOPERM);
+		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK) {
 		pkg_free(pkg);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	/*
@@ -155,7 +154,7 @@ exec_register(int argc, char **argv)
 		warnx("Cannot use both -m and -M together");
 		usage_register();
 		pkg_free(pkg);
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 
@@ -163,33 +162,33 @@ exec_register(int argc, char **argv)
 		warnx("One of either -m or -M flags is required");
 		usage_register();
 		pkg_free(pkg);
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	if (testing_mode && input_path != NULL) {
 		warnx("-i incompatible with -t option");
 		usage_register();
 		pkg_free(pkg);
-		return (EX_USAGE);
+		return (EXIT_FAILURE);
 	}
 
 	ret = pkg_load_metadata(pkg, mfile, mdir, plist, input_path, testing_mode);
 	if (ret != EPKG_OK) {
 		pkg_free(pkg);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_free(pkg);
-		return (EX_IOERR);
+		return (EXIT_FAILURE);
 	}
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
 		pkg_free(pkg);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
-		return (EX_TEMPFAIL);
+		return (EXIT_FAILURE);
 	}
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
@@ -202,5 +201,5 @@ exec_register(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 
-	return (retcode != EPKG_OK ? EX_SOFTWARE : EX_OK);
+	return (retcode != EPKG_OK ? EXIT_FAILURE : EXIT_SUCCESS);
 }
