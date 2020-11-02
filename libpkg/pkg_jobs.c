@@ -1828,7 +1828,7 @@ solve_with_sat_solver(struct pkg_jobs *j)
 
 	if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
 		!= NULL) {
-		dot = fopen(dotfile, "w");
+		dot = fopen(dotfile, "we");
 
 		if (dot == NULL) {
 			pkg_emit_errno("fopen", dotfile);
@@ -1851,7 +1851,7 @@ solve_with_sat_solver(struct pkg_jobs *j)
 
 	if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
 		!= NULL) {
-		dot = fopen(dotfile, "w");
+		dot = fopen(dotfile, "we");
 
 		if (dot == NULL) {
 			pkg_emit_errno("fopen", dotfile);

@@ -780,12 +780,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	/* Write metafile */
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
 		"meta");
-	if ((mfile = fopen(repodb, "w")) != NULL) {
+	if ((mfile = fopen(repodb, "we")) != NULL) {
 		meta_dump = pkg_repo_meta_to_ucl(meta);
 		ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
 		fclose(mfile);
 		strlcat(repodb, ".conf", sizeof(repodb));
-		if ((mfile = fopen(repodb, "w")) != NULL) {
+		if ((mfile = fopen(repodb, "we")) != NULL) {
 			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
 			fclose(mfile);
 		} else {

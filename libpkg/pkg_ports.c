@@ -1434,7 +1434,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 		plist_free(pplist);
 		return (EPKG_FATAL);
 	}
-	if ((plist_f = fopen(plist, "r")) == NULL) {
+	if ((plist_f = fopen(plist, "re")) == NULL) {
 		pkg_emit_error("Unable to open plist file: %s", plist);
 		plist_free(pplist);
 		return (EPKG_FATAL);

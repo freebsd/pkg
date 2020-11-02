@@ -36,7 +36,7 @@ FILE *metalogfp = NULL;
 int
 metalog_open(const char *metalog)
 {
-	metalogfp = fopen(metalog, "a");
+	metalogfp = fopen(metalog, "ae");
 	if (metalogfp == NULL) {
 		pkg_fatal_errno("Unable to open metalog '%s'", metalog);
 	} 

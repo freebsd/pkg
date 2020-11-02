@@ -387,7 +387,7 @@ read_dirs_from_file(const char *hintsfile, const char *listfile)
 	char	 buf[MAXPATHLEN];
 	int	 linenum;
 
-	if ((fp = fopen(listfile, "r")) == NULL)
+	if ((fp = fopen(listfile, "re")) == NULL)
 		err(1, "%s", listfile);
 
 	linenum = 0;

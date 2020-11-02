@@ -50,7 +50,7 @@ _load_rsa_private_key(struct rsa_key *rsa)
 {
 	FILE *fp;
 
-	if ((fp = fopen(rsa->path, "r")) == NULL)
+	if ((fp = fopen(rsa->path, "re")) == NULL)
 		return (EPKG_FATAL);
 
 	if ((rsa->key = RSA_new()) == NULL) {

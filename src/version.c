@@ -295,7 +295,7 @@ hash_indexfile(const char *indexfilename)
 	/* Create a hash table of all the package names and port
 	 * directories from the index file. */
 
-	indexfile = fopen(indexfilename, "r");
+	indexfile = fopen(indexfilename, "re");
 	if (!indexfile)
 		err(EX_NOINPUT, "Unable to open %s", indexfilename);
 
