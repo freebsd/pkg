@@ -31,6 +31,7 @@ files: {
 }
 EOF
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg plop plop 1
+	sed -ie 's/comment: a test/comment: Nothing to see here/' plop.ucl
 	cat >> plop.ucl << EOF
 deps: {
     test: {
@@ -40,6 +41,7 @@ deps: {
 
 }
 EOF
+	cat plop.ucl
 
 	atf_check \
 		-o match:".*Installing.*" \
@@ -133,4 +135,47 @@ EOF
 		-e empty \
 		-s exit:0 \
 		test "${sum1}" = "${sum2}"
+
+	# Test 'pkg query -F'
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M plop.ucl
+
+	atf_check \
+		-o inline:"${TMPDIR}/plop\n${TMPDIR}/bla\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -F ./test-1.txz '%Fp'
+
+	atf_check \
+		-o inline:"1\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -F ./test-1.txz '%?F'
+
+	atf_check \
+		-o inline:"2\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -F ./test-1.txz '%#F'
+
+	atf_check \
+		-o inline:"test 1\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -F ./test-1.txz '%n %v'
+
+	atf_check \
+		-o inline:"a test\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -F ./test-1.txz '%c'
+
+	atf_check \
+		-o inline:"Nothing to see here\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -F ./plop-1.txz '%c'
 }
