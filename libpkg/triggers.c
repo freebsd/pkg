@@ -304,9 +304,6 @@ trigger_free(struct trigger *t)
 		ucl_object_unref(t->path_glob);
 	if (t->path != NULL)
 		ucl_object_unref(t->path_regex);
-	free(t->path);
-	free(t->path_glob);
-	free(t->path_regex);
 	free(t->cleanup.script);
 	free(t->script.script);
 }
@@ -509,7 +506,7 @@ triggers_execute(struct trigger *cleanup_triggers)
 			trigger_free(trigger);
 		}
 	}
-	kh_free(strings, th, char, free);
+	kh_destroy_strings(th);
 
 	pkg_emit_triggers_begin();
 	LL_FOREACH(cleanup_triggers, t) {
