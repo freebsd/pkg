@@ -41,7 +41,6 @@ deps: {
 
 }
 EOF
-	cat plop.ucl
 
 	atf_check \
 		-o match:".*Installing.*" \
