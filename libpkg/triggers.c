@@ -158,6 +158,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	}
 
 	t = xcalloc(1, sizeof(*t));
+	t->name = xstrdup(name);
 
 	if (cleanup_only) {
 		cleanup = ucl_object_find_key(obj, "cleanup");
