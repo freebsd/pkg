@@ -890,6 +890,13 @@ event_callback(void *data, struct pkg_event *ev)
 		fprintf(conflicts->fp, " on %s\n",
 		    ev->e_conflicts.path);
 		break;
+	case PKG_EVENT_TRIGGER:
+		if (!quiet) {
+			if (ev->e_trigger.cleanup)
+				printf("==> Cleaning up trigger: %s\n", ev->e_trigger.name);
+			else
+				printf("==> Running trigger: %s\n", ev->e_trigger.name);
+		}
 	default:
 		break;
 	}

@@ -54,7 +54,8 @@ TESTS_SH= \
 	frontend/clean.sh \
 	frontend/backup_lib.sh \
 	frontend/abi.sh \
-	frontend/http.sh
+	frontend/http.sh \
+	frontend/triggers.sh
 
 merge_OBJS=	lib/merge.o
 plist_OBJS=	lib/plist.o
