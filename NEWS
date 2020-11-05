@@ -1,3 +1,11 @@
+Changes from 1.15.99.6 to 1.15.99.7
+- Merge keywords preinstall script into a single "prepackaging script"
+- implement triggers (lua and shell)
+- fix issues with script leaving process in the background
+- fix an issue with metalog duplicated entries
+- improve performances of pkg query -F
+- get rid of sysexits
+
 Changes from 1.15.99.5 to 1.15.99.6
 - lots of keywords improvements:
   * validation: lua script to validate the keyword line
