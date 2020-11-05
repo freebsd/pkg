@@ -5,6 +5,13 @@ CC=	@CC@
 CFLAGS+=	@COVERAGE_CFLAGS@
 LDFLAGS+=	@COVERAGE_LDFLAGS@
 @endif
+@if asan
+CFLAGS+=	-O0 -ggdb -fsanitize=address
+LDFLAGS+=	-fsanitize=address
+@endif
+@if ubsan
+CFLAGS+=	-fsanitize=undefined
+@endif
 SHOBJ_CFLAGS=	@SHOBJ_CFLAGS@
 LIBSOEXT=	@LIBSOEXT@
 SH_SOEXT=	@SH_SOEXT@

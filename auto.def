@@ -16,6 +16,8 @@ options {
 	with-ldns => "add support for libldns"
 	with-libarchive.pc => "build with libarchive getting flags via pc files"
 	with-coverage => "build with llvm coverage support"
+	with-asan => "build with libasan support"
+	with-ubsan => "Build with libubsan support"
 }
 
 if {[opt-str pkgconfigdir dir]} {
@@ -255,6 +257,15 @@ cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 	bsd/stdio.h bsd/strlib.h bsd/string.h bsd/sys/cdefs.h \
 	bsd/unistd.h
  
+if {[opt-bool with-asan]} {
+	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address
+	define-append ASAN_LDFLAGS -fsanitize=address
+	define asan 1
+	undefine HAVE_STATIC
+}
+if {[opt-bool with-ubsan]} {
+	define ubsan 1
+}
 if {[opt-bool with-coverage]} {
 	define-append COVERAGE_CFLAGS -O0 -ggdb -fprofile-instr-generate -fcoverage-mapping
 	define-append COVERAGE_LDFLAGS -fprofile-instr-generate -fuse-ld=/usr/local/bin/ld.lld
