@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 11, 2017
+.Dd November 5, 2020
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -195,6 +195,15 @@ Force quiet output.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh ENVIRONMENT
+.Bl -tag -width "PKG_REPO_SYMLINK"
+.It Ev PKG_REPO_HASH
+When set, rename packages with the short hash of contents appended to the
+filename.
+.It Ev PKG_REPO_SYMLINK
+When set, create a symlink between the short hash filename and the regular
+filename.
+.El
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,

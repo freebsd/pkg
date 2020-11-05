@@ -98,8 +98,8 @@ exec_repo(int argc, char **argv)
 	bool	 hash = false;
 	bool	 hash_symlink = false;
 
-	hash = pkg_object_bool(pkg_config_get("PKG_REPO_HASH"));
-	hash_symlink = pkg_object_bool(pkg_config_get("PKG_REPO_SYMLINK"));
+	hash = (getenv("PKG_REPO_HASH") != NULL);
+	hash_symlink = (getenv("PKG_REPO_SYMLINK") != NULL);
 
 	struct option longopts[] = {
 		{ "hash",	no_argument,		NULL,	'h' },

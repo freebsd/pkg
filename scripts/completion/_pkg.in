@@ -143,8 +143,6 @@ _pkg_config_opts() {
 		'PKG_ENABLE_PLUGINS[activate plugin support]:boolean:(yes no)' \
 		'PKG_ENV[key/value pair of environment variables]:key/value list' \
 		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
-		'PKG_REPO_HASH[make pkg_repo(8) rename files using a short hash]:boolean:(yes no)' \
-		'PKG_REPO_SYMLINK[make pkg_repo(8) symlink the hashed filename to the regular filename]:boolean:(yes no)' \
 		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
 		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
 		'PLIST_ACCEPT_DIRECTORIES[accept directories listed like plain files in plist]:boolean:(yes no)' \
