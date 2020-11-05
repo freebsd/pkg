@@ -98,6 +98,21 @@ the
 .Fl y
 flag was specified.
 Default: NO.
+.It Cm BACKUP_LIBRARIES: boolean
+If set to
+.Sy true
+.Xr pkg 8
+will backup ancient libraries if they are removed as the result of an upgrade
+and keep a copy in the path define in
+.Cm BACKUP_LIBRARY_PATH .
+If it does not exist yet a new package
+.Qq compat-libraries
+will be created. the version will be bumped each time a new library is backed up
+Default: NO.
+.It Cm BACKUP_LIBRARY_PATH: string
+Location where the libraries are backed up.
+Default:
+.Pa /usr/local/lib/compat/pkg .
 .It Cm CONSERVATIVE_UPGRADE: boolean
 Ensure in multi repository mode that the priority is given as much as possible
 to the repository where a package was first installed from.
@@ -128,6 +143,10 @@ suggestions to the output of
 as an aid to port maintainers, including indicating when the port
 might be marked as architecture independent.
 Default: NO.
+.It Cm DOT_FILE: string
+When defined to a valid path, pkg will generate a
+.Xr dot 1
+file with the dependency graph which of the concerned transaction.
 .It Cm EVENT_PIPE: string
 Send all event messages to the specified FIFO or Unix socket.
 Events messages should be formatted as JSON.
@@ -209,7 +228,7 @@ value, make
 .Xr pkg-create 8
 use verbose mode as standard.
 Default:
-.Sy false
+.Sy NO
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
@@ -237,6 +256,13 @@ Directory which
 will load plugins from.
 Default:
 .Pa /usr/local/lib/pkg
+.It Cm PKG_TRIGGERS_ENABLE
+Enable or disable execution of triggers at the end of the transactions.
+Default: YES
+.It Cm PKG_TRIGGERS_DIR
+Directory where the triggers are stored
+Default:
+.Pa /usr/local/share/pkg/triggers .
 .It Cm PKG_SSH_ARGS: string
 Extra arguments to pass to
 .Xr ssh 1 .
@@ -316,12 +342,21 @@ for remote.
 Default: If unset, the algorithm described in
 .Xr pkg-version 8
 is used to determine the version source automatically.
+.It Cm VALID_URL_SCHEME
+List of url scheme that pkg can accept while parsing the repository
+confguration file.
 .It Cm VULNXML_SITE: string
 Specifies the URL to fetch the
 .Pa vuln.xml
 vulnerability database from.
 Default:
 .Pa http://vuxml.freebsd.org/freebsd/vuln.xml.bz2 .
+.It Cm WARN_SIZE_LIMIT: integer
+When download and total change is less than than this option, don't ask
+the user to confirm the desired action.
+Default:
+.Sy 1048576
+.Pq 1MB .
 .It Cm WORKERS_COUNT: integer
 How many workers are used for pkg-repo.
 If set to 0,
