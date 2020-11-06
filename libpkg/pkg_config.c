@@ -769,7 +769,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 
 static void
 load_repo_file(int dfd, const char *repodir, const char *repofile,
-    pkg_init_flags flags)
+    pkg_init_flags flags, struct os_info *oi)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
@@ -784,6 +784,27 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 
 	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
+#ifdef __FreeBSD__
+	ucl_parser_register_variable(p, "OSVERSION", myosversion);
+#endif
+	if (oi->name != NULL) {
+		ucl_parser_register_variable(p, "OSNAME", oi->name);
+	}
+	if (oi->version != NULL) {
+		ucl_parser_register_variable(p, "RELEASE", oi->version);
+	}
+	if (oi->version_major != NULL) {
+		ucl_parser_register_variable(p, "VERSION_MAJOR", oi->version_major);
+	}
+	if (oi->version_minor != NULL) {
+		ucl_parser_register_variable(p, "VERSION_MINOR", oi->version_minor);
+	}
+	if (oi->arch != NULL) {
+		ucl_parser_register_variable(p, "ARCH", oi->arch);
+	}
+
+	errno = 0;
+	obj = NULL;
 
 	pkg_debug(1, "PKgConfig: loading %s/%s", repodir, repofile);
 	fd = openat(dfd, repofile, O_RDONLY);
@@ -830,7 +851,7 @@ configfile(const struct dirent *dp)
 }
 
 static void
-load_repo_files(const char *repodir, pkg_init_flags flags)
+load_repo_files(const char *repodir, pkg_init_flags flags, struct os_info *oi)
 {
 	struct dirent **ent;
 	int nents, i, fd;
@@ -841,7 +862,7 @@ load_repo_files(const char *repodir, pkg_init_flags flags)
 
 	nents = scandir(repodir, &ent, configfile, alphasort);
 	for (i = 0; i < nents; i++) {
-		load_repo_file(fd, repodir, ent[i]->d_name, flags);
+		load_repo_file(fd, repodir, ent[i]->d_name, flags, oi);
 		free(ent[i]);
 	}
 	if (nents >= 0)
@@ -850,19 +871,19 @@ load_repo_files(const char *repodir, pkg_init_flags flags)
 }
 
 static void
-load_repositories(const char *repodir, pkg_init_flags flags)
+load_repositories(const char *repodir, pkg_init_flags flags, struct os_info *oi)
 {
 	const pkg_object *reposlist, *cur;
 	pkg_iter it = NULL;
 
 	if (repodir != NULL) {
-		load_repo_files(repodir, flags);
+		load_repo_files(repodir, flags, oi);
 		return;
 	}
 
 	reposlist = pkg_config_get("REPOS_DIR");
 	while ((cur = pkg_object_iterate(reposlist, &it)))
-		load_repo_files(pkg_object_string(cur), flags);
+		load_repo_files(pkg_object_string(cur), flags, oi);
 }
 
 bool
@@ -1057,11 +1078,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (oi.arch != NULL) {
 		ucl_parser_register_variable(p, "ARCH", oi.arch);
 	}
-	free(oi.name);
-	free(oi.version);
-	free(oi.version_major);
-	free(oi.version_minor);
-	free(oi.arch);
 
 	errno = 0;
 	obj = NULL;
@@ -1265,7 +1281,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
 	/* load the repositories */
-	load_repositories(reposdir, flags);
+	load_repositories(reposdir, flags, &oi);
 
 	object = ucl_object_find_key(config, "REPOSITORIES");
 	while ((cur = ucl_iterate_object(object, &it, true))) {
