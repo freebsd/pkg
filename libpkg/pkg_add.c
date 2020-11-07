@@ -1161,6 +1161,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 	if (local != NULL) {
+		pkg_open_root_fd(local);
 		pkg_debug(1, "Cleaning up old version");
 		if (pkg_add_cleanup_old(db, local, pkg, flags) != EPKG_OK) {
 			retcode = EPKG_FATAL;
