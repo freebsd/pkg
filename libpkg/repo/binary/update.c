@@ -624,8 +624,8 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 
 		snprintf(filepath, sizeof(filepath), "%s/%s", ctx.dbdir,
 			pkg_repo_binary_get_filename(pkg_repo_name(repo)));
-		if (stat(filepath, &st) != -1) {
-			if (!got_meta && !force)
+		if (got_meta && stat(filepath, &st) != -1) {
+			if (!force)
 				t = st.st_mtime;
 		}
 	}
