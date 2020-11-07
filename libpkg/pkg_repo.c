@@ -793,6 +793,8 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 			return (EPKG_FATAL);
 		}
 		goto load_meta;
+	} else if (rc == EPKG_UPTODATE) {
+		return (EPKG_UPTODATE);
 	}
 
 	/* TODO: remove this backward compatibility some day */
