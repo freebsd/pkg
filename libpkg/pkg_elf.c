@@ -284,7 +284,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 
 	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("elf_begin() for %s failed: %s", fpath,
+		pkg_debug(1, "elf_begin() for %s failed: %s", fpath,
 		    elf_errmsg(-1));
 		goto cleanup;
 	}
