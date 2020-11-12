@@ -284,7 +284,6 @@ pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) 
 	pfd.events = POLLIN | POLLERR | POLLHUP;
 	pfd.fd = inputfd;
 
-
 	// Wait for child to exit, and read input, including all queued input on child exit.
 	wait_for_child = true;
 	do {
@@ -317,9 +316,12 @@ pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) 
 			}
 			if (pres > 0 && pfd.revents & POLLIN) {
 				while ((readsize = read(inputfd, msgbuf, sizeof msgbuf - 1)) < 0) {
-					if (errno != EINTR && errno != EAGAIN) {
-						pkg_emit_error("read() "
-						    "failed: %s", strerror(errno));
+					// MacOS gives us ECONNRESET on child exit
+					if (errno == EAGAIN || errno == ECONNRESET) {
+						break;
+					}
+					if (errno != EINTR) {
+						pkg_emit_errno(__func__, "read");
 						return (EPKG_FATAL);
 					}
 				}
