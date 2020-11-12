@@ -1174,8 +1174,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	pkgdb_update_config_file_content(pkg, db->sqlite);
 
 	retcode = pkg_extract_finalize(pkg);
-cleanup_reg:
-	pkgdb_register_finale(db, retcode, NULL);
+
 	/*
 	 * Execute post install scripts
 	 */
@@ -1243,7 +1242,9 @@ cleanup_reg:
 		xstring_free(message);
 	}
 
-	cleanup:
+cleanup_reg:
+	pkgdb_register_finale(db, retcode, NULL);
+cleanup:
 	if (a != NULL) {
 		archive_read_close(a);
 		archive_read_free(a);
