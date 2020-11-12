@@ -154,7 +154,7 @@ $(OBJS) $(SHOBJS): $(top_builddir)/pkg_config.h
 all: lib$(LIB)_flat.a
 
 @if libmachista
-lib$(LIB)_flat.a:
+lib$(LIB)_flat.a: $(STATIC_LIBS)
 	libtool -static -o lib$(LIB)_flat.a $(STATIC_LIBS)
 @else
 lib$(LIB)_flat.a: mergelib_script
