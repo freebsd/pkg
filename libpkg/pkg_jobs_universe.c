@@ -240,20 +240,28 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	int rc;
 	struct pkg_job_universe_item *unit;
-	struct pkg *npkg, *rpkg;
+	struct pkg *npkg, *rpkg, *lpkg;
 	pkg_chain_t *rpkgs = NULL;
 	bool found = false;
 
 	rpkg = NULL;
 
 	if (flags & DEPS_FLAG_REVERSE) {
+		pkg_debug(4, "Processing rdeps for %s (%s)", pkg->uid, pkg->type == PKG_INSTALLED ? "installed" : "remote");
+		if (pkg->type != PKG_INSTALLED) {
+			lpkg = pkg_jobs_universe_get_local(universe, pkg->uid, 0);
+			if (lpkg != NULL)
+				return (pkg_jobs_universe_process_deps(universe, lpkg, flags));
+		}
 		deps_func = pkg_rdeps;
 	}
 	else {
+		pkg_debug(4, "Processing deps for %s", pkg->uid);
 		deps_func = pkg_deps;
 	}
 
 	while (deps_func(pkg, &d) == EPKG_OK) {
+		pkg_debug(4, "Processing *deps for %s: %s", pkg->uid, d->uid);
 		HASH_FIND_STR(universe->items, d->uid, unit);
 		if (unit != NULL) {
 			continue;
@@ -563,6 +571,8 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	int rc = EPKG_OK;
 	pkg_jobs_t type = universe->j->type;
 	struct pkg_job_universe_item *found;
+
+	pkg_debug(4, "Processing item %s\n", pkg->uid);
 
 	job_flags = universe->j->flags;
 
