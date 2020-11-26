@@ -133,7 +133,7 @@ keyword_open_schema(void)
 		"            type = object;"
 		"            properties {"
 		"                message = { type = string };"
-		"                type = { enum = [ upgrade, remove, install ] };"
+		"                type = { enum = [ upgrade, remove, install, before ] };"
 		"            };"
 		"            required [ message ];"
 		"        };"

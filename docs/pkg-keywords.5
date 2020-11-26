@@ -96,9 +96,13 @@ Valid information by entry in the array are:
 .Bl -tag
 .It Cm message Ar string
 actual message to be shown to the users.
-.It Cm type Op Ar upgrade | Ar remove | Ar install
-defines in which contect the message should be shown to the users.
-If not set, the message will always be printed
+.It Cm type Op Ar upgrade | Ar remove | Ar install | Ar before
+defines in which context the message should be shown to the users.
+If not set, the message will always be printed, when set to
+.Va before ,
+message will be printed before install or upgrade and
+.Xr pkg 8
+will sleep for 10 seconds.
 .El
 .El
 .Sh SEE ALSO
