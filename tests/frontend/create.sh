@@ -558,8 +558,9 @@ cat << EOF > showmsg.ucl
 actions: []
 messages: [
 	{ message: "always" },
-	{ message: "on upgrade";type = "upgrade" },
+	{ message: "on upgrade"; type = "upgrade" },
 	{ message: "on install"; type = "install" },
+	{ message: "before operation"; type = "before" },
 ]
 EOF
 cat << EOF > +DISPLAY
@@ -578,6 +579,9 @@ on upgrade
 
 On install:
 on install
+
+Before install or upgrade:
+before operation
 
 '
 	atf_check pkg -o PLIST_KEYWORDS_DIR=. create -m . -r ${TMPDIR} -p test.plist
