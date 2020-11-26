@@ -984,6 +984,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 					msg->type = PKG_MESSAGE_REMOVE;
 				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 					msg->type = PKG_MESSAGE_UPGRADE;
+				else if (strcasecmp(ucl_object_tostring(elt), "before") == 0)
+					msg->type = PKG_MESSAGE_BEFORE;
 			}
 			DL_APPEND(p->pkg->message, msg);
 		}

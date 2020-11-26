@@ -1308,6 +1308,9 @@ format_message(xstring *buffer, const void *data, struct percent_esc *p)
 		case PKG_MESSAGE_REMOVE:
 			fprintf(bufmsg->fp, "On remove:\n");
 			break;
+		case PKG_MESSAGE_BEFORE:
+			fprintf(bufmsg->fp, "Before install or upgrade:\n");
+			break;
 		}
 		fprintf(bufmsg->fp, "%s\n", msg->str);
 	}

@@ -1735,6 +1735,8 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				msg->type = PKG_MESSAGE_REMOVE;
 			else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 				msg->type = PKG_MESSAGE_UPGRADE;
+			else if (strcasecmp(ucl_object_tostring(elt), "before") == 0)
+				msg->type = PKG_MESSAGE_BEFORE;
 			else
 				pkg_emit_error("Unknown message type,"
 				    " message will always be printed");
@@ -1828,6 +1830,11 @@ pkg_message_to_ucl(const struct pkg *pkg)
 		case PKG_MESSAGE_REMOVE:
 			ucl_object_insert_key(obj,
 			    ucl_object_fromstring("remove"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_BEFORE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("before"),
 			    "type", 0, false);
 			break;
 		}

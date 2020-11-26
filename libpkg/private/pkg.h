@@ -392,7 +392,14 @@ typedef enum {
 	PKG_MESSAGE_INSTALL,
 	PKG_MESSAGE_REMOVE,
 	PKG_MESSAGE_UPGRADE,
+	PKG_MESSAGE_BEFORE,
 } pkg_message_t;
+
+typedef enum {
+	PKG_PRINTMESSAGE_ALWAYS = 0,
+	PKG_PRINTMESSAGE_PRE,
+	PKG_PRINTMESSAGE_POST,
+} pkg_printmessage_t;
 
 struct pkg_message {
 	char			*str;
