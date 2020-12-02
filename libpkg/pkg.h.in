@@ -1629,47 +1629,6 @@ bool pkg_is_locked(const struct pkg * restrict p);
  */
 #define PKG_FILE_CKSUM_CHARS 10
 
-struct pkg_audit;
-
-/**
- * Creates new pkg_audit structure
- */
-struct pkg_audit * pkg_audit_new(void);
-
-/**
- * Fetch and extract audit file from url `src` to the file `dest`
- * If no update is required then this function returns `EPKG_UPTODATE`
- * @return error code
- */
-int pkg_audit_fetch(const char *src, const char *dest);
-
-/**
- * Load audit file into memory
- * @return error code
- */
-int pkg_audit_load(struct pkg_audit *audit, const char *fname);
-
-/**
- * Process loaded audit structure.
- * Can and should be executed after cap_enter(3) or another sandboxing call
- * @return error code
- */
-int pkg_audit_process(struct pkg_audit *audit);
-
-#if defined(__XSTRING_H_)
-/**
- * Check whether `pkg` is vulnerable against processed `audit` structure.
- * If a package is vulnerable, then `result` is set to sbuf describing the
- * vulnerability. If `quiet` is true, then this function produces reduced output
- * just returning a name of vulnerable package.
- * It's caller responsibility to free `result` after use
- * @return true and `*result` is set if a package is vulnerable
- */
-bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, xstring **result, int *affected);
-#endif
-
-void pkg_audit_free (struct pkg_audit *audit);
 char *pkg_utils_tokenize(char **);
 int pkg_utils_count_spaces(const char *);
 int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \

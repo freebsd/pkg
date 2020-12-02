@@ -55,6 +55,7 @@
 #endif
 
 #include <pkg.h>
+#include <pkg/audit.h>
 #include "pkgcli.h"
 
 void

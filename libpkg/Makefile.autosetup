@@ -172,9 +172,11 @@ mergelib_script: $(STATIC_LIBS)
 install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB).a
 	install -d -m 755 $(DESTDIR)$(libdir)
 	install -d -m 755 $(DESTDIR)$(includedir)
+	install -d -m 755 $(DESTDIR)$(includedir)/pkg
 	install -d -m 755 $(DESTDIR)$(pkgconfigdir)
 	install -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
 	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
 	install -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
 	install -m 644 pkg.h $(DESTDIR)$(includedir)/
+	install -m 644 $(top_srcdir)/libpkg/pkg/audit.h $(DESTDIR)$(includedir)/pkg
 	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)/

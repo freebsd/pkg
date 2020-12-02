@@ -50,6 +50,7 @@
 #include <sys/capsicum.h>
 #endif
 #include "pkgcli.h"
+#include <pkg/audit.h>
 
 static const char vuln_end_lit[] = "**END**";
 
