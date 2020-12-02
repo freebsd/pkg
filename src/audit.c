@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <khash.h>
 #include <utlist.h>
+#include <ucl.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
@@ -57,6 +58,7 @@
 #include <pkg.h>
 #include <pkg/audit.h>
 #include "pkgcli.h"
+#include "xmalloc.h"
 
 static const char* vop_names[] = {
 	[0] = "",
@@ -91,7 +93,7 @@ add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 }
 
 static void
-print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top)
+print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top, ucl_object_t *array)
 {
 	struct pkg_dep *dep = NULL;
 	int ret;
@@ -108,12 +110,16 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top)
 			continue;
 
 		kh_put_pkgs(seen, name, &ret);
-		if (!top)
-			printf(", ");
+		if (array == NULL) {
+			if (!top)
+				printf(", ");
 
-		printf("%s", name);
+			printf("%s", name);
+		} else {
+			ucl_array_append(array, ucl_object_fromstring(name));
+		}
 
-		print_recursive_rdeps(head, kh_val(head, h), seen, false);
+		print_recursive_rdeps(head, kh_val(head, h), seen, false, array);
 
 		top = false;
 	}
@@ -146,15 +152,61 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 		}
 	}
 	printf("  %s\n", e->desc);
-	if (e->cve) {
-		LL_FOREACH(e->cve, cve) {
-			printf("  CVE: %s\n", cve->cvename);
-		}
+	LL_FOREACH(e->cve, cve) {
+		printf("  CVE: %s\n", cve->cvename);
 	}
 	if (e->url)
 		printf("  WWW: %s\n\n", e->url);
 	else if (e->id)
 		printf("  WWW: https://vuxml.FreeBSD.org/freebsd/%s.html\n\n", e->id);
+}
+
+static void
+format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
+{
+	const char *version;
+	struct pkg_audit_versions_range *vers;
+	const struct pkg_audit_entry *e;
+	struct pkg_audit_cve *cve;
+	ucl_object_t *o = ucl_object_typed_new(UCL_OBJECT);
+	ucl_object_t *affected_versions = ucl_object_typed_new(UCL_ARRAY);
+
+	pkg_get(p, PKG_VERSION, &version);
+	ucl_array_append(array, o);
+
+	e = issue->audit;
+	ucl_object_insert_key(o, affected_versions, "Affected versions", 17, false);
+	LL_FOREACH(e->versions, vers) {
+		char *ver;
+		if (vers->v1.type > 0 && vers->v2.type > 0)
+			xasprintf(&ver, "%s %s : %s %s",
+			    vop_names[vers->v1.type], vers->v1.version,
+			    vop_names[vers->v2.type], vers->v2.version);
+		else if (vers->v1.type > 0)
+			xasprintf(&ver, "%s %s",
+			    vop_names[vers->v1.type], vers->v1.version);
+		else
+			xasprintf(&ver, "%s %s",
+			    vop_names[vers->v2.type], vers->v2.version);
+		ucl_array_append(affected_versions, ucl_object_fromstring(ver));
+		free(ver);
+	}
+	ucl_object_insert_key(o, ucl_object_fromstring(e->desc), "description", 11, false);
+	if (e->cve) {
+		ucl_object_t *acve = ucl_object_typed_new(UCL_ARRAY);
+		LL_FOREACH(e->cve, cve) {
+			ucl_array_append(acve, ucl_object_fromstring(cve->cvename));
+		}
+		ucl_object_insert_key(o, acve, "cve", 3, false);
+	}
+	if (e->url)
+		ucl_object_insert_key(o, ucl_object_fromstring(e->url), "url", 3, false);
+	else if (e->id) {
+		char *url;
+		xasprintf(&url, "https://vuxml.FreeBSD.org/freebsd/%s.html\n\n", e->id);
+		ucl_object_insert_key(o, ucl_object_fromstring(url), "url", 3, false);
+		free(url);
+	}
 }
 
 int
@@ -172,18 +224,22 @@ exec_audit(int argc, char **argv)
 	int			 affected = 0, vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
+	int			 raw;
 	int			 ret = EXIT_SUCCESS;
 	kh_pkgs_t		*check = NULL;
+	ucl_object_t		*top = NULL, *vuln_objs = NULL;
+	ucl_object_t		*obj = NULL;
 
 	struct option longopts[] = {
 		{ "fetch",	no_argument,		NULL,	'F' },
 		{ "file",	required_argument,	NULL,	'f' },
 		{ "recursive",	no_argument,	NULL,	'r' },
+		{ "raw",	optional_argument,	NULL,	'R' },
 		{ "quiet",	no_argument,		NULL,	'q' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+Ff:qr", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Ff:qrR::", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'F':
 			fetch = true;
@@ -196,6 +252,22 @@ exec_audit(int argc, char **argv)
 			break;
 		case 'r':
 			recursive = true;
+			break;
+		case 'R':
+			if (optarg == NULL) {
+				raw = UCL_EMIT_CONFIG;
+			} else if (strcasecmp(optarg, "ucl") == 0) {
+				raw = UCL_EMIT_CONFIG;
+			} else if (strcasecmp(optarg, "json") == 0) {
+				raw = UCL_EMIT_JSON;
+			} else if (strcasecmp(optarg, "json-compact") == 0) {
+				raw = UCL_EMIT_JSON_COMPACT;
+			} else if (strcasecmp(optarg, "yaml") == 0) {
+				raw = UCL_EMIT_YAML;
+			} else {
+				errx(EXIT_FAILURE, "invalid argument %s for --raw option", optarg);
+			}
+			top = ucl_object_typed_new(UCL_OBJECT);
 			break;
 		default:
 			usage_audit();
@@ -326,40 +398,69 @@ exec_audit(int argc, char **argv)
 		kh_foreach_value(check, pkg, {
 			issues = NULL;
 			if (pkg_audit_is_vulnerable(audit, pkg, &issues, quiet)) {
-			const char *version;
+				const char *version;
+				const char *name = NULL;
+				ucl_object_t *array = NULL;
 				vuln ++;
 
-				affected += issues->count;
-				pkg_get(pkg, PKG_VERSION, &version);
-				if (quiet) {
+				if (top == NULL) {
+					affected += issues->count;
+					pkg_get(pkg, PKG_VERSION, &version);
+					if (quiet) {
+						if (version != NULL)
+							pkg_printf("%n-%v\n", pkg, pkg);
+							else
+						pkg_printf("%s\n", pkg);
+						continue;
+					}
+
+					pkg_printf("%n", pkg);
 					if (version != NULL)
-						pkg_printf("%n-%v\n", pkg, pkg);
-						else
-					pkg_printf("%s\n", pkg);
-					continue;
+						pkg_printf("-%v", pkg);
+					if (!quiet)
+						printf(" is vulnerable");
+					printf(":\n");
+				} else {
+					if (vuln_objs == NULL)
+						vuln_objs = ucl_object_typed_new(UCL_OBJECT);
+					obj = ucl_object_typed_new(UCL_OBJECT);
+					pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+					if (version != NULL)
+						ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7 , false);
+					ucl_object_insert_key(obj, ucl_object_fromint(issues->count), "issue_count", 11, false);
 				}
 
-				pkg_printf("%n", pkg);
-				if (version != NULL)
-					pkg_printf("-%v", pkg);
-				if (!quiet)
-					printf(" is vulnerable");
-				printf(":\n");
-
+				if (top != NULL)
+					array = ucl_object_typed_new(UCL_ARRAY);
 				LL_FOREACH(issues->issues, issue) {
-					print_issue(pkg, issue);
+					if (top == NULL)
+						print_issue(pkg, issue);
+					else
+						format_issue(pkg, issue, array);
 				}
+				if (top != NULL)
+					ucl_object_insert_key(obj, array, "issues", 6, false);
+				array = NULL;
 
-				if (recursive) {
-					const char *name;
+				if (top != NULL || recursive) {
 					kh_pkgs_t *seen = kh_init_pkgs();
 
-					pkg_get(pkg, PKG_NAME, &name);
-					printf("  Packages that depend on %s: ", name);
-					print_recursive_rdeps(check, pkg , seen, true);
-					printf("\n\n");
+					if (name == NULL)
+						pkg_get(pkg, PKG_NAME, &name);
+					if (top == NULL) {
+						printf("  Packages that depend on %s: ", name);
+					} else {
+						array = ucl_object_typed_new(UCL_ARRAY);
+					}
+					print_recursive_rdeps(check, pkg , seen, true, array);
+					if (top == NULL)
+						printf("\n\n");
 
 					kh_destroy_pkgs(seen);
+				}
+				if (top != NULL) {
+					ucl_object_insert_key(obj, array, "reverse dependencies", 20, false);
+					ucl_object_insert_key(vuln_objs, obj, xstrdup(name), strlen(name), false);
 				}
 			}
 			pkg_audit_issues_free(issues);
@@ -370,11 +471,17 @@ exec_audit(int argc, char **argv)
 		if (ret == EPKG_END && vuln == 0)
 			ret = EXIT_SUCCESS;
 
-		if (!quiet)
+		if (top == NULL && !quiet) {
 			printf("%u problem(s) in %u installed package(s) found.\n",
 			   affected, vuln);
-	}
-	else {
+	
+		} else {
+			ucl_object_insert_key(top, ucl_object_fromint(vuln), "pkg_count", 9, false );
+			ucl_object_insert_key(top, vuln_objs, "packages", 8, false);
+			fprintf(stdout, "%s\n", ucl_object_emit(top, raw));
+			ucl_object_unref(top);
+		}
+	} else {
 		warnx("cannot process vulnxml");
 		ret = EXIT_FAILURE;
 		kh_destroy_pkgs(check);
