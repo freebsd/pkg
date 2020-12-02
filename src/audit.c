@@ -82,8 +82,7 @@ add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 }
 
 static void
-print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, xstring *sb,
-    kh_pkgs_t *seen, bool top)
+print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top)
 {
 	struct pkg_dep *dep = NULL;
 	int ret;
@@ -101,11 +100,11 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, xstring *sb,
 
 		kh_put_pkgs(seen, name, &ret);
 		if (!top)
-			fprintf(sb->fp, ", ");
+			printf(", ");
 
-		fprintf(sb->fp, "%s", name);
+		printf("%s", name);
 
-		print_recursive_rdeps(head, kh_val(head, h), sb, seen, false);
+		print_recursive_rdeps(head, kh_val(head, h), seen, false);
 
 		top = false;
 	}
@@ -287,12 +286,8 @@ exec_audit(int argc, char **argv)
 					kh_pkgs_t *seen = kh_init_pkgs();
 
 					pkg_get(pkg, PKG_NAME, &name);
-					xstring_reset(sb);
 					printf("Packages that depend on %s: ", name);
-					fprintf(sb->fp, "Packages that depend on %s: ", name);
-					fflush(sb->fp);
-					print_recursive_rdeps(check, pkg , sb, seen, true);
-					printf("%s\n\n", sb->buf);
+					print_recursive_rdeps(check, pkg , seen, true);
 
 					kh_destroy_pkgs(seen);
 				}
