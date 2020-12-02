@@ -121,7 +121,7 @@ exec_audit(int argc, char **argv)
 	char			*name;
 	char			*version;
 	char			*audit_file = NULL;
-	unsigned int		 affected = 0, vuln = 0;
+	int			 affected = 0, vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EXIT_SUCCESS;
