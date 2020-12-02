@@ -80,11 +80,11 @@ add_to_check(kh_pkgs_t *check, struct pkg *pkg)
 static void
 check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 {
+	struct pkg_audit_issues	*issues;
 	struct pkgdb_it	*it = NULL;
 	struct pkg		*pkg = NULL;
 	kh_pkgs_t		*check = NULL;
 	const char		*uid;
-	xstring		*sb;
 	int				ret;
 	FILE			*out;
 
@@ -149,12 +149,13 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
 		kh_foreach_value(check, pkg, {
-				if (pkg_audit_is_vulnerable(audit, pkg, true, &sb, NULL)) {
+				issues = NULL;
+				if (pkg_audit_is_vulnerable(audit, pkg, &issues, true)) {
 					pkg_get(pkg, PKG_UNIQUEID, &uid);
 					fprintf(out, "%s\n", uid);
 					fflush(out);
-					xstring_free(sb);
 				}
+				pkg_audit_issues_free(issues);
 				pkg_free(pkg);
 		});
 

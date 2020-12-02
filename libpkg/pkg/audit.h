@@ -25,6 +25,12 @@
 #ifndef _PKG_AUDIT_H
 #define _PKG_AUDIT_H
 
+#define EQ 1
+#define LT 2
+#define LTE 3
+#define GT 4
+#define GTE 5
+
 struct pkg_audit_version {
 	char *version;
 	int type;
@@ -65,6 +71,16 @@ struct pkg_audit_entry {
 	struct pkg_audit_entry *next;
 };
 
+struct pkg_audit_issue {
+	const struct pkg_audit_entry *audit;
+	struct pkg_audit_issue *next;
+};
+
+struct pkg_audit_issues {
+	int count;
+	struct pkg_audit_issue *issues;
+};
+
 /**
  * Creates new pkg_audit structure
  */
@@ -90,7 +106,6 @@ int pkg_audit_load(struct pkg_audit *audit, const char *fname);
  */
 int pkg_audit_process(struct pkg_audit *audit);
 
-#if defined(__XSTRING_H_)
 /**
  * Check whether `pkg` is vulnerable against processed `audit` structure.
  * If a package is vulnerable, then `result` is set to sbuf describing the
@@ -99,9 +114,8 @@ int pkg_audit_process(struct pkg_audit *audit);
  * It's caller responsibility to free `result` after use
  * @return true and `*result` is set if a package is vulnerable
  */
-bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, xstring **result, int *affected);
-#endif
+bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg, struct pkg_audit_issues **issues, bool stop_quick);
 
 void pkg_audit_free(struct pkg_audit *audit);
+void pkg_audit_issues_free(struct pkg_audit_issues *issues);
 #endif

@@ -44,7 +44,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <khash.h>
-#include <xstring.h>
+#include <utlist.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
 #include <sys/capsicum.h>
@@ -57,6 +57,15 @@
 #include <pkg.h>
 #include <pkg/audit.h>
 #include "pkgcli.h"
+
+static const char* vop_names[] = {
+	[0] = "",
+	[EQ] = "=",
+	[LT] = "<",
+	[LTE] = "<=",
+	[GT] = ">",
+	[GTE] = ">="
+};
 
 void
 usage_audit(void)
@@ -110,10 +119,50 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top)
 	}
 }
 
+static void
+print_issue(struct pkg *p, struct pkg_audit_issue *issue)
+{
+	const char *version;
+	struct pkg_audit_versions_range *vers;
+	const struct pkg_audit_entry *e;
+	struct pkg_audit_cve *cve;
+
+	pkg_get(p, PKG_VERSION, &version);
+
+	e = issue->audit;
+	if (version == NULL) {
+		printf("  Affected versions:\n");
+		LL_FOREACH(e->versions, vers) {
+			if (vers->v1.type > 0 && vers->v2.type > 0)
+				printf("  %s %s : %s %s\n",
+				    vop_names[vers->v1.type], vers->v1.version,
+				    vop_names[vers->v2.type], vers->v2.version);
+			else if (vers->v1.type > 0)
+				printf("  %s %s\n",
+				    vop_names[vers->v1.type], vers->v1.version);
+			else
+				printf("  %s %s\n",
+				    vop_names[vers->v2.type], vers->v2.version);
+		}
+	}
+	printf("  %s\n", e->desc);
+	if (e->cve) {
+		LL_FOREACH(e->cve, cve) {
+			printf("  CVE: %s\n", cve->cvename);
+		}
+	}
+	if (e->url)
+		printf("  WWW: %s\n\n", e->url);
+	else if (e->id)
+		printf("  WWW: https://vuxml.FreeBSD.org/freebsd/%s.html\n\n", e->id);
+}
+
 int
 exec_audit(int argc, char **argv)
 {
 	struct pkg_audit	*audit;
+	struct pkg_audit_issues	*issues;
+	struct pkg_audit_issue	*issue;
 	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
@@ -124,7 +173,6 @@ exec_audit(int argc, char **argv)
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
 	int			 ret = EXIT_SUCCESS;
-	xstring			*sb;
 	kh_pkgs_t		*check = NULL;
 
 	struct option longopts[] = {
@@ -276,23 +324,45 @@ exec_audit(int argc, char **argv)
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
 		kh_foreach_value(check, pkg, {
-			if (pkg_audit_is_vulnerable(audit, pkg, quiet, &sb, &affected)) {
+			issues = NULL;
+			if (pkg_audit_is_vulnerable(audit, pkg, &issues, quiet)) {
+			const char *version;
 				vuln ++;
-				fflush(sb->fp);
-				printf("%s", sb->buf);
+
+				affected += issues->count;
+				pkg_get(pkg, PKG_VERSION, &version);
+				if (quiet) {
+					if (version != NULL)
+						pkg_printf("%n-%v\n", pkg, pkg);
+						else
+					pkg_printf("%s\n", pkg);
+					continue;
+				}
+
+				pkg_printf("%n", pkg);
+				if (version != NULL)
+					pkg_printf("-%v", pkg);
+				if (!quiet)
+					printf(" is vulnerable");
+				printf(":\n");
+
+				LL_FOREACH(issues->issues, issue) {
+					print_issue(pkg, issue);
+				}
 
 				if (recursive) {
 					const char *name;
 					kh_pkgs_t *seen = kh_init_pkgs();
 
 					pkg_get(pkg, PKG_NAME, &name);
-					printf("Packages that depend on %s: ", name);
+					printf("  Packages that depend on %s: ", name);
 					print_recursive_rdeps(check, pkg , seen, true);
+					printf("\n\n");
 
 					kh_destroy_pkgs(seen);
 				}
-				xstring_free(sb);
 			}
+			pkg_audit_issues_free(issues);
 			pkg_free(pkg);
 		});
 		kh_destroy_pkgs(check);

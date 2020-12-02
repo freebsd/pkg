@@ -45,21 +45,6 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
-#define EQ 1
-#define LT 2
-#define LTE 3
-#define GT 4
-#define GTE 5
-
-static const char* vop_names[] = {
-	[0] = "",
-	[EQ] = "=",
-	[LT] = "<",
-	[LTE] = "<=",
-	[GT] = ">",
-	[GTE] = ">="
-};
-
 /*
  * The _sorted stuff.
  *
@@ -732,69 +717,24 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 }
 
 static void
-pkg_audit_print_versions(struct pkg_audit_entry *e, xstring *sb)
+pkg_audit_add_entry(struct pkg_audit_entry *e, struct pkg_audit_issues **ai)
 {
-	struct pkg_audit_versions_range *vers;
+	struct pkg_audit_issue *issue;
 
-	fprintf(sb->fp, "%s", "Affected versions:\n");
-	LL_FOREACH(e->versions, vers) {
-		if (vers->v1.type > 0 && vers->v2.type > 0)
-			fprintf(sb->fp, "%s %s : %s %s\n",
-				vop_names[vers->v1.type], vers->v1.version,
-				vop_names[vers->v2.type], vers->v2.version);
-		else if (vers->v1.type > 0)
-			fprintf(sb->fp, "%s %s\n",
-				vop_names[vers->v1.type], vers->v1.version);
-		else
-			fprintf(sb->fp, "%s %s\n",
-				vop_names[vers->v2.type], vers->v2.version);
-	}
-}
-
-static void
-pkg_audit_print_entry(struct pkg_audit_entry *e, xstring *sb,
-	const char *pkgname, const char *pkgversion, bool quiet)
-{
-	struct pkg_audit_cve *cve;
-
-	if (quiet) {
-		if (pkgversion != NULL)
-			fprintf(sb->fp, "%s-%s\n", pkgname, pkgversion);
-		else
-			fprintf(sb->fp, "%s\n", pkgname);
-	} else {
-		if (pkgversion != NULL)
-			fprintf(sb->fp, "%s-%s is vulnerable:\n", pkgname, pkgversion);
-		else {
-			fprintf(sb->fp, "%s is vulnerable:\n", pkgname);
-			pkg_audit_print_versions(e, sb);
-		}
-
-		fprintf(sb->fp, "%s\n", e->desc);
-		/* XXX: for vulnxml we should use more clever approach indeed */
-		if (e->cve) {
-			cve = e->cve;
-			while (cve) {
-				fprintf(sb->fp, "CVE: %s\n", cve->cvename);
-				cve = cve->next;
-			}
-		}
-		if (e->url)
-			fprintf(sb->fp, "WWW: %s\n\n", e->url);
-		else if (e->id)
-			fprintf(sb->fp,
-				"WWW: https://vuxml.FreeBSD.org/freebsd/%s.html\n\n",
-				e->id);
-	}
+	if (*ai == NULL)
+		*ai = xcalloc(1, sizeof(**ai));
+	issue = xcalloc(1, sizeof(*issue));
+	issue->audit = e;
+	(*ai)->count++;
+	LL_APPEND((*ai)->issues, issue);
 }
 
 bool
 pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
-		bool quiet, xstring **result, int *affected)
+    struct pkg_audit_issues **ai, bool stop_quick)
 {
 	struct pkg_audit_entry *e;
 	struct pkg_audit_versions_range *vers;
-	xstring *sb;
 	struct pkg_audit_item *a;
 	bool res = false, res1, res2;
 
@@ -803,7 +743,6 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 
 	a = audit->items;
 	a += audit_entry_first_byte_idx[(size_t)pkg->name[0]];
-	sb = xstring_new();
 
 	for (; (e = a->e) != NULL; a += a->next_pfx_incr) {
 		int cmp;
@@ -830,10 +769,7 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 				 * Assume that all versions should be checked
 				 */
 				res = true;
-				pkg_audit_print_entry(e, sb, pkg->name, NULL, quiet);
-				if (affected != NULL) {
-					++*affected;
-				}
+				pkg_audit_add_entry(e, ai);
 			}
 			else {
 				LL_FOREACH(e->versions, vers) {
@@ -842,25 +778,15 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 
 					if (res1 && res2) {
 						res = true;
-						pkg_audit_print_entry(e, sb, pkg->name, pkg->version, quiet);
-						if (affected != NULL) {
-							++*affected;
-						}
+						pkg_audit_add_entry(e, ai);
 						break;
 					}
 				}
 			}
 
-			if (res && quiet)
-				goto out;
+			if (res && stop_quick)
+				return (res);
 		}
-	}
-
-out:
-	if (res) {
-		*result = sb;
-	} else {
-		xstring_free(sb);
 	}
 
 	return (res);
@@ -941,5 +867,19 @@ pkg_audit_free (struct pkg_audit *audit)
 			munmap(audit->map, audit->len);
 		}
 		free(audit);
+	}
+}
+
+void
+pkg_audit_issues_free(struct pkg_audit_issues *issues)
+{
+	struct pkg_audit_issue *i, *issue;
+
+	if (issues == NULL)
+		return;
+
+	LL_FOREACH_SAFE(issues->issues, issue, i) {
+		LL_DELETE(issues->issues, issue);
+		free(issue);
 	}
 }
