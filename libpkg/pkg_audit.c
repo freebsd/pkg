@@ -41,6 +41,7 @@
 #include <yxml.h>
 
 #include "pkg.h"
+#include "pkg/audit.h"
 #include "private/pkg.h"
 #include "private/event.h"
 
@@ -57,46 +58,6 @@ static const char* vop_names[] = {
 	[LTE] = "<=",
 	[GT] = ">",
 	[GTE] = ">="
-};
-
-struct pkg_audit_version {
-	char *version;
-	int type;
-};
-
-struct pkg_audit_versions_range {
-	struct pkg_audit_version v1;
-	struct pkg_audit_version v2;
-	struct pkg_audit_versions_range *next;
-};
-
-struct pkg_audit_cve {
-	char *cvename;
-	struct pkg_audit_cve *next;
-};
-
-struct pkg_audit_pkgname {
-	char *pkgname;
-	struct pkg_audit_pkgname *next;
-};
-
-struct pkg_audit_package {
-	struct pkg_audit_pkgname *names;
-	struct pkg_audit_versions_range *versions;
-	struct pkg_audit_package *next;
-};
-
-struct pkg_audit_entry {
-	const char *pkgname;
-	struct pkg_audit_package *packages;
-	struct pkg_audit_pkgname *names;
-	struct pkg_audit_versions_range *versions;
-	struct pkg_audit_cve *cve;
-	char *url;
-	char *desc;
-	char *id;
-	bool ref;
-	struct pkg_audit_entry *next;
 };
 
 /*
