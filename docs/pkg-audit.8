@@ -22,12 +22,13 @@
 .Nd audit installed packages against known vulnerabilities
 .Sh SYNOPSIS
 .Nm
-.Op Fl Fqr
+.Op Fl RFqr
 .Op Fl f Ar filename
 .Ar pkg-name
 .Pp
 .Nm
 .Op Cm --{fetch,quiet,recursive}
+.Op Cm --raw Ns Op = Ns Ar format
 .Op Cm --file Ar filename
 .Ar pkg-name
 .Sh DESCRIPTION
@@ -77,6 +78,10 @@ displaying many hints.
 .It Fl r , Cm --recursive
 Prints packages that depend on vulnerable packages and are thus
 potentially vulnerable as well.
+.It Fl R , Cm --raw Ns Op = Ns Ar format
+The output will be formatted in a parseable
+.Ar format .
+It can be ucl (default), json, json-compact and yaml.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
