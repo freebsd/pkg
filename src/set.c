@@ -284,6 +284,7 @@ exec_set(int argc, char **argv)
 	i = 0;
 	do {
 		bool saved_rc = rc;
+		bool gotone = false;
 
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			retcode = EXIT_FAILURE;
@@ -291,6 +292,7 @@ exec_set(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
+			gotone = true;
 			if ((sets & AUTOMATIC) == AUTOMATIC) {
 				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 				if (automatic == newautomatic)
@@ -340,6 +342,10 @@ exec_set(int argc, char **argv)
 					}
 				}
 			}
+		}
+		if (!gotone) {
+			warnx("No package(s) matching %s", argv[i]);
+			retcode = EXIT_FAILURE;
 		}
 		pkgdb_it_free(it);
 		i++;
