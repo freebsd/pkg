@@ -37,7 +37,6 @@
 #include <string.h>
 #include <utlist.h>
 #include <xstring.h>
-#include <regex.h>
 
 #include <yxml.h>
 
@@ -733,43 +732,6 @@ pkg_audit_add_entry(struct pkg_audit_entry *e, struct pkg_audit_issues **ai)
 }
 
 bool
-ignore_package(const char *name)
-{
-	const ucl_object_t *globs, *regexes, *cur;
-	ucl_object_iter_t it;
-
-	globs = pkg_config_get("AUDIT_IGNORE_GLOB");
-	regexes = pkg_config_get("AUDIT_IGNORE_REGEX");
-
-	if (globs == NULL && regexes == NULL)
-		return (false);
-
-	if (globs != NULL) {
-		it = NULL;
-		while ((cur = ucl_iterate_object(globs, &it, true))) {
-			if (fnmatch(ucl_object_tostring(cur), name, 0) == 0)
-				return (true);
-		}
-	}
-
-	if (regexes != NULL) {
-		it = NULL;
-		while ((cur = ucl_iterate_object(regexes, &it, true))) {
-			regex_t re;
-			regcomp(&re, ucl_object_tostring(cur),
-			   REG_EXTENDED|REG_NOSUB);
-			if (regexec(&re, name, 0, NULL, 0) == 0) {
-				regfree(&re);
-				return (true);
-			}
-			regfree(&re);
-		}
-	}
-
-	return (false);
-}
-
-bool
 pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
     struct pkg_audit_issues **ai, bool stop_quick)
 {
@@ -782,7 +744,9 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 		return false;
 
 	/* check if we decided to ignore that package or not */
-	if (ignore_package(pkg->name))
+	if (match_ucl_lists(pkg->name,
+	    pkg_config_get("AUDIT_IGNORE_GLOB"),
+	    pkg_config_get("AUDIT_IGNORE_REGEX")))
 		return (false);
 
 	a = audit->items;

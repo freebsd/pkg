@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -46,6 +46,7 @@
 #include <paths.h>
 #include <float.h>
 #include <math.h>
+#include <regex.h>
 
 #include <bsd_compat.h>
 
@@ -56,6 +57,40 @@
 #include "xmalloc.h"
 
 extern struct pkg_ctx ctx;
+
+bool
+match_ucl_lists(const char *buf, const ucl_object_t *globs, const ucl_object_t *regexes)
+{
+	const ucl_object_t *cur;
+	ucl_object_iter_t it;
+
+	if (globs == NULL && regexes == NULL)
+		return (false);
+
+	if (globs != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(globs, &it, true))) {
+			if (fnmatch(ucl_object_tostring(cur), buf, 0) == 0)
+				return (true);
+		}
+	}
+
+	if (regexes != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(regexes, &it, true))) {
+			regex_t re;
+			regcomp(&re, ucl_object_tostring(cur),
+			   REG_EXTENDED|REG_NOSUB);
+			if (regexec(&re, buf, 0, NULL, 0) == 0) {
+				regfree(&re);
+				return (true);
+			}
+			regfree(&re);
+		}
+	}
+
+	return (false);
+}
 
 int
 mkdirs(const char *_path)

@@ -37,9 +37,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <fnmatch.h>
 #include <paths.h>
-#include <regex.h>
 #include <spawn.h>
 
 #include <private/pkg.h>
@@ -447,30 +445,8 @@ trigger_check_match(struct trigger *t, char *dir)
 		}
 	}
 
-	if (t->path_glob != NULL) {
-		it = NULL;
-		while ((cur = ucl_iterate_object(t->path_glob, &it, true))) {
-			if (fnmatch(ucl_object_tostring(cur), dir, 0) == 0) {
-				kh_safe_add(strings, t->matched, dir, dir);
-				return;
-			}
-		}
-	}
-
-	if (t->path_regex != NULL) {
-		it = NULL;
-		while ((cur = ucl_iterate_object(t->path_regex, &it, true))) {
-			regex_t re;
-			regcomp(&re, ucl_object_tostring(cur),
-			   REG_EXTENDED|REG_NOSUB);
-			if (regexec(&re, dir, 0, NULL, 0) == 0) {
-				kh_safe_add(strings, t->matched, dir, dir);
-				regfree(&re);
-				return;
-			}
-			regfree(&re);
-		}
-	}
+	if (match_ucl_lists(dir, t->path_glob, t->path_regex))
+		kh_safe_add(strings, t->matched, dir, dir);
 }
 
 /*

@@ -102,5 +102,6 @@ bool string_end_with(const char *path, const char *str);
 bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
 int checkflags(const char *mode, int *optr);
+bool match_ucl_lists(const char *buffer, const ucl_object_t *globs, const ucl_object_t *regexes);
 
 #endif
