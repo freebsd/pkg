@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -458,6 +458,18 @@ static struct config_entry c[] = {
 		"PKG_TRIGGERS_ENABLE",
 		"YES",
 		"Disable triggers",
+	},
+	{
+		PKG_ARRAY,
+		"AUDIT_IGNORE_GLOB",
+		NULL,
+		"List of glob to ignore while autiditing for vulnerabilities",
+	},
+	{
+		PKG_ARRAY,
+		"AUDIT_IGNORE_REGEX",
+		"NULL",
+		"List of regex to ignore while autiditing for vulnerabilities",
 	},
 };
 
