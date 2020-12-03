@@ -103,5 +103,6 @@ bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
 int checkflags(const char *mode, int *optr);
 bool match_ucl_lists(const char *buffer, const ucl_object_t *globs, const ucl_object_t *regexes);
+char *get_dirname(char *dir);
 
 #endif

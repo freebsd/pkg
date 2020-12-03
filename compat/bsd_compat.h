@@ -75,9 +75,6 @@
 #include <sys/stat.h>
 #include "endian_util.h"
 
-char *bsd_dirname(const char *);
-char *bsd_basename(const char *);
-
 #if !HAVE_EACCESS
 #define eaccess(_p, _m) access(_p, _m)
 #endif

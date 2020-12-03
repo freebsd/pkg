@@ -411,6 +411,20 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	return (EPKG_OK);
 }
 
+
+static bool
+try_mkdir(int fd, const char *path)
+{
+	char *p = get_dirname(xstrdup(path));
+
+	if (!mkdirat_p(fd, RELATIVE_PATH(p))) {
+		free(p);
+		return (false);
+	}
+	free(p);
+	return (true);
+}
+
 static int
 create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target)
 {
@@ -420,7 +434,7 @@ create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target)
 retry:
 	if (symlinkat(target, pkg->rootfd, RELATIVE_PATH(f->temppath)) == -1) {
 		if (!tried_mkdir) {
-			if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(bsd_dirname(f->path))))
+			if (!try_mkdir(pkg->rootfd, f->path))
 				return (EPKG_FATAL);
 			tried_mkdir = true;
 			goto retry;
@@ -488,8 +502,7 @@ retry:
 	if (linkat(pkg->rootfd, RELATIVE_PATH(fh->temppath),
 	    pkg->rootfd, RELATIVE_PATH(f->temppath), 0) == -1) {
 		if (!tried_mkdir) {
-			if (!mkdirat_p(pkg->rootfd,
-			    RELATIVE_PATH(bsd_dirname(f->path))))
+			if (!try_mkdir(pkg->rootfd, f->path))
 				return (EPKG_FATAL);
 			tried_mkdir = true;
 			goto retry;
@@ -544,10 +557,8 @@ retry:
 	    O_CREAT|O_WRONLY|O_EXCL, f->perm);
 	if (fd == -1) {
 		if (!tried_mkdir) {
-			if (!mkdirat_p(pkg->rootfd,
-			    RELATIVE_PATH(bsd_dirname(f->path)))) {
+			if (!try_mkdir(pkg->rootfd, f->path))
 				return (EPKG_FATAL);
-			}
 			tried_mkdir = true;
 			goto retry;
 		}
@@ -902,7 +913,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	fromstdin = (strcmp(path, "-") == 0);
 	strlcpy(bd, path, sizeof(bd));
 	if (!fromstdin) {
-		basedir = bsd_dirname(bd);
+		basedir = get_dirname(bd);
 		strlcpy(bd, basedir, sizeof(bd));
 		if ((ext = strrchr(path, '.')) == NULL) {
 			pkg_emit_error("%s has no extension", path);

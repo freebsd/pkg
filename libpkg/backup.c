@@ -123,16 +123,18 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 	int	 ret;
 	int destdbfd;
 	int savedfd;
+	char *d;
 
-	destdbfd = open(bsd_dirname(dest), O_DIRECTORY|O_CLOEXEC);
-	if (destdbfd == -1) {
-		pkg_fatal_errno("Unable to access '%s'",
-		    bsd_dirname(dest));
-	}
+	d = xstrdup(dest);
+	d = get_dirname(d);
+	destdbfd = open(d, O_DIRECTORY|O_CLOEXEC);
+	if (destdbfd == -1)
+		pkg_fatal_errno("Unable to access '%s'", d);
 
 	savedfd = pkg_get_dbdirfd();
 	ctx.pkg_dbdirfd = destdbfd;
 	ret = sqlite3_open(dest, &backup);
+	free(d);
 
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(backup, "sqlite3_open");

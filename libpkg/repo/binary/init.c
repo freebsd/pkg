@@ -55,7 +55,7 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	char	 fpath[MAXPATHLEN];
 	sqlite3	*db = sqlite3_context_db_handle(ctx);
-	char	*path = bsd_dirname(sqlite3_db_filename(db, "main"));
+	char	*path = get_dirname(xstrdup(sqlite3_db_filename(db, "main")));
 	char	*cksum;
 
 	if (argc != 2) {
@@ -75,6 +75,7 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	} else {
 		sqlite3_result_int(ctx, 0);
 	}
+	free(path);
 }
 
 static int

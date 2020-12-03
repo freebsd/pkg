@@ -883,3 +883,22 @@ get_socketpair(int *pipe)
 
 	return (r);
 }
+
+char *
+get_dirname(char *d)
+{
+	char *walk;
+
+	if (d == NULL)
+		return (__DECONST(char *, "."));
+
+	walk = strrchr(d, '/');
+	if (walk == NULL) {
+		d[0] = '.';
+		d[1] = '\0';
+	} else {
+		*walk = '\0';
+	}
+
+	return (d);
+}

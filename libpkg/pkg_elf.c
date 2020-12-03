@@ -410,8 +410,11 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		    rpath == NULL)
 			rpath = elf_strptr(e, sh_link, dyn->d_un.d_val);
 	}
-	if (rpath != NULL)
-		shlib_list_from_rpath(rpath, bsd_dirname(fpath));
+	if (rpath != NULL) {
+		char *p = xstrdup(fpath);
+		shlib_list_from_rpath(rpath, get_dirname(p));
+		free(p);
+	}
 
 	/* Now find all of the NEEDED shared libraries. */
 

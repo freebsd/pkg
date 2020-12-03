@@ -101,9 +101,9 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 	ext = strrchr(path, '.');
 
 	strlcpy(tmp_name, path, sizeof(tmp_name));
-	rel_dir = dirname(tmp_name);
+	rel_dir = get_dirname(tmp_name);
 	while (strstr(rel_dir, "/Hashed") != NULL) {
-		rel_dir = dirname(rel_dir);
+		rel_dir = get_dirname(rel_dir);
 	}
 	strlcpy(tmp_name, rel_dir, sizeof(tmp_name));
 	rel_dir = (char *)&tmp_name;
@@ -115,9 +115,9 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 			rel_repo++;
 	}
 	strlcpy(tmp_repo, rel_repo, sizeof(tmp_repo));
-	rel_repo = dirname(tmp_repo);
+	rel_repo = get_dirname(tmp_repo);
 	while (strstr(rel_repo, "/Hashed") != NULL) {
-		rel_repo = dirname(rel_repo);
+		rel_repo = get_dirname(rel_repo);
 	}
 	strlcpy(tmp_repo, rel_repo, sizeof(tmp_repo));
 	rel_repo = (char *)&tmp_repo;

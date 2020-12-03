@@ -131,7 +131,6 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	char *dir = NULL;
 	bool fetched = false;
 	struct stat st;
-	char *path = NULL;
 	const char *packagesite = NULL;
 	ssize_t offset = -1;
 
@@ -165,14 +164,8 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	}
 
 	/* Create the dirs in cachedir */
-	dir = xstrdup(dest);
-	if ((path = dirname(dir)) == NULL) {
-		pkg_emit_errno("dirname", dest);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((retcode = mkdirs(path)) != EPKG_OK)
+	dir = get_dirname(xstrdup(dest));
+	if ((retcode = mkdirs(dir)) != EPKG_OK)
 		goto cleanup;
 
 	/*
@@ -244,8 +237,8 @@ cleanup:
 
 	if (retcode != EPKG_OK)
 		unlink(dest);
-	else if (!mirror && path != NULL) {
-		(void)pkg_repo_binary_create_symlink(pkg, dest, path);
+	else if (!mirror && dir != NULL) {
+		(void)pkg_repo_binary_create_symlink(pkg, dest, dir);
 	}
 
 	/* allowed even if dir is NULL */
