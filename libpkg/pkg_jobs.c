@@ -1640,7 +1640,8 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 	int retcode = 0;
 
 	/* Check for new pkg. Skip for 'upgrade -F'. */
-	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
+	if (((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
+	    (j->flags & PKG_FLAG_DRY_RUN) == 0) &&
 	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			j->flags &= ~PKG_FLAG_PKG_VERSION_TEST;
