@@ -1016,6 +1016,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->dep_formula, 0,
 		    UCL_STRING_TRIM), "dep_formula", 11, false);
 	}
+	if (pkg->type == PKG_INSTALLED &&
+	    (flags & PKG_MANIFEST_EMIT_LOCAL_METADATA) == PKG_MANIFEST_EMIT_LOCAL_METADATA) {
+		ucl_object_insert_key(top, ucl_object_fromint(pkg->timestamp), "timestamp", 9, false);
+	}
+
 	/*
 	 * XXX: dirty hack to be compatible with pkg 1.2
 	 */

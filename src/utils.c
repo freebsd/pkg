@@ -334,7 +334,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
-	int outflags = 0;
+	int outflags = PKG_MANIFEST_EMIT_LOCAL_METADATA;
 
 	pkg_get(pkg,
 		PKG_REPOURL,       &repourl,

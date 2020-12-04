@@ -754,6 +754,7 @@ void pkg_manifest_parser_free(struct pkg_manifest_parser *p);
 #define PKG_MANIFEST_EMIT_PRETTY (0x1 << 2)
 #define PKG_MANIFEST_EMIT_JSON (0x1 << 3)
 #define PKG_MANIFEST_EMIT_UCL (0x1 << 4)
+#define PKG_MANIFEST_EMIT_LOCAL_METADATA (0x1 << 5)
 
 /**
  * Emit a manifest according to the attributes of pkg.
