@@ -1596,6 +1596,7 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 {
 	struct job_pattern *jp;
 	struct pkg_job_request *req, *rtmp;
+	bool error_found = false;
 	int retcode;
 
 	LL_FOREACH(j->patterns, jp) {
@@ -1606,13 +1607,16 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 					"repositories",
 					(j->type == PKG_JOBS_UPGRADE) ? "upgrade" : "install",
 					jp->pattern);
+			/* delay the return to be sure we print a message for all issues */
 			if ((j->flags & PKG_FLAG_UPGRADE_VULNERABLE) == 0)
-				return (retcode);
+				error_found = true;
 		}
 		if (retcode == EPKG_LOCKED) {
 			return (retcode);
 		}
 	}
+	if (error_found)
+		return (EPKG_FATAL);
 	/*
 	 * Here we have not selected the proper candidate among all
 	 * possible choices.
