@@ -95,6 +95,12 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			return (EPKG_FATAL);
 		}
 
+		if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode))) {
+			pkg_emit_error("file '%s' is not a regular file", fpath);
+			kh_destroy_hardlinks(hardlinks);
+			return (EPKG_FATAL);
+		}
+
 		if (file->size == 0)
 			file->size = (int64_t)st.st_size;
 
