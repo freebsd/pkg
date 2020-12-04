@@ -15,6 +15,7 @@ tests_init \
 	create_from_plist_with_keyword_arguments \
 	create_from_manifest_and_plist \
 	create_from_manifest \
+	create_from_manifest_dir \
 	create_from_plist_pkg_descr \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
@@ -539,6 +540,24 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg info -R --raw-format=ucl -F test-1.txz
+}
+
+create_from_manifest_dir_body() {
+	genmanifest
+	cat <<EOF >> +MANIFEST
+files: {
+     /testfile: {perm: 0644}
+     /testdir: {perm: 0644}
+}
+EOF
+	touch testfile
+	mkdir testdir
+	atf_check \
+		-o empty \
+		-e not-empty \
+		-s not-exit:0 \
+		pkg create -M ./+MANIFEST -r ${TMPDIR}
+
 }
 
 create_from_plist_pkg_descr_body() {
