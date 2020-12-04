@@ -75,7 +75,7 @@ exec_install(int argc, char **argv)
 		{ "fetch-only",		no_argument,		NULL,	'F' },
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
-		{ "no-install-scripts",	no_argument,		NULL,	'I' },
+		{ "no-scripts",		no_argument,		NULL,	'I' },
 		{ "local-only",		no_argument,		NULL,	'l' },
 		{ "ignore-missing",	no_argument,		NULL,	'M' },
 		{ "dry-run",		no_argument,		NULL,	'n' },

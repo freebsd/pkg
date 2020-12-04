@@ -63,7 +63,7 @@ exec_delete(int argc, char **argv)
 	struct option longopts[] = {
 		{ "all",			no_argument,	NULL,	'a' },
 		{ "case-sensitive",		no_argument,	NULL,	'C' },
-		{ "no-deinstall-script",	no_argument,	NULL,	'D' },
+		{ "no-scripts",			no_argument,	NULL,	'D' },
 		{ "force",			no_argument,	NULL,	'f' },
 		{ "glob",			no_argument,	NULL,	'g' },
 		{ "case-insensitive",		no_argument,	NULL,	'i' },

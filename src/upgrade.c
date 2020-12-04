@@ -283,7 +283,7 @@ exec_upgrade(int argc, char **argv)
 		{ "fetch-only",		no_argument,		NULL,	'F' },
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
-		{ "no-install-scripts",	no_argument,		NULL,	'I' },
+		{ "no-scripts",		no_argument,		NULL,	'I' },
 		{ "dry-run",		no_argument,		NULL,	'n' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },

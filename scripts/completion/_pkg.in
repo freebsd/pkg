@@ -312,7 +312,7 @@ _pkg_args() {
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
 				'(-f --force)'{-f,--force}'[force the package(s) to be removed]' \
-				'(-D --no-deinstall-script)'{-D,--no-deinstall-script}"[don't execute deinstallation scripts]" \
+				'(-D --no-scripts)'{-D,--no-scripts}"[don't execute deinstallation scripts]" \
 				'(-R --recursive)'{-R,--recursive}'[delete all packages that require the list packages as well]' \
 				- '(all)' \
 				{-a,--all}'[process all packages]' \
@@ -385,7 +385,7 @@ _pkg_args() {
 				'(-A --automatic)'{-A,--automatic}'[mark the installed packages as automatic]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to install packages from]:repository:->repositories' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
-				'(-I --no-install-scripts)'{-I,--no-install-scripts}"[don't execute any pre/post-install scripts]" \
+				'(-I --no-scripts)'{-I,--no-scripts}"[don't execute any pre/post-install scripts]" \
 				'(-M --ignore-missing)'{-M,--ignore-missing}'[ignore missing dependencies]' \
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
@@ -587,7 +587,7 @@ _pkg_args() {
 				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
 				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
-				'(-I --no-install-scripts)'{-I,--no-install-scripts}"[don't execute any pre/post-install scripts]" \
+				'(-I --no-scripts)'{-I,--no-scripts}"[don't execute any pre/post-install scripts]" \
 				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to upgrade from]:repository:->repositories' \
 				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
