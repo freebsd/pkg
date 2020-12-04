@@ -40,8 +40,9 @@ EOF
 
 	atf_check \
 		-o match:".*New version of pkg detected.*" \
-		-s exit:1 \
-		pkg -o REPOS_DIR="$TMPDIR/repoconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -n
+		-e ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="$TMPDIR/repoconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 }
 
 autoupgrade_multirepo_head() {
