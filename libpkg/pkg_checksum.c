@@ -419,13 +419,19 @@ static void
 pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 {
 	char buffer[8192];
-	size_t r;
+	ssize_t r;
 
 	SHA256_CTX sign_ctx;
 	*out = xmalloc(SHA256_BLOCK_SIZE);
 	sha256_init(&sign_ctx);
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		sha256_update(&sign_ctx, buffer, r);
+	if (r < 0) {
+		pkg_emit_errno(__func__, "read failed");
+		free(*out);
+		*out = NULL;
+		return;
+	}
 	sha256_final(&sign_ctx, *out);
 	*outlen = SHA256_BLOCK_SIZE;
 }
@@ -461,14 +467,19 @@ static void
 pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 {
 	char buffer[8192];
-	size_t r;
+	ssize_t r;
 
 	blake2b_state st;
 	blake2b_init(&st, BLAKE2B_OUTBYTES);
 
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2b_update(&st, buffer, r);
-
+	if (r < 0) {
+		pkg_emit_errno(__func__, "read failed");
+		free(*out);
+		*out = NULL;
+		return;
+	}
 	*out = xmalloc(BLAKE2B_OUTBYTES);
 	blake2b_final(&st, *out, BLAKE2B_OUTBYTES);
 	*outlen = BLAKE2B_OUTBYTES;
@@ -505,14 +516,19 @@ static void
 pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
 {
 	char buffer[8192];
-	size_t r;
+	ssize_t r;
 
 	blake2s_state st;
 	blake2s_init(&st, BLAKE2S_OUTBYTES);
 
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2s_update(&st, buffer, r);
-
+	if (r < 0) {
+		pkg_emit_errno(__func__, "read failed");
+		free(*out);
+		*out = NULL;
+		return;
+	}
 	*out = xmalloc(BLAKE2S_OUTBYTES);
 	blake2s_final(&st, *out, BLAKE2S_OUTBYTES);
 	*outlen = BLAKE2S_OUTBYTES;
