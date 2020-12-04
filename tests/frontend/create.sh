@@ -14,6 +14,7 @@ tests_init \
 	create_from_plist_fflags create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
 	create_from_manifest_and_plist \
+	create_from_manifest \
 	create_from_plist_pkg_descr \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
@@ -469,6 +470,48 @@ create_from_manifest_and_plist_body() {
 		-e empty \
 		-s exit:0 \
 		pkg create -M ./+MANIFEST -p test.plist -r ${TMPDIR}
+
+	cat << EOF > output.ucl
+name = "test";
+origin = "test";
+version = "1";
+comment = "a test";
+maintainer = "test";
+www = "http://test";
+abi = "*";
+arch = "*";
+prefix = "/";
+flatsize = 0;
+desc = "Yet another test";
+categories [
+    "test",
+]
+files {
+    /testfile = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+}
+
+EOF
+
+	atf_check \
+		-o file:output.ucl \
+		-e empty \
+		-s exit:0 \
+		pkg info -R --raw-format=ucl -F test-1.txz
+}
+
+create_from_manifest_body() {
+	genmanifest
+	cat <<EOF >> +MANIFEST
+files: {
+     /testfile: {perm: 0644}
+}
+EOF
+	touch testfile
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M ./+MANIFEST -r ${TMPDIR}
 
 	cat << EOF > output.ucl
 name = "test";
