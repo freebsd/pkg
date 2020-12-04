@@ -931,6 +931,21 @@ pkg_init(const char *path, const char *reposdir)
 	return (pkg_ini(path, reposdir, 0));
 }
 
+static const char *
+type_to_string(int type)
+{
+	if (type == UCL_ARRAY)
+		return ("array");
+	if (type == UCL_OBJECT)
+		return ("object");
+	if (type == UCL_STRING)
+		return ("string");
+	if (type == UCL_INT)
+		return ("integer");
+	if (type == UCL_BOOLEAN)
+		return ("boolean");
+	return ("unknown");
+}
 int
 pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 {
@@ -1127,7 +1142,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			continue;
 
 		if (object->type != cur->type) {
-			pkg_emit_error("Malformed key %s, ignoring", key);
+			pkg_emit_error("Malformed key %s, got '%s' expecting "
+			    "'%s', ignoring", key,
+			    type_to_string(cur->type),
+			    type_to_string(object->type));
 			continue;
 		}
 
