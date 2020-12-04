@@ -560,7 +560,8 @@ messages: [
 	{ message: "always" },
 	{ message: "on upgrade"; type = "upgrade" },
 	{ message: "on install"; type = "install" },
-	{ message: "before operation"; type = "before" },
+	{ message: "before upgrade"; type = "pre-upgrade" },
+	{ message: "before install"; type = "pre-install" },
 ]
 EOF
 cat << EOF > +DISPLAY
@@ -580,8 +581,11 @@ on upgrade
 On install:
 on install
 
-Before install or upgrade:
-before operation
+Before upgrade:
+before upgrade
+
+Before install:
+before install
 
 '
 	atf_check pkg -o PLIST_KEYWORDS_DIR=. create -m . -r ${TMPDIR} -p test.plist

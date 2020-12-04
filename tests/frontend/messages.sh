@@ -18,7 +18,9 @@ comment: "need one"
 desc: "also need one"
 message: [
 	{ message: "Always print" },
-	{ message: "Before operation", type: before },
+	{ message: "Before remove", type: pre-remove },
+	{ message: "Before install", type: pre-install },
+	{ message: "Before upgrade", type: pre-upgrade },
 	{ message: "package being removed", type: remove },
 	{ message: "package being installed", type: install },
 	{ message: "package is being upgraded", type: upgrade },
@@ -98,8 +100,14 @@ OUTPUT='test-5.20_3:
 Always:
 Always print
 
-Before install or upgrade:
-Before operation
+Before remove:
+Before remove
+
+Before install:
+Before install
+
+Before upgrade:
+Before upgrade
 
 On remove:
 package being removed

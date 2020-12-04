@@ -1039,33 +1039,34 @@ pkg_print_message(struct pkg *pkg, struct pkg *local, struct pkg *remote,
 
 	LL_FOREACH(pkg->message, msg) {
 		msgstr = NULL;
-		if (prepost == PKG_PRINTMESSAGE_POST) {
-			if (msg->type == PKG_MESSAGE_ALWAYS) {
+		/* Print "always"-type only post-operation */
+		if ((msg->type == PKG_MESSAGE_ALWAYS) &&
+		     (prepost == PKG_PRINTMESSAGE_POST)) {
+			msgstr = msg->str;
+		} else if (local != NULL &&
+		     msg->type == ((prepost == PKG_PRINTMESSAGE_POST) ? 
+			     PKG_MESSAGE_UPGRADE : PKG_MESSAGE_PREUPGRADE)) {
+			if (msg->maximum_version == NULL &&
+			    msg->minimum_version == NULL) {
 				msgstr = msg->str;
-			} else if (local != NULL &&
-			     msg->type == PKG_MESSAGE_UPGRADE) {
-				if (msg->maximum_version == NULL &&
-				    msg->minimum_version == NULL) {
-					msgstr = msg->str;
-				} else if (msg->maximum_version == NULL) {
-					if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
-						msgstr = msg->str;
-					}
-				} else if (msg->minimum_version == NULL) {
-					if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
-						msgstr = msg->str;
-					}
-				} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
-					    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+			} else if (msg->maximum_version == NULL) {
+				if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
 					msgstr = msg->str;
 				}
-			} else if (local == NULL &&
-				    msg->type == PKG_MESSAGE_INSTALL) {
+			} else if (msg->minimum_version == NULL) {
+				if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
 					msgstr = msg->str;
+				}
+			} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
+				    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+				msgstr = msg->str;
 			}
-		} else
-			if (msg->type == PKG_MESSAGE_BEFORE)
-					msgstr = msg->str;
+		} else if (local == NULL &&
+			    msg->type == (
+				(prepost == PKG_PRINTMESSAGE_POST ?
+				 PKG_MESSAGE_INSTALL : PKG_MESSAGE_PREINSTALL))) {
+				msgstr = msg->str;
+		}
 		if (msgstr != NULL) {
 			if (message == NULL) {
 				message = xstring_new();
@@ -1080,7 +1081,7 @@ pkg_print_message(struct pkg *pkg, struct pkg *local, struct pkg *remote,
 		if (prepost == PKG_PRINTMESSAGE_POST)
 			pkg_emit_message(message->buf);
 		else {
-			pkg_emit_notice(message->buf);
+			pkg_emit_notice("%s", message->buf);
 			sleep(10);
 		}
 		xstring_free(message);
