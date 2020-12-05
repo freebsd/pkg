@@ -851,7 +851,8 @@ pkg_globmatch(char *pattern, const char *name)
 		if (pkg_version_cmp(path, g.gl_pathv[i]) == 1)
 			path = g.gl_pathv[i];
 	}
-	path = xstrdup(path);
+	if (path)
+		path = xstrdup(path);
 	globfree(&g);
 
 	return (path);
