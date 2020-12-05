@@ -836,7 +836,7 @@ pkg_globmatch(char *pattern, const char *name)
 		buf = strrchr(g.gl_pathv[i], '-');
 		if (buf == NULL)
 			continue;
-		buf2 = strchr(g.gl_pathv[i], '/');
+		buf2 = strrchr(g.gl_pathv[i], '/');
 		if (buf2 == NULL)
 			buf2 = g.gl_pathv[i];
 		else
