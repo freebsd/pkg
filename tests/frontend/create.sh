@@ -5,7 +5,7 @@
 tests_init \
 	create_from_plist \
 	create_from_plist_set_owner \
-	create_from_plist_set_group \
+	create_from_plist_set_group_space \
 	create_from_plist_gather_mode \
 	create_from_plist_set_mode \
 	create_from_plist_mini \
@@ -116,6 +116,25 @@ create_from_plist_set_owner_body() {
 create_from_plist_set_group_body() {
 
 	preparetestcredentials "(,bla,)"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	basic_validation
+	atf_check \
+		-o match:"-rw-r--r-- .*root[ /]+bla.* /file1$" \
+		-e ignore \
+		-s exit:0 \
+		tar tvf test-1.txz
+}
+
+
+create_from_plist_set_group_space_body() {
+
+	preparetestcredentials "(, bla,)"
 
 	atf_check \
 		-o empty \

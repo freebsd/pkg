@@ -1119,6 +1119,8 @@ parse_keyword_args(char *args, char *keyword)
 		args++;
 		if (*args == '\0')
 			break;
+		while (isspace(*args))
+			args++;
 		if (owner == NULL) {
 			owner = args;
 		} else if (group == NULL) {
@@ -1246,14 +1248,22 @@ plist_parse_line(struct plist *plist, char *line)
 		keyword = line;
 		keyword++; /* skip the @ */
 		buf = keyword;
-		while (!(isspace(buf[0]) || buf[0] == '\0'))
+		while (!(isspace(buf[0]) || buf[0] == '\0')) {
+			if (buf[0] == '(') {
+				if ((buf = strchr(buf, ')')) == NULL) {
+					pkg_emit_error("Malformed keyword %s, expecting @keyword "
+				    "or @keyword(owner,group,mode)", keyword);
+					return (EPKG_FATAL);
+				}
+			}
 			buf++;
+		}
 
 		if (buf[0] != '\0') {
 			buf[0] = '\0';
 			buf++;
 		}
-		/* trim write spaces */
+		/* trim spaces */
 		while (isspace(buf[0]))
 			buf++;
 		pkg_debug(1, "Parsing plist, found keyword: '%s", keyword);
