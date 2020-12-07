@@ -1184,8 +1184,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		/* Add annotations except for internal ones. */
-		if (strcmp(kv->key, "repository") == 0 ||
-		    strcmp(kv->key, "relocated") == 0)
+		if ((strcmp(kv->key, "repository") == 0 ||
+		    strcmp(kv->key, "relocated") == 0) &&
+		    (flags & PKG_MANIFEST_EMIT_LOCAL_METADATA) == 0)
 			continue;
 		ucl_object_insert_key(map, ucl_object_fromstring(kv->value),
 		    kv->key, strlen(kv->key), true);
