@@ -24,7 +24,7 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl nqv
+.Op Fl enqv
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -33,7 +33,7 @@
 .Op Fl t Ar timestamp
 .Fl m Ar metadatadir
 .Nm
-.Op Fl nqv
+.Op Fl enqv
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -41,7 +41,7 @@
 .Op Fl t Ar timestamp
 .Fl M Ar manifest
 .Nm
-.Op Fl gnqvx
+.Op Fl egnqvx
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -49,7 +49,7 @@
 .Op Fl t Ar timestamp
 .Ar pkg-name ...
 .Nm
-.Op Fl nqv
+.Op Fl enqv
 .Op Fl f Ar format
 .Op Fl l Ar level
 .Op Fl o Ar outdir
@@ -59,6 +59,7 @@
 .\" ---------------------------------------------------------------------------
 .Pp
 .Nm
+.Op Cm --expand-manifest
 .Op Cm --no-clobber
 .Op Cm --quiet
 .Op Cm --verbose
@@ -69,6 +70,7 @@
 .Op Cm --root-dir Ar rootdir
 .Cm --metadata Ar metadatadir
 .Nm
+.Op Cm --expand-manifest
 .Op Cm --no-clobber
 .Op Cm --quiet
 .Op Cm --verbose
@@ -78,6 +80,7 @@
 .Op Cm --root-dir Ar rootdir
 .Cm --manifest Ar manifest
 .Nm
+.Op Cm --expand-manifest
 .Op Cm --{glob,no-clobber,regex}
 .Op Cm --quiet
 .Op Cm --verbose
@@ -87,6 +90,7 @@
 .Op Cm --root-dir Ar rootdir
 .Ar pkg-name ...
 .Nm
+.Op Cm --expand-manifest
 .Op Cm --no-clobber
 .Op Cm --quiet
 .Op Cm --verbose
@@ -129,6 +133,8 @@ The following options are supported by
 .It Fl a , Cm --all
 Create package tarballs from all packages installed on your system.
 This option is incompatible with the
+.It Fl e, Cm --expand-manifest
+The manifest contained in pkg will be expanded to readable UCL format.
 .Fl g , x
 or
 .Fl m Ar metadatadir

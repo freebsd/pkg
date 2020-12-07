@@ -62,13 +62,13 @@ struct pkg_entry *pkg_head = NULL;
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-Ohnqv] [-f format] [-l level] "
+	fprintf(stderr, "Usage: pkg create [-eOhnqv] [-f format] [-l level] "
 		"[-o outdir] [-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-Ohnqv] [-f format] [-l level] "
+	fprintf(stderr, "Usage: pkg create [-eOhnqv] [-f format] [-l level] "
 		"[-o outdir] [-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-Ohgnqvx] [-f format] [-l level] "
+	fprintf(stderr, "       pkg create [-eOhgnqvx] [-f format] [-l level] "
 		"[-o outdir] [-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-Ohnqv] [-f format] [-l level] "
+	fprintf(stderr, "       pkg create [-eOhnqv] [-f format] [-l level] "
 		"[-o outdir] [-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -181,6 +181,7 @@ exec_create(int argc, char **argv)
 	int		 ret;
 	bool		 hash = false;
 	bool		 overwrite = true;
+	bool		 expand_manifest = false;
 	time_t		 ts = (time_t)-1;
 
 	/* Sentinel values: INT_MIN (fast), 0 (default), INT_MAX (best). */
@@ -194,6 +195,7 @@ exec_create(int argc, char **argv)
 
 	struct option longopts[] = {
 		{ "all",	no_argument,		NULL,	'a' },
+		{ "expand-manifest",	no_argument,	NULL,	'e' },
 		{ "format",	required_argument,	NULL,	'f' },
 		{ "glob",	no_argument,		NULL,	'g' },
 		{ "hash",	no_argument,		NULL,	'h' },
@@ -211,10 +213,13 @@ exec_create(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aghxf:l:r:m:M:no:p:qvt:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aeghxf:l:r:m:M:no:p:qvt:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'e':
+			expand_manifest = true;
 			break;
 		case 'f':
 			format = optarg;
@@ -312,6 +317,7 @@ exec_create(int argc, char **argv)
 	pkg_create_set_overwrite(pc, overwrite);
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
+	pkg_create_set_expand_manifest(pc, expand_manifest);
 	if (ts != (time_t)-1)
 		pkg_create_set_timestamp(pc, ts);
 

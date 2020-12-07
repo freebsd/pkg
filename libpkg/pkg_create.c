@@ -43,7 +43,6 @@
 
 static int load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
     const char *rootdir);
-static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
 static void fixup_abi(struct pkg *pkg, const char *rootdir, bool testing);
 static void counter_init(const char *what, int64_t max);
 static void counter_count(void);
@@ -53,7 +52,7 @@ extern struct pkg_ctx ctx;
 
 static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
-    struct packing *pkg_archive)
+    struct pkg_create *pc, struct packing *pkg_archive)
 {
 	char		 fpath[MAXPATHLEN];
 	struct pkg_file	*file = NULL;
@@ -137,7 +136,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	fflush(b->fp);
 	packing_append_buffer(pkg_archive, b->buf, "+COMPACT_MANIFEST", strlen(b->buf));
 	xstring_reset(b);
-	pkg_emit_manifest_buf(pkg, b, 0, NULL);
+	if (pc->expand_manifest)
+		pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_UCL, NULL);
+	else
+		pkg_emit_manifest_buf(pkg, b, 0, NULL);
 	fflush(b->fp);
 	packing_append_buffer(pkg_archive, b->buf, "+MANIFEST", strlen(b->buf));
 	xstring_free(b);
@@ -241,6 +243,7 @@ pkg_create_new(void)
 	pc->format = TXZ;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
+	pc->expand_manifest = false;
 
 	return (pc);
 }
@@ -273,6 +276,12 @@ void
 pkg_create_set_compression_level(struct pkg_create *pc, int clevel)
 {
 	pc->compression_level = clevel;
+}
+
+void
+pkg_create_set_expand_manifest(struct pkg_create *pc, bool expand)
+{
+	pc->expand_manifest = expand;
 }
 
 void
@@ -347,7 +356,7 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_create_from_dir(pkg, NULL, pkg_archive)) != EPKG_OK) {
+	if ((ret = pkg_create_from_dir(pkg, NULL, pc, pkg_archive)) != EPKG_OK) {
 		pkg_emit_error("package creation failed");
 	}
 	packing_finish(pkg_archive);
@@ -389,7 +398,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_create_from_dir(pkg, pc->rootdir, pkg_archive)) != EPKG_OK)
+	if ((ret = pkg_create_from_dir(pkg, pc->rootdir, pc, pkg_archive)) != EPKG_OK)
 		pkg_emit_error("package creation failed");
 
 	packing_finish(pkg_archive);

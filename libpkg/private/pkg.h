@@ -364,6 +364,7 @@ struct trigger {
 
 struct pkg_create {
 	bool overwrite;
+	bool expand_manifest;
 	int compression_level;
 	pkg_formats format;
 	time_t timestamp;
