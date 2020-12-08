@@ -902,3 +902,16 @@ get_dirname(char *d)
 
 	return (d);
 }
+
+char *
+rtrimspace(char *buf)
+{
+	char *cp = buf + strlen(buf) -1;
+
+	while (cp > buf && isspace(*cp)) {
+		*cp = 0;
+		cp --;
+	}
+
+	return (buf);
+}
