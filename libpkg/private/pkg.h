@@ -861,8 +861,11 @@ int pkg_open_root_fd(struct pkg *pkg);
 void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
 struct plist *plist_new(struct pkg *p, const char *stage);
 int plist_parse_line(struct plist *p, char *line);
+char *extract_keywords(char *line, char **keyword, struct file_attr **attr);
+struct file_attr *parse_keyword_args(char *args, char *keyword);
 void plist_free(struct plist *);
 int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
+void free_file_attr(struct file_attr *a);
 
 int pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type);
 int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);

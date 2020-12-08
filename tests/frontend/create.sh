@@ -264,7 +264,7 @@ create_from_plist_bad_fflags_body() {
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: Malformed keyword '', wrong fflags\n" \
+		-e inline:"${PROGNAME}: Malformed keyword '', wrong fflags\n${PROGNAME}: Malformed keyword @(,,,schg,bad) file1, expecting @keyword or @keyword(owner,group,mode)\n" \
 		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }

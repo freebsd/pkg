@@ -173,8 +173,7 @@ parse_mode(const char *str)
 	return (setmode(str));
 }
 
-
-static void
+void
 free_file_attr(struct file_attr *a)
 {
 	if (a == NULL)
@@ -1101,7 +1100,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	return (ret);
 }
 
-static struct file_attr *
+ struct file_attr *
 parse_keyword_args(char *args, char *keyword)
 {
 	struct file_attr *attr;
@@ -1117,10 +1116,10 @@ parse_keyword_args(char *args, char *keyword)
 	do {
 		args[0] = '\0';
 		args++;
-		if (*args == '\0')
-			break;
 		while (isspace(*args))
 			args++;
+		if (*args == '\0')
+			break;
 		if (owner == NULL) {
 			owner = args;
 		} else if (group == NULL) {
@@ -1131,9 +1130,6 @@ parse_keyword_args(char *args, char *keyword)
 			fflags = args;
 			break;
 		} else {
-			pkg_emit_error("Malformed keyword '%s', expecting "
-			    "keyword or keyword(owner,group,mode,fflags...)",
-			    keyword);
 			return (NULL);
 		}
 	} while ((args = strchr(args, ',')) != NULL);
@@ -1158,12 +1154,14 @@ parse_keyword_args(char *args, char *keyword)
 			return (NULL);
 		}
 	}
+	if (owner == NULL && group == NULL && set == NULL)
+		return (NULL);
 
 	attr = xcalloc(1, sizeof(struct file_attr));
 	if (owner != NULL && *owner != '\0')
-		attr->owner = xstrdup(owner);
+		attr->owner = xstrdup(rtrimspace(owner));
 	if (group != NULL && *group != '\0')
-		attr->group = xstrdup(group);
+		attr->group = xstrdup(rtrimspace(group));
 	if (set != NULL) {
 		attr->mode = getmode(set, 0);
 		free(set);
@@ -1174,26 +1172,12 @@ parse_keyword_args(char *args, char *keyword)
 }
 
 static int
-parse_keywords(struct plist *plist, char *keyword, char *line)
+parse_keywords(struct plist *plist, char *keyword,
+    char *line, struct file_attr *attr)
 {
 	struct keyword *k;
 	struct action *a;
-	struct file_attr *attr = NULL;
-	char *tmp;
 	int ret = EPKG_FATAL;
-
-	if ((tmp = strchr(keyword, '(')) != NULL &&
-	    keyword[strlen(keyword) -1] != ')') {
-		pkg_emit_error("Malformed keyword %s, expecting @keyword "
-		    "or @keyword(owner,group,mode)", keyword);
-		return (ret);
-	}
-
-	if (tmp != NULL) {
-		attr = parse_keyword_args(tmp, keyword);
-		if (attr == NULL)
-			return (ret);
-	}
 
 	/* if keyword is empty consider it as a file */
 	if (*keyword == '\0')
@@ -1204,9 +1188,9 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 		LL_FOREACH(k->actions, a) {
 			ret = a->perform(plist, line, attr);
 			if (ret != EPKG_OK)
-				goto end;
+				break;
 		}
-		goto end;
+		return (ret);
 	}
 
 	/*
@@ -1214,10 +1198,45 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	 * maybe it is defined externally
 	 * let's try to find it
 	 */
-	ret = external_keyword(plist, keyword, line, attr);
-end:
-	free_file_attr(attr);
-	return (ret);
+	return (external_keyword(plist, keyword, line, attr));
+}
+
+char *
+extract_keywords(char *line, char **keyword, struct file_attr **attr)
+{
+	char *k, *buf, *tmp;
+	struct file_attr *a = NULL;
+
+	buf = k = line;
+	while (!(isspace(buf[0]) || buf[0] == '\0')) {
+		if (buf[0] == '(' && (buf = strchr(buf, ')')) == NULL)
+			return (NULL);
+		buf++;
+	}
+	if (buf[0] != '\0') {
+		buf[0] = '\0';
+		buf++;
+	}
+
+	/* trim spaces after the keyword */
+	while (isspace(buf[0]))
+		buf++;
+
+	pkg_debug(1, "Parsing plist, found keyword: '%s", k);
+
+	if ((tmp = strchr(k, '(')) != NULL && k[strlen(k) -1] != ')')
+		return (NULL);
+
+	if (tmp != NULL) {
+		a = parse_keyword_args(tmp, k);
+		if (a == NULL)
+			return (NULL);
+	}
+
+	*attr = a;
+	*keyword = k;
+
+	return (buf);
 }
 
 static void
@@ -1232,7 +1251,8 @@ flush_script_buffer(xstring *buf, struct pkg *p, int type)
 int
 plist_parse_line(struct plist *plist, char *line)
 {
-	char *keyword, *buf;
+	char *keyword, *buf, *bkpline;
+	struct file_attr *a;
 
 	if (plist->ignore_next) {
 		plist->ignore_next = false;
@@ -1243,32 +1263,19 @@ plist_parse_line(struct plist *plist, char *line)
 		return (EPKG_OK);
 
 	pkg_debug(1, "Parsing plist line: '%s'", line);
+	bkpline = xstrdup(line);
 
 	if (line[0] == '@') {
-		keyword = line;
-		keyword++; /* skip the @ */
-		buf = keyword;
-		while (!(isspace(buf[0]) || buf[0] == '\0')) {
-			if (buf[0] == '(') {
-				if ((buf = strchr(buf, ')')) == NULL) {
-					pkg_emit_error("Malformed keyword %s, expecting @keyword "
-				    "or @keyword(owner,group,mode)", keyword);
-					return (EPKG_FATAL);
-				}
-			}
-			buf++;
+		keyword = NULL;
+		a = NULL;
+		buf = extract_keywords(line + 1, &keyword, &a);
+		if (buf == NULL) {
+			pkg_emit_error("Malformed keyword %s, expecting @keyword "
+			    "or @keyword(owner,group,mode)", bkpline);
+			return (EPKG_FATAL);
 		}
 
-		if (buf[0] != '\0') {
-			buf[0] = '\0';
-			buf++;
-		}
-		/* trim spaces */
-		while (isspace(buf[0]))
-			buf++;
-		pkg_debug(1, "Parsing plist, found keyword: '%s", keyword);
-
-		switch (parse_keywords(plist, keyword, buf)) {
+		switch (parse_keywords(plist, keyword, buf, a)) {
 		case EPKG_UNKNOWN:
 			pkg_emit_error("unknown keyword %s: %s",
 			    keyword, line);
