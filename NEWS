@@ -1,3 +1,27 @@
+Changes from 1.15.99.7 to 1.15.99.8
+- Update documentation about configuration options
+- Fix variable expansion while parsing pkg.conf and repositories
+- Fix scripts never ending on MacOS
+- Do not execute post-install script if extraction fails
+- Fix fetching of meta.conf if it is missing
+- Update lua to lua 5.3.6
+- Improve solver missing some reverse dependencies
+- 'audit' now accept a -R/--raw option for parseable output
+- 'audit' can now ignore packages based on use define globs or regexp
+- 'set' now reports when a package provided in command line is not installed
+- all commands are now consistently using --no-scritps instead of different
+  flavor per commands
+- when request to install many packages unavailable in the repo, print all the
+  missing one instead of stop at the first one only
+- 'info' now prints the timestamp and repository in the --raw output
+- Improve error messaging when parsing the configuration file
+- when upgrading in dry-run mode: stop first checking for pkg, but show all
+  the packages to be upgraded, pkg included
+- Fix crash when pkg is told to package a directory as a file
+- 'create' now accept -e to create package with an expanded version of the
+  manifest aka readable
+- Relax keywords attributes syntax by allowing spaces
+
 Changes from 1.15.99.6 to 1.15.99.7
 - Merge keywords preinstall script into a single "prepackaging script"
 - implement triggers (lua and shell)
