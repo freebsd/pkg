@@ -44,6 +44,7 @@
 #include <utlist.h>
 
 #include "pkg.h"
+#include <xstring.h>
 #include <private/pkg_printf.h>
 #include <private/pkg.h>
 

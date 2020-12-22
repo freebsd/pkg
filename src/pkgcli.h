@@ -31,6 +31,7 @@
 #include <search.h>
 #include <stdint.h>
 #include <string.h>
+#include <xstring.h>
 #include <bsd_compat.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)

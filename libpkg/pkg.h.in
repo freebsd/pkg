@@ -44,7 +44,6 @@ extern "C" {
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <xstring.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
