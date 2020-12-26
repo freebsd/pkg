@@ -471,9 +471,10 @@ exec_audit(int argc, char **argv)
 		if (ret == EPKG_END && vuln == 0)
 			ret = EXIT_SUCCESS;
 
-		if (top == NULL && !quiet) {
-			printf("%u problem(s) in %u installed package(s) found.\n",
-			   affected, vuln);
+		if (top == NULL) {
+			if (!quiet)
+				printf("%u problem(s) in %u installed package(s) found.\n",
+				   affected, vuln);
 	
 		} else {
 			ucl_object_insert_key(top, ucl_object_fromint(vuln), "pkg_count", 9, false );
