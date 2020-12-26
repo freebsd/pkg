@@ -1,3 +1,6 @@
+Changes from 1.16.1
+- pkg audit: fix the quiet output
+
 Changes from 1.15.99.8 to 1.16
 - Release 1.16
 - Fix a typo in pkg.conf(5)
