@@ -914,7 +914,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
-	bool found = false;
+	bool checklocal, found = false;
 	int rc = EPKG_FATAL;
 	int with_version;
 	struct pkg_dep *rdep = NULL;
@@ -927,7 +927,20 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
 		rc = EPKG_FATAL;
 
+	/*
+	 * MATCH_EXACT is handled at a higher level, so that we can complain if a
+	 * specific upgrade was requested without the package being locally installed.
+	 *
+	 * MATCH_ALL is a non-issue, because we will not get that from pkg-upgrade
+	 * anyways.
+
+	 * Pattern matches are the main target, as the above query may grab packages
+	 * that are not installed that we can ignore.
+	 */
+	checklocal = j->type == PKG_JOBS_UPGRADE && m != MATCH_EXACT && m != MATCH_ALL;
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+		if (checklocal && pkg_jobs_installed_local_pkg(j, p) != EPKG_OK)
+			continue;
 		if (pattern != NULL) {
 			with_version = strcmp(p->name, pattern);
 		} else {
@@ -1016,10 +1029,12 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 	struct pkg_job_request *req;
 
 	if (!(jp->flags & PKG_PATTERN_FLAG_FILE)) {
-		if (j->type == PKG_JOBS_UPGRADE) {
+		if (j->type == PKG_JOBS_UPGRADE && jp->match == MATCH_EXACT) {
 			/*
 			 * For upgrade patterns we must ensure that a local package is
-			 * installed as well.
+			 * installed as well.  This only works if we're operating on an
+			 * exact match, as we otherwise don't know exactly what packages
+			 * are in store for us.
 			 */
 			if (pkg_jobs_check_local_pkg(j, jp) != EPKG_OK) {
 				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
