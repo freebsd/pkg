@@ -95,7 +95,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		}
 
 		if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode))) {
-			pkg_emit_error("file '%s' is not a regular file", fpath);
+			pkg_emit_error("file '%s' is not a regular file or symlink", fpath);
 			kh_destroy_hardlinks(hardlinks);
 			return (EPKG_FATAL);
 		}
