@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 14, 2015
+.Dd January 14, 2021
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -28,14 +28,14 @@
 .Nm
 .Op Fl lqy
 .Op Fl Cgix
-.Ar pkg-name
+.Ar pkg-name ...
 .Nm "pkg unlock"
 .Op Fl lqy
 .Op Fl a
 .Nm "pkg unlock"
 .Op Fl lqy
 .Op Fl Cgix
-.Ar pkg-name
+.Ar pkg-name ...
 .Pp
 .Nm
 .Op Cm --{show-locked,quiet,yes}
@@ -45,14 +45,14 @@
 .Nm
 .Op Cm --{show-locked,quiet,yes}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
-.Ar pkg-name
+.Ar pkg-name ...
 .Nm "pkg unlock"
 .Op Cm --{show-locked,quiet,yes}
 .Op Cm --all
 .Nm "pkg unlock"
 .Op Cm --{show-locked,quiet,yes}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
-.Ar pkg-name
+.Ar pkg-name ...
 .Sh DESCRIPTION
 .Nm
 is used to lock packages against reinstallation,
