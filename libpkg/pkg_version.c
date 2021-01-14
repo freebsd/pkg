@@ -144,17 +144,16 @@ typedef struct {
  * Oliver Eikemeier
  */
 
-static const struct {
+static const struct stage {
 	const char *name;
 	size_t namelen;
 	int value;
-} stage[] = {
+} stages[] = {
 	{ "pl",    2,  0        },
 	{ "alpha", 5, 'a'-'a'+1 },
 	{ "beta",  4, 'b'-'a'+1 },
 	{ "pre",   3, 'p'-'a'+1 },
 	{ "rc",    2, 'r'-'a'+1 },
-	{ NULL,    0,  -1       }
 };
 
 static const char *
@@ -195,14 +194,15 @@ get_component(const char *position, version_component *component)
 		/* handle special suffixes */
 		if (isalpha(pos[1])) {
 			unsigned int i;
-			for (i = 0; stage[i].name; i++) {
-				size_t len = stage[i].namelen;
-				if (strncasecmp(pos, stage[i].name, len) == 0 &&
-				    !isalpha(pos[stage[i].namelen])) {
+			for (i = 0; i < nitems(stages); i++) {
+				const struct stage *stage = &stages[i];
+				size_t len = stage->namelen;
+				if (strncasecmp(pos, stage->name, len) == 0 &&
+				    !isalpha(pos[stage->namelen])) {
 					if (hasstage) {
 						/* stage to value */
-						component->a = stage[i].value;
-						pos += stage[i].namelen;
+						component->a = stage->value;
+						pos += stage->namelen;
 					} else {
 						/* insert dot */
 						component->a = 0;
