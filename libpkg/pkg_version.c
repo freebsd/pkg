@@ -149,11 +149,13 @@ static const struct stage {
 	size_t namelen;
 	int value;
 } stages[] = {
-	{ "pl",    2,  0        },
-	{ "alpha", 5, 'a'-'a'+1 },
-	{ "beta",  4, 'b'-'a'+1 },
-	{ "pre",   3, 'p'-'a'+1 },
-	{ "rc",    2, 'r'-'a'+1 },
+	{ "pl",    2,  0            },
+	{ "snap",  4,  1            },
+#define	ABASE	2	/* Last special early-sorted prefix + 1 */
+	{ "alpha", 5, 'a'-'a'+ABASE },
+	{ "beta",  4, 'b'-'a'+ABASE },
+	{ "pre",   3, 'p'-'a'+ABASE },
+	{ "rc",    2, 'r'-'a'+ABASE },
 };
 
 static const char *
@@ -216,7 +218,7 @@ get_component(const char *position, version_component *component)
 		/* unhandled above */
 		if (c) {
 			/* use the first letter and skip following */
-			component->a = c - 'a' + 1;
+			component->a = c - 'a' + ABASE;
 			do {
 				++pos;
 			} while (isalpha(*pos));

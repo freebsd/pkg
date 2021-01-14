@@ -17,6 +17,9 @@ version_body() {
 	atf_check -o inline:"<\n" -s exit:0 pkg version -t 1.beta1 1.pre1
 	atf_check -o inline:"<\n" -s exit:0 pkg version -t 1.pre1 1.rc1
 	atf_check -o inline:"<\n" -s exit:0 pkg version -t 1.rc1 1
+
+	atf_check -o inline:"<\n" -s exit:0 pkg version -t 1.pl1 1.snap1
+	atf_check -o inline:"<\n" -s exit:0 pkg version -t 1.snap1 1.alpha1
 }
 
 compare_body() {
