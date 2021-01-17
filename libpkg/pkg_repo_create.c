@@ -982,6 +982,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 {
 	char repo_path[MAXPATHLEN];
 	char repo_archive[MAXPATHLEN];
+	char *key_file;
+	const char *key_type;
 	struct rsa_key *rsa = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
@@ -994,7 +996,16 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	}
 
 	if (argc == 1) {
-		rsa_new(&rsa, password_cb, argv[0]);
+		key_type = key_file = argv[0];
+		if (strncmp(key_file, "rsa:", 4) == 0) {
+			key_file += 4;
+			*(key_file - 1) = '\0';
+		} else {
+			key_type = "rsa";
+		}
+
+		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
+		rsa_new(&rsa, password_cb, key_file);
 	}
 
 	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
