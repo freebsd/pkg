@@ -51,7 +51,7 @@ void
 usage_repo(void)
 {
 	fprintf(stderr, "Usage: pkg repo [-lqL] [-o output-dir] <repo-path> "
-	    "[<rsa-key>|signing_command: <the command>]\n\n");
+	    "[rsa:<rsa-key>|signing_command: <the command>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 

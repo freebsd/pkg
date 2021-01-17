@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 5, 2020
+.Dd January 17, 2021
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -25,13 +25,13 @@
 .Op Fl lq
 .Op Fl m Ar meta-file
 .Op Fl o Ar output-dir
-.Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
+.Ao Ar repo-path Ac Op rsa: Ns Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Pp
 .Nm
 .Op Cm --{list-files,quiet}
 .Op Cm --meta-file Ar meta-file
 .Op Cm --output-dir Ar output-dir
-.Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
+.Ao Ar repo-path Ac Op rsa: Ns Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
 .Nm
 is used to create a catalogue of the available
