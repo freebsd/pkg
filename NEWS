@@ -1,4 +1,4 @@
-Changes from 1.15.99.8 to 1.15.99.9
+Changes from 1.16.99.8 to 1.16.99.1
 - Avoid making making xstring.h public
 - audit: fix quiet
 - libpkg: add a snap(shot) version prefix
