@@ -79,3 +79,18 @@ Add some new ucl files in the ports tree do define groups of files instead of me
 
 * Tests for pkg audit
 * Improve tests for triggers
+
+# pkg reposync/repomerge
+
+Currently there is a race easily obtain when you pkg install blah and the remote repository
+is synced.
+The idea of reposync/repomerge is to address this issue by having a command that takes two
+repository directories, one being the directory served by the webserver (named www below) and
+the other being the newly created repository (named new below) and does:
+
+* Open www/packagesite and rm all packages in www/All/ that aren't in it (this clean pkgs-1)
+* Copy all new/All/* to www/All/
+* Copy atomically meta.conf/meta.XXX/packagesite.XXX from new/ to www/
+
+This leaves the new/ directory with the new packagesite, the new pkgs and the
+pkgs-1 from the previous run.
