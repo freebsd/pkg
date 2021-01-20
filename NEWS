@@ -1,3 +1,8 @@
+Changes from 1.16.1 to 1.16.2
+- libpkg: add a snap(shot) version prefix
+- libpkg: only upgrade installed packages with pattern matches
+- Document pkg-lock(8) accepts a list of packages
+
 Changes from 1.16.1
 - pkg audit: fix the quiet output
 
