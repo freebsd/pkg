@@ -53,11 +53,6 @@ _load_rsa_private_key(struct rsa_key *rsa)
 	if ((fp = fopen(rsa->path, "re")) == NULL)
 		return (EPKG_FATAL);
 
-	if ((rsa->key = RSA_new()) == NULL) {
-		fclose(fp);
-		return (EPKG_FATAL);
-	}
-
 	rsa->key = PEM_read_RSAPrivateKey(fp, 0, rsa->pw_cb, rsa->path);
 	if (rsa->key == NULL) {
 		fclose(fp);
