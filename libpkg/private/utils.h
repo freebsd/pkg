@@ -59,7 +59,7 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
-struct rsa_key;
+struct pkg_key;
 
 int32_t string_hash_func(const char *);
 
@@ -71,9 +71,10 @@ int format_exec_cmd(char **, const char *, const char *, const char *, char *,
 int is_dir(const char *);
 int is_link(const char *);
 
-int rsa_new(struct rsa_key **, pkg_password_cb *, char *path);
-void rsa_free(struct rsa_key *);
-int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
+int rsa_new(struct pkg_key **, pkg_password_cb *, char *path);
+void rsa_free(struct pkg_key *);
+int rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
+    unsigned int *siglen);
 int rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd);
 int rsa_verify_cert(unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
