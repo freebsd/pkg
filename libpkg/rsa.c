@@ -31,30 +31,53 @@
 #include <fcntl.h>
 
 #include <openssl/err.h>
-#include <openssl/rsa.h>
 #include <openssl/ssl.h>
-
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 
-struct rsa_key {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+/*
+ * This matches the historical usage for pkg.  Older versions sign the hex
+ * encoding of the SHA256 checksum.  If we ever deprecated RSA, this can go
+ * away.
+ */
+static EVP_MD *md_pkg_sha1;
+
+static EVP_MD *
+EVP_md_pkg_sha1(void)
+{
+
+	if (md_pkg_sha1 != NULL)
+		return (md_pkg_sha1);
+
+	md_pkg_sha1 = EVP_MD_meth_dup(EVP_sha1());
+	if (md_pkg_sha1 == NULL)
+		return (NULL);
+
+	EVP_MD_meth_set_result_size(md_pkg_sha1,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+	return (md_pkg_sha1);
+}
+#endif	/* OPENSSL_VERSION_NUMBER >= 0x10100000L */
+
+struct pkg_key {
 	pkg_password_cb *pw_cb;
 	char *path;
-	RSA *key;
+	EVP_PKEY *key;
 };
 
 static int
-_load_rsa_private_key(struct rsa_key *rsa)
+_load_private_key(struct pkg_key *keyinfo)
 {
 	FILE *fp;
 
-	if ((fp = fopen(rsa->path, "re")) == NULL)
+	if ((fp = fopen(keyinfo->path, "re")) == NULL)
 		return (EPKG_FATAL);
 
-	rsa->key = PEM_read_RSAPrivateKey(fp, 0, rsa->pw_cb, rsa->path);
-	if (rsa->key == NULL) {
+	keyinfo->key = PEM_read_PrivateKey(fp, 0, keyinfo->pw_cb, keyinfo->path);
+	if (keyinfo->key == NULL) {
 		fclose(fp);
 		return (EPKG_FATAL);
 	}
@@ -63,22 +86,30 @@ _load_rsa_private_key(struct rsa_key *rsa)
 	return (EPKG_OK);
 }
 
-static RSA *
-_load_rsa_public_key_buf(unsigned char *cert, int certlen)
+static EVP_PKEY *
+_load_public_key_buf(unsigned char *cert, int certlen)
 {
-	RSA *rsa = NULL;
+	EVP_PKEY *pkey;
 	BIO *bp;
 	char errbuf[1024];
 
 	bp = BIO_new_mem_buf((void *)cert, certlen);
-	if (!PEM_read_bio_RSA_PUBKEY(bp, &rsa, NULL, NULL)) {
+	if (bp == NULL) {
+		pkg_emit_error("error allocating public key bio: %s",
+		    ERR_error_string(ERR_get_error(), errbuf));
+		return (NULL);
+	}
+
+	pkey = PEM_read_bio_PUBKEY(bp, NULL, NULL, NULL);
+	if (pkey == NULL) {
 		pkg_emit_error("error reading public key: %s",
 		    ERR_error_string(ERR_get_error(), errbuf));
 		BIO_free(bp);
 		return (NULL);
 	}
+
 	BIO_free(bp);
-	return (rsa);
+	return (pkey);
 }
 
 struct rsa_verify_cbdata {
@@ -95,7 +126,8 @@ rsa_verify_cert_cb(int fd, void *ud)
 	char *sha256;
 	char *hash;
 	char errbuf[1024];
-	RSA *rsa = NULL;
+	EVP_PKEY *pkey = NULL;
+	EVP_PKEY_CTX *ctx;
 	int ret;
 
 	sha256 = pkg_checksum_fd(fd, PKG_HASH_TYPE_SHA256_HEX);
@@ -106,23 +138,62 @@ rsa_verify_cert_cb(int fd, void *ud)
 	    PKG_HASH_TYPE_SHA256_RAW);
 	free(sha256);
 
-	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
-	if (rsa == NULL) {
+	pkey = _load_public_key_buf(cbdata->key, cbdata->keylen);
+	if (pkey == NULL) {
 		free(hash);
 		return (EPKG_FATAL);
 	}
-	ret = RSA_verify(NID_sha256, hash,
-	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_RAW), cbdata->sig,
-	    cbdata->siglen, rsa);
-	free(hash);
-	if (ret == 0) {
-		pkg_emit_error("rsa verify failed: %s",
-				ERR_error_string(ERR_get_error(), errbuf));
-		RSA_free(rsa);
+
+	if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
+		EVP_PKEY_free(pkey);
+		free(hash);
 		return (EPKG_FATAL);
 	}
 
-	RSA_free(rsa);
+	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (ctx == NULL) {
+		EVP_PKEY_free(pkey);
+		free(hash);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_verify_init(ctx) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(hash);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(hash);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(hash);
+		return (EPKG_FATAL);
+	}
+
+	ret = EVP_PKEY_verify(ctx, cbdata->sig, cbdata->siglen, hash,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_RAW));
+	free(hash);
+	if (ret <= 0) {
+		if (ret < 0)
+			pkg_emit_error("rsa verify failed: %s",
+					ERR_error_string(ERR_get_error(), errbuf));
+		else
+			pkg_emit_error("rsa signature verification failure");
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		return (EPKG_FATAL);
+	}
+
+	EVP_PKEY_CTX_free(ctx);
+	EVP_PKEY_free(pkey);
 
 	return (EPKG_OK);
 }
@@ -159,31 +230,91 @@ rsa_verify_cb(int fd, void *ud)
 	struct rsa_verify_cbdata *cbdata = ud;
 	char *sha256;
 	char errbuf[1024];
-	RSA *rsa = NULL;
+	EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	EVP_PKEY_CTX *ctx;
+#else
+	RSA *rsa;
+#endif
 	int ret;
 
 	sha256 = pkg_checksum_fd(fd, PKG_HASH_TYPE_SHA256_HEX);
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-	rsa = _load_rsa_public_key_buf(cbdata->key, cbdata->keylen);
-	if (rsa == NULL) {
+	pkey = _load_public_key_buf(cbdata->key, cbdata->keylen);
+	if (pkey == NULL) {
 		free(sha256);
-		return(EPKG_FATAL);
+		return (EPKG_FATAL);
 	}
+
+	if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
+		EVP_PKEY_free(pkey);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (ctx == NULL) {
+		EVP_PKEY_free(pkey);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_verify_init(ctx) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_md_pkg_sha1()) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	ret = EVP_PKEY_verify(ctx, cbdata->sig, cbdata->siglen, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+#else
+	rsa = EVP_PKEY_get1_RSA(pkey);
 
 	ret = RSA_verify(NID_sha1, sha256,
 	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX), cbdata->sig,
 	    cbdata->siglen, rsa);
+#endif
 	free(sha256);
-	if (ret == 0) {
-		pkg_emit_error("%s: %s", cbdata->key,
-		    ERR_error_string(ERR_get_error(), errbuf));
+	if (ret <= 0) {
+		if (ret < 0)
+			pkg_emit_error("%s: %s", cbdata->key,
+				ERR_error_string(ERR_get_error(), errbuf));
+		else
+			pkg_emit_error("%s: rsa signature verification failure",
+			    cbdata->key);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		EVP_PKEY_CTX_free(ctx);
+#else
 		RSA_free(rsa);
+#endif
+		EVP_PKEY_free(pkey);
 		return (EPKG_FATAL);
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	EVP_PKEY_CTX_free(ctx);
+#else
 	RSA_free(rsa);
+#endif
+	EVP_PKEY_free(pkey);
 
 	return (EPKG_OK);
 }
@@ -223,51 +354,102 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 }
 
 int
-rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen)
+rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
+    unsigned int *osiglen)
 {
 	char errbuf[1024];
 	int max_len = 0, ret;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	EVP_PKEY_CTX *ctx;
+	size_t siglen;
+#else
+	RSA *rsa;
+#endif
 	char *sha256;
 
-	if (access(rsa->path, R_OK) == -1) {
-		pkg_emit_errno("access", rsa->path);
+	if (access(keyinfo->path, R_OK) == -1) {
+		pkg_emit_errno("access", keyinfo->path);
 		return (EPKG_FATAL);
 	}
 
-	if (rsa->key == NULL && _load_rsa_private_key(rsa) != EPKG_OK) {
-		pkg_emit_error("can't load key from %s", rsa->path);
+	if (keyinfo->key == NULL && _load_private_key(keyinfo) != EPKG_OK) {
+		pkg_emit_error("can't load key from %s", keyinfo->path);
 		return (EPKG_FATAL);
 	}
 
-	max_len = RSA_size(rsa->key);
+	max_len = EVP_PKEY_size(keyinfo->key);
 	*sigret = xcalloc(1, max_len + 1);
 
 	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-	ret = RSA_sign(NID_sha1, sha256,
-	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
-	    *sigret, siglen, rsa->key);
-	free(sha256);
-	if (ret == 0) {
-		/* XXX pass back RSA errors correctly */
-		pkg_emit_error("%s: %s", rsa->path,
-		   ERR_error_string(ERR_get_error(), errbuf));
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	ctx = EVP_PKEY_CTX_new(keyinfo->key, NULL);
+	if (ctx == NULL) {
+		free(sha256);
 		return (EPKG_FATAL);
 	}
+
+	if (EVP_PKEY_sign_init(ctx) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_md_pkg_sha1()) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		free(sha256);
+		return (EPKG_FATAL);
+	}
+
+	siglen = max_len;
+	ret = EVP_PKEY_sign(ctx, *sigret, &siglen, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+#else
+	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
+
+	ret = RSA_sign(NID_sha1, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
+	    *sigret, osiglen, rsa);
+#endif
+	free(sha256);
+	if (ret <= 0) {
+		pkg_emit_error("%s: %s", keyinfo->path,
+		   ERR_error_string(ERR_get_error(), errbuf));
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		EVP_PKEY_CTX_free(ctx);
+#else
+		RSA_free(rsa);
+#endif
+		return (EPKG_FATAL);
+	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	assert(siglen <= INT_MAX);
+	*osiglen = siglen;
+	EVP_PKEY_CTX_free(ctx);
+#else
+	RSA_free(rsa);
+#endif
 
 	return (EPKG_OK);
 }
 
 int
-rsa_new(struct rsa_key **rsa, pkg_password_cb *cb, char *path)
+rsa_new(struct pkg_key **keyinfo, pkg_password_cb *cb, char *path)
 {
-	assert(*rsa == NULL);
+	assert(*keyinfo == NULL);
 
-	*rsa = xcalloc(1, sizeof(struct rsa_key));
-	(*rsa)->path = path;
-	(*rsa)->pw_cb = cb;
+	*keyinfo = xcalloc(1, sizeof(struct pkg_key));
+	(*keyinfo)->path = path;
+	(*keyinfo)->pw_cb = cb;
 
 	SSL_load_error_strings();
 
@@ -278,15 +460,15 @@ rsa_new(struct rsa_key **rsa, pkg_password_cb *cb, char *path)
 }
 
 void
-rsa_free(struct rsa_key *rsa)
+rsa_free(struct pkg_key *keyinfo)
 {
-	if (rsa == NULL)
+	if (keyinfo == NULL)
 		return;
 
-	if (rsa->key != NULL)
-		RSA_free(rsa->key);
+	if (keyinfo->key != NULL)
+		EVP_PKEY_free(keyinfo->key);
 
-	free(rsa);
+	free(keyinfo);
 	ERR_free_strings();
 }
 

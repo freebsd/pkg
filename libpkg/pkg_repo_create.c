@@ -918,7 +918,7 @@ done:
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-		struct rsa_key *rsa, struct pkg_repo_meta *meta,
+		struct pkg_key *keyinfo, struct pkg_repo_meta *meta,
 		char **argv, int argc)
 {
 	struct packing *pack;
@@ -935,8 +935,8 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1, true) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (rsa != NULL) {
-		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
+	if (keyinfo != NULL) {
+		if (rsa_sign(path, keyinfo, &sigret, &siglen) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
@@ -984,7 +984,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	char repo_archive[MAXPATHLEN];
 	char *key_file;
 	const char *key_type;
-	struct rsa_key *rsa = NULL;
+	struct pkg_key *keyinfo = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
 	int ret = EPKG_OK, nfile = 0, fd;
@@ -1005,7 +1005,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		}
 
 		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
-		rsa_new(&rsa, password_cb, key_file);
+		rsa_new(&keyinfo, password_cb, key_file);
 	}
 
 	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
@@ -1024,12 +1024,12 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	if ((fd = open(repo_path, O_RDONLY)) != -1) {
 		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
-			rsa_free(rsa);
+			rsa_free(keyinfo);
 			close(fd);
 			return (EPKG_FATAL);
 		}
-		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,
-			argv, argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo,
+		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1042,8 +1042,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	    meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		meta->manifests_archive);
-	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, rsa, meta,
-		argv, argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, keyinfo,
+	    meta, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1055,8 +1055,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		    meta->filesite);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
 		    output_dir, meta->filesite_archive);
-		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, rsa, meta,
-			argv, argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, keyinfo,
+		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1069,8 +1069,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		    meta->digests);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		    meta->digests_archive);
-		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, rsa, meta,
-		    argv, argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, keyinfo,
+		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1083,8 +1083,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		meta->conflicts);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		meta->conflicts_archive);
-	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, rsa, meta,
-		argv, argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, keyinfo,
+	    meta, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1126,7 +1126,7 @@ cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
 	pkg_repo_meta_free(meta);
 
-	rsa_free(rsa);
+	rsa_free(keyinfo);
 
 	return (ret);
 }
