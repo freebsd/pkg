@@ -78,22 +78,12 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
-struct pkg_key;
-
 int file_to_buffer(const char *, char **, off_t *);
 int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, const char *,
     int argc, char **argv, bool lua);
 int is_dir(const char *);
 int is_link(const char *);
-
-int rsa_new(struct pkg_key **, pkg_password_cb *, char *path);
-void rsa_free(struct pkg_key *);
-int rsa_sign(const char *path, struct pkg_key *keyinfo, unsigned char **sigret,
-    unsigned int *siglen);
-int rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd);
-int rsa_verify_cert(unsigned char *cert,
-    int certlen, unsigned char *sig, int sig_len, int fd);
 
 bool check_for_hardlink(hardlinks_t *hl, struct stat *st);
 bool is_valid_abi(const char *arch, bool emit_error);
