@@ -56,6 +56,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/pkgsign.h"
 
 enum {
 	MSG_PKG_DONE=0,
@@ -63,7 +64,7 @@ enum {
 };
 
 static int pkg_repo_pack_db(const char *name, const char *archive, char *path,
-    struct pkg_key *keyinfo, struct pkg_repo_create *prc);
+    struct pkgsign_ctx *ctx, struct pkg_repo_create *prc);
 
 static int
 hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
@@ -603,7 +604,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	char repo_archive[MAXPATHLEN];
 	char *key_file;
 	const char *key_type;
-	struct pkg_key *keyinfo = NULL;
+	struct pkgsign_ctx *sctx = NULL;
 	struct stat st;
 	int ret = EPKG_OK, nfile = 0;
 	const int files_to_pack = 4;
@@ -618,7 +619,14 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 		}
 
 		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
-		rsa_new(&keyinfo, prc->sign.cb, key_file);
+		ret = pkgsign_new_sign(key_type, &sctx);
+		if (ret != 0) {
+			pkg_emit_error("'%s' signer not found", key_type);
+			return (EPKG_FATAL);
+		}
+
+		pkgsign_set(sctx, prc->sign.cb, key_file);
+		ret = EPKG_OK;
 	}
 
 	if (prc->sign.argc > 1 && strcmp(prc->sign.argv[0], "signing_command:") != 0)
@@ -636,7 +644,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	    prc->meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
 		prc->meta->manifests_archive);
-	if (pkg_repo_pack_db(prc->meta->manifests, repo_archive, repo_path, keyinfo, prc) != EPKG_OK) {
+	if (pkg_repo_pack_db(prc->meta->manifests, repo_archive, repo_path, sctx, prc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -648,7 +656,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 		    prc->meta->filesite);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
 		    prc->outdir, prc->meta->filesite_archive);
-		if (pkg_repo_pack_db(prc->meta->filesite, repo_archive, repo_path, keyinfo, prc) != EPKG_OK) {
+		if (pkg_repo_pack_db(prc->meta->filesite, repo_archive, repo_path, sctx, prc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -658,7 +666,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir, prc->meta->data);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
 	    prc->meta->data_archive);
-	if (pkg_repo_pack_db(prc->meta->data, repo_archive, repo_path, keyinfo, prc) != EPKG_OK) {
+	if (pkg_repo_pack_db(prc->meta->data, repo_archive, repo_path, sctx, prc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -692,7 +700,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
 
-	rsa_free(keyinfo);
+	pkgsign_free(sctx);
 
 	return (ret);
 }
@@ -962,16 +970,16 @@ done:
 }
 
 static int
-pack_rsa_sign(struct packing *pack, struct pkg_key *keyinfo, const char *path,
+pack_sign(struct packing *pack, struct pkgsign_ctx *sctx, const char *path,
     const char *name)
 {
 	unsigned char *sigret = NULL;
-	unsigned int siglen = 0;
+	size_t siglen = 0;
 
-	if (keyinfo == NULL)
+	if (sctx == NULL)
 		return (EPKG_FATAL);
 
-	if (rsa_sign(path, keyinfo, &sigret, &siglen) != EPKG_OK) {
+	if (pkgsign_sign(sctx, path, &sigret, &siglen) != EPKG_OK) {
 		free(sigret);
 		return (EPKG_FATAL);
 	}
@@ -1019,7 +1027,7 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-    struct pkg_key *keyinfo, struct pkg_repo_create *prc)
+    struct pkgsign_ctx *sctx, struct pkg_repo_create *prc)
 {
 	struct packing *pack;
 	int ret = EPKG_OK;
@@ -1027,8 +1035,8 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	if (packing_init(&pack, archive, prc->meta->packing_format, 0, (time_t)-1, true, true) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (keyinfo != NULL) {
-		ret = pack_rsa_sign(pack, keyinfo, path, "signature");
+	if (sctx != NULL) {
+		ret = pack_sign(pack, sctx, path, "signature");
 	} else if (prc->sign.argc >= 1) {
 		ret = pack_command_sign(pack, path, prc->sign.argv, prc->sign.argc, name);
 	}

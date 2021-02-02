@@ -56,6 +56,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/fetch.h"
+#include "private/pkgsign.h"
 
 struct sig_cert {
 	char name[MAXPATHLEN];
@@ -615,6 +616,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 {
 	pkghash *sc = NULL;
 	struct sig_cert *s;
+	const struct pkgsign_ctx *sctx;
+	const char *rkey;
+	signature_t sigtype;
 	pkghash_it it;
 	int ret, rc;
 
@@ -624,8 +628,11 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			!= EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
-		if (pkg_repo_key(repo) == NULL) {
+	sctx = NULL;
+	sigtype = pkg_repo_signature_type(repo);
+	if (sigtype == SIG_PUBKEY) {
+		rkey = pkg_repo_key(repo);
+		if (rkey == NULL) {
 			pkg_emit_error("No PUBKEY defined. Removing "
 			    "repository.");
 			rc = EPKG_FATAL;
@@ -633,22 +640,40 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		}
 		if (sc == NULL) {
 			pkg_emit_error("No signature found in the repository.  "
-					"Can not validate against %s key.", pkg_repo_key(repo));
+					"Can not validate against %s key.", rkey);
 			rc = EPKG_FATAL;
 			goto out;
 		}
 		it = pkghash_iterator(sc);
 		pkghash_next(&it); /* check that there is content is already above */
 		s = (struct sig_cert *)it.value;
+
+		ret = pkgsign_new_verify("rsa", &sctx);
+		if (ret != EPKG_OK) {
+			pkg_emit_error("'rsa' signer not found");
+			rc = EPKG_FATAL;
+			goto out;
+		}
+
 		/*
-		 * Here are dragons:
-		 * 1) rsa_verify is NOT rsa_verify_cert
-		 * 2) siglen must be reduced by one to match how pkg_repo_finish()
-		 *    packs the signature in.
+		 * Note that pkgsign_verify is not the same method or use-case
+		 * as pkgsign_verify_cert.
 		 *
-		 * by @bdrewery
+		 * The primary difference is that pkgsign_verify takes a file
+		 * to load the pubkey from, while pkgsign_verify_cert expects
+		 * that the key will simply be passed in for it to verify
+		 * against.
+		 *
+		 * Some versions of pkgsign_verify were also suboptimal, in the
+		 * sense that they signed the hex encoding of a SHA256 checksum
+		 * over the repo rather than raw.  This required some kludges
+		 * to work with, but future pkgsign_verify implementations
+		 * should not follow in its path.
+		 *
+		 * We reduce siglen by one to chop off the NULL terminator that
+		 * is packed in with it over in pkg_repo_finish().
 		 */
-		ret = rsa_verify(pkg_repo_key(repo), s->sig, s->siglen - 1,
+		ret = pkgsign_verify(sctx, rkey, s->sig, s->siglen - 1,
 		    dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
@@ -661,8 +686,23 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		it = pkghash_iterator(sc);
 		while (pkghash_next(&it)) {
 			s = (struct sig_cert *)it.value;
-			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
-				dest_fd);
+
+			/*
+			 * Each signature may use a different signer, so we'll potentially
+			 * grab a new context for each one.  This is cheaper than it sounds,
+			 * verifying contexts are stashed in a pkghash for re-use.
+			 */
+			if (sctx == NULL) {
+				ret = pkgsign_new_verify("rsa", &sctx);
+				if (ret != EPKG_OK) {
+					pkg_emit_error("'rsa' signer not found");
+					rc = EPKG_FATAL;
+					goto out;
+				}
+			}
+
+			ret = pkgsign_verify_cert(sctx, s->cert, s->certlen, s->sig,
+			     s->siglen, dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
 				break;
 			}
@@ -867,6 +907,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
 	char filepath[MAXPATHLEN];
 	struct pkg_repo_meta *nmeta;
+	const struct pkgsign_ctx *sctx;
 	struct stat st;
 	unsigned char *map = NULL;
 	int fd, dbdirfd, metafd;
@@ -878,6 +919,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	pkghash_it it;
 
 	dbdirfd = pkg_get_dbdirfd();
+	sctx = NULL;
 	if (repo->dfd == -1) {
 		if (pkg_repo_open(repo) == EPKG_FATAL)
 			return (EPKG_FATAL);
@@ -985,7 +1027,21 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		it = pkghash_iterator(sc);
 		while (pkghash_next(&it)) {
 			s = (struct sig_cert *) it.value;
-			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
+
+			/*
+			 * Just as above, each one may have a different type associated with
+			 * it, so grab a new one each time.
+			 */
+			if (sctx == NULL) {
+				ret = pkgsign_new_verify("rsa", &sctx);
+				if (ret != EPKG_OK) {
+					pkg_emit_error("'rsa' signer not found");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+			}
+
+			ret = pkgsign_verify_cert(sctx, s->cert, s->certlen, s->sig, s->siglen,
 				metafd);
 			if (ret == EPKG_OK && s->trusted)
 				break;
