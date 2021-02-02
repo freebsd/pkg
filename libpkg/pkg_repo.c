@@ -621,7 +621,8 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		/*
 		 * Here are dragons:
 		 * 1) rsa_verify is NOT rsa_verify_cert
-		 * 2) siglen must be reduced by one to support this legacy method
+		 * 2) siglen must be reduced by one to match how pkg_repo_finish()
+		 *    packs the signature in.
 		 *
 		 * by @bdrewery
 		 */
