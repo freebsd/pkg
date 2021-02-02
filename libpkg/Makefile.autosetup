@@ -7,7 +7,8 @@ SRCS=	backup.c \
 	pkg_deps.c \
 	pkg_repo_meta.c \
 	pkg.c \
-	rsa.c \
+	pkgsign.c \
+	pkgsign_ossl.c \
 	clean_cache.c \
 	metalog.c \
 	pkg_checksum.c \

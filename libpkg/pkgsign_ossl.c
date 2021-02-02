@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
+ * Copyright (c) 2021 Kyle Evans <kevans@FreeBSD.org>
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +37,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkgsign.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 /*
@@ -62,21 +64,24 @@ EVP_md_pkg_sha1(void)
 }
 #endif	/* OPENSSL_VERSION_NUMBER >= 0x10100000L */
 
-struct pkg_key {
-	pkg_password_cb *pw_cb;
-	char *path;
+struct ossl_sign_ctx {
+	struct pkgsign_ctx sctx;
 	EVP_PKEY *key;
 };
 
+/* Grab the ossl context from a pkgsign_ctx. */
+#define	OSSL_CTX(c)	((struct ossl_sign_ctx *)(c))
+
 static int
-_load_private_key(struct pkg_key *keyinfo)
+_load_private_key(struct ossl_sign_ctx *keyinfo)
 {
 	FILE *fp;
 
-	if ((fp = fopen(keyinfo->path, "re")) == NULL)
+	if ((fp = fopen(keyinfo->sctx.path, "re")) == NULL)
 		return (EPKG_FATAL);
 
-	keyinfo->key = PEM_read_PrivateKey(fp, 0, keyinfo->pw_cb, keyinfo->path);
+	keyinfo->key = PEM_read_PrivateKey(fp, 0, keyinfo->sctx.pw_cb,
+	    keyinfo->sctx.path);
 	if (keyinfo->key == NULL) {
 		fclose(fp);
 		return (EPKG_FATAL);
@@ -112,7 +117,7 @@ _load_public_key_buf(unsigned char *cert, int certlen)
 	return (pkey);
 }
 
-struct rsa_verify_cbdata {
+struct ossl_verify_cbdata {
 	unsigned char *key;
 	size_t keylen;
 	unsigned char *sig;
@@ -120,9 +125,9 @@ struct rsa_verify_cbdata {
 };
 
 static int
-rsa_verify_cert_cb(int fd, void *ud)
+ossl_verify_cert_cb(int fd, void *ud)
 {
-	struct rsa_verify_cbdata *cbdata = ud;
+	struct ossl_verify_cbdata *cbdata = ud;
 	char *sha256;
 	char *hash;
 	char errbuf[1024];
@@ -198,13 +203,13 @@ rsa_verify_cert_cb(int fd, void *ud)
 	return (EPKG_OK);
 }
 
-int
-rsa_verify_cert(unsigned char *key, int keylen,
-    unsigned char *sig, int siglen, int fd)
+static int
+ossl_verify_cert(struct pkgsign_ctx *ctx __unused, unsigned char *key,
+    size_t keylen, unsigned char *sig, size_t siglen, int fd)
 {
 	int ret;
 	bool need_close = false;
-	struct rsa_verify_cbdata cbdata;
+	struct ossl_verify_cbdata cbdata;
 
 	(void)lseek(fd, 0, SEEK_SET);
 
@@ -217,7 +222,7 @@ rsa_verify_cert(unsigned char *key, int keylen,
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	ret = pkg_emit_sandbox_call(rsa_verify_cert_cb, fd, &cbdata);
+	ret = pkg_emit_sandbox_call(ossl_verify_cert_cb, fd, &cbdata);
 	if (need_close)
 		close(fd);
 
@@ -225,9 +230,9 @@ rsa_verify_cert(unsigned char *key, int keylen,
 }
 
 static int
-rsa_verify_cb(int fd, void *ud)
+ossl_verify_cb(int fd, void *ud)
 {
-	struct rsa_verify_cbdata *cbdata = ud;
+	struct ossl_verify_cbdata *cbdata = ud;
 	char *sha256;
 	char errbuf[1024];
 	EVP_PKEY *pkey = NULL;
@@ -319,17 +324,18 @@ rsa_verify_cb(int fd, void *ud)
 	return (EPKG_OK);
 }
 
-int
-rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
+static int
+ossl_verify(struct pkgsign_ctx *sctx __unused, const char *keypath,
+    unsigned char *sig, size_t sig_len, int fd)
 {
 	int ret;
 	bool need_close = false;
-	struct rsa_verify_cbdata cbdata;
+	struct ossl_verify_cbdata cbdata;
 	char *key_buf;
 	off_t key_len;
 
-	if (file_to_buffer(key, (char**)&key_buf, &key_len) != EPKG_OK) {
-		pkg_emit_errno("rsa_verify", "cannot read key");
+	if (file_to_buffer(keypath, (char**)&key_buf, &key_len) != EPKG_OK) {
+		pkg_emit_errno("ossl_verify", "cannot read key");
 		return (EPKG_FATAL);
 	}
 
@@ -344,7 +350,7 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	ret = pkg_emit_sandbox_call(rsa_verify_cb, fd, &cbdata);
+	ret = pkg_emit_sandbox_call(ossl_verify_cb, fd, &cbdata);
 	if (need_close)
 		close(fd);
 
@@ -353,27 +359,28 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 	return (ret);
 }
 
-int
-rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
-    unsigned int *osiglen)
+static int
+ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
+    size_t *siglen)
 {
 	char errbuf[1024];
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
 	int max_len = 0, ret;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	EVP_PKEY_CTX *ctx;
-	size_t siglen;
 #else
 	RSA *rsa;
+	unsigned int ssiglen;
 #endif
 	char *sha256;
 
-	if (access(keyinfo->path, R_OK) == -1) {
-		pkg_emit_errno("access", keyinfo->path);
+	if (access(keyinfo->sctx.path, R_OK) == -1) {
+		pkg_emit_errno("access", keyinfo->sctx.path);
 		return (EPKG_FATAL);
 	}
 
 	if (keyinfo->key == NULL && _load_private_key(keyinfo) != EPKG_OK) {
-		pkg_emit_error("can't load key from %s", keyinfo->path);
+		pkg_emit_error("can't load key from %s", keyinfo->sctx.path);
 		return (EPKG_FATAL);
 	}
 
@@ -409,19 +416,19 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 		return (EPKG_FATAL);
 	}
 
-	siglen = max_len;
-	ret = EVP_PKEY_sign(ctx, *sigret, &siglen, sha256,
+	*siglen = max_len;
+	ret = EVP_PKEY_sign(ctx, *sigret, siglen, sha256,
 	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
 #else
 	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
 
 	ret = RSA_sign(NID_sha1, sha256,
 	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
-	    *sigret, osiglen, rsa);
+	    *sigret, &ssiglen, rsa);
 #endif
 	free(sha256);
 	if (ret <= 0) {
-		pkg_emit_error("%s: %s", keyinfo->path,
+		pkg_emit_error("%s: %s", keyinfo->sctx.path,
 		   ERR_error_string(ERR_get_error(), errbuf));
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		EVP_PKEY_CTX_free(ctx);
@@ -432,43 +439,44 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	assert(siglen <= INT_MAX);
-	*osiglen = siglen;
 	EVP_PKEY_CTX_free(ctx);
 #else
 	RSA_free(rsa);
+	*siglen = ssiglen;
 #endif
 
 	return (EPKG_OK);
 }
 
-int
-rsa_new(struct pkg_key **keyinfo, pkg_password_cb *cb, char *path)
+static int
+ossl_new(const char *name __unused, struct pkgsign_ctx *ctx __unused)
 {
-	assert(*keyinfo == NULL);
-
-	*keyinfo = xcalloc(1, sizeof(struct pkg_key));
-	(*keyinfo)->path = path;
-	(*keyinfo)->pw_cb = cb;
 
 	SSL_load_error_strings();
 
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	return (EPKG_OK);
+	return (0);
 }
 
-void
-rsa_free(struct pkg_key *keyinfo)
+static void
+ossl_free(struct pkgsign_ctx *sctx)
 {
-	if (keyinfo == NULL)
-		return;
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
 
 	if (keyinfo->key != NULL)
 		EVP_PKEY_free(keyinfo->key);
 
-	free(keyinfo);
 	ERR_free_strings();
 }
 
+const struct pkgsign_ops pkgsign_ossl = {
+	.pkgsign_ctx_size = sizeof(struct ossl_sign_ctx),
+	.pkgsign_new = ossl_new,
+	.pkgsign_free = ossl_free,
+
+	.pkgsign_sign = ossl_sign,
+	.pkgsign_verify = ossl_verify,
+	.pkgsign_verify_cert = ossl_verify_cert,
+};

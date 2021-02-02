@@ -53,6 +53,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/pkgsign.h"
 
 struct sig_cert {
 	char name[MAXPATHLEN];
@@ -597,6 +598,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
     struct pkg_repo *repo, int dest_fd)
 {
 	struct sig_cert *sc = NULL, *s, *stmp;
+	struct pkgsign_ctx *sctx;
+	const char *rkey;
+	signature_t sigtype;
 	int ret, rc;
 
 	ret = rc = EPKG_OK;
@@ -605,8 +609,22 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			!= EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
-		if (pkg_repo_key(repo) == NULL) {
+	sctx = NULL;
+	sigtype = pkg_repo_signature_type(repo);
+	if (sigtype == SIG_PUBKEY || sigtype == SIG_FINGERPRINT) {
+		ret = pkgsign_new("rsa", &sctx);
+		if (ret != 0) {
+			pkg_emit_error("'rsa' signer not found");
+			rc = EPKG_FATAL;
+			goto out;
+		}
+
+		ret = EPKG_OK;
+	}
+
+	if (sigtype == SIG_PUBKEY) {
+		rkey = pkg_repo_key(repo);
+		if (rkey == NULL) {
 			pkg_emit_error("No PUBKEY defined. Removing "
 			    "repository.");
 			rc = EPKG_FATAL;
@@ -614,19 +632,30 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		}
 		if (sc == NULL) {
 			pkg_emit_error("No signature found in the repository.  "
-					"Can not validate against %s key.", pkg_repo_key(repo));
+					"Can not validate against %s key.", rkey);
 			rc = EPKG_FATAL;
 			goto out;
 		}
+
 		/*
-		 * Here are dragons:
-		 * 1) rsa_verify is NOT rsa_verify_cert
-		 * 2) siglen must be reduced by one to match how pkg_repo_finish()
-		 *    packs the signature in.
+		 * Note that pkgsign_verify is not the same method or use-case
+		 * as pkgsign_verify_cert.
 		 *
-		 * by @bdrewery
+		 * The primary difference is that pkgsign_verify takes a file
+		 * to load the pubkey from, while pkgsign_verify_cert expects
+		 * that the key will simply be passed in for it to verify
+		 * against.
+		 *
+		 * Some versions of pkgsign_verify were also suboptimal, in the
+		 * sense that they signed the hex encoding of a SHA256 checksum
+		 * over the repo rather than raw.  This required some kludges
+		 * to work with, but future pkgsign_verify implementations
+		 * should not follow in its path.
+		 *
+		 * We reduce siglen by one to chop off the NULL terminator that
+		 * is packed in with it over in pkg_repo_finish().
 		 */
-		ret = rsa_verify(pkg_repo_key(repo), sc->sig, sc->siglen - 1,
+		ret = pkgsign_verify(sctx, rkey, sc->sig, sc->siglen - 1,
 		    dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
@@ -635,10 +664,10 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			goto out;
 		}
 	}
-	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+	else if (sigtype == SIG_FINGERPRINT) {
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
-				dest_fd);
+			ret = pkgsign_verify_cert(sctx, s->cert, s->certlen,
+			    s->sig, s->siglen, dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
 				break;
 			}
@@ -653,6 +682,8 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	}
 
 out:
+	if (sctx != NULL)
+		pkgsign_free(sctx);
 	return rc;
 }
 
@@ -774,6 +805,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
 	char filepath[MAXPATHLEN];
 	struct pkg_repo_meta *nmeta;
+	struct pkgsign_ctx *sctx;
 	struct stat st;
 	unsigned char *map = NULL;
 	int fd, dbdirfd, metafd;
@@ -783,6 +815,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	bool newscheme = false;
 
 	dbdirfd = pkg_get_dbdirfd();
+	sctx = NULL;
 	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
 	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "conf", t, &rc, true);
 	if (fd != -1) {
@@ -859,6 +892,13 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 	if (repo->signature_type == SIG_FINGERPRINT) {
+		ret = pkgsign_new("rsa", &sctx);
+		if (ret != 0) {
+			pkg_emit_error("'rsa' signer not found");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+
 		cbdata.len = st.st_size;
 		cbdata.map = map;
 		HASH_ITER(hh, sc, s, stmp) {
@@ -882,8 +922,8 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		}
 
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
-				metafd);
+			ret = pkgsign_verify_cert(sctx, s->cert, s->certlen,
+			    s->sig, s->siglen, metafd);
 			if (ret == EPKG_OK && s->trusted)
 				break;
 
@@ -915,6 +955,9 @@ load_meta:
 cleanup:
 	if (map != NULL)
 		munmap(map, st.st_size);
+
+	if (sctx != NULL)
+		pkgsign_free(sctx);
 
 	if (sc != NULL)
 		pkg_repo_signatures_free(sc);

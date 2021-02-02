@@ -58,6 +58,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/pkgsign.h"
 
 enum {
 	MSG_PKG_DONE=0,
@@ -918,12 +919,11 @@ done:
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-		struct pkg_key *keyinfo, struct pkg_repo_meta *meta,
+		struct pkgsign_ctx *sctx, struct pkg_repo_meta *meta,
 		char **argv, int argc)
 {
 	struct packing *pack;
 	unsigned char *sigret = NULL;
-	unsigned int siglen = 0;
 	size_t signature_len = 0;
 	char fname[MAXPATHLEN];
 	char *sig, *pub;
@@ -935,13 +935,13 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1, true) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (keyinfo != NULL) {
-		if (rsa_sign(path, keyinfo, &sigret, &siglen) != EPKG_OK) {
+	if (sctx != NULL) {
+		if (pkgsign_sign(sctx, path, &sigret, &signature_len) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
 
-		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
+		if (packing_append_buffer(pack, sigret, "signature", signature_len + 1) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
@@ -984,7 +984,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	char repo_archive[MAXPATHLEN];
 	char *key_file;
 	const char *key_type;
-	struct pkg_key *keyinfo = NULL;
+	struct pkgsign_ctx *sctx = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
 	int ret = EPKG_OK, nfile = 0, fd;
@@ -1005,7 +1005,14 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		}
 
 		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
-		rsa_new(&keyinfo, password_cb, key_file);
+		ret = pkgsign_new(key_type, &sctx);
+		if (ret != 0) {
+			pkg_emit_error("Requested signer '%s' not found", key_type);
+			return (EPKG_FATAL);
+		}
+
+
+		pkgsign_set(sctx, password_cb, key_file);
 	}
 
 	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
@@ -1024,11 +1031,11 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	if ((fd = open(repo_path, O_RDONLY)) != -1) {
 		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
-			rsa_free(keyinfo);
+			pkgsign_free(sctx);
 			close(fd);
 			return (EPKG_FATAL);
 		}
-		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo,
+		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, sctx,
 		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
@@ -1042,7 +1049,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	    meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		meta->manifests_archive);
-	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, keyinfo,
+	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, sctx,
 	    meta, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
@@ -1055,7 +1062,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		    meta->filesite);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
 		    output_dir, meta->filesite_archive);
-		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, keyinfo,
+		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, sctx,
 		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
@@ -1069,7 +1076,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		    meta->digests);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		    meta->digests_archive);
-		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, keyinfo,
+		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, sctx,
 		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
@@ -1083,7 +1090,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		meta->conflicts);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		meta->conflicts_archive);
-	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, keyinfo,
+	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, sctx,
 	    meta, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
@@ -1126,7 +1133,7 @@ cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
 	pkg_repo_meta_free(meta);
 
-	rsa_free(keyinfo);
+	pkgsign_free(sctx);
 
 	return (ret);
 }
