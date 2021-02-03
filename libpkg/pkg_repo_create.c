@@ -996,9 +996,13 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	}
 
 	if (argc == 1) {
+		char *cpos;
+
 		key_type = key_file = argv[0];
-		if (strncmp(key_file, "rsa:", 4) == 0) {
-			key_file += 4;
+		cpos = strchr(key_file, ':');
+
+		if (cpos != NULL) {
+			key_file = cpos + 1;
 			*(key_file - 1) = '\0';
 		} else {
 			key_type = "rsa";
