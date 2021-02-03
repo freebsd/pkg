@@ -85,6 +85,8 @@ typedef struct {
  */
 #define	PFLAG_RSA		0x02
 
+#define	PFLAG_LEGACY_RSA	(PFLAG_RAW | PFLAG_RSA)
+
 static const ossl_signer_profile_t ossl_signer_profiles[] = {
 	{
 		.name = "rsa",
@@ -93,6 +95,14 @@ static const ossl_signer_profile_t ossl_signer_profiles[] = {
 		.cert_hash = PKG_HASH_TYPE_SHA256_RAW,
 		.hash = PKG_HASH_TYPE_SHA256_HEX,
 	},
+#ifdef PKGSIGN_ED25519
+	{
+		.name = "ed25519",
+		.keyid = EVP_PKEY_ED25519,
+		.cert_hash = PKG_HASH_TYPE_SHA256_RAW,
+		.hash = PKG_HASH_TYPE_BLAKE2_RAW,
+	},
+#endif
 };
 
 struct ossl_sign_ctx {
@@ -127,6 +137,10 @@ ossl_profile_digest(const ossl_signer_profile_t *sprof,
 #else
 		digest = EVP_sha1();
 #endif
+		break;
+	case PKG_HASH_TYPE_BLAKE2_RAW:
+		/* Must use one-shot digest.. */
+		assert((sprof->pflags & PFLAG_RAW) == 0);
 		break;
 	default:
 		/* Incomplete signer profile, or missing addition. */
@@ -219,52 +233,68 @@ ossl_verify_internal(const ossl_signer_profile_t *sprof, EVP_PKEY *pkey,
 	int ret;
 
 	ret = 0;
-	/* We only support raw providers for now. */
-	assert((sprof->pflags & PFLAG_RAW) != 0);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	assert(digest != NULL);
-
-	ctx = EVP_PKEY_CTX_new(pkey, NULL);
-	if (ctx == NULL) {
-		return (EPKG_FATAL);
-	}
-
-	if (EVP_PKEY_verify_init(ctx) <= 0) {
-		EVP_PKEY_CTX_free(ctx);
-		return (EPKG_FATAL);
-	}
-
-	if ((sprof->pflags & PFLAG_RSA) != 0 &&
-	    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
-		EVP_PKEY_CTX_free(ctx);
-		return (EPKG_FATAL);
-	}
-
-	if (EVP_PKEY_CTX_set_signature_md(ctx, digest) <= 0) {
-		EVP_PKEY_CTX_free(ctx);
-		return (EPKG_FATAL);
-	}
-
+	if ((sprof->pflags & PFLAG_RAW) != 0) {
 #ifndef NDEBUG
-	switch (ctype) {
-	case PKG_HASH_TYPE_SHA256_RAW:
-		assert(digest == EVP_sha256());
-		break;
-	case PKG_HASH_TYPE_SHA256_HEX:
-		assert(digest == EVP_md_pkg_sha1());
-		break;
-	default:
-		/* Unhandled */
-		break;
-	}
+		switch (ctype) {
+		case PKG_HASH_TYPE_SHA256_RAW:
+			assert(digest == EVP_sha256());
+			break;
+		case PKG_HASH_TYPE_SHA256_HEX:
+			assert(digest == EVP_md_pkg_sha1());
+			break;
+		default:
+			assert(digest != NULL);
+			break;
+		}
 #endif
 
-	ret = EVP_PKEY_verify(ctx, sig, siglen, hash,
-	    pkg_checksum_type_size(ctype));
+		ctx = EVP_PKEY_CTX_new(pkey, NULL);
+		if (ctx == NULL) {
+			return (EPKG_FATAL);
+		}
 
-	EVP_PKEY_CTX_free(ctx);
+		if (EVP_PKEY_verify_init(ctx) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			return (EPKG_FATAL);
+		}
+
+		if ((sprof->pflags & PFLAG_RSA) != 0 &&
+		    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			return (EPKG_FATAL);
+		}
+
+		if (EVP_PKEY_CTX_set_signature_md(ctx, digest) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			return (EPKG_FATAL);
+		}
+
+		ret = EVP_PKEY_verify(ctx, sig, siglen, hash,
+		    pkg_checksum_type_size(ctype));
+
+		EVP_PKEY_CTX_free(ctx);
+	} else {
+		EVP_MD_CTX *mdctx;
+
+		/* One-shot digest verify */
+		mdctx = EVP_MD_CTX_new();
+		if (mdctx == NULL) {
+			return (EPKG_FATAL);
+		}
+
+		if (EVP_DigestVerifyInit(mdctx, NULL,
+		    ossl_profile_digest(sprof, ctype), NULL, pkey) <= 0) {
+			EVP_MD_CTX_free(mdctx);
+			return (EPKG_FATAL);
+		}
+
+		ret = EVP_DigestVerify(mdctx, sig, siglen, hash,
+		    pkg_checksum_type_size(ctype));
+		EVP_MD_CTX_free(mdctx);
+	}
 #else
-	assert((sprof->pflags & PFLAG_RSA) != 0);
+	assert((sprof->pflags & PFLAG_LEGACY_RSA) == PFLAG_LEGACY_RSA);
 
 	rsa = EVP_PKEY_get1_RSA(pkey);
 
@@ -442,16 +472,12 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
 	const ossl_signer_profile_t *sprof = keyinfo->sprof;
 	int max_len = 0, ret;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	EVP_PKEY_CTX *ctx;
-#else
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	RSA *rsa;
 	unsigned int ssiglen;
 #endif
 	char *sha256;
 
-	/* We only support raw providers for now. */
-	assert((sprof->pflags & PFLAG_RAW) != 0);
 	if (access(keyinfo->sctx.path, R_OK) == -1) {
 		pkg_emit_errno("access", keyinfo->sctx.path);
 		return (EPKG_FATAL);
@@ -469,39 +495,68 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
+	ret = 0;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	ctx = EVP_PKEY_CTX_new(keyinfo->key, NULL);
-	if (ctx == NULL) {
-		free(sha256);
-		return (EPKG_FATAL);
-	}
+	if ((sprof->pflags & PFLAG_RAW) != 0) {
+		EVP_PKEY_CTX *ctx;
 
-	if (EVP_PKEY_sign_init(ctx) <= 0) {
+		ctx = EVP_PKEY_CTX_new(keyinfo->key, NULL);
+		if (ctx == NULL) {
+			free(sha256);
+			return (EPKG_FATAL);
+		}
+
+		if (EVP_PKEY_sign_init(ctx) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			free(sha256);
+			return (EPKG_FATAL);
+		}
+
+		if ((sprof->pflags & PFLAG_RSA) != 0 &&
+		    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			free(sha256);
+			return (EPKG_FATAL);
+		}
+
+		if (EVP_PKEY_CTX_set_signature_md(ctx,
+		    ossl_profile_digest(sprof, sprof->hash)) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			free(sha256);
+			return (EPKG_FATAL);
+		}
+
+		*siglen = max_len;
+		ret = EVP_PKEY_sign(ctx, *sigret, siglen, sha256,
+		    pkg_checksum_type_size(sprof->hash));
+
 		EVP_PKEY_CTX_free(ctx);
-		free(sha256);
-		return (EPKG_FATAL);
+	} else {
+		EVP_MD_CTX *mdctx;
+
+		/* One-shot digest sign */
+		mdctx = EVP_MD_CTX_new();
+		if (mdctx == NULL) {
+			free(sha256);
+			return (EPKG_FATAL);
+		}
+
+		if (EVP_DigestSignInit(mdctx, NULL,
+		    ossl_profile_digest(sprof, sprof->hash), NULL,
+		    keyinfo->key) <= 0) {
+			EVP_MD_CTX_free(mdctx);
+			free(sha256);
+			return (EPKG_FATAL);
+		}
+
+		*siglen = max_len;
+		ret = EVP_DigestSign(mdctx, *sigret, siglen, sha256,
+		    pkg_checksum_type_size(sprof->hash));
+		EVP_MD_CTX_free(mdctx);
 	}
-
-	if ((sprof->pflags & PFLAG_RSA) != 0 &&
-	    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
-		EVP_PKEY_CTX_free(ctx);
-		free(sha256);
-		return (EPKG_FATAL);
-	}
-
-	if (EVP_PKEY_CTX_set_signature_md(ctx,
-	    ossl_profile_digest(sprof, sprof->hash)) <= 0) {
-		EVP_PKEY_CTX_free(ctx);
-		free(sha256);
-		return (EPKG_FATAL);
-	}
-
-	*siglen = max_len;
-	ret = EVP_PKEY_sign(ctx, *sigret, siglen, sha256,
-	    pkg_checksum_type_size(sprof->hash));
-
-	EVP_PKEY_CTX_free(ctx);
 #else
+	assert((sprof->pflags & PFLAG_LEGACY_RSA) == PFLAG_LEGACY_RSA);
+
 	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
 
 	ret = RSA_sign(NID_sha1, sha256,

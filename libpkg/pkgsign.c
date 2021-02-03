@@ -51,6 +51,12 @@ static struct pkgsign_impl {
 		.pi_name = "rsa",
 		.pi_ops = &pkgsign_ossl,
 	},
+#ifdef PKGSIGN_ED25519
+	{
+		.pi_name = "ed25519",
+		.pi_ops = &pkgsign_ossl,
+	},
+#endif
 };
 
 int
@@ -146,4 +152,11 @@ pkgsign_verify_cert(struct pkgsign_ctx *ctx, unsigned char *key, size_t keylen,
 
 	return (*ctx->impl->pi_ops->pkgsign_verify_cert)(ctx, key, keylen, sig,
 	    siglen, fd);
+}
+
+const char *
+pkgsign_impl_name(const struct pkgsign_ctx *ctx)
+{
+
+	return (ctx->impl->pi_name);
 }

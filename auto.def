@@ -135,6 +135,10 @@ foreach fct [list memmove usleep pread pwrite] {
 	}
 }
 
+cc-with { -includes openssl/evp.h } {
+	cc-check-decls EVP_PKEY_ED25519
+}
+
 cc-with { -includes fcntl.h } {
 	cc-check-decls F_CLOSEM
 }

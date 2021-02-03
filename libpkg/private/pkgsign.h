@@ -26,6 +26,10 @@
 #ifndef _PKGSIGN_H
 #define _PKGSIGN_H
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <pkg.h>
 
 struct pkgsign_ctx;
@@ -97,5 +101,11 @@ int pkgsign_verify(struct pkgsign_ctx *, const char *, unsigned char *, size_t,
     int);
 int pkgsign_verify_cert(struct pkgsign_ctx *, unsigned char *, size_t,
     unsigned char *, size_t, int);
+
+const char *pkgsign_impl_name(const struct pkgsign_ctx *);
+
+#ifdef HAVE_DECL_EVP_PKEY_ED25519
+#define	PKGSIGN_ED25519
+#endif
 
 #endif
