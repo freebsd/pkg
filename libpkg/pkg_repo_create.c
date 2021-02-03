@@ -610,9 +610,11 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	const int files_to_pack = 4;
 
 	if (prc->sign.argc == 1) {
+		char *cpos;
+
 		key_type = key_file = prc->sign.argv[0];
-		if (strncmp(key_file, "rsa:", 4) == 0) {
-			key_file += 4;
+		if ((cpos = strchr(key_type, ':')) != NULL) {
+			key_file = cpos + 1;
 			*(key_file - 1) = '\0';
 		} else {
 			key_type = "rsa";
