@@ -64,13 +64,78 @@ EVP_md_pkg_sha1(void)
 }
 #endif	/* OPENSSL_VERSION_NUMBER >= 0x10100000L */
 
+typedef struct {
+	int			 pflags;
+	const char		*name;
+	int			 keyid;
+	pkg_checksum_type_t	 cert_hash;
+	pkg_checksum_type_t	 hash;
+} ossl_signer_profile_t;
+
+/*
+ * Uses raw sign/verify ops.  Future profiles will be using the one-shot digest
+ * sign/verify methods instead.
+ */
+#define	PFLAG_RAW		0x01
+
+/*
+ * RSA indicator.  OpenSSL < 1.1 can only handle RSA, so this flag must be
+ * present for any profiles there.  For OpenSSL >= 1.1, this indicates that
+ * raw sign/verify ops should be setting up padding on the ctx.
+ */
+#define	PFLAG_RSA		0x02
+
+static const ossl_signer_profile_t ossl_signer_profiles[] = {
+	{
+		.name = "rsa",
+		.pflags = PFLAG_RAW | PFLAG_RSA,
+		.keyid = EVP_PKEY_RSA,
+		.cert_hash = PKG_HASH_TYPE_SHA256_RAW,
+		.hash = PKG_HASH_TYPE_SHA256_HEX,
+	},
+};
+
 struct ossl_sign_ctx {
 	struct pkgsign_ctx sctx;
+	const ossl_signer_profile_t *sprof;
 	EVP_PKEY *key;
 };
 
 /* Grab the ossl context from a pkgsign_ctx. */
 #define	OSSL_CTX(c)	((struct ossl_sign_ctx *)(c))
+
+static const EVP_MD *
+ossl_profile_digest(const ossl_signer_profile_t *sprof,
+    pkg_checksum_type_t ctype)
+{
+	const EVP_MD *digest;
+
+	digest = NULL;
+	switch (ctype) {
+	case PKG_HASH_TYPE_SHA256_RAW:
+		digest = EVP_sha256();
+		break;
+	case PKG_HASH_TYPE_SHA256_HEX:
+		/*
+		 * Hex encoded hashes should generally not be what we're
+		 * signing.  If we are, then it should be legacy RSA.
+		 */
+#define	PFLAG_LEGACY_RSA	(PFLAG_RAW | PFLAG_RSA)
+		assert((sprof->pflags & PFLAG_LEGACY_RSA) == PFLAG_LEGACY_RSA);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		digest = EVP_md_pkg_sha1();
+#else
+		digest = EVP_sha1();
+#endif
+		break;
+	default:
+		/* Incomplete signer profile, or missing addition. */
+		assert(0);
+		break;
+	}
+
+	return (digest);
+}
 
 static int
 _load_private_key(struct ossl_sign_ctx *keyinfo)
@@ -89,7 +154,7 @@ _load_private_key(struct ossl_sign_ctx *keyinfo)
 
 	fclose(fp);
 
-	if (EVP_PKEY_id(keyinfo->key) != EVP_PKEY_RSA) {
+	if (EVP_PKEY_id(keyinfo->key) != keyinfo->sprof->keyid) {
 		keyinfo->key = NULL;
 		return (EPKG_FATAL);
 	}
@@ -98,7 +163,8 @@ _load_private_key(struct ossl_sign_ctx *keyinfo)
 }
 
 static EVP_PKEY *
-_load_public_key_buf(unsigned char *cert, int certlen)
+_load_public_key_buf(const ossl_signer_profile_t *sprof, unsigned char *cert,
+    int certlen)
 {
 	EVP_PKEY *pkey;
 	BIO *bp;
@@ -121,9 +187,9 @@ _load_public_key_buf(unsigned char *cert, int certlen)
 
 	BIO_free(bp);
 
-	if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
+	if (EVP_PKEY_id(pkey) != sprof->keyid) {
 		EVP_PKEY_free(pkey);
-		pkg_emit_error("wrong key type, wanted 'rsa'");
+		pkg_emit_error("wrong key type, wanted '%s'", sprof->name);
 		return (NULL);
 	}
 
@@ -131,6 +197,7 @@ _load_public_key_buf(unsigned char *cert, int certlen)
 }
 
 struct ossl_verify_cbdata {
+	const ossl_signer_profile_t *sprof;
 	unsigned char *key;
 	size_t keylen;
 	unsigned char *sig;
@@ -138,8 +205,8 @@ struct ossl_verify_cbdata {
 };
 
 static int
-ossl_verify_internal(EVP_PKEY *pkey, const char *hash, unsigned char *sig,
-    size_t siglen,
+ossl_verify_internal(const ossl_signer_profile_t *sprof, EVP_PKEY *pkey,
+    const char *hash, unsigned char *sig, size_t siglen,
     pkg_checksum_type_t ctype, const EVP_MD *digest)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -152,6 +219,8 @@ ossl_verify_internal(EVP_PKEY *pkey, const char *hash, unsigned char *sig,
 	int ret;
 
 	ret = 0;
+	/* We only support raw providers for now. */
+	assert((sprof->pflags & PFLAG_RAW) != 0);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	assert(digest != NULL);
 
@@ -165,7 +234,8 @@ ossl_verify_internal(EVP_PKEY *pkey, const char *hash, unsigned char *sig,
 		return (EPKG_FATAL);
 	}
 
-	if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+	if ((sprof->pflags & PFLAG_RSA) != 0 &&
+	    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		return (EPKG_FATAL);
 	}
@@ -194,6 +264,8 @@ ossl_verify_internal(EVP_PKEY *pkey, const char *hash, unsigned char *sig,
 
 	EVP_PKEY_CTX_free(ctx);
 #else
+	assert((sprof->pflags & PFLAG_RSA) != 0);
+
 	rsa = EVP_PKEY_get1_RSA(pkey);
 
 	if (digest == EVP_sha1())
@@ -216,38 +288,13 @@ ossl_verify_internal(EVP_PKEY *pkey, const char *hash, unsigned char *sig,
 	return (ret);
 }
 
-static const EVP_MD *
-ossl_profile_digest(pkg_checksum_type_t ctype)
-{
-	const EVP_MD *digest;
-
-	digest = NULL;
-	switch (ctype) {
-	case PKG_HASH_TYPE_SHA256_RAW:
-		digest = EVP_sha256();
-		break;
-	case PKG_HASH_TYPE_SHA256_HEX:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-		digest = EVP_md_pkg_sha1();
-#else
-		digest = EVP_sha1();
-#endif
-		break;
-	default:
-		/* Incomplete signer profile, or missing addition. */
-		assert(0);
-		break;
-	}
-
-	return (digest);
-}
-
 static int
 ossl_verify_cert_cb(int fd, void *ud)
 {
 	struct ossl_verify_cbdata *cbdata = ud;
 	char *sha256;
 	char *hash;
+	const ossl_signer_profile_t *sprof = cbdata->sprof;
 	char errbuf[1024];
 	EVP_PKEY *pkey = NULL;
 	int ret;
@@ -256,26 +303,25 @@ ossl_verify_cert_cb(int fd, void *ud)
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-	hash = pkg_checksum_data(sha256, strlen(sha256),
-	    PKG_HASH_TYPE_SHA256_RAW);
+	hash = pkg_checksum_data(sha256, strlen(sha256), sprof->cert_hash);
 	free(sha256);
 
-	pkey = _load_public_key_buf(cbdata->key, cbdata->keylen);
+	pkey = _load_public_key_buf(cbdata->sprof, cbdata->key, cbdata->keylen);
 	if (pkey == NULL) {
 		free(hash);
 		return (EPKG_FATAL);
 	}
 
-	ret = ossl_verify_internal(pkey, hash, cbdata->sig,
-	    cbdata->siglen, PKG_HASH_TYPE_SHA256_RAW,
-	    ossl_profile_digest(PKG_HASH_TYPE_SHA256_RAW));
+	ret = ossl_verify_internal(sprof, pkey, hash, cbdata->sig,
+	    cbdata->siglen, sprof->cert_hash,
+	    ossl_profile_digest(sprof, sprof->cert_hash));
 
 	EVP_PKEY_free(pkey);
 	free(hash);
 	if (ret <= 0) {
 		if (ret < 0)
 			pkg_emit_error("rsa verify failed: %s",
-					ERR_error_string(ERR_get_error(), errbuf));
+			    ERR_error_string(ERR_get_error(), errbuf));
 		else
 			pkg_emit_error("rsa signature verification failure");
 		return (EPKG_FATAL);
@@ -285,15 +331,17 @@ ossl_verify_cert_cb(int fd, void *ud)
 }
 
 static int
-ossl_verify_cert(struct pkgsign_ctx *ctx __unused, unsigned char *key,
+ossl_verify_cert(struct pkgsign_ctx *sctx, unsigned char *key,
     size_t keylen, unsigned char *sig, size_t siglen, int fd)
 {
 	int ret;
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
 	bool need_close = false;
 	struct ossl_verify_cbdata cbdata;
 
 	(void)lseek(fd, 0, SEEK_SET);
 
+	cbdata.sprof = keyinfo->sprof;
 	cbdata.key = key;
 	cbdata.keylen = keylen;
 	cbdata.sig = sig;
@@ -316,22 +364,23 @@ ossl_verify_cb(int fd, void *ud)
 	struct ossl_verify_cbdata *cbdata = ud;
 	char *sha256;
 	char errbuf[1024];
+	const ossl_signer_profile_t *sprof = cbdata->sprof;
 	EVP_PKEY *pkey = NULL;
 	int ret;
 
-	sha256 = pkg_checksum_fd(fd, PKG_HASH_TYPE_SHA256_HEX);
+	sha256 = pkg_checksum_fd(fd, sprof->hash);
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-	pkey = _load_public_key_buf(cbdata->key, cbdata->keylen);
+	pkey = _load_public_key_buf(sprof, cbdata->key, cbdata->keylen);
 	if (pkey == NULL) {
 		free(sha256);
 		return (EPKG_FATAL);
 	}
 
-	ret = ossl_verify_internal(pkey, sha256, cbdata->sig,
-	    cbdata->siglen, PKG_HASH_TYPE_SHA256_HEX,
-	    ossl_profile_digest(PKG_HASH_TYPE_SHA256_HEX));
+	ret = ossl_verify_internal(sprof, pkey, sha256, cbdata->sig,
+	    cbdata->siglen, sprof->hash,
+	    ossl_profile_digest(sprof, sprof->hash));
 
 	EVP_PKEY_free(pkey);
 	free(sha256);
@@ -349,10 +398,11 @@ ossl_verify_cb(int fd, void *ud)
 }
 
 static int
-ossl_verify(struct pkgsign_ctx *sctx __unused, const char *keypath,
+ossl_verify(struct pkgsign_ctx *sctx, const char *keypath,
     unsigned char *sig, size_t sig_len, int fd)
 {
 	int ret;
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
 	bool need_close = false;
 	struct ossl_verify_cbdata cbdata;
 	char *key_buf;
@@ -365,6 +415,7 @@ ossl_verify(struct pkgsign_ctx *sctx __unused, const char *keypath,
 
 	(void)lseek(fd, 0, SEEK_SET);
 
+	cbdata.sprof = keyinfo->sprof;
 	cbdata.key = key_buf;
 	cbdata.keylen = key_len;
 	cbdata.sig = sig;
@@ -389,6 +440,7 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 {
 	char errbuf[1024];
 	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
+	const ossl_signer_profile_t *sprof = keyinfo->sprof;
 	int max_len = 0, ret;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	EVP_PKEY_CTX *ctx;
@@ -398,6 +450,8 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 #endif
 	char *sha256;
 
+	/* We only support raw providers for now. */
+	assert((sprof->pflags & PFLAG_RAW) != 0);
 	if (access(keyinfo->sctx.path, R_OK) == -1) {
 		pkg_emit_errno("access", keyinfo->sctx.path);
 		return (EPKG_FATAL);
@@ -411,7 +465,7 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 	max_len = EVP_PKEY_size(keyinfo->key);
 	*sigret = xcalloc(1, max_len + 1);
 
-	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+	sha256 = pkg_checksum_file(path, sprof->hash);
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
@@ -428,14 +482,15 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 		return (EPKG_FATAL);
 	}
 
-	if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+	if ((sprof->pflags & PFLAG_RSA) != 0 &&
+	    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		free(sha256);
 		return (EPKG_FATAL);
 	}
 
 	if (EVP_PKEY_CTX_set_signature_md(ctx,
-	    ossl_profile_digest(PKG_HASH_TYPE_SHA256_HEX)) <= 0) {
+	    ossl_profile_digest(sprof, sprof->hash)) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		free(sha256);
 		return (EPKG_FATAL);
@@ -443,30 +498,25 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 
 	*siglen = max_len;
 	ret = EVP_PKEY_sign(ctx, *sigret, siglen, sha256,
-	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+	    pkg_checksum_type_size(sprof->hash));
+
+	EVP_PKEY_CTX_free(ctx);
 #else
 	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
 
 	ret = RSA_sign(NID_sha1, sha256,
-	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
-	    *sigret, &ssiglen, rsa);
+	    pkg_checksum_type_size(sprof->hash), *sigret, &ssiglen, rsa);
+
+	RSA_free(rsa);
 #endif
 	free(sha256);
 	if (ret <= 0) {
 		pkg_emit_error("%s: %s", keyinfo->sctx.path,
 		   ERR_error_string(ERR_get_error(), errbuf));
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-		EVP_PKEY_CTX_free(ctx);
-#else
-		RSA_free(rsa);
-#endif
 		return (EPKG_FATAL);
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	EVP_PKEY_CTX_free(ctx);
-#else
-	RSA_free(rsa);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	*siglen = ssiglen;
 #endif
 
@@ -474,8 +524,20 @@ ossl_sign(struct pkgsign_ctx *sctx, char *path, unsigned char **sigret,
 }
 
 static int
-ossl_new(const char *name __unused, struct pkgsign_ctx *ctx __unused)
+ossl_new(const char *name, struct pkgsign_ctx *sctx)
 {
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
+	const ossl_signer_profile_t *sprof;
+
+	for (size_t i = 0; i < nitems(ossl_signer_profiles); i++) {
+		sprof = &ossl_signer_profiles[i];
+		if (strcmp(name, sprof->name) == 0) {
+			keyinfo->sprof = sprof;
+			break;
+		}
+	}
+
+	assert(keyinfo->sprof != NULL);
 
 	SSL_load_error_strings();
 
