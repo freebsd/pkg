@@ -32,6 +32,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 #include <sys/file.h>
 #include <sys/time.h>
 
@@ -622,7 +623,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 
 		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
 		ret = pkgsign_new_sign(key_type, &sctx);
-		if (ret != 0) {
+		if (ret != EPKG_OK) {
 			pkg_emit_error("'%s' signer not found", key_type);
 			return (EPKG_FATAL);
 		}
@@ -898,7 +899,7 @@ cleanup:
 
 static int
 pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *siglen,
-    char **cert)
+    char **sigtype, char **cert)
 {
 	FILE *fp;
 	char *sha256;
@@ -906,6 +907,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	xstring *buf = NULL;
 	xstring *sigstr = NULL;
 	xstring *certstr = NULL;
+	xstring *typestr = NULL;
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -934,6 +936,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 
 	sigstr = xstring_new();
 	certstr = xstring_new();
+	typestr = xstring_new();
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
 		if (strcmp(line, "SIGNATURE\n") == 0) {
@@ -941,6 +944,9 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 			continue;
 		} else if (strcmp(line, "CERT\n") == 0) {
 			buf = certstr;
+			continue;
+		} else if (strcmp(line, "TYPE\n") == 0) {
+			buf = typestr;
 			continue;
 		} else if (strcmp(line, "END\n") == 0) {
 			break;
@@ -950,6 +956,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 		}
 	}
 
+	*sigtype = xstring_get(typestr);
 	*cert = xstring_get(certstr);
 	fclose(sigstr->fp);
 	sigstr->size--;
@@ -976,7 +983,11 @@ pack_sign(struct packing *pack, struct pkgsign_ctx *sctx, const char *path,
     const char *name)
 {
 	unsigned char *sigret = NULL;
+	const char *sigtype;
 	size_t siglen = 0;
+	struct iovec iov[2];
+	char buf[32];
+	int offset, size;
 
 	if (sctx == NULL)
 		return (EPKG_FATAL);
@@ -985,10 +996,29 @@ pack_sign(struct packing *pack, struct pkgsign_ctx *sctx, const char *path,
 		free(sigret);
 		return (EPKG_FATAL);
 	}
-	if (packing_append_buffer(pack, sigret, name, siglen + 1) != EPKG_OK) {
+
+	offset = 0;
+	sigtype = pkgsign_impl_name(sctx);
+	if (strcmp(sigtype, "rsa") != 0) {
+		size = snprintf(buf, sizeof(buf), "%s%s$", PKGSIGN_HEAD, sigtype);
+		if (size >= sizeof(buf)) {
+			free(sigret);
+			return (EPKG_FATAL);
+		}
+
+		iov[offset].iov_base = buf;
+		iov[offset++].iov_len = size;
+	}
+
+	iov[offset].iov_base = sigret;
+	iov[offset++].iov_len = siglen + 1;
+
+	if (packing_append_iovec(pack, name, iov, offset) != EPKG_OK) {
 		free(sigret);
 		return (EPKG_FATAL);
 	}
+	free(sigret);
+
 	return (EPKG_OK);
 }
 
@@ -998,19 +1028,44 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 {
 	size_t signature_len = 0;
 	char fname[MAXPATHLEN];
-	char *sig, *pub;
+	char *sig, *sigtype, *pub;
+	char buf[32];
+	struct iovec iov[2];
+	int offset, size;
 
 	sig = NULL;
 	pub = NULL;
 
-	if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &pub) != EPKG_OK) {
+	if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &sigtype, &pub) != EPKG_OK) {
 		free(sig);
 		free(pub);
 		return (EPKG_FATAL);
 	}
 
+	offset = 0;
 	snprintf(fname, sizeof(fname), "%s.sig", name);
-	if (packing_append_buffer(pack, sig, fname, signature_len) != EPKG_OK) {
+	if (*sigtype != '\0' && strcmp(sigtype, "rsa") != 0) {
+		int typelen;
+
+		typelen = strlen(sigtype);
+		if (sigtype[typelen - 1] == '\n')
+			sigtype[--typelen] = '\0';
+		size = snprintf(buf, sizeof(buf), "%s%s$", PKGSIGN_HEAD, sigtype);
+		free(sigtype);
+		if (size >= sizeof(buf)) {
+			free(sig);
+			free(pub);
+			return (EPKG_FATAL);
+		}
+
+		iov[offset].iov_base = buf;
+		iov[offset++].iov_len = size;
+	}
+
+	iov[offset].iov_base = sig;
+	iov[offset].iov_len = signature_len;
+
+	if (packing_append_iovec(pack, fname, iov, offset + 1) != EPKG_OK) {
 		free(sig);
 		free(pub);
 		return (EPKG_FATAL);
@@ -1018,7 +1073,9 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 	free(sig);
 
 	snprintf(fname, sizeof(fname), "%s.pub", name);
-	if (packing_append_buffer(pack, pub, fname, strlen(pub)) != EPKG_OK) {
+	iov[offset].iov_base = pub;
+	iov[offset].iov_len = strlen(pub);
+	if (packing_append_iovec(pack, fname, iov, offset + 1) != EPKG_OK) {
 		free(pub);
 		return (EPKG_FATAL);
 	}

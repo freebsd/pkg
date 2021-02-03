@@ -98,4 +98,9 @@ int pkgsign_verify(const struct pkgsign_ctx *, const char *, unsigned char *,
 int pkgsign_verify_cert(const struct pkgsign_ctx *, unsigned char *, size_t,
     unsigned char *, size_t, int);
 
+const char *pkgsign_impl_name(const struct pkgsign_ctx *);
+
+/* Newer signature types will encode a $PKGSIGN:<signer_type>$ */
+#define	PKGSIGN_HEAD	"$PKGSIGN:"
+
 #endif
