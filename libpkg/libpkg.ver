@@ -233,6 +233,11 @@ global:
 	pkgdb_transaction_rollback;
 	pkgdb_upgrade_lock;
 	ports_parse_plist;
+	pkg_key_new;
+	pkg_key_free;
+	pkg_key_create;
+	pkg_key_pubkey;
+	pkg_key_info;
 # Symbols from libcsu
 	__progname;
 	environ;

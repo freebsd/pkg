@@ -6,6 +6,7 @@ SRCS=	backup_lib.c \
 	pkg_deps.c \
 	pkg_repo_meta.c \
 	pkg.c \
+	pkg_key.c \
 	pkgsign.c \
 	pkgsign_ossl.c \
 	clean_cache.c \
