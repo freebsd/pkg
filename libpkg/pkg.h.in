@@ -534,6 +534,10 @@ typedef enum {
 	 */
 	EPKG_NONETWORK,
 	EPKG_ENOENT,
+	/**
+	 * The requested operation is not supported.
+	 */
+	EPKG_OPNOTSUPP,
 } pkg_error_t;
 
 /**

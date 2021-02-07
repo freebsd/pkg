@@ -31,6 +31,7 @@
 struct pkgsign_ctx;
 struct pkgsign_ops;
 struct pkgsign_impl;
+struct iovec;
 
 /*
  * This should be embedded at the beginning of your pkgsign implementation's
@@ -68,6 +69,17 @@ typedef int pkgsign_verify_cb(const struct pkgsign_ctx *, const char *,
 typedef int pkgsign_verify_cert_cb(const struct pkgsign_ctx *, unsigned char *,
     size_t, unsigned char *, size_t, int);
 
+/* Generate a signing key. */
+typedef int pkgsign_generate_cb(struct pkgsign_ctx *, const struct iovec *,
+    int);
+
+/* Return information about a signing key. */
+typedef int pkgsign_keyinfo_cb(struct pkgsign_ctx *, struct iovec **,
+    int *);
+
+/* Return the public key. */
+typedef int pkgsign_pubkey_cb(struct pkgsign_ctx *, char **, size_t *);
+
 struct pkgsign_ops {
 	/*
 	 * pkgsign_ctx_size <= sizeof(pkgsign_ctx) is wrong, but
@@ -78,6 +90,11 @@ struct pkgsign_ops {
 	/* Optional request initialization/finalization handlers. */
 	pkgsign_new_cb			*pkgsign_new;
 	pkgsign_free_cb			*pkgsign_free;
+
+	/* Optional key generation/information handlers. */
+	pkgsign_generate_cb		*pkgsign_generate;
+	pkgsign_keyinfo_cb		*pkgsign_keyinfo;
+	pkgsign_pubkey_cb		*pkgsign_pubkey;
 
 	/* Non-optional. */
 	pkgsign_sign_cb			*pkgsign_sign;
@@ -97,6 +114,10 @@ int pkgsign_verify(const struct pkgsign_ctx *, const char *, unsigned char *,
     size_t, int);
 int pkgsign_verify_cert(const struct pkgsign_ctx *, unsigned char *, size_t,
     unsigned char *, size_t, int);
+
+int pkgsign_generate(struct pkgsign_ctx *, const struct iovec *, int);
+int pkgsign_keyinfo(struct pkgsign_ctx *, struct iovec **, int *);
+int pkgsign_pubkey(struct pkgsign_ctx *, char **, size_t *);
 
 const char *pkgsign_impl_name(const struct pkgsign_ctx *);
 
