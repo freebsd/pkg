@@ -187,3 +187,30 @@ pkgsign_impl_name(const struct pkgsign_ctx *ctx)
 
 	return (ctx->impl->pi_name);
 }
+
+int
+pkgsign_generate(struct pkgsign_ctx *ctx, const struct iovec *iov, int niov)
+{
+
+	if (ctx->impl->pi_ops->pkgsign_generate == NULL)
+		return (EPKG_OPNOTSUPP);
+	return (*ctx->impl->pi_ops->pkgsign_generate)(ctx, iov, niov);
+}
+
+int
+pkgsign_keyinfo(struct pkgsign_ctx *ctx, struct iovec **iov, int *niov)
+{
+
+	if (ctx->impl->pi_ops->pkgsign_keyinfo == NULL)
+		return (EPKG_OPNOTSUPP);
+	return (*ctx->impl->pi_ops->pkgsign_keyinfo)(ctx, iov, niov);
+}
+
+int
+pkgsign_pubkey(struct pkgsign_ctx *ctx, char **pubkey, size_t *pubkeylen)
+{
+
+	if (ctx->impl->pi_ops->pkgsign_pubkey == NULL)
+		return (EPKG_OPNOTSUPP);
+	return (*ctx->impl->pi_ops->pkgsign_pubkey)(ctx, pubkey, pubkeylen);
+}
