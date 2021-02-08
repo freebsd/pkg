@@ -1,0 +1,55 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\"
+.Dd January 14, 2021
+.Dt PKG-KEY 8
+.Os
+.Sh NAME
+.Nm "pkg key"
+.Nd create or extract signing key details
+.Sh SYNOPSIS
+.Nm
+.Op Fl -create | Fl -public
+.Ar key-path
+.Sh DESCRIPTION
+.Nm
+is used to create or extract signing key details for use with
+.Xr pkg-repo 8 .
+Cryptographically signing your package repository catalog is strongly
+recommended.
+.Pp
+The default operation for
+.Nm
+is to write some useful information about the key at
+.Ar key-path
+to stdout.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width all
+.It Fl -create
+Create the named key.
+Note that any file at
+.Ar key-path
+will be overwritten.
+.It Fl -public
+Write the public key to stdout.
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg-repo 8

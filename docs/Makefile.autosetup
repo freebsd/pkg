@@ -23,6 +23,7 @@ MAN8=	pkg-add.8 \
 	pkg-fetch.8 \
 	pkg-info.8 \
 	pkg-install.8 \
+	pkg-key.8 \
 	pkg-lock.8 \
 	pkg-query.8 \
 	pkg-register.8 \

@@ -15,6 +15,7 @@ SRCS=	add.c \
 	globals.c \
 	info.c \
 	install.c \
+	key.c \
 	lock.c \
 	main.c \
 	plugins.c \
@@ -43,7 +44,8 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/libpkg \
 		-I$(top_builddir)/libpkg \
 		-DGITHASH=\"@GITHASH@\" \
-		-DHAVE_CONFIG_H
+		-DHAVE_CONFIG_H \
+		-Werror=switch
 LIBPKGFLAT=	-L$(top_builddir)/libpkg -lpkg_flat
 OTHER_LIBS=	@EXTRA_LIBS@ -lssl -lcrypto
 
