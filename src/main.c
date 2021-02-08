@@ -91,6 +91,7 @@ static struct commands {
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 	{ "help", "Displays help information", exec_help, usage_help},
+	{ "key", "Create or display signing key data", exec_key, usage_key},
 	{ "info", "Displays information about installed packages", exec_info, usage_info},
 	{ "install", "Installs packages from remote package repositories and local archives", exec_install, usage_install},
 	{ "lock", "Locks package against modifications or deletion", exec_lock, usage_lock},

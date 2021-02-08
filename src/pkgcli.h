@@ -93,6 +93,10 @@ void usage_install(void);
 int exec_plugins(int, char **);
 void usage_plugins(void);
 
+/* pkg key */
+int exec_key(int, char **);
+void usage_key(void);
+
 /* pkg lock */
 int exec_lock(int, char **);
 int exec_unlock(int, char **);
@@ -294,6 +298,7 @@ int format_sql_condition(const char *str, xstring *sqlcond,
 int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,
 			 char *multiline);
+int password_cb(char *buf, int size, int rwflag, void *key);
 
 extern int default_yes;
 extern int yes;

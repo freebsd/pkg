@@ -54,38 +54,6 @@ usage_repo(void)
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
-static int
-password_cb(char *buf, int size, int rwflag, void *key)
-{
-	int len = 0;
-	char pass[BUFSIZ];
-	sigset_t sig, oldsig;
-
-	(void)rwflag;
-	(void)key;
-
-	/* Block sigalarm temporary */
-	sigemptyset(&sig);
-	sigaddset(&sig, SIGALRM);
-	sigprocmask(SIG_BLOCK, &sig, &oldsig);
-
-	if (readpassphrase("\nEnter passphrase: ", pass, BUFSIZ, RPP_ECHO_OFF) == NULL)
-		return 0;
-
-	len = strlen(pass);
-
-	if (len <= 0)  return 0;
-	if (len > size) len = size;
-
-	memset(buf, '\0', size);
-	memcpy(buf, pass, len);
-	memset(pass, 0, BUFSIZ);
-
-	sigprocmask(SIG_SETMASK, &oldsig, NULL);
-
-	return (len);
-}
-
 int
 exec_repo(int argc, char **argv)
 {
