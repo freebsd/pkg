@@ -543,12 +543,12 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  args = {"a.sample"}
-  sample_file = pkg.prefixed_path(args[1])
-  if args[2] == nil then
+  -- args: a.sample
+  sample_file = pkg.prefixed_path(arg[1])
+  if arg[2] == nil then
     target_file = string.gsub(sample_file,'%.sample$', "")
   else
-    target_file = pkg.prefixed_path(args[2])
+    target_file = pkg.prefixed_path(arg[2])
   end
   if not pkg.stat(target_file) then
     pkg.copy(sample_file, target_file)
@@ -591,12 +591,12 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  args = {"b.sample"}
-  sample_file = pkg.prefixed_path(args[1])
-  if args[2] == nil then
+  -- args: b.sample
+  sample_file = pkg.prefixed_path(arg[1])
+  if arg[2] == nil then
     target_file = string.gsub(sample_file,'%.sample$', "")
   else
-    target_file = pkg.prefixed_path(args[2])
+    target_file = pkg.prefixed_path(arg[2])
   end
   if not pkg.stat(target_file) then
     pkg.copy(sample_file, target_file)
@@ -638,12 +638,12 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  args = {"a", "b"}
-  sample_file = pkg.prefixed_path(args[1])
-  if args[2] == nil then
+  -- args: a b
+  sample_file = pkg.prefixed_path(arg[1])
+  if arg[2] == nil then
     target_file = string.gsub(sample_file,'%.sample$', "")
   else
-    target_file = pkg.prefixed_path(args[2])
+    target_file = pkg.prefixed_path(arg[2])
   end
   if not pkg.stat(target_file) then
     pkg.copy(sample_file, target_file)
@@ -684,12 +684,12 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  args = {"a.sample"}
-  sample_file = pkg.prefixed_path(args[1])
-  if args[2] == nil then
+  -- args: a.sample
+  sample_file = pkg.prefixed_path(arg[1])
+  if arg[2] == nil then
     target_file = string.gsub(sample_file,'%.sample$', "")
   else
-    target_file = pkg.prefixed_path(args[2])
+    target_file = pkg.prefixed_path(arg[2])
   end
   if not pkg.stat(target_file) then
     pkg.copy(sample_file, target_file)
