@@ -509,15 +509,22 @@ EOF
 
 script_sample_not_exists_body() {
 	echo "sample text" > a.sample
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a.sample: ""
 }
 lua_scripts: {
   post-install: [ <<EOS
-  if pkg.filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
-     pkg.copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
+  args = {"a.sample"}
+  sample_file = pkg.prefixed_path(args[1])
+  if args[2] == nil then
+    target_file = string.gsub(sample_file,'%.sample$', "")
+  else
+    target_file = pkg.prefixed_path(args[2])
+  end
+  if not pkg.stat(target_file) then
+    pkg.copy(sample_file, target_file)
   end
 EOS
 , ]
@@ -555,8 +562,15 @@ files: {
 }
 lua_scripts: {
   post-install: [ <<EOS
-  if pkg.filecmp("${TMPDIR}/a.sample", "${TMPDIR}/a") == 2 then
-     pkg.copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
+  args = {"a.sample"}
+  sample_file = pkg.prefixed_path(args[1])
+  if args[2] == nil then
+    target_file = string.gsub(sample_file,'%.sample$', "")
+  else
+    target_file = pkg.prefixed_path(args[2])
+  end
+  if not pkg.stat(target_file) then
+    pkg.copy(sample_file, target_file)
   end
 EOS
 , ]
