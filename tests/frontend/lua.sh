@@ -46,7 +46,7 @@ EOF
 
 script_message_body() {
 	# The message should be the last thing planned
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [
@@ -73,7 +73,7 @@ EOF
 
 script_rooteddir_body() {
 	# The message should be the last thing planned
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [ <<EOS
@@ -109,7 +109,7 @@ EOF
 }
 
 script_remove_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [ <<EOS
@@ -143,7 +143,7 @@ EOF
 }
 
 script_rename_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [ <<EOS
@@ -171,7 +171,7 @@ EOF
 }
 
 script_execute_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [ <<EOS
@@ -199,7 +199,7 @@ pkg: lua script failed\n"
 }
 
 script_upgrade_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [ <<EOS
@@ -225,7 +225,7 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [ <<EOS
@@ -267,7 +267,7 @@ EOF
 script_filecmp_body() {
 	echo "sametext" > a
 	echo "sametext" > b
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a: ""
@@ -308,7 +308,7 @@ EOF
 
 	echo "sametext" > a
 	echo "differenttext" > b
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a: ""
@@ -345,7 +345,7 @@ script_filecmp_symlink_body() {
 	echo "sametext" > b
 	ln -s a c
 	ln -s b d
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a: ""
@@ -391,7 +391,7 @@ EOF
 	echo "differenttext" > b
 	ln -s a c
 	ln -s b d
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a: ""
@@ -427,7 +427,7 @@ EOF
 
 script_copy_body() {
 	echo "sample text" > a.sample
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a.sample: ""
@@ -465,7 +465,7 @@ EOF
 script_copy_symlink_body() {
 	echo "sample text" > a.sample
 	ln -s a.sample b
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a.sample: ""
@@ -509,7 +509,7 @@ EOF
 
 script_sample_not_exists_body() {
 	echo "sample text" > a.sample
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a.sample: ""
@@ -548,7 +548,7 @@ EOF
 
 script_sample_exists_body() {
 	echo "sample text" > a.sample
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/a.sample: ""
@@ -586,7 +586,7 @@ EOF
 
 script_stat_body() {
 	touch plop
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 files: {
 	${TMPDIR}/plop: ""
