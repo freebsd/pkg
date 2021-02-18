@@ -205,16 +205,12 @@ lua_pkg_filecmp(lua_State *L)
 	lua_getglobal(L, "package");
 	struct pkg *pkg = lua_touserdata(L, -1);
 
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(file1), &s1, AT_SYMLINK_NOFOLLOW) == -1) {
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(file1), &s1, 0) == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(file2), &s2, AT_SYMLINK_NOFOLLOW) == -1) {
+	if (fstatat(pkg->rootfd, RELATIVE_PATH(file2), &s2, 0) == -1) {
 		lua_pushinteger(L, 2);
-		return (1);
-	}
-	if (!S_ISREG(s1.st_mode) || !S_ISREG(s2.st_mode)) {
-		lua_pushinteger(L, -1);
 		return (1);
 	}
 	if (s1.st_size != s2.st_size) {
