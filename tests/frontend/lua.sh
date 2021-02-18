@@ -15,6 +15,7 @@ tests_init \
 	script_copy \
 	script_copy_symlink \
 	script_sample_not_exists \
+	script_sample_not_exists_two_files \
 	script_sample_exists \
 	script_stat \
 	script_arguments
@@ -576,6 +577,52 @@ EOF
 		-e empty \
 		-s exit:0 \
 		cmp -s ${TMPDIR}/target${TMPDIR}/a.sample ${TMPDIR}/target${TMPDIR}/a
+}
+
+script_sample_not_exists_two_files_body() {
+	echo "sample text" > a
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+  args = {"a", "b"}
+  sample_file = pkg.prefixed_path(args[1])
+  if args[2] == nil then
+    target_file = string.gsub(sample_file,'%.sample$', "")
+  else
+    target_file = pkg.prefixed_path(args[2])
+  end
+  if not pkg.stat(target_file) then
+    pkg.copy(sample_file, target_file)
+  end
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/b
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		cmp -s ${TMPDIR}/target${TMPDIR}/a ${TMPDIR}/target${TMPDIR}/b
 }
 
 script_sample_exists_body() {
