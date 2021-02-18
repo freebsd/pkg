@@ -12,10 +12,35 @@ tests_init \
 	script_upgrade \
 	script_sample_not_exists \
 	script_sample_exists \
-	script_stat
+	script_stat \
+	script_arguments
+
+script_arguments_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [
+  "-- args: plop\nprint(arg[1])"
+  ]
+}
+EOF
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o inline:"plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+}
 
 script_basic_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	cat << EOF >> test.ucl
 lua_scripts: {
   post-install: [
