@@ -512,7 +512,6 @@ EOF
 		-s exit:0 \
 		pkg create -M test.ucl
 
-	mkdir ${TMPDIR}/target
 	atf_check \
 		-o empty \
 		-e empty \
