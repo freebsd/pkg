@@ -1,3 +1,6 @@
+Changes from 1.16.2 to 1.16.3
+- lua: filecmp: Fix for symlink
+
 Changes from 1.16.1 to 1.16.2
 - libpkg: add a snap(shot) version prefix
 - libpkg: only upgrade installed packages with pattern matches
