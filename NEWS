@@ -1,3 +1,8 @@
+Changes from 1.16.99.1 to 1.16.99.2
+- libpkg: rsa: stop leaking an RSA object
+- libpkg: rsa: start abstracting away rsa bits
+- lua: filecmp: Fix for symlink
+
 Changes from 1.16.99.8 to 1.16.99.1
 - Avoid making making xstring.h public
 - audit: fix quiet
