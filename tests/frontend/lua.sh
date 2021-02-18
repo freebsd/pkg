@@ -10,6 +10,7 @@ tests_init \
 	script_execute \
 	script_rename \
 	script_upgrade \
+	script_filecmp \
 	script_sample_not_exists \
 	script_sample_exists \
 	script_stat
@@ -258,6 +259,82 @@ EOF
 		-o match:"upgrade:true" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -r ${TMPDIR}/target upgrade -y
+}
+
+script_filecmp_body() {
+	echo "sametext" > a
+	echo "sametext" > b
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a: ""
+	${TMPDIR}/b: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+  if pkg.filecmp("${TMPDIR}/a", "${TMPDIR}/b") == 0 then
+     pkg.print_msg("same")
+  else
+     pkg.print_msg("different")
+  end
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o inline:"same\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	# Cleanup
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target delete -qfy test-1
+	rm -rf ${TMPDIR}/target
+
+	echo "sametext" > a
+	echo "differenttext" > b
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a: ""
+	${TMPDIR}/b: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+  if pkg.filecmp("${TMPDIR}/a", "${TMPDIR}/b") == 0 then
+     pkg.print_msg("same")
+  else
+     pkg.print_msg("different")
+  end
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o inline:"different\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
 }
 
 script_sample_not_exists_body() {
