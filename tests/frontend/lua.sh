@@ -12,6 +12,8 @@ tests_init \
 	script_upgrade \
 	script_filecmp \
 	script_filecmp_symlink \
+	script_copy \
+	script_copy_symlink \
 	script_sample_not_exists \
 	script_sample_exists \
 	script_stat
@@ -421,6 +423,88 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+}
+
+script_copy_body() {
+	echo "sample text" > a.sample
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a.sample: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+   pkg.copy("${TMPDIR}/a.sample", "${TMPDIR}/a")
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a.sample
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		cmp -s ${TMPDIR}/target${TMPDIR}/a.sample ${TMPDIR}/target${TMPDIR}/a
+}
+
+script_copy_symlink_body() {
+	echo "sample text" > a.sample
+	ln -s a.sample b
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/a.sample: ""
+	${TMPDIR}/b: ""
+}
+lua_scripts: {
+  post-install: [ <<EOS
+   pkg.copy("${TMPDIR}/b", "${TMPDIR}/a")
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a.sample
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/b
+	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		cmp -s ${TMPDIR}/target${TMPDIR}/a.sample ${TMPDIR}/target${TMPDIR}/a
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		cmp -s ${TMPDIR}/target${TMPDIR}/b ${TMPDIR}/target${TMPDIR}/a
 }
 
 script_sample_not_exists_body() {
