@@ -749,9 +749,4 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
-
-	# ensure we create the parent directory of ${TMPDIR}
-	mkdir -p ${TMPDIR}/target2/${TMPDIR}
-	rmdir ${TMPDIR}/target2/${TMPDIR}
-	mkdir ${TMPDIR}/target2/plop
 }
