@@ -94,3 +94,34 @@ the other being the newly created repository (named new below) and does:
 
 This leaves the new/ directory with the new packagesite, the new pkgs and the
 pkgs-1 from the previous run.
+
+# Alternatives
+
+Alternatives are install in /usr/local/share/alternatives
+For a given alternative X we have a subdirectory alternatives/X
+Then a files with the various alternatives names for each alternative
+alternatives/php/7.2
+alternatives/php/7.4
+
+A special alternatives is provided by the repo based on DEFAULT\_VERSION when
+the alternative is version based, or a specific KNOBS when not based on version
+this add a new file (symlink) to the package alternatives/php/default -> 7.2
+
+The alternative file is a ucl file, with a list of symlinks:
+
+Description: "yeah baby"
+symlinks {
+	file1: target1
+	file2: target2
+	file3: target3
+}
+exec: { type = lua; script: ... },
+exec: { type = shell; script: ...}
+
+The exec part is an optional script which could be use to regenerate caches if needed for example
+
+In case pkg 2 pkg have the default symlink then the regular conflict mechanism would be used
+By default pkg priorize user defined default before package defined repo
+if user defined repo to not exists then it switches to the global defaut if in non interactive
+or as the user if in interractives mode
+
