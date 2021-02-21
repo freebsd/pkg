@@ -83,11 +83,15 @@ These options are supported by
 .Bl -tag -width dependencies
 .It Fl a , Fl -all
 Process all packages.
+.It Fl B , Fl -shlibs
+Regenerates the library dependency metadata for a package
 .It Fl C , Fl -case-sensitive
 Use case sensitive standard or regular expression
 .Fl ( x )
 matching with
 .Ar pattern .
+.It Fl d , Fl -dependencies
+Checks for and installs missing dependencies
 .It Fl g , Fl -glob
 Treat
 .Ar pattern
@@ -103,6 +107,10 @@ has been set to true in
 .Pa pkg.conf .
 .It Fl n , Fl -dry-run
 Only check for missing dependencies, do not install them.
+.It Fl r , Fl -recompute
+Recalculates and sets the checksums of installed packages
+.It Fl s , Fl -checksums
+Detects installed packages with invalid checksums
 .It Fl v , Fl -verbose
 Be verbose.
 .It Fl q , Fl -quiet
