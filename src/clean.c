@@ -180,27 +180,27 @@ populate_sums(struct pkgdb *db)
 }
 
 /*
- * Extract hash from filename in format <name>-<version>-<hash>.txz
+ * Extract hash from filename in format <name>-<version>~<hash>.txz
  */
 static bool
 extract_filename_sum(const char *fname, char sum[])
 {
-	const char *dash_pos, *dot_pos;
+	const char *tilde_pos, *dot_pos;
 
 	dot_pos = strrchr(fname, '.');
 	if (dot_pos == NULL)
 		dot_pos = fname + strlen(fname);
 
-	dash_pos = strrchr(fname, '-');
-	if (dash_pos == NULL)
+	tilde_pos = strrchr(fname, '~');
+	if (tilde_pos == NULL)
 		return (false);
-	else if (dot_pos < dash_pos)
+	else if (dot_pos < tilde_pos)
 		dot_pos = fname + strlen(fname);
 
-	if (dot_pos - dash_pos != PKG_FILE_CKSUM_CHARS + 1)
+	if (dot_pos - tilde_pos != PKG_FILE_CKSUM_CHARS + 1)
 		return (false);
 
-	strlcpy(sum, dash_pos + 1, PKG_FILE_CKSUM_CHARS + 1);
+	strlcpy(sum, tilde_pos + 1, PKG_FILE_CKSUM_CHARS + 1);
 	return (true);
 }
 
