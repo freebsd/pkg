@@ -1301,11 +1301,10 @@ run_transaction(sqlite3 *sqlite, const char *query, const char *savepoint)
 			ret = sqlite3_step(stmt);
 	}
 
-	sqlite3_finalize(stmt);
-
 	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
 	}
+	sqlite3_finalize(stmt);
 	free(sql);
 	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
 }
@@ -2239,12 +2238,13 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_bind_int64(stmt_del, 1, package_id);
 
 			ret = sqlite3_step(stmt_del);
-			sqlite3_finalize(stmt_del);
 
 			if (ret != SQLITE_DONE) {
-				ERROR_SQLITE(db->sqlite, sql[i]);
+				ERROR_STMT_SQLITE(db->sqlite, stmt_del);
+				sqlite3_finalize(stmt_del);
 				return (EPKG_FATAL);
 			}
+			sqlite3_finalize(stmt_del);
 		}
 
 		if (sql_exec(db->sqlite, sql[2]) != EPKG_OK)
@@ -2448,12 +2448,13 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 	sqlite3_bind_int64(stmt_del, 1, id);
 
 	ret = sqlite3_step(stmt_del);
-	sqlite3_finalize(stmt_del);
 
 	if (ret != SQLITE_DONE) {
-		ERROR_SQLITE(db->sqlite, sql);
+		ERROR_STMT_SQLITE(db->sqlite, stmt_del);
+		sqlite3_finalize(stmt_del);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt_del);
 
 	for (obj = 0 ;obj < NELEM(deletions); obj++) {
 		ret = sql_exec(db->sqlite, "DELETE FROM %s;", deletions[obj]);
@@ -2521,15 +2522,12 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 	if (ret == SQLITE_ROW)
 		*res = sqlite3_column_int64(stmt, 0);
 
+
+	if (ret != SQLITE_ROW && !silence)
+		ERROR_STMT_SQLITE(s, stmt);
 	sqlite3_finalize(stmt);
 
-	if (ret != SQLITE_ROW) {
-		if (!silence)
-			ERROR_SQLITE(s, sql);
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
+	return (ret == SQLITE_ROW ? EPKG_OK : EPKG_FATAL);
 }
 
 int
@@ -2640,7 +2638,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		}
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
-			ERROR_SQLITE(db->sqlite, sql[attr]);
+			ERROR_STMT_SQLITE(db->sqlite, stmt);
 			sqlite3_finalize(stmt);
 			return (EPKG_FATAL);
 		}
@@ -2681,7 +2679,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 	sqlite3_bind_text(stmt, 2, file->path, -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		ERROR_SQLITE(db->sqlite, sql_file_update);
+		ERROR_STMT_SQLITE(db->sqlite, stmt);
 		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
@@ -2769,7 +2767,7 @@ pkgdb_remove_lock_pid(struct pkgdb *db, int64_t pid)
 	sqlite3_bind_int64(stmt, 1, pid);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		ERROR_SQLITE(db->sqlite, lock_pid_sql);
+		ERROR_STMT_SQLITE(db->sqlite, stmt);
 		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}

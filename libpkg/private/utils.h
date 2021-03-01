@@ -40,9 +40,14 @@
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
 
 #define ERROR_SQLITE(db, query) do { \
-	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", (query), \
-	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
+	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", query, \
+	__FILE__, __LINE__, sqlite3_errmsg(db)); \
 } while(0)
+
+#define ERROR_STMT_SQLITE(db, statement) do { \
+	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", sqlite3_expanded_sql(statement), \
+	__FILE__, __LINE__, sqlite3_errmsg(db)); \
+} while (0)
 
 KHASH_MAP_INIT_INT(hardlinks, int)
 typedef khash_t(hardlinks) hardlinks_t;
