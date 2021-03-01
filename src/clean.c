@@ -192,6 +192,9 @@ extract_filename_sum(const char *fname, char sum[])
 		dot_pos = fname + strlen(fname);
 
 	tilde_pos = strrchr(fname, '~');
+	/* XXX Legacy fallback; remove eventually. */
+	if (tilde_pos == NULL)
+		tilde_pos = strrchr(fname, '-');
 	if (tilde_pos == NULL)
 		return (false);
 	else if (dot_pos < tilde_pos)
