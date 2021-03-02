@@ -1778,7 +1778,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 		sqlite3_bind_text(stmt, 2, r->old_uid, -1, SQLITE_TRANSIENT);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE)
-			ERROR_SQLITE(j->db->sqlite, sql);
+			ERROR_STMT_SQLITE(j->db->sqlite, stmt);
 
 		sqlite3_reset(stmt);
 	}

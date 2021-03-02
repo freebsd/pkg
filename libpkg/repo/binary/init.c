@@ -459,7 +459,7 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 		sqlite3_bind_text(stmt, 1, pkg_repo_url(repo), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite, sql);
+			ERROR_STMT_SQLITE(sqlite, stmt);
 			sqlite3_finalize(stmt);
 			retcode = EPKG_FATAL;
 			goto cleanup;
