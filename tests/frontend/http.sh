@@ -19,7 +19,7 @@ simple_repo_body()
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	atf_check pkg create -M test.ucl
 	mkdir repo
-	mv test-1.txz repo/
+	mv test-1.txz test-1.bsd repo/
 	atf_check -o ignore pkg repo repo
 
 	trap cleanup EXIT
