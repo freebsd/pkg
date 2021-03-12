@@ -409,7 +409,7 @@ out:
 		} else if (clevel == INT_MAX) {
 			switch (elected_format) {
 			case TZS:
-				clevel = 20;
+				clevel = 19;
 				break;
 			case TXZ:
 			case TBZ:
