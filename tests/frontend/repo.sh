@@ -35,7 +35,7 @@ EOF
 		-s exit:0 \
 		pkg repo --meta-file meta.ucl .
 
-	ln -s test-1.txz test.txz
+	cp test-1.txz test.txz
 
 	atf_check \
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
