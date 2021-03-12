@@ -448,6 +448,20 @@ packing_format_from_string(const char *str)
 	return TXZ;
 }
 
+bool
+packing_is_valid_format(const char *str)
+{
+	if (str == NULL)
+		return (false);
+	if ((strcmp(str, "tzst") == 0) ||
+	    (strcmp(str, "txz") == 0) ||
+	    (strcmp(str, "tbz") == 0) ||
+	    (strcmp(str, "tgz") == 0) ||
+	    (strcmp(str, "tar") == 0))
+	    return (true);
+	return (false);
+}
+
 const char*
 packing_format_to_string(pkg_formats format)
 {

@@ -790,6 +790,7 @@ void packing_get_filename(struct packing *pack, const char *filename);
 void packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);
+bool packing_is_valid_format(const char *str);
 
 int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, struct pkg *p);
