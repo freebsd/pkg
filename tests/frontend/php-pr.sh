@@ -113,6 +113,7 @@ EOF
 	rm reposconf/repo1.conf
 	rm -f *.ucl
 	rm *.txz
+	rm *.bsd
 
 	cat << EOF > php53.new.ucl
 name: php53
@@ -225,7 +226,6 @@ EOF
 		-s exit:0 \
 		pkg repo .
 
-	mkdir reposconf
 	cat << EOF >> reposconf/repo.conf
 local: {
         url: file://${TMPDIR}/,
@@ -241,7 +241,7 @@ php53-gd-5.3.27
 
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching packagesite.txz:  done
+${JAILED}Fetching packagesite.bsd:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
 All repositories are up to date.

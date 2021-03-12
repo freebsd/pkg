@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
  * 
@@ -55,6 +55,8 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 	time_t timestamp, bool overwrite)
 {
 	char archive_path[MAXPATHLEN];
+	char archive_symlink[MAXPATHLEN];
+	char *archive_name;
 	const char *ext;
 	const char *source_date_epoch;
 	char *endptr;
@@ -92,7 +94,13 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		*pack = NULL;
 		return (EPKG_FATAL); /* error set by _set_format() */
 	}
-	snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
+	snprintf(archive_path, sizeof(archive_path), "%s.bsd", path);
+	archive_name = strrchr(archive_path, '/');
+	if (archive_name == NULL)
+		archive_name = archive_path;
+	else
+		archive_name++;
+	snprintf(archive_symlink, sizeof(archive_path), "%s.%s", path,
 	    ext);
 
 	if (!overwrite && access(archive_path, F_OK) == 0) {
@@ -116,6 +124,11 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		archive_write_free((*pack)->awrite);
 		*pack = NULL;
 		return EPKG_FATAL;
+	}
+
+	unlink(archive_symlink);
+	if (symlink(archive_name, archive_symlink) != 0) {
+		pkg_emit_errno("symlink", archive_symlink);
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();
@@ -453,7 +466,8 @@ packing_is_valid_format(const char *str)
 {
 	if (str == NULL)
 		return (false);
-	if ((strcmp(str, "tzst") == 0) ||
+	if ((strcmp(str, "bsd") == 0) ||
+	    (strcmp(str, "tzst") == 0) ||
 	    (strcmp(str, "txz") == 0) ||
 	    (strcmp(str, "tbz") == 0) ||
 	    (strcmp(str, "tgz") == 0) ||

@@ -7,7 +7,8 @@ tests_init \
 	repo_v2 \
 	repo_multiversion \
 	repo_multiformat \
-	repo_symlinks
+	repo_symlinks \
+	repo_content
 
 repo_v1_body() {
 	touch plop
@@ -212,4 +213,12 @@ EOF
 		pkg -C ./pkg.conf update -f
 	atf_check -o inline:"test\n" \
 		pkg -C ./pkg.conf rquery -a "%n"
+}
+
+repo_content_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
+	atf_check pkg create --format txz -M test.ucl
+	atf_check -o ignore pkg repo .
+	nb=$(tar -xf packagesite.bsd -O - packagesite.yaml | wc -l)
+	[ $nb -eq 1 ] || atf_fail "packagesite has $nb entries instead of 1"
 }

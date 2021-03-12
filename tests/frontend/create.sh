@@ -706,11 +706,11 @@ create_no_clobber_body()
 {
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 
-	touch test-1.txz
-	before=$(ls -l test-1.txz)
+	touch test-1.bsd
+	before=$(ls -l test-1.bsd)
 	atf_check pkg create -nM test.ucl
-	after=$(ls -l test-1.txz)
-	[ "$before" = "$after" ] || atf_fail "Package was recreated"
+	after=$(ls -l test-1.bsd)
+	[ "$before" = "$after" ] || atf_fail "Package was recreated \"$before\" vs \"$after\""
 }
 
 create_from_plist_include_body()
