@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -218,7 +218,14 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	char *ext;
 	int linklen = 0;
 	char tmp_name[MAXPATHLEN] = { 0 };
+	char repo_path[MAXPATHLEN];
+	size_t repo_path_len;
 
+	if (realpath(repopath, repo_path) == NULL) {
+		pkg_emit_errno("invalid repo path", repopath);
+		return (EPKG_FATAL);
+	}
+	repo_path_len = strlen(repo_path);
 	errno = 0;
 
 	while ((fts_ent = fts_read(fts)) != NULL) {
@@ -246,6 +253,14 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		}
 		/* Follow symlinks. */
 		if (fts_ent->fts_info == FTS_SL) {
+			/*
+			 * Skip symlinks pointing inside the repo
+			 * and dead symlinks
+			 */
+			if (realpath(fts_ent->fts_path, tmp_name) == NULL)
+				continue;
+			if (strncmp(repo_path, tmp_name, repo_path_len) == 0)
+				continue;
 			/* Skip symlinks to hashed packages */
 			if (meta->hash) {
 				linklen = readlink(fts_ent->fts_path,

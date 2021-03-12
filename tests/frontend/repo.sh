@@ -6,7 +6,8 @@ tests_init \
 	repo_v1 \
 	repo_v2 \
 	repo_multiversion \
-	repo_multiformat
+	repo_multiformat \
+	repo_symlinks
 
 repo_v1_body() {
 	touch plop
@@ -180,4 +181,35 @@ EOF
 
 	atf_check -o match:"Installing plop-1\.1" \
 		pkg -C ./pkg.conf install -y plop
+}
+
+repo_symlinks_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
+	atf_check pkg create --format txz -M test.ucl
+	mkdir repo
+	ln -sf ../test-1.0.txz ./repo/meh-1.0.txz
+	atf_check -o ignore pkg repo repo
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore \
+		pkg -C ./pkg.conf update
+	atf_check -o inline:"test\n" \
+		pkg -C ./pkg.conf rquery -a "%n"
+
+	rm -rf repo
+	mkdir repo
+	cp test-1.0.txz repo/
+	ln -fs test-1.0.txz ./repo/meh-1.0.txz
+
+	atf_check -o ignore pkg repo repo
+	atf_check -o ignore \
+		pkg -C ./pkg.conf update -f
+	atf_check -o inline:"test\n" \
+		pkg -C ./pkg.conf rquery -a "%n"
 }
