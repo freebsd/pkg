@@ -5,7 +5,8 @@
 tests_init \
 	repo_v1 \
 	repo_v2 \
-	repo_multiversion
+	repo_multiversion \
+	repo_multiformat
 
 repo_v1_body() {
 	touch plop
@@ -150,4 +151,33 @@ EOF
 	# Ensure the latest version is installed
 	atf_check -o match:"Installing test-1.1" \
 		pkg -C ./pkg.conf install -y test
+}
+
+repo_multiformat_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg plop plop 1.1 "${TMPDIR}"
+	atf_check pkg create -M test.ucl
+	atf_check pkg create --format tar -M plop.ucl
+
+	atf_check \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		pkg repo .
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR} }
+}
+EOF
+
+	atf_check -o ignore \
+		pkg -C ./pkg.conf update
+
+	# Ensure we can pickup the old version
+	atf_check -o match:"Installing test-1\.0" \
+		pkg -C ./pkg.conf install -y test
+
+	atf_check -o match:"Installing plop-1\.1" \
+		pkg -C ./pkg.conf install -y plop
 }

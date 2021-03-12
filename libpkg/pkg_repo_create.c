@@ -269,7 +269,7 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		if (ext == NULL)
 			continue;
 
-		if (strcmp(ext + 1, packing_format_to_string(meta->packing_format)) != 0)
+		if (!packing_is_valid_format(ext + 1))
 			continue;
 
 		*ext = '\0';
