@@ -2230,12 +2230,12 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 
 		for (i = 0; i < 2; i++) {
 			/* Clean out old shlibs first */
-			pkg_debug(4, "Pkgdb: running '%s'", sql[i]);
 			stmt_del = prepare_sql(db->sqlite, sql[i]);
 			if (stmt_del == NULL)
 				return (EPKG_FATAL);
 
 			sqlite3_bind_int64(stmt_del, 1, package_id);
+			pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt_del));
 
 			ret = sqlite3_step(stmt_del);
 
@@ -2440,12 +2440,12 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 
 	assert(db != NULL);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	stmt_del = prepare_sql(db->sqlite, sql);
 	if (stmt_del == NULL)
 		return (EPKG_FATAL);
 
 	sqlite3_bind_int64(stmt_del, 1, id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt_del));
 
 	ret = sqlite3_step(stmt_del);
 
@@ -2595,7 +2595,6 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 	};
 
 	while ((attr = va_arg(ap, int)) > 0) {
-		pkg_debug(4, "Pkgdb: running '%s'", sql[attr]);
 		stmt = prepare_sql(db->sqlite, sql[attr]);
 		if (stmt == NULL)
 			return (EPKG_FATAL);
@@ -2637,6 +2636,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			break;
 		}
 
+		pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(db->sqlite, stmt);
 			sqlite3_finalize(stmt);
@@ -2671,12 +2671,12 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 	const char	 sql_file_update[] = ""
 		"UPDATE files SET sha256 = ?1 WHERE path = ?2";
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql_file_update);
 	stmt = prepare_sql(db->sqlite, sql_file_update);
 	if (stmt == NULL)
 		return (EPKG_FATAL);
 	sqlite3_bind_text(stmt, 1, sum, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 2, file->path, -1, SQLITE_STATIC);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, stmt);
