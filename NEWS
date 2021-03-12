@@ -1,3 +1,7 @@
+Changes from 1.16.99.2 to 1.16.99.3
+- lua update to 5.4.2
+- pkg repo accept now all supported formats mixed without config
+
 Changes from 1.16.99.1 to 1.16.99.2
 - libpkg: rsa: stop leaking an RSA object
 - libpkg: rsa: start abstracting away rsa bits
