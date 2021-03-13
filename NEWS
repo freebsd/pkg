@@ -1,6 +1,11 @@
 Changes from 1.16.99.2 to 1.16.99.3
 - lua update to 5.4.2
 - pkg repo accept now all supported formats mixed without config
+- pkg now default on creating .bsd files with backward compatible symlinks
+- backward compatible symlinks are now an option
+- make the default comprpession format a config option
+- set the default compression level for zstd to 19
+- make the default compression level a config option
 
 Changes from 1.16.99.1 to 1.16.99.2
 - libpkg: rsa: stop leaking an RSA object
