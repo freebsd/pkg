@@ -41,7 +41,7 @@ static void
 pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 {
 	meta->digest_format = PKG_HASH_TYPE_SHA256_BASE32;
-	meta->packing_format = TXZ;
+	meta->packing_format = DEFAULT_COMPRESSION;
 
 	/* Not use conflicts for now */
 	meta->conflicts = NULL;

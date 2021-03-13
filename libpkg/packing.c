@@ -446,7 +446,7 @@ pkg_formats
 packing_format_from_string(const char *str)
 {
 	if (str == NULL)
-		return TXZ;
+		return DEFAULT_COMPRESSION;
 	if (strcmp(str, "tzst") == 0)
 		return TZS;
 	if (strcmp(str, "txz") == 0)

@@ -18,6 +18,7 @@ options {
 	with-coverage => "build with llvm coverage support"
 	with-asan => "build with libasan support"
 	with-ubsan => "Build with libubsan support"
+	default-format:txz => "Default compression format: tzst, txz (default), tbz, tar"
 }
 
 if {[opt-str pkgconfigdir dir]} {
@@ -28,6 +29,21 @@ if {[opt-str pkgconfigdir dir]} {
 	} else {
 		define pkgconfigdir [get-define prefix]/lib/pkgconfig
 	}
+}
+
+# default compression format
+
+if {[opt-str default-format fmt]} {
+	switch $fmt \
+	    "tzst" { set comp TZS } \
+	    "txz" { set comp TXZ } \
+	    "tbz" { set comp TBZ } \
+	    "tgz" { set comp TGZ } \
+	    "tar" { set comp TAR } \
+	    "default" { user-error "Invalid format $fmt" }
+	define DEFAULT_COMPRESSION $comp
+} else {
+	define DEFAULT_COMPRESSION TXZ
 }
 
 cc-check-tools ar ranlib strip
@@ -320,7 +336,7 @@ if {[get-define CCACHE] ne {none}} {
   define CC "[get-define CCACHE] [get-define CC]"
 }
 
-make-config-header pkg_config.h
+make-config-header pkg_config.h -bare { DEFAULT_* }
 make-config-header external/sqlite/config.h
 make-template mk/defs.mk.in
 make-template libpkg/pkg.h.in

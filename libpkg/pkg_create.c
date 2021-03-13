@@ -240,7 +240,7 @@ pkg_create_new(void)
 	struct pkg_create *pc;
 
 	pc = xcalloc(1, sizeof(*pc));
-	pc->format = TXZ;
+	pc->format = DEFAULT_COMPRESSION;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
 	pc->expand_manifest = false;
