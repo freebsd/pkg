@@ -356,6 +356,8 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 #ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
 			elected_format = TZS;
+			if (clevel == -1)
+				clevel = 19;
 			goto out;
 		}
 #endif
@@ -389,6 +391,8 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 	default:
 		return (NULL);
 	}
+	if (clevel == -1)
+		clevel = 0;
 
 out:
 	/*
