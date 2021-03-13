@@ -76,6 +76,9 @@ a syntactically correct
 command line when substituted in and followed by any remaining tokens from
 the original command line.
 Default: not set.
+.It Cm ARCHIVE_SYMLINK: boolean
+When creating a package, create a symlink to it using the legacy extension,
+this is a backward compatibility option, default: true
 .It Cm AUTOCLEAN: boolean
 Automatically cleanout the content of
 .Em PKG_CACHEDIR

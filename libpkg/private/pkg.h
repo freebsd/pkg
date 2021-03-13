@@ -260,6 +260,7 @@ struct pkg_ctx {
 	int dbdirfd;
 	int pkg_dbdirfd;
 	int osversion;
+	bool archive_symlink;
 	bool backup_libraries;
 	const char *backup_library_path;
 	bool triggers;

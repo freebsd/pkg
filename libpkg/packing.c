@@ -126,9 +126,11 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		return EPKG_FATAL;
 	}
 
-	unlink(archive_symlink);
-	if (symlink(archive_name, archive_symlink) != 0) {
-		pkg_emit_errno("symlink", archive_symlink);
+	if (ctx.archive_symlink) {
+		unlink(archive_symlink);
+		if (symlink(archive_name, archive_symlink) != 0) {
+			pkg_emit_errno("symlink", archive_symlink);
+		}
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();

@@ -478,6 +478,12 @@ static struct config_entry c[] = {
 		"-1",
 		"Set the default compression level",
 	},
+	{
+		PKG_BOOL,
+		"ARCHIVE_SYMLINK",
+		"TRUE",
+		"Create a symlink to legacy extension for backward compatibility",
+	},
 };
 
 static bool parsed = false;
@@ -1301,6 +1307,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
+	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
