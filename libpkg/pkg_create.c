@@ -241,7 +241,7 @@ pkg_create_new(void)
 
 	pc = xcalloc(1, sizeof(*pc));
 	pc->format = DEFAULT_COMPRESSION;
-	pc->compression_level = -1;
+	pc->compression_level = ctx.compression_level;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
 	pc->expand_manifest = false;

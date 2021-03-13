@@ -254,6 +254,7 @@ struct pkg_ctx {
 	const char *pkg_rootdir;
 	const char *dbdir;
 	const char *cachedir;
+	int compression_level;
 	int rootfd;
 	int cachedirfd;
 	int dbdirfd;

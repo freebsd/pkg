@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd November 5, 2020
+.Dd March 13, 2021
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -113,6 +113,12 @@ Default: NO.
 Location where the libraries are backed up.
 Default:
 .Pa /usr/local/lib/compat/pkg .
+.It Cm COMPRESSION_LEVEL: integer
+Set the default compression level, special values are:
+.Bl -tag
+.It 0 default value per libarchive developers
+.It -1 default value per pkg developers (default)
+.El
 .It Cm CONSERVATIVE_UPGRADE: boolean
 Ensure in multi repository mode that the priority is given as much as possible
 to the repository where a package was first installed from.

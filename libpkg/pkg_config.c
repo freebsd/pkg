@@ -75,6 +75,7 @@ struct pkg_ctx ctx = {
 	.osversion = 0,
 	.backup_libraries = false,
 	.triggers = true,
+	.compression_level = -1,
 };
 
 struct config_entry {
@@ -470,6 +471,12 @@ static struct config_entry c[] = {
 		"AUDIT_IGNORE_REGEX",
 		"NULL",
 		"List of regex to ignore while autiditing for vulnerabilities",
+	},
+	{
+		PKG_INT,
+		"COMPRESSION_LEVEL",
+		"-1",
+		"Set the default compression level",
 	},
 };
 
@@ -1293,6 +1300,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
 	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
+	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
