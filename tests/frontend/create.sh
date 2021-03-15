@@ -60,7 +60,6 @@ preparetestcredentials() {
 
 basic_validation() {
 	test -f test-1.bsd || atf_fail "Package not created"
-	xz -t test-1.bsd || atf_fail "XZ integrity check failed"
 }
 
 create_with_hardlink_body() {
