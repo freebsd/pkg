@@ -41,7 +41,7 @@ EOF
 		-o inline:"plop\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 }
 
@@ -67,7 +67,7 @@ EOF
 		-o inline:"this is post install1\nthis is post install2\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 }
 
@@ -94,7 +94,7 @@ EOF
 		-o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 }
 
@@ -123,7 +123,7 @@ EOF
 	atf_check \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 	[ -f ${TMPDIR}/target/file.txt ] || atf_fail "File not created in the rootdir"
 	# test the mode
 	atf_check -o match:"^-rw-r--r--" ls -l ${TMPDIR}/target/file.txt
@@ -157,14 +157,14 @@ EOF
 	atf_check \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 	test -d ${TMPDIR}/target/file && atf_fail "directory not removed"
 
 	touch ${TMPDIR}/target/file
 	atf_check \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 	test -f ${TMPDIR}/target/file && atf_fail "file not removed"
 	return 0
 }
@@ -191,7 +191,7 @@ EOF
 	atf_check \
 		-e inline:"${ERR}" \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 	test -f ${TMPDIR}/target/file && atf_fail "File not renamed"
 	test -f ${TMPDIR}/target/plop || atf_fail "File not renamed"
 	return 0
@@ -222,7 +222,7 @@ pkg: lua script failed\n"
 	atf_check \
 		-e inline:"${ERR}" \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 }
 
 script_upgrade_body() {
@@ -250,7 +250,7 @@ EOF
 		-e empty \
 		-o empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2" "/"
 	cat << EOF >> test.ucl
@@ -265,7 +265,7 @@ EOS
 }
 EOF
 
-	rm ${TMPDIR}/test-1.txz
+	rm ${TMPDIR}/test-1.bsd
 	atf_check \
 		-o empty \
 		-e empty \
@@ -323,7 +323,7 @@ EOF
 		-o inline:"same\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	# Cleanup
 	atf_check \
@@ -364,7 +364,7 @@ EOF
 		-o inline:"different\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 }
 
 script_filecmp_symlink_body() {
@@ -403,7 +403,7 @@ EOF
 		-o inline:"same\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	# Cleanup
 	atf_check \
@@ -449,7 +449,7 @@ EOF
 		-o inline:"different\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 }
 
 script_copy_body() {
@@ -478,7 +478,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a.sample
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
@@ -517,7 +517,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a.sample
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/b
@@ -569,7 +569,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a.sample
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
@@ -617,7 +617,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/b.sample
@@ -664,7 +664,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/a
 	atf_check -o inline:"sample text\n" cat ${TMPDIR}/target${TMPDIR}/b
@@ -711,7 +711,7 @@ EOF
 		-o empty \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check \
 		-o empty \
@@ -748,5 +748,5 @@ EOF
 		-o inline:"zero\nreg\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 }

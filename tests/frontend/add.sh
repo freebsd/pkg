@@ -48,7 +48,7 @@ post-install
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		pkg add test-1.txz
+		pkg add test-1.bsd
 
 # test automatic is not set
 	atf_check \
@@ -68,7 +68,7 @@ post-install
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		pkg add -A test-1.txz
+		pkg add -A test-1.bsd
 
 	atf_check \
 		-o inline:"1\n" \
@@ -83,10 +83,10 @@ add_noscript_body() {
 OUTPUT="${JAILED}Installing test-1...
 ${JAILED}Extracting test-1:  done
 "
-	cat test-1.txz | atf_check \
+	cat test-1.bsd | atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		pkg add -I test-1.txz
+		pkg add -I test-1.bsd
 }
 
 add_force_body() {
@@ -124,10 +124,10 @@ EOF
 		pkg create -M test.ucl
 
 	atf_check \
-		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): test-1.txz\n" \
+		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): test-1.bsd\n" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:1 \
-		pkg add test-1.txz
+		pkg add test-1.bsd
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
@@ -138,7 +138,7 @@ post-install
 		-o inline:"${OUTPUT}" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
-		pkg add -M test-1.txz
+		pkg add -M test-1.bsd
 }
 
 add_quiet_body() {
@@ -147,7 +147,7 @@ add_quiet_body() {
 	atf_check \
 		-o inline:"pre-install\npost-install\n" \
 		-e empty \
-		pkg add -q ./test-1.txz
+		pkg add -q ./test-1.bsd
 }
 
 add_stdin_body() {
@@ -158,7 +158,7 @@ pre-install
 ${JAILED}Extracting test-1:  done
 post-install
 "
-	cat test-1.txz | atf_check \
+	cat test-1.bsd | atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		pkg add -
@@ -193,7 +193,7 @@ EOF
 		-s exit:0 \
 		pkg create -M test.ucl
 
-	cat test-1.txz | atf_check \
+	cat test-1.bsd | atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): -\n" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:1 \
@@ -204,7 +204,7 @@ pre-install
 ${JAILED}Extracting test-1:  done
 post-install
 "
-	cat test-1.txz | atf_check \
+	cat test-1.bsd | atf_check \
 		-o inline:"${OUTPUT}" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
@@ -228,5 +228,5 @@ EOF
 			pkg create -M ${p}.ucl
 	done
 	atf_check -o ignore -s exit:0 \
-		pkg add final-1.txz
+		pkg add final-1.bsd
 }

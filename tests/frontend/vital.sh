@@ -22,7 +22,7 @@ EOF
 		-o match:"^vital" \
 		-e empty \
 		-s exit:0 \
-		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.txz
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.bsd
 
 	mkdir ${TMPDIR}/target
 	atf_check \
@@ -30,7 +30,7 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.txz
+			${TMPDIR}/test-1.bsd
 
 	atf_check \
 		-o inline:"1\n" \

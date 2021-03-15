@@ -36,7 +36,7 @@ EOF
 		-s exit:0 \
 		pkg repo --meta-file meta.ucl .
 
-	cp test-1.txz test.txz
+	cp test-1.bsd test.bsd
 
 	atf_check \
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
@@ -48,11 +48,11 @@ EOF
 		atf_pass
 	fi
 
-	nb=$(tar -xf digests.txz -O digests | wc -l)
+	nb=$(tar -xf digests.bsd -O digests | wc -l)
 	atf_check_equal $nb 2
 
 	mkdir Latest
-	ln -s test-1.txz Latest/test.txz
+	ln -s test-1.bsd Latest/test.bsd
 
 	atf_check \
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
@@ -86,7 +86,7 @@ EOF
 		-s exit:0 \
 		pkg repo --meta-file meta.ucl .
 
-	ln -s test-1.txz test.txz
+	ln -s test-1.bsd test.bsd
 
 	atf_check \
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
@@ -98,10 +98,10 @@ EOF
 		atf_pass
 	fi
 
-	atf_check -s exit:127 -o ignore -e ignore "ls digest.txz"
+	atf_check -s exit:127 -o ignore -e ignore "ls digest.bsd"
 
 	mkdir Latest
-	ln -s test-1.txz Latest/test.txz
+	ln -s test-1.bsd Latest/test.bsd
 
 	atf_check \
 		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
@@ -188,7 +188,7 @@ repo_symlinks_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
 	atf_check pkg create --format txz -M test.ucl
 	mkdir repo
-	ln -sf ../test-1.0.txz ./repo/meh-1.0.txz
+	ln -sf ../test-1.0.bsd ./repo/meh-1.0.bsd
 	atf_check -o ignore pkg repo repo
 	cat > pkg.conf << EOF
 PKG_DBDIR=${TMPDIR}
@@ -205,8 +205,8 @@ EOF
 
 	rm -rf repo
 	mkdir repo
-	cp test-1.0.txz repo/
-	ln -fs test-1.0.txz ./repo/meh-1.0.txz
+	cp test-1.0.bsd repo/
+	ln -fs test-1.0.bsd ./repo/meh-1.0.bsd
 
 	atf_check -o ignore pkg repo repo
 	atf_check -o ignore \

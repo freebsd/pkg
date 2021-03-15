@@ -126,8 +126,8 @@ EOF
 		-s exit:0 \
 		pkg create -M test2.ucl
 
-	sum1=$(pkg query -F ./test-1.txz '%X')
-	sum2=$(pkg query -F ./test-2.txz '%X')
+	sum1=$(pkg query -F ./test-1.bsd '%X')
+	sum2=$(pkg query -F ./test-2.bsd '%X')
 
 	atf_check \
 		-o empty \
@@ -146,35 +146,35 @@ EOF
 		-o inline:"${TMPDIR}/plop\n${TMPDIR}/bla\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%Fp'
+		pkg query -F ./test-1.bsd '%Fp'
 
 	atf_check \
 		-o inline:"1\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%?F'
+		pkg query -F ./test-1.bsd '%?F'
 
 	atf_check \
 		-o inline:"2\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%#F'
+		pkg query -F ./test-1.bsd '%#F'
 
 	atf_check \
 		-o inline:"test 1\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%n %v'
+		pkg query -F ./test-1.bsd '%n %v'
 
 	atf_check \
 		-o inline:"a test\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%c'
+		pkg query -F ./test-1.bsd '%c'
 
 	atf_check \
 		-o inline:"Nothing to see here\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./plop-1.txz '%c'
+		pkg query -F ./plop-1.bsd '%c'
 }

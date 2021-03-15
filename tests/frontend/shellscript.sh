@@ -30,7 +30,7 @@ EOF
 		-o inline:"this is post install1\nthis is post install2\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 }
 
@@ -58,7 +58,7 @@ EOF
 		-o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 }
 
@@ -87,7 +87,7 @@ EOF
 		-o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 }
 
@@ -114,7 +114,7 @@ EOF
 		-e empty \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 	cat << EOF >> test.ucl
@@ -127,7 +127,7 @@ EOS
 }
 EOF
 
-	rm ${TMPDIR}/test-1.txz
+	rm ${TMPDIR}/test-1.bsd
 	atf_check \
 		-o empty \
 		-e empty \
@@ -138,7 +138,7 @@ EOF
 		-o ignore \
 		-e empty \
 		-s exit:0 \
-		pkg info -R -F ./test-2.txz
+		pkg info -R -F ./test-2.bsd
 	atf_check \
 		-o ignore \
 		-e empty \
