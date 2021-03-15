@@ -393,10 +393,10 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 	default:
 		return (NULL);
 	}
-	if (clevel == -1)
-		clevel = 0;
 
 out:
+	if (clevel == -1)
+		clevel = 0;
 	/*
 	 * N.B., we only want to whine about this if the user actually selected
 	 * tar and specified a compress level.  If we had to fallback to tar,
