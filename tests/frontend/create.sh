@@ -780,8 +780,8 @@ touch A B
 	atf_check \
 		-s exit:0 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
-
-	atf_check \
+	# -e ignore needed since GNU tar prints "tar: Removing leading `/' from member names"
+	atf_check -e ignore \
 		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /A$" \
 		tar tvf test-1.pkg
 }
