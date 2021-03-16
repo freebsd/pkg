@@ -273,9 +273,10 @@ fetch_resolve(const char *addr, int port, int af)
 	} else {
 		hb = addr;
 #if HAVE_STRCHRNUL
-    sep = strchrnul(hb, ':');
+		sep = strchrnul(hb, ':');
 #else
-    do{ sep++; }while( *sep && *sep != ':' );
+		sep = hb;
+		do { sep++; } while (*sep && *sep != ':');
 #endif
 		he = sep;
 	}
