@@ -33,7 +33,7 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 
 OUTPUT="${TMPDIR}/target/local.sqlite
 ${TMPDIR}/target${TMPDIR}/a
@@ -57,7 +57,7 @@ ${TMPDIR}/target${TMPDIR}/a
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 
 	atf_check \
 		-o inline:"${OUTPUT}" \
@@ -89,7 +89,7 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 
 	test -d ${TMPDIR}/target${TMPDIR}/plop || atf_fail "directory not extracted"
 }
@@ -113,7 +113,7 @@ EOF
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
 		-e ignore \
-		tar tvf ${TMPDIR}/test-1.bsd
+		tar tvf ${TMPDIR}/test-1.pkg
 
 	mkdir ${TMPDIR}/target
 	atf_check \
@@ -121,7 +121,7 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
@@ -153,7 +153,7 @@ EOF
 		-o match:"^-r-sr-xr--.*a$" \
 		-o match:"^hr-sr-xr--.*a$" \
 		-e ignore \
-		tar tvf ${TMPDIR}/test-1.bsd
+		tar tvf ${TMPDIR}/test-1.pkg
 
 	mkdir ${TMPDIR}/target
 	atf_check \
@@ -161,7 +161,7 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null  -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
@@ -199,7 +199,7 @@ chflags_body()
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-		    ${TMPDIR}/test-1.bsd
+		    ${TMPDIR}/test-1.pkg
 
 	atf_check \
 		-o match:"nodump" \
@@ -230,7 +230,7 @@ chflags_schg_body()
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 
 	atf_check \
 		-o match:"schg" \
@@ -244,7 +244,7 @@ chflags_schg_body()
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 }
 
 chflags_schg_cleanup()
@@ -276,5 +276,5 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
-			${TMPDIR}/test-1.bsd
+			${TMPDIR}/test-1.pkg
 }

@@ -3,7 +3,7 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 
-# https://github.com/freebsd/pkg/issues/1440
+# https://github.com/fre.pkg/pkg/issues/1440
 #pkgA
 # - pkgB
 #    - pkgC
@@ -188,12 +188,12 @@ EOF
 
 OUTPUT_CASE1="Updating repoA repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching packagesite.bsd:  done
+${JAILED}Fetching packagesite.pkg:  done
 Processing entries:  done
 repoA repository update completed. 4 packages processed.
 Updating repoB repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching packagesite.bsd:  done
+${JAILED}Fetching packagesite.pkg:  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
 All repositories are up to date.

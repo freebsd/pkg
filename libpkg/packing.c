@@ -94,7 +94,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		*pack = NULL;
 		return (EPKG_FATAL); /* error set by _set_format() */
 	}
-	snprintf(archive_path, sizeof(archive_path), "%s.bsd", path);
+	snprintf(archive_path, sizeof(archive_path), "%s.pkg", path);
 	archive_name = strrchr(archive_path, '/');
 	if (archive_name == NULL)
 		archive_name = archive_path;
@@ -472,7 +472,7 @@ packing_is_valid_format(const char *str)
 {
 	if (str == NULL)
 		return (false);
-	if ((strcmp(str, "bsd") == 0) ||
+	if ((strcmp(str, "pkg") == 0) ||
 	    (strcmp(str, "tzst") == 0) ||
 	    (strcmp(str, "txz") == 0) ||
 	    (strcmp(str, "tbz") == 0) ||

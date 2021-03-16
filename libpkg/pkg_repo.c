@@ -665,7 +665,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 	char tmp[MAXPATHLEN];
 	struct stat st;
 
-	fd = pkg_repo_fetch_remote_tmp(repo, filename, "bsd", t, rc, false);
+	fd = pkg_repo_fetch_remote_tmp(repo, filename, "pkg", t, rc, false);
 	if (fd == -1) {
 		fd = pkg_repo_fetch_remote_tmp(repo, filename,
 		    packing_format_to_string(repo->meta->packing_format), t, rc, false);

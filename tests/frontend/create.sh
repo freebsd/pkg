@@ -59,7 +59,7 @@ preparetestcredentials() {
 }
 
 basic_validation() {
-	test -f test-1.bsd || atf_fail "Package not created"
+	test -f test-1.pkg || atf_fail "Package not created"
 }
 
 create_with_hardlink_body() {
@@ -91,7 +91,7 @@ create_from_plist_body() {
 		-o match:"-rw-r--r-- .*root[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_set_owner_body() {
@@ -109,7 +109,7 @@ create_from_plist_set_owner_body() {
 		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_set_group_body() {
@@ -127,7 +127,7 @@ create_from_plist_set_group_body() {
 		-o match:"-rw-r--r-- .*root[ /]+bla.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 
@@ -146,7 +146,7 @@ create_from_plist_set_group_space_body() {
 		-o match:"-rw-r--r-- .*root[ /]+bla.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_gather_mode_body() {
@@ -166,7 +166,7 @@ create_from_plist_gather_mode_body() {
 		-o match:"-rwxrwxrwx .*plop[ /]+bla.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_set_mode_body() {
@@ -184,7 +184,7 @@ create_from_plist_set_mode_body() {
 		-o match:"-rwxr-sr-x .*root[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_mini_body() {
@@ -202,7 +202,7 @@ create_from_plist_mini_body() {
 		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /file1$" \
 		-e ignore \
 		-s exit:0 \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_dirrm_body() {
@@ -238,7 +238,7 @@ aline"
 		-o inline:"+COMPACT_MANIFEST\n+MANIFEST\n" \
 		-e empty \
 		-s exit:0 \
-		tar tf test-1.bsd
+		tar tf test-1.pkg
 
 	atf_check \
 		-o empty \
@@ -293,7 +293,7 @@ mkdir target
 
 	atf_check \
 		-o inline:"yes\nfile1\nyes\nA\nB\nC\nD\n" \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
 }
 
 create_from_plist_keyword_validation_body() {
@@ -477,7 +477,7 @@ EOF
 		-o file:output.ucl \
 		-e empty \
 		-s exit:0 \
-		pkg info -R --raw-format=ucl -F test-1.bsd
+		pkg info -R --raw-format=ucl -F test-1.pkg
 }
 
 create_from_manifest_and_plist_body() {
@@ -515,7 +515,7 @@ EOF
 		-o file:output.ucl \
 		-e empty \
 		-s exit:0 \
-		pkg info -R --raw-format=ucl -F test-1.bsd
+		pkg info -R --raw-format=ucl -F test-1.pkg
 }
 
 create_from_manifest_body() {
@@ -557,7 +557,7 @@ EOF
 		-o file:output.ucl \
 		-e empty \
 		-s exit:0 \
-		pkg info -R --raw-format=ucl -F test-1.bsd
+		pkg info -R --raw-format=ucl -F test-1.pkg
 }
 
 create_from_manifest_dir_body() {
@@ -590,7 +590,7 @@ Message
 
 "
 	atf_check pkg create -m . -r ${TMPDIR}
-	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.bsd
+	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.pkg
 
 cat << EOF > ./+DISPLAY
 [
@@ -609,7 +609,7 @@ message upgrade
 '
 
 	atf_check pkg create -m . -r ${TMPDIR}
-	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.bsd
+	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.pkg
 
 }
 
@@ -628,7 +628,7 @@ create_from_plist_hash_body() {
 		-o ignore \
 		-e empty \
 		-s exit:0 \
-		ls test-1-*.bsd
+		ls test-1-*.pkg
 }
 
 create_from_plist_with_keyword_and_message_body() {
@@ -661,7 +661,7 @@ on install
 
 '
 	atf_check pkg -o PLIST_KEYWORDS_DIR=. create -m . -r ${TMPDIR} -p test.plist
-	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.bsd
+	atf_check -o inline:"${OUTPUT}" pkg info -D -F ./test-1.pkg
 
 }
 
@@ -678,24 +678,24 @@ EOF
 	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -M test.ucl
 	atf_check \
 		-o match:"0 Jan +2 +1970.*/a" \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 	atf_check -e match:"Invalid" -s exit:1 pkg create -t meh -M test.ucl
 	atf_check pkg create -t 172800 -M test.ucl
 	atf_check \
 		-o match:"0 Jan +3 +1970.*/a" \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -t 172800 -M test.ucl
 	atf_check \
 		-o match:"0 Jan +3 +1970.*/a" \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 	atf_check pkg create -M test.ucl
 	atf_check \
 		-o match:"${pattern}" \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 
 	mkdir target
 	atf_check -o empty \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.bsd
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
 	atf_check \
 		-o match:"${pattern}" \
 		ls -l ${TMPDIR}/target/${TMPDIR}/a
@@ -705,10 +705,10 @@ create_no_clobber_body()
 {
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 
-	touch test-1.bsd
-	before=$(ls -l test-1.bsd)
+	touch test-1.pkg
+	before=$(ls -l test-1.pkg)
 	atf_check pkg create -nM test.ucl
-	after=$(ls -l test-1.bsd)
+	after=$(ls -l test-1.pkg)
 	[ "$before" = "$after" ] || atf_fail "Package was recreated \"$before\" vs \"$after\""
 }
 
@@ -732,7 +732,7 @@ EOF
 		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
-	atf_check -o inline:"/file1\n/file3\n/file2\n" pkg info -ql -F test*.bsd
+	atf_check -o inline:"/file1\n/file3\n/file2\n" pkg info -ql -F test*.pkg
 	cat << EOF >> other-plist
 @include test.plist
 EOF
@@ -783,7 +783,7 @@ touch A B
 
 	atf_check \
 		-o match:"-rw-r--r-- .*plop[ /]+wheel.* /A$" \
-		tar tvf test-1.bsd
+		tar tvf test-1.pkg
 }
 
 create_from_plist_keyword_deprecated_body()

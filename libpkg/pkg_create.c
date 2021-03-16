@@ -316,11 +316,11 @@ hash_file(struct pkg_create *pc, struct pkg *pkg)
 	char filename[MAXPATHLEN];
 
 	/* Find the hash and rename the file and create a symlink */
-	pkg_snprintf(filename, sizeof(filename), "%n-%v.bsd",
+	pkg_snprintf(filename, sizeof(filename), "%n-%v.pkg",
 			pkg, pkg);
 	pkg->sum = pkg_checksum_file(filename,
 			PKG_HASH_TYPE_SHA256_HEX);
-	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.bsd",
+	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.pkg",
 			pkg, pkg, pkg);
 
 	pkg_debug(1, "Rename the pkg file from: %s to: %s",
