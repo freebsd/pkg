@@ -6,7 +6,7 @@ tests_init \
 
 basic_body() {
 	if [ `uname -s` != "FreeBSD" ]; then
-		atf_skip "Not yet supported on non Fre.pkg"
+		atf_skip "Not yet supported on non FreeBSD"
 	fi
 	atf_check \
 		-o inline:"FreeBSD:13:amd64\n" \

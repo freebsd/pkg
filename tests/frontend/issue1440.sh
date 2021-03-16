@@ -3,7 +3,7 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 
-# https://github.com/fre.pkg/pkg/issues/1440
+# https://github.com/freebsd/pkg/issues/1440
 #pkgA
 # - pkgB
 #    - pkgC
