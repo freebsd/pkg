@@ -113,7 +113,7 @@ EOF
 	atf_check \
 		-o match:"^-r-sr-xr-- " \
 		-e ignore \
-		tar tvf ${TMPDIR}/test-1.pkg
+		bsdtar tvf ${TMPDIR}/test-1.pkg
 
 	mkdir ${TMPDIR}/target
 	atf_check \
@@ -153,7 +153,7 @@ EOF
 		-o match:"^-r-sr-xr--.*a$" \
 		-o match:"^hr-sr-xr--.*a$" \
 		-e ignore \
-		tar tvf ${TMPDIR}/test-1.pkg
+		bsdtar tvf ${TMPDIR}/test-1.pkg
 
 	mkdir ${TMPDIR}/target
 	atf_check \
