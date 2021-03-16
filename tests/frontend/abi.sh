@@ -5,11 +5,11 @@ tests_init \
 	basic
 
 basic_body() {
-	if [ `uname -s` != "Fre.pkg" ]; then
+	if [ `uname -s` != "FreeBSD" ]; then
 		atf_skip "Not yet supported on non Fre.pkg"
 	fi
 	atf_check \
-		-o inline:"Fre.pkg:13:amd64\n" \
+		-o inline:"FreeBSD:13:amd64\n" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/.pkg.bin config abi
 
 #	atf_check \
