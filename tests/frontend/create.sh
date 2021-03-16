@@ -676,20 +676,24 @@ EOF
 	pattern=$(ls -l ${TMPDIR}/a | awk '{print $6" +"$7" +"$8".*/a"}')
 	atf_check pkg create -M test.ucl
 	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -M test.ucl
-	atf_check \
+	# -e ignore needed since GNU tar prints "tar: Removing leading `/' from member names"
+	atf_check -e ignore \
 		-o match:"0 Jan +2 +1970.*/a" \
 		tar tvf test-1.pkg
 	atf_check -e match:"Invalid" -s exit:1 pkg create -t meh -M test.ucl
 	atf_check pkg create -t 172800 -M test.ucl
-	atf_check \
+	# -e ignore needed since GNU tar prints "tar: Removing leading `/' from member names"
+	atf_check -e ignore \
 		-o match:"0 Jan +3 +1970.*/a" \
 		tar tvf test-1.pkg
 	atf_check env SOURCE_DATE_EPOCH=86400 pkg create -t 172800 -M test.ucl
-	atf_check \
+	# -e ignore needed since GNU tar prints "tar: Removing leading `/' from member names"
+	atf_check -e ignore \
 		-o match:"0 Jan +3 +1970.*/a" \
 		tar tvf test-1.pkg
 	atf_check pkg create -M test.ucl
-	atf_check \
+	# -e ignore needed since GNU tar prints "tar: Removing leading `/' from member names"
+	atf_check -e ignore \
 		-o match:"${pattern}" \
 		tar tvf test-1.pkg
 
