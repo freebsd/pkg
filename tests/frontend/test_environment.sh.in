@@ -42,7 +42,7 @@ atf_skip_on() {
 }
 
 atf_require() {
-	if ! which -s $1; then
+	if ! command -v "$1" 2>/dev/null >/dev/null; then
 		shift
 		atf_skip "$@"
 	fi
