@@ -37,6 +37,7 @@
 
 #include <err.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <inttypes.h>
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
