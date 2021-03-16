@@ -1181,7 +1181,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			key = ucl_object_key(cur);
 			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
-		ucl_object_unref(ncfg);
 	}
 
 	ncfg = NULL;
