@@ -57,15 +57,16 @@ fedora_task:
         container:
                 image: fedora:latest
         env:
-                LDFLAGS: -fsanitize=address -ldl -g
-                CPPFLAGS: -fsanitize=address -g
-                CXXFLAGS: -fsanitize=address -g
-                CFLAGS: -fsanitize=address -g
+                LDFLAGS: -fsanitize=address,undefined -ldl -g
+                CPPFLAGS: -fsanitize=address,undefined -g
+                CXXFLAGS: -fsanitize=address,undefined -g
+                CFLAGS: -fsanitize=address,undefined -g
                 # False-positive leak detection in glibc:
                 # Direct leak of 12 byte(s) in 2 object(s) allocated from:
                 # #0 0x7fe222e5d3cf in __interceptor_malloc (/lib64/libasan.so.6+0xab3cf)
                 # #1 0x7fe22260f08f in __vasprintf_internal (/lib64/libc.so.6+0x7f08f)
                 ASAN_OPTIONS: detect_leaks=0
+                UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         install_script:
                 - dnf -y upgrade
                 - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc g++ make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel diffutils bsdtar openssl which xz
