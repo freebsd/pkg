@@ -1066,7 +1066,9 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 cleanup:
 	if (elf != NULL)
 		elf_end(elf);
-
+	if (oi == &loi) {
+		free(oi->name);
+	}
 	close(fd);
 	return (ret);
 }
@@ -1133,8 +1135,12 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 	char *arch_tweak;
 	int err;
 	err = pkg_get_myarch_elfparse(dest, sz, oi);
-	if (err)
+	if (err) {
+		if (oi) {
+			free(oi->name);
+		}
 		return (err);
+	}
 
 #ifdef __DragonFly__
 	if (strncasecmp(dest, "DragonFly", 9) == 0) {

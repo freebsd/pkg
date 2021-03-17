@@ -982,11 +982,13 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	char *tmp = NULL;
 	struct os_info oi;
 	size_t ukeylen;
+	int err = EPKG_OK;
 
 	k = NULL;
 	o = NULL;
 	if (ctx.rootfd == -1 && (ctx.rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open /");
+		/* Note: Not goto out since oi.arch hasn't been initialized yet. */
 		return (EPKG_FATAL);
 	}
 
@@ -999,13 +1001,15 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 #endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	if (((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4) &&
 	    ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)) {
 		pkg_emit_error("Invalid flags for pkg_init()");
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	config = ucl_object_typed_new(UCL_OBJECT);
@@ -1172,7 +1176,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	if (ncfg != NULL) {
@@ -1284,7 +1289,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (pkg_object_string(pkg_config_get("ABI")) == NULL ||
 	    strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
 		pkg_emit_error("Unable to determine ABI");
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	pkg_debug(1, "%s", "pkg initialized");
@@ -1339,7 +1345,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		buf = strstr(url, ":/");
 		if (buf == NULL) {
 			pkg_emit_error("invalid url: %s", url);
-			return (EPKG_FATAL);
+			err = EPKG_FATAL;
+			goto out;
 		}
 		fatal_errors = true;
 		it = NULL;
@@ -1353,7 +1360,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 		if (fatal_errors) {
 			pkg_emit_error("invalid scheme %.*s", (int)(buf - url), url);
-			return (EPKG_FATAL);
+			err = EPKG_FATAL;
+			goto out;
 		}
 	}
 
@@ -1366,11 +1374,16 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	metalog = pkg_object_string(pkg_config_get("METALOG"));
 	if (metalog != NULL) {
 		if(metalog_open(metalog) != EPKG_OK) {
-			return (EPKG_FATAL);
+			err = EPKG_FATAL;
+			goto out;
 		}
 	}
 
-	return (EPKG_OK);
+out:
+	free(oi.arch);
+	free(oi.name);
+	return err;
+
 }
 
 static struct pkg_repo_ops*
