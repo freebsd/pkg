@@ -31,7 +31,8 @@ xstring_new(void)
 static inline void
 xstring_reset(xstring *str)
 {
-	memset(str->buf, 0, str->size);
+	if (str->buf)
+		memset(str->buf, 0, str->size);
 	rewind(str->fp);
 
 }
