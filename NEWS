@@ -6,6 +6,8 @@ Changes from 1.16.99.2 to 1.16.99.3
 - make the default comprpession format a config option
 - set the default compression level for zstd to 19
 - make the default compression level a config option
+- Update libucl to latest version
+- change the package extension to .pkg (with symlink on the old format)
 
 Changes from 1.16.99.1 to 1.16.99.2
 - libpkg: rsa: stop leaking an RSA object
