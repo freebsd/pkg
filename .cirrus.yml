@@ -58,7 +58,8 @@ fedora_task:
                 image: fedora:latest
         env:
                 LDFLAGS: -fsanitize=address,undefined -ldl -g
-                CPPFLAGS: -fsanitize=address,undefined -g
+                # Avoid error when building with UBSan inside _mum_hash_avx2
+                CPPFLAGS: -fsanitize=address,undefined -g -D_MUM_UNALIGNED_ACCESS=0
                 CXXFLAGS: -fsanitize=address,undefined -g
                 CFLAGS: -fsanitize=address,undefined -g
                 # False-positive leak detection in glibc:
