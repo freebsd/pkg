@@ -29,11 +29,11 @@
 #include "pkg.h"
 #include "private/pkg.h"
 
-const char *
+char *
 pkg_object_dump(const pkg_object *o)
 {
 	if (o == NULL)
-		return ("");
+		return xstrdup("");
 
 	return (ucl_object_emit(o, UCL_EMIT_CONFIG));
 }
