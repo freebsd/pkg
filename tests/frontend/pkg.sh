@@ -46,7 +46,7 @@ pkg_config_defaults_body()
 	    -o match:'^ *SSH_RESTRICT_DIR = "";$' \
 	    -e empty              \
 	    -s exit:0             \
-	    env -i PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
+	    env -i ASAN_OPTIONS="${ASAN_OPTIONS}" PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -C "" -R "" -vv
 }
 
 pkg_create_manifest_bad_syntax_body()
