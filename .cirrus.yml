@@ -63,10 +63,10 @@ fedora_task:
                 ASAN_OPTIONS: detect_leaks=0
         install_script:
                 - dnf -y upgrade
-                - dnf -y install gcc g++ make kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel zlib-devel \
-                                 bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel \
-                                 libxml2-devel libacl-devel libzstd-devel \
-                                 libasan-static libubsan-static libasan-static libubsan-static \
+                - dnf -y install gcc g++ make kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel zlib-devel
+                                 bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel
+                                 libxml2-devel libacl-devel libzstd-devel
+                                 libasan-static libubsan-static libasan-static libubsan-static
                                  bsdtar diffutils openssl which xz
         script:
                 - ./configure --with-libarchive.pc --with-asan --with-ubsan
