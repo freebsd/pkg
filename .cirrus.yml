@@ -45,9 +45,9 @@ osx_task:
         install_script: scripts/install_deps.sh
         env:
                 LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
-                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-                CXXFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
+                CXXFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
+                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
         script:
                 - ./configure --with-asan --with-ubsan
                 - make -j4 || make V=1
