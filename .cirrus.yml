@@ -23,6 +23,11 @@ ubuntu_task:
         setup_script:
                 - DEBIAN_FRONTEND=noninteractive apt-get update
                 - DEBIAN_FRONTEND=noninteractive apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev libzstd-dev
+        env:
+          LDFLAGS: -fsanitize=address,undefined
+          CPPFLAGS: -fsanitize=address,undefined
+          CXXFLAGS: -fsanitize=address,undefined
+          CFLAGS: -fsanitize=address,undefined
         install_script: scripts/install_deps.sh
         script:
                 - ./configure --with-libarchive.pc
@@ -34,9 +39,10 @@ osx_task:
                 image: catalina-xcode
         install_script: scripts/install_deps.sh
         env:
-                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
-                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
+                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib -fsanitize=address,undefined
+                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -fsanitize=address,undefined
+                CXXFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -fsanitize=address,undefined
+                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -fsanitize=address,undefined
         script:
                 - ./configure
                 - make -j4 || make V=1
@@ -45,6 +51,11 @@ osx_task:
 fedora_task:
         container:
                 image: fedora:latest
+        env:
+                LDFLAGS: -fsanitize=address,undefined
+                CPPFLAGS: -fsanitize=address,undefined
+                CXXFLAGS: -fsanitize=address,undefined
+                CFLAGS: -fsanitize=address,undefined
         install_script:
                 - dnf -y upgrade
                 - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel openssl which xz
