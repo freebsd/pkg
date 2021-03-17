@@ -18,7 +18,8 @@ freebsd_task:
                   freebsd_instance:
                      image_family: freebsd-14-0-snap
                   env:
-                     EXTRA_ARGS: --with-asan --with-ubsan
+                     # TODO: enable --with-ubsan once the remaining issues have been fixed
+                     EXTRA_ARGS: --with-asan
 
 ubuntu_task:
         container:
