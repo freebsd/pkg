@@ -57,10 +57,10 @@ fedora_task:
         container:
                 image: fedora:latest
         env:
-                LDFLAGS: -fsanitize=address -ldl
-                CPPFLAGS: -fsanitize=address
-                CXXFLAGS: -fsanitize=address
-                CFLAGS: -fsanitize=address
+                LDFLAGS: -fsanitize=address -ldl -g
+                CPPFLAGS: -fsanitize=address -g
+                CXXFLAGS: -fsanitize=address -g
+                CFLAGS: -fsanitize=address -g
         install_script:
                 - dnf -y upgrade
                 - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc g++ make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel diffutils bsdtar openssl which xz
