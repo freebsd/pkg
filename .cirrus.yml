@@ -18,10 +18,10 @@ freebsd_task:
                   freebsd_instance:
                      image_family: freebsd-14-0-snap
                   env:
-                     LDFLAGS: -fsanitize=address,undefined
-                     CPPFLAGS: -fsanitize=address,undefined
-                     CXXFLAGS: -fsanitize=address,undefined
-                     CFLAGS: -fsanitize=address,undefined
+                     LDFLAGS: -fsanitize=address
+                     CPPFLAGS: -fsanitize=address
+                     CXXFLAGS: -fsanitize=address
+                     CFLAGS: -fsanitize=address
 ubuntu_task:
         container:
                 image: ubuntu:latest
@@ -29,10 +29,10 @@ ubuntu_task:
                 - DEBIAN_FRONTEND=noninteractive apt-get update
                 - DEBIAN_FRONTEND=noninteractive apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev libzstd-dev
         env:
-                LDFLAGS: -fsanitize=address,undefined
-                CPPFLAGS: -fsanitize=address,undefined
-                CXXFLAGS: -fsanitize=address,undefined
-                CFLAGS: -fsanitize=address,undefined
+                LDFLAGS: -fsanitize=address
+                CPPFLAGS: -fsanitize=address
+                CXXFLAGS: -fsanitize=address
+                CFLAGS: -fsanitize=address
         install_script: scripts/install_deps.sh
         script:
                 - ./configure --with-libarchive.pc
@@ -57,10 +57,10 @@ fedora_task:
         container:
                 image: fedora:latest
         env:
-                LDFLAGS: -fsanitize=address,undefined
-                CPPFLAGS: -fsanitize=address,undefined
-                CXXFLAGS: -fsanitize=address,undefined
-                CFLAGS: -fsanitize=address,undefined
+                LDFLAGS: -fsanitize=address
+                CPPFLAGS: -fsanitize=address
+                CXXFLAGS: -fsanitize=address
+                CFLAGS: -fsanitize=address
         install_script:
                 - dnf -y upgrade
                 - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel openssl which xz
