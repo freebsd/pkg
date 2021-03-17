@@ -17,6 +17,11 @@ freebsd_task:
                 - name: freebsd14-amd64
                   freebsd_instance:
                      image_family: freebsd-14-0-snap
+                  env:
+                     LDFLAGS: -fsanitize=address,undefined
+                     CPPFLAGS: -fsanitize=address,undefined
+                     CXXFLAGS: -fsanitize=address,undefined
+                     CFLAGS: -fsanitize=address,undefined
 ubuntu_task:
         container:
                 image: ubuntu:latest
@@ -24,10 +29,10 @@ ubuntu_task:
                 - DEBIAN_FRONTEND=noninteractive apt-get update
                 - DEBIAN_FRONTEND=noninteractive apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev libzstd-dev
         env:
-          LDFLAGS: -fsanitize=address,undefined
-          CPPFLAGS: -fsanitize=address,undefined
-          CXXFLAGS: -fsanitize=address,undefined
-          CFLAGS: -fsanitize=address,undefined
+                LDFLAGS: -fsanitize=address,undefined
+                CPPFLAGS: -fsanitize=address,undefined
+                CXXFLAGS: -fsanitize=address,undefined
+                CFLAGS: -fsanitize=address,undefined
         install_script: scripts/install_deps.sh
         script:
                 - ./configure --with-libarchive.pc
