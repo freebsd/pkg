@@ -276,10 +276,18 @@ cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 if {[opt-bool with-asan]} {
 	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address
 	define-append ASAN_LDFLAGS -fsanitize=address
+	if {[string match *-linux* [get-define host]]} {
+		# ASAN depends on libdl for dlsym when building with GCC
+		define-append ASAN_LDFLAGS -ldl
+	}
 	define asan 1
 	undefine HAVE_STATIC
 }
 if {[opt-bool with-ubsan]} {
+	# Avoid alignment error when building with UBSan inside _mum_hash_avx2
+	define-append UBSAN_CFLAGS -D_MUM_UNALIGNED_ACCESS=0
+	define-append UBSAN_CFLAGS -O0 -ggdb -fsanitize=undefined
+	define-append UBSAN_LDFLAGS -fsanitize=undefined
 	define ubsan 1
 }
 if {[opt-bool with-coverage]} {

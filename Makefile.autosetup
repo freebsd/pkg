@@ -15,6 +15,9 @@ clean-profiles:
 
 check: all
 @if TESTS
+@if ubsan
+	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1
+@endif
 	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw
 	if [ "$(HTML)" != "" ]; then \
 		args="-r $(top_builddir)/res.db" ; \
