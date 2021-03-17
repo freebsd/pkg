@@ -3901,7 +3901,7 @@ prop2 (PS * ps, Lit * this)
 #ifdef NO_BINARY_CLAUSES
   lstk = LIT2IMPLS (this);
   start = lstk->start;
-  l = start + lstk->count;
+  l = start ? start + lstk->count : NULL;
   while (l != start)
     {
       /* The counter 'visits' is the number of clauses that are
@@ -4709,7 +4709,7 @@ collect_clauses (PS * ps)
 	      Lit ** r, ** s;
 	      r = lstk->start;
 	      if (lit->val != TRUE || LIT2VAR (lit)->level)
-		for (s = r; s < lstk->start + lstk->count; s++)
+		for (s = r; lstk->start && s < lstk->start + lstk->count; s++)
 		  {
 		    Lit * other = *s;
 		    Var *v = LIT2VAR (other);
