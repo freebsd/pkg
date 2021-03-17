@@ -1188,8 +1188,8 @@ void pkg_object_free(pkg_object *o);
 const char *pkg_object_key(const pkg_object *);
 const pkg_object *pkg_object_iterate(const pkg_object *, pkg_iter *);
 unsigned pkg_object_count(const pkg_object *);
-const char *pkg_object_dump(const pkg_object *o);
-const char *pkg_config_dump(void);
+char *pkg_object_dump(const pkg_object *o);
+char *pkg_config_dump(void);
 
 /**
  * @todo Document

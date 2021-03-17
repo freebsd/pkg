@@ -376,6 +376,7 @@ show_repository_info(void)
 static void
 show_version_info(int version)
 {
+	char *config;
 	if (version > 1)
 		printf("%-24s: ", "Version");
 
@@ -384,7 +385,9 @@ show_version_info(int version)
 	if (version == 1)
 		exit(EXIT_SUCCESS);
 
-	printf("%s\n", pkg_config_dump());
+	config = pkg_config_dump();
+	printf("%s\n", config);
+	free(config);
 	show_plugin_info();
 	show_repository_info();
 

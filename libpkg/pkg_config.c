@@ -554,7 +554,7 @@ pkg_config_get(const char *key) {
 	return (ucl_object_find_key(config, key));
 }
 
-const char *
+char *
 pkg_config_dump(void)
 {
 	return (pkg_object_dump(config));
