@@ -7,12 +7,12 @@ tests_init \
 basic_body() {
 	_uname_s="$(uname -s)"
 	_expected="TODO: implement me"
-	if [ "${_uname_s}" = "FreeBSD" ]; then
-		_expected="FreeBSD:13:amd64\n"
-	else
-		# The FreeBSD ELF ABI_FILE should be ignored on other systems:
+	if [ "${_uname_s}" = "Darwin" ]; then
+			# The FreeBSD ELF ABI_FILE should is ignored on non-ELF platforms:
 		_expected="${_uname_s}:$(uname -r | cut -d. -f1):$(uname -p)\n"
-		# atf_skip "Not yet supported on ${_uname_s}"
+	else
+		# Otherwise the ABI should be parsed from the ELF file.
+		_expected="FreeBSD:13:amd64\n"
 	fi
 	atf_check \
 		-o inline:"${_expected}" \
