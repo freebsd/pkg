@@ -350,7 +350,7 @@ exec_info(int argc, char **argv)
 						pkgversion2++;
 						if (pkgversion2[0] == '=') {
 							pkgversion2++;
-							sign=LE;
+							sign2=LE;
 							j++;
 						}
 					} else {
@@ -372,7 +372,7 @@ exec_info(int argc, char **argv)
 						pkgversion2++;
 						if (pkgversion2[0] == '=') {
 							pkgversion2++;
-							sign=GE;
+							sign2=GE;
 							j++;
 						}
 					} else {
@@ -394,7 +394,7 @@ exec_info(int argc, char **argv)
 						pkgversion2++;
 						if (pkgversion2[0] == '=') {
 							pkgversion2++;
-							sign=EQ;
+							sign2=EQ;
 							j++;
 						}
 					} else {
