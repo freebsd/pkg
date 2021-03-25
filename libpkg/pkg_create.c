@@ -499,10 +499,6 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	/* First load the message before what ever in the manifest for backward compat */
-	if (pkg->message == NULL)
-		pkg_load_message_from_file(fd, pkg, "+DISPLAY");
-
 	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST", keys)) != EPKG_OK) {
 		pkg_manifest_keys_free(keys);
 		close(fd);
@@ -510,6 +506,7 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 	}
 	pkg_manifest_keys_free(keys);
 
+	pkg_load_message_from_file(fd, pkg, "+DISPLAY");
 	if (pkg->desc == NULL)
 		pkg_set_from_fileat(fd, pkg, PKG_DESC, "+DESC", false);
 
