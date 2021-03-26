@@ -110,7 +110,7 @@ keyword_open_schema(void)
 		"    actions_script = { type = string }; "
 		"    arguments = { type = boolean }; "
 		"    preformat_arguments { type = boolean };
-		"    validation = { type = string }; "
+		"    prepackaging = { type = string }; "
 		"    deprecated = { type = boolean }; "
 		"    deprecation_message = { type = string }; "
 		"    attributes = { "
