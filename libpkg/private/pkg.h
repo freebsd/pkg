@@ -652,8 +652,6 @@ struct plist {
 	char *uname;
 	char *gname;
 	const char *slash;
-	char *pkgdep;
-	bool ignore_next;
 	int64_t flatsize;
 	hardlinks_t *hardlinks;
 	mode_t perm;

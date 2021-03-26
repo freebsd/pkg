@@ -9,8 +9,6 @@ tests_init \
 	create_from_plist_gather_mode \
 	create_from_plist_set_mode \
 	create_from_plist_mini \
-	create_from_plist_dirrm \
-	create_from_plist_ignore \
 	create_from_plist_fflags create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
 	create_from_manifest_and_plist \
@@ -203,47 +201,6 @@ create_from_plist_mini_body() {
 		-e ignore \
 		-s exit:0 \
 		bsdtar tvf test-1.pkg
-}
-
-create_from_plist_dirrm_body() {
-	mkdir testdir
-
-	genmanifest
-	for dir in dirrm dirrmtry ; do
-		rm test.plist
-		genplist "@${dir} testdir"
-
-		atf_check \
-			-o empty \
-			-e inline:"${PROGNAME}: Warning: @dirrm[try] is deprecated, please use @dir\n" \
-			pkg create -o ${TMPDIR} -m . -p test.plist -r .
-
-		basic_validation
-
-	done
-}
-
-create_from_plist_ignore_body() {
-	genmanifest
-	genplist "@ignore
-aline"
-	atf_check \
-		-o empty \
-		-e empty \
-		pkg create -o ${TMPDIR} -m . -p test.plist -r .
-
-	basic_validation
-
-	atf_check \
-		-o inline:"+COMPACT_MANIFEST\n+MANIFEST\n" \
-		-e empty \
-		-s exit:0 \
-		bsdtar tf test-1.pkg
-
-	atf_check \
-		-o empty \
-		-e inline:"${PROGNAME}: Warning: @ignore is deprecated\n" \
-		pkg -o DEVELOPER_MODE=yes create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_fflags_body() {

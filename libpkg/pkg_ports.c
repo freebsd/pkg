@@ -59,7 +59,6 @@ static ucl_object_t *keyword_schema = NULL;
 
 static int setprefix(struct plist *, char *, struct file_attr *);
 static int dir(struct plist *, char *, struct file_attr *);
-static int dirrm(struct plist *, char *, struct file_attr *);
 static int file(struct plist *, char *, struct file_attr *);
 static int setmod(struct plist *, char *, struct file_attr *);
 static int setowner(struct plist *, char *, struct file_attr *);
@@ -68,7 +67,6 @@ static int comment_key(struct plist *, char *, struct file_attr *);
 static int config(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
 static int name_key(struct plist *, char *, struct file_attr *);
-static int pkgdep(struct plist *, char *, struct file_attr *);
 static int include_plist(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
@@ -77,8 +75,6 @@ static struct action_cmd {
 	size_t namelen;
 } list_actions[] = {
 	{ "setprefix", setprefix, 9},
-	{ "dirrm", dirrm, 5 },
-	{ "dirrmtry", dirrm, 7 },
 	{ "dir", dir, 3 },
 	{ "file", file, 4 },
 	{ "setmode", setmod, 6 },
@@ -88,7 +84,6 @@ static struct action_cmd {
 	{ "config", config, 6 },
 	/* compat with old packages */
 	{ "name", name_key, 4 },
-	{ "pkgdep", pkgdep, 6 },
 	{ NULL, NULL, 0 }
 };
 
@@ -223,16 +218,6 @@ name_key(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
-pkgdep(struct plist *p, char *line, struct file_attr *a __unused)
-{
-	if (*line != '\0') {
-		free(p->pkgdep);
-		p->pkgdep = xstrdup(line);
-	}
-	return (EPKG_OK);
-}
-
-static int
 lua_meta(lua_State *L,
     int (*perform)(struct plist *, char *, struct file_attr *))
 {
@@ -312,27 +297,6 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	return (ret);
-}
-
-static void
-warn_deprecated_dir(void)
-{
-	static bool warned_deprecated_dir = false;
-
-	if (warned_deprecated_dir)
-		return;
-	warned_deprecated_dir = true;
-
-	pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
-	    " use @dir");
-}
-
-static int
-dirrm(struct plist *p, char *line, struct file_attr *a)
-{
-
-	warn_deprecated_dir();
-	return (dir(p, line, a));
 }
 
 static int
@@ -486,40 +450,8 @@ setgroup(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
-comment_key(struct plist *p, char *line, struct file_attr *a __unused)
+comment_key(struct plist *p, char *line__unused , struct file_attr *a __unused)
 {
-	char *name, *version, *line_options, *line_options2, *option;
-
-	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
-		line += 10;
-		name = p->pkgdep;
-		if (name != NULL) {
-			version = strrchr(name, '-');
-			version[0] = '\0';
-			version++;
-			pkg_adddep(p->pkg, name, line, version, false);
-			free(p->pkgdep);
-		}
-		p->pkgdep = NULL;
-	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
-		line += 7;
-		free(p->pkg->origin);
-		p->pkg->origin = xstrdup(line);
-	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
-		line += 8;
-		/* OPTIONS:+OPTION -OPTION */
-		if (line[0] != '\0') {
-			line_options2 = line_options = xstrdup(line);
-			while ((option = strsep(&line_options, " ")) != NULL) {
-				if ((option[0] == '+' || option[0] == '-') &&
-				    option[1] != '\0' && isupper(option[1]))
-					pkg_addoption(p->pkg, option + 1,
-					    option[0] == '+' ? "on" : "off");
-			}
-			free(line_options2);
-		}
-	}
-
 	/* ignore md5 will be recomputed anyway */
 	return (EPKG_OK);
 }
@@ -532,19 +464,12 @@ static struct keyact {
 	{ "comment", comment_key },
 	{ "config", config },
 	{ "dir", dir },
-	{ "dirrm", dirrm },
-	{ "dirrmtry", dirrm },
 	{ "include", include_plist },
 	{ "mode", setmod },
 	{ "owner", setowner },
 	{ "group", setgroup },
 	/* old pkg compat */
 	{ "name", name_key },
-	{ "pkgdep", pkgdep },
-	{ "mtree", comment_key },
-	{ "stopdaemon", comment_key },
-	{ "display", comment_key },
-	{ "conflicts", comment_key },
 	{ NULL, NULL },
 };
 
@@ -1126,7 +1051,6 @@ plist_free(struct plist *p)
 
 	HASH_FREE(p->keywords, keyword_free);
 
-	free(p->pkgdep);
 	free(p->uname);
 	free(p->gname);
 	free(p->post_patterns.buf);

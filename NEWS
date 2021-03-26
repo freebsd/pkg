@@ -1,7 +1,13 @@
 Changes from 1.16.99.3 to 1.16.99.4
 - expose the name of the packages to its scripts lua and shell
-- remove internal support for @*exec
-- remove support for @ignore
+- plist: remove internal support for @*exec
+- plist: remove support for @ignore
+- plist: remove suppot for @dirrm/@dirrmtry
+- plist: remove support for @pkgdep
+- plist: remove stub support for @stopdaemon
+- plist: remove stub support for @display
+- plist: remove stub support for @mtree
+- plist: remove stub support for @conflict
 
 Changes from 1.16.99.2 to 1.16.99.3
 - lua update to 5.4.2
