@@ -215,7 +215,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 int
 format_exec_cmd(char **dest, const char *in, const char *prefix,
-    const char *plist_file, char *line, int argc, char **argv, bool lua)
+    const char *plist_file, const char *line, int argc, char **argv, bool lua)
 {
 	xstring *buf;
 	char path[MAXPATHLEN];

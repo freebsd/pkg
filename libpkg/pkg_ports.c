@@ -108,6 +108,8 @@ keyword_open_schema(void)
 		"      uniqueItems: true "
 		"    }; "
 		"    actions_script = { type = string }; "
+		"    arguments = { type = boolean }; "
+		"    preformat_arguments { type = boolean };
 		"    validation = { type = string }; "
 		"    deprecated = { type = boolean }; "
 		"    deprecation_message = { type = string }; "
@@ -573,175 +575,6 @@ should_be_post(char *cmd, struct plist *p)
 	return (false);
 }
 
-typedef enum {
-	EXEC = 0,
-	UNEXEC,
-	PREEXEC,
-	POSTEXEC,
-	PREUNEXEC,
-	POSTUNEXEC
-} exec_t;
-
-static int
-meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
-{
-	char *cmd, *buf, *tmp;
-	char comment[2];
-	char path[MAXPATHLEN];
-	regmatch_t pmatch[2];
-	int ret;
-
-	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL, 0,
-	    NULL, false);
-	if (ret != EPKG_OK)
-		return (EPKG_OK);
-
-	switch (type) {
-	case PREEXEC:
-		fprintf(p->pre_install_buf->fp, "%s\n", cmd);
-		break;
-	case POSTEXEC:
-		fprintf(p->post_install_buf->fp, "%s\n", cmd);
-		break;
-	case PREUNEXEC:
-		fprintf(p->pre_deinstall_buf->fp, "%s\n", cmd);
-		break;
-	case POSTUNEXEC:
-		fprintf(p->post_deinstall_buf->fp, "%s\n", cmd);
-		break;
-	case UNEXEC:
-		comment[0] = '\0';
-		/* workaround to detect the @dirrmtry */
-		if (STARTS_WITH(cmd, "rmdir ") || STARTS_WITH(cmd, "/bin/rmdir ")) {
-			comment[0] = '#';
-			comment[1] = '\0';
-
-			/* remove the glob if any */
-			if (strchr(cmd, '*'))
-				comment[0] = '\0';
-
-			buf = cmd;
-
-			/* start remove mkdir -? */
-			/* remove the command */
-			while (!isspace(buf[0]))
-				buf++;
-
-			while (isspace(buf[0]))
-				buf++;
-
-			if (buf[0] == '-')
-				comment[0] = '\0';
-			/* end remove mkdir -? */
-		}
-
-		if (should_be_post(cmd, p)) {
-			if (comment[0] != '#')
-				fprintf(p->post_deinstall_buf->fp,
-				    "%s%s\n", comment, cmd);
-		} else {
-			fprintf(p->pre_deinstall_buf->fp, "%s%s\n", comment, cmd);
-		}
-		if (comment[0] == '#') {
-			buf = cmd;
-			regex_t preg;
-
-			/* remove the @dirrm{,try}
-			 * command */
-			while (!isspace(buf[0]))
-				buf++;
-
-			if ((tmp = strchr(buf, '|')) != NULL)
-				tmp[0] = '\0';
-
-			if (strstr(buf, "\"/")) {
-				regcomp(&preg, "[[:space:]]\"(/[^\"]+)",
-				    REG_EXTENDED);
-				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so],
-					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-					buf+=pmatch[1].rm_eo;
-					if (!strcmp(path, "/dev/null"))
-						continue;
-					dir(p, path, a);
-					a = NULL;
-				}
-			} else {
-				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
-				    REG_EXTENDED);
-				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so],
-					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-					buf+=pmatch[1].rm_eo;
-					if (!strcmp(path, "/dev/null"))
-						continue;
-					dir(p, path, a);
-					a = NULL;
-				}
-			}
-			regfree(&preg);
-
-		}
-		break;
-	case EXEC:
-		fprintf(p->post_install_buf->fp, "%s\n", cmd);
-		break;
-	}
-
-	free(cmd);
-	return (EPKG_OK);
-}
-
-static int
-preunexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, PREUNEXEC));
-}
-
-static int
-postunexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, POSTUNEXEC));
-}
-
-static int
-preexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, PREEXEC));
-}
-
-static int
-postexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, POSTEXEC));
-}
-
-static int
-exec(struct plist *p, char *line, struct file_attr *a)
-{
-	static bool warned_deprecated_exec = false;
-
-	if (!warned_deprecated_exec) {
-		warned_deprecated_exec = true;
-		pkg_emit_error("Warning: @exec is deprecated, please"
-		    " use @[pre|post][un]exec");
-	}
-	return (meta_exec(p, line, a, EXEC));
-}
-
-static int
-unexec(struct plist *p, char *line, struct file_attr *a)
-{
-	static bool warned_deprecated_unexec = false;
-
-	if (!warned_deprecated_unexec) {
-		warned_deprecated_unexec = true;
-		pkg_emit_error("Warning: @unexec is deprecated, please"
-		    " use @[pre|post]unexec");
-	}
-	return (meta_exec(p, line, a, UNEXEC));
-}
-
 static struct keyact {
 	const char *key;
 	int (*action)(struct plist *, char *, struct file_attr *);
@@ -757,12 +590,6 @@ static struct keyact {
 	{ "mode", setmod },
 	{ "owner", setowner },
 	{ "group", setgroup },
-	{ "exec", exec },
-	{ "unexec", unexec },
-	{ "preexec", preexec },
-	{ "postexec", postexec },
-	{ "preunexec", preunexec },
-	{ "postunexec", postunexec },
 	/* old pkg compat */
 	{ "name", name_key },
 	{ "pkgdep", pkgdep },
@@ -929,6 +756,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	ucl_object_iter_t it = NULL;
 	struct pkg_message *msg;
 	char *cmd;
+	const char *l = line;
+	char *formated_line = NULL;
 	char **args = NULL;
 	char *buf, *tofree = NULL;
 	struct file_attr *freeattr = NULL;
@@ -947,11 +776,17 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "attributes")))
 		parse_attributes(o, attr != NULL ? &attr : &freeattr);
 
+	if ((o = ucl_object_find_key(obj,  "preformat_arguments")) &&
+	    ucl_object_toboolean(o)) {
+		format_exec_cmd(&formated_line, line, p->prefix, p->last_file, NULL, 0,
+				NULL, false);
+		l = formated_line;
+	}
 	/* add all shell scripts */
 	for (int i = 0; i < nitems(script_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, script_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-			    p->last_file, line, argc, args, false) != EPKG_OK)
+			    p->last_file, l, argc, args, false) != EPKG_OK)
 				goto keywords_cleanup;
 			append_script(p, script_mapping[i].type, cmd);
 			free(cmd);
@@ -962,12 +797,13 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	for (int i = 0; i < nitems(lua_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, lua_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-			    p->last_file, line, argc, args, true) != EPKG_OK)
+			    p->last_file, l, argc, args, true) != EPKG_OK)
 				goto keywords_cleanup;
 			pkg_add_lua_script(p->pkg, cmd, lua_mapping[i].type);
 			free(cmd);
 		}
 	}
+	free(formated_line);
 
 	if ((o = ucl_object_find_key(obj, "messages"))) {
 		while ((cur = ucl_iterate_object(o, &it, true))) {
