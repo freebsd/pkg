@@ -109,7 +109,7 @@ keyword_open_schema(void)
 		"    }; "
 		"    actions_script = { type = string }; "
 		"    arguments = { type = boolean }; "
-		"    preformat_arguments { type = boolean };
+		"    preformat_arguments { type = boolean }; "
 		"    prepackaging = { type = string }; "
 		"    deprecated = { type = boolean }; "
 		"    deprecation_message = { type = string }; "
