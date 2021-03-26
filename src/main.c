@@ -628,6 +628,13 @@ main(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
+	struct env_option {
+		char *assignment;
+		struct env_option *next;
+	};
+	static struct env_option *arg_options = NULL;
+	struct env_option *o;
+
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
@@ -685,7 +692,9 @@ main(int argc, char **argv)
 			version++;
 			break;
 		case 'o':
-			export_arg_option (optarg);
+			o = malloc(sizeof(struct env_option));
+			o->assignment = optarg;
+			LL_APPEND(arg_options, o);
 			break;
 		case '4':
 			init_flags = PKG_INIT_FLAG_USE_IPV4;
@@ -767,6 +776,10 @@ main(int argc, char **argv)
 
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EXIT_FAILURE, "Cannot parse configuration file!");
+
+	if (arg_options != NULL)
+		LL_FOREACH(arg_options, o)
+			export_arg_option (o->assignment);
 
 	if (debug > 0)
 		pkg_set_debug_level(debug);
