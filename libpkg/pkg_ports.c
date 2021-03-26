@@ -524,45 +524,6 @@ comment_key(struct plist *p, char *line, struct file_attr *a __unused)
 	return (EPKG_OK);
 }
 
-static void
-parse_post(struct plist *p)
-{
-	const char *env;
-	char *token;
-
-	if ((env = getenv("FORCE_POST")) == NULL)
-		return;
-
-	p->post_patterns.buf = xstrdup(env);
-	while ((token = strsep(&p->post_patterns.buf, " \t")) != NULL) {
-		if (token[0] == '\0')
-			continue;
-		if (p->post_patterns.len >= p->post_patterns.cap) {
-			p->post_patterns.cap += 10;
-			p->post_patterns.patterns = xrealloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
-		}
-		p->post_patterns.patterns[p->post_patterns.len++] = token;
-	}
-}
-
-static bool
-should_be_post(char *cmd, struct plist *p)
-{
-	size_t i;
-
-	if (p->post_patterns.patterns == NULL)
-		parse_post(p);
-
-	if (p->post_patterns.patterns == NULL)
-		return (false);
-
-	for (i = 0; i < p->post_patterns.len ; i++)
-		if (strstr(cmd, p->post_patterns.patterns[i]))
-			return (true);
-
-	return (false);
-}
-
 static struct keyact {
 	const char *key;
 	int (*action)(struct plist *, char *, struct file_attr *);
