@@ -8,6 +8,10 @@ Changes from 1.16.99.3 to 1.16.99.4
 - plist: remove stub support for @display
 - plist: remove stub support for @mtree
 - plist: remove stub support for @conflict
+- info: fix info processing of mutliple compares
+- ci runs again on linux and osx
+- portability fixes for linux and osx
+- ubsan/asan related fixes
 
 Changes from 1.16.99.2 to 1.16.99.3
 - lua update to 5.4.2
