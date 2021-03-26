@@ -1,5 +1,7 @@
 Changes from 1.16.99.3 to 1.16.99.4
 - expose the name of the packages to its scripts lua and shell
+- remove internal support for @*exec
+- remove support for @ignore
 
 Changes from 1.16.99.2 to 1.16.99.3
 - lua update to 5.4.2

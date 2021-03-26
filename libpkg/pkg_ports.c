@@ -64,7 +64,6 @@ static int file(struct plist *, char *, struct file_attr *);
 static int setmod(struct plist *, char *, struct file_attr *);
 static int setowner(struct plist *, char *, struct file_attr *);
 static int setgroup(struct plist *, char *, struct file_attr *);
-static int ignore_next(struct plist *, char *, struct file_attr *);
 static int comment_key(struct plist *, char *, struct file_attr *);
 static int config(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
@@ -86,7 +85,6 @@ static struct action_cmd {
 	{ "setowner", setowner, 8 },
 	{ "setgroup", setgroup, 8 },
 	{ "comment", comment_key, 7 },
-	{ "ignore_next", ignore_next, 11 },
 	{ "config", config, 6 },
 	/* compat with old packages */
 	{ "name", name_key, 4 },
@@ -526,16 +524,6 @@ comment_key(struct plist *p, char *line, struct file_attr *a __unused)
 	return (EPKG_OK);
 }
 
-static int
-ignore_next(struct plist *p, __unused char *line, struct file_attr *a __unused)
-{
-	p->ignore_next = true;
-	if (ctx.developer_mode)
-		pkg_emit_error("Warning: @ignore is deprecated");
-
-	return (EPKG_OK);
-}
-
 static void
 parse_post(struct plist *p)
 {
@@ -580,7 +568,6 @@ static struct keyact {
 	int (*action)(struct plist *, char *, struct file_attr *);
 } keyacts[] = {
 	{ "cwd", setprefix },
-	{ "ignore", ignore_next },
 	{ "comment", comment_key },
 	{ "config", config },
 	{ "dir", dir },
@@ -1089,11 +1076,6 @@ plist_parse_line(struct plist *plist, char *line)
 {
 	char *keyword, *buf, *bkpline;
 	struct file_attr *a;
-
-	if (plist->ignore_next) {
-		plist->ignore_next = false;
-		return (EPKG_OK);
-	}
 
 	if (line[0] == '\0')
 		return (EPKG_OK);
