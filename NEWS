@@ -1,3 +1,6 @@
+Changes from 1.16.99.3 to 1.16.99.4
+- expose the name of the packages to its scripts lua and shell
+
 Changes from 1.16.99.2 to 1.16.99.3
 - lua update to 5.4.2
 - pkg repo accept now all supported formats mixed without config

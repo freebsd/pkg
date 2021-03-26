@@ -103,6 +103,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_pushliteral(L, "PREFIX");
 			lua_pushstring(L, pkg->prefix);
 			lua_setglobal(L, "pkg_prefix");
+			lua_pushstring(L, pkg->name);
+			lua_setglobal(L, "pkg_name");
 			if (ctx.pkg_rootdir == NULL)
 				ctx.pkg_rootdir = "/";
 			lua_pushstring(L, ctx.pkg_rootdir);

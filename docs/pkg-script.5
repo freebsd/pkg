@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd January 28, 2020
+.Dd March 26, 2021
 .Dt PKG-SCRIPT 5
 .Os
 .Sh NAME
@@ -48,6 +48,8 @@ new post-install
 .Sh Environment
 The following environment variable are exported to be used by the script
 .Bl -tag -width Ds
+.It Ev PKG_NAME
+Represents the name of the package.
 .It Ev PKG_PREFIX
 .Va PREFIX
 defined within the package at build time.

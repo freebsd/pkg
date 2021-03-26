@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd July 17, 2020
+.Dd March 26, 2021
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -80,6 +80,8 @@ has been disabled.
 .Pp
 The following variables are available defined to any lua scripts:
 .Bl -tag -width Ds
+.It Va pkg_name
+name of the package.
 .It Va pkg_prefix
 .Va PREFIX
 defined within the package at build time.

@@ -110,6 +110,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			if (upgrade) {
 				setenv("PKG_UPGRADE", "true", 1);
 			}
+			setenv("PKG_NAME", pkg->name, 1);
 			setenv("PKG_PREFIX", pkg->prefix, 1);
 			if (ctx.pkg_rootdir == NULL)
 				ctx.pkg_rootdir = "/";
