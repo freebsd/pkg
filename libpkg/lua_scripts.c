@@ -114,7 +114,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_pushcfunction(L, lua_print_msg);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
-			lua_override_ios(L);
+			lua_override_ios(L, true);
 #ifdef HAVE_CAPSICUM
 			if (cap_enter() < 0 && errno != ENOSYS) {
 				err(1, "cap_enter failed");

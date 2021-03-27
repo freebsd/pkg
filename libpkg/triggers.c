@@ -26,10 +26,6 @@
 
 #include "pkg_config.h"
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
-
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -384,7 +380,7 @@ trigger_execute_lua(const char *script, kh_strings_t *args)
 	if (pid == 0) {
 		L = luaL_newstate();
 		luaL_openlibs(L);
-		lua_override_ios(L);
+		lua_override_ios(L, false);
 		char *dir;
 		char **arguments = NULL;
 		int i = 0;
@@ -395,11 +391,6 @@ trigger_execute_lua(const char *script, kh_strings_t *args)
 			});
 		}
 		lua_args_table(L, arguments, i);
-#ifdef HAVE_CAPSICUM
-		if (cap_enter() < 0 && errno != ENOSYS) {
-			err(1, "cap_enter failed");
-		}
-#endif
 		if (luaL_dostring(L, script)) {
 			pkg_emit_error("Failed to execute lua trigger: "
 					"%s", lua_tostring(L, -1));

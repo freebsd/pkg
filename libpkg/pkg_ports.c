@@ -719,7 +719,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		lua_args_table(L, args, argc);
 		luaL_newlib(L, plist_lib);
 		lua_setglobal(L, "pkg");
-		lua_override_ios(L);
+		lua_override_ios(L, false);
 		pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---"
 		    "\n%s\nScripts: --- END ---", ucl_object_tostring(o));
 		if (luaL_dostring(L, ucl_object_tostring(o))) {

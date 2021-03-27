@@ -415,7 +415,7 @@ lua_os_exit(lua_State *L)
 }
 
 void
-lua_override_ios(lua_State *L)
+lua_override_ios(lua_State *L, bool sandboxed)
 {
 	lua_getglobal(L, "io");
 	lua_pushcfunction(L, lua_io_open);
@@ -426,8 +426,10 @@ lua_override_ios(lua_State *L)
 	lua_setfield(L, -2, "remove");
 	lua_pushcfunction(L, lua_os_rename);
 	lua_setfield(L, -2, "rename");
-	lua_pushcfunction(L, lua_os_execute);
-	lua_setfield(L, -2, "execute");
+	if (sandboxed) {
+		lua_pushcfunction(L, lua_os_execute);
+		lua_setfield(L, -2, "execute");
+	}
 	lua_pushcfunction(L, lua_os_exit);
 	lua_setfield(L, -2, "exit");
 }
