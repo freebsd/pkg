@@ -381,6 +381,17 @@ trigger_execute_lua(const char *script, kh_strings_t *args)
 		L = luaL_newstate();
 		luaL_openlibs(L);
 		lua_override_ios(L, false);
+		static const luaL_Reg pkg_lib[] = {
+			{ "print_msg", lua_print_msg },
+			{ "prefixed_path", lua_prefix_path },
+			{ "filecmp", lua_pkg_filecmp },
+			{ "copy", lua_pkg_copy },
+			{ "stat", lua_stat },
+			{ "exec", lua_exec },
+			{ NULL, NULL },
+		};
+		luaL_newlib(L, pkg_lib);
+		lua_setglobal(L, "pkg");
 		char *dir;
 		char **arguments = NULL;
 		int i = 0;
