@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,10 @@
  */
 
 #include "pkg_config.h"
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -79,6 +83,7 @@ trigger_open_schema(void)
 		"      properties = {"
 		"        type = { "
 		"          type = string,"
+		"          sandbox = boolean, "
 		"          enum: [lua, shell];"
 		"        };"
 		"        script = { type = string };"
@@ -90,6 +95,7 @@ trigger_open_schema(void)
 		"      properties = {"
 		"        type = { "
 		"          type = string,"
+		"          sandbox = boolean, "
 		"          enum: [lua, shell];"
 		"        };"
 		"        script = { type = string };"
@@ -175,6 +181,12 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		}
 
 		t->cleanup.script = xstrdup(ucl_object_tostring(o));
+		o = ucl_object_find_key(cleanup, "sandbox");
+		if (o == NULL) {
+			t->cleanup.sandbox = true;
+		} else {
+			t->cleanup.sandbox = ucl_object_toboolean(o);
+		}
 		ucl_object_unref(obj);
 		return (t);
 	}
@@ -200,8 +212,13 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		pkg_emit_error("No script in trigger %s", name);
 		goto err;
 	}
-
 	t->script.script = xstrdup(ucl_object_tostring(o));
+	o = ucl_object_find_key(trigger, "sandbox");
+	if (o == NULL) {
+		t->script.sandbox = true;
+	} else {
+		t->script.sandbox = ucl_object_toboolean(o);
+	}
 
 	o = ucl_object_find_key(obj, "path");
 	if (o != NULL)
@@ -371,7 +388,7 @@ cleanup:
 }
 
 static int
-trigger_execute_lua(const char *script, kh_strings_t *args)
+trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 {
 	lua_State *L;
 	int pstat;
@@ -380,7 +397,7 @@ trigger_execute_lua(const char *script, kh_strings_t *args)
 	if (pid == 0) {
 		L = luaL_newstate();
 		luaL_openlibs(L);
-		lua_override_ios(L, false);
+		lua_override_ios(L, sandbox);
 		static const luaL_Reg pkg_lib[] = {
 			{ "print_msg", lua_print_msg },
 			{ "prefixed_path", lua_prefix_path },
@@ -402,6 +419,13 @@ trigger_execute_lua(const char *script, kh_strings_t *args)
 			});
 		}
 		lua_args_table(L, arguments, i);
+#ifdef HAVE_CAPSICUM
+		if (sandbox) {
+			if (cap_enter() < 0 && errno != ENOSYS) {
+				err(1, "cap_enter failed");
+			}
+		}
+#endif
 		if (luaL_dostring(L, script)) {
 			pkg_emit_error("Failed to execute lua trigger: "
 					"%s", lua_tostring(L, -1));
@@ -490,7 +514,8 @@ triggers_execute(struct trigger *cleanup_triggers)
 	LL_FOREACH(cleanup_triggers, t) {
 		pkg_emit_trigger(t->name, true);
 		if (t->cleanup.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->cleanup.script, NULL);
+			ret = trigger_execute_lua(t->cleanup.script,
+			    t->cleanup.sandbox, NULL);
 		} else if (t->cleanup.type == SCRIPT_SHELL) {
 			ret = trigger_execute_shell(t->cleanup.script, NULL);
 		}
@@ -512,7 +537,8 @@ triggers_execute(struct trigger *cleanup_triggers)
 			continue;
 		pkg_emit_trigger(t->name, false);
 		if (t->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->script.script, t->matched);
+			ret = trigger_execute_lua(t->script.script,
+			    t->script.sandbox, t->matched);
 		} else if (t->script.type == SCRIPT_SHELL) {
 			ret = trigger_execute_shell(t->script.script, t->matched);
 		}

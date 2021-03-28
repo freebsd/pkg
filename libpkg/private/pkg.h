@@ -355,10 +355,12 @@ struct trigger {
 	struct {
 		char *script;
 		int type;
+		bool sandbox;
 	} script;
 	struct {
 		char *script;
 		int type;
+		bool sandbox;
 	} cleanup;
 	kh_strings_t *matched;
 	struct trigger *prev, *next;

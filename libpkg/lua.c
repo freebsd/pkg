@@ -24,6 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkg_config.h"
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
+
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
@@ -128,6 +134,12 @@ lua_exec(lua_State *L)
 	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
 	    "pkg.prefix_path takes exactly one argument");
 
+#ifdef HAVE_CAPSICUM
+	unsigned int capmode;
+	if (cap_getmode(&capmode) == 0 && capmode > 0) {
+		return (luaL_error(L, "pkg.exec not available in sandbox"));
+	}
+#endif
 	if (pipe(stdin_pipe) < 0)
 		return (EPKG_FATAL);
 
