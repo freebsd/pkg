@@ -89,7 +89,7 @@ lua_print_msg(lua_State *L)
 	return (0);
 }
 
- int
+int
 lua_pkg_copy(lua_State *L)
 {
 	int n = lua_gettop(L);
