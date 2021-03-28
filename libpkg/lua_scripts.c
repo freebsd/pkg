@@ -100,6 +100,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_setglobal(L, "msgfd");
 			lua_pushlightuserdata(L, pkg);
 			lua_setglobal(L, "package");
+			lua_pushinteger(L, pkg->rootfd);
+			lua_setglobal(L, "rootfd");
 			lua_pushliteral(L, "PREFIX");
 			lua_pushstring(L, pkg->prefix);
 			lua_setglobal(L, "pkg_prefix");

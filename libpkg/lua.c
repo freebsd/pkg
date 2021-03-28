@@ -166,14 +166,14 @@ lua_pkg_copy(lua_State *L)
 
 	bool install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
-	lua_getglobal(L, "package");
-	struct pkg *pkg = lua_touserdata(L, -1);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
 
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(src), &s1, 0) == -1) {
+	if (fstatat(rootfd, RELATIVE_PATH(src), &s1, 0) == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	fd1 = openat(pkg->rootfd, RELATIVE_PATH(src), O_RDONLY, DEFFILEMODE);
+	fd1 = openat(rootfd, RELATIVE_PATH(src), O_RDONLY, DEFFILEMODE);
 	if (fd1 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
@@ -183,7 +183,7 @@ lua_pkg_copy(lua_State *L)
 	 * bug is preventing us doing that
 	 * See https://bugs.freebsd.org/250271
 	 */
-	fd2 = openat(pkg->rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
+	fd2 = openat(rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
@@ -232,7 +232,7 @@ lua_pkg_copy(lua_State *L)
 #endif
 #endif
 
-	if (set_attrsat(pkg->rootfd, RELATIVE_PATH(dst), s1.st_mode, s1.st_uid,
+	if (set_attrsat(rootfd, RELATIVE_PATH(dst), s1.st_mode, s1.st_uid,
 	  s1.st_gid, &ts[0], &ts[1]) != EPKG_OK) {
 		lua_pushinteger(L, -1);
 		return (1);
@@ -240,7 +240,7 @@ lua_pkg_copy(lua_State *L)
 
 #ifdef HAVE_CHFLAGSAT
 	if (!install_as_user && s1.st_flags != 0) {
-		if (chflagsat(pkg->rootfd, RELATIVE_PATH(dst),
+		if (chflagsat(rootfd, RELATIVE_PATH(dst),
 		    s1.st_flags, AT_SYMLINK_NOFOLLOW) == -1) {
 			pkg_fatal_errno("Fail to chflags %s", dst);
 			lua_pushinteger(L, -1);
@@ -264,14 +264,14 @@ lua_pkg_filecmp(lua_State *L)
 	int fd1, fd2;
 	int ret = 0;
 
-	lua_getglobal(L, "package");
-	struct pkg *pkg = lua_touserdata(L, -1);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
 
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(file1), &s1, 0) == -1) {
+	if (fstatat(rootfd, RELATIVE_PATH(file1), &s1, 0) == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(file2), &s2, 0) == -1) {
+	if (fstatat(rootfd, RELATIVE_PATH(file2), &s2, 0) == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
@@ -279,12 +279,12 @@ lua_pkg_filecmp(lua_State *L)
 		lua_pushinteger(L, 1);
 		return (1);
 	}
-	fd1 = openat(pkg->rootfd, RELATIVE_PATH(file1), O_RDONLY, DEFFILEMODE);
+	fd1 = openat(rootfd, RELATIVE_PATH(file1), O_RDONLY, DEFFILEMODE);
 	if (fd1 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	fd2 = openat(pkg->rootfd, RELATIVE_PATH(file2), O_RDONLY, DEFFILEMODE);
+	fd2 = openat(rootfd, RELATIVE_PATH(file2), O_RDONLY, DEFFILEMODE);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
@@ -344,12 +344,12 @@ lua_stat(lua_State *L)
 	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
 	    "pkg.stat takes exactly one argument");
 	const char *path = RELATIVE_PATH(luaL_checkstring(L, 1));
-	lua_getglobal(L, "package");
-	struct pkg *pkg = lua_touserdata(L, -1);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
 	struct stat s;
 	const char *type = "unknown";
 
-	if (fstatat(pkg->rootfd, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
+	if (fstatat(rootfd, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
 		return lua_pushnil(L), 1;
 	}
 
@@ -424,13 +424,13 @@ lua_io_open(lua_State *L)
 {
 	const char *filename = luaL_checkstring(L, 1);
 	const char *mode = luaL_optstring(L, 2, "r");
-	lua_getglobal(L, "package");
-	struct pkg *pkg = lua_touserdata(L, -1);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
 	int oflags;
 	luaL_Stream *p = newfile(L);
 	const char *md = mode;
 	luaL_argcheck(L, checkflags(md, &oflags), 2, "invalid mode");
-	int fd = openat(pkg->rootfd, RELATIVE_PATH(filename), oflags, DEFFILEMODE);
+	int fd = openat(rootfd, RELATIVE_PATH(filename), oflags, DEFFILEMODE);
 	if (fd == -1)
 		return (luaL_fileresult(L, 0, filename));
 	p->f = fdopen(fd, mode);
@@ -440,18 +440,18 @@ lua_io_open(lua_State *L)
 static int
 lua_os_remove(lua_State *L) {
 	const char *filename = RELATIVE_PATH(luaL_checkstring(L, 1));
-	lua_getglobal(L, "package");
-	struct pkg *pkg = lua_touserdata(L, -1);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
 	int flag = 0;
 	struct stat st;
 
-	if (fstatat(pkg->rootfd, filename, &st, AT_SYMLINK_NOFOLLOW) == -1)
+	if (fstatat(rootfd, filename, &st, AT_SYMLINK_NOFOLLOW) == -1)
 		return (luaL_fileresult(L, 1, NULL));
 
 	if (S_ISDIR(st.st_mode))
 		flag = AT_REMOVEDIR;
 
-	return (luaL_fileresult(L, unlinkat(pkg->rootfd, filename, flag) == 0, NULL));
+	return (luaL_fileresult(L, unlinkat(rootfd, filename, flag) == 0, NULL));
 }
 
 static int
@@ -459,9 +459,9 @@ lua_os_rename(lua_State *L)
 {
 	const char *fromname = RELATIVE_PATH(luaL_checkstring(L, 1));
 	const char *toname = RELATIVE_PATH(luaL_checkstring(L, 2));
-	lua_getglobal(L, "package");
-	struct pkg *pkg = lua_touserdata(L, -1);
-	return luaL_fileresult(L, renameat(pkg->rootfd, fromname, pkg->rootfd, toname) == 0, NULL);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
+	return luaL_fileresult(L, renameat(rootfd, fromname, rootfd, toname) == 0, NULL);
 }
 
 static int
