@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2019 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2019-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -26,15 +26,20 @@
 
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
+#include <spawn.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <xstring.h>
 
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/lua.h"
+
+extern char **environ;
 
 lua_CFunction
 stack_dump(lua_State *L)
@@ -87,6 +92,63 @@ lua_print_msg(lua_State *L)
 	dprintf(fd, "%s\n", str);
 
 	return (0);
+}
+
+
+static const char**
+luaL_checkarraystrings(lua_State *L, int arg) {
+	const char **ret;
+	lua_Integer n, i;
+	int t;
+	int abs_arg = lua_absindex(L, arg);
+	luaL_checktype(L, abs_arg, LUA_TTABLE);
+	n = lua_rawlen(L, abs_arg);
+	ret = lua_newuserdata(L, (n+1)*sizeof(char*));
+	for (i=0; i<n; i++) {
+		t = lua_rawgeti(L, abs_arg, i+1);
+		if (t == LUA_TNIL)
+			break;
+		luaL_argcheck(L, t == LUA_TSTRING, arg, "expected array of strings");
+		ret[i] = lua_tostring(L, -1);
+		lua_pop(L, 1);
+	}
+	ret[i] = NULL;
+	return ret;
+}
+
+int
+lua_exec(lua_State *L)
+{
+	int r;
+	posix_spawn_file_actions_t action;
+	int stdin_pipe[2] = {-1, -1};
+	pid_t pid;
+	const char **argv;
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.prefix_path takes exactly one argument");
+
+	if (pipe(stdin_pipe) < 0)
+		return (EPKG_FATAL);
+
+	posix_spawn_file_actions_init(&action);
+	posix_spawn_file_actions_adddup2(&action, stdin_pipe[0], STDIN_FILENO);
+	posix_spawn_file_actions_addclose(&action, stdin_pipe[1]);
+
+	argv = luaL_checkarraystrings(L, 1);
+	if (0 != (r = posix_spawnp(&pid, argv[0], &action, NULL,
+		(char*const*)argv, environ))) {
+		lua_pushnil(L);
+		lua_pushstring(L, strerror(r));
+		lua_pushinteger(L, r);
+		return 3;
+	}
+	if (stdin_pipe[0] != -1)
+		close(stdin_pipe[0]);
+	if (stdin_pipe[1] != -1)
+		close(stdin_pipe[1]);
+	lua_pushinteger(L, pid);
+	return 1;
 }
 
 int
