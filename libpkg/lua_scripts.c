@@ -103,7 +103,6 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_setglobal(L, "package");
 			lua_pushinteger(L, pkg->rootfd);
 			lua_setglobal(L, "rootfd");
-			lua_pushliteral(L, "PREFIX");
 			lua_pushstring(L, pkg->prefix);
 			lua_setglobal(L, "pkg_prefix");
 			lua_pushstring(L, pkg->name);
@@ -114,7 +113,6 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_setglobal(L, "pkg_rootdir");
 			lua_pushboolean(L, (upgrade));
 			lua_setglobal(L, "pkg_upgrade");
-			lua_pushcfunction(L, lua_print_msg);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
 			lua_override_ios(L, true);
