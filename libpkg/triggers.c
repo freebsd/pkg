@@ -409,6 +409,8 @@ trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 		};
 		luaL_newlib(L, pkg_lib);
 		lua_setglobal(L, "pkg");
+		lua_pushinteger(L, ctx.rootfd);
+		lua_setglobal(L, "rootfd");
 		char *dir;
 		char **arguments = NULL;
 		int i = 0;
