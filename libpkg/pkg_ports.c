@@ -128,7 +128,7 @@ keyword_open_schema(void)
 		"            type = object;"
 		"            properties {"
 		"                message = { type = string };"
-		"                type = { enum = [ upgrade, remove, install ] };"
+		"                type = { enum = [ upgrade, remove, install, pre-upgrade, pre-remove, pre-install ] };"
 		"            };"
 		"            required [ message ];"
 		"        };"
@@ -692,6 +692,12 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 					msg->type = PKG_MESSAGE_REMOVE;
 				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 					msg->type = PKG_MESSAGE_UPGRADE;
+				else if (strcasecmp(ucl_object_tostring(elt), "pre-install") == 0)
+					msg->type = PKG_MESSAGE_PREINSTALL;
+				else if (strcasecmp(ucl_object_tostring(elt), "pre-remove") == 0)
+					msg->type = PKG_MESSAGE_PREREMOVE;
+				else if (strcasecmp(ucl_object_tostring(elt), "pre-upgrade") == 0)
+					msg->type = PKG_MESSAGE_PREUPGRADE;
 			}
 			DL_APPEND(p->pkg->message, msg);
 		}

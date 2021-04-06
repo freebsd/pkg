@@ -62,6 +62,8 @@ message
 	{ message: "hey"},
 	{ message: "install", type = install},
 	{ message: "remove", type = remove},
+	{ message: "before install", type = pre-install},
+	{ message: "before remove", type = pre-remove},
 ]
 EOF
 OUTPUT='test2-1:
@@ -73,6 +75,12 @@ install
 
 On remove:
 remove
+
+Before install:
+before install
+
+Before remove:
+before remove
 
 '
 	atf_check -o match:"hey" -o match:"install" -o not-match:"remove" pkg register -m .

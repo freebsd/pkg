@@ -1041,6 +1041,65 @@ pkg_rollback_cb(void *data)
 	pkg_rollback_pkg((struct pkg *)data);
 }
 
+static void
+pkg_print_message(struct pkg *pkg, struct pkg *local, struct pkg *remote,
+		pkg_printmessage_t prepost)
+{
+	xstring			*message = NULL;
+	struct pkg_message	*msg;
+	const char		*msgstr;
+
+	LL_FOREACH(pkg->message, msg) {
+		msgstr = NULL;
+		/* Print "always"-type only post-operation */
+		if ((msg->type == PKG_MESSAGE_ALWAYS) &&
+		     (prepost == PKG_PRINTMESSAGE_POST)) {
+			msgstr = msg->str;
+		} else if (local != NULL &&
+		     msg->type == ((prepost == PKG_PRINTMESSAGE_POST) ? 
+			     PKG_MESSAGE_UPGRADE : PKG_MESSAGE_PREUPGRADE)) {
+			if (msg->maximum_version == NULL &&
+			    msg->minimum_version == NULL) {
+				msgstr = msg->str;
+			} else if (msg->maximum_version == NULL) {
+				if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+					msgstr = msg->str;
+				}
+			} else if (msg->minimum_version == NULL) {
+				if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
+					msgstr = msg->str;
+				}
+			} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
+				    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
+				msgstr = msg->str;
+			}
+		} else if (local == NULL &&
+			    msg->type == (
+				(prepost == PKG_PRINTMESSAGE_POST ?
+				 PKG_MESSAGE_INSTALL : PKG_MESSAGE_PREINSTALL))) {
+				msgstr = msg->str;
+		}
+		if (msgstr != NULL) {
+			if (message == NULL) {
+				message = xstring_new();
+				pkg_fprintf(message->fp, "=====\nMessage from "
+				    "%n-%v:\n\n", pkg, pkg);
+			}
+			fprintf(message->fp, "--\n%s\n", msgstr);
+		}
+	}
+	if (pkg->message != NULL && message != NULL) {
+		fflush(message->fp);
+		if (prepost == PKG_PRINTMESSAGE_POST)
+			pkg_emit_message(message->buf);
+		else {
+			pkg_emit_notice("%s", message->buf);
+			sleep(10);
+		}
+		xstring_free(message);
+	}
+}
+
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
@@ -1049,10 +1108,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct archive		*a;
 	struct archive_entry	*ae;
 	struct pkg		*pkg = NULL;
-	xstring			*message = NULL;
-	struct pkg_message	*msg;
 	struct pkg_file		*f;
-	const char		*msgstr;
 	bool			 extract = true;
 	int			 retcode = EPKG_OK;
 	int			 ret;
@@ -1142,6 +1198,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
+	pkg_print_message(pkg, local, remote, PKG_PRINTMESSAGE_PRE);
+
 	/*
 	 * Execute pre-install scripts
 	 */
@@ -1216,45 +1274,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg_emit_install_finished(pkg, local);
 	}
 
-	LL_FOREACH(pkg->message, msg) {
-		msgstr = NULL;
-		if (msg->type == PKG_MESSAGE_ALWAYS) {
-			msgstr = msg->str;
-		} else if (local != NULL &&
-		     msg->type == PKG_MESSAGE_UPGRADE) {
-			if (msg->maximum_version == NULL &&
-			    msg->minimum_version == NULL) {
-				msgstr = msg->str;
-			} else if (msg->maximum_version == NULL) {
-				if (pkg_version_cmp(local->version, msg->minimum_version) == 1) {
-					msgstr = msg->str;
-				}
-			} else if (msg->minimum_version == NULL) {
-				if (pkg_version_cmp(local->version, msg->maximum_version) == -1) {
-					msgstr = msg->str;
-				}
-			} else if (pkg_version_cmp(local->version, msg->maximum_version) == -1 &&
-				    pkg_version_cmp(local->version, msg->minimum_version) == 1) {
-				msgstr = msg->str;
-			}
-		} else if (local == NULL &&
-		    msg->type == PKG_MESSAGE_INSTALL) {
-			msgstr = msg->str;
-		}
-		if (msgstr != NULL) {
-			if (message == NULL) {
-				message = xstring_new();
-				pkg_fprintf(message->fp, "=====\nMessage from "
-				    "%n-%v:\n\n", pkg, pkg);
-			}
-			fprintf(message->fp, "--\n%s\n", msgstr);
-		}
-	}
-	if (pkg->message != NULL && message != NULL) {
-		fflush(message->fp);
-		pkg_emit_message(message->buf);
-		xstring_free(message);
-	}
+	pkg_print_message(pkg, local, remote, PKG_PRINTMESSAGE_POST);
 
 cleanup:
 	if (a != NULL) {

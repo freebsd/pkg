@@ -1735,6 +1735,12 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				msg->type = PKG_MESSAGE_REMOVE;
 			else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 				msg->type = PKG_MESSAGE_UPGRADE;
+			else if (strcasecmp(ucl_object_tostring(elt), "pre-install") == 0)
+				msg->type = PKG_MESSAGE_PREINSTALL;
+			else if (strcasecmp(ucl_object_tostring(elt), "pre-remove") == 0)
+				msg->type = PKG_MESSAGE_PREREMOVE;
+			else if (strcasecmp(ucl_object_tostring(elt), "pre-upgrade") == 0)
+				msg->type = PKG_MESSAGE_PREUPGRADE;
 			else
 				pkg_emit_error("Unknown message type,"
 				    " message will always be printed");
@@ -1834,6 +1840,21 @@ pkg_message_to_ucl(const struct pkg *pkg)
 		case PKG_MESSAGE_REMOVE:
 			ucl_object_insert_key(obj,
 			    ucl_object_fromstring("remove"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_PREINSTALL:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("pre-install"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_PREUPGRADE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("pre-upgrade"),
+			    "type", 0, false);
+			break;
+		case PKG_MESSAGE_PREREMOVE:
+			ucl_object_insert_key(obj,
+			    ucl_object_fromstring("pre-remove"),
 			    "type", 0, false);
 			break;
 		}
