@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd March 3, 2016
+.Dd April 8, 2021
 .Dt PKG-DELETE 8
 .Os
 .Sh NAME
@@ -30,11 +30,11 @@
 .Fl a
 .Pp
 .Nm
-.Op Cm --{no-deinstall-script,force,dry-run,quiet,recursive,yes}
+.Op Cm --{no-scripts,force,dry-run,quiet,recursive,yes}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name ...
 .Nm
-.Op Cm --{no-deinstall-script,dry-run,quiet,yes}
+.Op Cm --{no-scripts,dry-run,quiet,yes}
 .Cm --all
 .Sh DESCRIPTION
 .Nm
@@ -83,7 +83,7 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl D , Cm --no-deinstall-script
+.It Fl D , Cm --no-scripts
 If a deinstallation script exists for a given package, do not execute it.
 .It Fl f , Cm --force
 Forces packages to be removed despite leaving unresolved dependencies.
