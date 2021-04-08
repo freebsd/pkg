@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd May 14, 2019
+.Dd April 8, 2021
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -28,7 +28,7 @@
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{force,no-install-scripts,dry-run,fetch-only}
+.Op Cm --{force,no-scripts,dry-run,fetch-only}
 .Op Cm --{quiet,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -137,7 +137,7 @@ upgraded and detect possible conflicts.
 Force the reinstallation or upgrade of the whole set of packages.
 .It Fl g , Cm --glob
 Treat the package names as shell glob patterns.
-.It Fl I , Cm --no-install-scripts
+.It Fl I , Cm --no-scripts
 If any installation scripts (pre-install or post-install) or deinstallation
 scripts (pre-deinstall or post-deinstall) exist for a given package, do not
 execute them.

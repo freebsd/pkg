@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd May 7, 2016
+.Dd April 8, 2021
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -28,7 +28,7 @@
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{automatic,force,no-install-scripts,ignore-missing}
+.Op Cm --{automatic,force,no-scripts,ignore-missing}
 .Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -128,7 +128,7 @@ case sensitive.
 Force the reinstallation of the package if already installed.
 .It Fl g , Cm --glob
 Treat the package names as shell glob patterns.
-.It Fl I , Cm --no-install-scripts
+.It Fl I , Cm --no-scripts
 If any installation scripts (pre-install or post-install) exist for a given
 package, do not execute them.
 When a package is updated, deinstallation
