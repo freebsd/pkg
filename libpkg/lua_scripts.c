@@ -30,10 +30,6 @@
 #include <sys/procctl.h>
 #endif
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
-
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -116,11 +112,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
 			lua_override_ios(L, true);
-#ifdef HAVE_CAPSICUM
-			if (cap_enter() < 0 && errno != ENOSYS) {
-				err(1, "cap_enter failed");
-			}
-#endif
+
 			/* parse and set arguments of the line is in the comments */
 			if (STARTS_WITH(lscript->script, "-- args: ")) {
 				char *walk, *begin, *line = NULL;
