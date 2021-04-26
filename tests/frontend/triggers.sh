@@ -105,7 +105,7 @@ EOF
 	atf_check -o inline:"triggered ${TMPDIR}/trigger_dir\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
 }
 
-path_trigger_boddy() {
+path_trigger_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	mkdir trigger_dir/
 	cat << EOF >> trigger_dir/trigger.ucl
@@ -118,7 +118,7 @@ EOS
 }
 EOF
 	echo ${TMPDIR}/trigger_dir/trigger.ucl > plist
-	atf_check pkg create -M test.ucl -p plist -r .
+	atf_check pkg create -M test.ucl -p plist
 	mkdir target
 	unset PKG_TRIGGERS_DIR
 	atf_check -o inline:"triggered ${TMPDIR}/trigger_dir\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
