@@ -29,6 +29,7 @@
 #define _PKGCLI_H
 
 #include <search.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <xstring.h>
@@ -135,6 +136,10 @@ char *sanitize(char *, const char *, size_t);
 
 int exec_stats(int, char **);
 void usage_stats(void);
+
+/* pkg triggers */
+int exec_triggers(int, char **);
+void usage_triggers(void);
 
 /* pkg update */
 int exec_update(int, char **);

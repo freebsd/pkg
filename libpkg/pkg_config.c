@@ -76,6 +76,7 @@ struct pkg_ctx ctx = {
 	.backup_libraries = false,
 	.triggers = true,
 	.compression_level = -1,
+	.defer_triggers = false,
 };
 
 struct config_entry {
@@ -1612,6 +1613,8 @@ pkg_set_rootdir(const char *rootdir) {
 		return (EPKG_FATAL);
 	}
 	ctx.pkg_rootdir = rootdir;
+	ctx.defer_triggers = true;
+	printf("ici\n");
 
 	return (EPKG_OK);
 }

@@ -266,6 +266,7 @@ struct pkg_ctx {
 	bool triggers;
 	const char *triggers_path;
 	kh_strings_t *touched_dir_hash;
+	bool defer_triggers;
 };
 
 extern struct pkg_ctx ctx;

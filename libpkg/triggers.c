@@ -39,12 +39,16 @@
 #include <fcntl.h>
 #include <paths.h>
 #include <spawn.h>
+#include <xstring.h>
 
 #include <private/pkg.h>
 #include <private/event.h>
 #include <private/lua.h>
 
 extern char **environ;
+
+static const unsigned char litchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 static script_type_t
 get_script_type(const char *str)
@@ -319,8 +323,76 @@ trigger_free(struct trigger *t)
 	free(t->script.script);
 }
 
+static char *
+get_random_name(char name[])
+{
+	char *pos;
+	int r;
+
+	pos = name;
+	while (*pos == 'X') {
+#ifndef HAVE_ARC4RANDOM
+		r = rand() % (sizeof(litchar) -1);
+#else
+		r = arc4random_uniform(sizeof(litchar) -1);
+#endif
+		*pos++ = litchar[r];
+	}
+
+	return (name);
+}
+
+static void
+save_trigger(const char *script, bool sandbox, kh_strings_t *args, bool lua)
+{
+	int db = ctx.pkg_dbdirfd;
+	const char *dir;
+	const char *comment = "-- ";
+
+	if (!lua)
+		comment = "# ";
+
+	if (!mkdirat_p(db, "triggers"))
+		return;
+
+	int trigfd = openat(db, "triggers", O_DIRECTORY);
+	close(db);
+	if (trigfd == -1) {
+		pkg_errno("Failed to open '%s' as a directory", "triggers");
+		return;
+	}
+
+#ifndef HAVE_ARC4RANDOM
+	srand(time(NULL));
+#endif
+
+	int fd;
+	for (;;) {
+		char name[] = "XXXXXXXXXX";
+		fd = openat(trigfd, get_random_name(name),
+		    O_CREAT|O_RDWR|O_EXCL, 0644);
+		if (fd != -1)
+			break;
+		if (errno == EEXIST)
+			continue;
+		pkg_errno("meh %s", name);
+		return;
+	}
+	close(trigfd);
+	FILE *f = fdopen(fd, "w");
+	if (sandbox)
+		fprintf(f, "%ssandbox\n", comment);
+	fprintf(f, "%sbegin args\n", comment);
+	kh_foreach_value(args, dir, {
+		fprintf(f, "-- %s\n", dir);
+	});
+	fprintf(f, "%send args\n--\n", comment);
+	fprintf(f, "%s\n", script);
+	fclose(f);
+}
+
 static int
-trigger_execute_shell(const char *script, kh_strings_t *args __unused)
+trigger_execute_shell(const char *script, bool sandboxed __unused, kh_strings_t *args __unused)
 {
 	posix_spawn_file_actions_t action;
 	int stdin_pipe[2] = {-1, -1};
@@ -331,6 +403,11 @@ trigger_execute_shell(const char *script, kh_strings_t *args __unused)
 	int error, pstat;
 	int ret = EPKG_OK;
 	pid_t pid;
+
+	if (ctx.defer_triggers) {
+		save_trigger(script, false, args, false);
+		return (EPKG_OK);
+	}
 
 	if (pipe(stdin_pipe) < 0)
 		return (EPKG_FATAL);
@@ -392,6 +469,11 @@ trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 {
 	lua_State *L;
 	int pstat;
+
+	if (ctx.defer_triggers) {
+		save_trigger(script, sandbox, args, true);
+		return (EPKG_OK);
+	}
 
 	pid_t pid = fork();
 	if (pid == 0) {
@@ -519,7 +601,7 @@ triggers_execute(struct trigger *cleanup_triggers)
 			ret = trigger_execute_lua(t->cleanup.script,
 			    t->cleanup.sandbox, NULL);
 		} else if (t->cleanup.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->cleanup.script, NULL);
+			ret = trigger_execute_shell(t->cleanup.script, false, NULL);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -542,7 +624,7 @@ triggers_execute(struct trigger *cleanup_triggers)
 			ret = trigger_execute_lua(t->script.script,
 			    t->script.sandbox, t->matched);
 		} else if (t->script.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->script.script, t->matched);
+			ret = trigger_execute_shell(t->script.script, false, t->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -574,4 +656,110 @@ append_touched_file(const char *path)
 	*walk = '\0';
 
 	kh_add(strings, ctx.touched_dir_hash, newpath, newpath, free);
+}
+
+void
+exec_deferred(int dfd, const char *name)
+{
+	int (*trigger_exec)(const char *, bool , kh_strings_t *);
+	const char *comment = NULL;
+	bool sandbox = false;
+	kh_strings_t *args = NULL;
+	xstring *script = NULL;
+
+	int fd = openat(dfd, name, O_RDONLY);
+	if (fd == -1) {
+		pkg_errno("Unable to open the trigger '%s'", name);
+		return;
+	}
+	FILE *f = fdopen(fd, "r");
+	if (f == NULL) {
+		pkg_errno("Unable to open the trigger '%s'", name);
+		return;
+	}
+	
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	char *walk;
+	bool inargs = false;
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (comment == NULL) {
+			if (*line == '#') {
+				trigger_exec = &trigger_execute_shell;
+				comment = "#";
+			} else {
+				trigger_exec = &trigger_execute_lua;
+				comment = "--";
+			}
+		}
+		walk = line;
+		walk += strlen(comment);
+		if (strncmp(walk, "sandbox", 7) == 0) {
+			sandbox = true;
+			continue;
+		}
+		if (strncmp(walk, "begin args", 10) == 0) {
+			inargs = true;
+			continue;
+		}
+		if (strncmp(walk, "end args", 8) == 0) {
+			inargs = false;
+			script = xstring_new();
+			continue;
+		}
+		if (inargs) {
+			walk++; /* skip the space */
+			if (line[linelen -1] == '\n')
+				line[linelen -1] = '\0';
+			char *s = strdup(walk);
+			kh_add(strings, args, s, s, free);
+		}
+		if (script != NULL)
+			fputs(line, script->fp);
+	}
+	free(line);
+	fclose(f);
+	if (script == NULL) {
+		kh_destroy_strings(args);
+		return;
+	}
+	char *s = xstring_get(script);
+	if (trigger_exec(s, sandbox, args) == EPKG_OK) {
+		unlinkat(dfd, name, 0);
+	}
+	free(s);
+	kh_destroy_strings(args);
+}
+
+int
+pkg_execute_deferred_triggers(void)
+{
+	struct dirent *e;
+	struct stat st;
+	int dbdir = pkg_get_dbdirfd();
+
+	int trigfd = openat(dbdir, "triggers", O_DIRECTORY);
+	if (trigfd == -1)
+		return (EPKG_OK);
+
+	DIR *d = fdopendir(trigfd);
+	if (d == NULL) {
+		close(trigfd);
+		pkg_emit_error("Unable to open the deferred trigger directory");
+		return (EPKG_FATAL);
+	}
+
+	while ((e = readdir(d)) != NULL) {
+		/* ignore all hiddn files */
+		if (e->d_name[0] == '.')
+			continue;
+		/* only regular files are considered */
+		if (fstatat(trigfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+			pkg_emit_errno("fstatat", e->d_name);
+			return (EPKG_FATAL);
+		}
+		exec_deferred(trigfd, e->d_name);
+	}
+	return (EPKG_OK);
 }

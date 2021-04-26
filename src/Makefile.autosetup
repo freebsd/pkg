@@ -29,6 +29,7 @@ SRCS=	add.c \
 	shlib.c \
 	ssh.c \
 	stats.c \
+	triggers.c \
 	update.c \
 	updating.c \
 	upgrade.c \
