@@ -1,3 +1,10 @@
+Changes from 1.16.99.4 to 1.16.99.5
+- allow to execute programs from lua script and triggers
+- fetch vuln.xml.xz by default
+- triggers detected by pkg -r are now deferred for firstboot
+- pkg triggers command can be executed at first boot to run the
+  deferred triggers
+
 Changes from 1.16.99.3 to 1.16.99.4
 - expose the name of the packages to its scripts lua and shell
 - plist: remove internal support for @*exec
