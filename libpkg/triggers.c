@@ -55,8 +55,6 @@ get_script_type(const char *str)
 {
 	if (strcasecmp(str, "lua") == 0)
 		return (SCRIPT_LUA);
-	if (strcasecmp(str, "shell") == 0)
-		return (SCRIPT_SHELL);
 	return (SCRIPT_UNKNOWN);
 }
 
@@ -88,7 +86,7 @@ trigger_open_schema(void)
 		"        type = { "
 		"          type = string,"
 		"          sandbox = boolean, "
-		"          enum: [lua, shell];"
+		"          enum: [lua];"
 		"        };"
 		"        script = { type = string };"
 		"      }; "
@@ -100,7 +98,7 @@ trigger_open_schema(void)
 		"        type = { "
 		"          type = string,"
 		"          sandbox = boolean, "
-		"          enum: [lua, shell];"
+		"          enum: [lua];"
 		"        };"
 		"        script = { type = string };"
 		"      }; "
@@ -343,14 +341,10 @@ get_random_name(char name[])
 }
 
 static void
-save_trigger(const char *script, bool sandbox, kh_strings_t *args, bool lua)
+save_trigger(const char *script, bool sandbox, kh_strings_t *args)
 {
 	int db = ctx.pkg_dbdirfd;
 	const char *dir;
-	const char *comment = "-- ";
-
-	if (!lua)
-		comment = "# ";
 
 	if (!mkdirat_p(db, "triggers"))
 		return;
@@ -381,87 +375,14 @@ save_trigger(const char *script, bool sandbox, kh_strings_t *args, bool lua)
 	close(trigfd);
 	FILE *f = fdopen(fd, "w");
 	if (sandbox)
-		fprintf(f, "%ssandbox\n", comment);
-	fprintf(f, "%sbegin args\n", comment);
+		fputs("--sandbox\n", f);
+	fputs("--begin args\n", f);
 	kh_foreach_value(args, dir, {
 		fprintf(f, "-- %s\n", dir);
 	});
-	fprintf(f, "%send args\n--\n", comment);
+	fputs("--end args\n--\n", f);
 	fprintf(f, "%s\n", script);
 	fclose(f);
-}
-
-static int
-trigger_execute_shell(const char *script, bool sandboxed __unused, kh_strings_t *args __unused)
-{
-	posix_spawn_file_actions_t action;
-	int stdin_pipe[2] = {-1, -1};
-	const char *argv[3];
-	const char *script_p;
-	size_t len;
-	ssize_t bw;
-	int error, pstat;
-	int ret = EPKG_OK;
-	pid_t pid;
-
-	if (ctx.defer_triggers) {
-		save_trigger(script, false, args, false);
-		return (EPKG_OK);
-	}
-
-	if (pipe(stdin_pipe) < 0)
-		return (EPKG_FATAL);
-
-	posix_spawn_file_actions_init(&action);
-	posix_spawn_file_actions_adddup2(&action, stdin_pipe[0], STDIN_FILENO);
-	posix_spawn_file_actions_addclose(&action, stdin_pipe[1]);
-
-	argv[0] = _PATH_BSHELL;
-	argv[1] = "-s";
-	argv[2] = NULL;
-
-	if ((error = posix_spawn(&pid, _PATH_BSHELL, &action, NULL,
-	    __DECONST(char **, argv), environ)) != 0) {
-		errno = error;
-		pkg_errno("Cannot run trigger script %s", script);
-		posix_spawn_file_actions_destroy(&action);
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-	posix_spawn_file_actions_destroy(&action);
-	len = strlen(script);
-
-	while (len > 0) {
-		script_p = script;
-		if ((bw = write(stdin_pipe[1], script_p, len)) == -1) {
-			if (errno == EINTR)
-				continue;
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-		script_p += bw;
-		len -= bw;
-	}
-	close(stdin_pipe[1]);
-
-	while (waitpid(pid, &pstat, 0) == -1) {
-		if (errno != EINTR) {
-			pkg_emit_error("waitpid() failed: %s", strerror(errno));
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
-	if (WEXITSTATUS(pstat) != 0)
-		ret = EPKG_FATAL;
-
-cleanup:
-	if (stdin_pipe[0] != -1)
-		close(stdin_pipe[0]);
-	if (stdin_pipe[1] != -1)
-		close(stdin_pipe[1]);
-
-	return (ret);
 }
 
 static int
@@ -471,7 +392,7 @@ trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 	int pstat;
 
 	if (ctx.defer_triggers) {
-		save_trigger(script, sandbox, args, true);
+		save_trigger(script, sandbox, args);
 		return (EPKG_OK);
 	}
 
@@ -600,8 +521,6 @@ triggers_execute(struct trigger *cleanup_triggers)
 		if (t->cleanup.type == SCRIPT_LUA) {
 			ret = trigger_execute_lua(t->cleanup.script,
 			    t->cleanup.sandbox, NULL);
-		} else if (t->cleanup.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->cleanup.script, false, NULL);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -623,8 +542,6 @@ triggers_execute(struct trigger *cleanup_triggers)
 		if (t->script.type == SCRIPT_LUA) {
 			ret = trigger_execute_lua(t->script.script,
 			    t->script.sandbox, t->matched);
-		} else if (t->script.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->script.script, false, t->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -661,8 +578,6 @@ append_touched_file(const char *path)
 void
 exec_deferred(int dfd, const char *name)
 {
-	int (*trigger_exec)(const char *, bool , kh_strings_t *);
-	const char *comment = NULL;
 	bool sandbox = false;
 	kh_strings_t *args = NULL;
 	xstring *script = NULL;
@@ -684,17 +599,8 @@ exec_deferred(int dfd, const char *name)
 	char *walk;
 	bool inargs = false;
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
-		if (comment == NULL) {
-			if (*line == '#') {
-				trigger_exec = &trigger_execute_shell;
-				comment = "#";
-			} else {
-				trigger_exec = &trigger_execute_lua;
-				comment = "--";
-			}
-		}
 		walk = line;
-		walk += strlen(comment);
+		walk += 2; /* '--' aka lua comments */
 		if (strncmp(walk, "sandbox", 7) == 0) {
 			sandbox = true;
 			continue;
@@ -725,7 +631,7 @@ exec_deferred(int dfd, const char *name)
 		return;
 	}
 	char *s = xstring_get(script);
-	if (trigger_exec(s, sandbox, args) == EPKG_OK) {
+	if (trigger_execute_lua(s, sandbox, args) == EPKG_OK) {
 		unlinkat(dfd, name, 0);
 	}
 	free(s);
