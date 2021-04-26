@@ -287,8 +287,15 @@ triggers_load(bool cleanup_only)
 	schema = trigger_open_schema();
 
 	while ((e = readdir(d)) != NULL) {
+		const char *ext;
 		/* ignore all hidden files */
 		if (e->d_name[0] ==  '.')
+			continue;
+		/* only consider files ending with .ucl */
+		ext = strrchr(e->d_name, '.');
+		if (ext == NULL)
+			continue;
+		if (strcmp(ext, ".ucl") != 0)
 			continue;
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
