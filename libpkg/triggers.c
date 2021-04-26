@@ -378,7 +378,7 @@ save_trigger(const char *script, bool sandbox, kh_strings_t *args)
 			break;
 		if (errno == EEXIST)
 			continue;
-		pkg_errno("Can't create defered triggers %s", name);
+		pkg_errno("Can't create deferred triggers %s", name);
 		return;
 	}
 	close(trigfd);
