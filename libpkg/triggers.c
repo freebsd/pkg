@@ -302,6 +302,8 @@ triggers_load(bool cleanup_only)
 			pkg_emit_errno("fstatat", e->d_name);
 			return (NULL);
 		}
+		if (!S_ISREG(st.st_mode))
+			continue;
 		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
 		if (t != NULL)
 			DL_APPEND(triggers, t);
