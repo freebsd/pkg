@@ -1614,7 +1614,6 @@ pkg_set_rootdir(const char *rootdir) {
 	}
 	ctx.pkg_rootdir = rootdir;
 	ctx.defer_triggers = true;
-	printf("ici\n");
 
 	return (EPKG_OK);
 }
