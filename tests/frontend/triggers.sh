@@ -24,12 +24,12 @@ exit 0
 EOS
 }
 EOF
-	echo trigger_dir/trigger.ucl > plist
-	atf_check pkg create -M test.ucl -p plist -r .
+	echo ${TMPDIR}/trigger_dir/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist
 	mkdir target
 	atf_check pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
-	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
-	atf_check -o inline:"Cleaning up\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy test
+	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
+	atf_check -o inline:"Cleaning up\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" delete -qy test
 }
 
 cleanup_lua_body() {
@@ -50,10 +50,10 @@ trigger: {
 EOS
 }
 EOF
-	echo trigger_dir/trigger.ucl > plist
-	atf_check pkg create -M test.ucl -p plist -r .
+	echo ${TMPDIR}/trigger_dir/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist
 	mkdir target
 	atf_check pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
-	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
-	atf_check -o inline:"Cleaning up\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy test
+	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
+	atf_check -o inline:"Cleaning up\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" delete -qy test
 }
