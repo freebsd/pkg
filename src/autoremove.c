@@ -80,7 +80,8 @@ exec_autoremove(int argc, char **argv)
 			yes = true;
 			break;
 		default:
-			break;
+			usage_autoremove();
+			return (EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
