@@ -39,7 +39,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "Usage: pkg autoremove [-ynq]\n\n");
+	fprintf(stderr, "Usage: pkg autoremove [-Dynq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -57,17 +57,21 @@ exec_autoremove(int argc, char **argv)
 
 	struct option longopts[] = {
 		{ "dry-run",	no_argument,	NULL,	'n' },
+		{ "no-scripts",	no_argument,	NULL,	'D' },
 		{ "quiet",	no_argument,	NULL,	'q' },
 		{ "yes",	no_argument,	NULL,	'y' },
 		{ NULL,		0,		NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+nqy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Dnqy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
 			lock_type = PKGDB_LOCK_READONLY;
+			break;
+		case 'D':
+			f |= PKG_FLAG_NOSCRIPT;
 			break;
 		case 'q':
 			quiet = true;
