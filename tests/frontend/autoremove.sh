@@ -17,6 +17,9 @@ files: {
 	${TMPDIR}/file1: "",
 	${TMPDIR}/file2: "",
 }
+scripts: {
+	post-deinstall: "exit 1"
+}
 EOF
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg dep1 master 1
@@ -53,7 +56,7 @@ autoremove_body() {
 
 	atf_check \
 	    -o match:"Deinstalling test-1\.\.\." \
-	    -e empty \
+	    -e inline:"${PROGNAME}: POST-DEINSTALL script failed\n" \
 	    -s exit:0 \
 	    pkg autoremove -y
 
@@ -66,12 +69,31 @@ autoremove_body() {
 	test ! -f ${TMPDIR}/file1 -o ! -f ${TMPDIR}/file2 || atf_fail "Files are still present"
 }
 
+autoremove_no_scripts_body() {
+	autoremove_prep
+
+	atf_check \
+	    -o match:"Deinstalling test-1\.\.\." \
+	    -e empty \
+	    -s exit:0 \
+	    pkg autoremove -yDq
+
+	atf_check \
+	    -o empty \
+	    -e empty \
+	    -s exit:0 \
+	    pkg info
+
+	test ! -f ${TMPDIR}/file1 -o ! -f ${TMPDIR}/file2 || atf_fail "Files are still present"
+}
+
+
 autoremove_quiet_body() {
 	autoremove_prep
 
 	atf_check \
 	    -o empty \
-	    -e empty \
+	    -e inline:"${PROGNAME}: POST-DEINSTALL script failed\n" \
 	    -s exit:0 \
 	    pkg autoremove -yq
 
