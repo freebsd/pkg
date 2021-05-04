@@ -31,7 +31,7 @@ EOF
 		pkg create -M test.ucl
 
 	atf_check \
-		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		-o inline:"WARNING: Meta v1 support will be removed in the next version\nCreating repository in .:  done\nPacking files for repository: WARNING: Meta v1 support will be removed in the next version\n done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo --meta-file meta.ucl .
@@ -39,7 +39,7 @@ EOF
 	cp test-1.pkg test.pkg
 
 	atf_check \
-		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		-o inline:"WARNING: Meta v1 support will be removed in the next version\nCreating repository in .:  done\nPacking files for repository: WARNING: Meta v1 support will be removed in the next version\n done\n" \
 		-e empty \
 		-s exit:0 \
 		pkg repo --meta-file meta.ucl .
