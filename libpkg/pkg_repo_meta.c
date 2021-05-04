@@ -357,8 +357,10 @@ pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target)
 	}
 
 	/* Now we support only v1 and v2 meta */
-	if (version == 1)
+	if (version == 1) {
 		schema = pkg_repo_meta_open_schema_v1();
+		printf("WARNING: Meta v1 support will be removed in the next version\n");
+	}
 	else if (version == 2)
 		schema = pkg_repo_meta_open_schema_v2();
 	else {
