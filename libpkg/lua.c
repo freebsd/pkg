@@ -296,18 +296,20 @@ lua_pkg_filecmp(lua_State *L)
 		lua_pushinteger(L, 2);
 		return (1);
 	}
+	buf1 = mmap(NULL, s1.st_size, PROT_READ, MAP_SHARED, fd1, 0);
+	close(fd1);
+	if (buf1 == NULL) {
+		lua_pushinteger(L, -1);
+		return (1);
+	}
 	fd2 = openat(rootfd, RELATIVE_PATH(file2), O_RDONLY, DEFFILEMODE);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
 
-	buf1 = mmap(NULL, s1.st_size, PROT_READ, MAP_SHARED, fd1, 0);
-	if (buf1 == NULL) {
-		lua_pushinteger(L, -1);
-		return (1);
-	}
 	buf2 = mmap(NULL, s2.st_size, PROT_READ, MAP_SHARED, fd2, 0);
+	close(fd2);
 	if (buf2 == NULL) {
 		lua_pushinteger(L, -1);
 		return (1);
@@ -317,8 +319,6 @@ lua_pkg_filecmp(lua_State *L)
 
 	munmap(buf1, s1.st_size);
 	munmap(buf2, s2.st_size);
-	close(fd1);
-	close(fd2);
 
 	lua_pushinteger(L, ret);
 	return (1);
