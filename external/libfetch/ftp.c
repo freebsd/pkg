@@ -628,14 +628,13 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	const char *bindaddr;
 	const char *filename;
 	int filenamelen, type;
-	int low, pasv, verbose;
+	int pasv, verbose;
 	int e, sd = -1;
 	socklen_t l;
 	char *s;
 	FILE *df;
 
 	/* check flags */
-	low = CHECK_FLAG('l');
 	pasv = CHECK_FLAG('p') || !CHECK_FLAG('P');
 	verbose = CHECK_FLAG('v');
 
@@ -786,7 +785,11 @@ ftp_transfer(conn_t *conn, const char *oper, const char *file,
 	} else {
 		u_int32_t a;
 		u_short p;
-		int arg, d;
+#if defined(IPV6_PORTRANGE) || defined(IP_PORTRANGE)
+		int arg;
+		int low = CHECK_FLAG('l');
+#endif
+		int d;
 		char *ap;
 		char hname[INET6_ADDRSTRLEN];
 
