@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libfetch/http.c 351573 2019-08-28 17:01:28Z markj $");
 

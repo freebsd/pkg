@@ -90,7 +90,9 @@ struct url_ent {
 #define	FETCH_URL	18
 #define	FETCH_VERBOSE	19
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* FILE-specific functions */
 FILE		*fetchXGetFile(struct url *, struct url_stat *, const char *);
@@ -134,7 +136,9 @@ struct url	*fetchParseURL(const char *);
 struct url	*fetchDupURL(struct url *);
 void		 fetchFreeURL(struct url *);
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 /* Connection caching */
 void fetchConnectionCacheInit(int, int);
