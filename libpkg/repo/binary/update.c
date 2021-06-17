@@ -47,7 +47,7 @@
 #include "binary_private.h"
 
 static int
-pkg_repo_binary_init_update(struct pkg_repo *repo, const char *name)
+pkg_repo_binary_init_update(struct pkg_repo *repo, const char *name __unused)
 {
 	sqlite3 *sqlite;
 	const char update_check_sql[] = ""
@@ -91,7 +91,7 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
-	oversion = sqlite3_column_text(pkg_repo_binary_stmt_prstatement(REPO_VERSION), 0);
+	oversion = (const char *)sqlite3_column_text(pkg_repo_binary_stmt_prstatement(REPO_VERSION), 0);
 	if (!forced) {
 		switch(pkg_version_cmp(oversion, version)) {
 		case -1:

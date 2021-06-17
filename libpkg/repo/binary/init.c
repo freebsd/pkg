@@ -66,8 +66,8 @@ sqlite_file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	snprintf(fpath, sizeof(fpath), "%s/%s", path, sqlite3_value_text(argv[0]));
 
 	if (access(fpath, R_OK) == 0) {
-		cksum = pkg_checksum_file(fpath, PKG_HASH_TYPE_SHA256_HEX);
-		if (cksum && strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
+		cksum = (char *)pkg_checksum_file(fpath, PKG_HASH_TYPE_SHA256_HEX);
+		if (cksum && strcmp(cksum, (char *)sqlite3_value_text(argv[1])) == 0)
 			sqlite3_result_int(ctx, 1);
 		else
 			sqlite3_result_int(ctx, 0);
