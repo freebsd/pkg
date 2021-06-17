@@ -1402,7 +1402,10 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 	http_headerbuf_t headerbuf;
 	const char *p;
 	int verbose;
-	int af, val;
+	int af;
+#ifdef TCP_NOPUSH
+	int val;
+#endif
 	int serrno;
 
 #ifdef INET6
@@ -1507,12 +1510,12 @@ http_get_proxy(struct url * url, const char *flags)
 static void
 http_print_html(FILE *out, FILE *in)
 {
-	size_t len;
-	char *line, *p, *q;
+	size_t len = 0;
+	char *line = NULL, *p, *q;
 	int comment, tag;
 
 	comment = tag = 0;
-	while ((line = fgetln(in, &len)) != NULL) {
+	while (getline(&line, &len, in) >= 0) {
 		while (len && isspace((unsigned char)line[len - 1]))
 			--len;
 		for (p = q = line; q < line + len; ++q) {
@@ -1540,6 +1543,8 @@ http_print_html(FILE *out, FILE *in)
 			fwrite(p, q - p, 1, out);
 		fputc('\n', out);
 	}
+
+	free(line);
 }
 
 
