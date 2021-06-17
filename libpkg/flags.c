@@ -35,7 +35,6 @@
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = "@(#)flags.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
-#include <sys/cdefs.h>
 #include "bsd_compat.h"
 __FBSDID("$FreeBSD: head/lib/libc/stdio/flags.c 326025 2017-11-20 19:49:47Z pfg $");
 

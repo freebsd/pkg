@@ -271,7 +271,7 @@ cc-with { -libs { -ljail} } {
 # libbsd
 cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 	bsd/stdio.h bsd/stdlib.h bsd/strlib.h bsd/string.h \
-	bsd/sys/cdefs.h bsd/unistd.h
+	bsd/sys/cdefs.h bsd/sys/queue.h bsd/unistd.h
  
 if {[opt-bool with-asan]} {
 	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address

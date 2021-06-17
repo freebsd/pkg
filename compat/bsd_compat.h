@@ -37,7 +37,11 @@
  #endif
 #endif
 
-#ifdef HAVE_BSD_SYS_CDEFS_H
+#ifndef HAVE_BSD_SYS_CDEFS_H
+
+#include <sys/cdefs.h>
+
+#else
 
 /* Deal with broken __DECONST */
 #ifndef __uintptr_t
