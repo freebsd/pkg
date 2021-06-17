@@ -553,8 +553,14 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 	return (EPKG_OK);
 }
 
+#ifdef __linux__
+typedef const FTSENT *FTSENTP;
+#else
+typedef const FTSENT *const FTSENTP;
+#endif
+
 static int
-fts_compare(const FTSENT *const *a, const FTSENT *const *b)
+fts_compare(FTSENTP *a, FTSENTP *b)
 {
 	/* Sort files before directories, then alpha order */
 	if ((*a)->fts_info != FTS_D && (*b)->fts_info == FTS_D)
