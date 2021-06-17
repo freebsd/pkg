@@ -32,7 +32,6 @@
 #endif
 
 #include <sys/param.h>
-#include <sys/queue.h>
 
 #ifdef PKG_COMPAT
 #include <sys/stat.h>

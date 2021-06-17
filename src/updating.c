@@ -33,7 +33,11 @@
 #include <sys/capsicum.h>
 #endif
 
+#ifdef HAVE_BSD_SYS_QUEUE_H
+#include <bsd/sys/queue.h>
+#else
 #include <sys/queue.h>
+#endif
 
 #include <err.h>
 #include <errno.h>
