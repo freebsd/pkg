@@ -70,7 +70,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
   const char *filename, const char *extension, time_t *t, int *rc, bool silent)
 {
 	char url[MAXPATHLEN];
-	char tmp[MAXPATHLEN];
+	char tmp[MAXPATHLEN - 3];
 	int fd;
 	const char *tmpdir, *dot;
 

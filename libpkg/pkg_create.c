@@ -310,7 +310,7 @@ pkg_create_set_overwrite(struct pkg_create *pc, bool overwrite)
 }
 
 static int
-hash_file(struct pkg_create *pc, struct pkg *pkg)
+hash_file(struct pkg_create *pc __unused, struct pkg *pkg)
 {
 	char hash_dest[MAXPATHLEN];
 	char filename[MAXPATHLEN];

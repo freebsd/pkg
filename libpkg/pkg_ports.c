@@ -450,7 +450,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
-comment_key(struct plist *p, char *line__unused , struct file_attr *a __unused)
+comment_key(struct plist *p __unused, char *line __unused , struct file_attr *a __unused)
 {
 	/* ignore md5 will be recomputed anyway */
 	return (EPKG_OK);
@@ -618,6 +618,13 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 		break;
 	case PKG_SCRIPT_POST_DEINSTALL:
 		fprintf(p->post_deinstall_buf->fp, "%s\n", cmd);
+		break;
+	case PKG_SCRIPT_INSTALL:
+	case PKG_SCRIPT_DEINSTALL:
+	case PKG_SCRIPT_UNKNOWN:
+	case __DO_NOT_USE_ME1:
+	case __DO_NOT_USE_ME2:
+	case __DO_NOT_USE_ME3:
 		break;
 	}
 }
@@ -1150,7 +1157,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	pplist->plistdirfd = open_directory_of(plist);
 	if (pplist->plistdirfd == -1) {
-		pkg_emit_error("impossible to open the directory where the plist is", plist);
+		pkg_emit_error("impossible to open the directory where the plist is: %s", plist);
 		plist_free(pplist);
 		return (EPKG_FATAL);
 	}
@@ -1209,8 +1216,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	if (!testing) {
 		/* Execute pre-install scripts */
-		pkg_lua_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false);
-		pkg_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
+		pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
+		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false);
 
 		if (input_path != NULL) {
 			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
@@ -1223,8 +1230,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		}
 
 		/* Execute post-install scripts */
-		pkg_lua_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false);
-		pkg_script_run(pkg, PKG_LUA_POST_INSTALL, false);
+		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, false);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false);
 	}
 
 	if (rc == EPKG_OK) {

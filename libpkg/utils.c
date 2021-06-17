@@ -449,6 +449,7 @@ is_valid_os_version(struct pkg *pkg)
 	}
 	return (true);
 #else
+	(void)pkg;
 	return (true);
 #endif
 

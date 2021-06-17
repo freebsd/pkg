@@ -744,9 +744,11 @@ pkg_extract_finalize(struct pkg *pkg)
 	struct pkg_dir *d = NULL;
 	char path[MAXPATHLEN + 8];
 	const char *fto;
+#ifdef HAVE_CHFLAGSAT
 	bool install_as_user;
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+#endif
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		append_touched_file(f->path);
@@ -866,7 +868,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char	*arch;
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
-	char	bd[MAXPATHLEN], *basedir = NULL;
+	char	bd[MAXPATHLEN - 3], *basedir = NULL;
 	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
@@ -986,11 +988,11 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	 * Execute pre deinstall scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		ret = pkg_lua_script_run(old, PKG_SCRIPT_PRE_DEINSTALL, (old != NULL));
+		ret = pkg_lua_script_run(old, PKG_LUA_PRE_DEINSTALL, (old != NULL));
 		if (ret != EPKG_OK && ctx.developer_mode) {
 			return (ret);
 		} else {
-			ret = pkg_script_run(old, PKG_LUA_PRE_DEINSTALL, (old != NULL));
+			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL, (old != NULL));
 			if (ret != EPKG_OK && ctx.developer_mode) {
 				return (ret);
 			} else {
@@ -1146,9 +1148,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Execute pre-install scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if ((retcode = pkg_lua_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, (local != NULL))) != EPKG_OK)
+		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, (local != NULL))) != EPKG_OK)
 			goto cleanup;
-		if ((retcode = pkg_script_run(pkg, PKG_LUA_PRE_INSTALL, (local != NULL))) != EPKG_OK)
+		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, (local != NULL))) != EPKG_OK)
 			goto cleanup;
 	}
 
@@ -1196,8 +1198,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (retcode != EPKG_OK)
 		goto cleanup;
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		pkg_lua_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL));
-		pkg_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
+		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL));
 	}
 
 	/*

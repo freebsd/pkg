@@ -1088,8 +1088,6 @@ pkgdb_syscall_overload(void)
 void
 pkgdb_nfs_corruption(sqlite3 *db)
 {
-	int dbdirfd = pkg_get_dbdirfd();
-
 	if (sqlite3_errcode(db) != SQLITE_CORRUPT)
 		return;
 
@@ -1100,6 +1098,8 @@ pkgdb_nfs_corruption(sqlite3 *db)
 #if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
 	struct statvfs stfs;
 
+	int dbdirfd = pkg_get_dbdirfd();
+
 	if (fstatvfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
 			pkg_emit_error("You are running on a remote filesystem,"
@@ -1108,6 +1108,8 @@ pkgdb_nfs_corruption(sqlite3 *db)
 	}
 #elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
 	struct statfs stfs;
+
+	int dbdirfd = pkg_get_dbdirfd();
 
 	if (fstatfs(dbdirfd, &stfs) == 0) {
 		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)

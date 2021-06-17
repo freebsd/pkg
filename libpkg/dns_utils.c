@@ -274,6 +274,7 @@ dns_getsrvinfo(const char *zone)
 int
 set_nameserver(const char *nsname) {
 #ifndef HAVE___RES_SETSERVERS
+	(void)nsname;
 	return (-1);
 #else
 	struct __res_state res;

@@ -565,6 +565,12 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 			vulnxml_end_attribute(&ud, &x);
 			/* ignore */
 			break;
+		case YXML_EEOF:
+		case YXML_OK:
+		case YXML_PISTART:
+		case YXML_PICONTENT:
+		case YXML_PIEND:
+			break;
 		}
 	}
 

@@ -304,6 +304,8 @@ shlib_list_from_elf_hints(const char *hintsfile)
 {
 #if defined __FreeBSD__ || defined __DragonFly__
 	read_elf_hints(hintsfile, 1);
+#else
+	(void)hintsfile;
 #endif
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));

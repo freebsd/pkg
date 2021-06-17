@@ -211,7 +211,8 @@ pkg_checksum_entry_cmp(struct pkg_checksum_entry *e1,
 
 int
 pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
-       pkg_checksum_type_t type, bool inc_scripts, bool inc_version, bool inc_files)
+       pkg_checksum_type_t type, bool inc_scripts, bool inc_version,
+       bool inc_files __unused)
 {
 	unsigned char *bdigest;
 	char *olduid, *buf;

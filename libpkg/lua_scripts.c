@@ -186,11 +186,11 @@ pkg_lua_script_to_ucl(struct pkg_lua_script *scripts)
 {
 	struct pkg_lua_script *script;
 	ucl_object_t *array;
-	ucl_object_t *obj;
+	/*ucl_object_t *obj;*/
 
 	array = ucl_object_typed_new(UCL_ARRAY);
 	LL_FOREACH(scripts, script) {
-		obj = ucl_object_typed_new(UCL_OBJECT);
+		/*obj = ucl_object_typed_new(UCL_OBJECT);*/
 
 		ucl_array_append(array, ucl_object_fromstring_common(script->script,
 				strlen(script->script), UCL_STRING_RAW|UCL_STRING_TRIM));

@@ -1112,7 +1112,8 @@ pkg_emit_trigger(const char *name, bool cleanup)
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_TRIGGER;
-	ev.e_trigger.name = name;
+	ev.e_trigger.name = (char *)name;
 	ev.e_trigger.cleanup = cleanup;
 
+	pkg_emit_event(&ev);
 }

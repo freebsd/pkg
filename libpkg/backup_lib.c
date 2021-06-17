@@ -52,6 +52,9 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES) != EPKG_OK)
 			rc = EPKG_FATAL;
 		pkgdb_it_free(it);
+		if (rc != EPKG_OK) {
+			return rc;
+		}
 	}
 	if (pkg == NULL) {
 		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
