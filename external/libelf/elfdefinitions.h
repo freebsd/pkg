@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: elfdefinitions.h 2132 2011-11-10 08:27:41Z jkoshy $
+ * $Id: elfdefinitions.h 3403 2016-02-13 15:39:27Z jkoshy $
  */
 
 /*
@@ -171,7 +171,7 @@ _ELF_DEFINE_DT(DT_MOVEENT,          0x6FFFFDFAUL,			\
 	"size of DT_MOVETAB entries")					\
 _ELF_DEFINE_DT(DT_MOVESZ,           0x6FFFFDFBUL,			\
 	"total size of the MOVETAB table")				\
-_ELF_DEFINE_DT(DT_FEATURE_1,        0x6FFFFDFCUL, "feature values")	\
+_ELF_DEFINE_DT(DT_FEATURE,          0x6FFFFDFCUL, "feature values")	\
 _ELF_DEFINE_DT(DT_POSFLAG_1,        0x6FFFFDFDUL,			\
 	"dynamic position flags")					\
 _ELF_DEFINE_DT(DT_SYMINSZ,          0x6FFFFDFEUL,			\
@@ -362,6 +362,18 @@ _ELF_DEFINE_EF(EF_ARM_LE8,          0x00400000UL,			\
 	"file contains LE-8 code")					\
 _ELF_DEFINE_EF(EF_ARM_EABIMASK,     0xFF000000UL,			\
 	"mask for ARM EABI version number (0 denotes GNU or unknown)")	\
+_ELF_DEFINE_EF(EF_ARM_EABI_UNKNOWN, 0x00000000UL,			\
+	"Unknown or GNU ARM EABI version number")			\
+_ELF_DEFINE_EF(EF_ARM_EABI_VER1,    0x01000000UL,			\
+	"ARM EABI version 1")						\
+_ELF_DEFINE_EF(EF_ARM_EABI_VER2,    0x02000000UL,			\
+	"ARM EABI version 2")						\
+_ELF_DEFINE_EF(EF_ARM_EABI_VER3,    0x03000000UL,			\
+	"ARM EABI version 3")						\
+_ELF_DEFINE_EF(EF_ARM_EABI_VER4,    0x04000000UL,			\
+	"ARM EABI version 4")						\
+_ELF_DEFINE_EF(EF_ARM_EABI_VER5,    0x05000000UL,			\
+	"ARM EABI version 5")						\
 _ELF_DEFINE_EF(EF_ARM_INTERWORK,    0x00000004UL,			\
 	"GNU EABI extension")						\
 _ELF_DEFINE_EF(EF_ARM_APCS_26,      0x00000008UL,			\
@@ -553,6 +565,7 @@ _ELF_DEFINE_EM(EM_SPARC,            2, "SPARC")				\
 _ELF_DEFINE_EM(EM_386,              3, "Intel 80386")			\
 _ELF_DEFINE_EM(EM_68K,              4, "Motorola 68000")		\
 _ELF_DEFINE_EM(EM_88K,              5, "Motorola 88000")		\
+_ELF_DEFINE_EM(EM_IAMCU,            6, "Intel MCU")			\
 _ELF_DEFINE_EM(EM_860,              7, "Intel 80860")			\
 _ELF_DEFINE_EM(EM_MIPS,             8, "MIPS I Architecture")		\
 _ELF_DEFINE_EM(EM_S370,             9, "IBM System/370 Processor")	\
@@ -758,6 +771,8 @@ _ELF_DEFINE_EM(EM_ETPU,             178,				\
 	"Freescale Extended Time Processing Unit")			\
 _ELF_DEFINE_EM(EM_SLE9X,            179,				\
 	"Infineon Technologies SLE9X core")				\
+_ELF_DEFINE_EM(EM_AARCH64,          183,				\
+	"AArch64 (64-bit ARM)")						\
 _ELF_DEFINE_EM(EM_AVR32,            185,				\
 	"Atmel Corporation 32-bit microprocessor family")		\
 _ELF_DEFINE_EM(EM_STM8,             186,				\
@@ -782,7 +797,24 @@ _ELF_DEFINE_EM(EM_OPEN8,            196,				\
 	"Open8 8-bit RISC soft processor core")				\
 _ELF_DEFINE_EM(EM_RL78,             197, "Renesas RL78 family")		\
 _ELF_DEFINE_EM(EM_VIDEOCORE5,       198, "Broadcom VideoCore V processor") \
-_ELF_DEFINE_EM(EM_78KOR,            199, "Renesas 78KOR family")
+_ELF_DEFINE_EM(EM_78KOR,            199, "Renesas 78KOR family")	\
+_ELF_DEFINE_EM(EM_56800EX,          200,				\
+	"Freescale 56800EX Digital Signal Controller")			\
+_ELF_DEFINE_EM(EM_BA1,              201, "Beyond BA1 CPU architecture")	\
+_ELF_DEFINE_EM(EM_BA2,              202, "Beyond BA2 CPU architecture")	\
+_ELF_DEFINE_EM(EM_XCORE,            203, "XMOS xCORE processor family") \
+_ELF_DEFINE_EM(EM_MCHP_PIC,         204, "Microchip 8-bit PIC(r) family") \
+_ELF_DEFINE_EM(EM_INTEL205,         205, "Reserved by Intel")           \
+_ELF_DEFINE_EM(EM_INTEL206,         206, "Reserved by Intel")           \
+_ELF_DEFINE_EM(EM_INTEL207,         207, "Reserved by Intel")           \
+_ELF_DEFINE_EM(EM_INTEL208,         208, "Reserved by Intel")           \
+_ELF_DEFINE_EM(EM_INTEL209,         209, "Reserved by Intel")           \
+_ELF_DEFINE_EM(EM_KM32,             210, "KM211 KM32 32-bit processor") \
+_ELF_DEFINE_EM(EM_KMX32,            211, "KM211 KMX32 32-bit processor") \
+_ELF_DEFINE_EM(EM_KMX16,            212, "KM211 KMX16 16-bit processor") \
+_ELF_DEFINE_EM(EM_KMX8,             213, "KM211 KMX8 8-bit processor")  \
+_ELF_DEFINE_EM(EM_KVARC,            214, "KM211 KMX32 KVARC processor") \
+_ELF_DEFINE_EM(EM_RISCV,            243, "RISC-V")
 
 #undef	_ELF_DEFINE_EM
 #define	_ELF_DEFINE_EM(N, V, DESCR)	N = V ,
@@ -791,7 +823,8 @@ enum {
 	EM__LAST__
 };
 
-/* Older synonyms. */
+/* Other synonyms. */
+#define	EM_AMD64		EM_X86_64
 #define	EM_ARC_A5		EM_ARC_COMPACT
 
 /*
@@ -825,6 +858,12 @@ enum {
 #define	GRP_COMDAT 	0x1		/* COMDAT semantics */
 #define	GRP_MASKOS 	0x0ff00000	/* OS-specific flags */
 #define	GRP_MASKPROC 	0xf0000000	/* processor-specific flags */
+
+/*
+ * Flags / mask for .gnu.versym sections.
+ */
+#define	VERSYM_VERSION	0x7fff
+#define	VERSYM_HIDDEN	0x8000
 
 /*
  * Flags used by program header table entries.
@@ -936,6 +975,8 @@ _ELF_DEFINE_SHF(SHF_GROUP,           0x200,				\
 	"member of a section group")					\
 _ELF_DEFINE_SHF(SHF_TLS,             0x400,				\
 	"holds thread-local storage")					\
+_ELF_DEFINE_SHF(SHF_COMPRESSED,      0x800,				\
+	"holds compressed data")					\
 _ELF_DEFINE_SHF(SHF_MASKOS,          0x0FF00000UL,			\
 	"bits reserved for OS-specific semantics")			\
 _ELF_DEFINE_SHF(SHF_AMD64_LARGE,     0x10000000UL,			\
@@ -1148,6 +1189,8 @@ _ELF_DEFINE_SHT(SHT_MIPS_XLATE_OLD,  0x70000028UL,			\
 	"obsolete")							\
 _ELF_DEFINE_SHT(SHT_MIPS_PDR_EXCEPTION, 0x70000029UL,			\
 	"runtime procedure descriptor table exception information")	\
+_ELF_DEFINE_SHT(SHT_MIPS_ABIFLAGS,   0x7000002AUL,			\
+	"ABI flags")							\
 _ELF_DEFINE_SHT(SHT_SPARC_GOTDATA,   0x70000000UL,			\
 	"SPARC-specific data")						\
 _ELF_DEFINE_SHT(SHT_AMD64_UNWIND,    0x70000001UL,			\
@@ -1185,6 +1228,7 @@ _ELF_DEFINE_STB(STB_GLOBAL,          1,					\
 _ELF_DEFINE_STB(STB_WEAK,            2,					\
 	"visible across all object files but with low precedence")	\
 _ELF_DEFINE_STB(STB_LOOS,            10, "start of OS-specific range")	\
+_ELF_DEFINE_STB(STB_GNU_UNIQUE,      10, "unique symbol (GNU)")		\
 _ELF_DEFINE_STB(STB_HIOS,            12, "end of OS-specific range")	\
 _ELF_DEFINE_STB(STB_LOPROC,          13,				\
 	"start of processor-specific range")				\
@@ -1216,6 +1260,7 @@ _ELF_DEFINE_STT(STT_LOPROC,          13,				\
 	"start of processor-specific types")				\
 _ELF_DEFINE_STT(STT_ARM_TFUNC,       13, "Thumb function (GNU)")	\
 _ELF_DEFINE_STT(STT_ARM_16BIT,       15, "Thumb label (GNU)")		\
+_ELF_DEFINE_STT(STT_SPARC_REGISTER,  13, "SPARC register information")	\
 _ELF_DEFINE_STT(STT_HIPROC,          15,				\
 	"end of processor-specific types")
 
@@ -1352,7 +1397,7 @@ _ELF_DEFINE_RELOC(R_386_GOT32,		3)	\
 _ELF_DEFINE_RELOC(R_386_PLT32,		4)	\
 _ELF_DEFINE_RELOC(R_386_COPY,		5)	\
 _ELF_DEFINE_RELOC(R_386_GLOB_DAT,	6)	\
-_ELF_DEFINE_RELOC(R_386_JMP_SLOT,	7)	\
+_ELF_DEFINE_RELOC(R_386_JUMP_SLOT,	7)	\
 _ELF_DEFINE_RELOC(R_386_RELATIVE,	8)	\
 _ELF_DEFINE_RELOC(R_386_GOTOFF,		9)	\
 _ELF_DEFINE_RELOC(R_386_GOTPC,		10)	\
@@ -1361,6 +1406,12 @@ _ELF_DEFINE_RELOC(R_386_16,		20)	\
 _ELF_DEFINE_RELOC(R_386_PC16,		21)	\
 _ELF_DEFINE_RELOC(R_386_8,		22)	\
 _ELF_DEFINE_RELOC(R_386_PC8,		23)
+
+/*
+ */
+#define	_ELF_DEFINE_AARCH64_RELOCATIONS()		\
+_ELF_DEFINE_RELOC(R_AARCH64_ABS64,		257)	\
+_ELF_DEFINE_RELOC(R_AARCH64_ABS32,		258)	\
 
 /*
  * These are the symbols used in the Sun ``Linkers and Loaders
@@ -1388,6 +1439,10 @@ _ELF_DEFINE_RELOC(R_AMD64_PC64,		24)	\
 _ELF_DEFINE_RELOC(R_AMD64_GOTOFF64,	25)	\
 _ELF_DEFINE_RELOC(R_AMD64_GOTPC32,	26)
 
+/*
+ * Relocation definitions from the ARM ELF ABI, version "ARM IHI
+ * 0044E" released on 30th November 2012.
+ */
 #define	_ELF_DEFINE_ARM_RELOCATIONS()			\
 _ELF_DEFINE_RELOC(R_ARM_NONE,			0)	\
 _ELF_DEFINE_RELOC(R_ARM_PC24,			1)	\
@@ -1403,6 +1458,7 @@ _ELF_DEFINE_RELOC(R_ARM_THM_CALL,		10)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_PC8,		11)	\
 _ELF_DEFINE_RELOC(R_ARM_BREL_ADJ,		12)	\
 _ELF_DEFINE_RELOC(R_ARM_SWI24,			13)	\
+_ELF_DEFINE_RELOC(R_ARM_TLS_DESC,		13)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_SWI8,		14)	\
 _ELF_DEFINE_RELOC(R_ARM_XPC25,			15)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_XPC22,		16)	\
@@ -1421,12 +1477,12 @@ _ELF_DEFINE_RELOC(R_ARM_CALL,			28)	\
 _ELF_DEFINE_RELOC(R_ARM_JUMP24,			29)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_JUMP24,		30)	\
 _ELF_DEFINE_RELOC(R_ARM_BASE_ABS,		31)	\
-_ELF_DEFINE_RELOC(R_ARM_ALU_PCREL7_0,		32)	\
-_ELF_DEFINE_RELOC(R_ARM_ALU_PCREL15_8,		33)	\
-_ELF_DEFINE_RELOC(R_ARM_ALU_PCREL23_15,		34)	\
-_ELF_DEFINE_RELOC(R_ARM_LDR_SBREL_11_0,		35)	\
-_ELF_DEFINE_RELOC(R_ARM_ALU_SBREL_19_12,	36)	\
-_ELF_DEFINE_RELOC(R_ARM_ALU_SBREL_27_20,	37)	\
+_ELF_DEFINE_RELOC(R_ARM_ALU_PCREL_7_0,		32)	\
+_ELF_DEFINE_RELOC(R_ARM_ALU_PCREL_15_8,		33)	\
+_ELF_DEFINE_RELOC(R_ARM_ALU_PCREL_23_15,	34)	\
+_ELF_DEFINE_RELOC(R_ARM_LDR_SBREL_11_0_NC,	35)	\
+_ELF_DEFINE_RELOC(R_ARM_ALU_SBREL_19_12_NC,	36)	\
+_ELF_DEFINE_RELOC(R_ARM_ALU_SBREL_27_20_CK,	37)	\
 _ELF_DEFINE_RELOC(R_ARM_TARGET1,		38)	\
 _ELF_DEFINE_RELOC(R_ARM_SBREL31,		39)	\
 _ELF_DEFINE_RELOC(R_ARM_V4BX,			40)	\
@@ -1438,7 +1494,7 @@ _ELF_DEFINE_RELOC(R_ARM_MOVW_PREL_NC,		45)	\
 _ELF_DEFINE_RELOC(R_ARM_MOVT_PREL,		46)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_MOVW_ABS_NC,	47)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_MOVT_ABS,		48)	\
-_ELF_DEFINE_RELOC(R_ARM_MOVW_PREL_NC,		49)	\
+_ELF_DEFINE_RELOC(R_ARM_THM_MOVW_PREL_NC,	49)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_MOVT_PREL,		50)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_JUMP19,		51)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_JUMP6,		52)	\
@@ -1501,9 +1557,27 @@ _ELF_DEFINE_RELOC(R_ARM_TLS_LE32,		108)	\
 _ELF_DEFINE_RELOC(R_ARM_TLS_LDO12,		109)	\
 _ELF_DEFINE_RELOC(R_ARM_TLS_LE12,		110)	\
 _ELF_DEFINE_RELOC(R_ARM_TLS_IE12GP,		111)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_0,		112)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_1,		113)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_2,		114)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_3,		115)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_4,		116)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_5,		117)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_6,		118)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_7,		119)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_8,		120)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_9,		121)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_10,		122)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_11,		123)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_12,		124)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_13,		125)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_14,		126)	\
+_ELF_DEFINE_RELOC(R_ARM_PRIVATE_15,		127)	\
 _ELF_DEFINE_RELOC(R_ARM_ME_TOO,			128)	\
 _ELF_DEFINE_RELOC(R_ARM_THM_TLS_DESCSEQ16,	129)	\
-_ELF_DEFINE_RELOC(R_ARM_THM_TLS_DESCSEQ32,	130)
+_ELF_DEFINE_RELOC(R_ARM_THM_TLS_DESCSEQ32,	130)	\
+_ELF_DEFINE_RELOC(R_ARM_THM_GOT_BREL12,		131)	\
+_ELF_DEFINE_RELOC(R_ARM_IRELATIVE,		140)
 
 #define	_ELF_DEFINE_IA64_RELOCATIONS()			\
 _ELF_DEFINE_RELOC(R_IA_64_NONE,			0)	\
@@ -1561,7 +1635,7 @@ _ELF_DEFINE_RELOC(R_IA_64_LTV32MSB,		0x74)	\
 _ELF_DEFINE_RELOC(R_IA_64_LTV32LSB,		0x75)	\
 _ELF_DEFINE_RELOC(R_IA_64_LTV64MSB,		0x76)	\
 _ELF_DEFINE_RELOC(R_IA_64_LTV64LSB,		0x77)	\
-_ELF_DEFINE_RELOC(R_IA_64_PCREL21BIa,		0x79)	\
+_ELF_DEFINE_RELOC(R_IA_64_PCREL21BI,		0x79)	\
 _ELF_DEFINE_RELOC(R_IA_64_PCREL22,		0x7A)	\
 _ELF_DEFINE_RELOC(R_IA_64_PCREL64I,		0x7B)	\
 _ELF_DEFINE_RELOC(R_IA_64_IPLTMSB,		0x80)	\
@@ -1587,25 +1661,38 @@ _ELF_DEFINE_RELOC(R_IA_64_DTPREL64MSB,		0xB6)	\
 _ELF_DEFINE_RELOC(R_IA_64_DTPREL64LSB,		0xB7)	\
 _ELF_DEFINE_RELOC(R_IA_64_LTOFF_DTPREL22,	0xBA)
 
-#define	_ELF_DEFINE_MIPS_RELOCATIONS()		\
-_ELF_DEFINE_RELOC(R_MIPS_NONE,		0)	\
-_ELF_DEFINE_RELOC(R_MIPS_16,		1)	\
-_ELF_DEFINE_RELOC(R_MIPS_32,		2)	\
-_ELF_DEFINE_RELOC(R_MIPS_REL32,		3)	\
-_ELF_DEFINE_RELOC(R_MIPS_26,		4)	\
-_ELF_DEFINE_RELOC(R_MIPS_HI16,		5)	\
-_ELF_DEFINE_RELOC(R_MIPS_LO16,		6)	\
-_ELF_DEFINE_RELOC(R_MIPS_GPREL16,	7)	\
-_ELF_DEFINE_RELOC(R_MIPS_LITERAL, 	8)	\
-_ELF_DEFINE_RELOC(R_MIPS_GOT16,		9)	\
-_ELF_DEFINE_RELOC(R_MIPS_PC16,		10)	\
-_ELF_DEFINE_RELOC(R_MIPS_CALL16,	11)	\
-_ELF_DEFINE_RELOC(R_MIPS_GPREL32,	12)	\
-_ELF_DEFINE_RELOC(R_MIPS_64,		18)	\
-_ELF_DEFINE_RELOC(R_MIPS_GOTHI16,	21)	\
-_ELF_DEFINE_RELOC(R_MIPS_GOTLO16,	22)	\
-_ELF_DEFINE_RELOC(R_MIPS_CALLHI16,	30)	\
-_ELF_DEFINE_RELOC(R_MIPS_CALLLO16,	31)
+#define	_ELF_DEFINE_MIPS_RELOCATIONS()			\
+_ELF_DEFINE_RELOC(R_MIPS_NONE,			0)	\
+_ELF_DEFINE_RELOC(R_MIPS_16,			1)	\
+_ELF_DEFINE_RELOC(R_MIPS_32,			2)	\
+_ELF_DEFINE_RELOC(R_MIPS_REL32,			3)	\
+_ELF_DEFINE_RELOC(R_MIPS_26,			4)	\
+_ELF_DEFINE_RELOC(R_MIPS_HI16,			5)	\
+_ELF_DEFINE_RELOC(R_MIPS_LO16,			6)	\
+_ELF_DEFINE_RELOC(R_MIPS_GPREL16,		7)	\
+_ELF_DEFINE_RELOC(R_MIPS_LITERAL, 		8)	\
+_ELF_DEFINE_RELOC(R_MIPS_GOT16,			9)	\
+_ELF_DEFINE_RELOC(R_MIPS_PC16,			10)	\
+_ELF_DEFINE_RELOC(R_MIPS_CALL16,		11)	\
+_ELF_DEFINE_RELOC(R_MIPS_GPREL32,		12)	\
+_ELF_DEFINE_RELOC(R_MIPS_64,			18)	\
+_ELF_DEFINE_RELOC(R_MIPS_GOTHI16,		21)	\
+_ELF_DEFINE_RELOC(R_MIPS_GOTLO16,		22)	\
+_ELF_DEFINE_RELOC(R_MIPS_CALLHI16,		30)	\
+_ELF_DEFINE_RELOC(R_MIPS_CALLLO16,		31)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_DTPMOD32,		38)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_DTPREL32,		39)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_DTPMOD64,		40)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_DTPREL64,		41)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_GD,		42)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_LDM,		43)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_DTPREL_HI16,	44)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_DTPREL_LO16,	45)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_GOTTPREL,		46)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL32,		47)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL64,		48)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL_HI16,	49)	\
+_ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL_LO16,	50)
 
 #define	_ELF_DEFINE_PPC32_RELOCATIONS()		\
 _ELF_DEFINE_RELOC(R_PPC_NONE,		0)	\
@@ -1638,7 +1725,7 @@ _ELF_DEFINE_RELOC(R_PPC_REL32,		26)	\
 _ELF_DEFINE_RELOC(R_PPC_PLT32,		27)	\
 _ELF_DEFINE_RELOC(R_PPC_PLTREL32,	28)	\
 _ELF_DEFINE_RELOC(R_PPC_PLT16_LO,	29)	\
-_ELF_DEFINE_RELOC(R_PPL_PLT16_HI,	30)	\
+_ELF_DEFINE_RELOC(R_PPC_PLT16_HI,	30)	\
 _ELF_DEFINE_RELOC(R_PPC_PLT16_HA,	31)	\
 _ELF_DEFINE_RELOC(R_PPC_SDAREL16,	32)	\
 _ELF_DEFINE_RELOC(R_PPC_SECTOFF,	33)	\
@@ -1801,6 +1888,50 @@ _ELF_DEFINE_RELOC(R_PPC64_DTPREL16_HIGHESTA,	106)	\
 _ELF_DEFINE_RELOC(R_PPC64_TLSGD,		107)	\
 _ELF_DEFINE_RELOC(R_PPC64_TLSLD,		108)
 
+#define	_ELF_DEFINE_RISCV_RELOCATIONS()			\
+_ELF_DEFINE_RELOC(R_RISCV_NONE,			0)	\
+_ELF_DEFINE_RELOC(R_RISCV_32,			1)	\
+_ELF_DEFINE_RELOC(R_RISCV_64,			2)	\
+_ELF_DEFINE_RELOC(R_RISCV_RELATIVE,		3)	\
+_ELF_DEFINE_RELOC(R_RISCV_COPY,			4)	\
+_ELF_DEFINE_RELOC(R_RISCV_JUMP_SLOT,		5)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_DTPMOD32,		6)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_DTPMOD64,		7)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_DTPREL32,		8)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_DTPREL64,		9)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_TPREL32,		10)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_TPREL64,		11)	\
+_ELF_DEFINE_RELOC(R_RISCV_BRANCH,		16)	\
+_ELF_DEFINE_RELOC(R_RISCV_JAL,			17)	\
+_ELF_DEFINE_RELOC(R_RISCV_CALL,			18)	\
+_ELF_DEFINE_RELOC(R_RISCV_CALL_PLT,		19)	\
+_ELF_DEFINE_RELOC(R_RISCV_GOT_HI20,		20)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_GOT_HI20,		21)	\
+_ELF_DEFINE_RELOC(R_RISCV_TLS_GD_HI20,		22)	\
+_ELF_DEFINE_RELOC(R_RISCV_PCREL_HI20,		23)	\
+_ELF_DEFINE_RELOC(R_RISCV_PCREL_LO12_I,		24)	\
+_ELF_DEFINE_RELOC(R_RISCV_PCREL_LO12_S,		25)	\
+_ELF_DEFINE_RELOC(R_RISCV_HI20,			26)	\
+_ELF_DEFINE_RELOC(R_RISCV_LO12_I,		27)	\
+_ELF_DEFINE_RELOC(R_RISCV_LO12_S,		28)	\
+_ELF_DEFINE_RELOC(R_RISCV_TPREL_HI20,		29)	\
+_ELF_DEFINE_RELOC(R_RISCV_TPREL_LO12_I,		30)	\
+_ELF_DEFINE_RELOC(R_RISCV_TPREL_LO12_S,		31)	\
+_ELF_DEFINE_RELOC(R_RISCV_TPREL_ADD,		32)	\
+_ELF_DEFINE_RELOC(R_RISCV_ADD8,			33)	\
+_ELF_DEFINE_RELOC(R_RISCV_ADD16,		34)	\
+_ELF_DEFINE_RELOC(R_RISCV_ADD32,		35)	\
+_ELF_DEFINE_RELOC(R_RISCV_ADD64,		36)	\
+_ELF_DEFINE_RELOC(R_RISCV_SUB8,			37)	\
+_ELF_DEFINE_RELOC(R_RISCV_SUB16,		38)	\
+_ELF_DEFINE_RELOC(R_RISCV_SUB32,		39)	\
+_ELF_DEFINE_RELOC(R_RISCV_SUB64,		40)	\
+_ELF_DEFINE_RELOC(R_RISCV_GNU_VTINHERIT,	41)	\
+_ELF_DEFINE_RELOC(R_RISCV_GNU_VTENTRY,		42)	\
+_ELF_DEFINE_RELOC(R_RISCV_ALIGN,		43)	\
+_ELF_DEFINE_RELOC(R_RISCV_RVC_BRANCH,		44)	\
+_ELF_DEFINE_RELOC(R_RISCV_RVC_JUMP,		45)
+
 #define	_ELF_DEFINE_SPARC_RELOCATIONS()		\
 _ELF_DEFINE_RELOC(R_SPARC_NONE,		0)	\
 _ELF_DEFINE_RELOC(R_SPARC_8,		1)	\
@@ -1892,19 +2023,28 @@ _ELF_DEFINE_RELOC(R_X86_64_TPOFF32,	23)	\
 _ELF_DEFINE_RELOC(R_X86_64_PC64,	24)	\
 _ELF_DEFINE_RELOC(R_X86_64_GOTOFF64,	25)	\
 _ELF_DEFINE_RELOC(R_X86_64_GOTPC32,	26)	\
+_ELF_DEFINE_RELOC(R_X86_64_GOT64,	27)	\
+_ELF_DEFINE_RELOC(R_X86_64_GOTPCREL64,	28)	\
+_ELF_DEFINE_RELOC(R_X86_64_GOTPC64,	29)	\
+_ELF_DEFINE_RELOC(R_X86_64_GOTPLT64,	30)	\
+_ELF_DEFINE_RELOC(R_X86_64_PLTOFF64,	31)	\
 _ELF_DEFINE_RELOC(R_X86_64_SIZE32,	32)	\
 _ELF_DEFINE_RELOC(R_X86_64_SIZE64,	33)	\
 _ELF_DEFINE_RELOC(R_X86_64_GOTPC32_TLSDESC, 34)	\
 _ELF_DEFINE_RELOC(R_X86_64_TLSDESC_CALL, 35)	\
-_ELF_DEFINE_RELOC(R_X86_64_TLSDESC,	36)
+_ELF_DEFINE_RELOC(R_X86_64_TLSDESC,	36)	\
+_ELF_DEFINE_RELOC(R_X86_64_IRELATIVE,	37)
 
 #define	_ELF_DEFINE_RELOCATIONS()		\
 _ELF_DEFINE_386_RELOCATIONS()			\
+_ELF_DEFINE_AARCH64_RELOCATIONS()		\
 _ELF_DEFINE_AMD64_RELOCATIONS()			\
+_ELF_DEFINE_ARM_RELOCATIONS()			\
 _ELF_DEFINE_IA64_RELOCATIONS()			\
 _ELF_DEFINE_MIPS_RELOCATIONS()			\
 _ELF_DEFINE_PPC32_RELOCATIONS()			\
 _ELF_DEFINE_PPC64_RELOCATIONS()			\
+_ELF_DEFINE_RISCV_RELOCATIONS()			\
 _ELF_DEFINE_SPARC_RELOCATIONS()			\
 _ELF_DEFINE_X86_64_RELOCATIONS()
 
@@ -2058,11 +2198,11 @@ typedef struct {
 
 /* 64-bit entry. */
 typedef struct {
-	Elf64_Word l_name;
-	Elf64_Word l_time_stamp;
-	Elf64_Word l_checksum;
-	Elf64_Word l_version;
-	Elf64_Word l_flags;
+	Elf64_Word l_name;	     /* The name of a shared object. */
+	Elf64_Word l_time_stamp;     /* 32-bit timestamp. */
+	Elf64_Word l_checksum;	     /* Checksum of visible symbols, sizes. */
+	Elf64_Word l_version;	     /* Interface version string index. */
+	Elf64_Word l_flags;	     /* Flags (LL_*). */
 } Elf64_Lib;
 
 #define	_ELF_DEFINE_LL_FLAGS()			\
@@ -2310,12 +2450,12 @@ typedef struct {
 /* 64 bit PHDR entry. */
 typedef struct {
 	Elf64_Word	p_type;	     /* Type of segment. */
-	Elf64_Word	p_flags;     /* File offset to segment. */
-	Elf64_Off	p_offset;    /* Virtual address in memory. */
-	Elf64_Addr	p_vaddr;     /* Physical address (if relevant). */
-	Elf64_Addr	p_paddr;     /* Size of segment in file. */
-	Elf64_Xword	p_filesz;    /* Size of segment in memory. */
-	Elf64_Xword	p_memsz;     /* Segment flags. */
+	Elf64_Word	p_flags;     /* Segment flags. */
+	Elf64_Off	p_offset;    /* File offset to segment. */
+	Elf64_Addr	p_vaddr;     /* Virtual address in memory. */
+	Elf64_Addr	p_paddr;     /* Physical address (if relevant). */
+	Elf64_Xword	p_filesz;    /* Size of segment in file. */
+	Elf64_Xword	p_memsz;     /* Size of segment in memory. */
 	Elf64_Xword	p_align;     /* Alignment constraints. */
 } Elf64_Phdr;
 
@@ -2399,11 +2539,11 @@ typedef struct {
 
 typedef struct {
 	Elf64_Word	st_name;     /* index of symbol's name */
-	unsigned char	st_info;     /* value for the symbol */
-	unsigned char	st_other;    /* size of associated data */
-	Elf64_Half	st_shndx;    /* type and binding attributes */
-	Elf64_Addr	st_value;    /* visibility */
-	Elf64_Xword	st_size;     /* index of related section */
+	unsigned char	st_info;     /* type and binding attributes */
+	unsigned char	st_other;    /* visibility */
+	Elf64_Half	st_shndx;    /* index of related section */
+	Elf64_Addr	st_value;    /* value for the symbol */
+	Elf64_Xword	st_size;     /* size of associated data */
 } Elf64_Sym;
 
 #define ELF32_ST_BIND(I)	((I) >> 4)
