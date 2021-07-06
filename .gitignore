@@ -63,7 +63,6 @@ scripts/sbin/pkg2ng
 /external/libelf/libelf_convert.c
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c
-/external/libelf/native-elf-format.h
 /libpkg/Makefile
 /libpkg/repo/Makefile
 /libpkg/repo/binary/Makefile
