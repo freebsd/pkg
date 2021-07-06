@@ -174,11 +174,25 @@
 
 #if defined(__linux__)
 
-#include "native-elf-format.h"
+#if    defined(__amd64__)
 
-#define	LIBELF_CLASS		ELFTC_CLASS
-#define	LIBELF_ARCH		ELFTC_ARCH
-#define	LIBELF_BYTEORDER	ELFTC_BYTEORDER
+#define LIBELF_ARCH             EM_X86_64
+#define LIBELF_BYTEORDER        ELFDATA2LSB
+#define LIBELF_CLASS            ELFCLASS64
+
+#elif   defined(__aarch64__)
+
+#define LIBELF_ARCH             EM_AARCH64
+#define LIBELF_BYTEORDER        ELFDATA2LSB
+#define LIBELF_CLASS            ELFCLASS64
+
+#elif  defined(__i386__)
+
+#define LIBELF_ARCH             EM_386
+#define LIBELF_BYTEORDER        ELFDATA2LSB
+#define LIBELF_CLASS            ELFCLASS32
+
+#endif
 
 #endif	/* defined(__linux__) */
 
