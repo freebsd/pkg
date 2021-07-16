@@ -125,7 +125,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 				exitcode = EXIT_FAILURE;
 				goto cleanup;
 			}
-		} while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK);
+		} while (retcode == EPKG_OK);
 	} else
 		printf("%s: package not found\n", pkgname);
 
@@ -162,16 +162,15 @@ list_locked(struct pkgdb *db, bool has_locked)
 		return (EXIT_FAILURE);
 	}
 
-	if (!quiet && !has_locked && (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK)) {
+	if (!quiet && !has_locked)
 		printf("Currently locked packages:\n");
-		do {
-			gotone = true;
-			if (has_locked)
-				break;
-			pkg_printf("%n-%v\n", pkg, pkg);
-		} while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK);
-	} else
-		printf("No package is locked\n");
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		gotone = true;
+		if (has_locked)
+			break;
+		pkg_printf("%n-%v\n", pkg, pkg);
+	}
 
 	pkg_free(pkg);
 	pkgdb_it_free(it);
