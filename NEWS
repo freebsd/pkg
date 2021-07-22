@@ -1,3 +1,8 @@
+Changes from 1.16.99.5 to 1.17.99.1
+- fix plenty of typos
+- add --no-script to autoremove
+- deprecated meta file v1
+
 Changes from 1.16.99.4 to 1.16.99.5
 - allow to execute programs from lua script and triggers
 - fetch vuln.xml.xz by default
