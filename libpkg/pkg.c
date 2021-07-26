@@ -1343,10 +1343,38 @@ static int
 pkg_parse_archive(struct pkg *pkg, struct pkg_manifest_key *keys,
     struct archive *a, size_t len)
 {
-	char buffer[len];
+	struct ucl_parser *p = NULL;
+	ucl_object_t *obj = NULL;
+	const void *buffer;
+	size_t size;
+	int64_t offset;
+	int rc, ret_code;
 
-	archive_read_data(a, buffer, len);
-	return (pkg_parse_manifest(pkg, buffer, len, keys));
+	pkg_debug(2, "%s", "Parsing manifest from buffer");
+
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (p == NULL)
+		return (EPKG_FATAL);
+
+	rc = archive_read_data_block(a, &buffer, &size, &offset);
+	while (ARCHIVE_OK == rc)
+	{
+		if (!ucl_parser_add_chunk(p, buffer, size)) {
+			pkg_emit_error("Error parsing manifest: %s",
+					ucl_parser_get_error(p));
+			ucl_parser_free(p);
+			return (EPKG_FATAL);
+		}
+		rc = archive_read_data_block(a, &buffer, &size, &offset);
+	}
+	if ((obj = ucl_parser_get_object(p)) == NULL) {
+		ucl_parser_free(p);
+		return (EPKG_FATAL);
+	}
+	ucl_parser_free(p);
+	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
+	ucl_object_unref(obj);
+	return (rc);
 }
 
 int

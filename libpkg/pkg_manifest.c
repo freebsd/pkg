@@ -801,7 +801,7 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 	return (EPKG_OK);
 }
 
-static int
+int
 pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_key *keys)
 {
 	const ucl_object_t *cur;
