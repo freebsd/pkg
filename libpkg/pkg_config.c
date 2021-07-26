@@ -482,7 +482,7 @@ static struct config_entry c[] = {
 	{
 		PKG_BOOL,
 		"ARCHIVE_SYMLINK",
-		"TRUE",
+		"FALSE",
 		"Create a symlink to legacy extension for backward compatibility",
 	},
 };

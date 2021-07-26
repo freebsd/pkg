@@ -52,7 +52,7 @@ struct packing {
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
-	time_t timestamp, bool overwrite)
+	time_t timestamp, bool overwrite, bool compat_symlink)
 {
 	char archive_path[MAXPATHLEN];
 	char archive_symlink[MAXPATHLEN];
@@ -126,7 +126,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		return EPKG_FATAL;
 	}
 
-	if (ctx.archive_symlink) {
+	if (compat_symlink || ctx.archive_symlink) {
 		unlink(archive_symlink);
 		if (symlink(archive_name, archive_symlink) != 0) {
 			pkg_emit_errno("symlink", archive_symlink);
