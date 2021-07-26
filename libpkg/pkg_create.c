@@ -200,7 +200,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	}
 
 	if (packing_init(&pkg_archive, pkg_path, pc->format,
-	    pc->compression_level, pc->timestamp, pc->overwrite) != EPKG_OK) {
+	    pc->compression_level, pc->timestamp, pc->overwrite, false) != EPKG_OK) {
 		pkg_archive = NULL;
 	}
 
