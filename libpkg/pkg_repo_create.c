@@ -287,6 +287,11 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		if (!packing_is_valid_format(ext + 1))
 			continue;
 
+		/* skip all files which are not .pkg */
+		if (!ctx.repo_accept_legacy_pkg && strcmp(ext + 1, "pkg") != 0)
+			continue;
+
+
 		*ext = '\0';
 
 		if (pkg_repo_meta_is_old_file(fts_ent->fts_name, meta)) {
