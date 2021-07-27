@@ -267,6 +267,7 @@ struct pkg_ctx {
 	const char *triggers_path;
 	kh_strings_t *touched_dir_hash;
 	bool defer_triggers;
+	bool repo_accept_legacy_pkg;
 };
 
 extern struct pkg_ctx ctx;
