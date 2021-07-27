@@ -1,3 +1,9 @@
+Changes from 1.17.99.1 to 1.17.99.2
+- by default only create .txz symlinks for metadata
+- only consider the .pkg when creating a repository
+  add an option REPO_ACCEPT_LEGACY_PKG to keep index old pkg
+- Reduce usage of memory stack
+
 Changes from 1.16.99.5 to 1.17.99.1
 - fix plenty of typos
 - add --no-script to autoremove
