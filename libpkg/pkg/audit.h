@@ -25,6 +25,10 @@
 #ifndef _PKG_AUDIT_H
 #define _PKG_AUDIT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EQ 1
 #define LT 2
 #define LTE 3
@@ -118,4 +122,7 @@ bool pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg, struct pk
 
 void pkg_audit_free(struct pkg_audit *audit);
 void pkg_audit_issues_free(struct pkg_audit_issues *issues);
+#ifdef __cplusplus
+}
+#endif
 #endif
