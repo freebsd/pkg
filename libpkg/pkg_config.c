@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -482,8 +482,14 @@ static struct config_entry c[] = {
 	{
 		PKG_BOOL,
 		"ARCHIVE_SYMLINK",
-		"TRUE",
+		"FALSE",
 		"Create a symlink to legacy extension for backward compatibility",
+	},
+	{
+		PKG_BOOL,
+		"REPO_ACCEPT_LEGACY_PKG",
+		"FALSE",
+		"Accept legacy package extensions when creating the repository",
 	},
 };
 
@@ -1314,6 +1320,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
 	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
+	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");

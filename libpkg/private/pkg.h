@@ -267,6 +267,7 @@ struct pkg_ctx {
 	const char *triggers_path;
 	kh_strings_t *touched_dir_hash;
 	bool defer_triggers;
+	bool repo_accept_legacy_pkg;
 };
 
 extern struct pkg_ctx ctx;
@@ -781,7 +782,7 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 
 struct packing;
 
-int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp, bool overwrite);
+int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp, bool overwrite, bool archive_symlink);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
      const char *newpath, const char *uname, const char *gname, mode_t perm,
      u_long fflags);

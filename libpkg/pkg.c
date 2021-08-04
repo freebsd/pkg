@@ -1343,10 +1343,15 @@ static int
 pkg_parse_archive(struct pkg *pkg, struct pkg_manifest_key *keys,
     struct archive *a, size_t len)
 {
-	char buffer[len];
+	void *buffer;
+	int rc;
+
+	buffer = xmalloc(len);
 
 	archive_read_data(a, buffer, len);
-	return (pkg_parse_manifest(pkg, buffer, len, keys));
+	rc = pkg_parse_manifest(pkg, buffer, len, keys);
+	free(buffer);
+	return (rc);
 }
 
 int
