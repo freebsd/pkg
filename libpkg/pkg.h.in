@@ -189,10 +189,6 @@ typedef enum {
 	 * case insensitive according to pkgdb_case_sensitive()
 	 */
 	MATCH_REGEX,
-	/**
-	 * The argument is a WHERE clause to use as condition
-	 */
-	MATCH_CONDITION,
 } match_t;
 
 /**
@@ -909,8 +905,12 @@ bool pkgdb_case_sensitive(void);
  */
 struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
     match_t type);
+struct pkgdb_it * pkgdb_query_cond(struct pkgdb *db, const char *cond,
+    const char *pattern, match_t type);
 struct pkgdb_it * pkgdb_repo_query(struct pkgdb *db, const char *pattern,
     match_t type, const char *reponame);
+struct pkgdb_it *pkgdb_repo_query_cond(struct pkgdb *db, const char *cond,
+	const char *pattern, match_t type, const char *reponame);
 struct pkgdb_it * pkgdb_repo_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
 

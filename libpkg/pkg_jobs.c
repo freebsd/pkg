@@ -70,6 +70,8 @@ extern struct pkg_ctx ctx;
 
 static int pkg_jobs_installed_local_pkg(struct pkg_jobs *j, struct pkg *pkg);
 static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m);
+static int pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond,
+	const char *pattern, match_t m);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
@@ -801,7 +803,7 @@ pkg_jobs_has_replacement(struct pkg_jobs *j, const char *uid)
 }
 
 static int
-pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
+pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *pattern,
     const char *uid, match_t m)
 {
 	struct pkg *p = NULL;
@@ -814,7 +816,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 	xstring *qmsg = NULL;
 	struct pkg_job_universe_item *unit;
 
-	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query_cond(j->db, cond, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
@@ -868,7 +870,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 	/* First of all, try to search a package with the same name */
 	pos = strchr(pattern, '/');
 	if (pos != NULL && pos[1] != '\0') {
-		if (pkg_jobs_try_remote_candidate(j, pos + 1, opattern, MATCH_EXACT)
+		if (pkg_jobs_try_remote_candidate(j, pos + 1, NULL, opattern, MATCH_EXACT)
 						== EPKG_OK)
 			return (EPKG_OK);
 
@@ -891,12 +893,12 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 		/* Try exact pattern without numbers */
 		cpy = xmalloc(len + 1);
 		strlcpy(cpy, pos, len + 1);
-		if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_EXACT) != EPKG_OK) {
+		if (pkg_jobs_try_remote_candidate(j, cpy, NULL, opattern, MATCH_EXACT) != EPKG_OK) {
 			free(cpy);
 			cpy = sqlite3_mprintf(" WHERE name REGEXP ('^' || %.*Q || '[0-9.]*$')",
 					len, pos);
 
-			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_CONDITION)
+			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, NULL, MATCH_ALL)
 					== EPKG_OK)
 				rc = EPKG_OK;
 			sqlite3_free(cpy);
@@ -911,7 +913,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 }
 
 static int
-pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
+pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
@@ -986,6 +988,12 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	}
 
 	return (rc);
+}
+
+static int
+pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
+{
+	return pkg_jobs_find_upgrade_cond(j, NULL, pattern, m);
 }
 
 static int
@@ -1460,7 +1468,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 
-	if ((it = pkgdb_query(j->db, " WHERE automatic=1 AND vital=0 ", MATCH_CONDITION)) == NULL)
+	if ((it = pkgdb_query_cond(j->db, " WHERE automatic=1 AND vital=0 ", NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg,
@@ -1584,7 +1592,7 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 		pkg_emit_progress_tick(++elt_num, jcount);
 		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
 		    c->id);
-		if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
+		if ((it = pkgdb_query_cond(j->db, sqlbuf, NULL, MATCH_ALL)) == NULL)
 			return (EPKG_FATAL);
 
 		pkg = NULL;

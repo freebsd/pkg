@@ -386,7 +386,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	repo->priv = sqlite;
 	/* Check digests format */
-	if ((it = pkg_repo_binary_query(repo, NULL, MATCH_ALL)) == NULL)
+	if ((it = pkg_repo_binary_query(repo, NULL, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_OK);
 
 	if (it->ops->next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {

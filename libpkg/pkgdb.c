@@ -3107,8 +3107,8 @@ pkgdb_begin_solver(struct pkgdb *db)
 	int rc = EPKG_OK;
 	int64_t cnt = 0, cur = 0;
 
-	it = pkgdb_query(db, " WHERE manifestdigest IS NULL OR manifestdigest==''",
-		MATCH_CONDITION);
+	it = pkgdb_query_cond(db, " WHERE manifestdigest IS NULL OR manifestdigest==''",
+		NULL, MATCH_ALL);
 	if (it != NULL) {
 		kv_init(pkglist);
 		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC|PKG_LOAD_OPTIONS) == EPKG_OK) {
