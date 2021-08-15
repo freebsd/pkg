@@ -1581,7 +1581,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		" (SELECT id FROM packages WHERE name = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
-		"TTTT",
+		"TTTT", // "TTT"???
 	},
 	[ANNOTATE_DEL1] = {
 		NULL,
@@ -1590,7 +1590,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
                 " (SELECT id FROM packages WHERE name = ?1) "
 		"AND tag_id IN"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2)",
-		"TTT",
+		"TTT", // "TT"???
 	},
 	[ANNOTATE_DEL2] = {
 		NULL,
