@@ -40,7 +40,7 @@ int pkg_repo_binary_create(struct pkg_repo *repo);
 int pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode);
 
 struct pkg_repo_it *pkg_repo_binary_query(struct pkg_repo *repo,
-	const char *pattern, match_t match);
+	const char *cond, const char *pattern, match_t match);
 struct pkg_repo_it *pkg_repo_binary_shlib_provide(struct pkg_repo *repo,
 	const char *require);
 struct pkg_repo_it *pkg_repo_binary_provide(struct pkg_repo *repo,

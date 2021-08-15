@@ -96,7 +96,7 @@ pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 }
 
 struct pkg_repo_it *
-pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
+pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
@@ -122,7 +122,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 	if (stmt == NULL)
 		return (NULL);
 
-	if (match != MATCH_ALL && match != MATCH_CONDITION)
+	if (match != MATCH_ALL && cond == NULL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
@@ -266,10 +266,6 @@ pkg_repo_binary_search_how(match_t match)
 		break;
 	case MATCH_REGEX:
 		how = "%s REGEXP ?1";
-		break;
-	case MATCH_CONDITION:
-		/* Should not be called by pkgdb_get_match_how(). */
-		assert(0);
 		break;
 	}
 
