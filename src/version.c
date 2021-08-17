@@ -1020,6 +1020,10 @@ exec_version(int argc, char **argv)
 		return (do_source_index(opt, limchar, pattern, match,
 			    matchorigin, matchname, indexfile));
 	} else if (have_ports(&portsdir, false)) {
+		if (argc == 1) {
+			warnx("No such INDEX file: '%s'", argv[0]);
+			return (EXIT_FAILURE);
+		}
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
 			    matchorigin, matchname, portsdir));
