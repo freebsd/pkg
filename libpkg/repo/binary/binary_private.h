@@ -376,9 +376,9 @@ static const struct repo_changes repo_upgrades[] = {
 	},
 	{2013,
 	 2014,
-	 "DROP TABLE pkg_search;",
+	 "Drop 'pkg_search'",
 
-	 NULL,
+	 "DROP TABLE pkg_search;",
 	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
