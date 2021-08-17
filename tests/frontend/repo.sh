@@ -201,7 +201,21 @@ EOF
 	atf_check -o ignore \
 		pkg -C ./pkg.conf update
 	atf_check -o inline:"test\n" \
+		pkg -C ./pkg.conf rquery "%n"
+	atf_check -o inline:"test\n" \
 		pkg -C ./pkg.conf rquery -a "%n"
+	atf_check -o inline:"test\n" \
+		pkg -C ./pkg.conf rquery -e "%n == test" "%n"
+	atf_check -o empty \
+		pkg -C ./pkg.conf rquery -e "%n != test" "%n"
+	atf_check -o inline:"test\n" \
+		pkg -C ./pkg.conf rquery -e "%n == test" "%n" test
+	atf_check -o empty \
+		  -s exit:1 \
+		pkg -C ./pkg.conf rquery -e "%n != test" "%n" test
+	atf_check -o empty \
+		  -s exit:1 \
+		pkg -C ./pkg.conf rquery -e "%n == test" "%n" nottest
 
 	rm -rf repo
 	mkdir repo
