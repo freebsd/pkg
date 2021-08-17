@@ -116,10 +116,9 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 
 	comp = pkgdb_get_pattern_query(pattern, match);
 	if (cond == NULL)
-		xasprintf(&sql, basesql, repo->name, comp, "", "", "");
+		xasprintf(&sql, basesql, repo->name, comp ? comp : "", "", "", "");
 	else
-		xasprintf(&sql, basesql, repo->name, comp,
-		    comp[0] != '\0' ? "AND (" : "WHERE (", cond + 7, ")");
+		xasprintf(&sql, basesql, repo->name, comp ? comp : "", "AND (", cond + 7, ")");
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
 	     pattern == NULL ? "all": pattern);
@@ -128,7 +127,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	if (stmt == NULL)
 		return (NULL);
 
-	if (match != MATCH_ALL && cond == NULL)
+	if (match != MATCH_ALL || cond != NULL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));

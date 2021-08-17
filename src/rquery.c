@@ -234,7 +234,6 @@ exec_rquery(int argc, char **argv)
 	if (index_output)
 		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
-	const char *condition_sql = NULL;
 	if (sqlcond) {
 		fflush(sqlcond->fp);
 		condition_sql = sqlcond->buf;
