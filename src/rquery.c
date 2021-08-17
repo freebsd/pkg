@@ -114,6 +114,7 @@ exec_rquery(int argc, char **argv)
 	int			 i;
 	char			 multiline = 0;
 	char			*condition = NULL;
+	const char		*condition_sql = NULL;
 	const char		*portsdir;
 	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
@@ -233,7 +234,6 @@ exec_rquery(int argc, char **argv)
 	if (index_output)
 		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
-	const char *condition_sql = NULL;
 	if (sqlcond) {
 		fflush(sqlcond->fp);
 		condition_sql = sqlcond->buf;

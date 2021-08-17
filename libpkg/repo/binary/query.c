@@ -107,13 +107,18 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
-		"FROM packages AS p %s ORDER BY NAME;";
+		"FROM packages AS p %s "
+		"%s%s%s "
+		"ORDER BY NAME;";
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
 	comp = pkgdb_get_pattern_query(pattern, match);
-	xasprintf(&sql, basesql, repo->name, comp ? comp : "");
+	if (cond == NULL)
+		xasprintf(&sql, basesql, repo->name, comp ? comp : "", "", "", "");
+	else
+		xasprintf(&sql, basesql, repo->name, comp ? comp : "", "AND (", cond + 7, ")");
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
 	     pattern == NULL ? "all": pattern);
@@ -122,7 +127,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	if (stmt == NULL)
 		return (NULL);
 
-	if (match != MATCH_ALL && cond == NULL)
+	if (match != MATCH_ALL || cond != NULL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));

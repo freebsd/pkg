@@ -361,7 +361,7 @@ pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, m
 
 	LL_FOREACH(db->repos, cur) {
 		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			rit = cur->repo->ops->query(cur->repo, NULL, pattern, match);
+			rit = cur->repo->ops->query(cur->repo, cond, pattern, match);
 			if (rit != NULL)
 				pkgdb_it_repo_attach(it, rit);
 		}
