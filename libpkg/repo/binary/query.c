@@ -120,8 +120,8 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	if (cond == NULL)
 		xasprintf(&sql, basesql, repo->name, comp, "", "", "");
 	else
-		xasprintf(&sql, basesql, repo->name, comp ? comp : "",
-		    comp[0] ? "AND (" : "WHERE (", cond + 7, ")");
+		xasprintf(&sql, basesql, repo->name, comp,
+		    comp[0] != '\0' ? "AND (" : "WHERE (", cond + 7, ")");
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
 	     pattern == NULL ? "all": pattern);
