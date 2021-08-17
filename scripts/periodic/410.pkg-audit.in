@@ -156,12 +156,12 @@ audit_pkgs_all() {
 		;;
 	esac
 
-	for j in $jails ; do
+	for j in ${jails} ; do
 		# ignore some jails
 		# we iterate to get exact matches because we want substring matches
 		# foo should not match foo.bar
-		for ignore in $security_status_pkgaudit_jails_ignore ; do
-			if [ "${j%|*}" = "$ignore" ]; then
+		for ignore in ${security_status_pkgaudit_jails_ignore} ; do
+			if [ "${j%|*}" = "${ignore}" ]; then
 				echo
 				echo "ignoring jail: ${j%|*}"
 				# continue with the main loop
