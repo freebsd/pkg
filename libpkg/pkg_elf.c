@@ -457,9 +457,8 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 	if (dot[1] == 'a' && dot[2] == '\0')
 		pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
 
-	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0') ||
-	    (dot[1] == 'h' && dot[2] == '\0'))
-		pkg->flags |= PKG_CONTAINS_H_OR_LA;
+	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0'))
+		pkg->flags |= PKG_CONTAINS_LA;
 
 	return (EPKG_OK);
 }
@@ -498,7 +497,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	if (ctx.developer_mode)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 				PKG_CONTAINS_STATIC_LIBS |
-				PKG_CONTAINS_H_OR_LA);
+				PKG_CONTAINS_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
