@@ -85,7 +85,6 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	struct pkg		*pkg = NULL;
 	kh_pkgs_t		*check = NULL;
 	const char		*uid;
-	int				ret;
 	FILE			*out;
 
 	out = fdopen(sock, "w");
@@ -100,26 +99,19 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		fclose(out);
 		return;
 	}
-	else {
-		check = kh_init_pkgs();
+	check = kh_init_pkgs();
 
-		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
-				== EPKG_OK) {
-			if (pkg_type(pkg) == PKG_INSTALLED) {
-				add_to_check(check, pkg);
-				pkg = NULL;
-			}
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+		if (pkg_type(pkg) == PKG_INSTALLED) {
+			add_to_check(check, pkg);
+			pkg = NULL;
 		}
-
-		ret = EXIT_SUCCESS;
 	}
 
-	if (db != NULL) {
-		pkgdb_it_free(it);
-		pkgdb_close(db);
-	}
+	pkgdb_it_free(it);
+	pkgdb_close(db);
 
-	if (ret != EXIT_SUCCESS) {
+	if (check == NULL) {
 		pkg_audit_free(audit);
 		kh_destroy_pkgs(check);
 		fclose(out);
