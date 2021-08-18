@@ -1007,7 +1007,7 @@ exec_query(int argc, char **argv)
 		if ((it = pkgdb_query_cond(db, condition_sql, pkgname, match)) == NULL) {
 			warnx("DEBUG: %s/%s\n", condition_sql ? condition_sql : "-", pkgname ? pkgname : "-");
 			retcode = EXIT_FAILURE;
-			goto cleanup;
+			break;
 		}
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
@@ -1030,7 +1030,6 @@ exec_query(int argc, char **argv)
 		retcode = EXIT_FAILURE;
 	}
 
-cleanup:
 	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
