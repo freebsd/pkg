@@ -115,8 +115,6 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		return (NULL);
 
 	comp = pkgdb_get_pattern_query(pattern, match);
-	if (comp == NULL)
-		comp = "";
 	if (cond == NULL)
 		xasprintf(&sql, basesql, repo->name, comp, "", "", "");
 	else
