@@ -53,13 +53,13 @@ suggest_arch(struct pkg *pkg, bool isdefault)
 			    "installs architecture specific files", pkg->abi);
 		}
 	} else {
-		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
+		if (pkg->flags & PKG_CONTAINS_LA) {
 			if (iswildcard) {
 				/* Could well be arch specific */
 				pkg_emit_developer_mode("Warning: arch \"%s\" "
-				    "-- package installs C/C++ headers or "
-				    "libtool files,\n**** which are often "
-				    "architecture specific", pkg->abi);
+				    "-- package installs libtool files which "
+				    " are often architecture specific",
+				    pkg->abi);
 			}
 		} else {
 			/* Might be arch independent */
