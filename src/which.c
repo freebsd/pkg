@@ -74,7 +74,7 @@ exec_which(int argc, char **argv)
 	struct pkg_file *file = NULL;
 	char		 pathabs[MAXPATHLEN];
 	char		*p, *path, *match, *savedpath;
-	int		 ret = EPKG_OK, retcode = EXIT_FAILURE;
+	int		 retcode = EXIT_FAILURE;
 	int		 ch, res, pathlen = 0;
 	size_t		 i;
 	bool		 orig = false;
@@ -212,7 +212,7 @@ exec_which(int argc, char **argv)
 			}
 
 			pkg = NULL;
-			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_FILES)) == EPKG_OK) {
+			while (pkgdb_it_next(it, &pkg, PKG_LOAD_FILES) == EPKG_OK) {
 				retcode = EXIT_SUCCESS;
 				if (quiet && orig && !show_match)
 					pkg_printf("%o\n", pkg);

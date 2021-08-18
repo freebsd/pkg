@@ -59,7 +59,7 @@ exec_triggers(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 	}
-	argv += optind;
+	// argv += optind;
 
 	pkg_execute_deferred_triggers();
 
