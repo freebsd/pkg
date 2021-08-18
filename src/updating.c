@@ -241,7 +241,6 @@ exec_updating(int argc, char **argv)
 	int			 ch;
 	char			*line = NULL;
 	size_t			 linecap = 0;
-	ssize_t			 linelen;
 	char			*tmp;
 	int			 head = 0;
 	int			 found = 0;
@@ -346,7 +345,7 @@ exec_updating(int argc, char **argv)
 		}
 	}
 
-	while ((linelen = getline(&line, &linecap, fd)) > 0) {
+	while (getline(&line, &linecap, fd) > 0) {
 		if (strspn(line, "0123456789:") == 9) {
 			dateline = strdup(line);
 			found = 0;

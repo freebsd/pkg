@@ -1464,10 +1464,9 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 	int ret = EPKG_OK;
 	char *line = NULL, *var_str, *begin;
 	size_t linecap = 0;
-	ssize_t linelen;
 	bool got_sat = false, done = false;
 
-	while ((linelen = getline(&line, &linecap, f)) > 0) {
+	while (getline(&line, &linecap, f) > 0) {
 		if (strncmp(line, "SAT", 3) == 0) {
 			got_sat = true;
 		}

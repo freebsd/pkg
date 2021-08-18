@@ -114,7 +114,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 		goto cleanup;
 	}
 
-	while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, 0) == EPKG_OK) {
 		if (action == LOCK)
 			retcode = do_lock(db, pkg);
 		else
