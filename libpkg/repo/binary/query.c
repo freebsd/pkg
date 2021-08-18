@@ -115,8 +115,6 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		return (NULL);
 
 	comp = pkgdb_get_pattern_query(pattern, match);
-	if (comp == NULL)
-		comp = "";
 	if (cond == NULL)
 		xasprintf(&sql, basesql, repo->name, comp, "", "", "");
 	else
@@ -130,7 +128,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	if (stmt == NULL)
 		return (NULL);
 
-	if (match != MATCH_ALL || cond != NULL)
+	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
