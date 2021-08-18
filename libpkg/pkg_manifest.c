@@ -878,7 +878,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 
 	errno = 0;
 
-	if ((rc = file_to_bufferat(dfd, file, &data, &sz)) != EPKG_OK)
+	if (file_to_bufferat(dfd, file, &data, &sz) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);

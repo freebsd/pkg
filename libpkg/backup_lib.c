@@ -36,7 +36,6 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 {
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	int rc = EPKG_OK;
 	time_t t;
 	char buf[BUFSIZ];
 	char *sum;
@@ -49,8 +48,7 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 
 	it = pkgdb_query(db, "compat-libraries", MATCH_EXACT);
 	if (it != NULL) {
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES) != EPKG_OK)
-			rc = EPKG_FATAL;
+		pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES);
 		pkgdb_it_free(it);
 	}
 	if (pkg == NULL) {
@@ -100,7 +98,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	ssize_t nread, nwritten;
 
 	pkg_open_root_fd(p);
-	from = to = backupdir = -1;
+	to = -1;
 
 	if (libname == NULL)
 		return;
@@ -162,7 +160,6 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		close(from);
 		register_backup(db, backupdir, libname);
 		close(backupdir);
-		backupdir = -1;
 		return;
 	}
 

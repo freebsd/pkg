@@ -62,7 +62,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
 					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_LUA_SCRIPTS;
-	bool		head = true;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -122,7 +121,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 					message = xstring_new();
 					pkg_fprintf(message->fp, "Message from "
 					    "%n-%v:\n", pkg, pkg);
-					head = false;
 				}
 				fprintf(message->fp, "%s\n", msg->str);
 			}

@@ -77,7 +77,6 @@ checkflags(const char *mode, int *optr)
 		break;
 
 	default:	/* illegal mode */
-		ret = 0;
 		errno = EINVAL;
 		return (0);
 	}

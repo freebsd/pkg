@@ -596,7 +596,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	char repodb[MAXPATHLEN];
 	FILE *mandigests = NULL;
 
-	outputdir_fd = mfd = ffd = -1;
+	mfd = ffd = -1;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -796,7 +796,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	pkg_emit_progress_tick(len, len);
-	retcode = EPKG_OK;
 
 	/* Now sort all digests */
 	if (meta->version == 1)

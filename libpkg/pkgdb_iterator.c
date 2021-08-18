@@ -293,7 +293,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 					/* Fetch matching packages */
 					chain = NULL;
 
-					while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+					while (sqlite3_step(stmt) == SQLITE_ROW) {
 						/*
 						 * Load options for a package and check
 						 * if they are compatible
@@ -311,8 +311,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 							sqlite3_bind_int64(opt_stmt, 1,
 									sqlite3_column_int64(stmt, 0));
 
-							while ((ret = sqlite3_step(opt_stmt))
-									== SQLITE_ROW) {
+							while (sqlite3_step(opt_stmt) == SQLITE_ROW) {
 								DL_FOREACH(fit->options, optit) {
 									if(strcmp(optit->opt,
 											sqlite3_column_text(opt_stmt, 0))
@@ -438,7 +437,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_bind_int64(stmt, 1, pkg->id);
 	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
-	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		pkg_addfile(pkg, sqlite3_column_text(stmt, 0),
 		    sqlite3_column_text(stmt, 1), false);
 	}

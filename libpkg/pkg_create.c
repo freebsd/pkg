@@ -381,7 +381,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = load_metadata(pkg, metadata, plist, pc->rootdir)) != EPKG_OK) {
+	if (load_metadata(pkg, metadata, plist, pc->rootdir) != EPKG_OK) {
 		pkg_free(pkg);
 		return (EPKG_FATAL);
 	}
