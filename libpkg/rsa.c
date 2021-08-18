@@ -37,7 +37,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 /*
  * This matches the historical usage for pkg.  Older versions sign the hex
  * encoding of the SHA256 checksum.  If we ever deprecated RSA, this can go
@@ -231,7 +231,7 @@ rsa_verify_cb(int fd, void *ud)
 	char *sha256;
 	char errbuf[1024];
 	EVP_PKEY *pkey = NULL;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	EVP_PKEY_CTX *ctx;
 #else
 	RSA *rsa;
@@ -254,7 +254,7 @@ rsa_verify_cb(int fd, void *ud)
 		return (EPKG_FATAL);
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	ctx = EVP_PKEY_CTX_new(pkey, NULL);
 	if (ctx == NULL) {
 		EVP_PKEY_free(pkey);
@@ -300,7 +300,7 @@ rsa_verify_cb(int fd, void *ud)
 		else
 			pkg_emit_error("%s: rsa signature verification failure",
 			    cbdata->key);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_PKEY_CTX_free(ctx);
 #else
 		RSA_free(rsa);
@@ -309,7 +309,7 @@ rsa_verify_cb(int fd, void *ud)
 		return (EPKG_FATAL);
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	EVP_PKEY_CTX_free(ctx);
 #else
 	RSA_free(rsa);
@@ -359,7 +359,7 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 {
 	char errbuf[1024];
 	int max_len = 0, ret;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	EVP_PKEY_CTX *ctx;
 	size_t siglen;
 #else
@@ -384,7 +384,7 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 	if (sha256 == NULL)
 		return (EPKG_FATAL);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	ctx = EVP_PKEY_CTX_new(keyinfo->key, NULL);
 	if (ctx == NULL) {
 		free(sha256);
@@ -423,7 +423,7 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 	if (ret <= 0) {
 		pkg_emit_error("%s: %s", keyinfo->path,
 		   ERR_error_string(ERR_get_error(), errbuf));
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_PKEY_CTX_free(ctx);
 #else
 		RSA_free(rsa);
@@ -431,7 +431,7 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 		return (EPKG_FATAL);
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	assert(siglen <= INT_MAX);
 	*osiglen = siglen;
 	EVP_PKEY_CTX_free(ctx);

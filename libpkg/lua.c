@@ -45,6 +45,10 @@
 #include "private/event.h"
 #include "private/lua.h"
 
+#ifndef DEFFILEMODE
+#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+#endif
+
 extern char **environ;
 
 lua_CFunction

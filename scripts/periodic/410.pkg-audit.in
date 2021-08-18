@@ -42,6 +42,7 @@ fi
 : ${security_status_pkgaudit_quiet:=YES}
 : ${security_status_pkgaudit_chroots=$pkg_chroots}
 : ${security_status_pkgaudit_jails=$pkg_jails}
+: ${security_status_pkgaudit_jails_ignore+=""}
 : ${security_status_pkgaudit_expiry:=2}
 
 security_daily_compat_var security_status_pkgaudit_enable
@@ -155,7 +156,18 @@ audit_pkgs_all() {
 		;;
 	esac
 
-	for j in $jails ; do
+	for j in ${jails} ; do
+		# ignore some jails
+		# we iterate to get exact matches because we want substring matches
+		# foo should not match foo.bar
+		for ignore in ${security_status_pkgaudit_jails_ignore} ; do
+			if [ "${j%|*}" = "${ignore}" ]; then
+				echo
+				echo "ignoring jail: ${j%|*}"
+				# continue with the main loop
+				continue 2
+			fi
+		done
 		echo
 		echo "jail: ${j%|*}"
 		for t in audit expiration deprecation; do

@@ -693,7 +693,7 @@ int pkg_config_files(const struct pkg *pkg, struct pkg_config_file **cf);
  /* Don't conflict with PKG_LOAD_* q.v. */
 #define PKG_CONTAINS_ELF_OBJECTS	(1U << 24)
 #define PKG_CONTAINS_STATIC_LIBS	(1U << 25)
-#define PKG_CONTAINS_H_OR_LA		(1U << 26)
+#define PKG_CONTAINS_LA			(1U << 26)
 
 int pkg_analyse_files(struct pkgdb *, struct pkg *, const char *);
 
