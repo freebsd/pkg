@@ -741,7 +741,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	ntask = 0;
 	remaining_workers = num_workers;
 	while(remaining_workers > 0) {
-		int st, r;
+		int st;
 
 		pkg_debug(1, "checking for %d workers", remaining_workers);
 		retcode = poll(pfd, num_workers, -1);
@@ -757,7 +757,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			for (i = 0; i < num_workers; i ++) {
 				if (pfd[i].fd != -1 &&
 								(pfd[i].revents & (POLLIN|POLLHUP|POLLERR))) {
-					if ((r = pkg_create_repo_read_pipe(pfd[i].fd, &dlist)) != EPKG_OK) {
+					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist) != EPKG_OK) {
 						/*
 						 * Wait for the worker finished
 						 */

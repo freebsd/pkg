@@ -363,7 +363,7 @@ exec_audit(int argc, char **argv)
 			ret = EXIT_FAILURE;
 		}
 		else {
-			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
+			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS)
 							== EPKG_OK) {
 				add_to_check(check, pkg);
 				pkg = NULL;
