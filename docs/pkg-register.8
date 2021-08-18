@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 02, 2014
+.Dd August 13, 2021
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -22,22 +22,22 @@
 .Nd register a package into the local package database
 .Sh SYNOPSIS
 .Nm
-.Op Fl dlt
+.Op Fl dltN
 .Op Fl f Ar plist-file
 .Fl m Ar metadatadir
 .Fl i Ar input-path
 .Nm
-.Op Fl dlt
+.Op Fl dltN
 .Fl M Ar metadatafile
 .Pp
 .Nm
-.Op Cm --{debug,legacy,test}
+.Op Cm --{debug,legacy,test,no-registration}
 .Op Cm --relocate Ar location
 .Op Cm --plist Ar plist-file
 .Cm --metadata Ar metadatadir
 .Cm --root Ar input-path
 .Nm
-.Op Cm --{debug,legacy,test}
+.Op Cm --{debug,legacy,test,no-registration}
 .Op Cm --relocate Ar location
 .Cm --manifest Ar metadatafile
 .Sh DESCRIPTION
@@ -114,6 +114,9 @@ For more information please refer to
 .Xr pkg-autoremove 8 .
 .It Fl d , Cm --debug
 Enable debugging output.
+.It Fl N , Cm --no-registration
+Disable registration in the package database, the files will be installed,
+the scripts will be executed.
 .It Fl f Ar plist-file , Cm --plist Ar plist-file
 Specifies a
 .Fa pkg-plist
