@@ -1180,6 +1180,10 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	return (rc);
 }
 
+/*
+ * if the provided database is NULL then we don't want to register the package
+ * in the database aka NO_PKG_REGISTER
+ */
 int
 pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
     const char *reloc, bool testing)
@@ -1189,7 +1193,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	xstring *message;
 	struct pkg_message *msg;
 
-	if (pkg_is_installed(db, pkg->name) != EPKG_END) {
+	if (db != NULL && pkg_is_installed(db, pkg->name) != EPKG_END) {
 		return(EPKG_INSTALLED);
 	}
 
@@ -1202,10 +1206,12 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	pkg_emit_install_begin(pkg);
 
-	rc = pkgdb_register_pkg(db, pkg, 0, NULL);
+	if (db != NULL) {
+		rc = pkgdb_register_pkg(db, pkg, 0, NULL);
 
-	if (rc != EPKG_OK)
-		goto cleanup;
+		if (rc != EPKG_OK)
+			goto cleanup;
+	}
 
 	if (!testing) {
 		/* Execute pre-install scripts */
@@ -1218,7 +1224,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 			pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 			if (rc != EPKG_OK) {
 				pkg_rollback_pkg(pkg);
-				pkg_delete_dirs(db, pkg, NULL);
+				if (db != NULL)
+					pkg_delete_dirs(db, pkg, NULL);
 			}
 		}
 
@@ -1247,7 +1254,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	}
 
 cleanup:
-	pkgdb_register_finale(db, rc, NULL);
+	if (db != NULL)
+		pkgdb_register_finale(db, rc, NULL);
 
 	return (rc);
 }
