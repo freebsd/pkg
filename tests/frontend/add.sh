@@ -11,7 +11,8 @@ tests_init	\
 		add_quiet \
 		add_stdin \
 		add_stdin_missing \
-		add_no_version
+		add_no_version \
+		add_wrong_version
 
 initialize_pkg() {
 	touch a
@@ -220,6 +221,27 @@ add_no_version_body() {
 deps {
 	test {
 		origin = "test";
+	}
+}
+EOF
+		fi
+		atf_check -o ignore -s exit:0 \
+			pkg create -M ${p}.ucl
+	done
+	atf_check -o ignore -s exit:0 \
+		pkg add final-1.pkg
+}
+
+add_wrong_version_body() {
+
+	for p in test test-lib final ; do
+		atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ${p} ${p} 1
+		if [ ${p} = "final" ]; then
+			cat << EOF >> final.ucl
+deps {
+	test {
+		origin = "test";
+		version = "2";
 	}
 }
 EOF
