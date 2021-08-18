@@ -1024,7 +1024,7 @@ exec_query(int argc, char **argv)
 		i++;
 	} while (i < argc);
 
-	if (nprinted == 0 && condition_sql == NULL && retcode == EXIT_SUCCESS) {
+	if (nprinted == 0 && match != MATCH_ALL && retcode == EXIT_SUCCESS) {
 		/* ensure to return a non-zero status when no package
 		 were found. */
 		retcode = EXIT_FAILURE;

@@ -81,7 +81,7 @@ EOF
 	atf_check \
 		-o empty \
 		-e empty \
-		-s exit:0 \
+		-s exit:1 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop
 
 	atf_check \
