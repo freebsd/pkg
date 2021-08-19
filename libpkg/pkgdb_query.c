@@ -166,7 +166,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 		return (NULL);
 	}
 
-	if (match != MATCH_ALL || cond != NULL)
+	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
