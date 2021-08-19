@@ -134,10 +134,10 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
-	char			*buf;
 	struct pkg_kv		*kv;
 	const char		*arch;
 	int64_t			 package_id;
+	pkghash_it		it;
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
@@ -178,27 +178,29 @@ try_again:
 		}
 	}
 
-	kh_each_value(pkg->categories, buf, {
-		ret = pkg_repo_binary_run_prstatement(CAT1, buf);
+	it = pkghash_iterator(pkg->categories);
+	while (pkghash_next(&it)) {
+	ret = pkg_repo_binary_run_prstatement(CAT1, it.key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(CAT2, package_id,
-			    buf);
+			    it.key);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
-	});
+	}
 
-	kh_each_value(pkg->licenses, buf, {
-		ret = pkg_repo_binary_run_prstatement(LIC1, buf);
+	it = pkghash_iterator(pkg->licenses);
+	while (pkghash_next(&it)) {
+		ret = pkg_repo_binary_run_prstatement(LIC1, it.key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
-			    buf);
+			    it.key);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
 		}
-	});
+	}
 
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -212,48 +214,48 @@ try_again:
 		}
 	}
 
-	buf = NULL;
-	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, buf);
+	it = pkghash_iterator(pkg->shlibs_required);
+	while (pkghash_next(&it)) {
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, it.key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id,
-			    buf);
+			    it.key);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
 		}
 	}
 
-	buf = NULL;
-	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, buf);
+	it = pkghash_iterator(pkg->shlibs_provided);
+	while (pkghash_next(&it)) {
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, it.key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id,
-			    buf);
+			    it.key);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);
 		}
 	}
 
-	buf = NULL;
-	while (pkg_provides(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(PROVIDE, buf);
+	it = pkghash_iterator(pkg->provides);
+	while (pkghash_next(&it)) {
+		ret = pkg_repo_binary_run_prstatement(PROVIDE, it.key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id,
-			    buf);
+			    it.key);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PROVIDES));
 			return (EPKG_FATAL);
 		}
 	}
 
-	buf = NULL;
-	while (pkg_requires(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(REQUIRE, buf);
+	it = pkghash_iterator(pkg->requires);
+	while (pkghash_next(&it)) {
+		ret = pkg_repo_binary_run_prstatement(REQUIRE, it.key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id,
-			    buf);
+			    it.key);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(REQUIRES));
 			return (EPKG_FATAL);

@@ -113,7 +113,6 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	struct pkg_dep *dep;
 	struct pkg_conflict *conflict;
 	struct pkg_job_universe_item *u;
-	char *buf;
 	int column = 0, ver;
 
 	if (fprintf(f, "package: ") < 0)
@@ -125,31 +124,32 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
 		return (EPKG_FATAL);
 
-	if (kh_count(pkg->depshash) > 0) {
+	if (pkghash_count(pkg->depshash) > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
 		LL_FOREACH(pkg->depends, dep) {
 			if (cudf_print_element(f, dep->name,
-			    column + 1 == kh_count(pkg->depshash), &column) < 0) {
+			    column + 1 == pkghash_count(pkg->depshash), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}
 	}
 
 	column = 0;
-	if (kh_count(pkg->provides) > 0) {
+	if (pkghash_count(pkg->provides) > 0) {
 		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
-		kh_each_value(pkg->provides, buf, {
-			if (cudf_print_element(f, buf,
-			    column + 1 == kh_count(pkg->provides), &column) < 0) {
+		pkghash_it it = pkghash_iterator(pkg->provides);
+		while (pkghash_next(&it)) {
+			if (cudf_print_element(f, it.key,
+			    column + 1 == pkghash_count(pkg->provides), &column) < 0) {
 				return (EPKG_FATAL);
 			}
-		});
+		}
 	}
 
 	column = 0;
-	if (kh_count(pkg->conflictshash) > 0 ||
+	if (pkghash_count(pkg->conflictshash) > 0 ||
 			(conflicts_chain->next != NULL &&
 			conflicts_chain->next->priority != INT_MIN)) {
 		if (fprintf(f, "conflicts: ") < 0)

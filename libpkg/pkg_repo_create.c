@@ -76,7 +76,7 @@ struct digest_list_entry {
 
 struct pkg_conflict_bulk {
 	struct pkg_conflict *conflicts;
-	kh_pkg_conflicts_t *conflictshash;
+	pkghash *conflictshash;
 	char *file;
 	UT_hash_handle hh;
 };
@@ -830,7 +830,8 @@ cleanup:
 		close(ffd);
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
 		DL_FREE(curcb->conflicts, pkg_conflict_free);
-		kh_destroy_pkg_conflicts(curcb->conflictshash);
+		pkghash_destroy(curcb->conflictshash);
+		curcb->conflictshash = NULL;
 		HASH_DEL(conflicts, curcb);
 		free(curcb);
 	}

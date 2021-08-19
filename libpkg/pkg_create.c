@@ -79,7 +79,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	nfiles = kh_count(pkg->filehash);
+	nfiles = pkghash_count(pkg->filehash);
 	counter_init("file sizes/checksums", nfiles);
 
 	hardlinks = kh_init_hardlinks();
@@ -160,7 +160,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	nfiles = kh_count(pkg->dirhash);
+	nfiles = pkghash_count(pkg->dirhash);
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {

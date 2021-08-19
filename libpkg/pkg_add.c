@@ -568,8 +568,12 @@ retry:
 
 	if (fromfd == -1) {
 		/* check if this is a config file */
-		kh_find(pkg_config_files, pkg->config_files, f->path,
-		    f->config);
+		pkghash_entry *e;
+		e = pkghash_get(pkg->config_files_hash, f->path);
+		if (e == NULL)
+			f->config = NULL;
+		else
+			f->config = (struct pkg_config_file *)e->value;
 		if (f->config) {
 			const char *cfdata;
 			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
@@ -1011,7 +1015,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 					const char *libname;
 					libname = strrchr(f->path, '/');
 					if (libname != NULL &&
-					    kh_contains(strings, old->shlibs_provided, libname+1)) {
+					    pkghash_get(old->shlibs_provided, libname+1) != NULL) {
 						backup_library(db, old, f->path);
 					}
 				}
@@ -1157,7 +1161,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = kh_count(pkg->filehash) + kh_count(pkg->dirhash);
+	nfiles = pkghash_count(pkg->filehash) + pkghash_count(pkg->dirhash);
 	/*
 	 * Extract the files on disk.
 	 */

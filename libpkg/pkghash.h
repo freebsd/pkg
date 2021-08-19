@@ -8,7 +8,7 @@ typedef struct pkghash pkghash;
 
 pkghash *pkghash_new(void);
 void pkghash_destroy(pkghash *table);
-const char *pkghash_add(pkghash *table, const char *key, void *value, void (*free_func)(void *));
+bool pkghash_add(pkghash *table, const char *key, void *value, void (*free_func)(void *));
 size_t pkghash_count(pkghash *table);
 
 typedef struct {

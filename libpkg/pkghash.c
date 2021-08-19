@@ -83,19 +83,15 @@ pkghash_get(pkghash *table, const char *key)
 	return (NULL);
 }
 
-static const char *
+static bool
 pkghash_set_entry(pkghash_entry *entries, size_t capacity,
     const char *key, void *value, size_t *pcount, void (*free_func)(void *)) {
 	uint64_t hash = mum_hash(key, strlen(key), 0);
 	size_t index = (size_t)(hash & (uint64_t)(capacity - 1));
 
 	while (entries[index].key != NULL) {
-		if (strcmp(key, entries[index].key) == 0) {
-			if (entries[index].free_func != NULL)
-				entries[index].free_func(entries[index].value);
-			entries[index].value = value;
-			return (entries[index].key);
-		}
+		if (strcmp(key, entries[index].key) == 0)
+			return (false);
 		index++;
 		if (index >= capacity)
 			index = 0;
@@ -108,7 +104,7 @@ pkghash_set_entry(pkghash_entry *entries, size_t capacity,
 	entries[index].key = (char *)key;
 	entries[index].value = value;
 	entries[index].free_func = free_func;
-	return (key);
+	return (true);
 }
 
 static bool
@@ -132,7 +128,7 @@ pkghash_expand(pkghash *table)
 	return (true);
 }
 
-const char *
+bool
 pkghash_add(pkghash *table, const char *key, void *value, void (*free_func)(void *))
 {
 	if (table->count >= table->capacity / 2 && !pkghash_expand(table))

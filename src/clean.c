@@ -49,7 +49,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-#include <khash.h>
 #include <kvec.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -58,8 +57,8 @@
 #include <bsd_compat.h>
 
 #include "pkgcli.h"
+#include "pkghash.h"
 
-KHASH_MAP_INIT_STR(sum, char *);
 typedef kvec_t(char *) dl_list;
 
 #define OUT_OF_DATE	(1U<<0)
@@ -153,7 +152,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	return (retcode);
 }
 
-static kh_sum_t *
+static pkghash *
 populate_sums(struct pkgdb *db)
 {
 	struct pkg *p = NULL;
@@ -161,19 +160,16 @@ populate_sums(struct pkgdb *db)
 	const char *sum;
 	char *cksum;
 	size_t slen;
-	kh_sum_t *suml = NULL;
-	khint_t k;
-	int ret;
+	pkghash *suml = NULL;
 
-	suml = kh_init_sum();
+	suml = pkghash_new();
 	it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(p, PKG_CKSUM, &sum);
 		slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
 		cksum = strndup(sum, slen);
-		k = kh_put_sum(suml, cksum, &ret);
-		if (ret != 0)
-			kh_value(suml, k) = cksum;
+		pkghash_safe_add(suml, cksum, NULL, NULL);
+		free(cksum);
 	}
 
 	return (suml);
@@ -209,7 +205,7 @@ extract_filename_sum(const char *fname, char sum[])
 
 static int
 recursive_analysis(int fd, struct pkgdb *db, const char *dir,
-    const char *cachedir, dl_list *dl, kh_sum_t **sumlist, bool all,
+    const char *cachedir, dl_list *dl, pkghash **sumlist, bool all,
     size_t *total)
 {
 	DIR *d;
@@ -220,7 +216,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 	const char *name;
 	ssize_t link_len;
 	size_t nbfiles = 0, added = 0;
-	khint_t k;
+	pkghash_entry *e;
 
 	tmpfd = dup(fd);
 	d = fdopendir(tmpfd);
@@ -273,10 +269,11 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 			name = link_buf;
 		}
 
-		k = kh_end(*sumlist);
-		if (extract_filename_sum(name, csum))
-			k = kh_get_sum(*sumlist, csum);
-		if (k == kh_end(*sumlist)) {
+		e = NULL;
+		if (extract_filename_sum(name, csum)) {
+			e = pkghash_get(*sumlist, csum);
+		}
+		if (e == NULL) {
 			added++;
 			*total += add_to_dellist(fd, dl, cachedir, path);
 		}
@@ -296,7 +293,7 @@ int
 exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
-	kh_sum_t	*sumlist = NULL;
+	pkghash		*sumlist = NULL;
 	dl_list		 dl;
 	const char	*cachedir;
 	bool		 all = false;
@@ -305,7 +302,6 @@ exec_clean(int argc, char **argv)
 	int		 cachefd = -1;
 	size_t		 total = 0;
 	char		 size[8];
-	char		*cksum;
 	struct pkg_manifest_key *keys = NULL;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
@@ -400,10 +396,7 @@ exec_clean(int argc, char **argv)
 	pkg_manifest_keys_new(&keys);
 	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
 	    &total);
-	if (sumlist != NULL) {
-		kh_foreach_value(sumlist, cksum, free(cksum));
-		kh_destroy_sum(sumlist);
-	}
+	pkghash_destroy(sumlist);
 
 	if (kv_size(dl) == 0) {
 		if (!quiet)

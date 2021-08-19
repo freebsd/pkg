@@ -917,7 +917,7 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
 	else {
-		char	*buffer = NULL;
+		pkghash_it it;
 		int			 count;
 
 		set_list_defaults(p, "%Bn\n", "");
@@ -925,13 +925,14 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_shlibs_required(pkg, &buffer) == EPKG_OK) {
+		it = pkghash_iterator(pkg->shlibs_required);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     buffer, count, PP_B);
+					     it.key, count, PP_B);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     buffer, count, PP_B);
+				     it.key, count, PP_B);
 			count++;
 		}
 	}
@@ -961,7 +962,6 @@ format_categories(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	int			 count = 0;
-	char			*cat;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
 		return (list_count(buf, pkg_list_count(pkg, PKG_CATEGORIES), p));
@@ -971,15 +971,16 @@ format_categories(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		kh_each_value(pkg->categories, cat, {
+		pkghash_it it = pkghash_iterator(pkg->categories);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    cat, count, PP_C);
+				    it.key, count, PP_C);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, cat,
+			iterate_item(buf, pkg, p->item_fmt->buf, it.key,
 			    count, PP_C);
 			count++;
-		});
+		}
 	}
 	return (buf);
 }
@@ -1233,7 +1234,6 @@ xstring *
 format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	char			*lic;
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
@@ -1244,15 +1244,16 @@ format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		kh_each_value(pkg->licenses, lic, {
+		pkghash_it it = pkghash_iterator(pkg->licenses);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    lic, count, PP_L);
+				    it.key, count, PP_L);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, lic,
+			iterate_item(buf, pkg, p->item_fmt->buf, it.key,
 			    count, PP_L);
 			count++;
-		});
+		}
 	}
 	return (buf);
 }
@@ -1536,7 +1537,6 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_REQUIRES), p));
 	else {
-		char	*provide = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%Yn\n", "");
@@ -1544,13 +1544,14 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_requires(pkg, &provide) == EPKG_OK) {
+		pkghash_it it = pkghash_iterator(pkg->requires);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     provide, count, PP_Y);
+					     it.key, count, PP_Y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     provide, count, PP_Y);
+				     it.key, count, PP_Y);
 			count++;
 		}
 	}
@@ -1594,7 +1595,7 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
 	else {
-		char	*shlib = NULL;
+		pkghash_it it;
 		int	 count;
 
 		set_list_defaults(p, "%bn\n", "");
@@ -1602,13 +1603,14 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+		it = pkghash_iterator(pkg->shlibs_provided);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     shlib, count, PP_b);
+					     it.key, count, PP_b);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     shlib, count, PP_b);
+				     it.key, count, PP_b);
 			count++;
 		}
 	}
@@ -1936,7 +1938,7 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_PROVIDES), p));
 	else {
-		char	*provide = NULL;
+		pkghash_it it;
 		int	 count;
 
 		set_list_defaults(p, "%yn\n", "");
@@ -1944,13 +1946,14 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_provides(pkg, &provide) == EPKG_OK) {
+		it = pkghash_iterator(pkg->provides);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     provide, count, PP_y);
+					     it.key, count, PP_y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     provide, count, PP_y);
+				     it.key, count, PP_y);
 			count++;
 		}
 	}

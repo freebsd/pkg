@@ -168,9 +168,9 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 	c2 = xcalloc(1, sizeof(*c2));
 
 	c1->type = c2->type = type;
-	if (!kh_contains(pkg_conflicts, p1->conflictshash, p2->uid)) {
+	if (pkghash_get(p1->conflictshash, p2->uid) == NULL) {
 		c1->uid = xstrdup(p2->uid);
-		kh_safe_add(pkg_conflicts, p1->conflictshash, c1, c1->uid);
+		pkghash_safe_add(p1->conflictshash, c1->uid, c1, NULL);
 		DL_APPEND(p1->conflicts, c1);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
@@ -179,9 +179,9 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type ty
 		pkg_conflict_free(c1);
 	}
 
-	if (!kh_contains(pkg_conflicts, p2->conflictshash, p1->uid)) {
+	if (pkghash_get(p2->conflictshash, p1->uid) == NULL) {
 		c2->uid = xstrdup(p1->uid);
-		kh_safe_add(pkg_conflicts, p2->conflictshash, c2, c2->uid);
+		pkghash_safe_add(p2->conflictshash, c2->uid, c2, NULL);
 		DL_APPEND(p2->conflicts, c2);
 		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
 				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
@@ -224,8 +224,8 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	/*
 	 * Check if we already have this conflict registered
 	 */
-	if (kh_contains(pkg_conflicts, p1->conflictshash, p2->uid) &&
-	    kh_contains(pkg_conflicts, p2->conflictshash, p1->uid))
+	if (pkghash_get(p1->conflictshash, p2->uid) != NULL &&
+	    pkghash_get(p2->conflictshash, p1->uid) != NULL)
 		return false;
 
 	/*
@@ -253,9 +253,15 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	bool use_digest)
 {
 	struct pkg_conflict *c1, *c2;
+	pkghash_entry *e;
 
-	kh_find(pkg_conflicts, p1->conflictshash, p2->uid, c1);
-	kh_find(pkg_conflicts, p2->conflictshash, p1->uid, c2);
+	c1 = c2 = NULL;
+	e = pkghash_get(p1->conflictshash, p2->uid);
+	if (e != NULL)
+		c1 = (struct pkg_conflict *)e->value;
+	e = pkghash_get(p2->conflictshash, p1->uid);
+	if (e != NULL)
+		c2 = (struct pkg_conflict *)e->value;
 	if (c1 == NULL) {
 		c1 = xcalloc(1, sizeof(*c1));
 		c1->type = type;
@@ -265,7 +271,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 			c1->digest = xstrdup(p2->digest);
 		}
 
-		kh_safe_add(pkg_conflicts, p1->conflictshash, c1, c1->uid);
+		pkghash_safe_add(p1->conflictshash, c1->uid, c1, NULL);
 		DL_APPEND(p1->conflicts, c1);
 	}
 
@@ -281,7 +287,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 			c2->digest = xstrdup(p1->digest);
 		}
 
-		kh_safe_add(pkg_conflicts, p2->conflictshash, c2, c2->uid);
+		pkghash_safe_add(p2->conflictshash, c2->uid, c2, NULL);
 		DL_APPEND(p2->conflicts, c2);
 	}
 
@@ -385,7 +391,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 
 		assert(strcmp(uid, p->uid) != 0);
 
-		if (!kh_contains(pkg_conflicts, p->conflictshash, uid)) {
+		if (pkghash_get(p->conflictshash, uid) == NULL) {
 			/* We need to register the conflict between two universe chains */
 			sqlite3_finalize(stmt);
 			return (p);
@@ -404,6 +410,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 	struct pkg_jobs_conflict_item *cit, test;
 	struct pkg_conflict *c;
 	uint64_t hv;
+	pkghash_entry *e;
 
 	hv = siphash24(path, strlen(path), k);
 	test.hash = hv;
@@ -430,7 +437,10 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		}
 
 		/* Here we can have either collision or a real conflict */
-		kh_find(pkg_conflicts, it->pkg->conflictshash, uid2, c);
+		c = NULL;
+		e = pkghash_get(it->pkg->conflictshash, uid2);
+		if (e != NULL)
+			c = (struct pkg_conflict *)e->value;
 		if (c != NULL || !pkg_conflicts_register_chain(j, it, cit->item, path)) {
 			/*
 			 * Collision found, change the key following the

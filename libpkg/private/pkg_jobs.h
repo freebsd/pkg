@@ -68,8 +68,6 @@ struct pkg_solved {
 	struct pkg_solved *prev, *next;
 };
 
-KHASH_MAP_INIT_STR(pkg_jobs_seen, struct pkg_job_universe_item *);
-
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
 	const char *provide;
@@ -86,7 +84,7 @@ struct pkg_job_replace {
 
 struct pkg_jobs_universe {
 	struct pkg_job_universe_item *items;
-	kh_pkg_jobs_seen_t *seen;
+	pkghash *seen;
 	struct pkg_job_provide *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;

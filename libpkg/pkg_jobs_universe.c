@@ -157,6 +157,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		bool force __unused, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *seen, *tmp = NULL;
+	pkghash_entry *e;
 
 	pkg_validate(pkg, universe->j->db);
 
@@ -169,7 +170,10 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 
-	kh_find(pkg_jobs_seen, universe->seen, pkg->digest, seen);
+	seen = NULL;
+	e = pkghash_get(universe->seen, pkg->digest);
+	if (e != NULL)
+		seen = (struct pkg_job_universe_item *)e->value;
 	if (seen) {
 		bool same_package = false;
 
@@ -216,7 +220,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	DL_APPEND(tmp, item);
 
 	if (seen == NULL)
-		kh_safe_add(pkg_jobs_seen, universe->seen, item, item->pkg->digest);
+		pkghash_safe_add(universe->seen, item->pkg->digest, item, NULL);
 
 	universe->nitems++;
 
@@ -476,39 +480,40 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 {
 	struct pkg_job_provide *pr;
 	struct pkgdb_it *it;
-	char *buf = NULL;
 	int rc;
+	pkghash_it hit;
 
-	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
-		HASH_FIND_STR(universe->provides, buf, pr);
+	hit = pkghash_iterator(pkg->shlibs_required);
+	while (pkghash_next(&hit)) {
+		HASH_FIND_STR(universe->provides, hit.key, pr);
 		if (pr != NULL)
 			continue;
 
 		/* Check for local provides */
-		it = pkgdb_query_shlib_provide(universe->j->db, buf);
+		it = pkgdb_query_shlib_provide(universe->j->db, hit.key);
 		if (it != NULL) {
 			rc = pkg_jobs_universe_handle_provide(universe, it,
-			    buf, true, pkg);
+			    hit.key, true, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find local packages that provide library %s "
 						"required for %s",
-						buf, pkg->name);
+						hit.key, pkg->name);
 			}
 		}
 		/* Not found, search in the repos */
 		it = pkgdb_repo_shlib_provide(universe->j->db,
-			buf, universe->j->reponame);
+			hit.key, universe->j->reponame);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, buf, true, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, hit.key, true, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find remote packages that provide library %s "
 						"required for %s",
-				    buf, pkg->name);
+				    hit.key, pkg->name);
 			}
 		}
 	}
@@ -522,39 +527,41 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 {
 	struct pkg_job_provide *pr;
 	struct pkgdb_it *it;
-	char *buf = NULL;
 	int rc;
+	pkghash_it hit;
 
-	while (pkg_requires(pkg, &buf) == EPKG_OK) {
-		HASH_FIND_STR(universe->provides, buf, pr);
+
+	hit = pkghash_iterator(pkg->requires);
+	while(pkghash_next(&hit)) {
+		HASH_FIND_STR(universe->provides, hit.key, pr);
 		if (pr != NULL)
 			continue;
 
 		/* Check for local provides */
-		it = pkgdb_query_provide(universe->j->db, buf);
+		it = pkgdb_query_provide(universe->j->db, hit.key);
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, buf, false, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, hit.key, false, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find local packages that provide %s "
 						"required for %s",
-						buf, pkg->name);
+						hit.key, pkg->name);
 			}
 		}
 
 		/* Not found, search in the repos */
 		it = pkgdb_repo_provide(universe->j->db,
-			buf, universe->j->reponame);
+			hit.key, universe->j->reponame);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, buf, false, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, hit.key, false, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find remote packages that provide %s "
 						"required for %s",
-				    buf, pkg->name);
+				    hit.key, pkg->name);
 				return (rc);
 			}
 		}
@@ -830,7 +837,8 @@ pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 			free(cur);
 		}
 	}
-	kh_destroy_pkg_jobs_seen(universe->seen);
+	pkghash_destroy(universe->seen);
+	universe->seen = NULL;
 	HASH_FREE(universe->provides, pkg_jobs_universe_provide_free);
 	LL_FREE(universe->uid_replaces, pkg_jobs_universe_replacement_free);
 }

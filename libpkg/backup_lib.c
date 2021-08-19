@@ -39,10 +39,10 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 	time_t t;
 	char buf[BUFSIZ];
 	char *sum;
-	khint_t k;
 	struct pkg_file *f;
 	char *lpath;
 	struct stat st;
+	pkghash_entry *e;
 
 	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path), PKG_HASH_TYPE_SHA256_HEX);
 
@@ -67,11 +67,10 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 	free(pkg->version);
 	t = time(NULL);
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtime(&t));
-	if (pkg->filehash != NULL && (k = kh_get_pkg_files(pkg->filehash, path)) != kh_end(pkg->filehash)) {
-		f = kh_val(pkg->filehash, k);
-		kh_del_pkg_files(pkg->filehash, k);
-		DL_DELETE(pkg->files, f);
-		pkg_file_free(f);
+	if ((e = pkghash_get(pkg->filehash, path)) != NULL) {
+		DL_DELETE(pkg->files, (struct pkg_file *)e->value);
+		pkg_file_free(e->value);
+		pkghash_del(pkg->filehash, path);
 	}
 	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, path);
 	pkg_addfile(pkg, lpath, sum, false);

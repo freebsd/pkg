@@ -350,10 +350,10 @@ get_random_name(char name[])
 }
 
 static void
-save_trigger(const char *script, bool sandbox, kh_strings_t *args)
+save_trigger(const char *script, bool sandbox, pkghash *args)
 {
 	int db = ctx.pkg_dbdirfd;
-	const char *dir;
+	pkghash_it it;
 
 	if (!mkdirat_p(db, "triggers"))
 		return;
@@ -386,19 +386,21 @@ save_trigger(const char *script, bool sandbox, kh_strings_t *args)
 	if (sandbox)
 		fputs("--sandbox\n", f);
 	fputs("--begin args\n", f);
-	kh_foreach_value(args, dir, {
-		fprintf(f, "-- %s\n", dir);
-	});
+	it = pkghash_iterator(args);
+	while (pkghash_next(&it)) {
+		fprintf(f, "-- %s\n", (char *)it.value);
+	}
 	fputs("--end args\n--\n", f);
 	fprintf(f, "%s\n", script);
 	fclose(f);
 }
 
 static int
-trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
+trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 {
 	lua_State *L;
 	int pstat;
+	pkghash_it it;
 
 	if (ctx.defer_triggers) {
 		save_trigger(script, sandbox, args);
@@ -423,14 +425,14 @@ trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 		lua_setglobal(L, "pkg");
 		lua_pushinteger(L, ctx.rootfd);
 		lua_setglobal(L, "rootfd");
-		char *dir;
 		char **arguments = NULL;
 		int i = 0;
 		if (args != NULL) {
-			arguments = xcalloc(kh_count(args), sizeof(char*));
-			kh_foreach_value(args, dir, {
-				arguments[i++] = dir;
-			});
+			arguments = xcalloc(pkghash_count(args), sizeof(char*));
+			it = pkghash_iterator(args);
+			while (pkghash_next(&it)) {
+				arguments[i++] = it.value;
+			}
 		}
 		lua_args_table(L, arguments, i);
 #ifdef HAVE_CAPSICUM
@@ -479,14 +481,14 @@ trigger_check_match(struct trigger *t, char *dir)
 		it = NULL;
 		while ((cur = ucl_iterate_object(t->path, &it, true))) {
 			if (strcmp(dir, ucl_object_tostring(cur)) == 0) {
-				kh_safe_add(strings, t->matched, dir, dir);
+				pkghash_safe_add(t->matched, dir, dir, NULL);
 				return;
 			}
 		}
 	}
 
 	if (match_ucl_lists(dir, t->path_glob, t->path_regex))
-		kh_safe_add(strings, t->matched, dir, dir);
+		pkghash_safe_add(t->matched, dir, dir, NULL);
 }
 
 /*
@@ -498,8 +500,7 @@ int
 triggers_execute(struct trigger *cleanup_triggers)
 {
 	struct trigger *triggers, *t, *trigger;
-	kh_strings_t *th = NULL;
-	char *dir;
+	pkghash *th = NULL;
 	int ret = EPKG_OK;
 
 	triggers = triggers_load(false);
@@ -509,20 +510,22 @@ triggers_execute(struct trigger *cleanup_triggers)
 	 */
 	if (cleanup_triggers != NULL) {
 		LL_FOREACH(triggers, t) {
-			kh_add(strings, th, t->name, t->name, free);
+			pkghash_safe_add(th, t->name, t->name, NULL);
 		}
 	}
 
 	/*
 	 * only keep from the cleanup the one that are not anymore in triggers
 	 */
-	LL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
-		if (kh_contains(strings, th, trigger->name)) {
-			DL_DELETE(cleanup_triggers, trigger);
-			trigger_free(trigger);
+	if (th != NULL) {
+		LL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
+			if (pkghash_get(th, trigger->name) != NULL) {
+				DL_DELETE(cleanup_triggers, trigger);
+				trigger_free(trigger);
+			}
 		}
+		pkghash_destroy(th);
 	}
-	kh_destroy_strings(th);
 
 	pkg_emit_triggers_begin();
 	LL_FOREACH(cleanup_triggers, t) {
@@ -536,12 +539,13 @@ triggers_execute(struct trigger *cleanup_triggers)
 	}
 
 	if (ctx.touched_dir_hash) {
-		kh_foreach_value(ctx.touched_dir_hash, dir, {
-				LL_FOREACH(triggers, t) {
-				trigger_check_match(t, dir);
-				}
+		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
+		while (pkghash_next(&it)) {
+			LL_FOREACH(triggers, t) {
+				trigger_check_match(t, (char *)it.value);
+			}
 				/* We need to check if that matches a trigger */
-				});
+		}
 	}
 
 	LL_FOREACH(triggers, t) {
@@ -581,14 +585,14 @@ append_touched_file(const char *path)
 		return;
 	*walk = '\0';
 
-	kh_add(strings, ctx.touched_dir_hash, newpath, newpath, free);
+	pkghash_safe_add(ctx.touched_dir_hash, newpath, newpath, free);
 }
 
 void
 exec_deferred(int dfd, const char *name)
 {
 	bool sandbox = false;
-	kh_strings_t *args = NULL;
+	pkghash *args = NULL;
 	xstring *script = NULL;
 
 	int fd = openat(dfd, name, O_RDONLY);
@@ -628,7 +632,7 @@ exec_deferred(int dfd, const char *name)
 			if (line[linelen -1] == '\n')
 				line[linelen -1] = '\0';
 			char *s = strdup(walk);
-			kh_add(strings, args, s, s, free);
+			pkghash_safe_add(args, s, s, free);
 		}
 		if (script != NULL)
 			fputs(line, script->fp);
@@ -636,7 +640,7 @@ exec_deferred(int dfd, const char *name)
 	free(line);
 	fclose(f);
 	if (script == NULL) {
-		kh_destroy_strings(args);
+		pkghash_destroy(args);
 		return;
 	}
 	char *s = xstring_get(script);
@@ -644,7 +648,7 @@ exec_deferred(int dfd, const char *name)
 		unlinkat(dfd, name, 0);
 	}
 	free(s);
-	kh_destroy_strings(args);
+	pkghash_destroy(args);
 }
 
 int

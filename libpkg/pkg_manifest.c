@@ -985,6 +985,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	char legacyarch[BUFSIZ];
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
+	pkghash_it it;
 
 	if (pkg->abi == NULL && pkg->arch != NULL)
 		pkg->abi = xstrdup(pkg->arch);
@@ -1045,11 +1046,12 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting licenses");
 	seq = NULL;
-	kh_each_value(pkg->licenses, buf, {
+	it = pkghash_iterator(pkg->licenses);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
-	});
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
+	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "licenses", 8, false);
 
@@ -1081,11 +1083,12 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting categories");
 	seq = NULL;
-	kh_each_value(pkg->categories, buf, {
+	it = pkghash_iterator(pkg->categories);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
-	});
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
+	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "categories", 10, false);
 
@@ -1114,10 +1117,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting required");
 	seq = NULL;
 	buf = NULL;
-	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
+	it = pkghash_iterator(pkg->shlibs_required);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
@@ -1125,10 +1129,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting shlibs_provided");
 	seq = NULL;
 	buf = NULL;
-	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
+	it = pkghash_iterator(pkg->shlibs_provided);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
@@ -1146,10 +1151,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting provides");
 	seq = NULL;
 	buf = NULL;
-	while (pkg_provides(pkg, &buf) == EPKG_OK) {
+	it = pkghash_iterator(pkg->provides);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "provides", 8, false);
@@ -1157,10 +1163,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting requires");
 	seq = NULL;
 	buf = NULL;
-	while (pkg_requires(pkg, &buf) == EPKG_OK) {
+	it = pkghash_iterator(pkg->requires);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "requires", 8, false);
