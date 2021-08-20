@@ -1376,6 +1376,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	 * other leading path. */
 
 	if (fd == -1) {
+		if (path == NULL) {
+			pkg_emit_error("bad usage of pkg_open2");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 		read_from_stdin = (strncmp(path, "-", 2) == 0);
 
 		if (archive_read_open_filename(*a,
