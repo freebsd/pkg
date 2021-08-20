@@ -908,6 +908,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 			goto cleanup;
 		}
 
+		ret = EPKG_FATAL;
 		it = pkghash_iterator(sc);
 		while (pkghash_next(&it)) {
 			s = (struct sig_cert *) it.value;
@@ -915,7 +916,6 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 				metafd);
 			if (ret == EPKG_OK && s->trusted)
 				break;
-
 			ret = EPKG_FATAL;
 		}
 		if (ret != EPKG_OK) {
