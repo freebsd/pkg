@@ -976,6 +976,7 @@ plist_parse_line(struct plist *plist, char *line)
 		if (buf == NULL) {
 			pkg_emit_error("Malformed keyword %s, expecting @keyword "
 			    "or @keyword(owner,group,mode)", bkpline);
+			free(bkpline);
 			return (EPKG_FATAL);
 		}
 
@@ -985,6 +986,7 @@ plist_parse_line(struct plist *plist, char *line)
 			    keyword, line);
 			/* FALLTHRU */
 		case EPKG_FATAL:
+			free(bkpline);
 			return (EPKG_FATAL);
 		}
 	} else {
@@ -995,10 +997,13 @@ plist_parse_line(struct plist *plist, char *line)
 		while (isspace(buf[0]))
 			buf++;
 
-		if (file(plist, buf, NULL) != EPKG_OK)
+		if (file(plist, buf, NULL) != EPKG_OK) {
+			free(bkpline);
 			return (EPKG_FATAL);
+		}
 	}
 
+	free(bkpline);
 	return (EPKG_OK);
 }
 
