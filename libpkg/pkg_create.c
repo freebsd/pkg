@@ -596,6 +596,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	pkg_create_set_output_dir(pc, outdir);
 
 	ret = pkg_create(pc, md_dir, plist, hash);
+	pkg_create_free(pc);
 	return (ret);
 }
 
