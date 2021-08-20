@@ -78,7 +78,6 @@ struct pkg_conflict_bulk {
 	struct pkg_conflict *conflicts;
 	pkghash *conflictshash;
 	char *file;
-	UT_hash_handle hh;
 };
 
 static int
@@ -581,7 +580,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
-	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
+	pkghash *conflicts = NULL;
+	struct pkg_conflict_bulk *curcb;
 	int num_workers, i, remaining_workers, remain, cur_jobs, remain_jobs, nworker;
 	size_t len, tasks_per_worker, ntask;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
@@ -591,6 +591,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	FILE *mfile;
+	pkghash_it it;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN];
@@ -828,13 +829,15 @@ cleanup:
 		close(mfd);
 	if (ffd != -1)
 		close(ffd);
-	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		DL_FREE(curcb->conflicts, pkg_conflict_free);
+	it = pkghash_iterator(conflicts);
+	while (pkghash_next(&it)) {
+		curcb = (struct pkg_conflict_bulk *)it.value;
+		LL_FREE(curcb->conflicts, pkg_conflict_free);
 		pkghash_destroy(curcb->conflictshash);
 		curcb->conflictshash = NULL;
-		HASH_DEL(conflicts, curcb);
 		free(curcb);
 	}
+	pkghash_destroy(conflicts);
 
 	if (pfd != NULL)
 		free(pfd);

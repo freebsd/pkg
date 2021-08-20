@@ -80,7 +80,6 @@ struct pkg_solve_variable {
 	const char *digest;
 	const char *uid;
 	const char *assumed_reponame;
-	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
 };
 
@@ -100,7 +99,7 @@ struct pkg_solve_rule {
 struct pkg_solve_problem {
 	struct pkg_jobs *j;
 	kvec_t(struct pkg_solve_rule *) rules;
-	struct pkg_solve_variable *variables_by_uid;
+	pkghash *variables_by_uid;
 	struct pkg_solve_variable *variables;
 	PicoSAT *sat;
 	size_t nvars;
@@ -172,15 +171,11 @@ pkg_solve_rule_free(struct pkg_solve_rule *rule)
 void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_variable *v, *vtmp;
-
 	while (kv_size(problem->rules)) {
 		pkg_solve_rule_free(kv_pop(problem->rules));
 	}
 
-	HASH_ITER(hh, problem->variables_by_uid, v, vtmp) {
-		HASH_DELETE(hh, problem->variables_by_uid, v);
-	}
+	pkghash_destroy(problem->variables_by_uid);
 
 	picosat_reset(problem->sat);
 	free(problem->variables);
@@ -289,6 +284,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	struct pkg_job_universe_item *un;
 	struct pkg *pkg;
 	bool libfound, providefound;
+	pkghash_entry *e;
 
 	/* Find the first package in the universe list */
 	un = pr->un;
@@ -297,7 +293,11 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	}
 
 	/* Find the corresponding variables chain */
-	HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
+
+	var = NULL;
+	e = pkghash_get(problem->variables_by_uid, un->pkg->uid);
+	if (e != NULL)
+		var = (struct pkg_solve_variable *)e->value;
 
 	LL_FOREACH(var, curvar) {
 		/*
@@ -377,7 +377,10 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 
 	LL_FOREACH2(dep, cur, alt_next) {
 		uid = cur->uid;
-		HASH_FIND_STR(problem->variables_by_uid, uid, depvar);
+		depvar = NULL;
+		pkghash_entry *e = pkghash_get(problem->variables_by_uid, uid);
+		if (e != NULL)
+			depvar = (struct pkg_solve_variable *)e->value;
 		if (depvar == NULL) {
 			pkg_debug(2, "cannot find variable dependency %s", uid);
 			continue;
@@ -428,7 +431,10 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	struct pkg *other;
 
 	uid = conflict->uid;
-	HASH_FIND_STR(problem->variables_by_uid, uid, confvar);
+	confvar = NULL;
+	pkghash_entry *e = pkghash_get(problem->variables_by_uid, uid);
+	if (e != NULL)
+		confvar = (struct pkg_solve_variable *)e->value;
 	if (confvar == NULL) {
 		pkg_debug(2, "cannot find conflict %s", uid);
 		return (EPKG_END);
@@ -590,7 +596,10 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	HASH_FIND_STR(problem->variables_by_uid, req->item->pkg->uid, var);
+	var = NULL;
+	pkghash_entry *e = pkghash_get(problem->variables_by_uid, req->item->pkg->uid);
+	if (e != NULL)
+		var = (struct pkg_solve_variable *)e->value;
 	var = pkg_solve_find_var_in_chain(var, req->item->unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
@@ -821,8 +830,7 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 
 		if (tvar == NULL) {
 			pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
-			HASH_ADD_KEYPTR(hh, problem->variables_by_uid,
-				var->uid, strlen(var->uid), var);
+			pkghash_safe_add(problem->variables_by_uid, var->uid, var, NULL);
 			tvar = var;
 		}
 		else {
@@ -868,9 +876,10 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 
 	/* Add rules for all conflict chains */
 	HASH_ITER(hh, j->universe->items, un, utmp) {
-		struct pkg_solve_variable *var;
-
-		HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
+		struct pkg_solve_variable *var = NULL;
+		pkghash_entry *e = pkghash_get(problem->variables_by_uid, un->pkg->uid);
+		if (e != NULL)
+			var = (struct pkg_solve_variable *)e->value;
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    un->pkg->uid);
@@ -1421,9 +1430,11 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_variable *var, *tvar;
+	struct pkg_solve_variable *var;
+	pkghash_it it = pkghash_iterator(problem->variables_by_uid);
 
-	HASH_ITER(hh, problem->variables_by_uid, var, tvar) {
+	while (pkghash_next(&it)) {
+		var = (struct pkg_solve_variable *)it.value;
 		pkg_debug(4, "solver: check variable with uid %s", var->uid);
 		pkg_solve_insert_res_job(var, problem);
 	}

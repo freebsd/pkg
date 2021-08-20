@@ -413,7 +413,6 @@ struct pkg_repo_meta_key {
 	char *pubkey;
 	char *pubkey_type; /* TODO: should be enumeration */
 	char *name;
-	UT_hash_handle hh;
 };
 
 typedef enum pkg_checksum_type_e {
@@ -451,7 +450,7 @@ struct pkg_repo_meta {
 	char *source_identifier;
 	int64_t revision;
 
-	struct pkg_repo_meta_key *keys;
+	pkghash *keys;
 
 	time_t eol;
 
@@ -534,8 +533,8 @@ struct pkg_repo {
 	FILE *ssh;
 	bool silent;
 
-	struct fingerprint *trusted_fp;
-	struct fingerprint *revoked_fp;
+	pkghash *trusted_fp;
+	pkghash *revoked_fp;
 
 	struct {
 		int in;
@@ -558,10 +557,8 @@ struct pkg_repo {
 };
 
 struct keyword {
-	/* 64 is more than enough for this */
-	char keyword[64];
+	char *keyword;
 	struct action *actions;
-	UT_hash_handle hh;
 };
 
 struct plist {
@@ -588,7 +585,7 @@ struct plist {
 		size_t len;
 		size_t cap;
 	} post_patterns;
-	struct keyword *keywords;
+	pkghash *keywords;
 };
 
 struct file_attr {
@@ -673,7 +670,6 @@ typedef enum {
 struct fingerprint {
 	hash_t type;
 	char hash[BUFSIZ];
-	UT_hash_handle hh;
 };
 int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 
