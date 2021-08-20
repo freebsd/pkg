@@ -631,7 +631,7 @@ exec_deferred(int dfd, const char *name)
 			walk++; /* skip the space */
 			if (line[linelen -1] == '\n')
 				line[linelen -1] = '\0';
-			char *s = strdup(walk);
+			char *s = xstrdup(walk);
 			pkghash_safe_add(args, s, s, free);
 		}
 		if (script != NULL)
