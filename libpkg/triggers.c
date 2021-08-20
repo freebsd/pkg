@@ -431,7 +431,7 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 			arguments = xcalloc(pkghash_count(args), sizeof(char*));
 			it = pkghash_iterator(args);
 			while (pkghash_next(&it)) {
-				arguments[i++] = it.value;
+				arguments[i++] = it.key;
 			}
 		}
 		lua_args_table(L, arguments, i);
@@ -542,7 +542,7 @@ triggers_execute(struct trigger *cleanup_triggers)
 		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
 		while (pkghash_next(&it)) {
 			LL_FOREACH(triggers, t) {
-				trigger_check_match(t, (char *)it.value);
+				trigger_check_match(t, it.key);
 			}
 				/* We need to check if that matches a trigger */
 		}
@@ -585,7 +585,8 @@ append_touched_file(const char *path)
 		return;
 	*walk = '\0';
 
-	pkghash_safe_add(ctx.touched_dir_hash, newpath, newpath, free);
+	pkghash_safe_add(ctx.touched_dir_hash, newpath, NULL, NULL );
+	free(newpath);
 }
 
 void
@@ -631,8 +632,7 @@ exec_deferred(int dfd, const char *name)
 			walk++; /* skip the space */
 			if (line[linelen -1] == '\n')
 				line[linelen -1] = '\0';
-			char *s = xstrdup(walk);
-			pkghash_safe_add(args, s, s, free);
+			pkghash_safe_add(args, walk, NULL, NULL);
 		}
 		if (script != NULL)
 			fputs(line, script->fp);
