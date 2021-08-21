@@ -29,7 +29,7 @@ is the system-wide configuration file used by the
 tools.
 .Pp
 The default location of this file is
-.Pa /usr/local/etc/pkg.conf
+.Pa /usr/local/etc/pkg.conf .
 .Pp
 Lines in the file beginning with a "#" are comments
 and are ignored.
@@ -85,7 +85,7 @@ Automatically cleanout the content of
 after each non dry-run call to
 .Xr pkg-install 8
 or
-.Xr pkg-upgrade 8
+.Xr pkg-upgrade 8 .
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1
@@ -177,7 +177,7 @@ Services are only started on installation if they are enabled in
 Default: NO.
 .It Cm HTTP_USER_AGENT: string
 Define User-agent to be sent to HTTP server when getting repository
-data
+data.
 .It Cm IGNORE_OSVERSION: boolean [FreeBSD specific]
 Ignore FreeBSD OS version check, useful on -STABLE and -CURRENT branches.
 Default: NO.
@@ -229,7 +229,7 @@ Default: NO.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 Default:
-.Pa /var/cache/pkg
+.Pa /var/cache/pkg .
 .It Cm PKG_CREATE_VERBOSE: boolean
 When set to a
 .Sy true
@@ -237,12 +237,12 @@ value, make
 .Xr pkg-create 8
 use verbose mode as standard.
 Default:
-.Sy NO
+.Sy NO .
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
 Default:
-.Pa /var/db/pkg
+.Pa /var/db/pkg .
 .It Cm PKG_ENABLE_PLUGINS: boolean
 When set to
 .Dq YES ,
@@ -264,10 +264,10 @@ Directory which
 .Xr pkg 8
 will load plugins from.
 Default:
-.Pa /usr/local/lib/pkg
+.Pa /usr/local/lib/pkg .
 .It Cm PKG_TRIGGERS_ENABLE
 Enable or disable execution of triggers at the end of the transactions.
-Default: YES
+Default: YES.
 .It Cm PKG_TRIGGERS_DIR
 Directory where the triggers are stored
 Default:
@@ -278,7 +278,7 @@ Extra arguments to pass to
 Default: not set.
 .It Cm PLIST_KEYWORDS_DIR: string
 Directory containing definitions of plist keywords.
-Default: PORTSDIR/keyword
+Default: PORTSDIR/keyword.
 .It Cm PLIST_ACCEPT_DIRECTORIES: boolean
 Accept directories listed like plain files in plist.
 Default: NO.
@@ -290,11 +290,11 @@ Default: not set.
 .It Cm PLUGINS_CONF_DIR: string
 Directory containing per-plugin configuration files.
 Default:
-.Pa /usr/local/etc/pkg
+.Pa /usr/local/etc/pkg .
 .It Cm PORTSDIR: string
 Specifies the location to the Ports directory.
 Default:
-.Pa /usr/ports
+.Pa /usr/ports .
 .It Cm READ_LOCK: boolean
 Use read locking for query database.
 Default: NO.
@@ -387,7 +387,7 @@ and
 .Pa /usr/local/etc/pkg/repos/ .
 .Pp
 Filenames are arbitrary, but should end in
-.Sq .conf
+.Sq .conf .
 For example
 .Pa /usr/local/etc/pkg/repos/myrepo.conf .
 .Pp
@@ -436,7 +436,7 @@ Default: 0.
 .It Cm PRIORITY: integer
 Set the priority of the repository.
 Higher values are preferred.
-Default: 0
+Default: 0.
 .El
 .El
 .Pp
