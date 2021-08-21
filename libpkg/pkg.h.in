@@ -426,6 +426,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_PRE_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_POST_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW,
+	PKG_PLUGIN_HOOK_LAST
 } pkg_plugin_hook_t;
 
 /**
