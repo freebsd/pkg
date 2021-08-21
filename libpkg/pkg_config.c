@@ -611,7 +611,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			 * forget all stuff parsed
 			 */
 			pkg_debug(1, "PkgConfig: disabling repo %s", rname);
-			HASH_DEL(repos, r);
+			LL_DELETE(repos, r);
 			pkg_repo_free(r);
 			return;
 		}
@@ -1430,7 +1430,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
 	r->name = xstrdup(name);
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+	DL_APPEND(repos, r);
 
 	return (r);
 }
@@ -1447,8 +1447,6 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 		r->url = xstrdup(url);
 	}
 	r->ops = pkg_repo_find_type(type);
-	HASH_DEL(repos, r);
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
@@ -1482,7 +1480,7 @@ pkg_shutdown(void)
 
 	metalog_close();
 	ucl_object_unref(config);
-	HASH_FREE(repos, pkg_repo_free);
+	LL_FREE(repos, pkg_repo_free);
 
 	if (ctx.rootfd != -1) {
 		close(ctx.rootfd);
@@ -1505,8 +1503,11 @@ pkg_shutdown(void)
 int
 pkg_repos_total_count(void)
 {
+	int cnt = 0;
+	struct pkg_repo *r;
 
-	return (HASH_COUNT(repos));
+	LL_COUNT(repos, r, cnt);
+	return (cnt);
 }
 
 int
@@ -1515,7 +1516,7 @@ pkg_repos_activated_count(void)
 	struct pkg_repo *r = NULL;
 	int count = 0;
 
-	for (r = repos; r != NULL; r = r->hh.next) {
+	LL_FOREACH(repos, r) {
 		if (r->enable)
 			count++;
 	}
@@ -1526,7 +1527,13 @@ pkg_repos_activated_count(void)
 int
 pkg_repos(struct pkg_repo **r)
 {
-	HASH_NEXT(repos, (*r));
+	if (*r == NULL)
+		*r = repos;
+	else
+		*r = (*r)->next;
+	if (*r == NULL)
+		return (EPKG_END);
+	return (EPKG_OK);
 }
 
 const char *
@@ -1595,8 +1602,11 @@ pkg_repo_find(const char *reponame)
 {
 	struct pkg_repo *r;
 
-	HASH_FIND_STR(repos, reponame, r);
-	return (r);
+	LL_FOREACH(repos, r) {
+		if (strcmp(r->name, reponame) == 0)
+			return (r);
+	}
+	return (NULL);
 }
 
 int64_t

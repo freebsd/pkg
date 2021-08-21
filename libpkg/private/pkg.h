@@ -545,7 +545,6 @@ struct pkg_repo {
 	struct pkg_repo_meta *meta;
 
 	bool enable;
-	UT_hash_handle hh;
 
 	unsigned int priority;
 
@@ -554,6 +553,7 @@ struct pkg_repo {
 
 	/* Opaque repository data */
 	void *priv;
+	struct pkg_repo *next, *prev;
 };
 
 struct keyword {
