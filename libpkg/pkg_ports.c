@@ -46,7 +46,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <uthash.h>
 #include <err.h>
 
 #include "pkg.h"

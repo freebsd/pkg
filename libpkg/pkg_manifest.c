@@ -88,7 +88,8 @@ static struct pkg_manifest_key {
 	uint32_t type;
 	uint16_t valid_type;
 	int (*parse_data)(struct pkg *, const ucl_object_t *, uint32_t);
-	UT_hash_handle hh;
+	struct pkg_manifest_key *next;
+	struct pkg_manifest_key *prev;
 } manifest_keys[] = {
 	{ "annotations",         PKG_ANNOTATIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
@@ -226,15 +227,12 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 		return (EPKG_OK);
 
 	for (i = 0; manifest_keys[i].key != NULL; i++) {
-		HASH_FIND_STR(*key, manifest_keys[i].key, k);
-		if (k == NULL) {
-			k = xcalloc(1, sizeof(struct pkg_manifest_key));
-			k->key = manifest_keys[i].key;
-			k->type = manifest_keys[i].type;
-			k->valid_type = manifest_keys[i].valid_type;
-			k->parse_data = manifest_keys[i].parse_data;
-			HASH_ADD_KEYPTR(hh, *key, k->key, strlen(k->key), k);
-		}
+		k = xcalloc(1, sizeof(struct pkg_manifest_key));
+		k->key = manifest_keys[i].key;
+		k->type = manifest_keys[i].type;
+		k->valid_type = manifest_keys[i].valid_type;
+		k->parse_data = manifest_keys[i].parse_data;
+		DL_APPEND(*key, k);
 	}
 
 	return (EPKG_OK);
@@ -252,7 +250,7 @@ pkg_manifest_keys_free(struct pkg_manifest_key *key)
 	if (key == NULL)
 		return;
 
-	HASH_FREE(key, pmk_free);
+	LL_FREE(key, pmk_free);
 }
 
 static int
@@ -786,7 +784,10 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		if (key == NULL)
 			continue;
 		pkg_debug(3, "Manifest: found key: '%s'", key);
-		HASH_FIND_STR(keys, key, selected_key);
+		LL_FOREACH(keys, selected_key) {
+			if (strcmp(selected_key->key, key) == 0)
+				break;
+		}
 		if (selected_key != NULL) {
 			if (TYPE_SHIFT(ucl_object_type(cur)) & selected_key->valid_type) {
 				selected_key->parse_data(pkg, cur, selected_key->type);
@@ -814,7 +815,10 @@ pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
-		HASH_FIND_STR(keys, key, sk);
+		LL_FOREACH(keys, sk) {
+			if (strcmp(sk->key, key) == 0)
+				break;
+		}
 		if (sk != NULL) {
 			if (!(sk->valid_type & TYPE_SHIFT(ucl_object_type(cur)))) {
 				pkg_emit_error("Bad format in manifest for key:"

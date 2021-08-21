@@ -38,7 +38,6 @@
 #include <archive.h>
 #include <sqlite3.h>
 #include <stdbool.h>
-#include <uthash.h>
 #include <utlist.h>
 #include <ucl.h>
 
