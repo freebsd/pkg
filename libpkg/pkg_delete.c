@@ -91,10 +91,10 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
 		pkg_open_root_fd(pkg);
 		if (!(flags & PKG_DELETE_UPGRADE)) {
-			ret = pkg_lua_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
+			ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
 			if (ret != EPKG_OK && ctx.developer_mode)
 				return (ret);
-			ret = pkg_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
+			ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
 			if (ret != EPKG_OK && ctx.developer_mode)
 				return (ret);
 		}
@@ -105,8 +105,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
-		pkg_lua_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false);
-		pkg_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
+		pkg_lua_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false);
 	}
 
 	ret = pkg_delete_dirs(db, pkg, NULL);
