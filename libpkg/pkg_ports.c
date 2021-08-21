@@ -450,7 +450,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
-comment_key(struct plist *p, char *line__unused , struct file_attr *a __unused)
+comment_key(struct plist *p __unused, char *line __unused , struct file_attr *a __unused)
 {
 	/* ignore md5 will be recomputed anyway */
 	return (EPKG_OK);
@@ -1163,7 +1163,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	pplist->plistdirfd = open_directory_of(plist);
 	if (pplist->plistdirfd == -1) {
-		pkg_emit_error("impossible to open the directory where the plist is", plist);
+		pkg_emit_error("impossible to open the directory where the plist is: %s", plist);
 		plist_free(pplist);
 		return (EPKG_FATAL);
 	}
