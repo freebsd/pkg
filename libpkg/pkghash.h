@@ -38,6 +38,7 @@ bool pkghash_next(pkghash_it *it);
 void pkghash_loopinit(pkghash *h);
 pkghash_entry *pkghash_inext(pkghash *h);
 bool pkghash_del(pkghash *h, const char *key);
+void *pkghash_delete(pkghash *h, const char *key);
 
 #endif
 

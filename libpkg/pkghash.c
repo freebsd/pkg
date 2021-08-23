@@ -218,3 +218,15 @@ pkghash_del(pkghash *h, const char *key)
 	h->count--;
 	return (true);
 }
+
+void *
+pkghash_delete(pkghash *h, const char *key)
+{
+	pkghash_entry *e = pkghash_get(h, key);
+	if (e == NULL)
+		return (NULL);
+	free(e->key);
+	e->key = NULL;
+	h->count--;
+	return (e->value);
+}
