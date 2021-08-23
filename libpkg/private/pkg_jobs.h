@@ -58,7 +58,6 @@ struct pkg_job_request {
 	struct pkg_job_request_item *item;
 	bool skip;
 	bool automatic;
-	UT_hash_handle hh;
 };
 
 struct pkg_solved {
@@ -98,8 +97,8 @@ struct pkg_jobs_conflict_item {
 
 struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
-	struct pkg_job_request	*request_add;
-	struct pkg_job_request	*request_delete;
+	pkghash	*request_add;
+	pkghash	*request_delete;
 	struct pkg_solved *jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;

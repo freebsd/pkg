@@ -183,16 +183,21 @@ static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
 	struct pkg_job_request *req, *tmp;
-	int column = 0;
+	int column = 0, cnt = 0, max;
 	bool printed = false;
+	pkghash_it it;
 
+	max = pkghash_count(j->request_add);
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
-	HASH_ITER(hh, j->request_add, req, tmp) {
+	it = pkghash_iterator(j->request_add);
+	while (pkghash_next(&it)) {
+		req = it.value;
+		cnt++;
 		if (req->skip)
 			continue;
 		if (cudf_print_element(f, req->item->pkg->uid,
-		    (req->hh.next != NULL), &column) < 0) {
+		    (max > cnt), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 		printed = true;
@@ -206,11 +211,15 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	printed = false;
 	if (fprintf(f, "remove: ") < 0)
 		return (EPKG_FATAL);
-	HASH_ITER(hh, j->request_delete, req, tmp) {
+	max = pkghash_count(j->request_delete);
+	it = pkghash_iterator(j->request_delete);
+	while (pkghash_next(&it)) {
+		req = it.value;
+		cnt++;
 		if (req->skip)
 			continue;
 		if (cudf_print_element(f, req->item->pkg->uid,
-		    (req->hh.next != NULL), &column) < 0) {
+		    (max > cnt), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 		printed = true;

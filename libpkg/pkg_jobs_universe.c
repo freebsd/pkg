@@ -1115,7 +1115,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 		unsigned vercnt = 0;
 		unit = (struct pkg_job_universe_item *)it.value;
 
-		HASH_FIND_STR(j->request_add, unit->pkg->uid, req);
+		req = pkghash_get_value(j->request_add, unit->pkg->uid);
 		if (req == NULL) {
 			/* Not obviously requested */
 			continue;
@@ -1131,7 +1131,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 		if (local != NULL && local->pkg->locked) {
 			pkg_debug(1, "removing %s from the request as it is locked",
 				cur->pkg->uid);
-			HASH_DEL(j->request_add, req);
+			pkghash_del(j->request_add, req->item->pkg->uid);
 			pkg_jobs_request_free(req);
 			continue;
 		}
@@ -1156,7 +1156,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * candidates
 			 */
 			assert(selected != NULL);
-			HASH_DEL(j->request_add, req);
+			pkghash_del(j->request_add, req->item->pkg->uid);
 
 			/*
 			 * We also check if the selected package has different digest,
@@ -1188,8 +1188,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				rit->unit = selected;
 				DL_APPEND(req->item, rit);
 			}
-			HASH_ADD_KEYPTR(hh, j->request_add, selected->pkg->uid,
-				strlen (selected->pkg->uid), req);
+			pkghash_safe_add(j->request_add, selected->pkg->uid, req, NULL);
 		}
 	}
 }

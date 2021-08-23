@@ -125,12 +125,15 @@ pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_jo
 int
 pkg_conflicts_request_resolve(struct pkg_jobs *j)
 {
-	struct pkg_job_request *req, *rtmp, *found;
+	struct pkg_job_request *req, *found;
 	struct pkg_conflict *c;
 	struct pkg_conflict_chain *chain;
 	struct pkg_job_universe_item *unit;
+	pkghash_it it;
 
-	HASH_ITER(hh, j->request_add, req, rtmp) {
+	it = pkghash_iterator(j->request_add);
+	while (pkghash_next(&it)) {
+		req = it.value;
 		chain = NULL;
 		if (req->skip)
 			continue;
@@ -138,8 +141,8 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 		LL_FOREACH(req->item->pkg->conflicts, c) {
 			unit = pkg_jobs_universe_find(j->universe, c->uid);
 			if (unit != NULL) {
-				HASH_FIND_STR(j->request_add, unit->pkg->uid, found);
-				if (found && !found->skip) {
+				found = pkghash_get_value(j->request_add, unit->pkg->uid);
+				if (found != NULL && !found->skip) {
 					pkg_conflicts_request_add_chain(&chain, found);
 				}
 			}

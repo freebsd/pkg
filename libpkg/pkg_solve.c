@@ -756,10 +756,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Request */
 		if (!(cur_var->flags & PKG_VAR_TOP)) {
-			HASH_FIND_STR(j->request_add, cur_var->uid, jreq);
+			jreq = pkghash_get_value(j->request_add, cur_var->uid);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
-			HASH_FIND_STR(j->request_delete, cur_var->uid, jreq);
+			jreq = pkghash_get_value(j->request_delete, cur_var->uid);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, -1);
 		}
