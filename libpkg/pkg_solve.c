@@ -284,7 +284,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	struct pkg_job_universe_item *un;
 	struct pkg *pkg;
 	bool libfound, providefound;
-	pkghash_entry *e;
 
 	/* Find the first package in the universe list */
 	un = pr->un;
@@ -294,11 +293,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 
 	/* Find the corresponding variables chain */
 
-	var = NULL;
-	e = pkghash_get(problem->variables_by_uid, un->pkg->uid);
-	if (e != NULL)
-		var = (struct pkg_solve_variable *)e->value;
-
+	var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
 	LL_FOREACH(var, curvar) {
 		/*
 		 * For each provide we need to check whether this package
@@ -378,9 +373,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	LL_FOREACH2(dep, cur, alt_next) {
 		uid = cur->uid;
 		depvar = NULL;
-		pkghash_entry *e = pkghash_get(problem->variables_by_uid, uid);
-		if (e != NULL)
-			depvar = (struct pkg_solve_variable *)e->value;
+		depvar = pkghash_get_value(problem->variables_by_uid, uid);
 		if (depvar == NULL) {
 			pkg_debug(2, "cannot find variable dependency %s", uid);
 			continue;
@@ -431,10 +424,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	struct pkg *other;
 
 	uid = conflict->uid;
-	confvar = NULL;
-	pkghash_entry *e = pkghash_get(problem->variables_by_uid, uid);
-	if (e != NULL)
-		confvar = (struct pkg_solve_variable *)e->value;
+	confvar = pkghash_get_value(problem->variables_by_uid, uid);
 	if (confvar == NULL) {
 		pkg_debug(2, "cannot find conflict %s", uid);
 		return (EPKG_END);
@@ -510,12 +500,10 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg *pkg;
 	int cnt;
-	pkghash_entry *e;
 
 	pkg = var->unit->pkg;
 
-	e = pkghash_get(problem->j->universe->provides, requirement);
-	prhead = e != NULL ? (struct pkg_job_provide *)e->value : NULL;
+	prhead = pkghash_get_value(problem->j->universe->provides, requirement);
 	if (prhead != NULL) {
 		pkg_debug(4, "solver: Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
@@ -598,10 +586,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	var = NULL;
-	pkghash_entry *e = pkghash_get(problem->variables_by_uid, req->item->pkg->uid);
-	if (e != NULL)
-		var = (struct pkg_solve_variable *)e->value;
+	var = pkghash_get_value(problem->variables_by_uid, req->item->pkg->uid);
 	var = pkg_solve_find_var_in_chain(var, req->item->unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
@@ -884,9 +869,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	while (pkghash_next(&it)) {
 		un = (struct pkg_job_universe_item *)it.value;
 		struct pkg_solve_variable *var = NULL;
-		pkghash_entry *e = pkghash_get(problem->variables_by_uid, un->pkg->uid);
-		if (e != NULL)
-			var = (struct pkg_solve_variable *)e->value;
+		var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    un->pkg->uid);

@@ -568,12 +568,7 @@ retry:
 
 	if (fromfd == -1) {
 		/* check if this is a config file */
-		pkghash_entry *e;
-		e = pkghash_get(pkg->config_files_hash, f->path);
-		if (e == NULL)
-			f->config = NULL;
-		else
-			f->config = (struct pkg_config_file *)e->value;
+		f->config = pkghash_get_value(pkg->config_files_hash, f->path);
 		if (f->config) {
 			const char *cfdata;
 			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));

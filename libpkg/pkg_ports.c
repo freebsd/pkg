@@ -887,15 +887,12 @@ parse_keywords(struct plist *plist, char *keyword,
 	struct keyword *k = NULL;
 	struct action *a;
 	int ret = EPKG_FATAL;
-	pkghash_entry *e;
 
 	/* if keyword is empty consider it as a file */
 	if (*keyword == '\0')
 		return (file(plist, line, attr));
 
-	e = pkghash_get(plist->keywords, keyword);
-	if (e != NULL)
-		k = (struct keyword *)e->value;
+	k = pkghash_get_value(plist->keywords, keyword);
 	if (k != NULL) {
 		LL_FOREACH(k->actions, a) {
 			ret = a->perform(plist, line, attr);

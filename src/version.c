@@ -639,7 +639,6 @@ validate_origin(const char *portsdir, const char *origin)
 	struct category	*cat;
 	char		*category, *buf;
 	char		 categorypath[MAXPATHLEN];
-	pkghash_entry	*e;
 
 	/* If the origin does not contain a / ignore it like for
 	 * "base"
@@ -654,12 +653,9 @@ validate_origin(const char *portsdir, const char *origin)
 	category = strrchr(categorypath, '/');
 	category++;
 
-	e = pkghash_get(categories, category);
-	if (e == NULL)
+	cat = pkghash_get_value(categories, category);
+	if (cat == NULL)
 		cat = category_new(categorypath, category);
-	else
-		cat = (struct category *)e->value;
-
 	if (cat == NULL)
 		return (false);
 

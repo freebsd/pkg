@@ -1618,22 +1618,18 @@ pkg_is_config_file(struct pkg *p, const char *path,
 {
 	*file = NULL;
 	*cfile = NULL;
-	pkghash_entry *e;
 
 	if (pkghash_count(p->config_files_hash) == 0)
 		return (false);
 
-	e = pkghash_get(p->filehash, path);
-	if (e == NULL)
+	*file = pkghash_get_value(p->filehash, path);
+	if (*file == NULL)
 		return (false);
-	*file = (struct pkg_file *)e->value;
-
-	e = pkghash_get(p->config_files_hash, path);
-	if (e == NULL) {
+	*cfile = pkghash_get_value(p->config_files_hash, path);
+	if (*cfile == NULL) {
 		*file = NULL;
 		return (false);
 	}
-	*cfile = (struct pkg_config_file *)e->value;
 
 	return (true);
 }
@@ -1641,19 +1637,13 @@ pkg_is_config_file(struct pkg *p, const char *path,
 struct pkg_dir *
 pkg_get_dir(struct pkg *p, const char *path)
 {
-	pkghash_entry *e = pkghash_get(p->dirhash, path);
-	if (e == NULL)
-		return (NULL);
-	return ((struct pkg_dir *)e->value);
+	return (pkghash_get_value(p->dirhash, path));
 }
 
 struct pkg_file *
 pkg_get_file(struct pkg *p, const char *path)
 {
-	pkghash_entry *e = pkghash_get(p->filehash, path);
-	if (e == NULL)
-		return (NULL);
-	return ((struct pkg_file *)e->value);
+	return (pkghash_get_value(p->filehash, path));
 }
 
 bool

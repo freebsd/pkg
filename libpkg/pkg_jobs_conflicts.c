@@ -256,15 +256,9 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	bool use_digest)
 {
 	struct pkg_conflict *c1, *c2;
-	pkghash_entry *e;
 
-	c1 = c2 = NULL;
-	e = pkghash_get(p1->conflictshash, p2->uid);
-	if (e != NULL)
-		c1 = (struct pkg_conflict *)e->value;
-	e = pkghash_get(p2->conflictshash, p1->uid);
-	if (e != NULL)
-		c2 = (struct pkg_conflict *)e->value;
+	c1 = pkghash_get_value(p1->conflictshash, p2->uid);
+	c2 = pkghash_get_value(p2->conflictshash, p1->uid);
 	if (c1 == NULL) {
 		c1 = xcalloc(1, sizeof(*c1));
 		c1->type = type;
@@ -413,7 +407,6 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 	struct pkg_jobs_conflict_item *cit, test;
 	struct pkg_conflict *c;
 	uint64_t hv;
-	pkghash_entry *e;
 
 	hv = siphash24(path, strlen(path), k);
 	test.hash = hv;
@@ -440,10 +433,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		}
 
 		/* Here we can have either collision or a real conflict */
-		c = NULL;
-		e = pkghash_get(it->pkg->conflictshash, uid2);
-		if (e != NULL)
-			c = (struct pkg_conflict *)e->value;
+		c = pkghash_get_value(it->pkg->conflictshash, uid2);
 		if (c != NULL || !pkg_conflicts_register_chain(j, it, cit->item, path)) {
 			/*
 			 * Collision found, change the key following the

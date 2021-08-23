@@ -119,20 +119,15 @@ const char *
 shlib_list_find_by_name(const char *shlib_file)
 {
 	struct shlib *sl;
-	pkghash_entry *e;
 
-	e = pkghash_get(rpath, shlib_file);
-	if (e != NULL) {
-		sl = (struct shlib *)e->value;
+	sl = pkghash_get_value(rpath, shlib_file);
+	if (sl != NULL)
 		return (sl->path);
-	}
 
-	e = pkghash_get(shlibs, shlib_file);
-	if (e != NULL) {
-		sl = (struct shlib *)e->value;
+	sl = pkghash_get_value(shlibs, shlib_file);
+	if (sl != NULL)
 		return (sl->path);
-	}
-		
+
 	return (NULL);
 }
 

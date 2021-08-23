@@ -155,10 +155,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 			 * We may want to check meta
 			 */
 			if (repo->meta != NULL && repo->meta->keys != NULL) {
-				mk = NULL;
-				pkghash_entry *e = pkghash_get(repo->meta->keys, s->name);
-				if (e != NULL)
-					mk = (struct pkg_repo_meta_key *)e->value;
+				mk = pkghash_get_value(repo->meta->keys, s->name);
 			}
 
 			if (mk != NULL && mk->pubkey != NULL) {
@@ -420,7 +417,6 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 	int len = 0, tlen;
 	struct sig_cert *s = NULL;
 	bool new = false;
-	pkghash_entry *e;
 
 	while (p < end) {
 		switch (state) {
@@ -460,17 +456,15 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 				return (EPKG_FATAL);
 			}
 			char *k = xstrndup(p, len);
-			e = pkghash_get(*sc, k);
+			s = pkghash_get_value(*sc, k);
 			free(k);
-			if ( e == NULL) {
+			if ( s == NULL) {
 				s = xcalloc(1, sizeof(struct sig_cert));
 				tlen = MIN(len, sizeof(s->name) - 1);
 				memcpy(s->name, p, tlen);
 				s->name[tlen] = '\0';
 				new = true;
-			}
-			else {
-				s = (struct sig_cert *)e->value;
+			} else {
 				new = false;
 			}
 			state = fp_parse_siglen;

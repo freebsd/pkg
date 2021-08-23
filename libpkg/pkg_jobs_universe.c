@@ -56,7 +56,6 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *cur, *found;
-	pkghash_entry *e;
 
 	if (flag == 0) {
 		if (!IS_DELETE(universe->j))
@@ -68,10 +67,9 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS;
 	}
 
-	e = pkghash_get(universe->items, uid);
-	if (e != NULL) {
+	unit = pkghash_get_value(universe->items, uid);
+	if (unit != NULL) {
 		/* Search local in a universe chain */
-		unit = (struct pkg_job_universe_item *)e->value;
 		cur = unit;
 		found = NULL;
 		do {
@@ -107,7 +105,6 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	pkg_chain_t *result = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *cur, *found;
-	pkghash_entry *e;
 
 	if (flag == 0) {
 		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
@@ -116,10 +113,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	}
 
-	unit = NULL;
-	e = pkghash_get(universe->items, uid);
-	if (e != NULL)
-		unit = (struct pkg_job_universe_item *)e->value;
+	unit = pkghash_get_value(universe->items, uid);
 	if (unit != NULL && unit->pkg->type != PKG_INSTALLED) {
 		/* Search local in a universe chain */
 		cur = unit;
@@ -163,7 +157,6 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		bool force __unused, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *seen, *tmp = NULL;
-	pkghash_entry *e;
 
 	pkg_validate(pkg, universe->j->db);
 
@@ -176,10 +169,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		}
 	}
 
-	seen = NULL;
-	e = pkghash_get(universe->seen, pkg->digest);
-	if (e != NULL)
-		seen = (struct pkg_job_universe_item *)e->value;
+	seen = pkghash_get_value(universe->seen, pkg->digest);
 	if (seen) {
 		bool same_package = false;
 
@@ -218,12 +208,10 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	item = xcalloc(1, sizeof (struct pkg_job_universe_item));
 	item->pkg = pkg;
 
-	e = pkghash_get(universe->items, pkg->uid);
-	if (e == NULL) {
+	tmp = pkghash_get_value(universe->items, pkg->uid);
+	if (tmp == NULL) {
 		pkghash_safe_add(universe->items, pkg->uid, item, NULL);
 		item->inhash = true;
-	} else {
-		tmp = (struct pkg_job_universe_item *)e->value;
 	}
 
 	DL_APPEND(tmp, item);
@@ -401,17 +389,13 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
-	pkghash_entry *e;
 
 	rpkg = NULL;
 
-	e = pkghash_get(universe->provides, name);
-	prhead = e != NULL ? e->value : NULL;
+	prhead = pkghash_get_value(universe->provides, name);
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
 		/* Check for local packages */
-		unit = NULL;
-		if ((e = pkghash_get(universe->items, rpkg->uid)) != NULL) {
-			unit = (struct pkg_job_universe_item *)e->value;
+		if ((unit = pkghash_get_value(universe->items, rpkg->uid)) != NULL) {
 			/* Remote provide is newer, so we can add it */
 			if (pkg_jobs_universe_process_item(universe, rpkg,
 			    &unit) != EPKG_OK) {
@@ -671,7 +655,6 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 	struct pkg_conflict *c = NULL;
 	struct pkg_job_universe_item *found, *cur, *it;
 	const char *is_local;
-	pkghash_entry *e;
 	int maxpri;
 
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
@@ -722,10 +705,9 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		}
 
 		while (deps_func(it->pkg, &d) == EPKG_OK) {
-			e = pkghash_get(universe->items, d->uid);
-			if (e == NULL)
+			found = pkghash_get_value(universe->items, d->uid);
+			if (found == NULL)
 				continue;
-			found = (struct pkg_job_universe_item *)e->value;
 			LL_FOREACH(found, cur) {
 				if (cur->priority < priority + 1)
 					pkg_jobs_update_universe_item_priority(universe, cur,
@@ -736,10 +718,9 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		d = NULL;
 		maxpri = priority;
 		while (rdeps_func(it->pkg, &d) == EPKG_OK) {
-			e = pkghash_get(universe->items, d->uid);
-			if (e == NULL)
+			found = pkghash_get_value(universe->items, d->uid);
+			if (found == NULL)
 				continue;
-			found = (struct pkg_job_universe_item *)e->value;
 			LL_FOREACH(found, cur) {
 				if (cur->priority >= maxpri) {
 					maxpri = cur->priority + 1;
@@ -755,10 +736,7 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 			continue;
 
 		while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
-			e = pkghash_get(universe->items, c->uid);
-			if (e == NULL)
-				continue;
-			found = (struct pkg_job_universe_item *)e->value;
+			found = pkghash_get_value(universe->items, c->uid);
 			LL_FOREACH(found, cur) {
 				if (cur->pkg->type != PKG_INSTALLED)
 					continue;
@@ -780,13 +758,11 @@ pkg_jobs_update_conflict_priority(struct pkg_jobs_universe *universe,
 	struct pkg_conflict *c = NULL;
 	struct pkg *lp = req->items[1]->pkg;
 	struct pkg_job_universe_item *found, *cur, *rit = NULL;
-	pkghash_entry *e;
 
 	while (pkg_conflicts(lp, &c) == EPKG_OK) {
 		rit = NULL;
-		e = pkghash_get(universe->items, c->uid);
-		assert(e != NULL);
-		found = (struct pkg_job_universe_item *)e->value;
+		found = pkghash_get_value(universe->items, c->uid);
+		assert(found != NULL);
 
 		LL_FOREACH(found, cur) {
 			if (cur->pkg->type != PKG_INSTALLED) {
@@ -872,12 +848,7 @@ pkg_jobs_universe_new(struct pkg_jobs *j)
 struct pkg_job_universe_item *
 pkg_jobs_universe_find(struct pkg_jobs_universe *universe, const char *uid)
 {
-	pkghash_entry *e;
-
-	e = pkghash_get(universe->items, uid);
-	if (e == NULL)
-		return (NULL);
-	return ((struct pkg_job_universe_item *)e->value);
+	return (pkghash_get_value(universe->items, uid));
 }
 
 void
@@ -890,7 +861,6 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 	struct pkg *lp;
 	struct pkg_job_replace *replacement;
-	pkghash_entry *e;
 
 	if (update_rdeps) {
 		/* For all rdeps update deps accordingly */
@@ -925,8 +895,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	free(unit->pkg->uid);
 	unit->pkg->uid = xstrdup(new_uid);
 
-	e = pkghash_get(universe->items, new_uid);
-	found = e != NULL ? (struct pkg_job_universe_item *)e->value : NULL;
+	found = pkghash_get_value(universe->items, new_uid);
 	if (found != NULL)
 		DL_APPEND(found, unit);
 	else
@@ -1205,10 +1174,8 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	kvec_t(struct pkg *) candidates;
-	pkghash_entry *e;
 
-	e = pkghash_get(universe->items, uid);
-	unit = e != NULL ? (struct pkg_job_universe_item *)e->value : NULL;
+	unit = pkghash_get_value(universe->items, uid);
 	if (unit != NULL) {
 		/*
 		 * If a unit has been found, we have already found the potential
@@ -1275,8 +1242,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		return (NULL);
 	}
 
-	e = pkghash_get(universe->items, uid);
-	unit = e != NULL ? (struct pkg_job_universe_item *)e->value : NULL;
+	unit = pkghash_get_value(universe->items, uid);
 	kv_destroy(candidates);
 
 	return (unit);
