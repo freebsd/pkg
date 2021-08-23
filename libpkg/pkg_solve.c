@@ -636,7 +636,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		cnt ++;
 	}
 
-	if (cnt > 1 && var->unit->hh.keylen != 0) {
+	if (cnt > 1 && var->unit->inhash != 0) {
 		kv_prepend(typeof(rule), problem->rules, rule);
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
@@ -848,8 +848,9 @@ struct pkg_solve_problem *
 pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 {
 	struct pkg_solve_problem *problem;
-	struct pkg_job_universe_item *un, *utmp;
+	struct pkg_job_universe_item *un;
 	size_t i = 0;
+	pkghash_it it;
 
 	problem = xcalloc(1, sizeof(struct pkg_solve_problem));
 
@@ -867,7 +868,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	picosat_adjust(problem->sat, problem->nvars);
 
 	/* Parse universe */
-	HASH_ITER(hh, j->universe->items, un, utmp) {
+	it = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&it)) {
+		un = (struct pkg_job_universe_item *)it.value;
 		/* Add corresponding variables */
 		if (pkg_solve_add_variable(un, problem, &i)
 						== EPKG_FATAL)
@@ -875,7 +878,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	}
 
 	/* Add rules for all conflict chains */
-	HASH_ITER(hh, j->universe->items, un, utmp) {
+	it = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&it)) {
+		un = (struct pkg_job_universe_item *)it.value;
 		struct pkg_solve_variable *var = NULL;
 		pkghash_entry *e = pkghash_get(problem->variables_by_uid, un->pkg->uid);
 		if (e != NULL)

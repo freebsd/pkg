@@ -834,8 +834,8 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 			pkg_validate(p, j->db);
 			unit = pkg_jobs_universe_find(j->universe, uid);
 			if (unit != NULL)
-				pkg_jobs_universe_change_uid(j->universe, unit, p->uid,
-					strlen(p->uid), false);
+				pkg_jobs_universe_change_uid(j->universe, unit,
+				    p->uid, false);
 			else
 				assert(0);
 
@@ -1308,11 +1308,14 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 static void
 pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 {
-	struct pkg_job_universe_item *unit, *utmp, *cur, *local;
+	struct pkg_job_universe_item *unit, *cur, *local;
 	struct pkg_job_request *req;
 	bool automatic;
+	pkghash_it it;
 
-	HASH_ITER(hh, j->universe->items, unit, utmp) {
+	it = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&it)) {
+		unit = (struct pkg_job_universe_item *)it.value;
 		if (unit->next == NULL) {
 			/*
 			 * For packages that are alone in the installation list

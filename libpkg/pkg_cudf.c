@@ -245,13 +245,16 @@ int
 pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 {
 	struct pkg *pkg;
-	struct pkg_job_universe_item *it, *itmp, *icur;
+	struct pkg_job_universe_item *it, *icur;
 	int version;
+	pkghash_it hit;
 
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	HASH_ITER(hh, j->universe->items, it, itmp) {
+	hit = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&hit)) {
+		it = (struct pkg_job_universe_item *)hit.value;
 		/* XXX
 		 * Here are dragons:
 		 * after sorting it we actually modify the head of the list, but there is

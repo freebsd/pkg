@@ -43,7 +43,7 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	int priority;
 	bool processed;
-	UT_hash_handle hh;
+	bool inhash;
 	struct pkg_job_universe_item *next, *prev;
 };
 
@@ -83,7 +83,7 @@ struct pkg_job_replace {
 };
 
 struct pkg_jobs_universe {
-	struct pkg_job_universe_item *items;
+	pkghash *items;
 	pkghash *seen;
 	struct pkg_job_provide *provides;
 	struct pkg_job_replace *uid_replaces;
@@ -187,7 +187,7 @@ int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
  */
 void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
-	const char *new_uid, size_t uidlen, bool update_rdeps);
+	const char *new_uid, bool update_rdeps);
 
 
 
