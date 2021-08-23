@@ -83,6 +83,16 @@ pkghash_get(pkghash *table, const char *key)
 	return (NULL);
 }
 
+void *
+pkghash_get_value(pkghash *table, const char *key)
+{
+	pkghash_entry *e;
+
+	e = pkghash_get(table, key);
+	return (e != NULL ? e->value : NULL);
+
+}
+
 static bool
 pkghash_set_entry(pkghash_entry *entries, size_t capacity,
     const char *key, void *value, size_t *pcount, void (*free_func)(void *)) {
