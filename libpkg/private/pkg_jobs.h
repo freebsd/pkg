@@ -27,7 +27,6 @@
 #include <sys/types.h>
 
 #include <stdbool.h>
-#include <uthash.h>
 #include <utlist.h>
 #include <ucl.h>
 

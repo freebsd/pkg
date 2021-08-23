@@ -182,7 +182,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
-	struct pkg_job_request *req, *tmp;
+	struct pkg_job_request *req;
 	int column = 0, cnt = 0, max;
 	bool printed = false;
 	pkghash_it it;
