@@ -1,3 +1,19 @@
+Changes from 1.17.99.2 to 1.17.99.3
+- make pkg/audit.h C++ friendly
+- fix build with libressl
+- Enable aarch64 support for linux
+- plenty of portability fixes for linux with musl libc
+- autoremove: respect -q
+- version: report an error if the provided INDEX file does not exist
+- periodic: allow users so provide an ignore list of jails
+- periodic: reduce audit script verbosity
+- arch: to not consider .h as potentially arch specific
+- query: allow -e to be used with other filter options
+- register: implement a -N to disable registration in the database
+- rework internal hash tables
+- plenty of memory leak fixed
+- fetch; do not count cached files as files to be fetched
+
 Changes from 1.17.99.1 to 1.17.99.2
 - by default only create .txz symlinks for metadata
 - only consider the .pkg when creating a repository
