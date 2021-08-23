@@ -787,7 +787,6 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	case PKG_SOLVED_FETCH:
 		*newsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
-		sum->fetch++;
 		if (destdir == NULL)
 			pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		else
@@ -805,6 +804,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 		}
 		else
 			*dlsize += pkgsize;
+		sum->fetch++;
 
 		break;
 	}
