@@ -405,8 +405,8 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 	rpkg = NULL;
 
-	HASH_FIND_STR(universe->provides, name, prhead);
-
+	e = pkghash_get(universe->provides, name);
+	prhead = e != NULL ? e->value : NULL;
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
 		/* Check for local packages */
 		unit = NULL;
@@ -464,14 +464,13 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 		if (prhead == NULL) {
 			DL_APPEND(prhead, pr);
-			HASH_ADD_KEYPTR(hh, universe->provides, pr->provide,
-					strlen(pr->provide), prhead);
+			pkghash_safe_add(universe->provides, pr->provide,
+			    prhead, NULL);
 			pkg_debug (4, "universe: add new provide %s-%s(%s) for require %s",
 					pr->un->pkg->name, pr->un->pkg->version,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
-		}
-		else {
+		} else {
 			DL_APPEND(prhead, pr);
 			pkg_debug (4, "universe: append provide %s-%s(%s) for require %s",
 					pr->un->pkg->name, pr->un->pkg->version,
@@ -487,15 +486,13 @@ static int
 pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 	struct pkg *pkg)
 {
-	struct pkg_job_provide *pr;
 	struct pkgdb_it *it;
 	int rc;
 	pkghash_it hit;
 
 	hit = pkghash_iterator(pkg->shlibs_required);
 	while (pkghash_next(&hit)) {
-		HASH_FIND_STR(universe->provides, hit.key, pr);
-		if (pr != NULL)
+		if (pkghash_get(universe->provides, hit.key) != NULL)
 			continue;
 
 		/* Check for local provides */
@@ -534,7 +531,6 @@ static int
 pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 	struct pkg *pkg)
 {
-	struct pkg_job_provide *pr;
 	struct pkgdb_it *it;
 	int rc;
 	pkghash_it hit;
@@ -542,8 +538,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 
 	hit = pkghash_iterator(pkg->requires);
 	while(pkghash_next(&hit)) {
-		HASH_FIND_STR(universe->provides, hit.key, pr);
-		if (pr != NULL)
+		if (pkghash_get(universe->provides, hit.key) != NULL)
 			continue;
 
 		/* Check for local provides */
@@ -856,7 +851,10 @@ pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 	universe->items = NULL;
 	pkghash_destroy(universe->seen);
 	universe->seen = NULL;
-	HASH_FREE(universe->provides, pkg_jobs_universe_provide_free);
+	it = pkghash_iterator(universe->provides);
+	while (pkghash_next(&it))
+		pkg_jobs_universe_provide_free(it.value);
+	pkghash_destroy(universe->provides);
 	LL_FREE(universe->uid_replaces, pkg_jobs_universe_replacement_free);
 }
 

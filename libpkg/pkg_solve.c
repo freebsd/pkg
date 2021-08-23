@@ -510,10 +510,12 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg *pkg;
 	int cnt;
+	pkghash_entry *e;
 
 	pkg = var->unit->pkg;
 
-	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
+	e = pkghash_get(problem->j->universe->provides, requirement);
+	prhead = e != NULL ? (struct pkg_job_provide *)e->value : NULL;
 	if (prhead != NULL) {
 		pkg_debug(4, "solver: Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',

@@ -73,7 +73,6 @@ struct pkg_job_provide {
 	const char *provide;
 	bool is_shlib;
 	struct pkg_job_provide *next, *prev;
-	UT_hash_handle hh;
 };
 
 struct pkg_job_replace {
@@ -85,7 +84,7 @@ struct pkg_job_replace {
 struct pkg_jobs_universe {
 	pkghash *items;
 	pkghash *seen;
-	struct pkg_job_provide *provides;
+	pkghash *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
 	size_t nitems;
