@@ -212,6 +212,7 @@ pkghash_del(pkghash *h, const char *key)
 	if (e == NULL)
 		return (false);
 	free(e->key);
+	e->key = NULL;
 	if (e->free_func != NULL)
 		e->free_func(e->value);
 	h->count--;
