@@ -748,6 +748,11 @@ pkg_extract_finalize(struct pkg *pkg)
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		append_touched_file(f->path);
 		if (*f->temppath == '\0')
 			continue;
@@ -1030,6 +1035,10 @@ pkg_rollback_pkg(struct pkg *p)
 	struct pkg_file *f = NULL;
 
 	while (pkg_files(p, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		if (*f->temppath != '\0') {
 			unlinkat(p->rootfd, f->temppath, 0);
 		}
@@ -1128,6 +1137,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* analyse previous files */
 	f = NULL;
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX"))) {
+			continue;
+		}
 		if (faccessat(pkg->rootfd, RELATIVE_PATH(f->path), F_OK, 0) == 0) {
 			f->previous = PKG_FILE_EXIST;
 			if (!pkgdb_file_exists(db, f->path)) {
@@ -1373,6 +1387,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 
 	hardlinks = kh_init_hls();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
 		    AT_SYMLINK_NOFOLLOW) == -1) {
 			kh_destroy_hls(hardlinks);

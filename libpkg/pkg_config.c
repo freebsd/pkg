@@ -491,6 +491,18 @@ static struct config_entry c[] = {
 		"FALSE",
 		"Accept legacy package extensions when creating the repository",
 	},
+	{
+		PKG_ARRAY,
+		"FILES_IGNORE_GLOB",
+		"NULL",
+		"patterns of files to not extract from the package",
+	},
+	{
+		PKG_ARRAY,
+		"FILES_IGNORE_REGEX",
+		"NULL",
+		"patterns of files to not extract from the package",
+	},
 };
 
 static bool parsed = false;

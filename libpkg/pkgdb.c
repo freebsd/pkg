@@ -1817,6 +1817,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		bool		permissive = false;
+		if (match_ucl_lists(file->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX"))) {
+			continue;
+			printf("matched\n");
+		}
 
 		ret = run_prstmt(FILES, file->path, file->sum, package_id);
 		if (ret == SQLITE_DONE)
