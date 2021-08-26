@@ -312,7 +312,6 @@ hash_indexfile(const char *indexfilename)
 		entry->name = xstrdup(name);
 		entry->version = xstrdup(version);
 
-		pkghash_safe_add(index, entry->name, entry, NULL);
 		if (index == NULL)
 			index = pkghash_new();
 
@@ -395,7 +394,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
     const char *matchorigin, const char *matchname, const char *indexfile)
 {
 	pkghash		*index;
-	pkghash_entry	*e;
+	struct index_entry *ie;
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
@@ -437,9 +436,9 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		e = pkghash_get(index, name);
-		print_version(pkg, "index",
-		    e != NULL ? ((struct index_entry *)e->value)->version : NULL, limchar, opt);
+		ie = pkghash_get_value(index, name);
+		print_version(pkg, "index", ie != NULL ? ie->version : NULL,
+		    limchar, opt);
 	}
 
 cleanup:
