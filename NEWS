@@ -1,3 +1,75 @@
+Changes from 1.17.99.2 to 1.17.99.3
+- make pkg/audit.h C++ friendly
+- fix build with libressl
+- Enable aarch64 support for linux
+- plenty of portability fixes for linux with musl libc
+- autoremove: respect -q
+- version: report an error if the provided INDEX file does not exist
+- periodic: allow users so provide an ignore list of jails
+- periodic: reduce audit script verbosity
+- arch: to not consider .h as potentially arch specific
+- query: allow -e to be used with other filter options
+- register: implement a -N to disable registration in the database
+- rework internal hash tables
+- plenty of memory leak fixed
+- fetch; do not count cached files as files to be fetched
+
+Changes from 1.17.99.1 to 1.17.99.2
+- by default only create .txz symlinks for metadata
+- only consider the .pkg when creating a repository
+  add an option REPO_ACCEPT_LEGACY_PKG to keep index old pkg
+- Reduce usage of memory stack
+
+Changes from 1.16.99.5 to 1.17.99.1
+- fix plenty of typos
+- add --no-script to autoremove
+- deprecated meta file v1
+
+Changes from 1.16.99.4 to 1.16.99.5
+- allow to execute programs from lua script and triggers
+- fetch vuln.xml.xz by default
+- triggers detected by pkg -r are now deferred for firstboot
+- pkg triggers command can be executed at first boot to run the
+  deferred triggers
+
+Changes from 1.16.99.3 to 1.16.99.4
+- expose the name of the packages to its scripts lua and shell
+- plist: remove internal support for @*exec
+- plist: remove support for @ignore
+- plist: remove suppot for @dirrm/@dirrmtry
+- plist: remove support for @pkgdep
+- plist: remove stub support for @stopdaemon
+- plist: remove stub support for @display
+- plist: remove stub support for @mtree
+- plist: remove stub support for @conflict
+- info: fix info processing of mutliple compares
+- ci runs again on linux and osx
+- portability fixes for linux and osx
+- ubsan/asan related fixes
+
+Changes from 1.16.99.2 to 1.16.99.3
+- lua update to 5.4.2
+- pkg repo accept now all supported formats mixed without config
+- pkg now default on creating .bsd files with backward compatible symlinks
+- backward compatible symlinks are now an option
+- make the default comprpession format a config option
+- set the default compression level for zstd to 19
+- make the default compression level a config option
+- Update libucl to latest version
+- change the package extension to .pkg (with symlink on the old format)
+
+Changes from 1.16.99.1 to 1.16.99.2
+- libpkg: rsa: stop leaking an RSA object
+- libpkg: rsa: start abstracting away rsa bits
+- lua: filecmp: Fix for symlink
+
+Changes from 1.16.99.8 to 1.16.99.1
+- Avoid making making xstring.h public
+- audit: fix quiet
+- libpkg: add a snap(shot) version prefix
+- libpkg: only upgrade installed packages with pattern matches
+- libpkg: accept an "rsa:" prefixed file for pkg_finish_repo()
+
 Changes from 1.15.99.7 to 1.15.99.8
 - Update documentation about configuration options
 - Fix variable expansion while parsing pkg.conf and repositories

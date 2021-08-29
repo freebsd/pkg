@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd May 25, 2014
+.Dd May 3, 2021
 .Dt PKG-AUTOREMOVE 8
 .Os
 .Sh NAME
@@ -22,10 +22,10 @@
 .Nd removes orphan packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl nqy
+.Op Fl Dnqy
 .Pp
 .Nm
-.Op Cm --{dry-run,quiet,yes}
+.Op Cm --{dry-run,no-scripts,quiet,yes}
 .Sh DESCRIPTION
 .Nm
 is used for removing orphan packages, which were installed
@@ -38,6 +38,8 @@ The following options are supported by
 Dry-run mode.
 The list of changes to packages is always printed, but
 no changes are actually made.
+.It Fl D , Cm --no-scripts
+If a deinstallation script exists for a given package, do not execute it.
 .It Fl q , Cm --quiet
 Force quiet output.
 .It Fl y , Cm --yes

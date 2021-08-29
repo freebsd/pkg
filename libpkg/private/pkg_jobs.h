@@ -27,7 +27,6 @@
 #include <sys/types.h>
 
 #include <stdbool.h>
-#include <uthash.h>
 #include <utlist.h>
 #include <ucl.h>
 
@@ -43,7 +42,7 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	int priority;
 	bool processed;
-	UT_hash_handle hh;
+	bool inhash;
 	struct pkg_job_universe_item *next, *prev;
 };
 
@@ -58,7 +57,6 @@ struct pkg_job_request {
 	struct pkg_job_request_item *item;
 	bool skip;
 	bool automatic;
-	UT_hash_handle hh;
 };
 
 struct pkg_solved {
@@ -68,14 +66,11 @@ struct pkg_solved {
 	struct pkg_solved *prev, *next;
 };
 
-KHASH_MAP_INIT_STR(pkg_jobs_seen, struct pkg_job_universe_item *);
-
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
 	const char *provide;
 	bool is_shlib;
 	struct pkg_job_provide *next, *prev;
-	UT_hash_handle hh;
 };
 
 struct pkg_job_replace {
@@ -85,9 +80,9 @@ struct pkg_job_replace {
 };
 
 struct pkg_jobs_universe {
-	struct pkg_job_universe_item *items;
-	kh_pkg_jobs_seen_t *seen;
-	struct pkg_job_provide *provides;
+	pkghash *items;
+	pkghash *seen;
+	pkghash *provides;
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
 	size_t nitems;
@@ -101,8 +96,8 @@ struct pkg_jobs_conflict_item {
 
 struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
-	struct pkg_job_request	*request_add;
-	struct pkg_job_request	*request_delete;
+	pkghash	*request_add;
+	pkghash	*request_delete;
 	struct pkg_solved *jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
@@ -189,7 +184,7 @@ int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
  */
 void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
-	const char *new_uid, size_t uidlen, bool update_rdeps);
+	const char *new_uid, bool update_rdeps);
 
 
 

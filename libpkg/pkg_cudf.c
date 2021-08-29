@@ -113,7 +113,6 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	struct pkg_dep *dep;
 	struct pkg_conflict *conflict;
 	struct pkg_job_universe_item *u;
-	char *buf;
 	int column = 0, ver;
 
 	if (fprintf(f, "package: ") < 0)
@@ -125,31 +124,32 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
 		return (EPKG_FATAL);
 
-	if (kh_count(pkg->depshash) > 0) {
+	if (pkghash_count(pkg->depshash) > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
 		LL_FOREACH(pkg->depends, dep) {
 			if (cudf_print_element(f, dep->name,
-			    column + 1 == kh_count(pkg->depshash), &column) < 0) {
+			    column + 1 == pkghash_count(pkg->depshash), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}
 	}
 
 	column = 0;
-	if (kh_count(pkg->provides) > 0) {
+	if (pkghash_count(pkg->provides) > 0) {
 		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
-		kh_each_value(pkg->provides, buf, {
-			if (cudf_print_element(f, buf,
-			    column + 1 == kh_count(pkg->provides), &column) < 0) {
+		pkghash_it it = pkghash_iterator(pkg->provides);
+		while (pkghash_next(&it)) {
+			if (cudf_print_element(f, it.key,
+			    column + 1 == pkghash_count(pkg->provides), &column) < 0) {
 				return (EPKG_FATAL);
 			}
-		});
+		}
 	}
 
 	column = 0;
-	if (kh_count(pkg->conflictshash) > 0 ||
+	if (pkghash_count(pkg->conflictshash) > 0 ||
 			(conflicts_chain->next != NULL &&
 			conflicts_chain->next->priority != INT_MIN)) {
 		if (fprintf(f, "conflicts: ") < 0)
@@ -182,17 +182,22 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
-	struct pkg_job_request *req, *tmp;
-	int column = 0;
+	struct pkg_job_request *req;
+	int column = 0, cnt = 0, max;
 	bool printed = false;
+	pkghash_it it;
 
+	max = pkghash_count(j->request_add);
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
-	HASH_ITER(hh, j->request_add, req, tmp) {
+	it = pkghash_iterator(j->request_add);
+	while (pkghash_next(&it)) {
+		req = it.value;
+		cnt++;
 		if (req->skip)
 			continue;
 		if (cudf_print_element(f, req->item->pkg->uid,
-		    (req->hh.next != NULL), &column) < 0) {
+		    (max > cnt), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 		printed = true;
@@ -206,11 +211,15 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	printed = false;
 	if (fprintf(f, "remove: ") < 0)
 		return (EPKG_FATAL);
-	HASH_ITER(hh, j->request_delete, req, tmp) {
+	max = pkghash_count(j->request_delete);
+	it = pkghash_iterator(j->request_delete);
+	while (pkghash_next(&it)) {
+		req = it.value;
+		cnt++;
 		if (req->skip)
 			continue;
 		if (cudf_print_element(f, req->item->pkg->uid,
-		    (req->hh.next != NULL), &column) < 0) {
+		    (max > cnt), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 		printed = true;
@@ -245,13 +254,16 @@ int
 pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 {
 	struct pkg *pkg;
-	struct pkg_job_universe_item *it, *itmp, *icur;
+	struct pkg_job_universe_item *it, *icur;
 	int version;
+	pkghash_it hit;
 
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	HASH_ITER(hh, j->universe->items, it, itmp) {
+	hit = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&hit)) {
+		it = (struct pkg_job_universe_item *)hit.value;
 		/* XXX
 		 * Here are dragons:
 		 * after sorting it we actually modify the head of the list, but there is
@@ -431,12 +443,11 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 {
 	char *line = NULL, *begin, *param, *value;
 	size_t linecap = 0;
-	ssize_t linelen;
 	struct pkg_cudf_entry cur_pkg;
 
 	memset(&cur_pkg, 0, sizeof(cur_pkg));
 
-	while ((linelen = getline(&line, &linecap, f)) > 0) {
+	while (getline(&line, &linecap, f) > 0) {
 		/* Split line, cut spaces */
 		begin = line;
 		param = strsep(&begin, ": \t");

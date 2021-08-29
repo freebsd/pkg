@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -51,7 +51,7 @@
 #define PORTSDIR "/usr/ports"
 #endif
 #ifndef DEFAULT_VULNXML_URL
-#define DEFAULT_VULNXML_URL "http://vuxml.freebsd.org/freebsd/vuln.xml.bz2"
+#define DEFAULT_VULNXML_URL "http://vuxml.freebsd.org/freebsd/vuln.xml.xz"
 #endif
 
 #ifdef	OSMAJOR
@@ -75,6 +75,8 @@ struct pkg_ctx ctx = {
 	.osversion = 0,
 	.backup_libraries = false,
 	.triggers = true,
+	.compression_level = -1,
+	.defer_triggers = false,
 };
 
 struct config_entry {
@@ -471,6 +473,36 @@ static struct config_entry c[] = {
 		"NULL",
 		"List of regex to ignore while autiditing for vulnerabilities",
 	},
+	{
+		PKG_INT,
+		"COMPRESSION_LEVEL",
+		"-1",
+		"Set the default compression level",
+	},
+	{
+		PKG_BOOL,
+		"ARCHIVE_SYMLINK",
+		"FALSE",
+		"Create a symlink to legacy extension for backward compatibility",
+	},
+	{
+		PKG_BOOL,
+		"REPO_ACCEPT_LEGACY_PKG",
+		"FALSE",
+		"Accept legacy package extensions when creating the repository",
+	},
+	{
+		PKG_ARRAY,
+		"FILES_IGNORE_GLOB",
+		"NULL",
+		"patterns of files to not extract from the package",
+	},
+	{
+		PKG_ARRAY,
+		"FILES_IGNORE_REGEX",
+		"NULL",
+		"patterns of files to not extract from the package",
+	},
 };
 
 static bool parsed = false;
@@ -541,7 +573,7 @@ pkg_config_get(const char *key) {
 	return (ucl_object_find_key(config, key));
 }
 
-const char *
+char *
 pkg_config_dump(void)
 {
 	return (pkg_object_dump(config));
@@ -591,7 +623,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			 * forget all stuff parsed
 			 */
 			pkg_debug(1, "PkgConfig: disabling repo %s", rname);
-			HASH_DEL(repos, r);
+			LL_DELETE(repos, r);
 			pkg_repo_free(r);
 			return;
 		}
@@ -969,11 +1001,13 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	char *tmp = NULL;
 	struct os_info oi;
 	size_t ukeylen;
+	int err = EPKG_OK;
 
 	k = NULL;
 	o = NULL;
 	if (ctx.rootfd == -1 && (ctx.rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open /");
+		/* Note: Not goto out since oi.arch hasn't been initialized yet. */
 		return (EPKG_FATAL);
 	}
 
@@ -986,13 +1020,15 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 #endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	if (((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4) &&
 	    ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)) {
 		pkg_emit_error("Invalid flags for pkg_init()");
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	config = ucl_object_typed_new(UCL_OBJECT);
@@ -1159,7 +1195,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);
 		ucl_parser_free(p);
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	if (ncfg != NULL) {
@@ -1168,7 +1205,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			key = ucl_object_key(cur);
 			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
-		ucl_object_unref(ncfg);
 	}
 
 	ncfg = NULL;
@@ -1272,7 +1308,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (pkg_object_string(pkg_config_get("ABI")) == NULL ||
 	    strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
 		pkg_emit_error("Unable to determine ABI");
-		return (EPKG_FATAL);
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 	pkg_debug(1, "%s", "pkg initialized");
@@ -1293,6 +1330,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
 	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
+	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
+	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
+	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
@@ -1325,7 +1365,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		buf = strstr(url, ":/");
 		if (buf == NULL) {
 			pkg_emit_error("invalid url: %s", url);
-			return (EPKG_FATAL);
+			err = EPKG_FATAL;
+			goto out;
 		}
 		fatal_errors = true;
 		it = NULL;
@@ -1339,7 +1380,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 		if (fatal_errors) {
 			pkg_emit_error("invalid scheme %.*s", (int)(buf - url), url);
-			return (EPKG_FATAL);
+			err = EPKG_FATAL;
+			goto out;
 		}
 	}
 
@@ -1352,11 +1394,16 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	metalog = pkg_object_string(pkg_config_get("METALOG"));
 	if (metalog != NULL) {
 		if(metalog_open(metalog) != EPKG_OK) {
-			return (EPKG_FATAL);
+			err = EPKG_FATAL;
+			goto out;
 		}
 	}
 
-	return (EPKG_OK);
+out:
+	free(oi.arch);
+	free(oi.name);
+	return err;
+
 }
 
 static struct pkg_repo_ops*
@@ -1395,7 +1442,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
 	r->name = xstrdup(name);
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+	DL_APPEND(repos, r);
 
 	return (r);
 }
@@ -1412,8 +1459,6 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 		r->url = xstrdup(url);
 	}
 	r->ops = pkg_repo_find_type(type);
-	HASH_DEL(repos, r);
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
@@ -1447,7 +1492,7 @@ pkg_shutdown(void)
 
 	metalog_close();
 	ucl_object_unref(config);
-	HASH_FREE(repos, pkg_repo_free);
+	LL_FREE(repos, pkg_repo_free);
 
 	if (ctx.rootfd != -1) {
 		close(ctx.rootfd);
@@ -1470,8 +1515,11 @@ pkg_shutdown(void)
 int
 pkg_repos_total_count(void)
 {
+	int cnt = 0;
+	struct pkg_repo *r;
 
-	return (HASH_COUNT(repos));
+	LL_COUNT(repos, r, cnt);
+	return (cnt);
 }
 
 int
@@ -1480,7 +1528,7 @@ pkg_repos_activated_count(void)
 	struct pkg_repo *r = NULL;
 	int count = 0;
 
-	for (r = repos; r != NULL; r = r->hh.next) {
+	LL_FOREACH(repos, r) {
 		if (r->enable)
 			count++;
 	}
@@ -1491,7 +1539,13 @@ pkg_repos_activated_count(void)
 int
 pkg_repos(struct pkg_repo **r)
 {
-	HASH_NEXT(repos, (*r));
+	if (*r == NULL)
+		*r = repos;
+	else
+		*r = (*r)->next;
+	if (*r == NULL)
+		return (EPKG_END);
+	return (EPKG_OK);
 }
 
 const char *
@@ -1560,8 +1614,11 @@ pkg_repo_find(const char *reponame)
 {
 	struct pkg_repo *r;
 
-	HASH_FIND_STR(repos, reponame, r);
-	return (r);
+	LL_FOREACH(repos, r) {
+		if (strcmp(r->name, reponame) == 0)
+			return (r);
+	}
+	return (NULL);
 }
 
 int64_t
@@ -1585,6 +1642,7 @@ pkg_set_rootdir(const char *rootdir) {
 		return (EPKG_FATAL);
 	}
 	ctx.pkg_rootdir = rootdir;
+	ctx.defer_triggers = true;
 
 	return (EPKG_OK);
 }

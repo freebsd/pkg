@@ -220,6 +220,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_option *option = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *f = NULL;
+	pkghash_it	it;
 	int i;
 
 	if (pkg == NULL || type >= PKG_HASH_TYPE_UNKNOWN ||
@@ -237,23 +238,27 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	buf = NULL;
-	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
-		pkg_checksum_add_entry("required_shlib", buf, &entries);
+	it = pkghash_iterator(pkg->shlibs_required);
+	while (pkghash_next(&it)) {
+		pkg_checksum_add_entry("required_shlib", it.key, &entries);
 	}
 
 	buf = NULL;
-	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
-		pkg_checksum_add_entry("provided_shlib", buf, &entries);
+	it = pkghash_iterator(pkg->shlibs_provided);
+	while (pkghash_next(&it)) {
+		pkg_checksum_add_entry("provided_shlib", it.key, &entries);
 	}
 
 	buf = NULL;
-	while (pkg_users(pkg, &buf) == EPKG_OK) {
-		pkg_checksum_add_entry("user", buf, &entries);
+	it = pkghash_iterator(pkg->users);
+	while (pkghash_next(&it)) {
+		pkg_checksum_add_entry("user", it.key, &entries);
 	}
 
 	buf = NULL;
-	while (pkg_groups(pkg, &buf) == EPKG_OK) {
-		pkg_checksum_add_entry("group", buf, &entries);
+	it = pkghash_iterator(pkg->groups);
+	while (pkghash_next(&it)) {
+		pkg_checksum_add_entry("group", it.key, &entries);
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
@@ -263,13 +268,15 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	buf = NULL;
-	while (pkg_provides(pkg, &buf) == EPKG_OK) {
-		pkg_checksum_add_entry("provide", buf, &entries);
+	it = pkghash_iterator(pkg->provides);
+	while (pkghash_next(&it)) {
+		pkg_checksum_add_entry("provide", it.key, &entries);
 	}
 
 	buf = NULL;
-	while (pkg_requires(pkg, &buf) == EPKG_OK) {
-		pkg_checksum_add_entry("require", buf, &entries);
+	it = pkghash_iterator(pkg->requires);
+	while (pkghash_next(&it)) {
+		pkg_checksum_add_entry("require", it.key, &entries);
 	}
 
 	if (inc_scripts) {

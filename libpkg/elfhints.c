@@ -41,7 +41,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <uthash.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -55,11 +54,9 @@ struct shlib {
 	char		 path[];
 };
 
-KHASH_MAP_INIT_STR(shlib, struct shlib *);
-
-static int	shlib_list_add(kh_shlib_t **shlib_list,
+static int	shlib_list_add(pkghash **shlib_list,
 				const char *dir, const char *shlib_file);
-static int	scan_dirs_for_shlibs(kh_shlib_t **shlib_list,
+static int	scan_dirs_for_shlibs(pkghash **shlib_list,
 				     int numdirs, const char **dirlist,
 	                             bool strictnames);
 static void	add_dir(const char *, const char *, int);
@@ -73,26 +70,26 @@ int			 insecure;
 
 /* Known shlibs on the standard system search path.  Persistent,
    common to all applications */
-static kh_shlib_t *shlibs = NULL;
+static pkghash *shlibs = NULL;
 
 /* Known shlibs on the specific RPATH or RUNPATH of one binary.
    Evanescent. */
-static kh_shlib_t *rpath = NULL;
+static pkghash *rpath = NULL;
 
 void
 shlib_list_init(void)
 {
-	assert(kh_count(shlibs) == 0);
+	assert(pkghash_count(shlibs) == 0);
 }
 
 void
 rpath_list_init(void)
 {
-	assert(kh_count(rpath) == 0);
+	assert(pkghash_count(rpath) == 0);
 }
 
 static int
-shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
+shlib_list_add(pkghash **shlib_list, const char *dir,
     const char *shlib_file)
 {
 	struct shlib	*sl;
@@ -100,7 +97,7 @@ shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
 
 	/* If shlib_file is already in the shlib_list table, don't try
 	 * and add it again */
-	if (kh_contains(shlib, *shlib_list, shlib_file))
+	if (pkghash_get(*shlib_list, shlib_file) != NULL)
 		return (EPKG_OK);
 
 	path_len = strlen(dir) + strlen(shlib_file) + 2;
@@ -113,7 +110,7 @@ shlib_list_add(kh_shlib_t **shlib_list, const char *dir,
 	
 	sl->name = sl->path + dir_len;
 
-	kh_add(shlib, *shlib_list, sl, sl->name, free);
+	pkghash_safe_add(*shlib_list, sl->name, sl, free);
 
 	return (EPKG_OK);
 }
@@ -123,14 +120,14 @@ shlib_list_find_by_name(const char *shlib_file)
 {
 	struct shlib *sl;
 
-	kh_find(shlib, rpath, shlib_file, sl);
+	sl = pkghash_get_value(rpath, shlib_file);
 	if (sl != NULL)
 		return (sl->path);
 
-	kh_find(shlib, shlibs, shlib_file, sl);
+	sl = pkghash_get_value(shlibs, shlib_file);
 	if (sl != NULL)
 		return (sl->path);
-		
+
 	return (NULL);
 }
 
@@ -138,7 +135,7 @@ void
 shlib_list_free(void)
 {
 
-	kh_free(shlib, shlibs, struct shlib, free);
+	pkghash_destroy(shlibs);
 	shlibs = NULL;
 }
 
@@ -146,7 +143,7 @@ void
 rpath_list_free(void)
 {
 
-	kh_free(shlib, rpath, struct shlib, free);
+	pkghash_destroy(rpath);
 	rpath = NULL;
 }
 
@@ -185,7 +182,7 @@ add_dir(const char *hintsfile, const char *name, int trusted)
 }
 
 static int
-scan_dirs_for_shlibs(kh_shlib_t **shlib_list, int numdirs,
+scan_dirs_for_shlibs(pkghash **shlib_list, int numdirs,
 		     const char **dirlist, bool strictnames)
 {
 	int	i;

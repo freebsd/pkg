@@ -48,14 +48,13 @@
 struct plugin_hook {
 	pkg_plugin_hook_t hook;				/* plugin hook type */
 	pkg_plugin_callback callback;			/* plugin callback function */
-	UT_hash_handle hh;
 };
 
 struct pkg_plugin {
 	xstring *fields[PLUGIN_NUMFIELDS];
 	void *lh;						/* library handle */
 	bool parsed;
-	struct plugin_hook *hooks;
+	struct plugin_hook *hooks[PKG_PLUGIN_HOOK_LAST];
 	pkg_object *conf;
 	struct pkg_plugin *next;
 };
@@ -63,7 +62,7 @@ struct pkg_plugin {
 static struct pkg_plugin *plugins = NULL;
 
 static int pkg_plugin_free(void);
-static int pkg_plugin_hook_free(struct pkg_plugin *p);
+static void pkg_plugin_hook_free(struct pkg_plugin *p);
 static int pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, struct pkgdb *db);
 
 void *
@@ -72,14 +71,16 @@ pkg_plugin_func(struct pkg_plugin *p, const char *func)
 	return (dlsym(p->lh, func));
 }
 
-static int
+static void
 pkg_plugin_hook_free(struct pkg_plugin *p)
 {
-	assert(p != NULL);
+	if (p == NULL)
+		return;
 
-	HASH_FREE(p->hooks, free);
-
-	return (EPKG_OK);
+	for (int i = 1; i < PKG_PLUGIN_HOOK_LAST; i++) {
+		if (p->hooks[i] != NULL)
+			free(p->hooks[i]);
+	}
 }
 
 static void
@@ -111,11 +112,19 @@ pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugi
 	assert(p != NULL);
 	assert(callback != NULL);
 
+	if (hook < 1 || hook >= PKG_PLUGIN_HOOK_LAST) {
+		pkg_emit_error("Invalid hook");
+		return (EPKG_FATAL);
+	}
+	if (p->hooks[hook] != NULL) {
+		pkg_emit_error("Hook already installed");
+		return (EPKG_FATAL);
+	}
 	new = xcalloc(1, sizeof(struct plugin_hook));
 	new->hook = hook;
 	new->callback = callback;
 
-	HASH_ADD_INT(p->hooks, hook, new);
+	p->hooks[hook] = new;
 
 	return (EPKG_OK);
 }
@@ -123,13 +132,10 @@ pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugi
 static int
 pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, struct pkgdb *db)
 {
-	struct plugin_hook *h = NULL;
-	
 	assert(p != NULL);
 
-	HASH_FIND_INT(p->hooks, &hook, h);
-	if (h != NULL)
-		h->callback(data, db);
+	if (p->hooks[hook] != NULL)
+		p->hooks[hook]->callback(data, db);
 
 	return (EPKG_OK);
 }

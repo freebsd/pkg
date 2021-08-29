@@ -4,7 +4,8 @@
 
 tests_init \
 	issue1881 \
-	issue1881_newdep
+	issue1881_newdep \
+	three_digit_revision
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -117,4 +118,48 @@ EOF
 		-e ignore \
 		-s exit:0 \
 		pkg -o REPOS_DIR="$TMPDIR/repoconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -yx '^pkg_'
+}
+
+three_digit_revision_body() {
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1_90
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg register -M pkg1.ucl
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1_125
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg create -M ./pkg1.ucl
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg repo .
+
+	mkdir repoconf
+	cat << EOF > repoconf/repo.conf
+local: {
+	url: file:///$TMPDIR,
+	enabled: true
+}
+EOF
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="$TMPDIR/repoconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -yx '^pkg_'
+	atf_check \
+		-o inline:"pkg_a-1_125\n" \
+		-e empty \
+		-s exit:0 \
+		pkg info -q
 }

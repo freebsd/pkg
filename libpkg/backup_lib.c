@@ -36,21 +36,19 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 {
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	int rc = EPKG_OK;
 	time_t t;
 	char buf[BUFSIZ];
 	char *sum;
-	khint_t k;
 	struct pkg_file *f;
 	char *lpath;
 	struct stat st;
+	pkghash_entry *e;
 
 	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path), PKG_HASH_TYPE_SHA256_HEX);
 
 	it = pkgdb_query(db, "compat-libraries", MATCH_EXACT);
 	if (it != NULL) {
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES) != EPKG_OK)
-			rc = EPKG_FATAL;
+		pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES);
 		pkgdb_it_free(it);
 	}
 	if (pkg == NULL) {
@@ -69,11 +67,10 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 	free(pkg->version);
 	t = time(NULL);
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtime(&t));
-	if (pkg->filehash != NULL && (k = kh_get_pkg_files(pkg->filehash, path)) != kh_end(pkg->filehash)) {
-		f = kh_val(pkg->filehash, k);
-		kh_del_pkg_files(pkg->filehash, k);
-		DL_DELETE(pkg->files, f);
-		pkg_file_free(f);
+	if ((e = pkghash_get(pkg->filehash, path)) != NULL) {
+		DL_DELETE(pkg->files, (struct pkg_file *)e->value);
+		pkg_file_free(e->value);
+		pkghash_del(pkg->filehash, path);
 	}
 	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, path);
 	pkg_addfile(pkg, lpath, sum, false);
@@ -100,7 +97,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	ssize_t nread, nwritten;
 
 	pkg_open_root_fd(p);
-	from = to = backupdir = -1;
+	to = -1;
 
 	if (libname == NULL)
 		return;
@@ -162,7 +159,6 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		close(from);
 		register_backup(db, backupdir, libname);
 		close(backupdir);
-		backupdir = -1;
 		return;
 	}
 

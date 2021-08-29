@@ -6,6 +6,7 @@ tests_init \
 	basic
 
 basic_body() {
+	atf_skip_on Darwin The macOS linker uses different flags
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 	cat << EOF >> test.ucl
 files: {
@@ -41,13 +42,13 @@ EOF
 		-e empty \
 		-o empty \
 		-s exit:0 \
-		pkg -o BACKUP_LIBRARIES=true -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o BACKUP_LIBRARIES=true -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
 
 	atf_check \
 		-e empty \
 		-o empty \
 		-s exit:0 \
-		pkg -o BACKUP_LIBRARIES=true -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/foo-1.txz
+		pkg -o BACKUP_LIBRARIES=true -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/foo-1.pkg
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 
@@ -55,7 +56,7 @@ EOF
 		-s exit:0 \
 		pkg create -M test.ucl
 
-	rm test-1.txz
+	rm test-1.pkg
 	atf_check \
 		-o ignore \
 		-s exit:0 pkg repo .
@@ -81,7 +82,7 @@ EOF
 	atf_check \
 		-o inline:"/back/libempty.so.1\n" \
 		pkg -r ${TMPDIR}/target query "%Fp" compat-libraries
-	rm foo-1.txz
+	rm foo-1.pkg
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "2"
 	atf_check \
 		-s exit:0 \

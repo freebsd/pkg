@@ -157,7 +157,7 @@ list_locked(struct pkgdb *db, bool has_locked)
 	struct pkg	*pkg = NULL;
 	bool		 gotone = false;
 
-	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
+	if ((it = pkgdb_query_cond(db, " WHERE locked=1", NULL, MATCH_ALL)) == NULL) {
 		pkgdb_close(db);
 		return (EXIT_FAILURE);
 	}

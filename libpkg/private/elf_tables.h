@@ -33,16 +33,12 @@ struct _elf_corres {
 static const struct _elf_corres mach_corres[] = {
 	{ EM_386, "x86" },
 	{ EM_X86_64, "x86" },
-#ifdef EM_AARCH64
 	{ EM_AARCH64, "aarch64" },
-#endif
 	{ EM_ARM, "arm" },
 	{ EM_MIPS, "mips" },
 	{ EM_PPC, "powerpc" },
 	{ EM_PPC64, "powerpc" },
-#ifdef EM_RISCV
 	{ EM_RISCV, "riscv" },
-#endif
 	{ EM_SPARCV9, "sparc64" },
 	{ EM_IA_64, "ia64" },
 	{ -1, NULL },

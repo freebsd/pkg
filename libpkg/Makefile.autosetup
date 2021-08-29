@@ -47,7 +47,8 @@ SRCS=	backup.c \
 	fetch_ssh.c \
 	fetch_libfetch.c \
 	fetch_file.c \
-	triggers.c
+	triggers.c \
+	pkghash.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/blake2 \
@@ -56,6 +57,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/picosat \
 		-I$(top_srcdir)/external/yxml \
 		-I$(top_srcdir)/external/include \
+		-I$(top_srcdir)/external/mum \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libucl/klib \
 		-I$(top_srcdir)/external/libfetch \

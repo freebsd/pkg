@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -76,9 +76,8 @@ struct digest_list_entry {
 
 struct pkg_conflict_bulk {
 	struct pkg_conflict *conflicts;
-	kh_pkg_conflicts_t *conflictshash;
+	pkghash *conflictshash;
 	char *file;
-	UT_hash_handle hh;
 };
 
 static int
@@ -218,7 +217,14 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 	char *ext;
 	int linklen = 0;
 	char tmp_name[MAXPATHLEN] = { 0 };
+	char repo_path[MAXPATHLEN];
+	size_t repo_path_len;
 
+	if (realpath(repopath, repo_path) == NULL) {
+		pkg_emit_errno("invalid repo path", repopath);
+		return (EPKG_FATAL);
+	}
+	repo_path_len = strlen(repo_path);
 	errno = 0;
 
 	while ((fts_ent = fts_read(fts)) != NULL) {
@@ -246,6 +252,14 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		}
 		/* Follow symlinks. */
 		if (fts_ent->fts_info == FTS_SL) {
+			/*
+			 * Skip symlinks pointing inside the repo
+			 * and dead symlinks
+			 */
+			if (realpath(fts_ent->fts_path, tmp_name) == NULL)
+				continue;
+			if (strncmp(repo_path, tmp_name, repo_path_len) == 0)
+				continue;
 			/* Skip symlinks to hashed packages */
 			if (meta->hash) {
 				linklen = readlink(fts_ent->fts_path,
@@ -269,8 +283,13 @@ pkg_create_repo_read_fts(struct pkg_fts_item **items, FTS *fts,
 		if (ext == NULL)
 			continue;
 
-		if (strcmp(ext + 1, packing_format_to_string(meta->packing_format)) != 0)
+		if (!packing_is_valid_format(ext + 1))
 			continue;
+
+		/* skip all files which are not .pkg */
+		if (!ctx.repo_accept_legacy_pkg && strcmp(ext + 1, "pkg") != 0)
+			continue;
+
 
 		*ext = '\0';
 
@@ -538,8 +557,14 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist)
 	return (EPKG_OK);
 }
 
+#ifdef __linux__
+typedef const FTSENT *FTSENTP;
+#else
+typedef const FTSENT *const FTSENTP;
+#endif
+
 static int
-fts_compare(const FTSENT *const *a, const FTSENT *const *b)
+fts_compare(FTSENTP *a, FTSENTP *b)
 {
 	/* Sort files before directories, then alpha order */
 	if ((*a)->fts_info != FTS_D && (*b)->fts_info == FTS_D)
@@ -555,7 +580,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL, *fts_cur, *fts_start;
-	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
+	pkghash *conflicts = NULL;
+	struct pkg_conflict_bulk *curcb;
 	int num_workers, i, remaining_workers, remain, cur_jobs, remain_jobs, nworker;
 	size_t len, tasks_per_worker, ntask;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
@@ -565,12 +591,13 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	FILE *mfile;
+	pkghash_it it;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN];
 	FILE *mandigests = NULL;
 
-	outputdir_fd = mfd = ffd = -1;
+	mfd = ffd = -1;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -721,7 +748,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	ntask = 0;
 	remaining_workers = num_workers;
 	while(remaining_workers > 0) {
-		int st, r;
+		int st;
 
 		pkg_debug(1, "checking for %d workers", remaining_workers);
 		retcode = poll(pfd, num_workers, -1);
@@ -737,7 +764,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 			for (i = 0; i < num_workers; i ++) {
 				if (pfd[i].fd != -1 &&
 								(pfd[i].revents & (POLLIN|POLLHUP|POLLERR))) {
-					if ((r = pkg_create_repo_read_pipe(pfd[i].fd, &dlist)) != EPKG_OK) {
+					if (pkg_create_repo_read_pipe(pfd[i].fd, &dlist) != EPKG_OK) {
 						/*
 						 * Wait for the worker finished
 						 */
@@ -770,7 +797,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	pkg_emit_progress_tick(len, len);
-	retcode = EPKG_OK;
 
 	/* Now sort all digests */
 	if (meta->version == 1)
@@ -803,12 +829,15 @@ cleanup:
 		close(mfd);
 	if (ffd != -1)
 		close(ffd);
-	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		DL_FREE(curcb->conflicts, pkg_conflict_free);
-		kh_destroy_pkg_conflicts(curcb->conflictshash);
-		HASH_DEL(conflicts, curcb);
+	it = pkghash_iterator(conflicts);
+	while (pkghash_next(&it)) {
+		curcb = (struct pkg_conflict_bulk *)it.value;
+		LL_FREE(curcb->conflicts, pkg_conflict_free);
+		pkghash_destroy(curcb->conflictshash);
+		curcb->conflictshash = NULL;
 		free(curcb);
 	}
+	pkghash_destroy(conflicts);
 
 	if (pfd != NULL)
 		free(pfd);
@@ -918,7 +947,7 @@ done:
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-		struct rsa_key *rsa, struct pkg_repo_meta *meta,
+		struct pkg_key *keyinfo, struct pkg_repo_meta *meta,
 		char **argv, int argc)
 {
 	struct packing *pack;
@@ -932,11 +961,11 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	sig = NULL;
 	pub = NULL;
 
-	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1, true) != EPKG_OK)
+	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1, true, true) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (rsa != NULL) {
-		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
+	if (keyinfo != NULL) {
+		if (rsa_sign(path, keyinfo, &sigret, &siglen) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto out;
 		}
@@ -984,7 +1013,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	char repo_archive[MAXPATHLEN];
 	char *key_file;
 	const char *key_type;
-	struct rsa_key *rsa = NULL;
+	struct pkg_key *keyinfo = NULL;
 	struct pkg_repo_meta *meta;
 	struct stat st;
 	int ret = EPKG_OK, nfile = 0, fd;
@@ -1005,7 +1034,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		}
 
 		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
-		rsa_new(&rsa, password_cb, key_file);
+		rsa_new(&keyinfo, password_cb, key_file);
 	}
 
 	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
@@ -1024,12 +1053,12 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	if ((fd = open(repo_path, O_RDONLY)) != -1) {
 		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
 			pkg_emit_error("meta loading error while trying %s", repo_path);
-			rsa_free(rsa);
+			rsa_free(keyinfo);
 			close(fd);
 			return (EPKG_FATAL);
 		}
-		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, rsa, meta,
-			argv, argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo,
+		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1042,8 +1071,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	    meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		meta->manifests_archive);
-	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, rsa, meta,
-		argv, argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, keyinfo,
+	    meta, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1055,8 +1084,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		    meta->filesite);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
 		    output_dir, meta->filesite_archive);
-		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, rsa, meta,
-			argv, argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, keyinfo,
+		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1069,8 +1098,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		    meta->digests);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		    meta->digests_archive);
-		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, rsa, meta,
-		    argv, argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(meta->digests, repo_archive, repo_path, keyinfo,
+		    meta, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1083,8 +1112,8 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 		meta->conflicts);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 		meta->conflicts_archive);
-	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, rsa, meta,
-		argv, argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, keyinfo,
+	    meta, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1126,7 +1155,7 @@ cleanup:
 	pkg_emit_progress_tick(files_to_pack, files_to_pack);
 	pkg_repo_meta_free(meta);
 
-	rsa_free(rsa);
+	rsa_free(keyinfo);
 
 	return (ret);
 }

@@ -96,7 +96,7 @@ pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 }
 
 struct pkg_repo_it *
-pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
+pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
@@ -107,13 +107,21 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
-		"FROM packages AS p %s ORDER BY NAME;";
+		"FROM packages AS p %s "
+		"%s%s%s "
+		"ORDER BY NAME;";
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
 	comp = pkgdb_get_pattern_query(pattern, match);
-	xasprintf(&sql, basesql, repo->name, comp ? comp : "");
+	if (comp == NULL)
+		comp = "";
+	if (cond == NULL)
+		xasprintf(&sql, basesql, repo->name, comp, "", "", "");
+	else
+		xasprintf(&sql, basesql, repo->name, comp,
+		    comp[0] != '\0' ? "AND (" : "WHERE (", cond + 7, ")");
 
 	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
 	     pattern == NULL ? "all": pattern);
@@ -122,7 +130,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
 	if (stmt == NULL)
 		return (NULL);
 
-	if (match != MATCH_ALL && match != MATCH_CONDITION)
+	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
@@ -266,10 +274,6 @@ pkg_repo_binary_search_how(match_t match)
 		break;
 	case MATCH_REGEX:
 		how = "%s REGEXP ?1";
-		break;
-	case MATCH_CONDITION:
-		/* Should not be called by pkgdb_get_match_how(). */
-		assert(0);
 		break;
 	}
 

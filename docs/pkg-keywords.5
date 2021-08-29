@@ -66,30 +66,47 @@ Name of the group of the file or directory.
 .It Cm mode Ar string
 mode of the file or directory, this mode can be in numeric or string form.
 .El
+.It Cm deprecated
+Boolean to mark a keyword as deprecated
+.It Cm deprecation_message
+Message to be show if the keyword is used and mark as deprecated
+.It Cm preformat_arguments
+Boolean to activate the preformating the arguemnts of the keywords repescting the escape sequences descibred below.
+.It Cm prepackaging
+lua script which is executed at the packaging time.
+Useful to add some input validation.
 .It Cm pre-install
 shell script to be run during the pre-install phase.
 It will be merged with any existing pre-install scripts.
+The script will be formatted respecting the escape sequences define later.
 .It Cm post-install
 shell script to be run during the post-install phase.
 It will be merged with any existing post-install scripts.
+The script will be formatted respecting the escape sequences define later.
 .It Cm pre-deinstall
 shell script to be run during the pre-deinstall phase.
 It will be merged with any existing pre-deinstall scripts.
+The script will be formatted respecting the escape sequences define later.
 .It Cm post-deinstall
 shell script to be run during the post-deinstall phase.
 It will be merged with any existing post-deinstall scripts.
+The script will be formatted respecting the escape sequences define later.
 .It Cm pre-install-lua
 Lua script to be run during the pre-install phase.
 It will be appended with any existing array of lua pre-install scripts
+The script will be formatted respecting the escape sequences define later.
 .It Cm post-install-lua
 Lua script to be run during the post-install phase.
 It will be appended with any existing array of lua post-install scripts
+The script will be formatted respecting the escape sequences define later.
 .It Cm pre-deinstall-lua
 Lua script to be run during the pre-deinstall phase.
 It will be appended with any existing array of lua pre-deinstall scripts
+The script will be formatted respecting the escape sequences define later.
 .It Cm post-deinstall-lua
 Lua script to be run during the post-deinstall phase.
 It will be appended with any existing array of lua post-deinstall scripts
+The script will be formatted respecting the escape sequences define later.
 .It Cm messages
 Array of test messages that can be passed to the users.
 Valid information by entry in the array are:
@@ -100,6 +117,40 @@ actual message to be shown to the users.
 defines in which contect the message should be shown to the users.
 If not set, the message will always be printed
 .El
+.El
+.Sh ESCAPE SEQUENCE
+If
+.Ar line
+contains any of the following sequences somewhere in it, they will
+be expanded inline.
+For the following examples, assume that
+.Cm @cwd
+is set to
+.Pa /usr/local
+and the last extracted file was
+.Pa bin/emacs .
+.Bl -tag -width indent -compact
+.It Cm "%F"
+Expands to the last filename extracted (as specified), in the example case
+.Pa bin/emacs .
+.It Cm "\&%D"
+Expand to the current directory prefix, as set with
+.Cm @cwd ,
+in the example case
+.Pa /usr/local .
+.It Cm "\&%B"
+Expand to the
+.Dq basename
+of the fully qualified filename, that is the current directory prefix,
+plus the last filespec, minus the trailing filename.
+In the example case, that would be
+.Pa /usr/local/bin .
+.It Cm "%f"
+Expand to the filename part of the fully qualified name, or
+the converse of
+.Cm \&%B ,
+being in the example case,
+.Pa emacs .
 .El
 .Sh SEE ALSO
 .Xr pkg_printf 3 ,

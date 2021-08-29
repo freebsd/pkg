@@ -79,9 +79,9 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (pkgdb_case_sensitive()) {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
-					comp = " WHERE name = ?1 "
+					comp = " WHERE (name = ?1 "
 					    "OR (name = SPLIT_VERSION('name', ?1) AND "
-					    " version = SPLIT_VERSION('version', ?1))";
+					    " version = SPLIT_VERSION('version', ?1)))";
 				else
 					comp = " WHERE origin = ?1";
 			} else {
@@ -90,9 +90,9 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		} else {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
-					comp = " WHERE name = ?1 COLLATE NOCASE "
+					comp = " WHERE (name = ?1 COLLATE NOCASE "
 							"OR (name = SPLIT_VERSION('name', ?1) COLLATE NOCASE AND "
-							" version = SPLIT_VERSION('version', ?1))";
+							" version = SPLIT_VERSION('version', ?1)))";
 				else
 					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {
@@ -103,8 +103,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	case MATCH_GLOB:
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
-				comp = " WHERE name GLOB ?1 "
-					"OR name || '-' || version GLOB ?1";
+				comp = " WHERE (name GLOB ?1 "
+					"OR name || '-' || version GLOB ?1)";
 			else
 				comp = " WHERE origin GLOB ?1";
 		} else {
@@ -114,16 +114,13 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	case MATCH_REGEX:
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
-				comp = " WHERE name REGEXP ?1 "
-				    "OR name || '-' || version REGEXP ?1";
+				comp = " WHERE (name REGEXP ?1 "
+				    "OR name || '-' || version REGEXP ?1)";
 			else
 				comp = " WHERE origin REGEXP ?1";
 		} else {
 			comp = " WHERE name = ?1";
 		}
-		break;
-	case MATCH_CONDITION:
-		comp = pattern;
 		break;
 	}
 
@@ -131,7 +128,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 }
 
 struct pkgdb_it *
-pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
+pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_t match)
 {
 	char		 sql[BUFSIZ];
 	sqlite3_stmt	*stmt;
@@ -144,14 +141,24 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 
 	comp = pkgdb_get_pattern_query(pattern, match);
 
-	sqlite3_snprintf(sizeof(sql), sql,
-			"SELECT id, origin, name, name as uniqueid, "
-				"version, comment, desc, "
-				"message, arch, maintainer, www, "
-				"prefix, flatsize, licenselogic, automatic, "
-				"locked, time, manifestdigest, vital "
-			"FROM packages AS p%s "
-			"ORDER BY p.name;", comp);
+	if (cond)
+		sqlite3_snprintf(sizeof(sql), sql,
+				"SELECT id, origin, name, name as uniqueid, "
+					"version, comment, desc, "
+					"message, arch, maintainer, www, "
+					"prefix, flatsize, licenselogic, automatic, "
+					"locked, time, manifestdigest, vital "
+					"FROM packages AS p%s %s (%s) ORDER BY p.name;",
+					comp, pattern == NULL ? "WHERE" : "AND", cond + 7);
+	else
+		sqlite3_snprintf(sizeof(sql), sql,
+				"SELECT id, origin, name, name as uniqueid, "
+					"version, comment, desc, "
+					"message, arch, maintainer, www, "
+					"prefix, flatsize, licenselogic, automatic, "
+					"locked, time, manifestdigest, vital "
+				"FROM packages AS p%s "
+				"ORDER BY p.name;", comp);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -159,10 +166,16 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 		return (NULL);
 	}
 
-	if (match != MATCH_ALL && match != MATCH_CONDITION)
+	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkgdb_it *
+pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
+{
+	return pkgdb_query_cond(db, NULL, pattern, match);
 }
 
 bool
@@ -335,7 +348,7 @@ pkgdb_query_provide(struct pkgdb *db, const char *req)
 }
 
 struct pkgdb_it *
-pkgdb_repo_query(struct pkgdb *db, const char *pattern, match_t match,
+pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_t match,
     const char *repo)
 {
 	struct pkgdb_it *it;
@@ -348,13 +361,19 @@ pkgdb_repo_query(struct pkgdb *db, const char *pattern, match_t match,
 
 	LL_FOREACH(db->repos, cur) {
 		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			rit = cur->repo->ops->query(cur->repo, pattern, match);
+			rit = cur->repo->ops->query(cur->repo, cond, pattern, match);
 			if (rit != NULL)
 				pkgdb_it_repo_attach(it, rit);
 		}
 	}
 
 	return (it);
+}
+
+struct pkgdb_it *pkgdb_repo_query(struct pkgdb *db, const char *pattern,
+	match_t match, const char *repo)
+{
+	return pkgdb_repo_query_cond(db, NULL, pattern, match, repo);
 }
 
 struct pkgdb_it *

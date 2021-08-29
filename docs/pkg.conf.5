@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd November 5, 2020
+.Dd March 13, 2021
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -29,7 +29,7 @@ is the system-wide configuration file used by the
 tools.
 .Pp
 The default location of this file is
-.Pa /usr/local/etc/pkg.conf
+.Pa /usr/local/etc/pkg.conf .
 .Pp
 Lines in the file beginning with a "#" are comments
 and are ignored.
@@ -76,13 +76,16 @@ a syntactically correct
 command line when substituted in and followed by any remaining tokens from
 the original command line.
 Default: not set.
+.It Cm ARCHIVE_SYMLINK: boolean
+When creating a package, create a symlink to it using the legacy extension,
+this is a backward compatibility option, default: true
 .It Cm AUTOCLEAN: boolean
 Automatically cleanout the content of
 .Em PKG_CACHEDIR
 after each non dry-run call to
 .Xr pkg-install 8
 or
-.Xr pkg-upgrade 8
+.Xr pkg-upgrade 8 .
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1
@@ -113,6 +116,12 @@ Default: NO.
 Location where the libraries are backed up.
 Default:
 .Pa /usr/local/lib/compat/pkg .
+.It Cm COMPRESSION_LEVEL: integer
+Set the default compression level, special values are:
+.Bl -tag
+.It 0 default value per libarchive developers
+.It -1 default value per pkg developers (default)
+.El
 .It Cm CONSERVATIVE_UPGRADE: boolean
 Ensure in multi repository mode that the priority is given as much as possible
 to the repository where a package was first installed from.
@@ -168,7 +177,7 @@ Services are only started on installation if they are enabled in
 Default: NO.
 .It Cm HTTP_USER_AGENT: string
 Define User-agent to be sent to HTTP server when getting repository
-data
+data.
 .It Cm IGNORE_OSVERSION: boolean [FreeBSD specific]
 Ignore FreeBSD OS version check, useful on -STABLE and -CURRENT branches.
 Default: NO.
@@ -220,7 +229,7 @@ Default: NO.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 Default:
-.Pa /var/cache/pkg
+.Pa /var/cache/pkg .
 .It Cm PKG_CREATE_VERBOSE: boolean
 When set to a
 .Sy true
@@ -228,12 +237,12 @@ value, make
 .Xr pkg-create 8
 use verbose mode as standard.
 Default:
-.Sy NO
+.Sy NO .
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
 Default:
-.Pa /var/db/pkg
+.Pa /var/db/pkg .
 .It Cm PKG_ENABLE_PLUGINS: boolean
 When set to
 .Dq YES ,
@@ -255,10 +264,10 @@ Directory which
 .Xr pkg 8
 will load plugins from.
 Default:
-.Pa /usr/local/lib/pkg
+.Pa /usr/local/lib/pkg .
 .It Cm PKG_TRIGGERS_ENABLE
 Enable or disable execution of triggers at the end of the transactions.
-Default: YES
+Default: YES.
 .It Cm PKG_TRIGGERS_DIR
 Directory where the triggers are stored
 Default:
@@ -269,7 +278,7 @@ Extra arguments to pass to
 Default: not set.
 .It Cm PLIST_KEYWORDS_DIR: string
 Directory containing definitions of plist keywords.
-Default: PORTSDIR/keyword
+Default: PORTSDIR/keyword.
 .It Cm PLIST_ACCEPT_DIRECTORIES: boolean
 Accept directories listed like plain files in plist.
 Default: NO.
@@ -281,11 +290,11 @@ Default: not set.
 .It Cm PLUGINS_CONF_DIR: string
 Directory containing per-plugin configuration files.
 Default:
-.Pa /usr/local/etc/pkg
+.Pa /usr/local/etc/pkg .
 .It Cm PORTSDIR: string
 Specifies the location to the Ports directory.
 Default:
-.Pa /usr/ports
+.Pa /usr/ports .
 .It Cm READ_LOCK: boolean
 Use read locking for query database.
 Default: NO.
@@ -350,7 +359,7 @@ Specifies the URL to fetch the
 .Pa vuln.xml
 vulnerability database from.
 Default:
-.Pa http://vuxml.freebsd.org/freebsd/vuln.xml.bz2 .
+.Pa http://vuxml.freebsd.org/freebsd/vuln.xml.xz .
 .It Cm WARN_SIZE_LIMIT: integer
 When download and total change is less than than this option, don't ask
 the user to confirm the desired action.
@@ -378,7 +387,7 @@ and
 .Pa /usr/local/etc/pkg/repos/ .
 .Pp
 Filenames are arbitrary, but should end in
-.Sq .conf
+.Sq .conf .
 For example
 .Pa /usr/local/etc/pkg/repos/myrepo.conf .
 .Pp
@@ -427,7 +436,7 @@ Default: 0.
 .It Cm PRIORITY: integer
 Set the priority of the repository.
 Higher values are preferred.
-Default: 0
+Default: 0.
 .El
 .El
 .Pp

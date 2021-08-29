@@ -70,6 +70,8 @@ extern struct pkg_ctx ctx;
 
 static int pkg_jobs_installed_local_pkg(struct pkg_jobs *j, struct pkg *pkg);
 static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m);
+static int pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond,
+	const char *pattern, match_t m);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
@@ -166,19 +168,22 @@ pkg_jobs_request_free(struct pkg_job_request *req)
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
-	struct pkg_job_request *req, *tmp;
+	pkghash_it it;
 
 	if (j == NULL)
 		return;
 
-	HASH_ITER(hh, j->request_add, req, tmp) {
-		HASH_DEL(j->request_add, req);
-		pkg_jobs_request_free(req);
-	}
-	HASH_ITER(hh, j->request_delete, req, tmp) {
-		HASH_DEL(j->request_delete, req);
-		pkg_jobs_request_free(req);
-	}
+	it = pkghash_iterator(j->request_add);
+	while (pkghash_next(&it))
+		pkg_jobs_request_free(it.value);
+	pkghash_destroy(j->request_add);
+	j->request_add = NULL;
+
+	it = pkghash_iterator(j->request_delete);
+	while (pkghash_next(&it))
+		pkg_jobs_request_free(it.value);
+	pkghash_destroy(j->request_delete);
+	j->request_delete = NULL;
 
 	pkg_jobs_universe_free(j->universe);
 	LL_FREE(j->jobs, free);
@@ -201,11 +206,12 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 		 * Compare suffix with .txz or .tbz
 		 */
 		dot_pos ++;
-		if (strcmp(dot_pos, "tzst") == 0 ||
-			strcmp(dot_pos, "txz") == 0 ||
-			strcmp(dot_pos, "tbz") == 0 ||
-			strcmp(dot_pos, "tgz") == 0 ||
-			strcmp(dot_pos, "tar") == 0) {
+		if (strcmp(dot_pos, "pkg") == 0 ||
+		    strcmp(dot_pos, "tzst") == 0 ||
+		    strcmp(dot_pos, "txz") == 0 ||
+		    strcmp(dot_pos, "tbz") == 0 ||
+		    strcmp(dot_pos, "tgz") == 0 ||
+		    strcmp(dot_pos, "tar") == 0) {
 			if ((pkg_path = realpath(pattern, NULL)) != NULL) {
 				/* Dot pos is one character after the dot */
 				int len = dot_pos - pattern;
@@ -291,8 +297,8 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 }
 
 static struct pkg_job_request_item*
-pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
-	struct pkg_job_universe_item *un, bool local, bool automatic)
+pkg_jobs_add_req_from_universe(pkghash **head, struct pkg_job_universe_item *un,
+    bool local, bool automatic)
 {
 	struct pkg_job_request *req;
 	struct pkg_job_request_item *nit;
@@ -300,7 +306,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 	bool new_req = false;
 
 	assert(un != NULL);
-	HASH_FIND_STR(*head, un->pkg->uid, req);
+	req = pkghash_get_value(*head, un->pkg->uid);
 
 	if (req == NULL) {
 		req = xcalloc(1, sizeof(*req));
@@ -327,7 +333,7 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 
 	if (new_req) {
 		if (req->item != NULL) {
-			HASH_ADD_KEYPTR(hh, *head, un->pkg->uid, strlen(un->pkg->uid), req);
+			pkghash_safe_add(*head, un->pkg->uid, req, NULL);
 		}
 		else {
 			free(req);
@@ -341,7 +347,8 @@ pkg_jobs_add_req_from_universe(struct pkg_job_request **head,
 static struct pkg_job_request_item*
 pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
-	struct pkg_job_request *req, **head;
+	pkghash **head;
+	struct pkg_job_request *req;
 	struct pkg_job_request_item *nit;
 	struct pkg_job_universe_item *un;
 	int rc;
@@ -367,7 +374,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		 * digest. In turn, that means that two upgrade candidates are equal,
 		 * we thus won't do anything with this item, as it is definitely useless
 		 */
-		HASH_FIND_STR(*head, pkg->uid, req);
+		req = pkghash_get_value(*head, pkg->uid);
 		if (req != NULL) {
 			DL_FOREACH(req->item, nit) {
 				if (nit->unit == un)
@@ -395,7 +402,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		return (NULL);
 	}
 
-	HASH_FIND_STR(*head, pkg->uid, req);
+	req = pkghash_get_value(*head, pkg->uid);
 
 	nit = xcalloc(1, sizeof(*nit));
 	nit->pkg = pkg;
@@ -404,7 +411,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 	if (req == NULL) {
 		/* Allocate new unique request item */
 		req = xcalloc(1, sizeof(*req));
-		HASH_ADD_KEYPTR(hh, *head, pkg->uid, strlen(pkg->uid), req);
+		pkghash_safe_add(*head, pkg->uid, req, NULL);
 	}
 
 	/* Append candidate to the list of candidates */
@@ -425,19 +432,22 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 	bool force = j->flags & PKG_FLAG_FORCE,
 		 reverse = j->flags & PKG_FLAG_RECURSIVE,
 		 upgrade = j->type == PKG_JOBS_UPGRADE;
-	struct pkg_job_request *req, *tmp, *found;
+	struct pkg_job_request *req;
 	struct pkg_job_request_item *it;
 	struct pkg_job_universe_item *un, *cur;
 	struct pkg_dep *d;
 	struct pkg *lp;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
 	kvec_t(struct pkg_job_universe_item *) to_process;
+	pkghash_it hit;
 
 	if (!upgrade && !reverse)
 		return;
 
 	kv_init(to_process);
-	HASH_ITER(hh, j->request_add, req, tmp) {
+	hit = pkghash_iterator(j->request_add);
+	while (pkghash_next(&hit)) {
+		req = hit.value;
 		it = req->item;
 
 		if (reverse)
@@ -456,8 +466,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 			/*
 			 * Do not add duplicated upgrade candidates
 			 */
-			HASH_FIND_STR(j->request_add, d->uid, found);
-			if (found != NULL)
+			if (pkghash_get(j->request_add, d->uid))
 				continue;
 
 			pkg_debug(4, "adding dependency %s to request", d->uid);
@@ -502,11 +511,12 @@ static int
 pkg_jobs_process_delete_request(struct pkg_jobs *j)
 {
 	bool force = j->flags & PKG_FLAG_FORCE;
-	struct pkg_job_request *req, *tmp, *found;
+	struct pkg_job_request *req;
 	struct pkg_dep *d = NULL;
 	struct pkg *lp;
 	int rc = EPKG_OK;
 	kvec_t(struct pkg *) to_process;
+	pkghash_it it;
 
 	if (force)
 		return (EPKG_OK);
@@ -515,11 +525,12 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	/*
 	 * Need to add also all reverse deps here
 	 */
-	HASH_ITER(hh, j->request_delete, req, tmp) {
+	it = pkghash_iterator(j->request_delete);
+	while (pkghash_next(&it)) {
+		req = it.value;
 		d = NULL;
 		while (pkg_rdeps(req->item->pkg, &d) == EPKG_OK) {
-			HASH_FIND_STR(j->request_delete, d->uid, found);
-			if (found)
+			if (pkghash_get(j->request_delete, d->uid))
 				continue;
 
 			lp = pkg_jobs_universe_get_local(j->universe, d->uid, 0);
@@ -800,7 +811,7 @@ pkg_jobs_has_replacement(struct pkg_jobs *j, const char *uid)
 }
 
 static int
-pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
+pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *pattern,
     const char *uid, match_t m)
 {
 	struct pkg *p = NULL;
@@ -813,7 +824,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 	xstring *qmsg = NULL;
 	struct pkg_job_universe_item *unit;
 
-	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query_cond(j->db, cond, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
 
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
@@ -831,8 +842,8 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *pattern,
 			pkg_validate(p, j->db);
 			unit = pkg_jobs_universe_find(j->universe, uid);
 			if (unit != NULL)
-				pkg_jobs_universe_change_uid(j->universe, unit, p->uid,
-					strlen(p->uid), false);
+				pkg_jobs_universe_change_uid(j->universe, unit,
+				    p->uid, false);
 			else
 				assert(0);
 
@@ -867,7 +878,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 	/* First of all, try to search a package with the same name */
 	pos = strchr(pattern, '/');
 	if (pos != NULL && pos[1] != '\0') {
-		if (pkg_jobs_try_remote_candidate(j, pos + 1, opattern, MATCH_EXACT)
+		if (pkg_jobs_try_remote_candidate(j, pos + 1, NULL, opattern, MATCH_EXACT)
 						== EPKG_OK)
 			return (EPKG_OK);
 
@@ -890,12 +901,12 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 		/* Try exact pattern without numbers */
 		cpy = xmalloc(len + 1);
 		strlcpy(cpy, pos, len + 1);
-		if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_EXACT) != EPKG_OK) {
+		if (pkg_jobs_try_remote_candidate(j, cpy, NULL, opattern, MATCH_EXACT) != EPKG_OK) {
 			free(cpy);
 			cpy = sqlite3_mprintf(" WHERE name REGEXP ('^' || %.*Q || '[0-9.]*$')",
 					len, pos);
 
-			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_CONDITION)
+			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, NULL, MATCH_ALL)
 					== EPKG_OK)
 				rc = EPKG_OK;
 			sqlite3_free(cpy);
@@ -910,7 +921,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 }
 
 static int
-pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
+pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
@@ -988,6 +999,12 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 }
 
 static int
+pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
+{
+	return pkg_jobs_find_upgrade_cond(j, NULL, pattern, m);
+}
+
+static int
 pkg_jobs_check_local_pkg(struct pkg_jobs *j, struct job_pattern *jp)
 {
 	struct pkgdb_it *it;
@@ -1058,7 +1075,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 			pkg->type = PKG_FILE;
 			pkg_jobs_add_req(j, pkg);
 
-			HASH_FIND_STR(j->request_add, pkg->uid, req);
+			req = pkghash_get_value(j->request_add, pkg->uid);
 			if (req != NULL)
 				req->item->jp = jp;
 		}
@@ -1081,6 +1098,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 	char *lb, *rb;
+	pkghash_it it1, it2;
 
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
@@ -1200,16 +1218,18 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 
 	/* Provides */
 	lb = rb = NULL;
+	it1 = pkghash_iterator(rp->provides);
+	it2 = pkghash_iterator(lp->provides);
 	for (;;) {
-		ret1 = pkg_provides(rp, &rb);
-		ret2 = pkg_provides(lp, &lb);
+		ret1 = pkghash_next(&it1);
+		ret2 = pkghash_next(&it2);
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = xstrdup("provides changed");
 			return (true);
 		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(rb, lb) != 0) {
+		if (ret1) {
+			if (strcmp(it1.key, it2.key) != 0) {
 				free(rp->reason);
 				rp->reason = xstrdup("provides changed");
 				return (true);
@@ -1220,16 +1240,18 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 	/* Requires */
 	lb = rb = NULL;
+	it1 = pkghash_iterator(rp->requires);
+	it2 = pkghash_iterator(lp->requires);
 	for (;;) {
-		ret1 = pkg_requires(rp, &rb);
-		ret2 = pkg_requires(lp, &lb);
+		ret1 = pkghash_next(&it1);
+		ret2 = pkghash_next(&it2);
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = xstrdup("requires changed");
 			return (true);
 		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(rb, lb) != 0) {
+		if (ret1) {
+			if (strcmp(it1.key, it2.key) != 0) {
 				free(rp->reason);
 				rp->reason = xstrdup("requires changed");
 				return (true);
@@ -1241,20 +1263,22 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 
 	/* Finish by the shlibs */
 	lb = rb = NULL;
+	it1 = pkghash_iterator(rp->shlibs_provided);
+	it2 = pkghash_iterator(lp->shlibs_provided);
 	for (;;) {
-		ret1 = pkg_shlibs_provided(rp, &rb);
-		ret2 = pkg_shlibs_provided(lp, &lb);
+		ret1 = pkghash_next(&it1);
+		ret2 = pkghash_next(&it2);
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = xstrdup("provided shared library changed");
 			return (true);
 		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(rb, lb) != 0) {
+		if (ret1) {
+			if (strcmp(it1.key, it2.key) != 0) {
 				free(rp->reason);
 				rp->reason = xstrdup("provided shared library changed");
 				pkg_debug(1, "provided shlib changed %s -> %s",
-				    lb, rb);
+				    it2.key, it1.key);
 				return (true);
 			}
 		}
@@ -1263,20 +1287,22 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 
 	lb = rb = NULL;
+	it1 = pkghash_iterator(rp->shlibs_required);
+	it2 = pkghash_iterator(lp->shlibs_required);
 	for (;;) {
-		ret1 = pkg_shlibs_required(rp, &rb);
-		ret2 = pkg_shlibs_required(lp, &lb);
+		ret1 = pkghash_next(&it1);
+		ret2 = pkghash_next(&it2);
 		if (ret1 != ret2) {
 			free(rp->reason);
 			rp->reason = xstrdup("needed shared library changed");
 			return (true);
 		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(rb, lb) != 0) {
+		if (ret1) {
+			if (strcmp(it1.key, it2.key) != 0) {
 				free(rp->reason);
 				rp->reason = xstrdup("needed shared library changed");
 				pkg_debug(1, "Required shlib changed %s -> %s",
-				    lb, rb);
+				    it2.key, it1.key);
 				return (true);
 			}
 		}
@@ -1290,17 +1316,20 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 static void
 pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 {
-	struct pkg_job_universe_item *unit, *utmp, *cur, *local;
+	struct pkg_job_universe_item *unit, *cur, *local;
 	struct pkg_job_request *req;
 	bool automatic;
+	pkghash_it it;
 
-	HASH_ITER(hh, j->universe->items, unit, utmp) {
+	it = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&it)) {
+		unit = (struct pkg_job_universe_item *)it.value;
 		if (unit->next == NULL) {
 			/*
 			 * For packages that are alone in the installation list
 			 * we search them in the corresponding request
 			 */
-			HASH_FIND_STR(j->request_add, unit->pkg->uid, req);
+			req = pkghash_get_value(j->request_add, unit->pkg->uid);
 			if ((req == NULL || req->automatic) &&
 			    unit->pkg->type != PKG_INSTALLED) {
 				automatic = true;
@@ -1345,7 +1374,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				 *
 				 * See #1374
 				 */
-				HASH_FIND_STR(j->request_add, unit->pkg->uid, req);
+				req = pkghash_get_value(j->request_add, unit->pkg->uid);
 				if ((req == NULL || req->automatic)) {
 					automatic = true;
 					pkg_debug(2, "set automatic flag for %s", unit->pkg->uid);
@@ -1373,7 +1402,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 		return (NULL);
 	}
 
-	HASH_FIND_STR(j->request_delete, pkg->uid, found);
+	found = pkghash_get_value(j->request_delete, pkg->uid);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
 			dep_item = pkg_jobs_universe_find(j->universe, d->uid);
@@ -1459,7 +1488,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 
-	if ((it = pkgdb_query(j->db, " WHERE automatic=1 AND vital=0 ", MATCH_CONDITION)) == NULL)
+	if ((it = pkgdb_query_cond(j->db, " WHERE automatic=1 AND vital=0 ", NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg,
@@ -1569,8 +1598,9 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	size_t elt_num = 0;
 	char sqlbuf[256];
 	struct pkg_jobs_install_candidate *candidates, *c;
-	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_request *req;
 	struct pkgdb_it *it;
+	pkghash_it hit;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
@@ -1583,7 +1613,7 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 		pkg_emit_progress_tick(++elt_num, jcount);
 		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
 		    c->id);
-		if ((it = pkgdb_query(j->db, sqlbuf, MATCH_CONDITION)) == NULL)
+		if ((it = pkgdb_query_cond(j->db, sqlbuf, NULL, MATCH_ALL)) == NULL)
 			return (EPKG_FATAL);
 
 		pkg = NULL;
@@ -1601,7 +1631,9 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 			jcount);
 	elt_num = 0;
 
-	HASH_ITER(hh, j->request_add, req, rtmp) {
+	hit = pkghash_iterator(j->request_add);
+	while (pkghash_next(&hit)) {
+		req = hit.value;
 		pkg_emit_progress_tick(++elt_num, jcount);
 		pkg_jobs_universe_process(j->universe, req->item->pkg);
 	}
@@ -1616,9 +1648,10 @@ static int
 jobs_solve_partial_upgrade(struct pkg_jobs *j)
 {
 	struct job_pattern *jp;
-	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_request *req;
 	bool error_found = false;
 	int retcode;
+	pkghash_it it;
 
 	LL_FOREACH(j->patterns, jp) {
 		retcode = pkg_jobs_find_remote_pattern(j, jp);
@@ -1648,7 +1681,10 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 	/*
 	 * Need to iterate request one more time to recurse depends
 	 */
-	HASH_ITER(hh, j->request_add, req, rtmp) {
+
+	it = pkghash_iterator(j->request_add);
+	while (pkghash_next(&it)) {
+		req = it.value;
 		pkg_jobs_universe_process(j->universe, req->item->pkg);
 	}
 	return (EPKG_OK);
@@ -1657,8 +1693,9 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 static int
 jobs_solve_install_upgrade(struct pkg_jobs *j)
 {
-	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_request *req;
 	int retcode = 0;
+	pkghash_it it;
 
 	/* Check for new pkg. Skip for 'upgrade -F'. */
 	if (((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
@@ -1693,7 +1730,9 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		 * If we have tried to solve request, then we just want to re-add all
 		 * request packages to the universe to find out any potential conflicts
 		 */
-		HASH_ITER(hh, j->request_add, req, rtmp) {
+		it = pkghash_iterator(j->request_add);
+		while (pkghash_next(&it)) {
+			req = it.value;
 			pkg_jobs_universe_process(j->universe, req->item->pkg);
 		}
 	}
@@ -1722,7 +1761,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct job_pattern *jp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_request *req;
+	pkghash_it hit;
 
 	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED) {
 		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
@@ -1746,8 +1786,11 @@ jobs_solve_fetch(struct pkg_jobs *j)
 				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
 		}
-		HASH_ITER(hh, j->request_add, req, rtmp)
+		hit = pkghash_iterator(j->request_add);
+		while (pkghash_next(&hit)) {
+			req = hit.value;
 			pkg_jobs_universe_process(j->universe, req->item->pkg);
+		}
 	}
 
 	j->solved ++;
@@ -1778,7 +1821,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 		sqlite3_bind_text(stmt, 2, r->old_uid, -1, SQLITE_TRANSIENT);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE)
-			ERROR_SQLITE(j->db->sqlite, sql);
+			ERROR_STMT_SQLITE(j->db->sqlite, stmt);
 
 		sqlite3_reset(stmt);
 	}
@@ -2014,7 +2057,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
 
-	HASH_FIND_STR(j->request_add, new->uid, req);
+	req = pkghash_get_value(j->request_add, new->uid);
 	if (req != NULL && req->item->jp != NULL &&
 			(req->item->jp->flags & PKG_PATTERN_FLAG_FILE)) {
 		/*

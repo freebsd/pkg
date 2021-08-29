@@ -11,7 +11,8 @@ tests_init	\
 		add_quiet \
 		add_stdin \
 		add_stdin_missing \
-		add_no_version
+		add_no_version \
+		add_wrong_version
 
 initialize_pkg() {
 	touch a
@@ -48,7 +49,7 @@ post-install
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		pkg add test-1.txz
+		pkg add test-1.pkg
 
 # test automatic is not set
 	atf_check \
@@ -68,7 +69,7 @@ post-install
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		pkg add -A test-1.txz
+		pkg add -A test-1.pkg
 
 	atf_check \
 		-o inline:"1\n" \
@@ -83,10 +84,10 @@ add_noscript_body() {
 OUTPUT="${JAILED}Installing test-1...
 ${JAILED}Extracting test-1:  done
 "
-	cat test-1.txz | atf_check \
+	cat test-1.pkg | atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
-		pkg add -I test-1.txz
+		pkg add -I test-1.pkg
 }
 
 add_force_body() {
@@ -124,10 +125,10 @@ EOF
 		pkg create -M test.ucl
 
 	atf_check \
-		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): test-1.txz\n" \
+		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): test-1.pkg\n" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:1 \
-		pkg add test-1.txz
+		pkg add test-1.pkg
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
@@ -138,7 +139,7 @@ post-install
 		-o inline:"${OUTPUT}" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
-		pkg add -M test-1.txz
+		pkg add -M test-1.pkg
 }
 
 add_quiet_body() {
@@ -147,7 +148,7 @@ add_quiet_body() {
 	atf_check \
 		-o inline:"pre-install\npost-install\n" \
 		-e empty \
-		pkg add -q ./test-1.txz
+		pkg add -q ./test-1.pkg
 }
 
 add_stdin_body() {
@@ -158,7 +159,7 @@ pre-install
 ${JAILED}Extracting test-1:  done
 post-install
 "
-	cat test-1.txz | atf_check \
+	cat test-1.pkg | atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		pkg add -
@@ -193,7 +194,7 @@ EOF
 		-s exit:0 \
 		pkg create -M test.ucl
 
-	cat test-1.txz | atf_check \
+	cat test-1.pkg | atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): -\n" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:1 \
@@ -204,7 +205,7 @@ pre-install
 ${JAILED}Extracting test-1:  done
 post-install
 "
-	cat test-1.txz | atf_check \
+	cat test-1.pkg | atf_check \
 		-o inline:"${OUTPUT}" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
@@ -228,5 +229,26 @@ EOF
 			pkg create -M ${p}.ucl
 	done
 	atf_check -o ignore -s exit:0 \
-		pkg add final-1.txz
+		pkg add final-1.pkg
+}
+
+add_wrong_version_body() {
+
+	for p in test test-lib final ; do
+		atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ${p} ${p} 1
+		if [ ${p} = "final" ]; then
+			cat << EOF >> final.ucl
+deps {
+	test {
+		origin = "test";
+		version = "2";
+	}
+}
+EOF
+		fi
+		atf_check -o ignore -s exit:0 \
+			pkg create -M ${p}.ucl
+	done
+	atf_check -o ignore -s exit:0 \
+		pkg add final-1.pkg
 }

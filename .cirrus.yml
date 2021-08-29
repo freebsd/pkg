@@ -1,51 +1,76 @@
 freebsd_task:
         install_script: ASSUME_ALWAYS_YES=yes pkg bootstrap -f ; pkg install -y kyua pkgconf mini_httpd
         script:
-                - ./configure
+                - ./configure $EXTRA_ARGS
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ; }
         matrix:
                 - name: freebsd11-amd64
                   freebsd_instance:
-                    image: freebsd-11-2-release-amd64
+                    image: freebsd-11-4-release-amd64
                 - name: freebsd12-amd64
                   freebsd_instance:
-                     image: freebsd-12-0-release-amd64
+                     image: freebsd-12-2-release-amd64
                 - name: freebsd13-amd64
                   freebsd_instance:
-                     image_family: freebsd-13-0-snap
-#ubuntu_task:
-#        container:
-#                image: ubuntu:latest
-#        setup_script:
-#                - apt-get update
-#                - apt-get install -y libsqlite3-dev libbsd-dev libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev
-#        install_script: scripts/install_deps.sh
-#        script:
-#                - ./configure --with-libarchive.pc
-#                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ; }
-#
-#osx_task:
-#        osx_instance:
-#                image: catalina-xcode
-#        install_script: scripts/install_deps.sh
-#        env:
-#                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
-#                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-#                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include
-#        script:
-#                - ./configure
-#                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ;}
-#
-#fedora_task:
-#        container:
-#                image: fedora:latest
-#        install_script:
-#                - dnf -y upgrade
-#                - dnf -y install kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel gcc make zlib-devel bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel libxml2-devel libacl-devel libzstd-devel xz
-#        script:
-#                - ./configure --with-libarchive.pc
-#                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ; }
+                     image: freebsd-13-0-release-amd64
+                - name: freebsd14-amd64
+                  freebsd_instance:
+                     image_family: freebsd-14-0-snap
+                  env:
+                     EXTRA_ARGS: --with-asan --with-ubsan
+                     # There are still a few occurrences of this error (adding offset to NULL pointer)
+                     CPPFLAGS: -fno-sanitize=pointer-overflow -ftrivial-auto-var-init=pattern
+
+ubuntu_task:
+        container:
+                image: ubuntu:latest
+        setup_script:
+                - DEBIAN_FRONTEND=noninteractive apt-get update
+                - DEBIAN_FRONTEND=noninteractive apt-get install -y libsqlite3-dev libbsd-dev libarchive-tools libarchive-dev libssl-dev liblzma-dev liblua5.2-dev nettle-dev liblzo2-dev libattr1-dev libacl1-dev wget build-essential zlib1g-dev libbz2-dev m4 libexpat1-dev liblz4-dev libxml2-dev libzstd-dev
+        env:
+                # False-positive leak detection in recent glibc:
+                # Direct leak of 12 byte(s) in 2 object(s) allocated from:
+                # #0 0x7fe222e5d3cf in __interceptor_malloc (/lib64/libasan.so.6+0xab3cf)
+                # #1 0x7fe22260f08f in __vasprintf_internal (/lib64/libc.so.6+0x7f08f)
+                ASAN_OPTIONS: detect_leaks=0
+        install_script: scripts/install_deps.sh
+        script:
+                - ./configure --with-libarchive.pc --with-asan --with-ubsan
+                - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ; }
+
+osx_task:
+        osx_instance:
+                image: catalina-xcode
+        install_script: scripts/install_deps.sh
+        env:
+                LDFLAGS: -L/usr/local/opt/libarchive/lib -L/usr/local/opt/openssl/lib
+                CPPFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
+                CXXFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
+                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
+        script:
+                - ./configure --with-asan --with-ubsan
+                - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ;}
+
+fedora_task:
+        container:
+                image: fedora:latest
+        env:
+                # False-positive leak detection in recent glibc:
+                # Direct leak of 12 byte(s) in 2 object(s) allocated from:
+                # #0 0x7fe222e5d3cf in __interceptor_malloc (/lib64/libasan.so.6+0xab3cf)
+                # #1 0x7fe22260f08f in __vasprintf_internal (/lib64/libc.so.6+0x7f08f)
+                ASAN_OPTIONS: detect_leaks=0
+        install_script:
+                - dnf -y upgrade
+                - dnf -y install gcc g++ make kyua libatf-c-devel libatf-sh-devel libatf-sh libbsd-devel zlib-devel
+                                 bzip2-devel libarchive-devel openssl-devel xz-devel m4 lz4-devel expat-devel
+                                 libxml2-devel libacl-devel libzstd-devel
+                                 libasan-static libubsan-static libasan-static libubsan-static
+                                 bsdtar diffutils openssl which xz
+        script:
+                - ./configure --with-libarchive.pc --with-asan --with-ubsan
+                - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ; }

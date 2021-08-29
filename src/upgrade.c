@@ -38,8 +38,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <khash.h>
 #include <xstring.h>
+#include <pkghash.h>
 #include <pkg.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
@@ -61,20 +61,13 @@ usage_upgrade(void)
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
-KHASH_MAP_INIT_STR(pkgs, struct pkg *);
-
 static void
-add_to_check(kh_pkgs_t *check, struct pkg *pkg)
+add_to_check(pkghash *check, struct pkg *pkg)
 {
 	const char *uid;
-	int ret;
-	khint_t k;
 
 	pkg_get(pkg, PKG_UNIQUEID, &uid);
-
-	k = kh_put_pkgs(check, uid, &ret);
-	if (ret != 0)
-		kh_value(check, k) = pkg;
+	pkghash_safe_add(check, uid, pkg, NULL);
 }
 
 static void
@@ -83,9 +76,9 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	struct pkg_audit_issues	*issues;
 	struct pkgdb_it	*it = NULL;
 	struct pkg		*pkg = NULL;
-	kh_pkgs_t		*check = NULL;
+	pkghash			*check = NULL;
+	pkghash_it		hit;
 	const char		*uid;
-	int				ret;
 	FILE			*out;
 
 	out = fdopen(sock, "w");
@@ -100,28 +93,21 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		fclose(out);
 		return;
 	}
-	else {
-		check = kh_init_pkgs();
+	check = pkghash_new();
 
-		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
-				== EPKG_OK) {
-			if (pkg_type(pkg) == PKG_INSTALLED) {
-				add_to_check(check, pkg);
-				pkg = NULL;
-			}
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+		if (pkg_type(pkg) == PKG_INSTALLED) {
+			add_to_check(check, pkg);
+			pkg = NULL;
 		}
-
-		ret = EXIT_SUCCESS;
 	}
 
-	if (db != NULL) {
-		pkgdb_it_free(it);
-		pkgdb_close(db);
-	}
+	pkgdb_it_free(it);
+	pkgdb_close(db);
 
-	if (ret != EXIT_SUCCESS) {
+	if (check == NULL) {
 		pkg_audit_free(audit);
-		kh_destroy_pkgs(check);
+		pkghash_destroy(check);
 		fclose(out);
 		return;
 	}
@@ -131,7 +117,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		warn("unable to open vulnxml file");
 		fclose(out);
 		pkg_audit_free(audit);
-		kh_destroy_pkgs(check);
+		pkghash_destroy(check);
 		return;
 	}
 
@@ -141,15 +127,17 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);
-		kh_destroy_pkgs(check);
+		pkghash_destroy(check);
 		fclose(out);
 		return;
 	}
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
-		kh_foreach_value(check, pkg, {
+		hit = pkghash_iterator(check);
+		while (pkghash_next(&hit)) {
 				issues = NULL;
+				pkg = (struct pkg *)hit.value;
 				if (pkg_audit_is_vulnerable(audit, pkg, &issues, true)) {
 					pkg_get(pkg, PKG_UNIQUEID, &uid);
 					fprintf(out, "%s\n", uid);
@@ -157,18 +145,16 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 				}
 				pkg_audit_issues_free(issues);
 				pkg_free(pkg);
-		});
+		}
 
-		kh_destroy_pkgs(check);
 		fprintf(out, "%s\n", vuln_end_lit);
 		fflush(out);
-	}
-	else {
+	} else {
 		warnx("cannot process vulnxml");
-		kh_destroy_pkgs(check);
 	}
 
 	pkg_audit_free(audit);
+	pkghash_destroy(check);
 	fclose(out);
 }
 

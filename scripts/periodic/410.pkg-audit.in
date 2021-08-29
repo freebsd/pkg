@@ -42,7 +42,10 @@ fi
 : ${security_status_pkgaudit_quiet:=YES}
 : ${security_status_pkgaudit_chroots=$pkg_chroots}
 : ${security_status_pkgaudit_jails=$pkg_jails}
+: ${security_status_pkgaudit_jails_ignore+=""}
 : ${security_status_pkgaudit_expiry:=2}
+: ${security_status_pkgaudit_expiration:=YES}
+: ${security_status_pkgaudit_deprecation:=YES}
 
 security_daily_compat_var security_status_pkgaudit_enable
 security_daily_compat_var security_status_pkgaudit_quiet
@@ -83,23 +86,35 @@ audit_pkgs() {
 expiration_pkgs() {
 	local pkgargs="$1"
 
-	output=$(${pkgcmd} ${pkgargs} annotate -a -S expiration_date)
+	case "$security_status_pkgaudit_expiration" in
+	[Yy][Ee][Ss])
 
-	if [ -n "${output}" ]; then
-		echo "${output}"
-		return 3
-	fi
+		output=$(${pkgcmd} ${pkgargs} annotate -a -S expiration_date)
+
+		if [ -n "${output}" ]; then
+			echo "${output}"
+			return 3
+		fi
+		;;
+	*)
+		return 0;;
+	esac
 }
 
 deprecation_pkgs() {
 	local pkgargs="$1"
 
-	output=$(${pkgcmd} ${pkgargs} annotate -a -S deprecated)
-
-	if [ -n "${output}" ]; then
-		echo "${output}"
-		return 3
-	fi
+	case "$security_status_pkgaudit_deprecation" in
+	[Yy][Ee][Ss])
+		output=$(${pkgcmd} ${pkgargs} annotate -a -S deprecated)
+		if [ -n "${output}" ]; then
+			echo "${output}"
+			return 3
+		fi
+		;;
+	*)
+		return 0;;
+	esac
 }
 
 # Use $pkg_chroots to provide a default list of chroots, and
@@ -155,14 +170,28 @@ audit_pkgs_all() {
 		;;
 	esac
 
-	for j in $jails ; do
-		echo
-		echo "jail: ${j%|*}"
+	for j in ${jails} ; do
+		# ignore some jails
+		# we iterate to get exact matches because we want substring matches
+		# foo should not match foo.bar
+		for ignore in ${security_status_pkgaudit_jails_ignore} ; do
+			if [ "${j%|*}" = "${ignore}" ]; then
+				echo
+				echo "ignoring jail: ${j%|*}"
+				# continue with the main loop
+				continue 2
+			fi
+		done
 		for t in audit expiration deprecation; do
-			${t}_pkgs "-j ${j%|*}" ${j##*|}
+			output=${output-}$(${t}_pkgs "-j ${j%|*}" ${j##*|})
 			last_rc=$?
 			[ $last_rc -gt 1 ] && rc=$last_rc
 		done
+		if [ -n "${output-}" ]; then
+			echo
+			echo "jail: ${j%|*}"
+		fi
+
 	done
 
 	return $rc

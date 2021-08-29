@@ -457,9 +457,8 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 	if (dot[1] == 'a' && dot[2] == '\0')
 		pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
 
-	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0') ||
-	    (dot[1] == 'h' && dot[2] == '\0'))
-		pkg->flags |= PKG_CONTAINS_H_OR_LA;
+	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0'))
+		pkg->flags |= PKG_CONTAINS_LA;
 
 	return (EPKG_OK);
 }
@@ -469,16 +468,20 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	char *sh;
-	khint_t k;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN +1];
 	const char *lib;
 	bool failures = false;
 
-	if (kh_count(pkg->shlibs_required) != 0)
-		pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-	if (kh_count(pkg->shlibs_provided) != 0)
-		pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	if (pkghash_count(pkg->shlibs_required) != 0) {
+		pkghash_destroy(pkg->shlibs_required);
+		pkg->shlibs_required = NULL;
+	}
+
+	if (pkghash_count(pkg->shlibs_provided) != 0) {
+		pkghash_destroy(pkg->shlibs_provided);
+		pkg->shlibs_provided = NULL;
+	}
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
@@ -498,7 +501,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	if (ctx.developer_mode)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 				PKG_CONTAINS_STATIC_LIBS |
-				PKG_CONTAINS_H_OR_LA);
+				PKG_CONTAINS_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
@@ -519,35 +522,37 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	kh_each_value(pkg->shlibs_required, sh, {
-		if (kh_contains(strings, pkg->shlibs_provided, sh)) {
+	pkghash_it it = pkghash_iterator(pkg->shlibs_required);
+	while (pkghash_next(&it)) {
+		if (pkghash_get(pkg->shlibs_provided, it.key)) {
 			pkg_debug(2, "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    sh, pkg->name);
-			k = kh_get_strings(pkg->shlibs_required, sh);
-			kh_del_strings(pkg->shlibs_required, k);
+			    it.key, pkg->name);
+			pkghash_del(pkg->shlibs_required, it.key);
 			continue;
 		}
 		file = NULL;
 		while (pkg_files(pkg, &file) == EPKG_OK) {
-			if ((lib = strstr(file->path, sh)) != NULL &&
+			if ((lib = strstr(file->path, it.key)) != NULL &&
 			    strlen(lib) == strlen(sh) && lib[-1] == '/') {
 				pkg_debug(2, "remove %s from required shlibs as "
 				    "the package %s provides this file itself",
-				    sh, pkg->name);
-				k = kh_get_strings(pkg->shlibs_required, sh);
-				kh_del_strings(pkg->shlibs_required, k);
+				    it.key, pkg->name);
+
+				pkghash_del(pkg->shlibs_required, it.key);
 				break;
 			}
 		}
-	});
+	}
 
 	/*
 	 * if the package is not supposed to provide share libraries then
 	 * drop the provided one
 	 */
-	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL)
-		kh_free(strings, pkg->shlibs_provided, char, free);
+	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL) {
+		pkghash_destroy(pkg->shlibs_provided);
+		pkg->shlibs_provided = NULL;
+	}
 
 	if (failures)
 		goto cleanup;
@@ -1066,7 +1071,9 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 cleanup:
 	if (elf != NULL)
 		elf_end(elf);
-
+	if (oi == &loi) {
+		free(oi->name);
+	}
 	close(fd);
 	return (ret);
 }
@@ -1133,8 +1140,12 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 	char *arch_tweak;
 	int err;
 	err = pkg_get_myarch_elfparse(dest, sz, oi);
-	if (err)
+	if (err) {
+		if (oi) {
+			free(oi->name);
+		}
 		return (err);
+	}
 
 #ifdef __DragonFly__
 	if (strncasecmp(dest, "DragonFly", 9) == 0) {

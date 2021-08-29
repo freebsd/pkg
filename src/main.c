@@ -112,6 +112,7 @@ static struct commands {
 	{ "shell", "Opens a debug shell", exec_shell, usage_shell},
 	{ "shlib", "Displays which packages link against a specific shared library", exec_shlib, usage_shlib},
 	{ "stats", "Displays package database statistics", exec_stats, usage_stats},
+	{ "triggers", "Execute deferred triggers", exec_triggers, usage_triggers},
 	{ "unlock", "Unlocks a package, allowing modification or deletion", exec_unlock, usage_lock},
 	{ "update", "Updates package repository catalogues", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
@@ -376,6 +377,7 @@ show_repository_info(void)
 static void
 show_version_info(int version)
 {
+	char *config;
 	if (version > 1)
 		printf("%-24s: ", "Version");
 
@@ -384,7 +386,9 @@ show_version_info(int version)
 	if (version == 1)
 		exit(EXIT_SUCCESS);
 
-	printf("%s\n", pkg_config_dump());
+	config = pkg_config_dump();
+	printf("%s\n", config);
+	free(config);
 	show_plugin_info();
 	show_repository_info();
 

@@ -25,5 +25,5 @@ From the pkg's source root (use _libpkg_ or _src_ as `$DIR`):
 		-I external/blake2  -I external/yxml      -I external/include     \
 		-I external/libelf  -I external/libfetch       -I external/libmachista \
 		-I external/libsbuf -I external/libucl/include -I external/linenoise   \
-		-I external/picosat -I external/sqlite         -I external/uthash      \
+		-I external/picosat -I external/sqlite         \
 		-in_place -sp_file ./tests/cocci/$TESTFILE.cocci -dir $DIR

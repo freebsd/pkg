@@ -79,3 +79,58 @@ Add some new ucl files in the ports tree do define groups of files instead of me
 
 * Tests for pkg audit
 * Improve tests for triggers
+
+# pkg reposync/repomerge
+
+Currently there is a race easily obtain when you pkg install blah and the remote repository
+is synced.
+The idea of reposync/repomerge is to address this issue by having a command that takes two
+repository directories, one being the directory served by the webserver (named www below) and
+the other being the newly created repository (named new below) and does:
+
+* Open www/packagesite and rm all packages in www/All/ that aren't in it (this clean pkgs-1)
+* Copy all new/All/* to www/All/
+* Copy atomically meta.conf/meta.XXX/packagesite.XXX from new/ to www/
+
+This leaves the new/ directory with the new packagesite, the new pkgs and the
+pkgs-1 from the previous run.
+
+# Alternatives
+
+Alternatives are install in /usr/local/share/alternatives
+For a given alternative X we have a subdirectory alternatives/X
+Then a files with the various alternatives names for each alternative
+alternatives/php/7.2
+alternatives/php/7.4
+
+A special alternatives is provided by the repo based on DEFAULT\_VERSION when
+the alternative is version based, or a specific KNOBS when not based on version
+this add a new file (symlink) to the package alternatives/php/default -> 7.2
+
+The alternative file is a ucl file, with a list of symlinks:
+
+Description: "yeah baby"
+symlinks {
+	file1: target1
+	file2: target2
+	file3: target3
+}
+exec: { type = lua; script: ... },
+exec: { type = shell; script: ...}
+
+The exec part is an optional script which could be use to regenerate caches if needed for example
+
+In case pkg 2 pkg have the default symlink then the regular conflict mechanism would be used
+By default pkg priorize user defined default before package defined repo
+if user defined repo to not exists then it switches to the global defaut if in non interactive
+or as the user if in interractives mode
+
+# List of "broken builds" in pkg repo metadata
+
+Would be nice if we could provide some notes to the repo metadata where for example
+a builder car specify that some packages are broken and why, or failed to build and why
+
+# pipe long message to $PAGER
+
+It would be nice to add a way to detect if pkg is running on a terminal and
+plans to print long messages, if so, automatically pipes the message to $PAGER

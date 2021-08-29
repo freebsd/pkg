@@ -2,10 +2,10 @@
 .Dt PKG_REPOS 3
 .Os
 .Sh NAME
-.Nm pkg_repos , pkg_repos_total_count , pkg_repos_activated_count
-.Nm pkg_repo_url , pkg_repo_ident , pkg_repo_name , pkg_repo_ident_from_name
-.Nm pkg_repo_key , pkg_repo_fingerprints
-.Nm pkg_repo_signature_type , pkg_repo_mirror_type , pkg_repo_enabled
+.Nm pkg_repos , pkg_repos_total_count , pkg_repos_activated_count ,
+.Nm pkg_repo_url , pkg_repo_ident , pkg_repo_name , pkg_repo_ident_from_name ,
+.Nm pkg_repo_key , pkg_repo_fingerprints ,
+.Nm pkg_repo_signature_type , pkg_repo_mirror_type , pkg_repo_enabled ,
 .Nm pkg_repo_priority , pkg_repo_find_ident , pkg_repo_find_name
 .Nd manipulate repositories
 .Sh LIBRARY
@@ -108,7 +108,7 @@ Otherwise, return
 takes a pointer to a repository as argument and returns
 the priority of the repository as an unsigned integer.
 Packages ae chosed preferentially from the repository with the highest
-priority value and which has that package available. 
+priority value and which has that package available.
 .Pp
 .Fn pkg_repo_mirror_type
 takes a pointer to a repository as argument and returns the type of

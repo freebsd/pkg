@@ -40,9 +40,14 @@
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
 
 #define ERROR_SQLITE(db, query) do { \
-	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", (query), \
-	__FILE__, __LINE__, sqlite3_errmsg(db));									 \
+	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", query, \
+	__FILE__, __LINE__, sqlite3_errmsg(db)); \
 } while(0)
+
+#define ERROR_STMT_SQLITE(db, statement) do { \
+	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", sqlite3_expanded_sql(statement), \
+	__FILE__, __LINE__, sqlite3_errmsg(db)); \
+} while (0)
 
 KHASH_MAP_INIT_INT(hardlinks, int)
 typedef khash_t(hardlinks) hardlinks_t;
@@ -59,21 +64,22 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
-struct rsa_key;
+struct pkg_key;
 
 int32_t string_hash_func(const char *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
 int file_to_bufferat(int, const char *, char **, off_t *);
-int format_exec_cmd(char **, const char *, const char *, const char *, char *,
+int format_exec_cmd(char **, const char *, const char *, const char *, const char *,
     int argc, char **argv, bool lua);
 int is_dir(const char *);
 int is_link(const char *);
 
-int rsa_new(struct rsa_key **, pkg_password_cb *, char *path);
-void rsa_free(struct rsa_key *);
-int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
+int rsa_new(struct pkg_key **, pkg_password_cb *, char *path);
+void rsa_free(struct pkg_key *);
+int rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
+    unsigned int *siglen);
 int rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd);
 int rsa_verify_cert(unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);

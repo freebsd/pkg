@@ -30,10 +30,6 @@
 #include <sys/procctl.h>
 #endif
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
-
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -90,6 +86,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				{ "filecmp", lua_pkg_filecmp },
 				{ "copy", lua_pkg_copy },
 				{ "stat", lua_stat },
+				{ "exec", lua_exec },
 				{ NULL, NULL },
 			};
 			close(cur_pipe[0]);
@@ -100,24 +97,22 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_setglobal(L, "msgfd");
 			lua_pushlightuserdata(L, pkg);
 			lua_setglobal(L, "package");
-			lua_pushliteral(L, "PREFIX");
+			lua_pushinteger(L, pkg->rootfd);
+			lua_setglobal(L, "rootfd");
 			lua_pushstring(L, pkg->prefix);
 			lua_setglobal(L, "pkg_prefix");
+			lua_pushstring(L, pkg->name);
+			lua_setglobal(L, "pkg_name");
 			if (ctx.pkg_rootdir == NULL)
 				ctx.pkg_rootdir = "/";
 			lua_pushstring(L, ctx.pkg_rootdir);
 			lua_setglobal(L, "pkg_rootdir");
 			lua_pushboolean(L, (upgrade));
 			lua_setglobal(L, "pkg_upgrade");
-			lua_pushcfunction(L, lua_print_msg);
 			luaL_newlib(L, pkg_lib);
 			lua_setglobal(L, "pkg");
-			lua_override_ios(L);
-#ifdef HAVE_CAPSICUM
-			if (cap_enter() < 0 && errno != ENOSYS) {
-				err(1, "cap_enter failed");
-			}
-#endif
+			lua_override_ios(L, true);
+
 			/* parse and set arguments of the line is in the comments */
 			if (STARTS_WITH(lscript->script, "-- args: ")) {
 				char *walk, *begin, *line = NULL;
@@ -191,12 +186,9 @@ pkg_lua_script_to_ucl(struct pkg_lua_script *scripts)
 {
 	struct pkg_lua_script *script;
 	ucl_object_t *array;
-	ucl_object_t *obj;
 
 	array = ucl_object_typed_new(UCL_ARRAY);
 	LL_FOREACH(scripts, script) {
-		obj = ucl_object_typed_new(UCL_OBJECT);
-
 		ucl_array_append(array, ucl_object_fromstring_common(script->script,
 				strlen(script->script), UCL_STRING_RAW|UCL_STRING_TRIM));
 	}

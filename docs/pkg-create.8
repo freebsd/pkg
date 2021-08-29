@@ -133,7 +133,7 @@ The following options are supported by
 .It Fl a , Cm --all
 Create package tarballs from all packages installed on your system.
 This option is incompatible with the
-.It Fl e, Cm --expand-manifest
+.It Fl e , Cm --expand-manifest
 The manifest contained in pkg will be expanded to readable UCL format.
 .Fl g , x
 or
@@ -157,7 +157,7 @@ but interpret
 as a regular expression using the "modern" or "extended" syntax described in
 .Xr re_format 7 .
 This option is incompatible with the
-.Fl a, g
+.Fl a , g
 or
 .Fl m Ar metadatadir
 options.
@@ -207,7 +207,7 @@ are not required; the
 file can contain all the required information needed to build a
 package.
 This option is incompatible with the
-.Fl M, a, g
+.Fl M , a , g
 or
 .Fl x
 options.
@@ -221,7 +221,7 @@ mentioned above, but any file name can be used, and no
 other file will be used to read package metadata from.
 If specified, only a single package will be created.
 This option is incompatible with the
-.Fl m, a, g
+.Fl m , a , g
 or
 .Fl x
 options.
@@ -403,74 +403,6 @@ Available keywords are the following:
 Set the internal directory pointer to point to
 .Ar directory .
 All subsequent filenames will be assumed relative to this directory.
-.It Cm @preexec Ar Command
-Execute
-.Ar command
-as part of the pre-install scripts.
-.It Cm @preunexec Ar command
-Execute
-.Ar command
-as part of the pre-deinstall scripts.
-.It Cm @postexec Ar command
-Execute
-.Ar command
-as part of the post-install scripts.
-.It Cm @postunexec Ar command
-Execute
-.Ar command
-as part of the post-deinstall scripts.
-.It Cm @exec Ar command Pq deprecated
-Execute
-.Ar command
-as part of the unpacking process.
-If
-.Ar command
-contains any of the following sequences somewhere in it, they will
-be expanded inline.
-For the following examples, assume that
-.Cm @cwd
-is set to
-.Pa /usr/local
-and the last extracted file was
-.Pa bin/emacs .
-.Bl -tag -width indent -compact
-.It Cm "%F"
-Expands to the last filename extracted (as specified), in the example case
-.Pa bin/emacs .
-.It Cm "\&%D"
-Expand to the current directory prefix, as set with
-.Cm @cwd ,
-in the example case
-.Pa /usr/local .
-.It Cm "\&%B"
-Expand to the
-.Dq basename
-of the fully qualified filename, that is the current directory prefix,
-plus the last filespec, minus the trailing filename.
-In the example case, that would be
-.Pa /usr/local/bin .
-.It Cm "%f"
-Expand to the filename part of the fully qualified name, or
-the converse of
-.Cm \&%B ,
-being in the example case,
-.Pa emacs .
-.El
-.It Cm @unexec Ar command Pq deprecated
-Execute
-.Ar command
-as part of the deinstallation process.
-Expansion of special
-.Cm %
-sequences is the same as for
-.Cm @exec .
-This command is not executed during the package add, as
-.Cm @exec
-is, but rather when the package is deleted.
-This is useful for deleting links and other ancillary files that were
-created as a result of adding the package, but not directly known to
-the package's table of contents (and hence not automatically
-removable).
 .It Cm @mode Ar mode
 Set default permission for all subsequently extracted files to
 .Ar mode .
@@ -513,6 +445,7 @@ Note: only one level of
 .Cm @include
 is allowed
 .El
+.Sh ESCAPE SEQUENCES
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

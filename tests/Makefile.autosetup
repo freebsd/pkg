@@ -80,8 +80,7 @@ include $(MK)/common.mk
 
 TESTS_SHELL=	$(TESTS_SH:.sh=)
 
-LOCAL_CFLAGS=	-I$(top_srcdir)/external/uthash \
-		-I$(top_srcdir)/compat \
+LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libucl/klib \
 		-I$(top_srcdir)/external/uthash \

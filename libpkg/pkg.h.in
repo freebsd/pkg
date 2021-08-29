@@ -189,10 +189,6 @@ typedef enum {
 	 * case insensitive according to pkgdb_case_sensitive()
 	 */
 	MATCH_REGEX,
-	/**
-	 * The argument is a WHERE clause to use as condition
-	 */
-	MATCH_CONDITION,
 } match_t;
 
 /**
@@ -430,6 +426,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_PRE_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_POST_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW,
+	PKG_PLUGIN_HOOK_LAST
 } pkg_plugin_hook_t;
 
 /**
@@ -697,7 +694,7 @@ int pkg_config_files(const struct pkg *pkg, struct pkg_config_file **cf);
  /* Don't conflict with PKG_LOAD_* q.v. */
 #define PKG_CONTAINS_ELF_OBJECTS	(1U << 24)
 #define PKG_CONTAINS_STATIC_LIBS	(1U << 25)
-#define PKG_CONTAINS_H_OR_LA		(1U << 26)
+#define PKG_CONTAINS_LA			(1U << 26)
 
 int pkg_analyse_files(struct pkgdb *, struct pkg *, const char *);
 
@@ -909,8 +906,12 @@ bool pkgdb_case_sensitive(void);
  */
 struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
     match_t type);
+struct pkgdb_it * pkgdb_query_cond(struct pkgdb *db, const char *cond,
+    const char *pattern, match_t type);
 struct pkgdb_it * pkgdb_repo_query(struct pkgdb *db, const char *pattern,
     match_t type, const char *reponame);
+struct pkgdb_it *pkgdb_repo_query_cond(struct pkgdb *db, const char *cond,
+	const char *pattern, match_t type, const char *reponame);
 struct pkgdb_it * pkgdb_repo_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
 
@@ -1188,8 +1189,8 @@ void pkg_object_free(pkg_object *o);
 const char *pkg_object_key(const pkg_object *);
 const pkg_object *pkg_object_iterate(const pkg_object *, pkg_iter *);
 unsigned pkg_object_count(const pkg_object *);
-const char *pkg_object_dump(const pkg_object *o);
-const char *pkg_config_dump(void);
+char *pkg_object_dump(const pkg_object *o);
+char *pkg_config_dump(void);
 
 /**
  * @todo Document
@@ -1660,6 +1661,7 @@ int pkg_create_from_manifest(const char *, pkg_formats, const char *,
 int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool) __attribute__((deprecated));
 int pkg_create_installed(const char *, pkg_formats, struct pkg *) __attribute__((deprecated));
 int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg) __attribute__((deprecated));;
+int pkg_execute_deferred_triggers(void);
 
 #ifdef __cplusplus
 }

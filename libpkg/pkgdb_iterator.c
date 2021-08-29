@@ -135,26 +135,26 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	if (pkg->flags & flags)
 		return (EPKG_OK);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddata(pkg, sqlite3_column_text(stmt, 0));
 	}
 
-	sqlite3_finalize(stmt);
-
 	if (ret != SQLITE_DONE) {
 		if (list != -1)
 			pkg_list_free(pkg, list);
-		ERROR_SQLITE(db, sql);
+		ERROR_STMT_SQLITE(db, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= flags;
 	return (EPKG_OK);
@@ -173,26 +173,27 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	if (pkg->flags & flags)
 		return (EPKG_OK);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addtagval(pkg, sqlite3_column_text(stmt, 0),
 			      sqlite3_column_text(stmt, 1));
 	}
-	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
 		if (list != -1)
 			pkg_list_free(pkg, list);
-		ERROR_SQLITE(db, sql);
+		ERROR_STMT_SQLITE(db, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= flags;
 	return (EPKG_OK);
@@ -220,7 +221,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	bool options_match;
 	char *formula_sql, *clause;
 	const char	 sql[] = ""
-		"SELECT d.name, d.origin, p.version, 0"
+		"SELECT DISTINCT d.name, d.origin, p.version, 0"
 		"  FROM deps AS d"
 		"    LEFT JOIN packages AS p ON"
 		"    (p.origin = d.origin AND p.name = d.name)"
@@ -241,7 +242,6 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		return (EPKG_OK);
 
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	ret = sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL);
 
 	if (ret != SQLITE_OK) {
@@ -250,6 +250,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -258,13 +259,14 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 			   sqlite3_column_text(stmt, 2),
 			   sqlite3_column_int64(stmt, 3));
 	}
-	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_DEPS);
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	if (pkg->dep_formula) {
 		pkg_debug(4, "Pkgdb: reading package formula '%s'", pkg->dep_formula);
@@ -291,7 +293,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 					/* Fetch matching packages */
 					chain = NULL;
 
-					while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+					while (sqlite3_step(stmt) == SQLITE_ROW) {
 						/*
 						 * Load options for a package and check
 						 * if they are compatible
@@ -309,8 +311,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 							sqlite3_bind_int64(opt_stmt, 1,
 									sqlite3_column_int64(stmt, 0));
 
-							while ((ret = sqlite3_step(opt_stmt))
-									== SQLITE_ROW) {
+							while (sqlite3_step(opt_stmt) == SQLITE_ROW) {
 								DL_FOREACH(fit->options, optit) {
 									if(strcmp(optit->opt,
 											sqlite3_column_text(opt_stmt, 0))
@@ -376,7 +377,6 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 		return (EPKG_OK);
 
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	ret = sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL);
 
 	if (ret != SQLITE_OK) {
@@ -385,6 +385,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_text(stmt, 1, pkg->uid, -1, SQLITE_STATIC);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -393,13 +394,14 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 			    sqlite3_column_text(stmt, 2),
 			    sqlite3_column_int64(stmt, 3));
 	}
-	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_RDEPS);
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= PKG_LOAD_RDEPS;
 	return (EPKG_OK);
@@ -427,39 +429,40 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_FILES)
 		return (EPKG_OK);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
-	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		pkg_addfile(pkg, sqlite3_column_text(stmt, 0),
 		    sqlite3_column_text(stmt, 1), false);
 	}
 	sqlite3_finalize(stmt);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql2);
 	if (sqlite3_prepare_v2(sqlite, sql2, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sql2);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addconfig_file(pkg, sqlite3_column_text(stmt, 0),
 		    sqlite3_column_text(stmt, 1));
 	}
 
-	sqlite3_finalize(stmt);
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_FILES);
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= PKG_LOAD_FILES;
 	return (EPKG_OK);
@@ -483,24 +486,25 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_DIRS)
 		return (EPKG_OK);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), false);
 	}
 
-	sqlite3_finalize(stmt);
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_DIRS);
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= PKG_LOAD_DIRS;
 
@@ -644,24 +648,25 @@ pkgdb_load_lua_scripts(sqlite3 *sqlite, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_LUA_SCRIPTS)
 		return (EPKG_OK);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_add_lua_script(pkg, sqlite3_column_text(stmt, 0),
 		    sqlite3_column_int64(stmt, 1));
 	}
-	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= PKG_LOAD_LUA_SCRIPTS;
 	return (EPKG_OK);
@@ -684,24 +689,25 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_SCRIPTS)
 		return (EPKG_OK);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite, sql);
 		return (EPKG_FATAL);
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addscript(pkg, sqlite3_column_text(stmt, 0),
 		    sqlite3_column_int64(stmt, 1));
 	}
-	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite, sql);
+		ERROR_STMT_SQLITE(sqlite, stmt);
+		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
 	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= PKG_LOAD_SCRIPTS;
 	return (EPKG_OK);

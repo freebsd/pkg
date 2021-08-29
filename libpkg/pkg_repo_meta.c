@@ -41,7 +41,7 @@ static void
 pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 {
 	meta->digest_format = PKG_HASH_TYPE_SHA256_BASE32;
-	meta->packing_format = TXZ;
+	meta->packing_format = DEFAULT_COMPRESSION;
 
 	/* Not use conflicts for now */
 	meta->conflicts = NULL;
@@ -69,7 +69,8 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 void
 pkg_repo_meta_free(struct pkg_repo_meta *meta)
 {
-	struct pkg_repo_meta_key *k, *ktmp;
+	struct pkg_repo_meta_key *k;
+	pkghash_it it;
 
 	/*
 	 * It is safe to free NULL pointer by standard
@@ -88,13 +89,15 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
-		HASH_ITER(hh, meta->keys, k, ktmp) {
-			HASH_DELETE(hh, meta->keys, k);
+		it = pkghash_iterator(meta->keys);
+		while (pkghash_next(&it)) {
+			k = (struct pkg_repo_meta_key *)it.value;
 			free(k->name);
 			free(k->pubkey);
 			free(k->pubkey_type);
 			free(k);
 		}
+		pkghash_destroy(meta->keys);
 		free(meta);
 	}
 }
@@ -290,7 +293,7 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	while ((cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
 		cert = pkg_repo_meta_parse_cert(cur);
 		if (cert != NULL)
-			HASH_ADD_STR(meta->keys, name, cert);
+			pkghash_safe_add(meta->keys, cert->name, cert, NULL);
 	}
 
 	*target = meta;
@@ -357,8 +360,10 @@ pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target)
 	}
 
 	/* Now we support only v1 and v2 meta */
-	if (version == 1)
+	if (version == 1) {
 		schema = pkg_repo_meta_open_schema_v1();
+		printf("WARNING: Meta v1 support will be removed in the next version\n");
+	}
 	else if (version == 2)
 		schema = pkg_repo_meta_open_schema_v2();
 	else {

@@ -22,7 +22,7 @@ EOF
 	ln -sf ${TMPDIR}/plop2 ${TMPDIR}/plop
 	atf_check \
 		-o ignore \
-		pkg -o REPOS_DIR=/dev/null install -y ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null install -y ${TMPDIR}/test-1.pkg
 	test -d ${TMPDIR}/plop || atf_fail "directory not created"
 }
 
@@ -42,6 +42,6 @@ EOF
 	ln -sf ${TMPDIR}/plop2 ${TMPDIR}/plop
 	atf_check \
 		-o ignore \
-		pkg -o REPOS_DIR=/dev/null install -y ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null install -y ${TMPDIR}/test-1.pkg
 	test -h ${TMPDIR}/plop || atf_fail "Symlink deleted"
 }

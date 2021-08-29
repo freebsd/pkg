@@ -73,10 +73,46 @@ EOF
 		pkg query -e "%#r>0" "%n: %rn %rv %ro"
 
 	atf_check \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#r>0" "%n: %rn %rv %ro" test
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:1 \
+		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop
+
+	atf_check \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop test
+
+	atf_check \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -ge "%#r>0" "%n: %rn %rv %ro" "p*p" "t*t"
+
+	atf_check \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -xe "%#r>0" "%n: %rn %rv %ro" "p.*p" "t.*t"
+
+	atf_check \
 		-o inline:"plop: test 1 test\n" \
 		-e empty \
 		-s exit:0 \
 		pkg query -e "%#d>0" "%n: %dn %dv %do"
+
+	atf_check \
+		-o inline:"plop: test 1 test\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e "%#d>0" "%n: %dn %dv %do" plop test
 
 	atf_check \
 		-o empty \
@@ -126,8 +162,8 @@ EOF
 		-s exit:0 \
 		pkg create -M test2.ucl
 
-	sum1=$(pkg query -F ./test-1.txz '%X')
-	sum2=$(pkg query -F ./test-2.txz '%X')
+	sum1=$(pkg query -F ./test-1.pkg '%X')
+	sum2=$(pkg query -F ./test-2.pkg '%X')
 
 	atf_check \
 		-o empty \
@@ -146,35 +182,35 @@ EOF
 		-o inline:"${TMPDIR}/plop\n${TMPDIR}/bla\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%Fp'
+		pkg query -F ./test-1.pkg '%Fp'
 
 	atf_check \
 		-o inline:"1\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%?F'
+		pkg query -F ./test-1.pkg '%?F'
 
 	atf_check \
 		-o inline:"2\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%#F'
+		pkg query -F ./test-1.pkg '%#F'
 
 	atf_check \
 		-o inline:"test 1\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%n %v'
+		pkg query -F ./test-1.pkg '%n %v'
 
 	atf_check \
 		-o inline:"a test\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./test-1.txz '%c'
+		pkg query -F ./test-1.pkg '%c'
 
 	atf_check \
 		-o inline:"Nothing to see here\n" \
 		-e empty \
 		-s exit:0 \
-		pkg query -F ./plop-1.txz '%c'
+		pkg query -F ./plop-1.pkg '%c'
 }

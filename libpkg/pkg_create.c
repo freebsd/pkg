@@ -79,7 +79,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	nfiles = kh_count(pkg->filehash);
+	nfiles = pkghash_count(pkg->filehash);
 	counter_init("file sizes/checksums", nfiles);
 
 	hardlinks = kh_init_hardlinks();
@@ -160,7 +160,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	nfiles = kh_count(pkg->dirhash);
+	nfiles = pkghash_count(pkg->dirhash);
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -200,7 +200,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	}
 
 	if (packing_init(&pkg_archive, pkg_path, pc->format,
-	    pc->compression_level, pc->timestamp, pc->overwrite) != EPKG_OK) {
+	    pc->compression_level, pc->timestamp, pc->overwrite, false) != EPKG_OK) {
 		pkg_archive = NULL;
 	}
 
@@ -240,7 +240,8 @@ pkg_create_new(void)
 	struct pkg_create *pc;
 
 	pc = xcalloc(1, sizeof(*pc));
-	pc->format = TXZ;
+	pc->format = DEFAULT_COMPRESSION;
+	pc->compression_level = ctx.compression_level;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
 	pc->expand_manifest = false;
@@ -315,12 +316,12 @@ hash_file(struct pkg_create *pc, struct pkg *pkg)
 	char filename[MAXPATHLEN];
 
 	/* Find the hash and rename the file and create a symlink */
-	pkg_snprintf(filename, sizeof(filename), "%n-%v.%S",
-			pkg, pkg, packing_format_to_string(pc->format));
+	pkg_snprintf(filename, sizeof(filename), "%n-%v.pkg",
+			pkg, pkg);
 	pkg->sum = pkg_checksum_file(filename,
 			PKG_HASH_TYPE_SHA256_HEX);
-	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.%S",
-			pkg, pkg, pkg, packing_format_to_string(pc->format));
+	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.pkg",
+			pkg, pkg, pkg);
 
 	pkg_debug(1, "Rename the pkg file from: %s to: %s",
 			filename, hash_dest);
@@ -380,7 +381,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = load_metadata(pkg, metadata, plist, pc->rootdir)) != EPKG_OK) {
+	if (load_metadata(pkg, metadata, plist, pc->rootdir) != EPKG_OK) {
 		pkg_free(pkg);
 		return (EPKG_FATAL);
 	}
@@ -498,10 +499,6 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	/* First load the message before what ever in the manifest for backward compat */
-	if (pkg->message == NULL)
-		pkg_load_message_from_file(fd, pkg, "+DISPLAY");
-
 	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST", keys)) != EPKG_OK) {
 		pkg_manifest_keys_free(keys);
 		close(fd);
@@ -509,6 +506,7 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 	}
 	pkg_manifest_keys_free(keys);
 
+	pkg_load_message_from_file(fd, pkg, "+DISPLAY");
 	if (pkg->desc == NULL)
 		pkg_set_from_fileat(fd, pkg, PKG_DESC, "+DESC", false);
 
@@ -598,6 +596,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	pkg_create_set_output_dir(pc, outdir);
 
 	ret = pkg_create(pc, md_dir, plist, hash);
+	pkg_create_free(pc);
 	return (ret);
 }
 

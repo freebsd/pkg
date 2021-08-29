@@ -157,7 +157,7 @@ static int
 pkg_audit_sandboxed_extract(int fd, void *ud)
 {
 	struct pkg_audit_extract_cbdata *cbdata = ud;
-	int ret, rc = EPKG_OK;
+	int rc = EPKG_OK;
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 
@@ -176,7 +176,7 @@ pkg_audit_sandboxed_extract(int fd, void *ud)
 		rc = EPKG_FATAL;
 	}
 	else {
-		while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+		while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 			if (archive_read_data_into_fd(a, cbdata->out) != ARCHIVE_OK) {
 				pkg_emit_error("archive_read_data_into_fd(%s) failed: %s",
 						cbdata->dest, archive_error_string(a));
@@ -211,7 +211,7 @@ pkg_audit_fetch(const char *src, const char *dest)
 		tmpdir = "/tmp";
 
 	strlcpy(tmp, tmpdir, sizeof(tmp));
-	strlcat(tmp, "/vuln.xml.bz2.XXXXXXXX", sizeof(tmp));
+	strlcat(tmp, "/vuln.xml.XXXXXXXXXX", sizeof(tmp));
 
 	if (dest != NULL) {
 		if (stat(dest, &st) != -1)

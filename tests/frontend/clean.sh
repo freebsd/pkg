@@ -18,7 +18,7 @@ basic_body() {
 		-e empty \
 		-o ignore \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
 
@@ -49,7 +49,7 @@ EOF
 	mv test-* cache
 	atf_check \
 		-e empty \
-		-o match:"test-.\.txz" \
+		-o match:"test-.\.pkg" \
 		-s exit:0 \
 		pkg -C /dev/null -o PKG_CACHEDIR=${TMPDIR}/cache -o REPOS_DIR="${TMPDIR}/reposconf" clean -n
 }

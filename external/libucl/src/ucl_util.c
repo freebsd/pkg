@@ -866,6 +866,8 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen,
 	*buf = cbdata.buf;
 	*buflen = cbdata.buflen;
 
+	curl_easy_cleanup (curl);
+
 	return true;
 #else
 	ucl_create_err (err, "URL support is disabled");
@@ -1574,6 +1576,11 @@ ucl_include_common (const unsigned char *data, size_t len,
 			else if (param->type == UCL_INT) {
 				if (strncmp (param->key, "priority", param->keylen) == 0) {
 					params.priority = ucl_object_toint (param);
+					if (params.priority > UCL_PRIORITY_MAX) {
+						ucl_create_err (&parser->err, "Invalid priority value in macro: %d",
+							params.priority);
+						return false;
+					}
 				}
 			}
 		}
@@ -1712,8 +1719,9 @@ ucl_priority_handler (const unsigned char *data, size_t len,
 	if (len > 0) {
 		value = malloc(len + 1);
 		ucl_strlcpy(value, (const char *)data, len + 1);
-		priority = strtol(value, &leftover, 10);
-		if (*leftover != '\0') {
+		errno = 0;
+		priority = strtoul(value, &leftover, 10);
+		if (errno != 0 || *leftover != '\0' || priority > UCL_PRIORITY_MAX) {
 			ucl_create_err (&parser->err, "Invalid priority value in macro: %s",
 				value);
 			free(value);
@@ -3658,6 +3666,13 @@ ucl_object_compare (const ucl_object_t *o1, const ucl_object_t *o2)
 	ucl_object_iter_t iter = NULL;
 	int ret = 0;
 
+    // Must check for NULL or code will segfault
+    if ((o1 == NULL) || (o2 == NULL))
+    {
+        // The only way this could be true is of both are NULL
+        return (o1 == NULL) && (o2 == NULL);
+    }
+    
 	if (o1->type != o2->type) {
 		return (o1->type) - (o2->type);
 	}

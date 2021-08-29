@@ -127,7 +127,7 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				break;
 			case 's':
 				qstr++;
-				if (qstr[0] == 'h') 
+				if (qstr[0] == 'h')
 					pkg_fprintf(dest->fp, "%#sB", pkg);
 			        else if (qstr[0] == 'b')
 					pkg_fprintf(dest->fp, "%s", pkg);
@@ -869,7 +869,9 @@ exec_query(int argc, char **argv)
 	int			 retcode = EXIT_SUCCESS;
 	int			 i;
 	char			 multiline = 0;
+	int			 nprinted = 0;
 	char			*condition = NULL;
+	const char 		*condition_sql = NULL;
 	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_query_flags);
 
@@ -893,7 +895,6 @@ exec_query(int argc, char **argv)
 			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'e':
-			match = MATCH_CONDITION;
 			condition = optarg;
 			break;
 		case 'F':
@@ -923,7 +924,7 @@ exec_query(int argc, char **argv)
 	}
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 1 && pkgname == NULL && condition == NULL && match == MATCH_EXACT) {
+	if (argc == 1 && pkgname == NULL && match == MATCH_EXACT) {
 		match = MATCH_ALL;
 	} else if (((argc == 1) ^ (match == MATCH_ALL)) && pkgname == NULL
 			&& condition == NULL) {
@@ -995,52 +996,40 @@ exec_query(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (match == MATCH_ALL || match == MATCH_CONDITION) {
-		const char *condition_sql = NULL;
-		if (match == MATCH_CONDITION && sqlcond) {
-			fflush(sqlcond->fp);
-			condition_sql = sqlcond->buf;
-		}
-		if ((it = pkgdb_query(db, condition_sql, match)) == NULL)
-			return (EXIT_FAILURE);
+	if (sqlcond) {
+		fflush(sqlcond->fp);
+		condition_sql = sqlcond->buf;
+	}
+        i = 1;
+        do {
+		pkgname = i < argc ? argv[i] : NULL;
 
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
-			print_query(pkg, argv[0],  multiline);
-
-		if (ret != EPKG_END)
+		if ((it = pkgdb_query_cond(db, condition_sql, pkgname, match)) == NULL) {
+			warnx("DEBUG: %s/%s\n", condition_sql ? condition_sql : "-", pkgname ? pkgname : "-");
 			retcode = EXIT_FAILURE;
+			break;
+		}
+
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+			nprinted++;
+			print_query(pkg, argv[0], multiline);
+		}
+
+		if (ret != EPKG_END) {
+			retcode = EXIT_FAILURE;
+			break;
+		}
 
 		pkgdb_it_free(it);
-	} else {
-		int nprinted = 0;
-		for (i = 1; i < argc; i++) {
-			pkgname = argv[i];
+		i++;
+	} while (i < argc);
 
-			if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-				retcode = EXIT_FAILURE;
-				goto cleanup;
-			}
-
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-				nprinted++;
-				print_query(pkg, argv[0], multiline);
-			}
-
-			if (ret != EPKG_END) {
-				retcode = EXIT_FAILURE;
-				break;
-			}
-
-			pkgdb_it_free(it);
-		}
-		if (nprinted == 0 && retcode == EXIT_SUCCESS) {
-			/* ensure to return a non-zero status when no package
-			 were found. */
-			retcode = EXIT_FAILURE;
-		}
+	if (nprinted == 0 && match != MATCH_ALL && retcode == EXIT_SUCCESS) {
+		/* ensure to return a non-zero status when no package
+		 were found. */
+		retcode = EXIT_FAILURE;
 	}
 
-cleanup:
 	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
  * 
@@ -52,9 +52,11 @@ struct packing {
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
-	time_t timestamp, bool overwrite)
+	time_t timestamp, bool overwrite, bool compat_symlink)
 {
 	char archive_path[MAXPATHLEN];
+	char archive_symlink[MAXPATHLEN];
+	char *archive_name;
 	const char *ext;
 	const char *source_date_epoch;
 	char *endptr;
@@ -92,7 +94,13 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		*pack = NULL;
 		return (EPKG_FATAL); /* error set by _set_format() */
 	}
-	snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
+	snprintf(archive_path, sizeof(archive_path), "%s.pkg", path);
+	archive_name = strrchr(archive_path, '/');
+	if (archive_name == NULL)
+		archive_name = archive_path;
+	else
+		archive_name++;
+	snprintf(archive_symlink, sizeof(archive_path), "%s.%s", path,
 	    ext);
 
 	if (!overwrite && access(archive_path, F_OK) == 0) {
@@ -116,6 +124,13 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		archive_write_free((*pack)->awrite);
 		*pack = NULL;
 		return EPKG_FATAL;
+	}
+
+	if (compat_symlink || ctx.archive_symlink) {
+		unlink(archive_symlink);
+		if (symlink(archive_name, archive_symlink) != 0) {
+			pkg_emit_errno("symlink", archive_symlink);
+		}
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();
@@ -343,6 +358,8 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 #ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
 			elected_format = TZS;
+			if (clevel == -1)
+				clevel = 19;
 			goto out;
 		}
 #endif
@@ -378,6 +395,8 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 	}
 
 out:
+	if (clevel == -1)
+		clevel = 0;
 	/*
 	 * N.B., we only want to whine about this if the user actually selected
 	 * tar and specified a compress level.  If we had to fallback to tar,
@@ -409,7 +428,7 @@ out:
 		} else if (clevel == INT_MAX) {
 			switch (elected_format) {
 			case TZS:
-				clevel = 20;
+				clevel = 19;
 				break;
 			case TXZ:
 			case TBZ:
@@ -433,7 +452,7 @@ pkg_formats
 packing_format_from_string(const char *str)
 {
 	if (str == NULL)
-		return TXZ;
+		return DEFAULT_COMPRESSION;
 	if (strcmp(str, "tzst") == 0)
 		return TZS;
 	if (strcmp(str, "txz") == 0)
@@ -446,6 +465,21 @@ packing_format_from_string(const char *str)
 		return TAR;
 	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
+}
+
+bool
+packing_is_valid_format(const char *str)
+{
+	if (str == NULL)
+		return (false);
+	if ((strcmp(str, "pkg") == 0) ||
+	    (strcmp(str, "tzst") == 0) ||
+	    (strcmp(str, "txz") == 0) ||
+	    (strcmp(str, "tbz") == 0) ||
+	    (strcmp(str, "tgz") == 0) ||
+	    (strcmp(str, "tar") == 0))
+	    return (true);
+	return (false);
 }
 
 const char*

@@ -43,6 +43,7 @@ __FBSDID("$FreeBSD: head/lib/libc/stdio/flags.c 326025 2017-11-20 19:49:47Z pfg 
 #include <sys/file.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 
 /*
  * Return the (stdio) flags for a given mode.  Store the flags
@@ -76,7 +77,6 @@ checkflags(const char *mode, int *optr)
 		break;
 
 	default:	/* illegal mode */
-		ret = 0;
 		errno = EINVAL;
 		return (0);
 	}

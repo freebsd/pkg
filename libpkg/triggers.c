@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <paths.h>
 #include <spawn.h>
+#include <xstring.h>
 
 #include <private/pkg.h>
 #include <private/event.h>
@@ -46,13 +47,14 @@
 
 extern char **environ;
 
+static const unsigned char litchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
 static script_type_t
 get_script_type(const char *str)
 {
 	if (strcasecmp(str, "lua") == 0)
 		return (SCRIPT_LUA);
-	if (strcasecmp(str, "shell") == 0)
-		return (SCRIPT_SHELL);
 	return (SCRIPT_UNKNOWN);
 }
 
@@ -83,7 +85,8 @@ trigger_open_schema(void)
 		"      properties = {"
 		"        type = { "
 		"          type = string,"
-		"          enum: [lua, shell];"
+		"          sandbox = boolean, "
+		"          enum: [lua];"
 		"        };"
 		"        script = { type = string };"
 		"      }; "
@@ -94,7 +97,8 @@ trigger_open_schema(void)
 		"      properties = {"
 		"        type = { "
 		"          type = string,"
-		"          enum: [lua, shell];"
+		"          sandbox = boolean, "
+		"          enum: [lua];"
 		"        };"
 		"        script = { type = string };"
 		"      }; "
@@ -179,6 +183,12 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		}
 
 		t->cleanup.script = xstrdup(ucl_object_tostring(o));
+		o = ucl_object_find_key(cleanup, "sandbox");
+		if (o == NULL) {
+			t->cleanup.sandbox = true;
+		} else {
+			t->cleanup.sandbox = ucl_object_toboolean(o);
+		}
 		ucl_object_unref(obj);
 		return (t);
 	}
@@ -204,8 +214,13 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		pkg_emit_error("No script in trigger %s", name);
 		goto err;
 	}
-
 	t->script.script = xstrdup(ucl_object_tostring(o));
+	o = ucl_object_find_key(trigger, "sandbox");
+	if (o == NULL) {
+		t->script.sandbox = true;
+	} else {
+		t->script.sandbox = ucl_object_toboolean(o);
+	}
 
 	o = ucl_object_find_key(obj, "path");
 	if (o != NULL)
@@ -272,14 +287,23 @@ triggers_load(bool cleanup_only)
 	schema = trigger_open_schema();
 
 	while ((e = readdir(d)) != NULL) {
+		const char *ext;
 		/* ignore all hidden files */
 		if (e->d_name[0] ==  '.')
+			continue;
+		/* only consider files ending with .ucl */
+		ext = strrchr(e->d_name, '.');
+		if (ext == NULL)
+			continue;
+		if (strcmp(ext, ".ucl") != 0)
 			continue;
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
 			return (NULL);
 		}
+		if (!S_ISREG(st.st_mode))
+			continue;
 		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
 		if (t != NULL)
 			DL_APPEND(triggers, t);
@@ -306,98 +330,116 @@ trigger_free(struct trigger *t)
 	free(t->script.script);
 }
 
-static int
-trigger_execute_shell(const char *script, kh_strings_t *args __unused)
+static char *
+get_random_name(char name[])
 {
-	posix_spawn_file_actions_t action;
-	int stdin_pipe[2] = {-1, -1};
-	const char *argv[3];
-	const char *script_p;
-	size_t len;
-	ssize_t bw;
-	int error, pstat;
-	int ret = EPKG_OK;
-	pid_t pid;
+	char *pos;
+	int r;
 
-	if (pipe(stdin_pipe) < 0)
-		return (EPKG_FATAL);
-
-	posix_spawn_file_actions_init(&action);
-	posix_spawn_file_actions_adddup2(&action, stdin_pipe[0], STDIN_FILENO);
-	posix_spawn_file_actions_addclose(&action, stdin_pipe[1]);
-
-	argv[0] = _PATH_BSHELL;
-	argv[1] = "-s";
-	argv[2] = NULL;
-
-	if ((error = posix_spawn(&pid, _PATH_BSHELL, &action, NULL,
-	    __DECONST(char **, argv), environ)) != 0) {
-		errno = error;
-		pkg_errno("Cannot run trigger script %s", script);
-		posix_spawn_file_actions_destroy(&action);
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-	posix_spawn_file_actions_destroy(&action);
-	len = strlen(script);
-
-	while (len > 0) {
-		script_p = script;
-		if ((bw = write(stdin_pipe[1], script_p, len)) == -1) {
-			if (errno == EINTR)
-				continue;
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-		script_p += bw;
-		len -= bw;
-	}
-	close(stdin_pipe[1]);
-
-	while (waitpid(pid, &pstat, 0) == -1) {
-		if (errno != EINTR) {
-			pkg_emit_error("waitpid() failed: %s", strerror(errno));
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
+	pos = name;
+	while (*pos == 'X') {
+#ifndef HAVE_ARC4RANDOM
+		r = rand() % (sizeof(litchar) -1);
+#else
+		r = arc4random_uniform(sizeof(litchar) -1);
+#endif
+		*pos++ = litchar[r];
 	}
 
-	if (WEXITSTATUS(pstat) != 0)
-		ret = EPKG_FATAL;
+	return (name);
+}
 
-cleanup:
-	if (stdin_pipe[0] != -1)
-		close(stdin_pipe[0]);
-	if (stdin_pipe[1] != -1)
-		close(stdin_pipe[1]);
+static void
+save_trigger(const char *script, bool sandbox, pkghash *args)
+{
+	int db = ctx.pkg_dbdirfd;
+	pkghash_it it;
 
-	return (ret);
+	if (!mkdirat_p(db, "triggers"))
+		return;
+
+	int trigfd = openat(db, "triggers", O_DIRECTORY);
+	close(db);
+	if (trigfd == -1) {
+		pkg_errno("Failed to open '%s' as a directory", "triggers");
+		return;
+	}
+
+#ifndef HAVE_ARC4RANDOM
+	srand(time(NULL));
+#endif
+
+	int fd;
+	for (;;) {
+		char name[] = "XXXXXXXXXX";
+		fd = openat(trigfd, get_random_name(name),
+		    O_CREAT|O_RDWR|O_EXCL, 0644);
+		if (fd != -1)
+			break;
+		if (errno == EEXIST)
+			continue;
+		pkg_errno("Can't create deferred triggers %s", name);
+		return;
+	}
+	close(trigfd);
+	FILE *f = fdopen(fd, "w");
+	if (sandbox)
+		fputs("--sandbox\n", f);
+	fputs("--begin args\n", f);
+	it = pkghash_iterator(args);
+	while (pkghash_next(&it)) {
+		fprintf(f, "-- %s\n", (char *)it.value);
+	}
+	fputs("--end args\n--\n", f);
+	fprintf(f, "%s\n", script);
+	fclose(f);
 }
 
 static int
-trigger_execute_lua(const char *script, kh_strings_t *args)
+trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 {
 	lua_State *L;
 	int pstat;
+	pkghash_it it;
+
+	if (ctx.defer_triggers) {
+		save_trigger(script, sandbox, args);
+		return (EPKG_OK);
+	}
 
 	pid_t pid = fork();
 	if (pid == 0) {
 		L = luaL_newstate();
 		luaL_openlibs(L);
-		lua_override_ios(L);
-		char *dir;
+		lua_override_ios(L, sandbox);
+		static const luaL_Reg pkg_lib[] = {
+			{ "print_msg", lua_print_msg },
+			{ "prefixed_path", lua_prefix_path },
+			{ "filecmp", lua_pkg_filecmp },
+			{ "copy", lua_pkg_copy },
+			{ "stat", lua_stat },
+			{ "exec", lua_exec },
+			{ NULL, NULL },
+		};
+		luaL_newlib(L, pkg_lib);
+		lua_setglobal(L, "pkg");
+		lua_pushinteger(L, ctx.rootfd);
+		lua_setglobal(L, "rootfd");
 		char **arguments = NULL;
 		int i = 0;
 		if (args != NULL) {
-			arguments = xcalloc(kh_count(args), sizeof(char*));
-			kh_foreach_value(args, dir, {
-				arguments[i++] = dir;
-			});
+			arguments = xcalloc(pkghash_count(args), sizeof(char*));
+			it = pkghash_iterator(args);
+			while (pkghash_next(&it)) {
+				arguments[i++] = it.key;
+			}
 		}
 		lua_args_table(L, arguments, i);
 #ifdef HAVE_CAPSICUM
-		if (cap_enter() < 0 && errno != ENOSYS) {
-			err(1, "cap_enter failed");
+		if (sandbox) {
+			if (cap_enter() < 0 && errno != ENOSYS) {
+				err(1, "cap_enter failed");
+			}
 		}
 #endif
 		if (luaL_dostring(L, script)) {
@@ -439,14 +481,14 @@ trigger_check_match(struct trigger *t, char *dir)
 		it = NULL;
 		while ((cur = ucl_iterate_object(t->path, &it, true))) {
 			if (strcmp(dir, ucl_object_tostring(cur)) == 0) {
-				kh_safe_add(strings, t->matched, dir, dir);
+				pkghash_safe_add(t->matched, dir, dir, NULL);
 				return;
 			}
 		}
 	}
 
 	if (match_ucl_lists(dir, t->path_glob, t->path_regex))
-		kh_safe_add(strings, t->matched, dir, dir);
+		pkghash_safe_add(t->matched, dir, dir, NULL);
 }
 
 /*
@@ -458,8 +500,7 @@ int
 triggers_execute(struct trigger *cleanup_triggers)
 {
 	struct trigger *triggers, *t, *trigger;
-	kh_strings_t *th = NULL;
-	char *dir;
+	pkghash *th = NULL;
 	int ret = EPKG_OK;
 
 	triggers = triggers_load(false);
@@ -469,40 +510,42 @@ triggers_execute(struct trigger *cleanup_triggers)
 	 */
 	if (cleanup_triggers != NULL) {
 		LL_FOREACH(triggers, t) {
-			kh_add(strings, th, t->name, t->name, free);
+			pkghash_safe_add(th, t->name, t->name, NULL);
 		}
 	}
 
 	/*
 	 * only keep from the cleanup the one that are not anymore in triggers
 	 */
-	LL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
-		if (kh_contains(strings, th, trigger->name)) {
-			DL_DELETE(cleanup_triggers, trigger);
-			trigger_free(trigger);
+	if (th != NULL) {
+		LL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
+			if (pkghash_get(th, trigger->name) != NULL) {
+				DL_DELETE(cleanup_triggers, trigger);
+				trigger_free(trigger);
+			}
 		}
+		pkghash_destroy(th);
 	}
-	kh_destroy_strings(th);
 
 	pkg_emit_triggers_begin();
 	LL_FOREACH(cleanup_triggers, t) {
 		pkg_emit_trigger(t->name, true);
 		if (t->cleanup.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->cleanup.script, NULL);
-		} else if (t->cleanup.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->cleanup.script, NULL);
+			ret = trigger_execute_lua(t->cleanup.script,
+			    t->cleanup.sandbox, NULL);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
 	}
 
 	if (ctx.touched_dir_hash) {
-		kh_foreach_value(ctx.touched_dir_hash, dir, {
-				LL_FOREACH(triggers, t) {
-				trigger_check_match(t, dir);
-				}
+		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
+		while (pkghash_next(&it)) {
+			LL_FOREACH(triggers, t) {
+				trigger_check_match(t, it.key);
+			}
 				/* We need to check if that matches a trigger */
-				});
+		}
 	}
 
 	LL_FOREACH(triggers, t) {
@@ -510,9 +553,8 @@ triggers_execute(struct trigger *cleanup_triggers)
 			continue;
 		pkg_emit_trigger(t->name, false);
 		if (t->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->script.script, t->matched);
-		} else if (t->script.type == SCRIPT_SHELL) {
-			ret = trigger_execute_shell(t->script.script, t->matched);
+			ret = trigger_execute_lua(t->script.script,
+			    t->script.sandbox, t->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -543,5 +585,100 @@ append_touched_file(const char *path)
 		return;
 	*walk = '\0';
 
-	kh_add(strings, ctx.touched_dir_hash, newpath, newpath, free);
+	pkghash_safe_add(ctx.touched_dir_hash, newpath, NULL, NULL );
+	free(newpath);
+}
+
+void
+exec_deferred(int dfd, const char *name)
+{
+	bool sandbox = false;
+	pkghash *args = NULL;
+	xstring *script = NULL;
+
+	int fd = openat(dfd, name, O_RDONLY);
+	if (fd == -1) {
+		pkg_errno("Unable to open the trigger '%s'", name);
+		return;
+	}
+	FILE *f = fdopen(fd, "r");
+	if (f == NULL) {
+		pkg_errno("Unable to open the trigger '%s'", name);
+		return;
+	}
+	
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	char *walk;
+	bool inargs = false;
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		walk = line;
+		walk += 2; /* '--' aka lua comments */
+		if (strncmp(walk, "sandbox", 7) == 0) {
+			sandbox = true;
+			continue;
+		}
+		if (strncmp(walk, "begin args", 10) == 0) {
+			inargs = true;
+			continue;
+		}
+		if (strncmp(walk, "end args", 8) == 0) {
+			inargs = false;
+			script = xstring_new();
+			continue;
+		}
+		if (inargs) {
+			walk++; /* skip the space */
+			if (line[linelen -1] == '\n')
+				line[linelen -1] = '\0';
+			pkghash_safe_add(args, walk, NULL, NULL);
+		}
+		if (script != NULL)
+			fputs(line, script->fp);
+	}
+	free(line);
+	fclose(f);
+	if (script == NULL) {
+		pkghash_destroy(args);
+		return;
+	}
+	char *s = xstring_get(script);
+	if (trigger_execute_lua(s, sandbox, args) == EPKG_OK) {
+		unlinkat(dfd, name, 0);
+	}
+	free(s);
+	pkghash_destroy(args);
+}
+
+int
+pkg_execute_deferred_triggers(void)
+{
+	struct dirent *e;
+	struct stat st;
+	int dbdir = pkg_get_dbdirfd();
+
+	int trigfd = openat(dbdir, "triggers", O_DIRECTORY);
+	if (trigfd == -1)
+		return (EPKG_OK);
+
+	DIR *d = fdopendir(trigfd);
+	if (d == NULL) {
+		close(trigfd);
+		pkg_emit_error("Unable to open the deferred trigger directory");
+		return (EPKG_FATAL);
+	}
+
+	while ((e = readdir(d)) != NULL) {
+		/* ignore all hiddn files */
+		if (e->d_name[0] == '.')
+			continue;
+		/* only regular files are considered */
+		if (fstatat(trigfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+			pkg_emit_errno("fstatat", e->d_name);
+			return (EPKG_FATAL);
+		}
+		exec_deferred(trigfd, e->d_name);
+	}
+	return (EPKG_OK);
 }

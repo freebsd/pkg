@@ -46,7 +46,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <uthash.h>
 #include <err.h>
 
 #include "pkg.h"
@@ -59,17 +58,14 @@ static ucl_object_t *keyword_schema = NULL;
 
 static int setprefix(struct plist *, char *, struct file_attr *);
 static int dir(struct plist *, char *, struct file_attr *);
-static int dirrm(struct plist *, char *, struct file_attr *);
 static int file(struct plist *, char *, struct file_attr *);
 static int setmod(struct plist *, char *, struct file_attr *);
 static int setowner(struct plist *, char *, struct file_attr *);
 static int setgroup(struct plist *, char *, struct file_attr *);
-static int ignore_next(struct plist *, char *, struct file_attr *);
 static int comment_key(struct plist *, char *, struct file_attr *);
 static int config(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
 static int name_key(struct plist *, char *, struct file_attr *);
-static int pkgdep(struct plist *, char *, struct file_attr *);
 static int include_plist(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
@@ -78,19 +74,15 @@ static struct action_cmd {
 	size_t namelen;
 } list_actions[] = {
 	{ "setprefix", setprefix, 9},
-	{ "dirrm", dirrm, 5 },
-	{ "dirrmtry", dirrm, 7 },
 	{ "dir", dir, 3 },
 	{ "file", file, 4 },
 	{ "setmode", setmod, 6 },
 	{ "setowner", setowner, 8 },
 	{ "setgroup", setgroup, 8 },
 	{ "comment", comment_key, 7 },
-	{ "ignore_next", ignore_next, 11 },
 	{ "config", config, 6 },
 	/* compat with old packages */
 	{ "name", name_key, 4 },
-	{ "pkgdep", pkgdep, 6 },
 	{ NULL, NULL, 0 }
 };
 
@@ -108,7 +100,9 @@ keyword_open_schema(void)
 		"      uniqueItems: true "
 		"    }; "
 		"    actions_script = { type = string }; "
-		"    validation = { type = string }; "
+		"    arguments = { type = boolean }; "
+		"    preformat_arguments { type = boolean }; "
+		"    prepackaging = { type = string }; "
 		"    deprecated = { type = boolean }; "
 		"    deprecation_message = { type = string }; "
 		"    attributes = { "
@@ -223,16 +217,6 @@ name_key(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
-pkgdep(struct plist *p, char *line, struct file_attr *a __unused)
-{
-	if (*line != '\0') {
-		free(p->pkgdep);
-		p->pkgdep = xstrdup(line);
-	}
-	return (EPKG_OK);
-}
-
-static int
 lua_meta(lua_State *L,
     int (*perform)(struct plist *, char *, struct file_attr *))
 {
@@ -312,27 +296,6 @@ dir(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	return (ret);
-}
-
-static void
-warn_deprecated_dir(void)
-{
-	static bool warned_deprecated_dir = false;
-
-	if (warned_deprecated_dir)
-		return;
-	warned_deprecated_dir = true;
-
-	pkg_emit_error("Warning: @dirrm[try] is deprecated, please"
-	    " use @dir");
-}
-
-static int
-dirrm(struct plist *p, char *line, struct file_attr *a)
-{
-
-	warn_deprecated_dir();
-	return (dir(p, line, a));
 }
 
 static int
@@ -486,260 +449,10 @@ setgroup(struct plist *p, char *line, struct file_attr *a __unused)
 }
 
 static int
-comment_key(struct plist *p, char *line, struct file_attr *a __unused)
+comment_key(struct plist *p __unused, char *line __unused , struct file_attr *a __unused)
 {
-	char *name, *version, *line_options, *line_options2, *option;
-
-	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
-		line += 10;
-		name = p->pkgdep;
-		if (name != NULL) {
-			version = strrchr(name, '-');
-			version[0] = '\0';
-			version++;
-			pkg_adddep(p->pkg, name, line, version, false);
-			free(p->pkgdep);
-		}
-		p->pkgdep = NULL;
-	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
-		line += 7;
-		free(p->pkg->origin);
-		p->pkg->origin = xstrdup(line);
-	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
-		line += 8;
-		/* OPTIONS:+OPTION -OPTION */
-		if (line[0] != '\0') {
-			line_options2 = line_options = xstrdup(line);
-			while ((option = strsep(&line_options, " ")) != NULL) {
-				if ((option[0] == '+' || option[0] == '-') &&
-				    option[1] != '\0' && isupper(option[1]))
-					pkg_addoption(p->pkg, option + 1,
-					    option[0] == '+' ? "on" : "off");
-			}
-			free(line_options2);
-		}
-	}
-
 	/* ignore md5 will be recomputed anyway */
 	return (EPKG_OK);
-}
-
-static int
-ignore_next(struct plist *p, __unused char *line, struct file_attr *a __unused)
-{
-	p->ignore_next = true;
-	if (ctx.developer_mode)
-		pkg_emit_error("Warning: @ignore is deprecated");
-
-	return (EPKG_OK);
-}
-
-static void
-parse_post(struct plist *p)
-{
-	const char *env;
-	char *token;
-
-	if ((env = getenv("FORCE_POST")) == NULL)
-		return;
-
-	p->post_patterns.buf = xstrdup(env);
-	while ((token = strsep(&p->post_patterns.buf, " \t")) != NULL) {
-		if (token[0] == '\0')
-			continue;
-		if (p->post_patterns.len >= p->post_patterns.cap) {
-			p->post_patterns.cap += 10;
-			p->post_patterns.patterns = xrealloc(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
-		}
-		p->post_patterns.patterns[p->post_patterns.len++] = token;
-	}
-}
-
-static bool
-should_be_post(char *cmd, struct plist *p)
-{
-	size_t i;
-
-	if (p->post_patterns.patterns == NULL)
-		parse_post(p);
-
-	if (p->post_patterns.patterns == NULL)
-		return (false);
-
-	for (i = 0; i < p->post_patterns.len ; i++)
-		if (strstr(cmd, p->post_patterns.patterns[i]))
-			return (true);
-
-	return (false);
-}
-
-typedef enum {
-	EXEC = 0,
-	UNEXEC,
-	PREEXEC,
-	POSTEXEC,
-	PREUNEXEC,
-	POSTUNEXEC
-} exec_t;
-
-static int
-meta_exec(struct plist *p, char *line, struct file_attr *a, exec_t type)
-{
-	char *cmd, *buf, *tmp;
-	char comment[2];
-	char path[MAXPATHLEN];
-	regmatch_t pmatch[2];
-	int ret;
-
-	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL, 0,
-	    NULL, false);
-	if (ret != EPKG_OK)
-		return (EPKG_OK);
-
-	switch (type) {
-	case PREEXEC:
-		fprintf(p->pre_install_buf->fp, "%s\n", cmd);
-		break;
-	case POSTEXEC:
-		fprintf(p->post_install_buf->fp, "%s\n", cmd);
-		break;
-	case PREUNEXEC:
-		fprintf(p->pre_deinstall_buf->fp, "%s\n", cmd);
-		break;
-	case POSTUNEXEC:
-		fprintf(p->post_deinstall_buf->fp, "%s\n", cmd);
-		break;
-	case UNEXEC:
-		comment[0] = '\0';
-		/* workaround to detect the @dirrmtry */
-		if (STARTS_WITH(cmd, "rmdir ") || STARTS_WITH(cmd, "/bin/rmdir ")) {
-			comment[0] = '#';
-			comment[1] = '\0';
-
-			/* remove the glob if any */
-			if (strchr(cmd, '*'))
-				comment[0] = '\0';
-
-			buf = cmd;
-
-			/* start remove mkdir -? */
-			/* remove the command */
-			while (!isspace(buf[0]))
-				buf++;
-
-			while (isspace(buf[0]))
-				buf++;
-
-			if (buf[0] == '-')
-				comment[0] = '\0';
-			/* end remove mkdir -? */
-		}
-
-		if (should_be_post(cmd, p)) {
-			if (comment[0] != '#')
-				fprintf(p->post_deinstall_buf->fp,
-				    "%s%s\n", comment, cmd);
-		} else {
-			fprintf(p->pre_deinstall_buf->fp, "%s%s\n", comment, cmd);
-		}
-		if (comment[0] == '#') {
-			buf = cmd;
-			regex_t preg;
-
-			/* remove the @dirrm{,try}
-			 * command */
-			while (!isspace(buf[0]))
-				buf++;
-
-			if ((tmp = strchr(buf, '|')) != NULL)
-				tmp[0] = '\0';
-
-			if (strstr(buf, "\"/")) {
-				regcomp(&preg, "[[:space:]]\"(/[^\"]+)",
-				    REG_EXTENDED);
-				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so],
-					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-					buf+=pmatch[1].rm_eo;
-					if (!strcmp(path, "/dev/null"))
-						continue;
-					dir(p, path, a);
-					a = NULL;
-				}
-			} else {
-				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
-				    REG_EXTENDED);
-				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so],
-					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-					buf+=pmatch[1].rm_eo;
-					if (!strcmp(path, "/dev/null"))
-						continue;
-					dir(p, path, a);
-					a = NULL;
-				}
-			}
-			regfree(&preg);
-
-		}
-		break;
-	case EXEC:
-		fprintf(p->post_install_buf->fp, "%s\n", cmd);
-		break;
-	}
-
-	free(cmd);
-	return (EPKG_OK);
-}
-
-static int
-preunexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, PREUNEXEC));
-}
-
-static int
-postunexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, POSTUNEXEC));
-}
-
-static int
-preexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, PREEXEC));
-}
-
-static int
-postexec(struct plist *p, char *line, struct file_attr *a)
-{
-	return (meta_exec(p, line, a, POSTEXEC));
-}
-
-static int
-exec(struct plist *p, char *line, struct file_attr *a)
-{
-	static bool warned_deprecated_exec = false;
-
-	if (!warned_deprecated_exec) {
-		warned_deprecated_exec = true;
-		pkg_emit_error("Warning: @exec is deprecated, please"
-		    " use @[pre|post][un]exec");
-	}
-	return (meta_exec(p, line, a, EXEC));
-}
-
-static int
-unexec(struct plist *p, char *line, struct file_attr *a)
-{
-	static bool warned_deprecated_unexec = false;
-
-	if (!warned_deprecated_unexec) {
-		warned_deprecated_unexec = true;
-		pkg_emit_error("Warning: @unexec is deprecated, please"
-		    " use @[pre|post]unexec");
-	}
-	return (meta_exec(p, line, a, UNEXEC));
 }
 
 static struct keyact {
@@ -747,29 +460,15 @@ static struct keyact {
 	int (*action)(struct plist *, char *, struct file_attr *);
 } keyacts[] = {
 	{ "cwd", setprefix },
-	{ "ignore", ignore_next },
 	{ "comment", comment_key },
 	{ "config", config },
 	{ "dir", dir },
-	{ "dirrm", dirrm },
-	{ "dirrmtry", dirrm },
 	{ "include", include_plist },
 	{ "mode", setmod },
 	{ "owner", setowner },
 	{ "group", setgroup },
-	{ "exec", exec },
-	{ "unexec", unexec },
-	{ "preexec", preexec },
-	{ "postexec", postexec },
-	{ "preunexec", preunexec },
-	{ "postunexec", postunexec },
 	/* old pkg compat */
 	{ "name", name_key },
-	{ "pkgdep", pkgdep },
-	{ "mtree", comment_key },
-	{ "stopdaemon", comment_key },
-	{ "display", comment_key },
-	{ "conflicts", comment_key },
 	{ NULL, NULL },
 };
 
@@ -803,16 +502,17 @@ populate_keywords(struct plist *p)
 	for (i = 0; keyacts[i].key != NULL; i++) {
 		k = xcalloc(1, sizeof(struct keyword));
 		a = xmalloc(sizeof(struct action));
-		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
+		k->keyword = xstrdup(keyacts[i].key);
 		a->perform = keyacts[i].action;
 		DL_APPEND(k->actions, a);
-		HASH_ADD_STR(p->keywords, keyword, k);
+		pkghash_safe_add(p->keywords, k->keyword, k, NULL);
 	}
 }
 
 static void
 keyword_free(struct keyword *k)
 {
+	free(k->keyword);
 	DL_FREE(k->actions, free);
 	free(k);
 }
@@ -929,6 +629,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	ucl_object_iter_t it = NULL;
 	struct pkg_message *msg;
 	char *cmd;
+	const char *l = line;
+	char *formated_line = NULL;
 	char **args = NULL;
 	char *buf, *tofree = NULL;
 	struct file_attr *freeattr = NULL;
@@ -947,11 +649,17 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	if ((o = ucl_object_find_key(obj,  "attributes")))
 		parse_attributes(o, attr != NULL ? &attr : &freeattr);
 
+	if ((o = ucl_object_find_key(obj,  "preformat_arguments")) &&
+	    ucl_object_toboolean(o)) {
+		format_exec_cmd(&formated_line, line, p->prefix, p->last_file, NULL, 0,
+				NULL, false);
+		l = formated_line;
+	}
 	/* add all shell scripts */
 	for (int i = 0; i < nitems(script_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, script_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-			    p->last_file, line, argc, args, false) != EPKG_OK)
+			    p->last_file, l, argc, args, false) != EPKG_OK)
 				goto keywords_cleanup;
 			append_script(p, script_mapping[i].type, cmd);
 			free(cmd);
@@ -962,12 +670,13 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	for (int i = 0; i < nitems(lua_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, lua_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
-			    p->last_file, line, argc, args, true) != EPKG_OK)
+			    p->last_file, l, argc, args, true) != EPKG_OK)
 				goto keywords_cleanup;
 			pkg_add_lua_script(p->pkg, cmd, lua_mapping[i].type);
 			free(cmd);
 		}
 	}
+	free(formated_line);
 
 	if ((o = ucl_object_find_key(obj, "messages"))) {
 		while ((cur = ucl_iterate_object(o, &it, true))) {
@@ -1010,7 +719,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		lua_args_table(L, args, argc);
 		luaL_newlib(L, plist_lib);
 		lua_setglobal(L, "pkg");
-		lua_override_ios(L);
+		lua_override_ios(L, false);
 		pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---"
 		    "\n%s\nScripts: --- END ---", ucl_object_tostring(o));
 		if (luaL_dostring(L, ucl_object_tostring(o))) {
@@ -1175,7 +884,7 @@ static int
 parse_keywords(struct plist *plist, char *keyword,
     char *line, struct file_attr *attr)
 {
-	struct keyword *k;
+	struct keyword *k = NULL;
 	struct action *a;
 	int ret = EPKG_FATAL;
 
@@ -1183,7 +892,7 @@ parse_keywords(struct plist *plist, char *keyword,
 	if (*keyword == '\0')
 		return (file(plist, line, attr));
 
-	HASH_FIND_STR(plist->keywords, keyword, k);
+	k = pkghash_get_value(plist->keywords, keyword);
 	if (k != NULL) {
 		LL_FOREACH(k->actions, a) {
 			ret = a->perform(plist, line, attr);
@@ -1254,11 +963,6 @@ plist_parse_line(struct plist *plist, char *line)
 	char *keyword, *buf, *bkpline;
 	struct file_attr *a;
 
-	if (plist->ignore_next) {
-		plist->ignore_next = false;
-		return (EPKG_OK);
-	}
-
 	if (line[0] == '\0')
 		return (EPKG_OK);
 
@@ -1272,6 +976,7 @@ plist_parse_line(struct plist *plist, char *line)
 		if (buf == NULL) {
 			pkg_emit_error("Malformed keyword %s, expecting @keyword "
 			    "or @keyword(owner,group,mode)", bkpline);
+			free(bkpline);
 			return (EPKG_FATAL);
 		}
 
@@ -1281,6 +986,7 @@ plist_parse_line(struct plist *plist, char *line)
 			    keyword, line);
 			/* FALLTHRU */
 		case EPKG_FATAL:
+			free(bkpline);
 			return (EPKG_FATAL);
 		}
 	} else {
@@ -1291,10 +997,13 @@ plist_parse_line(struct plist *plist, char *line)
 		while (isspace(buf[0]))
 			buf++;
 
-		if (file(plist, buf, NULL) != EPKG_OK)
+		if (file(plist, buf, NULL) != EPKG_OK) {
+			free(bkpline);
 			return (EPKG_FATAL);
+		}
 	}
 
+	free(bkpline);
 	return (EPKG_OK);
 }
 
@@ -1317,7 +1026,7 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->pkg = pkg;
 	if (pkg->prefix != NULL)
 		strlcpy(p->prefix, pkg->prefix, sizeof(p->prefix));
-	p->slash = p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
+	p->slash = *p->prefix != '\0' && p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
 	p->stage = stage;
 
 	p->uname = xstrdup("root");
@@ -1345,9 +1054,12 @@ plist_free(struct plist *p)
 	if (p->plistdirfd != -1)
 		close(p->plistdirfd);
 
-	HASH_FREE(p->keywords, keyword_free);
+	pkghash_it it = pkghash_iterator(p->keywords);
+	while (pkghash_next(&it))
+		keyword_free((struct keyword *)it.value);
+	pkghash_destroy(p->keywords);
+	p->keywords = NULL;
 
-	free(p->pkgdep);
 	free(p->uname);
 	free(p->gname);
 	free(p->post_patterns.buf);
@@ -1447,7 +1159,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	pplist->plistdirfd = open_directory_of(plist);
 	if (pplist->plistdirfd == -1) {
-		pkg_emit_error("impossible to open the directory where the plist is", plist);
+		pkg_emit_error("impossible to open the directory where the plist is: %s", plist);
 		plist_free(pplist);
 		return (EPKG_FATAL);
 	}
@@ -1477,6 +1189,10 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	return (rc);
 }
 
+/*
+ * if the provided database is NULL then we don't want to register the package
+ * in the database aka NO_PKG_REGISTER
+ */
 int
 pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
     const char *reloc, bool testing)
@@ -1486,7 +1202,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	xstring *message;
 	struct pkg_message *msg;
 
-	if (pkg_is_installed(db, pkg->name) != EPKG_END) {
+	if (db != NULL && pkg_is_installed(db, pkg->name) != EPKG_END) {
 		return(EPKG_INSTALLED);
 	}
 
@@ -1499,15 +1215,17 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	pkg_emit_install_begin(pkg);
 
-	rc = pkgdb_register_pkg(db, pkg, 0, NULL);
+	if (db != NULL) {
+		rc = pkgdb_register_pkg(db, pkg, 0, NULL);
 
-	if (rc != EPKG_OK)
-		goto cleanup;
+		if (rc != EPKG_OK)
+			goto cleanup;
+	}
 
 	if (!testing) {
 		/* Execute pre-install scripts */
-		pkg_lua_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false);
-		pkg_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
+		pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
+		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false);
 
 		if (input_path != NULL) {
 			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
@@ -1515,13 +1233,14 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 			pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 			if (rc != EPKG_OK) {
 				pkg_rollback_pkg(pkg);
-				pkg_delete_dirs(db, pkg, NULL);
+				if (db != NULL)
+					pkg_delete_dirs(db, pkg, NULL);
 			}
 		}
 
 		/* Execute post-install scripts */
-		pkg_lua_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false);
-		pkg_script_run(pkg, PKG_LUA_POST_INSTALL, false);
+		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, false);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false);
 	}
 
 	if (rc == EPKG_OK) {
@@ -1544,7 +1263,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	}
 
 cleanup:
-	pkgdb_register_finale(db, rc, NULL);
+	if (db != NULL)
+		pkgdb_register_finale(db, rc, NULL);
 
 	return (rc);
 }

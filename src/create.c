@@ -184,8 +184,9 @@ exec_create(int argc, char **argv)
 	bool		 expand_manifest = false;
 	time_t		 ts = (time_t)-1;
 
-	/* Sentinel values: INT_MIN (fast), 0 (default), INT_MAX (best). */
-	level = 0;
+	/* Sentinel values: INT_MIN (fast), -1 (default per pkg),
+	 * 0 (default per libarchive), INT_MAX (best). */
+	level = -1;
 
 	/* POLA: pkg create is quiet by default, unless
 	 * PKG_CREATE_VERBOSE is set in pkg.conf.  This is for

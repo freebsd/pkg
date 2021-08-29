@@ -4,9 +4,9 @@
 use cc cc-lib cc-shared pkg-config
 
 set maj_ver 1
-set med_ver 15
+set med_ver 17
 set min_ver 99
-set dev_ver 8
+set dev_ver 3
 define PKG_API [expr $maj_ver * 1000000 + $med_ver * 1000 + $min_ver]
 define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]
 
@@ -18,6 +18,7 @@ options {
 	with-coverage => "build with llvm coverage support"
 	with-asan => "build with libasan support"
 	with-ubsan => "Build with libubsan support"
+	default-format:txz => "Default compression format: tzst, txz (default), tbz, tar"
 }
 
 if {[opt-str pkgconfigdir dir]} {
@@ -28,6 +29,21 @@ if {[opt-str pkgconfigdir dir]} {
 	} else {
 		define pkgconfigdir [get-define prefix]/lib/pkgconfig
 	}
+}
+
+# default compression format
+
+if {[opt-str default-format fmt]} {
+	switch $fmt \
+	    "tzst" { set comp TZS } \
+	    "txz" { set comp TXZ } \
+	    "tbz" { set comp TBZ } \
+	    "tgz" { set comp TGZ } \
+	    "tar" { set comp TAR } \
+	    "default" { user-error "Invalid format $fmt" }
+	define DEFAULT_COMPRESSION $comp
+} else {
+	define DEFAULT_COMPRESSION TXZ
 }
 
 cc-check-tools ar ranlib strip
@@ -254,16 +270,24 @@ cc-with { -libs { -ljail} } {
 
 # libbsd
 cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
-	bsd/stdio.h bsd/strlib.h bsd/string.h bsd/sys/cdefs.h \
-	bsd/unistd.h
+	bsd/stdio.h bsd/stdlib.h bsd/strlib.h bsd/string.h \
+	bsd/sys/cdefs.h bsd/unistd.h
  
 if {[opt-bool with-asan]} {
 	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address
 	define-append ASAN_LDFLAGS -fsanitize=address
+	if {[string match *-linux* [get-define host]]} {
+		# ASAN depends on libdl for dlsym when building with GCC
+		define-append ASAN_LDFLAGS -ldl
+	}
 	define asan 1
 	undefine HAVE_STATIC
 }
 if {[opt-bool with-ubsan]} {
+	# Avoid alignment error when building with UBSan inside _mum_hash_avx2
+	define-append UBSAN_CFLAGS -D_MUM_UNALIGNED_ACCESS=0
+	define-append UBSAN_CFLAGS -O0 -ggdb -fsanitize=undefined
+	define-append UBSAN_LDFLAGS -fsanitize=undefined
 	define ubsan 1
 }
 if {[opt-bool with-coverage]} {
@@ -320,7 +344,7 @@ if {[get-define CCACHE] ne {none}} {
   define CC "[get-define CCACHE] [get-define CC]"
 }
 
-make-config-header pkg_config.h
+make-config-header pkg_config.h -bare { DEFAULT_* }
 make-config-header external/sqlite/config.h
 make-template mk/defs.mk.in
 make-template libpkg/pkg.h.in

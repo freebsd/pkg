@@ -21,12 +21,12 @@ config_body()
 
 	atf_check \
 		-o match:"^config" \
-		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.txz
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.pkg
 
 	mkdir ${TMPDIR}/target
 	unset PKG_DBDIR
 	atf_check \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.pkg
 	test -f ${TMPDIR}/target/${TMPDIR}/a || atf_fail "file absent"
 	echo "addition" >> ${TMPDIR}/target/${TMPDIR}/a
 	atf_check \
@@ -63,7 +63,7 @@ config_fileexist_body()
 	mkdir ${TMPDIR}/target
 	unset PKG_DBDIR
 	atf_check \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.pkg
 	test -f ${TMPDIR}/target/${TMPDIR}/a || atf_fail "file absent"
 	echo "addition" >> ${TMPDIR}/target/${TMPDIR}/a
 	atf_check \
@@ -99,7 +99,7 @@ config_filenotexist_body()
 	mkdir ${TMPDIR}/target
 	unset PKG_DBDIR
 	atf_check \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.pkg
 	test -f ${TMPDIR}/target/${TMPDIR}/a || atf_fail "file absent"
 	echo "addition" >> ${TMPDIR}/target/${TMPDIR}/a
 	atf_check \
@@ -145,7 +145,7 @@ config_hardlink_body()
 	# Install the pkg
 	atf_check \
 		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qy test
-	rm *.txz
+	rm *.pkg
 
 	# Modify the local config
 	echo "line 1a" > target/a
@@ -209,12 +209,12 @@ config_morecomplicated_body()
 
 	atf_check \
 		-o match:"^config" \
-		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.txz
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.pkg
 
 	mkdir ${TMPDIR}/target
 	unset PKG_DBDIR
 	atf_check \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.txz
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.pkg
 	test -f ${TMPDIR}/target/${TMPDIR}/test.config || atf_fail "file absent"
 
 	atf_check \

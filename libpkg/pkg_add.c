@@ -568,8 +568,7 @@ retry:
 
 	if (fromfd == -1) {
 		/* check if this is a config file */
-		kh_find(pkg_config_files, pkg->config_files, f->path,
-		    f->config);
+		f->config = pkghash_get_value(pkg->config_files_hash, f->path);
 		if (f->config) {
 			const char *cfdata;
 			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
@@ -749,6 +748,11 @@ pkg_extract_finalize(struct pkg *pkg)
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		append_touched_file(f->path);
 		if (*f->temppath == '\0')
 			continue;
@@ -867,7 +871,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir = NULL;
-	char	dpath[MAXPATHLEN], *ppath;
+	char	dpath[MAXPATHLEN] = "", *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
 	bool	fromstdin;
@@ -939,7 +943,9 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if (dep->version != NULL && dep->version[0] != '\0') {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", bd,
 				dep->name, dep->version, ext);
-		} else {
+		}
+
+		if (strlen(dpath) == 0 || access(dpath, F_OK) != 0) {
 			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", bd,
 			    dep->name, ext);
 			ppath = pkg_globmatch(dpath, dep->name);
@@ -986,11 +992,11 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	 * Execute pre deinstall scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		ret = pkg_lua_script_run(old, PKG_SCRIPT_PRE_DEINSTALL, (old != NULL));
+		ret = pkg_lua_script_run(old, PKG_LUA_PRE_DEINSTALL, (old != NULL));
 		if (ret != EPKG_OK && ctx.developer_mode) {
 			return (ret);
 		} else {
-			ret = pkg_script_run(old, PKG_LUA_PRE_DEINSTALL, (old != NULL));
+			ret = pkg_script_run(old, PKG_SCRIPT_PRE_DEINSTALL, (old != NULL));
 			if (ret != EPKG_OK && ctx.developer_mode) {
 				return (ret);
 			} else {
@@ -1009,7 +1015,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 					const char *libname;
 					libname = strrchr(f->path, '/');
 					if (libname != NULL &&
-					    kh_contains(strings, old->shlibs_provided, libname+1)) {
+					    pkghash_get(old->shlibs_provided, libname+1) != NULL) {
 						backup_library(db, old, f->path);
 					}
 				}
@@ -1029,6 +1035,10 @@ pkg_rollback_pkg(struct pkg *p)
 	struct pkg_file *f = NULL;
 
 	while (pkg_files(p, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		if (*f->temppath != '\0') {
 			unlinkat(p->rootfd, f->temppath, 0);
 		}
@@ -1127,6 +1137,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* analyse previous files */
 	f = NULL;
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX"))) {
+			continue;
+		}
 		if (faccessat(pkg->rootfd, RELATIVE_PATH(f->path), F_OK, 0) == 0) {
 			f->previous = PKG_FILE_EXIST;
 			if (!pkgdb_file_exists(db, f->path)) {
@@ -1146,16 +1161,16 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Execute pre-install scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if ((retcode = pkg_lua_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, (local != NULL))) != EPKG_OK)
+		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, (local != NULL))) != EPKG_OK)
 			goto cleanup;
-		if ((retcode = pkg_script_run(pkg, PKG_LUA_PRE_INSTALL, (local != NULL))) != EPKG_OK)
+		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, (local != NULL))) != EPKG_OK)
 			goto cleanup;
 	}
 
 
 	/* add the user and group if necessary */
 
-	nfiles = kh_count(pkg->filehash) + kh_count(pkg->dirhash);
+	nfiles = pkghash_count(pkg->filehash) + pkghash_count(pkg->dirhash);
 	/*
 	 * Extract the files on disk.
 	 */
@@ -1196,8 +1211,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (retcode != EPKG_OK)
 		goto cleanup;
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		pkg_lua_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL));
-		pkg_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
+		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL));
 	}
 
 	/*
@@ -1372,6 +1387,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 
 	hardlinks = kh_init_hls();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
 		    AT_SYMLINK_NOFOLLOW) == -1) {
 			kh_destroy_hls(hardlinks);
