@@ -1071,6 +1071,12 @@ _dbdir_mkdir(const char *path, mode_t mode)
 	return (mkdirat(dfd, _dbdir_trim_path(path), mode));
 }
 
+static int
+_dbdir_getcwd(char *path, size_t sz)
+{
+	return (snprintf(path, sz, "/"));
+}
+
 void
 pkgdb_syscall_overload(void)
 {
@@ -1083,6 +1089,7 @@ pkgdb_syscall_overload(void)
 	vfs->xSetSystemCall(vfs, "lstat", (sqlite3_syscall_ptr)_dbdir_lstat);
 	vfs->xSetSystemCall(vfs, "unlink", (sqlite3_syscall_ptr)_dbdir_unlink);
 	vfs->xSetSystemCall(vfs, "mkdir", (sqlite3_syscall_ptr)_dbdir_mkdir);
+	vfs->xSetSystemCall(vfs, "getcwd", (sqlite3_syscall_ptr)_dbdir_getcwd);
 }
 
 void
