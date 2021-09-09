@@ -795,7 +795,7 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 	}
 	dest_len = strlen(dest);
 
-	for (cur = next = src; next != NULL; cur = next + 1) {
+	for (cur = next = src; next != NULL; cur = (next == NULL) ? NULL : next + 1) {
 		next = strchr(cur, '/');
 		if (next != NULL)
 			cur_len = next - cur;
