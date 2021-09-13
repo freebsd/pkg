@@ -601,13 +601,20 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 	return (EPKG_OK);
 }
 
+static bool
+pkg_jobs_is_delete(struct pkg_solved *req)
+{
+	return (req->type == PKG_SOLVED_DELETE ||
+	    req->type == PKG_SOLVED_UPGRADE_REMOVE);
+}
+
 static int
 pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
 	if (r1->items[0]->priority == r2->items[0]->priority) {
-		if (r1->type == PKG_SOLVED_DELETE && r2->type != PKG_SOLVED_DELETE)
+		if (pkg_jobs_is_delete(r1) && !pkg_jobs_is_delete(r2))
 			return (-1);
-		else if (r2->type == PKG_SOLVED_DELETE && r1->type != PKG_SOLVED_DELETE)
+		if (pkg_jobs_is_delete(r2) && !pkg_jobs_is_delete(r1))
 			return (1);
 
 		return (0);
