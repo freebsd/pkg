@@ -859,16 +859,16 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	while (pkghash_next(&it)) {
 		un = (struct pkg_job_universe_item *)it.value;
 		/* Add corresponding variables */
-		if (pkg_solve_add_variable(un, problem, &i)
-						== EPKG_FATAL)
+		if (pkg_solve_add_variable(un, problem, &i) == EPKG_FATAL)
 			goto err;
 	}
 
 	/* Add rules for all conflict chains */
 	it = pkghash_iterator(j->universe->items);
 	while (pkghash_next(&it)) {
+		struct pkg_solve_variable *var;
+
 		un = (struct pkg_job_universe_item *)it.value;
-		struct pkg_solve_variable *var = NULL;
 		var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
@@ -879,10 +879,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 	}
 
-	if (kv_size(problem->rules) == 0) {
+	if (kv_size(problem->rules) == 0)
 		pkg_debug(1, "problem has no requests");
-		return (problem);
-	}
 
 	return (problem);
 

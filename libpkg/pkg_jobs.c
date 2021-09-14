@@ -2372,8 +2372,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 	/* Fetch */
 	DL_FOREACH(j->jobs, ps) {
-		if (ps->type != PKG_SOLVED_DELETE
-						&& ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
+		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			p = ps->items[0]->pkg;
 			if (p->type != PKG_REMOTE)
 				continue;

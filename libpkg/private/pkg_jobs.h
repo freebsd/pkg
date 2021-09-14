@@ -79,9 +79,9 @@ struct pkg_job_replace {
 };
 
 struct pkg_jobs_universe {
-	pkghash *items;
-	pkghash *seen;
-	pkghash *provides;
+	pkghash *items;		/* package uid, pkg_job_universe_item */
+	pkghash *seen;		/* package digest, pkg_job_universe_item */
+	pkghash *provides;	/* shlibs, pkg_job_provide */
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
 	size_t nitems;
