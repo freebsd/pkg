@@ -70,8 +70,6 @@ extern struct pkg_ctx ctx;
 
 static int pkg_jobs_installed_local_pkg(struct pkg_jobs *j, struct pkg *pkg);
 static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m);
-static int pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond,
-	const char *pattern, match_t m);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
@@ -924,7 +922,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 }
 
 static int
-pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond, const char *pattern, match_t m)
+pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
@@ -999,12 +997,6 @@ pkg_jobs_find_upgrade_cond(struct pkg_jobs *j, const char *cond, const char *pat
 	}
 
 	return (rc);
-}
-
-static int
-pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
-{
-	return pkg_jobs_find_upgrade_cond(j, NULL, pattern, m);
 }
 
 static int
