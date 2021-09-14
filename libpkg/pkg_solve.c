@@ -122,16 +122,17 @@ struct pkg_solve_impl_graph {
  * Utilities to convert jobs to SAT rule
  */
 
-static struct pkg_solve_item *
-pkg_solve_item_new(struct pkg_solve_variable *var)
+static void
+pkg_solve_item_new(struct pkg_solve_rule *rule, struct pkg_solve_variable *var,
+    int inverse)
 {
-	struct pkg_solve_item *result;
+	struct pkg_solve_item *it;
 
-	result = xcalloc(1, sizeof(struct pkg_solve_item));
-	result->var = var;
-	result->inverse = 1;
-
-	return (result);
+	it = xcalloc(1, sizeof(struct pkg_solve_item));
+	it->var = var;
+	it->inverse = inverse;
+	it->nitems = rule->items ? rule->items->nitems + 1 : 1;
+	DL_APPEND(rule->items, it);
 }
 
 static struct pkg_solve_rule *
@@ -182,11 +183,6 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 	free(problem);
 }
 
-
-#define RULE_ITEM_APPEND(rule, item) do {									\
-	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
-	DL_APPEND((rule)->items, (item));										\
-} while (0)
 
 static void
 pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
@@ -279,7 +275,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		struct pkg_job_provide *pr, struct pkg_solve_rule *rule,
 		struct pkg *orig, const char *reponame, int *cnt)
 {
-	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
 	struct pkg *pkg;
@@ -331,10 +326,8 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 				pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 				'l' : 'r');
 
-		it = pkg_solve_item_new(curvar);
-		it->inverse = 1;
-		RULE_ITEM_APPEND(rule, it);
-		(*cnt) ++;
+		pkg_solve_item_new(rule, curvar, 1);
+		(*cnt)++;
 	}
 
 	return (EPKG_OK);
@@ -349,16 +342,13 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	const char *uid;
 	struct pkg_solve_variable *depvar, *curvar;
 	struct pkg_solve_rule *rule = NULL;
-	struct pkg_solve_item *it = NULL;
 	int cnt = 0;
 	struct pkg_dep *cur;
 
 	/* Dependency rule: (!A | B1 | B2 | B3...) */
 	rule = pkg_solve_rule_new(PKG_RULE_DEPEND);
 	/* !A */
-	it = pkg_solve_item_new(var);
-	it->inverse = -1;
-	RULE_ITEM_APPEND(rule, it);
+	pkg_solve_item_new(rule, var, -1);
 
 	LL_FOREACH2(dep, cur, alt_next) {
 		uid = cur->uid;
@@ -377,10 +367,8 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 				curvar->assumed_reponame = reponame;
 			}
 
-			it = pkg_solve_item_new(curvar);
-			it->inverse = 1;
-			RULE_ITEM_APPEND(rule, it);
-			cnt ++;
+			pkg_solve_item_new(rule, curvar, 1);
+			cnt++;
 		}
 	}
 
@@ -405,7 +393,6 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	const char *uid;
 	struct pkg_solve_variable *confvar, *curvar;
 	struct pkg_solve_rule *rule = NULL;
-	struct pkg_solve_item *it = NULL;
 	struct pkg *other;
 
 	uid = conflict->uid;
@@ -448,13 +435,9 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		/* Conflict rule: (!A | !Bx) */
 		rule = pkg_solve_rule_new(PKG_RULE_EXPLICIT_CONFLICT);
 		/* !A */
-		it = pkg_solve_item_new(var);
-		it->inverse = -1;
-		RULE_ITEM_APPEND(rule, it);
+		pkg_solve_item_new(rule, var, -1);
 		/* !Bx */
-		it = pkg_solve_item_new(curvar);
-		it->inverse = -1;
-		RULE_ITEM_APPEND(rule, it);
+		pkg_solve_item_new(rule, curvar, -1);
 
 		kv_prepend(typeof(rule), problem->rules, rule);
 	}
@@ -484,9 +467,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
 		/* !A */
-		it = pkg_solve_item_new(var);
-		it->inverse = -1;
-		RULE_ITEM_APPEND(rule, it);
+		pkg_solve_item_new(rule, var, -1);
 		/* B1 | B2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
@@ -541,7 +522,6 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
 	struct pkg_solve_rule *rule = NULL;
-	struct pkg_solve_item *it = NULL;
 	struct pkg_job_request_item *item, *confitem;
 	struct pkg_solve_variable *confvar, *curvar;
 	int cnt;
@@ -569,7 +549,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	LL_FOREACH(req->item, item) {
 		curvar = pkg_solve_find_var_in_chain(var, item->unit);
 		assert(curvar != NULL);
-		it = pkg_solve_item_new(curvar);
+		pkg_solve_item_new(rule, curvar, inverse);
 		/* All request variables are top level */
 		curvar->flags |= PKG_VAR_TOP;
 
@@ -577,9 +557,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 			curvar->flags |= PKG_VAR_INSTALL;
 		}
 
-		it->inverse = inverse;
-		RULE_ITEM_APPEND(rule, it);
-		cnt ++;
+		cnt++;
 	}
 
 	if (cnt > 1 && var->unit->inhash != 0) {
@@ -596,13 +574,9 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 				/* Conflict rule: (!A | !Bx) */
 				rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
 				/* !A */
-				it = pkg_solve_item_new(curvar);
-				it->inverse = -1;
-				RULE_ITEM_APPEND(rule, it);
+				pkg_solve_item_new(rule, curvar, -1);
 				/* !Bx */
-				it = pkg_solve_item_new(confvar);
-				it->inverse = -1;
-				RULE_ITEM_APPEND(rule, it);
+				pkg_solve_item_new(rule, confvar, -1);
 
 				kv_prepend(typeof(rule), problem->rules, rule);
 			}
@@ -627,7 +601,6 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 {
 	struct pkg_solve_variable *curvar, *confvar;
 	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
 
 	/* Rewind to first */
 	while (var->prev->next != NULL) {
@@ -643,13 +616,9 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 		LL_FOREACH(curvar->next, confvar) {
 			rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
 			/* !Ax */
-			it = pkg_solve_item_new(curvar);
-			it->inverse = -1;
-			RULE_ITEM_APPEND(rule, it);
+			pkg_solve_item_new(rule, curvar, -1);
 			/* !Ay */
-			it = pkg_solve_item_new(confvar);
-			it->inverse = -1;
-			RULE_ITEM_APPEND(rule, it);
+			pkg_solve_item_new(rule, confvar, -1);
 
 			kv_prepend(typeof(rule), problem->rules, rule);
 		}
