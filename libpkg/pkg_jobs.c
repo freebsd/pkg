@@ -568,8 +568,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 {
 	struct pkg_solved *ts;
 
-	if (solved->type == PKG_SOLVED_UPGRADE
-			&& solved->items[1]->pkg->conflicts != NULL) {
+	if (solved->type == PKG_SOLVED_UPGRADE && solved->items[1]->pkg->conflicts != NULL) {
 		/*
 		 * We have an upgrade request that has some conflicting packages, therefore
 		 * update priorities of local packages and try to update priorities of remote ones
@@ -577,8 +576,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 		if (solved->items[0]->priority == 0)
 			pkg_jobs_update_conflict_priority(j->universe, solved);
 
-		if (solved->items[1]->priority > solved->items[0]->priority &&
-				!solved->already_deleted) {
+		if (solved->items[1]->priority > solved->items[0]->priority) {
 			/*
 			 * Split conflicting upgrade request into delete -> upgrade request
 			 */
@@ -588,8 +586,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			solved->items[1] = NULL;
 			solved->type = PKG_SOLVED_UPGRADE_INSTALL;
 			DL_APPEND(j->jobs, ts);
-			j->count ++;
-			solved->already_deleted = true;
+			j->count++;
 			pkg_debug(2, "split upgrade request for %s",
 			   ts->items[0]->pkg->uid);
 			return (EPKG_CONFLICT);
@@ -600,10 +597,9 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			pkg_jobs_update_universe_priority(j->universe, solved->items[0],
 					PKG_PRIORITY_UPDATE_DELETE);
 	}
-	else {
-		if (solved->items[0]->priority == 0)
-			pkg_jobs_update_universe_priority(j->universe, solved->items[0],
-					PKG_PRIORITY_UPDATE_REQUEST);
+	else if (solved->items[0]->priority == 0) {
+		pkg_jobs_update_universe_priority(j->universe, solved->items[0],
+				PKG_PRIORITY_UPDATE_REQUEST);
 	}
 
 	return (EPKG_OK);

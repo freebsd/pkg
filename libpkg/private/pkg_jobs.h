@@ -60,9 +60,8 @@ struct pkg_job_request {
 };
 
 struct pkg_solved {
-	struct pkg_job_universe_item *items[2];
+	struct pkg_job_universe_item *items[2]; /* to-add/to-delete */
 	pkg_solved_t type;
-	bool already_deleted;
 	struct pkg_solved *prev, *next;
 };
 
