@@ -332,9 +332,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 				'l' : 'r');
 
 		it = pkg_solve_item_new(curvar);
-		if (it == NULL)
-			return (EPKG_FATAL);
-
 		it->inverse = 1;
 		RULE_ITEM_APPEND(rule, it);
 		(*cnt) ++;
@@ -358,15 +355,8 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 
 	/* Dependency rule: (!A | B1 | B2 | B3...) */
 	rule = pkg_solve_rule_new(PKG_RULE_DEPEND);
-	if (rule == NULL)
-		return (EPKG_FATAL);
 	/* !A */
 	it = pkg_solve_item_new(var);
-	if (it == NULL) {
-		pkg_solve_rule_free(rule);
-		return (EPKG_FATAL);
-	}
-
 	it->inverse = -1;
 	RULE_ITEM_APPEND(rule, it);
 
@@ -388,11 +378,6 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 			}
 
 			it = pkg_solve_item_new(curvar);
-			if (it == NULL) {
-				pkg_solve_rule_free(rule);
-				return (EPKG_FATAL);
-			}
-
 			it->inverse = 1;
 			RULE_ITEM_APPEND(rule, it);
 			cnt ++;
@@ -462,24 +447,12 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 
 		/* Conflict rule: (!A | !Bx) */
 		rule = pkg_solve_rule_new(PKG_RULE_EXPLICIT_CONFLICT);
-		if (rule == NULL)
-			return (EPKG_FATAL);
 		/* !A */
 		it = pkg_solve_item_new(var);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
 		it->inverse = -1;
 		RULE_ITEM_APPEND(rule, it);
 		/* !Bx */
 		it = pkg_solve_item_new(curvar);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
 		it->inverse = -1;
 		RULE_ITEM_APPEND(rule, it);
 
@@ -510,15 +483,8 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 			requirement);
 		/* Require rule !A | P1 | P2 | P3 ... */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
-		if (rule == NULL)
-			return (EPKG_FATAL);
 		/* !A */
 		it = pkg_solve_item_new(var);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
 		it->inverse = -1;
 		RULE_ITEM_APPEND(rule, it);
 		/* B1 | B2 | ... */
@@ -597,8 +563,6 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	 * A1 | A2 | ... | An
 	 */
 	rule = pkg_solve_rule_new(PKG_RULE_REQUEST);
-	if (rule == NULL)
-		return (EPKG_FATAL);
 
 	cnt = 0;
 
@@ -606,11 +570,6 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		curvar = pkg_solve_find_var_in_chain(var, item->unit);
 		assert(curvar != NULL);
 		it = pkg_solve_item_new(curvar);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
 		/* All request variables are top level */
 		curvar->flags |= PKG_VAR_TOP;
 
@@ -636,24 +595,12 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 				assert(confvar != NULL && confvar != curvar && confvar != var);
 				/* Conflict rule: (!A | !Bx) */
 				rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
-				if (rule == NULL)
-					return (EPKG_FATAL);
 				/* !A */
 				it = pkg_solve_item_new(curvar);
-				if (it == NULL) {
-					pkg_solve_rule_free(rule);
-					return (EPKG_FATAL);
-				}
-
 				it->inverse = -1;
 				RULE_ITEM_APPEND(rule, it);
 				/* !Bx */
 				it = pkg_solve_item_new(confvar);
-				if (it == NULL) {
-					pkg_solve_rule_free(rule);
-					return (EPKG_FATAL);
-				}
-
 				it->inverse = -1;
 				RULE_ITEM_APPEND(rule, it);
 
@@ -695,24 +642,12 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 
 		LL_FOREACH(curvar->next, confvar) {
 			rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
-			if (rule == NULL)
-				return (EPKG_FATAL);
 			/* !Ax */
 			it = pkg_solve_item_new(curvar);
-			if (it == NULL) {
-				pkg_solve_rule_free(rule);
-				return (EPKG_FATAL);
-			}
-
 			it->inverse = -1;
 			RULE_ITEM_APPEND(rule, it);
 			/* !Ay */
 			it = pkg_solve_item_new(confvar);
-			if (it == NULL) {
-				pkg_solve_rule_free(rule);
-				return (EPKG_FATAL);
-			}
-
 			it->inverse = -1;
 			RULE_ITEM_APPEND(rule, it);
 
