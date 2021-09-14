@@ -689,7 +689,7 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 
 		is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
 		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
-		    is_local, it->pkg->uid, it->pkg->digest, it->priority, priority, type);
+		    is_local, it->pkg->uid, it->pkg->version, it->priority, priority, type);
 		it->priority = priority;
 
 		if (type == PKG_PRIORITY_UPDATE_DELETE) {
