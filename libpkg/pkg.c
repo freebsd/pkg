@@ -69,6 +69,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->name);
 	free(pkg->origin);
 	free(pkg->old_version);
+	free(pkg->version);
 	free(pkg->maintainer);
 	free(pkg->www);
 	free(pkg->arch);

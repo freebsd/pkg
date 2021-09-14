@@ -1073,6 +1073,10 @@ cleanup:
 		elf_end(elf);
 	if (oi == &loi) {
 		free(oi->name);
+		free(oi->version);
+		free(oi->version_major);
+		free(oi->version_minor);
+		free(oi->arch);
 	}
 	close(fd);
 	return (ret);

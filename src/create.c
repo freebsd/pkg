@@ -322,10 +322,14 @@ exec_create(int argc, char **argv)
 	if (ts != (time_t)-1)
 		pkg_create_set_timestamp(pc, ts);
 
-	if (metadatadir == NULL && manifest == NULL)
-		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
+	if (metadatadir == NULL && manifest == NULL) {
+		ret = pkg_create_matches(argc, argv, match, pc);
+		pkg_create_free(pc);
+		return (ret == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
+	}
 	ret = pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
 	    hash);
+	pkg_create_free(pc);
 	if (ret == EPKG_EXIST || ret == EPKG_OK)
 		return (EXIT_SUCCESS);
 	return (EXIT_FAILURE);

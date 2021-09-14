@@ -339,6 +339,7 @@ packing_finish(struct packing *pack)
 
 	archive_read_close(pack->aread);
 	archive_read_free(pack->aread);
+	archive_entry_linkresolver_free(pack->resolver);
 
 	archive_write_close(pack->awrite);
 	archive_write_free(pack->awrite);

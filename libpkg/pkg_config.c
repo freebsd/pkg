@@ -866,9 +866,12 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 	close(fd);
 
 	obj = ucl_parser_get_object(p);
-	if (obj == NULL)
+	if (obj == NULL) {
+		ucl_parser_free(p);
 		return;
+	}
 
+	ucl_parser_free(p);
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj, repofile, flags);
 
@@ -1206,7 +1209,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
 	}
-
+	ucl_object_unref(ncfg);
 	ncfg = NULL;
 	it = NULL;
 	while ((cur = ucl_iterate_object(config, &it, true))) {
@@ -1402,6 +1405,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 out:
 	free(oi.arch);
 	free(oi.name);
+	free(oi.version);
+	free(oi.version_major);
+	free(oi.version_minor);
 	return err;
 
 }
@@ -1469,7 +1475,8 @@ pkg_repo_free(struct pkg_repo *r)
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
-	free(r->meta);
+	free(r->fingerprints);
+	pkg_repo_meta_free(r->meta);
 	if (r->ssh != NULL) {
 		fprintf(r->ssh, "quit\n");
 		pclose(r->ssh);

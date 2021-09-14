@@ -83,6 +83,7 @@ pkg_dep_is_locked(struct pkg_dep const * const d)
 void
 pkg_file_free(struct pkg_file *file)
 {
+
 	free(file->sum);
 	free(file);
 }
