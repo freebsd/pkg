@@ -1,3 +1,13 @@
+Changes from 1.17.99.3 to 1.17.99.4
+- pkg version: fix regression from conversion to pkghash
+- allow filtering files at install time
+- add periodic script to check vulnerabilities in base
+- fix pkg failing to find its db if run from a directory which does not exists
+  anymore
+- fix ubsan reported issues
+- fix priorization upgrade-removal along with other deletion
+- fix plenty of memory leaks
+
 Changes from 1.17.99.2 to 1.17.99.3
 - make pkg/audit.h C++ friendly
 - fix build with libressl
