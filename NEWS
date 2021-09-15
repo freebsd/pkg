@@ -1,3 +1,6 @@
+Changes from 1.17.99.4 to 1.17.99.5
+- fix memory corruption which can happen in some corner cases
+
 Changes from 1.17.99.3 to 1.17.99.4
 - pkg version: fix regression from conversion to pkghash
 - allow filtering files at install time
