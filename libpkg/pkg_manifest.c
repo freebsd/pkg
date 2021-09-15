@@ -1099,10 +1099,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
 	buf = NULL;
-	while (pkg_users(pkg, &buf) == EPKG_OK) {
+	it = pkghash_iterator(pkg->users);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "users", 5, false);
@@ -1110,10 +1111,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_debug(4, "Emitting groups");
 	seq = NULL;
 	buf = NULL;
-	while (pkg_groups(pkg, &buf) == EPKG_OK) {
+	it = pkghash_iterator(pkg->users);
+	while (pkghash_next(&it)) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(buf));
+		ucl_array_append(seq, ucl_object_fromstring(it.key));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "groups", 6, false);

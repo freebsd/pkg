@@ -1182,7 +1182,6 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
-		char	*group = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%Gn\n", "");
@@ -1190,13 +1189,14 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while(pkg_groups(pkg, &group) == EPKG_OK) {
+		pkghash_it it = pkghash_iterator(pkg->users);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     group, count, PP_G);
+					     it.key, count, PP_G);
 
 			iterate_item(buf, pkg,p->item_fmt->buf,
-				     group, count, PP_G);
+				     it.key, count, PP_G);
 			count++;
 		}
 	}
@@ -1469,7 +1469,6 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
-		char	*user = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%Un\n", "");
@@ -1477,13 +1476,14 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_users(pkg, &user) == EPKG_OK) {
+		pkghash_it it = pkghash_iterator(pkg->users);
+		while (pkghash_next(&it)) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     user, count, PP_U);
+					     it.key, count, PP_U);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     user, count, PP_U);
+				     it.key, count, PP_U);
 			count++;
 		}
 	}
