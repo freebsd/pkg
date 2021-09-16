@@ -107,15 +107,6 @@
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
 
-#define HASH_FREE(data, free_func) do {      \
-	__typeof(data) hf1, hf2;                    \
-	HASH_ITER(hh, data, hf1, hf2) {            \
-		HASH_DEL(data, hf1);               \
-		free_func(hf1);                    \
-	}                                          \
-	data = NULL;                               \
-} while (0)
-
 #define LL_FREE2(head, free_func, next) do {   \
 	__typeof(head) l1, l2;                 \
 	LL_FOREACH_SAFE2(head, l1, l2, next) {       \
@@ -135,17 +126,6 @@
 	head = NULL;                          \
 } while (0)
 #define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
-
-#define HASH_NEXT(hash, data) do {            \
-		if (data == NULL)             \
-			data = hash;          \
-		else                          \
-			data = data->hh.next; \
-		if (data == NULL)             \
-			return (EPKG_END);    \
-		else                          \
-			return (EPKG_OK);     \
-	} while (0)
 
 #define kh_safe_add(name, h, val, k) do {		\
 	int __ret;					\
