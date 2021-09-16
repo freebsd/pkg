@@ -347,26 +347,6 @@ is_link(const char *path)
 }
 
 bool
-string_end_with(const char *path, const char *str)
-{
-	size_t n, s;
-	const char *p = NULL;
-
-	s = strlen(str);
-	n = strlen(path);
-
-	if (n < s)
-		return (false);
-
-	p = &path[n - s];
-
-	if (strcmp(p, str) == 0)
-		return (true);
-
-	return (false);
-}
-
-bool
 check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
 	int absent;

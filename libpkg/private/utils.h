@@ -104,7 +104,6 @@ pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);
 int merge_3way(char *pivot, char *v1, char *v2, xstring *out);
-bool string_end_with(const char *path, const char *str);
 bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
 int checkflags(const char *mode, int *optr);
