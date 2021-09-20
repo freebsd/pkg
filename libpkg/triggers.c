@@ -416,6 +416,7 @@ trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 			{ "filecmp", lua_pkg_filecmp },
 			{ "copy", lua_pkg_copy },
 			{ "stat", lua_stat },
+			{ "readdir", lua_readdir },
 			{ "exec", lua_exec },
 			{ NULL, NULL },
 		};
