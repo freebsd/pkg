@@ -86,6 +86,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				{ "filecmp", lua_pkg_filecmp },
 				{ "copy", lua_pkg_copy },
 				{ "stat", lua_stat },
+				{ "readdir", lua_readdir },
 				{ "exec", lua_exec },
 				{ NULL, NULL },
 			};

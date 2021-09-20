@@ -34,6 +34,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <spawn.h>
@@ -510,4 +511,40 @@ lua_override_ios(lua_State *L, bool sandboxed)
 	}
 	lua_pushcfunction(L, lua_os_exit);
 	lua_setfield(L, -2, "exit");
+}
+
+int
+lua_readdir(lua_State *L)
+{
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.readdir takes exactly one argument");
+	const char *path = luaL_checkstring(L, 1);
+	int fd = -1;
+
+	if (*path == '/') {
+		lua_getglobal(L, "rootfd");
+		int rootfd = lua_tointeger(L, -1);
+		fd = openat(rootfd, path +1, O_DIRECTORY);
+	} else {
+		fd = open(path, O_DIRECTORY);
+	}
+	if (fd == -1)
+		return (luaL_fileresult(L, 0, path));
+
+	DIR *dir = fdopendir(fd);
+	if (!dir)
+		return (luaL_fileresult(L, 0, path));
+	lua_newtable(L);
+	struct dirent *e;
+	int i = 0;
+	while ((e = readdir(dir))) {
+		char *name = e->d_name;
+		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+			continue;
+		lua_pushinteger(L, ++i);
+		lua_pushstring(L, name);
+		lua_settable(L, -3);
+	}
+	return 1;
 }
