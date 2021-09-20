@@ -1257,6 +1257,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_emit_message(message->buf);
 		xstring_free(message);
 	}
+	/*
+	 * Command pkg add has been invoked, note that in this case
+	 * it is impossible to get cleanup triggers to execute
+	 */
+	if (remote == NULL)
+		triggers_execute(NULL);
 
 cleanup:
 	if (a != NULL) {
