@@ -1257,6 +1257,8 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 			xstring_free(message);
 		}
 	}
+	/* it is impossible at this point to get any cleanup triggers to run */
+	triggers_execute(NULL);
 
 cleanup:
 	if (db != NULL)
