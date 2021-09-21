@@ -1,3 +1,25 @@
+Changes from 1.17.1 to 1.17.2
+- make audit.h c++ friendly
+- fix build with libressl
+- autoremove now respects -q
+- version: reports error if INDEX file does not exists but is expected
+- periodic audit:
+  * Allow user to specify which jail not to audit
+  * New option to ignore deprecation and expiration warnings
+  * Reduce verbosity of the report
+  * Add a script to audit base
+- register: implement -N to actually not register in the database
+- fetch: do not count cached package in the list to be fetched
+- query: -e is not supported as additional condition
+- fix pkg not finding its db when run from a directory which does not exists
+  anymore
+- De-prioritize upgrade-removals in the solver
+- triggers:
+  * run them for pkg register and pkg add
+  * Add pkg.readdir lua function
+  * Add documentation for the triggers
+
+
 Changes from 1.17.0 to 1.17.1
 - by default only create .txz symlinks for metadata
 - only consider the .pkg when creating a repository
