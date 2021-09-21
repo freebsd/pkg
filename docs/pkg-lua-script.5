@@ -124,6 +124,24 @@ with the following fields:
 .Va size ,
 .Va uid ,
 .Va gid
+.It Fn pkg.exec arguments
+Will execute the command
+.Ar arguments
+expected in the following form:
+.So
+.Bro command, arg1, arg2, arg3, ...
+.Brc
+.Sc
+.It Ft res Fn pkg.readdir path
+Will return an
+.Va ipair
+with the list of elements contained in the directory
+the specicial directory
+.Va So .
+.Sc
+and
+.Va Sq ..
+are be filtered out.
 .El
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
