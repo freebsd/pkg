@@ -1,0 +1,83 @@
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\"
+.Dd September 21, 2021
+.Dt PKG-TRIGGERS 8
+.Os
+.Sh NAME
+.Nm "pkg triggers"
+.Nd execute triggers which has been deferred
+.Sh SYNOPSIS
+.Nm
+.Op Fl q
+.Pp
+.Nm
+.Op Cm --quiet
+.Sh DESCRIPTION
+.Nm
+execute triggers which has been deffered.
+Triggers can be deferred when the package has been installed on a non default
+.Va rootdir
+for example .
+Deferred triggers are stored in
+.Pa /var/db/pkg/triggers .
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width xxxxxxxxxxxx
+.It Fl q , Cm --quiet
+Force quiet output.
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_create 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
