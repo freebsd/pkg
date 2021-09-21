@@ -1,5 +1,9 @@
 Changes from 1.17.99.4 to 1.17.99.5
+- document triggers
+- add pkg.readdir to lua scripts
+- reduce memory usage for hashes
 - fix memory corruption which can happen in some corner cases
+- run triggers for pkg add and pkg register
 
 Changes from 1.17.99.3 to 1.17.99.4
 - pkg version: fix regression from conversion to pkghash
