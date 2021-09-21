@@ -1,0 +1,118 @@
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.Dd September 9, 2021
+.Dt PKG-TRIGGERS 5
+.Os
+.Sh NAME
+.Nm triggers
+.Nd trigger file format
+.Sh DESCRIPTION
+.Nm
+are executed at the end of the transactions: installation, deinstallation or upgrade.
+They are only execute one even if they have been triggered multiple times.
+.Pp
+.Nm are triggered by pattern matching during the transaction.
+.Nm
+are files locate in
+.Pa /usr/local/share/pkg/triggers
+Those files are in UCL format and should use a
+.Va .ucl
+extension.
+.Pp
+The format is the following:
+.Bl -tag -width xxxxxxxxxxx
+.It Cm path
+exact path to match: each time a package installs exactly a file or directory
+matching the
+.Cm path
+the trigger will be execute at the end of the transation .
+.It Cm path_glob
+glob path to match: each time a package installs a file or directory which
+matches the glob pattern
+.Cm pattern
+the trigger will be execute at the end of the transation .
+.It Cm path_regexp
+regexp path to match: each time a package installs a file or directory which
+matches the regexp pattern
+.Cm pattern
+the trigger will be execute at the end of the transation .
+
+.It Cm cleanup
+Object which represent the script to execute in case the transaction results in
+removal of the trigger from the installation.
+The object requires the following fields:
+.Bl -tag -width xxxxxx
+.It Cm type
+The type of the script to be executed, currently only lua script is supported
+.Po
+See
+.Xr pkg-lua-script 5
+.Pc .
+.It Cm script
+The script itself.
+.El
+.It Cm trigger
+Object which represent the script to execute at the end of the transaction if a
+pattern has been matched.
+This object requires the following fields:
+.Bl -tag -width xxxxxx
+.It Cm type
+The type of the script to be executed, currently only lua script is supported
+.Po
+See
+.Xr pkg-lua-script 5
+.Pc .
+.It Cm script
+The script itself.
+It will receive as arguments the list of path which matches the patterns during
+the transaction.
+.El
+.El
+.Sh SEE ALSO
+.Xr pkg_create 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
