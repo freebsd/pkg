@@ -250,7 +250,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		pkg_debug(4, "Processing rdeps for %s (%s)", pkg->uid, pkg->type == PKG_INSTALLED ? "installed" : "remote");
 		if (pkg->type != PKG_INSTALLED) {
 			lpkg = pkg_jobs_universe_get_local(universe, pkg->uid, 0);
-			if (lpkg != NULL)
+			if (lpkg != NULL && lpkg != pkg)
 				return (pkg_jobs_universe_process_deps(universe, lpkg, flags));
 		}
 		deps_func = pkg_rdeps;
