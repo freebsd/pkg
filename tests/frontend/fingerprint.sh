@@ -35,20 +35,7 @@ cat repo.pub
 echo END
 EOF
 
-	cat >> test.ucl << EOF
-name: test
-origin: test
-version: "1"
-maintainer: test
-categories: [test]
-comment: a test
-www: http://test
-prefix: /
-abi = "*";
-desc: <<EOD
-Yet another test
-EOD
-EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
 
 	atf_check -o ignore -e ignore \
 		pkg create -M test.ucl -o fakerepo
