@@ -1046,7 +1046,13 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 	char path[MAXPATHLEN];
 	struct stat st;
 
-	snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+	if (ctx.pkg_rootdir) {
+		snprintf(path, sizeof(path), "%s/%s/trusted", ctx.pkg_rootdir, pkg_repo_fingerprints(repo));
+	}
+	else {
+		snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+	}
+
 	if ((pkg_repo_load_fingerprints_from_path(path, &repo->trusted_fp)) != EPKG_OK) {
 		pkg_emit_error("Error loading trusted certificates");
 		return (EPKG_FATAL);
@@ -1057,7 +1063,12 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 		return (EPKG_FATAL);
 	}
 
-	snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
+	if (ctx.pkg_rootdir) {
+		snprintf(path, sizeof(path), "%s/%s/revoked", ctx.pkg_rootdir, pkg_repo_fingerprints(repo));
+	}
+	else {
+		snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
+	}
 	/* Absence of revoked certificates is not a fatal error */
 	if (stat(path, &st) != -1) {
 		if ((pkg_repo_load_fingerprints_from_path(path, &repo->revoked_fp)) != EPKG_OK) {

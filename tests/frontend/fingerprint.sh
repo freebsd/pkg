@@ -3,24 +3,26 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	fingerprint
+	fingerprint \
+	fingerprint_rootdir
 
-fingerprint_body() {
+setup() {
+	local _root=$1
         atf_skip_on Darwin Test fails on Darwin
         atf_skip_on Linux Test fails on Linux
 
 	atf_check -o ignore -e ignore \
 		openssl genrsa -out repo.key 2048
 	rm -rf ${TMPDIR}/keys || :
-	mkdir -p keys/trusted
-	mkdir -p keys/revoked
+	mkdir -p ${_root}/keys/trusted
+	mkdir -p ${_root}/keys/revoked
 	chmod 0400 repo.key
 	atf_check -o ignore -e ignore \
 		openssl rsa -in repo.key -out repo.pub -pubout
-	echo "function: sha256" > keys/trusted/key
-	echo -n "fingerprint: " >> keys/trusted/key
-	openssl dgst -sha256 -hex repo.pub | sed 's/^.* //' >> keys/trusted/key
-	echo "" >> keys/trusted/key
+	echo "function: sha256" > ${_root}/keys/trusted/key
+	echo -n "fingerprint: " >> ${_root}/keys/trusted/key
+	openssl dgst -sha256 -hex repo.pub | sed 's/^.* //' >> ${_root}/keys/trusted/key
+	echo "" >> ${_root}/keys/trusted/key
 	mkdir fakerepo
 
 	cat >> sign.sh << EOF
@@ -47,12 +49,27 @@ local: {
 	url: file:///${TMPDIR}/fakerepo
 	enabled: true
 	signature_type: FINGERPRINTS
-	fingerprints: ${TMPDIR}/keys
+	fingerprints: keys
 }
 EOF
+}
+
+fingerprint_body() {
+	setup "${TMPDIR}/."
+
 	atf_check \
 		-o ignore \
 		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" update
+}
+
+fingerprint_rootdir_body() {
+	setup "${TMPDIR}/rootdir"
+
+	atf_check \
+		-o ignore \
+		-e match:".*extracting signature of repo.*" \
+		pkg -dd -o REPOS_DIR="${TMPDIR}" \
+		-o PKG_CACHEDIR="${TMPDIR}" -r "${TMPDIR}/rootdir" update
 }
