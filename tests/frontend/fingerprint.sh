@@ -14,15 +14,15 @@ setup() {
 	atf_check -o ignore -e ignore \
 		openssl genrsa -out repo.key 2048
 	rm -rf ${TMPDIR}/keys || :
-	mkdir -p ${_root}/keys/trusted
-	mkdir -p ${_root}/keys/revoked
+	mkdir -p ${_root}/${TMPDIR}/keys/trusted
+	mkdir -p ${_root}/${TMPDIR}/keys/revoked
 	chmod 0400 repo.key
 	atf_check -o ignore -e ignore \
 		openssl rsa -in repo.key -out repo.pub -pubout
-	echo "function: sha256" > ${_root}/keys/trusted/key
-	echo -n "fingerprint: " >> ${_root}/keys/trusted/key
-	openssl dgst -sha256 -hex repo.pub | sed 's/^.* //' >> ${_root}/keys/trusted/key
-	echo "" >> ${_root}/keys/trusted/key
+	echo "function: sha256" > ${_root}/${TMPDIR}/keys/trusted/key
+	echo -n "fingerprint: " >> ${_root}/${TMPDIR}/keys/trusted/key
+	openssl dgst -sha256 -hex repo.pub | sed 's/^.* //' >> ${_root}/${TMPDIR}/keys/trusted/key
+	echo "" >> ${_root}/${TMPDIR}/keys/trusted/key
 	mkdir fakerepo
 
 	cat >> sign.sh << EOF
@@ -49,13 +49,13 @@ local: {
 	url: file:///${TMPDIR}/fakerepo
 	enabled: true
 	signature_type: FINGERPRINTS
-	fingerprints: keys
+	fingerprints: ${TMPDIR}/keys
 }
 EOF
 }
 
 fingerprint_body() {
-	setup "${TMPDIR}/."
+	setup ""
 
 	atf_check \
 		-o ignore \
