@@ -695,6 +695,7 @@ main(int argc, char **argv)
 			init_flags = PKG_INIT_FLAG_USE_IPV6;
 			break;
 		default:
+			errx(EXIT_FAILURE, "Invalid argument provided");
 			break;
 		}
 	}
