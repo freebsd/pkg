@@ -1002,7 +1002,7 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 	int fd;
 
 	snprintf(path, sizeof(path), "%s/%s", dir, filename);
-	fd = open(path, O_RDONLY);
+	fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_RDONLY);
 	if (fd == -1) {
 		pkg_emit_error("cannot load fingerprints from %s: %s",
 				path, strerror(errno));
@@ -1038,13 +1038,20 @@ static int
 pkg_repo_load_fingerprints_from_path(const char *path, pkghash **f)
 {
 	DIR *d;
+	int fd;
 	struct dirent *ent;
 	struct fingerprint *finger = NULL;
 
 	*f = NULL;
 
-	if ((d = opendir(path)) == NULL)
+	if ((fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_DIRECTORY)) == -1) {
+		pkg_emit_error("Error opening the trusted directory %s", path);
 		return (EPKG_FATAL);
+	}
+	if ((d = fdopendir(fd)) == NULL) {
+		pkg_emit_error("Error fdopening the trusted directory %s", path);
+		return (EPKG_FATAL);
+	}
 
 	while ((ent = readdir(d))) {
 		if (strcmp(ent->d_name, ".") == 0 ||
@@ -1066,12 +1073,7 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 	char path[MAXPATHLEN];
 	struct stat st;
 
-	if (ctx.pkg_rootdir) {
-		snprintf(path, sizeof(path), "%s/%s/trusted", ctx.pkg_rootdir, pkg_repo_fingerprints(repo));
-	}
-	else {
-		snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
-	}
+	snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
 
 	if ((pkg_repo_load_fingerprints_from_path(path, &repo->trusted_fp)) != EPKG_OK) {
 		pkg_emit_error("Error loading trusted certificates");
@@ -1083,14 +1085,9 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 		return (EPKG_FATAL);
 	}
 
-	if (ctx.pkg_rootdir) {
-		snprintf(path, sizeof(path), "%s/%s/revoked", ctx.pkg_rootdir, pkg_repo_fingerprints(repo));
-	}
-	else {
-		snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
-	}
+	snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
 	/* Absence of revoked certificates is not a fatal error */
-	if (stat(path, &st) != -1) {
+	if (fstatat(ctx.rootfd, RELATIVE_PATH(path), &st, 0) != -1) {
 		if ((pkg_repo_load_fingerprints_from_path(path, &repo->revoked_fp)) != EPKG_OK) {
 			pkg_emit_error("Error loading revoked certificates");
 			return (EPKG_FATAL);
@@ -1099,7 +1096,6 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 
 	return (EPKG_OK);
 }
-
 
 
 int
