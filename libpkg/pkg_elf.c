@@ -467,7 +467,6 @@ int
 pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
-	char *sh;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN +1];
 	const char *lib;
@@ -534,7 +533,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		file = NULL;
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			if ((lib = strstr(file->path, it.key)) != NULL &&
-			    strlen(lib) == strlen(sh) && lib[-1] == '/') {
+			    strlen(lib) == strlen(it.key) && lib[-1] == '/') {
 				pkg_debug(2, "remove %s from required shlibs as "
 				    "the package %s provides this file itself",
 				    it.key, pkg->name);
