@@ -1,3 +1,7 @@
+Changes from 1.17.99.5 to 1.17.99.6
+- fix segfault when packaging packages providing shared libraries
+- fix fingerprint signature handling with rootdir
+
 Changes from 1.17.99.4 to 1.17.99.5
 - document triggers
 - add pkg.readdir to lua scripts
