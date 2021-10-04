@@ -217,7 +217,7 @@ pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
 			buf++;
 			walk = buf;
 		}
-		key = walk;
+		k = walk;
 		value = walk;
 		while (*value != '\0') {
 			if (*value == '=')
