@@ -871,7 +871,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir = NULL;
-	char	dpath[MAXPATHLEN] = "", *ppath;
+	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
 	bool	fromstdin;
@@ -930,6 +930,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	pkg_emit_add_deps_begin(pkg);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		dpath[0] = '\0';
+
 		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
 
