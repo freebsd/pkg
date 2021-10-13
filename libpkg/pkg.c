@@ -710,12 +710,8 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	pkg_debug(3, "Pkg: add new config file '%s'", path);
 
 	if (pkghash_get(pkg->config_files_hash, path) != NULL) {
-		if (ctx.developer_mode) {
-			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
-			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate file listing: %s, ignoring", path);
-		}
+		pkg_emit_error("duplicate file listing: %s", path);
+		return (EPKG_FATAL);
 	}
 	f = xcalloc(1, sizeof(*f));
 	strlcpy(f->path, path, sizeof(f->path));

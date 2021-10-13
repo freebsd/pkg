@@ -414,6 +414,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
+	int ret;
 
 	pkg_debug(3, "%s", "Manifest: parsing array");
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
@@ -483,8 +484,11 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		case PKG_CONFIG_FILES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed config file name");
-			else
-				pkg_addconfig_file(pkg, ucl_object_tostring(cur), NULL);
+			else {
+				ret = pkg_addconfig_file(pkg, ucl_object_tostring(cur), NULL);
+				if (ret != EPKG_OK)
+					return (ret);
+			}
 			break;
 		case PKG_REQUIRES:
 			if (cur->type != UCL_STRING)
@@ -778,6 +782,7 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 	ucl_object_iter_t it = NULL;
 	struct pkg_manifest_key *selected_key;
 	const char *key;
+	int ret = EPKG_OK;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
@@ -790,7 +795,9 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		}
 		if (selected_key != NULL) {
 			if (TYPE_SHIFT(ucl_object_type(cur)) & selected_key->valid_type) {
-				selected_key->parse_data(pkg, cur, selected_key->type);
+				ret = selected_key->parse_data(pkg, cur, selected_key->type);
+				if (ret != EPKG_OK)
+					return (ret);
 			} else {
 				pkg_emit_error("Skipping malformed key '%s'", key);
 			}

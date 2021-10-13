@@ -3,6 +3,7 @@
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
 	config \
+	config_duplicate \
 	config_fileexist \
 	config_filenotexist \
 	config_fileexist_notinpkg \
@@ -48,6 +49,26 @@ config_body()
 	atf_check \
 		-o inline:"entry 2\naddition\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/a
+}
+
+config_duplicate_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat >> test.ucl << EOF
+files: {
+	"${TMPDIR}/a": "$sum"
+}
+
+config: [
+	"${TMPDIR}/a",
+	"${TMPDIR}/a"
+]
+EOF
+
+	echo "entry" > a
+
+	atf_check -s exit:1 -e match:"pkg: duplicate file listing: .*" \
+		pkg create -M test.ucl
 }
 
 config_fileexist_body()
