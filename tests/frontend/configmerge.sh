@@ -4,6 +4,7 @@
 tests_init \
 	config \
 	config_duplicate \
+	config_duplicate_keyword \
 	config_fileexist \
 	config_filenotexist \
 	config_fileexist_notinpkg \
@@ -69,6 +70,18 @@ EOF
 
 	atf_check -s exit:1 -e match:"pkg: duplicate file listing: .*" \
 		pkg create -M test.ucl
+}
+
+config_duplicate_keyword_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	echo "@config ${TMPDIR}/a" > plist
+	echo "@config ${TMPDIR}/a" >> plist
+
+	echo "entry" > a
+
+	atf_check -s exit:1 -e match:"pkg: duplicate file listing: .*" \
+		pkg create -M test.ucl -p plist
 }
 
 config_fileexist_body()

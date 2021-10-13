@@ -356,7 +356,10 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			char *content;
 			file_to_bufferat(p->stagefd, RELATIVE_PATH(path),
 			    &content, &sz);
-			pkg_addconfig_file(p->pkg, path, content);
+			ret = pkg_addconfig_file(p->pkg, path, content);
+			if (ret != EPKG_OK) {
+				return (ret);
+			}
 			free(content);
 		}
 	}
