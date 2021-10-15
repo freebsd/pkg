@@ -1120,7 +1120,7 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 #endif
 
 	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
 	    output_dir, repo_meta_file);
 	if (stat(repo_archive, &st) == 0) {
 		struct timeval ftimes[2] = {
@@ -1133,21 +1133,21 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 			.tv_usec = 0
 			}
 		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
 		    output_dir, meta->manifests_archive);
 		utimes(repo_archive, ftimes);
 		if (meta->version == 1) {
-			snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+			snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
 			    output_dir, meta->digests_archive);
 			utimes(repo_archive, ftimes);
 		}
 		if (filelist) {
 			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.txz", output_dir, meta->filesite_archive);
+			    "%s/%s.pkg", output_dir, meta->filesite_archive);
 			utimes(repo_archive, ftimes);
 		}
 		snprintf(repo_archive, sizeof(repo_archive),
-			"%s/%s.txz", output_dir, repo_meta_file);
+			"%s/%s.pkg", output_dir, repo_meta_file);
 		utimes(repo_archive, ftimes);
 	}
 
