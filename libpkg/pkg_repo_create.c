@@ -639,8 +639,8 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct pkg_fts_item *fts_items = NULL;
 	pkghash *conflicts = NULL;
 	struct pkg_conflict_bulk *curcb;
-	int num_workers, i, remaining_workers, remain;
-	size_t len, tasks_per_worker, ntask;
+	int num_workers, i, remaining_workers;
+	size_t len, ntask;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd, outputdir_fd, mfd, ffd;
@@ -745,10 +745,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	/* Split items over all workers */
 	num_workers = MIN(num_workers, len);
-	tasks_per_worker = len / num_workers;
-	/* How much extra tasks should be distributed over the workers */
-	remain = len % num_workers;
-	assert(tasks_per_worker > 0);
 
 	/* Launch workers */
 	pkg_emit_progress_start("Creating repository in %s", output_dir);
