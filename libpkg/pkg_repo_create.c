@@ -351,8 +351,8 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 	struct iovec iov[2];
 	uint32_t len;
 	char buf[1024];
-	char *w;
-	const char *rbuf, *c;
+	char *w, *path;
+	const char *rbuf, *c, *repopath;
 
 	b = xstring_new();
 
@@ -428,7 +428,10 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 		c = mp_decode_str(&rbuf, &len);
 		if (len == 0) /* empty package name means ends of repo */
 			break;
-		char *path = xstrndup(c, len);
+		path = xstrndup(c, len);
+		repopath = mp_decode_str(&rbuf, &len);
+		if (len == 0) /* empty package name means ends of repo */
+			break;
 		if (pkg_open(&pkg, path, keys, flags) == EPKG_OK) {
 			off_t mpos, fpos = 0;
 			size_t mlen;
@@ -442,7 +445,7 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 				if (ret != EPKG_OK)
 					goto cleanup;
 			} else {
-				pkg->repopath = xstrdup(path);
+				pkg->repopath = xstrdup(repopath);
 			}
 
 			/*
@@ -594,9 +597,11 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist, struct pkg_f
 		if (msgtype == MSG_PKG_READY) {
 			char *w;
 			const char *str = (*items) != NULL ? (*items)->fts_accpath : "";
+			const char *str2 = (*items) != NULL ? (*items)->pkg_path : "";
 			w = buf;
-			w = mp_encode_array(w, 1);
+			w = mp_encode_array(w, 2);
 			w = mp_encode_str(w, str, strlen(str));
+			w = mp_encode_str(w, str2, strlen(str2) + 1);
 			if (*items != NULL)
 				LL_DELETE((*items), (*items));
 			tell_parent(fd, buf, w - buf);
