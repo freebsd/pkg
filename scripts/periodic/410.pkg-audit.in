@@ -182,16 +182,13 @@ audit_pkgs_all() {
 				continue 2
 			fi
 		done
+		echo
+		echo "jail: ${j%|*}"
 		for t in audit expiration deprecation; do
-			output=${output-}$(${t}_pkgs "-j ${j%|*}" ${j##*|})
+			${t}_pkgs "-j ${j%|*}" ${j##*|}
 			last_rc=$?
 			[ $last_rc -gt 1 ] && rc=$last_rc
 		done
-		if [ -n "${output-}" ]; then
-			echo
-			echo "jail: ${j%|*}"
-		fi
-
 	done
 
 	return $rc
