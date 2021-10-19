@@ -1,3 +1,10 @@
+Changes from 1.17.99.6 to 1.17.99.7
+- speed up pkg repo on SMP machines
+- error on duplicated @config entry
+- revert the fallback on pkg add with mismatched version
+- document pkg upgrade --vulnerable
+- revert jail audit perdiodic script verbosity reduction
+
 Changes from 1.17.99.5 to 1.17.99.6
 - fix segfault when packaging packages providing shared libraries
 - fix fingerprint signature handling with rootdir
