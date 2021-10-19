@@ -1,3 +1,11 @@
+Changes from 1.17.2 to 1.17.3
+- revert 2 regressions,
+  * periodic script for audit which reduced verbosity
+  * the fallback on version mismatch on pkg add
+- prevent an endless recursion on the solver
+- make fingerprint signature validation respect rootdir
+- pkg dies now if a bad argument is provided
+
 Changes from 1.17.1 to 1.17.2
 - make audit.h c++ friendly
 - fix build with libressl
