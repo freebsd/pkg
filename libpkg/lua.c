@@ -126,7 +126,7 @@ luaL_checkarraystrings(lua_State *L, int arg) {
 int
 lua_exec(lua_State *L)
 {
-	int r;
+	int r, pstat;
 	posix_spawn_file_actions_t action;
 	int stdin_pipe[2] = {-1, -1};
 	pid_t pid;
@@ -156,6 +156,24 @@ lua_exec(lua_State *L)
 		lua_pushinteger(L, r);
 		return 3;
 	}
+	while (waitpid(pid, &pstat, 0) == -1) {
+		if (errno != EINTR) {
+			lua_pushnil(L);
+			lua_pushstring(L, strerror(r));
+			lua_pushinteger(L, r);
+			return 3;
+		}
+	}
+
+	if (WEXITSTATUS(pstat) != 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, "Abnormal terminaison");
+		lua_pushinteger(L, r);
+		return 3;
+	}
+
+	posix_spawn_file_actions_destroy(&action);
+
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)
