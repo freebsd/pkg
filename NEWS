@@ -1,3 +1,7 @@
+Changes from 1.17.99.7 to 1.17.99.8
+- ensure pkg waits for the programs executed by the triggers
+- bring back the fallback on the pkg add with mismatched version (with regression fixed)
+
 Changes from 1.17.99.6 to 1.17.99.7
 - speed up pkg repo on SMP machines
 - error on duplicated @config entry
