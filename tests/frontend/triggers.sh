@@ -7,7 +7,9 @@ tests_init \
 	deferred \
 	glob_trigger \
 	regex_trigger \
-	path_trigger
+	path_trigger \
+	pkg_exec_sandbox \
+	pkg_exec_no_sandbox
 
 cleanup_lua_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
@@ -122,4 +124,43 @@ EOF
 	mkdir target
 	unset PKG_TRIGGERS_DIR
 	atf_check -o inline:"triggered ${TMPDIR}/trigger_dir\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
+}
+
+pkg_exec_sandbox_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	mkdir trigger_dir/
+	cat << EOF >> trigger_dir/trigger.ucl
+path_glob: [ "/*" ]
+trigger: {
+	type: lua
+	script: <<EOS
+pkg.exec({"echo", "plop"})
+EOS
+}
+EOF
+	echo ${TMPDIR}/trigger_dir/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist
+	mkdir target
+	unset PKG_TRIGGERS_DIR
+	atf_check -e inline:"pkg: Failed to execute lua trigger: [string \"pkg.exec({\"echo\", \"plop\"})\"]:1: pkg.exec not available in sandbox\npkg: lua script failed\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
+}
+
+pkg_exec_no_sandbox_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	mkdir trigger_dir/
+	cat << EOF >> trigger_dir/trigger.ucl
+path_glob: [ "/*" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+pkg.exec({"echo", "plop"})
+EOS
+}
+EOF
+	echo ${TMPDIR}/trigger_dir/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist
+	mkdir target
+	unset PKG_TRIGGERS_DIR
+	atf_check -o inline:"plop\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
 }
