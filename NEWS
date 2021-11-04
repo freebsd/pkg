@@ -1,3 +1,6 @@
+Changes from 1.17.3 to 1.17.4
+- ensure pkg waits for the programs executed by the triggers
+
 Changes from 1.17.2 to 1.17.3
 - revert 2 regressions,
   * periodic script for audit which reduced verbosity
