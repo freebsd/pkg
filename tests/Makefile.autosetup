@@ -23,6 +23,7 @@ TESTS_SH= \
 	frontend/create.sh \
 	frontend/delete.sh \
 	frontend/extract.sh \
+	frontend/fetch.sh \
 	frontend/install.sh \
 	frontend/jpeg.sh \
 	frontend/lock.sh \
