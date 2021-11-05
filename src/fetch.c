@@ -59,7 +59,8 @@ exec_fetch(int argc, char **argv)
 	const char	*reponame = NULL;
 	const char *destdir = NULL;
 	int		 ch;
-	int		 retcode = EXIT_FAILURE;
+	int		 retcode;
+	int		 status = EXIT_FAILURE;
 	bool		 upgrades_for_installed = false, rc, csum_only = false;
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
@@ -223,12 +224,12 @@ exec_fetch(int argc, char **argv)
 	if (csum_only && !quiet)
 		printf("Integrity check was successful.\n");
 
-	retcode = EXIT_SUCCESS;
+	status = EXIT_SUCCESS;
 
 cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
-	return (retcode);
+	return (status);
 }
