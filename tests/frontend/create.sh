@@ -11,6 +11,7 @@ tests_init \
 	create_from_plist_mini \
 	create_from_plist_fflags create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
+	create_from_plist_missing_file \
 	create_from_manifest_and_plist \
 	create_from_manifest \
 	create_from_manifest_dir \
@@ -90,6 +91,18 @@ create_from_plist_body() {
 		-e ignore \
 		-s exit:0 \
 		bsdtar tvf test-1.pkg
+}
+
+create_from_plist_missing_file_body() {
+	# touch file1
+	genmanifest
+	genplist "file1"
+
+	atf_check \
+		-o empty \
+		-e match:"Unable to access file .*file1:" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_set_owner_body() {
