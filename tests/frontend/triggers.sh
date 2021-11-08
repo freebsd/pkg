@@ -127,6 +127,8 @@ EOF
 }
 
 pkg_exec_sandbox_body() {
+	atf_skip_on Darwin Requires capsicum
+	atf_skip_on Linux Requires capsicum
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	mkdir trigger_dir/
 	cat << EOF >> trigger_dir/trigger.ucl
