@@ -385,7 +385,12 @@ exec_search(int argc, char **argv)
 	case FIELD_NONE:
 		break;		/* should never happen */
 	case FIELD_ORIGIN:
-		opt |= INFO_TAG_ORIGIN|INFO_COMMENT;
+		if (quiet) {
+			opt = INFO_TAG_ORIGIN;
+			quiet = false;
+		} else {
+			opt |= INFO_TAG_ORIGIN|INFO_COMMENT;
+		}
 		break;
 	case FIELD_NAME:
 		opt |= INFO_TAG_NAME|INFO_COMMENT;
