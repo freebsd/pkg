@@ -1031,7 +1031,7 @@ drop_privileges(void)
 	if (geteuid() == 0) {
 		nobody = getpwnam("nobody");
 		if (nobody == NULL)
-			err(EXIT_FAILURE, "Unable to drop privileges");
+			errx(EXIT_FAILURE, "Unable to drop privileges: no 'nobody' user");
 		setgroups(1, &nobody->pw_gid);
 		/* setgid also sets egid and setuid also sets euid */
 		if (setgid(nobody->pw_gid) == -1)
