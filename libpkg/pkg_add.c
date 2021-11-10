@@ -667,6 +667,10 @@ do_extract(struct archive *a, struct archive_entry *ae,
 
 	do {
 		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
+		if (match_ucl_lists(path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
 		switch (archive_entry_filetype(ae)) {
 		case AE_IFDIR:
 			extract_cb = do_extract_dir;
@@ -1011,7 +1015,9 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 	if (new != NULL) {
 		f = NULL;
 		while (pkg_files(old, &f) == EPKG_OK) {
-			if (!pkg_has_file(new, f->path)) {
+			if (!pkg_has_file(new, f->path) || match_ucl_lists(f->path,
+			    pkg_config_get("FILES_IGNORE_GLOB"),
+			    pkg_config_get("FILES_IGNORE_REGEX"))) {
 				pkg_debug(2, "File %s is not in the new package", f->path);
 				if (ctx.backup_libraries) {
 					const char *libname;
