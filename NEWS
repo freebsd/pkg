@@ -1,3 +1,9 @@
+Changes from 1.17.4 to 1.17.5
+- pkg add: only runs triggers at the end of the equivalent of a transaction
+- pkg search: fix the combinaison of -q and -o
+- pkg fetch: correctly exit with error on fetch failures
+- Improve error message when failing to drop privileges
+
 Changes from 1.17.3 to 1.17.4
 - ensure pkg waits for the programs executed by the triggers
 
