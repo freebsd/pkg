@@ -1059,6 +1059,12 @@ pkg_rollback_cb(void *data)
 	pkg_rollback_pkg((struct pkg *)data);
 }
 
+int
+pkg_add_triggers(void)
+{
+	return (triggers_execute(NULL));
+}
+
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
@@ -1278,12 +1284,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_emit_message(message->buf);
 		xstring_free(message);
 	}
-	/*
-	 * Command pkg add has been invoked, note that in this case
-	 * it is impossible to get cleanup triggers to execute
-	 */
-	if (remote == NULL)
-		triggers_execute(NULL);
 
 cleanup:
 	if (a != NULL) {

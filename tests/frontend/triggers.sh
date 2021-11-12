@@ -9,7 +9,8 @@ tests_init \
 	regex_trigger \
 	path_trigger \
 	pkg_exec_sandbox \
-	pkg_exec_no_sandbox
+	pkg_exec_no_sandbox \
+	pkg_add
 
 cleanup_lua_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
@@ -165,4 +166,37 @@ EOF
 	mkdir target
 	unset PKG_TRIGGERS_DIR
 	atf_check -o inline:"plop\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
+}
+
+pkg_add_body() {
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	mkdir trigger_dir/
+	cat << EOF >> trigger_dir/trigger.ucl
+path_glob: [ "/*" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+print("plop")
+EOS
+}
+EOF
+	echo "${TMPDIR}"/trigger_dir/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist
+
+	atf_check -s exit:0 ${RESOURCEDIR}/test_subr.sh new_pkg "meh" "meh" "1" "/"
+	cat << EOF >> meh.ucl
+deps: { test: { version: "1", origin: "dontcare" } }
+EOF
+	echo "@dir ${TMPDIR}"/trigger_dir/ > plist
+	mkdir target
+	unset PKG_TRIGGERS_DIR
+	atf_check pkg create -M meh.ucl -p plist
+OUTPUT="Installing meh-1...
+\`-- Installing test-1...
+\`-- Extracting test-1:  done
+Extracting meh-1:  done
+plop
+"
+	atf_check -o inline:"${OUTPUT}" pkg -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" add meh-1.pkg
 }

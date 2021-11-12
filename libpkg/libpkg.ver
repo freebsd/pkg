@@ -4,6 +4,7 @@ global:
 	pkg_add;
 	pkg_add_from_remote;
 	pkg_add_port;
+	pkg_add_triggers;
 	pkg_adddep;
 	pkg_addluascript_fileat;
 	pkg_addrdep;

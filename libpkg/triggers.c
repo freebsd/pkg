@@ -488,8 +488,9 @@ trigger_check_match(struct trigger *t, char *dir)
 		}
 	}
 
-	if (match_ucl_lists(dir, t->path_glob, t->path_regex))
+	if (match_ucl_lists(dir, t->path_glob, t->path_regex)) {
 		pkghash_safe_add(t->matched, dir, dir, NULL);
+	}
 }
 
 /*
