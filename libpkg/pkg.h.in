@@ -1661,6 +1661,7 @@ int pkg_create_staged(const char *, pkg_formats, const char *, const char *, cha
 int pkg_create_installed(const char *, pkg_formats, struct pkg *) __attribute__((deprecated));
 int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg) __attribute__((deprecated));;
 int pkg_execute_deferred_triggers(void);
+int pkg_add_triggers(void);
 
 #ifdef __cplusplus
 }
