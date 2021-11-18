@@ -195,22 +195,22 @@ EOF
 		-s exit:0 \
 		pkg create -M test.ucl
 
-	cat test-1.pkg | atf_check \
+	atf_check \
 		-o inline:"${JAILED}Installing test-1...\n\nFailed to install the following 1 package(s): -\n" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:1 \
-		pkg add -
+		pkg add - < test-1.pkg
 
 OUTPUT="${JAILED}Installing test-1...
 pre-install
 ${JAILED}Extracting test-1:  done
 post-install
 "
-	cat test-1.pkg | atf_check \
+	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e inline:"${PROGNAME}: Missing dependency 'b'\n" \
 		-s exit:0 \
-		pkg add -M -
+		pkg add -M - < test-1.pkg
 }
 
 add_no_version_body() {
