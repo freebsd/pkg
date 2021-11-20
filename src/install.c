@@ -58,6 +58,7 @@ exec_install(int argc, char **argv)
 	struct pkg_jobs	*jobs = NULL;
 	const char	*reponame = NULL;
 	int		 retcode;
+	int		 status;
 	int		 updcode = EPKG_OK;
 	int		 ch;
 	int		 mode, repo_type;
@@ -188,8 +189,6 @@ exec_install(int argc, char **argv)
 		return (EXIT_FAILURE);
 	} else if (retcode != EPKG_OK)
 		return (EXIT_FAILURE);
-	else
-		retcode = EXIT_FAILURE;
 
 	/* first update the remote repositories if needed */
 	if (auto_update && pkg_repos_total_count() > 0 &&
@@ -207,6 +206,7 @@ exec_install(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
+	status = EXIT_FAILURE;
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		goto cleanup;
 
@@ -222,6 +222,7 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
+	status = EXIT_SUCCESS;
 	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
 		rc = yes;
 		/* print a summary before applying the jobs */
@@ -229,13 +230,13 @@ exec_install(int argc, char **argv)
 			print_jobs_summary(jobs,
 			    "The following %d package(s) will be affected (of %d checked):\n\n",
 			    nbactions, pkg_jobs_total(jobs));
+		}
+		if (dry_run)
+			break;
 
-			if (!dry_run) {
-				rc = query_yesno(false,
-				    "\nProceed with this action? ");
-			} else {
-				rc = false;
-			}
+		if (!quiet) {
+			rc = query_yesno(false,
+			    "\nProceed with this action? ");
 		}
 
 		if (rc) {
@@ -247,9 +248,10 @@ exec_install(int argc, char **argv)
 				    "iteration is needed to resolve them.\n");
 				continue;
 			}
-			else if (retcode != EPKG_OK)
+			else if (retcode != EPKG_OK) {
+				status = retcode;
 				goto cleanup;
-		} else {
+			}
 		}
 
 		if (messages != NULL) {
@@ -262,10 +264,8 @@ exec_install(int argc, char **argv)
 	if (done == 0 && rc)
 		printf("The most recent versions of packages are already installed\n");
 
-	if (rc)
-		retcode = EXIT_SUCCESS;
-	else
-		retcode = EXIT_FAILURE;
+	if (!rc)
+		status = EXIT_FAILURE;
 
 cleanup:
 	pkgdb_release_lock(db, lock_type);
@@ -278,5 +278,5 @@ cleanup:
 	if (!rc && newpkgversion)
 		newpkgversion = false;
 
-	return (retcode);
+	return (status);
 }

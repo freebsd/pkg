@@ -1680,7 +1680,9 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 	it = pkghash_iterator(j->request_add);
 	while (pkghash_next(&it)) {
 		req = it.value;
-		pkg_jobs_universe_process(j->universe, req->item->pkg);
+		retcode = pkg_jobs_universe_process(j->universe, req->item->pkg);
+		if (retcode != EPKG_OK)
+			return (retcode);
 	}
 	return (EPKG_OK);
 }
@@ -1758,6 +1760,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	struct pkg_job_request *req;
 	pkghash_it hit;
+	pkg_error_t rc;
 
 	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED) {
 		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
@@ -1784,7 +1787,9 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		hit = pkghash_iterator(j->request_add);
 		while (pkghash_next(&hit)) {
 			req = hit.value;
-			pkg_jobs_universe_process(j->universe, req->item->pkg);
+			rc = pkg_jobs_universe_process(j->universe, req->item->pkg);
+			if (rc != EPKG_OK)
+				return (rc);
 		}
 	}
 
