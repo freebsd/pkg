@@ -755,6 +755,7 @@ pkgdb_init(sqlite3 *sdb)
 	"END;"
 
 	"PRAGMA user_version = %d;"
+        "PRAGMA journal_mode = WAL;"
 	"COMMIT;"
 	;
 
@@ -1185,6 +1186,12 @@ retry:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
+
+                /* Keep WAL files around on close, for read-only clients */
+                int one = 1;
+                if (sqlite3_file_control(db->sqlite, "main", SQLITE_FCNTL_PERSIST_WAL, &one) != SQLITE_OK) {
+                        pkg_emit_error("cannot set WAL persist mode, non-root or read-only clients may fail");
+                }
 
 		/* Wait up to 5 seconds if database is busy */
 		sqlite3_busy_timeout(db->sqlite, 5000);
@@ -3108,8 +3115,6 @@ int
 pkgdb_begin_solver(struct pkgdb *db)
 {
 	const char solver_sql[] = ""
-		"PRAGMA synchronous = OFF;"
-		"PRAGMA journal_mode = MEMORY;"
 		"BEGIN TRANSACTION;";
 	const char update_digests_sql[] = ""
 		"DROP INDEX IF EXISTS pkg_digest_id;"
@@ -3178,9 +3183,7 @@ int
 pkgdb_end_solver(struct pkgdb *db)
 {
 	const char solver_sql[] = ""
-		"END TRANSACTION;"
-		"PRAGMA synchronous = NORMAL;"
-		"PRAGMA journal_mode = DELETE;";
+		"END TRANSACTION;";
 
 	return (sql_exec(db->sqlite, solver_sql));
 }
