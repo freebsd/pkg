@@ -482,7 +482,12 @@ pkg_repo_binary_init(struct pkg_repo *repo)
 
 	sqlite3_create_function(sqlite, "file_exists", 2, SQLITE_ANY, NULL,
 		    sqlite_file_exists, NULL, NULL);
-	retcode = sql_exec(sqlite, "PRAGMA synchronous=default");
+
+	retcode = sql_exec(sqlite, "PRAGMA journal_mode=TRUNCATE;");
+	if (retcode != EPKG_OK)
+		return (retcode);
+
+	retcode = sql_exec(sqlite, "PRAGMA synchronous=FULL");
 	if (retcode != EPKG_OK)
 		return (retcode);
 
