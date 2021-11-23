@@ -336,6 +336,8 @@ static int
 pkgdb_init(sqlite3 *sdb)
 {
 	const char	sql[] = ""
+	"PRAGMA journal_mode = TRUNCATE;"
+	"PRAGMA synchronous = FULL;"
 	"BEGIN;"
 	"CREATE TABLE packages ("
 		"id INTEGER PRIMARY KEY,"
@@ -2925,8 +2927,6 @@ int
 pkgdb_begin_solver(struct pkgdb *db)
 {
 	const char solver_sql[] = ""
-		"PRAGMA synchronous = OFF;"
-		"PRAGMA journal_mode = MEMORY;"
 		"BEGIN TRANSACTION;";
 	const char update_digests_sql[] = ""
 		"DROP INDEX IF EXISTS pkg_digest_id;"
@@ -2992,9 +2992,7 @@ int
 pkgdb_end_solver(struct pkgdb *db)
 {
 	const char solver_sql[] = ""
-		"END TRANSACTION;"
-		"PRAGMA synchronous = NORMAL;"
-		"PRAGMA journal_mode = DELETE;";
+		"END TRANSACTION;";
 
 	return (sql_exec(db->sqlite, solver_sql));
 }
