@@ -133,6 +133,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	struct stat st;
 	const char *packagesite = NULL;
 	ssize_t offset = -1;
+	int retval;
 
 	int retcode = EPKG_OK;
 
@@ -186,9 +187,15 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
-	if (!mirror && strncasecmp(packagesite, "file://", 7) == 0) {
+	if (!mirror && strncasecmp(url, "file://", 7) == 0) {
 		free(dir);
-		return (EPKG_OK);
+		if (access(url + strlen("file://"), F_OK) == 0) {
+			return (EPKG_OK);
+		}
+		pkg_emit_error("cached package %s-%s: "
+			       "%s is missing from repo\n",
+			       pkg->name, pkg->version, url);
+		return EPKG_FATAL;
 	}
 
 	retcode = pkg_fetch_file(repo, url, dest, 0, offset, pkg->pkgsize);
@@ -205,7 +212,7 @@ checksum:
 	if (stat(dest, &st) == -1 || pkg->pkgsize != st.st_size) {
 		if (already_tried) {
 			pkg_emit_error("cached package %s-%s: "
-			    "size mismatch, cannot continue\n"
+			    "missing or size mismatch, cannot continue\n"
 			    "Consider running 'pkg update -f'",
 			    pkg->name, pkg->version);
 			retcode = EPKG_FATAL;
@@ -215,11 +222,17 @@ checksum:
 		unlink(dest);
 		free(dir);
 		pkg_emit_error("cached package %s-%s: "
-		    "size mismatch, fetching from remote",
+		    "missing or size mismatch, fetching from remote",
 		    pkg->name, pkg->version);
 		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
 	}
-	if (pkg_checksum_validate_file(dest, pkg->sum) != 0) {
+	retval = pkg_checksum_validate_file(dest, pkg->sum);
+	if (retval == ENOENT) {
+			pkg_emit_error("%s-%s missing "
+			    "from repository", pkg->name, pkg->version);
+			return EPKG_FATAL;
+	}
+	if (retval != 0) {
 		if (already_tried || fetched) {
 			pkg_emit_error("%s-%s failed checksum "
 			    "from repository", pkg->name, pkg->version);
