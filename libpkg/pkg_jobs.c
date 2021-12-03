@@ -1788,7 +1788,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		while (pkghash_next(&hit)) {
 			req = hit.value;
 			rc = pkg_jobs_universe_process(j->universe, req->item->pkg);
-			if (rc != EPKG_OK)
+			if (rc != EPKG_OK && rc != EPKG_END)
 				return (rc);
 		}
 	}
