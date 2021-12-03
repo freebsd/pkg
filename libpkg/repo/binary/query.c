@@ -388,41 +388,62 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg_manifest_key *keys = NULL;
 	struct pkg *cached = NULL;
 	char path[MAXPATHLEN];
+	int rc;
 
-	if (pkg->type != PKG_INSTALLED &&
-			(flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) != 0 &&
-			(pkg->flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) == 0) {
-		/*
-		 * Try to get that information from fetched package in cache
-		 */
-		pkg_manifest_keys_new(&keys);
-		
-		if (pkg_repo_cached_name(pkg, path, sizeof(path)) != EPKG_OK)
-			return (EPKG_FATAL);
+	flags &= PKG_LOAD_FILES|PKG_LOAD_DIRS;
+	/*
+	 * If info is already present, done.
+	 */
+	if ((pkg->flags & flags) == flags) {
+		return EPKG_OK;
+	}
+	if (pkg->type == PKG_INSTALLED) {
+		pkg_emit_error("cached package %-%: "
+			       "attempting to load info from an installed package",
+			       pkg->name, pkg->version);
+		return EPKG_FATAL;
 
-		pkg_debug(1, "Binary> loading %s", path);
-		if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK) {
-			pkg_free(cached);
-			return (EPKG_FATAL);
+		/* XXX If package is installed, get info from SQLite ???  */
+		rc = pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags);
+		if (rc != EPKG_OK) {
+			return rc;
 		}
+		/* probably unnecessary */
+		if ((pkg->flags & flags) != flags) {
+			return EPKG_FATAL;
+		}
+		return rc;
+	}
+	/*
+	 * Try to get that information from fetched package in cache
+	 */
+	pkg_manifest_keys_new(&keys);
 
-		/* Now move required elements to the provided package */
-		pkg_list_free(pkg, PKG_FILES);
-		pkg_list_free(pkg, PKG_DIRS);
-		pkg->files = cached->files;
-		pkg->filehash = cached->filehash;
-		pkg->dirs = cached->dirs;
-		pkg->dirhash = cached->dirhash;
-		cached->files = NULL;
-		cached->filehash = NULL;
-		cached->dirs = NULL;
-		cached->dirhash = NULL;
+	if (pkg_repo_cached_name(pkg, path, sizeof(path)) != EPKG_OK)
+		return (EPKG_FATAL);
 
+	pkg_debug(1, "Binary> loading %s", path);
+	if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK) {
 		pkg_free(cached);
-		pkg->flags |= (PKG_LOAD_FILES|PKG_LOAD_DIRS);
+		return EPKG_FATAL;
 	}
 
-	return (pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags));
+	/* Now move required elements to the provided package */
+	pkg_list_free(pkg, PKG_FILES);
+	pkg_list_free(pkg, PKG_DIRS);
+	pkg->files = cached->files;
+	pkg->filehash = cached->filehash;
+	pkg->dirs = cached->dirs;
+	pkg->dirhash = cached->dirhash;
+	cached->files = NULL;
+	cached->filehash = NULL;
+	cached->dirs = NULL;
+	cached->dirhash = NULL;
+
+	pkg_free(cached);
+	pkg->flags |= flags;
+
+	return EPKG_OK;
 }
 
 
