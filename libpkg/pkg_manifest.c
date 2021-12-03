@@ -896,11 +896,18 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	if (!ucl_parser_add_string(p, data, sz)) {
 		pkg_emit_error("manifest parsing error: %s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
+		free(data);
 		return (EPKG_FATAL);
 	}
 
-	obj = ucl_parser_get_object(p);
+	if ((obj = ucl_parser_get_object(p)) == NULL) {
+		ucl_parser_free(p);
+		free(data);
+		return (EPKG_FATAL);
+	}
+
 	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
+	ucl_object_unref(obj);
 	ucl_parser_free(p);
 	free(data);
 
@@ -910,43 +917,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 int
 pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_key *keys)
 {
-	struct ucl_parser *p = NULL;
-	ucl_object_t *obj = NULL;
-	int rc, fd;
-
-	assert(pkg != NULL);
-	assert(file != NULL);
-
-	pkg_debug(1, "Parsing manifest from '%s'", file);
-	fd = open(file, O_RDONLY);
-
-	if (fd == -1) {
-		pkg_emit_error("Error loading manifest from %s: %s",
-				    file, strerror(errno));
-	}
-
-	errno = 0;
-	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_fd(p, fd)) {
-		pkg_emit_error("Error parsing manifest: %s",
-		    ucl_parser_get_error(p));
-		ucl_parser_free(p);
-		close(fd);
-		return (EPKG_FATAL);
-	}
-
-	close(fd);
-
-	if ((obj = ucl_parser_get_object(p)) == NULL) {
-		ucl_parser_free(p);
-		return (EPKG_FATAL);
-	}
-
-	ucl_parser_free(p);
-	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
-	ucl_object_unref(obj);
-
-	return (rc);
+	return pkg_parse_manifest_fileat(AT_FDCWD, pkg, file, keys);
 }
 
 int

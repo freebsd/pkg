@@ -740,19 +740,7 @@ pkg_checksum_fileat(int rootfd, const char *path, pkg_checksum_type_t type)
 unsigned char *
 pkg_checksum_file(const char *path, pkg_checksum_type_t type)
 {
-	int fd;
-	unsigned char *ret;
-
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
-		return (NULL);
-	}
-
-	ret = pkg_checksum_fd(fd, type);
-
-	close(fd);
-
-	return (ret);
+	return pkg_checksum_fileat(AT_FDCWD, path, type);
 }
 
 unsigned char *
@@ -798,16 +786,7 @@ pkg_checksum_symlink_readlink(const char *linkbuf, int linklen,
 unsigned char *
 pkg_checksum_symlink(const char *path, pkg_checksum_type_t type)
 {
-	char linkbuf[MAXPATHLEN];
-	int linklen;
-
-	if ((linklen = readlink(path, linkbuf, sizeof(linkbuf) - 1)) == -1) {
-		pkg_emit_errno("pkg_checksum_symlink", "readlink failed");
-		return (NULL);
-	}
-	linkbuf[linklen] = '\0';
-
-	return (pkg_checksum_symlink_readlink(linkbuf, linklen, type));
+	return pkg_checksum_symlinkat(AT_FDCWD, path, type);
 }
 
 unsigned char *
@@ -828,65 +807,7 @@ pkg_checksum_symlinkat(int fd, const char *path, pkg_checksum_type_t type)
 int
 pkg_checksum_validate_file(const char *path, const char *sum)
 {
-	struct stat st;
-	char *newsum;
-	pkg_checksum_type_t type;
-
-	type = pkg_checksum_file_get_type(sum, strlen(sum));
-	if (type == PKG_HASH_TYPE_UNKNOWN) {
-		type = PKG_HASH_TYPE_SHA256_HEX;
-	} else {
-		sum = strchr(sum, PKG_CKSUM_SEPARATOR);
-		if (sum != NULL)
-			sum++;
-	}
-
-	if (lstat(path, &st) == -1) {
-		return (errno);
-	}
-
-	if (S_ISLNK(st.st_mode))
-		newsum = pkg_checksum_symlink(path, type);
-	else
-		newsum = pkg_checksum_file(path, type);
-
-	if (newsum == NULL)
-		return (-1);
-
-	if (strcmp(sum, newsum) != 0) {
-		free(newsum);
-		return (-1);
-	}
-
-	free(newsum);
-
-	return (0);
-}
-
-char *
-pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
-{
-	struct stat st;
-	unsigned char *sum;
-	char *cksum;
-
-	if (lstat(path, &st) == -1) {
-		pkg_emit_errno("pkg_checksum_generate_file", "lstat");
-		return (NULL);
-	}
-
-	if (S_ISLNK(st.st_mode))
-		sum = pkg_checksum_symlink(path, type);
-	else
-		sum = pkg_checksum_file(path, type);
-
-	if (sum == NULL)
-		return (NULL);
-
-	xasprintf(&cksum, "%d%c%s", type, PKG_CKSUM_SEPARATOR, sum);
-	free(sum);
-
-	return (cksum);
+	return pkg_checksum_validate_fileat(AT_FDCWD, path, sum);
 }
 
 int
@@ -925,6 +846,12 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 	free(newsum);
 
 	return (0);
+}
+
+char *
+pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type)
+{
+	return pkg_checksum_generate_fileat(AT_FDCWD, path, type);
 }
 
 char *
