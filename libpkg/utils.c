@@ -97,10 +97,17 @@ mkdirs(const char *_path)
 {
 	char path[MAXPATHLEN];
 	char *p;
+	int dirfd;
+
+	dirfd = open(_path, O_RDONLY|O_DIRECTORY);
+	if (dirfd >= 0) {
+		close(dirfd);
+		return EPKG_OK;
+	}
 
 	strlcpy(path, _path, sizeof(path));
 	p = path;
-	if (*p == '/')
+	while (*p == '/')
 		p++;
 
 	for (;;) {
