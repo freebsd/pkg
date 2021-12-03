@@ -140,7 +140,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	if (fstatat(dfd, path, &st, 0) == -1) {
+	if (fstat(fd, &st) == -1) {
 		pkg_emit_errno("fstatat", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -171,46 +171,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 int
 file_to_buffer(const char *path, char **buffer, off_t *sz)
 {
-	int fd = -1;
-	struct stat st;
-	int retcode = EPKG_OK;
-
-	assert(path != NULL && path[0] != '\0');
-	assert(buffer != NULL);
-	assert(sz != NULL);
-
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (fstat(fd, &st) == -1) {
-		pkg_emit_errno("fstat", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	*buffer = xmalloc(st.st_size + 1);
-
-	if (read(fd, *buffer, st.st_size) == -1) {
-		pkg_emit_errno("read", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	cleanup:
-	if (fd >= 0)
-		close(fd);
-
-	if (retcode == EPKG_OK) {
-		(*buffer)[st.st_size] = '\0';
-		*sz = st.st_size;
-	} else {
-		*buffer = NULL;
-		*sz = -1;
-	}
-	return (retcode);
+	return file_to_bufferat(AT_FDCWD, path, buffer, sz);
 }
 
 int
