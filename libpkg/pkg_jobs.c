@@ -1092,7 +1092,6 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
-	char *lb, *rb;
 	pkghash_it it1, it2;
 
 	/* If no local package, then rp is obviously need to be added */
@@ -1212,7 +1211,6 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 
 	/* Provides */
-	lb = rb = NULL;
 	it1 = pkghash_iterator(rp->provides);
 	it2 = pkghash_iterator(lp->provides);
 	for (;;) {
@@ -1234,7 +1232,6 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			break;
 	}
 	/* Requires */
-	lb = rb = NULL;
 	it1 = pkghash_iterator(rp->requires);
 	it2 = pkghash_iterator(lp->requires);
 	for (;;) {
@@ -1257,7 +1254,6 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 
 	/* Finish by the shlibs */
-	lb = rb = NULL;
 	it1 = pkghash_iterator(rp->shlibs_provided);
 	it2 = pkghash_iterator(lp->shlibs_provided);
 	for (;;) {
@@ -1281,7 +1277,6 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			break;
 	}
 
-	lb = rb = NULL;
 	it1 = pkghash_iterator(rp->shlibs_required);
 	it2 = pkghash_iterator(lp->shlibs_required);
 	for (;;) {
