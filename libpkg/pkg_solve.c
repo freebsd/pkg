@@ -345,7 +345,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	int cnt = 0;
 	struct pkg_dep *cur;
 
-	/* Dependency rule: (!A | B1 | B2 | B3...) */
+	/* Dependency rule: (!A | B1 | B2 | B3...) must be true */
 	rule = pkg_solve_rule_new(PKG_RULE_DEPEND);
 	/* !A */
 	pkg_solve_item_new(rule, var, -1);
@@ -432,7 +432,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 				continue;
 		}
 
-		/* Conflict rule: (!A | !Bx) */
+		/* Conflict rule: (!A | !Bx) must be true */
 		rule = pkg_solve_rule_new(PKG_RULE_EXPLICIT_CONFLICT);
 		/* !A */
 		pkg_solve_item_new(rule, var, -1);
@@ -452,7 +452,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		const char *reponame)
 {
 	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg *pkg;
 	int cnt;
@@ -464,16 +463,15 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		pkg_debug(4, "solver: Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
 			requirement);
-		/* Require rule !A | P1 | P2 | P3 ... */
+		/* Require rule: ( !A | P1 | P2 | P3 ... ) must be true */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
 		/* !A */
 		pkg_solve_item_new(rule, var, -1);
-		/* B1 | B2 | ... */
+		/* P1 | P2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
 			if (pkg_solve_handle_provide(problem, pr, rule, pkg, reponame, &cnt)
 					!= EPKG_OK) {
-				free(it);
 				free(rule);
 				return (EPKG_FATAL);
 			}
@@ -484,7 +482,6 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		}
 		else {
 			/* Missing dependencies... */
-			free(it);
 			free(rule);
 		}
 	}
@@ -521,7 +518,7 @@ static int
 pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
-	struct pkg_solve_rule *rule = NULL;
+	struct pkg_solve_rule *rule;
 	struct pkg_job_request_item *item, *confitem;
 	struct pkg_solve_variable *confvar, *curvar;
 	int cnt;
@@ -571,7 +568,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 			LL_FOREACH(item->next, confitem) {
 				confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
 				assert(confvar != NULL && confvar != curvar && confvar != var);
-				/* Conflict rule: (!A | !Bx) */
+				/* Conflict rule: (!A | !Bx) must be true */
 				rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
 				/* !A */
 				pkg_solve_item_new(rule, curvar, -1);
@@ -608,7 +605,7 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 	}
 
 	LL_FOREACH(var, curvar) {
-		/* Conflict rule: (!Ax | !Ay) */
+		/* Conflict rule: (!Ax | !Ay) must be true */
 		if (curvar->next == NULL) {
 			break;
 		}
