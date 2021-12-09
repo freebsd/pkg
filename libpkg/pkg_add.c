@@ -747,9 +747,11 @@ pkg_extract_finalize(struct pkg *pkg)
 	struct pkg_dir *d = NULL;
 	char path[MAXPATHLEN + 8];
 	const char *fto;
+#ifdef HAVE_CHFLAGSAT
 	bool install_as_user;
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+#endif
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 

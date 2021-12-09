@@ -1095,7 +1095,6 @@ pkgdb_syscall_overload(void)
 void
 pkgdb_nfs_corruption(sqlite3 *db)
 {
-	int dbdirfd = pkg_get_dbdirfd();
 
 	if (sqlite3_errcode(db) != SQLITE_CORRUPT)
 		return;
@@ -1105,6 +1104,7 @@ pkgdb_nfs_corruption(sqlite3 *db)
 	 */
 
 #if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	int dbdirfd = pkg_get_dbdirfd();
 	struct statvfs stfs;
 
 	if (fstatvfs(dbdirfd, &stfs) == 0) {
@@ -1114,6 +1114,7 @@ pkgdb_nfs_corruption(sqlite3 *db)
 			    " properly setup\n");
 	}
 #elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
+	int dbdirfd = pkg_get_dbdirfd();
 	struct statfs stfs;
 
 	if (fstatfs(dbdirfd, &stfs) == 0) {
