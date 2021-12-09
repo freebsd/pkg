@@ -15,7 +15,7 @@ freebsd_task:
                   freebsd_instance:
                      image_family: freebsd-14-0-snap
                   env:
-                     EXTRA_ARGS: --with-asan --with-ubsan
+                     #EXTRA_ARGS: --with-asan --with-ubsan
                      # There are still a few occurrences of this error (adding offset to NULL pointer)
                      CPPFLAGS: -fno-sanitize=pointer-overflow -ftrivial-auto-var-init=pattern
 
