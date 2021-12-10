@@ -31,11 +31,13 @@
 #include <private/pkg.h>
 
 ATF_TC(check_symlinks);
+ATF_TC(check_pkg);
 
 ATF_TC_HEAD(check_symlinks, tc)
 {
 	atf_tc_set_md_var(tc, "descr", "testing checksums on symlinks");
 }
+ATF_TC_HEAD(check_pkg, tc) {}
 
 ATF_TC_BODY(check_symlinks, tc)
 {
@@ -91,10 +93,35 @@ ATF_TC_BODY(check_files, tc)
 	ATF_REQUIRE_STREQ(sum, "1$7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730");
 }
 
+ATF_TC_BODY(check_pkg, tc)
+{
+	struct pkg *p = NULL;
+	pkg_new(&p, PKG_INSTALLED);
+	pkg_set(p, PKG_NAME, "test");
+	pkg_set(p, PKG_ORIGIN, "origin");
+	pkg_set(p, PKG_ARCH, "*");
+	char *sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, sizeof(char));
+
+	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false) == EPKG_OK);
+	ATF_REQUIRE_STREQ(sum, "2$1$22c6baf7d22b7035be18ffe04f43717f907f4848b3d5d72bfc44bb8435053ea4");
+	free(sum);
+
+	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, sizeof(char));
+	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, PKG_HASH_TYPE_BLAKE2_BASE32, false, false, false) == EPKG_OK);
+	ATF_REQUIRE_STREQ(sum, "2$2$iskiim4jgor5sie8tkthjksomnpyuynaqfxbmgt3x7rn9atyebiwk5njiiyxpyqm5eimq6g44bd9tnuwf3mfesqp6r8tim8un7jfday");
+	free(sum);
+
+	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, sizeof(char));
+	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, PKG_HASH_TYPE_BLAKE2S_BASE32, false, false, false) == EPKG_OK);
+	ATF_REQUIRE_STREQ(sum, "2$5$9819ezi7ytn58y3mwhcxaqbkiaik7ui9o3obewhqmuyx99kmb95y");
+	free(sum);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, check_symlinks);
 	ATF_TP_ADD_TC(tp, check_files);
+	ATF_TP_ADD_TC(tp, check_pkg);
 
 	return (atf_no_error());
 }
