@@ -225,10 +225,12 @@ event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		_exit(EXIT_FAILURE);
 	}
+#endif
 #endif
 
 	ret = func(fd, ud);
@@ -332,10 +334,12 @@ event_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len,
 		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
 
 #ifdef HAVE_CAPSICUM
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		return (EPKG_FATAL);
 	}
+#endif
 #endif
 
 	ret = func(pair[0], ud);

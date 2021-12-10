@@ -316,11 +316,13 @@ exec_updating(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		fclose(fd);
 		return (EXIT_FAILURE);
 	}
+#endif
 #endif
 
 	SLIST_INIT(&origins);

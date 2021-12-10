@@ -382,11 +382,13 @@ exec_clean(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
+#ifndef PKG_COVERAGE
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(cachefd);
 			return (EXIT_FAILURE);
 		}
+#endif
 #endif
 
 	kv_init(dl);
