@@ -8,6 +8,7 @@ TESTS=	\
 	pkg_printf \
 	pkg_validation \
 	plist \
+	lua
 
 TESTS_SH= \
 	frontend/pkg.sh \
@@ -59,6 +60,7 @@ TESTS_SH= \
 	frontend/http.sh \
 	frontend/triggers.sh
 
+lua_OBJS=	lib/lua.o
 merge_OBJS=	lib/merge.o
 plist_OBJS=	lib/plist.o
 checksum_OBJS=	lib/checksum.o
@@ -71,6 +73,7 @@ pkg_validation_OBJS=	lib/pkg_validation.o
 SRCS=	\
 	$(merge_OBJS:.o=.c) \
 	$(plist_OBJS:.o=.c) \
+	$(lua_OBJS:.o=.c) \
 	$(checksum_OBJS:.o=.c) \
 	$(pkg_printf_OBJS:.o=.c) \
 	$(deps_formula_OBJS:.o=.c) \
@@ -86,6 +89,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/libucl/klib \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/sqlite \
+		-I$(top_srcdir)/external/lua/src \
 		-I$(top_builddir)/ \
 		-I$(top_builddir)/libpkg \
 		@PKG_ATF_C_CFLAGS@ \
