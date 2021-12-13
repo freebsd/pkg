@@ -77,7 +77,9 @@ ATF_TC_BODY(packing_set_format, tc)
 	struct archive *a = archive_write_new();
 	ATF_CHECK(a != NULL);
 
+#ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, -1), "tzst");
+#endif
 	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, -1), "txz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, -1), "tbz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, -1), "tgz");
@@ -85,7 +87,9 @@ ATF_TC_BODY(packing_set_format, tc)
 	ATF_REQUIRE_EQ(packing_set_format(a, 28, -1), NULL);
 
 	/* compression min */
+#ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, INT_MIN), "tzst");
+#endif
 	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, INT_MIN), "txz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, INT_MIN), "tbz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MIN), "tgz");
@@ -93,7 +97,9 @@ ATF_TC_BODY(packing_set_format, tc)
 	ATF_REQUIRE_EQ(packing_set_format(a, 28, INT_MIN), NULL);
 
 	/* compression max */
+#ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
 	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, INT_MAX), "tzst");
+#endif
 	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, INT_MAX), "txz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, INT_MAX), "tbz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MAX), "tgz");
