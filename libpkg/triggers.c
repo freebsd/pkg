@@ -438,7 +438,7 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 		lua_args_table(L, arguments, i);
 #ifdef HAVE_CAPSICUM
 		if (sandbox) {
-#ifndef defined(PKG_COVERAGE)
+#ifndef PKG_COVERAGE
 			if (cap_enter() < 0 && errno != ENOSYS) {
 				err(1, "cap_enter failed");
 			}
