@@ -337,7 +337,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 
 	if (S_ISREG(st.st_mode)) {
 		if (st.st_nlink > 1)
-			regular = !check_for_hardlink(p->hardlinks, &st);
+			regular = !check_for_hardlink(&p->hardlinks, &st);
 		else
 			regular = true;
 	} else if (S_ISLNK(st.st_mode))
@@ -1039,7 +1039,6 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->post_install_buf = xstring_new();
 	p->pre_deinstall_buf = xstring_new();
 	p->post_deinstall_buf = xstring_new();
-	p->hardlinks = kh_init_hardlinks();
 
 	populate_keywords(p);
 
@@ -1067,7 +1066,7 @@ plist_free(struct plist *p)
 	free(p->gname);
 	free(p->post_patterns.buf);
 	free(p->post_patterns.patterns);
-	kh_destroy_hardlinks(p->hardlinks);
+	tll_free_and_free(p->hardlinks, free);
 
 	xstring_free(p->post_deinstall_buf);
 	xstring_free(p->post_install_buf);

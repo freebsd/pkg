@@ -32,7 +32,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <ucl.h>
-#include <khash.h>
+#include <tllist.h>
 #include <pkg.h>
 #include <xstring.h>
 
@@ -49,8 +49,11 @@
 	__FILE__, __LINE__, sqlite3_errmsg(db)); \
 } while (0)
 
-KHASH_MAP_INIT_INT(hardlinks, int)
-typedef khash_t(hardlinks) hardlinks_t;
+typedef tll(struct hardlink *) hardlinks_t;
+struct hardlink {
+	ino_t ino;
+	dev_t dev;
+};
 
 struct dns_srvinfo {
 	unsigned int type;

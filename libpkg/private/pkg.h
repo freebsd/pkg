@@ -556,7 +556,7 @@ struct plist {
 	char *gname;
 	const char *slash;
 	int64_t flatsize;
-	hardlinks_t *hardlinks;
+	hardlinks_t hardlinks;
 	mode_t perm;
 	struct {
 		char *buf;

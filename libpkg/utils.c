@@ -349,11 +349,17 @@ is_link(const char *path)
 bool
 check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	int absent;
+	struct hardlink *h;
 
-	kh_put_hardlinks(hl, st->st_ino, &absent);
-	if (absent == 0)
-		return (true);
+	tll_foreach(*hl, it) {
+		if (it->item->ino == st->st_ino &&
+		    it->item->dev == st->st_dev)
+			return (true);
+	}
+	h = xcalloc(1, sizeof(*h));
+	h->ino = st->st_ino;
+	h->dev = st->st_dev;
+	tll_push_back(*hl, h);
 
 	return (false);
 }

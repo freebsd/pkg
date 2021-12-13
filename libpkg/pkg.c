@@ -1526,14 +1526,13 @@ int
 pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
-	hardlinks_t *hl = NULL;
+	hardlinks_t hl = tll_init();
 	int64_t flatsize = 0;
 	struct stat st;
 	bool regular = false;
 	char *sum;
 	int rc = EPKG_OK;
 
-	hl = kh_init_hardlinks();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (lstat(f->path, &st) != 0)
 			continue;
@@ -1550,7 +1549,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 		}
 
 		if (st.st_nlink > 1)
-			regular = !check_for_hardlink(hl, &st);
+			regular = !check_for_hardlink(&hl, &st);
 
 		if (regular)
 			flatsize += st.st_size;
@@ -1559,7 +1558,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			pkgdb_file_set_cksum(db, f, sum);
 		free(sum);
 	}
-	kh_destroy_hardlinks(hl);
+	tll_free_and_free(hl, free);
 
 	if (flatsize != pkg->flatsize)
 		pkg->flatsize = flatsize;
