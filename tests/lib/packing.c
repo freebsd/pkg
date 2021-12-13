@@ -28,6 +28,7 @@
 #include <pkg.h>
 #include <private/pkg.h>
 #include <private/packing.h>
+#include <pkg_config.h>
 
 ATF_TC(packing_format_from_string);
 ATF_TC(packing_format_to_string);
