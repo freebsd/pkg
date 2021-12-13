@@ -40,15 +40,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
-
-static const char *packing_set_format(struct archive *a, pkg_formats format, int clevel);
-
-struct packing {
-	struct archive *aread;
-	struct archive *awrite;
-	struct archive_entry_linkresolver *resolver;
-	time_t timestamp;
-};
+#include "private/packing.h"
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
@@ -294,7 +286,7 @@ packing_finish(struct packing *pack)
 	free(pack);
 }
 
-static const char *
+const char *
 packing_set_format(struct archive *a, pkg_formats format, int clevel)
 {
 	const char *notsupp_fmt = "%s is not supported, trying %s";
