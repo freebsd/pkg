@@ -57,7 +57,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/picosat \
 		-I$(top_srcdir)/external/yxml \
 		-I$(top_srcdir)/external/include \
-		-I$(top_srcdir)/external/mum \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/libfetch \
 		-I$(top_srcdir)/external/lua/src \
