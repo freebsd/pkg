@@ -54,7 +54,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <utlist.h>
 #include <unistd.h>
 #ifdef HAVE_LIBJAIL
 #include <jail.h>
@@ -63,6 +62,8 @@
 #include <signal.h>
 
 #include <pkg.h>
+#include <tllist.h>
+#include <xmalloc.h>
 
 #include "pkgcli.h"
 
@@ -127,10 +128,8 @@ struct plugcmd {
 	const char *name;
 	const char *desc;
 	int (*exec)(int argc, char **argv);
-	struct plugcmd *next;
-	struct plugcmd *prev;
 };
-static struct plugcmd *plugins = NULL;
+static tll(struct plugcmd *)plugins = tll_init();
 
 typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
 typedef int (nb_cmd)(void);
@@ -149,7 +148,6 @@ show_command_names(void)
 static void
 usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reason reason, ...)
 {
-	struct plugcmd *c;
 	bool plugins_enabled = false;
 	unsigned int i;
 	const char *arg;
@@ -207,8 +205,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
-			DL_FOREACH(plugins, c) {
-				fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			tll_foreach(plugins, it) {
+				fprintf(out, "\t%-15s%s\n", it->item->name,
+				    it->item->desc);
 			}
 		}
 		fprintf(out, "\nFor more information on the different commands"
@@ -232,7 +231,6 @@ exec_help(int argc, char **argv)
 {
 	char *manpage;
 	bool plugins_enabled = false;
-	struct plugcmd *c;
 	unsigned int i;
 	const pkg_object *all_aliases;
 	const pkg_object *alias;
@@ -245,9 +243,7 @@ exec_help(int argc, char **argv)
 
 	for (i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
-			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
-				errx(EXIT_FAILURE, "cannot allocate memory");
-
+			xasprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name);
 			system(manpage);
 			free(manpage);
 
@@ -258,11 +254,9 @@ exec_help(int argc, char **argv)
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 	if (plugins_enabled) {
-		DL_FOREACH(plugins, c) {
-			if (strcmp(c->name, argv[1]) == 0) {
-				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
-					errx(EXIT_FAILURE, "cannot allocate memory");
-
+		tll_foreach(plugins, it) {
+			if (strcmp(it->item->name, argv[1]) == 0) {
+				xasprintf(&manpage, "/usr/bin/man pkg-%s", it->item->name);
 				system(manpage);
 				free(manpage);
 
@@ -802,9 +796,9 @@ main(int argc, char **argv)
 			if (reg != NULL && ncmd != NULL) {
 				n = ncmd();
 				for (j = 0; j < n ; j++) {
-					c = malloc(sizeof(struct plugcmd));
+					c = xmalloc(sizeof(struct plugcmd));
 					reg(j, &c->name, &c->desc, &c->exec);
-					DL_APPEND(plugins, c);
+					tll_push_back(plugins, c);
 				}
 			}
 		}
@@ -870,10 +864,10 @@ main(int argc, char **argv)
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
-			DL_FOREACH(plugins, c) {
-				if (strcmp(c->name, argv[0]) == 0) {
+			tll_foreach(plugins, it) {
+				if (strcmp(it->item->name, argv[0]) == 0) {
 					plugin_found = true;
-					ret = c->exec(argc, argv);
+					ret = it->item->exec(argc, argv);
 					break;
 				}
 			}
