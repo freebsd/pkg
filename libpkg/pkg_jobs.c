@@ -64,7 +64,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
-#include "kvec.h"
+#include "tllist.h"
 
 extern struct pkg_ctx ctx;
 
@@ -436,13 +436,12 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 	struct pkg_dep *d;
 	struct pkg *lp;
 	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
-	kvec_t(struct pkg_job_universe_item *) to_process;
+	tll(struct pkg_job_universe_item *) to_process = tll_init();
 	pkghash_it hit;
 
 	if (!upgrade && !reverse)
 		return;
 
-	kv_init(to_process);
 	hit = pkghash_iterator(j->request_add);
 	while (pkghash_next(&hit)) {
 		req = hit.value;
@@ -482,7 +481,7 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 			cur = un->prev;
 			while (cur != un) {
 				if (cur->pkg->type != PKG_INSTALLED) {
-					kv_push(typeof(un), to_process, un);
+					tll_push_back(to_process, un);
 					break;
 				}
 				cur = cur->prev;
@@ -491,15 +490,15 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 	}
 
 	/* Add all items to the request */
-	for (int i = 0; i < kv_size(to_process); i++) {
-		un = kv_A(to_process, i);
+	tll_foreach(to_process, pit) {
+		un = pit->item;
 		pkg_jobs_add_req_from_universe(&j->request_add, un, false, true);
 	}
 	/* Now recursively process all items checked */
-	if (kv_size(to_process) > 0)
+	if (tll_length(to_process) > 0)
 		pkg_jobs_process_add_request(j);
 
-	kv_destroy(to_process);
+	tll_free(to_process);
 }
 
 /*
@@ -513,13 +512,12 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	struct pkg_dep *d = NULL;
 	struct pkg *lp;
 	int rc = EPKG_OK;
-	kvec_t(struct pkg *) to_process;
+	tll(struct pkg *) to_process = tll_init();
 	pkghash_it it;
 
 	if (force)
 		return (EPKG_OK);
 
-	kv_init(to_process);
 	/*
 	 * Need to add also all reverse deps here
 	 */
@@ -539,7 +537,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 					   req->item->pkg->name);
 					rc = EPKG_FATAL;
 				}
-				kv_push(typeof(lp), to_process, lp);
+				tll_push_back(to_process, lp);
 			}
 		}
 	}
@@ -547,16 +545,16 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	if (rc == EPKG_FATAL)
 		return (rc);
 
-	for (int i = 0; i < kv_size(to_process); i++) {
-		lp = kv_A(to_process, i);
+	tll_foreach(to_process, pit) {
+		lp = pit->item;
 		if (pkg_jobs_add_req(j, lp) == NULL) {
-			kv_destroy(to_process);
+			tll_free(to_process);
 			return (EPKG_FATAL);
 		}
 	}
-	if (kv_size(to_process) > 0)
+	if (tll_length(to_process) > 0)
 		rc = pkg_jobs_process_delete_request(j);
-	kv_destroy(to_process);
+	tll_free(to_process);
 
 	return (rc);
 }

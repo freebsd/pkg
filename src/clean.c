@@ -49,7 +49,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-#include <kvec.h>
+#include <tllist.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
@@ -59,7 +59,7 @@
 #include "pkgcli.h"
 #include "pkghash.h"
 
-typedef kvec_t(char *) dl_list;
+typedef tll(char *) dl_list;
 
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
@@ -92,19 +92,9 @@ add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
 	relpath = path + strlen(cachedir) + 1;
 	if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) != -1 && S_ISREG(st.st_mode))
 		sz = st.st_size;
-	kv_push(char *, *dl, store_path);
+	tll_push_back(*dl, store_path);
 
 	return (sz);
-}
-
-static void
-free_dellist(dl_list *dl)
-{
-	unsigned int i;
-
-	for (i = 0; i < kv_size(*dl); i++)
-		free(kv_A(*dl, i));
-	kv_destroy(*dl);
 }
 
 static int
@@ -113,15 +103,14 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	struct stat st;
 	int retcode = EXIT_SUCCESS;
 	int flag = 0;
-	size_t i;
 	unsigned int count = 0, processed = 0;
 	char *file, *relpath;
 
-	count = kv_size(*dl);
+	count = tll_length(*dl);
 	progressbar_start("Deleting files");
-	for (i = 0; i < kv_size(*dl); i++) {
+	tll_foreach(*dl, it) {
 		flag = 0;
-		relpath = file = kv_A(*dl, i);
+		relpath = file = it->item;
 		relpath += strlen(cachedir) + 1;
 		if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) == -1) {
 			++processed;
@@ -136,7 +125,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 			retcode = EXIT_FAILURE;
 		}
 		free(file);
-		kv_A(*dl, i) = NULL;
+		it->item = NULL;
 		++processed;
 		progressbar_tick(processed, total);
 	}
@@ -294,7 +283,7 @@ exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	pkghash		*sumlist = NULL;
-	dl_list		 dl;
+	dl_list		 dl = tll_init();
 	const char	*cachedir;
 	bool		 all = false;
 	int		 retcode;
@@ -391,8 +380,6 @@ exec_clean(int argc, char **argv)
 #endif
 #endif
 
-	kv_init(dl);
-
 	/* Build the list of out-of-date or obsolete packages */
 
 	pkg_manifest_keys_new(&keys);
@@ -400,7 +387,7 @@ exec_clean(int argc, char **argv)
 	    &total);
 	pkghash_destroy(sumlist);
 
-	if (kv_size(dl) == 0) {
+	if (tll_length(dl) == 0) {
 		if (!quiet)
 			printf("Nothing to do.\n");
 		retcode = EXIT_SUCCESS;
@@ -415,7 +402,7 @@ exec_clean(int argc, char **argv)
 	if (!dry_run) {
 			if (query_yesno(false,
 			  "\nProceed with cleaning the cache? ")) {
-				retcode = delete_dellist(cachefd, cachedir, &dl, kv_size(dl));
+				retcode = delete_dellist(cachefd, cachedir, &dl, tll_length(dl));
 			}
 	} else {
 		retcode = EXIT_SUCCESS;
@@ -425,7 +412,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_manifest_keys_free(keys);
-	free_dellist(&dl);
+	tll_free_and_free(dl, free);
 
 	if (cachefd != -1)
 		close(cachefd);

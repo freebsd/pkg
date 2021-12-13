@@ -54,7 +54,7 @@
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
-#include <kvec.h>
+#include <tllist.h>
 
 #include <bsd_compat.h>
 
@@ -83,7 +83,7 @@ static int64_t bytes_per_second;
 static time_t last_update;
 static time_t begin = 0;
 static int add_deps_depth;
-static kvec_t(struct cleanup *) cleanup_list;
+static tll(struct cleanup *) cleanup_list = tll_init();
 static bool signal_handler_installed = false;
 
 /* units for format_size */
@@ -95,13 +95,12 @@ static void
 cleanup_handler(int dummy __unused)
 {
 	struct cleanup *ev;
-	size_t i;
 
-	if (kv_size(cleanup_list) == 0)
+	if (tll_length(cleanup_list) == 0)
 		return;
 	warnx("\nsignal received, cleaning up");
-	for (i = 0; i < kv_size(cleanup_list); i++) {
-		ev = kv_A(cleanup_list, i);
+	tll_foreach(cleanup_list, it) {
+		ev = it->item;
 		ev->cb(ev->data);
 	}
 	exit(1);
@@ -539,7 +538,6 @@ event_callback(void *data, struct pkg_event *ev)
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
 	struct cleanup *evtmp;
 	int *debug = data;
-	size_t i;
 	struct pkg_event_conflict *cur_conflict;
 	const char *filename, *reponame;
 
@@ -851,23 +849,22 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
 		if (!signal_handler_installed) {
-			kv_init(cleanup_list);
 			signal(SIGINT, cleanup_handler);
 			signal_handler_installed = true;
 		}
 		evtmp = malloc(sizeof(struct cleanup));
 		evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
 		evtmp->data = ev->e_cleanup_callback.data;
-		kv_push(struct cleanup *, cleanup_list, evtmp);
+		tll_push_back(cleanup_list, evtmp);
 		break;
 	case PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER:
 		if (!signal_handler_installed)
 			break;
-		for (i = 0; i < kv_size(cleanup_list); i++) {
-			evtmp = kv_A(cleanup_list, i);
+		tll_foreach(cleanup_list, it) {
+			evtmp = it->item;
 			if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
 			    evtmp->data == ev->e_cleanup_callback.data) {
-				kv_del(struct cleanup *, cleanup_list, i);
+				tll_remove(cleanup_list, it);
 				break;
 			}
 		}

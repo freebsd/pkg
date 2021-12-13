@@ -35,13 +35,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <kvec.h>
 #include <fnmatch.h>
 
 #include <pkg.h>
 #include "pkgcli.h"
+#include <string.h>
+#include <xmalloc.h>
+#include <tllist.h>
 
-typedef kvec_t(char *) charlist;
+typedef tll(char *) charlist;
 
 void
 usage_which(void)
@@ -56,11 +58,10 @@ int get_match(char **, char **, char *);
 static bool
 already_in_list(charlist *list, const char *pattern)
 {
-	size_t i;
-
-	for (i = 0; i < kv_size(*list); i++)
-		if (strcmp(kv_A(*list, i), pattern) == 0)
+	tll_foreach(*list, it) {
+		if (strcmp(it->item, pattern) == 0)
 			return (true);
+	}
 
 	return (false);
 }
@@ -76,13 +77,12 @@ exec_which(int argc, char **argv)
 	char		*p, *path, *match, *savedpath;
 	int		 retcode = EXIT_FAILURE;
 	int		 ch, res, pathlen = 0;
-	size_t		 i;
 	bool		 orig = false;
 	bool		 glob = false;
 	bool		 search = false;
 	bool		 search_s = false;
 	bool		 show_match = false;
-	charlist	 patterns;
+	charlist	 patterns = tll_init();
 
 	struct option longopts[] = {
 		{ "glob",		no_argument,	NULL,	'g' },
@@ -146,7 +146,6 @@ exec_which(int argc, char **argv)
 	}
 
 	while (argc >= 1) {
-		kv_init(patterns);
 		retcode = EXIT_FAILURE;
 		if (search_s) {
 			if ((argv[0][0] == '.') || (argv[0][0] == '/')) {
@@ -185,7 +184,7 @@ exec_which(int argc, char **argv)
 						/* ensure not not append twice an entry if PATH is messy */
 						if (already_in_list(&patterns, pathabs))
 							continue;
-						kv_push(char *, patterns, strdup(pathabs));
+						tll_push_back(patterns, xstrdup(pathabs));
 						free(match);
 					}
 				}
@@ -195,18 +194,18 @@ exec_which(int argc, char **argv)
 
 		if (!glob && !search) {
 			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs), false);
-			kv_push(char *, patterns, strdup(pathabs));
+			tll_push_back(patterns, xstrdup(pathabs));
 		} else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
 				retcode = EXIT_FAILURE;
 				goto cleanup;
                         }
-			kv_push(char *, patterns, strdup(pathabs));
+			tll_push_back(patterns, xstrdup(pathabs));
 		}
 
 
-		for (i = 0; i < kv_size(patterns); i++) {
-			if ((it = pkgdb_query_which(db, kv_A(patterns, i), glob)) == NULL) {
+		tll_foreach(patterns, item) {
+			if ((it = pkgdb_query_which(db, item->item, glob)) == NULL) {
 				retcode = EXIT_FAILURE;
 				goto cleanup;
 			}
@@ -219,30 +218,30 @@ exec_which(int argc, char **argv)
 				else if (quiet && !orig && !show_match)
 					pkg_printf("%n-%v\n", pkg, pkg);
 				else if (!quiet && orig && !show_match)
-					pkg_printf("%S was installed by package %o\n", kv_A(patterns, i), pkg);
+					pkg_printf("%S was installed by package %o\n", item->item, pkg);
 				else if (!quiet && !orig && !show_match)
-					pkg_printf("%S was installed by package %n-%v\n", kv_A(patterns, i), pkg, pkg);
+					pkg_printf("%S was installed by package %n-%v\n", item->item, pkg, pkg);
 				else if (glob && show_match) {
 					if (!quiet)
-						pkg_printf("%S was glob searched and found in package %n-%v\n", kv_A(patterns, i), pkg, pkg, pkg);
+						pkg_printf("%S was glob searched and found in package %n-%v\n", item->item, pkg, pkg, pkg);
 					while(pkg_files(pkg, &file) == EPKG_OK) {
 						pkg_asprintf(&match, "%Fn", file);
 						if (match == NULL)
 							err(EXIT_FAILURE, "pkg_asprintf");
-						if(!fnmatch(kv_A(patterns, i), match, 0))
+						if(!fnmatch(item->item, match, 0))
 							printf("%s\n", match);
 						free(match);
 					}
 				}
 			}
 			if (retcode != EXIT_SUCCESS && !quiet)
-				printf("%s was not found in the database\n", kv_A(patterns, i));
+				printf("%s was not found in the database\n", item->item);
 
 			pkg_free(pkg);
 			pkgdb_it_free(it);
 
 		}
-		kv_destroy(patterns);
+		tll_free_and_free(patterns, free);
 
 		argc--;
 		argv++;
