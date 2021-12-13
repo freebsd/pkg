@@ -214,7 +214,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
        pkg_checksum_type_t type, bool inc_scripts, bool inc_version, bool inc_files)
 {
 	unsigned char *bdigest;
-	char *olduid, *buf;
+	char *olduid;
 	size_t blen;
 	struct pkg_checksum_entry *entries = NULL;
 	struct pkg_option *option = NULL;
@@ -237,25 +237,21 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		pkg_checksum_add_entry(option->key, option->value, &entries);
 	}
 
-	buf = NULL;
 	it = pkghash_iterator(pkg->shlibs_required);
 	while (pkghash_next(&it)) {
 		pkg_checksum_add_entry("required_shlib", it.key, &entries);
 	}
 
-	buf = NULL;
 	it = pkghash_iterator(pkg->shlibs_provided);
 	while (pkghash_next(&it)) {
 		pkg_checksum_add_entry("provided_shlib", it.key, &entries);
 	}
 
-	buf = NULL;
 	it = pkghash_iterator(pkg->users);
 	while (pkghash_next(&it)) {
 		pkg_checksum_add_entry("user", it.key, &entries);
 	}
 
-	buf = NULL;
 	it = pkghash_iterator(pkg->groups);
 	while (pkghash_next(&it)) {
 		pkg_checksum_add_entry("group", it.key, &entries);
@@ -267,13 +263,11 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		free(olduid);
 	}
 
-	buf = NULL;
 	it = pkghash_iterator(pkg->provides);
 	while (pkghash_next(&it)) {
 		pkg_checksum_add_entry("provide", it.key, &entries);
 	}
 
-	buf = NULL;
 	it = pkghash_iterator(pkg->requires);
 	while (pkghash_next(&it)) {
 		pkg_checksum_add_entry("require", it.key, &entries);
