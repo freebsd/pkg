@@ -91,6 +91,20 @@ ATF_TC_BODY(check_files, tc)
 
 	sum=pkg_checksum_generate_file("foo", PKG_HASH_TYPE_SHA256_HEX);
 	ATF_REQUIRE_STREQ(sum, "1$7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730");
+	free(sum);
+
+	sum=pkg_checksum_generate_file("foo", PKG_HASH_TYPE_SHA256_HEX);
+	ATF_CHECK(pkg_checksum_validate_fileat(AT_FDCWD, "foo", "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730") == 0);
+	free(sum);
+
+	sum = pkg_checksum_file("foo", PKG_HASH_TYPE_BLAKE2_BASE32);
+	ATF_REQUIRE_STREQ(sum, "gf8mcrnmm6p6hg6wa9xkfb98zo8g6nxu8z4q7s93boz8hzf5ogrsr4qgpsb7utd6speio3op18ocyrsa9ms8jj15byttiq7ofbih8gn");
+	free(sum);
+
+	sum = pkg_checksum_file("foo", PKG_HASH_TYPE_BLAKE2S_BASE32);
+	ATF_REQUIRE_STREQ(sum, "dqi4rzroazhfbq4sd33ektsg3jjsrye7mc37ggsa9bt3mhxsyddy");
+	free(sum);
+
 }
 
 ATF_TC_BODY(check_pkg, tc)
@@ -104,16 +118,19 @@ ATF_TC_BODY(check_pkg, tc)
 
 	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false) == EPKG_OK);
 	ATF_REQUIRE_STREQ(sum, "2$1$22c6baf7d22b7035be18ffe04f43717f907f4848b3d5d72bfc44bb8435053ea4");
+	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_SHA256_HEX);
 	free(sum);
 
 	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, sizeof(char));
 	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, PKG_HASH_TYPE_BLAKE2_BASE32, false, false, false) == EPKG_OK);
 	ATF_REQUIRE_STREQ(sum, "2$2$iskiim4jgor5sie8tkthjksomnpyuynaqfxbmgt3x7rn9atyebiwk5njiiyxpyqm5eimq6g44bd9tnuwf3mfesqp6r8tim8un7jfday");
+	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2_BASE32);
 	free(sum);
 
 	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, sizeof(char));
 	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, PKG_HASH_TYPE_BLAKE2S_BASE32, false, false, false) == EPKG_OK);
 	ATF_REQUIRE_STREQ(sum, "2$5$9819ezi7ytn58y3mwhcxaqbkiaik7ui9o3obewhqmuyx99kmb95y");
+	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2S_BASE32);
 	free(sum);
 }
 
