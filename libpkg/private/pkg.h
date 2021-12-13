@@ -127,26 +127,6 @@
 } while (0)
 #define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
-#define kh_safe_add(name, h, val, k) do {		\
-	int __ret;					\
-	khint_t __i;					\
-	if (!h) h = kh_init_##name();			\
-	__i = kh_put_##name(h, k, &__ret);		\
-	if (__ret != 0)					\
-		kh_val(h, __i) = val;			\
-} while (0)
-
-#define kh_find(name, h, k, ret) do {			\
-	khint_t __k;					\
-	ret = NULL;					\
-	if (h != NULL) {				\
-		__k = kh_get(name, h, k);		\
-		if (__k != kh_end(h)) {			\
-			ret = kh_value(h, __k);		\
-		}					\
-	}						\
-} while (0)
-
 struct pkg_ctx {
 	int eventpipe;
 	int64_t debug_level;
