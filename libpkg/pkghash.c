@@ -186,35 +186,6 @@ pkghash_next(pkghash_it *it)
 	return (false);
 }
 
-void
-pkghash_loopinit(pkghash *h)
-{
-	if (h == NULL)
-		return;
-	h->index = 0;
-}
-
-pkghash_entry *
-pkghash_inext(pkghash *h)
-{
-	if (h == NULL)
-		return (NULL);
-	if (h->count == 0) {
-		h->index = 0;
-		return (NULL);
-	}
-
-	while (h->index < h->capacity) {
-		size_t i = h->index;
-		h->index++;
-		if (h->entries[i].key != NULL)
-			return (&h->entries[i]);
-	}
-	/* rewind just in case */
-	h->index = 0;
-	return (NULL);
-}
-
 bool
 pkghash_del(pkghash *h, const char *key)
 {
