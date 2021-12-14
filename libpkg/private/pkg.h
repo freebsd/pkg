@@ -518,9 +518,10 @@ struct pkg_repo {
 	struct pkg_repo *next, *prev;
 };
 
+typedef tll(struct action *) actions_t;
 struct keyword {
 	char *keyword;
-	struct action *actions;
+	actions_t actions;
 };
 
 struct plist {
@@ -559,7 +560,6 @@ struct file_attr {
 
 struct action {
 	int (*perform)(struct plist *, char *, struct file_attr *);
-	struct action *next, *prev;
 };
 
 /* sql helpers */
