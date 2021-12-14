@@ -1927,11 +1927,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert categories
 	 */
 
-	hit = pkghash_iterator(pkg->categories);
-	while (pkghash_next(&hit)) {
-		ret = run_prstmt(CATEGORY1, hit.key);
+	tll_foreach(pkg->categories, c) {
+		ret = run_prstmt(CATEGORY1, c->item);
 		if (ret == SQLITE_DONE)
-			ret = run_prstmt(CATEGORY2, package_id, hit.key);
+			ret = run_prstmt(CATEGORY2, package_id, c->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(CATEGORY2));
 			goto cleanup;
@@ -1942,12 +1941,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert licenses
 	 */
 
-	hit = pkghash_iterator(pkg->licenses);
-	while (pkghash_next(&hit)) {
-		if (run_prstmt(LICENSES1, hit.key)
+	tll_foreach(pkg->licenses, l) {
+		if (run_prstmt(LICENSES1, l->item)
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(LICENSES2, package_id, hit.key)
+		    run_prstmt(LICENSES2, package_id, l->item)
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(LICENSES2));
 			goto cleanup;

@@ -178,24 +178,22 @@ try_again:
 		}
 	}
 
-	it = pkghash_iterator(pkg->categories);
-	while (pkghash_next(&it)) {
-	ret = pkg_repo_binary_run_prstatement(CAT1, it.key);
+	tll_foreach(pkg->categories, c) {
+		ret = pkg_repo_binary_run_prstatement(CAT1, c->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(CAT2, package_id,
-			    it.key);
+			    c->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
 	}
 
-	it = pkghash_iterator(pkg->licenses);
-	while (pkghash_next(&it)) {
-		ret = pkg_repo_binary_run_prstatement(LIC1, it.key);
+	tll_foreach(pkg->licenses, l) {
+		ret = pkg_repo_binary_run_prstatement(LIC1, l->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
-			    it.key);
+			    l->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);

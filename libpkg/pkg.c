@@ -100,8 +100,10 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 	pkg_list_free(pkg, PKG_PROVIDES);
 	pkg_list_free(pkg, PKG_REQUIRES);
-	pkg_list_free(pkg, PKG_CATEGORIES);
-	pkg_list_free(pkg, PKG_LICENSES);
+	tll_free_and_free(pkg->categories, free);
+	pkg->flags &= ~PKG_LOAD_CATEGORIES;
+	tll_free_and_free(pkg->licenses, free);
+	pkg->flags &= ~PKG_LOAD_LICENSES;
 
 	DL_FREE(pkg->message, pkg_message_free);
 	DL_FREE(pkg->annotations, pkg_kv_free);
@@ -520,8 +522,6 @@ pkg_##name(const struct pkg *pkg, char **c) {        \
 	return (EPKG_OK);                            \
 }
 
-pkg_each_string_hash(categories);
-pkg_each_string_hash(licenses);
 pkg_each_string_hash(requires);
 pkg_each_string_hash(provides);
 pkg_each_string_hash(shlibs_required);
@@ -726,24 +726,25 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 }
 
 int
-pkg_addstring(pkghash **list, const char *val, const char *title)
+pkg_addstring(stringlist_t *list, const char *val, const char *title)
 {
 	assert(val != NULL);
 	assert(title != NULL);
 
-	if (pkghash_get(*list, val) != NULL) {
+	tll_foreach(*list, v) {
+		if (strcmp(v->item, val) != 0)
+			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s listing: %s, fatal"
 			    " (developer mode)", title, val);
 			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate %s listing: %s, "
-			    "ignoring", title, val);
-			return (EPKG_OK);
 		}
+		pkg_emit_error("duplicate %s listing: %s, "
+		    "ignoring", title, val);
+		return (EPKG_OK);
 	}
 
-	pkghash_safe_add(*list, val, NULL, NULL);
+	tll_push_back(*list, xstrdup(val));
 
 	return (EPKG_OK);
 }
@@ -1191,10 +1192,6 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (pkghash_count(pkg->requires));
 	case PKG_CONFIG_FILES:
 		return (pkghash_count(pkg->config_files_hash));
-	case PKG_CATEGORIES:
-		return (pkghash_count(pkg->categories));
-	case PKG_LICENSES:
-		return (pkghash_count(pkg->licenses));
 	}
 
 	return (0);
@@ -1279,16 +1276,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkghash_destroy(pkg->requires);
 		pkg->requires = NULL;
 		pkg->flags &= ~PKG_LOAD_REQUIRES;
-		break;
-	case PKG_CATEGORIES:
-		pkghash_destroy(pkg->categories);
-		pkg->categories = NULL;
-		pkg->flags &= ~PKG_LOAD_CATEGORIES;
-		break;
-	case PKG_LICENSES:
-		pkghash_destroy(pkg->licenses);
-		pkg->licenses = NULL;
-		pkg->flags &= ~PKG_LOAD_LICENSES;
 		break;
 	}
 }

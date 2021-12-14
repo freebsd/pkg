@@ -347,7 +347,10 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
 	char			*buf;
+	const char		*str;
 	struct pkg_kv		*kv;
+	struct pkg_stringlist	*sl;
+	struct pkg_stringlist_iterator	*slit;
 
 	output = xstring_new();
 
@@ -366,10 +369,14 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		break;
 	case 'C':
 		buf = NULL;
-		while (pkg_categories(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get_stringlist(pkg, PKG_CATEGORIES, sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'O':
 		while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -391,10 +398,14 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		break;
 	case 'L':
 		buf = NULL;
-		while (pkg_licenses(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get_stringlist(pkg, PKG_LICENSES, sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'U':
 		buf = NULL;

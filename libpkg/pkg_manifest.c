@@ -1027,11 +1027,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting licenses");
 	seq = NULL;
-	it = pkghash_iterator(pkg->licenses);
-	while (pkghash_next(&it)) {
+	tll_foreach(pkg->licenses, l) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(it.key));
+		ucl_array_append(seq, ucl_object_fromstring(l->item));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "licenses", 8, false);
@@ -1064,11 +1063,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting categories");
 	seq = NULL;
-	it = pkghash_iterator(pkg->categories);
-	while (pkghash_next(&it)) {
+	tll_foreach(pkg->categories, c) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(it.key));
+		ucl_array_append(seq, ucl_object_fromstring(c->item));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "categories", 10, false);

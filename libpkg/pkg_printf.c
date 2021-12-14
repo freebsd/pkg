@@ -964,20 +964,19 @@ format_categories(xstring *buf, const void *data, struct percent_esc *p)
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, pkg_list_count(pkg, PKG_CATEGORIES), p));
+		return (list_count(buf, tll_length(pkg->categories), p));
 	} else {
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		pkghash_it it = pkghash_iterator(pkg->categories);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->categories, c) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    it.key, count, PP_C);
+				    c->item, count, PP_C);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, it.key,
+			iterate_item(buf, pkg, p->item_fmt->buf, c->item,
 			    count, PP_C);
 			count++;
 		}
@@ -1237,20 +1236,19 @@ format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, pkg_list_count(pkg, PKG_LICENSES), p));
+		return (list_count(buf, tll_length(pkg->licenses), p));
 	} else {
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		pkghash_it it = pkghash_iterator(pkg->licenses);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->licenses, l) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    it.key, count, PP_L);
+				    l->item, count, PP_L);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, it.key,
+			iterate_item(buf, pkg, p->item_fmt->buf, l->item,
 			    count, PP_L);
 			count++;
 		}

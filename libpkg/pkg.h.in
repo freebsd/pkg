@@ -274,6 +274,8 @@ typedef enum {
 	PKG_OLD_DIGEST,
 	PKG_DEP_FORMULA,
 	PKG_VITAL,
+	PKG_CATEGORIES,
+	PKG_LICENSES,
 	PKG_NUM_FIELDS,		/* end of fields */
 } pkg_attr;
 
@@ -313,8 +315,6 @@ typedef enum {
 	PKG_PROVIDES,
 	PKG_CONFIG_FILES,
 	PKG_REQUIRES,
-	PKG_CATEGORIES,
-	PKG_LICENSES
 } pkg_list;
 
 typedef enum {
@@ -581,7 +581,7 @@ typedef enum {
 #define pkg_get_stringlist(p, t, v) do { \
 	struct pkg_el *e = pkg_get_element(p, t); \
 	if (e->type != PKG_STRINGLIST) abort(); \
-	v = e->kvlist; \
+	v = e->stringlist; \
 } while (0);
 
 struct pkg_el {

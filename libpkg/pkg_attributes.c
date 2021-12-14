@@ -279,6 +279,12 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->integer = p->pkgsize;
 		e->type = PKG_INTEGER;
 		break;
+	case PKG_CATEGORIES:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->categories;
+		e->type = PKG_STRINGLIST;
+		break;
 	}
+
 	return (e);
 }

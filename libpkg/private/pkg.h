@@ -216,8 +216,8 @@ struct pkg {
 	struct pkg_dep		*depends;
 	pkghash			*rdepshash;
 	struct pkg_dep		*rdepends;
-	pkghash			*categories;
-	pkghash			*licenses;
+	stringlist_t		 categories;
+	stringlist_t		 licenses;
 	pkghash			*filehash;
 	struct pkg_file		*files;
 	pkghash			*dirhash;
@@ -780,7 +780,7 @@ int pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates);
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
     const char *gname, mode_t perm, u_long fflags, bool check_duplicates);
 
-int pkg_addstring(pkghash **s, const char *value, const char *title);
+int pkg_addstring(stringlist_t *s, const char *value, const char *title);
 int pkg_kv_add(struct pkg_kv **kv, const char *key, const char *value, const char *title);
 const char *pkg_kv_get(struct pkg_kv *const*kv, const char *key);
 int pkg_adduser(struct pkg *pkg, const char *name);
