@@ -62,7 +62,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	int64_t		 flatsize = 0;
 	int64_t		 nfiles;
 	const char	*relocation;
-	hardlinks_t	*hardlinks;
+	hardlinks_t	 hardlinks = tll_init();
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -82,7 +82,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	nfiles = pkghash_count(pkg->filehash);
 	counter_init("file sizes/checksums", nfiles);
 
-	hardlinks = kh_init_hardlinks();
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
@@ -90,33 +89,33 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
-			kh_destroy_hardlinks(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode))) {
 			pkg_emit_error("file '%s' is not a regular file or symlink", fpath);
-			kh_destroy_hardlinks(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		if (file->size == 0)
 			file->size = (int64_t)st.st_size;
 
-		if (st.st_nlink == 1 || !check_for_hardlink(hardlinks, &st)) {
+		if (st.st_nlink == 1 || !check_for_hardlink(&hardlinks, &st)) {
 			flatsize += file->size;
 		}
 
 		file->sum = pkg_checksum_generate_file(fpath,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (file->sum == NULL) {
-			kh_destroy_hardlinks(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		counter_count();
 	}
-	kh_destroy_hardlinks(hardlinks);
+	tll_free_and_free(hardlinks, free);
 
 	counter_end();
 

@@ -127,26 +127,6 @@
 } while (0)
 #define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
-#define kh_safe_add(name, h, val, k) do {		\
-	int __ret;					\
-	khint_t __i;					\
-	if (!h) h = kh_init_##name();			\
-	__i = kh_put_##name(h, k, &__ret);		\
-	if (__ret != 0)					\
-		kh_val(h, __i) = val;			\
-} while (0)
-
-#define kh_find(name, h, k, ret) do {			\
-	khint_t __k;					\
-	ret = NULL;					\
-	if (h != NULL) {				\
-		__k = kh_get(name, h, k);		\
-		if (__k != kh_end(h)) {			\
-			ret = kh_value(h, __k);		\
-		}					\
-	}						\
-} while (0)
-
 struct pkg_ctx {
 	int eventpipe;
 	int64_t debug_level;
@@ -556,7 +536,7 @@ struct plist {
 	char *gname;
 	const char *slash;
 	int64_t flatsize;
-	hardlinks_t *hardlinks;
+	hardlinks_t hardlinks;
 	mode_t perm;
 	struct {
 		char *buf;
@@ -686,8 +666,6 @@ int packing_append_file_attr(struct packing *pack, const char *filepath,
      u_long fflags);
 int packing_append_buffer(struct packing *pack, const char *buffer,
 			  const char *path, int size);
-int packing_append_tree(struct packing *pack, const char *treepath,
-			const char *newroot);
 void packing_get_filename(struct packing *pack, const char *filename);
 void packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);

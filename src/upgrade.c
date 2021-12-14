@@ -124,6 +124,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	drop_privileges();
 
 #ifdef HAVE_CAPSICUM
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);
@@ -131,6 +132,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		fclose(out);
 		return;
 	}
+#endif
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {

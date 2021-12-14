@@ -42,6 +42,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <xstring.h>
+#include <tllist.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -49,7 +50,12 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-KHASH_MAP_INIT_INT(hls, char *);
+struct store_hardlinks {
+	ino_t ino;
+	dev_t dev;
+	const char *path;
+};
+typedef tll(struct store_hardlinks *) hls;
 
 #if defined(UF_NOUNLINK)
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
@@ -747,9 +753,11 @@ pkg_extract_finalize(struct pkg *pkg)
 	struct pkg_dir *d = NULL;
 	char path[MAXPATHLEN + 8];
 	const char *fto;
+#ifdef HAVE_CHFLAGSAT
 	bool install_as_user;
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+#endif
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 
@@ -1333,7 +1341,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	struct group *gr, grent;
 	int err, fd, fromfd;
 	int retcode;
-	kh_hls_t *hardlinks = NULL;;
+	hls hardlinks = tll_init();
 	const char *path;
 	char buffer[1024];
 	size_t link_len;
@@ -1399,7 +1407,6 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		}
 	}
 
-	hardlinks = kh_init_hls();
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		if (match_ucl_lists(f->path,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
@@ -1407,7 +1414,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			continue;
 		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
 		    AT_SYMLINK_NOFOLLOW) == -1) {
-			kh_destroy_hls(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			close(fromfd);
 			pkg_fatal_errno("%s%s", src, f->path);
 		}
@@ -1460,7 +1467,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			if ((link_len = readlinkat(fromfd,
 			    RELATIVE_PATH(f->path), target,
 			    sizeof(target))) == -1) {
-				kh_destroy_hls(hardlinks);
+				tll_free_and_free(hardlinks, free);
 				close(fromfd);
 				pkg_fatal_errno("Impossible to read symlinks "
 				    "'%s'", f->path);
@@ -1473,12 +1480,19 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		} else if (S_ISREG(st.st_mode)) {
 			if ((fd = openat(fromfd, RELATIVE_PATH(f->path),
 			    O_RDONLY)) == -1) {
-				kh_destroy_hls(hardlinks);
+				tll_free_and_free(hardlinks, free);
 				close(fromfd);
 				pkg_fatal_errno("Impossible to open source file"
 				    " '%s'", RELATIVE_PATH(f->path));
 			}
-			kh_find(hls, hardlinks, st.st_ino, path);
+			path = NULL;
+			tll_foreach(hardlinks, hit) {
+				if (hit->item->ino == st.st_ino &&
+				    hit->item->dev == st.st_dev) {
+					path = hit->item->path;
+					break;
+				}
+			}
 			if (path != NULL) {
 				if (create_hardlink(pkg, f, path) == EPKG_FATAL) {
 					close(fd);
@@ -1491,7 +1505,11 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
-				kh_safe_add(hls, hardlinks, f->path, st.st_ino);
+				struct store_hardlinks *h = xcalloc(1, sizeof(*h));
+				h->ino = st.st_ino;
+				h->dev = st.st_dev;
+				h->path = f->path;
+				tll_push_back(hardlinks, h);
 			}
 			close(fd);
 		} else {
@@ -1504,7 +1522,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	retcode = pkg_extract_finalize(pkg);
 
 cleanup:
-	kh_destroy_hls(hardlinks);
+	tll_free_and_free(hardlinks, free);
 	close(fromfd);
 	return (retcode);
 }

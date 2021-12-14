@@ -48,16 +48,11 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <utlist.h>
+#include <tllist.h>
 
 #include "pkgcli.h"
 
-struct pkg_entry {
-	struct pkg *pkg;
-	struct pkg_entry *next;
-	struct pkg_entry *prev;
-};
-struct pkg_entry *pkg_head = NULL;
+tll(struct pkg *) pkg_head = tll_init();
 
 void
 usage_create(void)
@@ -86,7 +81,6 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS | PKG_LOAD_LUA_SCRIPTS;
-	struct pkg_entry *e = NULL, *etmp;
 	bool foundone;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -112,11 +106,8 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 
 		foundone = false;
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
-				err(1, "malloc(pkg_entry)");
-			e->pkg = pkg;
 			pkg = NULL;
-			DL_APPEND(pkg_head, e);
+			tll_push_back(pkg_head, pkg);
 			foundone = true;
 		}
 		if (!foundone) {
@@ -130,18 +121,16 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 			retcode = EXIT_FAILURE;
 	}
 
-	DL_FOREACH_SAFE(pkg_head, e, etmp) {
-		DL_DELETE(pkg_head, e);
-		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
-		ret = pkg_create_i(pc, e->pkg, false);
+	tll_foreach(pkg_head, el) {
+		pkg_printf("Creating package for %n-%v\n", el->item, el->item);
+		ret = pkg_create_i(pc, el->item, false);
 		if (ret == EPKG_EXIST) {
 			pkg_printf("%n-%v already packaged, skipping...\n",
-			  e->pkg, e->pkg);
+			  el->item, el->item);
 		}
 		if (ret != EPKG_OK && ret != EPKG_EXIST)
 			retcode = EXIT_FAILURE;
-		pkg_free(e->pkg);
-		free(e);
+		tll_remove_and_free(pkg_head, el, pkg_free);
 	}
 
 cleanup:

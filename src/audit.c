@@ -378,12 +378,14 @@ exec_audit(int argc, char **argv)
 
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);
 		pkghash_destroy(check);
 		return (EPKG_FATAL);
 	}
+#endif
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {

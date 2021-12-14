@@ -137,7 +137,7 @@ lua_exec(lua_State *L)
 	const char **argv;
 	int n = lua_gettop(L);
 	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
-	    "pkg.prefix_path takes exactly one argument");
+	    "pkg.exec takes exactly one argument");
 
 #ifdef HAVE_CAPSICUM
 	unsigned int capmode;

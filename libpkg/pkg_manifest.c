@@ -961,7 +961,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf       = NULL;
 	xstring		*tmpsbuf  = NULL;
-	char			*buf;
 	int i;
 	const char *script_types = NULL;
 	char legacyarch[BUFSIZ];
@@ -1076,7 +1075,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
-	buf = NULL;
 	it = pkghash_iterator(pkg->users);
 	while (pkghash_next(&it)) {
 		if (seq == NULL)
@@ -1088,7 +1086,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting groups");
 	seq = NULL;
-	buf = NULL;
 	it = pkghash_iterator(pkg->users);
 	while (pkghash_next(&it)) {
 		if (seq == NULL)
@@ -1100,7 +1097,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting required");
 	seq = NULL;
-	buf = NULL;
 	it = pkghash_iterator(pkg->shlibs_required);
 	while (pkghash_next(&it)) {
 		if (seq == NULL)
@@ -1112,7 +1108,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting shlibs_provided");
 	seq = NULL;
-	buf = NULL;
 	it = pkghash_iterator(pkg->shlibs_provided);
 	while (pkghash_next(&it)) {
 		if (seq == NULL)
@@ -1134,7 +1129,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting provides");
 	seq = NULL;
-	buf = NULL;
 	it = pkghash_iterator(pkg->provides);
 	while (pkghash_next(&it)) {
 		if (seq == NULL)
@@ -1146,7 +1140,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	pkg_debug(4, "Emitting requires");
 	seq = NULL;
-	buf = NULL;
 	it = pkghash_iterator(pkg->requires);
 	while (pkghash_next(&it)) {
 		if (seq == NULL)

@@ -35,7 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <kvec.h>
+#include <tllist.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -98,7 +98,7 @@ struct pkg_solve_rule {
 
 struct pkg_solve_problem {
 	struct pkg_jobs *j;
-	kvec_t(struct pkg_solve_rule *) rules;
+	tll(struct pkg_solve_rule *) rules;
 	pkghash *variables_by_uid;
 	struct pkg_solve_variable *variables;
 	PicoSAT *sat;
@@ -172,12 +172,8 @@ pkg_solve_rule_free(struct pkg_solve_rule *rule)
 void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
-	while (kv_size(problem->rules)) {
-		pkg_solve_rule_free(kv_pop(problem->rules));
-	}
-
+	tll_free_and_free(problem->rules, pkg_solve_rule_free);
 	pkghash_destroy(problem->variables_by_uid);
-
 	picosat_reset(problem->sat);
 	free(problem->variables);
 	free(problem);
@@ -379,7 +375,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		return (EPKG_FATAL);
 	}
 
-	kv_prepend(typeof(rule), problem->rules, rule);
+	tll_push_front(problem->rules, rule);
 
 	return (EPKG_OK);
 }
@@ -439,7 +435,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		/* !Bx */
 		pkg_solve_item_new(rule, curvar, -1);
 
-		kv_prepend(typeof(rule), problem->rules, rule);
+		tll_push_front(problem->rules, rule);
 	}
 
 	return (EPKG_OK);
@@ -480,7 +476,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		}
 
 		if (cnt > 1) {
-			kv_prepend(typeof(rule), problem->rules, rule);
+			tll_push_front(problem->rules, rule);
 		}
 		else {
 			/* Missing dependencies... */
@@ -561,7 +557,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	}
 
 	if (cnt > 1 && var->unit->inhash != 0) {
-		kv_prepend(typeof(rule), problem->rules, rule);
+		tll_push_front(problem->rules, rule);
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
 			curvar = pkg_solve_find_var_in_chain(var, item->unit);
@@ -578,7 +574,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 				/* !Bx */
 				pkg_solve_item_new(rule, confvar, -1);
 
-				kv_prepend(typeof(rule), problem->rules, rule);
+				tll_push_front(problem->rules, rule);
 			}
 		}
 	}
@@ -620,7 +616,7 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 			/* !Ay */
 			pkg_solve_item_new(rule, confvar, -1);
 
-			kv_prepend(typeof(rule), problem->rules, rule);
+			tll_push_front(problem->rules, rule);
 		}
 	}
 
@@ -749,7 +745,6 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	problem->nvars = j->universe->nitems;
 	problem->variables = xcalloc(problem->nvars, sizeof(struct pkg_solve_variable));
 	problem->sat = picosat_init();
-	kv_init(problem->rules);
 
 	if (problem->sat == NULL) {
 		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
@@ -783,7 +778,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 	}
 
-	if (kv_size(problem->rules) == 0)
+	if (tll_length(problem->rules) == 0)
 		pkg_debug(1, "problem has no requests");
 
 	return (problem);
@@ -979,8 +974,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int attempt = 0;
 	struct pkg_solve_variable *var;
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, it) {
+		rule = it->item;
 
 		LL_FOREACH(rule->items, item) {
 			picosat_add(problem->sat, item->var->order * item->inverse);
@@ -990,8 +985,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		pkg_debug_print_rule(rule);
 	}
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, it) {
+		rule = it->item;
 		pkg_solve_set_initial_assumption(problem, rule);
 	}
 
@@ -1023,8 +1018,8 @@ reiterate:
 
 			while (*failed) {
 				var = &problem->variables[abs(*failed) - 1];
-				for (i = 0; i < kv_size(problem->rules); i++) {
-					rule = kv_A(problem->rules, i);
+				tll_foreach(problem->rules, it) {
+					rule = it->item;
 
 					if (rule->reason != PKG_RULE_DEPEND) {
 						LL_FOREACH(rule->items, item) {
@@ -1170,8 +1165,8 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 
 	/* Print all variables as nodes */
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, rit) {
+		rule = rit->item;
 		struct pkg_solve_item *it = rule->items, *key_elt = NULL;
 
 		switch(rule->reason) {
@@ -1227,10 +1222,10 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it;
 
-	fprintf(f, "p cnf %d %zu\n", (int)problem->nvars, kv_size(problem->rules));
+	fprintf(f, "p cnf %d %zu\n", (int)problem->nvars, tll_length(problem->rules));
 
-	for (unsigned int i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, rit) {
+		rule = rit->item;
 		LL_FOREACH(rule->items, it) {
 			size_t order = it->var - problem->variables;
 			if (order < problem->nvars)

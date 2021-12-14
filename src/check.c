@@ -38,27 +38,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <utlist.h>
 
 #include <pkg.h>
+#include <tllist.h>
+#include <xmalloc.h>
 
 #include "pkgcli.h"
 
-struct deps_entry {
-	char *name;
-	struct deps_entry *next;
-	struct deps_entry *prev;
-};
+typedef tll(char *) deps_entries;
 
-static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_entry **dh,
+static int check_deps(struct pkgdb *db, struct pkg *pkg, deps_entries *dh,
     bool noinstall, xstring *out);
-static void add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs);
-static void deps_free(struct deps_entry *dh);
-static int fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs);
-static void check_summary(struct pkgdb *db, struct deps_entry *dh);
+static void add_missing_dep(struct pkg_dep *d, deps_entries *dh, int *nbpkgs);
+static int fix_deps(struct pkgdb *db, deps_entries *dh, int nbpkgs);
+static void check_summary(struct pkgdb *db, deps_entries *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinstall, xstring *out)
+check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xstring *out)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
@@ -117,9 +113,8 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_entry **dh, bool noinsta
 }
 
 static void
-add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs)
+add_missing_dep(struct pkg_dep *d, deps_entries *dh, int *nbpkgs)
 {
-	struct deps_entry *e = NULL;
 	const char *name = NULL;
 
 	assert(d != NULL);
@@ -127,38 +122,19 @@ add_missing_dep(struct pkg_dep *d, struct deps_entry **dh, int *nbpkgs)
 	/* do not add duplicate entries in the queue */
 	name = pkg_dep_name(d);
 
-	DL_FOREACH(*dh, e) {
-		if (strcmp(e->name, name) == 0)
+	tll_foreach(*dh, it) {
+		if (strcmp(it->item, name) == 0)
 			return;
 	}
-
-	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
-		err(1, "calloc(deps_entry)");
-
-	e->name = strdup(name);
-
 	(*nbpkgs)++;
 
-	DL_APPEND(*dh, e);
-}
-
-static void
-deps_free(struct deps_entry *dh)
-{
-	struct deps_entry *e, *etmp;
-
-	DL_FOREACH_SAFE(dh, e, etmp) {
-		DL_DELETE(dh, e);
-		free(e->name);
-		free(e);
-	}
+	tll_push_back(*dh, xstrdup(name));
 }
 
 static int
-fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs)
+fix_deps(struct pkgdb *db, deps_entries *dh, int nbpkgs)
 {
 	struct pkg_jobs *jobs = NULL;
-	struct deps_entry *e = NULL;
 	char **pkgs = NULL;
 	int i = 0;
 	bool rc;
@@ -170,8 +146,8 @@ fix_deps(struct pkgdb *db, struct deps_entry *dh, int nbpkgs)
 	if ((pkgs = calloc(nbpkgs, sizeof (char *))) == NULL)
 		err(1, "calloc()");
 
-	DL_FOREACH(dh, e)
-		pkgs[i++] = e->name;
+	tll_foreach(*dh, it)
+		pkgs[i++] = it->item;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		free(pkgs);
@@ -224,9 +200,8 @@ cleanup:
 }
 
 static void
-check_summary(struct pkgdb *db, struct deps_entry *dh)
+check_summary(struct pkgdb *db, deps_entries *dh)
 {
-	struct deps_entry *e = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	bool fixed = true;
@@ -235,15 +210,15 @@ check_summary(struct pkgdb *db, struct deps_entry *dh)
 
 	printf(">>> Summary of actions performed:\n\n");
 
-	DL_FOREACH(dh, e) {
-		if ((it = pkgdb_query(db, e->name, MATCH_EXACT)) == NULL)
+	tll_foreach(*dh, e) {
+		if ((it = pkgdb_query(db, e->item, MATCH_EXACT)) == NULL)
 			return;
 
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
 			fixed = false;
-			printf("%s dependency failed to be fixed\n", e->name);
+			printf("%s dependency failed to be fixed\n", e->item);
 		} else
-			printf("%s dependency has been fixed\n", e->name);
+			printf("%s dependency has been fixed\n", e->item);
 
 		pkgdb_it_free(it);
 	}
@@ -306,7 +281,7 @@ exec_check(int argc, char **argv)
 		{ NULL,			0,		NULL,	0   },
 	};
 
-	struct deps_entry *dh = NULL;
+	deps_entries dh = tll_init();
 
 	processed = 0;
 
@@ -526,9 +501,9 @@ exec_check(int argc, char **argv)
 			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
 			if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
 					PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-				ret = fix_deps(db, dh, nbpkgs);
+				ret = fix_deps(db, &dh, nbpkgs);
 				if (ret == EPKG_OK)
-					check_summary(db, dh);
+					check_summary(db, &dh);
 				else if (ret == EPKG_ENODB) {
 					db = NULL;
 					rc = EXIT_FAILURE;
@@ -551,7 +526,7 @@ cleanup:
 	if (!verbose)
 		progressbar_stop();
 	xstring_free(msg);
-	deps_free(dh);
+	tll_free_and_free(dh, free);
 	pkg_free(pkg);
 	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkgdb_close(db);

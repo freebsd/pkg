@@ -47,6 +47,7 @@
 
 #include "pkg.h"
 #include "private/event.h"
+#include "private/utils.h"
 
 int
 pkg_sshserve(int fd)
@@ -88,12 +89,12 @@ pkg_sshserve(int fd)
 
 		file = line + 4;
 
-		if (*file == '/')
-			file++;
-		else if (*file == '\0') {
+		if (*file == '\0') {
 			printf("ko: bad command get, expecting 'get file age'\n");
 			continue;
 		}
+		if (*file == '/')
+			file++;
 
 		pkg_debug(1, "SSH server> file requested: %s", file);
 
@@ -145,7 +146,7 @@ pkg_sshserve(int fd)
 
 			if (realpath(file, fpath) == NULL ||
 			    realpath(restricted, rpath) == NULL ||
-			    strncmp(fpath, rpath, strlen(rpath)) != 0) {
+			    strncmp(rpath, get_dirname(fpath), strlen(rpath)) != 0) {
 				printf("ko: file not found\n");
 				continue;
 			}
