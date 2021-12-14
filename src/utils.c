@@ -51,10 +51,11 @@
 #include <errno.h>
 #include <pwd.h>
 #include <pkg.h>
+#include <tllist.h>
+#include <xmalloc.h>
 
 #include <bsd_compat.h>
 
-#include "utlist.h"
 #include "pkgcli.h"
 
 struct jobs_sum_number {
@@ -682,17 +683,18 @@ enum pkg_display_type {
 	PKG_DISPLAY_FETCH,
 	PKG_DISPLAY_MAX
 };
-struct pkg_solved_display_item {
+struct pkg_solved_display {
 	struct pkg *new, *old;
 	enum pkg_display_type display_type;
 	pkg_solved_t solved_type;
-	struct pkg_solved_display_item *prev, *next;
 };
+
+typedef tll(struct pkg_solved_display *) pkg_solved_display_t;
 
 static void
 set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
     struct pkg *old_pkg, pkg_solved_t type, int64_t *oldsize,
-    int64_t *newsize, int64_t *dlsize, struct pkg_solved_display_item **disp,
+    int64_t *newsize, int64_t *dlsize, pkg_solved_display_t *disp,
     struct jobs_sum_number *sum)
 {
 	const char *oldversion, *repopath, *destdir;
@@ -700,7 +702,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	int ret;
 	struct stat st;
 	int64_t flatsize, oldflatsize, pkgsize;
-	struct pkg_solved_display_item *it;
+	struct pkg_solved_display *it;
 
 	flatsize = oldflatsize = pkgsize = 0;
 	oldversion = NULL;
@@ -713,7 +715,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	it = malloc(sizeof (*it));
 	if (it == NULL) {
 		fprintf(stderr, "malloc failed for "
-				"pkg_solved_display_item: %s", strerror (errno));
+				"pkg_solved_display: %s", strerror (errno));
 		return;
 	}
 	it->new = new_pkg;
@@ -723,7 +725,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
 		it->display_type = PKG_DISPLAY_LOCKED;
-		DL_APPEND(disp[it->display_type], it);
+		tll_push_back(disp[it->display_type], it);
 		return;
 	}
 
@@ -808,11 +810,11 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 
 		break;
 	}
-	DL_APPEND(disp[it->display_type], it);
+	tll_push_back(disp[it->display_type], it);
 }
 
 static void
-display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
+display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 {
 	const char *why;
 	int64_t pkgsize;
@@ -919,10 +921,12 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 };
 
 static int
-namecmp(struct pkg_solved_display_item *a, struct pkg_solved_display_item *b)
+namecmp(const void *a, const void *b)
 {
+	const struct pkg_solved_display *sda = *(const struct pkg_solved_display **) a;
+	const struct pkg_solved_display *sdb = *(const struct pkg_solved_display **) b;
 
-	return (pkg_namecmp(a->new, b->new));
+	return (pkg_namecmp(sda->new, sdb->new));
 }
 
 int
@@ -934,14 +938,15 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	va_list ap;
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
-	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
+	pkg_solved_display_t disp[PKG_DISPLAY_MAX];
+	struct pkg_solved_display **displays;
 	bool first = true;
 	size_t bytes_change, limbytes;
 	struct jobs_sum_number sum;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
-	memset(disp, 0, sizeof(disp));
+	memset(disp, 0, sizeof(*disp) * PKG_DISPLAY_MAX);
 	memset(&sum, 0, sizeof(sum));
 
 	nbtodl = 0;
@@ -951,7 +956,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
-		if (disp[type] != NULL) {
+		if (tll_length(disp[type]) != 0) {
 			/* Space between each section. */
 			if (!first)
 				puts("");
@@ -965,12 +970,18 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				msg = NULL;
 			}
 			printf("%s:\n", pkg_display_messages[type]);
-			DL_SORT(disp[type], namecmp);
-			DL_FOREACH_SAFE(disp[type], cur, tmp) {
-				display_summary_item(cur, dlsize);
-				displayed ++;
-				free(cur);
+			displays = xcalloc(tll_length(disp[type]), sizeof(*displays));
+			size_t i = 0;
+			tll_foreach(disp[type], d) {
+				displays[i++] = d->item;
 			}
+			qsort(displays, i, sizeof(displays[0]), namecmp);
+			for (i = 0; i < tll_length(disp[type]); i++) {
+				display_summary_item(displays[i], dlsize);
+				displayed ++;
+			}
+			tll_free_and_free(disp[type], free);
+			free(displays);
 		}
 	}
 

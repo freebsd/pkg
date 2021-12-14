@@ -36,6 +36,7 @@
 #include <bsd_compat.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
+#define ll_foreach(head, el) for (el=head; el != NULL; el = (el)->next)
 
 extern bool quiet;
 extern int nbactions;

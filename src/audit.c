@@ -43,7 +43,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <utlist.h>
 #include <ucl.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
@@ -129,7 +128,7 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 	e = issue->audit;
 	if (version == NULL) {
 		printf("  Affected versions:\n");
-		LL_FOREACH(e->versions, vers) {
+		ll_foreach(e->versions, vers) {
 			if (vers->v1.type > 0 && vers->v2.type > 0)
 				printf("  %s %s : %s %s\n",
 				    vop_names[vers->v1.type], vers->v1.version,
@@ -143,7 +142,7 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 		}
 	}
 	printf("  %s\n", e->desc);
-	LL_FOREACH(e->cve, cve) {
+	ll_foreach(e->cve, cve) {
 		printf("  CVE: %s\n", cve->cvename);
 	}
 	if (e->url)
@@ -167,7 +166,7 @@ format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
 
 	e = issue->audit;
 	ucl_object_insert_key(o, affected_versions, "Affected versions", 17, false);
-	LL_FOREACH(e->versions, vers) {
+	ll_foreach(e->versions, vers) {
 		char *ver;
 		if (vers->v1.type > 0 && vers->v2.type > 0)
 			xasprintf(&ver, "%s %s : %s %s",
@@ -185,7 +184,7 @@ format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
 	ucl_object_insert_key(o, ucl_object_fromstring(e->desc), "description", 11, false);
 	if (e->cve) {
 		ucl_object_t *acve = ucl_object_typed_new(UCL_ARRAY);
-		LL_FOREACH(e->cve, cve) {
+		ll_foreach(e->cve, cve) {
 			ucl_array_append(acve, ucl_object_fromstring(cve->cvename));
 		}
 		ucl_object_insert_key(o, acve, "cve", 3, false);
@@ -428,7 +427,7 @@ exec_audit(int argc, char **argv)
 
 				if (top != NULL)
 					array = ucl_object_typed_new(UCL_ARRAY);
-				LL_FOREACH(issues->issues, issue) {
+				ll_foreach(issues->issues, issue) {
 					if (top == NULL)
 						print_issue(pkg, issue);
 					else
