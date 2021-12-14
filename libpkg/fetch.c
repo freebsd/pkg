@@ -181,7 +181,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	struct url	*u = NULL;
 	struct pkg_kv	*kv;
 	kvlist_t	 envtorestore = tll_init();
-	kvlist_t	 envtounset = tll_init();
+	stringlist_t	 envtounset = tll_init();
 	char		*tmp;
 	off_t		 done = 0;
 	off_t		 r;
@@ -234,13 +234,13 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (repo != NULL) {
 		repo->silent = silent;
 		tll_foreach(repo->env, k) {
-			kv = xcalloc(1, sizeof(*kv));
-			kv->key = xstrdup(k->item->key);
 			if ((tmp = getenv(k->item->key)) != NULL) {
+				kv = xcalloc(1, sizeof(*kv));
+				kv->key = xstrdup(k->item->key);
 				kv->value = xstrdup(tmp);
 				tll_push_back(envtorestore, kv);
 			} else {
-				tll_push_back(envtounset, kv);
+				tll_push_back(envtounset, k->item->key);
 			}
 			setenv(k->item->key, k->item->value, 1);
 		}
@@ -334,8 +334,8 @@ cleanup:
 		}
 		tll_free(envtorestore);
 		tll_foreach(envtounset, k) {
-			unsetenv(k->item->key);
-			tll_remove_and_free(envtounset, k, pkg_kv_free);
+			unsetenv(k->item);
+			tll_remove(envtounset, k);
 		}
 		tll_free(envtounset);
 	}

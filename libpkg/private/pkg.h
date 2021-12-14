@@ -158,6 +158,7 @@ struct pkg_message;
 struct pkg_lua_script;
 
 typedef tll(struct pkg_kv *) kvlist_t;
+typedef tll(char *) stringlist_t;
 
 struct pkg {
 	bool		 direct;
