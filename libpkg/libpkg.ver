@@ -56,7 +56,6 @@ global:
 	pkg_finish_repo;
 	pkg_fprintf;
 	pkg_free;
-	pkg_get2;
 	pkg_get_cachedir;
 	pkg_get_cachedirfd;
 	pkg_get_dbdirfd;
