@@ -61,7 +61,6 @@ global:
 	pkg_get_dbdirfd;
 	pkg_get_dir;
 	pkg_get_file;
-	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;
@@ -129,7 +128,6 @@ global:
 	pkg_plugins_init;
 	pkg_plugins_shutdown;
 	pkg_printf;
-	pkg_provides;
 	pkg_rdeps;
 	pkg_recompute;
 	pkg_repo_cached_name;
@@ -146,13 +144,10 @@ global:
 	pkg_repos;
 	pkg_repos_activated_count;
 	pkg_repos_total_count;
-	pkg_requires;
 	pkg_script_get;
 	pkg_set2;
 	pkg_set_debug_level;
 	pkg_set_rootdir;
-	pkg_shlibs_provided;
-	pkg_shlibs_required;
 	pkg_shutdown;
 	pkg_snprintf;
 	pkg_solve_dimacs_export;
@@ -168,7 +163,6 @@ global:
 	pkg_try_installed;
 	pkg_type;
 	pkg_update;
-	pkg_users;
 	pkg_utils_count_spaces;
 	pkg_utils_tokenize;
 	pkg_vasprintf;

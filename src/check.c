@@ -58,8 +58,10 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
-	char *buf = NULL;
+	const char *buf;
 	int nbpkgs = 0;
+	struct pkg_stringlist	*sl;
+	struct pkg_stringlist_iterator	*slit;
 
 	assert(db != NULL);
 	assert(p != NULL);
@@ -78,8 +80,9 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 	}
 
 	/* checking libraries required */
-	buf = NULL;
-	while (pkg_shlibs_required(p, &buf) == EPKG_OK) {
+	pkg_get_stringlist(p, PKG_SHLIBS_REQUIRED, sl);
+	slit = pkg_stringlist_iterator(sl);
+	while ((buf = pkg_stringlist_next(slit))) {
 		it = pkgdb_query_shlib_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
@@ -92,10 +95,14 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 			pkg_fprintf(out->fp, "%n is missing a required shared library: %S\n",
 			    p, buf);
 	}
+	free(slit);
+	free(sl);
 
 	/* checking requires */
 	buf = NULL;
-	while (pkg_requires(p, &buf) == EPKG_OK) {
+	pkg_get_stringlist(p, PKG_REQUIRES, sl);
+	slit = pkg_stringlist_iterator(sl);
+	while ((buf = pkg_stringlist_next(slit))) {
 		it = pkgdb_query_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
@@ -108,6 +115,8 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 			pkg_fprintf(out->fp, "%n has a missing requirement: %S\n",
 			    p, buf);
 	}
+	free(slit);
+	free(sl);
 
 	return (nbpkgs);
 }

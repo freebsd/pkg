@@ -1031,7 +1031,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 					const char *libname;
 					libname = strrchr(f->path, '/');
 					if (libname != NULL &&
-					    pkghash_get(old->shlibs_provided, libname+1) != NULL) {
+					    stringlist_contains(&old->shlibs_provided, libname+1)) {
 						backup_library(db, old, f->path);
 					}
 				}

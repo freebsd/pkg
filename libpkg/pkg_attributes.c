@@ -289,7 +289,47 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->kvlist->list = &p->annotations;
 		e->type = PKG_KVLIST;
 		break;
+	case PKG_SHLIBS_REQUIRED:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->shlibs_required;
+		e->type = PKG_STRINGLIST;
+		break;
+	case PKG_SHLIBS_PROVIDED:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->shlibs_provided;
+		e->type = PKG_STRINGLIST;
+		break;
+	case PKG_PROVIDES:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->provides;
+		e->type = PKG_STRINGLIST;
+		break;
+	case PKG_REQUIRES:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->requires;
+		e->type = PKG_STRINGLIST;
+		break;
+	case PKG_USERS:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->users;
+		e->type = PKG_STRINGLIST;
+		break;
+	case PKG_GROUPS:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->groups;
+		e->type = PKG_STRINGLIST;
+		break;
 	}
 
 	return (e);
+}
+
+bool
+stringlist_contains(stringlist_t *l, const char *name)
+{
+	tll_foreach(*l, e) {
+		if (strcmp(e->item, name) == 0)
+			return (true);
+	}
+	return (false);
 }

@@ -913,9 +913,8 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
+		return (list_count(buf, tll_length(pkg->shlibs_required), p));
 	else {
-		pkghash_it it;
 		int			 count;
 
 		set_list_defaults(p, "%Bn\n", "");
@@ -923,14 +922,13 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		it = pkghash_iterator(pkg->shlibs_required);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->shlibs_required, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     it.key, count, PP_B);
+					     r->item, count, PP_B);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     it.key, count, PP_B);
+				     r->item, count, PP_B);
 			count++;
 		}
 	}
@@ -1177,7 +1175,7 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_GROUPS), p));
+		return (list_count(buf, tll_length(pkg->groups), p));
 	else {
 		int	 count;
 
@@ -1186,14 +1184,13 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		pkghash_it it = pkghash_iterator(pkg->users);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->groups, g) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     it.key, count, PP_G);
+					     g->item, count, PP_G);
 
 			iterate_item(buf, pkg,p->item_fmt->buf,
-				     it.key, count, PP_G);
+				     g->item, count, PP_G);
 			count++;
 		}
 	}
@@ -1463,7 +1460,7 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_USERS), p));
+		return (list_count(buf, tll_length(pkg->users), p));
 	else {
 		int	 count;
 
@@ -1472,14 +1469,13 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		pkghash_it it = pkghash_iterator(pkg->users);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->users, u) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     it.key, count, PP_U);
+					     u->item, count, PP_U);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     it.key, count, PP_U);
+				     u->item, count, PP_U);
 			count++;
 		}
 	}
@@ -1523,15 +1519,14 @@ format_int_checksum(xstring *buf, const void *data, struct percent_esc *p)
 /*
  * %Y -- Required pattern.  List of pattern required by
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
- * %}.  Default %{%Yn\n%|%}
- */
+ * %}.  Default %{%Yn\nr->item*/
 xstring *
 format_required(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_REQUIRES), p));
+		return (list_count(buf, tll_length(pkg->requires), p));
 	else {
 		int	 count;
 
@@ -1540,14 +1535,13 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		pkghash_it it = pkghash_iterator(pkg->requires);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->requires, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     it.key, count, PP_Y);
+					     r->item, count, PP_Y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     it.key, count, PP_Y);
+				     r->item, count, PP_Y);
 			count++;
 		}
 	}
@@ -1589,9 +1583,8 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
+		return (list_count(buf, tll_length(pkg->shlibs_provided), p));
 	else {
-		pkghash_it it;
 		int	 count;
 
 		set_list_defaults(p, "%bn\n", "");
@@ -1599,14 +1592,13 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		it = pkghash_iterator(pkg->shlibs_provided);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->shlibs_provided, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     it.key, count, PP_b);
+					     r->item, count, PP_b);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     it.key, count, PP_b);
+				     r->item, count, PP_b);
 			count++;
 		}
 	}
@@ -1932,9 +1924,8 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_PROVIDES), p));
+		return (list_count(buf, tll_length(pkg->provides), p));
 	else {
-		pkghash_it it;
 		int	 count;
 
 		set_list_defaults(p, "%yn\n", "");
@@ -1942,14 +1933,13 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		it = pkghash_iterator(pkg->provides);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->provides, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     it.key, count, PP_y);
+					     r->item, count, PP_y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     it.key, count, PP_y);
+				     r->item, count, PP_y);
 			count++;
 		}
 	}

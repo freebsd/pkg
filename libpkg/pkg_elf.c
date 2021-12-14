@@ -472,14 +472,12 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	const char *lib;
 	bool failures = false;
 
-	if (pkghash_count(pkg->shlibs_required) != 0) {
-		pkghash_destroy(pkg->shlibs_required);
-		pkg->shlibs_required = NULL;
+	if (tll_length(pkg->shlibs_required) != 0) {
+		tll_free_and_free(pkg->shlibs_required, free);
 	}
 
-	if (pkghash_count(pkg->shlibs_provided) != 0) {
-		pkghash_destroy(pkg->shlibs_provided);
-		pkg->shlibs_provided = NULL;
+	if (tll_length(pkg->shlibs_provided) != 0) {
+		tll_free_and_free(pkg->shlibs_provided, free);
 	}
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
@@ -521,24 +519,23 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	pkghash_it it = pkghash_iterator(pkg->shlibs_required);
-	while (pkghash_next(&it)) {
-		if (pkghash_get(pkg->shlibs_provided, it.key)) {
+	tll_foreach(pkg->shlibs_required, s) {
+		if (stringlist_contains(&pkg->shlibs_provided, s->item)) {
 			pkg_debug(2, "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    it.key, pkg->name);
-			pkghash_del(pkg->shlibs_required, it.key);
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_required, s, free);
 			continue;
 		}
 		file = NULL;
 		while (pkg_files(pkg, &file) == EPKG_OK) {
-			if ((lib = strstr(file->path, it.key)) != NULL &&
-			    strlen(lib) == strlen(it.key) && lib[-1] == '/') {
+			if ((lib = strstr(file->path, s->item)) != NULL &&
+			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
 				pkg_debug(2, "remove %s from required shlibs as "
 				    "the package %s provides this file itself",
-				    it.key, pkg->name);
+				    s->item, pkg->name);
 
-				pkghash_del(pkg->shlibs_required, it.key);
+				tll_remove_and_free(pkg->shlibs_required, s, free);
 				break;
 			}
 		}
@@ -549,8 +546,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	 * drop the provided one
 	 */
 	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL) {
-		pkghash_destroy(pkg->shlibs_provided);
-		pkg->shlibs_provided = NULL;
+		tll_free_and_free(pkg->shlibs_provided, free);
 	}
 
 	if (failures)

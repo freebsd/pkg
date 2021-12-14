@@ -224,14 +224,14 @@ struct pkg {
 	struct pkg_dir		*dirs;
 	pkghash			*optionshash;
 	struct pkg_option	*options;
-	pkghash			*users;
-	pkghash			*groups;
-	pkghash			*shlibs_required;
-	pkghash			*shlibs_provided;
+	stringlist_t		 users;
+	stringlist_t		 groups;
+	stringlist_t		 shlibs_required;
+	stringlist_t		 shlibs_provided;
 	pkghash			*conflictshash;
 	struct pkg_conflict	*conflicts;
-	pkghash			*provides;
-	pkghash			*requires;
+	stringlist_t		 provides;
+	stringlist_t		 requires;
 	pkghash			*config_files_hash;
 	struct pkg_config_file	*config_files;
 	kvlist_t		 annotations;
@@ -828,5 +828,6 @@ int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, con
 struct trigger *triggers_load(bool cleanup_only);
 int triggers_execute(struct trigger *cleanup_triggers);
 void append_touched_file(const char *path);
+bool stringlist_contains(stringlist_t *l, const char *name);
 
 #endif

@@ -1090,7 +1090,8 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
-	pkghash_it it1, it2;
+	const char **l1;
+	size_t i;
 
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
@@ -1209,94 +1210,91 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 
 	/* Provides */
-	it1 = pkghash_iterator(rp->provides);
-	it2 = pkghash_iterator(lp->provides);
-	for (;;) {
-		ret1 = pkghash_next(&it1);
-		ret2 = pkghash_next(&it2);
-		if (ret1 != ret2) {
+	if (tll_length(rp->provides) != tll_length(lp->provides)) {
+		free(rp->reason);
+		rp->reason = xstrdup("provides changed");
+		return (true);
+	}
+	l1 = xcalloc(tll_length(lp->provides), sizeof (char*));
+	i = 0;
+	tll_foreach(lp->provides, l) {
+		l1[i++] = l->item;
+	}
+	i = 0;
+	tll_foreach(rp->provides, r) {
+		if (strcmp(r->item, l1[i]) != 0) {
 			free(rp->reason);
 			rp->reason = xstrdup("provides changed");
+			free(l1);
 			return (true);
 		}
-		if (ret1) {
-			if (strcmp(it1.key, it2.key) != 0) {
-				free(rp->reason);
-				rp->reason = xstrdup("provides changed");
-				return (true);
-			}
-		}
-		else
-			break;
 	}
+	free(l1);
+
 	/* Requires */
-	it1 = pkghash_iterator(rp->requires);
-	it2 = pkghash_iterator(lp->requires);
-	for (;;) {
-		ret1 = pkghash_next(&it1);
-		ret2 = pkghash_next(&it2);
-		if (ret1 != ret2) {
+	if (tll_length(rp->requires) != tll_length(lp->requires)) {
+		free(rp->reason);
+		rp->reason = xstrdup("requires changed");
+		return (true);
+	}
+	l1 = xcalloc(tll_length(lp->requires), sizeof (char*));
+	i = 0;
+	tll_foreach(lp->requires, l) {
+		l1[i++] = l->item;
+	}
+	i = 0;
+	tll_foreach(rp->requires, r) {
+		if (strcmp(r->item, l1[i]) != 0) {
 			free(rp->reason);
 			rp->reason = xstrdup("requires changed");
+			free(l1);
 			return (true);
 		}
-		if (ret1) {
-			if (strcmp(it1.key, it2.key) != 0) {
-				free(rp->reason);
-				rp->reason = xstrdup("requires changed");
-				return (true);
-			}
-		}
-		else
-			break;
 	}
+	free(l1);
 
 	/* Finish by the shlibs */
-	it1 = pkghash_iterator(rp->shlibs_provided);
-	it2 = pkghash_iterator(lp->shlibs_provided);
-	for (;;) {
-		ret1 = pkghash_next(&it1);
-		ret2 = pkghash_next(&it2);
-		if (ret1 != ret2) {
+	if (tll_length(rp->shlibs_provided) != tll_length(lp->shlibs_provided)) {
+		free(rp->reason);
+		rp->reason = xstrdup("provided shared library changed");
+		return (true);
+	}
+	l1 = xcalloc(tll_length(lp->shlibs_provided), sizeof (char*));
+	i = 0;
+	tll_foreach(lp->shlibs_provided, l) {
+		l1[i++] = l->item;
+	}
+	i = 0;
+	tll_foreach(rp->shlibs_provided, r) {
+		if (strcmp(r->item, l1[i]) != 0) {
 			free(rp->reason);
 			rp->reason = xstrdup("provided shared library changed");
+			free(l1);
 			return (true);
 		}
-		if (ret1) {
-			if (strcmp(it1.key, it2.key) != 0) {
-				free(rp->reason);
-				rp->reason = xstrdup("provided shared library changed");
-				pkg_debug(1, "provided shlib changed %s -> %s",
-				    it2.key, it1.key);
-				return (true);
-			}
-		}
-		else
-			break;
 	}
+	free(l1);
 
-	it1 = pkghash_iterator(rp->shlibs_required);
-	it2 = pkghash_iterator(lp->shlibs_required);
-	for (;;) {
-		ret1 = pkghash_next(&it1);
-		ret2 = pkghash_next(&it2);
-		if (ret1 != ret2) {
+	if (tll_length(rp->shlibs_required) != tll_length(lp->shlibs_required)) {
+		free(rp->reason);
+		rp->reason = xstrdup("required shared library changed");
+		return (true);
+	}
+	l1 = xcalloc(tll_length(lp->shlibs_required), sizeof (char*));
+	i = 0;
+	tll_foreach(lp->shlibs_required, l) {
+		l1[i++] = l->item;
+	}
+	i = 0;
+	tll_foreach(rp->shlibs_required, r) {
+		if (strcmp(r->item, l1[i]) != 0) {
 			free(rp->reason);
-			rp->reason = xstrdup("needed shared library changed");
+			rp->reason = xstrdup("required shared library changed");
+			free(l1);
 			return (true);
 		}
-		if (ret1) {
-			if (strcmp(it1.key, it2.key) != 0) {
-				free(rp->reason);
-				rp->reason = xstrdup("needed shared library changed");
-				pkg_debug(1, "Required shlib changed %s -> %s",
-				    it2.key, it1.key);
-				return (true);
-			}
-		}
-		else
-			break;
 	}
+	free(l1);
 
 	return (false);
 }

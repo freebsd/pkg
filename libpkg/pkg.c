@@ -94,12 +94,19 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
 	pkg_list_free(pkg, PKG_OPTIONS);
-	pkg_list_free(pkg, PKG_USERS);
-	pkg_list_free(pkg, PKG_GROUPS);
-	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
-	pkg_list_free(pkg, PKG_PROVIDES);
-	pkg_list_free(pkg, PKG_REQUIRES);
+
+	tll_free_and_free(pkg->users, free);
+	pkg->flags &= ~PKG_LOAD_USERS;
+	tll_free_and_free(pkg->groups, free);
+	pkg->flags &= ~PKG_LOAD_GROUPS;
+	tll_free_and_free(pkg->shlibs_required, free);
+	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
+	tll_free_and_free(pkg->shlibs_provided, free);
+	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
+	tll_free_and_free(pkg->provides, free);
+	pkg->flags &= ~PKG_LOAD_PROVIDES;
+	tll_free_and_free(pkg->requires, free);
+	pkg->flags &= ~PKG_LOAD_REQUIRES;
 	tll_free_and_free(pkg->categories, free);
 	pkg->flags &= ~PKG_LOAD_CATEGORIES;
 	tll_free_and_free(pkg->licenses, free);
@@ -378,44 +385,24 @@ pkg_each(options, struct pkg_option, options);
 pkg_each(conflicts, struct pkg_conflict, conflicts);
 pkg_each(config_files, struct pkg_config_file, config_files);
 
-#define pkg_each_string_hash(name)                   \
-int                                                  \
-pkg_##name(const struct pkg *pkg, char **c) {        \
-	if ((*c) == NULL)                            \
-		pkghash_loopinit(pkg->name);         \
-	pkghash_entry *e = pkghash_inext(pkg->name); \
-	if (e == NULL) {                             \
-		(*c) = NULL;                         \
-		return (EPKG_END);                   \
-	}                                            \
-	(*c) = e->key;                               \
-	return (EPKG_OK);                            \
-}
-
-pkg_each_string_hash(requires);
-pkg_each_string_hash(provides);
-pkg_each_string_hash(shlibs_required);
-pkg_each_string_hash(shlibs_provided);
-pkg_each_string_hash(users);
-pkg_each_string_hash(groups);
-
 int
 pkg_adduser(struct pkg *pkg, const char *name)
 {
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	if (pkghash_get(pkg->users, name) != NULL) {
+	tll_foreach(pkg->users, u) {
+		if (strcmp(u->item, name) != 0)
+			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate user listing: %s, ignoring", name);
-			return (EPKG_OK);
 		}
+		pkg_emit_error("duplicate user listing: %s, ignoring", name);
+		return (EPKG_OK);
 	}
 
-	pkghash_safe_add(pkg->users, name, NULL, NULL);
+	tll_push_back(pkg->users, xstrdup(name));
 
 	return (EPKG_OK);
 }
@@ -426,17 +413,18 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	if (pkghash_get(pkg->groups, name) != NULL) {
+	tll_foreach(pkg->groups, g) {
+		if (strcmp(g->item, name) != 0)
+			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
 			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate group listing: %s, ignoring", name);
-			return (EPKG_OK);
 		}
+		pkg_emit_error("duplicate group listing: %s, ignoring", name);
+		return (EPKG_OK);
 	}
 
-	pkghash_safe_add(pkg->groups, name, NULL, NULL);
+	tll_push_back(pkg->groups, xstrdup(name));
 
 	return (EPKG_OK);
 }
@@ -905,10 +893,12 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	/* silently ignore duplicates in case of shlibs */
-	if (pkghash_get(pkg->shlibs_required, name) != NULL)
-		return (EPKG_OK);
+	tll_foreach(pkg->shlibs_required, s) {
+		if (strcmp(s->item, name) == 0)
+			return (EPKG_OK);
+	}
 
-	pkghash_safe_add(pkg->shlibs_required, name, NULL, NULL);
+	tll_push_back(pkg->shlibs_required, xstrdup(name));
 
 	pkg_debug(3, "added shlib deps for %s on %s", pkg->name, name);
 
@@ -926,10 +916,12 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 		return (EPKG_OK);
 
 	/* silently ignore duplicates in case of shlibs */
-	if (pkghash_get(pkg->shlibs_provided, name) != NULL)
-		return (EPKG_OK);
+	tll_foreach(pkg->shlibs_provided, s) {
+		if (strcmp(s->item, name) == 0)
+			return (EPKG_OK);
+	}
 
-	pkghash_safe_add(pkg->shlibs_provided, name, NULL, NULL);
+	tll_push_back(pkg->shlibs_provided, xstrdup(name));
 
 	pkg_debug(3, "added shlib provide %s for %s", name, pkg->name);
 
@@ -966,10 +958,12 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	/* silently ignore duplicates in case of conflicts */
-	if (pkghash_get(pkg->requires, name) != NULL)
-		return (EPKG_OK);
+	tll_foreach(pkg->requires, p) {
+		if (strcmp(p->item, name) == 0)
+			return (EPKG_OK);
+	}
 
-	pkghash_safe_add(pkg->requires, name, NULL, NULL);
+	tll_push_back(pkg->requires, xstrdup(name));
 
 	return (EPKG_OK);
 }
@@ -981,10 +975,12 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	/* silently ignore duplicates in case of conflicts */
-	if (pkghash_get(pkg->provides, name) != NULL)
-		return (EPKG_OK);
+	tll_foreach(pkg->provides, p) {
+		if (strcmp(p->item, name) == 0)
+			return (EPKG_OK);
+	}
 
-	pkghash_safe_add(pkg->provides, name, NULL, NULL);
+	tll_push_back(pkg->provides, xstrdup(name));
 
 	return (EPKG_OK);
 }
@@ -1043,20 +1039,8 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (pkghash_count(pkg->filehash));
 	case PKG_DIRS:
 		return (pkghash_count(pkg->dirhash));
-	case PKG_USERS:
-		return (pkghash_count(pkg->users));
-	case PKG_GROUPS:
-		return (pkghash_count(pkg->groups));
-	case PKG_SHLIBS_REQUIRED:
-		return (pkghash_count(pkg->shlibs_required));
-	case PKG_SHLIBS_PROVIDED:
-		return (pkghash_count(pkg->shlibs_provided));
 	case PKG_CONFLICTS:
 		return (pkghash_count(pkg->conflictshash));
-	case PKG_PROVIDES:
-		return (pkghash_count(pkg->provides));
-	case PKG_REQUIRES:
-		return (pkghash_count(pkg->requires));
 	case PKG_CONFIG_FILES:
 		return (pkghash_count(pkg->config_files_hash));
 	}
@@ -1108,41 +1092,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->dirhash = NULL;
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
-	case PKG_USERS:
-		pkghash_destroy(pkg->users);
-		pkg->users = NULL;
-		pkg->flags &= ~PKG_LOAD_USERS;
-		break;
-	case PKG_GROUPS:
-		pkghash_destroy(pkg->groups);
-		pkg->groups = NULL;
-		pkg->flags &= ~PKG_LOAD_GROUPS;
-		break;
-	case PKG_SHLIBS_REQUIRED:
-		pkghash_destroy(pkg->shlibs_required);
-		pkg->shlibs_required = NULL;
-		pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
-		break;
-	case PKG_SHLIBS_PROVIDED:
-		pkghash_destroy(pkg->shlibs_provided);
-		pkg->shlibs_provided = NULL;
-		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
-		break;
 	case PKG_CONFLICTS:
 		DL_FREE(pkg->conflicts, pkg_conflict_free);
 		pkghash_destroy(pkg->conflictshash);
 		pkg->conflictshash = NULL;
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
-		break;
-	case PKG_PROVIDES:
-		pkghash_destroy(pkg->provides);
-		pkg->provides = NULL;
-		pkg->flags &= ~PKG_LOAD_PROVIDES;
-		break;
-	case PKG_REQUIRES:
-		pkghash_destroy(pkg->requires);
-		pkg->requires = NULL;
-		pkg->flags &= ~PKG_LOAD_REQUIRES;
 		break;
 	}
 }

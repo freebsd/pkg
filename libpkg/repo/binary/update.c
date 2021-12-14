@@ -212,48 +212,44 @@ try_again:
 		}
 	}
 
-	it = pkghash_iterator(pkg->shlibs_required);
-	while (pkghash_next(&it)) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, it.key);
+	tll_foreach(pkg->shlibs_required, s) {
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, s->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id,
-			    it.key);
+			    s->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
 		}
 	}
 
-	it = pkghash_iterator(pkg->shlibs_provided);
-	while (pkghash_next(&it)) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, it.key);
+	tll_foreach(pkg->shlibs_provided, s) {
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, s->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id,
-			    it.key);
+			    s->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);
 		}
 	}
 
-	it = pkghash_iterator(pkg->provides);
-	while (pkghash_next(&it)) {
-		ret = pkg_repo_binary_run_prstatement(PROVIDE, it.key);
+	tll_foreach(pkg->provides, p) {
+		ret = pkg_repo_binary_run_prstatement(PROVIDE, p->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id,
-			    it.key);
+			    p->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PROVIDES));
 			return (EPKG_FATAL);
 		}
 	}
 
-	it = pkghash_iterator(pkg->requires);
-	while (pkghash_next(&it)) {
-		ret = pkg_repo_binary_run_prstatement(REQUIRE, it.key);
+	tll_foreach(pkg->requires, r) {
+		ret = pkg_repo_binary_run_prstatement(REQUIRE, r->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id,
-			    it.key);
+			    r->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(REQUIRES));
 			return (EPKG_FATAL);

@@ -346,7 +346,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
-	char			*buf;
 	const char		*str;
 	struct pkg_kv		*kv;
 	struct pkg_stringlist	*sl;
@@ -370,7 +369,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		buf = NULL;
 		pkg_get_stringlist(pkg, PKG_CATEGORIES, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
@@ -399,7 +397,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'L':
-		buf = NULL;
 		pkg_get_stringlist(pkg, PKG_LICENSES, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
@@ -410,30 +407,34 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		free(sl);
 		break;
 	case 'U':
-		buf = NULL;
-		while (pkg_users(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get_stringlist(pkg, PKG_USERS, sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'G':
-		buf = NULL;
-		while (pkg_groups(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get_stringlist(pkg, PKG_GROUPS, sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'B':
-		buf = NULL;
-		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get_stringlist(pkg, PKG_SHLIBS_REQUIRED, sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'b':
-		buf = NULL;
-		while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get_stringlist(pkg, PKG_SHLIBS_PROVIDED, sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;

@@ -294,7 +294,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		pkg = curvar->unit->pkg;
 
 		if (pr->is_shlib) {
-			libfound = (pkghash_get(pkg->shlibs_provided, pr->provide) != NULL);
+			libfound = stringlist_contains(&pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
 			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
 				pkg_debug(2, "solver: require %s: package %s-%s(%c) provides wrong ABI %s, "
@@ -304,7 +304,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			}
 		}
 		else {
-			providefound = (pkghash_get(pkg->provides, pr->provide) != NULL);
+			providefound = stringlist_contains(&pkg->provides, pr->provide);
 		}
 
 		if (!providefound && !libfound) {
@@ -630,7 +630,6 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *cur_var;
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq = NULL;
-	pkghash_it it;
 	bool chain_added = false;
 
 	LL_FOREACH(var, cur_var) {
@@ -666,21 +665,18 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Shlibs */
-		it = pkghash_iterator(pkg->shlibs_required);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->shlibs_required, s) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-			    it.key, cur_var->assumed_reponame) != EPKG_OK) {
+			    s->item, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
 		}
-		it = pkghash_iterator(pkg->requires);
-		while (pkghash_next(&it)) {
+		tll_foreach(pkg->requires, r) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-			    it.key, cur_var->assumed_reponame) != EPKG_OK) {
+			    r->item, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
 		}
-
 
 		/*
 		 * If this var chain contains mutually conflicting vars

@@ -472,38 +472,36 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 {
 	struct pkgdb_it *it;
 	int rc;
-	pkghash_it hit;
 
-	hit = pkghash_iterator(pkg->shlibs_required);
-	while (pkghash_next(&hit)) {
-		if (pkghash_get(universe->provides, hit.key) != NULL)
+	tll_foreach(pkg->shlibs_required, s) {
+		if (pkghash_get(universe->provides, s->item) != NULL)
 			continue;
 
 		/* Check for local provides */
-		it = pkgdb_query_shlib_provide(universe->j->db, hit.key);
+		it = pkgdb_query_shlib_provide(universe->j->db, s->item);
 		if (it != NULL) {
 			rc = pkg_jobs_universe_handle_provide(universe, it,
-			    hit.key, true, pkg);
+			    s->item, true, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find local packages that provide library %s "
 						"required for %s",
-						hit.key, pkg->name);
+						s->item, pkg->name);
 			}
 		}
 		/* Not found, search in the repos */
 		it = pkgdb_repo_shlib_provide(universe->j->db,
-			hit.key, universe->j->reponame);
+			s->item, universe->j->reponame);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, hit.key, true, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, s->item, true, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find remote packages that provide library %s "
 						"required for %s",
-				    hit.key, pkg->name);
+				    s->item, pkg->name);
 			}
 		}
 	}
@@ -517,39 +515,36 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 {
 	struct pkgdb_it *it;
 	int rc;
-	pkghash_it hit;
 
-
-	hit = pkghash_iterator(pkg->requires);
-	while(pkghash_next(&hit)) {
-		if (pkghash_get(universe->provides, hit.key) != NULL)
+	tll_foreach(pkg->requires, r) {
+		if (pkghash_get(universe->provides, r->item) != NULL)
 			continue;
 
 		/* Check for local provides */
-		it = pkgdb_query_provide(universe->j->db, hit.key);
+		it = pkgdb_query_provide(universe->j->db, r->item);
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, hit.key, false, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, r->item, false, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find local packages that provide %s "
 						"required for %s",
-						hit.key, pkg->name);
+						r->item, pkg->name);
 			}
 		}
 
 		/* Not found, search in the repos */
 		it = pkgdb_repo_provide(universe->j->db,
-			hit.key, universe->j->reponame);
+			r->item, universe->j->reponame);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, hit.key, false, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, r->item, false, pkg);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
 				pkg_debug(1, "cannot find remote packages that provide %s "
 						"required for %s",
-				    hit.key, pkg->name);
+				    r->item, pkg->name);
 				return (rc);
 			}
 		}
