@@ -80,7 +80,7 @@ add_to_check(pkghash *check, struct pkg *pkg)
 {
 	const char *uid;
 
-	pkg_get(pkg, PKG_UNIQUEID, &uid);
+	pkg_get_string(pkg, PKG_UNIQUEID, uid);
 	pkghash_safe_add(check, uid, pkg, NULL);
 }
 
@@ -123,7 +123,7 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 	const struct pkg_audit_entry *e;
 	struct pkg_audit_cve *cve;
 
-	pkg_get(p, PKG_VERSION, &version);
+	pkg_get_string(p, PKG_VERSION, version);
 
 	e = issue->audit;
 	if (version == NULL) {
@@ -152,16 +152,14 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 }
 
 static void
-format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
+format_issue(struct pkg_audit_issue *issue, ucl_object_t *array)
 {
-	const char *version;
 	struct pkg_audit_versions_range *vers;
 	const struct pkg_audit_entry *e;
 	struct pkg_audit_cve *cve;
 	ucl_object_t *o = ucl_object_typed_new(UCL_OBJECT);
 	ucl_object_t *affected_versions = ucl_object_typed_new(UCL_ARRAY);
 
-	pkg_get(p, PKG_VERSION, &version);
 	ucl_array_append(array, o);
 
 	e = issue->audit;
@@ -400,7 +398,7 @@ exec_audit(int argc, char **argv)
 
 				if (top == NULL) {
 					affected += issues->count;
-					pkg_get(pkg, PKG_VERSION, &version);
+					pkg_get_string(pkg, PKG_VERSION, version);
 					if (quiet) {
 						if (version != NULL)
 							pkg_printf("%n-%v\n", pkg, pkg);
@@ -419,7 +417,8 @@ exec_audit(int argc, char **argv)
 					if (vuln_objs == NULL)
 						vuln_objs = ucl_object_typed_new(UCL_OBJECT);
 					obj = ucl_object_typed_new(UCL_OBJECT);
-					pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+					pkg_get_string(pkg, PKG_NAME, name);
+					pkg_get_string(pkg, PKG_VERSION, version);
 					if (version != NULL)
 						ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7 , false);
 					ucl_object_insert_key(obj, ucl_object_fromint(issues->count), "issue_count", 11, false);
@@ -431,7 +430,7 @@ exec_audit(int argc, char **argv)
 					if (top == NULL)
 						print_issue(pkg, issue);
 					else
-						format_issue(pkg, issue, array);
+						format_issue(issue, array);
 				}
 				if (top != NULL)
 					ucl_object_insert_key(obj, array, "issues", 6, false);
@@ -441,7 +440,7 @@ exec_audit(int argc, char **argv)
 					pkghash *seen = pkghash_new();
 
 					if (name == NULL)
-						pkg_get(pkg, PKG_NAME, &name);
+						pkg_get_string(pkg, PKG_NAME, name);
 					if (top == NULL) {
 						printf("  Packages that depend on %s: ", name);
 					} else {

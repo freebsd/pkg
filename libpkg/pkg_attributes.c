@@ -172,3 +172,113 @@ pkg_kv_free(struct pkg_kv *c)
 	free(c->value);
 	free(c);
 }
+
+struct pkg_kvlist_iterator *
+pkg_kvlist_iterator(struct pkg_kvlist *l)
+{
+	struct pkg_kvlist_iterator *it = xcalloc(1, sizeof(struct pkg_kvlist_iterator));
+	it->list = l->list;
+	return (it);
+};
+
+struct pkg_kv *
+pkg_kvlist_next(struct pkg_kvlist_iterator *it)
+{
+	if (it->cur == NULL)
+		it->cur = it->list->head;
+	else
+		it->cur = ((__typeof__(it->list->head))it->cur)->next;
+	if (it->cur == NULL)
+		return (NULL);
+	return (((__typeof__(it->list->head))it->cur)->item);
+}
+
+struct pkg_stringlist_iterator *
+pkg_stringlist_iterator(struct pkg_stringlist *l)
+{
+	struct pkg_stringlist_iterator *it = xcalloc(1, sizeof(struct pkg_stringlist_iterator));
+	it->list = l->list;
+	return (it);
+};
+
+const char *
+pkg_stringlist_next(struct pkg_stringlist_iterator *it)
+{
+	if (it->cur == NULL)
+		it->cur = it->list->head;
+	else
+		it->cur = ((__typeof__(it->list->head))it->cur)->next;
+	if (it->cur == NULL)
+		return (NULL);
+	return (((__typeof__(it->list->head))it->cur)->item);
+}
+
+struct pkg_el *
+pkg_get_element(struct pkg *p, pkg_attr a)
+{
+	struct pkg_el *e = xcalloc(1, sizeof(*e));
+
+	switch (a) {
+	case PKG_NAME:
+		e->string = p->name;
+		e->type = PKG_STR;
+		break;
+	case PKG_VERSION:
+		e->string = p->version;
+		e->type = PKG_STR;
+		break;
+	case PKG_ORIGIN:
+		e->string = p->origin;
+		e->type = PKG_STR;
+		break;
+	case PKG_UNIQUEID:
+		e->string = p->uid;
+		e->type = PKG_STR;
+		break;
+	case PKG_CKSUM:
+		e->string = p->sum;
+		e->type = PKG_STR;
+		break;
+	case PKG_REPONAME:
+		e->string = p->reponame;
+		e->type = PKG_STR;
+		break;
+	case PKG_REPOPATH:
+		e->string = p->repopath;
+		e->type = PKG_STR;
+		break;
+	case PKG_REPOURL:
+		e->string = p->repourl;
+		e->type = PKG_STR;
+		break;
+	case PKG_REASON:
+		e->string = p->reason;
+		e->type = PKG_STR;
+		break;
+	case PKG_AUTOMATIC:
+		e->boolean = p->automatic;
+		e->type = PKG_BOOLEAN;
+		break;
+	case PKG_LOCKED:
+		e->boolean = p->locked;
+		e->type = PKG_BOOLEAN;
+		break;
+	case PKG_VITAL:
+		e->boolean = p->vital;
+		e->type = PKG_BOOLEAN;
+		break;
+	case PKG_FLATSIZE:
+		e->integer = p->flatsize;
+		e->type = PKG_INTEGER;
+		break;
+	case PKG_OLD_FLATSIZE:
+		e->integer = p->old_flatsize;
+		e->type = PKG_INTEGER;
+		break;
+	case PKG_PKGSIZE:
+		e->integer = p->pkgsize;
+		e->type = PKG_INTEGER;
+		break;
+	}
+	return (e);
+}

@@ -66,7 +66,7 @@ add_to_check(pkghash *check, struct pkg *pkg)
 {
 	const char *uid;
 
-	pkg_get(pkg, PKG_UNIQUEID, &uid);
+	pkg_get_string(pkg, PKG_UNIQUEID, uid);
 	pkghash_safe_add(check, uid, pkg, NULL);
 }
 
@@ -141,7 +141,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 				issues = NULL;
 				pkg = (struct pkg *)hit.value;
 				if (pkg_audit_is_vulnerable(audit, pkg, &issues, true)) {
-					pkg_get(pkg, PKG_UNIQUEID, &uid);
+					pkg_get_string(pkg, PKG_UNIQUEID, uid);
 					fprintf(out, "%s\n", uid);
 					fflush(out);
 				}

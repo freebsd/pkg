@@ -115,11 +115,11 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				pkg_fprintf(dest->fp, "%w", pkg);
 				break;
 			case 'a':
-				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
+				pkg_get_bool(pkg, PKG_AUTOMATIC, automatic);
 				fprintf(dest->fp, "%d", automatic);
 				break;
 			case 'k':
-				pkg_get(pkg, PKG_LOCKED, &locked);
+				pkg_get_bool(pkg, PKG_LOCKED, locked);
 				fprintf(dest->fp, "%d", locked);
 				break;
 			case 't':
@@ -129,7 +129,7 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				qstr++;
 				if (qstr[0] == 'h')
 					pkg_fprintf(dest->fp, "%#sB", pkg);
-			        else if (qstr[0] == 'b')
+				else if (qstr[0] == 'b')
 					pkg_fprintf(dest->fp, "%s", pkg);
 				break;
 			case 'e':
@@ -295,7 +295,7 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%M", pkg);
 				break;
 			case 'V':
-				pkg_get(pkg, PKG_VITAL, &vital);
+				pkg_get_bool(pkg, PKG_VITAL, vital);
 				fprintf(dest->fp, "%d", vital);
 				break;
 			case 'X':

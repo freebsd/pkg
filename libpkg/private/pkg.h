@@ -127,6 +127,27 @@
 } while (0)
 #define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
+typedef tll(struct pkg_kv *) kvlist_t;
+typedef tll(char *) stringlist_t;
+
+struct pkg_kvlist {
+	kvlist_t *list;
+};
+
+struct pkg_stringlist {
+	stringlist_t *list;
+};
+
+struct pkg_kvlist_iterator {
+	kvlist_t *list;
+	void *cur;
+};
+
+struct pkg_stringlist_iterator {
+	stringlist_t *list;
+	void *cur;
+};
+
 struct pkg_ctx {
 	int eventpipe;
 	int64_t debug_level;
@@ -156,9 +177,6 @@ struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
 struct pkg_lua_script;
-
-typedef tll(struct pkg_kv *) kvlist_t;
-typedef tll(char *) stringlist_t;
 
 struct pkg {
 	bool		 direct;
@@ -693,7 +711,6 @@ int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res);
 int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
 
-
 int pkg_emit_manifest_buf(struct pkg*, xstring *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
 
@@ -712,7 +729,7 @@ int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
  * Caller must free resulting hash after usage
  */
 unsigned char * pkg_checksum_data(const unsigned char *in, size_t inlen,
-	pkg_checksum_type_t type);
+    pkg_checksum_type_t type);
 unsigned char *pkg_checksum_fd(int fd, pkg_checksum_type_t type);
 unsigned char *pkg_checksum_file(const char *path, pkg_checksum_type_t type);
 unsigned char *pkg_checksum_fileat(int fd, const char *path,

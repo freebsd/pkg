@@ -539,6 +539,62 @@ typedef enum {
 	PKG_SOLVED_UPGRADE_INSTALL
 } pkg_solved_t;
 
+struct pkg_kvlist;
+struct pkg_stringlist;
+
+typedef enum {
+	PKG_KVLIST = 1U,
+	PKG_STRINGLIST,
+	PKG_STR,
+	PKG_INTEGER,
+	PKG_BOOLEAN,
+} pkg_el_t;
+
+#define pkg_get_string(p, t, v) do { \
+	struct pkg_el *e = pkg_get_element(p, t); \
+	if (e->type != PKG_STR) abort(); \
+	v = e->string; \
+	free(e); \
+} while (0);
+
+#define pkg_get_bool(p, t, v) do { \
+	struct pkg_el *e = pkg_get_element(p, t); \
+	if (e->type != PKG_BOOLEAN) abort(); \
+	v = e->boolean; \
+	free(e); \
+} while (0);
+
+#define pkg_get_int(p, t, v) do { \
+	struct pkg_el *e = pkg_get_element(p, t); \
+	if (e->type != PKG_INTEGER) abort(); \
+	v = e->integer; \
+	free(e); \
+} while (0);
+
+#define pkg_get_kv(p, t, v) do { \
+	struct pkg_el *e = pkg_get_element(p, t); \
+	if (e->type != PKG_KVLIST) abort(); \
+	v = e->kvlist; \
+	free(e); \
+} while (0);
+
+#define pkg_get_stringlist(p, t, v) do { \
+	struct pkg_el *e = pkg_get_element(p, t); \
+	if (e->type != PKG_STRINGLIST) abort(); \
+	v = e->kvlist; \
+} while (0);
+
+struct pkg_el {
+	union {
+		struct pkg_kvlist *kvlist;
+		struct pkg_stringlist *stringlist;
+		const char *string;
+		int64_t integer;
+		bool boolean;
+	};
+	pkg_el_t type;
+};
+
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
 #define PKG_OPEN_TRY (0x1 << 2)
@@ -1663,6 +1719,12 @@ int pkg_create_installed(const char *, pkg_formats, struct pkg *) __attribute__(
 int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg) __attribute__((deprecated));;
 int pkg_execute_deferred_triggers(void);
 int pkg_add_triggers(void);
+
+struct pkg_kvlist_iterator *pkg_kvlist_iterator(struct pkg_kvlist *l);
+struct pkg_kv *pkg_kvlist_next(struct pkg_kvlist_iterator *it);
+struct pkg_stringlist_iterator *pkg_stringlist_iterator(struct pkg_stringlist *l);
+const char *pkg_stringlist_next(struct pkg_stringlist_iterator *it);
+struct pkg_el *pkg_get_element(struct pkg *p, pkg_attr a);
 
 #ifdef __cplusplus
 }

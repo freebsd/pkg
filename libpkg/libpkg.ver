@@ -1,5 +1,9 @@
 LIBPKG_1.4 {
 global:
+	pkg_kvlist_iterator;
+	pkg_kvlist_next;
+	pkg_stringlist_iterator;
+	pkg_stringlist_next;
 	pkg_absolutepath;
 	pkg_add;
 	pkg_add_from_remote;
