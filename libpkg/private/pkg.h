@@ -157,6 +157,8 @@ struct pkg_repo;
 struct pkg_message;
 struct pkg_lua_script;
 
+typedef tll(struct pkg_kv *) kvlist_t;
+
 struct pkg {
 	bool		 direct;
 	bool		 locked;
@@ -508,7 +510,7 @@ struct pkg_repo {
 	unsigned int priority;
 
 	pkg_repo_flags flags;
-	struct pkg_kv *env;
+	kvlist_t env;
 
 	/* Opaque repository data */
 	void *priv;

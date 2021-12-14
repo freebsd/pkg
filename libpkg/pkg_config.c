@@ -770,7 +770,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		while ((cur = ucl_iterate_object(env, &it, true))) {
 			kv = pkg_kv_new(ucl_object_key(cur),
 			    ucl_object_tostring_forced(cur));
-			DL_APPEND(r->env, kv);
+			tll_push_back(r->env, kv);
 		}
 	}
 }
@@ -1470,8 +1470,6 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 static void
 pkg_repo_free(struct pkg_repo *r)
 {
-	struct pkg_kv *kv, *tmp;
-
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
@@ -1481,10 +1479,7 @@ pkg_repo_free(struct pkg_repo *r)
 		fprintf(r->ssh, "quit\n");
 		pclose(r->ssh);
 	}
-	LL_FOREACH_SAFE(r->env, kv, tmp) {
-		LL_DELETE(r->env, kv);
-		pkg_kv_free(kv);
-	}
+	tll_free_and_free(r->env, pkg_kv_free);
 	free(r);
 }
 

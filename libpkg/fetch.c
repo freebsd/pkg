@@ -179,9 +179,9 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent)
 {
 	struct url	*u = NULL;
-	struct pkg_kv	*kv, *kvtmp;
-	struct pkg_kv	*envtorestore = NULL;
-	struct pkg_kv	*envtounset = NULL;
+	struct pkg_kv	*kv;
+	kvlist_t	 envtorestore = tll_init();
+	kvlist_t	 envtounset = tll_init();
 	char		*tmp;
 	off_t		 done = 0;
 	off_t		 r;
@@ -233,16 +233,16 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 
 	if (repo != NULL) {
 		repo->silent = silent;
-		LL_FOREACH(repo->env, kv) {
-			kvtmp = xcalloc(1, sizeof(*kvtmp));
-			kvtmp->key = xstrdup(kv->key);
-			if ((tmp = getenv(kv->key)) != NULL) {
-				kvtmp->value = xstrdup(tmp);
-				DL_APPEND(envtorestore, kvtmp);
+		tll_foreach(repo->env, k) {
+			kv = xcalloc(1, sizeof(*kv));
+			kv->key = xstrdup(k->item->key);
+			if ((tmp = getenv(k->item->key)) != NULL) {
+				kv->value = xstrdup(tmp);
+				tll_push_back(envtorestore, kv);
 			} else {
-				DL_APPEND(envtounset, kvtmp);
+				tll_push_back(envtounset, kv);
 			}
-			setenv(kv->key, kv->value, 1);
+			setenv(k->item->key, k->item->value, 1);
 		}
 	} else {
 		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
@@ -328,15 +328,16 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 
 cleanup:
 	if (repo != NULL) {
-		LL_FOREACH_SAFE(envtorestore, kv, kvtmp) {
-			setenv(kv->key, kv->value, 1);
-			LL_DELETE(envtorestore, kv);
-			pkg_kv_free(kv);
+		tll_foreach(envtorestore, k) {
+			setenv(k->item->key, k->item->value, 1);
+			tll_remove_and_free(envtorestore, k, pkg_kv_free);
 		}
-		LL_FOREACH_SAFE(envtounset, kv, kvtmp) {
-			unsetenv(kv->key);
-			pkg_kv_free(kv);
+		tll_free(envtorestore);
+		tll_foreach(envtounset, k) {
+			unsetenv(k->item->key);
+			tll_remove_and_free(envtounset, k, pkg_kv_free);
 		}
+		tll_free(envtounset);
 	}
 
 	if (u != NULL) {
