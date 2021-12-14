@@ -260,7 +260,8 @@ try_again:
 		}
 	}
 
-	LL_FOREACH(pkg->annotations, kv) {
+	tll_foreach(pkg->annotations, k) {
+		kv = k->item;
 		ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->value);

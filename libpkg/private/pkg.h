@@ -234,7 +234,7 @@ struct pkg {
 	pkghash			*requires;
 	pkghash			*config_files_hash;
 	struct pkg_config_file	*config_files;
-	struct pkg_kv		*annotations;
+	kvlist_t		 annotations;
 	unsigned			flags;
 	int		rootfd;
 	char		rootpath[MAXPATHLEN];
@@ -781,8 +781,8 @@ int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
     const char *gname, mode_t perm, u_long fflags, bool check_duplicates);
 
 int pkg_addstring(stringlist_t *s, const char *value, const char *title);
-int pkg_kv_add(struct pkg_kv **kv, const char *key, const char *value, const char *title);
-const char *pkg_kv_get(struct pkg_kv *const*kv, const char *key);
+int pkg_kv_add(kvlist_t *kv, const char *key, const char *value, const char *title);
+const char *pkg_kv_get(const kvlist_t *kv, const char *key);
 int pkg_adduser(struct pkg *pkg, const char *name);
 int pkg_addgroup(struct pkg *pkg, const char *group);
 int pkg_addshlib_required(struct pkg *pkg, const char *name);

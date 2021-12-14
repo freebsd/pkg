@@ -284,6 +284,11 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->stringlist->list = &p->categories;
 		e->type = PKG_STRINGLIST;
 		break;
+	case PKG_ANNOTATIONS:
+		e->kvlist = xcalloc(1, sizeof(struct pkg_kvlist *));
+		e->kvlist->list = &p->annotations;
+		e->type = PKG_KVLIST;
+		break;
 	}
 
 	return (e);

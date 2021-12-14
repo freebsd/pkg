@@ -106,7 +106,7 @@ pkg_free(struct pkg *pkg)
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 
 	DL_FREE(pkg->message, pkg_message_free);
-	DL_FREE(pkg->annotations, pkg_kv_free);
+	tll_free_and_free(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
@@ -990,44 +990,41 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 }
 
 const char *
-pkg_kv_get(struct pkg_kv *const *kv, const char *tag)
+pkg_kv_get(const kvlist_t *kv, const char *tag)
 {
-	struct pkg_kv *k;
-
 	assert(tag != NULL);
 
-	LL_FOREACH(*kv, k) {
-		if (strcmp(k->key, tag) == 0)
-			return (k->value);
+	tll_foreach(*kv, k) {
+		if (strcmp(k->item->key, tag) == 0)
+			return (k->item->value);
 	}
 
 	return (NULL);
 }
 
 int
-pkg_kv_add(struct pkg_kv **list, const char *key, const char *val, const char *title)
+pkg_kv_add(kvlist_t *list, const char *key, const char *val, const char *title)
 {
 	struct pkg_kv *kv;
 
 	assert(val != NULL);
 	assert(title != NULL);
 
-	LL_FOREACH(*list, kv) {
-		if (strcmp(kv->key, key) == 0) {
-			if (ctx.developer_mode) {
-				pkg_emit_error("duplicate %s: %s, fatal"
+	tll_foreach(*list, k) {
+		if (strcmp(k->item->key, key) != 0)
+			continue;
+		if (ctx.developer_mode) {
+			pkg_emit_error("duplicate %s: %s, fatal"
 				    " (developer mode)", title, key);
 				return (EPKG_FATAL);
-			} else {
-				pkg_emit_error("duplicate %s: %s, "
-				    "ignoring", title, val);
-				return (EPKG_OK);
-			}
 		}
+		pkg_emit_error("duplicate %s: %s, "
+		    "ignoring", title, val);
+		return (EPKG_OK);
 	}
 
 	kv = pkg_kv_new(key, val);
-	DL_APPEND(*list, kv);
+	tll_push_back(*list, kv);
 
 	return (EPKG_OK);
 }

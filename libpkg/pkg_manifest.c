@@ -1161,8 +1161,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		ucl_object_insert_key(top, map, "options", 7, false);
 
 	map = NULL;
-	kv = NULL;
-	LL_FOREACH(pkg->annotations, kv) {
+	tll_foreach(pkg->annotations, k) {
+		kv = k->item;
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		/* Add annotations except for internal ones. */

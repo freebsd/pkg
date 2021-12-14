@@ -857,25 +857,23 @@ xstring *
 format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	struct pkg_kv		*kv;
 	int			count;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->annotations, kv, count);
-		return (list_count(buf, count, p));
+		return (list_count(buf, tll_length(pkg->annotations), p));
 	} else {
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		LL_FOREACH(pkg->annotations, kv) {
+		tll_foreach(pkg->annotations, k) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     kv, count, PP_A);
+					     k->item, count, PP_A);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     kv, count, PP_A);
+				     k->item, count, PP_A);
 			count++;
 		}
 	}

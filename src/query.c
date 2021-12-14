@@ -351,6 +351,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_kv		*kv;
 	struct pkg_stringlist	*sl;
 	struct pkg_stringlist_iterator	*slit;
+	struct pkg_kvlist	*kl;
+	struct pkg_kvlist_iterator	*kit;
 
 	output = xstring_new();
 
@@ -436,12 +438,14 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'A':
-		pkg_get(pkg, PKG_ANNOTATIONS, &kv);
-		while (kv != NULL) {
+		pkg_get_kv(pkg, PKG_ANNOTATIONS, kl);
+		kit = pkg_kvlist_iterator(kl);
+		while ((kv = pkg_kvlist_next(kit))) {
 			format_str(pkg, output, qstr, kv);
 			printf("%s\n", output->buf);
-			kv = kv->next;
 		}
+		free(kit);
+		free(kl);
 		break;
 	default:
 		format_str(pkg, output, qstr, dep);
