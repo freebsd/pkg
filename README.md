@@ -163,10 +163,10 @@ root-owned files without being packaged by the root user.
 When a package is installed, it is registered in a SQLite database.
 
 The SQLite database allow fast queries and ACID transactions.  It also
-allows finding the reverse dependencies reliably without a needing the
+allows finding the reverse dependencies reliably without needing the
 __+REQUIRED_BY__ hack.
 
-In order to save space the MTREE is only stored once, which save 18K per
+In order to save space the MTREE is only stored once, which saves 18K per
 installed package.
 
 pkg supports a `register` command to register packages into the SQLite
@@ -227,13 +227,13 @@ database and then proceed to run the command you originally requested.
 
 More recent versions of pkg(7) understand `pkg -N` as a test to see if
 pkg(8) is installed without triggering the installation, and
-conversely, `pkg bootstrap[-f]` to install pkg(8) (or force it to be
+conversely, `pkg bootstrap [-f]` to install pkg(8) (or force it to be
 reinstalled) without performing any other actions.
 
 <a name="pkgports"></a>
 ### pkg in Ports
 
-pkg-1.0 release was committed to the the ports tree on 30th August
+pkg-1.0 release was committed to the ports tree on 30th August
 2012, and a series of further releases are planned.  To install the
 latest release version:
 
@@ -297,7 +297,7 @@ repositories and installing from them, etc.
 ### Getting help on the commands usage
 
 In order to get help on any of the pkg commands you should use the `pkg help <command>`
-command, which will take the man page of the specified command.
+command, which will display the man page of the specified command.
 
 In order to get the available commands in pkg, just execute `pkg help`
 
