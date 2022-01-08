@@ -211,7 +211,7 @@ exec_which(int argc, char **argv)
 			}
 
 			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, PKG_LOAD_FILES) == EPKG_OK) {
+			while (pkgdb_it_next(it, &pkg, (glob && show_match) ? PKG_LOAD_FILES : PKG_LOAD_BASIC) == EPKG_OK) {
 				retcode = EXIT_SUCCESS;
 				if (quiet && orig && !show_match)
 					pkg_printf("%o\n", pkg);
