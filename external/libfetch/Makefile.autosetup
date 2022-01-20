@@ -2,7 +2,6 @@ include @builddir@/mk/defs.mk
 LIB=	fetch
 SRCS=	common.c \
 	fetch.c \
-	file.c \
 	ftp.c \
 	http.c
 
