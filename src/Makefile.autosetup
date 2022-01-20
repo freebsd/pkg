@@ -45,14 +45,14 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-DGITHASH=\"@GITHASH@\" \
 		-DHAVE_CONFIG_H
 LIBPKGFLAT=	-L$(top_builddir)/libpkg -lpkg_flat
-OTHER_LIBS=	@EXTRA_LIBS@
+OTHER_LIBS=	@EXTRA_LIBS@ -lssl -lcrypto
 
 @if HAVE_PKG_LIBARCHIVE
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
 @else
 OTHER_LIBS+=	-larchive -lbz2 -lz -llzma @ZSTDLIB@
 @endif
-OTHER_LIBS+=	-lm -lssl -lcrypto -pthread
+OTHER_LIBS+=	-lm -pthread
 @if HAVE_LIBUTIL
 OTHER_LIBS+=	-lutil
 @endif
