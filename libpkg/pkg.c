@@ -1315,7 +1315,9 @@ pkg_test_filesum(struct pkg *pkg)
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		if (f->sum != NULL) {
+		if (f->sum != NULL &&
+		    /* skip config files as they can be modified */
+		    pkghash_get_value(pkg->config_files_hash, f->path) == NULL) {
 			ret = pkg_checksum_validate_file(f->path, f->sum);
 			if (ret != 0) {
 				if (ret == ENOENT)
