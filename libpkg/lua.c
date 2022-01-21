@@ -214,7 +214,7 @@ lua_pkg_copy(lua_State *L)
 	 * bug is preventing us doing that
 	 * See https://bugs.freebsd.org/250271
 	 */
-	fd2 = openat(rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
+	fd2 = openat(rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, s1.st_mode);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
