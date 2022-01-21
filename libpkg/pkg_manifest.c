@@ -830,7 +830,6 @@ pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_
 			if (!(sk->valid_type & TYPE_SHIFT(ucl_object_type(cur)))) {
 				pkg_emit_error("Bad format in manifest for key:"
 						" %s", key);
-				ucl_object_unref(obj);
 				return (EPKG_FATAL);
 			}
 		}
@@ -905,9 +904,9 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 		free(data);
 		return (EPKG_FATAL);
 	}
+	ucl_parser_free(p);
 
 	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
-	ucl_parser_free(p);
 	ucl_object_unref(obj);
 	free(data);
 
