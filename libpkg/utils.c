@@ -869,3 +869,51 @@ rtrimspace(char *buf)
 
 	return (buf);
 }
+
+static int
+_copy_file(int from, int to)
+{
+	char buf[BUFSIZ];
+	ssize_t r, wresid, w = 0;
+	char *bufp;
+	r = read(from, buf, BUFSIZ);
+	if (r < 0)
+		return (r);
+	for (bufp = buf, wresid = r; ; bufp += w, wresid -= w) {
+		w = write(to, bufp, wresid);
+		if (w <= 0)
+			break;
+		if (w >= (ssize_t)wresid)
+			break;
+	}
+	return (w < 0 ? w : r);
+}
+
+bool
+copy_file(int from, int to)
+{
+#ifdef HAVE_COPY_FILE_RANGE
+	bool cfr = true;
+#endif
+	int r;
+
+	do {
+#ifdef HAVE_COPY_FILE_RANGE
+		if (cfr) {
+			r = copy_file_range(from, NULL, to, NULL, SSIZE_MAX,
+			    0);
+			if (r < 0 && errno == EINVAL) {
+				/* probably a non seekable FD */
+				cfr = false;
+			}
+		}
+		if (!cfr) {
+#endif
+			r = _copy_file(from, to);
+#ifdef HAVE_COPY_FILE_RANGE
+		}
+#endif
+	} while (r > 0);
+
+	return (r >= 0);
+}

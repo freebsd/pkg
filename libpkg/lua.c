@@ -194,7 +194,6 @@ lua_pkg_copy(lua_State *L)
 	    "pkg.copy takes exactly two arguments");
 	const char* src = luaL_checkstring(L, 1);
 	const char* dst = luaL_checkstring(L, 2);
-	char *buf1, *buf2;
 	struct stat s1;
 	int fd1, fd2;
 	struct timespec ts[2];
@@ -213,42 +212,19 @@ lua_pkg_copy(lua_State *L)
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	/* 
-	 * We should be using O_WRONLY but a weird aarch64 pmap
-	 * bug is preventing us doing that
-	 * See https://bugs.freebsd.org/250271
-	 */
+
 	fd2 = openat(rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, s1.st_mode);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	if (ftruncate(fd2, s1.st_size) != 0) {
-		lua_pushinteger(L, -1);
-		return (1);
-	}
-	buf1 = mmap(NULL, s1.st_size, PROT_READ, MAP_SHARED, fd1, 0);
-	if (buf1 == NULL) {
-		lua_pushinteger(L, -1);
-		return (1);
-	}
-	/* 
-	 * We should be using only PROT_WRITE but a weird aarch64 pmap
-	 * bug is preventing us doing that
-	 * https://bugs.freebsd.org/250271
-	 */
-	buf2 = mmap(NULL, s1.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0);
-	if (buf2 == NULL) {
+
+	if (!copy_file(fd1, fd2)) {
 		lua_pushinteger(L, -1);
 		return (1);
 	}
 
-	memcpy(buf2, buf1, s1.st_size);
-
-	munmap(buf1, s1.st_size);
-	munmap(buf2, s1.st_size);
 	fsync(fd2);
-
 	close(fd1);
 	close(fd2);
 

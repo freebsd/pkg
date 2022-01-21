@@ -113,5 +113,6 @@ int checkflags(const char *mode, int *optr);
 bool match_ucl_lists(const char *buffer, const ucl_object_t *globs, const ucl_object_t *regexes);
 char *get_dirname(char *dir);
 char *rtrimspace(char *buf);
+bool copy_file(int from, int to);
 
 #endif
