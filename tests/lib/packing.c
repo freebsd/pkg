@@ -78,7 +78,7 @@ ATF_TC_BODY(packing_set_format, tc)
 	struct archive *a = archive_write_new();
 	ATF_CHECK(a != NULL);
 
-#ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
+#ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD && __FreeBSD_version <= 1300000
 	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, -1), "tzst");
 #endif
 	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, -1), "txz");
