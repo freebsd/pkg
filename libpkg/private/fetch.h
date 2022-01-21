@@ -29,5 +29,6 @@
 int fetch_open(struct pkg_repo *, struct url *, off_t *);
 int ssh_open(struct pkg_repo *, struct url *, off_t *);
 int file_open(struct pkg_repo *, struct url *, off_t *);
+int tcp_open(struct pkg_repo *, struct url *, off_t *);
 
 #endif

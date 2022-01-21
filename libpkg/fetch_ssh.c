@@ -27,6 +27,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -36,6 +37,7 @@
 #include <fetch.h>
 #include <paths.h>
 #include <poll.h>
+#include <netdb.h>
 
 #include <bsd_compat.h>
 
@@ -48,6 +50,83 @@
 static int ssh_read(void *data, char *buf, int len);
 static int ssh_write(void *data, const char *buf, int l);
 static int ssh_close(void *data);
+static int tcp_close(void *data);
+
+static int
+tcp_connect(struct pkg_repo *repo, struct url *u)
+{
+	char *line = NULL;
+	size_t linecap = 0;
+	struct addrinfo *ai = NULL, *curai, hints;
+	char srv[NI_MAXSERV];
+	int sd = -1;
+	int retcode;
+	struct pollfd pfd;
+
+	pkg_debug(1, "TCP> tcp_connect");
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = PF_UNSPEC;
+	if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+		hints.ai_family = PF_INET;
+	else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+		hints.ai_family = PF_INET6;
+	hints.ai_socktype = SOCK_STREAM;
+	snprintf(srv, sizeof(srv), "%d", u->port);
+	if (getaddrinfo(u->host, srv, &hints, &ai) != 0) {
+		pkg_emit_error("Unable to lookup for '%s'", u->host);
+		return (EPKG_FATAL);
+	}
+	for (curai = ai; curai != NULL; curai = curai->ai_next) {
+		if ((sd = socket(curai->ai_family, curai->ai_socktype,
+		    curai->ai_protocol)) == -1)
+			continue;
+		if (connect(sd, curai->ai_addr, curai->ai_addrlen) == -1) {
+			close(sd);
+			sd = -1;
+			continue;
+		}
+		break;
+	}
+	freeaddrinfo(ai);
+	if (sd == -1) {
+		pkg_emit_error("Could not connect to tcp://%s:%d", u->host,
+		    u->port);
+		return (EPKG_FATAL);
+	}
+	if (setsockopt(sd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int)) != 0) {
+		pkg_emit_errno("Could not connect", "setsockopt");
+		close(sd);
+		return (EPKG_FATAL);
+	}
+	repo->sshio.in = dup(sd);
+	repo->sshio.out = dup(sd);
+	repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, tcp_close);
+
+	retcode = EPKG_FATAL;
+	if (repo->ssh == NULL) {
+		pkg_emit_errno("Failed to open stream", "tcp_connect");
+		goto tcp_cleanup;
+	}
+
+	if (getline(&line, &linecap, repo->ssh) > 0) {
+		if (strncmp(line, "ok:", 3) != 0) {
+			pkg_debug(1, "SSH> server rejected, got: %s", line);
+			goto tcp_cleanup;
+		}
+		pkg_debug(1, "SSH> server is: %s", line +4);
+	} else {
+		pkg_debug(1, "SSH> nothing to read, got: %s", line);
+		goto tcp_cleanup;
+	}
+	retcode = EPKG_OK;
+tcp_cleanup:
+	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
+		fclose(repo->ssh);
+		repo->ssh = NULL;
+	}
+	free(line);
+	return (retcode);
+}
 
 static int
 ssh_connect(struct pkg_repo *repo, struct url *u)
@@ -151,8 +230,9 @@ ssh_cleanup:
 	return (retcode);
 }
 
-int
-ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+static int
+pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
+    int (*proto_connect)(struct pkg_repo *, struct url *))
 {
 	char *line = NULL;
 	size_t linecap = 0;
@@ -160,8 +240,9 @@ ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 	const char *errstr;
 	int retcode = EPKG_FATAL;
 
+	pkg_debug(1, "SSH> tcp_open");
 	if (repo->ssh == NULL)
-		retcode = ssh_connect(repo, u);
+		retcode = proto_connect(repo, u);
 	else
 		retcode = EPKG_OK;
 
@@ -189,11 +270,39 @@ ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 			retcode = EPKG_OK;
 			goto out;
 		}
+		if (strncmp(line, "ko:", 3) == 0) {
+			retcode = EPKG_FATAL;
+			goto out;
+		}
 	}
 
 out:
 	free(line);
 	return (retcode);
+}
+
+int
+tcp_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+{
+	return (pkgprotocol_open(repo, u, sz, tcp_connect));
+}
+
+int
+ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+{
+	return (pkgprotocol_open(repo, u, sz, ssh_connect));
+}
+
+static int
+tcp_close(void *data)
+{
+	struct pkg_repo *repo = (struct pkg_repo *)data;
+
+	write(repo->sshio.out, "quit\n", 5);
+	close(repo->sshio.out);
+	close(repo->sshio.in);
+	repo->ssh = NULL;
+	return (0);
 }
 
 static int
@@ -208,6 +317,8 @@ ssh_close(void *data)
 		if (errno != EINTR)
 			return (EPKG_FATAL);
 	}
+	close(repo->sshio.out);
+	close(repo->sshio.in);
 
 	repo->ssh = NULL;
 
@@ -351,7 +462,6 @@ ssh_read(void *data, char *buf, int len)
 			return (-1);
 		}
 		pkg_debug(1, "end poll()");
-
 
 	}
 

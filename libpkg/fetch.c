@@ -53,6 +53,10 @@ static struct fetcher {
 	int (*open)(struct pkg_repo *, struct url *, off_t *);
 } fetchers [] = {
 	{
+		"tcp",
+		tcp_open,
+	},
+	{
 		"ssh",
 		ssh_open,
 	},
@@ -274,7 +278,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 	pkg_debug(1, "Fetch: fetcher chosen: %s", fetcher->scheme);
 
-	if (strcmp(u->scheme, "ssh") != 0) {
+	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0 ) {
 		if (t != NULL && u->ims_time != 0) {
 			if (u->ims_time <= *t) {
 				retcode = EPKG_UPTODATE;
@@ -320,7 +324,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 	pkg_emit_fetch_finished(url);
 
-	if (strcmp(u->scheme, "ssh") != 0 && ferror(remote)) {
+	if (strcmp(u->scheme, "ssh") != 0 & strcmp(u->scheme, "tcp") != 0
+	    && ferror(remote)) {
 		pkg_emit_error("%s: %s", url, fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;

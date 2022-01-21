@@ -403,7 +403,7 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"VALID_URL_SCHEME",
-		"pkg+http,pkg+https,https,http,file,ssh,ftp,ftps,pkg+ssh,pkg+ftp,pkg+ftps",
+		"pkg+http,pkg+https,https,http,file,ssh,ftp,ftps,pkg+ssh,pkg+ftp,pkg+ftps,tcp",
 	},
 	{
 		PKG_BOOL,
