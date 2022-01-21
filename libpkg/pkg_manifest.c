@@ -907,8 +907,8 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	}
 
 	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
-	ucl_object_unref(obj);
 	ucl_parser_free(p);
+	ucl_object_unref(obj);
 	free(data);
 
 	return (rc);
