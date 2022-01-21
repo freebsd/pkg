@@ -5,9 +5,12 @@ freebsd_task:
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ; }
         matrix:
-                - name: freebsd12-amd64
+                - name: freebsd12.2-amd64
                   freebsd_instance:
                      image: freebsd-12-2-release-amd64
+                - name: freebsd12.3-amd64
+                  freebsd_instance:
+                     image: freebsd-12-3-release-amd64
                 - name: freebsd13-amd64
                   freebsd_instance:
                      image: freebsd-13-0-release-amd64
