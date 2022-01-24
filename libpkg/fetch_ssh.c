@@ -61,7 +61,6 @@ tcp_connect(struct pkg_repo *repo, struct url *u)
 	char srv[NI_MAXSERV];
 	int sd = -1;
 	int retcode;
-	struct pollfd pfd;
 
 	pkg_debug(1, "TCP> tcp_connect");
 	memset(&hints, 0, sizeof(hints));
