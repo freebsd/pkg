@@ -219,6 +219,7 @@ lua_pkg_copy(lua_State *L)
 		lua_pushinteger(L, 2);
 		return (1);
 	}
+
 	if (ftruncate(fd2, s1.st_size) != 0) {
 		lua_pushinteger(L, -1);
 		return (1);
@@ -244,6 +245,11 @@ lua_pkg_copy(lua_State *L)
 	munmap(buf1, s1.st_size);
 	munmap(buf2, s1.st_size);
 	fsync(fd2);
+
+	if (fchown(fd2, s1.st_uid, s1.st_gid) == -1) {
+		lua_pushinteger(L, 2);
+		return (1);
+	}
 
 	close(fd1);
 	close(fd2);
