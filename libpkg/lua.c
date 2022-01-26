@@ -220,7 +220,11 @@ lua_pkg_copy(lua_State *L)
 	}
 
 	if (!copy_file(fd1, fd2)) {
-		lua_pushinteger(L, -1);
+		lua_pushinteger(L, 2);
+		return (1);
+	}
+	if (fchown(fd2, s1.st_uid, s1.st_gid) == -1) {
+		lua_pushinteger(L, 2);
 		return (1);
 	}
 
