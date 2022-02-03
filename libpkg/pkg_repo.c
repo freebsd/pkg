@@ -274,7 +274,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 		}
 		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-				pkg_emit_errno("archive_read_extract", "extract error");
+				pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
 				rc = EPKG_FATAL;
 				break;
 			}
@@ -386,7 +386,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 		else {
 			if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-					pkg_emit_errno("archive_read_extract", "extract error");
+					pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
 					rc = EPKG_FATAL;
 					break;
 				}
