@@ -191,7 +191,7 @@ format_issue(struct pkg_audit_issue *issue, ucl_object_t *array)
 		ucl_object_insert_key(o, ucl_object_fromstring(e->url), "url", 3, false);
 	else if (e->id) {
 		char *url;
-		xasprintf(&url, "https://vuxml.FreeBSD.org/freebsd/%s.html\n\n", e->id);
+		xasprintf(&url, "https://vuxml.FreeBSD.org/freebsd/%s.html", e->id);
 		ucl_object_insert_key(o, ucl_object_fromstring(url), "url", 3, false);
 		free(url);
 	}
