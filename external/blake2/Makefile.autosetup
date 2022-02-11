@@ -3,4 +3,6 @@ LIB=	blake2
 SRCS=	blake2b-ref.c blake2s-ref.c
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat -O3
 
+VPATH=	$(top_srcdir)/external/blake2
+
 include $(MK)/static-lib.mk

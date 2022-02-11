@@ -63,8 +63,11 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/liblua/ \
 		-I$(top_srcdir)/external/msgpuck \
 		-I$(top_srcdir)/libpkg/repo \
+		-I$(top_builddir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
+		-I$(top_builddir)/libpkg \
 		-I$(top_srcdir) \
+		-I$(top_builddir) \
 		-Wno-pointer-sign \
 		-Wno-missing-field-initializers \
 		-Wno-sign-compare \
@@ -122,7 +125,7 @@ LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic \
 SRCS+=		pkg_macho.c
 @else
 SRCS+=		pkg_elf.c
-LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver \
+LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver \
 @endif
 
 @if libelf-internal
@@ -146,6 +149,8 @@ LOCAL_LDFLAGS+=	-larchive
 LOCAL_CFLAGS+=	@PKG_LIBLDNS_CFLAGS@
 LOCAL_LDFLAGS+=	@PKG_LIBLDNS_LDFLAGS@ @PKG_LIBLDNS_LIBS@
 @endif
+
+VPATH=	$(top_srcdir)/libpkg
 
 include $(MK)/lib.mk
 

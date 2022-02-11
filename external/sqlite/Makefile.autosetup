@@ -4,6 +4,7 @@ SRCS=	sqlite3.c \
 	shell.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/external/linenoise \
+		-I$(top_builddir)/external/sqlite \
 		-D_HAVE_SQLITE_CONFIG_H \
 		-DHAVE_LINENOISE \
 		-Wno-unused-variable \
@@ -38,5 +39,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/external/linenoise \
 		-DSQLITE_SHELL_INIT_PROC=pkgdb_init_proc \
 		-Dmain=sqlite3_shell \
 		-DNDEBUG
+
+VPATH=	$(top_srcdir)/external/sqlite
 
 include $(MK)/static-lib.mk

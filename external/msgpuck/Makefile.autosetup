@@ -5,5 +5,7 @@ LIB=	msgpuck
 SRCS=	msgpuck.c \
 	hints.c
 
+VPATH=	$(top_srcdir)/external/msgpuck
+
 include $(MK)/static-lib.mk
 

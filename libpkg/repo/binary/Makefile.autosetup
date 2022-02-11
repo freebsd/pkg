@@ -7,11 +7,15 @@ SRCS=	binary.c \
 	query.c \
 	update.c
 LOCAL_CFLAGS=	-I$(top_srcdir)/libpkg \
+		-I$(top_builddir)/libpkg \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/sqlite \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/ \
+		-I$(top_builddir)/
+
+VPATH=	$(top_srcdir)/libpkg/repo/binary
 
 include $(MK)/static-lib.mk
