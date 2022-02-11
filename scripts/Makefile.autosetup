@@ -20,6 +20,8 @@ PWEEKLY=	periodic/400.status-pkg
 COMPLETION=	completion/_pkg \
 		completion/_pkg.bash
 
+VPATH=	$(top_srcdir)/scripts
+
 all: $(PDAILY) $(PSECURITY) $(PWEEKLY) $(COMPLETION)
 
 clean:

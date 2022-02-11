@@ -1,5 +1,6 @@
 include @builddir@/mk/defs.mk
 LIB=	linenoise
 SRCS=	linenoise.c
+VPATH=	$(top_srcdir)/external/linenoise
 
 include $(MK)/static-lib.mk

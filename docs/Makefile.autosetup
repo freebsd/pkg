@@ -46,18 +46,20 @@ MAN3GZ=	$(MAN3:.3=.3.gz)
 MAN5GZ=	$(MAN5:.5=.5.gz)
 MAN8GZ=	$(MAN8:.8=.8.gz)
 
+VPATH=	$(top_srcdir)/docs
+
 .SUFFIXES: .3.gz .5.gz .8.gz .3 .5 .8
 
 all: $(MAN3GZ) $(MAN5GZ) $(MAN8GZ)
 
 .3.3.gz:
-	gzip -kfn $< > $@
+	gzip -knc $< > $@
 
 .5.5.gz:
-	gzip -kfn $< > $@
+	gzip -knc $< > $@
 
 .8.8.gz:
-	gzip -kfn $< > $@
+	gzip -knc $< > $@
 
 clean:
 	rm -f *.gz

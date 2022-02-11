@@ -17,4 +17,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/external/libucl/include \
 		-Wno-unused-parameter \
 		-Wno-pointer-sign
 
+VPATH=	$(top_srcdir)/external/libucl
+
 include $(MK)/static-lib.mk
