@@ -398,7 +398,7 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 		return EPKG_OK;
 	}
 	if (pkg->type == PKG_INSTALLED) {
-		pkg_emit_error("cached package %-%: "
+		pkg_emit_error("cached package %s-%s: "
 			       "attempting to load info from an installed package",
 			       pkg->name, pkg->version);
 		return EPKG_FATAL;
