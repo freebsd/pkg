@@ -1509,7 +1509,7 @@ struct pkg_event {
 			const char *path;
 		} e_conflicts;
 		struct {
-			char *name;
+			const char *name;
 			bool cleanup;
 		} e_trigger;
 	};
