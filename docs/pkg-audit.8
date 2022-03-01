@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 30, 2014
+.Dd March 1, 2022
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -23,15 +23,15 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Fqr
-.Op Fl R Ns Op Ar format
 .Op Fl f Ar filename
-.Ar pkg-name
+.Op Fl R Ns Op Ar format
+.Op Ar pkg-name
 .Pp
 .Nm
 .Op Cm --{fetch,quiet,recursive}
-.Op Cm --raw Ns Op = Ns Ar format
-.Op Cm --file Ar filename
-.Ar pkg-name
+.Op Fl -file Ar filename
+.Op Fl -raw Ns Op Cm = Ns Ar format
+.Op Ar pkg-name
 .Sh DESCRIPTION
 .Nm
 checks installed packages for known vulnerabilities and generates reports
@@ -47,8 +47,8 @@ to check if security advisories for any installed packages exist.
 Note that a current ports tree (or any local copy of the ports tree) is not
 required for operation.
 .Pp
-The URL that is used to fetch the database can be overridden via the VULNXML_SITE
-config variable.
+The URL that is used to fetch the database can be overridden via
+the VULNXML_SITE config variable.
 See
 .Xr pkg.conf 5
 for more information.
@@ -62,8 +62,10 @@ will audit only that package.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width fetch
-.It Fl f Ar filename , Cm --file Ar filename
+.Bl -tag -width indent
+.It Fl F , Cm --fetch
+Fetch the database before checking.
+.It Fl f Ar filename , Fl -file Ar filename
 Use
 .Pa filename
 as the local copy of the vulnerability database.
@@ -72,19 +74,32 @@ If used in combination with
 download the vulnerability database to the named
 .Pa filename
 before auditing installed ports against it.
-.It Fl F , Cm --fetch
-Fetch the database before checking.
-.It Fl q , Cm --quiet
-Be ``quiet''.
+.It Fl q , Fl -quiet
+Be
+.Dq quiet .
 Prints only the requested information without
 displaying many hints.
-.It Fl r , Cm --recursive
+.It Fl R Ns Oo Ar format Oc , Fl -raw Ns Op Cm = Ns Ar format
+Present the output in one of the following formats:
+.Pp
+.Bl -bullet -compact
+.It
+.Cm json
+.It
+.Cm json-compact
+.It
+.Cm ucl
+.It
+.Cm yaml
+.El
+.Pp
+In case
+.Ar format
+is not provided, it defaults to
+.Cm ucl .
+.It Fl r , Fl -recursive
 Prints packages that depend on vulnerable packages and are thus
 potentially vulnerable as well.
-.It Fl R , Cm --raw Ns Op = Ns Ar format
-The output will be formatted in a parseable
-.Ar format .
-It can be ucl (default), json, json-compact and yaml.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
