@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd March 13, 2021
+.Dd March 7, 2022
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -57,6 +57,8 @@ Default: derived from the ABI of the
 binary, if not found then
 .Pa /bin/sh
 binary.
+E.g.,
+.Ql FreeBSD:14:amd64 .
 .It Cm ALIAS: key/value list
 Define local aliases for various
 .Xr pkg 8
