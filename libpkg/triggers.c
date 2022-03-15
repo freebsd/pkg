@@ -579,6 +579,12 @@ cleanup:
 }
 
 void
+append_touched_dir(const char *path)
+{
+	pkghash_safe_add(ctx.touched_dir_hash, path, NULL, NULL);
+}
+
+void
 append_touched_file(const char *path)
 {
 	char *newpath, *walk;

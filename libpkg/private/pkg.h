@@ -827,6 +827,7 @@ int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, con
 
 struct trigger *triggers_load(bool cleanup_only);
 int triggers_execute(struct trigger *cleanup_triggers);
+void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
 bool stringlist_contains(stringlist_t *l, const char *name);
 

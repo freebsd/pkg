@@ -823,6 +823,7 @@ pkg_extract_finalize(struct pkg *pkg)
 	}
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
+		append_touched_dir(d->path);
 		if (d->noattrs)
 			continue;
 		if (set_attrsat(pkg->rootfd, d->path, d->perm,
