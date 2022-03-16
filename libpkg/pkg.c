@@ -1043,6 +1043,18 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (pkghash_count(pkg->conflictshash));
 	case PKG_CONFIG_FILES:
 		return (pkghash_count(pkg->config_files_hash));
+	case PKG_USERS:
+		return (tll_length(pkg->users));
+	case PKG_GROUPS:
+		return (tll_length(pkg->groups));
+	case PKG_SHLIBS_REQUIRED:
+		return (tll_length(pkg->shlibs_required));
+	case PKG_SHLIBS_PROVIDED:
+		return (tll_length(pkg->shlibs_provided));
+	case PKG_REQUIRES:
+		return (tll_length(pkg->requires));
+	case PKG_PROVIDES:
+		return (tll_length(pkg->provides));
 	}
 
 	return (0);
