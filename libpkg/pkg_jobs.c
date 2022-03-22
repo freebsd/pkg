@@ -779,11 +779,13 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 				}
 			}
 			/* Also process all rdeps recursively */
-			while (pkg_rdeps(nrit->pkg, &rdep) == EPKG_OK) {
-				lp = pkg_jobs_universe_get_local(j->universe, rdep->uid, 0);
+			if (nrit != NULL) {
+				while (pkg_rdeps(nrit->pkg, &rdep) == EPKG_OK) {
+					lp = pkg_jobs_universe_get_local(j->universe, rdep->uid, 0);
 
-				if (lp) {
-					(void)pkg_jobs_process_remote_pkg(j, lp, NULL, 0);
+					if (lp) {
+						(void)pkg_jobs_process_remote_pkg(j, lp, NULL, 0);
+					}
 				}
 			}
 		}
