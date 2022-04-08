@@ -290,17 +290,27 @@ const char *
 packing_set_format(struct archive *a, pkg_formats format, int clevel)
 {
 	const char *notsupp_fmt = "%s is not supported, trying %s";
+	const char *notbltin_fmt = "%s is supported, but not builtin";
+	int error;
 
 	pkg_formats elected_format;
 
+	/*
+	 * For several of these formats, ARCHIVE_WARN will be returned when an
+	 * external program will be used to satisfy the request.
+	 */
 	switch (format) {
 	case TZS:
 #ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
-		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
+		error = archive_write_add_filter_zstd(a);
+		if (error == ARCHIVE_OK) {
 			elected_format = TZS;
 			if (clevel == -1)
 				clevel = 19;
 			goto out;
+		} else if (error == ARCHIVE_WARN) {
+			pkg_emit_error(notbltin_fmt, "zstd");
+			return (NULL);
 		}
 #endif
 		pkg_emit_error(notsupp_fmt, "zstd", "xz");
@@ -313,16 +323,24 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 		pkg_emit_error(notsupp_fmt, "xz", "bzip2");
 		/* FALLTHRU */
 	case TBZ:
-		if (archive_write_add_filter_bzip2(a) == ARCHIVE_OK) {
+		error = archive_write_add_filter_bzip2(a);
+		if (error == ARCHIVE_OK) {
 			elected_format = TBZ;
 			goto out;
+		} else if (error == ARCHIVE_WARN) {
+			pkg_emit_error(notbltin_fmt, "bzip2");
+			return (NULL);
 		}
 		pkg_emit_error(notsupp_fmt, "bzip2", "gzip");
 		/* FALLTHRU */
 	case TGZ:
-		if (archive_write_add_filter_gzip(a) == ARCHIVE_OK) {
+		error = archive_write_add_filter_gzip(a);
+		if (error == ARCHIVE_OK) {
 			elected_format = TGZ;
 			goto out;
+		} else if (error == ARCHIVE_WARN) {
+			pkg_emit_error(notbltin_fmt, "gzip");
+			return (NULL);
 		}
 		pkg_emit_error(notsupp_fmt, "gzip", "plain tar");
 		/* FALLTHRU */
