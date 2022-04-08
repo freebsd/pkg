@@ -290,13 +290,19 @@ const char *
 packing_set_format(struct archive *a, pkg_formats format, int clevel)
 {
 	const char *notsupp_fmt = "%s is not supported, trying %s";
+	int error;
 
 	pkg_formats elected_format;
 
+	/*
+	 * For several of these formats, ARCHIVE_WARN wil be returned when an
+	 * external program will be used to satisfy the request.
+	 */
 	switch (format) {
 	case TZS:
 #ifdef HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD
-		if (archive_write_add_filter_zstd(a) == ARCHIVE_OK) {
+		error = archive_write_add_filter_zstd(a);
+		if (error == ARCHIVE_OK || error == ARCHIVE_WARN) {
 			elected_format = TZS;
 			if (clevel == -1)
 				clevel = 19;
@@ -313,14 +319,16 @@ packing_set_format(struct archive *a, pkg_formats format, int clevel)
 		pkg_emit_error(notsupp_fmt, "xz", "bzip2");
 		/* FALLTHRU */
 	case TBZ:
-		if (archive_write_add_filter_bzip2(a) == ARCHIVE_OK) {
+		error = archive_write_add_filter_bzip2(a);
+		if (error == ARCHIVE_OK || error == ARCHIVE_WARN) {
 			elected_format = TBZ;
 			goto out;
 		}
 		pkg_emit_error(notsupp_fmt, "bzip2", "gzip");
 		/* FALLTHRU */
 	case TGZ:
-		if (archive_write_add_filter_gzip(a) == ARCHIVE_OK) {
+		error = archive_write_add_filter_gzip(a);
+		if (error == ARCHIVE_OK || error == ARCHIVE_WARN) {
 			elected_format = TGZ;
 			goto out;
 		}
