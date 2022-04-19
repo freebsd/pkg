@@ -790,6 +790,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 	ucl_object_iter_t it = NULL;
 	struct pkg_repo *r;
 	const char *key;
+	const char *yaml;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
@@ -799,9 +800,12 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
 			add_repo(cur, r, key, flags);
-		else
+		else {
+			yaml = ucl_object_emit(cur, UCL_EMIT_YAML);
 			pkg_emit_error("Ignoring bad configuration entry in %s: %s",
-			    file, ucl_object_emit(cur, UCL_EMIT_YAML));
+			    file, yaml);
+			free(yaml);
+		}
 	}
 }
 

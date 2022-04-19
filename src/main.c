@@ -294,13 +294,15 @@ show_plugin_info(void)
 {
 	const pkg_object	*conf;
 	struct pkg_plugin	*p = NULL;
+	const char		*dump;
 
 	while (pkg_plugins(&p) == EPKG_OK) {
 		conf = pkg_plugin_conf(p);
 		printf("Configuration for plugin: %s\n",
 		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
-
-		printf("%s\n", pkg_object_dump(conf));
+		dump = pkg_object_dump(conf);
+		printf("%s\n", dump);
+		free(dump);
 	}
 }
 
