@@ -978,7 +978,7 @@ hidden_tempfile(char *buf, int buflen, const char *path)
 		if (strlen(path) > NAME_MAX - 15)
 			prefix = ".";
 		snprintf(buf, buflen, "%s%s", prefix, path);
-		nbuflen = NAME_MAX;
+		nbuflen = NAME_MAX -1;
 	}
 
 
