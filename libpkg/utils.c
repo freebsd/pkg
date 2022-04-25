@@ -917,3 +917,71 @@ copy_file(int from, int to)
 
 	return (r >= 0);
 }
+
+static const unsigned char litchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+void
+append_random_suffix(char *buf, int buflen, int suflen)
+{
+	int nchars = strlen(buf);
+	char *pos;
+	int r;
+
+	if (nchars + suflen > buflen - 1) {
+		suflen = buflen - nchars - 1;
+		if (suflen <= 0)
+			return;
+	}
+
+	buf[nchars++] = '.';
+	pos = buf + nchars;
+
+	while(suflen --) {
+#ifndef HAVE_ARC4RANDOM
+		r = rand() % (sizeof(litchar) - 1);
+#else
+		r = arc4random_uniform(sizeof(litchar) - 1);
+#endif
+		*pos++ = litchar[r];
+	}
+
+	*pos = '\0';
+}
+
+void
+hidden_tempfile(char *buf, int buflen, const char *path)
+{
+	const char *fname;
+	int suffixlen = 12;
+	int nbuflen;
+	const char *prefix = ".pkgtemp.";
+
+	fname = strrchr(path, '/');
+	if (fname != NULL)
+		fname++;
+
+	/* 
+	 * try to reduce the temporary name as much as possible to fit with very
+	 * long file names if possible. by default
+	 * .pkgtemp. fname . <suffix>
+	 * otherwise
+	 * . fname . <suffix>
+	 * keep if suffix of at least 5 if possible
+	 */
+	if (fname != NULL) {
+		if (strlen(fname) > (NAME_MAX - 15))
+			prefix = ".";
+		snprintf(buf, buflen, "%.*s%s%s", (int)(fname - path), path, prefix, fname);
+		nbuflen = buflen;
+	} else {
+		if (strlen(path) > NAME_MAX - 15)
+			prefix = ".";
+		snprintf(buf, buflen, "%s%s", prefix, path);
+		nbuflen = NAME_MAX;
+	}
+
+
+	append_random_suffix(buf, nbuflen, suffixlen);
+}
+

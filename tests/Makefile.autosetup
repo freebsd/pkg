@@ -10,7 +10,8 @@ TESTS=	\
 	pkg_validation \
 	plist \
 	lua \
-	ssh
+	ssh \
+	utils
 
 TESTS_SH= \
 	frontend/pkg.sh \
@@ -73,6 +74,7 @@ pkg_add_dir_to_del_OBJS=	lib/pkg_add_dir_to_del.o
 pkg_validation_OBJS=	lib/pkg_validation.o
 packing_OBJS=	lib/packing.o
 ssh_OBJS=	lib/ssh.o
+utils_OBJS=	lib/utils.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -84,7 +86,8 @@ SRCS=	\
 	$(deps_formula_OBJS:.o=.c) \
 	$(pkg_add_dir_to_del_OBJS:.o=.c) \
 	$(pkg_validation_OBJS:.o=.c) \
-	$(ssh_OBJS:.o=.c)
+	$(ssh_OBJS:.o=.c) \
+	$(utils_OBJS:.o=.c)
 
 include $(MK)/common.mk
 

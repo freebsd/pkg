@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -114,5 +114,7 @@ bool match_ucl_lists(const char *buffer, const ucl_object_t *globs, const ucl_ob
 char *get_dirname(char *dir);
 char *rtrimspace(char *buf);
 bool copy_file(int from, int to);
+void hidden_tempfile(char *buf, int buflen, const char *path);
+void append_random_suffix(char *buf, int buflen, int suffixlen);
 
 #endif

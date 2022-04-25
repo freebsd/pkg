@@ -63,54 +63,6 @@ typedef tll(struct store_hardlinks *) hls;
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
 
-static const unsigned char litchar[] =
-"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-static void
-pkg_add_file_random_suffix(char *buf, int buflen, int suflen)
-{
-	int nchars = strlen(buf);
-	char *pos;
-	int r;
-
-	if (nchars + suflen > buflen - 1) {
-		suflen = buflen - nchars - 1;
-		if (suflen <= 0)
-			return;
-	}
-
-	buf[nchars++] = '.';
-	pos = buf + nchars;
-
-	while(suflen --) {
-#ifndef HAVE_ARC4RANDOM
-		r = rand() % (sizeof(litchar) - 1);
-#else
-		r = arc4random_uniform(sizeof(litchar) - 1);
-#endif
-		*pos++ = litchar[r];
-	}
-
-	*pos = '\0';
-}
-
-static void
-pkg_hidden_tempfile(char *buf, int buflen, const char *path)
-{
-	const char *fname;
-
-	fname = strrchr(path, '/');
-	if (fname != NULL)
-		fname++;
-
-	if (fname != NULL)
-		snprintf(buf, buflen, "%.*s.pkgtemp.%s", (int)(fname - path), path, fname);
-	else
-		snprintf(buf, buflen, ".pkgtemp.%s", path);
-
-	pkg_add_file_random_suffix(buf, buflen, 12);
-}
-
 static void
 attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
     bool merge)
@@ -436,7 +388,7 @@ create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target)
 {
 	bool tried_mkdir = false;
 
-	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+	hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 retry:
 	if (symlinkat(target, pkg->rootfd, RELATIVE_PATH(f->temppath)) == -1) {
 		if (!tried_mkdir) {
@@ -495,7 +447,7 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path)
 	bool tried_mkdir = false;
 	struct pkg_file *fh;
 
-	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+	hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 	fh = pkg_get_file(pkg, path);
 	if (fh == NULL) {
 		pkg_emit_error("Can't find the file %s is supposed to be"
@@ -555,7 +507,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	size_t len;
 	char buf[32768];
 
-	pkg_hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+	hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 
 retry:
 	/* Create the new temp file */
