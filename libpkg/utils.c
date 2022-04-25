@@ -928,8 +928,9 @@ append_random_suffix(char *buf, int buflen, int suflen)
 	char *pos;
 	int r;
 
-	if (nchars + suflen > buflen - 1) {
-		suflen = buflen - nchars - 1;
+	/* 2 being the "." and the \0 */
+	if (nchars + suflen > buflen - 2) {
+		suflen = buflen - nchars - 2;
 		if (suflen <= 0)
 			return;
 	}
@@ -978,7 +979,7 @@ hidden_tempfile(char *buf, int buflen, const char *path)
 		if (strlen(path) > NAME_MAX - 15)
 			prefix = ".";
 		snprintf(buf, buflen, "%s%s", prefix, path);
-		nbuflen = NAME_MAX -1;
+		nbuflen = NAME_MAX;
 	}
 
 

@@ -61,7 +61,7 @@ ATF_TC_BODY(random_suffix, tc) {
 	ATF_REQUIRE_EQ_MSG(strlen(buf), 13, "suffix not long enough %lu", strlen(buf));
 	snprintf(buf, sizeof(buf), "filename");
 	append_random_suffix(buf, sizeof(buf), 12);
-	ATF_REQUIRE_EQ_MSG(strlen(buf), 14, "suffix not long enough %lu", strlen(buf));
+	ATF_REQUIRE_EQ_MSG(strlen(buf), 13, "suffix not long enough %lu", strlen(buf));
 }
 
 ATF_TP_ADD_TCS(tp)
