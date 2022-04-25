@@ -11,7 +11,8 @@ TESTS=	\
 	plist \
 	lua \
 	ssh \
-	utils
+	utils \
+	metalog
 
 TESTS_SH= \
 	frontend/pkg.sh \
@@ -75,6 +76,7 @@ pkg_validation_OBJS=	lib/pkg_validation.o
 packing_OBJS=	lib/packing.o
 ssh_OBJS=	lib/ssh.o
 utils_OBJS=	lib/utils.o
+metalog_OBJS=	lib/metalog.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -87,7 +89,8 @@ SRCS=	\
 	$(pkg_add_dir_to_del_OBJS:.o=.c) \
 	$(pkg_validation_OBJS:.o=.c) \
 	$(ssh_OBJS:.o=.c) \
-	$(utils_OBJS:.o=.c)
+	$(utils_OBJS:.o=.c) \
+	$(metalog_OBJS:.o=.c)
 
 include $(MK)/common.mk
 

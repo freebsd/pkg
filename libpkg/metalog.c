@@ -44,15 +44,15 @@ metalog_open(const char *metalog)
 	return EPKG_OK;
 }
 
-void
+int
 metalog_add(int type, const char *path, const char *uname, const char *gname,
     int mode, unsigned long fflags, const char *link)
 {
 	char *fflags_buffer = NULL;
+	int ret = EPKG_FATAL;
 
-	if (metalogfp == NULL) {
-		return;
-	}
+	if (metalogfp == NULL)
+		goto out;
 
 #ifdef HAVE_FFLAGSTOSTR
 	if (fflags) {
@@ -69,6 +69,7 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 		    fflags ? " flags=" : "",
 		    fflags_buffer ? fflags_buffer : "") < 0) {
 			pkg_errno("%s", "Unable to write to the metalog");
+			goto out;
 		}
 		break;
 	case PKG_METALOG_FILE:
@@ -78,6 +79,7 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 		    fflags ? " flags=" : "",
 		    fflags_buffer ? fflags_buffer : "") < 0) {
 			pkg_errno("%s", "Unable to write to the metalog");
+			goto out;
 		}
 		break;
 	case PKG_METALOG_LINK:
@@ -87,11 +89,15 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 		    fflags ? " flags=" : "",
 		    fflags_buffer ? fflags_buffer : "") < 0) {
 			pkg_errno("%s", "Unable to write to the metalog");
+			goto out;
 		}
 		break;
 	}
+	ret = EPKG_OK;
 
+out:
 	free(fflags_buffer);
+	return (ret);
 }
 
 void
