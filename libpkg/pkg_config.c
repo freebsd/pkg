@@ -347,12 +347,6 @@ static struct config_entry c[] = {
 		"Use read locking for query database"
 	},
 	{
-		PKG_BOOL,
-		"PLIST_ACCEPT_DIRECTORIES",
-		"NO",
-		"Accept directories listed like plain files in plist"
-	},
-	{
 		PKG_INT,
 		"IP_VERSION",
 		"0",

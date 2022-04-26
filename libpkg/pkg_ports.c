@@ -368,34 +368,22 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		}
 	}
 
-	if (S_ISDIR(st.st_mode) &&
-	    !pkg_object_bool(pkg_config_get("PLIST_ACCEPT_DIRECTORIES"))) {
+	if (S_ISDIR(st.st_mode)) {
 		pkg_emit_error("Plist error, directory listed as a file: %s",
 		    line);
 		free(buf);
 		return (EPKG_FATAL);
 	}
 
-	if (S_ISDIR(st.st_mode)) {
-		if (a != NULL)
-			ret = pkg_adddir_attr(p->pkg, path,
-			    a->owner ? a->owner : p->uname,
-			    a->group ? a->group : p->gname,
-			    a->mode ? a->mode : p->perm,
-			    true, true);
-		else
-			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-			    p->perm, true, true);
+	if (a != NULL) {
+		ret = pkg_addfile_attr(p->pkg, path, buf,
+		    a->owner ? a->owner : p->uname,
+		    a->group ? a->group : p->gname,
+		    a->mode ? a->mode : p->perm,
+		    a->fflags, true);
 	} else {
-		if (a != NULL)
-			ret = pkg_addfile_attr(p->pkg, path, buf,
-			    a->owner ? a->owner : p->uname,
-			    a->group ? a->group : p->gname,
-			    a->mode ? a->mode : p->perm,
-			    a->fflags, true);
-		else
-			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
-			    p->gname, p->perm, 0, true);
+		ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
+		    p->gname, p->perm, 0, true);
 	}
 
 	free(buf);

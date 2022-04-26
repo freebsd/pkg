@@ -145,7 +145,6 @@ _pkg_config_opts() {
 		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
 		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
 		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
-		'PLIST_ACCEPT_DIRECTORIES[accept directories listed like plain files in plist]:boolean:(yes no)' \
 		'PLUGINS[list of plugins pkg(8) should load]:plugins' \
 		'PLUGINS_CONF_DIR[directory containing per-plugin configurations files]:directory:_files -/' \
 		'PORTSDIR[specify location of ports directory]:directory:_files -/' \
