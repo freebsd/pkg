@@ -139,7 +139,7 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_encode_base32
 	},
 	[PKG_HASH_TYPE_BLAKE2S_RAW] = {
-		"blake2_raw",
+		"blake2s_raw",
 		BLAKE2S_OUTBYTES,
 		pkg_checksum_hash_blake2s,
 		pkg_checksum_hash_blake2s_bulk,
