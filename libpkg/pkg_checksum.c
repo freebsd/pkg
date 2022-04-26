@@ -158,12 +158,10 @@ static const struct _pkg_cksum_type {
 static void
 pkg_checksum_free_entry(struct pkg_checksum_entry *e)
 {
-	if (e != NULL) {
-		if (e->value) {
-			free(e->value);
-		}
-		free(e);
-	}
+	if (e == NULL)
+		return;
+	free(e->value);
+	free(e);
 }
 
 static void
