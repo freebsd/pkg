@@ -986,3 +986,18 @@ hidden_tempfile(char *buf, int buflen, const char *path)
 	append_random_suffix(buf, nbuflen, suffixlen);
 }
 
+char *
+json_escape(const char *str)
+{
+	xstring *buf = xstring_new();
+
+	while (str != NULL && *str != '\0') {
+		if (*str == '"' || *str == '\\')
+			fputc('\\', buf->fp);
+		fputc(*str, buf->fp);
+		str++;
+	}
+
+	return (xstring_get(buf));
+}
+

@@ -38,21 +38,6 @@
 static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
 
-static char *
-buf_json_escape(const char *str)
-{
-	xstring *buf = xstring_new();
-
-	while (str != NULL && *str != '\0') {
-		if (*str == '"' || *str == '\\')
-			fputc('\\', buf->fp);
-		fputc(*str, buf->fp);
-		str++;
-	}
-
-	return (xstring_get(buf));
-}
-
 static void
 pipeevent(struct pkg_event *ev)
 {
@@ -71,25 +56,25 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": {"
 		    "\"msg\": \"%s(%s): %s\","
 		    "\"errno\": %d}}",
-		    buf_json_escape(ev->e_errno.func),
-		    buf_json_escape(ev->e_errno.arg),
-		    buf_json_escape(strerror(ev->e_errno.no)),
+		    json_escape(ev->e_errno.func),
+		    json_escape(ev->e_errno.arg),
+		    json_escape(strerror(ev->e_errno.no)),
 		    ev->e_errno.no);
 		break;
 	case PKG_EVENT_ERROR:
 		fprintf(msg->fp, "{ \"type\": \"ERROR\", "
 		    "\"data\": {\"msg\": \"%s\"}}",
-		    buf_json_escape(ev->e_pkg_error.msg));
+		    json_escape(ev->e_pkg_error.msg));
 		break;
 	case PKG_EVENT_NOTICE:
 		fprintf(msg->fp, "{ \"type\": \"NOTICE\", "
 		    "\"data\": {\"msg\": \"%s\"}}",
-		    buf_json_escape(ev->e_pkg_notice.msg));
+		    json_escape(ev->e_pkg_notice.msg));
 		break;
 	case PKG_EVENT_DEVELOPER_MODE:
 		fprintf(msg->fp, "{ \"type\": \"ERROR\", "
 		    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
-		    buf_json_escape(ev->e_pkg_error.msg));
+		    json_escape(ev->e_pkg_error.msg));
 		break;
 	case PKG_EVENT_UPDATE_ADD:
 		fprintf(msg->fp, "{ \"type\": \"INFO_UPDATE_ADD\", "
@@ -116,7 +101,7 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": { "
 		    "\"url\": \"%s\" "
 		    "}}",
-		    buf_json_escape(ev->e_fetching.url)
+		    json_escape(ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_FETCH_FINISHED:
@@ -124,7 +109,7 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": { "
 		    "\"url\": \"%s\" "
 		    "}}",
-		    buf_json_escape(ev->e_fetching.url)
+		    json_escape(ev->e_fetching.url)
 		    );
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
@@ -158,7 +143,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
 			ev->e_install_finished.pkg->message ?
-				buf_json_escape(ev->e_install_finished.pkg->message->str) :
+				json_escape(ev->e_install_finished.pkg->message->str) :
 				"");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
@@ -303,7 +288,7 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_file_mismatch.pkg,
 		    ev->e_file_mismatch.pkg,
-		    buf_json_escape(ev->e_file_mismatch.file->path));
+		    json_escape(ev->e_file_mismatch.file->path));
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		fprintf(msg->fp, "{ \"type\": \"ERROR_PLUGIN\", "
@@ -313,9 +298,9 @@ pipeevent(struct pkg_event *ev)
 		    "\"errno\": %d"
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
-		    buf_json_escape(ev->e_plugin_errno.func),
-		    buf_json_escape(ev->e_plugin_errno.arg),
-		    buf_json_escape(strerror(ev->e_plugin_errno.no)),
+		    json_escape(ev->e_plugin_errno.func),
+		    json_escape(ev->e_plugin_errno.arg),
+		    json_escape(strerror(ev->e_plugin_errno.no)),
 		    ev->e_plugin_errno.no);
 		break;
 	case PKG_EVENT_PLUGIN_ERROR:
@@ -325,7 +310,7 @@ pipeevent(struct pkg_event *ev)
 		    "\"msg\": \"%s\""
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
-		    buf_json_escape(ev->e_plugin_error.msg));
+		    json_escape(ev->e_plugin_error.msg));
 		break;
 	case PKG_EVENT_PLUGIN_INFO:
 		fprintf(msg->fp, "{ \"type\": \"INFO_PLUGIN\", "
@@ -334,7 +319,7 @@ pipeevent(struct pkg_event *ev)
 		    "\"msg\": \"%s\""
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
-		    buf_json_escape(ev->e_plugin_info.msg));
+		    json_escape(ev->e_plugin_info.msg));
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		fprintf(msg->fp, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
