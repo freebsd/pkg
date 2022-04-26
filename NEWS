@@ -1,3 +1,16 @@
+Changes from 1.17.99.9 to 1.17.99.10
+- greatly improve test coverage
+- many improvements in error handling for pkg fetch
+- Remove the deprecated pkg_get() function from the API
+- prevent @config files to be verified from pkg checksums checking
+- add tcp:// protocol support which allows to server packages form inetd
+  and secure it via spiped for example
+- triggers can now be trigger when empty directories are added/removed
+- Add "orphans" aliases
+- speed up pkg which
+- Reduce the possibility to have a temporary file during package extraction
+  which exceed NAME_MAX (maxium file name length)
+
 Changes from 1.17.99.8 to 1.17.99.9
 - pkg add: only runs triggers at the end of the equivalent of a transaction
 - pkg search: fix the combinaison of -q and -o
