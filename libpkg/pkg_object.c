@@ -119,12 +119,6 @@ pkg_object_int(const pkg_object *o)
 	return (ucl_object_toint(o));
 }
 
-unsigned
-pkg_object_count(const pkg_object *o)
-{
-	return (UCL_COUNT(o));
-}
-
 const pkg_object *
 pkg_object_find(const pkg_object *o, const char *key)
 {

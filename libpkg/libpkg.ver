@@ -98,7 +98,6 @@ global:
 	pkg_namecmp;
 	pkg_new;
 	pkg_object_bool;
-	pkg_object_count;
 	pkg_object_dump;
 	pkg_object_find;
 	pkg_object_free;
