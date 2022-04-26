@@ -165,7 +165,6 @@ global:
 	pkg_utils_tokenize;
 	pkg_vasprintf;
 	pkg_vdprintf;
-	pkg_version_change;
 	pkg_version_change_between;
 	pkg_version_cmp;
 	pkg_vfprintf;

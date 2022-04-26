@@ -339,24 +339,6 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 }
 
 pkg_change_t
-pkg_version_change(const struct pkg * restrict pkg)
-{
-
-	if (pkg->old_version == NULL)
-		return (PKG_REINSTALL);
-
-	switch (pkg_version_cmp(pkg->old_version, pkg->version)) {
-	case -1:
-		return (PKG_UPGRADE);
-	default:		/* placate the compiler */
-	case 0:
-		return (PKG_REINSTALL);
-	case 1:
-		return (PKG_DOWNGRADE);
-	}
-}
-
-pkg_change_t
 pkg_version_change_between(const struct pkg * pkg1, const struct pkg *pkg2)
 {
 	if (pkg2 == NULL)
