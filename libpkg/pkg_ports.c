@@ -208,6 +208,10 @@ name_key(struct plist *p, char *line, struct file_attr *a __unused)
 		return (EPKG_OK);
 	}
 	tmp = strrchr(line, '-');
+	if (tmp == NULL) {
+		pkg_emit_error("Invalid @name key: '%s' expecting <name>-<version>", line);
+		return (EPKG_FATAL);
+	}
 	tmp[0] = '\0';
 	tmp++;
 	p->pkg->name = xstrdup(line);

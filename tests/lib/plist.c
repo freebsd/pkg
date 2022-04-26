@@ -199,6 +199,20 @@ ATF_TC_BODY(parse_plist, tc)
 	ATF_REQUIRE(plist->pkg == p);
 	ATF_REQUIRE_EQ(plist->prefix[0], '\0');
 
+	strlcpy(buf, "@name name1", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(plist, buf));
+
+	strlcpy(buf, "@name name1-1", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
+	ATF_REQUIRE_STREQ(p->name, "name1");
+	ATF_REQUIRE_STREQ(p->version, "1");
+
+	/* if already set, name should not change */
+	strlcpy(buf, "@name name2-2", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
+	ATF_REQUIRE_STREQ(p->name, "name1");
+	ATF_REQUIRE_STREQ(p->version, "1");
+
 	strlcpy(buf, "@cwd /myprefix", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
 	ATF_REQUIRE_STREQ(p->prefix, "/myprefix");
