@@ -1228,7 +1228,6 @@ int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_p
 
 const pkg_object *pkg_config_get(const char *);
 pkg_object_t pkg_object_type(const pkg_object *);
-const pkg_object *pkg_object_find(const pkg_object *o, const char *key);
 int64_t pkg_object_int(const pkg_object *o);
 bool pkg_object_bool(const pkg_object *o);
 const char *pkg_object_string(const pkg_object *o);

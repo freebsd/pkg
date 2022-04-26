@@ -99,7 +99,6 @@ global:
 	pkg_new;
 	pkg_object_bool;
 	pkg_object_dump;
-	pkg_object_find;
 	pkg_object_free;
 	pkg_object_int;
 	pkg_object_iterate;
