@@ -26,15 +26,22 @@
 #include <atf-c.h>
 #include <err.h>
 #include <private/pkg.h>
+#include <pkg_config.h>
 
 ATF_TC(basics);
 
 ATF_TC_HEAD(basics, tc) {}
 
 ATF_TC_BODY(basics, tc) {
+#ifdef HAVE_FFLAGSTOSTR
 	const char *file = "./file type=file uname=root gname=wheel mode=644 flags=uchg\n"
 		"./dir type=dir uname=root gname=wheel mode=644 flags=uchg\n"
 		"./link type=link uname=root gname=wheel mode=644 link=bla\n";
+#else
+	const char *file = "./file type=file uname=root gname=wheel mode=644 flags=\n"
+		"./dir type=dir uname=root gname=wheel mode=644 flags=\n"
+		"./link type=link uname=root gname=wheel mode=644 link=bla\n";
+#endif
 	ATF_REQUIRE_EQ(EPKG_FATAL, metalog_open("/dev/nope/nope"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, metalog_add(PKG_METALOG_FILE, "meh", "root", "wheel", 0644, 2, NULL));
 	ATF_REQUIRE_EQ(EPKG_OK, metalog_open("out"));
