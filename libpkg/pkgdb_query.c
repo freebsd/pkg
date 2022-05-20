@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -79,47 +79,47 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (pkgdb_case_sensitive()) {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
-					comp = " WHERE (myname = ?1 "
-					    "OR (packages.name = SPLIT_VERSION('name', ?1) AND "
+					comp = " WHERE (name = ?1 "
+					    "OR (name = SPLIT_VERSION('name', ?1) AND "
 					    " version = SPLIT_VERSION('version', ?1)))";
 				else
-					comp = " WHERE categories.name || substr(origin, instr(origin, '/'))";
+					comp = " WHERE origin = ?1";
 			} else {
-				comp = " WHERE packages.name = ?1";
+				comp = " WHERE name = ?1";
 			}
 		} else {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
-					comp = " WHERE (packages.name = ?1 COLLATE NOCASE "
-							"OR (packages.name = SPLIT_VERSION('name', ?1) COLLATE NOCASE AND "
+					comp = " WHERE (name = ?1 COLLATE NOCASE "
+							"OR (name = SPLIT_VERSION('name', ?1) COLLATE NOCASE AND "
 							" version = SPLIT_VERSION('version', ?1)))";
 				else
-					comp = " WHERE categories.name || substr(origin, instr(origin, '/'))  = ?1 COLLATE NOCASE";
+					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {
-				comp = " WHERE packages.name = ?1 COLLATE NOCASE";
+				comp = " WHERE name = ?1 COLLATE NOCASE";
 			}
 		}
 		break;
 	case MATCH_GLOB:
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
-				comp = " WHERE (packages.name GLOB ?1 "
-					"OR packages.name || '-' || version GLOB ?1)";
+				comp = " WHERE (name GLOB ?1 "
+					"OR name || '-' || version GLOB ?1)";
 			else
-				comp = " WHERE categories.name || substr(origin, instr(origin, '/')) GLOB ?1";
+				comp = " WHERE origin GLOB ?1";
 		} else {
-			comp = " WHERE packages.name = ?1";
+			comp = " WHERE name = ?1";
 		}
 		break;
 	case MATCH_REGEX:
 		if (checkuid == NULL) {
 			if (checkorigin == NULL)
-				comp = " WHERE (packages.name REGEXP ?1 "
-				    "OR package.name || '-' || version REGEXP ?1)";
+				comp = " WHERE (name REGEXP ?1 "
+				    "OR name || '-' || version REGEXP ?1)";
 			else
-				comp = " WHERE categories.name || substr(origin, instr(origin, '/'))e  REGEXP ?1";
+				comp = " WHERE origin REGEXP ?1";
 		} else {
-			comp = " WHERE packages.name = ?1";
+			comp = " WHERE name = ?1";
 		}
 		break;
 	}
@@ -143,28 +143,22 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 
 	if (cond)
 		sqlite3_snprintf(sizeof(sql), sql,
-				"SELECT packages.id, origin, packages.name, packages.name as uniqueid, "
+				"SELECT id, origin, name, name as uniqueid, "
 					"version, comment, desc, "
 					"message, arch, maintainer, www, "
 					"prefix, flatsize, licenselogic, automatic, "
 					"locked, time, manifestdigest, vital "
-					"FROM packages "
-					"INNER JOIN pkg_categories ON packages.id = pkg_categories.package_id "
-					"INNER JOIN categories ON categories.id = pkg_categories.category_id "
-					" %s %s (%s) GROUP BY packages.name ORDER BY packages.name;",
+					"FROM packages AS p%s %s (%s) ORDER BY p.name;",
 					comp, pattern == NULL ? "WHERE" : "AND", cond + 7);
 	else
 		sqlite3_snprintf(sizeof(sql), sql,
-				"SELECT packages.id, origin, packages.name, packages.name as uniqueid, "
+				"SELECT id, origin, name, name as uniqueid, "
 					"version, comment, desc, "
 					"message, arch, maintainer, www, "
 					"prefix, flatsize, licenselogic, automatic, "
 					"locked, time, manifestdigest, vital "
-				"FROM packages "
-				"INNER JOIN pkg_categories ON packages.id = pkg_categories.package_id "
-				"INNER JOIN categories ON categories.id = pkg_categories.category_id "
-				"%s"
-				" GROUP BY packages.name ORDER BY packages.id", comp);
+				"FROM packages AS p%s "
+				"ORDER BY p.name;", comp);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
