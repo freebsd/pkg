@@ -70,3 +70,13 @@ fedora_task:
                 - ./configure --with-libarchive.pc --with-asan --with-ubsan
                 - make -j4 || make V=1
         check_script: make check || { kyua report --verbose ; exit 1 ; }
+
+alpine_task:
+        container:
+                image: alpine:latest
+        install_script:
+                - apk add musl-dev gcc g++ make kyua pkgconf gcompat tcl fts-dev libbsd-dev libarchive-dev openssl-dev bzip2-dev xz-dev zlib-dev m4
+        script:
+                - ./configure
+                - make -j4 || make V=1
+        check_script: make check || { kyua report --verbose ; exit 1 ; }
