@@ -79,9 +79,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		if (pkgdb_case_sensitive()) {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
-					comp = " WHERE (name = ?1 "
-					    "OR (name = SPLIT_VERSION('name', ?1) AND "
-					    " version = SPLIT_VERSION('version', ?1)))";
+					comp = " WHERE (name = ?1 OR name || '-' || version = ?1)";
 				else
 					comp = " WHERE origin = ?1";
 			} else {
@@ -90,9 +88,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		} else {
 			if (checkuid == NULL) {
 				if (checkorigin == NULL)
-					comp = " WHERE (name = ?1 COLLATE NOCASE "
-							"OR (name = SPLIT_VERSION('name', ?1) COLLATE NOCASE AND "
-							" version = SPLIT_VERSION('version', ?1)))";
+					comp = " WHERE (name = ?1 COLLATE NOCASE OR "
+					"name || '-' || version = ?1 COLLATE NOCASE)";
 				else
 					comp = " WHERE origin = ?1 COLLATE NOCASE";
 			} else {

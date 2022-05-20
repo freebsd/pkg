@@ -123,8 +123,6 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		xasprintf(&sql, basesql, repo->name, comp,
 		    comp[0] != '\0' ? "AND (" : "WHERE (", cond + 7, ")");
 
-	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
-	     pattern == NULL ? "all": pattern);
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
 	if (stmt == NULL)
@@ -132,6 +130,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -369,13 +368,13 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	fprintf(sql->fp, "%s", ";");
 	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
 	stmt = prepare_sql(sqlite, sqlcmd);
 	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }

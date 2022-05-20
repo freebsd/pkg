@@ -156,47 +156,6 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
 }
 
-static void
-pkgdb_split_common(sqlite3_context *ctx, int argc, sqlite3_value **argv,
-    char delim, const char *first, const char *second)
-{
-	const unsigned char *what = NULL;
-	const unsigned char *data;
-	const unsigned char *pos;
-
-	if (argc != 2 || (what = sqlite3_value_text(argv[0])) == NULL ||
-	    (data = sqlite3_value_text(argv[1])) == NULL) {
-		sqlite3_result_error(ctx, "SQL function split_*() called "
-		    "with invalid arguments.\n", -1);
-		return;
-	}
-
-	if (strcasecmp(what, first) == 0) {
-		pos = strrchr(data, delim);
-		if (pos != NULL)
-			sqlite3_result_text(ctx, data, (pos - data), NULL);
-		else
-			sqlite3_result_text(ctx, data, -1, NULL);
-	}
-	else if (strcasecmp(what, second) == 0) {
-		pos = strrchr(data, delim);
-		if (pos != NULL)
-			sqlite3_result_text(ctx, pos + 1, -1, NULL);
-		else
-			sqlite3_result_text(ctx, data, -1, NULL);
-	}
-	else {
-		sqlite3_result_error(ctx, "SQL function split_*() called "
-		    "with invalid arguments.\n", -1);
-	}
-}
-
-void
-pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_split_common(ctx, argc, argv, '-', "name", "version");
-}
-
 void
 pkgdb_regex_delete(void *p)
 {
@@ -2706,8 +2665,6 @@ pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
 	    pkgdb_now, NULL, NULL);
 	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_regex, NULL, NULL);
-	sqlite3_create_function(db, "split_version", 2, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
-	    pkgdb_split_version, NULL, NULL);
 	sqlite3_create_function(db, "vercmp", 3, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_vercmp, NULL, NULL);
 
