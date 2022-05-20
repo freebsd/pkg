@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
@@ -33,12 +33,6 @@
 #include <sys/capsicum.h>
 #endif
 
-#ifdef HAVE_BSD_SYS_QUEUE_H
-#include <bsd/sys/queue.h>
-#else
-#include <sys/queue.h>
-#endif
-
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
@@ -49,18 +43,17 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <regex.h>
+#include <tllist.h>
 
 #include "pkgcli.h"
 
 struct installed_ports {
 	char *origin;
-	SLIST_ENTRY(installed_ports) next;
 };
 
 struct regex_cache {
 	char *pattern;
 	regex_t reg;
-	SLIST_ENTRY(regex_cache) next;
 };
 
 void
@@ -125,7 +118,7 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	size_t len;
 	char *re, *buf, *p, **words;
 	struct regex_cache *ent;
-	static SLIST_HEAD(,regex_cache) cache = SLIST_HEAD_INITIALIZER(regex_cache);
+	tll(struct regex_cache *) cache = tll_init();
 
 	len = strlen(affects);
 	buf = strdup(affects);
@@ -187,14 +180,14 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 		}
 
 		found = 0;
-		SLIST_FOREACH(ent, &cache, next) {
+		tll_foreach(cache, it) {
 			if (ignorecase)
-				rc = strcasecmp(words[i], ent->pattern);
+				rc = strcasecmp(words[i], it->item->pattern);
 			else
-				rc = strcmp(words[i], ent->pattern);
+				rc = strcmp(words[i], it->item->pattern);
 			if (rc == 0) {
 				found++;
-				if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
+				if (regexec(&it->item->reg, origin, 0, NULL, 0) == 0) {
 					ret = 1;
 					break;
 				}
@@ -216,7 +209,7 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 			}
 			regcomp(&ent->reg, re, (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
 			free(re);
-			SLIST_INSERT_HEAD(&cache, ent, next);
+			tll_push_front(cache, ent);
 			if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
 				ret = 1;
 				break;
@@ -241,7 +234,7 @@ exec_updating(int argc, char **argv)
 	char			*updatingfile = NULL;
 	bool			caseinsensitive = false;
 	struct installed_ports	*port;
-	SLIST_HEAD(,installed_ports) origins;
+	tll(struct installed_ports *) origins = tll_init();
 	int			 ch;
 	char			*line = NULL;
 	size_t			 linecap = 0;
@@ -329,7 +322,6 @@ exec_updating(int argc, char **argv)
 #endif
 #endif
 
-	SLIST_INIT(&origins);
 	if (argc == 0) {
 		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
 			retcode = EXIT_FAILURE;
@@ -340,13 +332,13 @@ exec_updating(int argc, char **argv)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			port = malloc(sizeof(struct installed_ports));
 			pkg_asprintf(&port->origin, "%o", pkg);
-			SLIST_INSERT_HEAD(&origins, port, next);
+			tll_push_front(origins, port);
 		}
 	} else {
 		while (*argv) {
 			port = malloc(sizeof(struct installed_ports));
 			port->origin = strdup(*argv);
-			SLIST_INSERT_HEAD(&origins, port, next);
+			tll_push_front(origins, port);
 			argv++;
 		}
 	}
@@ -363,8 +355,8 @@ exec_updating(int argc, char **argv)
 		tmp = NULL;
 		if (found == 0) {
 			if (strstr(line, "AFFECTS") != NULL) {
-				SLIST_FOREACH(port, &origins, next) {
-					if (matcher(line, port->origin, caseinsensitive) != 0) {
+				tll_foreach(origins, it) {
+					if (matcher(line, it->item->origin, caseinsensitive) != 0) {
 						tmp = "";
 						break;
 					}
