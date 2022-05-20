@@ -3105,7 +3105,7 @@ pkgdb_begin_solver(struct pkgdb *db)
 		"BEGIN TRANSACTION;";
 	const char end_update_sql[] = ""
 		"END TRANSACTION;"
-		"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);";
+		"CREATE INDEX pkg_digest_id ON packages(name, manifestdigest);";
 	struct pkgdb_it *it;
 	struct pkg *p = NULL;
 	tll(struct pkg *) pkglist = tll_init();
