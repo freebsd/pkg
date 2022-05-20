@@ -1637,7 +1637,6 @@ prstmt_initialize(struct pkgdb *db)
 		sqlite = db->sqlite;
 
 		for (i = 0; i < PRSTMT_LAST; i++) {
-			pkg_debug(4, "Pkgdb: preparing statement '%s'", SQL(i));
 			STMT(i) = prepare_sql(sqlite, SQL(i));
 			if (STMT(i) == NULL)
 				return (EPKG_FATAL);
@@ -1679,6 +1678,7 @@ run_prstmt(sql_prstmt_index s, ...)
 
 	va_end(ap);
 
+	pkg_debug(4, "Pkgdb, running '%s'", sqlite3_expanded_sql(stmt));
 	retcode = sqlite3_step(stmt);
 
 	return (retcode);
@@ -3035,13 +3035,13 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		break;
 	}
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	stmt = prepare_sql(db->sqlite, sql);
 	if (stmt == NULL)
 		return (-1);
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
+		pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 	}
 
 	sqlite3_finalize(stmt);
