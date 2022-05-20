@@ -1584,7 +1584,7 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 
 	tll_foreach(*candidates, c) {
 		pkg_emit_progress_tick(++elt_num, jcount);
-		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
+		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE p.id=%" PRId64,
 		    c->item);
 		if ((it = pkgdb_query_cond(j->db, sqlbuf, NULL, MATCH_ALL)) == NULL)
 			return (EPKG_FATAL);

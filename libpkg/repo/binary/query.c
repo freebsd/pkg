@@ -103,13 +103,15 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	char *sql = NULL;
 	const char	*comp = NULL;
 	char basesql[] = ""
-		"SELECT id, origin, name, name as uniqueid, version, comment, "
+		"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
-		"FROM packages AS p %s "
+		"FROM packages  as p "
+		"LEFT JOIN pkg_categories ON p.id = pkg_categories.package_id "
+		"LEFT JOIN categories ON categories.id = pkg_categories.category_id %s"
 		"%s%s%s "
-		"ORDER BY NAME;";
+		"ORDER BY p.name;";
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
@@ -121,7 +123,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		xasprintf(&sql, basesql, repo->name, comp, "", "", "");
 	else
 		xasprintf(&sql, basesql, repo->name, comp,
-		    comp[0] != '\0' ? "AND (" : "WHERE (", cond + 7, ")");
+		    comp[0] != '\0' ? "AND (" : "WHERE ( ", cond + 7, " )");
 
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
@@ -294,13 +296,13 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 		what = NULL;
 		break;
 	case FIELD_ORIGIN:
-		what = "origin";
+		what = "categories.name || substr(origin, instr(origin, '/')) as mycat";
 		break;
 	case FIELD_NAME:
-		what = "name";
+		what = "p.name";
 		break;
 	case FIELD_NAMEVER:
-		what = "name || '-' || version";
+		what = "p.name || '-' || version";
 		break;
 	case FIELD_COMMENT:
 		what = "comment";
@@ -318,13 +320,13 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 		orderby = NULL;
 		break;
 	case FIELD_ORIGIN:
-		orderby = " ORDER BY origin";
+		orderby = " ORDER BY mycat";
 		break;
 	case FIELD_NAME:
-		orderby = " ORDER BY name";
+		orderby = " ORDER BY p.name";
 		break;
 	case FIELD_NAMEVER:
-		orderby = " ORDER BY name, version";
+		orderby = " ORDER BY p.name, version";
 		break;
 	case FIELD_COMMENT:
 		orderby = " ORDER BY comment";
@@ -349,11 +351,13 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	xstring	*sql = NULL;
 	char *sqlcmd = NULL;
 	const char	*multireposql = ""
-		"SELECT id, origin, name, version, comment, "
+		"SELECT DISTINCT p.id, origin, p.name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, path AS repopath, '%1$s' AS dbname, '%2$s' AS repourl "
-		"FROM packages ";
+		"FROM packages  as p "
+		"LEFT JOIN pkg_categories ON p.id = pkg_categories.package_id "
+		"LEFT JOIN categories ON categories.id = pkg_categories.category_id ";
 
 	if (pattern == NULL || pattern[0] == '\0')
 		return (NULL);

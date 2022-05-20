@@ -483,7 +483,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 				str++;
 				switch (str[0]) {
 				case 'n':
-					fprintf(sqlcond->fp, "name");
+					fprintf(sqlcond->fp, "p.name");
 					state = OPERATOR_STRING;
 					break;
 				case 'o':
