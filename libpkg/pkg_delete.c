@@ -140,7 +140,7 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 {
 	char path[MAXPATHLEN];
 	char *tmp;
-	size_t i, len, len2;
+	size_t len, len2;
 
 	strlcpy(path, file != NULL ? file : dir, MAXPATHLEN);
 
@@ -158,29 +158,21 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 		path[len] = '\0';
 	}
 
-	for (i = 0; i < pkg->dir_to_del_len ; i++) {
-		len2 = strlen(pkg->dir_to_del[i]);
-		if (len2 >= len && strncmp(path, pkg->dir_to_del[i], len) == 0)
+	tll_foreach(pkg->dir_to_del, d) {
+		len2 = strlen(d->item);
+		if (len2 >= len && strncmp(path, d->item, len) == 0)
 			return;
 
-		if (strncmp(path, pkg->dir_to_del[i], len2) == 0) {
+		if (strncmp(path, d->item, len2) == 0) {
 			pkg_debug(1, "Replacing in deletion %s with %s",
-			    pkg->dir_to_del[i], path);
-			free(pkg->dir_to_del[i]);
-			pkg->dir_to_del[i] = xstrdup(path);
-			return;
+			    d->item, path);
+			tll_remove_and_free(pkg->dir_to_del, d, free);
+			break;
 		}
 	}
 
 	pkg_debug(1, "Adding to deletion %s", path);
-
-	if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
-		pkg->dir_to_del_cap += 64;
-		pkg->dir_to_del = xrealloc(pkg->dir_to_del,
-		    pkg->dir_to_del_cap * sizeof(char *));
-	}
-
-	pkg->dir_to_del[pkg->dir_to_del_len++] = xstrdup(path);
+	tll_push_back(pkg->dir_to_del, xstrdup(path));
 }
 
 static void
@@ -269,11 +261,10 @@ static void
 pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 {
 	char prefix_r[MAXPATHLEN];
-	size_t i;
 
 	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix + 1);
-	for (i = 0; i < pkg->dir_to_del_len; i++)
-		rmdir_p(db, pkg, pkg->dir_to_del[i], prefix_r);
+	tll_foreach(pkg->dir_to_del, d)
+		rmdir_p(db, pkg, d->item, prefix_r);
 }
 
 void
@@ -385,12 +376,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
 		pkg_add_dir_to_del(pkg, NULL, path);
 	} else {
-		if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
-			pkg->dir_to_del_cap += 64;
-			pkg->dir_to_del = xrealloc(pkg->dir_to_del,
-			    pkg->dir_to_del_cap * sizeof(char *));
-		}
-		pkg->dir_to_del[pkg->dir_to_del_len++] = xstrdup(path);
+		tll_push_back(pkg->dir_to_del, xstrdup(path));
 	}
 }
 

@@ -239,9 +239,7 @@ struct pkg {
 	unsigned			flags;
 	int		rootfd;
 	char		rootpath[MAXPATHLEN];
-	char		**dir_to_del;
-	size_t		dir_to_del_cap;
-	size_t		dir_to_del_len;
+	stringlist_t	dir_to_del;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
 };
