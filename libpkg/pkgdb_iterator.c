@@ -535,7 +535,7 @@ static int
 pkgdb_load_license(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
-		"SELECT ifnull(group_concat(name, ', '), '') AS name"
+		"SELECT name "
 		"  FROM pkg_licenses, licenses AS l"
 		"  WHERE package_id = ?1"
 		"    AND license_id = l.id"
