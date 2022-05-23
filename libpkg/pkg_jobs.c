@@ -78,6 +78,7 @@ struct pkg_jobs_locked {
 	void *context;
 };
 static __thread struct pkg_jobs_locked *pkgs_job_lockedpkg;
+typedef tll(int64_t) candidates_t;
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
@@ -1499,21 +1500,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
-struct pkg_jobs_install_candidate {
-	int64_t id;
-	struct pkg_jobs_install_candidate *next;
-};
-
-static struct pkg_jobs_install_candidate *
-pkg_jobs_new_candidate(struct pkg *pkg)
-{
-	struct pkg_jobs_install_candidate *n;
-
-	n = xmalloc(sizeof(*n));
-	n->id = pkg->id;
-	return (n);
-}
-
 static bool
 pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 {
@@ -1553,12 +1539,12 @@ pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 	return (true);
 }
 
-static struct pkg_jobs_install_candidate *
-pkg_jobs_find_install_candidates(struct pkg_jobs *j, size_t *count)
+static candidates_t *
+pkg_jobs_find_install_candidates(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	struct pkg_jobs_install_candidate *candidates = NULL, *c;
+	candidates_t *candidates = xcalloc(1, sizeof(*candidates));
 
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (NULL);
@@ -1566,9 +1552,7 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j, size_t *count)
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		if ((j->flags & PKG_FLAG_FORCE) ||
 						pkg_jobs_check_remote_candidate(j, pkg)) {
-			c = pkg_jobs_new_candidate(pkg);
-			LL_PREPEND(candidates, c);
-			(*count)++;
+			tll_push_front(*candidates, pkg->id);
 		}
 		pkg_free(pkg);
 		pkg = NULL;
@@ -1585,22 +1569,23 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	size_t jcount = 0;
 	size_t elt_num = 0;
 	char sqlbuf[256];
-	struct pkg_jobs_install_candidate *candidates, *c;
+	candidates_t *candidates;
 	struct pkg_job_request *req;
 	struct pkgdb_it *it;
 	pkghash_it hit;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
-	candidates = pkg_jobs_find_install_candidates(j, &jcount);
+	candidates = pkg_jobs_find_install_candidates(j);
+	jcount = tll_length(*candidates);
 
 	pkg_emit_progress_start("Checking for upgrades (%zd candidates)",
 			jcount);
 
-	LL_FOREACH(candidates, c) {
+	tll_foreach(*candidates, c) {
 		pkg_emit_progress_tick(++elt_num, jcount);
 		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE id=%" PRId64,
-		    c->id);
+		    c->item);
 		if ((it = pkgdb_query_cond(j->db, sqlbuf, NULL, MATCH_ALL)) == NULL)
 			return (EPKG_FATAL);
 
@@ -1612,8 +1597,9 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 		pkg_free(pkg);
 		pkgdb_it_free(it);
 	}
+	tll_free(*candidates);
+	free(candidates);
 	pkg_emit_progress_tick(jcount, jcount);
-	LL_FREE(candidates, free);
 
 	pkg_emit_progress_start("Processing candidates (%zd candidates)",
 			jcount);
