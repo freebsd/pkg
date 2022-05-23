@@ -142,8 +142,8 @@ pipeevent(struct pkg_event *ev)
 		    "}}",
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
-			ev->e_install_finished.pkg->message ?
-				json_escape(ev->e_install_finished.pkg->message->str) :
+			pkg_has_message(ev->e_install_finished.pkg) ?
+				pkg_message_to_str(ev->e_install_finished.pkg) :
 				"");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
