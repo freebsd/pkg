@@ -1278,7 +1278,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 
 	pkg_debug(4, "Emitting message");
-	if (pkg->message != NULL) {
+	if (pkg_has_message(pkg))  {
 		ucl_object_insert_key(top,
 			pkg_message_to_ucl(pkg),
 			"messages", sizeof("messages") - 1, false);

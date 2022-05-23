@@ -688,7 +688,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
 					msg->type = PKG_MESSAGE_UPGRADE;
 			}
-			DL_APPEND(p->pkg->message, msg);
+			tll_push_back(p->pkg->message, msg);
 		}
 	}
 
@@ -1193,7 +1193,6 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	const char *location;
 	int rc = EPKG_OK;
 	xstring *message;
-	struct pkg_message *msg;
 
 	if (db != NULL && pkg_is_installed(db, pkg->name) != EPKG_END) {
 		return(EPKG_INSTALLED);
@@ -1238,15 +1237,15 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	if (rc == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
-		if (pkg->message != NULL)
+		if (pkg_has_message(pkg))
 			message = xstring_new();
-		LL_FOREACH(pkg->message, msg) {
-			if (msg->type == PKG_MESSAGE_ALWAYS ||
-			    msg->type == PKG_MESSAGE_INSTALL) {
-				fprintf(message->fp, "%s\n", msg->str);
+		tll_foreach(pkg->message, m) {
+			if (m->item->type == PKG_MESSAGE_ALWAYS ||
+			    m->item->type == PKG_MESSAGE_INSTALL) {
+				fprintf(message->fp, "%s\n", m->item->str);
 			}
 		}
-		if (pkg->message != NULL) {
+		if (pkg_has_message(pkg)) {
 			fflush(message->fp);
 			if (message->buf[0] != '\0') {
 				pkg_emit_message(message->buf);

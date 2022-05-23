@@ -56,7 +56,6 @@
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
-	struct pkg_message	*msg;
 	xstring		*message = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
@@ -115,17 +114,17 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
-		LL_FOREACH(pkg->message, msg) {
-			if (msg->type == PKG_MESSAGE_REMOVE) {
+		tll_foreach(pkg->message, m) {
+			if (m->item->type == PKG_MESSAGE_REMOVE) {
 				if (message == NULL) {
 					message = xstring_new();
 					pkg_fprintf(message->fp, "Message from "
 					    "%n-%v:\n", pkg, pkg);
 				}
-				fprintf(message->fp, "%s\n", msg->str);
+				fprintf(message->fp, "%s\n", m->item->str);
 			}
 		}
-		if (pkg->message != NULL && message != NULL) {
+		if (pkg_has_message(pkg) && message != NULL) {
 			fflush(message->fp);
 			pkg_emit_message(message->buf);
 			xstring_free(message);

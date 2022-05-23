@@ -112,7 +112,7 @@ pkg_free(struct pkg *pkg)
 	tll_free_and_free(pkg->licenses, free);
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 
-	DL_FREE(pkg->message, pkg_message_free);
+	tll_free_and_free(pkg->message, pkg_message_free);
 	tll_free_and_free(pkg->annotations, pkg_kv_free);
 
 	if (pkg->rootfd != -1)
@@ -186,7 +186,6 @@ pkg_vset(struct pkg *pkg, va_list ap)
 	int attr;
 	const char *buf;
 	ucl_object_t *obj;
-	struct pkg_message *msg;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -221,9 +220,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			(void)va_arg(ap, const char *);
 			break;
 		case PKG_MESSAGE:
-			LL_FOREACH(pkg->message, msg) {
-				pkg_message_free(msg);
-			}
+			tll_free_and_free(pkg->message, pkg_message_free);
 			buf = va_arg(ap, const char *);
 			if (*buf == '[') {
 				pkg_message_from_str(pkg, buf, strlen(buf));
@@ -1418,7 +1415,7 @@ pkg_is_installed(struct pkgdb *db, const char *name)
 bool
 pkg_has_message(struct pkg *p)
 {
-	return (p->message != NULL);
+	return (tll_length(p->message) > 0);
 }
 
 bool
@@ -1515,7 +1512,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		msg = xcalloc(1, sizeof(*msg));
 		msg->str = xstrdup(ucl_object_tostring(obj));
 		msg->type = PKG_MESSAGE_ALWAYS;
-		DL_APPEND(pkg->message, msg);
+		tll_push_back(pkg->message, msg);
 		return (EPKG_OK);
 	}
 
@@ -1551,7 +1548,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				    " message will always be printed");
 		}
 		if (msg->type != PKG_MESSAGE_UPGRADE) {
-			DL_APPEND(pkg->message, msg);
+			tll_push_back(pkg->message, msg);
 			continue;
 		}
 
@@ -1565,7 +1562,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 			msg->maximum_version = xstrdup(ucl_object_tostring(elt));
 		}
 
-		DL_APPEND(pkg->message, msg);
+		tll_push_back(pkg->message, msg);
 	}
 
 	return (EPKG_OK);
@@ -1621,7 +1618,8 @@ pkg_message_to_ucl(const struct pkg *pkg)
 	ucl_object_t *obj;
 
 	array = ucl_object_typed_new(UCL_ARRAY);
-	LL_FOREACH(pkg->message, msg) {
+	tll_foreach(pkg->message, t) {
+		msg = t->item;
 		obj = ucl_object_typed_new (UCL_OBJECT);
 
 		ucl_object_insert_key(obj,
@@ -1670,9 +1668,8 @@ pkg_message_to_str(struct pkg *pkg)
 	ucl_object_t *obj;
 	char *ret = NULL;
 
-	if (pkg->message == NULL) {
+	if (tll_length(pkg->message) <= 0)
 		return (NULL);
-	}
 
 	obj = pkg_message_to_ucl(pkg);
 	ret = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);

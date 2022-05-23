@@ -1273,7 +1273,8 @@ format_message(xstring *buffer, const void *data, struct percent_esc *p)
 	struct pkg_message	*msg;
 	char			*message;
 
-	LL_FOREACH(pkg->message, msg) {
+	tll_foreach(pkg->message, m) {
+		msg = m->item;
 		if (bufmsg == NULL) {
 			bufmsg = xstring_new();
 		} else {

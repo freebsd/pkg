@@ -177,6 +177,7 @@ struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
 struct pkg_lua_script;
+typedef tll(struct pkg_message *) messages_t;
 
 struct pkg {
 	bool		 direct;
@@ -197,7 +198,7 @@ struct pkg {
 	char			*uid;
 	char			*digest;
 	char			*old_digest;
-	struct pkg_message	*message;
+	messages_t		 message;
 	char			*prefix;
 	char			*comment;
 	char			*desc;
@@ -308,7 +309,6 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
-	struct pkg_message	*next, *prev;
 };
 
 struct pkg_lua_script {

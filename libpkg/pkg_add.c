@@ -1206,7 +1206,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg_emit_install_finished(pkg, local);
 	}
 
-	LL_FOREACH(pkg->message, msg) {
+	tll_foreach(pkg->message, m) {
+		msg = m->item;
 		msgstr = NULL;
 		if (msg->type == PKG_MESSAGE_ALWAYS) {
 			msgstr = msg->str;
@@ -1240,7 +1241,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			fprintf(message->fp, "--\n%s\n", msgstr);
 		}
 	}
-	if (pkg->message != NULL && message != NULL) {
+	if (pkg_has_message(pkg) && message != NULL) {
 		fflush(message->fp);
 		pkg_emit_message(message->buf);
 		xstring_free(message);
