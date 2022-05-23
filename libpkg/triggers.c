@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2020-2021 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2020-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -259,29 +258,28 @@ err:
 	return (NULL);
 }
 
-struct trigger *
+trigger_t *
 triggers_load(bool cleanup_only)
 {
 	int dfd;
 	DIR *d;
 	struct dirent *e;
-	struct trigger *triggers, *t;
+	struct trigger *t;
+	trigger_t *triggers = xcalloc(1, sizeof(*triggers));
 	ucl_object_t *schema;
 	struct stat st;
-
-	triggers = NULL;
 
 	dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
 	if (dfd == -1) {
 		if (errno != ENOENT)
 			pkg_emit_error("Unable to open the trigger directory");
-		return (NULL);
+		return (triggers);
 	}
 	d = fdopendir(dfd);
 	if (d == NULL) {
 		pkg_emit_error("Unable to open the trigger directory");
 		close(dfd);
-		return (NULL);
+		return (triggers);
 	}
 
 	schema = trigger_open_schema();
@@ -300,13 +298,13 @@ triggers_load(bool cleanup_only)
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
-			return (NULL);
+			return (triggers);
 		}
 		if (!S_ISREG(st.st_mode))
 			continue;
 		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
 		if (t != NULL)
-			DL_APPEND(triggers, t);
+			tll_push_back(*triggers, t);
 	}
 
 	closedir(d);
@@ -501,9 +499,9 @@ trigger_check_match(struct trigger *t, char *dir)
  * Then execute all triggers
  */
 int
-triggers_execute(struct trigger *cleanup_triggers)
+triggers_execute(trigger_t *cleanup_triggers)
 {
-	struct trigger *triggers, *t, *trigger;
+	trigger_t *triggers;
 	pkghash *th = NULL;
 	int ret = EPKG_OK;
 
@@ -512,53 +510,53 @@ triggers_execute(struct trigger *cleanup_triggers)
 	/*
 	 * Generate a hash table to ease the lookup later
 	 */
-	if (cleanup_triggers != NULL) {
-		LL_FOREACH(triggers, t) {
-			pkghash_safe_add(th, t->name, t->name, NULL);
-		}
+	if (cleanup_triggers != NULL && tll_length(*cleanup_triggers) > 0) {
+		tll_foreach(*triggers, it)
+			pkghash_safe_add(th, it->item->name, it->item->name, NULL);
 	}
 
 	/*
 	 * only keep from the cleanup the one that are not anymore in triggers
 	 */
 	if (th != NULL) {
-		LL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
-			if (pkghash_get(th, trigger->name) != NULL) {
-				DL_DELETE(cleanup_triggers, trigger);
-				trigger_free(trigger);
+		if (cleanup_triggers != NULL) {
+			tll_foreach(*cleanup_triggers, it) {
+				if (pkghash_get(th, it->item->name) != NULL)
+					tll_remove_and_free(*cleanup_triggers, it, trigger_free);
 			}
 		}
 		pkghash_destroy(th);
 	}
 
 	pkg_emit_triggers_begin();
-	LL_FOREACH(cleanup_triggers, t) {
-		pkg_emit_trigger(t->name, true);
-		if (t->cleanup.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->cleanup.script,
-			    t->cleanup.sandbox, NULL);
+	if (cleanup_triggers != NULL) {
+		tll_foreach(*cleanup_triggers, it) {
+			pkg_emit_trigger(it->item->name, true);
+			if (it->item->cleanup.type == SCRIPT_LUA) {
+				ret = trigger_execute_lua(it->item->cleanup.script,
+				    it->item->cleanup.sandbox, NULL);
+			}
+			if (ret != EPKG_OK)
+				goto cleanup;
 		}
-		if (ret != EPKG_OK)
-			goto cleanup;
 	}
 
 	if (ctx.touched_dir_hash) {
 		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
 		while (pkghash_next(&it)) {
-			LL_FOREACH(triggers, t) {
-				trigger_check_match(t, it.key);
-			}
-				/* We need to check if that matches a trigger */
+			tll_foreach(*triggers, t)
+				trigger_check_match(t->item, it.key);
+			/* We need to check if that matches a trigger */
 		}
 	}
 
-	LL_FOREACH(triggers, t) {
-		if (t->matched == NULL)
+	tll_foreach(*triggers, it) {
+		if (it->item->matched == NULL)
 			continue;
-		pkg_emit_trigger(t->name, false);
-		if (t->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->script.script,
-			    t->script.sandbox, t->matched);
+		pkg_emit_trigger(it->item->name, false);
+		if (it->item->script.type == SCRIPT_LUA) {
+			ret = trigger_execute_lua(it->item->script.script,
+			    it->item->script.sandbox, it->item->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -566,15 +564,14 @@ triggers_execute(struct trigger *cleanup_triggers)
 	pkg_emit_triggers_finished();
 
 cleanup:
-	DL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
-		DL_DELETE(cleanup_triggers, trigger);
-		trigger_free(trigger);
+	if (cleanup_triggers != NULL) {
+		tll_free_and_free(*cleanup_triggers, trigger_free);
+		free(cleanup_triggers);
 	}
 
-	DL_FOREACH_SAFE(triggers, trigger, t) {
-		DL_DELETE(triggers, trigger);
-		trigger_free(trigger);
-	}
+	tll_free_and_free(*triggers, trigger_free);
+	free(triggers);
+
 	return (EPKG_OK);
 }
 

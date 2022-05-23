@@ -2099,7 +2099,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
-	struct trigger *cleanup_triggers;
+	trigger_t *cleanup_triggers;
 
 	cleanup_triggers = triggers_load(true);
 	if (j->type == PKG_JOBS_INSTALL) {
