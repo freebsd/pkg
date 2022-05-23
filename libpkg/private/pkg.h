@@ -558,12 +558,6 @@ struct plist {
 	int64_t flatsize;
 	hardlinks_t hardlinks;
 	mode_t perm;
-	struct {
-		char *buf;
-		char **patterns;
-		size_t len;
-		size_t cap;
-	} post_patterns;
 	pkghash *keywords;
 };
 

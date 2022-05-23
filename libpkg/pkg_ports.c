@@ -1055,8 +1055,6 @@ plist_free(struct plist *p)
 
 	free(p->uname);
 	free(p->gname);
-	free(p->post_patterns.buf);
-	free(p->post_patterns.patterns);
 	tll_free_and_free(p->hardlinks, free);
 
 	xstring_free(p->post_deinstall_buf);
