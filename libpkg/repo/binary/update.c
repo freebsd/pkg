@@ -137,7 +137,6 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	struct pkg_kv		*kv;
 	const char		*arch;
 	int64_t			 package_id;
-	pkghash_it		it;
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
