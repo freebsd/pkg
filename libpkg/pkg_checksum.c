@@ -274,10 +274,9 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 			}
 		}
 		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
-			if (pkg->lua_scripts[i] != NULL)
+			tll_foreach(pkg->lua_scripts[i], s)
 				pkg_checksum_add_entry("lua_script",
-				    pkg->lua_scripts[i]->script,
-				    &entries);
+				    s->item, &entries);
 		}
 	}
 

@@ -88,6 +88,8 @@ pkg_free(struct pkg *pkg)
 
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		xstring_free(pkg->scripts[i]);
+	for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++)
+		tll_free_and_free(pkg->lua_scripts[i], free);
 
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
@@ -672,14 +674,11 @@ int
 pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type)
 {
 	assert(pkg != NULL);
-	struct pkg_lua_script *lua;
 
 	if (type >= PKG_LUA_UNKNOWN)
 		return (EPKG_FATAL);
 
-	lua = xcalloc(1, sizeof(*lua));
-	lua->script = xstrdup(data);
-	DL_APPEND(pkg->lua_scripts[type], lua);
+	tll_push_back(pkg->lua_scripts[type], xstrdup(data));
 
 	return (EPKG_OK);
 }

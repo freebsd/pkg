@@ -50,7 +50,6 @@ int
 pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 {
 	int ret = EPKG_OK;
-	struct pkg_lua_script *lscript;
 	int pstat;
 #ifdef PROC_REAP_KILL
 	bool do_reap;
@@ -61,7 +60,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 	int cur_pipe[2];
 	char *line = NULL;
 
-	if (pkg->lua_scripts[type] == NULL)
+	if (tll_length(pkg->lua_scripts[type]) == 0)
 		return (EPKG_OK);
 
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
@@ -73,7 +72,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
 #endif
 
-	LL_FOREACH(pkg->lua_scripts[type], lscript) {
+	tll_foreach(pkg->lua_scripts[type], s) {
 		if (get_socketpair(cur_pipe) == -1) {
 			pkg_emit_errno("pkg_lua_script_script", "socketpair");
 			goto cleanup;
@@ -115,13 +114,13 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_override_ios(L, true);
 
 			/* parse and set arguments of the line is in the comments */
-			if (STARTS_WITH(lscript->script, "-- args: ")) {
+			if (STARTS_WITH(s->item, "-- args: ")) {
 				char *walk, *begin, *line = NULL;
 				int spaces, argc = 0;
 				char **args = NULL;
 
-				walk = strchr(lscript->script, '\n');
-				begin = lscript->script + strlen("-- args: ");
+				walk = strchr(s->item, '\n');
+				begin = s->item + strlen("-- args: ");
 				line = xstrndup(begin, walk - begin);
 				spaces = pkg_utils_count_spaces(line);
 				args = xmalloc((spaces + 1)* sizeof(char *));
@@ -132,8 +131,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				lua_args_table(L, args, argc);
 			}
 
-			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", lscript->script);
-			if (luaL_dostring(L, lscript->script)) {
+			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", s->item);
+			if (luaL_dostring(L, s->item)) {
 				pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
 				lua_close(L);
 				_exit(1);
@@ -183,16 +182,14 @@ cleanup:
 }
 
 ucl_object_t *
-pkg_lua_script_to_ucl(struct pkg_lua_script *scripts)
+pkg_lua_script_to_ucl(stringlist_t *scripts)
 {
-	struct pkg_lua_script *script;
 	ucl_object_t *array;
 
 	array = ucl_object_typed_new(UCL_ARRAY);
-	LL_FOREACH(scripts, script) {
-		ucl_array_append(array, ucl_object_fromstring_common(script->script,
-				strlen(script->script), UCL_STRING_RAW|UCL_STRING_TRIM));
-	}
+	tll_foreach(*scripts, s)
+		ucl_array_append(array, ucl_object_fromstring_common(s->item,
+		    strlen(s->item), UCL_STRING_RAW|UCL_STRING_TRIM));
 
 	return (array);
 }
@@ -200,7 +197,6 @@ pkg_lua_script_to_ucl(struct pkg_lua_script *scripts)
 int
 pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_script type)
 {
-	struct pkg_lua_script *lscript;
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 
@@ -209,9 +205,7 @@ pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_script
 			pkg_emit_error("lua scripts be strings");
 			return (EPKG_FATAL);
 		}
-		lscript = xcalloc(1, sizeof(*lscript));
-		lscript->script = xstrdup(ucl_object_tostring(cur));
-		DL_APPEND(pkg->lua_scripts[type], lscript);
+		tll_push_back(pkg->lua_scripts[type], xstrdup(ucl_object_tostring(cur)));
 	}
 	return (EPKG_OK);
 }

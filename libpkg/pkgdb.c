@@ -2034,17 +2034,13 @@ pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 static int
 pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_lua_script	*scripts, *script;
 	int64_t			 i;
 
 	for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
-		scripts = pkg->lua_scripts[i];
-		if (scripts == NULL)
-			continue;
-		LL_FOREACH(scripts, script) {
-			if (run_prstmt(LUASCRIPT1, script->script) != SQLITE_DONE
+		tll_foreach(pkg->lua_scripts[i], script) {
+			if (run_prstmt(LUASCRIPT1, script->item) != SQLITE_DONE
 			    ||
-			    run_prstmt(LUASCRIPT2, script->script, package_id, i) != SQLITE_DONE) {
+			    run_prstmt(LUASCRIPT2, script->item, package_id, i) != SQLITE_DONE) {
 				ERROR_STMT_SQLITE(s, STMT(LUASCRIPT2));
 				return (EPKG_FATAL);
 			}

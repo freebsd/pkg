@@ -1251,7 +1251,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		pkg_debug(4, "Emitting lua scripts");
 		map = NULL;
 		for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
-			if (pkg->lua_scripts[i] == NULL)
+			if (tll_length(pkg->lua_scripts[i]) == 0)
 				continue;
 			switch(i) {
 			case PKG_LUA_PRE_INSTALL:
@@ -1270,7 +1270,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			if (map == NULL)
 				map = ucl_object_typed_new(UCL_OBJECT);
 			ucl_object_insert_key(map,
-			    pkg_lua_script_to_ucl(pkg->lua_scripts[i]),
+			    pkg_lua_script_to_ucl(&pkg->lua_scripts[i]),
 				    script_types, 0, true);
 		}
 		if (map)

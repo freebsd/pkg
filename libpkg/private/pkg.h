@@ -176,7 +176,6 @@ extern struct pkg_ctx ctx;
 struct pkg_repo_it;
 struct pkg_repo;
 struct pkg_message;
-struct pkg_lua_script;
 typedef tll(struct pkg_message *) messages_t;
 
 struct pkg {
@@ -186,7 +185,7 @@ struct pkg {
 	bool		 vital;
 	int64_t		 id;
 	xstring		*scripts[PKG_NUM_SCRIPTS];
-	struct pkg_lua_script	*lua_scripts[PKG_NUM_LUA_SCRIPTS];
+	stringlist_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
 	char			*name;
 	char			*origin;
 	char			*version;
@@ -307,11 +306,6 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
-};
-
-struct pkg_lua_script {
-	char			*script;
-	struct pkg_lua_script	*next, *prev;
 };
 
 enum pkg_conflict_type {
@@ -650,7 +644,7 @@ int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
 int pkg_script_run(struct pkg *, pkg_script type, bool upgrade);
 int pkg_lua_script_run(struct pkg *, pkg_lua_script type, bool upgrade);
-ucl_object_t *pkg_lua_script_to_ucl(struct pkg_lua_script *);
+ucl_object_t *pkg_lua_script_to_ucl(stringlist_t *);
 int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
