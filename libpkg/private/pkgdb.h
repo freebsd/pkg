@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  *
@@ -30,16 +30,14 @@
 
 #include "pkg.h"
 
-#include "sqlite3.h"
+#include <sqlite3.h>
+#include <tllist.h>
 
 struct pkgdb {
 	sqlite3		*sqlite;
 	bool		 prstmt_initialized;
 
-	struct _pkg_repo_list_item {
-		struct pkg_repo *repo;
-		struct _pkg_repo_list_item *next;
-	} *repos;
+	tll(struct pkg_repo *) repos;
 };
 
 enum pkgdb_iterator_type {

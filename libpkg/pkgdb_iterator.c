@@ -1303,17 +1303,16 @@ int
 pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
 {
 	int ret;
-	struct _pkg_repo_list_item *cur;
 
 	if (pkg->type == PKG_INSTALLED) {
 		return (pkgdb_ensure_loaded_sqlite(db->sqlite, pkg, flags));
 	}
 	else {
 		/* Call repo functions */
-		LL_FOREACH(db->repos, cur) {
-			if (cur->repo == pkg->repo) {
-				if (cur->repo->ops->ensure_loaded) {
-					ret = cur->repo->ops->ensure_loaded(cur->repo, pkg, flags);
+		tll_foreach(db->repos, cur) {
+			if (cur->item == pkg->repo) {
+				if (cur->item->ops->ensure_loaded) {
+					ret = cur->item->ops->ensure_loaded(cur->item, pkg, flags);
 					return (ret);
 				}
 			}

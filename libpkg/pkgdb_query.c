@@ -350,15 +350,14 @@ pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, m
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
-	struct _pkg_repo_list_item *cur;
 
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
 
-	LL_FOREACH(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			rit = cur->repo->ops->query(cur->repo, cond, pattern, match);
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			rit = cur->item->ops->query(cur->item, cond, pattern, match);
 			if (rit != NULL)
 				pkgdb_it_repo_attach(it, rit);
 		}
@@ -378,16 +377,15 @@ pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, const char *repo
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
-	struct _pkg_repo_list_item *cur;
 
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
 
-	LL_FOREACH(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			if (cur->repo->ops->shlib_required != NULL) {
-				rit = cur->repo->ops->shlib_required(cur->repo, require);
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			if (cur->item->ops->shlib_required != NULL) {
+				rit = cur->item->ops->shlib_required(cur->item, require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -402,16 +400,15 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
-	struct _pkg_repo_list_item *cur;
 
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
 
-	LL_FOREACH(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			if (cur->repo->ops->shlib_required != NULL) {
-				rit = cur->repo->ops->shlib_provided(cur->repo, require);
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			if (cur->item->ops->shlib_required != NULL) {
+				rit = cur->item->ops->shlib_provided(cur->item, require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -426,16 +423,15 @@ pkgdb_repo_require(struct pkgdb *db, const char *require, const char *repo)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
-	struct _pkg_repo_list_item *cur;
 
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
 
-	LL_FOREACH(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			if (cur->repo->ops->required != NULL) {
-				rit = cur->repo->ops->required(cur->repo, require);
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			if (cur->item->ops->required != NULL) {
+				rit = cur->item->ops->required(cur->item, require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -450,16 +446,15 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, const char *repo)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
-	struct _pkg_repo_list_item *cur;
 
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
 
-	LL_FOREACH(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			if (cur->repo->ops->required != NULL) {
-				rit = cur->repo->ops->provided(cur->repo, require);
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			if (cur->item->ops->required != NULL) {
+				rit = cur->item->ops->provided(cur->item, require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -474,16 +469,15 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
-	struct _pkg_repo_list_item *cur;
 
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
 
-	LL_FOREACH(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->repo->name, repo) == 0) {
-			if (cur->repo->ops->search != NULL) {
-				rit = cur->repo->ops->search(cur->repo, pattern, match,
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			if (cur->item->ops->search != NULL) {
+				rit = cur->item->ops->search(cur->item, pattern, match,
 					field, sort);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);

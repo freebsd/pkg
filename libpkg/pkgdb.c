@@ -949,7 +949,6 @@ static int
 pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 {
 	struct pkg_repo *r = NULL;
-	struct _pkg_repo_list_item *item;
 
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (!r->enable) {
@@ -959,10 +958,8 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 		if (reponame == NULL || strcasecmp(r->name, reponame) == 0) {
 			/* We need read only access here */
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
-				item = xmalloc(sizeof(*item));
 				r->ops->init(r);
-				item->repo = r;
-				LL_PREPEND(db->repos, item);
+				tll_push_front(db->repos, r);
 			} else
 				pkg_emit_error("Repository %s cannot be opened."
 				    " 'pkg update' required", r->name);
@@ -1207,11 +1204,15 @@ retry:
 	return (EPKG_OK);
 }
 
+static void
+pkgdb_free_repo(struct pkg_repo *repo)
+{
+	repo->ops->close(repo, false);
+}
+
 void
 pkgdb_close(struct pkgdb *db)
 {
-	struct _pkg_repo_list_item *cur, *tmp;
-
 	if (db == NULL)
 		return;
 
@@ -1220,10 +1221,7 @@ pkgdb_close(struct pkgdb *db)
 
 	if (db->sqlite != NULL) {
 
-		LL_FOREACH_SAFE(db->repos, cur, tmp) {
-			cur->repo->ops->close(cur->repo, false);
-			free(cur);
-		}
+		tll_free_and_free(db->repos, pkgdb_free_repo);
 
 		if (!sqlite3_db_readonly(db->sqlite, "main"))
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW, NULL, db);
@@ -3001,7 +2999,6 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	sqlite3_stmt	*stmt = NULL;
 	int64_t		 stats = 0;
 	const char *sql = NULL;
-	struct _pkg_repo_list_item *rit;
 
 	assert(db != NULL);
 
@@ -3015,19 +3012,14 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	case PKG_STATS_REMOTE_UNIQUE:
 	case PKG_STATS_REMOTE_COUNT:
 	case PKG_STATS_REMOTE_SIZE:
-		LL_FOREACH(db->repos, rit) {
-			struct pkg_repo *repo = rit->repo;
-
-			if (repo->ops->stat != NULL)
-				stats += repo->ops->stat(repo, type);
+		tll_foreach(db->repos, rit) {
+			if (rit->item->ops->stat != NULL)
+				stats += rit->item->ops->stat(rit->item, type);
 		}
 		return (stats);
 		break;
 	case PKG_STATS_REMOTE_REPOS:
-		LL_FOREACH(db->repos, rit) {
-			stats ++;
-		}
-		return (stats);
+		return (tll_length(db->repos));
 		break;
 	}
 
