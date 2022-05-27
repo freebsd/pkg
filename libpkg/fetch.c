@@ -77,22 +77,6 @@ static struct fetcher {
 		fetch_open,
 	},
 	{
-		"pkg+ftps",
-		fetch_open,
-	},
-	{
-		"pkg+ftp",
-		fetch_open,
-	},
-	{
-		"ftps",
-		fetch_open,
-	},
-	{
-		"ftp",
-		fetch_open,
-	},
-	{
 		"file",
 		file_open,
 	},
@@ -206,7 +190,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 * /usr/sbin/pkg in various releases so we can't just drop it.
          *
          * Instead, introduce new pkg+http://, pkg+https://,
-	 * pkg+ssh://, pkg+ftp://, pkg+file:// to support the
+	 * pkg+ssh://, pkg+file:// to support the
 	 * SRV-style server discovery, and also to allow eg. Firefox
 	 * to run pkg-related stuff given a pkg+foo:// URL.
 	 *

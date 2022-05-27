@@ -83,9 +83,7 @@ fetchXGet(struct url *URL, struct url_stat *us, const char *flags)
 		us->size = -1;
 		us->atime = us->mtime = 0;
 	}
-	if (strcmp(URL->scheme, SCHEME_FTP) == 0)
-		return (fetchXGetFTP(URL, us, flags));
-	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
+	if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchXGetHTTP(URL, us, flags));
 	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchXGetHTTP(URL, us, flags));
@@ -111,9 +109,7 @@ FILE *
 fetchPut(struct url *URL, const char *flags)
 {
 
-	if (strcmp(URL->scheme, SCHEME_FTP) == 0)
-		return (fetchPutFTP(URL, flags));
-	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
+	if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchPutHTTP(URL, flags));
 	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchPutHTTP(URL, flags));
@@ -133,9 +129,7 @@ fetchStat(struct url *URL, struct url_stat *us, const char *flags)
 		us->size = -1;
 		us->atime = us->mtime = 0;
 	}
-	if (strcmp(URL->scheme, SCHEME_FTP) == 0)
-		return (fetchStatFTP(URL, us, flags));
-	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
+	if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchStatHTTP(URL, us, flags));
 	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchStatHTTP(URL, us, flags));
@@ -151,9 +145,7 @@ struct url_ent *
 fetchList(struct url *URL, const char *flags)
 {
 
-	if (strcmp(URL->scheme, SCHEME_FTP) == 0)
-		return (fetchListFTP(URL, flags));
-	else if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
+	if (strcmp(URL->scheme, SCHEME_HTTP) == 0)
 		return (fetchListHTTP(URL, flags));
 	else if (strcmp(URL->scheme, SCHEME_HTTPS) == 0)
 		return (fetchListHTTP(URL, flags));

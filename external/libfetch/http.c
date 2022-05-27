@@ -1622,14 +1622,6 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		if (!url->port)
 			url->port = fetch_default_port(url->scheme);
 
-		/* were we redirected to an FTP URL? */
-		if (purl == NULL && strcmp(url->scheme, SCHEME_FTP) == 0) {
-			if (strcmp(op, "GET") == 0)
-				return (ftp_request(url, "RETR", us, purl, flags));
-			else if (strcmp(op, "HEAD") == 0)
-				return (ftp_request(url, "STAT", us, purl, flags));
-		}
-
 		/* connect to server or proxy */
 		if ((conn = http_connect(url, purl, flags, &cached)) == NULL)
 			goto ouch;

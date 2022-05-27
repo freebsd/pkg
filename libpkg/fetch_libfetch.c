@@ -122,8 +122,7 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 
 	while (repo->fh == NULL) {
 		if (repo != NULL && repo->mirror_type == SRV &&
-		    (strncmp(u->scheme, "http", 4) == 0
-		     || strcmp(u->scheme, "ftp") == 0)) {
+		    (strncmp(u->scheme, "http", 4) == 0)) {
 			if (repo->srv == NULL) {
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);

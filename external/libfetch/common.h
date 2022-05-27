@@ -127,7 +127,7 @@ void		 fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *));
 #endif
 
 /*
- * I don't really like exporting http_request() and ftp_request(),
+ * I don't really like exporting http_request()
  * but the HTTP and FTP code occasionally needs to cross-call
  * eachother, and this saves me from adding a lot of special-case code
  * to handle those cases.
@@ -140,8 +140,6 @@ FILE		*http_request(struct url *, const char *,
 FILE		*http_request_body(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *,
 		     const char *, const char *);
-FILE		*ftp_request(struct url *, const char *,
-		     struct url_stat *, struct url *, const char *);
 
 /*
  * Check whether a particular flag is set
