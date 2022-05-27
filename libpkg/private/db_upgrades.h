@@ -724,6 +724,10 @@ static struct db_upgrades {
 		"WHERE lua_script_id NOT IN "
 			"( SELECT DISTINCT lua_script_id from lua_script );"
 	"END;"
+	}, { 36,
+	"DROP VIEW IF EXISTS lua_scripts; "
+	"DROP VIEW IF EXISTS options; "
+	"DROP VIEW IF EXISTS scripts; "
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

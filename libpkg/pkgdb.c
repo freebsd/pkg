@@ -90,7 +90,7 @@ extern struct pkg_ctx ctx;
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	35
+#define DB_SCHEMA_MINOR	36
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
