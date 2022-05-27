@@ -1,3 +1,7 @@
+Changes from 1.17.99.10 to 1.17.99.11
+- Fix performance issue while computing upgrades
+- Fix shlibs always considered as changed
+
 Changes from 1.17.99.9 to 1.17.99.10
 - greatly improve test coverage
 - many improvements in error handling for pkg fetch
