@@ -1390,7 +1390,7 @@ pkg_try_installed(struct pkgdb *db, const char *name,
 	struct pkgdb_it *it = NULL;
 	int ret = EPKG_FATAL;
 
-	if ((it = pkgdb_query(db, name, MATCH_EXACT)) == NULL)
+	if ((it = pkgdb_query(db, name, MATCH_INTERNAL)) == NULL)
 		return (EPKG_FATAL);
 
 	ret = pkgdb_it_next(it, pkg, flags);

@@ -86,7 +86,7 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 		}
 	}
 
-	if ((it = pkgdb_query(universe->j->db, uid, MATCH_EXACT)) == NULL)
+	if ((it = pkgdb_query(universe->j->db, uid, MATCH_INTERNAL)) == NULL)
 		return (NULL);
 
 	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
@@ -132,7 +132,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		}
 	}
 
-	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_EXACT,
+	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_INTERNAL,
 		universe->j->reponame)) == NULL)
 		return (NULL);
 
@@ -1192,7 +1192,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		}
 	}
 
-	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_EXACT,
+	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_INTERNAL,
 		universe->j->reponame)) == NULL)
 		return (NULL);
 

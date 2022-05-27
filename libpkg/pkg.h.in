@@ -187,6 +187,7 @@ typedef enum {
 	 * case insensitive according to pkgdb_case_sensitive()
 	 */
 	MATCH_REGEX,
+	MATCH_INTERNAL
 } match_t;
 
 /**

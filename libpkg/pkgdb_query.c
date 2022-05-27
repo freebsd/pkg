@@ -78,6 +78,9 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	case MATCH_ALL:
 		comp = "";
 		break;
+	case MATCH_INTERNAL:
+		comp = " WHERE p.name = ?1";
+		break;
 	case MATCH_EXACT:
 		if (pkgdb_case_sensitive()) {
 			if (checkuid == NULL) {
@@ -149,7 +152,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 
 	comp = pkgdb_get_pattern_query(pattern, match);
 
-	if (cond)
+	if (cond) {
 		sqlite3_snprintf(sizeof(sql), sql,
 				"WITH flavors AS "
 				"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
@@ -167,7 +170,17 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				"   LEFT JOIN flavors ON flavors.package_id = p.id "
 				"    %s %s (%s) ORDER BY p.name;",
 					comp, pattern == NULL ? "WHERE" : "AND", cond + 7);
-	else
+	} else if (match == MATCH_INTERNAL) {
+		sqlite3_snprintf(sizeof(sql), sql,
+				"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, "
+					"version, comment, desc, "
+					"message, arch, maintainer, www, "
+					"prefix, flatsize, licenselogic, automatic, "
+					"locked, time, manifestdigest, vital "
+				"FROM packages AS p "
+				"%s"
+				" ORDER BY p.name", comp);
+	} else {
 		sqlite3_snprintf(sizeof(sql), sql,
 				"WITH flavors AS "
 				"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
@@ -185,6 +198,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				"LEFT JOIN flavors ON flavors.package_id = p.id "
 				"%s"
 				" ORDER BY p.name", comp);
+	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite, sql);
