@@ -302,8 +302,6 @@ exec_audit(int argc, char **argv)
 				pkg_set(pkg, PKG_NAME, name, PKG_VERSION, version);
 			else
 				pkg_set(pkg, PKG_NAME, name);
-			/* Fake uniqueid */
-			pkg_set(pkg, PKG_UNIQUEID, name);
 			add_to_check(check, pkg);
 			pkg = NULL;
 		}
