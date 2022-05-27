@@ -126,11 +126,14 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	regex_t			*re;
 	int			 ret;
 
-	if (argc != 2 || (regex = sqlite3_value_text(argv[0])) == NULL ||
-		(str = sqlite3_value_text(argv[1])) == NULL) {
-		pkg_debug(4, "meh, %s", str);
+	if (argc != 2) {
 		sqlite3_result_error(ctx, "SQL function regex() called "
-		    "with invalid arguments.\n", -1);
+		    "with invalid number of arguments.\n", -1);
+		return;
+	}
+	if ((regex = sqlite3_value_text(argv[0])) == NULL) {
+		sqlite3_result_error(ctx, "SQL function regex() called "
+		    "without a regular expression.\n", -1);
 		return;
 	}
 
@@ -153,8 +156,10 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 		sqlite3_set_auxdata(ctx, 0, re, pkgdb_regex_delete);
 	}
 
-	ret = regexec(re, str, 0, NULL, 0);
-	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
+	if ((str = sqlite3_value_text(argv[1])) != NULL) {
+		ret = regexec(re, str, 0, NULL, 0);
+		sqlite3_result_int(ctx, (ret != REG_NOMATCH));
+	}
 }
 
 void
