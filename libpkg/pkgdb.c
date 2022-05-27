@@ -128,6 +128,7 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 	if (argc != 2 || (regex = sqlite3_value_text(argv[0])) == NULL ||
 		(str = sqlite3_value_text(argv[1])) == NULL) {
+		pkg_debug(4, "meh, %s", str);
 		sqlite3_result_error(ctx, "SQL function regex() called "
 		    "with invalid arguments.\n", -1);
 		return;
