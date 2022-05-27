@@ -344,8 +344,7 @@ pkgdb_init(sqlite3 *sdb)
 		"version TEXT NOT NULL,"
 		"comment TEXT NOT NULL,"
 		"desc TEXT NOT NULL,"
-		"mtree_id INTEGER REFERENCES mtree(id) ON DELETE RESTRICT"
-			" ON UPDATE CASCADE,"
+		"mtree_id INTEGER, "
 		"message TEXT,"
 		"arch TEXT NOT NULL,"
 		"maintainer TEXT NOT NULL, "
@@ -362,10 +361,6 @@ pkgdb_init(sqlite3 *sdb)
 		",vital INTEGER NOT NULL DEFAULT 0"
 	");"
 	"CREATE UNIQUE INDEX packages_unique ON packages(name);"
-	"CREATE TABLE mtree ("
-		"id INTEGER PRIMARY KEY,"
-		"content TEXT NOT NULL UNIQUE"
-	");"
 	"CREATE TABLE pkg_script ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
@@ -1396,7 +1391,7 @@ typedef enum _sql_prstmt_index {
 static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[MTREE] = {
 		NULL,
-		"INSERT OR IGNORE INTO mtree(content) VALUES(?1)",
+		NULL,
 		"T",
 	},
 	[PKG] = {
@@ -1404,9 +1399,9 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR REPLACE INTO packages( "
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, "
-			"licenselogic, mtree_id, time, manifestdigest, dep_formula, vital)"
+			"licenselogic, time, manifestdigest, dep_formula, vital)"
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
-		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?15, ?16, ?17 )",
+		"?13, NOW(), ?14, ?15, ?16 )",
 		"TTTTTTTTTTIIITTTI",
 	},
 	[DEPS_UPDATE] = {
@@ -1641,6 +1636,8 @@ prstmt_initialize(struct pkgdb *db)
 		sqlite = db->sqlite;
 
 		for (i = 0; i < PRSTMT_LAST; i++) {
+			if (SQL(i) == NULL)
+				continue;
 			STMT(i) = prepare_sql(sqlite, SQL(i));
 			if (STMT(i) == NULL)
 				return (EPKG_FATAL);
@@ -1748,7 +1745,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	ret = run_prstmt(PKG, pkg->origin, pkg->name, pkg->version,
 	    pkg->comment, pkg->desc, msg, arch, pkg->maintainer,
 	    pkg->www, pkg->prefix, pkg->flatsize, (int64_t)pkg->automatic,
-	    (int64_t)pkg->licenselogic, NULL, pkg->digest, pkg->dep_formula, (int64_t)pkg->vital);
+	    (int64_t)pkg->licenselogic, pkg->digest, pkg->dep_formula, (int64_t)pkg->vital);
 	if (ret != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(s, STMT(PKG));
 		goto cleanup;
@@ -2384,8 +2381,6 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 			"(SELECT DISTINCT category_id FROM pkg_categories)",
 		"licenses WHERE id NOT IN "
 			"(SELECT DISTINCT license_id FROM pkg_licenses)",
-		"mtree WHERE id NOT IN "
-			"(SELECT DISTINCT mtree_id FROM packages)",
 		/* TODO print the users that are not used anymore */
 		"users WHERE id NOT IN "
 			"(SELECT DISTINCT user_id FROM pkg_users)",
