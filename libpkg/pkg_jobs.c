@@ -1275,6 +1275,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			free(l1);
 			return (true);
 		}
+		i++;
 	}
 	free(l1);
 
@@ -1296,6 +1297,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			free(l1);
 			return (true);
 		}
+		i++;
 	}
 	free(l1);
 
