@@ -813,8 +813,7 @@ pkg_jobs_has_replacement(struct pkg_jobs *j, const char *uid)
 }
 
 static int
-pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *pattern,
-    const char *uid, match_t m)
+pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
@@ -824,7 +823,6 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	int rc = EPKG_FATAL;
 	xstring *qmsg = NULL;
-	struct pkg_job_universe_item *unit;
 
 	if ((it = pkgdb_repo_query_cond(j->db, cond, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
@@ -834,28 +832,6 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 		if (pkg_jobs_has_replacement(j, p->uid)) {
 			pkg_debug(1, "replacement %s is already used", p->uid);
 			continue;
-		}
-
-		fprintf(qmsg->fp, "%s has no direct installation candidates, change it to "
-				"%s? ", uid, p->uid);
-		fflush(qmsg->fp);
-		if (pkg_emit_query_yesno(true, qmsg->buf)) {
-			/* Change the origin of the local package */
-			pkg_validate(p, j->db);
-			unit = pkg_jobs_universe_find(j->universe, uid);
-			if (unit != NULL)
-				pkg_jobs_universe_change_uid(j->universe, unit,
-				    p->uid, false);
-			else
-				assert(0);
-
-			rc = EPKG_OK;
-			pkg_jobs_process_remote_pkg(j, p, NULL, 0);
-			if (rc == EPKG_OK) {
-				/* Avoid freeing */
-				p = NULL;
-			}
-			break;
 		}
 	}
 
@@ -880,7 +856,7 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 	/* First of all, try to search a package with the same name */
 	pos = strchr(pattern, '/');
 	if (pos != NULL && pos[1] != '\0') {
-		if (pkg_jobs_try_remote_candidate(j, pos + 1, NULL, opattern, MATCH_INTERNAL)
+		if (pkg_jobs_try_remote_candidate(j, pos + 1, NULL, MATCH_INTERNAL)
 						== EPKG_OK)
 			return (EPKG_OK);
 
@@ -903,12 +879,12 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 		/* Try exact pattern without numbers */
 		cpy = xmalloc(len + 1);
 		strlcpy(cpy, pos, len + 1);
-		if (pkg_jobs_try_remote_candidate(j, cpy, NULL, opattern, MATCH_INTERNAL) != EPKG_OK) {
+		if (pkg_jobs_try_remote_candidate(j, cpy, NULL, MATCH_INTERNAL) != EPKG_OK) {
 			free(cpy);
 			cpy = sqlite3_mprintf(" WHERE name REGEXP ('^' || %.*Q || '[0-9.]*$')",
 					len, pos);
 
-			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, NULL, MATCH_ALL)
+			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_ALL)
 					== EPKG_OK)
 				rc = EPKG_OK;
 			sqlite3_free(cpy);
