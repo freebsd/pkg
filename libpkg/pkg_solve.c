@@ -299,7 +299,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
 				pkg_debug(2, "solver: require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
-					pkg->type == PKG_INSTALLED ? 'l' : 'r', orig->arch, pkg->arch);
+					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->arch, orig->arch);
 				continue;
 			}
 		}
