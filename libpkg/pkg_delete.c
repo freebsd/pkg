@@ -54,7 +54,7 @@
 #endif
 
 int
-pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
+pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t)
 {
 	xstring		*message = NULL;
 	int		 ret;
@@ -99,7 +99,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		}
 	}
 
-	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE ? 1 : 0))
+	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE ? 1 : 0, t))
             != EPKG_OK)
 		return (ret);
 
@@ -324,7 +324,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 }
 
 int
-pkg_delete_files(struct pkg *pkg, unsigned force)
+pkg_delete_files(struct pkg *pkg, unsigned force, struct triggers *t)
 	/* force: 0 ... be careful and vocal about it.
 	 *        1 ... remove files without bothering about checksums.
 	 *        2 ... like 1, but remain silent if removal fails.
@@ -345,6 +345,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		append_touched_file(file->path);
 		pkg_emit_progress_tick(cur_file++, nfiles);
+		trigger_is_it_a_cleanup(t, file->path);
 		pkg_delete_file(pkg, file, force);
 	}
 

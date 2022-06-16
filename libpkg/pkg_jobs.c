@@ -102,6 +102,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	(*j)->pinning = true;
 	(*j)->flags = PKG_FLAG_NONE;
 	(*j)->conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
+	(*j)->triggers.dfd = -1;
 
 	return (EPKG_OK);
 }
@@ -187,6 +188,14 @@ pkg_jobs_free(struct pkg_jobs *j)
 	pkg_jobs_universe_free(j->universe);
 	LL_FREE(j->jobs, free);
 	LL_FREE(j->patterns, pkg_jobs_pattern_free);
+	if (j->triggers.cleanup != NULL) {
+		tll_free_and_free(*j->triggers.cleanup, trigger_free);
+		free(j->triggers.cleanup);
+	}
+	if (j->triggers.dfd != -1)
+		close(j->triggers.dfd);
+	if (j->triggers.schema != NULL)
+		ucl_object_unref(j->triggers.schema);
 	free(j);
 }
 
@@ -2048,9 +2057,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 		flags |= PKG_ADD_AUTOMATIC;
 
 	if (old != NULL)
-		retcode = pkg_add_upgrade(j->db, target, flags, keys, NULL, new, old);
+		retcode = pkg_add_upgrade(j->db, target, flags, keys, NULL, new, old, &j->triggers);
 	else
-		retcode = pkg_add_from_remote(j->db, target, flags, keys, NULL, new);
+		retcode = pkg_add_from_remote(j->db, target, flags, keys, NULL, new, &j->triggers);
 
 	return (retcode);
 }
@@ -2065,7 +2074,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
 
-	j->triggers.cleanup = triggers_load(true);
+//j->triggers.cleanup = triggers_load(true);
 	if (j->type == PKG_JOBS_INSTALL) {
 		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
 		post = PKG_PLUGIN_HOOK_POST_INSTALL;
@@ -2133,9 +2142,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			 * in further they will be upgraded correctly.
 			 */
 			if (j->type == PKG_JOBS_UPGRADE)
-				retcode = pkg_delete(p, j->db, flags | PKG_DELETE_CONFLICT);
+				retcode = pkg_delete(p, j->db, flags | PKG_DELETE_CONFLICT, &j->triggers);
 			else
-				retcode = pkg_delete(p, j->db, flags);
+				retcode = pkg_delete(p, j->db, flags, &j->triggers);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;

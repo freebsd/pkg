@@ -948,7 +948,7 @@ cleanup:
 }
 
 static int
-pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flags)
+pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, struct triggers *t, int flags)
 {
 	struct pkg_file *f;
 	int ret = EPKG_OK;
@@ -988,6 +988,8 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, int flag
 						backup_library(db, old, f->path);
 					}
 				}
+
+				trigger_is_it_a_cleanup(t, f->path);
 				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
 			}
 		}
@@ -1029,7 +1031,7 @@ pkg_add_triggers(void)
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
-    struct pkg *local)
+    struct pkg *local, struct triggers *t)
 {
 	struct archive		*a;
 	struct archive_entry	*ae;
@@ -1166,7 +1168,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (local != NULL) {
 		pkg_open_root_fd(local);
 		pkg_debug(1, "Cleaning up old version");
-		if (pkg_add_cleanup_old(db, local, pkg, flags) != EPKG_OK) {
+		if (pkg_add_cleanup_old(db, local, pkg, t, flags) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1262,26 +1264,26 @@ int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location)
 {
-	return pkg_add_common(db, path, flags, keys, location, NULL, NULL);
+	return pkg_add_common(db, path, flags, keys, location, NULL, NULL, NULL);
 }
 
 int
 pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location, struct pkg *rp)
+    struct pkg_manifest_key *keys, const char *location, struct pkg *rp, struct triggers *t)
 {
-	return pkg_add_common(db, path, flags, keys, location, rp, NULL);
+	return pkg_add_common(db, path, flags, keys, location, rp, NULL, t);
 }
 
 int
 pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location,
-    struct pkg *rp, struct pkg *lp)
+    struct pkg *rp, struct pkg *lp, struct triggers *t)
 {
 	if (pkgdb_ensure_loaded(db, lp,
 	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	return pkg_add_common(db, path, flags, keys, location, rp, lp);
+	return pkg_add_common(db, path, flags, keys, location, rp, lp, t);
 }
 
 int

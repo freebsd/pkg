@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -267,6 +267,14 @@ struct trigger {
 	pkghash *matched;
 };
 typedef tll(struct trigger *) trigger_t;
+
+struct triggers {
+	ucl_object_t *schema;
+	int dfd;
+	trigger_t *cleanup;
+	trigger_t *post_transaction;
+	trigger_t *post_install;
+};
 
 struct pkg_create {
 	bool overwrite;
@@ -605,7 +613,7 @@ int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
  * required by other packages.
  * @return An error code.
  */
-int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
+int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *);
 #define PKG_DELETE_FORCE (1<<0)
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
@@ -679,7 +687,7 @@ pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);
 bool packing_is_valid_format(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, unsigned force);
+int pkg_delete_files(struct pkg *pkg, unsigned force, struct triggers *t);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, struct pkg *p);
 
 /* pkgdb commands */
@@ -741,7 +749,10 @@ char *pkg_checksum_generate_fileat(int fd, const char *path,
 
 int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location,
-    struct pkg *rp, struct pkg *lp);
+    struct pkg *rp, struct pkg *lp, struct triggers *);
+int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location, struct pkg *rp,
+    struct triggers *);
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force);
 int pkg_open_root_fd(struct pkg *pkg);
@@ -813,6 +824,8 @@ int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, con
 
 trigger_t *triggers_load(bool cleanup_only);
 int triggers_execute(trigger_t *cleanup_triggers);
+void trigger_is_it_a_cleanup(struct triggers *t, const char *path);
+void trigger_free(struct trigger *);
 void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
 bool stringlist_contains(stringlist_t *l, const char *name);

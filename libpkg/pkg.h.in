@@ -1051,9 +1051,6 @@ int pkgdb_compact(struct pkgdb *db);
 int pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location);
 
-int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location, struct pkg *rp);
-
 #define PKG_ADD_UPGRADE			(1U << 0)
 /* (1U << 1) removed intentionally */
 #define PKG_ADD_AUTOMATIC		(1U << 2)

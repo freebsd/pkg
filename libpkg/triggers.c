@@ -134,6 +134,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	fd = openat(dfd, name, O_RDONLY);
 	if (fd == -1) {
 		pkg_emit_error("Unable to open the tigger: %s", name);
+		pkg_emit_errno("plop", name);
 		return (NULL);
 	}
 
@@ -256,6 +257,30 @@ err:
 	}
 	ucl_object_unref(obj);
 	return (NULL);
+}
+
+void
+trigger_is_it_a_cleanup(struct triggers *t, const char *path)
+{
+	const char *trigger_name;
+	struct trigger *trig;
+
+	if (t->schema == NULL)
+		t->schema = trigger_open_schema();
+	if (strncmp(path, ctx.triggers_path, strlen(ctx.triggers_path)) != 0)
+		return;
+
+	trigger_name = path + strlen(ctx.triggers_path);
+
+	if (t->dfd == -1)
+		t->dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
+	trig = trigger_load(t->dfd, RELATIVE_PATH(trigger_name), true, t->schema);
+	if (trig != NULL) {
+		if (t->cleanup == NULL)
+			t->cleanup = xcalloc(1, sizeof(*t->cleanup));
+
+		tll_push_back(*t->cleanup, trig);
+	}
 }
 
 trigger_t *
@@ -502,32 +527,9 @@ int
 triggers_execute(trigger_t *cleanup_triggers)
 {
 	trigger_t *triggers;
-	pkghash *th = NULL;
 	int ret = EPKG_OK;
 
 	triggers = triggers_load(false);
-
-	/*
-	 * Generate a hash table to ease the lookup later
-	 */
-	if (cleanup_triggers != NULL && tll_length(*cleanup_triggers) > 0) {
-		tll_foreach(*triggers, it)
-			pkghash_safe_add(th, it->item->name, it->item->name, NULL);
-	}
-
-	/*
-	 * only keep from the cleanup the one that are not anymore in triggers
-	 */
-	if (th != NULL) {
-		if (cleanup_triggers != NULL) {
-			tll_foreach(*cleanup_triggers, it) {
-				if (pkghash_get(th, it->item->name) != NULL)
-					tll_remove_and_free(*cleanup_triggers, it, trigger_free);
-			}
-		}
-		pkghash_destroy(th);
-	}
-
 	pkg_emit_triggers_begin();
 	if (cleanup_triggers != NULL) {
 		tll_foreach(*cleanup_triggers, it) {
@@ -564,11 +566,6 @@ triggers_execute(trigger_t *cleanup_triggers)
 	pkg_emit_triggers_finished();
 
 cleanup:
-	if (cleanup_triggers != NULL) {
-		tll_free_and_free(*cleanup_triggers, trigger_free);
-		free(cleanup_triggers);
-	}
-
 	tll_free_and_free(*triggers, trigger_free);
 	free(triggers);
 
