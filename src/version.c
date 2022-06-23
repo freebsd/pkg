@@ -601,7 +601,7 @@ category_new(char *categorypath, const char *category)
 {
 	struct category	*cat = NULL;
 	xstring		*makecmd;
-	char		*results, *d, *key;
+	char		*results, *d;
 	char		*argv[5];
 
 	makecmd = xstring_new();
@@ -626,7 +626,7 @@ category_new(char *categorypath, const char *category)
 
 	pkghash_add(categories, cat->name, cat, NULL);
 	while ((d = strsep(&results, " \n")) != NULL)
-		pkghash_safe_add(cat->ports, key, NULL, NULL);
+		pkghash_safe_add(cat->ports, d, NULL, NULL);
 
 cleanup:
 	xstring_free(makecmd);
