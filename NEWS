@@ -1,3 +1,6 @@
+Changes from 1.18.0 to 1.18.1
+- fix a crash in pkg create
+
 Changes from 1.17.99.11 to 1.18.0
 - Stop asking user for a choice when no candidates are available for upgrade
   this was broken anyway
