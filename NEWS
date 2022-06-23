@@ -1,3 +1,6 @@
+Changes from 1.18.1 to 1.18.2
+- fix a crash in pkg version -PvL=
+
 Changes from 1.18.0 to 1.18.1
 - fix a crash in pkg create
 
