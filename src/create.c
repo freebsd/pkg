@@ -105,8 +105,8 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 
 		foundone = false;
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			pkg = NULL;
 			tll_push_back(pkg_head, pkg);
+			pkg = NULL;
 			foundone = true;
 		}
 		if (!foundone) {
