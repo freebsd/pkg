@@ -1,3 +1,8 @@
+Changes from 1.17.99.11 to 1.18.0
+- Stop asking user for a choice when no candidates are available for upgrade
+  this was broken anyway
+- Plug small memory leaks
+
 Changes from 1.17.99.10 to 1.17.99.11
 - Fix performance issue while computing upgrades
 - Fix shlibs always considered as changed
