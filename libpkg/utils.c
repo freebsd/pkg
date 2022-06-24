@@ -971,12 +971,12 @@ hidden_tempfile(char *buf, int buflen, const char *path)
 	 * keep if suffix of at least 5 if possible
 	 */
 	if (fname != NULL) {
-		if (strlen(fname) > (NAME_MAX - 15))
+		if (strlen(fname) >= (NAME_MAX - 15))
 			prefix = ".";
 		snprintf(buf, buflen, "%.*s%s%s", (int)(fname - path), path, prefix, fname);
 		nbuflen = buflen;
 	} else {
-		if (strlen(path) > NAME_MAX - 15)
+		if (strlen(path) >= NAME_MAX - 15)
 			prefix = ".";
 		snprintf(buf, buflen, "%s%s", prefix, path);
 		nbuflen = NAME_MAX;
