@@ -617,7 +617,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			 * forget all stuff parsed
 			 */
 			pkg_debug(1, "PkgConfig: disabling repo %s", rname);
-			LL_DELETE(repos, r);
+			DL_DELETE(repos, r);
 			pkg_repo_free(r);
 			return;
 		}
