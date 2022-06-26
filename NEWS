@@ -1,3 +1,8 @@
+Changes from 1.18.2 to 1.18.3
+- allow to deal with 240 character long filenames
+- fix an issue when disabling a repository resulting in breakage of the
+  repository list
+
 Changes from 1.18.1 to 1.18.2
 - fix a crash in pkg version -PvL=
 
