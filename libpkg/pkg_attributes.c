@@ -319,6 +319,11 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->stringlist->list = &p->groups;
 		e->type = PKG_STRINGLIST;
 		break;
+	case PKG_LICENSES:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->licenses;
+		e->type = PKG_STRINGLIST;
+		break;
 	}
 
 	return (e);
