@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2019-2021 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2019-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -324,6 +324,21 @@ lua_pkg_filecmp(lua_State *L)
 	munmap(buf2, s2.st_size);
 
 	lua_pushinteger(L, ret);
+	return (1);
+}
+
+int
+lua_pkg_symlink(lua_State *L)
+{
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 2, n > 2 ? 3 : n,
+	    "pkg.symlink takes exactly two arguments");
+	const char *from = luaL_checkstring(L, 1);
+	const char *to = luaL_checkstring(L, 2);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
+	if (symlinkat(from, rootfd, RELATIVE_PATH(to)) == -1)
+		return (luaL_fileresult(L, 0, from));
 	return (1);
 }
 

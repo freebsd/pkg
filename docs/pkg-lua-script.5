@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd March 26, 2021
+.Dd July 27, 2022
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -125,6 +125,11 @@ with the following fields:
 .Va size ,
 .Va uid ,
 .Va gid
+.It Fn pkg.symlink "source" "destination"
+Create a symbolic link
+.Va destination
+pointing at
+.Va source
 .It Fn pkg.exec arguments
 Will execute the command
 .Ar arguments
