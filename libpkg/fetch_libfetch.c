@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -209,8 +209,6 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 				http_current = repo->http->next;
 				if (http_current == NULL)
 					http_current = repo->http;
-			} else {
-				sleep(1);
 			}
 		}
 	}
