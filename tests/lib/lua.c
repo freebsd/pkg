@@ -23,6 +23,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/stat.h>
+
 #include <atf-c.h>
 #include <err.h>
 #include <unistd.h>
@@ -353,6 +355,7 @@ ATF_TC_BODY(override, tc)
 
 ATF_TC_BODY(fileops, tc)
 {
+	char b[1024];
 	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
@@ -362,6 +365,7 @@ ATF_TC_BODY(fileops, tc)
 	static const luaL_Reg test_lib[] = {
 		{ "copy", lua_pkg_copy },
 		{ "cmp", lua_pkg_filecmp},
+		{ "symlink", lua_pkg_symlink},
 		{ NULL, NULL },
 	};
 	luaL_newlib(L, test_lib);
@@ -459,6 +463,42 @@ ATF_TC_BODY(fileops, tc)
 		exit(lua_tonumber(L, -1));
 	}
 	atf_utils_wait(p, 0, "", "");
+
+	p = atf_utils_fork();
+	if (p == 0) {
+		if (luaL_dostring(L, "test.symlink(\"a\", \"b\", \"meh\")\n")) {
+			printf("%s\n", lua_tostring(L, -1));
+		}
+		exit(lua_tonumber(L, -1));
+	}
+	atf_utils_wait(p, 0, "[string \"test.symlink(\"a\", \"b\", \"meh\")...\"]:1: bad argument #3 to 'symlink' (pkg.symlink takes exactly two arguments)\n", "");
+
+	p = atf_utils_fork();
+	if (p == 0) {
+		if (luaL_dostring(L, "test.symlink(\"a\")\n")) {
+			printf("%s\n", lua_tostring(L, -1));
+		}
+		exit(lua_tonumber(L, -1));
+	}
+	atf_utils_wait(p, 0, "[string \"test.symlink(\"a\")...\"]:1: bad argument #1 to 'symlink' (pkg.symlink takes exactly two arguments)\n", "");
+
+	p = atf_utils_fork();
+	if (p == 0) {
+		if (luaL_dostring(L, "test.symlink(\"a\", \"b\")\n")) {
+			printf("%s\n", lua_tostring(L, -1));
+		}
+		exit(lua_tonumber(L, -1));
+	}
+	atf_utils_wait(p, 0, "", "");
+	struct stat st;
+	if (lstat("b", &st) != 0)
+		atf_tc_fail("File 'b' not created");
+	if (!S_ISLNK(st.st_mode))
+		atf_tc_fail("File 'b' is not a symlink");
+	memset(b, 0, sizeof(b));
+	readlink("b", b, sizeof(b));
+	ATF_REQUIRE_STREQ(b, "a");
+
 }
 
 ATF_TC_BODY(prefix_path, tc)

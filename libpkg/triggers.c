@@ -418,6 +418,7 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 			{ "stat", lua_stat },
 			{ "readdir", lua_readdir },
 			{ "exec", lua_exec },
+			{ "symlink", lua_pkg_symlink },
 			{ NULL, NULL },
 		};
 		luaL_newlib(L, pkg_lib);
