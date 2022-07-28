@@ -295,7 +295,10 @@ pkg_repo_binary_search_how(match_t match)
 			how = "%s = ?1 COLLATE NOCASE";
 		break;
 	case MATCH_GLOB:
-		how = "%s GLOB ?1";
+		if (pkgdb_case_sensitive())
+			how = "%s GLOB ?1";
+		else
+			how = "%s GLOB ?1 COLLATE NOCASE";
 		break;
 	case MATCH_REGEX:
 		how = "%s REGEXP ?1";

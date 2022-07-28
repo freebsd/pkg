@@ -108,16 +108,30 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		}
 		break;
 	case MATCH_GLOB:
-		if (checkuid == NULL) {
-			if (checkorigin == NULL)
-				comp = " WHERE (p.name GLOB ?1 "
-					"OR p.name || '-' || version GLOB ?1)";
-			else if (checkflavor == NULL)
-				comp = " WHERE (origin GLOB ?1 OR categories.name || substr(origin, instr(origin, '/')) GLOB ?1)";
-			else
-				comp = "WHERE (categories.name || substr(origin, instr(origin, '/')) || '@' || flavor GLOB ?1)";
-		} else {
-			comp = " WHERE p.name GLOB ?1";
+		if (pkgdb_case_sensitive()) {
+			if (checkuid == NULL) {
+				if (checkorigin == NULL)
+					comp = " WHERE (p.name GLOB ?1 "
+						"OR p.name || '-' || version GLOB ?1)";
+				else if (checkflavor == NULL)
+					comp = " WHERE (origin GLOB ?1 OR categories.name || substr(origin, instr(origin, '/')) GLOB ?1)";
+				else
+					comp = "WHERE (categories.name || substr(origin, instr(origin, '/')) || '@' || flavor GLOB ?1)";
+			} else {
+				comp = " WHERE p.name GLOB ?1";
+			}
+		} else  {
+			if (checkuid == NULL) {
+				if (checkorigin == NULL)
+					comp = " WHERE (p.name GLOB ?1 COLLATE NOCASE "
+						"OR p.name || '-' || version GLOB ?1 COLLATE NOCASE)";
+				else if (checkflavor == NULL)
+					comp = " WHERE (origin GLOB ?1 COLLATE NOCASE OR categories.name || substr(origin, instr(origin, '/')) GLOB ?1 COLLATE NOCASE)";
+				else
+					comp = "WHERE (categories.name || substr(origin, instr(origin, '/')) || '@' || flavor GLOB ?1 COLLATE NOCASE)";
+			} else {
+				comp = " WHERE p.name GLOB ?1 COLLATE NOCASE";
+			}
 		}
 		break;
 	case MATCH_REGEX:
