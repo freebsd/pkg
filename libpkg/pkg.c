@@ -703,9 +703,9 @@ pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *filename)
 		type = PKG_LUA_PRE_INSTALL;
 	} else if (strcmp(filename, "pkg-post-install.lua") == 0) {
 		type = PKG_LUA_POST_INSTALL;
-	} else if (strcmp(filename, "pkg-pre-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-pre-deinstall.lua") == 0) {
 		type = PKG_LUA_PRE_DEINSTALL;
-	} else if (strcmp(filename, "pkg-post-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-post-deinstall.lua") == 0) {
 		type = PKG_LUA_POST_DEINSTALL;
 	} else {
 		pkg_emit_error("unknown lua script '%s'", filename);
