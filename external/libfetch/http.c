@@ -73,6 +73,7 @@ __FBSDID("$FreeBSD: head/lib/libfetch/http.c 351573 2019-08-28 17:01:28Z markj $
 #include <locale.h>
 #include <netdb.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -131,7 +132,6 @@ struct httpio
 {
 	conn_t		*conn;		/* connection */
 	int		 chunked;	/* chunked mode */
-	int		 keep_alive;	/* keep-alive mode */
 	char		*buf;		/* chunk buffer */
 	size_t		 bufsize;	/* size of chunk buffer */
 	size_t		 buflen;	/* amount of data currently in buffer */
@@ -317,24 +317,11 @@ static int
 http_closefn(void *v)
 {
 	struct httpio *io = (struct httpio *)v;
-	int r, val;
+	int r;
 
-	if (io->keep_alive) {
-		val = 0;
-		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
-		    sizeof(val));
-		fetch_cache_put(io->conn, fetch_close);
-#ifdef TCP_NOPUSH
-		val = 1;
-		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
-		    sizeof(val));
-#endif
-		r = 0;
-	} else {
-		r = fetch_close(io->conn);
-	}
-
-	free(io->buf);
+	r = fetch_close(io->conn);
+	if (io->buf)
+		free(io->buf);
 	free(io);
 	return (r);
 }
@@ -343,7 +330,7 @@ http_closefn(void *v)
  * Wrap a file descriptor up
  */
 static FILE *
-http_funopen(conn_t *conn, int chunked, int keep_alive)
+http_funopen(conn_t *conn, int chunked)
 {
 	struct httpio *io;
 	FILE *f;
@@ -354,7 +341,6 @@ http_funopen(conn_t *conn, int chunked, int keep_alive)
 	}
 	io->conn = conn;
 	io->chunked = chunked;
-	io->keep_alive = keep_alive;
 	f = funopen(io, http_readfn, http_writefn, NULL, http_closefn);
 	if (f == NULL) {
 		fetch_syserr();
@@ -375,7 +361,6 @@ typedef enum {
 	hdr_error = -1,
 	hdr_end = 0,
 	hdr_unknown = 1,
-	hdr_connection,
 	hdr_content_length,
 	hdr_content_range,
 	hdr_last_modified,
@@ -390,7 +375,6 @@ static struct {
 	hdr_t		 num;
 	const char	*name;
 } hdr_names[] = {
-	{ hdr_connection,		"Connection" },
 	{ hdr_content_length,		"Content-Length" },
 	{ hdr_content_range,		"Content-Range" },
 	{ hdr_last_modified,		"Last-Modified" },
@@ -992,13 +976,12 @@ http_base64(const char *src)
 	    "0123456789+/";
 	char *str, *dst;
 	size_t l;
-	int t, r;
+	int t;
 
 	l = strlen(src);
 	if ((str = malloc(((l + 2) / 3) * 4 + 1)) == NULL)
 		return (NULL);
 	dst = str;
-	r = 0;
 
 	while (l >= 3) {
 		t = (src[0] << 16) | (src[1] << 8) | src[2];
@@ -1007,7 +990,7 @@ http_base64(const char *src)
 		dst[2] = base64[(t >> 6) & 0x3f];
 		dst[3] = base64[(t >> 0) & 0x3f];
 		src += 3; l -= 3;
-		dst += 4; r += 4;
+		dst += 4;
 	}
 
 	switch (l) {
@@ -1018,7 +1001,6 @@ http_base64(const char *src)
 		dst[2] = base64[(t >> 6) & 0x3f];
 		dst[3] = '=';
 		dst += 4;
-		r += 4;
 		break;
 	case 1:
 		t = src[0] << 16;
@@ -1026,7 +1008,6 @@ http_base64(const char *src)
 		dst[1] = base64[(t >> 12) & 0x3f];
 		dst[2] = dst[3] = '=';
 		dst += 4;
-		r += 4;
 		break;
 	case 0:
 		break;
@@ -1394,7 +1375,7 @@ http_authorize(conn_t *conn, const char *hdr, http_auth_challenges_t *cs,
  * Connect to the correct HTTP server or proxy.
  */
 static conn_t *
-http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
+http_connect(struct url *URL, struct url *purl, const char *flags)
 {
 	struct url *curl;
 	conn_t *conn;
@@ -1404,6 +1385,8 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 	int verbose;
 	int af, val;
 	int serrno;
+	bool isproxyauth = false;
+	http_auth_challenges_t proxy_challenges;
 
 #ifdef INET6
 	af = AF_UNSPEC;
@@ -1421,23 +1404,58 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 
 	curl = (purl != NULL) ? purl : URL;
 
-	if ((conn = fetch_cache_get(curl, af)) != NULL) {
-		*cached = 1;
-		return (conn);
-	}
-
-	if ((conn = fetch_connect(curl, af, verbose)) == NULL)
+retry:
+	if ((conn = fetch_connect(curl->host, curl->port, af, verbose)) == NULL)
 		/* fetch_connect() has already set an error code */
 		return (NULL);
 	init_http_headerbuf(&headerbuf);
 	if (strcmp(URL->scheme, SCHEME_HTTPS) == 0 && purl) {
-		http_cmd(conn, "CONNECT %s:%d HTTP/1.1",
-		    URL->host, URL->port);
-		http_cmd(conn, "Host: %s:%d",
-		    URL->host, URL->port);
+		init_http_auth_challenges(&proxy_challenges);
+		http_cmd(conn, "CONNECT %s:%d HTTP/1.1", URL->host, URL->port);
+		http_cmd(conn, "Host: %s:%d", URL->host, URL->port);
+		if (isproxyauth) {
+			http_auth_params_t aparams;
+			init_http_auth_params(&aparams);
+			if (*purl->user || *purl->pwd) {
+				aparams.user = strdup(purl->user);
+				aparams.password = strdup(purl->pwd);
+			} else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL &&
+				    *p != '\0') {
+				if (http_authfromenv(p, &aparams) < 0) {
+					http_seterr(HTTP_NEED_PROXY_AUTH);
+					fetch_syserr();
+					goto ouch;
+				}
+			} else if (fetch_netrc_auth(purl) == 0) {
+				aparams.user = strdup(purl->user);
+				aparams.password = strdup(purl->pwd);
+			} else {
+				/*
+				 * No auth information found in system - exiting
+				 * with warning.
+				 */
+				warnx("Missing username and/or password set");
+				fetch_syserr();
+				goto ouch;
+			}
+			http_authorize(conn, "Proxy-Authorization",
+			    &proxy_challenges, &aparams, purl);
+			clean_http_auth_params(&aparams);
+		}
 		http_cmd(conn, "");
-		if (http_get_reply(conn) != HTTP_OK) {
-			http_seterr(conn->err);
+		/* Get reply from CONNECT Tunnel attempt */
+		int httpreply = http_get_reply(conn);
+		if (httpreply != HTTP_OK) {
+			http_seterr(httpreply);
+			/* If the error is a 407/HTTP_NEED_PROXY_AUTH */
+			if (httpreply == HTTP_NEED_PROXY_AUTH &&
+			    ! isproxyauth) {
+				/* Try again with authentication. */
+				clean_http_headerbuf(&headerbuf);
+				fetch_close(conn);
+				isproxyauth = true;
+				goto retry;
+			}
 			goto ouch;
 		}
 		/* Read and discard the rest of the proxy response */
@@ -1507,12 +1525,13 @@ http_get_proxy(struct url * url, const char *flags)
 static void
 http_print_html(FILE *out, FILE *in)
 {
-	size_t len = 0;
+	ssize_t len = 0;
+	size_t cap;
 	char *line = NULL, *p, *q;
 	int comment, tag;
 
 	comment = tag = 0;
-	while (getline(&line, &len, in) >= 0) {
+	while ((len = getline(&line, &cap, in)) >= 0) {
 		while (len && isspace((unsigned char)line[len - 1]))
 			--len;
 		for (p = q = line; q < line + len; ++q) {
@@ -1572,7 +1591,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	char hbuf[MAXHOSTNAMELEN + 7], *host;
 	conn_t *conn;
 	struct url *url, *new;
-	int chunked, direct, ims, keep_alive, noredirect, verbose, cached;
+	int chunked, direct, ims, noredirect, verbose;
 	int e, i, n, val;
 	off_t offset, clength, length, size;
 	time_t mtime;
@@ -1594,7 +1613,6 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	noredirect = CHECK_FLAG('A');
 	verbose = CHECK_FLAG('v');
 	ims = CHECK_FLAG('i');
-	keep_alive = 0;
 
 	if (direct && purl) {
 		fetchFreeURL(purl);
@@ -1616,14 +1634,13 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		length = -1;
 		size = -1;
 		mtime = 0;
-		cached = 0;
 
 		/* check port */
 		if (!url->port)
 			url->port = fetch_default_port(url->scheme);
 
 		/* connect to server or proxy */
-		if ((conn = http_connect(url, purl, flags, &cached)) == NULL)
+		if ((conn = http_connect(url, purl, flags)) == NULL)
 			goto ouch;
 
 		/* append port number only if necessary */
@@ -1850,10 +1867,6 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 			case hdr_error:
 				http_seterr(HTTP_PROTOCOL_ERROR);
 				goto ouch;
-			case hdr_connection:
-				/* XXX too weak? */
-				keep_alive = (strcasecmp(p, "keep-alive") == 0);
-				break;
 			case hdr_content_length:
 				http_parse_length(p, &clength);
 				break;
@@ -2028,7 +2041,7 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	URL->length = clength;
 
 	/* wrap it up in a FILE */
-	if ((f = http_funopen(conn, chunked, keep_alive)) == NULL) {
+	if ((f = http_funopen(conn, chunked)) == NULL) {
 		fetch_syserr();
 		goto ouch;
 	}

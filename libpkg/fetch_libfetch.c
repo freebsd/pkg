@@ -105,7 +105,6 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 
-	fetchConnectionCacheInit(-1, -1);
 	fetchTimeout = (int)MIN(fetch_timeout, INT_MAX);
 
 	repourl = fetchParseURL(repo->url);
