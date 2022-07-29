@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 3, 2018
+.Dd July 29, 2022
 .Dt PKG-UPDATING 8
 .Os
 .Sh NAME
@@ -63,8 +63,12 @@ The following environment variables affect the execution of
 Location of the ports tree.
 .El
 .Sh FILES
-See
-.Xr pkg.conf 5 .
+.Bl -tag -width /usr/ports/UPDATING
+.It Pa /usr/ports/UPDATING
+The default location of the
+.Pa UPDATING
+file.
+.El
 .Sh EXAMPLES
 Shows all entries of all installed ports:
 .Dl % pkg updating
