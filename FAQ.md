@@ -31,7 +31,6 @@ Table of Contents
 * [Can it track user-edited configuration files that are associated with packages?](#24)
 * [Can it do 2- or 3-way merges of package configuration files?](#25)
 * [The README states "Directory leftovers are automatically removed if they are not in the MTREE."  How does this work for directories that are shared between multiple packages?  Does this mean that if I add a file to a directory that was created by a package, that file will be deleted automatically if I delete the package?](#26)
-* [How to create a new plugin for pkgng?](#27)
 
 <a name="0"></a>
 ### Q: How can I start using pkgng?
@@ -231,10 +230,3 @@ This is the standard way things work in the ports at the moment.
 ### Q: The README states "Directory leftovers are automatically removed if they are not in the MTREE."  How does this work for directories that are shared between multiple packages?  Does this mean that if I add a file to a directory that was created by a package, that file will be deleted automatically if I delete the package?
 
 No.  Directories have to be empty before they will be removed.
-
-<a name="27"></a>
-### Q: How to create a new plugin for pkgng?
-
-If you are interested in creating a new plugin for pkgng you might want to check the following handbook which is an introduction to plugins writing for pkgng.
-
-* [Introduction to writing plugins for pkgng in FreeBSD](http://unix-heaven.org/writing-plugins-for-pkgng)
