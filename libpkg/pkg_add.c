@@ -188,6 +188,20 @@ out:
 	return (grent.gr_gid);
 }
 
+static int
+set_chflags(int fd, const char *path, u_long fflags)
+{
+#ifdef HAVE_CHFLAGSAT
+	if (getenv("INSTALL_AS_USER"))
+		return (EPKG_OK);
+	if (fflags == 0)
+		return (EPKG_OK);
+	if (chflagsat(fd, RELATIVE_PATH(path), fflags, AT_SYMLINK_NOFOLLOW) == -1) {
+		pkg_fatal_errno("Fail to chflags %s", path);
+	}
+#endif
+	return (EPKG_OK);
+}
 int
 set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
     const struct timespec *ats, const struct timespec *mts)
@@ -428,6 +442,9 @@ retry:
 	    &f->time[0], &f->time[1]) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
+	if (tmpdir != NULL)
+		set_chflags(fd, path, f->fflags);
+
 	return (EPKG_OK);
 }
 
@@ -651,6 +668,8 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	if (set_attrsat(fd, path, f->perm, f->uid, f->gid,
 	    &f->time[0], &f->time[1]) != EPKG_OK)
 			return (EPKG_FATAL);
+	if (tmpdir != NULL)
+		set_chflags(fd, path, f->fflags);
 
 	return (EPKG_OK);
 }
@@ -861,14 +880,8 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 			    f->temppath, fto);
 		}
 
-#ifdef HAVE_CHFLAGSAT
-		if (!install_as_user && f->fflags != 0) {
-			if (chflagsat(pkg->rootfd, RELATIVE_PATH(fto),
-			    f->fflags, AT_SYMLINK_NOFOLLOW) == -1) {
-				pkg_fatal_errno("Fail to chflags %s", fto);
-			}
-		}
-#endif
+		if (set_chflags(pkg->rootfd, fto, f->fflags) != EPKG_OK)
+			return (EPKG_FATAL);
 	}
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
@@ -877,6 +890,8 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 			continue;
 		if (set_attrsat(pkg->rootfd, d->path, d->perm,
 		    d->uid, d->gid, &d->time[0], &d->time[1]) != EPKG_OK)
+			return (EPKG_FATAL);
+		if (set_chflags(pkg->rootfd, d->path, d->fflags) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 	if (tempdirs != NULL)
