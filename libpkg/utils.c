@@ -1001,3 +1001,50 @@ json_escape(const char *str)
 	return (xstring_get(buf));
 }
 
+
+struct tempdir *
+open_tempdir(int rootfd, const char *path)
+{
+	struct stat st;
+	char walk[MAXPATHLEN];
+	char *dir;
+	size_t cnt = 0;
+	
+	strlcpy(walk, path, sizeof(walk));
+	while ((dir = strrchr(walk, '/')) != NULL) {
+		struct tempdir *t;
+		*dir = '\0';
+		cnt++;
+		/* accept symlinks pointing to directories */
+		if (strlen(walk) == 0 && cnt == 1)
+			break;
+		if (strlen(walk) > 0) {
+			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1) 
+				continue;
+			if (S_ISDIR(st.st_mode) && cnt == 1)
+				break;
+			if (!S_ISDIR(st.st_mode))
+				continue;
+		}
+		*dir = '/';
+		t = xcalloc(1, sizeof(*t));
+		hidden_tempfile(t->temp, sizeof(t->temp), walk);
+		if (mkdirat(rootfd, RELATIVE_PATH(t->temp), 0755) == -1) {
+			pkg_errno("Fail to create temporary directory: %s", t->temp);
+			free(t);
+			return (NULL);
+		}
+
+		strlcpy(t->name, walk, sizeof(t->name));
+		t->len = strlen(t->name);
+		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY);
+		if (t->fd == -1) {
+			pkg_errno("Fail to open directory %s", t->temp);
+			free(t);
+			return (NULL);
+		}
+		return (t);
+	}
+	errno = 0;
+	return (NULL);
+}

@@ -25,11 +25,13 @@
 
 #include <atf-c.h>
 #include <err.h>
+#include <fcntl.h>
 #include <private/utils.h>
 
 ATF_TC_WITHOUT_HEAD(hidden_tempfile);
 ATF_TC_WITHOUT_HEAD(random_suffix);
 ATF_TC_WITHOUT_HEAD(json_escape);
+ATF_TC_WITHOUT_HEAD(open_tempdir);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -67,11 +69,48 @@ ATF_TC_BODY(json_escape, tc) {
 	ATF_REQUIRE_STREQ_MSG(m, "entry1\\\"\\\"\\\\ ", "Invalid escaping");
 }
 
+ATF_TC_BODY(open_tempdir, tc) {
+	struct tempdir *t;
+	int rootfd = open(getenv("TMPDIR"), O_DIRECTORY);
+	ATF_REQUIRE_MSG(rootfd  != -1, "impossible to open TMPDIR");
+	t = open_tempdir(rootfd, "/plop");
+	ATF_REQUIRE(t == NULL);
+	mkdirat(rootfd, "usr", 0755);
+	t = open_tempdir(rootfd, "/usr/local/directory");
+	ATF_REQUIRE(t != NULL);
+	ATF_REQUIRE_STREQ(t->name, "/usr/local");
+	ATF_REQUIRE_EQ(t->len, strlen("/usr/local"));
+	ATF_REQUIRE(strncmp(t->temp, "/usr/.pkgtemp.", 14) == 0);
+	ATF_REQUIRE(t->fd != -1);
+	close(t->fd);
+	free(t);
+	t = open_tempdir(rootfd, "/nousr/local/directory");
+	ATF_REQUIRE(t != NULL);
+	ATF_REQUIRE_STREQ(t->name, "/nousr");
+	ATF_REQUIRE_EQ(t->len, strlen("/nousr"));
+	ATF_REQUIRE(strncmp(t->temp, "/.pkgtemp.", 10) == 0);
+	ATF_REQUIRE(t->fd != -1);
+	close(t->fd);
+	free(t);
+	mkdirat(rootfd, "dir", 0755);
+	/* a file in the path */
+	close(open(rootfd, "dir/file1", O_CREAT|O_WRONLY, 0644));
+	t = open_tempdir(rootfd, "/dir/file1/test");
+	ATF_REQUIRE(t != NULL);
+	ATF_REQUIRE_STREQ(t->name, "/dir/file1");
+	ATF_REQUIRE_EQ(t->len, strlen("/dir/file1"));
+	ATF_REQUIRE(strncmp(t->temp, "/dir/.pkgtemp.", 14) == 0);
+	ATF_REQUIRE(t->fd != -1);
+	close(t->fd);
+	free(t);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
 	ATF_TP_ADD_TC(tp, random_suffix);
 	ATF_TP_ADD_TC(tp, json_escape);
+	ATF_TP_ADD_TC(tp, open_tempdir);
 
 	return (atf_no_error());
 }
