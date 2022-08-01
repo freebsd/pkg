@@ -28,9 +28,7 @@
 #include <private/pkg.h>
 #include <pkg_config.h>
 
-ATF_TC(basics);
-
-ATF_TC_HEAD(basics, tc) {}
+ATF_TC_WITHOUT_HEAD(basics);
 
 ATF_TC_BODY(basics, tc) {
 #ifdef HAVE_FFLAGSTOSTR

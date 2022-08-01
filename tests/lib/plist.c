@@ -28,13 +28,7 @@
 #include <pkg.h>
 #include <private/pkg.h>
 
-ATF_TC(parse_mode);
-
-ATF_TC_HEAD(parse_mode, tc)
-{
-	atf_tc_set_md_var(tc, "descr",
-	    "parse_mode()");
-}
+ATF_TC_WITHOUT_HEAD(parse_mode);
 
 ATF_TC_BODY(parse_mode, tc)
 {

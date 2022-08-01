@@ -27,13 +27,9 @@
 #include <err.h>
 #include <private/utils.h>
 
-ATF_TC(hidden_tempfile);
-ATF_TC(random_suffix);
-ATF_TC(json_escape);
-
-ATF_TC_HEAD(hidden_tempfile, tc) {}
-ATF_TC_HEAD(random_suffix, tc) {}
-ATF_TC_HEAD(json_escape, tc) {}
+ATF_TC_WITHOUT_HEAD(hidden_tempfile);
+ATF_TC_WITHOUT_HEAD(random_suffix);
+ATF_TC_WITHOUT_HEAD(json_escape);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";

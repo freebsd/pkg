@@ -30,15 +30,10 @@
 #include <private/packing.h>
 #include <pkg_config.h>
 
-ATF_TC(packing_format_from_string);
-ATF_TC(packing_format_to_string);
-ATF_TC(packing_format_is_valid);
-ATF_TC(packing_set_format);
-
-ATF_TC_HEAD(packing_format_from_string, tc) { }
-ATF_TC_HEAD(packing_format_to_string, tc) { }
-ATF_TC_HEAD(packing_format_is_valid, tc) { }
-ATF_TC_HEAD(packing_set_format, tc) {}
+ATF_TC_WITHOUT_HEAD(packing_format_from_string);
+ATF_TC_WITHOUT_HEAD(packing_format_to_string);
+ATF_TC_WITHOUT_HEAD(packing_format_is_valid);
+ATF_TC_WITHOUT_HEAD(packing_set_format);
 
 ATF_TC_BODY(packing_format_from_string, tc)
 {

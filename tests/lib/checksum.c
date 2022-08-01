@@ -29,18 +29,10 @@
 #include <pkg.h>
 #include <private/pkg.h>
 
-ATF_TC(check_symlinks);
-ATF_TC(check_pkg);
-ATF_TC(check_types);
-ATF_TC(check_validity);
-
-ATF_TC_HEAD(check_symlinks, tc)
-{
-	atf_tc_set_md_var(tc, "descr", "testing checksums on symlinks");
-}
-ATF_TC_HEAD(check_pkg, tc) {}
-ATF_TC_HEAD(check_types, tc) {}
-ATF_TC_HEAD(check_validity, tc) {}
+ATF_TC_WITHOUT_HEAD(check_symlinks);
+ATF_TC_WITHOUT_HEAD(check_pkg);
+ATF_TC_WITHOUT_HEAD(check_types);
+ATF_TC_WITHOUT_HEAD(check_validity);
 
 ATF_TC_BODY(check_validity, tc)
 {

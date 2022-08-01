@@ -42,13 +42,7 @@
 
 xstring *msg;
 
-ATF_TC(valid_installed);
-
-ATF_TC_HEAD(valid_installed, tc)
-{
-	atf_tc_set_md_var(tc, "descr",
-	    "pkg_valid() tests installed packages");
-}
+ATF_TC_WITHOUT_HEAD(valid_installed);
 
 int
 event_callback(void *data __unused, struct pkg_event *ev)

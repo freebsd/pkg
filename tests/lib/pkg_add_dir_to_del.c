@@ -29,13 +29,7 @@
 #include <private/pkg.h>
 #include <tllist.h>
 
-ATF_TC(pkg_add_dir_to_del);
-
-ATF_TC_HEAD(pkg_add_dir_to_del, tc)
-{
-	atf_tc_set_md_var(tc, "descr",
-	    "pkg_add_dir_to_del()");
-}
+ATF_TC_WITHOUT_HEAD(pkg_add_dir_to_del);
 
 ATF_TC_BODY(pkg_add_dir_to_del, tc)
 {

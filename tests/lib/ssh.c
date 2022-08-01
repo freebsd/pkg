@@ -32,17 +32,11 @@
 #include <stdlib.h>
 #include <xmalloc.h>
 
-ATF_TC(badcommand);
-ATF_TC(badrestrict);
-ATF_TC(getfile);
-ATF_TC(notrestricted);
-ATF_TC(restricted);
-
-ATF_TC_HEAD(badcommand, tc) { }
-ATF_TC_HEAD(getfile, tc) { }
-ATF_TC_HEAD(badrestrict, tc) { }
-ATF_TC_HEAD(notrestricted, tc) { }
-ATF_TC_HEAD(restricted, tc) { }
+ATF_TC_WITHOUT_HEAD(badcommand);
+ATF_TC_WITHOUT_HEAD(badrestrict);
+ATF_TC_WITHOUT_HEAD(getfile);
+ATF_TC_WITHOUT_HEAD(notrestricted);
+ATF_TC_WITHOUT_HEAD(restricted);
 
 ATF_TC_BODY(badcommand, tc)
 {

@@ -33,21 +33,13 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
-ATF_TC(readdir);
-ATF_TC(stat);
-ATF_TC(print_msg);
-ATF_TC(execute);
-ATF_TC(override);
-ATF_TC(fileops);
-ATF_TC(prefix_path);
-
-ATF_TC_HEAD(readdir, tc) { }
-ATF_TC_HEAD(stat, tc) {}
-ATF_TC_HEAD(print_msg, tc) {}
-ATF_TC_HEAD(execute, tc) {}
-ATF_TC_HEAD(override, tc) {}
-ATF_TC_HEAD(fileops, tc) {}
-ATF_TC_HEAD(prefix_path, tc) {}
+ATF_TC_WITHOUT_HEAD(readdir);
+ATF_TC_WITHOUT_HEAD(stat);
+ATF_TC_WITHOUT_HEAD(print_msg);
+ATF_TC_WITHOUT_HEAD(execute);
+ATF_TC_WITHOUT_HEAD(override);
+ATF_TC_WITHOUT_HEAD(fileops);
+ATF_TC_WITHOUT_HEAD(prefix_path);
 
 ATF_TC_BODY(readdir, tc)
 {

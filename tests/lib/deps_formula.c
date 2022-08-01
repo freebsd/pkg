@@ -30,14 +30,9 @@
 #include <private/pkg.h>
 #include <private/pkg_deps.h>
 
-ATF_TC(check_parsing);
-ATF_TC(check_sql);
-ATF_TC(check_op_parsing);
-
-ATF_TC_HEAD(check_parsing, tc)
-{
-	atf_tc_set_md_var(tc, "descr", "testing parsing of deps formula");
-}
+ATF_TC_WITHOUT_HEAD(check_parsing);
+ATF_TC_WITHOUT_HEAD(check_sql);
+ATF_TC_WITHOUT_HEAD(check_op_parsing);
 
 ATF_TC_BODY(check_parsing, tc)
 {
