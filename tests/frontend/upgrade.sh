@@ -6,7 +6,9 @@ tests_init \
 	issue1881 \
 	issue1881_newdep \
 	three_digit_revision \
-	dual_conflict
+	dual_conflict \
+	file_become_dir \
+	dir_become_file
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -226,4 +228,37 @@ EOF
 	atf_check \
 		-o inline:'pkg-1-2\n' \
 		pkg -r ${TMPDIR}/target which -q ${TMPDIR}/file-pkg-2
+}
+
+file_become_dir_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	echo "${TMPDIR}/file-pkg-1" > plist-1
+	echo "entry" > file-pkg-1
+	atf_check pkg create -M pkg.ucl -p plist-1
+	mkdir target
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-1.pkg
+	atf_check test -f target/${TMPDIR}/file-pkg-1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "2"
+	rm file-pkg-1
+	mkdir file-pkg-1
+	echo entry > file-pkg-1/file
+	echo "${TMPDIR}/file-pkg-1/file" > plist-2
+	atf_check pkg create -M pkg.ucl -p plist-2
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
+}
+
+dir_become_file_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	mkdir file-pkg-1
+	echo entry > file-pkg-1/file
+	echo "${TMPDIR}/file-pkg-1/file" > plist-1
+	atf_check pkg create -M pkg.ucl -p plist-1
+	mkdir target
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-1.pkg
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "2"
+	rm -rf file-pkg-1
+	echo entry > file-pkg-1
+	echo "${TMPDIR}/file-pkg-1" > plist-2
+	atf_check pkg create -M pkg.ucl -p plist-2
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
 }
