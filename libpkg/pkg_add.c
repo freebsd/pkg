@@ -50,13 +50,6 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-struct store_hardlinks {
-	ino_t ino;
-	dev_t dev;
-	const char *path;
-};
-typedef tll(struct store_hardlinks *) hls;
-
 #if defined(UF_NOUNLINK)
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
 #else
@@ -1412,7 +1405,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	struct group *gr, grent;
 	int err, fd, fromfd;
 	int retcode;
-	hls hardlinks = tll_init();
+	hardlinks_t hardlinks = tll_init();
 	const char *path;
 	char buffer[1024];
 	size_t link_len;
@@ -1577,7 +1570,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
-				struct store_hardlinks *h = xcalloc(1, sizeof(*h));
+				struct hardlink *h = xcalloc(1, sizeof(*h));
 				h->ino = st.st_ino;
 				h->dev = st.st_dev;
 				h->path = f->path;

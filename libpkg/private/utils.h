@@ -53,6 +53,7 @@ typedef tll(struct hardlink *) hardlinks_t;
 struct hardlink {
 	ino_t ino;
 	dev_t dev;
+	const char *path;
 };
 
 struct tempdir {
