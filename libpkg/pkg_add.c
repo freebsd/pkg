@@ -817,7 +817,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 
 
 	if (tempdirs != NULL) {
-	tll_foreach(*tempdirs, t) {
+		tll_foreach(*tempdirs, t) {
 			close(t->item->fd);
 			if (renameat(pkg->rootfd, RELATIVE_PATH(t->item->temp),
 			    pkg->rootfd, RELATIVE_PATH(t->item->name)) != 0) {
