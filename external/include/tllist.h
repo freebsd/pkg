@@ -190,3 +190,65 @@
         (list).length = 0;                                  \
         (list).head = (list).tail = NULL;                   \
     } while (0)
+
+#define tll_sort(list, cmp)                                                 \
+    do {                                                                    \
+	__typeof((list).head) __p;                                          \
+	__typeof((list).head) __q;                                          \
+	__typeof((list).head) __e;                                          \
+	__typeof((list).head) __t;                                          \
+        int __insize, __nmerges, __p_size, __q_size;                        \
+	if ((list).head == NULL)                                            \
+	    break;                                                          \
+        __insize = 1;                                                       \
+        while (1) {                                                         \
+		__p = (list).head;                                          \
+		(list).head = NULL;                                         \
+                __t = NULL;                                                 \
+		__nmerges = 0;                                              \
+		while (__p != NULL) {                                       \
+	            __nmerges++;                                            \
+	            __q = __p;                                              \
+		    __p_size = 0;                                           \
+		    for (int _i = 0; _i < __insize; _i++) {                 \
+			    __p_size++;                                     \
+			    __q = __q->next;                                \
+			    if (__q == NULL)                                \
+			        break;                                      \
+		    }                                                       \
+	            __q_size = __insize;                                    \
+		    while (__p_size > 0 || (__q_size > 0 && __q != NULL)) { \
+			    if (__p_size == 0) {                            \
+				    __e = __q;                              \
+				    __q = __q->next;                        \
+				    __q_size--;                             \
+			    } else if (__q_size == 0 || __q == NULL) {      \
+				    __e = __p;                              \
+				    __p = __p->next;                        \
+				    __p_size--;                             \
+			    } else if (cmp(__p->item, __q->item) <= 0) {    \
+				    __e = __p;                              \
+				    __p = __p->next;                        \
+				    __p_size--;                             \
+			    } else {                                        \
+				    __e = __q;                              \
+				    __q = __q->next;                        \
+				    __q_size--;                             \
+			    }                                               \
+			    if (__t != NULL) {                              \
+				    __t->next = __e;                        \
+			    } else {                                        \
+				    (list).head = __e;                      \
+			    }                                               \
+			    __e->prev = __t;                                \
+			    __t = __e;                                      \
+		    }                                                       \
+	            __p = __q;                                              \
+		}                                                           \
+		(list).tail = __t;                                          \
+		__t->next = NULL;                                           \
+		__insize *= 2;                                              \
+		if (__nmerges <= 1)                                         \
+			break;                                              \
+	}                                                                   \
+    } while (0)
