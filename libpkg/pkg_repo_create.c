@@ -72,8 +72,8 @@ struct digest_list_entry {
 	long files_pos;
 	long manifest_length;
 	char *checksum;
-	struct digest_list_entry *prev, *next;
 };
+typedef tll(struct digest_list_entry *) digest_list_t;
 
 struct pkg_conflict_bulk {
 	struct pkg_conflict *conflicts;
@@ -539,7 +539,7 @@ cleanup:
 }
 
 static int
-pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist, struct pkg_fts_item **items)
+pkg_create_repo_read_pipe(int fd, digest_list_t *dlist, struct pkg_fts_item **items)
 {
 	struct digest_list_entry *dig = NULL;
 	char buf[1024];
@@ -591,7 +591,7 @@ pkg_create_repo_read_pipe(int fd, struct digest_list_entry **dlist, struct pkg_f
 			dig->manifest_length = mp_decode_uint(&rbuf);
 			c = mp_decode_str(&rbuf, &len);
 			dig->checksum = xstrndup(c, len);
-			DL_APPEND(*dlist, dig);
+			tll_push_back(*dlist, dig);
 		}
 
 		if (msgtype == MSG_PKG_READY) {
@@ -641,7 +641,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct pkg_conflict_bulk *curcb;
 	int num_workers, i, remaining_workers;
 	size_t len, ntask;
-	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
+	digest_list_t dlist = tll_init();
 	struct pollfd *pfd = NULL;
 	int cur_pipe[2], fd, outputdir_fd, mfd, ffd;
 	struct pkg_repo_meta *meta = NULL;
@@ -836,7 +836,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	/* Now sort all digests */
 	if (meta->version == 1)
-		DL_SORT(dlist, pkg_digest_sort_compare_func);
+		tll_sort(dlist, pkg_digest_sort_compare_func);
 
 	/* Write metafile */
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
@@ -883,22 +883,23 @@ cleanup:
 	LL_FREE(fts_items, pkg_create_repo_fts_free);
 
 	if (meta->version == 1) {
-		LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-			if (cur_dig->checksum != NULL)
-				fprintf(mandigests, "%s:%s:%ld:%ld:%ld:%s\n", cur_dig->origin,
-				    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-				    cur_dig->manifest_length, cur_dig->checksum);
+		tll_foreach(dlist, it) {
+			if (it->item->checksum != NULL)
+				fprintf(mandigests, "%s:%s:%ld:%ld:%ld:%s\n", it->item->origin,
+				    it->item->digest, it->item->manifest_pos, it->item->files_pos,
+				    it->item->manifest_length, it->item->checksum);
 			else
-				fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
-				    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-				    cur_dig->manifest_length);
+				fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", it->item->origin,
+				    it->item->digest, it->item->manifest_pos, it->item->files_pos,
+				    it->item->manifest_length);
 
-			free(cur_dig->digest);
-			free(cur_dig->origin);
-			free(cur_dig);
+			free(it->item->digest);
+			free(it->item->origin);
+			free(it->item);
 		}
 	}
 
+	tll_free(dlist);
 	if (meta->version == 1 && mandigests != NULL)
 		fclose(mandigests);
 	pkg_repo_meta_free(meta);
