@@ -37,11 +37,7 @@
 #include "private/pkg_jobs.h"
 #include "siphash.h"
 
-struct pkg_conflict_chain {
-	struct pkg_job_request *req;
-	struct pkg_conflict_chain *next;
-};
-
+typedef tll(struct pkg_job_request *) conflict_chain_t;
 
 TREE_DEFINE(pkg_jobs_conflict_item, entry);
 
@@ -59,36 +55,36 @@ pkg_conflicts_sipkey_init(void)
 }
 
 static int
-pkg_conflicts_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_chain *b)
+pkg_conflicts_chain_cmp_cb(struct pkg_job_request *a, struct pkg_job_request *b)
 {
 	const char *vera, *verb;
 
-	if (a->req->skip || b->req->skip) {
-		return (a->req->skip - b->req->skip);
+	if (a->skip || b->skip) {
+		return (a->skip - b->skip);
 	}
 
-	vera = a->req->item->pkg->version;
-	verb = b->req->item->pkg->version;
+	vera = a->item->pkg->version;
+	verb = b->item->pkg->version;
 
 	/* Inverse sort to get the maximum version as the first element */
 	return (pkg_version_cmp(vera, verb));
 }
 
 static int
-pkg_conflicts_request_resolve_chain(struct pkg *req, struct pkg_conflict_chain *chain)
+pkg_conflicts_request_resolve_chain(struct pkg *req, conflict_chain_t *chain)
 {
-	struct pkg_conflict_chain *elt, *selected = NULL;
+	struct pkg_job_request *selected = NULL;
 	const char *slash_pos;
 
 	/*
 	 * First of all prefer pure origins, where the last element of
 	 * an origin is pkg name
 	 */
-	LL_FOREACH(chain, elt) {
-		slash_pos = strrchr(elt->req->item->pkg->origin, '/');
+	tll_foreach(*chain, e) {
+		slash_pos = strrchr(e->item->item->pkg->origin, '/');
 		if (slash_pos != NULL) {
 			if (strcmp(slash_pos + 1, req->name) == 0) {
-				selected = elt;
+				selected = e->item;
 				break;
 			}
 		}
@@ -97,29 +93,19 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, struct pkg_conflict_chain *
 	if (selected == NULL) {
 		/* XXX: add manual selection here */
 		/* Sort list by version of package */
-		LL_SORT(chain, pkg_conflicts_chain_cmp_cb);
-		selected = chain;
+		tll_sort(*chain, pkg_conflicts_chain_cmp_cb);
+		selected = tll_front(*chain);
 	}
 
 	pkg_debug(2, "select %s in the chain of conflicts for %s",
-	    selected->req->item->pkg->name, req->name);
+	    selected->item->pkg->name, req->name);
 	/* Disable conflicts from a request */
-	LL_FOREACH(chain, elt) {
-		if (elt != selected)
-			elt->req->skip = true;
+	tll_foreach(*chain, e) {
+		if (e->item != selected)
+			e->item->skip = true;
 	}
 
 	return (EPKG_OK);
-}
-
-static void
-pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_job_request *req)
-{
-	struct pkg_conflict_chain *elt;
-
-	elt = xcalloc(1, sizeof(struct pkg_conflict_chain));
-	elt->req = req;
-	LL_PREPEND(*chain, elt);
 }
 
 int
@@ -127,14 +113,13 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *found;
 	struct pkg_conflict *c;
-	struct pkg_conflict_chain *chain;
 	struct pkg_job_universe_item *unit;
 	pkghash_it it;
 
 	it = pkghash_iterator(j->request_add);
 	while (pkghash_next(&it)) {
 		req = it.value;
-		chain = NULL;
+		conflict_chain_t  chain = tll_init();
 		if (req->skip)
 			continue;
 
@@ -143,20 +128,20 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			if (unit != NULL) {
 				found = pkghash_get_value(j->request_add, unit->pkg->uid);
 				if (found != NULL && !found->skip) {
-					pkg_conflicts_request_add_chain(&chain, found);
+					tll_push_front(chain, found);
 				}
 			}
 		}
-		if (chain != NULL) {
+		if (tll_length(chain) > 0) {
 			/* Add package itself */
-			pkg_conflicts_request_add_chain(&chain, req);
+			tll_push_front(chain, req);
 
-			if (pkg_conflicts_request_resolve_chain(req->item->pkg, chain) != EPKG_OK) {
-				LL_FREE(chain, free);
+			if (pkg_conflicts_request_resolve_chain(req->item->pkg, &chain) != EPKG_OK) {
+				tll_free(chain);
 				return (EPKG_FATAL);
 			}
-			LL_FREE(chain, free);
 		}
+		tll_free(chain);
 	}
 
 	return (EPKG_OK);
