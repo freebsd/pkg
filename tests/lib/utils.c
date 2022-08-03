@@ -94,7 +94,7 @@ ATF_TC_BODY(open_tempdir, tc) {
 	free(t);
 	mkdirat(rootfd, "dir", 0755);
 	/* a file in the path */
-	close(open(rootfd, "dir/file1", O_CREAT|O_WRONLY, 0644));
+	close(openat(rootfd, "dir/file1", O_CREAT|O_WRONLY, 0644));
 	t = open_tempdir(rootfd, "/dir/file1/test");
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/dir/file1");
