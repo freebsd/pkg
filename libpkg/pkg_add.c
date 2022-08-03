@@ -548,7 +548,7 @@ retry:
 			goto retry;
 		}
 
-		pkg_fatal_errno("Fail to create hardlink: %s", f->temppath);
+		pkg_fatal_errno("Fail to create hardlink: %s <-> %s", pathfrom, pathto);
 	}
 
 	return (EPKG_OK);
