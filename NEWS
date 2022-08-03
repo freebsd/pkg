@@ -1,3 +1,17 @@
+Changes from 1.17.99.11 to 1.18.99.1
+- rework the extraction process to fix the case when a file becomes a directory
+  during an upgrade
+- fix a crash in pkg create
+- fix a crash in pkg version -PvL=
+- allow to deal with 240 character long filenames
+- fix an issue when disabling a repository resulting in breakage of the
+  repository list
+- fix querying licenses
+- fix packaging the lua deinstall scripts
+- add pkg.symlink to allow creating symlinks from lua scripts
+- performance improvements
+- sync libfetch with base bringing in socks proxy support
+
 Changes from 1.17.99.10 to 1.17.99.11
 - Fix performance issue while computing upgrades
 - Fix shlibs always considered as changed
