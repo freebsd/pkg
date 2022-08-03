@@ -1,3 +1,11 @@
+Changes from 1.18.3 to 1.18.4
+- fix querying licenses
+- fix "ambiguous colomn name
+- fix packaging the lua deinstall scripts
+- add pkg.symlink to allow creating symlinks from lua scripts
+- performance improvements
+- sync libfetch with base bringing in socks proxy support
+
 Changes from 1.18.2 to 1.18.3
 - allow to deal with 240 character long filenames
 - fix an issue when disabling a repository resulting in breakage of the
