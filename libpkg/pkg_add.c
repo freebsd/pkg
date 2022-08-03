@@ -324,7 +324,7 @@ create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs __unused)
 	const char *path;
 
 	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, d->path, t->item->len) == 0) {
+		if (strncmp(t->item->name, d->path, t->item->len) == 0 && d->path[t->item->len] == '/') {
 			tmpdir = t->item;
 			break;
 		}
@@ -422,7 +422,7 @@ create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target, tempdir
 	bool tried_mkdir = false;
 
 	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, f->path, t->item->len) == 0) {
+		if (strncmp(t->item->name, f->path, t->item->len) == 0 &&  f->path[t->item->len] == '/') {
 			tmpdir = t->item;
 			break;
 		}
@@ -507,7 +507,7 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_
 	struct tempdir *tmpdir = NULL;
 
 	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, f->path, t->item->len) == 0) {
+		if (strncmp(t->item->name, f->path, t->item->len) == 0 && f->path[t->item->len] == '/' ) {
 			tmpdir = t->item;
 			break;
 		}
@@ -611,7 +611,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	struct tempdir *tmpdir = NULL;
 
 	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, f->path, t->item->len) == 0) {
+		if (strncmp(t->item->name, f->path, t->item->len) == 0 && f->path[t->item->len] == '/') {
 			tmpdir = t->item;
 			break;
 		}
