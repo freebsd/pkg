@@ -319,19 +319,42 @@ static int
 create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs __unused)
 {
 	struct stat st;
+	struct tempdir *tmpdir = NULL;
+	int fd;
+	const char *path;
 
-	if (mkdirat(pkg->rootfd, RELATIVE_PATH(d->path), 0755) == -1)
-		if (!mkdirat_p(pkg->rootfd, RELATIVE_PATH(d->path)))
+	tll_foreach(*tempdirs, t) {
+		if (strncmp(t->item->name, d->path, t->item->len) == 0) {
+			tmpdir = t->item;
+			break;
+		}
+	}
+	if (tmpdir == NULL) {
+		tmpdir = open_tempdir(pkg->rootfd, d->path);
+		if (tmpdir != NULL)
+			tll_push_back(*tempdirs, tmpdir);
+	}
+	if (tmpdir == NULL) {
+		fd = pkg->rootfd;
+		path = d->path;
+	} else {
+		fd = tmpdir->fd;
+		path = d->path + tmpdir->len;
+
+	}
+
+	if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1)
+		if (!mkdirat_p(fd, RELATIVE_PATH(path)))
 			return (EPKG_FATAL);
-	if (fstatat(pkg->rootfd, RELATIVE_PATH(d->path), &st, 0) == -1) {
+	if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
 		if (errno != ENOENT) {
-			pkg_fatal_errno("Fail to stat directory %s", d->path);
+			pkg_fatal_errno("Fail to stat directory %s", path);
 		}
-		if (fstatat(pkg->rootfd, RELATIVE_PATH(d->path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
-			unlinkat(pkg->rootfd, RELATIVE_PATH(d->path), 0);
+		if (fstatat(fd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
+			unlinkat(fd, RELATIVE_PATH(path), 0);
 		}
-		if (mkdirat(pkg->rootfd, RELATIVE_PATH(d->path), 0755) == -1) {
-			pkg_fatal_errno("Fail to create directory %s", d->path);
+		if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
+			pkg_fatal_errno("Fail to create directory %s", path);
 		}
 	}
 
@@ -1466,7 +1489,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 #endif
 #endif
 
-		if (create_dir(pkg, d, NULL) == EPKG_FATAL) {
+		if (create_dir(pkg, d, &tempdirs) == EPKG_FATAL) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
