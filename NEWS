@@ -1,3 +1,6 @@
+Changes from 1.18.99.1 to 1.18.99.2
+- fix directory path matching in the new extraction code
+
 Changes from 1.17.99.11 to 1.18.99.1
 - rework the extraction process to fix the case when a file becomes a directory
   during an upgrade
