@@ -557,7 +557,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'r':
-							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.origin=p.origin)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.name=p.name)", sqlop);
 							break;
 						case 'C':
 							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_categories AS d WHERE d.package_id=p.id)", sqlop);
