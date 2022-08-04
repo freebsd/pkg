@@ -502,9 +502,10 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_
 {
 	bool tried_mkdir = false;
 	struct pkg_file *fh;
-	int fd;
+	int fd, fdh;
 	const char *pathfrom, *pathto;
 	struct tempdir *tmpdir = NULL;
+	struct tempdir *tmphdir = NULL;
 
 	tll_foreach(*tempdirs, t) {
 		if (strncmp(t->item->name, f->path, t->item->len) == 0 && f->path[t->item->len] == '/' ) {
@@ -530,19 +531,36 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_
 		    " hardlinked to %s", f->path, path);
 		return (EPKG_FATAL);
 	}
+	if (fh->temppath[0] == '\0') {
+		tll_foreach(*tempdirs, t) {
+			if (strncmp(t->item->name, fh->path, t->item->len) == 0 &&
+			    fh->path[t->item->len] == '/' ) {
+				tmphdir = t->item;
+				break;
+			}
+		}
+	}
 	if (tmpdir == NULL) {
-		pathfrom = fh->temppath;
 		pathto = f->temppath;
+		fd = pkg->rootfd;
 	} else {
-		pathfrom = fh->path + tmpdir->len;
 		pathto = f->path + tmpdir->len;
+		fd = tmpdir->fd;
+	}
+
+	if (tmphdir == NULL) {
+		pathfrom = fh->temppath;
+		fdh = pkg->rootfd;
+	} else {
+		pathfrom = fh->path + tmphdir->len;
+		fdh = tmphdir->fd;
 	}
 
 retry:
-	if (linkat(fd, RELATIVE_PATH(pathfrom),
+	if (linkat(fdh, RELATIVE_PATH(pathfrom),
 	    fd, RELATIVE_PATH(pathto), 0) == -1) {
 		if (!tried_mkdir) {
-			if (!try_mkdir(fd, pathfrom))
+			if (!try_mkdir(fd, pathto))
 				return (EPKG_FATAL);
 			tried_mkdir = true;
 			goto retry;
