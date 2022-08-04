@@ -1,3 +1,6 @@
+Changes from 1.18.99.2 to 1.18.99.3
+- fix regression creating hardlinks
+
 Changes from 1.18.99.1 to 1.18.99.2
 - fix directory path matching in the new extraction code
 
