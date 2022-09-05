@@ -367,6 +367,10 @@ Check for missing dependencies:
 .Pp
 Show the pkg-message of a package:
 .Dl # pkg info -D perl-5.14
+.Pp
+Restore a backup database:
+.Dl % rm /var/db/pkg/local.sqlite
+.Dl % xzcat /var/backups/pkg.sql.xz | pkg shell
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
