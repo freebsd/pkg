@@ -698,6 +698,8 @@ main(int argc, char **argv)
 	argv += optind;
 
 	pkg_set_debug_level(debug);
+	if (pkg_open_devnull() != EPKG_OK)
+		errx(EXIT_FAILURE, "Cannot open dev/null");
 
 	if (version == 1)
 		show_version_info(version);
@@ -889,6 +891,8 @@ main(int argc, char **argv)
 
 	if (save_argv != argv)
 		free(argv);
+
+	pkg_close_devnull();
 
 	if (ret == EXIT_SUCCESS && newpkgversion)
 		return (EX_NEEDRESTART);

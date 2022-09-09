@@ -158,6 +158,7 @@ struct pkg_ctx {
 	int compression_level;
 	int rootfd;
 	int cachedirfd;
+	int devnullfd;
 	int dbdirfd;
 	int pkg_dbdirfd;
 	int osversion;
