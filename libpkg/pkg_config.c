@@ -72,6 +72,7 @@ struct pkg_ctx ctx = {
 	.rootfd = -1,
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
+	.devnullfd = -1,
 	.osversion = 0,
 	.backup_libraries = false,
 	.triggers = true,
@@ -1682,4 +1683,25 @@ pkg_get_dbdirfd(void)
 	}
 
 	return (ctx.pkg_dbdirfd);
+}
+
+int
+pkg_open_devnull(void) {
+	pkg_close_devnull();
+
+	if ((ctx.devnullfd = open("/dev/null", O_RDWR)) < 0) {
+		pkg_emit_error("Cannot open /dev/null");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+void
+pkg_close_devnull(void) {
+	if (ctx.devnullfd != 1) {
+		close(ctx.devnullfd);
+	}
+
+	return;
 }
