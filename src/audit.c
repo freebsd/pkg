@@ -70,7 +70,7 @@ static const char* vop_names[] = {
 void
 usage_audit(void)
 {
-	fprintf(stderr, "Usage: pkg audit [-RFqr] [--raw[=format]|-R[format] [-f file] <pattern>\n\n");
+	fprintf(stderr, "Usage: pkg audit [-RFqr] [--database repopath|-d repopath] [--raw[=format]|-R[format] [-f file] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
@@ -208,6 +208,7 @@ exec_audit(int argc, char **argv)
 	char			*name;
 	char			*version;
 	char			*audit_file = NULL;
+	char			*reponame = NULL;
 	int			 affected = 0, vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
@@ -219,6 +220,7 @@ exec_audit(int argc, char **argv)
 	ucl_object_t		*obj = NULL;
 
 	struct option longopts[] = {
+		{ "database",	required_argument,	NULL,	'd' },
 		{ "fetch",	no_argument,		NULL,	'F' },
 		{ "file",	required_argument,	NULL,	'f' },
 		{ "recursive",	no_argument,	NULL,	'r' },
@@ -227,8 +229,11 @@ exec_audit(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+Ff:qrR::", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:Ff:qrR::", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'd':
+			reponame = optarg;
+			break;
 		case 'F':
 			fetch = true;
 			break;
@@ -312,7 +317,13 @@ exec_audit(int argc, char **argv)
 		 * packages to audit.
 		 */
 
-		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+		if (reponame == NULL) {
+			ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+		}
+		else {
+			ret = pkgdb_open_all(&db, PKGDB_REMOTE, reponame);
+		}
+
 		if (ret == EPKG_ENODB) {
 			pkg_audit_free(audit);
 			pkghash_destroy(check);
@@ -329,26 +340,33 @@ exec_audit(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-			pkg_audit_free(audit);
-			pkghash_destroy(check);
-			return (EXIT_FAILURE);
-		}
-
-		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-			pkgdb_close(db);
-			pkg_audit_free(audit);
-			pkghash_destroy(check);
-			warnx("Cannot get a read lock on a database, it is locked by another process");
-			return (EXIT_FAILURE);
-		}
-
-		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
-			warnx("Error accessing the package database");
-			ret = EXIT_FAILURE;
+		if (reponame == NULL) {
+			if (pkgdb_open(&db, PKGDB_DEFAULT) == EPKG_OK) {
+				if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
+					pkgdb_close(db);
+					pkg_audit_free(audit);
+					pkghash_destroy(check);
+					warnx("Cannot get a read lock on a database, it is locked by another process");
+					return (EXIT_FAILURE);
+				}
+			}
+			if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
+				warnx("Error accessing the package database");
+				ret = EXIT_FAILURE;
+			}
 		}
 		else {
-			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS)
+			if ((it = pkgdb_repo_query_cond(db, NULL, NULL, MATCH_ALL, reponame)) == NULL) {
+			}
+		}
+
+		if (ret != EPKG_OK) {
+			pkg_audit_free(audit);
+			pkghash_destroy(check);
+			return (EXIT_FAILURE);
+		}
+		else {
+			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)
 							== EPKG_OK) {
 				add_to_check(check, pkg);
 				pkg = NULL;
