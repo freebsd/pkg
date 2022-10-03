@@ -57,4 +57,14 @@ Number of packages to be installed: 2
 	    -o inline:"${OUTPUT}" \
 	    -s exit:1 \
 	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -n b
+
+	atf_check \
+	    -o ignore \
+	    -s exit:0 \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -y b
+
+	atf_check \
+		-o match:".*Nothing to do.*" \
+		-s exit:0 \
+		pkg autoremove -n
 }

@@ -651,6 +651,38 @@ iter_again:
 	DL_SORT(j->jobs, pkg_jobs_sort_priority);
 }
 
+static bool pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p);
+
+static bool
+is_orphaned(struct pkg_jobs *j, const char *uid)
+{
+	struct pkg_job_universe_item *unit;
+	struct pkg *npkg;
+
+	unit = pkg_jobs_universe_find(j->universe, uid);
+	if (unit != NULL) {
+		if (unit->pkg->automatic)
+			return (false);
+		npkg = unit->pkg;
+	} else {
+		npkg = pkg_jobs_universe_get_local(j->universe, uid,
+		    PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_ANNOTATIONS|
+		    PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_REQUIRES);
+		if (npkg == NULL)
+			return (false);
+		if (!npkg->automatic) {
+			pkg_free(npkg);
+			return (false);
+		}
+		if (pkg_jobs_universe_process(j->universe, npkg) != EPKG_OK)
+			return (false);
+	}
+
+	if (!pkg_jobs_test_automatic(j, npkg))
+		return (false);
+
+	return (true);
+}
 
 /**
  * Test whether package specified is automatic with all its rdeps
@@ -662,38 +694,36 @@ static bool
 pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 {
 	struct pkg_dep *d = NULL;
-	struct pkg_job_universe_item *unit;
 	struct pkg *npkg;
-	bool ret = true;
+	struct pkgdb_it *it;
 
-	while (pkg_rdeps(p, &d) == EPKG_OK && ret) {
-		unit = pkg_jobs_universe_find(j->universe, d->uid);
-		if (unit != NULL) {
-			if (!unit->pkg->automatic) {
-				return (false);
-			}
-			npkg = unit->pkg;
-		}
-		else {
-			npkg = pkg_jobs_universe_get_local(j->universe, d->uid,
-					PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_ANNOTATIONS);
-			if (npkg == NULL)
-				return (false);
-			if (!npkg->automatic) {
-				/*
-				 * Safe to free, as d->uid is not in the universe
-				 */
-				pkg_free(npkg);
-				return (false);
-			}
-			if (pkg_jobs_universe_process(j->universe, npkg) != EPKG_OK)
-				return (false);
-		}
-
-		ret = pkg_jobs_test_automatic(j, npkg);
+	while (pkg_rdeps(p, &d) == EPKG_OK) {
+		if (!is_orphaned(j, d->uid))
+			return (false);
 	}
 
-	return (ret);
+	tll_foreach(p->provides, i) {
+		it = pkgdb_query_require(j->db, i->item);
+		if (it == NULL)
+			continue;
+		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			if (!is_orphaned(j, npkg->uid))
+				return (false);
+		}
+	}
+
+	tll_foreach(p->shlibs_provided, i) {
+		it = pkgdb_query_shlib_require(j->db, i->item);
+		if (it == NULL)
+			continue;
+		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			if (!is_orphaned(j, npkg->uid))
+				return (false);
+		}
+	}
+
+
+	return (true);
 }
 
 
@@ -1468,7 +1498,9 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg,
-			PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS)
+			PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|
+			PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
+			PKG_LOAD_SHLIBS_PROVIDED)
 			== EPKG_OK) {
 		if(pkg->locked) {
 			pkg_emit_locked(pkg);
