@@ -706,6 +706,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		it = pkgdb_query_require(j->db, i->item);
 		if (it == NULL)
 			continue;
+		npkg = NULL;
 		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			if (!is_orphaned(j, npkg->uid))
 				return (false);
@@ -716,6 +717,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		it = pkgdb_query_shlib_require(j->db, i->item);
 		if (it == NULL)
 			continue;
+		npkg = NULL;
 		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			if (!is_orphaned(j, npkg->uid))
 				return (false);
