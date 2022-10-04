@@ -1,3 +1,13 @@
+Changes from 1.18.99.3 to 1.18.99.4
+- Accept '~' in the version or name of a package
+- Autoremove will not remove anything which is required
+  by another installed package (via provides or via shlibs_provides)
+- Update linenoise to latest version
+- Update sqlite to 3.39.3
+- Update lua to 5.4.4
+- doc: add example on how to restore a package
+- query: fix unicity issue
+
 Changes from 1.18.99.2 to 1.18.99.3
 - fix regression creating hardlinks
 
