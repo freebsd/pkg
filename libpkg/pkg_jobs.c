@@ -65,8 +65,6 @@
 #include "private/pkg_jobs.h"
 #include "tllist.h"
 
-typedef tll(struct pkg *) pkg_chain_t;
-
 extern struct pkg_ctx ctx;
 
 static int pkg_jobs_installed_local_pkg(struct pkg_jobs *j, struct pkg *pkg);
