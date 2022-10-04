@@ -1,3 +1,6 @@
+Changes from 1.18.99.4 to 1.18.99.5
+- delete: now handles properly provides/requipres
+
 Changes from 1.18.99.3 to 1.18.99.4
 - Accept '~' in the version or name of a package
 - Autoremove will not remove anything which is required
