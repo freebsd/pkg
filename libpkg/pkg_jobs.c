@@ -527,6 +527,53 @@ append_to_del_request(struct pkg_jobs *j, pkg_chain_t *to_process, const char *u
 	return (true);
 }
 
+bool
+delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
+    struct pkgdb_it *(*provideq)(struct pkgdb *db, const char *req),
+    struct pkgdb_it *(*requireq)(struct pkgdb *db, const char *req),
+    pkg_chain_t *to_process)
+{
+	struct pkgdb_it *lit, *rit;
+	struct pkg *pkg;
+	struct pkg_job_request *req;
+	bool ret = true;
+
+	/* if something else to provide the same thing we can safely delete */
+	lit = provideq(j->db, provide);
+	if (lit == NULL)
+		return (ret);
+	pkg = NULL;
+	while (pkgdb_it_next(lit, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		/* skip myself */
+		if (strcmp(pkg->uid, lp->uid) == 0)
+			continue;
+		req = pkghash_get_value(j->request_delete, pkg->uid);
+		/*
+		 * skip already processed provides
+		 * if N packages providing the same "provide"
+		 * are in the request delete they needs to be
+		 * counted as to be removed and then if no
+		 * packages are left providing the provide are
+		 * left after the removal of those packages
+		 * cascade.
+		 */
+		if (req != NULL && req->processed)
+			continue;
+		return (ret);
+	}
+	rit = requireq(j->db, provide);
+	if (rit == NULL)
+		return (ret);
+
+	pkg = NULL;
+	while (pkgdb_it_next(rit, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		if (!append_to_del_request(j, to_process,
+		    pkg->uid, lp->name))
+			ret = false;
+	}
+	return (ret);
+}
+
 /*
  * For delete request we merely check rdeps and force flag
  */
@@ -540,9 +587,6 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	int rc = EPKG_OK;
 	pkg_chain_t to_process = tll_init();
 	pkghash_it it;
-	struct pkg *npkg;
-	struct pkgdb_it *lit, *rit;
-	bool anotherone;
 
 	if (force)
 		return (EPKG_OK);
@@ -565,89 +609,17 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 		}
 
 		tll_foreach(lp->provides, i) {
-			/*
-			 * if something else to provide the same thing we can
-			 * safely delete
-			 */
-			lit = pkgdb_query_provide(j->db, i->item);
-			if (lit == NULL)
-				continue;
-			npkg = NULL;
-			anotherone = false;
-			while (pkgdb_it_next(lit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-				/* skip myself */
-				if (strcmp(npkg->uid, lp->uid) == 0)
-					continue;
-				req = pkghash_get_value(j->request_delete, npkg->uid);
-				/*
-				 * skip already processed provides
-				 * if 3 packages providing the same "provide"
-				 * are in the request delete they needs to be
-				 * counted as to be removed and then if no
-				 * packages are left providing the provide are
-				 * left after the removal of those packages
-				 * cascade.
-				 */
-				if (req != NULL && req->processed)
-					continue;
-				anotherone = true;
-				break;
-			}
-			if (anotherone)
-				continue;
-			rit = pkgdb_query_require(j->db, i->item);
-			if (rit == NULL)
-				continue;
-
-			npkg = NULL;
-			while (pkgdb_it_next(rit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-				if (!append_to_del_request(j, &to_process,
-				    npkg->uid, lp->name))
-					rc = EPKG_FATAL;
-			}
+			if (!delete_process_provides(j, lp, i->item,
+			    pkgdb_query_provide, pkgdb_query_require,
+			    &to_process))
+				rc = EPKG_FATAL;
 		}
 
 		tll_foreach(lp->shlibs_provided, i) {
-			/*
-			 * if something else to provide the same thing we can
-			 * safely delete
-			 */
-			lit = pkgdb_query_shlib_provide(j->db, i->item);
-			if (lit == NULL)
-				continue;
-			npkg = NULL;
-			anotherone = false;
-			while (pkgdb_it_next(lit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-				/* skip myself */
-				if (strcmp(npkg->uid, lp->uid) == 0)
-					continue;
-				req = pkghash_get_value(j->request_delete, npkg->uid);
-				/*
-				 * skip already processed provides
-				 * if 3 packages providing the same "provide"
-				 * are in the request delete they needs to be
-				 * counted as to be removed and then if no
-				 * packages are left providing the provide are
-				 * left after the removal of those packages
-				 * cascade.
-				 */
-				if (req != NULL && req->processed)
-					continue;
-				anotherone = true;
-				break;
-			}
-			if (anotherone)
-				continue;
-			rit = pkgdb_query_shlib_require(j->db, i->item);
-			if (rit == NULL)
-				continue;
-
-			npkg = NULL;
-			while (pkgdb_it_next(rit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-				if (!append_to_del_request(j, &to_process,
-				    npkg->uid, lp->name))
-					rc = EPKG_FATAL;
-			}
+			if (!delete_process_provides(j, lp, i->item,
+			    pkgdb_query_shlib_provide,
+			    pkgdb_query_shlib_require, &to_process))
+				rc = EPKG_FATAL;
 		}
 	}
 
