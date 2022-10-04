@@ -578,7 +578,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 				/* skip myself */
 				if (strcmp(npkg->uid, lp->uid) == 0)
 					continue;
-				req = pkghash_get_value(j->request_delete, lp->uid);
+				req = pkghash_get_value(j->request_delete, npkg->uid);
 				/*
 				 * skip already processed provides
 				 * if 3 packages providing the same "provide"
@@ -621,7 +621,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 				/* skip myself */
 				if (strcmp(npkg->uid, lp->uid) == 0)
 					continue;
-				req = pkghash_get_value(j->request_delete, lp->uid);
+				req = pkghash_get_value(j->request_delete, npkg->uid);
 				/*
 				 * skip already processed provides
 				 * if 3 packages providing the same "provide"
