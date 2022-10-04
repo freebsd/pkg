@@ -64,10 +64,6 @@ void usage_audit(void);
 int exec_autoremove(int, char **);
 void usage_autoremove(void);
 
-/* pkg backup */
-int exec_backup(int, char **);
-void usage_backup(void);
-
 /* pkg check */
 int exec_check(int, char **);
 void usage_check(void);

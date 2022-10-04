@@ -35,7 +35,6 @@ Table of Contents:
 * [Updating remote repositories](#pkgupdate)
 * [Searching in remote package repositories](#pkgsearch)
 * [Installing from remote repositories](#pkginstall)
-* [Backing up your package database](#pkgbackup)
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
@@ -476,21 +475,6 @@ Or you could also install the packages using only one command, like this:
 
 For more information on the remote package installs, please refer to
 *pkg-install(1)*
-
-<a name="pkgbackup"></a>
-### Backing up your package database
-
-It is a good idea that you backup your local package database on regular basis.
-
-In order to backup the local package database, you should use the `pkg backup` command.
-
-	# pkg backup -d /path/to/pkg-backup.dump
-
-The above command will create a dump of your local package database in
-/path/to/pkg-backup.dump
-
-For more information on backing up your local package database, please
-refer to *pkg-backup(1)*
 
 <a name="pkgcreate"></a>
 ### Creating a package repository

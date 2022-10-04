@@ -5,7 +5,6 @@ SRCS=	add.c \
 	annotate.c \
 	audit.c \
 	autoremove.c \
-	backup.c \
 	check.c \
 	clean.c \
 	config.c \

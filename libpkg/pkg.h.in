@@ -931,15 +931,6 @@ void pkgdb_close(struct pkgdb *db);
 int pkgdb_remote_init(struct pkgdb *db, const char *reponame);
 
 /**
- * Dump to or load from a backup copy of the main database file
- * (local.sqlite)
- */
-
-int pkgdb_dump(struct pkgdb *db, const char *dest);
-int pkgdb_load(struct pkgdb *db, const char *src);
-
-
-/**
  * Set the case sensitivity flag on or off.  Defaults to
  * true (case_sensitive)
  */

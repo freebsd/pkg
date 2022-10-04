@@ -14,7 +14,6 @@ MAN8=	pkg-add.8 \
 	pkg-annotate.8 \
 	pkg-audit.8 \
 	pkg-autoremove.8 \
-	pkg-backup.8 \
 	pkg-check.8 \
 	pkg-clean.8 \
 	pkg-config.8 \

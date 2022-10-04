@@ -93,18 +93,6 @@ _pkgng_autoremove () {
     large_info=""
 }
 
-_pkgng_backup () {
-    local cur prev opts lopts
-    COMPREPLY=()
-
-    opts=('-r' '-d')
-    lopts=('-r[Restore the local package database]' 
-           '-d[Dumps the local package database]')
-
-    small_info="Backs-up and restores the local package database"
-    large_info=""
-}
-
 _pkgng_check () {
     local cur prev opts lopts
     COMPREPLY=()
@@ -373,7 +361,7 @@ _pkg () {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
     # init opts for first completion
-    opts='add audit autoremove backup check clean create delete
+    opts='add audit autoremove check clean create delete
           fetch help info install query rquery search set shell
           shlib stats update updating upgrade version which'
 
@@ -381,7 +369,6 @@ _pkg () {
     lopts=( 'add[Registers a package and installs it on the system]'
             'audit[Reports vulnerable packages]'
             'autoremove[Removes orphan packages]'
-            'backup[Backs-up and restores the local package database]'
             'check[Checks for missing dependencies and database consistency]'
             'clean[Cleans old packages from the cache]'
             'convert[Convert database from/to pkgng]'
@@ -427,14 +414,6 @@ _pkg () {
         autoremove) 
 	    COMPREPLY=( $(compgen) ) && \
 		return 0 ;;
-
-        backup) 
-	    COMPREPLY=(
-		'(-r)-d[Dumps the local package database]'
-		'(-d)-r[Restore the local package database]'
-	    )
-	    return 0 
-	    ;;
 
         check) 
 	    COMPREPLY=(

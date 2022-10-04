@@ -178,12 +178,10 @@ global:
 	pkgdb_compact;
 	pkgdb_delete_annotation;
 	pkgdb_downgrade_lock;
-	pkgdb_dump;
 	pkgdb_it_count;
 	pkgdb_it_free;
 	pkgdb_it_next;
 	pkgdb_it_reset;
-	pkgdb_load;
 	pkgdb_modify_annotation;
 	pkgdb_obtain_lock;
 	pkgdb_open;

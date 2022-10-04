@@ -89,7 +89,6 @@ static struct commands {
 	{ "annotate", "Add, modify or delete tag-value style annotations on packages", exec_annotate, usage_annotate},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
-	{ "backup", "Backs-up and restores the local package database", exec_backup, usage_backup},
 	{ "check", "Checks for missing dependencies and database consistency", exec_check, usage_check},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "config", "Display the value of the configuration options", exec_config, usage_config},
