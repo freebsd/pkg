@@ -58,13 +58,10 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit, *cur, *found;
 
 	if (flag == 0) {
-		if (!IS_DELETE(universe->j))
-			flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
-				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|PKG_LOAD_ANNOTATIONS|
-				PKG_LOAD_CONFLICTS;
-		else
-			flag = PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS;
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
+			PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|PKG_LOAD_ANNOTATIONS|
+			PKG_LOAD_CONFLICTS;
 	}
 
 	unit = pkghash_get_value(universe->items, uid);

@@ -56,6 +56,7 @@ struct pkg_job_request_item {
 struct pkg_job_request {
 	struct pkg_job_request_item *item;
 	bool skip;
+	bool processed;
 	bool automatic;
 };
 

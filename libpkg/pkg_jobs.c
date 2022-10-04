@@ -1,10 +1,9 @@
 /*-
- * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,6 +64,8 @@
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
 #include "tllist.h"
+
+typedef tll(struct pkg *) pkg_chain_t;
 
 extern struct pkg_ctx ctx;
 
@@ -511,6 +512,23 @@ pkg_jobs_process_add_request(struct pkg_jobs *j)
 	tll_free(to_process);
 }
 
+static bool
+append_to_del_request(struct pkg_jobs *j, pkg_chain_t *to_process, const char *uid, const char *reqname)
+{
+	struct pkg *p;
+
+	p = pkg_jobs_universe_get_local(j->universe, uid, 0);
+	if (p == NULL)
+		return (true);
+	if (p->locked) {
+		pkg_emit_error("%s is locked cannot delete %s", p->name,
+		   reqname);
+		return (false);
+	}
+	tll_push_back(*to_process, p);
+	return (true);
+}
+
 /*
  * For delete request we merely check rdeps and force flag
  */
@@ -522,8 +540,11 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	struct pkg_dep *d = NULL;
 	struct pkg *lp;
 	int rc = EPKG_OK;
-	tll(struct pkg *) to_process = tll_init();
+	pkg_chain_t to_process = tll_init();
 	pkghash_it it;
+	struct pkg *npkg;
+	struct pkgdb_it *lit, *rit;
+	bool anotherone;
 
 	if (force)
 		return (EPKG_OK);
@@ -534,20 +555,100 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	it = pkghash_iterator(j->request_delete);
 	while (pkghash_next(&it)) {
 		req = it.value;
+		if (req->processed)
+			continue;
+		req->processed = true;
+		lp = req->item->pkg;
 		d = NULL;
-		while (pkg_rdeps(req->item->pkg, &d) == EPKG_OK) {
-			if (pkghash_get(j->request_delete, d->uid))
+		while (pkg_rdeps(lp, &d) == EPKG_OK) {
+			if (!append_to_del_request(j, &to_process, d->uid,
+			    lp->name))
+				rc = EPKG_FATAL;
+		}
+
+		tll_foreach(lp->provides, i) {
+			/*
+			 * if something else to provide the same thing we can
+			 * safely delete
+			 */
+			lit = pkgdb_query_provide(j->db, i->item);
+			if (lit == NULL)
+				continue;
+			npkg = NULL;
+			anotherone = false;
+			while (pkgdb_it_next(lit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+				/* skip myself */
+				if (strcmp(npkg->uid, lp->uid) == 0)
+					continue;
+				req = pkghash_get_value(j->request_delete, lp->uid);
+				/*
+				 * skip already processed provides
+				 * if 3 packages providing the same "provide"
+				 * are in the request delete they needs to be
+				 * counted as to be removed and then if no
+				 * packages are left providing the provide are
+				 * left after the removal of those packages
+				 * cascade.
+				 */
+				if (req != NULL && req->processed)
+					continue;
+				anotherone = true;
+				break;
+			}
+			if (anotherone)
+				continue;
+			rit = pkgdb_query_require(j->db, i->item);
+			if (rit == NULL)
 				continue;
 
-			lp = pkg_jobs_universe_get_local(j->universe, d->uid, 0);
-			if (lp) {
-				if (lp->locked) {
-					pkg_emit_error("%s is locked, "
-					    "cannot delete %s", lp->name,
-					   req->item->pkg->name);
+			npkg = NULL;
+			while (pkgdb_it_next(rit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+				if (!append_to_del_request(j, &to_process,
+				    npkg->uid, lp->name))
 					rc = EPKG_FATAL;
-				}
-				tll_push_back(to_process, lp);
+			}
+		}
+
+		tll_foreach(lp->shlibs_provided, i) {
+			/*
+			 * if something else to provide the same thing we can
+			 * safely delete
+			 */
+			lit = pkgdb_query_shlib_provide(j->db, i->item);
+			if (lit == NULL)
+				continue;
+			npkg = NULL;
+			anotherone = false;
+			while (pkgdb_it_next(lit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+				/* skip myself */
+				if (strcmp(npkg->uid, lp->uid) == 0)
+					continue;
+				req = pkghash_get_value(j->request_delete, lp->uid);
+				/*
+				 * skip already processed provides
+				 * if 3 packages providing the same "provide"
+				 * are in the request delete they needs to be
+				 * counted as to be removed and then if no
+				 * packages are left providing the provide are
+				 * left after the removal of those packages
+				 * cascade.
+				 */
+				if (req != NULL && req->processed)
+					continue;
+				anotherone = true;
+				break;
+			}
+			if (anotherone)
+				continue;
+			rit = pkgdb_query_shlib_require(j->db, i->item);
+			if (rit == NULL)
+				continue;
+
+			npkg = NULL;
+			while (pkgdb_it_next(rit, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+				if (!append_to_del_request(j, &to_process,
+				    npkg->uid, lp->name))
+					rc = EPKG_FATAL;
 			}
 		}
 	}
@@ -562,6 +663,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 		}
 	}
+
 	if (tll_length(to_process) > 0)
 		rc = pkg_jobs_process_delete_request(j);
 	tll_free(to_process);
@@ -1470,8 +1572,9 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			pkg_emit_notice("No packages matched for pattern '%s'\n", jp->pattern);
 		}
 
-		while (pkgdb_it_next(it, &pkg,
-				PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS) == EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS|
+		    PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
+		    PKG_LOAD_SHLIBS_PROVIDED) == EPKG_OK) {
 			if(pkg->locked) {
 				if (tsearch(pkg, &j->lockedpkgs, comp) == NULL) {
 					return (EPKG_FATAL);
