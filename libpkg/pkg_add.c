@@ -69,11 +69,6 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	off_t sz;
 	char *localsum;
 
-	if (rcf == NULL) {
-		pkg_debug(3, "No remote config file");
-		return;
-	}
-
 	if (local == NULL) {
 		pkg_debug(3, "No local package");
 		if (fstatat(rootfd, RELATIVE_PATH(rcf->path), &st, 0) == 0) {
