@@ -99,8 +99,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t
 		}
 	}
 
-	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE ? 1 : 0, t))
-            != EPKG_OK)
+	if ((ret = pkg_delete_files(pkg, t)) != EPKG_OK)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
@@ -268,7 +267,7 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 }
 
 void
-pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
+pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 {
 	const char *path;
 	const char *prefix_rel;
@@ -309,12 +308,10 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 #endif
 	pkg_debug(1, "Deleting file: '%s'", path);
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
-		if (force < 2) {
-			if (errno == ENOENT)
-				pkg_emit_file_missing(pkg, file);
-			else
-				pkg_emit_errno("unlinkat", path);
-		}
+		if (errno == ENOENT)
+			pkg_emit_file_missing(pkg, file);
+		else
+			pkg_emit_errno("unlinkat", path);
 		return;
 	}
 
@@ -324,11 +321,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 }
 
 int
-pkg_delete_files(struct pkg *pkg, unsigned force, struct triggers *t)
-	/* force: 0 ... be careful and vocal about it.
-	 *        1 ... remove files without bothering about checksums.
-	 *        2 ... like 1, but remain silent if removal fails.
-	 */
+pkg_delete_files(struct pkg *pkg, struct triggers *t)
 {
 	struct pkg_file	*file = NULL;
 
@@ -346,7 +339,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force, struct triggers *t)
 		append_touched_file(file->path);
 		pkg_emit_progress_tick(cur_file++, nfiles);
 		trigger_is_it_a_cleanup(t, file->path);
-		pkg_delete_file(pkg, file, force);
+		pkg_delete_file(pkg, file);
 	}
 
 	pkg_emit_progress_tick(nfiles, nfiles);

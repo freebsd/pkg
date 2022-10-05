@@ -1138,7 +1138,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, struct t
 				}
 
 				trigger_is_it_a_cleanup(t, f->path);
-				pkg_delete_file(old, f, flags & PKG_DELETE_FORCE ? 1 : 0);
+				pkg_delete_file(old, f);
 			}
 		}
 
