@@ -14,32 +14,23 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2016
+.Dd October 5, 2022
 .Dt PKG-SET 8
 .Os
 .Sh NAME
 .Nm "pkg set"
-.Nd modify information in the installed database
+.Nd modify information in the installed packages database
 .Sh SYNOPSIS
 .Nm
-.Op Fl a
-.Op Fl A Ar 0|1
-.Op Fl n Ar oldname:newname
-.Op Fl o Ar oldorigin:neworigin
-.Op Fl v Ar 0|1
-.Op Fl y
-.Op Fl Cgix
-.Ar pkg-name
-.Pp
-.Nm
-.Op Cm --all
-.Op Cm --automatic Ar 0|1
-.Op Cm --change-name Ar oldname:newname
-.Op Cm --change-origin Ar oldorigin:neworigin
-.Op Cm --yes
-.Op Fl v Ar 0|1
-.Op Cm --{case-sensitive,glob,case-insensitive,regex}
-.Ar pkg-name
+.Op Bo Fl a | Fl -all Bc
+.Op Bo Fl A | Fl -automatic Bc Ar 0|1
+.Op Bo Fl n | Fl -change-name Bc Ar oldname:newname
+.Op Bo Fl o | Fl -change-origin Bc Ar oldorigin:neworigin
+.Op Bo Fl v | Fl -vital Bc Ar 0|1
+.Op Bo Fl y | Fl -yes Bc
+.Op Bo Fl C | Fl -case-sensitive Bc | Bo Fl i | Fl -case-insensitive Bc
+.Op Bo Fl g | Fl -glob Bc | Bo Fl x | Fl -regex Bc
+.Op Ar pkg-name
 .Sh DESCRIPTION
 .Nm
 is used to modify information concerning installed packages.
@@ -49,38 +40,47 @@ should always be used with caution.
 The following options are supported by
 .Nm :
 .Bl -tag -width automatic
-.It Fl A Ar 01 , Cm --automatic Ar 01
-Set automatic flag for the package: 0 is not automatic, 1 is automatic.
+.It Fl A Ar 0|1 , Fl -automatic Ar 0|1
+Set the
+.Qq automatic
+flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
-.It Fl a , Cm --all
+.It Fl a , Fl -all
 Match all installed packages.
-.It Fl C , Cm --case-sensitive
-Make the standard or the regular expression
-.Fl ( x )
+This is the default unless
+.Ar pkg-name
+is present.
+.It Fl C , Fl -case-sensitive
+Make the globbing
+.Pq Fl g
+or regular expression
+.Pq Fl x
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl g , Cm --glob
+.It Fl g , Fl -glob
 Match
 .Ar pkg-name
 as a globbing expression.
-.It Fl i , Cm --case-insensitive
-Make the standard or regular expression
-.Fl ( x )
+.It Fl i , Fl -case-insensitive
+Make the globbing
+.Pq Fl g
+or regular expression
+.Pq Fl x
 matching against
 .Ar pkg-name
-case insensitive.
+case-insensitive.
 This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl n Ar oldname:newname , Cm --change-name Ar oldname:newname
+.It Fl n Ar oldname:newname , Fl -change-name Ar oldname:newname
 Change the package name of a given dependency from
 .Ar oldname
 to
 .Ar newname .
-.It Fl o Ar oldorigin:neworigin , Cm --change-origin Ar oldorigin:neworigin
+.It Fl o Ar oldorigin:neworigin , Fl -change-origin Ar oldorigin:neworigin
 Change the port origin of a given dependency from
 .Ar oldorigin
 to
@@ -94,12 +94,12 @@ Also see
 .Xr pkg-updating 8
 and
 .Sx EXAMPLES .
-.It Fl x , Cm --regex
+.It Fl x , Fl -regex
 Match
 .Ar pkg-name
-as a regular expression according to the "modern" or "extended" syntax of
+as a regular expression using the modern or extended syntax of
 .Xr re_format 7 .
-.It Fl v Ar 01
+.It Fl v Ar 0|1 , Fl -vital Ar 0|1
 Set or unset the
 .Qq vital
 flag on the target package(s).
@@ -118,29 +118,31 @@ If neither the
 .Fl g
 nor
 .Fl x
-options are used, the default is to match pkg-name exactly.
-.Sh FILES
-See
-.Xr pkg.conf 5 .
-.Sh EXAMPLES
-Change a package from automatic to non-automatic, which will prevent
-.Ic autoremove
-from removing it:
-.Dl % pkg set -A 0 perl-5.14
-.Pp
-Change a package from non-automatic to automatic, which will make
-.Ic autoremove
-allow it be removed once nothing depends on it:
-.Dl % pkg set -A 1 perl-5.14
+options are used, the default is to match
+.Ar pkg-name
+exactly.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
 See
 .Xr pkg.conf 5
 for further description.
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.Bl -tag -width ".Ev CASE_SENSITIVE_MATCH"
 .It Ev CASE_SENSITIVE_MATCH
 .El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh EXAMPLES
+Change a package from automatic to non-automatic, which will keep
+.Ic autoremove
+from removing it:
+.Dl % pkg set -A 0 perl-5.14
+.Pp
+Change a package from non-automatic to automatic, which will let
+.Ic autoremove
+remove it if nothing depends on it:
+.Dl % pkg set -A 1 perl-5.14
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
