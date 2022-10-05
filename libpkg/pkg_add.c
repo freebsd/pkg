@@ -1211,16 +1211,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		retcode = ret;
 		goto cleanup;
 	}
-	if ((flags & PKG_ADD_SPLITTED_UPGRADE) != PKG_ADD_SPLITTED_UPGRADE)
+	if ((flags & PKG_ADD_SPLITTED_UPGRADE) == 0)
 		pkg_emit_new_action();
-	if ((flags & PKG_ADD_UPGRADE) == 0)
+	if ((flags & PKG_ADD_UPGRADE) == 0 || local == NULL)
 		pkg_emit_install_begin(pkg);
-	else {
-		if (local != NULL)
-			pkg_emit_upgrade_begin(pkg, local);
-		else
-			pkg_emit_install_begin(pkg);
-	}
+	else
+		pkg_emit_upgrade_begin(pkg, local);
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
