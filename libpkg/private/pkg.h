@@ -611,8 +611,6 @@ int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
  * Remove and unregister the package.
  * @param pkg An installed package to delete
  * @param db An opened pkgdb
- * @param force If set to one, the function will not fail if the package is
- * required by other packages.
  * @return An error code.
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *);
@@ -688,7 +686,7 @@ pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);
 bool packing_is_valid_format(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, unsigned force, struct triggers *t);
+int pkg_delete_files(struct pkg *pkg, struct triggers *t);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, struct pkg *p);
 
 /* pkgdb commands */
@@ -755,7 +753,7 @@ int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
     struct pkg_manifest_key *keys, const char *location, struct pkg *rp,
     struct triggers *);
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);
-void pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force);
+void pkg_delete_file(struct pkg *pkg, struct pkg_file *file);
 int pkg_open_root_fd(struct pkg *pkg);
 void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
 struct plist *plist_new(struct pkg *p, const char *stage);
