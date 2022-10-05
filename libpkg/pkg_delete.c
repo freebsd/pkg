@@ -87,16 +87,14 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
-	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
+	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
 		pkg_open_root_fd(pkg);
-		if (!(flags & PKG_DELETE_UPGRADE)) {
-			ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
-			if (ret != EPKG_OK && ctx.developer_mode)
-				return (ret);
-			ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
-			if (ret != EPKG_OK && ctx.developer_mode)
-				return (ret);
-		}
+		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
+		if (ret != EPKG_OK && ctx.developer_mode)
+			return (ret);
+		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
+		if (ret != EPKG_OK && ctx.developer_mode)
+			return (ret);
 	}
 
 	if ((ret = pkg_delete_files(pkg, t)) != EPKG_OK)
