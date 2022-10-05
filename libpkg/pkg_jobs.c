@@ -2251,10 +2251,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			break;
 		case PKG_SOLVED_INSTALL:
 		case PKG_SOLVED_UPGRADE_INSTALL:
-			retcode = pkg_jobs_handle_install(ps, j, keys);
-			if (retcode != EPKG_OK)
-				goto cleanup;
-			break;
 		case PKG_SOLVED_UPGRADE:
 			retcode = pkg_jobs_handle_install(ps, j, keys);
 			if (retcode != EPKG_OK)
@@ -2264,7 +2260,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			retcode = EPKG_FATAL;
 			pkg_emit_error("internal error: bad job type");
 			goto cleanup;
-			break;
 		}
 
 	}
