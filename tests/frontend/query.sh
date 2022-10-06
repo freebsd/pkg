@@ -91,15 +91,15 @@ EOF
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop test
 
 	atf_check \
-		-o inline:"test: plop 1 plop\n" \
-		-e empty \
-		-s exit:0 \
+		-o empty \
+		-e inline:"Usage: pkg query -e <evaluation> <query-format>\n'-e' flag do not accept any other argument\n" \
+		-s exit:1 \
 		pkg query -ge "%#r>0" "%n: %rn %rv %ro" "p*p" "t*t"
 
 	atf_check \
-		-o inline:"test: plop 1 plop\n" \
-		-e empty \
-		-s exit:0 \
+		-o empty \
+		-e inline:"Usage: pkg query -e <evaluation> <query-format>\n'-e' flag do not accept any other argument\n" \
+		-s exit:1 \
 		pkg query -xe "%#r>0" "%n: %rn %rv %ro" "p.*p" "t.*t"
 
 	atf_check \
