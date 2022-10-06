@@ -197,40 +197,38 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	return (false);
 }
 
+static void
+pkg_conflicts_register_one(struct pkg *p, struct pkg *op,
+    enum pkg_conflict_type type)
+{
+	struct pkg_conflict *conflict;
+
+	conflict = pkghash_get_value(p->conflictshash, op->uid);
+	if (conflict != NULL)
+		return;
+
+	conflict = xcalloc(1, sizeof(*conflict));
+	conflict->type = type;
+	conflict->uid = xstrdup(op->uid);
+	conflict->digest = xstrdup(op->digest);
+
+	pkghash_safe_add(p->conflictshash, op->uid, conflict, NULL);
+	DL_APPEND(p->conflicts, conflict);
+}
+
 /*
- * Just insert new conflicts items to the packages
+ * Record the existence of a file conflict between a pair of packages.
  */
 static void
 pkg_conflicts_register(struct pkg *p1, struct pkg *p2, const char *path,
     enum pkg_conflict_type type)
 {
-	struct pkg_conflict *c1, *c2;
-
-	c1 = pkghash_get_value(p1->conflictshash, p2->uid);
-	c2 = pkghash_get_value(p2->conflictshash, p1->uid);
-	if (c1 == NULL) {
-		c1 = xcalloc(1, sizeof(*c1));
-		c1->type = type;
-		c1->uid = xstrdup(p2->uid);
-		c1->digest = xstrdup(p2->digest);
-
-		pkghash_safe_add(p1->conflictshash, c1->uid, c1, NULL);
-		DL_APPEND(p1->conflicts, c1);
-	}
-
-	if (c2 == NULL) {
-		c2 = xcalloc(1, sizeof(*c2));
-		c2->type = type;
-		c2->uid = xstrdup(p1->uid);
-		c2->digest = xstrdup(p1->digest);
-
-		pkghash_safe_add(p2->conflictshash, c2->uid, c2, NULL);
-		DL_APPEND(p2->conflicts, c2);
-	}
+	pkg_conflicts_register_one(p1, p2, type);
+	pkg_conflicts_register_one(p2, p1, type);
 
 	pkg_debug(2, "registering conflict between %s(%s) and %s(%s) on path %s",
-			p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
-			p2->uid, p2->type == PKG_INSTALLED ? "l" : "r", path);
+	    p1->uid, p1->type == PKG_INSTALLED ? "local" : "remote",
+	    p2->uid, p2->type == PKG_INSTALLED ? "local" : "remote", path);
 }
 
 /*
