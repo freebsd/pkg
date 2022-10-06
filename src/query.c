@@ -957,6 +957,11 @@ exec_query(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
+	if ((match == MATCH_ALL || condition != NULL || pkgname != NULL)
+	    && argc > 1) {
+		usage_query();
+		return (EXIT_FAILURE);
+	}
 
 	if (argc == 0) {
 		usage_query();

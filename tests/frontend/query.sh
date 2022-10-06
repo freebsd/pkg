@@ -73,21 +73,21 @@ EOF
 		pkg query -e "%#r>0" "%n: %rn %rv %ro"
 
 	atf_check \
-		-o inline:"test: plop 1 plop\n" \
-		-e empty \
-		-s exit:0 \
+		-o empty \
+		-e match:"Usage:.*" \
+		-s exit:1 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" test
 
 	atf_check \
 		-o empty \
-		-e empty \
+		-e match:"Usage:.*" \
 		-s exit:1 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop
 
 	atf_check \
-		-o inline:"test: plop 1 plop\n" \
-		-e empty \
-		-s exit:0 \
+		-o empty \
+		-e match:"Usage:.*" \
+		-s exit:1 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop test
 
 	atf_check \
@@ -109,9 +109,9 @@ EOF
 		pkg query -e "%#d>0" "%n: %dn %dv %do"
 
 	atf_check \
-		-o inline:"plop: test 1 test\n" \
-		-e empty \
-		-s exit:0 \
+		-o empty \
+		-e match:"Usage:.*" \
+		-s exit:1 \
 		pkg query -e "%#d>0" "%n: %dn %dv %do" plop test
 
 	atf_check \
