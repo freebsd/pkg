@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <utlist.h>
 #include <ucl.h>
+#include <tllist.h>
 
 #include "private/utils.h"
 #include "private/pkg.h"
@@ -63,8 +64,8 @@ struct pkg_job_request {
 struct pkg_solved {
 	struct pkg_job_universe_item *items[2]; /* to-add/to-delete */
 	pkg_solved_t type;
-	struct pkg_solved *prev, *next;
 };
+typedef tll(struct pkg_solved *) pkg_solved;
 
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
@@ -98,7 +99,7 @@ struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
 	pkghash	*request_add;
 	pkghash	*request_delete;
-	struct pkg_solved *jobs;
+	pkg_solved	 jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;

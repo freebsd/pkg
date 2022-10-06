@@ -1264,7 +1264,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->items[0] = add_var->unit;
 				res->type = (j->type == PKG_JOBS_FETCH) ?
 								PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
-				DL_APPEND(j->jobs, res);
+				tll_push_back(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule installation of %s %s",
 					add_var->uid, add_var->digest);
 			}
@@ -1273,7 +1273,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->items[0] = add_var->unit;
 				res->items[1] = del_var->unit;
 				res->type = PKG_SOLVED_UPGRADE;
-				DL_APPEND(j->jobs, res);
+				tll_push_back(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
 			}
@@ -1294,7 +1294,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res = xcalloc(1, sizeof(struct pkg_solved));
 				res->items[0] = cur_var->unit;
 				res->type = PKG_SOLVED_DELETE;
-				DL_APPEND(j->jobs, res);
+				tll_push_back(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
 					cur_var->uid, cur_var->digest);
 				j->count ++;

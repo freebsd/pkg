@@ -336,7 +336,7 @@ cudf_strdup(const char *in)
 }
 
 static void
-pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
+pkg_jobs_cudf_insert_res_job (pkg_solved *target,
 		struct pkg_job_universe_item *it_new,
 		struct pkg_job_universe_item *it_old,
 		int type)
@@ -350,7 +350,7 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 	if (it_old != NULL)
 		res->items[1] = it_old;
 
-	DL_APPEND(*target, res);
+	tll_push_back(*target, res);
 }
 
 struct pkg_cudf_entry {

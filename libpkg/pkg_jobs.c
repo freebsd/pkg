@@ -185,7 +185,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	j->request_delete = NULL;
 
 	pkg_jobs_universe_free(j->universe);
-	LL_FREE(j->jobs, free);
+	tll_free_and_free(j->jobs, free);
 	LL_FREE(j->patterns, pkg_jobs_pattern_free);
 	if (j->triggers.cleanup != NULL) {
 		tll_free_and_free(*j->triggers.cleanup, trigger_free);
@@ -278,28 +278,32 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 }
 
 bool
-pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
+pkg_jobs_iter(struct pkg_jobs *j, void **iter,
 				struct pkg **new, struct pkg **old,
 				int *type)
 {
 	struct pkg_solved *s;
-	assert(iter != NULL);
-	if (jobs->jobs == NULL) {
-		return (false);
-	}
+	struct {
+		typeof(*(j->jobs.head)) *it;
+	} *t;
+	t = *iter;
 	if (*iter == NULL) {
-		s = jobs->jobs;
+		t = xcalloc(1, sizeof(*t));
+		*iter = t;
+	} else if (t->it == NULL) {
+			free(t);
+			return (false);
 	}
-	else if (*iter == jobs->jobs) {
+
+	if (tll_length(j->jobs) == 0)
 		return (false);
-	}
-	else {
-		s = *iter;
-	}
+	if (t->it == NULL)
+		t->it = j->jobs.head;
+	s = t->it->item;
 	*new = s->items[0]->pkg;
 	*old = s->items[1] ? s->items[1]->pkg : NULL;
 	*type = s->type;
-	*iter = s->next ? s->next : jobs->jobs;
+	t->it = t->it->next;
 	return (true);
 }
 
@@ -663,7 +667,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			ts->items[0] = solved->items[1];
 			solved->items[1] = NULL;
 			solved->type = PKG_SOLVED_UPGRADE_INSTALL;
-			DL_APPEND(j->jobs, ts);
+			tll_push_back(j->jobs, ts);
 			j->count++;
 			pkg_debug(2, "split upgrade request for %s",
 			   ts->items[0]->pkg->uid);
@@ -710,17 +714,18 @@ pkg_jobs_set_priorities(struct pkg_jobs *j)
 	struct pkg_solved *req;
 
 iter_again:
-	LL_FOREACH(j->jobs, req) {
+	tll_foreach(j->jobs, r) {
+		req = r->item;
 		req->items[0]->priority = 0;
 		if (req->items[1] != NULL)
 			req->items[1]->priority = 0;
 	}
-	LL_FOREACH(j->jobs, req) {
-		if (pkg_jobs_set_execute_priority(j, req) == EPKG_CONFLICT)
+	tll_foreach(j->jobs, r) {
+		if (pkg_jobs_set_execute_priority(j, r->item) == EPKG_CONFLICT)
 			goto iter_again;
 	}
 
-	DL_SORT(j->jobs, pkg_jobs_sort_priority);
+	tll_sort(j->jobs, pkg_jobs_sort_priority);
 }
 
 static bool pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p);
@@ -1507,7 +1512,8 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 	struct pkg_job_request *jreq;
 	struct pkg *req_pkg, *pkg;
 
-	LL_FOREACH(j->jobs, sit) {
+	tll_foreach(j->jobs, it) {
+		sit = it->item;
 		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j, 0);
 		if (jreq != NULL && jreq->item->unit != sit->items[0]) {
 			req_pkg = jreq->item->pkg;
@@ -2012,7 +2018,6 @@ int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
 	int ret;
-	struct pkg_solved *job;
 	const char *cudf_solver;
 
 	pkgdb_begin_solver(j->db);
@@ -2057,10 +2062,10 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	pkg_jobs_apply_replacements(j);
 
 	/* Check if we need to fetch and re-run the solver */
-	DL_FOREACH(j->jobs, job) {
+	tll_foreach(j->jobs, job) {
 		struct pkg *p;
 
-		p = job->items[0]->pkg;
+		p = ((struct pkg_solved *)job->item)->items[0]->pkg;
 		if (p->type != PKG_REMOTE)
 			continue;
 
@@ -2079,8 +2084,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			rc = pkg_jobs_check_conflicts(j);
 			if (rc == EPKG_CONFLICT) {
 				/* Cleanup results */
-				LL_FREE(j->jobs, free);
-				j->jobs = NULL;
+				tll_free_and_free(j->jobs, free);
 				j->count = 0;
 				has_conflicts = true;
 				pkg_jobs_solve(j);
@@ -2175,7 +2179,6 @@ static int
 pkg_jobs_execute(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
-	struct pkg_solved *ps;
 	struct pkg_manifest_key *keys = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
@@ -2220,7 +2223,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	pkg_jobs_set_priorities(j);
 
-	DL_FOREACH(j->jobs, ps) {
+	tll_foreach(j->jobs, _p) {
+		struct pkg_solved *ps = _p->item;
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
 		case PKG_SOLVED_UPGRADE_REMOVE:
@@ -2302,8 +2306,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 						rc = pkg_jobs_check_conflicts(j);
 						if (rc == EPKG_CONFLICT) {
 							/* Cleanup results */
-							LL_FREE(j->jobs, free);
-							j->jobs = NULL;
+							tll_free_and_free(j->jobs, free);
 							j->count = 0;
 							has_conflicts = true;
 							rc = pkg_jobs_solve(j);
@@ -2351,7 +2354,6 @@ static int
 pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
-	struct pkg_solved *ps;
 	struct stat st;
 	int64_t dlsize = 0, fs_avail = -1;
 	const char *cachedir = NULL;
@@ -2365,7 +2367,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		cachedir = j->destdir;
 
 	/* check for available size to fetch */
-	DL_FOREACH(j->jobs, ps) {
+	tll_foreach(j->jobs, _p) {
+		struct pkg_solved *ps = _p->item;
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			p = ps->items[0]->pkg;
 			if (p->type != PKG_REMOTE)
@@ -2430,7 +2433,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
-	DL_FOREACH(j->jobs, ps) {
+	tll_foreach(j->jobs, _p) {
+		struct pkg_solved *ps = _p->item;
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			p = ps->items[0]->pkg;
 			if (p->type != PKG_REMOTE)
@@ -2453,14 +2457,14 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)
 {
-	struct pkg_solved *ps;
 	struct pkg *p = NULL;
 	int ret = EPKG_OK, res, added = 0;
 
 	pkg_emit_integritycheck_begin();
 	j->conflicts_registered = 0;
 
-	DL_FOREACH(j->jobs, ps) {
+	tll_foreach(j->jobs, _p) {
+		struct pkg_solved *ps = _p->item;
 		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
 			continue;
 		}
