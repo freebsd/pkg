@@ -122,6 +122,7 @@ exec_rquery(int argc, char **argv)
 	bool			 onematched = false;
 	bool			 old_quiet;
 	bool			 index_output = false;
+	size_t			 optscount = 0;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -139,6 +140,7 @@ exec_rquery(int argc, char **argv)
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
 	while ((ch = getopt_long(argc, argv, "+aCgiIxe:r:U", longopts, NULL)) != -1) {
+		optscount++;
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -175,6 +177,12 @@ exec_rquery(int argc, char **argv)
 
 	argc -= optind;
 	argv += optind;
+
+	if (optscount > 1 && condition != NULL) {
+		fprintf(stderr, "Usage: pkg rquery -e <evaluation> [-r reponame] <query-format>\n"
+		    "'-e' flag do not accept any other argument\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (argc == 0 && !index_output) {
 		usage_rquery();

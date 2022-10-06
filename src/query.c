@@ -890,6 +890,7 @@ exec_query(int argc, char **argv)
 	const char 		*condition_sql = NULL;
 	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_query_flags);
+	size_t			optscount = 0;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -903,6 +904,7 @@ exec_query(int argc, char **argv)
 	};
 
 	while ((ch = getopt_long(argc, argv, "+aCe:F:gix", longopts, NULL)) != -1) {
+		optscount++;
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -933,6 +935,13 @@ exec_query(int argc, char **argv)
 
 	argc -= optind;
 	argv += optind;
+
+	if (optscount > 1 && condition != NULL) {
+		fprintf(stderr, "Usage: pkg query -e <evaluation> <query-format>\n"
+		    "'-e' flag do not accept any other argument\n");
+		return (EXIT_FAILURE);
+	}
+
 
 	if (argc == 0) {
 		usage_query();
