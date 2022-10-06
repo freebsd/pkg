@@ -710,7 +710,7 @@ bad_option:
 				} else {
 					state = NEXT_IS_INT;
 				}
-				if (str[0] == "~" && state == NEXT_IS_STRING) {
+				if (str[0] == '~' && state == NEXT_IS_STRING) {
 					str++;
 					collate_nocase = true;
 				}
