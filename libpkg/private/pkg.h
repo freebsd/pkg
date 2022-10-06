@@ -670,8 +670,6 @@ void pkg_option_free(struct pkg_option *);
 void pkg_conflict_free(struct pkg_conflict *);
 void pkg_config_file_free(struct pkg_config_file *);
 
-int pkg_jobs_resolv(struct pkg_jobs *jobs);
-
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp, bool overwrite, bool archive_symlink);
