@@ -1,6 +1,8 @@
 Changes from 1.18.99.5 to1.18.99.6
 - remove backup command, do backup pkg shell .dump should be preferred
   as already done via periodic script
+- (r)query: stricter command line validation
+- (r)query: new operators: =~ ==~ and !=~
 
 Changes from 1.18.99.4 to 1.18.99.5
 - delete: now handles properly provides/requipres
