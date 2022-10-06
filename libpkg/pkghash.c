@@ -141,8 +141,8 @@ pkghash_expand(pkghash *table)
 bool
 pkghash_add(pkghash *table, const char *key, void *value, void (*free_func)(void *))
 {
-	if (table->count * 2  >= table->capacity && !pkghash_expand(table))
-		return (NULL);
+	if (table->count * 2 >= table->capacity && !pkghash_expand(table))
+		return (false);
 
 	return (pkghash_set_entry(table->entries, table->capacity, key, value,
 	    &table->count, free_func));
