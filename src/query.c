@@ -475,6 +475,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
 	const char *sqlop;
+	bool collate_nocase = false;
 
 	fprintf(sqlcond->fp, " WHERE ");
 	while (str[0] != '\0') {
@@ -689,7 +690,9 @@ bad_option:
 				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[1] == '=') {
 					str++;
-					fprintf(sqlcond->fp, "%c", str[0]);
+				} else if (str[1] == '~' && state == NEXT_IS_STRING) {
+					str++;
+					collate_nocase = true;
 				}
 			} else if (str[0] == '!') {
 				if (str[1] == '=') {
@@ -706,6 +709,10 @@ bad_option:
 					state = NEXT_IS_STRING;
 				} else {
 					state = NEXT_IS_INT;
+				}
+				if (str[0] == "~" && state == NEXT_IS_STRING) {
+					str++;
+					collate_nocase = true;
 				}
 			} else {
 				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
@@ -747,6 +754,10 @@ bad_option:
 			    (state == SQUOTEDSTRING && str[0] == '\'')) {
 				fprintf(sqlcond->fp, "%c", '\'');
 				state = POST_EXPR;
+				if (collate_nocase) {
+					fprintf(sqlcond->fp, " COLLATE NOCASE ");
+					collate_nocase = false;
+				}
 			} else {
 				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[0] == '\'')
@@ -760,6 +771,10 @@ bad_option:
 	if (state == STRING) {
 		fprintf(sqlcond->fp, "%c", '\'');
 		state = POST_EXPR;
+		if (collate_nocase) {
+			fprintf(sqlcond->fp, " COLLATE NOCASE ");
+			collate_nocase = false;
+		}
 	}
 
 	if (state != POST_EXPR && state != INT) {

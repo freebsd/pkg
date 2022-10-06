@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2016
+.Dd October 06, 2022
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -336,14 +336,22 @@ The numerical value of
 is less than
 .Op or equal to
 the given number.
-.It Va var Cm = Ns Oo = Oc Ar num
-The numerical value of
+.It Va var Cm = Ns Oo = Oc Oo Ar num | Ar string Oc
+The value of
 .Va var
-is equal to the given number.
-.It Va var Cm != Ar num
-The numerical value of
+is equal to the given number or string.
+.It Va var Cm =~ Oo Ar num | Ar string Oc
+The value of
 .Va var
-is not equal to the given number.
+is equal (case insensitive) to the given number or string.
+.It Va var Cm != Oo Ar num | Ar string Oc
+The value of
+.Va var
+is not equal to the given number or string.
+.It Va var Cm !=~  Oo Ar num | Ar string Oc
+The value of
+.Va var
+is not equal case insensitive to the given number or string.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
