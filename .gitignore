@@ -31,6 +31,7 @@ scripts/completion/_pkg.bash
 scripts/completion/_pkg.zsh
 scripts/completion/_pkg
 scripts/periodic/400.status-pkg
+scripts/periodic/405.pkg-base-audit
 scripts/periodic/410.pkg-audit
 scripts/periodic/411.pkg-backup
 scripts/periodic/460.pkg-checksum
@@ -82,8 +83,13 @@ scripts/sbin/pkg2ng
 !/tests/frontend/*.sh
 !/tests/frontend/*.in
 /tests/frontend/test_environment.sh
+/tests/lua
+/tests/metalog
 /tests/merge
+/tests/packing
 /tests/pkg_add_dir_to_del
 /tests/pkg_printf
 /tests/pkg_validation
 /tests/plist
+/tests/ssh
+/tests/utils
