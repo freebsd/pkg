@@ -275,44 +275,33 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 	struct pkg_job_universe_item *u2, const char *path)
 {
 	struct pkg_job_universe_item *cur1, *cur2;
+	enum pkg_conflict_type type;
 	bool ret = false;
 
 	cur1 = u1;
-
 	do {
-
 		cur2 = u2;
 		do {
 			struct pkg *p1 = cur1->pkg, *p2 = cur2->pkg;
 
-			if (p1->type == PKG_INSTALLED && p2->type == PKG_INSTALLED) {
-				/* Local and local packages cannot conflict */
-				cur2 = cur2->prev;
-				continue;
-			}
-			else if (p1->type == PKG_INSTALLED || p2->type == PKG_INSTALLED) {
-				/* local <-> remote conflict */
-				if (pkg_conflicts_need_conflict(j, p1, p2)) {
-					pkg_emit_conflicts(p1, p2, path);
-					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_LOCAL);
-					j->conflicts_registered ++;
-					ret = true;
-				}
-			}
-			else {
-				/* two remote packages */
-				if (pkg_conflicts_need_conflict(j, p1, p2)) {
-					pkg_emit_conflicts(p1, p2, path);
-					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_REMOTE);
-					j->conflicts_registered ++;
-					ret = true;
-				}
+			if (p1->type == PKG_INSTALLED && p2->type == PKG_INSTALLED)
+				type = PKG_CONFLICT_LOCAL_LOCAL;
+			else if (p1->type == PKG_INSTALLED || p2->type == PKG_INSTALLED)
+				type = PKG_CONFLICT_REMOTE_LOCAL;
+			else
+				type = PKG_CONFLICT_REMOTE_REMOTE;
+
+			/* A pair of installed packages cannot conflict. */
+			if (type != PKG_CONFLICT_LOCAL_LOCAL &&
+			    pkg_conflicts_need_conflict(j, p1, p2)) {
+				pkg_emit_conflicts(p1, p2, path);
+				pkg_conflicts_register_unsafe(p1, p2, path,
+				    type);
+				j->conflicts_registered++;
+				ret = true;
 			}
 			cur2 = cur2->prev;
 		} while (cur2 != u2);
-
 		cur1 = cur1->prev;
 	} while (cur1 != u1);
 
