@@ -147,40 +147,6 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
-void
-pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type type)
-{
-	struct pkg_conflict *c1, *c2;
-
-	c1 = xcalloc(1, sizeof(*c1));
-	c2 = xcalloc(1, sizeof(*c2));
-
-	c1->type = c2->type = type;
-	if (pkghash_get(p1->conflictshash, p2->uid) == NULL) {
-		c1->uid = xstrdup(p2->uid);
-		pkghash_safe_add(p1->conflictshash, c1->uid, c1, NULL);
-		DL_APPEND(p1->conflicts, c1);
-		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
-				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r",
-				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r");
-	} else {
-		pkg_conflict_free(c1);
-	}
-
-	if (pkghash_get(p2->conflictshash, p1->uid) == NULL) {
-		c2->uid = xstrdup(p1->uid);
-		pkghash_safe_add(p2->conflictshash, c2->uid, c2, NULL);
-		DL_APPEND(p2->conflicts, c2);
-		pkg_debug(2, "registering conflict between %s(%s) and %s(%s)",
-				p2->uid, p2->type == PKG_INSTALLED ? "l" : "r",
-				p1->uid, p1->type == PKG_INSTALLED ? "l" : "r");
-	} else {
-		pkg_conflict_free(c2);
-	}
-}
-
-
-
 static int
 pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
 	struct pkg_jobs_conflict_item *b)
@@ -235,8 +201,8 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
  * Just insert new conflicts items to the packages
  */
 static void
-pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
-    const char *path, enum pkg_conflict_type type)
+pkg_conflicts_register(struct pkg *p1, struct pkg *p2, const char *path,
+    enum pkg_conflict_type type)
 {
 	struct pkg_conflict *c1, *c2;
 
@@ -295,8 +261,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 			if (type != PKG_CONFLICT_LOCAL_LOCAL &&
 			    pkg_conflicts_need_conflict(j, p1, p2)) {
 				pkg_emit_conflicts(p1, p2, path);
-				pkg_conflicts_register_unsafe(p1, p2, path,
-				    type);
+				pkg_conflicts_register(p1, p2, path, type);
 				j->conflicts_registered++;
 				ret = true;
 			}

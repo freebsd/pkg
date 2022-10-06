@@ -188,8 +188,6 @@ void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
 	const char *new_uid, bool update_rdeps);
 
-
-
 /*
  * Find local package in db or universe
  */
@@ -206,15 +204,11 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
  */
 int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	struct pkg_jobs *j);
+
 /*
  * Perform integrity check for the jobs specified
  */
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
-/*
- * Register a conflict between two packages
- */
-void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
-		enum pkg_conflict_type type);
 
 /*
  * Check whether `rp` is an upgrade for `lp`
