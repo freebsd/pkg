@@ -614,9 +614,8 @@ int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
  * @return An error code.
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *);
-#define PKG_DELETE_FORCE (1<<0)
-#define PKG_DELETE_UPGRADE (1<<1)
-#define PKG_DELETE_NOSCRIPT (1<<2)
+#define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
+#define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent);
