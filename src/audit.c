@@ -455,7 +455,10 @@ exec_audit(int argc, char **argv)
 				}
 			}
 			pkg_audit_issues_free(issues);
-			pkg_free(pkg);
+		}
+		hit = pkghash_iterator(check);
+		while (pkghash_next(&hit)) {
+			pkg_free(hit.value);
 		}
 		pkghash_destroy(check);
 
