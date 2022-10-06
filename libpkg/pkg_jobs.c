@@ -2089,11 +2089,21 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 }
 
 static int
+pkg_jobs_handle_delete(struct pkg_solved *ps, struct pkg_jobs *j)
+{
+	int flags;
+
+	flags = 0;
+	if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
+		flags |= PKG_DELETE_NOSCRIPT;
+	return (pkg_delete(ps->items[0]->pkg, j->db, flags, &j->triggers));
+}
+
+static int
 pkg_jobs_execute(struct pkg_jobs *j)
 {
-	struct pkg *p = NULL;
+	struct pkg *p;
 	struct pkg_manifest_key *keys = NULL;
-	int flags = 0;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
 
@@ -2118,12 +2128,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
 
-	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
-		flags |= PKG_DELETE_FORCE;
-
-	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
-		flags |= PKG_DELETE_NOSCRIPT;
-
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
 			PKGDB_LOCK_EXCLUSIVE);
 	if (retcode != EPKG_OK)
@@ -2131,38 +2135,40 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	pkg_plugins_hook_run(pre, j, j->db);
 
-	p = NULL;
 	pkg_manifest_keys_new(&keys);
 
 	pkg_jobs_set_priorities(j);
 
 	tll_foreach(j->jobs, _p) {
 		struct pkg_solved *ps = _p->item;
+
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
-		case PKG_SOLVED_UPGRADE_REMOVE:
-			p = ps->items[0]->pkg;
-			if (ps->type == PKG_SOLVED_DELETE && p->vital && ((flags & PKG_DELETE_FORCE) == 0)) {
-				pkg_emit_error("Cannot delete vital package: %s!", p->name);
-				pkg_emit_error("If you are sure you want to remove %s, ", p->name);
-				pkg_emit_error("unset the 'vital' flag with: pkg set -v 0 %s", p->name);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			if (ps->type == PKG_SOLVED_DELETE &&
-			    (strcmp(p->name, "pkg") == 0 ||
-			    strcmp(p->name, "pkg-devel") == 0) &&
-			    (flags & PKG_DELETE_FORCE) == 0) {
-				if (j->patterns->match == MATCH_ALL) {
-					continue;
-				} else {
-					pkg_emit_error("Cannot delete pkg itself without force flag");
+			if ((j->flags & PKG_FLAG_FORCE) == 0) {
+				p = ps->items[0]->pkg;
+				if (p->vital) {
+					pkg_emit_error(
+					    "Cannot delete vital package: %s!", p->name);
+					pkg_emit_error(
+					    "If you are sure you want to remove %s, ", p->name);
+					pkg_emit_error(
+					    "unset the 'vital' flag with: pkg set -v 0 %s", p->name);
+					retcode = EPKG_FATAL;
+					goto cleanup;
+				}
+				if (strcmp(p->name, "pkg") == 0 ||
+				    strcmp(p->name, "pkg-devel") == 0) {
+					if (j->patterns->match == MATCH_ALL)
+						continue;
+					pkg_emit_error(
+					    "Cannot delete pkg itself without force flag");
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
 			}
-
-			retcode = pkg_delete(p, j->db, flags, &j->triggers);
+			/* FALLTHROUGH */
+		case PKG_SOLVED_UPGRADE_REMOVE:
+			retcode = pkg_jobs_handle_delete(ps, j);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
