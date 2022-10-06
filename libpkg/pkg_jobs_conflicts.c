@@ -236,9 +236,7 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
  */
 static void
 pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
-	const char *path,
-	enum pkg_conflict_type type,
-	bool use_digest)
+    const char *path, enum pkg_conflict_type type)
 {
 	struct pkg_conflict *c1, *c2;
 
@@ -248,10 +246,7 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 		c1 = xcalloc(1, sizeof(*c1));
 		c1->type = type;
 		c1->uid = xstrdup(p2->uid);
-
-		if (use_digest) {
-			c1->digest = xstrdup(p2->digest);
-		}
+		c1->digest = xstrdup(p2->digest);
 
 		pkghash_safe_add(p1->conflictshash, c1->uid, c1, NULL);
 		DL_APPEND(p1->conflicts, c1);
@@ -260,14 +255,8 @@ pkg_conflicts_register_unsafe(struct pkg *p1, struct pkg *p2,
 	if (c2 == NULL) {
 		c2 = xcalloc(1, sizeof(*c2));
 		c2->type = type;
-
 		c2->uid = xstrdup(p1->uid);
-
-		if (use_digest) {
-			/* We also add digest information into account */
-
-			c2->digest = xstrdup(p1->digest);
-		}
+		c2->digest = xstrdup(p1->digest);
 
 		pkghash_safe_add(p2->conflictshash, c2->uid, c2, NULL);
 		DL_APPEND(p2->conflicts, c2);
@@ -306,7 +295,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
 					pkg_emit_conflicts(p1, p2, path);
 					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_LOCAL, true);
+						PKG_CONFLICT_REMOTE_LOCAL);
 					j->conflicts_registered ++;
 					ret = true;
 				}
@@ -316,7 +305,7 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				if (pkg_conflicts_need_conflict(j, p1, p2)) {
 					pkg_emit_conflicts(p1, p2, path);
 					pkg_conflicts_register_unsafe(p1, p2, path,
-						PKG_CONFLICT_REMOTE_REMOTE, true);
+						PKG_CONFLICT_REMOTE_REMOTE);
 					j->conflicts_registered ++;
 					ret = true;
 				}
