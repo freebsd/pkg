@@ -151,7 +151,7 @@ pkghash_add(pkghash *table, const char *key, void *value, void (*free_func)(void
 size_t
 pkghash_count(pkghash *table)
 {
-	if (table == 0)
+	if (table == NULL)
 		return (0);
 	return (table->count);
 }
