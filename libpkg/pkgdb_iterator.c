@@ -1302,19 +1302,14 @@ pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags)
 int
 pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
 {
-	int ret;
-
-	if (pkg->type == PKG_INSTALLED) {
+	if (pkg->type == PKG_INSTALLED)
 		return (pkgdb_ensure_loaded_sqlite(db->sqlite, pkg, flags));
-	}
-	else {
-		/* Call repo functions */
-		tll_foreach(db->repos, cur) {
-			if (cur->item == pkg->repo) {
-				if (cur->item->ops->ensure_loaded) {
-					ret = cur->item->ops->ensure_loaded(cur->item, pkg, flags);
-					return (ret);
-				}
+
+	tll_foreach(db->repos, cur) {
+		if (cur->item == pkg->repo) {
+			if (cur->item->ops->ensure_loaded) {
+				return (cur->item->ops->ensure_loaded(cur->item,
+				    pkg, flags));
 			}
 		}
 	}
