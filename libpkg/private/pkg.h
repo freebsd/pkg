@@ -610,10 +610,12 @@ int pkg_get_myarch_legacy(char *pkgarch, size_t sz);
 /**
  * Remove and unregister the package.
  * @param pkg An installed package to delete
+ * @param rpkg A package which will replace pkg, or NULL
  * @param db An opened pkgdb
  * @return An error code.
  */
-int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *);
+int pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
+    struct triggers *);
 #define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
 #define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
 
@@ -683,7 +685,8 @@ pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);
 bool packing_is_valid_format(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, struct triggers *t);
+int pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
+    struct triggers *t);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, struct pkg *p);
 
 /* pkgdb commands */
