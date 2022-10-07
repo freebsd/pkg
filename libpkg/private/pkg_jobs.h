@@ -63,6 +63,7 @@ struct pkg_job_request {
 
 struct pkg_solved {
 	struct pkg_job_universe_item *items[2]; /* to-add/to-delete */
+	struct pkg_solved *xlink;	/* link split jobs together */
 	pkg_solved_t type;
 };
 typedef tll(struct pkg_solved *) pkg_solved;

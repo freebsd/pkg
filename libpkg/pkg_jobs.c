@@ -582,8 +582,10 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			ts = xcalloc(1, sizeof(struct pkg_solved));
 			ts->type = PKG_SOLVED_UPGRADE_REMOVE;
 			ts->items[0] = solved->items[1];
+			ts->xlink = solved;
 			solved->items[1] = NULL;
 			solved->type = PKG_SOLVED_UPGRADE_INSTALL;
+			solved->xlink = ts;
 			tll_push_back(j->jobs, ts);
 			j->count++;
 			pkg_debug(2, "split upgrade request for %s",
@@ -2045,8 +2047,17 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
-	old = ps->items[1] ? ps->items[1]->pkg : NULL;
+	/*
+	 * For a split upgrade, pass along the old package even though it's
+	 * already deleted, since we need it in order to merge configuration
+	 * file changes.
+	 */
 	new = ps->items[0]->pkg;
+	old = NULL;
+	if (ps->items[1] != NULL)
+		old = ps->items[1]->pkg;
+	else if (ps->type == PKG_SOLVED_UPGRADE_INSTALL)
+		old = ps->xlink->items[0]->pkg;
 
 	req = pkghash_get_value(j->request_add, new->uid);
 	if (req != NULL && req->item->jp != NULL &&
@@ -2074,9 +2085,11 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 		flags |= PKG_ADD_NOSCRIPT;
 	if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING)
 		flags |= PKG_ADD_FORCE_MISSING;
-	flags |= PKG_ADD_UPGRADE;
-	if (ps->type == PKG_SOLVED_UPGRADE_INSTALL)
-		flags |= PKG_ADD_SPLITTED_UPGRADE;
+	if (ps->type != PKG_SOLVED_INSTALL) {
+		flags |= PKG_ADD_UPGRADE;
+		if (ps->type == PKG_SOLVED_UPGRADE_INSTALL)
+			flags |= PKG_ADD_SPLITTED_UPGRADE;
+	}
 	if (new->automatic || (j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
 		flags |= PKG_ADD_AUTOMATIC;
 
@@ -2091,12 +2104,19 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 static int
 pkg_jobs_handle_delete(struct pkg_solved *ps, struct pkg_jobs *j)
 {
+	struct pkg *rpkg;
 	int flags;
 
+	rpkg = NULL;
 	flags = 0;
 	if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
 		flags |= PKG_DELETE_NOSCRIPT;
-	return (pkg_delete(ps->items[0]->pkg, j->db, flags, &j->triggers));
+	if (ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
+		flags |= PKG_DELETE_UPGRADE;
+		rpkg = ps->xlink->items[0]->pkg;
+	}
+	return (pkg_delete(ps->items[0]->pkg, rpkg, j->db, flags,
+	    &j->triggers));
 }
 
 static int

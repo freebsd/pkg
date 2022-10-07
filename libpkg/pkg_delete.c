@@ -54,7 +54,8 @@
 #endif
 
 int
-pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t)
+pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
+    struct triggers *t)
 {
 	xstring		*message = NULL;
 	int		 ret;
@@ -67,11 +68,11 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t
 
 	if (pkgdb_ensure_loaded(db, pkg, load_flags) != EPKG_OK)
 		return (EPKG_FATAL);
+	if (rpkg != NULL && pkgdb_ensure_loaded(db, rpkg, load_flags) != EPKG_OK)
+		return (EPKG_FATAL);
 
-	if ((flags & PKG_DELETE_UPGRADE) == 0) {
-		pkg_emit_new_action();
-		pkg_emit_deinstall_begin(pkg);
-	}
+	pkg_emit_new_action();
+	pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */
 	if (pkg->locked) {
@@ -97,7 +98,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t
 			return (ret);
 	}
 
-	if ((ret = pkg_delete_files(pkg, t)) != EPKG_OK)
+	if ((ret = pkg_delete_files(pkg, rpkg, flags, t)) != EPKG_OK)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
@@ -126,7 +127,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags, struct triggers *t
 			pkg_emit_message(message->buf);
 			xstring_free(message);
 		}
-
 	}
 
 	return (pkgdb_unregister_pkg(db, pkg->id));
@@ -318,15 +318,37 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 		pkg_add_dir_to_del(pkg, path, NULL);
 }
 
+/*
+ * Handle a special case: the package is to be upgraded but is being deleted
+ * temporarily to handle a file path conflict.  In this situation we shouldn't
+ * remove configuration files.  For now, keep them if the replacement package
+ * contains a configuration file at the same path.
+ *
+ * Note, this currently doesn't handle the case where a configuration file
+ * participates in the conflict, i.e., it moves from one package to another.
+ */
+static bool
+pkg_delete_skip_config(struct pkg *pkg, struct pkg *rpkg, struct pkg_file *file,
+    int flags)
+{
+	if ((flags & PKG_DELETE_UPGRADE) == 0)
+		return (false);
+	if (pkghash_get(pkg->config_files_hash, file->path) == NULL)
+		return (false);
+	if (pkghash_get(rpkg->config_files_hash, file->path) == NULL)
+		return (false);
+	return (true);
+}
+
 int
-pkg_delete_files(struct pkg *pkg, struct triggers *t)
+pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
+    struct triggers *t)
 {
 	struct pkg_file	*file = NULL;
 
 	int		nfiles, cur_file = 0;
 
 	nfiles = pkghash_count(pkg->filehash);
-
 	if (nfiles == 0)
 		return (EPKG_OK);
 
@@ -334,6 +356,8 @@ pkg_delete_files(struct pkg *pkg, struct triggers *t)
 	pkg_emit_progress_start(NULL);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		if (pkg_delete_skip_config(pkg, rpkg, file, flags))
+			continue;
 		append_touched_file(file->path);
 		pkg_emit_progress_tick(cur_file++, nfiles);
 		trigger_is_it_a_cleanup(t, file->path);

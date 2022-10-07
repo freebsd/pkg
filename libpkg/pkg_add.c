@@ -1191,9 +1191,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	assert(path != NULL);
 
-	if (local != NULL)
-		flags |= PKG_ADD_UPGRADE;
-
 	/*
 	 * Open the package archive file, read all the meta files and set the
 	 * current archive_entry to the first non-meta file.
@@ -1208,7 +1205,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 	if ((flags & PKG_ADD_SPLITTED_UPGRADE) == 0)
 		pkg_emit_new_action();
-	if ((flags & PKG_ADD_UPGRADE) == 0 || local == NULL)
+	if ((flags & (PKG_ADD_UPGRADE | PKG_ADD_SPLITTED_UPGRADE)) !=
+	    PKG_ADD_UPGRADE)
 		pkg_emit_install_begin(pkg);
 	else
 		pkg_emit_upgrade_begin(pkg, local);
@@ -1305,7 +1303,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 	}
 
-	if (local != NULL) {
+	/*
+	 * If this was a split upgrade, the old package has been entirely
+	 * removed already.
+	 */
+	if (local != NULL && (flags & PKG_ADD_SPLITTED_UPGRADE) == 0) {
 		pkg_open_root_fd(local);
 		pkg_debug(1, "Cleaning up old version");
 		if (pkg_add_cleanup_old(db, local, pkg, t, flags) != EPKG_OK) {
@@ -1339,14 +1341,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
-	if ((flags & PKG_ADD_UPGRADE) == 0)
+	if ((flags & (PKG_ADD_UPGRADE | PKG_ADD_SPLITTED_UPGRADE)) !=
+	    PKG_ADD_UPGRADE)
 		pkg_emit_install_finished(pkg, local);
-	else {
-		if (local != NULL)
-			pkg_emit_upgrade_finished(pkg, local);
-		else
-			pkg_emit_install_finished(pkg, local);
-	}
+	else
+		pkg_emit_upgrade_finished(pkg, local);
 
 	tll_foreach(pkg->message, m) {
 		msg = m->item;
