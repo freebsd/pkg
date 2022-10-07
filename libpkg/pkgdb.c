@@ -1244,6 +1244,7 @@ typedef enum _sql_prstmt_index {
 	ANNOTATE1,
 	ANNOTATE2,
 	ANNOTATE_ADD1,
+	ANNOTATE_MOD1,
 	ANNOTATE_DEL1,
 	ANNOTATE_DEL2,
 	CONFLICT,
@@ -1414,6 +1415,15 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[ANNOTATE_ADD1] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_annotation(package_id, tag_id, value_id) "
+		"VALUES ("
+		" (SELECT id FROM packages WHERE name = ?1 ),"
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
+		"TTTT", // "TTT"???
+	},
+	[ANNOTATE_MOD1] = {
+		NULL,
+		"INSERT OR REPLACE INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES ("
 		" (SELECT id FROM packages WHERE name = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
@@ -2148,29 +2158,30 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	if (pkgdb_transaction_begin_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (run_prstmt(ANNOTATE_DEL1, pkg->uid, tag) != SQLITE_DONE
-	    ||
-	    run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
+	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_ADD1, pkg->uid, tag, value) !=
-	        SQLITE_DONE
-	    ||
-	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
+	    run_prstmt(ANNOTATE_MOD1, pkg->uid, tag, value) !=
+	        SQLITE_DONE) {
+		ERROR_STMT_SQLITE(db->sqlite, STMT(ANNOTATE_MOD1));
+		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
+
+		return (EPKG_FATAL);
+	}
+	rows_changed = sqlite3_changes(db->sqlite);
+
+	if (run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, STMT(ANNOTATE_DEL2));
 		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 
 		return (EPKG_FATAL);
 	}
 
-	/* Something has gone very wrong if rows_changed != 1 here */
-
-	rows_changed = sqlite3_changes(db->sqlite);
-
 	if (pkgdb_transaction_commit_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
+	/* Something has gone very wrong if rows_changed != 1 here */
 	return (rows_changed == 1 ? EPKG_OK : EPKG_WARN);
 }
 
