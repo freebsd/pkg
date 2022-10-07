@@ -471,13 +471,18 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 
 	/* Now move required elements to the provided package */
 	pkg_list_free(pkg, PKG_FILES);
+	pkg_list_free(pkg, PKG_CONFIG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
 	pkg->files = cached->files;
 	pkg->filehash = cached->filehash;
+	pkg->config_files = cached->config_files;
+	pkg->config_files_hash = cached->config_files_hash;
 	pkg->dirs = cached->dirs;
 	pkg->dirhash = cached->dirhash;
 	cached->files = NULL;
 	cached->filehash = NULL;
+	cached->config_files = NULL;
+	cached->config_files_hash = NULL;
 	cached->dirs = NULL;
 	cached->dirhash = NULL;
 
@@ -486,7 +491,6 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 
 	return EPKG_OK;
 }
-
 
 int64_t
 pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)
