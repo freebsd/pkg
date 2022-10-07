@@ -3,6 +3,7 @@
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
 	config \
+	config_conflict \
 	config_duplicate \
 	config_duplicate_keyword \
 	config_fileexist \
@@ -49,6 +50,77 @@ config_body()
 
 	atf_check \
 		-o inline:"entry 2\naddition\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/a
+}
+
+# Make sure that config file modifications are preserved across split upgrades.
+# Here, package "test" contains a config file, and the "other" package introduces a
+# conflict on upgrade when file "b" moves from "test" to "other".  To resolve the
+# conflict, pkg must temporarily uninstall "test", and we check that modifications
+# to the config file are not lost.
+config_conflict_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	echo "@config ${TMPDIR}/a" > plist
+	echo "${TMPDIR}/b" >> plist
+
+	echo "be provocative" > a
+	touch b
+
+	atf_check \
+		pkg create -M test.ucl -p plist
+
+	atf_check \
+		-o match:"^config" \
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.pkg
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	echo "@config ${TMPDIR}/a" > plist
+
+	atf_check \
+		pkg create -M test.ucl -p plist
+
+	atf_check \
+		-o match:"^config" \
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-2.pkg
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "other" "other" "1"
+	echo "${TMPDIR}/c" > plist
+
+	touch c
+
+	atf_check \
+		pkg create -M other.ucl -p plist
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "other" "other" "2"
+	echo "${TMPDIR}/b" > plist
+	echo "${TMPDIR}/c" >> plist
+
+	touch c
+
+	atf_check \
+		pkg create -M other.ucl -p plist
+
+	mkdir ${TMPDIR}/target
+	unset PKG_DBDIR
+	atf_check \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.pkg
+	atf_check \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/other-1.pkg
+	test -f ${TMPDIR}/target/${TMPDIR}/a || atf_fail "file absent"
+
+	echo "be organized" >> ${TMPDIR}/target/${TMPDIR}/a
+
+	pkg repo .
+	mkdir reposconf
+	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
+	atf_check \
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target upgrade -qy
+
+	test -f ${TMPDIR}/target/${TMPDIR}/a || atf_fail "file absent"
+
+	atf_check \
+		-o inline:"be provocative\nbe organized\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/a
 }
 
