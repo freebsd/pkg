@@ -8,8 +8,10 @@ tests_init \
 
 setup() {
 	local _root=$1
-        atf_skip_on Darwin Test fails on Darwin
-        atf_skip_on Linux Test fails on Linux
+	local _fingerprint
+
+	atf_skip_on Darwin Test fails on Darwin
+	atf_skip_on Linux Test fails on Linux
 
 	atf_check -o ignore -e ignore \
 		openssl genrsa -out repo.key 2048
@@ -19,10 +21,9 @@ setup() {
 	chmod 0400 repo.key
 	atf_check -o ignore -e ignore \
 		openssl rsa -in repo.key -out repo.pub -pubout
+	_fingerprint=$(openssl dgst -sha256 -hex repo.pub | sed 's/^.* //')
 	echo "function: sha256" > ${_root}/${TMPDIR}/keys/trusted/key
-	echo -n "fingerprint: " >> ${_root}/${TMPDIR}/keys/trusted/key
-	openssl dgst -sha256 -hex repo.pub | sed 's/^.* //' >> ${_root}/${TMPDIR}/keys/trusted/key
-	echo "" >> ${_root}/${TMPDIR}/keys/trusted/key
+	echo "fingerprint: \"${_fingerprint}\"" >> ${_root}/${TMPDIR}/keys/trusted/key
 	mkdir fakerepo
 
 	cat >> sign.sh << EOF
