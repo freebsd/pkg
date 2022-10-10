@@ -3,6 +3,8 @@ Changes from 1.18.99.5 to1.18.99.6
   as already done via periodic script
 - (r)query: stricter command line validation
 - (r)query: new operators: =~ ==~ and !=~
+- fix merging of config files accross split upgrades
+- fix a regression when executing a shell script
 
 Changes from 1.18.99.4 to 1.18.99.5
 - delete: now handles properly provides/requipres
