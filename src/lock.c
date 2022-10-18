@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include <pkg.h>
+#include <tllist.h>
 
 #include "pkgcli.h"
 
@@ -101,6 +102,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	struct pkg	*pkg = NULL;
 	int		 retcode;
 	int		 exitcode = EXIT_SUCCESS;
+	tll(struct pkg *)pkgs = tll_init();
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
@@ -115,10 +117,14 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	}
 
 	while (pkgdb_it_next(it, &pkg, 0) == EPKG_OK) {
+		tll_push_back(pkgs, pkg);
+		pkg = NULL;
+	}
+	tll_foreach(pkgs, p) {
 		if (action == LOCK)
-			retcode = do_lock(db, pkg);
+			retcode = do_lock(db, p->item);
 		else
-			retcode = do_unlock(db, pkg);
+			retcode = do_unlock(db, p->item);
 
 		if (retcode != EPKG_OK) {
 			exitcode = EXIT_FAILURE;
@@ -127,7 +133,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	}
 
 cleanup:
-	pkg_free(pkg);
+	tll_free_and_free(pkgs, pkg_free);
 	pkgdb_it_free(it);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
