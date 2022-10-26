@@ -468,7 +468,7 @@ fetch_socks5_init(conn_t *conn, const char *host, int port, int verbose)
 		goto fail;
 	}
 	*ptr++ = strlen(host);
-	strncpy(ptr, host, strlen(host));
+	memcpy(ptr, host, strlen(host));
 	ptr = ptr + strlen(host);
 
 	port = htons(port);
