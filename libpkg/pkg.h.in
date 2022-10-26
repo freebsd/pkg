@@ -1704,7 +1704,7 @@ struct pkg_kvlist_iterator *pkg_kvlist_iterator(struct pkg_kvlist *l);
 struct pkg_kv *pkg_kvlist_next(struct pkg_kvlist_iterator *it);
 struct pkg_stringlist_iterator *pkg_stringlist_iterator(struct pkg_stringlist *l);
 const char *pkg_stringlist_next(struct pkg_stringlist_iterator *it);
-struct pkg_el *pkg_get_element(struct pkg *p, pkg_attr a);
+struct pkg_el *pkg_get_element(struct pkg *p, int a);
 
 #ifdef __cplusplus
 }

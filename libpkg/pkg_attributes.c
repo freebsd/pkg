@@ -214,7 +214,7 @@ pkg_stringlist_next(struct pkg_stringlist_iterator *it)
 }
 
 struct pkg_el *
-pkg_get_element(struct pkg *p, pkg_attr a)
+pkg_get_element(struct pkg *p, int a)
 {
 	struct pkg_el *e = xcalloc(1, sizeof(*e));
 
