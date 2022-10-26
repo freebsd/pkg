@@ -249,8 +249,10 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		}
 	}
 
-	while (pkg_files(pkg, &f) == EPKG_OK) {
-		tll_push_back(entries, pkg_kv_new(f->path, f->sum));
+	if (inc_files) {
+		while (pkg_files(pkg, &f) == EPKG_OK) {
+			tll_push_back(entries, pkg_kv_new(f->path, f->sum));
+		}
 	}
 
 	/* Sort before hashing */
