@@ -196,6 +196,7 @@ OUTPUT="Installing meh-1...
 \`-- Installing test-1...
 \`-- Extracting test-1:  done
 Extracting meh-1:  done
+==> Running trigger: trigger.ucl
 plop
 "
 	atf_check -o inline:"${OUTPUT}" pkg -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" add meh-1.pkg
