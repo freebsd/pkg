@@ -93,7 +93,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			close(cur_pipe[0]);
 			lua_State *L = luaL_newstate();
 			luaL_openlibs( L );
-			lua_atpanic(L, (lua_CFunction)stack_dump );
+			lua_atpanic(L, stack_dump);
 			lua_pushinteger(L, cur_pipe[1]);
 			lua_setglobal(L, "msgfd");
 			lua_pushlightuserdata(L, pkg);

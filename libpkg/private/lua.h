@@ -27,7 +27,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-lua_CFunction stack_dump(lua_State *L);
+int stack_dump(lua_State *L);
 int lua_print_msg(lua_State *L);
 int lua_pkg_copy(lua_State *L);
 int lua_pkg_filecmp(lua_State *L);

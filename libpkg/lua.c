@@ -52,7 +52,7 @@
 
 extern char **environ;
 
-lua_CFunction
+int
 stack_dump(lua_State *L)
 {
 	int i;
