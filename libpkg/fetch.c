@@ -308,8 +308,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 	pkg_emit_fetch_finished(url);
 
-	if (strcmp(u->scheme, "ssh") != 0 & strcmp(u->scheme, "tcp") != 0
-	    && ferror(remote)) {
+	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0 &&
+	    ferror(remote)) {
 		pkg_emit_error("%s: %s", url, fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;
