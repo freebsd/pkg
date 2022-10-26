@@ -533,11 +533,14 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	while (walk < end) {
 		r = yxml_parse(&x, *walk++);
 		switch (r) {
-		case YXML_EREF:
+		case YXML_EEOF:
 			pkg_emit_error("Unexpected EOF while parsing vulnxml");
 			goto out;
+		case YXML_EREF:
+			pkg_emit_error("Invalid entity encountered while parsing vulnxml");
+			goto out;
 		case YXML_ESTACK:
-			pkg_emit_error("Unexpected EOF while parsing vulnxml");
+			pkg_emit_error("Stack overflow while parsing vulnxml");
 			goto out;
 		case YXML_ESYN:
 			pkg_emit_error("Syntax error while parsing vulnxml");
@@ -547,7 +550,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 			goto out;
 		case YXML_ELEMSTART:
 			vulnxml_start_element(&ud, &x);
-				break;
+			break;
 		case YXML_ELEMEND:
 			vulnxml_end_element(&ud, &x);
 			break;
@@ -560,9 +563,13 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		case YXML_ATTRSTART:
 			vulnxml_start_attribute(&ud, &x);
 			break;
-			/* ignore */
 		case YXML_ATTREND:
 			vulnxml_end_attribute(&ud, &x);
+			break;
+		case YXML_OK:
+		case YXML_PISTART:
+		case YXML_PICONTENT:
+		case YXML_PIEND:
 			/* ignore */
 			break;
 		}
