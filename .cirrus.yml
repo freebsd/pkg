@@ -75,7 +75,7 @@ alpine_task:
         container:
                 image: alpine:latest
         install_script:
-                - apk add musl-dev gcc g++ make kyua pkgconf gcompat tcl fts-dev libbsd-dev libarchive-dev openssl-dev bzip2-dev xz-dev zlib-dev m4
+                - apk add musl-dev gcc g++ make kyua pkgconf gcompat tcl musl-fts-dev libbsd-dev libarchive-dev openssl-dev bzip2-dev xz-dev zlib-dev m4
         script:
                 - ./configure
                 - make -j4 || make V=1
