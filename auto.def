@@ -344,7 +344,7 @@ if {[get-define CCACHE] ne {none}} {
 }
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
-make-config-header external/sqlite/config.h
+make-config-header external/sqlite/sqlite_cfg.h
 make-template mk/defs.mk.in
 make-template libpkg/pkg.h.in
 make-template libpkg/pkg.pc.in
