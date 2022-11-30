@@ -38,11 +38,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#ifdef __FreeBSD__
-#include <sys/sysctl.h>
-#include <sys/user.h>
-#include <sys/proc.h>
-#endif
 
 #include <assert.h>
 #include <ctype.h>
@@ -553,30 +548,6 @@ expand_aliases(int argc, char ***argv)
 	return (newargc);
 }
 
-static
-bool ptraced(void)
-{
-#if defined(__FreeBSD__)
-	int                 mib[4];
-	struct kinfo_proc   info;
-	size_t              size;
-
-	info.ki_flag = 0;
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_PID;
-	mib[3] = getpid();
-
-	size = sizeof(info);
-	sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
-
-	return ((info.ki_flag & P_TRACED) != 0 );
-#else
-	return (false);
-#endif
-}
-
 int
 main(int argc, char **argv)
 {
@@ -718,7 +689,7 @@ main(int argc, char **argv)
 	optreset = 1;
 	optind = 1;
 
-	if (debug == 0 && version == 0 && !ptraced())
+	if (debug == 0 && version == 0)
 		start_process_worker(save_argv);
 
 #ifdef HAVE_ARC4RANDOM_STIR
