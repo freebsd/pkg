@@ -310,25 +310,32 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 #endif
 }
 
+static struct tempdir *
+get_tempdir(int rootfd, const char *path, tempdirs_t *tempdirs)
+{
+	struct tempdir *tmpdir = NULL;
+
+	tll_foreach(*tempdirs, t) {
+		if (strncmp(t->item->name, path, t->item->len) == 0 && path[t->item->len] == '/')
+			return (t->item);
+	}
+
+	tmpdir = open_tempdir(rootfd, path);
+	if (tmpdir != NULL)
+		tll_push_back(*tempdirs, tmpdir);
+
+	return (tmpdir);
+}
+
 static int
-create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs __unused)
+create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs)
 {
 	struct stat st;
 	struct tempdir *tmpdir = NULL;
 	int fd;
 	const char *path;
 
-	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, d->path, t->item->len) == 0 && d->path[t->item->len] == '/') {
-			tmpdir = t->item;
-			break;
-		}
-	}
-	if (tmpdir == NULL) {
-		tmpdir = open_tempdir(pkg->rootfd, d->path);
-		if (tmpdir != NULL)
-			tll_push_back(*tempdirs, tmpdir);
-	}
+	tmpdir = get_tempdir(pkg->rootfd, path, tempdirs);
 	if (tmpdir == NULL) {
 		fd = pkg->rootfd;
 		path = d->path;
@@ -416,20 +423,9 @@ create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target, tempdir
 	const char *path;
 	bool tried_mkdir = false;
 
-	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, f->path, t->item->len) == 0 &&  f->path[t->item->len] == '/') {
-			tmpdir = t->item;
-			break;
-		}
-	}
-	if (tmpdir == NULL) {
-		tmpdir = open_tempdir(pkg->rootfd, f->path);
-		if (tmpdir == NULL && errno == 0)
-			hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
-
-		if (tmpdir != NULL)
-			tll_push_back(*tempdirs, tmpdir);
-	}
+	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs);
+	if (tmpdir == NULL && errno == 0)
+		hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 	if (tmpdir == NULL) {
 		fd = pkg->rootfd;
 		path = f->temppath;
@@ -502,19 +498,9 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_
 	struct tempdir *tmpdir = NULL;
 	struct tempdir *tmphdir = NULL;
 
-	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, f->path, t->item->len) == 0 && f->path[t->item->len] == '/' ) {
-			tmpdir = t->item;
-			break;
-		}
-	}
-	if (tmpdir == NULL) {
-		tmpdir = open_tempdir(pkg->rootfd, f->path);
-		if (tmpdir == NULL && errno == 0)
-			hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
-		if (tmpdir != NULL)
-			tll_push_back(*tempdirs, tmpdir);
-	}
+	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs);
+	if (tmpdir == NULL && errno == 0)
+		hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 	if (tmpdir != NULL) {
 		fd = tmpdir->fd;
 	} else {
@@ -623,20 +609,10 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	char *path;
 	struct tempdir *tmpdir = NULL;
 
-	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, f->path, t->item->len) == 0 && f->path[t->item->len] == '/') {
-			tmpdir = t->item;
-			break;
-		}
-	}
-	if (tmpdir == NULL) {
-		tmpdir = open_tempdir(pkg->rootfd, f->path);
-		if (tmpdir == NULL && errno == 0) {
-			hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
-		}
-		if (tmpdir != NULL)
-			tll_push_back(*tempdirs, tmpdir);
-	}
+	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs);
+	if (tmpdir == NULL && errno == 0)
+		hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
+
 	if (tmpdir != NULL) {
 		fd = open_tempfile(tmpdir->fd, f->path + tmpdir->len, f->perm);
 	} else {
