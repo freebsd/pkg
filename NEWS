@@ -1,4 +1,10 @@
 Changes from 1.18.99.5 to1.18.99.6
+- reduce the number of filedescriptors opened at the same time
+- update sqlite to 3.40.0
+- fix regression in pkg lock
+- fix annotate --modify
+
+Changes from 1.18.99.5 to1.18.99.6
 - remove backup command, do backup pkg shell .dump should be preferred
   as already done via periodic script
 - (r)query: stricter command line validation
