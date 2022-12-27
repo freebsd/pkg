@@ -465,7 +465,7 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"AUDIT_IGNORE_REGEX",
-		"NULL",
+		NULL,
 		"List of regex to ignore while autiditing for vulnerabilities",
 	},
 	{
@@ -489,13 +489,13 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"FILES_IGNORE_GLOB",
-		"NULL",
+		NULL,
 		"patterns of files to not extract from the package",
 	},
 	{
 		PKG_ARRAY,
 		"FILES_IGNORE_REGEX",
-		"NULL",
+		NULL,
 		"patterns of files to not extract from the package",
 	},
 };
