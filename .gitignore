@@ -45,6 +45,7 @@ scripts/sbin/pkg2ng
 # Generated files:
 
 /autosetup/jimsh0
+/Kyuafile
 /Makefile
 /compat/Makefile
 /docs/Makefile
@@ -78,10 +79,11 @@ scripts/sbin/pkg2ng
 /tests/Kyuafile
 /tests/checksum
 /tests/deps_formula
-# Almost everything in tests/frontend is generated aside from .sh and .in files.
+# Almost everything in tests/frontend is generated aside from .sh, .in and .binin files.
 /tests/frontend/*
 !/tests/frontend/*.sh
 !/tests/frontend/*.in
+!/tests/frontend/*.binin
 /tests/frontend/test_environment.sh
 /tests/lua
 /tests/metalog

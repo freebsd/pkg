@@ -359,4 +359,4 @@ foreach dir [list external/blake2 external/picosat \
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
 
-file mkdir external/libucl/src scripts/periodic scripts/completion
+file mkdir external/libucl/src scripts/periodic scripts/completion tests/lib tests/frontend
