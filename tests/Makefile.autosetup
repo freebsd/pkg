@@ -64,6 +64,10 @@ TESTS_SH= \
 	frontend/http.sh \
 	frontend/triggers.sh
 
+TESTS_SHELL_BINS= \
+	frontend/dfly.bin \
+	frontend/fbsd.bin
+
 lua_OBJS=	lib/lua.o
 merge_OBJS=	lib/merge.o
 plist_OBJS=	lib/plist.o
@@ -102,6 +106,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/sqlite \
 		-I$(top_srcdir)/external/lua/src \
+		-I$(top_srcdir)/libpkg \
 		-I$(top_builddir)/ \
 		-I$(top_builddir)/libpkg \
 		@PKG_ATF_C_CFLAGS@ \
@@ -139,7 +144,9 @@ OTHER_LIBS+=	-lresolv
 LOCAL_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
 LOCAL_LDFLAGS+=	@PKG_ATF_C_LDFLAGS@ @PKG_ATF_C_LIBS@
 
-all: $(TESTS) Kyuafile ${TESTS_SHELL} frontend/Kyuafile
+VPATH=	$(top_srcdir)/tests
+
+all: $(TESTS) Kyuafile ${TESTS_SHELL} $(TESTS_SHELL_BINS) frontend/Kyuafile
 
 $(TESTS): $(OBJS)
 	$(CC) -o $@ $($@_OBJS) $(LDFLAGS) $(LOCAL_LDFLAGS)
@@ -151,7 +158,7 @@ lib/pkg_printf.c: $(top_srcdir)/libpkg/pkg_printf.c
 	install -m 755 $< $@
 
 clean:
-	rm -f lib/pkg_printf.c $(OBJS) $(TESTS) $(TESTS_SHELL) Kyuafile frontend/Kyuafile
+	rm -f lib/pkg_printf.c $(OBJS) $(TESTS) $(TESTS_SHELL) $(TESTS_SHELL_BINS) Kyuafile frontend/Kyuafile
 
 Kyuafile: $(TESTS)
 	@echo "Generating $@"
@@ -162,7 +169,7 @@ Kyuafile: $(TESTS)
 	done
 	@echo 'include("frontend/Kyuafile")' >> $@
 
-frontend/Kyuafile: $(TESTS_SHELL)
+frontend/Kyuafile: $(TESTS_SHELL) $(TESTS_SHELL_BINS)
 	@echo "Generating $@"
 	@echo 'syntax(2)' > $@
 	@echo 'test_suite("pkg")' >> $@

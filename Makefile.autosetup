@@ -5,6 +5,9 @@ DIRS+=	tests
 @endif
 
 include $(MK)/dir.mk
+include $(MK)/common.mk
+
+VPATH=	$(top_srcdir)
 
 @if coverage
 check: clean-profiles
@@ -14,7 +17,11 @@ clean-profiles:
 @endif
 
 check: all
+
 @if TESTS
+all: Kyuafile
+
+check:
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1; \
 	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw; \
 	if [ "$(HTML)" != "" ]; then \

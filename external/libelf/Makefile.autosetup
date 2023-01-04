@@ -61,6 +61,8 @@ SRCS=	elf_begin.c \
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/external/libelf -I$(top_builddir)/external/libelf
 
+VPATH=	$(top_srcdir)/external/libelf
+
 libelf_fsize.c: libelf_fsize.m4 elf_types.m4
 	m4 -D SRCDIR=$(top_srcdir)/external/libelf $(top_srcdir)/external/libelf/elf_types.m4 $(top_srcdir)/external/libelf/libelf_fsize.m4 > $@
 
