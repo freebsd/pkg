@@ -3,4 +3,6 @@ LIB=	machista
 SRCS=	libmachista.c \
 	hashmap.c
 
+VPATH=	$(top_srcdir)/external/libmachista
+
 include $(MK)/static-lib.mk
