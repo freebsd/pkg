@@ -1,9 +1,12 @@
 freebsd_task:
         install_script: ASSUME_ALWAYS_YES=yes pkg bootstrap -f ; pkg install -y kyua pkgconf python3 bzip2
         script:
-                - ./configure $EXTRA_ARGS
+                - mkdir build && cd build
+                - ../configure $EXTRA_ARGS
                 - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ; }
+        check_script:
+                - cd build
+                - make check || { kyua report --verbose ; exit 1 ; }
         matrix:
                 - name: freebsd12.3-amd64
                   freebsd_instance:
@@ -32,9 +35,12 @@ debian_task:
                 # #1 0x7fe22260f08f in __vasprintf_internal (/lib64/libc.so.6+0x7f08f)
                 ASAN_OPTIONS: detect_leaks=0
         script:
-                - ./configure --with-libarchive.pc --with-asan --with-ubsan
+                - mkdir build && cd build
+                - ../configure --with-libarchive.pc --with-asan --with-ubsan
                 - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ; }
+        check_script:
+                - cd build
+                - make check || { kyua report --verbose ; exit 1 ; }
 
 #osx_task:
 #        osx_instance:
@@ -46,9 +52,12 @@ debian_task:
 #                CXXFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
 #                CFLAGS: -I/usr/local/opt/libarchive/include -I/usr/local/opt/openssl/include -ftrivial-auto-var-init=pattern
 #        script:
-#                - ./configure --with-asan --with-ubsan
+#                - mkdir build && cd build
+#                - ../configure --with-asan --with-ubsan
 #                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ;}
+#        check_script:
+#                - cd build
+#                - make check || { kyua report --verbose ; exit 1 ;}
 
 #fedora_task:
 #        container:
@@ -67,9 +76,12 @@ debian_task:
 #                                 libasan-static libubsan-static libasan-static libubsan-static
 #                                 bsdtar diffutils openssl which xz python3 bzip2
 #        script:
-#                - ./configure --with-libarchive.pc --with-asan --with-ubsan
+#                - mkdir build && cd build
+#                - ../configure --with-libarchive.pc --with-asan --with-ubsan
 #                - make -j4 || make V=1
-#        check_script: make check || { kyua report --verbose ; exit 1 ; }
+#        check_script:
+#                - cd build
+#                - make check || { kyua report --verbose ; exit 1 ; }
 
 alpine_task:
         container:
@@ -77,6 +89,9 @@ alpine_task:
         install_script:
                 - apk add musl-dev gcc g++ make kyua pkgconf gcompat tcl musl-fts-dev libbsd-dev libarchive-dev openssl-dev bzip2-dev xz-dev zlib-dev m4
         script:
-                - ./configure
+                - mkdir build && cd build
+                - ../configure
                 - make -j4 || make V=1
-        check_script: make check || { kyua report --verbose ; exit 1 ; }
+        check_script:
+                - cd build
+                - make check || { kyua report --verbose ; exit 1 ; }
