@@ -52,10 +52,9 @@ repositories, package creation, updating, etc.
 <a name="pkgfmt"></a>
 ### pkg package format
 
-pkg package format is a tar archive which can be raw, or use the following
-compression: gz, bzip2 and xz, defaulting in xz format.
+The `pkg` package format is a tar archive that may be raw or compressed using one of the following algorithms: `gz`, `bzip2`, `zstd`, or `xz`. The default compression algorithm is `zstd`.
 
-The tar itself is composed in two types of elements:
+The tar archive itself is composed in two types of elements:
 
 * the special files at the beginning of the archive, starting with a "+"
 * the data.
@@ -505,13 +504,12 @@ your repository :)
 
 * [Jenkins instance for pkg][3]
 
-In order to get in contact with us, you can find us in the
-#pkgng@FreeNode IRC channel.
+To contact us, you can find us in the **#pkg** channel on [Libera Chat IRC Network](https://libera.chat/).
 
 If you hit a bug when using pkg, you can always submit an issue in the
 [pkg issue tracker][4].
 
 [1]: https://github.com/freebsd/pkg
-[2]: http://wiki.freebsd.org/pkgng
+[2]: http://wiki.freebsd.org/pkg
 [3]: http://jenkins.mouf.net/job/pkg/
 [4]: https://github.com/freebsd/pkg/issues
