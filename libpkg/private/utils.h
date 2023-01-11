@@ -57,8 +57,8 @@ struct hardlink {
 };
 
 struct tempdir {
-	char name[MAXHOSTNAMELEN];
-	char temp[MAXHOSTNAMELEN];
+	char name[MAXPATHLEN];
+	char temp[MAXPATHLEN];
 	size_t len;
 	int fd;
 };
