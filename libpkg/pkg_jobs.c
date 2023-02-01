@@ -657,7 +657,7 @@ is_orphaned(struct pkg_jobs *j, const char *uid)
 
 	unit = pkg_jobs_universe_find(j->universe, uid);
 	if (unit != NULL) {
-		if (unit->pkg->automatic)
+		if (!unit->pkg->automatic)
 			return (false);
 		npkg = unit->pkg;
 	} else {
