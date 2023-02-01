@@ -29,7 +29,6 @@ Table of Contents:
 * [Getting help on the commands usage](#pkghelp)
 * [Querying the local package database](#pkginfo)
 * [Installing packages](#pkginstalling)
-* [Adding pkg tarballs directly](#pkgadd)
 * [Working with a remote package repository](#pkgrepos)
 * [Working with multiple remote package repositories](#multirepos)
 * [Updating remote repositories](#pkgupdate)
@@ -332,30 +331,6 @@ exposing the repository via HTTP or some other networking protocol.
 You can also publish a repository from a local or NFS mounted
 filesystem (using file:// style URLs) or via SSH (using ssh:// URLs.)
 
-<a name="pkgadd"></a>
-#### Adding pkg tarballs directly
-
-In order to install the package foo-1.2.3 from a local pkg tarball,
-use a command similar to the following:
-
-	# pkg add /path/to/packages/foo-1.2.3.txz
-
-You will need to make sure that all dependencies of foo-1.2.3 are
-either also available as tarballs in the same directory, or previously
-installed by other means.
-
-You can also install the package foo-1.2.3 tarball from a remote
-location using the FTP/HTTP protocol. In order to do that you could
-use a command similar to the following:
-
-	# pkg add http://example.org/pkg-repo/foo-1.2.3.txz
-
-Which works in exactly the same way, except that it fetches the
-package tarballs using the protocol indicated by the URL.
-
-For more information on installing packages on your FreeBSD system,
-please refer to *pkg-add(1)*
-
 <a name="pkgrepos"></a>
 ### Working with a remote package repository
 
@@ -502,14 +477,11 @@ your repository :)
 
 * The [pkg Wiki page][2]
 
-* [Jenkins instance for pkg][3]
-
 To contact us, you can find us in the **#pkg** channel on [Libera Chat IRC Network](https://libera.chat/).
 
 If you hit a bug when using pkg, you can always submit an issue in the
-[pkg issue tracker][4].
+[pkg issue tracker][3].
 
 [1]: https://github.com/freebsd/pkg
 [2]: http://wiki.freebsd.org/pkg
-[3]: http://jenkins.mouf.net/job/pkg/
-[4]: https://github.com/freebsd/pkg/issues
+[3]: https://github.com/freebsd/pkg/issues
