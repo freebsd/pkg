@@ -1,4 +1,10 @@
-Changes from 1.18.99.5 to1.18.99.6
+Changes from 1.18.99.7 to 1.19.99.1
+- fix regression in pkg autoremove
+- fix regression preventing tracking files with path longer than 64 chars
+- fix build out of tree
+- fix spelling issues in pkg-trigger(8)
+
+Changes from 1.18.99.6 to 1.18.99.7
 - reduce the number of filedescriptors opened at the same time
 - update sqlite to 3.40.0
 - fix regression in pkg lock
