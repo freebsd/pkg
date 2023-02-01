@@ -1,4 +1,10 @@
-Changes From 1.18.99.6 to 1.19
+Changes from 1.19.0 to 1.19.1
+- fix regression in pkg autoremove
+- fix regression preventing tracking files with path longer than 64 chars
+- fix build out of tree
+- fix spelling issues in pkg-trigger(8)
+
+Changes From 1.18.99.7 to 1.19
 - None
 
 Changes from 1.18.99.6 to 1.18.99.7
