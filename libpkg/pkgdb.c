@@ -2396,7 +2396,7 @@ pkgdb_compact(struct pkgdb *db)
 	 * used space.
 	 */
 
-	if (freelist_count / (float)page_count < 0.25)
+	if (freelist_count > 0 && freelist_count / (float)page_count < 0.25)
 		return (EPKG_OK);
 
 	return (sql_exec(db->sqlite, "VACUUM;"));
