@@ -6,7 +6,8 @@ tests_init \
 	pkg_no_database \
 	pkg_config_defaults \
 	pkg_create_manifest_bad_syntax \
-	pkg_repo_load_order
+	pkg_repo_load_order \
+	double_entry
 
 pkg_no_database_body() {
         atf_skip_on Linux Test fails on Linux
@@ -86,4 +87,17 @@ pkg_repo_load_order_body()
 	    -e empty \
 	    -s exit:0 \
 	    echo $out
+}
+
+double_entry_body()
+{
+	cat >> pkg.conf <<EOF
+pkg_env {}
+PKG_ENV : {
+ http_proxy: "http://10.0.0.1:3128"
+ https_proxy: "http://10.0.0.1:3128"
+ ftp_proxy: "http://10.0.0.1:3128"
+}
+EOF
+	atf_check -o ignore pkg -C ./pkg.conf -vv
 }
