@@ -512,7 +512,7 @@ static void pkg_repo_free(struct pkg_repo *r);
 static void
 connect_evpipe(const char *evpipe) {
 	struct stat st;
-	struct sockaddr_un sock;
+	struct sockaddr_un sock = { 0 };
 	int flag = O_WRONLY;
 
 	if (stat(evpipe, &st) != 0) {
@@ -537,7 +537,6 @@ connect_evpipe(const char *evpipe) {
 			pkg_emit_errno("Open event pipe", evpipe);
 			return;
 		}
-		memset(&sock, 0, sizeof(struct sockaddr_un));
 		sock.sun_family = AF_UNIX;
 		if (strlcpy(sock.sun_path, evpipe, sizeof(sock.sun_path)) >=
 		    sizeof(sock.sun_path)) {
@@ -1001,7 +1000,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
-	struct os_info oi;
+	struct os_info oi = { 0 };
 	size_t ukeylen;
 	int err = EPKG_OK;
 
@@ -1013,7 +1012,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
-	memset(&oi, 0, sizeof(oi));
 	pkg_get_myarch(myabi, BUFSIZ, &oi);
 	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
 #ifdef __FreeBSD__

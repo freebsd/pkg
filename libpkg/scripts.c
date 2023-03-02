@@ -265,13 +265,12 @@ cleanup:
 
 
 int
-pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) {
-	struct pollfd pfd;
+pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name)
+{
+	struct pollfd pfd = { 0 };
 	bool wait_for_child;
 	char msgbuf[16384+1];
 
-
-	memset(&pfd, 0, sizeof(pfd));
 	pfd.events = POLLIN | POLLERR | POLLHUP;
 	pfd.fd = inputfd;
 
