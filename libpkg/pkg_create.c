@@ -239,7 +239,7 @@ pkg_create_new(void)
 	struct pkg_create *pc;
 
 	pc = xcalloc(1, sizeof(*pc));
-	pc->format = DEFAULT_COMPRESSION;
+	pc->format = packing_format_from_string(ctx.compression_format);
 	pc->compression_level = ctx.compression_level;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
