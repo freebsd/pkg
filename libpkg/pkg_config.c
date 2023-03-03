@@ -76,6 +76,7 @@ struct pkg_ctx ctx = {
 	.osversion = 0,
 	.backup_libraries = false,
 	.triggers = true,
+	.compression_format = NULL,
 	.compression_level = -1,
 	.defer_triggers = false,
 };
@@ -467,6 +468,12 @@ static struct config_entry c[] = {
 		"AUDIT_IGNORE_REGEX",
 		NULL,
 		"List of regex to ignore while autiditing for vulnerabilities",
+	},
+	{
+		PKG_STRING,
+		"COMPRESSION_FORMAT",
+		NULL,
+		"Set the default compression format for packages creating",
 	},
 	{
 		PKG_INT,
@@ -1331,6 +1338,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
 	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
+	ctx.compression_format = pkg_object_string(pkg_config_get("COMPRESSION_FORMAT"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
 	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
