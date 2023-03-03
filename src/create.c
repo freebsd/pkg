@@ -166,6 +166,7 @@ exec_create(int argc, char **argv)
 	char	*endptr;
 	int		 ch;
 	int		 level;
+	bool		 level_is_set = false;
 	int		 ret;
 	bool		 hash = false;
 	bool		 overwrite = true;
@@ -223,6 +224,7 @@ exec_create(int argc, char **argv)
 			{
 			const char *errstr;
 
+			level_is_set = true;
 			level = strtonum(optarg, -200, 200, &errstr);
 			if (errstr == NULL)
 				break;
@@ -302,7 +304,8 @@ exec_create(int argc, char **argv)
 		if (!pkg_create_set_format(pc, format))
 			warnx("unknown format %s, using the default", format);
 	}
-	pkg_create_set_compression_level(pc, level);
+	if (level_is_set)
+	    pkg_create_set_compression_level(pc, level);
 	pkg_create_set_overwrite(pc, overwrite);
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
