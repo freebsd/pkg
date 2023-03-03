@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 1998 John D. Polstra
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2016 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,6 +64,10 @@ static void	read_dirs_from_file(const char *, const char *);
 static void	read_elf_hints(const char *, int);
 static void	write_elf_hints(const char *);
 
+static bool	match_shlib_name(const char *, bool);
+static bool	strict_match_shlib_name(const char *);
+static bool	tolerant_match_shlib_name(const char *);
+
 static const char	*dirs[MAXDIRS];
 static int		 ndirs;
 int			 insecure;
@@ -107,7 +111,7 @@ shlib_list_add(pkghash **shlib_list, const char *dir,
 	strlcpy(sl->path, dir, path_len);
 	dir_len = strlcat(sl->path, "/", path_len);
 	strlcat(sl->path, shlib_file, path_len);
-	
+
 	sl->name = sl->path + dir_len;
 
 	pkghash_safe_add(*shlib_list, sl->name, sl, free);
@@ -189,12 +193,19 @@ scan_dirs_for_shlibs(pkghash **shlib_list, int numdirs,
 
 	/* Expect shlibs to follow the name pattern libfoo.so.N if
 	   strictnames is true -- ie. when searching the default
-	   library search path.
+	   library search path.  Here, the version number N consists
+	   of typically one or three sets of digits separated by '.'
+	   characters, although we accept any number of fields.
 
 	   Otherwise, allow any name ending in .so or .so.N --
 	   ie. when searching RPATH or RUNPATH and assuming it
 	   contains private shared libraries which can follow just
-	   about any naming convention */
+	   about any naming convention.  In this case the version
+	   number may include letters and presumbably other characters
+	   and have some arbitrary number of fields.  In this case, we
+	   will recognise such things as apache loadable modules as
+	   "shared libraries."  Semantically there's a difference but
+	   functionally they work very similarly. */
 
 	for (i = 0;  i < numdirs;  i++) {
 		DIR		*dirp;
@@ -203,9 +214,7 @@ scan_dirs_for_shlibs(pkghash **shlib_list, int numdirs,
 		if ((dirp = opendir(dirlist[i])) == NULL)
 			continue;
 		while ((dp = readdir(dirp)) != NULL) {
-			int		 len;
-			int		 ret;
-			const char	*vers;
+			int	ret;
 
 			/* Only regular files and sym-links. On some
 			   filesystems d_type is not set, on these the d_type
@@ -214,31 +223,16 @@ scan_dirs_for_shlibs(pkghash **shlib_list, int numdirs,
 			    dp->d_type != DT_UNKNOWN)
 				continue;
 
-			len = strlen(dp->d_name);
-			if (strictnames) {
-				/* Name can't be shorter than "libx.so" */
-				if (len < 7 ||
-				    strncmp(dp->d_name, "lib", 3) != 0)
-					continue;
-			}
-
-			vers = dp->d_name + len;
-			while (vers > dp->d_name &&
-			       (isdigit(*(vers-1)) || *(vers-1) == '.'))
-				vers--;
-			if (vers == dp->d_name + len) {
-				if (strncmp(vers - 3, ".so", 3) != 0)
-					continue;
-			} else if (vers < dp->d_name + 3 ||
-			    strncmp(vers - 3, ".so.", 4) != 0)
-				continue;
-
-			/* We have a valid shared library name. */
-			ret = shlib_list_add(shlib_list, dirlist[i],
-					      dp->d_name);
-			if (ret != EPKG_OK) {
-				closedir(dirp);
-				return ret;
+			/* Does the name match the expected pattern
+			 * for a shared library? */
+			if (match_shlib_name(dp->d_name, strictnames)) {
+				/* We have a valid shared library name. */
+				ret = shlib_list_add(shlib_list, dirlist[i],
+						     dp->d_name);
+				if (ret != EPKG_OK) {
+					closedir(dirp);
+					return ret;
+				}
 			}
 		}
 		closedir(dirp);
@@ -256,7 +250,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	int		i, numdirs;
 	int		ret;
 	const char     *c, *cstart;
-	
+
 	/* The special token $ORIGIN should be replaced by the
 	   dirpath: adjust buflen calculation to account for this */
 
@@ -535,4 +529,74 @@ write_elf_hints(const char *hintsfile)
 	if (rename(tempname, hintsfile) == -1)
 		err(1, "rename %s to %s", tempname, hintsfile);
 	free(tempname);
+}
+
+static bool
+match_shlib_name(const char *shlib_name, bool strictnames)
+{
+	if (strictnames)
+		return (strict_match_shlib_name(shlib_name));
+	else
+		return (tolerant_match_shlib_name(shlib_name));
+}
+
+static bool
+strict_match_shlib_name(const char *shlib_name)
+{
+	int		 len;
+	const char	*vers;
+	bool		 result = false;
+
+	/* If strictnames is enabled, the library name must conform to
+	   libname.so or libname.so.N ie with a leading 'lib', a
+	   trailing '.so' and ending in an optional version string
+	   containing only a sequence of digits and '.' characters. */
+
+	len = strlen(shlib_name);
+	if (len < 3)
+		goto done;
+
+	/* Name can't be shorter than "libx.so" */
+	if (len < 7 ||
+	    strncmp(shlib_name, "lib", 3) != 0)
+		goto done;
+
+	vers = shlib_name + len;
+	while (vers > shlib_name &&
+	       (isdigit(*(vers-1)) || *(vers-1) == '.'))
+		vers--;
+
+	if (vers == shlib_name + len) {
+		if (strncmp(vers - 3, ".so", 3) != 0)
+			goto done;
+	} else if (vers < shlib_name + 3 ||
+		   strncmp(vers - 3, ".so.", 4) != 0)
+		goto done;
+
+	result = true;
+
+done:
+	return (result);
+}
+
+static bool
+tolerant_match_shlib_name(const char *shlib_name)
+{
+	int		 len;
+	const char	*vers;
+	bool		 result = false;
+
+	/* If strictnames is not enabled then so long as the name ends
+	   in '.so' or '.so.' appears anywhere, we recognise a
+	   potential shared library. */
+
+	len = strlen(shlib_name);
+	if (len >= 3) {
+		vers = shlib_name + len - 3;
+		if (strncmp(vers, ".so", 3) == 0 ||
+		    strnstr(shlib_name, ".so.", len) != NULL)
+			result = true;
+	}
+
+	return (result);
 }
