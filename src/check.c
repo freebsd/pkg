@@ -69,7 +69,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_name(dep)) != EPKG_OK) {
 			if (quiet)
-				pkg_fprintf(out->fp, "%n\t%sn\n", p, dep);
+				pkg_fprintf(out->fp, "%n\t%dn\n", p, dep);
 			else
 				pkg_fprintf(out->fp, "%n has a missing dependency: %dn\n",
 				    p, dep);
