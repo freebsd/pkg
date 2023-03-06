@@ -937,11 +937,12 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg_solved_display **displays;
 	bool first = true;
 	size_t bytes_change, limbytes;
-	struct jobs_sum_number sum = { 0 };
+	struct jobs_sum_number sum;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
 	memset(disp, 0, sizeof(*disp) * PKG_DISPLAY_MAX);
+	memset(&sum, 0, sizeof(sum));
 
 	nbtodl = 0;
 	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {

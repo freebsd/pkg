@@ -442,7 +442,9 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 {
 	char *line = NULL, *begin, *param, *value;
 	size_t linecap = 0;
-	struct pkg_cudf_entry cur_pkg = { 0 };
+	struct pkg_cudf_entry cur_pkg;
+
+	memset(&cur_pkg, 0, sizeof(cur_pkg));
 
 	while (getline(&line, &linecap, f) > 0) {
 		/* Split line, cut spaces */

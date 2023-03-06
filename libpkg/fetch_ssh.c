@@ -57,12 +57,13 @@ tcp_connect(struct pkg_repo *repo, struct url *u)
 {
 	char *line = NULL;
 	size_t linecap = 0;
-	struct addrinfo *ai = NULL, *curai, hints = { 0 };
+	struct addrinfo *ai = NULL, *curai, hints;
 	char srv[NI_MAXSERV];
 	int sd = -1;
 	int retcode;
 
 	pkg_debug(1, "TCP> tcp_connect");
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
 		hints.ai_family = PF_INET;
@@ -327,10 +328,12 @@ static int
 ssh_writev(int fd, struct iovec *iov, int iovcnt)
 {
 	struct timeval now, timeout, delta;
-	struct pollfd pfd = { 0 };
+	struct pollfd pfd;
 	ssize_t wlen, total;
 	int deltams;
 	struct msghdr msg;
+
+	memset(&pfd, 0, sizeof pfd);
 
 	if (fetchTimeout) {
 		pfd.fd = fd;

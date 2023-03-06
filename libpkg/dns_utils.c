@@ -276,14 +276,16 @@ set_nameserver(const char *nsname) {
 #ifndef HAVE___RES_SETSERVERS
 	return (-1);
 #else
-	struct __res_state res = { 0 };
+	struct __res_state res;
 	union res_sockaddr_union u[MAXNS];
 	struct addrinfo *answer = NULL;
 	struct addrinfo *cur = NULL;
-	struct addrinfo hint = { 0 };
+	struct addrinfo hint;
 	int nscount = 0;
 
 	memset(u, 0, sizeof(u));
+	memset(&hint, 0, sizeof(hint));
+	memset(&res, 0, sizeof(res));
 	hint.ai_socktype = SOCK_DGRAM;
 	hint.ai_flags = AI_NUMERICHOST;
 

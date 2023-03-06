@@ -827,7 +827,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 	int ret = EPKG_OK;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	bool checkroot;
-	struct os_info loi = { 0 };
+	struct os_info loi;
 
 	const char *abi_files[] = {
 		getenv("ABI_FILE"),
@@ -837,8 +837,10 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 
 	arch = NULL;
 
-	if (oi == NULL)
+	if (oi == NULL) {
+		memset(&loi, 0, sizeof(loi));
 		oi = &loi;
+	}
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",

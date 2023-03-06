@@ -325,10 +325,11 @@ static void
 tell_parent(int fd, char *buf, size_t len)
 {
 	struct iovec iov[2];
-	struct msghdr msg = { 0 };
+	struct msghdr msg;
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
+	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 	sendmsg(fd, &msg, MSG_EOR);
