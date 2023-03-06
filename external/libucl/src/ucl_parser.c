@@ -47,6 +47,9 @@ struct ucl_parser_saved_state {
  */
 #define ucl_chunk_skipc(chunk, p)    \
 do {                                 \
+	if (p == chunk->end) {       \
+		break;                   \
+	}                            \
 	if (*(p) == '\n') {          \
 		(chunk)->line ++;    \
 		(chunk)->column = 0; \
@@ -176,7 +179,7 @@ start:
 				if (!quoted) {
 					if (*p == '*') {
 						ucl_chunk_skipc (chunk, p);
-						if (*p == '/') {
+						if (chunk->remain > 0 && *p == '/') {
 							comments_nested --;
 							if (comments_nested == 0) {
 								if (parser->flags & UCL_PARSER_SAVE_COMMENTS) {
@@ -345,7 +348,6 @@ ucl_check_variable_safe (struct ucl_parser *parser, const char *ptr, size_t rema
 		/* Call generic handler */
 		if (parser->var_handler (ptr, remain, &dst, &dstlen, &need_free,
 				parser->var_data)) {
-			*out_len = dstlen;
 			*found = true;
 			if (need_free) {
 				free (dst);
@@ -395,6 +397,9 @@ ucl_check_variable (struct ucl_parser *parser, const char *ptr,
 			}
 			p ++;
 		}
+		if(p == end) {
+			(*out_len) ++;
+		}
 	}
 	else if (*ptr != '$') {
 		/* Not count escaped dollar sign */
@@ -418,13 +423,14 @@ ucl_check_variable (struct ucl_parser *parser, const char *ptr,
  * Expand a single variable
  * @param parser
  * @param ptr
- * @param remain
+ * @param in_len
  * @param dest
+ * @param out_len
  * @return
  */
 static const char *
 ucl_expand_single_variable (struct ucl_parser *parser, const char *ptr,
-		size_t remain, unsigned char **dest)
+		size_t in_len, unsigned char **dest, size_t out_len)
 {
 	unsigned char *d = *dest, *dst;
 	const char *p = ptr + 1, *ret;
@@ -435,7 +441,8 @@ ucl_expand_single_variable (struct ucl_parser *parser, const char *ptr,
 	bool strict = false;
 
 	ret = ptr + 1;
-	remain --;
+	/* For the $ sign */
+	in_len --;
 
 	if (*p == '$') {
 		*d++ = *p++;
@@ -444,39 +451,53 @@ ucl_expand_single_variable (struct ucl_parser *parser, const char *ptr,
 	}
 	else if (*p == '{') {
 		p ++;
+		in_len --;
 		strict = true;
 		ret += 2;
-		remain -= 2;
 	}
 
 	LL_FOREACH (parser->variables, var) {
-		if (remain >= var->var_len) {
+		if (out_len >= var->value_len && in_len >= (var->var_len + (strict ? 1 : 0))) {
 			if (memcmp (p, var->var, var->var_len) == 0) {
-				memcpy (d, var->value, var->value_len);
-				ret += var->var_len;
-				d += var->value_len;
-				found = true;
-				break;
+				if (!strict || p[var->var_len] == '}') {
+					memcpy (d, var->value, var->value_len);
+					ret += var->var_len;
+					d += var->value_len;
+					found = true;
+					break;
+				}
 			}
 		}
 	}
+
 	if (!found) {
 		if (strict && parser->var_handler != NULL) {
-			if (parser->var_handler (p, remain, &dst, &dstlen, &need_free,
+			dstlen = out_len;
+
+			if (parser->var_handler (p, in_len, &dst, &dstlen, &need_free,
 							parser->var_data)) {
-				memcpy (d, dst, dstlen);
-				ret += remain;
-				d += dstlen;
-				found = true;
-				if (need_free) {
-					free (dst);
+				if (dstlen > out_len) {
+					/* We do not have enough space! */
+					if (need_free) {
+						free (dst);
+					}
+				}
+				else {
+					memcpy(d, dst, dstlen);
+					ret += in_len;
+					d += dstlen;
+					found = true;
+
+					if (need_free) {
+						free(dst);
+					}
 				}
 			}
 		}
 
-		/* Leave variable as is */
+		/* Leave variable as is, in this case we use dest */
 		if (!found) {
-			if (strict) {
+			if (strict && out_len >= 2) {
 				/* Copy '${' */
 				memcpy (d, ptr, 2);
 				d += 2;
@@ -506,7 +527,7 @@ ucl_expand_variable (struct ucl_parser *parser, unsigned char **dst,
 		const char *src, size_t in_len)
 {
 	const char *p, *end = src + in_len;
-	unsigned char *d;
+	unsigned char *d, *d_end;
 	size_t out_len = 0;
 	bool vars_found = false;
 
@@ -517,7 +538,7 @@ ucl_expand_variable (struct ucl_parser *parser, unsigned char **dst,
 
 	p = src;
 	while (p != end) {
-		if (*p == '$') {
+		if (*p == '$' && p + 1 != end) {
 			p = ucl_check_variable (parser, p + 1, end - p - 1, &out_len, &vars_found);
 		}
 		else {
@@ -538,10 +559,11 @@ ucl_expand_variable (struct ucl_parser *parser, unsigned char **dst,
 	}
 
 	d = *dst;
+	d_end = d + out_len;
 	p = src;
-	while (p != end) {
-		if (*p == '$') {
-			p = ucl_expand_single_variable (parser, p, end - p, &d);
+	while (p != end && d != d_end) {
+		if (*p == '$' && p + 1 != end) {
+			p = ucl_expand_single_variable (parser, p, end - p, &d, d_end - d);
 		}
 		else {
 			*d++ = *p++;
@@ -686,6 +708,8 @@ ucl_parser_add_container (ucl_object_t *obj, struct ucl_parser *parser,
 			ucl_object_unref (obj);
 		}
 
+		UCL_FREE(sizeof (struct ucl_stack), st);
+
 		return NULL;
 	}
 
@@ -722,13 +746,13 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 	const char *p = start, *c = start;
 	char *endptr;
 	bool got_dot = false, got_exp = false, need_double = false,
-			is_time = false, valid_start = false, is_hex = false,
-			is_neg = false;
+			is_time = false, valid_start = false, is_hex = false;
+	int is_neg = 0;
 	double dv = 0;
 	int64_t lv = 0;
 
 	if (*p == '-') {
-		is_neg = true;
+		is_neg = 1;
 		c ++;
 		p ++;
 	}
@@ -744,6 +768,7 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 			is_hex = true;
 			allow_double = false;
 			c = p + 1;
+			p ++;
 		}
 		else if (allow_double) {
 			if (p == c) {
@@ -792,26 +817,46 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 				break;
 			}
 		}
+		else if (!allow_double && *p == '.') {
+			/* Unexpected dot */
+			*pos = start;
+			return EINVAL;
+		}
 		else {
 			break;
 		}
 	}
 
-	if (!valid_start) {
+	if (!valid_start || p == c) {
 		*pos = start;
 		return EINVAL;
 	}
 
+	char numbuf[128];
+	
+	if ((size_t)(p - c + 1) >= sizeof(numbuf)) {
+		*pos = start;
+		return EINVAL;
+	}
+	
+	if (is_neg) {
+		numbuf[0] = '-';
+		ucl_strlcpy (&numbuf[1], c, p - c + 1);
+	}
+	else {
+		ucl_strlcpy (numbuf, c, p - c + 1);
+	}
+	
 	errno = 0;
 	if (need_double) {
-		dv = strtod (c, &endptr);
+		dv = strtod (numbuf, &endptr);
 	}
 	else {
 		if (is_hex) {
-			lv = strtoimax (c, &endptr, 16);
+			lv = strtoimax (numbuf, &endptr, 16);
 		}
 		else {
-			lv = strtoimax (c, &endptr, 10);
+			lv = strtoimax (numbuf, &endptr, 10);
 		}
 	}
 	if (errno == ERANGE) {
@@ -819,14 +864,21 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 		return ERANGE;
 	}
 
-	/* Now check endptr */
+	/* Now check endptr and move it from numbuf to the real ending */
+	if (endptr != NULL) {
+		long shift = endptr - numbuf - is_neg;
+		endptr = (char *)c + shift;
+	}
+	if (endptr >= end) {
+		p = end;
+		goto set_obj;
+	}
 	if (endptr == NULL || ucl_lex_is_atom_end (*endptr) || *endptr == '\0') {
 		p = endptr;
 		goto set_obj;
 	}
 
 	if (endptr < end && endptr != start) {
-		p = endptr;
 		switch (*p) {
 		case 'm':
 		case 'M':
@@ -849,6 +901,10 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 						dv *= ucl_lex_num_multiplier (*p, false);
 					}
 					p += 2;
+					if (end - p > 0 && !ucl_lex_is_atom_end (*p)) {
+						*pos = start;
+						return EINVAL;
+					}
 					goto set_obj;
 				}
 				else if (number_bytes || (p[1] == 'b' || p[1] == 'B')) {
@@ -859,6 +915,10 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 					}
 					lv *= ucl_lex_num_multiplier (*p, true);
 					p += 2;
+					if (end - p > 0 && !ucl_lex_is_atom_end (*p)) {
+						*pos = start;
+						return EINVAL;
+					}
 					goto set_obj;
 				}
 				else if (ucl_lex_is_atom_end (p[1])) {
@@ -883,6 +943,10 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 						is_time = true;
 						dv *= 60.;
 						p += 3;
+						if (end - p > 0 && !ucl_lex_is_atom_end (*p)) {
+							*pos = start;
+							return EINVAL;
+						}
 						goto set_obj;
 					}
 				}
@@ -895,6 +959,10 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 					lv *= ucl_lex_num_multiplier (*p, number_bytes);
 				}
 				p ++;
+				if (end - p > 0 && !ucl_lex_is_atom_end (*p)) {
+					*pos = start;
+					return EINVAL;
+				}
 				goto set_obj;
 			}
 			break;
@@ -943,7 +1011,7 @@ ucl_maybe_parse_number (ucl_object_t *obj,
 	}
 	else if (endptr == end) {
 		/* Just a number at the end of chunk */
-		p = endptr;
+		p = end;
 		goto set_obj;
 	}
 
@@ -959,11 +1027,11 @@ set_obj:
 			else {
 				obj->type = UCL_TIME;
 			}
-			obj->value.dv = is_neg ? (-dv) : dv;
+			obj->value.dv = dv;
 		}
 		else {
 			obj->type = UCL_INT;
-			obj->value.iv = is_neg ? (-lv) : lv;
+			obj->value.iv = lv;
 		}
 	}
 	*pos = p;
@@ -1037,13 +1105,13 @@ ucl_lex_json_string (struct ucl_parser *parser,
 		}
 		else if (c == '\\') {
 			ucl_chunk_skipc (chunk, p);
-			c = *p;
 			if (p >= chunk->end) {
 				ucl_set_err (parser, UCL_ESYNTAX, "unfinished escape character",
 						&parser->err);
 				return false;
 			}
-			else if (ucl_test_character (c, UCL_CHARACTER_ESCAPE)) {
+			c = *p;
+			if (ucl_test_character (c, UCL_CHARACTER_ESCAPE)) {
 				if (c == 'u') {
 					ucl_chunk_skipc (chunk, p);
 					for (i = 0; i < 4 && p < chunk->end; i ++) {
@@ -1811,6 +1879,11 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk)
 					/* We allow only uppercase characters in multiline definitions */
 					while (p < chunk->end && *p >= 'A' && *p <= 'Z') {
 						p ++;
+					}
+					if(p == chunk->end) {
+						ucl_set_err (parser, UCL_ESYNTAX,
+								"unterminated multiline value", &parser->err);
+						return false;
 					}
 					if (*p =='\n') {
 						/* Set chunk positions and start multiline parsing */
@@ -2889,7 +2962,9 @@ ucl_parser_add_chunk_full (struct ucl_parser *parser, const unsigned char *data,
 
 				if (!special_handler->handler (parser, data, len, &ndata, &nlen,
 						special_handler->user_data)) {
+					UCL_FREE(sizeof (struct ucl_chunk), chunk);
 					ucl_create_err (&parser->err, "call for external handler failed");
+
 					return false;
 				}
 

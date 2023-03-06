@@ -399,7 +399,7 @@ mum_hash64 (uint64_t key, uint64_t seed) {
    target endianness and the unroll factor.  */
 static inline uint64_t
 mum_hash (const void *key, size_t len, uint64_t seed) {
-#if defined(__x86_64__) && defined(_MUM_FRESH_GCC) && _MUM_UNALIGNED_ACCESS != 0
+#if defined(__x86_64__) && defined(_MUM_FRESH_GCC)
   static int avx2_support = 0;
 
   if (avx2_support > 0)
