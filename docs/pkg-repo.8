@@ -77,7 +77,8 @@ in the repository configuration.
 contains
 .Pa filesite.yaml
 which is a database of all of the files present in all of the packages in
-the repository, containing filenames, file sizes and checksums.
+the repository, containing filenames, file sizes and checksums as described in
+.Xr pkg-repository 5 .
 Generating
 .Pa filesite.txz
 involves significant additional system resources and is not usually done.
@@ -85,8 +86,9 @@ involves significant additional system resources and is not usually done.
 .Pa packagesite.txz
 similarly contains at least one file
 .Pa packagesite.yaml ,
-which is a YAML document listing selected metadata for each of the
-packages in the repository.
+which lists selected metadata for each of the
+packages in the repository as described in
+.Xr pkg-repository 5 .
 This is the key file containing the working data used by
 .Xr pkg 8
 and includes the run-time dependencies for each package,
