@@ -85,7 +85,7 @@ exec_register(int argc, char **argv)
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EXIT_FAILURE, "malloc");
 
-	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:Nt", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Adf:i:M:m:Nt", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 		case 'd':
