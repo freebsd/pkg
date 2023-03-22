@@ -88,8 +88,6 @@ static struct pkg_manifest_key {
 	uint32_t type;
 	uint16_t valid_type;
 	int (*parse_data)(struct pkg *, const ucl_object_t *, uint32_t);
-	struct pkg_manifest_key *next;
-	struct pkg_manifest_key *prev;
 } manifest_keys[] = {
 	{ "annotations",         PKG_ANNOTATIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
@@ -214,44 +212,7 @@ static struct pkg_manifest_key {
 	{ "www",                 offsetof(struct pkg, www),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ NULL, -99, -99, NULL}
 };
-
-int
-pkg_manifest_keys_new(struct pkg_manifest_key **key)
-{
-	int i;
-	struct pkg_manifest_key *k;
-
-	if (*key != NULL)
-		return (EPKG_OK);
-
-	for (i = 0; manifest_keys[i].key != NULL; i++) {
-		k = xcalloc(1, sizeof(struct pkg_manifest_key));
-		k->key = manifest_keys[i].key;
-		k->type = manifest_keys[i].type;
-		k->valid_type = manifest_keys[i].valid_type;
-		k->parse_data = manifest_keys[i].parse_data;
-		DL_APPEND(*key, k);
-	}
-
-	return (EPKG_OK);
-}
-
-static void
-pmk_free(struct pkg_manifest_key *key)
-{
-	free(key);
-}
-
-void
-pkg_manifest_keys_free(struct pkg_manifest_key *key)
-{
-	if (key == NULL)
-		return;
-
-	LL_FREE(key, pmk_free);
-}
 
 static int
 urlencode(const char *src, xstring **dest)
@@ -272,7 +233,6 @@ urlencode(const char *src, xstring **dest)
 	fflush((*dest)->fp);
 	return (EPKG_OK);
 }
-
 
 static int
 urldecode(const char *src, xstring **dest)
@@ -775,12 +735,20 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	return (EPKG_OK);
 }
 
+static struct pkg_manifest_key *
+select_manifest_key(const char *key)
+{
+	for (int i = 0; i < NELEM(manifest_keys); i++)
+		if (strcmp(manifest_keys[i].key, key) == 0)
+			return (&(manifest_keys[i]));
+	return (NULL);
+}
 static int
-parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj)
+parse_manifest(struct pkg *pkg, ucl_object_t *obj)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
-	struct pkg_manifest_key *selected_key;
+	struct pkg_manifest_key *selected_key = NULL;
 	const char *key;
 	int ret = EPKG_OK;
 
@@ -789,20 +757,16 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		if (key == NULL)
 			continue;
 		pkg_debug(3, "Manifest: found key: '%s'", key);
-		LL_FOREACH(keys, selected_key) {
-			if (strcmp(selected_key->key, key) == 0)
-				break;
-		}
-		if (selected_key != NULL) {
-			if (TYPE_SHIFT(ucl_object_type(cur)) & selected_key->valid_type) {
-				ret = selected_key->parse_data(pkg, cur, selected_key->type);
-				if (ret != EPKG_OK)
-					return (ret);
-			} else {
-				pkg_emit_error("Skipping malformed key '%s'", key);
-			}
-		} else {
+		if ((selected_key = select_manifest_key(key)) == NULL) {
 			pkg_debug(1, "Skipping unknown key '%s'", key);
+			continue;
+		}
+		if (TYPE_SHIFT(ucl_object_type(cur)) & selected_key->valid_type) {
+			ret = selected_key->parse_data(pkg, cur, selected_key->type);
+			if (ret != EPKG_OK)
+				return (ret);
+		} else {
+			pkg_emit_error("Skipping malformed key '%s'", key);
 		}
 	}
 
@@ -810,11 +774,11 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 }
 
 int
-pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_key *keys)
+pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *obj)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
-	struct pkg_manifest_key *sk;
+	struct pkg_manifest_key *sk = NULL;
 	const char *key;
 
 	/* do a minimal validation */
@@ -822,24 +786,20 @@ pkg_parse_manifest_ucl (struct pkg *pkg, ucl_object_t *obj, struct pkg_manifest_
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
-		LL_FOREACH(keys, sk) {
-			if (strcmp(sk->key, key) == 0)
-				break;
-		}
-		if (sk != NULL) {
-			if (!(sk->valid_type & TYPE_SHIFT(ucl_object_type(cur)))) {
-				pkg_emit_error("Bad format in manifest for key:"
-						" %s", key);
-				return (EPKG_FATAL);
-			}
+		if ((sk = select_manifest_key(key)) == NULL)
+			continue;
+		if (!(sk->valid_type & TYPE_SHIFT(ucl_object_type(cur)))) {
+			pkg_emit_error("Bad format in manifest for key:"
+				" %s", key);
+			return (EPKG_FATAL);
 		}
 	}
 
-	return (parse_manifest(pkg, keys, obj));
+	return (parse_manifest(pkg, obj));
 }
 
 int
-pkg_parse_manifest(struct pkg *pkg, const char *buf, size_t len, struct pkg_manifest_key *keys)
+pkg_parse_manifest(struct pkg *pkg, const char *buf, size_t len)
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;
@@ -865,15 +825,14 @@ pkg_parse_manifest(struct pkg *pkg, const char *buf, size_t len, struct pkg_mani
 	}
 
 	ucl_parser_free(p);
-	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
+	rc = pkg_parse_manifest_ucl(pkg, obj);
 	ucl_object_unref(obj);
 
 	return (rc);
 }
 
 int
-pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
-    struct pkg_manifest_key *keys)
+pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file)
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;
@@ -906,7 +865,7 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 	}
 	ucl_parser_free(p);
 
-	rc = pkg_parse_manifest_ucl(pkg, obj, keys);
+	rc = pkg_parse_manifest_ucl(pkg, obj);
 	ucl_object_unref(obj);
 	free(data);
 
@@ -914,9 +873,9 @@ pkg_parse_manifest_fileat(int dfd, struct pkg *pkg, const char *file,
 }
 
 int
-pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_key *keys)
+pkg_parse_manifest_file(struct pkg *pkg, const char *file)
 {
-	return pkg_parse_manifest_fileat(AT_FDCWD, pkg, file, keys);
+	return pkg_parse_manifest_fileat(AT_FDCWD, pkg, file);
 }
 
 int

@@ -426,7 +426,6 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *pkg, unsigned flags)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
-	struct pkg_manifest_key *keys = NULL;
 	struct pkg *cached = NULL;
 	char path[MAXPATHLEN];
 	int rc;
@@ -458,13 +457,12 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	/*
 	 * Try to get that information from fetched package in cache
 	 */
-	pkg_manifest_keys_new(&keys);
 
 	if (pkg_repo_cached_name(pkg, path, sizeof(path)) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	pkg_debug(1, "Binary> loading %s", path);
-	if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK) {
+	if (pkg_open(&cached, path, PKG_OPEN_TRY) != EPKG_OK) {
 		pkg_free(cached);
 		return EPKG_FATAL;
 	}

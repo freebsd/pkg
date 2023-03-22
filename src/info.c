@@ -94,7 +94,6 @@ exec_info(int argc, char **argv)
 	bool pkg_exists = false;
 	bool origin_search = false;
 	bool e_flag = false;
-	struct pkg_manifest_key *keys = NULL;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
@@ -287,17 +286,15 @@ exec_info(int argc, char **argv)
 #endif
 		if (opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
-		pkg_manifest_keys_new(&keys);
 
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
 			open_flags = PKG_OPEN_MANIFEST_COMPACT;
 
-		if (pkg_open_fd(&pkg, fd, keys, open_flags) != EPKG_OK) {
+		if (pkg_open_fd(&pkg, fd, open_flags) != EPKG_OK) {
 			close(fd);
 			return (1);
 		}
-		pkg_manifest_keys_free(keys);
 		print_info(pkg, opt);
 		close(fd);
 		pkg_free(pkg);

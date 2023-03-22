@@ -657,7 +657,7 @@ ucl_object_t *pkg_lua_script_to_ucl(stringlist_t *);
 int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
-	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
+	      const char *path, int flags, int fd);
 
 int pkg_validate(struct pkg *pkg, struct pkgdb *db);
 
@@ -748,11 +748,9 @@ char *pkg_checksum_generate_fileat(int fd, const char *path,
     pkg_checksum_type_t type);
 
 int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location,
-    struct pkg *rp, struct pkg *lp, struct triggers *);
+    const char *location, struct pkg *rp, struct pkg *lp, struct triggers *);
 int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location, struct pkg *rp,
-    struct triggers *);
+    const char *location, struct pkg *rp, struct triggers *);
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file);
 int pkg_open_root_fd(struct pkg *pkg);

@@ -465,11 +465,11 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 /* TODO use file descriptor for rootdir */
 static int
 load_manifest(struct pkg *pkg, const char *metadata, const char *plist,
-    struct pkg_manifest_key *keys, const char *rootdir)
+    const char *rootdir)
 {
 	int ret;
 
-	ret = pkg_parse_manifest_file(pkg, metadata, keys);
+	ret = pkg_parse_manifest_file(pkg, metadata);
 
 	if (ret == EPKG_OK && plist != NULL)
 		ret = ports_parse_plist(pkg, plist, rootdir);
@@ -481,29 +481,23 @@ static int
 load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
     const char *rootdir)
 {
-	struct pkg_manifest_key *keys = NULL;
 	regex_t preg;
 	regmatch_t pmatch[2];
 	size_t size;
 	int fd, i;
 
-	pkg_manifest_keys_new(&keys);
-
 	/* Let's see if we have a directory or a manifest */
 	if ((fd = open(metadata, O_DIRECTORY|O_CLOEXEC)) == -1) {
 		if (errno == ENOTDIR)
-			return (load_manifest(pkg, metadata, plist, keys, rootdir));
+			return (load_manifest(pkg, metadata, plist, rootdir));
 		pkg_emit_errno("open", metadata);
-		pkg_manifest_keys_free(keys);
 		return (EPKG_FATAL);
 	}
 
-	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST", keys)) != EPKG_OK) {
-		pkg_manifest_keys_free(keys);
+	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST")) != EPKG_OK) {
 		close(fd);
 		return (EPKG_FATAL);
 	}
-	pkg_manifest_keys_free(keys);
 
 	pkg_load_message_from_file(fd, pkg, "+DISPLAY");
 	if (pkg->desc == NULL)

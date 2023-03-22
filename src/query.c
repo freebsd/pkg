@@ -891,7 +891,6 @@ exec_query(int argc, char **argv)
 	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
-	struct pkg_manifest_key	*keys = NULL;
 	char			*pkgname = NULL;
 	int			 query_flags = PKG_LOAD_BASIC;
 	match_t			 match = MATCH_EXACT;
@@ -1000,12 +999,10 @@ exec_query(int argc, char **argv)
 		} else if ((query_flags & PKG_LOAD_FILES) == 0) {
 			open_flags = PKG_OPEN_MANIFEST_ONLY;
 		}
-		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, pkgname, keys, open_flags) != EPKG_OK) {
+		if (pkg_open(&pkg, pkgname, open_flags) != EPKG_OK) {
 			return (EXIT_FAILURE);
 		}
 
-		pkg_manifest_keys_free(keys);
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
 		return (EXIT_SUCCESS);

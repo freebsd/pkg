@@ -291,7 +291,6 @@ exec_clean(int argc, char **argv)
 	int		 cachefd = -1;
 	size_t		 total = 0;
 	char		 size[8];
-	struct pkg_manifest_key *keys = NULL;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
@@ -382,7 +381,6 @@ exec_clean(int argc, char **argv)
 
 	/* Build the list of out-of-date or obsolete packages */
 
-	pkg_manifest_keys_new(&keys);
 	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
 	    &total);
 	pkghash_destroy(sumlist);
@@ -411,7 +409,6 @@ exec_clean(int argc, char **argv)
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
-	pkg_manifest_keys_free(keys);
 	tll_free_and_free(dl, free);
 
 	if (cachefd != -1)

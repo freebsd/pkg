@@ -999,8 +999,7 @@ pkg_globmatch(char *pattern, const char *name)
 
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
-	const char *path, int flags,
-	struct pkg_manifest_key *keys, const char *location)
+	const char *path, int flags, const char *location)
 {
 	const char	*arch;
 	int	ret, retcode;
@@ -1098,8 +1097,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(dpath, F_OK) == 0) {
-			ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC,
-					keys, location);
+			ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, location);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1200,7 +1198,7 @@ pkg_add_triggers(void)
 
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *reloc, struct pkg *remote,
+    const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t)
 {
 	struct archive		*a;
@@ -1223,7 +1221,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path, keys, 0, -1);
+	ret = pkg_open2(&pkg, &a, &ae, path, 0, -1);
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {
@@ -1250,8 +1248,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Additional checks for non-remote package
 	 */
 	if (remote == NULL) {
-		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, keys,
-		    reloc);
+		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, reloc);
 		if (ret != EPKG_OK) {
 			/* Do not return error on installed package */
 			retcode = (ret == EPKG_INSTALLED ? EPKG_OK : ret);
@@ -1428,28 +1425,28 @@ cleanup:
 
 int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location)
+    const char *location)
 {
-	return pkg_add_common(db, path, flags, keys, location, NULL, NULL, NULL);
+	return pkg_add_common(db, path, flags, location, NULL, NULL, NULL);
 }
 
 int
 pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location, struct pkg *rp, struct triggers *t)
+    const char *location, struct pkg *rp, struct triggers *t)
 {
-	return pkg_add_common(db, path, flags, keys, location, rp, NULL, t);
+	return pkg_add_common(db, path, flags, location, rp, NULL, t);
 }
 
 int
 pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
-    struct pkg_manifest_key *keys, const char *location,
+    const char *location,
     struct pkg *rp, struct pkg *lp, struct triggers *t)
 {
 	if (pkgdb_ensure_loaded(db, lp,
 	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	return pkg_add_common(db, path, flags, keys, location, rp, lp, t);
+	return pkg_add_common(db, path, flags, location, rp, lp, t);
 }
 
 int

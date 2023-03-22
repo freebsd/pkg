@@ -344,7 +344,6 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 	int flags, ret = EPKG_OK;
 	size_t sz;
 	struct pkg *pkg = NULL;
-	struct pkg_manifest_key *keys = NULL;
 	char *mdigest = NULL;
 	char digestbuf[1024];
 	xstring *b;
@@ -372,7 +371,6 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 		break;
 	}
 
-	pkg_manifest_keys_new(&keys);
 	pkg_debug(1, "start worker to parse packages");
 
 	if (ffd != -1)
@@ -432,7 +430,7 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 		repopath = mp_decode_str(&rbuf, &len);
 		if (len == 0) /* empty package name means ends of repo */
 			break;
-		if (pkg_open(&pkg, path, keys, flags) == EPKG_OK) {
+		if (pkg_open(&pkg, path, flags) == EPKG_OK) {
 			off_t mpos, fpos = 0;
 			size_t mlen;
 			struct stat st;
@@ -529,7 +527,6 @@ pkg_create_repo_worker(int mfd, int ffd, int pip,
 	}
 
 cleanup:
-	pkg_manifest_keys_free(keys);
 	xstring_free(b);
 	close(pip);
 	free(mdigest);

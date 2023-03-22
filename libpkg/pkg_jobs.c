@@ -1051,7 +1051,6 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg = NULL;
-	struct pkg_manifest_key *keys = NULL;
 	struct pkg_job_request *req;
 
 	if (!(jp->flags & PKG_PATTERN_FLAG_FILE)) {
@@ -1071,14 +1070,12 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
 	}
 	else {
-		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, jp->path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
+		if (pkg_open(&pkg, jp->path, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
 			rc = EPKG_FATAL;
 		} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
 			if (j->type == PKG_JOBS_UPGRADE && pkg_jobs_installed_local_pkg(j, pkg) != EPKG_OK) {
 				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
 							pkg->name);
-				pkg_manifest_keys_free(keys);
 				return (EPKG_NOTINSTALLED);
 			}
 			pkg->type = PKG_FILE;
@@ -1093,7 +1090,6 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 					jp->pattern);
 			rc = EPKG_FATAL;
 		}
-		pkg_manifest_keys_free(keys);
 	}
 
 	return (rc);
@@ -2038,8 +2034,7 @@ pkg_jobs_type(struct pkg_jobs *j)
 }
 
 static int
-pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
-		struct pkg_manifest_key *keys)
+pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 {
 	struct pkg *new, *old;
 	struct pkg_job_request *req;
@@ -2094,9 +2089,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j,
 		flags |= PKG_ADD_AUTOMATIC;
 
 	if (old != NULL)
-		retcode = pkg_add_upgrade(j->db, target, flags, keys, NULL, new, old, &j->triggers);
+		retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old, &j->triggers);
 	else
-		retcode = pkg_add_from_remote(j->db, target, flags, keys, NULL, new, &j->triggers);
+		retcode = pkg_add_from_remote(j->db, target, flags, NULL, new, &j->triggers);
 
 	return (retcode);
 }
@@ -2123,7 +2118,6 @@ static int
 pkg_jobs_execute(struct pkg_jobs *j)
 {
 	struct pkg *p;
-	struct pkg_manifest_key *keys = NULL;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
 
@@ -2154,8 +2148,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		return (retcode);
 
 	pkg_plugins_hook_run(pre, j, j->db);
-
-	pkg_manifest_keys_new(&keys);
 
 	pkg_jobs_set_priorities(j);
 
@@ -2195,7 +2187,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_INSTALL:
 		case PKG_SOLVED_UPGRADE_INSTALL:
 		case PKG_SOLVED_UPGRADE:
-			retcode = pkg_jobs_handle_install(ps, j, keys);
+			retcode = pkg_jobs_handle_install(ps, j);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
@@ -2212,7 +2204,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
-	pkg_manifest_keys_free(keys);
 
 	return (retcode);
 }

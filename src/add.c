@@ -72,7 +72,6 @@ exec_add(int argc, char **argv)
 	int i;
 	int failedpkgcount = 0;
 	pkg_flags f = PKG_FLAG_NONE;
-	struct pkg_manifest_key *keys = NULL;
 	const char *location = NULL;
 
 	/* options descriptor */
@@ -140,7 +139,6 @@ exec_add(int argc, char **argv)
 	}
 
 	failedpkgs = xstring_new();
-	pkg_manifest_keys_new(&keys);
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			const char *name = strrchr(argv[i], '/');
@@ -176,7 +174,7 @@ exec_add(int argc, char **argv)
 
 		}
 
-		if ((retcode = pkg_add(db, file, f, keys, location)) != EPKG_OK) {
+		if ((retcode = pkg_add(db, file, f, location)) != EPKG_OK) {
 			fprintf(failedpkgs->fp, "%s", argv[i]);
 			if (i != argc - 1)
 				fprintf(failedpkgs->fp, ", ");
@@ -187,7 +185,6 @@ exec_add(int argc, char **argv)
 			unlink(file);
 
 	}
-	pkg_manifest_keys_free(keys);
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 	

@@ -361,7 +361,7 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 
 static int
 pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
-		struct pkg_manifest_key **keys, struct pkg **p __unused,
+		struct pkg **p __unused,
 		struct pkg_repo *repo)
 {
 	int rc = EPKG_OK;
@@ -372,8 +372,7 @@ pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 	if (rc != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_manifest_keys_new(keys);
-	rc = pkg_parse_manifest(pkg, buf, len, *keys);
+	rc = pkg_parse_manifest(pkg, buf, len);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -462,7 +461,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
-	struct pkg_manifest_key *keys = NULL;
 	size_t len = 0;
 	bool in_trans = false;
 	char *path = NULL;
@@ -533,7 +531,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		if ((cnt % 10 ) == 0)
 			pkg_emit_progress_tick(totallen, len);
 		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
-		    &keys, &pkg, repo);
+		    &pkg, repo);
 		if (rc != EPKG_OK) {
 			pkg_emit_progress_tick(len, len);
 			break;
@@ -573,7 +571,6 @@ cleanup:
 		free(path);
 	}
 	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
-	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
 	free(line);
 	if (f != NULL)
