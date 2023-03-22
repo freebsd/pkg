@@ -1,12 +1,7 @@
 LIBPKG_1.4 {
 global:
-	pkg_kvlist_iterator;
-	pkg_kvlist_next;
-	pkg_stringlist_iterator;
-	pkg_stringlist_next;
 	pkg_absolutepath;
 	pkg_add;
-	pkg_add_from_remote;
 	pkg_add_port;
 	pkg_add_triggers;
 	pkg_adddep;
@@ -18,11 +13,13 @@ global:
 	pkg_audit_fetch;
 	pkg_audit_free;
 	pkg_audit_is_vulnerable;
+	pkg_audit_issues_free;
 	pkg_audit_load;
 	pkg_audit_new;
 	pkg_audit_process;
 	pkg_cache_full_clean;
 	pkg_categories;
+	pkg_close_devnull;
 	pkg_compiled_for_same_os_major;
 	pkg_config_dump;
 	pkg_config_files;
@@ -36,6 +33,7 @@ global:
 	pkg_create_new;
 	pkg_create_repo;
 	pkg_create_set_compression_level;
+	pkg_create_set_expand_manifest;
 	pkg_create_set_format;
 	pkg_create_set_output_dir;
 	pkg_create_set_overwrite;
@@ -50,6 +48,7 @@ global:
 	pkg_emit_manifest;
 	pkg_emit_manifest_file;
 	pkg_event_register;
+	pkg_execute_deferred_triggers;
 	pkg_fetch_file;
 	pkg_fetch_file_tmp;
 	pkg_files;
@@ -60,7 +59,9 @@ global:
 	pkg_get_cachedirfd;
 	pkg_get_dbdirfd;
 	pkg_get_dir;
+	pkg_get_element;
 	pkg_get_file;
+	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;
@@ -87,6 +88,8 @@ global:
 	pkg_jobs_solve;
 	pkg_jobs_total;
 	pkg_jobs_type;
+	pkg_kvlist_iterator;
+	pkg_kvlist_next;
 	pkg_license_name;
 	pkg_licenses;
 	pkg_list_count;
@@ -106,6 +109,7 @@ global:
 	pkg_object_string;
 	pkg_object_type;
 	pkg_open;
+	pkg_open_devnull;
 	pkg_open_fd;
 	pkg_options;
 	pkg_parse_manifest;
@@ -126,6 +130,7 @@ global:
 	pkg_plugins_init;
 	pkg_plugins_shutdown;
 	pkg_printf;
+	pkg_provides;
 	pkg_rdeps;
 	pkg_recompute;
 	pkg_repo_cached_name;
@@ -142,10 +147,13 @@ global:
 	pkg_repos;
 	pkg_repos_activated_count;
 	pkg_repos_total_count;
+	pkg_requires;
 	pkg_script_get;
 	pkg_set2;
 	pkg_set_debug_level;
 	pkg_set_rootdir;
+	pkg_shlibs_provided;
+	pkg_shlibs_required;
 	pkg_shutdown;
 	pkg_snprintf;
 	pkg_solve_dimacs_export;
@@ -157,10 +165,13 @@ global:
 	pkg_solve_sat_to_jobs;
 	pkg_sshserve;
 	pkg_status;
+	pkg_stringlist_iterator;
+	pkg_stringlist_next;
 	pkg_test_filesum;
 	pkg_try_installed;
 	pkg_type;
 	pkg_update;
+	pkg_users;
 	pkg_utils_count_spaces;
 	pkg_utils_tokenize;
 	pkg_vasprintf;
@@ -187,6 +198,7 @@ global:
 	pkgdb_open;
 	pkgdb_open_all;
 	pkgdb_query;
+	pkgdb_query_cond;
 	pkgdb_query_provide;
 	pkgdb_query_require;
 	pkgdb_query_shlib_provide;
@@ -197,6 +209,7 @@ global:
 	pkgdb_release_lock;
 	pkgdb_remote_init;
 	pkgdb_repo_query;
+	pkgdb_repo_query_cond;
 	pkgdb_repo_search;
 	pkgdb_rquery_provide;
 	pkgdb_set2;
