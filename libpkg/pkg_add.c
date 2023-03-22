@@ -1098,6 +1098,86 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		}
 	}
 
+	tll_foreach(pkg->shlibs_required, s) {
+		struct pkg *founddep = NULL;
+		if (pkgdb_is_shlib_provided(db, s->item))
+			continue;
+
+		if (fromstdin) {
+			pkg_emit_error("Missing shlib dependency: %s", s->item);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
+		}
+		tll_foreach(localpkgs, p) {
+			tll_foreach(p->item->shlibs_provided, sp) {
+				if (strcmp(sp->item, s->item) == 0) {
+					founddep = p->item;
+					break;
+				}
+			}
+			if (founddep != NULL)
+				break;
+		}
+		if (founddep == NULL) {
+			pkg_emit_error("Missing shlib dependency: %s", s->item);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
+		}
+		if ((flags & PKG_ADD_UPGRADE) == 0 &&
+				access(founddep->repopath, F_OK) == 0) {
+			ret = pkg_add(db, founddep->repopath, PKG_ADD_AUTOMATIC, location);
+
+			if (ret != EPKG_OK)
+				goto cleanup;
+		} else {
+			pkg_emit_missing_dep(pkg, dep);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+		}
+	}
+
+	tll_foreach(pkg->requires, s) {
+		struct pkg *founddep = NULL;
+		if (pkgdb_is_provided(db, s->item))
+			continue;
+
+		if (fromstdin) {
+			pkg_emit_error("Missing require dependency: %s", s->item);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
+		}
+		tll_foreach(localpkgs, p) {
+			tll_foreach(p->item->provides, sp) {
+				if (strcmp(sp->item, s->item) == 0) {
+					founddep = p->item;
+					break;
+				}
+			}
+			if (founddep != NULL)
+				break;
+		}
+		if (founddep == NULL) {
+			pkg_emit_error("Missing require dependency: %s", s->item);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
+		}
+		if ((flags & PKG_ADD_UPGRADE) == 0 &&
+				access(founddep->repopath, F_OK) == 0) {
+			ret = pkg_add(db, founddep->repopath, PKG_ADD_AUTOMATIC, location);
+
+			if (ret != EPKG_OK)
+				goto cleanup;
+		} else {
+			pkg_emit_missing_dep(pkg, dep);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+		}
+	}
+
 	retcode = EPKG_OK;
 cleanup:
 	tll_free_and_free(localpkgs, pkg_free);

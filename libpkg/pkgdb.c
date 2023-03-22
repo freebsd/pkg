@@ -3029,3 +3029,53 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 
 	return (EPKG_OK);
 }
+
+bool
+pkgdb_is_shlib_provided(struct pkgdb *db, const char *req)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	bool found = false;
+
+	const char *sql = ""
+		"select package_id from pkg_shlibs_provided INNER JOIN shlibs "
+		"on pkg_shlibs_provided.shlib_id = shlibs.id "
+		"where shlibs.name=?1" ;
+
+	stmt = prepare_sql(db->sqlite, sql);
+	if (stmt == NULL)
+		return (false);
+
+	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
+	ret = sqlite3_step(stmt);
+	if (ret == SQLITE_ROW)
+		found = true;
+
+	sqlite3_finalize(stmt);
+	return (found);
+}
+
+bool
+pkgdb_is_provided(struct pkgdb *db, const char *req)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	bool found = false;
+
+	const char *sql = ""
+		"select package_id from pkg_provides INNER JOIN provides "
+		"on pkg_provides.provide_id = provides.id "
+		"where provides.provide = ?1" ;
+
+	stmt = prepare_sql(db->sqlite, sql);
+	if (stmt == NULL)
+		return (false);
+
+	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
+	ret = sqlite3_step(stmt);
+	if (ret == SQLITE_ROW)
+		found = true;
+
+	sqlite3_finalize(stmt);
+	return (found);
+}

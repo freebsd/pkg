@@ -182,4 +182,7 @@ void pkgdb_nfs_corruption(sqlite3 *s);
 bool pkgdb_file_exists(struct pkgdb *db, const char *path);
 struct sqlite3_stmt *prepare_sql(sqlite3 *s, const char *sql);
 
+bool pkgdb_is_provided(struct pkgdb *db, const char *req);
+bool pkgdb_is_shlib_provided(struct pkgdb *db, const char *req);
+
 #endif
