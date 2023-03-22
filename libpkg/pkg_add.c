@@ -956,45 +956,21 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	return (EPKG_OK);
 }
 
-static char *
-pkg_globmatch(char *pattern, const char *name)
+static bool
+should_append_pkg(pkg_chain_t *localpkgs, struct pkg *p)
 {
-	glob_t g;
-	int i;
-	char *buf, *buf2;
-	char *path = NULL;
-
-	if (glob(pattern, 0, NULL, &g) == GLOB_NOMATCH) {
-		globfree(&g);
-
-		return (NULL);
-	}
-
-	for (i = 0; i < g.gl_pathc; i++) {
-		/* the version starts here */
-		buf = strrchr(g.gl_pathv[i], '-');
-		if (buf == NULL)
-			continue;
-		buf2 = strrchr(g.gl_pathv[i], '/');
-		if (buf2 == NULL)
-			buf2 = g.gl_pathv[i];
-		else
-			buf2++;
-		/* ensure we have match the proper name */
-		if (strncmp(buf2, name, buf - buf2) != 0)
-			continue;
-		if (path == NULL) {
-			path = g.gl_pathv[i];
-			continue;
+	/* only keep the highest version is we fine one */
+	tll_foreach(*localpkgs, lp) {
+		if (strcmp(lp->item->name, p->name) == 0) {
+			if (pkg_version_cmp(lp->item->version, p->version) == 1) {
+				tll_remove_and_free(*localpkgs, lp, pkg_free);
+				return (true);
+			}
+			return (false);
 		}
-		if (pkg_version_cmp(path, g.gl_pathv[i]) == 1)
-			path = g.gl_pathv[i];
 	}
-	if (path)
-		path = xstrdup(path);
-	globfree(&g);
-
-	return (path);
+	/* none found we should append */
+	return (true);
 }
 
 static int
@@ -1005,10 +981,10 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN], *basedir = NULL;
-	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
 	bool	fromstdin;
+	pkg_chain_t localpkgs = tll_init();
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
@@ -1062,9 +1038,29 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 
 	retcode = EPKG_FATAL;
 	pkg_emit_add_deps_begin(pkg);
+	if (!fromstdin) {
+		glob_t g;
+		char *pattern;
+
+		xasprintf(&pattern, "%s/*%s" , bd, ext);
+		if (glob(pattern, 0, NULL, &g) == 0) {
+			for (int i = 0; i <g.gl_pathc; i++) {
+				struct pkg *p = NULL;
+				if (pkg_open(&p, g.gl_pathv[i],
+				    PKG_OPEN_MANIFEST_ONLY) == EPKG_OK) {
+					if (should_append_pkg(&localpkgs, p)) {
+						p->repopath = xstrdup(g.gl_pathv[i]);
+						tll_push_back(localpkgs, p);
+					}
+				}
+			}
+		}
+		globfree(&g);
+		free(pattern);
+	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		dpath[0] = '\0';
+		struct pkg *founddep = NULL;
 
 		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
@@ -1076,28 +1072,22 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			continue;
 		}
 
-		if (dep->version != NULL && dep->version[0] != '\0') {
-			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", bd,
-				dep->name, dep->version, ext);
-		}
-
-		if (strlen(dpath) == 0 || access(dpath, F_OK) != 0) {
-			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", bd,
-			    dep->name, ext);
-			ppath = pkg_globmatch(dpath, dep->name);
-			if (ppath == NULL) {
-				pkg_emit_missing_dep(pkg, dep);
-				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-					goto cleanup;
-				continue;
+		tll_foreach(localpkgs, p) {
+			if (strcmp(p->item->name, dep->name) == 0) {
+				founddep = p->item;
+				break;
 			}
-			strlcpy(dpath, ppath, sizeof(dpath));
-			free(ppath);
+		}
+		if (founddep == NULL) {
+			pkg_emit_missing_dep(pkg, dep);
+			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+			continue;
 		}
 
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(dpath, F_OK) == 0) {
-			ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, location);
+				access(founddep->repopath, F_OK) == 0) {
+			ret = pkg_add(db, founddep->repopath, PKG_ADD_AUTOMATIC, location);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1110,6 +1100,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 
 	retcode = EPKG_OK;
 cleanup:
+	tll_free_and_free(localpkgs, pkg_free);
 	pkg_emit_add_deps_finished(pkg);
 
 	return (retcode);
