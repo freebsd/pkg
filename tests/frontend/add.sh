@@ -268,7 +268,7 @@ deps {
 EOF
 	atf_check -o ignore -s exit:0 pkg create -M test.ucl
 	atf_check -o ignore -s exit:0 pkg create -M final.ucl
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 2
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	atf_check -o ignore -s exit:0 pkg create -M test.ucl
 	atf_check -o "match:.*test-2.*" -e ignore -s exit:0 \
 		pkg add final-1.pkg

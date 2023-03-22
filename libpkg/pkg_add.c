@@ -962,7 +962,7 @@ should_append_pkg(pkg_chain_t *localpkgs, struct pkg *p)
 	/* only keep the highest version is we fine one */
 	tll_foreach(*localpkgs, lp) {
 		if (strcmp(lp->item->name, p->name) == 0) {
-			if (pkg_version_cmp(lp->item->version, p->version) == 1) {
+			if (pkg_version_cmp(lp->item->version, p->version) == -1) {
 				tll_remove_and_free(*localpkgs, lp, pkg_free);
 				return (true);
 			}
