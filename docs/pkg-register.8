@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd August 13, 2021
+.Dd March 22, 2023
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -31,13 +31,13 @@
 .Fl M Ar metadatafile
 .Pp
 .Nm
-.Op Cm --{debug,legacy,test,no-registration}
+.Op Cm --{debug,test,no-registration}
 .Op Cm --relocate Ar location
 .Op Cm --plist Ar plist-file
 .Cm --metadata Ar metadatadir
 .Cm --root Ar input-path
 .Nm
-.Op Cm --{debug,legacy,test,no-registration}
+.Op Cm --{debug,test,no-registration}
 .Op Cm --relocate Ar location
 .Cm --manifest Ar metadatafile
 .Sh DESCRIPTION
@@ -123,14 +123,6 @@ Specifies a
 style packing list file.
 .It Fl i Ar input-path , Cm --root Ar input-path
 Specifies the package input path or staging directory.
-.It Fl l , Cm --legacy
-Tells
-.Nm
-to generate an old-style package registry entry in a sub-directory of
-.Sy $PKG_DBDIR
-rather than updating the
-.Fa local.sqlite
-database.
 .It  Fl M Ar manifest , Cm --manifest Ar manifest
 Specifies the package manifest file.
 Use of this option means that the only file which will be used as a

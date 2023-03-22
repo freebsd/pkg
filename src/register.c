@@ -42,9 +42,9 @@
 void
 usage_register(void)
 {
-	fprintf(stderr, "Usage: pkg register [-ldtN] [-i <input-path>]"
+	fprintf(stderr, "Usage: pkg register [-dtN] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
-	fprintf(stderr, "       pkg register [-ldtN] [-i <input_path>]"
+	fprintf(stderr, "       pkg register [-dtN] [-i <input_path>]"
 		        " -M <manifest>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
@@ -61,7 +61,6 @@ exec_register(int argc, char **argv)
 	const char	*input_path = NULL;
 	const char	*location   = NULL;
 
-	bool		 legacy        = false;
 	bool		 testing_mode  = false;
 	bool		 reg_in_db = true;
 
@@ -73,7 +72,6 @@ exec_register(int argc, char **argv)
 	struct option longopts[] = {
 		{ "automatic",	no_argument,		NULL,	'A' },
 		{ "debug",      no_argument,		NULL,	'd' },
-		{ "legacy",	no_argument,		NULL,	'l' },
 		{ "manifest",	required_argument,	NULL,	'M' },
 		{ "metadata",	required_argument,	NULL,	'm' },
 		{ "no-registration", no_argument,	NULL,	'N' },
@@ -98,9 +96,6 @@ exec_register(int argc, char **argv)
 			break;
 		case 'i':
 			input_path = optarg;
-			break;
-		case 'l':
-			legacy = true;
 			break;
 		case 'M':
 			mfile = optarg;
@@ -198,7 +193,7 @@ exec_register(int argc, char **argv)
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (!legacy && retcode == EPKG_OK && messages != NULL) {
+	if (retcode == EPKG_OK && messages != NULL) {
 		fflush(messages->fp);
 		printf("%s\n", messages->buf);
 	}
