@@ -112,7 +112,7 @@ audit_base() {
 		f="-F"
 	else
 		echo -n 'Database fetched: '
-		date -r "${then}" || rc=3
+		date -r "${then}" -Iminutes || rc=3
 	fi
 
 	# cannot check kernel in jail or chroot

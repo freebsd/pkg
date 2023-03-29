@@ -76,7 +76,7 @@ audit_pkgs() {
 		${pkgcmd} ${pkgargs} audit -F $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
 	else
 		echo -n 'Database fetched: '
-		date -r "${then}" || rc=3
+		date -r "${then}" -Iminutes || rc=3
 		${pkgcmd} ${pkgargs} audit $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
 	fi
 
