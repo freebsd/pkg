@@ -18,6 +18,7 @@ options {
 	with-coverage => "build with llvm coverage support"
 	with-asan => "build with libasan support"
 	with-ubsan => "Build with libubsan support"
+	without-procctl => "build explicitly without procctl hardening"
 	default-format:txz => "Default compression format: tzst, txz (default), tbz, tar"
 }
 
@@ -217,7 +218,11 @@ if {![cc-check-functions __res_query]} {
 }
 
 cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
-	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
+	sys/statfs.h sys/statvfs.h libutil.h
+
+if {![opt-bool without-procctl]} {
+	cc-check-includes sys/procctl.h
+}
 
 # for compat
 cc-check-includes dirent.h
