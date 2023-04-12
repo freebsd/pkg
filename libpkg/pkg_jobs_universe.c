@@ -614,13 +614,33 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 			return (rc);
 		break;
 	case PKG_JOBS_AUTOREMOVE:
+		rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
+		if (rc != EPKG_OK)
+			return (rc);
+		rc = pkg_jobs_universe_process_shlibs(universe, pkg);
+		if (rc != EPKG_OK)
+			return (rc);
+		rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
+		if (rc != EPKG_OK)
+			return (rc);
+		break;
 		/* XXX */
 		break;
 	case PKG_JOBS_DEINSTALL:
 		/* For delete jobs we worry only about local reverse deps */
 		flags |= DEPS_FLAG_REVERSE|DEPS_FLAG_FORCE_LOCAL;
-		if (job_flags & PKG_FLAG_RECURSIVE)
+		if (job_flags & PKG_FLAG_RECURSIVE) {
 			rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
+			if (rc != EPKG_OK)
+				return (rc);
+			rc = pkg_jobs_universe_process_shlibs(universe, pkg);
+			if (rc != EPKG_OK)
+				return (rc);
+			rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
+			if (rc != EPKG_OK)
+				return (rc);
+			break;
+		}
 		break;
 	}
 
