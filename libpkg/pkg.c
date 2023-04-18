@@ -182,155 +182,183 @@ pkg_is_valid(const struct pkg * restrict pkg)
 	return (EPKG_OK);
 }
 
-static int
-pkg_vset(struct pkg *pkg, va_list ap)
+int
+pkg_set_i(struct pkg *pkg, pkg_attr attr, int64_t val)
 {
-	int attr;
-	const char *buf;
-	ucl_object_t *obj;
-
-	while ((attr = va_arg(ap, int)) > 0) {
-		if (attr >= PKG_ATTR_NUM_FIELDS || attr <= 0) {
-			pkg_emit_error("Bad argument on pkg_set %d", attr);
-			return (EPKG_FATAL);
-		}
-
-		switch (attr) {
-		case PKG_ATTR_NAME:
-			free(pkg->name);
-			pkg->name = xstrdup(va_arg(ap, const char *));
-			free(pkg->uid);
-			pkg->uid = xstrdup(pkg->name);
-			break;
-		case PKG_ATTR_ORIGIN:
-			free(pkg->origin);
-			pkg->origin = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_VERSION:
-			free(pkg->version);
-			pkg->version = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_COMMENT:
-			free(pkg->comment);
-			pkg->comment = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_DESC:
-			free(pkg->desc);
-			pkg->desc = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_MTREE:
-			(void)va_arg(ap, const char *);
-			break;
-		case PKG_ATTR_MESSAGE:
-			tll_free_and_free(pkg->message, pkg_message_free);
-			buf = va_arg(ap, const char *);
-			if (*buf == '[') {
-				pkg_message_from_str(pkg, buf, strlen(buf));
-			} else {
-				obj = ucl_object_fromstring_common(buf, strlen(buf),
-				    UCL_STRING_RAW|UCL_STRING_TRIM);
-				pkg_message_from_ucl(pkg, obj);
-				ucl_object_unref(obj);
-			}
-			break;
-		case PKG_ATTR_ARCH:
-			free(pkg->arch);
-			pkg->arch = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_ABI:
-			free(pkg->abi);
-			pkg->abi = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_MAINTAINER:
-			free(pkg->maintainer);
-			pkg->maintainer = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_WWW:
-			free(pkg->www);
-			pkg->www = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_PREFIX:
-			free(pkg->prefix);
-			pkg->prefix = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_REPOPATH:
-			free(pkg->repopath);
-			pkg->repopath = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_CKSUM:
-			free(pkg->sum);
-			pkg->sum = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_OLD_VERSION:
-			free(pkg->old_version);
-			pkg->old_version = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_REPONAME:
-			free(pkg->reponame);
-			pkg->reponame = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_REPOURL:
-			free(pkg->repourl);
-			pkg->repourl = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_DIGEST:
-			free(pkg->digest);
-			pkg->digest = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_REASON:
-			free(pkg->reason);
-			pkg->reason = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_FLATSIZE:
-			pkg->flatsize = va_arg(ap, int64_t);
-			break;
-		case PKG_ATTR_OLD_FLATSIZE:
-			pkg->old_flatsize = va_arg(ap, int64_t);
-			break;
-		case PKG_ATTR_PKGSIZE:
-			pkg->pkgsize = va_arg(ap, int64_t);
-			break;
-		case PKG_ATTR_LICENSE_LOGIC:
-			pkg->licenselogic = (lic_t)va_arg(ap, int);
-			break;
-		case PKG_ATTR_AUTOMATIC:
-			pkg->automatic = (bool)va_arg(ap, int);
-			break;
-		case PKG_ATTR_ROWID:
-			pkg->id = va_arg(ap, int64_t);
-			break;
-		case PKG_ATTR_LOCKED:
-			pkg->locked = (bool)va_arg(ap, int);
-			break;
-		case PKG_ATTR_TIME:
-			pkg->timestamp = va_arg(ap, int64_t);
-			break;
-		case PKG_ATTR_DEP_FORMULA:
-			free(pkg->dep_formula);
-			pkg->dep_formula = xstrdup(va_arg(ap, const char *));
-			break;
-		case PKG_ATTR_VITAL:
-			pkg->vital = (bool)va_arg(ap, int);
-			break;
-		}
+	switch (attr) {
+	case PKG_ATTR_FLATSIZE:
+		pkg->flatsize = val;
+		break;
+	case PKG_ATTR_OLD_FLATSIZE:
+		pkg->old_flatsize = val;
+		break;
+	case PKG_ATTR_PKGSIZE:
+		pkg->pkgsize = val;
+		break;
+	case PKG_ATTR_TIME:
+		pkg->timestamp = val;
+		break;
+	default:
+		pkg_emit_error("%d does not accept int64_t values", attr);
+		return (EPKG_FATAL);
 	}
-
 	return (EPKG_OK);
 }
 
 int
-pkg_set2(struct pkg *pkg, ...)
+pkg_set_b(struct pkg *pkg, pkg_attr attr, bool boolean)
 {
-	int ret = EPKG_OK;
-	va_list ap;
+	switch (attr) {
+	case PKG_ATTR_AUTOMATIC:
+		pkg->automatic = boolean;
+		break;
+	case PKG_ATTR_LOCKED:
+		pkg->automatic = boolean;
+		break;
+	case PKG_ATTR_VITAL:
+		pkg->vital = boolean;
+		break;
+	default:
+		pkg_emit_error("%d does not accept bool values", attr);
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
 
-	assert(pkg != NULL);
+int
+pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
+{
+	char *endptr;
+	ucl_object_t *obj;
+	int64_t i;
 
-	va_start(ap, pkg);
-	ret = pkg_vset(pkg, ap);
-	va_end(ap);
-
-	return (ret);
+	switch (attr) {
+	case PKG_ATTR_NAME:
+		free(pkg->name);
+		pkg->name = xstrdup(str);
+		free(pkg->uid);
+		pkg->name = xstrdup(str);
+		break;
+	case PKG_ATTR_ORIGIN:
+		free(pkg->origin);
+		pkg->origin = xstrdup(str);
+		break;
+	case PKG_ATTR_VERSION:
+		free(pkg->version);
+		pkg->version = xstrdup(str);
+		break;
+	case PKG_ATTR_DESC:
+		free(pkg->desc);
+		pkg->desc = xstrdup(str);
+		break;
+	case PKG_ATTR_COMMENT:
+		free(pkg->comment);
+		pkg->comment = xstrdup(str);
+		break;
+	case PKG_ATTR_MESSAGE:
+		tll_free_and_free(pkg->message, pkg_message_free);
+		if (*str == '[') {
+			pkg_message_from_str(pkg, str, strlen(str));
+		} else {
+			obj = ucl_object_fromstring_common(str, strlen(str),
+			    UCL_STRING_RAW|UCL_STRING_TRIM);
+			pkg_message_from_ucl(pkg, obj);
+			ucl_object_unref(obj);
+		}
+		break;
+	case PKG_ATTR_ARCH:
+		free(pkg->arch);
+		pkg->arch = xstrdup(str);
+		break;
+	case PKG_ATTR_ABI:
+		free(pkg->abi);
+		pkg->abi = xstrdup(str);
+		break;
+	case PKG_ATTR_MAINTAINER:
+		free(pkg->maintainer);
+		pkg->maintainer = xstrdup(str);
+		break;
+	case PKG_ATTR_WWW:
+		free(pkg->www);
+		pkg->www = xstrdup(str);
+		break;
+	case PKG_ATTR_PREFIX:
+		free(pkg->prefix);
+		pkg->prefix = xstrdup(str);
+		break;
+	case PKG_ATTR_REPOPATH:
+		free(pkg->repopath);
+		pkg->repopath = xstrdup(str);
+		break;
+	case PKG_ATTR_CKSUM:
+		free(pkg->sum);
+		pkg->sum = xstrdup(str);
+		break;
+	case PKG_ATTR_OLD_VERSION:
+		free(pkg->old_version);
+		pkg->old_version = xstrdup(str);
+		break;
+	case PKG_ATTR_REPONAME:
+		free(pkg->reponame);
+		pkg->reponame = xstrdup(str);
+		break;
+	case PKG_ATTR_REPOURL:
+		free(pkg->repourl);
+		pkg->repourl = xstrdup(str);
+		break;
+	case PKG_ATTR_DIGEST:
+		free(pkg->digest);
+		pkg->digest = xstrdup(str);
+		break;
+	case PKG_ATTR_REASON:
+		free(pkg->reason);
+		pkg->reason = xstrdup(str);
+		break;
+	case PKG_ATTR_DEP_FORMULA:
+		free(pkg->dep_formula);
+		pkg->dep_formula = xstrdup(str);
+		break;
+	case PKG_ATTR_FLATSIZE:
+		i = strtoimax(str, &endptr, 10);
+		if (endptr != NULL) {
+			pkg_emit_error("Impossible to convert '%s' to int64_t",
+			    str);
+			return (EPKG_FATAL);
+		}
+		pkg->flatsize = i;
+		break;
+	case PKG_ATTR_OLD_FLATSIZE:
+		i = strtoimax(str, &endptr, 10);
+		if (endptr != NULL) {
+			pkg_emit_error("Impossible to convert '%s' to int64_t",
+			    str);
+			return (EPKG_FATAL);
+		}
+		pkg->old_flatsize = i;
+		break;
+	case PKG_ATTR_PKGSIZE:
+		i = strtoimax(str, &endptr, 10);
+		if (endptr != NULL) {
+			pkg_emit_error("Impossible to convert '%s' to int64_t",
+			    str);
+			return (EPKG_FATAL);
+		}
+		pkg->pkgsize = i;
+		break;
+	case PKG_ATTR_TIME:
+		i = strtoimax(str, &endptr, 10);
+		if (endptr != NULL) {
+			pkg_emit_error("Impossible to convert '%s' to int64_t",
+			    str);
+			return (EPKG_FATAL);
+		}
+		pkg->timestamp = i;
+		break;
+	default:
+		pkg_emit_error("%d does not accept string values", attr);
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
 }
 
 int

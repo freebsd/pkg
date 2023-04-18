@@ -719,12 +719,6 @@ int pkg_config_files(const struct pkg *pkg, struct pkg_config_file **cf);
 
 int pkg_analyse_files(struct pkgdb *, struct pkg *, const char *);
 
-/**
- * Generic setter for simple attributes.
- */
-int pkg_set2(struct pkg *pkg, ...);
-#define pkg_set(pkg, ...) pkg_set2(pkg, __VA_ARGS__, -1)
-
 int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
@@ -1783,6 +1777,16 @@ pkg_get_invalid(struct pkg *p __unused, pkg_attr a __unused, void *v __unused)
 	abort();
 }
 
+int pkg_set_s(struct pkg *pkg, pkg_attr a, const char *val);
+int pkg_set_i(struct pkg *pkg, pkg_attr a, int64_t i);
+int pkg_set_b(struct pkg *pkg, pkg_attr a, bool b);
+static inline int
+pkg_set_invalid(struct pkg *p __unused, pkg_attr a __unused, void *v __unused)
+{
+	fprintf(stderr, "Invalid attribute type for pkg_set\n");
+	abort();
+}
+
 #define pkg_get(p, t, a) _Generic((a), \
 	const char **: pkg_get_s, \
 	int64_t *: pkg_get_i, \
@@ -1790,6 +1794,13 @@ pkg_get_invalid(struct pkg *p __unused, pkg_attr a __unused, void *v __unused)
 	struct pkg_kvlist **: pkg_get_kv, \
 	struct pkg_stringlist **: pkg_get_sl, \
 	default: pkg_get_invalid)(p, t, a)
+
+#define pkg_set(p, t, a) _Generic((a), \
+	const char *: pkg_set_s, \
+	char *: pkg_set_s, \
+	int64_t: pkg_set_i, \
+	bool: pkg_set_b, \
+	default: pkg_set_invalid)(p, t, a)
 
 #ifdef __cplusplus
 }

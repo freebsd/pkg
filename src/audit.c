@@ -298,10 +298,9 @@ exec_audit(int argc, char **argv)
 			}
 			if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
 				err(EXIT_FAILURE, "malloc");
+			pkg_set(pkg, PKG_ATTR_NAME, name);
 			if (version != NULL)
-				pkg_set(pkg, PKG_ATTR_NAME, name, PKG_ATTR_VERSION, version);
-			else
-				pkg_set(pkg, PKG_ATTR_NAME, name);
+				pkg_set(pkg, PKG_ATTR_VERSION, version);
 			add_to_check(check, pkg);
 			pkg = NULL;
 		}
