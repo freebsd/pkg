@@ -44,23 +44,28 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 
-#define PKG_UNKNOWN		-1
-#define PKG_DEPS		-2
-#define PKG_FILES		-3
-#define PKG_DIRS		-4
-#define PKG_SCRIPTS		-5
-#define PKG_OPTIONS		-8
-#define PKG_OPTION_DEFAULTS	-9
-#define PKG_OPTION_DESCRIPTIONS	-10
-#define PKG_USERS		-11
-#define PKG_GROUPS		-12
-#define PKG_DIRECTORIES		-13
-#define PKG_SHLIBS_REQUIRED	-14
-#define PKG_SHLIBS_PROVIDED	-15
-#define PKG_CONFLICTS		-17
-#define PKG_PROVIDES		-18
-#define PKG_REQUIRES		-19
-#define PKG_LUA_SCRIPTS		-20
+enum {
+	MANIFEST_ANNOTATIONS,
+	MANIFEST_CATEGORIES,
+	MANIFEST_CONFIG_FILES,
+	MANIFEST_CONFLICTS,
+	MANIFEST_DEPS,
+	MANIFEST_DIRECTORIES,
+	MANIFEST_DIRS,
+	MANIFEST_FILES,
+	MANIFEST_GROUPS,
+	MANIFEST_LICENSES,
+	MANIFEST_LUA_SCRIPTS,
+	MANIFEST_OPTIONS,
+	MANIFEST_OPTION_DEFAULTS,
+	MANIFEST_OPTION_DESCRIPTIONS,
+	MANIFEST_PROVIDES,
+	MANIFEST_REQUIRES,
+	MANIFEST_SCRIPTS,
+	MANIFEST_SHLIBS_PROVIDED,
+	MANIFEST_SHLIBS_REQUIRED,
+	MANIFEST_USERS,
+};
 
 #define PKG_MESSAGE_LEGACY	1
 #define PKG_MESSAGE_NEW 2
@@ -89,7 +94,7 @@ static struct pkg_manifest_key {
 	uint16_t valid_type;
 	int (*parse_data)(struct pkg *, const ucl_object_t *, uint32_t);
 } manifest_keys[] = {
-	{ "annotations",         PKG_ANNOTATIONS,
+	{ "annotations",         MANIFEST_ANNOTATIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "abi",                 offsetof(struct pkg, abi),
@@ -98,49 +103,49 @@ static struct pkg_manifest_key {
 	{ "arch",                offsetof(struct pkg, arch),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "categories",          PKG_CATEGORIES,
+	{ "categories",          MANIFEST_CATEGORIES,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "comment",             offsetof(struct pkg, comment),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "conflicts",           PKG_CONFLICTS,
+	{ "conflicts",           MANIFEST_CONFLICTS,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
-	{ "config",              PKG_CONFIG_FILES,
+	{ "config",              MANIFEST_CONFIG_FILES,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "dep_formula",         offsetof(struct pkg, dep_formula),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "deps",                PKG_DEPS,
+	{ "deps",                MANIFEST_DEPS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "desc",                offsetof(struct pkg, desc) | STRING_FLAG_URLDECODE,
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "directories",         PKG_DIRECTORIES,
+	{ "directories",         MANIFEST_DIRECTORIES,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
-	{ "dirs",                PKG_DIRS,
+	{ "dirs",                MANIFEST_DIRS,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
-	{ "files",               PKG_FILES,
+	{ "files",               MANIFEST_FILES,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "flatsize",            offsetof(struct pkg, flatsize),
 			TYPE_SHIFT(UCL_INT),    pkg_int},
 
-	{ "groups",              PKG_GROUPS,
+	{ "groups",              MANIFEST_GROUPS,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "licenselogic",        offsetof(struct pkg, licenselogic) | STRING_FLAG_LICENSE,
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "licenses",            PKG_LICENSES,
+	{ "licenses",            MANIFEST_LICENSES,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
-	{ "lua_scripts",         PKG_LUA_SCRIPTS,
+	{ "lua_scripts",         MANIFEST_LUA_SCRIPTS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "maintainer",          offsetof(struct pkg, maintainer),
@@ -155,13 +160,13 @@ static struct pkg_manifest_key {
 	{ "name",                offsetof(struct pkg, name),
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 
-	{ "options",             PKG_OPTIONS,
+	{ "options",             MANIFEST_OPTIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
-	{ "option_defaults",     PKG_OPTION_DEFAULTS,
+	{ "option_defaults",     MANIFEST_OPTION_DEFAULTS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
-	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS,
+	{ "option_descriptions", MANIFEST_OPTION_DESCRIPTIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "origin",              offsetof(struct pkg, origin),
@@ -179,28 +184,28 @@ static struct pkg_manifest_key {
 	{ "prefix",              offsetof(struct pkg, prefix),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "provides",            PKG_PROVIDES,
+	{ "provides",            MANIFEST_PROVIDES,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
-	{ "requires",            PKG_REQUIRES,
+	{ "requires",            MANIFEST_REQUIRES,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
-	{ "scripts",             PKG_SCRIPTS,
+	{ "scripts",             MANIFEST_SCRIPTS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
-	{ "shlibs",              PKG_SHLIBS_REQUIRED,
+	{ "shlibs",              MANIFEST_SHLIBS_REQUIRED,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array}, /* Backwards compat with 1.0.x packages */
 
-	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,
+	{ "shlibs_provided",     MANIFEST_SHLIBS_PROVIDED,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
-	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,
+	{ "shlibs_required",     MANIFEST_SHLIBS_REQUIRED,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "sum",                 offsetof(struct pkg, sum),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "users",               PKG_USERS,
+	{ "users",               MANIFEST_USERS,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "version",             offsetof(struct pkg, version),
@@ -379,21 +384,21 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 	pkg_debug(3, "%s", "Manifest: parsing array");
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		switch (attr) {
-		case PKG_CATEGORIES:
+		case MANIFEST_CATEGORIES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed category");
 			else
 				pkg_addstring(&pkg->categories,
 				    ucl_object_tostring(cur), "category");
 			break;
-		case PKG_LICENSES:
+		case MANIFEST_LICENSES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed license");
 			else
 				pkg_addstring(&pkg->licenses,
 				    ucl_object_tostring(cur), "license");
 			break;
-		case PKG_USERS:
+		case MANIFEST_USERS:
 			if (cur->type == UCL_STRING)
 				pkg_adduser(pkg, ucl_object_tostring(cur));
 			else if (cur->type == UCL_OBJECT)
@@ -401,7 +406,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			else
 				pkg_emit_error("Skipping malformed license");
 			break;
-		case PKG_GROUPS:
+		case MANIFEST_GROUPS:
 			if (cur->type == UCL_STRING)
 				pkg_addgroup(pkg, ucl_object_tostring(cur));
 			else if (cur->type == UCL_OBJECT)
@@ -409,7 +414,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			else
 				pkg_emit_error("Skipping malformed license");
 			break;
-		case PKG_DIRS:
+		case MANIFEST_DIRS:
 			if (cur->type == UCL_STRING)
 				pkg_adddir(pkg, ucl_object_tostring(cur), false);
 			else if (cur->type == UCL_OBJECT)
@@ -417,31 +422,31 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			else
 				pkg_emit_error("Skipping malformed dirs");
 			break;
-		case PKG_SHLIBS_REQUIRED:
+		case MANIFEST_SHLIBS_REQUIRED:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed required shared library");
 			else
 				pkg_addshlib_required(pkg, ucl_object_tostring(cur));
 			break;
-		case PKG_SHLIBS_PROVIDED:
+		case MANIFEST_SHLIBS_PROVIDED:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed provided shared library");
 			else
 				pkg_addshlib_provided(pkg, ucl_object_tostring(cur));
 			break;
-		case PKG_CONFLICTS:
+		case MANIFEST_CONFLICTS:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed conflict name");
 			else
 				pkg_addconflict(pkg, ucl_object_tostring(cur));
 			break;
-		case PKG_PROVIDES:
+		case MANIFEST_PROVIDES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed provide name");
 			else
 				pkg_addprovide(pkg, ucl_object_tostring(cur));
 			break;
-		case PKG_CONFIG_FILES:
+		case MANIFEST_CONFIG_FILES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed config file name");
 			else {
@@ -450,7 +455,7 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 					return (ret);
 			}
 			break;
-		case PKG_REQUIRES:
+		case MANIFEST_REQUIRES:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed require name");
 			else
@@ -479,21 +484,21 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		if (key == NULL)
 			continue;
 		switch (attr) {
-		case PKG_DEPS:
+		case MANIFEST_DEPS:
 			if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY)
 				pkg_emit_error("Skipping malformed dependency %s",
 				    key);
 			else
 				pkg_set_deps_from_object(pkg, cur);
 			break;
-		case PKG_DIRS:
+		case MANIFEST_DIRS:
 			if (cur->type != UCL_OBJECT)
 				pkg_emit_error("Skipping malformed dirs %s",
 				    key);
 			else
 				pkg_set_dirs_from_object(pkg, cur);
 			break;
-		case PKG_DIRECTORIES:
+		case MANIFEST_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {
 				urldecode(key, &tmp);
 				pkg_adddir(pkg, tmp->buf, false);
@@ -507,7 +512,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				    key);
 			}
 			break;
-		case PKG_FILES:
+		case MANIFEST_FILES:
 			if (cur->type == UCL_STRING) {
 				buf = ucl_object_tolstring(cur, &len);
 				urldecode(key, &tmp);
@@ -518,7 +523,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				pkg_emit_error("Skipping malformed files %s",
 				   key);
 			break;
-		case PKG_OPTIONS:
+		case MANIFEST_OPTIONS:
 			if (cur->type != UCL_STRING && cur->type != UCL_BOOLEAN)
 				pkg_emit_error("Skipping malformed option %s",
 				    key);
@@ -528,7 +533,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				pkg_addoption(pkg, key, ucl_object_toboolean(cur) ? "on" : "off");
 			}
 			break;
-		case PKG_OPTION_DEFAULTS:
+		case MANIFEST_OPTION_DEFAULTS:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed option default %s",
 				    key);
@@ -536,7 +541,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				pkg_addoption_default(pkg, key,
 				    ucl_object_tostring(cur));
 			break;
-		case PKG_OPTION_DESCRIPTIONS:
+		case MANIFEST_OPTION_DESCRIPTIONS:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed option description %s",
 				    key);
@@ -544,7 +549,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				pkg_addoption_description(pkg, key,
 				    ucl_object_tostring(cur));
 			break;
-		case PKG_SCRIPTS:
+		case MANIFEST_SCRIPTS:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed scripts %s",
 				    key);
@@ -560,7 +565,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				pkg_addscript(pkg, tmp->buf, script_type);
 			}
 			break;
-		case PKG_LUA_SCRIPTS:
+		case MANIFEST_LUA_SCRIPTS:
 			if (cur->type != UCL_ARRAY) {
 				pkg_emit_error("Skipping malformed dependency %s",
 				    key);
@@ -574,7 +579,7 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			}
 			pkg_lua_script_from_ucl(pkg, cur, lua_script_type);
 			break;
-		case PKG_ANNOTATIONS:
+		case MANIFEST_ANNOTATIONS:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed annotation %s",
 				    key);
