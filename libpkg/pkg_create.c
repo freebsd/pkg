@@ -309,7 +309,7 @@ pkg_create_set_overwrite(struct pkg_create *pc, bool overwrite)
 }
 
 static int
-hash_file(struct pkg_create *pc, struct pkg *pkg)
+hash_file(struct pkg *pkg)
 {
 	char hash_dest[MAXPATHLEN];
 	char filename[MAXPATHLEN];
@@ -362,7 +362,7 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 	packing_finish(pkg_archive);
 
 	if (hash && ret == EPKG_OK)
-		ret = hash_file(pc, pkg);
+		ret = hash_file(pkg);
 
 	return (ret);
 }
@@ -403,7 +403,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 
 	packing_finish(pkg_archive);
 	if (hash && ret == EPKG_OK)
-		ret = hash_file(pc, pkg);
+		ret = hash_file(pkg);
 
 	pkg_free(pkg);
 	return (ret);
