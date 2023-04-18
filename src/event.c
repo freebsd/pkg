@@ -876,14 +876,14 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_fprintf(conflicts->fp, "  - %n-%v",
 		    ev->e_conflicts.p1, ev->e_conflicts.p1);
 		if (pkg_repos_total_count() > 1) {
-			pkg_get_string(ev->e_conflicts.p1, PKG_REPONAME, reponame);
+			pkg_get_string(ev->e_conflicts.p1, PKG_ATTR_REPONAME, reponame);
 			fprintf(conflicts->fp, " [%s]",
 			    reponame == NULL ? "installed" : reponame);
 		}
 		pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
 		    ev->e_conflicts.p2, ev->e_conflicts.p2);
 		if (pkg_repos_total_count() > 1) {
-			pkg_get_string(ev->e_conflicts.p2, PKG_REPONAME, reponame);
+			pkg_get_string(ev->e_conflicts.p2, PKG_ATTR_REPONAME, reponame);
 			fprintf(conflicts->fp, " [%s]",
 			    reponame == NULL ? "installed" : reponame);
 		}

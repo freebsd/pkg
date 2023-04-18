@@ -79,7 +79,7 @@ add_to_check(pkghash *check, struct pkg *pkg)
 {
 	const char *uid;
 
-	pkg_get_string(pkg, PKG_UNIQUEID, uid);
+	pkg_get_string(pkg, PKG_ATTR_UNIQUEID, uid);
 	pkghash_safe_add(check, uid, pkg, NULL);
 }
 
@@ -122,7 +122,7 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 	const struct pkg_audit_entry *e;
 	struct pkg_audit_cve *cve;
 
-	pkg_get_string(p, PKG_VERSION, version);
+	pkg_get_string(p, PKG_ATTR_VERSION, version);
 
 	e = issue->audit;
 	if (version == NULL) {
@@ -299,9 +299,9 @@ exec_audit(int argc, char **argv)
 			if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
 				err(EXIT_FAILURE, "malloc");
 			if (version != NULL)
-				pkg_set(pkg, PKG_NAME, name, PKG_VERSION, version);
+				pkg_set(pkg, PKG_ATTR_NAME, name, PKG_ATTR_VERSION, version);
 			else
-				pkg_set(pkg, PKG_NAME, name);
+				pkg_set(pkg, PKG_ATTR_NAME, name);
 			add_to_check(check, pkg);
 			pkg = NULL;
 		}
@@ -395,7 +395,7 @@ exec_audit(int argc, char **argv)
 
 				if (top == NULL) {
 					affected += issues->count;
-					pkg_get_string(pkg, PKG_VERSION, version);
+					pkg_get_string(pkg, PKG_ATTR_VERSION, version);
 					if (quiet) {
 						if (version != NULL)
 							pkg_printf("%n-%v\n", pkg, pkg);
@@ -414,8 +414,8 @@ exec_audit(int argc, char **argv)
 					if (vuln_objs == NULL)
 						vuln_objs = ucl_object_typed_new(UCL_OBJECT);
 					obj = ucl_object_typed_new(UCL_OBJECT);
-					pkg_get_string(pkg, PKG_NAME, name);
-					pkg_get_string(pkg, PKG_VERSION, version);
+					pkg_get_string(pkg, PKG_ATTR_NAME, name);
+					pkg_get_string(pkg, PKG_ATTR_VERSION, version);
 					if (version != NULL)
 						ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7 , false);
 					ucl_object_insert_key(obj, ucl_object_fromint(issues->count), "issue_count", 11, false);
@@ -437,7 +437,7 @@ exec_audit(int argc, char **argv)
 					pkghash *seen = pkghash_new();
 
 					if (name == NULL)
-						pkg_get_string(pkg, PKG_NAME, name);
+						pkg_get_string(pkg, PKG_ATTR_NAME, name);
 					if (top == NULL) {
 						printf("  Packages that depend on %s: ", name);
 					} else {

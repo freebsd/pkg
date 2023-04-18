@@ -36,7 +36,7 @@ ATF_TC_BODY(pkg_add_dir_to_del, tc)
 	struct pkg *p = NULL;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
-	pkg_set(p, PKG_PREFIX, "/usr/local");
+	pkg_set(p, PKG_ATTR_PREFIX, "/usr/local");
 
 	ATF_REQUIRE_EQ(tll_length(p->dir_to_del), 0);
 

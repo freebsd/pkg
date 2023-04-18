@@ -84,7 +84,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 	const char	*version;
 	int		 cout;
 
-	pkg_get_string(pkg, PKG_VERSION, version);
+	pkg_get_string(pkg, PKG_ATTR_VERSION, version);
 	if (ver == NULL) {
 		if (source == NULL)
 			key = "!";
@@ -424,8 +424,8 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get_string(pkg, PKG_NAME, name);
-		pkg_get_string(pkg, PKG_ORIGIN, origin);
+		pkg_get_string(pkg, PKG_ATTR_NAME, name);
+		pkg_get_string(pkg, PKG_ATTR_ORIGIN, origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
@@ -500,8 +500,8 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get_string(pkg, PKG_NAME, name);
-		pkg_get_string(pkg, PKG_ORIGIN, origin);
+		pkg_get_string(pkg, PKG_ATTR_NAME, name);
+		pkg_get_string(pkg, PKG_ATTR_ORIGIN, origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
@@ -525,7 +525,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC)
 		    == EPKG_OK) {
-			pkg_get_string(pkg_remote, PKG_VERSION, version_remote);
+			pkg_get_string(pkg_remote, PKG_ATTR_VERSION, version_remote);
 			print_version(pkg, "remote", version_remote, limchar,
 			    opt);
 		} else {
@@ -748,8 +748,8 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	cmd = xstring_new();
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get_string(pkg, PKG_NAME, name);
-		pkg_get_string(pkg, PKG_ORIGIN, origin);
+		pkg_get_string(pkg, PKG_ATTR_NAME, name);
+		pkg_get_string(pkg, PKG_ATTR_ORIGIN, origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&

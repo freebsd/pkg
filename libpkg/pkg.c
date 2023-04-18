@@ -190,38 +190,38 @@ pkg_vset(struct pkg *pkg, va_list ap)
 	ucl_object_t *obj;
 
 	while ((attr = va_arg(ap, int)) > 0) {
-		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
+		if (attr >= PKG_ATTR_NUM_FIELDS || attr <= 0) {
 			pkg_emit_error("Bad argument on pkg_set %d", attr);
 			return (EPKG_FATAL);
 		}
 
 		switch (attr) {
-		case PKG_NAME:
+		case PKG_ATTR_NAME:
 			free(pkg->name);
 			pkg->name = xstrdup(va_arg(ap, const char *));
 			free(pkg->uid);
 			pkg->uid = xstrdup(pkg->name);
 			break;
-		case PKG_ORIGIN:
+		case PKG_ATTR_ORIGIN:
 			free(pkg->origin);
 			pkg->origin = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_VERSION:
+		case PKG_ATTR_VERSION:
 			free(pkg->version);
 			pkg->version = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_COMMENT:
+		case PKG_ATTR_COMMENT:
 			free(pkg->comment);
 			pkg->comment = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_DESC:
+		case PKG_ATTR_DESC:
 			free(pkg->desc);
 			pkg->desc = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_MTREE:
+		case PKG_ATTR_MTREE:
 			(void)va_arg(ap, const char *);
 			break;
-		case PKG_MESSAGE:
+		case PKG_ATTR_MESSAGE:
 			tll_free_and_free(pkg->message, pkg_message_free);
 			buf = va_arg(ap, const char *);
 			if (*buf == '[') {
@@ -233,83 +233,83 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				ucl_object_unref(obj);
 			}
 			break;
-		case PKG_ARCH:
+		case PKG_ATTR_ARCH:
 			free(pkg->arch);
 			pkg->arch = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_ABI:
+		case PKG_ATTR_ABI:
 			free(pkg->abi);
 			pkg->abi = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_MAINTAINER:
+		case PKG_ATTR_MAINTAINER:
 			free(pkg->maintainer);
 			pkg->maintainer = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_WWW:
+		case PKG_ATTR_WWW:
 			free(pkg->www);
 			pkg->www = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_PREFIX:
+		case PKG_ATTR_PREFIX:
 			free(pkg->prefix);
 			pkg->prefix = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_REPOPATH:
+		case PKG_ATTR_REPOPATH:
 			free(pkg->repopath);
 			pkg->repopath = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_CKSUM:
+		case PKG_ATTR_CKSUM:
 			free(pkg->sum);
 			pkg->sum = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_OLD_VERSION:
+		case PKG_ATTR_OLD_VERSION:
 			free(pkg->old_version);
 			pkg->old_version = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_REPONAME:
+		case PKG_ATTR_REPONAME:
 			free(pkg->reponame);
 			pkg->reponame = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_REPOURL:
+		case PKG_ATTR_REPOURL:
 			free(pkg->repourl);
 			pkg->repourl = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_DIGEST:
+		case PKG_ATTR_DIGEST:
 			free(pkg->digest);
 			pkg->digest = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_REASON:
+		case PKG_ATTR_REASON:
 			free(pkg->reason);
 			pkg->reason = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_FLATSIZE:
+		case PKG_ATTR_FLATSIZE:
 			pkg->flatsize = va_arg(ap, int64_t);
 			break;
-		case PKG_OLD_FLATSIZE:
+		case PKG_ATTR_OLD_FLATSIZE:
 			pkg->old_flatsize = va_arg(ap, int64_t);
 			break;
-		case PKG_PKGSIZE:
+		case PKG_ATTR_PKGSIZE:
 			pkg->pkgsize = va_arg(ap, int64_t);
 			break;
-		case PKG_LICENSE_LOGIC:
+		case PKG_ATTR_LICENSE_LOGIC:
 			pkg->licenselogic = (lic_t)va_arg(ap, int);
 			break;
-		case PKG_AUTOMATIC:
+		case PKG_ATTR_AUTOMATIC:
 			pkg->automatic = (bool)va_arg(ap, int);
 			break;
-		case PKG_ROWID:
+		case PKG_ATTR_ROWID:
 			pkg->id = va_arg(ap, int64_t);
 			break;
-		case PKG_LOCKED:
+		case PKG_ATTR_LOCKED:
 			pkg->locked = (bool)va_arg(ap, int);
 			break;
-		case PKG_TIME:
+		case PKG_ATTR_TIME:
 			pkg->timestamp = va_arg(ap, int64_t);
 			break;
-		case PKG_DEP_FORMULA:
+		case PKG_ATTR_DEP_FORMULA:
 			free(pkg->dep_formula);
 			pkg->dep_formula = xstrdup(va_arg(ap, const char *));
 			break;
-		case PKG_VITAL:
+		case PKG_ATTR_VITAL:
 			pkg->vital = (bool)va_arg(ap, int);
 			break;
 		}

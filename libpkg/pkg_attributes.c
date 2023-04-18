@@ -219,107 +219,107 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 	struct pkg_el *e = xcalloc(1, sizeof(*e));
 
 	switch (a) {
-	case PKG_NAME:
+	case PKG_ATTR_NAME:
 		e->string = p->name;
 		e->type = PKG_STR;
 		break;
-	case PKG_VERSION:
+	case PKG_ATTR_VERSION:
 		e->string = p->version;
 		e->type = PKG_STR;
 		break;
-	case PKG_ORIGIN:
+	case PKG_ATTR_ORIGIN:
 		e->string = p->origin;
 		e->type = PKG_STR;
 		break;
-	case PKG_UNIQUEID:
+	case PKG_ATTR_UNIQUEID:
 		e->string = p->uid;
 		e->type = PKG_STR;
 		break;
-	case PKG_CKSUM:
+	case PKG_ATTR_CKSUM:
 		e->string = p->sum;
 		e->type = PKG_STR;
 		break;
-	case PKG_REPONAME:
+	case PKG_ATTR_REPONAME:
 		e->string = p->reponame;
 		e->type = PKG_STR;
 		break;
-	case PKG_REPOPATH:
+	case PKG_ATTR_REPOPATH:
 		e->string = p->repopath;
 		e->type = PKG_STR;
 		break;
-	case PKG_REPOURL:
+	case PKG_ATTR_REPOURL:
 		e->string = p->repourl;
 		e->type = PKG_STR;
 		break;
-	case PKG_REASON:
+	case PKG_ATTR_REASON:
 		e->string = p->reason;
 		e->type = PKG_STR;
 		break;
-	case PKG_AUTOMATIC:
+	case PKG_ATTR_AUTOMATIC:
 		e->boolean = p->automatic;
 		e->type = PKG_BOOLEAN;
 		break;
-	case PKG_LOCKED:
+	case PKG_ATTR_LOCKED:
 		e->boolean = p->locked;
 		e->type = PKG_BOOLEAN;
 		break;
-	case PKG_VITAL:
+	case PKG_ATTR_VITAL:
 		e->boolean = p->vital;
 		e->type = PKG_BOOLEAN;
 		break;
-	case PKG_FLATSIZE:
+	case PKG_ATTR_FLATSIZE:
 		e->integer = p->flatsize;
 		e->type = PKG_INTEGER;
 		break;
-	case PKG_OLD_FLATSIZE:
+	case PKG_ATTR_OLD_FLATSIZE:
 		e->integer = p->old_flatsize;
 		e->type = PKG_INTEGER;
 		break;
-	case PKG_PKGSIZE:
+	case PKG_ATTR_PKGSIZE:
 		e->integer = p->pkgsize;
 		e->type = PKG_INTEGER;
 		break;
-	case PKG_CATEGORIES:
+	case PKG_ATTR_CATEGORIES:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->categories;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_ANNOTATIONS:
+	case PKG_ATTR_ANNOTATIONS:
 		e->kvlist = xcalloc(1, sizeof(struct pkg_kvlist *));
 		e->kvlist->list = &p->annotations;
 		e->type = PKG_KVLIST;
 		break;
-	case PKG_SHLIBS_REQUIRED:
+	case PKG_ATTR_SHLIBS_REQUIRED:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->shlibs_required;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_SHLIBS_PROVIDED:
+	case PKG_ATTR_SHLIBS_PROVIDED:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->shlibs_provided;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_PROVIDES:
+	case PKG_ATTR_PROVIDES:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->provides;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_REQUIRES:
+	case PKG_ATTR_REQUIRES:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->requires;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_USERS:
+	case PKG_ATTR_USERS:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->users;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_GROUPS:
+	case PKG_ATTR_GROUPS:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->groups;
 		e->type = PKG_STRINGLIST;
 		break;
-	case PKG_LICENSES:
+	case PKG_ATTR_LICENSES:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->licenses;
 		e->type = PKG_STRINGLIST;

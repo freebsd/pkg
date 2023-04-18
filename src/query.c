@@ -115,11 +115,11 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				pkg_fprintf(dest->fp, "%w", pkg);
 				break;
 			case 'a':
-				pkg_get_bool(pkg, PKG_AUTOMATIC, automatic);
+				pkg_get_bool(pkg, PKG_ATTR_AUTOMATIC, automatic);
 				fprintf(dest->fp, "%d", automatic);
 				break;
 			case 'k':
-				pkg_get_bool(pkg, PKG_LOCKED, locked);
+				pkg_get_bool(pkg, PKG_ATTR_LOCKED, locked);
 				fprintf(dest->fp, "%d", locked);
 				break;
 			case 't':
@@ -295,7 +295,7 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%M", pkg);
 				break;
 			case 'V':
-				pkg_get_bool(pkg, PKG_VITAL, vital);
+				pkg_get_bool(pkg, PKG_ATTR_VITAL, vital);
 				fprintf(dest->fp, "%d", vital);
 				break;
 			case 'X':
@@ -369,7 +369,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		pkg_get_stringlist(pkg, PKG_CATEGORIES, sl);
+		pkg_get_stringlist(pkg, PKG_ATTR_CATEGORIES, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -397,7 +397,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'L':
-		pkg_get_stringlist(pkg, PKG_LICENSES, sl);
+		pkg_get_stringlist(pkg, PKG_ATTR_LICENSES, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -407,7 +407,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		free(sl);
 		break;
 	case 'U':
-		pkg_get_stringlist(pkg, PKG_USERS, sl);
+		pkg_get_stringlist(pkg, PKG_ATTR_USERS, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -415,7 +415,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'G':
-		pkg_get_stringlist(pkg, PKG_GROUPS, sl);
+		pkg_get_stringlist(pkg, PKG_ATTR_GROUPS, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -423,7 +423,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'B':
-		pkg_get_stringlist(pkg, PKG_SHLIBS_REQUIRED, sl);
+		pkg_get_stringlist(pkg, PKG_ATTR_SHLIBS_REQUIRED, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -431,7 +431,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'b':
-		pkg_get_stringlist(pkg, PKG_SHLIBS_PROVIDED, sl);
+		pkg_get_stringlist(pkg, PKG_ATTR_SHLIBS_PROVIDED, sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -439,7 +439,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'A':
-		pkg_get_kv(pkg, PKG_ANNOTATIONS, kl);
+		pkg_get_kv(pkg, PKG_ATTR_ANNOTATIONS, kl);
 		kit = pkg_kvlist_iterator(kl);
 		while ((kv = pkg_kvlist_next(kit))) {
 			format_str(pkg, output, qstr, kv);

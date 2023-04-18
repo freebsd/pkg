@@ -501,7 +501,7 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 
 	pkg_load_message_from_file(fd, pkg, "+DISPLAY");
 	if (pkg->desc == NULL)
-		pkg_set_from_fileat(fd, pkg, PKG_DESC, "+DESC", false);
+		pkg_set_from_fileat(fd, pkg, PKG_ATTR_DESC, "+DESC", false);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		if (faccessat(fd, scripts[i], F_OK, 0) == 0)

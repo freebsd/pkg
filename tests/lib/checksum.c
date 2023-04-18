@@ -155,9 +155,9 @@ ATF_TC_BODY(check_pkg, tc)
 {
 	struct pkg *p = NULL;
 	pkg_new(&p, PKG_INSTALLED);
-	pkg_set(p, PKG_NAME, "test");
-	pkg_set(p, PKG_ORIGIN, "origin");
-	pkg_set(p, PKG_ARCH, "*");
+	pkg_set(p, PKG_ATTR_NAME, "test");
+	pkg_set(p, PKG_ATTR_ORIGIN, "origin");
+	pkg_set(p, PKG_ATTR_ARCH, "*");
 	char *sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, sizeof(char));
 
 	ATF_REQUIRE_EQ(pkg_checksum_generate(NULL, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false), EPKG_FATAL);

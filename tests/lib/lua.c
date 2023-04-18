@@ -497,7 +497,7 @@ ATF_TC_BODY(prefix_path, tc)
 {
 	struct pkg *pkg = NULL;
 	pkg_new(&pkg, PKG_INSTALLED);
-	pkg_set(pkg, PKG_PREFIX, "/myprefix");
+	pkg_set(pkg, PKG_ATTR_PREFIX, "/myprefix");
 	lua_State *L = luaL_newstate();
 	static const luaL_Reg test_lib[] = {
 		{ "prefix_path", lua_prefix_path },

@@ -154,7 +154,7 @@ populate_sums(struct pkgdb *db)
 	suml = pkghash_new();
 	it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get_string(p, PKG_CKSUM, sum);
+		pkg_get_string(p, PKG_ATTR_CKSUM, sum);
 		slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
 		cksum = strndup(sum, slen);
 		pkghash_safe_add(suml, cksum, NULL, NULL);

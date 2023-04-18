@@ -73,35 +73,35 @@ static struct column_mapping {
 		PKG_SQLITE_BOOL
 	} pkg_type;
 } columns[] = {
-	{ "arch",	PKG_ABI, PKG_SQLITE_STRING },
-	{ "automatic",	PKG_AUTOMATIC, PKG_SQLITE_BOOL },
-	{ "cksum",	PKG_CKSUM, PKG_SQLITE_STRING },
-	{ "comment",	PKG_COMMENT, PKG_SQLITE_STRING },
-	{ "dbname",	PKG_REPONAME, PKG_SQLITE_STRING },
-	{ "dep_formula",	PKG_DEP_FORMULA, PKG_SQLITE_STRING },
-	{ "desc",	PKG_DESC, PKG_SQLITE_STRING },
-	{ "flatsize",	PKG_FLATSIZE, PKG_SQLITE_INT64 },
-	{ "id",		PKG_ROWID, PKG_SQLITE_INT64 },
-	{ "licenselogic", PKG_LICENSE_LOGIC, PKG_SQLITE_INT64 },
-	{ "locked",	PKG_LOCKED, PKG_SQLITE_BOOL },
-	{ "maintainer",	PKG_MAINTAINER, PKG_SQLITE_STRING },
-	{ "manifestdigest",	PKG_DIGEST, PKG_SQLITE_STRING },
-	{ "message",	PKG_MESSAGE, PKG_SQLITE_STRING },
-	{ "name",	PKG_NAME, PKG_SQLITE_STRING },
-	{ "oldflatsize", PKG_OLD_FLATSIZE, PKG_SQLITE_INT64 },
-	{ "oldversion",	PKG_OLD_VERSION, PKG_SQLITE_STRING },
-	{ "origin",	PKG_ORIGIN, PKG_SQLITE_STRING },
-	{ "pkgsize",	PKG_PKGSIZE, PKG_SQLITE_INT64 },
-	{ "prefix",	PKG_PREFIX, PKG_SQLITE_STRING },
-	{ "repopath",	PKG_REPOPATH, PKG_SQLITE_STRING },
-	{ "repourl",	PKG_REPOURL, PKG_SQLITE_STRING },
-	{ "rowid",	PKG_ROWID, PKG_SQLITE_INT64 },
-	{ "time",	PKG_TIME, PKG_SQLITE_INT64 },
-	{ "uniqueid",	PKG_UNIQUEID, PKG_SQLITE_STRING },
-	{ "version",	PKG_VERSION, PKG_SQLITE_STRING },
-	{ "vital",	PKG_VITAL, PKG_SQLITE_BOOL },
+	{ "arch",	PKG_ATTR_ABI, PKG_SQLITE_STRING },
+	{ "automatic",	PKG_ATTR_AUTOMATIC, PKG_SQLITE_BOOL },
+	{ "cksum",	PKG_ATTR_CKSUM, PKG_SQLITE_STRING },
+	{ "comment",	PKG_ATTR_COMMENT, PKG_SQLITE_STRING },
+	{ "dbname",	PKG_ATTR_REPONAME, PKG_SQLITE_STRING },
+	{ "dep_formula",	PKG_ATTR_DEP_FORMULA, PKG_SQLITE_STRING },
+	{ "desc",	PKG_ATTR_DESC, PKG_SQLITE_STRING },
+	{ "flatsize",	PKG_ATTR_FLATSIZE, PKG_SQLITE_INT64 },
+	{ "id",		PKG_ATTR_ROWID, PKG_SQLITE_INT64 },
+	{ "licenselogic", PKG_ATTR_LICENSE_LOGIC, PKG_SQLITE_INT64 },
+	{ "locked",	PKG_ATTR_LOCKED, PKG_SQLITE_BOOL },
+	{ "maintainer",	PKG_ATTR_MAINTAINER, PKG_SQLITE_STRING },
+	{ "manifestdigest",	PKG_ATTR_DIGEST, PKG_SQLITE_STRING },
+	{ "message",	PKG_ATTR_MESSAGE, PKG_SQLITE_STRING },
+	{ "name",	PKG_ATTR_NAME, PKG_SQLITE_STRING },
+	{ "oldflatsize", PKG_ATTR_OLD_FLATSIZE, PKG_SQLITE_INT64 },
+	{ "oldversion",	PKG_ATTR_OLD_VERSION, PKG_SQLITE_STRING },
+	{ "origin",	PKG_ATTR_ORIGIN, PKG_SQLITE_STRING },
+	{ "pkgsize",	PKG_ATTR_PKGSIZE, PKG_SQLITE_INT64 },
+	{ "prefix",	PKG_ATTR_PREFIX, PKG_SQLITE_STRING },
+	{ "repopath",	PKG_ATTR_REPOPATH, PKG_SQLITE_STRING },
+	{ "repourl",	PKG_ATTR_REPOURL, PKG_SQLITE_STRING },
+	{ "rowid",	PKG_ATTR_ROWID, PKG_SQLITE_INT64 },
+	{ "time",	PKG_ATTR_TIME, PKG_SQLITE_INT64 },
+	{ "uniqueid",	PKG_ATTR_UNIQUEID, PKG_SQLITE_STRING },
+	{ "version",	PKG_ATTR_VERSION, PKG_SQLITE_STRING },
+	{ "vital",	PKG_ATTR_VITAL, PKG_SQLITE_BOOL },
 	{ "weight",	-1, PKG_SQLITE_INT64 },
-	{ "www",	PKG_WWW, PKG_SQLITE_STRING },
+	{ "www",	PKG_ATTR_WWW, PKG_SQLITE_STRING },
 	{ NULL,		-1, PKG_SQLITE_STRING }
 };
 
@@ -544,7 +544,7 @@ pkgdb_load_license(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_LICENSES,
-	    pkg_addlicense, PKG_LICENSES));
+	    pkg_addlicense, PKG_ATTR_LICENSES));
 }
 
 static int
@@ -560,7 +560,7 @@ pkgdb_load_category(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_CATEGORIES,
-	    pkg_addcategory, PKG_CATEGORIES));
+	    pkg_addcategory, PKG_ATTR_CATEGORIES));
 }
 
 static int
@@ -578,7 +578,7 @@ pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg->type == PKG_INSTALLED);
 
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_USERS,
-	    pkg_adduser, PKG_USERS);
+	    pkg_adduser, PKG_ATTR_USERS);
 
 	return (ret);
 }
@@ -598,7 +598,7 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg->type == PKG_INSTALLED);
 
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_GROUPS,
-	    pkg_addgroup, PKG_GROUPS);
+	    pkg_addgroup, PKG_ATTR_GROUPS);
 
 	return (ret);
 }
@@ -616,7 +616,7 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
-	    pkg_addshlib_required, PKG_SHLIBS_REQUIRED));
+	    pkg_addshlib_required, PKG_ATTR_SHLIBS_REQUIRED));
 }
 
 
@@ -648,7 +648,7 @@ pkgdb_load_annotations(sqlite3 *sqlite, struct pkg *pkg)
 		"  ORDER BY tag, value";
 
 	return (load_tag_val(sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
-		   pkg_addannotation, PKG_ANNOTATIONS));
+		   pkg_addannotation, PKG_ATTR_ANNOTATIONS));
 }
 
 static int
@@ -816,7 +816,7 @@ pkgdb_load_conflicts(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
-			pkg_addconflict, PKG_CONFLICTS));
+			pkg_addconflict, PKG_ATTR_CONFLICTS));
 }
 
 static int
@@ -832,7 +832,7 @@ pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_PROVIDES,
-	    pkg_addprovide, PKG_PROVIDES));
+	    pkg_addprovide, PKG_ATTR_PROVIDES));
 }
 
 static int
@@ -872,28 +872,28 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			}
 
 			switch (column->type) {
-			case PKG_ABI:
+			case PKG_ATTR_ABI:
 				pkg->abi = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_CKSUM:
+			case PKG_ATTR_CKSUM:
 				pkg->sum = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_COMMENT:
+			case PKG_ATTR_COMMENT:
 				pkg->comment = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_REPONAME:
+			case PKG_ATTR_REPONAME:
 				pkg->reponame = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_DESC:
+			case PKG_ATTR_DESC:
 				pkg->desc = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_MAINTAINER:
+			case PKG_ATTR_MAINTAINER:
 				pkg->maintainer = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_DIGEST:
+			case PKG_ATTR_DIGEST:
 				pkg->digest = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_MESSAGE:
+			case PKG_ATTR_MESSAGE:
 				msg = sqlite3_column_text(stmt, icol);
 				if (msg) {
 					/* A stupid logic to detect legacy pkg message */
@@ -908,34 +908,34 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 					}
 				}
 				break;
-			case PKG_NAME:
+			case PKG_ATTR_NAME:
 				pkg->name = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_OLD_VERSION:
+			case PKG_ATTR_OLD_VERSION:
 				pkg->old_version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_ORIGIN:
+			case PKG_ATTR_ORIGIN:
 				pkg->origin = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_PREFIX:
+			case PKG_ATTR_PREFIX:
 				pkg->prefix = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_REPOPATH:
+			case PKG_ATTR_REPOPATH:
 				pkg->repopath = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_REPOURL:
+			case PKG_ATTR_REPOURL:
 				pkg->repourl = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_UNIQUEID:
+			case PKG_ATTR_UNIQUEID:
 				pkg->uid = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_VERSION:
+			case PKG_ATTR_VERSION:
 				pkg->version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_WWW:
+			case PKG_ATTR_WWW:
 				pkg->www = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_DEP_FORMULA:
+			case PKG_ATTR_DEP_FORMULA:
 				pkg->dep_formula = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			default:
@@ -952,31 +952,31 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			}
 
 			switch (column->type) {
-			case PKG_AUTOMATIC:
+			case PKG_ATTR_AUTOMATIC:
 				pkg->automatic = (bool)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_LOCKED:
+			case PKG_ATTR_LOCKED:
 				pkg->locked = (bool)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_FLATSIZE:
+			case PKG_ATTR_FLATSIZE:
 				pkg->flatsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_ROWID:
+			case PKG_ATTR_ROWID:
 				pkg->id = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_LICENSE_LOGIC:
+			case PKG_ATTR_LICENSE_LOGIC:
 				pkg->licenselogic = (lic_t)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_OLD_FLATSIZE:
+			case PKG_ATTR_OLD_FLATSIZE:
 				pkg->old_flatsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_PKGSIZE:
+			case PKG_ATTR_PKGSIZE:
 				pkg->pkgsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_VITAL:
+			case PKG_ATTR_VITAL:
 				pkg->vital = (bool)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_TIME:
+			case PKG_ATTR_TIME:
 				pkg->timestamp = sqlite3_column_int64(stmt, icol);
 				break;
 			default:

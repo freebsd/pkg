@@ -337,7 +337,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	int info_num;		/* Number of different data items to print */
 	int outflags = PKG_MANIFEST_EMIT_LOCAL_METADATA;
 
-	pkg_get_string(pkg, PKG_REPOURL, repourl);
+	pkg_get_string(pkg, PKG_ATTR_REPOURL, repourl);
 
 	if (options & INFO_RAW) {
 		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) {
@@ -701,11 +701,11 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 
 	flatsize = oldflatsize = pkgsize = 0;
 
-	pkg_get_int(new_pkg, PKG_FLATSIZE, flatsize);
-	pkg_get_int(new_pkg, PKG_PKGSIZE, pkgsize);
-	pkg_get_string(new_pkg, PKG_REPOPATH, repopath);
+	pkg_get_int(new_pkg, PKG_ATTR_FLATSIZE, flatsize);
+	pkg_get_int(new_pkg, PKG_ATTR_PKGSIZE, pkgsize);
+	pkg_get_string(new_pkg, PKG_ATTR_REPOPATH, repopath);
 	if (old_pkg != NULL)
-		pkg_get_int(old_pkg, PKG_FLATSIZE, oldflatsize);
+		pkg_get_int(old_pkg, PKG_ATTR_FLATSIZE, oldflatsize);
 
 	it = malloc(sizeof (*it));
 	if (it == NULL) {
@@ -816,7 +816,7 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 	char size[8], tlsize[8];
 	const char *type;
 
-	pkg_get_int(it->new, PKG_PKGSIZE, pkgsize);
+	pkg_get_int(it->new, PKG_ATTR_PKGSIZE, pkgsize);
 
 	switch (it->display_type) {
 	case PKG_DISPLAY_LOCKED:
@@ -855,7 +855,7 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		}
 		break;
 	case PKG_DISPLAY_DELETE:
-		pkg_get_string(it->new, PKG_REASON, why);
+		pkg_get_string(it->new, PKG_ATTR_REASON, why);
 		pkg_printf("\t%n: %v", it->new, it->new);
 		if (why != NULL)
 			printf(" (%s)", why);
@@ -880,7 +880,7 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		printf("\n");
 		break;
 	case PKG_DISPLAY_REINSTALL:
-		pkg_get_string(it->new, PKG_REASON, why);
+		pkg_get_string(it->new, PKG_ATTR_REASON, why);
 		pkg_printf("\t%n-%v", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);

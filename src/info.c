@@ -448,7 +448,7 @@ exec_info(int argc, char **argv)
 			gotone = true;
 			const char *version;
 
-			pkg_get_string(pkg, PKG_VERSION, version);
+			pkg_get_string(pkg, PKG_ATTR_VERSION, version);
 			if (pkgversion != NULL) {
 				switch (pkg_version_cmp(version, pkgversion)) {
 				case -1:
