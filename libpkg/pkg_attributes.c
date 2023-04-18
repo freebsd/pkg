@@ -223,6 +223,30 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->string = p->name;
 		e->type = PKG_STR;
 		break;
+	case PKG_ATTR_MAINTAINER:
+		e->string = p->maintainer;
+		e->type = PKG_STR;
+		break;
+	case PKG_ATTR_PREFIX:
+		e->string = p->prefix;
+		e->type = PKG_STR;
+		break;
+	case PKG_ATTR_DESC:
+		e->string = p->desc;
+		e->type = PKG_STR;
+		break;
+	case PKG_ATTR_WWW:
+		e->string = p->www;
+		e->type = PKG_STR;
+		break;
+	case PKG_ATTR_ABI:
+		e->string = p->abi;
+		e->type = PKG_STR;
+		break;
+	case PKG_ATTR_ARCH:
+		e->string = p->arch;
+		e->type = PKG_STR;
+		break;
 	case PKG_ATTR_VERSION:
 		e->string = p->version;
 		e->type = PKG_STR;
