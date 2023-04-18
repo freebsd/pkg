@@ -43,6 +43,7 @@ extern "C" {
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -555,40 +556,6 @@ typedef enum {
 	PKG_INTEGER,
 	PKG_BOOLEAN,
 } pkg_el_t;
-
-#define pkg_get_string(p, t, v) do { \
-	struct pkg_el *e = pkg_get_element(p, t); \
-	if (e->type != PKG_STR) abort(); \
-	v = e->string; \
-	free(e); \
-} while (0);
-
-#define pkg_get_bool(p, t, v) do { \
-	struct pkg_el *e = pkg_get_element(p, t); \
-	if (e->type != PKG_BOOLEAN) abort(); \
-	v = e->boolean; \
-	free(e); \
-} while (0);
-
-#define pkg_get_int(p, t, v) do { \
-	struct pkg_el *e = pkg_get_element(p, t); \
-	if (e->type != PKG_INTEGER) abort(); \
-	v = e->integer; \
-	free(e); \
-} while (0);
-
-#define pkg_get_kv(p, t, v) do { \
-	struct pkg_el *e = pkg_get_element(p, t); \
-	if (e->type != PKG_KVLIST) abort(); \
-	v = e->kvlist; \
-	free(e); \
-} while (0);
-
-#define pkg_get_stringlist(p, t, v) do { \
-	struct pkg_el *e = pkg_get_element(p, t); \
-	if (e->type != PKG_STRINGLIST) abort(); \
-	v = e->stringlist; \
-} while (0);
 
 struct pkg_el {
 	union {
@@ -1709,6 +1676,120 @@ struct pkg_kv *pkg_kvlist_next(struct pkg_kvlist_iterator *it);
 struct pkg_stringlist_iterator *pkg_stringlist_iterator(struct pkg_stringlist *l);
 const char *pkg_stringlist_next(struct pkg_stringlist_iterator *it);
 struct pkg_el *pkg_get_element(struct pkg *p, pkg_attr a);
+
+static inline void
+pkg_get_s(struct pkg *p, pkg_attr a, const char **val)
+{
+	struct pkg_el *e = pkg_get_element(p, a);
+	*val = NULL;
+
+	switch (e->type) {
+	case PKG_STR:
+		*val = e->string;
+		break;
+	case PKG_BOOLEAN:
+		*val = e->boolean ? "true" : "false";
+		break;
+	case PKG_INTEGER:
+		break;
+	case PKG_KVLIST:
+		free(e->stringlist);
+	case PKG_STRINGLIST:
+		free(e->kvlist);
+		break;
+	}
+	free(e);
+};
+
+static inline void
+pkg_get_i(struct pkg *p, pkg_attr a, int64_t *val)
+{
+	struct pkg_el *e = pkg_get_element(p, a);
+	int64_t ret = -1;
+
+	switch (e->type) {
+	case PKG_STR:
+		ret = e->string != NULL;
+		break;
+	case PKG_BOOLEAN:
+		ret = e->boolean;
+		break;
+	case PKG_INTEGER:
+		ret = e->integer;
+		break;
+	case PKG_KVLIST:
+		free(e->stringlist);
+	case PKG_STRINGLIST:
+		free(e->kvlist);
+		break;
+	}
+	free(e);
+	*val = ret;
+};
+
+static inline void
+pkg_get_b(struct pkg *p, pkg_attr a, bool *val)
+{
+	struct pkg_el *e = pkg_get_element(p, a);
+	bool ret = false;
+
+	switch (e->type) {
+	case PKG_STR:
+		ret = e->string != NULL;
+		break;
+	case PKG_BOOLEAN:
+		ret = e->boolean;
+		break;
+	case PKG_INTEGER:
+		ret = e->integer > 0;
+		break;
+	case PKG_KVLIST:
+		free(e->stringlist);
+	case PKG_STRINGLIST:
+		free(e->kvlist);
+		break;
+	}
+	free(e);
+	*val = ret;
+};
+
+static inline void
+pkg_get_kv(struct pkg *p, pkg_attr a, struct pkg_kvlist **val)
+{
+	struct pkg_el *e = pkg_get_element(p, a);
+	struct pkg_kvlist *kv = NULL;
+
+	if (e->type == PKG_KVLIST)
+		kv = e->kvlist;
+	free(e);
+	*val = kv;
+}
+
+static inline void
+pkg_get_sl(struct pkg *p, pkg_attr a, struct pkg_stringlist **val)
+{
+	struct pkg_el *e = pkg_get_element(p, a);
+	struct pkg_stringlist *sl = NULL;
+
+	if (e->type == PKG_STRINGLIST)
+		sl = e->stringlist;
+	free(e);
+	*val = sl;
+}
+static inline void
+pkg_get_invalid(struct pkg *p __unused, pkg_attr a __unused, void *v __unused)
+{
+	fprintf(stderr, "invalid attribute type for pkg_get\n");
+	abort();
+}
+
+#define pkg_get(p, t, a) _Generic((a), \
+	const char **: pkg_get_s, \
+	int64_t *: pkg_get_i, \
+	bool *: pkg_get_b, \
+	struct pkg_kvlist **: pkg_get_kv, \
+	struct pkg_stringlist **: pkg_get_sl, \
+	default: pkg_get_invalid)(p, t, a)
 
 #ifdef __cplusplus
 }

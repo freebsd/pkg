@@ -59,7 +59,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 	struct pkgdb_it *it;
 	const char *buf;
 	int nbpkgs = 0;
-	struct pkg_stringlist	*sl;
+	struct pkg_stringlist *sl = NULL;
 	struct pkg_stringlist_iterator	*slit;
 
 	assert(db != NULL);
@@ -79,7 +79,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 	}
 
 	/* checking libraries required */
-	pkg_get_stringlist(p, PKG_ATTR_SHLIBS_REQUIRED, sl);
+	pkg_get(p, PKG_ATTR_SHLIBS_REQUIRED, &sl);
 	slit = pkg_stringlist_iterator(sl);
 	while ((buf = pkg_stringlist_next(slit))) {
 		it = pkgdb_query_shlib_provide(db, buf);
@@ -99,7 +99,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 
 	/* checking requires */
 	buf = NULL;
-	pkg_get_stringlist(p, PKG_ATTR_REQUIRES, sl);
+	pkg_get(p, PKG_ATTR_REQUIRES, &sl);
 	slit = pkg_stringlist_iterator(sl);
 	while ((buf = pkg_stringlist_next(slit))) {
 		it = pkgdb_query_provide(db, buf);

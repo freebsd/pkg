@@ -539,7 +539,7 @@ event_callback(void *data, struct pkg_event *ev)
 	struct cleanup *evtmp;
 	int *debug = data;
 	struct pkg_event_conflict *cur_conflict;
-	const char *filename, *reponame;
+	const char *filename, *reponame = NULL;
 
 	if (msg_buf == NULL) {
 		msg_buf = xstring_new();
@@ -876,14 +876,14 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_fprintf(conflicts->fp, "  - %n-%v",
 		    ev->e_conflicts.p1, ev->e_conflicts.p1);
 		if (pkg_repos_total_count() > 1) {
-			pkg_get_string(ev->e_conflicts.p1, PKG_ATTR_REPONAME, reponame);
+			pkg_get(ev->e_conflicts.p1, PKG_ATTR_REPONAME, &reponame);
 			fprintf(conflicts->fp, " [%s]",
 			    reponame == NULL ? "installed" : reponame);
 		}
 		pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
 		    ev->e_conflicts.p2, ev->e_conflicts.p2);
 		if (pkg_repos_total_count() > 1) {
-			pkg_get_string(ev->e_conflicts.p2, PKG_ATTR_REPONAME, reponame);
+			pkg_get(ev->e_conflicts.p2, PKG_ATTR_REPONAME, &reponame);
 			fprintf(conflicts->fp, " [%s]",
 			    reponame == NULL ? "installed" : reponame);
 		}

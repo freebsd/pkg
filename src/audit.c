@@ -79,7 +79,7 @@ add_to_check(pkghash *check, struct pkg *pkg)
 {
 	const char *uid;
 
-	pkg_get_string(pkg, PKG_ATTR_UNIQUEID, uid);
+	pkg_get(pkg, PKG_ATTR_UNIQUEID, &uid);
 	pkghash_safe_add(check, uid, pkg, NULL);
 }
 
@@ -117,12 +117,12 @@ print_recursive_rdeps(pkghash *head, struct pkg *p, pkghash *seen, bool top, ucl
 static void
 print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 {
-	const char *version;
+	const char *version = NULL;
 	struct pkg_audit_versions_range *vers;
 	const struct pkg_audit_entry *e;
 	struct pkg_audit_cve *cve;
 
-	pkg_get_string(p, PKG_ATTR_VERSION, version);
+	pkg_get(p, PKG_ATTR_VERSION, &version);
 
 	e = issue->audit;
 	if (version == NULL) {
@@ -388,14 +388,14 @@ exec_audit(int argc, char **argv)
 			issues = NULL;
 			pkg = (struct pkg *) hit.value;
 			if (pkg_audit_is_vulnerable(audit, pkg, &issues, quiet)) {
-				const char *version;
+				const char *version = NULL;
 				const char *name = NULL;
 				ucl_object_t *array = NULL;
 				vuln ++;
 
 				if (top == NULL) {
 					affected += issues->count;
-					pkg_get_string(pkg, PKG_ATTR_VERSION, version);
+					pkg_get(pkg, PKG_ATTR_VERSION, &version);
 					if (quiet) {
 						if (version != NULL)
 							pkg_printf("%n-%v\n", pkg, pkg);
@@ -414,8 +414,8 @@ exec_audit(int argc, char **argv)
 					if (vuln_objs == NULL)
 						vuln_objs = ucl_object_typed_new(UCL_OBJECT);
 					obj = ucl_object_typed_new(UCL_OBJECT);
-					pkg_get_string(pkg, PKG_ATTR_NAME, name);
-					pkg_get_string(pkg, PKG_ATTR_VERSION, version);
+					pkg_get(pkg, PKG_ATTR_NAME, &name);
+					pkg_get(pkg, PKG_ATTR_VERSION, &version);
 					if (version != NULL)
 						ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7 , false);
 					ucl_object_insert_key(obj, ucl_object_fromint(issues->count), "issue_count", 11, false);
@@ -437,7 +437,7 @@ exec_audit(int argc, char **argv)
 					pkghash *seen = pkghash_new();
 
 					if (name == NULL)
-						pkg_get_string(pkg, PKG_ATTR_NAME, name);
+						pkg_get(pkg, PKG_ATTR_NAME, &name);
 					if (top == NULL) {
 						printf("  Packages that depend on %s: ", name);
 					} else {

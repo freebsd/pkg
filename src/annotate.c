@@ -142,11 +142,11 @@ static int
 do_show(struct pkg *pkg, const char *tag)
 {
 	struct pkg_kvlist_iterator *kit;
-	struct pkg_kvlist *kl;
+	struct pkg_kvlist *kl = NULL;
 	struct pkg_kv *note;
 	int ret = EPKG_OK;
 
-	pkg_get_kv(pkg, PKG_ATTR_ANNOTATIONS, kl);
+	pkg_get(pkg, PKG_ATTR_ANNOTATIONS, &kl);
 	kit = pkg_kvlist_iterator(kl);
 	while ((note = pkg_kvlist_next(kit))) {
 		if (strcmp(tag, note->key) == 0) {

@@ -294,7 +294,7 @@ exec_set(int argc, char **argv)
 		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
 			gotone = true;
 			if ((sets & AUTOMATIC) == AUTOMATIC) {
-				pkg_get_bool(pkg, PKG_ATTR_AUTOMATIC, automatic);
+				pkg_get(pkg, PKG_ATTR_AUTOMATIC, &automatic);
 				if (automatic == newautomatic)
 					continue;
 				if (!rc) {
@@ -312,7 +312,7 @@ exec_set(int argc, char **argv)
 				rc = saved_rc;
 			}
 			if ((sets & VITAL) == VITAL) {
-				pkg_get_bool(pkg, PKG_ATTR_VITAL, vital);
+				pkg_get(pkg, PKG_ATTR_VITAL, &vital);
 				if (vital == newvital)
 					continue;
 				if (!rc) {
