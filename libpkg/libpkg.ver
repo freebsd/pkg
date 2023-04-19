@@ -212,6 +212,7 @@ global:
 	pkgdb_repo_query;
 	pkgdb_repo_query_cond;
 	pkgdb_repo_search;
+	pkgdb_all_search;
 	pkgdb_rquery_provide;
 	pkgdb_set2;
 	pkgdb_set_case_sensitivity;

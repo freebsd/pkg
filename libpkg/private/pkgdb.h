@@ -40,11 +40,6 @@ struct pkgdb {
 	tll(struct pkg_repo *) repos;
 };
 
-enum pkgdb_iterator_type {
-	PKGDB_IT_LOCAL = 0,
-	PKGDB_IT_REPO
-};
-
 struct pkgdb_sqlite_it {
 	sqlite3	*sqlite;
 	sqlite3_stmt	*stmt;
@@ -56,15 +51,12 @@ struct pkgdb_sqlite_it {
 struct pkg_repo_it;
 
 struct pkgdb_it {
-	enum pkgdb_iterator_type type;
 	struct pkgdb *db;
-	union _un_pkg_it {
-		struct _pkg_repo_it_set {
-			struct pkg_repo_it *it;
-			struct _pkg_repo_it_set *next;
-		} *remote;
-		struct pkgdb_sqlite_it local;
-	} un;
+	struct _pkg_repo_it_set {
+		struct pkg_repo_it *it;
+		struct _pkg_repo_it_set *next;
+	} *remote;
+	struct pkgdb_sqlite_it *local;
 };
 
 #define PKGDB_IT_FLAG_CYCLED (0x1)
