@@ -103,7 +103,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	char *sql = NULL;
 	const char	*comp = NULL;
 	char basesql_quick[] = ""
-		"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, version, comment, "
+		"SELECT p.id, origin, p.name, p.name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
@@ -118,7 +118,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
 		"   WHERE tag.annotation = 'flavor') "
 
-		"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, version, comment, "
+		"SELECT p.id, origin, p.name, p.name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
