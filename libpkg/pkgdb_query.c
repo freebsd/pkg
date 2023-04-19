@@ -497,6 +497,7 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, const char *repo)
 
 	return (it);
 }
+
 struct pkgdb_it *
 pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)
@@ -507,6 +508,29 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 	it = pkgdb_it_new_repo(db);
 	if (it == NULL)
 		return (NULL);
+
+	tll_foreach(db->repos, cur) {
+		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+			if (cur->item->ops->search != NULL) {
+				rit = cur->item->ops->search(cur->item, pattern, match,
+					field, sort);
+				if (rit != NULL)
+					pkgdb_it_repo_attach(it, rit);
+			}
+		}
+	}
+
+	return (it);
+}
+
+struct pkgdb_it *
+pkgdb_all_search(struct pkgdb *db, const char *pattern, match_t match,
+    pkgdb_field field, pkgdb_field sort, const char *repo)
+{
+	struct pkgdb_it *it;
+	struct pkg_repo_it *rit;
+
+	it = pkgdb_query(db, pattern, match);
 
 	tll_foreach(db->repos, cur) {
 		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {

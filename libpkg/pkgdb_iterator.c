@@ -1116,47 +1116,42 @@ int
 pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 {
 	struct pkg_repo_it *rit;
-	int ret;
+	int ret = EPKG_END;
 
 	assert(it != NULL);
 
-	switch (it->type) {
-	case PKGDB_IT_LOCAL:
-		return (pkgdb_sqlite_it_next(&it->un.local, pkg_p, flags));
-		break;
-	case PKGDB_IT_REPO:
-		if (it->un.remote != NULL) {
-			rit = it->un.remote->it;
-			ret = rit->ops->next(rit, pkg_p, flags);
-			if (ret != EPKG_OK) {
-				/*
-				 * Detach this iterator from list and switch to another
-				 */
-				struct _pkg_repo_it_set *tmp;
-
-				rit->ops->free(rit);
-				tmp = it->un.remote;
-				it->un.remote = tmp->next;
-				free(tmp);
-
-				return (pkgdb_it_next(it, pkg_p, flags));
-			}
-
-			if (*pkg_p != NULL)
-				(*pkg_p)->repo = rit->repo;
-
-			return (EPKG_OK);
-		}
-		/*
-		 * All done
-		 */
-		return (EPKG_END);
-		break;
+	if (it->local != NULL && !it->local->finished) {
+		if (pkgdb_sqlite_it_next(it->local, pkg_p, flags) == EPKG_OK)
+			return EPKG_OK;
 	}
 
-	return (EPKG_FATAL);
+	if (it->remote != NULL) {
+		rit = it->remote->it;
+		ret = rit->ops->next(rit, pkg_p, flags);
+		if (ret != EPKG_OK) {
+			/*
+			* Detach this iterator from list and switch to another
+			*/
+			struct _pkg_repo_it_set *tmp;
+
+			rit->ops->free(rit);
+			tmp = it->remote;
+			it->remote = tmp->next;
+			free(tmp);
+
+			return (pkgdb_it_next(it, pkg_p, flags));
+		}
+
+		if (*pkg_p != NULL)
+			(*pkg_p)->repo = rit->repo;
+
+		return (EPKG_OK);
+	}
+
+	return ret;
 }
 
+// TODO: Why doesn't this function handle remote?
 int
 pkgdb_it_count(struct pkgdb_it *it)
 {
@@ -1167,7 +1162,7 @@ pkgdb_it_count(struct pkgdb_it *it)
 	assert(it != NULL);
 
 	i = 0;
-	sit = &it->un.local;
+	sit = it->local;
 
 	if (sit == NULL)
 		return (0);
@@ -1197,15 +1192,13 @@ pkgdb_it_reset(struct pkgdb_it *it)
 
 	assert(it != NULL);
 
-	switch (it->type) {
-		case PKGDB_IT_LOCAL:
-			pkgdb_sqlite_it_reset(&it->un.local);
-			break;
-		case PKGDB_IT_REPO:
-			LL_FOREACH(it->un.remote, cur) {
-				cur->it->ops->reset(cur->it);
-			}
-			break;
+	if (it->local != NULL) {
+		pkgdb_sqlite_it_reset(it->local);
+	}
+	if (it->remote != NULL) {
+		LL_FOREACH(it->remote, cur) {
+			cur->it->ops->reset(cur->it);
+		}
 	}
 }
 
@@ -1217,16 +1210,15 @@ pkgdb_it_free(struct pkgdb_it *it)
 	if (it == NULL)
 		return;
 
-	switch (it->type) {
-		case PKGDB_IT_LOCAL:
-			pkgdb_sqlite_it_free(&it->un.local);
-			break;
-		case PKGDB_IT_REPO:
-			LL_FOREACH_SAFE(it->un.remote, cur, tmp) {
-				cur->it->ops->free(cur->it);
-				free(cur);
-			}
-			break;
+	if (it->local != NULL) {
+		pkgdb_sqlite_it_free(it->local);
+		free(it->local);
+	}
+	if (it->remote != NULL) {
+		LL_FOREACH_SAFE(it->remote, cur, tmp) {
+			cur->it->ops->free(cur->it);
+			free(cur);
+		}
 	}
 
 	free(it);
@@ -1243,15 +1235,16 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 
 	it = xmalloc(sizeof(struct pkgdb_it));
 
-	it->type = PKGDB_IT_LOCAL;
-
 	it->db = db;
-	it->un.local.sqlite = db->sqlite;
-	it->un.local.stmt = s;
-	it->un.local.pkg_type = type;
+	it->local = xmalloc(sizeof(struct pkgdb_sqlite_it));
+	it->local->sqlite = db->sqlite;
+	it->local->stmt = s;
+	it->local->pkg_type = type;
 
-	it->un.local.flags = flags;
-	it->un.local.finished = 0;
+	it->local->flags = flags;
+	it->local->finished = 0;
+
+	it->remote = NULL;
 
 	return (it);
 }
@@ -1263,11 +1256,10 @@ pkgdb_it_new_repo(struct pkgdb *db)
 
 	it = xmalloc(sizeof(struct pkgdb_it));
 
-	it->type = PKGDB_IT_REPO;
-
 	it->db = db;
 
-	it->un.remote = NULL;
+	it->local = NULL;
+	it->remote = NULL;
 
 	return (it);
 }
@@ -1279,7 +1271,7 @@ pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 
 	item = xmalloc(sizeof(struct _pkg_repo_it_set));
 	item->it = rit;
-	LL_PREPEND(it->un.remote, item);
+	LL_PREPEND(it->remote, item);
 }
 
 int
