@@ -38,14 +38,6 @@ extern "C" {
 #define restrict
 #endif
 
-#ifndef __unused
-#ifdef __GNUC__
-# define __unused __attribute__((__unused__))
-#else
-# define __unused
-#endif
-#endif
-
 #include <sys/types.h>
 #include <sys/param.h>
 #include <stdarg.h>
@@ -1789,7 +1781,7 @@ int pkg_set_s(struct pkg *pkg, pkg_attr a, const char *val);
 int pkg_set_i(struct pkg *pkg, pkg_attr a, int64_t i);
 int pkg_set_b(struct pkg *pkg, pkg_attr a, bool b);
 static inline int
-pkg_set_invalid(struct pkg *p __unused, pkg_attr a __unused, void *v __unused)
+pkg_set_invalid(struct pkg *p __attribute__((__unused__)), pkg_attr a __unused, void *v __attribute__((__unused__)))
 {
 	fprintf(stderr, "Invalid attribute type for pkg_set\n");
 	abort();
