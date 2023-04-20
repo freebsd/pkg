@@ -67,3 +67,46 @@ fh_close(struct pkg_repo *repo)
 		fclose(repo->fh);
 	repo->fh = NULL;
 }
+
+int
+stdio_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t)
+{
+	char buf[8192];
+	size_t buflen = 0, left = 0;
+	off_t done = 0, r;
+
+	if (t != NULL && u->ims_time != 0) {
+		if (u->ims_time <= *t)
+			return (EPKG_UPTODATE);
+		*t = u->ims_time;
+	}
+
+	pkg_emit_fetch_begin(url);
+	pkg_emit_progress_start(NULL);
+	if (u->offset > 0)
+		done += u->offset;
+	buflen = sizeof(buf);
+	left = sizeof(buf);
+	if (sz > 0)
+		left = sz - done;
+
+	while ((r = fread(buf, 1, left < buflen ? left : buflen, repo->fh)) > 0) {
+		if (write(dest, buf, r) != r) {
+			pkg_emit_errno("write", "");
+			return (EPKG_FATAL);
+		}
+		done += r;
+		if (sz > 0) {
+			left -= r;
+			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
+		} else
+			pkg_debug(4, "Read status: %jd", (intmax_t)done);
+		if (sz > 0)
+			pkg_emit_progress_tick(done, sz);
+	}
+	if (r != 0) {
+		pkg_emit_error("An error occurred while fetching package");
+		return(EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}

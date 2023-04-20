@@ -234,3 +234,17 @@ fetch_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 
 	return (retcode);
 }
+
+int
+libfetch_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t)
+{
+	int ret;
+
+	ret = stdio_fetch(repo, dest, url, u, sz, t);
+
+	if (ret == EPKG_OK && ferror(repo->fh)) {
+		pkg_emit_error("%s: %s", url, fetchLastErrString);
+		return (EPKG_FATAL);
+	}
+	return (ret);
+}

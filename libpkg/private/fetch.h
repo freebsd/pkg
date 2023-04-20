@@ -30,3 +30,5 @@ int ssh_open(struct pkg_repo *, struct url *, off_t *);
 int file_open(struct pkg_repo *, struct url *, off_t *);
 int fh_close(struct pkg_repo *);
 int tcp_open(struct pkg_repo *, struct url *, off_t *);
+int stdio_fetch(struct pkg_repo *, int dest, const char *url, struct url *u, off_t sz, time_t *t);
+int libfetch_fetch(struct pkg_repo *, int dest, const char *url, struct url *u, off_t sz, time_t *t);

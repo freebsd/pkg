@@ -54,42 +54,49 @@ static struct fetcher fetchers [] = {
 		tcp_open,
 		NULL,
 		fh_close,
+		stdio_fetch,
 	},
 	{
 		"ssh",
 		ssh_open,
 		NULL,
 		fh_close,
+		stdio_fetch,
 	},
 	{
 		"pkg+https",
 		fetch_open,
 		fh_close,
 		NULL,
+		libfetch_fetch,
 	},
 	{
 		"pkg+http",
 		fetch_open,
 		fh_close,
 		NULL,
+		libfetch_fetch,
 	},
 	{
 		"https",
 		fetch_open,
 		fh_close,
 		NULL,
+		libfetch_fetch,
 	},
 	{
 		"http",
 		fetch_open,
 		fh_close,
 		NULL,
+		libfetch_fetch,
 	},
 	{
 		"file",
 		file_open,
 		fh_close,
 		NULL,
+		stdio_fetch,
 	},
 };
 
@@ -181,13 +188,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	kvlist_t	 envtorestore = tll_init();
 	stringlist_t	 envtounset = tll_init();
 	char		*tmp;
-	off_t		 done = 0;
-	off_t		 r;
-	char		 buf[8192];
 	int		 retcode = EPKG_OK;
 	off_t		 sz = 0;
-	size_t		 buflen = 0;
-	size_t		 left = 0;
 	struct pkg_repo	*fakerepo = NULL;
 
 	/* A URL of the form http://host.example.com/ where
@@ -265,60 +267,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
 		goto cleanup;
-	pkg_debug(1, "Fetch: fetcher chosen: %s", repo->fetcher->scheme);
-
-	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0 ) {
-		if (t != NULL && u->ims_time != 0) {
-			if (u->ims_time <= *t) {
-				retcode = EPKG_UPTODATE;
-				goto cleanup;
-			} else
-				*t = u->ims_time;
-		}
-	}
+	pkg_debug(1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
 
 	if (sz <= 0 && size > 0)
 		sz = size;
 
-	pkg_emit_fetch_begin(url);
-	pkg_emit_progress_start(NULL);
-	if (offset > 0)
-		done += offset;
-	buflen = sizeof(buf);
-	left = sizeof(buf);
-	if (sz > 0)
-		left = sz - done;
-	while ((r = fread(buf, 1, left < buflen ? left : buflen, repo->fh)) > 0) {
-		if (write(dest, buf, r) != r) {
-			pkg_emit_errno("write", "");
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		done += r;
-		if (sz > 0) {
-			left -= r;
-			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
-		} else
-			pkg_debug(4, "Read status: %jd", (intmax_t)done);
-		if (sz > 0)
-			pkg_emit_progress_tick(done, sz);
-	}
-
-	if (r != 0) {
-		pkg_emit_error("An error occurred while fetching package");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	} else {
-		pkg_emit_progress_tick(done, done);
-	}
-	pkg_emit_fetch_finished(url);
-
-	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0
-	    && ferror(repo->fh)) {
-		pkg_emit_error("%s: %s", url, fetchLastErrString);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
+	retcode = repo->fetcher->fetch(repo, dest, url, u, sz, t);
+	if (retcode == EPKG_OK)
+		pkg_emit_fetch_finished(url);
 
 cleanup:
 	tll_foreach(envtorestore, k) {

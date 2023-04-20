@@ -183,6 +183,7 @@ struct fetcher {
 	int (*open)(struct pkg_repo *, struct url *, off_t *);
 	int (*close)(struct pkg_repo *);
 	int (*cleanup)(struct pkg_repo *);
+	int (*fetch)(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t);
 };
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;
