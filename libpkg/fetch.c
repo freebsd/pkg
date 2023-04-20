@@ -242,25 +242,21 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (t != NULL)
 		u->ims_time = *t;
 
-	if (repo != NULL) {
+	if (repo->fetcher == NULL) {
 		for (int i = 0; i < nitems(fetchers); i++) {
 			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
 				repo->fetcher = &fetchers[i];
-				if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
-					goto cleanup;
-				remote = repo->ssh ? repo->ssh : repo->fh;
 				break;
 			}
 		}
-		if (repo->fetcher == NULL) {
-			pkg_emit_error("Unknown scheme: %s", u->scheme);
-			return (EPKG_FATAL);
-		}
-	} else {
-		if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
-			goto cleanup;
-		remote = repo->ssh ? repo->ssh : repo->fh;
 	}
+	if (repo->fetcher == NULL) {
+		pkg_emit_error("Unknown scheme: %s", u->scheme);
+		return (EPKG_FATAL);
+	}
+	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
+		goto cleanup;
+	remote = repo->ssh ? repo->ssh : repo->fh;
 	pkg_debug(1, "Fetch: fetcher chosen: %s", repo->fetcher->scheme);
 
 	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0 ) {
