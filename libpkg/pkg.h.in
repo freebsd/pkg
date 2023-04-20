@@ -1771,7 +1771,9 @@ pkg_get_sl(struct pkg *p, pkg_attr a, struct pkg_stringlist **val)
 	*val = sl;
 }
 static inline void
-pkg_get_invalid(struct pkg *p __unused, pkg_attr a __unused, void *v __unused)
+pkg_get_invalid(struct pkg *p __attribute__((__unused__)),
+		pkg_attr a __attribute__((__unused__)),
+		void *v __attribute__((__unused__)))
 {
 	fprintf(stderr, "invalid attribute type for pkg_get\n");
 	abort();
@@ -1781,7 +1783,9 @@ int pkg_set_s(struct pkg *pkg, pkg_attr a, const char *val);
 int pkg_set_i(struct pkg *pkg, pkg_attr a, int64_t i);
 int pkg_set_b(struct pkg *pkg, pkg_attr a, bool b);
 static inline int
-pkg_set_invalid(struct pkg *p __attribute__((__unused__)), pkg_attr a __unused, void *v __attribute__((__unused__)))
+pkg_set_invalid(struct pkg *p __attribute__((__unused__)),
+		pkg_attr a __attribute__((__unused__)),
+		void *v __attribute__((__unused__)))
 {
 	fprintf(stderr, "Invalid attribute type for pkg_set\n");
 	abort();
