@@ -193,19 +193,22 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 */
 
 	pkg_debug(1, "Request to fetch %s", url);
-	if (repo != NULL) {
-		if (strncmp(URL_SCHEME_PREFIX, url,
-		    strlen(URL_SCHEME_PREFIX)) == 0) {
-			if (repo->fetcher == NULL && repo->mirror_type != SRV) {
-				pkg_emit_error("packagesite URL error for %s -- "
-						URL_SCHEME_PREFIX
-						":// implies SRV mirror type", url);
+	if (repo == NULL) {
+		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
+		fakerepo->url = xstrdup(url);
+		repo = fakerepo;
+	}
+	if (strncmp(URL_SCHEME_PREFIX, url,
+	    strlen(URL_SCHEME_PREFIX)) == 0) {
+		if (repo->fetcher == NULL && repo->mirror_type != SRV) {
+			pkg_emit_error("packagesite URL error for %s -- "
+					URL_SCHEME_PREFIX
+					":// implies SRV mirror type", url);
 
-				/* Too early for there to be anything to cleanup */
-				return(EPKG_FATAL);
-			}
-			url += strlen(URL_SCHEME_PREFIX);
+			/* Too early for there to be anything to cleanup */
+			return(EPKG_FATAL);
 		}
+		url += strlen(URL_SCHEME_PREFIX);
 	}
 
 	if (u == NULL)
@@ -214,23 +217,17 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (offset > 0)
 		u->offset = offset;
 
-	if (repo != NULL) {
-		repo->silent = silent;
-		tll_foreach(repo->env, k) {
-			if ((tmp = getenv(k->item->key)) != NULL) {
-				kv = xcalloc(1, sizeof(*kv));
-				kv->key = xstrdup(k->item->key);
-				kv->value = xstrdup(tmp);
-				tll_push_back(envtorestore, kv);
-			} else {
-				tll_push_back(envtounset, k->item->key);
-			}
-			setenv(k->item->key, k->item->value, 1);
+	repo->silent = silent;
+	tll_foreach(repo->env, k) {
+		if ((tmp = getenv(k->item->key)) != NULL) {
+			kv = xcalloc(1, sizeof(*kv));
+			kv->key = xstrdup(k->item->key);
+			kv->value = xstrdup(tmp);
+			tll_push_back(envtorestore, kv);
+		} else {
+			tll_push_back(envtounset, k->item->key);
 		}
-	} else {
-		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
-		fakerepo->url = xstrdup(url);
-		repo = fakerepo;
+		setenv(k->item->key, k->item->value, 1);
 	}
 
 	if (u == NULL) {
@@ -313,18 +310,16 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 
 cleanup:
-	if (repo != NULL) {
-		tll_foreach(envtorestore, k) {
-			setenv(k->item->key, k->item->value, 1);
-			tll_remove_and_free(envtorestore, k, pkg_kv_free);
-		}
-		tll_free(envtorestore);
-		tll_foreach(envtounset, k) {
-			unsetenv(k->item);
-			tll_remove(envtounset, k);
-		}
-		tll_free(envtounset);
+	tll_foreach(envtorestore, k) {
+		setenv(k->item->key, k->item->value, 1);
+		tll_remove_and_free(envtorestore, k, pkg_kv_free);
 	}
+	tll_free(envtorestore);
+	tll_foreach(envtounset, k) {
+		unsetenv(k->item);
+		tll_remove(envtounset, k);
+	}
+	tll_free(envtounset);
 
 	if (u != NULL) {
 		if (remote != NULL &&  repo != NULL && remote != repo->ssh) {
