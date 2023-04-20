@@ -65,17 +65,17 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"pkg+https",
-		fetch_open,
-		fh_close,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"pkg+http",
-		fetch_open,
-		fh_close,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"https",
@@ -86,10 +86,10 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"http",
-		fetch_open,
-		fh_close,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"file",

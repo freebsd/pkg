@@ -522,6 +522,7 @@ struct pkg_repo {
 	signature_t signature_type;
 	char *fingerprints;
 	FILE *fh;
+	void *fetch_priv;
 	bool silent;
 
 	pkghash *trusted_fp;
