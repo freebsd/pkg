@@ -182,6 +182,7 @@ struct fetcher {
 	const char *scheme;
 	int (*open)(struct pkg_repo *, struct url *, off_t *);
 	int (*close)(struct pkg_repo *);
+	int (*cleanup)(struct pkg_repo *);
 };
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;
@@ -520,7 +521,6 @@ struct pkg_repo {
 	signature_t signature_type;
 	char *fingerprints;
 	FILE *fh;
-	FILE *ssh;
 	bool silent;
 
 	pkghash *trusted_fp;

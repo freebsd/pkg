@@ -53,36 +53,43 @@ static struct fetcher fetchers [] = {
 		"tcp",
 		tcp_open,
 		NULL,
+		fh_close,
 	},
 	{
 		"ssh",
 		ssh_open,
 		NULL,
+		fh_close,
 	},
 	{
 		"pkg+https",
 		fetch_open,
 		fh_close,
+		NULL,
 	},
 	{
 		"pkg+http",
 		fetch_open,
 		fh_close,
+		NULL,
 	},
 	{
 		"https",
 		fetch_open,
 		fh_close,
+		NULL,
 	},
 	{
 		"http",
 		fetch_open,
 		fh_close,
+		NULL,
 	},
 	{
 		"file",
 		file_open,
 		fh_close,
+		NULL,
 	},
 };
 

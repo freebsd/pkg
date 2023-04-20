@@ -1481,10 +1481,8 @@ pkg_repo_free(struct pkg_repo *r)
 	free(r->pubkey);
 	free(r->fingerprints);
 	pkg_repo_meta_free(r->meta);
-	if (r->ssh != NULL) {
-		fprintf(r->ssh, "quit\n");
-		pclose(r->ssh);
-	}
+	if (r->fetcher != NULL && r->fetcher->cleanup != NULL)
+		r->fetcher->cleanup(r);
 	tll_free_and_free(r->env, pkg_kv_free);
 	free(r);
 }
