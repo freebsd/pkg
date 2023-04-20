@@ -82,6 +82,7 @@ SRCS=	\
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \
 		-I$(top_srcdir)/external/libcurl \
+		-I$(top_builddir)/external/libcurl \
 		-I$(top_srcdir)/external/curl/lib \
 		-I$(top_srcdir)/external/curl/include
 
