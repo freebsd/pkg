@@ -3,6 +3,12 @@ include @builddir@/mk/defs.mk
 LIB=	curl
 .PATH:	$(top_srcdir)/external/curl/lib/
 VPATH=	$(top_srcdir)/external/curl/lib/
+.PATH:	$(top_srcdir)/external/curl/lib/vtls
+VPATH+=	$(top_srcdir)/external/curl/lib/vtls
+.PATH:	$(top_srcdir)/external/curl/lib/vauth
+VPATH+=	$(top_srcdir)/external/curl/lib/vauth
+.PATH:	$(top_srcdir)/external/curl/lib/vquic
+VPATH+=	$(top_srcdir)/external/curl/lib/vquic
 
 SRCS=	\
 	altsvc.c \
@@ -129,6 +135,12 @@ SRCS=	\
 	version.c \
 	warnless.c \
 	ws.c \
+	vtls.c \
+	openssl.c \
+	keylog.c \
+	hostcheck.c \
+	vauth.c \
+	vquic.c
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \
