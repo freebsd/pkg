@@ -48,10 +48,7 @@
 #include "private/utils.h"
 #include "private/fetch.h"
 
-static struct fetcher {
-	const char *scheme;
-	int (*open)(struct pkg_repo *, struct url *, off_t *);
-} fetchers [] = {
+static struct fetcher fetchers [] = {
 	{
 		"tcp",
 		tcp_open,
@@ -81,7 +78,6 @@ static struct fetcher {
 		file_open,
 	},
 };
-
 
 int
 pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
@@ -178,7 +174,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	off_t		 sz = 0;
 	size_t		 buflen = 0;
 	size_t		 left = 0;
-	struct fetcher	*fetcher = NULL;
 	struct pkg_repo	*fakerepo = NULL;
 
 	FILE *remote = NULL;
@@ -198,19 +193,19 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 */
 
 	pkg_debug(1, "Request to fetch %s", url);
-	if (repo != NULL &&
-		strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
-		if (repo->mirror_type != SRV) {
-			pkg_emit_error("packagesite URL error for %s -- "
-				       URL_SCHEME_PREFIX
-				       ":// implies SRV mirror type", url);
+	if (repo != NULL) {
+		if (strncmp(URL_SCHEME_PREFIX, url,
+		    strlen(URL_SCHEME_PREFIX)) == 0) {
+			if (repo->fetcher == NULL && repo->mirror_type != SRV) {
+				pkg_emit_error("packagesite URL error for %s -- "
+						URL_SCHEME_PREFIX
+						":// implies SRV mirror type", url);
 
-			/* Too early for there to be anything to cleanup */
-			return(EPKG_FATAL);
+				/* Too early for there to be anything to cleanup */
+				return(EPKG_FATAL);
+			}
+			url += strlen(URL_SCHEME_PREFIX);
 		}
-
-		url += strlen(URL_SCHEME_PREFIX);
-		u = fetchParseURL(url);
 	}
 
 	if (u == NULL)
@@ -247,20 +242,26 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (t != NULL)
 		u->ims_time = *t;
 
-	for (int i = 0; i < nitems(fetchers); i++) {
-		if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
-			fetcher = &fetchers[i];
-			if ((retcode = fetcher->open(repo, u, &sz)) != EPKG_OK)
-				goto cleanup;
-			remote = repo->ssh ? repo->ssh : repo->fh;
-			break;
+	if (repo != NULL) {
+		for (int i = 0; i < nitems(fetchers); i++) {
+			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
+				repo->fetcher = &fetchers[i];
+				if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
+					goto cleanup;
+				remote = repo->ssh ? repo->ssh : repo->fh;
+				break;
+			}
 		}
+		if (repo->fetcher == NULL) {
+			pkg_emit_error("Unknown scheme: %s", u->scheme);
+			return (EPKG_FATAL);
+		}
+	} else {
+		if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
+			goto cleanup;
+		remote = repo->ssh ? repo->ssh : repo->fh;
 	}
-	if (fetcher == NULL) {
-		pkg_emit_error("Unknown scheme: %s", u->scheme);
-		return (EPKG_FATAL);
-	}
-	pkg_debug(1, "Fetch: fetcher chosen: %s", fetcher->scheme);
+	pkg_debug(1, "Fetch: fetcher chosen: %s", repo->fetcher->scheme);
 
 	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0 ) {
 		if (t != NULL && u->ims_time != 0) {

@@ -177,6 +177,11 @@ extern struct pkg_ctx ctx;
 
 struct pkg_repo_it;
 struct pkg_repo;
+struct url;
+struct fetcher {
+	const char *scheme;
+	int (*open)(struct pkg_repo *, struct url *, off_t *);
+};
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;
 
@@ -503,6 +508,7 @@ struct pkg_repo {
 	struct pkg_repo_ops *ops;
 
 	char *name;
+	struct fetcher *fetcher;
 	char *url;
 	char *pubkey;
 	mirror_t mirror_type;
