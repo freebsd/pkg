@@ -31,15 +31,13 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
-struct curl_priv {
-	CURLM *cm;
-};
 struct curl_userdata {
 	int fd;
 	FILE *fh;
 	size_t size;
 	size_t totalsize;
 	bool started;
+	const char *url;
 };
 
 static size_t
@@ -49,6 +47,7 @@ curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
 	size_t written;
 
 	if (!d->started) {
+		pkg_emit_fetch_begin(d->url);
 		pkg_emit_progress_start(NULL);
 		d->started = true;
 	}
@@ -95,6 +94,7 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_
 	if (data.fh == NULL)
 		return (EPKG_FATAL);
 	data.totalsize = sz;
+	data.url = url;
 
 	pkg_debug(1, "curl> fetching %s\n", url);
 	cl = curl_easy_init();
@@ -114,7 +114,6 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_
 		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYHOST, 0L);
 	curl_multi_add_handle(cm, cl);
 
-	pkg_emit_fetch_begin(url);
 	while(still_running) {
 		CURLMcode mc = curl_multi_perform(cm, &still_running);
 
