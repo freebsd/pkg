@@ -220,7 +220,7 @@ cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
 	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
 
 # for compat
-cc-check-includes dirent.h
+cc-check-includes dirent.h sys/sockio.h
 
 #endian stuff
 foreach header [list endian.h sys/endian.h] {
@@ -345,6 +345,7 @@ if {[get-define CCACHE] ne {none}} {
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
 make-config-header external/sqlite/sqlite_cfg.h
+make-config-header external/libcurl/curl_cfg.h
 make-template mk/defs.mk.in
 make-template libpkg/pkg.h.in
 make-template libpkg/pkg.pc.in
