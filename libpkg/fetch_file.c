@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,4 +58,12 @@ file_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 	if (repo->fh == NULL)
 		return (EPKG_FATAL);
 	return (EPKG_OK);
+}
+
+void
+fh_close(struct pkg_repo *repo)
+{
+	if (repo->fh != NULL)
+		fclose(repo->fh);
+	repo->fh = NULL;
 }

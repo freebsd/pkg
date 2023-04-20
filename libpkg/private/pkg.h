@@ -181,6 +181,7 @@ struct url;
 struct fetcher {
 	const char *scheme;
 	int (*open)(struct pkg_repo *, struct url *, off_t *);
+	int (*close)(struct pkg_repo *);
 };
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;

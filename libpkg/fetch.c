@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -52,30 +52,37 @@ static struct fetcher fetchers [] = {
 	{
 		"tcp",
 		tcp_open,
+		NULL,
 	},
 	{
 		"ssh",
 		ssh_open,
+		NULL,
 	},
 	{
 		"pkg+https",
 		fetch_open,
+		fh_close,
 	},
 	{
 		"pkg+http",
 		fetch_open,
+		fh_close,
 	},
 	{
 		"https",
 		fetch_open,
+		fh_close,
 	},
 	{
 		"http",
 		fetch_open,
+		fh_close,
 	},
 	{
 		"file",
 		file_open,
+		fh_close,
 	},
 };
 
@@ -176,8 +183,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	size_t		 left = 0;
 	struct pkg_repo	*fakerepo = NULL;
 
-	FILE *remote = NULL;
-
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is
 	 * not valid according to RFC 2616 Section 3.2.2.  Our usage
@@ -253,7 +258,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
 		goto cleanup;
-	remote = repo->ssh ? repo->ssh : repo->fh;
 	pkg_debug(1, "Fetch: fetcher chosen: %s", repo->fetcher->scheme);
 
 	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0 ) {
@@ -277,7 +281,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	left = sizeof(buf);
 	if (sz > 0)
 		left = sz - done;
-	while ((r = fread(buf, 1, left < buflen ? left : buflen, remote)) > 0) {
+	while ((r = fread(buf, 1, left < buflen ? left : buflen, repo->fh)) > 0) {
 		if (write(dest, buf, r) != r) {
 			pkg_emit_errno("write", "");
 			retcode = EPKG_FATAL;
@@ -302,8 +306,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	}
 	pkg_emit_fetch_finished(url);
 
-	if (strcmp(u->scheme, "ssh") != 0 & strcmp(u->scheme, "tcp") != 0
-	    && ferror(remote)) {
+	if (strcmp(u->scheme, "ssh") != 0 && strcmp(u->scheme, "tcp") != 0
+	    && ferror(repo->fh)) {
 		pkg_emit_error("%s: %s", url, fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -321,12 +325,8 @@ cleanup:
 	}
 	tll_free(envtounset);
 
-	if (u != NULL) {
-		if (remote != NULL &&  repo != NULL && remote != repo->ssh) {
-			fclose(remote);
-			repo->fh = NULL;
-		}
-	}
+	if (repo->fetcher != NULL && repo->fetcher->close != NULL)
+		repo->fetcher->close(repo);
 	free(fakerepo);
 
 	if (retcode == EPKG_OK) {

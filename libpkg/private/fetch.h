@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _PKG_FETCH_H
-#define _PKG_FETCH_H
+#pragma once
 
 int fetch_open(struct pkg_repo *, struct url *, off_t *);
 int ssh_open(struct pkg_repo *, struct url *, off_t *);
 int file_open(struct pkg_repo *, struct url *, off_t *);
+int fh_close(struct pkg_repo *);
 int tcp_open(struct pkg_repo *, struct url *, off_t *);
-
-#endif

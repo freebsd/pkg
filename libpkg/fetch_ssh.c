@@ -99,15 +99,15 @@ tcp_connect(struct pkg_repo *repo, struct url *u)
 	}
 	repo->sshio.in = dup(sd);
 	repo->sshio.out = dup(sd);
-	repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, tcp_close);
+	repo->fh = funopen(repo, ssh_read, ssh_write, NULL, tcp_close);
 
 	retcode = EPKG_FATAL;
-	if (repo->ssh == NULL) {
+	if (repo->fh == NULL) {
 		pkg_emit_errno("Failed to open stream", "tcp_connect");
 		goto tcp_cleanup;
 	}
 
-	if (getline(&line, &linecap, repo->ssh) > 0) {
+	if (getline(&line, &linecap, repo->fh) > 0) {
 		if (strncmp(line, "ok:", 3) != 0) {
 			pkg_debug(1, "SSH> server rejected, got: %s", line);
 			goto tcp_cleanup;
@@ -119,9 +119,9 @@ tcp_connect(struct pkg_repo *repo, struct url *u)
 	}
 	retcode = EPKG_OK;
 tcp_cleanup:
-	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
-		fclose(repo->ssh);
-		repo->ssh = NULL;
+	if (retcode == EPKG_FATAL && repo->fh != NULL) {
+		fclose(repo->fh);
+		repo->fh = NULL;
 	}
 	free(line);
 	return (retcode);
@@ -202,13 +202,13 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 	repo->sshio.out = sshin[1];
 	set_nonblocking(repo->sshio.in);
 
-	repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
-	if (repo->ssh == NULL) {
+	repo->fh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
+	if (repo->fh == NULL) {
 		pkg_emit_errno("Failed to open stream", "start_ssh");
 		goto ssh_cleanup;
 	}
 
-	if (getline(&line, &linecap, repo->ssh) > 0) {
+	if (getline(&line, &linecap, repo->fh) > 0) {
 		if (strncmp(line, "ok:", 3) != 0) {
 			pkg_debug(1, "SSH> server rejected, got: %s", line);
 			goto ssh_cleanup;
@@ -221,9 +221,9 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 	retcode = EPKG_OK;
 
 ssh_cleanup:
-	if (retcode == EPKG_FATAL && repo->ssh != NULL) {
-		fclose(repo->ssh);
-		repo->ssh = NULL;
+	if (retcode == EPKG_FATAL && repo->fh != NULL) {
+		fclose(repo->fh);
+		repo->fh = NULL;
 	}
 	free(line);
 	return (retcode);
@@ -240,7 +240,7 @@ pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
 	int retcode = EPKG_FATAL;
 
 	pkg_debug(1, "SSH> tcp_open");
-	if (repo->ssh == NULL)
+	if (repo->fh == NULL)
 		retcode = proto_connect(repo, u);
 	else
 		retcode = EPKG_OK;
@@ -249,8 +249,8 @@ pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
 		return (retcode);
 
 	pkg_debug(1, "SSH> get %s %" PRIdMAX "", u->doc, (intmax_t)u->ims_time);
-	fprintf(repo->ssh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
-	if ((linelen = getline(&line, &linecap, repo->ssh)) > 0) {
+	fprintf(repo->fh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
+	if ((linelen = getline(&line, &linecap, repo->fh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
 
@@ -300,7 +300,7 @@ tcp_close(void *data)
 	write(repo->sshio.out, "quit\n", 5);
 	close(repo->sshio.out);
 	close(repo->sshio.in);
-	repo->ssh = NULL;
+	repo->fh = NULL;
 	return (0);
 }
 
@@ -319,7 +319,7 @@ ssh_close(void *data)
 	close(repo->sshio.out);
 	close(repo->sshio.in);
 
-	repo->ssh = NULL;
+	repo->fh = NULL;
 
 	return (WEXITSTATUS(pstat));
 }
