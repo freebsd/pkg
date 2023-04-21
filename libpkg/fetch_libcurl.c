@@ -33,11 +33,13 @@
 
 struct curl_userdata {
 	int fd;
+	CURL *cl;
 	FILE *fh;
 	size_t size;
 	size_t totalsize;
 	bool started;
 	const char *url;
+	long response;
 };
 
 static size_t
@@ -46,16 +48,41 @@ curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
 	struct curl_userdata *d = (struct curl_userdata *)userdata;
 	size_t written;
 
+	written = fwrite(data, size, nmemb, d->fh);
+	d->size += written;
+
+	return (written);
+}
+
+static size_t
+curl_parseheader_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdata)
+{
+	struct curl_userdata *d = (struct curl_userdata *)userdata;
+
 	if (!d->started) {
 		pkg_emit_fetch_begin(d->url);
 		pkg_emit_progress_start(NULL);
 		d->started = true;
 	}
-	written = fwrite(data, size, nmemb, d->fh);
-	d->size += written;
-	pkg_emit_progress_tick(d->size, d->totalsize);
-	return (written);
+
+	curl_easy_getinfo(d->cl, CURLINFO_RESPONSE_CODE, &d->response);
+
+	return (size *nmemb);
+
 }
+
+static size_t
+curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal __unused, curl_off_t ulnow __unused)
+{
+	struct curl_userdata *d = (struct curl_userdata *)userdata;
+
+	if (d->response != 200)
+		return (0);
+
+	pkg_emit_progress_tick(dlnow, dltotal);
+	return (0);
+}
+
 
 int
 curl_open(struct pkg_repo *repo, struct url *u __unused, off_t *sz __unused)
@@ -98,14 +125,20 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_
 
 	pkg_debug(1, "curl> fetching %s\n", url);
 	cl = curl_easy_init();
+	data.cl = cl;
 	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_write_cb);
 	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
-	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 1L);
+	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 0L);
 	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
+	curl_easy_setopt(cl, CURLOPT_XFERINFOFUNCTION, curl_progress_cb);
+	curl_easy_setopt(cl, CURLOPT_XFERINFODATA, &data);
 	curl_easy_setopt(cl, CURLOPT_URL, url); /* TODO handle mirrors */
 	curl_easy_setopt(cl, CURLOPT_TIMEVALUE, (long)*t);
 	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
+	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_parseheader_cb);
+	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
+
 	//curl_easy_setopt(cl, CURLOPT_MAXFILESIZE_LARGE, *sz);
 	/* compat with libfetch */
 	if (getenv("SSL_NO_VERFIRY_PEER") != NULL)
