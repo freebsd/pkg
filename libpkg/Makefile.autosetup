@@ -161,11 +161,13 @@ $(OBJS) $(SHOBJS): $(top_builddir)/pkg_config.h
 
 all: lib$(LIB)_flat.a
 
+lib$(LIB)$(LIBSOEXT): $(STATIC_LIBS)
+
 @if libmachista
 lib$(LIB)_flat.a: $(STATIC_LIBS)
 	libtool -static -o lib$(LIB)_flat.a $(STATIC_LIBS)
 @else
-lib$(LIB)_flat.a: mergelib_script
+lib$(LIB)_flat.a: ${STATIC_LIBS} mergelib_script
 	ar -M < mergelib_script
 @endif
 
@@ -177,14 +179,14 @@ mergelib_script: $(STATIC_LIBS)
 	@echo "SAVE" >> $@
 	@echo "END" >> $@
 
-install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB).a
+install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB)_flat.a
 	install -d -m 755 $(DESTDIR)$(libdir)
 	install -d -m 755 $(DESTDIR)$(includedir)
 	install -d -m 755 $(DESTDIR)$(includedir)/pkg
 	install -d -m 755 $(DESTDIR)$(pkgconfigdir)
 	install -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
 	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
-	install -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
+	install -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/lib$(LIB).a
 	install -m 644 pkg.h $(DESTDIR)$(includedir)/
 	install -m 644 $(top_srcdir)/libpkg/pkg/audit.h $(DESTDIR)$(includedir)/pkg
 	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)/
