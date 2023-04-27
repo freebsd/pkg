@@ -48,7 +48,8 @@ SRCS=	backup_lib.c \
 	fetch_libcurl.c \
 	fetch_file.c \
 	triggers.c \
-	pkghash.c
+	pkghash.c \
+	yuarel.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/blake2 \
