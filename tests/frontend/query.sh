@@ -73,33 +73,33 @@ EOF
 		pkg query -e "%#r>0" "%n: %rn %rv %ro"
 
 	atf_check \
-		-o empty \
-		-e match:"Usage:.*" \
-		-s exit:1 \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" test
 
 	atf_check \
 		-o empty \
-		-e match:"Usage:.*" \
+		-e empty \
 		-s exit:1 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop
 
 	atf_check \
-		-o empty \
-		-e match:"Usage:.*" \
-		-s exit:1 \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
 		pkg query -e "%#r>0" "%n: %rn %rv %ro" plop test
 
 	atf_check \
-		-o empty \
-		-e inline:"Usage: pkg query -e <evaluation> <query-format>\n'-e' flag do not accept any other argument\n" \
-		-s exit:1 \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
 		pkg query -ge "%#r>0" "%n: %rn %rv %ro" "p*p" "t*t"
 
 	atf_check \
-		-o empty \
-		-e inline:"Usage: pkg query -e <evaluation> <query-format>\n'-e' flag do not accept any other argument\n" \
-		-s exit:1 \
+		-o inline:"test: plop 1 plop\n" \
+		-e empty \
+		-s exit:0 \
 		pkg query -xe "%#r>0" "%n: %rn %rv %ro" "p.*p" "t.*t"
 
 	atf_check \
@@ -109,9 +109,9 @@ EOF
 		pkg query -e "%#d>0" "%n: %dn %dv %do"
 
 	atf_check \
-		-o empty \
-		-e match:"Usage:.*" \
-		-s exit:1 \
+		-o inline:"plop: test 1 test\n" \
+		-e empty \
+		-s exit:0 \
 		pkg query -e "%#d>0" "%n: %dn %dv %do" plop test
 
 	atf_check \

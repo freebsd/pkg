@@ -30,9 +30,8 @@
 .Nm
 .Fl F Ao pkg-file Ac Ao query-format Ac
 .Nm
-.Fl e Ao evaluation-condition Ac Ao query-format Ac
-.Nm
 .Op Fl Cgix
+.Op Fl e Ao evaluation-condition Ac
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Pp
 .Nm
@@ -41,9 +40,8 @@
 .Nm
 .Cm --file Ao pkg-file Ac Ao query-format Ac
 .Nm
-.Cm --evaluate Ao evaluation-condition Ac Ao query-format Ac
-.Nm
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Op Cm --evaluate Ao evaluation-condition Ac
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
@@ -59,7 +57,7 @@ Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
-case sensitive.
+in pattern case sensitive.
 .It Fl e , Cm --evaluate
 Match packages using the given
 .Ar evaluation-condition .
@@ -74,7 +72,7 @@ Make the standard or regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
-case insensitive.
+in pattern case insensitive.
 This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
