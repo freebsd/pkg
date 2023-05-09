@@ -1,4 +1,6 @@
 /* Copyright (c) 2014, Vsevolod Stakhov
+ * Copyright (c) 2023, Serenity Cyber Security, LLC
+ *                     Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
