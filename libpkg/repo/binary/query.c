@@ -285,7 +285,7 @@ pkg_repo_binary_search_how(match_t match)
 
 	switch (match) {
 	case MATCH_ALL:
-		how = NULL;
+		how = "TRUE";
 		break;
 	case MATCH_INTERNAL:
 		how = "%s = ?1";
@@ -399,7 +399,7 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 		"LEFT JOIN categories ON categories.id = pkg_categories.category_id "
 		"LEFT JOIN flavors ON flavors.package_id = p.id ";
 
-	if (pattern == NULL || pattern[0] == '\0')
+	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
 	sql = xstring_new();
