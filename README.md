@@ -128,9 +128,6 @@ Valid scripts are:
 * pre-deinstall
 * post-deinstall
 * deinstall
-* pre-upgrade
-* post-upgrade
-* upgrade
 
 Script *MUST* be in sh format.
 Nothing else will work.
