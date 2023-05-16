@@ -4,6 +4,8 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -480,6 +482,8 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 		 */
 		if (req != NULL && req->processed)
 			continue;
+
+		pkgdb_it_free (lit);
 		return (ret);
 	}
 	rit = requireq(j->db, provide);
