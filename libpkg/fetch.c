@@ -79,10 +79,10 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"https",
-		fetch_open,
-		fh_close,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"http",
