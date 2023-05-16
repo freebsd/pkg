@@ -8,6 +8,8 @@
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1100,7 +1102,8 @@ pkgdb_close(struct pkgdb *db)
 		if (!sqlite3_db_readonly(db->sqlite, "main"))
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW, NULL, db);
 
-		sqlite3_close(db->sqlite);
+		if (sqlite3_close(db->sqlite) != SQLITE_OK)
+			pkg_emit_error("Package database is busy while closing!");
 	}
 
 	sqlite3_shutdown();
