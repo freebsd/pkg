@@ -486,6 +486,7 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 		pkgdb_it_free (lit);
 		return (ret);
 	}
+	pkgdb_it_free(lit);
 	rit = requireq(j->db, provide);
 	if (rit == NULL)
 		return (ret);
@@ -496,6 +497,7 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 		    pkg->uid, lp->name))
 			ret = false;
 	}
+	pkgdb_it_free(rit);
 	return (ret);
 }
 
@@ -708,9 +710,12 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 			continue;
 		npkg = NULL;
 		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			if (!is_orphaned(j, npkg->uid))
+			if (!is_orphaned(j, npkg->uid)) {
+				pkgdb_it_free(it);
 				return (false);
+			}
 		}
+		pkgdb_it_free(it);
 	}
 
 	tll_foreach(p->shlibs_provided, i) {
@@ -719,9 +724,12 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 			continue;
 		npkg = NULL;
 		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			if (!is_orphaned(j, npkg->uid))
+			if (!is_orphaned(j, npkg->uid)) {
+				pkgdb_it_free(it);
 				return (false);
+			}
 		}
+		pkgdb_it_free(it);
 	}
 
 
@@ -977,9 +985,9 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 			with_version = 0;
 		}
 		rc = pkg_jobs_process_remote_pkg(j, p, NULL, with_version);
-		if (rc == EPKG_FATAL)
+		if (rc == EPKG_FATAL) {
 			break;
-		else if (rc == EPKG_OK)
+		} else if (rc == EPKG_OK)
 			found = true;
 
 		p = NULL;
@@ -1472,6 +1480,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		    PKG_LOAD_SHLIBS_PROVIDED) == EPKG_OK) {
 			if(pkg->locked) {
 				if (tsearch(pkg, &j->lockedpkgs, comp) == NULL) {
+					pkgdb_it_free(it);
 					return (EPKG_FATAL);
 				}
 			}
