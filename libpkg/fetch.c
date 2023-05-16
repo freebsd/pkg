@@ -212,7 +212,22 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		fakerepo->url = xstrdup(url);
 		repo = fakerepo;
 	}
-	if (strncmp(URL_SCHEME_PREFIX, url,
+
+	if (repo->fetcher == NULL) {
+		for (int i = 0; i < nitems(fetchers); i++) {
+			if (strncasecmp(url, fetchers[i].scheme,
+			    strlen(fetchers[i].scheme)) == 0) {
+				repo->fetcher = &fetchers[i];
+				break;
+			}
+		}
+	}
+	if (repo->fetcher == NULL) {
+		pkg_emit_error("Unknown scheme: %s", url);
+		return (EPKG_FATAL);
+	}
+
+	if (strncasecmp(URL_SCHEME_PREFIX, url,
 	    strlen(URL_SCHEME_PREFIX)) == 0) {
 		if (repo->fetcher == NULL && repo->mirror_type != SRV) {
 			pkg_emit_error("packagesite URL error for %s -- "
@@ -224,7 +239,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		}
 		url += strlen(URL_SCHEME_PREFIX);
 	}
-
 	if (u == NULL)
 		u = fetchParseURL(url);
 
@@ -253,18 +267,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (t != NULL)
 		u->ims_time = *t;
 
-	if (repo->fetcher == NULL) {
-		for (int i = 0; i < nitems(fetchers); i++) {
-			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
-				repo->fetcher = &fetchers[i];
-				break;
-			}
-		}
-	}
-	if (repo->fetcher == NULL) {
-		pkg_emit_error("Unknown scheme: %s", u->scheme);
-		return (EPKG_FATAL);
-	}
 	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
 		goto cleanup;
 	pkg_debug(1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
