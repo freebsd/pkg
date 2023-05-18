@@ -2,8 +2,10 @@
  * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -93,7 +95,7 @@ match_ucl_lists(const char *buf, const ucl_object_t *globs, const ucl_object_t *
 }
 
 int
-mkdirs(const char *_path)
+pkg_mkdirs(const char *_path)
 {
 	char path[MAXPATHLEN];
 	char *p;
@@ -673,7 +675,7 @@ pkg_utils_tokenize(char **args)
 				else {
 					parse_state = ORDINARY_TEXT;
 					p_start = p;
-				}				
+				}
 			} else
 				p_start = p;
 			break;
@@ -890,7 +892,7 @@ _copy_file(int from, int to)
 }
 
 bool
-copy_file(int from, int to)
+pkg_copy_file(int from, int to)
 {
 #ifdef HAVE_COPY_FILE_RANGE
 	bool cfr = true;
@@ -962,7 +964,7 @@ hidden_tempfile(char *buf, int buflen, const char *path)
 	if (fname != NULL)
 		fname++;
 
-	/* 
+	/*
 	 * try to reduce the temporary name as much as possible to fit with very
 	 * long file names if possible. by default
 	 * .pkgtemp. fname . <suffix>
@@ -1009,7 +1011,7 @@ open_tempdir(int rootfd, const char *path)
 	char walk[MAXPATHLEN];
 	char *dir;
 	size_t cnt = 0;
-	
+
 	strlcpy(walk, path, sizeof(walk));
 	while ((dir = strrchr(walk, '/')) != NULL) {
 		struct tempdir *t;
@@ -1019,7 +1021,7 @@ open_tempdir(int rootfd, const char *path)
 		if (strlen(walk) == 0 && cnt == 1)
 			break;
 		if (strlen(walk) > 0) {
-			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1) 
+			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
 				continue;
 			if (S_ISDIR(st.st_mode) && cnt == 1)
 				break;

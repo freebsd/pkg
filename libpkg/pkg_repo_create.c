@@ -4,6 +4,8 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * All rights reserved.
  *
@@ -137,7 +139,7 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 	rel_dir = (char *)&tmp_name;
 	if (!is_dir(rel_dir)) {
 		pkg_debug(1, "Making directory: %s", rel_dir);
-		(void)mkdirs(rel_dir);
+		(void)pkg_mkdirs(rel_dir);
 	}
 
 	if (strcmp(path, hash_name) != 0) {

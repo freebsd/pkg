@@ -2,6 +2,8 @@
  * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,5 +51,9 @@
 int
 pkg_update(struct pkg_repo *repo, bool force)
 {
-	return (repo->ops->update(repo, force));
+	int rc = repo->ops->update(repo, force);
+	if (rc == EPKG_OK) {
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_REPO_UPDATE_SUCCESS, repo, NULL);
+	}
+	return rc;
 }

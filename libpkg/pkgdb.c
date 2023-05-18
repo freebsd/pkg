@@ -697,7 +697,7 @@ pkgdb_check_access(unsigned mode, const char *dbname)
 		break;
 	case PKGDB_MODE_WRITE:
 		if (dbdirfd == -1) {
-			mkdirs(ctx.dbdir);
+			pkg_mkdirs(ctx.dbdir);
 			dbdirfd = pkg_get_dbdirfd();
 			if (dbdirfd == -1)
 				goto out;
@@ -706,7 +706,7 @@ pkgdb_check_access(unsigned mode, const char *dbname)
 		break;
 	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
 		if (dbdirfd == -1) {
-			mkdirs(ctx.dbdir);
+			pkg_mkdirs(ctx.dbdir);
 			dbdirfd = pkg_get_dbdirfd();
 			if (dbdirfd == -1)
 				goto out;
@@ -983,7 +983,7 @@ retry:
 		dbdirfd = pkg_get_dbdirfd();
 		if (dbdirfd == -1) {
 			if (errno == ENOENT) {
-				if (mkdirs(ctx.dbdir) != EPKG_OK) {
+				if (pkg_mkdirs(ctx.dbdir) != EPKG_OK) {
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 				}

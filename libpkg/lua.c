@@ -1,7 +1,9 @@
 /*-
  * Copyright (c) 2019-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -219,7 +221,7 @@ lua_pkg_copy(lua_State *L)
 		return (1);
 	}
 
-	if (!copy_file(fd1, fd2)) {
+	if (!pkg_copy_file(fd1, fd2)) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
