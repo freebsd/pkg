@@ -4,6 +4,8 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * All rights reserved.
  *
@@ -166,7 +168,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 
 	/* Create the dirs in cachedir */
 	dir = get_dirname(xstrdup(dest));
-	if ((retcode = mkdirs(dir)) != EPKG_OK)
+	if ((retcode = pkg_mkdirs(dir)) != EPKG_OK)
 		goto cleanup;
 
 	/*

@@ -2338,7 +2338,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct statfs fs;
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {
-			if (mkdirs(cachedir) != EPKG_OK)
+			if (pkg_mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
 			pkg_emit_errno("statfs", cachedir);

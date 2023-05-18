@@ -435,6 +435,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_PRE_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_POST_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW,
+	PKG_PLUGIN_HOOK_REPO_UPDATE_SUCCESS,
 	PKG_PLUGIN_HOOK_LAST
 } pkg_plugin_hook_t;
 
@@ -1507,6 +1508,9 @@ mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
 unsigned pkg_repo_priority(struct pkg_repo *r);
 unsigned pkg_repo_ip_version(struct pkg_repo *r);
 struct pkg_repo *pkg_repo_find(const char *name);
+int pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
+	const char *filename, const char *extension,
+	time_t *t, int *rc, bool silent);
 
 /**
  * pkg_printf() and friends.  These parallel the similarly named libc
@@ -1637,6 +1641,8 @@ bool pkg_is_locked(const struct pkg * restrict p);
 
 char *pkg_utils_tokenize(char **);
 int pkg_utils_count_spaces(const char *);
+int pkg_mkdirs(const char *path);
+bool pkg_copy_file(int from, int to);
 int pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *root, \
     const char *locationn, bool testing);
 char *pkg_absolutepath(const char *src, char *dest, size_t dest_len, bool fromroot);
@@ -1648,6 +1654,16 @@ int pkg_get_cachedirfd(void);
 int pkg_get_dbdirfd(void);
 
 int pkg_namecmp(struct pkg *, struct pkg *);
+
+#ifndef PKG_FORMAT_ATTRIBUTE
+#ifdef __GNUC__
+#define PKG_FORMAT_ATTRIBUTE(x, y) __attribute__ ((format (printf, (x), (y))));
+#else
+#define PKG_FORMAT_ATTRIBUTE(x, y)
+#endif
+#endif
+void pkg_emit_error(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
+void pkg_emit_notice(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
 
 struct pkg_create *pkg_create_new(void);
 void pkg_create_free(struct pkg_create *);

@@ -3,6 +3,8 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,13 +32,13 @@
 #ifndef _PKG_EVENT
 #define _PKG_EVENT
 
+#ifndef PKG_FORMAT_ATTRIBUTE
 #ifdef __GNUC__
 #define PKG_FORMAT_ATTRIBUTE(x, y) __attribute__ ((format (printf, (x), (y))));
 #else
 #define PKG_FORMAT_ATTRIBUTE(x, y)
 #endif
-void pkg_emit_error(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
-void pkg_emit_notice(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
+#endif
 void pkg_emit_errno(const char *func, const char *arg);
 
 #define pkg_errno(fmt, ...) \
