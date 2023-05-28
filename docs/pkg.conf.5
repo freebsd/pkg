@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd March 13, 2021
+.Dd April 26, 2022
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -29,7 +29,7 @@ is the system-wide configuration file used by the
 tools.
 .Pp
 The default location of this file is
-.Pa /usr/local/etc/pkg.conf
+.Pa /usr/local/etc/pkg.conf .
 .Pp
 Lines in the file beginning with a "#" are comments
 and are ignored.
@@ -57,6 +57,8 @@ Default: derived from the ABI of the
 binary, if not found then
 .Pa /bin/sh
 binary.
+E.g.,
+.Ql FreeBSD:14:amd64 .
 .It Cm ALIAS: key/value list
 Define local aliases for various
 .Xr pkg 8
@@ -85,7 +87,7 @@ Automatically cleanout the content of
 after each non dry-run call to
 .Xr pkg-install 8
 or
-.Xr pkg-upgrade 8
+.Xr pkg-upgrade 8 .
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1
@@ -116,6 +118,9 @@ Default: NO.
 Location where the libraries are backed up.
 Default:
 .Pa /usr/local/lib/compat/pkg .
+.It Cm COMPRESSION_FORMAT: string
+Set the default compression format: tzst, txz (default), tbz, tar.
+Default: per pkg developers.
 .It Cm COMPRESSION_LEVEL: integer
 Set the default compression level, special values are:
 .Bl -tag
@@ -177,7 +182,7 @@ Services are only started on installation if they are enabled in
 Default: NO.
 .It Cm HTTP_USER_AGENT: string
 Define User-agent to be sent to HTTP server when getting repository
-data
+data.
 .It Cm IGNORE_OSVERSION: boolean [FreeBSD specific]
 Ignore FreeBSD OS version check, useful on -STABLE and -CURRENT branches.
 Default: NO.
@@ -229,7 +234,7 @@ Default: NO.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 Default:
-.Pa /var/cache/pkg
+.Pa /var/cache/pkg .
 .It Cm PKG_CREATE_VERBOSE: boolean
 When set to a
 .Sy true
@@ -237,12 +242,12 @@ value, make
 .Xr pkg-create 8
 use verbose mode as standard.
 Default:
-.Sy NO
+.Sy NO .
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
 Default:
-.Pa /var/db/pkg
+.Pa /var/db/pkg .
 .It Cm PKG_ENABLE_PLUGINS: boolean
 When set to
 .Dq YES ,
@@ -264,10 +269,10 @@ Directory which
 .Xr pkg 8
 will load plugins from.
 Default:
-.Pa /usr/local/lib/pkg
+.Pa /usr/local/lib/pkg .
 .It Cm PKG_TRIGGERS_ENABLE
 Enable or disable execution of triggers at the end of the transactions.
-Default: YES
+Default: YES.
 .It Cm PKG_TRIGGERS_DIR
 Directory where the triggers are stored
 Default:
@@ -278,10 +283,7 @@ Extra arguments to pass to
 Default: not set.
 .It Cm PLIST_KEYWORDS_DIR: string
 Directory containing definitions of plist keywords.
-Default: PORTSDIR/keyword
-.It Cm PLIST_ACCEPT_DIRECTORIES: boolean
-Accept directories listed like plain files in plist.
-Default: NO.
+Default: PORTSDIR/keyword.
 .It Cm PLUGINS: array
 List of plugins that
 .Xr pkg 8
@@ -290,11 +292,11 @@ Default: not set.
 .It Cm PLUGINS_CONF_DIR: string
 Directory containing per-plugin configuration files.
 Default:
-.Pa /usr/local/etc/pkg
+.Pa /usr/local/etc/pkg .
 .It Cm PORTSDIR: string
 Specifies the location to the Ports directory.
 Default:
-.Pa /usr/ports
+.Pa /usr/ports .
 .It Cm READ_LOCK: boolean
 Use read locking for query database.
 Default: NO.
@@ -387,7 +389,7 @@ and
 .Pa /usr/local/etc/pkg/repos/ .
 .Pp
 Filenames are arbitrary, but should end in
-.Sq .conf
+.Sq .conf .
 For example
 .Pa /usr/local/etc/pkg/repos/myrepo.conf .
 .Pp
@@ -436,7 +438,7 @@ Default: 0.
 .It Cm PRIORITY: integer
 Set the priority of the repository.
 Higher values are preferred.
-Default: 0
+Default: 0.
 .El
 .El
 .Pp
@@ -546,7 +548,7 @@ same repository the older installed version came from, as given in the
 .Sy repository
 annotation of the installed package.
 See
-.Xr pkg-repository 8
+.Xr pkg-repository 5
 for details.
 .Pp
 It is possible to specify more than one repository per file.
@@ -643,18 +645,20 @@ from, and subsequently passes it in the environment to
 which ignores it (possibly with a deprecation warning that should be
 ignored), and reads the configuration files instead.
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -674,6 +678,7 @@ ignored), and reads the configuration files instead.
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

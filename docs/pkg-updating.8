@@ -5,7 +5,7 @@
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 8. Redistributions of source code must retain the above copyright
+.\" 1. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 3, 2018
+.Dd July 29, 2022
 .Dt PKG-UPDATING 8
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@ The following options are supported by
 .Bl -tag -width file
 .It Ar pkg-name ...
 UPDATING entries for the named packages are displayed.
-.It Fl i, Cm --case-insensitive
+.It Fl i , Cm --case-insensitive
 Matching against pkg-name case insensitive.
 .It Fl d Ar date , Cm --date Ar date
 Only entries newer than
@@ -63,8 +63,12 @@ The following environment variables affect the execution of
 Location of the ports tree.
 .El
 .Sh FILES
-See
-.Xr pkg.conf 5 .
+.Bl -tag -width /usr/ports/UPDATING
+.It Pa /usr/ports/UPDATING
+The default location of the
+.Pa UPDATING
+file.
+.El
 .Sh EXAMPLES
 Shows all entries of all installed ports:
 .Dl % pkg updating
@@ -82,11 +86,14 @@ Defines that the UPDATING file is in /tmp and shows all entries of all
 installed ports:
 .Dl % pkg updating -f /tmp/UPDATING
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -94,7 +101,6 @@ installed ports:
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -114,6 +120,7 @@ installed ports:
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,

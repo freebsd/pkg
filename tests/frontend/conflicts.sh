@@ -132,8 +132,8 @@ All repositories are up to date.
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
 Checking integrity... done (2 conflicting)
-  - bar1-1.1 conflicts with bar-2.0 on ${TMPDIR}/file1
   - bar1-1.1 conflicts with bar-1.0 on ${TMPDIR}/file1
+  - bar1-1.1 conflicts with bar-2.0 on ${TMPDIR}/file1
 Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
@@ -311,8 +311,8 @@ All repositories are up to date.
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
 Checking integrity... done (2 conflicting)
-  - bar1-1.1 conflicts with bar-2.0 on ${TMPDIR}/file1
   - bar1-1.1 conflicts with bar-1.0 on ${TMPDIR}/file1
+  - bar1-1.1 conflicts with bar-2.0 on ${TMPDIR}/file1
 Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
 The following 4 package(s) will be affected (of 0 checked):

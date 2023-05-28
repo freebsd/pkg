@@ -1,4 +1,6 @@
 /* Copyright (c) 2014, Vsevolod Stakhov
+ * Copyright (c) 2023, Serenity Cyber Security, LLC
+ *                     Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -96,34 +98,64 @@ pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 }
 
 struct pkg_repo_it *
-pkg_repo_binary_query(struct pkg_repo *repo, const char *pattern, match_t match)
+pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
 	char *sql = NULL;
 	const char	*comp = NULL;
-	char basesql[] = ""
-		"SELECT id, origin, name, name as uniqueid, version, comment, "
+	char basesql_quick[] = ""
+		"SELECT p.id, origin, p.name, p.name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
-		"FROM packages AS p %s ORDER BY NAME;";
+		"FROM packages  as p "
+		" %s "
+		"%s%s%s "
+		"ORDER BY p.name;";
+	char basesql[] = ""
+		"WITH flavors AS "
+		"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
+		"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
+		"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
+		"   WHERE tag.annotation = 'flavor') "
+
+		"SELECT p.id, origin, p.name, p.name as uniqueid, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, manifestdigest, path AS repopath, '%s' AS dbname "
+		"FROM packages  as p "
+		"LEFT JOIN pkg_categories ON p.id = pkg_categories.package_id "
+		"LEFT JOIN categories ON categories.id = pkg_categories.category_id "
+		"LEFT JOIN flavors ON flavors.package_id = p.id "
+		" %s "
+		"%s%s%s "
+		"ORDER BY p.name;";
+	char *bsql = basesql;
+
+	if (match == MATCH_INTERNAL)
+		bsql = basesql_quick;
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
 	comp = pkgdb_get_pattern_query(pattern, match);
-	xasprintf(&sql, basesql, repo->name, comp ? comp : "");
+	if (comp == NULL)
+		comp = "";
+	if (cond == NULL)
+		xasprintf(&sql, bsql, repo->name, comp, "", "", "");
+	else
+		xasprintf(&sql, bsql, repo->name, comp,
+		    comp[0] != '\0' ? "AND (" : "WHERE ( ", cond + 7, " )");
 
-	pkg_debug(4, "Pkgdb: running '%s' query for %s", sql,
-	     pattern == NULL ? "all": pattern);
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
-	if (match != MATCH_ALL && match != MATCH_CONDITION)
+	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -253,7 +285,10 @@ pkg_repo_binary_search_how(match_t match)
 
 	switch (match) {
 	case MATCH_ALL:
-		how = NULL;
+		how = "TRUE";
+		break;
+	case MATCH_INTERNAL:
+		how = "%s = ?1";
 		break;
 	case MATCH_EXACT:
 		if (pkgdb_case_sensitive())
@@ -262,14 +297,13 @@ pkg_repo_binary_search_how(match_t match)
 			how = "%s = ?1 COLLATE NOCASE";
 		break;
 	case MATCH_GLOB:
-		how = "%s GLOB ?1";
+		if (pkgdb_case_sensitive())
+			how = "%s GLOB ?1";
+		else
+			how = "%s GLOB ?1 COLLATE NOCASE";
 		break;
 	case MATCH_REGEX:
 		how = "%s REGEXP ?1";
-		break;
-	case MATCH_CONDITION:
-		/* Should not be called by pkgdb_get_match_how(). */
-		assert(0);
 		break;
 	}
 
@@ -291,13 +325,16 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 		what = NULL;
 		break;
 	case FIELD_ORIGIN:
-		what = "origin";
+		what = "categories.name || substr(origin, instr(origin, '/'))";
+		break;
+	case FIELD_FLAVOR:
+		what = "categories.name || substr(origin, instr(origin, '/')) || '@' || flavor";
 		break;
 	case FIELD_NAME:
-		what = "name";
+		what = "p.name";
 		break;
 	case FIELD_NAMEVER:
-		what = "name || '-' || version";
+		what = "p.name || '-' || version";
 		break;
 	case FIELD_COMMENT:
 		what = "comment";
@@ -317,11 +354,13 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 	case FIELD_ORIGIN:
 		orderby = " ORDER BY origin";
 		break;
+	case FIELD_FLAVOR:
+		orderby = " ORDER BY p.name";
 	case FIELD_NAME:
-		orderby = " ORDER BY name";
+		orderby = " ORDER BY p.name";
 		break;
 	case FIELD_NAMEVER:
-		orderby = " ORDER BY name, version";
+		orderby = " ORDER BY p.name, version";
 		break;
 	case FIELD_COMMENT:
 		orderby = " ORDER BY comment";
@@ -346,13 +385,21 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	xstring	*sql = NULL;
 	char *sqlcmd = NULL;
 	const char	*multireposql = ""
-		"SELECT id, origin, name, version, comment, "
+		"WITH flavors AS "
+		"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
+		"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
+		"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
+		"   WHERE tag.annotation = 'flavor') "
+		"SELECT DISTINCT p.id, origin, p.name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
 		"cksum, path AS repopath, '%1$s' AS dbname, '%2$s' AS repourl "
-		"FROM packages ";
+		"FROM packages  as p "
+		"LEFT JOIN pkg_categories ON p.id = pkg_categories.package_id "
+		"LEFT JOIN categories ON categories.id = pkg_categories.category_id "
+		"LEFT JOIN flavors ON flavors.package_id = p.id ";
 
-	if (pattern == NULL || pattern[0] == '\0')
+	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
 	sql = xstring_new();
@@ -365,13 +412,13 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	fprintf(sql->fp, "%s", ";");
 	sqlcmd = xstring_get(sql);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sqlcmd);
 	stmt = prepare_sql(sqlite, sqlcmd);
 	free(sqlcmd);
 	if (stmt == NULL)
 		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -381,46 +428,69 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *pkg, unsigned flags)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
-	struct pkg_manifest_key *keys = NULL;
 	struct pkg *cached = NULL;
 	char path[MAXPATHLEN];
+	int rc;
 
-	if (pkg->type != PKG_INSTALLED &&
-			(flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) != 0 &&
-			(pkg->flags & (PKG_LOAD_FILES|PKG_LOAD_DIRS)) == 0) {
-		/*
-		 * Try to get that information from fetched package in cache
-		 */
-		pkg_manifest_keys_new(&keys);
-		
-		if (pkg_repo_cached_name(pkg, path, sizeof(path)) != EPKG_OK)
-			return (EPKG_FATAL);
+	flags &= PKG_LOAD_FILES|PKG_LOAD_DIRS;
+	/*
+	 * If info is already present, done.
+	 */
+	if ((pkg->flags & flags) == flags) {
+		return EPKG_OK;
+	}
+	if (pkg->type == PKG_INSTALLED) {
+		pkg_emit_error("cached package %s-%s: "
+			       "attempting to load info from an installed package",
+			       pkg->name, pkg->version);
+		return EPKG_FATAL;
 
-		pkg_debug(1, "Binary> loading %s", path);
-		if (pkg_open(&cached, path, keys, PKG_OPEN_TRY) != EPKG_OK) {
-			pkg_free(cached);
-			return (EPKG_FATAL);
+		/* XXX If package is installed, get info from SQLite ???  */
+		rc = pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags);
+		if (rc != EPKG_OK) {
+			return rc;
 		}
+		/* probably unnecessary */
+		if ((pkg->flags & flags) != flags) {
+			return EPKG_FATAL;
+		}
+		return rc;
+	}
+	/*
+	 * Try to get that information from fetched package in cache
+	 */
 
-		/* Now move required elements to the provided package */
-		pkg_list_free(pkg, PKG_FILES);
-		pkg_list_free(pkg, PKG_DIRS);
-		pkg->files = cached->files;
-		pkg->filehash = cached->filehash;
-		pkg->dirs = cached->dirs;
-		pkg->dirhash = cached->dirhash;
-		cached->files = NULL;
-		cached->filehash = NULL;
-		cached->dirs = NULL;
-		cached->dirhash = NULL;
+	if (pkg_repo_cached_name(pkg, path, sizeof(path)) != EPKG_OK)
+		return (EPKG_FATAL);
 
+	pkg_debug(1, "Binary> loading %s", path);
+	if (pkg_open(&cached, path, PKG_OPEN_TRY) != EPKG_OK) {
 		pkg_free(cached);
-		pkg->flags |= (PKG_LOAD_FILES|PKG_LOAD_DIRS);
+		return EPKG_FATAL;
 	}
 
-	return (pkgdb_ensure_loaded_sqlite(sqlite, pkg, flags));
-}
+	/* Now move required elements to the provided package */
+	pkg_list_free(pkg, PKG_FILES);
+	pkg_list_free(pkg, PKG_CONFIG_FILES);
+	pkg_list_free(pkg, PKG_DIRS);
+	pkg->files = cached->files;
+	pkg->filehash = cached->filehash;
+	pkg->config_files = cached->config_files;
+	pkg->config_files_hash = cached->config_files_hash;
+	pkg->dirs = cached->dirs;
+	pkg->dirhash = cached->dirhash;
+	cached->files = NULL;
+	cached->filehash = NULL;
+	cached->config_files = NULL;
+	cached->config_files_hash = NULL;
+	cached->dirs = NULL;
+	cached->dirhash = NULL;
 
+	pkg_free(cached);
+	pkg->flags |= flags;
+
+	return EPKG_OK;
+}
 
 int64_t
 pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type)

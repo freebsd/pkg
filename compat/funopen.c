@@ -31,18 +31,69 @@
 
 #ifndef HAVE_FUNOPEN
 
+typedef struct {
+	int (*readfn)(void *, char *, int);
+	int (*writefn)(void *, const char *, int);
+	off_t (*seekfn)(void *, off_t, int);
+	int (*closefn)(void *);
+	void *cookie;
+} bsd_cookie_funcs_t;
+
+static ssize_t
+cookie_read(void *cookie, char *buf, size_t size)
+{
+	bsd_cookie_funcs_t *funcs = cookie;
+	return (ssize_t)funcs->readfn(funcs->cookie, buf, (int)size);
+}
+
+static ssize_t
+cookie_write(void *cookie, const char *buf, size_t size)
+{
+	bsd_cookie_funcs_t *funcs = cookie;
+	return (ssize_t)funcs->writefn(funcs->cookie, buf, (int)size);
+}
+
+static int
+cookie_seek(void *cookie, off64_t *offset, int whence)
+{
+	bsd_cookie_funcs_t *funcs = cookie;
+	off_t v = funcs->seekfn(funcs->cookie, (off_t)*offset, whence);
+	if (v < 0)
+		return -1;
+	*offset = (off64_t)v;
+	return 0;
+}
+
+static int
+cookie_close(void *cookie)
+{
+	int ret = 0;
+	bsd_cookie_funcs_t *funcs = cookie;
+	if (funcs->closefn)
+		ret = funcs->closefn(funcs->cookie);
+	free(cookie);
+	return ret;
+}
+
 FILE *
 funopen(const void *cookie, int (*readfn)(void *, char *, int),
          int (*writefn)(void *, const char *, int),
          off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *))
 {
-	cookie_io_functions_t c;
-	c.read = readfn;
-	c.write = writefn;
-	c.seek = seekfn;
-	c.close = closefn;
+	bsd_cookie_funcs_t *cf = malloc(sizeof(bsd_cookie_funcs_t));
+	cf->readfn  = readfn;
+	cf->writefn = writefn;
+	cf->seekfn  = seekfn;
+	cf->closefn = closefn;
+	cf->cookie  = __DECONST(void *, cookie);
 
-	return (fopencookie(__DECONST(void *, cookie), "a+", c));
+	cookie_io_functions_t c;
+	if (readfn) c.read = cookie_read;
+	if (writefn) c.write = cookie_write;
+	if (seekfn) c.seek = cookie_seek;
+	c.close = cookie_close;
+
+	return fopencookie(cf, "a+", c);
 }
 
 #endif

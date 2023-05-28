@@ -114,6 +114,7 @@ exec_rquery(int argc, char **argv)
 	int			 i;
 	char			 multiline = 0;
 	char			*condition = NULL;
+	const char		*condition_sql = NULL;
 	const char		*portsdir;
 	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
@@ -146,7 +147,6 @@ exec_rquery(int argc, char **argv)
 			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'e':
-			match = MATCH_CONDITION;
 			condition = optarg;
 			break;
 		case 'g':
@@ -183,7 +183,7 @@ exec_rquery(int argc, char **argv)
 
 	/* Default to all packages if no pkg provided */
 	if (!index_output) {
-		if (argc == 1 && condition == NULL && match == MATCH_EXACT) {
+		if (argc == 1 && match == MATCH_EXACT) {
 			match = MATCH_ALL;
 		} else if (((argc == 1) ^ (match == MATCH_ALL )) && condition == NULL) {
 			usage_rquery();
@@ -234,13 +234,12 @@ exec_rquery(int argc, char **argv)
 	if (index_output)
 		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
-	if (match == MATCH_ALL || match == MATCH_CONDITION) {
-		const char *condition_sql = NULL;
-		if (match == MATCH_CONDITION && sqlcond) {
-			fflush(sqlcond->fp);
-			condition_sql = sqlcond->buf;
-		}
-		if ((it = pkgdb_repo_query(db, condition_sql, match, reponame)) == NULL) {
+	if (sqlcond) {
+		fflush(sqlcond->fp);
+		condition_sql = sqlcond->buf;
+	}
+	if (match == MATCH_ALL) {
+		if ((it = pkgdb_repo_query_cond(db, condition_sql, NULL, match, reponame)) == NULL) {
 			xstring_free(sqlcond);
 			return (EXIT_FAILURE);
 		}
@@ -260,7 +259,7 @@ exec_rquery(int argc, char **argv)
 		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_repo_query(db, pkgname, match, reponame)) == NULL) {
+			if ((it = pkgdb_repo_query_cond(db, condition_sql, pkgname, match, reponame)) == NULL) {
 				xstring_free(sqlcond);
 				return (EXIT_FAILURE);
 			}

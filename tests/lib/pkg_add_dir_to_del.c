@@ -27,35 +27,30 @@
 #include <atf-c.h>
 #include <pkg.h>
 #include <private/pkg.h>
+#include <tllist.h>
 
-ATF_TC(pkg_add_dir_to_del);
-
-ATF_TC_HEAD(pkg_add_dir_to_del, tc)
-{
-	atf_tc_set_md_var(tc, "descr",
-	    "pkg_add_dir_to_del()");
-}
+ATF_TC_WITHOUT_HEAD(pkg_add_dir_to_del);
 
 ATF_TC_BODY(pkg_add_dir_to_del, tc)
 {
 	struct pkg *p = NULL;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
-	pkg_set(p, PKG_PREFIX, "/usr/local");
+	pkg_set(p, PKG_ATTR_PREFIX, "/usr/local");
 
-	ATF_REQUIRE(p->dir_to_del == NULL);
+	ATF_REQUIRE_EQ(tll_length(p->dir_to_del), 0);
 
 	pkg_add_dir_to_del(p, "/usr/local/plop/bla", NULL);
 
-	ATF_REQUIRE_STREQ(p->dir_to_del[0], "/usr/local/plop/");
+	ATF_REQUIRE_STREQ(tll_back(p->dir_to_del), "/usr/local/plop/");
 
 	pkg_add_dir_to_del(p, NULL, "/usr/local/plop");
 
-	ATF_REQUIRE(p->dir_to_del_len == 1);
+	ATF_REQUIRE_EQ(tll_length(p->dir_to_del), 1);
 
 	pkg_add_dir_to_del(p, NULL, "/var/run/yeah");
 
-	ATF_REQUIRE_STREQ(p->dir_to_del[1], "/var/run/yeah/");
+	ATF_REQUIRE_STREQ(tll_back(p->dir_to_del), "/var/run/yeah/");
 
 	pkg_free(p);
 }

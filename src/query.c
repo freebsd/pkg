@@ -80,9 +80,9 @@ static struct query_flags accepted_query_flags[] = {
 static void
 format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 {
-	bool automatic;
-	bool locked;
-	bool vital;
+	bool automatic = false;
+	bool locked = false;
+	bool vital = false;
 
 	xstring_reset(dest);
 
@@ -115,11 +115,11 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				pkg_fprintf(dest->fp, "%w", pkg);
 				break;
 			case 'a':
-				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
+				pkg_get(pkg, PKG_ATTR_AUTOMATIC, &automatic);
 				fprintf(dest->fp, "%d", automatic);
 				break;
 			case 'k':
-				pkg_get(pkg, PKG_LOCKED, &locked);
+				pkg_get(pkg, PKG_ATTR_LOCKED, &locked);
 				fprintf(dest->fp, "%d", locked);
 				break;
 			case 't':
@@ -127,9 +127,9 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				break;
 			case 's':
 				qstr++;
-				if (qstr[0] == 'h') 
+				if (qstr[0] == 'h')
 					pkg_fprintf(dest->fp, "%#sB", pkg);
-			        else if (qstr[0] == 'b')
+				else if (qstr[0] == 'b')
 					pkg_fprintf(dest->fp, "%s", pkg);
 				break;
 			case 'e':
@@ -295,7 +295,7 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%M", pkg);
 				break;
 			case 'V':
-				pkg_get(pkg, PKG_VITAL, &vital);
+				pkg_get(pkg, PKG_ATTR_VITAL, &vital);
 				fprintf(dest->fp, "%d", vital);
 				break;
 			case 'X':
@@ -346,8 +346,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
-	char			*buf;
-	struct pkg_kv		*kv;
+	const char		*str = NULL;
+	struct pkg_kv		*kv = NULL;
+	struct pkg_stringlist	*sl = NULL;
+	struct pkg_stringlist_iterator	*slit;
+	struct pkg_kvlist	*kl = NULL;
+	struct pkg_kvlist_iterator	*kit;
 
 	output = xstring_new();
 
@@ -365,11 +369,14 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		buf = NULL;
-		while (pkg_categories(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get(pkg, PKG_ATTR_CATEGORIES, &sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'O':
 		while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -390,47 +397,56 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'L':
-		buf = NULL;
-		while (pkg_licenses(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get(pkg, PKG_ATTR_LICENSES, &sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'U':
-		buf = NULL;
-		while (pkg_users(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get(pkg, PKG_ATTR_USERS, &sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'G':
-		buf = NULL;
-		while (pkg_groups(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get(pkg, PKG_ATTR_GROUPS, &sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'B':
-		buf = NULL;
-		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get(pkg, PKG_ATTR_SHLIBS_REQUIRED, &sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'b':
-		buf = NULL;
-		while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
-			format_str(pkg, output, qstr, buf);
+		pkg_get(pkg, PKG_ATTR_SHLIBS_PROVIDED, &sl);
+		slit = pkg_stringlist_iterator(sl);
+		while ((str = pkg_stringlist_next(slit))) {
+			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
 		break;
 	case 'A':
-		pkg_get(pkg, PKG_ANNOTATIONS, &kv);
-		while (kv != NULL) {
+		pkg_get(pkg, PKG_ATTR_ANNOTATIONS, &kl);
+		kit = pkg_kvlist_iterator(kl);
+		while ((kv = pkg_kvlist_next(kit))) {
 			format_str(pkg, output, qstr, kv);
 			printf("%s\n", output->buf);
-			kv = kv->next;
 		}
+		free(kit);
+		free(kl);
 		break;
 	default:
 		format_str(pkg, output, qstr, dep);
@@ -459,6 +475,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
 	const char *sqlop;
+	bool collate_nocase = false;
 
 	fprintf(sqlcond->fp, " WHERE ");
 	while (str[0] != '\0') {
@@ -467,7 +484,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 				str++;
 				switch (str[0]) {
 				case 'n':
-					fprintf(sqlcond->fp, "name");
+					fprintf(sqlcond->fp, "p.name");
 					state = OPERATOR_STRING;
 					break;
 				case 'o':
@@ -541,7 +558,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'r':
-							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.origin=p.origin)", sqlop);
+							fprintf(sqlcond->fp, "(SELECT %s FROM deps AS d WHERE d.name=p.name)", sqlop);
 							break;
 						case 'C':
 							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_categories AS d WHERE d.package_id=p.id)", sqlop);
@@ -673,7 +690,9 @@ bad_option:
 				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[1] == '=') {
 					str++;
-					fprintf(sqlcond->fp, "%c", str[0]);
+				} else if (str[1] == '~' && state == NEXT_IS_STRING) {
+					str++;
+					collate_nocase = true;
 				}
 			} else if (str[0] == '!') {
 				if (str[1] == '=') {
@@ -690,6 +709,10 @@ bad_option:
 					state = NEXT_IS_STRING;
 				} else {
 					state = NEXT_IS_INT;
+				}
+				if (str[0] == '~' && state == NEXT_IS_STRING) {
+					str++;
+					collate_nocase = true;
 				}
 			} else {
 				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
@@ -731,6 +754,10 @@ bad_option:
 			    (state == SQUOTEDSTRING && str[0] == '\'')) {
 				fprintf(sqlcond->fp, "%c", '\'');
 				state = POST_EXPR;
+				if (collate_nocase) {
+					fprintf(sqlcond->fp, " COLLATE NOCASE ");
+					collate_nocase = false;
+				}
 			} else {
 				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[0] == '\'')
@@ -744,6 +771,10 @@ bad_option:
 	if (state == STRING) {
 		fprintf(sqlcond->fp, "%c", '\'');
 		state = POST_EXPR;
+		if (collate_nocase) {
+			fprintf(sqlcond->fp, " COLLATE NOCASE ");
+			collate_nocase = false;
+		}
 	}
 
 	if (state != POST_EXPR && state != INT) {
@@ -860,7 +891,6 @@ exec_query(int argc, char **argv)
 	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
-	struct pkg_manifest_key	*keys = NULL;
 	char			*pkgname = NULL;
 	int			 query_flags = PKG_LOAD_BASIC;
 	match_t			 match = MATCH_EXACT;
@@ -869,7 +899,9 @@ exec_query(int argc, char **argv)
 	int			 retcode = EXIT_SUCCESS;
 	int			 i;
 	char			 multiline = 0;
+	int			 nprinted = 0;
 	char			*condition = NULL;
+	const char 		*condition_sql = NULL;
 	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_query_flags);
 
@@ -893,7 +925,6 @@ exec_query(int argc, char **argv)
 			pkgdb_set_case_sensitivity(true);
 			break;
 		case 'e':
-			match = MATCH_CONDITION;
 			condition = optarg;
 			break;
 		case 'F':
@@ -917,13 +948,19 @@ exec_query(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if ((match == MATCH_ALL || pkgname != NULL)
+	    && argc > 1) {
+		usage_query();
+		return (EXIT_FAILURE);
+	}
+
 	if (argc == 0) {
 		usage_query();
 		return (EXIT_FAILURE);
 	}
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 1 && pkgname == NULL && condition == NULL && match == MATCH_EXACT) {
+	if (argc == 1 && pkgname == NULL && match == MATCH_EXACT) {
 		match = MATCH_ALL;
 	} else if (((argc == 1) ^ (match == MATCH_ALL)) && pkgname == NULL
 			&& condition == NULL) {
@@ -954,12 +991,10 @@ exec_query(int argc, char **argv)
 		} else if ((query_flags & PKG_LOAD_FILES) == 0) {
 			open_flags = PKG_OPEN_MANIFEST_ONLY;
 		}
-		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, pkgname, keys, open_flags) != EPKG_OK) {
+		if (pkg_open(&pkg, pkgname, open_flags) != EPKG_OK) {
 			return (EXIT_FAILURE);
 		}
 
-		pkg_manifest_keys_free(keys);
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
 		return (EXIT_SUCCESS);
@@ -995,52 +1030,40 @@ exec_query(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (match == MATCH_ALL || match == MATCH_CONDITION) {
-		const char *condition_sql = NULL;
-		if (match == MATCH_CONDITION && sqlcond) {
-			fflush(sqlcond->fp);
-			condition_sql = sqlcond->buf;
-		}
-		if ((it = pkgdb_query(db, condition_sql, match)) == NULL)
-			return (EXIT_FAILURE);
+	if (sqlcond) {
+		fflush(sqlcond->fp);
+		condition_sql = sqlcond->buf;
+	}
+        i = 1;
+        do {
+		pkgname = i < argc ? argv[i] : NULL;
 
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
-			print_query(pkg, argv[0],  multiline);
-
-		if (ret != EPKG_END)
+		if ((it = pkgdb_query_cond(db, condition_sql, pkgname, match)) == NULL) {
+			warnx("DEBUG: %s/%s\n", condition_sql ? condition_sql : "-", pkgname ? pkgname : "-");
 			retcode = EXIT_FAILURE;
+			break;
+		}
+
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+			nprinted++;
+			print_query(pkg, argv[0], multiline);
+		}
+
+		if (ret != EPKG_END) {
+			retcode = EXIT_FAILURE;
+			break;
+		}
 
 		pkgdb_it_free(it);
-	} else {
-		int nprinted = 0;
-		for (i = 1; i < argc; i++) {
-			pkgname = argv[i];
+		i++;
+	} while (i < argc);
 
-			if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-				retcode = EXIT_FAILURE;
-				goto cleanup;
-			}
-
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-				nprinted++;
-				print_query(pkg, argv[0], multiline);
-			}
-
-			if (ret != EPKG_END) {
-				retcode = EXIT_FAILURE;
-				break;
-			}
-
-			pkgdb_it_free(it);
-		}
-		if (nprinted == 0 && retcode == EXIT_SUCCESS) {
-			/* ensure to return a non-zero status when no package
-			 were found. */
-			retcode = EXIT_FAILURE;
-		}
+	if (nprinted == 0 && match != MATCH_ALL && retcode == EXIT_SUCCESS) {
+		/* ensure to return a non-zero status when no package
+		 were found. */
+		retcode = EXIT_FAILURE;
 	}
 
-cleanup:
 	pkg_free(pkg);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);

@@ -54,26 +54,25 @@
 #endif
 
 int
-pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
+pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
+    struct triggers *t)
 {
-	struct pkg_message	*msg;
 	xstring		*message = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
 					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_LUA_SCRIPTS;
-	bool		head = true;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
 
 	if (pkgdb_ensure_loaded(db, pkg, load_flags) != EPKG_OK)
 		return (EPKG_FATAL);
+	if (rpkg != NULL && pkgdb_ensure_loaded(db, rpkg, load_flags) != EPKG_OK)
+		return (EPKG_FATAL);
 
-	if ((flags & PKG_DELETE_UPGRADE) == 0) {
-		pkg_emit_new_action();
-		pkg_emit_deinstall_begin(pkg);
-	}
+	pkg_emit_new_action();
+	pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */
 	if (pkg->locked) {
@@ -89,25 +88,22 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
-	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
+	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
 		pkg_open_root_fd(pkg);
-		if (!(flags & PKG_DELETE_UPGRADE)) {
-			ret = pkg_lua_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
-			if (ret != EPKG_OK && ctx.developer_mode)
-				return (ret);
-			ret = pkg_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
-			if (ret != EPKG_OK && ctx.developer_mode)
-				return (ret);
-		}
+		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
+		if (ret != EPKG_OK && ctx.developer_mode)
+			return (ret);
+		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
+		if (ret != EPKG_OK && ctx.developer_mode)
+			return (ret);
 	}
 
-	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE ? 1 : 0))
-            != EPKG_OK)
+	if ((ret = pkg_delete_files(pkg, rpkg, flags, t)) != EPKG_OK)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
-		pkg_lua_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false);
-		pkg_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
+		pkg_lua_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
+		pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false);
 	}
 
 	ret = pkg_delete_dirs(db, pkg, NULL);
@@ -116,23 +112,21 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
-		LL_FOREACH(pkg->message, msg) {
-			if (msg->type == PKG_MESSAGE_REMOVE) {
+		tll_foreach(pkg->message, m) {
+			if (m->item->type == PKG_MESSAGE_REMOVE) {
 				if (message == NULL) {
 					message = xstring_new();
 					pkg_fprintf(message->fp, "Message from "
 					    "%n-%v:\n", pkg, pkg);
-					head = false;
 				}
-				fprintf(message->fp, "%s\n", msg->str);
+				fprintf(message->fp, "%s\n", m->item->str);
 			}
 		}
-		if (pkg->message != NULL && message != NULL) {
+		if (pkg_has_message(pkg) && message != NULL) {
 			fflush(message->fp);
 			pkg_emit_message(message->buf);
 			xstring_free(message);
 		}
-
 	}
 
 	return (pkgdb_unregister_pkg(db, pkg->id));
@@ -143,7 +137,7 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 {
 	char path[MAXPATHLEN];
 	char *tmp;
-	size_t i, len, len2;
+	size_t len, len2;
 
 	strlcpy(path, file != NULL ? file : dir, MAXPATHLEN);
 
@@ -161,29 +155,21 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 		path[len] = '\0';
 	}
 
-	for (i = 0; i < pkg->dir_to_del_len ; i++) {
-		len2 = strlen(pkg->dir_to_del[i]);
-		if (len2 >= len && strncmp(path, pkg->dir_to_del[i], len) == 0)
+	tll_foreach(pkg->dir_to_del, d) {
+		len2 = strlen(d->item);
+		if (len2 >= len && strncmp(path, d->item, len) == 0)
 			return;
 
-		if (strncmp(path, pkg->dir_to_del[i], len2) == 0) {
+		if (strncmp(path, d->item, len2) == 0) {
 			pkg_debug(1, "Replacing in deletion %s with %s",
-			    pkg->dir_to_del[i], path);
-			free(pkg->dir_to_del[i]);
-			pkg->dir_to_del[i] = xstrdup(path);
-			return;
+			    d->item, path);
+			tll_remove_and_free(pkg->dir_to_del, d, free);
+			break;
 		}
 	}
 
 	pkg_debug(1, "Adding to deletion %s", path);
-
-	if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
-		pkg->dir_to_del_cap += 64;
-		pkg->dir_to_del = xrealloc(pkg->dir_to_del,
-		    pkg->dir_to_del_cap * sizeof(char *));
-	}
-
-	pkg->dir_to_del[pkg->dir_to_del_len++] = xstrdup(path);
+	tll_push_back(pkg->dir_to_del, xstrdup(path));
 }
 
 static void
@@ -272,15 +258,14 @@ static void
 pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 {
 	char prefix_r[MAXPATHLEN];
-	size_t i;
 
 	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix + 1);
-	for (i = 0; i < pkg->dir_to_del_len; i++)
-		rmdir_p(db, pkg, pkg->dir_to_del[i], prefix_r);
+	tll_foreach(pkg->dir_to_del, d)
+		rmdir_p(db, pkg, d->item, prefix_r);
 }
 
 void
-pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
+pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 {
 	const char *path;
 	const char *prefix_rel;
@@ -321,12 +306,10 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 #endif
 	pkg_debug(1, "Deleting file: '%s'", path);
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
-		if (force < 2) {
-			if (errno == ENOENT)
-				pkg_emit_file_missing(pkg, file);
-			else
-				pkg_emit_errno("unlinkat", path);
-		}
+		if (errno == ENOENT)
+			pkg_emit_file_missing(pkg, file);
+		else
+			pkg_emit_errno("unlinkat", path);
 		return;
 	}
 
@@ -335,19 +318,37 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file, unsigned force)
 		pkg_add_dir_to_del(pkg, path, NULL);
 }
 
+/*
+ * Handle a special case: the package is to be upgraded but is being deleted
+ * temporarily to handle a file path conflict.  In this situation we shouldn't
+ * remove configuration files.  For now, keep them if the replacement package
+ * contains a configuration file at the same path.
+ *
+ * Note, this currently doesn't handle the case where a configuration file
+ * participates in the conflict, i.e., it moves from one package to another.
+ */
+static bool
+pkg_delete_skip_config(struct pkg *pkg, struct pkg *rpkg, struct pkg_file *file,
+    int flags)
+{
+	if ((flags & PKG_DELETE_UPGRADE) == 0)
+		return (false);
+	if (pkghash_get(pkg->config_files_hash, file->path) == NULL)
+		return (false);
+	if (pkghash_get(rpkg->config_files_hash, file->path) == NULL)
+		return (false);
+	return (true);
+}
+
 int
-pkg_delete_files(struct pkg *pkg, unsigned force)
-	/* force: 0 ... be careful and vocal about it.
-	 *        1 ... remove files without bothering about checksums.
-	 *        2 ... like 1, but remain silent if removal fails.
-	 */
+pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
+    struct triggers *t)
 {
 	struct pkg_file	*file = NULL;
 
 	int		nfiles, cur_file = 0;
 
-	nfiles = kh_count(pkg->filehash);
-
+	nfiles = pkghash_count(pkg->filehash);
 	if (nfiles == 0)
 		return (EPKG_OK);
 
@@ -355,9 +356,12 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 	pkg_emit_progress_start(NULL);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		if (pkg_delete_skip_config(pkg, rpkg, file, flags))
+			continue;
 		append_touched_file(file->path);
 		pkg_emit_progress_tick(cur_file++, nfiles);
-		pkg_delete_file(pkg, file, force);
+		trigger_is_it_a_cleanup(t, file->path);
+		pkg_delete_file(pkg, file);
 	}
 
 	pkg_emit_progress_tick(nfiles, nfiles);
@@ -388,12 +392,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
 		pkg_add_dir_to_del(pkg, NULL, path);
 	} else {
-		if (pkg->dir_to_del_len + 1 > pkg->dir_to_del_cap) {
-			pkg->dir_to_del_cap += 64;
-			pkg->dir_to_del = xrealloc(pkg->dir_to_del,
-			    pkg->dir_to_del_cap * sizeof(char *));
-		}
-		pkg->dir_to_del[pkg->dir_to_del_len++] = xstrdup(path);
+		tll_push_back(pkg->dir_to_del, xstrdup(path));
 	}
 }
 

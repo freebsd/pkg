@@ -88,7 +88,7 @@ exec_stats(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 	}
-	argv += optind;
+	//argv += optind;
 
 	/* default is to show everything we have */
 	if (opt == 0)

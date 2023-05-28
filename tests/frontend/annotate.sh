@@ -3,7 +3,8 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	annotate
+	annotate \
+	annotate_multiple
 
 annotate_body() {
 	for pkg in 'png' 'sqlite3' ; do
@@ -64,6 +65,18 @@ annotate_body() {
 	    pkg info -A png
 
 	atf_check \
+	    -o match:"Modified annotation tagged: TEST1" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate -My sqlite3 TEST1 test1-modified
+
+	atf_check \
+	    -o match:"TEST1 +: test1-modified" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg info -A sqlite3
+
+	atf_check \
 	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1-modified$" \
 	    -e empty \
 	    -s exit:0 \
@@ -95,6 +108,32 @@ annotate_body() {
 	    -e empty \
 	    pkg info -A png
 
+	atf_check \
+	    -o match:"Deleted annotation tagged: TEST1" \
+	    -s exit:0 \
+	    -e empty \
+	    pkg annotate -Dy sqlite3 TEST1
+
+	atf_check \
+	    -o not-match:"TEST1" \
+	    -o not-match:"TEST2" \
+	    -s exit:0 \
+	    -e empty \
+	    pkg info -A sqlite3
+}
+
+annotate_multiple_body() {
+	for pkg in 'png' 'sqlite3' ; do
+	    atf_check \
+		-o match:".*Installing.*\.\.\.$" \
+		-e empty \
+		-s exit:0 \
+		pkg register -t -M ${RESOURCEDIR}/$pkg.ucl
+	done
+
+	[ -f "./local.sqlite" ] || \
+	    atf_fail "Can't populate $PKG_DBDIR/local.sqlite"
+
 	# Check multiple annotations
 	atf_check \
 	    -o match:"^png-1.5.18: added annotation tagged: TEST1$" \
@@ -106,6 +145,20 @@ annotate_body() {
 	atf_check \
 	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1$" \
 	    -o match:"^sqlite3-3.8.6: Tag: TEST1 Value: test1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate --all --show TEST1
+
+	atf_check \
+	    -o match:"^png-1.5.18: Modified annotation tagged: TEST1$" \
+	    -o match:"^sqlite3-3.8.6: Modified annotation tagged: TEST1$" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg annotate -aMy TEST1 test1-changed
+
+	atf_check \
+	    -o match:"^png-1.5.18: Tag: TEST1 Value: test1-changed$" \
+	    -o match:"^sqlite3-3.8.6: Tag: TEST1 Value: test1-changed$" \
 	    -e empty \
 	    -s exit:0 \
 	    pkg annotate --all --show TEST1

@@ -121,11 +121,21 @@ link, used for bootstrapping
 .Nm pkg
 itself on a new system.
 .It Pa $REPOSITORY_ROOT/packagesite.txz
-Contains one
-.Cm JSON
-document, which is the concatenation of the
+Contains a single file, usually named
+.Pa packagesite.yaml ,
+a concatenation of the
 .Pa +MANIFEST
-files from each of the packages in the repository.
+files from the packages in the repository.
+Each manifest is represented as a single-line
+.Cm JSON
+text (no carriage returns or line feeds are used as
+whitespace within the
+.Cm JSON
+text),
+and the manifests are separated by newlines.
+The complete file is not a valid
+.Cm JSON
+text.
 This is used by
 .Nm pkg-1.1
 or later.
@@ -137,14 +147,26 @@ This is supplied for backwards compatibility with
 .Nm pkg-1.0 .
 .It Pa $REPOSITORY_ROOT/filesite.txz
 (Optional).
-Contains a YAML document listing all of the files contained in all
-of the packages within the repository.
+Contains a single file, usually named
+.Pa filesite.yaml ,
+a concatenation of the file lists
+from the packages in the repository.
+Each file list is represented as a single-line
+.Cm JSON
+text (no carriage returns or line feeds are used as
+whitespace within the
+.Cm JSON
+text),
+and the file lists are concatenated with no delimiters.
+The complete file is not a valid
+.Cm JSON
+text.
+.El
 .Pp
 The repository may optionally contain sub-directories corresponding to
 the package origins within the
 .Os
 ports tree.
-.El
 .Pp
 Each of the packages listed in the repository catalogue must have a
 unique
@@ -269,10 +291,13 @@ in
 .Pa pkg.conf .
 .Pp
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -280,7 +305,6 @@ in
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -300,6 +324,7 @@ in
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

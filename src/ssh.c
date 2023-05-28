@@ -81,11 +81,13 @@ exec_ssh(int argc, char **argv __unused)
 		return (EXIT_FAILURE);
 	}
 
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		close(fd);
 		return (EXIT_FAILURE);
 	}
+#endif
 
 #endif
 	if (pkg_sshserve(fd) != EPKG_OK) {

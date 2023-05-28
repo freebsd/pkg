@@ -4,7 +4,9 @@ LIB=	yxml
 
 SRCS=	yxml.c
 
-LOCAL_CFLAGS=	-Wno-unused-parameter -I.
+LOCAL_CFLAGS=	-Wno-unused-parameter -I. -I$(top_srcdir)/external/yxml
+
+VPATH=	$(top_srcdir)/external/yxml
 
 include $(MK)/static-lib.mk
 

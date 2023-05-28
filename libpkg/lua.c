@@ -1,7 +1,9 @@
 /*-
- * Copyright (c) 2019-2021 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2019-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -34,6 +36,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <spawn.h>
@@ -44,6 +47,10 @@
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/lua.h"
+
+#ifndef DEFFILEMODE
+#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+#endif
 
 extern char **environ;
 
@@ -125,14 +132,14 @@ luaL_checkarraystrings(lua_State *L, int arg) {
 int
 lua_exec(lua_State *L)
 {
-	int r;
+	int r, pstat;
 	posix_spawn_file_actions_t action;
 	int stdin_pipe[2] = {-1, -1};
 	pid_t pid;
 	const char **argv;
 	int n = lua_gettop(L);
 	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
-	    "pkg.prefix_path takes exactly one argument");
+	    "pkg.exec takes exactly one argument");
 
 #ifdef HAVE_CAPSICUM
 	unsigned int capmode;
@@ -155,6 +162,24 @@ lua_exec(lua_State *L)
 		lua_pushinteger(L, r);
 		return 3;
 	}
+	while (waitpid(pid, &pstat, 0) == -1) {
+		if (errno != EINTR) {
+			lua_pushnil(L);
+			lua_pushstring(L, strerror(r));
+			lua_pushinteger(L, r);
+			return 3;
+		}
+	}
+
+	if (WEXITSTATUS(pstat) != 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, "Abnormal terminaison");
+		lua_pushinteger(L, r);
+		return 3;
+	}
+
+	posix_spawn_file_actions_destroy(&action);
+
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)
@@ -171,7 +196,6 @@ lua_pkg_copy(lua_State *L)
 	    "pkg.copy takes exactly two arguments");
 	const char* src = luaL_checkstring(L, 1);
 	const char* dst = luaL_checkstring(L, 2);
-	char *buf1, *buf2;
 	struct stat s1;
 	int fd1, fd2;
 	struct timespec ts[2];
@@ -190,42 +214,23 @@ lua_pkg_copy(lua_State *L)
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	/* 
-	 * We should be using O_WRONLY but a weird aarch64 pmap
-	 * bug is preventing us doing that
-	 * See https://bugs.freebsd.org/250271
-	 */
-	fd2 = openat(rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, DEFFILEMODE);
+
+	fd2 = openat(rootfd, RELATIVE_PATH(dst), O_RDWR | O_CREAT | O_TRUNC | O_EXCL, s1.st_mode);
 	if (fd2 == -1) {
 		lua_pushinteger(L, 2);
 		return (1);
 	}
-	if (ftruncate(fd2, s1.st_size) != 0) {
-		lua_pushinteger(L, -1);
+
+	if (!pkg_copy_file(fd1, fd2)) {
+		lua_pushinteger(L, 2);
 		return (1);
 	}
-	buf1 = mmap(NULL, s1.st_size, PROT_READ, MAP_SHARED, fd1, 0);
-	if (buf1 == NULL) {
-		lua_pushinteger(L, -1);
-		return (1);
-	}
-	/* 
-	 * We should be using only PROT_WRITE but a weird aarch64 pmap
-	 * bug is preventing us doing that
-	 * https://bugs.freebsd.org/250271
-	 */
-	buf2 = mmap(NULL, s1.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd2, 0);
-	if (buf2 == NULL) {
-		lua_pushinteger(L, -1);
+	if (fchown(fd2, s1.st_uid, s1.st_gid) == -1) {
+		lua_pushinteger(L, 2);
 		return (1);
 	}
 
-	memcpy(buf2, buf1, s1.st_size);
-
-	munmap(buf1, s1.st_size);
-	munmap(buf2, s1.st_size);
 	fsync(fd2);
-
 	close(fd1);
 	close(fd2);
 
@@ -321,6 +326,21 @@ lua_pkg_filecmp(lua_State *L)
 	munmap(buf2, s2.st_size);
 
 	lua_pushinteger(L, ret);
+	return (1);
+}
+
+int
+lua_pkg_symlink(lua_State *L)
+{
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 2, n > 2 ? 3 : n,
+	    "pkg.symlink takes exactly two arguments");
+	const char *from = luaL_checkstring(L, 1);
+	const char *to = luaL_checkstring(L, 2);
+	lua_getglobal(L, "rootfd");
+	int rootfd = lua_tointeger(L, -1);
+	if (symlinkat(from, rootfd, RELATIVE_PATH(to)) == -1)
+		return (luaL_fileresult(L, 0, from));
 	return (1);
 }
 
@@ -506,4 +526,40 @@ lua_override_ios(lua_State *L, bool sandboxed)
 	}
 	lua_pushcfunction(L, lua_os_exit);
 	lua_setfield(L, -2, "exit");
+}
+
+int
+lua_readdir(lua_State *L)
+{
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.readdir takes exactly one argument");
+	const char *path = luaL_checkstring(L, 1);
+	int fd = -1;
+
+	if (*path == '/') {
+		lua_getglobal(L, "rootfd");
+		int rootfd = lua_tointeger(L, -1);
+		fd = openat(rootfd, path +1, O_DIRECTORY);
+	} else {
+		fd = open(path, O_DIRECTORY);
+	}
+	if (fd == -1)
+		return (luaL_fileresult(L, 0, path));
+
+	DIR *dir = fdopendir(fd);
+	if (!dir)
+		return (luaL_fileresult(L, 0, path));
+	lua_newtable(L);
+	struct dirent *e;
+	int i = 0;
+	while ((e = readdir(dir))) {
+		char *name = e->d_name;
+		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+			continue;
+		lua_pushinteger(L, ++i);
+		lua_pushstring(L, name);
+		lua_settable(L, -3);
+	}
+	return 1;
 }

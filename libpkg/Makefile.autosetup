@@ -1,7 +1,6 @@
 include @builddir@/mk/defs.mk
 LIB=	pkg
-SRCS=	backup.c \
-	backup_lib.c \
+SRCS=	backup_lib.c \
 	merge3.c \
 	pkg_audit.c \
 	pkg_deps.c \
@@ -47,7 +46,8 @@ SRCS=	backup.c \
 	fetch_ssh.c \
 	fetch_libfetch.c \
 	fetch_file.c \
-	triggers.c
+	triggers.c \
+	pkghash.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/blake2 \
@@ -57,14 +57,16 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/yxml \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/libucl/include \
-		-I$(top_srcdir)/external/libucl/klib \
 		-I$(top_srcdir)/external/libfetch \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
 		-I$(top_srcdir)/external/msgpuck \
 		-I$(top_srcdir)/libpkg/repo \
+		-I$(top_builddir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
+		-I$(top_builddir)/libpkg \
 		-I$(top_srcdir) \
+		-I$(top_builddir) \
 		-Wno-pointer-sign \
 		-Wno-missing-field-initializers \
 		-Wno-sign-compare \
@@ -122,7 +124,7 @@ LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic \
 SRCS+=		pkg_macho.c
 @else
 SRCS+=		pkg_elf.c
-LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_builddir)/libpkg/libpkg.ver \
+LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver \
 @endif
 
 @if libelf-internal
@@ -146,6 +148,8 @@ LOCAL_LDFLAGS+=	-larchive
 LOCAL_CFLAGS+=	@PKG_LIBLDNS_CFLAGS@
 LOCAL_LDFLAGS+=	@PKG_LIBLDNS_LDFLAGS@ @PKG_LIBLDNS_LIBS@
 @endif
+
+VPATH=	$(top_srcdir)/libpkg
 
 include $(MK)/lib.mk
 

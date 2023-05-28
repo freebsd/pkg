@@ -48,7 +48,6 @@ _pkg_subcommands() {
 		'annotate:add, modify or delete tag-value style annotations on packages'
 		'audit:report vulnerable packages'
 		'autoremove:remove orphaned packages'
-		'backup:back-up and restore the local package database'
 		'check:check for missing dependencies and database consistency'
 		'clean:clean old packages from the cache'
 		'config:display value of a configuration option'
@@ -145,7 +144,6 @@ _pkg_config_opts() {
 		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
 		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
 		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
-		'PLIST_ACCEPT_DIRECTORIES[accept directories listed like plain files in plist]:boolean:(yes no)' \
 		'PLUGINS[list of plugins pkg(8) should load]:plugins' \
 		'PLUGINS_CONF_DIR[directory containing per-plugin configurations files]:directory:_files -/' \
 		'PORTSDIR[specify location of ports directory]:directory:_files -/' \
@@ -247,13 +245,6 @@ _pkg_args() {
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-y --yes -n --dry-run)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]'
-			return
-			;;
-		(backup)
-			_arguments -s \
-				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
-				'(-d --dump -r --restore)'{-d+,--dump=}'[dump the local package database]:destination:_files' \
-				'(-d --dump -r --restore)'{-r+,--restore=}'[restore the local package database]:destination:_files'
 			return
 			;;
 		(check)

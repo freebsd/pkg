@@ -386,7 +386,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	repo->priv = sqlite;
 	/* Check digests format */
-	if ((it = pkg_repo_binary_query(repo, NULL, MATCH_ALL)) == NULL)
+	if ((it = pkg_repo_binary_query(repo, NULL, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_OK);
 
 	if (it->ops->next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
@@ -482,7 +482,12 @@ pkg_repo_binary_init(struct pkg_repo *repo)
 
 	sqlite3_create_function(sqlite, "file_exists", 2, SQLITE_ANY, NULL,
 		    sqlite_file_exists, NULL, NULL);
-	retcode = sql_exec(sqlite, "PRAGMA synchronous=default");
+
+	retcode = sql_exec(sqlite, "PRAGMA journal_mode=TRUNCATE;");
+	if (retcode != EPKG_OK)
+		return (retcode);
+
+	retcode = sql_exec(sqlite, "PRAGMA synchronous=FULL");
 	if (retcode != EPKG_OK)
 		return (retcode);
 

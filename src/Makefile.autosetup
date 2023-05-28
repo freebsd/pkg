@@ -5,7 +5,6 @@ SRCS=	add.c \
 	annotate.c \
 	audit.c \
 	autoremove.c \
-	backup.c \
 	check.c \
 	clean.c \
 	config.c \
@@ -37,23 +36,23 @@ SRCS=	add.c \
 	version.c \
 	which.c
 
-LOCAL_CFLAGS=	-I$(top_srcdir)/external/uthash \
-		-I$(top_srcdir)/compat \
-		-I$(top_srcdir)/external/libucl/klib \
+LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/libucl/include \
+		-I$(top_srcdir)/external/include \
 		-I$(top_builddir)/ \
+		-I$(top_srcdir)/libpkg \
 		-I$(top_builddir)/libpkg \
 		-DGITHASH=\"@GITHASH@\" \
 		-DHAVE_CONFIG_H
 LIBPKGFLAT=	-L$(top_builddir)/libpkg -lpkg_flat
-OTHER_LIBS=	@EXTRA_LIBS@
+OTHER_LIBS=	@EXTRA_LIBS@ -lssl -lcrypto
 
 @if HAVE_PKG_LIBARCHIVE
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
 @else
 OTHER_LIBS+=	-larchive -lbz2 -lz -llzma @ZSTDLIB@
 @endif
-OTHER_LIBS+=	-lm -lssl -lcrypto -pthread
+OTHER_LIBS+=	-lm -pthread
 @if HAVE_LIBUTIL
 OTHER_LIBS+=	-lutil
 @endif
@@ -85,6 +84,7 @@ STATIC_ARG=	-static
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
 @endif
 
+VPATH=	$(top_srcdir)/src
 
 include $(MK)/prog.mk
 
@@ -107,7 +107,7 @@ $(PROG): $(top_builddir)/libpkg/libpkg_flat.a
 install: $(PROG)
 	install -d -m 755 $(DESTDIR)$(sbindir)
 	install -m 755 pkg $(DESTDIR)$(sbindir)/pkg
-	install -m 644 pkg.conf.sample $(DESTDIR)$(etcdir)/
+	install -m 644 $(top_srcdir)/src/pkg.conf.sample $(DESTDIR)$(etcdir)/
 
 clean: clean-pkg-static
 clean-pkg-static:

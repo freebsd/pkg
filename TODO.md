@@ -125,3 +125,12 @@ By default pkg priorize user defined default before package defined repo
 if user defined repo to not exists then it switches to the global defaut if in non interactive
 or as the user if in interractives mode
 
+# List of "broken builds" in pkg repo metadata
+
+Would be nice if we could provide some notes to the repo metadata where for example
+a builder car specify that some packages are broken and why, or failed to build and why
+
+# pipe long message to $PAGER
+
+It would be nice to add a way to detect if pkg is running on a terminal and
+plans to print long messages, if so, automatically pipes the message to $PAGER

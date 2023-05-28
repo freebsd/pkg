@@ -51,10 +51,11 @@
 #include <errno.h>
 #include <pwd.h>
 #include <pkg.h>
+#include <tllist.h>
+#include <xmalloc.h>
 
 #include <bsd_compat.h>
 
-#include "utlist.h"
 #include "pkgcli.h"
 
 struct jobs_sum_number {
@@ -330,18 +331,13 @@ print_info(struct pkg * const pkg, uint64_t options)
 {
 	bool print_tag = false;
 	bool show_locks = false;
-	const char *repourl;
+	const char *repourl = NULL;
 	unsigned opt;
-	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
 	int outflags = PKG_MANIFEST_EMIT_LOCAL_METADATA;
 
-	pkg_get(pkg,
-		PKG_REPOURL,       &repourl,
-		PKG_FLATSIZE,      &flatsize,
-		PKG_OLD_FLATSIZE,  &oldflatsize,
-		PKG_PKGSIZE,       &pkgsize);
+	pkg_get(pkg, PKG_ATTR_REPOURL, &repourl);
 
 	if (options & INFO_RAW) {
 		switch (options & (INFO_RAW_YAML|INFO_RAW_JSON|INFO_RAW_JSON_COMPACT|INFO_RAW_UCL)) {
@@ -682,38 +678,39 @@ enum pkg_display_type {
 	PKG_DISPLAY_FETCH,
 	PKG_DISPLAY_MAX
 };
-struct pkg_solved_display_item {
+struct pkg_solved_display {
 	struct pkg *new, *old;
 	enum pkg_display_type display_type;
 	pkg_solved_t solved_type;
-	struct pkg_solved_display_item *prev, *next;
 };
+
+typedef tll(struct pkg_solved_display *) pkg_solved_display_t;
 
 static void
 set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
     struct pkg *old_pkg, pkg_solved_t type, int64_t *oldsize,
-    int64_t *newsize, int64_t *dlsize, struct pkg_solved_display_item **disp,
+    int64_t *newsize, int64_t *dlsize, pkg_solved_display_t *disp,
     struct jobs_sum_number *sum)
 {
-	const char *oldversion, *repopath, *destdir;
+	const char *repopath = NULL, *destdir;
 	char path[MAXPATHLEN];
 	int ret;
 	struct stat st;
 	int64_t flatsize, oldflatsize, pkgsize;
-	struct pkg_solved_display_item *it;
+	struct pkg_solved_display *it;
 
 	flatsize = oldflatsize = pkgsize = 0;
-	oldversion = NULL;
 
-	pkg_get(new_pkg, PKG_FLATSIZE, &flatsize, PKG_PKGSIZE, &pkgsize,
-		PKG_REPOPATH, &repopath);
+	pkg_get(new_pkg, PKG_ATTR_FLATSIZE, &flatsize);
+	pkg_get(new_pkg, PKG_ATTR_PKGSIZE, &pkgsize);
+	pkg_get(new_pkg, PKG_ATTR_REPOPATH, &repopath);
 	if (old_pkg != NULL)
-		pkg_get(old_pkg, PKG_VERSION, &oldversion, PKG_FLATSIZE, &oldflatsize);
+		pkg_get(old_pkg, PKG_ATTR_FLATSIZE, &oldflatsize);
 
 	it = malloc(sizeof (*it));
 	if (it == NULL) {
 		fprintf(stderr, "malloc failed for "
-				"pkg_solved_display_item: %s", strerror (errno));
+				"pkg_solved_display: %s", strerror (errno));
 		return;
 	}
 	it->new = new_pkg;
@@ -723,7 +720,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
 		it->display_type = PKG_DISPLAY_LOCKED;
-		DL_APPEND(disp[it->display_type], it);
+		tll_push_back(disp[it->display_type], it);
 		return;
 	}
 
@@ -787,7 +784,6 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	case PKG_SOLVED_FETCH:
 		*newsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
-		sum->fetch++;
 		if (destdir == NULL)
 			pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		else
@@ -805,21 +801,22 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 		}
 		else
 			*dlsize += pkgsize;
+		sum->fetch++;
 
 		break;
 	}
-	DL_APPEND(disp[it->display_type], it);
+	tll_push_back(disp[it->display_type], it);
 }
 
 static void
-display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
+display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 {
-	const char *why;
-	int64_t pkgsize;
+	const char *why = NULL;
+	int64_t pkgsize = 0;
 	char size[8], tlsize[8];
 	const char *type;
 
-	pkg_get(it->new, PKG_PKGSIZE, &pkgsize);
+	pkg_get(it->new, PKG_ATTR_PKGSIZE, &pkgsize);
 
 	switch (it->display_type) {
 	case PKG_DISPLAY_LOCKED:
@@ -858,7 +855,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		}
 		break;
 	case PKG_DISPLAY_DELETE:
-		pkg_get(it->new, PKG_REASON, &why);
+		pkg_get(it->new, PKG_ATTR_REASON, &why);
 		pkg_printf("\t%n: %v", it->new, it->new);
 		if (why != NULL)
 			printf(" (%s)", why);
@@ -883,7 +880,7 @@ display_summary_item(struct pkg_solved_display_item *it, int64_t dlsize)
 		printf("\n");
 		break;
 	case PKG_DISPLAY_REINSTALL:
-		pkg_get(it->new, PKG_REASON, &why);
+		pkg_get(it->new, PKG_ATTR_REASON, &why);
 		pkg_printf("\t%n-%v", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
@@ -919,10 +916,12 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 };
 
 static int
-namecmp(struct pkg_solved_display_item *a, struct pkg_solved_display_item *b)
+namecmp(const void *a, const void *b)
 {
+	const struct pkg_solved_display *sda = *(const struct pkg_solved_display **) a;
+	const struct pkg_solved_display *sdb = *(const struct pkg_solved_display **) b;
 
-	return (pkg_namecmp(a->new, b->new));
+	return (pkg_namecmp(sda->new, sdb->new));
 }
 
 int
@@ -934,14 +933,15 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	va_list ap;
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
-	struct pkg_solved_display_item *disp[PKG_DISPLAY_MAX], *cur, *tmp;
+	pkg_solved_display_t disp[PKG_DISPLAY_MAX];
+	struct pkg_solved_display **displays;
 	bool first = true;
 	size_t bytes_change, limbytes;
 	struct jobs_sum_number sum;
 
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
-	memset(disp, 0, sizeof(disp));
+	memset(disp, 0, sizeof(*disp) * PKG_DISPLAY_MAX);
 	memset(&sum, 0, sizeof(sum));
 
 	nbtodl = 0;
@@ -951,7 +951,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
-		if (disp[type] != NULL) {
+		if (tll_length(disp[type]) != 0) {
 			/* Space between each section. */
 			if (!first)
 				puts("");
@@ -965,12 +965,18 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				msg = NULL;
 			}
 			printf("%s:\n", pkg_display_messages[type]);
-			DL_SORT(disp[type], namecmp);
-			DL_FOREACH_SAFE(disp[type], cur, tmp) {
-				display_summary_item(cur, dlsize);
-				displayed ++;
-				free(cur);
+			displays = xcalloc(tll_length(disp[type]), sizeof(*displays));
+			size_t i = 0;
+			tll_foreach(disp[type], d) {
+				displays[i++] = d->item;
 			}
+			qsort(displays, i, sizeof(displays[0]), namecmp);
+			for (i = 0; i < tll_length(disp[type]); i++) {
+				display_summary_item(displays[i], dlsize);
+				displayed ++;
+			}
+			tll_free_and_free(disp[type], free);
+			free(displays);
 		}
 	}
 
@@ -1031,7 +1037,7 @@ drop_privileges(void)
 	if (geteuid() == 0) {
 		nobody = getpwnam("nobody");
 		if (nobody == NULL)
-			err(EXIT_FAILURE, "Unable to drop privileges");
+			errx(EXIT_FAILURE, "Unable to drop privileges: no 'nobody' user");
 		setgroups(1, &nobody->pw_gid);
 		/* setgid also sets egid and setuid also sets euid */
 		if (setgid(nobody->pw_gid) == -1)
@@ -1044,11 +1050,9 @@ drop_privileges(void)
 int
 print_pkg(struct pkg *p, void *ctx)
 {
-	const char *name;
 	int *counter = ctx;
 
-	pkg_get(p, PKG_NAME, &name);
-	printf("\t%s\n", name);
+	pkg_printf("\t%n\n", p);
 	(*counter)++;
 
 	return 0;

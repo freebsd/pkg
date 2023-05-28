@@ -32,7 +32,6 @@
 #endif
 
 #include <sys/param.h>
-#include <sys/queue.h>
 
 #ifdef PKG_COMPAT
 #include <sys/stat.h>
@@ -48,16 +47,11 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <utlist.h>
+#include <tllist.h>
 
 #include "pkgcli.h"
 
-struct pkg_entry {
-	struct pkg *pkg;
-	struct pkg_entry *next;
-	struct pkg_entry *prev;
-};
-struct pkg_entry *pkg_head = NULL;
+tll(struct pkg *) pkg_head = tll_init();
 
 void
 usage_create(void)
@@ -86,7 +80,6 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS | PKG_LOAD_LUA_SCRIPTS;
-	struct pkg_entry *e = NULL, *etmp;
 	bool foundone;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -112,11 +105,8 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 
 		foundone = false;
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
-				err(1, "malloc(pkg_entry)");
-			e->pkg = pkg;
+			tll_push_back(pkg_head, pkg);
 			pkg = NULL;
-			DL_APPEND(pkg_head, e);
 			foundone = true;
 		}
 		if (!foundone) {
@@ -130,18 +120,16 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 			retcode = EXIT_FAILURE;
 	}
 
-	DL_FOREACH_SAFE(pkg_head, e, etmp) {
-		DL_DELETE(pkg_head, e);
-		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
-		ret = pkg_create_i(pc, e->pkg, false);
+	tll_foreach(pkg_head, el) {
+		pkg_printf("Creating package for %n-%v\n", el->item, el->item);
+		ret = pkg_create_i(pc, el->item, false);
 		if (ret == EPKG_EXIST) {
 			pkg_printf("%n-%v already packaged, skipping...\n",
-			  e->pkg, e->pkg);
+			  el->item, el->item);
 		}
 		if (ret != EPKG_OK && ret != EPKG_EXIST)
 			retcode = EXIT_FAILURE;
-		pkg_free(e->pkg);
-		free(e);
+		tll_remove_and_free(pkg_head, el, pkg_free);
 	}
 
 cleanup:
@@ -178,6 +166,7 @@ exec_create(int argc, char **argv)
 	char	*endptr;
 	int		 ch;
 	int		 level;
+	bool		 level_is_set = false;
 	int		 ret;
 	bool		 hash = false;
 	bool		 overwrite = true;
@@ -235,6 +224,7 @@ exec_create(int argc, char **argv)
 			{
 			const char *errstr;
 
+			level_is_set = true;
 			level = strtonum(optarg, -200, 200, &errstr);
 			if (errstr == NULL)
 				break;
@@ -314,7 +304,8 @@ exec_create(int argc, char **argv)
 		if (!pkg_create_set_format(pc, format))
 			warnx("unknown format %s, using the default", format);
 	}
-	pkg_create_set_compression_level(pc, level);
+	if (level_is_set)
+	    pkg_create_set_compression_level(pc, level);
 	pkg_create_set_overwrite(pc, overwrite);
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);
@@ -322,10 +313,14 @@ exec_create(int argc, char **argv)
 	if (ts != (time_t)-1)
 		pkg_create_set_timestamp(pc, ts);
 
-	if (metadatadir == NULL && manifest == NULL)
-		return (pkg_create_matches(argc, argv, match, pc) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
+	if (metadatadir == NULL && manifest == NULL) {
+		ret = pkg_create_matches(argc, argv, match, pc);
+		pkg_create_free(pc);
+		return (ret == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
+	}
 	ret = pkg_create(pc, metadatadir != NULL ? metadatadir : manifest, plist,
 	    hash);
+	pkg_create_free(pc);
 	if (ret == EPKG_EXIST || ret == EPKG_OK)
 		return (EXIT_SUCCESS);
 	return (EXIT_FAILURE);

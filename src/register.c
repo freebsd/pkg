@@ -42,9 +42,9 @@
 void
 usage_register(void)
 {
-	fprintf(stderr, "Usage: pkg register [-ldt] [-i <input-path>]"
+	fprintf(stderr, "Usage: pkg register [-dtN] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
-	fprintf(stderr, "       pkg register [-ldt] [-i <input_path>]"
+	fprintf(stderr, "       pkg register [-dtN] [-i <input_path>]"
 		        " -M <manifest>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
@@ -61,8 +61,8 @@ exec_register(int argc, char **argv)
 	const char	*input_path = NULL;
 	const char	*location   = NULL;
 
-	bool		 legacy        = false;
 	bool		 testing_mode  = false;
+	bool		 reg_in_db = true;
 
 	int		 ch;
 	int		 ret     = EPKG_OK;
@@ -72,9 +72,9 @@ exec_register(int argc, char **argv)
 	struct option longopts[] = {
 		{ "automatic",	no_argument,		NULL,	'A' },
 		{ "debug",      no_argument,		NULL,	'd' },
-		{ "legacy",	no_argument,		NULL,	'l' },
 		{ "manifest",	required_argument,	NULL,	'M' },
 		{ "metadata",	required_argument,	NULL,	'm' },
+		{ "no-registration", no_argument,	NULL,	'N' },
 		{ "plist",	required_argument,	NULL,	'f' },
 		{ "relocate",	required_argument,	NULL, 	1 },
 		{ "root",	required_argument,	NULL,	'i' },
@@ -85,11 +85,11 @@ exec_register(int argc, char **argv)
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EXIT_FAILURE, "malloc");
 
-	while ((ch = getopt_long(argc, argv, "+Adf:i:lM:m:t", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+Adf:i:M:m:Nt", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 		case 'd':
-			pkg_set(pkg, PKG_AUTOMATIC, (bool)true);
+			pkg_set(pkg, PKG_ATTR_AUTOMATIC, (bool)true);
 			break;
 		case 'f':
 			plist = optarg;
@@ -97,14 +97,14 @@ exec_register(int argc, char **argv)
 		case 'i':
 			input_path = optarg;
 			break;
-		case 'l':
-			legacy = true;
-			break;
 		case 'M':
 			mfile = optarg;
 			break;
 		case 'm':
 			mdir = optarg;
+			break;
+		case 'N':
+			reg_in_db = false;
 			break;
 		case 't':
 			testing_mode = true;
@@ -179,12 +179,12 @@ exec_register(int argc, char **argv)
 	}
 
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if (reg_in_db && pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_free(pkg);
 		return (EXIT_FAILURE);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
+	if (db != NULL && pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
 		pkg_free(pkg);
 		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
@@ -193,13 +193,14 @@ exec_register(int argc, char **argv)
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (!legacy && retcode == EPKG_OK && messages != NULL) {
+	if (retcode == EPKG_OK && messages != NULL) {
 		fflush(messages->fp);
 		printf("%s\n", messages->buf);
 	}
 
 	pkg_free(pkg);
-	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+	if (db != NULL)
+		pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 
 	return (retcode != EPKG_OK ? EXIT_FAILURE : EXIT_SUCCESS);
 }

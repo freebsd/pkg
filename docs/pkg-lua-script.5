@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd March 26, 2021
+.Dd July 27, 2022
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -92,7 +92,7 @@ arguments passed to
 Boolean to inform the scripts that it is running or not in the context of an upgrade
 .El
 .Pp
-The following function has been added:
+The following functions have been added:
 .Bl -tag -width Ds
 .It Ft out Fn pkg.prefixed_path "in"
 prepend
@@ -121,15 +121,42 @@ if an error occured
 return an object table
 .Ft st
 with the following fields:
+.Va type ,
 .Va size ,
 .Va uid ,
 .Va gid
+.It Fn pkg.symlink "source" "destination"
+Create a symbolic link
+.Va destination
+pointing at
+.Va source
+.It Fn pkg.exec arguments
+Will execute the command
+.Ar arguments
+expected in the following form:
+.So
+.Bro command, arg1, arg2, arg3, ...
+.Brc
+.Sc
+.It Ft res Fn pkg.readdir path
+Will return an
+.Va ipair
+with the list of elements contained in the directory
+the specicial directory
+.Va So .
+.Sc
+and
+.Va Sq ..
+are be filtered out.
 .El
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-repository 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -137,7 +164,6 @@ with the following fields:
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -157,6 +183,7 @@ with the following fields:
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

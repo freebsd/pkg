@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -48,52 +48,57 @@
 #include "private/utils.h"
 #include "private/fetch.h"
 
-static struct fetcher {
-	const char *scheme;
-	int (*open)(struct pkg_repo *, struct url *, off_t *);
-} fetchers [] = {
+static struct fetcher fetchers [] = {
+	{
+		"tcp",
+		tcp_open,
+		NULL,
+		fh_close,
+		stdio_fetch,
+	},
 	{
 		"ssh",
 		ssh_open,
+		NULL,
+		fh_close,
+		stdio_fetch,
 	},
 	{
 		"pkg+https",
 		fetch_open,
+		fh_close,
+		NULL,
+		libfetch_fetch,
 	},
 	{
 		"pkg+http",
 		fetch_open,
+		fh_close,
+		NULL,
+		libfetch_fetch,
 	},
 	{
 		"https",
 		fetch_open,
+		fh_close,
+		NULL,
+		libfetch_fetch,
 	},
 	{
 		"http",
 		fetch_open,
-	},
-	{
-		"pkg+ftps",
-		fetch_open,
-	},
-	{
-		"pkg+ftp",
-		fetch_open,
-	},
-	{
-		"ftps",
-		fetch_open,
-	},
-	{
-		"ftp",
-		fetch_open,
+		fh_close,
+		NULL,
+		libfetch_fetch,
 	},
 	{
 		"file",
 		file_open,
+		fh_close,
+		NULL,
+		stdio_fetch,
 	},
 };
-
 
 int
 pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
@@ -179,21 +184,13 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent)
 {
 	struct url	*u = NULL;
-	struct pkg_kv	*kv, *kvtmp;
-	struct pkg_kv	*envtorestore = NULL;
-	struct pkg_kv	*envtounset = NULL;
+	struct pkg_kv	*kv;
+	kvlist_t	 envtorestore = tll_init();
+	stringlist_t	 envtounset = tll_init();
 	char		*tmp;
-	off_t		 done = 0;
-	off_t		 r;
-	char		 buf[8192];
 	int		 retcode = EPKG_OK;
 	off_t		 sz = 0;
-	size_t		 buflen = 0;
-	size_t		 left = 0;
-	struct fetcher	*fetcher = NULL;
 	struct pkg_repo	*fakerepo = NULL;
-
-	FILE *remote = NULL;
 
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is
@@ -202,7 +199,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 * /usr/sbin/pkg in various releases so we can't just drop it.
          *
          * Instead, introduce new pkg+http://, pkg+https://,
-	 * pkg+ssh://, pkg+ftp://, pkg+file:// to support the
+	 * pkg+ssh://, pkg+file:// to support the
 	 * SRV-style server discovery, and also to allow eg. Firefox
 	 * to run pkg-related stuff given a pkg+foo:// URL.
 	 *
@@ -210,19 +207,22 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 */
 
 	pkg_debug(1, "Request to fetch %s", url);
-	if (repo != NULL &&
-		strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
-		if (repo->mirror_type != SRV) {
+	if (repo == NULL) {
+		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
+		fakerepo->url = xstrdup(url);
+		repo = fakerepo;
+	}
+	if (strncmp(URL_SCHEME_PREFIX, url,
+	    strlen(URL_SCHEME_PREFIX)) == 0) {
+		if (repo->fetcher == NULL && repo->mirror_type != SRV) {
 			pkg_emit_error("packagesite URL error for %s -- "
-				       URL_SCHEME_PREFIX
-				       ":// implies SRV mirror type", url);
+					URL_SCHEME_PREFIX
+					":// implies SRV mirror type", url);
 
 			/* Too early for there to be anything to cleanup */
 			return(EPKG_FATAL);
 		}
-
 		url += strlen(URL_SCHEME_PREFIX);
-		u = fetchParseURL(url);
 	}
 
 	if (u == NULL)
@@ -231,23 +231,17 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (offset > 0)
 		u->offset = offset;
 
-	if (repo != NULL) {
-		repo->silent = silent;
-		LL_FOREACH(repo->env, kv) {
-			kvtmp = xcalloc(1, sizeof(*kvtmp));
-			kvtmp->key = xstrdup(kv->key);
-			if ((tmp = getenv(kv->key)) != NULL) {
-				kvtmp->value = xstrdup(tmp);
-				DL_APPEND(envtorestore, kvtmp);
-			} else {
-				DL_APPEND(envtounset, kvtmp);
-			}
-			setenv(kv->key, kv->value, 1);
+	repo->silent = silent;
+	tll_foreach(repo->env, k) {
+		if ((tmp = getenv(k->item->key)) != NULL) {
+			kv = xcalloc(1, sizeof(*kv));
+			kv->key = xstrdup(k->item->key);
+			kv->value = xstrdup(tmp);
+			tll_push_back(envtorestore, kv);
+		} else {
+			tll_push_back(envtounset, k->item->key);
 		}
-	} else {
-		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
-		fakerepo->url = xstrdup(url);
-		repo = fakerepo;
+		setenv(k->item->key, k->item->value, 1);
 	}
 
 	if (u == NULL) {
@@ -259,92 +253,43 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	if (t != NULL)
 		u->ims_time = *t;
 
-	for (int i = 0; i < nitems(fetchers); i++) {
-		if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
-			fetcher = &fetchers[i];
-			if ((retcode = fetcher->open(repo, u, &sz)) != EPKG_OK)
-				goto cleanup;
-			remote = repo->ssh ? repo->ssh : repo->fh;
-			break;
+	if (repo->fetcher == NULL) {
+		for (int i = 0; i < nitems(fetchers); i++) {
+			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
+				repo->fetcher = &fetchers[i];
+				break;
+			}
 		}
 	}
-	if (fetcher == NULL) {
+	if (repo->fetcher == NULL) {
 		pkg_emit_error("Unknown scheme: %s", u->scheme);
 		return (EPKG_FATAL);
 	}
-	pkg_debug(1, "Fetch: fetcher chosen: %s", fetcher->scheme);
-
-	if (strcmp(u->scheme, "ssh") != 0) {
-		if (t != NULL && u->ims_time != 0) {
-			if (u->ims_time <= *t) {
-				retcode = EPKG_UPTODATE;
-				goto cleanup;
-			} else
-				*t = u->ims_time;
-		}
-	}
+	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
+		goto cleanup;
+	pkg_debug(1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
 
 	if (sz <= 0 && size > 0)
 		sz = size;
 
-	pkg_emit_fetch_begin(url);
-	pkg_emit_progress_start(NULL);
-	if (offset > 0)
-		done += offset;
-	buflen = sizeof(buf);
-	left = sizeof(buf);
-	if (sz > 0)
-		left = sz - done;
-	while ((r = fread(buf, 1, left < buflen ? left : buflen, remote)) > 0) {
-		if (write(dest, buf, r) != r) {
-			pkg_emit_errno("write", "");
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		done += r;
-		if (sz > 0) {
-			left -= r;
-			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
-		} else
-			pkg_debug(4, "Read status: %jd", (intmax_t)done);
-		if (sz > 0)
-			pkg_emit_progress_tick(done, sz);
-	}
-
-	if (r != 0) {
-		pkg_emit_error("An error occurred while fetching package");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	} else {
-		pkg_emit_progress_tick(done, done);
-	}
-	pkg_emit_fetch_finished(url);
-
-	if (strcmp(u->scheme, "ssh") != 0 && ferror(remote)) {
-		pkg_emit_error("%s: %s", url, fetchLastErrString);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
+	retcode = repo->fetcher->fetch(repo, dest, url, u, sz, t);
+	if (retcode == EPKG_OK)
+		pkg_emit_fetch_finished(url);
 
 cleanup:
-	if (repo != NULL) {
-		LL_FOREACH_SAFE(envtorestore, kv, kvtmp) {
-			setenv(kv->key, kv->value, 1);
-			LL_DELETE(envtorestore, kv);
-			pkg_kv_free(kv);
-		}
-		LL_FOREACH_SAFE(envtounset, kv, kvtmp) {
-			unsetenv(kv->key);
-			pkg_kv_free(kv);
-		}
+	tll_foreach(envtorestore, k) {
+		setenv(k->item->key, k->item->value, 1);
+		tll_remove_and_free(envtorestore, k, pkg_kv_free);
 	}
+	tll_free(envtorestore);
+	tll_foreach(envtounset, k) {
+		unsetenv(k->item);
+		tll_remove(envtounset, k);
+	}
+	tll_free(envtounset);
 
-	if (u != NULL) {
-		if (remote != NULL &&  repo != NULL && remote != repo->ssh) {
-			fclose(remote);
-			repo->fh = NULL;
-		}
-	}
+	if (repo->fetcher != NULL && repo->fetcher->close != NULL)
+		repo->fetcher->close(repo);
 	free(fakerepo);
 
 	if (retcode == EPKG_OK) {

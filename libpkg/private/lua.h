@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2019 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2019-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,10 @@ lua_CFunction stack_dump(lua_State *L);
 int lua_print_msg(lua_State *L);
 int lua_pkg_copy(lua_State *L);
 int lua_pkg_filecmp(lua_State *L);
+int lua_pkg_symlink(lua_State *L);
 int lua_prefix_path(lua_State *L);
 int lua_exec(lua_State *L);
 void lua_override_ios(lua_State *L, bool);
 int lua_stat(lua_State *L);
+int lua_readdir(lua_State *L);
 void lua_args_table(lua_State *L, char **argv, int argc);

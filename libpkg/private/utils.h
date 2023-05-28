@@ -1,8 +1,10 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -32,7 +34,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <ucl.h>
-#include <khash.h>
+#include <tllist.h>
 #include <pkg.h>
 #include <xstring.h>
 
@@ -49,8 +51,20 @@
 	__FILE__, __LINE__, sqlite3_errmsg(db)); \
 } while (0)
 
-KHASH_MAP_INIT_INT(hardlinks, int)
-typedef khash_t(hardlinks) hardlinks_t;
+typedef tll(struct hardlink *) hardlinks_t;
+struct hardlink {
+	ino_t ino;
+	dev_t dev;
+	const char *path;
+};
+
+struct tempdir {
+	char name[PATH_MAX];
+	char temp[PATH_MAX];
+	size_t len;
+	int fd;
+};
+typedef tll(struct tempdir *) tempdirs_t;
 
 struct dns_srvinfo {
 	unsigned int type;
@@ -68,7 +82,6 @@ struct pkg_key;
 
 int32_t string_hash_func(const char *);
 
-int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
 int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, const char *,
@@ -104,12 +117,15 @@ pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);
 int merge_3way(char *pivot, char *v1, char *v2, xstring *out);
-bool string_end_with(const char *path, const char *str);
 bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
 int checkflags(const char *mode, int *optr);
 bool match_ucl_lists(const char *buffer, const ucl_object_t *globs, const ucl_object_t *regexes);
 char *get_dirname(char *dir);
 char *rtrimspace(char *buf);
+void hidden_tempfile(char *buf, int buflen, const char *path);
+void append_random_suffix(char *buf, int buflen, int suffixlen);
+char *json_escape(const char *str);
+struct tempdir *open_tempdir(int rootfd, const char *path);
 
 #endif

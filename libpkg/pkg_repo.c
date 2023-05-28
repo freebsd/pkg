@@ -4,6 +4,8 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * All rights reserved.
  *
@@ -61,11 +63,10 @@ struct sig_cert {
 	char *cert;
 	int64_t certlen;
 	bool cert_allocated;
-	UT_hash_handle hh;
 	bool trusted;
 };
 
-static int
+int
 pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
   const char *filename, const char *extension, time_t *t, int *rc, bool silent)
 {
@@ -91,7 +92,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	mkdirs(tmpdir);
+	pkg_mkdirs(tmpdir);
 	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
 	fd = mkstemp(tmp);
@@ -128,15 +129,15 @@ pkg_repo_file_has_ext(const char *path, const char *ext)
 }
 
 static bool
-pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fatal)
+pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 {
-	struct fingerprint *f = NULL;
 	char *hash;
 	int nbgood = 0;
-	struct sig_cert *s = NULL, *stmp = NULL;
+	struct sig_cert *s = NULL;
 	struct pkg_repo_meta_key *mk = NULL;
+	pkghash_it it;
 
-	if (HASH_COUNT(sc) == 0) {
+	if (pkghash_count(sc) == 0) {
 		if (fatal)
 			pkg_emit_error("No signature found");
 		return (false);
@@ -148,13 +149,16 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 			return (false);
 	}
 
-	HASH_ITER(hh, sc, s, stmp) {
+	it = pkghash_iterator(sc);
+	while (pkghash_next(&it)) {
+		s = (struct sig_cert *) it.value;
 		if (s->sig != NULL && s->cert == NULL) {
 			/*
 			 * We may want to check meta
 			 */
-			if (repo->meta != NULL && repo->meta->keys != NULL)
-				HASH_FIND_STR(repo->meta->keys, s->name, mk);
+			if (repo->meta != NULL && repo->meta->keys != NULL) {
+				mk = pkghash_get_value(repo->meta->keys, s->name);
+			}
 
 			if (mk != NULL && mk->pubkey != NULL) {
 				s->cert = mk->pubkey;
@@ -175,8 +179,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 		s->trusted = false;
 		hash = pkg_checksum_data(s->cert, s->certlen,
 		    PKG_HASH_TYPE_SHA256_HEX);
-		HASH_FIND_STR(repo->revoked_fp, hash, f);
-		if (f != NULL) {
+		if (pkghash_get(repo->revoked_fp, hash) != NULL) {
 			if (fatal)
 				pkg_emit_error("At least one of the "
 					"certificates has been revoked");
@@ -185,12 +188,11 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 			return (false);
 		}
 
-		HASH_FIND_STR(repo->trusted_fp, hash, f);
-		free(hash);
-		if (f != NULL) {
+		if (pkghash_get(repo->trusted_fp, hash) != NULL) {
 			nbgood++;
 			s->trusted = true;
 		}
+		free(hash);
 	}
 
 	if (nbgood == 0) {
@@ -204,17 +206,22 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 }
 
 static void
-pkg_repo_signatures_free(struct sig_cert *sc)
+pkg_repo_signatures_free(pkghash *sc)
 {
-	struct sig_cert *s, *stmp;
+	struct sig_cert *s;
+	pkghash_it it;
 
-	HASH_ITER(hh, sc, s, stmp) {
-		HASH_DELETE(hh, sc, s);
+	if (sc == NULL)
+		return;
+	it = pkghash_iterator(sc);
+	while (pkghash_next(&it)) {
+		s = (struct sig_cert *)it.value;
 		free(s->sig);
 		if (s->cert_allocated)
 			free(s->cert);
 		free(s);
 	}
+	pkghash_destroy(sc);
 }
 
 
@@ -269,7 +276,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 		}
 		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-				pkg_emit_errno("archive_read_extract", "extract error");
+				pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
 				rc = EPKG_FATAL;
 				break;
 			}
@@ -381,7 +388,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 		else {
 			if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
 				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-					pkg_emit_errno("archive_read_extract", "extract error");
+					pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
 					rc = EPKG_FATAL;
 					break;
 				}
@@ -396,7 +403,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 }
 
 static int
-pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
+pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 {
 	const char *p = in, *end = in + inlen;
 	int rc = EPKG_OK;
@@ -450,15 +457,16 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 				free(s);
 				return (EPKG_FATAL);
 			}
-			HASH_FIND(hh, *sc, p, len, s);
-			if (s == NULL) {
+			char *k = xstrndup(p, len);
+			s = pkghash_get_value(*sc, k);
+			free(k);
+			if ( s == NULL) {
 				s = xcalloc(1, sizeof(struct sig_cert));
 				tlen = MIN(len, sizeof(s->name) - 1);
 				memcpy(s->name, p, tlen);
 				s->name[tlen] = '\0';
 				new = true;
-			}
-			else {
+			} else {
 				new = false;
 			}
 			state = fp_parse_siglen;
@@ -505,7 +513,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 			p += len;
 
 			if (new)
-				HASH_ADD_STR(*sc, name, s);
+				pkghash_safe_add(*sc, s->name, s, NULL);
 
 			break;
 		}
@@ -517,9 +525,10 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, struct sig_cert **sc)
 static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
     struct pkg_repo *repo, int dest_fd,
-    struct sig_cert **signatures)
+    pkghash **signatures)
 {
-	struct sig_cert *sc = NULL, *s;
+	struct pkghash *sc = NULL;
+	struct sig_cert *s;
 	struct pkg_extract_cbdata cbdata;
 
 	char *sig = NULL;
@@ -544,7 +553,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 			s->sig = sig;
 			s->siglen = siglen;
 			strlcpy(s->name, "signature", sizeof(s->name));
-			HASH_ADD_STR(sc, name, s);
+			pkghash_safe_add(sc, s->name, s, NULL);
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
@@ -596,7 +605,9 @@ static int
 pkg_repo_archive_extract_check_archive(int fd, const char *file,
     struct pkg_repo *repo, int dest_fd)
 {
-	struct sig_cert *sc = NULL, *s, *stmp;
+	pkghash *sc = NULL;
+	struct sig_cert *s;
+	pkghash_it it;
 	int ret, rc;
 
 	ret = rc = EPKG_OK;
@@ -618,6 +629,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			rc = EPKG_FATAL;
 			goto out;
 		}
+		it = pkghash_iterator(sc);
+		pkghash_next(&it); /* check that there is content is already above */
+		s = (struct sig_cert *)it.value;
 		/*
 		 * Here are dragons:
 		 * 1) rsa_verify is NOT rsa_verify_cert
@@ -626,7 +640,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		 *
 		 * by @bdrewery
 		 */
-		ret = rsa_verify(pkg_repo_key(repo), sc->sig, sc->siglen - 1,
+		ret = rsa_verify(pkg_repo_key(repo), s->sig, s->siglen - 1,
 		    dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
@@ -636,7 +650,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
-		HASH_ITER(hh, sc, s, stmp) {
+		it = pkghash_iterator(sc);
+		while (pkghash_next(&it)) {
+			s = (struct sig_cert *)it.value;
 			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
 				dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
@@ -781,9 +797,11 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	unsigned char *map = NULL;
 	int fd, dbdirfd, metafd;
 	int rc = EPKG_OK, ret;
-	struct sig_cert *sc = NULL, *s, *stmp;
+	pkghash *sc = NULL;
+	struct sig_cert *s;
 	struct pkg_repo_check_cbdata cbdata;
 	bool newscheme = false;
+	pkghash_it it;
 
 	dbdirfd = pkg_get_dbdirfd();
 	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
@@ -864,7 +882,9 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	if (repo->signature_type == SIG_FINGERPRINT) {
 		cbdata.len = st.st_size;
 		cbdata.map = map;
-		HASH_ITER(hh, sc, s, stmp) {
+		it = pkghash_iterator(sc);
+		while (pkghash_next(&it)) {
+			s = (struct sig_cert *) it.value;
 			if (s->siglen != 0 && s->certlen == 0) {
 				/*
 				 * We need to load this pubkey from meta
@@ -884,12 +904,14 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 			goto cleanup;
 		}
 
-		HASH_ITER(hh, sc, s, stmp) {
+		ret = EPKG_FATAL;
+		it = pkghash_iterator(sc);
+		while (pkghash_next(&it)) {
+			s = (struct sig_cert *) it.value;
 			ret = rsa_verify_cert(s->cert, s->certlen, s->sig, s->siglen,
 				metafd);
 			if (ret == EPKG_OK && s->trusted)
 				break;
-
 			ret = EPKG_FATAL;
 		}
 		if (ret != EPKG_OK) {
@@ -982,7 +1004,7 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 	int fd;
 
 	snprintf(path, sizeof(path), "%s/%s", dir, filename);
-	fd = open(path, O_RDONLY);
+	fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_RDONLY);
 	if (fd == -1) {
 		pkg_emit_error("cannot load fingerprints from %s: %s",
 				path, strerror(errno));
@@ -1015,16 +1037,23 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 }
 
 static int
-pkg_repo_load_fingerprints_from_path(const char *path, struct fingerprint **f)
+pkg_repo_load_fingerprints_from_path(const char *path, pkghash **f)
 {
 	DIR *d;
+	int fd;
 	struct dirent *ent;
 	struct fingerprint *finger = NULL;
 
 	*f = NULL;
 
-	if ((d = opendir(path)) == NULL)
+	if ((fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_DIRECTORY)) == -1) {
+		pkg_emit_error("Error opening the trusted directory %s", path);
 		return (EPKG_FATAL);
+	}
+	if ((d = fdopendir(fd)) == NULL) {
+		pkg_emit_error("Error fdopening the trusted directory %s", path);
+		return (EPKG_FATAL);
+	}
 
 	while ((ent = readdir(d))) {
 		if (strcmp(ent->d_name, ".") == 0 ||
@@ -1032,7 +1061,7 @@ pkg_repo_load_fingerprints_from_path(const char *path, struct fingerprint **f)
 			continue;
 		finger = pkg_repo_load_fingerprint(path, ent->d_name);
 		if (finger != NULL)
-			HASH_ADD_STR(*f, hash, finger);
+			pkghash_safe_add(*f, finger->hash, finger, NULL);
 	}
 
 	closedir(d);
@@ -1047,19 +1076,20 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 	struct stat st;
 
 	snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+
 	if ((pkg_repo_load_fingerprints_from_path(path, &repo->trusted_fp)) != EPKG_OK) {
 		pkg_emit_error("Error loading trusted certificates");
 		return (EPKG_FATAL);
 	}
 
-	if (HASH_COUNT(repo->trusted_fp) == 0) {
+	if (pkghash_count(repo->trusted_fp) == 0) {
 		pkg_emit_error("No trusted certificates");
 		return (EPKG_FATAL);
 	}
 
 	snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
 	/* Absence of revoked certificates is not a fatal error */
-	if (stat(path, &st) != -1) {
+	if (fstatat(ctx.rootfd, RELATIVE_PATH(path), &st, 0) != -1) {
 		if ((pkg_repo_load_fingerprints_from_path(path, &repo->revoked_fp)) != EPKG_OK) {
 			pkg_emit_error("Error loading revoked certificates");
 			return (EPKG_FATAL);
@@ -1068,7 +1098,6 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 
 	return (EPKG_OK);
 }
-
 
 
 int

@@ -61,7 +61,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 	const char *argv[4];
 	char **ep;
 	int ret = EPKG_OK;
-	int fd = -1;
 	int stdin_pipe[2] = {-1, -1};
 	posix_spawn_file_actions_t action;
 	bool use_pipe = 0;
@@ -161,7 +160,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			 * opened fd close all unuseful fd up to there
 			 */
 			for (int i = 5; i <= cur_pipe[1]; i++) {
-				if (i != cur_pipe[0])
+				if (i != cur_pipe[0] && i != ctx.devnullfd)
 					posix_spawn_file_actions_addclose(&action, i);
 			}
 			if (script_len > argmax) {
@@ -181,15 +180,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 
 				use_pipe = 1;
 			} else {
-				fd = open("/dev/null", O_RDWR);
-				if (fd < 0) {
-					pkg_errno("Cannot open %s", "/dev/null");
-					ret = EPKG_FATAL;
-					posix_spawn_file_actions_destroy(&action);
-					goto cleanup;
-				}
 				posix_spawn_file_actions_adddup2(&action,
-				    fd, STDIN_FILENO);
+				    ctx.devnullfd, STDIN_FILENO);
 
 				argv[0] = _PATH_BSHELL;
 				argv[1] = "-c";
@@ -209,8 +201,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 			}
 			posix_spawn_file_actions_destroy(&action);
 
-			if (fd != -1)
-				close(fd);
 			if (use_pipe) {
 				script_cmd_p = script_cmd->buf;
 				while (script_len > 0) {

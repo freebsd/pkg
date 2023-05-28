@@ -61,14 +61,6 @@ struct fetchconn {
 	const SSL_METHOD *ssl_meth;	/* SSL method */
 #endif
 	int		 ref;		/* reference count */
-	char		 scheme[URL_SCHEMELEN+1];
-	char		 user[URL_USERLEN+1];
-	char		 pwd[URL_PWDLEN+1];
-	char		 host[MAXHOSTNAMELEN+1];
-	int		 port;
-	int		 af;
-	int		(*close)(conn_t *);
-	conn_t		*next;
 };
 
 /* Structure used for error message lists */
@@ -78,17 +70,52 @@ struct fetcherr {
 	const char	*string;
 };
 
+/* For SOCKS header size */
+#define HEAD_SIZE	4
+#define FQDN_SIZE	256
+#define PACK_SIZE	1
+#define PORT_SIZE	2
+#define BUFF_SIZE	HEAD_SIZE + FQDN_SIZE + PACK_SIZE + PORT_SIZE
+
+/* SOCKS5 Request Header */
+#define SOCKS_VERSION_5		0x05
+/* SOCKS5 CMD */
+#define SOCKS_CONNECTION	0x01
+#define SOCKS_BIND		0x02
+#define SOCKS_UDP		0x03
+#define SOCKS_NOMETHODS		0xFF
+#define SOCKS5_NOTIMPLEMENTED	0x00
+/* SOCKS5 Reserved */
+#define SOCKS_RSV		0x00
+/* SOCKS5 Address Type */
+#define SOCKS_ATYP_IPV4		0x01
+#define SOCKS_ATYP_DOMAINNAME	0x03
+#define SOCKS_ATYP_IPV6		0x04
+/* SOCKS5 Reply Field */
+#define SOCKS_SUCCESS			0x00
+#define SOCKS_GENERAL_FAILURE		0x01
+#define SOCKS_CONNECTION_NOT_ALLOWED	0x02
+#define SOCKS_NETWORK_UNREACHABLE	0x03
+#define SOCKS_HOST_UNREACHABLE		0x04
+#define SOCKS_CONNECTION_REFUSED	0x05
+#define SOCKS_TTL_EXPIRED		0x06
+#define SOCKS_COMMAND_NOT_SUPPORTED	0x07
+#define SOCKS_ADDRESS_NOT_SUPPORTED	0x08
+
 /* for fetch_writev */
 struct iovec;
 
 void		 fetch_seterr(struct fetcherr *, int);
 void		 fetch_syserr(void);
 void		 fetch_info(const char *, ...) __printflike(1, 2);
+int		 fetch_socks5_getenv(char **host, int *port);
+int		 fetch_socks5_init(conn_t *conn, const char *host,
+		     int port, int verbose);
 int		 fetch_default_port(const char *);
 int		 fetch_default_proxy_port(const char *);
 struct addrinfo *fetch_resolve(const char *, int, int);
 int		 fetch_bind(int, int, const char *);
-conn_t		*fetch_connect(struct url *, int, int);
+conn_t		*fetch_connect(const char *, int, int, int);
 conn_t		*fetch_reopen(int);
 conn_t		*fetch_ref(conn_t *);
 #ifdef WITH_SSL
@@ -105,13 +132,12 @@ int		 fetch_add_entry(struct url_ent **, int *, int *,
 		     const char *, struct url_stat *);
 int		 fetch_netrc_auth(struct url *url);
 int		 fetch_no_proxy_match(const char *);
-conn_t		*fetch_cache_get(const struct url *, int);
-void		 fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *));
 
 #define ftp_seterr(n)	 fetch_seterr(ftp_errlist, n)
 #define http_seterr(n)	 fetch_seterr(http_errlist, n)
 #define netdb_seterr(n)	 fetch_seterr(netdb_errlist, n)
 #define url_seterr(n)	 fetch_seterr(url_errlist, n)
+#define socks5_seterr(n) fetch_seterr(socks5_errlist, n)
 
 #ifndef NDEBUG
 #define DEBUGF(...)							\
@@ -127,7 +153,7 @@ void		 fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *));
 #endif
 
 /*
- * I don't really like exporting http_request() and ftp_request(),
+ * I don't really like exporting http_request()
  * but the HTTP and FTP code occasionally needs to cross-call
  * eachother, and this saves me from adding a lot of special-case code
  * to handle those cases.
@@ -140,8 +166,6 @@ FILE		*http_request(struct url *, const char *,
 FILE		*http_request_body(struct url *, const char *,
 		     struct url_stat *, struct url *, const char *,
 		     const char *, const char *);
-FILE		*ftp_request(struct url *, const char *,
-		     struct url_stat *, struct url *, const char *);
 
 /*
  * Check whether a particular flag is set

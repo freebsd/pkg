@@ -36,14 +36,8 @@
 #include <sys/param.h>
 
 #include <sys/stat.h>
-#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#ifdef __FreeBSD__
-#include <sys/sysctl.h>
-#include <sys/user.h>
-#include <sys/proc.h>
-#endif
 
 #include <assert.h>
 #include <ctype.h>
@@ -54,7 +48,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <utlist.h>
 #include <unistd.h>
 #ifdef HAVE_LIBJAIL
 #include <jail.h>
@@ -63,6 +56,8 @@
 #include <signal.h>
 
 #include <pkg.h>
+#include <tllist.h>
+#include <xmalloc.h>
 
 #include "pkgcli.h"
 
@@ -89,7 +84,6 @@ static struct commands {
 	{ "annotate", "Add, modify or delete tag-value style annotations on packages", exec_annotate, usage_annotate},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
-	{ "backup", "Backs-up and restores the local package database", exec_backup, usage_backup},
 	{ "check", "Checks for missing dependencies and database consistency", exec_check, usage_check},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "config", "Display the value of the configuration options", exec_config, usage_config},
@@ -127,10 +121,8 @@ struct plugcmd {
 	const char *name;
 	const char *desc;
 	int (*exec)(int argc, char **argv);
-	struct plugcmd *next;
-	struct plugcmd *prev;
 };
-static struct plugcmd *plugins = NULL;
+static tll(struct plugcmd *)plugins = tll_init();
 
 typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
 typedef int (nb_cmd)(void);
@@ -149,7 +141,6 @@ show_command_names(void)
 static void
 usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reason reason, ...)
 {
-	struct plugcmd *c;
 	bool plugins_enabled = false;
 	unsigned int i;
 	const char *arg;
@@ -207,8 +198,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
-			DL_FOREACH(plugins, c) {
-				fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+			tll_foreach(plugins, it) {
+				fprintf(out, "\t%-15s%s\n", it->item->name,
+				    it->item->desc);
 			}
 		}
 		fprintf(out, "\nFor more information on the different commands"
@@ -232,7 +224,6 @@ exec_help(int argc, char **argv)
 {
 	char *manpage;
 	bool plugins_enabled = false;
-	struct plugcmd *c;
 	unsigned int i;
 	const pkg_object *all_aliases;
 	const pkg_object *alias;
@@ -245,9 +236,7 @@ exec_help(int argc, char **argv)
 
 	for (i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
-			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
-				errx(EXIT_FAILURE, "cannot allocate memory");
-
+			xasprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name);
 			system(manpage);
 			free(manpage);
 
@@ -258,11 +247,9 @@ exec_help(int argc, char **argv)
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 	if (plugins_enabled) {
-		DL_FOREACH(plugins, c) {
-			if (strcmp(c->name, argv[1]) == 0) {
-				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
-					errx(EXIT_FAILURE, "cannot allocate memory");
-
+		tll_foreach(plugins, it) {
+			if (strcmp(it->item->name, argv[1]) == 0) {
+				xasprintf(&manpage, "/usr/bin/man pkg-%s", it->item->name);
 				system(manpage);
 				free(manpage);
 
@@ -301,13 +288,15 @@ show_plugin_info(void)
 {
 	const pkg_object	*conf;
 	struct pkg_plugin	*p = NULL;
+	const char		*dump;
 
 	while (pkg_plugins(&p) == EPKG_OK) {
 		conf = pkg_plugin_conf(p);
 		printf("Configuration for plugin: %s\n",
 		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
-
-		printf("%s\n", pkg_object_dump(conf));
+		dump = pkg_object_dump(conf);
+		printf("%s\n", dump);
+		free(dump);
 	}
 }
 
@@ -559,30 +548,6 @@ expand_aliases(int argc, char ***argv)
 	return (newargc);
 }
 
-static
-bool ptraced(void)
-{
-#if defined(__FreeBSD__)
-	int                 mib[4];
-	struct kinfo_proc   info;
-	size_t              size;
-
-	info.ki_flag = 0;
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_PID;
-	mib[3] = getpid();
-
-	size = sizeof(info);
-	sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
-
-	return ((info.ki_flag & P_TRACED) != 0 );
-#else
-	return (false);
-#endif
-}
-
 int
 main(int argc, char **argv)
 {
@@ -695,6 +660,7 @@ main(int argc, char **argv)
 			init_flags = PKG_INIT_FLAG_USE_IPV6;
 			break;
 		default:
+			errx(EXIT_FAILURE, "Invalid argument provided");
 			break;
 		}
 	}
@@ -702,6 +668,8 @@ main(int argc, char **argv)
 	argv += optind;
 
 	pkg_set_debug_level(debug);
+	if (pkg_open_devnull() != EPKG_OK)
+		errx(EXIT_FAILURE, "Cannot open dev/null");
 
 	if (version == 1)
 		show_version_info(version);
@@ -721,7 +689,7 @@ main(int argc, char **argv)
 	optreset = 1;
 	optind = 1;
 
-	if (debug == 0 && version == 0 && !ptraced())
+	if (debug == 0 && version == 0)
 		start_process_worker(save_argv);
 
 #ifdef HAVE_ARC4RANDOM_STIR
@@ -801,9 +769,9 @@ main(int argc, char **argv)
 			if (reg != NULL && ncmd != NULL) {
 				n = ncmd();
 				for (j = 0; j < n ; j++) {
-					c = malloc(sizeof(struct plugcmd));
+					c = xmalloc(sizeof(struct plugcmd));
 					reg(j, &c->name, &c->desc, &c->exec);
-					DL_APPEND(plugins, c);
+					tll_push_back(plugins, c);
 				}
 			}
 		}
@@ -869,10 +837,10 @@ main(int argc, char **argv)
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
-			DL_FOREACH(plugins, c) {
-				if (strcmp(c->name, argv[0]) == 0) {
+			tll_foreach(plugins, it) {
+				if (strcmp(it->item->name, argv[0]) == 0) {
 					plugin_found = true;
-					ret = c->exec(argc, argv);
+					ret = it->item->exec(argc, argv);
 					break;
 				}
 			}
@@ -893,6 +861,8 @@ main(int argc, char **argv)
 
 	if (save_argv != argv)
 		free(argv);
+
+	pkg_close_devnull();
 
 	if (ret == EXIT_SUCCESS && newpkgversion)
 		return (EX_NEEDRESTART);

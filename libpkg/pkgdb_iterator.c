@@ -8,6 +8,8 @@
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,35 +75,35 @@ static struct column_mapping {
 		PKG_SQLITE_BOOL
 	} pkg_type;
 } columns[] = {
-	{ "arch",	PKG_ABI, PKG_SQLITE_STRING },
-	{ "automatic",	PKG_AUTOMATIC, PKG_SQLITE_BOOL },
-	{ "cksum",	PKG_CKSUM, PKG_SQLITE_STRING },
-	{ "comment",	PKG_COMMENT, PKG_SQLITE_STRING },
-	{ "dbname",	PKG_REPONAME, PKG_SQLITE_STRING },
-	{ "dep_formula",	PKG_DEP_FORMULA, PKG_SQLITE_STRING },
-	{ "desc",	PKG_DESC, PKG_SQLITE_STRING },
-	{ "flatsize",	PKG_FLATSIZE, PKG_SQLITE_INT64 },
-	{ "id",		PKG_ROWID, PKG_SQLITE_INT64 },
-	{ "licenselogic", PKG_LICENSE_LOGIC, PKG_SQLITE_INT64 },
-	{ "locked",	PKG_LOCKED, PKG_SQLITE_BOOL },
-	{ "maintainer",	PKG_MAINTAINER, PKG_SQLITE_STRING },
-	{ "manifestdigest",	PKG_DIGEST, PKG_SQLITE_STRING },
-	{ "message",	PKG_MESSAGE, PKG_SQLITE_STRING },
-	{ "name",	PKG_NAME, PKG_SQLITE_STRING },
-	{ "oldflatsize", PKG_OLD_FLATSIZE, PKG_SQLITE_INT64 },
-	{ "oldversion",	PKG_OLD_VERSION, PKG_SQLITE_STRING },
-	{ "origin",	PKG_ORIGIN, PKG_SQLITE_STRING },
-	{ "pkgsize",	PKG_PKGSIZE, PKG_SQLITE_INT64 },
-	{ "prefix",	PKG_PREFIX, PKG_SQLITE_STRING },
-	{ "repopath",	PKG_REPOPATH, PKG_SQLITE_STRING },
-	{ "repourl",	PKG_REPOURL, PKG_SQLITE_STRING },
-	{ "rowid",	PKG_ROWID, PKG_SQLITE_INT64 },
-	{ "time",	PKG_TIME, PKG_SQLITE_INT64 },
-	{ "uniqueid",	PKG_UNIQUEID, PKG_SQLITE_STRING },
-	{ "version",	PKG_VERSION, PKG_SQLITE_STRING },
-	{ "vital",	PKG_VITAL, PKG_SQLITE_BOOL },
+	{ "arch",	PKG_ATTR_ABI, PKG_SQLITE_STRING },
+	{ "automatic",	PKG_ATTR_AUTOMATIC, PKG_SQLITE_BOOL },
+	{ "cksum",	PKG_ATTR_CKSUM, PKG_SQLITE_STRING },
+	{ "comment",	PKG_ATTR_COMMENT, PKG_SQLITE_STRING },
+	{ "dbname",	PKG_ATTR_REPONAME, PKG_SQLITE_STRING },
+	{ "dep_formula",	PKG_ATTR_DEP_FORMULA, PKG_SQLITE_STRING },
+	{ "desc",	PKG_ATTR_DESC, PKG_SQLITE_STRING },
+	{ "flatsize",	PKG_ATTR_FLATSIZE, PKG_SQLITE_INT64 },
+	{ "id",		PKG_ATTR_ROWID, PKG_SQLITE_INT64 },
+	{ "licenselogic", PKG_ATTR_LICENSE_LOGIC, PKG_SQLITE_INT64 },
+	{ "locked",	PKG_ATTR_LOCKED, PKG_SQLITE_BOOL },
+	{ "maintainer",	PKG_ATTR_MAINTAINER, PKG_SQLITE_STRING },
+	{ "manifestdigest",	PKG_ATTR_DIGEST, PKG_SQLITE_STRING },
+	{ "message",	PKG_ATTR_MESSAGE, PKG_SQLITE_STRING },
+	{ "name",	PKG_ATTR_NAME, PKG_SQLITE_STRING },
+	{ "oldflatsize", PKG_ATTR_OLD_FLATSIZE, PKG_SQLITE_INT64 },
+	{ "oldversion",	PKG_ATTR_OLD_VERSION, PKG_SQLITE_STRING },
+	{ "origin",	PKG_ATTR_ORIGIN, PKG_SQLITE_STRING },
+	{ "pkgsize",	PKG_ATTR_PKGSIZE, PKG_SQLITE_INT64 },
+	{ "prefix",	PKG_ATTR_PREFIX, PKG_SQLITE_STRING },
+	{ "repopath",	PKG_ATTR_REPOPATH, PKG_SQLITE_STRING },
+	{ "repourl",	PKG_ATTR_REPOURL, PKG_SQLITE_STRING },
+	{ "rowid",	PKG_ATTR_ROWID, PKG_SQLITE_INT64 },
+	{ "time",	PKG_ATTR_TIME, PKG_SQLITE_INT64 },
+	{ "uniqueid",	PKG_ATTR_UNIQUEID, PKG_SQLITE_STRING },
+	{ "version",	PKG_ATTR_VERSION, PKG_SQLITE_STRING },
+	{ "vital",	PKG_ATTR_VITAL, PKG_SQLITE_BOOL },
 	{ "weight",	-1, PKG_SQLITE_INT64 },
-	{ "www",	PKG_WWW, PKG_SQLITE_STRING },
+	{ "www",	PKG_ATTR_WWW, PKG_SQLITE_STRING },
 	{ NULL,		-1, PKG_SQLITE_STRING }
 };
 
@@ -129,6 +131,7 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	char *str;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -141,7 +144,9 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddata(pkg, sqlite3_column_text(stmt, 0));
@@ -167,6 +172,7 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	char *str;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -179,7 +185,9 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addtagval(pkg, sqlite3_column_text(stmt, 0),
@@ -235,6 +243,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		"    JOIN pkg_option USING(option_id)"
 		"  WHERE package_id = ?1"
 		"  ORDER BY option";
+	char *str;
 
 	assert(pkg != NULL);
 
@@ -250,7 +259,9 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str =sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -293,7 +304,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 					/* Fetch matching packages */
 					chain = NULL;
 
-					while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+					while (sqlite3_step(stmt) == SQLITE_ROW) {
 						/*
 						 * Load options for a package and check
 						 * if they are compatible
@@ -311,8 +322,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 							sqlite3_bind_int64(opt_stmt, 1,
 									sqlite3_column_int64(stmt, 0));
 
-							while ((ret = sqlite3_step(opt_stmt))
-									== SQLITE_ROW) {
+							while (sqlite3_step(opt_stmt) == SQLITE_ROW) {
 								DL_FOREACH(fit->options, optit) {
 									if(strcmp(optit->opt,
 											sqlite3_column_text(opt_stmt, 0))
@@ -371,6 +381,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM packages AS p"
 		"    INNER JOIN deps AS d ON (p.id = d.package_id)"
 		"  WHERE d.name = ?1";
+	char *str;
 
 	assert(pkg != NULL);
 
@@ -386,7 +397,9 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_text(stmt, 1, pkg->uid, -1, SQLITE_STATIC);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -423,6 +436,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM config_files"
 		"  WHERE package_id = ?1"
 		"  ORDER BY PATH ASC";
+	char *str;
 
 	assert( pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -436,9 +450,11 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
-	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		pkg_addfile(pkg, sqlite3_column_text(stmt, 0),
 		    sqlite3_column_text(stmt, 1), false);
 	}
@@ -450,7 +466,9 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addconfig_file(pkg, sqlite3_column_text(stmt, 0),
@@ -480,6 +498,7 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 		"  ORDER by path DESC";
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	char *str;
 
 	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -493,7 +512,9 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), false);
@@ -516,7 +537,7 @@ static int
 pkgdb_load_license(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
-		"SELECT ifnull(group_concat(name, ', '), '') AS name"
+		"SELECT name "
 		"  FROM pkg_licenses, licenses AS l"
 		"  WHERE package_id = ?1"
 		"    AND license_id = l.id"
@@ -525,7 +546,7 @@ pkgdb_load_license(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_LICENSES,
-	    pkg_addlicense, PKG_LICENSES));
+	    pkg_addlicense, PKG_ATTR_LICENSES));
 }
 
 static int
@@ -541,7 +562,7 @@ pkgdb_load_category(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_CATEGORIES,
-	    pkg_addcategory, PKG_CATEGORIES));
+	    pkg_addcategory, PKG_ATTR_CATEGORIES));
 }
 
 static int
@@ -559,7 +580,7 @@ pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg->type == PKG_INSTALLED);
 
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_USERS,
-	    pkg_adduser, PKG_USERS);
+	    pkg_adduser, PKG_ATTR_USERS);
 
 	return (ret);
 }
@@ -579,7 +600,7 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg->type == PKG_INSTALLED);
 
 	ret = load_val(sqlite, pkg, sql, PKG_LOAD_GROUPS,
-	    pkg_addgroup, PKG_GROUPS);
+	    pkg_addgroup, PKG_ATTR_GROUPS);
 
 	return (ret);
 }
@@ -597,7 +618,7 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
-	    pkg_addshlib_required, PKG_SHLIBS_REQUIRED));
+	    pkg_addshlib_required, PKG_ATTR_SHLIBS_REQUIRED));
 }
 
 
@@ -629,7 +650,7 @@ pkgdb_load_annotations(sqlite3 *sqlite, struct pkg *pkg)
 		"  ORDER BY tag, value";
 
 	return (load_tag_val(sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
-		   pkg_addannotation, PKG_ANNOTATIONS));
+		   pkg_addannotation, PKG_ATTR_ANNOTATIONS));
 }
 
 static int
@@ -642,6 +663,7 @@ pkgdb_load_lua_scripts(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM lua_script"
 		"    JOIN pkg_lua_script USING(lua_script_id)"
 		"  WHERE package_id = ?1";
+	char *str;
 
 	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -655,7 +677,10 @@ pkgdb_load_lua_scripts(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_add_lua_script(pkg, sqlite3_column_text(stmt, 0),
@@ -683,6 +708,7 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM pkg_script"
 		"    JOIN script USING(script_id)"
 		"  WHERE package_id = ?1";
+	char *str;
 
 	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -696,7 +722,9 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(4, "Pkgdb: running '%s'", str);
+	sqlite3_free(str);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addscript(pkg, sqlite3_column_text(stmt, 0),
@@ -790,7 +818,7 @@ pkgdb_load_conflicts(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
-			pkg_addconflict, PKG_CONFLICTS));
+			pkg_addconflict, PKG_ATTR_CONFLICTS));
 }
 
 static int
@@ -806,7 +834,7 @@ pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_PROVIDES,
-	    pkg_addprovide, PKG_PROVIDES));
+	    pkg_addprovide, PKG_ATTR_PROVIDES));
 }
 
 static int
@@ -846,28 +874,28 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			}
 
 			switch (column->type) {
-			case PKG_ABI:
+			case PKG_ATTR_ABI:
 				pkg->abi = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_CKSUM:
+			case PKG_ATTR_CKSUM:
 				pkg->sum = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_COMMENT:
+			case PKG_ATTR_COMMENT:
 				pkg->comment = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_REPONAME:
+			case PKG_ATTR_REPONAME:
 				pkg->reponame = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_DESC:
+			case PKG_ATTR_DESC:
 				pkg->desc = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_MAINTAINER:
+			case PKG_ATTR_MAINTAINER:
 				pkg->maintainer = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_DIGEST:
+			case PKG_ATTR_DIGEST:
 				pkg->digest = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_MESSAGE:
+			case PKG_ATTR_MESSAGE:
 				msg = sqlite3_column_text(stmt, icol);
 				if (msg) {
 					/* A stupid logic to detect legacy pkg message */
@@ -876,43 +904,40 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 					}
 					else {
 						struct pkg_message *message;
-						message = xcalloc(1, sizeof(*pkg->message));
+						message = xcalloc(1, sizeof(*message));
 						message->str = xstrdup(msg);
-						DL_APPEND(pkg->message, message);
+						tll_push_back(pkg->message, message);
 					}
 				}
-				else {
-					pkg->message = NULL;
-				}
 				break;
-			case PKG_NAME:
+			case PKG_ATTR_NAME:
 				pkg->name = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_OLD_VERSION:
+			case PKG_ATTR_OLD_VERSION:
 				pkg->old_version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_ORIGIN:
+			case PKG_ATTR_ORIGIN:
 				pkg->origin = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_PREFIX:
+			case PKG_ATTR_PREFIX:
 				pkg->prefix = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_REPOPATH:
+			case PKG_ATTR_REPOPATH:
 				pkg->repopath = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_REPOURL:
+			case PKG_ATTR_REPOURL:
 				pkg->repourl = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_UNIQUEID:
+			case PKG_ATTR_UNIQUEID:
 				pkg->uid = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_VERSION:
+			case PKG_ATTR_VERSION:
 				pkg->version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_WWW:
+			case PKG_ATTR_WWW:
 				pkg->www = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
-			case PKG_DEP_FORMULA:
+			case PKG_ATTR_DEP_FORMULA:
 				pkg->dep_formula = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			default:
@@ -929,31 +954,31 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			}
 
 			switch (column->type) {
-			case PKG_AUTOMATIC:
+			case PKG_ATTR_AUTOMATIC:
 				pkg->automatic = (bool)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_LOCKED:
+			case PKG_ATTR_LOCKED:
 				pkg->locked = (bool)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_FLATSIZE:
+			case PKG_ATTR_FLATSIZE:
 				pkg->flatsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_ROWID:
+			case PKG_ATTR_ROWID:
 				pkg->id = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_LICENSE_LOGIC:
+			case PKG_ATTR_LICENSE_LOGIC:
 				pkg->licenselogic = (lic_t)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_OLD_FLATSIZE:
+			case PKG_ATTR_OLD_FLATSIZE:
 				pkg->old_flatsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_PKGSIZE:
+			case PKG_ATTR_PKGSIZE:
 				pkg->pkgsize = sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_VITAL:
+			case PKG_ATTR_VITAL:
 				pkg->vital = (bool)sqlite3_column_int64(stmt, icol);
 				break;
-			case PKG_TIME:
+			case PKG_ATTR_TIME:
 				pkg->timestamp = sqlite3_column_int64(stmt, icol);
 				break;
 			default:
@@ -1093,47 +1118,42 @@ int
 pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 {
 	struct pkg_repo_it *rit;
-	int ret;
+	int ret = EPKG_END;
 
 	assert(it != NULL);
 
-	switch (it->type) {
-	case PKGDB_IT_LOCAL:
-		return (pkgdb_sqlite_it_next(&it->un.local, pkg_p, flags));
-		break;
-	case PKGDB_IT_REPO:
-		if (it->un.remote != NULL) {
-			rit = it->un.remote->it;
-			ret = rit->ops->next(rit, pkg_p, flags);
-			if (ret != EPKG_OK) {
-				/*
-				 * Detach this iterator from list and switch to another
-				 */
-				struct _pkg_repo_it_set *tmp;
-
-				rit->ops->free(rit);
-				tmp = it->un.remote;
-				it->un.remote = tmp->next;
-				free(tmp);
-
-				return (pkgdb_it_next(it, pkg_p, flags));
-			}
-
-			if (*pkg_p != NULL)
-				(*pkg_p)->repo = rit->repo;
-
-			return (EPKG_OK);
-		}
-		/*
-		 * All done
-		 */
-		return (EPKG_END);
-		break;
+	if (it->local != NULL && !it->local->finished) {
+		if (pkgdb_sqlite_it_next(it->local, pkg_p, flags) == EPKG_OK)
+			return EPKG_OK;
 	}
 
-	return (EPKG_FATAL);
+	if (it->remote != NULL) {
+		rit = it->remote->it;
+		ret = rit->ops->next(rit, pkg_p, flags);
+		if (ret != EPKG_OK) {
+			/*
+			* Detach this iterator from list and switch to another
+			*/
+			struct _pkg_repo_it_set *tmp;
+
+			rit->ops->free(rit);
+			tmp = it->remote;
+			it->remote = tmp->next;
+			free(tmp);
+
+			return (pkgdb_it_next(it, pkg_p, flags));
+		}
+
+		if (*pkg_p != NULL)
+			(*pkg_p)->repo = rit->repo;
+
+		return (EPKG_OK);
+	}
+
+	return ret;
 }
 
+// TODO: Why doesn't this function handle remote?
 int
 pkgdb_it_count(struct pkgdb_it *it)
 {
@@ -1144,7 +1164,7 @@ pkgdb_it_count(struct pkgdb_it *it)
 	assert(it != NULL);
 
 	i = 0;
-	sit = &it->un.local;
+	sit = it->local;
 
 	if (sit == NULL)
 		return (0);
@@ -1174,15 +1194,13 @@ pkgdb_it_reset(struct pkgdb_it *it)
 
 	assert(it != NULL);
 
-	switch (it->type) {
-		case PKGDB_IT_LOCAL:
-			pkgdb_sqlite_it_reset(&it->un.local);
-			break;
-		case PKGDB_IT_REPO:
-			LL_FOREACH(it->un.remote, cur) {
-				cur->it->ops->reset(cur->it);
-			}
-			break;
+	if (it->local != NULL) {
+		pkgdb_sqlite_it_reset(it->local);
+	}
+	if (it->remote != NULL) {
+		LL_FOREACH(it->remote, cur) {
+			cur->it->ops->reset(cur->it);
+		}
 	}
 }
 
@@ -1194,16 +1212,15 @@ pkgdb_it_free(struct pkgdb_it *it)
 	if (it == NULL)
 		return;
 
-	switch (it->type) {
-		case PKGDB_IT_LOCAL:
-			pkgdb_sqlite_it_free(&it->un.local);
-			break;
-		case PKGDB_IT_REPO:
-			LL_FOREACH_SAFE(it->un.remote, cur, tmp) {
-				cur->it->ops->free(cur->it);
-				free(cur);
-			}
-			break;
+	if (it->local != NULL) {
+		pkgdb_sqlite_it_free(it->local);
+		free(it->local);
+	}
+	if (it->remote != NULL) {
+		LL_FOREACH_SAFE(it->remote, cur, tmp) {
+			cur->it->ops->free(cur->it);
+			free(cur);
+		}
 	}
 
 	free(it);
@@ -1220,15 +1237,16 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 
 	it = xmalloc(sizeof(struct pkgdb_it));
 
-	it->type = PKGDB_IT_LOCAL;
-
 	it->db = db;
-	it->un.local.sqlite = db->sqlite;
-	it->un.local.stmt = s;
-	it->un.local.pkg_type = type;
+	it->local = xmalloc(sizeof(struct pkgdb_sqlite_it));
+	it->local->sqlite = db->sqlite;
+	it->local->stmt = s;
+	it->local->pkg_type = type;
 
-	it->un.local.flags = flags;
-	it->un.local.finished = 0;
+	it->local->flags = flags;
+	it->local->finished = 0;
+
+	it->remote = NULL;
 
 	return (it);
 }
@@ -1240,11 +1258,10 @@ pkgdb_it_new_repo(struct pkgdb *db)
 
 	it = xmalloc(sizeof(struct pkgdb_it));
 
-	it->type = PKGDB_IT_REPO;
-
 	it->db = db;
 
-	it->un.remote = NULL;
+	it->local = NULL;
+	it->remote = NULL;
 
 	return (it);
 }
@@ -1256,7 +1273,7 @@ pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 
 	item = xmalloc(sizeof(struct _pkg_repo_it_set));
 	item->it = rit;
-	LL_PREPEND(it->un.remote, item);
+	LL_PREPEND(it->remote, item);
 }
 
 int
@@ -1279,20 +1296,14 @@ pkgdb_ensure_loaded_sqlite(sqlite3 *sqlite, struct pkg *pkg, unsigned flags)
 int
 pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
 {
-	int ret;
-	struct _pkg_repo_list_item *cur;
-
-	if (pkg->type == PKG_INSTALLED) {
+	if (pkg->type == PKG_INSTALLED)
 		return (pkgdb_ensure_loaded_sqlite(db->sqlite, pkg, flags));
-	}
-	else {
-		/* Call repo functions */
-		LL_FOREACH(db->repos, cur) {
-			if (cur->repo == pkg->repo) {
-				if (cur->repo->ops->ensure_loaded) {
-					ret = cur->repo->ops->ensure_loaded(cur->repo, pkg, flags);
-					return (ret);
-				}
+
+	tll_foreach(db->repos, cur) {
+		if (cur->item == pkg->repo) {
+			if (cur->item->ops->ensure_loaded) {
+				return (cur->item->ops->ensure_loaded(cur->item,
+				    pkg, flags));
 			}
 		}
 	}

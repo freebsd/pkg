@@ -90,7 +90,9 @@ struct url_ent {
 #define	FETCH_URL	18
 #define	FETCH_VERBOSE	19
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* FILE-specific functions */
 FILE		*fetchXGetFile(struct url *, struct url_stat *, const char *);
@@ -131,14 +133,11 @@ struct url_ent	*fetchList(struct url *, const char *);
 struct url	*fetchMakeURL(const char *, const char *, int,
 		     const char *, const char *, const char *);
 struct url	*fetchParseURL(const char *);
-struct url	*fetchDupURL(struct url *);
 void		 fetchFreeURL(struct url *);
 
-__END_DECLS
-
-/* Connection caching */
-void fetchConnectionCacheInit(int, int);
-void fetchConnectionCacheClose(void);
+#ifdef __cplusplus
+}
+#endif
 
 /* Authentication */
 typedef int (*auth_t)(struct url *);

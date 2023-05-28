@@ -141,11 +141,14 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 static int
 do_show(struct pkg *pkg, const char *tag)
 {
+	struct pkg_kvlist_iterator *kit;
+	struct pkg_kvlist *kl = NULL;
 	struct pkg_kv *note;
 	int ret = EPKG_OK;
 
-	ret = pkg_get(pkg, PKG_ANNOTATIONS, &note);
-	while (note != NULL) {
+	pkg_get(pkg, PKG_ATTR_ANNOTATIONS, &kl);
+	kit = pkg_kvlist_iterator(kl);
+	while ((note = pkg_kvlist_next(kit))) {
 		if (strcmp(tag, note->key) == 0) {
 			if (quiet)
 				printf("%s\n", note->value);
@@ -154,8 +157,9 @@ do_show(struct pkg *pkg, const char *tag)
 				    pkg, pkg, note->key, note->value);
 			return (EPKG_OK);
 		}
-		note = note->next;
 	}
+	free(kit);
+	free(kl);
 
 	return (ret);
 }

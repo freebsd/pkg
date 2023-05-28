@@ -159,8 +159,8 @@ Updating database digests format:  done
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
 Checking integrity... done (2 conflicting)
-  - test-1.1 [local2] conflicts with test2-1 [local1] on ${TMPDIR}/b
   - test-1.1 [local2] conflicts with test2-1 [installed] on ${TMPDIR}/b
+  - test-1.1 [local2] conflicts with test2-1 [local1] on ${TMPDIR}/b
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
@@ -171,10 +171,10 @@ Installed packages to be UPGRADED:
 Number of packages to be upgraded: 2
 ${JAILED}[1/2] Deinstalling test2-1...
 ${JAILED}[1/2] Deleting files for test2-1:  done
-${JAILED}[1/2] Installing test2-1.1...
-${JAILED}[1/2] Extracting test2-1.1:  done
 ${JAILED}[2/2] Upgrading test from 1 to 1.1...
 ${JAILED}[2/2] Extracting test-1.1:  done
+${JAILED}[2/2] Installing test2-1.1...
+${JAILED}[2/2] Extracting test2-1.1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \

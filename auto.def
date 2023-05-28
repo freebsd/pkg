@@ -4,9 +4,9 @@
 use cc cc-lib cc-shared pkg-config
 
 set maj_ver 1
-set med_ver 17
+set med_ver 18
 set min_ver 99
-set dev_ver 2
+set dev_ver 7
 define PKG_API [expr $maj_ver * 1000000 + $med_ver * 1000 + $min_ver]
 define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]
 
@@ -176,7 +176,8 @@ cc-check-includes stdint.h inttypes.h
 cc-check-functions arc4random arc4random_stir basename_r chflagsat \
 	closefrom dirfd eaccess fopencookie fstatfs funopen getprogname strnstr \
 	strtofflags strtonum sysconf utimensat __res_setservers unlinkat \
-	faccessat fstatat openat readlinkat fflagstostr reallocarray strchrnul
+	faccessat fstatat openat readlinkat fflagstostr reallocarray strchrnul \
+	copy_file_range
 
 cc-with { -includes { libutil.h }} {
 	if {[cc-check-decls humanize_number]} {
@@ -271,7 +272,7 @@ cc-with { -libs { -ljail} } {
 # libbsd
 cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 	bsd/stdio.h bsd/stdlib.h bsd/strlib.h bsd/string.h \
-	bsd/sys/cdefs.h bsd/unistd.h
+	bsd/sys/cdefs.h bsd/sys/queue.h bsd/unistd.h
  
 if {[opt-bool with-asan]} {
 	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address
@@ -291,10 +292,8 @@ if {[opt-bool with-ubsan]} {
 	define ubsan 1
 }
 if {[opt-bool with-coverage]} {
-	define-append COVERAGE_CFLAGS -O0 -ggdb -fprofile-instr-generate -fcoverage-mapping
-	define-append COVERAGE_LDFLAGS -fprofile-instr-generate -fuse-ld=/usr/local/bin/ld.lld
-	define CC /usr/local/bin/clang
-	define CC_FOR_BUILD /usr/local/bin/clang
+	define-append COVERAGE_CFLAGS -O0 -ggdb -fprofile-arcs -ftest-coverage -fprofile-instr-generate -fcoverage-mapping
+	define-append COVERAGE_LDFLAGS -fprofile-instr-generate
 	define coverage 1
 # disable capsicum when coverage is used because coverage does not work in
 # capsicum mode
@@ -345,7 +344,7 @@ if {[get-define CCACHE] ne {none}} {
 }
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
-make-config-header external/sqlite/config.h
+make-config-header external/sqlite/sqlite_cfg.h
 make-template mk/defs.mk.in
 make-template libpkg/pkg.h.in
 make-template libpkg/pkg.pc.in
@@ -360,3 +359,4 @@ foreach dir [list external/blake2 external/picosat \
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
 
+file mkdir external/libucl/src scripts/periodic scripts/completion tests/lib tests/frontend

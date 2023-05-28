@@ -37,7 +37,11 @@
  #endif
 #endif
 
-#ifdef HAVE_BSD_SYS_CDEFS_H
+#ifndef HAVE_BSD_SYS_CDEFS_H
+
+#include <sys/cdefs.h>
+
+#else
 
 /* Deal with broken __DECONST */
 #ifndef __uintptr_t
@@ -188,7 +192,10 @@ FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
 #endif
 
 #if !HAVE_GETPROGNAME
-#ifdef __GLIBC__
+#if defined(__linux__)
+extern char *__progname;
+# define getprogname() __progname
+#elif defined(__GLIBC__)
 extern char *program_invocation_short_name;
 # define getprogname() program_invocation_short_name
 #else

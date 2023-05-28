@@ -7,13 +7,13 @@ MAN5=	pkg-repository.5 \
 	pkg-keywords.5 \
 	pkg-script.5 \
 	pkg-lua-script.5 \
+	pkg-triggers.5 \
 	pkg.conf.5
 MAN8=	pkg-add.8 \
 	pkg-alias.8 \
 	pkg-annotate.8 \
 	pkg-audit.8 \
 	pkg-autoremove.8 \
-	pkg-backup.8 \
 	pkg-check.8 \
 	pkg-clean.8 \
 	pkg-config.8 \
@@ -33,6 +33,7 @@ MAN8=	pkg-add.8 \
 	pkg-shlib.8 \
 	pkg-ssh.8 \
 	pkg-stats.8 \
+	pkg-triggers.8 \
 	pkg-update.8 \
 	pkg-updating.8 \
 	pkg-upgrade.8 \
@@ -44,18 +45,20 @@ MAN3GZ=	$(MAN3:.3=.3.gz)
 MAN5GZ=	$(MAN5:.5=.5.gz)
 MAN8GZ=	$(MAN8:.8=.8.gz)
 
+VPATH=	$(top_srcdir)/docs
+
 .SUFFIXES: .3.gz .5.gz .8.gz .3 .5 .8
 
 all: $(MAN3GZ) $(MAN5GZ) $(MAN8GZ)
 
 .3.3.gz:
-	gzip -kfn $< > $@
+	gzip -knc $< > $@
 
 .5.5.gz:
-	gzip -kfn $< > $@
+	gzip -knc $< > $@
 
 .8.8.gz:
-	gzip -kfn $< > $@
+	gzip -knc $< > $@
 
 clean:
 	rm -f *.gz

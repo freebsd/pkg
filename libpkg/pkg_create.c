@@ -3,6 +3,8 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,7 +64,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	int64_t		 flatsize = 0;
 	int64_t		 nfiles;
 	const char	*relocation;
-	hardlinks_t	*hardlinks;
+	hardlinks_t	 hardlinks = tll_init();
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -79,10 +81,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	nfiles = kh_count(pkg->filehash);
+	nfiles = pkghash_count(pkg->filehash);
 	counter_init("file sizes/checksums", nfiles);
 
-	hardlinks = kh_init_hardlinks();
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
@@ -90,33 +91,33 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
-			kh_destroy_hardlinks(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode))) {
 			pkg_emit_error("file '%s' is not a regular file or symlink", fpath);
-			kh_destroy_hardlinks(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		if (file->size == 0)
 			file->size = (int64_t)st.st_size;
 
-		if (st.st_nlink == 1 || !check_for_hardlink(hardlinks, &st)) {
+		if (st.st_nlink == 1 || !check_for_hardlink(&hardlinks, &st)) {
 			flatsize += file->size;
 		}
 
 		file->sum = pkg_checksum_generate_file(fpath,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (file->sum == NULL) {
-			kh_destroy_hardlinks(hardlinks);
+			tll_free_and_free(hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		counter_count();
 	}
-	kh_destroy_hardlinks(hardlinks);
+	tll_free_and_free(hardlinks, free);
 
 	counter_end();
 
@@ -160,7 +161,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	nfiles = kh_count(pkg->dirhash);
+	nfiles = pkghash_count(pkg->dirhash);
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -191,7 +192,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	if (pkg->type != PKG_OLD_FILE)
 		assert((pkg->flags & required_flags) == required_flags);
 
-	if (mkdirs(pc->outdir) != EPKG_OK)
+	if (pkg_mkdirs(pc->outdir) != EPKG_OK)
 		return NULL;
 
 	if (pkg_asprintf(&pkg_path, "%S/%n-%v", pc->outdir, pkg, pkg) == -1) {
@@ -240,7 +241,7 @@ pkg_create_new(void)
 	struct pkg_create *pc;
 
 	pc = xcalloc(1, sizeof(*pc));
-	pc->format = DEFAULT_COMPRESSION;
+	pc->format = packing_format_from_string(ctx.compression_format);
 	pc->compression_level = ctx.compression_level;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
@@ -310,7 +311,7 @@ pkg_create_set_overwrite(struct pkg_create *pc, bool overwrite)
 }
 
 static int
-hash_file(struct pkg_create *pc, struct pkg *pkg)
+hash_file(struct pkg *pkg)
 {
 	char hash_dest[MAXPATHLEN];
 	char filename[MAXPATHLEN];
@@ -363,7 +364,7 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 	packing_finish(pkg_archive);
 
 	if (hash && ret == EPKG_OK)
-		ret = hash_file(pc, pkg);
+		ret = hash_file(pkg);
 
 	return (ret);
 }
@@ -381,7 +382,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = load_metadata(pkg, metadata, plist, pc->rootdir)) != EPKG_OK) {
+	if (load_metadata(pkg, metadata, plist, pc->rootdir) != EPKG_OK) {
 		pkg_free(pkg);
 		return (EPKG_FATAL);
 	}
@@ -404,7 +405,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 
 	packing_finish(pkg_archive);
 	if (hash && ret == EPKG_OK)
-		ret = hash_file(pc, pkg);
+		ret = hash_file(pkg);
 
 	pkg_free(pkg);
 	return (ret);
@@ -466,11 +467,11 @@ pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 /* TODO use file descriptor for rootdir */
 static int
 load_manifest(struct pkg *pkg, const char *metadata, const char *plist,
-    struct pkg_manifest_key *keys, const char *rootdir)
+    const char *rootdir)
 {
 	int ret;
 
-	ret = pkg_parse_manifest_file(pkg, metadata, keys);
+	ret = pkg_parse_manifest_file(pkg, metadata);
 
 	if (ret == EPKG_OK && plist != NULL)
 		ret = ports_parse_plist(pkg, plist, rootdir);
@@ -482,33 +483,27 @@ static int
 load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
     const char *rootdir)
 {
-	struct pkg_manifest_key *keys = NULL;
 	regex_t preg;
 	regmatch_t pmatch[2];
 	size_t size;
 	int fd, i;
 
-	pkg_manifest_keys_new(&keys);
-
 	/* Let's see if we have a directory or a manifest */
 	if ((fd = open(metadata, O_DIRECTORY|O_CLOEXEC)) == -1) {
 		if (errno == ENOTDIR)
-			return (load_manifest(pkg, metadata, plist, keys, rootdir));
+			return (load_manifest(pkg, metadata, plist, rootdir));
 		pkg_emit_errno("open", metadata);
-		pkg_manifest_keys_free(keys);
 		return (EPKG_FATAL);
 	}
 
-	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST", keys)) != EPKG_OK) {
-		pkg_manifest_keys_free(keys);
+	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST")) != EPKG_OK) {
 		close(fd);
 		return (EPKG_FATAL);
 	}
-	pkg_manifest_keys_free(keys);
 
 	pkg_load_message_from_file(fd, pkg, "+DISPLAY");
 	if (pkg->desc == NULL)
-		pkg_set_from_fileat(fd, pkg, PKG_DESC, "+DESC", false);
+		pkg_set_from_fileat(fd, pkg, PKG_ATTR_DESC, "+DESC", false);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		if (faccessat(fd, scripts[i], F_OK, 0) == 0)
@@ -596,6 +591,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	pkg_create_set_output_dir(pc, outdir);
 
 	ret = pkg_create(pc, md_dir, plist, hash);
+	pkg_create_free(pc);
 	return (ret);
 }
 

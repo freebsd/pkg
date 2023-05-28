@@ -36,6 +36,7 @@
 #include <bsd_compat.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
+#define ll_foreach(head, el) for (el=head; el != NULL; el = (el)->next)
 
 extern bool quiet;
 extern int nbactions;
@@ -62,10 +63,6 @@ void usage_audit(void);
 /* pkg autoremove */
 int exec_autoremove(int, char **);
 void usage_autoremove(void);
-
-/* pkg backup */
-int exec_backup(int, char **);
-void usage_backup(void);
 
 /* pkg check */
 int exec_check(int, char **);

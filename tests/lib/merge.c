@@ -28,13 +28,7 @@
 #include <sys/types.h>
 #include <private/utils.h>
 
-ATF_TC(merge);
-
-ATF_TC_HEAD(merge, tc)
-{
-	atf_tc_set_md_var(tc, "descr",
-	    "3 way merge");
-}
+ATF_TC_WITHOUT_HEAD(merge);
 
 ATF_TC_BODY(merge, tc)
 {

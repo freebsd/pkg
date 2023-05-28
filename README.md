@@ -29,13 +29,11 @@ Table of Contents:
 * [Getting help on the commands usage](#pkghelp)
 * [Querying the local package database](#pkginfo)
 * [Installing packages](#pkginstalling)
-* [Adding pkg tarballs directly](#pkgadd)
 * [Working with a remote package repository](#pkgrepos)
 * [Working with multiple remote package repositories](#multirepos)
 * [Updating remote repositories](#pkgupdate)
 * [Searching in remote package repositories](#pkgsearch)
 * [Installing from remote repositories](#pkginstall)
-* [Backing up your package database](#pkgbackup)
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
@@ -53,10 +51,9 @@ repositories, package creation, updating, etc.
 <a name="pkgfmt"></a>
 ### pkg package format
 
-pkg package format is a tar archive which can be raw, or use the following
-compression: gz, bzip2 and xz, defaulting in xz format.
+The `pkg` package format is a tar archive that may be raw or compressed using one of the following algorithms: `gz`, `bzip2`, `zstd`, or `xz`. The default compression algorithm is `zstd`.
 
-The tar itself is composed in two types of elements:
+The tar archive itself is composed in two types of elements:
 
 * the special files at the beginning of the archive, starting with a "+"
 * the data.
@@ -131,9 +128,6 @@ Valid scripts are:
 * pre-deinstall
 * post-deinstall
 * deinstall
-* pre-upgrade
-* post-upgrade
-* upgrade
 
 Script *MUST* be in sh format.
 Nothing else will work.
@@ -334,30 +328,6 @@ exposing the repository via HTTP or some other networking protocol.
 You can also publish a repository from a local or NFS mounted
 filesystem (using file:// style URLs) or via SSH (using ssh:// URLs.)
 
-<a name="pkgadd"></a>
-#### Adding pkg tarballs directly
-
-In order to install the package foo-1.2.3 from a local pkg tarball,
-use a command similar to the following:
-
-	# pkg add /path/to/packages/foo-1.2.3.txz
-
-You will need to make sure that all dependencies of foo-1.2.3 are
-either also available as tarballs in the same directory, or previously
-installed by other means.
-
-You can also install the package foo-1.2.3 tarball from a remote
-location using the FTP/HTTP protocol. In order to do that you could
-use a command similar to the following:
-
-	# pkg add http://example.org/pkg-repo/foo-1.2.3.txz
-
-Which works in exactly the same way, except that it fetches the
-package tarballs using the protocol indicated by the URL.
-
-For more information on installing packages on your FreeBSD system,
-please refer to *pkg-add(1)*
-
 <a name="pkgrepos"></a>
 ### Working with a remote package repository
 
@@ -477,21 +447,6 @@ Or you could also install the packages using only one command, like this:
 For more information on the remote package installs, please refer to
 *pkg-install(1)*
 
-<a name="pkgbackup"></a>
-### Backing up your package database
-
-It is a good idea that you backup your local package database on regular basis.
-
-In order to backup the local package database, you should use the `pkg backup` command.
-
-	# pkg backup -d /path/to/pkg-backup.dump
-
-The above command will create a dump of your local package database in
-/path/to/pkg-backup.dump
-
-For more information on backing up your local package database, please
-refer to *pkg-backup(1)*
-
 <a name="pkgcreate"></a>
 ### Creating a package repository
 
@@ -519,15 +474,11 @@ your repository :)
 
 * The [pkg Wiki page][2]
 
-* [Jenkins instance for pkg][3]
-
-In order to get in contact with us, you can find us in the
-#pkgng@FreeNode IRC channel.
+To contact us, you can find us in the **#pkg** channel on [Libera Chat IRC Network](https://libera.chat/).
 
 If you hit a bug when using pkg, you can always submit an issue in the
-[pkg issue tracker][4].
+[pkg issue tracker][3].
 
 [1]: https://github.com/freebsd/pkg
-[2]: http://wiki.freebsd.org/pkgng
-[3]: http://jenkins.mouf.net/job/pkg/
-[4]: https://github.com/freebsd/pkg/issues
+[2]: http://wiki.freebsd.org/pkg
+[3]: https://github.com/freebsd/pkg/issues

@@ -134,7 +134,6 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
-	char			*buf;
 	struct pkg_kv		*kv;
 	const char		*arch;
 	int64_t			 package_id;
@@ -178,27 +177,27 @@ try_again:
 		}
 	}
 
-	kh_each_value(pkg->categories, buf, {
-		ret = pkg_repo_binary_run_prstatement(CAT1, buf);
+	tll_foreach(pkg->categories, c) {
+		ret = pkg_repo_binary_run_prstatement(CAT1, c->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(CAT2, package_id,
-			    buf);
+			    c->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
-	});
+	}
 
-	kh_each_value(pkg->licenses, buf, {
-		ret = pkg_repo_binary_run_prstatement(LIC1, buf);
+	tll_foreach(pkg->licenses, l) {
+		ret = pkg_repo_binary_run_prstatement(LIC1, l->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
-			    buf);
+			    l->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
 		}
-	});
+	}
 
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -212,55 +211,52 @@ try_again:
 		}
 	}
 
-	buf = NULL;
-	while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, buf);
+	tll_foreach(pkg->shlibs_required, s) {
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, s->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id,
-			    buf);
+			    s->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
 		}
 	}
 
-	buf = NULL;
-	while (pkg_shlibs_provided(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, buf);
+	tll_foreach(pkg->shlibs_provided, s) {
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, s->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id,
-			    buf);
+			    s->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);
 		}
 	}
 
-	buf = NULL;
-	while (pkg_provides(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(PROVIDE, buf);
+	tll_foreach(pkg->provides, p) {
+		ret = pkg_repo_binary_run_prstatement(PROVIDE, p->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id,
-			    buf);
+			    p->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PROVIDES));
 			return (EPKG_FATAL);
 		}
 	}
 
-	buf = NULL;
-	while (pkg_requires(pkg, &buf) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(REQUIRE, buf);
+	tll_foreach(pkg->requires, r) {
+		ret = pkg_repo_binary_run_prstatement(REQUIRE, r->item);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id,
-			    buf);
+			    r->item);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(REQUIRES));
 			return (EPKG_FATAL);
 		}
 	}
 
-	LL_FOREACH(pkg->annotations, kv) {
+	tll_foreach(pkg->annotations, k) {
+		kv = k->item;
 		ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->key);
 		if (ret == SQLITE_DONE)
 			ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->value);
@@ -365,7 +361,7 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 
 static int
 pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
-		struct pkg_manifest_key **keys, struct pkg **p __unused,
+		struct pkg **p __unused,
 		struct pkg_repo *repo)
 {
 	int rc = EPKG_OK;
@@ -376,8 +372,7 @@ pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 	if (rc != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_manifest_keys_new(keys);
-	rc = pkg_parse_manifest(pkg, buf, len, *keys);
+	rc = pkg_parse_manifest(pkg, buf, len);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -466,7 +461,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
-	struct pkg_manifest_key *keys = NULL;
 	size_t len = 0;
 	bool in_trans = false;
 	char *path = NULL;
@@ -523,7 +517,8 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sql_exec(sqlite, "PRAGMA mmap_size = 209715200;");
 	sql_exec(sqlite, "PRAGMA page_size = %d;", getpagesize());
 	sql_exec(sqlite, "PRAGMA foreign_keys = OFF;");
-	sql_exec(sqlite, "PRAGMA synchronous = OFF;");
+	sql_exec(sqlite, "PRAGMA journal_mode = TRUNCATE;");
+	sql_exec(sqlite, "PRAGMA synchronous = FULL;");
 
 	rc = pkgdb_transaction_begin_sqlite(sqlite, "REPO");
 	if (rc != EPKG_OK)
@@ -536,7 +531,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		if ((cnt % 10 ) == 0)
 			pkg_emit_progress_tick(totallen, len);
 		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
-		    &keys, &pkg, repo);
+		    &pkg, repo);
 		if (rc != EPKG_OK) {
 			pkg_emit_progress_tick(len, len);
 			break;
@@ -576,7 +571,6 @@ cleanup:
 		free(path);
 	}
 	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
-	pkg_manifest_keys_free(keys);
 	pkg_free(pkg);
 	free(line);
 	if (f != NULL)

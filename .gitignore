@@ -31,6 +31,7 @@ scripts/completion/_pkg.bash
 scripts/completion/_pkg.zsh
 scripts/completion/_pkg
 scripts/periodic/400.status-pkg
+scripts/periodic/405.pkg-base-audit
 scripts/periodic/410.pkg-audit
 scripts/periodic/411.pkg-backup
 scripts/periodic/460.pkg-checksum
@@ -44,6 +45,7 @@ scripts/sbin/pkg2ng
 # Generated files:
 
 /autosetup/jimsh0
+/Kyuafile
 /Makefile
 /compat/Makefile
 /docs/Makefile
@@ -63,7 +65,6 @@ scripts/sbin/pkg2ng
 /external/libelf/libelf_convert.c
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c
-/external/libelf/native-elf-format.h
 /libpkg/Makefile
 /libpkg/repo/Makefile
 /libpkg/repo/binary/Makefile
@@ -78,13 +79,19 @@ scripts/sbin/pkg2ng
 /tests/Kyuafile
 /tests/checksum
 /tests/deps_formula
-# Almost everything in tests/frontend is generated aside from .sh and .in files.
+# Almost everything in tests/frontend is generated aside from .sh, .in and .binin files.
 /tests/frontend/*
 !/tests/frontend/*.sh
 !/tests/frontend/*.in
+!/tests/frontend/*.binin
 /tests/frontend/test_environment.sh
+/tests/lua
+/tests/metalog
 /tests/merge
+/tests/packing
 /tests/pkg_add_dir_to_del
 /tests/pkg_printf
 /tests/pkg_validation
 /tests/plist
+/tests/ssh
+/tests/utils

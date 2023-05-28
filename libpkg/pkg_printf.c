@@ -857,25 +857,23 @@ xstring *
 format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	struct pkg_kv		*kv;
 	int			count;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		LL_COUNT(pkg->annotations, kv, count);
-		return (list_count(buf, count, p));
+		return (list_count(buf, tll_length(pkg->annotations), p));
 	} else {
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		LL_FOREACH(pkg->annotations, kv) {
+		tll_foreach(pkg->annotations, k) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     kv, count, PP_A);
+					     k->item, count, PP_A);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     kv, count, PP_A);
+				     k->item, count, PP_A);
 			count++;
 		}
 	}
@@ -915,9 +913,8 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
+		return (list_count(buf, tll_length(pkg->shlibs_required), p));
 	else {
-		char	*buffer = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Bn\n", "");
@@ -925,13 +922,13 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_shlibs_required(pkg, &buffer) == EPKG_OK) {
+		tll_foreach(pkg->shlibs_required, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     buffer, count, PP_B);
+					     r->item, count, PP_B);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     buffer, count, PP_B);
+				     r->item, count, PP_B);
 			count++;
 		}
 	}
@@ -961,25 +958,24 @@ format_categories(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	int			 count = 0;
-	char			*cat;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, pkg_list_count(pkg, PKG_CATEGORIES), p));
+		return (list_count(buf, tll_length(pkg->categories), p));
 	} else {
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		kh_each_value(pkg->categories, cat, {
+		tll_foreach(pkg->categories, c) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    cat, count, PP_C);
+				    c->item, count, PP_C);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, cat,
+			iterate_item(buf, pkg, p->item_fmt->buf, c->item,
 			    count, PP_C);
 			count++;
-		});
+		}
 	}
 	return (buf);
 }
@@ -1179,9 +1175,8 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_GROUPS), p));
+		return (list_count(buf, tll_length(pkg->groups), p));
 	else {
-		char	*group = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%Gn\n", "");
@@ -1189,13 +1184,13 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while(pkg_groups(pkg, &group) == EPKG_OK) {
+		tll_foreach(pkg->groups, g) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     group, count, PP_G);
+					     g->item, count, PP_G);
 
 			iterate_item(buf, pkg,p->item_fmt->buf,
-				     group, count, PP_G);
+				     g->item, count, PP_G);
 			count++;
 		}
 	}
@@ -1233,26 +1228,25 @@ xstring *
 format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	char			*lic;
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, pkg_list_count(pkg, PKG_LICENSES), p));
+		return (list_count(buf, tll_length(pkg->licenses), p));
 	} else {
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		kh_each_value(pkg->licenses, lic, {
+		tll_foreach(pkg->licenses, l) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    lic, count, PP_L);
+				    l->item, count, PP_L);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, lic,
+			iterate_item(buf, pkg, p->item_fmt->buf, l->item,
 			    count, PP_L);
 			count++;
-		});
+		}
 	}
 	return (buf);
 }
@@ -1279,7 +1273,8 @@ format_message(xstring *buffer, const void *data, struct percent_esc *p)
 	struct pkg_message	*msg;
 	char			*message;
 
-	LL_FOREACH(pkg->message, msg) {
+	tll_foreach(pkg->message, m) {
+		msg = m->item;
 		if (bufmsg == NULL) {
 			bufmsg = xstring_new();
 		} else {
@@ -1466,9 +1461,8 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_USERS), p));
+		return (list_count(buf, tll_length(pkg->users), p));
 	else {
-		char	*user = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%Un\n", "");
@@ -1476,13 +1470,13 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_users(pkg, &user) == EPKG_OK) {
+		tll_foreach(pkg->users, u) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     user, count, PP_U);
+					     u->item, count, PP_U);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     user, count, PP_U);
+				     u->item, count, PP_U);
 			count++;
 		}
 	}
@@ -1526,17 +1520,15 @@ format_int_checksum(xstring *buf, const void *data, struct percent_esc *p)
 /*
  * %Y -- Required pattern.  List of pattern required by
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
- * %}.  Default %{%Yn\n%|%}
- */
+ * %}.  Default %{%Yn\nr->item*/
 xstring *
 format_required(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_REQUIRES), p));
+		return (list_count(buf, tll_length(pkg->requires), p));
 	else {
-		char	*provide = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%Yn\n", "");
@@ -1544,13 +1536,13 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_requires(pkg, &provide) == EPKG_OK) {
+		tll_foreach(pkg->requires, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     provide, count, PP_Y);
+					     r->item, count, PP_Y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     provide, count, PP_Y);
+				     r->item, count, PP_Y);
 			count++;
 		}
 	}
@@ -1592,9 +1584,8 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
+		return (list_count(buf, tll_length(pkg->shlibs_provided), p));
 	else {
-		char	*shlib = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%bn\n", "");
@@ -1602,13 +1593,13 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+		tll_foreach(pkg->shlibs_provided, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     shlib, count, PP_b);
+					     r->item, count, PP_b);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     shlib, count, PP_b);
+				     r->item, count, PP_b);
 			count++;
 		}
 	}
@@ -1934,9 +1925,8 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, pkg_list_count(pkg, PKG_PROVIDES), p));
+		return (list_count(buf, tll_length(pkg->provides), p));
 	else {
-		char	*provide = NULL;
 		int	 count;
 
 		set_list_defaults(p, "%yn\n", "");
@@ -1944,13 +1934,13 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_provides(pkg, &provide) == EPKG_OK) {
+		tll_foreach(pkg->provides, r) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     provide, count, PP_y);
+					     r->item, count, PP_y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     provide, count, PP_y);
+				     r->item, count, PP_y);
 			count++;
 		}
 	}

@@ -35,7 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <kvec.h>
+#include <tllist.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -80,7 +80,6 @@ struct pkg_solve_variable {
 	const char *digest;
 	const char *uid;
 	const char *assumed_reponame;
-	UT_hash_handle hh;
 	struct pkg_solve_variable *next, *prev;
 };
 
@@ -99,8 +98,8 @@ struct pkg_solve_rule {
 
 struct pkg_solve_problem {
 	struct pkg_jobs *j;
-	kvec_t(struct pkg_solve_rule *) rules;
-	struct pkg_solve_variable *variables_by_uid;
+	tll(struct pkg_solve_rule *) rules;
+	pkghash *variables_by_uid;
 	struct pkg_solve_variable *variables;
 	PicoSAT *sat;
 	size_t nvars;
@@ -123,16 +122,17 @@ struct pkg_solve_impl_graph {
  * Utilities to convert jobs to SAT rule
  */
 
-static struct pkg_solve_item *
-pkg_solve_item_new(struct pkg_solve_variable *var)
+static void
+pkg_solve_item_new(struct pkg_solve_rule *rule, struct pkg_solve_variable *var,
+    int inverse)
 {
-	struct pkg_solve_item *result;
+	struct pkg_solve_item *it;
 
-	result = xcalloc(1, sizeof(struct pkg_solve_item));
-	result->var = var;
-	result->inverse = 1;
-
-	return (result);
+	it = xcalloc(1, sizeof(struct pkg_solve_item));
+	it->var = var;
+	it->inverse = inverse;
+	it->nitems = rule->items ? rule->items->nitems + 1 : 1;
+	DL_APPEND(rule->items, it);
 }
 
 static struct pkg_solve_rule *
@@ -172,26 +172,13 @@ pkg_solve_rule_free(struct pkg_solve_rule *rule)
 void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_variable *v, *vtmp;
-
-	while (kv_size(problem->rules)) {
-		pkg_solve_rule_free(kv_pop(problem->rules));
-	}
-
-	HASH_ITER(hh, problem->variables_by_uid, v, vtmp) {
-		HASH_DELETE(hh, problem->variables_by_uid, v);
-	}
-
+	tll_free_and_free(problem->rules, pkg_solve_rule_free);
+	pkghash_destroy(problem->variables_by_uid);
 	picosat_reset(problem->sat);
 	free(problem->variables);
 	free(problem);
 }
 
-
-#define RULE_ITEM_APPEND(rule, item) do {									\
-	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
-	DL_APPEND((rule)->items, (item));										\
-} while (0)
 
 static void
 pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
@@ -284,7 +271,6 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		struct pkg_job_provide *pr, struct pkg_solve_rule *rule,
 		struct pkg *orig, const char *reponame, int *cnt)
 {
-	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
 	struct pkg *pkg;
@@ -297,8 +283,8 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 	}
 
 	/* Find the corresponding variables chain */
-	HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
 
+	var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
 	LL_FOREACH(var, curvar) {
 		/*
 		 * For each provide we need to check whether this package
@@ -308,17 +294,17 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		pkg = curvar->unit->pkg;
 
 		if (pr->is_shlib) {
-			libfound = kh_contains(strings, pkg->shlibs_provided, pr->provide);
+			libfound = stringlist_contains(&pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
 			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
 				pkg_debug(2, "solver: require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
-					pkg->type == PKG_INSTALLED ? 'l' : 'r', orig->arch, pkg->arch);
+					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->arch, orig->arch);
 				continue;
 			}
 		}
 		else {
-			providefound = kh_contains(strings, pkg->provides, pr->provide);
+			providefound = stringlist_contains(&pkg->provides, pr->provide);
 		}
 
 		if (!providefound && !libfound) {
@@ -336,13 +322,8 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 				pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 				'l' : 'r');
 
-		it = pkg_solve_item_new(curvar);
-		if (it == NULL)
-			return (EPKG_FATAL);
-
-		it->inverse = 1;
-		RULE_ITEM_APPEND(rule, it);
-		(*cnt) ++;
+		pkg_solve_item_new(rule, curvar, 1);
+		(*cnt)++;
 	}
 
 	return (EPKG_OK);
@@ -357,27 +338,18 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	const char *uid;
 	struct pkg_solve_variable *depvar, *curvar;
 	struct pkg_solve_rule *rule = NULL;
-	struct pkg_solve_item *it = NULL;
 	int cnt = 0;
 	struct pkg_dep *cur;
 
-	/* Dependency rule: (!A | B1 | B2 | B3...) */
+	/* Dependency rule: (!A | B1 | B2 | B3...) must be true */
 	rule = pkg_solve_rule_new(PKG_RULE_DEPEND);
-	if (rule == NULL)
-		return (EPKG_FATAL);
 	/* !A */
-	it = pkg_solve_item_new(var);
-	if (it == NULL) {
-		pkg_solve_rule_free(rule);
-		return (EPKG_FATAL);
-	}
-
-	it->inverse = -1;
-	RULE_ITEM_APPEND(rule, it);
+	pkg_solve_item_new(rule, var, -1);
 
 	LL_FOREACH2(dep, cur, alt_next) {
 		uid = cur->uid;
-		HASH_FIND_STR(problem->variables_by_uid, uid, depvar);
+		depvar = NULL;
+		depvar = pkghash_get_value(problem->variables_by_uid, uid);
 		if (depvar == NULL) {
 			pkg_debug(2, "cannot find variable dependency %s", uid);
 			continue;
@@ -391,15 +363,8 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 				curvar->assumed_reponame = reponame;
 			}
 
-			it = pkg_solve_item_new(curvar);
-			if (it == NULL) {
-				pkg_solve_rule_free(rule);
-				return (EPKG_FATAL);
-			}
-
-			it->inverse = 1;
-			RULE_ITEM_APPEND(rule, it);
-			cnt ++;
+			pkg_solve_item_new(rule, curvar, 1);
+			cnt++;
 		}
 	}
 
@@ -410,7 +375,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		return (EPKG_FATAL);
 	}
 
-	kv_prepend(typeof(rule), problem->rules, rule);
+	tll_push_front(problem->rules, rule);
 
 	return (EPKG_OK);
 }
@@ -424,11 +389,10 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	const char *uid;
 	struct pkg_solve_variable *confvar, *curvar;
 	struct pkg_solve_rule *rule = NULL;
-	struct pkg_solve_item *it = NULL;
 	struct pkg *other;
 
 	uid = conflict->uid;
-	HASH_FIND_STR(problem->variables_by_uid, uid, confvar);
+	confvar = pkghash_get_value(problem->variables_by_uid, uid);
 	if (confvar == NULL) {
 		pkg_debug(2, "cannot find conflict %s", uid);
 		return (EPKG_END);
@@ -464,30 +428,14 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 				continue;
 		}
 
-		/* Conflict rule: (!A | !Bx) */
+		/* Conflict rule: (!A | !Bx) must be true */
 		rule = pkg_solve_rule_new(PKG_RULE_EXPLICIT_CONFLICT);
-		if (rule == NULL)
-			return (EPKG_FATAL);
 		/* !A */
-		it = pkg_solve_item_new(var);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
-		it->inverse = -1;
-		RULE_ITEM_APPEND(rule, it);
+		pkg_solve_item_new(rule, var, -1);
 		/* !Bx */
-		it = pkg_solve_item_new(curvar);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
+		pkg_solve_item_new(rule, curvar, -1);
 
-		it->inverse = -1;
-		RULE_ITEM_APPEND(rule, it);
-
-		kv_prepend(typeof(rule), problem->rules, rule);
+		tll_push_front(problem->rules, rule);
 	}
 
 	return (EPKG_OK);
@@ -500,48 +448,36 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		const char *reponame)
 {
 	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg *pkg;
 	int cnt;
 
 	pkg = var->unit->pkg;
 
-	HASH_FIND_STR(problem->j->universe->provides, requirement, prhead);
+	prhead = pkghash_get_value(problem->j->universe->provides, requirement);
 	if (prhead != NULL) {
 		pkg_debug(4, "solver: Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
 			requirement);
-		/* Require rule !A | P1 | P2 | P3 ... */
+		/* Require rule: ( !A | P1 | P2 | P3 ... ) must be true */
 		rule = pkg_solve_rule_new(PKG_RULE_REQUIRE);
-		if (rule == NULL)
-			return (EPKG_FATAL);
 		/* !A */
-		it = pkg_solve_item_new(var);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
-		it->inverse = -1;
-		RULE_ITEM_APPEND(rule, it);
-		/* B1 | B2 | ... */
+		pkg_solve_item_new(rule, var, -1);
+		/* P1 | P2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
 			if (pkg_solve_handle_provide(problem, pr, rule, pkg, reponame, &cnt)
 					!= EPKG_OK) {
-				free(it);
 				free(rule);
 				return (EPKG_FATAL);
 			}
 		}
 
 		if (cnt > 1) {
-			kv_prepend(typeof(rule), problem->rules, rule);
+			tll_push_front(problem->rules, rule);
 		}
 		else {
 			/* Missing dependencies... */
-			free(it);
 			free(rule);
 		}
 	}
@@ -578,8 +514,7 @@ static int
 pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
-	struct pkg_solve_rule *rule = NULL;
-	struct pkg_solve_item *it = NULL;
+	struct pkg_solve_rule *rule;
 	struct pkg_job_request_item *item, *confitem;
 	struct pkg_solve_variable *confvar, *curvar;
 	int cnt;
@@ -590,7 +525,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	HASH_FIND_STR(problem->variables_by_uid, req->item->pkg->uid, var);
+	var = pkghash_get_value(problem->variables_by_uid, req->item->pkg->uid);
 	var = pkg_solve_find_var_in_chain(var, req->item->unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
@@ -601,20 +536,13 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	 * A1 | A2 | ... | An
 	 */
 	rule = pkg_solve_rule_new(PKG_RULE_REQUEST);
-	if (rule == NULL)
-		return (EPKG_FATAL);
 
 	cnt = 0;
 
 	LL_FOREACH(req->item, item) {
 		curvar = pkg_solve_find_var_in_chain(var, item->unit);
 		assert(curvar != NULL);
-		it = pkg_solve_item_new(curvar);
-		if (it == NULL) {
-			pkg_solve_rule_free(rule);
-			return (EPKG_FATAL);
-		}
-
+		pkg_solve_item_new(rule, curvar, inverse);
 		/* All request variables are top level */
 		curvar->flags |= PKG_VAR_TOP;
 
@@ -622,13 +550,11 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 			curvar->flags |= PKG_VAR_INSTALL;
 		}
 
-		it->inverse = inverse;
-		RULE_ITEM_APPEND(rule, it);
-		cnt ++;
+		cnt++;
 	}
 
-	if (cnt > 1 && var->unit->hh.keylen != 0) {
-		kv_prepend(typeof(rule), problem->rules, rule);
+	if (cnt > 1 && var->unit->inhash != 0) {
+		tll_push_front(problem->rules, rule);
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
 			curvar = pkg_solve_find_var_in_chain(var, item->unit);
@@ -638,30 +564,14 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 			LL_FOREACH(item->next, confitem) {
 				confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
 				assert(confvar != NULL && confvar != curvar && confvar != var);
-				/* Conflict rule: (!A | !Bx) */
+				/* Conflict rule: (!A | !Bx) must be true */
 				rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
-				if (rule == NULL)
-					return (EPKG_FATAL);
 				/* !A */
-				it = pkg_solve_item_new(curvar);
-				if (it == NULL) {
-					pkg_solve_rule_free(rule);
-					return (EPKG_FATAL);
-				}
-
-				it->inverse = -1;
-				RULE_ITEM_APPEND(rule, it);
+				pkg_solve_item_new(rule, curvar, -1);
 				/* !Bx */
-				it = pkg_solve_item_new(confvar);
-				if (it == NULL) {
-					pkg_solve_rule_free(rule);
-					return (EPKG_FATAL);
-				}
+				pkg_solve_item_new(rule, confvar, -1);
 
-				it->inverse = -1;
-				RULE_ITEM_APPEND(rule, it);
-
-				kv_prepend(typeof(rule), problem->rules, rule);
+				tll_push_front(problem->rules, rule);
 			}
 		}
 	}
@@ -684,7 +594,6 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 {
 	struct pkg_solve_variable *curvar, *confvar;
 	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it = NULL;
 
 	/* Rewind to first */
 	while (var->prev->next != NULL) {
@@ -692,35 +601,19 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 	}
 
 	LL_FOREACH(var, curvar) {
-		/* Conflict rule: (!Ax | !Ay) */
+		/* Conflict rule: (!Ax | !Ay) must be true */
 		if (curvar->next == NULL) {
 			break;
 		}
 
 		LL_FOREACH(curvar->next, confvar) {
 			rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
-			if (rule == NULL)
-				return (EPKG_FATAL);
 			/* !Ax */
-			it = pkg_solve_item_new(curvar);
-			if (it == NULL) {
-				pkg_solve_rule_free(rule);
-				return (EPKG_FATAL);
-			}
-
-			it->inverse = -1;
-			RULE_ITEM_APPEND(rule, it);
+			pkg_solve_item_new(rule, curvar, -1);
 			/* !Ay */
-			it = pkg_solve_item_new(confvar);
-			if (it == NULL) {
-				pkg_solve_rule_free(rule);
-				return (EPKG_FATAL);
-			}
+			pkg_solve_item_new(rule, confvar, -1);
 
-			it->inverse = -1;
-			RULE_ITEM_APPEND(rule, it);
-
-			kv_prepend(typeof(rule), problem->rules, rule);
+			tll_push_front(problem->rules, rule);
 		}
 	}
 
@@ -737,7 +630,6 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *cur_var;
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq = NULL;
-	char *buf;
 	bool chain_added = false;
 
 	LL_FOREACH(var, cur_var) {
@@ -745,10 +637,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Request */
 		if (!(cur_var->flags & PKG_VAR_TOP)) {
-			HASH_FIND_STR(j->request_add, cur_var->uid, jreq);
+			jreq = pkghash_get_value(j->request_add, cur_var->uid);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
-			HASH_FIND_STR(j->request_delete, cur_var->uid, jreq);
+			jreq = pkghash_get_value(j->request_delete, cur_var->uid);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, -1);
 		}
@@ -773,21 +665,18 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Shlibs */
-		buf = NULL;
-		while (pkg_shlibs_required(pkg, &buf) == EPKG_OK) {
+		tll_foreach(pkg->shlibs_required, s) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-					buf, cur_var->assumed_reponame) != EPKG_OK) {
+			    s->item, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
 		}
-		buf = NULL;
-		while (pkg_requires(pkg, &buf) == EPKG_OK) {
+		tll_foreach(pkg->requires, r) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-					buf, cur_var->assumed_reponame) != EPKG_OK) {
+			    r->item, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
 		}
-
 
 		/*
 		 * If this var chain contains mutually conflicting vars
@@ -821,8 +710,7 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 
 		if (tvar == NULL) {
 			pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
-			HASH_ADD_KEYPTR(hh, problem->variables_by_uid,
-				var->uid, strlen(var->uid), var);
+			pkghash_safe_add(problem->variables_by_uid, var->uid, var, NULL);
 			tvar = var;
 		}
 		else {
@@ -840,8 +728,9 @@ struct pkg_solve_problem *
 pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 {
 	struct pkg_solve_problem *problem;
-	struct pkg_job_universe_item *un, *utmp;
+	struct pkg_job_universe_item *un;
 	size_t i = 0;
+	pkghash_it it;
 
 	problem = xcalloc(1, sizeof(struct pkg_solve_problem));
 
@@ -849,7 +738,6 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	problem->nvars = j->universe->nitems;
 	problem->variables = xcalloc(problem->nvars, sizeof(struct pkg_solve_variable));
 	problem->sat = picosat_init();
-	kv_init(problem->rules);
 
 	if (problem->sat == NULL) {
 		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
@@ -859,18 +747,21 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	picosat_adjust(problem->sat, problem->nvars);
 
 	/* Parse universe */
-	HASH_ITER(hh, j->universe->items, un, utmp) {
+	it = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&it)) {
+		un = (struct pkg_job_universe_item *)it.value;
 		/* Add corresponding variables */
-		if (pkg_solve_add_variable(un, problem, &i)
-						== EPKG_FATAL)
+		if (pkg_solve_add_variable(un, problem, &i) == EPKG_FATAL)
 			goto err;
 	}
 
 	/* Add rules for all conflict chains */
-	HASH_ITER(hh, j->universe->items, un, utmp) {
+	it = pkghash_iterator(j->universe->items);
+	while (pkghash_next(&it)) {
 		struct pkg_solve_variable *var;
 
-		HASH_FIND_STR(problem->variables_by_uid, un->pkg->uid, var);
+		un = (struct pkg_job_universe_item *)it.value;
+		var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    un->pkg->uid);
@@ -880,10 +771,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 	}
 
-	if (kv_size(problem->rules) == 0) {
+	if (tll_length(problem->rules) == 0)
 		pkg_debug(1, "problem has no requests");
-		return (problem);
-	}
 
 	return (problem);
 
@@ -1078,8 +967,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int attempt = 0;
 	struct pkg_solve_variable *var;
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, it) {
+		rule = it->item;
 
 		LL_FOREACH(rule->items, item) {
 			picosat_add(problem->sat, item->var->order * item->inverse);
@@ -1089,8 +978,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		pkg_debug_print_rule(rule);
 	}
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, it) {
+		rule = it->item;
 		pkg_solve_set_initial_assumption(problem, rule);
 	}
 
@@ -1122,8 +1011,8 @@ reiterate:
 
 			while (*failed) {
 				var = &problem->variables[abs(*failed) - 1];
-				for (i = 0; i < kv_size(problem->rules); i++) {
-					rule = kv_A(problem->rules, i);
+				tll_foreach(problem->rules, it) {
+					rule = it->item;
 
 					if (rule->reason != PKG_RULE_DEPEND) {
 						LL_FOREACH(rule->items, item) {
@@ -1269,8 +1158,8 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 
 	/* Print all variables as nodes */
 
-	for (i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, rit) {
+		rule = rit->item;
 		struct pkg_solve_item *it = rule->items, *key_elt = NULL;
 
 		switch(rule->reason) {
@@ -1326,10 +1215,10 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it;
 
-	fprintf(f, "p cnf %d %zu\n", (int)problem->nvars, kv_size(problem->rules));
+	fprintf(f, "p cnf %d %zu\n", (int)problem->nvars, tll_length(problem->rules));
 
-	for (unsigned int i = 0; i < kv_size(problem->rules); i++) {
-		rule = kv_A(problem->rules, i);
+	tll_foreach(problem->rules, rit) {
+		rule = rit->item;
 		LL_FOREACH(rule->items, it) {
 			size_t order = it->var - problem->variables;
 			if (order < problem->nvars)
@@ -1375,7 +1264,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->items[0] = add_var->unit;
 				res->type = (j->type == PKG_JOBS_FETCH) ?
 								PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
-				DL_APPEND(j->jobs, res);
+				tll_push_back(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule installation of %s %s",
 					add_var->uid, add_var->digest);
 			}
@@ -1384,7 +1273,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->items[0] = add_var->unit;
 				res->items[1] = del_var->unit;
 				res->type = PKG_SOLVED_UPGRADE;
-				DL_APPEND(j->jobs, res);
+				tll_push_back(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
 			}
@@ -1405,7 +1294,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res = xcalloc(1, sizeof(struct pkg_solved));
 				res->items[0] = cur_var->unit;
 				res->type = PKG_SOLVED_DELETE;
-				DL_APPEND(j->jobs, res);
+				tll_push_back(j->jobs, res);
 				pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
 					cur_var->uid, cur_var->digest);
 				j->count ++;
@@ -1421,9 +1310,11 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_variable *var, *tvar;
+	struct pkg_solve_variable *var;
+	pkghash_it it = pkghash_iterator(problem->variables_by_uid);
 
-	HASH_ITER(hh, problem->variables_by_uid, var, tvar) {
+	while (pkghash_next(&it)) {
+		var = (struct pkg_solve_variable *)it.value;
 		pkg_debug(4, "solver: check variable with uid %s", var->uid);
 		pkg_solve_insert_res_job(var, problem);
 	}
@@ -1464,10 +1355,9 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 	int ret = EPKG_OK;
 	char *line = NULL, *var_str, *begin;
 	size_t linecap = 0;
-	ssize_t linelen;
 	bool got_sat = false, done = false;
 
-	while ((linelen = getline(&line, &linecap, f)) > 0) {
+	while (getline(&line, &linecap, f) > 0) {
 		if (strncmp(line, "SAT", 3) == 0) {
 			got_sat = true;
 		}

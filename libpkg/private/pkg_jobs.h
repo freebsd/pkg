@@ -27,9 +27,9 @@
 #include <sys/types.h>
 
 #include <stdbool.h>
-#include <uthash.h>
 #include <utlist.h>
 #include <ucl.h>
+#include <tllist.h>
 
 #include "private/utils.h"
 #include "private/pkg.h"
@@ -43,7 +43,7 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	int priority;
 	bool processed;
-	UT_hash_handle hh;
+	bool inhash;
 	struct pkg_job_universe_item *next, *prev;
 };
 
@@ -57,25 +57,22 @@ struct pkg_job_request_item {
 struct pkg_job_request {
 	struct pkg_job_request_item *item;
 	bool skip;
+	bool processed;
 	bool automatic;
-	UT_hash_handle hh;
 };
 
 struct pkg_solved {
-	struct pkg_job_universe_item *items[2];
+	struct pkg_job_universe_item *items[2]; /* to-add/to-delete */
+	struct pkg_solved *xlink;	/* link split jobs together */
 	pkg_solved_t type;
-	bool already_deleted;
-	struct pkg_solved *prev, *next;
 };
-
-KHASH_MAP_INIT_STR(pkg_jobs_seen, struct pkg_job_universe_item *);
+typedef tll(struct pkg_solved *) pkg_solved;
 
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
 	const char *provide;
 	bool is_shlib;
 	struct pkg_job_provide *next, *prev;
-	UT_hash_handle hh;
 };
 
 struct pkg_job_replace {
@@ -85,9 +82,9 @@ struct pkg_job_replace {
 };
 
 struct pkg_jobs_universe {
-	struct pkg_job_universe_item *items;
-	kh_pkg_jobs_seen_t *seen;
-	struct pkg_job_provide *provides;
+	pkghash *items;		/* package uid, pkg_job_universe_item */
+	pkghash *seen;		/* package digest, pkg_job_universe_item */
+	pkghash *provides;	/* shlibs, pkg_job_provide */
 	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
 	size_t nitems;
@@ -101,9 +98,9 @@ struct pkg_jobs_conflict_item {
 
 struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
-	struct pkg_job_request	*request_add;
-	struct pkg_job_request	*request_delete;
-	struct pkg_solved *jobs;
+	pkghash	*request_add;
+	pkghash	*request_delete;
+	pkg_solved	 jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
@@ -119,6 +116,7 @@ struct pkg_jobs {
 	bool conservative;
 	bool pinning;
 	void		*lockedpkgs;
+	struct triggers triggers;
 };
 
 #define PKG_PATTERN_FLAG_FILE (1 << 0)
@@ -189,9 +187,7 @@ int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
  */
 void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *unit,
-	const char *new_uid, size_t uidlen, bool update_rdeps);
-
-
+	const char *new_uid, bool update_rdeps);
 
 /*
  * Find local package in db or universe
@@ -209,15 +205,11 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
  */
 int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	struct pkg_jobs *j);
+
 /*
  * Perform integrity check for the jobs specified
  */
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
-/*
- * Register a conflict between two packages
- */
-void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
-		enum pkg_conflict_type type);
 
 /*
  * Check whether `rp` is an upgrade for `lp`

@@ -73,7 +73,8 @@ Message to be show if the keyword is used and mark as deprecated
 .It Cm preformat_arguments
 Boolean to activate the preformating the arguemnts of the keywords repescting the escape sequences descibred below.
 .It Cm prepackaging
-lua script which is executed at the packaging time. Useful to add some input validation.
+lua script which is executed at the packaging time.
+Useful to add some input validation.
 .It Cm pre-install
 shell script to be run during the pre-install phase.
 It will be merged with any existing pre-install scripts.
@@ -152,10 +153,13 @@ being in the example case,
 .Pa emacs .
 .El
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -163,7 +167,6 @@ being in the example case,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -183,6 +186,7 @@ being in the example case,
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

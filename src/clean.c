@@ -49,8 +49,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-#include <khash.h>
-#include <kvec.h>
+#include <tllist.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
@@ -58,9 +57,9 @@
 #include <bsd_compat.h>
 
 #include "pkgcli.h"
+#include "pkghash.h"
 
-KHASH_MAP_INIT_STR(sum, char *);
-typedef kvec_t(char *) dl_list;
+typedef tll(char *) dl_list;
 
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
@@ -93,19 +92,9 @@ add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
 	relpath = path + strlen(cachedir) + 1;
 	if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) != -1 && S_ISREG(st.st_mode))
 		sz = st.st_size;
-	kv_push(char *, *dl, store_path);
+	tll_push_back(*dl, store_path);
 
 	return (sz);
-}
-
-static void
-free_dellist(dl_list *dl)
-{
-	unsigned int i;
-
-	for (i = 0; i < kv_size(*dl); i++)
-		free(kv_A(*dl, i));
-	kv_destroy(*dl);
 }
 
 static int
@@ -114,15 +103,14 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	struct stat st;
 	int retcode = EXIT_SUCCESS;
 	int flag = 0;
-	size_t i;
 	unsigned int count = 0, processed = 0;
 	char *file, *relpath;
 
-	count = kv_size(*dl);
+	count = tll_length(*dl);
 	progressbar_start("Deleting files");
-	for (i = 0; i < kv_size(*dl); i++) {
+	tll_foreach(*dl, it) {
 		flag = 0;
-		relpath = file = kv_A(*dl, i);
+		relpath = file = it->item;
 		relpath += strlen(cachedir) + 1;
 		if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) == -1) {
 			++processed;
@@ -137,7 +125,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 			retcode = EXIT_FAILURE;
 		}
 		free(file);
-		kv_A(*dl, i) = NULL;
+		it->item = NULL;
 		++processed;
 		progressbar_tick(processed, total);
 	}
@@ -153,7 +141,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	return (retcode);
 }
 
-static kh_sum_t *
+static pkghash *
 populate_sums(struct pkgdb *db)
 {
 	struct pkg *p = NULL;
@@ -161,19 +149,16 @@ populate_sums(struct pkgdb *db)
 	const char *sum;
 	char *cksum;
 	size_t slen;
-	kh_sum_t *suml = NULL;
-	khint_t k;
-	int ret;
+	pkghash *suml = NULL;
 
-	suml = kh_init_sum();
+	suml = pkghash_new();
 	it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(p, PKG_CKSUM, &sum);
+		pkg_get(p, PKG_ATTR_CKSUM, &sum);
 		slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
 		cksum = strndup(sum, slen);
-		k = kh_put_sum(suml, cksum, &ret);
-		if (ret != 0)
-			kh_value(suml, k) = cksum;
+		pkghash_safe_add(suml, cksum, NULL, NULL);
+		free(cksum);
 	}
 
 	return (suml);
@@ -209,7 +194,7 @@ extract_filename_sum(const char *fname, char sum[])
 
 static int
 recursive_analysis(int fd, struct pkgdb *db, const char *dir,
-    const char *cachedir, dl_list *dl, kh_sum_t **sumlist, bool all,
+    const char *cachedir, dl_list *dl, pkghash **sumlist, bool all,
     size_t *total)
 {
 	DIR *d;
@@ -220,7 +205,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 	const char *name;
 	ssize_t link_len;
 	size_t nbfiles = 0, added = 0;
-	khint_t k;
+	pkghash_entry *e;
 
 	tmpfd = dup(fd);
 	d = fdopendir(tmpfd);
@@ -273,10 +258,11 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 			name = link_buf;
 		}
 
-		k = kh_end(*sumlist);
-		if (extract_filename_sum(name, csum))
-			k = kh_get_sum(*sumlist, csum);
-		if (k == kh_end(*sumlist)) {
+		e = NULL;
+		if (extract_filename_sum(name, csum)) {
+			e = pkghash_get(*sumlist, csum);
+		}
+		if (e == NULL) {
 			added++;
 			*total += add_to_dellist(fd, dl, cachedir, path);
 		}
@@ -296,8 +282,8 @@ int
 exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
-	kh_sum_t	*sumlist = NULL;
-	dl_list		 dl;
+	pkghash		*sumlist = NULL;
+	dl_list		 dl = tll_init();
 	const char	*cachedir;
 	bool		 all = false;
 	int		 retcode;
@@ -305,8 +291,6 @@ exec_clean(int argc, char **argv)
 	int		 cachefd = -1;
 	size_t		 total = 0;
 	char		 size[8];
-	char		*cksum;
-	struct pkg_manifest_key *keys = NULL;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
@@ -386,26 +370,22 @@ exec_clean(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
+#ifndef PKG_COVERAGE
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(cachefd);
 			return (EXIT_FAILURE);
 		}
 #endif
-
-	kv_init(dl);
+#endif
 
 	/* Build the list of out-of-date or obsolete packages */
 
-	pkg_manifest_keys_new(&keys);
 	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
 	    &total);
-	if (sumlist != NULL) {
-		kh_foreach_value(sumlist, cksum, free(cksum));
-		kh_destroy_sum(sumlist);
-	}
+	pkghash_destroy(sumlist);
 
-	if (kv_size(dl) == 0) {
+	if (tll_length(dl) == 0) {
 		if (!quiet)
 			printf("Nothing to do.\n");
 		retcode = EXIT_SUCCESS;
@@ -420,7 +400,7 @@ exec_clean(int argc, char **argv)
 	if (!dry_run) {
 			if (query_yesno(false,
 			  "\nProceed with cleaning the cache? ")) {
-				retcode = delete_dellist(cachefd, cachedir, &dl, kv_size(dl));
+				retcode = delete_dellist(cachefd, cachedir, &dl, tll_length(dl));
 			}
 	} else {
 		retcode = EXIT_SUCCESS;
@@ -429,8 +409,7 @@ exec_clean(int argc, char **argv)
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
-	pkg_manifest_keys_free(keys);
-	free_dellist(&dl);
+	tll_free_and_free(dl, free);
 
 	if (cachefd != -1)
 		close(cachefd);

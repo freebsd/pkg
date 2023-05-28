@@ -8,7 +8,10 @@ SRCS=	closefrom.c \
 	funopen.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
-		-I$(top_srcdir)
+		-I$(top_srcdir) \
+		-I$(top_builddir)
+
+VPATH=	$(top_srcdir)/compat
 
 include $(MK)/static-lib.mk
 

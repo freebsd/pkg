@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include <pkg.h>
+#include <tllist.h>
 
 #include "pkgcli.h"
 
@@ -101,6 +102,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	struct pkg	*pkg = NULL;
 	int		 retcode;
 	int		 exitcode = EXIT_SUCCESS;
+	tll(struct pkg *)pkgs = tll_init();
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
@@ -114,11 +116,15 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 		goto cleanup;
 	}
 
-	while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, 0) == EPKG_OK) {
+		tll_push_back(pkgs, pkg);
+		pkg = NULL;
+	}
+	tll_foreach(pkgs, p) {
 		if (action == LOCK)
-			retcode = do_lock(db, pkg);
+			retcode = do_lock(db, p->item);
 		else
-			retcode = do_unlock(db, pkg);
+			retcode = do_unlock(db, p->item);
 
 		if (retcode != EPKG_OK) {
 			exitcode = EXIT_FAILURE;
@@ -127,7 +133,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	}
 
 cleanup:
-	pkg_free(pkg);
+	tll_free_and_free(pkgs, pkg_free);
 	pkgdb_it_free(it);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
@@ -154,7 +160,7 @@ list_locked(struct pkgdb *db, bool has_locked)
 	struct pkg	*pkg = NULL;
 	bool		 gotone = false;
 
-	if ((it = pkgdb_query(db, " where locked=1", MATCH_CONDITION)) == NULL) {
+	if ((it = pkgdb_query_cond(db, " WHERE locked=1", NULL, MATCH_ALL)) == NULL) {
 		pkgdb_close(db);
 		return (EXIT_FAILURE);
 	}

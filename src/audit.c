@@ -29,7 +29,6 @@
 #include "pkg_config.h"
 
 #include <sys/param.h>
-#include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
@@ -43,8 +42,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <khash.h>
-#include <utlist.h>
 #include <ucl.h>
 
 #ifdef HAVE_SYS_CAPSICUM_H
@@ -59,6 +56,7 @@
 #include <pkg/audit.h>
 #include "pkgcli.h"
 #include "xmalloc.h"
+#include "pkghash.h"
 
 static const char* vop_names[] = {
 	[0] = "",
@@ -72,44 +70,35 @@ static const char* vop_names[] = {
 void
 usage_audit(void)
 {
-	fprintf(stderr, "Usage: pkg audit [-RFqr] [--raw[=format]|-R[format]| [-f file] <pattern>\n\n");
+	fprintf(stderr, "Usage: pkg audit [-RFqr] [--raw[=format]|-R[format] [-f file] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
-KHASH_MAP_INIT_STR(pkgs, struct pkg *);
-
 static void
-add_to_check(kh_pkgs_t *check, struct pkg *pkg)
+add_to_check(pkghash *check, struct pkg *pkg)
 {
 	const char *uid;
-	int ret;
-	khint_t k;
 
-	pkg_get(pkg, PKG_UNIQUEID, &uid);
-
-	k = kh_put_pkgs(check, uid, &ret);
-	if (ret != 0)
-		kh_value(check, k) = pkg;
+	pkg_get(pkg, PKG_ATTR_UNIQUEID, &uid);
+	pkghash_safe_add(check, uid, pkg, NULL);
 }
 
 static void
-print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top, ucl_object_t *array)
+print_recursive_rdeps(pkghash *head, struct pkg *p, pkghash *seen, bool top, ucl_object_t *array)
 {
+	pkghash_entry *e;
 	struct pkg_dep *dep = NULL;
-	int ret;
-	khint_t k, h;
 
 	while(pkg_rdeps(p, &dep) == EPKG_OK) {
 		const char *name = pkg_dep_get(dep, PKG_DEP_NAME);
 
-		k = kh_get_pkgs(seen, name);
-		if (k != kh_end(seen))
-			continue;
-		h = kh_get_pkgs(head, name);
-		if (h == kh_end(head))
+		if (pkghash_get(seen, name) != NULL)
 			continue;
 
-		kh_put_pkgs(seen, name, &ret);
+		if ((e = pkghash_get(head, name)) == NULL)
+			continue;
+
+		pkghash_safe_add(seen, name, NULL, NULL);
 		if (array == NULL) {
 			if (!top)
 				printf(", ");
@@ -119,7 +108,7 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top,
 			ucl_array_append(array, ucl_object_fromstring(name));
 		}
 
-		print_recursive_rdeps(head, kh_val(head, h), seen, false, array);
+		print_recursive_rdeps(head, (struct pkg *)e->value, seen, false, array);
 
 		top = false;
 	}
@@ -128,17 +117,17 @@ print_recursive_rdeps(kh_pkgs_t *head, struct pkg *p, kh_pkgs_t *seen, bool top,
 static void
 print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 {
-	const char *version;
+	const char *version = NULL;
 	struct pkg_audit_versions_range *vers;
 	const struct pkg_audit_entry *e;
 	struct pkg_audit_cve *cve;
 
-	pkg_get(p, PKG_VERSION, &version);
+	pkg_get(p, PKG_ATTR_VERSION, &version);
 
 	e = issue->audit;
 	if (version == NULL) {
 		printf("  Affected versions:\n");
-		LL_FOREACH(e->versions, vers) {
+		ll_foreach(e->versions, vers) {
 			if (vers->v1.type > 0 && vers->v2.type > 0)
 				printf("  %s %s : %s %s\n",
 				    vop_names[vers->v1.type], vers->v1.version,
@@ -152,7 +141,7 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 		}
 	}
 	printf("  %s\n", e->desc);
-	LL_FOREACH(e->cve, cve) {
+	ll_foreach(e->cve, cve) {
 		printf("  CVE: %s\n", cve->cvename);
 	}
 	if (e->url)
@@ -162,21 +151,19 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 }
 
 static void
-format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
+format_issue(struct pkg_audit_issue *issue, ucl_object_t *array)
 {
-	const char *version;
 	struct pkg_audit_versions_range *vers;
 	const struct pkg_audit_entry *e;
 	struct pkg_audit_cve *cve;
 	ucl_object_t *o = ucl_object_typed_new(UCL_OBJECT);
 	ucl_object_t *affected_versions = ucl_object_typed_new(UCL_ARRAY);
 
-	pkg_get(p, PKG_VERSION, &version);
 	ucl_array_append(array, o);
 
 	e = issue->audit;
 	ucl_object_insert_key(o, affected_versions, "Affected versions", 17, false);
-	LL_FOREACH(e->versions, vers) {
+	ll_foreach(e->versions, vers) {
 		char *ver;
 		if (vers->v1.type > 0 && vers->v2.type > 0)
 			xasprintf(&ver, "%s %s : %s %s",
@@ -194,7 +181,7 @@ format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
 	ucl_object_insert_key(o, ucl_object_fromstring(e->desc), "description", 11, false);
 	if (e->cve) {
 		ucl_object_t *acve = ucl_object_typed_new(UCL_ARRAY);
-		LL_FOREACH(e->cve, cve) {
+		ll_foreach(e->cve, cve) {
 			ucl_array_append(acve, ucl_object_fromstring(cve->cvename));
 		}
 		ucl_object_insert_key(o, acve, "cve", 3, false);
@@ -203,7 +190,7 @@ format_issue(struct pkg *p, struct pkg_audit_issue *issue, ucl_object_t *array)
 		ucl_object_insert_key(o, ucl_object_fromstring(e->url), "url", 3, false);
 	else if (e->id) {
 		char *url;
-		xasprintf(&url, "https://vuxml.FreeBSD.org/freebsd/%s.html\n\n", e->id);
+		xasprintf(&url, "https://vuxml.FreeBSD.org/freebsd/%s.html", e->id);
 		ucl_object_insert_key(o, ucl_object_fromstring(url), "url", 3, false);
 		free(url);
 	}
@@ -226,7 +213,8 @@ exec_audit(int argc, char **argv)
 	int			 ch, i;
 	int			 raw;
 	int			 ret = EXIT_SUCCESS;
-	kh_pkgs_t		*check = NULL;
+	pkghash			*check = NULL;
+	pkghash_it		hit;
 	ucl_object_t		*top = NULL, *vuln_objs = NULL;
 	ucl_object_t		*obj = NULL;
 
@@ -299,7 +287,7 @@ exec_audit(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	check = kh_init_pkgs();
+	check = pkghash_new();
 	if (argc >= 1) {
 		for (i = 0; i < argc; i ++) {
 			name = argv[i];
@@ -310,12 +298,9 @@ exec_audit(int argc, char **argv)
 			}
 			if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
 				err(EXIT_FAILURE, "malloc");
+			pkg_set(pkg, PKG_ATTR_NAME, name);
 			if (version != NULL)
-				pkg_set(pkg, PKG_NAME, name, PKG_VERSION, version);
-			else
-				pkg_set(pkg, PKG_NAME, name);
-			/* Fake uniqueid */
-			pkg_set(pkg, PKG_UNIQUEID, name);
+				pkg_set(pkg, PKG_ATTR_VERSION, version);
 			add_to_check(check, pkg);
 			pkg = NULL;
 		}
@@ -330,30 +315,30 @@ exec_audit(int argc, char **argv)
 		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 		if (ret == EPKG_ENODB) {
 			pkg_audit_free(audit);
-			kh_destroy_pkgs(check);
+			pkghash_destroy(check);
 			return (EXIT_SUCCESS);
 		} else if (ret == EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to read the package database");
 			pkg_audit_free(audit);
-			kh_destroy_pkgs(check);
+			pkghash_destroy(check);
 			return (EXIT_FAILURE);
 		} else if (ret != EPKG_OK) {
 			warnx("Error accessing the package database");
 			pkg_audit_free(audit);
-			kh_destroy_pkgs(check);
+			pkghash_destroy(check);
 			return (EXIT_FAILURE);
 		}
 
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 			pkg_audit_free(audit);
-			kh_destroy_pkgs(check);
+			pkghash_destroy(check);
 			return (EXIT_FAILURE);
 		}
 
 		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 			pkgdb_close(db);
 			pkg_audit_free(audit);
-			kh_destroy_pkgs(check);
+			pkghash_destroy(check);
 			warnx("Cannot get a read lock on a database, it is locked by another process");
 			return (EXIT_FAILURE);
 		}
@@ -363,7 +348,7 @@ exec_audit(int argc, char **argv)
 			ret = EXIT_FAILURE;
 		}
 		else {
-			while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS))
+			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS)
 							== EPKG_OK) {
 				add_to_check(check, pkg);
 				pkg = NULL;
@@ -377,7 +362,7 @@ exec_audit(int argc, char **argv)
 		}
 		if (ret != EXIT_SUCCESS) {
 			pkg_audit_free(audit);
-			kh_destroy_pkgs(check);
+			pkghash_destroy(check);
 			return (ret);
 		}
 	}
@@ -386,26 +371,30 @@ exec_audit(int argc, char **argv)
 
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM
+#ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);
-		kh_destroy_pkgs(check);
+		pkghash_destroy(check);
 		return (EPKG_FATAL);
 	}
 #endif
+#endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
-		kh_foreach_value(check, pkg, {
+		hit = pkghash_iterator(check);
+		while (pkghash_next(&hit)) {
 			issues = NULL;
+			pkg = (struct pkg *) hit.value;
 			if (pkg_audit_is_vulnerable(audit, pkg, &issues, quiet)) {
-				const char *version;
+				const char *version = NULL;
 				const char *name = NULL;
 				ucl_object_t *array = NULL;
 				vuln ++;
 
 				if (top == NULL) {
 					affected += issues->count;
-					pkg_get(pkg, PKG_VERSION, &version);
+					pkg_get(pkg, PKG_ATTR_VERSION, &version);
 					if (quiet) {
 						if (version != NULL)
 							pkg_printf("%n-%v\n", pkg, pkg);
@@ -424,7 +413,8 @@ exec_audit(int argc, char **argv)
 					if (vuln_objs == NULL)
 						vuln_objs = ucl_object_typed_new(UCL_OBJECT);
 					obj = ucl_object_typed_new(UCL_OBJECT);
-					pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+					pkg_get(pkg, PKG_ATTR_NAME, &name);
+					pkg_get(pkg, PKG_ATTR_VERSION, &version);
 					if (version != NULL)
 						ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7 , false);
 					ucl_object_insert_key(obj, ucl_object_fromint(issues->count), "issue_count", 11, false);
@@ -432,21 +422,21 @@ exec_audit(int argc, char **argv)
 
 				if (top != NULL)
 					array = ucl_object_typed_new(UCL_ARRAY);
-				LL_FOREACH(issues->issues, issue) {
+				ll_foreach(issues->issues, issue) {
 					if (top == NULL)
 						print_issue(pkg, issue);
 					else
-						format_issue(pkg, issue, array);
+						format_issue(issue, array);
 				}
 				if (top != NULL)
 					ucl_object_insert_key(obj, array, "issues", 6, false);
 				array = NULL;
 
 				if (top != NULL || recursive) {
-					kh_pkgs_t *seen = kh_init_pkgs();
+					pkghash *seen = pkghash_new();
 
 					if (name == NULL)
-						pkg_get(pkg, PKG_NAME, &name);
+						pkg_get(pkg, PKG_ATTR_NAME, &name);
 					if (top == NULL) {
 						printf("  Packages that depend on %s: ", name);
 					} else {
@@ -456,7 +446,7 @@ exec_audit(int argc, char **argv)
 					if (top == NULL)
 						printf("\n\n");
 
-					kh_destroy_pkgs(seen);
+					pkghash_destroy(seen);
 				}
 				if (top != NULL) {
 					ucl_object_insert_key(obj, array, "reverse dependencies", 20, false);
@@ -464,9 +454,12 @@ exec_audit(int argc, char **argv)
 				}
 			}
 			pkg_audit_issues_free(issues);
-			pkg_free(pkg);
-		});
-		kh_destroy_pkgs(check);
+		}
+		hit = pkghash_iterator(check);
+		while (pkghash_next(&hit)) {
+			pkg_free(hit.value);
+		}
+		pkghash_destroy(check);
 
 		if (ret == EPKG_END && vuln == 0)
 			ret = EXIT_SUCCESS;
@@ -485,7 +478,7 @@ exec_audit(int argc, char **argv)
 	} else {
 		warnx("cannot process vulnxml");
 		ret = EXIT_FAILURE;
-		kh_destroy_pkgs(check);
+		pkghash_destroy(check);
 	}
 
 	pkg_audit_free(audit);

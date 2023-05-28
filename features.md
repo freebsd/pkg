@@ -61,12 +61,6 @@ or
 Hardcoded keywords:
 
  - @cwd
- - @preexec
- - @preunexec
- - @postexec
- - @postunexec
- - @exec
- - @unexec
  - @mode
  - @owner
  - @group

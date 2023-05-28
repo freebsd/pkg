@@ -31,12 +31,8 @@
 #include <pkg.h>
 #include <private/pkg_printf.h>
 
-ATF_TC(gen_format);
-ATF_TC_HEAD(gen_format, tc)
-{
-	atf_tc_set_md_var(tc, "descr",
-			  "Generate printf format code for final output");
-}
+ATF_TC_WITHOUT_HEAD(gen_format);
+
 ATF_TC_BODY(gen_format, tc)
 {
 	char		 buf[32];

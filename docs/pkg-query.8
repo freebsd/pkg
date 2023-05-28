@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2016
+.Dd October 06, 2022
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -30,9 +30,8 @@
 .Nm
 .Fl F Ao pkg-file Ac Ao query-format Ac
 .Nm
-.Fl e Ao evaluation-condition Ac Ao query-format Ac
-.Nm
 .Op Fl Cgix
+.Op Fl e Ao evaluation-condition Ac
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Pp
 .Nm
@@ -41,9 +40,8 @@
 .Nm
 .Cm --file Ao pkg-file Ac Ao query-format Ac
 .Nm
-.Cm --evaluate Ao evaluation-condition Ac Ao query-format Ac
-.Nm
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Op Cm --evaluate Ao evaluation-condition Ac
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
@@ -59,7 +57,7 @@ Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
-case sensitive.
+in pattern case sensitive.
 .It Fl e , Cm --evaluate
 Match packages using the given
 .Ar evaluation-condition .
@@ -74,7 +72,7 @@ Make the standard or regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
-case insensitive.
+in pattern case insensitive.
 This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
@@ -336,14 +334,22 @@ The numerical value of
 is less than
 .Op or equal to
 the given number.
-.It Va var Cm = Ns Oo = Oc Ar num
-The numerical value of
+.It Va var Cm = Ns Oo = Oc Oo Ar num | Ar string Oc
+The value of
 .Va var
-is equal to the given number.
-.It Va var Cm != Ar num
-The numerical value of
+is equal to the given number or string.
+.It Va var Cm =~ Oo Ar num | Ar string Oc
+The value of
 .Va var
-is not equal to the given number.
+is equal (case insensitive) to the given number or string.
+.It Va var Cm != Oo Ar num | Ar string Oc
+The value of
+.Va var
+is not equal to the given number or string.
+.It Va var Cm !=~  Oo Ar num | Ar string Oc
+The value of
+.Va var
+is not equal case insensitive to the given number or string.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -391,11 +397,14 @@ List automatic packages:
 List unmaintained packages:
 .Dl $ pkg query -e '%m = ports@FreeBSD.org' %o
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -403,7 +412,6 @@ List unmaintained packages:
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -422,6 +430,7 @@ List unmaintained packages:
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

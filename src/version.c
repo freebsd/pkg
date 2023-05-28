@@ -47,7 +47,8 @@
 #include <spawn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <khash.h>
+#include <pkghash.h>
+#include <xmalloc.h>
 
 #include "pkgcli.h"
 
@@ -58,15 +59,12 @@ struct index_entry {
 	char *version;
 };
 
-KHASH_MAP_INIT_STR(index, struct index_entry *);
-KHASH_MAP_INIT_STR(ports, char *);
 struct category {
 	char *name;
-	kh_ports_t *ports;
+	pkghash *ports;
 };
-KHASH_MAP_INIT_STR(categories, struct category *);
 
-kh_categories_t *categories = NULL;
+pkghash *categories = NULL;
 
 void
 usage_version(void)
@@ -83,10 +81,10 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 	      char limchar, unsigned int opt)
 {
 	const char	*key;
-	const char	*version;
+	const char	*version = NULL;
 	int		 cout;
 
-	pkg_get(pkg, PKG_VERSION, &version);
+	pkg_get(pkg, PKG_ATTR_VERSION, &version);
 	if (ver == NULL) {
 		if (source == NULL)
 			key = "!";
@@ -278,17 +276,15 @@ indexfilename(char *filebuf, size_t filebuflen)
 	return (filebuf);
 }
 
-static kh_index_t *
+static pkghash *
 hash_indexfile(const char *indexfilename)
 {
 	FILE			*indexfile;
-	kh_index_t		*index = NULL;
+	pkghash			*index = NULL;
 	struct index_entry	*entry;
 	char			*version, *name;
 	char			*line = NULL, *l;
 	size_t			 linecap = 0;
-	int			 ret;
-	khint_t			 k;
 
 
 	/* Create a hash table of all the package names and port
@@ -312,23 +308,14 @@ hash_indexfile(const char *indexfilename)
 		version[0] = '\0';
 		version++;
 
-		entry = malloc(sizeof(struct index_entry));
-		if (entry != NULL) {
-			entry->name = strdup(name);
-			entry->version = strdup(version);
-		}
-
-		if (entry == NULL || entry->version == NULL ||
-		    entry->name == NULL)
-			err(EXIT_FAILURE, "Out of memory while reading %s",
-			    indexfilename);
+		entry = xmalloc(sizeof(struct index_entry));
+		entry->name = xstrdup(name);
+		entry->version = xstrdup(version);
 
 		if (index == NULL)
-			index = kh_init_index();
-		k = kh_put_index(index, entry->name, &ret);
-		if (ret != 0) {
-			kh_value(index, k) = entry;
-		} else {
+			index = pkghash_new();
+
+		if (!pkghash_add(index, entry->name, entry, NULL)) {
 			free(entry->version);
 			free(entry->name);
 			free(entry);
@@ -348,35 +335,33 @@ hash_indexfile(const char *indexfilename)
 static void
 free_categories(void)
 {
-	char *v;
 	struct category *cat;
+	pkghash_it it;
 
-	if (categories == NULL)
-		return;
-
-	kh_foreach_value(categories, cat, {
+	it = pkghash_iterator(categories);
+	while (pkghash_next(&it)) {
+		cat = (struct category *) it.value;
 		free(cat->name);
-		kh_foreach_value(cat->ports, v, free(v));
-		kh_destroy_ports(cat->ports);
+		pkghash_destroy(cat->ports);
 		free(cat);
-	});
-	kh_destroy_categories(categories);
+	}
+	pkghash_destroy(categories);
 }
 
 static void
-free_index(kh_index_t *index)
+free_index(pkghash *index)
 {
+	pkghash_it it;
 	struct index_entry *entry;
 
-	if (index == NULL)
-		return;
-
-	kh_foreach_value(index, entry, {
+	it = pkghash_iterator(index);
+	while (pkghash_next(&it)) {
+		entry = (struct index_entry *)it.value;
 		free(entry->version);
 		free(entry->name);
 		free(entry);
-	});
-	kh_destroy_index(index);
+	}
+	pkghash_destroy(index);
 }
 
 static bool
@@ -408,13 +393,13 @@ static int
 do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
     const char *matchorigin, const char *matchname, const char *indexfile)
 {
-	kh_index_t	*index;
+	pkghash		*index;
+	struct index_entry *ie;
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-	const char	*name;
-	const char	*origin;
-	khint_t		 k;
+	const char	*name = NULL;
+	const char	*origin = NULL;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX) {
 		usage_version();
@@ -439,7 +424,8 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_ATTR_NAME, &name);
+		pkg_get(pkg, PKG_ATTR_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
@@ -451,9 +437,9 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		k = kh_get_index(index, name);
-		print_version(pkg, "index",
-		    k != kh_end(index) ? (kh_value(index, k))->version : NULL, limchar, opt);
+		ie = pkghash_get_value(index, name);
+		print_version(pkg, "index", ie != NULL ? ie->version : NULL,
+		    limchar, opt);
 	}
 
 cleanup:
@@ -476,9 +462,9 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkgdb_it	*it_remote = NULL;
 	struct pkg	*pkg = NULL;
 	struct pkg	*pkg_remote = NULL;
-	const char	*name;
-	const char	*origin;
-	const char	*version_remote;
+	const char	*name = NULL;
+	const char	*origin = NULL;
+	const char	*version_remote = NULL;
 	bool		is_origin = false;
 
 	int		 retcode = EPKG_OK;
@@ -514,7 +500,8 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_ATTR_NAME, &name);
+		pkg_get(pkg, PKG_ATTR_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
@@ -538,7 +525,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC)
 		    == EPKG_OK) {
-			pkg_get(pkg_remote, PKG_VERSION, &version_remote);
+			pkg_get(pkg_remote, PKG_ATTR_VERSION, &version_remote);
 			print_version(pkg, "remote", version_remote, limchar,
 			    opt);
 		} else {
@@ -614,10 +601,8 @@ category_new(char *categorypath, const char *category)
 {
 	struct category	*cat = NULL;
 	xstring		*makecmd;
-	char		*results, *d, *key;
+	char		*results, *d;
 	char		*argv[5];
-	int		 ret;
-	khint_t		 k;
 
 	makecmd = xstring_new();
 
@@ -634,25 +619,14 @@ category_new(char *categorypath, const char *category)
 	results = makecmd->buf;
 
 	if (categories == NULL)
-		categories = kh_init_categories();
+		categories = pkghash_new();
 
-	cat = calloc(1, sizeof(*cat));
-	if (cat == NULL)
-		goto cleanup;
+	cat = xcalloc(1, sizeof(*cat));
+	cat->name = xstrdup(category);
 
-	cat->name = strdup(category);
-	cat->ports = kh_init_ports();
-
-	k = kh_put_categories(categories, cat->name, &ret);
-	kh_value(categories, k) = cat;
-	while ((d = strsep(&results, " \n")) != NULL) {
-		key = strdup(d);
-		k = kh_put_ports(cat->ports, key, &ret);
-		if (k != kh_end(cat->ports))
-			kh_value(cat->ports, k) = key;
-		else
-			free(key);
-	}
+	pkghash_add(categories, cat->name, cat, NULL);
+	while ((d = strsep(&results, " \n")) != NULL)
+		pkghash_safe_add(cat->ports, d, NULL, NULL);
 
 cleanup:
 	xstring_free(makecmd);
@@ -666,7 +640,6 @@ validate_origin(const char *portsdir, const char *origin)
 	struct category	*cat;
 	char		*category, *buf;
 	char		 categorypath[MAXPATHLEN];
-	khint_t		 k;
 
 	/* If the origin does not contain a / ignore it like for
 	 * "base"
@@ -681,14 +654,9 @@ validate_origin(const char *portsdir, const char *origin)
 	category = strrchr(categorypath, '/');
 	category++;
 
-	if (categories != NULL)
-		k = kh_get_categories(categories, category);
-	if (categories == NULL || k == kh_end(categories)) {
+	cat = pkghash_get_value(categories, category);
+	if (cat == NULL)
 		cat = category_new(categorypath, category);
-	} else {
-		cat = kh_value(categories, k);
-	}
-
 	if (cat == NULL)
 		return (false);
 
@@ -698,9 +666,7 @@ validate_origin(const char *portsdir, const char *origin)
 	if (strcmp(origin, "base") == 0)
 		return (false);
 
-	k = kh_get_ports(cat->ports, buf);
-
-	return (k != kh_end(cat->ports));
+	return (pkghash_get(cat->ports, buf) != NULL);
 }
 
 static const char *
@@ -754,9 +720,9 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	xstring		*cmd;
-	const char	*name;
-	const char	*origin;
-	const char	*version;
+	const char	*name = NULL;
+	const char	*origin = NULL;
+	const char	*version = NULL;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_PORTS ) {
 		usage_version();
@@ -782,7 +748,8 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	cmd = xstring_new();
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin);
+		pkg_get(pkg, PKG_ATTR_NAME, &name);
+		pkg_get(pkg, PKG_ATTR_ORIGIN, &origin);
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
@@ -1020,6 +987,10 @@ exec_version(int argc, char **argv)
 		return (do_source_index(opt, limchar, pattern, match,
 			    matchorigin, matchname, indexfile));
 	} else if (have_ports(&portsdir, false)) {
+		if (argc == 1) {
+			warnx("No such INDEX file: '%s'", argv[0]);
+			return (EXIT_FAILURE);
+		}
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
 			    matchorigin, matchname, portsdir));

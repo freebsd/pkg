@@ -94,7 +94,6 @@ exec_info(int argc, char **argv)
 	bool pkg_exists = false;
 	bool origin_search = false;
 	bool e_flag = false;
-	struct pkg_manifest_key *keys = NULL;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
@@ -277,25 +276,25 @@ exec_info(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
+#ifndef PKG_COVERAGE
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(fd);
 			return (EXIT_FAILURE);
 		}
 #endif
+#endif
 		if (opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
-		pkg_manifest_keys_new(&keys);
 
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
 			open_flags = PKG_OPEN_MANIFEST_COMPACT;
 
-		if (pkg_open_fd(&pkg, fd, keys, open_flags) != EPKG_OK) {
+		if (pkg_open_fd(&pkg, fd, open_flags) != EPKG_OK) {
 			close(fd);
 			return (1);
 		}
-		pkg_manifest_keys_free(keys);
 		print_info(pkg, opt);
 		close(fd);
 		pkg_free(pkg);
@@ -441,7 +440,7 @@ exec_info(int argc, char **argv)
 		if (argc == 1 && !origin_search && !quiet && !e_flag &&
 		    match == MATCH_GLOB &&
 		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
-		    opt == INFO_TAG_NAMEVER)
+		    opt == INFO_TAG_NAMEVER && !quiet)
 			opt |= INFO_FULL;
 
 		query_flags = info_flags(opt, false);
@@ -449,7 +448,7 @@ exec_info(int argc, char **argv)
 			gotone = true;
 			const char *version;
 
-			pkg_get(pkg, PKG_VERSION, &version);
+			pkg_get(pkg, PKG_ATTR_VERSION, &version);
 			if (pkgversion != NULL) {
 				switch (pkg_version_cmp(version, pkgversion)) {
 				case -1:

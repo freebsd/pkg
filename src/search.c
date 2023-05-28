@@ -373,9 +373,12 @@ exec_search(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 	if (search == FIELD_NONE) {
-		if (strchr(pattern, '/') != NULL)
-			search = FIELD_ORIGIN;
-		else
+		if (strchr(pattern, '/') != NULL) {
+			if (strchr(pattern, '@') != NULL)
+				search = FIELD_FLAVOR;
+			else
+				search = FIELD_ORIGIN;
+		} else
 			search = FIELD_NAMEVER; /* Default search */
 	}
 	if (label == FIELD_NONE)
@@ -385,8 +388,14 @@ exec_search(int argc, char **argv)
 	case FIELD_NONE:
 		break;		/* should never happen */
 	case FIELD_ORIGIN:
-		opt |= INFO_TAG_ORIGIN|INFO_COMMENT;
+		if (quiet) {
+			opt = INFO_TAG_ORIGIN;
+			quiet = false;
+		} else {
+			opt |= INFO_TAG_ORIGIN|INFO_COMMENT;
+		}
 		break;
+	case FIELD_FLAVOR:
 	case FIELD_NAME:
 		opt |= INFO_TAG_NAME|INFO_COMMENT;
 		break;

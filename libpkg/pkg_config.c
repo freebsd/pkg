@@ -72,9 +72,11 @@ struct pkg_ctx ctx = {
 	.rootfd = -1,
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
+	.devnullfd = -1,
 	.osversion = 0,
 	.backup_libraries = false,
 	.triggers = true,
+	.compression_format = NULL,
 	.compression_level = -1,
 	.defer_triggers = false,
 };
@@ -347,12 +349,6 @@ static struct config_entry c[] = {
 		"Use read locking for query database"
 	},
 	{
-		PKG_BOOL,
-		"PLIST_ACCEPT_DIRECTORIES",
-		"NO",
-		"Accept directories listed like plain files in plist"
-	},
-	{
 		PKG_INT,
 		"IP_VERSION",
 		"0",
@@ -403,7 +399,7 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"VALID_URL_SCHEME",
-		"pkg+http,pkg+https,https,http,file,ssh,ftp,ftps,pkg+ssh,pkg+ftp,pkg+ftps",
+		"pkg+http,pkg+https,https,http,file,ssh,tcp",
 	},
 	{
 		PKG_BOOL,
@@ -470,8 +466,14 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"AUDIT_IGNORE_REGEX",
-		"NULL",
+		NULL,
 		"List of regex to ignore while autiditing for vulnerabilities",
+	},
+	{
+		PKG_STRING,
+		"COMPRESSION_FORMAT",
+		NULL,
+		"Set the default compression format for packages creating",
 	},
 	{
 		PKG_INT,
@@ -490,6 +492,18 @@ static struct config_entry c[] = {
 		"REPO_ACCEPT_LEGACY_PKG",
 		"FALSE",
 		"Accept legacy package extensions when creating the repository",
+	},
+	{
+		PKG_ARRAY,
+		"FILES_IGNORE_GLOB",
+		NULL,
+		"patterns of files to not extract from the package",
+	},
+	{
+		PKG_ARRAY,
+		"FILES_IGNORE_REGEX",
+		NULL,
+		"patterns of files to not extract from the package",
 	},
 };
 
@@ -611,7 +625,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			 * forget all stuff parsed
 			 */
 			pkg_debug(1, "PkgConfig: disabling repo %s", rname);
-			HASH_DEL(repos, r);
+			DL_DELETE(repos, r);
 			pkg_repo_free(r);
 			return;
 		}
@@ -758,7 +772,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		while ((cur = ucl_iterate_object(env, &it, true))) {
 			kv = pkg_kv_new(ucl_object_key(cur),
 			    ucl_object_tostring_forced(cur));
-			DL_APPEND(r->env, kv);
+			tll_push_back(r->env, kv);
 		}
 	}
 }
@@ -784,6 +798,7 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 	ucl_object_iter_t it = NULL;
 	struct pkg_repo *r;
 	const char *key;
+	char *yaml;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
@@ -793,9 +808,12 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
 			add_repo(cur, r, key, flags);
-		else
+		else {
+			yaml = ucl_object_emit(cur, UCL_EMIT_YAML);
 			pkg_emit_error("Ignoring bad configuration entry in %s: %s",
-			    file, ucl_object_emit(cur, UCL_EMIT_YAML));
+			    file, yaml);
+			free(yaml);
+		}
 	}
 }
 
@@ -854,9 +872,12 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 	close(fd);
 
 	obj = ucl_parser_get_object(p);
-	if (obj == NULL)
+	if (obj == NULL) {
+		ucl_parser_free(p);
 		return;
+	}
 
+	ucl_parser_free(p);
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj, repofile, flags);
 
@@ -1194,7 +1215,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
 		}
 	}
-
 	ncfg = NULL;
 	it = NULL;
 	while ((cur = ucl_iterate_object(config, &it, true))) {
@@ -1318,6 +1338,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
 	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
+	ctx.compression_format = pkg_object_string(pkg_config_get("COMPRESSION_FORMAT"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
 	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
@@ -1390,6 +1411,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 out:
 	free(oi.arch);
 	free(oi.name);
+	free(oi.version);
+	free(oi.version_major);
+	free(oi.version_minor);
 	return err;
 
 }
@@ -1430,7 +1454,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
 	r->name = xstrdup(name);
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+	DL_APPEND(repos, r);
 
 	return (r);
 }
@@ -1447,27 +1471,19 @@ pkg_repo_overwrite(struct pkg_repo *r, const char *name, const char *url,
 		r->url = xstrdup(url);
 	}
 	r->ops = pkg_repo_find_type(type);
-	HASH_DEL(repos, r);
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
 pkg_repo_free(struct pkg_repo *r)
 {
-	struct pkg_kv *kv, *tmp;
-
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
-	free(r->meta);
-	if (r->ssh != NULL) {
-		fprintf(r->ssh, "quit\n");
-		pclose(r->ssh);
-	}
-	LL_FOREACH_SAFE(r->env, kv, tmp) {
-		LL_DELETE(r->env, kv);
-		pkg_kv_free(kv);
-	}
+	free(r->fingerprints);
+	pkg_repo_meta_free(r->meta);
+	if (r->fetcher != NULL && r->fetcher->cleanup != NULL)
+		r->fetcher->cleanup(r);
+	tll_free_and_free(r->env, pkg_kv_free);
 	free(r);
 }
 
@@ -1482,7 +1498,7 @@ pkg_shutdown(void)
 
 	metalog_close();
 	ucl_object_unref(config);
-	HASH_FREE(repos, pkg_repo_free);
+	LL_FREE(repos, pkg_repo_free);
 
 	if (ctx.rootfd != -1) {
 		close(ctx.rootfd);
@@ -1505,8 +1521,11 @@ pkg_shutdown(void)
 int
 pkg_repos_total_count(void)
 {
+	int cnt = 0;
+	struct pkg_repo *r;
 
-	return (HASH_COUNT(repos));
+	LL_COUNT(repos, r, cnt);
+	return (cnt);
 }
 
 int
@@ -1515,7 +1534,7 @@ pkg_repos_activated_count(void)
 	struct pkg_repo *r = NULL;
 	int count = 0;
 
-	for (r = repos; r != NULL; r = r->hh.next) {
+	LL_FOREACH(repos, r) {
 		if (r->enable)
 			count++;
 	}
@@ -1526,7 +1545,13 @@ pkg_repos_activated_count(void)
 int
 pkg_repos(struct pkg_repo **r)
 {
-	HASH_NEXT(repos, (*r));
+	if (*r == NULL)
+		*r = repos;
+	else
+		*r = (*r)->next;
+	if (*r == NULL)
+		return (EPKG_END);
+	return (EPKG_OK);
 }
 
 const char *
@@ -1595,8 +1620,11 @@ pkg_repo_find(const char *reponame)
 {
 	struct pkg_repo *r;
 
-	HASH_FIND_STR(repos, reponame, r);
-	return (r);
+	LL_FOREACH(repos, r) {
+		if (strcmp(r->name, reponame) == 0)
+			return (r);
+	}
+	return (NULL);
 }
 
 int64_t
@@ -1660,4 +1688,25 @@ pkg_get_dbdirfd(void)
 	}
 
 	return (ctx.pkg_dbdirfd);
+}
+
+int
+pkg_open_devnull(void) {
+	pkg_close_devnull();
+
+	if ((ctx.devnullfd = open("/dev/null", O_RDWR)) < 0) {
+		pkg_emit_error("Cannot open /dev/null");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+void
+pkg_close_devnull(void) {
+	if (ctx.devnullfd != 1) {
+		close(ctx.devnullfd);
+	}
+
+	return;
 }

@@ -14,10 +14,13 @@ zshcompdir=		$(PREFIX)/share/zsh/site-functions
 PDAILY=	periodic/411.pkg-backup \
 	periodic/490.status-pkg-changes
 PSECURITY=	periodic/410.pkg-audit \
+		periodic/405.pkg-base-audit \
 		periodic/460.pkg-checksum
 PWEEKLY=	periodic/400.status-pkg
 COMPLETION=	completion/_pkg \
 		completion/_pkg.bash
+
+VPATH=	$(top_srcdir)/scripts
 
 all: $(PDAILY) $(PSECURITY) $(PWEEKLY) $(COMPLETION)
 

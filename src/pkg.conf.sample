@@ -72,6 +72,7 @@ ALIAS              : {
   noauto = "query -e '%a == 0' '%n-%v'",
   options: query -i "%n - %Ok: %Ov",
   origin: info -qo,
+  orphans: version -vRl\?,
   provided-depends: info -qb,
   rall-depends: rquery %dn-%dv,
   raw: info -R,

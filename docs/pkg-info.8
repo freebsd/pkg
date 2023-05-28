@@ -26,11 +26,11 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl AbBDdefIklOpqRrs
+.Op Fl ABbDdefIklOpqRrs
 .Op Fl Cgix
 .Ar pkg-name
 .Nm
-.Op Fl AbBDdfIlpqRrs
+.Op Fl ABbDdfIlpqRrs
 .Fl F Ar pkg-file
 .Pp
 .Nm
@@ -56,38 +56,49 @@ is used for displaying information for packages.
 The following options are supported by
 .Nm :
 .Bl -tag -width origin
-.It Fl a , Cm --all
-Display all installed packages.
 .It Fl A , Cm --annotations
 Display any annotations added to the package.
+.It Fl a , Cm --all
+Display all installed packages.
+.It Fl B , Cm --required-shlibs
+Display all shared libraries used by
+.Ar pkg-name .
+.It Fl b , Cm --provided-shlibs
+Display all shared libraries provided by
+.Ar pkg-name .
 .It Fl C , Cm --case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl f , Cm --full
-Display full information about the packages matching
-.Ar pkg-name .
-This is the default.
-.It Fl R , Cm --raw
-Display the full manifest (raw) for the packages matching
-.Ar pkg-name .
-.It Fl -raw-format Ar format
-Choose the format of the raw output.
-The format can be: ucl (default),
-json, json-compact, yaml.
+.It Fl D , Cm --pkg-message
+Show the pkg-message for matching packages.
+.It Fl d , Cm --dependencies
+Display the list of packages on which
+.Ar pkg-name
+depends.
+.It Fl E , Cm --show-name-only
+Hides the full package output and only shows the package name.
+This option is deprecated and exists only for Ports compatibility.
 .It Fl e , Cm --exists
 If
 .Ar pkg-name
 is installed and registered in the database, return 0, otherwise return 1.
 Useful for checking whether the package is installed.
-.It Fl D , Cm --pkg-message
-Show the pkg-message for matching packages.
+.It Fl F Ar pkg-file , Cm --file Ar pkg-file
+Displays information from the package archive
+.Ar pkg-file .
+.It Fl f , Cm --full
+Display full information about the packages matching
+.Ar pkg-name .
+This is the default.
 .It Fl g , Cm --glob
 Treat
 .Ar pkg-name
 as a shell glob pattern.
+.It Fl I , Cm --comment
+Display the specified packages and their comments.
 .It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
@@ -98,21 +109,6 @@ This is the default, unless modified by setting
 .Ev CASE_SENSITIVE_MATCH
 to true in
 .Pa pkg.conf .
-.It Fl I , Cm --comment
-Display the specified packages and their comments.
-.It Fl x , Cm --regex
-Treat
-.Ar pkg-name
-as a regular expression according to the "modern" or "extended" syntax
-of
-.Xr re_format 7 .
-.It Fl d , Cm --dependencies
-Display the list of packages on which
-.Ar pkg-name
-depends.
-.It Fl r , Cm --required-by
-Display the list of packages which require
-.Ar pkg-name .
 .It Fl k , Cm --locked
 Show the locking status for
 .Ar pkg-name .
@@ -129,28 +125,12 @@ is queried.
 .It Fl l , Cm --list-files
 Display all files installed by
 .Ar pkg-name .
-.It Fl b , Cm --provided-shlibs
-Display all shared libraries provided by
-.Ar pkg-name .
-.It Fl B , Cm --required-shlibs
-Display all shared libraries used by
-.Ar pkg-name .
-.It Fl s , Cm --size
-Display the total size of files installed by
-.Ar pkg-name .
-.It Fl q , Cm --quiet
-Be
-.Dq quiet .
-Prints only the requested information without displaying many hints.
 .It Fl O , Cm --by-origin
 Search is done by the
 .Ar pkg-name
 origin.
 Added only for Ports compatibility.
 .Pp
-.It Fl E , Cm --show-name-only
-Hides the full package output and only shows the package name.
-This option is deprecated and exists only for Ports compatibility.
 .It Fl o , Cm --origin
 Display
 .Ar pkg-name
@@ -158,9 +138,29 @@ origin.
 .It Fl p , Cm --prefix
 Display the installation prefix for each package matching
 .Ar pkg-name .
-.It Fl F Ar pkg-file , Cm --file Ar pkg-file
-Displays information from the package archive
-.Ar pkg-file .
+.It Fl q , Cm --quiet
+Be
+.Dq quiet .
+Prints only the requested information without displaying many hints.
+.It Fl R , Cm --raw
+Display the full manifest (raw) for the packages matching
+.Ar pkg-name .
+.It Fl r , Cm --required-by
+Display the list of packages which require
+.Ar pkg-name .
+.It Fl -raw-format Ar format
+Choose the format of the raw output.
+The format can be: ucl (default),
+json, json-compact, yaml.
+.It Fl s , Cm --size
+Display the total size of files installed by
+.Ar pkg-name .
+.It Fl x , Cm --regex
+Treat
+.Ar pkg-name
+as a regular expression according to the "modern" or "extended" syntax
+of
+.Xr re_format 7 .
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -176,11 +176,14 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -188,7 +191,6 @@ See
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -207,6 +209,7 @@ See
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

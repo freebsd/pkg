@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 02, 2014
+.Dd March 22, 2023
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -22,22 +22,22 @@
 .Nd register a package into the local package database
 .Sh SYNOPSIS
 .Nm
-.Op Fl dlt
+.Op Fl dltN
 .Op Fl f Ar plist-file
 .Fl m Ar metadatadir
 .Fl i Ar input-path
 .Nm
-.Op Fl dlt
+.Op Fl dltN
 .Fl M Ar metadatafile
 .Pp
 .Nm
-.Op Cm --{debug,legacy,test}
+.Op Cm --{debug,test,no-registration}
 .Op Cm --relocate Ar location
 .Op Cm --plist Ar plist-file
 .Cm --metadata Ar metadatadir
 .Cm --root Ar input-path
 .Nm
-.Op Cm --{debug,legacy,test}
+.Op Cm --{debug,test,no-registration}
 .Op Cm --relocate Ar location
 .Cm --manifest Ar metadatafile
 .Sh DESCRIPTION
@@ -114,20 +114,15 @@ For more information please refer to
 .Xr pkg-autoremove 8 .
 .It Fl d , Cm --debug
 Enable debugging output.
+.It Fl N , Cm --no-registration
+Disable registration in the package database, the files will be installed,
+the scripts will be executed.
 .It Fl f Ar plist-file , Cm --plist Ar plist-file
 Specifies a
 .Fa pkg-plist
 style packing list file.
 .It Fl i Ar input-path , Cm --root Ar input-path
 Specifies the package input path or staging directory.
-.It Fl l , Cm --legacy
-Tells
-.Nm
-to generate an old-style package registry entry in a sub-directory of
-.Sy $PKG_DBDIR
-rather than updating the
-.Fa local.sqlite
-database.
 .It  Fl M Ar manifest , Cm --manifest Ar manifest
 Specifies the package manifest file.
 Use of this option means that the only file which will be used as a
@@ -178,11 +173,14 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
 .Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
 .Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -190,7 +188,6 @@ See
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-config 8 ,
@@ -209,6 +206,7 @@ See
 .Xr pkg-shlib 8 ,
 .Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

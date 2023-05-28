@@ -2,8 +2,10 @@
  * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -93,14 +95,21 @@ match_ucl_lists(const char *buf, const ucl_object_t *globs, const ucl_object_t *
 }
 
 int
-mkdirs(const char *_path)
+pkg_mkdirs(const char *_path)
 {
 	char path[MAXPATHLEN];
 	char *p;
+	int dirfd;
+
+	dirfd = open(_path, O_RDONLY|O_DIRECTORY);
+	if (dirfd >= 0) {
+		close(dirfd);
+		return EPKG_OK;
+	}
 
 	strlcpy(path, _path, sizeof(path));
 	p = path;
-	if (*p == '/')
+	while (*p == '/')
 		p++;
 
 	for (;;) {
@@ -140,7 +149,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	if (fstatat(dfd, path, &st, 0) == -1) {
+	if (fstat(fd, &st) == -1) {
 		pkg_emit_errno("fstatat", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -171,46 +180,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 int
 file_to_buffer(const char *path, char **buffer, off_t *sz)
 {
-	int fd = -1;
-	struct stat st;
-	int retcode = EPKG_OK;
-
-	assert(path != NULL && path[0] != '\0');
-	assert(buffer != NULL);
-	assert(sz != NULL);
-
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (fstat(fd, &st) == -1) {
-		pkg_emit_errno("fstat", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	*buffer = xmalloc(st.st_size + 1);
-
-	if (read(fd, *buffer, st.st_size) == -1) {
-		pkg_emit_errno("read", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	cleanup:
-	if (fd >= 0)
-		close(fd);
-
-	if (retcode == EPKG_OK) {
-		(*buffer)[st.st_size] = '\0';
-		*sz = st.st_size;
-	} else {
-		*buffer = NULL;
-		*sz = -1;
-	}
-	return (retcode);
+	return file_to_bufferat(AT_FDCWD, path, buffer, sz);
 }
 
 int
@@ -347,33 +317,19 @@ is_link(const char *path)
 }
 
 bool
-string_end_with(const char *path, const char *str)
-{
-	size_t n, s;
-	const char *p = NULL;
-
-	s = strlen(str);
-	n = strlen(path);
-
-	if (n < s)
-		return (false);
-
-	p = &path[n - s];
-
-	if (strcmp(p, str) == 0)
-		return (true);
-
-	return (false);
-}
-
-bool
 check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
-	int absent;
+	struct hardlink *h;
 
-	kh_put_hardlinks(hl, st->st_ino, &absent);
-	if (absent == 0)
-		return (true);
+	tll_foreach(*hl, it) {
+		if (it->item->ino == st->st_ino &&
+		    it->item->dev == st->st_dev)
+			return (true);
+	}
+	h = xcalloc(1, sizeof(*h));
+	h->ino = st->st_ino;
+	h->dev = st->st_dev;
+	tll_push_back(*hl, h);
 
 	return (false);
 }
@@ -719,7 +675,7 @@ pkg_utils_tokenize(char **args)
 				else {
 					parse_state = ORDINARY_TEXT;
 					p_start = p;
-				}				
+				}
 			} else
 				p_start = p;
 			break;
@@ -795,7 +751,7 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 	}
 	dest_len = strlen(dest);
 
-	for (cur = next = src; next != NULL; cur = next + 1) {
+	for (cur = next = src; next != NULL; cur = (next == NULL) ? NULL : next + 1) {
 		next = strchr(cur, '/');
 		if (next != NULL)
 			cur_len = next - cur;
@@ -914,4 +870,183 @@ rtrimspace(char *buf)
 	}
 
 	return (buf);
+}
+
+static int
+_copy_file(int from, int to)
+{
+	char buf[BUFSIZ];
+	ssize_t r, wresid, w = 0;
+	char *bufp;
+	r = read(from, buf, BUFSIZ);
+	if (r < 0)
+		return (r);
+	for (bufp = buf, wresid = r; ; bufp += w, wresid -= w) {
+		w = write(to, bufp, wresid);
+		if (w <= 0)
+			break;
+		if (w >= (ssize_t)wresid)
+			break;
+	}
+	return (w < 0 ? w : r);
+}
+
+bool
+pkg_copy_file(int from, int to)
+{
+#ifdef HAVE_COPY_FILE_RANGE
+	bool cfr = true;
+#endif
+	int r;
+
+	do {
+#ifdef HAVE_COPY_FILE_RANGE
+		if (cfr) {
+			r = copy_file_range(from, NULL, to, NULL, SSIZE_MAX,
+			    0);
+			if (r < 0 && (errno == EINVAL || errno == EXDEV)) {
+				/* probably a non seekable FD */
+				cfr = false;
+			}
+		}
+		if (!cfr) {
+#endif
+			r = _copy_file(from, to);
+#ifdef HAVE_COPY_FILE_RANGE
+		}
+#endif
+	} while (r > 0);
+
+	return (r >= 0);
+}
+
+static const unsigned char litchar[] =
+"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+void
+append_random_suffix(char *buf, int buflen, int suflen)
+{
+	int nchars = strlen(buf);
+	char *pos;
+	int r;
+
+	/* 2 being the "." and the \0 */
+	if (nchars + suflen > buflen - 2) {
+		suflen = buflen - nchars - 2;
+		if (suflen <= 0)
+			return;
+	}
+
+	buf[nchars++] = '.';
+	pos = buf + nchars;
+
+	while(suflen --) {
+#ifndef HAVE_ARC4RANDOM
+		r = rand() % (sizeof(litchar) - 1);
+#else
+		r = arc4random_uniform(sizeof(litchar) - 1);
+#endif
+		*pos++ = litchar[r];
+	}
+
+	*pos = '\0';
+}
+
+void
+hidden_tempfile(char *buf, int buflen, const char *path)
+{
+	const char *fname;
+	int suffixlen = 12;
+	int nbuflen;
+	const char *prefix = ".pkgtemp.";
+
+	fname = strrchr(path, '/');
+	if (fname != NULL)
+		fname++;
+
+	/*
+	 * try to reduce the temporary name as much as possible to fit with very
+	 * long file names if possible. by default
+	 * .pkgtemp. fname . <suffix>
+	 * otherwise
+	 * . fname . <suffix>
+	 * keep if suffix of at least 5 if possible
+	 */
+	if (fname != NULL) {
+		if (strlen(fname) >= (NAME_MAX - 15))
+			prefix = ".";
+		snprintf(buf, buflen, "%.*s%s%s", (int)(fname - path), path, prefix, fname);
+		nbuflen = buflen;
+	} else {
+		if (strlen(path) >= NAME_MAX - 15)
+			prefix = ".";
+		snprintf(buf, buflen, "%s%s", prefix, path);
+		nbuflen = NAME_MAX;
+	}
+
+
+	append_random_suffix(buf, nbuflen, suffixlen);
+}
+
+char *
+json_escape(const char *str)
+{
+	xstring *buf = xstring_new();
+
+	while (str != NULL && *str != '\0') {
+		if (*str == '"' || *str == '\\')
+			fputc('\\', buf->fp);
+		fputc(*str, buf->fp);
+		str++;
+	}
+
+	return (xstring_get(buf));
+}
+
+
+struct tempdir *
+open_tempdir(int rootfd, const char *path)
+{
+	struct stat st;
+	char walk[MAXPATHLEN];
+	char *dir;
+	size_t cnt = 0;
+
+	strlcpy(walk, path, sizeof(walk));
+	while ((dir = strrchr(walk, '/')) != NULL) {
+		struct tempdir *t;
+		*dir = '\0';
+		cnt++;
+		/* accept symlinks pointing to directories */
+		if (strlen(walk) == 0 && cnt == 1)
+			break;
+		if (strlen(walk) > 0) {
+			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
+				continue;
+			if (S_ISDIR(st.st_mode) && cnt == 1)
+				break;
+			if (!S_ISDIR(st.st_mode))
+				continue;
+		}
+		*dir = '/';
+		t = xcalloc(1, sizeof(*t));
+		hidden_tempfile(t->temp, sizeof(t->temp), walk);
+		if (mkdirat(rootfd, RELATIVE_PATH(t->temp), 0755) == -1) {
+			pkg_errno("Fail to create temporary directory: %s", t->temp);
+			free(t);
+			return (NULL);
+		}
+
+		strlcpy(t->name, walk, sizeof(t->name));
+		t->len = strlen(t->name);
+		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY);
+		if (t->fd == -1) {
+			pkg_errno("Fail to open directory %s", t->temp);
+			free(t);
+			return (NULL);
+		}
+		return (t);
+	}
+	errno = 0;
+	return (NULL);
 }

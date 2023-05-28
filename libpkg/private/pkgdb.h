@@ -1,6 +1,8 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,21 +32,14 @@
 
 #include "pkg.h"
 
-#include "sqlite3.h"
+#include <sqlite3.h>
+#include <tllist.h>
 
 struct pkgdb {
 	sqlite3		*sqlite;
 	bool		 prstmt_initialized;
 
-	struct _pkg_repo_list_item {
-		struct pkg_repo *repo;
-		struct _pkg_repo_list_item *next;
-	} *repos;
-};
-
-enum pkgdb_iterator_type {
-	PKGDB_IT_LOCAL = 0,
-	PKGDB_IT_REPO
+	tll(struct pkg_repo *) repos;
 };
 
 struct pkgdb_sqlite_it {
@@ -58,15 +53,12 @@ struct pkgdb_sqlite_it {
 struct pkg_repo_it;
 
 struct pkgdb_it {
-	enum pkgdb_iterator_type type;
 	struct pkgdb *db;
-	union _un_pkg_it {
-		struct _pkg_repo_it_set {
-			struct pkg_repo_it *it;
-			struct _pkg_repo_it_set *next;
-		} *remote;
-		struct pkgdb_sqlite_it local;
-	} un;
+	struct _pkg_repo_it_set {
+		struct pkg_repo_it *it;
+		struct _pkg_repo_it_set *next;
+	} *remote;
+	struct pkgdb_sqlite_it *local;
 };
 
 #define PKGDB_IT_FLAG_CYCLED (0x1)
@@ -183,5 +175,8 @@ void pkgdb_syscall_overload(void);
 void pkgdb_nfs_corruption(sqlite3 *s);
 bool pkgdb_file_exists(struct pkgdb *db, const char *path);
 struct sqlite3_stmt *prepare_sql(sqlite3 *s, const char *sql);
+
+bool pkgdb_is_provided(struct pkgdb *db, const char *req);
+bool pkgdb_is_shlib_provided(struct pkgdb *db, const char *req);
 
 #endif

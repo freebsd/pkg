@@ -6,7 +6,8 @@ tests_init \
 	register_conflicts \
 	register_message \
 	prefix_is_a_symlink \
-	file_not_found
+	file_not_found \
+	no_pkg_register
 
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
@@ -122,4 +123,20 @@ file_not_found_body()
 		-e match:"Unable to access file ${TMPDIR}/prefix/foo" \
 		-s exit:1 \
 		pkg -r ${TMPDIR}/target register -M ${TMPDIR}/test.ucl -f ${TMPDIR}/plist -i ${TMPDIR}
+}
+
+no_pkg_register_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/prefix"
+	echo "/foo" > plist
+	touch foo
+	mkdir -p ${TMPDIR}/target
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -r ${TMPDIR}/target register -N -M ${TMPDIR}/test.ucl -f ${TMPDIR}/plist -i ${TMPDIR}
+	test -f ${TMPDIR}/target/foo || atf_fail "foo file has not been installed"
+	atf_check \
+		pkg -r ${TMPDIR}/target info
 }

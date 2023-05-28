@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -105,7 +105,6 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 
-	fetchConnectionCacheInit(-1, -1);
 	fetchTimeout = (int)MIN(fetch_timeout, INT_MAX);
 
 	repourl = fetchParseURL(repo->url);
@@ -122,8 +121,7 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 
 	while (repo->fh == NULL) {
 		if (repo != NULL && repo->mirror_type == SRV &&
-		    (strncmp(u->scheme, "http", 4) == 0
-		     || strcmp(u->scheme, "ftp") == 0)) {
+		    (strncmp(u->scheme, "http", 4) == 0)) {
 			if (repo->srv == NULL) {
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
@@ -210,8 +208,6 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 				http_current = repo->http->next;
 				if (http_current == NULL)
 					http_current = repo->http;
-			} else {
-				sleep(1);
 			}
 		}
 	}
@@ -237,4 +233,18 @@ fetch_open(struct pkg_repo *repo, struct url *u, off_t *sz)
 		*sz = u->length;
 
 	return (retcode);
+}
+
+int
+libfetch_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t)
+{
+	int ret;
+
+	ret = stdio_fetch(repo, dest, url, u, sz, t);
+
+	if (ret == EPKG_OK && ferror(repo->fh)) {
+		pkg_emit_error("%s: %s", url, fetchLastErrString);
+		return (EPKG_FATAL);
+	}
+	return (ret);
 }

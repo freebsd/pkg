@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2020-2021 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2020-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -135,6 +134,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	fd = openat(dfd, name, O_RDONLY);
 	if (fd == -1) {
 		pkg_emit_error("Unable to open the tigger: %s", name);
+		pkg_emit_errno("plop", name);
 		return (NULL);
 	}
 
@@ -259,29 +259,52 @@ err:
 	return (NULL);
 }
 
-struct trigger *
+void
+trigger_is_it_a_cleanup(struct triggers *t, const char *path)
+{
+	const char *trigger_name;
+	struct trigger *trig;
+
+	if (t->schema == NULL)
+		t->schema = trigger_open_schema();
+	if (strncmp(path, ctx.triggers_path, strlen(ctx.triggers_path)) != 0)
+		return;
+
+	trigger_name = path + strlen(ctx.triggers_path);
+
+	if (t->dfd == -1)
+		t->dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
+	trig = trigger_load(t->dfd, RELATIVE_PATH(trigger_name), true, t->schema);
+	if (trig != NULL) {
+		if (t->cleanup == NULL)
+			t->cleanup = xcalloc(1, sizeof(*t->cleanup));
+
+		tll_push_back(*t->cleanup, trig);
+	}
+}
+
+trigger_t *
 triggers_load(bool cleanup_only)
 {
 	int dfd;
 	DIR *d;
 	struct dirent *e;
-	struct trigger *triggers, *t;
+	struct trigger *t;
+	trigger_t *triggers = xcalloc(1, sizeof(*triggers));
 	ucl_object_t *schema;
 	struct stat st;
-
-	triggers = NULL;
 
 	dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
 	if (dfd == -1) {
 		if (errno != ENOENT)
 			pkg_emit_error("Unable to open the trigger directory");
-		return (NULL);
+		return (triggers);
 	}
 	d = fdopendir(dfd);
 	if (d == NULL) {
 		pkg_emit_error("Unable to open the trigger directory");
 		close(dfd);
-		return (NULL);
+		return (triggers);
 	}
 
 	schema = trigger_open_schema();
@@ -300,13 +323,13 @@ triggers_load(bool cleanup_only)
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
-			return (NULL);
+			return (triggers);
 		}
 		if (!S_ISREG(st.st_mode))
 			continue;
 		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
 		if (t != NULL)
-			DL_APPEND(triggers, t);
+			tll_push_back(*triggers, t);
 	}
 
 	closedir(d);
@@ -350,10 +373,10 @@ get_random_name(char name[])
 }
 
 static void
-save_trigger(const char *script, bool sandbox, kh_strings_t *args)
+save_trigger(const char *script, bool sandbox, pkghash *args)
 {
 	int db = ctx.pkg_dbdirfd;
-	const char *dir;
+	pkghash_it it;
 
 	if (!mkdirat_p(db, "triggers"))
 		return;
@@ -386,19 +409,21 @@ save_trigger(const char *script, bool sandbox, kh_strings_t *args)
 	if (sandbox)
 		fputs("--sandbox\n", f);
 	fputs("--begin args\n", f);
-	kh_foreach_value(args, dir, {
-		fprintf(f, "-- %s\n", dir);
-	});
+	it = pkghash_iterator(args);
+	while (pkghash_next(&it)) {
+		fprintf(f, "-- %s\n", (char *)it.value);
+	}
 	fputs("--end args\n--\n", f);
 	fprintf(f, "%s\n", script);
 	fclose(f);
 }
 
 static int
-trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
+trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 {
 	lua_State *L;
 	int pstat;
+	pkghash_it it;
 
 	if (ctx.defer_triggers) {
 		save_trigger(script, sandbox, args);
@@ -416,28 +441,32 @@ trigger_execute_lua(const char *script, bool sandbox, kh_strings_t *args)
 			{ "filecmp", lua_pkg_filecmp },
 			{ "copy", lua_pkg_copy },
 			{ "stat", lua_stat },
+			{ "readdir", lua_readdir },
 			{ "exec", lua_exec },
+			{ "symlink", lua_pkg_symlink },
 			{ NULL, NULL },
 		};
 		luaL_newlib(L, pkg_lib);
 		lua_setglobal(L, "pkg");
 		lua_pushinteger(L, ctx.rootfd);
 		lua_setglobal(L, "rootfd");
-		char *dir;
 		char **arguments = NULL;
 		int i = 0;
 		if (args != NULL) {
-			arguments = xcalloc(kh_count(args), sizeof(char*));
-			kh_foreach_value(args, dir, {
-				arguments[i++] = dir;
-			});
+			arguments = xcalloc(pkghash_count(args), sizeof(char*));
+			it = pkghash_iterator(args);
+			while (pkghash_next(&it)) {
+				arguments[i++] = it.key;
+			}
 		}
 		lua_args_table(L, arguments, i);
 #ifdef HAVE_CAPSICUM
 		if (sandbox) {
+#ifndef PKG_COVERAGE
 			if (cap_enter() < 0 && errno != ENOSYS) {
 				err(1, "cap_enter failed");
 			}
+#endif
 		}
 #endif
 		if (luaL_dostring(L, script)) {
@@ -479,14 +508,15 @@ trigger_check_match(struct trigger *t, char *dir)
 		it = NULL;
 		while ((cur = ucl_iterate_object(t->path, &it, true))) {
 			if (strcmp(dir, ucl_object_tostring(cur)) == 0) {
-				kh_safe_add(strings, t->matched, dir, dir);
+				pkghash_safe_add(t->matched, dir, dir, NULL);
 				return;
 			}
 		}
 	}
 
-	if (match_ucl_lists(dir, t->path_glob, t->path_regex))
-		kh_safe_add(strings, t->matched, dir, dir);
+	if (match_ucl_lists(dir, t->path_glob, t->path_regex)) {
+		pkghash_safe_add(t->matched, dir, dir, NULL);
+	}
 }
 
 /*
@@ -495,62 +525,41 @@ trigger_check_match(struct trigger *t, char *dir)
  * Then execute all triggers
  */
 int
-triggers_execute(struct trigger *cleanup_triggers)
+triggers_execute(trigger_t *cleanup_triggers)
 {
-	struct trigger *triggers, *t, *trigger;
-	kh_strings_t *th = NULL;
-	char *dir;
+	trigger_t *triggers;
 	int ret = EPKG_OK;
 
 	triggers = triggers_load(false);
-
-	/*
-	 * Generate a hash table to ease the lookup later
-	 */
-	if (cleanup_triggers != NULL) {
-		LL_FOREACH(triggers, t) {
-			kh_add(strings, th, t->name, t->name, free);
-		}
-	}
-
-	/*
-	 * only keep from the cleanup the one that are not anymore in triggers
-	 */
-	LL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
-		if (kh_contains(strings, th, trigger->name)) {
-			DL_DELETE(cleanup_triggers, trigger);
-			trigger_free(trigger);
-		}
-	}
-	kh_destroy_strings(th);
-
 	pkg_emit_triggers_begin();
-	LL_FOREACH(cleanup_triggers, t) {
-		pkg_emit_trigger(t->name, true);
-		if (t->cleanup.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->cleanup.script,
-			    t->cleanup.sandbox, NULL);
+	if (cleanup_triggers != NULL) {
+		tll_foreach(*cleanup_triggers, it) {
+			pkg_emit_trigger(it->item->name, true);
+			if (it->item->cleanup.type == SCRIPT_LUA) {
+				ret = trigger_execute_lua(it->item->cleanup.script,
+				    it->item->cleanup.sandbox, NULL);
+			}
+			if (ret != EPKG_OK)
+				goto cleanup;
 		}
-		if (ret != EPKG_OK)
-			goto cleanup;
 	}
 
 	if (ctx.touched_dir_hash) {
-		kh_foreach_value(ctx.touched_dir_hash, dir, {
-				LL_FOREACH(triggers, t) {
-				trigger_check_match(t, dir);
-				}
-				/* We need to check if that matches a trigger */
-				});
+		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
+		while (pkghash_next(&it)) {
+			tll_foreach(*triggers, t)
+				trigger_check_match(t->item, it.key);
+			/* We need to check if that matches a trigger */
+		}
 	}
 
-	LL_FOREACH(triggers, t) {
-		if (t->matched == NULL)
+	tll_foreach(*triggers, it) {
+		if (it->item->matched == NULL)
 			continue;
-		pkg_emit_trigger(t->name, false);
-		if (t->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(t->script.script,
-			    t->script.sandbox, t->matched);
+		pkg_emit_trigger(it->item->name, false);
+		if (it->item->script.type == SCRIPT_LUA) {
+			ret = trigger_execute_lua(it->item->script.script,
+			    it->item->script.sandbox, it->item->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -558,16 +567,16 @@ triggers_execute(struct trigger *cleanup_triggers)
 	pkg_emit_triggers_finished();
 
 cleanup:
-	DL_FOREACH_SAFE(cleanup_triggers, trigger, t) {
-		DL_DELETE(cleanup_triggers, trigger);
-		trigger_free(trigger);
-	}
+	tll_free_and_free(*triggers, trigger_free);
+	free(triggers);
 
-	DL_FOREACH_SAFE(triggers, trigger, t) {
-		DL_DELETE(triggers, trigger);
-		trigger_free(trigger);
-	}
 	return (EPKG_OK);
+}
+
+void
+append_touched_dir(const char *path)
+{
+	pkghash_safe_add(ctx.touched_dir_hash, path, NULL, NULL);
 }
 
 void
@@ -581,14 +590,15 @@ append_touched_file(const char *path)
 		return;
 	*walk = '\0';
 
-	kh_add(strings, ctx.touched_dir_hash, newpath, newpath, free);
+	pkghash_safe_add(ctx.touched_dir_hash, newpath, NULL, NULL );
+	free(newpath);
 }
 
 void
 exec_deferred(int dfd, const char *name)
 {
 	bool sandbox = false;
-	kh_strings_t *args = NULL;
+	pkghash *args = NULL;
 	xstring *script = NULL;
 
 	int fd = openat(dfd, name, O_RDONLY);
@@ -627,8 +637,7 @@ exec_deferred(int dfd, const char *name)
 			walk++; /* skip the space */
 			if (line[linelen -1] == '\n')
 				line[linelen -1] = '\0';
-			char *s = strdup(walk);
-			kh_add(strings, args, s, s, free);
+			pkghash_safe_add(args, walk, NULL, NULL);
 		}
 		if (script != NULL)
 			fputs(line, script->fp);
@@ -636,7 +645,7 @@ exec_deferred(int dfd, const char *name)
 	free(line);
 	fclose(f);
 	if (script == NULL) {
-		kh_destroy_strings(args);
+		pkghash_destroy(args);
 		return;
 	}
 	char *s = xstring_get(script);
@@ -644,7 +653,7 @@ exec_deferred(int dfd, const char *name)
 		unlinkat(dfd, name, 0);
 	}
 	free(s);
-	kh_destroy_strings(args);
+	pkghash_destroy(args);
 }
 
 int
