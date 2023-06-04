@@ -164,8 +164,8 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) altsvc$(EXEEXT) \
 	pop3-tls$(EXEEXT) pop3-top$(EXEEXT) pop3-uidl$(EXEEXT) \
 	post-callback$(EXEEXT) postinmemory$(EXEEXT) postit2$(EXEEXT) \
 	postit2-formadd$(EXEEXT) progressfunc$(EXEEXT) \
-	resolve$(EXEEXT) sendrecv$(EXEEXT) sepheaders$(EXEEXT) \
-	sftpget$(EXEEXT) sftpuploadresume$(EXEEXT) \
+	protofeats$(EXEEXT) resolve$(EXEEXT) sendrecv$(EXEEXT) \
+	sepheaders$(EXEEXT) sftpget$(EXEEXT) sftpuploadresume$(EXEEXT) \
 	shared-connection-cache$(EXEEXT) simple$(EXEEXT) \
 	simplepost$(EXEEXT) simplessl$(EXEEXT) smtp-authzid$(EXEEXT) \
 	smtp-expn$(EXEEXT) smtp-mail$(EXEEXT) smtp-mime$(EXEEXT) \
@@ -719,6 +719,13 @@ progressfunc_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@progressfunc_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+protofeats_SOURCES = protofeats.c
+protofeats_OBJECTS = protofeats.$(OBJEXT)
+protofeats_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@protofeats_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@protofeats_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 resolve_SOURCES = resolve.c
 resolve_OBJECTS = resolve.$(OBJEXT)
 resolve_LDADD = $(LDADD)
@@ -912,9 +919,10 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/pop3-top.Po ./$(DEPDIR)/pop3-uidl.Po \
 	./$(DEPDIR)/post-callback.Po ./$(DEPDIR)/postinmemory.Po \
 	./$(DEPDIR)/postit2-formadd.Po ./$(DEPDIR)/postit2.Po \
-	./$(DEPDIR)/progressfunc.Po ./$(DEPDIR)/resolve.Po \
-	./$(DEPDIR)/sendrecv.Po ./$(DEPDIR)/sepheaders.Po \
-	./$(DEPDIR)/sftpget.Po ./$(DEPDIR)/sftpuploadresume.Po \
+	./$(DEPDIR)/progressfunc.Po ./$(DEPDIR)/protofeats.Po \
+	./$(DEPDIR)/resolve.Po ./$(DEPDIR)/sendrecv.Po \
+	./$(DEPDIR)/sepheaders.Po ./$(DEPDIR)/sftpget.Po \
+	./$(DEPDIR)/sftpuploadresume.Po \
 	./$(DEPDIR)/shared-connection-cache.Po ./$(DEPDIR)/simple.Po \
 	./$(DEPDIR)/simplepost.Po ./$(DEPDIR)/simplessl.Po \
 	./$(DEPDIR)/smtp-authzid.Po ./$(DEPDIR)/smtp-expn.Po \
@@ -959,9 +967,9 @@ SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c chkspeed.c \
 	pop3-dele.c pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c \
 	pop3-ssl.c pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c \
 	post-callback.c postinmemory.c postit2.c postit2-formadd.c \
-	progressfunc.c resolve.c sendrecv.c sepheaders.c sftpget.c \
-	sftpuploadresume.c shared-connection-cache.c simple.c \
-	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	progressfunc.c protofeats.c resolve.c sendrecv.c sepheaders.c \
+	sftpget.c sftpuploadresume.c shared-connection-cache.c \
+	simple.c simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
 	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
 	smtp-vrfy.c sslbackend.c url2file.c urlapi.c
 DIST_SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c \
@@ -981,9 +989,9 @@ DIST_SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c \
 	pop3-dele.c pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c \
 	pop3-ssl.c pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c \
 	post-callback.c postinmemory.c postit2.c postit2-formadd.c \
-	progressfunc.c resolve.c sendrecv.c sepheaders.c sftpget.c \
-	sftpuploadresume.c shared-connection-cache.c simple.c \
-	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	progressfunc.c protofeats.c resolve.c sendrecv.c sepheaders.c \
+	sftpget.c sftpuploadresume.c shared-connection-cache.c \
+	simple.c simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
 	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
 	smtp-vrfy.c sslbackend.c url2file.c urlapi.c
 am__can_run_installinfo = \
@@ -1622,6 +1630,10 @@ progressfunc$(EXEEXT): $(progressfunc_OBJECTS) $(progressfunc_DEPENDENCIES) $(EX
 	@rm -f progressfunc$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(progressfunc_OBJECTS) $(progressfunc_LDADD) $(LIBS)
 
+protofeats$(EXEEXT): $(protofeats_OBJECTS) $(protofeats_DEPENDENCIES) $(EXTRA_protofeats_DEPENDENCIES) 
+	@rm -f protofeats$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(protofeats_OBJECTS) $(protofeats_LDADD) $(LIBS)
+
 resolve$(EXEEXT): $(resolve_OBJECTS) $(resolve_DEPENDENCIES) $(EXTRA_resolve_DEPENDENCIES) 
 	@rm -f resolve$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(resolve_OBJECTS) $(resolve_LDADD) $(LIBS)
@@ -1781,6 +1793,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/postit2-formadd.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/postit2.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/progressfunc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protofeats.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/resolve.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sendrecv.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sepheaders.Po@am__quote@ # am--include-marker
@@ -2036,6 +2049,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/postit2-formadd.Po
 	-rm -f ./$(DEPDIR)/postit2.Po
 	-rm -f ./$(DEPDIR)/progressfunc.Po
+	-rm -f ./$(DEPDIR)/protofeats.Po
 	-rm -f ./$(DEPDIR)/resolve.Po
 	-rm -f ./$(DEPDIR)/sendrecv.Po
 	-rm -f ./$(DEPDIR)/sepheaders.Po
@@ -2174,6 +2188,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/postit2-formadd.Po
 	-rm -f ./$(DEPDIR)/postit2.Po
 	-rm -f ./$(DEPDIR)/progressfunc.Po
+	-rm -f ./$(DEPDIR)/protofeats.Po
 	-rm -f ./$(DEPDIR)/resolve.Po
 	-rm -f ./$(DEPDIR)/sendrecv.Po
 	-rm -f ./$(DEPDIR)/sepheaders.Po

@@ -163,7 +163,8 @@ am__EXEEXT_1 = unit1300$(EXEEXT) unit1302$(EXEEXT) unit1303$(EXEEXT) \
 	unit1620$(EXEEXT) unit1621$(EXEEXT) unit1650$(EXEEXT) \
 	unit1651$(EXEEXT) unit1652$(EXEEXT) unit1653$(EXEEXT) \
 	unit1654$(EXEEXT) unit1655$(EXEEXT) unit1660$(EXEEXT) \
-	unit1661$(EXEEXT) unit2600$(EXEEXT) unit3200$(EXEEXT)
+	unit1661$(EXEEXT) unit2600$(EXEEXT) unit2601$(EXEEXT) \
+	unit2602$(EXEEXT) unit2603$(EXEEXT) unit3200$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = ../libtest/first.$(OBJEXT)
@@ -376,6 +377,21 @@ unit2600_OBJECTS = $(am_unit2600_OBJECTS)
 unit2600_LDADD = $(LDADD)
 unit2600_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
 	$(top_builddir)/lib/libcurlu.la
+am_unit2601_OBJECTS = unit2601.$(OBJEXT) $(am__objects_1)
+unit2601_OBJECTS = $(am_unit2601_OBJECTS)
+unit2601_LDADD = $(LDADD)
+unit2601_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
+am_unit2602_OBJECTS = unit2602.$(OBJEXT) $(am__objects_1)
+unit2602_OBJECTS = $(am_unit2602_OBJECTS)
+unit2602_LDADD = $(LDADD)
+unit2602_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
+am_unit2603_OBJECTS = unit2603.$(OBJEXT) $(am__objects_1)
+unit2603_OBJECTS = $(am_unit2603_OBJECTS)
+unit2603_LDADD = $(LDADD)
+unit2603_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
 am_unit3200_OBJECTS = unit3200.$(OBJEXT) $(am__objects_1)
 unit3200_OBJECTS = $(am_unit3200_OBJECTS)
 unit3200_LDADD = $(LDADD)
@@ -417,7 +433,9 @@ am__depfiles_remade = ../libtest/$(DEPDIR)/first.Po \
 	./$(DEPDIR)/unit1652.Po ./$(DEPDIR)/unit1653.Po \
 	./$(DEPDIR)/unit1654.Po ./$(DEPDIR)/unit1655.Po \
 	./$(DEPDIR)/unit1660.Po ./$(DEPDIR)/unit1661.Po \
-	./$(DEPDIR)/unit2600.Po ./$(DEPDIR)/unit3200.Po
+	./$(DEPDIR)/unit2600.Po ./$(DEPDIR)/unit2601.Po \
+	./$(DEPDIR)/unit2602.Po ./$(DEPDIR)/unit2603.Po \
+	./$(DEPDIR)/unit3200.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -450,7 +468,8 @@ SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) $(unit1303_SOURCES) \
 	$(unit1620_SOURCES) $(unit1621_SOURCES) $(unit1650_SOURCES) \
 	$(unit1651_SOURCES) $(unit1652_SOURCES) $(unit1653_SOURCES) \
 	$(unit1654_SOURCES) $(unit1655_SOURCES) $(unit1660_SOURCES) \
-	$(unit1661_SOURCES) $(unit2600_SOURCES) $(unit3200_SOURCES)
+	$(unit1661_SOURCES) $(unit2600_SOURCES) $(unit2601_SOURCES) \
+	$(unit2602_SOURCES) $(unit2603_SOURCES) $(unit3200_SOURCES)
 DIST_SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) \
 	$(unit1303_SOURCES) $(unit1304_SOURCES) $(unit1305_SOURCES) \
 	$(unit1307_SOURCES) $(unit1308_SOURCES) $(unit1309_SOURCES) \
@@ -465,6 +484,7 @@ DIST_SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) \
 	$(unit1650_SOURCES) $(unit1651_SOURCES) $(unit1652_SOURCES) \
 	$(unit1653_SOURCES) $(unit1654_SOURCES) $(unit1655_SOURCES) \
 	$(unit1660_SOURCES) $(unit1661_SOURCES) $(unit2600_SOURCES) \
+	$(unit2601_SOURCES) $(unit2602_SOURCES) $(unit2603_SOURCES) \
 	$(unit3200_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -776,7 +796,7 @@ UNITPROGS = unit1300          unit1302 unit1303 unit1304 unit1305 unit1307 \
  unit1620 unit1621 \
  unit1650 unit1651 unit1652 unit1653 unit1654 unit1655 \
  unit1660 unit1661 \
- unit2600 \
+ unit2600 unit2601 unit2602 unit2603 \
  unit3200
 
 unit1300_SOURCES = unit1300.c $(UNITFILES)
@@ -824,6 +844,9 @@ unit1655_SOURCES = unit1655.c $(UNITFILES)
 unit1660_SOURCES = unit1660.c $(UNITFILES)
 unit1661_SOURCES = unit1661.c $(UNITFILES)
 unit2600_SOURCES = unit2600.c $(UNITFILES)
+unit2601_SOURCES = unit2601.c $(UNITFILES)
+unit2602_SOURCES = unit2602.c $(UNITFILES)
+unit2603_SOURCES = unit2603.c $(UNITFILES)
 unit3200_SOURCES = unit3200.c $(UNITFILES)
 all: all-am
 
@@ -1041,6 +1064,18 @@ unit2600$(EXEEXT): $(unit2600_OBJECTS) $(unit2600_DEPENDENCIES) $(EXTRA_unit2600
 	@rm -f unit2600$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit2600_OBJECTS) $(unit2600_LDADD) $(LIBS)
 
+unit2601$(EXEEXT): $(unit2601_OBJECTS) $(unit2601_DEPENDENCIES) $(EXTRA_unit2601_DEPENDENCIES) 
+	@rm -f unit2601$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit2601_OBJECTS) $(unit2601_LDADD) $(LIBS)
+
+unit2602$(EXEEXT): $(unit2602_OBJECTS) $(unit2602_DEPENDENCIES) $(EXTRA_unit2602_DEPENDENCIES) 
+	@rm -f unit2602$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit2602_OBJECTS) $(unit2602_LDADD) $(LIBS)
+
+unit2603$(EXEEXT): $(unit2603_OBJECTS) $(unit2603_DEPENDENCIES) $(EXTRA_unit2603_DEPENDENCIES) 
+	@rm -f unit2603$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit2603_OBJECTS) $(unit2603_LDADD) $(LIBS)
+
 unit3200$(EXEEXT): $(unit3200_OBJECTS) $(unit3200_DEPENDENCIES) $(EXTRA_unit3200_DEPENDENCIES) 
 	@rm -f unit3200$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit3200_OBJECTS) $(unit3200_LDADD) $(LIBS)
@@ -1094,6 +1129,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1660.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1661.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2600.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2601.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2602.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2603.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3200.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -1300,6 +1338,9 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit1660.Po
 	-rm -f ./$(DEPDIR)/unit1661.Po
 	-rm -f ./$(DEPDIR)/unit2600.Po
+	-rm -f ./$(DEPDIR)/unit2601.Po
+	-rm -f ./$(DEPDIR)/unit2602.Po
+	-rm -f ./$(DEPDIR)/unit2603.Po
 	-rm -f ./$(DEPDIR)/unit3200.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1388,6 +1429,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit1660.Po
 	-rm -f ./$(DEPDIR)/unit1661.Po
 	-rm -f ./$(DEPDIR)/unit2600.Po
+	-rm -f ./$(DEPDIR)/unit2601.Po
+	-rm -f ./$(DEPDIR)/unit2602.Po
+	-rm -f ./$(DEPDIR)/unit2603.Po
 	-rm -f ./$(DEPDIR)/unit3200.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

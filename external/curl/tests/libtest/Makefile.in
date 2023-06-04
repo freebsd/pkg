@@ -90,80 +90,79 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 noinst_PROGRAMS = chkhostname$(EXEEXT) libauthretry$(EXEEXT) \
-	libntlmconnect$(EXEEXT) chkdecimalpoint$(EXEEXT) \
-	libprereq$(EXEEXT) lib500$(EXEEXT) lib501$(EXEEXT) \
-	lib502$(EXEEXT) lib503$(EXEEXT) lib504$(EXEEXT) \
-	lib505$(EXEEXT) lib506$(EXEEXT) lib507$(EXEEXT) \
-	lib508$(EXEEXT) lib509$(EXEEXT) lib510$(EXEEXT) \
-	lib511$(EXEEXT) lib512$(EXEEXT) lib513$(EXEEXT) \
-	lib514$(EXEEXT) lib515$(EXEEXT) lib516$(EXEEXT) \
-	lib517$(EXEEXT) lib518$(EXEEXT) lib519$(EXEEXT) \
-	lib520$(EXEEXT) lib521$(EXEEXT) lib523$(EXEEXT) \
-	lib524$(EXEEXT) lib525$(EXEEXT) lib526$(EXEEXT) \
-	lib527$(EXEEXT) lib529$(EXEEXT) lib530$(EXEEXT) \
-	lib532$(EXEEXT) lib533$(EXEEXT) lib537$(EXEEXT) \
-	lib539$(EXEEXT) lib540$(EXEEXT) lib541$(EXEEXT) \
-	lib542$(EXEEXT) lib543$(EXEEXT) lib544$(EXEEXT) \
-	lib545$(EXEEXT) lib547$(EXEEXT) lib548$(EXEEXT) \
-	lib549$(EXEEXT) lib552$(EXEEXT) lib553$(EXEEXT) \
-	lib554$(EXEEXT) lib555$(EXEEXT) lib556$(EXEEXT) \
-	lib557$(EXEEXT) lib558$(EXEEXT) lib559$(EXEEXT) \
-	lib560$(EXEEXT) lib562$(EXEEXT) lib564$(EXEEXT) \
-	lib565$(EXEEXT) lib566$(EXEEXT) lib567$(EXEEXT) \
-	lib568$(EXEEXT) lib569$(EXEEXT) lib570$(EXEEXT) \
-	lib571$(EXEEXT) lib572$(EXEEXT) lib573$(EXEEXT) \
-	lib574$(EXEEXT) lib575$(EXEEXT) lib576$(EXEEXT) \
-	lib578$(EXEEXT) lib579$(EXEEXT) lib582$(EXEEXT) \
-	lib583$(EXEEXT) lib584$(EXEEXT) lib585$(EXEEXT) \
-	lib586$(EXEEXT) lib587$(EXEEXT) lib589$(EXEEXT) \
-	lib590$(EXEEXT) lib591$(EXEEXT) lib597$(EXEEXT) \
-	lib598$(EXEEXT) lib599$(EXEEXT) lib643$(EXEEXT) \
-	lib645$(EXEEXT) lib650$(EXEEXT) lib651$(EXEEXT) \
-	lib652$(EXEEXT) lib653$(EXEEXT) lib654$(EXEEXT) \
-	lib655$(EXEEXT) lib658$(EXEEXT) lib659$(EXEEXT) \
-	lib661$(EXEEXT) lib666$(EXEEXT) lib667$(EXEEXT) \
-	lib668$(EXEEXT) lib670$(EXEEXT) lib671$(EXEEXT) \
-	lib672$(EXEEXT) lib673$(EXEEXT) lib674$(EXEEXT) \
-	lib676$(EXEEXT) lib677$(EXEEXT) lib678$(EXEEXT) \
-	lib1156$(EXEEXT) lib1301$(EXEEXT) lib1500$(EXEEXT) \
-	lib1501$(EXEEXT) lib1502$(EXEEXT) lib1503$(EXEEXT) \
-	lib1504$(EXEEXT) lib1505$(EXEEXT) lib1506$(EXEEXT) \
-	lib1507$(EXEEXT) lib1508$(EXEEXT) lib1509$(EXEEXT) \
-	lib1510$(EXEEXT) lib1511$(EXEEXT) lib1512$(EXEEXT) \
-	lib1513$(EXEEXT) lib1514$(EXEEXT) lib1515$(EXEEXT) \
-	lib1517$(EXEEXT) lib1518$(EXEEXT) lib1520$(EXEEXT) \
-	lib1521$(EXEEXT) lib1522$(EXEEXT) lib1523$(EXEEXT) \
-	lib1525$(EXEEXT) lib1526$(EXEEXT) lib1527$(EXEEXT) \
-	lib1528$(EXEEXT) lib1529$(EXEEXT) lib1530$(EXEEXT) \
-	lib1531$(EXEEXT) lib1532$(EXEEXT) lib1533$(EXEEXT) \
-	lib1534$(EXEEXT) lib1535$(EXEEXT) lib1536$(EXEEXT) \
-	lib1537$(EXEEXT) lib1538$(EXEEXT) lib1539$(EXEEXT) \
-	lib1540$(EXEEXT) lib1542$(EXEEXT) lib1543$(EXEEXT) \
-	lib1550$(EXEEXT) lib1551$(EXEEXT) lib1552$(EXEEXT) \
-	lib1553$(EXEEXT) lib1554$(EXEEXT) lib1555$(EXEEXT) \
-	lib1556$(EXEEXT) lib1557$(EXEEXT) lib1558$(EXEEXT) \
-	lib1559$(EXEEXT) lib1560$(EXEEXT) lib1564$(EXEEXT) \
-	lib1565$(EXEEXT) lib1567$(EXEEXT) lib1568$(EXEEXT) \
-	lib1569$(EXEEXT) lib1591$(EXEEXT) lib1592$(EXEEXT) \
-	lib1593$(EXEEXT) lib1594$(EXEEXT) lib1596$(EXEEXT) \
-	lib1597$(EXEEXT) lib1662$(EXEEXT) lib1903$(EXEEXT) \
-	lib1905$(EXEEXT) lib1906$(EXEEXT) lib1907$(EXEEXT) \
-	lib1908$(EXEEXT) lib1910$(EXEEXT) lib1911$(EXEEXT) \
-	lib1912$(EXEEXT) lib1913$(EXEEXT) lib1915$(EXEEXT) \
-	lib1916$(EXEEXT) lib1917$(EXEEXT) lib1918$(EXEEXT) \
-	lib1919$(EXEEXT) lib1933$(EXEEXT) lib1934$(EXEEXT) \
-	lib1935$(EXEEXT) lib1936$(EXEEXT) lib1937$(EXEEXT) \
-	lib1938$(EXEEXT) lib1939$(EXEEXT) lib1940$(EXEEXT) \
-	lib1945$(EXEEXT) lib1946$(EXEEXT) lib1947$(EXEEXT) \
-	lib1948$(EXEEXT) lib1955$(EXEEXT) lib1956$(EXEEXT) \
-	lib1957$(EXEEXT) lib1958$(EXEEXT) lib1959$(EXEEXT) \
-	lib1960$(EXEEXT) lib1970$(EXEEXT) lib1971$(EXEEXT) \
-	lib1972$(EXEEXT) lib1973$(EXEEXT) lib1974$(EXEEXT) \
-	lib1975$(EXEEXT) lib2301$(EXEEXT) lib2302$(EXEEXT) \
-	lib2304$(EXEEXT) lib2305$(EXEEXT) lib2402$(EXEEXT) \
-	lib2502$(EXEEXT) lib3010$(EXEEXT) lib3025$(EXEEXT) \
-	lib3026$(EXEEXT) lib3027$(EXEEXT) lib3100$(EXEEXT) \
-	lib3101$(EXEEXT)
+	libntlmconnect$(EXEEXT) libprereq$(EXEEXT) lib500$(EXEEXT) \
+	lib501$(EXEEXT) lib502$(EXEEXT) lib503$(EXEEXT) \
+	lib504$(EXEEXT) lib505$(EXEEXT) lib506$(EXEEXT) \
+	lib507$(EXEEXT) lib508$(EXEEXT) lib509$(EXEEXT) \
+	lib510$(EXEEXT) lib511$(EXEEXT) lib512$(EXEEXT) \
+	lib513$(EXEEXT) lib514$(EXEEXT) lib515$(EXEEXT) \
+	lib516$(EXEEXT) lib517$(EXEEXT) lib518$(EXEEXT) \
+	lib519$(EXEEXT) lib520$(EXEEXT) lib521$(EXEEXT) \
+	lib523$(EXEEXT) lib524$(EXEEXT) lib525$(EXEEXT) \
+	lib526$(EXEEXT) lib527$(EXEEXT) lib529$(EXEEXT) \
+	lib530$(EXEEXT) lib532$(EXEEXT) lib533$(EXEEXT) \
+	lib537$(EXEEXT) lib539$(EXEEXT) lib540$(EXEEXT) \
+	lib541$(EXEEXT) lib542$(EXEEXT) lib543$(EXEEXT) \
+	lib544$(EXEEXT) lib545$(EXEEXT) lib547$(EXEEXT) \
+	lib548$(EXEEXT) lib549$(EXEEXT) lib552$(EXEEXT) \
+	lib553$(EXEEXT) lib554$(EXEEXT) lib555$(EXEEXT) \
+	lib556$(EXEEXT) lib557$(EXEEXT) lib558$(EXEEXT) \
+	lib559$(EXEEXT) lib560$(EXEEXT) lib562$(EXEEXT) \
+	lib564$(EXEEXT) lib565$(EXEEXT) lib566$(EXEEXT) \
+	lib567$(EXEEXT) lib568$(EXEEXT) lib569$(EXEEXT) \
+	lib570$(EXEEXT) lib571$(EXEEXT) lib572$(EXEEXT) \
+	lib573$(EXEEXT) lib574$(EXEEXT) lib575$(EXEEXT) \
+	lib576$(EXEEXT) lib578$(EXEEXT) lib579$(EXEEXT) \
+	lib582$(EXEEXT) lib583$(EXEEXT) lib584$(EXEEXT) \
+	lib585$(EXEEXT) lib586$(EXEEXT) lib587$(EXEEXT) \
+	lib589$(EXEEXT) lib590$(EXEEXT) lib591$(EXEEXT) \
+	lib597$(EXEEXT) lib598$(EXEEXT) lib599$(EXEEXT) \
+	lib643$(EXEEXT) lib645$(EXEEXT) lib650$(EXEEXT) \
+	lib651$(EXEEXT) lib652$(EXEEXT) lib653$(EXEEXT) \
+	lib654$(EXEEXT) lib655$(EXEEXT) lib658$(EXEEXT) \
+	lib659$(EXEEXT) lib661$(EXEEXT) lib666$(EXEEXT) \
+	lib667$(EXEEXT) lib668$(EXEEXT) lib670$(EXEEXT) \
+	lib671$(EXEEXT) lib672$(EXEEXT) lib673$(EXEEXT) \
+	lib674$(EXEEXT) lib676$(EXEEXT) lib677$(EXEEXT) \
+	lib678$(EXEEXT) lib1156$(EXEEXT) lib1301$(EXEEXT) \
+	lib1500$(EXEEXT) lib1501$(EXEEXT) lib1502$(EXEEXT) \
+	lib1503$(EXEEXT) lib1504$(EXEEXT) lib1505$(EXEEXT) \
+	lib1506$(EXEEXT) lib1507$(EXEEXT) lib1508$(EXEEXT) \
+	lib1509$(EXEEXT) lib1510$(EXEEXT) lib1511$(EXEEXT) \
+	lib1512$(EXEEXT) lib1513$(EXEEXT) lib1514$(EXEEXT) \
+	lib1515$(EXEEXT) lib1517$(EXEEXT) lib1518$(EXEEXT) \
+	lib1520$(EXEEXT) lib1521$(EXEEXT) lib1522$(EXEEXT) \
+	lib1523$(EXEEXT) lib1525$(EXEEXT) lib1526$(EXEEXT) \
+	lib1527$(EXEEXT) lib1528$(EXEEXT) lib1529$(EXEEXT) \
+	lib1530$(EXEEXT) lib1531$(EXEEXT) lib1532$(EXEEXT) \
+	lib1533$(EXEEXT) lib1534$(EXEEXT) lib1535$(EXEEXT) \
+	lib1536$(EXEEXT) lib1537$(EXEEXT) lib1538$(EXEEXT) \
+	lib1539$(EXEEXT) lib1540$(EXEEXT) lib1542$(EXEEXT) \
+	lib1543$(EXEEXT) lib1550$(EXEEXT) lib1551$(EXEEXT) \
+	lib1552$(EXEEXT) lib1553$(EXEEXT) lib1554$(EXEEXT) \
+	lib1555$(EXEEXT) lib1556$(EXEEXT) lib1557$(EXEEXT) \
+	lib1558$(EXEEXT) lib1559$(EXEEXT) lib1560$(EXEEXT) \
+	lib1564$(EXEEXT) lib1565$(EXEEXT) lib1567$(EXEEXT) \
+	lib1568$(EXEEXT) lib1569$(EXEEXT) lib1591$(EXEEXT) \
+	lib1592$(EXEEXT) lib1593$(EXEEXT) lib1594$(EXEEXT) \
+	lib1596$(EXEEXT) lib1597$(EXEEXT) lib1662$(EXEEXT) \
+	lib1903$(EXEEXT) lib1905$(EXEEXT) lib1906$(EXEEXT) \
+	lib1907$(EXEEXT) lib1908$(EXEEXT) lib1910$(EXEEXT) \
+	lib1911$(EXEEXT) lib1912$(EXEEXT) lib1913$(EXEEXT) \
+	lib1915$(EXEEXT) lib1916$(EXEEXT) lib1917$(EXEEXT) \
+	lib1918$(EXEEXT) lib1919$(EXEEXT) lib1933$(EXEEXT) \
+	lib1934$(EXEEXT) lib1935$(EXEEXT) lib1936$(EXEEXT) \
+	lib1937$(EXEEXT) lib1938$(EXEEXT) lib1939$(EXEEXT) \
+	lib1940$(EXEEXT) lib1945$(EXEEXT) lib1946$(EXEEXT) \
+	lib1947$(EXEEXT) lib1948$(EXEEXT) lib1955$(EXEEXT) \
+	lib1956$(EXEEXT) lib1957$(EXEEXT) lib1958$(EXEEXT) \
+	lib1959$(EXEEXT) lib1960$(EXEEXT) lib1970$(EXEEXT) \
+	lib1971$(EXEEXT) lib1972$(EXEEXT) lib1973$(EXEEXT) \
+	lib1974$(EXEEXT) lib1975$(EXEEXT) lib2301$(EXEEXT) \
+	lib2302$(EXEEXT) lib2304$(EXEEXT) lib2305$(EXEEXT) \
+	lib2306$(EXEEXT) lib2402$(EXEEXT) lib2502$(EXEEXT) \
+	lib3010$(EXEEXT) lib3025$(EXEEXT) lib3026$(EXEEXT) \
+	lib3027$(EXEEXT) lib3100$(EXEEXT) lib3101$(EXEEXT)
 @USE_CPPFLAG_CURL_STATICLIB_TRUE@am__append_1 = -DCURL_STATICLIB
 @CURL_LT_SHLIB_USE_NO_UNDEFINED_TRUE@am__append_2 = -no-undefined
 @CURL_LT_SHLIB_USE_NO_UNDEFINED_TRUE@am__append_3 = -no-undefined
@@ -232,13 +231,6 @@ libstubgss_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 @BUILD_LIBHOSTNAME_FALSE@@BUILD_STUB_GSS_TRUE@am_libstubgss_la_rpath =
 @BUILD_LIBHOSTNAME_TRUE@@BUILD_STUB_GSS_TRUE@am_libstubgss_la_rpath =
 am__dirstamp = $(am__leading_dot)dirstamp
-am_chkdecimalpoint_OBJECTS =  \
-	chkdecimalpoint-chkdecimalpoint.$(OBJEXT) \
-	../../lib/chkdecimalpoint-mprintf.$(OBJEXT) \
-	../../lib/chkdecimalpoint-dynbuf.$(OBJEXT) \
-	../../lib/chkdecimalpoint-strdup.$(OBJEXT)
-chkdecimalpoint_OBJECTS = $(am_chkdecimalpoint_OBJECTS)
-chkdecimalpoint_DEPENDENCIES =
 am_chkhostname_OBJECTS = chkhostname.$(OBJEXT) \
 	../../lib/curl_gethostname.$(OBJEXT)
 chkhostname_OBJECTS = $(am_chkhostname_OBJECTS)
@@ -704,6 +696,9 @@ am_lib2305_OBJECTS = lib2305.$(OBJEXT) $(am__objects_1) \
 	$(am__objects_2) $(am__objects_17) $(am__objects_28)
 lib2305_OBJECTS = $(am_lib2305_OBJECTS)
 lib2305_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_lib2306_OBJECTS = lib2306.$(OBJEXT) $(am__objects_1)
+lib2306_OBJECTS = $(am_lib2306_OBJECTS)
+lib2306_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_lib2402_OBJECTS = lib2402.$(OBJEXT) $(am__objects_1) \
 	$(am__objects_2) $(am__objects_3)
 lib2402_OBJECTS = $(am_lib2402_OBJECTS)
@@ -1225,10 +1220,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po \
-	../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Po \
-	../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Po \
-	../../lib/$(DEPDIR)/curl_gethostname.Po \
+am__depfiles_remade = ../../lib/$(DEPDIR)/curl_gethostname.Po \
 	../../lib/$(DEPDIR)/curl_multibyte.Po \
 	../../lib/$(DEPDIR)/lib1502-timediff.Po \
 	../../lib/$(DEPDIR)/lib1502-warnless.Po \
@@ -1271,71 +1263,70 @@ am__depfiles_remade = ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po \
 	../../lib/$(DEPDIR)/lib672-timediff.Po \
 	../../lib/$(DEPDIR)/lib672-warnless.Po \
 	../../lib/$(DEPDIR)/timediff.Po \
-	../../lib/$(DEPDIR)/warnless.Po \
-	./$(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Po \
-	./$(DEPDIR)/chkhostname.Po ./$(DEPDIR)/first.Po \
-	./$(DEPDIR)/lib1156.Po ./$(DEPDIR)/lib1301.Po \
-	./$(DEPDIR)/lib1500.Po ./$(DEPDIR)/lib1501.Po \
-	./$(DEPDIR)/lib1502-first.Po ./$(DEPDIR)/lib1502-lib1502.Po \
-	./$(DEPDIR)/lib1502-testutil.Po ./$(DEPDIR)/lib1503-first.Po \
-	./$(DEPDIR)/lib1503-lib1502.Po ./$(DEPDIR)/lib1503-testutil.Po \
-	./$(DEPDIR)/lib1504-first.Po ./$(DEPDIR)/lib1504-lib1502.Po \
-	./$(DEPDIR)/lib1504-testutil.Po ./$(DEPDIR)/lib1505-first.Po \
-	./$(DEPDIR)/lib1505-lib1502.Po ./$(DEPDIR)/lib1505-testutil.Po \
-	./$(DEPDIR)/lib1506.Po ./$(DEPDIR)/lib1507.Po \
-	./$(DEPDIR)/lib1508.Po ./$(DEPDIR)/lib1509.Po \
-	./$(DEPDIR)/lib1510.Po ./$(DEPDIR)/lib1511.Po \
-	./$(DEPDIR)/lib1512.Po ./$(DEPDIR)/lib1513.Po \
-	./$(DEPDIR)/lib1514.Po ./$(DEPDIR)/lib1515.Po \
-	./$(DEPDIR)/lib1517.Po ./$(DEPDIR)/lib1518.Po \
-	./$(DEPDIR)/lib1520.Po ./$(DEPDIR)/lib1521-first.Po \
-	./$(DEPDIR)/lib1521-lib1521.Po ./$(DEPDIR)/lib1522.Po \
-	./$(DEPDIR)/lib1523.Po ./$(DEPDIR)/lib1525.Po \
-	./$(DEPDIR)/lib1526.Po ./$(DEPDIR)/lib1527.Po \
-	./$(DEPDIR)/lib1528.Po ./$(DEPDIR)/lib1529.Po \
-	./$(DEPDIR)/lib1530.Po ./$(DEPDIR)/lib1531.Po \
-	./$(DEPDIR)/lib1532.Po ./$(DEPDIR)/lib1533.Po \
-	./$(DEPDIR)/lib1534.Po ./$(DEPDIR)/lib1535.Po \
-	./$(DEPDIR)/lib1536.Po ./$(DEPDIR)/lib1537.Po \
-	./$(DEPDIR)/lib1538.Po ./$(DEPDIR)/lib1539-first.Po \
-	./$(DEPDIR)/lib1539-lib1514.Po ./$(DEPDIR)/lib1539-testutil.Po \
-	./$(DEPDIR)/lib1540.Po ./$(DEPDIR)/lib1542.Po \
-	./$(DEPDIR)/lib1543-first.Po ./$(DEPDIR)/lib1543-lib1518.Po \
-	./$(DEPDIR)/lib1550.Po ./$(DEPDIR)/lib1551.Po \
-	./$(DEPDIR)/lib1552.Po ./$(DEPDIR)/lib1553.Po \
-	./$(DEPDIR)/lib1554.Po ./$(DEPDIR)/lib1555.Po \
-	./$(DEPDIR)/lib1556.Po ./$(DEPDIR)/lib1557.Po \
-	./$(DEPDIR)/lib1558.Po ./$(DEPDIR)/lib1559.Po \
-	./$(DEPDIR)/lib1560.Po ./$(DEPDIR)/lib1564.Po \
-	./$(DEPDIR)/lib1565.Po ./$(DEPDIR)/lib1567.Po \
-	./$(DEPDIR)/lib1568.Po ./$(DEPDIR)/lib1569.Po \
-	./$(DEPDIR)/lib1591.Po ./$(DEPDIR)/lib1592.Po \
-	./$(DEPDIR)/lib1593.Po ./$(DEPDIR)/lib1594.Po \
-	./$(DEPDIR)/lib1596-first.Po ./$(DEPDIR)/lib1596-lib1594.Po \
-	./$(DEPDIR)/lib1596-testutil.Po ./$(DEPDIR)/lib1597.Po \
-	./$(DEPDIR)/lib1662.Po ./$(DEPDIR)/lib1903.Po \
-	./$(DEPDIR)/lib1905.Po ./$(DEPDIR)/lib1906.Po \
-	./$(DEPDIR)/lib1907.Po ./$(DEPDIR)/lib1908.Po \
-	./$(DEPDIR)/lib1910.Po ./$(DEPDIR)/lib1911.Po \
-	./$(DEPDIR)/lib1912.Po ./$(DEPDIR)/lib1913.Po \
-	./$(DEPDIR)/lib1915.Po ./$(DEPDIR)/lib1916.Po \
-	./$(DEPDIR)/lib1917-first.Po ./$(DEPDIR)/lib1917-lib1916.Po \
-	./$(DEPDIR)/lib1918.Po ./$(DEPDIR)/lib1919.Po \
-	./$(DEPDIR)/lib1933.Po ./$(DEPDIR)/lib1934.Po \
-	./$(DEPDIR)/lib1935.Po ./$(DEPDIR)/lib1936.Po \
-	./$(DEPDIR)/lib1937.Po ./$(DEPDIR)/lib1938.Po \
-	./$(DEPDIR)/lib1939.Po ./$(DEPDIR)/lib1940.Po \
-	./$(DEPDIR)/lib1945.Po ./$(DEPDIR)/lib1946-first.Po \
-	./$(DEPDIR)/lib1946-lib1940.Po ./$(DEPDIR)/lib1947.Po \
-	./$(DEPDIR)/lib1948.Po ./$(DEPDIR)/lib1955.Po \
-	./$(DEPDIR)/lib1956.Po ./$(DEPDIR)/lib1957.Po \
-	./$(DEPDIR)/lib1958.Po ./$(DEPDIR)/lib1959.Po \
-	./$(DEPDIR)/lib1960.Po ./$(DEPDIR)/lib1970.Po \
-	./$(DEPDIR)/lib1971.Po ./$(DEPDIR)/lib1972.Po \
-	./$(DEPDIR)/lib1973.Po ./$(DEPDIR)/lib1974.Po \
-	./$(DEPDIR)/lib1975.Po ./$(DEPDIR)/lib2301.Po \
-	./$(DEPDIR)/lib2302.Po ./$(DEPDIR)/lib2304.Po \
-	./$(DEPDIR)/lib2305.Po ./$(DEPDIR)/lib2402.Po \
+	../../lib/$(DEPDIR)/warnless.Po ./$(DEPDIR)/chkhostname.Po \
+	./$(DEPDIR)/first.Po ./$(DEPDIR)/lib1156.Po \
+	./$(DEPDIR)/lib1301.Po ./$(DEPDIR)/lib1500.Po \
+	./$(DEPDIR)/lib1501.Po ./$(DEPDIR)/lib1502-first.Po \
+	./$(DEPDIR)/lib1502-lib1502.Po ./$(DEPDIR)/lib1502-testutil.Po \
+	./$(DEPDIR)/lib1503-first.Po ./$(DEPDIR)/lib1503-lib1502.Po \
+	./$(DEPDIR)/lib1503-testutil.Po ./$(DEPDIR)/lib1504-first.Po \
+	./$(DEPDIR)/lib1504-lib1502.Po ./$(DEPDIR)/lib1504-testutil.Po \
+	./$(DEPDIR)/lib1505-first.Po ./$(DEPDIR)/lib1505-lib1502.Po \
+	./$(DEPDIR)/lib1505-testutil.Po ./$(DEPDIR)/lib1506.Po \
+	./$(DEPDIR)/lib1507.Po ./$(DEPDIR)/lib1508.Po \
+	./$(DEPDIR)/lib1509.Po ./$(DEPDIR)/lib1510.Po \
+	./$(DEPDIR)/lib1511.Po ./$(DEPDIR)/lib1512.Po \
+	./$(DEPDIR)/lib1513.Po ./$(DEPDIR)/lib1514.Po \
+	./$(DEPDIR)/lib1515.Po ./$(DEPDIR)/lib1517.Po \
+	./$(DEPDIR)/lib1518.Po ./$(DEPDIR)/lib1520.Po \
+	./$(DEPDIR)/lib1521-first.Po ./$(DEPDIR)/lib1521-lib1521.Po \
+	./$(DEPDIR)/lib1522.Po ./$(DEPDIR)/lib1523.Po \
+	./$(DEPDIR)/lib1525.Po ./$(DEPDIR)/lib1526.Po \
+	./$(DEPDIR)/lib1527.Po ./$(DEPDIR)/lib1528.Po \
+	./$(DEPDIR)/lib1529.Po ./$(DEPDIR)/lib1530.Po \
+	./$(DEPDIR)/lib1531.Po ./$(DEPDIR)/lib1532.Po \
+	./$(DEPDIR)/lib1533.Po ./$(DEPDIR)/lib1534.Po \
+	./$(DEPDIR)/lib1535.Po ./$(DEPDIR)/lib1536.Po \
+	./$(DEPDIR)/lib1537.Po ./$(DEPDIR)/lib1538.Po \
+	./$(DEPDIR)/lib1539-first.Po ./$(DEPDIR)/lib1539-lib1514.Po \
+	./$(DEPDIR)/lib1539-testutil.Po ./$(DEPDIR)/lib1540.Po \
+	./$(DEPDIR)/lib1542.Po ./$(DEPDIR)/lib1543-first.Po \
+	./$(DEPDIR)/lib1543-lib1518.Po ./$(DEPDIR)/lib1550.Po \
+	./$(DEPDIR)/lib1551.Po ./$(DEPDIR)/lib1552.Po \
+	./$(DEPDIR)/lib1553.Po ./$(DEPDIR)/lib1554.Po \
+	./$(DEPDIR)/lib1555.Po ./$(DEPDIR)/lib1556.Po \
+	./$(DEPDIR)/lib1557.Po ./$(DEPDIR)/lib1558.Po \
+	./$(DEPDIR)/lib1559.Po ./$(DEPDIR)/lib1560.Po \
+	./$(DEPDIR)/lib1564.Po ./$(DEPDIR)/lib1565.Po \
+	./$(DEPDIR)/lib1567.Po ./$(DEPDIR)/lib1568.Po \
+	./$(DEPDIR)/lib1569.Po ./$(DEPDIR)/lib1591.Po \
+	./$(DEPDIR)/lib1592.Po ./$(DEPDIR)/lib1593.Po \
+	./$(DEPDIR)/lib1594.Po ./$(DEPDIR)/lib1596-first.Po \
+	./$(DEPDIR)/lib1596-lib1594.Po ./$(DEPDIR)/lib1596-testutil.Po \
+	./$(DEPDIR)/lib1597.Po ./$(DEPDIR)/lib1662.Po \
+	./$(DEPDIR)/lib1903.Po ./$(DEPDIR)/lib1905.Po \
+	./$(DEPDIR)/lib1906.Po ./$(DEPDIR)/lib1907.Po \
+	./$(DEPDIR)/lib1908.Po ./$(DEPDIR)/lib1910.Po \
+	./$(DEPDIR)/lib1911.Po ./$(DEPDIR)/lib1912.Po \
+	./$(DEPDIR)/lib1913.Po ./$(DEPDIR)/lib1915.Po \
+	./$(DEPDIR)/lib1916.Po ./$(DEPDIR)/lib1917-first.Po \
+	./$(DEPDIR)/lib1917-lib1916.Po ./$(DEPDIR)/lib1918.Po \
+	./$(DEPDIR)/lib1919.Po ./$(DEPDIR)/lib1933.Po \
+	./$(DEPDIR)/lib1934.Po ./$(DEPDIR)/lib1935.Po \
+	./$(DEPDIR)/lib1936.Po ./$(DEPDIR)/lib1937.Po \
+	./$(DEPDIR)/lib1938.Po ./$(DEPDIR)/lib1939.Po \
+	./$(DEPDIR)/lib1940.Po ./$(DEPDIR)/lib1945.Po \
+	./$(DEPDIR)/lib1946-first.Po ./$(DEPDIR)/lib1946-lib1940.Po \
+	./$(DEPDIR)/lib1947.Po ./$(DEPDIR)/lib1948.Po \
+	./$(DEPDIR)/lib1955.Po ./$(DEPDIR)/lib1956.Po \
+	./$(DEPDIR)/lib1957.Po ./$(DEPDIR)/lib1958.Po \
+	./$(DEPDIR)/lib1959.Po ./$(DEPDIR)/lib1960.Po \
+	./$(DEPDIR)/lib1970.Po ./$(DEPDIR)/lib1971.Po \
+	./$(DEPDIR)/lib1972.Po ./$(DEPDIR)/lib1973.Po \
+	./$(DEPDIR)/lib1974.Po ./$(DEPDIR)/lib1975.Po \
+	./$(DEPDIR)/lib2301.Po ./$(DEPDIR)/lib2302.Po \
+	./$(DEPDIR)/lib2304.Po ./$(DEPDIR)/lib2305.Po \
+	./$(DEPDIR)/lib2306.Po ./$(DEPDIR)/lib2402.Po \
 	./$(DEPDIR)/lib2502.Po ./$(DEPDIR)/lib3010.Po \
 	./$(DEPDIR)/lib3025.Po ./$(DEPDIR)/lib3026.Po \
 	./$(DEPDIR)/lib3027.Po ./$(DEPDIR)/lib3100.Po \
@@ -1426,83 +1417,6 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(libhostname_la_SOURCES) $(libstubgss_la_SOURCES) \
-	$(chkdecimalpoint_SOURCES) $(chkhostname_SOURCES) \
-	$(lib1156_SOURCES) $(lib1301_SOURCES) $(lib1500_SOURCES) \
-	$(lib1501_SOURCES) $(lib1502_SOURCES) $(lib1503_SOURCES) \
-	$(lib1504_SOURCES) $(lib1505_SOURCES) $(lib1506_SOURCES) \
-	$(lib1507_SOURCES) $(lib1508_SOURCES) $(lib1509_SOURCES) \
-	$(lib1510_SOURCES) $(lib1511_SOURCES) $(lib1512_SOURCES) \
-	$(lib1513_SOURCES) $(lib1514_SOURCES) $(lib1515_SOURCES) \
-	$(lib1517_SOURCES) $(lib1518_SOURCES) $(lib1520_SOURCES) \
-	$(nodist_lib1521_SOURCES) $(lib1522_SOURCES) \
-	$(lib1523_SOURCES) $(lib1525_SOURCES) $(lib1526_SOURCES) \
-	$(lib1527_SOURCES) $(lib1528_SOURCES) $(lib1529_SOURCES) \
-	$(lib1530_SOURCES) $(lib1531_SOURCES) $(lib1532_SOURCES) \
-	$(lib1533_SOURCES) $(lib1534_SOURCES) $(lib1535_SOURCES) \
-	$(lib1536_SOURCES) $(lib1537_SOURCES) $(lib1538_SOURCES) \
-	$(lib1539_SOURCES) $(lib1540_SOURCES) $(lib1542_SOURCES) \
-	$(lib1543_SOURCES) $(lib1550_SOURCES) $(lib1551_SOURCES) \
-	$(lib1552_SOURCES) $(lib1553_SOURCES) $(lib1554_SOURCES) \
-	$(lib1555_SOURCES) $(lib1556_SOURCES) $(lib1557_SOURCES) \
-	$(lib1558_SOURCES) $(lib1559_SOURCES) $(lib1560_SOURCES) \
-	$(lib1564_SOURCES) $(lib1565_SOURCES) $(lib1567_SOURCES) \
-	$(lib1568_SOURCES) $(lib1569_SOURCES) $(lib1591_SOURCES) \
-	$(lib1592_SOURCES) $(lib1593_SOURCES) $(lib1594_SOURCES) \
-	$(lib1596_SOURCES) $(lib1597_SOURCES) $(lib1662_SOURCES) \
-	$(lib1903_SOURCES) $(lib1905_SOURCES) $(lib1906_SOURCES) \
-	$(lib1907_SOURCES) $(lib1908_SOURCES) $(lib1910_SOURCES) \
-	$(lib1911_SOURCES) $(lib1912_SOURCES) $(lib1913_SOURCES) \
-	$(lib1915_SOURCES) $(lib1916_SOURCES) $(lib1917_SOURCES) \
-	$(lib1918_SOURCES) $(lib1919_SOURCES) $(lib1933_SOURCES) \
-	$(lib1934_SOURCES) $(lib1935_SOURCES) $(lib1936_SOURCES) \
-	$(lib1937_SOURCES) $(lib1938_SOURCES) $(lib1939_SOURCES) \
-	$(lib1940_SOURCES) $(lib1945_SOURCES) $(lib1946_SOURCES) \
-	$(lib1947_SOURCES) $(lib1948_SOURCES) $(lib1955_SOURCES) \
-	$(lib1956_SOURCES) $(lib1957_SOURCES) $(lib1958_SOURCES) \
-	$(lib1959_SOURCES) $(lib1960_SOURCES) $(lib1970_SOURCES) \
-	$(lib1971_SOURCES) $(lib1972_SOURCES) $(lib1973_SOURCES) \
-	$(lib1974_SOURCES) $(lib1975_SOURCES) $(lib2301_SOURCES) \
-	$(lib2302_SOURCES) $(lib2304_SOURCES) $(lib2305_SOURCES) \
-	$(lib2402_SOURCES) $(lib2502_SOURCES) $(lib3010_SOURCES) \
-	$(lib3025_SOURCES) $(lib3026_SOURCES) $(lib3027_SOURCES) \
-	$(lib3100_SOURCES) $(lib3101_SOURCES) $(lib500_SOURCES) \
-	$(lib501_SOURCES) $(lib502_SOURCES) $(lib503_SOURCES) \
-	$(lib504_SOURCES) $(lib505_SOURCES) $(lib506_SOURCES) \
-	$(lib507_SOURCES) $(lib508_SOURCES) $(lib509_SOURCES) \
-	$(lib510_SOURCES) $(lib511_SOURCES) $(lib512_SOURCES) \
-	$(lib513_SOURCES) $(lib514_SOURCES) $(lib515_SOURCES) \
-	$(lib516_SOURCES) $(lib517_SOURCES) $(lib518_SOURCES) \
-	$(lib519_SOURCES) $(lib520_SOURCES) $(lib521_SOURCES) \
-	$(lib523_SOURCES) $(lib524_SOURCES) $(lib525_SOURCES) \
-	$(lib526_SOURCES) $(lib527_SOURCES) $(lib529_SOURCES) \
-	$(lib530_SOURCES) $(lib532_SOURCES) $(lib533_SOURCES) \
-	$(lib537_SOURCES) $(lib539_SOURCES) $(lib540_SOURCES) \
-	$(lib541_SOURCES) $(lib542_SOURCES) $(lib543_SOURCES) \
-	$(lib544_SOURCES) $(lib545_SOURCES) $(lib547_SOURCES) \
-	$(lib548_SOURCES) $(lib549_SOURCES) $(lib552_SOURCES) \
-	$(lib553_SOURCES) $(lib554_SOURCES) $(lib555_SOURCES) \
-	$(lib556_SOURCES) $(lib557_SOURCES) $(lib558_SOURCES) \
-	$(lib559_SOURCES) $(lib560_SOURCES) $(lib562_SOURCES) \
-	$(lib564_SOURCES) $(lib565_SOURCES) $(lib566_SOURCES) \
-	$(lib567_SOURCES) $(lib568_SOURCES) $(lib569_SOURCES) \
-	$(lib570_SOURCES) $(lib571_SOURCES) $(lib572_SOURCES) \
-	$(lib573_SOURCES) $(lib574_SOURCES) $(lib575_SOURCES) \
-	$(lib576_SOURCES) $(lib578_SOURCES) $(lib579_SOURCES) \
-	$(lib582_SOURCES) $(lib583_SOURCES) $(lib584_SOURCES) \
-	$(lib585_SOURCES) $(lib586_SOURCES) $(lib587_SOURCES) \
-	$(lib589_SOURCES) $(lib590_SOURCES) $(lib591_SOURCES) \
-	$(lib597_SOURCES) $(lib598_SOURCES) $(lib599_SOURCES) \
-	$(lib643_SOURCES) $(lib645_SOURCES) $(lib650_SOURCES) \
-	$(lib651_SOURCES) $(lib652_SOURCES) $(lib653_SOURCES) \
-	$(lib654_SOURCES) $(lib655_SOURCES) $(lib658_SOURCES) \
-	$(lib659_SOURCES) $(lib661_SOURCES) $(lib666_SOURCES) \
-	$(lib667_SOURCES) $(lib668_SOURCES) $(lib670_SOURCES) \
-	$(lib671_SOURCES) $(lib672_SOURCES) $(lib673_SOURCES) \
-	$(lib674_SOURCES) $(lib676_SOURCES) $(lib677_SOURCES) \
-	$(lib678_SOURCES) $(libauthretry_SOURCES) \
-	$(libntlmconnect_SOURCES) $(libprereq_SOURCES)
-DIST_SOURCES = $(libhostname_la_SOURCES) \
-	$(am__libstubgss_la_SOURCES_DIST) $(chkdecimalpoint_SOURCES) \
 	$(chkhostname_SOURCES) $(lib1156_SOURCES) $(lib1301_SOURCES) \
 	$(lib1500_SOURCES) $(lib1501_SOURCES) $(lib1502_SOURCES) \
 	$(lib1503_SOURCES) $(lib1504_SOURCES) $(lib1505_SOURCES) \
@@ -1510,35 +1424,112 @@ DIST_SOURCES = $(libhostname_la_SOURCES) \
 	$(lib1509_SOURCES) $(lib1510_SOURCES) $(lib1511_SOURCES) \
 	$(lib1512_SOURCES) $(lib1513_SOURCES) $(lib1514_SOURCES) \
 	$(lib1515_SOURCES) $(lib1517_SOURCES) $(lib1518_SOURCES) \
-	$(lib1520_SOURCES) $(lib1522_SOURCES) $(lib1523_SOURCES) \
-	$(lib1525_SOURCES) $(lib1526_SOURCES) $(lib1527_SOURCES) \
-	$(lib1528_SOURCES) $(lib1529_SOURCES) $(lib1530_SOURCES) \
-	$(lib1531_SOURCES) $(lib1532_SOURCES) $(lib1533_SOURCES) \
-	$(lib1534_SOURCES) $(lib1535_SOURCES) $(lib1536_SOURCES) \
-	$(lib1537_SOURCES) $(lib1538_SOURCES) $(lib1539_SOURCES) \
-	$(lib1540_SOURCES) $(lib1542_SOURCES) $(lib1543_SOURCES) \
-	$(lib1550_SOURCES) $(lib1551_SOURCES) $(lib1552_SOURCES) \
-	$(lib1553_SOURCES) $(lib1554_SOURCES) $(lib1555_SOURCES) \
-	$(lib1556_SOURCES) $(lib1557_SOURCES) $(lib1558_SOURCES) \
-	$(lib1559_SOURCES) $(lib1560_SOURCES) $(lib1564_SOURCES) \
-	$(lib1565_SOURCES) $(lib1567_SOURCES) $(lib1568_SOURCES) \
-	$(lib1569_SOURCES) $(lib1591_SOURCES) $(lib1592_SOURCES) \
-	$(lib1593_SOURCES) $(lib1594_SOURCES) $(lib1596_SOURCES) \
-	$(lib1597_SOURCES) $(lib1662_SOURCES) $(lib1903_SOURCES) \
-	$(lib1905_SOURCES) $(lib1906_SOURCES) $(lib1907_SOURCES) \
-	$(lib1908_SOURCES) $(lib1910_SOURCES) $(lib1911_SOURCES) \
-	$(lib1912_SOURCES) $(lib1913_SOURCES) $(lib1915_SOURCES) \
-	$(lib1916_SOURCES) $(lib1917_SOURCES) $(lib1918_SOURCES) \
-	$(lib1919_SOURCES) $(lib1933_SOURCES) $(lib1934_SOURCES) \
-	$(lib1935_SOURCES) $(lib1936_SOURCES) $(lib1937_SOURCES) \
-	$(lib1938_SOURCES) $(lib1939_SOURCES) $(lib1940_SOURCES) \
-	$(lib1945_SOURCES) $(lib1946_SOURCES) $(lib1947_SOURCES) \
-	$(lib1948_SOURCES) $(lib1955_SOURCES) $(lib1956_SOURCES) \
-	$(lib1957_SOURCES) $(lib1958_SOURCES) $(lib1959_SOURCES) \
-	$(lib1960_SOURCES) $(lib1970_SOURCES) $(lib1971_SOURCES) \
-	$(lib1972_SOURCES) $(lib1973_SOURCES) $(lib1974_SOURCES) \
-	$(lib1975_SOURCES) $(lib2301_SOURCES) $(lib2302_SOURCES) \
-	$(lib2304_SOURCES) $(lib2305_SOURCES) $(lib2402_SOURCES) \
+	$(lib1520_SOURCES) $(nodist_lib1521_SOURCES) \
+	$(lib1522_SOURCES) $(lib1523_SOURCES) $(lib1525_SOURCES) \
+	$(lib1526_SOURCES) $(lib1527_SOURCES) $(lib1528_SOURCES) \
+	$(lib1529_SOURCES) $(lib1530_SOURCES) $(lib1531_SOURCES) \
+	$(lib1532_SOURCES) $(lib1533_SOURCES) $(lib1534_SOURCES) \
+	$(lib1535_SOURCES) $(lib1536_SOURCES) $(lib1537_SOURCES) \
+	$(lib1538_SOURCES) $(lib1539_SOURCES) $(lib1540_SOURCES) \
+	$(lib1542_SOURCES) $(lib1543_SOURCES) $(lib1550_SOURCES) \
+	$(lib1551_SOURCES) $(lib1552_SOURCES) $(lib1553_SOURCES) \
+	$(lib1554_SOURCES) $(lib1555_SOURCES) $(lib1556_SOURCES) \
+	$(lib1557_SOURCES) $(lib1558_SOURCES) $(lib1559_SOURCES) \
+	$(lib1560_SOURCES) $(lib1564_SOURCES) $(lib1565_SOURCES) \
+	$(lib1567_SOURCES) $(lib1568_SOURCES) $(lib1569_SOURCES) \
+	$(lib1591_SOURCES) $(lib1592_SOURCES) $(lib1593_SOURCES) \
+	$(lib1594_SOURCES) $(lib1596_SOURCES) $(lib1597_SOURCES) \
+	$(lib1662_SOURCES) $(lib1903_SOURCES) $(lib1905_SOURCES) \
+	$(lib1906_SOURCES) $(lib1907_SOURCES) $(lib1908_SOURCES) \
+	$(lib1910_SOURCES) $(lib1911_SOURCES) $(lib1912_SOURCES) \
+	$(lib1913_SOURCES) $(lib1915_SOURCES) $(lib1916_SOURCES) \
+	$(lib1917_SOURCES) $(lib1918_SOURCES) $(lib1919_SOURCES) \
+	$(lib1933_SOURCES) $(lib1934_SOURCES) $(lib1935_SOURCES) \
+	$(lib1936_SOURCES) $(lib1937_SOURCES) $(lib1938_SOURCES) \
+	$(lib1939_SOURCES) $(lib1940_SOURCES) $(lib1945_SOURCES) \
+	$(lib1946_SOURCES) $(lib1947_SOURCES) $(lib1948_SOURCES) \
+	$(lib1955_SOURCES) $(lib1956_SOURCES) $(lib1957_SOURCES) \
+	$(lib1958_SOURCES) $(lib1959_SOURCES) $(lib1960_SOURCES) \
+	$(lib1970_SOURCES) $(lib1971_SOURCES) $(lib1972_SOURCES) \
+	$(lib1973_SOURCES) $(lib1974_SOURCES) $(lib1975_SOURCES) \
+	$(lib2301_SOURCES) $(lib2302_SOURCES) $(lib2304_SOURCES) \
+	$(lib2305_SOURCES) $(lib2306_SOURCES) $(lib2402_SOURCES) \
+	$(lib2502_SOURCES) $(lib3010_SOURCES) $(lib3025_SOURCES) \
+	$(lib3026_SOURCES) $(lib3027_SOURCES) $(lib3100_SOURCES) \
+	$(lib3101_SOURCES) $(lib500_SOURCES) $(lib501_SOURCES) \
+	$(lib502_SOURCES) $(lib503_SOURCES) $(lib504_SOURCES) \
+	$(lib505_SOURCES) $(lib506_SOURCES) $(lib507_SOURCES) \
+	$(lib508_SOURCES) $(lib509_SOURCES) $(lib510_SOURCES) \
+	$(lib511_SOURCES) $(lib512_SOURCES) $(lib513_SOURCES) \
+	$(lib514_SOURCES) $(lib515_SOURCES) $(lib516_SOURCES) \
+	$(lib517_SOURCES) $(lib518_SOURCES) $(lib519_SOURCES) \
+	$(lib520_SOURCES) $(lib521_SOURCES) $(lib523_SOURCES) \
+	$(lib524_SOURCES) $(lib525_SOURCES) $(lib526_SOURCES) \
+	$(lib527_SOURCES) $(lib529_SOURCES) $(lib530_SOURCES) \
+	$(lib532_SOURCES) $(lib533_SOURCES) $(lib537_SOURCES) \
+	$(lib539_SOURCES) $(lib540_SOURCES) $(lib541_SOURCES) \
+	$(lib542_SOURCES) $(lib543_SOURCES) $(lib544_SOURCES) \
+	$(lib545_SOURCES) $(lib547_SOURCES) $(lib548_SOURCES) \
+	$(lib549_SOURCES) $(lib552_SOURCES) $(lib553_SOURCES) \
+	$(lib554_SOURCES) $(lib555_SOURCES) $(lib556_SOURCES) \
+	$(lib557_SOURCES) $(lib558_SOURCES) $(lib559_SOURCES) \
+	$(lib560_SOURCES) $(lib562_SOURCES) $(lib564_SOURCES) \
+	$(lib565_SOURCES) $(lib566_SOURCES) $(lib567_SOURCES) \
+	$(lib568_SOURCES) $(lib569_SOURCES) $(lib570_SOURCES) \
+	$(lib571_SOURCES) $(lib572_SOURCES) $(lib573_SOURCES) \
+	$(lib574_SOURCES) $(lib575_SOURCES) $(lib576_SOURCES) \
+	$(lib578_SOURCES) $(lib579_SOURCES) $(lib582_SOURCES) \
+	$(lib583_SOURCES) $(lib584_SOURCES) $(lib585_SOURCES) \
+	$(lib586_SOURCES) $(lib587_SOURCES) $(lib589_SOURCES) \
+	$(lib590_SOURCES) $(lib591_SOURCES) $(lib597_SOURCES) \
+	$(lib598_SOURCES) $(lib599_SOURCES) $(lib643_SOURCES) \
+	$(lib645_SOURCES) $(lib650_SOURCES) $(lib651_SOURCES) \
+	$(lib652_SOURCES) $(lib653_SOURCES) $(lib654_SOURCES) \
+	$(lib655_SOURCES) $(lib658_SOURCES) $(lib659_SOURCES) \
+	$(lib661_SOURCES) $(lib666_SOURCES) $(lib667_SOURCES) \
+	$(lib668_SOURCES) $(lib670_SOURCES) $(lib671_SOURCES) \
+	$(lib672_SOURCES) $(lib673_SOURCES) $(lib674_SOURCES) \
+	$(lib676_SOURCES) $(lib677_SOURCES) $(lib678_SOURCES) \
+	$(libauthretry_SOURCES) $(libntlmconnect_SOURCES) \
+	$(libprereq_SOURCES)
+DIST_SOURCES = $(libhostname_la_SOURCES) \
+	$(am__libstubgss_la_SOURCES_DIST) $(chkhostname_SOURCES) \
+	$(lib1156_SOURCES) $(lib1301_SOURCES) $(lib1500_SOURCES) \
+	$(lib1501_SOURCES) $(lib1502_SOURCES) $(lib1503_SOURCES) \
+	$(lib1504_SOURCES) $(lib1505_SOURCES) $(lib1506_SOURCES) \
+	$(lib1507_SOURCES) $(lib1508_SOURCES) $(lib1509_SOURCES) \
+	$(lib1510_SOURCES) $(lib1511_SOURCES) $(lib1512_SOURCES) \
+	$(lib1513_SOURCES) $(lib1514_SOURCES) $(lib1515_SOURCES) \
+	$(lib1517_SOURCES) $(lib1518_SOURCES) $(lib1520_SOURCES) \
+	$(lib1522_SOURCES) $(lib1523_SOURCES) $(lib1525_SOURCES) \
+	$(lib1526_SOURCES) $(lib1527_SOURCES) $(lib1528_SOURCES) \
+	$(lib1529_SOURCES) $(lib1530_SOURCES) $(lib1531_SOURCES) \
+	$(lib1532_SOURCES) $(lib1533_SOURCES) $(lib1534_SOURCES) \
+	$(lib1535_SOURCES) $(lib1536_SOURCES) $(lib1537_SOURCES) \
+	$(lib1538_SOURCES) $(lib1539_SOURCES) $(lib1540_SOURCES) \
+	$(lib1542_SOURCES) $(lib1543_SOURCES) $(lib1550_SOURCES) \
+	$(lib1551_SOURCES) $(lib1552_SOURCES) $(lib1553_SOURCES) \
+	$(lib1554_SOURCES) $(lib1555_SOURCES) $(lib1556_SOURCES) \
+	$(lib1557_SOURCES) $(lib1558_SOURCES) $(lib1559_SOURCES) \
+	$(lib1560_SOURCES) $(lib1564_SOURCES) $(lib1565_SOURCES) \
+	$(lib1567_SOURCES) $(lib1568_SOURCES) $(lib1569_SOURCES) \
+	$(lib1591_SOURCES) $(lib1592_SOURCES) $(lib1593_SOURCES) \
+	$(lib1594_SOURCES) $(lib1596_SOURCES) $(lib1597_SOURCES) \
+	$(lib1662_SOURCES) $(lib1903_SOURCES) $(lib1905_SOURCES) \
+	$(lib1906_SOURCES) $(lib1907_SOURCES) $(lib1908_SOURCES) \
+	$(lib1910_SOURCES) $(lib1911_SOURCES) $(lib1912_SOURCES) \
+	$(lib1913_SOURCES) $(lib1915_SOURCES) $(lib1916_SOURCES) \
+	$(lib1917_SOURCES) $(lib1918_SOURCES) $(lib1919_SOURCES) \
+	$(lib1933_SOURCES) $(lib1934_SOURCES) $(lib1935_SOURCES) \
+	$(lib1936_SOURCES) $(lib1937_SOURCES) $(lib1938_SOURCES) \
+	$(lib1939_SOURCES) $(lib1940_SOURCES) $(lib1945_SOURCES) \
+	$(lib1946_SOURCES) $(lib1947_SOURCES) $(lib1948_SOURCES) \
+	$(lib1955_SOURCES) $(lib1956_SOURCES) $(lib1957_SOURCES) \
+	$(lib1958_SOURCES) $(lib1959_SOURCES) $(lib1960_SOURCES) \
+	$(lib1970_SOURCES) $(lib1971_SOURCES) $(lib1972_SOURCES) \
+	$(lib1973_SOURCES) $(lib1974_SOURCES) $(lib1975_SOURCES) \
+	$(lib2301_SOURCES) $(lib2302_SOURCES) $(lib2304_SOURCES) \
+	$(lib2305_SOURCES) $(lib2306_SOURCES) $(lib2402_SOURCES) \
 	$(lib2502_SOURCES) $(lib3010_SOURCES) $(lib3025_SOURCES) \
 	$(lib3026_SOURCES) $(lib3027_SOURCES) $(lib3100_SOURCES) \
 	$(lib3101_SOURCES) $(lib500_SOURCES) $(lib501_SOURCES) \
@@ -1911,13 +1902,6 @@ MULTIBYTE = ../../lib/curl_multibyte.c ../../lib/curl_multibyte.h
 
 # these files are used in every single test program below
 SUPPORTFILES = ../../lib/timediff.c ../../lib/timediff.h first.c test.h
-chkdecimalpoint_SOURCES = chkdecimalpoint.c ../../lib/mprintf.c \
- ../../lib/dynbuf.c ../../lib/strdup.c
-
-chkdecimalpoint_LDADD = 
-chkdecimalpoint_CPPFLAGS = $(AM_CPPFLAGS) -DCURL_STATICLIB \
- -DCURLX_NO_MEMORY_CALLBACKS -DBUILDING_LIBCURL
-
 chkhostname_SOURCES = chkhostname.c ../../lib/curl_gethostname.c
 chkhostname_LDADD = @CURL_NETWORK_LIBS@
 chkhostname_DEPENDENCIES = 
@@ -2283,6 +2267,8 @@ lib2304_SOURCES = lib2304.c $(SUPPORTFILES)
 lib2304_LDADD = $(TESTUTIL_LIBS)
 lib2305_SOURCES = lib2305.c $(SUPPORTFILES) $(TESTUTIL) $(TSTTRACE) $(MULTIBYTE)
 lib2305_LDADD = $(TESTUTIL_LIBS)
+lib2306_SOURCES = lib2306.c $(SUPPORTFILES)
+lib2306_LDADD = $(TESTUTIL_LIBS)
 lib2402_SOURCES = lib2402.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib2402_LDADD = $(TESTUTIL_LIBS)
 lib2502_SOURCES = lib2502.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
@@ -2397,16 +2383,6 @@ libstubgss.la: $(libstubgss_la_OBJECTS) $(libstubgss_la_DEPENDENCIES) $(EXTRA_li
 ../../lib/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) ../../lib/$(DEPDIR)
 	@: > ../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/chkdecimalpoint-mprintf.$(OBJEXT):  \
-	../../lib/$(am__dirstamp) ../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/chkdecimalpoint-dynbuf.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/chkdecimalpoint-strdup.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-
-chkdecimalpoint$(EXEEXT): $(chkdecimalpoint_OBJECTS) $(chkdecimalpoint_DEPENDENCIES) $(EXTRA_chkdecimalpoint_DEPENDENCIES) 
-	@rm -f chkdecimalpoint$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(chkdecimalpoint_OBJECTS) $(chkdecimalpoint_LDADD) $(LIBS)
 ../../lib/curl_gethostname.$(OBJEXT): ../../lib/$(am__dirstamp) \
 	../../lib/$(DEPDIR)/$(am__dirstamp)
 
@@ -2881,6 +2857,10 @@ lib2304$(EXEEXT): $(lib2304_OBJECTS) $(lib2304_DEPENDENCIES) $(EXTRA_lib2304_DEP
 lib2305$(EXEEXT): $(lib2305_OBJECTS) $(lib2305_DEPENDENCIES) $(EXTRA_lib2305_DEPENDENCIES) 
 	@rm -f lib2305$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(lib2305_OBJECTS) $(lib2305_LDADD) $(LIBS)
+
+lib2306$(EXEEXT): $(lib2306_OBJECTS) $(lib2306_DEPENDENCIES) $(EXTRA_lib2306_DEPENDENCIES) 
+	@rm -f lib2306$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(lib2306_OBJECTS) $(lib2306_LDADD) $(LIBS)
 
 lib2402$(EXEEXT): $(lib2402_OBJECTS) $(lib2402_DEPENDENCIES) $(EXTRA_lib2402_DEPENDENCIES) 
 	@rm -f lib2402$(EXEEXT)
@@ -3383,9 +3363,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/curl_gethostname.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/curl_multibyte.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/lib1502-timediff.Po@am__quote@ # am--include-marker
@@ -3430,7 +3407,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/lib672-warnless.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/timediff.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/warnless.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chkhostname.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/first.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1156.Po@am__quote@ # am--include-marker
@@ -3556,6 +3532,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2302.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2304.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2305.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2306.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2402.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2502.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib3010.Po@am__quote@ # am--include-marker
@@ -3739,62 +3716,6 @@ libstubgss_la-stub_gssapi.lo: stub_gssapi.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='stub_gssapi.c' object='libstubgss_la-stub_gssapi.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstubgss_la_CPPFLAGS) $(CPPFLAGS) $(libstubgss_la_CFLAGS) $(CFLAGS) -c -o libstubgss_la-stub_gssapi.lo `test -f 'stub_gssapi.c' || echo '$(srcdir)/'`stub_gssapi.c
-
-chkdecimalpoint-chkdecimalpoint.o: chkdecimalpoint.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT chkdecimalpoint-chkdecimalpoint.o -MD -MP -MF $(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Tpo -c -o chkdecimalpoint-chkdecimalpoint.o `test -f 'chkdecimalpoint.c' || echo '$(srcdir)/'`chkdecimalpoint.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Tpo $(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='chkdecimalpoint.c' object='chkdecimalpoint-chkdecimalpoint.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o chkdecimalpoint-chkdecimalpoint.o `test -f 'chkdecimalpoint.c' || echo '$(srcdir)/'`chkdecimalpoint.c
-
-chkdecimalpoint-chkdecimalpoint.obj: chkdecimalpoint.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT chkdecimalpoint-chkdecimalpoint.obj -MD -MP -MF $(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Tpo -c -o chkdecimalpoint-chkdecimalpoint.obj `if test -f 'chkdecimalpoint.c'; then $(CYGPATH_W) 'chkdecimalpoint.c'; else $(CYGPATH_W) '$(srcdir)/chkdecimalpoint.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Tpo $(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='chkdecimalpoint.c' object='chkdecimalpoint-chkdecimalpoint.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o chkdecimalpoint-chkdecimalpoint.obj `if test -f 'chkdecimalpoint.c'; then $(CYGPATH_W) 'chkdecimalpoint.c'; else $(CYGPATH_W) '$(srcdir)/chkdecimalpoint.c'; fi`
-
-../../lib/chkdecimalpoint-mprintf.o: ../../lib/mprintf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ../../lib/chkdecimalpoint-mprintf.o -MD -MP -MF ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Tpo -c -o ../../lib/chkdecimalpoint-mprintf.o `test -f '../../lib/mprintf.c' || echo '$(srcdir)/'`../../lib/mprintf.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Tpo ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/mprintf.c' object='../../lib/chkdecimalpoint-mprintf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ../../lib/chkdecimalpoint-mprintf.o `test -f '../../lib/mprintf.c' || echo '$(srcdir)/'`../../lib/mprintf.c
-
-../../lib/chkdecimalpoint-mprintf.obj: ../../lib/mprintf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ../../lib/chkdecimalpoint-mprintf.obj -MD -MP -MF ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Tpo -c -o ../../lib/chkdecimalpoint-mprintf.obj `if test -f '../../lib/mprintf.c'; then $(CYGPATH_W) '../../lib/mprintf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/mprintf.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Tpo ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/mprintf.c' object='../../lib/chkdecimalpoint-mprintf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ../../lib/chkdecimalpoint-mprintf.obj `if test -f '../../lib/mprintf.c'; then $(CYGPATH_W) '../../lib/mprintf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/mprintf.c'; fi`
-
-../../lib/chkdecimalpoint-dynbuf.o: ../../lib/dynbuf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ../../lib/chkdecimalpoint-dynbuf.o -MD -MP -MF ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Tpo -c -o ../../lib/chkdecimalpoint-dynbuf.o `test -f '../../lib/dynbuf.c' || echo '$(srcdir)/'`../../lib/dynbuf.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Tpo ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/dynbuf.c' object='../../lib/chkdecimalpoint-dynbuf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ../../lib/chkdecimalpoint-dynbuf.o `test -f '../../lib/dynbuf.c' || echo '$(srcdir)/'`../../lib/dynbuf.c
-
-../../lib/chkdecimalpoint-dynbuf.obj: ../../lib/dynbuf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ../../lib/chkdecimalpoint-dynbuf.obj -MD -MP -MF ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Tpo -c -o ../../lib/chkdecimalpoint-dynbuf.obj `if test -f '../../lib/dynbuf.c'; then $(CYGPATH_W) '../../lib/dynbuf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/dynbuf.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Tpo ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/dynbuf.c' object='../../lib/chkdecimalpoint-dynbuf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ../../lib/chkdecimalpoint-dynbuf.obj `if test -f '../../lib/dynbuf.c'; then $(CYGPATH_W) '../../lib/dynbuf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/dynbuf.c'; fi`
-
-../../lib/chkdecimalpoint-strdup.o: ../../lib/strdup.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ../../lib/chkdecimalpoint-strdup.o -MD -MP -MF ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Tpo -c -o ../../lib/chkdecimalpoint-strdup.o `test -f '../../lib/strdup.c' || echo '$(srcdir)/'`../../lib/strdup.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Tpo ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strdup.c' object='../../lib/chkdecimalpoint-strdup.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ../../lib/chkdecimalpoint-strdup.o `test -f '../../lib/strdup.c' || echo '$(srcdir)/'`../../lib/strdup.c
-
-../../lib/chkdecimalpoint-strdup.obj: ../../lib/strdup.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ../../lib/chkdecimalpoint-strdup.obj -MD -MP -MF ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Tpo -c -o ../../lib/chkdecimalpoint-strdup.obj `if test -f '../../lib/strdup.c'; then $(CYGPATH_W) '../../lib/strdup.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strdup.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Tpo ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strdup.c' object='../../lib/chkdecimalpoint-strdup.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(chkdecimalpoint_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ../../lib/chkdecimalpoint-strdup.obj `if test -f '../../lib/strdup.c'; then $(CYGPATH_W) '../../lib/strdup.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strdup.c'; fi`
 
 lib1502-lib1502.o: lib1502.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib1502_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lib1502-lib1502.o -MD -MP -MF $(DEPDIR)/lib1502-lib1502.Tpo -c -o lib1502-lib1502.o `test -f 'lib1502.c' || echo '$(srcdir)/'`lib1502.c
@@ -5372,10 +5293,7 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	clean-noinstPROGRAMS mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po
-	-rm -f ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Po
-	-rm -f ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Po
-	-rm -f ../../lib/$(DEPDIR)/curl_gethostname.Po
+		-rm -f ../../lib/$(DEPDIR)/curl_gethostname.Po
 	-rm -f ../../lib/$(DEPDIR)/curl_multibyte.Po
 	-rm -f ../../lib/$(DEPDIR)/lib1502-timediff.Po
 	-rm -f ../../lib/$(DEPDIR)/lib1502-warnless.Po
@@ -5419,7 +5337,6 @@ distclean: distclean-am
 	-rm -f ../../lib/$(DEPDIR)/lib672-warnless.Po
 	-rm -f ../../lib/$(DEPDIR)/timediff.Po
 	-rm -f ../../lib/$(DEPDIR)/warnless.Po
-	-rm -f ./$(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Po
 	-rm -f ./$(DEPDIR)/chkhostname.Po
 	-rm -f ./$(DEPDIR)/first.Po
 	-rm -f ./$(DEPDIR)/lib1156.Po
@@ -5545,6 +5462,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/lib2302.Po
 	-rm -f ./$(DEPDIR)/lib2304.Po
 	-rm -f ./$(DEPDIR)/lib2305.Po
+	-rm -f ./$(DEPDIR)/lib2306.Po
 	-rm -f ./$(DEPDIR)/lib2402.Po
 	-rm -f ./$(DEPDIR)/lib2502.Po
 	-rm -f ./$(DEPDIR)/lib3010.Po
@@ -5729,10 +5647,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ../../lib/$(DEPDIR)/chkdecimalpoint-dynbuf.Po
-	-rm -f ../../lib/$(DEPDIR)/chkdecimalpoint-mprintf.Po
-	-rm -f ../../lib/$(DEPDIR)/chkdecimalpoint-strdup.Po
-	-rm -f ../../lib/$(DEPDIR)/curl_gethostname.Po
+		-rm -f ../../lib/$(DEPDIR)/curl_gethostname.Po
 	-rm -f ../../lib/$(DEPDIR)/curl_multibyte.Po
 	-rm -f ../../lib/$(DEPDIR)/lib1502-timediff.Po
 	-rm -f ../../lib/$(DEPDIR)/lib1502-warnless.Po
@@ -5776,7 +5691,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ../../lib/$(DEPDIR)/lib672-warnless.Po
 	-rm -f ../../lib/$(DEPDIR)/timediff.Po
 	-rm -f ../../lib/$(DEPDIR)/warnless.Po
-	-rm -f ./$(DEPDIR)/chkdecimalpoint-chkdecimalpoint.Po
 	-rm -f ./$(DEPDIR)/chkhostname.Po
 	-rm -f ./$(DEPDIR)/first.Po
 	-rm -f ./$(DEPDIR)/lib1156.Po
@@ -5902,6 +5816,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/lib2302.Po
 	-rm -f ./$(DEPDIR)/lib2304.Po
 	-rm -f ./$(DEPDIR)/lib2305.Po
+	-rm -f ./$(DEPDIR)/lib2306.Po
 	-rm -f ./$(DEPDIR)/lib2402.Po
 	-rm -f ./$(DEPDIR)/lib2502.Po
 	-rm -f ./$(DEPDIR)/lib3010.Po

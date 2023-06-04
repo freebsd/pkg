@@ -77,7 +77,14 @@ SRCS=	\
 	keylog.c \
 	hostcheck.c \
 	vauth.c \
-	vquic.c
+	vquic.c \
+	bufq.c \
+	cf-h1-proxy.c \
+	cf-h2-proxy.c \
+	cf-haproxy.c \
+	dynhds.c \
+	http1.c
+
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \
