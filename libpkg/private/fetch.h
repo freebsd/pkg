@@ -25,13 +25,12 @@
 
 #pragma once
 
-int fetch_open(struct pkg_repo *, struct url *, off_t *);
-int ssh_open(struct pkg_repo *, struct url *, off_t *);
-int file_open(struct pkg_repo *, struct url *, off_t *);
+int fetch_open(struct pkg_repo *, const char *, off_t *, time_t *t);
+int ssh_open(struct pkg_repo *, const char *, off_t *, time_t *t);
+int file_open(struct pkg_repo *, const char *, off_t *, time_t *t);
 int fh_close(struct pkg_repo *);
-int tcp_open(struct pkg_repo *, struct url *, off_t *);
-int stdio_fetch(struct pkg_repo *, int dest, const char *url, struct url *u, off_t sz, time_t *t);
-int libfetch_fetch(struct pkg_repo *, int dest, const char *url, struct url *u, off_t sz, time_t *t);
-int curl_open(struct pkg_repo *, struct url *, off_t *);
-int curl_fetch(struct pkg_repo *, int dest, const char *url, struct url *u, off_t sz, time_t *t);
+int tcp_open(struct pkg_repo *, const char *, off_t *, time_t *t);
+int stdio_fetch(struct pkg_repo *, int dest, const char *url, off_t sz, off_t offset, time_t *t);
+int curl_open(struct pkg_repo *, const char *, off_t *, time_t *t);
+int curl_fetch(struct pkg_repo *, int dest, const char *url, off_t sz, off_t offset, time_t *t);
 int curl_cleanup(struct pkg_repo *);

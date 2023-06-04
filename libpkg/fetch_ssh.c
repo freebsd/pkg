@@ -46,6 +46,7 @@
 #include "private/pkg.h"
 #include "private/fetch.h"
 #include "private/utils.h"
+#include "yuarel.h"
 
 static int ssh_read(void *data, char *buf, int len);
 static int ssh_write(void *data, const char *buf, int l);
@@ -53,7 +54,7 @@ static int ssh_close(void *data);
 static int tcp_close(void *data);
 
 static int
-tcp_connect(struct pkg_repo *repo, struct url *u)
+tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 {
 	char *line = NULL;
 	size_t linecap = 0;
@@ -128,7 +129,7 @@ tcp_cleanup:
 }
 
 static int
-ssh_connect(struct pkg_repo *repo, struct url *u)
+ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 {
 	char *line = NULL;
 	size_t linecap = 0;
@@ -173,8 +174,8 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 			fputs("-6 ", cmd->fp);
 		if (u->port > 0)
 			fprintf(cmd->fp, "-p %d ", u->port);
-		if (u->user[0] != '\0')
-			fprintf(cmd->fp, "%s@", u->user);
+		if (u->username != NULL)
+			fprintf(cmd->fp, "%s@", u->username);
 		fprintf(cmd->fp, "%s pkg ssh", u->host);
 		cmdline = xstring_get(cmd);
 		pkg_debug(1, "Fetch: running '%s'", cmdline);
@@ -230,26 +231,34 @@ ssh_cleanup:
 }
 
 static int
-pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
-    int (*proto_connect)(struct pkg_repo *, struct url *))
+pkgprotocol_open(struct pkg_repo *repo, const char *u, off_t *sz,
+    int (*proto_connect)(struct pkg_repo *, struct yuarel *), time_t *t)
 {
 	char *line = NULL;
 	size_t linecap = 0;
 	size_t linelen;
 	const char *errstr;
 	int retcode = EPKG_FATAL;
+	struct yuarel url;
+	char *url_to_free = xstrdup(u);
+
+	if (yuarel_parse(&url, url_to_free) == -1) {
+		free(url_to_free);
+		pkg_emit_error("Invalid url: '%s'", u);
+		return (EPKG_FATAL);
+	}
 
 	pkg_debug(1, "SSH> tcp_open");
 	if (repo->fh == NULL)
-		retcode = proto_connect(repo, u);
+		retcode = proto_connect(repo, &url);
 	else
 		retcode = EPKG_OK;
 
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	pkg_debug(1, "SSH> get %s %" PRIdMAX "", u->doc, (intmax_t)u->ims_time);
-	fprintf(repo->fh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
+	pkg_debug(1, "SSH> get %s %" PRIdMAX "", url.path, (intmax_t)*t);
+	fprintf(repo->fh, "get %s %" PRIdMAX "\n", url.path, (intmax_t)*t);
 	if ((linelen = getline(&line, &linecap, repo->fh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
@@ -276,20 +285,21 @@ pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
 	}
 
 out:
+	free(url_to_free);
 	free(line);
 	return (retcode);
 }
 
 int
-tcp_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+tcp_open(struct pkg_repo *repo, const char *u, off_t *sz, time_t *t)
 {
-	return (pkgprotocol_open(repo, u, sz, tcp_connect));
+	return (pkgprotocol_open(repo, u, sz, tcp_connect, t));
 }
 
 int
-ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+ssh_open(struct pkg_repo *repo, const char *u, off_t *sz, time_t *t)
 {
-	return (pkgprotocol_open(repo, u, sz, ssh_connect));
+	return (pkgprotocol_open(repo, u, sz, ssh_connect, t));
 }
 
 static int

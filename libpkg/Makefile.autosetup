@@ -44,7 +44,6 @@ SRCS=	backup_lib.c \
 	rcscripts.c \
 	flags.c \
 	fetch_ssh.c \
-	fetch_libfetch.c \
 	fetch_libcurl.c \
 	fetch_file.c \
 	triggers.c \

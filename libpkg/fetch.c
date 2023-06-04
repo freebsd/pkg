@@ -36,7 +36,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <fetch.h>
 #include <paths.h>
 #include <poll.h>
 
@@ -183,7 +182,6 @@ int
 pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent)
 {
-	struct url	*u = NULL;
 	struct pkg_kv	*kv;
 	kvlist_t	 envtorestore = tll_init();
 	stringlist_t	 envtounset = tll_init();
@@ -239,11 +237,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		}
 		url += strlen(URL_SCHEME_PREFIX);
 	}
-	if (u == NULL)
-		u = fetchParseURL(url);
-
-	if (offset > 0)
-		u->offset = offset;
 
 	repo->silent = silent;
 	tll_foreach(repo->env, k) {
@@ -258,23 +251,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		setenv(k->item->key, k->item->value, 1);
 	}
 
-	if (u == NULL) {
-		pkg_emit_error("%s: parse error", url);
-		/* Too early for there to be anything to cleanup */
-		return(EPKG_FATAL);
-	}
-
-	if (t != NULL)
-		u->ims_time = *t;
-
-	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
+	if ((retcode = repo->fetcher->open(repo, url, &sz, t)) != EPKG_OK)
 		goto cleanup;
 	pkg_debug(1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
 
 	if (sz <= 0 && size > 0)
 		sz = size;
 
-	retcode = repo->fetcher->fetch(repo, dest, url, u, sz, t);
+	retcode = repo->fetcher->fetch(repo, dest, url, sz, offset, t);
 	if (retcode == EPKG_OK)
 		pkg_emit_fetch_finished(url);
 
@@ -307,9 +291,6 @@ cleanup:
 		};
 		futimes(dest, ftimes);
 	}
-
-	/* restore original doc */
-	fetchFreeURL(u);
 
 	return (retcode);
 }

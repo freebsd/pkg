@@ -180,10 +180,10 @@ struct pkg_repo;
 struct url;
 struct fetcher {
 	const char *scheme;
-	int (*open)(struct pkg_repo *, struct url *, off_t *);
+	int (*open)(struct pkg_repo *, const char *url, off_t *, time_t *t);
 	int (*close)(struct pkg_repo *);
 	int (*cleanup)(struct pkg_repo *);
-	int (*fetch)(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t);
+	int (*fetch)(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t offset, time_t *t);
 };
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;

@@ -36,25 +36,29 @@
 #include "private/utils.h"
 
 int
-file_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+file_open(struct pkg_repo *repo, const char *url, size_t *sz,
+    time_t *t)
 {
 	struct stat st;
+	const char *u = url;
 
-	if (stat(u->doc, &st) == -1) {
+	if (strlen(u) > 5)
+		u += 5; /* file: */
+	if (*u != '/') {
+		pkg_emit_error("invalid url: '%s'\n", url);
+		return (EPKG_FATAL);
+	}
+	if (stat(u, &st) == -1) {
 		if (!repo->silent)
-			pkg_emit_error("%s://%s%s%s%s: %s",
-			    u->scheme,
-			    u->user,
-			    u->user[0] != '\0' ? "@" : "",
-			    u->host,
-			    u->doc,
+			pkg_emit_error("%s: %s", url,
 			    strerror(errno));
 		return (EPKG_FATAL);
 	}
 	*sz = st.st_size;
-	u->ims_time = st.st_mtime;
+	if (st.st_mtime <= *t)
+		return (EPKG_UPTODATE);
 
-	repo->fh = fopen(u->doc, "re");
+	repo->fh = fopen(u, "re");
 	if (repo->fh == NULL)
 		return (EPKG_FATAL);
 	return (EPKG_OK);
@@ -69,22 +73,16 @@ fh_close(struct pkg_repo *repo)
 }
 
 int
-stdio_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t)
+stdio_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t offset, time_t *t __unused)
 {
 	char buf[8192];
 	size_t buflen = 0, left = 0;
 	off_t done = 0, r;
 
-	if (t != NULL && u->ims_time != 0) {
-		if (u->ims_time <= *t)
-			return (EPKG_UPTODATE);
-		*t = u->ims_time;
-	}
-
 	pkg_emit_fetch_begin(url);
 	pkg_emit_progress_start(NULL);
-	if (u->offset > 0)
-		done += u->offset;
+	if (offset > 0)
+		done += offset;
 	buflen = sizeof(buf);
 	left = sizeof(buf);
 	if (sz > 0)

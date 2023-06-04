@@ -85,7 +85,8 @@ curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_
 
 
 int
-curl_open(struct pkg_repo *repo, struct url *u __unused, off_t *sz __unused)
+curl_open(struct pkg_repo *repo, const char *u __unused,
+    size_t *sz __unused, time_t *t __unused)
 {
 	CURLM *cm;
 	pkg_debug(1, "curl_open");
@@ -105,7 +106,7 @@ curl_open(struct pkg_repo *repo, struct url *u __unused, off_t *sz __unused)
 }
 
 int
-curl_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t)
+curl_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t offset __unused, time_t *t)
 {
 	CURL *cl;
 	CURLM *cm = NULL;
