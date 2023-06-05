@@ -139,6 +139,8 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t off
 	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
 	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_parseheader_cb);
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
+	if (repo->fetcher->timeout > 0)
+		curl_easy_setopt(cl, CURLOPT_TIMEOUT, repo->fetcher->timeout);
 
 	//curl_easy_setopt(cl, CURLOPT_MAXFILESIZE_LARGE, *sz);
 	/* compat with libfetch */
