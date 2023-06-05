@@ -157,6 +157,7 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 	int fd = -1;
 	int retcode = EPKG_FATAL;
 	struct fetch_item fi;
+	char *url_to_free = NULL;
 
 	fd = open(dest, O_CREAT|O_APPEND|O_WRONLY, 00644);
 	if (fd == -1) {
@@ -164,12 +165,19 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		return(EPKG_FATAL);
 	}
 
-	fi.url = url;
+	if (repo != NULL) {
+		xasprintf(&url_to_free, "%s/%s", repo->url, url);
+		fi.url = url_to_free;
+	} else {
+		fi.url = url;
+	}
+
 	fi.offset = offset;
 	fi.size = size;
 	fi.mtime = t;
 
 	retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
+	free(url_to_free);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -184,7 +192,6 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		};
 		futimes(fd, ftimes);
 	}
-
 	close(fd);
 
 	/* Remove local file if fetch failed */
@@ -244,6 +251,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	if (repo == NULL) {
 		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
 		fakerepo->url = xstrdup(fi->url);
+		fakerepo->mirror_type = NOMIRROR;
 		repo = fakerepo;
 	}
 
