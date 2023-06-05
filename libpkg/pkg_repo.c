@@ -114,7 +114,8 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 		close(fd);
 		fd = -1;
 	}
-	*t = fi.mtime;
+	if (fd != -1)
+		*t = fi.mtime;
 
 	return (fd);
 }
@@ -690,6 +691,8 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 
 	fd = pkg_repo_fetch_remote_tmp(repo, filename, "pkg", t, rc, false);
 	if (fd == -1) {
+		if (*rc == EPKG_UPTODATE)
+			return (-1);
 		fd = pkg_repo_fetch_remote_tmp(repo, filename,
 		    packing_format_to_string(repo->meta->packing_format), t, rc, false);
 	}
