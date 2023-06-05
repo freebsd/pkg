@@ -353,7 +353,7 @@ make-template tests/frontend/test_environment.sh.in
 make-template Makefile.autosetup Makefile
 
 foreach dir [list external/blake2 external/picosat \
-	external/linenoise external/libfetch external/sqlite \
+	external/linenoise external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf external/libmachista tests docs \
 	external/liblua external/msgpuck external/yxml scripts external/libcurl] {

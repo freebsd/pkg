@@ -27,7 +27,6 @@
 #include <sys/param.h>
 
 #include <stdio.h>
-#include <fetch.h>
 #include <errno.h>
 
 #include "pkg.h"

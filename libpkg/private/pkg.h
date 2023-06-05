@@ -180,6 +180,7 @@ struct pkg_repo;
 struct url;
 struct fetcher {
 	const char *scheme;
+	int64_t timeout;
 	int (*open)(struct pkg_repo *, const char *url, off_t *, time_t *t);
 	int (*close)(struct pkg_repo *);
 	int (*cleanup)(struct pkg_repo *);

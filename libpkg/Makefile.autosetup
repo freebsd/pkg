@@ -58,7 +58,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/yxml \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/libucl/include \
-		-I$(top_srcdir)/external/libfetch \
 		-I$(top_srcdir)/external/curl/include \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
@@ -84,7 +83,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/yxml -lyxml_pic \
 		-L$(top_builddir)/external/blake2 -lblake2_pic \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
-		-L$(top_builddir)/external/libfetch -lfetch_pic \
 		-L$(top_builddir)/external/libcurl -lcurl_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
 		-L$(top_builddir)/external/msgpuck -lmsgpuck_pic \
@@ -102,7 +100,6 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/blake2/libblake2.a \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
-		$(top_builddir)/external/libfetch/libfetch.a \
 		$(top_builddir)/external/libcurl/libcurl.a \
 		$(top_builddir)/external/msgpuck/libmsgpuck.a \
 		lib$(LIB).a

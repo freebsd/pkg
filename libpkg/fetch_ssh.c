@@ -34,7 +34,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <fetch.h>
 #include <paths.h>
 #include <poll.h>
 #include <netdb.h>
@@ -335,7 +334,7 @@ ssh_close(void *data)
 }
 
 static int
-ssh_writev(int fd, struct iovec *iov, int iovcnt)
+ssh_writev(int fd, struct iovec *iov, int iovcnt, int64_t tmout)
 {
 	struct timeval now, timeout, delta;
 	struct pollfd pfd;
@@ -345,16 +344,16 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 
 	memset(&pfd, 0, sizeof pfd);
 
-	if (fetchTimeout) {
+	if (tmout > 0) {
 		pfd.fd = fd;
 		pfd.events = POLLOUT | POLLERR;
 		gettimeofday(&timeout, NULL);
-		timeout.tv_sec += fetchTimeout;
+		timeout.tv_sec += tmout;
 	}
 
 	total = 0;
 	while (iovcnt > 0) {
-		while (fetchTimeout && pfd.revents == 0) {
+		while (tmout && pfd.revents == 0) {
 			gettimeofday(&now, NULL);
 			if (!timercmp(&timeout, &now, >)) {
 				errno = ETIMEDOUT;
@@ -412,7 +411,7 @@ ssh_write(void *data, const char *buf, int l)
 
 	pkg_debug(1, "writing data");
 
-	return (ssh_writev(repo->sshio.out, &iov, 1));
+	return (ssh_writev(repo->sshio.out, &iov, 1, repo->fetcher->timeout));
 }
 
 static int
@@ -426,9 +425,9 @@ ssh_read(void *data, char *buf, int len)
 
 	pkg_debug(2, "ssh: start reading");
 
-	if (fetchTimeout > 0) {
+	if (repo->fetcher->timeout > 0) {
 		gettimeofday(&timeout, NULL);
-		timeout.tv_sec += fetchTimeout;
+		timeout.tv_sec += repo->fetcher->timeout;
 	}
 
 	deltams = -1;
@@ -451,7 +450,7 @@ ssh_read(void *data, char *buf, int len)
 		}
 
 		/* only EAGAIN should get here */
-		if (fetchTimeout > 0) {
+		if (repo->fetcher->timeout > 0) {
 			gettimeofday(&now, NULL);
 			if (!timercmp(&timeout, &now, >)) {
 				errno = ETIMEDOUT;

@@ -50,6 +50,7 @@
 static struct fetcher fetchers [] = {
 	{
 		"tcp",
+		0,
 		tcp_open,
 		NULL,
 		fh_close,
@@ -57,6 +58,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"ssh",
+		0,
 		ssh_open,
 		NULL,
 		fh_close,
@@ -64,6 +66,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"pkg+https",
+		0,
 		curl_open,
 		NULL,
 		curl_cleanup,
@@ -71,6 +74,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"pkg+http",
+		0,
 		curl_open,
 		NULL,
 		curl_cleanup,
@@ -78,6 +82,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"https",
+		0,
 		curl_open,
 		NULL,
 		curl_cleanup,
@@ -85,6 +90,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"http",
+		0,
 		curl_open,
 		NULL,
 		curl_cleanup,
@@ -92,6 +98,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"file",
+		0,
 		file_open,
 		fh_close,
 		NULL,
@@ -178,6 +185,24 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 
 #define URL_SCHEME_PREFIX	"pkg+"
 
+static struct fetcher *
+select_fetcher(const char *url)
+{
+	struct fetcher *f;
+
+	for (size_t i = 0; i < nitems(fetchers); i++) {
+		if ((strncasecmp(url, fetchers[i].scheme,
+		    strlen(fetchers[i].scheme)) == 0) &&
+		    url[strlen(fetchers[i].scheme)] == ':') {
+			f = &fetchers[i];
+			f->timeout =
+			    pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
+			return (f);
+		}
+	}
+	return (NULL);
+
+}
 int
 pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
     time_t *t, ssize_t offset, int64_t size, bool silent)
@@ -211,15 +236,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		repo = fakerepo;
 	}
 
-	if (repo->fetcher == NULL) {
-		for (int i = 0; i < nitems(fetchers); i++) {
-			if (strncasecmp(url, fetchers[i].scheme,
-			    strlen(fetchers[i].scheme)) == 0) {
-				repo->fetcher = &fetchers[i];
-				break;
-			}
-		}
-	}
+	if (repo->fetcher == NULL)
+		repo->fetcher = select_fetcher(url);
 	if (repo->fetcher == NULL) {
 		pkg_emit_error("Unknown scheme: %s", url);
 		return (EPKG_FATAL);
