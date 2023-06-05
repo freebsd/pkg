@@ -140,8 +140,9 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
 	if (repo->fetcher->timeout > 0)
 		curl_easy_setopt(cl, CURLOPT_TIMEOUT, repo->fetcher->timeout);
+	if (ctx.debug_level > 0)
+		curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
 
-	//curl_easy_setopt(cl, CURLOPT_MAXFILESIZE_LARGE, *sz);
 	/* compat with libfetch */
 	if (getenv("SSL_NO_VERFIRY_PEER") != NULL)
 		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -176,6 +177,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 		}
 	}
 
+	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &fi->mtime);
 	curl_multi_remove_handle(cm, cl);
 	curl_easy_cleanup(cl);
 
