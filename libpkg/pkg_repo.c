@@ -55,6 +55,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/fetch.h"
 
 struct sig_cert {
 	char name[MAXPATHLEN];
@@ -70,10 +71,13 @@ int
 pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
   const char *filename, const char *extension, time_t *t, int *rc, bool silent)
 {
+	struct fetch_item fi;
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
 	int fd;
 	const char *tmpdir, *dot;
+
+	memset(&fi, 0, sizeof(struct fetch_item));
 
 	/*
 	 * XXX: here we support old naming scheme, such as filename.yaml
@@ -104,10 +108,13 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	}
 	(void)unlink(tmp);
 
-	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t, -1, 0, silent)) != EPKG_OK) {
+	fi.url = url;
+	fi.mtime = *t;
+	if ((*rc = pkg_fetch_file_to_fd(repo, fd, &fi, silent)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
+	*t = fi.mtime;
 
 	return (fd);
 }

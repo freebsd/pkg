@@ -43,6 +43,7 @@
 
 #include "xmalloc.h"
 #include "private/utils.h"
+#include "private/fetch.h"
 #include "pkghash.h"
 
 #define UCL_COUNT(obj) ((obj)?((obj)->len):0)
@@ -178,14 +179,7 @@ extern struct pkg_ctx ctx;
 struct pkg_repo_it;
 struct pkg_repo;
 struct url;
-struct fetcher {
-	const char *scheme;
-	int64_t timeout;
-	int (*open)(struct pkg_repo *, const char *url, off_t *, time_t *t);
-	int (*close)(struct pkg_repo *);
-	int (*cleanup)(struct pkg_repo *);
-	int (*fetch)(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t offset, time_t *t);
-};
+struct fetcher;
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;
 
@@ -630,8 +624,8 @@ int pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 #define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
 #define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
 
-int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
-    time_t *t, ssize_t offset, int64_t size, bool silent);
+int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
+    bool silent);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo,

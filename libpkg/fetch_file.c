@@ -33,28 +33,28 @@
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/fetch.h"
 
 int
-file_open(struct pkg_repo *repo, const char *url, size_t *sz,
-    time_t *t)
+file_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
 	struct stat st;
-	const char *u = url;
+	const char *u = fi->url;
 
 	if (strlen(u) > 5)
 		u += 5; /* file: */
 	if (*u != '/') {
-		pkg_emit_error("invalid url: '%s'\n", url);
+		pkg_emit_error("invalid url: '%s'\n", fi->url);
 		return (EPKG_FATAL);
 	}
 	if (stat(u, &st) == -1) {
 		if (!repo->silent)
-			pkg_emit_error("%s: %s", url,
+			pkg_emit_error("%s: %s", fi->url,
 			    strerror(errno));
 		return (EPKG_FATAL);
 	}
-	*sz = st.st_size;
-	if (st.st_mtime <= *t)
+	fi->size = st.st_size;
+	if (st.st_mtime <= fi->mtime)
 		return (EPKG_UPTODATE);
 
 	repo->fh = fopen(u, "re");
@@ -72,20 +72,20 @@ fh_close(struct pkg_repo *repo)
 }
 
 int
-stdio_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t offset, time_t *t __unused)
+stdio_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 {
 	char buf[8192];
 	size_t buflen = 0, left = 0;
 	off_t done = 0, r;
 
-	pkg_emit_fetch_begin(url);
+	pkg_emit_fetch_begin(fi->url);
 	pkg_emit_progress_start(NULL);
-	if (offset > 0)
-		done += offset;
+	if (fi->offset > 0)
+		done += fi->offset;
 	buflen = sizeof(buf);
 	left = sizeof(buf);
-	if (sz > 0)
-		left = sz - done;
+	if (fi->size > 0)
+		left = fi->size - done;
 
 	while ((r = fread(buf, 1, left < buflen ? left : buflen, repo->fh)) > 0) {
 		if (write(dest, buf, r) != r) {
@@ -93,13 +93,13 @@ stdio_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t of
 			return (EPKG_FATAL);
 		}
 		done += r;
-		if (sz > 0) {
+		if (fi->size > 0) {
 			left -= r;
-			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
+			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)fi->size);
 		} else
 			pkg_debug(4, "Read status: %jd", (intmax_t)done);
-		if (sz > 0)
-			pkg_emit_progress_tick(done, sz);
+		if (fi->size > 0)
+			pkg_emit_progress_tick(done, fi->size);
 	}
 	if (r != 0) {
 		pkg_emit_error("An error occurred while fetching package");

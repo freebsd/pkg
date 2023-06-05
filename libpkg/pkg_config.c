@@ -45,6 +45,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "private/fetch.h"
 #include "pkg_repos.h"
 
 #ifndef PORTSDIR

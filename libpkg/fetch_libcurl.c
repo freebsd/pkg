@@ -30,6 +30,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "private/fetch.h"
 
 struct curl_userdata {
 	int fd;
@@ -83,10 +84,8 @@ curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_
 	return (0);
 }
 
-
 int
-curl_open(struct pkg_repo *repo, const char *u __unused,
-    size_t *sz __unused, time_t *t __unused)
+curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 {
 	CURLM *cm;
 	pkg_debug(1, "curl_open");
@@ -106,7 +105,7 @@ curl_open(struct pkg_repo *repo, const char *u __unused,
 }
 
 int
-curl_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t offset __unused, time_t *t)
+curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 {
 	CURL *cl;
 	CURLM *cm = NULL;
@@ -121,10 +120,10 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t off
 	data.fh = fdopen(dup(dest), "w");
 	if (data.fh == NULL)
 		return (EPKG_FATAL);
-	data.totalsize = sz;
-	data.url = url;
+	data.totalsize = fi->size;
+	data.url = fi->url;
 
-	pkg_debug(1, "curl> fetching %s\n", url);
+	pkg_debug(1, "curl> fetching %s\n", fi->url);
 	cl = curl_easy_init();
 	data.cl = cl;
 	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -134,8 +133,8 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t off
 	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
 	curl_easy_setopt(cl, CURLOPT_XFERINFOFUNCTION, curl_progress_cb);
 	curl_easy_setopt(cl, CURLOPT_XFERINFODATA, &data);
-	curl_easy_setopt(cl, CURLOPT_URL, url); /* TODO handle mirrors */
-	curl_easy_setopt(cl, CURLOPT_TIMEVALUE, (long)*t);
+	curl_easy_setopt(cl, CURLOPT_URL, fi->url); /* TODO handle mirrors */
+	curl_easy_setopt(cl, CURLOPT_TIMEVALUE, (long)fi->mtime);
 	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
 	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_parseheader_cb);
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
@@ -183,15 +182,15 @@ curl_fetch(struct pkg_repo *repo, int dest, const char *url, off_t sz, off_t off
 	return (retcode);
 }
 
-int
+void
 curl_cleanup(struct pkg_repo *repo)
 {
 	CURLM *cm;
 
 	if (repo->fetch_priv == NULL)
-		return (EPKG_OK);
+		return;
 	cm = repo->fetch_priv;
 	curl_multi_cleanup(cm);
 	repo->fetch_priv = NULL;
-	return (EPKG_OK);
+	return;
 }

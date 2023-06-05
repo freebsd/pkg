@@ -230,8 +230,8 @@ ssh_cleanup:
 }
 
 static int
-pkgprotocol_open(struct pkg_repo *repo, const char *u, off_t *sz,
-    int (*proto_connect)(struct pkg_repo *, struct yuarel *), time_t *t)
+pkgprotocol_open(struct pkg_repo *repo, struct fetch_item *fi,
+    int (*proto_connect)(struct pkg_repo *, struct yuarel *))
 {
 	char *line = NULL;
 	size_t linecap = 0;
@@ -239,11 +239,11 @@ pkgprotocol_open(struct pkg_repo *repo, const char *u, off_t *sz,
 	const char *errstr;
 	int retcode = EPKG_FATAL;
 	struct yuarel url;
-	char *url_to_free = xstrdup(u);
+	char *url_to_free = xstrdup(fi->url);
 
 	if (yuarel_parse(&url, url_to_free) == -1) {
 		free(url_to_free);
-		pkg_emit_error("Invalid url: '%s'", u);
+		pkg_emit_error("Invalid url: '%s'", fi->url);
 		return (EPKG_FATAL);
 	}
 
@@ -256,20 +256,20 @@ pkgprotocol_open(struct pkg_repo *repo, const char *u, off_t *sz,
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	pkg_debug(1, "SSH> get %s %" PRIdMAX "", url.path, (intmax_t)*t);
-	fprintf(repo->fh, "get %s %" PRIdMAX "\n", url.path, (intmax_t)*t);
+	pkg_debug(1, "SSH> get %s %" PRIdMAX "", url.path, (intmax_t)fi->mtime);
+	fprintf(repo->fh, "get %s %" PRIdMAX "\n", url.path, (intmax_t)fi->mtime);
 	if ((linelen = getline(&line, &linecap, repo->fh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
 
 		pkg_debug(1, "SSH> recv: %s", line);
 		if (strncmp(line, "ok:", 3) == 0) {
-			*sz = strtonum(line + 4, 0, LONG_MAX, &errstr);
+			fi->size = strtonum(line + 4, 0, LONG_MAX, &errstr);
 			if (errstr) {
 				goto out;
 			}
 
-			if (*sz == 0) {
+			if (fi->size == 0) {
 				retcode = EPKG_UPTODATE;
 				goto out;
 			}
@@ -290,15 +290,15 @@ out:
 }
 
 int
-tcp_open(struct pkg_repo *repo, const char *u, off_t *sz, time_t *t)
+tcp_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
-	return (pkgprotocol_open(repo, u, sz, tcp_connect, t));
+	return (pkgprotocol_open(repo, fi, tcp_connect));
 }
 
 int
-ssh_open(struct pkg_repo *repo, const char *u, off_t *sz, time_t *t)
+ssh_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
-	return (pkgprotocol_open(repo, u, sz, ssh_connect, t));
+	return (pkgprotocol_open(repo, fi, ssh_connect));
 }
 
 static int

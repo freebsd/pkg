@@ -25,12 +25,28 @@
 
 #pragma once
 
-int fetch_open(struct pkg_repo *, const char *, off_t *, time_t *t);
-int ssh_open(struct pkg_repo *, const char *, off_t *, time_t *t);
-int file_open(struct pkg_repo *, const char *, off_t *, time_t *t);
-int fh_close(struct pkg_repo *);
-int tcp_open(struct pkg_repo *, const char *, off_t *, time_t *t);
-int stdio_fetch(struct pkg_repo *, int dest, const char *url, off_t sz, off_t offset, time_t *t);
-int curl_open(struct pkg_repo *, const char *, off_t *, time_t *t);
-int curl_fetch(struct pkg_repo *, int dest, const char *url, off_t sz, off_t offset, time_t *t);
-int curl_cleanup(struct pkg_repo *);
+struct fetch_item {
+	const char *url;
+	off_t size;
+	off_t offset;
+	time_t mtime;
+};
+
+struct fetcher {
+	const char *scheme;
+	int64_t timeout;
+	int (*open)(struct pkg_repo *, struct fetch_item *);
+	void (*close)(struct pkg_repo *);
+	void (*cleanup)(struct pkg_repo *);
+	int (*fetch)(struct pkg_repo *repo, int dest, struct fetch_item *);
+};
+
+int fetch_open(struct pkg_repo *, struct fetch_item *);
+int ssh_open(struct pkg_repo *, struct fetch_item *);
+int file_open(struct pkg_repo *, struct fetch_item *);
+void fh_close(struct pkg_repo *);
+int tcp_open(struct pkg_repo *, struct fetch_item *);
+int stdio_fetch(struct pkg_repo *, int dest, struct fetch_item *);
+int curl_open(struct pkg_repo *, struct fetch_item *);
+int curl_fetch(struct pkg_repo *, int dest, struct fetch_item *);
+void curl_cleanup(struct pkg_repo *);
