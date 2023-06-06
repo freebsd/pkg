@@ -131,6 +131,12 @@
 typedef tll(struct pkg_kv *) kvlist_t;
 typedef tll(char *) stringlist_t;
 
+typedef enum {
+	IPALL = 0,
+	IPV4,
+	IPV6,
+} ip_version_t;
+
 struct pkg_kvlist {
 	kvlist_t *list;
 };
@@ -172,6 +178,7 @@ struct pkg_ctx {
 	pkghash *touched_dir_hash;
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
+	ip_version_t ip;
 };
 
 extern struct pkg_ctx ctx;
@@ -493,11 +500,6 @@ struct pkg_repo_ops {
 		const char *destdir);
 };
 
-typedef enum _pkg_repo_flags {
-	REPO_FLAGS_USE_IPV4 = (1U << 0),
-	REPO_FLAGS_USE_IPV6 = (1U << 1)
-} pkg_repo_flags;
-
 struct pkg_repo {
 	struct pkg_repo_ops *ops;
 
@@ -531,7 +533,7 @@ struct pkg_repo {
 
 	unsigned int priority;
 
-	pkg_repo_flags flags;
+	ip_version_t ip;
 	kvlist_t env;
 
 	/* Opaque repository data */

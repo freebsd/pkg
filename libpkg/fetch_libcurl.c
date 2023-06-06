@@ -152,6 +152,10 @@ http_getmirrors(struct curl_repodata *cr)
 	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_ph_cb);
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
 	curl_do_fetch(&data, cl, cr);
+	if (ctx.ip == IPV4)
+		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+	if (ctx.ip == IPV6)
+		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
 	walk = buf;
 	while ((line = strsep(&walk, "\n\r")) != NULL) {
 		if (strncmp(line, "URL:", 4) != 0)
@@ -358,6 +362,10 @@ retry:
 	} else {
 		curl_easy_setopt(cl, CURLOPT_URL, fi->url);
 	}
+	if (repo->ip == IPV4)
+		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+	if (repo->ip == IPV6)
+		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
 	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_write_cb);
 	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
 	curl_easy_setopt(cl, CURLOPT_XFERINFOFUNCTION, curl_progress_cb);

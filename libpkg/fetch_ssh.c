@@ -65,9 +65,9 @@ tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 	pkg_debug(1, "TCP> tcp_connect");
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
-	if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+	if (repo->ip == IPV4)
 		hints.ai_family = PF_INET;
-	else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+	else if (repo->ip == IPV6)
 		hints.ai_family = PF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 	snprintf(srv, sizeof(srv), "%d", u->port);
@@ -167,9 +167,9 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 		ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
 		if (ssh_args != NULL)
 			fprintf(cmd->fp, "%s ", ssh_args);
-		if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+		if (repo->ip == IPV4)
 			fputs("-4 ", cmd->fp);
-		else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+		else if (repo->ip == IPV6)
 			fputs("-6 ", cmd->fp);
 		if (u->port > 0)
 			fprintf(cmd->fp, "-p %d ", u->port);
