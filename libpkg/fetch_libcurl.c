@@ -33,8 +33,6 @@
 #include "private/event.h"
 #include "private/fetch.h"
 
-#define http_mirror_max_size 1048576 // 1MB
-
 struct curl_repodata {
 	CURLM *cm;
 	CURLU *url;
@@ -56,37 +54,6 @@ struct http_mirror {
 	CURLU *url;
 	struct http_mirror *next;
 };
-
-static size_t
-curl_ph_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdata)
-{
-	struct curl_userdata *d = (struct curl_userdata *)userdata;
-
-	curl_easy_getinfo(d->cl, CURLINFO_RESPONSE_CODE, &d->response);
-	if (d->response == 200 && !d->started) {
-		if (!curl_easy_getinfo(d->cl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &d->content_length))
-			if (d->content_length > http_mirror_max_size)
-				return (CURL_WRITEFUNC_ERROR);
-
-	}
-
-	return (size *nmemb);
-}
-
-static size_t
-curl_wr_cb(char *data, size_t size, size_t nmemb, void *userdata)
-{
-	struct curl_userdata *d = (struct curl_userdata *)userdata;
-	size_t written;
-
-	written = fwrite(data, size, nmemb, d->fh);
-	d->size += written;
-
-	if (d->size > http_mirror_max_size)
-		return (CURL_WRITEFUNC_ERROR);
-
-	return (written);
-}
 
 static long
 curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
@@ -133,6 +100,18 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 	return (0);
 }
 
+static size_t
+curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
+{
+	struct curl_userdata *d = (struct curl_userdata *)userdata;
+	size_t written;
+
+	written = fwrite(data, size, nmemb, d->fh);
+	d->size += written;
+
+	return (written);
+}
+
 static struct http_mirror *
 http_getmirrors(struct curl_repodata *cr)
 {
@@ -147,10 +126,9 @@ http_getmirrors(struct curl_repodata *cr)
 	data.fh = open_memstream(& buf, &cap);
 	data.cl = cl;
 
-	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_wr_cb);
+	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_write_cb);
 	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
-	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_ph_cb);
-	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
+	curl_easy_setopt(cl, CURLOPT_MAXFILESIZE_LARGE, 1048576L);
 	curl_do_fetch(&data, cl, cr);
 	if (ctx.ip == IPV4)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
@@ -178,18 +156,6 @@ http_getmirrors(struct curl_repodata *cr)
 	free(buf);
 
 	return (mirrors);
-}
-
-static size_t
-curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
-{
-	struct curl_userdata *d = (struct curl_userdata *)userdata;
-	size_t written;
-
-	written = fwrite(data, size, nmemb, d->fh);
-	d->size += written;
-
-	return (written);
 }
 
 static size_t
