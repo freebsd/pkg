@@ -389,11 +389,7 @@ struct pkg_option {
 	struct pkg_option *next, *prev;
 };
 
-struct http_mirror {
-	struct url *url;
-	struct http_mirror *next;
-	bool reldoc;
-};
+struct http_mirror;
 
 struct pkg_repo_meta_key {
 	char *pubkey;

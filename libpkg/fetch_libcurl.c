@@ -26,12 +26,14 @@
 #include <sys/param.h>
 #include <stdlib.h>
 #include <curl/curl.h>
+#include <ctype.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/fetch.h"
 
+#define http_mirror_max_size 1048576 // 1MB
 
 struct curl_repodata {
 	CURLM *cm;
@@ -44,10 +46,135 @@ struct curl_userdata {
 	FILE *fh;
 	size_t size;
 	size_t totalsize;
+	size_t content_length;
 	bool started;
 	const char *url;
 	long response;
 };
+
+struct http_mirror {
+	CURLU *url;
+	struct http_mirror *next;
+};
+
+static size_t
+curl_ph_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdata)
+{
+	struct curl_userdata *d = (struct curl_userdata *)userdata;
+
+	curl_easy_getinfo(d->cl, CURLINFO_RESPONSE_CODE, &d->response);
+	if (d->response == 200 && !d->started) {
+		if (!curl_easy_getinfo(d->cl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &d->content_length))
+			if (d->content_length > http_mirror_max_size)
+				return (CURL_WRITEFUNC_ERROR);
+
+	}
+
+	return (size *nmemb);
+}
+
+static size_t
+curl_wr_cb(char *data, size_t size, size_t nmemb, void *userdata)
+{
+	struct curl_userdata *d = (struct curl_userdata *)userdata;
+	size_t written;
+
+	written = fwrite(data, size, nmemb, d->fh);
+	d->size += written;
+
+	if (d->size > http_mirror_max_size)
+		return (CURL_WRITEFUNC_ERROR);
+
+	return (written);
+}
+
+static long
+curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
+{
+	int still_running = 1;
+	CURLMsg *msg;
+	int msg_left;
+
+	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 0L);
+	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
+
+	if (ctx.debug_level > 0)
+		curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
+
+	/* compat with libfetch */
+	if (getenv("SSL_NO_VERFIRY_PEER") != NULL)
+		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYPEER, 0L);
+	if (getenv("SSL_NO_VERIFY_HOSTNAME") != NULL)
+		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYHOST, 0L);
+	curl_multi_add_handle(cr->cm, cl);
+
+	while(still_running) {
+		CURLMcode mc = curl_multi_perform(cr->cm, &still_running);
+
+		if(still_running)
+			/* wait for activity, timeout or "nothing" */
+			mc = curl_multi_poll(cr->cm, NULL, 0, 1000, NULL);
+
+		if(mc)
+			break;
+	}
+
+	while ((msg = curl_multi_info_read(cr->cm, &msg_left))) {
+		fclose(data->fh);
+		if (msg->msg == CURLMSG_DONE) {
+			CURL *eh = msg->easy_handle;
+			long rc = 0;
+			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &rc);
+			return (rc);
+		}
+
+	}
+	return (0);
+}
+
+static struct http_mirror *
+http_getmirrors(struct curl_repodata *cr)
+{
+	CURL *cl;
+	struct curl_userdata data = { 0 };
+	char *buf = NULL, *walk, *line;
+	size_t cap = 0;
+	struct http_mirror *m, *mirrors = NULL;
+	CURLU *url;
+
+	cl = curl_easy_init();
+	data.fh = open_memstream(& buf, &cap);
+	data.cl = cl;
+
+	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_wr_cb);
+	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
+	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_ph_cb);
+	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
+	curl_do_fetch(&data, cl, cr);
+	walk = buf;
+	while ((line = strsep(&walk, "\n\r")) != NULL) {
+		if (strncmp(line, "URL:", 4) != 0)
+			continue;
+		line += 4;
+		while (isspace(*line))
+			line++;
+		if (*line == '\0')
+			continue;
+		url = curl_url();
+		if (curl_url_set(url, CURLUPART_URL, line, 0)) {
+			curl_url_cleanup(url);
+			pkg_emit_error("Invalid mirror url: '%s'", line);
+			continue;
+		}
+		m = xmalloc(sizeof(*m));
+		m->url = url;
+		LL_APPEND(mirrors, m);
+	}
+	free(buf);
+
+	return (mirrors);
+}
 
 static size_t
 curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
@@ -73,9 +200,7 @@ curl_parseheader_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdat
 		d->started = true;
 	}
 
-
 	return (size *nmemb);
-
 }
 
 static size_t
@@ -127,9 +252,28 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 			free(host);
 			if (repo->srv == NULL) {
 				pkg_emit_error("No SRV record found for the "
-				    "repo '%s'\n", repo->name);
+				    "repo '%s'", repo->name);
 				repo->mirror_type = NOMIRROR;
 			}
+		}
+	}
+	if (repo->mirror_type == HTTP && repo->http == NULL) {
+		if (strncasecmp(repo->url, "pkg+", 4) == 0) {
+			pkg_emit_error("invalid for http mirror mechanism "
+			   "scheme '%s'", repo->url);
+			return (EPKG_FATAL);
+		}
+		cr->url = curl_url();
+		CURLUcode c = curl_url_set(cr->url, CURLUPART_URL, repo->url, 0);
+		if (c) {
+			pkg_emit_error("impossible to parse url: '%s'", repo->url);
+			return (EPKG_FATAL);
+		}
+		repo->http = http_getmirrors(cr);
+		if (repo->http == NULL) {
+			pkg_emit_error("No HTTP mirrors founds for the repo "
+			    "'%s'", repo->name);
+			repo->mirror_type = NOMIRROR;
 		}
 	}
 
@@ -140,15 +284,14 @@ int
 curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 {
 	CURL *cl;
+	CURLU *hu = NULL;
 	struct curl_userdata data = { 0 };
-	int still_running = 1;
-	CURLMsg *msg;
-	int msgs_left;
 	int64_t retry;
 	int retcode = EPKG_OK;
 	struct dns_srvinfo *srv_current = NULL;
 	struct http_mirror *http_current = NULL;
-	char *urlpath;
+	char *urlpath = NULL;
+	const char *relpath = NULL;
 
 	struct curl_repodata *cr = (struct curl_repodata *)repo->fetch_priv;
 
@@ -162,12 +305,23 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	cl = curl_easy_init();
 	data.cl = cl;
 	retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
-	if (repo->mirror_type == SRV) {
+	if (repo->mirror_type == SRV || repo->mirror_type == HTTP) {
 		CURLU *cu = curl_url();
 		curl_url_set(cu, CURLUPART_URL, fi->url, 0);
 		curl_url_get(cu, CURLUPART_PATH, &urlpath, 0);
-		if (urlpath != NULL)
+		if (urlpath != NULL && repo->mirror_type == SRV)
 			curl_url_set(cr->url, CURLUPART_PATH, urlpath, 0);
+		if (urlpath != NULL && repo->mirror_type == HTTP) {
+			CURLU *ru = curl_url();
+			char *doc = NULL;
+			curl_url_set(ru, CURLUPART_URL, repo->url, 0);
+			curl_url_get(ru, CURLUPART_PATH, &doc, 0);
+			relpath = urlpath;
+			if (doc != NULL)
+				relpath += strlen(doc);
+			free(doc);
+			curl_url_cleanup(ru);
+		}
 		curl_url_cleanup(cu);
 	}
 
@@ -184,68 +338,54 @@ retry:
 		free(portstr);
 		curl_easy_setopt(cl, CURLOPT_CURLU, cr->url);
 	} else if (repo->mirror_type == HTTP) {
-		/* TODO http mirroring */
+		if (http_current == NULL)
+			http_current = repo->http;
+		else
+			http_current = http_current->next;
+		char *doc = NULL;
+		char *p = NULL;
+		const char *path = relpath;;
+		curl_url_cleanup(hu);
+		hu = curl_url_dup(http_current->url);
+		curl_url_get(hu, CURLUPART_PATH, &doc, 0);
+		if (doc != NULL) {
+			xasprintf(&p, "%s/%s", doc, relpath);
+			path = p;
+		}
+		curl_url_set(hu, CURLUPART_PATH, path, 0);
+		free(p);
+		curl_easy_setopt(cl, CURLOPT_CURLU, hu);
 	} else {
 		curl_easy_setopt(cl, CURLOPT_URL, fi->url);
 	}
-	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_write_cb);
 	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
-	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 0L);
-	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
 	curl_easy_setopt(cl, CURLOPT_XFERINFOFUNCTION, curl_progress_cb);
 	curl_easy_setopt(cl, CURLOPT_XFERINFODATA, &data);
-	curl_easy_setopt(cl, CURLOPT_TIMEVALUE, (long)fi->mtime);
-	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
 	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_parseheader_cb);
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
+	curl_easy_setopt(cl, CURLOPT_TIMEVALUE, (long)fi->mtime);
+	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
 	if (repo->fetcher->timeout > 0)
 		curl_easy_setopt(cl, CURLOPT_TIMEOUT, repo->fetcher->timeout);
-	if (ctx.debug_level > 0)
-		curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
 
-	/* compat with libfetch */
-	if (getenv("SSL_NO_VERFIRY_PEER") != NULL)
-		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYPEER, 0L);
-	if (getenv("SSL_NO_VERIFY_HOSTNAME") != NULL)
-		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYHOST, 0L);
-	curl_multi_add_handle(cr->cm, cl);
-
-	while(still_running) {
-		CURLMcode mc = curl_multi_perform(cr->cm, &still_running);
-
-		if(still_running)
-			/* wait for activity, timeout or "nothing" */
-			mc = curl_multi_poll(cr->cm, NULL, 0, 1000, NULL);
-
-		if(mc)
-			break;
-	}
-	while((msg = curl_multi_info_read(cr->cm, &msgs_left))) {
-		fclose(data.fh);
-		if(msg->msg == CURLMSG_DONE) {
-			CURL *eh = msg->easy_handle;
-			long rc = 0;
-			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &rc);
-			if (rc == 304) {
-				retcode = EPKG_UPTODATE;
-			} else if (rc != 200) {
-				--retry;
-				if (retry <= 0 || rc == 404) {
-					pkg_emit_error("An error occured while "
-				    "fetching package");
-					retcode = EPKG_FATAL;
-				}
-				goto retry;
-			}
-		} else {
+	long rc = curl_do_fetch(&data, cl, cr);
+	if (rc == 304) {
+		retcode = EPKG_UPTODATE;
+	} else if (rc != 200) {
+		--retry;
+		if (retry <= 0 || rc == 404) {
 			pkg_emit_error("An error occured while fetching package");
-		}
+			retcode = EPKG_FATAL;
+		} else
+			goto retry;
 	}
 
 	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &fi->mtime);
 	curl_multi_remove_handle(cr->cm, cl);
 	curl_easy_cleanup(cl);
+	free(urlpath);
+	curl_url_cleanup(hu);
 
 	return (retcode);
 }
