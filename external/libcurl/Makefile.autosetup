@@ -83,7 +83,14 @@ SRCS=	\
 	cf-h2-proxy.c \
 	cf-haproxy.c \
 	dynhds.c \
-	http1.c
+	http1.c \
+	http_digest.c \
+	http_aws_sigv4.c \
+	digest.c \
+	sha256.c \
+	md5.c \
+	hmac.c \
+	altsvc.c
 
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \

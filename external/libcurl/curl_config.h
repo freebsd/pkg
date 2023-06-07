@@ -11,19 +11,19 @@
 #define CURL_CA_FALLBACK 1
 
 /* Location of default ca path */
-#define CURL_CA_PATH "/etc/ssl/certs"
+#define CURL_CA_PATH "/etc/ssl/certs/"
 
 /* Default SSL backend */
 /* #undef CURL_DEFAULT_SSL_BACKEND */
 
 /* disable alt-svc */
-#define CURL_DISABLE_ALTSVC 1
+/* #undef CURL_DISABLE_ALTSVC */
 
 /* to disable cookies support */
 #define CURL_DISABLE_COOKIES 1
 
 /* to disable cryptographic authentication */
-#define CURL_DISABLE_CRYPTO_AUTH 1
+/* #undef CURL_DISABLE_CRYPTO_AUTH */
 
 /* to disable DICT */
 #define CURL_DISABLE_DICT 1
@@ -107,7 +107,7 @@
 #define CURL_DISABLE_SMTP 1
 
 /* to disable socketpair support */
-#define CURL_DISABLE_SOCKETPAIR 1
+/* #undef CURL_DISABLE_SOCKETPAIR */
 
 /* to disable TELNET */
 #define CURL_DISABLE_TELNET 1
@@ -172,6 +172,7 @@
 
 /* Define to 1 if you have the __builtin_available function. */
 /* #undef HAVE_BUILTIN_AVAILABLE */
+#define HAVE_BUILTIN_AVAILABLE 1
 
 /* Define to 1 if you have the clock_gettime function and monotonic timer. */
 #define HAVE_CLOCK_GETTIME_MONOTONIC 1
@@ -804,6 +805,9 @@
 /* Size of curl_off_t in number of bytes */
 #define SIZEOF_CURL_OFF_T 8
 
+/* Size of curl_socket_t in number of bytes */
+#define SIZEOF_CURL_SOCKET_T 4
+
 /* Size of int in number of bytes */
 #define SIZEOF_INT 4
 
@@ -918,7 +922,7 @@
 #define USE_TLS_SRP 1
 
 /* Use Unix domain sockets */
-/* #undef USE_UNIX_SOCKETS */
+#define USE_UNIX_SOCKETS 1
 
 /* enable websockets support */
 /* #undef USE_WEBSOCKETS */
