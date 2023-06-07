@@ -11,7 +11,7 @@
 #define CURL_CA_FALLBACK 1
 
 /* Location of default ca path */
-/* #undef CURL_CA_PATH */
+#define CURL_CA_PATH "/etc/ssl/certs"
 
 /* Default SSL backend */
 /* #undef CURL_DEFAULT_SSL_BACKEND */
