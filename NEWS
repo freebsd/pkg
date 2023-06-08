@@ -1,3 +1,23 @@
+Changes from 1.19.99.2
+- Update libucl to latest version
+- Allow to configure COMPRESSION_FORMAT in pkg.conf
+- Remove support for legacy (pkg_* tools)
+- kill useless pkg_manifest_key API
+- pkg add (respect provide/require)
+- pkg autoremove: properly process provides/requires
+- pkg now requires C11
+- remplace pkg_set(3) API with a _Generic based API
+- periodic script: Use locale-agnostic (ISO 8601)
+- complete refactoring of the fetch code
+- new pkgdb_all_search to search local and remote DBs at the same time
+- fix plenty of memory leaks
+- fix a regression in -e
+- improve the plugin API
+- replace libfetch with libcurl
+- add support for http pipelining
+- improve SRV and HTTP mirroring, reducing the number of round trips
+- only keep one version of HTTP mirroring the one that respects the repo url
+
 Changes from 1.18.99.7 to 1.19.99.1
 - fix regression in pkg autoremove
 - fix regression preventing tracking files with path longer than 64 chars
