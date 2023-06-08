@@ -55,23 +55,14 @@ struct http_mirror {
 	struct http_mirror *next;
 };
 
-struct data {
-  char trace_ascii; /* 1 or 0 */
-};
-
 static
 void dump(const char *text,
-          FILE *stream, unsigned char *ptr, size_t size,
-          char nohex)
+          FILE *stream, unsigned char *ptr, size_t size)
 {
   size_t i;
   size_t c;
 
-  unsigned int width = 0x10;
-
-  if(nohex)
-    /* without the hex output, we can fit more on screen */
-    width = 0x40;
+  unsigned int width = 0x40;
 
   fprintf(stream, "%s, %10.10lu bytes (0x%8.8lx)\n",
           text, (unsigned long)size, (unsigned long)size);
@@ -80,18 +71,9 @@ void dump(const char *text,
 
     fprintf(stream, "%4.4lx: ", (unsigned long)i);
 
-    if(!nohex) {
-      /* hex not disabled, show it */
-      for(c = 0; c < width; c++)
-        if(i + c < size)
-          fprintf(stream, "%02x ", ptr[i + c]);
-        else
-          fputs("   ", stream);
-    }
-
     for(c = 0; (c < width) && (i + c < size); c++) {
       /* check for 0D0A; if found, skip past and start a new line of output */
-      if(nohex && (i + c + 1 < size) && ptr[i + c] == 0x0D &&
+      if((i + c + 1 < size) && ptr[i + c] == 0x0D &&
          ptr[i + c + 1] == 0x0A) {
         i += (c + 2 - width);
         break;
@@ -99,7 +81,7 @@ void dump(const char *text,
       fprintf(stream, "%c",
               (ptr[i + c] >= 0x20) && (ptr[i + c]<0x80)?ptr[i + c]:'.');
       /* check again for 0D0A, to avoid an extra \n if it's at width */
-      if(nohex && (i + c + 2 < size) && ptr[i + c + 1] == 0x0D &&
+      if((i + c + 2 < size) && ptr[i + c + 1] == 0x0D &&
          ptr[i + c + 2] == 0x0A) {
         i += (c + 3 - width);
         break;
@@ -113,9 +95,8 @@ void dump(const char *text,
 static
 int my_trace(CURL *handle, curl_infotype type,
              char *data, size_t size,
-             void *userp)
+             void *userp __unused)
 {
-  struct data *config = (struct data *)userp;
   const char *text;
   (void)handle; /* prevent compiler warning */
 
@@ -146,7 +127,7 @@ int my_trace(CURL *handle, curl_infotype type,
     break;
   }
 
-  dump(text, stderr, (unsigned char *)data, size, config->trace_ascii);
+  dump(text, stderr, (unsigned char *)data, size);
   return 0;
 }
 
@@ -158,7 +139,6 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 	int msg_left;
 
 	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 0L);
 	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
 
 	if (ctx.debug_level > 0)
@@ -185,7 +165,6 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 	}
 
 	while ((msg = curl_multi_info_read(cr->cm, &msg_left))) {
-		fclose(data->fh);
 		if (msg->msg == CURLMSG_DONE) {
 			CURL *eh = msg->easy_handle;
 			long rc = 0;
@@ -210,7 +189,7 @@ curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
 }
 
 static struct http_mirror *
-http_getmirrors(struct curl_repodata *cr)
+http_getmirrors(struct pkg_repo *r, struct curl_repodata *cr)
 {
 	CURL *cl;
 	struct curl_userdata data = { 0 };
@@ -218,6 +197,7 @@ http_getmirrors(struct curl_repodata *cr)
 	size_t cap = 0;
 	struct http_mirror *m, *mirrors = NULL;
 	CURLU *url;
+	pkg_debug(1, "CURL> fetching http mirror list if any");
 
 	cl = curl_easy_init();
 	data.fh = open_memstream(& buf, &cap);
@@ -226,11 +206,15 @@ http_getmirrors(struct curl_repodata *cr)
 	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_write_cb);
 	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
 	curl_easy_setopt(cl, CURLOPT_MAXFILESIZE_LARGE, 1048576L);
-	curl_do_fetch(&data, cl, cr);
+	curl_easy_setopt(cl, CURLOPT_URL, r->url);
+	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 1L);
+	data.url = r->url;
 	if (ctx.ip == IPV4)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 	if (ctx.ip == IPV6)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+	curl_do_fetch(&data, cl, cr);
+	fclose(data.fh);
 	walk = buf;
 	while ((line = strsep(&walk, "\n\r")) != NULL) {
 		if (strncmp(line, "URL:", 4) != 0)
@@ -248,6 +232,7 @@ http_getmirrors(struct curl_repodata *cr)
 		}
 		m = xmalloc(sizeof(*m));
 		m->url = url;
+		pkg_debug(1, "CURL> appending an http mirror: %s", line);
 		LL_APPEND(mirrors, m);
 	}
 	free(buf);
@@ -261,6 +246,8 @@ curl_parseheader_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdat
 	struct curl_userdata *d = (struct curl_userdata *)userdata;
 
 	curl_easy_getinfo(d->cl, CURLINFO_RESPONSE_CODE, &d->response);
+	if (d->response == 404)
+		return (CURLE_WRITE_ERROR);
 	if (d->response == 200 && !d->started) {
 		pkg_emit_fetch_begin(d->url);
 		pkg_emit_progress_start(NULL);
@@ -338,7 +325,7 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 			pkg_emit_error("impossible to parse url: '%s'", repo->url);
 			return (EPKG_FATAL);
 		}
-		repo->http = http_getmirrors(cr);
+		repo->http = http_getmirrors(repo, cr);
 		if (repo->http == NULL) {
 			pkg_emit_error("No HTTP mirrors founds for the repo "
 			    "'%s'", repo->name);
@@ -371,8 +358,6 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	data.url = fi->url;
 
 	pkg_debug(1, "curl> fetching %s\n", fi->url);
-	cl = curl_easy_init();
-	data.cl = cl;
 	retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	if (repo->mirror_type == SRV || repo->mirror_type == HTTP) {
 		CURLU *cu = curl_url();
@@ -395,22 +380,24 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	}
 
 retry:
+	cl = curl_easy_init();
+	data.cl = cl;
 	if (repo->mirror_type == SRV) {
 		char *portstr;
+		if (srv_current != NULL)
+			srv_current = srv_current->next;
 		if (srv_current == NULL)
 			srv_current = repo->srv;
-		else
-			srv_current = srv_current->next;
 		curl_url_set(cr->url, CURLUPART_HOST, srv_current->host, 0);
 		xasprintf(&portstr, "%d", srv_current->port);
 		curl_url_set(cr->url, CURLUPART_PORT, portstr, 0);
 		free(portstr);
 		curl_easy_setopt(cl, CURLOPT_CURLU, cr->url);
 	} else if (repo->mirror_type == HTTP) {
+		if (http_current != NULL)
+			http_current = http_current->next;
 		if (http_current == NULL)
 			http_current = repo->http;
-		else
-			http_current = http_current->next;
 		char *doc = NULL;
 		char *p = NULL;
 		const char *path = relpath;;
@@ -423,14 +410,25 @@ retry:
 		}
 		curl_url_set(hu, CURLUPART_PATH, path, 0);
 		free(p);
+		char *lurl;
+		curl_url_get(hu, CURLUPART_URL, &lurl, 0);
+		pkg_debug(1, "CURL> new http mirror url: %s", lurl);
 		curl_easy_setopt(cl, CURLOPT_CURLU, hu);
 	} else {
+		pkg_debug(1, "CURL> No mirror set url to %s\n", fi->url);
 		curl_easy_setopt(cl, CURLOPT_URL, fi->url);
+	}
+	if (ctx.debug_level > 0) {
+		const char *lurl = NULL;
+		curl_easy_getinfo(cl, CURLINFO_EFFECTIVE_URL, &lurl);
+		pkg_debug(1, "CURL> attempting to fetch from %s, left retry %ld\n",
+				lurl, retry);
 	}
 	if (repo->ip == IPV4)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 	if (repo->ip == IPV6)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
+	curl_easy_setopt(cl, CURLOPT_NOPROGRESS, 0L);
 	curl_easy_setopt(cl, CURLOPT_WRITEFUNCTION, curl_write_cb);
 	curl_easy_setopt(cl, CURLOPT_WRITEDATA, &data);
 	curl_easy_setopt(cl, CURLOPT_XFERINFOFUNCTION, curl_progress_cb);
@@ -443,20 +441,23 @@ retry:
 		curl_easy_setopt(cl, CURLOPT_TIMEOUT, repo->fetcher->timeout);
 
 	long rc = curl_do_fetch(&data, cl, cr);
+	time_t t;
+	curl_multi_remove_handle(cr->cm, cl);
+	curl_easy_cleanup(cl);
+	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &t);
 	if (rc == 304) {
 		retcode = EPKG_UPTODATE;
 	} else if (rc != 200) {
 		--retry;
-		if (retry <= 0 || rc == 404) {
+		if (retry <= 0 || (rc == 404 && repo->mirror_type == NOMIRROR)) {
 			pkg_emit_error("An error occured while fetching package");
 			retcode = EPKG_FATAL;
 		} else
 			goto retry;
 	}
 
-	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &fi->mtime);
-	curl_multi_remove_handle(cr->cm, cl);
-	curl_easy_cleanup(cl);
+	fi->mtime = t;
+	fclose(data.fh);
 	free(urlpath);
 	curl_url_cleanup(hu);
 
