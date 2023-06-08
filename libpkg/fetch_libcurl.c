@@ -442,9 +442,9 @@ retry:
 
 	long rc = curl_do_fetch(&data, cl, cr);
 	time_t t;
+	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &t);
 	curl_multi_remove_handle(cr->cm, cl);
 	curl_easy_cleanup(cl);
-	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &t);
 	if (rc == 304) {
 		retcode = EPKG_UPTODATE;
 	} else if (rc != 200) {
