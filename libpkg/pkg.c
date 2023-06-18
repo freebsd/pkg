@@ -237,7 +237,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		free(pkg->name);
 		pkg->name = xstrdup(str);
 		free(pkg->uid);
-		pkg->name = xstrdup(str);
+		pkg->uid = xstrdup(str);
 		break;
 	case PKG_ATTR_ORIGIN:
 		free(pkg->origin);
