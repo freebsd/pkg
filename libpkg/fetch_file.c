@@ -101,7 +101,7 @@ stdio_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 		if (fi->size > 0)
 			pkg_emit_progress_tick(done, fi->size);
 	}
-	if (r != 0) {
+	if (ferror(repo->fh)) {
 		pkg_emit_error("An error occurred while fetching package");
 		return(EPKG_FATAL);
 	}
