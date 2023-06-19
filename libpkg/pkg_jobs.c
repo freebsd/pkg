@@ -1572,10 +1572,12 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	candidates_t *candidates = xcalloc(1, sizeof(*candidates));
+	candidates_t *candidates;
 
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (NULL);
+
+	candidates = xcalloc(1, sizeof(*candidates));
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 
