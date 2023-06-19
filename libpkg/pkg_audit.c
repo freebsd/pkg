@@ -532,8 +532,6 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		r = yxml_parse(&x, *walk++);
 		switch (r) {
 		case YXML_EREF:
-			pkg_emit_error("Unexpected EOF while parsing vulnxml");
-			goto out;
 		case YXML_ESTACK:
 			pkg_emit_error("Unexpected EOF while parsing vulnxml");
 			goto out;
