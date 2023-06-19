@@ -159,7 +159,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		pkg_debug(3, "no digest found for package %s (%s-%s)",
 		    pkg->uid, pkg->name, pkg->version);
 		if (pkg_checksum_calculate(pkg, universe->j->db, false, true, false) != EPKG_OK) {
-			if (foudn != NULL)
+			if (found != NULL)
 				*found = NULL;
 			return (EPKG_FATAL);
 		}
@@ -1110,7 +1110,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 
 		if (local != NULL && local->pkg->locked) {
 			pkg_debug(1, "removing %s from the request as it is locked",
-				cur->pkg->uid);
+				local->pkg->uid);
 			pkghash_del(j->request_add, req->item->pkg->uid);
 			pkg_jobs_request_free(req);
 			continue;
