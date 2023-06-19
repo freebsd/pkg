@@ -963,7 +963,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	struct pkg_job_universe_item *unit = NULL;
 
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
-		rc = EPKG_FATAL;
+		return (rc);
 
 	/*
 	 * MATCH_EXACT is handled at a higher level, so that we can complain if a
