@@ -215,7 +215,7 @@ pkg_set_b(struct pkg *pkg, pkg_attr attr, bool boolean)
 		pkg->automatic = boolean;
 		break;
 	case PKG_ATTR_LOCKED:
-		pkg->automatic = boolean;
+		pkg->locked = boolean;
 		break;
 	case PKG_ATTR_VITAL:
 		pkg->vital = boolean;
