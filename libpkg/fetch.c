@@ -264,7 +264,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 
 	if (strncasecmp(URL_SCHEME_PREFIX, fi->url,
 	    strlen(URL_SCHEME_PREFIX)) == 0) {
-		if (repo->fetcher == NULL && repo->mirror_type != SRV) {
+		if (repo->mirror_type != SRV) {
 			pkg_emit_error("packagesite URL error for %s -- "
 					URL_SCHEME_PREFIX
 					":// implies SRV mirror type", fi->url);
