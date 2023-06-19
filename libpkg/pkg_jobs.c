@@ -876,7 +876,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 	if ((it = pkgdb_repo_query_cond(j->db, cond, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
 
-	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		xstring_renew(qmsg);
 		if (pkg_jobs_has_replacement(j, p->uid)) {
 			pkg_debug(1, "replacement %s is already used", p->uid);
