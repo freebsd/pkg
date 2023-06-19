@@ -236,10 +236,8 @@ pkg_audit_fetch(const char *src, const char *dest)
 
 	/* Open input fd */
 	fd = open(tmp, O_RDONLY);
-	if (fd == -1) {
-		retcode = EPKG_FATAL;
+	if (fd == -1)
 		goto cleanup;
-	}
 	/* Open out fd */
 	if (dest != NULL) {
 		outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
