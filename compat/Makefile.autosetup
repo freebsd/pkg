@@ -8,6 +8,7 @@ SRCS=	closefrom.c \
 	funopen.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/libpkg \
 		-I$(top_srcdir) \
 		-I$(top_builddir)
 
