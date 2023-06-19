@@ -272,13 +272,14 @@ curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_
 int
 curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 {
-	struct curl_repodata *cr = xcalloc(1, sizeof(*cr));
+	struct curl_repodata *cr;
 	pkg_debug(1, "curl_open");
 
 	if (repo->fetch_priv != NULL)
 		return (EPKG_OK);
 
 	curl_global_init(CURL_GLOBAL_ALL);
+	cr = xcalloc(1, sizeof(*cr));
 	cr->cm = curl_multi_init();
 	curl_multi_setopt(cr->cm, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 	curl_multi_setopt(cr->cm, CURLMOPT_MAX_HOST_CONNECTIONS, 1);
