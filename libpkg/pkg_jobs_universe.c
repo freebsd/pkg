@@ -159,7 +159,8 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		pkg_debug(3, "no digest found for package %s (%s-%s)",
 		    pkg->uid, pkg->name, pkg->version);
 		if (pkg_checksum_calculate(pkg, universe->j->db, false, true, false) != EPKG_OK) {
-			*found = NULL;
+			if (foudn != NULL)
+				*found = NULL;
 			return (EPKG_FATAL);
 		}
 	}
