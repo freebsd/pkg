@@ -222,12 +222,6 @@ dns_getsrvinfo(const char *zone)
 		}
 
 		res[n] = xmalloc(sizeof(struct dns_srvinfo));
-		if (res[n] == NULL) {
-			for (i = 0; i < n; i++)
-				free(res[i]);
-			free(res);
-			return NULL;
-		}
 		res[n]->type = type;
 		res[n]->class = class;
 		res[n]->ttl = ttl;
