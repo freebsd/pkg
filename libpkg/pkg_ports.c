@@ -1007,9 +1007,6 @@ plist_new(struct pkg *pkg, const char *stage)
 	struct plist *p;
 
 	p = xcalloc(1, sizeof(struct plist));
-	if (p == NULL)
-		return (NULL);
-
 	p->plistdirfd = -1;
 	p->stagefd = open(stage ? stage : "/", O_DIRECTORY | O_CLOEXEC);
 	if (p->stagefd == -1) {
