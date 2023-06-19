@@ -296,21 +296,19 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 			return (EPKG_FATAL);
 		}
 
+		char *zone;
+		char *host = NULL, *scheme = NULL;
+		curl_url_get(cr->url, CURLUPART_HOST, &host, 0);
+		curl_url_get(cr->url, CURLUPART_SCHEME, &scheme, 0);
+		xasprintf(&zone, "_%s._tcp.%s", scheme, host);
+		repo->srv = dns_getsrvinfo(zone);
+		free(zone);
+		free(host);
+		free(scheme);
 		if (repo->srv == NULL) {
-			char *zone;
-			char *host = NULL, *scheme = NULL;
-			curl_url_get(cr->url, CURLUPART_HOST, &host, 0);
-			curl_url_get(cr->url, CURLUPART_SCHEME, &scheme, 0);
-			xasprintf(&zone, "_%s._tcp.%s", scheme, host);
-			repo->srv = dns_getsrvinfo(zone);
-			free(zone);
-			free(host);
-			free(scheme);
-			if (repo->srv == NULL) {
-				pkg_emit_error("No SRV record found for the "
-				    "repo '%s'", repo->name);
-				repo->mirror_type = NOMIRROR;
-			}
+			pkg_emit_error("No SRV record found for the "
+			    "repo '%s'", repo->name);
+			repo->mirror_type = NOMIRROR;
 		}
 	}
 	if (repo->mirror_type == HTTP && repo->http == NULL) {
