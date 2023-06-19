@@ -230,7 +230,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	stringlist_t	 envtounset = tll_init();
 	char		*tmp;
 	int		 retcode = EPKG_OK;
-	off_t		 sz = 0;
 	struct pkg_repo	*fakerepo = NULL;
 
 	/* A URL of the form http://host.example.com/ where
@@ -291,9 +290,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	if ((retcode = repo->fetcher->open(repo, fi)) != EPKG_OK)
 		goto cleanup;
 	pkg_debug(1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
-
-	if (sz <= 0 && fi->size > 0)
-		sz = fi->size;
 
 	retcode = repo->fetcher->fetch(repo, dest, fi);
 	if (retcode == EPKG_OK)
