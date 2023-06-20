@@ -874,6 +874,18 @@ pkg_emit_package_not_found(const char *p)
 }
 
 void
+pkg_emit_incremental_update_begin(const char *reponame)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_INCREMENTAL_UPDATE_BEGIN;
+	ev.e_incremental_update.reponame = reponame;
+	ev.e_incremental_update.processed = 0;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_incremental_update(const char *reponame, int processed)
 {
 	struct pkg_event ev;
