@@ -511,6 +511,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
 
+	pkg_emit_incremental_update_begin(repo->name);
 	pkg_emit_progress_start("Processing entries");
 
 	/* 200MB should be enough */

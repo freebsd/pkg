@@ -73,6 +73,7 @@ void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *new
 void pkg_emit_newpkgversion(void);
 void pkg_emit_developer_mode(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
 void pkg_emit_package_not_found(const char *);
+void pkg_emit_incremental_update_begin(const char *reponame);
 void pkg_emit_incremental_update(const char *reponame, int processed);
 void pkg_emit_backup(void);
 void pkg_emit_restore(void);
