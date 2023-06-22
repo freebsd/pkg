@@ -457,7 +457,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
 {
 	struct pkg *pkg = NULL;
-	int rc = EPKG_FATAL;
+	int rc = EPKG_FATAL, cancel = 0;
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
@@ -530,13 +530,11 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		cnt++;
 		totallen += linelen;
 		if ((cnt % 10 ) == 0)
-			pkg_emit_progress_tick(totallen, len);
+			cancel = pkg_emit_progress_tick(totallen, len);
 		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
 		    &pkg, repo);
-		if (rc != EPKG_OK) {
-			pkg_emit_progress_tick(len, len);
+		if (rc != EPKG_OK || cancel != 0)
 			break;
-		}
 	}
 	pkg_emit_progress_tick(len, len);
 

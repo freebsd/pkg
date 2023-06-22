@@ -1016,7 +1016,7 @@ pkg_emit_progress_start(const char *fmt, ...)
 	free(ev.e_progress_start.msg);
 }
 
-void
+int
 pkg_emit_progress_tick(int64_t current, int64_t total)
 {
 	struct pkg_event ev;
@@ -1025,8 +1025,7 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 	ev.e_progress_tick.current = current;
 	ev.e_progress_tick.total = total;
 
-	pkg_emit_event(&ev);
-
+	return !!pkg_emit_event(&ev);
 }
 
 void
