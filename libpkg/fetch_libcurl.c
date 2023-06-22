@@ -1,5 +1,7 @@
 /*-
  * Copyright (c) 2023 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -166,12 +168,13 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 
 	while ((msg = curl_multi_info_read(cr->cm, &msg_left))) {
 		if (msg->msg == CURLMSG_DONE) {
+			if (msg->data.result == CURLE_ABORTED_BY_CALLBACK)
+				return (-1); // FIXME: more clear return code?
 			CURL *eh = msg->easy_handle;
 			long rc = 0;
 			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &rc);
 			return (rc);
 		}
-
 	}
 	return (0);
 }
@@ -257,7 +260,7 @@ curl_parseheader_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdat
 	return (size *nmemb);
 }
 
-static size_t
+static int
 curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal __unused, curl_off_t ulnow __unused)
 {
 	struct curl_userdata *d = (struct curl_userdata *)userdata;
@@ -265,8 +268,7 @@ curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_
 	if (d->response != 200)
 		return (0);
 
-	pkg_emit_progress_tick(dlnow, dltotal);
-	return (0);
+	return pkg_emit_progress_tick(dlnow, dltotal);
 }
 
 int
@@ -446,6 +448,8 @@ retry:
 	curl_easy_cleanup(cl);
 	if (rc == 304) {
 		retcode = EPKG_UPTODATE;
+	} else if (rc == -1) {
+		retcode = EPKG_CANCEL;
 	} else if (rc != 200) {
 		--retry;
 		if (retry <= 0 || (rc == 404 && repo->mirror_type == NOMIRROR)) {

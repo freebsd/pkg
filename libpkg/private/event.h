@@ -85,7 +85,7 @@ bool pkg_emit_query_yesno(bool deft, const char *msg);
 int pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft);
 
 void pkg_emit_progress_start(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
-void pkg_emit_progress_tick(int64_t current, int64_t total);
+int pkg_emit_progress_tick(int64_t current, int64_t total);
 
 void pkg_emit_add_deps_begin(struct pkg *p);
 void pkg_emit_add_deps_finished(struct pkg *p);
