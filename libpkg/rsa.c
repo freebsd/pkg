@@ -37,6 +37,31 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+/*
+ * This matches the historical usage for pkg.  Older versions sign the hex
+ * encoding of the SHA256 checksum.  If we ever deprecated RSA, this can go
+ * away.
+ */
+static EVP_MD *md_pkg_sha1;
+
+static EVP_MD *
+EVP_md_pkg_sha1(void)
+{
+
+	if (md_pkg_sha1 != NULL)
+		return (md_pkg_sha1);
+
+	md_pkg_sha1 = EVP_MD_meth_dup(EVP_sha1());
+	if (md_pkg_sha1 == NULL)
+		return (NULL);
+
+	EVP_MD_meth_set_result_size(md_pkg_sha1,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+	return (md_pkg_sha1);
+}
+#endif	/* OPENSSL_VERSION_NUMBER >= 0x10100000L */
+
 struct pkg_key {
 	pkg_password_cb *pw_cb;
 	char *path;
@@ -192,7 +217,6 @@ rsa_verify_cert(unsigned char *key, int keylen,
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-
 	ret = pkg_emit_sandbox_call(rsa_verify_cert_cb, fd, &cbdata);
 	if (need_close)
 		close(fd);
@@ -208,7 +232,6 @@ rsa_verify_cb(int fd, void *ud)
 	char errbuf[1024];
 	EVP_PKEY *pkey = NULL;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-	const EVP_MD *md;
 	EVP_PKEY_CTX *ctx;
 #else
 	RSA *rsa;
@@ -253,8 +276,7 @@ rsa_verify_cb(int fd, void *ud)
 		return (EPKG_FATAL);
 	}
 
-	md = EVP_sha1();
-	if (EVP_PKEY_CTX_set_signature_md(ctx, md) <= 0) {
+	if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_md_pkg_sha1()) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		EVP_PKEY_free(pkey);
 		free(sha256);
@@ -262,7 +284,7 @@ rsa_verify_cb(int fd, void *ud)
 	}
 
 	ret = EVP_PKEY_verify(ctx, cbdata->sig, cbdata->siglen, sha256,
-	    EVP_MD_size(md));
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
 #else
 	rsa = EVP_PKEY_get1_RSA(pkey);
 
@@ -338,7 +360,6 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 	char errbuf[1024];
 	int max_len = 0, ret;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-	const EVP_MD *md;
 	EVP_PKEY_CTX *ctx;
 	size_t siglen;
 #else
@@ -382,15 +403,15 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 		return (EPKG_FATAL);
 	}
 
-	md = EVP_sha1();
-	if (EVP_PKEY_CTX_set_signature_md(ctx, md) <= 0) {
+	if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_md_pkg_sha1()) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		free(sha256);
 		return (EPKG_FATAL);
 	}
+
 	siglen = max_len;
 	ret = EVP_PKEY_sign(ctx, *sigret, &siglen, sha256,
-	    EVP_MD_size(md));
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
 #else
 	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
 
