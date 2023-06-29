@@ -117,6 +117,7 @@ struct rsa_verify_cbdata {
 	size_t keylen;
 	unsigned char *sig;
 	size_t siglen;
+	bool verbose;
 };
 
 static int
@@ -181,12 +182,14 @@ rsa_verify_cert_cb(int fd, void *ud)
 	ret = EVP_PKEY_verify(ctx, cbdata->sig, cbdata->siglen, hash,
 	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_RAW));
 	free(hash);
-	if (ret <= 0) {
+	if (ret <= 0 && cbdata->verbose) {
 		if (ret < 0)
 			pkg_emit_error("rsa verify failed: %s",
 					ERR_error_string(ERR_get_error(), errbuf));
 		else
 			pkg_emit_error("rsa signature verification failure");
+	}
+	if (ret <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		EVP_PKEY_free(pkey);
 		return (EPKG_FATAL);
@@ -212,6 +215,7 @@ rsa_verify_cert(unsigned char *key, int keylen,
 	cbdata.keylen = keylen;
 	cbdata.sig = sig;
 	cbdata.siglen = siglen;
+	cbdata.verbose = true;
 
 	SSL_load_error_strings();
 	OpenSSL_add_all_algorithms();
@@ -339,6 +343,7 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 	cbdata.keylen = key_len;
 	cbdata.sig = sig;
 	cbdata.siglen = sig_len;
+	cbdata.verbose = false;
 
 	SSL_load_error_strings();
 	OpenSSL_add_all_algorithms();
@@ -348,6 +353,8 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 	if (need_close)
 		close(fd);
 	if (ret != EPKG_OK) {
+		cbdata.verbose = true;
+		(void)lseek(fd, 0, SEEK_SET);
 		ret = pkg_emit_sandbox_call(rsa_verify_cb, fd, &cbdata);
 	}
 
