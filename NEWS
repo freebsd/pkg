@@ -1,3 +1,6 @@
+Changes from 1.19.1 to 1.19.2
+- accept the 2 variants of signature that can be issue for pubkey
+
 Changes from 1.19.0 to 1.19.1
 - fix regression in pkg autoremove
 - fix regression preventing tracking files with path longer than 64 chars
