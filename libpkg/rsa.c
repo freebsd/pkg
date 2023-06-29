@@ -344,9 +344,12 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	ret = pkg_emit_sandbox_call(rsa_verify_cb, fd, &cbdata);
+	ret = pkg_emit_sandbox_call(rsa_verify_cert_cb, fd, &cbdata);
 	if (need_close)
 		close(fd);
+	if (ret != EPKG_OK) {
+		ret = pkg_emit_sandbox_call(rsa_verify_cb, fd, &cbdata);
+	}
 
 	free(key_buf);
 
@@ -361,7 +364,15 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 	int max_len = 0, ret;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	EVP_PKEY_CTX *ctx;
+	const EVP_MD *md;
 	size_t siglen;
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	md = EVP_md_pkg_sha1();
+#else
+	md = EVP_sha256();
+	char *hash;
+#endif
 #else
 	RSA *rsa;
 #endif
@@ -385,6 +396,11 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 		return (EPKG_FATAL);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	hash = pkg_checksum_data(sha256, strlen(sha256),
+	    PKG_HASH_TYPE_SHA256_RAW);
+#endif
 	ctx = EVP_PKEY_CTX_new(keyinfo->key, NULL);
 	if (ctx == NULL) {
 		free(sha256);
@@ -403,15 +419,21 @@ rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
 		return (EPKG_FATAL);
 	}
 
-	if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_md_pkg_sha1()) <= 0) {
+	if (EVP_PKEY_CTX_set_signature_md(ctx, md) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		free(sha256);
 		return (EPKG_FATAL);
 	}
 
 	siglen = max_len;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	ret = EVP_PKEY_sign(ctx, *sigret, &siglen, hash,
+	    EVP_MD_size(md));
+#else
 	ret = EVP_PKEY_sign(ctx, *sigret, &siglen, sha256,
 	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+#endif
+
 #else
 	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
 
