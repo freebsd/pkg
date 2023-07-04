@@ -651,39 +651,11 @@ int pkg_files(const struct pkg *, struct pkg_file **file);
 int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
 
 /**
- * Iterates over the users of the package.
- * @param Must be set to NULL for the first call.
- * @return An error code.
- */
-int pkg_users(const struct pkg *pkg, char **user);
-
-/**
- * Iterates over the groups of the package.
- * @param Must be set to NULL for the first call.
- * @return An error code.
- */
-int pkg_groups(const struct pkg *pkg, char **group);
-
-/**
  * Iterates over the options of the package.
  * @param  option Must be set to NULL for the first call.
  * @return An error code.
  */
 int pkg_options(const struct pkg *, struct pkg_option **option);
-
-/**
- * Iterates over the shared libraries used by the package.
- * @param shlib must be set to NULL for the first call.
- * @return An error code
- */
-int pkg_shlibs_required(const struct pkg *pkg, char **shlib);
-
-/**
- * Iterates over the shared libraries provided by the package.
- * @param shlib must be set to NULL for the first call.
- * @return An error code
- */
-int pkg_shlibs_provided(const struct pkg *pkg, char **shlib);
 
 /**
  * Iterates over the conflicts registered in the package.
@@ -692,15 +664,6 @@ int pkg_shlibs_provided(const struct pkg *pkg, char **shlib);
  */
 int pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **conflict);
 
-/**
- * Iterates over the provides registered in the package.
- * @param provide must be set to NULL for the first call.
- * @return An error code
- */
-int pkg_provides(const struct pkg *pkg, char **provide);
-int pkg_requires(const struct pkg *pkg, char **require);
-
-int pkg_categories(const struct pkg *pkg, char **category);
 int pkg_licenses(const struct pkg *pkg, char **licenses);
 
 /**
@@ -765,8 +728,6 @@ int pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *path);
 int pkg_parse_manifest(struct pkg *pkg, const char *buf, size_t len);
 int pkg_parse_manifest_file(struct pkg *pkg, const char *);
 int pkg_parse_manifest_fileat(int fd, struct pkg *pkg, const char *);
-int pkg_manifest_parser_new(struct pkg_manifest_parser **p);
-void pkg_manifest_parser_free(struct pkg_manifest_parser *p);
 
 #define PKG_MANIFEST_EMIT_COMPACT 0x1
 #define PKG_MANIFEST_EMIT_NOFILES (0x1 << 1)
@@ -898,11 +859,6 @@ int pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint);
 void pkgdb_close(struct pkgdb *db);
 
 /**
- * Initialize the local cache of the remote database with indicies
- */
-int pkgdb_remote_init(struct pkgdb *db, const char *reponame);
-
-/**
  * Set the case sensitivity flag on or off.  Defaults to
  * true (case_sensitive)
  */
@@ -940,9 +896,6 @@ struct pkgdb_it * pkgdb_query_shlib_require(struct pkgdb *db, const char *shlib)
 struct pkgdb_it * pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib);
 struct pkgdb_it * pkgdb_query_require(struct pkgdb *db, const char *req);
 struct pkgdb_it * pkgdb_query_provide(struct pkgdb *db, const char *req);
-
-struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db,
-    const char *provide, const char *repo);
 
 /**
  * Add/Modify/Delete an annotation for a package
