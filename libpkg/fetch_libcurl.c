@@ -349,7 +349,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	struct http_mirror *http_current = NULL;
 	char *urlpath = NULL;
 	const char *relpath = NULL;
-	const char *userpasswd = getenv("HTTP_AUTH");
+	const char *userpasswd = get_http_auth();
 
 	struct curl_repodata *cr = (struct curl_repodata *)repo->fetch_priv;
 
