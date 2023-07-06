@@ -1,3 +1,6 @@
+Changes: from 1.20.0 to 1.20.1
+- add backward compatibility with libfetch HTTP_AUTH
+
 Changes: from 1.19.99.3 to 1.20.0
 - cleanup header and symbols for removed functions
 
