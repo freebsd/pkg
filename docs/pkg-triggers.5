@@ -17,11 +17,11 @@
 .Sh DESCRIPTION
 .Nm
 are executed at the end of the transactions: installation, deinstallation or upgrade.
-They are only execute one even if they have been triggered multiple times.
+They are only executed once even if they have been triggered multiple times.
 .Pp
 .Nm are triggered by pattern matching during the transaction.
 .Nm
-are files locate in
+are files located in
 .Pa /usr/local/share/pkg/triggers
 Those files are in UCL format and should use a
 .Va .ucl
@@ -30,20 +30,20 @@ extension.
 The format is the following:
 .Bl -tag -width xxxxxxxxxxx
 .It Cm path
-exact path to match: each time a package installs exactly a file or directory
-matching the
+exact path to match: each time a package installs a file or directory
+exactly matching the
 .Cm path
-the trigger will be execute at the end of the transation .
+the trigger will be executed at the end of the transation .
 .It Cm path_glob
 glob path to match: each time a package installs a file or directory which
 matches the glob pattern
 .Cm pattern
-the trigger will be execute at the end of the transation .
+the trigger will be executed at the end of the transation .
 .It Cm path_regexp
 regexp path to match: each time a package installs a file or directory which
 matches the regexp pattern
 .Cm pattern
-the trigger will be execute at the end of the transation .
+the trigger will be executed at the end of the transation .
 
 .It Cm cleanup
 Object which represent the script to execute in case the transaction results in
@@ -72,7 +72,7 @@ See
 .Pc .
 .It Cm script
 The script itself.
-It will receive as arguments the list of path which matches the patterns during
+It will receive as arguments the list of paths that matched the patterns during
 the transaction.
 .El
 .El
