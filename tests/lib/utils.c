@@ -24,6 +24,7 @@
  */
 
 #include <atf-c.h>
+#include <atf-c/macros.h>
 #include <err.h>
 #include <fcntl.h>
 #include <private/utils.h>
@@ -32,6 +33,7 @@ ATF_TC_WITHOUT_HEAD(hidden_tempfile);
 ATF_TC_WITHOUT_HEAD(random_suffix);
 ATF_TC_WITHOUT_HEAD(json_escape);
 ATF_TC_WITHOUT_HEAD(open_tempdir);
+ATF_TC_WITHOUT_HEAD(get_http_auth);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -105,12 +107,29 @@ ATF_TC_BODY(open_tempdir, tc) {
 	free(t);
 }
 
+ATF_TC_BODY(get_http_auth, tc) {
+	unsetenv("HTTP_AUTH");
+	ATF_REQUIRE(get_http_auth() == NULL);
+	setenv("HTTP_AUTH", "plop", 1);
+	ATF_REQUIRE(get_http_auth() == NULL);
+
+	setenv("HTTP_AUTH", "basic:any", 1);
+	ATF_REQUIRE(get_http_auth() == NULL);
+
+	setenv("HTTP_AUTH", "basic:any:user", 1);
+	ATF_REQUIRE(get_http_auth() == NULL);
+
+	setenv("HTTP_AUTH", "basic:any:user:passwd", 1);
+	ATF_REQUIRE_STREQ(get_http_auth(), "user:passwd");
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
 	ATF_TP_ADD_TC(tp, random_suffix);
 	ATF_TP_ADD_TC(tp, json_escape);
 	ATF_TP_ADD_TC(tp, open_tempdir);
+	ATF_TP_ADD_TC(tp, get_http_auth);
 
 	return (atf_no_error());
 }
