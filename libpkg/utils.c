@@ -1003,7 +1003,6 @@ json_escape(const char *str)
 	return (xstring_get(buf));
 }
 
-
 struct tempdir *
 open_tempdir(int rootfd, const char *path)
 {
@@ -1050,3 +1049,25 @@ open_tempdir(int rootfd, const char *path)
 	errno = 0;
 	return (NULL);
 }
+
+const char *
+get_http_auth(void)
+{
+	const char *str = getenv("HTTP_AUTH");
+	if (str == NULL)
+		return (false);
+	if ((str = strchr(str, ':')) == NULL) {
+		pkg_emit_error("malformed HTTP_AUTH");
+		return (NULL);
+	}
+	if ((str = strchr(++str, ':')) == NULL) {
+		pkg_emit_error("malformed HTTP_AUTH");
+		return (NULL);
+	}
+	if (strchr(++str, ':') == NULL) {
+		pkg_emit_error("malformed HTTP_AUTH");
+		return (NULL);
+	}
+	return (str);
+}
+
