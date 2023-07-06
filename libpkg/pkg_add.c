@@ -1047,7 +1047,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			for (int i = 0; i <g.gl_pathc; i++) {
 				struct pkg *p = NULL;
 				if (pkg_open(&p, g.gl_pathv[i],
-				    PKG_OPEN_MANIFEST_ONLY) == EPKG_OK) {
+				    PKG_OPEN_MANIFEST_COMPACT) == EPKG_OK) {
 					if (should_append_pkg(&localpkgs, p)) {
 						p->repopath = xstrdup(g.gl_pathv[i]);
 						tll_push_back(localpkgs, p);
