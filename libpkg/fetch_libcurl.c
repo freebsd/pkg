@@ -35,6 +35,11 @@
 #include "private/event.h"
 #include "private/fetch.h"
 
+/*
+ * The choice of 2KB/s is arbitrary; at some point this should be configurable.
+ */
+#define	LIBPKG_SPEED_LIMIT	(2 * 1024)	/* bytes per second */
+
 struct curl_repodata {
 	CURLM *cm;
 	CURLU *url;
@@ -453,8 +458,12 @@ retry:
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
 	curl_easy_setopt(cl, CURLOPT_TIMEVALUE, (long)fi->mtime);
 	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
-	if (repo->fetcher->timeout > 0)
-		curl_easy_setopt(cl, CURLOPT_TIMEOUT, repo->fetcher->timeout);
+	if (repo->fetcher->timeout > 0) {
+		curl_easy_setopt(cl, CURLOPT_CONNECTTIMEOUT, repo->fetcher->timeout);
+
+		curl_easy_setopt(cl, CURLOPT_LOW_SPEED_LIMIT, LIBPKG_SPEED_LIMIT);
+		curl_easy_setopt(cl, CURLOPT_LOW_SPEED_TIME, repo->fetcher->timeout);
+	}
 
 	long rc = curl_do_fetch(&data, cl, cr);
 	time_t t;
