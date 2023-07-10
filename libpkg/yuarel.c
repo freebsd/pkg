@@ -180,12 +180,10 @@ yuarel_parse(struct yuarel *url, char *u)
 			*u = '\0';
 
 			u = strchr(url->username, ':');
-			if (NULL == u) {
-				return -1;
+			if (NULL != u) {
+				url->password = u + 1;
+				*u = '\0';
 			}
-
-			url->password = u + 1;
-			*u = '\0';
 		}
 
 		/* Missing hostname? */
