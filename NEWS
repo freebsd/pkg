@@ -1,3 +1,10 @@
+Changes from 1.20.99.1 to 1.20.99.2
+- Fix regression regarding url parsing for ssh://
+- Reduce memory usage for pkg add
+- Fix a libfetch compatibility issue (typo in SSL_VERIFY_HOST)
+- Fix issue with version generation in configure script
+- Update pkg-triggers.5 manpage
+
 Changes from 1.20.99.0 to 1.20.99.1
 - Add compatibility with libfetch HTTP_AUTH
 
