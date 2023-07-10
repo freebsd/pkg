@@ -350,6 +350,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	char *urlpath = NULL;
 	const char *relpath = NULL;
 	const char *userpasswd = get_http_auth();
+	const char *http_proxy = getenv("HTTP_PROXY");
 
 	struct curl_repodata *cr = (struct curl_repodata *)repo->fetch_priv;
 
@@ -429,6 +430,9 @@ retry:
 	if (userpasswd != NULL) {
 		curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
 		curl_easy_setopt(cl, CURLOPT_USERPWD, userpasswd);
+	}
+	if (http_proxy != NULL) {
+		curl_easy_setopt(cl, CURLOPT_PROXY, http_proxy);
 	}
 
 	if (repo->ip == IPV4)
