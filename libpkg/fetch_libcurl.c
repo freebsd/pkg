@@ -351,6 +351,8 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	const char *relpath = NULL;
 	const char *userpasswd = get_http_auth();
 	const char *http_proxy = getenv("HTTP_PROXY");
+	const char *sslkey = getenv("SSL_CLIENT_KEY_FILE");
+	const char *sslcert = getenv("SSL_CLIENT_CERT_FILE");
 
 	struct curl_repodata *cr = (struct curl_repodata *)repo->fetch_priv;
 
@@ -431,9 +433,12 @@ retry:
 		curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
 		curl_easy_setopt(cl, CURLOPT_USERPWD, userpasswd);
 	}
-	if (http_proxy != NULL) {
+	if (http_proxy != NULL)
 		curl_easy_setopt(cl, CURLOPT_PROXY, http_proxy);
-	}
+	if (sslkey != NULL)
+		curl_easy_setopt(cl, CURLOPT_SSLKEY, sslkey);
+	if (sslcert != NULL)
+		curl_easy_setopt(cl, CURLOPT_SSLCERT, sslcert);
 
 	if (repo->ip == IPV4)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
