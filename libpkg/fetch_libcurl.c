@@ -149,7 +149,7 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 		curl_easy_setopt(cl, CURLOPT_DEBUGFUNCTION, my_trace);
 
 	/* compat with libfetch */
-	if (getenv("SSL_NO_VERFIRY_PEER") != NULL)
+	if (getenv("SSL_NO_VERIFY_PEER") != NULL)
 		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYPEER, 0L);
 	if (getenv("SSL_NO_VERIFY_HOSTNAME") != NULL)
 		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYHOST, 0L);
