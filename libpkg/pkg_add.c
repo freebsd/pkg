@@ -985,6 +985,9 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	struct pkg	*pkg_inst = NULL;
 	bool	fromstdin;
 	pkg_chain_t localpkgs = tll_init();
+	struct pkghash *lpkgs = NULL;
+	struct pkghash *provides = NULL;
+	struct pkghash *shlibs_provides = NULL;
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
 
@@ -1057,10 +1060,20 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		}
 		globfree(&g);
 		free(pattern);
+		tll_foreach(localpkgs, p) {
+			pkghash_safe_add(lpkgs, p->item->name, xstrdup(p->item->repopath), NULL);
+			tll_foreach(p->item->shlibs_provided, sp) {
+				pkghash_safe_add(shlibs_provides, sp->item, xstrdup(p->item->repopath), free);
+			}
+			tll_foreach(p->item->provides, sp) {
+				pkghash_safe_add(provides, sp->item, xstrdup(p->item->repopath), free);
+			}
+		}
+		tll_free_and_free(localpkgs, pkg_free);
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		struct pkg *founddep = NULL;
+		pkghash_entry *founddep = NULL;
 
 		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
@@ -1072,13 +1085,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			continue;
 		}
 
-		tll_foreach(localpkgs, p) {
-			if (strcmp(p->item->name, dep->name) == 0) {
-				founddep = p->item;
-				break;
-			}
-		}
-		if (founddep == NULL) {
+		if ((founddep = pkghash_get(lpkgs, dep->name)) == NULL) {
 			pkg_emit_missing_dep(pkg, dep);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
@@ -1086,8 +1093,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		}
 
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(founddep->repopath, F_OK) == 0) {
-			ret = pkg_add(db, founddep->repopath, PKG_ADD_AUTOMATIC, location);
+				access(founddep->value, F_OK) == 0) {
+			ret = pkg_add(db, founddep->value, PKG_ADD_AUTOMATIC, location);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1099,7 +1106,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	}
 
 	tll_foreach(pkg->shlibs_required, s) {
-		struct pkg *founddep = NULL;
+		pkghash_entry *founddep = NULL;
 		if (pkgdb_is_shlib_provided(db, s->item))
 			continue;
 
@@ -1109,25 +1116,15 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				goto cleanup;
 			continue;
 		}
-		tll_foreach(localpkgs, p) {
-			tll_foreach(p->item->shlibs_provided, sp) {
-				if (strcmp(sp->item, s->item) == 0) {
-					founddep = p->item;
-					break;
-				}
-			}
-			if (founddep != NULL)
-				break;
-		}
-		if (founddep == NULL) {
+		if ((founddep = pkghash_get(shlibs_provides, s->item)) == NULL) {
 			pkg_emit_error("Missing shlib dependency: %s", s->item);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
 			continue;
 		}
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(founddep->repopath, F_OK) == 0) {
-			ret = pkg_add(db, founddep->repopath, PKG_ADD_AUTOMATIC, location);
+				access(founddep->value, F_OK) == 0) {
+			ret = pkg_add(db, founddep->value, PKG_ADD_AUTOMATIC, location);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1139,7 +1136,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	}
 
 	tll_foreach(pkg->requires, s) {
-		struct pkg *founddep = NULL;
+		pkghash_entry *founddep = NULL;
 		if (pkgdb_is_provided(db, s->item))
 			continue;
 
@@ -1149,25 +1146,15 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				goto cleanup;
 			continue;
 		}
-		tll_foreach(localpkgs, p) {
-			tll_foreach(p->item->provides, sp) {
-				if (strcmp(sp->item, s->item) == 0) {
-					founddep = p->item;
-					break;
-				}
-			}
-			if (founddep != NULL)
-				break;
-		}
-		if (founddep == NULL) {
+		if ((founddep = pkghash_get(provides, s->item)) == NULL) {
 			pkg_emit_error("Missing require dependency: %s", s->item);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
 			continue;
 		}
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(founddep->repopath, F_OK) == 0) {
-			ret = pkg_add(db, founddep->repopath, PKG_ADD_AUTOMATIC, location);
+				access(founddep->value, F_OK) == 0) {
+			ret = pkg_add(db, founddep->value, PKG_ADD_AUTOMATIC, location);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1180,7 +1167,9 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 
 	retcode = EPKG_OK;
 cleanup:
-	tll_free_and_free(localpkgs, pkg_free);
+	pkghash_destroy(lpkgs);
+	pkghash_destroy(provides);
+	pkghash_destroy(shlibs_provides);
 	pkg_emit_add_deps_finished(pkg);
 
 	return (retcode);
