@@ -1,3 +1,9 @@
+Changes: from 1.20.2 to 1.20.3
+- curl add compatiblity for SSL_CLIENT_KEY_FILE, SSL_CLIENT_CERT_FILE,
+  SSL_CA_CERT_FILE
+- fixed FETCH_TIMEOUT adaptation to libcurl
+- speed up again pkg add and reduced its memory footprint
+
 Changes: from 1.20.1 to 1.20.2
 - Fix regression regarding url parsing for ssh://
 - Reduce memory usage for pkg add
