@@ -1053,7 +1053,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (seq)
 		ucl_object_insert_key(top, seq, "groups", 6, false);
 
-	pkg_debug(4, "Emitting shibs_required %zu\n", tll_length(pkg->shlibs_required));
+	pkg_debug(4, "Emitting shibs_required");
 	seq = NULL;
 	tll_foreach(pkg->shlibs_required, s) {
 		if (seq == NULL)
