@@ -1,3 +1,7 @@
+Chanegs: from 1.20.3 to 1.20.4
+- backout the provide/require feature for pkg add, it has too many impact
+  on performances.
+
 Changes: from 1.20.2 to 1.20.3
 - curl add compatiblity for SSL_CLIENT_KEY_FILE, SSL_CLIENT_CERT_FILE,
   SSL_CA_CERT_FILE
