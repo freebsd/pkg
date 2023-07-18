@@ -25,7 +25,6 @@
 #include <sys/mount.h>
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <regex.h>
 #include <grp.h>
@@ -318,8 +317,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	if ((fd = openat(dbdirfd, filepath, O_RDONLY)) != -1) {
 		if (pkg_repo_meta_load(fd, &repo->meta) != EPKG_OK) {
 			pkg_emit_error("Repository %s load error: "
-					"meta cannot be loaded %s", pkg_repo_name(repo),
-					strerror(errno));
+			    "meta file cannot be loaded", pkg_repo_name(repo));
 			close(fd);
 			return (EPKG_FATAL);
 		}
@@ -338,17 +336,16 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	if (sqlite3_open_v2(filepath, &sqlite, flags, NULL) != SQLITE_OK) {
 		pkgdb_nfs_corruption(sqlite);
 		pkg_emit_error("Repository %s load error: "
-				"cannot open sqlite3 db: %s", pkg_repo_name(repo),
-				strerror(errno));
+		    "cannot open sqlite3 db: %s",
+		    pkg_repo_name(repo), sqlite3_errmsg(sqlite));
 		return (EPKG_FATAL);
 	}
 
 	/* Sanitise sqlite database */
 	if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
 		"WHERE type='table' AND name='repodata';", &res, false) != EPKG_OK) {
-		pkg_emit_error("Repository %s load error: "
-				"unable to query db: %s", pkg_repo_name(repo),
-				strerror(errno));
+		pkg_emit_error("Repository %s load error: unable to query db",
+		    pkg_repo_name(repo));
 		sqlite3_close(sqlite);
 		return (EPKG_FATAL);
 	}
