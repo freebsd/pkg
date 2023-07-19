@@ -6,7 +6,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * Copyright (c) 2023 Serenity Cyber Security, LLC
+ * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
@@ -519,7 +519,11 @@ typedef enum {
 	/**
 	 * the operation was cancelled
 	 */
-	EPKG_CANCEL
+	EPKG_CANCEL,
+	/**
+	 * the operation has failed due to network down
+	 */
+	EPKG_NONETWORK
 } pkg_error_t;
 
 /**
@@ -1259,7 +1263,8 @@ typedef enum {
 	PKG_EVENT_CONFLICTS,
 	PKG_EVENT_TRIGGERS_BEGIN,
 	PKG_EVENT_TRIGGER,
-	PKG_EVENT_TRIGGERS_FINISHED
+	PKG_EVENT_TRIGGERS_FINISHED,
+	PKG_EVENT_PKG_ERRNO
 } pkg_event_t;
 
 struct pkg_event {
