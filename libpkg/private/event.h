@@ -40,6 +40,7 @@
 #endif
 #endif
 void pkg_emit_errno(const char *func, const char *arg);
+void pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg);
 
 #define pkg_errno(fmt, ...) \
 	pkg_emit_error(fmt":%s", __VA_ARGS__, strerror(errno))

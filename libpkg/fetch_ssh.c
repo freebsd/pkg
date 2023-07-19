@@ -1,5 +1,7 @@
 /*-
  * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,7 +73,9 @@ tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 		hints.ai_family = PF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 	snprintf(srv, sizeof(srv), "%d", u->port);
-	if (getaddrinfo(u->host, srv, &hints, &ai) != 0) {
+	retcode = getaddrinfo(u->host, srv, &hints, &ai);
+	if (retcode != 0) {
+		pkg_emit_pkg_errno(EPKG_NONETWORK, "tcp_connect", gai_strerror(retcode));
 		pkg_emit_error("Unable to lookup for '%s'", u->host);
 		return (EPKG_FATAL);
 	}
@@ -88,6 +92,7 @@ tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 	}
 	freeaddrinfo(ai);
 	if (sd == -1) {
+		pkg_emit_pkg_errno(EPKG_NONETWORK, "tcp_connect", NULL);
 		pkg_emit_error("Could not connect to tcp://%s:%d", u->host,
 		    u->port);
 		return (EPKG_FATAL);

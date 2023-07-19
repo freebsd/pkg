@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2023 Baptiste Daroussin <bapt@FreeBSD.org>
- * Copyright (c) 2023 Serenity Cyber Security, LLC
+ * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -175,6 +175,10 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 		if (msg->msg == CURLMSG_DONE) {
 			if (msg->data.result == CURLE_ABORTED_BY_CALLBACK)
 				return (-1); // FIXME: more clear return code?
+			if (msg->data.result == CURLE_COULDNT_CONNECT
+				|| msg->data.result == CURLE_COULDNT_RESOLVE_HOST
+				|| msg->data.result == CURLE_COULDNT_RESOLVE_PROXY)
+				pkg_emit_pkg_errno(EPKG_NONETWORK, "curl_do_fetch", NULL);
 			CURL *eh = msg->easy_handle;
 			long rc = 0;
 			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &rc);

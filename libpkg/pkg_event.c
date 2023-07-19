@@ -2,6 +2,8 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -464,6 +466,19 @@ pkg_emit_errno(const char *func, const char *arg)
 	ev.e_errno.func = func;
 	ev.e_errno.arg = arg;
 	ev.e_errno.no = errno;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PKG_ERRNO;
+	ev.e_errno.func = func;
+	ev.e_errno.arg = arg;
+	ev.e_errno.no = err;
 
 	pkg_emit_event(&ev);
 }
