@@ -496,7 +496,7 @@ retry:
 		fi->mtime = t;
 	} else if (rc != 304) {
 		pkg_emit_error("Impossible to get the value from Last-Modified"
-		    " HTTP header: %ld", t);
+		    " HTTP header");
 		fi->mtime = 0;
 	}
 	fclose(data.fh);
