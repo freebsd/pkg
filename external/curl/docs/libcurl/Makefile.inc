@@ -85,6 +85,8 @@ man_MANS = \
  curl_multi_timeout.3 \
  curl_multi_wakeup.3 \
  curl_multi_wait.3 \
+ curl_pushheader_bynum.3 \
+ curl_pushheader_byname.3 \
  curl_share_cleanup.3 \
  curl_share_init.3 \
  curl_share_setopt.3 \
@@ -115,4 +117,5 @@ man_MANS = \
  libcurl-thread.3 \
  libcurl-tutorial.3 \
  libcurl-url.3 \
+ libcurl-ws.3 \
  libcurl.3

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_INFILESIZE 3 "April 26, 2023" "ibcurl 8.1.2" libcurl
+.TH CURLOPT_INFILESIZE 3 "June 12, 2023" "ibcurl 8.2.1" libcurl
 
 .SH NAME
 CURLOPT_INFILESIZE \- size of the input file to send off
@@ -42,6 +42,9 @@ For uploading using SCP, this option or \fICURLOPT_INFILESIZE_LARGE(3)\fP is
 mandatory.
 
 To unset this value again, set it to -1.
+
+Using \fICURLOPT_UPLOAD(3)\fP to a HTTP/1.1 server and this value set to -1,
+makes libcurl do a chunked transfer-encoded upload.
 
 When sending emails using SMTP, this command can be used to specify the
 optional SIZE parameter for the MAIL FROM command.

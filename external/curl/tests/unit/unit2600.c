@@ -347,7 +347,7 @@ static void test_connect(struct test_case *tc)
 
 /*
  * How these test cases work:
- * - replace the creation of the TCP socket filter with out test filter
+ * - replace the creation of the TCP socket filter with our test filter
  * - test filter does nothing and reports failure after configured delay
  * - we feed addresses into the resolve cache to simulate different cases
  * - we monitor how many instances of ipv4/v6 attempts are made and when
@@ -364,7 +364,7 @@ static struct test_case TEST_CASES[] = {
   /* TIMEOUT_MS,        FAIL_MS      CREATED    DURATION     Result, HE_PREF */
   /* CNCT   HE          v4    v6     v4 v6      MIN   MAX */
   { 1, TURL, "test.com:123:192.0.2.1", CURL_IPRESOLVE_WHATEVER,
-    250,  150,        200,  200,    1,  0,      200,  500,  R_FAIL, NULL },
+    250,  150,        200,  200,    1,  0,      200,  600,  R_FAIL, NULL },
   /* 1 ipv4, fails after ~200ms, reports COULDNT_CONNECT   */
   { 2, TURL, "test.com:123:192.0.2.1,192.0.2.2", CURL_IPRESOLVE_WHATEVER,
     500,  150,        200,  200,    2,  0,      400,  800,  R_FAIL, NULL },

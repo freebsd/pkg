@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH libcurl-symbols 3 "May 30, 2023" "libcurl" "libcurl"
+.TH libcurl-symbols 3 "Jul 19, 2023" "libcurl" "libcurl"
 .SH NAME
 libcurl-symbols \- libcurl symbol version information
 .SH "libcurl symbols"
@@ -926,6 +926,8 @@ Introduced in 7.84.0
 Introduced in 7.19.1
 .IP CURLINFO_CONDITION_UNMET
 Introduced in 7.19.4
+.IP CURLINFO_CONN_ID
+Introduced in 8.2.0
 .IP CURLINFO_CONNECT_TIME
 Introduced in 7.4.1
 .IP CURLINFO_CONNECT_TIME_T
@@ -1100,6 +1102,8 @@ Introduced in 7.4.1
 Introduced in 7.61.0
 .IP CURLINFO_TYPEMASK
 Introduced in 7.4.1
+.IP CURLINFO_XFER_ID
+Introduced in 8.2.0
 .IP CURLIOCMD_NOP
 Introduced in 7.12.3
 .IP CURLIOCMD_RESTARTREAD
@@ -1396,6 +1400,8 @@ Introduced in 7.22.0
 Introduced in 7.59.0
 .IP CURLOPT_HAPROXYPROTOCOL
 Introduced in 7.60.0
+.IP CURLOPT_HAPROXY_CLIENT_IP
+Introduced in 8.2.0
 .IP CURLOPT_HEADER
 Introduced in 7.1
 .IP CURLOPT_HEADERDATA
@@ -1493,6 +1499,9 @@ Introduced in 7.20.0
 Introduced in 7.20.0
 .IP CURLOPT_MAIL_RCPT_ALLLOWFAILS
 Introduced in 7.69.0
+Deprecated since 8.2.0
+.IP CURLOPT_MAIL_RCPT_ALLOWFAILS
+Introduced in 8.2.0
 .IP CURLOPT_QUICK_EXIT
 Introduced in 7.87.0
 .IP CURLOPT_MAX_RECV_SPEED_LARGE

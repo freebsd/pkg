@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_SSH_KEYFUNCTION 3 "April 26, 2023" "ibcurl 8.1.2" libcurl
+.TH CURLOPT_SSH_KEYFUNCTION 3 "June 08, 2023" "ibcurl 8.2.1" libcurl
 
 .SH NAME
 CURLOPT_SSH_KEYFUNCTION \- callback for known host matching logic
@@ -57,7 +57,7 @@ struct curl_khkey {
 int ssh_keycallback(CURL *easy,
                     const struct curl_khkey *knownkey,
                     const struct curl_khkey *foundkey,
-                    enum curl_khmatch,
+                    enum curl_khmatch match,
                     void *clientp);
 
 CURLcode curl_easy_setopt(CURL *handle, CURLOPT_SSH_KEYFUNCTION,
@@ -109,7 +109,7 @@ SFTP and SCP
 static int keycb(CURL *easy,
                  const struct curl_khkey *knownkey,
                  const struct curl_khkey *foundkey,
-                 enum curl_khmatch,
+                 enum curl_khmatch match,
                  void *clientp)
 {
   /* 'clientp' points to the callback_data struct */

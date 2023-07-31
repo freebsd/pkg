@@ -22,54 +22,49 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_MAIL_RCPT_ALLLOWFAILS 3 "April 26, 2023" "ibcurl 8.1.2" libcurl
+.TH CURLINFO_CONN_ID 3 "May 23, 2023" "libcurl 8.2.1" "libcurl"
 
 .SH NAME
-CURLOPT_MAIL_RCPT_ALLLOWFAILS \- allow RCPT TO command to fail for some recipients
+CURLINFO_CONN_ID \- get the ID of the last connection used by the handle
 .SH SYNOPSIS
 .nf
 #include <curl/curl.h>
 
-CURLcode curl_easy_setopt(CURL *handle, CURLOPT_MAIL_RCPT_ALLLOWFAILS,
-                          long allow);
+CURLcode curl_easy_getinfo(CURL *handle, CURLINFO_CONN_ID,
+                           curl_off_t *conn_id);
+.fi
 .SH DESCRIPTION
-If \fIallow\fP is set to 1L, allow RCPT TO command to fail for some recipients.
+Pass a pointer to a \fIcurl_off_t\fP to receive the connection identifier last
+used by the handle. Stores -1 if there was no connection used.
 
-When sending data to multiple recipients, by default curl will abort SMTP
-conversation if at least one of the recipients causes RCPT TO command to
-return an error.
+The connection id is unique among all connections using the same
+connection cache. This is implicitly the case for all connections in the
+same multi handle.
 
-The default behavior can be changed by setting \fIignore\fP to 1L which will
-make curl ignore errors and proceed with the remaining valid recipients.
-
-If all recipients trigger RCPT TO failures and this flag is specified, curl
-will still abort the SMTP conversation and return the error received from to
-the last RCPT TO command.
-.SH DEFAULT
-0
 .SH PROTOCOLS
-SMTP
+All
 .SH EXAMPLE
 .nf
 CURL *curl = curl_easy_init();
 if(curl) {
-  struct curl_slist *list;
+  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
 
-  /* Adding one valid and one invalid email address */
-  list = curl_slist_append(NULL, "person@example.com");
-  list = curl_slist_append(list, "invalidemailaddress");
+  /* Perform the request */
+  res = curl_easy_perform(curl);
 
-  curl_easy_setopt(curl, CURLOPT_URL, "smtp://example.com/");
-  curl_easy_setopt(curl, CURLOPT_MAIL_RCPT_ALLLOWFAILS, 1L);
-
-  ret = curl_easy_perform(curl);
-  curl_slist_free_all(list);
-  curl_easy_cleanup(curl);
+  if(!res) {
+    curl_off_t conn_id;
+    res = curl_easy_getinfo(curl, CURLINFO_CONN_ID, &conn_id);
+    if(!res) {
+      printf("Connection used: %" CURL_FORMAT_CURL_OFF_T "\\n", conn_id);
+    }
+  }
 }
 .fi
 .SH AVAILABILITY
-Added in 7.69.0.
+Added in 8.2.0
 .SH RETURN VALUE
 Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
 .SH "SEE ALSO"
-.BR CURLOPT_MAIL_FROM "(3), " CURLOPT_MAIL_RCPT "(3), "
+.BR curl_easy_getinfo "(3), " curl_easy_setopt "(3), "
+.BR CURLINFO_XFER_ID "(3), "
