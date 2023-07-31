@@ -2410,6 +2410,7 @@
     <ClCompile Include="..\..\..\..\lib\krb5.c" />
     <ClCompile Include="..\..\..\..\lib\ldap.c" />
     <ClCompile Include="..\..\..\..\lib\llist.c" />
+    <ClCompile Include="..\..\..\..\lib\macos.c" />
     <ClCompile Include="..\..\..\..\lib\md4.c" />
     <ClCompile Include="..\..\..\..\lib\md5.c" />
     <ClCompile Include="..\..\..\..\lib\memdebug.c" />
@@ -2583,6 +2584,7 @@
     <ClInclude Include="..\..\..\..\lib\inet_ntop.h" />
     <ClInclude Include="..\..\..\..\lib\inet_pton.h" />
     <ClInclude Include="..\..\..\..\lib\llist.h" />
+    <ClInclude Include="..\..\..\..\lib\macos.h" />
     <ClInclude Include="..\..\..\..\lib\memdebug.h" />
     <ClInclude Include="..\..\..\..\lib\mime.h" />
     <ClInclude Include="..\..\..\..\lib\mqtt.h" />
@@ -2650,6 +2652,7 @@
     <ClInclude Include="..\..\..\..\lib\vtls\openssl.h" />
     <ClInclude Include="..\..\..\..\lib\vtls\rustls.h" />
     <ClInclude Include="..\..\..\..\lib\vtls\schannel.h" />
+    <ClInclude Include="..\..\..\..\lib\vtls\schannel_int.h" />
     <ClInclude Include="..\..\..\..\lib\vtls\sectransp.h" />
     <ClInclude Include="..\..\..\..\lib\vtls\vtls.h" />
     <ClInclude Include="..\..\..\..\lib\vtls\vtls_int.h" />

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH curl_easy_getinfo 3 "May 17, 2023" "libcurl 8.1.2" "libcurl"
+.TH curl_easy_getinfo 3 "May 23, 2023" "libcurl 8.2.1" "libcurl"
 
 .SH NAME
 curl_easy_getinfo - extract information from a curl handle
@@ -248,6 +248,12 @@ See \fICURLINFO_PROTOCOL(3)\fP
 .IP CURLINFO_SCHEME
 The scheme used for the connection. (Added in 7.52.0)
 See \fICURLINFO_SCHEME(3)\fP
+.IP CURLINFO_CONN_ID
+The ID of the last connection used by the transfer. (Added in 8.2.0)
+See \fICURLINFO_CONN_ID(3)\fP
+.IP CURLINFO_XFER_ID
+The ID of the transfer. (Added in 8.2.0)
+See \fICURLINFO_XFER_ID(3)\fP
 .SH TIMES
 .nf
 An overview of the six time values available from curl_easy_getinfo()

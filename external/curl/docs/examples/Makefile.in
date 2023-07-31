@@ -138,13 +138,14 @@ host_triplet = @host@
 @USE_CPPFLAG_CURL_STATICLIB_TRUE@am__append_1 = -DCURL_STATICLIB
 check_PROGRAMS = 10-at-a-time$(EXEEXT) altsvc$(EXEEXT) \
 	anyauthput$(EXEEXT) certinfo$(EXEEXT) chkspeed$(EXEEXT) \
-	cookie_interface$(EXEEXT) debug$(EXEEXT) \
-	externalsocket$(EXEEXT) fileupload$(EXEEXT) \
-	ftp-wildcard$(EXEEXT) ftpget$(EXEEXT) ftpgetinfo$(EXEEXT) \
-	ftpgetresp$(EXEEXT) ftpsget$(EXEEXT) ftpupload$(EXEEXT) \
-	ftpuploadfrommem$(EXEEXT) ftpuploadresume$(EXEEXT) \
-	getinfo$(EXEEXT) getinmemory$(EXEEXT) getredirect$(EXEEXT) \
-	getreferrer$(EXEEXT) headerapi$(EXEEXT) http-post$(EXEEXT) \
+	connect-to$(EXEEXT) cookie_interface$(EXEEXT) debug$(EXEEXT) \
+	default-scheme$(EXEEXT) externalsocket$(EXEEXT) \
+	fileupload$(EXEEXT) ftp-wildcard$(EXEEXT) ftpget$(EXEEXT) \
+	ftpgetinfo$(EXEEXT) ftpgetresp$(EXEEXT) ftpsget$(EXEEXT) \
+	ftpupload$(EXEEXT) ftpuploadfrommem$(EXEEXT) \
+	ftpuploadresume$(EXEEXT) getinfo$(EXEEXT) getinmemory$(EXEEXT) \
+	getredirect$(EXEEXT) getreferrer$(EXEEXT) headerapi$(EXEEXT) \
+	hsts-preload$(EXEEXT) http-options$(EXEEXT) http-post$(EXEEXT) \
 	http2-download$(EXEEXT) http2-pushinmemory$(EXEEXT) \
 	http2-serverpush$(EXEEXT) http2-upload$(EXEEXT) http3$(EXEEXT) \
 	http3-present$(EXEEXT) httpcustomheader$(EXEEXT) \
@@ -154,15 +155,16 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) altsvc$(EXEEXT) \
 	imap-examine$(EXEEXT) imap-fetch$(EXEEXT) imap-list$(EXEEXT) \
 	imap-lsub$(EXEEXT) imap-multi$(EXEEXT) imap-noop$(EXEEXT) \
 	imap-search$(EXEEXT) imap-ssl$(EXEEXT) imap-store$(EXEEXT) \
-	imap-tls$(EXEEXT) multi-app$(EXEEXT) \
-	multi-debugcallback$(EXEEXT) multi-double$(EXEEXT) \
-	multi-formadd$(EXEEXT) multi-legacy$(EXEEXT) \
-	multi-post$(EXEEXT) multi-single$(EXEEXT) parseurl$(EXEEXT) \
-	persistent$(EXEEXT) pop3-authzid$(EXEEXT) pop3-dele$(EXEEXT) \
-	pop3-list$(EXEEXT) pop3-multi$(EXEEXT) pop3-noop$(EXEEXT) \
-	pop3-retr$(EXEEXT) pop3-ssl$(EXEEXT) pop3-stat$(EXEEXT) \
-	pop3-tls$(EXEEXT) pop3-top$(EXEEXT) pop3-uidl$(EXEEXT) \
-	post-callback$(EXEEXT) postinmemory$(EXEEXT) postit2$(EXEEXT) \
+	imap-tls$(EXEEXT) ipv6$(EXEEXT) maxconnects$(EXEEXT) \
+	multi-app$(EXEEXT) multi-debugcallback$(EXEEXT) \
+	multi-double$(EXEEXT) multi-formadd$(EXEEXT) \
+	multi-legacy$(EXEEXT) multi-post$(EXEEXT) \
+	multi-single$(EXEEXT) parseurl$(EXEEXT) persistent$(EXEEXT) \
+	pop3-authzid$(EXEEXT) pop3-dele$(EXEEXT) pop3-list$(EXEEXT) \
+	pop3-multi$(EXEEXT) pop3-noop$(EXEEXT) pop3-retr$(EXEEXT) \
+	pop3-ssl$(EXEEXT) pop3-stat$(EXEEXT) pop3-tls$(EXEEXT) \
+	pop3-top$(EXEEXT) pop3-uidl$(EXEEXT) post-callback$(EXEEXT) \
+	postinmemory$(EXEEXT) postit2$(EXEEXT) \
 	postit2-formadd$(EXEEXT) progressfunc$(EXEEXT) \
 	protofeats$(EXEEXT) resolve$(EXEEXT) sendrecv$(EXEEXT) \
 	sepheaders$(EXEEXT) sftpget$(EXEEXT) sftpuploadresume$(EXEEXT) \
@@ -170,8 +172,9 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) altsvc$(EXEEXT) \
 	simplepost$(EXEEXT) simplessl$(EXEEXT) smtp-authzid$(EXEEXT) \
 	smtp-expn$(EXEEXT) smtp-mail$(EXEEXT) smtp-mime$(EXEEXT) \
 	smtp-multi$(EXEEXT) smtp-ssl$(EXEEXT) smtp-tls$(EXEEXT) \
-	smtp-vrfy$(EXEEXT) sslbackend$(EXEEXT) url2file$(EXEEXT) \
-	urlapi$(EXEEXT)
+	smtp-vrfy$(EXEEXT) sslbackend$(EXEEXT) unixsocket$(EXEEXT) \
+	url2file$(EXEEXT) urlapi$(EXEEXT) websocket$(EXEEXT) \
+	websocket-cb$(EXEEXT)
 subdir = docs/examples
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
@@ -246,6 +249,13 @@ chkspeed_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@chkspeed_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+connect_to_SOURCES = connect-to.c
+connect_to_OBJECTS = connect-to.$(OBJEXT)
+connect_to_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@connect_to_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@connect_to_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 cookie_interface_SOURCES = cookie_interface.c
 cookie_interface_OBJECTS = cookie_interface.$(OBJEXT)
 cookie_interface_LDADD = $(LDADD)
@@ -259,6 +269,13 @@ debug_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@debug_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@debug_DEPENDENCIES = $(LIBDIR)/libcurl.la
+default_scheme_SOURCES = default-scheme.c
+default_scheme_OBJECTS = default-scheme.$(OBJEXT)
+default_scheme_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@default_scheme_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@default_scheme_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 externalsocket_SOURCES = externalsocket.c
 externalsocket_OBJECTS = externalsocket.$(OBJEXT)
 externalsocket_LDADD = $(LDADD)
@@ -363,6 +380,20 @@ headerapi_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@headerapi_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@headerapi_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+hsts_preload_SOURCES = hsts-preload.c
+hsts_preload_OBJECTS = hsts-preload.$(OBJEXT)
+hsts_preload_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@hsts_preload_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@hsts_preload_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+http_options_SOURCES = http-options.c
+http_options_OBJECTS = http-options.$(OBJEXT)
+http_options_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@http_options_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@http_options_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 http_post_SOURCES = http-post.c
 http_post_OBJECTS = http-post.$(OBJEXT)
@@ -543,6 +574,18 @@ imap_tls_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@imap_tls_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@imap_tls_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+ipv6_SOURCES = ipv6.c
+ipv6_OBJECTS = ipv6.$(OBJEXT)
+ipv6_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@ipv6_DEPENDENCIES = $(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@ipv6_DEPENDENCIES = $(LIBDIR)/libcurl.la
+maxconnects_SOURCES = maxconnects.c
+maxconnects_OBJECTS = maxconnects.$(OBJEXT)
+maxconnects_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@maxconnects_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@maxconnects_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 multi_app_SOURCES = multi-app.c
 multi_app_OBJECTS = multi-app.$(OBJEXT)
@@ -852,6 +895,13 @@ sslbackend_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@sslbackend_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+unixsocket_SOURCES = unixsocket.c
+unixsocket_OBJECTS = unixsocket.$(OBJEXT)
+unixsocket_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@unixsocket_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@unixsocket_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 url2file_SOURCES = url2file.c
 url2file_OBJECTS = url2file.$(OBJEXT)
 url2file_LDADD = $(LDADD)
@@ -865,6 +915,20 @@ urlapi_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@urlapi_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@urlapi_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+websocket_SOURCES = websocket.c
+websocket_OBJECTS = websocket.$(OBJEXT)
+websocket_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@websocket_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@websocket_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+websocket_cb_SOURCES = websocket-cb.c
+websocket_cb_OBJECTS = websocket-cb.$(OBJEXT)
+websocket_cb_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@websocket_cb_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@websocket_cb_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -884,7 +948,8 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/altsvc.Po ./$(DEPDIR)/anyauthput.Po \
 	./$(DEPDIR)/certinfo.Po ./$(DEPDIR)/chkspeed.Po \
-	./$(DEPDIR)/cookie_interface.Po ./$(DEPDIR)/debug.Po \
+	./$(DEPDIR)/connect-to.Po ./$(DEPDIR)/cookie_interface.Po \
+	./$(DEPDIR)/debug.Po ./$(DEPDIR)/default-scheme.Po \
 	./$(DEPDIR)/externalsocket.Po ./$(DEPDIR)/fileupload.Po \
 	./$(DEPDIR)/ftp-wildcard.Po ./$(DEPDIR)/ftpget.Po \
 	./$(DEPDIR)/ftpgetinfo.Po ./$(DEPDIR)/ftpgetresp.Po \
@@ -892,7 +957,8 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/ftpuploadfrommem.Po ./$(DEPDIR)/ftpuploadresume.Po \
 	./$(DEPDIR)/getinfo.Po ./$(DEPDIR)/getinmemory.Po \
 	./$(DEPDIR)/getredirect.Po ./$(DEPDIR)/getreferrer.Po \
-	./$(DEPDIR)/headerapi.Po ./$(DEPDIR)/http-post.Po \
+	./$(DEPDIR)/headerapi.Po ./$(DEPDIR)/hsts-preload.Po \
+	./$(DEPDIR)/http-options.Po ./$(DEPDIR)/http-post.Po \
 	./$(DEPDIR)/http2-download.Po \
 	./$(DEPDIR)/http2-pushinmemory.Po \
 	./$(DEPDIR)/http2-serverpush.Po ./$(DEPDIR)/http2-upload.Po \
@@ -907,6 +973,7 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/imap-multi.Po ./$(DEPDIR)/imap-noop.Po \
 	./$(DEPDIR)/imap-search.Po ./$(DEPDIR)/imap-ssl.Po \
 	./$(DEPDIR)/imap-store.Po ./$(DEPDIR)/imap-tls.Po \
+	./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/maxconnects.Po \
 	./$(DEPDIR)/multi-app.Po ./$(DEPDIR)/multi-debugcallback.Po \
 	./$(DEPDIR)/multi-double.Po ./$(DEPDIR)/multi-formadd.Po \
 	./$(DEPDIR)/multi-legacy.Po ./$(DEPDIR)/multi-post.Po \
@@ -929,8 +996,9 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/smtp-mail.Po ./$(DEPDIR)/smtp-mime.Po \
 	./$(DEPDIR)/smtp-multi.Po ./$(DEPDIR)/smtp-ssl.Po \
 	./$(DEPDIR)/smtp-tls.Po ./$(DEPDIR)/smtp-vrfy.Po \
-	./$(DEPDIR)/sslbackend.Po ./$(DEPDIR)/url2file.Po \
-	./$(DEPDIR)/urlapi.Po
+	./$(DEPDIR)/sslbackend.Po ./$(DEPDIR)/unixsocket.Po \
+	./$(DEPDIR)/url2file.Po ./$(DEPDIR)/urlapi.Po \
+	./$(DEPDIR)/websocket-cb.Po ./$(DEPDIR)/websocket.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -951,49 +1019,55 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c chkspeed.c \
-	cookie_interface.c debug.c externalsocket.c fileupload.c \
-	ftp-wildcard.c ftpget.c ftpgetinfo.c ftpgetresp.c ftpsget.c \
-	ftpupload.c ftpuploadfrommem.c ftpuploadresume.c getinfo.c \
-	getinmemory.c getredirect.c getreferrer.c headerapi.c \
-	http-post.c http2-download.c http2-pushinmemory.c \
-	http2-serverpush.c http2-upload.c http3.c http3-present.c \
-	httpcustomheader.c httpput.c httpput-postfields.c https.c \
-	imap-append.c imap-authzid.c imap-copy.c imap-create.c \
-	imap-delete.c imap-examine.c imap-fetch.c imap-list.c \
-	imap-lsub.c imap-multi.c imap-noop.c imap-search.c imap-ssl.c \
-	imap-store.c imap-tls.c multi-app.c multi-debugcallback.c \
-	multi-double.c multi-formadd.c multi-legacy.c multi-post.c \
-	multi-single.c parseurl.c persistent.c pop3-authzid.c \
-	pop3-dele.c pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c \
-	pop3-ssl.c pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c \
-	post-callback.c postinmemory.c postit2.c postit2-formadd.c \
-	progressfunc.c protofeats.c resolve.c sendrecv.c sepheaders.c \
-	sftpget.c sftpuploadresume.c shared-connection-cache.c \
-	simple.c simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	connect-to.c cookie_interface.c debug.c default-scheme.c \
+	externalsocket.c fileupload.c ftp-wildcard.c ftpget.c \
+	ftpgetinfo.c ftpgetresp.c ftpsget.c ftpupload.c \
+	ftpuploadfrommem.c ftpuploadresume.c getinfo.c getinmemory.c \
+	getredirect.c getreferrer.c headerapi.c hsts-preload.c \
+	http-options.c http-post.c http2-download.c \
+	http2-pushinmemory.c http2-serverpush.c http2-upload.c http3.c \
+	http3-present.c httpcustomheader.c httpput.c \
+	httpput-postfields.c https.c imap-append.c imap-authzid.c \
+	imap-copy.c imap-create.c imap-delete.c imap-examine.c \
+	imap-fetch.c imap-list.c imap-lsub.c imap-multi.c imap-noop.c \
+	imap-search.c imap-ssl.c imap-store.c imap-tls.c ipv6.c \
+	maxconnects.c multi-app.c multi-debugcallback.c multi-double.c \
+	multi-formadd.c multi-legacy.c multi-post.c multi-single.c \
+	parseurl.c persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
+	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
+	protofeats.c resolve.c sendrecv.c sepheaders.c sftpget.c \
+	sftpuploadresume.c shared-connection-cache.c simple.c \
+	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
 	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
-	smtp-vrfy.c sslbackend.c url2file.c urlapi.c
+	smtp-vrfy.c sslbackend.c unixsocket.c url2file.c urlapi.c \
+	websocket.c websocket-cb.c
 DIST_SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c \
-	chkspeed.c cookie_interface.c debug.c externalsocket.c \
-	fileupload.c ftp-wildcard.c ftpget.c ftpgetinfo.c ftpgetresp.c \
-	ftpsget.c ftpupload.c ftpuploadfrommem.c ftpuploadresume.c \
-	getinfo.c getinmemory.c getredirect.c getreferrer.c \
-	headerapi.c http-post.c http2-download.c http2-pushinmemory.c \
-	http2-serverpush.c http2-upload.c http3.c http3-present.c \
-	httpcustomheader.c httpput.c httpput-postfields.c https.c \
-	imap-append.c imap-authzid.c imap-copy.c imap-create.c \
-	imap-delete.c imap-examine.c imap-fetch.c imap-list.c \
-	imap-lsub.c imap-multi.c imap-noop.c imap-search.c imap-ssl.c \
-	imap-store.c imap-tls.c multi-app.c multi-debugcallback.c \
-	multi-double.c multi-formadd.c multi-legacy.c multi-post.c \
-	multi-single.c parseurl.c persistent.c pop3-authzid.c \
-	pop3-dele.c pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c \
-	pop3-ssl.c pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c \
-	post-callback.c postinmemory.c postit2.c postit2-formadd.c \
-	progressfunc.c protofeats.c resolve.c sendrecv.c sepheaders.c \
-	sftpget.c sftpuploadresume.c shared-connection-cache.c \
-	simple.c simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	chkspeed.c connect-to.c cookie_interface.c debug.c \
+	default-scheme.c externalsocket.c fileupload.c ftp-wildcard.c \
+	ftpget.c ftpgetinfo.c ftpgetresp.c ftpsget.c ftpupload.c \
+	ftpuploadfrommem.c ftpuploadresume.c getinfo.c getinmemory.c \
+	getredirect.c getreferrer.c headerapi.c hsts-preload.c \
+	http-options.c http-post.c http2-download.c \
+	http2-pushinmemory.c http2-serverpush.c http2-upload.c http3.c \
+	http3-present.c httpcustomheader.c httpput.c \
+	httpput-postfields.c https.c imap-append.c imap-authzid.c \
+	imap-copy.c imap-create.c imap-delete.c imap-examine.c \
+	imap-fetch.c imap-list.c imap-lsub.c imap-multi.c imap-noop.c \
+	imap-search.c imap-ssl.c imap-store.c imap-tls.c ipv6.c \
+	maxconnects.c multi-app.c multi-debugcallback.c multi-double.c \
+	multi-formadd.c multi-legacy.c multi-post.c multi-single.c \
+	parseurl.c persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
+	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
+	protofeats.c resolve.c sendrecv.c sepheaders.c sftpget.c \
+	sftpuploadresume.c shared-connection-cache.c simple.c \
+	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
 	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
-	smtp-vrfy.c sslbackend.c url2file.c urlapi.c
+	smtp-vrfy.c sslbackend.c unixsocket.c url2file.c urlapi.c \
+	websocket.c websocket-cb.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -1172,7 +1246,7 @@ USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
-USE_NGTCP2_CRYPTO_OPENSSL = @USE_NGTCP2_CRYPTO_OPENSSL@
+USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
 USE_NSS = @USE_NSS@
 USE_OPENLDAP = @USE_OPENLDAP@
@@ -1281,7 +1355,6 @@ COMPLICATED_EXAMPLES = \
   multi-event.c \
   multi-uv.c \
   multithread.c \
-  opensslthreadlock.c \
   sessioninfo.c \
   smooth-gtk-thread.c \
   synctime.c \
@@ -1358,6 +1431,10 @@ chkspeed$(EXEEXT): $(chkspeed_OBJECTS) $(chkspeed_DEPENDENCIES) $(EXTRA_chkspeed
 	@rm -f chkspeed$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(chkspeed_OBJECTS) $(chkspeed_LDADD) $(LIBS)
 
+connect-to$(EXEEXT): $(connect_to_OBJECTS) $(connect_to_DEPENDENCIES) $(EXTRA_connect_to_DEPENDENCIES) 
+	@rm -f connect-to$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(connect_to_OBJECTS) $(connect_to_LDADD) $(LIBS)
+
 cookie_interface$(EXEEXT): $(cookie_interface_OBJECTS) $(cookie_interface_DEPENDENCIES) $(EXTRA_cookie_interface_DEPENDENCIES) 
 	@rm -f cookie_interface$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(cookie_interface_OBJECTS) $(cookie_interface_LDADD) $(LIBS)
@@ -1365,6 +1442,10 @@ cookie_interface$(EXEEXT): $(cookie_interface_OBJECTS) $(cookie_interface_DEPEND
 debug$(EXEEXT): $(debug_OBJECTS) $(debug_DEPENDENCIES) $(EXTRA_debug_DEPENDENCIES) 
 	@rm -f debug$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(debug_OBJECTS) $(debug_LDADD) $(LIBS)
+
+default-scheme$(EXEEXT): $(default_scheme_OBJECTS) $(default_scheme_DEPENDENCIES) $(EXTRA_default_scheme_DEPENDENCIES) 
+	@rm -f default-scheme$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(default_scheme_OBJECTS) $(default_scheme_LDADD) $(LIBS)
 
 externalsocket$(EXEEXT): $(externalsocket_OBJECTS) $(externalsocket_DEPENDENCIES) $(EXTRA_externalsocket_DEPENDENCIES) 
 	@rm -f externalsocket$(EXEEXT)
@@ -1425,6 +1506,14 @@ getreferrer$(EXEEXT): $(getreferrer_OBJECTS) $(getreferrer_DEPENDENCIES) $(EXTRA
 headerapi$(EXEEXT): $(headerapi_OBJECTS) $(headerapi_DEPENDENCIES) $(EXTRA_headerapi_DEPENDENCIES) 
 	@rm -f headerapi$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(headerapi_OBJECTS) $(headerapi_LDADD) $(LIBS)
+
+hsts-preload$(EXEEXT): $(hsts_preload_OBJECTS) $(hsts_preload_DEPENDENCIES) $(EXTRA_hsts_preload_DEPENDENCIES) 
+	@rm -f hsts-preload$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(hsts_preload_OBJECTS) $(hsts_preload_LDADD) $(LIBS)
+
+http-options$(EXEEXT): $(http_options_OBJECTS) $(http_options_DEPENDENCIES) $(EXTRA_http_options_DEPENDENCIES) 
+	@rm -f http-options$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(http_options_OBJECTS) $(http_options_LDADD) $(LIBS)
 
 http-post$(EXEEXT): $(http_post_OBJECTS) $(http_post_DEPENDENCIES) $(EXTRA_http_post_DEPENDENCIES) 
 	@rm -f http-post$(EXEEXT)
@@ -1529,6 +1618,14 @@ imap-store$(EXEEXT): $(imap_store_OBJECTS) $(imap_store_DEPENDENCIES) $(EXTRA_im
 imap-tls$(EXEEXT): $(imap_tls_OBJECTS) $(imap_tls_DEPENDENCIES) $(EXTRA_imap_tls_DEPENDENCIES) 
 	@rm -f imap-tls$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(imap_tls_OBJECTS) $(imap_tls_LDADD) $(LIBS)
+
+ipv6$(EXEEXT): $(ipv6_OBJECTS) $(ipv6_DEPENDENCIES) $(EXTRA_ipv6_DEPENDENCIES) 
+	@rm -f ipv6$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(ipv6_OBJECTS) $(ipv6_LDADD) $(LIBS)
+
+maxconnects$(EXEEXT): $(maxconnects_OBJECTS) $(maxconnects_DEPENDENCIES) $(EXTRA_maxconnects_DEPENDENCIES) 
+	@rm -f maxconnects$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(maxconnects_OBJECTS) $(maxconnects_LDADD) $(LIBS)
 
 multi-app$(EXEEXT): $(multi_app_OBJECTS) $(multi_app_DEPENDENCIES) $(EXTRA_multi_app_DEPENDENCIES) 
 	@rm -f multi-app$(EXEEXT)
@@ -1706,6 +1803,10 @@ sslbackend$(EXEEXT): $(sslbackend_OBJECTS) $(sslbackend_DEPENDENCIES) $(EXTRA_ss
 	@rm -f sslbackend$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(sslbackend_OBJECTS) $(sslbackend_LDADD) $(LIBS)
 
+unixsocket$(EXEEXT): $(unixsocket_OBJECTS) $(unixsocket_DEPENDENCIES) $(EXTRA_unixsocket_DEPENDENCIES) 
+	@rm -f unixsocket$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unixsocket_OBJECTS) $(unixsocket_LDADD) $(LIBS)
+
 url2file$(EXEEXT): $(url2file_OBJECTS) $(url2file_DEPENDENCIES) $(EXTRA_url2file_DEPENDENCIES) 
 	@rm -f url2file$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(url2file_OBJECTS) $(url2file_LDADD) $(LIBS)
@@ -1713,6 +1814,14 @@ url2file$(EXEEXT): $(url2file_OBJECTS) $(url2file_DEPENDENCIES) $(EXTRA_url2file
 urlapi$(EXEEXT): $(urlapi_OBJECTS) $(urlapi_DEPENDENCIES) $(EXTRA_urlapi_DEPENDENCIES) 
 	@rm -f urlapi$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(urlapi_OBJECTS) $(urlapi_LDADD) $(LIBS)
+
+websocket$(EXEEXT): $(websocket_OBJECTS) $(websocket_DEPENDENCIES) $(EXTRA_websocket_DEPENDENCIES) 
+	@rm -f websocket$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(websocket_OBJECTS) $(websocket_LDADD) $(LIBS)
+
+websocket-cb$(EXEEXT): $(websocket_cb_OBJECTS) $(websocket_cb_DEPENDENCIES) $(EXTRA_websocket_cb_DEPENDENCIES) 
+	@rm -f websocket-cb$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(websocket_cb_OBJECTS) $(websocket_cb_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -1725,8 +1834,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/anyauthput.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/certinfo.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chkspeed.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/connect-to.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cookie_interface.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/default-scheme.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/externalsocket.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fileupload.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ftp-wildcard.Po@am__quote@ # am--include-marker
@@ -1742,6 +1853,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getredirect.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getreferrer.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/headerapi.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hsts-preload.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/http-options.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/http-post.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/http2-download.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/http2-pushinmemory.Po@am__quote@ # am--include-marker
@@ -1768,6 +1881,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imap-ssl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imap-store.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imap-tls.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/maxconnects.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-app.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-debugcallback.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-double.Po@am__quote@ # am--include-marker
@@ -1812,8 +1927,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/smtp-tls.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/smtp-vrfy.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sslbackend.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unixsocket.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/url2file.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urlapi.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/websocket-cb.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/websocket.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1981,8 +2099,10 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/anyauthput.Po
 	-rm -f ./$(DEPDIR)/certinfo.Po
 	-rm -f ./$(DEPDIR)/chkspeed.Po
+	-rm -f ./$(DEPDIR)/connect-to.Po
 	-rm -f ./$(DEPDIR)/cookie_interface.Po
 	-rm -f ./$(DEPDIR)/debug.Po
+	-rm -f ./$(DEPDIR)/default-scheme.Po
 	-rm -f ./$(DEPDIR)/externalsocket.Po
 	-rm -f ./$(DEPDIR)/fileupload.Po
 	-rm -f ./$(DEPDIR)/ftp-wildcard.Po
@@ -1998,6 +2118,8 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/getredirect.Po
 	-rm -f ./$(DEPDIR)/getreferrer.Po
 	-rm -f ./$(DEPDIR)/headerapi.Po
+	-rm -f ./$(DEPDIR)/hsts-preload.Po
+	-rm -f ./$(DEPDIR)/http-options.Po
 	-rm -f ./$(DEPDIR)/http-post.Po
 	-rm -f ./$(DEPDIR)/http2-download.Po
 	-rm -f ./$(DEPDIR)/http2-pushinmemory.Po
@@ -2024,6 +2146,8 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/imap-ssl.Po
 	-rm -f ./$(DEPDIR)/imap-store.Po
 	-rm -f ./$(DEPDIR)/imap-tls.Po
+	-rm -f ./$(DEPDIR)/ipv6.Po
+	-rm -f ./$(DEPDIR)/maxconnects.Po
 	-rm -f ./$(DEPDIR)/multi-app.Po
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
 	-rm -f ./$(DEPDIR)/multi-double.Po
@@ -2068,8 +2192,11 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/smtp-tls.Po
 	-rm -f ./$(DEPDIR)/smtp-vrfy.Po
 	-rm -f ./$(DEPDIR)/sslbackend.Po
+	-rm -f ./$(DEPDIR)/unixsocket.Po
 	-rm -f ./$(DEPDIR)/url2file.Po
 	-rm -f ./$(DEPDIR)/urlapi.Po
+	-rm -f ./$(DEPDIR)/websocket-cb.Po
+	-rm -f ./$(DEPDIR)/websocket.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -2120,8 +2247,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/anyauthput.Po
 	-rm -f ./$(DEPDIR)/certinfo.Po
 	-rm -f ./$(DEPDIR)/chkspeed.Po
+	-rm -f ./$(DEPDIR)/connect-to.Po
 	-rm -f ./$(DEPDIR)/cookie_interface.Po
 	-rm -f ./$(DEPDIR)/debug.Po
+	-rm -f ./$(DEPDIR)/default-scheme.Po
 	-rm -f ./$(DEPDIR)/externalsocket.Po
 	-rm -f ./$(DEPDIR)/fileupload.Po
 	-rm -f ./$(DEPDIR)/ftp-wildcard.Po
@@ -2137,6 +2266,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/getredirect.Po
 	-rm -f ./$(DEPDIR)/getreferrer.Po
 	-rm -f ./$(DEPDIR)/headerapi.Po
+	-rm -f ./$(DEPDIR)/hsts-preload.Po
+	-rm -f ./$(DEPDIR)/http-options.Po
 	-rm -f ./$(DEPDIR)/http-post.Po
 	-rm -f ./$(DEPDIR)/http2-download.Po
 	-rm -f ./$(DEPDIR)/http2-pushinmemory.Po
@@ -2163,6 +2294,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/imap-ssl.Po
 	-rm -f ./$(DEPDIR)/imap-store.Po
 	-rm -f ./$(DEPDIR)/imap-tls.Po
+	-rm -f ./$(DEPDIR)/ipv6.Po
+	-rm -f ./$(DEPDIR)/maxconnects.Po
 	-rm -f ./$(DEPDIR)/multi-app.Po
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
 	-rm -f ./$(DEPDIR)/multi-double.Po
@@ -2207,8 +2340,11 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/smtp-tls.Po
 	-rm -f ./$(DEPDIR)/smtp-vrfy.Po
 	-rm -f ./$(DEPDIR)/sslbackend.Po
+	-rm -f ./$(DEPDIR)/unixsocket.Po
 	-rm -f ./$(DEPDIR)/url2file.Po
 	-rm -f ./$(DEPDIR)/urlapi.Po
+	-rm -f ./$(DEPDIR)/websocket-cb.Po
+	-rm -f ./$(DEPDIR)/websocket.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

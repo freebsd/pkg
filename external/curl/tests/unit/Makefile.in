@@ -224,10 +224,9 @@ unit1330_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
 	$(top_builddir)/lib/libcurlu.la
 am_unit1394_OBJECTS = unit1394.$(OBJEXT) $(am__objects_1)
 unit1394_OBJECTS = $(am_unit1394_OBJECTS)
-unit1394_DEPENDENCIES = $(top_builddir)/lib/libcurl.la
-unit1394_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(unit1394_LDFLAGS) $(LDFLAGS) -o $@
+unit1394_LDADD = $(LDADD)
+unit1394_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
 am_unit1395_OBJECTS = unit1395.$(OBJEXT) $(am__objects_1)
 unit1395_OBJECTS = $(am_unit1395_OBJECTS)
 unit1395_LDADD = $(LDADD)
@@ -330,8 +329,9 @@ unit1620_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
 	$(top_builddir)/lib/libcurlu.la
 am_unit1621_OBJECTS = unit1621.$(OBJEXT) $(am__objects_1)
 unit1621_OBJECTS = $(am_unit1621_OBJECTS)
+unit1621_LDADD = $(LDADD)
 unit1621_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurl.la
+	$(top_builddir)/lib/libcurlu.la
 am_unit1650_OBJECTS = unit1650.$(OBJEXT) $(am__objects_1)
 unit1650_OBJECTS = $(am_unit1650_OBJECTS)
 unit1650_LDADD = $(LDADD)
@@ -662,7 +662,7 @@ USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
-USE_NGTCP2_CRYPTO_OPENSSL = @USE_NGTCP2_CRYPTO_OPENSSL@
+USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
 USE_NSS = @USE_NSS@
 USE_OPENLDAP = @USE_OPENLDAP@
@@ -810,9 +810,6 @@ unit1309_SOURCES = unit1309.c $(UNITFILES)
 unit1323_SOURCES = unit1323.c $(UNITFILES)
 unit1330_SOURCES = unit1330.c $(UNITFILES)
 unit1394_SOURCES = unit1394.c $(UNITFILES)
-unit1394_LDADD = $(top_builddir)/lib/libcurl.la @LIBCURL_LIBS@
-unit1394_LDFLAGS = $(top_builddir)/src/libcurltool.la
-unit1394_LIBS = 
 unit1395_SOURCES = unit1395.c $(UNITFILES)
 unit1396_SOURCES = unit1396.c $(UNITFILES)
 unit1397_SOURCES = unit1397.c $(UNITFILES)
@@ -834,7 +831,6 @@ unit1612_SOURCES = unit1612.c $(UNITFILES)
 unit1614_SOURCES = unit1614.c $(UNITFILES)
 unit1620_SOURCES = unit1620.c $(UNITFILES)
 unit1621_SOURCES = unit1621.c $(UNITFILES)
-unit1621_LDADD = $(top_builddir)/src/libcurltool.la $(top_builddir)/lib/libcurl.la @NSS_LIBS@
 unit1650_SOURCES = unit1650.c $(UNITFILES)
 unit1651_SOURCES = unit1651.c $(UNITFILES)
 unit1652_SOURCES = unit1652.c $(UNITFILES)
@@ -942,7 +938,7 @@ unit1330$(EXEEXT): $(unit1330_OBJECTS) $(unit1330_DEPENDENCIES) $(EXTRA_unit1330
 
 unit1394$(EXEEXT): $(unit1394_OBJECTS) $(unit1394_DEPENDENCIES) $(EXTRA_unit1394_DEPENDENCIES) 
 	@rm -f unit1394$(EXEEXT)
-	$(AM_V_CCLD)$(unit1394_LINK) $(unit1394_OBJECTS) $(unit1394_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(unit1394_OBJECTS) $(unit1394_LDADD) $(LIBS)
 
 unit1395$(EXEEXT): $(unit1395_OBJECTS) $(unit1395_DEPENDENCIES) $(EXTRA_unit1395_DEPENDENCIES) 
 	@rm -f unit1395$(EXEEXT)

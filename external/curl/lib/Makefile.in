@@ -226,11 +226,11 @@ am__libcurl_la_SOURCES_DIST = altsvc.c amigaos.c asyn-ares.c \
 	hostip4.c hostip6.c hostsyn.c hsts.c http.c http1.c http2.c \
 	http_chunks.c http_digest.c http_negotiate.c http_ntlm.c \
 	http_proxy.c http_aws_sigv4.c idn.c if2ip.c imap.c inet_ntop.c \
-	inet_pton.c krb5.c ldap.c llist.c md4.c md5.c memdebug.c \
-	mime.c mprintf.c mqtt.c multi.c netrc.c nonblock.c noproxy.c \
-	openldap.c parsedate.c pingpong.c pop3.c progress.c psl.c \
-	rand.c rename.c rtsp.c select.c sendf.c setopt.c sha256.c \
-	share.c slist.c smb.c smtp.c socketpair.c socks.c \
+	inet_pton.c krb5.c ldap.c llist.c macos.c md4.c md5.c \
+	memdebug.c mime.c mprintf.c mqtt.c multi.c netrc.c nonblock.c \
+	noproxy.c openldap.c parsedate.c pingpong.c pop3.c progress.c \
+	psl.c rand.c rename.c rtsp.c select.c sendf.c setopt.c \
+	sha256.c share.c slist.c smb.c smtp.c socketpair.c socks.c \
 	socks_gssapi.c socks_sspi.c speedcheck.c splay.c strcase.c \
 	strdup.c strerror.c strtok.c strtoofft.c system_win32.c \
 	telnet.c tftp.c timediff.c timeval.c transfer.c url.c urlapi.c \
@@ -262,8 +262,8 @@ am__libcurl_la_SOURCES_DIST = altsvc.c amigaos.c asyn-ares.c \
 	gopher.h hash.h headers.h hostip.h hsts.h http.h http1.h \
 	http2.h http_chunks.h http_digest.h http_negotiate.h \
 	http_ntlm.h http_proxy.h http_aws_sigv4.h idn.h if2ip.h imap.h \
-	inet_ntop.h inet_pton.h llist.h memdebug.h mime.h mqtt.h \
-	multihandle.h multiif.h netrc.h nonblock.h noproxy.h \
+	inet_ntop.h inet_pton.h llist.h macos.h memdebug.h mime.h \
+	mqtt.h multihandle.h multiif.h netrc.h nonblock.h noproxy.h \
 	parsedate.h pingpong.h pop3.h progress.h psl.h rand.h rename.h \
 	rtsp.h select.h sendf.h setopt.h setup-vms.h share.h sigpipe.h \
 	slist.h smb.h smtp.h sockaddr.h socketpair.h socks.h \
@@ -274,10 +274,11 @@ am__libcurl_la_SOURCES_DIST = altsvc.c amigaos.c asyn-ares.c \
 	vauth/vauth.h vtls/bearssl.h vtls/gskit.h vtls/gtls.h \
 	vtls/hostcheck.h vtls/keylog.h vtls/mbedtls.h \
 	vtls/mbedtls_threadlock.h vtls/nssg.h vtls/openssl.h \
-	vtls/rustls.h vtls/schannel.h vtls/sectransp.h vtls/vtls.h \
-	vtls/vtls_int.h vtls/wolfssl.h vtls/x509asn1.h \
-	vquic/curl_msh3.h vquic/curl_ngtcp2.h vquic/curl_quiche.h \
-	vquic/vquic.h vquic/vquic_int.h vssh/ssh.h libcurl.rc
+	vtls/rustls.h vtls/schannel.h vtls/schannel_int.h \
+	vtls/sectransp.h vtls/vtls.h vtls/vtls_int.h vtls/wolfssl.h \
+	vtls/x509asn1.h vquic/curl_msh3.h vquic/curl_ngtcp2.h \
+	vquic/curl_quiche.h vquic/vquic.h vquic/vquic_int.h vssh/ssh.h \
+	libcurl.rc
 am__objects_1 = libcurl_la-altsvc.lo libcurl_la-amigaos.lo \
 	libcurl_la-asyn-ares.lo libcurl_la-asyn-thread.lo \
 	libcurl_la-base64.lo libcurl_la-bufq.lo libcurl_la-bufref.lo \
@@ -314,9 +315,10 @@ am__objects_1 = libcurl_la-altsvc.lo libcurl_la-amigaos.lo \
 	libcurl_la-idn.lo libcurl_la-if2ip.lo libcurl_la-imap.lo \
 	libcurl_la-inet_ntop.lo libcurl_la-inet_pton.lo \
 	libcurl_la-krb5.lo libcurl_la-ldap.lo libcurl_la-llist.lo \
-	libcurl_la-md4.lo libcurl_la-md5.lo libcurl_la-memdebug.lo \
-	libcurl_la-mime.lo libcurl_la-mprintf.lo libcurl_la-mqtt.lo \
-	libcurl_la-multi.lo libcurl_la-netrc.lo libcurl_la-nonblock.lo \
+	libcurl_la-macos.lo libcurl_la-md4.lo libcurl_la-md5.lo \
+	libcurl_la-memdebug.lo libcurl_la-mime.lo \
+	libcurl_la-mprintf.lo libcurl_la-mqtt.lo libcurl_la-multi.lo \
+	libcurl_la-netrc.lo libcurl_la-nonblock.lo \
 	libcurl_la-noproxy.lo libcurl_la-openldap.lo \
 	libcurl_la-parsedate.lo libcurl_la-pingpong.lo \
 	libcurl_la-pop3.lo libcurl_la-progress.lo libcurl_la-psl.lo \
@@ -410,8 +412,9 @@ am__objects_11 = libcurlu_la-altsvc.lo libcurlu_la-amigaos.lo \
 	libcurlu_la-idn.lo libcurlu_la-if2ip.lo libcurlu_la-imap.lo \
 	libcurlu_la-inet_ntop.lo libcurlu_la-inet_pton.lo \
 	libcurlu_la-krb5.lo libcurlu_la-ldap.lo libcurlu_la-llist.lo \
-	libcurlu_la-md4.lo libcurlu_la-md5.lo libcurlu_la-memdebug.lo \
-	libcurlu_la-mime.lo libcurlu_la-mprintf.lo libcurlu_la-mqtt.lo \
+	libcurlu_la-macos.lo libcurlu_la-md4.lo libcurlu_la-md5.lo \
+	libcurlu_la-memdebug.lo libcurlu_la-mime.lo \
+	libcurlu_la-mprintf.lo libcurlu_la-mqtt.lo \
 	libcurlu_la-multi.lo libcurlu_la-netrc.lo \
 	libcurlu_la-nonblock.lo libcurlu_la-noproxy.lo \
 	libcurlu_la-openldap.lo libcurlu_la-parsedate.lo \
@@ -556,6 +559,7 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	./$(DEPDIR)/libcurl_la-krb5.Plo \
 	./$(DEPDIR)/libcurl_la-ldap.Plo \
 	./$(DEPDIR)/libcurl_la-llist.Plo \
+	./$(DEPDIR)/libcurl_la-macos.Plo \
 	./$(DEPDIR)/libcurl_la-md4.Plo ./$(DEPDIR)/libcurl_la-md5.Plo \
 	./$(DEPDIR)/libcurl_la-memdebug.Plo \
 	./$(DEPDIR)/libcurl_la-mime.Plo \
@@ -682,6 +686,7 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	./$(DEPDIR)/libcurlu_la-krb5.Plo \
 	./$(DEPDIR)/libcurlu_la-ldap.Plo \
 	./$(DEPDIR)/libcurlu_la-llist.Plo \
+	./$(DEPDIR)/libcurlu_la-macos.Plo \
 	./$(DEPDIR)/libcurlu_la-md4.Plo \
 	./$(DEPDIR)/libcurlu_la-md5.Plo \
 	./$(DEPDIR)/libcurlu_la-memdebug.Plo \
@@ -1006,7 +1011,7 @@ USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
-USE_NGTCP2_CRYPTO_OPENSSL = @USE_NGTCP2_CRYPTO_OPENSSL@
+USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
 USE_NSS = @USE_NSS@
 USE_OPENLDAP = @USE_OPENLDAP@
@@ -1183,6 +1188,7 @@ LIB_VTLS_HFILES = \
   vtls/openssl.h            \
   vtls/rustls.h             \
   vtls/schannel.h           \
+  vtls/schannel_int.h       \
   vtls/sectransp.h          \
   vtls/vtls.h               \
   vtls/vtls_int.h           \
@@ -1290,6 +1296,7 @@ LIB_CFILES = \
   krb5.c             \
   ldap.c             \
   llist.c            \
+  macos.c            \
   md4.c              \
   md5.c              \
   memdebug.c         \
@@ -1426,6 +1433,7 @@ LIB_HFILES = \
   inet_ntop.h        \
   inet_pton.h        \
   llist.h            \
+  macos.h            \
   memdebug.h         \
   mime.h             \
   mqtt.h             \
@@ -1871,6 +1879,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-krb5.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-ldap.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-llist.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-macos.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-md4.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-md5.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-memdebug.Plo@am__quote@ # am--include-marker
@@ -2000,6 +2009,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-krb5.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-ldap.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-llist.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-macos.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-md4.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-md5.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-memdebug.Plo@am__quote@ # am--include-marker
@@ -2705,6 +2715,13 @@ libcurl_la-llist.lo: llist.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='llist.c' object='libcurl_la-llist.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o libcurl_la-llist.lo `test -f 'llist.c' || echo '$(srcdir)/'`llist.c
+
+libcurl_la-macos.lo: macos.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT libcurl_la-macos.lo -MD -MP -MF $(DEPDIR)/libcurl_la-macos.Tpo -c -o libcurl_la-macos.lo `test -f 'macos.c' || echo '$(srcdir)/'`macos.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurl_la-macos.Tpo $(DEPDIR)/libcurl_la-macos.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='macos.c' object='libcurl_la-macos.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o libcurl_la-macos.lo `test -f 'macos.c' || echo '$(srcdir)/'`macos.c
 
 libcurl_la-md4.lo: md4.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT libcurl_la-md4.lo -MD -MP -MF $(DEPDIR)/libcurl_la-md4.Tpo -c -o libcurl_la-md4.lo `test -f 'md4.c' || echo '$(srcdir)/'`md4.c
@@ -3861,6 +3878,13 @@ libcurlu_la-llist.lo: llist.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o libcurlu_la-llist.lo `test -f 'llist.c' || echo '$(srcdir)/'`llist.c
 
+libcurlu_la-macos.lo: macos.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT libcurlu_la-macos.lo -MD -MP -MF $(DEPDIR)/libcurlu_la-macos.Tpo -c -o libcurlu_la-macos.lo `test -f 'macos.c' || echo '$(srcdir)/'`macos.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurlu_la-macos.Tpo $(DEPDIR)/libcurlu_la-macos.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='macos.c' object='libcurlu_la-macos.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o libcurlu_la-macos.lo `test -f 'macos.c' || echo '$(srcdir)/'`macos.c
+
 libcurlu_la-md4.lo: md4.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT libcurlu_la-md4.lo -MD -MP -MF $(DEPDIR)/libcurlu_la-md4.Tpo -c -o libcurlu_la-md4.lo `test -f 'md4.c' || echo '$(srcdir)/'`md4.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurlu_la-md4.Tpo $(DEPDIR)/libcurlu_la-md4.Plo
@@ -4688,6 +4712,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libcurl_la-krb5.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-ldap.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-llist.Plo
+	-rm -f ./$(DEPDIR)/libcurl_la-macos.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-md4.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-md5.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-memdebug.Plo
@@ -4817,6 +4842,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libcurlu_la-krb5.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-ldap.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-llist.Plo
+	-rm -f ./$(DEPDIR)/libcurlu_la-macos.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-md4.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-md5.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-memdebug.Plo
@@ -5063,6 +5089,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libcurl_la-krb5.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-ldap.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-llist.Plo
+	-rm -f ./$(DEPDIR)/libcurl_la-macos.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-md4.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-md5.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-memdebug.Plo
@@ -5192,6 +5219,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libcurlu_la-krb5.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-ldap.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-llist.Plo
+	-rm -f ./$(DEPDIR)/libcurlu_la-macos.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-md4.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-md5.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-memdebug.Plo

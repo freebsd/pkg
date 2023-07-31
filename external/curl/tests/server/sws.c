@@ -160,7 +160,7 @@ static char loglockfile[256];
 #define RESPONSE_PROXY_DUMP "proxy.response"
 
 /* file in which additional instructions may be found */
-#define DEFAULT_CMDFILE "log/ftpserver.cmd"
+#define DEFAULT_CMDFILE "log/server.cmd"
 const char *cmdfile = DEFAULT_CMDFILE;
 
 /* very-big-path support */
@@ -956,7 +956,7 @@ static int get_request(curl_socket_t sock, struct httprequest *req)
         /* nothing to read at the moment */
         return 0;
       }
-      logmsg("recv() returned error: (%d) %s", error, strerror(error));
+      logmsg("recv() returned error: (%d) %s", error, sstrerror(error));
       fail = 1;
     }
     if(fail) {
@@ -1304,7 +1304,7 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
   if(CURL_SOCKET_BAD == serverfd) {
     error = SOCKERRNO;
     logmsg("Error creating socket for server connection: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     return CURL_SOCKET_BAD;
   }
 
@@ -1360,7 +1360,7 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
   if(rc) {
     error = SOCKERRNO;
     logmsg("Error connecting to server port %hu: (%d) %s",
-           port, error, strerror(error));
+           port, error, sstrerror(error));
     sclose(serverfd);
     return CURL_SOCKET_BAD;
   }
@@ -1813,14 +1813,14 @@ static curl_socket_t accept_connection(curl_socket_t sock)
       return 0;
     }
     logmsg("MAJOR ERROR: accept() failed with error: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     return CURL_SOCKET_BAD;
   }
 
   if(0 != curlx_nonblock(msgsock, TRUE)) {
     error = SOCKERRNO;
     logmsg("curlx_nonblock failed with error: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     sclose(msgsock);
     return CURL_SOCKET_BAD;
   }
@@ -1829,7 +1829,7 @@ static curl_socket_t accept_connection(curl_socket_t sock)
                      (void *)&flag, sizeof(flag))) {
     error = SOCKERRNO;
     logmsg("setsockopt(SO_KEEPALIVE) failed with error: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     sclose(msgsock);
     return CURL_SOCKET_BAD;
   }
@@ -1964,6 +1964,7 @@ int main(int argc, char *argv[])
   char port_str[11];
   const char *location_str = port_str;
   int keepalive_secs = 5;
+  const char *protocol_type = "HTTP";
 
   /* a default CONNECT port is basically pointless but still ... */
   size_t socket_idx;
@@ -2008,6 +2009,7 @@ int main(int argc, char *argv[])
     else if(!strcmp("--gopher", argv[arg])) {
       arg++;
       use_gopher = TRUE;
+      protocol_type = "GOPHER";
       end_of_headers = "\r\n"; /* gopher style is much simpler */
     }
     else if(!strcmp("--ipv4", argv[arg])) {
@@ -2109,8 +2111,9 @@ int main(int argc, char *argv[])
     }
   }
 
-  msnprintf(loglockfile, sizeof(loglockfile), "%s/%s",
-            logdir, SERVERLOGS_LOCK);
+  msnprintf(loglockfile, sizeof(loglockfile), "%s/%s/sws-%s%s-%s.lock",
+            logdir, SERVERLOGS_LOCKDIR, protocol_type,
+            is_proxy ? "-proxy" : "", socket_type);
 
 #ifdef WIN32
   win32_init();
@@ -2130,8 +2133,7 @@ int main(int argc, char *argv[])
 
   if(CURL_SOCKET_BAD == sock) {
     error = SOCKERRNO;
-    logmsg("Error creating socket: (%d) %s",
-           error, strerror(error));
+    logmsg("Error creating socket: (%d) %s", error, sstrerror(error));
     goto sws_cleanup;
   }
 
@@ -2140,13 +2142,13 @@ int main(int argc, char *argv[])
                      (void *)&flag, sizeof(flag))) {
     error = SOCKERRNO;
     logmsg("setsockopt(SO_REUSEADDR) failed with error: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     goto sws_cleanup;
   }
   if(0 != curlx_nonblock(sock, TRUE)) {
     error = SOCKERRNO;
     logmsg("curlx_nonblock failed with error: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     goto sws_cleanup;
   }
 
@@ -2174,7 +2176,14 @@ int main(int argc, char *argv[])
   }
   if(0 != rc) {
     error = SOCKERRNO;
-    logmsg("Error binding socket: (%d) %s", error, strerror(error));
+#ifdef USE_UNIX_SOCKETS
+    if(socket_domain == AF_UNIX)
+      logmsg("Error binding socket on path %s: (%d) %s",
+             unix_socket, error, sstrerror(error));
+    else
+#endif
+      logmsg("Error binding socket on port %hu: (%d) %s",
+             port, error, sstrerror(error));
     goto sws_cleanup;
   }
 
@@ -2195,7 +2204,7 @@ int main(int argc, char *argv[])
     if(getsockname(sock, &localaddr.sa, &la_size) < 0) {
       error = SOCKERRNO;
       logmsg("getsockname() failed with error: (%d) %s",
-             error, strerror(error));
+             error, sstrerror(error));
       sclose(sock);
       goto sws_cleanup;
     }
@@ -2227,14 +2236,13 @@ int main(int argc, char *argv[])
     msnprintf(port_str, sizeof(port_str), "port %hu", port);
 
   logmsg("Running %s %s version on %s",
-         use_gopher?"GOPHER":"HTTP", socket_type, location_str);
+         protocol_type, socket_type, location_str);
 
   /* start accepting connections */
   rc = listen(sock, 5);
   if(0 != rc) {
     error = SOCKERRNO;
-    logmsg("listen() failed with error: (%d) %s",
-           error, strerror(error));
+    logmsg("listen() failed with error: (%d) %s", error, sstrerror(error));
     goto sws_cleanup;
   }
 
@@ -2306,8 +2314,7 @@ int main(int argc, char *argv[])
 
     if(rc < 0) {
       error = SOCKERRNO;
-      logmsg("select() failed with error: (%d) %s",
-             error, strerror(error));
+      logmsg("select() failed with error: (%d) %s", error, sstrerror(error));
       goto sws_cleanup;
     }
 

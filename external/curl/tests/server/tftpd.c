@@ -647,8 +647,8 @@ int main(int argc, char **argv)
     }
   }
 
-  msnprintf(loglockfile, sizeof(loglockfile), "%s/%s",
-            logdir, SERVERLOGS_LOCK);
+  msnprintf(loglockfile, sizeof(loglockfile), "%s/%s/tftp-%s.lock",
+            logdir, SERVERLOGS_LOCKDIR, ipv_inuse);
 
 #ifdef WIN32
   win32_init();
@@ -668,8 +668,7 @@ int main(int argc, char **argv)
 
   if(CURL_SOCKET_BAD == sock) {
     error = SOCKERRNO;
-    logmsg("Error creating socket: (%d) %s",
-           error, strerror(error));
+    logmsg("Error creating socket: (%d) %s", error, sstrerror(error));
     result = 1;
     goto tftpd_cleanup;
   }
@@ -679,7 +678,7 @@ int main(int argc, char **argv)
             (void *)&flag, sizeof(flag))) {
     error = SOCKERRNO;
     logmsg("setsockopt(SO_REUSEADDR) failed with error: (%d) %s",
-           error, strerror(error));
+           error, sstrerror(error));
     result = 1;
     goto tftpd_cleanup;
   }
@@ -704,8 +703,8 @@ int main(int argc, char **argv)
 #endif /* ENABLE_IPV6 */
   if(0 != rc) {
     error = SOCKERRNO;
-    logmsg("Error binding socket on port %hu: (%d) %s",
-           port, error, strerror(error));
+    logmsg("Error binding socket on port %hu: (%d) %s", port, error,
+           sstrerror(error));
     result = 1;
     goto tftpd_cleanup;
   }
@@ -727,7 +726,7 @@ int main(int argc, char **argv)
     if(getsockname(sock, &localaddr.sa, &la_size) < 0) {
       error = SOCKERRNO;
       logmsg("getsockname() failed with error: (%d) %s",
-             error, strerror(error));
+             error, sstrerror(error));
       sclose(sock);
       goto tftpd_cleanup;
     }

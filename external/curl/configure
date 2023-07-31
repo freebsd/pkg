@@ -933,7 +933,7 @@ USE_QUICHE
 USE_NGHTTP3
 USE_NGTCP2_CRYPTO_WOLFSSL
 USE_NGTCP2_CRYPTO_GNUTLS
-USE_NGTCP2_CRYPTO_OPENSSL
+USE_NGTCP2_CRYPTO_QUICTLS
 USE_NGTCP2
 USE_NGHTTP2
 IDN_ENABLED
@@ -6676,11 +6676,15 @@ INITIAL_LDFLAGS=$LDFLAGS
 INITIAL_LIBS=$LIBS
 
 compilersh="run-compiler"
-export "CURL_SAVED_CC=$CC"
-export "CURL_SAVED_LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+CURL_SAVED_CC="$CC"
+export CURL_SAVED_CC
+CURL_SAVED_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+export CURL_SAVED_LD_LIBRARY_PATH
 cat <<\EOF > "$compilersh"
-export "CC=$CURL_SAVED_CC"
-export "LD_LIBRARY_PATH=$CURL_SAVED_LD_LIBRARY_PATH"
+CC="$CURL_SAVED_CC"
+export CC
+LD_LIBRARY_PATH="$CURL_SAVED_LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH
 exec $CC "$@"
 EOF
 
@@ -7294,7 +7298,7 @@ fi
 # Check whether --with-darwinssl was given.
 if test ${with_darwinssl+y}
 then :
-  withval=$with_darwinssl; as_fn_error $? "--with-darwin-ssl no longer works!" "$LINENO" 5
+  withval=$with_darwinssl; as_fn_error $? "--with-darwin-ssl and --without-darwin-ssl no longer work!" "$LINENO" 5
 fi
 
 
@@ -21496,71 +21500,11 @@ printf "%s\n" "#define HAVE_WINCRYPT_H 1" >>confdefs.h
       ;;
   esac
 
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for winldap.h" >&5
-printf %s "checking for winldap.h... " >&6; }
-if test ${curl_cv_header_winldap_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifdef HAVE_WINDOWS_H
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-#include <winldap.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__)
-        HAVE_WINLDAP_H shall not be defined.
-#else
-        LDAP *ldp = ldap_init("dummy", LDAP_PORT);
-        ULONG res = ldap_unbind(ldp);
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_winldap_h="yes"
-
-else $as_nop
-
-      curl_cv_header_winldap_h="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_winldap_h" >&5
-printf "%s\n" "$curl_cv_header_winldap_h" >&6; }
-  case "$curl_cv_header_winldap_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINLDAP_H 1" >>confdefs.h
-
-      ;;
-  esac
-
     ;;
   *)
     curl_cv_header_winsock2_h="no"
     curl_cv_header_ws2tcpip_h="no"
     curl_cv_header_wincrypt_h="no"
-    curl_cv_header_winldap_h="no"
     ;;
 esac
 
@@ -23645,6 +23589,66 @@ printf "%s\n" "#define HAVE_CLOCK_GETTIME_MONOTONIC 1" >>confdefs.h
   #
 
 
+
+  ac_fn_c_check_header_compile "$LINENO" "sys/types.h" "ac_cv_header_sys_types_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_types_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_TYPES_H 1" >>confdefs.h
+
+fi
+ac_fn_c_check_header_compile "$LINENO" "sys/time.h" "ac_cv_header_sys_time_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_time_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_TIME_H 1" >>confdefs.h
+
+fi
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for raw monotonic clock_gettime" >&5
+printf %s "checking for raw monotonic clock_gettime... " >&6; }
+  #
+  if test "x$dontwant_rt" = "xno" ; then
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#include <time.h>
+
+int main (void)
+{
+
+        struct timespec ts;
+        (void)clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+
+ ;
+ return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+printf "%s\n" "#define HAVE_CLOCK_GETTIME_MONOTONIC_RAW 1" >>confdefs.h
+
+
+else $as_nop
+
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  fi
+
+
 CURL_NETWORK_AND_TIME_LIBS=$LIBS
 
 
@@ -25047,6 +25051,12 @@ then :
   printf "%s\n" "#define HAVE_LDAP_URL_PARSE 1" >>confdefs.h
 
 fi
+ac_fn_c_check_func "$LINENO" "ldap_init_fd" "ac_cv_func_ldap_init_fd"
+if test "x$ac_cv_func_ldap_init_fd" = xyes
+then :
+  printf "%s\n" "#define HAVE_LDAP_INIT_FD 1" >>confdefs.h
+
+fi
 
 
   if test "$LDAPLIBNAME" = "wldap32"; then
@@ -25055,13 +25065,15 @@ fi
 printf "%s\n" "#define USE_WIN32_LDAP 1" >>confdefs.h
 
   else
-    curl_ldap_msg="enabled (OpenLDAP)"
     if test "x$ac_cv_func_ldap_init_fd" = "xyes"; then
+      curl_ldap_msg="enabled (OpenLDAP)"
 
 printf "%s\n" "#define USE_OPENLDAP 1" >>confdefs.h
 
       USE_OPENLDAP=1
 
+    else
+      curl_ldap_msg="enabled (ancient OpenLDAP)"
     fi
   fi
 fi
@@ -26250,7 +26262,7 @@ if test "$HAVE_PROTO_BSDSOCKET_H" = "1"; then
 int main (void)
 {
 
-        #if defined(AMISSL_CURRENT_VERSION) && (AMISSL_CURRENT_VERSION >= AMISSL_V303) && \
+        #if defined(AMISSL_CURRENT_VERSION) && defined(AMISSL_V3xx) && \
             defined(OPENSSL_VERSION_MAJOR) && (OPENSSL_VERSION_MAJOR >= 3) && \
             defined(PROTO_AMISSL_H)
         return 0;
@@ -29415,7 +29427,7 @@ fi
 # Check whether --with-libmetalink was given.
 if test ${with_libmetalink+y}
 then :
-  withval=$with_libmetalink; as_fn_error $? "--with-libmetalink no longer works!" "$LINENO" 5
+  withval=$with_libmetalink; as_fn_error $? "--with-libmetalink and --without-libmetalink no longer work!" "$LINENO" 5
 fi
 
 
@@ -31167,11 +31179,11 @@ printf "%s\n" "$as_me: -L is $LD_H2" >&6;}
   CPPFLAGS="$CPPFLAGS $CPP_H2"
   LIBS="$LIB_H2 $LIBS"
 
-  # use nghttp2_session_set_local_window_size to require nghttp2
-  # >= 1.12.0
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for nghttp2_session_set_local_window_size in -lnghttp2" >&5
-printf %s "checking for nghttp2_session_set_local_window_size in -lnghttp2... " >&6; }
-if test ${ac_cv_lib_nghttp2_nghttp2_session_set_local_window_size+y}
+  # use nghttp2_session_get_stream_local_window_size to require nghttp2
+  # >= 1.15.0
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for nghttp2_session_get_stream_local_window_size in -lnghttp2" >&5
+printf %s "checking for nghttp2_session_get_stream_local_window_size in -lnghttp2... " >&6; }
+if test ${ac_cv_lib_nghttp2_nghttp2_session_get_stream_local_window_size+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
@@ -31184,27 +31196,27 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char nghttp2_session_set_local_window_size ();
+char nghttp2_session_get_stream_local_window_size ();
 int main (void)
 {
-return nghttp2_session_set_local_window_size ();
+return nghttp2_session_get_stream_local_window_size ();
  ;
  return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_lib_nghttp2_nghttp2_session_set_local_window_size=yes
+  ac_cv_lib_nghttp2_nghttp2_session_get_stream_local_window_size=yes
 else $as_nop
-  ac_cv_lib_nghttp2_nghttp2_session_set_local_window_size=no
+  ac_cv_lib_nghttp2_nghttp2_session_get_stream_local_window_size=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_nghttp2_nghttp2_session_set_local_window_size" >&5
-printf "%s\n" "$ac_cv_lib_nghttp2_nghttp2_session_set_local_window_size" >&6; }
-if test "x$ac_cv_lib_nghttp2_nghttp2_session_set_local_window_size" = xyes
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_nghttp2_nghttp2_session_get_stream_local_window_size" >&5
+printf "%s\n" "$ac_cv_lib_nghttp2_nghttp2_session_get_stream_local_window_size" >&6; }
+if test "x$ac_cv_lib_nghttp2_nghttp2_session_get_stream_local_window_size" = xyes
 then :
 
             for ac_header in nghttp2/nghttp2.h
@@ -31645,14 +31657,14 @@ fi
     fi
 
     if test "x$PKGCONFIG" != "xno"; then
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libngtcp2_crypto_openssl options with pkg-config" >&5
-printf %s "checking for libngtcp2_crypto_openssl options with pkg-config... " >&6; }
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libngtcp2_crypto_quictls options with pkg-config" >&5
+printf %s "checking for libngtcp2_crypto_quictls options with pkg-config... " >&6; }
             itexists=`
     if test -n "$want_tcp2_path"; then
       PKG_CONFIG_LIBDIR="$want_tcp2_path"
       export PKG_CONFIG_LIBDIR
     fi
-         $PKGCONFIG --exists libngtcp2_crypto_openssl >/dev/null 2>&1 && echo 1`
+         $PKGCONFIG --exists libngtcp2_crypto_quictls >/dev/null 2>&1 && echo 1`
 
       if test -z "$itexists"; then
                         PKGCONFIG="no"
@@ -31666,50 +31678,50 @@ printf "%s\n" "found" >&6; }
 
 
   if test "$PKGCONFIG" != "no" ; then
-    LIB_NGTCP2_CRYPTO_OPENSSL=`
+    LIB_NGTCP2_CRYPTO_QUICTLS=`
     if test -n "$want_tcp2_path"; then
       PKG_CONFIG_LIBDIR="$want_tcp2_path"
       export PKG_CONFIG_LIBDIR
     fi
 
-      $PKGCONFIG --libs-only-l libngtcp2_crypto_openssl`
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -l is $LIB_NGTCP2_CRYPTO_OPENSSL" >&5
-printf "%s\n" "$as_me: -l is $LIB_NGTCP2_CRYPTO_OPENSSL" >&6;}
+      $PKGCONFIG --libs-only-l libngtcp2_crypto_quictls`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -l is $LIB_NGTCP2_CRYPTO_QUICTLS" >&5
+printf "%s\n" "$as_me: -l is $LIB_NGTCP2_CRYPTO_QUICTLS" >&6;}
 
-    CPP_NGTCP2_CRYPTO_OPENSSL=`
+    CPP_NGTCP2_CRYPTO_QUICTLS=`
     if test -n "$want_tcp2_path"; then
       PKG_CONFIG_LIBDIR="$want_tcp2_path"
       export PKG_CONFIG_LIBDIR
     fi
-       $PKGCONFIG --cflags-only-I libngtcp2_crypto_openssl`
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -I is $CPP_NGTCP2_CRYPTO_OPENSSL" >&5
-printf "%s\n" "$as_me: -I is $CPP_NGTCP2_CRYPTO_OPENSSL" >&6;}
+       $PKGCONFIG --cflags-only-I libngtcp2_crypto_quictls`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -I is $CPP_NGTCP2_CRYPTO_QUICTLS" >&5
+printf "%s\n" "$as_me: -I is $CPP_NGTCP2_CRYPTO_QUICTLS" >&6;}
 
-    LD_NGTCP2_CRYPTO_OPENSSL=`
+    LD_NGTCP2_CRYPTO_QUICTLS=`
     if test -n "$want_tcp2_path"; then
       PKG_CONFIG_LIBDIR="$want_tcp2_path"
       export PKG_CONFIG_LIBDIR
     fi
 
-      $PKGCONFIG --libs-only-L libngtcp2_crypto_openssl`
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -L is $LD_NGTCP2_CRYPTO_OPENSSL" >&5
-printf "%s\n" "$as_me: -L is $LD_NGTCP2_CRYPTO_OPENSSL" >&6;}
+      $PKGCONFIG --libs-only-L libngtcp2_crypto_quictls`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -L is $LD_NGTCP2_CRYPTO_QUICTLS" >&5
+printf "%s\n" "$as_me: -L is $LD_NGTCP2_CRYPTO_QUICTLS" >&6;}
 
-    LDFLAGS="$LDFLAGS $LD_NGTCP2_CRYPTO_OPENSSL"
-    CPPFLAGS="$CPPFLAGS $CPP_NGTCP2_CRYPTO_OPENSSL"
-    LIBS="$LIB_NGTCP2_CRYPTO_OPENSSL $LIBS"
+    LDFLAGS="$LDFLAGS $LD_NGTCP2_CRYPTO_QUICTLS"
+    CPPFLAGS="$CPPFLAGS $CPP_NGTCP2_CRYPTO_QUICTLS"
+    LIBS="$LIB_NGTCP2_CRYPTO_QUICTLS $LIBS"
 
     if test "x$cross_compiling" != "xyes"; then
-      DIR_NGTCP2_CRYPTO_OPENSSL=`echo $LD_NGTCP2_CRYPTO_OPENSSL | $SED -e 's/^-L//'`
+      DIR_NGTCP2_CRYPTO_QUICTLS=`echo $LD_NGTCP2_CRYPTO_QUICTLS | $SED -e 's/^-L//'`
     fi
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ngtcp2_crypto_recv_client_initial_cb in -lngtcp2_crypto_openssl" >&5
-printf %s "checking for ngtcp2_crypto_recv_client_initial_cb in -lngtcp2_crypto_openssl... " >&6; }
-if test ${ac_cv_lib_ngtcp2_crypto_openssl_ngtcp2_crypto_recv_client_initial_cb+y}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ngtcp2_crypto_recv_client_initial_cb in -lngtcp2_crypto_quictls" >&5
+printf %s "checking for ngtcp2_crypto_recv_client_initial_cb in -lngtcp2_crypto_quictls... " >&6; }
+if test ${ac_cv_lib_ngtcp2_crypto_quictls_ngtcp2_crypto_recv_client_initial_cb+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lngtcp2_crypto_openssl  $LIBS"
+LIBS="-lngtcp2_crypto_quictls  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -31727,17 +31739,17 @@ return ngtcp2_crypto_recv_client_initial_cb ();
 _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_lib_ngtcp2_crypto_openssl_ngtcp2_crypto_recv_client_initial_cb=yes
+  ac_cv_lib_ngtcp2_crypto_quictls_ngtcp2_crypto_recv_client_initial_cb=yes
 else $as_nop
-  ac_cv_lib_ngtcp2_crypto_openssl_ngtcp2_crypto_recv_client_initial_cb=no
+  ac_cv_lib_ngtcp2_crypto_quictls_ngtcp2_crypto_recv_client_initial_cb=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ngtcp2_crypto_openssl_ngtcp2_crypto_recv_client_initial_cb" >&5
-printf "%s\n" "$ac_cv_lib_ngtcp2_crypto_openssl_ngtcp2_crypto_recv_client_initial_cb" >&6; }
-if test "x$ac_cv_lib_ngtcp2_crypto_openssl_ngtcp2_crypto_recv_client_initial_cb" = xyes
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ngtcp2_crypto_quictls_ngtcp2_crypto_recv_client_initial_cb" >&5
+printf "%s\n" "$ac_cv_lib_ngtcp2_crypto_quictls_ngtcp2_crypto_recv_client_initial_cb" >&6; }
+if test "x$ac_cv_lib_ngtcp2_crypto_quictls_ngtcp2_crypto_recv_client_initial_cb" = xyes
 then :
 
               for ac_header in ngtcp2/ngtcp2_crypto.h
@@ -31748,14 +31760,14 @@ then :
   printf "%s\n" "#define HAVE_NGTCP2_NGTCP2_CRYPTO_H 1" >>confdefs.h
  NGTCP2_ENABLED=1
 
-printf "%s\n" "#define USE_NGTCP2_CRYPTO_OPENSSL 1" >>confdefs.h
+printf "%s\n" "#define USE_NGTCP2_CRYPTO_QUICTLS 1" >>confdefs.h
 
-          USE_NGTCP2_CRYPTO_OPENSSL=1
+          USE_NGTCP2_CRYPTO_QUICTLS=1
 
-          CURL_LIBRARY_PATH="$CURL_LIBRARY_PATH:$DIR_NGTCP2_CRYPTO_OPENSSL"
+          CURL_LIBRARY_PATH="$CURL_LIBRARY_PATH:$DIR_NGTCP2_CRYPTO_QUICTLS"
           export CURL_LIBRARY_PATH
-          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Added $DIR_NGTCP2_CRYPTO_OPENSSL to CURL_LIBRARY_PATH" >&5
-printf "%s\n" "$as_me: Added $DIR_NGTCP2_CRYPTO_OPENSSL to CURL_LIBRARY_PATH" >&6;}
+          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Added $DIR_NGTCP2_CRYPTO_QUICTLS to CURL_LIBRARY_PATH" >&5
+printf "%s\n" "$as_me: Added $DIR_NGTCP2_CRYPTO_QUICTLS to CURL_LIBRARY_PATH" >&6;}
 
 fi
 
@@ -31771,7 +31783,7 @@ fi
 
   else
         if test X"$want_tcp2" != Xdefault; then
-                  as_fn_error $? "--with-ngtcp2 was specified but could not find ngtcp2_crypto_openssl pkg-config file." "$LINENO" 5
+                  as_fn_error $? "--with-ngtcp2 was specified but could not find ngtcp2_crypto_quictls pkg-config file." "$LINENO" 5
     fi
   fi
 fi

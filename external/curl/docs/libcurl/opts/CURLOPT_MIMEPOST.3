@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_MIMEPOST 3 "April 26, 2023" "ibcurl 8.1.2" libcurl
+.TH CURLOPT_MIMEPOST 3 "July 12, 2023" "ibcurl 8.2.1" libcurl
 
 .SH NAME
 CURLOPT_MIMEPOST \- send data from mime structure
@@ -41,6 +41,10 @@ SMTP and IMAP protocols to provide the email data to send/upload.
 
 This option is the preferred way of posting an HTTP form, replacing and
 extending the \fICURLOPT_HTTPPOST(3)\fP option.
+
+When setting \fICURLOPT_MIMEPOST(3)\fP to NULL, libcurl resets the request
+type for HTTP to the default to disable the POST. Typically that would mean it
+is reset to GET. Instead you should set a desired request method explicitly.
 .SH PROTOCOLS
 HTTP, SMTP, IMAP.
 .SH EXAMPLE
