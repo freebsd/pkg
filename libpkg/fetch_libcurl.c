@@ -490,9 +490,9 @@ retry:
 
 	if (res == CURLE_OK && t >= 0) {
 		fi->mtime = t;
-	} else {
+	} else if (rc != 304) {
 		pkg_emit_error("Impossible to get the value from Last-Modified"
-		    " HTTP header");
+		    " HTTP header: %ld", t);
 		fi->mtime = 0;
 	}
 	fclose(data.fh);
