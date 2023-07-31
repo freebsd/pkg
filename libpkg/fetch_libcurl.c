@@ -347,6 +347,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 {
 	CURL *cl;
 	CURLU *hu = NULL;
+	CURLcode res;
 	struct curl_userdata data = { 0 };
 	int64_t retry;
 	int retcode = EPKG_OK;
@@ -470,8 +471,8 @@ retry:
 	}
 
 	long rc = curl_do_fetch(&data, cl, cr);
-	time_t t;
-	curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &t);
+	curl_off_t t;
+	res = curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &t);
 	curl_multi_remove_handle(cr->cm, cl);
 	curl_easy_cleanup(cl);
 	if (rc == 304) {
@@ -487,7 +488,13 @@ retry:
 			goto retry;
 	}
 
-	fi->mtime = t;
+	if (res == CURLE_OK && t >= 0) {
+		fi->mtime = t;
+	} else {
+		pkg_emit_error("Impossible to get the value from Last-Modified"
+		    " HTTP header");
+		fi->mtime = 0;
+	}
 	fclose(data.fh);
 	free(urlpath);
 	curl_url_cleanup(hu);
