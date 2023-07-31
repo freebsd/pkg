@@ -460,6 +460,7 @@ retry:
 	curl_easy_setopt(cl, CURLOPT_HEADERFUNCTION, curl_parseheader_cb);
 	curl_easy_setopt(cl, CURLOPT_HEADERDATA, &data);
 	curl_easy_setopt(cl, CURLOPT_TIMEVALUE_LARGE, (curl_off_t)fi->mtime);
+	curl_easy_setopt(cl, CURLOPT_FILETIME, 1L);
 	curl_easy_setopt(cl, CURLOPT_TIMECONDITION, (long)CURL_TIMECOND_IFMODSINCE);
 	if (repo->fetcher->timeout > 0) {
 		curl_easy_setopt(cl, CURLOPT_CONNECTTIMEOUT, repo->fetcher->timeout);
