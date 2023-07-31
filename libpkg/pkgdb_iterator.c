@@ -107,6 +107,12 @@ static struct column_mapping {
 	{ NULL,		-1, PKG_SQLITE_STRING }
 };
 
+static void
+remote_free(struct pkg_repo_it *it)
+{
+	it->ops->free(it);
+}
+
 static int
 pkg_addcategory(struct pkg *pkg, const char *data)
 {
@@ -1123,24 +1129,23 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 	assert(it != NULL);
 
 	if (it->local != NULL && !it->local->finished) {
-		if (pkgdb_sqlite_it_next(it->local, pkg_p, flags) == EPKG_OK)
-			return EPKG_OK;
+		int r = pkgdb_sqlite_it_next(it->local, pkg_p, flags);
+		if ( r != EPKG_END)
+			return (r);
+		if (tll_length(it->remote))
+			return (EPKG_END);
 	}
 
-	if (it->remote != NULL) {
-		rit = it->remote->it;
+	if (tll_length(it->remote) != 0) {
+		if (it->opq_it == NULL)
+			it->opq_it = it->remote.head;
+		__typeof__(*(it->remote).head) *lit = it->opq_it;
+		rit = lit->item;
 		ret = rit->ops->next(rit, pkg_p, flags);
 		if (ret != EPKG_OK) {
-			/*
-			* Detach this iterator from list and switch to another
-			*/
-			struct _pkg_repo_it_set *tmp;
-
-			rit->ops->free(rit);
-			tmp = it->remote;
-			it->remote = tmp->next;
-			free(tmp);
-
+			if (it->opq_it == it->remote.tail)
+				return (EPKG_END);
+			it->opq_it = lit->next;
 			return (pkgdb_it_next(it, pkg_p, flags));
 		}
 
@@ -1190,25 +1195,19 @@ done:
 void
 pkgdb_it_reset(struct pkgdb_it *it)
 {
-	struct _pkg_repo_it_set *cur;
-
 	assert(it != NULL);
 
 	if (it->local != NULL) {
 		pkgdb_sqlite_it_reset(it->local);
 	}
-	if (it->remote != NULL) {
-		LL_FOREACH(it->remote, cur) {
-			cur->it->ops->reset(cur->it);
-		}
+	tll_foreach(it->remote, cur) {
+		cur->item->ops->reset(cur->item);
 	}
 }
 
 void
 pkgdb_it_free(struct pkgdb_it *it)
 {
-	struct _pkg_repo_it_set *cur, *tmp;
-
 	if (it == NULL)
 		return;
 
@@ -1216,12 +1215,7 @@ pkgdb_it_free(struct pkgdb_it *it)
 		pkgdb_sqlite_it_free(it->local);
 		free(it->local);
 	}
-	if (it->remote != NULL) {
-		LL_FOREACH_SAFE(it->remote, cur, tmp) {
-			cur->it->ops->free(cur->it);
-			free(cur);
-		}
-	}
+	tll_free_and_free(it->remote, remote_free);
 
 	free(it);
 }
@@ -1235,7 +1229,7 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 	assert(!(flags & (PKGDB_IT_FLAG_CYCLED & PKGDB_IT_FLAG_ONCE)));
 	assert(!(flags & (PKGDB_IT_FLAG_AUTO & (PKGDB_IT_FLAG_CYCLED | PKGDB_IT_FLAG_ONCE))));
 
-	it = xmalloc(sizeof(struct pkgdb_it));
+	it = xcalloc(1, sizeof(struct pkgdb_it));
 
 	it->db = db;
 	it->local = xmalloc(sizeof(struct pkgdb_sqlite_it));
@@ -1245,8 +1239,7 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 
 	it->local->flags = flags;
 	it->local->finished = 0;
-
-	it->remote = NULL;
+	it->opq_it = it->remote.head;
 
 	return (it);
 }
@@ -1256,12 +1249,9 @@ pkgdb_it_new_repo(struct pkgdb *db)
 {
 	struct pkgdb_it	*it;
 
-	it = xmalloc(sizeof(struct pkgdb_it));
+	it = xcalloc(1, sizeof(struct pkgdb_it));
 
 	it->db = db;
-
-	it->local = NULL;
-	it->remote = NULL;
 
 	return (it);
 }
@@ -1269,11 +1259,7 @@ pkgdb_it_new_repo(struct pkgdb *db)
 void
 pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 {
-	struct _pkg_repo_it_set *item;
-
-	item = xmalloc(sizeof(struct _pkg_repo_it_set));
-	item->it = rit;
-	LL_PREPEND(it->remote, item);
+	tll_push_front(it->remote, rit);
 }
 
 int
