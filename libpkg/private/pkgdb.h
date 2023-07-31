@@ -54,10 +54,8 @@ struct pkg_repo_it;
 
 struct pkgdb_it {
 	struct pkgdb *db;
-	struct _pkg_repo_it_set {
-		struct pkg_repo_it *it;
-		struct _pkg_repo_it_set *next;
-	} *remote;
+	tll(struct pkg_repo_it *) remote;
+	void *opq_it;
 	struct pkgdb_sqlite_it *local;
 };
 
