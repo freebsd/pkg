@@ -390,6 +390,8 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 		}
 		curl_url_cleanup(cu);
 	}
+	if (http_proxy == NULL)
+		http_proxy = getenv("http_proxy");
 
 retry:
 	cl = curl_easy_init();
