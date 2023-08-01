@@ -442,8 +442,8 @@ retry:
 		pkg_debug(1, "CURL> attempting to fetch from %s, left retry %ld\n",
 				lurl, retry);
 	}
+	curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
 	if (userpasswd != NULL) {
-		curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
 		curl_easy_setopt(cl, CURLOPT_USERPWD, userpasswd);
 	}
 	if (http_proxy != NULL)
