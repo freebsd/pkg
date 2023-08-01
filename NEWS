@@ -1,4 +1,12 @@
-Chanegs: from 1.20.3 to 1.20.4
+Changes from 1.20.4 to 1.20.5
+- fix a regression introduce with switch to libcurl which results in
+  the remote db mtime being badly set
+- fix a regression which makes pkg query report twice some packages
+  when configured in multirepository mode.
+- fix a compatibility issue with http_proxy env var (lowercase)
+- update libcurl to latest version
+
+Changes: from 1.20.3 to 1.20.4
 - backout the provide/require feature for pkg add, it has too many impact
   on performances.
 
