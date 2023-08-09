@@ -1132,8 +1132,6 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 		int r = pkgdb_sqlite_it_next(it->local, pkg_p, flags);
 		if ( r != EPKG_END)
 			return (r);
-		if (tll_length(it->remote))
-			return (EPKG_END);
 	}
 
 	if (tll_length(it->remote) != 0) {
