@@ -360,6 +360,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	const char *sslkey = getenv("SSL_CLIENT_KEY_FILE");
 	const char *sslcert = getenv("SSL_CLIENT_CERT_FILE");
 	const char *ssl_ca_cert_file = getenv("SSL_CA_CERT_FILE");
+	const char *netrc_file = getenv("NETRC");
 
 	struct curl_repodata *cr = (struct curl_repodata *)repo->fetch_priv;
 
@@ -450,6 +451,9 @@ retry:
 		curl_easy_setopt(cl, CURLOPT_SSLCERT, sslcert);
 	if (ssl_ca_cert_file != NULL)
 		curl_easy_setopt(cl, CURLOPT_CAINFO, ssl_ca_cert_file);
+	if (netrc_file != NULL)
+		curl_easy_setopt(cl, CURLOPT_NETRC_FILE, netrc_file);
+	curl_easy_setopt(cl, CURLOPT_NETRC, 1L);
 
 	if (repo->ip == IPV4)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
