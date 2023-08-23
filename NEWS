@@ -1,3 +1,9 @@
+Changes from 1.20.5 to 1.20.6
+- fix duplicated rquery output
+- fix digest authentication support
+- fix pkgdb_all_search (for packagekit)
+- activate netrc support
+
 Changes from 1.20.4 to 1.20.5
 - fix a regression introduce with switch to libcurl which results in
   the remote db mtime being badly set
