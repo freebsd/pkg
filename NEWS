@@ -1,4 +1,4 @@
-Changes from 1.10.99.4 to 1.20.99.5
+Changes from 1.20.99.4 to 1.20.99.5
 - fix a regression introduce with switch to libcurl which results in
   the remote db mtime being badly set
 - fix a regression which makes pkg query report twice some packages
