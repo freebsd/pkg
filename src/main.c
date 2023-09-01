@@ -194,7 +194,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 		if (plugins_enabled) {
 			if (pkg_plugins_init() != EPKG_OK)
-				errx(EXIT_FAILURE, "Plugins cannot be loaded");
+				warnx("Some plugins cannot be loaded");
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
