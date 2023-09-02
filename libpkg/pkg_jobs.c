@@ -2223,6 +2223,12 @@ cleanup:
 	return (retcode);
 }
 
+static void
+pkg_jobs_cancel(struct pkg_jobs *j)
+{
+	pkgdb_release_lock(j->db, PKGDB_LOCK_ADVISORY);
+}
+
 int
 pkg_jobs_apply(struct pkg_jobs *j)
 {
@@ -2274,6 +2280,9 @@ pkg_jobs_apply(struct pkg_jobs *j)
 					rc = pkg_jobs_execute(j);
 				}
 			}
+			else if (rc == EPKG_CANCEL) {
+				pkg_jobs_cancel(j);
+			}
 		}
 		else {
 			rc = pkg_jobs_execute(j);
@@ -2304,6 +2313,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	const char *cachedir = NULL;
 	char cachedpath[MAXPATHLEN];
 	bool mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
+	int retcode;
 
 
 	if (j->destdir == NULL || !mirror)
@@ -2386,12 +2396,14 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 				continue;
 
 			if (mirror) {
-				if (pkg_repo_mirror_package(p, cachedir) != EPKG_OK)
-					return (EPKG_FATAL);
+				retcode = pkg_repo_mirror_package(p, cachedir);
+				if (retcode != EPKG_OK)
+					return (retcode);
 			}
 			else {
+				retcode = pkg_repo_fetch_package(p);
 				if (pkg_repo_fetch_package(p) != EPKG_OK)
-					return (EPKG_FATAL);
+					return (retcode);
 			}
 		}
 	}
