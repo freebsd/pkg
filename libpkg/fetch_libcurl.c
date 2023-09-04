@@ -500,7 +500,8 @@ retry:
 
 	if (res == CURLE_OK && t >= 0) {
 		fi->mtime = t;
-	} else if (rc != 304) {
+	} else if (rc != 304 && retcode != EPKG_FATAL &&
+	    retcode != EPKG_CANCEL) {
 		pkg_emit_error("Impossible to get the value from Last-Modified"
 		    " HTTP header");
 		fi->mtime = 0;
