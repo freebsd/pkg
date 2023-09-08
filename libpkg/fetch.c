@@ -36,7 +36,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <fetch.h>
 #include <paths.h>
 #include <poll.h>
 
@@ -51,6 +50,7 @@
 static struct fetcher fetchers [] = {
 	{
 		"tcp",
+		0,
 		tcp_open,
 		NULL,
 		fh_close,
@@ -58,6 +58,7 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"ssh",
+		0,
 		ssh_open,
 		NULL,
 		fh_close,
@@ -65,34 +66,39 @@ static struct fetcher fetchers [] = {
 	},
 	{
 		"pkg+https",
-		fetch_open,
-		fh_close,
+		0,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"pkg+http",
-		fetch_open,
-		fh_close,
+		0,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"https",
-		fetch_open,
-		fh_close,
+		0,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"http",
-		fetch_open,
-		fh_close,
+		0,
+		curl_open,
 		NULL,
-		libfetch_fetch,
+		curl_cleanup,
+		curl_fetch,
 	},
 	{
 		"file",
+		0,
 		file_open,
 		fh_close,
 		NULL,
@@ -106,6 +112,9 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
+	struct fetch_item fi;
+
+	memset(&fi, 0, sizeof(struct fetch_item));
 
 	fd = mkstemp(dest);
 
@@ -114,16 +123,18 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, 0, -1, false);
+	fi.url = url;
+	fi.mtime = t;
+	retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
 
-	if (t != 0) {
+	if (fi.mtime != 0) {
 		struct timeval ftimes[2] = {
 			{
-			.tv_sec = t,
+			.tv_sec = fi.mtime,
 			.tv_usec = 0
 			},
 			{
-			.tv_sec = t,
+			.tv_sec = fi.mtime,
 			.tv_usec = 0
 			}
 		};
@@ -145,6 +156,8 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
+	struct fetch_item fi;
+	char *url_to_free = NULL;
 
 	fd = open(dest, O_CREAT|O_APPEND|O_WRONLY, 00644);
 	if (fd == -1) {
@@ -152,7 +165,19 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(repo, url, fd, &t, offset, size, false);
+	if (repo != NULL) {
+		xasprintf(&url_to_free, "%s/%s", repo->url, url);
+		fi.url = url_to_free;
+	} else {
+		fi.url = url;
+	}
+
+	fi.offset = offset;
+	fi.size = size;
+	fi.mtime = t;
+
+	retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
+	free(url_to_free);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -167,7 +192,6 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		};
 		futimes(fd, ftimes);
 	}
-
 	close(fd);
 
 	/* Remove local file if fetch failed */
@@ -179,17 +203,33 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 
 #define URL_SCHEME_PREFIX	"pkg+"
 
-int
-pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
-    time_t *t, ssize_t offset, int64_t size, bool silent)
+static struct fetcher *
+select_fetcher(const char *url)
 {
-	struct url	*u = NULL;
+	struct fetcher *f;
+
+	for (size_t i = 0; i < nitems(fetchers); i++) {
+		if ((strncasecmp(url, fetchers[i].scheme,
+		    strlen(fetchers[i].scheme)) == 0) &&
+		    url[strlen(fetchers[i].scheme)] == ':') {
+			f = &fetchers[i];
+			f->timeout =
+			    pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
+			return (f);
+		}
+	}
+	return (NULL);
+
+}
+int
+pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
+    bool silent)
+{
 	struct pkg_kv	*kv;
 	kvlist_t	 envtorestore = tll_init();
 	stringlist_t	 envtounset = tll_init();
 	char		*tmp;
 	int		 retcode = EPKG_OK;
-	off_t		 sz = 0;
 	struct pkg_repo	*fakerepo = NULL;
 
 	/* A URL of the form http://host.example.com/ where
@@ -206,30 +246,33 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 	 * Error if using plain http://, https:// etc with SRV
 	 */
 
-	pkg_debug(1, "Request to fetch %s", url);
+	pkg_debug(1, "Request to fetch %s", fi->url);
 	if (repo == NULL) {
 		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
-		fakerepo->url = xstrdup(url);
+		fakerepo->url = xstrdup(fi->url);
+		fakerepo->mirror_type = NOMIRROR;
 		repo = fakerepo;
 	}
-	if (strncmp(URL_SCHEME_PREFIX, url,
+
+	if (repo->fetcher == NULL)
+		repo->fetcher = select_fetcher(fi->url);
+	if (repo->fetcher == NULL) {
+		pkg_emit_error("Unknown scheme: %s", fi->url);
+		return (EPKG_FATAL);
+	}
+
+	if (strncasecmp(URL_SCHEME_PREFIX, fi->url,
 	    strlen(URL_SCHEME_PREFIX)) == 0) {
-		if (repo->fetcher == NULL && repo->mirror_type != SRV) {
+		if (repo->mirror_type != SRV) {
 			pkg_emit_error("packagesite URL error for %s -- "
 					URL_SCHEME_PREFIX
-					":// implies SRV mirror type", url);
+					":// implies SRV mirror type", fi->url);
 
 			/* Too early for there to be anything to cleanup */
 			return(EPKG_FATAL);
 		}
-		url += strlen(URL_SCHEME_PREFIX);
+		fi->url += strlen(URL_SCHEME_PREFIX);
 	}
-
-	if (u == NULL)
-		u = fetchParseURL(url);
-
-	if (offset > 0)
-		u->offset = offset;
 
 	repo->silent = silent;
 	tll_foreach(repo->env, k) {
@@ -244,37 +287,13 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
 		setenv(k->item->key, k->item->value, 1);
 	}
 
-	if (u == NULL) {
-		pkg_emit_error("%s: parse error", url);
-		/* Too early for there to be anything to cleanup */
-		return(EPKG_FATAL);
-	}
-
-	if (t != NULL)
-		u->ims_time = *t;
-
-	if (repo->fetcher == NULL) {
-		for (int i = 0; i < nitems(fetchers); i++) {
-			if (strcmp(u->scheme, fetchers[i].scheme) == 0) {
-				repo->fetcher = &fetchers[i];
-				break;
-			}
-		}
-	}
-	if (repo->fetcher == NULL) {
-		pkg_emit_error("Unknown scheme: %s", u->scheme);
-		return (EPKG_FATAL);
-	}
-	if ((retcode = repo->fetcher->open(repo, u, &sz)) != EPKG_OK)
+	if ((retcode = repo->fetcher->open(repo, fi)) != EPKG_OK)
 		goto cleanup;
 	pkg_debug(1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
 
-	if (sz <= 0 && size > 0)
-		sz = size;
-
-	retcode = repo->fetcher->fetch(repo, dest, url, u, sz, t);
+	retcode = repo->fetcher->fetch(repo, dest, fi);
 	if (retcode == EPKG_OK)
-		pkg_emit_fetch_finished(url);
+		pkg_emit_fetch_finished(fi->url);
 
 cleanup:
 	tll_foreach(envtorestore, k) {
@@ -295,19 +314,16 @@ cleanup:
 	if (retcode == EPKG_OK) {
 		struct timeval ftimes[2] = {
 			{
-			.tv_sec = *t,
+			.tv_sec = fi->mtime,
 			.tv_usec = 0
 			},
 			{
-			.tv_sec = *t,
+			.tv_sec = fi->mtime,
 			.tv_usec = 0
 			}
 		};
 		futimes(dest, ftimes);
 	}
-
-	/* restore original doc */
-	fetchFreeURL(u);
 
 	return (retcode);
 }

@@ -45,6 +45,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "private/fetch.h"
 #include "pkg_repos.h"
 
 #ifndef PORTSDIR
@@ -763,9 +764,9 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		use_ipvx = pkg_object_int(pkg_config_get("IP_VERSION"));
 
 	if (use_ipvx == 4)
-		r->flags = REPO_FLAGS_USE_IPV4;
+		r->ip = IPV4;
 	else if (use_ipvx == 6)
-		r->flags = REPO_FLAGS_USE_IPV6;
+		r->ip = IPV6;
 
 	if (env != NULL) {
 		it = NULL;
@@ -1039,6 +1040,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		err = EPKG_FATAL;
 		goto out;
 	}
+	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
+		ctx.ip = IPV4;
+	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
+		ctx.ip = IPV6;
 
 	config = ucl_object_typed_new(UCL_OBJECT);
 
@@ -1606,12 +1611,11 @@ pkg_repo_priority(struct pkg_repo *r)
 unsigned int
 pkg_repo_ip_version(struct pkg_repo *r)
 {
-	if ((r->flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
+	if (r->ip == IPV4)
 		return 4;
-	else if ((r->flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)
+	if (r->ip == IPV6)
 		return 6;
-	else
-		return 0;
+	return 0;
 }
 
 /* Locate the repo by the file basename / database name */

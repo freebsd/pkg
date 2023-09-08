@@ -221,7 +221,7 @@ cleanup:
 }
 
 int
-fetch_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+fetch_open(struct pkg_repo *repo, struct url *u, off_t *sz, time_t *t)
 {
 	int retcode = EPKG_FATAL;
 

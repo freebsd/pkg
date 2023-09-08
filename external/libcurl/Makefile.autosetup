@@ -1,0 +1,103 @@
+include @builddir@/mk/defs.mk
+
+LIB=	curl
+.PATH:	$(top_srcdir)/external/curl/lib/
+VPATH=	$(top_srcdir)/external/curl/lib/
+.PATH:	$(top_srcdir)/external/curl/lib/vtls
+VPATH+=	$(top_srcdir)/external/curl/lib/vtls
+.PATH:	$(top_srcdir)/external/curl/lib/vauth
+VPATH+=	$(top_srcdir)/external/curl/lib/vauth
+.PATH:	$(top_srcdir)/external/curl/lib/vquic
+VPATH+=	$(top_srcdir)/external/curl/lib/vquic
+
+SRCS=	\
+	asyn-thread.c \
+	base64.c \
+	bufref.c \
+	cf-https-connect.c \
+	cf-socket.c \
+	cfilters.c \
+	conncache.c \
+	connect.c \
+	content_encoding.c \
+	cookie.c \
+	curl_addrinfo.c \
+	curl_get_line.c \
+	curl_log.c \
+	curl_threads.c \
+	dynbuf.c \
+	easy.c \
+	easygetopt.c \
+	easyoptions.c \
+	escape.c \
+	fopen.c \
+	getenv.c \
+	getinfo.c \
+	hash.c \
+	headers.c \
+	hostasyn.c \
+	hostip.c \
+	hostip4.c \
+	hostip6.c \
+	hsts.c \
+	http_chunks.c \
+	http_proxy.c \
+	http.c \
+	idn.c \
+	if2ip.c \
+	llist.c \
+	mprintf.c \
+	multi.c \
+	netrc.c \
+	nonblock.c \
+	noproxy.c \
+	parsedate.c \
+	progress.c \
+	rand.c \
+	rename.c \
+	select.c \
+	sendf.c \
+	setopt.c \
+	share.c \
+	slist.c \
+	socks.c \
+	speedcheck.c \
+	splay.c \
+	strcase.c \
+	strdup.c \
+	strerror.c \
+	strtoofft.c \
+	timeval.c \
+	transfer.c \
+	url.c \
+	urlapi.c \
+	warnless.c \
+	vtls.c \
+	openssl.c \
+	keylog.c \
+	hostcheck.c \
+	vauth.c \
+	vquic.c \
+	bufq.c \
+	cf-h1-proxy.c \
+	cf-h2-proxy.c \
+	cf-haproxy.c \
+	dynhds.c \
+	http1.c \
+	http_digest.c \
+	http_aws_sigv4.c \
+	digest.c \
+	sha256.c \
+	md5.c \
+	hmac.c \
+	altsvc.c
+
+
+LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
+		-DBUILDING_LIBCURL \
+		-I$(top_srcdir)/external/libcurl \
+		-I$(top_builddir)/external/libcurl \
+		-I$(top_srcdir)/external/curl/lib \
+		-I$(top_srcdir)/external/curl/include
+
+include $(MK)/static-lib.mk

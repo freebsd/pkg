@@ -1,5 +1,7 @@
 /*-
  * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +36,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <fetch.h>
 #include <paths.h>
 #include <poll.h>
 #include <netdb.h>
@@ -46,6 +47,7 @@
 #include "private/pkg.h"
 #include "private/fetch.h"
 #include "private/utils.h"
+#include "yuarel.h"
 
 static int ssh_read(void *data, char *buf, int len);
 static int ssh_write(void *data, const char *buf, int l);
@@ -53,7 +55,7 @@ static int ssh_close(void *data);
 static int tcp_close(void *data);
 
 static int
-tcp_connect(struct pkg_repo *repo, struct url *u)
+tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 {
 	char *line = NULL;
 	size_t linecap = 0;
@@ -65,13 +67,15 @@ tcp_connect(struct pkg_repo *repo, struct url *u)
 	pkg_debug(1, "TCP> tcp_connect");
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
-	if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+	if (repo->ip == IPV4)
 		hints.ai_family = PF_INET;
-	else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+	else if (repo->ip == IPV6)
 		hints.ai_family = PF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 	snprintf(srv, sizeof(srv), "%d", u->port);
-	if (getaddrinfo(u->host, srv, &hints, &ai) != 0) {
+	retcode = getaddrinfo(u->host, srv, &hints, &ai);
+	if (retcode != 0) {
+		pkg_emit_pkg_errno(EPKG_NONETWORK, "tcp_connect", gai_strerror(retcode));
 		pkg_emit_error("Unable to lookup for '%s'", u->host);
 		return (EPKG_FATAL);
 	}
@@ -88,6 +92,7 @@ tcp_connect(struct pkg_repo *repo, struct url *u)
 	}
 	freeaddrinfo(ai);
 	if (sd == -1) {
+		pkg_emit_pkg_errno(EPKG_NONETWORK, "tcp_connect", NULL);
 		pkg_emit_error("Could not connect to tcp://%s:%d", u->host,
 		    u->port);
 		return (EPKG_FATAL);
@@ -128,7 +133,7 @@ tcp_cleanup:
 }
 
 static int
-ssh_connect(struct pkg_repo *repo, struct url *u)
+ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 {
 	char *line = NULL;
 	size_t linecap = 0;
@@ -167,14 +172,14 @@ ssh_connect(struct pkg_repo *repo, struct url *u)
 		ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
 		if (ssh_args != NULL)
 			fprintf(cmd->fp, "%s ", ssh_args);
-		if ((repo->flags & REPO_FLAGS_USE_IPV4) == REPO_FLAGS_USE_IPV4)
+		if (repo->ip == IPV4)
 			fputs("-4 ", cmd->fp);
-		else if ((repo->flags & REPO_FLAGS_USE_IPV6) == REPO_FLAGS_USE_IPV6)
+		else if (repo->ip == IPV6)
 			fputs("-6 ", cmd->fp);
 		if (u->port > 0)
 			fprintf(cmd->fp, "-p %d ", u->port);
-		if (u->user[0] != '\0')
-			fprintf(cmd->fp, "%s@", u->user);
+		if (u->username != NULL)
+			fprintf(cmd->fp, "%s@", u->username);
 		fprintf(cmd->fp, "%s pkg ssh", u->host);
 		cmdline = xstring_get(cmd);
 		pkg_debug(1, "Fetch: running '%s'", cmdline);
@@ -230,38 +235,46 @@ ssh_cleanup:
 }
 
 static int
-pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
-    int (*proto_connect)(struct pkg_repo *, struct url *))
+pkgprotocol_open(struct pkg_repo *repo, struct fetch_item *fi,
+    int (*proto_connect)(struct pkg_repo *, struct yuarel *))
 {
 	char *line = NULL;
 	size_t linecap = 0;
 	size_t linelen;
 	const char *errstr;
 	int retcode = EPKG_FATAL;
+	struct yuarel url;
+	char *url_to_free = xstrdup(fi->url);
+
+	if (yuarel_parse(&url, url_to_free) == -1) {
+		free(url_to_free);
+		pkg_emit_error("Invalid url: '%s'", fi->url);
+		return (EPKG_FATAL);
+	}
 
 	pkg_debug(1, "SSH> tcp_open");
 	if (repo->fh == NULL)
-		retcode = proto_connect(repo, u);
+		retcode = proto_connect(repo, &url);
 	else
 		retcode = EPKG_OK;
 
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	pkg_debug(1, "SSH> get %s %" PRIdMAX "", u->doc, (intmax_t)u->ims_time);
-	fprintf(repo->fh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
+	pkg_debug(1, "SSH> get %s %" PRIdMAX "", url.path, (intmax_t)fi->mtime);
+	fprintf(repo->fh, "get %s %" PRIdMAX "\n", url.path, (intmax_t)fi->mtime);
 	if ((linelen = getline(&line, &linecap, repo->fh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
 
 		pkg_debug(1, "SSH> recv: %s", line);
 		if (strncmp(line, "ok:", 3) == 0) {
-			*sz = strtonum(line + 4, 0, LONG_MAX, &errstr);
+			fi->size = strtonum(line + 4, 0, LONG_MAX, &errstr);
 			if (errstr) {
 				goto out;
 			}
 
-			if (*sz == 0) {
+			if (fi->size == 0) {
 				retcode = EPKG_UPTODATE;
 				goto out;
 			}
@@ -276,20 +289,21 @@ pkgprotocol_open(struct pkg_repo *repo, struct url *u, off_t *sz,
 	}
 
 out:
+	free(url_to_free);
 	free(line);
 	return (retcode);
 }
 
 int
-tcp_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+tcp_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
-	return (pkgprotocol_open(repo, u, sz, tcp_connect));
+	return (pkgprotocol_open(repo, fi, tcp_connect));
 }
 
 int
-ssh_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+ssh_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
-	return (pkgprotocol_open(repo, u, sz, ssh_connect));
+	return (pkgprotocol_open(repo, fi, ssh_connect));
 }
 
 static int
@@ -325,7 +339,7 @@ ssh_close(void *data)
 }
 
 static int
-ssh_writev(int fd, struct iovec *iov, int iovcnt)
+ssh_writev(int fd, struct iovec *iov, int iovcnt, int64_t tmout)
 {
 	struct timeval now, timeout, delta;
 	struct pollfd pfd;
@@ -335,16 +349,16 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt)
 
 	memset(&pfd, 0, sizeof pfd);
 
-	if (fetchTimeout) {
+	if (tmout > 0) {
 		pfd.fd = fd;
 		pfd.events = POLLOUT | POLLERR;
 		gettimeofday(&timeout, NULL);
-		timeout.tv_sec += fetchTimeout;
+		timeout.tv_sec += tmout;
 	}
 
 	total = 0;
 	while (iovcnt > 0) {
-		while (fetchTimeout && pfd.revents == 0) {
+		while (tmout && pfd.revents == 0) {
 			gettimeofday(&now, NULL);
 			if (!timercmp(&timeout, &now, >)) {
 				errno = ETIMEDOUT;
@@ -402,7 +416,7 @@ ssh_write(void *data, const char *buf, int l)
 
 	pkg_debug(1, "writing data");
 
-	return (ssh_writev(repo->sshio.out, &iov, 1));
+	return (ssh_writev(repo->sshio.out, &iov, 1, repo->fetcher->timeout));
 }
 
 static int
@@ -416,9 +430,9 @@ ssh_read(void *data, char *buf, int len)
 
 	pkg_debug(2, "ssh: start reading");
 
-	if (fetchTimeout > 0) {
+	if (repo->fetcher->timeout > 0) {
 		gettimeofday(&timeout, NULL);
-		timeout.tv_sec += fetchTimeout;
+		timeout.tv_sec += repo->fetcher->timeout;
 	}
 
 	deltams = -1;
@@ -441,7 +455,7 @@ ssh_read(void *data, char *buf, int len)
 		}
 
 		/* only EAGAIN should get here */
-		if (fetchTimeout > 0) {
+		if (repo->fetcher->timeout > 0) {
 			gettimeofday(&now, NULL);
 			if (!timercmp(&timeout, &now, >)) {
 				errno = ETIMEDOUT;

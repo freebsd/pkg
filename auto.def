@@ -4,10 +4,10 @@
 use cc cc-lib cc-shared pkg-config
 
 set maj_ver 1
-set med_ver 18
+set med_ver 20
 set min_ver 99
-set dev_ver 7
-define PKG_API [expr $maj_ver * 1000000 + $med_ver * 1000 + $min_ver]
+set dev_ver 5
+define PKG_API [expr {$maj_ver * 1000000 + $med_ver * 1000 + $min_ver}]
 define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]
 
 # Add any user options here
@@ -17,6 +17,7 @@ options {
 	with-libarchive.pc => "build with libarchive getting flags via pc files"
 	with-coverage => "build with llvm coverage support"
 	with-asan => "build with libasan support"
+	with-lsan => "build with liblsan support"
 	with-ubsan => "Build with libubsan support"
 	default-format:txz => "Default compression format: tzst, txz (default), tbz, tar"
 }
@@ -220,7 +221,7 @@ cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
 	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
 
 # for compat
-cc-check-includes dirent.h
+cc-check-includes dirent.h sys/sockio.h
 
 #endian stuff
 foreach header [list endian.h sys/endian.h] {
@@ -273,7 +274,7 @@ cc-with { -libs { -ljail} } {
 cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 	bsd/stdio.h bsd/stdlib.h bsd/strlib.h bsd/string.h \
 	bsd/sys/cdefs.h bsd/sys/queue.h bsd/unistd.h
- 
+
 if {[opt-bool with-asan]} {
 	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address
 	define-append ASAN_LDFLAGS -fsanitize=address
@@ -283,6 +284,15 @@ if {[opt-bool with-asan]} {
 	}
 	define asan 1
 	undefine HAVE_STATIC
+}
+if {[opt-bool with-lsan]} {
+	define-append LSAN_CFLAGS -O0 -ggdb -fsanitize=leak
+	define-append LSAN_LDFLAGS -fsanitize=leak
+	if {[string match *-linux* [get-define host]]} {
+		# LSAN depends on libdl for dlsym when building with GCC
+		define-append LSAN_LDFLAGS -ldl
+	}
+	define lsan 1
 }
 if {[opt-bool with-ubsan]} {
 	# Avoid alignment error when building with UBSan inside _mum_hash_avx2
@@ -298,7 +308,7 @@ if {[opt-bool with-coverage]} {
 # disable capsicum when coverage is used because coverage does not work in
 # capsicum mode
 } else {
-# capsicum 
+# capsicum
 	if {[cc-check-functions cap_sandboxed]} {
 		define-feature capsicum
 			cc-check-includes sys/capsicum.h
@@ -345,6 +355,7 @@ if {[get-define CCACHE] ne {none}} {
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
 make-config-header external/sqlite/sqlite_cfg.h
+make-config-header external/libcurl/curl_cfg.h
 make-template mk/defs.mk.in
 make-template libpkg/pkg.h.in
 make-template libpkg/pkg.pc.in
@@ -352,10 +363,10 @@ make-template tests/frontend/test_environment.sh.in
 make-template Makefile.autosetup Makefile
 
 foreach dir [list external/blake2 external/picosat \
-	external/linenoise external/libfetch external/sqlite \
+	external/linenoise external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf external/libmachista tests docs \
-	external/liblua external/msgpuck external/yxml scripts] {
+	external/liblua external/msgpuck external/yxml scripts external/libcurl] {
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
 

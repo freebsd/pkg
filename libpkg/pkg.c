@@ -4,6 +4,8 @@
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023, Serenity Cyber Security, LLC
+ *                     Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -213,7 +215,7 @@ pkg_set_b(struct pkg *pkg, pkg_attr attr, bool boolean)
 		pkg->automatic = boolean;
 		break;
 	case PKG_ATTR_LOCKED:
-		pkg->automatic = boolean;
+		pkg->locked = boolean;
 		break;
 	case PKG_ATTR_VITAL:
 		pkg->vital = boolean;
@@ -237,7 +239,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		free(pkg->name);
 		pkg->name = xstrdup(str);
 		free(pkg->uid);
-		pkg->name = xstrdup(str);
+		pkg->uid = xstrdup(str);
 		break;
 	case PKG_ATTR_ORIGIN:
 		free(pkg->origin);

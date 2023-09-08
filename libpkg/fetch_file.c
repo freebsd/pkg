@@ -27,34 +27,37 @@
 #include <sys/param.h>
 
 #include <stdio.h>
-#include <fetch.h>
 #include <errno.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/fetch.h"
 
 int
-file_open(struct pkg_repo *repo, struct url *u, off_t *sz)
+file_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
 	struct stat st;
+	const char *u = fi->url;
 
-	if (stat(u->doc, &st) == -1) {
+	if (strlen(u) > 5)
+		u += 5; /* file: */
+	if (*u != '/') {
+		pkg_emit_error("invalid url: '%s'\n", fi->url);
+		return (EPKG_FATAL);
+	}
+	if (stat(u, &st) == -1) {
 		if (!repo->silent)
-			pkg_emit_error("%s://%s%s%s%s: %s",
-			    u->scheme,
-			    u->user,
-			    u->user[0] != '\0' ? "@" : "",
-			    u->host,
-			    u->doc,
+			pkg_emit_error("%s: %s", fi->url,
 			    strerror(errno));
 		return (EPKG_FATAL);
 	}
-	*sz = st.st_size;
-	u->ims_time = st.st_mtime;
+	fi->size = st.st_size;
+	if (st.st_mtime <= fi->mtime)
+		return (EPKG_UPTODATE);
 
-	repo->fh = fopen(u->doc, "re");
+	repo->fh = fopen(u, "re");
 	if (repo->fh == NULL)
 		return (EPKG_FATAL);
 	return (EPKG_OK);
@@ -69,26 +72,20 @@ fh_close(struct pkg_repo *repo)
 }
 
 int
-stdio_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t)
+stdio_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 {
 	char buf[8192];
 	size_t buflen = 0, left = 0;
 	off_t done = 0, r;
 
-	if (t != NULL && u->ims_time != 0) {
-		if (u->ims_time <= *t)
-			return (EPKG_UPTODATE);
-		*t = u->ims_time;
-	}
-
-	pkg_emit_fetch_begin(url);
+	pkg_emit_fetch_begin(fi->url);
 	pkg_emit_progress_start(NULL);
-	if (u->offset > 0)
-		done += u->offset;
+	if (fi->offset > 0)
+		done += fi->offset;
 	buflen = sizeof(buf);
 	left = sizeof(buf);
-	if (sz > 0)
-		left = sz - done;
+	if (fi->size > 0)
+		left = fi->size - done;
 
 	while ((r = fread(buf, 1, left < buflen ? left : buflen, repo->fh)) > 0) {
 		if (write(dest, buf, r) != r) {
@@ -96,15 +93,15 @@ stdio_fetch(struct pkg_repo *repo, int dest, const char *url, struct url *u, off
 			return (EPKG_FATAL);
 		}
 		done += r;
-		if (sz > 0) {
+		if (fi->size > 0) {
 			left -= r;
-			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)sz);
+			pkg_debug(4, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)fi->size);
 		} else
 			pkg_debug(4, "Read status: %jd", (intmax_t)done);
-		if (sz > 0)
-			pkg_emit_progress_tick(done, sz);
+		if (fi->size > 0)
+			pkg_emit_progress_tick(done, fi->size);
 	}
-	if (r != 0) {
+	if (ferror(repo->fh)) {
 		pkg_emit_error("An error occurred while fetching package");
 		return(EPKG_FATAL);
 	}

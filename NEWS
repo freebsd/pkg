@@ -1,3 +1,61 @@
+Changes from 1.20.99.4 to 1.20.99.5
+- fix a regression introduce with switch to libcurl which results in
+  the remote db mtime being badly set
+- fix a regression which makes pkg query report twice some packages
+  when configured in multirepository mode.
+- fix a compatibility issue with http_proxy env var (lowercase)
+- update libcurl to latest version
+- introduce PKG_EVENT_PKG_ERRNO new event type
+
+Changes from 1.20.99.3 to 1.20.99.4
+- backout pkg add support for provides/requires (performance issue)
+
+Changes from 1.20.99.2 to 1.20.99.3
+- curl add compatiblity for SSL_CLIENT_KEY_FILE, SSL_CLIENT_CERT_FILE,
+  SSL_CA_CERT_FILE
+- fixed FETCH_TIMEOUT adaptation to libcurl
+- speed up again pkg add and reduced its memory footprint
+
+Changes from 1.20.99.1 to 1.20.99.2
+- Fix regression regarding url parsing for ssh://
+- Reduce memory usage for pkg add
+- Fix a libfetch compatibility issue (typo in SSL_VERIFY_HOST)
+- Fix issue with version generation in configure script
+- Update pkg-triggers.5 manpage
+
+Changes from 1.20.99.0 to 1.20.99.1
+- Add compatibility with libfetch HTTP_AUTH
+
+Changes from 1.19.99.3 to 1.20.99.0
+- cleanup functions
+
+Changes from 1.19.99.2 to 1.19.99.3
+- fix memory leaks
+- fix regression: implement cancelling with libcurl
+- new event PKG_EVENT_INCREMENTAL_UPDATE_BEGIN
+- fix signature generation with openssl3
+- allow reading pre and post openssl3 signatures
+
+Changes from 1.19.99.1 to 1.19.99.2
+- Update libucl to latest version
+- Allow to configure COMPRESSION_FORMAT in pkg.conf
+- Remove support for legacy (pkg_* tools)
+- kill useless pkg_manifest_key API
+- pkg add (respect provide/require)
+- pkg autoremove: properly process provides/requires
+- pkg now requires C11
+- remplace pkg_set(3) API with a _Generic based API
+- periodic script: Use locale-agnostic (ISO 8601)
+- complete refactoring of the fetch code
+- new pkgdb_all_search to search local and remote DBs at the same time
+- fix plenty of memory leaks
+- fix a regression in -e
+- improve the plugin API
+- replace libfetch with libcurl
+- add support for http pipelining
+- improve SRV and HTTP mirroring, reducing the number of round trips
+- only keep one version of HTTP mirroring the one that respects the repo url
+
 Changes from 1.18.99.7 to 1.19.99.1
 - fix regression in pkg autoremove
 - fix regression preventing tracking files with path longer than 64 chars

@@ -26,8 +26,11 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "bsd_compat.h"
+#include "pkg_config.h"
+#include <xmalloc.h>
 
 #ifndef HAVE_FUNOPEN
 
@@ -80,7 +83,7 @@ funopen(const void *cookie, int (*readfn)(void *, char *, int),
          int (*writefn)(void *, const char *, int),
          off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *))
 {
-	bsd_cookie_funcs_t *cf = malloc(sizeof(bsd_cookie_funcs_t));
+	bsd_cookie_funcs_t *cf = xmalloc(sizeof(bsd_cookie_funcs_t));
 	cf->readfn  = readfn;
 	cf->writefn = writefn;
 	cf->seekfn  = seekfn;

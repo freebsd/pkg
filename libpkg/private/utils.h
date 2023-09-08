@@ -127,5 +127,6 @@ void hidden_tempfile(char *buf, int buflen, const char *path);
 void append_random_suffix(char *buf, int buflen, int suffixlen);
 char *json_escape(const char *str);
 struct tempdir *open_tempdir(int rootfd, const char *path);
+const char *get_http_auth(void);
 
 #endif

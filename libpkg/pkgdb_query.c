@@ -152,7 +152,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
 				"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
 				"   WHERE tag.annotation = 'flavor') "
-				"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, "
+				"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, "
 				"   version, comment, desc, "
 				"   message, arch, maintainer, www, "
 				"   prefix, flatsize, licenselogic, automatic, "
@@ -165,7 +165,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 					comp, pattern == NULL ? "WHERE" : "AND", cond + 7);
 	} else if (match == MATCH_INTERNAL) {
 		sqlite3_snprintf(sizeof(sql), sql,
-				"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, "
+				"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, "
 					"version, comment, desc, "
 					"message, arch, maintainer, www, "
 					"prefix, flatsize, licenselogic, automatic, "
@@ -180,7 +180,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
 				"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
 				"   WHERE tag.annotation = 'flavor') "
-				"SELECT DISTINCT p.id, origin, p.name, p.name as uniqueid, "
+				"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, "
 					"version, comment, desc, "
 					"message, arch, maintainer, www, "
 					"prefix, flatsize, licenselogic, automatic, "

@@ -40,6 +40,7 @@
 #endif
 #endif
 void pkg_emit_errno(const char *func, const char *arg);
+void pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg);
 
 #define pkg_errno(fmt, ...) \
 	pkg_emit_error(fmt":%s", __VA_ARGS__, strerror(errno))
@@ -73,6 +74,7 @@ void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *new
 void pkg_emit_newpkgversion(void);
 void pkg_emit_developer_mode(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
 void pkg_emit_package_not_found(const char *);
+void pkg_emit_incremental_update_begin(const char *reponame);
 void pkg_emit_incremental_update(const char *reponame, int processed);
 void pkg_emit_backup(void);
 void pkg_emit_restore(void);
@@ -84,7 +86,7 @@ bool pkg_emit_query_yesno(bool deft, const char *msg);
 int pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft);
 
 void pkg_emit_progress_start(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
-void pkg_emit_progress_tick(int64_t current, int64_t total);
+int pkg_emit_progress_tick(int64_t current, int64_t total);
 
 void pkg_emit_add_deps_begin(struct pkg *p);
 void pkg_emit_add_deps_finished(struct pkg *p);

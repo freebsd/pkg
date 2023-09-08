@@ -18,13 +18,13 @@ global:
 	pkg_audit_new;
 	pkg_audit_process;
 	pkg_cache_full_clean;
-	pkg_categories;
 	pkg_close_devnull;
 	pkg_compiled_for_same_os_major;
 	pkg_config_dump;
 	pkg_config_files;
 	pkg_config_get;
 	pkg_conflicts;
+	pkg_copy_file;
 	pkg_create;
 	pkg_create_free;
 	pkg_create_from_manifest;
@@ -61,7 +61,6 @@ global:
 	pkg_get_dir;
 	pkg_get_element;
 	pkg_get_file;
-	pkg_groups;
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;
@@ -90,12 +89,9 @@ global:
 	pkg_jobs_type;
 	pkg_kvlist_iterator;
 	pkg_kvlist_next;
-	pkg_license_name;
-	pkg_licenses;
 	pkg_list_count;
 	pkg_load_metadata;
-	pkg_manifest_parser_free;
-	pkg_manifest_parser_new;
+	pkg_mkdirs;
 	pkg_namecmp;
 	pkg_new;
 	pkg_object_bool;
@@ -128,11 +124,11 @@ global:
 	pkg_plugins_init;
 	pkg_plugins_shutdown;
 	pkg_printf;
-	pkg_provides;
 	pkg_rdeps;
 	pkg_recompute;
 	pkg_repo_cached_name;
 	pkg_repo_enabled;
+	pkg_repo_fetch_remote_tmp;
 	pkg_repo_find;
 	pkg_repo_fingerprints;
 	pkg_repo_ip_version;
@@ -145,16 +141,12 @@ global:
 	pkg_repos;
 	pkg_repos_activated_count;
 	pkg_repos_total_count;
-	pkg_requires;
 	pkg_script_get;
 	pkg_set_b;
 	pkg_set_debug_level;
 	pkg_set_i;
-	pkg_set_invalid;
 	pkg_set_rootdir;
 	pkg_set_s;
-	pkg_shlibs_provided;
-	pkg_shlibs_required;
 	pkg_shutdown;
 	pkg_snprintf;
 	pkg_solve_dimacs_export;
@@ -172,7 +164,6 @@ global:
 	pkg_try_installed;
 	pkg_type;
 	pkg_update;
-	pkg_users;
 	pkg_utils_count_spaces;
 	pkg_utils_tokenize;
 	pkg_vasprintf;
@@ -184,6 +175,7 @@ global:
 	pkg_vsnprintf;
 	pkgdb_access;
 	pkgdb_add_annotation;
+	pkgdb_all_search;
 	pkgdb_case_sensitive;
 	pkgdb_close;
 	pkgdb_cmd;
@@ -208,12 +200,9 @@ global:
 	pkgdb_reanalyse_shlibs;
 	pkgdb_register_ports;
 	pkgdb_release_lock;
-	pkgdb_remote_init;
 	pkgdb_repo_query;
 	pkgdb_repo_query_cond;
 	pkgdb_repo_search;
-	pkgdb_all_search;
-	pkgdb_rquery_provide;
 	pkgdb_set2;
 	pkgdb_set_case_sensitivity;
 	pkgdb_stats;
@@ -222,11 +211,6 @@ global:
 	pkgdb_transaction_rollback;
 	pkgdb_upgrade_lock;
 	ports_parse_plist;
-	pkg_repo_fetch_remote_tmp;
-	pkg_copy_file;
-	pkg_mkdirs;
-	pkg_emit_error;
-	pkg_emit_notice;
 # Symbols from libcsu
 	__progname;
 	environ;

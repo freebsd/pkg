@@ -2,6 +2,8 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -469,6 +471,19 @@ pkg_emit_errno(const char *func, const char *arg)
 }
 
 void
+pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PKG_ERRNO;
+	ev.e_errno.func = func;
+	ev.e_errno.arg = arg;
+	ev.e_errno.no = err;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_already_installed(struct pkg *p)
 {
 	struct pkg_event ev;
@@ -874,6 +889,18 @@ pkg_emit_package_not_found(const char *p)
 }
 
 void
+pkg_emit_incremental_update_begin(const char *reponame)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_INCREMENTAL_UPDATE_BEGIN;
+	ev.e_incremental_update.reponame = reponame;
+	ev.e_incremental_update.processed = 0;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_incremental_update(const char *reponame, int processed)
 {
 	struct pkg_event ev;
@@ -1004,7 +1031,7 @@ pkg_emit_progress_start(const char *fmt, ...)
 	free(ev.e_progress_start.msg);
 }
 
-void
+int
 pkg_emit_progress_tick(int64_t current, int64_t total)
 {
 	struct pkg_event ev;
@@ -1013,8 +1040,7 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 	ev.e_progress_tick.current = current;
 	ev.e_progress_tick.total = total;
 
-	pkg_emit_event(&ev);
-
+	return !!pkg_emit_event(&ev);
 }
 
 void

@@ -43,6 +43,7 @@
 
 #include "xmalloc.h"
 #include "private/utils.h"
+#include "private/fetch.h"
 #include "pkghash.h"
 
 #define UCL_COUNT(obj) ((obj)?((obj)->len):0)
@@ -130,6 +131,12 @@
 typedef tll(struct pkg_kv *) kvlist_t;
 typedef tll(char *) stringlist_t;
 
+typedef enum {
+	IPALL = 0,
+	IPV4,
+	IPV6,
+} ip_version_t;
+
 struct pkg_kvlist {
 	kvlist_t *list;
 };
@@ -171,6 +178,7 @@ struct pkg_ctx {
 	pkghash *touched_dir_hash;
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
+	ip_version_t ip;
 };
 
 extern struct pkg_ctx ctx;
@@ -178,13 +186,7 @@ extern struct pkg_ctx ctx;
 struct pkg_repo_it;
 struct pkg_repo;
 struct url;
-struct fetcher {
-	const char *scheme;
-	int (*open)(struct pkg_repo *, struct url *, off_t *);
-	int (*close)(struct pkg_repo *);
-	int (*cleanup)(struct pkg_repo *);
-	int (*fetch)(struct pkg_repo *repo, int dest, const char *url, struct url *u, off_t sz, time_t *t);
-};
+struct fetcher;
 struct pkg_message;
 typedef tll(struct pkg_message *) messages_t;
 
@@ -394,11 +396,7 @@ struct pkg_option {
 	struct pkg_option *next, *prev;
 };
 
-struct http_mirror {
-	struct url *url;
-	struct http_mirror *next;
-	bool reldoc;
-};
+struct http_mirror;
 
 struct pkg_repo_meta_key {
 	char *pubkey;
@@ -502,11 +500,6 @@ struct pkg_repo_ops {
 		const char *destdir);
 };
 
-typedef enum _pkg_repo_flags {
-	REPO_FLAGS_USE_IPV4 = (1U << 0),
-	REPO_FLAGS_USE_IPV6 = (1U << 1)
-} pkg_repo_flags;
-
 struct pkg_repo {
 	struct pkg_repo_ops *ops;
 
@@ -522,6 +515,7 @@ struct pkg_repo {
 	signature_t signature_type;
 	char *fingerprints;
 	FILE *fh;
+	void *fetch_priv;
 	bool silent;
 
 	pkghash *trusted_fp;
@@ -539,7 +533,7 @@ struct pkg_repo {
 
 	unsigned int priority;
 
-	pkg_repo_flags flags;
+	ip_version_t ip;
 	kvlist_t env;
 
 	/* Opaque repository data */
@@ -628,8 +622,8 @@ int pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 #define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
 #define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
 
-int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest,
-    time_t *t, ssize_t offset, int64_t size, bool silent);
+int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
+    bool silent);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo,

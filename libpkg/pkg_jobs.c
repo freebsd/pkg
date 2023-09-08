@@ -876,7 +876,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 	if ((it = pkgdb_repo_query_cond(j->db, cond, pattern, m, j->reponame)) == NULL)
 		return (EPKG_FATAL);
 
-	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		xstring_renew(qmsg);
 		if (pkg_jobs_has_replacement(j, p->uid)) {
 			pkg_debug(1, "replacement %s is already used", p->uid);
@@ -963,7 +963,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	struct pkg_job_universe_item *unit = NULL;
 
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
-		rc = EPKG_FATAL;
+		return (rc);
 
 	/*
 	 * MATCH_EXACT is handled at a higher level, so that we can complain if a
@@ -1572,10 +1572,12 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	candidates_t *candidates = xcalloc(1, sizeof(*candidates));
+	candidates_t *candidates;
 
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (NULL);
+
+	candidates = xcalloc(1, sizeof(*candidates));
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 
@@ -2221,6 +2223,12 @@ cleanup:
 	return (retcode);
 }
 
+static void
+pkg_jobs_cancel(struct pkg_jobs *j)
+{
+	pkgdb_release_lock(j->db, PKGDB_LOCK_ADVISORY);
+}
+
 int
 pkg_jobs_apply(struct pkg_jobs *j)
 {
@@ -2272,6 +2280,9 @@ pkg_jobs_apply(struct pkg_jobs *j)
 					rc = pkg_jobs_execute(j);
 				}
 			}
+			else if (rc == EPKG_CANCEL) {
+				pkg_jobs_cancel(j);
+			}
 		}
 		else {
 			rc = pkg_jobs_execute(j);
@@ -2302,6 +2313,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	const char *cachedir = NULL;
 	char cachedpath[MAXPATHLEN];
 	bool mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
+	int retcode;
 
 
 	if (j->destdir == NULL || !mirror)
@@ -2384,12 +2396,14 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 				continue;
 
 			if (mirror) {
-				if (pkg_repo_mirror_package(p, cachedir) != EPKG_OK)
-					return (EPKG_FATAL);
+				retcode = pkg_repo_mirror_package(p, cachedir);
+				if (retcode != EPKG_OK)
+					return (retcode);
 			}
 			else {
+				retcode = pkg_repo_fetch_package(p);
 				if (pkg_repo_fetch_package(p) != EPKG_OK)
-					return (EPKG_FATAL);
+					return (retcode);
 			}
 		}
 	}
