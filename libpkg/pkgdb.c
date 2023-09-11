@@ -2271,7 +2271,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 		/* TODO print the users that are not used anymore */
 		"users WHERE id NOT IN "
 			"(SELECT DISTINCT user_id FROM pkg_users)",
-		/* TODO print the groups trhat are not used anymore */
+		/* TODO print the groups that are not used anymore */
 		"groups WHERE id NOT IN "
 			"(SELECT DISTINCT group_id FROM pkg_groups)",
 		"shlibs WHERE id NOT IN "
