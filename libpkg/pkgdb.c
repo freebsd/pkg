@@ -3032,3 +3032,15 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 
 	return (EPKG_OK);
 }
+
+void
+pkgdb_debug(int level, sqlite3_stmt *stmt)
+{
+	char *str;
+	if (ctx.debug_level < level)
+		return;
+
+	str = sqlite3_expanded_sql(stmt);
+	pkg_debug(level, "Pkgdb: running: '%s'", str);
+	sqlite3_free(str);
+}
