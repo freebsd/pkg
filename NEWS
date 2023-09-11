@@ -1,3 +1,17 @@
+Changes from 1.20.99.5 to 1.20.99.6
+- enable netrc support to be compatible with libfetch variable
+- enable by default all supported kind of authentication for curl
+- Fix duplicated rquery
+- Make missing plugins non fatal (needed for smooth packagekit support)
+- Do not complain about Last-Modified head if the fetch was a failure
+- Support for jobs cancellation (needed for packagekit support)
+- update sqlite3 to 3.43.0
+- update lua to 5.4.6
+- plug plenty of memory leaks
+- improve debug output in particular for sql statements
+- exclude locked package early from autoremove candidates
+- fix very slow orphan test computation consuming 100% of CPU in autoremove
+
 Changes from 1.20.99.4 to 1.20.99.5
 - fix a regression introduce with switch to libcurl which results in
   the remote db mtime being badly set
