@@ -197,6 +197,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 		close(j->triggers.dfd);
 	if (j->triggers.schema != NULL)
 		ucl_object_unref(j->triggers.schema);
+	pkghash_destroy(j->orphaned);
+	pkghash_destroy(j->notorphaned);
 	free(j);
 }
 
@@ -656,11 +658,13 @@ iter_again:
 static bool pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p);
 
 static bool
-is_orphaned(struct pkg_jobs *j, const char *uid)
+_is_orphaned(struct pkg_jobs *j, const char *uid)
 {
 	struct pkg_job_universe_item *unit;
 	struct pkg *npkg;
 
+	if (pkghash_get(j->notorphaned, uid) != NULL)
+		return (false);
 	unit = pkg_jobs_universe_find(j->universe, uid);
 	if (unit != NULL) {
 		if (!unit->pkg->automatic)
@@ -684,6 +688,21 @@ is_orphaned(struct pkg_jobs *j, const char *uid)
 		return (false);
 
 	return (true);
+}
+
+static bool
+is_orphaned(struct pkg_jobs *j, const char *uid)
+{
+	if (pkghash_get(j->orphaned, uid) != NULL)
+		return (true);
+	if (pkghash_get(j->notorphaned, uid) != NULL)
+		return (false);
+	if (_is_orphaned(j, uid)) {
+		pkghash_safe_add(j->orphaned, uid, NULL, NULL);
+		return (true);
+	}
+	pkghash_safe_add(j->notorphaned, uid, NULL, NULL);
+	return (false);
 }
 
 /**
@@ -1514,7 +1533,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		if (pkg_jobs_test_automatic(j, pkg)) {
 			assert(pkg_jobs_add_req(j, pkg));
 		}
-
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);

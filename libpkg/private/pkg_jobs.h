@@ -117,6 +117,8 @@ struct pkg_jobs {
 	bool pinning;
 	void		*lockedpkgs;
 	struct triggers triggers;
+	struct pkghash *orphaned;
+	struct pkghash *notorphaned;
 };
 
 #define PKG_PATTERN_FLAG_FILE (1 << 0)
