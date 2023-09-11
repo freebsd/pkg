@@ -1503,7 +1503,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 
-	if ((it = pkgdb_query_cond(j->db, " WHERE automatic=1 AND vital=0 ", NULL, MATCH_ALL)) == NULL)
+	if ((it = pkgdb_query_cond(j->db, " WHERE automatic=1 AND vital=0 AND locked=0", NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg,
@@ -1511,10 +1511,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
 			PKG_LOAD_SHLIBS_PROVIDED)
 			== EPKG_OK) {
-		if(pkg->locked) {
-			pkg_emit_locked(pkg);
-		}
-		else if (pkg_jobs_test_automatic(j, pkg)) {
+		if (pkg_jobs_test_automatic(j, pkg)) {
 			assert(pkg_jobs_add_req(j, pkg));
 		}
 
