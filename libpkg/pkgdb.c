@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -1135,8 +1135,8 @@ run_transaction(sqlite3 *sqlite, const char *query, const char *savepoint)
 	assert(sqlite != NULL);
 
 	xasprintf(&sql, "%s %s", query, savepoint != NULL ? savepoint : "");
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1, &stmt, NULL);
+	pkgdb_debug(4, stmt);
 
 	if (ret == SQLITE_OK) {
 		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
@@ -2082,7 +2082,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 				return (EPKG_FATAL);
 
 			sqlite3_bind_int64(stmt_del, 1, package_id);
-			pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt_del));
+			pkgdb_debug(4, stmt_del);
 
 			ret = sqlite3_step(stmt_del);
 
@@ -2291,7 +2291,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 		return (EPKG_FATAL);
 
 	sqlite3_bind_int64(stmt_del, 1, id);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt_del));
+	pkgdb_debug(4, stmt_del);
 
 	ret = sqlite3_step(stmt_del);
 
@@ -2355,12 +2355,12 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 
 	assert(s != NULL && sql != NULL);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		if (!silence)
 			ERROR_SQLITE(s, sql);
 		return (EPKG_OK);
 	}
+	pkgdb_debug(4, stmt);
 
 	PKGDB_SQLITE_RETRY_ON_BUSY(ret)
 		ret = sqlite3_step(stmt);
@@ -2482,7 +2482,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			break;
 		}
 
-		pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+		pkgdb_debug(4, stmt);
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(db->sqlite, stmt);
 			sqlite3_finalize(stmt);
@@ -2522,7 +2522,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 		return (EPKG_FATAL);
 	sqlite3_bind_text(stmt, 1, sum, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 2, file->path, -1, SQLITE_STATIC);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	pkgdb_debug(4, stmt);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, stmt);
@@ -2917,7 +2917,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
-		pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+		pkgdb_debug(4, stmt);
 	}
 
 	sqlite3_finalize(stmt);
@@ -3037,6 +3037,7 @@ void
 pkgdb_debug(int level, sqlite3_stmt *stmt)
 {
 	char *str;
+
 	if (ctx.debug_level < level)
 		return;
 

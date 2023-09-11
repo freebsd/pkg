@@ -155,7 +155,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -179,13 +179,13 @@ pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 
 	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
+	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -209,13 +209,13 @@ pkg_repo_binary_provide(struct pkg_repo *repo, const char *require)
 
 	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
+	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -238,7 +238,6 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 
 	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
 	if (stmt == NULL)
@@ -246,6 +245,7 @@ pkg_repo_binary_shlib_require(struct pkg_repo *repo, const char *provide)
 
 	pkg_debug(1, "> loading provides");
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
+	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -268,13 +268,13 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 
 	xasprintf(&sql, basesql, repo->name);
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	stmt = prepare_sql(sqlite, sql);
 	free(sql);
 	if (stmt == NULL)
 		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
+	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
@@ -418,7 +418,7 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 		return (NULL);
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
-	pkg_debug(4, "Pkgdb: running '%s'", sqlite3_expanded_sql(stmt));
+	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
