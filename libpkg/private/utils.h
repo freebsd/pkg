@@ -80,8 +80,6 @@ struct dns_srvinfo {
 
 struct pkg_key;
 
-int32_t string_hash_func(const char *);
-
 int file_to_buffer(const char *, char **, off_t *);
 int file_to_bufferat(int, const char *, char **, off_t *);
 int format_exec_cmd(char **, const char *, const char *, const char *, const char *,
