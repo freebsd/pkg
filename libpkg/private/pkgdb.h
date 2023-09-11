@@ -173,5 +173,6 @@ void pkgdb_syscall_overload(void);
 void pkgdb_nfs_corruption(sqlite3 *s);
 bool pkgdb_file_exists(struct pkgdb *db, const char *path);
 struct sqlite3_stmt *prepare_sql(sqlite3 *s, const char *sql);
+void pkgdb_debug(int level, sqlite3_stmt *stmt);
 
 #endif
