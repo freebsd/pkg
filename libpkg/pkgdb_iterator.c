@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -137,7 +137,6 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
-	char *str;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -150,10 +149,7 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
-
+	pkgdb_debug(4, stmt);
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddata(pkg, sqlite3_column_text(stmt, 0));
 	}
@@ -178,7 +174,6 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
-	char *str;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -191,9 +186,7 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addtagval(pkg, sqlite3_column_text(stmt, 0),
@@ -249,7 +242,6 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		"    JOIN pkg_option USING(option_id)"
 		"  WHERE package_id = ?1"
 		"  ORDER BY option";
-	char *str;
 
 	assert(pkg != NULL);
 
@@ -265,9 +257,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str =sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -296,9 +286,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 
 				if (clause) {
 					xasprintf(&formula_sql, "%s%s", formula_preamble, clause);
-					pkg_debug(4, "Pkgdb: running '%s'", sql);
 					ret = sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL);
-
 					if (ret != SQLITE_OK) {
 						ERROR_SQLITE(sqlite, sql);
 						free(clause);
@@ -306,6 +294,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 						pkg_deps_formula_free(f);
 						return (EPKG_FATAL);
 					}
+					pkgdb_debug(4, stmt);
 
 					/* Fetch matching packages */
 					chain = NULL;
@@ -318,12 +307,12 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 						options_match = true;
 
 						if (fit->options) {
-							pkg_debug(4, "Pkgdb: running '%s'", options_sql);
 							if (sqlite3_prepare_v2(sqlite, options_sql, -1,
 									&opt_stmt, NULL) != SQLITE_OK) {
 								ERROR_SQLITE(sqlite, options_sql);
 								return (EPKG_FATAL);
 							}
+							pkgdb_debug(4, opt_stmt);
 
 							sqlite3_bind_int64(opt_stmt, 1,
 									sqlite3_column_int64(stmt, 0));
@@ -387,7 +376,6 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM packages AS p"
 		"    INNER JOIN deps AS d ON (p.id = d.package_id)"
 		"  WHERE d.name = ?1";
-	char *str;
 
 	assert(pkg != NULL);
 
@@ -403,9 +391,7 @@ pkgdb_load_rdeps(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_text(stmt, 1, pkg->uid, -1, SQLITE_STATIC);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	/* XXX: why we used locked here ? */
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -442,7 +428,6 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM config_files"
 		"  WHERE package_id = ?1"
 		"  ORDER BY PATH ASC";
-	char *str;
 
 	assert( pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -456,9 +441,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		pkg_addfile(pkg, sqlite3_column_text(stmt, 0),
@@ -472,9 +455,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addconfig_file(pkg, sqlite3_column_text(stmt, 0),
@@ -504,7 +485,6 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 		"  ORDER by path DESC";
 	sqlite3_stmt	*stmt;
 	int		 ret;
-	char *str;
 
 	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -518,9 +498,7 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), false);
@@ -669,7 +647,6 @@ pkgdb_load_lua_scripts(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM lua_script"
 		"    JOIN pkg_lua_script USING(lua_script_id)"
 		"  WHERE package_id = ?1";
-	char *str;
 
 	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -684,9 +661,7 @@ pkgdb_load_lua_scripts(sqlite3 *sqlite, struct pkg *pkg)
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
 
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_add_lua_script(pkg, sqlite3_column_text(stmt, 0),
@@ -714,7 +689,6 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM pkg_script"
 		"    JOIN script USING(script_id)"
 		"  WHERE package_id = ?1";
-	char *str;
 
 	assert(pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -728,9 +702,7 @@ pkgdb_load_scripts(sqlite3 *sqlite, struct pkg *pkg)
 	}
 
 	sqlite3_bind_int64(stmt, 1, pkg->id);
-	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(4, "Pkgdb: running '%s'", str);
-	sqlite3_free(str);
+	pkgdb_debug(4, stmt);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addscript(pkg, sqlite3_column_text(stmt, 0),

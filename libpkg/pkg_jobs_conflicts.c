@@ -288,7 +288,6 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 	int ret;
 	struct pkg *p = NULL;
 
-	pkg_debug(4, "Pkgdb: running '%s'", sql_local_conflict);
 	ret = sqlite3_prepare_v2(j->db->sqlite, sql_local_conflict, -1,
 		&stmt, NULL);
 	if (ret != SQLITE_OK) {
@@ -300,6 +299,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 		path, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 2,
 		uid, -1, SQLITE_STATIC);
+	pkgdb_debug(4, stmt);
 
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
 		/*
