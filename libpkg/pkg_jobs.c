@@ -715,7 +715,7 @@ static bool
 pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 {
 	struct pkg_dep *d = NULL;
-	struct pkg *npkg;
+	struct pkg *npkg = NULL;
 	struct pkgdb_it *it;
 
 	while (pkg_rdeps(p, &d) == EPKG_OK) {
@@ -731,6 +731,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			if (!is_orphaned(j, npkg->uid)) {
 				pkgdb_it_free(it);
+				pkg_free(npkg);
 				return (false);
 			}
 		}
@@ -745,12 +746,13 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			if (!is_orphaned(j, npkg->uid)) {
 				pkgdb_it_free(it);
+				pkg_free(npkg);
 				return (false);
 			}
 		}
 		pkgdb_it_free(it);
 	}
-
+	pkg_free(npkg);
 
 	return (true);
 }
