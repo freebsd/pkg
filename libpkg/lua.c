@@ -173,7 +173,7 @@ lua_exec(lua_State *L)
 
 	if (WEXITSTATUS(pstat) != 0) {
 		lua_pushnil(L);
-		lua_pushstring(L, "Abnormal terminaison");
+		lua_pushstring(L, "Abnormal termination");
 		lua_pushinteger(L, r);
 		return 3;
 	}
