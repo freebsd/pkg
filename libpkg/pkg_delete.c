@@ -4,6 +4,8 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2023 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,7 +60,7 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
     struct triggers *t)
 {
 	xstring		*message = NULL;
-	int		 ret;
+	int		 ret, cancel = 0;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
 					PKG_LOAD_SCRIPTS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_LUA_SCRIPTS;
@@ -98,7 +100,10 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			return (ret);
 	}
 
-	if ((ret = pkg_delete_files(pkg, rpkg, flags, t)) != EPKG_OK)
+	ret = pkg_delete_files(pkg, rpkg, flags, t);
+	if (ret == EPKG_CANCEL)
+		cancel = 1;
+	else if (ret != EPKG_OK)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
@@ -129,7 +134,11 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 		}
 	}
 
-	return (pkgdb_unregister_pkg(db, pkg->id));
+	ret = pkgdb_unregister_pkg(db, pkg->id);
+	if (ret != EPKG_OK)
+		return ret;
+
+	return (cancel ? EPKG_CANCEL : ret);
 }
 
 void
@@ -347,6 +356,7 @@ pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
 	struct pkg_file	*file = NULL;
 
 	int		nfiles, cur_file = 0;
+	int		retcode = EPKG_OK;
 
 	nfiles = pkghash_count(pkg->filehash);
 	if (nfiles == 0)
@@ -359,7 +369,8 @@ pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
 		if (pkg_delete_skip_config(pkg, rpkg, file, flags))
 			continue;
 		append_touched_file(file->path);
-		pkg_emit_progress_tick(cur_file++, nfiles);
+		if (pkg_emit_progress_tick(cur_file++, nfiles))
+			retcode = EPKG_CANCEL;
 		trigger_is_it_a_cleanup(t, file->path);
 		pkg_delete_file(pkg, file);
 	}
@@ -367,7 +378,7 @@ pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
 	pkg_emit_progress_tick(nfiles, nfiles);
 	pkg_emit_delete_files_finished(pkg);
 
-	return (EPKG_OK);
+	return (retcode);
 }
 
 void
