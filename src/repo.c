@@ -93,8 +93,8 @@ exec_repo(int argc, char **argv)
 	int	 ret;
 	int	 ch;
 	bool	 filelist = false;
-	char	*output_dir = NULL;
-	char	*meta_file = NULL;
+	const char *output_dir = NULL;
+	const char *meta_file = NULL;
 	bool	 hash = false;
 	bool	 hash_symlink = false;
 
