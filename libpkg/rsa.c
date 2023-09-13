@@ -364,7 +364,7 @@ rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd)
 }
 
 int
-rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
+rsa_sign(const char *path, struct pkg_key *keyinfo, unsigned char **sigret,
     unsigned int *osiglen)
 {
 	char errbuf[1024];

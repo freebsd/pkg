@@ -982,13 +982,32 @@ done:
 }
 
 static int
+pack_rsa_sign(struct packing *pack, struct pkg_key *keyinfo, const char *path,
+    const char *name)
+{
+	unsigned char *sigret = NULL;
+	unsigned int siglen = 0;
+
+	if (keyinfo == NULL)
+		return (EPKG_FATAL);
+
+	if (rsa_sign(path, keyinfo, &sigret, &siglen) != EPKG_OK) {
+		free(sigret);
+		return (EPKG_FATAL);
+	}
+	if (packing_append_buffer(pack, sigret, name, siglen + 1) != EPKG_OK) {
+		free(sigret);
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		struct pkg_key *keyinfo, struct pkg_repo_meta *meta,
 		char **argv, int argc)
 {
 	struct packing *pack;
-	unsigned char *sigret = NULL;
-	unsigned int siglen = 0;
 	size_t signature_len = 0;
 	char fname[MAXPATHLEN];
 	char *sig, *pub;
@@ -1001,15 +1020,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		return (EPKG_FATAL);
 
 	if (keyinfo != NULL) {
-		if (rsa_sign(path, keyinfo, &sigret, &siglen) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto out;
-		}
-
-		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto out;
-		}
+		ret = pack_rsa_sign(pack, keyinfo, path, "signature");
 	} else if (argc >= 1) {
 		if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &pub) != EPKG_OK) {
 			ret = EPKG_FATAL;
@@ -1034,7 +1045,6 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 out:
 	packing_finish(pack);
 	unlink(path);
-	free(sigret);
 	free(sig);
 	free(pub);
 

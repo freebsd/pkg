@@ -89,7 +89,7 @@ int is_link(const char *);
 
 int rsa_new(struct pkg_key **, pkg_password_cb *, char *path);
 void rsa_free(struct pkg_key *);
-int rsa_sign(char *path, struct pkg_key *keyinfo, unsigned char **sigret,
+int rsa_sign(const char *path, struct pkg_key *keyinfo, unsigned char **sigret,
     unsigned int *siglen);
 int rsa_verify(const char *key, unsigned char *sig, unsigned int sig_len, int fd);
 int rsa_verify_cert(unsigned char *cert,
