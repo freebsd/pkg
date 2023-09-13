@@ -626,8 +626,8 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
     bool silent);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
-int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo,
-    const char *filename, time_t *t, int *rc, size_t *sz);
+int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, time_t *t, int *rc,
+    size_t *sz);
 int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 

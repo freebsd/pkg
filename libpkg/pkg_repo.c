@@ -681,19 +681,18 @@ out:
 }
 
 int
-pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
-    time_t *t, int *rc, size_t *sz)
+pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, time_t *t, int *rc, size_t *sz)
 {
 	int fd, dest_fd;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
 	struct stat st;
 
-	fd = pkg_repo_fetch_remote_tmp(repo, filename, "pkg", t, rc, false);
+	fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests, "pkg", t, rc, false);
 	if (fd == -1) {
 		if (*rc == EPKG_UPTODATE)
 			return (-1);
-		fd = pkg_repo_fetch_remote_tmp(repo, filename,
+		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
 		    packing_format_to_string(repo->meta->packing_format), t, rc, false);
 	}
 	if (fd == -1)
@@ -702,7 +701,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, filename);
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, repo->meta->manifests);
 
 	dest_fd = mkstemp(tmp);
 	if (dest_fd == -1) {
@@ -714,7 +713,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, const char *filename,
 	}
 
 	(void)unlink(tmp);
-	if (pkg_repo_archive_extract_check_archive(fd, filename, repo, dest_fd)
+	if (pkg_repo_archive_extract_check_archive(fd, repo->meta->manifests, repo, dest_fd)
 			!= EPKG_OK) {
 		*rc = EPKG_FATAL;
 		close(dest_fd);

@@ -484,8 +484,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	/* Fetch packagesite */
 	local_t = *mtime;
-	fd = pkg_repo_fetch_remote_extract_fd(repo,
-		repo->meta->manifests, &local_t, &rc, &len);
+	fd = pkg_repo_fetch_remote_extract_fd(repo, &local_t, &rc, &len);
 	if (fd == -1)
 		goto cleanup;
 	f = fdopen(fd, "r");
