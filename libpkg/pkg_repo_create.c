@@ -907,7 +907,7 @@ cleanup:
 }
 
 static int
-pkg_repo_sign(char *path, char **argv, int argc, char **sig, size_t *siglen,
+pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *siglen,
     char **cert)
 {
 	FILE *fp;
@@ -1003,18 +1003,47 @@ pack_rsa_sign(struct packing *pack, struct pkg_key *keyinfo, const char *path,
 }
 
 static int
+pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
+    const char *name)
+{
+	size_t signature_len = 0;
+	char fname[MAXPATHLEN];
+	char *sig, *pub;
+
+	sig = NULL;
+	pub = NULL;
+
+	if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &pub) != EPKG_OK) {
+		free(sig);
+		free(pub);
+		return (EPKG_FATAL);
+	}
+
+	snprintf(fname, sizeof(fname), "%s.sig", name);
+	if (packing_append_buffer(pack, sig, fname, signature_len) != EPKG_OK) {
+		free(sig);
+		free(pub);
+		return (EPKG_FATAL);
+	}
+	free(sig);
+
+	snprintf(fname, sizeof(fname), "%s.pub", name);
+	if (packing_append_buffer(pack, pub, fname, strlen(pub)) != EPKG_OK) {
+		free(pub);
+		return (EPKG_FATAL);
+	}
+	free(pub);
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
 		struct pkg_key *keyinfo, struct pkg_repo_meta *meta,
 		char **argv, int argc)
 {
 	struct packing *pack;
-	size_t signature_len = 0;
-	char fname[MAXPATHLEN];
-	char *sig, *pub;
 	int ret = EPKG_OK;
-
-	sig = NULL;
-	pub = NULL;
 
 	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1, true, true) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -1022,31 +1051,12 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	if (keyinfo != NULL) {
 		ret = pack_rsa_sign(pack, keyinfo, path, "signature");
 	} else if (argc >= 1) {
-		if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &pub) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto out;
-		}
-
-		snprintf(fname, sizeof(fname), "%s.sig", name);
-		if (packing_append_buffer(pack, sig, fname, signature_len) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto out;
-		}
-
-		snprintf(fname, sizeof(fname), "%s.pub", name);
-		if (packing_append_buffer(pack, pub, fname, strlen(pub)) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto out;
-		}
-
+		ret = pack_command_sign(pack, path, argv, argc, name);
 	}
 	packing_append_file_attr(pack, path, name, "root", "wheel", 0644, 0);
 
-out:
 	packing_finish(pack);
 	unlink(path);
-	free(sig);
-	free(pub);
 
 	return (ret);
 }
