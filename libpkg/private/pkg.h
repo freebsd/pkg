@@ -183,6 +183,12 @@ struct pkg_ctx {
 
 extern struct pkg_ctx ctx;
 
+struct pkg_repo_content {
+	time_t mtime;
+	int manifest_fd;
+	size_t manifest_len;
+};
+
 struct pkg_repo_it;
 struct pkg_repo;
 struct url;
@@ -626,8 +632,7 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
     bool silent);
 int pkg_repo_fetch_package(struct pkg *pkg);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
-int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, time_t *t, int *rc,
-    size_t *sz);
+int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 

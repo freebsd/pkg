@@ -461,14 +461,13 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
 	time_t local_t;
-	size_t len = 0;
 	bool in_trans = false;
 	char *path = NULL;
 	FILE *f = NULL;
-	int fd;
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen, totallen = 0;
+	struct pkg_repo_content prc;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -484,13 +483,17 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	/* Fetch packagesite */
 	local_t = *mtime;
-	fd = pkg_repo_fetch_remote_extract_fd(repo, &local_t, &rc, &len);
-	if (fd == -1)
+	prc.manifest_fd = -1;
+	prc.mtime = *mtime;
+	prc.manifest_len = 0;
+
+	rc = pkg_repo_fetch_remote_extract_fd(repo, &prc);
+	if (rc != EPKG_OK)
 		goto cleanup;
-	f = fdopen(fd, "r");
+	f = fdopen(prc.manifest_fd, "r");
 	rewind(f);
 
-	*mtime = local_t;
+	*mtime = prc.mtime;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
 			&rc, repo_conflicts_file);*/
@@ -529,13 +532,13 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		cnt++;
 		totallen += linelen;
 		if ((cnt % 10 ) == 0)
-			cancel = pkg_emit_progress_tick(totallen, len);
+			cancel = pkg_emit_progress_tick(totallen, prc.manifest_len);
 		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
 		    &pkg, repo);
 		if (rc != EPKG_OK || cancel != 0)
 			break;
 	}
-	pkg_emit_progress_tick(len, len);
+	pkg_emit_progress_tick(prc.manifest_len, prc.manifest_len);
 
 	if (rc == EPKG_OK)
 		pkg_emit_incremental_update(repo->name, cnt);

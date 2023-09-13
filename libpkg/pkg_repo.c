@@ -681,56 +681,55 @@ out:
 }
 
 int
-pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, time_t *t, int *rc, size_t *sz)
+pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 {
-	int fd, dest_fd;
+	int fd;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
 	struct stat st;
+	int rc = EPKG_OK;
 
-	fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests, "pkg", t, rc, false);
+	fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests, "pkg", &prc->mtime, &rc, false);
 	if (fd == -1) {
-		if (*rc == EPKG_UPTODATE)
-			return (-1);
-		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
-		    packing_format_to_string(repo->meta->packing_format), t, rc, false);
+		if (rc == EPKG_UPTODATE)
+			return (rc);
+		prc->manifest_fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
+		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
 	}
 	if (fd == -1)
-		return (-1);
+		return (EPKG_FATAL);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
 	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, repo->meta->manifests);
 
-	dest_fd = mkstemp(tmp);
-	if (dest_fd == -1) {
+	prc->manifest_fd = mkstemp(tmp);
+	if (prc->manifest_fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 				"aborting update.\n", tmp);
 		close(fd);
-		*rc = EPKG_FATAL;
-		return (-1);
+		return (EPKG_FATAL);
 	}
 
 	(void)unlink(tmp);
-	if (pkg_repo_archive_extract_check_archive(fd, repo->meta->manifests, repo, dest_fd)
+	if (pkg_repo_archive_extract_check_archive(fd, repo->meta->manifests, repo, prc->manifest_fd)
 			!= EPKG_OK) {
-		*rc = EPKG_FATAL;
-		close(dest_fd);
+		close(prc->manifest_fd);
 		close(fd);
-		return (-1);
+		return (EPKG_FATAL);
 	}
 
 	/* Thus removing archived file as well */
 	close(fd);
-	if (fstat(dest_fd, &st) == -1) {
-		close(dest_fd);
-		return (-1);
+	if (fstat(prc->manifest_fd, &st) == -1) {
+		close(prc->manifest_fd);
+		return (EPKG_FATAL);
 	}
 
-	*sz = st.st_size;
+	prc->manifest_len = st.st_size;
 
-	return (dest_fd);
+	return (EPKG_OK);
 }
 
 struct pkg_repo_check_cbdata {
