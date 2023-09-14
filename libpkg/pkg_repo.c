@@ -693,7 +693,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content 
 	if (fd == -1) {
 		if (rc == EPKG_UPTODATE)
 			return (rc);
-		prc->manifest_fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
+		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
 		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
 	}
 	if (fd == -1)
