@@ -125,7 +125,7 @@ LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic \
 SRCS+=		pkg_macho.c
 @else
 SRCS+=		pkg_elf.c
-LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver \
+LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver,--undefined-version \
 @endif
 
 @if libelf-internal
