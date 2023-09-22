@@ -109,7 +109,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_fprintf(out->fp, "%n\tS\n", p, buf);
+			pkg_fprintf(out->fp, "%n\t%S\n", p, buf);
 		else
 			pkg_fprintf(out->fp, "%n has a missing requirement: %S\n",
 			    p, buf);
