@@ -1626,6 +1626,19 @@ int pkg_namecmp(struct pkg *, struct pkg *);
 void pkg_emit_error(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
 void pkg_emit_notice(const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(1, 2);
 
+/**
+ * Default implementation for handling the PKG_EVENT_SANDBOX_CALL event.
+ */
+int pkg_handle_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud);
+/**
+ * Default implementation for handling the PKG_EVENT_SANDBOX_GET_STRING event.
+ */
+int pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len, void *ud);
+/**
+ * A helper function that switches the process to the "nobody" user.
+ */
+void pkg_drop_privileges(void);
+
 struct pkg_create *pkg_create_new(void);
 void pkg_create_free(struct pkg_create *);
 bool pkg_create_set_format(struct pkg_create *, const char *);

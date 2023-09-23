@@ -277,8 +277,6 @@ void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
-void drop_privileges(void);
-
 extern xstring *messages;
 
 

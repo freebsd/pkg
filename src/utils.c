@@ -1029,24 +1029,6 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	return (displayed);
 }
 
-void
-drop_privileges(void)
-{
-	struct passwd *nobody;
-
-	if (geteuid() == 0) {
-		nobody = getpwnam("nobody");
-		if (nobody == NULL)
-			errx(EXIT_FAILURE, "Unable to drop privileges: no 'nobody' user");
-		setgroups(1, &nobody->pw_gid);
-		/* setgid also sets egid and setuid also sets euid */
-		if (setgid(nobody->pw_gid) == -1)
-			err(EXIT_FAILURE, "Unable to setgid");
-		if (setuid(nobody->pw_uid) == -1)
-			err(EXIT_FAILURE, "Unable to setuid");
-	}
-}
-
 int
 print_pkg(struct pkg *p, void *ctx)
 {
