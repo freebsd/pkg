@@ -61,6 +61,8 @@ global:
 	pkg_get_dir;
 	pkg_get_element;
 	pkg_get_file;
+	pkg_handle_sandboxed_call;
+	pkg_handle_sandboxed_get_string;
 	pkg_has_dir;
 	pkg_has_file;
 	pkg_has_message;

@@ -5,7 +5,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -267,7 +267,7 @@ exec_info(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
-		drop_privileges();
+		pkg_drop_privileges();
 #ifdef HAVE_CAPSICUM
 		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
 		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
@@ -319,7 +319,7 @@ exec_info(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EXIT_FAILURE);
 
-	drop_privileges();
+	pkg_drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");

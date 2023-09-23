@@ -3,7 +3,7 @@
  * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -367,7 +367,7 @@ exec_audit(int argc, char **argv)
 		}
 	}
 
-	drop_privileges();
+	pkg_drop_privileges();
 
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM
@@ -468,7 +468,7 @@ exec_audit(int argc, char **argv)
 			if (!quiet)
 				printf("%u problem(s) in %u installed package(s) found.\n",
 				   affected, vuln);
-	
+
 		} else {
 			ucl_object_insert_key(top, ucl_object_fromint(vuln), "pkg_count", 9, false );
 			ucl_object_insert_key(top, vuln_objs, "packages", 8, false);

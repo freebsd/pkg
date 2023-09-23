@@ -121,7 +121,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		return;
 	}
 
-	drop_privileges();
+	pkg_drop_privileges();
 
 #ifdef HAVE_CAPSICUM
 #ifndef PKG_COVERAGE
