@@ -1,3 +1,10 @@
+Changes from 1.20.6 to 1.20.7
+- improve sql traces in debug mode
+- fix autoremove issue leading to 100% of CPU consumed almost forever
+- Don't complain about Last-modified http header being absent in case the DL failed
+- Plug memory leaks in pkg autoremove
+- fix build with lld >= 17
+
 Changes from 1.20.5 to 1.20.6
 - fix duplicated rquery output
 - fix digest authentication support
