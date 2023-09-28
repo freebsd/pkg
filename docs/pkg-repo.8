@@ -171,7 +171,7 @@ set to a directory having a
 containing a fingerprint style representation of the public key:
 .Bd -literal -offset indent
 function: sha256
-fingerprint: sha256_representation_of_the_public_key
+fingerprint: \\"sha256_representation_of_the_public_key\\"
 .Ed
 .Pp
 See the
@@ -290,7 +290,7 @@ EOF
 # On package server:
 % pkg repo /usr/ports/packages signing_command: ssh signing-server sign.sh
 # Generate fingerprint for sharing with clients
-% sh -c '( echo "function: sha256"; echo "fingerprint: $(sha256 -q repo.pub)"; ) > fingerprint'
+% sh -c '( echo "function: sha256"; echo "fingerprint: \\"$(sha256 -q repo.pub)\\""; ) > fingerprint'
 # The 'fingerprint' file should be distributed to all clients.
 
 # On clients with FINGERPRINTS: /usr/local/etc/pkg/fingerprints/myrepo:
