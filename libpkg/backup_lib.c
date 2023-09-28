@@ -43,6 +43,7 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 	char *lpath;
 	struct stat st;
 	pkghash_entry *e;
+	int retcode;
 
 	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path), PKG_HASH_TYPE_SHA256_HEX);
 
@@ -83,8 +84,10 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 		if (fstatat(pkg->rootfd, RELATIVE_PATH(f->path), &st, AT_SYMLINK_NOFOLLOW) != -1)
 			pkg->flatsize += st.st_size;
 	}
-	pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg, 0, "backuplib"), "backuplib");
-	return (EPKG_OK);
+	retcode = pkgdb_register_pkg(db, pkg, 0, "backuplib");
+	if (retcode == EPKG_OK)
+		pkgdb_register_finale(db, EPKG_OK, "backuplib");
+	return (retcode);
 }
 
 void
