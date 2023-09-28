@@ -1204,9 +1204,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	if (db != NULL) {
 		rc = pkgdb_register_pkg(db, pkg, 0, NULL);
-
-		if (rc != EPKG_OK)
+		if (rc != EPKG_OK) {
+			db = NULL;
 			goto cleanup;
+		}
 	}
 
 	if (!testing) {

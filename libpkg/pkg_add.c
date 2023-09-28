@@ -1208,7 +1208,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct pkg_message	*msg;
 	struct pkg_file		*f;
 	const char		*msgstr;
-	bool			 extract = true;
+	bool			 extract = true, openxact = false;
 	int			 retcode = EPKG_OK;
 	int			 ret;
 	int			 nfiles;
@@ -1289,12 +1289,14 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 	}
 
-	/* register the package before installing it in case there are
-	 * problems that could be caught here. */
+	/*
+	 * Register the package before installing it in case there are problems
+	 * that could be caught here.
+	 */
 	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_FORCE, NULL);
-
 	if (retcode != EPKG_OK)
 		goto cleanup;
+	openxact = true;
 
 	/*
 	 * Execute pre-install scripts
@@ -1319,10 +1321,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
 			/* If the add failed, clean up (silently) */
-
 			pkg_rollback_pkg(pkg);
 			pkg_delete_dirs(db, pkg, NULL);
-			pkgdb_register_finale(db, retcode, NULL);
 			goto cleanup;
 		}
 	}
@@ -1347,6 +1347,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	retcode = pkg_extract_finalize(pkg, &tempdirs);
 
 	pkgdb_register_finale(db, retcode, NULL);
+	openxact = false;
+
 	/*
 	 * Execute post install scripts
 	 */
@@ -1413,6 +1415,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 cleanup:
+	if (openxact)
+		pkgdb_register_finale(db, retcode, NULL);
 	if (a != NULL) {
 		archive_read_close(a);
 		archive_read_free(a);

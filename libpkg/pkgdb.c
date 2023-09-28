@@ -1587,6 +1587,11 @@ prstmt_finalize(struct pkgdb *db)
 	return;
 }
 
+/*
+ * Register a package in the database.  If successful, the caller is required to
+ * call pkgdb_register_finale() in order to either commit or roll back the
+ * transaction.  Otherwise, the caller does not need to do any extra cleanup.
+ */
 int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
     const char *savepoint)
@@ -1889,8 +1894,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 
 	retcode = EPKG_OK;
 
-	cleanup:
-
+cleanup:
+	if (retcode != EPKG_OK)
+		(void)pkgdb_transaction_rollback_sqlite(s, savepoint);
 	free(msg);
 
 	return (retcode);
@@ -2221,7 +2227,9 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	return (rows_changed == 1 ? EPKG_OK : EPKG_WARN);
 }
 
-
+/*
+ * Complete a transaction started by pkgdb_register_pkg().
+ */
 int
 pkgdb_register_finale(struct pkgdb *db, int retcode, const char *savepoint)
 {
@@ -2245,11 +2253,10 @@ pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
 	pkg_emit_install_begin(pkg);
 
 	ret = pkgdb_register_pkg(db, pkg, 0, NULL);
-	if (ret == EPKG_OK)
+	if (ret == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
-
-	pkgdb_register_finale(db, ret, NULL);
-
+		pkgdb_register_finale(db, ret, NULL);
+	}
 	return (ret);
 }
 
