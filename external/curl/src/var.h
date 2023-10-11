@@ -1,5 +1,5 @@
-#ifndef HEADER_CURL_GSKIT_H
-#define HEADER_CURL_GSKIT_H
+#ifndef HEADER_CURL_VAR_H
+#define HEADER_CURL_VAR_H
 /***************************************************************************
  *                                  _   _ ____  _
  *  Project                     ___| | | |  _ \| |
@@ -23,18 +23,25 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curl_setup.h"
 
-/*
- * This header should only be needed to get included by vtls.c and gskit.c
- */
+#include "tool_getparam.h"
+#include "dynbuf.h"
 
-#include "urldata.h"
+struct var {
+  struct var *next;
+  const char *name;
+  const char *content;
+  size_t clen; /* content length */
+};
 
-#ifdef USE_GSKIT
+struct GlobalConfig;
 
-extern const struct Curl_ssl Curl_ssl_gskit;
+ParameterError setvariable(struct GlobalConfig *global, const char *input);
+ParameterError varexpand(struct GlobalConfig *global,
+                         const char *line, struct curlx_dynbuf *out,
+                         bool *replaced);
 
-#endif /* USE_GSKIT */
+/* free everything */
+void varcleanup(struct GlobalConfig *global);
 
-#endif /* HEADER_CURL_GSKIT_H */
+#endif /* HEADER_CURL_VAR_H */

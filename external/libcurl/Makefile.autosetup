@@ -23,14 +23,15 @@ SRCS=	\
 	cookie.c \
 	curl_addrinfo.c \
 	curl_get_line.c \
-	curl_log.c \
 	curl_threads.c \
+	curl_trc.c \
 	dynbuf.c \
 	easy.c \
 	easygetopt.c \
 	easyoptions.c \
 	escape.c \
 	fopen.c \
+	formdata.c \
 	getenv.c \
 	getinfo.c \
 	hash.c \
@@ -46,6 +47,7 @@ SRCS=	\
 	idn.c \
 	if2ip.c \
 	llist.c \
+	mime.c \
 	mprintf.c \
 	multi.c \
 	netrc.c \

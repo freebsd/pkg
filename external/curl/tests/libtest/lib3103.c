@@ -1,5 +1,3 @@
-#ifndef HEADER_CURL_NSSG_H
-#define HEADER_CURL_NSSG_H
 /***************************************************************************
  *                                  _   _ ____  _
  *  Project                     ___| | | |  _ \| |
@@ -23,19 +21,46 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curl_setup.h"
+#include "test.h"
 
-#ifdef USE_NSS
-/*
- * This header should only be needed to get included by vtls.c and nss.c
- */
+#include "memdebug.h"
 
-#include "urldata.h"
+int test(char *URL)
+{
+  CURLcode res = CURLE_OK;
+  CURLSH *share;
+  CURL *curl;
 
-/* initialize NSS library if not already */
-CURLcode Curl_nss_force_init(struct Curl_easy *data);
+  curl_global_init(CURL_GLOBAL_ALL);
 
-extern const struct Curl_ssl Curl_ssl_nss;
+  share = curl_share_init();
+  curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
 
-#endif /* USE_NSS */
-#endif /* HEADER_CURL_NSSG_H */
+  curl = curl_easy_init();
+  test_setopt(curl, CURLOPT_SHARE, share);
+
+  test_setopt(curl, CURLOPT_VERBOSE, 1L);
+  test_setopt(curl, CURLOPT_HEADER, 1L);
+  test_setopt(curl, CURLOPT_PROXY, URL);
+  test_setopt(curl, CURLOPT_URL, "http://localhost/");
+
+  test_setopt(curl, CURLOPT_COOKIEFILE, "");
+
+  /* Set a cookie without Max-age or Expires */
+  test_setopt(curl, CURLOPT_COOKIELIST, "Set-Cookie: c1=v1; domain=localhost");
+
+  res = curl_easy_perform(curl);
+  if(res) {
+    fprintf(stderr, "curl_easy_perform() failed: %s\n",
+            curl_easy_strerror(res));
+  }
+
+test_cleanup:
+
+  /* always cleanup */
+  curl_easy_cleanup(curl);
+    curl_share_cleanup(share);
+  curl_global_cleanup();
+
+  return (int)res;
+}

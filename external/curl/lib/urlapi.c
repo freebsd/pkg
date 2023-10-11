@@ -100,7 +100,7 @@ static void free_urlhandle(struct Curl_URL *u)
 
 /*
  * Find the separator at the end of the host name, or the '?' in cases like
- * http://www.url.com?id=2380
+ * http://www.example.com?id=2380
  */
 static const char *find_host_sep(const char *url)
 {
@@ -338,7 +338,7 @@ static char *concat_url(char *base, const char *relurl)
       pathsep = strchr(protsep, '/');
       if(pathsep) {
         /* When people use badly formatted URLs, such as
-           "http://www.url.com?dir=/home/daniel" we must not use the first
+           "http://www.example.com?dir=/home/daniel" we must not use the first
            slash, if there's a ?-letter before it! */
         char *sep = strchr(protsep, '?');
         if(sep && (sep < pathsep))
@@ -347,9 +347,9 @@ static char *concat_url(char *base, const char *relurl)
       }
       else {
         /* There was no slash. Now, since we might be operating on a badly
-           formatted URL, such as "http://www.url.com?id=2380" which doesn't
-           use a slash separator as it is supposed to, we need to check for a
-           ?-letter as well! */
+           formatted URL, such as "http://www.example.com?id=2380" which
+           doesn't use a slash separator as it is supposed to, we need to check
+           for a ?-letter as well! */
         pathsep = strchr(protsep, '?');
         if(pathsep)
           *pathsep = 0;
@@ -1109,6 +1109,7 @@ static CURLUcode parseurl(const char *url, CURLU *u, unsigned int flags)
     if('/' == path[0] && STARTS_WITH_URL_DRIVE_PREFIX(&path[1])) {
       /* This cannot be done with strcpy, as the memory chunks overlap! */
       path++;
+      pathlen--;
     }
 #endif
 
@@ -1384,6 +1385,7 @@ CURLU *curl_url_dup(const CURLU *in)
     DUP(u, in, path);
     DUP(u, in, query);
     DUP(u, in, fragment);
+    DUP(u, in, zoneid);
     u->portnum = in->portnum;
   }
   return u;
@@ -1401,6 +1403,7 @@ CURLUcode curl_url_get(const CURLU *u, CURLUPart what,
   bool urldecode = (flags & CURLU_URLDECODE)?1:0;
   bool urlencode = (flags & CURLU_URLENCODE)?1:0;
   bool punycode = FALSE;
+  bool depunyfy = FALSE;
   bool plusdecode = FALSE;
   (void)flags;
   if(!u)
@@ -1431,6 +1434,7 @@ CURLUcode curl_url_get(const CURLU *u, CURLUPart what,
     ptr = u->host;
     ifmissing = CURLUE_NO_HOST;
     punycode = (flags & CURLU_PUNYCODE)?1:0;
+    depunyfy = (flags & CURLU_PUNY2IDN)?1:0;
     break;
   case CURLUPART_ZONEID:
     ptr = u->zoneid;
@@ -1481,6 +1485,7 @@ CURLUcode curl_url_get(const CURLU *u, CURLUPart what,
     char *port = u->port;
     char *allochost = NULL;
     punycode = (flags & CURLU_PUNYCODE)?1:0;
+    depunyfy = (flags & CURLU_PUNY2IDN)?1:0;
     if(u->scheme && strcasecompare("file", u->scheme)) {
       url = aprintf("file://%s%s%s",
                     u->path,
@@ -1540,9 +1545,23 @@ CURLUcode curl_url_get(const CURLU *u, CURLUPart what,
 #ifndef USE_IDN
           return CURLUE_LACKS_IDN;
 #else
-          allochost = Curl_idn_decode(u->host);
-          if(!allochost)
-            return CURLUE_OUT_OF_MEMORY;
+          CURLcode result = Curl_idn_decode(u->host, &allochost);
+          if(result)
+            return (result == CURLE_OUT_OF_MEMORY) ?
+              CURLUE_OUT_OF_MEMORY : CURLUE_BAD_HOSTNAME;
+#endif
+        }
+      }
+      else if(depunyfy) {
+        if(Curl_is_ASCII_name(u->host) && !strncmp("xn--", u->host, 4)) {
+#ifndef USE_IDN
+          return CURLUE_LACKS_IDN;
+#else
+          CURLcode result = Curl_idn_encode(u->host, &allochost);
+          if(result)
+            /* this is the most likely error */
+            return (result == CURLE_OUT_OF_MEMORY) ?
+              CURLUE_OUT_OF_MEMORY : CURLUE_BAD_HOSTNAME;
 #endif
         }
       }
@@ -1616,9 +1635,26 @@ CURLUcode curl_url_get(const CURLU *u, CURLUPart what,
 #ifndef USE_IDN
         return CURLUE_LACKS_IDN;
 #else
-        char *allochost = Curl_idn_decode(*part);
-        if(!allochost)
-          return CURLUE_OUT_OF_MEMORY;
+        char *allochost;
+        CURLcode result = Curl_idn_decode(*part, &allochost);
+        if(result)
+          return (result == CURLE_OUT_OF_MEMORY) ?
+            CURLUE_OUT_OF_MEMORY : CURLUE_BAD_HOSTNAME;
+        free(*part);
+        *part = allochost;
+#endif
+      }
+    }
+    else if(depunyfy) {
+      if(Curl_is_ASCII_name(u->host)  && !strncmp("xn--", u->host, 4)) {
+#ifndef USE_IDN
+        return CURLUE_LACKS_IDN;
+#else
+        char *allochost;
+        CURLcode result = Curl_idn_encode(*part, &allochost);
+        if(result)
+          return (result == CURLE_OUT_OF_MEMORY) ?
+            CURLUE_OUT_OF_MEMORY : CURLUE_BAD_HOSTNAME;
         free(*part);
         *part = allochost;
 #endif
@@ -1780,6 +1816,10 @@ CURLUcode curl_url_set(CURLU *u, CURLUPart what,
     char *oldurl;
     char *redired_url;
 
+    if(!nalloc)
+      /* a blank URL is not a valid URL */
+      return CURLUE_MALFORMED_INPUT;
+
     /* if the new thing is absolute or the old one is not
      * (we could not get an absolute url in 'oldurl'),
      * then replace the existing with the new. */
@@ -1825,7 +1865,7 @@ CURLUcode curl_url_set(CURLU *u, CURLUPart what,
           if(result)
             return CURLUE_OUT_OF_MEMORY;
         }
-        else if(Curl_isunreserved(*i) ||
+        else if(ISUNRESERVED(*i) ||
                 ((*i == '/') && urlskipslash) ||
                 ((*i == '=') && equalsencode)) {
           if((*i == '=') && equalsencode)

@@ -158,8 +158,8 @@ static CURLcode global_init(long flags, bool memoryfuncs)
 #endif
   }
 
-  if(Curl_log_init()) {
-    DEBUGF(fprintf(stderr, "Error: Curl_log_init failed\n"));
+  if(Curl_trc_init()) {
+    DEBUGF(fprintf(stderr, "Error: Curl_trc_init failed\n"));
     goto fail;
   }
 
@@ -168,19 +168,15 @@ static CURLcode global_init(long flags, bool memoryfuncs)
     goto fail;
   }
 
-#ifdef WIN32
   if(Curl_win32_init(flags)) {
     DEBUGF(fprintf(stderr, "Error: win32_init failed\n"));
     goto fail;
   }
-#endif
 
-#ifdef __AMIGA__
   if(Curl_amiga_init()) {
     DEBUGF(fprintf(stderr, "Error: Curl_amiga_init failed\n"));
     goto fail;
   }
-#endif
 
   if(Curl_macos_init()) {
     DEBUGF(fprintf(stderr, "Error: Curl_macos_init failed\n"));
@@ -307,9 +303,6 @@ void curl_global_cleanup(void)
 
   Curl_ssh_cleanup();
 
-#ifdef USE_WOLFSSH
-  (void)wolfSSH_Cleanup();
-#endif
 #ifdef DEBUGBUILD
   free(leakpointer);
 #endif
@@ -317,6 +310,26 @@ void curl_global_cleanup(void)
   easy_init_flags = 0;
 
   global_init_unlock();
+}
+
+/**
+ * curl_global_trace() globally initializes curl logging.
+ */
+CURLcode curl_global_trace(const char *config)
+{
+#ifndef CURL_DISABLE_VERBOSE_STRINGS
+  CURLcode result;
+  global_init_lock();
+
+  result = Curl_trc_opt(config);
+
+  global_init_unlock();
+
+  return result;
+#else
+  (void)config;
+  return CURLE_OK;
+#endif
 }
 
 /*
@@ -699,7 +712,7 @@ static CURLcode easy_transfer(struct Curl_multi *multi)
  *
  * REALITY: it can't just create and destroy the multi handle that easily. It
  * needs to keep it around since if this easy handle is used again by this
- * function, the same multi handle must be re-used so that the same pools and
+ * function, the same multi handle must be reused so that the same pools and
  * caches can be used.
  *
  * DEBUG: if 'events' is set TRUE, this function will use a replacement engine
@@ -909,9 +922,7 @@ struct Curl_easy *curl_easy_duphandle(struct Curl_easy *data)
   if(data->cookies) {
     /* If cookies are enabled in the parent handle, we enable them
        in the clone as well! */
-    outcurl->cookies = Curl_cookie_init(data,
-                                        data->cookies->filename,
-                                        outcurl->cookies,
+    outcurl->cookies = Curl_cookie_init(data, NULL, outcurl->cookies,
                                         data->set.cookiesession);
     if(!outcurl->cookies)
       goto fail;
@@ -1048,7 +1059,7 @@ void curl_easy_reset(struct Curl_easy *data)
   memset(&data->state.authhost, 0, sizeof(struct auth));
   memset(&data->state.authproxy, 0, sizeof(struct auth));
 
-#if !defined(CURL_DISABLE_HTTP) && !defined(CURL_DISABLE_CRYPTO_AUTH)
+#if !defined(CURL_DISABLE_HTTP) && !defined(CURL_DISABLE_DIGEST_AUTH)
   Curl_http_auth_cleanup_digest(data);
 #endif
 }
@@ -1072,11 +1083,14 @@ CURLcode curl_easy_pause(struct Curl_easy *data, int action)
   CURLcode result = CURLE_OK;
   int oldstate;
   int newstate;
+  bool recursive = FALSE;
 
   if(!GOOD_EASY_HANDLE(data) || !data->conn)
     /* crazy input, don't continue */
     return CURLE_BAD_FUNCTION_ARGUMENT;
 
+  if(Curl_is_in_callback(data))
+    recursive = TRUE;
   k = &data->req;
   oldstate = k->keepon & (KEEP_RECV_PAUSE| KEEP_SEND_PAUSE);
 
@@ -1104,34 +1118,9 @@ CURLcode curl_easy_pause(struct Curl_easy *data, int action)
 
   if(!(newstate & KEEP_RECV_PAUSE)) {
     Curl_conn_ev_data_pause(data, FALSE);
-
-    if(data->state.tempcount) {
-      /* there are buffers for sending that can be delivered as the receive
-         pausing is lifted! */
-      unsigned int i;
-      unsigned int count = data->state.tempcount;
-      struct tempbuf writebuf[3]; /* there can only be three */
-
-      /* copy the structs to allow for immediate re-pausing */
-      for(i = 0; i < data->state.tempcount; i++) {
-        writebuf[i] = data->state.tempwrite[i];
-        Curl_dyn_init(&data->state.tempwrite[i].b, DYN_PAUSE_BUFFER);
-      }
-      data->state.tempcount = 0;
-
-      for(i = 0; i < count; i++) {
-        /* even if one function returns error, this loops through and frees
-           all buffers */
-        if(!result)
-          result = Curl_client_write(data, writebuf[i].type,
-                                     Curl_dyn_ptr(&writebuf[i].b),
-                                     Curl_dyn_len(&writebuf[i].b));
-        Curl_dyn_free(&writebuf[i].b);
-      }
-
-      if(result)
-        return result;
-    }
+    result = Curl_client_unpause(data);
+    if(result)
+      return result;
   }
 
 #ifdef USE_HYPER
@@ -1167,6 +1156,11 @@ CURLcode curl_easy_pause(struct Curl_easy *data, int action)
     /* This transfer may have been moved in or out of the bundle, update the
        corresponding socket callback, if used */
     result = Curl_updatesocket(data);
+
+  if(recursive)
+    /* this might have called a callback recursively which might have set this
+       to false again on exit */
+    Curl_set_in_callback(data, TRUE);
 
   return result;
 }

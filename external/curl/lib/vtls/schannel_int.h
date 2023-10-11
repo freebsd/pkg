@@ -28,20 +28,31 @@
 
 #ifdef USE_SCHANNEL
 
-#ifdef __MINGW32__
-#ifdef __MINGW64_VERSION_MAJOR
+#if defined(__MINGW32__) || defined(CERT_CHAIN_REVOCATION_CHECK_CHAIN)
 #define HAS_MANUAL_VERIFY_API
-#endif
-#else
-#ifdef CERT_CHAIN_REVOCATION_CHECK_CHAIN
-#define HAS_MANUAL_VERIFY_API
-#endif
 #endif
 
 #if defined(CryptStringToBinary) && defined(CRYPT_STRING_HEX)   \
   && !defined(DISABLE_SCHANNEL_CLIENT_CERT)
 #define HAS_CLIENT_CERT_PATH
 #endif
+
+#ifndef CRYPT_DECODE_NOCOPY_FLAG
+#define CRYPT_DECODE_NOCOPY_FLAG 0x1
+#endif
+
+#ifndef CRYPT_DECODE_ALLOC_FLAG
+#define CRYPT_DECODE_ALLOC_FLAG 0x8000
+#endif
+
+#ifndef CERT_ALT_NAME_DNS_NAME
+#define CERT_ALT_NAME_DNS_NAME 3
+#endif
+
+#ifndef CERT_ALT_NAME_IP_ADDRESS
+#define CERT_ALT_NAME_IP_ADDRESS 8
+#endif
+
 
 #ifndef SCH_CREDENTIALS_VERSION
 

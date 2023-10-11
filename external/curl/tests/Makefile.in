@@ -119,7 +119,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
 	$(top_srcdir)/m4/curl-gnutls.m4 \
-	$(top_srcdir)/m4/curl-mbedtls.m4 $(top_srcdir)/m4/curl-nss.m4 \
+	$(top_srcdir)/m4/curl-mbedtls.m4 \
 	$(top_srcdir)/m4/curl-openssl.m4 \
 	$(top_srcdir)/m4/curl-override.m4 \
 	$(top_srcdir)/m4/curl-reentrant.m4 \
@@ -329,7 +329,6 @@ MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
 NROFF = @NROFF@
-NSS_LIBS = @NSS_LIBS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OTOOL = @OTOOL@
@@ -376,7 +375,6 @@ USE_NGTCP2 = @USE_NGTCP2@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
 USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
-USE_NSS = @USE_NSS@
 USE_OPENLDAP = @USE_OPENLDAP@
 USE_QUICHE = @USE_QUICHE@
 USE_RUSTLS = @USE_RUSTLS@
@@ -458,7 +456,7 @@ EXTRA_DIST = appveyor.pm azure.pm badsymbols.pl check-deprecated.pl CMakeLists.t
  pathhelp.pm README.md rtspserver.pl runner.pm runtests.1 runtests.pl secureserver.pl \
  serverhelp.pm servers.pm smbserver.py sshhelp.pm sshserver.pl stunnel.pem symbol-scan.pl \
  testcurl.1 testcurl.pl testutil.pm tftpserver.pl util.py valgrind.pm \
- valgrind.supp version-scan.pl
+ valgrind.supp version-scan.pl check-translatable-options.pl
 
 DISTCLEANFILES = configurehelp.pm
 @BUILD_UNITTESTS_FALSE@BUILD_UNIT = 
@@ -482,8 +480,9 @@ MAN2HTML = roffit $< >$@
 @CROSSCOMPILING_FALSE@TEST_T = -a -t
 @CROSSCOMPILING_FALSE@TEST_E = -a -e
 
-# !flaky means that it'll skip all tests using the flaky keyword
-@CROSSCOMPILING_FALSE@TEST_NF = -a -p !flaky
+# ~<keyword> means that it will run all tests matching the keyword, but will
+# ignore their results (since these ones are likely to fail for no good reason)
+@CROSSCOMPILING_FALSE@TEST_NF = -a -p ~flaky ~timing-dependent
 
 # special CI target derived from nonflaky with CI-specific flags
 @CROSSCOMPILING_FALSE@TEST_CI = $(TEST_NF) -rm
@@ -849,10 +848,10 @@ event-test: perlcheck all
 	echo "converted $< to $@")
 
 checksrc:
-	cd libtest && $(MAKE) checksrc
-	cd unit && $(MAKE) checksrc
-	cd server && $(MAKE) checksrc
-	cd http && $(MAKE) checksrc
+	(cd libtest && $(MAKE) checksrc)
+	(cd unit && $(MAKE) checksrc)
+	(cd server && $(MAKE) checksrc)
+	(cd http && $(MAKE) checksrc)
 
 # for debug builds, we scan the sources on all regular make invokes
 @CURLDEBUG_TRUE@all-local: checksrc

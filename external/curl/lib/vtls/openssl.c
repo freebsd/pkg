@@ -190,11 +190,12 @@
  * Whether SSL_CTX_set_keylog_callback is available.
  * OpenSSL: supported since 1.1.1 https://github.com/openssl/openssl/pull/2287
  * BoringSSL: supported since d28f59c27bac (committed 2015-11-19)
- * LibreSSL: unsupported in at least 2.7.2 (explicitly check for it since it
- *           lies and pretends to be OpenSSL 2.0.0).
+ * LibreSSL: supported since 3.5.0 (released 2022-02-24)
  */
 #if (OPENSSL_VERSION_NUMBER >= 0x10101000L && \
      !defined(LIBRESSL_VERSION_NUMBER)) || \
+    (defined(LIBRESSL_VERSION_NUMBER) && \
+     LIBRESSL_VERSION_NUMBER >= 0x3050000fL) || \
     defined(OPENSSL_IS_BORINGSSL)
 #define HAVE_KEYLOG_CALLBACK
 #endif
@@ -202,11 +203,13 @@
 /* Whether SSL_CTX_set_ciphersuites is available.
  * OpenSSL: supported since 1.1.1 (commit a53b5be6a05)
  * BoringSSL: no
- * LibreSSL: no
+ * LibreSSL: supported since 3.4.1 (released 2021-10-14)
  */
-#if ((OPENSSL_VERSION_NUMBER >= 0x10101000L) && \
-     !defined(LIBRESSL_VERSION_NUMBER) &&       \
-     !defined(OPENSSL_IS_BORINGSSL))
+#if ((OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+      !defined(LIBRESSL_VERSION_NUMBER)) || \
+     (defined(LIBRESSL_VERSION_NUMBER) && \
+      LIBRESSL_VERSION_NUMBER >= 0x3040100fL)) && \
+    !defined(OPENSSL_IS_BORINGSSL)
   #define HAVE_SSL_CTX_SET_CIPHERSUITES
   #if !defined(OPENSSL_IS_AWSLC)
     #define HAVE_SSL_CTX_SET_POST_HANDSHAKE_AUTH
@@ -266,7 +269,7 @@
 #define HAVE_OPENSSL_VERSION
 #endif
 
-#ifdef OPENSSL_IS_BORINGSSL
+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
 typedef uint32_t sslerr_t;
 #else
 typedef unsigned long sslerr_t;
@@ -463,7 +466,9 @@ CURLcode Curl_ossl_certchain(struct Curl_easy *data, SSL *ssl)
 
       X509_get0_signature(&psig, &sigalg, x);
       if(sigalg) {
-        i2a_ASN1_OBJECT(mem, sigalg->algorithm);
+        const ASN1_OBJECT *sigalgoid = NULL;
+        X509_ALGOR_get0(&sigalgoid, NULL, NULL, sigalg);
+        i2a_ASN1_OBJECT(mem, sigalgoid);
         push_certinfo("Signature Algorithm", i);
       }
 
@@ -658,7 +663,7 @@ CURLcode Curl_ossl_certchain(struct Curl_easy *data, SSL *ssl)
 #define BIO_set_shutdown(x,v)      ((x)->shutdown=(v))
 #endif /* USE_PRE_1_1_API */
 
-static int bio_cf_create(BIO *bio)
+static int ossl_bio_cf_create(BIO *bio)
 {
   BIO_set_shutdown(bio, 1);
   BIO_set_init(bio, 1);
@@ -669,14 +674,14 @@ static int bio_cf_create(BIO *bio)
   return 1;
 }
 
-static int bio_cf_destroy(BIO *bio)
+static int ossl_bio_cf_destroy(BIO *bio)
 {
   if(!bio)
     return 0;
   return 1;
 }
 
-static long bio_cf_ctrl(BIO *bio, int cmd, long num, void *ptr)
+static long ossl_bio_cf_ctrl(BIO *bio, int cmd, long num, void *ptr)
 {
   struct Curl_cfilter *cf = BIO_get_data(bio);
   long ret = 1;
@@ -710,7 +715,7 @@ static long bio_cf_ctrl(BIO *bio, int cmd, long num, void *ptr)
   return ret;
 }
 
-static int bio_cf_out_write(BIO *bio, const char *buf, int blen)
+static int ossl_bio_cf_out_write(BIO *bio, const char *buf, int blen)
 {
   struct Curl_cfilter *cf = BIO_get_data(bio);
   struct ssl_connect_data *connssl = cf->ctx;
@@ -722,8 +727,8 @@ static int bio_cf_out_write(BIO *bio, const char *buf, int blen)
 
   DEBUGASSERT(data);
   nwritten = Curl_conn_cf_send(cf->next, data, buf, blen, &result);
-  DEBUGF(LOG_CF(data, cf, "bio_cf_out_write(len=%d) -> %d, err=%d",
-                blen, (int)nwritten, result));
+  CURL_TRC_CF(data, cf, "ossl_bio_cf_out_write(len=%d) -> %d, err=%d",
+              blen, (int)nwritten, result);
   BIO_clear_retry_flags(bio);
   backend->io_result = result;
   if(nwritten < 0) {
@@ -733,7 +738,7 @@ static int bio_cf_out_write(BIO *bio, const char *buf, int blen)
   return (int)nwritten;
 }
 
-static int bio_cf_in_read(BIO *bio, char *buf, int blen)
+static int ossl_bio_cf_in_read(BIO *bio, char *buf, int blen)
 {
   struct Curl_cfilter *cf = BIO_get_data(bio);
   struct ssl_connect_data *connssl = cf->ctx;
@@ -749,8 +754,8 @@ static int bio_cf_in_read(BIO *bio, char *buf, int blen)
     return 0;
 
   nread = Curl_conn_cf_recv(cf->next, data, buf, blen, &result);
-  DEBUGF(LOG_CF(data, cf, "bio_cf_in_read(len=%d) -> %d, err=%d",
-                blen, (int)nread, result));
+  CURL_TRC_CF(data, cf, "ossl_bio_cf_in_read(len=%d) -> %d, err=%d",
+              blen, (int)nread, result);
   BIO_clear_retry_flags(bio);
   backend->io_result = result;
   if(nread < 0) {
@@ -774,42 +779,42 @@ static int bio_cf_in_read(BIO *bio, char *buf, int blen)
 
 #if USE_PRE_1_1_API
 
-static BIO_METHOD bio_cf_meth_1_0 = {
+static BIO_METHOD ossl_bio_cf_meth_1_0 = {
   BIO_TYPE_MEM,
   "OpenSSL CF BIO",
-  bio_cf_out_write,
-  bio_cf_in_read,
+  ossl_bio_cf_out_write,
+  ossl_bio_cf_in_read,
   NULL,                    /* puts is never called */
   NULL,                    /* gets is never called */
-  bio_cf_ctrl,
-  bio_cf_create,
-  bio_cf_destroy,
+  ossl_bio_cf_ctrl,
+  ossl_bio_cf_create,
+  ossl_bio_cf_destroy,
   NULL
 };
 
-static BIO_METHOD *bio_cf_method_create(void)
+static BIO_METHOD *ossl_bio_cf_method_create(void)
 {
-  return &bio_cf_meth_1_0;
+  return &ossl_bio_cf_meth_1_0;
 }
 
-#define bio_cf_method_free(m) Curl_nop_stmt
+#define ossl_bio_cf_method_free(m) Curl_nop_stmt
 
 #else
 
-static BIO_METHOD *bio_cf_method_create(void)
+static BIO_METHOD *ossl_bio_cf_method_create(void)
 {
   BIO_METHOD *m = BIO_meth_new(BIO_TYPE_MEM, "OpenSSL CF BIO");
   if(m) {
-    BIO_meth_set_write(m, &bio_cf_out_write);
-    BIO_meth_set_read(m, &bio_cf_in_read);
-    BIO_meth_set_ctrl(m, &bio_cf_ctrl);
-    BIO_meth_set_create(m, &bio_cf_create);
-    BIO_meth_set_destroy(m, &bio_cf_destroy);
+    BIO_meth_set_write(m, &ossl_bio_cf_out_write);
+    BIO_meth_set_read(m, &ossl_bio_cf_in_read);
+    BIO_meth_set_ctrl(m, &ossl_bio_cf_ctrl);
+    BIO_meth_set_create(m, &ossl_bio_cf_create);
+    BIO_meth_set_destroy(m, &ossl_bio_cf_destroy);
   }
   return m;
 }
 
-static void bio_cf_method_free(BIO_METHOD *m)
+static void ossl_bio_cf_method_free(BIO_METHOD *m)
 {
   if(m)
     BIO_meth_free(m);
@@ -994,20 +999,6 @@ static CURLcode ossl_seed(struct Curl_easy *data)
   RAND_load_file(RANDOM_FILE, RAND_LOAD_LENGTH);
   if(rand_enough())
     return CURLE_OK;
-#endif
-
-#if defined(HAVE_RAND_EGD) && defined(EGD_SOCKET)
-  /* available in OpenSSL 0.9.5 and later */
-  /* EGD_SOCKET is set at configure time or not at all */
-  {
-    /* If there's an option and a define, the option overrides the
-       define */
-    int ret = RAND_egd(EGD_SOCKET);
-    if(-1 != ret) {
-      if(rand_enough())
-        return CURLE_OK;
-    }
-  }
 #endif
 
   /* fallback to a custom seeding of the PRNG using a hash based on a current
@@ -1562,11 +1553,9 @@ fail:
         UI_method_set_closer(ui_method, UI_method_get_closer(UI_OpenSSL()));
         UI_method_set_reader(ui_method, ssl_ui_reader);
         UI_method_set_writer(ui_method, ssl_ui_writer);
-        /* the typecast below was added to please mingw32 */
-        priv_key = (EVP_PKEY *)
-          ENGINE_load_private_key(data->state.engine, key_file,
-                                  ui_method,
-                                  key_passwd);
+        priv_key = ENGINE_load_private_key(data->state.engine, key_file,
+                                           ui_method,
+                                           key_passwd);
         UI_destroy_method(ui_method);
         if(!priv_key) {
           failf(data, "failed to load private key from crypto engine");
@@ -1705,7 +1694,7 @@ static int x509_name_oneline(X509_NAME *a, char *buf, size_t size)
 static int ossl_init(void)
 {
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L) &&  \
-  !defined(LIBRESSL_VERSION_NUMBER)
+  (!defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER >= 0x2070000fL)
   const uint64_t flags =
 #ifdef OPENSSL_INIT_ENGINE_ALL_BUILTIN
     /* not present in BoringSSL */
@@ -1889,12 +1878,45 @@ static void ossl_close(struct Curl_cfilter *cf, struct Curl_easy *data)
 
   if(backend->handle) {
     if(cf->next && cf->next->connected) {
-      char buf[32];
+      char buf[1024];
+      int nread, err;
+      long sslerr;
+
       /* Maybe the server has already sent a close notify alert.
          Read it to avoid an RST on the TCP connection. */
       (void)SSL_read(backend->handle, buf, (int)sizeof(buf));
+      ERR_clear_error();
+      if(SSL_shutdown(backend->handle) == 1) {
+        CURL_TRC_CF(data, cf, "SSL shutdown finished");
+      }
+      else {
+        nread = SSL_read(backend->handle, buf, (int)sizeof(buf));
+        err = SSL_get_error(backend->handle, nread);
+        switch(err) {
+        case SSL_ERROR_NONE: /* this is not an error */
+        case SSL_ERROR_ZERO_RETURN: /* no more data */
+          CURL_TRC_CF(data, cf, "SSL shutdown, EOF from server");
+          break;
+        case SSL_ERROR_WANT_READ:
+          /* SSL has send its notify and now wants to read the reply
+           * from the server. We are not really interested in that. */
+          CURL_TRC_CF(data, cf, "SSL shutdown sent");
+          break;
+        case SSL_ERROR_WANT_WRITE:
+          CURL_TRC_CF(data, cf, "SSL shutdown send blocked");
+          break;
+        default:
+          sslerr = ERR_get_error();
+          CURL_TRC_CF(data, cf, "SSL shutdown, error: '%s', errno %d",
+                      (sslerr ?
+                       ossl_strerror(sslerr, buf, sizeof(buf)) :
+                       SSL_ERROR_to_str(err)),
+                      SOCKERRNO);
+          break;
+        }
+      }
 
-      (void)SSL_shutdown(backend->handle);
+      ERR_clear_error();
       SSL_set_connect_state(backend->handle);
     }
 
@@ -1907,7 +1929,7 @@ static void ossl_close(struct Curl_cfilter *cf, struct Curl_easy *data)
     backend->x509_store_setup = FALSE;
   }
   if(backend->bio_method) {
-    bio_cf_method_free(backend->bio_method);
+    ossl_bio_cf_method_free(backend->bio_method);
     backend->bio_method = NULL;
   }
 }
@@ -2320,7 +2342,11 @@ static CURLcode verifystatus(struct Curl_cfilter *cf,
 {
   struct ssl_connect_data *connssl = cf->ctx;
   int i, ocsp_status;
+#if defined(OPENSSL_IS_AWSLC)
+  const uint8_t *status;
+#else
   unsigned char *status;
+#endif
   const unsigned char *p;
   CURLcode result = CURLE_OK;
   OCSP_RESPONSE *rsp = NULL;
@@ -2418,7 +2444,7 @@ static CURLcode verifystatus(struct Curl_cfilter *cf,
     goto end;
   }
 
-  for(i = 0; i < sk_X509_num(ch); i++) {
+  for(i = 0; i < (int)sk_X509_num(ch); i++) {
     X509 *issuer = sk_X509_value(ch, i);
     if(X509_check_issued(issuer, cert) == X509_V_OK) {
       id = OCSP_cert_to_id(EVP_sha1(), cert, issuer);
@@ -3716,6 +3742,15 @@ static CURLcode ossl_connect_step1(struct Curl_cfilter *cf,
 
   /* give application a chance to interfere with SSL set up. */
   if(data->set.ssl.fsslctx) {
+    /* When a user callback is installed to modify the SSL_CTX,
+     * we need to do the full initialization before calling it.
+     * See: #11800 */
+    if(!backend->x509_store_setup) {
+      result = Curl_ssl_setup_x509_store(cf, data, backend->ctx);
+      if(result)
+        return result;
+      backend->x509_store_setup = TRUE;
+    }
     Curl_set_in_callback(data, true);
     result = (*data->set.ssl.fsslctx)(data, backend->ctx,
                                       data->set.ssl.fsslctxp);
@@ -3779,12 +3814,12 @@ static CURLcode ossl_connect_step1(struct Curl_cfilter *cf,
         return CURLE_SSL_CONNECT_ERROR;
       }
       /* Informational message */
-      infof(data, "SSL re-using session ID");
+      infof(data, "SSL reusing session ID");
     }
     Curl_ssl_sessionid_unlock(data);
   }
 
-  backend->bio_method = bio_cf_method_create();
+  backend->bio_method = ossl_bio_cf_method_create();
   if(!backend->bio_method)
     return CURLE_OUT_OF_MEMORY;
   bio = BIO_new(backend->bio_method);
@@ -3864,7 +3899,13 @@ static CURLcode ossl_connect_step2(struct Curl_cfilter *cf,
       return CURLE_OK;
     }
 #endif
-    else if(backend->io_result == CURLE_AGAIN) {
+#ifdef SSL_ERROR_WANT_RETRY_VERIFY
+    if(SSL_ERROR_WANT_RETRY_VERIFY == detail) {
+      connssl->connecting_state = ssl_connect_2;
+      return CURLE_OK;
+    }
+#endif
+    if(backend->io_result == CURLE_AGAIN) {
       return CURLE_OK;
     }
     else {
@@ -3904,11 +3945,7 @@ static CURLcode ossl_connect_step2(struct Curl_cfilter *cf,
              error_buffer */
           strcpy(error_buffer, "SSL certificate verification failed");
       }
-#if (OPENSSL_VERSION_NUMBER >= 0x10101000L &&   \
-     !defined(LIBRESSL_VERSION_NUMBER) &&       \
-     !defined(OPENSSL_IS_BORINGSSL) &&          \
-     !defined(OPENSSL_IS_AWSLC))
-
+#if defined(SSL_R_TLSV13_ALERT_CERTIFICATE_REQUIRED)
       /* SSL_R_TLSV13_ALERT_CERTIFICATE_REQUIRED is only available on
          OpenSSL version above v1.1.1, not LibreSSL, BoringSSL, or AWS-LC */
       else if((lib == ERR_LIB_SSL) &&
@@ -4734,7 +4771,10 @@ static CURLcode ossl_sha256sum(const unsigned char *tmp, /* input */
   mdctx = EVP_MD_CTX_create();
   if(!mdctx)
     return CURLE_OUT_OF_MEMORY;
-  EVP_DigestInit(mdctx, EVP_sha256());
+  if(!EVP_DigestInit(mdctx, EVP_sha256())) {
+    EVP_MD_CTX_destroy(mdctx);
+    return CURLE_FAILED_INIT;
+  }
   EVP_DigestUpdate(mdctx, tmp, tmplen);
   EVP_DigestFinal_ex(mdctx, sha256sum, &len);
   EVP_MD_CTX_destroy(mdctx);

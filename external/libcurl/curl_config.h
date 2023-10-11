@@ -68,7 +68,7 @@
 /* #undef CURL_DISABLE_LIBCURL_OPTION */
 
 /* disable mime API */
-#define CURL_DISABLE_MIME 1
+/* #define CURL_DISABLE_MIME 1 */
 
 /* to disable MQTT */
 #define CURL_DISABLE_MQTT 1

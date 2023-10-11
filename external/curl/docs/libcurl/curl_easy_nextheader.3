@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_easy_nextheader 3 "July 07, 2023" "libcurl 8.2.1" "libcurl"
+.TH curl_easy_nextheader 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
 
 .SH NAME
 curl_easy_nextheader - get the next HTTP header
@@ -94,4 +94,5 @@ This function returns the next header, or NULL when there are no more
 If this function returns NULL when \fIprev\fP was set to NULL, then there are
 no headers available within the scope to return.
 .SH "SEE ALSO"
-.BR curl_easy_header "(3), " curl_easy_perform "(3) "
+.BR curl_easy_header (3),
+.BR curl_easy_perform (3)
