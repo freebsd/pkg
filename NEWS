@@ -1,3 +1,9 @@
+Changes from 1.20.99.6 to 1.20.99.7
+- update curl to 8.4.0
+- plug some memory leak
+- plug a db transaction leak
+- refactoring of the repository generation code
+
 Changes from 1.20.99.5 to 1.20.99.6
 - enable netrc support to be compatible with libfetch variable
 - enable by default all supported kind of authentication for curl
