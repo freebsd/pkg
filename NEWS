@@ -1,3 +1,9 @@
+Changes from 1.20.7 to 1.20.8
+- update curl to 8.4.0
+- check: document -n
+- manuals: smalls fixes
+- fix database transaction leak
+
 Changes from 1.20.6 to 1.20.7
 - improve sql traces in debug mode
 - fix autoremove issue leading to 100% of CPU consumed almost forever
