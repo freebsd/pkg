@@ -40,9 +40,7 @@
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
-#ifdef HAVE_SIGNAL_H
 #include <signal.h>
-#endif
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -431,6 +429,7 @@ static CURLcode readwrite_data(struct Curl_easy *data,
   curl_off_t max_recv = data->set.max_recv_speed?
                         data->set.max_recv_speed : CURL_OFF_T_MAX;
   char *buf = data->state.buffer;
+  bool data_eof_handled = FALSE;
   DEBUGASSERT(buf);
 
   *done = FALSE;
@@ -448,8 +447,7 @@ static CURLcode readwrite_data(struct Curl_easy *data,
        to ensure that http2_handle_stream_close is called when we read all
        incoming bytes for a particular stream. */
     bool is_http3 = Curl_conn_is_http3(data, conn, FIRSTSOCKET);
-    bool data_eof_handled = is_http3
-                            || Curl_conn_is_http2(data, conn, FIRSTSOCKET);
+    data_eof_handled = is_http3 || Curl_conn_is_http2(data, conn, FIRSTSOCKET);
 
     if(!data_eof_handled && k->size != -1 && !k->header) {
       /* make sure we don't read too much */
@@ -492,15 +490,16 @@ static CURLcode readwrite_data(struct Curl_easy *data,
     if(0 < nread || is_empty_data) {
       buf[nread] = 0;
     }
-    else {
+    if(!nread) {
       /* if we receive 0 or less here, either the data transfer is done or the
          server closed the connection and we bail out from this! */
       if(data_eof_handled)
         DEBUGF(infof(data, "nread == 0, stream closed, bailing"));
       else
         DEBUGF(infof(data, "nread <= 0, server closed connection, bailing"));
-      k->keepon &= ~KEEP_RECV;
-      break;
+      k->keepon = 0; /* stop sending as well */
+      if(!is_empty_data)
+        break;
     }
 
     /* Default buffer to use when we write the buffer, it may be changed
@@ -670,7 +669,9 @@ static CURLcode readwrite_data(struct Curl_easy *data,
       k->bytecount += nread;
       max_recv -= nread;
 
-      Curl_pgrsSetDownloadCounter(data, k->bytecount);
+      result = Curl_pgrsSetDownloadCounter(data, k->bytecount);
+      if(result)
+        goto out;
 
       if(!k->chunk && (nread || k->badheader || is_empty_data)) {
         /* If this is chunky transfer, it was already written */
@@ -699,19 +700,15 @@ static CURLcode readwrite_data(struct Curl_easy *data,
              in http_chunks.c.
              Make sure that ALL_CONTENT_ENCODINGS contains all the
              encodings handled here. */
-          if(data->set.http_ce_skip || !k->writer_stack) {
-            if(!k->ignorebody && nread) {
+          if(!k->ignorebody && nread) {
 #ifndef CURL_DISABLE_POP3
-              if(conn->handler->protocol & PROTO_FAMILY_POP3)
-                result = Curl_pop3_write(data, k->str, nread);
-              else
+            if(conn->handler->protocol & PROTO_FAMILY_POP3)
+              result = Curl_pop3_write(data, k->str, nread);
+            else
 #endif /* CURL_DISABLE_POP3 */
-                result = Curl_client_write(data, CLIENTWRITE_BODY, k->str,
-                                           nread);
-            }
+              result = Curl_client_write(data, CLIENTWRITE_BODY, k->str,
+                                         nread);
           }
-          else if(!k->ignorebody && nread)
-            result = Curl_unencode_write(data, k->writer_stack, k->str, nread);
         }
         k->badheader = HEADER_NORMAL; /* taken care of now */
 
@@ -761,7 +758,7 @@ static CURLcode readwrite_data(struct Curl_easy *data,
   }
 
   if(((k->keepon & (KEEP_RECV|KEEP_SEND)) == KEEP_SEND) &&
-     conn->bits.close) {
+     (conn->bits.close || data_eof_handled)) {
     /* When we've read the entire thing and the close bit is set, the server
        may now close the connection. If there's now any kind of sending going
        on from our side, we need to stop that immediately. */
@@ -823,9 +820,6 @@ static CURLcode readwrite_upload(struct Curl_easy *data,
   ssize_t nread; /* number of bytes read */
   bool sending_http_headers = FALSE;
   struct SingleRequest *k = &data->req;
-
-  if((k->bytecount == 0) && (k->writebytecount == 0))
-    Curl_pgrsTime(data, TIMER_STARTTRANSFER);
 
   *didwhat |= KEEP_SEND;
 
@@ -1052,6 +1046,19 @@ static CURLcode readwrite_upload(struct Curl_easy *data,
   return CURLE_OK;
 }
 
+static int select_bits_paused(struct Curl_easy *data, int select_bits)
+{
+  /* See issue #11982: we really need to be careful not to progress
+   * a transfer direction when that direction is paused. Not all parts
+   * of our state machine are handling PAUSED transfers correctly. So, we
+   * do not want to go there.
+   * NOTE: we are only interested in PAUSE, not HOLD. */
+  return (((select_bits & CURL_CSELECT_IN) &&
+           (data->req.keepon & KEEP_RECV_PAUSE)) ||
+          ((select_bits & CURL_CSELECT_OUT) &&
+           (data->req.keepon & KEEP_SEND_PAUSE)));
+}
+
 /*
  * Curl_readwrite() is the low-level function to be called when data is to
  * be read and written to/from the connection.
@@ -1070,12 +1077,20 @@ CURLcode Curl_readwrite(struct connectdata *conn,
   int didwhat = 0;
   int select_bits;
 
-
   if(data->state.dselect_bits) {
+    if(select_bits_paused(data, data->state.dselect_bits)) {
+      /* leave the bits unchanged, so they'll tell us what to do when
+       * this transfer gets unpaused. */
+      DEBUGF(infof(data, "readwrite, dselect_bits, early return on PAUSED"));
+      result = CURLE_OK;
+      goto out;
+    }
     select_bits = data->state.dselect_bits;
     data->state.dselect_bits = 0;
   }
   else if(conn->cselect_bits) {
+    /* CAVEAT: adding `select_bits_paused()` check here makes test640 hang
+     * (among others). Which hints at strange state handling in FTP land... */
     select_bits = conn->cselect_bits;
     conn->cselect_bits = 0;
   }
@@ -1335,7 +1350,9 @@ CURLcode Curl_pretransfer(struct Curl_easy *data)
   }
 
   data->state.prefer_ascii = data->set.prefer_ascii;
+#ifdef CURL_LIST_ONLY_PROTOCOL
   data->state.list_only = data->set.list_only;
+#endif
   data->state.httpreq = data->set.method;
   data->state.url = data->set.str[STRING_SET_URL];
 
@@ -1397,7 +1414,7 @@ CURLcode Curl_pretransfer(struct Curl_easy *data)
     Curl_pgrsResetTransferSizes(data);
     Curl_pgrsStartNow(data);
 
-    /* In case the handle is re-used and an authentication method was picked
+    /* In case the handle is reused and an authentication method was picked
        in the session we need to make sure we only use the one(s) we now
        consider to be fine */
     data->state.authhost.picked &= data->state.authhost.want;
@@ -1787,7 +1804,7 @@ CURLcode Curl_retry_request(struct Curl_easy *data, char **url)
      && (data->set.rtspreq != RTSPREQ_RECEIVE)
 #endif
     )
-    /* We got no data, we attempted to re-use a connection. For HTTP this
+    /* We got no data, we attempted to reuse a connection. For HTTP this
        can be a retry so we try again regardless if we expected a body.
        For other protocols we only try again only if we expected a body.
 

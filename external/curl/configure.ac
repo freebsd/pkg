@@ -147,7 +147,7 @@ AC_SUBST(PKGADD_VENDOR)
 
 dnl
 dnl initialize all the info variables
-    curl_ssl_msg="no      (--with-{openssl,gnutls,nss,mbedtls,wolfssl,schannel,secure-transport,amissl,bearssl,rustls} )"
+    curl_ssl_msg="no      (--with-{openssl,gnutls,mbedtls,wolfssl,schannel,secure-transport,amissl,bearssl,rustls} )"
     curl_ssh_msg="no      (--with-{libssh,libssh2})"
    curl_zlib_msg="no      (--with-zlib)"
  curl_brotli_msg="no      (--with-brotli)"
@@ -298,28 +298,6 @@ AS_HELP_STRING([--with-rustls=PATH],[where to look for rustls, PATH points to th
   fi
 ])
 
-OPT_NSS_AWARE=no
-AC_ARG_WITH(nss-deprecated,dnl
-AS_HELP_STRING([--with-nss-deprecated],[confirm you realize NSS is going away]),
-  if test X"$withval" != Xno; then
-    OPT_NSS_AWARE=$withval
-  fi
-)
-
-OPT_NSS=no
-AC_ARG_WITH(nss,dnl
-AS_HELP_STRING([--with-nss=PATH],[where to look for NSS, PATH points to the installation root]),
-  OPT_NSS=$withval
-  if test X"$withval" != Xno; then
-
-    if test X"$OPT_NSS_AWARE" = "Xno" ; then
-      AC_MSG_ERROR([NSS use must be confirmed using --with-nss-deprecated. NSS support will be dropped from curl in August 2022. See docs/DEPRECATE.md])
-    fi
-
-    [TLSCHOICE="${TLSCHOICE:+$TLSCHOICE, }NSS"]
-  fi
-)
-
 TEST_NGHTTPX=nghttpx
 AC_ARG_WITH(test-nghttpx,dnl
 AS_HELP_STRING([--with-test-nghttpx=PATH],[where to find nghttpx for testing]),
@@ -427,7 +405,6 @@ Select from these:
   --with-bearssl
   --with-gnutls
   --with-mbedtls
-  --with-nss
   --with-openssl (also works for BoringSSL and libressl)
   --with-rustls
   --with-schannel
@@ -602,67 +579,6 @@ else
 fi
 AM_CONDITIONAL(BUILD_UNITTESTS, test x$want_unittests = xyes)
 
-# For original MinGW (ie not MinGW-w64) define the Windows minimum supported OS
-# version to Windows XP (0x501) if it hasn't already been defined by the user.
-# Without this override original MinGW defaults the version to Windows NT 4.0.
-# Note original MinGW sets _WIN32_WINNT if not defined to whatever WINVER is.
-case $host in
-  *-*-mingw32*)
-    AC_MSG_CHECKING([if MinGW minimum supported OS should be set to XP])
-    AC_COMPILE_IFELSE([
-      AC_LANG_PROGRAM([[
-#include <_mingw.h>
-      ]],[[
-#if defined(__MINGW64_VERSION_MAJOR) || \
-    defined(WINVER) || \
-    defined(_WIN32_WINNT)
-#error
-#endif
-      ]])
-    ],[
-      CPPFLAGS="$CPPFLAGS -DWINVER=0x501"
-      AC_MSG_RESULT([yes])
-    ],[
-      AC_MSG_RESULT([no])
-    ])
-    ;;
-esac
-
-# Detect original MinGW (not MinGW-w64)
-curl_mingw_original=no
-case $host in
-  *-*-mingw32*)
-    AC_MSG_CHECKING([using original MinGW (not MinGW-w64)])
-    AC_COMPILE_IFELSE([
-      AC_LANG_PROGRAM([[
-#include <_mingw.h>
-      ]],[[
-#if defined(__MINGW64_VERSION_MAJOR)
-#error
-#endif
-      ]])
-    ],[
-      curl_mingw_original=yes
-      curl_mingw_die=yes
-      AC_MSG_RESULT([yes])
-    ],[
-      AC_MSG_RESULT([no])
-    ])
-    ;;
-esac
-
-
-AC_ARG_WITH(mingw1-deprecated,dnl
-AS_HELP_STRING([--with-mingw1-deprecated],[confirm you realize support for mingw v1 is dying]),
-  if test X"$withval" != Xno; then
-    curl_mingw_die=
-  fi
-)
-
-if test -n "$curl_mingw_die"; then
-  AC_MSG_ERROR([support for mingw v1 is going away, enable temporarily with --with-mingw1-deprecated])
-fi
-
 dnl **********************************************************************
 dnl Compilation based checks should not be done before this point.
 dnl **********************************************************************
@@ -680,12 +596,10 @@ case X-"$curl_cv_native_windows" in
   X-yes)
     CURL_CHECK_HEADER_WINSOCK2
     CURL_CHECK_HEADER_WS2TCPIP
-    CURL_CHECK_HEADER_WINCRYPT
     ;;
   *)
     curl_cv_header_winsock2_h="no"
     curl_cv_header_ws2tcpip_h="no"
-    curl_cv_header_wincrypt_h="no"
     ;;
 esac
 CURL_CHECK_WIN32_LARGEFILE
@@ -1237,7 +1151,7 @@ then
 #endif
 #endif
         ]],[[
-          gethostbyname("www.dummysite.com");
+          gethostbyname("localhost");
         ]])
       ],[
         AC_MSG_RESULT([yes])
@@ -1260,7 +1174,7 @@ then
 /* Older Minix versions may need <net/gen/netdb.h> here instead */
 #include <netdb.h>
     ]],[[
-      gethostbyname("www.dummysite.com");
+      gethostbyname("localhost");
     ]])
   ],[
     AC_MSG_RESULT([yes])
@@ -1279,7 +1193,7 @@ then
 #include <stdio.h>
 #include <netdb.h>
     ]],[[
-      gethostbyname("www.dummysite.com");
+      gethostbyname("localhost");
     ]])
   ],[
     AC_MSG_RESULT([yes])
@@ -1303,7 +1217,7 @@ then
   struct Library *SocketBase = NULL;
   #endif
     ]],[[
-      gethostbyname("www.dummysite.com");
+      gethostbyname("localhost");
     ]])
   ],[
     AC_MSG_RESULT([yes])
@@ -1376,9 +1290,14 @@ else
     CURL_CHECK_PKGCONFIG(zlib)
 
     if test "$PKGCONFIG" != "no" ; then
-      LIBS="`$PKGCONFIG --libs-only-l zlib` $LIBS"
-      LDFLAGS="$LDFLAGS `$PKGCONFIG --libs-only-L zlib`"
-      CPPFLAGS="$CPPFLAGS `$PKGCONFIG --cflags-only-I zlib`"
+      ZLIB_LIBS="`$PKGCONFIG --libs-only-l zlib`"
+      if test -n "$ZLIB_LIBS"; then
+        LDFLAGS="$LDFLAGS `$PKGCONFIG --libs-only-L zlib`"
+      else
+        ZLIB_LIBS="`$PKGCONFIG --libs zlib`"
+      fi
+      LIBS="$ZLIB_LIBS $LIBS"
+      CPPFLAGS="$CPPFLAGS `$PKGCONFIG --cflags zlib`"
       OPT_ZLIB=""
       HAVE_LIBZ="1"
     fi
@@ -1391,7 +1310,8 @@ else
       AC_CHECK_LIB(z, inflateEnd,
                    dnl libz found, set the variable
                    [HAVE_LIBZ="1"
-                    LIBS="-lz $LIBS"],
+                    ZLIB_LIBS="-lz"
+                    LIBS="$ZLIB_LIBS $LIBS"],
                    dnl if no lib found, try /usr/local
                    [OPT_ZLIB="/usr/local"])
     fi
@@ -1413,7 +1333,8 @@ else
                    [
                    dnl the lib was found!
                    HAVE_LIBZ="1"
-                   LIBS="-lz $LIBS"
+                   ZLIB_LIBS="-lz"
+                   LIBS="$ZLIB_LIBS $LIBS"
                    ],
                    [ CPPFLAGS=$clean_CPPFLAGS
                    LDFLAGS=$clean_LDFLAGS])
@@ -1432,20 +1353,20 @@ else
     CPPFLAGS=$clean_CPPFLAGS
     LDFLAGS=$clean_LDFLAGS
     LIBS=$clean_LIBS
+    ZLIB_LIBS=""
   elif test "$HAVE_LIBZ" != "1" && test "$HAVE_ZLIB_H" = "1"
   then
     AC_MSG_WARN([configure found only the libz header file, not the lib!])
     CPPFLAGS=$clean_CPPFLAGS
     LDFLAGS=$clean_LDFLAGS
     LIBS=$clean_LIBS
+    ZLIB_LIBS=""
   elif test "$HAVE_LIBZ" = "1" && test "$HAVE_ZLIB_H" = "1"
   then
     dnl both header and lib were found!
     AC_SUBST(HAVE_LIBZ)
     AC_DEFINE(HAVE_LIBZ, 1, [if zlib is available])
-
-    ZLIB_LIBS="-lz"
-    LIBS="-lz $clean_LIBS"
+    LIBS="$ZLIB_LIBS $clean_LIBS"
 
     dnl replace 'HAVE_LIBZ' in the automake makefile.ams
     AMFIXLIB="1"
@@ -2091,7 +2012,6 @@ CURL_WITH_MBEDTLS
 CURL_WITH_WOLFSSL
 CURL_WITH_BEARSSL
 CURL_WITH_RUSTLS
-CURL_WITH_NSS
 
 dnl link required libraries for USE_WIN32_CRYPTO or USE_SCHANNEL
 if test "x$USE_WIN32_CRYPTO" = "x1" -o "x$USE_SCHANNEL" = "x1"; then
@@ -2099,16 +2019,15 @@ if test "x$USE_WIN32_CRYPTO" = "x1" -o "x$USE_SCHANNEL" = "x1"; then
 fi
 
 dnl link bcrypt for BCryptGenRandom() (used when building for Vista or newer)
-if test "x$curl_cv_native_windows" = "xyes" &&
-   test "x$curl_mingw_original" = "xno"; then
+if test "x$curl_cv_native_windows" = "xyes"; then
   LIBS="-lbcrypt $LIBS"
 fi
 
-case "x$SSL_DISABLED$OPENSSL_ENABLED$GNUTLS_ENABLED$NSS_ENABLED$MBEDTLS_ENABLED$WOLFSSL_ENABLED$SCHANNEL_ENABLED$SECURETRANSPORT_ENABLED$BEARSSL_ENABLED$RUSTLS_ENABLED"
+case "x$SSL_DISABLED$OPENSSL_ENABLED$GNUTLS_ENABLED$MBEDTLS_ENABLED$WOLFSSL_ENABLED$SCHANNEL_ENABLED$SECURETRANSPORT_ENABLED$BEARSSL_ENABLED$RUSTLS_ENABLED"
 in
 x)
   AC_MSG_ERROR([TLS not detected, you will not be able to use HTTPS, FTPS, NTLM and more.
-Use --with-openssl, --with-gnutls, --with-wolfssl, --with-mbedtls, --with-nss, --with-schannel, --with-secure-transport, --with-amissl, --with-bearssl or --with-rustls to address this.])
+Use --with-openssl, --with-gnutls, --with-wolfssl, --with-mbedtls, --with-schannel, --with-secure-transport, --with-amissl, --with-bearssl or --with-rustls to address this.])
   ;;
 x1)
   # one SSL backend is enabled
@@ -2121,7 +2040,7 @@ xD)
   ;;
 xD*)
   AC_MSG_ERROR([--without-ssl has been set together with an explicit option to use an ssl library
-(e.g. --with-openssl, --with-gnutls, --with-wolfssl, --with-mbedtls, --with-nss, --with-schannel, --with-secure-transport, --with-amissl, --with-bearssl, --with-rustls).
+(e.g. --with-openssl, --with-gnutls, --with-wolfssl, --with-mbedtls, --with-schannel, --with-secure-transport, --with-amissl, --with-bearssl, --with-rustls).
 Since these are conflicting parameters, verify which is the desired one and drop the other.])
   ;;
 *)
@@ -2242,7 +2161,7 @@ if test X"$OPT_LIBSSH2" != Xno; then
     CURL_CHECK_PKGCONFIG(libssh2)
 
     if test "$PKGCONFIG" != "no" ; then
-      LIB_SSH2=`$PKGCONFIG --libs libssh2`
+      LIB_SSH2=`$PKGCONFIG --libs-only-l libssh2`
       LD_SSH2=`$PKGCONFIG --libs-only-L libssh2`
       CPP_SSH2=`$PKGCONFIG --cflags-only-I libssh2`
       version=`$PKGCONFIG --modversion libssh2`
@@ -2504,8 +2423,6 @@ AS_HELP_STRING([--disable-versioned-symbols], [Disable versioned symbols in shar
           versioned_symbols_flavour="OPENSSL_"
         elif test "x$GNUTLS_ENABLED" = "x1"; then
           versioned_symbols_flavour="GNUTLS_"
-        elif test "x$NSS_ENABLED" = "x1"; then
-          versioned_symbols_flavour="NSS_"
         elif test "x$WOLFSSL_ENABLED" = "x1"; then
           versioned_symbols_flavour="WOLFSSL_"
         elif test "x$SCHANNEL_ENABLED" = "x1"; then
@@ -3435,7 +3352,6 @@ AC_CHECK_HEADERS(
         sys/select.h \
         sys/socket.h \
         sys/ioctl.h \
-        sys/uio.h \
         unistd.h \
         stdlib.h \
         arpa/inet.h \
@@ -3464,7 +3380,6 @@ AC_CHECK_HEADERS(
         libgen.h \
         locale.h \
         stdbool.h \
-        arpa/tftp.h \
         sys/filio.h \
         sys/wait.h \
         setjmp.h,
@@ -3590,8 +3505,10 @@ CURL_RUN_IFELSE(
   [
   #include <time.h>
   #include <limits.h>
-  time_t t = -1;
-  return (t > 0);
+  int main(void) {
+    time_t t = -1;
+    return (t < 0);
+  }
   ],[
   AC_MSG_RESULT([yes])
   AC_DEFINE(HAVE_TIME_T_UNSIGNED, 1, [Define this if time_t is unsigned])
@@ -3618,7 +3535,6 @@ CURL_CHECK_FUNC_ALARM
 CURL_CHECK_FUNC_BASENAME
 CURL_CHECK_FUNC_CLOSESOCKET
 CURL_CHECK_FUNC_CLOSESOCKET_CAMEL
-CURL_CHECK_FUNC_CONNECT
 CURL_CHECK_FUNC_FCNTL
 CURL_CHECK_FUNC_FREEADDRINFO
 CURL_CHECK_FUNC_FSETXATTR
@@ -3634,6 +3550,7 @@ CURL_CHECK_FUNC_GETIFADDRS
 CURL_CHECK_FUNC_GMTIME_R
 CURL_CHECK_FUNC_INET_NTOP
 CURL_CHECK_FUNC_INET_PTON
+CURL_CHECK_FUNC_IOCTL
 CURL_CHECK_FUNC_IOCTLSOCKET
 CURL_CHECK_FUNC_IOCTLSOCKET_CAMEL
 CURL_CHECK_FUNC_MEMRCHR
@@ -3665,9 +3582,12 @@ AC_CHECK_DECLS([getpwuid_r], [], [AC_DEFINE(HAVE_DECL_GETPWUID_R_MISSING, 1, "Se
           #include <sys/types.h>]])
 
 
-AC_CHECK_FUNCS([fnmatch \
+AC_CHECK_FUNCS([\
+  _fseeki64 \
+  arc4random \
   fchmod \
-  fork \
+  fnmatch \
+  fseeko \
   geteuid \
   getpass_r \
   getppid \
@@ -3686,7 +3606,6 @@ AC_CHECK_FUNCS([fnmatch \
   snprintf \
   utime \
   utimes \
-  arc4random
 ],[
 ],[
   func="$ac_func"
@@ -3956,17 +3875,113 @@ AS_HELP_STRING([--disable-sspi],[Disable SSPI]),
 )
 
 dnl ************************************************************
-dnl disable cryptographic authentication
+dnl disable basic authentication
 dnl
-AC_MSG_CHECKING([whether to enable cryptographic authentication methods])
-AC_ARG_ENABLE(crypto-auth,
-AS_HELP_STRING([--enable-crypto-auth],[Enable cryptographic authentication])
-AS_HELP_STRING([--disable-crypto-auth],[Disable cryptographic authentication]),
+AC_MSG_CHECKING([whether to enable basic authentication method])
+AC_ARG_ENABLE(basic-auth,
+AS_HELP_STRING([--enable-basic-auth],[Enable basic authentication (default)])
+AS_HELP_STRING([--disable-basic-auth],[Disable basic authentication]),
 [ case "$enableval" in
   no)
        AC_MSG_RESULT(no)
-       AC_DEFINE(CURL_DISABLE_CRYPTO_AUTH, 1, [to disable cryptographic authentication])
-       CURL_DISABLE_CRYPTO_AUTH=1
+       AC_DEFINE(CURL_DISABLE_BASIC_AUTH, 1, [to disable basic authentication])
+       CURL_DISABLE_BASIC_AUTH=1
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+)
+
+dnl ************************************************************
+dnl disable bearer authentication
+dnl
+AC_MSG_CHECKING([whether to enable bearer authentication method])
+AC_ARG_ENABLE(bearer-auth,
+AS_HELP_STRING([--enable-bearer-auth],[Enable bearer authentication (default)])
+AS_HELP_STRING([--disable-bearer-auth],[Disable bearer authentication]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_BEARER_AUTH, 1, [to disable bearer authentication])
+       CURL_DISABLE_BEARER_AUTH=1
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+)
+
+dnl ************************************************************
+dnl disable digest authentication
+dnl
+AC_MSG_CHECKING([whether to enable digest authentication method])
+AC_ARG_ENABLE(digest-auth,
+AS_HELP_STRING([--enable-digest-auth],[Enable digest authentication (default)])
+AS_HELP_STRING([--disable-digest-auth],[Disable digest authentication]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_DIGEST_AUTH, 1, [to disable digest authentication])
+       CURL_DISABLE_DIGEST_AUTH=1
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+)
+
+dnl ************************************************************
+dnl disable kerberos authentication
+dnl
+AC_MSG_CHECKING([whether to enable kerberos authentication method])
+AC_ARG_ENABLE(kerberos-auth,
+AS_HELP_STRING([--enable-kerberos-auth],[Enable kerberos authentication (default)])
+AS_HELP_STRING([--disable-kerberos-auth],[Disable kerberos authentication]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_KERBEROS_AUTH, 1, [to disable kerberos authentication])
+       CURL_DISABLE_KERBEROS_AUTH=1
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+)
+
+dnl ************************************************************
+dnl disable negotiate authentication
+dnl
+AC_MSG_CHECKING([whether to enable negotiate authentication method])
+AC_ARG_ENABLE(negotiate-auth,
+AS_HELP_STRING([--enable-negotiate-auth],[Enable negotiate authentication (default)])
+AS_HELP_STRING([--disable-negotiate-auth],[Disable negotiate authentication]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_NEGOTIATE_AUTH, 1, [to disable negotiate authentication])
+       CURL_DISABLE_NEGOTIATE_AUTH=1
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+)
+
+
+dnl ************************************************************
+dnl disable aws
+dnl
+AC_MSG_CHECKING([whether to enable aws sig methods])
+AC_ARG_ENABLE(aws,
+AS_HELP_STRING([--enable-aws],[Enable AWS sig support (default)])
+AS_HELP_STRING([--disable-aws],[Disable AWS sig support]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_AWS, 1, [to disable AWS sig support])
+       CURL_DISABLE_AWS=1
        ;;
   *)   AC_MSG_RESULT(yes)
        ;;
@@ -4150,6 +4165,50 @@ AS_HELP_STRING([--disable-mime],[Disable mime API support]),
        ;;
   esac ],
        AC_MSG_RESULT(yes)
+)
+
+dnl ************************************************************
+dnl disable bindlocal
+dnl
+AC_MSG_CHECKING([whether to support binding connections locally])
+AC_ARG_ENABLE(bindlocal,
+AS_HELP_STRING([--enable-bindlocal],[Enable local binding support])
+AS_HELP_STRING([--disable-bindlocal],[Disable local binding support]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_BINDLOCAL, 1, [disable local binding support])
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+)
+
+dnl ************************************************************
+dnl disable form API support
+dnl
+AC_MSG_CHECKING([whether to support the form API])
+AC_ARG_ENABLE(form-api,
+AS_HELP_STRING([--enable-form-api],[Enable form API support])
+AS_HELP_STRING([--disable-form-api],[Disable form API support]),
+[ case "$enableval" in
+  no)  AC_MSG_RESULT(no)
+       AC_DEFINE(CURL_DISABLE_FORM_API, 1, [disable form API])
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       test "$enable_mime" = no &&
+         AC_MSG_ERROR(MIME support needs to be enabled in order to enable form API support)
+       ;;
+  esac ],
+[
+  if test "$enable_mime" = no; then
+    enable_form_api=no
+    AC_MSG_RESULT(no)
+    AC_DEFINE(CURL_DISABLE_FORM_API, 1, [disable form API])
+  else
+    AC_MSG_RESULT(yes)
+  fi ]
 )
 
 dnl ************************************************************
@@ -4475,22 +4534,21 @@ if test "x$hsts" = "xyes"; then
   SUPPORT_FEATURES="$SUPPORT_FEATURES HSTS"
 fi
 
-if test "x$CURL_DISABLE_CRYPTO_AUTH" != "x1" -a \
+if test "x$CURL_DISABLE_NEGOTIATE_AUTH" != "x1" -a \
     \( "x$HAVE_GSSAPI" = "x1" -o "x$USE_WINDOWS_SSPI" = "x1" \); then
   SUPPORT_FEATURES="$SUPPORT_FEATURES SPNEGO"
 fi
 
-if test "x$CURL_DISABLE_CRYPTO_AUTH" != "x1" -a \
+if test "x$CURL_DISABLE_KERBEROS_AUTH" != "x1" -a \
     \( "x$HAVE_GSSAPI" = "x1" -o "x$USE_WINDOWS_SSPI" = "x1" \); then
   SUPPORT_FEATURES="$SUPPORT_FEATURES Kerberos"
 fi
 
 use_curl_ntlm_core=no
 
-if test "x$CURL_DISABLE_CRYPTO_AUTH" != "x1" -a \
-    "x$CURL_DISABLE_NTLM" != "x1"; then
+if test "x$CURL_DISABLE_NTLM" != "x1"; then
   if test "x$OPENSSL_ENABLED" = "x1" -o "x$MBEDTLS_ENABLED" = "x1" \
-      -o "x$GNUTLS_ENABLED" = "x1" -o "x$NSS_ENABLED" = "x1" \
+      -o "x$GNUTLS_ENABLED" = "x1" \
       -o "x$SECURETRANSPORT_ENABLED" = "x1" \
       -o "x$USE_WIN32_CRYPTO" = "x1" \
       -o "x$WOLFSSL_NTLM" = "x1"; then
@@ -4529,7 +4587,6 @@ dnl if not explicitly turned off, HTTPS-proxy comes with some TLS backends
 if test "x$https_proxy" != "xno"; then
   if test "x$OPENSSL_ENABLED" = "x1" \
       -o "x$GNUTLS_ENABLED" = "x1" \
-      -o "x$NSS_ENABLED" = "x1" \
       -o "x$SECURETRANSPORT_ENABLED" = "x1" \
       -o "x$RUSTLS_ENABLED" = "x1" \
       -o "x$BEARSSL_ENABLED" = "x1" \

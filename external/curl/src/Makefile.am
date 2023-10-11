@@ -50,6 +50,7 @@ SUBDIRS = ../docs
 if USE_CPPFLAG_CURL_STATICLIB
 AM_CPPFLAGS += -DCURL_STATICLIB
 endif
+AM_CPPFLAGS += -DBUILDING_CURL
 
 include Makefile.inc
 
@@ -69,7 +70,7 @@ LIBS = $(BLANK_AT_MAKETIME)
 if USE_EXPLICIT_LIB_DEPS
 curl_LDADD = $(top_builddir)/lib/libcurl.la @LIBCURL_LIBS@
 else
-curl_LDADD = $(top_builddir)/lib/libcurl.la @NSS_LIBS@ @SSL_LIBS@ @ZLIB_LIBS@ @CURL_NETWORK_AND_TIME_LIBS@
+curl_LDADD = $(top_builddir)/lib/libcurl.la @SSL_LIBS@ @ZLIB_LIBS@ @CURL_NETWORK_AND_TIME_LIBS@
 endif
 
 # if unit tests are enabled, build a static library to link them with

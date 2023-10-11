@@ -410,21 +410,22 @@ sub sysread_or_die {
 }
 
 sub startsf {
-    my $mainsockfcmd = "./server/sockfilt".exe_ext('SRV')." " .
-        "--ipv$ipvnum --port $port " .
-        "--pidfile \"$mainsockf_pidfile\" " .
-        "--portfile \"$portfile\" " .
-        "--logfile \"$mainsockf_logfile\"";
-    $sfpid = open2(*SFREAD, *SFWRITE, $mainsockfcmd);
+    my @mainsockfcmd = ("./server/sockfilt".exe_ext('SRV'),
+        "--ipv$ipvnum",
+	"--port", $port,
+        "--pidfile", $mainsockf_pidfile,
+        "--portfile", $portfile,
+        "--logfile", $mainsockf_logfile);
+    $sfpid = open2(*SFREAD, *SFWRITE, @mainsockfcmd);
 
-    print STDERR "$mainsockfcmd\n" if($verbose);
+    print STDERR "@mainsockfcmd\n" if($verbose);
 
     print SFWRITE "PING\n";
     my $pong;
     sysread_or_die(\*SFREAD, \$pong, 5);
 
     if($pong !~ /^PONG/) {
-        logmsg "Failed sockfilt command: $mainsockfcmd\n";
+        logmsg "Failed sockfilt command: @mainsockfcmd\n";
         killsockfilters($piddir, $proto, $ipvnum, $idnum, $verbose);
         unlink($pidfile);
         unlink($portfile);
@@ -669,6 +670,51 @@ sub protocolsetup {
     }
 }
 
+# Perform the disconnecgt handshake with sockfilt on the secondary connection
+# (the only connection we actively disconnect).
+# This involves waiting for the disconnect acknowledgmeent after the DISC
+# command, while throwing away anything else that might come in before
+# that.
+sub disc_handshake {
+    print DWRITE "DISC\n";
+    my $line;
+    my $nr;
+    while (5 == ($nr = sysread DREAD, $line, 5)) {
+        if($line eq "DATA\n") {
+            # Must read the data bytes to stay in sync
+            my $i;
+            sysread DREAD, $i, 5;
+
+            my $size = 0;
+            if($i =~ /^([0-9a-fA-F]{4})\n/) {
+                $size = hex($1);
+            }
+
+            read_datasockf(\$line, $size);
+
+            logmsg "> Throwing away $size bytes on closed connection\n";
+        }
+        elsif($line eq "DISC\n") {
+            logmsg "Fancy that; client wants to DISC, too\n";
+            printf DWRITE "ACKD\n";
+        }
+        elsif($line eq "ACKD\n") {
+            # Got the ack we were waiting for
+            last;
+        }
+        else {
+            logmsg "Ignoring: $line";
+            # sockfilt should not be sending us any other commands
+        }
+    }
+    if(!defined($nr)) {
+        logmsg "Error: pipe read error ($!) while waiting for ACKD";
+    }
+    elsif($nr <= 0) {
+        logmsg "Error: pipe EOF while waiting for ACKD";
+    }
+}
+
 sub close_dataconn {
     my ($closed)=@_; # non-zero if already disconnected
 
@@ -679,9 +725,7 @@ sub close_dataconn {
     if(!$closed) {
         if($datapid > 0) {
             logmsg "Server disconnects $datasockf_mode DATA connection\n";
-            print DWRITE "DISC\n";
-            my $i;
-            sysread DREAD, $i, 5;
+            disc_handshake();
             logmsg "Server disconnected $datasockf_mode DATA connection\n";
         }
         else {
@@ -873,7 +917,7 @@ sub RCPT_smtp {
               /^<([a-zA-Z0-9._%+-]+)\@(([a-zA-Z0-9-]+)\.)+([a-zA-Z]{2,4})>$/) ||
             ($smtputf8 && $to =~
               /^<([a-zA-Z0-9\x{80}-\x{ff}._%+-]+)\@(([a-zA-Z0-9\x{80}-\x{ff}-]+)\.)+([a-zA-Z]{2,4})>$/)) {
-            sendcontrol "250 Recipient OK\r\n";      
+            sendcontrol "250 Recipient OK\r\n";
         }
         else {
             sendcontrol "501 Invalid address\r\n";
@@ -939,6 +983,7 @@ sub DATA_smtp {
             elsif($line eq "DISC\n") {
                 # disconnect!
                 $disc=1;
+                printf SFWRITE "ACKD\n";
                 last;
             }
             else {
@@ -1285,6 +1330,7 @@ sub APPEND_imap {
             }
             elsif($line eq "DISC\n") {
                 logmsg "Unexpected disconnect!\n";
+                printf SFWRITE "ACKD\n";
                 last;
             }
             else {
@@ -1820,7 +1866,7 @@ sub LIST_pop3 {
     # This is a built-in fake-message list
     my @data = (
         "1 100\r\n",
-        "2 4294967400\r\n",	# > 4 GB
+        "2 4294967400\r\n",  # > 4 GB
         "3 200\r\n",
     );
 
@@ -2404,6 +2450,7 @@ sub STOR_ftp {
         elsif($line eq "DISC\n") {
             # disconnect!
             $disc=1;
+            printf DWRITE "ACKD\n";
             last;
         }
         else {
@@ -2433,7 +2480,6 @@ sub STOR_ftp {
 sub PASV_ftp {
     my ($arg, $cmd)=@_;
     my $pasvport;
-    my $bindonly = ($nodataconn) ? '--bindonly' : '';
 
     # kill previous data connection sockfilt when alive
     if($datasockf_runs eq 'yes') {
@@ -2447,11 +2493,14 @@ sub PASV_ftp {
     logmsg "DATA sockfilt for passive data channel starting...\n";
 
     # We fire up a new sockfilt to do the data transfer for us.
-    my $datasockfcmd = "./server/sockfilt".exe_ext('SRV')." " .
-        "--ipv$ipvnum $bindonly --port 0 " .
-        "--pidfile \"$datasockf_pidfile\" " .
-        "--logfile \"$datasockf_logfile\"";
-    $slavepid = open2(\*DREAD, \*DWRITE, $datasockfcmd);
+    my @datasockfcmd = ("./server/sockfilt".exe_ext('SRV'),
+        "--ipv$ipvnum", "--port", 0,
+        "--pidfile", $datasockf_pidfile,
+        "--logfile",  $datasockf_logfile);
+    if($nodataconn) {
+        push(@datasockfcmd, '--bindonly');
+    }
+    $slavepid = open2(\*DREAD, \*DWRITE, @datasockfcmd);
 
     if($nodataconn) {
         datasockf_state('PASSIVE_NODATACONN');
@@ -2460,7 +2509,7 @@ sub PASV_ftp {
         datasockf_state('PASSIVE');
     }
 
-    print STDERR "$datasockfcmd\n" if($verbose);
+    print STDERR "@datasockfcmd\n" if($verbose);
 
     print DWRITE "PING\n";
     my $pong;
@@ -2666,15 +2715,15 @@ sub PORT_ftp {
     logmsg "DATA sockfilt for active data channel starting...\n";
 
     # We fire up a new sockfilt to do the data transfer for us.
-    my $datasockfcmd = "./server/sockfilt".exe_ext('SRV')." " .
-        "--ipv$ipvnum --connect $port --addr \"$addr\" " .
-        "--pidfile \"$datasockf_pidfile\" " .
-        "--logfile \"$datasockf_logfile\"";
-    $slavepid = open2(\*DREAD, \*DWRITE, $datasockfcmd);
+    my @datasockfcmd = ("./server/sockfilt".exe_ext('SRV'),
+        "--ipv$ipvnum", "--connect", $port, "--addr", $addr,
+        "--pidfile", $datasockf_pidfile,
+        "--logfile", $datasockf_logfile);
+    $slavepid = open2(\*DREAD, \*DWRITE, @datasockfcmd);
 
     datasockf_state('ACTIVE');
 
-    print STDERR "$datasockfcmd\n" if($verbose);
+    print STDERR "@datasockfcmd\n" if($verbose);
 
     print DWRITE "PING\n";
     my $pong;
@@ -3153,6 +3202,7 @@ while(1) {
             logmsg "MAIN sockfilt said $i";
             if($i =~ /^DISC/) {
                 # disconnect
+                printf SFWRITE "ACKD\n";
                 last;
             }
             next;

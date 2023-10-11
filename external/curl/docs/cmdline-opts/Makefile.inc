@@ -114,6 +114,7 @@ DPAGES = \
   include.d \
   insecure.d \
   interface.d \
+  ipfs-gateway.d \
   ipv4.d \
   ipv6.d \
   json.d \
@@ -265,6 +266,7 @@ DPAGES = \
   tlsv1.d \
   tr-encoding.d \
   trace-ascii.d \
+  trace-config.d \
   trace-ids.d \
   trace-time.d \
   trace.d \
@@ -275,6 +277,7 @@ DPAGES = \
   use-ascii.d \
   user-agent.d \
   user.d \
+  variable.d \
   verbose.d \
   version.d \
   write-out.d \

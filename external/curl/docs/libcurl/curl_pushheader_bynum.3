@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_pushheader_bynum 3 "June 09, 2023" "libcurl 8.2.1" "libcurl"
+.TH curl_pushheader_bynum 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
 
 .SH NAME
 curl_pushheader_bynum - get a push header by index
@@ -37,9 +37,9 @@ This is a function that is only functional within a
 elsewhere and it has no function then.
 
 It returns the value for the header field at the given index \fBnum\fP, for
-the incoming server push request or NULL. The data pointed will be freed when
-this callback returns.  The returned pointer points to a "name:value" string
-that will be freed when this callback returns.
+the incoming server push request or NULL. The data pointed to is freed by
+libcurl when this callback returns. The returned pointer points to a
+"name:value" string that gets freed when this callback returns.
 
 .SH EXAMPLE
 .nf
@@ -68,4 +68,5 @@ Added in 7.44.0
 .SH RETURN VALUE
 Returns a pointer to the header field content or NULL.
 .SH "SEE ALSO"
-.BR CURLMOPT_PUSHFUNCTION "(3)," curl_pushheader_byname "(3),"
+.BR CURLMOPT_PUSHFUNCTION (3),
+.BR curl_pushheader_byname (3)

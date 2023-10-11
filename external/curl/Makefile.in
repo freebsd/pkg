@@ -176,7 +176,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
 	$(top_srcdir)/m4/curl-gnutls.m4 \
-	$(top_srcdir)/m4/curl-mbedtls.m4 $(top_srcdir)/m4/curl-nss.m4 \
+	$(top_srcdir)/m4/curl-mbedtls.m4 \
 	$(top_srcdir)/m4/curl-openssl.m4 \
 	$(top_srcdir)/m4/curl-override.m4 \
 	$(top_srcdir)/m4/curl-reentrant.m4 \
@@ -440,7 +440,6 @@ MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
 NROFF = @NROFF@
-NSS_LIBS = @NSS_LIBS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OTOOL = @OTOOL@
@@ -487,7 +486,6 @@ USE_NGTCP2 = @USE_NGTCP2@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
 USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
-USE_NSS = @USE_NSS@
 USE_OPENLDAP = @USE_OPENLDAP@
 USE_QUICHE = @USE_QUICHE@
 USE_RUSTLS = @USE_RUSTLS@
@@ -577,7 +575,6 @@ CMAKE_DIST = \
  CMake/FindNGHTTP2.cmake                        \
  CMake/FindNGHTTP3.cmake                        \
  CMake/FindNGTCP2.cmake                         \
- CMake/FindNSS.cmake                            \
  CMake/FindQUICHE.cmake                         \
  CMake/FindWolfSSL.cmake                        \
  CMake/FindZstd.cmake                           \
@@ -677,7 +674,8 @@ PLAN9_DIST = plan9/include/mkfile \
 
 EXTRA_DIST = CHANGES COPYING maketgz Makefile.dist curl-config.in            \
  RELEASE-NOTES buildconf libcurl.pc.in MacOSX-Framework $(CMAKE_DIST)        \
- $(VC_DIST) $(WINBUILD_DIST) $(PLAN9_DIST) lib/libcurl.vers.in buildconf.bat
+ $(VC_DIST) $(WINBUILD_DIST) $(PLAN9_DIST) lib/libcurl.vers.in buildconf.bat \
+ libcurl.def
 
 CLEANFILES = $(VC10_LIBVCXPROJ) $(VC10_SRCVCXPROJ) $(VC11_LIBVCXPROJ)        \
  $(VC11_SRCVCXPROJ) $(VC12_LIBVCXPROJ) $(VC12_SRCVCXPROJ) $(VC14_LIBVCXPROJ) \
@@ -711,13 +709,11 @@ LIB_VAUTH_HFILES = \
 
 LIB_VTLS_CFILES = \
   vtls/bearssl.c            \
-  vtls/gskit.c              \
   vtls/gtls.c               \
   vtls/hostcheck.c          \
   vtls/keylog.c             \
   vtls/mbedtls.c            \
   vtls/mbedtls_threadlock.c \
-  vtls/nss.c                \
   vtls/openssl.c            \
   vtls/rustls.c             \
   vtls/schannel.c           \
@@ -729,13 +725,11 @@ LIB_VTLS_CFILES = \
 
 LIB_VTLS_HFILES = \
   vtls/bearssl.h            \
-  vtls/gskit.h              \
   vtls/gtls.h               \
   vtls/hostcheck.h          \
   vtls/keylog.h             \
   vtls/mbedtls.h            \
   vtls/mbedtls_threadlock.h \
-  vtls/nssg.h               \
   vtls/openssl.h            \
   vtls/rustls.h             \
   vtls/schannel.h           \
@@ -793,7 +787,6 @@ LIB_CFILES = \
   curl_get_line.c    \
   curl_gethostname.c \
   curl_gssapi.c      \
-  curl_log.c         \
   curl_memrchr.c     \
   curl_multibyte.c   \
   curl_ntlm_core.c   \
@@ -804,6 +797,7 @@ LIB_CFILES = \
   curl_sasl.c        \
   curl_sspi.c        \
   curl_threads.c     \
+  curl_trc.c         \
   dict.c             \
   doh.c              \
   dynbuf.c           \
@@ -833,12 +827,12 @@ LIB_CFILES = \
   http.c             \
   http1.c            \
   http2.c            \
+  http_aws_sigv4.c   \
   http_chunks.c      \
   http_digest.c      \
   http_negotiate.c   \
   http_ntlm.c        \
   http_proxy.c       \
-  http_aws_sigv4.c   \
   idn.c              \
   if2ip.c            \
   imap.c             \
@@ -929,7 +923,6 @@ LIB_HFILES = \
   curl_hmac.h        \
   curl_krb5.h        \
   curl_ldap.h        \
-  curl_log.h         \
   curl_md4.h         \
   curl_md5.h         \
   curl_memory.h      \
@@ -947,6 +940,7 @@ LIB_HFILES = \
   curl_sha256.h      \
   curl_sspi.h        \
   curl_threads.h     \
+  curl_trc.h         \
   curlx.h            \
   dict.h             \
   doh.h              \
@@ -960,9 +954,9 @@ LIB_HFILES = \
   fileinfo.h         \
   fopen.h            \
   formdata.h         \
-  functypes.h        \
   ftp.h              \
   ftplistparser.h    \
+  functypes.h        \
   getinfo.h          \
   gopher.h           \
   hash.h             \
@@ -972,12 +966,12 @@ LIB_HFILES = \
   http.h             \
   http1.h            \
   http2.h            \
+  http_aws_sigv4.h   \
   http_chunks.h      \
   http_digest.h      \
   http_negotiate.h   \
   http_ntlm.h        \
   http_proxy.h       \
-  http_aws_sigv4.h   \
   idn.h              \
   if2ip.h            \
   imap.h             \
@@ -1041,27 +1035,34 @@ HHEADERS = $(LIB_HFILES) $(LIB_VAUTH_HFILES) $(LIB_VTLS_HFILES) \
   $(LIB_VQUIC_HFILES) $(LIB_VSSH_HFILES)
 
 
-# libcurl has sources that provide functions named curlx_* that aren't part of
-# the official API, but we re-use the code here to avoid duplication.
-CURLX_CFILES = \
-  ../lib/strtoofft.c \
-  ../lib/timediff.c \
-  ../lib/nonblock.c \
-  ../lib/warnless.c \
-  ../lib/curl_multibyte.c \
-  ../lib/version_win32.c \
+# libcurl sources to include in curltool lib we use for test binaries
+CURLTOOL_LIBCURL_CFILES = \
+  ../lib/base64.c \
   ../lib/dynbuf.c
 
+
+# libcurl has sources that provide functions named curlx_* that aren't part of
+# the official API, but we reuse the code here to avoid duplication.
+CURLX_CFILES = \
+  ../lib/base64.c \
+  ../lib/curl_multibyte.c \
+  ../lib/dynbuf.c \
+  ../lib/nonblock.c \
+  ../lib/strtoofft.c \
+  ../lib/timediff.c \
+  ../lib/version_win32.c \
+  ../lib/warnless.c
+
 CURLX_HFILES = \
-  ../lib/curl_setup.h \
-  ../lib/strtoofft.h \
-  ../lib/timediff.h \
-  ../lib/nonblock.h \
-  ../lib/warnless.h \
   ../lib/curl_ctype.h \
   ../lib/curl_multibyte.h \
+  ../lib/curl_setup.h \
+  ../lib/dynbuf.h \
+  ../lib/nonblock.h \
+  ../lib/strtoofft.h \
+  ../lib/timediff.h \
   ../lib/version_win32.h \
-  ../lib/dynbuf.h
+  ../lib/warnless.h
 
 CURL_CFILES = \
   slist_wc.c \
@@ -1094,16 +1095,17 @@ CURL_CFILES = \
   tool_paramhlp.c \
   tool_parsecfg.c \
   tool_progress.c \
-  tool_stderr.c \
-  tool_strdup.c \
   tool_setopt.c \
   tool_sleep.c \
+  tool_stderr.c \
+  tool_strdup.c \
   tool_urlglob.c \
   tool_util.c \
   tool_vms.c \
   tool_writeout.c \
   tool_writeout_json.c \
-  tool_xattr.c
+  tool_xattr.c \
+  var.c
 
 CURL_HFILES = \
   slist_wc.h \
@@ -1147,7 +1149,8 @@ CURL_HFILES = \
   tool_vms.h \
   tool_writeout.h \
   tool_writeout_json.h \
-  tool_xattr.h
+  tool_xattr.h \
+  var.h
 
 CURL_RCFILES = curl.rc
 

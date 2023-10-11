@@ -1167,14 +1167,16 @@ static void mime_subparts_unbind(void *ptr)
 
 void Curl_mime_cleanpart(curl_mimepart *part)
 {
-  cleanup_part_content(part);
-  curl_slist_free_all(part->curlheaders);
-  if(part->flags & MIME_USERHEADERS_OWNER)
-    curl_slist_free_all(part->userheaders);
-  Curl_safefree(part->mimetype);
-  Curl_safefree(part->name);
-  Curl_safefree(part->filename);
-  Curl_mime_initpart(part);
+  if(part) {
+    cleanup_part_content(part);
+    curl_slist_free_all(part->curlheaders);
+    if(part->flags & MIME_USERHEADERS_OWNER)
+      curl_slist_free_all(part->userheaders);
+    Curl_safefree(part->mimetype);
+    Curl_safefree(part->name);
+    Curl_safefree(part->filename);
+    Curl_mime_initpart(part);
+  }
 }
 
 /* Recursively delete a mime handle and its parts. */
@@ -1287,9 +1289,9 @@ curl_mime *curl_mime_init(struct Curl_easy *easy)
     mime->lastpart = NULL;
 
     memset(mime->boundary, '-', MIME_BOUNDARY_DASHES);
-    if(Curl_rand_hex(easy,
-                     (unsigned char *) &mime->boundary[MIME_BOUNDARY_DASHES],
-                     MIME_RAND_BOUNDARY_CHARS + 1)) {
+    if(Curl_rand_alnum(easy,
+                       (unsigned char *) &mime->boundary[MIME_BOUNDARY_DASHES],
+                       MIME_RAND_BOUNDARY_CHARS + 1)) {
       /* failed to get random separator, bail out */
       free(mime);
       return NULL;

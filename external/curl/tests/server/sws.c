@@ -30,9 +30,7 @@
 
  */
 
-#ifdef HAVE_SIGNAL_H
 #include <signal.h>
-#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
@@ -112,6 +110,7 @@ struct httprequest {
   size_t cl;      /* Content-Length of the incoming request */
   bool digest;    /* Authorization digest header found */
   bool ntlm;      /* Authorization ntlm header found */
+  int delay;      /* if non-zero, delay this number of msec after connect */
   int writedelay; /* if non-zero, delay this number of milliseconds between
                      writes in the response */
   int skip;       /* if non-zero, the server is instructed to not read this
@@ -328,6 +327,10 @@ static int parse_servercmd(struct httprequest *req)
         logmsg("instructed to reject Expect: 100-continue");
         req->noexpect = TRUE;
       }
+      else if(1 == sscanf(cmd, "delay: %d", &num)) {
+        logmsg("instructed to delay %d msecs after connect", num);
+        req->delay = num;
+      }
       else if(1 == sscanf(cmd, "writedelay: %d", &num)) {
         logmsg("instructed to delay %d msecs between packets", num);
         req->writedelay = num;
@@ -433,7 +436,7 @@ static int ProcessRequest(struct httprequest *req)
       if(*ptr == '/') {
         if((npath + strlen(request)) < 400)
           msnprintf(logbuf, sizeof(logbuf), "Got request: %s %.*s HTTP/%d.%d",
-                    request, npath, httppath, prot_major, prot_minor);
+                    request, (int)npath, httppath, prot_major, prot_minor);
         else
           msnprintf(logbuf, sizeof(logbuf), "Got a *HUGE* request HTTP/%d.%d",
                     prot_major, prot_minor);
@@ -854,6 +857,7 @@ static void init_httprequest(struct httprequest *req)
   req->skip = 0;
   req->skipall = FALSE;
   req->noexpect = FALSE;
+  req->delay = 0;
   req->writedelay = 0;
   req->rcmd = RCMD_NORMALREQ;
   req->prot_version = 0;
@@ -2333,6 +2337,8 @@ int main(int argc, char *argv[])
         logmsg("accept_connection %d returned %d", sock, msgsock);
         if(CURL_SOCKET_BAD == msgsock)
           goto sws_cleanup;
+        if(req->delay)
+          wait_ms(req->delay);
       } while(msgsock > 0);
       active--;
     }
@@ -2381,6 +2387,19 @@ int main(int argc, char *argv[])
 
           /* Reset the request, unless we're still in the middle of reading */
           if(rc && !req->upgrade_request)
+            /* Note: resetting the HTTP request here can cause problems if:
+             * 1) req->skipall is TRUE,
+             * 2) the socket is still open, and
+             * 3) (stale) data is still available (or about to be available)
+             *    on that socket
+             * In that case, this loop will run once more and treat that stale
+             * data (in service_connection()) as the first data received on
+             * this new HTTP request and report "** Unusual request" (skipall
+             * would have otherwise caused that data to be ignored). Normally,
+             * that socket will be closed by the client and there won't be any
+             * stale data to cause this, but stranger things have happened (see
+             * issue #11678).
+             */
             init_httprequest(req);
         } while(rc > 0);
       }
