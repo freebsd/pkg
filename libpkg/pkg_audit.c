@@ -201,6 +201,14 @@ pkg_audit_fetch(const char *src, const char *dest)
 	struct stat st;
 	struct pkg_audit_extract_cbdata cbdata;
 	int dfd = -1;
+	struct timeval tm[2] = {
+		{
+		.tv_usec = 0
+		},
+		{
+		.tv_usec = 0
+		}
+	};
 
 	if (src == NULL) {
 		src = pkg_object_string(pkg_config_get("VULNXML_SITE"));
@@ -254,9 +262,13 @@ pkg_audit_fetch(const char *src, const char *dest)
 	cbdata.fname = tmp;
 	cbdata.out = outfd;
 	cbdata.dest = dest;
+	fstat(fd, &st);
 
 	/* Call sandboxed */
 	retcode = pkg_emit_sandbox_call(pkg_audit_sandboxed_extract, fd, &cbdata);
+	tm[0].tv_sec = st.st_mtim.tv_sec;
+	tm[1].tv_sec = st.st_mtim.tv_sec;
+	futimes(outfd, tm);
 
 cleanup:
 	unlink(tmp);
