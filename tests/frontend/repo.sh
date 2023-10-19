@@ -3,63 +3,12 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	repo_v1 \
 	repo_v2 \
 	repo_multiversion \
 	repo_multiformat \
 	repo_symlinks \
 	repo_content
 
-repo_v1_body() {
-	touch plop
-	touch bla
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
-	cat >> test.ucl << EOF
-files: {
-	"${TMPDIR}/plop": ""
-	"${TMPDIR}/bla": ""
-}
-EOF
-
-	cat > meta.ucl << EOF
-version = 1
-EOF
-	atf_check \
-		-o empty \
-		-e empty \
-		-s exit:0 \
-		pkg create -M test.ucl
-
-	atf_check \
-		-o inline:"WARNING: Meta v1 support will be removed in the next version\nCreating repository in .:  done\nPacking files for repository: WARNING: Meta v1 support will be removed in the next version\n done\n" \
-		-e empty \
-		-s exit:0 \
-		pkg repo --meta-file meta.ucl .
-
-	cp test-1.pkg test.pkg
-
-	atf_check \
-		-o inline:"WARNING: Meta v1 support will be removed in the next version\nCreating repository in .:  done\nPacking files for repository: WARNING: Meta v1 support will be removed in the next version\n done\n" \
-		-e empty \
-		-s exit:0 \
-		pkg repo --meta-file meta.ucl .
-
-	if [ `uname -s` = "Darwin" ]; then
-		atf_pass
-	fi
-
-	nb=$(tar -xf digests.pkg -O digests | wc -l)
-	atf_check_equal $nb 2
-
-	mkdir Latest
-	ln -s test-1.pkg Latest/test.pkg
-
-	atf_check \
-		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
-		-e empty \
-		-s exit:0 \
-		pkg repo .
-}
 repo_v2_body() {
 	touch plop
 	touch bla
