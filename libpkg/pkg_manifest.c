@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -883,6 +883,10 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file)
 	return pkg_parse_manifest_fileat(AT_FDCWD, pkg, file);
 }
 
+#define MANIFEST_EXPORT_FIELD(result, o, field, type)	do { \
+	ucl_object_insert_key((result), ucl_object_from ## type (o->field), #field, 0, false); \
+	} while (0)
+
 int
 pkg_emit_filelist(struct pkg *pkg, FILE *f)
 {
@@ -891,9 +895,9 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	xstring *b = NULL;
 
 	obj = ucl_object_typed_new(UCL_OBJECT);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->origin), "origin", 6, false);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->name), "name", 4, false);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkg->version), "version", 7, false);
+	MANIFEST_EXPORT_FIELD(obj, pkg, origin, string);
+	MANIFEST_EXPORT_FIELD(obj, pkg, name, string);
+	MANIFEST_EXPORT_FIELD(obj, pkg, version, string);
 
 	seq = NULL;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
@@ -935,34 +939,22 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
 	pkg->arch = xstrdup(legacyarch);
 	pkg_debug(4, "Emitting basic metadata");
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->name, 0,
-	    UCL_STRING_TRIM), "name", 4, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->origin, 0,
-	    UCL_STRING_TRIM), "origin", 6, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->version, 0,
-	    UCL_STRING_TRIM), "version", 7, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->comment, 0,
-	    UCL_STRING_TRIM), "comment", 7, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->maintainer, 0,
-	    UCL_STRING_TRIM), "maintainer", 10, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->www, 0,
-	    UCL_STRING_TRIM), "www", 3, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->abi, 0,
-	    UCL_STRING_TRIM), "abi", 3, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->arch, 0,
-	    UCL_STRING_TRIM), "arch", 4, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->prefix, 0,
-	    UCL_STRING_TRIM), "prefix", 6, false);
-	ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->sum, 0,
-	    UCL_STRING_TRIM), "sum", 3, false);
-	ucl_object_insert_key(top, ucl_object_fromint(pkg->flatsize), "flatsize", 8, false);
-	if (pkg->dep_formula != NULL) {
-		ucl_object_insert_key(top, ucl_object_fromstring_common(pkg->dep_formula, 0,
-		    UCL_STRING_TRIM), "dep_formula", 11, false);
-	}
+	MANIFEST_EXPORT_FIELD(top, pkg, name, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, origin, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, version, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, comment, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, maintainer, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, www, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, abi, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, arch, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, prefix, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, sum, string);
+	MANIFEST_EXPORT_FIELD(top, pkg, flatsize, int);
+	if (pkg->dep_formula != NULL)
+		MANIFEST_EXPORT_FIELD(top, pkg, dep_formula, string);
 	if (pkg->type == PKG_INSTALLED &&
 	    (flags & PKG_MANIFEST_EMIT_LOCAL_METADATA) == PKG_MANIFEST_EMIT_LOCAL_METADATA) {
-		ucl_object_insert_key(top, ucl_object_fromint(pkg->timestamp), "timestamp", 9, false);
+		MANIFEST_EXPORT_FIELD(top, pkg, timestamp, int);
 	}
 
 	/*
@@ -971,8 +963,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->repopath) {
 		ucl_object_insert_key(top,
 			ucl_object_fromstring(pkg->repopath), "path", 4, false);
-		ucl_object_insert_key(top,
-			ucl_object_fromstring(pkg->repopath), "repopath", 8, false);
+		MANIFEST_EXPORT_FIELD(top, pkg, repopath, string);
 	}
 
 	switch (pkg->licenselogic) {
@@ -998,10 +989,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		ucl_object_insert_key(top, seq, "licenses", 8, false);
 
 	if (pkg->pkgsize > 0)
-		ucl_object_insert_key(top, ucl_object_fromint(pkg->pkgsize), "pkgsize", 7, false);
-
+		MANIFEST_EXPORT_FIELD(top, pkg, pkgsize, int);
 	if (pkg->vital)
-		ucl_object_insert_key(top, ucl_object_frombool(pkg->vital), "vital", 5, false);
+		MANIFEST_EXPORT_FIELD(top, pkg, vital, bool);
 
 	if (pkg->desc != NULL) {
 		urlencode(pkg->desc, &tmpsbuf);
@@ -1014,8 +1004,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	map = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		submap = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(submap, ucl_object_fromstring(dep->origin), "origin", 6, false);
-		ucl_object_insert_key(submap, ucl_object_fromstring(dep->version), "version", 7, false);
+		MANIFEST_EXPORT_FIELD(submap, dep, origin, string);
+		MANIFEST_EXPORT_FIELD(submap, dep, version, string);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(map, submap, dep->name, 0, false);
