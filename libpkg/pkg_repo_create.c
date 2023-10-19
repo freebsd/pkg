@@ -77,12 +77,6 @@ struct digest_list_entry {
 };
 typedef tll(struct digest_list_entry *) digest_list_t;
 
-struct pkg_conflict_bulk {
-	struct pkg_conflict *conflicts;
-	pkghash *conflictshash;
-	char *file;
-};
-
 static int
 hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 {
@@ -636,8 +630,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 {
 	FTS *fts = NULL;
 	struct pkg_fts_item *fts_items = NULL;
-	pkghash *conflicts = NULL;
-	struct pkg_conflict_bulk *curcb;
 	int num_workers, i, remaining_workers;
 	size_t len, ntask;
 	digest_list_t dlist = tll_init();
@@ -647,7 +639,6 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	FILE *mfile;
-	pkghash_it it;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN];
@@ -864,16 +855,6 @@ cleanup:
 		close(mfd);
 	if (ffd != -1)
 		close(ffd);
-	it = pkghash_iterator(conflicts);
-	while (pkghash_next(&it)) {
-		curcb = (struct pkg_conflict_bulk *)it.value;
-		LL_FREE(curcb->conflicts, pkg_conflict_free);
-		pkghash_destroy(curcb->conflictshash);
-		curcb->conflictshash = NULL;
-		free(curcb);
-	}
-	pkghash_destroy(conflicts);
-
 	if (pfd != NULL)
 		free(pfd);
 	if (fts != NULL)
