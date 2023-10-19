@@ -46,6 +46,8 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	/* Not use conflicts for now */
 	meta->conflicts = NULL;
 	meta->conflicts_archive = NULL;
+	meta->data = xstrdup("data");
+	meta->data_archive = xstrdup("data");
 	meta->manifests = xstrdup("packagesite.yaml");
 	meta->manifests_archive = xstrdup("packagesite");
 	meta->filesite = xstrdup("filesite.yaml");
@@ -173,9 +175,11 @@ pkg_repo_meta_open_schema_v2()
 			"source = {type = string};\n"
 			"packing_format = {enum = [tzst, txz, tbz, tgz, tar]};\n"
 			"manifests = {type = string};\n"
+			"data = { type = string };\n"
 			"conflicts = {type = string};\n"
 			"fulldb = {type = string};\n"
 			"filesite = {type = string};\n"
+			"data_archive = { type = string};\n"
 			"manifests_archive = {type = string};\n"
 			"conflicts_archive = {type = string};\n"
 			"fulldb_archive = {type = string};\n"
@@ -257,6 +261,7 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	META_EXTRACT_STRING(source);
 
 	META_EXTRACT_STRING(conflicts);
+	META_EXTRACT_STRING(data);
 	META_EXTRACT_STRING(digests);
 	META_EXTRACT_STRING(manifests);
 	META_EXTRACT_STRING(fulldb);
@@ -426,6 +431,7 @@ pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
 		META_EXPORT_FIELD(result, meta, digests_archive, string);
 	}
 	META_EXPORT_FIELD(result, meta, manifests, string);
+	META_EXPORT_FIELD(result, meta, data, string);
 	META_EXPORT_FIELD(result, meta, conflicts, string);
 	META_EXPORT_FIELD(result, meta, fulldb, string);
 	META_EXPORT_FIELD(result, meta, filesite, string);

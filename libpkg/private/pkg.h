@@ -433,6 +433,8 @@ struct pkg_repo_meta {
 
 	char *digests;
 	char *digests_archive;
+	char *data;
+	char *data_archive;
 	char *manifests;
 	char *manifests_archive;
 	char *filesite;
