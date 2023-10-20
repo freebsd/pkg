@@ -560,7 +560,6 @@ cleanup:
 		fts_close(fts);
 
 	tll_free_and_free(te.fts_items, pkg_create_repo_fts_free);
-	//LL_FREE(te.fts_items, pkg_create_repo_fts_free);
 
 	pkg_repo_meta_free(meta);
 
