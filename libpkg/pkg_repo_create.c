@@ -7,8 +7,6 @@
  * Copyright (c) 2023 Serenity Cyber Security, LLC
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  *
- * All rights reserved.
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -50,7 +48,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <math.h>
-#include <sys/uio.h>
 #include <pthread.h>
 
 #include "tllist.h"
@@ -306,6 +303,7 @@ struct thr_env {
 	fts_item_t fts_items;
 	pthread_mutex_t nlock;
 	pthread_mutex_t llock;
+	pthread_mutex_t flock;
 	pthread_cond_t cond;
 };
 
@@ -316,7 +314,6 @@ pkg_create_repo_thread(void *arg)
 	int flags, ret = EPKG_OK;
 	struct pkg *pkg = NULL;
 	xstring *b;
-	struct iovec iov[2];
 	char *path;
 	const char *repopath;
 	struct pkg_fts_item *items = NULL;
@@ -343,7 +340,6 @@ pkg_create_repo_thread(void *arg)
 		path = items->fts_accpath;
 		repopath = items->pkg_path;
 		if (pkg_open(&pkg, path, flags) == EPKG_OK) {
-			size_t mlen;
 			struct stat st;
 
 			pkg->sum = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
@@ -360,30 +356,14 @@ pkg_create_repo_thread(void *arg)
 			/*
 			 * TODO: use pkg_checksum for new manifests
 			 */
-			xstring_reset(b);
-			pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
-			fflush(b->fp);
-			mlen = strlen(b->buf);
+			pthread_mutex_lock(&te->flock);
+			ucl_object_t *o = pkg_emit_object(pkg, 0);
+			ucl_object_emit_fd(o, UCL_EMIT_JSON_COMPACT, te->mfd);
+			ucl_object_unref(o);
+			dprintf(te->mfd, "\n");
+			fdatasync(te->mfd);
 
-			if (flock(te->mfd, LOCK_EX) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "flock");
-				ret = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			iov[0].iov_base = b->buf;
-			iov[0].iov_len = mlen;
-			iov[1].iov_base = (void *)"\n";
-			iov[1].iov_len = 1;
-
-			if (writev(te->mfd, iov, 2) == -1) {
-				pkg_emit_errno("pkg_create_repo_worker", "write");
-				ret = EPKG_FATAL;
-				flock(te->mfd, LOCK_UN);
-				goto cleanup;
-			}
-
-			flock(te->mfd, LOCK_UN);
+			pthread_mutex_unlock(&te->flock);
 
 			if (te->ffd != -1) {
 				FILE *fl;
