@@ -55,7 +55,6 @@ scripts/sbin/pkg2ng
 /external/linenoise/Makefile
 /external/libucl/Makefile
 /external/yxml/Makefile
-/external/msgpuck/Makefile
 /external/liblua/Makefile
 /external/libmachista/Makefile
 /external/libfetch/Makefile

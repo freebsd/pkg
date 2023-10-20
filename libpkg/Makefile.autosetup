@@ -61,7 +61,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/curl/include \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
-		-I$(top_srcdir)/external/msgpuck \
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_builddir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
@@ -85,7 +84,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/libcurl -lcurl_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
-		-L$(top_builddir)/external/msgpuck -lmsgpuck_pic \
 		@nowaflags@ \
 		-lssl \
 		-lcrypto \
@@ -101,7 +99,6 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libcurl/libcurl.a \
-		$(top_builddir)/external/msgpuck/libmsgpuck.a \
 		lib$(LIB).a
 
 @if HAVE_LIBUTIL
