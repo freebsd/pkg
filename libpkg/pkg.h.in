@@ -745,11 +745,10 @@ int pkg_parse_manifest_fileat(int fd, struct pkg *pkg, const char *);
  * @param buf A pointer which will hold the allocated buffer containing the
  * manifest. To be free'ed.
  * @param flags Flags for manifest emitting.
- * @param pdigest A pointer that will hold digest of manifest produced, ignored
  * if NULL. To be free'ed if not NULL.
  * @return An error code.
  */
-int pkg_emit_manifest_file(struct pkg*, FILE *, short, char **pdigest);
+int pkg_emit_manifest_file(struct pkg*, FILE *, short);
 
 /* pkg_dep */
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);

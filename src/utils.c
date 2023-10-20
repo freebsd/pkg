@@ -358,7 +358,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 		if (pkg_type(pkg) == PKG_REMOTE)
 			outflags |= PKG_MANIFEST_EMIT_COMPACT;
 
-		pkg_emit_manifest_file(pkg, stdout, outflags, NULL);
+		pkg_emit_manifest_file(pkg, stdout, outflags);
 
 		return;
 	}

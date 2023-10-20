@@ -133,14 +133,14 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 */
 	xstring *b = xstring_new();
 
-	pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+	pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT);
 	fflush(b->fp);
 	packing_append_buffer(pkg_archive, b->buf, "+COMPACT_MANIFEST", strlen(b->buf));
 	xstring_reset(b);
 	if (pc->expand_manifest)
-		pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_UCL, NULL);
+		pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_UCL);
 	else
-		pkg_emit_manifest_buf(pkg, b, 0, NULL);
+		pkg_emit_manifest_buf(pkg, b, 0);
 	fflush(b->fp);
 	packing_append_buffer(pkg_archive, b->buf, "+MANIFEST", strlen(b->buf));
 	xstring_free(b);

@@ -1265,17 +1265,6 @@ emit_manifest(struct pkg *pkg, xstring **out, short flags)
 	return (EPKG_OK);
 }
 
-static void
-pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdigest)
-{
-	unsigned int i;
-
-	for (i = 0; i < len; i ++)
-		sprintf(hexdigest + (i * 2), "%02x", digest[i]);
-
-	hexdigest[len * 2] = '\0';
-}
-
 /*
  * This routine is able to output to either a (FILE *) or a (struct sbuf *). It
  * exist only to avoid code duplication and should not be called except from
@@ -1283,18 +1272,11 @@ pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdiges
  */
 static int
 pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
-	    char **pdigest, bool out_is_a_buf)
+    bool out_is_a_buf)
 {
 	xstring *output = NULL;
-	unsigned char digest[SHA256_BLOCK_SIZE];
 	SHA256_CTX *sign_ctx = NULL;
 	int rc;
-
-	if (pdigest != NULL) {
-		*pdigest = xmalloc(sizeof(digest) * 2 + 1);
-		sign_ctx = xmalloc(sizeof(SHA256_CTX));
-		sha256_init(sign_ctx);
-	}
 
 	if (out_is_a_buf)
 		output = out;
@@ -1308,12 +1290,6 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	if (!out_is_a_buf)
 		fprintf(out, "%s\n", output->buf);
 
-	if (pdigest != NULL) {
-		sha256_final(sign_ctx, digest);
-		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
-		free(sign_ctx);
-	}
-
 	if (!out_is_a_buf)
 		xstring_free(output);
 
@@ -1321,15 +1297,15 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 }
 
 int
-pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags)
 {
 
-	return (pkg_emit_manifest_generic(pkg, f, flags, pdigest, false));
+	return (pkg_emit_manifest_generic(pkg, f, flags, false));
 }
 
 int
-pkg_emit_manifest_buf(struct pkg *pkg, xstring *b, short flags, char **pdigest)
+pkg_emit_manifest_buf(struct pkg *pkg, xstring *b, short flags)
 {
 
-	return (pkg_emit_manifest_generic(pkg, b, flags, pdigest, true));
+	return (pkg_emit_manifest_generic(pkg, b, flags, true));
 }
