@@ -311,12 +311,9 @@ pkg_create_repo_thread(void *arg)
 	struct thr_env *te = (struct thr_env *)arg;
 	int flags, ret = EPKG_OK;
 	struct pkg *pkg = NULL;
-	xstring *b;
 	char *path;
 	const char *repopath;
 	struct pkg_fts_item *items = NULL;
-
-	b = xstring_new();
 
 	pkg_debug(1, "start worker to parse packages");
 
@@ -377,6 +374,7 @@ pkg_create_repo_thread(void *arg)
 
 				flock(te->ffd, LOCK_UN);
 			}
+			pkg_free(pkg);
 		}
 		pthread_mutex_lock(&te->nlock);
 		te->ntask++;
@@ -385,8 +383,6 @@ pkg_create_repo_thread(void *arg)
 	}
 
 cleanup:
-	xstring_free(b);
-
 	pkg_debug(1, "worker done");
 	return (NULL);
 }
