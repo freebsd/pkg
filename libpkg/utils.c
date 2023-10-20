@@ -565,6 +565,21 @@ ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
 }
 
 bool
+ucl_object_emit_fd(const ucl_object_t *obj, enum ucl_emitter emit_type, int fd)
+{
+	struct ucl_emitter_functions *f = ucl_object_emit_fd_funcs(fd);
+	bool ret = false;
+
+	if (obj == NULL)
+		return (false);
+	ret = ucl_object_emit_full(obj, emit_type, f, NULL);
+	ucl_object_emit_funcs_free(f);
+
+	return (ret);
+}
+
+
+bool
 ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
                      xstring **buf)
 {

@@ -719,6 +719,8 @@ int pkg_emit_filelist(struct pkg *, FILE *);
 
 bool ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     xstring **buf);
+bool ucl_object_emit_fd(const ucl_object_t *obj, enum ucl_emitter emit_type,
+    int fd);
 bool ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
     FILE *);
 
