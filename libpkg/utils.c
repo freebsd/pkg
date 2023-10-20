@@ -500,55 +500,6 @@ process_spawn_pipe(FILE *inout[2], const char *command)
 }
 
 static int
-ucl_file_append_character(unsigned char c, size_t len, void *data)
-{
-	size_t i;
-	FILE *out = data;
-
-	for (i = 0; i < len; i++)
-		fprintf(out, "%c", c);
-
-	return (0);
-}
-
-static int
-ucl_file_append_len(const unsigned char *str, size_t len, void *data)
-{
-	FILE *out = data;
-
-	fprintf(out, "%.*s", (int)len, str);
-
-	return (0);
-}
-
-static int
-ucl_file_append_int(int64_t val, void *data)
-{
-	FILE *out = data;
-
-	fprintf(out, "%"PRId64, val);
-
-	return (0);
-}
-
-static int
-ucl_file_append_double(double val, void *data)
-{
-	FILE *out = data;
-	const double delta = 0.0000001;
-
-	if (val == (double)(int)val) {
-		fprintf(out, "%.1lf", val);
-	} else if (fabs(val - (double)(int)val) < delta) {
-		fprintf(out, "%.*lg", DBL_DIG, val);
-	} else {
-		fprintf(out, "%lf", val);
-	}
-
-	return (0);
-}
-
-static int
 ucl_buf_append_character(unsigned char c, size_t len, void *data)
 {
 	xstring *buf = data;
@@ -601,19 +552,16 @@ bool
 ucl_object_emit_file(const ucl_object_t *obj, enum ucl_emitter emit_type,
     FILE *out)
 {
-	struct ucl_emitter_functions func = {
-		.ucl_emitter_append_character = ucl_file_append_character,
-		.ucl_emitter_append_len = ucl_file_append_len,
-		.ucl_emitter_append_int = ucl_file_append_int,
-		.ucl_emitter_append_double = ucl_file_append_double
-	};
+	struct ucl_emitter_functions *f = ucl_object_emit_file_funcs(out);
+	bool ret = false;
 
 	if (obj == NULL)
 		return (false);
 
-	func.ud = out;
+	ret = ucl_object_emit_full(obj, emit_type, f, NULL);
+	ucl_object_emit_funcs_free(f);
 
-	return (ucl_object_emit_full(obj, emit_type, &func, NULL));
+	return (ret);
 }
 
 bool
