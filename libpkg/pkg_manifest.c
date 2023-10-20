@@ -1333,23 +1333,3 @@ pkg_emit_manifest_buf(struct pkg *pkg, xstring *b, short flags, char **pdigest)
 
 	return (pkg_emit_manifest_generic(pkg, b, flags, pdigest, true));
 }
-
-int
-pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
-{
-	xstring *b;
-	int rc;
-
-	b = xstring_new();
-	rc = pkg_emit_manifest_buf(pkg, b, flags, pdigest);
-
-	if (rc != EPKG_OK) {
-		xstring_free(b);
-		return (rc);
-	}
-
-	*dest = xstring_get(b);
-
-	return (rc);
-}
-

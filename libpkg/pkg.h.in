@@ -749,7 +749,6 @@ int pkg_parse_manifest_fileat(int fd, struct pkg *pkg, const char *);
  * if NULL. To be free'ed if not NULL.
  * @return An error code.
  */
-int pkg_emit_manifest(struct pkg *pkg, char **buf, short flags, char **pdigest);
 int pkg_emit_manifest_file(struct pkg*, FILE *, short, char **pdigest);
 
 /* pkg_dep */
