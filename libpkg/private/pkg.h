@@ -714,7 +714,6 @@ int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res);
 int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
 
-int pkg_emit_manifest_buf(struct pkg*, xstring *, short);
 int pkg_emit_filelist(struct pkg *, FILE *);
 
 bool ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,

@@ -1243,69 +1243,23 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	return (top);
 }
 
-
-static int
-emit_manifest(struct pkg *pkg, xstring **out, short flags)
+int
+pkg_emit_manifest_file(struct pkg *pkg, FILE *out, short flags)
 {
 	ucl_object_t *top;
 
 	top = pkg_emit_object(pkg, flags);
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
-		ucl_object_emit_buf(top, UCL_EMIT_YAML, out);
+		ucl_object_emit_file(top, UCL_EMIT_YAML, out);
 	else if ((flags & PKG_MANIFEST_EMIT_UCL) == PKG_MANIFEST_EMIT_UCL)
-		ucl_object_emit_buf(top, UCL_EMIT_CONFIG, out);
+		ucl_object_emit_file(top, UCL_EMIT_CONFIG, out);
 	else if ((flags & PKG_MANIFEST_EMIT_JSON) == PKG_MANIFEST_EMIT_JSON)
-		ucl_object_emit_buf(top, UCL_EMIT_JSON, out);
+		ucl_object_emit_file(top, UCL_EMIT_JSON, out);
 	else
-		ucl_object_emit_buf(top, UCL_EMIT_JSON_COMPACT, out);
+		ucl_object_emit_file(top, UCL_EMIT_JSON_COMPACT, out);
 
 	ucl_object_unref(top);
 
 	return (EPKG_OK);
-}
-
-/*
- * This routine is able to output to either a (FILE *) or a (struct sbuf *). It
- * exist only to avoid code duplication and should not be called except from
- * pkg_emit_manifest_file() and pkg_emit_manifest_buf().
- */
-static int
-pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
-    bool out_is_a_buf)
-{
-	xstring *output = NULL;
-	SHA256_CTX *sign_ctx = NULL;
-	int rc;
-
-	if (out_is_a_buf)
-		output = out;
-
-	rc = emit_manifest(pkg, &output, flags);
-
-	fflush(output->fp);
-	if (sign_ctx != NULL)
-		sha256_update(sign_ctx, output->buf, strlen(output->buf));
-
-	if (!out_is_a_buf)
-		fprintf(out, "%s\n", output->buf);
-
-	if (!out_is_a_buf)
-		xstring_free(output);
-
-	return (rc);
-}
-
-int
-pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags)
-{
-
-	return (pkg_emit_manifest_generic(pkg, f, flags, false));
-}
-
-int
-pkg_emit_manifest_buf(struct pkg *pkg, xstring *b, short flags)
-{
-
-	return (pkg_emit_manifest_generic(pkg, b, flags, true));
 }

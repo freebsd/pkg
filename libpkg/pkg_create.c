@@ -64,6 +64,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	int64_t		 flatsize = 0;
 	int64_t		 nfiles;
 	const char	*relocation;
+	char		*manifest;
+	ucl_object_t	*obj;
 	hardlinks_t	 hardlinks = tll_init();
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
@@ -131,19 +133,20 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Register shared libraries used by the package if
 	 * SHLIBS enabled in conf.  Deletes shlib info if not.
 	 */
-	xstring *b = xstring_new();
 
-	pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_COMPACT);
-	fflush(b->fp);
-	packing_append_buffer(pkg_archive, b->buf, "+COMPACT_MANIFEST", strlen(b->buf));
-	xstring_reset(b);
-	if (pc->expand_manifest)
-		pkg_emit_manifest_buf(pkg, b, PKG_MANIFEST_EMIT_UCL);
-	else
-		pkg_emit_manifest_buf(pkg, b, 0);
-	fflush(b->fp);
-	packing_append_buffer(pkg_archive, b->buf, "+MANIFEST", strlen(b->buf));
-	xstring_free(b);
+	obj = pkg_emit_object(pkg, PKG_MANIFEST_EMIT_COMPACT);
+	manifest = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
+	ucl_object_unref(obj);
+	packing_append_buffer(pkg_archive, manifest, "+COMPACT_MANIFEST", strlen(manifest));
+	free(manifest);
+	obj = pkg_emit_object(pkg, 0);
+	if (pc->expand_manifest) {
+		manifest = ucl_object_emit(obj, UCL_EMIT_CONFIG);
+	} else {
+		manifest = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
+	}
+	ucl_object_unref(obj);
+	packing_append_buffer(pkg_archive, manifest, "+MANIFEST", strlen(manifest));
 
 	counter_init("packing files", nfiles);
 
