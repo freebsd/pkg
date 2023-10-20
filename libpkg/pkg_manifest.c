@@ -38,7 +38,6 @@
 #include <fcntl.h>
 #include <ucl.h>
 
-#include "sha256.h"
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
