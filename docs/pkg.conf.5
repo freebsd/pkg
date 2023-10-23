@@ -257,11 +257,10 @@ Default: YES.
 This tells
 .Xr pkg 8
 to set key/values to be passed in the environment.
-This allows control over underlying libraries like
+This allow setting variables to configure the http(s) fetcher.
+Which accepts environment variables compatible with
 .Xr fetch 3 ,
-which can be configured by e.g., setting
-.Ev FTP_PROXY
-and
+e.g.,
 .Ev HTTP_PROXY .
 Default: not set.
 .It Cm PKG_PLUGINS_DIR: string
@@ -446,17 +445,12 @@ For a
 .Cm MIRROR_TYPE
 of
 .Dv NONE ,
-any of the URL schemes supported by
-.Xr libfetch 3
-can be used, including:
+any of the following URL schemes:
 .Dv http:// ,
 .Dv https:// ,
-.Dv ftp:// ,
-or
-.Dv file:// .
-In addition a
-.Dv ssh://
-URL scheme is also supported.
+.Dv file:// ,
+.Dv ssh:// ,
+.Dv tcp:// .
 Where
 .Sy MIRROR_TYPE
 is
