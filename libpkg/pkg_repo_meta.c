@@ -465,6 +465,7 @@ pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta)
 	special = META_SPECIAL_FILE(file, meta, filesite_archive);
 	special = META_SPECIAL_FILE(file, meta, conflicts_archive);
 	special = META_SPECIAL_FILE(file, meta, fulldb_archive);
+	special = META_SPECIAL_FILE(file, meta, data_archive);
 
 	return (special);
 }

@@ -297,6 +297,8 @@ struct thr_env {
 	int ntask;
 	int ffd;
 	int mfd;
+	int dfd;
+	struct ucl_emitter_context *ctx;
 	struct pkg_repo_meta *meta;
 	fts_item_t fts_items;
 	pthread_mutex_t nlock;
@@ -353,10 +355,11 @@ pkg_create_repo_thread(void *arg)
 			 */
 			pthread_mutex_lock(&te->flock);
 			ucl_object_t *o = pkg_emit_object(pkg, 0);
+			ucl_object_emit_streamline_add_object(te->ctx, o);
 			ucl_object_emit_fd(o, UCL_EMIT_JSON_COMPACT, te->mfd);
-			ucl_object_unref(o);
 			dprintf(te->mfd, "\n");
 			fdatasync(te->mfd);
+			ucl_object_unref(o);
 
 			pthread_mutex_unlock(&te->flock);
 
@@ -422,7 +425,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	char *repopath[2];
 	char repodb[MAXPATHLEN];
 
-	te.mfd = te.ffd = -1;
+	te.mfd = te.ffd = te.dfd = -1;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -488,6 +491,10 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	     O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
+	if ((te.dfd = openat(outputdir_fd, meta->data,
+	    O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
+		goto cleanup;
+	}
 	if (filelist) {
 		if ((te.ffd = openat(outputdir_fd, meta->filesite,
 		        O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
@@ -513,6 +520,16 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	threads = xcalloc(num_workers, sizeof(pthread_t));
 
+	struct ucl_emitter_functions *f;
+	ucl_object_t *obj = ucl_object_typed_new(UCL_OBJECT);
+	f = ucl_object_emit_fd_funcs(te.dfd);
+	te.ctx = ucl_object_emit_streamline_new(obj, UCL_EMIT_JSON_COMPACT, f);
+	ucl_object_t *ar = ucl_object_typed_new(UCL_ARRAY);
+	ar->key = "packages";
+	ar->keylen = sizeof("packages") -1;
+
+	ucl_object_emit_streamline_start_container(te.ctx, ar);
+
 	for (int i = 0; i < num_workers; i++) {
 		/* Create new worker */
 		pthread_create(&threads[i], NULL, &pkg_create_repo_thread, &te);
@@ -528,6 +545,10 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	for (int i = 0; i < num_workers; i++)
 		pthread_join(threads[i], NULL);
 	pkg_emit_progress_tick(len, len);
+	ucl_object_emit_streamline_end_container(te.ctx);
+	ucl_object_emit_streamline_finish(te.ctx);
+	ucl_object_emit_funcs_free(f);
+	ucl_object_unref(obj);
 
 	/* Write metafile */
 	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
@@ -556,6 +577,8 @@ cleanup:
 		close(te.mfd);
 	if (te.ffd != -1)
 		close(te.ffd);
+	if (te.dfd != -1)
+		close(te.dfd);
 	if (fts != NULL)
 		fts_close(fts);
 
@@ -808,6 +831,14 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 	}
 
 	pkg_emit_progress_tick(nfile++, files_to_pack);
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir, meta->data);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+	    meta->data_archive);
+	if (pkg_repo_pack_db(meta->data, repo_archive, repo_path, keyinfo,
+	    meta, argv, argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	pkg_emit_progress_tick(nfile++, files_to_pack);
 
@@ -845,6 +876,9 @@ pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
 			    "%s/%s.pkg", output_dir, meta->filesite_archive);
 			utimes(repo_archive, ftimes);
 		}
+		snprintf(repo_archive, sizeof(repo_archive),
+			"%s/%s.pkg", output_dir, meta->data_archive);
+		utimes(repo_archive, ftimes);
 		snprintf(repo_archive, sizeof(repo_archive),
 			"%s/%s.pkg", output_dir, repo_meta_file);
 		utimes(repo_archive, ftimes);
