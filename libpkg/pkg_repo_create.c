@@ -420,10 +420,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
-	FILE *mfile;
-
 	char *repopath[2];
-	char repodb[MAXPATHLEN];
 
 	te.mfd = te.ffd = te.dfd = -1;
 
@@ -551,23 +548,25 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	ucl_object_unref(obj);
 
 	/* Write metafile */
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-		"meta");
-	if ((mfile = fopen(repodb, "we")) != NULL) {
+
+	fd = openat(outputdir_fd, "meta", O_CREAT|O_TRUNC|O_CLOEXEC|O_WRONLY,
+	    0644);
+	if (fd != -1) {
 		meta_dump = pkg_repo_meta_to_ucl(meta);
-		ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
-		fclose(mfile);
-		strlcat(repodb, ".conf", sizeof(repodb));
-		if ((mfile = fopen(repodb, "we")) != NULL) {
-			ucl_object_emit_file(meta_dump, UCL_EMIT_CONFIG, mfile);
-			fclose(mfile);
+		ucl_object_emit_fd(meta_dump, UCL_EMIT_CONFIG, fd);
+		close(fd);
+		fd = openat(outputdir_fd, "meta.conf",
+		    O_CREAT|O_TRUNC|O_CLOEXEC|O_WRONLY, 0644);
+		if (fd != -1) {
+			ucl_object_emit_fd(meta_dump, UCL_EMIT_CONFIG, fd);
+			close(fd);;
 		} else {
-			pkg_emit_notice("cannot create metafile at %s", repodb);
+			pkg_emit_notice("cannot create metafile at 'meta.conf'");
 		}
 		ucl_object_unref(meta_dump);
 	}
 	else {
-		pkg_emit_notice("cannot create metafile at %s", repodb);
+		pkg_emit_notice("cannot create metafile at 'meta'");
 	}
 	retcode = EPKG_OK;
 cleanup:
