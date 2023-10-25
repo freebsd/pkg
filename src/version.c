@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2015 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
@@ -597,7 +597,7 @@ exec_buf(xstring *res, char **argv) {
 }
 
 static struct category *
-category_new(char *categorypath, const char *category)
+category_new(int portsfd, const char *category)
 {
 	struct category	*cat = NULL;
 	xstring		*makecmd;
@@ -605,10 +605,11 @@ category_new(char *categorypath, const char *category)
 	char		*argv[5];
 
 	makecmd = xstring_new();
+	fchdir(portsfd);
 
 	argv[0] = "make";
 	argv[1] = "-C";
-	argv[2] = categorypath;
+	argv[2] = (char *)category;
 	argv[3] = "-VSUBDIR";
 	argv[4] = NULL;
 
@@ -635,11 +636,10 @@ cleanup:
 }
 
 static bool
-validate_origin(const char *portsdir, const char *origin)
+validate_origin(int portsfd, const char *origin)
 {
 	struct category	*cat;
 	char		*category, *buf;
-	char		 categorypath[MAXPATHLEN];
 
 	/* If the origin does not contain a / ignore it like for
 	 * "base"
@@ -647,16 +647,13 @@ validate_origin(const char *portsdir, const char *origin)
 	if (strchr(origin, '/') == NULL)
 		return (false);
 
-	snprintf(categorypath, MAXPATHLEN, "%s/%s", portsdir, origin);
-
-	buf = strrchr(categorypath, '/');
+	category = xstrdup(origin);
+	buf = strrchr(category, '/');
 	buf[0] = '\0';
-	category = strrchr(categorypath, '/');
-	category++;
 
 	cat = pkghash_get_value(categories, category);
 	if (cat == NULL)
-		cat = category_new(categorypath, category);
+		cat = category_new(portsfd, category);
 	if (cat == NULL)
 		return (false);
 
@@ -670,8 +667,7 @@ validate_origin(const char *portsdir, const char *origin)
 }
 
 static const char *
-port_version(xstring *cmd, const char *portsdir, const char *origin,
-    const char *pkgname)
+port_version(xstring *cmd, int portsfd, const char *origin, const char *pkgname)
 {
 	char	*output, *walk, *name;
 	char	*version = NULL;
@@ -681,13 +677,10 @@ port_version(xstring *cmd, const char *portsdir, const char *origin,
 	   in the ports and category Makefiles, then extract the
 	   version from the port itself. */
 
-	if (validate_origin(portsdir, origin)) {
-		fprintf(cmd->fp, "%s/%s", portsdir, origin);
-
-		fflush(cmd->fp);
+	if (validate_origin(portsfd, origin)) {
 		argv[0] = "make";
 		argv[1] = "-C";
-		argv[2] = cmd->buf;
+		argv[2] = (char *)origin;
 		argv[3] = "flavors-package-names";
 		argv[4] = NULL;
 
@@ -723,14 +716,16 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	const char	*name = NULL;
 	const char	*origin = NULL;
 	const char	*version = NULL;
+	int		portsfd;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_PORTS ) {
 		usage_version();
 		return (EXIT_FAILURE);
 	}
 
-	if (chdir(portsdir) != 0)
-		err(EXIT_FAILURE, "Cannot chdir to %s\n", portsdir); 
+	portsfd = open(portsdir, O_DIRECTORY);
+	if (portsfd == -1)
+		err(EXIT_FAILURE, "Cannot open '%s'", portsdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EXIT_FAILURE);
@@ -761,7 +756,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(name, matchname) != 0)
 			continue;
 
-		version = port_version(cmd, portsdir, origin, name);
+		version = port_version(cmd, portsfd, origin, name);
 		print_version(pkg, "port", version, limchar, opt);
 		xstring_reset(cmd);
 	}
