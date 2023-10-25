@@ -190,6 +190,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 	xstring *buf;
 	char path[MAXPATHLEN];
 	char *cp;
+	const char *ptr;
 	size_t sz;
 
 	buf = xstring_new();
@@ -229,14 +230,11 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				xstring_free(buf);
 				return (EPKG_FATAL);
 			}
-			if (prefix[strlen(prefix) - 1] == '/')
-				snprintf(path, sizeof(path), "%s%s",
-				    prefix, plist_file);
+			ptr = strrchr(plist_file, '/');
+			if (ptr != NULL)
+				ptr++;
 			else
-				snprintf(path, sizeof(path), "%s/%s",
-				    prefix, plist_file);
-			cp = strrchr(path, '/');
-			cp ++;
+				ptr = plist_file;
 			fprintf(buf->fp, "%s", cp);
 			break;
 		case 'B':
