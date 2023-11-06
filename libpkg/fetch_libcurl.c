@@ -141,6 +141,7 @@ int my_trace(CURL *handle, curl_infotype type,
 static long
 curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 {
+	char *tmp;
 	int still_running = 1;
 	CURLMsg *msg;
 	int msg_left;
@@ -154,6 +155,8 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 		curl_easy_setopt(cl, CURLOPT_DEBUGFUNCTION, my_trace);
 
 	/* compat with libfetch */
+	if ((tmp = getenv("HTTP_USER_AGENT")) != NULL)
+		curl_easy_setopt(cl, CURLOPT_USERAGENT, tmp);
 	if (getenv("SSL_NO_VERIFY_PEER") != NULL)
 		curl_easy_setopt(cl, CURLOPT_SSL_VERIFYPEER, 0L);
 	if (getenv("SSL_NO_VERIFY_HOSTNAME") != NULL)
