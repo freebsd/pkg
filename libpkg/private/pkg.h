@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -211,6 +211,7 @@ struct pkg {
 	char			*old_digest;
 	messages_t		 message;
 	char			*prefix;
+	char			*oprefix;
 	char			*comment;
 	char			*desc;
 	char			*sum;

@@ -80,6 +80,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->digest);
 	free(pkg->old_digest);
 	free(pkg->prefix);
+	free(pkg->oprefix);
 	free(pkg->comment);
 	free(pkg->desc);
 	free(pkg->sum);

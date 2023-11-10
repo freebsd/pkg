@@ -148,11 +148,23 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	counter_init("packing files", nfiles);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		char dpath[MAXPATHLEN];
+		const char *dp = file->path;
+
+		if (pkg->oprefix != NULL) {
+			size_t l = strlen(pkg->prefix);
+			if (strncmp(file->path, pkg->prefix, l) == 0 &&
+			    (file->path[l] == '/' || l == 1)) {
+				snprintf(dpath, sizeof(dpath), "%s%s%s",
+				    pkg->oprefix, l == 1 ? "/" : "", file->path + l);
+				dp = dpath;
+			}
+		}
 
 		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
 		    relocation, file->path);
 
-		ret = packing_append_file_attr(pkg_archive, fpath, file->path,
+		ret = packing_append_file_attr(pkg_archive, fpath, dp,
 		    file->uname, file->gname, file->perm, file->fflags);
 		if (ctx.developer_mode && ret != EPKG_OK)
 			return (ret);

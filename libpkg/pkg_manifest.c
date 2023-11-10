@@ -897,7 +897,19 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 
 	seq = NULL;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		urlencode(file->path, &b);
+		char dpath[MAXPATHLEN];
+		const char *dp = file->path;
+
+		if (pkg->oprefix != NULL) {
+			size_t l = strlen(pkg->prefix);
+			if (strncmp(file->path, pkg->prefix, l) == 0 &&
+			    (file->path[l] == '/' || l == 1)) {
+				snprintf(dpath, sizeof(dpath), "%s%s%s",
+				    pkg->oprefix, l == 1 ? "/" : "", file->path + l);
+				dp = dpath;
+			}
+		}
+		urlencode(dp, &b);
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
 		ucl_array_append(seq, ucl_object_fromlstring(b->buf, strlen(b->buf)));
@@ -1137,10 +1149,22 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			pkg_debug(4, "Emitting files");
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
+				char dpath[MAXPATHLEN];
+				const char *dp = file->path;
+
+				if (pkg->oprefix != NULL) {
+					size_t l = strlen(pkg->prefix);
+					if (strncmp(file->path, pkg->prefix, l) == 0 &&
+							(file->path[l] == '/' || l == 1)) {
+						snprintf(dpath, sizeof(dpath), "%s%s%s",
+								pkg->oprefix, l == 1 ? "/" : "", file->path + l);
+						dp = dpath;
+					}
+				}
 				if (file->sum == NULL)
 					file->sum = xstrdup("-");
 
-				urlencode(file->path, &tmpsbuf);
+				urlencode(dp, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map,

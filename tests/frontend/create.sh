@@ -25,7 +25,8 @@ tests_init \
 	create_from_plist_keyword_validation \
 	create_from_plist_keyword_real_args \
 	create_from_plist_keyword_lua_actions \
-	create_from_plist_keyword_deprecated
+	create_from_plist_keyword_deprecated \
+	create_from_plist_keyword_override_prefix
 
 genmanifest() {
 	cat << EOF >> +MANIFEST
@@ -37,6 +38,23 @@ categories: [test]
 comment: a test
 www: http://test
 prefix: /
+abi = "*";
+desc: <<EOD
+Yet another test
+EOD
+EOF
+}
+
+genprefixmanifest() {
+	cat << EOF >> +MANIFEST
+name: test
+origin: test
+version: 1
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /prefix
 abi = "*";
 desc: <<EOD
 Yet another test
@@ -783,4 +801,23 @@ EOF
 		-s exit:0 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
+}
+
+create_from_plist_keyword_override_prefix_body()
+{
+	genmanifest
+	genplist "@override_prefix /plop
+	file"
+	touch file
+	atf_check pkg create -o ${TMPDIR} -m . -p test.plist -r .
+	atf_check -o match:".*/plop/file$" tar tf test-1.pkg
+	atf_check -o inline:"/plop/file\n" pkg info -F test-1.pkg -ql
+
+	genprefixmanifest
+
+	mkdir "prefix"
+	touch prefix/file
+	atf_check pkg create -o ${TMPDIR} -m . -p test.plist -r .
+	atf_check -o match:".*/plop/file$" tar tf test-1.pkg
+	atf_check -o inline:"/plop/file\n" pkg info -F test-1.pkg -ql
 }
