@@ -56,6 +56,7 @@
 
 static ucl_object_t *keyword_schema = NULL;
 
+static int override_prefix(struct plist *, char *, struct file_attr *);
 static int setprefix(struct plist *, char *, struct file_attr *);
 static int dir(struct plist *, char *, struct file_attr *);
 static int file(struct plist *, char *, struct file_attr *);
@@ -81,6 +82,7 @@ static struct action_cmd {
 	{ "setgroup", setgroup, 8 },
 	{ "comment", comment_key, 7 },
 	{ "config", config, 6 },
+	{ "override_prefix", override_prefix, 15 },
 	/* compat with old packages */
 	{ "name", name_key, 4 },
 	{ NULL, NULL, 0 }
@@ -175,6 +177,18 @@ free_file_attr(struct file_attr *a)
 	free(a->owner);
 	free(a->group);
 	free(a);
+}
+
+static int
+override_prefix(struct plist *p, char *line, struct file_attr *a __unused)
+{
+	char *np = NULL;
+
+	if (line[0] != '\0')
+		np = xstrdup(line);
+	free(p->pkg->oprefix);
+	p->pkg->oprefix = np;
+	return (EPKG_OK);
 }
 
 static int
@@ -462,6 +476,7 @@ static struct keyact {
 	{ "mode", setmod },
 	{ "owner", setowner },
 	{ "group", setgroup },
+	{ "override_prefix", override_prefix },
 	/* old pkg compat */
 	{ "name", name_key },
 	{ NULL, NULL },
