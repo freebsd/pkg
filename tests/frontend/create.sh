@@ -440,7 +440,6 @@ directories {
 scripts {
     post-install = "# args: A B\necho A B";
 }
-
 EOF
 
 	atf_check \
@@ -478,7 +477,6 @@ categories [
 files {
     /testfile = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 }
-
 EOF
 
 	atf_check \
@@ -520,7 +518,6 @@ categories [
 files {
     /testfile = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 }
-
 EOF
 
 	atf_check \
