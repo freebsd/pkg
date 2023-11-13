@@ -858,6 +858,39 @@ cleanup:
 	return (retcode);
 }
 
+static void
+backup_file_if_needed(struct pkg *p, struct pkg_file *f)
+{
+	char path[MAXPATHLEN];
+	struct stat st;
+	char *sum;
+	pkg_checksum_type_t t;
+
+	if (fstatat(p->rootfd, RELATIVE_PATH(f->path), &st,
+	    AT_SYMLINK_NOFOLLOW) == -1)
+		return;
+
+	if (S_ISLNK(st.st_mode))
+		return;
+
+	if (S_ISREG(st.st_mode)) {
+		t = pkg_checksum_file_get_type(f->sum, -1);
+		sum = pkg_checksum_generate_fileat(p->rootfd,
+		    RELATIVE_PATH(f->path), t);
+		if (sum == NULL)
+			return;
+
+		if (strcmp(sum, f->sum) == 0) {
+			free(sum);
+			return;
+		}
+	}
+
+	snprintf(path, sizeof(path), "%s.pkgsave", f->path);
+	renameat(p->rootfd, RELATIVE_PATH(f->path),
+	    p->rootfd, RELATIVE_PATH(path));
+}
+
 static int
 pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 {
@@ -924,9 +957,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 #endif
 			/* if the files does not belong to any package, we do save it */
 			if (f->previous == PKG_FILE_SAVE) {
-				snprintf(path, sizeof(path), "%s.pkgsave", f->path);
-				renameat(pkg->rootfd, RELATIVE_PATH(fto),
-				    pkg->rootfd, RELATIVE_PATH(path));
+				backup_file_if_needed(pkg, f);
 			}
 			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
 		}

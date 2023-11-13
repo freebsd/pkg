@@ -380,6 +380,14 @@ fileexists_notinpkg_body()
 	atf_check \
 		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qyf test
 	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave && atf_fail "file saved when it should not have"
+
+	# Test if both files are identical
+	atf_check \
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target delete -qyf test
+	echo "entry 2" > ${TMPDIR}/target/${TMPDIR}/a
+	atf_check \
+		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qyf test
+	test -f ${TMPDIR}/target/${TMPDIR}/a.pkgsave && atf_fail "file saved when it should not have"
 	return 0
 }
 
