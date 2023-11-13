@@ -933,12 +933,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		}
 
 		if (f->config && f->config->status == MERGE_NOT_LOCAL) {
-			snprintf(path, sizeof(path), "%s.pkgsave", f->path);
-			if (renameat(pkg->rootfd, RELATIVE_PATH(fto),
-			    pkg->rootfd, RELATIVE_PATH(path)) == -1) {
-				pkg_fatal_errno("Fail to rename %s -> %s",
-				  fto, path);
-			}
+			backup_file_if_needed(pkg, f);
 		}
 
 		/*
