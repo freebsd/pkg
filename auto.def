@@ -5,7 +5,7 @@ use cc cc-lib cc-shared pkg-config
 
 set maj_ver 1
 set med_ver 20
-set min_ver 8
+set min_ver 9
 set dev_ver 0
 define PKG_API [expr {$maj_ver * 1000000 + $med_ver * 1000 + $min_ver}]
 define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]

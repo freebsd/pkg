@@ -1,3 +1,10 @@
+Changes from 1.20.8 to 1.20.9
+- fix a race in vuln.xml udpate trigger
+- undocument ftp support
+- curl: add backward compatibility with libfetch on HTTP_USER_AGENT
+- new Keyword: @override_prefix (pkgbase)
+- only generate .pkgsave files when really needed
+
 Changes from 1.20.7 to 1.20.8
 - update curl to 8.4.0
 - check: document -n
