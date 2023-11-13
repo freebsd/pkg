@@ -1,3 +1,16 @@
+Changes from 1.20.99.7 to 1.20.99.8
+- fix a race in vulnxml fetch trigger
+- add a new data.pkg which contains a fully valid json and aim at replacing
+  packagesite.pkg because extensible, continue to produce packagesite.pkg
+- repo: remove ability to provide v1 repository format
+- deduplicate code directly using libucl exporters instead of home backed ones
+- undocument ftp support
+- provide FreeBSD native sandboxing function in the library directly (packagekit)
+- curl: provide libfetch compatiblity about HTTP_USER_AGENT
+- New keywork: @override_prefix (pkgbase)
+- repo: using threads instead of forks
+- add: only generates .pkgsave when really needed
+
 Changes from 1.20.99.6 to 1.20.99.7
 - update curl to 8.4.0
 - plug some memory leak
