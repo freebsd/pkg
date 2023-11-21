@@ -150,7 +150,7 @@ static const struct stage {
 	int value;
 } stages[] = {
 	{ "pl",    2,  0            },
-	{ "snap",  4,  1            },
+	{ "snap",  6,  1            },
 #define	ABASE	2	/* Last special early-sorted prefix + 1 */
 	{ "alpha", 5, 'a'-'a'+ABASE },
 	{ "beta",  4, 'b'-'a'+ABASE },
