@@ -562,12 +562,12 @@ cleanup:
 		if (pkgdb_transaction_commit_sqlite(sqlite, "REPO") != EPKG_OK)
 			rc = EPKG_FATAL;
 	}
-	/* restore the previous db in case of failures */
-	if (rc != EPKG_OK && rc != EPKG_UPTODATE) {
-		unlink(name);
-		rename(path, name);
-	}
 	if (path != NULL) {
+		/* restore the previous db in case of failures */
+		if (rc != EPKG_OK && rc != EPKG_UPTODATE) {
+			unlink(name);
+			rename(path, name);
+		}
 		unlink(path);
 		free(path);
 	}
