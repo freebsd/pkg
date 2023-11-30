@@ -14,6 +14,7 @@
 *.log
 *.gz
 *.pc
+jimsh0
 tags
 TAGS
 src/pkg
@@ -53,6 +54,7 @@ scripts/sbin/pkg2ng
 /external/blake2/Makefile
 /external/picosat/Makefile
 /external/linenoise/Makefile
+/external/libcurl/Makefile
 /external/libucl/Makefile
 /external/yxml/Makefile
 /external/liblua/Makefile
@@ -61,9 +63,11 @@ scripts/sbin/pkg2ng
 /external/libelf/Makefile
 /external/sqlite/Makefile
 /external/sqlite/config.h
+/external/sqlite/sqlite_cfg.h
 /external/libelf/libelf_convert.c
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c
+/external/libcurl/curl_cfg.h
 /libpkg/Makefile
 /libpkg/repo/Makefile
 /libpkg/repo/binary/Makefile
@@ -94,3 +98,4 @@ scripts/sbin/pkg2ng
 /tests/plist
 /tests/ssh
 /tests/utils
+
