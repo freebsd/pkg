@@ -784,10 +784,24 @@ main(int argc, char **argv)
 		do_activation_test(argc);
 
 	if (argc >= 1 && strcmp(argv[0], "bootstrap") == 0) {
-		if (argc == 1) {
+		int force = 0, yes = 0;
+		while ((ch = getopt(argc, argv, "fy")) != -1) {
+			switch (ch) {
+			case 'f':
+				force = 1;
+				break;
+			case 'y':
+				yes = 1;
+				break;
+			default:
+				errx(EXIT_FAILURE, "Invalid argument provided");
+				break;
+			}
+		}
+		if (yes == 0 && force == 0) {
 			printf("pkg(8) already installed, use -f to force.\n");
 			exit(EXIT_SUCCESS);
-		} else if (argc == 2 && strcmp(argv[1], "-f") == 0) {
+		} else if (force == 1) {
 			if (access("/usr/sbin/pkg", R_OK) == 0) {
 				/* Only 10.0+ supported 'bootstrap -f' */
 #if __FreeBSD_version < 1000502
@@ -800,7 +814,7 @@ main(int argc, char **argv)
 				printf("pkg(8) is already installed. Forcing "
 				    "reinstallation through pkg(7).\n");
 				execl("/usr/sbin/pkg", "pkg", "bootstrap",
-				    "-f", NULL);
+				    "-f", yes ? "-y" : NULL, NULL);
 				/* NOTREACHED */
 			} else
 				errx(EXIT_FAILURE, "pkg(7) bootstrapper not"
