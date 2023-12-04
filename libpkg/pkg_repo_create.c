@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <math.h>
 #include <pthread.h>
+#include <fcntl.h>
 
 #include "tllist.h"
 #include "pkg.h"
