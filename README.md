@@ -39,6 +39,9 @@ Table of Contents:
 
 Cirrus CI: (Linux, OSX, FreeBSD):
 [![Build Status](https://api.cirrus-ci.com/github/freebsd/pkg.svg)](https://cirrus-ci.com/github/freebsd/pkg)
+SourceHut CI:
+[![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/freebsd.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/freebsd?)
+[![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/alpine.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/alpine?)
 
 <a name="libpkg"></a>
 ### libpkg
