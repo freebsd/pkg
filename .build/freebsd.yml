@@ -1,0 +1,18 @@
+image: freebsd/latest
+packages:
+  - kyua
+  - pkgconf
+  - python3
+sources:
+  - https://github.com/freebsd/pkg
+tasks:
+  - configure: |
+      mkdir build
+      cd build
+      ../pkg/configure 
+  - build: |
+      cd build
+      make
+  - test: |
+      cd build
+      make check || { kyua report --verbose; exit 1 ;}

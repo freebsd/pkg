@@ -1,0 +1,31 @@
+image: alpine/latest
+packages:
+  - musl-dev
+  - gcc
+  - g++
+  - make
+  - pkgconf
+  - kyua
+  - gcompat
+  - tcl
+  - musl-fts-dev
+  - libbsd-dev
+  - libarchive-dev
+  - openssl-dev
+  - bzip2-dev
+  - xz-dev
+  - zlib-dev
+  - m4
+sources:
+  - https://github.com/freebsd/pkg
+tasks:
+  - configure: |
+      mkdir build
+      cd build
+      ../pkg/configure
+  - build: |
+      cd build
+      make
+  - test: |
+      cd build
+      make check || { kyua report --verbose; exit 1 ;}
