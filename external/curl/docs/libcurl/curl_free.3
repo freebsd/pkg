@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_free 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_free 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_free - reclaim memory that has been obtained through a libcurl call
@@ -40,11 +40,14 @@ Passing in a NULL pointer in \fIptr\fP makes this function return immediately
 with no action.
 .SH EXAMPLE
 .nf
+int main(void)
+{
   char *width = curl_getenv("COLUMNS");
   if(width) {
     /* it was set! */
     curl_free(width);
   }
+}
 .fi
 .SH AVAILABILITY
 Always

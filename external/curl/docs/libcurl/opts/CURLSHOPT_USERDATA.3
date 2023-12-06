@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH CURLSHOPT_USERDATA 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLSHOPT_USERDATA 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLSHOPT_USERDATA - pointer passed to the lock and unlock mutex callbacks
@@ -39,12 +39,19 @@ the \fIclientp\fP argument to the callbacks set with
 All
 .SH EXAMPLE
 .nf
+struct secrets {
+  void *custom;
+};
+
+int main(void)
+{
   CURLSHcode sh;
   struct secrets private_stuff;
-  share = curl_share_init();
+  CURLSH *share = curl_share_init();
   sh = curl_share_setopt(share, CURLSHOPT_USERDATA, &private_stuff);
   if(sh)
     printf("Error: %s\\n", curl_share_strerror(sh));
+}
 .fi
 .SH AVAILABILITY
 Added in 7.10

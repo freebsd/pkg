@@ -199,6 +199,9 @@
 /* Define to 1 if you have the <crypto.h> header file. */
 #undef HAVE_CRYPTO_H
 
+/* Define to 1 if you have the fseeko declaration */
+#undef HAVE_DECL_FSEEKO
+
 /* Define to 1 if you have the declaration of `getpwuid_r', and to 0 if you
    don't. */
 #undef HAVE_DECL_GETPWUID_R
@@ -211,9 +214,6 @@
 
 /* Define to 1 if you have the <err.h> header file. */
 #undef HAVE_ERR_H
-
-/* Define to 1 if you have the `fchmod' function. */
-#undef HAVE_FCHMOD
 
 /* Define to 1 if you have the fcntl function. */
 #undef HAVE_FCNTL
@@ -721,12 +721,6 @@
 
 /* Define to 1 if you have the <utime.h> header file. */
 #undef HAVE_UTIME_H
-
-/* Define to 1 if compiler supports C99 variadic macro style. */
-#undef HAVE_VARIADIC_MACROS_C99
-
-/* Define to 1 if compiler supports old gcc variadic macro style. */
-#undef HAVE_VARIADIC_MACROS_GCC
 
 /* Define to 1 if you have the windows.h header file. */
 #undef HAVE_WINDOWS_H

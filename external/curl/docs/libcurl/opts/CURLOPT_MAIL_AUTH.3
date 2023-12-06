@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_MAIL_AUTH 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_MAIL_AUTH 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_MAIL_AUTH \- SMTP authentication address
@@ -57,12 +57,16 @@ NULL
 SMTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "smtp://example.com/");
-  curl_easy_setopt(curl, CURLOPT_MAIL_AUTH, "<secret@cave>");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "smtp://example.com/");
+    curl_easy_setopt(curl, CURLOPT_MAIL_AUTH, "<secret@cave>");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

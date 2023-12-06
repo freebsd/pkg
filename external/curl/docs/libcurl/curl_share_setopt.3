@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_share_setopt 3 "September 27, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_share_setopt 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_share_setopt - Set options for a shared object
@@ -46,11 +46,14 @@ See \fICURLSHOPT_UNSHARE(3)\fP.
 See \fICURLSHOPT_USERDATA(3)\fP.
 .SH EXAMPLE
 .nf
+int main(void)
+{
   CURLSHcode sh;
-  share = curl_share_init();
+  CURLSH *share = curl_share_init();
   sh = curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
   if(sh)
     printf("Error: %s\\n", curl_share_strerror(sh));
+}
 .fi
 .SH AVAILABILITY
 Added in 7.10

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLMOPT_MAX_HOST_CONNECTIONS 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLMOPT_MAX_HOST_CONNECTIONS 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLMOPT_MAX_HOST_CONNECTIONS \- max number of connections to a single host
@@ -59,9 +59,12 @@ timeout is however treated as a per-connect timeout.
 HTTP(S)
 .SH EXAMPLE
 .nf
-CURLM *m = curl_multi_init();
-/* do no more than 2 connections per host */
-curl_multi_setopt(m, CURLMOPT_MAX_HOST_CONNECTIONS, 2L);
+int main(void)
+{
+  CURLM *m = curl_multi_init();
+  /* do no more than 2 connections per host */
+  curl_multi_setopt(m, CURLMOPT_MAX_HOST_CONNECTIONS, 2L);
+}
 .fi
 .SH AVAILABILITY
 Added in 7.30.0

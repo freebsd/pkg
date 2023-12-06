@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_FTP_ENTRY_PATH 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLINFO_FTP_ENTRY_PATH 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_FTP_ENTRY_PATH \- get entry path in FTP server
@@ -45,21 +45,25 @@ CURL handle.
 FTP(S) and SFTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "ftp://example.com");
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "ftp://example.com");
 
-  res = curl_easy_perform(curl);
+    res = curl_easy_perform(curl);
 
-  if(!res) {
-    /* extract the entry path */
-    char *ep = NULL;
-    res = curl_easy_getinfo(curl, CURLINFO_FTP_ENTRY_PATH, &ep);
-    if(!res && ep) {
-      printf("Entry path was: %s\\n", ep);
+    if(!res) {
+      /* extract the entry path */
+      char *ep = NULL;
+      res = curl_easy_getinfo(curl, CURLINFO_FTP_ENTRY_PATH, &ep);
+      if(!res && ep) {
+        printf("Entry path was: %s\\n", ep);
+      }
     }
+    curl_easy_cleanup(curl);
   }
-  curl_easy_cleanup(curl);
 }
 .fi
 .SH AVAILABILITY

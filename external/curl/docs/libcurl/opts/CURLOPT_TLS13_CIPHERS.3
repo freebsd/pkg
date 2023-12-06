@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_TLS13_CIPHERS 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_TLS13_CIPHERS 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_TLS13_CIPHERS \- ciphers suites to use for TLS 1.3
@@ -54,13 +54,17 @@ NULL, use internal default
 All TLS based protocols: HTTPS, FTPS, IMAPS, POP3S, SMTPS etc.
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_TLS13_CIPHERS,
-                   "TLS_CHACHA20_POLY1305_SHA256");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_TLS13_CIPHERS,
+                     "TLS_CHACHA20_POLY1305_SHA256");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

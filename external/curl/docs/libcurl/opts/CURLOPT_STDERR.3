@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_STDERR 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_STDERR 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_STDERR \- redirect stderr to another stream
@@ -46,13 +46,16 @@ stderr
 All
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-FILE *filep = fopen("dump", "wb");
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
-  curl_easy_setopt(curl, CURLOPT_STDERR, filep);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  FILE *filep = fopen("dump", "wb");
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    curl_easy_setopt(curl, CURLOPT_STDERR, filep);
 
-  curl_easy_perform(curl);
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

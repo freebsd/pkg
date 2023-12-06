@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_UNRESTRICTED_AUTH 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_UNRESTRICTED_AUTH 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_UNRESTRICTED_AUTH \- send credentials to other hosts too
@@ -58,12 +58,15 @@ redirecting to new hosts.
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-  curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
-  curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

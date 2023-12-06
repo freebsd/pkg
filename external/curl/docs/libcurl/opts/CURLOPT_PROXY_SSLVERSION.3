@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PROXY_SSLVERSION 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_PROXY_SSLVERSION 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_PROXY_SSLVERSION \- preferred HTTPS proxy TLS version
@@ -86,15 +86,18 @@ CURL_SSLVERSION_DEFAULT
 All
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
 
-  /* ask libcurl to use TLS version 1.0 or later */
-  curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1);
+    /* ask libcurl to use TLS version 1.0 or later */
+    curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1);
 
-  /* Perform the request */
-  curl_easy_perform(curl);
+    /* Perform the request */
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

@@ -6677,7 +6677,7 @@ curl_headers_msg="enabled (--disable-headers-api)"
      curl_ws_msg="no      (--enable-websockets)"
     ssl_backends=
      curl_h1_msg="enabled (internal)"
-     curl_h2_msg="no      (--with-nghttp2, --with-hyper)"
+     curl_h2_msg="no      (--with-nghttp2)"
      curl_h3_msg="no      (--with-ngtcp2 --with-nghttp3, --with-quiche, --with-msh3)"
 
 enable_altsvc="yes"
@@ -17684,7 +17684,11 @@ rm -f conftest.err conftest.i conftest.$ac_ext
   if test "$curl_cv_have_def___INTEL_COMPILER" = "yes"; then
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking compiler version" >&5
+printf %s "checking compiler version... " >&6; }
     compiler_num="$curl_cv_def___INTEL_COMPILER"
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: Intel C '$compiler_num'" >&5
+printf "%s\n" "Intel C '$compiler_num'" >&6; }
 
     OLDCPPFLAGS=$CPPFLAGS
   # CPPPFLAG comes from CURL_CPP_P
@@ -17855,18 +17859,41 @@ printf "%s\n" "yes" >&6; }
 printf "%s\n" "no" >&6; }
       compiler_id="CLANG"
     fi
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking compiler version" >&5
+printf %s "checking compiler version... " >&6; }
     fullclangver=`$CC -v 2>&1 | grep version`
+    if echo $fullclangver | grep 'Apple' >/dev/null; then
+      appleclang=1
+    else
+      appleclang=0
+    fi
     clangver=`echo $fullclangver | grep "based on LLVM " | "$SED" 's/.*(based on LLVM \([0-9]*\.[0-9]*\).*)/\1/'`
     if test -z "$clangver"; then
-      if echo $fullclangver | grep "Apple LLVM version " >/dev/null; then
-                clangver="3.7"
-      else
-        clangver=`echo $fullclangver | "$SED" 's/.*version \([0-9]*\.[0-9]*\).*/\1/'`
-      fi
+      clangver=`echo $fullclangver | "$SED" 's/.*version \([0-9]*\.[0-9]*\).*/\1/'`
+      oldapple=0
+    else
+      oldapple=1
     fi
     clangvhi=`echo $clangver | cut -d . -f1`
     clangvlo=`echo $clangver | cut -d . -f2`
     compiler_num=`(expr $clangvhi "*" 100 + $clangvlo) 2>/dev/null`
+    if test "$appleclang" = '1' && test "$oldapple" = '0'; then
+            if   test "$compiler_num" -ge '1300'; then compiler_num='1200'
+      elif test "$compiler_num" -ge '1205'; then compiler_num='1101'
+      elif test "$compiler_num" -ge '1204'; then compiler_num='1000'
+      elif test "$compiler_num" -ge '1107'; then compiler_num='900'
+      elif test "$compiler_num" -ge '1103'; then compiler_num='800'
+      elif test "$compiler_num" -ge '1003'; then compiler_num='700'
+      elif test "$compiler_num" -ge '1001'; then compiler_num='600'
+      elif test "$compiler_num" -ge  '904'; then compiler_num='500'
+      elif test "$compiler_num" -ge  '902'; then compiler_num='400'
+      elif test "$compiler_num" -ge  '803'; then compiler_num='309'
+      elif test "$compiler_num" -ge  '703'; then compiler_num='308'
+      else                                       compiler_num='307'
+      fi
+    fi
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: clang '$compiler_num' (raw: '$fullclangver' / '$clangver')" >&5
+printf "%s\n" "clang '$compiler_num' (raw: '$fullclangver' / '$clangver')" >&6; }
     flags_dbg_yes="-g"
     flags_opt_all="-O -O0 -O1 -O2 -Os -O3 -O4"
     flags_opt_yes="-O2"
@@ -17929,10 +17956,19 @@ rm -f conftest.err conftest.i conftest.$ac_ext
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
     compiler_id="GNU_C"
-    gccver=`$CC -dumpversion`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking compiler version" >&5
+printf %s "checking compiler version... " >&6; }
+    # strip '-suffix' parts, e.g. Ubuntu Windows cross-gcc returns '10-win32'
+    gccver=`$CC -dumpversion | sed -E 's/-.+$//'`
     gccvhi=`echo $gccver | cut -d . -f1`
-    gccvlo=`echo $gccver | cut -d . -f2`
+    if echo $gccver | grep -F '.' >/dev/null; then
+      gccvlo=`echo $gccver | cut -d . -f2`
+    else
+      gccvlo="0"
+    fi
     compiler_num=`(expr $gccvhi "*" 100 + $gccvlo) 2>/dev/null`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: gcc '$compiler_num' (raw: '$gccver')" >&5
+printf "%s\n" "gcc '$compiler_num' (raw: '$gccver')" >&6; }
     flags_dbg_yes="-g"
     flags_opt_all="-O -O0 -O1 -O2 -O3 -Os -Og -Ofast"
     flags_opt_yes="-O2"
@@ -17982,67 +18018,6 @@ rm -f conftest.err conftest.i conftest.$ac_ext
   fi
       CPPFLAGS=$OLDCPPFLAGS
 
-  else
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-  fi
-
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler is LCC" >&5
-printf %s "checking if compiler is LCC... " >&6; }
-
-    OLDCPPFLAGS=$CPPFLAGS
-  # CPPPFLAG comes from CURL_CPP_P
-  CPPFLAGS="$CPPFLAGS $CPPPFLAG"
-      if test -z "$SED"; then
-    as_fn_error $? "SED not set. Cannot continue without SED being set." "$LINENO" 5
-  fi
-  if test -z "$GREP"; then
-    as_fn_error $? "GREP not set. Cannot continue without GREP being set." "$LINENO" 5
-  fi
-
-  tmp_exp=""
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#ifdef __LCC__
-CURL_DEF_TOKEN __LCC__
-#endif
-
-
-_ACEOF
-if ac_fn_c_try_cpp "$LINENO"
-then :
-
-    tmp_exp=`eval "$ac_cpp conftest.$ac_ext" 2>/dev/null | \
-      "$GREP" CURL_DEF_TOKEN 2>/dev/null | \
-      "$SED" 's/.*CURL_DEF_TOKEN[ ][ ]*//' 2>/dev/null | \
-      "$SED" 's/["][ ]*["]//g' 2>/dev/null`
-    if test -z "$tmp_exp" || test "$tmp_exp" = "__LCC__"; then
-      tmp_exp=""
-    fi
-
-fi
-rm -f conftest.err conftest.i conftest.$ac_ext
-  if test -z "$tmp_exp"; then
-    curl_cv_have_def___LCC__=no
-
-  else
-    curl_cv_have_def___LCC__=yes
-    curl_cv_def___LCC__=$tmp_exp
-
-  fi
-      CPPFLAGS=$OLDCPPFLAGS
-
-  if test "$curl_cv_have_def___LCC__" = "yes"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-    compiler_id="LCC"
-    flags_dbg_yes="-g"
-    flags_opt_all=""
-    flags_opt_yes=""
-    flags_opt_off=""
   else
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
@@ -18517,11 +18492,6 @@ squeeze() {
       INTEL_WINDOWS_C)
         #
                 tmp_CFLAGS="$tmp_CFLAGS"
-        ;;
-        #
-      LCC)
-        #
-                tmp_CFLAGS="$tmp_CFLAGS -n"
         ;;
         #
       SGI_MIPS_C)
@@ -19233,7 +19203,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
 
     ac_var_added_warnings=""
-  for warning in no-multichar sign-compare; do
+  for warning in sign-compare; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19251,6 +19221,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+          tmp_CFLAGS="$tmp_CFLAGS -Wno-multichar"
 
     ac_var_added_warnings=""
   for warning in undef; do
@@ -19377,10 +19348,10 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
           fi
           #
-                    if test "$compiler_num" -ge "208"; then
+                    if test "$compiler_num" -ge "207"; then
 
     ac_var_added_warnings=""
-  for warning in vla; do
+  for warning in address; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19398,12 +19369,9 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-          fi
-          #
-                    if test "$compiler_num" -ge "209"; then
 
     ac_var_added_warnings=""
-  for warning in shift-sign-overflow; do
+  for warning in attributes; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19421,9 +19389,6 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-          fi
-          #
-                    if test "$compiler_num" -ge "300"; then
 
     ac_var_added_warnings=""
   for warning in bad-function-cast; do
@@ -19466,6 +19431,26 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
 
     ac_var_added_warnings=""
+  for warning in div-by-zero format-security; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
   for warning in empty-body; do
 
   ac_var_match_word="no"
@@ -19484,6 +19469,131 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+
+    ac_var_added_warnings=""
+  for warning in missing-field-initializers; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in missing-noreturn; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in old-style-definition; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in redundant-decls; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [switch-enum])      # Not used because this basically disallows default case
+
+    ac_var_added_warnings=""
+  for warning in type-limits; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [unused-macros])    # Not practical
+
+    ac_var_added_warnings=""
+  for warning in unreachable-code unused-parameter; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          fi
+          #
+                    if test "$compiler_num" -ge "208"; then
 
     ac_var_added_warnings=""
   for warning in ignored-qualifiers; do
@@ -19506,7 +19616,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
 
     ac_var_added_warnings=""
-  for warning in type-limits; do
+  for warning in vla; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19524,9 +19634,37 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+          fi
+          #
+                    if test "$compiler_num" -ge "209"; then
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-sign-conversion"
 
     ac_var_added_warnings=""
-  for warning in no-sign-conversion; do
+  for warning in shift-sign-overflow; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [padded])  # Not used because we cannot change public structs
+          fi
+          #
+                    if test "$compiler_num" -ge "300"; then
+
+    ac_var_added_warnings=""
+  for warning in language-extension-token; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19550,6 +19688,26 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
     ac_var_added_warnings=""
   for warning in enum-conversion; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in sometimes-uninitialized; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19598,7 +19756,70 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
                     if test "$compiler_num" -ge "304"; then
 
     ac_var_added_warnings=""
+  for warning in header-guard; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
   for warning in unused-const-variable; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          fi
+          #
+                    if test "$compiler_num" -ge "305"; then
+
+    ac_var_added_warnings=""
+  for warning in pragmas; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in unreachable-code-break; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19724,7 +19945,6 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
       GNU_C)
         #
         if test "$want_warnings" = "yes"; then
-          tmp_CFLAGS="$tmp_CFLAGS -std=gnu89"
           #
                               if test "x$cross_compiling" != "xyes" ||
             test "$compiler_num" -ge "300"; then
@@ -20031,6 +20251,158 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
             tmp_CFLAGS="$tmp_CFLAGS -Wstrict-aliasing=3"
           fi
           #
+                    if test "$compiler_num" -ge "401"; then
+
+    ac_var_added_warnings=""
+  for warning in attributes; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in div-by-zero format-security; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in missing-field-initializers; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            case $host in
+              *-*-msys*)
+                ;;
+              *)
+
+    ac_var_added_warnings=""
+  for warning in missing-noreturn; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+  # Seen to clash with libtool-generated stub code
+                ;;
+            esac
+
+    ac_var_added_warnings=""
+  for warning in unreachable-code unused-parameter; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [padded])           # Not used because we cannot change public structs
+
+    ac_var_added_warnings=""
+  for warning in pragmas; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in redundant-decls; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [switch-enum])      # Not used because this basically disallows default case
+          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [unused-macros])    # Not practical
+          fi
+          #
                     if test "$compiler_num" -ge "402"; then
 
     ac_var_added_warnings=""
@@ -20055,6 +20427,26 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
           fi
           #
                     if test "$compiler_num" -ge "403"; then
+
+    ac_var_added_warnings=""
+  for warning in address; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
 
     ac_var_added_warnings=""
   for warning in type-limits old-style-declaration; do
@@ -20446,13 +20838,6 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
       INTEL_WINDOWS_C)
         #
                 tmp_CFLAGS="$tmp_CFLAGS"
-        ;;
-        #
-      LCC)
-        #
-        if test "$want_warnings" = "yes"; then
-                                                  tmp_CFLAGS="$tmp_CFLAGS"
-        fi
         ;;
         #
       SGI_MIPS_C)
@@ -22065,7 +22450,6 @@ then :
           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Hyper support is experimental" >&5
 printf "%s\n" "$as_me: Hyper support is experimental" >&6;}
           curl_h1_msg="enabled (Hyper)"
-          curl_h2_msg=$curl_h1_msg
           HYPER_ENABLED=1
 
 printf "%s\n" "#define USE_HYPER 1" >>confdefs.h
@@ -22711,10 +23095,10 @@ printf %s "checking for gethostbyname in $winsock_LIB... " >&6; }
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #endif
 
 int main (void)
@@ -22930,10 +23314,10 @@ curl_includes_winsock2="\
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
 #  endif
-#  include <windows.h>
 #  ifdef HAVE_WINSOCK2_H
 #    include <winsock2.h>
 #  endif
+#  include <windows.h>
 #endif
 /* includes end */"
 
@@ -26090,7 +26474,7 @@ int main (void)
 {
 
         #if defined(AMISSL_CURRENT_VERSION) && defined(AMISSL_V3xx) && \
-            defined(OPENSSL_VERSION_MAJOR) && (OPENSSL_VERSION_MAJOR >= 3) && \
+            (OPENSSL_VERSION_NUMBER >= 0x30000000L) && \
             defined(PROTO_AMISSL_H)
         return 0;
         #else
@@ -26918,7 +27302,7 @@ printf %s "checking for OpenSSL >= v3... " >&6; }
 int main (void)
 {
 
-        #if defined(OPENSSL_VERSION_MAJOR) && (OPENSSL_VERSION_MAJOR >= 3)
+        #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
         return 0;
         #else
         #error older than 3
@@ -31910,7 +32294,6 @@ printf "%s\n" "#define USE_NGHTTP3 1" >>confdefs.h
           export CURL_LIBRARY_PATH
           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Added $DIR_NGHTTP3 to CURL_LIBRARY_PATH" >&5
 printf "%s\n" "$as_me: Added $DIR_NGHTTP3 to CURL_LIBRARY_PATH" >&6;}
-          experimental="$experimental HTTP3"
 
 fi
 
@@ -33771,114 +34154,6 @@ printf "%s\n" "#define const /**/" >>confdefs.h
 
 fi
 
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for compiler support of C99 variadic macro style" >&5
-printf %s "checking for compiler support of C99 variadic macro style... " >&6; }
-if test ${curl_cv_variadic_macros_c99+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#define c99_vmacro3(first, ...) fun3(first, __VA_ARGS__)
-#define c99_vmacro2(first, ...) fun2(first, __VA_ARGS__)
-        int fun3(int arg1, int arg2, int arg3);
-        int fun2(int arg1, int arg2);
-        int fun3(int arg1, int arg2, int arg3)
-        { return arg1 + arg2 + arg3; }
-        int fun2(int arg1, int arg2)
-        { return arg1 + arg2; }
-
-int main (void)
-{
-
-        int res3 = c99_vmacro3(1, 2, 3);
-        int res2 = c99_vmacro2(1, 2);
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_variadic_macros_c99="yes"
-
-else $as_nop
-
-      curl_cv_variadic_macros_c99="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_variadic_macros_c99" >&5
-printf "%s\n" "$curl_cv_variadic_macros_c99" >&6; }
-  case "$curl_cv_variadic_macros_c99" in
-    yes)
-
-printf "%s\n" "#define HAVE_VARIADIC_MACROS_C99 1" >>confdefs.h
-
-      ;;
-  esac
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for compiler support of old gcc variadic macro style" >&5
-printf %s "checking for compiler support of old gcc variadic macro style... " >&6; }
-if test ${curl_cv_variadic_macros_gcc+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#define gcc_vmacro3(first, args...) fun3(first, args)
-#define gcc_vmacro2(first, args...) fun2(first, args)
-        int fun3(int arg1, int arg2, int arg3);
-        int fun2(int arg1, int arg2);
-        int fun3(int arg1, int arg2, int arg3)
-        { return arg1 + arg2 + arg3; }
-        int fun2(int arg1, int arg2)
-        { return arg1 + arg2; }
-
-int main (void)
-{
-
-        int res3 = gcc_vmacro3(1, 2, 3);
-        int res2 = gcc_vmacro2(1, 2);
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_variadic_macros_gcc="yes"
-
-else $as_nop
-
-      curl_cv_variadic_macros_gcc="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_variadic_macros_gcc" >&5
-printf "%s\n" "$curl_cv_variadic_macros_gcc" >&6; }
-  case "$curl_cv_variadic_macros_gcc" in
-    yes)
-
-printf "%s\n" "#define HAVE_VARIADIC_MACROS_GCC 1" >>confdefs.h
-
-      ;;
-  esac
-
 ac_fn_c_check_type "$LINENO" "size_t" "ac_cv_type_size_t" "$ac_includes_default"
 if test "x$ac_cv_type_size_t" = xyes
 then :
@@ -33926,10 +34201,10 @@ else $as_nop
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -34694,10 +34969,10 @@ _EOF
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -34738,10 +35013,10 @@ else $as_nop
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -34803,10 +35078,10 @@ fi
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -34858,10 +35133,10 @@ printf %s "checking for select... " >&6; }
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -34943,10 +35218,10 @@ printf %s "checking for recv... " >&6; }
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #else
 $curl_includes_bsdsocket
 #ifdef HAVE_SYS_TYPES_H
@@ -35019,10 +35294,10 @@ printf %s "checking for send... " >&6; }
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #else
 $curl_includes_bsdsocket
 #ifdef HAVE_SYS_TYPES_H
@@ -35099,10 +35374,10 @@ else $as_nop
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
+#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -36139,13 +36414,13 @@ curl_includes_ws2tcpip="\
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
 #  endif
-#  include <windows.h>
 #  ifdef HAVE_WINSOCK2_H
 #    include <winsock2.h>
 #    ifdef HAVE_WS2TCPIP_H
 #       include <ws2tcpip.h>
 #    endif
 #  endif
+#  include <windows.h>
 #endif
 /* includes end */"
 
@@ -43538,8 +43813,7 @@ fi
 
 
 
-
-  for ac_func in _fseeki64 arc4random fchmod fnmatch fseeko geteuid getpass_r getppid getpwuid getpwuid_r getrlimit gettimeofday if_nametoindex mach_absolute_time pipe sched_yield sendmsg setlocale setmode setrlimit snprintf utime utimes
+  for ac_func in _fseeki64 arc4random fnmatch fseeko geteuid getpass_r getppid getpwuid getpwuid_r getrlimit gettimeofday if_nametoindex mach_absolute_time pipe sched_yield sendmsg setlocale setmode setrlimit snprintf utime utimes
 do :
   as_ac_var=`printf "%s\n" "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -43597,6 +43871,15 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 fi
 
 done
+
+ac_fn_check_decl "$LINENO" "fseeko" "ac_cv_have_decl_fseeko" "#include <stdio.h>
+" "$ac_c_undeclared_builtin_options" "CFLAGS"
+if test "x$ac_cv_have_decl_fseeko" = xyes
+then :
+
+printf "%s\n" "#define HAVE_DECL_FSEEKO 1" >>confdefs.h
+
+fi
 
 
         #
@@ -45417,7 +45700,7 @@ if test "x$USE_TLS_SRP" = "x1"; then
   SUPPORT_FEATURES="$SUPPORT_FEATURES TLS-SRP"
 fi
 
-if test "x$USE_NGHTTP2" = "x1" -o "x$USE_HYPER" = "x1"; then
+if test "x$USE_NGHTTP2" = "x1"; then
   SUPPORT_FEATURES="$SUPPORT_FEATURES HTTP2"
 fi
 
@@ -45430,19 +45713,36 @@ if test "x$CURL_WITH_MULTI_SSL" = "x1"; then
   SUPPORT_FEATURES="$SUPPORT_FEATURES MultiSSL"
 fi
 
-if test "x$https_proxy" != "xno"; then
-  if test "x$OPENSSL_ENABLED" = "x1" \
-      -o "x$GNUTLS_ENABLED" = "x1" \
-      -o "x$SECURETRANSPORT_ENABLED" = "x1" \
-      -o "x$RUSTLS_ENABLED" = "x1" \
-      -o "x$BEARSSL_ENABLED" = "x1" \
-      -o "x$SCHANNEL_ENABLED" = "x1" \
-      -o "x$GNUTLS_ENABLED" = "x1" \
-      -o "x$MBEDTLS_ENABLED" = "x1"; then
-    SUPPORT_FEATURES="$SUPPORT_FEATURES HTTPS-proxy"
-  elif test "x$WOLFSSL_ENABLED" = "x1" -a "x$WOLFSSL_FULL_BIO" = "x1"; then
-    SUPPORT_FEATURES="$SUPPORT_FEATURES HTTPS-proxy"
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if this build supports HTTPS-proxy" >&5
+printf %s "checking if this build supports HTTPS-proxy... " >&6; }
+if test "x$CURL_DISABLE_HTTP" != "x1"; then
+  if test "x$https_proxy" != "xno"; then
+    if test "x$OPENSSL_ENABLED" = "x1" \
+        -o "x$GNUTLS_ENABLED" = "x1" \
+        -o "x$SECURETRANSPORT_ENABLED" = "x1" \
+        -o "x$RUSTLS_ENABLED" = "x1" \
+        -o "x$BEARSSL_ENABLED" = "x1" \
+        -o "x$SCHANNEL_ENABLED" = "x1" \
+        -o "x$GNUTLS_ENABLED" = "x1" \
+        -o "x$MBEDTLS_ENABLED" = "x1"; then
+      SUPPORT_FEATURES="$SUPPORT_FEATURES HTTPS-proxy"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+    elif test "x$WOLFSSL_ENABLED" = "x1" -a "x$WOLFSSL_FULL_BIO" = "x1"; then
+      SUPPORT_FEATURES="$SUPPORT_FEATURES HTTPS-proxy"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+    else
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+    fi
+  else
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
   fi
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
 fi
 
 if test "x$ECH_ENABLED" = "x1"; then
@@ -45457,6 +45757,9 @@ if test ${ac_cv_sizeof_curl_off_t} -gt 4; then
 fi
 
 if test "$tst_atomic" = "yes"; then
+  SUPPORT_FEATURES="$SUPPORT_FEATURES threadsafe"
+elif test "x$USE_THREADS_POSIX" = "x1" -a \
+     "x$ac_cv_header_pthread_h" = "xyes"; then
   SUPPORT_FEATURES="$SUPPORT_FEATURES threadsafe"
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_HSTS 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_HSTS 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_HSTS \- HSTS cache file name
@@ -65,10 +65,13 @@ NULL, no file name
 HTTPS and HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_HSTS, "/home/user/.hsts-cache");
-  curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_HSTS, "/home/user/.hsts-cache");
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

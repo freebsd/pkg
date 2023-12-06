@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_LOGIN_OPTIONS 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_LOGIN_OPTIONS 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_LOGIN_OPTIONS \- login options
@@ -58,12 +58,16 @@ NULL
 Only IMAP, LDAP, POP3 and SMTP support login options.
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "smtp://example.com/");
-  curl_easy_setopt(curl, CURLOPT_LOGIN_OPTIONS, "AUTH=*");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "smtp://example.com/");
+    curl_easy_setopt(curl, CURLOPT_LOGIN_OPTIONS, "AUTH=*");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

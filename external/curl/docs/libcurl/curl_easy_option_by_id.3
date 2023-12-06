@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_easy_option_by_id 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_easy_option_by_id 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_easy_option_by_id - find an easy setopt option by id
@@ -42,9 +42,12 @@ well.
 If libcurl has no option with the given id, this function returns NULL.
 .SH EXAMPLE
 .nf
-const struct curl_easyoption *opt = curl_easy_option_by_id(CURLOPT_URL);
-if(opt) {
-  printf("This option wants type %x\\n", opt->type);
+int main(void)
+{
+  const struct curl_easyoption *opt = curl_easy_option_by_id(CURLOPT_URL);
+  if(opt) {
+    printf("This option wants type %x\\n", opt->type);
+  }
 }
 .fi
 .SH AVAILABILITY

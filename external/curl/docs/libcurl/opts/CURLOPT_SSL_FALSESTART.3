@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_SSL_FALSESTART 3 "August 22, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_SSL_FALSESTART 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_SSL_FALSESTART \- TLS false start
@@ -45,11 +45,14 @@ when performing a full handshake.
 All TLS based protocols: HTTPS, FTPS, IMAPS, POP3S, SMTPS etc.
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
-  curl_easy_setopt(curl, CURLOPT_SSL_FALSESTART, 1L);
-  curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    curl_easy_setopt(curl, CURLOPT_SSL_FALSESTART, 1L);
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

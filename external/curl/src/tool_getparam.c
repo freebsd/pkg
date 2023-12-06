@@ -437,7 +437,7 @@ void parse_cert_parameter(const char *cert_parameter,
          needs to work. In order not to break compatibility, we still use : as
          separator, but we try to detect when it is used for a file name! On
          windows. */
-#ifdef WIN32
+#ifdef _WIN32
       if((param_place == &cert_parameter[1]) &&
          (cert_parameter[2] == '\\' || cert_parameter[2] == '/') &&
          (ISALPHA(cert_parameter[0])) ) {
@@ -1043,6 +1043,12 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
             break;
           }
         }
+
+        if(denominator > numerator) {
+          err = PARAM_NUMBER_TOO_LARGE;
+          break;
+        }
+
         global->ms_per_transfer = numerator/denominator;
       }
       break;

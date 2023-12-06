@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PROXY_SSLCERT_BLOB 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_PROXY_SSLCERT_BLOB 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_PROXY_SSLCERT_BLOB \- SSL proxy client certificate from memory blob
@@ -52,19 +52,27 @@ NULL
 Used with HTTPS proxy
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  struct curl_blob blob;
-  blob.data = certificateData;
-  blob.len = filesize;
-  blob.flags = CURL_BLOB_COPY;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_PROXY, "https://proxy");
-  curl_easy_setopt(curl, CURLOPT_PROXY_SSLKEY, "key.pem");
-  curl_easy_setopt(curl, CURLOPT_PROXY_KEYPASSWD, "s3cret");
-  curl_easy_setopt(curl, CURLOPT_PROXY_SSLCERT_BLOB, &blob);
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+
+extern char *certificateData; /* point to data */
+extern size_t filesize; /* size of the data */
+
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    struct curl_blob blob;
+    blob.data = certificateData;
+    blob.len = filesize;
+    blob.flags = CURL_BLOB_COPY;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_PROXY, "https://proxy");
+    curl_easy_setopt(curl, CURLOPT_PROXY_SSLKEY, "key.pem");
+    curl_easy_setopt(curl, CURLOPT_PROXY_KEYPASSWD, "s3cret");
+    curl_easy_setopt(curl, CURLOPT_PROXY_SSLCERT_BLOB, &blob);
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_printf 3 "August 22, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_printf 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_maprintf, curl_mfprintf, curl_mprintf, curl_msnprintf, curl_msprintf
@@ -238,8 +238,13 @@ by the corresponding argument.
 A '%' is written. No argument is converted.
 .SH EXAMPLE
 .nf
+const char *name = "John";
+
+int main(void)
+{
   curl_mprintf("My name is %s\\n", name);
-  curl_mprintf("Pi is almost %f\\n", 25/8);
+  curl_mprintf("Pi is almost %f\\n", (double)25.0/8);
+}
 .fi
 .SH AVAILABILITY
 These functions might be removed from the public libcurl API in the future. Do

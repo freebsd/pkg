@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PRE_PROXY 3 "September 27, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_PRE_PROXY 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_PRE_PROXY \- pre-proxy host to use
@@ -67,12 +67,15 @@ single port number used widely for proxies. Specify it!
 All except file://. Note that some protocols do not work well over proxy.
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/file.txt");
-  curl_easy_setopt(curl, CURLOPT_PRE_PROXY, "socks4://socks-proxy:1080");
-  curl_easy_setopt(curl, CURLOPT_PROXY, "http://proxy:80");
-  curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/file.txt");
+    curl_easy_setopt(curl, CURLOPT_PRE_PROXY, "socks4://socks-proxy:1080");
+    curl_easy_setopt(curl, CURLOPT_PROXY, "http://proxy:80");
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

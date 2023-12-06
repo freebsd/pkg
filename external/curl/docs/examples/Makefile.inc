@@ -76,7 +76,10 @@ check_PROGRAMS = \
   imap-ssl \
   imap-store \
   imap-tls \
+  interface \
   ipv6 \
+  keepalive \
+  localport \
   maxconnects  \
   multi-app \
   multi-debugcallback \
@@ -105,6 +108,7 @@ check_PROGRAMS = \
   progressfunc \
   protofeats \
   resolve \
+  rtsp-options \
   sendrecv \
   sepheaders \
   sftpget \

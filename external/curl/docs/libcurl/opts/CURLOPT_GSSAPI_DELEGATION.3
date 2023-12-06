@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_GSSAPI_DELEGATION 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_GSSAPI_DELEGATION 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_GSSAPI_DELEGATION \- allowed GSS-API delegation
@@ -46,14 +46,17 @@ CURLGSSAPI_DELEGATION_NONE
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode ret;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  /* delegate if okayed by policy */
-  curl_easy_setopt(curl, CURLOPT_GSSAPI_DELEGATION,
-                   (long)CURLGSSAPI_DELEGATION_POLICY_FLAG);
-  ret = curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode ret;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    /* delegate if okayed by policy */
+    curl_easy_setopt(curl, CURLOPT_GSSAPI_DELEGATION,
+                     (long)CURLGSSAPI_DELEGATION_POLICY_FLAG);
+    ret = curl_easy_perform(curl);
+  }
 }
 .fi
 

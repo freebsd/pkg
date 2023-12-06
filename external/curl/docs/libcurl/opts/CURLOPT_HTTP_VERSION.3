@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_HTTP_VERSION 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_HTTP_VERSION 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_HTTP_VERSION \- HTTP protocol version to use
@@ -81,15 +81,18 @@ Before that: CURL_HTTP_VERSION_1_1
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode ret;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_HTTP_VERSION,
-                   (long)CURL_HTTP_VERSION_2TLS);
-  ret = curl_easy_perform(curl);
-  if(ret == CURLE_HTTP_RETURNED_ERROR) {
-    /* an HTTP response error problem */
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode ret;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION,
+                     (long)CURL_HTTP_VERSION_2TLS);
+    ret = curl_easy_perform(curl);
+    if(ret == CURLE_HTTP_RETURNED_ERROR) {
+      /* an HTTP response error problem */
+    }
   }
 }
 .fi

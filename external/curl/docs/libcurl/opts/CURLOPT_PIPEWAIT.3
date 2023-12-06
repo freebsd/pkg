@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PIPEWAIT 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_PIPEWAIT 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_PIPEWAIT \- wait for multiplexing
@@ -59,12 +59,15 @@ and support level.
 HTTP(S)
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_PIPEWAIT, 1L);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_PIPEWAIT, 1L);
 
-  /* now add this easy handle to the multi handle */
+    /* now add this easy handle to the multi handle */
+  }
 }
 .fi
 .SH AVAILABILITY

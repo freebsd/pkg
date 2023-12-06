@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_DNS_LOCAL_IP6 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_DNS_LOCAL_IP6 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_DNS_LOCAL_IP6 \- IPv6 address to bind DNS resolves to
@@ -46,12 +46,16 @@ NULL
 All
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
-  curl_easy_setopt(curl, CURLOPT_DNS_LOCAL_IP6, "fe80::a9ff:fe46:b619");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
+    curl_easy_setopt(curl, CURLOPT_DNS_LOCAL_IP6, "fe80::a9ff:fe46:b619");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

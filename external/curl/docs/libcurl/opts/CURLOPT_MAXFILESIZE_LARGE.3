@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_MAXFILESIZE_LARGE 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_MAXFILESIZE_LARGE 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_MAXFILESIZE_LARGE \- maximum file size allowed to download
@@ -50,14 +50,17 @@ None
 FTP, HTTP and MQTT
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode ret;
-  curl_off_t ridiculous = 1 << 48;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  /* refuse to download if larger than ridiculous */
-  curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE, ridiculous);
-  ret = curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode ret;
+    curl_off_t ridiculous = (curl_off_t)1 << 48;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    /* refuse to download if larger than ridiculous */
+    curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE, ridiculous);
+    ret = curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_TLS_SSL_PTR 3 "September 27, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLINFO_TLS_SSL_PTR 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_TLS_SESSION, CURLINFO_TLS_SSL_PTR \- get TLS session info
@@ -134,13 +134,13 @@ static size_t wf(void *ptr, size_t size, size_t nmemb, void *stream)
   CURLcode res = curl_easy_getinfo(curl, CURLINFO_TLS_SSL_PTR, &info);
   if(info && !res) {
     if(CURLSSLBACKEND_OPENSSL == info->backend) {
-       printf("OpenSSL ver. %s\\n", SSL_get_version((SSL*)info->internals));
+      printf("OpenSSL ver. %s\\n", SSL_get_version((SSL*)info->internals));
     }
   }
   return size * nmemb;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
   CURLcode res;
   curl = curl_easy_init();

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_RANGE 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_RANGE 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_RANGE \- byte range to request
@@ -61,15 +61,18 @@ NULL
 HTTP, FTP, FILE, RTSP and SFTP.
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
 
-  /* get the first 200 bytes */
-  curl_easy_setopt(curl, CURLOPT_RANGE, "0-199");
+    /* get the first 200 bytes */
+    curl_easy_setopt(curl, CURLOPT_RANGE, "0-199");
 
-  /* Perform the request */
-  curl_easy_perform(curl);
+    /* Perform the request */
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

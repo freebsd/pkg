@@ -389,7 +389,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = updatemanpages.pl coverage.sh completion.pl firefox-db2pem.sh \
- checksrc.pl mk-ca-bundle.pl
+ checksrc.pl mk-ca-bundle.pl schemetable.c
 
 ZSH_COMPLETION_FUNCTION_FILENAME = _curl
 FISH_COMPLETION_FUNCTION_FILENAME = curl.fish

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_NOPROXY 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_NOPROXY 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_NOPROXY \- disable proxy use for specific hosts
@@ -67,15 +67,18 @@ NULL
 Most
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  /* accept various URLs */
-  curl_easy_setopt(curl, CURLOPT_URL, input);
-  /* use this proxy */
-  curl_easy_setopt(curl, CURLOPT_PROXY, "http://proxy:80");
-  /* ... but make sure this host name is not proxied */
-  curl_easy_setopt(curl, CURLOPT_NOPROXY, "www.example.com");
-  curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    /* accept various URLs */
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    /* use this proxy */
+    curl_easy_setopt(curl, CURLOPT_PROXY, "http://proxy:80");
+    /* ... but make sure this host name is not proxied */
+    curl_easy_setopt(curl, CURLOPT_NOPROXY, "www.example.com");
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

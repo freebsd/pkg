@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_SSL_ENGINES 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLINFO_SSL_ENGINES 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_SSL_ENGINES \- get an slist of OpenSSL crypto-engines
@@ -44,17 +44,20 @@ data for you.
 All TLS based ones.
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode res;
-  struct curl_slist *engines;
-  res = curl_easy_getinfo(curl, CURLINFO_SSL_ENGINES, &engines);
-  if((res == CURLE_OK) && engines) {
-    /* we have a list, free it when done using it */
-    curl_slist_free_all(engines);
-  }
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    struct curl_slist *engines;
+    res = curl_easy_getinfo(curl, CURLINFO_SSL_ENGINES, &engines);
+    if((res == CURLE_OK) && engines) {
+      /* we have a list, free it when done using it */
+      curl_slist_free_all(engines);
+    }
 
-  curl_easy_cleanup(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

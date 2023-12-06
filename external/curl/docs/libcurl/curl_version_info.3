@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH curl_version_info 3 "September 27, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_version_info 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_version_info - returns runtime libcurl version info
@@ -307,11 +307,14 @@ names are the same as would be used in URLs. The array is terminated by a NULL
 entry.
 .SH EXAMPLE
 .nf
-curl_version_info_data *ver = curl_version_info(CURLVERSION_NOW);
-printf("libcurl version %u.%u.%u\\n",
-       (ver->version_num >> 16) & 0xff,
-       (ver->version_num >> 8) & 0xff,
-       ver->version_num & 0xff);
+int main(void)
+{
+  curl_version_info_data *ver = curl_version_info(CURLVERSION_NOW);
+  printf("libcurl version %u.%u.%u\\n",
+         (ver->version_num >> 16) & 0xff,
+         (ver->version_num >> 8) & 0xff,
+         ver->version_num & 0xff);
+}
 .fi
 .SH AVAILABILITY
 Added in 7.10

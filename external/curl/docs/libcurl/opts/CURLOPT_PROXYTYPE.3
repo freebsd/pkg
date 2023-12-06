@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PROXYTYPE 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_PROXYTYPE 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_PROXYTYPE \- proxy protocol type
@@ -66,15 +66,18 @@ CURLPROXY_HTTP
 Most
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode ret;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_PROXY, "local.example.com:1080");
-  /* set the proxy type */
-  curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode ret;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_PROXY, "local.example.com:1080");
+    /* set the proxy type */
+    curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+    ret = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

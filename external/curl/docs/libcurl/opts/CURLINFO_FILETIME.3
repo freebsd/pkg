@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_FILETIME 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLINFO_FILETIME 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_FILETIME \- get the remote time of the retrieved document
@@ -49,21 +49,26 @@ the year 2038 on systems using 32 bit longs (Windows).
 HTTP(S), FTP(S), SFTP
 .SH EXAMPLE
 .nf
-curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, url);
-  /* Ask for filetime */
-  curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
-  res = curl_easy_perform(curl);
-  if(CURLE_OK == res) {
-    res = curl_easy_getinfo(curl, CURLINFO_FILETIME, &filetime);
-    if((CURLE_OK == res) && (filetime >= 0)) {
-      time_t file_time = (time_t)filetime;
-      printf("filetime %s: %s", filename, ctime(&file_time));
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    /* Ask for filetime */
+    curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
+    res = curl_easy_perform(curl);
+    if(CURLE_OK == res) {
+      long filetime = 0;
+      res = curl_easy_getinfo(curl, CURLINFO_FILETIME, &filetime);
+      if((CURLE_OK == res) && (filetime >= 0)) {
+        time_t file_time = (time_t)filetime;
+        printf("filetime: %s", ctime(&file_time));
+      }
     }
+    /* always cleanup */
+    curl_easy_cleanup(curl);
   }
-  /* always cleanup */
-  curl_easy_cleanup(curl);
 }
 .fi
 .SH AVAILABILITY

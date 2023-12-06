@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_CONV_TO_NETWORK_FUNCTION 3 "September 27, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_CONV_TO_NETWORK_FUNCTION 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_CONV_TO_NETWORK_FUNCTION \- convert data to network from host encoding
@@ -78,12 +78,10 @@ FTP, SMTP, IMAP, POP3
 .nf
 static CURLcode my_conv_from_ebcdic_to_ascii(char *buffer, size_t length)
 {
-  char *tempptrin, *tempptrout;
-  size_t bytes = length;
-  int rc;
-  tempptrin = tempptrout = buffer;
-  rc = platform_e2a(&tempptrin, &bytes, &tempptrout, &bytes);
-  if(rc == PLATFORM_CONV_OK) {
+  int rc = 0;
+  /* in-place convert 'buffer' from EBCDIC to ASCII */
+  if(rc == 0) {
+    /* success */
     return CURLE_OK;
   }
   else {
@@ -91,8 +89,13 @@ static CURLcode my_conv_from_ebcdic_to_ascii(char *buffer, size_t length)
   }
 }
 
-curl_easy_setopt(curl, CURLOPT_CONV_TO_NETWORK_FUNCTION,
-                 my_conv_from_ebcdic_to_ascii);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+
+  curl_easy_setopt(curl, CURLOPT_CONV_TO_NETWORK_FUNCTION,
+                   my_conv_from_ebcdic_to_ascii);
+}
 .fi
 .SH AVAILABILITY
 Not available and deprecated since 7.82.0.

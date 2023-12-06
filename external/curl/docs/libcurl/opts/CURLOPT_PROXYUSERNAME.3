@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PROXYUSERNAME 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_PROXYUSERNAME 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_PROXYUSERNAME \- user name to use for proxy authentication
@@ -49,14 +49,18 @@ blank
 Most
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
-  curl_easy_setopt(curl, CURLOPT_PROXY, "http://localhost:8080");
-  curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, "mrsmith");
-  curl_easy_setopt(curl, CURLOPT_PROXYPASSWORD, "qwerty");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
+    curl_easy_setopt(curl, CURLOPT_PROXY, "http://localhost:8080");
+    curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, "mrsmith");
+    curl_easy_setopt(curl, CURLOPT_PROXYPASSWORD, "qwerty");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

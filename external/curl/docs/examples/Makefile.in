@@ -155,7 +155,8 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) altsvc$(EXEEXT) \
 	imap-examine$(EXEEXT) imap-fetch$(EXEEXT) imap-list$(EXEEXT) \
 	imap-lsub$(EXEEXT) imap-multi$(EXEEXT) imap-noop$(EXEEXT) \
 	imap-search$(EXEEXT) imap-ssl$(EXEEXT) imap-store$(EXEEXT) \
-	imap-tls$(EXEEXT) ipv6$(EXEEXT) maxconnects$(EXEEXT) \
+	imap-tls$(EXEEXT) interface$(EXEEXT) ipv6$(EXEEXT) \
+	keepalive$(EXEEXT) localport$(EXEEXT) maxconnects$(EXEEXT) \
 	multi-app$(EXEEXT) multi-debugcallback$(EXEEXT) \
 	multi-double$(EXEEXT) multi-formadd$(EXEEXT) \
 	multi-legacy$(EXEEXT) multi-post$(EXEEXT) \
@@ -166,15 +167,15 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) altsvc$(EXEEXT) \
 	pop3-top$(EXEEXT) pop3-uidl$(EXEEXT) post-callback$(EXEEXT) \
 	postinmemory$(EXEEXT) postit2$(EXEEXT) \
 	postit2-formadd$(EXEEXT) progressfunc$(EXEEXT) \
-	protofeats$(EXEEXT) resolve$(EXEEXT) sendrecv$(EXEEXT) \
-	sepheaders$(EXEEXT) sftpget$(EXEEXT) sftpuploadresume$(EXEEXT) \
-	shared-connection-cache$(EXEEXT) simple$(EXEEXT) \
-	simplepost$(EXEEXT) simplessl$(EXEEXT) smtp-authzid$(EXEEXT) \
-	smtp-expn$(EXEEXT) smtp-mail$(EXEEXT) smtp-mime$(EXEEXT) \
-	smtp-multi$(EXEEXT) smtp-ssl$(EXEEXT) smtp-tls$(EXEEXT) \
-	smtp-vrfy$(EXEEXT) sslbackend$(EXEEXT) unixsocket$(EXEEXT) \
-	url2file$(EXEEXT) urlapi$(EXEEXT) websocket$(EXEEXT) \
-	websocket-cb$(EXEEXT)
+	protofeats$(EXEEXT) resolve$(EXEEXT) rtsp-options$(EXEEXT) \
+	sendrecv$(EXEEXT) sepheaders$(EXEEXT) sftpget$(EXEEXT) \
+	sftpuploadresume$(EXEEXT) shared-connection-cache$(EXEEXT) \
+	simple$(EXEEXT) simplepost$(EXEEXT) simplessl$(EXEEXT) \
+	smtp-authzid$(EXEEXT) smtp-expn$(EXEEXT) smtp-mail$(EXEEXT) \
+	smtp-mime$(EXEEXT) smtp-multi$(EXEEXT) smtp-ssl$(EXEEXT) \
+	smtp-tls$(EXEEXT) smtp-vrfy$(EXEEXT) sslbackend$(EXEEXT) \
+	unixsocket$(EXEEXT) url2file$(EXEEXT) urlapi$(EXEEXT) \
+	websocket$(EXEEXT) websocket-cb$(EXEEXT)
 subdir = docs/examples
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
@@ -575,11 +576,32 @@ imap_tls_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@imap_tls_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+interface_SOURCES = interface.c
+interface_OBJECTS = interface.$(OBJEXT)
+interface_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@interface_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@interface_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 ipv6_SOURCES = ipv6.c
 ipv6_OBJECTS = ipv6.$(OBJEXT)
 ipv6_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@ipv6_DEPENDENCIES = $(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@ipv6_DEPENDENCIES = $(LIBDIR)/libcurl.la
+keepalive_SOURCES = keepalive.c
+keepalive_OBJECTS = keepalive.$(OBJEXT)
+keepalive_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@keepalive_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@keepalive_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+localport_SOURCES = localport.c
+localport_OBJECTS = localport.$(OBJEXT)
+localport_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@localport_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@localport_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 maxconnects_SOURCES = maxconnects.c
 maxconnects_OBJECTS = maxconnects.$(OBJEXT)
 maxconnects_LDADD = $(LDADD)
@@ -775,6 +797,13 @@ resolve_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@resolve_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@resolve_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+rtsp_options_SOURCES = rtsp-options.c
+rtsp_options_OBJECTS = rtsp-options.$(OBJEXT)
+rtsp_options_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@rtsp_options_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@rtsp_options_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 sendrecv_SOURCES = sendrecv.c
 sendrecv_OBJECTS = sendrecv.$(OBJEXT)
@@ -973,21 +1002,23 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/imap-multi.Po ./$(DEPDIR)/imap-noop.Po \
 	./$(DEPDIR)/imap-search.Po ./$(DEPDIR)/imap-ssl.Po \
 	./$(DEPDIR)/imap-store.Po ./$(DEPDIR)/imap-tls.Po \
-	./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/maxconnects.Po \
-	./$(DEPDIR)/multi-app.Po ./$(DEPDIR)/multi-debugcallback.Po \
-	./$(DEPDIR)/multi-double.Po ./$(DEPDIR)/multi-formadd.Po \
-	./$(DEPDIR)/multi-legacy.Po ./$(DEPDIR)/multi-post.Po \
-	./$(DEPDIR)/multi-single.Po ./$(DEPDIR)/parseurl.Po \
-	./$(DEPDIR)/persistent.Po ./$(DEPDIR)/pop3-authzid.Po \
-	./$(DEPDIR)/pop3-dele.Po ./$(DEPDIR)/pop3-list.Po \
-	./$(DEPDIR)/pop3-multi.Po ./$(DEPDIR)/pop3-noop.Po \
-	./$(DEPDIR)/pop3-retr.Po ./$(DEPDIR)/pop3-ssl.Po \
-	./$(DEPDIR)/pop3-stat.Po ./$(DEPDIR)/pop3-tls.Po \
-	./$(DEPDIR)/pop3-top.Po ./$(DEPDIR)/pop3-uidl.Po \
-	./$(DEPDIR)/post-callback.Po ./$(DEPDIR)/postinmemory.Po \
-	./$(DEPDIR)/postit2-formadd.Po ./$(DEPDIR)/postit2.Po \
-	./$(DEPDIR)/progressfunc.Po ./$(DEPDIR)/protofeats.Po \
-	./$(DEPDIR)/resolve.Po ./$(DEPDIR)/sendrecv.Po \
+	./$(DEPDIR)/interface.Po ./$(DEPDIR)/ipv6.Po \
+	./$(DEPDIR)/keepalive.Po ./$(DEPDIR)/localport.Po \
+	./$(DEPDIR)/maxconnects.Po ./$(DEPDIR)/multi-app.Po \
+	./$(DEPDIR)/multi-debugcallback.Po ./$(DEPDIR)/multi-double.Po \
+	./$(DEPDIR)/multi-formadd.Po ./$(DEPDIR)/multi-legacy.Po \
+	./$(DEPDIR)/multi-post.Po ./$(DEPDIR)/multi-single.Po \
+	./$(DEPDIR)/parseurl.Po ./$(DEPDIR)/persistent.Po \
+	./$(DEPDIR)/pop3-authzid.Po ./$(DEPDIR)/pop3-dele.Po \
+	./$(DEPDIR)/pop3-list.Po ./$(DEPDIR)/pop3-multi.Po \
+	./$(DEPDIR)/pop3-noop.Po ./$(DEPDIR)/pop3-retr.Po \
+	./$(DEPDIR)/pop3-ssl.Po ./$(DEPDIR)/pop3-stat.Po \
+	./$(DEPDIR)/pop3-tls.Po ./$(DEPDIR)/pop3-top.Po \
+	./$(DEPDIR)/pop3-uidl.Po ./$(DEPDIR)/post-callback.Po \
+	./$(DEPDIR)/postinmemory.Po ./$(DEPDIR)/postit2-formadd.Po \
+	./$(DEPDIR)/postit2.Po ./$(DEPDIR)/progressfunc.Po \
+	./$(DEPDIR)/protofeats.Po ./$(DEPDIR)/resolve.Po \
+	./$(DEPDIR)/rtsp-options.Po ./$(DEPDIR)/sendrecv.Po \
 	./$(DEPDIR)/sepheaders.Po ./$(DEPDIR)/sftpget.Po \
 	./$(DEPDIR)/sftpuploadresume.Po \
 	./$(DEPDIR)/shared-connection-cache.Po ./$(DEPDIR)/simple.Po \
@@ -1030,16 +1061,17 @@ SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c chkspeed.c \
 	httpput-postfields.c https.c imap-append.c imap-authzid.c \
 	imap-copy.c imap-create.c imap-delete.c imap-examine.c \
 	imap-fetch.c imap-list.c imap-lsub.c imap-multi.c imap-noop.c \
-	imap-search.c imap-ssl.c imap-store.c imap-tls.c ipv6.c \
-	maxconnects.c multi-app.c multi-debugcallback.c multi-double.c \
-	multi-formadd.c multi-legacy.c multi-post.c multi-single.c \
-	parseurl.c persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	imap-search.c imap-ssl.c imap-store.c imap-tls.c interface.c \
+	ipv6.c keepalive.c localport.c maxconnects.c multi-app.c \
+	multi-debugcallback.c multi-double.c multi-formadd.c \
+	multi-legacy.c multi-post.c multi-single.c parseurl.c \
+	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
 	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
 	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
 	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
-	protofeats.c resolve.c sendrecv.c sepheaders.c sftpget.c \
-	sftpuploadresume.c shared-connection-cache.c simple.c \
-	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	protofeats.c resolve.c rtsp-options.c sendrecv.c sepheaders.c \
+	sftpget.c sftpuploadresume.c shared-connection-cache.c \
+	simple.c simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
 	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
 	smtp-vrfy.c sslbackend.c unixsocket.c url2file.c urlapi.c \
 	websocket.c websocket-cb.c
@@ -1055,16 +1087,17 @@ DIST_SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c \
 	httpput-postfields.c https.c imap-append.c imap-authzid.c \
 	imap-copy.c imap-create.c imap-delete.c imap-examine.c \
 	imap-fetch.c imap-list.c imap-lsub.c imap-multi.c imap-noop.c \
-	imap-search.c imap-ssl.c imap-store.c imap-tls.c ipv6.c \
-	maxconnects.c multi-app.c multi-debugcallback.c multi-double.c \
-	multi-formadd.c multi-legacy.c multi-post.c multi-single.c \
-	parseurl.c persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	imap-search.c imap-ssl.c imap-store.c imap-tls.c interface.c \
+	ipv6.c keepalive.c localport.c maxconnects.c multi-app.c \
+	multi-debugcallback.c multi-double.c multi-formadd.c \
+	multi-legacy.c multi-post.c multi-single.c parseurl.c \
+	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
 	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
 	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
 	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
-	protofeats.c resolve.c sendrecv.c sepheaders.c sftpget.c \
-	sftpuploadresume.c shared-connection-cache.c simple.c \
-	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	protofeats.c resolve.c rtsp-options.c sendrecv.c sepheaders.c \
+	sftpget.c sftpuploadresume.c shared-connection-cache.c \
+	simple.c simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
 	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
 	smtp-vrfy.c sslbackend.c unixsocket.c url2file.c urlapi.c \
 	websocket.c websocket-cb.c
@@ -1617,9 +1650,21 @@ imap-tls$(EXEEXT): $(imap_tls_OBJECTS) $(imap_tls_DEPENDENCIES) $(EXTRA_imap_tls
 	@rm -f imap-tls$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(imap_tls_OBJECTS) $(imap_tls_LDADD) $(LIBS)
 
+interface$(EXEEXT): $(interface_OBJECTS) $(interface_DEPENDENCIES) $(EXTRA_interface_DEPENDENCIES) 
+	@rm -f interface$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(interface_OBJECTS) $(interface_LDADD) $(LIBS)
+
 ipv6$(EXEEXT): $(ipv6_OBJECTS) $(ipv6_DEPENDENCIES) $(EXTRA_ipv6_DEPENDENCIES) 
 	@rm -f ipv6$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(ipv6_OBJECTS) $(ipv6_LDADD) $(LIBS)
+
+keepalive$(EXEEXT): $(keepalive_OBJECTS) $(keepalive_DEPENDENCIES) $(EXTRA_keepalive_DEPENDENCIES) 
+	@rm -f keepalive$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(keepalive_OBJECTS) $(keepalive_LDADD) $(LIBS)
+
+localport$(EXEEXT): $(localport_OBJECTS) $(localport_DEPENDENCIES) $(EXTRA_localport_DEPENDENCIES) 
+	@rm -f localport$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(localport_OBJECTS) $(localport_LDADD) $(LIBS)
 
 maxconnects$(EXEEXT): $(maxconnects_OBJECTS) $(maxconnects_DEPENDENCIES) $(EXTRA_maxconnects_DEPENDENCIES) 
 	@rm -f maxconnects$(EXEEXT)
@@ -1732,6 +1777,10 @@ protofeats$(EXEEXT): $(protofeats_OBJECTS) $(protofeats_DEPENDENCIES) $(EXTRA_pr
 resolve$(EXEEXT): $(resolve_OBJECTS) $(resolve_DEPENDENCIES) $(EXTRA_resolve_DEPENDENCIES) 
 	@rm -f resolve$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(resolve_OBJECTS) $(resolve_LDADD) $(LIBS)
+
+rtsp-options$(EXEEXT): $(rtsp_options_OBJECTS) $(rtsp_options_DEPENDENCIES) $(EXTRA_rtsp_options_DEPENDENCIES) 
+	@rm -f rtsp-options$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(rtsp_options_OBJECTS) $(rtsp_options_LDADD) $(LIBS)
 
 sendrecv$(EXEEXT): $(sendrecv_OBJECTS) $(sendrecv_DEPENDENCIES) $(EXTRA_sendrecv_DEPENDENCIES) 
 	@rm -f sendrecv$(EXEEXT)
@@ -1879,7 +1928,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imap-ssl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imap-store.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imap-tls.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/interface.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keepalive.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/localport.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/maxconnects.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-app.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-debugcallback.Po@am__quote@ # am--include-marker
@@ -1908,6 +1960,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/progressfunc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protofeats.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/resolve.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtsp-options.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sendrecv.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sepheaders.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sftpget.Po@am__quote@ # am--include-marker
@@ -2144,7 +2197,10 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/imap-ssl.Po
 	-rm -f ./$(DEPDIR)/imap-store.Po
 	-rm -f ./$(DEPDIR)/imap-tls.Po
+	-rm -f ./$(DEPDIR)/interface.Po
 	-rm -f ./$(DEPDIR)/ipv6.Po
+	-rm -f ./$(DEPDIR)/keepalive.Po
+	-rm -f ./$(DEPDIR)/localport.Po
 	-rm -f ./$(DEPDIR)/maxconnects.Po
 	-rm -f ./$(DEPDIR)/multi-app.Po
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
@@ -2173,6 +2229,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/progressfunc.Po
 	-rm -f ./$(DEPDIR)/protofeats.Po
 	-rm -f ./$(DEPDIR)/resolve.Po
+	-rm -f ./$(DEPDIR)/rtsp-options.Po
 	-rm -f ./$(DEPDIR)/sendrecv.Po
 	-rm -f ./$(DEPDIR)/sepheaders.Po
 	-rm -f ./$(DEPDIR)/sftpget.Po
@@ -2292,7 +2349,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/imap-ssl.Po
 	-rm -f ./$(DEPDIR)/imap-store.Po
 	-rm -f ./$(DEPDIR)/imap-tls.Po
+	-rm -f ./$(DEPDIR)/interface.Po
 	-rm -f ./$(DEPDIR)/ipv6.Po
+	-rm -f ./$(DEPDIR)/keepalive.Po
+	-rm -f ./$(DEPDIR)/localport.Po
 	-rm -f ./$(DEPDIR)/maxconnects.Po
 	-rm -f ./$(DEPDIR)/multi-app.Po
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
@@ -2321,6 +2381,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/progressfunc.Po
 	-rm -f ./$(DEPDIR)/protofeats.Po
 	-rm -f ./$(DEPDIR)/resolve.Po
+	-rm -f ./$(DEPDIR)/rtsp-options.Po
 	-rm -f ./$(DEPDIR)/sendrecv.Po
 	-rm -f ./$(DEPDIR)/sepheaders.Po
 	-rm -f ./$(DEPDIR)/sftpget.Po

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_AUTOREFERER 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_AUTOREFERER 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_AUTOREFERER \- automatically update the referer header
@@ -46,19 +46,23 @@ considered a minor privacy leak by some.
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
 
-  /* follow redirects */
-  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    /* follow redirects */
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
-  /* set Referer: automatically when following redirects */
-  curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
+    /* set Referer: automatically when following redirects */
+    curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
 
-  ret = curl_easy_perform(curl);
+    res = curl_easy_perform(curl);
 
-  curl_easy_cleanup(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

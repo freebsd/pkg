@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_SPEED_UPLOAD_T 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLINFO_SPEED_UPLOAD_T 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_SPEED_UPLOAD_T \- get upload speed
@@ -39,18 +39,22 @@ curl measured for the complete upload. Measured in bytes/second.
 .SH PROTOCOLS
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
 
-  /* Perform the request */
-  res = curl_easy_perform(curl);
+    /* Perform the request */
+    res = curl_easy_perform(curl);
 
-  if(!res) {
-    curl_off_t speed;
-    res = curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD_T, &speed);
     if(!res) {
-      printf("Upload speed %" CURL_FORMAT_CURL_OFF_T " bytes/sec\\n", speed);
+      curl_off_t speed;
+      res = curl_easy_getinfo(curl, CURLINFO_SPEED_UPLOAD_T, &speed);
+      if(!res) {
+        printf("Upload speed %" CURL_FORMAT_CURL_OFF_T " bytes/sec\\n", speed);
+      }
     }
   }
 }

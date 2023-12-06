@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_RTSP_STREAM_URI 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_RTSP_STREAM_URI 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_RTSP_STREAM_URI \- RTSP stream URI
@@ -52,14 +52,17 @@ option.
 RTSP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  char *prev_id; /* saved from before somehow */
-  curl_easy_setopt(curl, CURLOPT_URL, "rtsp://example.com/");
-  curl_easy_setopt(curl, CURLOPT_RTSP_STREAM_URI,
-                   "rtsp://foo.example.com/twister/video");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "rtsp://example.com/");
+    curl_easy_setopt(curl, CURLOPT_RTSP_STREAM_URI,
+                     "rtsp://foo.example.com/twister/video");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

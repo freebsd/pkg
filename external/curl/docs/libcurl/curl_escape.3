@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_escape 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_escape 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_escape - URL encodes the given string
@@ -45,10 +45,13 @@ on \fBstring\fP to find out the size.
 You must \fIcurl_free(3)\fP the returned string when you are done with it.
 .SH EXAMPLE
 .nf
-char *output = curl_escape("data to convert", 15);
-if(output) {
-  printf("Encoded: %s\\n", output);
-  curl_free(output);
+int main(void)
+{
+  char *output = curl_escape("data to convert", 15);
+  if(output) {
+    printf("Encoded: %s\\n", output);
+    curl_free(output);
+  }
 }
 .fi
 .SH AVAILABILITY

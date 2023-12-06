@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_WRITEFUNCTION 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_WRITEFUNCTION 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_WRITEFUNCTION \- callback for writing received data
@@ -64,7 +64,8 @@ that amount differs from the amount passed to your callback function, it
 signals an error condition to the library. This causes the transfer to get
 aborted and the libcurl function used returns \fICURLE_WRITE_ERROR\fP.
 
-You can also abort the transfer by returning CURL_WRITEFUNC_ERROR. (7.87.0)
+You can also abort the transfer by returning CURL_WRITEFUNC_ERROR (added in
+7.87.0), which makes \fICURLE_WRITE_ERROR\fP get returned.
 
 If the callback function returns CURL_WRITEFUNC_PAUSE it pauses this
 transfer. See \fIcurl_easy_pause(3)\fP for further details.
@@ -81,6 +82,9 @@ libcurl uses 'fwrite' as a callback by default.
 For all protocols
 .SH EXAMPLE
 .nf
+#include <stdlib.h> /* for realloc */
+#include <string.h> /* for memcpy */
+
 struct memory {
   char *response;
   size_t size;
@@ -92,7 +96,7 @@ static size_t cb(void *data, size_t size, size_t nmemb, void *clientp)
   struct memory *mem = (struct memory *)clientp;
 
   char *ptr = realloc(mem->response, mem->size + realsize + 1);
-  if(ptr == NULL)
+  if(!ptr)
     return 0;  /* out of memory! */
 
   mem->response = ptr;
@@ -103,25 +107,26 @@ static size_t cb(void *data, size_t size, size_t nmemb, void *clientp)
   return realsize;
 }
 
-struct memory chunk = {0};
-CURLcode res;
-CURL *curl_handle = curl_easy_init();
-
-if (curl_handle)
+int main(void)
 {
-  /* send all data to this function  */
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, cb);
+  struct memory chunk = {0};
+  CURLcode res;
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    /* send all data to this function  */
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
 
-  /* we pass our 'chunk' struct to the callback function */
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
+    /* we pass our 'chunk' struct to the callback function */
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 
-  /* send a request */
-  res = curl_easy_perform(curl_handle);
+    /* send a request */
+    res = curl_easy_perform(curl);
 
-  /* remember to free the buffer */
-  free(chunk.response);
+    /* remember to free the buffer */
+    free(chunk.response);
 
-  curl_easy_cleanup(curl_handle);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

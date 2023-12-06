@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_HTTP_CONTENT_DECODING 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_HTTP_CONTENT_DECODING 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_HTTP_CONTENT_DECODING \- HTTP content decoding control
@@ -43,12 +43,15 @@ default content decoding but requires you to use
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode ret;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_HTTP_CONTENT_DECODING, 0L);
-  ret = curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode ret;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_HTTP_CONTENT_DECODING, 0L);
+    ret = curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

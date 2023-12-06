@@ -21,15 +21,15 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_easy_pause 3 "October 06, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_easy_pause 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_easy_pause - pause and unpause a connection
 .SH SYNOPSIS
 .nf
-.B #include <curl/curl.h>
+#include <curl/curl.h>
 
-.BI "CURLcode curl_easy_pause(CURL *"handle ", int "bitmask ");"
+CURLcode curl_easy_pause(CURL *handle, int bitmask );
 .fi
 .SH DESCRIPTION
 Using this function, you can explicitly mark a running connection to get
@@ -93,8 +93,15 @@ When such a paused stream is unpaused again, any buffered data is delivered
 first.
 .SH EXAMPLE
 .nf
-/* pause a transfer in both directions */
-curl_easy_pause(curl, CURL_READFUNC_PAUSE | CURL_WRITEFUNC_PAUSE);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    /* pause a transfer in both directions */
+    curl_easy_pause(curl, CURL_READFUNC_PAUSE | CURL_WRITEFUNC_PAUSE);
+
+  }
+}
 .fi
 .SH "MEMORY USE"
 When pausing a download transfer by returning the magic return code from a

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_RTSP_CLIENT_CSEQ 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLINFO_RTSP_CLIENT_CSEQ 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_RTSP_CLIENT_CSEQ \- get the next RTSP client CSeq
@@ -40,16 +40,19 @@ by the application.
 RTSP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode res;
-  curl_easy_setopt(curl, CURLOPT_URL, "rtsp://rtsp.example.com");
-  res = curl_easy_perform(curl);
-  if(res == CURLE_OK) {
-    long cseq;
-    curl_easy_getinfo(curl, CURLINFO_RTSP_CLIENT_CSEQ, &cseq);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "rtsp://rtsp.example.com");
+    res = curl_easy_perform(curl);
+    if(res == CURLE_OK) {
+      long cseq;
+      curl_easy_getinfo(curl, CURLINFO_RTSP_CLIENT_CSEQ, &cseq);
+    }
+    curl_easy_cleanup(curl);
   }
-  curl_easy_cleanup(curl);
 }
 .fi
 .SH AVAILABILITY

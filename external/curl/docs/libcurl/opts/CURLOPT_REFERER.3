@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_REFERER 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_REFERER 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_REFERER \- the HTTP referer header
@@ -45,14 +45,17 @@ NULL
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
 
-  /* tell it where we found the link to this place */
-  curl_easy_setopt(curl, CURLOPT_REFERER, "https://example.com/aboutme.html");
+    /* tell it where we found the link to this place */
+    curl_easy_setopt(curl, CURLOPT_REFERER, "https://example.org/me.html");
 
-  curl_easy_perform(curl);
+    curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

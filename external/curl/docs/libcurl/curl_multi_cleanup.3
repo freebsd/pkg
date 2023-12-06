@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_multi_cleanup 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_multi_cleanup 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_multi_cleanup - close down a multi session
@@ -49,10 +49,15 @@ Passing in a NULL pointer in \fImulti_handle\fP makes this function return
 CURLM_BAD_HANDLE immediately with no other action.
 .SH EXAMPLE
 .nf
- /* when the multi transfer is done ... */
+int main(void)
+{
+  CURLM *multi = curl_multi_init();
 
- /* remove all easy handles, then: */
- curl_multi_cleanup(multi_handle);
+  /* when the multi transfer is done ... */
+
+  /* remove all easy handles, then: */
+  curl_multi_cleanup(multi);
+}
 .fi
 .SH AVAILABILITY
 Added in 7.9.6

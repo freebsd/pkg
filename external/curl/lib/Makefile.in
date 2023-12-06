@@ -1486,7 +1486,7 @@ libcurl_la_LDFLAGS_EXTRA = $(am__append_1) $(am__append_2) \
 	$(am__append_3) $(am__append_4) $(am__append_5)
 libcurl_la_CFLAGS_EXTRA = $(am__append_9)
 libcurl_la_CPPFLAGS = $(AM_CPPFLAGS) $(libcurl_la_CPPFLAGS_EXTRA)
-libcurl_la_LDFLAGS = $(AM_LDFLAGS) $(libcurl_la_LDFLAGS_EXTRA) $(LDFLAGS) $(LIBCURL_LIBS)
+libcurl_la_LDFLAGS = $(AM_LDFLAGS) $(libcurl_la_LDFLAGS_EXTRA) $(CURL_LDFLAGS_LIB) $(LIBCURL_LIBS)
 libcurl_la_CFLAGS = $(AM_CFLAGS) $(libcurl_la_CFLAGS_EXTRA)
 libcurlu_la_CPPFLAGS = $(AM_CPPFLAGS) -DCURL_STATICLIB -DUNITTESTS
 libcurlu_la_LDFLAGS = $(AM_LDFLAGS) -static $(LIBCURL_LIBS)

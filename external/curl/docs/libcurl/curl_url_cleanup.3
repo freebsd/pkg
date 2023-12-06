@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_url_cleanup 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_url_cleanup 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_url_cleanup - free the URL handle
@@ -38,9 +38,12 @@ Passing in a NULL pointer in \fIhandle\fP makes this function return
 immediately with no action.
 .SH EXAMPLE
 .nf
+int main(void)
+{
   CURLU *url = curl_url();
   curl_url_set(url, CURLUPART_URL, "https://example.com", 0);
   curl_url_cleanup(url);
+}
 .fi
 .SH AVAILABILITY
 Added in 7.62.0

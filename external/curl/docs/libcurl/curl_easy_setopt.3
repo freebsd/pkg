@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH curl_easy_setopt 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_easy_setopt 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_easy_setopt \- set options for a curl easy handle
@@ -710,12 +710,15 @@ To be set by toplevel tools like "curl" to skip lengthy cleanups when they are a
 TELNET options. See \fICURLOPT_TELNETOPTIONS(3)\fP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode res;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
-  res = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_TRAILERDATA 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_TRAILERDATA 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_TRAILERDATA \- pointer passed to trailing headers callback
@@ -40,11 +40,18 @@ NULL
 HTTP
 .SH EXAMPLE
 .nf
-/* Assuming we have a CURL handle in the hndl variable. */
+struct MyData {
+  void *custom;
+};
 
-struct MyData data;
-
-curl_easy_setopt(hndl, CURLOPT_TRAILERDATA, &data);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    struct MyData data;
+    curl_easy_setopt(curl, CURLOPT_TRAILERDATA, &data);
+  }
+}
 .fi
 
 A more complete example can be found in examples/http_trailers.html

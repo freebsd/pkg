@@ -59,8 +59,7 @@ announcement.
   [SECURITY-ADVISORY](https://curl.se/dev/advisory.html) for help on creating
   the advisory.
 
-- Request a CVE number from
-  [HackerOne](https://docs.hackerone.com/programs/cve-requests.html)
+- Request a CVE number from HackerOne
 
 - Update the "security advisory" with the CVE number.
 
@@ -283,3 +282,12 @@ and if an attacker can trick the user to run a specifically crafted curl
 command line, all bets are off. Such an attacker can just as well have the
 user run a much worse command that can do something fatal (like
 `sudo rm -rf /`).
+
+## Terminal output and escape sequences
+
+Content that is transferred from a server and gets displayed in a terminal by
+curl may contain escape sequences or use other tricks to fool the user. This
+is curl working as designed and is not a curl security problem. Escape
+sequences, moving cursor, changing color etc, is also frequently used for
+good. To reduce the risk of getting fooled, save files and browse them after
+download using a display method that minimizes risks.

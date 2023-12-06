@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_easy_header 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_easy_header 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_easy_header - get an HTTP header
@@ -35,6 +35,7 @@ CURLHcode curl_easy_header(CURL *easy,
                            unsigned int origin,
                            int request,
                            struct curl_header **hout);
+.fi
 .SH DESCRIPTION
 \fIcurl_easy_header(3)\fP returns a pointer to a "curl_header" struct in
 \fBhout\fP with data for the HTTP response header \fIname\fP. The case
@@ -127,9 +128,18 @@ response that might happen before the "real" response.
 The header is an HTTP/2 or HTTP/3 pseudo header
 .SH EXAMPLE
 .nf
-struct curl_header *type;
-CURLHcode h =
-  curl_easy_header(easy, "Content-Type", 0, CURLH_HEADER, -1, &type);
+int main(void)
+{
+  struct curl_header *type;
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLHcode h;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    curl_easy_perform(curl);
+    h = curl_easy_header(curl, "Content-Type", 0, CURLH_HEADER, -1, &type);
+    curl_easy_cleanup(curl);
+  }
+}
 .fi
 .SH AVAILABILITY
 Added in 7.83.0. Officially supported since 7.84.0.

@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_NETRC_FILE 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_NETRC_FILE 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_NETRC_FILE \- file name to read .netrc info from
@@ -46,13 +46,16 @@ NULL
 All
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode ret;
-  curl_easy_setopt(curl, CURLOPT_URL, "ftp://example.com/");
-  curl_easy_setopt(curl, CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
-  curl_easy_setopt(curl, CURLOPT_NETRC_FILE, "/tmp/magic-netrc");
-  ret = curl_easy_perform(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode ret;
+    curl_easy_setopt(curl, CURLOPT_URL, "ftp://example.com/");
+    curl_easy_setopt(curl, CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
+    curl_easy_setopt(curl, CURLOPT_NETRC_FILE, "/tmp/magic-netrc");
+    ret = curl_easy_perform(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

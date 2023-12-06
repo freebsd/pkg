@@ -22,7 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_POST 3 "September 26, 2023" "ibcurl 8.4.0" libcurl
+.TH CURLOPT_POST 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_POST \- make an HTTP POST
@@ -79,16 +79,20 @@ Instead you should set a new request type explicitly as described above.
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
-  curl_easy_setopt(curl, CURLOPT_POST, 1L);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
-  /* set up the read callback with CURLOPT_READFUNCTION */
+    /* set up the read callback with CURLOPT_READFUNCTION */
 
-  ret = curl_easy_perform(curl);
+    res = curl_easy_perform(curl);
 
-  curl_easy_cleanup(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY

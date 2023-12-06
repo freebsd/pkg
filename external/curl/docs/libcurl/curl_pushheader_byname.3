@@ -21,7 +21,7 @@
 .\" * SPDX-License-Identifier: curl
 .\" *
 .\" **************************************************************************
-.TH curl_pushheader_byname 3 "September 26, 2023" "libcurl 8.4.0" "libcurl"
+.TH curl_pushheader_byname 3 "December 04, 2023" "libcurl 8.5.0" "libcurl"
 
 .SH NAME
 curl_pushheader_byname - get a push header by name
@@ -44,11 +44,13 @@ one header field use the same name, this returns only the first one.
 
 .SH EXAMPLE
 .nf
-int curl_push_callback(CURL *parent,
-                       CURL *easy,
-                       size_t num_headers,
-                       struct curl_pushheaders *headers,
-                       void *clientp)
+#include <string.h> /* for strncmp */
+
+static int push_cb(CURL *parent,
+                   CURL *easy,
+                   size_t num_headers,
+                   struct curl_pushheaders *headers,
+                   void *clientp)
 {
   char *headp;
   int *transfers = (int *)clientp;
@@ -70,8 +72,13 @@ int curl_push_callback(CURL *parent,
   return CURL_PUSH_DENY;
 }
 
-curl_multi_setopt(multi, CURLMOPT_PUSHFUNCTION, curl_push_callback);
-curl_multi_setopt(multi, CURLMOPT_PUSHDATA, &counter);
+int main(void)
+{
+  int counter;
+  CURLM *multi = curl_multi_init();
+  curl_multi_setopt(multi, CURLMOPT_PUSHFUNCTION, push_cb);
+  curl_multi_setopt(multi, CURLMOPT_PUSHDATA, &counter);
+}
 .fi
 .SH AVAILABILITY
 Added in 7.44.0
