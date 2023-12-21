@@ -1016,7 +1016,7 @@ get_http_auth(void)
 {
 	const char *str = getenv("HTTP_AUTH");
 	if (str == NULL)
-		return (false);
+		return (NULL);
 	if ((str = strchr(str, ':')) == NULL) {
 		pkg_emit_error("malformed HTTP_AUTH");
 		return (NULL);
