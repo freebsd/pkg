@@ -207,14 +207,16 @@ static struct fetcher *
 select_fetcher(const char *url)
 {
 	struct fetcher *f;
+	size_t nsz;
 
 	for (size_t i = 0; i < nitems(fetchers); i++) {
-		if ((strncasecmp(url, fetchers[i].scheme,
-		    strlen(fetchers[i].scheme)) == 0) &&
-		    url[strlen(fetchers[i].scheme)] == ':') {
+		nsz = strlen(fetchers[i].scheme);
+
+		if ((strncasecmp(url, fetchers[i].scheme, nsz) == 0) &&
+		    url[nsz] == ':') {
 			f = &fetchers[i];
 			f->timeout =
-			    pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
+				pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 			return (f);
 		}
 	}
@@ -231,6 +233,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	char		*tmp;
 	int		 retcode = EPKG_OK;
 	struct pkg_repo	*fakerepo = NULL;
+	size_t           nsz;
 
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is
@@ -261,8 +264,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 		return (EPKG_FATAL);
 	}
 
-	if (strncasecmp(URL_SCHEME_PREFIX, fi->url,
-	    strlen(URL_SCHEME_PREFIX)) == 0) {
+	nsz = strlen(URL_SCHEME_PREFIX);
+	if (strncasecmp(URL_SCHEME_PREFIX, fi->url, nsz) == 0) {
 		if (repo->mirror_type != SRV) {
 			pkg_emit_error("packagesite URL error for %s -- "
 					URL_SCHEME_PREFIX
@@ -271,7 +274,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 			/* Too early for there to be anything to cleanup */
 			return(EPKG_FATAL);
 		}
-		fi->url += strlen(URL_SCHEME_PREFIX);
+		fi->url += nsz;
 	}
 
 	repo->silent = silent;
