@@ -117,6 +117,7 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 {
 	struct pkg_file *file = NULL;
 	const char *filepath;
+	size_t fsz, nsz;
 
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
@@ -132,8 +133,11 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			filepath = file->path;
-			if (strlen(filepath) >= strlen(name) &&
-			    strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
+			fsz = strlen(filepath);
+			nsz = strlen(name);
+
+			if (fsz >= nsz &&
+			    strcmp(&filepath[fsz - nsz], name) == 0) {
 				pkg_addshlib_required(pkg, name);
 				return (EPKG_OK);
 			}
@@ -828,6 +832,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	bool checkroot;
 	struct os_info loi;
+	size_t dsz;
 
 	const char *abi_files[] = {
 		getenv("ABI_FILE"),
@@ -999,7 +1004,8 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 			pkg_emit_error("unknown ARM ABI");
 			goto cleanup;
 		}
-		snprintf(dest + strlen(dest), sz - strlen(dest),
+		dsz = strlen(dest);
+		snprintf(dest + dsz, sz - dsz,
 		    ":%s:%s:%s:%s:%s", arch, wordsize_corres_str,
 		    endian_corres_str, abi, fpu);
 		break;
@@ -1029,7 +1035,8 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s:%s",
+		dsz = strlen(dest);
+		snprintf(dest + dsz, sz - dsz, ":%s:%s:%s:%s",
 		    arch, wordsize_corres_str, endian_corres_str, abi);
 		break;
 #if defined(EM_RISCV) && defined(EF_RISCV_FLOAT_ABI_MASK)
@@ -1045,7 +1052,8 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 				abi = "unknown";
 				break;
 		}
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		dsz = strlen(dest);
+		snprintf(dest + dsz, sz - dsz, ":%s:%s:%s",
 		    arch, wordsize_corres_str, abi);
 		break;
 #endif
@@ -1054,11 +1062,13 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		dsz = strlen(dest);
+		snprintf(dest + dsz, sz - dsz, ":%s:%s:%s",
 		    arch, wordsize_corres_str, endian_corres_str);
 		break;
 	default:
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+		dsz = strlen(dest);
+		snprintf(dest + dsz, sz - dsz, ":%s:%s",
 		    arch, wordsize_corres_str);
 		break;
 	}
@@ -1121,12 +1131,14 @@ int
 pkg_get_myarch_legacy(char *dest, size_t sz)
 {
 	int i, err;
+	size_t dsz;
 
 	err = pkg_get_myarch_elfparse(dest, sz, NULL);
 	if (err)
 		return (err);
 
-	for (i = 0; i < strlen(dest); i++)
+	dsz = strlen(dest);
+	for (i = 0; i < dsz; i++)
 		dest[i] = tolower(dest[i]);
 
 	return (0);
@@ -1138,6 +1150,7 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 	struct arch_trans *arch_trans;
 	char *arch_tweak;
 	int err;
+
 	err = pkg_get_myarch_elfparse(dest, sz, oi);
 	if (err) {
 		if (oi) {
@@ -1147,8 +1160,11 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 	}
 
 #ifdef __DragonFly__
+	size_t dsz;
+
+	dsz = strlen(dest);
 	if (strncasecmp(dest, "DragonFly", 9) == 0) {
-		for (int i = 0; i < strlen(dest); i++)
+		for (int i = 0; i < dsz; i++)
 			dest[i] = tolower(dest[i]);
 		return (0);
 	}
