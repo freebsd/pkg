@@ -385,11 +385,11 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *__unused u)
 
 	/* Fetch basic OS info */
 	if ((ret = host_os_info(os_name, sizeof(os_name), &major_version)) != EPKG_OK)
-		goto cleanup;
+	        return ret;
 
 	/* Fetch host CPU type */
 	if ((ret = host_cpu_type(&cpu_type)) != EPKG_OK)
-		goto cleanup;
+	        return ret;
 
 	/* Fetch the name for the base CPU family */
 	cpu_name = macho_get_arch_name(cpu_type);
@@ -398,7 +398,6 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *__unused u)
 	xasprintf(&spec, "%s:%lld:%s", os_name, major_version, cpu_name);
 	strlcpy(dest, spec, sz);
 
-cleanup:
 	free(spec);
 	return ret;
 }
