@@ -1657,6 +1657,16 @@ pkg_set_rootdir(const char *rootdir) {
 	return (EPKG_OK);
 }
 
+int
+pkg_set_ischrooted(bool ischrooted) {
+	if (pkg_initialized())
+		return (EPKG_FATAL);
+
+	ctx.ischrooted = ischrooted;
+
+	return (EPKG_OK);
+}
+
 const char *
 pkg_get_cachedir(void)
 {

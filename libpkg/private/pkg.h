@@ -179,6 +179,7 @@ struct pkg_ctx {
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
 	ip_version_t ip;
+	bool ischrooted;
 };
 
 extern struct pkg_ctx ctx;
