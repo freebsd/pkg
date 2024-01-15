@@ -703,6 +703,7 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
  */
 int64_t pkg_set_debug_level(int64_t debug_level);
 int pkg_set_rootdir(const char *rootdir);
+int pkg_set_ischrooted(bool ischrooted);
 
 int pkg_open_devnull(void);
 void pkg_close_devnull(void);

@@ -704,10 +704,12 @@ main(int argc, char **argv)
 		    "-j, -c and/or -r cannot be used at the same time!\n");
 	}
 
+	pkg_set_ischrooted(false);
 	if (chroot_path != NULL) {
 		if (chroot(chroot_path) == -1) {
 			err(EXIT_FAILURE, "chroot failed");
 		}
+		pkg_set_ischrooted(true);
 	}
 
 #ifdef HAVE_LIBJAIL
