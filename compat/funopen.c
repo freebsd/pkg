@@ -56,6 +56,10 @@ cookie_write(void *cookie, const char *buf, size_t size)
 	return (ssize_t)funcs->writefn(funcs->cookie, buf, (int)size);
 }
 
+#ifndef off64_t
+#define off64_t off_t
+#endif
+
 static int
 cookie_seek(void *cookie, off64_t *offset, int whence)
 {
