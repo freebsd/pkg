@@ -163,7 +163,7 @@ file_to_bufferat(int dfd, const char *path, char **buffer, off_t *sz)
 		goto cleanup;
 	}
 
-	cleanup:
+cleanup:
 	if (fd >= 0)
 		close(fd);
 
