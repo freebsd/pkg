@@ -194,6 +194,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 	size_t sz;
 
 	buf = xstring_new();
+	cp = NULL;
 
 	if (line != NULL && argv != NULL) {
 		if (lua) {
