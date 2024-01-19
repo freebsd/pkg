@@ -491,7 +491,7 @@ process_spawn_pipe(FILE *inout[2], const char *command)
 
 		execve(_PATH_BSHELL, argv, environ);
 
-		exit(127);
+		_exit(127);
 	}
 
 	return (-1); /* ? */
