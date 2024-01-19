@@ -88,6 +88,5 @@ pkg_cache_full_clean(void)
 		return;
 
 	pkg_debug(1, "Cleaning up cachedir");
-
-	return (rm_rf(-1, NULL));
+	rm_rf(-1, NULL);
 }
