@@ -93,9 +93,7 @@ static struct arch_trans machine_arch_translation[] = {
 	{ "arm:32:el:oabi:softfp", "arm" },
 	{ "arm:32:eb:eabi:softfp", "armeb" },
 	{ "arm:32:eb:oabi:softfp", "armeb" },
-	{ "armv6:32:el:eabi:softfp", "armv6" },
 	{ "armv6:32:el:eabi:hardfp", "armv6" },
-	{ "armv7:32:el:eabi:softfp", "armv7" },
 	{ "armv7:32:el:eabi:hardfp", "armv7" },
 	{ "aarch64:64", "aarch64" },
 	/* And now MIPS */
