@@ -69,18 +69,12 @@ copy_database(sqlite3 *src, sqlite3 *dst)
 
 	ret = sqlite3_exec(dst, "PRAGMA main.locking_mode=EXCLUSIVE;"
 			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
-	if (ret != SQLITE_OK) {
-		pkg_emit_error("sqlite error -- %s", errmsg);
-		sqlite3_free(errmsg);
-		return (EPKG_FATAL);
-	}
+	if (ret != SQLITE_OK)
+		goto out_error;
 
 	ret = sqlite3_exec(dst, "PRAGMA page_size", ps_cb, &page_size, &errmsg);
-	if (ret != SQLITE_OK) {
-		pkg_emit_error("sqlite error -- %s", errmsg);
-		sqlite3_free(errmsg);
-		return (EPKG_FATAL);
-	}
+	if (ret != SQLITE_OK)
+	        goto out_error;
 
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
@@ -107,13 +101,15 @@ copy_database(sqlite3 *src, sqlite3 *dst)
 	sqlite3_exec(dst, "PRAGMA main.locking_mode=NORMAL;"
 			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
 
-	if (ret != SQLITE_OK) {
-		pkg_emit_error("sqlite error -- %s", errmsg);
-		sqlite3_free(errmsg);
-		return (EPKG_FATAL);
-	}
+	if (ret != SQLITE_OK)
+		goto out_error;
 
 	return ret;
+
+out_error:
+	pkg_emit_error("sqlite error -- %s", errmsg);
+	sqlite3_free(errmsg);
+	return (EPKG_FATAL);
 }
 
 int
