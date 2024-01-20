@@ -2379,7 +2379,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct statvfs fs;
 	while (statvfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {
-			if (mkdirs(cachedir) != EPKG_OK)
+			if (pkg_mkdirs(cachedir) != EPKG_OK)
 				return (EPKG_FATAL);
 		} else {
 			pkg_emit_errno("statvfs", cachedir);
