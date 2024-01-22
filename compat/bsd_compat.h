@@ -163,7 +163,7 @@ char * strnstr(const char *s, const char *find, size_t slen);
 #endif
 
 #ifndef __unused
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 # define __unused __attribute__((__unused__))
 #else
 # define __unused

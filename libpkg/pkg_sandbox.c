@@ -46,6 +46,12 @@
 #include <signal.h>
 #include <pwd.h>
 
+#ifdef __linux__
+# ifdef __GLIBC__
+#  include <grp.h>
+# endif
+#endif
+
 #include "pkg.h"
 
 int
