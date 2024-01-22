@@ -571,10 +571,6 @@ fixup_abi(struct pkg *pkg, const char *rootdir, bool testing)
 		pkg->abi = xstrdup(arch);
 		defaultarch = true;
 	}
-	if (pkg->arch == NULL) {
-		arch = pkg_object_string(pkg_config_get("ALTABI"));
-		pkg->arch = xstrdup(arch);
-	}
 
 	if (!testing)
 		pkg_analyse_files(NULL, pkg, rootdir);
