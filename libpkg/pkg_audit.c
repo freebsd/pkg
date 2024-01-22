@@ -40,6 +40,12 @@
 
 #include <yxml.h>
 
+#ifdef __linux__
+# ifdef __GLIBC__
+#  include <sys/time.h>
+# endif
+#endif
+
 #include "pkg.h"
 #include "pkg/audit.h"
 #include "private/pkg.h"
