@@ -150,7 +150,7 @@ add_dylibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
 	/* Skip references to system libraries */
-	for (size_t i = 0; i < sizeof(system_dylib_prefixes) / sizeof(system_dylib_prefixes[0]); i++) {
+	for (size_t i = 0; i < nitems(system_dylib_prefixes); i++) {
 		const char *prefix = system_dylib_prefixes[i];
 		if (strncmp(name, prefix, strlen(prefix)) == 0)
 			return EPKG_OK;

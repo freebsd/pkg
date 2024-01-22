@@ -90,12 +90,12 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade)
 		return (EPKG_OK);
 	}
 
-	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+	for (i = 0; i < nitems(map); i++) {
 		if (map[i].a == type)
 			break;
 	}
 
-	assert(i < sizeof(map) / sizeof(map[0]));
+	assert(i < nitems(map));
 
 #ifdef PROC_REAP_KILL
 	mypid = getpid();
