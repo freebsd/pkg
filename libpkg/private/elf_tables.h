@@ -89,10 +89,6 @@ static struct arch_trans machine_arch_translation[] = {
 	{ "sparc64:64", "sparc64" },
 	{ "ia64:64", "ia64" },
 	/* All the ARM stuff */
-	{ "arm:32:el:eabi:softfp", "arm" },
-	{ "arm:32:el:oabi:softfp", "arm" },
-	{ "arm:32:eb:eabi:softfp", "armeb" },
-	{ "arm:32:eb:oabi:softfp", "armeb" },
 	{ "armv6:32:el:eabi:hardfp", "armv6" },
 	{ "armv7:32:el:eabi:hardfp", "armv7" },
 	{ "aarch64:64", "aarch64" },
