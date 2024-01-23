@@ -305,6 +305,7 @@ struct pkg_repo_create {
 	bool hash;
 	bool hash_symlink;
 	const char *outdir;
+	int ofd;
 	const char *metafile;
 	struct pkg_repo_meta *meta;
 	struct {

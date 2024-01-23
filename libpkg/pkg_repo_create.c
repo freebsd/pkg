@@ -417,6 +417,7 @@ pkg_repo_create_new(void)
 	struct pkg_repo_create *prc;
 
 	prc = xcalloc(1, sizeof(*prc));
+	prc->ofd = -1;
 
 	return (prc);
 }
@@ -427,6 +428,8 @@ pkg_repo_create_free(struct pkg_repo_create *prc)
 	if (prc == NULL)
 		return;
 	pkg_repo_meta_free(prc->meta);
+	if (prc->ofd != -1)
+		close(prc->ofd);
 	free(prc);
 }
 
@@ -537,10 +540,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 
 	pkg_emit_progress_tick(nfile++, files_to_pack);
 
-	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/meta.conf",
-	    prc->outdir);
-	if (stat(repo_archive, &st) == 0) {
+	if (fstatat(prc->ofd, "meta.conf", &st, 0) == 0) {
 		struct timeval ftimes[2] = {
 			{
 			.tv_sec = st.st_mtime,
@@ -551,17 +551,17 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 			.tv_usec = 0
 			}
 		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
-		    prc->outdir, prc->meta->manifests_archive);
-		utimes(repo_archive, ftimes);
+		snprintf(repo_archive, sizeof(repo_archive), "%s.pkg",
+		    prc->meta->manifests_archive);
+		futimesat(prc->ofd, repo_archive, ftimes);
 		if (prc->filelist) {
 			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.pkg", prc->outdir, prc->meta->filesite_archive);
-			utimes(repo_archive, ftimes);
+			    "%s.pkg", prc->meta->filesite_archive);
+			futimesat(prc->ofd, repo_archive, ftimes);
 		}
-		snprintf(repo_archive, sizeof(repo_archive),
-			"%s/%s.pkg", prc->outdir, prc->meta->data_archive);
-		utimes(repo_archive, ftimes);
+		snprintf(repo_archive, sizeof(repo_archive), "%s.pkg",
+		    prc->meta->data_archive);
+		futimesat(prc->ofd, repo_archive, ftimes);
 	}
 
 cleanup:
@@ -580,7 +580,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	pthread_t *threads;
 	struct thr_env te = { 0 };
 	size_t len;
-	int fd, outputdir_fd;
+	int fd;
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	char *repopath[2];
@@ -609,7 +609,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 			return (EPKG_FATAL);
 		}
 	}
-	if ((outputdir_fd = open(prc->outdir, O_DIRECTORY)) == -1) {
+	if ((prc->ofd = open(prc->outdir, O_DIRECTORY)) == -1) {
 		pkg_emit_error("Cannot open %s", prc->outdir);
 		return (EPKG_FATAL);
 	}
@@ -650,16 +650,16 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 		goto cleanup;
 	}
 
-	if ((te.mfd = openat(outputdir_fd, prc->meta->manifests,
+	if ((te.mfd = openat(prc->ofd, prc->meta->manifests,
 	     O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
-	if ((te.dfd = openat(outputdir_fd, prc->meta->data,
+	if ((te.dfd = openat(prc->ofd, prc->meta->data,
 	    O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
 	if (prc->filelist) {
-		if ((te.ffd = openat(outputdir_fd, prc->meta->filesite,
+		if ((te.ffd = openat(prc->ofd, prc->meta->filesite,
 		        O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 			goto cleanup;
 		}
@@ -715,13 +715,13 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 
 	/* Write metafile */
 
-	fd = openat(outputdir_fd, "meta", O_CREAT|O_TRUNC|O_CLOEXEC|O_WRONLY,
+	fd = openat(prc->ofd, "meta", O_CREAT|O_TRUNC|O_CLOEXEC|O_WRONLY,
 	    0644);
 	if (fd != -1) {
 		meta_dump = pkg_repo_meta_to_ucl(prc->meta);
 		ucl_object_emit_fd(meta_dump, UCL_EMIT_CONFIG, fd);
 		close(fd);
-		fd = openat(outputdir_fd, "meta.conf",
+		fd = openat(prc->ofd, "meta.conf",
 		    O_CREAT|O_TRUNC|O_CLOEXEC|O_WRONLY, 0644);
 		if (fd != -1) {
 			ucl_object_emit_fd(meta_dump, UCL_EMIT_CONFIG, fd);
@@ -736,8 +736,6 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	}
 	retcode = EPKG_OK;
 cleanup:
-	if (outputdir_fd != -1)
-		close(outputdir_fd);
 	if (te.mfd != -1)
 		close(te.mfd);
 	if (te.ffd != -1)
