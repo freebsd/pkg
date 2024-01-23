@@ -505,13 +505,6 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	pkg_emit_progress_tick(nfile++, files_to_pack);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir,
-		repo_meta_file);
-	if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo, prc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir,
 	    prc->meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
 		prc->meta->manifests_archive);
@@ -545,8 +538,8 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	pkg_emit_progress_tick(nfile++, files_to_pack);
 
 	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
-	    prc->outdir, repo_meta_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/meta.conf",
+	    prc->outdir);
 	if (stat(repo_archive, &st) == 0) {
 		struct timeval ftimes[2] = {
 			{
@@ -568,9 +561,6 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 		}
 		snprintf(repo_archive, sizeof(repo_archive),
 			"%s/%s.pkg", prc->outdir, prc->meta->data_archive);
-		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive),
-			"%s/%s.pkg", prc->outdir, repo_meta_file);
 		utimes(repo_archive, ftimes);
 	}
 
