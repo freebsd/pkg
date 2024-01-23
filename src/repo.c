@@ -90,13 +90,10 @@ password_cb(char *buf, int size, int rwflag, void *key)
 int
 exec_repo(int argc, char **argv)
 {
-	int	 ret;
 	int	 ch;
-	bool	 filelist = false;
-	const char *output_dir = NULL;
-	const char *meta_file = NULL;
 	bool	 hash = false;
 	bool	 hash_symlink = false;
+	struct pkg_repo_create *prc = pkg_repo_create_new();
 
 	hash = (getenv("PKG_REPO_HASH") != NULL);
 	hash_symlink = (getenv("PKG_REPO_SYMLINK") != NULL);
@@ -117,16 +114,16 @@ exec_repo(int argc, char **argv)
 			hash = true;
 			break;
 		case 'l':
-			filelist = true;
+			pkg_repo_create_set_create_filelist(prc, true);
 			break;
 		case 'o':
-			output_dir = optarg;
+			pkg_repo_create_set_output_dir(prc, optarg);
 			break;
 		case 'q':
 			quiet = true;
 			break;
 		case 'm':
-			meta_file = optarg;
+			pkg_repo_create_set_metafile(prc, optarg);
 			break;
 		case 's':
 			hash_symlink = true;
@@ -139,6 +136,10 @@ exec_repo(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	pkg_repo_create_set_hash(prc, hash);
+	pkg_repo_create_set_hash_symlink(prc, hash_symlink);
+	pkg_repo_create_set_sign(prc, argv + 1, argc - 1, password_cb);
+
 	if (argc < 1) {
 		usage_repo();
 		return (EXIT_FAILURE);
@@ -149,20 +150,10 @@ exec_repo(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (output_dir == NULL)
-		output_dir = argv[0];
-
-	ret = pkg_create_repo(argv[0], output_dir, filelist, meta_file, hash,
-	    hash_symlink);
-
-	if (ret != EPKG_OK) {
+	if (pkg_repo_create(prc, argv[0]) != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
 		return (EXIT_FAILURE);
 	}
-
-	if (pkg_finish_repo(output_dir, password_cb, argv + 1, argc - 1,
-	    filelist) != EPKG_OK)
-		return (EXIT_FAILURE);
 
 	return (EXIT_SUCCESS);
 }

@@ -300,6 +300,20 @@ struct pkg_create {
 	const char *outdir;
 };
 
+struct pkg_repo_create {
+	bool filelist;
+	bool hash;
+	bool hash_symlink;
+	const char *outdir;
+	const char *metafile;
+	struct pkg_repo_meta *meta;
+	struct {
+		char **argv;
+		int argc;
+		pkg_password_cb *cb;
+	} sign;
+};
+
 struct pkg_dep {
 	char		*origin;
 	char		*name;

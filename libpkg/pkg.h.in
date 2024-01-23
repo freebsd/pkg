@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2016 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -101,6 +101,7 @@ struct pkg_option;
 struct pkg_license;
 struct pkg_config_file;
 struct pkg_create;
+struct pkg_repo_create;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -808,6 +809,15 @@ int pkg_create_repo(char *path, const char *output_dir, bool filelist,
 int pkg_finish_repo(const char *output_dir, pkg_password_cb *cb, char **argv,
     int argc, bool filelist);
 
+struct pkg_repo_create *pkg_repo_create_new(void);
+void pkg_repo_create_free(struct pkg_repo_create *);
+void pkg_repo_create_set_create_filelist(struct pkg_repo_create *prc, bool);
+void pkg_repo_create_set_hash(struct pkg_repo_create *prc, bool);
+void pkg_repo_create_set_hash_symlink(struct pkg_repo_create *prc, bool);
+void pkg_repo_create_set_output_dir(struct pkg_repo_create *prc, const char *);
+void pkg_repo_create_set_metafile(struct pkg_repo_create *prc, const char *);
+void pkg_repo_create_set_sign(struct pkg_repo_create *prc, char **argv, int argc, pkg_password_cb *cb);
+int pkg_repo_create(struct pkg_repo_create *, char *path);
 
 /**
  * Test if the EUID has sufficient privilege to carry out some

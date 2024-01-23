@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -60,6 +60,9 @@ enum {
 	MSG_PKG_DONE=0,
 	MSG_PKG_READY,
 };
+
+static int pkg_repo_pack_db(const char *name, const char *archive, char *path,
+    struct pkg_key *keyinfo, struct pkg_repo_meta *meta, char **argv, int argc);
 
 static int
 hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
@@ -408,9 +411,183 @@ fts_compare(FTSENTP *a, FTSENTP *b)
 	return (strcmp((*a)->fts_name, (*b)->fts_name));
 }
 
+struct pkg_repo_create *
+pkg_repo_create_new(void)
+{
+	struct pkg_repo_create *prc;
+
+	prc = xcalloc(1, sizeof(*prc));
+
+	return (prc);
+}
+
+void
+pkg_repo_create_free(struct pkg_repo_create *prc)
+{
+	if (prc == NULL)
+		return;
+	pkg_repo_meta_free(prc->meta);
+	free(prc);
+}
+
+void
+pkg_repo_create_set_create_filelist(struct pkg_repo_create *prc, bool val)
+{
+	prc->filelist = val;
+}
+
+void
+pkg_repo_create_set_hash(struct pkg_repo_create *prc, bool val)
+{
+	prc->hash = val;
+}
+
+void
+pkg_repo_create_set_hash_symlink(struct pkg_repo_create *prc, bool val)
+{
+	prc->hash_symlink = val;
+}
+
+void
+pkg_repo_create_set_output_dir(struct pkg_repo_create *prc, const char *out)
+{
+	prc->outdir = out;
+}
+
+void
+pkg_repo_create_set_metafile(struct pkg_repo_create *prc, const char *metafile)
+{
+	prc->metafile = metafile;
+}
+
+void
+pkg_repo_create_set_sign(struct pkg_repo_create *prc, char **argv, int argc, pkg_password_cb *cb)
+{
+	prc->sign.argc = argc;
+	prc->sign.argv = argv;
+	prc->sign.cb = cb;
+}
+
+static int
+pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
+{
+	char repo_path[MAXPATHLEN];
+	char repo_archive[MAXPATHLEN];
+	char *key_file;
+	const char *key_type;
+	struct pkg_key *keyinfo = NULL;
+	struct stat st;
+	int ret = EPKG_OK, nfile = 0, fd;
+	const int files_to_pack = 4;
+
+	if (prc->sign.argc == 1) {
+		key_type = key_file = prc->sign.argv[0];
+		if (strncmp(key_file, "rsa:", 4) == 0) {
+			key_file += 4;
+			*(key_file - 1) = '\0';
+		} else {
+			key_type = "rsa";
+		}
+
+		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
+		rsa_new(&keyinfo, prc->sign.cb, key_file);
+	}
+
+	if (prc->sign.argc > 1 && strcmp(prc->sign.argv[0], "signing_command:") != 0)
+		return (EPKG_FATAL);
+
+	if (prc->sign.argc > 1) {
+		prc->sign.argc--;
+		prc->sign.argv++;
+	}
+
+	pkg_emit_progress_start("Packing files for repository");
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir,
+		repo_meta_file);
+	if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo,
+	    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir,
+	    prc->meta->manifests);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
+		prc->meta->manifests_archive);
+	if (pkg_repo_pack_db(prc->meta->manifests, repo_archive, repo_path, keyinfo,
+	    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
+	if (prc->filelist) {
+		snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir,
+		    prc->meta->filesite);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
+		    prc->outdir, prc->meta->filesite_archive);
+		if (pkg_repo_pack_db(prc->meta->filesite, repo_archive, repo_path, keyinfo,
+		    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir, prc->meta->data);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
+	    prc->meta->data_archive);
+	if (pkg_repo_pack_db(prc->meta->data, repo_archive, repo_path, keyinfo,
+	    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_emit_progress_tick(nfile++, files_to_pack);
+
+	/* Now we need to set the equal mtime for all archives in the repo */
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
+	    prc->outdir, repo_meta_file);
+	if (stat(repo_archive, &st) == 0) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = st.st_mtime,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = st.st_mtime,
+			.tv_usec = 0
+			}
+		};
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
+		    prc->outdir, prc->meta->manifests_archive);
+		utimes(repo_archive, ftimes);
+		if (prc->filelist) {
+			snprintf(repo_archive, sizeof(repo_archive),
+			    "%s/%s.pkg", prc->outdir, prc->meta->filesite_archive);
+			utimes(repo_archive, ftimes);
+		}
+		snprintf(repo_archive, sizeof(repo_archive),
+			"%s/%s.pkg", prc->outdir, prc->meta->data_archive);
+		utimes(repo_archive, ftimes);
+		snprintf(repo_archive, sizeof(repo_archive),
+			"%s/%s.pkg", prc->outdir, repo_meta_file);
+		utimes(repo_archive, ftimes);
+	}
+
+cleanup:
+	pkg_emit_progress_tick(files_to_pack, files_to_pack);
+
+	rsa_free(keyinfo);
+
+	return (ret);
+}
+
 int
-pkg_create_repo(char *path, const char *output_dir, bool filelist,
-	const char *metafile, bool hash, bool hash_symlink)
+pkg_repo_create(struct pkg_repo_create *prc, char *path)
 {
 	FTS *fts = NULL;
 	int num_workers;
@@ -418,10 +595,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	struct thr_env te = { 0 };
 	size_t len;
 	int fd, outputdir_fd;
-	struct pkg_repo_meta *meta = NULL;
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	char *repopath[2];
+
+	if (prc->outdir == NULL)
+		prc->outdir = path;
 
 	te.mfd = te.ffd = te.dfd = -1;
 
@@ -431,44 +610,44 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	}
 
 	errno = 0;
-	if (!is_dir(output_dir)) {
+	if (!is_dir(prc->outdir)) {
 		/* Try to create dir */
 		if (errno == ENOENT) {
-			if (mkdir(output_dir, 00755) == -1) {
+			if (mkdir(prc->outdir, 00755) == -1) {
 				pkg_fatal_errno("cannot create output directory %s",
-					output_dir);
+					prc->outdir);
 			}
 		}
 		else {
-			pkg_emit_error("%s is not a directory", output_dir);
+			pkg_emit_error("%s is not a directory", prc->outdir);
 			return (EPKG_FATAL);
 		}
 	}
-	if ((outputdir_fd = open(output_dir, O_DIRECTORY)) == -1) {
-		pkg_emit_error("Cannot open %s", output_dir);
+	if ((outputdir_fd = open(prc->outdir, O_DIRECTORY)) == -1) {
+		pkg_emit_error("Cannot open %s", prc->outdir);
 		return (EPKG_FATAL);
 	}
 
-	if (metafile != NULL) {
-		fd = open(metafile, O_RDONLY);
+	if (prc->metafile != NULL) {
+		fd = open(prc->metafile, O_RDONLY);
 		if (fd == -1) {
-			pkg_emit_error("meta loading error while trying %s", metafile);
+			pkg_emit_error("meta loading error while trying %s", prc->metafile);
 			return (EPKG_FATAL);
 		}
-		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
-			pkg_emit_error("meta loading error while trying %s", metafile);
+		if (pkg_repo_meta_load(fd, &prc->meta) != EPKG_OK) {
+			pkg_emit_error("meta loading error while trying %s", prc->metafile);
 			close(fd);
 			return (EPKG_FATAL);
 		}
 		close(fd);
 	} else {
-		meta = pkg_repo_meta_default();
+		prc->meta = pkg_repo_meta_default();
 	}
-	meta->repopath = path;
-	meta->hash = hash;
-	meta->hash_symlink = hash_symlink;
+	prc->meta->repopath = path;
+	prc->meta->hash = prc->hash;
+	prc->meta->hash_symlink = prc->hash_symlink;
 
-	te.meta = meta;
+	te.meta = prc->meta;
 
 	repopath[0] = path;
 	repopath[1] = NULL;
@@ -485,16 +664,16 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		goto cleanup;
 	}
 
-	if ((te.mfd = openat(outputdir_fd, meta->manifests,
+	if ((te.mfd = openat(outputdir_fd, prc->meta->manifests,
 	     O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
-	if ((te.dfd = openat(outputdir_fd, meta->data,
+	if ((te.dfd = openat(outputdir_fd, prc->meta->data,
 	    O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
-	if (filelist) {
-		if ((te.ffd = openat(outputdir_fd, meta->filesite,
+	if (prc->filelist) {
+		if ((te.ffd = openat(outputdir_fd, prc->meta->filesite,
 		        O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 			goto cleanup;
 		}
@@ -502,7 +681,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	len = 0;
 
-	pkg_create_repo_read_fts(&te.fts_items, fts, path, &len, meta);
+	pkg_create_repo_read_fts(&te.fts_items, fts, path, &len, prc->meta);
 
 	if (len == 0) {
 		/* Nothing to do */
@@ -514,7 +693,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	num_workers = MIN(num_workers, len);
 
 	/* Launch workers */
-	pkg_emit_progress_start("Creating repository in %s", output_dir);
+	pkg_emit_progress_start("Creating repository in %s", prc->outdir);
 
 	threads = xcalloc(num_workers, sizeof(pthread_t));
 
@@ -553,7 +732,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	fd = openat(outputdir_fd, "meta", O_CREAT|O_TRUNC|O_CLOEXEC|O_WRONLY,
 	    0644);
 	if (fd != -1) {
-		meta_dump = pkg_repo_meta_to_ucl(meta);
+		meta_dump = pkg_repo_meta_to_ucl(prc->meta);
 		ucl_object_emit_fd(meta_dump, UCL_EMIT_CONFIG, fd);
 		close(fd);
 		fd = openat(outputdir_fd, "meta.conf",
@@ -584,9 +763,10 @@ cleanup:
 
 	tll_free_and_free(te.fts_items, pkg_create_repo_fts_free);
 
-	pkg_repo_meta_free(meta);
+	if (retcode != EPKG_OK)
+		return (retcode);
 
-	return (retcode);
+	return (pkg_repo_create_pack_and_sign(prc));
 }
 
 static int
@@ -740,155 +920,6 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 
 	packing_finish(pack);
 	unlink(path);
-
-	return (ret);
-}
-
-int
-pkg_finish_repo(const char *output_dir, pkg_password_cb *password_cb,
-    char **argv, int argc, bool filelist)
-{
-	char repo_path[MAXPATHLEN];
-	char repo_archive[MAXPATHLEN];
-	char *key_file;
-	const char *key_type;
-	struct pkg_key *keyinfo = NULL;
-	struct pkg_repo_meta *meta;
-	struct stat st;
-	int ret = EPKG_OK, nfile = 0, fd;
-	const int files_to_pack = 4;
-
-	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
-		return (EPKG_FATAL);
-	}
-
-	if (argc == 1) {
-		key_type = key_file = argv[0];
-		if (strncmp(key_file, "rsa:", 4) == 0) {
-			key_file += 4;
-			*(key_file - 1) = '\0';
-		} else {
-			key_type = "rsa";
-		}
-
-		pkg_debug(1, "Loading %s key from '%s' for signing", key_type, key_file);
-		rsa_new(&keyinfo, password_cb, key_file);
-	}
-
-	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
-		return (EPKG_FATAL);
-
-	if (argc > 1) {
-		argc--;
-		argv++;
-	}
-
-	pkg_emit_progress_start("Packing files for repository");
-	pkg_emit_progress_tick(nfile++, files_to_pack);
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		repo_meta_file);
-	if ((fd = open(repo_path, O_RDONLY)) != -1) {
-		if (pkg_repo_meta_load(fd, &meta) != EPKG_OK) {
-			pkg_emit_error("meta loading error while trying %s", repo_path);
-			rsa_free(keyinfo);
-			close(fd);
-			return (EPKG_FATAL);
-		}
-		if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo,
-		    meta, argv, argc) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-	else {
-		meta = pkg_repo_meta_default();
-	}
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    meta->manifests);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		meta->manifests_archive);
-	if (pkg_repo_pack_db(meta->manifests, repo_archive, repo_path, keyinfo,
-	    meta, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	pkg_emit_progress_tick(nfile++, files_to_pack);
-
-	if (filelist) {
-		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		    meta->filesite);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
-		    output_dir, meta->filesite_archive);
-		if (pkg_repo_pack_db(meta->filesite, repo_archive, repo_path, keyinfo,
-		    meta, argv, argc) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
-	pkg_emit_progress_tick(nfile++, files_to_pack);
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir, meta->data);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    meta->data_archive);
-	if (pkg_repo_pack_db(meta->data, repo_archive, repo_path, keyinfo,
-	    meta, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	pkg_emit_progress_tick(nfile++, files_to_pack);
-
-#if 0
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		meta->conflicts);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		meta->conflicts_archive);
-	if (pkg_repo_pack_db(meta->conflicts, repo_archive, repo_path, keyinfo,
-	    meta, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-#endif
-
-	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
-	    output_dir, repo_meta_file);
-	if (stat(repo_archive, &st) == 0) {
-		struct timeval ftimes[2] = {
-			{
-			.tv_sec = st.st_mtime,
-			.tv_usec = 0
-			},
-			{
-			.tv_sec = st.st_mtime,
-			.tv_usec = 0
-			}
-		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.pkg",
-		    output_dir, meta->manifests_archive);
-		utimes(repo_archive, ftimes);
-		if (filelist) {
-			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.pkg", output_dir, meta->filesite_archive);
-			utimes(repo_archive, ftimes);
-		}
-		snprintf(repo_archive, sizeof(repo_archive),
-			"%s/%s.pkg", output_dir, meta->data_archive);
-		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive),
-			"%s/%s.pkg", output_dir, repo_meta_file);
-		utimes(repo_archive, ftimes);
-	}
-
-cleanup:
-	pkg_emit_progress_tick(files_to_pack, files_to_pack);
-	pkg_repo_meta_free(meta);
-
-	rsa_free(keyinfo);
 
 	return (ret);
 }
