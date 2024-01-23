@@ -1,3 +1,17 @@
+Chanegs from 1.20.99.8 to 1.20.99.9
+- pkgbase: .snap now comes after .alpha in versionning
+- update: lock pkg update to avoid concurrent instance of pkg update to compete
+- bundled sqlite: update to 3.45.0
+- bootstrap now accepts -y
+- update bundled curl to 8.5.0
+- New PKG_ISCHROOTED env var for scripts so they can grow the knowledge they
+  are being run in a pkg -c chroot environement
+- update autosetup to 7.1
+- lots of small code optimizations
+- remove now unsupported arm architectures
+- refactor pkg_repo_create API to make it more flexible, while here document it
+- repo: to not generate anymore the meta.{pkg,txz} which is unused since pkg 1.13
+
 Changes from 1.20.99.7 to 1.20.99.8
 - fix a race in vulnxml fetch trigger
 - add a new data.pkg which contains a fully valid json and aim at replacing
