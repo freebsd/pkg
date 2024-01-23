@@ -1,0 +1,82 @@
+.Dd January 23, 2024
+.Dt PKG_REPO_CREATE 3
+.Os
+.Sh NAME
+.Nm pkg_repo_create ,
+.Nm pkg_repo_create_new , pkg_repo_create_free ,
+.Nm pkg_repo_create_set_output_dir , pkg_repo_create_set_create_filelist ,
+.Nm pkg_repo_create_set_hash , pkg_repo_create_set_hash_symlink ,
+.Nm pkg_repo_create_set_metafile , pkg_repo_create_set_sign
+.Nd create repository of packages
+.Sh LIBRARY
+.Lb libpkg
+.Sh SYNOPSIS
+.In pkg.h
+.Ft struct pkg_repo_create *
+.Fn pkg_repo_create_new
+.Ft void
+.Fn pkg_repo_create_free "struct pkg_repo_create *"
+.Ft bool
+.Fn pkg_repo_create_set_output_dir "struct pkg_repo_create *" "const char *"
+.Ft void
+.Fn pkg_repo_create_set_create_filelist "struct pkg_repo_create *" "bool"
+.Ft void
+.Fn pkg_repo_create_set_hash "struct pkg_repo_create *" "bool"
+.Ft void
+.Fn pkg_repo_create_set_hash_symlink "struct pkg_repo_create *" "bool"
+.Ft void
+.Fn pkg_repo_create_set_metafile "struct pkg_repo_create *" "const char *"
+.Ft void
+.Fn pkg_repo_create_set_sign "struct pkg_repo_create *" "char **" "int" "pkg_password *"
+.Ft int
+.Fn pkg_repo_create "struct pkg_repo_create *" "char *"
+.Sh DESCRIPTION
+.Fn pkg_repo_create_new
+Allocates a new
+.Ft struct pkg_repo_create *
+which should be freed by the caller using
+.Fn pkg_repo_create_free .
+.Pp
+.Fn pkg_repo_create_set_output_dir
+defined the output directory where to generate the data.
+By default it will be the
+.Va path
+provided to the
+.Fn pkg_repo_create
+function.
+.Pp
+.Fn pkg_repo_create_set_create_filelist
+Accept a boolean to define if a the file database should be created
+along with the metadata database
+.Pq deprecated .
+Defaults to
+.Va false .
+.Pp
+.Fn pkg_repo_create_set_hash
+When creating the repository, move all the packages found into a
+.Qq Hashed
+subdirectory with the
+.Qq hash
+of the package appended to the name of the package.
+Defaults to
+.Va false .
+.Pp
+.Fn pkg_repo_create_set_hash_symlink
+If the
+.Va hash
+functionnality has been activated, then there will be a symlink for each
+packages in the
+.Qq Hashed
+directory will be created in the root of the repository.
+Defaults to
+.Va false .
+.Pp
+.Fn pkg_repo_create_set_metafile
+Define the
+.Va path
+to the metafile that will be used when creating the repository. If none is
+specified that it will fallback on the internal default.
+.Pp
+.Fn pkg_repo_create_set_sign
+Define the signing mecanism, which will be used to sign the metadata of the
+repository. Defaults to none.
