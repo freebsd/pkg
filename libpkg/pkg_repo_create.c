@@ -62,7 +62,7 @@ enum {
 };
 
 static int pkg_repo_pack_db(const char *name, const char *archive, char *path,
-    struct pkg_key *keyinfo, struct pkg_repo_meta *meta, char **argv, int argc);
+    struct pkg_key *keyinfo, struct pkg_repo_create *prc);
 
 static int
 hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
@@ -477,7 +477,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	const char *key_type;
 	struct pkg_key *keyinfo = NULL;
 	struct stat st;
-	int ret = EPKG_OK, nfile = 0, fd;
+	int ret = EPKG_OK, nfile = 0;
 	const int files_to_pack = 4;
 
 	if (prc->sign.argc == 1) {
@@ -506,8 +506,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir,
 		repo_meta_file);
-	if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo,
-	    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(repo_meta_file, repo_path, repo_path, keyinfo, prc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -516,8 +515,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	    prc->meta->manifests);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
 		prc->meta->manifests_archive);
-	if (pkg_repo_pack_db(prc->meta->manifests, repo_archive, repo_path, keyinfo,
-	    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(prc->meta->manifests, repo_archive, repo_path, keyinfo, prc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -529,8 +527,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 		    prc->meta->filesite);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
 		    prc->outdir, prc->meta->filesite_archive);
-		if (pkg_repo_pack_db(prc->meta->filesite, repo_archive, repo_path, keyinfo,
-		    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+		if (pkg_repo_pack_db(prc->meta->filesite, repo_archive, repo_path, keyinfo, prc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -540,8 +537,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", prc->outdir, prc->meta->data);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", prc->outdir,
 	    prc->meta->data_archive);
-	if (pkg_repo_pack_db(prc->meta->data, repo_archive, repo_path, keyinfo,
-	    prc->meta, prc->sign.argv, prc->sign.argc) != EPKG_OK) {
+	if (pkg_repo_pack_db(prc->meta->data, repo_archive, repo_path, keyinfo, prc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -902,19 +898,18 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 
 static int
 pkg_repo_pack_db(const char *name, const char *archive, char *path,
-		struct pkg_key *keyinfo, struct pkg_repo_meta *meta,
-		char **argv, int argc)
+    struct pkg_key *keyinfo, struct pkg_repo_create *prc)
 {
 	struct packing *pack;
 	int ret = EPKG_OK;
 
-	if (packing_init(&pack, archive, meta->packing_format, 0, (time_t)-1, true, true) != EPKG_OK)
+	if (packing_init(&pack, archive, prc->meta->packing_format, 0, (time_t)-1, true, true) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (keyinfo != NULL) {
 		ret = pack_rsa_sign(pack, keyinfo, path, "signature");
-	} else if (argc >= 1) {
-		ret = pack_command_sign(pack, path, argv, argc, name);
+	} else if (prc->sign.argc >= 1) {
+		ret = pack_command_sign(pack, path, prc->sign.argv, prc->sign.argc, name);
 	}
 	packing_append_file_attr(pack, path, name, "root", "wheel", 0644, 0);
 
