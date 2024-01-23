@@ -1,12 +1,12 @@
-.Dd April 24, 2020
+.Dd January 23, 2024
 .Dt PKG_CREATE 3
 .Os
 .Sh NAME
 .Nm pkg_create , pkg_create_i ,
 .Nm pkg_create_new , pkg_create_free ,
 .Nm pkg_create_set_format , pkg_create_set_overwrite ,
-.Nm pkg_create_set_compression_level , pkg_set_rootdir , pkg_set_output_dir ,
-.Nm pkg_create_set_timestamp
+.Nm pkg_create_set_compression_level , pkg_create_set_rootdir ,
+.Nm pkg_create_set_output_dir , pkg_create_set_timestamp
 .Nd create packages
 .Sh LIBRARY
 .Lb libpkg
@@ -64,7 +64,7 @@ Set the best compression ratio
 .El
 .Pp
 .Fn pkg_create_set_overwrite
-Accept Va a boolean to define the default behaviour when creating a package and
+Accept a boolean to define the default behaviour when creating a package and
 a local file already exists.
 The default behaviour is to overwrite.
 .Pp
