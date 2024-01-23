@@ -132,9 +132,7 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	progressbar_tick(processed, total);
 
 	if (!quiet) {
-		if (retcode == EXIT_SUCCESS)
-			printf("All done\n");
-		else
+		if (retcode != EXIT_SUCCESS)
 			printf("%d package%s could not be deleted\n",
 			      count, count > 1 ? "s" : "");
 	}
