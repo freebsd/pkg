@@ -84,7 +84,7 @@ pkg_repo_binary_init_update(struct pkg_repo *repo, const char *name)
 
 static int
 pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
-			 const char *pkg_path, bool forced)
+    bool forced)
 {
 	int ret = EPKG_FATAL;
 	const char *oversion;
@@ -98,8 +98,8 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 		switch(pkg_version_cmp(oversion, version)) {
 		case -1:
 			pkg_emit_error("duplicate package origin: replacing older "
-					"version %s in repo with package %s for "
-					"origin %s", oversion, pkg_path, origin);
+					"version %s in repo with package %s",
+					oversion, origin);
 
 			if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) !=
 							SQLITE_DONE)
@@ -111,8 +111,8 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 		case 0:
 		case 1:
 			pkg_emit_error("duplicate package origin: package %s is not "
-					"newer than version %s already in repo for "
-					"origin %s", pkg_path, oversion, origin);
+					"newer than version %s already in repo",
+					origin, oversion);
 			ret = EPKG_END;	/* keep what is already in the repo */
 			break;
 		}
@@ -130,8 +130,7 @@ cleanup:
 }
 
 static int
-pkg_repo_binary_add_pkg(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, bool forced)
+pkg_repo_binary_add_pkg(struct pkg *pkg, sqlite3 *sqlite, bool forced)
 {
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
@@ -151,7 +150,7 @@ try_again:
 		if (ret == SQLITE_CONSTRAINT) {
 			ERROR_SQLITE(sqlite, "grmbl");
 			switch(pkg_repo_binary_delete_conflicting(pkg->origin,
-			    pkg->version, pkg_path, forced)) {
+			    pkg->version, forced)) {
 			case EPKG_FATAL: /* sqlite error */
 				ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PKG));
 				return (EPKG_FATAL);
@@ -396,7 +395,7 @@ pkg_repo_binary_add_from_ucl(sqlite3 *sqlite, ucl_object_t *o, struct pkg_repo *
 	free(pkg->reponame);
 	pkg->reponame = xstrdup(repo->name);
 
-	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
+	rc = pkg_repo_binary_add_pkg(pkg, sqlite, true);
 
 cleanup:
 	ucl_object_unref(o);
@@ -441,7 +440,7 @@ pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 	free(pkg->reponame);
 	pkg->reponame = xstrdup(repo->name);
 
-	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
+	rc = pkg_repo_binary_add_pkg(pkg, sqlite, true);
 
 cleanup:
 	pkg_free(pkg);
