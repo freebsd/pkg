@@ -524,7 +524,8 @@ typedef enum {
 	/**
 	 * the operation has failed due to network down
 	 */
-	EPKG_NONETWORK
+	EPKG_NONETWORK,
+	EPKG_ENOENT,
 } pkg_error_t;
 
 /**

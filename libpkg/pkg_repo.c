@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
@@ -678,6 +678,55 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 
 out:
 	return rc;
+}
+
+int
+pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
+{
+	int fd;
+	const char *tmpdir;
+	char tmp[MAXPATHLEN];
+	struct stat st;
+	int rc = EPKG_OK;
+
+	fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->data, "pkg", &prc->mtime, &rc, false);
+	if (fd == -1) {
+		if (rc == EPKG_UPTODATE)
+			return (rc);
+		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->data,
+		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
+	}
+	if (fd == -1)
+		return (EPKG_FATAL);
+
+	tmpdir = getenv("TMMDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, repo->meta->data);
+	prc->data_fd = mkstemp(tmp);
+	if (prc->data_fd == -1) {
+		pkg_emit_error("Cound not create temporary file %s, "
+		    "aborting update.\n", tmp);
+		close(fd);
+		return (EPKG_FATAL);
+	}
+
+	unlink(tmp);
+	if (pkg_repo_archive_extract_check_archive(fd, repo->meta->data, repo, prc->data_fd) != EPKG_OK) {
+		close(prc->data_fd);
+		close(fd);
+		return (EPKG_FATAL);
+	}
+
+	close(fd);
+	if (fstat(prc->data_fd, &st) == -1) {
+		close(prc->data_fd);
+		return (EPKG_FATAL);
+	}
+
+	prc->data_len = st.st_size;
+
+	return (EPKG_OK);
 }
 
 int

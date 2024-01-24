@@ -228,7 +228,7 @@ EOF
 
 	OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching packagesite.pkg:  done
+${JAILED}Fetching data.pkg:  done
 Processing entries:  done
 local repository update completed. 5 packages processed.
 All repositories are up to date.

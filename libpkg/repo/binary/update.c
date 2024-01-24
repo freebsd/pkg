@@ -362,6 +362,50 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 }
 
 static int
+pkg_repo_binary_add_from_ucl(sqlite3 *sqlite, ucl_object_t *o, struct pkg_repo *repo)
+{
+	int rc = EPKG_OK;
+	struct pkg *pkg;
+	const char *abi;
+
+	rc = pkg_new(&pkg, PKG_REMOTE);
+	if (rc != EPKG_OK)
+		return (EPKG_FATAL);
+
+	rc = pkg_parse_manifest_ucl(pkg, o);
+	if (rc != EPKG_OK) {
+		goto cleanup;
+	}
+
+	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
+		pkg_checksum_calculate(pkg, NULL, false, true, false);
+	abi = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	if (abi == NULL || !is_valid_abi(abi, true)) {
+		rc = EPKG_FATAL;
+		pkg_emit_error("repository %s contains packages with wrong ABI: %s",
+			repo->name, abi);
+		goto cleanup;
+	}
+	if (!is_valid_os_version(pkg)) {
+		rc = EPKG_FATAL;
+		pkg_emit_error("repository %s contains packages for wrong OS "
+		    "version: %s", repo->name, abi);
+		goto cleanup;
+	}
+
+	free(pkg->reponame);
+	pkg->reponame = xstrdup(repo->name);
+
+	rc = pkg_repo_binary_add_pkg(pkg, NULL, sqlite, true);
+
+cleanup:
+	ucl_object_unref(o);
+	pkg_free(pkg);
+
+	return (rc);
+}
+
+static int
 pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 		struct pkg **p __unused,
 		struct pkg_repo *repo)
@@ -454,6 +498,7 @@ rollback_repo(void *data)
 	snprintf(path, sizeof(path), "%s-journal", name);
 	unlink(path);
 }
+
 static int
 pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
@@ -470,6 +515,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	size_t linecap = 0;
 	ssize_t linelen, totallen = 0;
 	struct pkg_repo_content prc;
+	ucl_object_t *data;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -488,12 +534,31 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	prc.manifest_fd = -1;
 	prc.mtime = *mtime;
 	prc.manifest_len = 0;
+	prc.data_fd = -1;
+	prc.data_len = 0;
 
-	rc = pkg_repo_fetch_remote_extract_fd(repo, &prc);
-	if (rc != EPKG_OK)
+	rc = pkg_repo_fetch_data_fd(repo, &prc);
+	if (rc == EPKG_UPTODATE)
 		goto cleanup;
-	f = fdopen(prc.manifest_fd, "r");
-	rewind(f);
+
+	if (rc == EPKG_OK) {
+		struct ucl_parser *p = ucl_parser_new(0);
+		if (!ucl_parser_add_fd(p, prc.data_fd)) {
+			pkg_emit_error("Error parsing data file: %s'",
+			    ucl_parser_get_error(p));
+			ucl_parser_free(p);
+			goto cleanup;
+		}
+		data = ucl_parser_get_object(p);
+		ucl_parser_free(p);
+		/* XXX TODO check against a schema */
+	} else {
+		rc = pkg_repo_fetch_remote_extract_fd(repo, &prc);
+		if (rc != EPKG_OK)
+			goto cleanup;
+		f = fdopen(prc.manifest_fd, "r");
+		rewind(f);
+	}
 
 	*mtime = prc.mtime;
 	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
@@ -513,7 +578,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	/* Here sqlite is initialized */
 	sqlite = PRIV_GET(repo);
 
-	pkg_debug(1, "Pkgrepo, reading new %s for '%s'", repo->meta->manifests, name);
+	pkg_debug(1, "Pkgrepo, reading new metadata");
 
 	pkg_emit_incremental_update_begin(repo->name);
 	pkg_emit_progress_start("Processing entries");
@@ -530,17 +595,33 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	in_trans = true;
-	while ((linelen = getline(&line, &linecap, f)) > 0) {
-		cnt++;
-		totallen += linelen;
-		if ((cnt % 10 ) == 0)
-			cancel = pkg_emit_progress_tick(totallen, prc.manifest_len);
-		rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
-		    &pkg, repo);
-		if (rc != EPKG_OK || cancel != 0)
-			break;
+	if (f != NULL) {
+		while ((linelen = getline(&line, &linecap, f)) > 0) {
+			cnt++;
+			totallen += linelen;
+			if ((cnt % 10 ) == 0)
+				cancel = pkg_emit_progress_tick(totallen, prc.manifest_len);
+			rc = pkg_repo_binary_add_from_manifest(line, sqlite, linelen,
+			    &pkg, repo);
+			if (rc != EPKG_OK || cancel != 0)
+				break;
+		}
+		pkg_emit_progress_tick(prc.manifest_len, prc.manifest_len);
 	}
-	pkg_emit_progress_tick(prc.manifest_len, prc.manifest_len);
+	if (data != NULL) {
+		ucl_object_t *pkgs = ucl_object_ref(ucl_object_find_key(data, "packages"));
+		int nbel = ucl_array_size(pkgs);
+		while (cnt < nbel) {
+			ucl_object_t *o = ucl_array_pop_first(pkgs);
+			cnt++;
+			if ((cnt % 10 ) == 0)
+				cancel = pkg_emit_progress_tick(nbel, cnt);
+			rc = pkg_repo_binary_add_from_ucl(sqlite, o, repo);
+			if (rc != EPKG_OK || cancel != 0)
+				break;
+		}
+		pkg_emit_progress_tick(nbel, cnt);
+	}
 
 	if (rc == EPKG_OK)
 		pkg_emit_incremental_update(repo->name, cnt);

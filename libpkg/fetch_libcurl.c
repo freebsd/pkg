@@ -494,9 +494,13 @@ retry:
 		retcode = EPKG_CANCEL;
 	} else if (rc != 200) {
 		--retry;
-		if (retry <= 0 || (rc == 404 && repo->mirror_type == NOMIRROR)) {
-			pkg_emit_error("An error occured while fetching package");
-			retcode = EPKG_FATAL;
+		if (retry <= 0) {
+			if (rc == 404) {
+				retcode = EPKG_ENOENT;
+			} else {
+				pkg_emit_error("An error occured while fetching package");
+				retcode = EPKG_FATAL;
+			}
 		} else
 			goto retry;
 	}
@@ -504,7 +508,7 @@ retry:
 	if (res == CURLE_OK && t >= 0) {
 		fi->mtime = t;
 	} else if (rc != 304 && retcode != EPKG_FATAL &&
-	    retcode != EPKG_CANCEL) {
+	    retcode != EPKG_CANCEL && retcode != EPKG_ENOENT) {
 		pkg_emit_error("Impossible to get the value from Last-Modified"
 		    " HTTP header");
 		fi->mtime = 0;

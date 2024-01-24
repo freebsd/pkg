@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -181,6 +181,8 @@ struct pkg_repo_content {
 	time_t mtime;
 	int manifest_fd;
 	size_t manifest_len;
+	int data_fd;
+	size_t data_len;
 };
 
 struct pkg_repo_it;
@@ -648,6 +650,8 @@ int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
+int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
+int pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);
 int pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target);
@@ -848,5 +852,7 @@ void trigger_free(struct trigger *);
 void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
 bool stringlist_contains(stringlist_t *l, const char *name);
+
+int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 
 #endif
