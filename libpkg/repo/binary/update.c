@@ -543,10 +543,12 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			pkg_emit_error("Error parsing data file: %s'",
 			    ucl_parser_get_error(p));
 			ucl_parser_free(p);
+			close(prc.data_fd);
 			goto cleanup;
 		}
 		data = ucl_parser_get_object(p);
 		ucl_parser_free(p);
+		close(prc.data_fd);
 		/* XXX TODO check against a schema */
 	} else {
 		rc = pkg_repo_fetch_remote_extract_fd(repo, &prc);
