@@ -817,6 +817,7 @@ void pkg_repo_create_set_hash_symlink(struct pkg_repo_create *prc, bool);
 void pkg_repo_create_set_output_dir(struct pkg_repo_create *prc, const char *);
 void pkg_repo_create_set_metafile(struct pkg_repo_create *prc, const char *);
 void pkg_repo_create_set_sign(struct pkg_repo_create *prc, char **argv, int argc, pkg_password_cb *cb);
+void pkg_repo_create_set_groups(struct pkg_repo_create *prc, const char *);
 int pkg_repo_create(struct pkg_repo_create *, char *path);
 
 /**

@@ -98,6 +98,7 @@ exec_repo(int argc, char **argv)
 	hash_symlink = (getenv("PKG_REPO_SYMLINK") != NULL);
 
 	struct option longopts[] = {
+		{ "groups",	required_argument,	NULL,	'g' },
 		{ "hash",	no_argument,		NULL,	'h' },
 		{ "list-files", no_argument,		NULL,	'l' },
 		{ "meta-file",	required_argument,	NULL,	'm' },
@@ -107,8 +108,11 @@ exec_repo(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+hlo:qm:s", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+hg:lo:qm:s", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'g':
+			pkg_repo_create_set_groups(prc, optarg);
+			break;
 		case 'h':
 			hash = true;
 			break;

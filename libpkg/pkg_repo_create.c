@@ -48,6 +48,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include "tllist.h"
 #include "pkg.h"
@@ -430,7 +431,131 @@ pkg_repo_create_free(struct pkg_repo_create *prc)
 	pkg_repo_meta_free(prc->meta);
 	if (prc->ofd != -1)
 		close(prc->ofd);
+	ucl_object_unref(prc->groups);
 	free(prc);
+}
+
+static void
+group_load(struct pkg_repo_create *prc, int dfd, const char *name, ucl_object_t *schema)
+{
+	struct ucl_parser *p;
+	ucl_object_t *obj = NULL;
+	int fd;
+	struct ucl_schema_error err;
+
+	fd = openat(dfd, name, O_RDONLY);
+	if (fd == -1) {
+		pkg_emit_error("Unable to open group: %s", name);
+		return;
+	}
+
+	p = ucl_parser_new(0);
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("Error parsing group '%s': %s'",
+		    name, ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		close(fd);
+		return;
+	}
+	close(fd);
+
+	obj = ucl_parser_get_object(p);
+	ucl_parser_free(p);
+	if (obj == NULL)
+		return;
+
+	if (!ucl_object_validate(schema, obj, &err)) {
+		pkg_emit_error("group definition %s cannot be validated: %s",
+		    name, err.msg);
+		ucl_object_unref(obj);
+		return;
+	}
+	if (prc->groups == NULL)
+		prc->groups = ucl_object_typed_new(UCL_ARRAY);
+	ucl_array_append(prc->groups, obj);
+}
+
+static ucl_object_t *
+group_open_schema(void)
+{
+	struct ucl_parser *parser;
+	ucl_object_t *group_schema;
+	static const char group_schema_str[] = ""
+		"{"
+		"  type = object;"
+		"  properties: {"
+		"    name: { type = string };"
+		"    requires: { "
+		"      type = array;"
+		"      item = { type = string };"
+		"    };"
+		"    depends: { "
+		"      type = array;"
+		"      item = { type = string };"
+		"    };"
+		"    comment: { type = string };"
+		"  };"
+		"  required = [ name, comment ];"
+		"};";
+	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_chunk(parser, group_schema_str,
+	    sizeof(group_schema_str) -1)) {
+		pkg_emit_error("Cannot parse schema for group: %s",
+		    ucl_parser_get_error(parser));
+		    ucl_parser_free(parser);
+		    return (NULL);
+	}
+	group_schema = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+	return (group_schema);
+
+}
+
+void
+pkg_repo_create_set_groups(struct pkg_repo_create *prc, const char *path)
+{
+	int dfd = open(path, O_DIRECTORY);
+	DIR *d;
+	struct dirent *e;
+	struct stat st;
+	ucl_object_t *schema;
+
+	if (dfd == -1) {
+		pkg_emit_error("Unable to open the groups directory '%s'", path);
+		return;
+	}
+
+	d = fdopendir(dfd);
+	if (d == NULL) {
+		pkg_emit_error("Unable to open the groups directory '%s'", path);
+		close(dfd);
+		return;
+	}
+
+	schema = group_open_schema();
+
+	while ((e = readdir(d)) != NULL) {
+		const char *ext;
+		/* ignore all hidden files */
+		if (e->d_name[0] == '.')
+			continue;
+		/* only consider files ending with .ucl */
+		ext = strrchr(e->d_name, '.');
+		if (ext == NULL)
+			continue;
+		if (strcmp(ext, ".ucl") != 0)
+			continue;
+		/* only regular files are considered */
+		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+			pkg_emit_errno("fstatat", e->d_name);
+			return;
+		}
+		if (!S_ISREG(st.st_mode))
+			continue;
+		group_load(prc, dfd, e->d_name, schema);
+	}
+	closedir(d);
+	ucl_object_unref(schema);
 }
 
 void
@@ -709,6 +834,13 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 		pthread_join(threads[i], NULL);
 	pkg_emit_progress_tick(len, len);
 	ucl_object_emit_streamline_end_container(te.ctx);
+	ucl_object_emit_streamline_end_container(te.ctx);
+	if (prc->groups != NULL) {
+		prc->groups->key = "groups";
+		prc->groups->keylen = sizeof("groups") -1;
+		ucl_object_emit_streamline_start_container(te.ctx, prc->groups);
+		ucl_object_emit_streamline_end_container(te.ctx);
+	}
 	ucl_object_emit_streamline_finish(te.ctx);
 	ucl_object_emit_funcs_free(f);
 	ucl_object_unref(obj);

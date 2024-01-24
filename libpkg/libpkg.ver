@@ -141,6 +141,7 @@ global:
 	pkg_repo_create_free;
 	pkg_repo_create_new;
 	pkg_repo_create_set_create_filelist;
+	pkg_repo_create_set_groups;
 	pkg_repo_create_set_hash;
 	pkg_repo_create_set_hash_symlink;
 	pkg_repo_create_set_metafile;

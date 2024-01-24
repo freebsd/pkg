@@ -308,6 +308,7 @@ struct pkg_repo_create {
 	int ofd;
 	const char *metafile;
 	struct pkg_repo_meta *meta;
+	ucl_object_t *groups;
 	struct {
 		char **argv;
 		int argc;
