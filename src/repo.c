@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,7 +49,7 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "Usage: pkg repo [-lqL] [-o output-dir] <repo-path> "
+	fprintf(stderr, "Usage: pkg repo [-hlqs] [-m metafile] [-o output-dir] <repo-path> "
 	    "[rsa:<rsa-key>|signing_command: <the command>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
