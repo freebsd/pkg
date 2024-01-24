@@ -134,7 +134,6 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	fd = openat(dfd, name, O_RDONLY);
 	if (fd == -1) {
 		pkg_emit_error("Unable to open the tigger: %s", name);
-		pkg_emit_errno("plop", name);
 		return (NULL);
 	}
 
