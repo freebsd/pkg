@@ -152,7 +152,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	if (obj == NULL)
 		return (NULL);
 
-	if (!ucl_object_validate(obj, schema, &err)) {
+	if (!ucl_object_validate(schema, obj, &err)) {
 		pkg_emit_error("trigger definition %s cannot be validated: %s", name, err.msg);
 		ucl_object_unref(obj);
 		return (NULL);
