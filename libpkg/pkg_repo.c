@@ -724,8 +724,6 @@ pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 		return (EPKG_FATAL);
 	}
 
-	prc->data_len = st.st_size;
-
 	return (EPKG_OK);
 }
 

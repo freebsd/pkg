@@ -182,7 +182,6 @@ struct pkg_repo_content {
 	int manifest_fd;
 	size_t manifest_len;
 	int data_fd;
-	size_t data_len;
 };
 
 struct pkg_repo_it;

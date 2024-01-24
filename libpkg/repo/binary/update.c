@@ -535,7 +535,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	prc.mtime = *mtime;
 	prc.manifest_len = 0;
 	prc.data_fd = -1;
-	prc.data_len = 0;
 
 	rc = pkg_repo_fetch_data_fd(repo, &prc);
 	if (rc == EPKG_UPTODATE)
