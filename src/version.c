@@ -143,8 +143,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 		}
 	}
 
-	printf("\n");
-	return;
+	putchar('\n');
 }
 
 static int

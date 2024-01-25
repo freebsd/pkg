@@ -105,20 +105,12 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	if (check == NULL) {
-		pkg_audit_free(audit);
-		pkghash_destroy(check);
-		fclose(out);
-		return;
-	}
-
+	if (check == NULL)
+	        goto out_cleanup;
 
 	if (pkg_audit_load(audit, NULL) != EPKG_OK) {
 		warn("unable to open vulnxml file");
-		fclose(out);
-		pkg_audit_free(audit);
-		pkghash_destroy(check);
-		return;
+	        goto out_cleanup;
 	}
 
 	pkg_drop_privileges();
@@ -127,10 +119,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 #ifndef PKG_COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
-		pkg_audit_free(audit);
-		pkghash_destroy(check);
-		fclose(out);
-		return;
+		goto out_cleanup;
 	}
 #endif
 #endif
@@ -155,6 +144,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		warnx("cannot process vulnxml");
 	}
 
+out_cleanup:
 	pkg_audit_free(audit);
 	pkghash_destroy(check);
 	fclose(out);
@@ -233,12 +223,8 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 	fclose(in);
 
 	while (waitpid(cld, &retcode, 0) == -1) {
-		if (errno == EINTR) {
-			continue;
-		}
-		else {
+		if (errno != EINTR) {
 			warnx("Cannot wait");
-
 			return (EPKG_FATAL);
 		}
 	}
