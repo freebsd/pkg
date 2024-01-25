@@ -158,18 +158,18 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 			u->port = http_current->url->port;
 		}
 		fetchOpts = xstring_new();
-		fputs("i", fetchOpts->fp);
+	        fputc('i', fetchOpts->fp);
 		if (repo != NULL) {
 			if ((repo->flags & REPO_FLAGS_USE_IPV4) ==
 			    REPO_FLAGS_USE_IPV4)
-				fputs("4", fetchOpts->fp);
+				fputc('4', fetchOpts->fp);
 			else if ((repo->flags & REPO_FLAGS_USE_IPV6) ==
 			    REPO_FLAGS_USE_IPV6)
-				fputs("6", fetchOpts->fp);
+				fputc('6', fetchOpts->fp);
 		}
 
 		if (ctx.debug_level >= 4)
-			fputs("v", fetchOpts->fp);
+			fputc('v', fetchOpts->fp);
 
 		opts = xstring_get(fetchOpts);
 		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
