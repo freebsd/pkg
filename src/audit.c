@@ -398,8 +398,8 @@ exec_audit(int argc, char **argv)
 					if (quiet) {
 						if (version != NULL)
 							pkg_printf("%n-%v\n", pkg, pkg);
-							else
-						pkg_printf("%s\n", pkg);
+						else
+							pkg_printf("%s\n", pkg);
 						continue;
 					}
 
