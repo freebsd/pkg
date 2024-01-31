@@ -96,12 +96,17 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
 		if (match == MATCH_ALL) {
 			printf("Loading the package list...\n");
-			if ((it = pkgdb_query(db, NULL, match)) == NULL)
+			if ((it = pkgdb_query(db, NULL, match)) == NULL) {
+				retcode = EXIT_FAILURE;
 				goto cleanup;
+			}
 			match = !MATCH_ALL;
-		} else
-			if ((it = pkgdb_query(db, argv[i], match)) == NULL)
+		} else {
+			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+				retcode = EXIT_FAILURE;
 				goto cleanup;
+			}
+		}
 
 		foundone = false;
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
