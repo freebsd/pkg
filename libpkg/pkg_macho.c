@@ -263,30 +263,26 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 
 	/* Determine our system's CPU type */
 	if ((ret = host_cpu_type(&cpu_type)) != EPKG_OK)
-		goto cleanup;
+		return (EPKG_FATAL);
 
 	/* Create our mach-o handle */
 	macho_handle = macho_create_handle();
 	if (macho_handle == NULL) {
-			pkg_emit_error("macho_create_handle() failed");
-			ret = EPKG_FATAL;
-			goto cleanup;
+		pkg_emit_error("macho_create_handle() failed");
+		return (EPKG_FATAL);
 	}
 
 	/* Evaluate all package files */
 	while ((ret = pkg_files(pkg, &file)) == EPKG_OK) {
-		if (stage != NULL)
+		if (stage != NULL) {
 			free(fpath);
-
-		if (stage != NULL)
 			xasprintf(&fpath, "%s/%s", stage, file->path);
-		else
-			fpath = file->path;
-
-		if (fpath == NULL) {
-			pkg_emit_error("pkg_analyse_files(): path allocation failed");
-			ret = EPKG_FATAL;
-			goto cleanup;
+		} else {
+			if ((fpath = file->path) == NULL) {
+				pkg_emit_error("pkg_analyse_files(): path allocation failed");
+				macho_destroy_handle(macho_handle);
+				return (EPKG_FATAL);
+			}
 		}
 
 		ret = analyse_macho(pkg, fpath, cpu_type, macho_handle, add_dylibs_to_pkg, db);
@@ -295,19 +291,12 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 		}
 	}
 
-	if (ret != EPKG_OK)
-		goto cleanup;
-
-cleanup:
 	macho_destroy_handle(macho_handle);
 
 	if (stage != NULL)
 		free(fpath);
 
-	if (failures)
-		ret = EPKG_FATAL;
-
-	return (ret);
+	return (failures ? EPKG_FATAL : ret);
 }
 
 int
