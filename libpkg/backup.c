@@ -101,10 +101,8 @@ copy_database(sqlite3 *src, sqlite3 *dst)
 	sqlite3_exec(dst, "PRAGMA main.locking_mode=NORMAL;"
 			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
 
-	if (ret != SQLITE_OK)
-		goto out_error;
-
-	return ret;
+	if (ret == SQLITE_OK)
+		return (EPKG_OK);
 
 out_error:
 	pkg_emit_error("sqlite error -- %s", errmsg);
@@ -145,7 +143,7 @@ pkgdb_dump(struct pkgdb *db, const char *dest)
 	ctx.pkg_dbdirfd = savedfd;
 	close(savedfd);
 
-	return (ret == SQLITE_OK? EPKG_OK : EPKG_FATAL);
+	return (ret);
 }
 
 int
@@ -154,9 +152,8 @@ pkgdb_load(struct pkgdb *db, const char *src)
 	sqlite3	*restore;
 	int	 ret;
 
-	if (eaccess(src, R_OK)) {
+	if (eaccess(src, R_OK))
 		pkg_fatal_errno("Unable to access '%s'", src);
-	}
 
 	ret = sqlite3_open(src, &restore);
 
@@ -171,5 +168,5 @@ pkgdb_load(struct pkgdb *db, const char *src)
 
 	sqlite3_close(restore);
 
-	return (ret == SQLITE_OK? EPKG_OK : EPKG_FATAL);
+	return (ret);
 }
