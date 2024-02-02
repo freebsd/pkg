@@ -67,10 +67,10 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 			rc++;
 			switch (attr) {
 			case PKG_RC_START:
-				ret += rc_start(rcfile);
+				ret += rc_start(rc);
 				break;
 			case PKG_RC_STOP:
-				ret += rc_stop(rcfile);
+				ret += rc_stop(rc);
 				break;
 			}
 		}
