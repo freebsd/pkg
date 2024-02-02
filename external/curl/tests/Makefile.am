@@ -22,19 +22,35 @@
 #
 ###########################################################################
 
-HTMLPAGES = testcurl.html runtests.html
-PDFPAGES = testcurl.pdf runtests.pdf
 MANDISTPAGES = runtests.1.dist testcurl.1.dist
 
-EXTRA_DIST = appveyor.pm azure.pm badsymbols.pl check-deprecated.pl CMakeLists.txt \
- devtest.pl dictserver.py directories.pm disable-scan.pl error-codes.pl extern-scan.pl FILEFORMAT.md \
- processhelp.pm ftpserver.pl getpart.pm globalconfig.pm http-server.pl http2-server.pl \
- http3-server.pl manpage-scan.pl manpage-syntax.pl markdown-uppercase.pl mem-include-scan.pl \
- memanalyze.pl negtelnetserver.py nroff-scan.pl option-check.pl options-scan.pl \
- pathhelp.pm README.md rtspserver.pl runner.pm runtests.1 runtests.pl secureserver.pl \
- serverhelp.pm servers.pm smbserver.py sshhelp.pm sshserver.pl stunnel.pem symbol-scan.pl \
- testcurl.1 testcurl.pl testutil.pm tftpserver.pl util.py valgrind.pm \
- valgrind.supp version-scan.pl check-translatable-options.pl
+# scripts used in test cases
+TESTSCRIPTS = \
+ test1119.pl  \
+ test1132.pl  \
+ test1135.pl  \
+ test1139.pl  \
+ test1140.pl  \
+ test1165.pl  \
+ test1167.pl  \
+ test1173.pl  \
+ test1175.pl  \
+ test1177.pl  \
+ test1222.pl  \
+ test1275.pl  \
+ test1276.pl  \
+ test1477.pl  \
+ test1544.pl  \
+ test971.pl
+
+EXTRA_DIST = appveyor.pm azure.pm CMakeLists.txt devtest.pl             \
+ dictserver.py directories.pm FILEFORMAT.md processhelp.pm ftpserver.pl \
+ getpart.pm globalconfig.pm http-server.pl http2-server.pl              \
+ http3-server.pl memanalyze.pl negtelnetserver.py pathhelp.pm README.md \
+ rtspserver.pl runner.pm runtests.1 runtests.pl secureserver.pl         \
+ serverhelp.pm servers.pm smbserver.py sshhelp.pm sshserver.pl          \
+ stunnel.pem testcurl.1 testcurl.pl testutil.pm tftpserver.pl util.py   \
+ valgrind.pm valgrind.supp $(TESTSCRIPTS)
 
 DISTCLEANFILES = configurehelp.pm
 
@@ -55,8 +71,6 @@ DIST_SUBDIRS = $(SUBDIRS) $(DIST_UNIT)
 PERLFLAGS = -I$(srcdir)
 
 CLEANFILES = .http.pid .https.pid .ftp.pid .ftps.pid $(MANDISTPAGES)
-
-MAN2HTML= roffit $< >$@
 
 curl:
 	@cd $(top_builddir) && $(MAKE)
@@ -106,16 +120,6 @@ torture-test: perlcheck all
 
 event-test: perlcheck all
 	$(TEST) $(TEST_E) $(TFLAGS)
-
-.1.html:
-	$(MAN2HTML)
-
-.1.pdf:
-	@(foo=`echo $@ | sed -e 's/\.[0-9]$$//g'`; \
-	groff -Tps -man $< >$$foo.ps; \
-	ps2pdf $$foo.ps $@; \
-	rm $$foo.ps; \
-	echo "converted $< to $@")
 
 checksrc:
 	(cd libtest && $(MAKE) checksrc)

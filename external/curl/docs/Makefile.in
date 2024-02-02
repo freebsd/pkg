@@ -330,6 +330,7 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
+HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -405,10 +406,14 @@ USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
+USE_NGTCP2_CRYPTO_BORINGSSL = @USE_NGTCP2_CRYPTO_BORINGSSL@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
 USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
+USE_NGTCP2_H3 = @USE_NGTCP2_H3@
 USE_OPENLDAP = @USE_OPENLDAP@
+USE_OPENSSL_H3 = @USE_OPENSSL_H3@
+USE_OPENSSL_QUIC = @USE_OPENSSL_QUIC@
 USE_QUICHE = @USE_QUICHE@
 USE_RUSTLS = @USE_RUSTLS@
 USE_SCHANNEL = @USE_SCHANNEL@
@@ -482,21 +487,19 @@ AUTOMAKE_OPTIONS = foreign no-dependencies
 
 # EXTRA_DIST breaks with $(abs_builddir) so build it using this variable
 # but distribute it (using the relative file name) in the next variable
-man_MANS = $(abs_builddir)/curl.1
+man_MANS = $(abs_builddir)/curl.1 mk-ca-bundle.1
 noinst_man_MANS = curl.1 mk-ca-bundle.1
 dist_man_MANS = curl-config.1
-GENHTMLPAGES = curl.html curl-config.html mk-ca-bundle.html
-PDFPAGES = curl.pdf curl-config.pdf mk-ca-bundle.pdf
-MANDISTPAGES = curl.1.dist curl-config.1.dist
-HTMLPAGES = $(GENHTMLPAGES)
+CURLPAGES = curl-config.md mk-ca-bundle.md
 
 # Build targets in this file (.) before cmdline-opts to ensure that
 # the curl.1 rule below runs first
-SUBDIRS = . cmdline-opts
-DIST_SUBDIRS = $(SUBDIRS) examples libcurl
-CLEANFILES = $(GENHTMLPAGES) $(PDFPAGES) $(MANDISTPAGES) curl.1
+SUBDIRS = . cmdline-opts libcurl
+DIST_SUBDIRS = $(SUBDIRS) examples
+CLEANFILES = $(man_MANS) curl.1 curl-config.1 mk-ca-bundle.1
+nodist_MANS = $(CLEANFILES)
 EXTRA_DIST = \
- $(noinst_man_MANS)                             \
+ $(CURLPAGES)                                   \
  ALTSVC.md                                      \
  BINDINGS.md                                    \
  BUFREF.md                                      \
@@ -508,9 +511,11 @@ EXTRA_DIST = \
  CODE_OF_CONDUCT.md                             \
  CODE_REVIEW.md                                 \
  CODE_STYLE.md                                  \
+ CLIENT-WRITERS.md                              \
  CONNECTION-FILTERS.md                          \
  CONTRIBUTE.md                                  \
  CURL-DISABLE.md                                \
+ CURLDOWN.md                                    \
  DEPRECATE.md                                   \
  DYNBUF.md                                      \
  EARLY-RELEASE.md                               \
@@ -526,7 +531,7 @@ EXTRA_DIST = \
  HTTP3.md                                       \
  HYPER.md                                       \
  INSTALL                                        \
- INSTALL.cmake                                  \
+ INSTALL-CMAKE.md                               \
  INSTALL.md                                     \
  INTERNALS.md                                   \
  KNOWN_BUGS                                     \
@@ -550,12 +555,16 @@ EXTRA_DIST = \
  VULN-DISCLOSURE-POLICY.md                      \
  WEBSOCKET.md
 
-MAN2HTML = roffit $< >$@
-SUFFIXES = .1 .html .pdf
+CD2NROFF = $(top_srcdir)/scripts/cd2nroff $< >$@
+CD2 = $(CD2_$(V))
+CD2_0 = @echo "  RENDER " $@;
+CD2_1 = 
+CD2_ = $(CD2_0)
+SUFFIXES = .1 .md
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .1 .html .pdf
+.SUFFIXES: .1 .md
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -840,6 +849,8 @@ dvi: dvi-recursive
 
 dvi-am:
 
+html: html-recursive
+
 html-am:
 
 info: info-recursive
@@ -881,6 +892,8 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 mostlyclean: mostlyclean-recursive
 
 mostlyclean-am: mostlyclean-generic mostlyclean-libtool
+
+pdf: pdf-recursive
 
 pdf-am:
 
@@ -925,21 +938,10 @@ $(abs_builddir)/curl.1:
 		&& touch -r "$(srcdir)/curl.1" $@; fi
 	cd cmdline-opts && $(MAKE)
 
-html: $(HTMLPAGES)
-	cd libcurl && $(MAKE) html
+.md.1:
+	$(CD2)$(CD2NROFF)
 
-pdf: $(PDFPAGES)
-	cd libcurl && $(MAKE) pdf
-
-.1.html:
-	$(MAN2HTML)
-
-.1.pdf:
-	@(foo=`echo $@ | sed -e 's/\.[0-9]$$//g'`; \
-	groff -Tps -man $< >$$foo.ps; \
-	ps2pdf $$foo.ps $@; \
-	rm $$foo.ps; \
-	echo "converted $< to $@")
+curl-config.1: curl-config.md
 
 distclean:
 	rm -f $(CLEANFILES)

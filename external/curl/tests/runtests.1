@@ -22,8 +22,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH runtests.pl 1 "October 24, 2023" "untests 8.5.0" runtests
-
+.TH runtests.pl 1 "06 Jun 2023" runtests runtests
 .SH NAME
 runtests.pl \- run one or more test cases
 .SH SYNOPSIS
@@ -115,6 +114,11 @@ Force the test to run even if mentioned in DISABLED.
 .IP "-g"
 Run the given test(s) with gdb. This is best used on a single test case and
 curl built --disable-shared. This then fires up gdb with command line set to
+run the specified test case. Simply (set a break-point and) type 'run' to
+start.
+.IP "-gl"
+Run the given test(s) with lldb. This is best used on a single test case and
+curl built --disable-shared. This then fires up lldb with command line set to
 run the specified test case. Simply (set a break-point and) type 'run' to
 start.
 .IP "-gw"

@@ -297,6 +297,7 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
+HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -372,10 +373,14 @@ USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
+USE_NGTCP2_CRYPTO_BORINGSSL = @USE_NGTCP2_CRYPTO_BORINGSSL@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
 USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
+USE_NGTCP2_H3 = @USE_NGTCP2_H3@
 USE_OPENLDAP = @USE_OPENLDAP@
+USE_OPENSSL_H3 = @USE_OPENSSL_H3@
+USE_OPENSSL_QUIC = @USE_OPENSSL_QUIC@
 USE_QUICHE = @USE_QUICHE@
 USE_RUSTLS = @USE_RUSTLS@
 USE_SCHANNEL = @USE_SCHANNEL@
@@ -488,6 +493,7 @@ man_MANS = \
   CURLINFO_PROXY_ERROR.3                        \
   CURLINFO_PROXY_SSL_VERIFYRESULT.3             \
   CURLINFO_PROXYAUTH_AVAIL.3                    \
+  CURLINFO_QUEUE_TIME_T.3                       \
   CURLINFO_REDIRECT_COUNT.3                     \
   CURLINFO_REDIRECT_TIME.3                      \
   CURLINFO_REDIRECT_TIME_T.3                    \
@@ -755,6 +761,7 @@ man_MANS = \
   CURLOPT_SEEKDATA.3                            \
   CURLOPT_SEEKFUNCTION.3                        \
   CURLOPT_SERVER_RESPONSE_TIMEOUT.3             \
+  CURLOPT_SERVER_RESPONSE_TIMEOUT_MS.3          \
   CURLOPT_SERVICE_NAME.3                        \
   CURLOPT_SHARE.3                               \
   CURLOPT_SOCKOPTDATA.3                         \
@@ -844,17 +851,20 @@ man_MANS = \
   CURLSHOPT_UNSHARE.3                           \
   CURLSHOPT_USERDATA.3
 
-man_DISTMANS = $(man_MANS:.3=.3.dist)
-HTMLPAGES = $(man_MANS:.3=.html)
-PDFPAGES = $(man_MANS:.3=.pdf)
-CLEANFILES = $(HTMLPAGES) $(PDFPAGES) $(man_DISTMANS)
-EXTRA_DIST = $(man_MANS) CMakeLists.txt
-MAN2HTML = roffit --mandir=. $< >$@
-SUFFIXES = .3 .html
+CURLPAGES = $(man_MANS:.3=.md)
+CLEANFILES = $(man_MANS)
+nodist_MANS = $(man_MANS)
+EXTRA_DIST = $(CURLPAGES) CMakeLists.txt
+CD2NROFF = $(top_srcdir)/scripts/cd2nroff $< >$@
+CD2 = $(CD2_$(V))
+CD2_0 = @echo "  RENDER " $@;
+CD2_1 = 
+CD2_ = $(CD2_0)
+SUFFIXES = .3 .md
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .3 .html .pdf
+.SUFFIXES: .3 .md
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/Makefile.inc $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -1023,6 +1033,8 @@ dvi: dvi-am
 
 dvi-am:
 
+html: html-am
+
 html-am:
 
 info: info-am
@@ -1065,6 +1077,8 @@ mostlyclean: mostlyclean-am
 
 mostlyclean-am: mostlyclean-generic mostlyclean-libtool
 
+pdf: pdf-am
+
 pdf-am:
 
 ps: ps-am
@@ -1093,28 +1107,8 @@ uninstall-man: uninstall-man3
 .PRECIOUS: Makefile
 
 
-html: $(HTMLPAGES)
-
-.3.html:
-	$(MAN2HTML)
-
-pdf: $(PDFPAGES)
-
-.3.pdf:
-	@(foo=`echo $@ | sed -e 's/\.[0-9]$$//g'`; \
-	groff -Tps -man $< >$$foo.ps; \
-	ps2pdf $$foo.ps $@; \
-	rm $$foo.ps; \
-	echo "converted $< to $@")
-
-mancheck:
-	@(cd $(top_srcdir)/docs/libcurl/opts && ls `awk -F, '!/OBSOLETE/ && /^  CINIT/ { a=substr($$1, 9); print "CURLOPT_" a ".3"}' $(top_srcdir)/include/curl/curl.h`)
-	rm -f in_temp
-	@(for a in $(man_MANS); do echo $$a >>in_temp; done)
-	sort in_temp > in_makefile
-	ls CURL*.3 > in_directory
-	-diff -u in_makefile in_directory
-	rm in_temp in_directory in_makefile
+.md.3:
+	$(CD2)$(CD2NROFF)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

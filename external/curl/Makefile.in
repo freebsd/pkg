@@ -408,6 +408,7 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
+HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -483,10 +484,14 @@ USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
+USE_NGTCP2_CRYPTO_BORINGSSL = @USE_NGTCP2_CRYPTO_BORINGSSL@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
 USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
+USE_NGTCP2_H3 = @USE_NGTCP2_H3@
 USE_OPENLDAP = @USE_OPENLDAP@
+USE_OPENSSL_H3 = @USE_OPENSSL_H3@
+USE_OPENSSL_QUIC = @USE_OPENSSL_QUIC@
 USE_QUICHE = @USE_QUICHE@
 USE_RUSTLS = @USE_RUSTLS@
 USE_SCHANNEL = @USE_SCHANNEL@
@@ -655,8 +660,9 @@ EXTRA_DIST = CHANGES COPYING maketgz Makefile.dist curl-config.in            \
  $(VC_DIST) $(WINBUILD_DIST) $(PLAN9_DIST) lib/libcurl.vers.in buildconf.bat \
  libcurl.def
 
-CLEANFILES = $(VC14_LIBVCXPROJ) \
- $(VC14_SRCVCXPROJ) $(VC14_10_LIBVCXPROJ) $(VC14_10_SRCVCXPROJ)              \
+CLEANFILES = $(VC14_LIBVCXPROJ) $(VC14_SRCVCXPROJ) \
+ $(VC14_10_LIBVCXPROJ) $(VC14_10_SRCVCXPROJ)       \
+ $(VC14_20_LIBVCXPROJ) $(VC14_20_SRCVCXPROJ)       \
  $(VC14_30_LIBVCXPROJ) $(VC14_30_SRCVCXPROJ)
 
 bin_SCRIPTS = curl-config
@@ -720,15 +726,19 @@ LIB_VTLS_HFILES = \
 LIB_VQUIC_CFILES = \
   vquic/curl_msh3.c   \
   vquic/curl_ngtcp2.c   \
+  vquic/curl_osslq.c   \
   vquic/curl_quiche.c   \
-  vquic/vquic.c
+  vquic/vquic.c \
+  vquic/vquic-tls.c
 
 LIB_VQUIC_HFILES = \
   vquic/curl_msh3.h   \
   vquic/curl_ngtcp2.h   \
+  vquic/curl_osslq.h   \
   vquic/curl_quiche.h   \
   vquic/vquic.h    \
-  vquic/vquic_int.h
+  vquic/vquic_int.h \
+  vquic/vquic-tls.h
 
 LIB_VSSH_CFILES = \
   vssh/libssh.c    \
@@ -1600,6 +1610,8 @@ dvi: dvi-recursive
 
 dvi-am:
 
+html: html-recursive
+
 html-am:
 
 info: info-recursive
@@ -1645,6 +1657,8 @@ mostlyclean: mostlyclean-recursive
 
 mostlyclean-am: mostlyclean-generic mostlyclean-libtool
 
+pdf: pdf-recursive
+
 pdf-am:
 
 ps: ps-recursive
@@ -1689,12 +1703,6 @@ dist-hook:
 	  strip=`echo $$file | sed -e s/^$(srcdir)// -e s/\.dist//`; \
 	  cp -p $$file $(distdir)$$strip; \
 	done)
-
-html:
-	cd docs && $(MAKE) html
-
-pdf:
-	cd docs && $(MAKE) pdf
 
 check: test examples check-docs
 
@@ -2042,7 +2050,8 @@ function gen_element(type, dir, file)\
 		-v src_rc="$$win32_src_rc" \
 		-v src_x_srcs="$$sorted_src_x_srcs" \
 		-v src_x_hdrs="$$sorted_src_x_hdrs" \
-		"$$awk_code" $(srcdir)/$(VC14_20_SRCTMPL) > $(VC14_20_SRCVCXPROJ) || { exit 1; };) \
+		"$$awk_code" $(srcdir)/$(VC14_20_SRCTMPL) > $(VC14_20_SRCVCXPROJ) || { exit 1; }; \
+	\
 	echo "generating '$(VC14_30_LIBVCXPROJ)'"; \
 	awk -v proj_type=vcxproj \
 		-v lib_srcs="$$sorted_lib_srcs" \

@@ -244,40 +244,42 @@ am__libcurl_la_SOURCES_DIST = altsvc.c amigaos.c asyn-ares.c \
 	vtls/openssl.c vtls/rustls.c vtls/schannel.c \
 	vtls/schannel_verify.c vtls/sectransp.c vtls/vtls.c \
 	vtls/wolfssl.c vtls/x509asn1.c vquic/curl_msh3.c \
-	vquic/curl_ngtcp2.c vquic/curl_quiche.c vquic/vquic.c \
-	vssh/libssh.c vssh/libssh2.c vssh/wolfssh.c altsvc.h amigaos.h \
-	arpa_telnet.h asyn.h bufq.h bufref.h c-hyper.h cf-h1-proxy.h \
-	cf-h2-proxy.h cf-haproxy.h cf-https-connect.h cf-socket.h \
-	cfilters.h conncache.h connect.h content_encoding.h cookie.h \
-	curl_addrinfo.h curl_base64.h curl_ctype.h curl_des.h \
-	curl_endian.h curl_fnmatch.h curl_get_line.h \
-	curl_gethostname.h curl_gssapi.h curl_hmac.h curl_krb5.h \
-	curl_ldap.h curl_md4.h curl_md5.h curl_memory.h curl_memrchr.h \
-	curl_multibyte.h curl_ntlm_core.h curl_ntlm_wb.h curl_path.h \
-	curl_printf.h curl_range.h curl_rtmp.h curl_sasl.h \
-	curl_setup.h curl_setup_once.h curl_sha256.h curl_sspi.h \
-	curl_threads.h curl_trc.h curlx.h dict.h doh.h dynbuf.h \
-	dynhds.h easy_lock.h easyif.h easyoptions.h escape.h file.h \
-	fileinfo.h fopen.h formdata.h ftp.h ftplistparser.h \
-	functypes.h getinfo.h gopher.h hash.h headers.h hostip.h \
-	hsts.h http.h http1.h http2.h http_aws_sigv4.h http_chunks.h \
-	http_digest.h http_negotiate.h http_ntlm.h http_proxy.h idn.h \
-	if2ip.h imap.h inet_ntop.h inet_pton.h llist.h macos.h \
-	memdebug.h mime.h mqtt.h multihandle.h multiif.h netrc.h \
-	nonblock.h noproxy.h parsedate.h pingpong.h pop3.h progress.h \
-	psl.h rand.h rename.h rtsp.h select.h sendf.h setopt.h \
-	setup-vms.h share.h sigpipe.h slist.h smb.h smtp.h sockaddr.h \
-	socketpair.h socks.h speedcheck.h splay.h strcase.h strdup.h \
-	strerror.h strtok.h strtoofft.h system_win32.h telnet.h tftp.h \
-	timediff.h timeval.h transfer.h url.h urlapi-int.h urldata.h \
+	vquic/curl_ngtcp2.c vquic/curl_osslq.c vquic/curl_quiche.c \
+	vquic/vquic.c vquic/vquic-tls.c vssh/libssh.c vssh/libssh2.c \
+	vssh/wolfssh.c altsvc.h amigaos.h arpa_telnet.h asyn.h bufq.h \
+	bufref.h c-hyper.h cf-h1-proxy.h cf-h2-proxy.h cf-haproxy.h \
+	cf-https-connect.h cf-socket.h cfilters.h conncache.h \
+	connect.h content_encoding.h cookie.h curl_addrinfo.h \
+	curl_base64.h curl_ctype.h curl_des.h curl_endian.h \
+	curl_fnmatch.h curl_get_line.h curl_gethostname.h \
+	curl_gssapi.h curl_hmac.h curl_krb5.h curl_ldap.h curl_md4.h \
+	curl_md5.h curl_memory.h curl_memrchr.h curl_multibyte.h \
+	curl_ntlm_core.h curl_ntlm_wb.h curl_path.h curl_printf.h \
+	curl_range.h curl_rtmp.h curl_sasl.h curl_setup.h \
+	curl_setup_once.h curl_sha256.h curl_sspi.h curl_threads.h \
+	curl_trc.h curlx.h dict.h doh.h dynbuf.h dynhds.h easy_lock.h \
+	easyif.h easyoptions.h escape.h file.h fileinfo.h fopen.h \
+	formdata.h ftp.h ftplistparser.h functypes.h getinfo.h \
+	gopher.h hash.h headers.h hostip.h hsts.h http.h http1.h \
+	http2.h http_aws_sigv4.h http_chunks.h http_digest.h \
+	http_negotiate.h http_ntlm.h http_proxy.h idn.h if2ip.h imap.h \
+	inet_ntop.h inet_pton.h llist.h macos.h memdebug.h mime.h \
+	mqtt.h multihandle.h multiif.h netrc.h nonblock.h noproxy.h \
+	parsedate.h pingpong.h pop3.h progress.h psl.h rand.h rename.h \
+	rtsp.h select.h sendf.h setopt.h setup-vms.h share.h sigpipe.h \
+	slist.h smb.h smtp.h sockaddr.h socketpair.h socks.h \
+	speedcheck.h splay.h strcase.h strdup.h strerror.h strtok.h \
+	strtoofft.h system_win32.h telnet.h tftp.h timediff.h \
+	timeval.h transfer.h url.h urlapi-int.h urldata.h \
 	version_win32.h warnless.h ws.h vauth/digest.h vauth/ntlm.h \
 	vauth/vauth.h vtls/bearssl.h vtls/gtls.h vtls/hostcheck.h \
 	vtls/keylog.h vtls/mbedtls.h vtls/mbedtls_threadlock.h \
 	vtls/openssl.h vtls/rustls.h vtls/schannel.h \
 	vtls/schannel_int.h vtls/sectransp.h vtls/vtls.h \
 	vtls/vtls_int.h vtls/wolfssl.h vtls/x509asn1.h \
-	vquic/curl_msh3.h vquic/curl_ngtcp2.h vquic/curl_quiche.h \
-	vquic/vquic.h vquic/vquic_int.h vssh/ssh.h libcurl.rc
+	vquic/curl_msh3.h vquic/curl_ngtcp2.h vquic/curl_osslq.h \
+	vquic/curl_quiche.h vquic/vquic.h vquic/vquic_int.h \
+	vquic/vquic-tls.h vssh/ssh.h libcurl.rc
 am__objects_1 = libcurl_la-altsvc.lo libcurl_la-amigaos.lo \
 	libcurl_la-asyn-ares.lo libcurl_la-asyn-thread.lo \
 	libcurl_la-base64.lo libcurl_la-bufq.lo libcurl_la-bufref.lo \
@@ -351,8 +353,9 @@ am__objects_3 = vtls/libcurl_la-bearssl.lo vtls/libcurl_la-gtls.lo \
 	vtls/libcurl_la-sectransp.lo vtls/libcurl_la-vtls.lo \
 	vtls/libcurl_la-wolfssl.lo vtls/libcurl_la-x509asn1.lo
 am__objects_4 = vquic/libcurl_la-curl_msh3.lo \
-	vquic/libcurl_la-curl_ngtcp2.lo \
-	vquic/libcurl_la-curl_quiche.lo vquic/libcurl_la-vquic.lo
+	vquic/libcurl_la-curl_ngtcp2.lo vquic/libcurl_la-curl_osslq.lo \
+	vquic/libcurl_la-curl_quiche.lo vquic/libcurl_la-vquic.lo \
+	vquic/libcurl_la-vquic-tls.lo
 am__objects_5 = vssh/libcurl_la-libssh.lo vssh/libcurl_la-libssh2.lo \
 	vssh/libcurl_la-wolfssh.lo
 am__objects_6 = $(am__objects_1) $(am__objects_2) $(am__objects_3) \
@@ -453,7 +456,9 @@ am__objects_13 = vtls/libcurlu_la-bearssl.lo vtls/libcurlu_la-gtls.lo \
 	vtls/libcurlu_la-wolfssl.lo vtls/libcurlu_la-x509asn1.lo
 am__objects_14 = vquic/libcurlu_la-curl_msh3.lo \
 	vquic/libcurlu_la-curl_ngtcp2.lo \
-	vquic/libcurlu_la-curl_quiche.lo vquic/libcurlu_la-vquic.lo
+	vquic/libcurlu_la-curl_osslq.lo \
+	vquic/libcurlu_la-curl_quiche.lo vquic/libcurlu_la-vquic.lo \
+	vquic/libcurlu_la-vquic-tls.lo
 am__objects_15 = vssh/libcurlu_la-libssh.lo \
 	vssh/libcurlu_la-libssh2.lo vssh/libcurlu_la-wolfssh.lo
 am__objects_16 = $(am__objects_11) $(am__objects_12) $(am__objects_13) \
@@ -763,11 +768,15 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	vauth/$(DEPDIR)/libcurlu_la-vauth.Plo \
 	vquic/$(DEPDIR)/libcurl_la-curl_msh3.Plo \
 	vquic/$(DEPDIR)/libcurl_la-curl_ngtcp2.Plo \
+	vquic/$(DEPDIR)/libcurl_la-curl_osslq.Plo \
 	vquic/$(DEPDIR)/libcurl_la-curl_quiche.Plo \
+	vquic/$(DEPDIR)/libcurl_la-vquic-tls.Plo \
 	vquic/$(DEPDIR)/libcurl_la-vquic.Plo \
 	vquic/$(DEPDIR)/libcurlu_la-curl_msh3.Plo \
 	vquic/$(DEPDIR)/libcurlu_la-curl_ngtcp2.Plo \
+	vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Plo \
 	vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Plo \
+	vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Plo \
 	vquic/$(DEPDIR)/libcurlu_la-vquic.Plo \
 	vssh/$(DEPDIR)/libcurl_la-libssh.Plo \
 	vssh/$(DEPDIR)/libcurl_la-libssh2.Plo \
@@ -926,6 +935,7 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
+HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -1003,10 +1013,14 @@ USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
 USE_NGHTTP3 = @USE_NGHTTP3@
 USE_NGTCP2 = @USE_NGTCP2@
+USE_NGTCP2_CRYPTO_BORINGSSL = @USE_NGTCP2_CRYPTO_BORINGSSL@
 USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
 USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
 USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
+USE_NGTCP2_H3 = @USE_NGTCP2_H3@
 USE_OPENLDAP = @USE_OPENLDAP@
+USE_OPENSSL_H3 = @USE_OPENSSL_H3@
+USE_OPENSSL_QUIC = @USE_OPENSSL_QUIC@
 USE_QUICHE = @USE_QUICHE@
 USE_RUSTLS = @USE_RUSTLS@
 USE_SCHANNEL = @USE_SCHANNEL@
@@ -1186,15 +1200,19 @@ LIB_VTLS_HFILES = \
 LIB_VQUIC_CFILES = \
   vquic/curl_msh3.c   \
   vquic/curl_ngtcp2.c   \
+  vquic/curl_osslq.c   \
   vquic/curl_quiche.c   \
-  vquic/vquic.c
+  vquic/vquic.c \
+  vquic/vquic-tls.c
 
 LIB_VQUIC_HFILES = \
   vquic/curl_msh3.h   \
   vquic/curl_ngtcp2.h   \
+  vquic/curl_osslq.h   \
   vquic/curl_quiche.h   \
   vquic/vquic.h    \
-  vquic/vquic_int.h
+  vquic/vquic_int.h \
+  vquic/vquic-tls.h
 
 LIB_VSSH_CFILES = \
   vssh/libssh.c    \
@@ -1675,9 +1693,13 @@ vquic/libcurl_la-curl_msh3.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
 vquic/libcurl_la-curl_ngtcp2.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
+vquic/libcurl_la-curl_osslq.lo: vquic/$(am__dirstamp) \
+	vquic/$(DEPDIR)/$(am__dirstamp)
 vquic/libcurl_la-curl_quiche.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
 vquic/libcurl_la-vquic.lo: vquic/$(am__dirstamp) \
+	vquic/$(DEPDIR)/$(am__dirstamp)
+vquic/libcurl_la-vquic-tls.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
 vssh/$(am__dirstamp):
 	@$(MKDIR_P) vssh
@@ -1752,9 +1774,13 @@ vquic/libcurlu_la-curl_msh3.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
 vquic/libcurlu_la-curl_ngtcp2.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
+vquic/libcurlu_la-curl_osslq.lo: vquic/$(am__dirstamp) \
+	vquic/$(DEPDIR)/$(am__dirstamp)
 vquic/libcurlu_la-curl_quiche.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
 vquic/libcurlu_la-vquic.lo: vquic/$(am__dirstamp) \
+	vquic/$(DEPDIR)/$(am__dirstamp)
+vquic/libcurlu_la-vquic-tls.lo: vquic/$(am__dirstamp) \
 	vquic/$(DEPDIR)/$(am__dirstamp)
 vssh/libcurlu_la-libssh.lo: vssh/$(am__dirstamp) \
 	vssh/$(DEPDIR)/$(am__dirstamp)
@@ -2068,11 +2094,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@vauth/$(DEPDIR)/libcurlu_la-vauth.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurl_la-curl_msh3.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurl_la-curl_ngtcp2.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurl_la-curl_osslq.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurl_la-curl_quiche.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurl_la-vquic-tls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurl_la-vquic.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurlu_la-curl_msh3.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurlu_la-curl_ngtcp2.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vquic/$(DEPDIR)/libcurlu_la-vquic.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vssh/$(DEPDIR)/libcurl_la-libssh.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vssh/$(DEPDIR)/libcurl_la-libssh2.Plo@am__quote@ # am--include-marker
@@ -3252,6 +3282,13 @@ vquic/libcurl_la-curl_ngtcp2.lo: vquic/curl_ngtcp2.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurl_la-curl_ngtcp2.lo `test -f 'vquic/curl_ngtcp2.c' || echo '$(srcdir)/'`vquic/curl_ngtcp2.c
 
+vquic/libcurl_la-curl_osslq.lo: vquic/curl_osslq.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vquic/libcurl_la-curl_osslq.lo -MD -MP -MF vquic/$(DEPDIR)/libcurl_la-curl_osslq.Tpo -c -o vquic/libcurl_la-curl_osslq.lo `test -f 'vquic/curl_osslq.c' || echo '$(srcdir)/'`vquic/curl_osslq.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vquic/$(DEPDIR)/libcurl_la-curl_osslq.Tpo vquic/$(DEPDIR)/libcurl_la-curl_osslq.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vquic/curl_osslq.c' object='vquic/libcurl_la-curl_osslq.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurl_la-curl_osslq.lo `test -f 'vquic/curl_osslq.c' || echo '$(srcdir)/'`vquic/curl_osslq.c
+
 vquic/libcurl_la-curl_quiche.lo: vquic/curl_quiche.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vquic/libcurl_la-curl_quiche.lo -MD -MP -MF vquic/$(DEPDIR)/libcurl_la-curl_quiche.Tpo -c -o vquic/libcurl_la-curl_quiche.lo `test -f 'vquic/curl_quiche.c' || echo '$(srcdir)/'`vquic/curl_quiche.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vquic/$(DEPDIR)/libcurl_la-curl_quiche.Tpo vquic/$(DEPDIR)/libcurl_la-curl_quiche.Plo
@@ -3265,6 +3302,13 @@ vquic/libcurl_la-vquic.lo: vquic/vquic.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vquic/vquic.c' object='vquic/libcurl_la-vquic.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurl_la-vquic.lo `test -f 'vquic/vquic.c' || echo '$(srcdir)/'`vquic/vquic.c
+
+vquic/libcurl_la-vquic-tls.lo: vquic/vquic-tls.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vquic/libcurl_la-vquic-tls.lo -MD -MP -MF vquic/$(DEPDIR)/libcurl_la-vquic-tls.Tpo -c -o vquic/libcurl_la-vquic-tls.lo `test -f 'vquic/vquic-tls.c' || echo '$(srcdir)/'`vquic/vquic-tls.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vquic/$(DEPDIR)/libcurl_la-vquic-tls.Tpo vquic/$(DEPDIR)/libcurl_la-vquic-tls.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vquic/vquic-tls.c' object='vquic/libcurl_la-vquic-tls.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurl_la-vquic-tls.lo `test -f 'vquic/vquic-tls.c' || echo '$(srcdir)/'`vquic/vquic-tls.c
 
 vssh/libcurl_la-libssh.lo: vssh/libssh.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vssh/libcurl_la-libssh.lo -MD -MP -MF vssh/$(DEPDIR)/libcurl_la-libssh.Tpo -c -o vssh/libcurl_la-libssh.lo `test -f 'vssh/libssh.c' || echo '$(srcdir)/'`vssh/libssh.c
@@ -4400,6 +4444,13 @@ vquic/libcurlu_la-curl_ngtcp2.lo: vquic/curl_ngtcp2.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurlu_la-curl_ngtcp2.lo `test -f 'vquic/curl_ngtcp2.c' || echo '$(srcdir)/'`vquic/curl_ngtcp2.c
 
+vquic/libcurlu_la-curl_osslq.lo: vquic/curl_osslq.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vquic/libcurlu_la-curl_osslq.lo -MD -MP -MF vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Tpo -c -o vquic/libcurlu_la-curl_osslq.lo `test -f 'vquic/curl_osslq.c' || echo '$(srcdir)/'`vquic/curl_osslq.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Tpo vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vquic/curl_osslq.c' object='vquic/libcurlu_la-curl_osslq.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurlu_la-curl_osslq.lo `test -f 'vquic/curl_osslq.c' || echo '$(srcdir)/'`vquic/curl_osslq.c
+
 vquic/libcurlu_la-curl_quiche.lo: vquic/curl_quiche.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vquic/libcurlu_la-curl_quiche.lo -MD -MP -MF vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Tpo -c -o vquic/libcurlu_la-curl_quiche.lo `test -f 'vquic/curl_quiche.c' || echo '$(srcdir)/'`vquic/curl_quiche.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Tpo vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Plo
@@ -4413,6 +4464,13 @@ vquic/libcurlu_la-vquic.lo: vquic/vquic.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vquic/vquic.c' object='vquic/libcurlu_la-vquic.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurlu_la-vquic.lo `test -f 'vquic/vquic.c' || echo '$(srcdir)/'`vquic/vquic.c
+
+vquic/libcurlu_la-vquic-tls.lo: vquic/vquic-tls.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vquic/libcurlu_la-vquic-tls.lo -MD -MP -MF vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Tpo -c -o vquic/libcurlu_la-vquic-tls.lo `test -f 'vquic/vquic-tls.c' || echo '$(srcdir)/'`vquic/vquic-tls.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Tpo vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vquic/vquic-tls.c' object='vquic/libcurlu_la-vquic-tls.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vquic/libcurlu_la-vquic-tls.lo `test -f 'vquic/vquic-tls.c' || echo '$(srcdir)/'`vquic/vquic-tls.c
 
 vssh/libcurlu_la-libssh.lo: vssh/libssh.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vssh/libcurlu_la-libssh.lo -MD -MP -MF vssh/$(DEPDIR)/libcurlu_la-libssh.Tpo -c -o vssh/libcurlu_la-libssh.lo `test -f 'vssh/libssh.c' || echo '$(srcdir)/'`vssh/libssh.c
@@ -4869,11 +4927,15 @@ distclean: distclean-am
 	-rm -f vauth/$(DEPDIR)/libcurlu_la-vauth.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_msh3.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_ngtcp2.Plo
+	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_osslq.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_quiche.Plo
+	-rm -f vquic/$(DEPDIR)/libcurl_la-vquic-tls.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-vquic.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_msh3.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_ngtcp2.Plo
+	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Plo
+	-rm -f vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-vquic.Plo
 	-rm -f vssh/$(DEPDIR)/libcurl_la-libssh.Plo
 	-rm -f vssh/$(DEPDIR)/libcurl_la-libssh2.Plo
@@ -5242,11 +5304,15 @@ maintainer-clean: maintainer-clean-am
 	-rm -f vauth/$(DEPDIR)/libcurlu_la-vauth.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_msh3.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_ngtcp2.Plo
+	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_osslq.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-curl_quiche.Plo
+	-rm -f vquic/$(DEPDIR)/libcurl_la-vquic-tls.Plo
 	-rm -f vquic/$(DEPDIR)/libcurl_la-vquic.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_msh3.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_ngtcp2.Plo
+	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_osslq.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-curl_quiche.Plo
+	-rm -f vquic/$(DEPDIR)/libcurlu_la-vquic-tls.Plo
 	-rm -f vquic/$(DEPDIR)/libcurlu_la-vquic.Plo
 	-rm -f vssh/$(DEPDIR)/libcurl_la-libssh.Plo
 	-rm -f vssh/$(DEPDIR)/libcurl_la-libssh2.Plo
