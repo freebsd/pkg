@@ -1045,7 +1045,7 @@ static CURLUcode updateurl(CURLU *u, const char *cmd, unsigned int setflags)
   while(p) {
     char *e = strchr(p, ',');
     if(e) {
-      size_t n = e-p;
+      size_t n = (size_t)(e - p);
       char buf[80];
       char part[80];
       char value[80];
@@ -1639,7 +1639,6 @@ static char bigpart[120000];
  */
 static int huge(void)
 {
-  const char *url = "%s://%s:%s@%s/%s?%s#%s";
   const char *smallpart = "c";
   int i;
   CURLU *urlp = curl_url();
@@ -1663,7 +1662,7 @@ static int huge(void)
   for(i = 0; i <  7; i++) {
     char *partp;
     msnprintf(total, sizeof(total),
-              url,
+              "%s://%s:%s@%s/%s?%s#%s",
               (i == 0)? &bigpart[1] : smallpart,
               (i == 1)? &bigpart[1] : smallpart,
               (i == 2)? &bigpart[1] : smallpart,

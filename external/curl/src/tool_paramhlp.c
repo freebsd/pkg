@@ -88,8 +88,6 @@ ParameterError file2string(char **bufp, FILE *file)
   return PARAM_OK;
 }
 
-#define MAX_FILE2MEMORY (1024*1024*1024) /* big enough ? */
-
 ParameterError file2memory(char **bufp, size_t *size, FILE *file)
 {
   if(file) {
@@ -134,6 +132,8 @@ static ParameterError getnum(long *val, const char *str, int base)
   if(str) {
     char *endptr = NULL;
     long num;
+    if(!str[0])
+      return PARAM_BLANK_STRING;
     errno = 0;
     num = strtol(str, &endptr, base);
     if(errno == ERANGE)
@@ -408,7 +408,7 @@ ParameterError proto2num(struct OperationConfig *config,
           break;
         case set:
           protoset[0] = NULL;
-          /* FALLTHROUGH */
+          FALLTHROUGH();
         case allow:
           protoset_set(protoset, p);
           break;

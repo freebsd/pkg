@@ -930,9 +930,13 @@ FISH_FUNCTIONS_DIR
 ZSH_FUNCTIONS_DIR
 USE_MSH3
 USE_QUICHE
+USE_OPENSSL_H3
+USE_NGTCP2_H3
 USE_NGHTTP3
+USE_OPENSSL_QUIC
 USE_NGTCP2_CRYPTO_WOLFSSL
 USE_NGTCP2_CRYPTO_GNUTLS
+USE_NGTCP2_CRYPTO_BORINGSSL
 USE_NGTCP2_CRYPTO_QUICTLS
 USE_NGTCP2
 USE_NGHTTP2
@@ -958,6 +962,7 @@ USE_WOLFSSL
 USE_MBEDTLS
 HAVE_GNUTLS_SRP
 USE_GNUTLS
+HAVE_OPENSSL_QUIC
 HAVE_OPENSSL_SRP
 RANDOM_FILE
 SSL_LIBS
@@ -1000,13 +1005,13 @@ HAVE_WINDRES_TRUE
 USE_WIN32_CRYPTO
 USE_WIN32_SMALL_FILES
 USE_WIN32_LARGE_FILES
-DOING_NATIVE_WINDOWS_FALSE
-DOING_NATIVE_WINDOWS_TRUE
 BUILD_UNITTESTS_FALSE
 BUILD_UNITTESTS_TRUE
 CURLDEBUG_FALSE
 CURLDEBUG_TRUE
 CURL_CFLAG_EXTRAS
+DOING_NATIVE_WINDOWS_FALSE
+DOING_NATIVE_WINDOWS_TRUE
 USE_EXPLICIT_LIB_DEPS_FALSE
 USE_EXPLICIT_LIB_DEPS_TRUE
 REQUIRE_LIB_DEPS
@@ -1244,6 +1249,7 @@ with_winidn
 with_libidn2
 with_nghttp2
 with_ngtcp2
+with_openssl_quic
 with_nghttp3
 with_quiche
 with_msh3
@@ -2140,7 +2146,7 @@ Optional Packages:
   --without-ca-path       Don't use a default CA path
   --with-ca-fallback      Use the built in CA store of the SSL library
   --without-ca-fallback   Don't use the built in CA store of the SSL library
-  --without-libpsl        disable support for libpsl cookie checking
+  --without-libpsl        disable support for libpsl
   --without-libgsasl      disable libgsasl support for SCRAM
   --with-libssh2=PATH     Where to look for libssh2, PATH points to the
                           libssh2 installation; when possible, set the
@@ -2169,6 +2175,8 @@ Optional Packages:
   --without-nghttp2       Disable nghttp2 usage
   --with-ngtcp2=PATH      Enable ngtcp2 usage
   --without-ngtcp2        Disable ngtcp2 usage
+  --with-openssl-quic     Enable OpenSSL QUIC usage
+  --without-openssl-quic  Disable OpenSSL QUIC usage
   --with-nghttp3=PATH     Enable nghttp3 usage
   --without-nghttp3       Disable nghttp3 usage
   --with-quiche=PATH      Enable quiche usage
@@ -6678,7 +6686,7 @@ curl_headers_msg="enabled (--disable-headers-api)"
     ssl_backends=
      curl_h1_msg="enabled (internal)"
      curl_h2_msg="no      (--with-nghttp2)"
-     curl_h3_msg="no      (--with-ngtcp2 --with-nghttp3, --with-quiche, --with-msh3)"
+     curl_h3_msg="no      (--with-ngtcp2 --with-nghttp3, --with-quiche, --with-openssl-quic, --with-msh3)"
 
 enable_altsvc="yes"
 hsts="yes"
@@ -7511,7 +7519,7 @@ printf "%s\n" "$ac_cv_path_EGREP" >&6; }
 
 
 
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if OS is AIX (to define _ALL_SOURCE)" >&5
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if OS is AIX (to define _ALL_SOURCE)" >&5
 printf %s "checking if OS is AIX (to define _ALL_SOURCE)... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -17973,51 +17981,6 @@ printf "%s\n" "gcc '$compiler_num' (raw: '$gccver')" >&6; }
     flags_opt_all="-O -O0 -O1 -O2 -O3 -Os -Og -Ofast"
     flags_opt_yes="-O2"
     flags_opt_off="-O0"
-
-    OLDCPPFLAGS=$CPPFLAGS
-  # CPPPFLAG comes from CURL_CPP_P
-  CPPFLAGS="$CPPFLAGS $CPPPFLAG"
-      if test -z "$SED"; then
-    as_fn_error $? "SED not set. Cannot continue without SED being set." "$LINENO" 5
-  fi
-  if test -z "$GREP"; then
-    as_fn_error $? "GREP not set. Cannot continue without GREP being set." "$LINENO" 5
-  fi
-
-  tmp_exp=""
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#ifdef _WIN32
-CURL_DEF_TOKEN _WIN32
-#endif
-
-
-_ACEOF
-if ac_fn_c_try_cpp "$LINENO"
-then :
-
-    tmp_exp=`eval "$ac_cpp conftest.$ac_ext" 2>/dev/null | \
-      "$GREP" CURL_DEF_TOKEN 2>/dev/null | \
-      "$SED" 's/.*CURL_DEF_TOKEN[ ][ ]*//' 2>/dev/null | \
-      "$SED" 's/["][ ]*["]//g' 2>/dev/null`
-    if test -z "$tmp_exp" || test "$tmp_exp" = "_WIN32"; then
-      tmp_exp=""
-    fi
-
-fi
-rm -f conftest.err conftest.i conftest.$ac_ext
-  if test -z "$tmp_exp"; then
-    curl_cv_have_def__WIN32=no
-
-  else
-    curl_cv_have_def__WIN32=yes
-    curl_cv_def__WIN32=$tmp_exp
-
-  fi
-      CPPFLAGS=$OLDCPPFLAGS
-
   else
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
@@ -18422,6 +18385,57 @@ printf "%s\n" "no" >&6; }
 ***
 _EOF
   fi
+
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build target is a native Windows one" >&5
+printf %s "checking whether build target is a native Windows one... " >&6; }
+if test ${curl_cv_native_windows+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+
+int main (void)
+{
+
+#ifdef _WIN32
+        int dummy=1;
+#else
+        Not a native Windows build target.
+#endif
+
+ ;
+ return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+      curl_cv_native_windows="yes"
+
+else $as_nop
+
+      curl_cv_native_windows="no"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_native_windows" >&5
+printf "%s\n" "$curl_cv_native_windows" >&6; }
+   if test "x$curl_cv_native_windows" = xyes; then
+  DOING_NATIVE_WINDOWS_TRUE=
+  DOING_NATIVE_WINDOWS_FALSE='#'
+else
+  DOING_NATIVE_WINDOWS_TRUE='#'
+  DOING_NATIVE_WINDOWS_FALSE=
+fi
+
 
 
 squeeze() {
@@ -19637,7 +19651,27 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
           fi
           #
                     if test "$compiler_num" -ge "209"; then
-            tmp_CFLAGS="$tmp_CFLAGS -Wno-sign-conversion"
+
+    ac_var_added_warnings=""
+  for warning in sign-conversion; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-error=sign-conversion"          # FIXME
 
     ac_var_added_warnings=""
   for warning in shift-sign-overflow; do
@@ -19682,6 +19716,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+            tmp_CFLAGS="$tmp_CFLAGS -Wformat=2"
           fi
           #
                     if test "$compiler_num" -ge "302"; then
@@ -19930,6 +19965,9 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+          fi
+                    if test "$compiler_num" -ge "1000"; then
+            tmp_CFLAGS="$tmp_CFLAGS -Wimplicit-fallthrough"  # we have silencing markup for clang 10.0 and above only
           fi
         fi
                                 tmp_CFLAGS="$tmp_CFLAGS -Wno-pointer-bool-conversion"
@@ -20509,7 +20547,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
 
     ac_var_added_warnings=""
-  for warning in conversion; do
+  for warning in conversion trampolines; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -20527,7 +20565,27 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-            tmp_CFLAGS="$tmp_CFLAGS -Wno-sign-conversion"
+
+    ac_var_added_warnings=""
+  for warning in sign-conversion; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-error=sign-conversion"          # FIXME
 
     ac_var_added_warnings=""
   for warning in vla; do
@@ -20552,7 +20610,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
           fi
           #
                     if test "$compiler_num" -ge "405"; then
-                        if test "$curl_cv_have_def__WIN32" = "yes"; then
+                        if test "$curl_cv_native_windows" = "yes"; then
               tmp_CFLAGS="$tmp_CFLAGS -Wno-pedantic-ms-format"
             fi
           fi
@@ -20736,9 +20794,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
             tmp_CFLAGS="$tmp_CFLAGS -Wformat-overflow=2"
             tmp_CFLAGS="$tmp_CFLAGS -Wformat-truncation=2"
-            if test "$compiler_num" -lt "1200"; then
-                            tmp_CFLAGS="$tmp_CFLAGS -Wimplicit-fallthrough=4"
-            fi
+            tmp_CFLAGS="$tmp_CFLAGS -Wimplicit-fallthrough"
           fi
           #
                     if test "$compiler_num" -ge "1000"; then
@@ -21484,243 +21540,10 @@ fi
 
 
 
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for windows.h" >&5
-printf %s "checking for windows.h... " >&6; }
-if test ${curl_cv_header_windows_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__)
-        HAVE_WINDOWS_H shall not be defined.
-#else
-        int dummy=2*WINVER;
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_windows_h="yes"
-
-else $as_nop
-
-      curl_cv_header_windows_h="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_windows_h" >&5
-printf "%s\n" "$curl_cv_header_windows_h" >&6; }
-  case "$curl_cv_header_windows_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINDOWS_H 1" >>confdefs.h
-
-      ;;
-  esac
-
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build target is a native Windows one" >&5
-printf %s "checking whether build target is a native Windows one... " >&6; }
-if test ${curl_cv_native_windows+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    if test "$curl_cv_header_windows_h" = "no"; then
-      curl_cv_native_windows="no"
-    else
-      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-
-int main (void)
-{
-
-#if defined(__MINGW32__) || defined(__MINGW32CE__) || \
-   (defined(_MSC_VER) && (defined(_WIN32) || defined(_WIN64)))
-          int dummy=1;
-#else
-          Not a native Windows build target.
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-        curl_cv_native_windows="yes"
-
-else $as_nop
-
-        curl_cv_native_windows="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-    fi
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_native_windows" >&5
-printf "%s\n" "$curl_cv_native_windows" >&6; }
-   if test "x$curl_cv_native_windows" = xyes; then
-  DOING_NATIVE_WINDOWS_TRUE=
-  DOING_NATIVE_WINDOWS_FALSE='#'
-else
-  DOING_NATIVE_WINDOWS_TRUE='#'
-  DOING_NATIVE_WINDOWS_FALSE=
-fi
-
-
-case X-"$curl_cv_native_windows" in
-  X-yes)
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for winsock2.h" >&5
-printf %s "checking for winsock2.h... " >&6; }
-if test ${curl_cv_header_winsock2_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <winsock2.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__) || defined(__MINGW32CE__)
-        HAVE_WINSOCK2_H shall not be defined.
-#else
-        int dummy=2*IPPROTO_ESP;
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_winsock2_h="yes"
-
-else $as_nop
-
-      curl_cv_header_winsock2_h="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_winsock2_h" >&5
-printf "%s\n" "$curl_cv_header_winsock2_h" >&6; }
-  case "$curl_cv_header_winsock2_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINSOCK2_H 1" >>confdefs.h
-
-      ;;
-  esac
-
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ws2tcpip.h" >&5
-printf %s "checking for ws2tcpip.h... " >&6; }
-if test ${curl_cv_header_ws2tcpip_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__) || defined(__MINGW32CE__)
-        HAVE_WS2TCPIP_H shall not be defined.
-#else
-        int dummy=2*IP_PKTINFO;
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_ws2tcpip_h="yes"
-
-else $as_nop
-
-      curl_cv_header_ws2tcpip_h="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_ws2tcpip_h" >&5
-printf "%s\n" "$curl_cv_header_ws2tcpip_h" >&6; }
-  case "$curl_cv_header_ws2tcpip_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WS2TCPIP_H 1" >>confdefs.h
-
-      ;;
-  esac
-
-    ;;
-  *)
-    curl_cv_header_winsock2_h="no"
-    curl_cv_header_ws2tcpip_h="no"
-    ;;
-esac
-
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build target supports WIN32 file API" >&5
 printf %s "checking whether build target supports WIN32 file API... " >&6; }
   curl_win32_file_api="no"
-  if test "$curl_cv_header_windows_h" = "yes"; then
+  if test "$curl_cv_native_windows" = "yes"; then
     if test x"$enable_largefile" != "xno"; then
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -21730,9 +21553,7 @@ printf %s "checking whether build target supports WIN32 file API... " >&6; }
 int main (void)
 {
 
-#if !defined(_WIN32_WCE) && \
-    (defined(__MINGW32__) || \
-    (defined(_MSC_VER) && (defined(_WIN32) || defined(_WIN64))))
+#if !defined(_WIN32_WCE) && (defined(__MINGW32__) || defined(_MSC_VER))
           int dummy=1;
 #else
           WIN32 large file API not supported.
@@ -21809,7 +21630,7 @@ printf "%s\n" "no" >&6; }
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build target supports WIN32 crypto API" >&5
 printf %s "checking whether build target supports WIN32 crypto API... " >&6; }
   curl_win32_crypto_api="no"
-  if test "$curl_cv_header_windows_h" = "yes"; then
+  if test "$curl_cv_native_windows" = "yes"; then
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -23078,10 +22899,8 @@ fi
 
 if test "$HAVE_GETHOSTBYNAME" != "1"
 then
-    if test "$curl_cv_header_windows_h" = "yes"; then
-    if test "$curl_cv_header_winsock2_h" = "yes"; then
-      winsock_LIB="-lws2_32"
-    fi
+    if test "$curl_cv_native_windows" = "yes"; then
+    winsock_LIB="-lws2_32"
     if test ! -z "$winsock_LIB"; then
       my_ac_save_LIBS=$LIBS
       LIBS="$winsock_LIB $LIBS"
@@ -23091,14 +22910,11 @@ printf %s "checking for gethostbyname in $winsock_LIB... " >&6; }
 /* end confdefs.h.  */
 
 
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #endif
 
 int main (void)
@@ -23310,20 +23126,17 @@ fi
 
 curl_includes_winsock2="\
 /* includes start */
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
 #  endif
-#  ifdef HAVE_WINSOCK2_H
-#    include <winsock2.h>
-#  endif
-#  include <windows.h>
+#  include <winsock2.h>
 #endif
 /* includes end */"
 
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for windows.h" >&5
-printf %s "checking for windows.h... " >&6; }
-if test ${curl_cv_header_windows_h+y}
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build target is a native Windows one" >&5
+printf %s "checking whether build target is a native Windows one... " >&6; }
+if test ${curl_cv_native_windows+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
@@ -23332,19 +23145,14 @@ else $as_nop
 /* end confdefs.h.  */
 
 
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
 
 int main (void)
 {
 
-#if defined(__CYGWIN__) || defined(__CEGCC__)
-        HAVE_WINDOWS_H shall not be defined.
+#ifdef _WIN32
+        int dummy=1;
 #else
-        int dummy=2*WINVER;
+        Not a native Windows build target.
 #endif
 
  ;
@@ -23355,81 +23163,26 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-      curl_cv_header_windows_h="yes"
+      curl_cv_native_windows="yes"
 
 else $as_nop
 
-      curl_cv_header_windows_h="no"
+      curl_cv_native_windows="no"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
 fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_windows_h" >&5
-printf "%s\n" "$curl_cv_header_windows_h" >&6; }
-  case "$curl_cv_header_windows_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINDOWS_H 1" >>confdefs.h
-
-      ;;
-  esac
-
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for winsock2.h" >&5
-printf %s "checking for winsock2.h... " >&6; }
-if test ${curl_cv_header_winsock2_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <winsock2.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__) || defined(__MINGW32CE__)
-        HAVE_WINSOCK2_H shall not be defined.
-#else
-        int dummy=2*IPPROTO_ESP;
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_winsock2_h="yes"
-
-else $as_nop
-
-      curl_cv_header_winsock2_h="no"
-
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_native_windows" >&5
+printf "%s\n" "$curl_cv_native_windows" >&6; }
+   if test "x$curl_cv_native_windows" = xyes; then
+  DOING_NATIVE_WINDOWS_TRUE=
+  DOING_NATIVE_WINDOWS_FALSE='#'
+else
+  DOING_NATIVE_WINDOWS_TRUE='#'
+  DOING_NATIVE_WINDOWS_FALSE=
 fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_winsock2_h" >&5
-printf "%s\n" "$curl_cv_header_winsock2_h" >&6; }
-  case "$curl_cv_header_winsock2_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINSOCK2_H 1" >>confdefs.h
-
-      ;;
-  esac
 
 
 
@@ -23473,7 +23226,7 @@ printf %s "checking for connect in libraries... " >&6; }
 
           $curl_includes_winsock2
           $curl_includes_bsdsocket
-          #if !defined(HAVE_WINDOWS_H) && !defined(HAVE_PROTO_BSDSOCKET_H)
+          #if !defined(_WIN32) && !defined(HAVE_PROTO_BSDSOCKET_H)
             int connect(int, void*, int);
           #endif
 
@@ -24753,7 +24506,7 @@ else $as_nop
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -24805,7 +24558,7 @@ printf "%s\n" "#define HAVE_LBER_H 1" >>confdefs.h
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -24869,7 +24622,7 @@ else $as_nop
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -24934,7 +24687,7 @@ else $as_nop
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -25093,7 +24846,7 @@ printf %s "checking for LDAP libraries... " >&6; }
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -25323,7 +25076,7 @@ else $as_nop
 
 /* are AF_INET6 and sockaddr_in6 available? */
 #include <sys/types.h>
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -25333,15 +25086,12 @@ else $as_nop
 # include <netinet/in6.h>
 #endif
 #endif
-#include <stdlib.h> /* for exit() */
-main()
+
+int main(void)
 {
  struct sockaddr_in6 s;
  (void)s;
- if (socket(AF_INET6, SOCK_STREAM, 0) < 0)
-   exit(1);
- else
-   exit(0);
+ return socket(AF_INET6, SOCK_STREAM, 0) < 0;
 }
 
 
@@ -25377,7 +25127,7 @@ printf %s "checking if struct sockaddr_in6 has sin6_scope_id member... " >&6; }
 /* end confdefs.h.  */
 
 #include <sys/types.h>
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -25911,10 +25661,6 @@ done
 if test "x$ac_cv_header_gssapi_h" = xyes
 then :
 
-
-printf "%s\n" "#define HAVE_GSSHEIMDAL 1" >>confdefs.h
-
-
 else $as_nop
 
                             want_gss=no
@@ -25925,10 +25671,7 @@ printf "%s\n" "$as_me: WARNING: disabling GSS-API support since no header files 
 fi
 
       else
-
-printf "%s\n" "#define HAVE_GSSMIT 1" >>confdefs.h
-
-                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if GSS-API headers declare GSS_C_NT_HOSTBASED_SERVICE" >&5
+                        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if GSS-API headers declare GSS_C_NT_HOSTBASED_SERVICE" >&5
 printf %s "checking if GSS-API headers declare GSS_C_NT_HOSTBASED_SERVICE... " >&6; }
         cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -27211,6 +26954,7 @@ then :
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
         ssl_msg="BoringSSL"
+        OPENSSL_IS_BORINGSSL=1
 
 else $as_nop
 
@@ -27246,6 +26990,7 @@ then :
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
         ssl_msg="AWS-LC"
+        OPENSSL_IS_BORINGSSL=1
 
 else $as_nop
 
@@ -27330,6 +27075,25 @@ printf "%s\n" "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  fi
+
+
+  for ac_func in SSL_set_quic_use_legacy_codepoint
+do :
+  ac_fn_c_check_func "$LINENO" "SSL_set_quic_use_legacy_codepoint" "ac_cv_func_SSL_set_quic_use_legacy_codepoint"
+if test "x$ac_cv_func_SSL_set_quic_use_legacy_codepoint" = xyes
+then :
+  printf "%s\n" "#define HAVE_SSL_SET_QUIC_USE_LEGACY_CODEPOINT 1" >>confdefs.h
+ QUIC_ENABLED=yes
+fi
+
+done
+  if test "$QUIC_ENABLED" = "yes"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: OpenSSL fork speaks QUIC API" >&5
+printf "%s\n" "$as_me: OpenSSL fork speaks QUIC API" >&6;}
+  else
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: OpenSSL version does not speak QUIC API" >&5
+printf "%s\n" "$as_me: OpenSSL version does not speak QUIC API" >&6;}
   fi
 
   if test "$OPENSSL_ENABLED" = "1"; then
@@ -27462,6 +27226,45 @@ fi
 
 fi
 
+if test "$OPENSSL_ENABLED" = "1"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for QUIC support in OpenSSL" >&5
+printf %s "checking for QUIC support in OpenSSL... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+#include <openssl/ssl.h>
+
+int main (void)
+{
+
+      OSSL_QUIC_client_method();
+
+ ;
+ return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+printf "%s\n" "#define HAVE_OPENSSL_QUIC 1" >>confdefs.h
+
+    HAVE_OPENSSL_QUIC=1
+
+
+else $as_nop
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+fi
 
 
 if test "x$OPT_GNUTLS" != xno; then
@@ -27707,6 +27510,7 @@ printf "%s\n" "#define USE_GNUTLS 1" >>confdefs.h
        GNUTLS_ENABLED=1
        USE_GNUTLS="yes"
        ssl_msg="GnuTLS"
+       QUIC_ENABLED=yes
        test gnutls != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
 
 else $as_nop
@@ -28298,6 +28102,7 @@ printf "%s\n" "#define USE_WOLFSSL 1" >>confdefs.h
          WOLFSSL_ENABLED=1
          USE_WOLFSSL="yes"
          ssl_msg="WolfSSL"
+         QUIC_ENABLED=yes
          test wolfssl != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
 
 else $as_nop
@@ -28990,6 +28795,7 @@ else $as_nop
   with_libpsl=yes
 fi
 
+curl_psl_msg="no      (libpsl disabled)"
 if test $with_libpsl != "no"; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for library containing psl_builtin" >&5
 printf %s "checking for library containing psl_builtin... " >&6; }
@@ -29053,10 +28859,7 @@ printf "%s\n" "#define USE_LIBPSL 1" >>confdefs.h
 
 
 else $as_nop
-  curl_psl_msg="no      (libpsl not found)";
-     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: libpsl was not found" >&5
-printf "%s\n" "$as_me: WARNING: libpsl was not found" >&2;}
-
+  as_fn_error $? "libpsl was not found" "$LINENO" 5
 
 fi
 
@@ -31018,6 +30821,11 @@ esac
 
 curl_tcp2_msg="no      (--with-ngtcp2)"
 if test X"$want_tcp2" != Xno; then
+
+  if test "$QUIC_ENABLED" != "yes"; then
+    as_fn_error $? "the detected TLS library does not support QUIC, making --with-ngtcp2 a no-no" "$LINENO" 5
+  fi
+
     CLEANLDFLAGS="$LDFLAGS"
   CLEANCPPFLAGS="$CPPFLAGS"
   CLEANLIBS="$LIBS"
@@ -31271,7 +31079,7 @@ fi
 
 fi
 
-if test "x$NGTCP2_ENABLED" = "x1" -a "x$OPENSSL_ENABLED" = "x1"; then
+if test "x$NGTCP2_ENABLED" = "x1" -a "x$OPENSSL_ENABLED" = "x1" -a "x$OPENSSL_IS_BORINGSSL" != "x1"; then
     CLEANLDFLAGS="$LDFLAGS"
   CLEANCPPFLAGS="$CPPFLAGS"
   CLEANLIBS="$LIBS"
@@ -31520,6 +31328,259 @@ fi
   else
         if test X"$want_tcp2" != Xdefault; then
                   as_fn_error $? "--with-ngtcp2 was specified but could not find ngtcp2_crypto_quictls pkg-config file." "$LINENO" 5
+    fi
+  fi
+fi
+
+if test "x$NGTCP2_ENABLED" = "x1" -a "x$OPENSSL_ENABLED" = "x1" -a "x$OPENSSL_IS_BORINGSSL" = "x1"; then
+    CLEANLDFLAGS="$LDFLAGS"
+  CLEANCPPFLAGS="$CPPFLAGS"
+  CLEANLIBS="$LIBS"
+
+
+    if test -n "$PKG_CONFIG"; then
+      PKGCONFIG="$PKG_CONFIG"
+    else
+      if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
+set dummy ${ac_tool_prefix}pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PKGCONFIG+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKGCONFIG="$PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKGCONFIG=$ac_cv_path_PKGCONFIG
+if test -n "$PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PKGCONFIG" >&5
+printf "%s\n" "$PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_path_PKGCONFIG"; then
+  ac_pt_PKGCONFIG=$PKGCONFIG
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_ac_pt_PKGCONFIG+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $ac_pt_PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_pt_PKGCONFIG="$ac_pt_PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_ac_pt_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_pt_PKGCONFIG=$ac_cv_path_ac_pt_PKGCONFIG
+if test -n "$ac_pt_PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_pt_PKGCONFIG" >&5
+printf "%s\n" "$ac_pt_PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+  if test "x$ac_pt_PKGCONFIG" = x; then
+    PKGCONFIG="no"
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+printf "%s\n" "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    PKGCONFIG=$ac_pt_PKGCONFIG
+  fi
+else
+  PKGCONFIG="$ac_cv_path_PKGCONFIG"
+fi
+
+    fi
+
+    if test "x$PKGCONFIG" != "xno"; then
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libngtcp2_crypto_boringssl options with pkg-config" >&5
+printf %s "checking for libngtcp2_crypto_boringssl options with pkg-config... " >&6; }
+            itexists=`
+    if test -n "$want_tcp2_path"; then
+      PKG_CONFIG_LIBDIR="$want_tcp2_path"
+      export PKG_CONFIG_LIBDIR
+    fi
+         $PKGCONFIG --exists libngtcp2_crypto_boringssl >/dev/null 2>&1 && echo 1`
+
+      if test -z "$itexists"; then
+                        PKGCONFIG="no"
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+      else
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found" >&5
+printf "%s\n" "found" >&6; }
+      fi
+    fi
+
+
+  if test "$PKGCONFIG" != "no" ; then
+    LIB_NGTCP2_CRYPTO_BORINGSSL=`
+    if test -n "$want_tcp2_path"; then
+      PKG_CONFIG_LIBDIR="$want_tcp2_path"
+      export PKG_CONFIG_LIBDIR
+    fi
+
+      $PKGCONFIG --libs-only-l libngtcp2_crypto_boringssl`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -l is $LIB_NGTCP2_CRYPTO_BORINGSSL" >&5
+printf "%s\n" "$as_me: -l is $LIB_NGTCP2_CRYPTO_BORINGSSL" >&6;}
+
+    CPP_NGTCP2_CRYPTO_BORINGSSL=`
+    if test -n "$want_tcp2_path"; then
+      PKG_CONFIG_LIBDIR="$want_tcp2_path"
+      export PKG_CONFIG_LIBDIR
+    fi
+       $PKGCONFIG --cflags-only-I libngtcp2_crypto_boringssl`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -I is $CPP_NGTCP2_CRYPTO_BORINGSSL" >&5
+printf "%s\n" "$as_me: -I is $CPP_NGTCP2_CRYPTO_BORINGSSL" >&6;}
+
+    LD_NGTCP2_CRYPTO_BORINGSSL=`
+    if test -n "$want_tcp2_path"; then
+      PKG_CONFIG_LIBDIR="$want_tcp2_path"
+      export PKG_CONFIG_LIBDIR
+    fi
+
+      $PKGCONFIG --libs-only-L libngtcp2_crypto_boringssl`
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: -L is $LD_NGTCP2_CRYPTO_BORINGSSL" >&5
+printf "%s\n" "$as_me: -L is $LD_NGTCP2_CRYPTO_BORINGSSL" >&6;}
+
+    LDFLAGS="$LDFLAGS $LD_NGTCP2_CRYPTO_BORINGSSL"
+    CPPFLAGS="$CPPFLAGS $CPP_NGTCP2_CRYPTO_BORINGSSL"
+    LIBS="$LIB_NGTCP2_CRYPTO_BORINGSSL $LIBS"
+
+    if test "x$cross_compiling" != "xyes"; then
+      DIR_NGTCP2_CRYPTO_BORINGSSL=`echo $LD_NGTCP2_CRYPTO_BORINGSSL | $SED -e 's/^-L//'`
+    fi
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ngtcp2_crypto_recv_client_initial_cb in -lngtcp2_crypto_boringssl" >&5
+printf %s "checking for ngtcp2_crypto_recv_client_initial_cb in -lngtcp2_crypto_boringssl... " >&6; }
+if test ${ac_cv_lib_ngtcp2_crypto_boringssl_ngtcp2_crypto_recv_client_initial_cb+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lngtcp2_crypto_boringssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+#ifdef __cplusplus
+extern "C"
+#endif
+char ngtcp2_crypto_recv_client_initial_cb ();
+int main (void)
+{
+return ngtcp2_crypto_recv_client_initial_cb ();
+ ;
+ return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ngtcp2_crypto_boringssl_ngtcp2_crypto_recv_client_initial_cb=yes
+else $as_nop
+  ac_cv_lib_ngtcp2_crypto_boringssl_ngtcp2_crypto_recv_client_initial_cb=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ngtcp2_crypto_boringssl_ngtcp2_crypto_recv_client_initial_cb" >&5
+printf "%s\n" "$ac_cv_lib_ngtcp2_crypto_boringssl_ngtcp2_crypto_recv_client_initial_cb" >&6; }
+if test "x$ac_cv_lib_ngtcp2_crypto_boringssl_ngtcp2_crypto_recv_client_initial_cb" = xyes
+then :
+
+              for ac_header in ngtcp2/ngtcp2_crypto.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "ngtcp2/ngtcp2_crypto.h" "ac_cv_header_ngtcp2_ngtcp2_crypto_h" "$ac_includes_default"
+if test "x$ac_cv_header_ngtcp2_ngtcp2_crypto_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NGTCP2_NGTCP2_CRYPTO_H 1" >>confdefs.h
+ NGTCP2_ENABLED=1
+
+printf "%s\n" "#define USE_NGTCP2_CRYPTO_BORINGSSL 1" >>confdefs.h
+
+          USE_NGTCP2_CRYPTO_BORINGSSL=1
+
+          CURL_LIBRARY_PATH="$CURL_LIBRARY_PATH:$DIR_NGTCP2_CRYPTO_BORINGSSL"
+          export CURL_LIBRARY_PATH
+          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Added $DIR_NGTCP2_CRYPTO_BORINGSSL to CURL_LIBRARY_PATH" >&5
+printf "%s\n" "$as_me: Added $DIR_NGTCP2_CRYPTO_BORINGSSL to CURL_LIBRARY_PATH" >&6;}
+
+fi
+
+done
+
+else $as_nop
+          LDFLAGS=$CLEANLDFLAGS
+        CPPFLAGS=$CLEANCPPFLAGS
+        LIBS=$CLEANLIBS
+
+fi
+
+
+  else
+        if test X"$want_tcp2" != Xdefault; then
+                  as_fn_error $? "--with-ngtcp2 was specified but could not find ngtcp2_crypto_boringssl pkg-config file." "$LINENO" 5
     fi
   fi
 fi
@@ -32031,10 +32092,50 @@ fi
 fi
 
 
+OPT_OPENSSL_QUIC="no"
+
+if test "x$disable_http" = "xyes" -o "x$OPENSSL_ENABLED" != "x1"; then
+  # without HTTP or without openssl, no use
+  OPT_OPENSSL_QUIC="no"
+fi
+
+
+# Check whether --with-openssl-quic was given.
+if test ${with_openssl_quic+y}
+then :
+  withval=$with_openssl_quic; OPT_OPENSSL_QUIC=$withval
+fi
+
+case "$OPT_OPENSSL_QUIC" in
+  no)
+        want_openssl_quic="no"
+    ;;
+  yes)
+        want_openssl_quic="yes"
+    ;;
+esac
+
+curl_openssl_quic_msg="no      (--with-openssl-quic)"
+if test "x$want_openssl_quic" = "xyes"; then
+
+  if test "$NGTCP2_ENABLED" = 1; then
+    as_fn_error $? "--with-openssl-quic and --with-ngtcp2 are mutually exclusive" "$LINENO" 5
+  fi
+  if test "$HAVE_OPENSSL_QUIC" != 1; then
+    as_fn_error $? "--with-openssl-quic requires quic support in OpenSSL" "$LINENO" 5
+  fi
+
+printf "%s\n" "#define USE_OPENSSL_QUIC 1" >>confdefs.h
+
+  USE_OPENSSL_QUIC=1
+
+fi
+
+
 OPT_NGHTTP3="yes"
 
-if test "x$NGTCP2_ENABLED" = "x"; then
-  # without ngtcp2, nghttp3 is of no use for us
+if test "x$USE_NGTCP2" = "x" -a "$USE_OPENSSL_QUIC" = "x"; then
+  # without ngtcp2 or openssl quic, nghttp3 is of no use for us
   OPT_NGHTTP3="no"
 fi
 
@@ -32061,6 +32162,7 @@ esac
 
 curl_http3_msg="no      (--with-nghttp3)"
 if test X"$want_nghttp3" != Xno; then
+
     CLEANLDFLAGS="$LDFLAGS"
   CLEANCPPFLAGS="$CPPFLAGS"
   CLEANLIBS="$LIBS"
@@ -32283,8 +32385,6 @@ do :
 if test "x$ac_cv_header_nghttp3_nghttp3_h" = xyes
 then :
   printf "%s\n" "#define HAVE_NGHTTP3_NGHTTP3_H 1" >>confdefs.h
- curl_h3_msg="enabled (ngtcp2 + nghttp3)"
-          NGHTTP3_ENABLED=1
 
 printf "%s\n" "#define USE_NGHTTP3 1" >>confdefs.h
 
@@ -32313,6 +32413,31 @@ fi
     fi
   fi
 
+fi
+
+
+if test "x$NGTCP2_ENABLED" = "x1" -a "x$USE_NGHTTP3" = "x1"; then
+
+printf "%s\n" "#define USE_NGTCP2_H3 1" >>confdefs.h
+
+  USE_NGTCP2_H3=1
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: HTTP3 support is experimental" >&5
+printf "%s\n" "$as_me: HTTP3 support is experimental" >&6;}
+  curl_h3_msg="enabled (ngtcp2 + nghttp3)"
+fi
+
+
+if test "x$USE_OPENSSL_QUIC" = "x1" -a "x$USE_NGHTTP3" = "x1"; then
+  experimental="$experimental HTTP3"
+
+printf "%s\n" "#define USE_OPENSSL_H3 1" >>confdefs.h
+
+  USE_OPENSSL_H3=1
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: HTTP3 support is experimental" >&5
+printf "%s\n" "$as_me: HTTP3 support is experimental" >&6;}
+  curl_h3_msg="enabled (openssl + nghttp3)"
 fi
 
 
@@ -32345,6 +32470,10 @@ case "$OPT_QUICHE" in
 esac
 
 if test X"$want_quiche" != Xno; then
+
+  if test "$QUIC_ENABLED" != "yes"; then
+    as_fn_error $? "the detected TLS library does not support QUIC, making --with-quiche a no-no" "$LINENO" 5
+  fi
 
   if test "$NGHTTP3_ENABLED" = 1; then
     as_fn_error $? "--with-quiche and --with-ngtcp2 are mutually exclusive" "$LINENO" 5
@@ -32645,8 +32774,20 @@ esac
 
 if test X"$want_msh3" != Xno; then
 
+    if test "$curl_cv_native_windows" != "yes"; then
+    if test "$QUIC_ENABLED" != "yes"; then
+      as_fn_error $? "the detected TLS library does not support QUIC, making --with-msh3 a no-no" "$LINENO" 5
+    fi
+    if test "$OPENSSL_ENABLED" != "1"; then
+      as_fn_error $? "msh3 requires OpenSSL" "$LINENO" 5
+    fi
+  fi
+
   if test "$NGHTTP3_ENABLED" = 1; then
     as_fn_error $? "--with-msh3 and --with-ngtcp2 are mutually exclusive" "$LINENO" 5
+  fi
+  if test "$QUICHE_ENABLED" = 1; then
+    as_fn_error $? "--with-msh3 and --with-quiche are mutually exclusive" "$LINENO" 5
   fi
 
     CLEANLDFLAGS="$LDFLAGS"
@@ -34197,14 +34338,11 @@ else $as_nop
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -34752,6 +34890,12 @@ else $as_nop
 
    # The windows name?
    ac_fn_c_check_type "$LINENO" "ADDRESS_FAMILY" "ac_cv_type_ADDRESS_FAMILY" "
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <winsock2.h>
+#endif
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
@@ -34879,100 +35023,13 @@ fi
 
 
 
-curl_includes_poll="\
-/* includes start */
-#ifdef HAVE_SYS_TYPES_H
-#  include <sys/types.h>
-#endif
-#ifdef HAVE_POLL_H
-#  include <poll.h>
-#endif
-#ifdef HAVE_SYS_POLL_H
-#  include <sys/poll.h>
-#endif
-/* includes end */"
-  ac_fn_c_check_header_compile "$LINENO" "sys/types.h" "ac_cv_header_sys_types_h" "$curl_includes_poll
-"
-if test "x$ac_cv_header_sys_types_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_SYS_TYPES_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "poll.h" "ac_cv_header_poll_h" "$curl_includes_poll
-"
-if test "x$ac_cv_header_poll_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_POLL_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "sys/poll.h" "ac_cv_header_sys_poll_h" "$curl_includes_poll
-"
-if test "x$ac_cv_header_sys_poll_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_SYS_POLL_H 1" >>confdefs.h
-
-fi
-
-
-
-    #
-  tst_poll_events_macro_defined="unknown"
-  #
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-      $curl_includes_poll
-
-int main (void)
-{
-
-#if defined(events) || defined(revents)
-      return 0;
-#else
-      force compilation error
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-    tst_poll_events_macro_defined="yes"
-
-else $as_nop
-
-    tst_poll_events_macro_defined="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-  #
-  if test "$tst_poll_events_macro_defined" = "yes"; then
-    if test "x$ac_cv_header_sys_poll_h" = "xyes"; then
-
-cat >>confdefs.h <<_EOF
-#define CURL_PULL_SYS_POLL_H 1
-_EOF
-
-    fi
-  fi
-  #
-
-
-
   ac_fn_c_check_type "$LINENO" "in_addr_t" "ac_cv_type_in_addr_t" "
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -35009,14 +35066,11 @@ else $as_nop
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -35074,14 +35128,11 @@ fi
 
    ac_fn_c_check_type "$LINENO" "struct sockaddr_storage" "ac_cv_type_struct_sockaddr_storage" "
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -35129,14 +35180,11 @@ printf %s "checking for select... " >&6; }
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -35145,7 +35193,7 @@ printf %s "checking for select... " >&6; }
 #include <sys/time.h>
 #endif
 #include <time.h>
-#ifndef HAVE_WINDOWS_H
+#ifndef _WIN32
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #elif defined(HAVE_UNISTD_H)
@@ -35214,14 +35262,11 @@ printf %s "checking for recv... " >&6; }
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #else
 $curl_includes_bsdsocket
 #ifdef HAVE_SYS_TYPES_H
@@ -35290,14 +35335,11 @@ printf %s "checking for send... " >&6; }
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #else
 $curl_includes_bsdsocket
 #ifdef HAVE_SYS_TYPES_H
@@ -35370,14 +35412,11 @@ else $as_nop
 
 
 #undef inline
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#endif
-#include <windows.h>
 #else
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -36410,23 +36449,18 @@ printf "%s\n" "no" >&6; }
 
 curl_includes_ws2tcpip="\
 /* includes start */
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
 #  endif
-#  ifdef HAVE_WINSOCK2_H
-#    include <winsock2.h>
-#    ifdef HAVE_WS2TCPIP_H
-#       include <ws2tcpip.h>
-#    endif
-#  endif
-#  include <windows.h>
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
 #endif
 /* includes end */"
 
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for windows.h" >&5
-printf %s "checking for windows.h... " >&6; }
-if test ${curl_cv_header_windows_h+y}
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build target is a native Windows one" >&5
+printf %s "checking whether build target is a native Windows one... " >&6; }
+if test ${curl_cv_native_windows+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
@@ -36435,19 +36469,14 @@ else $as_nop
 /* end confdefs.h.  */
 
 
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
 
 int main (void)
 {
 
-#if defined(__CYGWIN__) || defined(__CEGCC__)
-        HAVE_WINDOWS_H shall not be defined.
+#ifdef _WIN32
+        int dummy=1;
 #else
-        int dummy=2*WINVER;
+        Not a native Windows build target.
 #endif
 
  ;
@@ -36458,138 +36487,26 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-      curl_cv_header_windows_h="yes"
+      curl_cv_native_windows="yes"
 
 else $as_nop
 
-      curl_cv_header_windows_h="no"
+      curl_cv_native_windows="no"
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
 fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_windows_h" >&5
-printf "%s\n" "$curl_cv_header_windows_h" >&6; }
-  case "$curl_cv_header_windows_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINDOWS_H 1" >>confdefs.h
-
-      ;;
-  esac
-
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for winsock2.h" >&5
-printf %s "checking for winsock2.h... " >&6; }
-if test ${curl_cv_header_winsock2_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <winsock2.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__) || defined(__MINGW32CE__)
-        HAVE_WINSOCK2_H shall not be defined.
-#else
-        int dummy=2*IPPROTO_ESP;
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_winsock2_h="yes"
-
-else $as_nop
-
-      curl_cv_header_winsock2_h="no"
-
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_native_windows" >&5
+printf "%s\n" "$curl_cv_native_windows" >&6; }
+   if test "x$curl_cv_native_windows" = xyes; then
+  DOING_NATIVE_WINDOWS_TRUE=
+  DOING_NATIVE_WINDOWS_FALSE='#'
+else
+  DOING_NATIVE_WINDOWS_TRUE='#'
+  DOING_NATIVE_WINDOWS_FALSE=
 fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_winsock2_h" >&5
-printf "%s\n" "$curl_cv_header_winsock2_h" >&6; }
-  case "$curl_cv_header_winsock2_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WINSOCK2_H 1" >>confdefs.h
-
-      ;;
-  esac
-
-
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ws2tcpip.h" >&5
-printf %s "checking for ws2tcpip.h... " >&6; }
-if test ${curl_cv_header_ws2tcpip_h+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#undef inline
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
-int main (void)
-{
-
-#if defined(__CYGWIN__) || defined(__CEGCC__) || defined(__MINGW32CE__)
-        HAVE_WS2TCPIP_H shall not be defined.
-#else
-        int dummy=2*IP_PKTINFO;
-#endif
-
- ;
- return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-      curl_cv_header_ws2tcpip_h="yes"
-
-else $as_nop
-
-      curl_cv_header_ws2tcpip_h="no"
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $curl_cv_header_ws2tcpip_h" >&5
-printf "%s\n" "$curl_cv_header_ws2tcpip_h" >&6; }
-  case "$curl_cv_header_ws2tcpip_h" in
-    yes)
-
-printf "%s\n" "#define HAVE_WS2TCPIP_H 1" >>confdefs.h
-
-      ;;
-  esac
 
 
 
@@ -37313,10 +37230,10 @@ int main (void)
         struct addrinfo *ai = 0;
         int error;
 
-        #ifdef HAVE_WINSOCK2_H
+        #ifdef _WIN32
         WSADATA wsa;
-        if (WSAStartup(MAKEWORD(2,2), &wsa))
-                exit(2);
+        if(WSAStartup(MAKEWORD(2, 2), &wsa))
+          exit(2);
         #endif
 
         memset(&hints, 0, sizeof(hints));
@@ -37381,10 +37298,10 @@ int main (void)
         struct addrinfo *ai = 0;
         int error;
 
-        #ifdef HAVE_WINSOCK2_H
+        #ifdef _WIN32
         WSADATA wsa;
-        if (WSAStartup(MAKEWORD(2,2), &wsa))
-                exit(2);
+        if(WSAStartup(MAKEWORD(2, 2), &wsa))
+          exit(2);
         #endif
 
         memset(&hints, 0, sizeof(hints));
@@ -38039,7 +37956,7 @@ printf "%s\n" "no" >&6; }
 
 curl_preprocess_callconv="\
 /* preprocess start */
-#ifdef HAVE_WINDOWS_H
+#ifdef _WIN32
 #  define FUNCALLCONV __stdcall
 #else
 #  define FUNCALLCONV
@@ -39315,7 +39232,7 @@ curl_includes_arpa_inet="\
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 #endif
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #endif
@@ -41007,6 +40924,42 @@ printf "%s\n" "#define HAVE_MEMRCHR 1" >>confdefs.h
 printf "%s\n" "no" >&6; }
     curl_cv_func_memrchr="no"
   fi
+
+
+curl_includes_poll="\
+/* includes start */
+#ifdef HAVE_SYS_TYPES_H
+#  include <sys/types.h>
+#endif
+#ifdef HAVE_POLL_H
+#  include <poll.h>
+#endif
+#ifdef HAVE_SYS_POLL_H
+#  include <sys/poll.h>
+#endif
+/* includes end */"
+  ac_fn_c_check_header_compile "$LINENO" "sys/types.h" "ac_cv_header_sys_types_h" "$curl_includes_poll
+"
+if test "x$ac_cv_header_sys_types_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_TYPES_H 1" >>confdefs.h
+
+fi
+ac_fn_c_check_header_compile "$LINENO" "poll.h" "ac_cv_header_poll_h" "$curl_includes_poll
+"
+if test "x$ac_cv_header_poll_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_POLL_H 1" >>confdefs.h
+
+fi
+ac_fn_c_check_header_compile "$LINENO" "sys/poll.h" "ac_cv_header_sys_poll_h" "$curl_includes_poll
+"
+if test "x$ac_cv_header_sys_poll_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_POLL_H 1" >>confdefs.h
+
+fi
+
 
 
       #
@@ -45704,8 +45657,11 @@ if test "x$USE_NGHTTP2" = "x1"; then
   SUPPORT_FEATURES="$SUPPORT_FEATURES HTTP2"
 fi
 
-if test "x$USE_NGTCP2" = "x1" -o "x$USE_QUICHE" = "x1" \
-    -o "x$USE_MSH3" = "x1"; then
+if test "x$USE_NGTCP2_H3" = "x1" -o "x$USE_QUICHE" = "x1" \
+    -o "x$USE_OPENSSL_H3" = "x1" -o "x$USE_MSH3" = "x1"; then
+  if test "x$CURL_WITH_MULTI_SSL" = "x1"; then
+    as_fn_error $? "MultiSSL cannot be enabled with HTTP/3 and vice versa" "$LINENO" 5
+  fi
   SUPPORT_FEATURES="$SUPPORT_FEATURES HTTP3"
 fi
 
@@ -45793,7 +45749,7 @@ SUPPORT_FEATURES=`echo $SUPPORT_FEATURES | tr ' ' '\012' | sort | tr '\012' ' '`
 
 
 if test "x$CURL_DISABLE_HTTP" != "x1"; then
-  SUPPORT_PROTOCOLS="$SUPPORT_PROTOCOLS HTTP"
+  SUPPORT_PROTOCOLS="$SUPPORT_PROTOCOLS HTTP IPFS IPNS"
   if test "x$SSL_ENABLED" = "x1"; then
     SUPPORT_PROTOCOLS="$SUPPORT_PROTOCOLS HTTPS"
   fi
@@ -46230,6 +46186,10 @@ if test -z "${USE_EXPLICIT_LIB_DEPS_TRUE}" && test -z "${USE_EXPLICIT_LIB_DEPS_F
   as_fn_error $? "conditional \"USE_EXPLICIT_LIB_DEPS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
+if test -z "${DOING_NATIVE_WINDOWS_TRUE}" && test -z "${DOING_NATIVE_WINDOWS_FALSE}"; then
+  as_fn_error $? "conditional \"DOING_NATIVE_WINDOWS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${CURLDEBUG_TRUE}" && test -z "${CURLDEBUG_FALSE}"; then
   as_fn_error $? "conditional \"CURLDEBUG\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -46238,12 +46198,12 @@ if test -z "${BUILD_UNITTESTS_TRUE}" && test -z "${BUILD_UNITTESTS_FALSE}"; then
   as_fn_error $? "conditional \"BUILD_UNITTESTS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${DOING_NATIVE_WINDOWS_TRUE}" && test -z "${DOING_NATIVE_WINDOWS_FALSE}"; then
-  as_fn_error $? "conditional \"DOING_NATIVE_WINDOWS\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${HAVE_WINDRES_TRUE}" && test -z "${HAVE_WINDRES_FALSE}"; then
   as_fn_error $? "conditional \"HAVE_WINDRES\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DOING_NATIVE_WINDOWS_TRUE}" && test -z "${DOING_NATIVE_WINDOWS_FALSE}"; then
+  as_fn_error $? "conditional \"DOING_NATIVE_WINDOWS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_LIBZ_TRUE}" && test -z "${HAVE_LIBZ_FALSE}"; then
@@ -46264,6 +46224,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_TRUE}" && test -z "${CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_FALSE}"; then
   as_fn_error $? "conditional \"CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${DOING_NATIVE_WINDOWS_TRUE}" && test -z "${DOING_NATIVE_WINDOWS_FALSE}"; then
+  as_fn_error $? "conditional \"DOING_NATIVE_WINDOWS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${USE_MANUAL_TRUE}" && test -z "${USE_MANUAL_FALSE}"; then

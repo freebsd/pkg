@@ -123,8 +123,8 @@ If you are a curl developer and use gcc, you might want to enable more debug
 options with the `--enable-debug` option.
 
 curl can be built to use a whole range of libraries to provide various useful
-services, and configure will try to auto-detect a decent default. But if you
-want to alter it, you can select how to deal with each individual library.
+services, and configure will try to auto-detect a decent default. If you want
+to alter it, you can select how to deal with each individual library.
 
 ## Select TLS backend
 
@@ -146,7 +146,7 @@ you cannot add another OpenSSL fork (or wolfSSL) simply because they have
 conflicting identical symbol names.
 
 When you build with multiple TLS backends, you can select the active one at
-run-time when curl starts up.
+runtime when curl starts up.
 
 ## configure finding libs in wrong directory
 
@@ -174,8 +174,8 @@ Building for Windows XP is required as a minimum.
  KB140584 is a must for any Windows developer. Especially important is full
  understanding if you are not going to follow the advice given above.
 
- - [How To Use the C Run-Time](https://support.microsoft.com/help/94248/how-to-use-the-c-run-time)
- - [Run-Time Library Compiler Options](https://docs.microsoft.com/cpp/build/reference/md-mt-ld-use-run-time-library)
+ - [How To Use the C Runtime](https://support.microsoft.com/help/94248/how-to-use-the-c-run-time)
+ - [Runtime Library Compiler Options](https://docs.microsoft.com/cpp/build/reference/md-mt-ld-use-run-time-library)
  - [Potential Errors Passing CRT Objects Across DLL Boundaries](https://docs.microsoft.com/cpp/c-runtime-library/potential-errors-passing-crt-objects-across-dll-boundaries)
 
 If your app is misbehaving in some strange way, or it is suffering from memory
@@ -184,54 +184,6 @@ single library your app uses as well as your app using the debug
 multi-threaded dynamic C runtime.
 
  If you get linkage errors read section 5.7 of the FAQ document.
-
-## mingw-w64
-
-Make sure that mingw-w64's bin directory is in the search path, for example:
-
-```cmd
-set PATH=c:\mingw-w64\bin;%PATH%
-```
-
-then run `mingw32-make mingw32` in the root dir. There are other
-make targets available to build libcurl with more features, use:
-
- - `mingw32-make mingw32-zlib` to build with Zlib support;
- - `mingw32-make mingw32-ssl-zlib` to build with SSL and Zlib enabled;
- - `mingw32-make mingw32-ssh2-ssl-zlib` to build with SSH2, SSL, Zlib;
- - `mingw32-make mingw32-ssh2-ssl-sspi-zlib` to build with SSH2, SSL, Zlib
-   and SSPI support.
-
-If you have any problems linking libraries or finding header files, be sure
-to verify that the provided `Makefile.mk` files use the proper paths, and
-adjust as necessary. It is also possible to override these paths with
-environment variables, for example:
-
-```cmd
-set ZLIB_PATH=c:\zlib-1.2.12
-set OPENSSL_PATH=c:\openssl-3.0.5
-set LIBSSH2_PATH=c:\libssh2-1.10.0
-```
-
-It is also possible to build with other LDAP installations than MS LDAP;
-currently it is possible to build with native Win32 OpenLDAP, or with the
-*Novell CLDAP* SDK. If you want to use these you need to set these vars:
-
-```cmd
-set CPPFLAGS=-Ic:/openldap/include -DCURL_HAS_OPENLDAP_LDAPSDK
-set LDFLAGS=-Lc:/openldap/lib
-set LIBS=-lldap -llber
-```
-
-or for using the Novell SDK:
-
-```cmd
-set CPPFLAGS=-Ic:/openldapsdk/inc -DCURL_HAS_NOVELL_LDAPSDK
-set LDFLAGS=-Lc:/openldapsdk/lib/mscvc
-set LIBS=-lldapsdk -lldapssl -lldapx
-```
-
-If you want to enable LDAPS support then append `-ldaps` to the make target.
 
 ## Cygwin
 
@@ -388,14 +340,14 @@ In all above, the built libraries and executables can be found in the
 
 # Android
 
-When building curl for Android it's recommended to use a Linux/macOS environment
-since using curl's `configure` script is the easiest way to build curl
-for Android. Before you can build curl for Android, you need to install the
-Android NDK first. This can be done using the SDK Manager that is part of
-Android Studio. Once you have installed the Android NDK, you need to figure out
-where it has been installed and then set up some environment variables before
-launching `configure`. On macOS, those variables could look like this to compile
-for `aarch64` and API level 29:
+When building curl for Android it is recommended to use a Linux/macOS
+environment since using curl's `configure` script is the easiest way to build
+curl for Android. Before you can build curl for Android, you need to install
+the Android NDK first. This can be done using the SDK Manager that is part of
+Android Studio. Once you have installed the Android NDK, you need to figure
+out where it has been installed and then set up some environment variables
+before launching `configure`. On macOS, those variables could look like this
+to compile for `aarch64` and API level 29:
 
 ```bash
 export ANDROID_NDK_HOME=~/Library/Android/sdk/ndk/25.1.8937393 # Point into your NDK.
@@ -415,13 +367,13 @@ to adjust those variables accordingly. After that you can build curl like this:
 
     ./configure --host aarch64-linux-android --with-pic --disable-shared
 
-Note that this will not give you SSL/TLS support. If you need SSL/TLS, you have
-to build curl against a SSL/TLS layer, e.g. OpenSSL, because it's impossible for
-curl to access Android's native SSL/TLS layer. To build curl for Android using
-OpenSSL, follow the OpenSSL build instructions and then install `libssl.a` and
-`libcrypto.a` to `$TOOLCHAIN/sysroot/usr/lib` and copy `include/openssl` to
-`$TOOLCHAIN/sysroot/usr/include`. Now you can build curl for Android using
-OpenSSL like this:
+Note that this will not give you SSL/TLS support. If you need SSL/TLS, you
+have to build curl against a SSL/TLS layer, e.g. OpenSSL, because it is
+impossible for curl to access Android's native SSL/TLS layer. To build curl
+for Android using OpenSSL, follow the OpenSSL build instructions and then
+install `libssl.a` and `libcrypto.a` to `$TOOLCHAIN/sysroot/usr/lib` and copy
+`include/openssl` to `$TOOLCHAIN/sysroot/usr/include`. Now you can build curl
+for Android using OpenSSL like this:
 
 ```bash
 LIBS="-lssl -lcrypto -lc++" # For OpenSSL/BoringSSL. In general, you will need to the SSL/TLS layer's transitive dependencies if you are linking statically.

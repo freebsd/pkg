@@ -92,7 +92,6 @@ problems may have been fixed or changed somewhat since this was written.
  15.1 cmake outputs: no version information available
  15.2 support build with GnuTLS
  15.3 unusable tool_hugehelp.c with MinGW
- 15.4 build docs/curl.1
  15.6 uses -lpthread instead of Threads::Threads
  15.7 generated .pc file contains strange entries
  15.8 libcurl.pc uses absolute library paths
@@ -109,6 +108,9 @@ problems may have been fixed or changed somewhat since this was written.
 
  18. HTTP/3
  18.1 connection migration does not work
+
+ 19. RTSP
+ 19.1 Some methods do not support response bodies
 
 ==============================================================================
 
@@ -525,12 +527,6 @@ problems may have been fixed or changed somewhat since this was written.
 
  see https://github.com/curl/curl/issues/3125
 
-15.4 build docs/curl.1
-
- The cmake build does not create the docs/curl.1 file and therefore must rely on
- it being there already. This makes the --manual option not work and test
- cases like 1139 cannot function.
-
 15.6 uses -lpthread instead of Threads::Threads
 
  See https://github.com/curl/curl/issues/6166
@@ -602,3 +598,13 @@ problems may have been fixed or changed somewhat since this was written.
 18.1 connection migration does not work
 
  https://github.com/curl/curl/issues/7695
+
+19. RTSP
+
+19.1 Some methods do not support response bodies
+
+ The RTSP implementation is written to assume that a number of RTSP methods
+ will always get responses without bodies, even though there seems to be no
+ indication in the RFC that this is always the case.
+
+ https://github.com/curl/curl/issues/12414

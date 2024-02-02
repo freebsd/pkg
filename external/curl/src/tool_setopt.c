@@ -240,14 +240,10 @@ static char *c_escape(const char *str, curl_off_t len)
       if(p && *p)
         result = curlx_dyn_addn(&escaped, to + 2 * (p - from), 2);
       else {
-        const char *format = "\\x%02x";
-
-        if(len > 1 && ISXDIGIT(s[1])) {
-          /* Octal escape to avoid >2 digit hex. */
-          format = "\\%03o";
-        }
-
-        result = curlx_dyn_addf(&escaped, format,
+        result = curlx_dyn_addf(&escaped,
+                                /* Octal escape to avoid >2 digit hex. */
+                                (len > 1 && ISXDIGIT(s[1])) ?
+                                  "\\%03o" : "\\x%02x",
                                 (unsigned int) *(unsigned char *) s);
       }
     }
@@ -431,7 +427,7 @@ static CURLcode libcurl_generate_mime_part(CURL *curl,
   case TOOLMIME_STDIN:
     if(!filename)
       filename = "-";
-    /* FALLTHROUGH */
+    FALLTHROUGH();
   case TOOLMIME_STDINDATA:
     /* Can only be reading stdin in the current context. */
     CODE1("curl_mime_data_cb(part%d, -1, (curl_read_callback) fread, \\",
@@ -653,7 +649,7 @@ CURLcode tool_setopt(CURL *curl, bool str, struct GlobalConfig *global,
       if(escape) {
         curl_off_t len = ZERO_TERMINATED;
         if(tag == CURLOPT_POSTFIELDS)
-          len = config->postfieldsize;
+          len = curlx_dyn_len(&config->postdata);
         escaped = c_escape(value, len);
         NULL_CHECK(escaped);
         CODE2("curl_easy_setopt(hnd, %s, \"%s\");", name, escaped);
