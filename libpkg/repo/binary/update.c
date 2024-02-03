@@ -619,6 +619,20 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				break;
 		}
 		pkg_emit_progress_tick(nbel, cnt);
+		ucl_object_t *groups = ucl_object_ref(ucl_object_find_key(data, "groups"));
+		if (groups != NULL) {
+			int fd = openat(pkg_get_dbdirfd(),
+			    pkg_repo_binary_get_groups_filename(repo->name),
+			    O_CREAT|O_TRUNC|O_RDWR, 0644);
+			if (fd != -1) {
+				ucl_object_emit_fd(groups, UCL_EMIT_JSON_COMPACT, fd);
+				close(fd);
+			} else {
+				pkg_emit_errno("openat",
+				    pkg_repo_binary_get_groups_filename(repo->name));
+			}
+
+		}
 	}
 
 	if (rc == EPKG_OK)

@@ -230,6 +230,17 @@ pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...)
 	return (retcode);
 }
 
+const char *
+pkg_repo_binary_get_groups_filename(const char *name)
+{
+	static char buf[MAXPATHLEN];
+
+	snprintf(buf, sizeof(buf), REPO_NAME_PREFIX "%s-groups.ucl",
+			name);
+
+	return (buf);
+}
+
 
 const char *
 pkg_repo_binary_get_filename(const char *name)

@@ -810,6 +810,14 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 
 	struct ucl_emitter_functions *f;
 	ucl_object_t *obj = ucl_object_typed_new(UCL_OBJECT);
+	/*
+	 * Work around a bug in the streamline exporter which creates an invalid
+	 * json if there is nothing in the object, prior to the streamline to
+	 * start. So always add at least an empty groups array
+	 */
+	ucl_object_insert_key(obj,
+	    prc->groups == NULL ? ucl_object_typed_new(UCL_ARRAY) : prc->groups,
+	    "groups", 0, false);
 	f = ucl_object_emit_fd_funcs(te.dfd);
 	te.ctx = ucl_object_emit_streamline_new(obj, UCL_EMIT_JSON_COMPACT, f);
 	ucl_object_t *ar = ucl_object_typed_new(UCL_ARRAY);
@@ -832,15 +840,8 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 
 	for (int i = 0; i < num_workers; i++)
 		pthread_join(threads[i], NULL);
+	ucl_object_emit_streamline_end_container(te.ctx);
 	pkg_emit_progress_tick(len, len);
-	ucl_object_emit_streamline_end_container(te.ctx);
-	ucl_object_emit_streamline_end_container(te.ctx);
-	if (prc->groups != NULL) {
-		prc->groups->key = "groups";
-		prc->groups->keylen = sizeof("groups") -1;
-		ucl_object_emit_streamline_start_container(te.ctx, prc->groups);
-		ucl_object_emit_streamline_end_container(te.ctx);
-	}
 	ucl_object_emit_streamline_finish(te.ctx);
 	ucl_object_emit_funcs_free(f);
 	ucl_object_unref(obj);
