@@ -162,6 +162,7 @@ struct pkg_ctx {
 	int devnullfd;
 	int dbdirfd;
 	int pkg_dbdirfd;
+	int pkg_reposdirfd;
 	int osversion;
 	bool archive_symlink;
 	bool backup_libraries;
@@ -853,5 +854,6 @@ void append_touched_file(const char *path);
 bool stringlist_contains(stringlist_t *l, const char *name);
 
 int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
+int pkg_get_reposdirfd(void);
 
 #endif

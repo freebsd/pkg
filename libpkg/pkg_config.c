@@ -1705,6 +1705,23 @@ pkg_get_dbdirfd(void)
 }
 
 int
+pkg_get_reposdirfd(void)
+{
+	int dbfd = pkg_get_dbdirfd();
+	if (dbfd == -1)
+		return (-1);
+	if (ctx.pkg_reposdirfd == -1) {
+		ctx.pkg_reposdirfd = openat(dbfd, "repos", O_DIRECTORY|O_CLOEXEC);
+		if (ctx.pkg_reposdirfd == -1) {
+			if (mkdirat(dbfd, "repos", 0755) == -1)
+				return (-1);
+			ctx.pkg_reposdirfd = openat(dbfd, "repos", O_DIRECTORY|O_CLOEXEC);
+		}
+	}
+	return (ctx.pkg_reposdirfd);
+}
+
+int
 pkg_open_devnull(void) {
 	pkg_close_devnull();
 
