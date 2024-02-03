@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014, Vsevolod Stakhov
- * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  *
@@ -497,6 +497,22 @@ rollback_repo(void *data)
 	unlink(path);
 }
 
+static void
+save_groups(struct pkg_repo *repo, ucl_object_t *groups)
+{
+	if (groups == NULL)
+		return;
+	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
+		return;
+	int fd = openat(repo->dfd, "groups.ucl", O_CREAT|O_TRUNC|O_RDWR, 0644);
+	if (fd == -1) {
+		pkg_emit_errno("openat", "repo groups");
+		return;
+	}
+	ucl_object_emit_fd(groups, UCL_EMIT_JSON_COMPACT, fd);
+	close(fd);
+}
+
 static int
 pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
@@ -619,20 +635,8 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				break;
 		}
 		pkg_emit_progress_tick(nbel, cnt);
-		ucl_object_t *groups = ucl_object_ref(ucl_object_find_key(data, "groups"));
-		if (groups != NULL) {
-			int fd = openat(pkg_get_dbdirfd(),
-			    pkg_repo_binary_get_groups_filename(repo->name),
-			    O_CREAT|O_TRUNC|O_RDWR, 0644);
-			if (fd != -1) {
-				ucl_object_emit_fd(groups, UCL_EMIT_JSON_COMPACT, fd);
-				close(fd);
-			} else {
-				pkg_emit_errno("openat",
-				    pkg_repo_binary_get_groups_filename(repo->name));
-			}
-
-		}
+		save_groups(repo,
+		    ucl_object_ref(ucl_object_find_key(data, "groups")));
 	}
 
 	if (rc == EPKG_OK)
@@ -686,7 +690,7 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 
 	struct stat st;
 	time_t t = 0;
-	int dfd, ld, res = EPKG_FATAL;
+	int ld, res = EPKG_FATAL;
 
 	bool got_meta = false;
 
@@ -700,6 +704,9 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	filename = pkg_repo_binary_get_filename(repo->name);
 
 	/* First of all, try to open and init repo and check whether it is fine */
+	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
+		return (EPKG_FATAL);
+
 	if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
 		pkg_debug(1, "PkgRepo: need forced update of %s", repo->name);
 		t = 0;
@@ -709,8 +716,7 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	}
 	else {
 		repo->ops->close(repo, false);
-		snprintf(filepath, sizeof(filepath), "%s/%s.meta", ctx.dbdir, repo->name);
-		if (stat(filepath, &st) != -1) {
+		if (fstatat(repo->dfd, "meta", &st, 0) != -1) {
 			t = force ? 0 : st.st_mtime;
 			got_meta = true;
 		}
@@ -723,9 +729,11 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		}
 	}
 
-	xasprintf(&lockpath, "%s-lock", filename);
-	dfd = pkg_get_dbdirfd();
-	ld = openat(dfd, lockpath, O_CREAT|O_TRUNC|O_WRONLY, 00644);
+	ld = openat(repo->dfd, "lock", O_CREAT|O_TRUNC|O_WRONLY, 00644);
+	if (ld == -1) {
+		pkg_emit_errno("plop", "plop");
+		pkg_emit_error("plop, %d\n", repo->dfd);
+	}
 	if (flock(ld, LOCK_EX|LOCK_NB) == -1) {
 		/* lock blocking anyway to let the other end finish */
 		pkg_emit_notice("Waiting for another process to "
@@ -754,10 +762,8 @@ cleanup:
 		close(ld);
 	}
 
-	if (lockpath != NULL) {
-		unlinkat(dfd, lockpath, 0);
-		free(lockpath);
-	}
+	if (lockpath != NULL)
+		unlinkat(repo->dfd, "lock", 0);
 
 	/* Set mtime from http request if possible */
 	if (t != 0 && res == EPKG_OK) {
@@ -773,10 +779,8 @@ cleanup:
 		};
 
 		utimes(filepath, ftimes);
-		if (got_meta) {
-			snprintf(filepath, sizeof(filepath), "%s/%s.meta", ctx.dbdir, repo->name);
-			utimes(filepath, ftimes);
-		}
+		if (got_meta)
+			futimesat(repo->dfd, "meta", ftimes);
 	}
 
 	if (repo->priv != NULL)

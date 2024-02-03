@@ -1,13 +1,14 @@
-/* Copyright (c) 2014, Vsevolod Stakhov
- * All rights reserved.
+/* 
+ * Copyright (c) 2014, Vsevolod Stakhov
+ * Copyright (c) 2024, Baptiste Daroussin
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *       * Redistributions of source code must retain the above copyright
- *         notice, this list of conditions and the following disclaimer.
- *       * Redistributions in binary form must reproduce the above copyright
- *         notice, this list of conditions and the following disclaimer in the
- *         documentation and/or other materials provided with the distribution.
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED ''AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -301,7 +302,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 {
 	char filepath[MAXPATHLEN];
 	sqlite3 *sqlite = NULL;
-	int flags, dbdirfd, fd;
+	int flags, dbdirfd, fd, reposfd, thisrepofd;
 	int64_t res;
 	struct pkg_repo_it *it;
 	struct pkg *pkg = NULL;
@@ -311,13 +312,19 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 	pkgdb_syscall_overload();
 
 	dbdirfd = pkg_get_dbdirfd();
-	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
+	reposfd = pkg_get_reposdirfd();
+	thisrepofd = openat(reposfd, repo->name, O_DIRECTORY|O_CLOEXEC);
+	if (thisrepofd == -1) {
+		if (mkdirat(reposfd, repo->name, 0755) == -1)
+			return( EPKG_FATAL);
+		thisrepofd = openat(reposfd, repo->name, O_DIRECTORY|O_CLOEXEC);
+	}
 
 	/* Open metafile */
-	if ((fd = openat(dbdirfd, filepath, O_RDONLY)) != -1) {
+	if ((fd = openat(thisrepofd, "meta", O_RDONLY)) != -1) {
 		if (pkg_repo_meta_load(fd, &repo->meta) != EPKG_OK) {
 			pkg_emit_error("Repository %s load error: "
-			    "meta file cannot be loaded", pkg_repo_name(repo));
+			    "meta file cannot be loaded", repo->name);
 			close(fd);
 			return (EPKG_FATAL);
 		}

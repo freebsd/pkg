@@ -844,6 +844,25 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 }
 
 int
+pkg_repo_open(struct pkg_repo *repo)
+{
+	if (repo->dfd != -1)
+		return (EPKG_OK);
+	int reposfd = pkg_get_reposdirfd();
+	if (reposfd == -1)
+		return (EPKG_FATAL);
+	repo->dfd = openat(reposfd, repo->name, O_DIRECTORY|O_CLOEXEC);
+	if (repo->dfd == -1) {
+		if (mkdirat(reposfd, repo->name, 0755) == -1)
+			return (EPKG_FATAL);
+		repo->dfd = openat(reposfd, repo->name, O_DIRECTORY|O_CLOEXEC);
+	}
+	if (repo->dfd == -1)
+		return (EPKG_FATAL);
+	return (EPKG_OK);
+}
+
+int
 pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
 	char filepath[MAXPATHLEN];
@@ -859,12 +878,15 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	pkghash_it it;
 
 	dbdirfd = pkg_get_dbdirfd();
-	snprintf(filepath, sizeof(filepath), "%s.meta", pkg_repo_name(repo));
+	if (repo->dfd == -1) {
+		if (pkg_repo_open(repo) == EPKG_FATAL)
+			return (EPKG_FATAL);
+	}
 	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "conf", t, &rc, true);
 	if (fd != -1) {
 		newscheme = true;
 		metafd = fd;
-		fd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
+		fd = openat(repo->dfd, "meta", O_RDWR|O_CREAT|O_TRUNC, 0644);
 		if (fd == -1) {
 			close(metafd);
 			return (EPKG_FATAL);
@@ -879,7 +901,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	if (fd == -1)
 		return (rc);
 
-	metafd = openat(dbdirfd, filepath, O_RDWR|O_CREAT|O_TRUNC, 0644);
+	metafd = openat(repo->dfd, "meta", O_RDWR|O_CREAT|O_TRUNC, 0644);
 	if (metafd == -1) {
 		close(fd);
 		return (EPKG_FATAL);
@@ -915,7 +937,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	}
 
 	/* Map meta file for extracting pubkeys from it */
-	if ((metafd = openat(dbdirfd, filepath, O_RDONLY)) == -1) {
+	if ((metafd = openat(repo->dfd, "meta", O_RDONLY)) == -1) {
 		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
 		rc = EPKG_FATAL;
 		goto cleanup;

@@ -73,6 +73,7 @@ struct pkg_ctx ctx = {
 	.rootfd = -1,
 	.cachedirfd = -1,
 	.pkg_dbdirfd = -1,
+	.pkg_reposdirfd = -1,
 	.devnullfd = -1,
 	.osversion = 0,
 	.backup_libraries = false,
@@ -1452,6 +1453,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	struct pkg_repo *r;
 
 	r = xcalloc(1, sizeof(struct pkg_repo));
+	r->dfd = -1;
 	r->ops = pkg_repo_find_type(type);
 	r->url = xstrdup(url);
 	r->signature_type = SIG_NONE;
@@ -1713,8 +1715,9 @@ pkg_get_reposdirfd(void)
 	if (ctx.pkg_reposdirfd == -1) {
 		ctx.pkg_reposdirfd = openat(dbfd, "repos", O_DIRECTORY|O_CLOEXEC);
 		if (ctx.pkg_reposdirfd == -1) {
-			if (mkdirat(dbfd, "repos", 0755) == -1)
+			if (mkdirat(dbfd, "repos", 0755) == -1) {
 				return (-1);
+			}
 			ctx.pkg_reposdirfd = openat(dbfd, "repos", O_DIRECTORY|O_CLOEXEC);
 		}
 	}
