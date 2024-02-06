@@ -73,123 +73,6 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	return (retcode);
 }
 
-static int
-pkg_repo_binary_set_version(sqlite3 *sqlite, int reposcver)
-{
-	const char	*sql = "PRAGMA user_version = %d;";
-
-	if (sql_exec(sqlite, sql, reposcver) != EPKG_OK) {
-		ERROR_SQLITE(sqlite, sql);
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-static int
-pkg_repo_binary_apply_change(struct pkg_repo *repo, sqlite3 *sqlite,
-		  const struct repo_changes *repo_changes, const char *updown,
-		  int version, int *next_version)
-{
-	const struct repo_changes	*change;
-	bool			 found = false, in_trans = false;
-	int			 ret = EPKG_OK;
-	char			*errmsg;
-
-	for (change = repo_changes; change->version != -1; change++) {
-		if (change->version == version) {
-			found = true;
-			break;
-		}
-	}
-	if (!found) {
-		pkg_emit_error("Unable to %s \"%s\" repo schema "
-			"version %d (target version %d) "
-			"-- change not found", updown, repo->name, version,
-			REPO_SCHEMA_VERSION);
-		return (EPKG_FATAL);
-	}
-
-	/* begin transaction */
-	if ((ret = pkgdb_transaction_begin_sqlite(sqlite, "SCHEMA")) == EPKG_OK)
-		in_trans = true;
-
-	/* apply change */
-	if (ret == EPKG_OK) {
-		pkg_debug(4, "Pkgdb: running '%s'", change->sql);
-		ret = sqlite3_exec(sqlite, change->sql, NULL, NULL, &errmsg);
-		if (ret != SQLITE_OK) {
-			pkg_emit_error("sqlite: %s", errmsg);
-			sqlite3_free(errmsg);
-			ret = EPKG_FATAL;
-		}
-	}
-
-	/* update repo user_version */
-	if (ret == EPKG_OK) {
-		*next_version = change->next_version;
-		ret = pkg_repo_binary_set_version(sqlite, *next_version);
-	}
-
-	/* commit or rollback */
-	if (in_trans) {
-		if (ret != EPKG_OK)
-			pkgdb_transaction_rollback_sqlite(sqlite, "SCHEMA");
-
-		if (pkgdb_transaction_commit_sqlite(sqlite, "SCHEMA") != EPKG_OK)
-			ret = EPKG_FATAL;
-	}
-
-	if (ret == EPKG_OK) {
-		pkg_emit_notice("Repo \"%s\" %s schema %d to %d: %s",
-				repo->name, updown, version,
-				change->next_version, change->message);
-	}
-
-	return (ret);
-}
-
-static int
-pkg_repo_binary_upgrade(struct pkg_repo *repo, sqlite3 *sqlite, int current_version)
-{
-	int version;
-	int next_version;
-	int ret = EPKG_OK;
-
-	for (version = current_version;
-	     version < REPO_SCHEMA_VERSION;
-	     version = next_version)  {
-		ret = pkg_repo_binary_apply_change(repo, sqlite, repo_upgrades,
-					"upgrade", version, &next_version);
-		if (ret != EPKG_OK)
-			break;
-		pkg_debug(1, "Upgrading repo database schema from %d to %d",
-				version, next_version);
-	}
-	return (ret);
-}
-
-static int
-pkg_repo_binary_downgrade(struct pkg_repo *repo, sqlite3 *sqlite, int current_version)
-{
-	int version;
-	int next_version;
-	int ret = EPKG_OK;
-
-	for (version = current_version;
-	     version > REPO_SCHEMA_VERSION;
-	     version = next_version)  {
-
-		ret = pkg_repo_binary_apply_change(repo, sqlite, repo_downgrades,
-					"downgrade", version, &next_version);
-		if (ret != EPKG_OK)
-			break;
-		pkg_debug(1, "Downgrading repo database schema from %d to %d",
-				version, next_version);
-	}
-	return (ret);
-}
-
 int
 pkg_repo_binary_check_version(struct pkg_repo *repo, sqlite3 *sqlite)
 {
@@ -245,28 +128,9 @@ pkg_repo_binary_check_version(struct pkg_repo *repo, sqlite3 *sqlite)
 
 	/* This is a repo schema version we can work with */
 
-	ret = EPKG_OK;
-
-	if (reposcver < REPO_SCHEMA_VERSION) {
-		if (sqlite3_db_readonly(sqlite, "main")) {
-			pkg_emit_error("Repo %s needs schema upgrade from "
-			    "%d to %d but it is opened readonly", repo->name,
-			    reposcver, REPO_SCHEMA_VERSION);
-			ret = EPKG_FATAL;
-		} else
-			ret = pkg_repo_binary_upgrade(repo, sqlite, reposcver);
-	} else if (reposcver > REPO_SCHEMA_VERSION) {
-		if (sqlite3_db_readonly(sqlite, "main")) {
-			pkg_emit_error("Repo %s needs schema downgrade from "
-			"%d to %d but it is opened readonly", repo->name,
-			       reposcver, REPO_SCHEMA_VERSION
-			);
-			ret = EPKG_FATAL;
-		} else
-			ret = pkg_repo_binary_downgrade(repo, sqlite, reposcver);
-	}
-
-	return (ret);
+	if (reposcver != REPO_SCHEMA_VERSION)
+		return (EPKG_REPOSCHEMA);
+	return (EPKG_OK);
 }
 
 int
