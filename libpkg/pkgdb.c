@@ -846,7 +846,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 }
 
 static const char*
-_dbdir_trim_path(const char*path)
+_dbdir_trim_path(const char *path)
 {
 	static size_t l = 0;
 	const char *p;
