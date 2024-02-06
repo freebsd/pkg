@@ -197,8 +197,6 @@ static const char binary_repo_initsql[] = ""
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
-#define REPO_NAME_PREFIX "repo-"
-
 typedef enum _sql_prstmt_index {
 	PKG = 0,
 	DEPS,
