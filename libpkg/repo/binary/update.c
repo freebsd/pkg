@@ -727,8 +727,7 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 
 	ld = openat(repo->dfd, "lock", O_CREAT|O_TRUNC|O_WRONLY, 00644);
 	if (ld == -1) {
-		pkg_emit_errno("plop", "plop");
-		pkg_emit_error("plop, %d\n", repo->dfd);
+		pkg_emit_errno("openat", "lock");
 	}
 	if (flock(ld, LOCK_EX|LOCK_NB) == -1) {
 		/* lock blocking anyway to let the other end finish */
