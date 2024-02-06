@@ -701,7 +701,7 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 
 	pkg_debug(1, "PkgRepo: verifying update for %s", repo->name);
 
-	filename = pkg_repo_binary_get_filename(repo->name);
+	filename = pkg_repo_binary_get_filename(repo);
 
 	/* First of all, try to open and init repo and check whether it is fine */
 	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)

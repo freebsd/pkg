@@ -303,7 +303,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 		close(fd);
 	}
 
-	filepath = pkg_repo_binary_get_filename(repo->name);
+	filepath = pkg_repo_binary_get_filename(repo);
 
 	/* Always want read mode here */
 	if (faccessat(dbdirfd, filepath, R_OK | mode, 0) != 0) {
@@ -507,7 +507,7 @@ pkg_repo_binary_access(struct pkg_repo *repo, unsigned mode)
 	int			 ret = EPKG_OK;
 
 	ret = pkgdb_check_access(mode,
-		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
+		pkg_repo_binary_get_filename(repo));
 
 	return (ret);
 }

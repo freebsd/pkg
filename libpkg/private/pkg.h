@@ -557,6 +557,7 @@ struct pkg_repo {
 	ip_version_t ip;
 	kvlist_t env;
 	int dfd;
+	char *dbpath;
 
 	/* Opaque repository data */
 	void *priv;

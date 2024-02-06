@@ -231,14 +231,13 @@ pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...)
 }
 
 const char *
-pkg_repo_binary_get_filename(const char *name)
+pkg_repo_binary_get_filename(struct pkg_repo *repo)
 {
-	static char reponame[MAXPATHLEN];
+	if (repo->dbpath == NULL)
+		xasprintf(&repo->dbpath, "%s/repos/%s/db", ctx.dbdir,
+		    repo->name);
 
-	snprintf(reponame, sizeof(reponame), "%s/repos/%s/db",
-	    ctx.dbdir, name);
-
-	return (reponame);
+	return (repo->dbpath);
 }
 
 void
