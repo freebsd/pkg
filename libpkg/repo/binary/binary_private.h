@@ -672,6 +672,5 @@ void pkg_repo_binary_finalize_prstatements(void);
  * Warning: returns a pointer to static array
  */
 const char * pkg_repo_binary_get_filename(const char *name);
-const char * pkg_repo_binary_get_groups_filename(const char *name);
 
 #endif /* INIT_PRIVATE_H_ */
