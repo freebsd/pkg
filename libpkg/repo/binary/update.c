@@ -528,7 +528,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	size_t linecap = 0;
 	ssize_t linelen, totallen = 0;
 	struct pkg_repo_content prc;
-	ucl_object_t *data;
+	ucl_object_t *data = NULL;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
