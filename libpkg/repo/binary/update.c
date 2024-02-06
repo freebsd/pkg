@@ -560,6 +560,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			    ucl_parser_get_error(p));
 			ucl_parser_free(p);
 			close(prc.data_fd);
+			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 		data = ucl_parser_get_object(p);
