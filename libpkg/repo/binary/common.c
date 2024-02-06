@@ -247,8 +247,8 @@ pkg_repo_binary_get_filename(const char *name)
 {
 	static char reponame[MAXPATHLEN];
 
-	snprintf(reponame, sizeof(reponame), REPO_NAME_PREFIX "%s.sqlite",
-			name);
+	snprintf(reponame, sizeof(reponame), "%s/repos/%s/db",
+	    ctx.dbdir, name);
 
 	return (reponame);
 }

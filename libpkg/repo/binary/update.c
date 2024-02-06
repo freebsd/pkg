@@ -49,7 +49,7 @@
 #include "binary_private.h"
 
 static int
-pkg_repo_binary_init_update(struct pkg_repo *repo, const char *name)
+pkg_repo_binary_init_update(struct pkg_repo *repo)
 {
 	sqlite3 *sqlite;
 	const char update_check_sql[] = ""
@@ -584,7 +584,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	xasprintf(&path, "%s-pkgtemp", name);
 	rename(name, path);
 	pkg_register_cleanup_callback(rollback_repo, (void *)name);
-	rc = pkg_repo_binary_init_update(repo, name);
+	rc = pkg_repo_binary_init_update(repo);
 	if (rc != EPKG_OK) {
 		rc = EPKG_FATAL;
 		goto cleanup;
@@ -682,7 +682,6 @@ cleanup:
 int
 pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 {
-	char filepath[MAXPATHLEN];
 	char *lockpath = NULL;
 	const char update_finish_sql[] = ""
 		"DROP TABLE repo_update;";
@@ -712,8 +711,6 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		pkg_debug(1, "PkgRepo: need forced update of %s", repo->name);
 		t = 0;
 		force = true;
-		snprintf(filepath, sizeof(filepath), "%s/%s", ctx.dbdir,
-		    filename);
 	}
 	else {
 		repo->ops->close(repo, false);
@@ -722,9 +719,7 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 			got_meta = true;
 		}
 
-		snprintf(filepath, sizeof(filepath), "%s/%s", ctx.dbdir,
-			filename);
-		if (got_meta && stat(filepath, &st) != -1) {
+		if (got_meta && stat(filename, &st) != -1) {
 			if (!force)
 				t = st.st_mtime;
 		}
@@ -745,7 +740,7 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 		goto cleanup;
 	}
 
-	res = pkg_repo_binary_update_proceed(filepath, repo, &t, force);
+	res = pkg_repo_binary_update_proceed(filename, repo, &t, force);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to update repository %s", repo->name);
 		goto cleanup;
@@ -779,7 +774,7 @@ cleanup:
 			}
 		};
 
-		utimes(filepath, ftimes);
+		utimes(filename, ftimes);
 		if (got_meta)
 			futimesat(repo->dfd, "meta", ftimes);
 	}

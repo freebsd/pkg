@@ -846,7 +846,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 }
 
 static const char*
-_dbdir_trim_path(const char *path)
+_dbdir_trim_path(const char*path)
 {
 	static size_t l = 0;
 	const char *p;
@@ -860,11 +860,9 @@ _dbdir_trim_path(const char *path)
 			p++;
 		return (p);
 	}
-	p = strrchr(path, '/');
-
-	if(p == NULL)
-		return (path);
-	return (p + 1);
+	if (*path == '/')
+		return (path + 1);
+	return (path);
 }
 
 static int

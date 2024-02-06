@@ -272,7 +272,7 @@ pkg_repo_binary_check_version(struct pkg_repo *repo, sqlite3 *sqlite)
 int
 pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 {
-	char filepath[MAXPATHLEN];
+	const char *filepath;
 	sqlite3 *sqlite = NULL;
 	int flags, dbdirfd, fd, reposfd, thisrepofd;
 	int64_t res;
@@ -303,8 +303,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 		close(fd);
 	}
 
-	snprintf(filepath, sizeof(filepath), "%s",
-		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
+	filepath = pkg_repo_binary_get_filename(repo->name);
 
 	/* Always want read mode here */
 	if (faccessat(dbdirfd, filepath, R_OK | mode, 0) != 0) {
@@ -393,8 +392,7 @@ pkg_repo_binary_create(struct pkg_repo *repo)
 	sqlite3_initialize();
 
 	dbdirfd = pkg_get_dbdirfd();
-	snprintf(filepath, sizeof(filepath), "%s",
-		pkg_repo_binary_get_filename(pkg_repo_name(repo)));
+	snprintf(filepath, sizeof(filepath), "repos/%s/db", repo->name);
 	/* Should never ever happen */
 	if (faccessat(dbdirfd, filepath, R_OK, 0) == 0)
 		return (EPKG_CONFLICT);
