@@ -509,6 +509,7 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 	regex_t *re = NULL;
 	int flag = 0;
 	bool in_comment = false;
+	bool start_with = false;
 
 	switch (field) {
 		case FIELD_NAME:
@@ -543,6 +544,10 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 	if (ucl_object_type(groups) != UCL_ARRAY) {
 		ucl_object_unref(groups);
 		return (NULL);
+	}
+	if (*pattern == '@') {
+		pattern++;
+		start_with = true;
 	}
 
 	ar = NULL;
@@ -581,17 +586,25 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 				continue;
 		case MATCH_REGEX:
 			if (re == NULL) {
+				char *newpattern = NULL;
+				const char *pat = pattern;
 				flag = REG_EXTENDED | REG_NOSUB;
 				if (pkgdb_case_sensitive() != 0)
 					flag |= REG_ICASE;
 				re = xmalloc(sizeof(regex_t));
-				if (regcomp(re, pattern, flag) != 0) {
+				if (start_with) {
+					xasprintf(&newpattern, "^%s", pattern);
+					pat = newpattern;
+				}
+				if (regcomp(re, pat, flag) != 0) {
 					pkg_emit_error("Invalid regex: 'pattern'");
 					ucl_object_unref(groups);
 					if (ar != NULL)
 						ucl_object_unref(ar);
+					free(newpattern);
 					return (NULL);
 				}
+				free(newpattern);
 			}
 			if (regexec(re, cmp, 0, NULL, 0) == REG_NOMATCH)
 				continue;

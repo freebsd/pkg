@@ -331,6 +331,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 {
 	bool print_tag = false;
 	bool show_locks = false;
+	bool is_group = false;
 	const char *repourl = NULL;
 	unsigned opt;
 	int cout = 0;		/* Number of characters output */
@@ -367,6 +368,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 	   package is locally installed */
 	if (pkg_type(pkg) == PKG_INSTALLED && (options & INFO_LOCKED) != 0)
 		show_locks = true;
+	if (pkg_type(pkg) == PKG_GROUP_REMOTE || pkg_type(pkg) == PKG_GROUP_INSTALLED)
+		is_group = true;
 
 	if (!quiet) {
 		/* Print a tag-line identifying the package -- either
@@ -375,17 +378,22 @@ print_info(struct pkg * const pkg, uint64_t options)
 		   function */
 
 		if (options & INFO_TAG_NAMEVER) {
-			if (pkg_type(pkg) != PKG_GROUP_REMOTE &&
-			    pkg_type(pkg) != PKG_GROUP_INSTALLED) {
-				cout = pkg_printf("%n-%v", pkg, pkg);
-			} else {
+			if (is_group)
 				cout = pkg_printf("@%n", pkg);
-			}
+			else
+				cout = pkg_printf("%n-%v", pkg, pkg);
 		}
-		else if (options & INFO_TAG_ORIGIN)
+		else if (options & INFO_TAG_ORIGIN) {
+			if (is_group)
+				return;
 			cout = pkg_printf("%o", pkg);
-		else if (options & INFO_TAG_NAME)
-			cout = pkg_printf("%n", pkg);
+		}
+		else if (options & INFO_TAG_NAME) {
+			if (is_group)
+				cout = pkg_printf("@%n", pkg);
+			else
+				cout = pkg_printf("%n", pkg);
+		}
 	}
 
 	/* If we printed a tag, and there are no other items to print,
@@ -446,21 +454,29 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_VERSION:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Version");
 			pkg_printf("%v\n", pkg);
 			break;
 		case INFO_ORIGIN:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Origin");
 			pkg_printf("%o\n", pkg);
 			break;
 		case INFO_PREFIX:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Prefix");
 			pkg_printf("%p\n", pkg);
 			break;
 		case INFO_REPOSITORY:
+			if (is_group)
+				break;
 			if (pkg_type(pkg) == PKG_REMOTE &&
 			    repourl != NULL && repourl[0] != '\0') {
 				if (print_tag)
@@ -470,21 +486,29 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_CATEGORIES:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Categories");
 			pkg_printf("%C%{%Cn%| %}\n", pkg);
 			break;
 		case INFO_LICENSES:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Licenses");
 			pkg_printf("%L%{%Ln%| %l %}\n", pkg);
 			break;
 		case INFO_MAINTAINER:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Maintainer");
 			pkg_printf("%m\n", pkg);
 			break;
 		case INFO_WWW:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "WWW");
 			pkg_printf("%w\n", pkg);
@@ -545,6 +569,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 			}
 			break;
 		case INFO_ANNOTATIONS:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s:\n", "Annotations");
 			if (quiet)
@@ -553,6 +579,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 				pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);
 			break;
 		case INFO_FLATSIZE:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Flat size");
 			pkg_printf("%#sB\n", pkg);
@@ -566,11 +594,15 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_DESCR:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s:\n", "Description");
 			pkg_printf("%e\n", pkg);
 			break;
 		case INFO_MESSAGE:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s:\n", "Message");
 			if (pkg_has_message(pkg))
@@ -649,6 +681,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 			}
 			break;
 		case INFO_ARCH:
+			if (is_group)
+				break;
 			if (print_tag)
 				printf("%-15s: ", "Architecture");
 			pkg_printf("%q\n", pkg);
