@@ -508,6 +508,8 @@ struct pkg_repo_ops {
 					const char *);
 	struct pkg_repo_it * (*search)(struct pkg_repo *, const char *, match_t,
 					pkgdb_field field, pkgdb_field sort);
+	struct pkg_repo_it * (*groupsearch)(struct pkg_repo *, const char *,
+	    match_t, pkgdb_field field);
 
 	int64_t (*stat)(struct pkg_repo *, pkg_stats_t type);
 

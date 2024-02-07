@@ -1,15 +1,16 @@
-/* Copyright (c) 2014, Vsevolod Stakhov
+/*
+ * Copyright (c) 2014, Vsevolod Stakhov
+ * Copyright (c) 2024, Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2023, Serenity Cyber Security, LLC
  *                     Author: Gleb Popov <arrowd@FreeBSD.org>
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *       * Redistributions of source code must retain the above copyright
- *         notice, this list of conditions and the following disclaimer.
- *       * Redistributions in binary form must reproduce the above copyright
- *         notice, this list of conditions and the following disclaimer in the
- *         documentation and/or other materials provided with the distribution.
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED ''AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -33,6 +34,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <fcntl.h>
+#include <fnmatch.h>
 
 #include <sqlite3.h>
 
@@ -45,14 +48,29 @@
 
 static struct pkg_repo_it* pkg_repo_binary_it_new(struct pkg_repo *repo,
 	sqlite3_stmt *s, short flags);
+
+struct pkg_repo_group {
+	size_t index;
+	ucl_object_t *groups;
+};
 static int pkg_repo_binary_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
 static void pkg_repo_binary_it_free(struct pkg_repo_it *it);
 static void pkg_repo_binary_it_reset(struct pkg_repo_it *it);
+
+static int pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
+static void pkg_repo_binary_group_it_free(struct pkg_repo_it *it);
+static void pkg_repo_binary_group_it_reset(struct pkg_repo_it *it);
 
 static struct pkg_repo_it_ops pkg_repo_binary_it_ops = {
 	.next = pkg_repo_binary_it_next,
 	.free = pkg_repo_binary_it_free,
 	.reset = pkg_repo_binary_it_reset
+};
+
+static struct pkg_repo_it_ops pkg_repo_binary_group_it_ops = {
+	.next = pkg_repo_binary_group_it_next,
+	.free = pkg_repo_binary_group_it_free,
+	.reset = pkg_repo_binary_group_it_reset
 };
 
 static struct pkg_repo_it*
@@ -78,10 +96,49 @@ pkg_repo_binary_it_new(struct pkg_repo *repo, sqlite3_stmt *s, short flags)
 	return (it);
 }
 
+static struct pkg_repo_it *
+pkg_repo_binary_group_it_new(struct pkg_repo *repo __unused, ucl_object_t *matching)
+{
+	struct pkg_repo_group *prg;
+	struct pkg_repo_it *it;
+
+	it = xcalloc(1, sizeof(*it));
+	prg = xcalloc(1, sizeof(*prg));
+	prg->groups = matching;
+	it->ops = &pkg_repo_binary_group_it_ops;
+	it->data = prg;
+
+	return (it);
+}
+
 static int
 pkg_repo_binary_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags)
 {
 	return (pkgdb_it_next(it->data, pkg_p, flags));
+}
+
+static int
+pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags __unused)
+{
+	int ret;
+	struct pkg_repo_group *prg;
+	const ucl_object_t *o, *el;
+
+	prg = it->data;
+	if (prg->index == ucl_array_size(prg->groups))
+		return (EPKG_END);
+
+	el = ucl_array_find_index(prg->groups, prg->index);
+	prg->index++;
+	pkg_free(*pkg_p);
+	if ((ret = pkg_new(pkg_p, PKG_GROUP_REMOTE)) != EPKG_OK)
+		return (ret);
+	o = ucl_object_find_key(el, "name");
+	xasprintf(&(*pkg_p)->name, ucl_object_tostring(o));
+	o = ucl_object_find_key(el, "comment");
+	xasprintf(&(*pkg_p)->comment, ucl_object_tostring(o));
+
+	return (EPKG_OK);
 }
 
 static void
@@ -92,9 +149,26 @@ pkg_repo_binary_it_free(struct pkg_repo_it *it)
 }
 
 static void
+pkg_repo_binary_group_it_free(struct pkg_repo_it *it)
+{
+	struct pkg_repo_group *prg = it->data;
+	free(prg->groups);
+	free(prg);
+	free(it);
+}
+
+static void
 pkg_repo_binary_it_reset(struct pkg_repo_it *it)
 {
 	pkgdb_it_reset(it->data);
+}
+
+static void
+pkg_repo_binary_group_it_reset(struct pkg_repo_it *it)
+{
+	struct pkg_repo_group *prg = it->data;
+
+	prg->index = 0;
 }
 
 struct pkg_repo_it *
@@ -421,6 +495,120 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	pkgdb_debug(4, stmt);
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkg_repo_it *
+pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t match,
+    pkgdb_field field)
+{
+	ucl_object_t *groups, *ar, *el;
+	const ucl_object_t *o;
+	const char *cmp;
+	struct ucl_parser *p;
+	int fd;
+	regex_t *re = NULL;
+	int flag = 0;
+	bool in_comment = false;
+
+	switch (field) {
+		case FIELD_NAME:
+		case FIELD_NAMEVER:
+			break;
+		case FIELD_COMMENT:
+			in_comment = true;
+			break;
+		default:
+			/* we cannot search in other fields */
+			return (NULL);
+	}
+
+	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
+		return (NULL);
+	fd = openat(repo->dfd, "groups.ucl", O_RDONLY|O_CLOEXEC);
+	if (fd == -1)
+		return (NULL);
+	p = ucl_parser_new(0);
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("Error parsing groups for: %s'",
+		    repo->name);
+		ucl_parser_free(p);
+		close(fd);
+		return (NULL);
+
+	}
+	groups = ucl_parser_get_object(p);
+	ucl_parser_free(p);
+	close(fd);
+
+	if (ucl_object_type(groups) != UCL_ARRAY) {
+		ucl_object_unref(groups);
+		return (NULL);
+	}
+
+	ar = NULL;
+	while (ucl_array_size(groups) > 0) {
+		el = ucl_array_pop_first(groups);
+		if (in_comment) {
+			o = ucl_object_find_key(el, "comment");
+		} else {
+			o = ucl_object_find_key(el, "name");
+		}
+		if (o == NULL) {
+			ucl_object_unref(el);
+			continue;
+		}
+		cmp = ucl_object_tostring(o);
+		switch (match) {
+		case MATCH_ALL:
+			break;
+		case MATCH_INTERNAL:
+			if (strcmp(cmp, pattern) == 0)
+				continue;
+			break;
+		case MATCH_EXACT:
+			if (pkgdb_case_sensitive()) {
+				if (strcmp(cmp, pattern) == 0)
+					continue;
+			} else {
+				if (strcasecmp(cmp, pattern) == 0)
+					continue;
+			}
+			break;
+		case MATCH_GLOB:
+			if (pkgdb_case_sensitive() != 0)
+				flag = FNM_CASEFOLD;
+			if (fnmatch(cmp, pattern, flag) == FNM_NOMATCH)
+				continue;
+		case MATCH_REGEX:
+			if (re == NULL) {
+				flag = REG_EXTENDED | REG_NOSUB;
+				if (pkgdb_case_sensitive() != 0)
+					flag |= REG_ICASE;
+				re = xmalloc(sizeof(regex_t));
+				if (regcomp(re, pattern, flag) != 0) {
+					pkg_emit_error("Invalid regex: 'pattern'");
+					ucl_object_unref(groups);
+					if (ar != NULL)
+						ucl_object_unref(ar);
+					return (NULL);
+				}
+			}
+			if (regexec(re, cmp, 0, NULL, 0) == REG_NOMATCH)
+				continue;
+		}
+		if (ar == NULL)
+			ar = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(ar, el);
+	}
+
+	if (re != NULL)
+		regfree(re);
+	ucl_object_unref(groups);
+
+	if (ar == NULL)
+		return (NULL);
+
+	return (pkg_repo_binary_group_it_new(repo, ar));
 }
 
 int

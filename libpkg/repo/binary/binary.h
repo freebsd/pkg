@@ -52,6 +52,8 @@ struct pkg_repo_it *pkg_repo_binary_require(struct pkg_repo *repo,
 struct pkg_repo_it *pkg_repo_binary_search(struct pkg_repo *repo,
 	const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort);
+struct pkg_repo_it *pkg_repo_binary_groupsearch(struct pkg_repo *repo,
+	const char *pattern, match_t match, pkgdb_field field);
 int pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	struct pkg *pkg, unsigned flags);
 int64_t pkg_repo_binary_stat(struct pkg_repo *repo, pkg_stats_t type);

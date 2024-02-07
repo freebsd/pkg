@@ -374,8 +374,14 @@ print_info(struct pkg * const pkg, uint64_t options)
 		   preference).  This may be the only output from this
 		   function */
 
-		if (options & INFO_TAG_NAMEVER)
-			cout = pkg_printf("%n-%v", pkg, pkg);
+		if (options & INFO_TAG_NAMEVER) {
+			if (pkg_type(pkg) != PKG_GROUP_REMOTE &&
+			    pkg_type(pkg) != PKG_GROUP_INSTALLED) {
+				cout = pkg_printf("%n-%v", pkg, pkg);
+			} else {
+				cout = pkg_printf("@%n", pkg);
+			}
+		}
 		else if (options & INFO_TAG_ORIGIN)
 			cout = pkg_printf("%o", pkg);
 		else if (options & INFO_TAG_NAME)

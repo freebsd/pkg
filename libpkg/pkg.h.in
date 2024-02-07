@@ -238,6 +238,14 @@ typedef enum {
 	 * The pkg refers to a local file old archive.
 	 */
 	PKG_OLD_FILE = (1U << 4),
+	/**
+	 * The pkg is group available in a remove repository
+	 */
+	PKG_GROUP_REMOTE = (1U << 5),
+	/**
+	 * The pkg refers to an installed group
+	 */
+	PKG_GROUP_INSTALLED = (1U << 6),
 } pkg_t;
 
 /**

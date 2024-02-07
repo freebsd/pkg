@@ -519,6 +519,11 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
+			if (cur->item->ops->groupsearch != NULL) {
+				rit = cur->item->ops->groupsearch(cur->item, pattern, match, field);
+				if (rit != NULL)
+					pkgdb_it_repo_attach(it, rit);
+			}
 		}
 	}
 
