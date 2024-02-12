@@ -1,13 +1,14 @@
-/* Copyright (c) 2014, Vsevolod Stakhov
- * All rights reserved.
+/*
+ * Copyright (c) 2014, Vsevolod Stakhov
+ * Copyright (c) 2024, Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *       * Redistributions of source code must retain the above copyright
- *         notice, this list of conditions and the following disclaimer.
- *       * Redistributions in binary form must reproduce the above copyright
- *         notice, this list of conditions and the following disclaimer in the
- *         documentation and/or other materials provided with the distribution.
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED ''AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -32,6 +33,7 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.close = pkg_repo_binary_close,
 	.update = pkg_repo_binary_update,
 	.query = pkg_repo_binary_query,
+	.groupquery = pkg_repo_binary_groupquery,
 	.shlib_provided = pkg_repo_binary_shlib_provide,
 	.shlib_required = pkg_repo_binary_shlib_require,
 	.provided = pkg_repo_binary_provide,

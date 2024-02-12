@@ -498,6 +498,8 @@ struct pkg_repo_ops {
 	/* Query repo */
 	struct pkg_repo_it * (*query)(struct pkg_repo *,
 					const char*, const char *, match_t);
+	struct pkg_repo_it * (*groupquery)(struct pkg_repo *,
+					const char*, match_t);
 	struct pkg_repo_it * (*shlib_required)(struct pkg_repo *,
 					const char *);
 	struct pkg_repo_it * (*shlib_provided)(struct pkg_repo *,

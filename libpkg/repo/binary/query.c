@@ -172,6 +172,12 @@ pkg_repo_binary_group_it_reset(struct pkg_repo_it *it)
 }
 
 struct pkg_repo_it *
+pkg_repo_binary_groupquery(struct pkg_repo *repo, const char *pattern, match_t match)
+{
+	return (pkg_repo_binary_groupsearch(repo, pattern, match, FIELD_NAME));
+}
+
+struct pkg_repo_it *
 pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *pattern, match_t match)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
@@ -572,10 +578,10 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 			break;
 		case MATCH_EXACT:
 			if (pkgdb_case_sensitive()) {
-				if (strcmp(cmp, pattern) == 0)
+				if (strcmp(cmp, pattern) != 0)
 					continue;
 			} else {
-				if (strcasecmp(cmp, pattern) == 0)
+				if (strcasecmp(cmp, pattern) != 0)
 					continue;
 			}
 			break;
