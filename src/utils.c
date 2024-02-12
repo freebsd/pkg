@@ -1,10 +1,9 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1071,6 +1070,12 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 	if (sum.fetch > 0) {
 		printf("Number of packages to be fetched: %d\n", sum.fetch);
+	}
+	if (sum.group_install > 0) {
+		printf("Number of groups to be installed: %d\n", sum.group_install);
+	}
+	if (sum.group_upgrade > 0) {
+		printf("Number of groups to be upgraded: %d\n", sum.group_upgrade);
 	}
 	/* Add an extra line before the size output. */
 	if (bytes_change > limbytes || dlsize)
