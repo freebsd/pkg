@@ -162,13 +162,8 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 	ssize_t				linelen;
 
 	/* Fetch audit file */
-	/* TODO: maybe, we can skip it somethimes? */
-	audit = pkg_audit_new();
-
-	if (pkg_audit_fetch(NULL, NULL) != EPKG_OK) {
-		pkg_audit_free(audit);
+	if (pkg_audit_fetch(NULL, NULL) != EPKG_OK)
 		return (EXIT_FAILURE);
-	}
 
 	/* Create socketpair to execute audit check in a detached mode */
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sp) == -1)  {
@@ -177,6 +172,7 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 		return (EPKG_FATAL);
 	}
 
+	audit = pkg_audit_new();
 	cld = fork();
 
 	switch (cld) {
@@ -188,6 +184,7 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 		break;
 	case -1:
 		warnx("Cannot fork");
+	        pkg_audit_free(audit);
 		return (EPKG_FATAL);
 	default:
 		/* Parent code */
