@@ -191,16 +191,21 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *f = NULL;
 	int i;
+	bool is_group = false;
 
 	if (pkg == NULL || type >= PKG_HASH_TYPE_UNKNOWN ||
 					destlen < checksum_types[type].hlen)
 		return (EPKG_FATAL);
+	if (pkg_type(pkg) == PKG_GROUP_REMOTE || pkg_type(pkg) == PKG_GROUP_INSTALLED)
+		is_group = true;
 
 	tll_push_back(entries, pkg_kv_new("name", pkg->name));
-	tll_push_back(entries, pkg_kv_new("origin", pkg->origin));
-	if (inc_version)
+	if (!is_group)
+		tll_push_back(entries, pkg_kv_new("origin", pkg->origin));
+	if (inc_version && !is_group)
 		tll_push_back(entries, pkg_kv_new("version", pkg->version));
-	tll_push_back(entries, pkg_kv_new("arch", pkg->arch));
+	if (!is_group)
+		tll_push_back(entries, pkg_kv_new("arch", pkg->arch));
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		tll_push_back(entries, pkg_kv_new(option->key, option->value));

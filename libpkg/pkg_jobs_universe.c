@@ -68,19 +68,20 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 		cur = unit;
 		found = NULL;
 		do {
-			if (cur->pkg->type == PKG_INSTALLED) {
+			if (cur->pkg->type == PKG_INSTALLED || cur->pkg->type == PKG_GROUP_INSTALLED) {
 				found = cur;
 				break;
 			}
 			cur = cur->prev;
 		} while (cur != unit);
 
-		if (found) {
+		if (found && found->pkg->type == PKG_INSTALLED) {
 			pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
 			return (unit->pkg);
 		}
 	}
 
+	/* XX TODO query local groups */
 	if ((it = pkgdb_query(universe->j->db, uid, MATCH_INTERNAL)) == NULL)
 		return (NULL);
 

@@ -969,15 +969,6 @@ pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
 }
 
 static int
-pkg_jobs_find_group_upgrade(struct pkg_jobs *j __unused, const char *pattern __unused, match_t m __unused)
-{
-	int rc = EPKG_FATAL;
-	struct pkg_repo_it *it;
-
-	return (rc);
-}
-
-static int
 pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
@@ -991,10 +982,6 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_job_universe_item *unit = NULL;
-
-	/* We are looking for groups */
-	if (*pattern == '@')
-		return (pkg_jobs_find_group_upgrade(j, pattern, m));
 
 	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
 		return (rc);
@@ -1013,7 +1000,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		if (checklocal && pkg_jobs_installed_local_pkg(j, p) != EPKG_OK)
 			continue;
-		if (pattern != NULL) {
+		if (pattern != NULL && *pattern != '@') {
 			with_version = strcmp(p->name, pattern);
 		} else {
 			with_version = 0;

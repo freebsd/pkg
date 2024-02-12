@@ -97,7 +97,7 @@ pkg_repo_binary_it_new(struct pkg_repo *repo, sqlite3_stmt *s, short flags)
 }
 
 static struct pkg_repo_it *
-pkg_repo_binary_group_it_new(struct pkg_repo *repo __unused, ucl_object_t *matching)
+pkg_repo_binary_group_it_new(struct pkg_repo *repo, ucl_object_t *matching)
 {
 	struct pkg_repo_group *prg;
 	struct pkg_repo_it *it;
@@ -105,6 +105,7 @@ pkg_repo_binary_group_it_new(struct pkg_repo *repo __unused, ucl_object_t *match
 	it = xcalloc(1, sizeof(*it));
 	prg = xcalloc(1, sizeof(*prg));
 	prg->groups = matching;
+	it->repo = repo;
 	it->ops = &pkg_repo_binary_group_it_ops;
 	it->data = prg;
 
@@ -138,6 +139,7 @@ pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsign
 	xasprintf(&(*pkg_p)->uid, "@%s", (*pkg_p)->name);
 	o = ucl_object_find_key(el, "comment");
 	xasprintf(&(*pkg_p)->comment, ucl_object_tostring(o));
+	pkg_kv_add(&(*pkg_p)->annotations, "repository",   it->repo->name, "annotation");
 
 	return (EPKG_OK);
 }
@@ -574,7 +576,7 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 		case MATCH_ALL:
 			break;
 		case MATCH_INTERNAL:
-			if (strcmp(cmp, pattern) == 0)
+			if (strcmp(cmp, pattern) != 0)
 				continue;
 			break;
 		case MATCH_EXACT:

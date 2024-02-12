@@ -65,6 +65,8 @@ struct jobs_sum_number {
 	int upgrade;
 	int delete;
 	int fetch;
+	int group_install;
+	int group_upgrade;
 };
 
 void
@@ -716,6 +718,8 @@ enum pkg_display_type {
 	PKG_DISPLAY_DOWNGRADE,
 	PKG_DISPLAY_REINSTALL,
 	PKG_DISPLAY_FETCH,
+	PKG_DISPLAY_GROUP_INSTALL,
+	PKG_DISPLAY_GROUP_UPGRADE,
 	PKG_DISPLAY_MAX
 };
 struct pkg_solved_display {
@@ -786,27 +790,37 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 			nbtodl += 1;
 		}
 
-		if (old_pkg != NULL) {
-			switch (pkg_version_change_between(new_pkg, old_pkg)) {
-			case PKG_DOWNGRADE:
-				it->display_type = PKG_DISPLAY_DOWNGRADE;
-				sum->downgrade++;
-				break;
-			case PKG_REINSTALL:
-				it->display_type = PKG_DISPLAY_REINSTALL;
-				sum->reinstall++;
-				break;
-			case PKG_UPGRADE:
-				it->display_type = PKG_DISPLAY_UPGRADE;
-				sum->upgrade++;
-				break;
+		if (pkg_type(new_pkg) == PKG_GROUP_REMOTE) {
+			if (old_pkg == NULL) {
+				it->display_type = PKG_DISPLAY_GROUP_INSTALL;
+				sum->group_install++;
+			} else {
+				it->display_type = PKG_DISPLAY_GROUP_UPGRADE;
+				sum->group_upgrade++;
 			}
-			*oldsize += oldflatsize;
-			*newsize += flatsize;
 		} else {
-			it->display_type = PKG_DISPLAY_INSTALL;
-			sum->install++;
-			*newsize += flatsize;
+			if (old_pkg != NULL) {
+				switch (pkg_version_change_between(new_pkg, old_pkg)) {
+				case PKG_DOWNGRADE:
+					it->display_type = PKG_DISPLAY_DOWNGRADE;
+					sum->downgrade++;
+					break;
+				case PKG_REINSTALL:
+					it->display_type = PKG_DISPLAY_REINSTALL;
+					sum->reinstall++;
+					break;
+				case PKG_UPGRADE:
+					it->display_type = PKG_DISPLAY_UPGRADE;
+					sum->upgrade++;
+					break;
+				}
+				*oldsize += oldflatsize;
+				*newsize += flatsize;
+			} else {
+				it->display_type = PKG_DISPLAY_INSTALL;
+				sum->install++;
+				*newsize += flatsize;
+			}
 		}
 		break;
 	case PKG_SOLVED_DELETE:
@@ -938,6 +952,18 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		printf("(%s: %.2f%% of the %s to download)\n", size,
 		    ((double)100 * pkgsize) / (double)dlsize, tlsize);
 		break;
+	case PKG_DISPLAY_GROUP_UPGRADE:
+		pkg_printf("\t%n", it->new, it->new);
+		if (pkg_repos_total_count() > 1)
+			pkg_printf(" [%N]", it->new);
+		printf("\n");
+		break;
+	case PKG_DISPLAY_GROUP_INSTALL:
+		pkg_printf("\t@%n", it->new, it->new);
+		if (pkg_repos_total_count() > 1)
+			pkg_printf(" [%N]", it->new);
+		printf("\n");
+		break;
 	default:
 		break;
 	}
@@ -948,10 +974,12 @@ static const char* pkg_display_messages[PKG_DISPLAY_MAX + 1] = {
 	[PKG_DISPLAY_LOCKED] = "Installed packages LOCKED",
 	[PKG_DISPLAY_DELETE] = "Installed packages to be REMOVED",
 	[PKG_DISPLAY_INSTALL] = "New packages to be INSTALLED",
-	[PKG_DISPLAY_UPGRADE] = "Installed packages to be UPGRADED",
+	[PKG_DISPLAY_GROUP_UPGRADE] = "New groups to be UPGRADED",
 	[PKG_DISPLAY_DOWNGRADE] = "Installed packages to be DOWNGRADED",
 	[PKG_DISPLAY_REINSTALL] = "Installed packages to be REINSTALLED",
 	[PKG_DISPLAY_FETCH] = "New packages to be FETCHED",
+	[PKG_DISPLAY_GROUP_INSTALL] = "New groups to be INSTALLED",
+	[PKG_DISPLAY_UPGRADE] = "Installed packages to be UPGRADED",
 	[PKG_DISPLAY_MAX] = NULL
 };
 
