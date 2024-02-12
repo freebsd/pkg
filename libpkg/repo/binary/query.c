@@ -135,6 +135,7 @@ pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsign
 		return (ret);
 	o = ucl_object_find_key(el, "name");
 	xasprintf(&(*pkg_p)->name, ucl_object_tostring(o));
+	xasprintf(&(*pkg_p)->uid, "@%s", (*pkg_p)->name);
 	o = ucl_object_find_key(el, "comment");
 	xasprintf(&(*pkg_p)->comment, ucl_object_tostring(o));
 
