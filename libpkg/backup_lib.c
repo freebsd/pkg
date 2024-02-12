@@ -141,7 +141,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		goto out;
 	}
 
-	while (nread = read(from, buf, sizeof(buf)), nread > 0) {
+	while ((nread = read(from, buf, sizeof(buf))) > 0) {
 		outbuf = buf;
 		do {
 			nwritten = write(to, outbuf, nread);
@@ -174,6 +174,4 @@ out:
 		close(from);
 	if (to >= 0)
 		close(to);
-
-	return;
 }
