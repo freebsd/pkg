@@ -26,6 +26,10 @@
 #ifndef _PKGSIGN_H
 #define _PKGSIGN_H
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <pkg.h>
 
 struct pkgsign_ctx;
