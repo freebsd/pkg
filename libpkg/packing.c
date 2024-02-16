@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/uio.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -133,12 +134,15 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 }
 
 int
-packing_append_buffer(struct packing *pack, const char *buffer,
-    const char *path, int size)
+packing_append_iovec(struct packing *pack, const char *path, struct iovec *iov,
+    int niov)
 {
 	struct archive_entry *entry;
-	int ret = EPKG_OK;
+	int ret = EPKG_OK, size = 0;
 
+	for (int idx = 0; idx < niov; idx++) {
+		size += iov[idx].iov_len;
+	}
 	entry = archive_entry_new();
 	archive_entry_clear(entry);
 	archive_entry_set_filetype(entry, AE_IFREG);
@@ -153,15 +157,32 @@ packing_append_buffer(struct packing *pack, const char *buffer,
 		goto cleanup;
 	}
 
-	if (archive_write_data(pack->awrite, buffer, size) == -1) {
-		pkg_emit_errno("archive_write_data", path);
-		ret = EPKG_FATAL;
+	for (int idx = 0; idx < niov; idx++) {
+		const char *buffer;
+
+		buffer = iov[idx].iov_base;
+		size = iov[idx].iov_len;
+		if (archive_write_data(pack->awrite, buffer, size) == -1) {
+			pkg_emit_errno("archive_write_data", path);
+			ret = EPKG_FATAL;
+		}
 	}
 
 cleanup:
 	archive_entry_free(entry);
 
 	return (ret);
+}
+
+int
+packing_append_buffer(struct packing *pack, const char *buffer,
+    const char *path, int size)
+{
+	struct iovec iov;
+
+	iov.iov_base = __DECONST(char *, buffer);
+	iov.iov_len = size;
+	return (packing_append_iovec(pack, path, &iov, 1));
 }
 
 int
