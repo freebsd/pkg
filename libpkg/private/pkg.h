@@ -703,12 +703,15 @@ void pkg_option_free(struct pkg_option *);
 void pkg_conflict_free(struct pkg_conflict *);
 void pkg_config_file_free(struct pkg_config_file *);
 
+struct iovec;
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp, bool overwrite, bool archive_symlink);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
      const char *newpath, const char *uname, const char *gname, mode_t perm,
      u_long fflags);
+int packing_append_iovec(struct packing *pack, const char *buffer,
+			  struct iovec *iov, int niov);
 int packing_append_buffer(struct packing *pack, const char *buffer,
 			  const char *path, int size);
 void packing_get_filename(struct packing *pack, const char *filename);
