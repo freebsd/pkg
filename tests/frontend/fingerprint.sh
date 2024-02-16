@@ -3,18 +3,34 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	fingerprint \
+	fingerprint_ecc \
+	fingerprint_rsa \
 	fingerprint_rootdir
 
 setup() {
 	local _root=$1
+	local _type=$2
 	local _fingerprint
+	local _typecmd
 
 	atf_skip_on Darwin Test fails on Darwin
 	atf_skip_on Linux Test fails on Linux
 
-	atf_check -o save:repo.pub -e ignore \
-		pkg key --create repo.key
+	case "$_type" in
+	rsa)
+		atf_check -o save:repo.pub -e ignore \
+			pkg key --create repo.key
+		_typecmd=""
+		;;
+	ecc)
+		atf_check -o ignore -e ignore \
+			openssl ecparam -genkey -name secp256k1 -out repo.key -outform DER
+		chmod 0400 repo.key
+		atf_check -o ignore -e ignore \
+			openssl ec -in repo.key -pubout -out repo.pub -outform DER
+		_typecmd='printf "%s\n%s\n" "TYPE" "ecdsa"'
+		;;
+	esac
 
 	rm -rf ${TMPDIR}/keys || :
 	mkdir -p ${_root}/${TMPDIR}/keys/trusted
@@ -28,6 +44,8 @@ setup() {
 #!/bin/sh
 read -t 2 sum
 [ -z "\$sum" ] && exit 1
+
+$_typecmd
 echo SIGNATURE
 echo -n \$sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
 echo
@@ -53,8 +71,18 @@ local: {
 EOF
 }
 
-fingerprint_body() {
-	setup ""
+fingerprint_ecc_body() {
+	setup "" "ecc"
+
+	atf_check \
+		-o ignore \
+		-e match:".*extracting signature of repo.*" \
+		pkg -dd -o REPOS_DIR="${TMPDIR}" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+}
+
+fingerprint_rsa_body() {
+	setup "" "rsa"
 
 	atf_check \
 		-o ignore \
@@ -64,7 +92,7 @@ fingerprint_body() {
 }
 
 fingerprint_rootdir_body() {
-	setup "${TMPDIR}/rootdir"
+	setup "${TMPDIR}/rootdir" "rsa"
 
 	atf_check \
 		-o ignore \
