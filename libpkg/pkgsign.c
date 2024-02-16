@@ -37,6 +37,7 @@
 
 /* Other parts of libpkg should use pkgsign instead of rsa directly. */
 extern const struct pkgsign_ops	pkgsign_ossl;
+extern const struct pkgsign_ops	pkgsign_ecc;
 
 static pkghash *pkgsign_verifiers;
 
@@ -54,6 +55,18 @@ static struct pkgsign_impl {
 	{
 		.pi_name = "rsa",
 		.pi_ops = &pkgsign_ossl,
+	},
+	{
+		.pi_name = "ecc",
+		.pi_ops = &pkgsign_ecc,
+	},
+	{
+		.pi_name = "ecdsa",
+		.pi_ops = &pkgsign_ecc,
+	},
+	{
+		.pi_name = "eddsa",
+		.pi_ops = &pkgsign_ecc,
 	},
 };
 

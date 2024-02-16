@@ -8,6 +8,7 @@ SRCS=	backup_lib.c \
 	pkg.c \
 	pkg_key.c \
 	pkgsign.c \
+	pkgsign_ecc.c \
 	pkgsign_ossl.c \
 	clean_cache.c \
 	metalog.c \
@@ -64,6 +65,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/curl/include \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
+		-I$(top_srcdir)/external/libder/libder \
 		-I$(top_srcdir)/external/libecc/include \
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_builddir)/libpkg/repo \
@@ -103,6 +105,7 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libcurl/libcurl.a \
+		$(top_builddir)/external/libder/libder.a \
 		$(top_builddir)/external/libecc/libecc.a \
 		lib$(LIB).a
 
