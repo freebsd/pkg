@@ -13,14 +13,12 @@ setup() {
 	atf_skip_on Darwin Test fails on Darwin
 	atf_skip_on Linux Test fails on Linux
 
-	atf_check -o ignore -e ignore \
-		openssl genrsa -out repo.key 2048
+	atf_check -o save:repo.pub -e ignore \
+		pkg key --create repo.key
+
 	rm -rf ${TMPDIR}/keys || :
 	mkdir -p ${_root}/${TMPDIR}/keys/trusted
 	mkdir -p ${_root}/${TMPDIR}/keys/revoked
-	chmod 0400 repo.key
-	atf_check -o ignore -e ignore \
-		openssl rsa -in repo.key -out repo.pub -pubout
 	_fingerprint=$(openssl dgst -sha256 -hex repo.pub | sed 's/^.* //')
 	echo "function: sha256" > ${_root}/${TMPDIR}/keys/trusted/key
 	echo "fingerprint: \"${_fingerprint}\"" >> ${_root}/${TMPDIR}/keys/trusted/key

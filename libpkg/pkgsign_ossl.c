@@ -476,6 +476,102 @@ ossl_sign(struct pkgsign_ctx *sctx, const char *path, unsigned char **sigret,
 }
 
 static int
+ossl_generate(struct pkgsign_ctx *sctx, const struct iovec *iov __unused,
+    int niov __unused)
+{
+	char errbuf[1024];
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
+	const char *path = sctx->path;
+	EVP_PKEY_CTX *ctx;
+	EVP_PKEY *pkey;
+	FILE *fp;
+	int rc;
+
+	if (niov != 0)
+		return (EPKG_FATAL);
+
+	fp = fopen(path, "w");
+	if (fp == NULL) {
+		pkg_emit_errno("fopen write", path);
+		return (EPKG_FATAL);
+	}
+
+	if (fchmod(fileno(fp), 0400) != 0) {
+		pkg_emit_errno("fchmod", path);
+		fclose(fp);
+		return (EPKG_FATAL);
+	}
+
+	pkey = NULL;
+	rc = EPKG_FATAL;
+	ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+	if (ctx == NULL)
+		goto out;
+
+	if (EVP_PKEY_keygen_init(ctx) <= 0)
+		goto out;
+
+	if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) <= 0)
+		goto out;
+
+	if (EVP_PKEY_keygen(ctx, &pkey) <= 0)
+		goto out;
+
+	if (PEM_write_PrivateKey(fp, pkey, NULL, NULL, 0, 0, NULL) <= 0)
+		goto out;
+
+	rc = EPKG_OK;
+	if (keyinfo->key != NULL)
+		EVP_PKEY_free(keyinfo->key);
+	keyinfo->key = pkey;
+out:
+	if (rc != EPKG_OK) {
+		pkg_emit_error("%s: %s", path,
+		    ERR_error_string(ERR_get_error(), errbuf));
+
+		/* keyinfo claims the pkey on success for any future operations. */
+		EVP_PKEY_free(pkey);
+	}
+
+	fclose(fp);
+	EVP_PKEY_CTX_free(ctx);
+	return (rc);
+}
+
+static int
+ossl_pubkey(struct pkgsign_ctx *sctx, char **pubkey, size_t *pubkeylen)
+{
+	char errbuf[1024];
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
+	BIO *bp;
+
+	if (keyinfo->key == NULL && _load_private_key(keyinfo) != EPKG_OK) {
+		pkg_emit_error("can't load key from %s", sctx->path);
+		return (EPKG_FATAL);
+	}
+
+	bp = BIO_new(BIO_s_mem());
+	if (bp == NULL) {
+		pkg_emit_error("error allocating public key bio: %s",
+		    ERR_error_string(ERR_get_error(), errbuf));
+		return (EPKG_FATAL);
+	}
+
+	BIO_set_close(bp, BIO_NOCLOSE);
+
+	if (PEM_write_bio_PUBKEY(bp, keyinfo->key) <= 0) {
+		pkg_emit_error("error writing public key: %s",
+		    ERR_error_string(ERR_get_error(), errbuf));
+		BIO_free(bp);
+		return (EPKG_FATAL);
+	}
+
+	*pubkeylen = BIO_get_mem_data(bp, pubkey);
+	BIO_free(bp);
+	return (EPKG_OK);
+}
+
+static int
 ossl_new(const char *name __unused, struct pkgsign_ctx *sctx __unused)
 {
 
@@ -506,4 +602,7 @@ const struct pkgsign_ops pkgsign_ossl = {
 	.pkgsign_sign = ossl_sign,
 	.pkgsign_verify = ossl_verify,
 	.pkgsign_verify_cert = ossl_verify_cert,
+
+	.pkgsign_generate = ossl_generate,
+	.pkgsign_pubkey = ossl_pubkey,
 };
