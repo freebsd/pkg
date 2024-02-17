@@ -64,6 +64,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/curl/include \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
+		-I$(top_srcdir)/external/libecc/include \
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_builddir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
@@ -102,6 +103,7 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libcurl/libcurl.a \
+		$(top_builddir)/external/libecc/libecc.a \
 		lib$(LIB).a
 
 @if HAVE_LIBUTIL
