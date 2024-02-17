@@ -8,11 +8,8 @@ tests_init \
 
 # New format, prefix the key type
 pubkey_body() {
-	atf_check -o ignore -e ignore \
-		openssl genrsa -out repo.key 2048
-	chmod 0400 repo.key
-	atf_check -o ignore -e ignore \
-		openssl rsa -in repo.key -out repo.pub -pubout
+	atf_check -o save:repo.pub -e ignore \
+		pkg key --create repo.key
 	mkdir fakerepo
 
 	cat >> test.ucl << EOF
@@ -50,11 +47,8 @@ EOF
 
 # Legacy format, unprefixed key passed to pkg-repo
 pubkey_legacy_body() {
-	atf_check -o ignore -e ignore \
-		openssl genrsa -out repo.key 2048
-	chmod 0400 repo.key
-	atf_check -o ignore -e ignore \
-		openssl rsa -in repo.key -out repo.pub -pubout
+	atf_check -o save:repo.pub -e ignore \
+		pkg key --create repo.key
 	mkdir fakerepo
 
 	cat >> test.ucl << EOF
