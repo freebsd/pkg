@@ -66,7 +66,10 @@ static void	write_elf_hints(const char *);
 
 static const char	*dirs[MAXDIRS];
 static int		 ndirs;
+static int		 is_be;
 int			 insecure;
+
+#define COND_SWAP(n) (is_be ? be32toh(n) : le32toh(n))
 
 /* Known shlibs on the standard system search path.  Persistent,
    common to all applications */
@@ -451,14 +454,15 @@ read_elf_hints(const char *hintsfile, int must_exist)
 	close(fd);
 
 	hdr = (struct elfhints_hdr *)mapbase;
-	if (hdr->magic != ELFHINTS_MAGIC)
+	is_be = be32toh(hdr->magic) == ELFHINTS_MAGIC;
+	if (COND_SWAP(hdr->magic) != ELFHINTS_MAGIC)
 		errx(1, "\"%s\": invalid file format", hintsfile);
-	if (hdr->version != 1)
+	if (COND_SWAP(hdr->version) != 1)
 		errx(1, "\"%s\": unrecognized file version (%d)", hintsfile,
-		    hdr->version);
+		    COND_SWAP(hdr->version));
 
-	strtab = (char *)mapbase + hdr->strtab;
-	dirlist = strtab + hdr->dirlist;
+	strtab = (char *)mapbase + COND_SWAP(hdr->strtab);
+	dirlist = strtab + COND_SWAP(hdr->dirlist);
 
 	if (*dirlist != '\0')
 		while ((p = strsep(&dirlist, ":")) != NULL)
@@ -472,6 +476,9 @@ update_elf_hints(const char *hintsfile, int argc, char **argv, int merge)
 
 	if (merge)
 		read_elf_hints(hintsfile, 0);
+	else
+		// remove when FreeBSD switches to LE for all architectures
+		is_be = be32toh(1) == 1;
 	for (i = 0;  i < argc;  i++) {
 		struct stat	s;
 
@@ -502,9 +509,9 @@ write_elf_hints(const char *hintsfile)
 	if ((fp = fdopen(fd, "wb")) == NULL)
 		err(1, "fdopen(%s)", tempname);
 
-	hdr.magic = ELFHINTS_MAGIC;
-	hdr.version = 1;
-	hdr.strtab = sizeof hdr;
+	hdr.magic = COND_SWAP(ELFHINTS_MAGIC);
+	hdr.version = COND_SWAP(1);
+	hdr.strtab = COND_SWAP(sizeof hdr);
 	hdr.strsize = 0;
 	hdr.dirlist = 0;
 	memset(hdr.spare, 0, sizeof hdr.spare);
@@ -515,8 +522,9 @@ write_elf_hints(const char *hintsfile)
 		for (i = 1;  i < ndirs;  i++)
 			hdr.strsize += 1 + strlen(dirs[i]);
 	}
-	hdr.dirlistlen = hdr.strsize;
+	hdr.dirlistlen = COND_SWAP(hdr.strsize);
 	hdr.strsize++;	/* For the null terminator */
+	hdr.strsize = COND_SWAP(hdr.strsize);
 
 	/* Write the header. */
 	if (fwrite(&hdr, 1, sizeof hdr, fp) != sizeof hdr)
