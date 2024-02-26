@@ -126,10 +126,13 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
-		/* Ignore link resolution errors if we're analysing a
-		   shared library. */
-		if (is_shlib)
+		/* Report link resolution errors in shared library. */
+		if (is_shlib) {
+			pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
+			warnx("(%s-%s) %s - shared library %s not found",
+			      pkgname, pkgversion, fpath, name);
 			return (EPKG_OK);
+		}
 
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			filepath = file->path;
