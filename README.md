@@ -1,17 +1,6 @@
 pkg - a binary package manager for FreeBSD
 ==========================================
 
-Known to fully work on (official package manager):
-
-- FreeBSD
-- DragonflyBSD
-
-Known to work on (has been ported to):
-
-- Linux
-- NetBSD/EdgeBSD
-- OSX
-
 Table of Contents:
 ------------------
 
@@ -37,11 +26,10 @@ Table of Contents:
 * [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
-Cirrus CI: (Linux, OSX, FreeBSD):
-[![Build Status](https://api.cirrus-ci.com/github/freebsd/pkg.svg)](https://cirrus-ci.com/github/freebsd/pkg)
 SourceHut CI:
 [![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/freebsd.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/freebsd?)
 [![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/alpine.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/alpine?)
+[![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/alpine.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/debian?)
 
 <a name="libpkg"></a>
 ### libpkg
