@@ -61,7 +61,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 		if (!quiet)
 			pkg_printf("%n-%v: already locked\n",
 			       pkg, pkg);
-		return (EPKG_OK);
+		return (EPKG_FATAL);
 	}
 
 	if (!query_yesno(false, "%n-%v: lock this package? ",
@@ -81,7 +81,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 	if (!pkg_is_locked(pkg)) {
 		if (!quiet)
 			pkg_printf("%n-%v: already unlocked\n", pkg, pkg);
-		return (EPKG_OK);
+		return (EPKG_FATAL);
 	}
 
 	if (!query_yesno(false, "%n-%v: unlock this package? ",
@@ -102,6 +102,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	struct pkg	*pkg = NULL;
 	int		 retcode;
 	int		 exitcode = EXIT_SUCCESS;
+	bool		 gotone = false;
 	tll(struct pkg *)pkgs = tll_init();
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
@@ -117,6 +118,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	}
 
 	while (pkgdb_it_next(it, &pkg, 0) == EPKG_OK) {
+		gotone = true;
 		tll_push_back(pkgs, pkg);
 		pkg = NULL;
 	}
@@ -131,6 +133,10 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 			goto cleanup;
 		}
 	}
+
+	/* No package was found matching that name. */
+        if (gotone == false)
+	        exitcode = EXIT_FAILURE;
 
 cleanup:
 	tll_free_and_free(pkgs, pkg_free);
@@ -287,9 +293,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			exitcode = do_lock_unlock(db, match, NULL, action);
 		} else {
 			for (i = 0; i < argc; i++) {
-				retcode = do_lock_unlock(db, match, argv[i], action);
-				if (retcode != EXIT_SUCCESS)
-					exitcode = retcode;
+				exitcode = do_lock_unlock(db, match, argv[i], action);
 			}
 		}
 	}
@@ -299,5 +303,5 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	pkgdb_close(db);
 
-	return (exitcode == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
+	return (exitcode);
 }
