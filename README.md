@@ -29,7 +29,7 @@ Table of Contents:
 SourceHut CI:
 [![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/freebsd.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/freebsd?)
 [![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/alpine.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/alpine?)
-[![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/alpine.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/debian?)
+[![builds.sr.ht status](https://builds.sr.ht/~bapt/pkg/commits/master/debian.svg)](https://builds.sr.ht/~bapt/pkg/commits/master/debian?)
 
 <a name="libpkg"></a>
 ### libpkg
