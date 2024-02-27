@@ -393,7 +393,7 @@ pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, m
 
 	tll_foreach(db->repos, cur) {
 		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
-			if (*pattern == '@')
+			if (pattern != NULL && *pattern == '@')
 				rit = cur->item->ops->groupquery(cur->item, pattern + 1, match);
 			else
 				rit = cur->item->ops->query(cur->item, cond, pattern, match);
