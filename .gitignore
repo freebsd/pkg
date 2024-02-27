@@ -56,6 +56,8 @@ scripts/sbin/pkg2ng
 /external/linenoise/Makefile
 /external/libcurl/Makefile
 /external/libucl/Makefile
+/external/libucl/aclocal.m4
+/external/libucl/autom4te.cache
 /external/yxml/Makefile
 /external/liblua/Makefile
 /external/libmachista/Makefile
