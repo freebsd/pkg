@@ -42,7 +42,7 @@ lock_body() {
 	atf_check \
 	    -o inline:"sqlite3-3.8.6: already locked\n" \
 	    -e empty \
-	    -s exit:0 \
+	    -s exit:1 \
 	    pkg lock -y sqlite3
 
 	atf_check \
@@ -60,7 +60,7 @@ lock_body() {
 	atf_check \
 	    -o inline:"sqlite3-3.8.6: already unlocked\n" \
 	    -e empty \
-	    -s exit:0 \
+	    -s exit:1 \
 	    pkg unlock -y sqlite3
 
 	atf_check \
