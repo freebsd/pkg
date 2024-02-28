@@ -1,5 +1,7 @@
 /*-
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2024 Serenity Cyber Security, LLC <license@futurecrew.ru>
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,6 +55,7 @@ enum pkg_solve_rule_type {
 	PKG_RULE_REQUEST_CONFLICT,
 	PKG_RULE_REQUEST,
 	PKG_RULE_REQUIRE,
+	PKG_RULE_VITAL,
 	PKG_RULE_MAX
 };
 
@@ -63,6 +66,7 @@ static const char *rule_reasons[] = {
 	[PKG_RULE_EXPLICIT_CONFLICT] = "conflict",
 	[PKG_RULE_REQUEST] = "request",
 	[PKG_RULE_REQUIRE] = "require",
+	[PKG_RULE_VITAL] = "vital",
 	[PKG_RULE_MAX] = NULL
 };
 
@@ -243,6 +247,10 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 			fprintf(sb->fp, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					it->next ? ", " : "");
 		}
+		break;
+	case PKG_RULE_VITAL:
+		fprintf(sb->fp, "The following package is marked vital: %s-%s",
+				rule->items->var->uid, rule->items->var->unit->pkg->version);
 		break;
 	default:
 		break;
@@ -621,6 +629,17 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 }
 
 static int
+pkg_solve_add_vital_rule(struct pkg_solve_problem *problem,
+	struct pkg_solve_variable *var)
+{
+	struct pkg_solve_rule* rule = pkg_solve_rule_new(PKG_RULE_VITAL);
+	pkg_solve_item_new(rule, var, 1);
+	tll_push_front(problem->rules, rule);
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *var)
 {
@@ -631,6 +650,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq = NULL;
 	bool chain_added = false;
+	bool force = j->flags & PKG_FLAG_FORCE;
 
 	LL_FOREACH(var, cur_var) {
 		pkg = cur_var->unit->pkg;
@@ -647,6 +667,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		if (jreq) {
 			cur_var->assumed_reponame = pkg->reponame;
+		}
+
+		if (pkg->locked || (pkg->vital && !force)) {
+			pkg_solve_add_vital_rule(problem, cur_var);
 		}
 
 		/* Depends */
@@ -948,6 +972,10 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		break;
 	case PKG_RULE_REQUIRE:
 		/* XXX: deal with require rules somehow */
+		break;
+	case PKG_RULE_VITAL:
+		var = item->var;
+		picosat_set_default_phase_lit(problem->sat, var->order, 1);
 		break;
 	default:
 		/* No nothing */
