@@ -278,7 +278,7 @@ exec_audit(int argc, char **argv)
 		if (errno == ENOENT)
 			warnx("vulnxml file %s does not exist. "
 					"Try running 'pkg audit -F' first",
-					audit_file);
+			    audit_file == NULL ? "vuln.xml" : audit_file);
 		else
 			warn("unable to open vulnxml file %s",
 					audit_file);
