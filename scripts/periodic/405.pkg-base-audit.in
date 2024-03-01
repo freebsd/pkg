@@ -187,6 +187,18 @@ audit_base_all() {
 				continue 2
 			fi
 		done
+
+		# ignore some jails
+		# we iterate to get prefix matches because we foo to match foo.bar
+		for ignore in ${security_status_baseaudit_jails_ignore_wild} ; do
+			if [ $(expr "${j%|*}" : "${ignore}") -ne 0 ] ; then
+				echo
+				echo "ignoring jail: ${j%|*}"
+				# continue with the main loop
+				continue 2
+			fi
+		done
+
 		echo
 		echo "jail: ${j%|*}"
 		audit_base "-j ${j%|*}" ${j##*|}
