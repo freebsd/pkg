@@ -55,6 +55,7 @@ scripts/sbin/pkg2ng
 /external/picosat/Makefile
 /external/linenoise/Makefile
 /external/libcurl/Makefile
+/external/libder/Makefile
 /external/libecc/Makefile
 /external/libucl/Makefile
 /external/libucl/aclocal.m4

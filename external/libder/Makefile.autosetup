@@ -1,0 +1,15 @@
+include @builddir@/mk/defs.mk
+
+LIB=	der
+
+VPATH=	$(top_srcdir)/external/libder/libder
+.PATH:	$(top_srcdir)/external/libder/libder
+
+SRCS=	libder.c \
+	libder_error.c \
+	libder_obj.c \
+	libder_read.c \
+	libder_type.c \
+	libder_write.c
+
+include $(MK)/static-lib.mk
