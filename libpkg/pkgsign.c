@@ -211,6 +211,16 @@ pkgsign_generate(struct pkgsign_ctx *ctx, const struct iovec *iov, int niov)
 }
 
 int
+pkgsign_sign_data(struct pkgsign_ctx *ctx, const unsigned char *msg, size_t msgsz,
+    unsigned char **sig, size_t *siglen)
+{
+
+	if (ctx->impl->pi_ops->pkgsign_sign_data == NULL)
+		return (EPKG_OPNOTSUPP);
+	return (*ctx->impl->pi_ops->pkgsign_sign_data)(ctx, msg, msgsz, sig, siglen);
+}
+
+int
 pkgsign_keyinfo(struct pkgsign_ctx *ctx, struct iovec **iov, int *niov)
 {
 

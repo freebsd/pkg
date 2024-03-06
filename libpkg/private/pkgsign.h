@@ -81,6 +81,10 @@ typedef int pkgsign_generate_cb(struct pkgsign_ctx *, const struct iovec *,
 typedef int pkgsign_keyinfo_cb(struct pkgsign_ctx *, struct iovec **,
     int *);
 
+/* Sign arbitrary data. */
+typedef int pkgsign_sign_data_cb(struct pkgsign_ctx *, const unsigned char *,
+    size_t, unsigned char **, size_t *);
+
 /* Return the public key. */
 typedef int pkgsign_pubkey_cb(struct pkgsign_ctx *, char **, size_t *);
 
@@ -99,6 +103,7 @@ struct pkgsign_ops {
 	pkgsign_generate_cb		*pkgsign_generate;
 	pkgsign_keyinfo_cb		*pkgsign_keyinfo;
 	pkgsign_pubkey_cb		*pkgsign_pubkey;
+	pkgsign_sign_data_cb	*pkgsign_sign_data;
 
 	/* Non-optional. */
 	pkgsign_sign_cb			*pkgsign_sign;
@@ -122,6 +127,8 @@ int pkgsign_verify_cert(const struct pkgsign_ctx *, unsigned char *, size_t,
 int pkgsign_generate(struct pkgsign_ctx *, const struct iovec *, int);
 int pkgsign_keyinfo(struct pkgsign_ctx *, struct iovec **, int *);
 int pkgsign_pubkey(struct pkgsign_ctx *, char **, size_t *);
+int pkgsign_sign_data(struct pkgsign_ctx *, const unsigned char *,
+    size_t, unsigned char **, size_t *);
 
 const char *pkgsign_impl_name(const struct pkgsign_ctx *);
 
