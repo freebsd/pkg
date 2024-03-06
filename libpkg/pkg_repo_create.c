@@ -899,7 +899,7 @@ cleanup:
 
 static int
 pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *siglen,
-    char **sigtype, char **cert)
+    char **sigtype, char **cert, size_t *certlen)
 {
 	FILE *fp;
 	char *sha256;
@@ -912,6 +912,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	size_t linecap = 0;
 	ssize_t linelen;
 	int i, ret = EPKG_OK;
+	bool end_seen = false;
 
 	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
 	if (!sha256)
@@ -949,6 +950,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 			buf = typestr;
 			continue;
 		} else if (strcmp(line, "END\n") == 0) {
+			end_seen = true;
 			break;
 		}
 		if (buf != NULL) {
@@ -957,14 +959,19 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	}
 
 	*sigtype = xstring_get(typestr);
-	*cert = xstring_get(certstr);
-	fclose(sigstr->fp);
-	sigstr->size--;
-	*siglen = sigstr->size;
-	*sig = sigstr->buf;
-	free(sigstr);
+	*cert = xstring_get_binary(certstr, certlen);
+	*sig = xstring_get_binary(sigstr, siglen);
+
+	/*
+	 * cert could be DER-encoded rather than PEM, so strip off any trailing
+	 * END marker if we ran over it.
+	 */
+	if (!end_seen && *certlen >= 4 &&
+	    strcmp(&(*cert)[*certlen - 4], "END\n") == 0)
+		*certlen -= 4;
 
 	/* remove the latest \n */
+	*siglen -= 1;
 
 	if (pclose(fp) != 0) {
 		ret = EPKG_FATAL;
@@ -1026,7 +1033,7 @@ static int
 pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
     const char *name)
 {
-	size_t signature_len = 0;
+	size_t pub_len = 0, signature_len = 0;
 	char fname[MAXPATHLEN];
 	char *sig, *sigtype, *pub;
 	char buf[32];
@@ -1036,7 +1043,8 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 	sig = NULL;
 	pub = NULL;
 
-	if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &sigtype, &pub) != EPKG_OK) {
+	if (pkg_repo_sign(path, argv, argc, &sig, &signature_len, &sigtype, &pub,
+	    &pub_len) != EPKG_OK) {
 		free(sig);
 		free(pub);
 		return (EPKG_FATAL);
@@ -1074,7 +1082,7 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 
 	snprintf(fname, sizeof(fname), "%s.pub", name);
 	iov[offset].iov_base = pub;
-	iov[offset].iov_len = strlen(pub);
+	iov[offset].iov_len = pub_len;
 	if (packing_append_iovec(pack, fname, iov, offset + 1) != EPKG_OK) {
 		free(pub);
 		return (EPKG_FATAL);
