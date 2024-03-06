@@ -1272,4 +1272,5 @@ const struct pkgsign_ops pkgsign_ecc = {
 
 	.pkgsign_generate = ecc_generate,
 	.pkgsign_pubkey = ecc_pubkey,
+	.pkgsign_sign_data = ecc_sign_data,
 };

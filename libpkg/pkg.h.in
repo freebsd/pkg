@@ -1489,6 +1489,8 @@ int pkg_key_new(struct pkg_key **, const char *, const char *,
     pkg_password_cb *);
 int pkg_key_create(struct pkg_key *, const struct iovec *, int);
 int pkg_key_pubkey(struct pkg_key *, char **, size_t *);
+int pkg_key_sign_data(struct pkg_key *, const unsigned char *, size_t,
+   unsigned char **, size_t *);
 int pkg_key_info(struct pkg_key *, struct iovec **, int *);
 void pkg_key_free(struct pkg_key *);
 

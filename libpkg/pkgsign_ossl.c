@@ -369,8 +369,8 @@ ossl_verify(const struct pkgsign_ctx *sctx __unused, const char *keypath,
 }
 
 int
-ossl_sign(struct pkgsign_ctx *sctx, const char *path, unsigned char **sigret,
-    size_t *siglen)
+ossl_sign_data(struct pkgsign_ctx *sctx, const unsigned char *msg, size_t msgsz,
+    unsigned char **sigret, size_t *siglen)
 {
 	char errbuf[1024];
 	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
@@ -388,12 +388,6 @@ ossl_sign(struct pkgsign_ctx *sctx, const char *path, unsigned char **sigret,
 #else
 	RSA *rsa;
 #endif
-	char *sha256;
-
-	if (access(keyinfo->sctx.path, R_OK) == -1) {
-		pkg_emit_errno("access", keyinfo->sctx.path);
-		return (EPKG_FATAL);
-	}
 
 	if (keyinfo->key == NULL && _load_private_key(keyinfo) != EPKG_OK) {
 		pkg_emit_error("can't load key from %s", keyinfo->sctx.path);
@@ -403,57 +397,41 @@ ossl_sign(struct pkgsign_ctx *sctx, const char *path, unsigned char **sigret,
 	max_len = EVP_PKEY_size(keyinfo->key);
 	*sigret = xcalloc(1, max_len + 1);
 
-	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
-	if (sha256 == NULL)
-		return (EPKG_FATAL);
-
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	hash = pkg_checksum_data(sha256, strlen(sha256),
-	    PKG_HASH_TYPE_SHA256_RAW);
-#endif
 	ctx = EVP_PKEY_CTX_new(keyinfo->key, NULL);
-	if (ctx == NULL) {
-		free(sha256);
+	if (ctx == NULL)
 		return (EPKG_FATAL);
-	}
 
 	if (EVP_PKEY_sign_init(ctx) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
-		free(sha256);
 		return (EPKG_FATAL);
 	}
 
 	if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
-		free(sha256);
 		return (EPKG_FATAL);
 	}
 
 	if (EVP_PKEY_CTX_set_signature_md(ctx, md) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
-		free(sha256);
 		return (EPKG_FATAL);
 	}
 
 	*siglen = max_len;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	hash = pkg_checksum_data(msg, msgsz, PKG_HASH_TYPE_SHA256_RAW);
 	ret = EVP_PKEY_sign(ctx, *sigret, siglen, hash,
 	    EVP_MD_size(md));
+	free(hash);
 #else
-	ret = EVP_PKEY_sign(ctx, *sigret, siglen, sha256,
-	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX));
+	ret = EVP_PKEY_sign(ctx, *sigret, siglen, msg, msgsz);
 #endif
 
-#else
+#else	/* OPENSSL_VERSION_NUMBER < 0x10100000L || LIBRESSL_VERSION_NUMBER */
 	rsa = EVP_PKEY_get1_RSA(keyinfo->key);
 
-	ret = RSA_sign(NID_sha1, sha256,
-	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX),
-	    *sigret, siglen, rsa);
+	ret = RSA_sign(NID_sha1, msg, msgsz, *sigret, siglen, rsa);
 #endif
-	free(sha256);
 	if (ret <= 0) {
 		pkg_emit_error("%s: %s", keyinfo->sctx.path,
 		   ERR_error_string(ERR_get_error(), errbuf));
@@ -471,8 +449,36 @@ ossl_sign(struct pkgsign_ctx *sctx, const char *path, unsigned char **sigret,
 #else
 	RSA_free(rsa);
 #endif
-
 	return (EPKG_OK);
+}
+
+int
+ossl_sign(struct pkgsign_ctx *sctx, const char *path, unsigned char **sigret,
+    size_t *siglen)
+{
+	struct ossl_sign_ctx *keyinfo = OSSL_CTX(sctx);
+	char *sha256;
+	int ret;
+
+	if (access(keyinfo->sctx.path, R_OK) == -1) {
+		pkg_emit_errno("access", keyinfo->sctx.path);
+		return (EPKG_FATAL);
+	}
+
+	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+	if (sha256 == NULL)
+		return (EPKG_FATAL);
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	ret = ossl_sign_data(sctx, sha256, strlen(sha256), sigret, siglen);
+#else
+	ret = ossl_sign_data(sctx, sha256,
+	    pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX), sigret, siglen);
+#endif
+
+	free(sha256);
+
+	return (ret);
 }
 
 static int
@@ -605,4 +611,5 @@ const struct pkgsign_ops pkgsign_ossl = {
 
 	.pkgsign_generate = ossl_generate,
 	.pkgsign_pubkey = ossl_pubkey,
+	.pkgsign_sign_data = ossl_sign_data,
 };

@@ -31,6 +31,7 @@
 
 #include <bsd_compat.h>
 #include <assert.h>
+#include <err.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
@@ -52,18 +53,20 @@
 enum {
 	ARG_CREATE = CHAR_MAX + 1,
 	ARG_PUBLIC,
+	ARG_SIGN,
 };
 
 typedef enum {
 	MODE_UNSPECIFIED = 0,
 	MODE_CREATE,
 	MODE_PUBLIC,
+	MODE_SIGN,
 } key_mode_t;
 
 void
 usage_key(void)
 {
-	fprintf(stderr, "Usage: pkg key [--create | --public] [-t <type>] "
+	fprintf(stderr, "Usage: pkg key [--create | --public | --sign] [-t <type>] "
 	    "<key-path>\n");
 	fprintf(stderr, "For more information see 'pkg help key'.\n");
 }
@@ -87,10 +90,75 @@ key_pubout(struct pkg_key *key)
 		return (ret);
 
 	fwrite(keybuf, keylen, 1, stdout);
-	if (keybuf[keylen - 1] != '\n')
-		fputc('\n', stdout);
 	free(keybuf);
 	return (0);
+}
+
+static int
+key_sign_data(struct pkg_key *key, const char *name)
+{
+	char buf[BUFSIZ];
+	xstring *datastr;
+	char *data;
+	unsigned char *sig;
+	size_t datasz, readsz, siglen;
+	FILE *datafile;
+	int rc;
+
+	datafile = NULL;
+	datastr = NULL;
+	rc = EPKG_FATAL;
+	if (strcmp(name, "-") == 0) {
+		datafile = stdin;	/* XXX Make it configurable? */
+		name = "stdin";
+	} else {
+		datafile = fopen(name, "rb");
+		if (datafile == NULL)
+			err(EXIT_FAILURE, "fopen");
+	}
+
+	datastr = xstring_new();
+	while (!feof(datafile)) {
+		readsz = fread(&buf[0], 1, sizeof(buf), datafile);
+		if (readsz == 0 && ferror(datafile)) {
+			fprintf(stderr, "%s: I/O error\n", name);
+			goto out;
+		}
+
+		fwrite(buf, readsz, 1, datastr->fp);
+	}
+
+	data = xstring_get_binary(datastr, &datasz);
+	datastr = NULL;
+
+	sig = NULL;
+	rc = pkg_key_sign_data(key, (unsigned char *)data, datasz, &sig, &siglen);
+	free(data);
+
+#if 0
+	fprintf(stderr, "SIGNED: %s\n", data);
+#endif
+/*
++SIGNED: 64628d55add8b281b9868aea00c4829a3ad260cfc4262e9d1244a1ab67584935
++SIGNED: a2eb46d60cd26657b273ec55a0909e642ef522f35074a9c62c3c4b42608e55e1
+*/
+
+	if (rc == EPKG_OK) {
+		size_t writesz;
+
+		if ((writesz = fwrite(sig, 1, siglen, stdout)) < siglen) {
+			fprintf(stderr, "Failed to write signature out [%zu/%zu]\n",
+			    writesz, siglen);
+			rc = EPKG_FATAL;
+		}
+	}
+	free(sig);
+
+out:
+	xstring_free(datastr);
+	if (datafile != stdin)
+		fclose(datafile);
+	return rc;
 }
 
 static int
@@ -163,6 +231,7 @@ exec_key(int argc, char **argv)
 	struct option longopts[] = {
 		{ "create",	no_argument,		NULL,	ARG_CREATE },
 		{ "public", no_argument,		NULL,	ARG_PUBLIC },
+		{ "sign", no_argument,		NULL,		ARG_SIGN },
 		{ NULL,		0,			NULL,	0 },
 	};
 
@@ -184,6 +253,13 @@ exec_key(int argc, char **argv)
 				return (EXIT_FAILURE);
 			}
 			keymode = MODE_PUBLIC;
+			break;
+		case ARG_SIGN:
+			if (keymode != MODE_UNSPECIFIED) {
+				usage_key();
+				return (EXIT_FAILURE);
+			}
+			keymode = MODE_SIGN;
 			break;
 		case 't':
 			keytype = optarg;
@@ -252,6 +328,22 @@ exec_key(int argc, char **argv)
 			goto out;
 		}
 
+		break;
+	case MODE_SIGN:
+		ret = key_sign_data(key, "-");
+		if (ret != EPKG_OK) {
+			switch (ret) {
+			case EPKG_OPNOTSUPP:
+				fprintf(stderr, "Type '%s' does not support signing.\n",
+				    keytype);
+				break;
+			default:
+				fprintf(stderr, "Failed to sign.\n");
+				break;
+			}
+
+			goto out;
+		}
 		break;
 	case MODE_UNSPECIFIED:
 		ret = key_info(key, keypath, keytype);

@@ -87,6 +87,14 @@ pkg_key_create(struct pkg_key *key, const struct iovec *iov, int niov)
 }
 
 int
+pkg_key_sign_data(struct pkg_key *key, const unsigned char *msg, size_t msgsz,
+    unsigned char **sig, size_t *siglen)
+{
+
+	return (pkgsign_sign_data(key->ctx, msg, msgsz, sig, siglen));
+}
+
+int
 pkg_key_info(struct pkg_key *key, struct iovec **iov, int *niov)
 {
 	int rc;
