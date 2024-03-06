@@ -65,4 +65,14 @@ xstring_get(xstring *str)
 	return (ret);
 }
 
+static inline char *
+xstring_get_binary(xstring *str, size_t *size)
+{
+	fclose(str->fp);
+	char *ret = str->buf;
+	*size = str->size;
+	free(str);
+	return (ret);
+}
+
 #endif
