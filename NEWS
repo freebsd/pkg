@@ -1,4 +1,20 @@
-Chanegs from 1.20.99.8 to 1.20.99.9
+Changes from 1.20.99.9 to 1.20.99.10
+- fix trigger validation schema
+- use data.pkg instead of packagesite.pkg if available
+- update bundled curl to 8.6.0
+- update bundled libucl to latest version
+- data.pkg now receives the groups
+- lock and meta files are now saved under /var/db/repos/<reponame>/<file>
+- remote databases are now stored under /var/db/repos/<reponame>/db
+- pkg search now supports groups
+- pkg rquery now supports groups
+- pkg now support elfhints on any byte-order on FreeBSD
+- behaviour change: pkg lock/unlock errors if the package stated is unavailable
+- pkg now supports ECDSA and EdDSA for all its signature mechanism
+- new pkg key command which allows to generate keys.
+- plenty of minor code cleanup and bug fixes.
+
+Changes from 1.20.99.8 to 1.20.99.9
 - pkgbase: .snap now comes after .alpha in versionning
 - update: lock pkg update to avoid concurrent instance of pkg update to compete
 - bundled sqlite: update to 3.45.0
