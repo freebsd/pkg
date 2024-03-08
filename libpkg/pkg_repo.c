@@ -708,9 +708,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	const char *rkey;
 	signature_t sigtype;
 	pkghash_it it;
-	int ret, rc;
+	int ret;
 
-	ret = rc = EPKG_OK;
+	ret = EPKG_OK;
 
 	if (pkg_repo_archive_extract_archive(fd, file, repo, dest_fd, &sc)
 			!= EPKG_OK)
@@ -724,14 +724,12 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		if (rkey == NULL) {
 			pkg_emit_error("No PUBKEY defined. Removing "
 			    "repository.");
-			rc = EPKG_FATAL;
-			goto out;
+		        return (EPKG_FATAL);
 		}
 		if (sc == NULL) {
 			pkg_emit_error("No signature found in the repository.  "
 					"Can not validate against %s key.", rkey);
-			rc = EPKG_FATAL;
-			goto out;
+		        return (EPKG_FATAL);
 		}
 		it = pkghash_iterator(sc);
 		pkghash_next(&it); /* check that there is content is already above */
@@ -740,8 +738,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		ret = pkgsign_new_verify(s->type, &sctx);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("'%s' signer not found", s->type);
-			rc = EPKG_FATAL;
-			goto out;
+		        return (EPKG_FATAL);
 		}
 
 		/*
@@ -767,8 +764,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
 					"removing repository.");
-			rc = EPKG_FATAL;
-			goto out;
+		        return (EPKG_FATAL);
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
@@ -787,8 +783,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 				ret = pkgsign_new_verify(s->type, &sctx);
 				if (ret != EPKG_OK) {
 					pkg_emit_error("'%s' signer not found", s->type);
-					rc = EPKG_FATAL;
-					goto out;
+				        return (EPKG_FATAL);
 				}
 
 				signer_name = pkgsign_impl_name(sctx);
@@ -804,13 +799,11 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		if (ret != EPKG_OK) {
 			pkg_emit_error("No trusted certificate has been used "
 			    "to sign the repository");
-			rc = EPKG_FATAL;
-			goto out;
+		        return (EPKG_FATAL);
 		}
 	}
 
-out:
-	return rc;
+	return (EPKG_OK);
 }
 
 int
@@ -828,11 +821,11 @@ pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 			return (rc);
 		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->data,
 		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
+		if (fd == -1)
+			return (EPKG_FATAL);
 	}
-	if (fd == -1)
-		return (EPKG_FATAL);
 
-	tmpdir = getenv("TMMDIR");
+	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
 	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, repo->meta->data);
@@ -873,11 +866,12 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content 
 	if (fd == -1) {
 		if (rc == EPKG_UPTODATE)
 			return (rc);
+
 		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
 		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
+		if (fd == -1)
+			return (EPKG_FATAL);
 	}
-	if (fd == -1)
-		return (EPKG_FATAL);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
@@ -979,19 +973,25 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 int
 pkg_repo_open(struct pkg_repo *repo)
 {
+	int reposfd;
+
 	if (repo->dfd != -1)
 		return (EPKG_OK);
-	int reposfd = pkg_get_reposdirfd();
+
+	reposfd = pkg_get_reposdirfd();
 	if (reposfd == -1)
 		return (EPKG_FATAL);
+
 	repo->dfd = openat(reposfd, repo->name, O_DIRECTORY|O_CLOEXEC);
 	if (repo->dfd == -1) {
 		if (mkdirat(reposfd, repo->name, 0755) == -1)
 			return (EPKG_FATAL);
+
 		repo->dfd = openat(reposfd, repo->name, O_DIRECTORY|O_CLOEXEC);
+		if (repo->dfd == -1)
+			return (EPKG_FATAL);
 	}
-	if (repo->dfd == -1)
-		return (EPKG_FATAL);
+
 	return (EPKG_OK);
 }
 
