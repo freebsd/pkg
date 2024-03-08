@@ -82,6 +82,7 @@ exec_info(int argc, char **argv)
 	match_t match = MATCH_GLOB;
 	char *pkgname;
 	char *pkgversion = NULL, *pkgversion2 = NULL;
+	size_t len;
 	const char *file = NULL;
 	int ch, fd;
 	int ret = EPKG_OK;
@@ -335,8 +336,9 @@ exec_info(int argc, char **argv)
 		 * allow to search for origin with a trailing /
 		 * likes audio/linux-vsound depending on ${PORTSDIR}/audio/sox/
 		 */
-		if (argc > 0 && pkgname[strlen(pkgname) -1] == '/')
-			pkgname[strlen(pkgname) -1] = '\0';
+		len = strlen(pkgname);
+		if (argc > 0 && pkgname[len - 1] == '/')
+			pkgname[len - 1] = '\0';
 
 		if (argc > 0) {
 			j=0;
