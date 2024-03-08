@@ -112,11 +112,14 @@ static bool
 is_exec_at_localbase(const char *progname)
 {
 	char	pkgpath[MAXPATHLEN];
+	char	*env;
 	bool	result = true;
 
+	if ((env = getenv("LOCALBASE")) == NULL)
+		env = _LOCALBASE;
+
 	snprintf(pkgpath, sizeof(pkgpath), "%s/sbin/%s",
-		 getenv("LOCALBASE") ? getenv("LOCALBASE") : _LOCALBASE,
-		 progname);
+	    env, progname);
 	if (access(pkgpath, X_OK) == -1)
 		result = false;
 
