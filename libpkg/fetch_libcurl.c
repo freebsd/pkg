@@ -269,7 +269,7 @@ curl_parseheader_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdat
 		d->started = true;
 	}
 
-	return (size *nmemb);
+	return (size * nmemb);
 }
 
 static int
@@ -402,7 +402,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	if (http_proxy == NULL)
 		http_proxy = getenv("http_proxy");
 
-retry:
+do_retry:
 	cl = curl_easy_init();
 	data.cl = cl;
 	if (repo->mirror_type == SRV) {
@@ -505,7 +505,7 @@ retry:
 				retcode = EPKG_FATAL;
 			}
 		} else
-			goto retry;
+			goto do_retry;
 	}
 
 	if (res == CURLE_OK && t >= 0) {
