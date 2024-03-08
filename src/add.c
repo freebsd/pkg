@@ -65,7 +65,7 @@ exec_add(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	xstring *failedpkgs = NULL;
 	char path[MAXPATHLEN];
-	char *file;
+	char *env, *file;
 	int retcode;
 	int ch;
 	int i;
@@ -145,8 +145,10 @@ exec_add(int argc, char **argv)
 				name = argv[i];
 			else
 				name++;
-			snprintf(path, sizeof(path), "%s/%s.XXXXX",
-			    getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp", name);
+
+			if ((env = getenv("TMPDIR")) == NULL)
+				env = "/tmp";
+			snprintf(path, sizeof(path), "%s/%s.XXXXX", env, name);
 			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0, 0, 0)) != EPKG_OK)
 				break;
 
