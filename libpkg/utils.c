@@ -971,17 +971,18 @@ open_tempdir(int rootfd, const char *path)
 	struct stat st;
 	char walk[MAXPATHLEN];
 	char *dir;
-	size_t cnt = 0;
+	size_t cnt = 0, len;
+	struct tempdir *t;
 
 	strlcpy(walk, path, sizeof(walk));
 	while ((dir = strrchr(walk, '/')) != NULL) {
-		struct tempdir *t;
 		*dir = '\0';
 		cnt++;
 		/* accept symlinks pointing to directories */
-		if (strlen(walk) == 0 && cnt == 1)
+		len = strlen(walk);
+		if (len == 0 && cnt == 1)
 			break;
-		if (strlen(walk) > 0) {
+		if (len > 0) {
 			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
 				continue;
 			if (S_ISDIR(st.st_mode) && cnt == 1)
