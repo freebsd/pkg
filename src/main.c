@@ -133,10 +133,8 @@ show_command_names(void)
 {
 	unsigned	i;
 
-	for(i = 0; i < cmd_len; i++)
+	for (i = 0; i < cmd_len; i++)
 		printf("%s\n", cmd[i].name);
-
-	return;
 }
 
 static void
