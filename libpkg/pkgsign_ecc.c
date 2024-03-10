@@ -946,16 +946,7 @@ ecc_verify_internal(struct ecc_verify_cbdata *cbdata, const uint8_t *hash,
 	ret = ec_verify(rawsig, ecsiglen, &pubkey, hash, hashsz, keyinfo->sig_alg,
 	    keyinfo->sig_hash, NULL, 0);
 	if (ret != 0) {
-			if (cbdata->siglen < ecsiglen) {
-				pkg_emit_error("yeah, actually invalid...");
-				return (EPKG_FATAL);
-			}
 		pkg_emit_error("failed to verify signature");
-		return (EPKG_FATAL);
-	}
-
-	if (cbdata->siglen < ecsiglen) {
-		pkg_emit_error("told you so.");
 		return (EPKG_FATAL);
 	}
 
