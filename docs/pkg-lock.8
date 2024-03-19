@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd January 14, 2021
+.Dd March 19, 2024
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -73,14 +73,14 @@ This includes:
 .Pp
 .Bl -bullet -compact
 .It
-Attempts to reinstall, up- or downgrade or delete the locked package
+Attempts to reinstall, upgrade, downgrade, or delete the locked package
 itself.
 .It
-Installation, up- or downgrade of a package where the resultant
+Installation, upgrade, or downgrade of a package where the resultant
 package would have a dependency on a different version of the locked
 package.
 .It
-Deletion, up- or downgrade of any package the locked package depends
+Deletion, upgrade, or downgrade of any package the locked package depends
 upon, either directly or as a consequence of installing or upgrading
 some third package.
 .El
@@ -88,7 +88,7 @@ some third package.
 The following options are supported by
 .Nm :
 .Bl -tag -width all
-.It Fl a , Fl --all
+.It Fl a , Fl -all
 Lock or unlock all installed packages.
 .It Fl C , Fl -case-sensitive
 Make the standard or the regular expression
