@@ -52,9 +52,9 @@ lock_body() {
 	    pkg unlock -y sqlite3
 
 	atf_check \
-	    -o inline:"Currently locked packages:\n" \
+	    -o inline:"No locked packages were found\n" \
 	    -e empty \
-	    -s exit:0 \
+	    -s exit:1 \
 	    pkg lock -l
 
 	atf_check \
@@ -83,9 +83,9 @@ lock_body() {
 	    pkg unlock -y -a
 
 	atf_check \
-	    -o inline:"Currently locked packages:\n" \
+	    -o inline:"No locked packages were found\n" \
 	    -e empty \
-	    -s exit:0 \
+	    -s exit:1 \
 	    pkg lock -l
 }
 
