@@ -186,7 +186,7 @@ list_locked(struct pkgdb *db, bool has_locked)
 	}
 
 	if (!gotone && !quiet && !has_locked)
-		warnx("No locked packages were found.");
+		printf("No locked packages were found\n");
 
 	pkg_free(pkg);
 	pkgdb_it_free(it);
