@@ -171,23 +171,27 @@ list_locked(struct pkgdb *db, bool has_locked)
 		return (EXIT_FAILURE);
 	}
 
-	if (!quiet && !has_locked)
-		printf("Currently locked packages:\n");
-
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		gotone = true;
-		if (has_locked)
-			break;
+        while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		if (!gotone) {
+			gotone = true;
+			if (has_locked) {
+				break;
+			} else {
+				if (!quiet) {
+					printf("Currently locked packages:\n");
+				}
+			}
+		}
 		pkg_printf("%n-%v\n", pkg, pkg);
 	}
+
+	if (!gotone && !quiet && !has_locked)
+		warnx("No locked packages were found.");
 
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 
-	if (has_locked)
-		return (gotone ? EXIT_SUCCESS : EXIT_FAILURE);
-
-	return (EXIT_SUCCESS);
+	return (gotone ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 static int
