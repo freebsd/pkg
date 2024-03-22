@@ -90,6 +90,7 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/libcurl -lcurl_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
+		-L$(top_builddir)/external/libecc -lecc_pic \
 		@nowaflags@ \
 		-lssl \
 		-lcrypto \
