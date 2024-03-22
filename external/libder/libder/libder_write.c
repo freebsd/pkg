@@ -213,6 +213,7 @@ libder_write(struct libder_ctx *ctx, struct libder_object *root, uint8_t *buf,
 	mwrite.buf = buf;
 	mwrite.bufsz = *bufsz;
 	if (!libder_write_object(ctx, root, &memory_write, &mwrite)) {
+		libder_bzero(mwrite.buf, mwrite.offset);
 		free(buf);
 		return (NULL);	/* XXX Error */
 	}

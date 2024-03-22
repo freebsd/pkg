@@ -74,7 +74,11 @@ libder_obj_alloc(struct libder_ctx *ctx, struct libder_tag *type,
 
 	obj = libder_obj_alloc_internal(ctx, type, payload, length, 0);
 	if (obj == NULL) {
-		free(payload);
+		if (length != 0) {
+			libder_bzero(payload, length);
+			free(payload);
+		}
+
 		libder_set_error(ctx, LDE_NOMEM);
 	}
 
@@ -102,7 +106,11 @@ libder_obj_alloc_simple(struct libder_ctx *ctx, uint8_t stype,
 
 	obj = libder_obj_alloc_internal(ctx, type, payload, length, LDO_OWNTAG);
 	if (obj == NULL) {
-		free(payload);
+		if (length != 0) {
+			libder_bzero(payload, length);
+			free(payload);
+		}
+
 		libder_type_free(type);
 		libder_set_error(ctx, LDE_NOMEM);
 	}
@@ -241,7 +249,11 @@ libder_obj_free(struct libder_object *obj)
 	DER_FOREACH_CHILD_SAFE(child, obj, tmp)
 		libder_obj_free(child);
 
-	free(obj->payload);
+	if (obj->payload != NULL) {
+		libder_bzero(obj->payload, obj->length);
+		free(obj->payload);
+	}
+
 	libder_type_free(obj->type);
 	free(obj);
 }
@@ -817,12 +829,20 @@ violated:
 	obj->children = NULL;
 
 	if (strict_violation) {
-		free(coalesced_data);
+		if (coalesced_data != NULL) {
+			libder_bzero(coalesced_data, offset);
+			free(coalesced_data);
+		}
+
 		return (false);
 	}
 
 	/* Finally, swap out the payload. */
-	free(obj->payload);
+	if (obj->payload != NULL) {
+		libder_bzero(obj->payload, obj->length);
+		free(obj->payload);
+	}
+
 	obj->length = offset;
 	obj->payload = coalesced_data;
 	obj->type->tag_constructed = false;

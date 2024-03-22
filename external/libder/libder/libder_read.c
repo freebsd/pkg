@@ -83,7 +83,10 @@ payload_free(struct libder_payload *payload)
 	if (!payload->payload_heap)
 		return;
 
-	free(payload->payload_data);
+	if (payload->payload_data != NULL) {
+		libder_bzero(payload->payload_data, payload->payload_size);
+		free(payload->payload_data);
+	}
 
 	payload->payload_heap = false;
 	payload->payload_data = NULL;
@@ -126,7 +129,10 @@ libder_stream_init(struct libder_ctx *ctx, struct libder_stream *stream)
 static void
 libder_stream_free(struct libder_stream *stream)
 {
-	free(stream->stream_buf);
+	if (stream->stream_buf != NULL) {
+		libder_bzero(stream->stream_buf, stream->stream_bufsz);
+		free(stream->stream_buf);
+	}
 }
 
 static void
@@ -325,6 +331,36 @@ libder_stream_refill(struct libder_stream *stream, size_t req)
 	return (&stream->stream_buf[offset]);
 }
 
+/*
+ * We can't just use realloc() because it won't provide any guarantees about
+ * the previous region if it can't just resize in-place, so we'll always just
+ * allocate a new one and copy ourselves.
+ */
+static uint8_t *
+libder_read_realloc(uint8_t *ptr, size_t oldsz, size_t newsz)
+{
+	uint8_t *newbuf;
+
+	if (oldsz == 0)
+		assert(ptr == NULL);
+	else
+		assert(ptr != NULL);
+	assert(newsz > oldsz);
+
+	newbuf = malloc(newsz);
+	if (newbuf == NULL)
+		return (NULL);
+
+	if (oldsz != 0) {
+		memcpy(newbuf, ptr, oldsz);
+
+		libder_bzero(ptr, oldsz);
+		free(ptr);
+	}
+
+	return (newbuf);
+}
+
 #define	BER_TYPE_LONG_BATCH	0x04
 
 static bool
@@ -487,6 +523,13 @@ der_read_structure(struct libder_ctx *ctx, struct libder_stream *stream,
 		} else {
 			uint8_t *payload_data;
 
+			/*
+			 * We play it conservative here: we could allocate the
+			 * buffer up-front, but we have no idea how much data we
+			 * actually have to receive!  The length is a potentially
+			 * attacker-controlled aspect, so we're cautiously optimistic
+			 * that it's accurate.
+			 */
 			payload_data = NULL;
 
 			offset = 0;
@@ -497,14 +540,17 @@ der_read_structure(struct libder_ctx *ctx, struct libder_stream *stream,
 
 				req = MIN(stream->stream_bufsz, resid);
 				if ((buf = libder_stream_refill(stream, req)) == NULL) {
+					libder_bzero(payload_data, offset);
 					free(payload_data);
 
 					libder_set_error(ctx, LDE_SHORTDATA);
 					goto failed;
 				}
 
-				next_data = realloc(payload_data, offset + req);
+				next_data = libder_read_realloc(payload_data,
+				    offset, offset + req);
 				if (next_data == NULL) {
+					libder_bzero(payload_data, offset);
 					free(payload_data);
 
 					libder_set_error(ctx, LDE_NOMEM);

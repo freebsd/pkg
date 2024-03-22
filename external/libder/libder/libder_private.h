@@ -11,7 +11,12 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdbool.h>
-
+#ifdef __APPLE__
+#define	__STDC_WANT_LIB_EXT1__	1
+#include <string.h>	/* memset_s */
+#else
+#include <strings.h>	/* explicit_bzero */
+#endif
 #include "libder.h"
 
 /* FreeBSD's sys/cdefs.h */
@@ -137,6 +142,17 @@ libder_type_simple(const struct libder_tag *type)
 
 	encoded |= type->tag_short;
 	return (encoded);
+}
+
+static inline void
+libder_bzero(uint8_t *buf, size_t bufsz)
+{
+
+#ifdef __APPLE__
+	memset_s(buf, bufsz, 0, bufsz);
+#else
+	explicit_bzero(buf, bufsz);
+#endif
 }
 
 size_t	 libder_get_buffer_size(struct libder_ctx *);

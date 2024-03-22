@@ -8,6 +8,11 @@ re-encode the resulting tree would apply any normalization expected by a DER
 decoder.  The author's use is primarily to decode/encode ECC keys for
 interoperability with OpenSSL.
 
+The authoritative source for this software is located at
+https://git.kevans.dev/kevans/libder, but it's additionally mirrored to
+[GitHub](https://github.com/kevans91/libder) for user-facing interactions.
+Pull requests and issues are open on GitHub.
+
 ## What is libder not?
 
 libder is not intended to be a general-purpose library for working with DER/BER
