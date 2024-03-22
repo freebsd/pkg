@@ -31,6 +31,7 @@
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <strings.h>
 
 #include <libder.h>
 
@@ -886,6 +887,7 @@ _load_private_key(struct ecc_sign_ctx *keyinfo)
 	}
 
 out:
+	explicit_bzero(keybuf, sizeof(keybuf));
 	free(filedata);
 	if (fd != -1)
 		close(fd);
@@ -1247,9 +1249,11 @@ ecc_new(const char *name __unused, struct pkgsign_ctx *sctx)
 }
 
 static void
-ecc_free(struct pkgsign_ctx *sctx __unused)
+ecc_free(struct pkgsign_ctx *sctx)
 {
+	struct ecc_sign_ctx *keyinfo = ECC_CTX(sctx);
 
+	explicit_bzero(&keyinfo->keypair, sizeof(keyinfo->keypair));
 }
 
 const struct pkgsign_ops pkgsign_ecc = {
