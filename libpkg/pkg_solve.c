@@ -776,7 +776,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		un = (struct pkg_job_universe_item *)it.value;
 		/* Add corresponding variables */
 		if (pkg_solve_add_variable(un, problem, &i) == EPKG_FATAL)
-			goto err;
+			return (NULL);
 	}
 
 	/* Add rules for all conflict chains */
@@ -789,19 +789,16 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    un->pkg->uid);
-			goto err;
+			return (NULL);
 		}
 		if (pkg_solve_process_universe_variable(problem, var) != EPKG_OK)
-			goto err;
+		        return (NULL);
 	}
 
 	if (tll_length(problem->rules) == 0)
 		pkg_debug(1, "problem has no requests");
 
 	return (problem);
-
-err:
-	return (NULL);
 }
 
 static int
