@@ -971,6 +971,8 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		/* XXX: deal with require rules somehow */
 		break;
 	case PKG_RULE_VITAL:
+		assert (rule->items != NULL);
+		item = rule->items;
 		var = item->var;
 		picosat_set_default_phase_lit(problem->sat, var->order, 1);
 		break;
