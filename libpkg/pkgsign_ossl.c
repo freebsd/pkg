@@ -344,6 +344,15 @@ ossl_verify(const struct pkgsign_ctx *sctx __unused, const char *keypath,
 
 	(void)lseek(fd, 0, SEEK_SET);
 
+	/*
+	 * XXX Older versions of pkg write out the NUL terminator of the
+	 * signature, so we shim it out here to avoid breaking compatibility.
+	 * We can't do it at a lower level in the caller, because other signers
+	 * may use a binary format that could legitimately contain a nul byte.
+	 */
+	if (sig[sig_len - 1] == '\0')
+		sig_len--;
+
 	cbdata.key = key_buf;
 	cbdata.keylen = key_len;
 	cbdata.sig = sig;
@@ -444,11 +453,12 @@ ossl_sign_data(struct pkgsign_ctx *sctx, const unsigned char *msg, size_t msgsz,
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-	assert(*siglen <= INT_MAX);
+	assert(*siglen < INT_MAX);
 	EVP_PKEY_CTX_free(ctx);
 #else
 	RSA_free(rsa);
 #endif
+	*siglen += 1;
 	return (EPKG_OK);
 }
 

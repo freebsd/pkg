@@ -1018,7 +1018,7 @@ pack_sign(struct packing *pack, struct pkgsign_ctx *sctx, const char *path,
 	}
 
 	iov[offset].iov_base = sigret;
-	iov[offset++].iov_len = siglen + 1;
+	iov[offset++].iov_len = siglen;
 
 	if (packing_append_iovec(pack, name, iov, offset) != EPKG_OK) {
 		free(sigret);
