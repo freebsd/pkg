@@ -4,6 +4,7 @@
 
 tests_init \
 	create_from_plist \
+	create_from_plist_with_variables \
 	create_from_plist_set_owner \
 	create_from_plist_set_group_space \
 	create_from_plist_gather_mode \
@@ -817,4 +818,38 @@ create_from_plist_keyword_override_prefix_body()
 	atf_check pkg create -o ${TMPDIR} -m . -p test.plist -r .
 	atf_check -o match:".*/plop/file$" -e ignore tar tf test-1.pkg
 	atf_check -o inline:"/plop/file\n" pkg info -F test-1.pkg -ql
+}
+
+
+create_from_plist_with_variables_body() {
+	touch file1 file2 plop file3
+	genmanifest
+	genplist "
+@var key1
+@var key2 
+@var key3 plop
+%%key1%%file1
+%%key2%%file2
+%%key3%%
+@var key3 @comment 
+%%key3%% file3"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	basic_validation
+	atf_check \
+		-o inline:"/file1\n/file2\n/plop\n" \
+		 pkg info -F test-1.pkg -ql
+	rm test-1.pkg
+	echo "
+%%plop%%
+" >> test.plist
+	atf_check \
+		-e match:"%%plop%%" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }

@@ -599,6 +599,7 @@ struct plist {
 	hardlinks_t hardlinks;
 	mode_t perm;
 	pkghash *keywords;
+	kvlist_t variables;
 };
 
 struct file_attr {

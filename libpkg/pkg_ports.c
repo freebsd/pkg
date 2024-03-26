@@ -68,6 +68,7 @@ static int config(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
 static int name_key(struct plist *, char *, struct file_attr *);
 static int include_plist(struct plist *, char *, struct file_attr *);
+static int add_variable(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
 	const char *name;
@@ -477,6 +478,7 @@ static struct keyact {
 	{ "owner", setowner },
 	{ "group", setgroup },
 	{ "override_prefix", override_prefix },
+	{ "var", add_variable },
 	/* old pkg compat */
 	{ "name", name_key },
 	{ NULL, NULL },
@@ -1077,6 +1079,64 @@ plist_free(struct plist *p)
 	free(p);
 }
 
+static char *
+expand_plist_variables(const char *in, kvlist_t *vars)
+{
+	xstring *buf;
+	const char *cp;
+	size_t len;
+
+	if (tll_length(*vars) == 0)
+		return (xstrdup(in));
+
+	buf = xstring_new();
+	cp = NULL;
+	while (in[0] != '\0') {
+		if (in[0] != '%') {
+			fputc(in[0], buf->fp);
+			in++;
+			continue;
+		}
+		in++;
+		if (in[0] == '\0')
+			break;
+		if (in[0] != '%') {
+			fputc(in[0], buf->fp);
+			in++;
+			continue;
+		}
+		in++;
+		cp = in;
+		while (in[0] != '\0' && !isspace(in[0])) {
+			if (in[0] == '%' && in[1] == '%') {
+				in++;
+				break;
+			}
+			in++;
+		}
+		if (in[0] != '%') {
+			fprintf(buf->fp, "%%%%%.*s", (int)(in - cp), cp);
+			in++;
+			continue;
+		}
+		len = in - cp -1;
+		/* we have a variable */
+		bool found = false;
+		tll_foreach(*vars, i) {
+			if (strncmp(cp, i->item->key, len) != 0)
+				continue;
+			fputs(i->item->value, buf->fp);
+			found = true;
+			break;
+		}
+		if (found)
+			continue;
+		fprintf(buf->fp, "%%%%%.*s%%", (int)(in - cp), cp);
+		in++;
+	}
+	return (xstring_get(buf));
+}
+
 static int
 plist_parse(struct plist *pplist, FILE *f)
 {
@@ -1084,11 +1144,14 @@ plist_parse(struct plist *pplist, FILE *f)
 	size_t linecap = 0;
 	ssize_t linelen;
 	char *line = NULL;
+	char *l;
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
-		ret = plist_parse_line(pplist, line);
+		l = expand_plist_variables(line, &pplist->variables);
+		ret = plist_parse_line(pplist, l);
+		free(l);
 		if (ret != EPKG_OK && rc == EPKG_OK)
 			rc = ret;
 	}
@@ -1114,6 +1177,40 @@ open_directory_of(const char *file)
 	walk = strrchr(path, '/');
 	*walk = '\0';
 	return (open(path, O_DIRECTORY));
+}
+
+int
+add_variable(struct plist *p, char *line, struct file_attr *a __unused)
+{
+	const char *key;
+	char *val;
+
+	key = val = line;
+	while (*val != '\0' && !isspace(*val))
+		val++;
+	if (*val != '\0') {
+		*val = '\0';
+		val++;
+	}
+
+	if (*key == '\0') {
+		pkg_emit_error("Inside in @include it is not allowed to reuse @include");
+		return (EPKG_FATAL);
+	}
+
+	while (*val != '\0' && isspace(*val))
+		val++;
+
+	tll_foreach(p->variables, v) {
+		if (strcmp(v->item->key, key) == 0) {
+			free(v->item->value);
+			v->item->value = xstrdup(val);
+			return (EPKG_OK);
+		}
+	}
+	struct pkg_kv *kv = pkg_kv_new(key, val);
+	tll_push_back(p->variables, kv);
+	return (EPKG_OK);
 }
 
 int
