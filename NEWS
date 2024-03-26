@@ -1,3 +1,8 @@
+Changes from 1.20.99.11 to 1.20.99.12
+- ECC signature: plenty of fixes
+- plist now have a "@var key value" to deal with %%KEY%% variables
+- upgrade sqlite to latest version
+
 Changes from 1.20.99.10 to 1.20.99.11
 - solver now excludes removal of packages flagged as vital or locked from
   removal
