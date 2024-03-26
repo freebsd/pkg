@@ -12,11 +12,11 @@
 #include <signal.h>
 #include <stdbool.h>
 #ifdef __APPLE__
-#define	__STDC_WANT_LIB_EXT1__	1
-#include <string.h>	/* memset_s */
-#else
-#include <strings.h>	/* explicit_bzero */
+#define	__STDC_WANT_LIB_EXT1__	1	/* memset_s */
 #endif
+/* explicit_bzero is in one of these... */
+#include <string.h>
+#include <strings.h>
 #include "libder.h"
 
 /* FreeBSD's sys/cdefs.h */
