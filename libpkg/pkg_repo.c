@@ -755,12 +755,8 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		 * over the repo rather than raw.  This required some kludges
 		 * to work with, but future pkgsign_verify implementations
 		 * should not follow in its path.
-		 *
-		 * We reduce siglen by one to chop off the NULL terminator that
-		 * is packed in with it over in pkg_repo_finish().
 		 */
-		ret = pkgsign_verify(sctx, rkey, s->sig, s->siglen - 1,
-		    dest_fd);
+		ret = pkgsign_verify(sctx, rkey, s->sig, s->siglen, dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
 					"removing repository.");
