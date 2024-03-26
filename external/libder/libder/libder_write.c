@@ -201,7 +201,7 @@ libder_write(struct libder_ctx *ctx, struct libder_object *root, uint8_t *buf,
 	/* Allocate if we weren't passed a buffer. */
 	if (*bufsz == 0) {
 		*bufsz = needed;
-		buf = malloc(needed + 1);
+		buf = malloc(needed);
 		if (buf == NULL)
 			return (NULL);
 	} else if (needed > *bufsz) {
