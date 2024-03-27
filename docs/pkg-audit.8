@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd March 1, 2022
+.Dd September 25, 2022
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -24,12 +24,14 @@
 .Nm
 .Op Fl Fqr
 .Op Fl f Ar filename
+.Op Fl d Ar repopath
 .Op Fl R Ns Op Ar format
 .Op Ar pkg-name
 .Pp
 .Nm
 .Op Cm --{fetch,quiet,recursive}
 .Op Fl -file Ar filename
+.Op Fl -database Ar repopath
 .Op Fl -raw Ns Op Cm = Ns Ar format
 .Op Ar pkg-name
 .Sh DESCRIPTION
@@ -65,6 +67,10 @@ The following options are supported by
 .Bl -tag -width indent
 .It Fl F , Cm --fetch
 Fetch the database before checking.
+.It Fl d Ar repopath , Fl -database Ar repopath
+Use
+.Pa repopath
+as the repository to audit.
 .It Fl f Ar filename , Fl -file Ar filename
 Use
 .Pa filename
